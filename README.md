@@ -1,3 +1,5 @@
+*Forked from https://github.com/tedchoward/Frontier with aspirations to making it work on current versions of macOS*
+
 # Userland Frontier Kernel #
 
 ## Installation Instructions
