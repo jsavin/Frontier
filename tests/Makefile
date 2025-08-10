@@ -1,0 +1,193 @@
+# Frontier Test Suite Makefile
+# Phase 1.1: Comprehensive Testing Implementation
+
+CC = clang
+CFLAGS = -Wall -Wextra -std=c99 -g -O0
+FRONTIER_CLI_DIR = ../frontier-cli
+SYSTEMHEADERDIR = ../Common/SystemHeaders
+HEADERDIR = ../Common/headers
+MODERNHEADERDIR = ../build_Xcode_modern
+FRAMEWORKS = -framework CoreFoundation -framework Carbon
+
+# Frontier core source files (minimal set suitable for CLI/testing)
+# Portable core sources (subset)
+PORTABLE_SOURCES = \
+    ../portable/handle.c \
+    ../portable/classic_handle.c \
+    ../portable/platform_null.c \
+    ../portable/cli_executor.c
+
+# TODO: progressively add language engine sources adapted for FRONTIER_PORTABLE
+FRONTIER_SOURCES = $(PORTABLE_SOURCES) \
+    ../Common/source/langscan.c \
+    ../Common/source/langparser.c \
+    ../Common/source/langvalue.c \
+    ../Common/source/langevaluate.c \
+    ../Common/source/lang.c
+
+# CLI source files
+CLI_SOURCES =
+
+# Test framework
+TEST_FRAMEWORK = framework/test_framework.c
+
+# Test executables
+TEST_EXECUTABLES = \
+	test_usertalk_objects \
+	test_cli_integration \
+	test_database \
+	test_migration \
+	test_compatibility \
+	test_64bit_structures \
+	test_dbnew
+
+# UserTalk object test executables
+USERTALK_OBJECT_TESTS = \
+	test_basic_types \
+	test_collections \
+	test_complex_objects \
+	test_database_persistence \
+	test_usertalk_runner
+
+# All test executables
+ALL_TESTS = $(TEST_EXECUTABLES) $(USERTALK_OBJECT_TESTS)
+
+# Default target
+all: $(ALL_TESTS)
+
+# Test framework object
+framework/test_framework.o: framework/test_framework.c framework/test_framework.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Main test executables
+test_usertalk_objects: components/test_usertalk_objects.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES) $(CLI_SOURCES)
+	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable -I$(FRONTIER_CLI_DIR) $^ -o $@
+
+test_cli_integration: components/test_cli_integration.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES) $(CLI_SOURCES)
+	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable -I$(FRONTIER_CLI_DIR) $^ -o $@
+
+test_database: components/test_database.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES)
+	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable $^ -o $@
+
+test_migration: components/test_migration.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES)
+	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable $^ -o $@
+
+test_compatibility: components/test_compatibility.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES)
+	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable $^ -o $@
+
+test_64bit_structures: components/test_64bit_structures.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES)
+	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable $^ -o $@
+
+test_dbnew: components/test_dbnew.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES)
+	$(CC) $(CFLAGS) -I$(SYSTEMHEADERDIR) -I../Common/SystemHeaders -I$(HEADERDIR) -I$(MODERNHEADERDIR) -I../portable $^ $(FRAMEWORKS) -o $@
+
+
+# UserTalk object test executables
+test_usertalk_runner: components/usertalk_objects/test_usertalk_objects.c components/usertalk_objects/test_runner.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES) $(CLI_SOURCES)
+	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable $^ -o $@
+
+test_basic_types: components/usertalk_objects/test_basic_types.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES) $(CLI_SOURCES)
+	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable -I$(FRONTIER_CLI_DIR) $^ -o $@
+
+test_collections: components/usertalk_objects/test_collections.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES) $(CLI_SOURCES)
+	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable -I$(FRONTIER_CLI_DIR) $^ -o $@
+
+test_complex_objects: components/usertalk_objects/test_complex_objects.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES) $(CLI_SOURCES)
+	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable -I$(FRONTIER_CLI_DIR) $^ -o $@
+
+test_database_persistence: components/usertalk_objects/test_database_persistence.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES) $(CLI_SOURCES)
+	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable -I$(FRONTIER_CLI_DIR) $^ -o $@
+
+
+# Test targets
+test: $(ALL_TESTS)
+	@echo "Running all tests..."
+	@for test in $(ALL_TESTS); do \
+		echo "Running $$test..."; \
+		./$$test; \
+	done
+
+test-usertalk: test_usertalk_runner
+	@echo "Running UserTalk object tests..."
+	./test_usertalk_runner
+
+test-basic: test_basic_types
+	@echo "Running basic type tests..."
+	./test_basic_types
+
+test-collections: test_collections
+	@echo "Running collection tests..."
+	./test_collections
+
+test-complex: test_complex_objects
+	@echo "Running complex object tests..."
+	./test_complex_objects
+
+test-db-persistence: test_database_persistence
+	@echo "Running database persistence tests..."
+	./test_database_persistence
+
+test-cli: test_cli_integration
+	@echo "Running CLI integration tests..."
+	./test_cli_integration
+
+test-db: test_database
+	@echo "Running database tests..."
+	./test_database
+
+test-migration: test_migration
+	@echo "Running migration tests..."
+	./test_migration
+
+test-compat: test_compatibility
+	@echo "Running compatibility tests..."
+	./test_compatibility
+
+# Clean target
+clean:
+	rm -f $(ALL_TESTS)
+	rm -f framework/test_framework.o
+	rm -f *.root
+	rm -f test_*.root
+
+# Install target
+install: $(ALL_TESTS)
+	@echo "Installing test executables..."
+	@mkdir -p /usr/local/bin/frontier-tests
+	@cp $(ALL_TESTS) /usr/local/bin/frontier-tests/
+	@echo "Tests installed to /usr/local/bin/frontier-tests/"
+
+# Uninstall target
+uninstall:
+	@echo "Uninstalling test executables..."
+	@rm -rf /usr/local/bin/frontier-tests
+	@echo "Tests uninstalled"
+
+# Help target
+help:
+	@echo "Frontier Test Suite Makefile"
+	@echo "============================"
+	@echo ""
+	@echo "Available targets:"
+	@echo "  all              - Build all test executables"
+	@echo "  test             - Run all tests"
+	@echo "  test-usertalk    - Run UserTalk object tests"
+	@echo "  test-basic       - Run basic type tests"
+	@echo "  test-collections - Run collection tests"
+	@echo "  test-complex     - Run complex object tests"
+	@echo "  test-db-persistence - Run database persistence tests"
+	@echo "  test-cli         - Run CLI integration tests"
+	@echo "  test-db          - Run database tests"
+	@echo "  test-migration   - Run migration tests"
+	@echo "  test-compat      - Run compatibility tests"
+	@echo "  clean            - Remove all test executables"
+	@echo "  install          - Install test executables"
+	@echo "  uninstall        - Uninstall test executables"
+	@echo "  help             - Show this help message"
+	@echo ""
+	@echo "Test Structure:"
+	@echo "  components/usertalk_objects/ - UserTalk object type tests"
+	@echo "  components/                   - Integration and system tests"
+	@echo "  framework/                    - Test framework"
+
+.PHONY: all test clean install uninstall help

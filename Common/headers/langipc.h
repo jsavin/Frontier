@@ -35,9 +35,13 @@
 #endif
 
 #ifndef __APPLEEVENTS__
-
-	#include <AppleEvents.h>
-
+#ifdef FRONTIER_PORTABLE
+    typedef void* AppleEvent;
+    typedef void* AEEventID;
+    typedef void* AEDesc;
+#else
+    #include <AppleEvents.h>
+#endif
 #endif
 
 /*types*/

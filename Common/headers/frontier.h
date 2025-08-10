@@ -35,10 +35,16 @@
 #ifndef __FRONTIER_H__
 #define __FRONTIER_H__
 
+// Phase 0.4: Include compatibility layer first (ensures all system types are available)
+// This must be included before any other Frontier headers to avoid type definition conflicts
+#include "frontier_compat.h"
 
-
-
-
+// Test if compatibility layer was included
+#ifdef FRONTIER_COMPAT_INCLUDED
+// Compatibility layer included successfully
+#else
+#error "frontier_compat.h was not included properly"
+#endif
 
 #include "osincludes.h"		/* operating system headers */
 

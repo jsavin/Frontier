@@ -155,7 +155,11 @@ typedef struct tyselectioninfo {
 	
 	short fontsize;
 	
-	tyjustification justification;
+    #ifdef FRONTIER_PORTABLE
+    short justification; /* portable stub */
+    #else
+    tyjustification justification;
+    #endif
 	
 	short leading;
 	

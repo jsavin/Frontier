@@ -226,7 +226,11 @@ typedef struct tyoutlinerecord {
 	
 	short defaultlineheight; /*if the caller doesn't override, this is the height of each line*/
 	
-	tylinespacing linespacing; /*a vestige, it's preserved, but ignored*/
+    #ifdef FRONTIER_PORTABLE
+    short linespacing; /* portable stub */
+    #else
+    tylinespacing linespacing; /*a vestige, it's preserved, but ignored*/
+    #endif
 	
 	Rect outlinerect; /*the rectangle that the outline is displayed in*/
 	

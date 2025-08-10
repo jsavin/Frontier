@@ -31,9 +31,25 @@
 
 #ifndef shelltypesinclude
 
-	#include "shelltypes.h"
+    #include "shelltypes.h"
 
 #endif
+
+#ifdef FRONTIER_PORTABLE
+/* Portable core build: provide minimal typedefs and skip platform UI APIs */
+/* Forward use the full tyfilespec from shelltypes.h which we include before */
+typedef tyfilespec* ptrfilespec;
+typedef void* FSRefParamPtr; typedef void* FSCatalogInfoPtr; typedef void* FSSpecPtr; typedef void* CFStringRef; typedef const unsigned char* StringPtr; typedef int OSStatus; typedef void* IconRef;
+typedef struct tyfileinfo tyfileinfo; /* forward decl for prototypes */
+/* universal error codes */
+#define errorVolume -35
+#define errorParam -50
+#define errorFileNotFound -43
+#define errorDirNotFound -120
+#define errorNone 0
+#endif /* FRONTIER_PORTABLE */
+
+#ifndef FRONTIER_PORTABLE
 
 
 //universal error codes
@@ -45,10 +61,6 @@
 #ifndef __NAVIGATION__
 #include <Navigation.h>
 #endif
-
-
-
-
 	#define chpathseparator ':'
 
 
@@ -508,6 +520,8 @@ extern boolean filegetprogramversion (bigstring);
 
 extern boolean filestart (void); /*6.1b15 AR*/
 
+
+#endif /* FRONTIER_PORTABLE */
 
 #endif	//fileinclude
 

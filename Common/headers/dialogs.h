@@ -31,9 +31,9 @@
 #define okitem 1 /*can be used by any dialog if something more specific isn't needed*/
 #define cancelitem 2
 
-#define quitdialogid 254 /*standard ÒquitÓ dialog (shares items with Save)*/
+#define quitdialogid 254 /*standard ï¿½quitï¿½ dialog (shares items with Save)*/
 
-#define savedialogid 256 /*standard ÒsaveÓ dialog*/
+#define savedialogid 256 /*standard ï¿½saveï¿½ dialog*/
 #define saveyesitem 1
 #define savecancelitem 2
 #define savenoitem 3
@@ -45,23 +45,23 @@
 #define replaceduplicateitem 2
 #define replacecancelitem 3
 
-#define askdialogid 262 /*standard ÒaskÓ dialog for UserLand language*/
+#define askdialogid 262 /*standard ï¿½askï¿½ dialog for UserLand language*/
 #define askokitem 1
 #define askcancelitem 2
 #define askpromptitem 3
 #define askansweritem 4
 
-#define msgdialogid 263 /*standard ÒmsgÓ dialog for UserLand language*/
+#define msgdialogid 263 /*standard ï¿½msgï¿½ dialog for UserLand language*/
 #define msgokitem 1
 #define msgcancelitem 2
 #define msgmsgitem 3
 
-#define twowaydialogid 263 /*standard ÒmsgÓ dialog for UserLand language*/
+#define twowaydialogid 263 /*standard ï¿½msgï¿½ dialog for UserLand language*/
 #define twowayokitem 1
 #define twowaycancelitem 2
 #define twowaymsgitem 3
 
-#define threewaydialogid 264 /*standard ÒmsgÓ dialog for UserLand language*/
+#define threewaydialogid 264 /*standard ï¿½msgï¿½ dialog for UserLand language*/
 #define threewayyesitem 1
 #define threewaynoitem 2
 #define threewaycancelitem 3
@@ -81,11 +81,11 @@
 
 #define sferrordialogid 260 /*error while std file is up*/
 
-#define alertdialogid 261 /*standard ÒalertÓ dialog for UserLand language*/
+#define alertdialogid 261 /*standard ï¿½alertï¿½ dialog for UserLand language*/
 #define alertokitem 1
 #define alertmsgitem 3
 
-#define revertdialogid 269 /*standard ÒrevertÓ dialog for UserLand language*/
+#define revertdialogid 269 /*standard ï¿½revertï¿½ dialog for UserLand language*/
 #define revertokitem 1
 
 #define newvaluedialogid 255 /*zooming unknown value*/
@@ -212,7 +212,10 @@ extern short customalert (short, bigstring);
 
 extern boolean customdialog (short, short, dialogcallback);
 
-	char X0_p2cstrcpy(char *dst, StringPtr src);
+        #ifdef FRONTIER_PORTABLE
+        typedef const unsigned char* StringPtr;
+        #endif
+        char X0_p2cstrcpy(char *dst, StringPtr src);
 
 #endif
 

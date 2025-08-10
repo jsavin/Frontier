@@ -25,8 +25,15 @@
 
 ******************************************************************************/
 
+#ifdef FRONTIER_PORTABLE
+#include "../portable/os_portable.h"
+#include "../portable/time_portable.h"
+#include "../portable/frontier.h"
+#include "../portable/standard.h"
+#else
 #include "frontier.h"
 #include "standard.h"
+#endif
 
 #include "memory.h"
 #include "db.h"
@@ -1026,7 +1033,12 @@ boolean langrunstringnoerror (const bigstring bsprogram, bigstring bsresult) {
 		
 		saveerrorclear = langcallbacks.clearerrorcallback;
 		
-		langcallbacks.errormessagecallback = (langerrormessagecallback) &truenoop;
+    #ifdef FRONTIER_PORTABLE
+    extern boolean langportable_err_noop(unsigned char*, void*);
+    langcallbacks.errormessagecallback = (langerrormessagecallback) &langportable_err_noop;
+    #else
+    langcallbacks.errormessagecallback = (langerrormessagecallback) &truenoop;
+    #endif
 		
 		langcallbacks.clearerrorcallback = &truenoop;
 		

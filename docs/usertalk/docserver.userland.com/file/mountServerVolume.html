@@ -1,0 +1,501 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+  "http://www.w3.org/TR/1999/REC-html401-19991224/loose.dtd">
+<html lang="en">
+  
+<!-- Mirrored from docserver.userland.com/file/mountServerVolume by HTTrack Website Copier/3.x [XR&CO'2014], Thu, 07 Aug 2025 01:35:18 GMT -->
+<head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8">
+    <title>DocServer: file.mountServerVolume</title>
+    <style type="text/css">
+  /* General --------------------------------------------- */
+    body {
+      background-color: #FFF;
+      background-image: url(http://static.userland.com/rack1/images/ManilaWebsite/manilaBodyBG.jpg);
+      background-position: top left;
+      background-repeat: repeat-y;
+      color:#000;
+      font-family:Geneva, Arial, Helvetica, san-serif;
+      font-size:12px;
+      line-height:140%;
+      margin:0px 0px 0px 0px;
+      }
+    A {
+      text-decoration: none;
+      } 
+    A:link {
+      color: #932104;
+      } 
+    A:visited {
+      color: #CD3201; 
+      } 
+    A:active {
+      color: #920011;
+      } 
+    A:hover {
+      color: #FFF;
+      background:#000;
+      }
+  /* Banner --------------------------------------------- */
+    #banner {
+      background-color: #FFF;
+      background-image: url(http://static.userland.com/rack1/images/ManilaWebsite/manilaBannerRight.jpg);
+      background-position: top right;
+      background-repeat: no-repeat;
+      color: #000;
+      margin: 0;
+      padding-top: 60px;
+      padding-right: 100px;
+      padding-bottom: 24px;
+      padding-left: 10px;
+      }
+    #banner h1 {
+      font-family:'Trebuchet MS',verdana, arial, sans-serif;
+      font-size: 40px;
+      font-weight: bold;
+      letter-spacing: -0.1em;
+      }
+    #banner a {
+      background:transparent;
+      color: #000;
+      text-decoration:none;
+      }
+    #banner a:hover {
+      background:#FFF;
+      color: #000;
+      text-decoration:none;
+      }
+    .tagline {
+      color:#FFF;
+      font-size:13px;
+      text-shadow: 2px 2px 3px #000;
+      text-align:center;
+      font-style: italic;
+      padding: 26px 15px 0px 45px;
+      background: #932104 url(http://static.userland.com/rack1/images/ManilaWebsite/manilaNavTop.jpg) top left no-repeat;
+      }
+  /* NewsItems --------------------------------------------- */
+    .newsItemTitle {
+      font-size:16px;
+      font-weight:bold;
+      padding:5px 0px 5px 0px;
+      margin:0px;
+      }
+    .newsItemDesc {
+      padding: 5px 0px 15px 0px;
+      margin-bottom:25px;
+      }
+    .newsItemFooter {
+      text-align:right;
+      font-size:10px;
+      }
+  /* Navigation--------------------------------------------- */
+    #links {
+      background:#CD3201 url(http://static.userland.com/rack1/images/ManilaWebsite/manilaNavBG.jpg) top left repeat-y;
+      color:#FFF;
+      padding-bottom:90px;
+      }
+    #links a:link , #links a:visited{
+      color:#6DA8B3;
+      }
+    .linksPadding {
+      padding: 3px 30px 3px 30px;
+      }
+    #navcontainer { width: 100%; }
+    #navcontainer ul {
+      margin-left: 0;
+      padding-left: 0;
+      list-style-type: none;
+      font-family: Arial, Helvetica, sans-serif;
+      }
+    #navcontainer a {
+      display: block;
+      padding: 4px 9px 4px 9px;
+      width: 100%;
+      border-bottom: 1px solid #DE724A;
+      font-family:'Trebuchet MS',verdana, arial, sans-serif;
+      }
+    #navcontainer a:link, #navlist a:visited {
+      color: #FFF;
+      text-decoration: none;
+      }
+    #navcontainer a:hover {
+      background:#B32A00;
+      text-shadow: 2px 2px 3px #551302;
+      color: #FFF;
+      }
+    #navlist a:link#current {
+      text-shadow: 2px 2px 3px #551302;
+      background:#932104;
+      color:#FFF;
+      }
+  /* Main Column--------------------------------------------- */
+    #content {
+      margin-top: 0;
+      padding-top: 0;
+      padding-right: 18px;
+      padding-bottom: 0;
+      padding-left: 18px;
+      }
+    .title {
+      font-size: 20px; 
+      line-height:150%;
+      font-weight:bold; 
+      }
+    .date {
+      font-size:12px;
+      font-weight:bold;
+      text-align:left;
+      line-height:120%;
+      padding:3px 5px 4px 3px;
+      margin-top:10px;
+      margin-bottom:22px;
+      background:#A9B5C9;
+      color:#2B4575;
+      border-bottom:1px solid #2B4575;
+      border-left:1px solid #2B4575;
+      }
+    #footer{
+      font-size:10px;
+      line-height:130%;
+      font-weight:normal;
+      padding-top:10px; 
+      padding-right: 36px;
+      padding-bottom: 0;
+      padding-left: 36px;
+      margin-top:26px; 
+      border-top:1px solid #A9B5C9;
+      }
+  /* Calendar--------------------------------------------- */
+    #calendar td {
+      padding:0px;
+      color:#FFF;
+      text-align:center;
+      font-size:12px;
+      font-family:Geneva, Arial, Helvetica, san-serif;
+      line-height:140%;
+      }
+    #calendar a {
+      font-weight:bold;
+      color:#6DA8B3;
+      }
+    .hCalendarMonthYearRow, .dCalendarMonthYearRow {
+      font-size:12px;
+      font-weight:bold;
+      text-align:left;
+      }
+    .hCalendarDayNameRow, .dCalendarDayNameRow {
+      font-weight:bold;
+      }
+    .hCalendarDayRow, .dCalendarDayRow {
+      font-weight:normal;
+      }
+    .hCalendarDayLinked, .dCalendarDayLinked {
+      background-color: #215058;
+      }
+    .hCalendarDayCurrent, .dCalendarDayCurrent {
+      background-color: #67929E;
+      }
+  /* Discussion--------------------------------------------- */
+    .dlHeader{
+      padding:4px;
+      }
+    .dlCountReadsTitle, .dlSubjectTitle, .dlCountMessagesTitle, .dlPostedTitle, .dlMessageLinkTitle, .dlAuthorTitle {
+      padding:4px;
+      }
+    .dlSubject, .dlCountMessages,.dlPosted, .dlCountReads, .dlAuthor, .dlMessageLink {
+      padding:4px;
+      }
+    .discussHeader {
+      font-weight:normal;
+      line-height:120%;  
+      }
+    .discussResponceList {
+      padding:10px 10px 10px 10px;  
+      margin-top:10px;
+      border-top:1px dotted #999;  
+      }
+  /* Misc--------------------------------------------- */
+    hr {
+      background:#A9B5C9;
+      border-top:0px solid #A9B5C9;
+      border-bottom:0px solid #A9B5C9;
+      border-left:0px solid #A9B5C9;
+      border-right:0px solid #A9B5C9;
+      height:1px;
+      }
+    td {
+      font-size:12px;
+      font-family:Geneva, Arial, Helvetica, san-serif;
+      color:#000;
+      }
+  /* Feature List */
+    .featureList {
+      margin: 0;
+      padding-top: 0;
+      padding-right: 0;
+      padding-bottom: 0;
+      padding-left: 1em;
+      }
+    .featureList ul {
+      margin-left: 0;
+      padding-left: 0;
+      }
+  /* rssBoxes */
+    .rssBox {
+      background: #DAE6F0;
+      border-color: #29636C;
+      border-width: 1px;
+      border-style: solid;
+      color: #29636C;
+      margin-bottom: 4px;
+      }
+    .rssBoxHeader {
+      color:#FFFFFF;
+      background: #29636C;
+      border-bottom-color: #000000;
+      border-bottom-style: solid;
+      border-bottom-width: 6px;
+      padding-top: 12px;
+      padding-bottom: 12px;
+      }
+    .rssBoxHeader a {
+      color:#FFFFFF;
+      background: #29636C;
+      text-decoration: none;
+      }
+    .rssBoxHeader a:hover {
+      text-decoration: underline;
+      }
+    .rssBoxHeader h3 {
+      margin-top: 0;
+      margin-right: 12px;
+      margin-bottom: 0;
+      margin-left: 6px;
+      }
+    .rssBoxHeader p {
+      margin-top: 6px;
+      margin-right: 12px;
+      margin-bottom: 6px;
+      margin-left: 12px;
+      }
+    .rssBoxByline {
+      font-size: 12px;
+      }
+    .rssBoxTimeString {
+      font-size: 10px;
+      margin-bottom: 12px;
+      }
+    .rssBoxBody {
+      color:#000000;
+      background: #DAE6F0;
+      }
+    .rssBoxBody a {
+      text-decoration:none;
+      }
+    .rssBoxBody a:hover {
+      text-decoration:none;
+      }
+    .rssBoxItem {
+      color:#000000;
+      background: #DAE6F0;
+      margin: 12px;
+      }
+      /* RSS Sidebar */
+      .rssSidebar {
+      padding: 4px 9px 4px 9px;
+      margin-bottom: 9px;
+      }
+    #rssSideBarBox {
+      color:#6DA8B3;
+      background-color: transparent;
+      font-family:'Trebuchet MS',verdana, arial, sans-serif;
+      }
+    #rssSideBarBox a {
+      text-decoration: none;
+      }
+    #rssSideBarBox a:link {
+      color: #FFFFFF;
+      background-color: transparent;
+      } 
+    #rssSideBarBox a:visited {
+      color: #CCCCCC; 
+      background-color: transparent;
+      } 
+    #rssSideBarBox a:active {
+      color: #920011;
+      background-color: transparent;
+      } 
+  </style>
+    <script type="text/javascript" language="javascript">
+<!--
+
+function newImage(arg) {
+  if (document.images) {
+    rslt = new Image();
+    rslt.src = arg;
+    return rslt;
+  }
+}
+
+function changeImages() {
+  if (document.images && (preloadFlag == true)) {
+    for (var i=0; i<changeImages.arguments.length; i+=2) {
+      document[changeImages.arguments[i]].src = changeImages.arguments[i+1];
+    }
+  }
+}
+
+var preloadFlag = false;
+function preloadImages() {
+  if (document.images) {
+    radio2_01_over = newImage("http://static.userland.com/rack1/images/ul2004/radio201over1.gif");
+    manila2_01_over = newImage("http://static.userland.com/rack1/images/ul2004/manila201over1.gif");
+    preloadFlag = true;
+  }
+}
+
+// -->
+</script>
+
+    <link rel="icon" href="http://static.userland.com/images/UserLand/urlIcon.gif" type="image/ico">
+    <meta http-equiv="Expires" content="Mon, 01 Jan 1990 01:00:00 GMT">
+    <meta name="generator" content="UserLand Frontier 9.0.1">
+    </head>
+  <body onload="preloadImages();">
+    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background:#333 url(http://static.userland.com/images/UserLand/ulLogoTopBG.gif) top left repeat-x;padding:0px;font-size:12px;font-family:Geneva, Arial, Helvetica, san-serif;">
+
+	<tr>
+
+		<td valign="top" width="145" nowrap>
+
+			<a href="http://www.userland.com/"><img src="http://static.userland.com/images/UserLand/ulLogoTop.gif" width="145" height="36" border="0" alt="UserLand Software"></a>
+
+			</td>
+
+		<td align="right" width="100%" style="padding:0px 15px 0px 0px;text-shadow: 2px 2px 3px #000;color:#FFF;" nowrap>
+
+			<a style="color:#FFF;font-weight:bold;text-decoration: none;" href="http://www.userland.com/">Home</a>&nbsp;&nbsp;|&nbsp;&nbsp;<a style="color:#FFF;font-weight:bold;text-decoration: none;" href="http://manila.userland.com/">Manila</a>&nbsp;&nbsp;|&nbsp;&nbsp;<a style="color:#FFF;font-weight:bold;text-decoration: none;" href="http://radio.userland.com/">Radio</a>&nbsp;&nbsp;|&nbsp;&nbsp;<a style="color:#FFF;font-weight:bold;text-decoration: none;" href="http://www.userland.com/support/">Support</a>&nbsp;&nbsp;|&nbsp;&nbsp;<a style="color:#FFF;font-weight:bold;text-decoration: none;" href="http://productnews.userland.com/">News</a>
+
+			</td>
+
+		</tr>
+
+	</table>
+
+<table width="100%" border="0" cellspacing="0" cellpadding="0">
+    <tr>
+      <td valign="top" width="10">
+        <img src="http://static.userland.com/rack1/images/ManilaWebsite/manilaBannerleft.jpg" width="16" height="91" border="0" alt="">
+        </td>
+      <td valign="top" width="70%">
+        <h1 id="banner">
+          <a href="../index.html" style="font-family:'Trebuchet MS',verdana, arial, sans-serif;color:#000;font-size:37px;font-weight:bold;">DocServer</a><br />
+          </h1>
+        <div id="content">
+          
+          <p><table border="0" cellpadding="2" cellspacing="1" bgcolor="#CCCCCC"><tr><td bgcolor="#DCDCDC" align="left"><font size="-1"><a href="modified.html" title="file.modified">Prev</a> | <a href="move.html" title="file.move">Next</a> | <a href="index.html" onmouseover="window.status='../index.html';" onmouseout="window.status='';">File Verbs</a> > <a href="#" onmouseover="window.status='../index.html';" onmouseout="window.status='';">file.mountServerVolume</a></font></td></tr></table></p>
+          <h2 class="title">file.mountServerVolume</h2>
+          		<table border="0" cellspacing="7" cellpadding="0">
+		<tr>
+			<td valign="top" align="left"><b>Syntax</b></td>
+			<td valign="top" align="left">
+				file.mountServerVolume (networkPath, username, password)<p>
+				</td>
+			</tr>
+		<tr>
+			<td valign="top" align="left"><b>Params</b></td>
+			<td valign="top" align="left">
+				networkPath is a string containing the network address of the volume, containing the zone name, server name, and volume name separated by colons.<p>
+				username is the user name with which you want to log on to the server.<p>
+				password is the password associated with username.<p>
+				</td>
+			</tr>
+		<tr>
+			<td valign="top" align="left"><b>Action</b></td>
+			<td valign="top" align="left">
+				Locates and mounts the specified volume.<p>
+				</td>
+			</tr>
+		<tr>
+			<td valign="top" align="left"><b>Returns</b></td>
+			<td valign="top" align="left">
+				True if the volume is found on the network and is mounted successfully.<p>
+				</td>
+			</tr>
+		<tr>
+			<td valign="top" align="left"><b>Examples</b></td>
+			<td valign="top" align="left">
+				<font size="-1">
+					file.mountServerVolume ("*:Mac IIsi:Shared Folder", "sysop", "uguessit")<br>
+					<br>&nbsp;&nbsp;&nbsp;&#187; true<br><p>
+					The volume named "Shared Folder" on the machine named "Mac IIsi" on the local zone was mounted.<br>
+					file.mountServerVolume ("Development:Quadra IIzx:Hacks", "", "")<br>
+					<br>&nbsp;&nbsp;&nbsp;&#187; true<br><p>
+					The volume "Hacks" was mounted with guest privileges.  See Notes.<br>
+					</font>
+				</td>
+			</tr>
+		<tr>
+			<td valign="top" align="left"><b>Errors</b></td>
+			<td valign="top" align="left">
+				If the server at networkPath cannot be found, or if the username or password is invalid, an error will occur.<p>
+				</td>
+			</tr>
+		<tr>
+			<td valign="top" align="left"><b>Platform Notes</b></td>
+			<td valign="top" align="left">
+				This verb is only implemented in the Mac OS version of Frontier.<p>
+				</td>
+			</tr>
+		<tr>
+			<td valign="top" align="left"><b>Notes</b></td>
+			<td valign="top" align="left">
+				To log on as Guest, pass the empty string for both username and password.<p>
+				To specify the local zone in networkPath, use the '*' character, as in the first example above.<p>
+				</td>
+			</tr>
+		<tr>
+			<td valign="top" align="left"><b>See Also</b></td>
+			<td valign="top" align="left">
+				<a href="unmountVolume.html">file.unmountVolume</a><p>
+				</td>
+			</tr>
+		</table><p>
+
+<p><a href="../discuss/msgReader%24298.html"></a><p>
+
+          <p><table border="0" cellpadding="2" cellspacing="1" bgcolor="#CCCCCC"><tr><td bgcolor="#DCDCDC" align="left"><font size="-1"><a href="modified.html" title="file.modified">Prev</a> | <a href="move.html" title="file.move">Next</a> | <a href="index.html" onmouseover="window.status='../index.html';" onmouseout="window.status='';">File Verbs</a> > <a href="#" onmouseover="window.status='../index.html';" onmouseout="window.status='';">file.mountServerVolume</a></font></td></tr></table></p>
+          </div>
+        <div id="footer">
+          <p><a href="http://www.manilasites.com/" title="Manila is an Internet server application that allows groups of writers, designers and graphics people to manage full-featured, high performance web sites through an easy-to-use browser interface."><img src="../mainResponderResources/userlandIcons/thisIsAManilaSite2.gif" width="88" height="31" border="0" alt="This is a Manila site."></a><br />
+          <br />
+          Copyright 2025 <a href="http://www.userland.com/">UserLand Corporation</a><br>
+          <b>Membership:</b> <a href="http://login.userland.com/signUp">Join Now</a> : <a href="http://login.userland.com/">Login</a></p>
+          </div>
+        </td>
+      <td valign="top" width="30%" id="links">
+        <table width="100%" border="0" cellspacing="0" cellpadding="0">
+          <tr>
+            <td class="tagline" width="100%" valign="top">
+              UserTalk online reference for Manila and Radio UserLand programmers
+              </td>
+            <td valign="top" width="5">
+              <img src="http://static.userland.com/rack1/images/ManilaWebsite/manilaNavTopBG.jpg" width="8" height="100" border="0" alt="">
+              </td>
+            </tr>
+          </table>
+        <div class="linksPadding">
+          <div id="navcontainer">
+            <ul id="navlist">
+              <li><a href="../index.html" class="navigatorLink">Home</a></li><li><a href="http://manila.userland.com/" class="navigatorLink">Manila</a></li><li><a href="http://radio.userland.com/" class="navigatorLink">Radio UserLand</a></li>
+              </ul>
+            </div>
+          <FORM action=http://www.google.com/custom method=get><INPUT maxLength=255 size=13 name=q> <INPUT type=submit value=Search name=sa> <INPUT type=hidden value=AH:center;AWFID:901e54b48f490ab5; name=cof> <BR><INPUT type=hidden CHECKED value=docserver.userland.com name=sitesearch> </FORM>
+          <div id="calendar"><table align="center"><tr><td></td></tr></table></div><br></div>
+        </td>
+      </tr>
+    </table>
+</body>
+
+<!-- Mirrored from docserver.userland.com/file/mountServerVolume by HTTrack Website Copier/3.x [XR&CO'2014], Thu, 07 Aug 2025 01:35:19 GMT -->
+</html>

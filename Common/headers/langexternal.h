@@ -41,10 +41,29 @@
 
 #endif
 
+#ifndef FRONTIER_PORTABLE
 #ifndef shellinclude
-
-	#include "shell.h"
-
+    #include "shell.h"
+#endif
+#else
+    /* Portable core: no UI types */
+    #ifdef FRONTIER_PORTABLE
+        /* Forward declare opaque types for portable stubs */
+        struct tywindowinfo;
+        struct tyconfigrecord;
+        /* Don't define typedefs here to avoid conflicts with shell.h/frontierconfig.h */
+    #else
+        /* Full UI types when shell.h is present */
+        #ifndef shellinclude
+            struct tywindowinfo; /* incomplete */
+            #ifndef hdlwindowinfo
+            typedef struct tywindowinfo** hdlwindowinfo; /* match real shape */
+            #endif
+            #ifndef tyconfigrecord
+            typedef struct tyconfigrecord tyconfigrecord; /* opaque */
+            #endif
+        #endif
+    #endif
 #endif
 
 
@@ -216,13 +235,13 @@ extern boolean langexternalcopyvalue (const tyvaluerecord *, tyvaluerecord *);
 
 extern boolean langexternalcoercetostring (tyvaluerecord *);
 
-extern boolean langexternalgetowningwindow (hdlwindowinfo *);
+extern boolean langexternalgetowningwindow (struct tywindowinfo**);
 
 extern void langexternalquotename (bigstring);
 
 extern void langexternalbracketname (bigstring);
 
-extern boolean langexternalgetfullpath (hdlhashtable, bigstring, bigstring, hdlwindowinfo *);
+extern boolean langexternalgetfullpath (hdlhashtable, bigstring, bigstring, struct tywindowinfo**);
 
 extern boolean langexternalgetquotedpath (hdlhashtable, bigstring, bigstring);
 
@@ -234,7 +253,7 @@ extern boolean langexternalzoom (tyvaluerecord, hdlhashtable, bigstring);
 
 extern boolean langexternalzoomfilewindow (const tyvaluerecord *, ptrfilespec, boolean);
 
-extern boolean langexternalwindowopen (tyvaluerecord, hdlwindowinfo *);
+extern boolean langexternalwindowopen (tyvaluerecord, struct tywindowinfo**);
 
 extern boolean langexternalwindowclosed (hdlexternalvariable);
 
@@ -242,7 +261,7 @@ extern boolean langexternaldisposevariable (hdlexternalvariable, boolean, boolea
 
 extern boolean langexternaldisposevalue (tyvaluerecord, boolean);
 
-extern boolean langexternalgetconfig (tyvaluetype, short, tyconfigrecord *);
+extern boolean langexternalgetconfig (tyvaluetype, short, struct tyconfigrecord*);
 
 extern boolean langexternalnewvalue (tyexternalid, Handle, tyvaluerecord *);
 
@@ -276,7 +295,7 @@ extern tyvaluetype langexternalgetvaluetype (OSType);
 
 extern boolean langexternalregisterwindow (hdlexternalvariable);
 
-extern boolean langexternalunregisterwindow (hdlwindowinfo);
+extern boolean langexternalunregisterwindow (struct tywindowinfo** hw);
 
 extern boolean langexternalcloseregisteredwindows (boolean);
 

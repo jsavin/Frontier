@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UserTalk Language Guide - Frontier</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+        
+        .header p {
+            margin: 10px 0 0 0;
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .content {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        
+        h2 {
+            color: #667eea;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 10px;
+            margin-top: 40px;
+        }
+        
+        h3 {
+            color: #555;
+            margin-top: 30px;
+        }
+        
+        .code-example {
+            background: #f1f3f4;
+            padding: 20px;
+            border-radius: 6px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9em;
+            overflow-x: auto;
+            margin: 20px 0;
+            border-left: 4px solid #667eea;
+        }
+        
+        .code-example .comment {
+            color: #666;
+            font-style: italic;
+        }
+        
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .warning-box {
+            background: #fff3e0;
+            border-left: 4px solid #ff9800;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        .table th, .table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        
+        .table th {
+            background-color: #f5f5f5;
+            font-weight: 600;
+        }
+        
+        .table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        
+        .navigation {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        
+        .navigation a {
+            display: inline-block;
+            margin: 5px 10px 5px 0;
+            padding: 8px 16px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 20px;
+            font-size: 0.9em;
+            transition: background-color 0.3s;
+        }
+        
+        .navigation a:hover {
+            background: #5a6fd8;
+        }
+        
+        .footer {
+            text-align: center;
+            color: #666;
+            margin-top: 40px;
+            padding: 20px;
+            border-top: 1px solid #eee;
+        }
+        
+        ul, ol {
+            margin: 15px 0;
+            padding-left: 30px;
+        }
+        
+        li {
+            margin: 8px 0;
+        }
+        
+        strong {
+            color: #555;
+        }
+        
+        .syntax-highlight {
+            background: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+            color: #e83e8c;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>UserTalk Language Guide</h1>
+        <p>Complete Guide to Frontier's Native Scripting Language</p>
+        <p>Based on "The UserTalk Language" PDF and comprehensive language analysis</p>
+    </div>
+
+    <div class="navigation">
+        <a href="index.html">← Back to Index</a>
+        <a href="#overview">Language Overview</a>
+        <a href="#syntax">Syntax & Structure</a>
+        <a href="#control">Control Structures</a>
+        <a href="#datatypes">Data Types</a>
+        <a href="#operators">Operators</a>
+        <a href="#verbs">Verbs & Functions</a>
+        <a href="#database">Database Integration</a>
+        <a href="#examples">Examples</a>
+    </div>
+
+    <div class="content">
+        <h2 id="overview">Language Overview</h2>
+        
+        <p>UserTalk is Frontier's native scripting language, designed around the object database system. It features a hybrid architecture where approximately 50% of functionality is implemented in UserTalk scripts and 50% in C kernel implementations.</p>
+        
+        <div class="info-box">
+            <strong>Key Characteristics:</strong>
+            <ul>
+                <li><strong>Object-Oriented:</strong> Built around Frontier's object database system</li>
+                <li><strong>Dynamic Typing:</strong> Variables have no type until assigned</li>
+                <li><strong>Cross-Platform:</strong> Supports both Macintosh and Windows</li>
+                <li><strong>JITC:</strong> Uses Just In Time Compilation for performance</li>
+                <li><strong>Database-Centric:</strong> Deep integration with .root database files</li>
+            </ul>
+        </div>
+
+        <h2 id="syntax">Syntax & Structure</h2>
+        
+        <h3>Basic Syntax Rules</h3>
+        <ul>
+            <li>UserTalk is an <strong>imperative language</strong> - programs are sequences of commands</li>
+            <li>Commands are executed consecutively from start to end</li>
+            <li>Every command either performs an assignment or calls a verb</li>
+            <li>Indentation is significant for control structures</li>
+        </ul>
+
+        <h3>Variable Declaration</h3>
+        <div class="code-example">
+local (var1, var2, var3)        // Declare multiple local variables
+local (myString = "Hello")       // Declare with initial value
+global (sharedVar)               // Declare global variable
+persistent (configValue)         // Declare persistent variable
+        </div>
+
+        <h3>Assignment</h3>
+        <div class="code-example">
+myVariable = 42                  // Basic assignment
+myString = "Hello, World!"       // String assignment
+myArray = {1, 2, 3, 4, 5}       // Array assignment
+myTable = new table              // Object creation and assignment
+        </div>
+
+        <h2 id="control">Control Structures</h2>
+        
+        <h3>Repetition (Looping)</h3>
+        
+        <h4>For Loops</h4>
+        <div class="code-example">
+// Counter-based iteration
+for i = 1 to 5
+    msg (i)
+    clock.waitSeconds (1)
+
+// List iteration
+for element in finderMenu.getSelectionList ()
+    dialog.alert (element)
+        </div>
+
+        <h4>While Loops</h4>
+        <div class="code-example">
+while not file.endOfFile (f)
+    msg (file.readLine (f))
+    clock.waitSeconds (0.1)
+        </div>
+
+        <h4>Fileloop Structure</h4>
+        <div class="code-example">
+// Basic file iteration
+fileloop (f in path)
+    msg (file.fileFromPath (f))
+
+// With depth parameter
+fileloop (f in path, infinity)   // Visit all files at all levels
+    msg (file.fileFromPath (f))
+        </div>
+
+        <h4>Loop Structure</h4>
+        <div class="code-example">
+loop
+    msg (i)
+    i = i + 1
+    if i > 5
+        break                     // Exit the loop
+        </div>
+
+        <h3>Decisions (Branching)</h3>
+        
+        <h4>If/Else Structure</h4>
+        <div class="code-example">
+if answer > 6
+    msg ("Big family!")
+else
+    msg ("Not such a big family!")
+        </div>
+
+        <h4>Case Structure</h4>
+        <div class="code-example">
+case letter
+    "a"
+    "e"
+        msg ("Vowel")
+    "b"
+        msg ("Consonant")
+    else
+        msg ("This example isn't very thorough.")
+
+// Equivalent to else-if
+case true
+    temperature < minimum
+        dialog.alert ("Too cold.")
+    temperature > maximum
+        dialog.alert ("Too hot.")
+    else
+        dialog.notify ("Delicious porridge.")
+        </div>
+
+        <h3>Error Handling</h3>
+        
+        <div class="code-example">
+// Prevention strategy
+if file.exists (f)
+    file.delete (f)
+
+// Status checking
+if file.open (f)
+    theLine = file.readLine (f)
+    file.close (f)
+
+// Try/else structure
+try
+    file.delete (f)
+else
+    dialog.alert ("Could not delete file")
+        </div>
+
+        <h2 id="datatypes">Data Types</h2>
+        
+        <p>UserTalk supports 28 different data types. Here are the most commonly used ones:</p>
+        
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Data Type</th>
+                    <th>Description</th>
+                    <th>Example</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>stringType</code></td>
+                    <td>Text data with full 255-character support</td>
+                    <td><code>"Hello, World!"</code></td>
+                </tr>
+                <tr>
+                    <td><code>numberType</code></td>
+                    <td>Numeric values (integers and floating-point)</td>
+                    <td><code>42</code> or <code>3.14159</code></td>
+                </tr>
+                <tr>
+                    <td><code>booleanType</code></td>
+                    <td>True or False values</td>
+                    <td><code>true</code> or <code>false</code></td>
+                </tr>
+                <tr>
+                    <td><code>addressType</code></td>
+                    <td>Object database references</td>
+                    <td><code>@table.subtable.object</code></td>
+                </tr>
+                <tr>
+                    <td><code>arrayType</code></td>
+                    <td>Heterogeneous lists with zero-based indexing</td>
+                    <td><code>{1, "two", 3.0, true}</code></td>
+                </tr>
+                <tr>
+                    <td><code>recordType</code></td>
+                    <td>Key-value associative storage</td>
+                    <td><code>["name": "John", "age": 30]</code></td>
+                </tr>
+                <tr>
+                    <td><code>tableType</code></td>
+                    <td>Object database tables</td>
+                    <td><code>new table</code></td>
+                </tr>
+                <tr>
+                    <td><code>outlineType</code></td>
+                    <td>Hierarchical data structures</td>
+                    <td><code>new outline</code></td>
+                </tr>
+                <tr>
+                    <td><code>scriptType</code></td>
+                    <td>Executable UserTalk code</td>
+                    <td><code>new script</code></td>
+                </tr>
+                <tr>
+                    <td><code>wptextType</code></td>
+                    <td>Rich text with formatting</td>
+                    <td><code>new wptext</code></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 id="operators">Operators</h2>
+        
+        <h3>Arithmetic Operators</h3>
+        <div class="code-example">
+a = 10 + 5                      // Addition: 15
+b = 10 - 3                      // Subtraction: 7
+c = 4 * 6                       // Multiplication: 24
+d = 15 / 3                      // Division: 5
+e = 17 % 5                      // Modulo: 2
+f = 2 ^ 3                       // Exponentiation: 8
+        </div>
+
+        <h3>Increment/Decrement</h3>
+        <div class="code-example">
+i = 1
+i++                             // Increment: i becomes 2
+i--                             // Decrement: i becomes 1
+        </div>
+
+        <h3>Comparison Operators</h3>
+        <div class="code-example">
+a == b                          // Equal to
+a != b                          // Not equal to
+a < b                           // Less than
+a <= b                          // Less than or equal to
+a > b                           // Greater than
+a >= b                          // Greater than or equal to
+        </div>
+
+        <h3>Logical Operators</h3>
+        <div class="code-example">
+a and b                         // Logical AND
+a or b                          // Logical OR
+not a                           // Logical NOT
+        </div>
+
+        <h3>String Concatenation</h3>
+        <div class="code-example">
+firstName = "John"
+lastName = "Doe"
+fullName = firstName + " " + lastName    // "John Doe"
+        </div>
+
+        <div class="warning-box">
+            <strong>Important:</strong> UserTalk uses the <code>+</code> operator for string concatenation, not the <code>&</code> operator used in some other languages.
+        </div>
+
+        <h2 id="verbs">Verbs & Functions</h2>
+        
+        <h3>Verb Syntax</h3>
+        <div class="code-example">
+verb (param1, param2)           // Standard call with parameters
+verb ()                          // Call with no parameters
+verb (param2: val2)             // Named parameter override
+adrVerb^ ()                     // Dereferenced address call
+        </div>
+
+        <h3>Verb Implementation</h3>
+        <p>Verbs in UserTalk are organized in tables within the database hierarchy:</p>
+        <div class="code-example">
+system.verbs.builtins.db.open    // Full path to verb script
+        </div>
+
+        <div class="info-box">
+            <strong>Verb Architecture:</strong>
+            <ul>
+                <li><strong>Table Hierarchy:</strong> Verbs live in script objects within database tables</li>
+                <li><strong>JITC:</strong> Scripts use Just In Time Compilation by the runtime</li>
+                <li><strong>Kernel Integration:</strong> Scripts call C kernel implementations for core functionality</li>
+                <li><strong>Hybrid Model:</strong> Many verbs are UserTalk scripts that call other verbs</li>
+            </ul>
+        </div>
+
+        <h2 id="database">Database Integration</h2>
+        
+        <h3>Address References</h3>
+        <div class="code-example">
+@table.subtable.object           // Address reference
+local (adrCreateMessage = @manilaSuite.discuss.createMessage)
+adrCreateMessage^ (param1, param2)  // Dereference and call
+local (adrTable = @someTable)       // Address to table
+adrTable^                            // Dereference table
+        </div>
+
+        <h3>Object Reference Syntax</h3>
+        <div class="code-example">
+path.to.parentOfMyObject.["My Object"]  // Object with special characters
+tableName.objectName                     // Standard object reference
+parentTable.["Object With Spaces"]       // Object with spaces in name
+local (myObjectName = "Object Name"); tableName.[myObjectName]  // Dynamic reference
+        </div>
+
+        <h3>Database Lifecycle</h3>
+        <div class="code-example">
+db.new (filepath)               // 1. Create database
+db.open (filepath, false)       // 2. Open for access
+db.setValue (filepath, "path", value) // 3. Modify data
+db.save (filepath)              // 4. Save changes
+db.close (filepath)             // 5. Close database
+        </div>
+
+        <h2 id="examples">Practical Examples</h2>
+        
+        <h3>Hello World</h3>
+        <div class="code-example">
+msg ("Hello, World!")           // Simple message display
+        </div>
+
+        <h3>File Processing</h3>
+        <div class="code-example">
+local (filePath = "example.txt")
+if file.exists (filePath)
+    local (fileHandle)
+    if file.open (filePath, fileHandle)
+        local (line)
+        while not file.endOfFile (fileHandle)
+            line = file.readLine (fileHandle)
+            msg (line)
+        file.close (fileHandle)
+    else
+        dialog.alert ("Could not open file")
+else
+    dialog.alert ("File does not exist")
+        </div>
+
+        <h3>Database Operations</h3>
+        <div class="code-example">
+local (dbPath = "myDatabase.root")
+local (myTable = new table)
+
+// Add some data
+table.addColumn (myTable, "name", "string")
+table.addColumn (myTable, "age", "number")
+table.addRow (myTable, ["John", 30])
+table.addRow (myTable, ["Jane", 25])
+
+// Save to database
+db.new (dbPath)
+db.open (dbPath, false)
+db.setValue (dbPath, "people", myTable)
+db.save (dbPath)
+db.close (dbPath)
+        </div>
+
+        <h3>Web Server Example</h3>
+        <div class="code-example">
+local (port = 8080)
+webServer.start (port)
+
+// Handle requests
+on webServer.request (request)
+    local (response = "HTTP/1.1 200 OK\r\n")
+    response = response + "Content-Type: text/html\r\n\r\n"
+    response = response + "<html><body><h1>Hello from UserTalk!</h1></body></html>"
+    return (response)
+        </div>
+
+        <div class="info-box">
+            <strong>Best Practices:</strong>
+            <ul>
+                <li>Always use <code>local()</code> for variables unless you need global scope</li>
+                <li>Check return values from verbs that can fail</li>
+                <li>Use <code>try/else</code> for error handling when appropriate</li>
+                <li>Close files and databases when you're done with them</li>
+                <li>Use meaningful variable names and add comments for complex logic</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>This guide is based on "The UserTalk Language" PDF and comprehensive analysis of the UserTalk language.</p>
+        <p>For complete verb reference, see the <a href="docserver.userland.com/default.html">DocServer documentation</a>.</p>
+    </div>
+</body>
+</html>

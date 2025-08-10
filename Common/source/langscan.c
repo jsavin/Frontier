@@ -25,8 +25,14 @@
 
 ******************************************************************************/
 
+#ifdef FRONTIER_PORTABLE
+#include "../portable/os_portable.h"
+#include "../portable/frontier.h"
+#include "../portable/standard.h"
+#else
 #include "frontier.h"
 #include "standard.h"
+#endif
 
 #include "memory.h"
 #include "strings.h"
@@ -70,7 +76,7 @@ boolean isfirstidentifierchar (byte ch) {
 	could this character be the first character in an identifier?
 	*/
 	
-	return (isalpha (ch) || (ch == '_'));
+    return (isalpha ((int)ch) || (ch == '_'));
 	
 	/*
 		((ch >= 'a') && (ch <= 'z')) ||
@@ -92,7 +98,7 @@ boolean isidentifierchar (byte ch) {
 	if (isfirstidentifierchar (ch))
 		return (true);
 	
-	if (isdigit (ch))
+    if (isdigit ((int)ch))
 		return (true);
 		
 	if (ch == chtrademark)
@@ -947,7 +953,7 @@ static tokentype langscanner (hdltreenode *nodetoken) {
 		case '[': case ']': case '@': case '^':
 			return (chfirst); /*the ascii value is the token*/
 		
-		case (byte) '¥':
+        case (byte) 0xD7: /* legacy Mac <= */
 			return ('.');
 		
 		case chnotequals:
@@ -962,10 +968,10 @@ static tokentype langscanner (hdltreenode *nodetoken) {
 		case '%':
 			return (modtoken);
 		
-		case (byte) '²':
+        case (byte) 0xBC: /* legacy Mac <= */
 			return (LEtoken);
 			
-		case (byte) '³':
+        case (byte) 0xBE: /* legacy Mac >= */
 			return (GEtoken);
 			
 		case '+':
@@ -1113,7 +1119,7 @@ tokentype parsegettoken (hdltreenode *nodetoken) {
 	a bottleneck that makes debugging easier.  
 	
 	if you want to see the string that generated the current token, 
-	display "bstoken" -- its a globalÉ
+	display "bstoken" -- its a globalï¿½
 	*/
 	
 	register tokentype token;

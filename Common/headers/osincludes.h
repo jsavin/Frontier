@@ -50,7 +50,7 @@
 		
 		#include <Carbon/Carbon.h>
 		#include <ApplicationServices/ApplicationServices.h>
-		#include <QuickTime/Movies.h>
+		// QuickTime removed - feature disabled in modern version
 
 		#endif
 

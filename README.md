@@ -1,39 +1,128 @@
-*Forked from https://github.com/tedchoward/Frontier with aspirations to making it work on current versions of macOS*
+# Frontier Refactoring Project
 
-# Userland Frontier Kernel #
+## Project Structure
 
-## Installation Instructions
+This project has been reorganized for cross-platform compatibility and maintainability:
 
-*I apologize for how convoluted this is. Unfortunately Apple is making us jump
-through a series of hoops in the [name of security][app-translocation] in order
-to run this software.*
+```
+Frontier/                          # Project root
+├── tests/                         # Cross-platform test framework
+│   ├── framework/                 # Test framework core
+│   ├── components/                # Component-specific tests
+│   ├── examples/                  # Example tests
+│   └── test_runner.c             # Main test runner
+├── samples/                       # Sample files for testing
+├── planning/                      # Documentation and planning
+├── databases/                     # Database files
+│   ├── Frontier.root             # System database
+│   └── Guest Databases/          # User databases
+│       ├── apps/
+│       │   ├── Tools/
+│       │   ├── mainResponder.root
+│       │   └── manila.root
+│       └── ops/
+│           └── www/
+├── app_resources/                 # Application resources
+│   ├── Frontier/                 # Frontier app resources
+│   │   ├── frontierStartupCommands.txt  # Startup commands
+│   │   ├── Extras/              # Frontier-specific extras
+│   │   └── [icons, plists, bundles]
+│   ├── OPML/                     # OPML app resources
+│   └── Radio/                    # Radio app resources
+├── docs/                          # Documentation
+│   ├── LICENSE.txt               # License file
+│   ├── README.txt                # Original README
+│   └── sdk/                      # SDK documentation
+├── bin/                           # Application binaries (future)
+├── build_Xcode_modern/           # Xcode build artifacts
+├── build_GNU/                    # GNU build artifacts
+├── Common/                       # Source code
+│   ├── headers/                  # Header files
+│   └── source/                   # Source files
+└── [other build dirs]
+```
 
-- Download the OPML Editor distribution flle from: [static.tedchoward.com][opml-dl]
-  - This image contains the root database file (`opml.root`) and other files
-    necessary to run the OPML Editor.
-- Drag the `OPML` folder to `/Applications`
-- Download an OPML Editor application binary (`OPML.app.zip`) from the
-  [GitHub Releases Page][dev].
-- Drag `OPML.app` to `/Applications/OPML`
-- `CTRL`-click `OPML.app` to view the context menu, and click *Open* in the
-  context menu.
+## Key Directories
 
-## Notes on the Source Code
+### `tests/` - Cross-Platform Test Framework
+- **Purpose**: Unit tests that work across all build targets
+- **Structure**: Organized by component and functionality
+- **Usage**: `make -C tests test` to run all tests
 
-### The `develop` branch
+### `samples/` - Test Data
+- **Purpose**: Sample files for compatibility testing
+- **Content**: Legacy and modern .root files for validation
 
-- More experimental builds
-- Latest Release: [OPML Editor v10.2d4][dev].
-- Builds and runs in Xcode 9 on macOS 10.13, but requires the 10.6 sdk.
+### `planning/` - Documentation
+- **Purpose**: Refactoring plans and progress documentation
+- **Format**: Phase-based naming (0.5.7_database_dbnew_testing_success.md)
 
-### The `master` branch
+### `databases/` - Database Files
+- **Purpose**: Real Frontier database files for testing
+- **Structure**: 
+  - `Frontier.root` - System database (required for UserTalk development)
+  - `Guest Databases/` - User databases (apps, tools, operations)
+  - `apps/mainResponder.root` - Main responder application
+  - `apps/manila.root` - Manila web application
 
-- More "stable" builds
-- Latest Release: [OPML Editor v10.1b21][mas].
-- Builds in Xcode 4 on Mac OS X 10.6, but requires the 10.4 sdk.
-- Runs on macOS 10.13
+### `app_resources/` - Application Resources
+- **Purpose**: Application-specific resources and assets
+- **Structure**:
+  - `Frontier/` - Main Frontier application resources
+    - `frontierStartupCommands.txt` - Startup commands
+    - `Extras/` - Frontier-specific utilities
+    - Icons, plists, and bundles
+  - `OPML/` - OPML editor resources
+  - `Radio/` - Radio application resources
 
-[opml-dl]: http://static.tedchoward.com/frontier/opml-editor/OPML.dmg
-[mas]: https://github.com/tedchoward/Frontier/releases/tag/v10.1b21
-[dev]:https://github.com/tedchoward/Frontier/releases/tag/10.2d4
-[app-translocation]: https://github.com/tedchoward/Frontier/issues/9
+### `docs/` - Documentation
+- **Purpose**: All project documentation and SDK
+- **Structure**:
+  - `LICENSE.txt` - Project license
+  - `README.txt` - Original project README
+  - `Manila User's Guide.pdf` - Manila CMS documentation
+  - `sdk/FrontierSDK/` - Complete SDK documentation
+
+## Build Targets
+
+### Xcode Modern Build
+```bash
+cd build_Xcode_modern
+xcodebuild -project Frontier.xcodeproj -configuration Release
+```
+
+### Test Framework
+```bash
+cd tests
+make test                    # Run all tests
+make test_database          # Run database tests only
+make test_architectures     # Test both ARM64 and x86_64
+```
+
+## Development Workflow
+
+1. **Code Changes**: Modify files in `Common/`
+2. **Testing**: Run tests from `tests/` directory
+3. **Validation**: Use real .root files from `databases/`
+4. **Documentation**: Update planning files in `planning/`
+
+## Current Phase
+
+**Phase 0.5.8**: Database Compatibility Verification
+- Testing against real .root files
+- Validating structure compatibility
+- Ensuring forward/backward compatibility
+
+## Next Steps
+
+1. Add sample .root files to `databases/`
+2. Create comprehensive compatibility tests
+3. Validate database operations across architectures
+4. Document migration patterns
+
+## Compatibility Goals
+
+- **Forward Compatibility**: New code works with old .root files
+- **Backward Compatibility**: Old code works with new .root files
+- **Cross-Platform**: Tests pass on ARM64 and x86_64
+- **Long-term Maintainability**: Clean, documented code structure

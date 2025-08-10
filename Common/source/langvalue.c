@@ -1,4 +1,3 @@
-
 /*	$Id$    */
 
 /******************************************************************************
@@ -25,8 +24,14 @@
 
 ******************************************************************************/
 
+#ifdef FRONTIER_PORTABLE
+#include "../portable/os_portable.h"
+#include "../portable/frontier.h"
+#include "../portable/standard.h"
+#else
 #include "frontier.h"
 #include "standard.h"
+#endif
 
 #include "frontierconfig.h"
 #include "memory.h"
@@ -786,7 +791,7 @@ boolean copyvaluedata (tyvaluerecord *val) {
 			break;
 		
 		default:
-			shellinternalerror (idbadtempdatatype, STR_Internal_error_bad_type_for_temp_data);
+    shellinternalerror (idbadtempdatatype, STR_Internal_error_bad_type_for_temp_data);
 			
 			break;
 		} /*switch*/
@@ -2947,7 +2952,7 @@ boolean coercetofilespec (tyvaluerecord *v) {
 			
 			if (!pathtofilespec (bs, &fs)) {
 				
-				filenotfounderror (bs);
+				filenotfounderror();
 				
 				/*
 				langparamerror (filespeccoerceerror, bs);
@@ -8458,7 +8463,7 @@ static boolean builtinvalue (tyfunctype token, hdltreenode hparam1, tyvaluerecor
 	
 	#ifdef fldebug
 	
-	langerrormessage (STR_Internal_error_unimplemented_function_call);
+    langerrormessage (STR_Internal_error_unimplemented_function_call);
 	
 	#endif
 	
