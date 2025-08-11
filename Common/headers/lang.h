@@ -31,7 +31,11 @@
 
 #ifndef shelltypesinclude
 
-	#include "shelltypes.h"
+	#ifdef FRONTIER_PORTABLE
+		#include "../portable/shelltypes_portable.h"
+	#else
+		#include "shelltypes.h"
+	#endif
 
 #endif
 

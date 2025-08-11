@@ -48,6 +48,12 @@ Frontier/                          # Project root
 - **Purpose**: Unit tests that work across all build targets
 - **Structure**: Organized by component and functionality
 - **Usage**: `make -C tests test` to run all tests
+- **Status**: [Build Issues Documented](portable/BUILD_ISSUES.md)
+
+### `portable/` - Cross-Platform Runtime Stubs
+- **Purpose**: Platform-independent runtime implementations
+- **Status**: [Build Issues Documented](portable/BUILD_ISSUES.md)
+- **Structure**: 12 focused stub files replacing monolithic runtime_stubs.c
 
 ### `samples/` - Test Data
 - **Purpose**: Sample files for compatibility testing
@@ -82,6 +88,18 @@ Frontier/                          # Project root
   - `README.txt` - Original project README
   - `Manila User's Guide.pdf` - Manila CMS documentation
   - `sdk/FrontierSDK/` - Complete SDK documentation
+
+## Known Issues and Status
+
+### Build and Testing Issues
+- **Unit Test Build Issues**: [Documented in BUILD_ISSUES.md](portable/BUILD_ISSUES.md)
+- **Runtime Stub Implementation**: Complete with 12 focused files
+- **Current Blocking Issue**: `stringtoosttype` linking error affecting all test targets
+
+### Progress Summary
+- ✅ **Runtime Stub Implementation**: Successfully split monolithic 2029-line file into 12 focused files
+- ✅ **Compilation Issues**: All resolved through systematic signature corrections
+- ❌ **Linking Issues**: One remaining function linking problem preventing test execution
 
 ## Build Targets
 

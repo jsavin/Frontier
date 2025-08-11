@@ -8,15 +8,17 @@
 #include <stdbool.h>
 #include <ctype.h>
 #include <assert.h>
+
 /* Pull string token macros (works in portable too) */
 #include "../Common/headers/stringdefs.h"
 
-#ifndef true
-#define true 1
-#endif
-#ifndef false
-#define false 0
-#endif
+/* Include portable type abstractions before shelltypes.h */
+#include "portable_types.h"
+
+/* Include portable shelltypes for portable context to get hdlintarray and other types */
+#include "shelltypes_portable.h"
+
+/* Boolean constants are now defined in portable_types.h */
 
 #define infinity 32767
 #define BIGSTRING(s) ((unsigned char *)(s))
@@ -26,7 +28,6 @@
 
 /* Basic types */
 typedef unsigned char byte;
-typedef unsigned char boolean;
 typedef unsigned short word;
 typedef unsigned long dword;
 typedef unsigned int uint;
@@ -35,8 +36,6 @@ typedef long slong;
 typedef unsigned long ulong;
 typedef unsigned char uchar;
 typedef unsigned short ushort;
-/* Standard types like uint32_t, int8_t are already defined by system headers */
-typedef uint32_t OSType; /* Needed by shelltypes.h */
 
 typedef unsigned char Str255[256];
 typedef Str255 bigstring;
@@ -45,26 +44,14 @@ typedef unsigned char* ptrbyte;
 typedef unsigned char* ptrstring;
 typedef unsigned char** hdlstring;
 
-typedef struct { short top, left, bottom, right; } Rect;
-typedef struct { unsigned char pat[8]; } Pattern;
-typedef struct { void* dummy; } RgnHandle; /* placeholder */
-typedef struct { void* dummy; } ControlHandle; /* placeholder */
-typedef struct { void* dummy; } MenuHandle; /* placeholder */
-typedef void* WindowPtr; /* placeholder */
-typedef void* GrafPtr; /* placeholder */
+/* These types are now defined in portable_types.h */
 /* Forward declare filespec for portable stubs */
 struct tyfilespec;
 /* ptrfilespec and hdlintarray are defined in shelltypes.h when included */
 
-/* Define essential types needed by portable core */
-typedef short **hdlintarray;
-typedef struct tyfilespec* ptrfilespec;
+/* Essential types are defined in shelltypes.h when included */
 
 typedef const struct Rect* rectparam; /* minimal for portable prototypes */
-
-typedef struct HFSUniStr255 { uint16_t length; uint16_t unicode[255]; } HFSUniStr255; /* minimal */
-typedef struct { uint8_t data[80]; } FSRef; /* minimal */
-typedef struct { long highLongOfPSN; long lowLongOfPSN; } ProcessSerialNumber; /* minimal */
 
 /* Direction enums and related used widely in headers */
 typedef enum tydirection {
@@ -89,21 +76,7 @@ typedef enum tybitdirection {
     rightbit = 0x08
 } tybitdirection;
 
-/* Misc classic Mac-ish types used in prototypes; portable shims */
-typedef struct { short v, h; } Point;
-typedef struct { unsigned short red, green, blue; } RGBColor;
-typedef int Fixed;
-typedef int OSErr;
-typedef unsigned int ResType;
-typedef void* DialogPtr;
-typedef struct { unsigned short ascent, descent, widMax, leading; } FontInfo;
-typedef unsigned short UInt16;
-typedef unsigned char UInt8;
-typedef short SInt16;
-typedef int32_t SInt32;
-typedef uint32_t UInt32;
-typedef struct { uint8_t data[16]; } EventRecord; /* placeholder */
-typedef struct { unsigned char bytes[10]; } extended80;
+/* These types are now defined in portable_types.h */
 
 typedef short hdlfilenum;
 

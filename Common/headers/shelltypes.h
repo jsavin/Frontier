@@ -28,6 +28,9 @@
 #ifndef shelltypesinclude
 #define shelltypesinclude
 
+#ifdef FRONTIER_PORTABLE
+#include "../portable/shelltypes_portable.h"
+#else
 #include "standard.h"
 
 #ifdef HEADERTRACE
@@ -191,6 +194,7 @@ typedef struct tybuttonstatus {
 		
 
 
+#endif
 
 #endif
 

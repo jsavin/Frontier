@@ -30,6 +30,7 @@
 #include "../portable/time_portable.h"
 #include "../portable/frontier.h"
 #include "../portable/standard.h"
+#include "../portable/shelltypes_portable.h"
 #else
 #include "frontier.h"
 #include "standard.h"

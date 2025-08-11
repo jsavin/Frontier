@@ -15,7 +15,19 @@ PORTABLE_SOURCES = \
     ../portable/handle.c \
     ../portable/classic_handle.c \
     ../portable/platform_null.c \
-    ../portable/cli_executor.c
+    ../portable/cli_executor.c \
+    ../portable/runtime_stubs_core.c \
+    ../portable/runtime_stubs_errors.c \
+    ../portable/runtime_stubs_hash.c \
+    ../portable/runtime_stubs_lang.c \
+    ../portable/runtime_stubs_list.c \
+    ../portable/runtime_stubs_system.c \
+    ../portable/runtime_stubs_stack.c \
+    ../portable/runtime_stubs_string.c \
+    ../portable/runtime_stubs_coerce.c \
+    ../portable/runtime_stubs_parser.c \
+    ../portable/runtime_stubs_outline.c \
+    ../portable/runtime_stubs_shell.c
 
 # TODO: progressively add language engine sources adapted for FRONTIER_PORTABLE
 FRONTIER_SOURCES = $(PORTABLE_SOURCES) \
