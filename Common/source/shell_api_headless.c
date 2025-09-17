@@ -3,9 +3,11 @@
 
 #include <stdio.h>
 
+#ifndef FRONTIER_HEADLESS
 #include "langinternal.h"
-#include "shell_api.h"
 #include "strings.h"
+#endif
+#include "shell_api.h"
 
 static boolean shell_headless_require(tyshellcapability capability, const char *verbname);
 
@@ -17,9 +19,8 @@ static const tyshellapi kShellApiHeadless = {
 static boolean shell_headless_require(tyshellcapability capability, const char *verbname) {
     const char *capability_name = shell_api_capability_name(capability);
     char message[256];
-    bigstring bserror;
 
-    if ((verbname == nil) || (*verbname == '\0'))
+    if ((verbname == NULL) || (*verbname == '\0'))
         snprintf(message, sizeof (message),
             "UI capability \"%s\" is unavailable in headless mode.",
             capability_name);
@@ -29,9 +30,15 @@ static boolean shell_headless_require(tyshellcapability capability, const char *
             verbname,
             capability_name);
 
-    copyctopstring(message, bserror);
-
-    langerrormessage(bserror);
+#ifndef FRONTIER_HEADLESS
+    {
+        bigstring bserror;
+        copyctopstring(message, bserror);
+        langerrormessage(bserror);
+    }
+#else
+    fprintf(stderr, "%s\n", message);
+#endif
 
     return false;
 }

@@ -46,7 +46,11 @@
 #error "frontier_compat.h was not included properly"
 #endif
 
+#if defined(FRONTIER_HEADLESS)
+#include "osincludes_portable.h"   /* portable system headers for headless builds */
+#else
 #include "osincludes.h"		/* operating system headers */
+#endif
 
 
 #include "frontierdefs.h"	/* global pre-processor defines */

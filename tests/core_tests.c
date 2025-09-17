@@ -1,26 +1,16 @@
 #include <assert.h>
 #include <stdio.h>
-#include <string.h>
 
 #include "frontier.h"
-#include "db.h"
-#include "dbinternal.h"
-#include "lang.h"
-#include "langexternal.h"
-#include "strings.h"
-#include "memory.h"
+#include "shell_api.h"
 
-static void test_db_create_and_write(void) {
-    // TODO: implement real database smoke test (dbnew, dbassign, etc.)
-}
-
-static void test_lang_runstring(void) {
-    // TODO: call langrunstring with a simple script and assert result
+static void test_shell_api_headless_toggle(void) {
+    shell_api_use_headless();
+    assert(shell_api_is_headless());
 }
 
 int main(void) {
-    test_db_create_and_write();
-    test_lang_runstring();
-    printf("core_tests TODO placeholders executed\n");
+    test_shell_api_headless_toggle();
+    printf("core_tests: headless smoke test executed\n");
     return 0;
 }

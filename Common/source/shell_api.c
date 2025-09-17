@@ -3,7 +3,7 @@
 
 #include "shell_api.h"
 
-static boolean shell_allow_capability(tyshellcapability capability, const char *verbname);
+static Boolean shell_allow_capability(tyshellcapability capability, const char *verbname);
 
 static const tyshellapi kShellApiDefault = {
     false,
@@ -12,13 +12,13 @@ static const tyshellapi kShellApiDefault = {
 
 static const tyshellapi *gShellApi = &kShellApiDefault;
 
-static boolean shell_allow_capability(tyshellcapability capability, const char *verbname) {
+static Boolean shell_allow_capability(tyshellcapability capability, const char *verbname) {
     #pragma unused(capability, verbname)
     return true;
 }
 
 void shell_api_install(const tyshellapi *api) {
-    gShellApi = (api != nil) ? api : &kShellApiDefault;
+    gShellApi = (api != NULL) ? api : &kShellApiDefault;
 }
 
 void shell_api_use_default(void) {
@@ -29,10 +29,10 @@ const tyshellapi *shell_api_current(void) {
     return gShellApi;
 }
 
-boolean shell_api_require(tyshellcapability capability, const char *verbname) {
+Boolean shell_api_require(tyshellcapability capability, const char *verbname) {
     const tyshellapi *api = gShellApi;
 
-    if ((api == nil) || (api->require_capability == nil))
+    if ((api == NULL) || (api->require_capability == NULL))
         return true;
 
     return (*api->require_capability)(capability, verbname);
@@ -61,8 +61,8 @@ const char *shell_api_capability_name(tyshellcapability capability) {
     return "unknown";
 }
 
-boolean shell_api_is_headless(void) {
+Boolean shell_api_is_headless(void) {
     const tyshellapi *api = gShellApi;
 
-    return (api != nil) ? api->is_headless : false;
+    return (api != NULL) ? api->is_headless : false;
 }

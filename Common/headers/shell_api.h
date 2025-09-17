@@ -33,17 +33,17 @@ typedef enum tyshellcapability {
 } tyshellcapability;
 
 typedef struct tyshellapi {
-    boolean is_headless; /* true when this implementation rejects UI access */
-    boolean (*require_capability)(tyshellcapability capability, const char *verbname);
+    Boolean is_headless; /* true when this implementation rejects UI access */
+    Boolean (*require_capability)(tyshellcapability capability, const char *verbname);
 } tyshellapi;
 
 void shell_api_install(const tyshellapi *api);
 void shell_api_use_default(void);
 const tyshellapi *shell_api_current(void);
 
-boolean shell_api_require(tyshellcapability capability, const char *verbname);
+Boolean shell_api_require(tyshellcapability capability, const char *verbname);
 const char *shell_api_capability_name(tyshellcapability capability);
-boolean shell_api_is_headless(void);
+Boolean shell_api_is_headless(void);
 
 /* Convenience for tests/headless servers to install the strict implementation. */
 void shell_api_use_headless(void);

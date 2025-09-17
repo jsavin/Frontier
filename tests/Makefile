@@ -67,6 +67,10 @@ ALL_TESTS = $(TEST_EXECUTABLES) $(USERTALK_OBJECT_TESTS)
 # Default target
 all: $(ALL_TESTS)
 
+# Headless smoke test
+core_tests: core_tests.c ../Common/source/shell_api.c ../Common/source/shell_api_headless.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders core_tests.c ../Common/source/shell_api.c ../Common/source/shell_api_headless.c -o $@
+
 # Test framework object
 framework/test_framework.o: framework/test_framework.c framework/test_framework.h
 	$(CC) $(CFLAGS) -c $< -o $@
