@@ -17,3 +17,7 @@ build/
 xcuserdata
 
 build_Xcode/tools/*.a
+
+tests/core_tests
+tests/handle_tests
+
