@@ -194,11 +194,18 @@ boolean tableverbdispose (hdlexternalvariable hvariable, boolean fldisk) {
 
 
 boolean tableverbnew (hdlexternalvariable *hvariable) {
-	
-	hdlhashtable hnewtable;
-	
-	return (tablenewtable ((hdltablevariable *) hvariable, &hnewtable));
-	} /*tableverbnew*/
+
+    hdlhashtable hnewtable;
+    #include "frontierdebug.h"
+    MSG_1("tableverbnew: enter");
+    
+    if (!tablenewtable ((hdltablevariable *) hvariable, &hnewtable)) {
+        MSG_1("tableverbnew: tablenewtable failed");
+        return false;
+    }
+    MSG_1("tableverbnew: ok");
+    return true;
+} /*tableverbnew*/
 
 
 boolean tableverbinmemory (hdlexternalvariable hvariable, hdlhashnode hnode) {
@@ -1420,5 +1427,3 @@ boolean tablezoomtoname (hdlhashtable htable, bigstring bsname) {
 	
 	return (true);
 	} /*tablezoomtoname*/
-
-

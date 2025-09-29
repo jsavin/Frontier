@@ -63,14 +63,14 @@
 
 /* basic definitions */
 
-#define LAND_MSG(m, t, n)		logmessage ((m), __FILE__, __LINE__, (t), (n))
+#define LAND_MSG_LVL(m, t, n, lvl)		logmessage_level ((m), __FILE__, __LINE__, (t), (n), (lvl))
 #define LAND_ASSERT(e, t, n)	((void) ((e) ? 0 : (logassert ((#e), __FILE__, __LINE__, (t), (n))))
 
 
 /* definitions for GENERAL category */
 
 #if (LAND_GENERALLOG_LEVEL >= LAND_LOGLEVEL_1)
-	#define MSG_1(x)		LAND_MSG((x), LAND_GENERALLOG_TARGET, LAND_GENERALLOG_NAME)
+	#define MSG_1(x)		LAND_MSG_LVL((x), LAND_GENERALLOG_TARGET, LAND_GENERALLOG_NAME, 1)
 	#define ASSERT_1(x)		LAND_ASSERT((x), LAND_GENERALLOG_TARGET, LAND_GENERALLOG_NAME))
 #else
 	#define MSG_1(x)
@@ -78,7 +78,7 @@
 #endif
 
 #if (LAND_GENERALLOG_LEVEL >= LAND_LOGLEVEL_2)
-	#define MSG_2(x)		LAND_MSG((x), LAND_GENERALLOG_TARGET, LAND_GENERALLOG_NAME)
+	#define MSG_2(x)		LAND_MSG_LVL((x), LAND_GENERALLOG_TARGET, LAND_GENERALLOG_NAME, 2)
 	#define ASSERT_2(x)		LAND_ASSERT((x), LAND_GENERALLOG_TARGET, LAND_GENERALLOG_NAME))
 #else
 	#define MSG_2(x)
@@ -86,7 +86,7 @@
 #endif
 
 #if (LAND_GENERALLOG_LEVEL >= LAND_LOGLEVEL_3)
-	#define MSG_3(x)		LAND_MSG((x), LAND_GENERALLOG_TARGET, LAND_GENERALLOG_NAME)
+	#define MSG_3(x)		LAND_MSG_LVL((x), LAND_GENERALLOG_TARGET, LAND_GENERALLOG_NAME, 3)
 	#define ASSERT_3(x)		LAND_ASSERT((x), LAND_GENERALLOG_TARGET, LAND_GENERALLOG_NAME))
 #else
 	#define MSG_3(x)
@@ -97,7 +97,7 @@
 /* definitions for TCP category */
 
 #if (LAND_TCPLOG_LEVEL >= LAND_LOGLEVEL_1)
-	#define TCP_MSG_1(x)		LAND_MSG((x), LAND_TCPLOG_TARGET, LAND_TCPLOG_NAME)
+	#define TCP_MSG_1(x)		LAND_MSG_LVL((x), LAND_TCPLOG_TARGET, LAND_TCPLOG_NAME, 1)
 	#define TCP_ASSERT_1(x)		LAND_ASSERT((x), LAND_TCPLOG_TARGET, LAND_TCPLOG_NAME))
 #else
 	#define TCP_MSG_1(x)
@@ -105,7 +105,7 @@
 #endif
 
 #if (LAND_TCPLOG_LEVEL >= LAND_LOGLEVEL_2)
-	#define TCP_MSG_2(x)		LAND_MSG((x), LAND_TCPLOG_TARGET, LAND_TCPLOG_NAME)
+	#define TCP_MSG_2(x)		LAND_MSG_LVL((x), LAND_TCPLOG_TARGET, LAND_TCPLOG_NAME, 2)
 	#define TCP_ASSERT_2(x)		LAND_ASSERT((x), LAND_TCPLOG_TARGET, LAND_TCPLOG_NAME))
 #else
 	#define TCP_MSG_2(x)
@@ -113,7 +113,7 @@
 #endif
 
 #if (LAND_TCPLOG_LEVEL >= LAND_LOGLEVEL_3)
-	#define TCP_MSG_3(x)		LAND_MSG((x), LAND_TCPLOG_TARGET, LAND_TCPLOG_NAME)
+	#define TCP_MSG_3(x)		LAND_MSG_LVL((x), LAND_TCPLOG_TARGET, LAND_TCPLOG_NAME, 3)
 	#define TCP_ASSERT_3(x)		LAND_ASSERT((x), LAND_TCPLOG_TARGET, LAND_TCPLOG_NAME))
 #else
 	#define TCP_MSG_3(x)
@@ -124,7 +124,7 @@
 /* definitions for DB category */
 
 #if (LAND_DBLOG_LEVEL >= LAND_LOGLEVEL_1)
-	#define DB_MSG_1(x)		LAND_MSG((x), LAND_DBLOG_TARGET, LAND_DBLOG_NAME)
+	#define DB_MSG_1(x)		LAND_MSG_LVL((x), LAND_DBLOG_TARGET, LAND_DBLOG_NAME, 1)
 	#define DB_ASSERT_1(x)		LAND_ASSERT((x), LAND_DBLOG_TARGET, LAND_DBLOG_NAME))
 #else
 	#define DB_MSG_1(x)
@@ -132,7 +132,7 @@
 #endif
 
 #if (LAND_DBLOG_LEVEL >= LAND_LOGLEVEL_2)
-	#define DB_MSG_2(x)		LAND_MSG((x), LAND_DBLOG_TARGET, LAND_DBLOG_NAME)
+	#define DB_MSG_2(x)		LAND_MSG_LVL((x), LAND_DBLOG_TARGET, LAND_DBLOG_NAME, 2)
 	#define DB_ASSERT_2(x)		LAND_ASSERT((x), LAND_DBLOG_TARGET, LAND_DBLOG_NAME))
 #else
 	#define DB_MSG_2(x)
@@ -140,7 +140,7 @@
 #endif
 
 #if (LAND_DBLOG_LEVEL >= LAND_LOGLEVEL_3)
-	#define DB_MSG_3(x)		LAND_MSG((x), LAND_DBLOG_TARGET, LAND_DBLOG_NAME)
+	#define DB_MSG_3(x)		LAND_MSG_LVL((x), LAND_DBLOG_TARGET, LAND_DBLOG_NAME, 3)
 	#define DB_ASSERT_3(x)		LAND_ASSERT((x), LAND_DBLOG_TARGET, LAND_DBLOG_NAME))
 #else
 	#define DB_MSG_3(x)
@@ -151,7 +151,7 @@
 /* definitions for THREADS category */
 
 #if (LAND_THREADSLOG_LEVEL >= LAND_LOGLEVEL_1)
-	#define THREADS_MSG_1(x)		LAND_MSG((x), LAND_THREADSLOG_TARGET, LAND_THREADSLOG_NAME)
+	#define THREADS_MSG_1(x)		LAND_MSG_LVL((x), LAND_THREADSLOG_TARGET, LAND_THREADSLOG_NAME, 1)
 	#define THREADS_ASSERT_1(x)		LAND_ASSERT((x), LAND_THREADSLOG_TARGET, LAND_THREADSLOG_NAME))
 #else
 	#define THREADS_MSG_1(x)
@@ -159,7 +159,7 @@
 #endif
 
 #if (LAND_THREADSLOG_LEVEL >= LAND_LOGLEVEL_2)
-	#define THREADS_MSG_2(x)		LAND_MSG((x), LAND_THREADSLOG_TARGET, LAND_THREADSLOG_NAME)
+	#define THREADS_MSG_2(x)		LAND_MSG_LVL((x), LAND_THREADSLOG_TARGET, LAND_THREADSLOG_NAME, 2)
 	#define THREADS_ASSERT_2(x)		LAND_ASSERT((x), LAND_THREADSLOG_TARGET, LAND_THREADSLOG_NAME))
 #else
 	#define THREADS_MSG_2(x)
@@ -167,7 +167,7 @@
 #endif
 
 #if (LAND_THREADSLOG_LEVEL >= LAND_LOGLEVEL_3)
-	#define THREADS_MSG_3(x)		LAND_MSG((x), LAND_THREADSLOG_TARGET, LAND_THREADSLOG_NAME)
+	#define THREADS_MSG_3(x)		LAND_MSG_LVL((x), LAND_THREADSLOG_TARGET, LAND_THREADSLOG_NAME, 3)
 	#define THREADS_ASSERT_3(x)		LAND_ASSERT((x), LAND_THREADSLOG_TARGET, LAND_THREADSLOG_NAME))
 #else
 	#define THREADS_MSG_3(x)
@@ -177,11 +177,10 @@
 
 /* function templates */
 
-extern void logmessage (char *, char *, long, long, char *);
+extern void logmessage_level (char *, char *, long, long, char *, int);
 
 extern long logassert (char *, char *, long, long, char *);
 
 extern void logstartup (void);
 
 extern void logshutdown (void);
-

@@ -2,7 +2,17 @@
 # Phase 1.1: Comprehensive Testing Implementation
 
 CC = clang
-CFLAGS = -Wall -Wextra -std=c99 -g -O0 -DFRONTIER_USE_PORTABLE_HANDLES
+# Opt-in sanitizers: set SANITIZE=1 to enable ASan/UBSan for easier debugging
+SANITIZE ?= 0
+SAN_FLAGS =
+ifeq ($(SANITIZE),1)
+  SAN_FLAGS = -fsanitize=address,undefined -fno-omit-frame-pointer
+  # macOS leak detection can be noisy; disable unless needed
+  # export ASAN_OPTIONS=detect_leaks=0  # set in shell if desired
+endif
+CFLAGS = -Wall -Wextra -std=c99 -g -O0 -DFRONTIER_USE_PORTABLE_HANDLES \
+         -DLAND_GENERALLOG_LEVEL=3 -DLAND_GENERALLOG_TARGET=LAND_LOGTARGET_FILE \
+         $(SAN_FLAGS)
 FRONTIER_CLI_DIR = ../frontier-cli
 SYSTEMHEADERDIR = ../Common/SystemHeaders
 HEADERDIR = ../Common/headers
@@ -51,16 +61,23 @@ LANG_RUNTIME_SOURCES = \
     ../Common/source/langmath.c \
     ../Common/source/langops.c \
     ../Common/source/langpack.c \
-    ../Common/source/langsystem7.c \
+    \
     ../Common/source/langexternal.c \
     ../Common/source/langstartup.c \
     ../Common/source/langwarnings.c \
     ../Common/source/langtmpstack.c \
     ../Common/source/langtrace.c \
     ../Common/source/langtree.c \
+    ../Common/source/langdate.c \
+    ../Common/source/langsystypes.c \
     ../Common/source/memory.c \
     ../Common/source/portable_handles.c \
     ../Common/source/strings.c \
+    ../Common/source/FastTimes.c \
+    ../Common/source/md5.c \
+    ../Common/source/sha1dgst.c \
+    ../Common/source/whirlpool.c \
+    ../Common/source/strings_extras.c \
     ../Common/source/ops.c \
     ../Common/source/op.c \
     ../Common/source/opinit.c \
@@ -73,26 +90,11 @@ LANG_RUNTIME_SOURCES = \
     ../Common/source/oprefcon.c \
     ../Common/source/oppack.c \
     ../Common/source/opverbs.c \
+    ../Common/source/opxml.c \
+    ../Common/source/langxml.c \
     ../Common/source/tableops.c \
     ../Common/source/tablestructure.c \
-    ../Common/source/langdate.c \
-    ../Common/source/langsystypes.c \
-    ../Common/source/FastTimes.c \
-    ../Common/source/md5.c \
-    ../Common/source/sha1dgst.c \
-    ../Common/source/whirlpool.c \
-    ../portable/runtime_stubs_core.c \
-    ../portable/runtime_stubs_errors.c \
-    ../portable/runtime_stubs_hash.c \
-    ../portable/runtime_stubs_lang.c \
-    ../portable/runtime_stubs_list.c \
-    ../portable/runtime_stubs_system.c \
-    ../portable/runtime_stubs_stack.c \
-    ../portable/runtime_stubs_string.c \
-    ../portable/runtime_stubs_coerce.c \
-    ../portable/runtime_stubs_parser.c \
-    ../portable/runtime_stubs_outline.c \
-    ../portable/runtime_stubs_shell.c \
+    headless_lang_runtime_more_stubs.c \
     headless_shellhooks.c \
     headless_table_stubs.c \
     headless_wp_stubs.c \
@@ -101,7 +103,7 @@ LANG_RUNTIME_SOURCES = \
     headless_search_stubs.c \
     headless_mac_compat.c \
     headless_langregexp_stub.c \
-    headless_langverbs_stub.c \
+    \
     headless_langipc_stub.c
 
 # CLI source files

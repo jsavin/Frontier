@@ -58,14 +58,12 @@ boolean flfindanyspecialsymbol = false; /*see langfindsymbol*/
 //short flextendedsymbolsearch = true; /*see langgetsymbolval*/
 
 
-#pragma pack(2)
 typedef struct tytypeinfo {
 	
 	OSType id;
 	
 	byte *bsname;
-	} tytypeinfo;
-#pragma options align=reset
+} tytypeinfo;
 
 
 static tytypeinfo typeinfo [ctvaluetypes] = {
@@ -640,6 +638,14 @@ boolean langassignstringvalue (hdlhashtable ht, const bigstring bs, const bigstr
 	val.data.stringvalue = htext;
 	
 	if (!hashtableassign (ht, bs, val)) {
+	{
+		#include "frontierdebug.h"
+		char cname[64];
+		char msg[160];
+		copyptocstring(bs, cname);
+		snprintf(msg, sizeof(msg), "langassignstringvalue: hashtableassign failed (key='%s')", cname);
+		MSG_1(msg);
+	}
 		
 		disposehandle (htext);
 		
@@ -719,6 +725,14 @@ boolean langassignaddressvalue (hdlhashtable ht, const bigstring bs, const tyadd
 	val.data.addressvalue = hstring;
 	
 	if (!hashtableassign (ht, bs, val)) {
+	{
+		#include "frontierdebug.h"
+		char cname[64];
+		char msg[160];
+		copyptocstring(bs, cname);
+		snprintf(msg, sizeof(msg), "langassignaddressvalue: hashtableassign failed (key='%s')", cname);
+		MSG_1(msg);
+	}
 		
 		disposevaluerecord (val, false);
 		
@@ -737,10 +751,19 @@ boolean langassignnewtablevalue (hdlhashtable ht, const bigstring bs, hdlhashtab
 	
 	tyvaluerecord val;
 	
-	if (!tablenewtablevalue (newtable, &val))
+	if (!tablenewtablevalue (newtable, &val)) {
+		#include "frontierdebug.h"
+		MSG_1("langassignnewtablevalue: tablenewtablevalue failed");
 		return (false);
+	}
 	
 	if (!hashtableassign (ht, bs, val)) {
+		#include "frontierdebug.h"
+		char cname[64];
+		char msg[160];
+		copyptocstring(bs, cname);
+		snprintf(msg, sizeof(msg), "langassignnewtablevalue: hashtableassign failed (key='%s')", cname);
+		MSG_1(msg);
 		
 		disposevaluerecord (val, false);
 		
@@ -1254,8 +1277,6 @@ boolean langfollowifaddressvalue (tyvaluerecord *v) {
 
 	return (fl);
 	} /*langfollowifaddressvalue*/
-
-
 
 
 
