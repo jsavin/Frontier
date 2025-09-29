@@ -33,7 +33,9 @@ Implementation Plan
 
 2) Generation
    - Run Bison with options for modern C skeleton and reentrancy if feasible:
-     - Example: `bison -o langparser.c --defines=langparser.h -y langparser.y`
+     - Script: `scripts/gen_langparser.sh` (dry-run; writes to `tmp/parser/`)
+     - Apply changes: `scripts/gen_langparser.sh --apply` (C only) or `--apply --apply-header` (C+H)
+     - Direct example: `bison -y -o langparser.c --defines=langparser.h Common/source/langparser.y`
      - Prefer `%defines` and `%header` in grammar to standardize headers.
    - Ensure `%union`/`YYSTYPE` (hdltreenode) matches existing code.
 
@@ -52,11 +54,10 @@ Risks & Mitigations
 - Risk: Subtle behavior changes from new skeleton.
   - Mitigation: Keep grammar intact; extensive smoke tests; diff of key code paths.
 - Risk: Toolchain dependency drift.
-  - Mitigation: Commit generated C/headers; document Bison version; no hard build dep.
+  - Mitigation: Commit generated C/headers; document Bison version; no hard build dep. Use the script and review diffs before applying.
 - Risk: Stack size differences in new skeleton.
   - Mitigation: Set `%define api.push_pull` or stack size macros as needed; test large inputs.
 
 Notes
 - This work is orthogonal to hash/strings modernization; it’s a Phase 1 runtime quality task that improves headless test signal.
 - Follow‑up (optional): Similarly modernize the scanner if needed and ensure consistent token header usage across modules.
-
