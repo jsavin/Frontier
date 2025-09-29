@@ -1,5 +1,20 @@
 # Frontier Refactoring Plan
 
+Status
+- State: In Progress
+- Phase: Multi-Phase Roadmap
+- Last Updated: 2025-09-29
+- Notes: Hash Table modernization designated for Phase 3.
+
+Related Docs
+- planning/INDEX.md
+- planning/phase_gates.md
+- planning/ui_abstraction/PHASES.md
+- planning/no_ui_linkage_policy.md
+
+Change Log
+- 2025-09-29: Initialized template sections (Status/Related Docs/Change Log).
+
 ## Project Overview
 
 Frontier is a complex C/C++ application with:

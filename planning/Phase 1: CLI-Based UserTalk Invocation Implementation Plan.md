@@ -1,3 +1,16 @@
+Status
+- State: Unknown
+- Phase: Unknown
+- Last Updated: 2025-09-29
+- Notes: Future considerations; overlaps with UI/WPText modernization.
+
+Related Docs
+- planning/ui_abstraction/wptext_refactor_notes.md
+- planning/ui_abstraction/PHASES.md
+
+Change Log
+- 2025-09-29: Initialized template sections (Status/Related Docs/Change Log).
+
 ## Future Considerations
 
 ### WPText Object Modernization

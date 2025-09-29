@@ -1,5 +1,19 @@
 # UserTalk Objects Test Suite
 
+Status
+- State: In Progress
+- Phase: 1–2
+- Last Updated: 2025-09-29
+- Notes: Headless runtime coverage; UI-dependent object behaviors deferred.
+
+Related Docs
+- tests/README.md
+- planning/1.2_comprehensive_testing_plan.md
+- planning/headless_stubbed_behavior_matrix.md
+
+Change Log
+- 2025-09-29: Initialized template sections (Status/Related Docs/Change Log).
+
 This directory contains comprehensive tests for all UserTalk object types, organized by category for better maintainability and extensibility.
 
 ## Test Structure

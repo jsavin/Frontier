@@ -1,5 +1,38 @@
 # Frontier Refactoring Plan
 
+Status
+- State: In Progress
+- Phase: Multi-Phase Roadmap
+- Last Updated: 2025-09-29
+- Notes: Hash Table modernization designated for Phase 3.
+
+Related Docs
+- planning/INDEX.md
+- planning/phase_gates.md
+- planning/ui_abstraction/PHASES.md
+- planning/no_ui_linkage_policy.md
+
+Change Log
+- 2025-09-29: Hash Tables moved to Phase 3; added planning/INDEX.md and Phase Gates; documented No‑UI Linkage Policy and headless behavior matrix; added UI Abstraction Phase 2 documents (analysis, architecture, migration plan, patterns, UIServices stub).
+- 2025-09-28: Headless docs and tests expanded (db_format tests; headless stubs for IPC/menus/op/wp).
+- 2025-09-20: Portable handle runtime documented and tests added.
+
+## Table of Contents
+- [Project Overview](#project-overview)
+- [Critical Issues Identified](#critical-issues-identified)
+- [Phase 0: 64-bit & ARM Architecture Foundation (Weeks 1-3)](#phase-0-64-bit--arm-architecture-foundation-weeks-1-3)
+- [Phase 1: Foundation & Database Migration (Weeks 4-7)](#phase-1-foundation--database-migration-weeks-4-7)
+- [Phase 2: Core Engine Separation (Weeks 8-11)](#phase-2-core-engine-separation-weeks-8-11)
+- [Phase 3: Rich Text & UI Modernization (Weeks 15-22)](#phase-3-rich-text--ui-modernization-weeks-15-22)
+- [Phase 4: Architecture Modernization (Weeks 23-28)](#phase-4-architecture-modernization-weeks-23-28)
+
+## Doc Roadmap (Next Two Weeks)
+- Add UIServices interface draft as a code header when ready; keep planning doc in sync.
+- Expand headless stubbed behavior matrix as we migrate call sites behind UIServices.
+- Replace diagrams/placeholder with initial architecture diagram (core ↔ UIServices ↔ adapters).
+- Tighten link hygiene notes and add examples in no_ui_linkage_policy.md.
+- Keep INDEX.md summaries up to date as Phase 2 doc set evolves.
+
 ## Project Overview
 
 Frontier is a complex C/C++ application with:
@@ -98,7 +131,7 @@ Frontier is a complex C/C++ application with:
 - **Design new database schema** with improved hash tables
 - **Add database validation** and integrity checking tools
 
-### 1.2 **Hash Table Modernization**
+### 1.2 **Hash Table Modernization (Phase 3)**
 - **Replace 13-bucket hash** with dynamic bucket sizing
 - **Implement better hash algorithm** (FNV-1a or similar)
 - **Add hash collision resolution** strategies
@@ -138,6 +171,18 @@ Frontier is a complex C/C++ application with:
   - Follow-up actions:
     - Compile `Common/source/opxml.c` in headless, auditing its dependencies (`langxml`, window updates) and gating UI calls under `FRONTIER_HEADLESS`.
     - Add targeted headless shims for any remaining shell helpers invoked by OPML paths (e.g., `shellupdatenow`).
+
+- **Pascal String Retirement (Phase 4)**
+  - Design principle: Avoid long-term preservation of Classic Mac OS string concepts (Pascal `bigstring`). Prefer modern UTF‑8 C strings internally and limit Pascal usage to legacy boundaries (tokenizer/on‑disk formats) until fully modernized.
+  - Actions:
+    - Add canonical helpers in `strings.*` (`bs_from_c`, `c_from_bs`) to safely bridge between C strings and Pascal bigstrings and eliminate unsafe casts.
+    - Refactor init code (constants/keywords/builtins) and table APIs to use safe helpers and C‑string keys where possible.
+    - Plan phased migration of internal APIs from bigstring to C strings; keep shims for compatibility and convert I/O boundaries last.
+
+- **Infinity Semantics (Headless + UI)**
+  - TODO: Verify UserTalk arithmetic and comparison behavior with `infinity` and `longinfinity` in 64-bit builds.
+    - Examples: `infinity > 1000000` should be true; historical wraparound behaviors (e.g., `infinity + 1`) should be documented and not relied upon by production code.
+  - Keep sentinel values (`infinity = 32767`, `longinfinity = 0x7FFFFFFF`) unless a deliberate, tested change is made.
 
 - **Fat Headlines in Headless**
   - Some outline displays rely on “fat headlines” (multi-line text measurement and WP engine integration). In headless we disabled fat headlines to avoid UI text engine dependencies.

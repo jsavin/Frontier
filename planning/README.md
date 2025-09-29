@@ -1,5 +1,19 @@
 # Frontier Refactoring - Planning Documents
 
+Status
+- State: In Progress
+- Phase: Multi-Phase Roadmap
+- Last Updated: 2025-09-29
+- Notes: See planning/INDEX.md for an up-to-date index and status.
+
+Related Docs
+- planning/INDEX.md
+- planning/Frontier_Refactoring_Plan.md
+- planning/phase_gates.md
+
+Change Log
+- 2025-09-29: Initialized template sections (Status/Related Docs/Change Log).
+
 This directory contains all planning documents for the Frontier refactoring project, organized by phase and task using a dot-delimited numbering system.
 
 ## File Naming Convention

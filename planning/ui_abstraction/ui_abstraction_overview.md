@@ -1,5 +1,21 @@
 # UI Abstraction Overview
 
+Status
+- State: In Progress
+- Phase: 2
+- Last Updated: 2025-09-29
+- Notes: Targets headless-first runtime and adapter-based UI separation.
+
+Related Docs
+- planning/ui_abstraction/PHASES.md
+- planning/ui_abstraction/phase2/analysis.md
+- planning/ui_abstraction/phase2/architecture.md
+- planning/ui_abstraction/phase2/migration_plan.md
+- planning/ui_abstraction/phase2/patterns_and_choices.md
+
+Change Log
+- 2025-09-29: Initialized template sections (Status/Related Docs/Change Log).
+
 ## Motivation
 
 Frontier’s runtime is tightly coupled to Carbon/QuickDraw windowing code. To

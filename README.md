@@ -1,5 +1,19 @@
 # Frontier Refactoring Project
 
+Status
+- State: In Progress
+- Phase: Multi-Phase Roadmap
+- Last Updated: 2025-09-29
+- Notes: See planning/INDEX.md for current phases and key docs.
+
+Related Docs
+- planning/INDEX.md
+- planning/Frontier_Refactoring_Plan.md
+- planning/DEVELOPER_QUICKSTART_HEADLESS.md
+
+Change Log
+- 2025-09-29: Initialized template sections (Status/Related Docs/Change Log).
+
 ## Project Structure
 
 This project has been reorganized for cross-platform compatibility and maintainability:

@@ -1,5 +1,16 @@
 # Backup Naming Strategy Analysis
 
+Status
+- State: Unknown
+- Phase: Unknown
+- Last Updated: 2025-09-29
+- Notes: To be aligned with migration/CLI behavior in Phases 1–2.
+
+Related Docs
+
+Change Log
+- 2025-09-29: Initialized template sections (Status/Related Docs/Change Log).
+
 ## **Problem**
 When creating a backup during database migration, what happens if a `.rbk` file already exists?
 

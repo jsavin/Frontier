@@ -1,9 +1,60 @@
 # TODO: Future Improvements
 
-## **Phase 2: Hash Table Modernization**
+Status
+- State: Living Document
+- Phase: Multi-Phase Roadmap
+- Last Updated: 2025-09-29
+- Notes: Hash Tables moved to Phase 3.
+
+Related Docs
+- planning/Frontier_Refactoring_Plan.md
+- planning/INDEX.md
+- planning/ui_abstraction/PHASES.md
+
+Change Log
+- 2025-09-29: Initialized template sections (Status/Related Docs/Change Log).
+- 2025-09-29: Added Memory Management Audit TODO (codebase-wide).
+
+## **Memory Management Audit (Codebase‑Wide)**
+
+### **Priority: High**
+### **Timeline: Rolling (begin immediately, complete by end of Phase 1)**
+
+#### **Goals**
+- Identify and fix unsafe or leaky patterns across legacy C code.
+- Standardize ownership and lifetime for heap objects and Handles.
+- Reduce UB/ASan/UBSan findings (alignment, VLAs, function pointer casts).
+
+#### **Scope (examples, not exhaustive)**
+- Remove or replace variable‑length arrays (VLAs) with fixed or heap buffers.
+- Fix misaligned reads/writes (e.g., Handle stores) with safe copies.
+- Audit malloc/newclearhandle/newhandle/newtexthandle call sites for matching free/dispose.
+- Ensure error paths and early returns release allocations.
+- Verify temp stack usage (pushvalueontmpstack/cleartmpstack/exemptfromtmpstack) for all heap values.
+- Replace unsafe pointer casts (e.g., function pointer mismatches) with correct shims/adapters.
+- Prefer size_t for sizes/lengths; validate bounds before copy/move.
+- Guard VLA‑like patterns in platform APIs (e.g., count‑then‑alloc, always free).
+
+#### **Deliverables**
+- Tracking issue and checklist per module (lang, memory, strings, op*, db, tables, UI stubs).
+- Sanitizer‑clean headless test runs (ASan/UBSan) with documented suppressions if truly unavoidable.
+- Coding guideline snippet: ownership conventions and common helpers.
+
+#### **Initial Targets**
+- Common/source/langstartup.c: dynamic allocations (charsets init) — done; re‑audit.
+- Common/source/memory*.c: alignment‑safe Handle ops and memcpy patterns — in progress.
+- Common/source/langcallbacks.c: remove VLAs in error printing — done; re‑audit other fprintf/debug paths.
+- Common/source/langtree.c: LP64 packing guards for treenodes — done; verify other packed structs.
+
+#### **Process**
+- Enable ASan/UBSan in CI for tests; treat new sanitizer errors as must‑fix.
+- Add optional leak checks where feasible; avoid noisy false positives.
+- Document ownership for public APIs in headers.
+
+## **Phase 3: Hash Table Modernization**
 
 ### **Priority: Medium**
-### **Timeline: After Phase 1 64-bit migration is stable**
+### **Timeline: After Phase 2 UI abstraction work is stable**
 
 #### **Background**
 - Current hash table uses only first/last character of string
@@ -127,7 +178,7 @@ boolean offer_64bit_migration_dialog(const char* db_path, boolean headless_mode)
 
 ## **Notes**
 
-- **Priority Order**: Phase 1 (64-bit) → Phase 2 (hash tables) → Headless migration
+- **Priority Order**: Phase 1 (64-bit) → Phase 2 (UI abstraction) → Phase 3 (hash tables) → Headless migration
 - **Testing Strategy**: Each improvement should have comprehensive testing
 - **Backward Compatibility**: Maintain support for all previous versions
 - **Documentation**: Update user and developer documentation for each change
