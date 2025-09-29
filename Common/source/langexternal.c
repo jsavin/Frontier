@@ -2355,7 +2355,10 @@ boolean langexternalnewvalue (tyexternalid id, Handle hdata, tyvaluerecord *val)
 	font/size preference settings.
 	*/
 	
-	hdlexternalvariable hvariable;
+    hdlexternalvariable hvariable;
+#ifdef FRONTIER_HEADLESS
+    fprintf(stderr, "[xml] langexternalnewvalue: id=%d\n", (int)id);
+#endif
 	register boolean fl;
 	
 	switch (id) {
@@ -2834,5 +2837,4 @@ boolean langexternalsymbolinserted (hdlhashtable htable, const bigstring bsname,
 
 	return true;
 	} /*langexternalsymbolinserted*/
-
 

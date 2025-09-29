@@ -34,7 +34,10 @@ typedef struct { void* data; } hdlptrarray;
 /* Do not redefine them here to avoid conflicts */
 
 /* Process ID type */
+#ifndef TYPROCESSID_DEFINED
 typedef ProcessSerialNumber typrocessid;
+#define TYPROCESSID_DEFINED 1
+#endif
 
 /* Button status type */
 typedef struct tybuttonstatus {

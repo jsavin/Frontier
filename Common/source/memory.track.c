@@ -81,7 +81,7 @@ static boolean safetycushionhook (long *ctbytesneeded) {
 		our heap.
 		*/
 		
-		register Handle h;
+		Handle h;
 		OSErr err;
 		long extrasize;
 
@@ -133,7 +133,7 @@ static boolean safetycushionhook (long *ctbytesneeded) {
 		our heap.
 		*/
 		
-		register Handle h;
+		Handle h;
 		OSErr err;
 
 			if (fltemp) { /*try grabbing temp memory first*/
@@ -520,7 +520,7 @@ void movefromhandle (Handle h, ptrvoid pdest, long length) {
 #if (MEMTRACKER == 1)
 	boolean debugnewclearhandle (char * filename, unsigned long linenumber, unsigned long threadid, long size, Handle *hreturned) {
 		
-		register Handle h;
+		Handle h;
 		register long ctbytes;
 		
 		ctbytes = size; /*copy into a register*/
@@ -546,7 +546,7 @@ void movefromhandle (Handle h, ptrvoid pdest, long length) {
 
 	boolean debugnewfilledhandle (char * filename, unsigned long linenumber, unsigned long threadid, ptrvoid pdata, long size, Handle *hreturned) {
 		
-		register Handle h;
+		Handle h;
 		register long ctbytes;
 		
 		ctbytes = size; 
@@ -571,7 +571,7 @@ void movefromhandle (Handle h, ptrvoid pdest, long length) {
 #else	
 	boolean newclearhandle (long size, Handle *hreturned) {
 		
-		register Handle h;
+		Handle h;
 		register long ctbytes;
 		
 		ctbytes = size; /*copy into a register*/
@@ -597,7 +597,7 @@ void movefromhandle (Handle h, ptrvoid pdest, long length) {
 
 	boolean newfilledhandle (ptrvoid pdata, long size, Handle *hreturned) {
 		
-		register Handle h;
+		Handle h;
 		register long ctbytes;
 		
 		ctbytes = size; 
@@ -746,7 +746,7 @@ boolean prepareforgrowing (Handle h) {
 #if (MEMTRACKER == 1)
 boolean debugcopyhandle (char * filename, unsigned long linenumber, unsigned long threadid, Handle horig, Handle *hcopy) {
 	
-	register Handle h;
+	Handle h;
 	register long ct;
 	
 	if (horig == nil) /*easy to copy a nil handle*/
@@ -775,7 +775,7 @@ boolean debugcopyhandle (char * filename, unsigned long linenumber, unsigned lon
 #else
 boolean copyhandle (Handle horig, Handle *hcopy) {
 	
-	register Handle h;
+	Handle h;
 	register long ct;
 	
 	if (horig == nil) /*easy to copy a nil handle*/
@@ -939,7 +939,7 @@ boolean debugnewtexthandle (char * filename, unsigned long linenumber, unsigned 
 	*/
 	
 	register long len = stringlength (bs);
-	register Handle h;
+	Handle h;
 	
 	h = debuggetnewhandle (filename, linenumber, threadid, len, false);
 	
@@ -953,7 +953,7 @@ boolean debugnewtexthandle (char * filename, unsigned long linenumber, unsigned 
 	if (len > 0)
 		moveleft ((ptrstring) stringbaseaddress (bs), *h, len);
 	
-	*htext = h; /*pass handle back to caller*/
+	memcpy(htext, &h, sizeof(Handle)); /*pass handle back to caller*/
 	
 	return (true);
 	} /*newtexthandle*/
@@ -967,7 +967,7 @@ boolean newtexthandle (const bigstring bs, Handle *htext) {
 	*/
 	
 	register long len = stringlength (bs);
-	register Handle h;
+	Handle h;
 	
 	h = getnewhandle (len, false);
 	
@@ -981,7 +981,7 @@ boolean newtexthandle (const bigstring bs, Handle *htext) {
 	if (len > 0)
 		moveleft ((ptrstring) stringbaseaddress (bs), *h, len);
 	
-	*htext = h; /*pass handle back to caller*/
+	memcpy(htext, &h, sizeof(Handle)); /*pass handle back to caller*/
 	
 	return (true);
 	} /*newtexthandle*/
@@ -1481,7 +1481,7 @@ boolean debugconcathandles (char * filename, unsigned long linenumber, unsigned 
 	create a new handle which is the concatenation of two handles.
 	*/
 	
-	register Handle h;
+	Handle h;
 	long sizefirsthandle;
 	long sizesecondhandle;
 	register ptrbyte p;
@@ -1533,7 +1533,7 @@ boolean debugmergehandles (char * filename, unsigned long linenumber, unsigned l
 	the merged handle soon.
 	*/
 	
-	register Handle h;
+	Handle h;
 	long sizefirsthandle;
 	long sizesecondhandle;
 	long sizemergedhandle;
@@ -1728,7 +1728,7 @@ boolean concathandles (Handle h1, Handle h2, Handle *hmerged) {
 	create a new handle which is the concatenation of two handles.
 	*/
 	
-	register Handle h;
+	Handle h;
 	long sizefirsthandle;
 	long sizesecondhandle;
 	register ptrbyte p;
@@ -1780,7 +1780,7 @@ boolean mergehandles (Handle h1, Handle h2, Handle *hmerged) {
 	the merged handle soon.
 	*/
 	
-	register Handle h;
+	Handle h;
 	long sizefirsthandle;
 	long sizesecondhandle;
 	long sizemergedhandle;

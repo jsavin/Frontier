@@ -2953,6 +2953,9 @@ boolean coercetofilespec (tyvaluerecord *v) {
 			
 			if (!pathtofilespec (bs, &fs)) {
 				
+#ifdef FRONTIER_HEADLESS
+				return (false);
+#else
 				filenotfounderror();
 				
 				/*
@@ -2960,6 +2963,7 @@ boolean coercetofilespec (tyvaluerecord *v) {
 				*/
 				
 				return (false);
+#endif
 				}
 			
 			break;
@@ -8489,4 +8493,3 @@ boolean functionvalue (hdltreenode htree, hdltreenode hparam1, tyvaluerecord *vr
 	else
 		return (builtinvalue ((tyfunctype) val.data.tokenvalue, hparam1, vreturned));
 	} /*functionvalue*/
-

@@ -35,10 +35,14 @@
     typedef void* AppleEvent;
 #else
     #ifndef __COMPONENTS__
+        #if !defined(FRONTIER_HEADLESS)
         #include <Components.h>
+        #endif
     #endif
     #ifndef __OSA__
+        #if !defined(FRONTIER_HEADLESS)
         #include <OSA.h>
+        #endif
     #endif
 #endif
 
@@ -71,8 +75,6 @@ extern void osacomponentshutdown (void);
 
 
 #endif
-
-
 
 
 

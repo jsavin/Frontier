@@ -27,11 +27,13 @@
 
 
 
+#if !defined(FRONTIER_HEADLESS)
 #define PCRE_STATIC
 
 #undef abs	/* 2004-10-17 AR: might already be defined by standard.h, to be redefined in stdlib.h */
 
 #include "pcre.h"
+#endif
 
 
 extern boolean regexpcompile (const char *, int, bigstring, Handle *);
@@ -41,5 +43,4 @@ extern boolean regexpcheckreplacement (Handle, const char *, int);
 extern boolean regexpnewovector (Handle, Handle *);
 
 extern boolean regexptextsearch (byte *, long, long *, long *);
-
 

@@ -62,6 +62,9 @@
 
 
 
+/* Typed no-op for error message callbacks to avoid UB on function pointer casts */
+static boolean lang_errmsg_noop(bigstring bs, ptrvoid refcon) { (void)bs; (void)refcon; return true; }
+
 byte bstrue [] = "\x04" "true"; /*so we don't replicate this constant*/
 
 byte bsfalse [] = "\x05" "false"; /*or this one, either*/
@@ -957,10 +960,10 @@ boolean langrunhandletraperror (Handle htext, bigstring bsresult, bigstring bser
 	boolean fl;
 	langerrormessagecallback savecallback;
 	ptrvoid saverefcon;
+#ifndef FRONTIER_HEADLESS
 	GrafPtr saveport;
-	//Code change by Timothy Paustian Wednesday, June 14, 2000 4:32:31 PM
-	//Changed to Opaque call for Carbon
-	saveport = GetQDGlobalsThePort();
+    saveport = GetQDGlobalsThePort();
+#endif
 	
 	savecallback = langcallbacks.errormessagecallback;
 	
@@ -980,15 +983,15 @@ boolean langrunhandletraperror (Handle htext, bigstring bsresult, bigstring bser
 	
 	fllangerror = false;
 	
-	//Code change by Timothy Paustian Wednesday, June 14, 2000 4:35:24 PM
-	//Changed to Opaque call for Carbon
+	#ifndef FRONTIER_HEADLESS
 	{
 	GrafPtr thePort;
 	thePort = GetQDGlobalsThePort();
-	
+
 	if (thePort != saveport)
 		SetPort (saveport);
 	}
+	#endif
 	return (fl);
 
 	} /*langrunhandletraperror*/
@@ -1038,7 +1041,7 @@ boolean langrunstringnoerror (const bigstring bsprogram, bigstring bsresult) {
     extern boolean langportable_err_noop(unsigned char*, void*);
     langcallbacks.errormessagecallback = (langerrormessagecallback) &langportable_err_noop;
     #else
-    langcallbacks.errormessagecallback = (langerrormessagecallback) &truenoop;
+    langcallbacks.errormessagecallback = &lang_errmsg_noop;
     #endif
 		
 		langcallbacks.clearerrorcallback = &truenoop;
@@ -1621,4 +1624,3 @@ boolean langrunscript (bigstring bsscriptname, tyvaluerecord *vparams, hdlhashta
 	return (fl);
 	} /%langrunscript%/
 */
-

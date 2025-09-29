@@ -1,5 +1,16 @@
 # Build Issues and Known Problems
 
+Status
+- State: Historical/Outdated
+- Phase: N/A
+- Last Updated: 2025-09-29
+- Notes: Superseded by headless path and portable handles; retained for reference.
+
+Related Docs
+
+Change Log
+- 2025-09-29: Initialized template sections (Status/Related Docs/Change Log).
+
 ## Current Status: Stub Implementation Complete ✅
 
 The runtime stub implementation has been successfully completed with all functions split into 12 focused files, resolving the "conversation too long" errors and fixing all compilation issues.

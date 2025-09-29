@@ -37,6 +37,7 @@
 #include "strings.h"
 #include "shell.h"
 #include "db.h"
+#include "db_format.h"
 #include "dbinternal.h"
 #include "ops.h" //6.2b3 AR: for numbertostring
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
@@ -79,7 +80,7 @@ typedef enum {
 hdldatabaserecord databasedata; /*the global database handle*/
 
 // Global flag for format detection
-static boolean use_64bit_format = false;
+extern boolean use_64bit_format;
 
 boolean fldatabasesaveas = false; /*only true during Save As operation*/
 
@@ -87,144 +88,7 @@ boolean fldatabasesaveas = false; /*only true during Save As operation*/
 
 static hdldatabaserecord databasedestination; /*for Save As*/
 
-// Function to detect database format
-boolean detect_database_format(hdldatabaserecord hdb) {
-    if ((**hdb).versionnumber <= 6) {
-        use_64bit_format = false;
-        return true;  // Legacy 32-bit format
-    } else if ((**hdb).versionnumber >= 7) {
-        use_64bit_format = true;
-        return true;  // 64-bit format
-    } else {
-        return false;  // Unsupported version
-    }
-}
 
-// Function to create backup of database file
-boolean create_root_backup(const char* original_path) {
-    char backup_path[1024];
-    time_t now = time(NULL);
-    struct tm *tm_info = localtime(&now);
-    
-    // Create timestamped backup name: filename.root.YYYYMMDD_HHMMSS
-    snprintf(backup_path, sizeof(backup_path), "%s.%04d%02d%02d_%02d%02d%02d", 
-             original_path, 
-             tm_info->tm_year + 1900, tm_info->tm_mon + 1, tm_info->tm_mday,
-             tm_info->tm_hour, tm_info->tm_min, tm_info->tm_sec);
-    
-    // Copy file to backup
-    FILE *src = fopen(original_path, "rb");
-    FILE *dst = fopen(backup_path, "wb");
-    
-    if (!src || !dst) {
-        if (src) fclose(src);
-        if (dst) fclose(dst);
-        return false;
-    }
-    
-    // Copy file contents
-    char buffer[4096];
-    size_t bytes;
-    while ((bytes = fread(buffer, 1, sizeof(buffer), src)) > 0) {
-        fwrite(buffer, 1, bytes, dst);
-    }
-    
-    fclose(src);
-    fclose(dst);
-    return true;
-}
-
-// Function to convert 32-bit header to 64-bit format
-boolean convert_32bit_header_to_64bit(hdldatabaserecord hdb, tydatabaserecord_64 *new_header) {
-    // Copy basic fields
-    new_header->systemid = (**hdb).systemid;
-    new_header->versionnumber = 7;  // New version
-    new_header->availlist = (dbaddress)(**hdb).availlist;  // 32-bit → 64-bit
-    new_header->oldfnumdatabase = (**hdb).oldfnumdatabase;
-    new_header->flags = (**hdb).flags;
-    
-    // Convert views array
-    for (int i = 0; i < ctviews; i++) {
-        new_header->views[i] = (dbaddress)(**hdb).views[i];  // 32-bit → 64-bit
-    }
-    
-    new_header->releasestack = (**hdb).releasestack;
-    new_header->fnumdatabase = (long)(**hdb).fnumdatabase;  // 32-bit → 64-bit
-    new_header->headerLength = (long)(**hdb).headerLength;  // 32-bit → 64-bit
-    new_header->longversionMajor = (**hdb).longversionMajor;
-    new_header->longversionMinor = (**hdb).longversionMinor;
-    
-    // Copy extension fields
-    new_header->u.extensions.availlistblock = (dbaddress)(**hdb).u.extensions.availlistblock;
-    new_header->u.extensions.availlistshadow = (**hdb).u.extensions.availlistshadow;
-    new_header->u.extensions.flreadonly = (**hdb).u.extensions.flreadonly;
-    
-    return true;
-}
-
-// Function to migrate database from 32-bit to 64-bit format
-boolean migrate_32bit_to_64bit(const char* db_path) {
-    // Create backup first
-    if (!create_root_backup(db_path)) {
-        return false;
-    }
-    
-    // Open the database for reading
-    FILE *src = fopen(db_path, "rb");
-    if (!src) {
-        return false;
-    }
-    
-    // Read the 32-bit header
-    tydatabaserecord old_header;
-    if (fread(&old_header, sizeof(tydatabaserecord), 1, src) != 1) {
-        fclose(src);
-        return false;
-    }
-    
-    // Convert to 64-bit format
-    tydatabaserecord_64 new_header;
-    if (!convert_32bit_header_to_64bit(&old_header, &new_header)) {
-        fclose(src);
-        return false;
-    }
-    
-    // Create temporary file for new format
-    char temp_path[1024];
-    snprintf(temp_path, sizeof(temp_path), "%s.tmp", db_path);
-    
-    FILE *dst = fopen(temp_path, "wb");
-    if (!dst) {
-        fclose(src);
-        return false;
-    }
-    
-    // Write new header
-    if (fwrite(&new_header, sizeof(tydatabaserecord_64), 1, dst) != 1) {
-        fclose(src);
-        fclose(dst);
-        unlink(temp_path);
-        return false;
-    }
-    
-    // Copy rest of file (skip old header)
-    char buffer[4096];
-    size_t bytes;
-    while ((bytes = fread(buffer, 1, sizeof(buffer), src)) > 0) {
-        fwrite(buffer, 1, bytes, dst);
-    }
-    
-    fclose(src);
-    fclose(dst);
-    
-    // Replace original file with new format
-    if (rename(temp_path, db_path) != 0) {
-        unlink(temp_path);
-        return false;
-    }
-    
-    return true;
-}
 
 // Function to offer migration dialog (placeholder for now)
 boolean offer_64bit_migration_dialog(const char* db_path) {
@@ -2508,7 +2372,7 @@ boolean dbopenfile (hdlfilenum fnum, boolean flreadonly) {
 	**hdb = diskrec;
 	
 	// Detect database format and validate structure size
-	if (!detect_database_format(hdb)) {
+	if (!detect_database_format(&(**hdb))) {
 		dberror (dbwrongversionerror);
 		goto error;
 	}
@@ -2611,4 +2475,3 @@ boolean dbendsaveas (void) {
 	
 	return (fl);
 	} /*dbendsaveas*/
-

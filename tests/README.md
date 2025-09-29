@@ -1,5 +1,41 @@
 # Frontier Test Suite
 
+Status
+- State: In Progress
+- Phase: 1–2
+- Last Updated: 2025-09-29
+- Notes: Headless-first testing; see Quickstart and behavior matrix.
+
+Related Docs
+- planning/DEVELOPER_QUICKSTART_HEADLESS.md
+- planning/headless_stubbed_behavior_matrix.md
+- planning/no_ui_linkage_policy.md
+- planning/0.5.23_runtime_test_plan.md
+
+Change Log
+- 2025-09-29: Initialized template sections (Status/Related Docs/Change Log).
+
+## Table of Contents
+- [Overview](#overview)
+- [Directory Structure](#directory-structure)
+- [Test Hierarchy](#test-hierarchy)
+- [Usage](#usage)
+  - [Building and Running Tests](#building-and-running-tests)
+  - [Test Runner Usage](#test-runner-usage)
+- [Test Framework Features](#test-framework-features)
+  - [Assertions](#assertions)
+  - [Test Suite Definition](#test-suite-definition)
+  - [Test Runner Integration](#test-runner-integration)
+- [Adding New Test Suites](#adding-new-test-suites)
+- [Test Categories](#test-categories)
+- [Benefits for Project Priorities](#benefits-for-project-priorities)
+- [Current Test Suites](#current-test-suites)
+- [Future Test Suites](#future-test-suites)
+- [Architecture Support](#architecture-support)
+- [Contributing](#contributing)
+  - [Headless Helpers (`headless_shell.c`)](#headless-helpers-headless_shellc)
+  - [Runtime (`db_format_tests.c`)](#runtime-db_format_testsc)
+
 ## Overview
 
 This directory contains the organized test suite for the Frontier refactoring project. The test structure is designed to provide comprehensive testing for component migration while maintaining clear organization and long-term maintainability.
@@ -11,8 +47,10 @@ tests/
 ├── framework/          # Test framework core
 │   ├── test_framework.h    # Test framework header
 │   └── test_framework.c    # Test framework implementation
+├── headless_shell.c    # UI stubs used by headless harnesses
 ├── components/         # Component test suites
 │   └── test_database.c     # Database component tests
+├── db_format_tests.c   # Header conversion/detection unit tests
 ├── examples/           # Example test suites
 │   └── test_example.c      # Framework usage examples
 ├── test_runner.c       # Main test runner
@@ -234,3 +272,13 @@ When adding new tests:
 3. Test both success and failure cases
 4. Document test purpose and scope
 5. Ensure cross-architecture compatibility
+### Headless Helpers (`headless_shell.c`)
+- **Purpose**: Provide minimal `shellvisittypedwindows`/`shellerrormessage`
+  implementations so database/runtime tests can run without linking the UI
+  layer.
+- **Usage**: Linked into headless harnesses (e.g. `core_tests`).
+
+### Runtime (`db_format_tests.c`)
+- **Purpose**: Validate database header detection and 32→64-bit conversion
+  helpers without invoking the UI stack.
+- **Usage**: Build with `make db_format_tests` and run `./db_format_tests`.

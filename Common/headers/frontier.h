@@ -55,5 +55,9 @@
 
 #include "frontierdefs.h"	/* global pre-processor defines */
 
+#if defined(FRONTIER_HEADLESS)
+#include "headless_stubs.h"
+#endif
+
 
 #endif /*__FRONTIER_H__*/

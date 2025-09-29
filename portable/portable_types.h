@@ -67,14 +67,13 @@ typedef struct { unsigned char bytes[10]; } extended80;
 
 /* Type aliases for compatibility with existing code */
 /* These will be conditionally defined based on platform */
-#ifdef FRONTIER_PORTABLE
+#if defined(FRONTIER_PORTABLE) || defined(FRONTIER_HEADLESS)
     /* Use portable types */
     typedef PortableUniStr255 HFSUniStr255;
     typedef PortableFileRef FSRef;
     typedef PortableProcessID ProcessSerialNumber;
     typedef PortableUniStr255 tyfsname;
     typedef PortableUniStr255* tyfsnameptr;
-    typedef PortableProcessID typrocessid;
 #else
     /* On native Mac, use the real types */
     /* These should be defined by system headers */

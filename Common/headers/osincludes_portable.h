@@ -12,6 +12,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
+#include <assert.h>
 
 #include "portable_handles.h"
 
@@ -35,8 +37,16 @@ typedef int32_t SInt32;
 typedef uint8_t UInt8;
 #endif
 
+#ifndef SInt8
+typedef int8_t SInt8;
+#endif
+
 #ifndef Str255
 typedef unsigned char Str255[256];
+#endif
+
+#ifndef ConstStr255Param
+typedef const unsigned char *ConstStr255Param;
 #endif
 
 #ifndef Fixed
@@ -69,6 +79,114 @@ typedef struct RGBColor {
 typedef uint64_t UInt64;
 #endif
 
+#ifndef OSStatus
+typedef int32_t OSStatus;
+#endif
+
+#ifndef ItemCount
+typedef uint32_t ItemCount;
+#endif
+
+#ifndef TextEncoding
+typedef uint32_t TextEncoding;
+#endif
+
+#ifndef TextEncodingBase
+typedef uint32_t TextEncodingBase;
+#endif
+
+#ifndef TextEncodingVariant
+typedef uint32_t TextEncodingVariant;
+#endif
+
+#ifndef TextEncodingFormat
+typedef uint32_t TextEncodingFormat;
+#endif
+
+#ifndef RegionCode
+typedef uint32_t RegionCode;
+#endif
+
+#ifndef TextEncodingNameSelector
+typedef uint32_t TextEncodingNameSelector;
+#endif
+
+#ifndef TECObjectRef
+typedef void *TECObjectRef;
+#endif
+
+#ifndef ResType
+typedef uint32_t ResType;
+#endif
+
+#ifndef FontInfo
+typedef struct FontInfo {
+    short ascent;
+    short descent;
+    short leading;
+    short widMax;
+} FontInfo;
+#endif
+
+#ifndef extended80
+typedef struct extended80 {
+    uint8_t bytes[10];
+} extended80;
+#endif
+
+#ifndef CGrafPtr
+typedef void *CGrafPtr;
+#endif
+
+#ifndef THz
+typedef void *THz;
+#endif
+
+#ifndef AliasHandle
+typedef Handle AliasHandle;
+#endif
+
+#ifndef pascal
+#define pascal
+#endif
+
+#ifndef iBeamCursor
+#define iBeamCursor 1
+#endif
+
+#ifndef watchCursor
+#define watchCursor 2
+#endif
+
+#ifndef kTextEncodingFullName
+#define kTextEncodingFullName 0
+#endif
+
+#ifndef kTextEncodingMacRoman
+#define kTextEncodingMacRoman 0
+#endif
+
+#ifndef kTextUnsupportedEncodingErr
+#define kTextUnsupportedEncodingErr (-30874)
+#endif
+
+#ifndef kTextMalformedInputErr
+#define kTextMalformedInputErr (-32768)
+#endif
+
+#ifndef kTextUndefinedElementErr
+#define kTextUndefinedElementErr (-32767)
+#endif
+
+#ifndef kTECNoConversionPathErr
+#define kTECNoConversionPathErr (-32766)
+#endif
+
+#ifndef kTECPartialCharErr
+#define kTECPartialCharErr (-32765)
+#endif
+
+
 #ifndef StringPtr
 typedef unsigned char *StringPtr;
 #endif
@@ -77,8 +195,16 @@ typedef unsigned char *StringPtr;
 typedef StringPtr *StringHandle;
 #endif
 
+#ifndef nil
+#define nil NULL
+#endif
+
 #ifndef UniChar
 typedef uint16_t UniChar;
+#endif
+
+#ifndef UniCharCount
+typedef uint32_t UniCharCount;
 #endif
 
 #ifndef HFSUniStr255
@@ -103,7 +229,7 @@ typedef struct ProcessSerialNumber {
 
 #ifndef Pattern
 typedef struct Pattern {
-    uint8_t data[8];
+    uint8_t pat[8];
 } Pattern;
 #endif
 
@@ -162,4 +288,3 @@ typedef struct EventRecord {
 #endif
 
 #endif /* OSINCLUDES_PORTABLE_H */
-

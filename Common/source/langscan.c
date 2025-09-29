@@ -904,12 +904,21 @@ static tokentype langscanner (hdltreenode *nodetoken) {
 		
 		#endif
 		
-		fl = hashtablelookup (hkeywordtable, bs, &val, &hnode);
+        fl = hashtablelookup (hkeywordtable, bs, &val, &hnode);
 		
 		if (fl) 
 			return ((tokentype) val.data.tokenvalue); /*it's a reserved word*/
 		
-		fl = hashtablelookup (hconsttable, bs, &val, &hnode);
+        fl = hashtablelookup (hconsttable, bs, &val, &hnode);
+#ifdef FRONTIER_HEADLESS
+        {
+            char identbuf[64];
+            copyptocstring(bs, identbuf);
+            if (strcmp(identbuf, "true") == 0 || strcmp(identbuf, "false") == 0 || strcmp(identbuf, "stringType") == 0) {
+                fprintf(stderr, "[scan] ident '%s' const_lookup=%s\n", identbuf, fl ? "hit" : "miss");
+            }
+        }
+#endif
 		
 		if (fl) { /*it's a pre-defined constant*/
 			
@@ -918,13 +927,22 @@ static tokentype langscanner (hdltreenode *nodetoken) {
 			
 			exemptfromtmpstack (&val);
 			
-			if (!newconstnode (val, nodetoken))
-				return (0 /*errortoken*/);
+            if (!newconstnode (val, nodetoken))
+                return (0 /*errortoken*/);
 			
 			return (constanttoken);
 			}
 		
-		initvalue (&val, stringvaluetype);
+        initvalue (&val, stringvaluetype);
+#ifdef FRONTIER_HEADLESS
+        {
+            char identbuf2[64];
+            copyptocstring(bs, identbuf2);
+            if (strcmp(identbuf2, "true") == 0 || strcmp(identbuf2, "false") == 0 || strcmp(identbuf2, "stringType") == 0) {
+                fprintf(stderr, "[scan] ident '%s' -> identifier (not constant)\n", identbuf2);
+            }
+        }
+#endif
 		
 		if (!newtexthandle (bs, &val.data.stringvalue))
 			return (0 /*errortoken*/);
@@ -1355,4 +1373,3 @@ yyoverflow (bsevent, p1, size1, p2, size2, p3, size3, p4) bigstring bsevent; ptr
 	
 	
 	
-

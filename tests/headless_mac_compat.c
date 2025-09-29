@@ -15,6 +15,17 @@
 #include "shelltypes.h"
 #include "langexternal.h"
 #include "db.h"
+#include "resources.h"
+#include "aeutils.h"
+#include "timedate.h"
+#include "font.h"
+#include "scripts.h"
+#include "tableformats.h"
+#include "kb.h"
+#include "cancoon.h"
+#include "opxml.h"
+#include "error.h"
+#include "claybrowser.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -112,7 +123,7 @@ boolean shellclose (WindowPtr w, boolean f) { (void)w; (void)f; return false; }
 boolean shellfilterscrollkey (byte ch) { (void)ch; return false; }
 boolean shellconvertscrap (tyscraptype t, Handle *hh, boolean *fltext) { (void)t; if (hh) *hh=nil; if (fltext) *fltext=false; return false; }
 void shellcheckdirtyscrollbars (void) { }
-boolean shellgetglobalwindowrect (hdlwindowinfo hi, Rect *r) { (void)hi; if (r) memset(r,0,sizeof(*r)); return false; }
+boolean shellgetglobalwindowrect (hdlwindowinfo hi, Rect *r) { (void)hi; if (r) { r->top=0; r->left=0; r->bottom=600; r->right=800; } return true; }
 boolean shellbringtofront (hdlwindowinfo hi) { (void)hi; return false; }
 boolean shellgetexternaldata (hdlwindowinfo hi, void *p) { (void)hi; (void)p; return false; }
 boolean shellclosedatawindow (Handle h) { (void)h; return false; }
@@ -129,6 +140,9 @@ void ouch (void) { }
 boolean oserror (OSErr err) { (void)err; return false; }
 boolean pathtofilespec (bigstring bs, ptrfilespec fs) { (void)bs; if (fs) memset(fs,0,sizeof(*fs)); return false; }
 OSStatus pathtofsref (bigstring bs, FSRef *ref) { (void)bs; if (ref) memset(ref,0,sizeof(*ref)); return paramErr; }
+boolean equalfilespecs ( const ptrfilespec fs1, const ptrfilespec fs2 ) { (void)fs1; (void)fs2; return false; }
+boolean equalrects (Rect r1, Rect r2) { return r1.top==r2.top && r1.left==r2.left && r1.bottom==r2.bottom && r1.right==r2.right; }
+void diskinitloop (void) { }
 
 // Shell scrap and events
 EventRecord shellevent;
@@ -180,6 +194,12 @@ void opmakegap (long lnum, short lineheight) { (void)lnum; (void)lineheight; }
 void opvisisubheads (hdlheadrecord h) { (void)h; }
 boolean opgetoutinesize (long *w, long *h) { if (w) *w = 0; if (h) *h = 0; return true; }
 boolean shellupdatenow (WindowPtr w) { (void)w; return false; }
+boolean shellpushwindowglobals (hdlwindowinfo hinfo) { (void)hinfo; return true; }
+void shellupdatewindow (WindowPtr w) { (void)w; }
+boolean shellmovewindowhidden (hdlwindowinfo hinfo, short h, short v) { (void)hinfo; (void)h; (void)v; return true; }
+boolean shellsizewindowhidden (hdlwindowinfo hinfo, short h, short v) { (void)hinfo; (void)h; (void)v; return true; }
+boolean shellsetwindowtitle (hdlwindowinfo hinfo, bigstring bstitle) { (void)hinfo; (void)bstitle; return true; }
+void shellgetwindowtitle (hdlwindowinfo hinfo, bigstring bstitle) { (void)hinfo; setemptystring(bstitle); }
 
 // Default drawing/metrics helpers expected by opinit/opdisplay
 boolean opdefaultdrawicon (hdlheadrecord h, const Rect *r, boolean sel, boolean inv) { (void)h;(void)r;(void)sel;(void)inv; return true; }
@@ -200,6 +220,126 @@ boolean mousecheckautoscroll (Point pt, Rect r, boolean flhoriz, tydirection *di
 void smashrect (Rect r) { (void)r; }
 void invalrect (Rect r) { (void)r; }
 
+// DB stubs
+boolean dbpushdatabase (hdldatabaserecord h) { (void)h; return false; }
+boolean dbpopdatabase (void) { return false; }
+boolean dbcopy (dbaddress a, dbaddress *b) { (void)a; if (b) *b=0; return false; }
+boolean dbassignhandle (Handle h, dbaddress *adr) { (void)h; if (adr) *adr=0; return false; }
+hdldatabaserecord databasedata = nil;
+
+// Process/debug stubs
+boolean debuggingcurrentprocess (void) { return false; }
+
+// Disk/font/color conversions
+void diskgetfontname (short num, diskfontstring s) { (void)num; if (s) memset(s,0,sizeof(*s)); }
+void diskgetfontnum (diskfontstring s, short *num) { (void)s; if (num) *num=0; }
+void diskrecttorect (diskrect *dr, Rect *r) { if (dr && r) memset(r,0,sizeof(*r)); }
+void diskrgbtorgb (diskrgb *d, RGBColor *r) { if (d && r) memset(r,0,sizeof(*r)); }
+
+// Table formats
+void disposetableformats (hdltableformats hf) { (void)hf; }
+
+// Shell/misc helpers
+// Provide a minimal, static windowinfo handle for headless paths that expect one
+static tywindowinfo g_headless_wininfo; /* zero-initialized */
+static tywindowinfo *g_headless_wininfo_ptr = &g_headless_wininfo;
+
+boolean shellfinddatawindow (Handle h, hdlwindowinfo *hi) {
+    (void)h;
+    if (hi)
+        *hi = &g_headless_wininfo_ptr; /* return a stable handle */
+    return true;
+}
+void shellforcecursoradjust (void) { }
+void shellouch (void) { }
+boolean getrootwindow (WindowPtr w, hdlwindowinfo *hi) { (void)w; if (hi) *hi=nil; return false; }
+Handle getresourcehandle (ResType t, short id) { (void)t; (void)id; return nil; }
+void loadconfigresource (short n, tyconfigrecord *cr) { (void)n; if (cr) memset(cr,0,sizeof(*cr)); }
+
+// File/FS helpers
+boolean fileparsevolname (bigstring bs, ptrfilespec fs) { (void)bs; if (fs) memset(fs,0,sizeof(*fs)); return false; }
+OSErr macgetfsref (const ptrfilespec fs, FSRef* fsref) { (void)fs; if (fsref) memset(fsref,0,sizeof(*fsref)); return paramErr; }
+OSErr macmakefilespec (const FSRef *fsref, ptrfilespec fs) { (void)fsref; if (fs) memset(fs,0,sizeof(*fs)); return paramErr; }
+OSErr macgetfilespecparent (const ptrfilespec fs, ptrfilespec fsparent) { (void)fs; if (fsparent) memset(fsparent,0,sizeof(*fsparent)); return paramErr; }
+void fsnametobigstring (const tyfsnameptr fsname, bigstring bs) { (void)fsname; setemptystring (bs); }
+
+// Timing/keyboard
+long getcurrenttimezonebias (void) { return 0; }
+short getkeyboardstartrepeattime (void) { return 0; }
+long getmousedoubleclicktime (void) { return 0; }
+boolean keyboardescape (void) { return false; }
+void fontgetnumber (bigstring bs, short *num) { (void)bs; if (num) *num=0; }
+boolean getmachinename (bigstring bsname) { setemptystring (bsname); return false; }
+
+// Component/AE stubs
+boolean havecomponentmanager (void) { return false; }
+boolean newdescnull (AEDesc *desc, DescType type) { (void)type; if (desc) memset(desc,0,sizeof(*desc)); return true; }
+boolean newdescwithhandle (AEDesc *desc, DescType type, Handle h) { (void)type; (void)h; if (desc) memset(desc,0,sizeof(*desc)); return true; }
+boolean nildatahandle (AEDesc *desc) { (void)desc; return true; }
+
+// Menu/UI verbs used by opverbs
+boolean menuedit (void) { return false; }
+boolean menuwindowopen (hdlexternalvariable h, hdlwindowinfo *hi) { (void)h; if (hi) *hi=nil; return false; }
+boolean menuverbisdirty (hdlexternalvariable h) { (void)h; return false; }
+
+// OP verbs helpers
+boolean opbeginprint (void) { return false; }
+boolean opbuttonstatus (void) { return false; }
+boolean opbutton (void) { return false; }
+boolean oppostfontchange (void) { return true; }
+void oprestorehoists (void) { }
+boolean oprestorescrollposition (void) { return false; }
+void opsetdisplaydefaults (hdloutlinerecord ho) { (void)ho; }
+
+// Script helpers
+boolean scriptgetnametype (bigstring bsname, long *signature) { (void)bsname; if (signature) *signature=0; return false; }
+boolean scriptgettypename (long signature, bigstring bsname) { (void)signature; setemptystring (bsname); return false; }
+
+// Lang target helpers
+boolean langinitbuiltins (void) { return true; }
+boolean langfindtargetwindow (short id, WindowPtr *w) { (void)id; if (w) *w=NULL; return false; }
+boolean langsettarget (hdlhashtable ht, bigstring bs, tyvaluerecord *prev) { (void)ht;(void)bs;(void)prev; return false; }
+boolean langcleartarget (tyvaluerecord *prev) { (void)prev; return false; }
+boolean langzoomvalwindow (hdlhashtable ht, bigstring bs, tyvaluerecord v, boolean fl) { (void)ht;(void)bs;(void)v;(void)fl; return false; }
+
+// Misc flags/globals expected by opverbs/tablepack
+boolean flconvertingolddatabase = false;
+boolean fldatabasesaveas = false;
+boolean flinhibitclosedialogs = false;
+
+// Additional stubs to satisfy remaining links
+boolean arrowkey (char ch) { (void)ch; return false; }
+RGBColor blackcolor = {0,0,0};
+boolean ccdisposefilerecord (void) { return false; }
+boolean ccsavespecialfile (ptrfilespec fs, hdlfilenum fnum, short rnum, boolean flsaveas, boolean flrunnable) { (void)fs;(void)fnum;(void)rnum;(void)flsaveas;(void)flrunnable; return false; }
+boolean ccfindrootwindow (hdlwindowinfo *hi) { if (hi) *hi=nil; return false; }
+void clearfilespec (ptrfilespec fs) { if (fs) memset(fs,0,sizeof(*fs)); }
+boolean cmdkeydown (void) { return false; }
+tyconfigrecord config; /* default-initialized */
+boolean copydatahandle (AEDesc *desc, Handle *hout) { (void)desc; if (hout) *hout=nil; return false; }
+void bigstringtofsname (const bigstring bs, tyfsnameptr fsname) { (void)bs; if (fsname) memset(fsname,0,sizeof(*fsname)); }
+boolean datahandletostring (AEDesc* desc, bigstring bs) { (void)desc; setemptystring(bs); return false; }
+boolean getscrap (tyscraptype t, Handle h) { (void)t; (void)h; return false; }
+boolean gettablevalue (hdlhashtable ht, bigstring bs, tyvaluerecord *v, hdlhashnode *node) { (void)ht;(void)bs;(void)v; if (node) *node=nil; return false; }
+boolean getuntitledfilename (bigstring bs) { setemptystring(bs); return false; }
+boolean getwinparam (hdltreenode node, short id, hdlwindowinfo *hi) { (void)node; (void)id; if (hi) *hi=nil; return false; }
+tyshellglobals globalsarray[1];
+boolean handlesearch (Handle h, long *ix, long *len) { (void)h; if (ix) *ix=0; if (len) *len=0; return false; }
+void initbeachball (tydirection dir) { (void)dir; }
+boolean isfilewindow (WindowPtr w) { (void)w; return false; }
+boolean ismouserightclick (void) { return false; }
+void killundo (void) { }
+void rollbeachball (void) { }
+void secondstodatetime (long secs, short *yr, short *mon, short *day, short *doy, short *hr, short *min) { (void)secs; if(yr) *yr=0; if(mon) *mon=0; if(day) *day=0; if(doy) *doy=0; if(hr) *hr=0; if(min) *min=0; }
+void secondstodayofweek (long secs, short *dow) { (void)secs; if (dow) *dow=0; }
+void setfserrorparam ( const ptrfilespec fs ) { (void)fs; }
+boolean setoserrorparam (bigstring bs) { (void)bs; return false; }
+void scriptsetcallbacks (hdloutlinerecord ho) { (void)ho; }
+boolean shellfindcallbacks (short id, short *ix) { (void)id; if (ix) *ix=0; return false; }
+boolean browsergetrefcon (hdlheadrecord hnode, tybrowserinfo *info) { (void)hnode; if (info) memset(info,0,sizeof(*info)); return false; }
+boolean memoryerror (void) { return false; }
+
+
 // opdisplay default helpers
 boolean opdefaultgettextrect (hdlheadrecord h, const Rect *linerect, Rect *textrect) { (void)h; if (textrect) { if (linerect) *textrect = *linerect; else memset(textrect,0,sizeof(*textrect)); } return true; }
 boolean opdefaultpredrawline (hdlheadrecord h, const Rect *r, boolean fs, boolean fi) { (void)h;(void)r;(void)fs;(void)fi; return true; }
@@ -215,7 +355,6 @@ void opresetscrollbars (void) { }
 boolean opscroll (tydirection dir, boolean f, long n) { (void)dir; (void)f; (void)n; return false; }
 boolean opscrollto (long a, long b) { (void)a; (void)b; return false; }
 boolean opsetprintinfo (void) { return false; }
-boolean opscraphook (Handle h) { (void)h; return false; }
 boolean oprmousedown (Point pt, tyclickflags flags) { (void)pt; (void)flags; return false; }
 boolean oppushhoist (hdlheadrecord h) { (void)h; return false; }
 boolean oppophoist (void) { return false; }
@@ -757,11 +896,7 @@ boolean timetodatestring (unsigned long ptime, bigstring bs, boolean flabbreviat
     return false;
 }
 
-boolean timetotimestring (unsigned long ptime, bigstring bs) {
-    (void) ptime;
-    setemptystring (bs);
-    return false;
-}
+boolean timetotimestring (unsigned long ptime, bigstring bs, boolean fl) { (void)ptime; (void)fl; setemptystring(bs); return false; }
 
 boolean unixshellcall (Handle hcommand, Handle hreturn) {
     (void) hcommand;

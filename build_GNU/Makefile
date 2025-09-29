@@ -771,12 +771,14 @@ CLAY_OBJS = \
 
 DB_SRC = \
 	$(SRCDIR)/Common/source/db.c \
+	$(SRCDIR)/Common/source/db_format.c \
 	$(SRCDIR)/Common/source/dbstats.c \
 	$(SRCDIR)/Common/source/dbverbs.c \
 	$(SRCDIR)/Common/source/odbengine.c
 
 DB_OBJS = \
 	$(OBJDIR)/Common/source/db.o \
+	$(OBJDIR)/Common/source/db_format.o \
 	$(OBJDIR)/Common/source/dbstats.o \
 	$(OBJDIR)/Common/source/dbverbs.o \
 	$(OBJDIR)/Common/source/odbengine.o
@@ -834,6 +836,7 @@ LANG_SRC = \
 	$(SRCDIR)/Common/source/langpython.c \
 	$(SRCDIR)/Common/source/langscan.c \
 	$(SRCDIR)/Common/source/langstartup.c \
+	$(SRCDIR)/Common/source/langwarnings.c \
 	$(SRCDIR)/Common/source/langsystypes.c \
 	$(SRCDIR)/Common/source/langtmpstack.c \
 	$(SRCDIR)/Common/source/langtrace.c \
@@ -1355,4 +1358,3 @@ $(DIRS): %:
 #ifeq (.depend,$(wildcard .depend))
 #include .depend
 #endif
-

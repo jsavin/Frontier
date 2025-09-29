@@ -235,13 +235,13 @@ extern boolean langexternalcopyvalue (const tyvaluerecord *, tyvaluerecord *);
 
 extern boolean langexternalcoercetostring (tyvaluerecord *);
 
-extern boolean langexternalgetowningwindow (struct tywindowinfo**);
+extern boolean langexternalgetowningwindow (hdlwindowinfo *);
 
 extern void langexternalquotename (bigstring);
 
 extern void langexternalbracketname (bigstring);
 
-extern boolean langexternalgetfullpath (hdlhashtable, bigstring, bigstring, struct tywindowinfo**);
+extern boolean langexternalgetfullpath (hdlhashtable, bigstring, bigstring, hdlwindowinfo *);
 
 extern boolean langexternalgetquotedpath (hdlhashtable, bigstring, bigstring);
 
@@ -253,7 +253,7 @@ extern boolean langexternalzoom (tyvaluerecord, hdlhashtable, bigstring);
 
 extern boolean langexternalzoomfilewindow (const tyvaluerecord *, ptrfilespec, boolean);
 
-extern boolean langexternalwindowopen (tyvaluerecord, struct tywindowinfo**);
+extern boolean langexternalwindowopen (tyvaluerecord, hdlwindowinfo *);
 
 extern boolean langexternalwindowclosed (hdlexternalvariable);
 
@@ -295,7 +295,7 @@ extern tyvaluetype langexternalgetvaluetype (OSType);
 
 extern boolean langexternalregisterwindow (hdlexternalvariable);
 
-extern boolean langexternalunregisterwindow (struct tywindowinfo** hw);
+extern boolean langexternalunregisterwindow (hdlwindowinfo hw);
 
 extern boolean langexternalcloseregisteredwindows (boolean);
 
@@ -314,6 +314,5 @@ extern boolean langexternalsymbolchanged (hdlhashtable htable, const bigstring b
 extern boolean langexternalsymbolinserted (hdlhashtable htable, const bigstring bsname, hdlhashnode hnode);
 
 #endif
-
 
 

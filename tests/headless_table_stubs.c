@@ -1,5 +1,6 @@
 #include "frontier.h"
 #include "tableverbs.h"
+#include "tableinternal.h"
 #include "tablestructure.h"
 #include "tableformats.h"
 #include "strings.h"
@@ -54,8 +55,19 @@ boolean tableverbdispose (hdlexternalvariable h, boolean fldisk) {
 }
 
 boolean tableverbnew (hdlexternalvariable *hvariable) {
-    (void) hvariable;
-    return false;
+    hdltablevariable hv;
+    hdlhashtable ht;
+    if (!langnewexternalvariable(true, 0L, (hdlexternalvariable *)&hv))
+        return false;
+    if (!newhashtable(&ht)) {
+        disposehandle((Handle)hv);
+        return false;
+    }
+    (**hv).variabledata = (long) ht;
+    (**ht).hashtablerefcon = (long) hv;
+    (**ht).fldirty = true;
+    *hvariable = (hdlexternalvariable) hv;
+    return true;
 }
 
 boolean tableverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddress) {

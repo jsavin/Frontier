@@ -1,5 +1,53 @@
 # Frontier CLI
 
+Status
+- State: In Progress
+- Phase: 1 → 2 transition
+- Last Updated: 2025-09-29
+- Notes: Headless usage supported; future builds will decouple UI frameworks per Phase 2.
+
+Related Docs
+- planning/DEVELOPER_QUICKSTART_HEADLESS.md
+- planning/ui_abstraction/PHASES.md
+- planning/ui_abstraction/phase2/analysis.md
+- planning/no_ui_linkage_policy.md
+
+Change Log
+- 2025-09-29: Initialized template sections (Status/Related Docs/Change Log).
+
+## Table of Contents
+- [Overview](#overview)
+- [Features](#features)
+- [Building](#building)
+  - [Prerequisites](#prerequisites)
+  - [Compilation](#compilation)
+  - [Installation](#installation)
+- [Usage](#usage)
+  - [Basic Script Execution](#basic-script-execution)
+  - [Database Operations](#database-operations)
+  - [Network Server](#network-server)
+  - [Help and Version](#help-and-version)
+- [Examples](#examples)
+- [API Reference](#api-reference)
+  - [Command Line Options](#command-line-options)
+  - [HTTP API](#http-api)
+  - [WebSocket API](#websocket-api)
+- [Architecture](#architecture)
+  - [Core Components](#core-components)
+  - [Integration with Frontier Runtime](#integration-with-frontier-runtime)
+- [Development](#development)
+  - [Project Structure](#project-structure)
+  - [Building for Development](#building-for-development)
+  - [Testing](#testing)
+- [Troubleshooting](#troubleshooting)
+  - [Common Issues](#common-issues)
+  - [Debug Mode](#debug-mode)
+  - [Error Messages](#error-messages)
+- [Contributing](#contributing)
+- [License](#license)
+- [Phase 1 Status](#phase-1-status)
+- [Next Steps](#next-steps)
+
 Command Line Interface for UserTalk Script Execution
 
 ## Overview

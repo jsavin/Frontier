@@ -35,33 +35,63 @@
 
 #endif
 
-#ifdef FRONTIER_PORTABLE
+#if defined(FRONTIER_PORTABLE) || defined(FRONTIER_HEADLESS)
 /* Portable core build: provide minimal typedefs and skip platform UI APIs */
 /* Forward use the full tyfilespec from shelltypes.h which we include before */
-typedef tyfilespec* ptrfilespec;
-typedef void* FSRefParamPtr; typedef void* FSCatalogInfoPtr; typedef void* FSSpecPtr; typedef void* CFStringRef; typedef const unsigned char* StringPtr; typedef int OSStatus; typedef void* IconRef;
-typedef struct tyfileinfo tyfileinfo; /* forward decl for prototypes */
+#ifndef FSRefParamPtr
+typedef void* FSRefParamPtr;
+#endif
+#ifndef FSCatalogInfoPtr
+typedef void* FSCatalogInfoPtr;
+#endif
+#ifndef FSSpecPtr
+typedef void* FSSpecPtr;
+#endif
+#ifndef IconRef
+typedef void* IconRef;
+#endif
 /* universal error codes */
 #define errorVolume -35
 #define errorParam -50
 #define errorFileNotFound -43
 #define errorDirNotFound -120
 #define errorNone 0
-#endif /* FRONTIER_PORTABLE */
+#if defined(FRONTIER_HEADLESS)
+typedef struct CInfoPBRec CInfoPBRec;
+typedef struct FSRefParam FSRefParam;
+#endif /* FRONTIER_HEADLESS */
+
+#endif /* portable/headless shims */
 
 #ifndef FRONTIER_PORTABLE
 
 
 //universal error codes
+#if defined(FRONTIER_HEADLESS)
+#define errorVolume              -35
+#define errorParam                -50
+#define errorFileNotFound         -43
+#define errorDirNotFound         -120
+#define errorNone                   0
+#else
 #define errorVolume					nsvErr
 #define errorParam					paramErr
 #define errorFileNotFound			fnfErr
 #define errorDirNotFound			dirNFErr
 #define errorNone					noErr
+#endif
 #ifndef __NAVIGATION__
+#if !defined(FRONTIER_HEADLESS)
 #include <Navigation.h>
 #endif
+#endif
+#if !defined(chpathseparator)
+#if defined(FRONTIER_HEADLESS)
+#define chpathseparator '/'
+#else
 	#define chpathseparator ':'
+#endif
+#endif
 
 
 	
@@ -524,5 +554,3 @@ extern boolean filestart (void); /*6.1b15 AR*/
 #endif /* FRONTIER_PORTABLE */
 
 #endif	//fileinclude
-
-

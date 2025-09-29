@@ -197,4 +197,3 @@ typedef struct tybuttonstatus {
 #endif
 
 #endif
-

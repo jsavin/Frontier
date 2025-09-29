@@ -87,6 +87,9 @@ boolean datenetstandardstring (long localdate, tyvaluerecord *vreturn) {
 		gmtdate = 0L;
 
 	secondstodayofweek (gmtdate, &dayofweek);
+	/* Defensive clamp: some platforms may yield 0 for weekday on extreme dates */
+	if (dayofweek < 1 || dayofweek > 7)
+		dayofweek = 1; /* default to Sunday */
 	
 	if (!writehandlestream (&s, dayofweeknames[dayofweek - 1], 3))
 		goto exit;
@@ -95,6 +98,10 @@ boolean datenetstandardstring (long localdate, tyvaluerecord *vreturn) {
 		goto exit;
 
 	secondstodatetime (gmtdate, &day, &month, &year, &hour, &minute, &second);
+
+	/* Defensive clamp for month index */
+	if (month < 1 || month > 12)
+		month = 1;
 
 	numbertostring ((long) day, bs);
 
@@ -314,10 +321,10 @@ boolean datedayofweektostring (long ix, tyvaluerecord *vreturn) {
 
 /*
 on versionLessThan (vs1, vs2) {
-	Ç1/6/98 by DW
-		Çfixed this case:
-			Çdate.versionLessThan ("2.0b9", "2.0")
-				Çtrue
+	1/6/98 by DW
+		fixed this case:
+			date.versionLessThan ("2.0b9", "2.0")
+				true
 	on explodeVersion (s, adrtable) {
 		new (tableType, adrtable);
 		adrtable^.mainVersionNum = 0;
