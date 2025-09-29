@@ -25,6 +25,207 @@
 
 ******************************************************************************/
 
+#if defined(FRONTIER_HEADLESS)
+
+#include "frontier.h"
+#include "standard.h"
+#include "quickdraw.h"
+#include "strings.h"
+#include "op.h"
+#include "opinternal.h"
+#include "wpengine.h"
+
+boolean opeditsetglobals (void) {
+	return true;
+}
+
+boolean opeditingtext (hdlheadrecord hnode) {
+	(void) hnode;
+	return false;
+}
+
+boolean opdefaultgetedittextrect (hdlheadrecord hnode, const Rect *linerect, Rect *textrect) {
+	(void) hnode;
+
+	if (textrect != NULL) {
+		if (linerect != NULL)
+			*textrect = *linerect;
+		else {
+			textrect->top = textrect->left = textrect->bottom = textrect->right = 0;
+		}
+	}
+
+	return true;
+}
+
+boolean opdefaultsetwpedittext (hdlheadrecord hnode) {
+	(void) hnode;
+	return true;
+}
+
+boolean opdefaultgetwpedittext (hdlheadrecord hnode, boolean flunload) {
+	(void) hnode;
+	(void) flunload;
+	return true;
+}
+
+boolean opseteditbufferrect (void) {
+	return true;
+}
+
+boolean oploadeditbuffer (void) {
+	return true;
+}
+
+boolean opwriteeditbuffer (void) {
+	return true;
+}
+
+boolean opunloadeditbuffer (void) {
+	return true;
+}
+
+boolean opsaveeditbuffer (void) {
+	return true;
+}
+
+boolean oprestoreeditbuffer (void) {
+	return false;
+}
+
+boolean opeditmeasuretext (hdlheadrecord hnode) {
+	(void) hnode;
+	return false;
+}
+
+boolean opeditdrawtext (hdlheadrecord hnode, const Rect *rtext) {
+	(void) hnode;
+	(void) rtext;
+	return false;
+}
+
+boolean opeditcango (tydirection dir) {
+	(void) dir;
+	return false;
+}
+
+boolean opeditkey (void) {
+	return false;
+}
+
+boolean opeditcopy (void) {
+	return false;
+}
+
+boolean opeditcut (void) {
+	return false;
+}
+
+boolean opeditpaste (void) {
+	return false;
+}
+
+boolean opeditclear (void) {
+	return false;
+}
+
+boolean opeditinsert (bigstring bs) {
+	(void) bs;
+	return false;
+}
+
+boolean opeditclick (Point pt, tyclickflags flags) {
+	(void) pt;
+	(void) flags;
+	return false;
+}
+
+boolean opeditgetundoglobals (long *globals) {
+	if (globals != NULL)
+		*globals = 0;
+	return false;
+}
+
+boolean opeditsetundoglobals (long globals, boolean flundo) {
+	(void) globals;
+	(void) flundo;
+	return false;
+}
+
+void oppostedit (void) {
+}
+
+void opeditgetmaxpos (long *maxpos) {
+	if (maxpos != NULL)
+		*maxpos = 0;
+}
+
+void opeditgetselection (long *startsel, long *endsel) {
+	if (!wpgetselection (startsel, endsel)) {
+		if (startsel)
+			*startsel = 0;
+		if (endsel)
+			*endsel = 0;
+	}
+}
+
+void opeditsetselection (long startsel, long endsel) {
+	wpsetselection (startsel, endsel);
+}
+
+void opeditgetseltext (bigstring bs) {
+	if (bs != NULL)
+		setemptystring (bs);
+}
+
+void opeditgetselrect (Rect *r) {
+	if (r != NULL) {
+		r->top = r->left = r->bottom = r->right = 0;
+	}
+}
+
+void opeditgetselpoint (Point *pt) {
+	if (pt != NULL) {
+		if (outlinedata != nil)
+			*pt = (**outlinedata).selpoint;
+		else {
+			pt->h = 0;
+			pt->v = 0;
+		}
+	}
+}
+
+void opeditresetselpoint (void) {
+	if (outlinedata != nil) {
+		(**outlinedata).selpoint.h = -1;
+		(**outlinedata).selpoint.v = 0;
+	}
+}
+
+void opeditsetselpoint (Point pt) {
+	if (outlinedata != nil)
+		(**outlinedata).selpoint = pt;
+}
+
+void opeditselectall (void) {
+	wpsetselection (0, 0);
+}
+
+void opeditactivate (boolean flactivate) {
+	(void) flactivate;
+}
+
+void opeditupdate (void) {
+}
+
+void opeditidle (void) {
+}
+
+void opeditdispose (void) {
+}
+
+#else /* !FRONTIER_HEADLESS */
+
 #include "frontier.h"
 #include "standard.h"
 
@@ -1008,4 +1209,4 @@ boolean opeditsetundoglobals (long globals, boolean flundo) {
 	} /*opeditsetundoglobals*/
 
 
-
+#endif /* FRONTIER_HEADLESS */

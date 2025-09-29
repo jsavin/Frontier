@@ -2,7 +2,7 @@
 # Phase 1.1: Comprehensive Testing Implementation
 
 CC = clang
-CFLAGS = -Wall -Wextra -std=c99 -g -O0
+CFLAGS = -Wall -Wextra -std=c99 -g -O0 -DFRONTIER_USE_PORTABLE_HANDLES
 FRONTIER_CLI_DIR = ../frontier-cli
 SYSTEMHEADERDIR = ../Common/SystemHeaders
 HEADERDIR = ../Common/headers
@@ -37,6 +37,73 @@ FRONTIER_SOURCES = $(PORTABLE_SOURCES) \
     ../Common/source/langevaluate.c \
     ../Common/source/lang.c
 
+LANG_RUNTIME_SOURCES = \
+    ../Common/source/lang.c \
+    ../Common/source/langcallbacks.c \
+    ../Common/source/langcrypt.c \
+    ../Common/source/langerror.c \
+    ../Common/source/langscan.c \
+    ../Common/source/langparser.c \
+    ../Common/source/langvalue.c \
+    ../Common/source/langevaluate.c \
+    ../Common/source/langhash.c \
+    ../Common/source/langlist.c \
+    ../Common/source/langmath.c \
+    ../Common/source/langops.c \
+    ../Common/source/langpack.c \
+    ../Common/source/langsystem7.c \
+    ../Common/source/langexternal.c \
+    ../Common/source/langstartup.c \
+    ../Common/source/langwarnings.c \
+    ../Common/source/langtmpstack.c \
+    ../Common/source/langtrace.c \
+    ../Common/source/langtree.c \
+    ../Common/source/memory.c \
+    ../Common/source/portable_handles.c \
+    ../Common/source/strings.c \
+    ../Common/source/ops.c \
+    ../Common/source/op.c \
+    ../Common/source/opinit.c \
+    ../Common/source/opexpand.c \
+    ../Common/source/opvisit.c \
+    ../Common/source/opedit.c \
+    ../Common/source/opops.c \
+    ../Common/source/oplist.c \
+    ../Common/source/opstructure.c \
+    ../Common/source/oprefcon.c \
+    ../Common/source/oppack.c \
+    ../Common/source/opverbs.c \
+    ../Common/source/tableops.c \
+    ../Common/source/tablestructure.c \
+    ../Common/source/langdate.c \
+    ../Common/source/langsystypes.c \
+    ../Common/source/FastTimes.c \
+    ../Common/source/md5.c \
+    ../Common/source/sha1dgst.c \
+    ../Common/source/whirlpool.c \
+    ../portable/runtime_stubs_core.c \
+    ../portable/runtime_stubs_errors.c \
+    ../portable/runtime_stubs_hash.c \
+    ../portable/runtime_stubs_lang.c \
+    ../portable/runtime_stubs_list.c \
+    ../portable/runtime_stubs_system.c \
+    ../portable/runtime_stubs_stack.c \
+    ../portable/runtime_stubs_string.c \
+    ../portable/runtime_stubs_coerce.c \
+    ../portable/runtime_stubs_parser.c \
+    ../portable/runtime_stubs_outline.c \
+    ../portable/runtime_stubs_shell.c \
+    headless_shellhooks.c \
+    headless_table_stubs.c \
+    headless_wp_stubs.c \
+    headless_pict_stubs.c \
+    headless_menu_stubs.c \
+    headless_search_stubs.c \
+    headless_mac_compat.c \
+    headless_langregexp_stub.c \
+    headless_langverbs_stub.c \
+    headless_langipc_stub.c
+
 # CLI source files
 CLI_SOURCES =
 
@@ -51,7 +118,8 @@ TEST_EXECUTABLES = \
 	test_migration \
 	test_compatibility \
 	test_64bit_structures \
-	test_dbnew
+	test_dbnew \
+	db_format_tests
 
 # UserTalk object test executables
 USERTALK_OBJECT_TESTS = \
@@ -68,8 +136,14 @@ ALL_TESTS = $(TEST_EXECUTABLES) $(USERTALK_OBJECT_TESTS)
 all: $(ALL_TESTS)
 
 # Headless smoke test
-core_tests: core_tests.c ../Common/source/shell_api.c ../Common/source/shell_api_headless.c
-	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders core_tests.c ../Common/source/shell_api.c ../Common/source/shell_api_headless.c -o $@
+core_tests: core_tests.c ../Common/source/shell_api.c ../Common/source/shell_api_headless.c headless_shell.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders core_tests.c ../Common/source/shell_api.c ../Common/source/shell_api_headless.c headless_shell.c -o $@
+
+db_format_tests: db_format_tests.c ../Common/source/db_format.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders db_format_tests.c ../Common/source/db_format.c -o $@
+
+runtime_tests: runtime_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable runtime_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@
 
 # Test framework object
 framework/test_framework.o: framework/test_framework.c framework/test_framework.h
