@@ -104,6 +104,30 @@ that depends on expr is covered.  It's unique contructs associated with some com
 statements that need extra work.
 */
 
+/* Global result handle for modern parsers */
+hdltreenode langparser_result = nil;
+
+/* Bison compatibility shims: map legacy MacYACC identifiers to Bison's */
+#if defined(YYBISON) || defined(YYBISON_VERSION)
+/* Provide yylex prototype to satisfy C99; matches static definition below */
+static int yylex(void);
+/* Provide yyerror prototype expected by Bison */
+int yyerror(const char *s);
+/* Route legacy diagnostics to no-op (can be wired to logging if desired) */
+static void yytrace(const char *s) { (void)s; }
+/* MacYACC err count symbol -> Bison's yynerrs */
+#ifndef pcyyerrct
+#define pcyyerrct yynerrs
+#endif
+/* Legacy semantic stack pointer/name -> Bison's */
+#ifndef yypv
+#define yypv yyvsp
+#endif
+#ifndef yyv
+#define yyv yyvs
+#endif
+#endif /* Bison compatibility */
+
 %}
 
 %token EQtoken 400 /*must agree with numbers in langtokens.h*/
@@ -248,7 +272,8 @@ module:
 		
 		if (!pushbinaryoperation (moduleop, $1, nil, &$$))
 			goto cleanexit;
-		
+		/* expose final result to callers not accessing Bison internals */
+		langparser_result = $$;
 		return (0);
 	
  	cleanexit:
@@ -1482,9 +1507,9 @@ expr:
 
 %%
 
-#ifdef fldebug
+#if defined(fldebug) && !defined(YYBISON)
 
-	static void yytrace (char * s) {
+	static void yytrace (const char * s) {
 		
 		bigstring bs;
 		
@@ -1511,7 +1536,7 @@ static int yylex (void) {
 	} /*yylex*/
 
 
-static void yyerror (char *s) {
+int yyerror (const char *s) {
 	
 	/*
 	langdisposetree (yyval);
@@ -1523,9 +1548,6 @@ static void yyerror (char *s) {
 	clearbytes (&parseresult, (long) sizeof (parseresult));
 	*/
 	
-	parseerror ((ptrstring) s); 
+	parseerror ((ptrstring) s);
+	return 0; 
 	} /*yyerror*/
-
-
-
-

@@ -31,6 +31,8 @@
 #define YYSTYPE hdltreenode /*data type of yacc stack*/
 
 extern hdltreenode yylval, yyval;
+/* When using modern Bison, yyval is not a global; expose result explicitly */
+extern hdltreenode langparser_result;
 
 #define tokentype short /*something that's returned by parsegettoken*/
 
@@ -49,4 +51,3 @@ extern unsigned long parsegetscanoffset (unsigned long, unsigned short);
 extern void parsesetscanoffset (unsigned long);
 
 extern tokentype parsegettoken (hdltreenode *);
-
