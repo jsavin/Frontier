@@ -34,6 +34,10 @@ Quick Steps (Typical)
 Notes
 - Headless builds must not link AppKit/Carbon/Win32; if they do, see planning/no_ui_linkage_policy.md. frontier-cli still needs this cleanup.
 - Some UI-dependent verbs are stubbed in headless mode; see planning/headless_stubbed_behavior_matrix.md.
+- Database migration:
+  - Legacy v≤6 opens in legacy read mode; no silent rewrite.
+  - Save implies migration to v7 (header‑only, with timestamped backup). Until Save‑path migration is fully wired, saving a legacy DB fails fast (no write) to prevent format mismatch.
+  - CLI supports explicit migration (`--auto-migrate`) for non‑interactive upgrades.
 
 Parser Regeneration (Maintainers)
 - You do not need Bison to build. The generated parser C is committed.

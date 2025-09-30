@@ -125,8 +125,8 @@ make uninstall
 # Query database value
 ./frontier-cli -d test.root -q "db.getValue('myTable.myValue')"
 
-# Migrate database to 64-bit format
-./frontier-cli -d test.root -m migrate
+# Migrate database to 64-bit header format (v7)
+./frontier-cli -d test.root --auto-migrate
 
 # Create new database
 ./frontier-cli -d newdb.root --create
@@ -194,7 +194,7 @@ make uninstall
 | `-e, --execute SCRIPT` | Execute inline UserTalk script |
 | `-d, --database FILE` | Specify database file for operations |
 | `-q, --query QUERY` | Execute database query |
-| `-m, --migrate` | Migrate database to 64-bit format |
+| `--auto-migrate` | Migrate legacy (v≤6) database header to v7 with a timestamped backup |
 | `--server` | Run as HTTP server |
 | `--websocket` | Enable WebSocket support |
 | `-p, --port PORT` | Network server port (default: 8080) |
@@ -379,3 +379,9 @@ Phase 1 establishes the foundation for CLI-based UserTalk invocation. The next p
 4. **Integration Testing**: Comprehensive testing with real-world scenarios
 
 For more information about the Frontier refactoring project, see the main project documentation.
+- "Save failed on legacy database"
+  - Save implies migration to v7. In headless builds, saves on legacy DBs are blocked until migration is performed to avoid stamping v7 onto a v6 header layout.
+  - Fix: Run `--auto-migrate` first or upgrade via a UI save confirmation.
+
+- "Migration changed file size by 28 bytes"
+  - Expected: header layout size differs; payload is unchanged. Tests confirm safety on real databases.
