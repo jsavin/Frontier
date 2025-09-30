@@ -119,8 +119,13 @@ hdltreenode langparser_result = nil;
 static int yylex(void);
 /* Provide yyerror prototype expected by Bison */
 int yyerror(const char *s);
-/* Route legacy diagnostics to no-op (can be wired to logging if desired) */
-static void yytrace(const char *s) { (void)s; }
+/* Simple trace for debugging parser actions (guarded) */
+static void yytrace(const char *s) {
+    (void)s;
+#ifdef PARSER_TRACE
+    fprintf(stderr, "[yy] %s\n", s);
+#endif
+}
 /* MacYACC err count symbol -> Bison's yynerrs */
 #ifndef pcyyerrct
 #define pcyyerrct yynerrs
@@ -206,31 +211,31 @@ static void yytrace(const char *s) { (void)s; }
 
 %token globaltoken 520
 
-%token errortoken
+%token errortoken 292
 
-%token eoltoken
+%token eoltoken 293
 
-%token constanttoken
+%token constanttoken 294
 
-%token identifiertoken 
+%token identifiertoken 295
 
-%token othertoken
+%token othertoken 296
 
-%token assigntoken
+%token assigntoken 297
 
-%token addtoken 
+%token addtoken 298 
 
-%token subtracttoken 
+%token subtracttoken 299 
 
-%token multiplytoken 
+%token multiplytoken 300 
 
-%token dividetoken
+%token dividetoken 301
 
-%token modtoken
+%token modtoken 302
 
-%token plusplustoken 
+%token plusplustoken 303 
 
-%token minusminustoken
+%token minusminustoken 304
 
 
 %left ','
@@ -264,8 +269,8 @@ static void yytrace(const char *s) { (void)s; }
 
 
 module:
-	
-	statementlist eoltoken {
+    
+    statementlist eoltoken {
 		
 		yytrace ("module | statementlist eoltoken");
 		
@@ -281,13 +286,25 @@ module:
 		YYACCEPT;
 		}
 	
-	| error {
-		
-		yytrace ("module | error");
-		
-		YYABORT;
-		}
-	;
+    | statementlist {
+        yytrace ("module | statementlist (no eol)");
+        if (pcyyerrct) {
+            $$ = $1;
+            YYABORT; /* parse error */
+        }
+        if (!pushbinaryoperation (moduleop, $1, nil, &$$))
+            YYABORT; /* memory or internal error */
+        langparser_result = $$;
+        YYACCEPT;
+        }
+    
+    | error {
+        
+        yytrace ("module | error");
+        
+        YYABORT;
+        }
+    ;
 
 bracketedidentifier:
 	
@@ -1476,6 +1493,22 @@ expr:
 		if (!pushunaryoperation (notop, $2, &$$))
 			YYABORT;
 		}
+
+	| iftoken expr thentoken expr elsetoken expr {
+		
+		yytrace ("expr | iftoken expr thentoken expr elsetoken expr");
+		
+		if (!pushtriplet (ifop, $2, $4, $6, &$$))
+			YYABORT;
+		}
+
+	| iftoken expr thentoken expr {
+		
+		yytrace ("expr | iftoken expr thentoken expr");
+		
+		if (!pushtriplet (ifop, $2, $4, nil, &$$))
+			YYABORT;
+		}
 	
 	| '{' optionalexprlist '}' {
 		
@@ -1530,8 +1563,12 @@ static int yylex (void) {
 	set the global yylval to the value of the token, if it has one.
 	*/
 	
-	return (parsegettoken (&yylval));
-	} /*yylex*/
+    int t = parsegettoken (&yylval);
+#ifdef PARSER_TRACE
+    fprintf(stderr, "[yy] lex tok=%d\n", t);
+#endif
+    return t;
+    } /*yylex*/
 
 
 int yyerror (const char *s) {
