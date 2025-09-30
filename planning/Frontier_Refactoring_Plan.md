@@ -3,8 +3,8 @@
 Status
 - State: In Progress
 - Phase: Multi-Phase Roadmap
-- Last Updated: 2025-09-29
-- Notes: Hash Table modernization designated for Phase 3.
+- Last Updated: 2025-09-30
+- Notes: Headless tests are green (incl. parser_tests). Hash Tables designated for Phase 3. Next immediate focus: headless CLI build.
 
 Related Docs
 - planning/INDEX.md
@@ -27,11 +27,12 @@ Change Log
 - [Phase 4: Architecture Modernization (Weeks 23-28)](#phase-4-architecture-modernization-weeks-23-28)
 
 ## Doc Roadmap (Next Two Weeks)
-- Add UIServices interface draft as a code header when ready; keep planning doc in sync.
-- Expand headless stubbed behavior matrix as we migrate call sites behind UIServices.
-- Replace diagrams/placeholder with initial architecture diagram (core ↔ UIServices ↔ adapters).
-- Tighten link hygiene notes and add examples in no_ui_linkage_policy.md.
-- Keep INDEX.md summaries up to date as Phase 2 doc set evolves.
+- Document headless CLI finalization steps/results in Phase 1 docs (quickstart + CLI plan/summary)
+- Add UIServices interface draft as a code header when ready; keep planning doc in sync
+- Expand headless stubbed behavior matrix as we migrate call sites behind UIServices
+- Replace diagrams/placeholder with initial architecture diagram (core ↔ UIServices ↔ adapters)
+- Tighten link hygiene notes and add examples in no_ui_linkage_policy.md
+- Keep INDEX.md summaries up to date as Phase 2 doc set evolves
 
 ## Project Overview
 

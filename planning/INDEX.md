@@ -3,8 +3,8 @@
 Status
 - State: In Progress
 - Phase: Multi-Phase Roadmap
-- Last Updated: 2025-09-29
-- Notes: UI separation is Phase 2; Hash Tables moved to Phase 3.
+- Last Updated: 2025-09-30
+- Notes: Headless tests are green (incl. parser_tests); CLI build needs headless linking cleanup. UI separation remains Phase 2; Hash Tables moved to Phase 3.
 
 Purpose
 - Single source of truth for active phases, status, and key documents.
@@ -22,7 +22,12 @@ Current Phases
   - Plan: planning/1.0_phase1_cli_implementation_plan.md — CLI entry, parser, executor
   - Summary: planning/1.1_phase1_implementation_summary.md — status and deliverables
   - Tests: planning/0.5.23_runtime_test_plan.md — headless/runtime test coverage
-  - Parser: planning/phase1/parser_regeneration_with_bison.md — regenerate parser with modern Bison
+  - Parser: planning/phase1/parser_regeneration_with_bison.md — regenerate parser with modern Bison (maintainers only)
+  - Current status snapshot:
+    - Headless tests: PASS (core, runtime, db format, parser, 64‑bit migration, real DB migrations)
+    - Parser: expression‑level if/then/else supported; locals/assignment tested
+    - Logging: quieter by default; opt‑in via FRONTIER_HEADLESS_LOG/FRONTIER_DEBUG_SCAN
+    - CLI: build exists but links UI frameworks; action item to make it headless
 - Phase 2: UI Abstraction (ports/adapters)
   - Overview: planning/ui_abstraction/ui_abstraction_overview.md — why and goals
   - Phases: planning/ui_abstraction/PHASES.md — stub/gate then separate
@@ -48,6 +53,12 @@ Cross-Cutting Docs
 
 Developer Quickstart
 - Headless/Tests: planning/DEVELOPER_QUICKSTART_HEADLESS.md
+
+Next Steps (High Level)
+- Complete headless CLI build (remove UI frameworks; reuse test/runtime sources)
+- Add CLI smoke tests to tests/ and wire into default suite
+- Expand parser tests (control flow, handlers) while retaining Bison 2.3 compatibility
+- Document CI recipes (sanitized runs; optional parser regen by maintainers)
 
 Policies & Guides
 - Phase Gates: planning/phase_gates.md

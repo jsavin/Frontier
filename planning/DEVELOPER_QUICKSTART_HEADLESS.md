@@ -3,8 +3,8 @@
 Status
 - State: In Progress
 - Phase: 1–2
-- Last Updated: 2025-09-29
-- Notes: Focus on headless build/run; no UI frameworks required.
+- Last Updated: 2025-09-30
+- Notes: Headless tests are green; parser_tests included. CLI headless build pending (remove UI frameworks from frontier-cli).
 
 Related Docs
 - planning/INDEX.md
@@ -28,10 +28,11 @@ Quick Steps (Typical)
 - Run db format tests: `./tests/db_format_tests`
 - Run core tests: `./tests/core_tests`
 - Run runtime tests: `./tests/runtime_tests`
+- Run parser tests: `./tests/parser_tests`
 - Use CLI to run a script: `./frontier-cli -e "1 + 2"`
 
 Notes
-- Headless builds must not link AppKit/Carbon/Win32; if they do, see planning/no_ui_linkage_policy.md.
+- Headless builds must not link AppKit/Carbon/Win32; if they do, see planning/no_ui_linkage_policy.md. frontier-cli still needs this cleanup.
 - Some UI-dependent verbs are stubbed in headless mode; see planning/headless_stubbed_behavior_matrix.md.
 
 Parser Regeneration (Maintainers)
@@ -50,6 +51,8 @@ Logging (Headless/Tests)
   - `FRONTIER_LOG_LEVEL` = 0|1|2|3 (threshold; 0=off)
   - `FRONTIER_LOG_TARGET` = comma list of `file,about,dialog,debugger,none` (lowercase)
   - `FRONTIER_LOG_FILE` = path to log file (default: `frontierdebuglog.txt`)
+  - `FRONTIER_HEADLESS_LOG` = 1 to enable headless init logs (quiet by default)
+  - `FRONTIER_DEBUG_SCAN` = 1 to enable scanner identifier debug prints
 - Example:
   - `FRONTIER_LOG_LEVEL=1 FRONTIER_LOG_TARGET=none ./tests/runtime_tests`
   - `FRONTIER_LOG_LEVEL=3 FRONTIER_LOG_TARGET=file FRONTIER_LOG_FILE=/tmp/frontier.log ./tests/runtime_tests`
