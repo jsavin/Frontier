@@ -61,3 +61,4 @@ Risks & Mitigations
 Notes
 - This work is orthogonal to hash/strings modernization; it’s a Phase 1 runtime quality task that improves headless test signal.
 - Follow‑up (optional): Similarly modernize the scanner if needed and ensure consistent token header usage across modules.
+- Longer‑term upgrade path: See planning/phase5/bison3_migration_plan.md for a gated migration to Bison 3 that maintains 2.3 compatibility and continues to commit generated sources so contributors don’t need local Bison.

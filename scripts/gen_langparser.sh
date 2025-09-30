@@ -16,6 +16,8 @@ OUT_H="$ROOT_DIR/Common/headers/langparser.h"
 TMPDIR="$ROOT_DIR/tmp/parser"
 APPLY=0
 APPLY_HEADER=0
+# Allow callers to override bison via BISON env var, else use system bison.
+BISON_BIN=${BISON:-bison}
 
 for arg in "$@"; do
   case "$arg" in
@@ -27,19 +29,34 @@ done
 
 mkdir -p "$TMPDIR"
 
-if ! command -v bison >/dev/null 2>&1; then
-  echo "Error: bison not found in PATH" >&2
+if ! command -v "$BISON_BIN" >/dev/null 2>&1; then
+  # Try common Homebrew locations if not specified
+  for CAND in \
+    /opt/homebrew/opt/bison/bin/bison \
+    /usr/local/opt/bison/bin/bison; do
+    if [ -x "$CAND" ]; then BISON_BIN="$CAND"; break; fi
+  done
+fi
+
+if ! command -v "$BISON_BIN" >/dev/null 2>&1; then
+  echo "Error: bison not found. Set BISON=/path/to/bison or install bison." >&2
   exit 1
 fi
 
-echo "bison version: $(bison --version | head -1)"
+echo "bison: $BISON_BIN"
+echo "bison version: $($BISON_BIN --version | head -1)"
 
 # Generate to tmp
 GEN_C="$TMPDIR/langparser.c"
 GEN_H="$TMPDIR/langparser.h"
 
 set -x
-bison -y -o "$GEN_C" --defines="$GEN_H" "$YFILE"
+"$BISON_BIN" -y -o "$GEN_C" --defines="$GEN_H" "$YFILE"
+# Ensure YYSTYPE matches Frontier's hdltreenode if Bison didn't pick it up
+if grep -q "typedef int YYSTYPE;" "$GEN_C"; then
+  # portable in-place sed for macOS and Linux
+  sed -e 's/typedef int YYSTYPE;/typedef hdltreenode YYSTYPE;/' "$GEN_C" > "$GEN_C.tmp" && mv "$GEN_C.tmp" "$GEN_C"
+fi
 set +x
 
 echo
@@ -73,4 +90,3 @@ fi
 
 echo
 echo "Done. Review diffs above."
-
