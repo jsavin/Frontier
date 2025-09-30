@@ -34,6 +34,15 @@ Notes
 - Headless builds must not link AppKit/Carbon/Win32; if they do, see planning/no_ui_linkage_policy.md.
 - Some UI-dependent verbs are stubbed in headless mode; see planning/headless_stubbed_behavior_matrix.md.
 
+Parser Regeneration (Maintainers)
+- You do not need Bison to build. The generated parser C is committed.
+- To regenerate the parser locally (optional, maintainer task):
+  - Dry run (diff only): `scripts/gen_langparser.sh`
+  - Apply C only: `scripts/gen_langparser.sh --apply`
+  - Apply C + header: `scripts/gen_langparser.sh --apply --apply-header`
+  - Use a specific bison: `BISON=/path/to/bison3 scripts/gen_langparser.sh`
+- Migration plan: see planning/phase5/bison3_migration_plan.md for the gated Bison 3 transition while keeping Bison 2.3 compatibility.
+
 Logging (Headless/Tests)
 - Compile-time defaults (tests/Makefile):
   - `LAND_GENERALLOG_LEVEL=3` (verbose) and `LAND_GENERALLOG_TARGET=LAND_LOGTARGET_FILE` enabled.

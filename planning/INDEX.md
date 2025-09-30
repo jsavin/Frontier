@@ -36,6 +36,8 @@ Current Phases
 - Phase 4: String & Rich Text Modernization
   - Overview: planning/phase4/PHASES.md — goals, milestones, gates
   - String + Text Plan: planning/phase4/string_and_text_modernization.md — Pascal string retirement, UTF text, WPText/Paige deprecation
+- Phase 5: Parser/Bison 3 Migration (Gated)
+  - Plan: planning/phase5/bison3_migration_plan.md — stage for Bison 3, keep 2.3 compatibility and commit generated sources
 
 Cross-Cutting Docs
 - Frontier Refactoring Plan: planning/Frontier_Refactoring_Plan.md

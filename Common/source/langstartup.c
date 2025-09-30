@@ -48,6 +48,19 @@
 #include <stdio.h>
 #endif
 
+#ifdef FRONTIER_HEADLESS
+static int headless_should_log(void) {
+    static int inited = 0;
+    static int enabled = 0;
+    if (!inited) {
+        const char *e = getenv("FRONTIER_HEADLESS_LOG");
+        enabled = (e && *e) ? 1 : 0;
+        inited = 1;
+    }
+    return enabled;
+}
+#endif
+
 /* Typed headless no-op callbacks to avoid UB from casted function pointers */
 static boolean cb_noop_void(void) { return true; }
 static boolean cb_true_bool(boolean a) { (void)a; return true; }
@@ -705,17 +718,17 @@ static boolean langinitconsttable (void) {
 	/* Headless: initialize a minimal but useful constants table. */
 #endif
 	
-    #ifdef FRONTIER_HEADLESS
-    fprintf(stderr, "[ls] langinitconsttable: start\n");
-    #endif
+#ifdef FRONTIER_HEADLESS
+    if (headless_should_log()) fprintf(stderr, "[ls] langinitconsttable: start\n");
+#endif
     if (!tablenewsystemtable (langtable, (ptrstring) "\x09" "constants", &hconsttable))
         return (false);
 
     pushhashtable (hconsttable); /*converted to constants by the scanner*/
 
-    #ifdef FRONTIER_HEADLESS
-    fprintf(stderr, "[ls] constants: adding nil/booleans/directions\n");
-    #endif
+#ifdef FRONTIER_HEADLESS
+    if (headless_should_log()) fprintf(stderr, "[ls] constants: adding nil/booleans/directions\n");
+#endif
     addnil ("nil");
 
     addlong ("infinity", longinfinity);
@@ -747,7 +760,7 @@ static boolean langinitconsttable (void) {
     addboolean (bsfalse, (boolean) false);
 
 #ifdef FRONTIER_HEADLESS
-    fprintf(stderr, "[ls] constants: expanding full type constants\n");
+    if (headless_should_log()) fprintf(stderr, "[ls] constants: expanding full type constants\n");
 #endif
 	
 	for (type = novaluetype; type < ctvaluetypes; type++)
@@ -802,7 +815,7 @@ static boolean langinitbuiltintable (void) {
 		return (false);
 
 #ifdef FRONTIER_HEADLESS
-    fprintf(stderr, "[ls] langinitbuiltintable: headless noop\n");
+    if (headless_should_log()) fprintf(stderr, "[ls] langinitbuiltintable: headless noop\n");
     return (true);
 #else
 
@@ -860,77 +873,81 @@ static boolean langinitkeywordtable (void) {
 	if (!tablenewsystemtable (langtable, (ptrstring) "\x08" "keywords", &hkeywordtable))
 		return (false);
 
+
 #ifdef FRONTIER_HEADLESS
-    fprintf(stderr, "[ls] langinitkeywordtable: headless noop\n");
-    return (true);
+    if (headless_should_log()) fprintf(stderr, "[ls] langinitkeywordtable: installing keywords (headless)\n");
+    /* Avoid writing into string literals; build a C string in bigstring buffer. */
+    #define ADD_KW(name, tok) do { bigstring _bs; memset(_bs, 0, sizeof(_bs)); strncpy((char*)_bs, (name), lenbigstring); if (!langaddcstringkeyword(_bs, (tok))) return (false); } while(0)
 #else
+    #define ADD_KW(name, tok) add((name), (tok))
+#endif
 
-	pushhashtable (hkeywordtable); /*converted to tokens by the scanner*/
+    pushhashtable (hkeywordtable); /*converted to tokens by the scanner*/
 	
-	add ("equals", equalsfunc);
+    ADD_KW ("equals", equalsfunc);
 	
-	add ("notequals", notequalsfunc);
+    ADD_KW ("notequals", notequalsfunc);
 	
-	add ("greaterthan", greaterthanfunc);
+    ADD_KW ("greaterthan", greaterthanfunc);
 	
-	add ("lessthan", lessthanfunc);
+    ADD_KW ("lessthan", lessthanfunc);
 	
-	add ("not", notfunc);
+    ADD_KW ("not", notfunc);
 	
-	add ("and", andfunc);
+    ADD_KW ("and", andfunc);
 	
-	add ("or", orfunc);
+    ADD_KW ("or", orfunc);
 	
-	add ("beginswith", beginswithfunc);
+    ADD_KW ("beginswith", beginswithfunc);
 	
-	add ("endswith", endswithfunc);
+    ADD_KW ("endswith", endswithfunc);
 	
-	add ("contains", containsfunc);
+    ADD_KW ("contains", containsfunc);
 	
-	add ("loop", loopfunc);
+    ADD_KW ("loop", loopfunc);
 	
-	add ("fileloop", fileloopfunc);
+    ADD_KW ("fileloop", fileloopfunc);
 	
-	add ("while", whilefunc);
+    ADD_KW ("while", whilefunc);
 	
-	add ("in", infunc);
+    ADD_KW ("in", infunc);
 	
-	add ("break", breakfunc);
+    ADD_KW ("break", breakfunc);
 	
-	add ("continue", continuefunc);
+    ADD_KW ("continue", continuefunc);
 	
-	add ("return", returnfunc);
+    ADD_KW ("return", returnfunc);
 	
-	add ("if", iffunc);
+    ADD_KW ("if", iffunc);
 	
-	add ("then", thenfunc);
+    ADD_KW ("then", thenfunc);
 	
-	add ("else", elsefunc);
+    ADD_KW ("else", elsefunc);
 	
-	add ("bundle", bundlefunc);
+    ADD_KW ("bundle", bundlefunc);
 	
-	add ("local", localfunc);
+    ADD_KW ("local", localfunc);
 	
-	add ("on", onfunc);
+    ADD_KW ("on", onfunc);
 	
-	add ("case", casefunc);
+    ADD_KW ("case", casefunc);
 	
-	add ("kernel", kernelfunc);
+    ADD_KW ("kernel", kernelfunc);
 	
-	add ("for", forfunc);
+    ADD_KW ("for", forfunc);
 	
-	add ("to", tofunc);
+    ADD_KW ("to", tofunc);
 	
-	add ("downto", downtofunc);
+    ADD_KW ("downto", downtofunc);
 	
-	add ("with", withfunc);
+    ADD_KW ("with", withfunc);
 	
-	add ("try", tryfunc);
-	
-	pophashtable ();
-
-	return (true);
-#endif /* FRONTIER_HEADLESS */
+    ADD_KW ("try", tryfunc);
+    
+    pophashtable ();
+    
+    #undef ADD_KW
+    return (true);
 	} /*langinitkeywordtable*/
 
 
@@ -951,15 +968,15 @@ static boolean langinstallresources (void) {
 
 boolean langinitverbs (void) {
 
-    #ifdef FRONTIER_HEADLESS
-    fprintf(stderr, "[ls] langinitverbs: install start\n");
-    #endif
+#ifdef FRONTIER_HEADLESS
+    if (headless_should_log()) fprintf(stderr, "[ls] langinitverbs: install start\n");
+#endif
     if (!langinstallresources ())
         return (false);
 
-    #ifdef FRONTIER_HEADLESS
-    fprintf(stderr, "[ls] langinitverbs: install ok, builtins start\n");
-    #endif
+#ifdef FRONTIER_HEADLESS
+    if (headless_should_log()) fprintf(stderr, "[ls] langinitverbs: install ok, builtins start\n");
+#endif
     return (langinitbuiltins ());
     } /*langinitverbs*/
 

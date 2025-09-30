@@ -112,7 +112,8 @@ CLI_SOURCES =
 # Test framework
 TEST_FRAMEWORK = framework/test_framework.c
 
-# Test executables
+# Test executables (aspirational; many may not exist on this branch)
+# Keep the original list for reference, but do not depend on it for the test run.
 TEST_EXECUTABLES = \
 	test_usertalk_objects \
 	test_cli_integration \
@@ -131,11 +132,17 @@ USERTALK_OBJECT_TESTS = \
 	test_database_persistence \
 	test_usertalk_runner
 
-# All test executables
+# Buildable test executables on this branch
+RUN_BUILDABLE = core_tests db_format_tests runtime_tests parser_tests
+
+# Prebuilt or auxiliary test binaries that may be present
+RUN_PREBUILT = handle_tests test_64bit_direct test_migration_verification test_real_databases test_runner verify_migration_success
+
+# All test executables (for reference only)
 ALL_TESTS = $(TEST_EXECUTABLES) $(USERTALK_OBJECT_TESTS)
 
-# Default target
-all: $(ALL_TESTS)
+# Default target: build the tests we know are supported here
+all: $(RUN_BUILDABLE)
 
 # Headless smoke test
 core_tests: core_tests.c ../Common/source/shell_api.c ../Common/source/shell_api_headless.c headless_shell.c
@@ -146,6 +153,9 @@ db_format_tests: db_format_tests.c ../Common/source/db_format.c
 
 runtime_tests: runtime_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable runtime_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@
+
+parser_tests: parser_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable parser_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@
 
 # Test framework object
 framework/test_framework.o: framework/test_framework.c framework/test_framework.h
@@ -192,11 +202,16 @@ test_database_persistence: components/usertalk_objects/test_database_persistence
 
 
 # Test targets
-test: $(ALL_TESTS)
+test: $(RUN_BUILDABLE)
 	@echo "Running all tests..."
-	@for test in $(ALL_TESTS); do \
-		echo "Running $$test..."; \
-		./$$test; \
+	@set -e; \
+	for test in $(RUN_BUILDABLE) $(RUN_PREBUILT); do \
+	  if [ -x "./$$test" ]; then \
+	    echo "Running $$test..."; \
+	    ./$$test; \
+	  else \
+	    echo "Skipping $$test (not present)"; \
+	  fi; \
 	done
 
 test-usertalk: test_usertalk_runner

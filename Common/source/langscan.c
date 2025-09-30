@@ -912,10 +912,13 @@ static tokentype langscanner (hdltreenode *nodetoken) {
         fl = hashtablelookup (hconsttable, bs, &val, &hnode);
 #ifdef FRONTIER_HEADLESS
         {
-            char identbuf[64];
-            copyptocstring(bs, identbuf);
-            if (strcmp(identbuf, "true") == 0 || strcmp(identbuf, "false") == 0 || strcmp(identbuf, "stringType") == 0) {
-                fprintf(stderr, "[scan] ident '%s' const_lookup=%s\n", identbuf, fl ? "hit" : "miss");
+            const char *dbg = getenv("FRONTIER_DEBUG_SCAN");
+            if (dbg && *dbg) {
+                char identbuf[64];
+                copyptocstring(bs, identbuf);
+                if (strcmp(identbuf, "true") == 0 || strcmp(identbuf, "false") == 0 || strcmp(identbuf, "stringType") == 0) {
+                    fprintf(stderr, "[scan] ident '%s' const_lookup=%s\n", identbuf, fl ? "hit" : "miss");
+                }
             }
         }
 #endif
@@ -936,10 +939,13 @@ static tokentype langscanner (hdltreenode *nodetoken) {
         initvalue (&val, stringvaluetype);
 #ifdef FRONTIER_HEADLESS
         {
-            char identbuf2[64];
-            copyptocstring(bs, identbuf2);
-            if (strcmp(identbuf2, "true") == 0 || strcmp(identbuf2, "false") == 0 || strcmp(identbuf2, "stringType") == 0) {
-                fprintf(stderr, "[scan] ident '%s' -> identifier (not constant)\n", identbuf2);
+            const char *dbg = getenv("FRONTIER_DEBUG_SCAN");
+            if (dbg && *dbg) {
+                char identbuf2[64];
+                copyptocstring(bs, identbuf2);
+                if (strcmp(identbuf2, "true") == 0 || strcmp(identbuf2, "false") == 0 || strcmp(identbuf2, "stringType") == 0) {
+                    fprintf(stderr, "[scan] ident '%s' -> identifier (not constant)\n", identbuf2);
+                }
             }
         }
 #endif

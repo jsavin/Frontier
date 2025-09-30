@@ -11,6 +11,9 @@ Related Docs
 - planning/headless_stubbed_behavior_matrix.md
 - planning/no_ui_linkage_policy.md
 - planning/0.5.23_runtime_test_plan.md
+- Parser regeneration (maintainers): planning/phase5/bison3_migration_plan.md
+  - You do not need Bison to run tests; the generated parser C is committed.
+  - To regenerate locally (optional): see `scripts/gen_langparser.sh` usage in the Quickstart’s “Parser Regeneration” section.
 
 Change Log
 - 2025-09-29: Initialized template sections (Status/Related Docs/Change Log).

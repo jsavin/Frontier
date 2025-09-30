@@ -3,6 +3,8 @@
 #include <string.h>
 #include <assert.h>
 #include <unistd.h>
+#include <libgen.h>
+#include <limits.h>
 #include <dirent.h>
 #include <time.h>
 
@@ -322,23 +324,76 @@ boolean test_real_database_migration(const char* db_path) {
     return true;
 }
 
-int main() {
+static int file_readable(const char *p) {
+    return access(p, R_OK) == 0;
+}
+
+static void join_path(const char *a, const char *b, char *out, size_t outsz) {
+    if (a && *a) snprintf(out, outsz, "%s/%s", a, b); else snprintf(out, outsz, "%s", b);
+}
+
+static int resolve_repo_path(const char *repo_rel, const char *argv0, char *out, size_t outsz) {
+    // Try CWD-relative first
+    if (file_readable(repo_rel)) { strncpy(out, repo_rel, outsz); out[outsz-1]='\0'; return 1; }
+
+    // Try relative to executable directory
+    char exe_path[PATH_MAX];
+    if (argv0 && *argv0) {
+        if (realpath(argv0, exe_path) != NULL) {
+            char exe_dir[PATH_MAX];
+            strncpy(exe_dir, exe_path, sizeof(exe_dir)); exe_dir[sizeof(exe_dir)-1]='\0';
+            char *d = dirname(exe_dir);
+            char candidate[PATH_MAX];
+            // If binary is in tests/, repo root is parent
+            char parent[PATH_MAX];
+            strncpy(parent, d, sizeof(parent)); parent[sizeof(parent)-1]='\0';
+            char upone[PATH_MAX];
+            // parent of tests is repo root
+            char *p = strrchr(parent, '/');
+            if (p) *p = '\0';
+            join_path(parent, repo_rel, candidate, sizeof(candidate));
+            if (file_readable(candidate)) { strncpy(out, candidate, outsz); out[outsz-1]='\0'; return 1; }
+
+            // Also try d + "/../" + repo_rel
+            char d_up[PATH_MAX];
+            snprintf(d_up, sizeof(d_up), "%s/..", d);
+            join_path(d_up, repo_rel, candidate, sizeof(candidate));
+            if (file_readable(candidate)) { strncpy(out, candidate, outsz); out[outsz-1]='\0'; return 1; }
+        }
+    }
+
+    // Try adding a leading ../ for backwards compatibility
+    char rel2[PATH_MAX];
+    snprintf(rel2, sizeof(rel2), "../%s", repo_rel);
+    if (file_readable(rel2)) { strncpy(out, rel2, outsz); out[outsz-1]='\0'; return 1; }
+
+    return 0;
+}
+
+int main(int argc, char **argv) {
     printf("=== Real Database Migration Testing ===\n\n");
     
     // Test databases to migrate
-    const char* test_databases[] = {
-        "../databases/Frontier.root",
-        "../databases/Guest Databases/apps/manila.root",
-        "../databases/Guest Databases/apps/mainResponder.root",
+    const char* test_databases_repo_rel[] = {
+        "databases/Frontier.root",
+        "databases/Guest Databases/apps/manila.root",
+        "databases/Guest Databases/apps/mainResponder.root",
         NULL
     };
     
     int success_count = 0;
     int total_count = 0;
     
-    for (int i = 0; test_databases[i] != NULL; i++) {
+    for (int i = 0; test_databases_repo_rel[i] != NULL; i++) {
+        char resolved[PATH_MAX];
+        if (!resolve_repo_path(test_databases_repo_rel[i], (argc > 0 ? argv[0] : NULL), resolved, sizeof(resolved))) {
+            printf("\n=== Testing Migration: %s ===\n", test_databases_repo_rel[i]);
+            printf("   ❌ Database file not found: %s (tried CWD and executable-relative)\n", test_databases_repo_rel[i]);
+            total_count++;
+            continue;
+        }
         total_count++;
-        if (test_real_database_migration(test_databases[i])) {
+        if (test_real_database_migration(resolved)) {
             success_count++;
         }
     }
@@ -357,4 +412,3 @@ int main() {
     
     return (success_count == total_count) ? 0 : 1;
 }
-
