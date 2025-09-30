@@ -805,7 +805,7 @@ kernelcall:
 		yytrace ("kernelcall: kerneltoken '(' dottedid ')'");
 		
 		if (!pushkernelcall ($3, &$$))
-			return (1);
+			YYABORT;
 		}
 	;
 

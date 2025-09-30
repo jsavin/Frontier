@@ -496,7 +496,7 @@ boolean langcompiletext (Handle htext, boolean fllinebased, hdltreenode *hcode) 
 	
 	disposehandle (htext); 
 	
-	h = yyval; /*copy into register*/ /*parseresult.parsetree*/
+	h = langparser_result; /*copy into register*/ /*parseresult.parsetree*/
 	
 	if (yyresult != 0) { /*an error occurred*/
 		
