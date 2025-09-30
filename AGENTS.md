@@ -2,6 +2,16 @@
 
 This document is a concise contributor guide for Frontier’s C/C toolchain and test harness. Use it to navigate the repo, build locally, and submit focused changes that keep tests green.
 
+## TBD Decisions (to revisit later)
+- Windows/Linux build paths and toolchains (MSVC/CMake/GNU) — TBD.
+- CI provider and required jobs (build, tests, sanitizers) — TBD.
+- Coverage tooling and enforcement; target remains ~90% — TBD.
+- Static analysis toolchain (`clang-tidy`, `scan-build`) and configs — TBD.
+- Release checklist, tagging, and changelog flow (SemVer) — TBD.
+- Performance benchmarks and budgets — TBD.
+- Security review and threat model for web server features — TBD.
+- Large-file policy (e.g., Git LFS) and automated `.root` sanitization — TBD.
+
 ## Project Structure & Module Organization
 - `Common/headers`, `Common/source` — Core Frontier C sources and headers.
 - `portable/` — Cross‑platform shims and runtime stubs used by tests/CLI.
@@ -20,7 +30,7 @@ This document is a concise contributor guide for Frontier’s C/C toolchain and 
 
 ## Prerequisites & Platforms
 - Toolchains: Xcode 26.0.1 (Build 17A400); Apple clang 17.0.0.
-- OS support: macOS and Windows; Linux port in progress. Headless builds should be platform‑agnostic.
+- OS support: macOS primary; Windows/Linux plans are TBD. Headless builds aim to be platform‑agnostic.
 
 ## Workflow & Versioning
 - Branching: Work on feature branches and merge into `develop`; releases merge `develop` → `main`.

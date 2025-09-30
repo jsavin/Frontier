@@ -13,6 +13,7 @@ Related Docs
 - planning/Frontier_Refactoring_Plan.md
 - planning/phase_gates.md
 - planning/ui_abstraction/PHASES.md
+- planning/DECISIONS.md
 
 Change Log
 - 2025-09-29: Initialized template sections (Status/Related Docs/Change Log).
@@ -68,3 +69,10 @@ Policies & Guides
 ADRs
 - 0001 — Move Hash Tables to Phase 3: planning/adr/0001-hash-tables-phase-3.md
 - 0002 — UI Boundary via Ports/Adapters: planning/adr/0002-ui-boundary-ports-and-adapters.md
+- 0003 — Concurrency Model: planning/adr/0003-concurrency-model.md
+- 0004 — OSA/IPC Strategy: planning/adr/0004-osa-ipc-strategy.md
+- 0005 — Networking Architecture & Security: planning/adr/0005-networking-architecture-and-security.md
+- 0006 — Global State Boundaries: planning/adr/0006-global-state-boundaries.md
+- 0007 — File I/O & Path Policy: planning/adr/0007-file-io-and-path-policy.md
+- 0008 — Unicode Strategy: planning/adr/0008-unicode-strategy.md
+- 0009 — WPText → RTF Migration: planning/adr/0009-wptext-rtf-migration.md
