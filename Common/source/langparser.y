@@ -264,30 +264,22 @@ module:
 		yytrace ("module | statementlist eoltoken");
 		
 		if (pcyyerrct) {
-			
 			$$ = $1;
-			
-			return (1);
-			}
+			YYABORT; /* parse error */
+		}
 		
 		if (!pushbinaryoperation (moduleop, $1, nil, &$$))
-			goto cleanexit;
+			YYABORT; /* memory or internal error */
 		/* expose final result to callers not accessing Bison internals */
 		langparser_result = $$;
-		return (0);
-	
- 	cleanexit:
-	    while (--yypv - &yyv[0] > 0)
-			langdisposetree (*yypv);
-	
-		return (2);
+		YYACCEPT;
 		}
 	
 	| error {
 		
 		yytrace ("module | error");
 		
-		return (1);
+		YYABORT;
 		}
 	;
 
@@ -305,7 +297,7 @@ bracketedidentifier:
 		yytrace ("bracketedidentifier | '[' expr ']'");
 		
 		if (!pushunaryoperation (bracketop, $2, &$$))
-			goto cleanexit;
+			YYABORT;
 		}
 	;
 
@@ -316,7 +308,7 @@ handlerheader:
 		yytrace ("handlerheader | ontoken bracketedidentifier '(' namelist ')'");
 		
 		if (!pushbinaryoperation (procop, $2, $4, &$$))
-			goto cleanexit;
+			YYABORT;
 		}
 	
 	| ontoken bracketedidentifier '(' ')' {
@@ -324,7 +316,7 @@ handlerheader:
 		yytrace ("handlerheader | ontoken bracketedidentifier '(' ')'");
 		
 		if (!pushbinaryoperation (procop, $2, nil, &$$))
-			goto cleanexit;
+			YYABORT;
 		}
 	
 	/*
@@ -369,8 +361,8 @@ namelistid:
 			$$ = $1; /*just return the id*/
 			
 		else {
-			if (!pushbinaryoperation (assignlocalop, $1, $2, &$$))
-				goto cleanexit;
+		if (!pushbinaryoperation (assignlocalop, $1, $2, &$$))
+			YYABORT;
 			}
 		}
 	
@@ -396,7 +388,7 @@ namelist:
 		yytrace ("namelist | namelist ',' namelistid");
 		
 		if (!pushlastlink ($3, $1)) /*add new name to end of list*/
-			goto cleanexit;
+			YYABORT;
 		}
 	
 	| namelist ';' namelistid {
@@ -404,7 +396,7 @@ namelist:
 		yytrace ("namelist | namelist ';' namelistid");
 		
 		if (!pushlastlink ($3, $1)) /*add new name to end of list*/
-			goto cleanexit;
+			YYABORT;
 		}
 	;
 
@@ -422,7 +414,7 @@ statementlist:
 		yytrace ("statementlist | statementlist ';' statement");
 		
 		if (!pushlastlink ($3, $1)) /*add new statement to end of list*/
-			goto cleanexit;
+			YYABORT;
 		
 		$$ = $1; 
 		}
@@ -452,7 +444,7 @@ derefid:
 		yytrace ("derefid : term '^'");
 		
 		if (!pushunaryoperation (dereferenceop, $1, &$$))
-			goto cleanexit;
+			YYABORT;
 		}
 	
 	| functionref '^' {
@@ -460,7 +452,7 @@ derefid:
 		yytrace ("derefid | functionref '^'");
 		
 		if (!pushunaryoperation (dereferenceop, $1, &$$))
-			goto cleanexit;
+			YYABORT;
 		}
 	
 	| '(' expr ')'  '^' {
@@ -468,7 +460,7 @@ derefid:
 		yytrace ("derefid | '(' expr ')' '^'");
 		
 		if (!pushunaryoperation (dereferenceop, $2, &$$))
-			goto cleanexit;
+			YYABORT;
 		}
 	;
 
@@ -479,7 +471,7 @@ dottedid:
 		yytrace ("dottedid : term '.' bracketedidentifier");
 		
 		if (!pushbinaryoperation (dotop, $1, $3, &$$))
-			goto cleanexit;
+			YYABORT;
 		}
 	
 	| term '.' error {
@@ -497,7 +489,7 @@ rangeref:
 		yytrace ("rangeref: expr totoken expr");
 		
 		if (!pushbinaryoperation (rangeop, $1, $3, &$$))
-			goto cleanexit;
+			YYABORT;
 		}
 	;
 
@@ -508,7 +500,7 @@ arrayref:
 		yytrace ("arrayref: term '[' expr ']'");
 		
 		if (!pushbinaryoperation (arrayop, $1, $3, &$$))
-			goto cleanexit;
+			YYABORT;
 		}
 	
 	| term '[' rangeref ']' {
@@ -516,7 +508,7 @@ arrayref:
 		yytrace ("arrayref | term '[' rangeref ']'");
 		
 		if (!pushbinaryoperation (arrayop, $1, $3, &$$))
-			goto cleanexit;
+			YYABORT;
 		}
 	
 	| term '[' fieldspec ']' {
@@ -524,7 +516,7 @@ arrayref:
 		yytrace ("arrayref | term '[' fieldspec ']'");
 		
 		if (!pushbinaryoperation (arrayop, $1, $3, &$$))
-			goto cleanexit;
+			YYABORT;
 		}
 	;
 
@@ -566,7 +558,7 @@ statement:
 		yytrace ("statement: <empty statement>");
 		
 		if (!pushoperation (noop, &$$)) /*a place for the debugger to stop*/
-			goto cleanexit;
+			YYABORT;
 		}
 	
 	| expr {
@@ -581,7 +573,7 @@ statement:
 		yytrace ("statement | term assigntoken expr");
 		
 		if (!pushbinaryoperation (assignop, $1, $3, &$$))
-			goto cleanexit;
+			YYABORT;
 		}
 	
 	| handlerheader bracketedstatementlist {
@@ -589,7 +581,7 @@ statement:
 		yytrace ("statement : handlerheader bracketedstatementlist");
 		
 		if (!pushbinaryoperation (moduleop, $2, $1, &$$))
-			goto cleanexit;		
+			YYABORT;		
 		}
 	
 	| handlerheader '{' kernelcall '}' {
@@ -597,7 +589,7 @@ statement:
 		yytrace ("statement : handlerheader '{' kernelcall '}'");
 		
 		if (!pushbinaryoperation (moduleop, $3, $1, &$$))
-			goto cleanexit;		
+			YYABORT;		
 		}
 	
 	| localtoken '(' namelist ')' {
@@ -605,7 +597,7 @@ statement:
 		yytrace ("statement | localtoken '(' namelist ')'");
 		
 		if (!pushunaryoperation (localop, $3, &$$))
-			goto cleanexit;
+			YYABORT;
 		}
 	
 	| localtoken '{' namelist '}' {
@@ -613,7 +605,7 @@ statement:
 		yytrace ("statement | localtoken '{' namelist '}'");
 		
 		if (!pushunaryoperation (localop, $3, &$$))
-			goto cleanexit;
+			YYABORT;
 		}
 	
 	| globaltoken '(' namelist ')' {
@@ -621,7 +613,7 @@ statement:
 		yytrace ("statement | globaltoken '(' namelist ')'");
 		
 		if (!pushunaryoperation (globalop, $3, &$$))
-			goto cleanexit;
+			YYABORT;
 		}
 	
 	| globaltoken '{' namelist '}' {
@@ -629,7 +621,7 @@ statement:
 		yytrace ("statement | globaltoken '{' namelist '}'");
 		
 		if (!pushunaryoperation (globalop, $3, &$$))
-			goto cleanexit;
+			YYABORT;
 		}
 	
 	| fileloopheader bracketedstatementlist {
@@ -637,7 +629,7 @@ statement:
 		yytrace ("statement | fileloopheader bracketedstatementlist");
 		
 		if (!pushtripletstatementlists (nil, $2, $1))
-			goto cleanexit;
+			YYABORT;
 		
 		$$ = $1;
 		}
@@ -647,7 +639,7 @@ statement:
 		yytrace ("statement | loopheader bracketedstatementlist");
 		
 		if (!pushloopbody ($2, $1))
-			goto cleanexit;
+			YYABORT;
 		
 		$$ = $1;
 		}
@@ -657,7 +649,7 @@ statement:
 		yytrace ("statement | forloopheader bracketedstatementlist");
 		
 		if (!pushloopbody ($2, $1))
-			goto cleanexit;
+			YYABORT;
 		
 		$$ = $1;
 		}
@@ -667,7 +659,7 @@ statement:
 		yytrace ("statement | forinloopheader bracketedstatementlist");
 		
 		if (!pushloopbody ($2, $1))
-			goto cleanexit;
+			YYABORT;
 		
 		$$ = $1;
 		}
@@ -677,7 +669,7 @@ statement:
 		yytrace ("statement | ifheader bracketedstatementlist");
 		
 		if (!pushtripletstatementlists ($2, nil, $1))
-			goto cleanexit;
+			YYABORT;
 		
 		$$ = $1;
 		}
@@ -687,7 +679,7 @@ statement:
 		yytrace ("statement | ifheader bracketedstatementlist elsetoken bracketedstatementlist");
 		
 		if (!pushtripletstatementlists ($2, $4, $1))
-			goto cleanexit;
+			YYABORT;
 		
 		$$ = $1;
 		}
@@ -697,7 +689,7 @@ statement:
 		yytrace ("statement | bundleheader bracketedstatementlist");
 		
 		if (!pushunarystatementlist ($2, $1))
-			goto cleanexit;
+			YYABORT;
 		
 		$$ = $1;
 		}
@@ -707,7 +699,7 @@ statement:
 		yytrace ("statement | breaktoken '(' ')'");
 		
 		if (!pushoperation (breakop, &$$))
-			goto cleanexit;
+			YYABORT;
 		}
 	
 	| breaktoken {
@@ -715,7 +707,7 @@ statement:
 		yytrace ("statement | breaktoken");
 		
 		if (!pushoperation (breakop, &$$))
-			goto cleanexit;
+			YYABORT;
 		}
 	
 	| continuetoken {
@@ -723,7 +715,7 @@ statement:
 		yytrace ("statement | continuetoken");
 		
 		if (!pushoperation (continueop, &$$))
-			goto cleanexit;
+			YYABORT;
 		}
 	
 	| returntoken optionalexpr {
@@ -731,7 +723,7 @@ statement:
 		yytrace ("statement | returntoken");
 		
 		if (!pushunaryoperation (returnop, $2, &$$))
-			goto cleanexit;
+			YYABORT;
 		}
 	
 	| caseheader '{' casebody '}' {
@@ -739,7 +731,7 @@ statement:
 		yytrace ("statement | caseheader casebody");
 		
 		if (!pushtripletstatementlists ($3, nil, $1))
-			goto cleanexit;
+			YYABORT;
 		
 		$$ = $1;
 		}
@@ -749,7 +741,7 @@ statement:
 		yytrace ("statement | caseheader casebody elsetoken bracketedstatementlist");
 		
 		if (!pushtripletstatementlists ($3, $6, $1))
-			goto cleanexit;
+	YYABORT;
 		
 		$$ = $1;
 		}
@@ -759,7 +751,7 @@ statement:
 		yytrace ("statement | withheader bracketedstatementlist");
 		
 		if (!pushtripletstatementlists ($2, nil, $1))
-			goto cleanexit;
+			YYABORT;
 		
 		$$ = $1;
 		}
@@ -769,7 +761,7 @@ statement:
 		yytrace ("statement | tryheader bracketedstatementlist");
 		
 		if (!pushtripletstatementlists ($2, nil, $1))
-			goto cleanexit;
+			YYABORT;
 		
 		$$ = $1;
 		}
@@ -779,7 +771,7 @@ statement:
 		yytrace ("statement | tryheader bracketedstatementlist elsetoken bracketedstatementlist");
 		
 		if (!pushtripletstatementlists ($2, $4, $1))
-			goto cleanexit;
+			YYABORT;
 		
 		$$ = $1;
 		}
@@ -795,7 +787,7 @@ statement:
 	| expr error expr {
 		
 		if (!pushbinaryoperation (noop, $1, $3, &$$))
-			goto cleanexit;
+			YYABORT;
 		}
 	*/
 	;
@@ -826,7 +818,7 @@ fileloopspec:
 		yytrace ("fileloopspec | constanttoken '[' expr ']'");
 		
 		if (!pushbinaryoperation (arrayop, $1, $3, &$$))
-			goto cleanexit;
+			YYABORT;
 		}
 	;
 */
@@ -838,7 +830,7 @@ fileloopheader:
 		yytrace ("fileloopheader: filelooptoken '(' bracketedidentifier intoken expr ')'");
 		
 		if (!pushquadruplet (fileloopop, $3, $5, nil, nil, &$$))
-			goto cleanexit;
+			YYABORT;
 		}
 	
 	| filelooptoken '(' bracketedidentifier intoken expr ',' expr ')' {
@@ -846,7 +838,7 @@ fileloopheader:
 		yytrace ("fileloopheader | filelooptoken '(' bracketedidentifier intoken expr ',' expr ')'");
 		
 		if (!pushquadruplet (fileloopop, $3, $5, nil, $7, &$$))
-			goto cleanexit;
+			YYABORT;
 		}
 	
 	| filelooptoken '(' bracketedidentifier error {
@@ -854,7 +846,7 @@ fileloopheader:
 		yytrace ("fileloopheader | filelooptoken '(' bracketedidentifier error");
 		
 		if (!pushquadruplet (fileloopop, $3, nil, nil, nil, &$$))
-			goto cleanexit;
+			YYABORT;
 		}
 	;
 
@@ -865,7 +857,7 @@ loopheader:
 		yytrace ("loopheader: looptoken '(' statement ';' expr ';' statement ')'");
 		
 		if (!pushloop ($3, $5, $7, &$$))
-			goto cleanexit;
+			YYABORT;
 		}
 	
 	| looptoken {
@@ -873,7 +865,7 @@ loopheader:
 		yytrace ("loopheader | looptoken");
 		
 		if (!pushloop (nil, nil, nil, &$$))
-			goto cleanexit;
+			YYABORT;
 		}
 	
 	| looptoken '(' expr ')' {
@@ -881,7 +873,7 @@ loopheader:
 		yytrace ("loopheader | looptoken '(' expr ')'");
 		
 		if (!pushloop ($3, nil, nil, &$$))
-			goto cleanexit;
+			YYABORT;
 		}
 	
 	| whiletoken expr {
@@ -889,7 +881,7 @@ loopheader:
 		yytrace ("loopheader | whiletoken expr");
 		
 		if (!pushloop (nil, $2, nil, &$$))
-			goto cleanexit;
+			YYABORT;
 		}
 	
 	| looptoken '(' statement ';' expr ')' {
@@ -897,7 +889,7 @@ loopheader:
 		yytrace ("loopheader | looptoken '(' statement ';' expr ')'");
 		
 		if (!pushloop ($3, $5, nil, &$$))
-			goto cleanexit;
+			YYABORT;
 		}
 	;
 
@@ -908,7 +900,7 @@ forloopheader:
 		yytrace ("forloopheader: fortoken term assigntoken expr totoken expr");
 		
 		if (!pushquadruplet (forloopop, $4, $6, $2, nil, &$$))
-			goto cleanexit;
+			YYABORT;
 		}
 	
 	| fortoken '(' term assigntoken expr totoken expr ')' {
@@ -916,7 +908,7 @@ forloopheader:
 		yytrace ("forloopheader | fortoken '(' term assigntoken expr totoken expr ')' ");
 		
 		if (!pushquadruplet (forloopop, $5, $7, $3, nil, &$$))
-			goto cleanexit;
+			YYABORT;
 		}
 	
 	| fortoken term assigntoken expr downtotoken expr {
@@ -924,7 +916,7 @@ forloopheader:
 		yytrace ("forloopheader | fortoken term assigntoken expr downtotoken expr");
 		
 		if (!pushquadruplet (fordownloopop, $4, $6, $2, nil, &$$))
-			goto cleanexit;
+			YYABORT;
 		}
 	
 	| fortoken '(' term assigntoken expr downtotoken expr ')' {
@@ -932,7 +924,7 @@ forloopheader:
 		yytrace ("forloopheader | fortoken '(' term assigntoken expr downtotoken expr ')' ");
 		
 		if (!pushquadruplet (fordownloopop, $5, $7, $3, nil, &$$))
-			goto cleanexit;
+			YYABORT;
 		}
 	
 	| fortoken term assigntoken expr error {
@@ -940,7 +932,7 @@ forloopheader:
 		yytrace ("forloopheader: fortoken term assigntoken expr error");
 		
 		if (!pushquadruplet (noop, $2, $4, nil, nil, &$$))
-			goto cleanexit;
+			YYABORT;
 		}
 	
 	| fortoken term error {
@@ -948,7 +940,7 @@ forloopheader:
 		yytrace ("forloopheader: fortoken term error");
 		
 		if (!pushquadruplet (noop, $2, nil, nil, nil, &$$))
-			goto cleanexit;
+			YYABORT;
 		}
 	;
 
@@ -959,7 +951,7 @@ forinloopheader:
 		yytrace ("forinloopheader: fortoken term intoken expr");
 		
 		if (!pushquadruplet (forinloopop, $4, $2, nil, nil, &$$))
-			goto cleanexit;
+			YYABORT;
 		}
 	
 	| fortoken '(' term intoken expr ')' {
@@ -967,7 +959,7 @@ forinloopheader:
 		yytrace ("forinloopheader | fortoken '(' term intoken expr ')' ");
 		
 		if (!pushquadruplet (forinloopop, $5, $3, nil, nil, &$$))
-			goto cleanexit;
+			YYABORT;
 		}
 	;
 
@@ -978,7 +970,7 @@ ifheader:
 		yytrace ("ifheader: iftoken expr");
 		
 		if (!pushtriplet (ifop, $2, nil, nil, &$$))
-			goto cleanexit;
+			YYABORT;
 		}
 	;
 
