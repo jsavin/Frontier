@@ -3,8 +3,8 @@
 Status
 - State: In Progress
 - Phase: 1–2
-- Last Updated: 2025-09-29
-- Notes: Headless-first testing; see Quickstart and behavior matrix.
+- Last Updated: 2025-10-01
+- Notes: Headless-first; tests build/run via Makefile and runner. See `_results/` for latest logs and planning/INDEX.md for coverage.
 
 Related Docs
 - planning/DEVELOPER_QUICKSTART_HEADLESS.md
@@ -25,6 +25,7 @@ Change Log
 - [Usage](#usage)
   - [Building and Running Tests](#building-and-running-tests)
   - [Test Runner Usage](#test-runner-usage)
+  - [Results & Reports](#results--reports)
 - [Test Framework Features](#test-framework-features)
   - [Assertions](#assertions)
   - [Test Suite Definition](#test-suite-definition)
@@ -111,6 +112,9 @@ make clean
 
 # Show documentation
 make docs
+
+# Consolidated run with logging (example)
+./run_all_tests.sh | tee "_results/all_tests.$(date +%Y%m%d_%H%M%S).log" && cp "_results/$(ls -t _results/all_tests.*.log | head -n1 | xargs -n1 basename)" _results/all_tests.latest.log
 ```
 
 ### Test Runner Usage
@@ -128,6 +132,12 @@ make docs
 
 # Run all test suites (explicit)
 ./test_runner --all
+
+### Results & Reports
+- Latest consolidated log: `tests/_results/all_tests.latest.log`
+- Historical logs: `tests/_results/all_tests.YYYYMMDD_HHMMSS.log`
+- Per-binary summaries include `=== Test Summary ===` and either `ALL TESTS PASSED!` or `N TESTS FAILED`.
+- Runner markers: `RESULT:<target>:OK|RUN_FAILED|BUILD_FAILED` and `Summary: FAILURES=N` at the end.
 ```
 
 ## Test Framework Features
