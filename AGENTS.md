@@ -58,6 +58,7 @@ This document is a concise contributor guide for Frontier’s C/C toolchain and 
 - Commits: Imperative mood; optional scope tags (e.g., `feat:`, `fix:`, `Headless:`). Example: `fix: correct 64‑bit header conversion`.
 - PRs must include: purpose/impact, key files touched, test plan with command output, related docs (e.g., `planning/...`) and linked issues.
 - Keep changes surgical; update docs/tests when modifying `Common/source` or `portable/`.
+- Merging: Preserve individual commits (no squash). Prefer merging feature branches into `develop` with a merge commit; rebase only to resolve conflicts without rewriting intent.
 
 ## Security & Configuration Tips
 - Do not commit secrets or proprietary databases; keep `databases/` to samples.
