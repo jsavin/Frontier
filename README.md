@@ -10,6 +10,8 @@ Related Docs
 - planning/INDEX.md
 - planning/Frontier_Refactoring_Plan.md
 - planning/DEVELOPER_QUICKSTART_HEADLESS.md
+- planning/DECISIONS.md
+- planning/adr/ (Architecture Decision Records)
 
 Change Log
 - 2025-09-29: Initialized template sections (Status/Related Docs/Change Log).
