@@ -21,3 +21,16 @@ Related Indexes
 - Phase/status index: planning/INDEX.md
 - Existing ADRs: planning/adr/
 
+## Decision Needed Checklist
+
+| Topic                           | ADR    | Status   | Owner | Target Phase |
+|---------------------------------|--------|----------|-------|--------------|
+| Networking Architecture/Security| 0005   | Proposed | TBD   | Phase 1      |
+| File I/O & Path Policy          | 0007   | Draft    | TBD   | Phase 1      |
+| Concurrency Model               | 0003   | Proposed | TBD   | Phase 2      |
+| Global State Boundaries         | 0006   | Proposed | TBD   | Phase 2      |
+| OSA/IPC Strategy                | 0004   | Proposed | TBD   | Phase 2      |
+| Unicode Strategy                | 0008   | Proposed | TBD   | Phase 4      |
+| WPText → RTF Migration          | 0009   | Proposed | TBD   | Phase 4      |
+
+Pre‑issue stubs (to copy to GitHub later) live in `planning/issues/`.
