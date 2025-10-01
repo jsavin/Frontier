@@ -15,6 +15,7 @@ Decisions & Topics
 - File I/O & Path Policy — ADR 0007 (Draft; see database_path_canonicalization.md)
 - Unicode Strategy — ADR 0008 (TBD)
 - WPText → RTF Migration — ADR 0009 (TBD)
+- EFP Routing in Headless — ADR 0010 (Proposed)
 
 Related Indexes
 - Overall plan: planning/Frontier_Refactoring_Plan.md
@@ -32,5 +33,6 @@ Related Indexes
 | OSA/IPC Strategy                | 0004   | Proposed | TBD   | Phase 2      |
 | Unicode Strategy                | 0008   | Proposed | TBD   | Phase 4      |
 | WPText → RTF Migration          | 0009   | Proposed | TBD   | Phase 4      |
+| EFP Routing in Headless         | 0010   | Proposed | TBD   | Phase 1      |
 
 Pre‑issue stubs (to copy to GitHub later) live in `planning/issues/`.

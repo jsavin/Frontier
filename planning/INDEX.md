@@ -76,3 +76,4 @@ ADRs
 - 0007 — File I/O & Path Policy: planning/adr/0007-file-io-and-path-policy.md
 - 0008 — Unicode Strategy: planning/adr/0008-unicode-strategy.md
 - 0009 — WPText → RTF Migration: planning/adr/0009-wptext-rtf-migration.md
+- 0010 — EFP Routing in Headless: planning/adr/0010-efp-headless-routing.md
