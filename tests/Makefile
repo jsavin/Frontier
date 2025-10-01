@@ -291,6 +291,7 @@ help:
 	@echo "Available targets:"
 	@echo "  all              - Build all test executables"
 	@echo "  test             - Run all tests"
+	@echo "  results          - Build+run tests and write _results logs"
 	@echo "  test-usertalk    - Run UserTalk object tests"
 	@echo "  test-basic       - Run basic type tests"
 	@echo "  test-collections - Run collection tests"
@@ -310,4 +311,10 @@ help:
 	@echo "  components/                   - Integration and system tests"
 	@echo "  framework/                    - Test framework"
 
-.PHONY: all test clean install uninstall help
+results:
+	@mkdir -p _results
+	@ts=$$(date +%Y%m%d_%H%M%S); \
+	  bash ./run_all_tests.sh | tee "_results/all_tests.$$ts.log"; \
+	  cp "_results/all_tests.$$ts.log" "_results/all_tests.latest.log"
+
+.PHONY: all test clean install uninstall help results
