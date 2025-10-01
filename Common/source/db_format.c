@@ -130,9 +130,41 @@ boolean migrate_32bit_to_64bit(const char *db_path) {
         return false;
     }
 
-    const size_t written = fwrite(&new_header, sizeof new_header, 1, dst);
-    fclose(src);
-    fclose(dst);
-    return (written == 1);
-}
+    /* Write new header */
+    if (fwrite(&new_header, sizeof new_header, 1, dst) != 1) {
+        fclose(src);
+        fclose(dst);
+        remove(temp_path);
+        return false;
+    }
 
+    /* Copy remainder of file (skip old header) */
+    if (fseek(src, (long)sizeof(tydatabaserecord), SEEK_SET) != 0) {
+        fclose(src);
+        fclose(dst);
+        remove(temp_path);
+        return false;
+    }
+    char buffer[64 * 1024];
+    size_t bytes;
+    while ((bytes = fread(buffer, 1, sizeof buffer, src)) > 0) {
+        if (fwrite(buffer, 1, bytes, dst) != bytes) {
+            fclose(src);
+            fclose(dst);
+            remove(temp_path);
+            return false;
+        }
+    }
+
+    fclose(src);
+    if (fflush(dst) != 0) { fclose(dst); remove(temp_path); return false; }
+    if (fclose(dst) != 0) { remove(temp_path); return false; }
+
+    /* Atomically replace original */
+    if (rename(temp_path, db_path) != 0) {
+        remove(temp_path);
+        return false;
+    }
+
+    return true;
+}

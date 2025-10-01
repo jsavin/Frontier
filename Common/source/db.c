@@ -426,6 +426,7 @@ static boolean dbflushheader (void) {
 		
 		fl = dbwrite ((dbaddress) 0, sizeof (tydatabaserecord), &diskrec);
 		
+		#ifndef FRONTIER_HEADLESS
 		/*flush file buffers*/ {
 			IOParam pb;
 			
@@ -435,6 +436,7 @@ static boolean dbflushheader (void) {
 			
 			PBFlushFile ((ParmBlkPtr) &pb, false);
 			}
+		#endif
 
 		return (fl);
 		} /*changes made to header*/
@@ -2384,7 +2386,7 @@ boolean dbopenfile (hdlfilenum fnum, boolean flreadonly) {
 		assert(sizeof(tydatabaserecord) == 116);  // 32-bit format (on 64-bit systems)
 	}
 	
-	if ((**hdb).versionnumber != dbversionnumber) {
+    if ((**hdb).versionnumber != dbversionnumber) {
 
 		if (majorversion ((**hdb).versionnumber) != majorversion (dbversionnumber)) {
 		
@@ -2398,10 +2400,16 @@ boolean dbopenfile (hdlfilenum fnum, boolean flreadonly) {
 			(**hdb).u.extensions.availlistblock = nildbaddress; /*don't count on old version to handle this one*/
 		#endif
 		
-		(**hdb).versionnumber = dbversionnumber; /*we can only write what we know*/
-		
-		setdirty (hdb);
-		}
+        /*
+         * Only bump the in-memory header version when operating in the
+         * modern (v7) format. For legacy files (v<=6), defer version
+         * changes until an explicit migration is performed (e.g., Save).
+         */
+        if (use_64bit_format)
+            (**hdb).versionnumber = dbversionnumber; /* we can only write what we know */
+        
+        setdirty (hdb);
+        }
 		
 	// Check if this is a legacy database that should be migrated
 	if (!use_64bit_format && (**hdb).versionnumber <= 6) {
