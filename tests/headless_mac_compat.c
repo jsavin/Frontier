@@ -137,10 +137,14 @@ boolean popundoaction (void) { return false; }
 void ouch (void) { }
 
 // Error and path helpers
+#ifndef HEADLESS_TEST_PORTABLE_FILE
 boolean oserror (OSErr err) { (void)err; return false; }
 boolean pathtofilespec (bigstring bs, ptrfilespec fs) { (void)bs; if (fs) memset(fs,0,sizeof(*fs)); return false; }
+#endif
 OSStatus pathtofsref (bigstring bs, FSRef *ref) { (void)bs; if (ref) memset(ref,0,sizeof(*ref)); return paramErr; }
+#ifndef HEADLESS_TEST_PORTABLE_FILE
 boolean equalfilespecs ( const ptrfilespec fs1, const ptrfilespec fs2 ) { (void)fs1; (void)fs2; return false; }
+#endif
 boolean equalrects (Rect r1, Rect r2) { return r1.top==r2.top && r1.left==r2.left && r1.bottom==r2.bottom && r1.right==r2.right; }
 void diskinitloop (void) { }
 
@@ -221,10 +225,12 @@ void smashrect (Rect r) { (void)r; }
 void invalrect (Rect r) { (void)r; }
 
 // DB stubs
+#ifndef HEADLESS_TEST_PORTABLE_FILE
 boolean dbpushdatabase (hdldatabaserecord h) { (void)h; return false; }
 boolean dbpopdatabase (void) { return false; }
 boolean dbcopy (dbaddress a, dbaddress *b) { (void)a; if (b) *b=0; return false; }
 boolean dbassignhandle (Handle h, dbaddress *adr) { (void)h; if (adr) *adr=0; return false; }
+#endif
 hdldatabaserecord databasedata = nil;
 
 // Process/debug stubs
@@ -304,7 +310,9 @@ boolean langzoomvalwindow (hdlhashtable ht, bigstring bs, tyvaluerecord v, boole
 
 // Misc flags/globals expected by opverbs/tablepack
 boolean flconvertingolddatabase = false;
+#ifndef HEADLESS_TEST_PORTABLE_FILE
 boolean fldatabasesaveas = false;
+#endif
 boolean flinhibitclosedialogs = false;
 
 // Additional stubs to satisfy remaining links
@@ -504,11 +512,13 @@ Boolean filespectopath(const ptrfilespec fs, bigstring path) {
     return false;
 }
 
+#ifndef HEADLESS_TEST_PORTABLE_FILE
 Boolean getfsfile(const ptrfilespec fs, bigstring name) {
     (void)fs;
     setstringlength(name, 0);
     return false;
 }
+#endif
 
 void NumToString(long value, Str255 result) {
     char buffer[256];

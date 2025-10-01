@@ -333,7 +333,7 @@ boolean fiffindinfile (const ptrfilespec fs, bigstring pattern, long *idx) {
 					
 					} /*for*/
 				
-				*idx = fpos + (pbuffer - *hbuffer - 1);
+				*idx = fpos + (pbuffer - (char *)(*hbuffer) - 1);
 				
 				flreturned = true;
 				
@@ -1060,7 +1060,6 @@ boolean fifgetendoffile (const ptrfilespec fs, long *eof) {
 	
 	return (fl);
 	} /*fifseteof*/
-
 
 
 

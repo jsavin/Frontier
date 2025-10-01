@@ -260,12 +260,13 @@ extern boolean settablestructureglobals (Handle, boolean);
 extern void initsegment (void); /*tablestartup.c*/
 
 extern boolean loadfunctionprocessor (short, langvaluecallback);
+/* Headless: programmatic EFP creation */
+extern boolean newfunctionprocessor (bigstring bsname, langvaluecallback valuecallback, boolean flwindow, hdlhashtable *htable);
 
 extern boolean inittablestructure (void);
 
 
 extern boolean tablevalidate (hdlhashtable, boolean); /*tablevalidate.c*/
-
 
 
 

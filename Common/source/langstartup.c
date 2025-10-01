@@ -107,7 +107,7 @@ void initsegment (void) {
 	} /*initsegment*/
 
 
-static boolean newfunctionprocessor (bigstring bsname, langvaluecallback valuecallback, boolean flwindow, hdlhashtable *htable) {
+boolean newfunctionprocessor (bigstring bsname, langvaluecallback valuecallback, boolean flwindow, hdlhashtable *htable) {
 	
 	/*
 	each of the external function processors register with the system by calling

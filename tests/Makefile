@@ -133,7 +133,7 @@ USERTALK_OBJECT_TESTS = \
 	test_usertalk_runner
 
 # Buildable test executables on this branch
-RUN_BUILDABLE = core_tests db_format_tests runtime_tests parser_tests
+RUN_BUILDABLE = core_tests db_format_tests runtime_tests parser_tests save_migration_tests file_portable_tests file_readline_tests
 
 # Prebuilt or auxiliary test binaries that may be present
 RUN_PREBUILT = handle_tests test_64bit_direct test_migration_verification test_real_databases test_runner verify_migration_success
@@ -156,6 +156,19 @@ runtime_tests: runtime_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c
 
 parser_tests: parser_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable parser_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@
+
+save_migration_tests: save_migration_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/db.c ../Common/source/db_format.c headless_file_portable.c ../Common/source/odbengine.c headless_odb_stubs.c headless_shell.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -I../Common/headers -I../Common/SystemHeaders -I../portable save_migration_tests.c \
+		$(LANG_RUNTIME_SOURCES) ../Common/source/db.c ../Common/source/db_format.c headless_file_portable.c ../Common/source/odbengine.c headless_odb_stubs.c headless_shell.c -o $@
+
+file_portable_tests: file_portable_tests.c headless_file_portable.c headless_shell.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -I../Common/headers -I../Common/SystemHeaders -I../portable file_portable_tests.c headless_file_portable.c headless_shell.c -o $@
+
+file_readline_tests: file_readline_tests.c headless_file_portable.c headless_shell.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -I../Common/headers -I../Common/SystemHeaders -I../portable file_readline_tests.c headless_file_portable.c headless_shell.c -o $@
+
+file_verb_tests: file_verb_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/findinfile.c headless_file_portable.c headless_file_verbs.c headless_shell.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -I../Common/headers -I../Common/SystemHeaders -I../portable file_verb_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/findinfile.c headless_file_portable.c headless_file_verbs.c headless_shell.c -o $@
 
 # Test framework object
 framework/test_framework.o: framework/test_framework.c framework/test_framework.h

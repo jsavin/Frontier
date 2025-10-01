@@ -33,6 +33,11 @@ long releasethreadglobals (void) { return 0; }
 // DB helpers used during value/pack operations
 boolean dbpushreleasestack (dbaddress adr, long valtype) { (void)adr; (void)valtype; return true; }
 boolean dbrefhandle (dbaddress adr, Handle *h) { (void)adr; if (h) *h = nil; return false; }
+boolean dbassignhandle (Handle h, dbaddress *padr) { (void)h; if (padr) *padr = 0; return false; }
+boolean dbcopy (dbaddress a, dbaddress *pb) { (void)a; if (pb) *pb = 0; return false; }
+boolean dbpushdatabase (hdldatabaserecord h) { (void)h; return true; }
+boolean dbpopdatabase (void) { return true; }
+boolean fldatabasesaveas = false;
 
 // Byte order helpers (provide out-of-line versions)
 long dolongswap (long x) {

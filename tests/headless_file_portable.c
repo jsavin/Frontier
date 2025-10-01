@@ -9,6 +9,7 @@
 #include "frontier.h"
 #include "standard.h"
 #include "file.h"
+#include "memory.h"
 
 /* Simple headless portable file layer for tests */
 
@@ -147,7 +148,7 @@ boolean fileread (hdlfilenum fnum, long ctbytes, void *pdata) {
 
 /* Unused stubs for this test */
 boolean opennewfile (ptrfilespec fs, OSType a, OSType b, hdlfilenum *p) { (void)fs; (void)a; (void)b; (void)p; return false; }
-boolean filereaddata (hdlfilenum f, long a, long *b, void *c) { (void)f;(void)a;(void)b;(void)c; return false; }
+/* filereaddata implemented below */
 boolean filegetchar (hdlfilenum f, char *ch) { (void)f; (void)ch; return false; }
 boolean fileputchar (hdlfilenum f, char ch) { (void)f; (void)ch; return false; }
 boolean filewritehandle (hdlfilenum f, Handle h) { (void)f;(void)h; return false; }
@@ -159,4 +160,91 @@ const char* headless_fnum_path(hdlfilenum fnum) {
     FILE *fp = fp_from(fnum);
     if (!fp) return NULL;
     return ftable[fnum].path[0] ? ftable[fnum].path : NULL;
+}
+
+/* Read a logical line from file number handling CR, LF, and CRLF.
+ * Returns number of bytes placed into buf (excluding terminator),
+ * 0 on EOF with no data, or -1 on error. */
+long headless_readline(hdlfilenum fnum, char *buf, long bufsz) {
+    if (bufsz <= 0) return -1;
+    FILE *fp = fp_from(fnum);
+    if (!fp) return -1;
+    long n = 0;
+    int c = EOF;
+    int prev = -1;
+    while (1) {
+        c = fgetc(fp);
+        if (c == EOF) {
+            /* EOF: if we have any data, return it; otherwise 0 */
+            break;
+        }
+        if (c == '\n') {
+            /* If previous was CR, this is CRLF; consume as one delimiter */
+            break;
+        }
+        if (c == '\r') {
+            /* Peek next; if it's \n, consume it as part of CRLF */
+            int next = fgetc(fp);
+            if (next != '\n' && next != EOF) {
+                ungetc(next, fp);
+            }
+            break;
+        }
+        if (n < bufsz - 1) {
+            buf[n++] = (char)c;
+        } else {
+            /* buffer full; continue scanning to a delimiter to keep position sane */
+        }
+        prev = c;
+    }
+    buf[(n < bufsz) ? n : (bufsz - 1)] = '\0';
+    if (c == EOF && n == 0) return 0; /* clean EOF */
+    return n;
+}
+
+/* Additional functions used by findinfile.c-based logic */
+boolean filereaddata (hdlfilenum fnum, long ctread, long *pctactual, void *pbuf) {
+    if (!pctactual) return false;
+    FILE *fp = fp_from(fnum);
+    if (!fp) return false;
+    size_t n = fread(pbuf, 1, (size_t)ctread, fp);
+    *pctactual = (long)n;
+    return true; /* true even on short read (EOF); caller inspects *pctactual */
+}
+
+boolean filegetposition (hdlfilenum fnum, long *ppos) {
+    if (!ppos) return false;
+    FILE *fp = fp_from(fnum);
+    if (!fp) return false;
+    off_t cur = ftello(fp);
+    if (cur < 0) return false;
+    *ppos = (long)cur;
+    return true;
+}
+
+boolean equalfilespecs (const ptrfilespec a, const ptrfilespec b) {
+    if (!a || !b) return false;
+    if (a->name.length != b->name.length) return false;
+    for (unsigned int i = 0; i < a->name.length; i++) {
+        if (a->name.unicode[i] != b->name.unicode[i]) return false;
+    }
+    return true;
+}
+
+boolean largefilebuffer (Handle *hbuffer) {
+    if (!hbuffer) return false;
+    long sz = 32 * 1024;
+    return newhandle(sz, hbuffer);
+}
+
+boolean getfsfile (const ptrfilespec pfs, bigstring name) {
+    if (!pfs) { setemptystring(name); return false; }
+    unsigned int len = pfs->name.length;
+    if (len > 255) len = 255;
+    name[0] = (unsigned char)len;
+    for (unsigned int i = 0; i < len; i++) {
+        unsigned short u = pfs->name.unicode[i];
+        name[1 + i] = (unsigned char)(u & 0xFF);
+    }
+    return true;
 }
