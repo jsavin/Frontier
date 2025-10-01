@@ -21,6 +21,7 @@ Related Indexes
 - Overall plan: planning/Frontier_Refactoring_Plan.md
 - Phase/status index: planning/INDEX.md
 - Existing ADRs: planning/adr/
+ - Bootstrap plan: planning/system_verbs_bootstrap_plan.md (temporary, guarded)
 
 ## Decision Needed Checklist
 
