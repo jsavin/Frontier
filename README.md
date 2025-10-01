@@ -3,8 +3,8 @@
 Status
 - State: In Progress
 - Phase: Multi-Phase Roadmap
-- Last Updated: 2025-09-29
-- Notes: See planning/INDEX.md for current phases and key docs.
+- Last Updated: 2025-10-01
+- Notes: See planning/INDEX.md and planning/DECISIONS.md for active phases and open decisions.
 
 Related Docs
 - planning/INDEX.md
@@ -64,11 +64,11 @@ Frontier/                          # Project root
 - **Purpose**: Unit tests that work across all build targets
 - **Structure**: Organized by component and functionality
 - **Usage**: `make -C tests test` to run all tests
-- **Status**: [Build Issues Documented](portable/BUILD_ISSUES.md)
+- **Status**: Headless test binaries build and run; see tests/README.md and planning/INDEX.md for current coverage and status. Historical build notes: portable/BUILD_ISSUES.md
 
 ### `portable/` - Cross-Platform Runtime Stubs
 - **Purpose**: Platform-independent runtime implementations
-- **Status**: [Build Issues Documented](portable/BUILD_ISSUES.md)
+- **Status**: Stub implementation complete; build issues document retained for history (portable/BUILD_ISSUES.md)
 - **Structure**: 12 focused stub files replacing monolithic runtime_stubs.c
 
 ### `samples/` - Test Data
@@ -95,7 +95,7 @@ Frontier/                          # Project root
     - `Extras/` - Frontier-specific utilities
     - Icons, plists, and bundles
   - `OPML/` - OPML editor resources
-  - `Radio/` - Radio application resources
+  - `Radio/` - Radio UserLand application resources
 
 ### `docs/` - Documentation
 - **Purpose**: All project documentation and SDK
@@ -107,10 +107,10 @@ Frontier/                          # Project root
 
 ## Known Issues and Status
 
-### Build and Testing Issues
-- **Unit Test Build Issues**: [Documented in BUILD_ISSUES.md](portable/BUILD_ISSUES.md)
+### Build and Testing Status
+- **Headless Tests**: Core/runtime/db-format tests build and run; see tests/_results and tests/README.md
 - **Runtime Stub Implementation**: Complete with 12 focused files
-- **Current Blocking Issue**: `stringtoosttype` linking error affecting all test targets
+- **CLI Build**: Needs headless-only linkage (remove UI frameworks; reuse portable/test sources)
 
 ### Progress Summary
 - ✅ **Runtime Stub Implementation**: Successfully split monolithic 2029-line file into 12 focused files
