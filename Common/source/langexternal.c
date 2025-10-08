@@ -153,11 +153,40 @@ static boolean langexternalgetinfo (bigstring bs, hdlhashtable *htable, langvalu
 	
 
 boolean langexternalgettable (bigstring bs, hdlhashtable *htable) {
-	
-	langvaluecallback valueroutine;
-	
-	return (langexternalgetinfo (bs, htable, &valueroutine));
-	} /*langexternalgettable*/
+    
+    langvaluecallback valueroutine;
+    
+    if (langexternalgetinfo (bs, htable, &valueroutine))
+        return true;
+#if defined(FRONTIER_HEADLESS)
+    /* Headless fallback: look up external function processor under efptable */
+    {
+        hdlhashnode hnode = nil;
+        tyvaluerecord val;
+        pushhashtable(efptable);
+        if (hashtablelookupnode(efptable, bs, &hnode)) {
+            val = (**hnode).val;
+            if (tablevaltotable (val, htable, hnode)) {
+                pophashtable();
+                return true;
+            }
+            /* Direct headless coercion: extract table pointer from external */
+            {
+                hdlexternalvariable hv3 = (hdlexternalvariable) val.data.externalvalue;
+                if (hv3 && (**hv3).id == idtableprocessor) {
+                    *htable = (hdlhashtable) (**hv3).variabledata;
+                    if (*htable != nil) {
+                        pophashtable();
+                        return true;
+                    }
+                }
+            }
+        }
+        pophashtable();
+    }
+#endif
+    return false;
+    } /*langexternalgettable*/
 
 
 boolean langexternalvaltotable (tyvaluerecord val, hdlhashtable *htable, hdlhashnode hnode) {
@@ -2837,4 +2866,3 @@ boolean langexternalsymbolinserted (hdlhashtable htable, const bigstring bsname,
 
 	return true;
 	} /*langexternalsymbolinserted*/
-

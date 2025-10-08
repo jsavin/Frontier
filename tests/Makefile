@@ -133,7 +133,7 @@ USERTALK_OBJECT_TESTS = \
 	test_usertalk_runner
 
 # Buildable test executables on this branch
-RUN_BUILDABLE = core_tests db_format_tests runtime_tests parser_tests save_migration_tests file_portable_tests file_readline_tests
+RUN_BUILDABLE = core_tests db_format_tests runtime_tests parser_tests save_migration_tests file_portable_tests file_readline_tests file_verb_tests
 
 # Prebuilt or auxiliary test binaries that may be present
 RUN_PREBUILT = handle_tests test_64bit_direct test_migration_verification test_real_databases test_runner verify_migration_success
