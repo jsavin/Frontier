@@ -50,6 +50,7 @@ Change Log
 - Legacy Glossary: `planning/legacy_glossary.md`
 - Third-Party Dependencies: `planning/third_party_dependencies.md`
 - Future Enhancements: `planning/TODO_future_improvements.md`
+- Code Patterns Catalog: `planning/docs/code_patterns.md`
 
 ## Developer Quickstart
 - Headless/Tests: `planning/phase3/DEVELOPER_QUICKSTART_HEADLESS.md`
