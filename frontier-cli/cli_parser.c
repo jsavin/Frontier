@@ -1,0 +1,251 @@
+/*
+ * Frontier CLI - Command Line Interface for UserTalk Script Execution
+ * CLI Parser Implementation
+ * 
+ * Copyright (C) 1992-2004 UserLand Software, Inc.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <getopt.h>
+
+#include "cli_parser.h"
+#include "cli_utils.h"
+
+// Initialize CLI options with default values
+static void cli_init_options(cli_options_t* options) {
+    memset(options, 0, sizeof(cli_options_t));
+    options->port = CLI_DEFAULT_PORT;
+}
+
+// Validate CLI options for consistency
+static boolean cli_validate_options(const cli_options_t* options) {
+    // Check for conflicting modes
+    if (options->server_mode && options->websocket_mode) {
+        fprintf(stderr, "Error: Cannot use --server and --websocket simultaneously\n");
+        return false;
+    }
+    
+    // Check for required parameters
+    if (options->database_file != NULL) {
+        if (!options->migrate_database && options->query == NULL) {
+            fprintf(stderr, "Error: Database mode requires either --query or --migrate\n");
+            return false;
+        }
+    }
+    
+    // Check for script execution parameters
+    if (options->script_file == NULL && options->inline_script == NULL && 
+        options->database_file == NULL && !options->server_mode && !options->websocket_mode) {
+        fprintf(stderr, "Error: No execution mode specified\n");
+        return false;
+    }
+    
+    // Validate port number
+    if (options->port < 1 || options->port > 65535) {
+        fprintf(stderr, "Error: Invalid port number %d (must be 1-65535)\n", options->port);
+        return false;
+    }
+    
+    return true;
+}
+
+boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
+    int opt;
+    int option_index = 0;
+    
+    // Initialize options with defaults
+    cli_init_options(options);
+    
+    // Define long options
+    static struct option long_options[] = {
+        {"execute", required_argument, 0, 'e'},
+        {"database", required_argument, 0, 'd'},
+        {"query", required_argument, 0, 'q'},
+        {"migrate", no_argument, 0, 'm'},
+        {"server", no_argument, 0, 's'},
+        {"websocket", no_argument, 0, 'w'},
+        {"port", required_argument, 0, 'p'},
+        {"verbose", no_argument, 0, 'v'},
+        {"debug", no_argument, 0, 'D'},
+        {"help", no_argument, 0, 'h'},
+        {"version", no_argument, 0, 'V'},
+        {0, 0, 0, 0}
+    };
+    
+    // Parse command line arguments
+    while ((opt = getopt_long(argc, argv, "e:d:q:mswp:vDhV", long_options, &option_index)) != -1) {
+        switch (opt) {
+            case 'e':
+                // Inline script execution
+                if (options->inline_script != NULL) {
+                    fprintf(stderr, "Error: Multiple --execute options not allowed\n");
+                    return false;
+                }
+                if (strlen(optarg) > CLI_MAX_SCRIPT_LENGTH) {
+                    fprintf(stderr, "Error: Inline script too long (max %d characters)\n", CLI_MAX_SCRIPT_LENGTH);
+                    return false;
+                }
+                options->inline_script = strdup(optarg);
+                break;
+                
+            case 'd':
+                // Database file
+                if (options->database_file != NULL) {
+                    fprintf(stderr, "Error: Multiple --database options not allowed\n");
+                    return false;
+                }
+                if (strlen(optarg) > CLI_MAX_PATH_LENGTH) {
+                    fprintf(stderr, "Error: Database path too long (max %d characters)\n", CLI_MAX_PATH_LENGTH);
+                    return false;
+                }
+                options->database_file = strdup(optarg);
+                break;
+                
+            case 'q':
+                // Database query
+                if (options->query != NULL) {
+                    fprintf(stderr, "Error: Multiple --query options not allowed\n");
+                    return false;
+                }
+                if (strlen(optarg) > CLI_MAX_SCRIPT_LENGTH) {
+                    fprintf(stderr, "Error: Query too long (max %d characters)\n", CLI_MAX_SCRIPT_LENGTH);
+                    return false;
+                }
+                options->query = strdup(optarg);
+                break;
+                
+            case 'm':
+                // Migrate database
+                options->migrate_database = true;
+                break;
+                
+            case 's':
+                // Server mode
+                options->server_mode = true;
+                break;
+                
+            case 'w':
+                // WebSocket mode
+                options->websocket_mode = true;
+                break;
+                
+            case 'p':
+                // Port number
+                {
+                    char* endptr;
+                    long port = strtol(optarg, &endptr, 10);
+                    if (*endptr != '\0' || port < 1 || port > 65535) {
+                        fprintf(stderr, "Error: Invalid port number '%s'\n", optarg);
+                        return false;
+                    }
+                    options->port = (int)port;
+                }
+                break;
+                
+            case 'v':
+                // Verbose mode
+                options->verbose = true;
+                break;
+                
+            case 'D':
+                // Debug mode
+                options->debug = true;
+                break;
+                
+            case 'h':
+                // Help
+                options->show_help = true;
+                break;
+                
+            case 'V':
+                // Version
+                options->show_version = true;
+                break;
+                
+            case '?':
+                // Unknown option
+                return false;
+                
+            default:
+                fprintf(stderr, "Error: Unknown option\n");
+                return false;
+        }
+    }
+    
+    // Handle non-option arguments (script files)
+    if (optind < argc) {
+        if (options->script_file != NULL) {
+            fprintf(stderr, "Error: Multiple script files not allowed\n");
+            return false;
+        }
+        if (strlen(argv[optind]) > CLI_MAX_PATH_LENGTH) {
+            fprintf(stderr, "Error: Script file path too long (max %d characters)\n", CLI_MAX_PATH_LENGTH);
+            return false;
+        }
+        options->script_file = strdup(argv[optind]);
+        
+        // Check for additional arguments
+        if (optind + 1 < argc) {
+            fprintf(stderr, "Error: Unexpected argument '%s'\n", argv[optind + 1]);
+            return false;
+        }
+    }
+    
+    // Validate the parsed options
+    return cli_validate_options(options);
+}
+
+void cli_free_options(cli_options_t* options) {
+    if (options == NULL) {
+        return;
+    }
+    
+    // Free allocated strings
+    if (options->script_file != NULL) {
+        free(options->script_file);
+        options->script_file = NULL;
+    }
+    
+    if (options->inline_script != NULL) {
+        free(options->inline_script);
+        options->inline_script = NULL;
+    }
+    
+    if (options->database_file != NULL) {
+        free(options->database_file);
+        options->database_file = NULL;
+    }
+    
+    if (options->query != NULL) {
+        free(options->query);
+        options->query = NULL;
+    }
+}
+
+void cli_print_options(const cli_options_t* options) {
+    if (options == NULL) {
+        printf("CLI Options: NULL\n");
+        return;
+    }
+    
+    printf("CLI Options:\n");
+    printf("  Script File: %s\n", options->script_file ? options->script_file : "(none)");
+    printf("  Inline Script: %s\n", options->inline_script ? options->inline_script : "(none)");
+    printf("  Database File: %s\n", options->database_file ? options->database_file : "(none)");
+    printf("  Query: %s\n", options->query ? options->query : "(none)");
+    printf("  Port: %d\n", options->port);
+    printf("  Verbose: %s\n", options->verbose ? "yes" : "no");
+    printf("  Debug: %s\n", options->debug ? "yes" : "no");
+    printf("  Server Mode: %s\n", options->server_mode ? "yes" : "no");
+    printf("  WebSocket Mode: %s\n", options->websocket_mode ? "yes" : "no");
+    printf("  Migrate Database: %s\n", options->migrate_database ? "yes" : "no");
+    printf("  Show Help: %s\n", options->show_help ? "yes" : "no");
+    printf("  Show Version: %s\n", options->show_version ? "yes" : "no");
+}

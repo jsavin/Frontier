@@ -37,7 +37,8 @@
 //AR	#define dbversionnumber 5 /**VERSION used up to 6.2a10**/
 
 #ifdef SMART_DB_OPENING
-	#define dbversionnumber 6 /* 6.2a9 AR: added caching of shadow avail list in last block of database */
+	#define dbversionnumber 7 /* 64-bit format with legacy hash tables */
+	#define dbversionnumber_legacy 6 /* Legacy 32-bit format */
 	#define dbfirstversionwithcachedshadowavaillist 6 /* 6.2a11 AR */
 #else
 	#define dbversionnumber 5 /**VERSION used up to 6.2a10**/

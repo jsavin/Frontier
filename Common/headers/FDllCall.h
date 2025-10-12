@@ -28,6 +28,9 @@
 #ifndef FDLLCALL_H
 #define FDLLCALL_H
 
+#if defined(FRONTIER_HEADLESS)
+typedef struct FSSpec FSSpec;
+#endif
 
 typedef struct odb_ * odbRef;
 
@@ -283,4 +286,3 @@ typedef odbBool (xCALLBACK * tyDLLEXTROUTINE) (tydllparamblock * data, XDLLProcT
 
 
 #endif
-

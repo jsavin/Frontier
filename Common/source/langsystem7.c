@@ -25,24 +25,35 @@
 
 ******************************************************************************/
 
+#include "frontier.h"
+
+#if !defined(FRONTIER_HEADLESS)
 #include <Aliases.h>
 #include <AppleEvents.h>
 #include <AEPackObject.h>
 #include <AEObjects.h>
 #include <AERegistry.h>
 #include <Gestalt.h>
-#include <standard.h>
+#endif
+
+#include "standard.h"
 #include "memory.h"
 #include "strings.h"
+#include <string.h>
 #include "ops.h"
 #include "error.h"
 #include "file.h"
 #include "lang.h"
 #include "langinternal.h"
+#include "langwarnings.h"
 #include "langipc.h"
 #include "langsystem7.h"
 #include "tableinternal.h" /*for hdltablevariable; so we can avoid loading unloaded tables*/
 #include "tablestructure.h"
+
+#if defined(FRONTIER_HEADLESS)
+static unsigned char kHeadlessEllipsis[] = "\x03...";
+#endif
 
 
 	
@@ -190,7 +201,7 @@ static boolean langfindvalue (tyvaluerecord val, hdlhashtable *htable, bigstring
 //static tyvaluerecord vallookfor;
 
 
-static boolean getostypevalnamevisit (bigstring bsname, hdlhashnode hnode, tyvaluerecord val, tyvaluerecord *vallookfor) {
+static boolean getostypevalnamevisit (bigstring bsname, hdlhashnode hnode, tyvaluerecord val, ptrvoid userref) {
 	
 	/*
 	3.0.2b1 dmb: we now look in all loaded app tables for a match when 
@@ -204,6 +215,7 @@ static boolean getostypevalnamevisit (bigstring bsname, hdlhashnode hnode, tyval
 	hdltablevariable hvariable;
 	short errorcode;
 	boolean fl;
+	tyvaluerecord *vallookfor = (tyvaluerecord *) userref;
 	
 	if (!gettablevariable (val, &hvariable, &errorcode))
 		return (false);
@@ -342,16 +354,18 @@ static boolean getlimitedvaluestring (tyvaluerecord *val, short limit, char chqu
 	
 	pullstringvalue (v, bsvalue);
 	
-	limit:
-	
 	if (chquote != chnul)
 		langdeparsestring (bsvalue, chquote); /*add needed escape sequences*/
 	
 	if (stringlength (bsvalue) > limit) {
 		
 		setstringlength (bsvalue, limit - 1);
-		
-		pushchar ('É', bsvalue);
+
+#if defined(FRONTIER_HEADLESS)
+		pushstring (kHeadlessEllipsis, bsvalue);
+#else
+		pushchar ('ï¿½', bsvalue);
+#endif
 		}
 	
 	if (chquote != chnul) {
@@ -441,48 +455,100 @@ boolean getobjectmodeldisplaystring (tyvaluerecord *vitem, bigstring bsdisplay) 
 	} /*getobjectmodeldisplaystring*/
 
 
+#if defined(FRONTIER_HEADLESS)
+
+static boolean alias_operation_not_supported(void) {
+	langwarning_emit("alias.deprecated", "Alias/aliasHandle operations are not available in headless mode; use file paths instead.", false);
+	return false;
+}
+
+static boolean stringtoalias (tyvaluerecord *val) {
+	(void) val;
+	return alias_operation_not_supported();
+	} /*stringtoalias*/
+
+
+boolean filespectoalias (const ptrfilespec fs, boolean flminimal, AliasHandle *halias) {
+	(void) fs;
+	(void) flminimal;
+	(void) halias;
+	return alias_operation_not_supported();
+	} /*filespectoalias*/
+
+
+static boolean filespecvaltoalias (tyvaluerecord *val) {
+	(void) val;
+	return alias_operation_not_supported();
+	} /*filespecvaltoalias*/
+
+
+boolean aliastostring (Handle halias, bigstring bs) {
+	(void) halias;
+	setstringlength (bs, 0);
+	return alias_operation_not_supported();
+	} /*aliastostring*/
+
+
+boolean aliastofilespec (AliasHandle halias, ptrfilespec fs) {
+	(void) halias;
+	if (fs != NULL) {
+		(*fs).flags.flvolume = false;
+		memset(&(*fs).ref, 0, sizeof ((*fs).ref));
+		(*fs).name.length = 0;
+	}
+	return alias_operation_not_supported();
+	} /*aliastofilespec*/
+
+
+boolean coercetoalias (tyvaluerecord *v) {
+	(void) v;
+	return alias_operation_not_supported();
+	} /*coercetoalias*/
+
+#else /* !FRONTIER_HEADLESS */
+
 static boolean stringtoalias (tyvaluerecord *val) {
 	
 	/*
 	10/7/91 dmb: make sure we're actually passing a full path to the NewAlias routine
-	
+
 	7/2/92 dmb: don't call getfullfilepath; makes it impossible to create aliases of 
 	not-yet-existing files, or offline volumes
-	
+
 	7/23/92 dmb: OK, try to getfullfilepath, but with errors disabled
-	
+
 	2.1b2 dmb: try converting to a filespec first to ensure that partial path or 
 	drive number if processed properly. also, in the filespec case, the alias isn't 
 	minimal
 	*/
-	
+
 	register Handle htext;
 	bigstring bspath;
 	tyfilespec fs;
 	AliasHandle halias;
 	boolean flfolder;
 	OSErr errcode;
-	
+
 	if (!langcanusealiases ())
 		return (false);
-	
+
 	htext = (*val).data.stringvalue;
-	
+
 	texthandletostring (htext, bspath);
-	
+
 	if (pathtofilespec (bspath, &fs) && fileexists (&fs, &flfolder))
 		errcode = NewAlias (nil, &fs, &halias);
 	else
 		errcode = NewAliasMinimalFromFullPath (stringlength (bspath), bspath + 1, nil, nil, &halias);
-	
+
 	if (oserror (errcode))
 		return (false);
-	
+
 	if (!setheapvalue ((Handle) halias, aliasvaluetype, val))
 		return (false);
-	
+
 	releaseheaptmp ((Handle) htext);
-	
+
 	return (true);
 	} /*stringtoalias*/
 
@@ -491,28 +557,28 @@ boolean filespectoalias (const tyfilespec *fs, boolean flminimal, AliasHandle *h
 	
 	bigstring bs;
 	OSErr err;
-	
+
 	if (flminimal)
 		err = NewAliasMinimal (fs, halias);
 	else
 		err = NewAlias (nil, fs, halias);
-	
+
 	if (err == fnfErr) { /*alias manager isn't friendly enough to do anything for us here*/
 		
 		if (filespectopath (fs, bs))
 			err = NewAliasMinimalFromFullPath (stringlength (bs), bs + 1, nil, nil, halias);
 		}
-	
+
 	if (err == noErr)
 		return (true);
-	
+
 	if (langerrorenabled ()) {
 		
 		setoserrorparam ((ptrstring) (*fs).name);
 		
 		oserror (err);
 		}
-	
+
 	return (false);
 	} /*filespectoalias*/
 
@@ -522,22 +588,22 @@ static boolean filespecvaltoalias (tyvaluerecord *val) {
 	register FSSpecHandle hfs;
 	FSSpec fs;
 	AliasHandle halias;
-	
+
 	if (!langcanusealiases ())
 		return (false);
-	
+
 	hfs = (FSSpecHandle) (*val).data.filespecvalue;
-	
+
 	fs = **hfs;
-	
+
 	if (!filespectoalias (&fs, false, &halias))
 		return (false);
-	
+
 	if (!setheapvalue ((Handle) halias, aliasvaluetype, val))
 		return (false);
-	
+
 	releaseheaptmp ((Handle) hfs);
-	
+
 	return (true);
 	} /*filespecvaltoalias*/
 
@@ -546,27 +612,27 @@ boolean aliastostring (Handle halias, bigstring bs) {
 	
 	/*
 	10/4/91 dmb: if alias can't be resolved, just say what volume it's on.
-	
+
 	4/12/93 dmb: accept fnfErr result from ResolveAlias
-	
+
 	2.1b9 dmb: use FollowFinderAlias to avoid mounting volumes during 
 	alias resolution
-	
+
 	4.0b6 4/26/96 dmb: restored FollowFinderAlias code; must use if we get fnfErr.
 	*/
-	
+
 	register AliasHandle h = (AliasHandle) halias;
 	short flchanged;
 	FSSpec fs;
 	bigstring bsinfo;
 	AliasInfoType ix = asiAliasName;
 	OSErr err;
-	
+
 	if (!langcanusealiases ())
 		return (false);
-	
+
 	err = FollowFinderAlias (nil, h, false, &fs, (Boolean *) &flchanged);
-	
+
 	if ((err == noErr) /*|| (err == fnfErr)*/ ) {
 		
 		if (flchanged)
@@ -574,9 +640,9 @@ boolean aliastostring (Handle halias, bigstring bs) {
 		
 		return (filespectopath (&fs, bs));
 		}
-	
+
 	langgettypestring (aliasvaluetype, bs);
-	
+
 	/*
 	if (GetAliasInfo (h, asiVolumeName, bsinfo) == noErr) { //add the volume name
 		
@@ -589,9 +655,9 @@ boolean aliastostring (Handle halias, bigstring bs) {
 		copystring (bsaliasondisk, bs);
 		}
 	*/
-	
+
 	setemptystring (bs);
-	
+
 	// get each path element out of the alias
 	while (GetAliasInfo (h, ix, bsinfo) == noErr) {
 		
@@ -606,14 +672,14 @@ boolean aliastostring (Handle halias, bigstring bs) {
 		
 		++ix;
 		}
-	
+
 	// add the volume name
 	GetAliasInfo (h, asiVolumeName, bsinfo);
-	
+
 	pushchar (':', bsinfo);
-	
+
 	insertstring (bsinfo, bs);
-	
+
 	return (true);
 	} /*aliastostring*/
 
@@ -622,43 +688,43 @@ boolean aliastofilespec (AliasHandle halias, FSSpec *fs) {
 	
 	/*
 	2.1a6 dmb: ignore fnfErr
-	
+
 	2.1b2 dmb: on error, try to get as much info from the alias as possible, 
 	& just return false to caller
-	
+
 	2.1b9 dmb: use FollowFinderAlias to avoid mounting volumes during 
 	alias resolution
 	*/
-	
+
 	Boolean flchanged;
 	bigstring bs;
 	OSErr err;
-	
+
 	if (!langcanusealiases ())
 		return (false);
-	
+
 	err = FollowFinderAlias (nil, halias, false, fs, &flchanged);
-	
+
 	if ((err == noErr) || (err == fnfErr))
 		return (true);
-	
+
 	(*fs).parID = 0;
-	
+
 	(*fs).vRefNum = 0;
-	
+
 	if (GetAliasInfo (halias, asiVolumeName, bs) == noErr) /*try to get vol info*/
 		fileparsevolname (bs, &(*fs).vRefNum, nil);
-	
+
 	if (GetAliasInfo (halias, asiAliasName, (*fs).name) != noErr) /*try to set file name*/
 		langgetmiscstring (unknownstring, (*fs).name);
-	
+
 	if (langerrorenabled ()) {
 		
 		setoserrorparam ((*fs).name);
 		
 		oserror (err);
 		}
-	
+
 	return (false);
 	} /*aliastofilespec*/
 
@@ -670,7 +736,7 @@ boolean coercetoalias (tyvaluerecord *v) {
 	will just return false.  a specific error message might be better, but 
 	I don't expect this to come up much, if at all.
 	*/
-	
+
 	switch ((*v).valuetype) {
 		
 		case aliasvaluetype:
@@ -705,6 +771,10 @@ boolean coercetoalias (tyvaluerecord *v) {
 		} /*switch*/
 	} /*coercetoalias*/
 
+#endif /* FRONTIER_HEADLESS */
+
+
+#if !defined(FRONTIER_HEADLESS)
 
 boolean filespecaddvalue (tyvaluerecord *v1, tyvaluerecord *v2, tyvaluerecord *vreturned) {
 	
@@ -821,6 +891,8 @@ boolean filespecsubtractvalue (tyvaluerecord *v1, tyvaluerecord *v2, tyvaluereco
 	
 	return (setfilespecvalue (&fs, vreturned));
 	} /*filespecsubtractvalue*/
+
+#endif /* !FRONTIER_HEADLESS */
 
 
 static pascal OSErr langsystem7accessobject (
@@ -1171,13 +1243,21 @@ static boolean getobjspeckeydesc (AEDesc *objdata, OSType desiredkey, AEDesc *ke
 	if (*(OSType *)p == (*objdata).descriptorType) /*data begins with redundant type; skip it*/
 		p += 4;
 	
+#if defined(FRONTIER_HEADLESS)
+	memcpy (&ctitems, p, 4);
+#else
 	BlockMove (p, &ctitems, 4);
+#endif
 	
 	p += 8;
 	
 	while (--ctitems >= 0) {
 		
+#if defined(FRONTIER_HEADLESS)
+		memcpy (&objspecitem, p, sizeof (tyobjspecitem));
+#else
 		BlockMove (p, &objspecitem, sizeof (tyobjspecitem));
+#endif
 		
 		p += sizeof (objspecitem);
 		
@@ -1583,7 +1663,11 @@ static boolean objtostring (AEDesc *objdesc, boolean fldisposeobj, DescType exam
 		
 		if (!insertstring (bsitem, bsobj)) {
 			
-			insertchar ('É', bsobj);
+#if defined(FRONTIER_HEADLESS)
+			insertstring (kHeadlessEllipsis, bsobj);
+#else
+			insertchar ('ï¿½', bsobj);
+#endif
 			
 			break;
 			}
@@ -2644,9 +2728,3 @@ boolean isobjspectree (hdltreenode htree) {
 		h = (**h).param1;
 		}
 	} /*isobjspectree*/
-
-
-
-
-
-

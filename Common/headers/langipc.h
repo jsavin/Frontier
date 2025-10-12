@@ -35,9 +35,15 @@
 #endif
 
 #ifndef __APPLEEVENTS__
-
-	#include <AppleEvents.h>
-
+#if defined(FRONTIER_PORTABLE)
+    typedef void* AppleEvent;
+    typedef void* AEEventID;
+    typedef void* AEDesc;
+#elif defined(FRONTIER_HEADLESS)
+    /* Types declared in headless_stubs.h */
+#else
+    #include <AppleEvents.h>
+#endif
 #endif
 
 /*types*/
@@ -164,7 +170,4 @@ extern boolean langipcsymbolinserted (hdlhashtable, const bigstring);
 extern boolean langipcsymboldeleted (hdlhashtable, const bigstring);
 
 extern boolean langipcmenuinit (void);
-
-
-
 

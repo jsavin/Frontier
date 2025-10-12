@@ -43,6 +43,43 @@
 #include "WinSockNetEvents.h"
 #include "sysshellcall.h" /* 2006-03-09 aradke: unixshellcall moved from CallMachOFramework.h */
 #include "byteorder.h"	/* 2006-04-16 aradke: swap byte-order in loadfunctionprocessor */
+#include <stdlib.h>
+#ifdef FRONTIER_HEADLESS
+#include <stdio.h>
+#endif
+
+#ifdef FRONTIER_HEADLESS
+static int headless_should_log(void) {
+    static int inited = 0;
+    static int enabled = 0;
+    if (!inited) {
+        const char *e = getenv("FRONTIER_HEADLESS_LOG");
+        enabled = (e && *e) ? 1 : 0;
+        inited = 1;
+    }
+    return enabled;
+}
+#endif
+
+/* Typed headless no-op callbacks to avoid UB from casted function pointers */
+static boolean cb_noop_void(void) { return true; }
+static boolean cb_true_bool(boolean a) { (void)a; return true; }
+static boolean cb_false_bool(boolean a) { (void)a; return false; }
+static boolean cb_noop_treenode(hdltreenode n) { (void)n; return true; }
+static boolean cb_noop_treenodes(hdltreenode a, hdltreenode b) { (void)a; (void)b; return true; }
+static boolean cb_noop_address(hdlhashtable ht, const bigstring bs) { (void)ht; (void)bs; return true; }
+static boolean cb_noop_symbolinserted(hdlhashtable ht, const bigstring bs, hdlhashnode hn) { (void)ht; (void)bs; (void)hn; return true; }
+static boolean cb_noop_tablenode(hdlhashtable ht, hdlhashnode hn) { (void)ht; (void)hn; return true; }
+static boolean cb_noop_symbolchanged(hdlhashtable ht, const bigstring bs, hdlhashnode hn, boolean fl) { (void)ht; (void)bs; (void)hn; (void)fl; return true; }
+static short   cb_noop_compare(hdlhashtable ht, hdlhashnode h1, hdlhashnode h2) { (void)ht; (void)h1; (void)h2; return 0; }
+static boolean cb_noop_hashnode_treenode(hdlhashnode hn, hdltreenode* p) { (void)hn; (void)p; return true; }
+static boolean cb_noop_tableref(hdlhashtable* pht) { (void)pht; return true; }
+static boolean cb_noop_table(hdlhashtable ht) { (void)ht; return true; }
+static boolean cb_noop_sourcecode(hdlhashtable ht, hdlhashnode hn, bigstring bs) { (void)ht; (void)hn; (void)bs; return true; }
+static boolean cb_noop_errmsg(bigstring bs, ptrvoid refcon) { (void)bs; (void)refcon; return true; }
+static boolean cb_noop_verb(hdltreenode n, tyvaluerecord* v) { (void)n; (void)v; return true; }
+static boolean cb_false_short(UInt16 x) { (void)x; return false; }
+static boolean cb_false_event(EventRecord* e) { (void)e; return false; }
 
 
 #define str_isPike				BIGSTRING ("\x06" "isPike")
@@ -70,7 +107,7 @@ void initsegment (void) {
 	} /*initsegment*/
 
 
-static boolean newfunctionprocessor (bigstring bsname, langvaluecallback valuecallback, boolean flwindow, hdlhashtable *htable) {
+boolean newfunctionprocessor (bigstring bsname, langvaluecallback valuecallback, boolean flwindow, hdlhashtable *htable) {
 	
 	/*
 	each of the external function processors register with the system by calling
@@ -221,6 +258,43 @@ boolean loadfunctionprocessor (short id, langvaluecallback valuecallback) {
 	} /*loadfunctionprocessor*/
 
 
+#ifdef FRONTIER_HEADLESS
+static boolean initenvironment (hdlhashtable ht) {
+
+	/*
+	 * Headless/runtime-test build: populate the environment table with
+	 * conservative defaults without touching platform APIs or external
+	 * processes. The full application replaces these values at startup.
+	 */
+
+	bigstring bs;
+
+	langassignbooleanvalue (ht, str_isMac, false);
+	langassignbooleanvalue (ht, str_isWindows, false);
+	langassignbooleanvalue (ht, str_isMacOsClassic, false);
+	langassignbooleanvalue (ht, str_isServer, false);
+	langassignbooleanvalue (ht, str_isCarbon, false);
+	langassignbooleanvalue (ht, str_isPike, false);
+	langassignbooleanvalue (ht, str_isRadio, false);
+	langassignbooleanvalue (ht, str_isOpmlEditor, false);
+	langassignbooleanvalue (ht, str_isFrontier, true);
+
+	langassignlongvalue (ht, str_osMajorVersion, 0);
+	langassignlongvalue (ht, str_osMinorVersion, 0);
+	langassignlongvalue (ht, str_osPointVersion, 0);
+
+	copyctopstring ("0.0.0", bs);
+	langassignstringvalue (ht, str_osVersionString, bs);
+	langassignstringvalue (ht, str_osFullNameForDisplay, bs);
+	langassignstringvalue (ht, str_osBuildNumber, bs);
+	langassignstringvalue (ht, str_osFlavor, bs);
+	langassignstringvalue (ht, str_winServicePackNumber, bs);
+
+	langassignlongvalue (ht, str_maxTcpConnections, 0);
+
+	return (true);
+}
+#else
 static boolean initenvironment ( hdlhashtable ht ) {
 
 	//
@@ -237,7 +311,6 @@ static boolean initenvironment ( hdlhashtable ht ) {
 	
 	bigstring bsos, bsversion;
 	boolean isServer;
-	
 	
 		Handle hcommand, hreturn;
 		bigstring bs;
@@ -346,11 +419,11 @@ static boolean initenvironment ( hdlhashtable ht ) {
 	langassignlongvalue ( ht, str_maxTcpConnections, maxconnections ); // 7.0b37 PBS: max TCP connections
 	
 	langassignstringvalue ( ht, str_osFullNameForDisplay, bsos );
-	
+
 	langassignstringvalue ( ht, str_osVersionString, bsversion );
-	
+
 	#ifdef PIKE
-	
+
 		#ifndef OPMLEDITOR
 		
 			langassignbooleanvalue (ht, str_isPike, true);
@@ -368,7 +441,7 @@ static boolean initenvironment ( hdlhashtable ht ) {
 		#endif // OPMLEDITOR
 		
 	#else //!PIKE
-	
+
 		langassignbooleanvalue (ht, str_isPike, false);
 		langassignbooleanvalue (ht, str_isRadio, false); /*7.0b37 PBS: system.environment.isRadio*/
 		langassignbooleanvalue (ht, str_isOpmlEditor, false); /*2005-04-06 dluebbert: system.environment.isOPML*/
@@ -378,7 +451,9 @@ static boolean initenvironment ( hdlhashtable ht ) {
 
 	return ( true );
 		
-	} // initenvironment
+}
+#endif /* FRONTIER_HEADLESS */
+
 
 
 static boolean initCharsetsTable (hdlhashtable cSetsTable)
@@ -391,17 +466,23 @@ static boolean initCharsetsTable (hdlhashtable cSetsTable)
 		return (true);  // don't kill the whole startup
 	}
 	
-	TextEncoding enc, encOut;
-	TextEncoding availEncodings[ ct ];
+    TextEncoding enc, encOut;
+    if (ct == 0) {
+        return (true);
+    }
+    TextEncoding* availEncodings = (TextEncoding*) malloc(sizeof(TextEncoding) * ct);
+    if (availEncodings == NULL) {
+        return (true);
+    }
 	bigstring ianaName, displayName;
 	unsigned long lenDisplayName;
 	RegionCode reg;
 	
-	err = TECGetAvailableTextEncodings ( availEncodings, ct, &actual_ct );
-	if ( err != noErr )
-		return (true);  // we don't want to kill the whole startup here
+    err = TECGetAvailableTextEncodings ( availEncodings, ct, &actual_ct );
+    if ( err != noErr )
+    { free(availEncodings); return (true); }  // we don't want to kill the whole startup here
 	
-	for ( i = 0; i < actual_ct; i++ ) {
+    for ( i = 0; i < actual_ct; i++ ) {
 		enc = availEncodings[ i ];
 		
 		/*
@@ -450,10 +531,17 @@ boolean inittablestructure (void) {
 	
 	hdlhashtable htable; 
 	
-	if (!newhashtable (&htable)) /*this is where everything starts*/
-		return (false);
-	
-	pushhashtable (htable); /*set lang.c global*/
+    if (!newhashtable (&htable)) /*this is where everything starts*/
+        return (false);
+
+    /*
+     * Headless/runtime context: establish the process-global root table.
+     * The classic app path sets this during database/file open, but our
+     * headless test harness needs a usable root for scope chains.
+     */
+    roottable = htable;
+
+    pushhashtable (htable); /*set lang.c global*/
 	
 	// do the compiler table
 	
@@ -515,7 +603,7 @@ static boolean langaddnilconst (bigstring bs) {
 	
 	initvalue (&val, novaluetype);
 	
-	return (hashinsertcstring (bs, &val));
+	return (hashinsert (bs, val));
 	} /*langaddnilconst*/
 
 
@@ -525,7 +613,7 @@ static boolean langaddlongconst (bigstring bs, long x) {
 	
 	setlongvalue (x, &val);
 	
-	return (hashinsertcstring (bs, &val));
+	return (hashinsert (bs, val));
 	} /*langaddlongconst*/
 
 
@@ -535,7 +623,7 @@ static boolean langaddstringconst (bigstring bs, bigstring x) {
 	
 	setstringvalue (x, &val);
 	
-	if (!hashinsertcstring (bs, &val))
+	if (!hashinsert (bs, val))
 		return (false);
 	
 	exemptfromtmpstack (&val);
@@ -552,7 +640,7 @@ static boolean langadddirectionconst (bigstring bs, tydirection x) {
 	
 	setdirectionvalue (x, &val);
 	
-	return (hashinsertcstring (bs, &val));
+	return (hashinsert (bs, val));
 	} /*langadddirectionconst*/
 
 
@@ -572,19 +660,40 @@ static boolean langaddtypeconst (bigstring bs, tyvaluetype x) {
 	
 	setostypevalue (langgettypeid (x), &val);
 	
-	return (hashinsert (bs, val));
-	} /*langaddtypeconst*/
+    return (hashinsert (bs, val));
+    } /*langaddtypeconst*/
+
+/* C-string helpers: safely convert to bigstring on stack for constant insertion */
+static boolean add_nil_c (const char *name) {
+    bigstring _bs; copyctopstring(name, _bs); return langaddnilconst(_bs);
+}
+static boolean add_long_c (const char *name, long x) {
+    bigstring _bs; copyctopstring(name, _bs); return langaddlongconst(_bs, x);
+}
+static boolean add_dir_c (const char *name, tydirection d) {
+    bigstring _bs; copyctopstring(name, _bs); return langadddirectionconst(_bs, d);
+}
+static boolean add_bool_c (const char *name, boolean b) {
+    bigstring _bs; copyctopstring(name, _bs); return langaddbooleanconst(_bs, b);
+}
+static boolean add_type_c (const char *name, tyvaluetype t) {
+    bigstring _bs; copyctopstring(name, _bs); return langaddtypeconst(_bs, t);
+}
+static boolean add_string_const_c (const char *name, bigstring val) {
+    bigstring _bs; copyctopstring(name, _bs); return langaddstringconst(_bs, val);
+}
 
 
 #define add(x,y) if (!langaddcstringkeyword ((ptrstring) x, y)) return (false)
 
-#define addnil(x) if (!langaddnilconst ((ptrstring) x)) return (false)
+/* Avoid writing into string literals: use cstring wrappers */
+#define addnil(x) if (!add_nil_c (x)) return (false)
 
-#define addlong(x,y) if (!langaddlongconst ((ptrstring) x, y)) return (false)
+#define addlong(x,y) if (!add_long_c (x, y)) return (false)
 
 #define addint(x,y) if (!langaddintconst ((ptrstring) x, y)) return (false)
 
-#define adddirection(x,y) if (!langadddirectionconst ((ptrstring) x, y)) return (false)
+#define adddirection(x,y) if (!add_dir_c (x, y)) return (false)
 
 #define addboolean(x,y) if (!langaddbooleanconst ((ptrstring) x, y)) return (false)
 
@@ -604,41 +713,55 @@ static boolean langinitconsttable (void) {
 	
 	tyvaluetype type;
 	bigstring bs;
+
+#ifdef FRONTIER_HEADLESS
+	/* Headless: initialize a minimal but useful constants table. */
+#endif
 	
-	if (!tablenewsystemtable (langtable, (ptrstring) "\x09" "constants", &hconsttable))
-		return (false);
-		
-	pushhashtable (hconsttable); /*converted to constants by the scanner*/
-	
-	addnil ("nil");
-	
-	addlong ("infinity", longinfinity);
-	
-	adddirection ("up", up);
-	
-	adddirection ("down", down);
-	
-	adddirection ("left", left);
-	
-	adddirection ("right", right);
-	
-	adddirection ("flatup", flatup);
-	
-	adddirection ("flatdown", flatdown);
-	
-	adddirection ("nodirection", nodirection);
-	
-	adddirection ("pageup", pageup);
-	
-	adddirection ("pagedown", pagedown);
-	
-	adddirection ("pageleft", pageleft);
-	
-	adddirection ("pageright", pageright);
-	
-	addboolean (bstrue, (boolean) true);
-	
-	addboolean (bsfalse, (boolean) false);
+#ifdef FRONTIER_HEADLESS
+    if (headless_should_log()) fprintf(stderr, "[ls] langinitconsttable: start\n");
+#endif
+    if (!tablenewsystemtable (langtable, (ptrstring) "\x09" "constants", &hconsttable))
+        return (false);
+
+    pushhashtable (hconsttable); /*converted to constants by the scanner*/
+
+#ifdef FRONTIER_HEADLESS
+    if (headless_should_log()) fprintf(stderr, "[ls] constants: adding nil/booleans/directions\n");
+#endif
+    addnil ("nil");
+
+    addlong ("infinity", longinfinity);
+
+    adddirection ("up", up);
+
+    adddirection ("down", down);
+
+    adddirection ("left", left);
+
+    adddirection ("right", right);
+
+    adddirection ("flatup", flatup);
+
+    adddirection ("flatdown", flatdown);
+
+    adddirection ("nodirection", nodirection);
+
+    adddirection ("pageup", pageup);
+
+    adddirection ("pagedown", pagedown);
+
+    adddirection ("pageleft", pageleft);
+
+    adddirection ("pageright", pageright);
+
+    addboolean (bstrue, (boolean) true);
+
+    addboolean (bsfalse, (boolean) false);
+
+#ifdef FRONTIER_HEADLESS
+    if (headless_should_log()) fprintf(stderr, "[ls] constants: expanding full type constants\n");
+#endif
 	
 	for (type = novaluetype; type < ctvaluetypes; type++)
 		
@@ -666,32 +789,36 @@ static boolean langinitconsttable (void) {
 				addtype (bs, type);
 				
 				break;
-			}
+    }
+    addtype (BIGSTRING ("\x09shortType"), intvaluetype); /*special case to match coercion verb*/
 	
-	addtype (BIGSTRING ("\x09shortType"), intvaluetype); /*special case to match coercion verb*/
+    add_string_const_c ("machinePPC", machinePPC);
+    add_string_const_c ("machine68K", machine68K);
+    add_string_const_c ("machineX86", machinex86);
 	
-	addstring ("machinePPC", machinePPC);
-	addstring ("machine68K", machine68K);
-	addstring ("machineX86", machinex86);
-	
-	addstring ("osMacOS", osMacOS);
+    add_string_const_c ("osMacOS", osMacOS);
 	//Code change by Timothy Paustian Tuesday, July 11, 2000 9:41:39 PM
 	//We add a detection for the carbon environment
-	addstring("osMacCn", osCarbon);
-	addstring ("osWin95", osWin95);
-	addstring ("osWinNT", osWinNT);
+    add_string_const_c ("osMacCn", osCarbon);
+    add_string_const_c ("osWin95", osWin95);
+    add_string_const_c ("osWinNT", osWinNT);
 	
 	pophashtable ();
-	
-	return (true);
-	} /*langinitconsttable*/
+    
+    return (true);
+    } /*langinitconsttable*/
 
 
 static boolean langinitbuiltintable (void) {
 	
 	if (!tablenewsystemtable (langtable, (ptrstring) "\x08" "builtins", &hbuiltinfunctions))
 		return (false);
-	
+
+#ifdef FRONTIER_HEADLESS
+    if (headless_should_log()) fprintf(stderr, "[ls] langinitbuiltintable: headless noop\n");
+    return (true);
+#else
+
 	pushhashtable (hbuiltinfunctions); /*converted to function ops by the parser*/
 	
 	add ("appleevent", appleeventfunc);
@@ -733,6 +860,7 @@ static boolean langinitbuiltintable (void) {
 	pophashtable ();
 	
 	return (true);
+#endif /* FRONTIER_HEADLESS */
 	} /*langinitbuiltintable*/
 
 
@@ -744,72 +872,82 @@ static boolean langinitkeywordtable (void) {
 	
 	if (!tablenewsystemtable (langtable, (ptrstring) "\x08" "keywords", &hkeywordtable))
 		return (false);
+
+
+#ifdef FRONTIER_HEADLESS
+    if (headless_should_log()) fprintf(stderr, "[ls] langinitkeywordtable: installing keywords (headless)\n");
+    /* Avoid writing into string literals; build a C string in bigstring buffer. */
+    #define ADD_KW(name, tok) do { bigstring _bs; memset(_bs, 0, sizeof(_bs)); strncpy((char*)_bs, (name), lenbigstring); if (!langaddcstringkeyword(_bs, (tok))) return (false); } while(0)
+#else
+    #define ADD_KW(name, tok) add((name), (tok))
+#endif
+
+    pushhashtable (hkeywordtable); /*converted to tokens by the scanner*/
 	
-	pushhashtable (hkeywordtable); /*converted to tokens by the scanner*/
+    ADD_KW ("equals", equalsfunc);
 	
-	add ("equals", equalsfunc);
+    ADD_KW ("notequals", notequalsfunc);
 	
-	add ("notequals", notequalsfunc);
+    ADD_KW ("greaterthan", greaterthanfunc);
 	
-	add ("greaterthan", greaterthanfunc);
+    ADD_KW ("lessthan", lessthanfunc);
 	
-	add ("lessthan", lessthanfunc);
+    ADD_KW ("not", notfunc);
 	
-	add ("not", notfunc);
+    ADD_KW ("and", andfunc);
 	
-	add ("and", andfunc);
+    ADD_KW ("or", orfunc);
 	
-	add ("or", orfunc);
+    ADD_KW ("beginswith", beginswithfunc);
 	
-	add ("beginswith", beginswithfunc);
+    ADD_KW ("endswith", endswithfunc);
 	
-	add ("endswith", endswithfunc);
+    ADD_KW ("contains", containsfunc);
 	
-	add ("contains", containsfunc);
+    ADD_KW ("loop", loopfunc);
 	
-	add ("loop", loopfunc);
+    ADD_KW ("fileloop", fileloopfunc);
 	
-	add ("fileloop", fileloopfunc);
+    ADD_KW ("while", whilefunc);
 	
-	add ("while", whilefunc);
+    ADD_KW ("in", infunc);
 	
-	add ("in", infunc);
+    ADD_KW ("break", breakfunc);
 	
-	add ("break", breakfunc);
+    ADD_KW ("continue", continuefunc);
 	
-	add ("continue", continuefunc);
+    ADD_KW ("return", returnfunc);
 	
-	add ("return", returnfunc);
+    ADD_KW ("if", iffunc);
 	
-	add ("if", iffunc);
+    ADD_KW ("then", thenfunc);
 	
-	add ("then", thenfunc);
+    ADD_KW ("else", elsefunc);
 	
-	add ("else", elsefunc);
+    ADD_KW ("bundle", bundlefunc);
 	
-	add ("bundle", bundlefunc);
+    ADD_KW ("local", localfunc);
 	
-	add ("local", localfunc);
+    ADD_KW ("on", onfunc);
 	
-	add ("on", onfunc);
+    ADD_KW ("case", casefunc);
 	
-	add ("case", casefunc);
+    ADD_KW ("kernel", kernelfunc);
 	
-	add ("kernel", kernelfunc);
+    ADD_KW ("for", forfunc);
 	
-	add ("for", forfunc);
+    ADD_KW ("to", tofunc);
 	
-	add ("to", tofunc);
+    ADD_KW ("downto", downtofunc);
 	
-	add ("downto", downtofunc);
+    ADD_KW ("with", withfunc);
 	
-	add ("with", withfunc);
-	
-	add ("try", tryfunc);
-	
-	pophashtable ();
-	
-	return (true);
+    ADD_KW ("try", tryfunc);
+    
+    pophashtable ();
+    
+    #undef ADD_KW
+    return (true);
 	} /*langinitkeywordtable*/
 
 
@@ -829,32 +967,32 @@ static boolean langinstallresources (void) {
 
 
 boolean langinitverbs (void) {
-	
-	if (!langinstallresources ())
-		return (false);
-	
-	return (langinitbuiltins ());
-	} /*langinitverbs*/
+
+#ifdef FRONTIER_HEADLESS
+    if (headless_should_log()) fprintf(stderr, "[ls] langinitverbs: install start\n");
+#endif
+    if (!langinstallresources ())
+        return (false);
+
+#ifdef FRONTIER_HEADLESS
+    if (headless_should_log()) fprintf(stderr, "[ls] langinitverbs: install ok, builtins start\n");
+#endif
+    return (langinitbuiltins ());
+    } /*langinitverbs*/
 
 boolean initlang (void) {
 
-	shellpushmemoryhook (&hashflushcache);
-	
-	langcallbacks.symbolchangedcallback = (langsymbolchangedcallback) &truenoop; 
-	
-	langcallbacks.symbolunlinkingcallback = (langtablenodecallback) &truenoop;
-	
-	langcallbacks.symboldeletedcallback = (langaddresscallback) &truenoop;
-	
-	langcallbacks.symbolinsertedcallback = (langsymbolinsertedcallback) &truenoop;
-	
-	langcallbacks.comparenodescallback = (langcomparenodescallback) &falsenoop;
-		
-	langcallbacks.debuggercallback = (langtreenodecallback) &truenoop;
-	
-	langcallbacks.debugerrormessagecallback = (langerrormessagecallback) &truenoop;
-	
-	langcallbacks.scriptkilledcallback = (langbooleancallback) &falsenoop;
+    shellpushmemoryhook (&hashflushcache);
+    
+    /* Assign typed no-op callbacks to avoid UB from mismatched function pointers */
+    langcallbacks.symbolchangedcallback      = &cb_noop_symbolchanged;
+    langcallbacks.symbolunlinkingcallback   = &cb_noop_tablenode;
+    langcallbacks.symboldeletedcallback     = &cb_noop_address;
+    langcallbacks.symbolinsertedcallback    = &cb_noop_symbolinserted;
+    langcallbacks.comparenodescallback      = &cb_noop_compare;
+    langcallbacks.debuggercallback          = &cb_noop_treenode;
+    langcallbacks.debugerrormessagecallback = &cb_noop_errmsg;
+    langcallbacks.scriptkilledcallback      = &cb_false_bool;
 	
 	newclearhandle (longsizeof (tyerrorstack), (Handle *) &langcallbacks.scripterrorstack);
 	
@@ -868,42 +1006,31 @@ boolean initlang (void) {
 	langcallbacks.scripterrorrefcon = (long) 0;
 	*/
 	
-	langcallbacks.scriptcompilecallback = (langhashnodetreenodecallback) &falsenoop;
-	
-	langcallbacks.backgroundtaskcallback = (langbooleancallback) &truenoop;
+    langcallbacks.scriptcompilecallback     = &cb_noop_hashnode_treenode;
+    langcallbacks.backgroundtaskcallback    = &cb_true_bool;
 	
 	langcallbacks.pushtablecallback = (langtablerefcallback) &langdefaultpushtable;
 	
 	langcallbacks.poptablecallback = (langtablecallback) &langdefaultpoptable;
 	
-	langcallbacks.pushsourcecodecallback = (langsourcecodecallback) &truenoop;
-	
-	langcallbacks.popsourcecodecallback = (langvoidcallback) &truenoop;
-	
-	langcallbacks.saveglobalscallback = (langvoidcallback) &truenoop;
-	
-	langcallbacks.restoreglobalscallback = (langvoidcallback) &truenoop;
-	
-	langcallbacks.errormessagecallback = (langerrormessagecallback) &truenoop;
+    langcallbacks.pushsourcecodecallback    = &cb_noop_sourcecode;
+    langcallbacks.popsourcecodecallback     = &cb_noop_void;
+    langcallbacks.saveglobalscallback       = &cb_noop_void;
+    langcallbacks.restoreglobalscallback    = &cb_noop_void;
+    langcallbacks.errormessagecallback      = &cb_noop_errmsg;
 	
 	langcallbacks.errormessagerefcon = nil;
 	
-	langcallbacks.clearerrorcallback = (langvoidcallback) &truenoop;
+    langcallbacks.clearerrorcallback        = &cb_noop_void;
+    langcallbacks.msgverbcallback           = &cb_noop_verb;
+    langcallbacks.codereplacedcallback      = &cb_noop_treenodes;
 	
-	langcallbacks.msgverbcallback = (langverbcallback) &truenoop;
-	
-	langcallbacks.codereplacedcallback = (langtreenodescallback) &truenoop;
-	
-	langcallbacks.idvaluecallback = nil;
-	
-	langcallbacks.partialeventloopcallback = (langshortcallback) &falsenoop;
-	
-	langcallbacks.processeventcallback = (langeventcallback) &falsenoop; /*4.1b13 dmb - new*/
+    langcallbacks.idvaluecallback           = nil;
+    langcallbacks.partialeventloopcallback  = &cb_false_short;
+    langcallbacks.processeventcallback      = &cb_false_event; /*4.1b13 dmb - new*/
 	
 	if (!newclearhandle (longsizeof (tytablestack), (Handle *) &hashtablestack))
 		return (false);
 	
 	return (true);
 	} /*initlang*/
-
-

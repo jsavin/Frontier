@@ -29,10 +29,14 @@
 #define memoryinclude /*so other includes can tell if we've been loaded*/
 
 
+#ifdef FRONTIER_PORTABLE
+#include "../portable/memory_portable.h"
+#else
 #ifndef shelltypesinclude
 
-	#include "shelltypes.h"
+    #include "shelltypes.h"
 
+#endif
 #endif
 
 

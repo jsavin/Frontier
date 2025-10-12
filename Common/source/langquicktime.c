@@ -69,14 +69,15 @@ typedef enum tyquicktimeverbtoken { /*verbs that are processed by langquicktime.
 static boolean quicktimeisplayingverb (hdltreenode hp1, tyvaluerecord *v) {
 	
 	/*
-	7.0b4 PBS: Is the QuickTime Player window currently playing a movie?
+	QuickTime video playback is no longer supported in this version.
 	*/
 	
 	if (!langcheckparamcount (hp1, 0))
 		return (false);
 			
-	(*v).data.flvalue = playerisplaying ();
-			
+	// QuickTime is no longer supported - always return false
+	(*v).data.flvalue = false;
+	
 	return (true);
 	} /*quicktimeisplayingverb*/
 
@@ -85,7 +86,7 @@ static boolean quicktimeopenverb (hdltreenode hp1, tyvaluerecord *v) {
 #pragma unused(v)
 
 	/*
-	7.0b4 PBS: Open a movie in the QuickTime player window.
+	QuickTime video playback is no longer supported in this version.
 	*/
 	
 	tyfilespec fs;
@@ -95,44 +96,42 @@ static boolean quicktimeopenverb (hdltreenode hp1, tyvaluerecord *v) {
 	if (!getfilespecvalue (hp1, 1, &fs))
 		return (false);
 
-	if (!playeropenmovieinwindow (&fs)) {
-		
-		langerrormessage (BIGSTRING ("\x31" "Can't open the file because of a QuickTime error."));
-		
-		return (false);
-		} /*if*/
+	// QuickTime is no longer supported
+	langerrormessage (BIGSTRING ("\x3A" "Can't open the file because QuickTime is no longer supported."));
 	
-	return (true);		
+	return (false);
 	} /*quicktimeopenverb*/
 
 
 static boolean quicktimeplayverb (hdltreenode hp1, tyvaluerecord *v) {
 	
 	/*
-	7.0b4 PBS: play the movie in the QuickTime Player window.
+	QuickTime video playback is no longer supported in this version.
 	*/
 	
 	if (!langcheckparamcount (hp1, 0))
 		return (false);
 			
-	(*v).data.flvalue = playerplaymovie ();
-			
-	return (true);
+	// QuickTime is no longer supported
+	langerrormessage (BIGSTRING ("\x3A" "Can't play the movie because QuickTime is no longer supported."));
+	
+	return (false);
 	} /*quicktimeplayverb*/
 	
 
 static boolean quicktimestopverb (hdltreenode hp1, tyvaluerecord *v) {
 	
 	/*
-	7.0b4 PBS: stop the movie in the QuickTime Player window.
+	QuickTime video playback is no longer supported in this version.
 	*/
 	
 	if (!langcheckparamcount (hp1, 0))
 		return (false);
 			
-	(*v).data.flvalue = playerstopmovie ();
-			
-	return (true);
+	// QuickTime is no longer supported
+	langerrormessage (BIGSTRING ("\x3A" "Can't stop the movie because QuickTime is no longer supported."));
+	
+	return (false);
 	} /*quicktimestopverb*/
 
 

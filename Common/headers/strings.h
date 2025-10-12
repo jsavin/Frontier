@@ -158,6 +158,13 @@ extern void copyptocstring (const bigstring, char *);
 
 extern void copyctopstring (const char *, bigstring);
 
+/*
+ Utility helpers for bridging between C strings and Frontier bigstrings (Pascal).
+ Prefer these over casting C string literals to ptrstring.
+*/
+void bs_from_c(const char *cstr, bigstring out);
+void c_from_bs(const bigstring in, char *out, unsigned long out_sz);
+
 
 
 #define copyrezstring(a,b) copystring(a,b)
@@ -259,4 +266,3 @@ extern boolean convertCharset( Handle, Handle, bigstring, bigstring );
 extern boolean isTextEncodingAvailable( bigstring ); /* 2006-04-23 smd */
 
 #endif
-

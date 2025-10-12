@@ -400,102 +400,33 @@ pascal Boolean playermoviecontrollereventfilter (MovieController mc, short actio
 boolean playeropenmovieinwindow ( ptrfilespec f ) {
 	
 	//
-	// 2006-06-23 creedon: FSRef-zed
-	//
-	// 7.0b4 PBS: open a movie in the QuickTime Player window and display it.  If the window isn't already open, open it.
+	// QuickTime video playback is no longer supported in this version.
 	//
 	
-	short movieresref;
-	OSErr err;
-	hdlwindowinfo hinfo;
-	FSSpec fs;
-	
-	if (macgetfsspec (f, &fs) != noErr)
-		return (false);
-	
-	if (!findplayerwindow (&hinfo))
-		
-		playeropencommand (); // If the Player window doesn't exist, create a new one.
-		
-	getwindowinfo (playerwindow, &playerwindowinfo);
-		
-	playerdisposecurrentmovie (); // make sure the current movie has been disposed
-	
-	SetGWorld (GetWindowPort (playerwindow), nil);
-	
-	err = OpenMovieFile ( &fs, &movieresref, fsRdPerm);
-	
-	if (err != noErr)
-		
-		return (false);
-	
-	NewMovieFromFile (&currentmovie, movieresref, nil, nil, newMovieActive, nil);
-			
-	CloseMovieFile (movieresref);
-	
-	SetMovieGWorld (currentmovie, GetWindowPort (playerwindow), nil);
-	
-	GetMovieBox (currentmovie, &currentmovierect);
-	
-	OffsetRect (&currentmovierect, -currentmovierect.left, -currentmovierect.top);
-	
-	SetMovieBox (currentmovie, &currentmovierect);		
-		
-	currentcontroller = NewMovieController (currentmovie, &currentmovierect, mcTopLeftMovie);
-	
-	MCGetControllerBoundsRect (currentcontroller, &currentmovierect);
-	
-	//MCSetActionFilterWithRefCon (currentcontroller, NewMCActionFilterWithRefConProc(playermoviecontrollereventfilter), (long) playerwindow);
-	
-	SizeWindow (playerwindow, currentmovierect.right, currentmovierect.bottom, false);
-	
-	(**playerwindowinfo).contentrect = currentmovierect;
-	
-	AlignWindow (playerwindow, false, nil, nil); // position for optimal playback
-	
-	//MCDoAction (currentcontroller, mcActionSetKeysEnabled, (void *) true); /*enable keyboard input*/ /*No!*/
-	
-	MoviesTask (nil, 0);
-	
-	MCIdle (currentcontroller);
-		
-	return (true);	
+	// QuickTime is no longer supported - return false
+	return (false);
 	} // playeropenmovieinwindow
 
 
 boolean playerplaymovie (void) {
 	
 	/*
-	7.0b4 PBS: play the movie that's loaded.
+	QuickTime video playback is no longer supported in this version.
 	*/
 	
-	if (currentmovie == nil)
-		
-		return (false);
-		
-	GoToBeginningOfMovie (currentmovie);
-	
-	SetMovieActive (currentmovie, true);
-	
-	MCDoAction (currentcontroller, mcActionPlay, (void *) true); /*Start playing.*/
-	
-	MoviesTask (nil, 0);
-	
-	return (true);
+	// QuickTime is no longer supported - return false
+	return (false);
 	} /*playerplaymovie*/
 
 
 boolean playerstopmovie (void) {
 	
 	/*
-	7.0b4 PBS: stop playing a movie.
+	QuickTime video playback is no longer supported in this version.
 	*/
 	
-	if (currentmovie != nil)
-
-		SetMovieActive (currentmovie, false);
-	
-	return (true);
+	// QuickTime is no longer supported - return false
+	return (false);
 	} /*playerstopmovie*/
 
 

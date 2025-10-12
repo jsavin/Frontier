@@ -1,0 +1,433 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+  "http://www.w3.org/TR/1999/REC-html401-19991224/loose.dtd">
+<html lang="en">
+  
+<!-- Mirrored from docserver.userland.com/file/ by HTTrack Website Copier/3.x [XR&CO'2014], Thu, 07 Aug 2025 01:12:45 GMT -->
+<head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8">
+    <title>DocServer: File Verbs</title>
+    <style type="text/css">
+  /* General --------------------------------------------- */
+    body {
+      background-color: #FFF;
+      background-image: url(http://static.userland.com/rack1/images/ManilaWebsite/manilaBodyBG.jpg);
+      background-position: top left;
+      background-repeat: repeat-y;
+      color:#000;
+      font-family:Geneva, Arial, Helvetica, san-serif;
+      font-size:12px;
+      line-height:140%;
+      margin:0px 0px 0px 0px;
+      }
+    A {
+      text-decoration: none;
+      } 
+    A:link {
+      color: #932104;
+      } 
+    A:visited {
+      color: #CD3201; 
+      } 
+    A:active {
+      color: #920011;
+      } 
+    A:hover {
+      color: #FFF;
+      background:#000;
+      }
+  /* Banner --------------------------------------------- */
+    #banner {
+      background-color: #FFF;
+      background-image: url(http://static.userland.com/rack1/images/ManilaWebsite/manilaBannerRight.jpg);
+      background-position: top right;
+      background-repeat: no-repeat;
+      color: #000;
+      margin: 0;
+      padding-top: 60px;
+      padding-right: 100px;
+      padding-bottom: 24px;
+      padding-left: 10px;
+      }
+    #banner h1 {
+      font-family:'Trebuchet MS',verdana, arial, sans-serif;
+      font-size: 40px;
+      font-weight: bold;
+      letter-spacing: -0.1em;
+      }
+    #banner a {
+      background:transparent;
+      color: #000;
+      text-decoration:none;
+      }
+    #banner a:hover {
+      background:#FFF;
+      color: #000;
+      text-decoration:none;
+      }
+    .tagline {
+      color:#FFF;
+      font-size:13px;
+      text-shadow: 2px 2px 3px #000;
+      text-align:center;
+      font-style: italic;
+      padding: 26px 15px 0px 45px;
+      background: #932104 url(http://static.userland.com/rack1/images/ManilaWebsite/manilaNavTop.jpg) top left no-repeat;
+      }
+  /* NewsItems --------------------------------------------- */
+    .newsItemTitle {
+      font-size:16px;
+      font-weight:bold;
+      padding:5px 0px 5px 0px;
+      margin:0px;
+      }
+    .newsItemDesc {
+      padding: 5px 0px 15px 0px;
+      margin-bottom:25px;
+      }
+    .newsItemFooter {
+      text-align:right;
+      font-size:10px;
+      }
+  /* Navigation--------------------------------------------- */
+    #links {
+      background:#CD3201 url(http://static.userland.com/rack1/images/ManilaWebsite/manilaNavBG.jpg) top left repeat-y;
+      color:#FFF;
+      padding-bottom:90px;
+      }
+    #links a:link , #links a:visited{
+      color:#6DA8B3;
+      }
+    .linksPadding {
+      padding: 3px 30px 3px 30px;
+      }
+    #navcontainer { width: 100%; }
+    #navcontainer ul {
+      margin-left: 0;
+      padding-left: 0;
+      list-style-type: none;
+      font-family: Arial, Helvetica, sans-serif;
+      }
+    #navcontainer a {
+      display: block;
+      padding: 4px 9px 4px 9px;
+      width: 100%;
+      border-bottom: 1px solid #DE724A;
+      font-family:'Trebuchet MS',verdana, arial, sans-serif;
+      }
+    #navcontainer a:link, #navlist a:visited {
+      color: #FFF;
+      text-decoration: none;
+      }
+    #navcontainer a:hover {
+      background:#B32A00;
+      text-shadow: 2px 2px 3px #551302;
+      color: #FFF;
+      }
+    #navlist a:link#current {
+      text-shadow: 2px 2px 3px #551302;
+      background:#932104;
+      color:#FFF;
+      }
+  /* Main Column--------------------------------------------- */
+    #content {
+      margin-top: 0;
+      padding-top: 0;
+      padding-right: 18px;
+      padding-bottom: 0;
+      padding-left: 18px;
+      }
+    .title {
+      font-size: 20px; 
+      line-height:150%;
+      font-weight:bold; 
+      }
+    .date {
+      font-size:12px;
+      font-weight:bold;
+      text-align:left;
+      line-height:120%;
+      padding:3px 5px 4px 3px;
+      margin-top:10px;
+      margin-bottom:22px;
+      background:#A9B5C9;
+      color:#2B4575;
+      border-bottom:1px solid #2B4575;
+      border-left:1px solid #2B4575;
+      }
+    #footer{
+      font-size:10px;
+      line-height:130%;
+      font-weight:normal;
+      padding-top:10px; 
+      padding-right: 36px;
+      padding-bottom: 0;
+      padding-left: 36px;
+      margin-top:26px; 
+      border-top:1px solid #A9B5C9;
+      }
+  /* Calendar--------------------------------------------- */
+    #calendar td {
+      padding:0px;
+      color:#FFF;
+      text-align:center;
+      font-size:12px;
+      font-family:Geneva, Arial, Helvetica, san-serif;
+      line-height:140%;
+      }
+    #calendar a {
+      font-weight:bold;
+      color:#6DA8B3;
+      }
+    .hCalendarMonthYearRow, .dCalendarMonthYearRow {
+      font-size:12px;
+      font-weight:bold;
+      text-align:left;
+      }
+    .hCalendarDayNameRow, .dCalendarDayNameRow {
+      font-weight:bold;
+      }
+    .hCalendarDayRow, .dCalendarDayRow {
+      font-weight:normal;
+      }
+    .hCalendarDayLinked, .dCalendarDayLinked {
+      background-color: #215058;
+      }
+    .hCalendarDayCurrent, .dCalendarDayCurrent {
+      background-color: #67929E;
+      }
+  /* Discussion--------------------------------------------- */
+    .dlHeader{
+      padding:4px;
+      }
+    .dlCountReadsTitle, .dlSubjectTitle, .dlCountMessagesTitle, .dlPostedTitle, .dlMessageLinkTitle, .dlAuthorTitle {
+      padding:4px;
+      }
+    .dlSubject, .dlCountMessages,.dlPosted, .dlCountReads, .dlAuthor, .dlMessageLink {
+      padding:4px;
+      }
+    .discussHeader {
+      font-weight:normal;
+      line-height:120%;  
+      }
+    .discussResponceList {
+      padding:10px 10px 10px 10px;  
+      margin-top:10px;
+      border-top:1px dotted #999;  
+      }
+  /* Misc--------------------------------------------- */
+    hr {
+      background:#A9B5C9;
+      border-top:0px solid #A9B5C9;
+      border-bottom:0px solid #A9B5C9;
+      border-left:0px solid #A9B5C9;
+      border-right:0px solid #A9B5C9;
+      height:1px;
+      }
+    td {
+      font-size:12px;
+      font-family:Geneva, Arial, Helvetica, san-serif;
+      color:#000;
+      }
+  /* Feature List */
+    .featureList {
+      margin: 0;
+      padding-top: 0;
+      padding-right: 0;
+      padding-bottom: 0;
+      padding-left: 1em;
+      }
+    .featureList ul {
+      margin-left: 0;
+      padding-left: 0;
+      }
+  /* rssBoxes */
+    .rssBox {
+      background: #DAE6F0;
+      border-color: #29636C;
+      border-width: 1px;
+      border-style: solid;
+      color: #29636C;
+      margin-bottom: 4px;
+      }
+    .rssBoxHeader {
+      color:#FFFFFF;
+      background: #29636C;
+      border-bottom-color: #000000;
+      border-bottom-style: solid;
+      border-bottom-width: 6px;
+      padding-top: 12px;
+      padding-bottom: 12px;
+      }
+    .rssBoxHeader a {
+      color:#FFFFFF;
+      background: #29636C;
+      text-decoration: none;
+      }
+    .rssBoxHeader a:hover {
+      text-decoration: underline;
+      }
+    .rssBoxHeader h3 {
+      margin-top: 0;
+      margin-right: 12px;
+      margin-bottom: 0;
+      margin-left: 6px;
+      }
+    .rssBoxHeader p {
+      margin-top: 6px;
+      margin-right: 12px;
+      margin-bottom: 6px;
+      margin-left: 12px;
+      }
+    .rssBoxByline {
+      font-size: 12px;
+      }
+    .rssBoxTimeString {
+      font-size: 10px;
+      margin-bottom: 12px;
+      }
+    .rssBoxBody {
+      color:#000000;
+      background: #DAE6F0;
+      }
+    .rssBoxBody a {
+      text-decoration:none;
+      }
+    .rssBoxBody a:hover {
+      text-decoration:none;
+      }
+    .rssBoxItem {
+      color:#000000;
+      background: #DAE6F0;
+      margin: 12px;
+      }
+      /* RSS Sidebar */
+      .rssSidebar {
+      padding: 4px 9px 4px 9px;
+      margin-bottom: 9px;
+      }
+    #rssSideBarBox {
+      color:#6DA8B3;
+      background-color: transparent;
+      font-family:'Trebuchet MS',verdana, arial, sans-serif;
+      }
+    #rssSideBarBox a {
+      text-decoration: none;
+      }
+    #rssSideBarBox a:link {
+      color: #FFFFFF;
+      background-color: transparent;
+      } 
+    #rssSideBarBox a:visited {
+      color: #CCCCCC; 
+      background-color: transparent;
+      } 
+    #rssSideBarBox a:active {
+      color: #920011;
+      background-color: transparent;
+      } 
+  </style>
+    <script type="text/javascript" language="javascript">
+<!--
+
+function newImage(arg) {
+  if (document.images) {
+    rslt = new Image();
+    rslt.src = arg;
+    return rslt;
+  }
+}
+
+function changeImages() {
+  if (document.images && (preloadFlag == true)) {
+    for (var i=0; i<changeImages.arguments.length; i+=2) {
+      document[changeImages.arguments[i]].src = changeImages.arguments[i+1];
+    }
+  }
+}
+
+var preloadFlag = false;
+function preloadImages() {
+  if (document.images) {
+    radio2_01_over = newImage("http://static.userland.com/rack1/images/ul2004/radio201over1.gif");
+    manila2_01_over = newImage("http://static.userland.com/rack1/images/ul2004/manila201over1.gif");
+    preloadFlag = true;
+  }
+}
+
+// -->
+</script>
+
+    <link rel="icon" href="http://static.userland.com/images/UserLand/urlIcon.gif" type="image/ico">
+    <meta http-equiv="Expires" content="Mon, 01 Jan 1990 01:00:00 GMT">
+    <meta name="generator" content="UserLand Frontier 9.0.1">
+    </head>
+  <body onload="preloadImages();">
+    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background:#333 url(http://static.userland.com/images/UserLand/ulLogoTopBG.gif) top left repeat-x;padding:0px;font-size:12px;font-family:Geneva, Arial, Helvetica, san-serif;">
+
+	<tr>
+
+		<td valign="top" width="145" nowrap>
+
+			<a href="http://www.userland.com/"><img src="http://static.userland.com/images/UserLand/ulLogoTop.gif" width="145" height="36" border="0" alt="UserLand Software"></a>
+
+			</td>
+
+		<td align="right" width="100%" style="padding:0px 15px 0px 0px;text-shadow: 2px 2px 3px #000;color:#FFF;" nowrap>
+
+			<a style="color:#FFF;font-weight:bold;text-decoration: none;" href="http://www.userland.com/">Home</a>&nbsp;&nbsp;|&nbsp;&nbsp;<a style="color:#FFF;font-weight:bold;text-decoration: none;" href="http://manila.userland.com/">Manila</a>&nbsp;&nbsp;|&nbsp;&nbsp;<a style="color:#FFF;font-weight:bold;text-decoration: none;" href="http://radio.userland.com/">Radio</a>&nbsp;&nbsp;|&nbsp;&nbsp;<a style="color:#FFF;font-weight:bold;text-decoration: none;" href="http://www.userland.com/support/">Support</a>&nbsp;&nbsp;|&nbsp;&nbsp;<a style="color:#FFF;font-weight:bold;text-decoration: none;" href="http://productnews.userland.com/">News</a>
+
+			</td>
+
+		</tr>
+
+	</table>
+
+<table width="100%" border="0" cellspacing="0" cellpadding="0">
+    <tr>
+      <td valign="top" width="10">
+        <img src="http://static.userland.com/rack1/images/ManilaWebsite/manilaBannerleft.jpg" width="16" height="91" border="0" alt="">
+        </td>
+      <td valign="top" width="70%">
+        <h1 id="banner">
+          <a href="../index.html" style="font-family:'Trebuchet MS',verdana, arial, sans-serif;color:#000;font-size:37px;font-weight:bold;">DocServer</a><br />
+          </h1>
+        <div id="content">
+          
+          <p><table border="0" cellpadding="2" cellspacing="1" bgcolor="#CCCCCC"><tr><td bgcolor="#DCDCDC" align="left"><font size="-1"><a href="../fatPages/index.html" title="FatPages Verbs">Prev</a> | <a href="../fileMenu/index.html" title="FileMenu Verbs">Next</a> | <a href="#" onmouseover="window.status='../index.html';" onmouseout="window.status='';">File Verbs</a></font></td></tr></table></p>
+          <h2 class="title">File Verbs</h2>
+          <ul><li><a href="bytesInFolder.html" onmouseover="window.status='bytesInFolder.html';" onmouseout="window.status='';">file.bytesInFolder</a> - Get the number of bytes in a folder.</li><li><a href="bytesOnVolume.html" onmouseover="window.status='bytesOnVolume.html';" onmouseout="window.status='';">file.bytesOnVolume</a> - Get the number of bytes on a volume.</li><li><a href="bytesOnVolumeDouble.html" onmouseover="window.status='bytesOnVolumeDouble.html';" onmouseout="window.status='';">file.bytesOnVolumeDouble</a> - Get the number of bytes on a volume. (Up to 4 Terabytes.)</li><li><a href="close.html" onmouseover="window.status='close.html';" onmouseout="window.status='';">file.close</a> - Close a file.</li><li><a href="compare.html" onmouseover="window.status='compare.html';" onmouseout="window.status='';">file.compare</a> - Compare two files.</li><li><a href="copy.html" onmouseover="window.status='copy.html';" onmouseout="window.status='';">file.copy</a> - Copy a file.</li><li><a href="copyDataFork.html" onmouseover="window.status='copyDataFork.html';" onmouseout="window.status='';">file.copyDataFork</a> - Copy the data fork of a file.</li><li><a href="copyResourceFork.html" onmouseover="window.status='copyResourceFork.html';" onmouseout="window.status='';">file.copyResourceFork</a> - Copy a Macintosh resource fork.</li><li><a href="copyToSystemFolder.html" onmouseover="window.status='copyToSystemFolder.html';" onmouseout="window.status='';">file.copyToSystemFolder</a> - Copy a file to the Macintosh System Folder.</li><li><a href="countLines.html" onmouseover="window.status='countLines.html';" onmouseout="window.status='';">file.countLines</a> - Count the number of lines in a file.</li><li><a href="countVolumes.html" onmouseover="window.status='countVolumes.html';" onmouseout="window.status='';">file.countVolumes</a> - Count the number of volumes.</li><li><a href="created.html" onmouseover="window.status='created.html';" onmouseout="window.status='';">file.created</a> - Determine the creation date of a file.</li><li><a href="creator.html" onmouseover="window.status='creator.html';" onmouseout="window.status='';">file.creator</a> - Get a file's creator.</li><li><a href="delete.html" onmouseover="window.status='delete.html';" onmouseout="window.status='';">file.delete</a> - Delete a file.</li><li><a href="deleteFolder.html" onmouseover="window.status='deleteFolder.html';" onmouseout="window.status='';">file.deleteFolder</a> - Delete a folder.</li><li><a href="eject.html" onmouseover="window.status='eject.html';" onmouseout="window.status='';">file.eject</a> - Eject a disk.</li><li><a href="emptyFolder.html" onmouseover="window.status='emptyFolder.html';" onmouseout="window.status='';">file.emptyFolder</a> - Delete all the contents of a folder.</li><li><a href="endOfFile.html" onmouseover="window.status='endOfFile.html';" onmouseout="window.status='';">file.endOfFile</a> - Determine if the current position is at the end of the file.</li><li><a href="exists.html" onmouseover="window.status='exists.html';" onmouseout="window.status='';">file.exists</a> - Determine if a file or folder exists.</li><li><a href="fileFromPath.html" onmouseover="window.status='fileFromPath.html';" onmouseout="window.status='';">file.fileFromPath</a> - Get the file name from the end of a path.</li><li><a href="filesInFolder.html" onmouseover="window.status='filesInFolder.html';" onmouseout="window.status='';">file.filesInFolder</a> - Get the number of files in a folder.</li><li><a href="filesOnVolume.html" onmouseover="window.status='filesOnVolume.html';" onmouseout="window.status='';">file.filesOnVolume</a> - Get the number of files on a volume.</li><li><a href="fileToURL.html" onmouseover="window.status='fileToURL.html';" onmouseout="window.status='';">file.fileToURL</a> - Convert a file path to a file URL.</li><li><a href="filteredCopy.html" onmouseover="window.status='filteredCopy.html';" onmouseout="window.status='';">file.filteredCopy</a> - Selectively copy files.</li><li><a href="findApplication.html" onmouseover="window.status='findApplication.html';" onmouseout="window.status='';">file.findApplication</a> - Determine the location of an application.</li><li><a href="findInFile.html" onmouseover="window.status='findInFile.html';" onmouseout="window.status='';">file.findInFile</a> - Search a file for specified text.</li><li><a href="findInFolder.html" onmouseover="window.status='findInFolder.html';" onmouseout="window.status='';">file.findInFolder</a> - Search files in a folder containing specified text.</li><li><a href="folderFromPath.html" onmouseover="window.status='folderFromPath.html';" onmouseout="window.status='';">file.folderFromPath</a> - Get the path to the folder from a path.</li><li><a href="foldersInFolder.html" onmouseover="window.status='foldersInFolder.html';" onmouseout="window.status='';">file.foldersInFolder</a> - Get the number of folders in a folder.</li><li><a href="foldersOnVolume.html" onmouseover="window.status='foldersOnVolume.html';" onmouseout="window.status='';">file.foldersOnVolume</a> - Get the number of folders on a volume.</li><li><a href="followAlias.html" onmouseover="window.status='followAlias.html';" onmouseout="window.status='';">file.followAlias</a> - Get the path pointed to by the alias.</li><li><a href="freeSpaceOnVolume.html" onmouseover="window.status='freeSpaceOnVolume.html';" onmouseout="window.status='';">file.freeSpaceOnVolume</a> - Determine the amount of free space on a volume.</li><li><a href="freeSpaceOnVolumeDouble.html" onmouseover="window.status='freeSpaceOnVolumeDouble.html';" onmouseout="window.status='';">file.freeSpaceOnVolumeDouble</a> - Determine the amount of free space on a volume. (Up to 4 Terabytes.)</li><li><a href="getComment.html" onmouseover="window.status='getComment.html';" onmouseout="window.status='';">file.getComment</a> - Get the Macintosh comment for a file.</li><li><a href="getDiskDialog.html" onmouseover="window.status='getDiskDialog.html';" onmouseout="window.status='';">file.getDiskDialog</a> - Get input from the user via a Get Disk dialog.</li><li><a href="getEndOfFile.html" onmouseover="window.status='getEndOfFile.html';" onmouseout="window.status='';">file.getEndOfFile</a> - Get the position at the end of the file.</li><li><a href="getFileDialog.html" onmouseover="window.status='getFileDialog.html';" onmouseout="window.status='';">file.getFileDialog</a> - Get input from the user via a Get File dialog.</li><li><a href="getFolderDialog.html" onmouseover="window.status='getFolderDialog.html';" onmouseout="window.status='';">file.getFolderDialog</a> - Get input from the user via a Get Folder dialog.</li><li><a href="getFullVersion.html" onmouseover="window.status='getFullVersion.html';" onmouseout="window.status='';">file.getFullVersion</a> - Get the full version of a file.</li><li><a href="getIconPos.html" onmouseover="window.status='getIconPos.html';" onmouseout="window.status='';">file.getIconPos</a> - Get the icon position for a file.</li><li><a href="getLabel.html" onmouseover="window.status='getLabel.html';" onmouseout="window.status='';">file.getLabel</a> - Get the Macintosh label of a file.</li><li><a href="getMp3Info.html" onmouseover="window.status='getMp3Info.html';" onmouseout="window.status='';">file.getMp3Info</a> - Determine information about an MP3 file.</li><li><a href="getPath.html" onmouseover="window.status='getPath.html';" onmouseout="window.status='';">file.getPath</a> - Get Frontier's current default path.</li><li><a href="getPathChar.html" onmouseover="window.status='getPathChar.html';" onmouseout="window.status='';">file.getPathChar</a> - Get the path delimiter character, : on Macintosh and \ on Windows.</li><li><a href="getPosition.html" onmouseover="window.status='getPosition.html';" onmouseout="window.status='';">file.getPosition</a> - Get the current read position for an open file.</li><li><a href="getPrefsSubfolder.html" onmouseover="window.status='getPrefsSubfolder.html';" onmouseout="window.status='';">file.getPrefsSubfolder</a> - Get the path to the UserLand subfolder in the Prefs folder.</li><li><a href="getSpecialFolderPath.html" onmouseover="window.status='getSpecialFolderPath.html';" onmouseout="window.status='';">file.getSpecialFolderPath</a> - Get a path to a special folder, as defined by the current operating system.</li><li><a href="getSystemDisk.html" onmouseover="window.status='getSystemDisk.html';" onmouseout="window.status='';">file.getSystemDisk</a> - Get the path to the volume containing the system folder.</li><li><a href="getSystemFolderPath.html" onmouseover="window.status='getSystemFolderPath.html';" onmouseout="window.status='';">file.getSystemFolderPath</a> - Get the path to the system folder.</li><li><a href="getVersion.html" onmouseover="window.status='getVersion.html';" onmouseout="window.status='';">file.getVersion</a> - Get the version of a file.</li><li><a href="hasBundle.html" onmouseover="window.status='hasBundle.html';" onmouseout="window.status='';">file.hasBundle</a> - Determine if a file has its bundle bit set.</li><li><a href="isAlias.html" onmouseover="window.status='isAlias.html';" onmouseout="window.status='';">file.isAlias</a> - Determine if a path points to an alias.</li><li><a href="isBusy.html" onmouseover="window.status='isBusy.html';" onmouseout="window.status='';">file.isBusy</a> - Determine if a file is busy.</li><li><a href="isEjectable.html" onmouseover="window.status='isEjectable.html';" onmouseout="window.status='';">file.isEjectable</a> - Determine if the object at path is an ejectable disk.</li><li><a href="isFolder.html" onmouseover="window.status='isFolder.html';" onmouseout="window.status='';">file.isFolder</a> - Determine if a path points to a folder.</li><li><a href="isLocked.html" onmouseover="window.status='isLocked.html';" onmouseout="window.status='';">file.isLocked</a> - Determine if a file is locked.</li><li><a href="isVisible.html" onmouseover="window.status='isVisible.html';" onmouseout="window.status='';">file.isVisible</a> - Determine if a file is visible.</li><li><a href="isVolume.html" onmouseover="window.status='isVolume.html';" onmouseout="window.status='';">file.isVolume</a> - Determine if a path points to a volume.</li><li><a href="lock.html" onmouseover="window.status='lock.html';" onmouseout="window.status='';">file.lock</a> - Lock a file.</li><li><a href="modified.html" onmouseover="window.status='modified.html';" onmouseout="window.status='';">file.modified</a> - Get the modification date of a file.</li><li><a href="mountServerVolume.html" onmouseover="window.status='mountServerVolume.html';" onmouseout="window.status='';">file.mountServerVolume</a> - Mount a file server on the network.</li><li><a href="move.html" onmouseover="window.status='move.html';" onmouseout="window.status='';">file.move</a> - Move a file into a different folder.</li><li><a href="new.html" onmouseover="window.status='new.html';" onmouseout="window.status='';">file.new</a> - Create a new file.</li><li><a href="newAlias.html" onmouseover="window.status='newAlias.html';" onmouseout="window.status='';">file.newAlias</a> - Create a new Macintosh alias.</li><li><a href="newer.html" onmouseover="window.status='newer.html';" onmouseout="window.status='';">file.newer</a> - Compare two files to see which is newer.</li><li><a href="newFolder.html" onmouseover="window.status='newFolder.html';" onmouseout="window.status='';">file.newFolder</a> - Create a folder.</li><li><a href="open.html" onmouseover="window.status='open.html';" onmouseout="window.status='';">file.open</a> - Open a file for reading or writing.</li><li><a href="openFolder.html" onmouseover="window.status='openFolder.html';" onmouseout="window.status='';">file.openFolder</a> - Open the specified folder on the desktop.</li><li><a href="putFileDialog.html" onmouseover="window.status='putFileDialog.html';" onmouseout="window.status='';">file.putFileDialog</a> - Get user input by displaying the Put File dialog.</li><li><a href="read.html" onmouseover="window.status='read.html';" onmouseout="window.status='';">file.read</a> - Read data from a file.</li><li><a href="readLine.html" onmouseover="window.status='readLine.html';" onmouseout="window.status='';">file.readLine</a> - Read a line from a file.</li><li><a href="readWholeFile.html" onmouseover="window.status='readWholeFile.html';" onmouseout="window.status='';">file.readWholeFile</a> - Read an entire file.</li><li><a href="reconcileFolder.html" onmouseover="window.status='reconcileFolder.html';" onmouseout="window.status='';">file.reconcileFolder</a> - Reconcile the contents of two folders.</li><li><a href="rename.html" onmouseover="window.status='rename.html';" onmouseout="window.status='';">file.rename</a> - Rename a file, folder, or volume.</li><li><a href="resolveAlias.html" onmouseover="window.status='resolveAlias.html';" onmouseout="window.status='';">file.resolveAlias</a> - Resolve a Macintosh alias.</li><li><a href="reveal.html" onmouseover="window.status='reveal.html';" onmouseout="window.status='';">file.reveal</a> - Open a folder containing the file.</li><li><a href="setBundle.html" onmouseover="window.status='setBundle.html';" onmouseout="window.status='';">file.setBundle</a> - Set a Macintosh file's bundle bit.</li><li><a href="setComment.html" onmouseover="window.status='setComment.html';" onmouseout="window.status='';">file.setComment</a> - Set the Macintosh comment for a file.</li><li><a href="setCreated.html" onmouseover="window.status='setCreated.html';" onmouseout="window.status='';">file.setCreated</a> - Set the creation date of a file.</li><li><a href="setCreator.html" onmouseover="window.status='setCreator.html';" onmouseout="window.status='';">file.setCreator</a> - Set the creator of a file.</li><li><a href="setFullVersion.html" onmouseover="window.status='setFullVersion.html';" onmouseout="window.status='';">file.setFullVersion</a> - Set the full version of an application.</li><li><a href="setIconPos.html" onmouseover="window.status='setIconPos.html';" onmouseout="window.status='';">file.setIconPos</a> - Position an icon.</li><li><a href="setLabel.html" onmouseover="window.status='setLabel.html';" onmouseout="window.status='';">file.setLabel</a> - Set the Macintosh label of a file.</li><li><a href="setModified.html" onmouseover="window.status='setModified.html';" onmouseout="window.status='';">file.setModified</a> - Set the modification date of a file.</li><li><a href="setPath.html" onmouseover="window.status='setPath.html';" onmouseout="window.status='';">file.setPath</a> - Set Frontier's default path to a folder.</li><li><a href="setPosition.html" onmouseover="window.status='setPosition.html';" onmouseout="window.status='';">file.setPosition</a> - Set the current position in a file.</li><li><a href="setType.html" onmouseover="window.status='setType.html';" onmouseout="window.status='';">file.setType</a> - Set the type of a file.</li><li><a href="setVersion.html" onmouseover="window.status='setVersion.html';" onmouseout="window.status='';">file.setVersion</a> - Set the version number of an application.</li><li><a href="setVisible.html" onmouseover="window.status='setVisible.html';" onmouseout="window.status='';">file.setVisible</a> - Set the visibility of a file.</li><li><a href="size.html" onmouseover="window.status='size.html';" onmouseout="window.status='';">file.size</a> - Get the size of a file.</li><li><a href="sureFilePath.html" onmouseover="window.status='sureFilePath.html';" onmouseout="window.status='';">file.sureFilePath</a> - Create all the folders on the path to the file.</li><li><a href="sureFolder.html" onmouseover="window.status='sureFolder.html';" onmouseout="window.status='';">file.sureFolder</a> - Create all the folders on the path to the folder.</li><li><a href="synchFolderWithTable.html" onmouseover="window.status='synchFolderWithTable.html';" onmouseout="window.status='';">file.synchFolderWithTable</a> - After calling, the table mirrors the contents of the folder and its sub-folders.</li><li><a href="synchTableWithFolder.html" onmouseover="window.status='synchTableWithFolder.html';" onmouseout="window.status='';">file.synchTableWithFolder</a> - After calling, the table mirrors the contents of the folder and its sub-folders.</li><li><a href="touchPath.html" onmouseover="window.status='touchPath.html';" onmouseout="window.status='';">file.touchPath</a> - Set the modification date of every file and folder in the path to the current time.</li><li><a href="type.html" onmouseover="window.status='type.html';" onmouseout="window.status='';">file.type</a> - Get the type of a file.</li><li><a href="uniqueName.html" onmouseover="window.status='uniqueName.html';" onmouseout="window.status='';">file.uniqueName</a> - Create a unique name for a file in a folder.</li><li><a href="unlock.html" onmouseover="window.status='unlock.html';" onmouseout="window.status='';">file.unlock</a> - Unlock a file.</li><li><a href="unmountVolume.html" onmouseover="window.status='unmountVolume.html';" onmouseout="window.status='';">file.unmountVolume</a> - Unmount a volume.</li><li><a href="urlToFile.html" onmouseover="window.status='urlToFile.html';" onmouseout="window.status='';">file.urlToFile</a> - Convert a file URL to a file path.</li><li><a href="visitFolder.html" onmouseover="window.status='visitFolder.html';" onmouseout="window.status='';">file.visitFolder</a> - Loop through the contents of a folder.</li><li><a href="volumeBlockSize.html" onmouseover="window.status='volumeBlockSize.html';" onmouseout="window.status='';">file.volumeBlockSize</a> - Get the block size for a volume.</li><li><a href="volumeFromPath.html" onmouseover="window.status='volumeFromPath.html';" onmouseout="window.status='';">file.volumeFromPath</a> - Given a path, get the name of the volume.</li><li><a href="volumeSize.html" onmouseover="window.status='volumeSize.html';" onmouseout="window.status='';">file.volumeSize</a> - Get the size of a volume.</li><li><a href="volumeSizeDouble.html" onmouseover="window.status='volumeSizeDouble.html';" onmouseout="window.status='';">file.volumeSizeDouble</a> - Get the size of a volume. (Up to 4 Terabytes.)</li><li><a href="write.html" onmouseover="window.status='write.html';" onmouseout="window.status='';">file.write</a> - Write to a file.</li><li><a href="writeLine.html" onmouseover="window.status='writeLine.html';" onmouseout="window.status='';">file.writeLine</a> - Write a line to a file.</li><li><a href="writeTextFile.html" onmouseover="window.status='writeTextFile.html';" onmouseout="window.status='';">file.writeTextFile</a> - Writes a text file to disk with appropriate line endings and character set.</li><li><a href="writeWholeFile.html" onmouseover="window.status='writeWholeFile.html';" onmouseout="window.status='';">file.writeWholeFile</a> - Write a file to disk.</li></ul>
+          <p><table border="0" cellpadding="2" cellspacing="1" bgcolor="#CCCCCC"><tr><td bgcolor="#DCDCDC" align="left"><font size="-1"><a href="../fatPages/index.html" title="FatPages Verbs">Prev</a> | <a href="../fileMenu/index.html" title="FileMenu Verbs">Next</a> | <a href="#" onmouseover="window.status='../index.html';" onmouseout="window.status='';">File Verbs</a></font></td></tr></table></p>
+          </div>
+        <div id="footer">
+          <p><a href="http://www.manilasites.com/" title="Manila is an Internet server application that allows groups of writers, designers and graphics people to manage full-featured, high performance web sites through an easy-to-use browser interface."><img src="../mainResponderResources/userlandIcons/thisIsAManilaSite2.gif" width="88" height="31" border="0" alt="This is a Manila site."></a><br />
+          <br />
+          Copyright 2025 <a href="http://www.userland.com/">UserLand Corporation</a><br>
+          <b>Membership:</b> <a href="http://login.userland.com/signUp">Join Now</a> : <a href="http://login.userland.com/">Login</a></p>
+          </div>
+        </td>
+      <td valign="top" width="30%" id="links">
+        <table width="100%" border="0" cellspacing="0" cellpadding="0">
+          <tr>
+            <td class="tagline" width="100%" valign="top">
+              UserTalk online reference for Manila and Radio UserLand programmers
+              </td>
+            <td valign="top" width="5">
+              <img src="http://static.userland.com/rack1/images/ManilaWebsite/manilaNavTopBG.jpg" width="8" height="100" border="0" alt="">
+              </td>
+            </tr>
+          </table>
+        <div class="linksPadding">
+          <div id="navcontainer">
+            <ul id="navlist">
+              <li><a href="../index.html" class="navigatorLink">Home</a></li><li><a href="http://manila.userland.com/" class="navigatorLink">Manila</a></li><li><a href="http://radio.userland.com/" class="navigatorLink">Radio UserLand</a></li>
+              </ul>
+            </div>
+          <FORM action=http://www.google.com/custom method=get><INPUT maxLength=255 size=13 name=q> <INPUT type=submit value=Search name=sa> <INPUT type=hidden value=AH:center;AWFID:901e54b48f490ab5; name=cof> <BR><INPUT type=hidden CHECKED value=docserver.userland.com name=sitesearch> </FORM>
+          <div id="calendar"><table align="center"><tr><td></td></tr></table></div><br></div>
+        </td>
+      </tr>
+    </table>
+</body>
+
+<!-- Mirrored from docserver.userland.com/file/ by HTTrack Website Copier/3.x [XR&CO'2014], Thu, 07 Aug 2025 01:14:36 GMT -->
+</html>

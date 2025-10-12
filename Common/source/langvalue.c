@@ -1,4 +1,3 @@
-
 /*	$Id$    */
 
 /******************************************************************************
@@ -25,8 +24,15 @@
 
 ******************************************************************************/
 
+#ifdef FRONTIER_PORTABLE
+#include "../portable/os_portable.h"
+#include "../portable/frontier.h"
+#include "../portable/standard.h"
+#include "../portable/shelltypes_portable.h"
+#else
 #include "frontier.h"
 #include "standard.h"
+#endif
 
 #include "frontierconfig.h"
 #include "memory.h"
@@ -786,7 +792,7 @@ boolean copyvaluedata (tyvaluerecord *val) {
 			break;
 		
 		default:
-			shellinternalerror (idbadtempdatatype, STR_Internal_error_bad_type_for_temp_data);
+    shellinternalerror (idbadtempdatatype, STR_Internal_error_bad_type_for_temp_data);
 			
 			break;
 		} /*switch*/
@@ -2947,13 +2953,17 @@ boolean coercetofilespec (tyvaluerecord *v) {
 			
 			if (!pathtofilespec (bs, &fs)) {
 				
-				filenotfounderror (bs);
+#ifdef FRONTIER_HEADLESS
+				return (false);
+#else
+				filenotfounderror();
 				
 				/*
 				langparamerror (filespeccoerceerror, bs);
 				*/
 				
 				return (false);
+#endif
 				}
 			
 			break;
@@ -3792,7 +3802,10 @@ boolean langgetdotparams (hdltreenode htree, hdlhashtable *htable, bigstring bsn
 	register boolean fl;
 	tyvaluerecord val;
 	
-	*htable = nil; /*default, in case a table isn't specified*/
+    *htable = nil; /*default, in case a table isn't specified*/
+#if defined(FRONTIER_HEADLESS)
+    fprintf(stderr, "[hl] langgetdotparams: nodetype=%d\n", (int)nodetype);
+#endif
 	
 	langseterrorline (h); /*set globals for error reporting*/
 	
@@ -3824,13 +3837,18 @@ boolean langgetdotparams (hdltreenode htree, hdlhashtable *htable, bigstring bsn
 	if (!langgetdotparams ((**h).param1, &hsubtable, bsname)) /*recurse*/
 		return (false);
 	
-	if (hsubtable == nil) { /*we're at the very first table in the dot list*/
+    if (hsubtable == nil) { /*we're at the very first table in the dot list*/
 		
 		if (langgetspecialtable (bsname, htable)) /*translate "root" to roottable, etc.*/
 			goto L1;
 		
-		if (langexternalgettable (bsname, htable)) /*found bsname in current context*/
-			goto L1;
+        if (langexternalgettable (bsname, htable)) /*found bsname in current context*/
+            goto L1;
+#if defined(FRONTIER_HEADLESS)
+        else {
+            fprintf(stderr, "[hl] langgetdotparams: langexternalgettable miss for %s\n", stringbaseaddress(bsname));
+        }
+#endif
 		
 		if (fllocaldotparamsonly)
 			fl = false;
@@ -7477,21 +7495,60 @@ boolean kernelfunctionvalue (hdlhashtable htable, bigstring bsverb, hdltreenode 
 	tyvaluerecord val;
 	boolean flprofiling = currentprocess && (**currentprocess).flprofiling;
 	
-	valueroutine = (**ht).valueroutine;
+    valueroutine = (**ht).valueroutine;
+
+    assert (valueroutine != nil); /*this was checked at compile time in pushkernelcall*/
+    fprintf(stderr, "[hl] kernelfunctionvalue: table verb dispatch\n");
+#if defined(FRONTIER_HEADLESS)
+    /* debug disabled */
+#endif
 	
-	assert (valueroutine != nil); /*this was checked at compile time in pushkernelcall*/
-	
-	fl = hashtablelookupnode (ht, bsverb, &hnode); /*get the token value*/
-	
-	if (fl)
-		val = (**hnode).val;
-	
-	if (!valueroutine || !fl || (val.valuetype != tokenvaluetype)) { /*should never happen; preflighted at compile time*/
-		
-		langparamerror (notefperror, bsverb);
-		
-		return (false);
-		}
+    fl = hashtablelookupnode (ht, bsverb, &hnode); /*get the token value*/
+    if (fl) fprintf(stderr, "[hl] kernel verb=%s\n", stringbaseaddress(bsverb));
+    
+    if (fl)
+        val = (**hnode).val;
+    
+#if defined(FRONTIER_HEADLESS)
+    if (!valueroutine || !fl || (val.valuetype != tokenvaluetype)) {
+        /* Headless fallback: map known file verbs to tokens even if the table
+           entry isn't present. This allows headless programmatic EFPs to work
+           without resource-populated keyword tables. */
+        short tok = 0;
+        if (equalstrings(bsverb, (ptrstring)"\x04" "open")) tok = 1;
+        else if (equalstrings(bsverb, (ptrstring)"\x05" "close")) tok = 2;
+        else if (equalstrings(bsverb, (ptrstring)"\x08" "readLine")) tok = 3;
+        else if (equalstrings(bsverb, (ptrstring)"\x04" "read")) tok = 4;
+        else if (equalstrings(bsverb, (ptrstring)"\x05" "write")) tok = 5;
+        else if (equalstrings(bsverb, (ptrstring)"\x0B" "setPosition")) tok = 6;
+        else if (equalstrings(bsverb, (ptrstring)"\x0B" "getPosition")) tok = 7;
+        else if (equalstrings(bsverb, (ptrstring)"\x0C" "setEndOfFile")) tok = 8;
+        else if (equalstrings(bsverb, (ptrstring)"\x0C" "getEndOfFile")) tok = 9;
+        else if (equalstrings(bsverb, (ptrstring)"\x09" "endOfFile")) tok = 10;
+        if (tok != 0 && valueroutine != nil) {
+            setemptystring (bserror);
+            if (flprofiling) {
+                if (!langpusherrorcallback (kernelerrorroutine, (long) hnode))
+                    return (false);
+            }
+            boolean fcall = (*valueroutine) (tok, hparam1, vreturned, bserror);
+            /* debug disabled */
+            if (!fcall && !isemptystring (bserror)) {
+                setparseparams (bsverb, nil, nil, nil);
+                parseparamstring (bserror);
+                langerrormessage (bserror);
+            }
+            if (flprofiling)
+                langpoperrorcallback ();
+            return (fcall && !fllangerror);
+        }
+    }
+#endif
+    
+    if (!valueroutine || !fl || (val.valuetype != tokenvaluetype)) { /*should never happen; preflighted at compile time*/
+        langparamerror (notefperror, bsverb);
+        return (false);
+    }
 	
 	if ((**ht).flverbsrequirewindow && !infrontierprocess ()) { /*verb may need to be run in frontier process*/
 		
@@ -7506,7 +7563,8 @@ boolean kernelfunctionvalue (hdlhashtable htable, bigstring bsverb, hdltreenode 
 			return (false);
 		}
 	
-	fl = (*valueroutine) (val.data.tokenvalue, hparam1, vreturned, bserror);
+    fl = (*valueroutine) (val.data.tokenvalue, hparam1, vreturned, bserror);
+    fprintf(stderr, "[hl] valueroutine called, token=%d, result=%d\n", (int)val.data.tokenvalue, (int)fl);
 	
 	if (!fl && !isemptystring (bserror)) {
 		
@@ -7828,13 +7886,17 @@ boolean langfunctioncall (hdltreenode hcallernode, hdlhashtable htable, hdlhashn
 	tyvaluerecord osacode;
 	
 		
-		if (hcode == nil) { /*can only be a kernel call -- or an error*/
-			
-			if ((**hnode).val.valuetype == binaryvaluetype)
-				return (binaryfunctionvalue (hnode, bsname, hparam1, vreturned));
-			
-			return (kernelfunctionvalue (htable, bsname, hparam1, vreturned));
-			}
+        if (hcode == nil) { /*can only be a kernel call -- or an error*/
+#if defined(FRONTIER_HEADLESS)
+            /* debug disabled */
+#endif
+            /* Headless safety: hnode may be unset for EFP fast-paths; guard it. */
+            if (hnode != nil) {
+                if ((**hnode).val.valuetype == binaryvaluetype)
+                    return (binaryfunctionvalue (hnode, bsname, hparam1, vreturned));
+            }
+            return (kernelfunctionvalue (htable, bsname, hparam1, vreturned));
+            }
 		
 		if ((**(**hcode).param1).nodetype == kernelop)
 			return (kernelcall (hcode, hparam1, vreturned));
@@ -8109,13 +8171,59 @@ static boolean langgethandlercode (hdlhashtable intable, hdltreenode hnamenode, 
 	3/19/97 dmb: moved code extracting code into new langgetnodecode.
 	*/
 	
-	register hdlhashtable ht;
-	bigstring bs;
-	register boolean fl;
+    register hdlhashtable ht;
+    bigstring bs;
+    register boolean fl;
 	
 	setemptystring (bs);
 	
-	disablelangerror (); /*no dialog if an error is encountered*/
+    disablelangerror (); /*no dialog if an error is encountered*/
+
+/* Headless dotted-name efp fast-path removed; rely on efptable path below. */
+
+#if defined(FRONTIER_HEADLESS)
+    /* Headless fast-path: if asked to resolve within efptable and name is dotted,
+       interpret left as EFP table and right as verb directly. */
+    if ((intable == efptable) && hnamenode && ((**hnamenode).nodetype == dotop)) {
+        bigstring bsleft, bsright;
+        hdlhashtable hleft = nil;
+        setemptystring(bsleft); setemptystring(bsright);
+        if (langgetidentifier((**hnamenode).param1, bsleft) && langgetidentifier((**hnamenode).param2, bsright)) {
+            /* Look up the EFP table by name under efptable */
+            pushhashtable(efptable);
+            if (langexternalgettable(bsleft, &hleft) && (hleft != nil)) {
+                pophashtable();
+                /* Find the verb token in that table */
+                pushhashtable(hleft);
+                if (hashtablelookupnode(hleft, bsright, hnode)) {
+                    pophashtable();
+                    *htable = hleft;
+                    /* Produce kernel special-case: no code (handled by langfunctioncall) */
+                    if (!langgetnodecode(hleft, bsright, *hnode, hcode)) {
+                        /* If not a kernel token, fall back to kernelfunctionvalue via nil code */
+                        *hcode = nil;
+                    }
+                    /* Ensure bsfunctionname is set for kernelfunctionvalue */
+                    copystring(bsright, bsfunctionname);
+                    /* debug disabled */
+                    return (true);
+                }
+                pophashtable();
+                /* Even if the verb token wasn't present, allow kernel fallback in headless */
+                *htable = hleft;
+                *hcode = nil;
+                /* Ensure bsfunctionname is set for fallback */
+                copystring(bsright, bsfunctionname);
+                *hnode = nil;
+                /* debug disabled */
+                return (true);
+            } else {
+                pophashtable();
+            }
+        }
+        /* fall through to generic path on failure */
+    }
+#endif
 	
 	if (intable != currenthashtable) /*not being called for default scope*/
 		fllocaldotparamsonly = true;
@@ -8136,10 +8244,13 @@ static boolean langgethandlercode (hdlhashtable intable, hdltreenode hnamenode, 
 	
 	enablelangerror ();
 	
-	if (!fl) 
-		return (false);
-	
-	ht = *htable; /*move into register*/
+    if (!fl) 
+        return (false);
+    
+    ht = *htable; /*move into register*/
+#if defined(FRONTIER_HEADLESS)
+    /* debug disabled */
+#endif
 	
 	if (ht == nil) { /*no table specified*/
 		
@@ -8458,7 +8569,7 @@ static boolean builtinvalue (tyfunctype token, hdltreenode hparam1, tyvaluerecor
 	
 	#ifdef fldebug
 	
-	langerrormessage (STR_Internal_error_unimplemented_function_call);
+    langerrormessage (STR_Internal_error_unimplemented_function_call);
 	
 	#endif
 	
@@ -8483,4 +8594,3 @@ boolean functionvalue (hdltreenode htree, hdltreenode hparam1, tyvaluerecord *vr
 	else
 		return (builtinvalue ((tyfunctype) val.data.tokenvalue, hparam1, vreturned));
 	} /*functionvalue*/
-

@@ -25,8 +25,15 @@
 
 ******************************************************************************/
 
+#ifdef FRONTIER_PORTABLE
+#include "../portable/os_portable.h"
+#include "../portable/frontier.h"
+#include "../portable/standard.h"
+#include "../portable/shelltypes_portable.h"
+#else
 #include "frontier.h"
 #include "standard.h"
+#endif
 
 #include "error.h"
 #include "memory.h"
@@ -449,10 +456,18 @@ static boolean fileloopguts (hdltreenode htree, ptrfilespec fsfolder, bigstring 
 	boolean flfolder;
 	Handle hfileloop;
 	
-	clearfilespec (&fs);
+    #ifdef FRONTIER_PORTABLE
+    /* no-op in portable */
+    #else
+    clearfilespec (&fs);
+    #endif
 
 	
-		if (!macfilespecisvalid (fsfolder)) // loop over mounted volumes
+                #ifdef FRONTIER_PORTABLE
+                if (false)
+                #else
+                if (!macfilespecisvalid (fsfolder)) // loop over mounted volumes
+                #endif
 			fl = diskinitloop (nil, &hfileloop);
 		else
 		
@@ -1825,7 +1840,7 @@ boolean evaluatelist (hdltreenode hfirst, tyvaluerecord *val) {
 	get a garbage handle.  so we move the value from the local tmpstack into
 	the next-most-global tmpstack.
 	
-	9/4/90 DW: Major rewrite -- wrote the Ultimate SuperStresserª script, and
+	9/4/90 DW: Major rewrite -- wrote the Ultimate SuperStresserï¿½ script, and
 	it works!
 	
 	9/4/91 dmb: on break and return, make sure langerror isn't missed

@@ -1,0 +1,100 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+	<head><title>How the Outliner Works</title>
+	</head>
+	<body bgcolor="#FFFFFF" text="#000000" link="#0000FF" vlink="#800080" alink="#FF0000">
+		<blockquote>
+			<font size="+3"><b><a href="http://frontier.userland.com/">UserLand Frontier</a></b></font><hr><br>
+			<h2>How the Outliner Works</h2>
+			Outlines play a big role in Frontier. Scripts are outlines and so are menus. I've been using outliners for so long, they've become part of my basic vocabulary, it's easy to forget that for some people they are new and perhaps strange things.<p>
+
+So here are the basics of using the outliner that's built into Frontier.<p>
+
+<b>What is an outliner?</b><p>
+
+It's a text editor that allows you to control the level of detail that's visible, and allows you to reorganize text according to its structure.<p>
+
+Outliners make great program editors because programs are hierarchic structures, and editing programs is easier if you have an editor that understands structure. The same is true of hierarchic menu bars, and in Frontier 5.0, the object database.<p>
+
+Viewed from another angle, outlines are just lists of lists, carried on to as many levels as you want. The grouping is arbitrary and totally up to you. The outliner has commands that make it easy to browse and reorganize structured information.<p>
+
+<b>Controlling detail</b><p>
+
+As you look at an outline, scan down the left edge looking for black wedges. Any black wedge can be expanded, it has information collapsed underneath it. <p>
+
+To expand a line, double-click on the wedge.<p>
+
+Here's a screen shot:<p>
+
+<img alt="" height="370" width="495" src="http://static.userland.com/legacyLuna/userland/frontierImages/collapsedOutline.gif"><p>
+
+And here's the same picture after the while loop body is expanded:<p>
+
+<img alt="" height="370" width="495" src="http://static.userland.com/legacyLuna/userland/frontierImages/expandedOutline.gif"><p>
+
+Look carefully, notice that the wedge in front of this line turned to gray, indicating that it's already expanded.<p>
+
+<b>Reorganizing</b><p>
+
+You can move a line using the mouse or with command keys. When you move a line, all the lines underneath it move also, whether or not they're expanded.<p>
+
+To reorganize with the mouse, point at the wedge of the line you want to move. Point at another line. Note that its wedge turns into an arrow, indicating where the line will be dropped. If you nudge the mouse to the right, the arrow now points to the right. When you let up on the mouse, the line moves to its new location. If you don't like what it did, the Undo command works.<p>
+
+Little-known-fact: On the Mac, if you hold down the Option key as you let up the mouse, the destination line will not be expanded if you drop to the right of the destination headline. It's a much-requested feature that's already in the program.<p>
+
+Instead of using the mouse, I usually use the command keys to do my reorganizing. There are four of them, and they're easy to remember. On the Mac, cmd-U moves a line up, cmd-D moves a line down, cmd-R moves a line to the right (turns it into the last subhead of the line above it) and cmd-L moves a line to the left (it becomes the next sibling of its former parent). On Windows, the keystrokes are Control U, D, R and L.<p>
+
+Some people like using Tab and Shift-Tab to move a line to the right and left.<p>
+
+<b>Adding new lines to an outline</b><p>
+
+To add a new line to an outline, place the cursor above or near the point where you want to add the line, and press Return. (On Windows this is the non-numeric keypad Enter key, the one next to the quote key.)<p>
+
+At this point, you may need to use Cmd-U,D,R,L to reposition the line.<p>
+
+Type the text, if you want to enter another line, press Return. If you're done, press Enter. (On Windows, the Enter key on the numeric keypad.)<p>
+
+Note that there are two modes in outliner: text mode, where the insertion point is the usual flashing caret; and structure mode, where the cursor is shown as a black inverse bar. <p>
+
+You can toggle between modes by pressing the numeric keypad Enter key. You can also use the mouse -- if you're in text mode, click on the wedge to return to structure mode; if you're in structure mode, click on the text to get the flashing caret.<p>
+
+<b>Comments</b><p>
+
+There are two ways to add a comment to a script outline, one is suitable for big comment blocks, and the other is useful when you want to tack a comment onto the end of a line.<p>
+
+If you want a line and all the lines nested underneath it to be viewed as a comment, press the Shift key while you press Return. Note that instead of a wedge, the line has a chevron to its left.<p>
+
+Any text that's indented under one of these lines is also viewed as a comment. You can go on and on, but thankfully, your readers can collapse the whole comment down to a single line. So even if you have a lot to say, the code doesn't become totally unreadable.<p>
+
+For smaller comments that go at the end of a line, just enter two slashes before the comment text:<blockquote><p>
+
+dialog.alert ("Good morning!") //greet the user
+</blockquote><p>
+
+Here's a screen shot where I've expanded the comment, and added a short comment after the check to see if the file exists:<p>
+
+<img alt="" height="408" width="505" src="http://static.userland.com/legacyLuna/userland/frontierImages/commentExpo.gif"><p>
+
+<b>Breakpoints</b><p>
+
+Frontier has a built-in script debugger. What good would a debugger be if you couldn't set a breakpoint? Luckily, the debugger in Frontier is good, because you can set breakpoints. Here's how.<p>
+
+Hold down the Cmd key and click on the wedge next to the line. The wedge changes to a little hand. It toggles, so if you cmd-click on a breakpoint line, the hand turns back to a wedge.<p>
+
+If you're using Windows, hold down the Control key and click on the wedge next to the line.<p>
+
+As you debug the script, when the interpreter reaches a line with its breakpoint set, the interpreter stops, and allows you to examine or modify data that the script is operating on, or step thru the script, or set other breakpoints.<p>
+
+<b>Random notes</b><p>
+
+The outliner built into Frontier is (of course) fully scriptable. Check out the &#123;docServerLink ("op")&#125; verb docs for a complete list of verbs that can be used with outlines. By the way, "op" stands for "outline processor."<p>
+
+There are lots of neat outlining commands in Frontier's Outliner menu. They're all fairly transparent. Experiment. And don't forget about Undo!<p>
+
+
+			<hr>
+			<br>
+			This is a <a href="http://manila.userland.com/">Manila</a> site.
+			</blockquote>
+		</body>
+	</html>

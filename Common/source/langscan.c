@@ -25,8 +25,15 @@
 
 ******************************************************************************/
 
+#ifdef FRONTIER_PORTABLE
+#include "../portable/os_portable.h"
+#include "../portable/frontier.h"
+#include "../portable/standard.h"
+#include "../portable/shelltypes_portable.h"
+#else
 #include "frontier.h"
 #include "standard.h"
+#endif
 
 #include "memory.h"
 #include "strings.h"
@@ -70,7 +77,7 @@ boolean isfirstidentifierchar (byte ch) {
 	could this character be the first character in an identifier?
 	*/
 	
-	return (isalpha (ch) || (ch == '_'));
+    return (isalpha ((int)ch) || (ch == '_'));
 	
 	/*
 		((ch >= 'a') && (ch <= 'z')) ||
@@ -92,7 +99,7 @@ boolean isidentifierchar (byte ch) {
 	if (isfirstidentifierchar (ch))
 		return (true);
 	
-	if (isdigit (ch))
+    if (isdigit ((int)ch))
 		return (true);
 		
 	if (ch == chtrademark)
@@ -897,12 +904,24 @@ static tokentype langscanner (hdltreenode *nodetoken) {
 		
 		#endif
 		
-		fl = hashtablelookup (hkeywordtable, bs, &val, &hnode);
+        fl = hashtablelookup (hkeywordtable, bs, &val, &hnode);
 		
 		if (fl) 
 			return ((tokentype) val.data.tokenvalue); /*it's a reserved word*/
 		
-		fl = hashtablelookup (hconsttable, bs, &val, &hnode);
+        fl = hashtablelookup (hconsttable, bs, &val, &hnode);
+#ifdef FRONTIER_HEADLESS
+        {
+            const char *dbg = getenv("FRONTIER_DEBUG_SCAN");
+            if (dbg && *dbg) {
+                char identbuf[64];
+                copyptocstring(bs, identbuf);
+                if (strcmp(identbuf, "true") == 0 || strcmp(identbuf, "false") == 0 || strcmp(identbuf, "stringType") == 0) {
+                    fprintf(stderr, "[scan] ident '%s' const_lookup=%s\n", identbuf, fl ? "hit" : "miss");
+                }
+            }
+        }
+#endif
 		
 		if (fl) { /*it's a pre-defined constant*/
 			
@@ -911,13 +930,25 @@ static tokentype langscanner (hdltreenode *nodetoken) {
 			
 			exemptfromtmpstack (&val);
 			
-			if (!newconstnode (val, nodetoken))
-				return (0 /*errortoken*/);
+            if (!newconstnode (val, nodetoken))
+                return (0 /*errortoken*/);
 			
 			return (constanttoken);
 			}
 		
-		initvalue (&val, stringvaluetype);
+        initvalue (&val, stringvaluetype);
+#ifdef FRONTIER_HEADLESS
+        {
+            const char *dbg = getenv("FRONTIER_DEBUG_SCAN");
+            if (dbg && *dbg) {
+                char identbuf2[64];
+                copyptocstring(bs, identbuf2);
+                if (strcmp(identbuf2, "true") == 0 || strcmp(identbuf2, "false") == 0 || strcmp(identbuf2, "stringType") == 0) {
+                    fprintf(stderr, "[scan] ident '%s' -> identifier (not constant)\n", identbuf2);
+                }
+            }
+        }
+#endif
 		
 		if (!newtexthandle (bs, &val.data.stringvalue))
 			return (0 /*errortoken*/);
@@ -947,7 +978,7 @@ static tokentype langscanner (hdltreenode *nodetoken) {
 		case '[': case ']': case '@': case '^':
 			return (chfirst); /*the ascii value is the token*/
 		
-		case (byte) '¥':
+        case (byte) 0xD7: /* legacy Mac <= */
 			return ('.');
 		
 		case chnotequals:
@@ -962,10 +993,10 @@ static tokentype langscanner (hdltreenode *nodetoken) {
 		case '%':
 			return (modtoken);
 		
-		case (byte) '²':
+        case (byte) 0xBC: /* legacy Mac <= */
 			return (LEtoken);
 			
-		case (byte) '³':
+        case (byte) 0xBE: /* legacy Mac >= */
 			return (GEtoken);
 			
 		case '+':
@@ -1113,7 +1144,7 @@ tokentype parsegettoken (hdltreenode *nodetoken) {
 	a bottleneck that makes debugging easier.  
 	
 	if you want to see the string that generated the current token, 
-	display "bstoken" -- its a globalÉ
+	display "bstoken" -- its a globalï¿½
 	*/
 	
 	register tokentype token;
@@ -1348,4 +1379,3 @@ yyoverflow (bsevent, p1, size1, p2, size2, p3, size3, p4) bigstring bsevent; ptr
 	
 	
 	
-

@@ -25,8 +25,16 @@
 
 ******************************************************************************/
 
+#ifdef FRONTIER_PORTABLE
+#include "../portable/os_portable.h"
+#include "../portable/time_portable.h"
+#include "../portable/frontier.h"
+#include "../portable/standard.h"
+#include "../portable/shelltypes_portable.h"
+#else
 #include "frontier.h"
 #include "standard.h"
+#endif
 
 #include "memory.h"
 #include "db.h"
@@ -53,6 +61,9 @@
 
 
 
+
+/* Typed no-op for error message callbacks to avoid UB on function pointer casts */
+static boolean lang_errmsg_noop(bigstring bs, ptrvoid refcon) { (void)bs; (void)refcon; return true; }
 
 byte bstrue [] = "\x04" "true"; /*so we don't replicate this constant*/
 
@@ -485,7 +496,7 @@ boolean langcompiletext (Handle htext, boolean fllinebased, hdltreenode *hcode) 
 	
 	disposehandle (htext); 
 	
-	h = yyval; /*copy into register*/ /*parseresult.parsetree*/
+	h = langparser_result; /*copy into register*/ /*parseresult.parsetree*/
 	
 	if (yyresult != 0) { /*an error occurred*/
 		
@@ -949,10 +960,10 @@ boolean langrunhandletraperror (Handle htext, bigstring bsresult, bigstring bser
 	boolean fl;
 	langerrormessagecallback savecallback;
 	ptrvoid saverefcon;
+#ifndef FRONTIER_HEADLESS
 	GrafPtr saveport;
-	//Code change by Timothy Paustian Wednesday, June 14, 2000 4:32:31 PM
-	//Changed to Opaque call for Carbon
-	saveport = GetQDGlobalsThePort();
+    saveport = GetQDGlobalsThePort();
+#endif
 	
 	savecallback = langcallbacks.errormessagecallback;
 	
@@ -972,15 +983,15 @@ boolean langrunhandletraperror (Handle htext, bigstring bsresult, bigstring bser
 	
 	fllangerror = false;
 	
-	//Code change by Timothy Paustian Wednesday, June 14, 2000 4:35:24 PM
-	//Changed to Opaque call for Carbon
+	#ifndef FRONTIER_HEADLESS
 	{
 	GrafPtr thePort;
 	thePort = GetQDGlobalsThePort();
-	
+
 	if (thePort != saveport)
 		SetPort (saveport);
 	}
+	#endif
 	return (fl);
 
 	} /*langrunhandletraperror*/
@@ -1026,7 +1037,12 @@ boolean langrunstringnoerror (const bigstring bsprogram, bigstring bsresult) {
 		
 		saveerrorclear = langcallbacks.clearerrorcallback;
 		
-		langcallbacks.errormessagecallback = (langerrormessagecallback) &truenoop;
+    #ifdef FRONTIER_PORTABLE
+    extern boolean langportable_err_noop(unsigned char*, void*);
+    langcallbacks.errormessagecallback = (langerrormessagecallback) &langportable_err_noop;
+    #else
+    langcallbacks.errormessagecallback = &lang_errmsg_noop;
+    #endif
 		
 		langcallbacks.clearerrorcallback = &truenoop;
 		
@@ -1608,4 +1624,3 @@ boolean langrunscript (bigstring bsscriptname, tyvaluerecord *vparams, hdlhashta
 	return (fl);
 	} /%langrunscript%/
 */
-

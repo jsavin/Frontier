@@ -33,7 +33,11 @@ standard.h -- standard types and constants
 #define standardinclude /*so other modules can tell that we've been included*/
 
 
+	#ifdef FRONTIER_PORTABLE
+	#include "../../portable/time_portable.h"
+	#else
 	#include "FastTimes.h"
+	#endif
 
 #include "stringdefs.h"		/* embedded string definitions */
 
@@ -178,13 +182,13 @@ typedef enum tyjustification {
 #define chspace			((char) 32)
 #define chdelete 		((char) 127)
 
-	#define chcomment			((byte) 0xc7)	/* 'Ç' */
-	#define chendcomment		((byte) 0xc8)	/* 'È' */
-	#define chopencurlyquote	((byte) 0xd2)	/* 'Ò' */
-	#define chclosecurlyquote	((byte) 0xd3)	/* 'Ó' */
-	#define chtrademark			((byte) 0xaa)	/* 'ª' */
-	#define chnotequals			((byte) 0xad)	/* '­' */
-	#define chdivide			((byte) 0xd6)	/* 'Ö' */
+	#define chcomment			((byte) 0xc7)	/* 'ï¿½' */
+	#define chendcomment		((byte) 0xc8)	/* 'ï¿½' */
+	#define chopencurlyquote	((byte) 0xd2)	/* 'ï¿½' */
+	#define chclosecurlyquote	((byte) 0xd3)	/* 'ï¿½' */
+	#define chtrademark			((byte) 0xaa)	/* 'ï¿½' */
+	#define chnotequals			((byte) 0xad)	/* 'ï¿½' */
+	#define chdivide			((byte) 0xd6)	/* 'ï¿½' */
 
 
 

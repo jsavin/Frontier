@@ -28,7 +28,9 @@
 #include "frontier.h"
 #include "standard.h"
 
+#if !defined(FRONTIER_HEADLESS)
 	#include "mac.h"
+#endif
 
 #include "error.h"
 #include "memory.h"
@@ -298,14 +300,81 @@ boolean stringtoshort (bigstring bs, short *shortval) {
 
 
 
+#if defined(FRONTIER_HEADLESS)
+
+#include <math.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+#ifndef double_t
+typedef double double_t;
+#endif
+
+typedef struct headless_decform {
+	short style;
+	short digits;
+} decform;
+
+#define DecForm decform
+
+enum { FIXEDDECIMAL = 0 };
+
+static double_t str2num (byte *s) {
+	char buffer[256];
+	short len = stringlength (s);
+	if (len <= 0)
+		return 0.0;
+	if (len > 255)
+		len = 255;
+	for (short i = 0; i < len; ++i)
+		buffer[i] = (char) s[i + 1];
+	buffer[len] = '\0';
+	return strtod (buffer, NULL);
+} /*str2num*/
+
+static void num2str (decform *f, double_t x, void *s) {
+	unsigned char *bs = (unsigned char *) s;
+	char buffer[256];
+	int digits = (f != NULL && f->digits > 0) ? f->digits : 8;
+	if (digits > 16)
+		digits = 16;
+	int n = snprintf (buffer, sizeof buffer, "%.*f", digits, x);
+	if (n < 0)
+		n = 0;
+	if (n > 255)
+		n = 255;
+	for (int i = n - 1; i >= 0; --i) {
+		if (buffer[i] == '0' && i > 0 && buffer[i - 1] != '.')
+			buffer[i] = '\0';
+		else
+			break;
+	}
+	/* remove potential trailing '.' */
+	int newlen = (int) strlen (buffer);
+	if (newlen > 0 && buffer[newlen - 1] == '.') {
+		buffer[newlen - 1] = '\0';
+		--newlen;
+	}
+	if (newlen == 0) {
+		buffer[0] = '0';
+		buffer[1] = '\0';
+		newlen = 1;
+	}
+	bs[0] = (unsigned char) newlen;
+	for (int i = 0; i < newlen; ++i)
+		bs[i + 1] = (unsigned char) buffer[i];
+} /*num2str*/
+
+#else /* !FRONTIER_HEADLESS */
+
 	#define Decimal decimal
 	#define DecForm decform
-	
-	
+
+
 	/*
 	3.0.4 dmb: make these work with Metrowerks fp.h
 	*/
-	
+
 	static double_t str2num (byte *s) {
 		
 		/*
@@ -325,7 +394,7 @@ boolean stringtoshort (bigstring bs, short *shortval) {
 		
 		return(dec2num(&d));
 		} /*str2num*/
-	
+
 	static void num2str (decform *f, double_t x, void *s) {
 		
 		decimal d;
@@ -335,6 +404,8 @@ boolean stringtoshort (bigstring bs, short *shortval) {
 		
 		convertcstring (s);
 		} /*num2str*/
+
+#endif /* FRONTIER_HEADLESS */
 	
 	
 	
@@ -436,8 +507,11 @@ void exittooperatingsystem (void) {
 	unconditional exit to the operating system.
 	*/
 	
-
+#if defined(FRONTIER_HEADLESS)
+	exit (0);
+#else
 	ExitToShell ();
+#endif
 
 	} /*exittooperatingsystem*/
 	
@@ -610,12 +684,18 @@ static boolean gestaltavailable (void) {
 
 
 boolean gestalt (OSType selector, long *result) {
-	
 
-		if (!gestaltavailable ())
-			return (false);
-		
-		return (Gestalt (selector, result) == noErr);
+#if defined(FRONTIER_HEADLESS)
+	(void) selector;
+	if (result)
+		*result = 0;
+	return (false);
+#else
+	if (!gestaltavailable ())
+		return (false);
+
+	return (Gestalt (selector, result) == noErr);
+#endif
 
 	} /*gestalt*/
 

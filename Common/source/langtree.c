@@ -147,14 +147,18 @@ typedef struct tyOLD42disktreenode {
 
 #define treenodeblocksize 1024
 
+#if !defined(__LP64__)
 #pragma pack(2)
+#endif
 typedef struct tytreenodeblock {
 	
 	ptrtreenode pnode; // points to next field, simulating handle
 	
 	tytreenode node;
-	} tytreenodeblock, *ptrtreenodeblock;
+} tytreenodeblock, *ptrtreenodeblock;
+#if !defined(__LP64__)
 #pragma options align=reset
+#endif
 
 
 

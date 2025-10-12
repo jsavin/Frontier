@@ -200,11 +200,12 @@ boolean langerrormessage (bigstring bs) {
 	
 	4.1b3 dmb: added call to new langseterrorcallbackline for stack tracing (on error)
 	*/
-    
-    char cs[stringlength(bs)];
-    copyptocstring(bs, cs);
-    fprintf(stderr, "%s\n", cs);
-    
+    /* Headless/portable: safely print bigstring without VLAs or overflow */
+    {
+        char cs[256]; /* bigstring max length is 255 */
+        copyptocstring(bs, cs);
+        fprintf(stderr, "%s\n", cs);
+    }
 	
 	if (!langerrorenabled ())
 		return (true);
@@ -285,7 +286,6 @@ boolean langpartialeventloop (UInt16 desiredevents) {
 	
 	return ((*langcallbacks.partialeventloopcallback) (desiredevents));
 	} /*langpartialeventloop*/
-
 
 
 

@@ -58,16 +58,20 @@
 #endif
 
 
+#if !defined(FRONTIER_HEADLESS)
 #ifndef __ALIASES__
 
 	#include <Aliases.h>
 
 #endif
+#endif
 
+#if !defined(FRONTIER_HEADLESS)
 #ifndef __AEREGISTRY__
 
 	#include <AERegistry.h>
 
+#endif
 #endif
 
 #ifndef standardinclude
@@ -757,5 +761,3 @@ typedef struct tylandglobals {
 /*accessing the Toolkit globals*/
 
 	pascal hdllandglobals landgetglobals (void);
-
-

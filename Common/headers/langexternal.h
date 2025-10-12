@@ -41,10 +41,29 @@
 
 #endif
 
+#ifndef FRONTIER_PORTABLE
 #ifndef shellinclude
-
-	#include "shell.h"
-
+    #include "shell.h"
+#endif
+#else
+    /* Portable core: no UI types */
+    #ifdef FRONTIER_PORTABLE
+        /* Forward declare opaque types for portable stubs */
+        struct tywindowinfo;
+        struct tyconfigrecord;
+        /* Don't define typedefs here to avoid conflicts with shell.h/frontierconfig.h */
+    #else
+        /* Full UI types when shell.h is present */
+        #ifndef shellinclude
+            struct tywindowinfo; /* incomplete */
+            #ifndef hdlwindowinfo
+            typedef struct tywindowinfo** hdlwindowinfo; /* match real shape */
+            #endif
+            #ifndef tyconfigrecord
+            typedef struct tyconfigrecord tyconfigrecord; /* opaque */
+            #endif
+        #endif
+    #endif
 #endif
 
 
@@ -242,7 +261,7 @@ extern boolean langexternaldisposevariable (hdlexternalvariable, boolean, boolea
 
 extern boolean langexternaldisposevalue (tyvaluerecord, boolean);
 
-extern boolean langexternalgetconfig (tyvaluetype, short, tyconfigrecord *);
+extern boolean langexternalgetconfig (tyvaluetype, short, struct tyconfigrecord*);
 
 extern boolean langexternalnewvalue (tyexternalid, Handle, tyvaluerecord *);
 
@@ -276,7 +295,7 @@ extern tyvaluetype langexternalgetvaluetype (OSType);
 
 extern boolean langexternalregisterwindow (hdlexternalvariable);
 
-extern boolean langexternalunregisterwindow (hdlwindowinfo);
+extern boolean langexternalunregisterwindow (hdlwindowinfo hw);
 
 extern boolean langexternalcloseregisteredwindows (boolean);
 
@@ -295,6 +314,5 @@ extern boolean langexternalsymbolchanged (hdlhashtable htable, const bigstring b
 extern boolean langexternalsymbolinserted (hdlhashtable htable, const bigstring bsname, hdlhashnode hnode);
 
 #endif
-
 
 

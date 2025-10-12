@@ -38,6 +38,17 @@
 
 
 
+/* Typed no-op shims to avoid UB from casted function pointers */
+static boolean op_cb_true_textualize(hdlheadrecord h, Handle r) { (void)h; (void)r; return true; }
+static boolean op_cb_true_node(hdlheadrecord h) { (void)h; return true; }
+static boolean op_cb_false_node(hdlheadrecord h) { (void)h; return false; }
+static boolean op_cb_true_textchanged(hdlheadrecord h, bigstring bs) { (void)h; (void)bs; return true; }
+static boolean op_cb_true_preexpand(hdlheadrecord h, short s, boolean b) { (void)h; (void)s; (void)b; return true; }
+static boolean op_cb_true_validate(hdlheadrecord a, hdlheadrecord b, tydirection d) { (void)a; (void)b; (void)d; return true; }
+static boolean op_cb_false_2nodes(hdlheadrecord a, hdlheadrecord b) { (void)a; (void)b; return false; }
+static boolean op_cb_true_dragtarget(hdlheadrecord *h, tydirection *d) { (void)h; (void)d; return true; }
+static boolean op_cb_true_string(bigstring bs) { (void)bs; return true; }
+
 static void opdisposescrap (void *hnode) {
 	
 	/*
@@ -186,9 +197,11 @@ void opinitcallbacks (hdloutlinerecord houtline) {
 	5.1.5 dmb: ...now, it's oppostfontchange
 	*/
 	
-	#if !fljustpacking
-	
+#if !fljustpacking
+
 		register hdloutlinerecord ho = houtline;
+
+
 		
 		(**ho).setscrollbarsroutine = &opdefaultsetscrollbars;
 		
@@ -214,29 +227,29 @@ void opinitcallbacks (hdloutlinerecord houtline) {
 		
 		(**ho).copyrefconcallback = &opcopyrefconroutine; /*just copies the handle*/
 		
-		(**ho).textualizerefconcallback = (optextualizerefconcallback) &truenoop; /*very much like a noop*/
+		(**ho).textualizerefconcallback = &op_cb_true_textualize; /*very much like a noop*/
 		
-		(**ho).printrefconcallback = (opnodecallback) &truenoop; /*indistinguishable from a noop*/
+		(**ho).printrefconcallback = &op_cb_true_node; /*indistinguishable from a noop*/
 		
 		(**ho).releaserefconcallback = &opdefaultreleaserefconroutine; /*basically a no-op*/
 		
-		(**ho).searchrefconcallback = (opnodecallback) &falsenoop; /*just returns false*/
+		(**ho).searchrefconcallback = &op_cb_false_node; /*just returns false*/
 		
-		(**ho).deletelinecallback = (opnodecallback) &truenoop; /*called before a line is deleted*/
+		(**ho).deletelinecallback = &op_cb_true_node; /*called before a line is deleted*/
 		
-		(**ho).insertlinecallback = (opnodecallback) &truenoop; /*called after a line is inserted*/
+		(**ho).insertlinecallback = &op_cb_true_node; /*called after a line is inserted*/
 		
-		(**ho).textchangedcallback = (optextchangedcallback) &truenoop; /*called when the text of a line has changed*/
+		(**ho).textchangedcallback = &op_cb_true_textchanged; /*called when the text of a line has changed*/
 		
 		(**ho).mouseinlinecallback = &opdefaultmouseinline;
 		
 		(**ho).postfontchangecallback = &oppostfontchange;
 		
-		(**ho).hasdynamicsubscallback = (opnodecallback) &falsenoop;
+		(**ho).hasdynamicsubscallback = &op_cb_false_node;
 		
-		(**ho).haslinkedtextcallback = (opnodecallback) &falsenoop;
+		(**ho).haslinkedtextcallback = &op_cb_false_node;
 		
-		(**ho).cmdclickcallback = (opnodecallback) &falsenoop;
+		(**ho).cmdclickcallback = &op_cb_false_node;
 		
 		(**ho).doubleclickcallback = &truenoop;
 		
@@ -246,15 +259,15 @@ void opinitcallbacks (hdloutlinerecord houtline) {
 		
 		(**ho).texttooutlinecallback = &optextscraptooutline;
 		
-		(**ho).preexpandcallback = (oppreexpandcallback) &truenoop;
+		(**ho).preexpandcallback = &op_cb_true_preexpand;
 		
-		(**ho).postcollapsecallback = (opnodecallback) &truenoop;
+		(**ho).postcollapsecallback = &op_cb_true_node;
 		
-		(**ho).validatedragcallback = (opvalidatecallback) &truenoop;
+		(**ho).validatedragcallback = &op_cb_true_validate;
 		
-		(**ho).predragcallback = (opdragtargetcallback) &truenoop;
+		(**ho).predragcallback = &op_cb_true_dragtarget;
 		
-		(**ho).dragcopycallback = (op2nodescallback) &falsenoop;
+		(**ho).dragcopycallback = &op_cb_false_2nodes;
 		
 		(**ho).getlineheightcallback = &opdefaultgetlineheight;
 		
@@ -266,17 +279,17 @@ void opinitcallbacks (hdloutlinerecord houtline) {
 		
 		(**ho).icon2clickcallback = &opdefaulticon2click;
 		
-		(**ho).validatepastecallback = (opvalidatecallback) &truenoop;
+		(**ho).validatepastecallback = &op_cb_true_validate;
 		
-		(**ho).postpastecallback = (opnodecallback) &truenoop;
+		(**ho).postpastecallback = &op_cb_true_node;
 		
-		(**ho).validatecopycallback = (opstringcallback) &truenoop;
+		(**ho).validatecopycallback = &op_cb_true_string;
 		
-		(**ho).caneditcallback = (opnodecallback) &truenoop;
+		(**ho).caneditcallback = &op_cb_true_node;
 		
 		(**ho).getfullrectcallback = &opdefaultgetfullrect;
 		
-		(**ho).nodechangedcallback = (opnodecallback) &truenoop;
+		(**ho).nodechangedcallback = &op_cb_true_node;
 		
 	//	(**ho).returnkeycallback = opdefaultreturnkey;
 
@@ -286,5 +299,3 @@ void opinitcallbacks (hdloutlinerecord houtline) {
 
 	#endif
 	} /*opinitcallbacks*/
-
-

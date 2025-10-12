@@ -1,0 +1,1271 @@
+M1:Frontier jake$ codex
+
+✨⬆️ Update available! 0.36.0 -> 0.39.0.
+Run brew upgrade codex to update.
+
+╭────────────────────────────────────────────────────────╮
+│ >_ OpenAI Codex (v0.36.0)                              │
+│                                                        │
+│ model:     gpt-5-codex   /model to change              │
+│ directory: ~/dev/jsavin/Frontier                       │
+╰────────────────────────────────────────────────────────╯
+
+  To get started, describe a task or try one of these commands:
+
+  /init - create an AGENTS.md file with instructions for Codex
+  /status - show current session configuration
+  /approvals - choose what Codex can do without approval
+  /model - choose what model and reasoning effort to use
+
+▌ We ran out of space again. Please pick up from where we left off at the end of codex_sessions/codex_session_20250919_02.txt.
+
+• Explored
+  └ Read codex_session_20250919_02.txt, codex_session_20250919_01.txt, shelltypes.h
+
+• Ran git status -sb
+
+• Ran git diff Common/headers/shelltypes.h
+
+• Explored
+  └ Search FRONTIER_PORTABLE in Makefile
+    Read Makefile
+
+> Thinking
+  I'm untangling the history of changes around HEADLESS support and the portable header inclusion that caused compile errors earlier, trying to understand if those changes were reverted or undone.
+  Since the current file seems to lack the HEADLESS addition, I want to rerun make runtime_tests to capture fresh compile errors before making a clear plan, because the recent logs were incomplete
+  and the previous compile failure details are missing. This setup helps me figure out what to tackle next!
+
+• Ran make runtime_tests
+  └ make: *** No rule to make target `runtime_tests'.  Stop.
+
+• Ran make -C tests runtime_tests
+  └ ../Common/source/lang.c:1041:42: warning: cast from 'boolean (*)(void)' (aka 'unsigned char (*)(void)') to 'langerrormessagecallback' (aka 'unsigned char (*)(unsigned char *, void *)') converts
+    to incompatible function type [-Wcast-function-type-mismatch]
+     1041 |     langcallbacks.errormessagecallback = (langerrormessagecallback) &truenoop;
+          |                                          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    1 warning generated.
+    langparser.y:1859:11: warning: array index -1 is before the beginning of the array [-Warray-bounds]
+    … +640 lines
+    headless_langipc_stub.c:14:16: warning: unused function 'unsupported' [-Wunused-function]
+       14 | static boolean unsupported(boolean defaultValue) {
+          |                ^~~~~~~~~~~
+    1 warning generated.
+    make: *** [runtime_tests] Error 1
+
+> Thinking
+  I’m gathering context on the fatal errors coming from langsystem7.c after switching to tyfilespec in a headless build. The main challenge is that langsystem7.c still expects classic Mac-specific
+  FSSpec structs and callbacks, but the code now uses a different tyfilespec type and modern C standards that cause type mismatches and invalid escape sequence warnings. I’ll need to carefully align
+  function signatures, type usages, and possibly provide adapter functions or conditional compilation for headless builds to keep compatibility. I’m opening related headers to verify declarations and
+  plan the next steps.
+
+• Explored
+  └ Read langsystem7.h, langsystem7.c
+
+> Thinking
+  I’m digging into old code changes around pushchar and setstring that might have caused compile errors. Since many errors involve Mac-specific APIs like FSSpec, I’m thinking about stubbing out
+  or adapting these for a headless build by tweaking langsystem7.c or redefining tyfilespec conditionally to keep compatibility without FSRef. I'll look into existing HEADLESS macros and portable
+  headers to see how to best approach this.
+
+• Explored
+  └ Read osincludes_portable.h
+
+• Ran git diff Common/source/langsystem7.c
+
+• Explored
+  └ Search chellipsis
+    Search chEllipsis
+    Search ellips in Common
+
+> Thinking
+  I'm reviewing how stubbing out Mac-specific alias functions without proper conditional compilation caused major compile errors, especially due to inconsistent use of tyfilespec fields in the same
+  file. I plan to check the git diff and inspect relevant lines to understand all the changes and pinpoint remaining issues.
+
+• Explored
+  └ Read langsystem7.c, file.h, shelltypes_portable.h
+
+> Thinking
+  I’m outlining a multi-step plan to handle compile issues caused by changes in the tyfilespec struct and langsystem7.c’s reliance on old fields like parID and vRefNum. The plan includes auditing
+  existing alias-related code, crafting headless-compatible fixes or stubs, and iteratively testing to confirm progress while adapting the strategy as needed. Let’s get this organized before jumping
+  into coding.
+
+• Updated Plan
+  └ □ Audit `langsystem7.c` under headless build to list the incompatible Mac-specific code paths we must stub or adapt (aliases, FSSpec usage, callbacks).
+    □ Implement headless guards/replacements in `langsystem7.c` so it compiles with `tyfilespec` (including restoring valid ellipsis handling and fixing callback signatures).
+    □ Rebuild `runtime_tests` and triage any remaining compiler errors or warnings that block progress.
+
+> Thinking
+  I’m auditing code to pinpoint incompatible parts causing compile errors, especially around hashinversesearch, character handling in pushchar and insertchar, and file spec operations. My plan is to
+  list functions needing conditional compilation guards for headless mode and investigate any compatibility helpers for tyfilespec and FSSpec. This should help me find safer alternatives or wrap Mac-
+  specific code to fix these errors.
+
+• Explored
+  └ Search FSMakeFSSpec
+    Search setfilespecvalue
+    Read langvalue.c
+    Search \.ref in langsystem7.c
+    Search \.flags\.
+    Read langsystypes.c
+
+> Thinking
+  I'm exploring how langsystem7.c replicates FSRef-based functions already in langsystypes.c, especially filespecaddvalue. It looks like handling Mac file references is duplicated and might cause
+  duplicate symbol errors. I’ll verify compilation conditions and consider conditional compilation or stubs for headless builds to avoid conflicts while maintaining needed functionality.
+
+• Ran git diff Common/source/langsystypes.c
+
+• Explored
+  └ Search boolean filespecaddvalue
+    Read langsystem7.c
+    Search FSMakeFSSpec in langsystem7.c
+
+> Thinking
+  I'll gate functions like filespecaddvalue and filespecsubtractvalue with #if !defined(FRONTIER_HEADLESS) to avoid referencing unavailable fields in headless mode, stub some file-alias functions to
+  return false, and adjust function parameter types to match expected signatures. For character encoding errors related to invalid ellipsis chars, I'll look into using hex codes or defined constants
+  from existing code to fix pushchar calls while avoiding non-ASCII issues.
+
+• Explored
+  └ Read strings.c
+    Search pushchar \('[^']' in langsystem7.c
+    Search #define ch in headers
+
+> Thinking
+  I’m planning to replace pushchar('',…) and insertchar('',…) calls with pushstring() and insertstring() using an ASCII ellipsis sequence for headless builds while preserving original behavior
+  elsewhere. Also, I’m resolving conflicting types in alias-related function signatures by aligning them with header typedefs (const ptrfilespec) to fix compilation errors and prepare for stubbing
+  unsupported alias operations. This sets a clean base before moving on to the next step.
+
+• Updated Plan
+  └ Identified the problematic spots in `langsystem7.c` for the headless build: alias helpers now stubbed but still mismatched with header prototypes, `filespecaddvalue/filespecsubtractvalue` rely
+    on classic FSSpec fields and need headless guards, ellipsis handling was broken by the previous edit, and `getostypevalnamevisit` uses the wrong callback signature. Ready to implement the guarded
+    fixes.
+    ✔ Audit `langsystem7.c` under headless build to list the incompatible Mac-specific code paths we must stub or adapt (aliases, FSSpec usage, callbacks).
+    □ Implement headless guards/replacements in `langsystem7.c` so it compiles with `tyfilespec` (including restoring valid ellipsis handling and fixing callback signatures).
+    □ Rebuild `runtime_tests` and triage any remaining compiler errors or warnings that block progress.
+
+> Thinking
+  I’m planning to modify langsystem7.c so that alias stub functions apply only for headless builds by wrapping stubs in #if defined(FRONTIER_HEADLESS) and restoring original implementations under
+  #else. Since stubs replaced original code for all builds, I’ll retrieve the original function bodies from the last committed version via git to avoid losing functionality in UI builds. I'll
+  identify the stubbed functions and extract their original code to reinstate conditionally.
+
+• Ran git show HEAD:Common/source/langsystem7.c | sed -n '340,580p'
+
+• Ran git show HEAD:Common/source/langsystem7.c | sed -n '580,880p'
+
+• Explored
+  └ Search filespecaddvalue in langsystem7.c
+    Read langwarnings.c
+
+> Thinking
+  I’m working through adding a stub in langsystem7.c that will emit a warning and return false, making sure bool is handled correctly in C. Also, I’m setting up a Pascal string constant for ellipsis
+  used only in headless builds, with conditional compilation toggling pushchar or pushstring calls accordingly, and planning updates to related functions like getlimitedvaluestring and insertchar
+  around line 1583, plus checking getostypevalnamevisit adjustments. Let’s map all these modifications carefully!
+
+• Explored
+  └ Search getostypevalnamevisit in langsystem7.c
+    Read langsystem7.c
+
+> Thinking
+  I'm planning to reintroduce the original code inside an #else block for the stub functions under a #if defined(FRONTIER_HEADLESS) guard, ensuring function signatures match and carefully handling
+  pushchar modifications and ellipsis insertion. I also need to guard filespecaddvalue and filespecsubtractvalue with a non-headless macro to avoid duplicate definitions, while verifying how related
+  functions are conditionally compiled elsewhere to prevent symbol conflicts.
+
+• Explored
+  └ Read langsystypes.c
+
+> Thinking
+  I'm investigating why duplicate function definitions exist between langsystem7.c and langsystypes.c, suspecting platform-specific compile guards like #if !appleevent, FRONTIER_APP, or MACVERSION
+  control which get included. The duplicates cause linking errors unless excluded properly, so I'll verify how compile flags and platform macros influence these files to avoid conflicts.
+
+• Ran rg "#if" Common/source/langsystypes.c | head -n 20
+
+> Thinking
+  I'm sorting through duplicated function definitions across two source files and figuring out how to use #if !defined(FRONTIER_HEADLESS) guards to remove duplicates in headless builds while
+  preserving compatibility in non-headless builds. Planning to craft a multi-hunk patch with these changes plus other code adjustments.
+
+• Edited Common/source/langsystem7.c (+17 -5)
+    53
+    54    +#if defined(FRONTIER_HEADLESS)
+    55    +static const unsigned char kHeadlessEllipsis[] = "\x03...";
+    56    +#endif
+    57    +
+    58
+    ⋮
+    203
+    200   -static boolean getostypevalnamevisit (bigstring bsname, hdlhashnode hnode, tyvaluerecord val, tyvaluerecord *vallookfor) {
+    204   +static boolean getostypevalnamevisit (bigstring bsname, hdlhashnode hnode, tyvaluerecord val, ptrvoid userref) {
+    205    	
+    ⋮
+    217    	boolean fl;
+    218   +	tyvaluerecord *vallookfor = (tyvaluerecord *) userref;
+    219    	
+    ⋮
+    364    		setstringlength (bsvalue, limit - 1);
+    360   -		
+    361   -		pushchar ('', bsvalue);
+    365   +
+    366   +#if defined(FRONTIER_HEADLESS)
+    367   +		pushstring (kHeadlessEllipsis, bsvalue);
+    368   +#else
+    369   +		pushchar ('�', bsvalue);
+    370   +#endif
+    371    		}
+    ⋮
+    1385   			
+    1377  -			insertchar ('', bsobj);
+    1386  +#if defined(FRONTIER_HEADLESS)
+    1387  +			insertstring (kHeadlessEllipsis, bsobj);
+    1388  +#else
+    1389  +			insertchar ('�', bsobj);
+    1390  +#endif
+    1391   			
+    ⋮
+    2450   	} /*isobjspectree*/
+    2438  -
+    2451
+
+• Explored
+  └ Read langsystem7.c
+
+• Ran git show HEAD:Common/headers/langsystem7.h | sed -n '40,80p'
+
+• Ran git diff Common/headers/langsystem7.h
+
+• Ran git show HEAD:Common/headers/shelltypes.h | sed -n '150,220p'
+
+• Edited Common/source/langsystem7.c (+274 -5)
+    459
+    460   +#if defined(FRONTIER_HEADLESS)
+    461   +
+    462    static boolean alias_operation_not_supported(void) {
+    461   -	langwarning_emit("alias.deprecated", "Alias/aliasHandle operations are no longer supported; use file paths instead.", true);
+    463   +	langwarning_emit("alias.deprecated", "Alias/aliasHandle operations are not available in headless mode; use file paths instead.", false);
+    464    	return false;
+    ⋮
+    472
+    471   -boolean filespectoalias (const tyfilespec *fs, boolean flminimal, AliasHandle *halias) {
+    473   +boolean filespectoalias (const ptrfilespec fs, boolean flminimal, AliasHandle *halias) {
+    474    	(void) fs;
+    ⋮
+    488    	(void) halias;
+    487   -	setstringlength(bs, 0);
+    489   +	setstringlength (bs, 0);
+    490    	return alias_operation_not_supported();
+    ⋮
+    493
+    492   -boolean aliastofilespec (AliasHandle halias, tyfilespec *fs) {
+    494   +boolean aliastofilespec (AliasHandle halias, ptrfilespec fs) {
+    495    	(void) halias;
+    ⋮
+    509
+    510   +#else /* !FRONTIER_HEADLESS */
+    511   +
+    512   +static boolean stringtoalias (tyvaluerecord *val) {
+    513   +	
+    514   +	/*
+    515   +	10/7/91 dmb: make sure we're actually passing a full path to the NewAlias routine
+    516   +
+    517   +	7/2/92 dmb: don't call getfullfilepath; makes it impossible to create aliases of
+    518   +	not-yet-existing files, or offline volumes
+    519   +
+    520   +	7/23/92 dmb: OK, try to getfullfilepath, but with errors disabled
+    521   +
+    522   +	2.1b2 dmb: try converting to a filespec first to ensure that partial path or
+    523   +	drive number if processed properly. also, in the filespec case, the alias isn't
+    524   +	minimal
+    525   +	*/
+    526   +
+    527   +	register Handle htext;
+    528   +	bigstring bspath;
+    529   +	tyfilespec fs;
+    530   +	AliasHandle halias;
+    531   +	boolean flfolder;
+    532   +	OSErr errcode;
+    533   +
+    534   +	if (!langcanusealiases ())
+    535   +		return (false);
+    536   +
+    537   +	htext = (*val).data.stringvalue;
+    538   +
+    539   +	texthandletostring (htext, bspath);
+    540   +
+    541   +	if (pathtofilespec (bspath, &fs) && fileexists (&fs, &flfolder))
+    542   +		errcode = NewAlias (nil, &fs, &halias);
+    543   +	else
+    544   +		errcode = NewAliasMinimalFromFullPath (stringlength (bspath), bspath + 1, nil, nil, &halias);
+    545   +
+    546   +	if (oserror (errcode))
+    547   +		return (false);
+    548   +
+    549   +	if (!setheapvalue ((Handle) halias, aliasvaluetype, val))
+    550   +		return (false);
+    551   +
+    552   +	releaseheaptmp ((Handle) htext);
+    553   +
+    554   +	return (true);
+    555   +	} /*stringtoalias*/
+    556   +
+    557   +
+    558   +boolean filespectoalias (const tyfilespec *fs, boolean flminimal, AliasHandle *halias) {
+    559   +	
+    560   +	bigstring bs;
+    561   +	OSErr err;
+    562   +
+    563   +	if (flminimal)
+    564   +		err = NewAliasMinimal (fs, halias);
+    565   +	else
+    566   +		err = NewAlias (nil, fs, halias);
+    567   +
+    568   +	if (err == fnfErr) { /*alias manager isn't friendly enough to do anything for us here*/
+    569   +		
+    570   +		if (filespectopath (fs, bs))
+    571   +			err = NewAliasMinimalFromFullPath (stringlength (bs), bs + 1, nil, nil, halias);
+    572   +		}
+    573   +
+    574   +	if (err == noErr)
+    575   +		return (true);
+    576   +
+    577   +	if (langerrorenabled ()) {
+    578   +		
+    579   +		setoserrorparam ((ptrstring) (*fs).name);
+    580   +		
+    581   +		oserror (err);
+    582   +		}
+    583   +
+    584   +	return (false);
+    585   +	} /*filespectoalias*/
+    586   +
+    587   +
+    588   +static boolean filespecvaltoalias (tyvaluerecord *val) {
+    589   +	
+    590   +	register FSSpecHandle hfs;
+    591   +	FSSpec fs;
+    592   +	AliasHandle halias;
+    593   +
+    594   +	if (!langcanusealiases ())
+    595   +		return (false);
+    596   +
+    597   +	hfs = (FSSpecHandle) (*val).data.filespecvalue;
+    598   +
+    599   +	fs = **hfs;
+    600   +
+    601   +	if (!filespectoalias (&fs, false, &halias))
+    602   +		return (false);
+    603   +
+    604   +	if (!setheapvalue ((Handle) halias, aliasvaluetype, val))
+    605   +		return (false);
+    606   +
+    607   +	releaseheaptmp ((Handle) hfs);
+    608   +
+    609   +	return (true);
+    610   +	} /*filespecvaltoalias*/
+    611   +
+    612   +
+    613   +boolean aliastostring (Handle halias, bigstring bs) {
+    614   +	
+    615   +	/*
+    616   +	10/4/91 dmb: if alias can't be resolved, just say what volume it's on.
+    617   +
+    618   +	4/12/93 dmb: accept fnfErr result from ResolveAlias
+    619
+    620   +	2.1b9 dmb: use FollowFinderAlias to avoid mounting volumes during
+    621   +	alias resolution
+    622   +
+    623   +	4.0b6 4/26/96 dmb: restored FollowFinderAlias code; must use if we get fnfErr.
+    624   +	*/
+    625   +
+    626   +	register AliasHandle h = (AliasHandle) halias;
+    627   +	short flchanged;
+    628   +	FSSpec fs;
+    629   +	bigstring bsinfo;
+    630   +	AliasInfoType ix = asiAliasName;
+    631   +	OSErr err;
+    632   +
+    633   +	if (!langcanusealiases ())
+    634   +		return (false);
+    635   +
+    636   +	err = FollowFinderAlias (nil, h, false, &fs, (Boolean *) &flchanged);
+    637   +
+    638   +	if ((err == noErr) /*|| (err == fnfErr)*/ ) {
+    639   +		
+    640   +		if (flchanged)
+    641   +			UpdateAlias (nil, &fs, h, (Boolean *) &flchanged);
+    642   +		
+    643   +		return (filespectopath (&fs, bs));
+    644   +		}
+    645   +
+    646   +	langgettypestring (aliasvaluetype, bs);
+    647   +
+    648   +	/*
+    649   +	if (GetAliasInfo (h, asiVolumeName, bsinfo) == noErr) { //add the volume name
+    650   +		
+    651   +		bigstring bsaliasondisk;
+    652   +		
+    653   +		langgetstringlist (unresolvedaliasstring, bsaliasondisk);
+    654   +		
+    655   +		parsedialogstring (bsaliasondisk, bs, bsinfo, nil, nil, bsaliasondisk);
+    656   +		
+    657   +		copystring (bsaliasondisk, bs);
+    658   +		}
+    659   +	*/
+    660   +
+    661   +	setemptystring (bs);
+    662   +
+    663   +	// get each path element out of the alias
+    664   +	while (GetAliasInfo (h, ix, bsinfo) == noErr) {
+    665   +		
+    666   +		if (isemptystring (bsinfo)) // reached top of path hierarchy
+    667   +			break;
+    668   +		
+    669   +		if (ix > asiAliasName)
+    670   +			pushchar (':', bsinfo);
+    671   +		
+    672   +		if (!insertstring (bsinfo, bs))
+    673   +			break;
+    674   +		
+    675   +		++ix;
+    676   +		}
+    677   +
+    678   +	// add the volume name
+    679   +	GetAliasInfo (h, asiVolumeName, bsinfo);
+    680   +
+    681   +	pushchar (':', bsinfo);
+    682   +
+    683   +	insertstring (bsinfo, bs);
+    684   +
+    685   +	return (true);
+    686   +	} /*aliastostring*/
+    687   +
+    688   +
+    689   +boolean aliastofilespec (AliasHandle halias, FSSpec *fs) {
+    690   +	
+    691   +	/*
+    692   +	2.1a6 dmb: ignore fnfErr
+    693   +
+    694   +	2.1b2 dmb: on error, try to get as much info from the alias as possible,
+    695   +	& just return false to caller
+    696   +
+    697   +	2.1b9 dmb: use FollowFinderAlias to avoid mounting volumes during
+    698   +	alias resolution
+    699   +	*/
+    700   +
+    701   +	Boolean flchanged;
+    702   +	bigstring bs;
+    703   +	OSErr err;
+    704   +
+    705   +	if (!langcanusealiases ())
+    706   +		return (false);
+    707   +
+    708   +	err = FollowFinderAlias (nil, halias, false, fs, &flchanged);
+    709   +
+    710   +	if ((err == noErr) || (err == fnfErr))
+    711   +		return (true);
+    712   +
+    713   +	(*fs).parID = 0;
+    714   +
+    715   +	(*fs).vRefNum = 0;
+    716   +
+    717   +	if (GetAliasInfo (halias, asiVolumeName, bs) == noErr) /*try to get vol info*/
+    718   +		fileparsevolname (bs, &(*fs).vRefNum, nil);
+    719   +
+    720   +	if (GetAliasInfo (halias, asiAliasName, (*fs).name) != noErr) /*try to set file name*/
+    721   +		langgetmiscstring (unknownstring, (*fs).name);
+    722   +
+    723   +	if (langerrorenabled ()) {
+    724   +		
+    725   +		setoserrorparam ((*fs).name);
+    726   +		
+    727   +		oserror (err);
+    728   +		}
+    729   +
+    730   +	return (false);
+    731   +	} /*aliastofilespec*/
+    732   +
+    733   +
+    734   +boolean coercetoalias (tyvaluerecord *v) {
+    735   +	
+    736   +	/*
+    737   +	10/4/91 dmb: when v is novaluetype, fail silently so the new verb
+    738   +	will just return false.  a specific error message might be better, but
+    739   +	I don't expect this to come up much, if at all.
+    740   +	*/
+    741   +
+    742   +	switch ((*v).valuetype) {
+    743   +		
+    744   +		case aliasvaluetype:
+    745   +			return (true);
+    746   +		
+    747   +		case novaluetype: /*easy way is via file spec to make alias of default folder*/
+    748   +			if (flinhibitnilcoercion)
+    749   +				return (false);
+    750   +			
+    751   +			if (!coercetofilespec (v))
+    752   +				return (false);
+    753   +			
+    754   +			return (filespecvaltoalias (v));
+    755   +		
+    756   +		case stringvaluetype:
+    757   +			return (stringtoalias (v));
+    758   +		
+    759   +		case binaryvaluetype:
+    760   +			return (coercebinaryval (v, aliasvaluetype, 0L, aliasvaluetype));
+    761   +		
+    762   +		case filespecvaluetype:
+    763   +			return (filespecvaltoalias (v));
+    764   +		
+    765   +		case listvaluetype:
+    766   +		case recordvaluetype:
+    767   +			return (coercelistvalue (v, aliasvaluetype));
+    768   +		
+    769   +		default:
+    770   +			langcoerceerror (v, aliasvaluetype);
+    771   +			
+    772   +			return (false);
+    773   +		} /*switch*/
+    774   +	} /*coercetoalias*/
+    775   +
+    776   +#endif /* FRONTIER_HEADLESS */
+    777   +
+    778   +
+    779    boolean filespecaddvalue (tyvaluerecord *v1, tyvaluerecord *v2, tyvaluerecord *vreturned) {
+    ⋮
+    2720   	} /*isobjspectree*/
+    2451  -
+    2721
+
+• Edited Common/source/langsystem7.c (+4 -1)
+    778
+    779   +#if !defined(FRONTIER_HEADLESS)
+    780   +
+    781    boolean filespecaddvalue (tyvaluerecord *v1, tyvaluerecord *v2, tyvaluerecord *vreturned) {
+    ⋮
+    896
+    897   +#endif /* !FRONTIER_HEADLESS */
+    898   +
+    899
+    ⋮
+    2724   	} /*isobjspectree*/
+    2721  -
+    2725
+
+> Thinking
+  I'm untangling type mismatches between stub functions and headers, especially around ptrfilespec, tyfilespec, and FSSpec pointers, to avoid compilation issues in headless and non-headless builds.
+  I'm also verifying proper inclusion of <string.h>, ensuring stub signatures match declared prototypes, handling langwarnings_emit usage, and confirming no encoding problems with special characters
+  in the patch.
+
+• Explored
+  └ Read langsystem7.c
+
+> Thinking
+  I'm sorting out pointer type mismatches between function definitions and header declarations, especially around ptrfilespec, tyfilespec, and FSSpec pointers for headless versus non-headless builds.
+  To avoid compile errors, I'll adjust either the header or the stubs to align filespectoalias and aliastofilespec prototypes, using conditional macros if needed. I also checked that necessary
+  includes like <string.h> for memset are present and planned to confirm no further compile errors before advancing.
+
+• Updated Plan
+  └ Added headless-safe handling in `langsystem7.c`: wrapped the classic alias routines so they defer to warning stubs when `FRONTIER_HEADLESS` is set while preserving the full implementations for UI
+    builds, guarded the FSSpec-based helpers behind `#if !FRONTIER_HEADLESS`, restored proper ellipsis handling with a Pascal "..." fallback for headless, and fixed the callback signature mismatch.
+    Ready to rebuild and see what errors remain.
+    ✔ Audit `langsystem7.c` under headless build to list the incompatible Mac-specific code paths we must stub or adapt (aliases, FSSpec usage, callbacks).
+    ✔ Implement headless guards/replacements in `langsystem7.c` so it compiles with `tyfilespec` (including restoring valid ellipsis handling and fixing callback signatures).
+    □ Rebuild `runtime_tests` and triage any remaining compiler errors or warnings that block progress.
+
+• Ran make -C tests runtime_tests
+  └ ../Common/source/lang.c:1041:42: warning: cast from 'boolean (*)(void)' (aka 'unsigned char (*)(void)') to 'langerrormessagecallback' (aka 'unsigned char (*)(unsigned char *, void *)') converts
+    to incompatible function type [-Wcast-function-type-mismatch]
+     1041 |     langcallbacks.errormessagecallback = (langerrormessagecallback) &truenoop;
+          |                                          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    1 warning generated.
+    langparser.y:1859:11: warning: array index -1 is before the beginning of the array [-Warray-bounds]
+    … +596 lines
+    headless_langipc_stub.c:14:16: warning: unused function 'unsupported' [-Wunused-function]
+       14 | static boolean unsupported(boolean defaultValue) {
+          |                ^~~~~~~~~~~
+    1 warning generated.
+    make: *** [runtime_tests] Error 1
+
+• Explored
+  └ Read langsystem7.c
+    Search BlockMove in langsystem7.c
+
+• Edited Common/source/langsystem7.c (+8 -1)
+    1247   	
+    1248  +#if defined(FRONTIER_HEADLESS)
+    1249  +	memcpy (&ctitems, p, 4);
+    1250  +#else
+    1251   	BlockMove (p, &ctitems, 4);
+    1252  +#endif
+    1253   	
+    ⋮
+    1257   		
+    1258  +#if defined(FRONTIER_HEADLESS)
+    1259  +		memcpy (&objspecitem, p, sizeof (tyobjspecitem));
+    1260  +#else
+    1261   		BlockMove (p, &objspecitem, sizeof (tyobjspecitem));
+    1262  +#endif
+    1263   		
+    ⋮
+    2732   	} /*isobjspectree*/
+    2725  -
+    2733
+
+• Edited Common/source/langsystem7.c (+1 -2)
+    54     #if defined(FRONTIER_HEADLESS)
+    55    -static const unsigned char kHeadlessEllipsis[] = "\x03...";
+    55    +static unsigned char kHeadlessEllipsis[] = "\x03...";
+    56     #endif
+    ⋮
+    2732   	} /*isobjspectree*/
+    2733  -
+    2733
+
+• Explored
+  └ Search goto limit in langsystem7.c
+    Read langsystem7.c
+
+• Edited Common/source/langsystem7.c (+0 -3)
+    356    	
+    357   -	limit:
+    358   -	
+    357    	if (chquote != chnul)
+    ⋮
+    2730   	} /*isobjspectree*/
+    2733  -
+
+• Ran make -C tests runtime_tests
+  └ ../Common/source/lang.c:1041:42: warning: cast from 'boolean (*)(void)' (aka 'unsigned char (*)(void)') to 'langerrormessagecallback' (aka 'unsigned char (*)(unsigned char *, void *)') converts
+    to incompatible function type [-Wcast-function-type-mismatch]
+     1041 |     langcallbacks.errormessagecallback = (langerrormessagecallback) &truenoop;
+          |                                          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    1 warning generated.
+    langparser.y:1859:11: warning: array index -1 is before the beginning of the array [-Warray-bounds]
+    … +1310 lines
+      "_wpwindowopen", referenced from:
+          _langexternalvariablewindowopen in langexternal-a1af85.o
+    ld: symbol(s) not found for architecture x86_64
+    clang: error: linker command failed with exit code 1 (use -v to see invocation)
+    make: *** [runtime_tests] Error 1
+
+> Thinking
+  I’ve reached linking but hit missing symbol errors tied to Mac-specific functions. Since some like BlockMove are fixed but others remain, I’m weighing whether to stub these missing functions—
+  especially those from Mac API and langsystem7/langexternal modules—or include more code. I want to check existing stubs in tests/headless_mac_compat.c and think about updating the plan to reflect
+  these new findings and next actions.
+
+• Explored
+  └ Read headless_mac_compat.c
+
+• Updated Plan
+  └ Rebuild now reaches the link stage but fails with a large set of missing Mac runtime symbols (TempNewHandle, file/window/table ops, shell APIs, etc.), so we need another pass to supply headless
+    stubs or drop the dependencies pulled in via langexternal/langsystem7.
+    ✔ Audit `langsystem7.c` under headless build to list the incompatible Mac-specific code paths we must stub or adapt (aliases, FSSpec usage, callbacks).
+    ✔ Implement headless guards/replacements in `langsystem7.c` so it compiles with `tyfilespec` (including restoring valid ellipsis handling and fixing callback signatures).
+    □ Rebuild `runtime_tests` and triage any remaining compiler errors or warnings that block progress.
+
+> Thinking
+  I'm sorting missing functions into categories like Mac memory, outliner, database, and shell, considering whether to stub them or conditionally compile. Since fully integrating langexternal.c
+  is complex, I'm leaning toward creating stub implementations with safe defaults to satisfy linking, possibly in a new stub source file. Before coding, I'll check for existing headers like
+  headless_stubs.h to use for prototypes. This should help me proceed methodically without breaking the build.
+
+• Explored
+  └ Read headless_stubs.h
+
+> Thinking
+  I'm reviewing which functions are missing from the header and noting that TempNewHandle and others need to be added, ideally in headless_mac_compat.c. I’m also checking whether needed functions
+  like clearfilespec exist in other source files such as Common/source/file.c, considering whether to add these files to the build rather than just stub them out.
+
+• Explored
+  └ Search bigstringtofsname
+
+> Thinking
+  I’m sorting through the many missing functions blocking linking—mostly from UI, file ops, and database modules—and considering whether to revert to stubbing or carefully isolate essential parts of
+  langexternal.c for the headless build. Since stubbing dozens of functions manually is huge, I’m thinking about reusing existing portable stubs or wrapping UI-dependent code conditionally to ease
+  compilation. I also want to categorize missing functions to organize the stubbing effort effectively. Let’s explore the portable directory for existing stubs before deciding the next steps.
+
+• Explored
+  └ Search opverb in portable
+    Read runtime_stubs_outline.c
+    Search shellgetconfig
+    Read runtime_stubs_shell.c
+    Search TempNewHandle
+    Search clearfilespec
+    Search clearfilespec in portable
+    Search browsergetrefcon
+
+> Thinking
+  I'm weighing whether to add stub source files from the portable directory to resolve missing symbols without causing duplicate definitions, considering carefully which to include. My approach
+  involves updating build files to add specific stubs like runtime_stubs_outline.c and runtime_stubs_shell.c while verifying compatibility with the headless build environment.
+
+• Explored
+  └ Read runtime_stubs.h
+
+> Thinking
+  I'll prepare to update the Makefile by adding relevant stub source files and the portable handles file to the runtime sources list, and also modify the runtime_tests compile command to add the
+  portable include directory to ensure all required headers are found during compilation.
+
+• Edited tests/Makefile (+14 -1)
+    61         ../Common/source/memory.c \
+    62    +    ../Common/source/portable_handles.c \
+    63         ../Common/source/strings.c \
+    ⋮
+    71         ../Common/source/whirlpool.c \
+    72    +    ../portable/runtime_stubs_core.c \
+    73    +    ../portable/runtime_stubs_errors.c \
+    74    +    ../portable/runtime_stubs_hash.c \
+    75    +    ../portable/runtime_stubs_lang.c \
+    76    +    ../portable/runtime_stubs_list.c \
+    77    +    ../portable/runtime_stubs_system.c \
+    78    +    ../portable/runtime_stubs_stack.c \
+    79    +    ../portable/runtime_stubs_string.c \
+    80    +    ../portable/runtime_stubs_coerce.c \
+    81    +    ../portable/runtime_stubs_parser.c \
+    82    +    ../portable/runtime_stubs_outline.c \
+    83    +    ../portable/runtime_stubs_shell.c \
+    84         headless_shellhooks.c \
+    ⋮
+    128    runtime_tests: runtime_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c
+    116   -	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders runtime_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@
+    129   +	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable runtime_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@
+    130
+
+• Ran make -C tests runtime_tests
+  └ ../Common/source/lang.c:1041:42: warning: cast from 'boolean (*)(void)' (aka 'unsigned char (*)(void)') to 'langerrormessagecallback' (aka 'unsigned char (*)(unsigned char *, void *)') converts
+    to incompatible function type [-Wcast-function-type-mismatch]
+     1041 |     langcallbacks.errormessagecallback = (langerrormessagecallback) &truenoop;
+          |                                          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    1 warning generated.
+    langparser.y:1859:11: warning: array index -1 is before the beginning of the array [-Warray-bounds]
+    … +768 lines
+    headless_langipc_stub.c:14:16: warning: unused function 'unsupported' [-Wunused-function]
+       14 | static boolean unsupported(boolean defaultValue) {
+          |                ^~~~~~~~~~~
+    1 warning generated.
+    make: *** [runtime_tests] Error 1
+
+• Explored
+  └ Read standard_portable.h, portable_types.h
+
+> Thinking
+  I'm thinking about how to make stub files compile by sharing type definitions between FRONTIER_PORTABLE and FRONTIER_HEADLESS. Instead of defining FRONTIER_PORTABLE everywhere, it might be cleaner
+  to update portable_types.h to recognize both flags for defining FSRef and similar types without interfering with other code. This targeted change should help the stub code compile while keeping the
+  distinctions clear.
+
+• Edited portable/portable_types.h (+1 -1)
+    69     /* These will be conditionally defined based on platform */
+    70    -#ifdef FRONTIER_PORTABLE
+    70    +#if defined(FRONTIER_PORTABLE) || defined(FRONTIER_HEADLESS)
+    71         /* Use portable types */
+
+• Ran make -C tests runtime_tests
+  └ ../Common/source/lang.c:1041:42: warning: cast from 'boolean (*)(void)' (aka 'unsigned char (*)(void)') to 'langerrormessagecallback' (aka 'unsigned char (*)(unsigned char *, void *)') converts
+    to incompatible function type [-Wcast-function-type-mismatch]
+     1041 |     langcallbacks.errormessagecallback = (langerrormessagecallback) &truenoop;
+          |                                          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    1 warning generated.
+    langparser.y:1859:11: warning: array index -1 is before the beginning of the array [-Warray-bounds]
+    … +1254 lines
+      "_wpwindowopen", referenced from:
+          _langexternalvariablewindowopen in langexternal-0f4c2a.o
+    ld: symbol(s) not found for architecture x86_64
+    clang: error: linker command failed with exit code 1 (use -v to see invocation)
+    make: *** [runtime_tests] Error 1
+
+• Explored
+  └ Search opcountlistitems
+    Search menuverbgetsize
+    Search pictverb in source
+    Search TempNewHandle in portable_handles.c
+    Search opclearallmarks
+
+> Thinking
+  I'm mapping missing functions to their source modules to figure out what to compile or stub. Since the dependencies are huge, I'll likely create a stub file with minimal placeholder implementations
+  for tricky or unavailable functions, especially for UI and Mac-specific features, and plan how to proceed without fully linking everything. I'll next check for existing stub files like
+  headless_shellhooks.c to avoid reinventing the wheel.
+
+• Explored
+  └ Read headless_shellhooks.c
+    Search langbackgroundtask in tests
+    Search headless in source
+
+> Thinking
+  I’m thinking about how to handle missing functions that might be needed for linking, likely by creating a stub file with macros to define basic default-returning functions as a quick fix. I want to
+  check if something like Common/source/headless_stubs.c already exists before creating one to keep things clean and efficient.
+
+• Explored
+  └ Search langbackgroundtask in source
+    Search headless_stubs
+
+> Thinking
+  I'll create a new stub source file to define the missing functions referenced in the header, focusing on key function groups like file spec handlers, browser/window references, menu and shell
+  verbs, and database operations, mostly returning default values or no-ops. I also plan to verify the status of functions like truenoop to avoid duplications. This approach will keep the stubs
+  minimal yet cover the needed functionality.
+
+• Explored
+  └ Search truenoop in source
+
+> Thinking
+  I’m realizing that the truenoop symbol from ops.c isn’t being linked because only langops.c is compiled, not ops.c or other Common source files. Adding stubs won’t fix this; compiling several
+  underlying modules from Common/source is necessary to resolve these core functions. This adds substantial scope, so I need to update the plan to reflect this complexity and propose integrating
+  these additional modules next.
+
+• Updated Plan
+  └ Link step now fails because `langexternal.c` pulls in a large set of classic runtime entry points (op/menu/pict/wp/table/shell/db helpers) that are not yet part of the headless target. Need to
+    decide whether to stub those APIs or start adding the corresponding `Common/source` modules (ops.*, menuverbs.c, pictverbs.c, tableverbs.c, etc.) into the headless build.
+    ✔ Audit `langsystem7.c` under headless build to list the incompatible Mac-specific code paths we must stub or adapt (aliases, FSSpec usage, callbacks).
+    ✔ Implement headless guards/replacements in `langsystem7.c` so it compiles with `tyfilespec` (including restoring valid ellipsis handling and fixing callback signatures).
+    □ Rebuild `runtime_tests` and triage any remaining compiler errors or warnings that block progress.
+
+> Thinking
+  I’m mapping out a plan to gradually add key modules like ops.c, opstructure.c, and friends to LANG_RUNTIME_SOURCES to reduce missing functions, while staying mindful of heavy dependencies like
+  QuickDraw; starting small allows me to control complexity and track new issues as they appear.
+
+• Edited tests/Makefile (+5 -0)
+    71         ../Common/source/whirlpool.c \
+    72    +    ../Common/source/ops.c \
+    73    +    ../Common/source/opstructure.c \
+    74    +    ../Common/source/oplist.c \
+    75    +    ../Common/source/opinit.c \
+    76    +    ../Common/source/opverbs.c \
+    77         ../portable/runtime_stubs_core.c \
+
+• Ran make -C tests runtime_tests
+  └ ../Common/source/lang.c:1041:42: warning: cast from 'boolean (*)(void)' (aka 'unsigned char (*)(void)') to 'langerrormessagecallback' (aka 'unsigned char (*)(unsigned char *, void *)') converts
+    to incompatible function type [-Wcast-function-type-mismatch]
+     1041 |     langcallbacks.errormessagecallback = (langerrormessagecallback) &truenoop;
+          |                                          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    1 warning generated.
+    langparser.y:1859:11: warning: array index -1 is before the beginning of the array [-Warray-bounds]
+    … +892 lines
+    headless_langipc_stub.c:14:16: warning: unused function 'unsupported' [-Wunused-function]
+       14 | static boolean unsupported(boolean defaultValue) {
+          |                ^~~~~~~~~~~
+    1 warning generated.
+    make: *** [runtime_tests] Error 1
+
+• Edited tests/Makefile (+0 -5)
+    71         ../Common/source/whirlpool.c \
+    72    -    ../Common/source/ops.c \
+    73    -    ../Common/source/opstructure.c \
+    74    -    ../Common/source/oplist.c \
+    75    -    ../Common/source/opinit.c \
+    76    -    ../Common/source/opverbs.c \
+    72         ../portable/runtime_stubs_core.c \
+
+> Thinking
+  Given the complexity, I’m noting that the langsystem7 changes caused the compile to fail due to missing functions; I’ll need to either stub those out or add more modules. I plan to check the git
+  status to track changes and then prepare a detailed message for the user explaining what was done, the compile results, and the missing pieces.
+
+• Ran git status -sb
+
+> Thinking
+  I'll outline the changes made to langsystem7.c, portable/portable_types.h, and tests/Makefile, including how the Makefile now includes portable stub sources and includes the portable directory.
+  I'll explain that running make runtime_tests compiles but fails to link due to many missing functions, describing the nature of those unresolved symbols. I'll also suggest possible next steps like
+  stubbing or adding modules for completeness in a clear bullet-point format.
+
+> Headless Langsystem Updates
+
+  - Reworked Common/source/langsystem7.c so headless builds keep the classic alias helpers for UI targets but use warning stubs in headless mode, restored the Pascal‐string ellipsis handling,
+  switched hashinversesearch visitor to the proper ptrvoid callback signature, and replaced the BlockMove calls with memcpy under headless. Added a tiny "...“ Pascal string for headless ellipses and
+  removed the unused limit: label.
+  - Adjusted portable/portable_types.h so the portable FSRef/ProcessSerialNumber typedefs are also available when FRONTIER_HEADLESS is defined, letting the portable runtime stubs compile.
+
+  Runtime Build Wiring
+
+  - Extended tests/Makefile to pull in portable_handles.c plus the portable runtime_stubs_*.c files and added -I../portable so the new sources see their headers. This keeps the earlier target list
+  intact otherwise.
+
+  Build Status
+
+  - make -C tests runtime_tests now compiles the updated sources but the link step still fails: dozens of classic runtime entry points (op*, table*, menuverb*, pictverb*, db*, shell*, etc.) are
+  unresolved because langexternal.c and friends require modules that we still haven’t brought into the headless build.
+
+  Next Steps
+
+  1. Decide whether to stub the remaining classic APIs (providing no-op headless behaviors in a dedicated stub C file) or start pulling in the real modules (op*.c, menuverbs.c, pictverbs.c,
+  tableverbs.c, …) with heavy #ifdef FRONTIER_HEADLESS guard work.
+  2. Whichever route we choose, iteratively add the symbols and re-run make -C tests runtime_tests to confirm the link succeeds.
+
+  Let me know which direction you’d prefer for the unresolved symbol set and I’ll continue from there.
+
+▌ I prefer to start pulling in the real modules unless there's a good reason not to. I do have a comment about Pascal strings though: Does it make sense to completely get rid of them? I think the
+▌ only reason they're still in this codebase is because of the legacy Carbon APIs.
+
+> Thinking
+  I’m laying out a response explaining why removing Pascal strings is complex due to reliance on bigstrings, suggesting it’s a future task. I’ll update the existing plan to include incremental module
+  additions—starting with core ops modules—adding stubs for platform-specific calls, handling dependencies, and gating UI bits, with clear next steps for gradually integrating these parts into the
+  headless build.
+
+• Updated Plan
+  └ Linking still fails because large parts of the classic runtime (outline/menu/pict/wp/table modules) are absent. We'll now pull in the real modules, guard their UI-specific sections, and iterate
+    on the build until the linker succeeds.
+    □ Integrate outline/table/menu modules (ops/opstructure/oplist/opinit/opverbs, menuverbs, pictverbs, tableverbs, wpverbs, etc.) into the headless build with targeted `FRONTIER_HEADLESS` guards or
+      lightweight stubs for the remaining UI calls.
+    □ Rebuild `runtime_tests` to confirm linker closure, address any residual missing symbols, and iterate if new dependencies surface.
+    □ Document follow-up work (e.g., Pascal string modernization) once the headless runtime links cleanly.
+
+> - Sounds good—I’ll pivot to bringing the real modules back (ops/opstructure/oplist/opinit/opverbs, menu/pict/wp/table verbs, etc.) and wrap the Carbon/UI hot spots with #if !
+  defined(FRONTIER_HEADLESS) or tiny no-op shims where the UI work is genuinely optional. Once those are in, I’ll iterate on make -C tests runtime_tests until the linker is happy; if anything else
+  surfaces (e.g., shell callbacks) we can stub only the precise pieces.
+  - On Pascal strings: fully removing them would be a much larger refactor than it first appears. Frontier’s “bigstring” and the language runtime APIs expect the classic length-prefixed format,
+  not just the legacy Carbon calls. We’d need a wide sweep through the interpreter, database code, and script runtime to convert every consumer (and adjust all the assembly/serialization code that
+  depends on the exact layout). It’s doable as a dedicated project, but it’s separate from the current headless push; for now I’m leaning on small helper shims to bridge the gap instead of rewriting
+  string semantics mid-stream.
+  - Next up: start wiring those modules and guard or stub the few problem calls (LSCopyItemInfoForRef, SetWindowProxyCreatorAndType, etc.). I’ll report back once the new sources are integrated and
+  the next build run tells us what’s left.
+
+▌ Ok, that makes sense regarding Pascal strings. Please document that we'll eventually need to tackle that in order to completely modernize the kernel. Please proceed with wiring the modules and
+▌ dealing with problem calls.
+
+> Thinking
+  I’m outlining a step-by-step plan to reintroduce modules into the build system carefully, starting with tests/Makefile updates and incremental compilation to fix errors. I want to analyze
+  dependencies among ops, menu, pict, and other modules, tackle missing Pascal string and Decimal library declarations by guarding or stubbing code, and investigate if some functions can be stubbed
+  more easily via langexternal.c instead of full ops modules. This way, I can progressively build up functionality while managing complexity.
+
+• Explored
+  └ Search op in langexternal.c
+
+> Thinking
+  I'm weighing how to integrate real ops modules with their Mac OS dependencies—deciding between adding minimal stub replacements or deeper refactoring—while aiming to meet the user's preference for
+  real functionality and ensure successful headless compilation.
+
+• Explored
+  └ Read ops.c
+
+> Thinking
+  I'm examining ways to replace legacy Mac SANE decimal functions with standard C equivalents for headless builds. The plan involves creating compatibility macros and helper functions that mimic
+  Mac APIs, wrapping them with headless-specific guards to avoid extensive ops.c changes. I’m also considering strategies to stub or rewrite many Mac-dependent functions across multiple modules
+  since full compilation without heavy modification looks challenging. This looks like a big refactor to gradually convert Mac-centric code to cross-platform while maintaining real module behavior
+  as requested.
+
+• Explored
+  └ Read opverbs.c
+
+> Thinking
+  I'm weighing how to compile complex Mac-dependent modules for headless use by wrapping UI code with guards and adding stubbed implementations for core operations like string-number conversions.
+  Since fully adapting the modules is huge, I'll start step-by-step—beginning with modifying ops.c and extending headless compatibility with needed functions—while keeping user goals in mind to
+  eventually support more real functionality.
+
+• Explored
+  └ Search NumToString
+
+> Thinking
+  I'm planning a headless-friendly reimplementation of numeric-string conversions and related decimal types, aiming to replace SANE-dependent code with minimal C99-based structs and functions guarded
+  by FRONTIER_HEADLESS. I'll focus on updating ops.c and adding portable versions in headless_mac_compat.c to keep existing code intact for non-headless builds.
+
+• Explored
+  └ Search NumToString in headless_stubs.h
+
+> Thinking
+  I'll add function declarations to avoid implicit definitions and implement conversion functions using Pascal strings (Str255). I'll create NumToString to format numbers into Pascal strings and
+  StringToNum to parse them back, noting no error handling yet. After that, I'll plan to modify and rebuild the ops.c module to verify these changes before re-adding other modules.
+
+• Edited Common/source/ops.c (+76 -5)
+    30
+    31    +#if !defined(FRONTIER_HEADLESS)
+    32     	#include "mac.h"
+    33    +#endif
+    34
+    ⋮
+    302
+    303   +#if defined(FRONTIER_HEADLESS)
+    304   +
+    305   +#include <math.h>
+    306   +#include <stdlib.h>
+    307   +#include <stdio.h>
+    308   +
+    309   +#ifndef double_t
+    310   +typedef double double_t;
+    311   +#endif
+    312   +
+    313   +typedef struct headless_decform {
+    314   +	short style;
+    315   +	short digits;
+    316   +} decform;
+    317   +
+    318   +#define DecForm decform
+    319   +
+    320   +enum { FIXEDDECIMAL = 0 };
+    321   +
+    322   +static double_t str2num (byte *s) {
+    323   +	char buffer[256];
+    324   +	short len = stringlength (s);
+    325   +	if (len <= 0)
+    326   +		return 0.0;
+    327   +	if (len > 255)
+    328   +		len = 255;
+    329   +	for (short i = 0; i < len; ++i)
+    330   +		buffer[i] = (char) s[i + 1];
+    331   +	buffer[len] = '\0';
+    332   +	return strtod (buffer, NULL);
+    333   +} /*str2num*/
+    334   +
+    335   +static void num2str (decform *f, double_t x, void *s) {
+    336   +	unsigned char *bs = (unsigned char *) s;
+    337   +	char buffer[256];
+    338   +	int digits = (f != NULL && f->digits > 0) ? f->digits : 8;
+    339   +	if (digits > 16)
+    340   +		digits = 16;
+    341   +	int n = snprintf (buffer, sizeof buffer, "%.*f", digits, x);
+    342   +	if (n < 0)
+    343   +		n = 0;
+    344   +	if (n > 255)
+    345   +		n = 255;
+    346   +	for (int i = n - 1; i >= 0; --i) {
+    347   +		if (buffer[i] == '0' && i > 0 && buffer[i - 1] != '.')
+    348   +			buffer[i] = '\0';
+    349   +		else
+    350   +			break;
+    351   +	}
+    352   +	/* remove potential trailing '.' */
+    353   +	int newlen = (int) strlen (buffer);
+    354   +	if (newlen > 0 && buffer[newlen - 1] == '.') {
+    355   +		buffer[newlen - 1] = '\0';
+    356   +		--newlen;
+    357   +	}
+    358   +	if (newlen == 0) {
+    359   +		buffer[0] = '0';
+    360   +		buffer[1] = '\0';
+    361   +		newlen = 1;
+    362   +	}
+    363   +	bs[0] = (unsigned char) newlen;
+    364   +	for (int i = 0; i < newlen; ++i)
+    365   +		bs[i + 1] = (unsigned char) buffer[i];
+    366   +} /*num2str*/
+    367   +
+    368   +#else /* !FRONTIER_HEADLESS */
+    369   +
+    370    	#define Decimal decimal
+    371    	#define DecForm decform
+    303   -	
+    304   -	
+    372   +
+    373   +
+    374    	/*
+    ⋮
+    376    	*/
+    308   -	
+    377   +
+    378    	static double_t str2num (byte *s) {
+    ⋮
+    396    		} /*str2num*/
+    328   -	
+    397   +
+    398    	static void num2str (decform *f, double_t x, void *s) {
+    ⋮
+    406    		} /*num2str*/
+    407   +
+    408   +#endif /* FRONTIER_HEADLESS */
+    409    	
+    ⋮
+    897    	return (ret);
+    827   -	} /* bcdtolong */
+    898   +	} /* bcdtolong */
+
+• Edited tests/headless_mac_compat.c (+26 -0)
+    6      #include <stdint.h>
+    7     +#include <stdio.h>
+    8     +#include <stdlib.h>
+    9
+    ⋮
+    172
+    173   +void NumToString(long value, Str255 result) {
+    174   +    char buffer[256];
+    175   +    int written = snprintf(buffer, sizeof buffer, "%ld", value);
+    176   +    if (written < 0)
+    177   +        written = 0;
+    178   +    if (written > 255)
+    179   +        written = 255;
+    180   +    result[0] = (unsigned char) written;
+    181   +    for (int i = 0; i < written; ++i)
+    182   +        result[i + 1] = (unsigned char) buffer[i];
+    183   +}
+    184   +
+    185   +void StringToNum(ConstStr255Param str, long *value) {
+    186   +    char buffer[256];
+    187   +    short len = str ? str[0] : 0;
+    188   +    if (len > 255)
+    189   +        len = 255;
+    190   +    for (short i = 0; i < len; ++i)
+    191   +        buffer[i] = (char) str[i + 1];
+    192   +    buffer[len] = '\0';
+    193   +    if (value)
+    194   +        *value = (long) strtol(buffer, NULL, 10);
+    195   +}
+    196   +
+    197    Handle GetString(short resID) {
+
+• Explored
+  └ Search macfilespecisvalid in headless_stubs.h
+    Read headless_stubs.h
+
+• Edited Common/headers/headless_stubs.h (+3 -0)
+    511
+    512   +void NumToString(long value, Str255 result);
+    513   +void StringToNum(ConstStr255Param str, long *value);
+    514   +
+    515    Handle NewHandle(long userSize);
+
+• Edited tests/Makefile (+1 -0)
+    63         ../Common/source/strings.c \
+    64    +    ../Common/source/ops.c \
+    65         ../Common/source/tableops.c \
+
+• Ran make -C tests runtime_tests
+  └ ../Common/source/lang.c:1041:42: warning: cast from 'boolean (*)(void)' (aka 'unsigned char (*)(void)') to 'langerrormessagecallback' (aka 'unsigned char (*)(unsigned char *, void *)') converts
+    to incompatible function type [-Wcast-function-type-mismatch]
+     1041 |     langcallbacks.errormessagecallback = (langerrormessagecallback) &truenoop;
+          |                                          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    1 warning generated.
+    langparser.y:1859:11: warning: array index -1 is before the beginning of the array [-Warray-bounds]
+    … +760 lines
+    headless_langipc_stub.c:14:16: warning: unused function 'unsupported' [-Wunused-function]
+       14 | static boolean unsupported(boolean defaultValue) {
+          |                ^~~~~~~~~~~
+    1 warning generated.
+    make: *** [runtime_tests] Error 1
+
+• Explored
+  └ Read ops.c
+    Search gestaltavailable in ops.c
+    Read ops.c
+
+• Edited Common/source/ops.c (+4 -1)
+    509    	
+    510   -
+    510   +#if defined(FRONTIER_HEADLESS)
+    511   +	exit (0);
+    512   +#else
+    513    	ExitToShell ();
+    514   +#endif
+    515
+
+• Edited Common/source/ops.c (+11 -5)
+    686    boolean gestalt (OSType selector, long *result) {
+    687   -	
+    687
+    689   -		if (!gestaltavailable ())
+    690   -			return (false);
+    691   -		
+    692   -		return (Gestalt (selector, result) == noErr);
+    688   +#if defined(FRONTIER_HEADLESS)
+    689   +	(void) selector;
+    690   +	if (result)
+    691   +		*result = 0;
+    692   +	return (false);
+    693   +#else
+    694   +	if (!gestaltavailable ())
+    695   +		return (false);
+    696   +
+    697   +	return (Gestalt (selector, result) == noErr);
+    698   +#endif
+    699
+
+• Ran make -C tests runtime_tests
+  └ ../Common/source/lang.c:1041:42: warning: cast from 'boolean (*)(void)' (aka 'unsigned char (*)(void)') to 'langerrormessagecallback' (aka 'unsigned char (*)(unsigned char *, void *)') converts
+    to incompatible function type [-Wcast-function-type-mismatch]
+     1041 |     langcallbacks.errormessagecallback = (langerrormessagecallback) &truenoop;
+          |                                          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    1 warning generated.
+    langparser.y:1859:11: warning: array index -1 is before the beginning of the array [-Warray-bounds]
+    … +1253 lines
+      "_wpwindowopen", referenced from:
+          _langexternalvariablewindowopen in langexternal-ae74c8.o
+    ld: symbol(s) not found for architecture x86_64
+    clang: error: linker command failed with exit code 1 (use -v to see invocation)
+    make: *** [runtime_tests] Error 1
+
+> Thinking
+  I'm assessing the massive scope of porting numerous modules, especially considering user’s preference to proceed despite complexity. I'll update the plan to reflect partial progress on ops
+  integration and propose an incremental, stepwise approach explaining the significant dependencies and challenges involved.
+
+• Updated Plan
+  └ □ Integrate outline/table/menu modules (ops/opstructure/oplist/opinit/opverbs, menuverbs, pictverbs, wpverbs, etc.) into the headless build with targeted `FRONTIER_HEADLESS` guards or lightweight
+      stubs for the remaining UI calls.
+    □ Rebuild `runtime_tests` to confirm linker closure, address any residual missing symbols, and iterate if new dependencies surface.
+    □ Document follow-up work (e.g., Pascal string modernization) once the headless runtime links cleanly.
+
+> Thinking
+  I’m considering how to handle the many missing functions by proposing staged module integration with headless wrappers. Also, I want to note the plan to modernize Pascal strings in the existing
+  Frontier_Refactoring_Plan document before finalizing the message. I'll open that doc to add these points.
+
+• Explored
+  └ Read Frontier_Refactoring_Plan.md
+    Search Add performance benchmarking in Frontier_Refactoring_Plan.md
+
+• Edited planning/Frontier_Refactoring_Plan.md (+8 -1)
+    124
+    125   +### Future Compatibility Work
+    126   +
+    127   +- **Pascal String Retirement**
+    128   +  - The kernel still relies on classic Pascal `bigstring` values (length byte + payload). Legacy Carbon/QuickDraw APIs required this, but today these strings appear everywhere: script eval
+           uation, database serialization, AppleEvent glue, etc.
+    129   +  - **Goal**: Transition to modern UTF-8/UTF-16 C strings while preserving script compatibility and user data.
+    130   +  - **Plan**: Audit every API and serialization boundary that exposes Pascal strings, layer shims for backwards compatibility, convert internal data structures and on-disk formats once cov
+           erage is known, then retire Pascal-specific helpers when the new representation is proven.
+    131   +
+    132    ## Phase 2: Core Engine Separation (Weeks 8-11)
+    ⋮
+    324
+    318   -*This plan provides a structured approach to modernizing Frontier while maintaining its core functionality and enabling future development with modern tools and architectures.*
+    325   +*This plan provides a structured approach to modernizing Frontier while maintaining its core functionality and enabling future development with modern tools and architectures.*
+
+• Explored
+  └ Read shelltypes_portable.h, portable_types.h
+
+• Edited portable/portable_types.h (+0 -1)
+    76         typedef PortableUniStr255* tyfsnameptr;
+    77    -    typedef PortableProcessID typrocessid;
+    77     #else
+
+• Edited portable/shelltypes_portable.h (+3 -0)
+    36     /* Process ID type */
+    37    +#ifndef TYPROCESSID_DEFINED
+    38     typedef ProcessSerialNumber typrocessid;
+    39    +#define TYPROCESSID_DEFINED 1
+    40    +#endif
+    41
+
+• Ran git status -sb
+
+> Thinking
+  I’m noting that headless_mac_compat.c is untracked despite earlier mentions, likely because it wasn’t committed before. I’m wrapping up the summary of integrating ops.c changes and headless
+  replacements but acknowledging many modules still depend on Carbon functions. The next move is to map missing dependencies, plan stubs or ports, and update documentation. I’m highlighting tasks
+  like implementing or adapting TempNewHandle and clearfilespec, investigating symbol exports especially in portable_handles.c, and proposing a minimal headless layer to enable linking despite
+  limited functionality. This will help tackle the large unresolved symbol list progressively.
+
+• Explored
+  └ Search TempNewHandle in portable_handles.c
+    Read portable_handles.c, portable_handles.h
+    Search FRONTIER_USE_PORTABLE_HANDLES
+
+• Edited tests/Makefile (+1 -1)
+    4      CC = clang
+    5     -CFLAGS = -Wall -Wextra -std=c99 -g -O0
+    5     +CFLAGS = -Wall -Wextra -std=c99 -g -O0 -DFRONTIER_USE_PORTABLE_HANDLES
+    6      FRONTIER_CLI_DIR = ../frontier-cli
+
+• Ran make -C tests runtime_tests
+  └ ../Common/source/lang.c:1041:42: warning: cast from 'boolean (*)(void)' (aka 'unsigned char (*)(void)') to 'langerrormessagecallback' (aka 'unsigned char (*)(unsigned char *, void *)') converts
+    to incompatible function type [-Wcast-function-type-mismatch]
+     1041 |     langcallbacks.errormessagecallback = (langerrormessagecallback) &truenoop;
+          |                                          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    1 warning generated.
+    langparser.y:1859:11: warning: array index -1 is before the beginning of the array [-Warray-bounds]
+    … +1124 lines
+      "_wpwindowopen", referenced from:
+          _langexternalvariablewindowopen in langexternal-1682e4.o
+    ld: symbol(s) not found for architecture x86_64
+    clang: error: linker command failed with exit code 1 (use -v to see invocation)
+    make: *** [runtime_tests] Error 1
+
+⚠️ stream error: stream disconnected before completion: Your input exceeds the context window of this model. Please adjust your input and try again.; retrying 1/5 in 205ms…
+
+⚠️ stream error: stream disconnected before completion: Your input exceeds the context window of this model. Please adjust your input and try again.; retrying 2/5 in 381ms…
+
+⚠️ stream error: stream disconnected before completion: Your input exceeds the context window of this model. Please adjust your input and try again.; retrying 3/5 in 762ms…
+
+⚠️ stream error: stream disconnected before completion: Your input exceeds the context window of this model. Please adjust your input and try again.; retrying 4/5 in 1.65s…
+
+⚠️ stream error: stream disconnected before completion: Your input exceeds the context window of this model. Please adjust your input and try again.; retrying 5/5 in 3.301s…
+
+■ stream disconnected before completion: Your input exceeds the context window of this model. Please adjust your input and try again.
+
+▌ Summarize recent commits                                                                                                                                                                             
+
+⏎ send   ⌃J newline   ⌃T transcript   ⌃C quit   576K tokens used   5% context left                                                                                                                     
+

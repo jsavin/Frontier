@@ -51,6 +51,9 @@
 
 #include "langregexp.h"
 
+/* TODO(jsavin): replace legacy PCRE hookup with a modern maintained regex library
+   so headless/runtime builds don't depend on custom-stubbed Carbon-era glue. */
+
 /*
 	How to add the files from the Perl-Compatible Regular Expression (PCRE)
 	library to the CodeWarrior project for Frontier on Mac OS X:
@@ -3427,6 +3430,5 @@ boolean regexpinitverbs (void) {
 	
 	return (loadfunctionprocessor (idregexpverbs, &regexpfunctionvalue));
 	} /*regexpinitverbs*/
-
 
 

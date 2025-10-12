@@ -54,7 +54,107 @@
 #include "wpinternal.h"
 #include "wpverbs.h"
 #include "kernelverbdefs.h"
+#include "shell_api.h"
 
+
+static boolean wp_ui_available (void) {
+    return !shell_api_is_headless ();
+}
+
+static const unsigned char wp_target_symbol[] = "\x08""_target_";
+
+typedef struct tywpcontext {
+    boolean shell_pushed;
+    boolean data_pushed;
+    hdlwprecord hwp;
+    hdlwpvariable hv;
+    short idprocessor;
+} tywpcontext;
+
+static boolean wp_headless_get_target_record (hdlwprecord *hout, hdlwpvariable *hvout) {
+    tyvaluerecord addrval;
+    tyvaluerecord val;
+    hdlhashnode hnode;
+    hdlhashtable htable;
+    bigstring bsname;
+
+    pushouterlocaltable ();
+    boolean fl = langgetsymbolval ((const bigstring) wp_target_symbol, &addrval, &hnode);
+    pophashtable ();
+
+    if (!fl)
+        return false;
+
+    if (addrval.valuetype != addressvaluetype)
+        return false;
+
+    if (!getaddressvalue (addrval, &htable, bsname))
+        return false;
+
+    if (!langsymbolreference (htable, bsname, &val, &hnode))
+        return false;
+
+    if (val.valuetype != externalvaluetype)
+        return false;
+
+    *hvout = (hdlwpvariable) val.data.externalvalue;
+
+    if (*hvout == nil)
+        return false;
+
+    if (!wpverbinmemory ((hdlexternalvariable) *hvout))
+        return false;
+
+    *hout = (hdlwprecord) (**(*hvout)).variabledata;
+
+    return (*hout != nil);
+}
+
+static boolean wp_enter_context (tywpcontext *ctx, short idprocessor) {
+    ctx->shell_pushed = false;
+    ctx->data_pushed = false;
+    ctx->hwp = nil;
+    ctx->hv = nil;
+    ctx->idprocessor = idprocessor;
+
+    if (wp_ui_available ()) {
+        WindowPtr targetwindow;
+
+        if (!langfindtargetwindow (idprocessor, &targetwindow))
+            return false;
+
+        shellpushglobals (targetwindow);
+        ctx->shell_pushed = true;
+
+        (*shellglobals.gettargetdataroutine) (idprocessor);
+
+        ctx->hwp = wpdata;
+
+        return (ctx->hwp != nil);
+    }
+
+    if (!wp_headless_get_target_record (&ctx->hwp, &ctx->hv))
+        return false;
+
+    if (!wppushdata (ctx->hwp))
+        return false;
+
+    ctx->data_pushed = true;
+
+    return true;
+}
+
+static void wp_leave_context (tywpcontext *ctx, boolean flsuccess) {
+    if (ctx->data_pushed)
+        wppopdata ();
+
+    if (ctx->shell_pushed) {
+        if (flsuccess)
+            shellupdatescrollbars (shellwindowinfo);
+
+        shellpopglobals ();
+    }
+}
 
 
 #define wperrorlist 264 
@@ -260,6 +360,9 @@ boolean wpverbdispose (hdlexternalvariable hvariable, boolean fldisk) {
 
 static void wpverbcheckwindowrect (register hdlwprecord hwp) {
 	
+	if (!wp_ui_available ())
+		return;
+
 	hdlwindowinfo hinfo;
 	
 	if ((**hwp).flwindowopen) { /*make windowrect reflect current window size & position*/
@@ -363,7 +466,8 @@ boolean wpverbnew (Handle hdata, hdlexternalvariable *hvariable) {
 	
 	if (hdata != nil) { /*we've been given intial text*/
 		
-		shellpushglobals (nil); /*preserve our globals*/
+		if (wp_ui_available ())
+			shellpushglobals (nil); /*preserve our globals*/
 		
 		wppushdata (hwp);
 		
@@ -375,7 +479,8 @@ boolean wpverbnew (Handle hdata, hdlexternalvariable *hvariable) {
 		
 		wppopdata ();
 		
-		shellpopglobals ();
+		if (wp_ui_available ())
+			shellpopglobals ();
 		}
 	
 	wpverblinkvariable (hwp, hv); /*set up pointers to each other*/
@@ -796,6 +901,9 @@ boolean wpverbsettimes (hdlexternalvariable h, long timecreated, long timemodifi
 
 boolean wpwindowopen (hdlexternalvariable hvariable, hdlwindowinfo *hinfo) {
 	
+	if (!wp_ui_available ())
+		return (false);
+	
 	/*
 	1/1/92 dmb: check flpacked!
 	
@@ -823,6 +931,9 @@ boolean wpwindowopen (hdlexternalvariable hvariable, hdlwindowinfo *hinfo) {
 
 
 boolean wpedit (hdlexternalvariable hvariable, hdlwindowinfo hparent, ptrfilespec fs, bigstring bstitle, rectparam rzoom) {
+
+	if (!wp_ui_available ())
+		return (shell_api_require (kShellCapabilityWindows, "wp.edit"));
 
 	//
 	// 2006-09-16 creedon: on Mac, set window proxy icon
@@ -932,7 +1043,6 @@ static boolean wpfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord 
 	
 	register tyvaluerecord *v = vreturned;
 	register boolean fl;
-	WindowPtr targetwindow;
 	short idprocessor = idwordprocessor;
 	
 	if (v == nil)
@@ -965,19 +1075,29 @@ static boolean wpfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord 
 			break;
 		}
 	
+	if ((token == settextmodefunc) && !wp_ui_available ()) {
+		shell_api_require (kShellCapabilityWindows, "wp.setTextMode");
+		return (false);
+	}
+
+	if (!wp_ui_available () && token == intextmodefunc) {
+		if (!langcheckparamcount (hparam1, 0))
+			return (false);
+		return (setbooleanvalue (false, v));
+	}
+
 	/*all other verbs require a wp window in front -- set wpengine.c globals*/
 	
-	if (!langfindtargetwindow (idprocessor, &targetwindow)) {
-		
+	tywpcontext ctx;
+	boolean ctx_active = false;
+
+	if (!wp_enter_context (&ctx, idprocessor)) {
 		errornum = nowperror;
-		
 		goto error;
-		}
-	
-	shellpushglobals (targetwindow);
-	
-	(*shellglobals.gettargetdataroutine) (idprocessor); /*set wp globals*/
-	
+	}
+
+	ctx_active = true;
+
 	fl = false; /*default return value*/
 	
 	switch (token) {
@@ -987,6 +1107,11 @@ static boolean wpfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord 
 			
 			if (!langcheckparamcount (hparam1, 0))
 				break;
+			
+			if (!wp_ui_available ()) {
+				fl = setbooleanvalue (false, v);
+				break;
+			}
 			
 			fl = setbooleanvalue (langfindtargetwindow (idwordprocessor, &textwindow), v);
 			
@@ -1600,19 +1725,21 @@ static boolean wpfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord 
 		
 		} /*switch*/
 	
-	shellupdatescrollbars (shellwindowinfo);
-	
-	shellsetselectioninfo (); /*force ruler update*/
-	
-	shellpopglobals ();
-	
+	if (ctx.shell_pushed)
+		shellsetselectioninfo (); /*force ruler update*/
+
+	wp_leave_context (&ctx, true);
+
 	return (fl);
-	
+
 	error:
-	
+
+	if (ctx_active)
+		wp_leave_context (&ctx, false);
+
 	if (errornum != 0) /*get error string*/
 		getstringlist (wperrorlist, errornum, bserror);
-	
+
 	return (false);
 	} /*wpfunctionvalue*/
 

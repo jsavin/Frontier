@@ -4146,6 +4146,10 @@ boolean scriptstart (void) {
 
 boolean initscripts (void) {
 	
+#ifdef FRONTIER_HEADLESS
+	/* Headless runtime tests do not install Apple Event handlers. */
+	return (true);
+#else
 	if (!newclearhandle (longsizeof (tydebuggerrecord), (Handle *) &debuggerdata)) /*all fields are cool at 0*/
 		return (false);
 	
@@ -4158,8 +4162,8 @@ boolean initscripts (void) {
 	
 	
 	return (true);
+#endif
 	} /*initscripts*/
-
 
 
 

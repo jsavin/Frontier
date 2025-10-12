@@ -55,6 +55,7 @@
 #include "process.h"
 #include "processinternal.h"
 #include "odbinternal.h"
+#include "db_format.h" /* use_64bit_format + migration */
 
 /*
 if we're generating cfm (powerpc), we're linking to an odb engine shared 
@@ -994,4 +995,49 @@ boolean dbinitverbs (void) {
 	
 	return (true);
 	} /*dbinitverbs*/
+/* Exposed helpers for Save-path migration */
+boolean db_get_path_for_odb(odbref odb, bigstring out) {
+    hdlodbrecord hodb;
+    for (hodb = hodblist; hodb != nil; hodb = (**hodb).hnext) {
+        if ((**hodb).odb == odb) {
+            return filegetpath(&(**hodb).fs, out);
+        }
+    }
+    return false;
+}
 
+boolean db_migrate_reopen_if_legacy(odbref *podb) {
+    if (podb == NULL || *podb == NULL)
+        return false;
+    if (use_64bit_format)
+        return true; /* already modern */
+
+    hdlodbrecord hodb;
+    for (hodb = hodblist; hodb != nil; hodb = (**hodb).hnext) {
+        if ((**hodb).odb == *podb) {
+            bigstring bspath;
+            char cpath[1024];
+            if (!filegetpath(&(**hodb).fs, bspath))
+                return false;
+            copyptocstring(bspath, cpath);
+            /* Close current file handle if open */
+            if ((**hodb).fref)
+                closefile((**hodb).fref);
+            /* Perform header-only migration with backup */
+            if (!migrate_32bit_to_64bit(cpath))
+                return false;
+            /* Reopen the migrated file */
+            if (!openfile(&(**hodb).fs, &(**hodb).fref, (**hodb).flreadonly))
+                return false;
+            odbref newodb;
+            if (odberror(odbopenfile((**hodb).fref, &newodb, (**hodb).flreadonly))) {
+                closefile((**hodb).fref);
+                return false;
+            }
+            (**hodb).odb = newodb;
+            *podb = newodb;
+            return true;
+        }
+    }
+    return false;
+}

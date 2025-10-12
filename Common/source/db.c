@@ -37,6 +37,7 @@
 #include "strings.h"
 #include "shell.h"
 #include "db.h"
+#include "db_format.h"
 #include "dbinternal.h"
 #include "ops.h" //6.2b3 AR: for numbertostring
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
@@ -78,12 +79,23 @@ typedef enum {
 
 hdldatabaserecord databasedata; /*the global database handle*/
 
+// Global flag for format detection
+extern boolean use_64bit_format;
 
-	boolean fldatabasesaveas = false; /*only true during Save As operation*/
+boolean fldatabasesaveas = false; /*only true during Save As operation*/
 
 
 
 static hdldatabaserecord databasedestination; /*for Save As*/
+
+
+
+// Function to offer migration dialog (placeholder for now)
+boolean offer_64bit_migration_dialog(const char* db_path) {
+    // TODO: Implement actual dialog
+    // For now, return true to auto-migrate
+    return true;
+}
 
 #if fldebug
 
@@ -414,6 +426,7 @@ static boolean dbflushheader (void) {
 		
 		fl = dbwrite ((dbaddress) 0, sizeof (tydatabaserecord), &diskrec);
 		
+		#ifndef FRONTIER_HEADLESS
 		/*flush file buffers*/ {
 			IOParam pb;
 			
@@ -423,6 +436,7 @@ static boolean dbflushheader (void) {
 			
 			PBFlushFile ((ParmBlkPtr) &pb, false);
 			}
+		#endif
 
 		return (fl);
 		} /*changes made to header*/
@@ -2322,7 +2336,7 @@ boolean dbopenfile (hdlfilenum fnum, boolean flreadonly) {
 	tydatabaserecord diskrec;
 	register hdldatabaserecord hdb;
 	
-	assert (sizeof (tydatabaserecord) == 88);
+	// Version-specific size validation will be done after reading header
 	
 	if (!newclearhandle (longsizeof (tydatabaserecord), (Handle *) &databasedata))
 		return (false);
@@ -2359,7 +2373,20 @@ boolean dbopenfile (hdlfilenum fnum, boolean flreadonly) {
 
 	**hdb = diskrec;
 	
-	if ((**hdb).versionnumber != dbversionnumber) {
+	// Detect database format and validate structure size
+	if (!detect_database_format(&(**hdb))) {
+		dberror (dbwrongversionerror);
+		goto error;
+	}
+	
+	// Version-specific size validation
+	if (use_64bit_format) {
+		assert(sizeof(tydatabaserecord_64) == 88);  // 64-bit format
+	} else {
+		assert(sizeof(tydatabaserecord) == 116);  // 32-bit format (on 64-bit systems)
+	}
+	
+    if ((**hdb).versionnumber != dbversionnumber) {
 
 		if (majorversion ((**hdb).versionnumber) != majorversion (dbversionnumber)) {
 		
@@ -2373,10 +2400,26 @@ boolean dbopenfile (hdlfilenum fnum, boolean flreadonly) {
 			(**hdb).u.extensions.availlistblock = nildbaddress; /*don't count on old version to handle this one*/
 		#endif
 		
-		(**hdb).versionnumber = dbversionnumber; /*we can only write what we know*/
+        /*
+         * Only bump the in-memory header version when operating in the
+         * modern (v7) format. For legacy files (v<=6), defer version
+         * changes until an explicit migration is performed (e.g., Save).
+         */
+        if (use_64bit_format)
+            (**hdb).versionnumber = dbversionnumber; /* we can only write what we know */
+        
+        setdirty (hdb);
+        }
 		
-		setdirty (hdb);
+	// Check if this is a legacy database that should be migrated
+	if (!use_64bit_format && (**hdb).versionnumber <= 6) {
+		// Offer migration to 64-bit format
+		if (offer_64bit_migration_dialog("current_database_path")) {
+			// TODO: Get actual database path
+			// For now, just mark for migration
+			// migrate_32bit_to_64bit("current_database_path");
 		}
+	}
 		
 	if (!dbshadowavaillist ())
 		goto error;
@@ -2440,4 +2483,3 @@ boolean dbendsaveas (void) {
 	
 	return (fl);
 	} /*dbendsaveas*/
-

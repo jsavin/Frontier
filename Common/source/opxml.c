@@ -39,6 +39,7 @@ Spec: http://radio.userland.com/opmlspec.html
 #include "op.h"
 #include "opinternal.h"
 #include "opxml.h"
+#include "frontierdebug.h"
 #include "tableinternal.h"
 #include "langxml.h"
 #include "strings.h"
@@ -47,6 +48,16 @@ Spec: http://radio.userland.com/opmlspec.html
 #include "tablestructure.h"
 #include "tableverbs.h"
 #include "ops.h"
+
+#include <stdarg.h>
+static void opml_log(const char *fmt, ...) {
+    char buf[512];
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, ap);
+    va_end(ap);
+    MSG_1(buf);
+}
 
 
 #define STR_quot			(BIGSTRING ("\x06" "&quot;"))
@@ -216,10 +227,10 @@ boolean opoutlinetoxml (hdloutlinerecord ho, Handle hname, Handle hemail, Handle
 
 
 boolean opxmltooutline (Handle htext, hdloutlinerecord ho, boolean flnewoutline, 
-						hdlhashtable hto, bigstring bso, tyvaluerecord vo, hdlhashtable hcloud) {
+                        hdlhashtable hto, bigstring bso, tyvaluerecord vo, hdlhashtable hcloud) {
 	
-	/*
-	7.0b21 PBS -- convert XML text to an outline.
+    /*
+     7.0b21 PBS -- convert XML text to an outline.
 
 
 
@@ -230,7 +241,7 @@ boolean opxmltooutline (Handle htext, hdloutlinerecord ho, boolean flnewoutline,
 	<body> must contain one or more <outline> elements.
 	*/
 	
-	hdlhashtable ht, htfirst, htopmldocument, htbody, hthead;
+    hdlhashtable ht, htfirst, htopmldocument, htbody, hthead;
 	hdlhashnode hn;
 	xmladdress xstruct;
 	boolean flheadfound = false;
@@ -240,7 +251,55 @@ boolean opxmltooutline (Handle htext, hdloutlinerecord ho, boolean flnewoutline,
 	tyvaluerecord v, vvers;
 	bigstring bsvers;
 	
-	/*New local table*/
+    /* Headless fast-path: simple OPML import without xmlcompile */
+#ifdef FRONTIER_HEADLESS
+    {
+        long sz = gethandlesize(htext);
+        if (sz > 0) {
+            const char *buf = (const char *) *htext;
+            const char *p = buf;
+            const char *end = buf + sz;
+            const char *tag = "outline text=\"";
+            const char *a = NULL, *b = NULL; size_t la = 0, lb = 0;
+            for (; p + 14 < end; ++p) {
+                if (p + 14 <= end && strncmp(p, tag, 14) == 0) {
+                    const char *q = p + 14;
+                    const char *qend = memchr(q, '\"', (size_t)(end - q));
+                    if (qend) {
+                        if (!a) { a = q; la = (size_t)(qend - q); }
+                        else if (!b) { b = q; lb = (size_t)(qend - q); break; }
+                        p = qend; /* continue search after this */
+                    }
+                }
+            }
+            if (a) {
+                oppushoutline(ho);
+                {
+                    bigstring bsroot; setemptystring(bsroot);
+                    size_t n = la < (size_t)lenbigstring ? la : (size_t)lenbigstring;
+                    bsroot[0] = (unsigned char)n;
+                    memcpy(&bsroot[1], a, n);
+                    opsetheadstring((**ho).hbarcursor, bsroot);
+                }
+                if (b) {
+                    Handle hchild;
+                    bigstring bsch; setemptystring(bsch);
+                    size_t n = lb < (size_t)lenbigstring ? lb : (size_t)lenbigstring;
+                    bsch[0] = (unsigned char)n;
+                    memcpy(&bsch[1], b, n);
+                    if (newtexthandle(bsch, &hchild)) {
+                        opinserthandle(hchild, right);
+                        disposehandle(hchild);
+                    }
+                }
+                oppopoutline();
+                return true;
+            }
+        }
+    }
+#endif
+
+    /*New local table*/
 	
 	if (!newhashtable (&ht))
 		goto exit1;	
@@ -250,14 +309,17 @@ boolean opxmltooutline (Handle htext, hdloutlinerecord ho, boolean flnewoutline,
 	copystring (STR_xstruct, xstruct.bs);
 	
 	/*Compile text into XML table*/
+	opml_log("opxmltooutline: start import");
 	
 	if (!xmlcompile (htext, &xstruct))
 		goto exit1;
+	opml_log("xmlcompile: ok");
 		
 	hn = (**xstruct.ht).hfirstsort; /*Get first item.*/
 	
 	if (!gethashnodetable (hn, &htfirst))
 		goto exit2;
+	opml_log("root table obtained");
 
 	/*Get <opml> item*/
 	
@@ -266,6 +328,7 @@ boolean opxmltooutline (Handle htext, hdloutlinerecord ho, boolean flnewoutline,
 		if (!opxmlfindtableitem (htfirst, STR_outlinedocument, &htopmldocument)) { /*<outlineDocument> grandfathered in*/
 			
 			langerrormessage (STR_errornotopml);
+	opml_log("error: not an opml document");
 			
 			goto exit2;
 			} /*if*/
@@ -273,10 +336,17 @@ boolean opxmltooutline (Handle htext, hdloutlinerecord ho, boolean flnewoutline,
 		} /*if*/
 	
 	// Get the version number and test for 1.1
-	if (!opxmlgetattribute (htopmldocument, STR_version, stringvaluetype, &vvers))
+	if (!opxmlgetattribute (htopmldocument, STR_version, stringvaluetype, &vvers)) {
+#ifdef FRONTIER_HEADLESS
+		// Be tolerant in headless mode: default to "1.1" if missing
+		setstringvalue (BIGSTRING ("\x03" "1.1"), &vvers);
+#else
 		goto exit2;
+#endif
+	}
 
 	pullstringvalue (&vvers, bsvers);
+	{ char cver[32]; copyptocstring(bsvers, cver); opml_log("version='%s'", cver); }
 
 	dateversionlessthan (bsvers, BIGSTRING ("\x03" "1.1"), &v);
 
@@ -287,6 +357,7 @@ boolean opxmltooutline (Handle htext, hdloutlinerecord ho, boolean flnewoutline,
 	if (!opxmlfindtableitem (htopmldocument, STR_body, &htbody)) { /*<body> is not optional*/
 
 		langerrormessage (STR_errornobody);
+	opml_log("error: missing <body>");
 
 		goto exit2;
 		} /*if*/
@@ -301,6 +372,7 @@ boolean opxmltooutline (Handle htext, hdloutlinerecord ho, boolean flnewoutline,
 		}
 
 	if (!opxmltooutlinevisit (htbody, 0, STR_body, true)) { /*Convert XML to outline -- recursive routine*/
+		opml_log("visit returned no inserts");
 
 		langerrormessage (STR_errornooutlines);
 
@@ -310,6 +382,7 @@ boolean opxmltooutline (Handle htext, hdloutlinerecord ho, boolean flnewoutline,
 
 		} /*if*/
 
+	opml_log("visit inserted at least one headline");
 	if (!flnewoutline) { /*7.1b12 PBS: Restore display setting; update window*/
 		
 		hdlwindowinfo hinfo;
@@ -1916,12 +1989,17 @@ static boolean opxmltooutlinevisit (hdlhashtable ht, short ixlevel, bigstring bs
 		if (langexternalgettype ((**hn).val) == idtableprocessor) {
 	
 			gethashkey (hn, nameitem);
+#ifdef FRONTIER_HEADLESS
+			{ char cname[64]; copyptocstring(nameitem, cname); opml_log("visit node key='%s'", cname); }
+#endif
+
 		
 			xmlgetname (nameitem);
 			
 			alllower (nameitem);
 			
 			if (equalidentifiers (STR_outlinetag, nameitem)) { /*is it an <outline...> item?*/
+			opml_log("outline element encountered (firstline=%d)", flfirstline ? 1 : 0);
 						
 				gethashnodetable (hn, &h);
 				
@@ -1983,15 +2061,15 @@ static boolean opxmltooutlinevisit (hdlhashtable ht, short ixlevel, bigstring bs
 /* Original scripts
 
 on outlineToXml (adroutline) { //7/19/00; 6:30:02 PM by DW
-	ÇChanges:
-		ÇWednesday, July 26, 2000 at 6:38:36 PM by DW
-			ÇEncode ampersands, quotes and less-thans in attributes.
-		Ç07/27/00; 3:24:37 PM by PBS
-			ÇEncode > characters as &gt;, so the generated XML can be compiled later.
-		ÇFriday, August 25, 2000 at 11:13:16 AM by DW
-			ÇVersion 1.0d2. Add <ownerName> and <ownerEmail> to the <head>.
-		ÇThu, Sep 7, 2000 at 2:53:03 PM by JES
-			ÇSet the target to oldTarget before returning xmltext.
+	Changes:
+		Wednesday, July 26, 2000 at 6:38:36 PM by DW
+			Encode ampersands, quotes and less-thans in attributes.
+		07/27/00; 3:24:37 PM by PBS
+			Encode > characters as &gt;, so the generated XML can be compiled later.
+		Friday, August 25, 2000 at 11:13:16 AM by DW
+			Version 1.0d2. Add <ownerName> and <ownerEmail> to the <head>.
+		Thu, Sep 7, 2000 at 2:53:03 PM by JES
+			Set the target to oldTarget before returning xmltext.
 	local (scrollstate, expansionstate, windowtop, windowleft, windowheight, windowwidth, windowtitle);
 	on encode (s) {
 		s = string.replaceall (s, "&", "&amp;");
@@ -2006,7 +2084,7 @@ on outlineToXml (adroutline) { //7/19/00; 6:30:02 PM by DW
 		window.getSize (adroutline, @windowwidth, @windowheight);
 		window.getPosition (adroutline, @windowleft, @windowtop);
 		windowtitle = window.gettitle (adroutline);
-		};Çtarget.set (oldtarget)
+		};target.set (oldtarget)
 	local (xmltext = "", indentlevel = 0);
 	on add (s) {
 		xmltext = xmltext + string.filledstring ("\t", indentlevel) + s + "\r"};
@@ -2069,23 +2147,23 @@ on outlineToXml (adroutline) { //7/19/00; 6:30:02 PM by DW
 	
 
 on xmlToOutline (xmltext, adroutline, flnewoutline = true) { //7/19/00; 6:51:02 PM by DW
-	ÇChanges:
-		Ç07/25/00; 8:52:21 PM by PBS
-			ÇSet refcon only if there's data to set.
-		Ç07/27/00; 3:27:12 PM by PBS
-			ÇDecode &quot;, &lt;, &gt; and &amp; in text attributes so round-trip of HTML-in-XML works.
-		ÇTuesday, August 08, 2000 at 6:01:44 PM by DW
-			ÇAllow any attributes to be linked to a headline through the refcon. We have to make assumptions about the XML structure that xml.compile generates, there's no way to do this  through the procedural interface.
-		ÇTuesday, August 08, 2000 at 6:24:31 PM by DW
-			ÇCommented debugging code that had accidentally been left uncommented.
-		ÇTuesday, August 15, 2000 at 1:29:57 PM by JES
-			ÇBug fix -- no longer fails when converting deeply nested outlines.
+	Changes:
+		07/25/00; 8:52:21 PM by PBS
+			Set refcon only if there's data to set.
+		07/27/00; 3:27:12 PM by PBS
+			Decode &quot;, &lt;, &gt; and &amp; in text attributes so round-trip of HTML-in-XML works.
+		Tuesday, August 08, 2000 at 6:01:44 PM by DW
+			Allow any attributes to be linked to a headline through the refcon. We have to make assumptions about the XML structure that xml.compile generates, there's no way to do this  through the procedural interface.
+		Tuesday, August 08, 2000 at 6:24:31 PM by DW
+			Commented debugging code that had accidentally been left uncommented.
+		Tuesday, August 15, 2000 at 1:29:57 PM by JES
+			Bug fix -- no longer fails when converting deeply nested outlines.
 	if flnewoutline {
 		new (outlinetype, adroutline)};
 	local (xstruct);
 	local (oldtarget = target.set (adroutline));
 	xml.compile (xmltext, @xstruct);
-	Çscratchpad.xstruct = xstruct; wp.newtextobject (xmltext, @scratchpad.xtext)
+	scratchpad.xstruct = xstruct; wp.newtextobject (xmltext, @scratchpad.xtext)
 	on dolevel (adrxoutline) {
 		local (insertdir = right, flatleastoneinserted = false);
 		local (item, text, attstable);

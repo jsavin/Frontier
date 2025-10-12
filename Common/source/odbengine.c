@@ -46,6 +46,7 @@
 	#include "shellprivate.h"
 #include "timedate.h"
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
+#include "db_format.h" /* use_64bit_format flag */
 
 #pragma pack(2)
 typedef struct tycancoonrecord { /*one of these for every cancoon file that's open*/
@@ -413,9 +414,36 @@ pascal boolean odbOpenFile (hdlfilenum fnum, odbref *odb, boolean flreadonly) {
 	hdlcancoonrecord hc = nil;
 	dbaddress adr;
 	short versionnumber;
-	
+
 	setemptystring (bserror);
-	
+
+#if defined(FRONTIER_HEADLESS)
+	/* In headless tests, proactively migrate legacy headers to v7 before
+	   invoking dbopenfile, to avoid mixed 32/64-bit on-disk layouts.
+	   We detect legacy by peeking at byte 1 (versionnumber). */
+	{
+		extern const char* headless_fnum_path(hdlfilenum fnum);
+		const char *path = headless_fnum_path(fnum);
+		if (path != NULL) {
+			FILE *fp = fopen(path, "rb");
+			if (fp) {
+				unsigned char hdr[2];
+				if (fread(hdr, 1, 2, fp) == 2) {
+#if defined(FRONTIER_HEADLESS)
+					fprintf(stderr, "[debug] odbOpenFile pre-open header: path=%s ver=%u\n", path, (unsigned)hdr[1]);
+#endif
+					if (hdr[1] <= 6) {
+						fclose(fp);
+						if (!migrate_32bit_to_64bit(path))
+							return (false);
+					}
+				}
+				fclose(fp);
+			}
+		}
+	}
+#endif
+
 	
 	if (!dbopenfile (fnum, flreadonly))
 		return (false);
@@ -469,7 +497,15 @@ pascal boolean odbSaveFile (odbref odb) {
 	tyversion2cancoonrecord info;
 	dbaddress adr;
 	
-	setemptystring (bserror);
+    setemptystring (bserror);
+
+    /* Save implies migration to modern (v7) format. */
+    if (!use_64bit_format) {
+        extern boolean db_migrate_reopen_if_legacy(odbref *podb);
+        if (!db_migrate_reopen_if_legacy(&odb))
+            return (false);
+        /* After migration/reopen, use_64bit_format will be set during open. */
+    }
 	
 	setcancoonglobals (hc);
 	
@@ -831,6 +867,3 @@ pascal void odbGetError (bigstring bs) {
 
 	copystring (bserror, bs);
 	} /*odbGetError*/
-
-
-

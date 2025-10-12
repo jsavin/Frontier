@@ -467,6 +467,20 @@ static void opverbcheckwindowrect (hdloutlinerecord houtline) {
 	} /*opverbcheckwindowrect*/
 
 
+#if defined(FRONTIER_HEADLESS)
+
+boolean opwindowopen (hdlexternalvariable hvariable, hdlwindowinfo *hinfo) {
+
+	(void) hvariable;
+
+	if (hinfo)
+		*hinfo = nil;
+
+	return (false);
+	} /*opwindowopen*/
+
+#else /* !FRONTIER_HEADLESS */
+
 boolean opwindowopen (hdlexternalvariable hvariable, hdlwindowinfo *hinfo) {
 	
 	/*
@@ -491,6 +505,8 @@ boolean opwindowopen (hdlexternalvariable hvariable, hdlwindowinfo *hinfo) {
 	} /*opwindowopen*/
 
 
+#endif /* FRONTIER_HEADLESS */
+
 
 static void opverbsetupoutline (hdloutlinerecord ho, hdloutlinevariable hv) {
 
@@ -510,7 +526,11 @@ static void opverbsetupoutline (hdloutlinerecord ho, hdloutlinevariable hv) {
 	else
 		(**ho).outlinetype = outlineisoutline;
 	
+#if defined(FRONTIER_HEADLESS)
+	(**ho).flfatheadlines = false;
+#else
 	(**ho).flfatheadlines = true;
+#endif
 
 	(**ho).flhorizscrolldisabled = true; /*7.0b26 PBS: no horizontal scrolling.*/
 
@@ -1277,6 +1297,21 @@ boolean opverbarrayreference (hdlexternalvariable hvariable, long ix, hdlheadrec
 	} /*opverbarrayreference*/
 
 
+#if defined(FRONTIER_HEADLESS)
+
+boolean opedit (hdlexternalvariable hvariable, hdlwindowinfo hparent, ptrfilespec fs, bigstring bstitle, rectparam rzoom) {
+
+	(void) hvariable;
+	(void) hparent;
+	(void) fs;
+	(void) bstitle;
+	(void) rzoom;
+
+	return (false);
+	} /*opedit*/
+
+#else /* !FRONTIER_HEADLESS */
+
 boolean opedit (hdlexternalvariable hvariable, hdlwindowinfo hparent, ptrfilespec fs, bigstring bstitle, rectparam rzoom) {
 	
 	//
@@ -1419,6 +1454,8 @@ boolean opedit (hdlexternalvariable hvariable, hdlwindowinfo hparent, ptrfilespe
 	return (true);
 	
 	} // opedit
+
+#endif /* FRONTIER_HEADLESS */
 	
 	
 boolean opvaltoscript (tyvaluerecord val, hdloutlinerecord *houtline) {
@@ -4442,9 +4479,5 @@ boolean opstart (void) {
 	
 	return (true);
 	} /*opstart*/
-
-
-
-
 
 

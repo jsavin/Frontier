@@ -46,7 +46,7 @@
 #define ctviews 3 /*leave room for 3 different views in a database header*/
 #define cancoonview 0
 
-typedef long dbaddress, *ptrdbaddress, **hdldbaddress;
+typedef long long dbaddress, *ptrdbaddress, **hdldbaddress;
 
 #pragma pack(2)
 typedef struct tydatabaserecord { /*stored at offset 0 in the db file*/
@@ -102,6 +102,29 @@ typedef struct tydatabaserecord { /*stored at offset 0 in the db file*/
 			} extensions;
 		} u;
 	} tydatabaserecord, *ptrdatabaserecord, **hdldatabaserecord;
+
+// 64-bit database record structure (Version 7)
+typedef struct tydatabaserecord_64 { /*stored at offset 0 in the db file*/
+	unsigned char systemid;		/* 0 = MAC (compatiblity)  */
+	unsigned char versionnumber; /*which version created this file?*/
+	dbaddress availlist; /*avail list is singly-linked, nil terminated*/
+	short oldfnumdatabase; /*only applies when database record is in memory*/
+	short flags; /*any changes to header since it was last flushed?*/
+	dbaddress views [ctviews]; /*addresses of the root of each view*/
+	Handle releasestack; /*holds addresses of nodes waiting to be released*/
+	long fnumdatabase; /* file handle while in memory - New to version 5*/
+	long headerLength;		/*size of header - New to version 5*/
+	short longversionMajor;	/*new extended version id - new to version 5*/
+	short longversionMinor;	/*new extended version id - new to version 5*/
+	union {
+		char growthspace [22]; /*room for new fields without format change*/
+		struct {
+			dbaddress availlistblock; /*6.2a9 AR: on-disk structure mirroring availlist, a contiguous block*/
+			handlestream availlistshadow; /*never saved to disk; in-memory structure mirroring availlist*/
+			boolean flreadonly; /*6.2a9 AR: never saved to disk; if this is true, don't write to the file*/
+			} extensions;
+		} u;
+	} tydatabaserecord_64, *ptrdatabaserecord_64, **hdldatabaserecord_64;
 #pragma options align=reset
 	
 extern hdldatabaserecord databasedata; /*can be set by external user*/

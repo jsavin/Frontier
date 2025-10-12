@@ -53,6 +53,11 @@ typedef boolean (*langvisitlistvaluescallback) (tyvaluerecord *, ptrvoid); /*200
 
 /*prototypes*/
 
+/* Portable: provide AliasHandle typedef when not available */
+#ifdef FRONTIER_PORTABLE
+typedef void* AliasHandle;
+#endif
+
 extern boolean filespectoalias (const ptrfilespec , boolean, AliasHandle *);  /*landsystem7.c*/
 
 extern boolean aliastostring (Handle, bigstring);
