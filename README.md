@@ -1,162 +1,119 @@
-# Frontier Refactoring Project
+# Frontier Refactoring Project (develop branch status)
 
-Status
-- State: In Progress
-- Phase: Multi-Phase Roadmap
-- Last Updated: 2025-10-01
-- Notes: See planning/INDEX.md and planning/DECISIONS.md for active phases and open decisions.
+**Last updated:** 2025-10-11  
+**State:** Modernization wave 1 delivered; headless + 64-bit aligned  
+**Primary contacts:** planning/INDEX.md (owners per phase)
 
-Related Docs
-- planning/INDEX.md
-- planning/Frontier_Refactoring_Plan.md
-- planning/DEVELOPER_QUICKSTART_HEADLESS.md
-- planning/DECISIONS.md
-- planning/adr/ (Architecture Decision Records)
+This repository is actively modernising the Frontier runtime and toolchain. The
+`develop` branch now builds and tests with 64-bit alignment on both `arm64` and
+`x86_64`, includes a portable/headless runtime layer, and routes headless
+UserTalk `file.*` verbs through the external function processor (EFP) table so
+tests can exercise real UserTalk without `system.verbs.*` being loaded.
 
-Change Log
-- 2025-09-29: Initialized template sections (Status/Related Docs/Change Log).
+## Highlights
 
-## Project Structure
+- **64-bit/ARM readiness** – All core builds and tests compile cleanly on both
+  architectures. Database headers were revved for 64-bit alignment; migration
+  coverage lives in `tests/save_migration_tests`.
+- **Portable/headless runtime** – The `portable/` layer + headless stubs power
+  CLI/testing without UI dependencies (see planning/EFP_HEADLESS_NOTES.md for
+  scope/removal criteria).
+- **Modernised test harness** – Cross-platform C test suite with sanitiser
+  presets (`SANITIZE=1 make -C tests`). New test binaries:
+  - `file_portable_tests`
+  - `file_readline_tests`
+  - `file_verb_tests` (UserTalk `file.*` exercises headless EFP routing)
+- **Branch hygiene** – Large Codex session logs moved off `develop` and live in
+  the dedicated `codex-sessions` branch (see below for how to fetch).
 
-This project has been reorganized for cross-platform compatibility and maintainability:
+## Quick start
 
-```
-Frontier/                          # Project root
-├── tests/                         # Cross-platform test framework
-│   ├── framework/                 # Test framework core
-│   ├── components/                # Component-specific tests
-│   ├── examples/                  # Example tests
-│   └── test_runner.c             # Main test runner
-├── samples/                       # Sample files for testing
-├── planning/                      # Documentation and planning
-├── databases/                     # Database files
-│   ├── Frontier.root             # System database
-│   └── Guest Databases/          # User databases
-│       ├── apps/
-│       │   ├── Tools/
-│       │   ├── mainResponder.root
-│       │   └── manila.root
-│       └── ops/
-│           └── www/
-├── app_resources/                 # Application resources
-│   ├── Frontier/                 # Frontier app resources
-│   │   ├── frontierStartupCommands.txt  # Startup commands
-│   │   ├── Extras/              # Frontier-specific extras
-│   │   └── [icons, plists, bundles]
-│   ├── OPML/                     # OPML app resources
-│   └── Radio/                    # Radio app resources
-├── docs/                          # Documentation
-│   ├── LICENSE.txt               # License file
-│   ├── README.txt                # Original README
-│   └── sdk/                      # SDK documentation
-├── bin/                           # Application binaries (future)
-├── build_Xcode_modern/           # Xcode build artifacts
-├── build_GNU/                    # GNU build artifacts
-├── Common/                       # Source code
-│   ├── headers/                  # Header files
-│   └── source/                   # Source files
-└── [other build dirs]
-```
-
-## Key Directories
-
-### `tests/` - Cross-Platform Test Framework
-- **Purpose**: Unit tests that work across all build targets
-- **Structure**: Organized by component and functionality
-- **Usage**: `make -C tests test` to run all tests
-- **Status**: Headless test binaries build and run; see tests/README.md and planning/INDEX.md for current coverage and status. Historical build notes: portable/BUILD_ISSUES.md
-
-### `portable/` - Cross-Platform Runtime Stubs
-- **Purpose**: Platform-independent runtime implementations
-- **Status**: Stub implementation complete; build issues document retained for history (portable/BUILD_ISSUES.md)
-- **Structure**: 12 focused stub files replacing monolithic runtime_stubs.c
-
-### `samples/` - Test Data
-- **Purpose**: Sample files for compatibility testing
-- **Content**: Legacy and modern .root files for validation
-
-### `planning/` - Documentation
-- **Purpose**: Refactoring plans and progress documentation
-- **Format**: Phase-based naming (0.5.7_database_dbnew_testing_success.md)
-
-### `databases/` - Database Files
-- **Purpose**: Real Frontier database files for testing
-- **Structure**: 
-  - `Frontier.root` - System database (required for UserTalk development)
-  - `Guest Databases/` - User databases (apps, tools, operations)
-  - `apps/mainResponder.root` - Main responder application
-  - `apps/manila.root` - Manila web application
-
-### `app_resources/` - Application Resources
-- **Purpose**: Application-specific resources and assets
-- **Structure**:
-  - `Frontier/` - Main Frontier application resources
-    - `frontierStartupCommands.txt` - Startup commands
-    - `Extras/` - Frontier-specific utilities
-    - Icons, plists, and bundles
-  - `OPML/` - OPML editor resources
-  - `Radio/` - Radio UserLand application resources
-
-### `docs/` - Documentation
-- **Purpose**: All project documentation and SDK
-- **Structure**:
-  - `LICENSE.txt` - Project license
-  - `README.txt` - Original project README
-  - `Manila User's Guide.pdf` - Manila CMS documentation
-  - `sdk/FrontierSDK/` - Complete SDK documentation
-
-## Known Issues and Status
-
-### Build and Testing Status
-- **Headless Tests**: Core/runtime/db-format tests build and run; see tests/_results and tests/README.md
-- **Runtime Stub Implementation**: Complete with 12 focused files
-- **CLI Build**: Needs headless-only linkage (remove UI frameworks; reuse portable/test sources)
-
-### Progress Summary
-- ✅ **Runtime Stub Implementation**: Successfully split monolithic 2029-line file into 12 focused files
-- ✅ **Compilation Issues**: All resolved through systematic signature corrections
-- ❌ **Linking Issues**: One remaining function linking problem preventing test execution
-
-## Build Targets
-
-### Xcode Modern Build
 ```bash
-cd build_Xcode_modern
-xcodebuild -project Frontier.xcodeproj -configuration Release
+# build + run headless tests (multi-arch ready)
+make -C tests file_verb_tests && ./tests/file_verb_tests
+./tests/file_portable_tests
+./tests/file_readline_tests
+
+# sanitiser run
+SANITIZE=1 make -C tests test
+
+# CLI build (multi-arch)
+make -C frontier-cli
 ```
 
-### Test Framework
+> `make -C tests test` currently hits a pre-existing duplicate-symbol linker
+> issue in `runtime_tests`; tracked in planning/ISSUES.md.
+
+## Planning & docs (read these first)
+
+- `planning/INDEX.md` – roadmap + ownership
+- `planning/DECISIONS.md` – current decisions/TBDs
+- `planning/EFP_HEADLESS_NOTES.md` – headless shim, success criteria, removal
+  plan
+- `planning/adr/ADR-0010-headless-efp-routing.md` – decision record for dotted
+  call routing
+- `planning/Frontier_Refactoring_Plan.md` – original modernisation plan
+- `codex_sessions/README.md` – how to fetch/view Codex transcript logs
+
+For daily notes and context, see the Codex session branch (instructions below).
+
+## Current status matrix
+
+| Area                | Status | Notes |
+|---------------------|:------:|-------|
+| 64-bit alignment    | ✅     | DB header rev complete; save/migration tests green |
+| arm64 build         | ✅     | `make -C frontier-cli` builds universal binary |
+| Headless runtime    | ✅     | Portable stubs cover runtime/IO; EFP shim in place |
+| Tests (targeted)    | ✅     | `file_portable`, `file_readline`, `file_verb` |
+| Tests (full suite)  | ⚠️     | `runtime_tests` link failure (known issue) |
+| Docs/Planning       | ✅     | Planning/ADR files updated alongside code |
+| Codex transcripts   | ✅     | Stored on `codex-sessions` branch/worktree |
+
+## Codex session logs
+
+Large transcript files live on the `codex-sessions` branch. Fetch once and keep
+them in a separate worktree so they do not clutter `develop`:
+
 ```bash
-cd tests
-make test                    # Run all tests
-make test_database          # Run database tests only
-make test_architectures     # Test both ARM64 and x86_64
+git fetch origin codex-sessions
+git worktree add ../Frontier-codex-sessions codex-sessions   # once
 ```
 
-## Development Workflow
+Drop new transcripts into `../Frontier-codex-sessions/codex_sessions/`, commit
+there, and push. Details are in `codex_sessions/README.md`.
 
-1. **Code Changes**: Modify files in `Common/`
-2. **Testing**: Run tests from `tests/` directory
-3. **Validation**: Use real .root files from `databases/`
-4. **Documentation**: Update planning files in `planning/`
+## Repository layout (quick tour)
 
-## Current Phase
+```
+Frontier/
+├── app_resources/        # App bundles/resources (Frontier, OPML, Radio)
+├── Common/               # Legacy Frontier sources/headers
+├── databases/            # Frontier.root + guest databases (test fixtures)
+├── portable/             # Portable runtime layer + stubs
+├── frontier-cli/         # Multi-arch CLI build
+├── tests/                # Cross-platform C test suite
+├── planning/             # Roadmap, ADRs, decisions, quickstarts
+├── codex_sessions/       # README pointer (actual logs in codex-sessions branch)
+└── build_*               # Build scaffolding (Xcode/GNU)
+```
 
-**Phase 0.5.8**: Database Compatibility Verification
-- Testing against real .root files
-- Validating structure compatibility
-- Ensuring forward/backward compatibility
+## Contribution workflow
 
-## Next Steps
+1. Branch from `develop` and keep changes small.
+2. Update/consult planning docs before coding (PRs reference the appropriate
+   ADR/decision where possible).
+3. Run targeted tests locally; note known failures when applicable.
+4. Update docs and tests alongside code; add Codex notes if significant.
+5. Open PRs against `develop` (multi-arch + headless tests should remain green).
 
-1. Add sample .root files to `databases/`
-2. Create comprehensive compatibility tests
-3. Validate database operations across architectures
-4. Document migration patterns
+## Next milestone snapshot
 
-## Compatibility Goals
+- Remove temporary headless shim once `Frontier.root` can load in headless
+  builds (restores classic `system.verbs.* → kernelcall → EFP` routing).
+- Fix duplicate-symbol linker issue in `runtime_tests` so `make -C tests test`
+  is green.
+- Bring CI online (provider TBD) and enable coverage/static analysis once tool
+  chain is finalised.
 
-- **Forward Compatibility**: New code works with old .root files
-- **Backward Compatibility**: Old code works with new .root files
-- **Cross-Platform**: Tests pass on ARM64 and x86_64
-- **Long-term Maintainability**: Clean, documented code structure
+For day-by-day progress see the `codex-sessions` branch and
+planning/INDEX.md.
