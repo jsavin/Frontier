@@ -52,24 +52,40 @@ void doshortswap(void *data) {
     (void)data;
 }
 
-void equalhandles(void *h1, void *h2) {
-    (void)h1;
-    (void)h2;
+boolean equalhandles(void *h1, void *h2) {
+    return h1 == h2;
 }
 
-void equalidentifiers(const char *id1, const char *id2) {
-    (void)id1;
-    (void)id2;
+static boolean equal_bigstrings(const unsigned char *s1, const unsigned char *s2) {
+    if (s1 == NULL || s2 == NULL)
+        return false;
+
+    unsigned char len = s1[0];
+    if (len != s2[0])
+        return false;
+
+    if (len == 0)
+        return true;
+
+    return memcmp(s1 + 1, s2 + 1, len) == 0;
 }
 
-void equalstrings(const char *str1, const char *str2) {
-    (void)str1;
-    (void)str2;
+boolean equalstrings(const bigstring str1, const bigstring str2) {
+    return equal_bigstrings(str1, str2);
 }
 
-void equaltextidentifiers(const char *id1, const char *id2) {
-    (void)id1;
-    (void)id2;
+boolean equalidentifiers(const bigstring id1, const bigstring id2) {
+    return equal_bigstrings(id1, id2);
+}
+
+boolean equaltextidentifiers(byte *string1, byte *string2, short len) {
+    if (string1 == NULL || string2 == NULL || len < 0)
+        return false;
+
+    if (len == 0)
+        return true;
+
+    return memcmp(string1, string2, (size_t)len) == 0;
 }
 
 void *evaluateosascript(const char *script) {
