@@ -2,185 +2,108 @@
 
 Status
 - State: Living Document
-- Phase: Multi-Phase Roadmap
-- Last Updated: 2025-09-29
-- Notes: Hash Tables moved to Phase 3.
+- Phases: Multi-Phase Roadmap
+- Last Updated: 2025-10-12
+- Notes: Organised to mirror the current phase plan (see `planning/phase_overview.md`).
 
 Related Docs
 - planning/Frontier_Refactoring_Plan.md
 - planning/INDEX.md
-- planning/ui_abstraction/PHASES.md
+- planning/phase3/ui_abstraction/PHASES.md
 
 Change Log
-- 2025-09-29: Initialized template sections (Status/Related Docs/Change Log).
-- 2025-09-29: Added Memory Management Audit TODO (codebase-wide).
+- 2025-10-12: Updated links, clarified timelines by phase.
+- 2025-09-29: Initial draft (memory management audit, hash table modernisation notes).
 
-## **Memory Management Audit (Codebase‑Wide)**
+## Phase 1/2 — Memory Management Audit (Rolling)
 
-### **Priority: High**
-### **Timeline: Rolling (begin immediately, complete by end of Phase 1)**
+**Priority:** High  
+**Timeline:** Begin immediately; finish core audit alongside Phase 2 architecture work.
 
-#### **Goals**
-- Identify and fix unsafe or leaky patterns across legacy C code.
-- Standardize ownership and lifetime for heap objects and Handles.
-- Reduce UB/ASan/UBSan findings (alignment, VLAs, function pointer casts).
+Goals
+- Identify and fix unsafe or leaky patterns across the legacy C codebase.
+- Standardise ownership and lifetime for heap objects and Handles.
+- Reduce Undefined Behaviour (UB) / ASan / UBSan findings (alignment, VLAs, function pointer casts).
 
-#### **Scope (examples, not exhaustive)**
-- Remove or replace variable‑length arrays (VLAs) with fixed or heap buffers.
+Scope (examples, not exhaustive)
+- Remove or replace variable-length arrays (VLAs) with fixed or heap buffers.
 - Fix misaligned reads/writes (e.g., Handle stores) with safe copies.
-- Audit malloc/newclearhandle/newhandle/newtexthandle call sites for matching free/dispose.
+- Audit `malloc`/`newclearhandle`/`newhandle`/`newtexthandle` call sites for matching free/dispose patterns.
 - Ensure error paths and early returns release allocations.
-- Verify temp stack usage (pushvalueontmpstack/cleartmpstack/exemptfromtmpstack) for all heap values.
-- Replace unsafe pointer casts (e.g., function pointer mismatches) with correct shims/adapters.
-- Prefer size_t for sizes/lengths; validate bounds before copy/move.
-- Guard VLA‑like patterns in platform APIs (e.g., count‑then‑alloc, always free).
+- Verify temp stack usage (`pushvalueontmpstack`/`cleartmpstack`/`exemptfromtmpstack`) for all heap values.
+- Replace unsafe pointer casts (e.g., function pointer mismatches) with shims/adapters.
+- Prefer `size_t` for sizes/lengths; validate bounds before copy/move.
 
-#### **Deliverables**
-- Tracking issue and checklist per module (lang, memory, strings, op*, db, tables, UI stubs).
-- Sanitizer‑clean headless test runs (ASan/UBSan) with documented suppressions if truly unavoidable.
-- Coding guideline snippet: ownership conventions and common helpers.
+Deliverables
+- Tracking issue/checklist per module (lang, memory, strings, op*, db, tables, UI stubs).
+- Sanitiser-clean headless test runs with documented suppressions where unavoidable.
+- Coding guidelines covering ownership conventions and helper APIs.
 
-#### **Initial Targets**
-- Common/source/langstartup.c: dynamic allocations (charsets init) — done; re‑audit.
-- Common/source/memory*.c: alignment‑safe Handle ops and memcpy patterns — in progress.
-- Common/source/langcallbacks.c: remove VLAs in error printing — done; re‑audit other fprintf/debug paths.
-- Common/source/langtree.c: LP64 packing guards for treenodes — done; verify other packed structs.
+Initial Targets
+- `Common/source/langstartup.c`: charset initialisation allocations — verify post‑audit.
+- `Common/source/memory*.c`: alignment-safe Handle ops and memcpy patterns — in progress.
+- `Common/source/langcallbacks.c`: remove VLAs in error printing — done; re-audit other debug paths.
+- `Common/source/langtree.c`: LP64 packing guards for treenodes — done; verify other packed structs.
 
-#### **Process**
-- Enable ASan/UBSan in CI for tests; treat new sanitizer errors as must‑fix.
-- Add optional leak checks where feasible; avoid noisy false positives.
-- Document ownership for public APIs in headers.
+Process
+- Enable ASan/UBSan in CI for tests; treat new sanitiser errors as must-fix.
+- Add optional leak checks where feasible; label noisy false positives.
+- Document ownership for public APIs in headers and planning notes.
 
-## **Phase 3: Hash Table Modernization**
+## Phase 3 — Hash Table Modernisation
 
-### **Priority: Medium**
-### **Timeline: After Phase 2 UI abstraction work is stable**
+**Priority:** Medium  
+**Timeline:** Execute after core architecture upgrades stabilise (Phase 2 exit).
 
-#### **Background**
-- Current hash table uses only first/last character of string
-- Fixed 11 buckets regardless of table size
-- Poor distribution leads to performance issues with large tables
+Background
+- Current hash table uses first/last character only; bucket count fixed at 11.
+- Poor distribution causes performance issues with large tables.
 
-#### **Proposed Changes**
-- **Version 8**: 64-bit format with modern hash tables
-- **FNV-1a Hash**: Replace simple first/last character hash
-- **Dynamic Buckets**: Variable bucket count based on table size
-- **Load Factor**: Automatic resizing when load factor exceeds threshold
+Proposed Changes
+- Version 8 database format with modern hash tables.
+- FNV-1a (or similar) hash implementation.
+- Dynamic bucket sizing and load-factor-based resizing.
 
-#### **Implementation Plan**
-```c
-// New modern hash table structure
-typedef struct tyhashtable_modern {
-    hdlhashnode *hashbucket;           // Dynamic array
-    unsigned short bucket_count;        // Current bucket count
-    unsigned short max_bucket_count;    // Maximum buckets allowed
-    unsigned long item_count;           // Number of items in table
-    // ... other fields
-} tyhashtable_modern;
+Migration Strategy
+- Automatic conversion from Version 7 → Version 8 with rollback path.
+- Maintain backward compatibility mode where needed.
+- Benchmark improvements using representative databases.
 
-// FNV-1a hash function
-uint64_t fnv1a_hash(const bigstring bs) {
-    uint64_t hash = 0xcbf29ce484222325ULL;  // FNV offset basis
-    uint64_t fnv_prime = 0x100000001b3ULL;   // FNV prime
-    
-    register unsigned short len = stringlength(bs);
-    for (register unsigned short i = 0; i < len; i++) {
-        hash ^= (uint8_t)getstringcharacter(bs, i);
-        hash *= fnv_prime;
-    }
-    return hash;
-}
-```
+Reference Docs
+- `planning/phase2/0.5.16_hash_table_modernization_strategy.md`
+- `planning/phase2/0.5.19_phase1_migration_implementation_complete.md`
 
-#### **Migration Strategy**
-- **Database Version 8**: New format with modern hash tables
-- **Automatic Migration**: Convert from Version 7 to Version 8
-- **Backward Compatibility**: Version 7 databases still supported
-- **Performance Testing**: Validate performance improvements
+## Phase 3 — Headless Migration Options
 
-#### **Files to Update**
-- `Common/headers/lang.h` - Update hash table structures
-- `Common/source/langhash.c` - Implement FNV-1a hash
-- `Common/headers/dbinternal.h` - Add Version 8 constants
-- `Common/source/db.c` - Add Version 8 detection and migration
+**Priority:** Low  
+**Timeline:** After Phase 3 CLI/adapter work is stable.
 
----
+Background
+- Some deployments need automated database migration without interactive prompts.
 
-## **Headless Migration Option**
+Proposed Changes
+- Add configuration surface (CLI flag, environment variable, preference) to auto-migrate.
+- Ensure headless builds honour the setting while retaining safe defaults for interactive shells.
 
-### **Priority: Low**
-### **Timeline: After Phase 1 migration is working**
+Reference Docs
+- `planning/phase3/system_verbs_bootstrap_plan.md`
+- `planning/phase3/DEVELOPER_QUICKSTART_HEADLESS.md`
 
-#### **Background**
-- Current plan requires user confirmation for database migration
-- Some deployment scenarios need automated migration without user interaction
-- Batch processing or server environments need headless operation
+## Future Considerations (Phase 4/5 and Beyond)
 
-#### **Proposed Changes**
-- **Configuration Option**: Add setting to enable automatic migration
-- **Command Line Flag**: `--auto-migrate` for headless operation
-- **Environment Variable**: `FRONTIER_AUTO_MIGRATE=1`
-- **Preferences Setting**: User-configurable default behavior
+### Performance Optimisations
+- Investigate memory-mapped I/O for large database files.
+- Optional compression for on-disk data.
+- Improved caching strategies for frequently accessed tables.
 
-#### **Implementation Plan**
-```c
-// Configuration options
-typedef enum {
-    MIGRATION_PROMPT_ALWAYS,     // Always ask user
-    MIGRATION_PROMPT_NEVER,      // Never ask, auto-migrate
-    MIGRATION_PROMPT_ONCE        // Ask once, remember choice
-} migration_prompt_mode_t;
+### User Experience Enhancements
+- Progress indicators for long-running migrations.
+- Batch migration tooling for multiple databases.
+- Easy rollback/downgrade support.
 
-// Migration function with headless support
-boolean offer_64bit_migration_dialog(const char* db_path, boolean headless_mode) {
-    if (headless_mode) {
-        return true;  // Auto-migrate without prompting
-    }
-    
-    // Show dialog: "Upgrade database to 64-bit format?"
-    // Options: "Upgrade", "Cancel", "Don't ask again"
-    return user_confirms_migration();
-}
-```
+### Developer Experience
+- Better database inspection/validation tools.
+- Automated database integrity checkers.
+- Comprehensive API documentation refresh once new infrastructure lands.
 
-#### **Configuration Sources**
-1. **Command Line**: `--auto-migrate` flag
-2. **Environment**: `FRONTIER_AUTO_MIGRATE=1`
-3. **Preferences**: User setting in Frontier preferences
-4. **Default**: Prompt user (current behavior)
-
-#### **Files to Update**
-- `Common/source/db.c` - Add headless migration support
-- `Common/source/shell.c` - Add command line parsing
-- `Common/headers/shell.h` - Add migration configuration types
-- `Common/source/preferences.c` - Add migration preferences
-
----
-
-## **Additional Future Considerations**
-
-### **Performance Optimizations**
-- **Memory Mapping**: Use `mmap()` for large database files
-- **Compression**: Optional compression for database files
-- **Caching**: Improved caching strategies for frequently accessed data
-
-### **User Experience Enhancements**
-- **Progress Indicators**: Show migration progress for large databases
-- **Batch Migration**: Migrate multiple databases at once
-- **Rollback Options**: Easy rollback to previous format if needed
-
-### **Developer Experience**
-- **Debugging Tools**: Better tools for database inspection
-- **Validation Tools**: Comprehensive database integrity checking
-- **Documentation**: Complete API documentation for database operations
-
----
-
-## **Notes**
-
-- **Priority Order**: Phase 1 (64-bit) → Phase 2 (UI abstraction) → Phase 3 (hash tables) → Headless migration
-- **Testing Strategy**: Each improvement should have comprehensive testing
-- **Backward Compatibility**: Maintain support for all previous versions
-- **Documentation**: Update user and developer documentation for each change
-
-This TODO list ensures we don't lose track of important improvements while focusing on the current Phase 1 implementation.
+These items provide a parking lot for work that spans or follows the current phases. Revisit after each phase review to reprioritise.
