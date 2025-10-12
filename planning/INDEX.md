@@ -2,78 +2,59 @@
 
 Status
 - State: In Progress
-- Phase: Multi-Phase Roadmap
-- Last Updated: 2025-09-30
-- Notes: Headless tests are green (incl. parser_tests); CLI build needs headless linking cleanup. UI separation remains Phase 2; Hash Tables moved to Phase 3.
+- Phases: Foundations → Architecture → Headless Runtime → Text Modernization → Tooling
+- Last Updated: 2025-10-12
+- Notes: Headless runtime is operational; CLI build/linking cleanup remains. UTF-8 migration planning queued after headless stabilization.
 
 Purpose
-- Single source of truth for active phases, status, and key documents.
+- Provide a single entry point to the phase directories and the most relevant planning documents.
 
 Related Docs
+- planning/phase_overview.md
 - planning/Frontier_Refactoring_Plan.md
 - planning/phase_gates.md
-- planning/ui_abstraction/PHASES.md
 - planning/DECISIONS.md
 
 Change Log
-- 2025-09-29: Initialized template sections (Status/Related Docs/Change Log).
+- 2025-10-12: Reorganized planning materials by phase and refreshed cross-links.
 
-Current Phases
-- Phase 1: Headless/CLI enablement and testing
-  - Plan: planning/1.0_phase1_cli_implementation_plan.md — CLI entry, parser, executor
-  - Summary: planning/1.1_phase1_implementation_summary.md — status and deliverables
-  - Tests: planning/0.5.23_runtime_test_plan.md — headless/runtime test coverage
-  - Parser: planning/phase1/parser_regeneration_with_bison.md — regenerate parser with modern Bison (maintainers only)
-  - Current status snapshot:
-    - Headless tests: PASS (core, runtime, db format, parser, 64‑bit migration, real DB migrations)
-    - Parser: expression‑level if/then/else supported; locals/assignment tested
-    - Logging: quieter by default; opt‑in via FRONTIER_HEADLESS_LOG/FRONTIER_DEBUG_SCAN
-    - CLI: build exists but links UI frameworks; action item to make it headless
-- Phase 2: UI Abstraction (ports/adapters)
-  - Overview: planning/ui_abstraction/ui_abstraction_overview.md — why and goals
-  - Phases: planning/ui_abstraction/PHASES.md — stub/gate then separate
-  - Analysis: planning/ui_abstraction/phase2/analysis.md — limits of stubs/#if
-  - Architecture: planning/ui_abstraction/phase2/architecture.md — UIServices and adapters
-  - Migration Plan: planning/ui_abstraction/phase2/migration_plan.md — sequencing
-  - Patterns: planning/ui_abstraction/phase2/patterns_and_choices.md — MVC/MVVM guidance
-- Phase 3: Hash Table Modernization
-  - Strategy: planning/0.5.16_hash_table_modernization_strategy.md — design and migration
-  - TODO: planning/TODO_future_improvements.md — priorities and notes
-- Phase 4: String & Rich Text Modernization
-  - Overview: planning/phase4/PHASES.md — goals, milestones, gates
-  - String + Text Plan: planning/phase4/string_and_text_modernization.md — Pascal string retirement, UTF text, WPText/Paige deprecation
-- Phase 5: Parser/Bison 3 Migration (Gated)
-  - Plan: planning/phase5/bison3_migration_plan.md — stage for Bison 3, keep 2.3 compatibility and commit generated sources
+## Phase 1 — Foundations & Toolchain (`planning/phase1/`)
+- Initial Analysis: `planning/phase1/0.1_initial_analysis.md`
+- Compiler Compatibility: `planning/phase1/0.4.1_compiler_compatibility_plan.md`
+- Minimal Compilation + Test Harness: `planning/phase1/0.5.1_minimal_viable_compilation.md`, `planning/phase1/0.5.3_testing_strategy.md`
+- QuickTime & Legacy Cleanup: `planning/phase1/0.4.6_quicktime_elimination_plan.md`
 
-Cross-Cutting Docs
-- Frontier Refactoring Plan: planning/Frontier_Refactoring_Plan.md
-- Carbon/UI Audit: planning/ui_abstraction/phase2/carbon_dependency_audit.md
-- langsystem7 Headless Refactor: planning/ui_abstraction/phase2/langsystem7_headless_refactor.md
-- Portable Handle Runtime: planning/0.5.21_portable_handle_runtime.md
-- QuickTime Retirement Scope: planning/ui_abstraction/phase2/quicktime_retirement.md
+## Phase 2 — Core Architecture & Database (`planning/phase2/`)
+- Database Versioning & Paths: `planning/phase2/0.5.14_database_versioning_strategy.md`, `planning/phase2/database_path_canonicalization.md`
+- 64-bit Data Structure Plan & Execution: `planning/phase2/0.5.15_64bit_data_structure_analysis.md`, `planning/phase2/0.5.19_phase1_migration_implementation_complete.md`
+- Portable Handle Runtime: `planning/phase2/0.5.21_portable_handle_runtime.md`
 
-Developer Quickstart
-- Headless/Tests: planning/DEVELOPER_QUICKSTART_HEADLESS.md
+## Phase 3 — Headless Runtime & Automation (`planning/phase3/`)
+- CLI Execution Plan & Summary: `planning/phase3/1.0_phase1_cli_implementation_plan.md`, `planning/phase3/1.1_phase1_implementation_summary.md`
+- Runtime Test Plan: `planning/phase3/0.5.23_runtime_test_plan.md`
+- Headless Developer Guides: `planning/phase3/DEVELOPER_QUICKSTART_HEADLESS.md`, `planning/phase3/headless_stubbed_behavior_matrix.md`
+- System Verb Bootstrapping & UI Abstraction: `planning/phase3/system_verbs_bootstrap_plan.md`, `planning/phase3/ui_abstraction/`
 
-Next Steps (High Level)
-- Complete headless CLI build (remove UI frameworks; reuse test/runtime sources)
-- Add CLI smoke tests to tests/ and wire into default suite
-- Expand parser tests (control flow, handlers) while retaining Bison 2.3 compatibility
-- Document CI recipes (sanitized runs; optional parser regen by maintainers)
+## Phase 4 — String & Text Modernization (`planning/phase4/`)
+- Modernization Overview: `planning/phase4/PHASES.md`
+- UTF-8 Transition Plan: `planning/phase4/utf8_transition_plan.md`
+- String & Text Modernization Strategy: `planning/phase4/string_and_text_modernization.md`
 
-Policies & Guides
-- Phase Gates: planning/phase_gates.md
-- No-UI Linkage Policy: planning/no_ui_linkage_policy.md
-- Headless Stubbed Behavior Matrix: planning/headless_stubbed_behavior_matrix.md
+## Phase 5 — Toolchain & Parser Evolution (`planning/phase5/`)
+- Bison 3 Migration Plan: `planning/phase5/bison3_migration_plan.md`
+- Parser Regeneration Playbook: `planning/phase5/parser_regeneration_with_bison.md`
 
-ADRs
-- 0001 — Move Hash Tables to Phase 3: planning/adr/0001-hash-tables-phase-3.md
-- 0002 — UI Boundary via Ports/Adapters: planning/adr/0002-ui-boundary-ports-and-adapters.md
-- 0003 — Concurrency Model: planning/adr/0003-concurrency-model.md
-- 0004 — OSA/IPC Strategy: planning/adr/0004-osa-ipc-strategy.md
-- 0005 — Networking Architecture & Security: planning/adr/0005-networking-architecture-and-security.md
-- 0006 — Global State Boundaries: planning/adr/0006-global-state-boundaries.md
-- 0007 — File I/O & Path Policy: planning/adr/0007-file-io-and-path-policy.md
-- 0008 — Unicode Strategy: planning/adr/0008-unicode-strategy.md
-- 0009 — WPText → RTF Migration: planning/adr/0009-wptext-rtf-migration.md
-- 0010 — EFP Routing in Headless: planning/adr/0010-efp-headless-routing.md
+## Cross-Cutting Docs
+- ADR Index: `planning/adr/`
+- Open Issues & Backlog: `planning/issues/`
+- Legacy Glossary: `planning/legacy_glossary.md`
+- Third-Party Dependencies: `planning/third_party_dependencies.md`
+- Future Enhancements: `planning/TODO_future_improvements.md`
+
+## Developer Quickstart
+- Headless/Tests: `planning/phase3/DEVELOPER_QUICKSTART_HEADLESS.md`
+
+## Next Steps (High Level)
+1. Complete CLI build/linking cleanup (Phase 3 gate).
+2. Finalize UTF-8 migration work breakdown (Phase 4).
+3. Schedule parser/Bison upgrades once UTF-8/text modernization milestones are stable (Phase 5).
