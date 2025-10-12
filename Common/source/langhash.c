@@ -1958,7 +1958,8 @@ static boolean hashpackscalar (handlestream *s, hdlhashnode hnode, long *ix) {
 			if (hdb)
 				dbpushdatabase (hdb);
 			
-			fl = dbrefhandle ((dbaddress) hbinary, &hbinary);
+			dbaddress diskadr = (**hnode).val.data.diskvalue;
+			fl = dbrefhandle (diskadr, &hbinary);
 			
 			if (hdb)
 				dbpopdatabase ();
@@ -1975,7 +1976,7 @@ static boolean hashpackscalar (handlestream *s, hdlhashnode hnode, long *ix) {
 		
 		diskvalue.sizeflag = conditionallongswap(diskvalsizeflag);
 		
-		diskvalue.adr = (dbaddress) hbinary;
+		diskvalue.adr = (**hnode).val.data.diskvalue;
 		
 		if (fldatabasesaveas) {
 		
@@ -2066,7 +2067,12 @@ static boolean hashunpackscalar (Handle hget, tyvaluerecord *val, long ix) {
 		
 		(*val).fldiskval = true;
 		
-		return (loadlongfromdiskhandle (hget, &ix, (dbaddress *) &(*val).data.binaryvalue));
+		long diskadr = 0;
+		if (!loadlongfromdiskhandle (hget, &ix, &diskadr))
+			return (false);
+		
+		(*val).data.diskvalue = (dbaddress) diskadr;
+		return (true);
 		}
 	else {
 		return (loadfromhandletohandle (hget, &ix, ctbytes, false, &(*val).data.binaryvalue));
@@ -2587,7 +2593,6 @@ boolean hashunpacktable (Handle hpackedtable, boolean flmemory, hdlhashtable hta
 	tydisktablerecord header;
 	long ix = 0;
 	long ixstrings;
-	long size;
 	Handle hpacked;
 	boolean fldirty;
 	langerrormessagecallback savecallback;
@@ -2670,7 +2675,6 @@ boolean hashunpacktable (Handle hpackedtable, boolean flmemory, hdlhashtable hta
 		
 		initvalue (&val, (tyvaluetype) rec.valuetype);
 		
-		size = 0; // by default, we take no data directly from rec
 		
 		switch (val.valuetype) {
 			

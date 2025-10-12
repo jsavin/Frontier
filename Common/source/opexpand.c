@@ -200,7 +200,7 @@ boolean opexpand (hdlheadrecord hnode, short level, boolean flmaycreatesubs) {
 	Rect outlinerect = (**ho).outlinerect;
 	long origct = (**ho).ctexpanded;
 	long lnum;
-	Rect linerect, iconrect, r;
+	Rect linerect, r;
 	long hscroll, vscroll;
 	
 	if (!(*(**ho).preexpandcallback) (hnode, level, flmaycreatesubs))
@@ -477,7 +477,6 @@ boolean opsetlongcursor (long cursor) {
 	return (true);
 	} /*opsetlongcursor*/
 	
-
 
 
 

@@ -32,7 +32,7 @@ static inline frontier_handle_block *frontier_block_from_handle(Handle h) {
     return ((frontier_handle_block *)h) - 1;
 }
 
-static inline Handle frontier_handle_from_block(frontier_handle_block *block) {
+static inline __attribute__((unused)) Handle frontier_handle_from_block(frontier_handle_block *block) {
     return (Handle)(block + 1);
 }
 

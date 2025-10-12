@@ -939,11 +939,11 @@ long langcommentdelete (byte chdelim, byte *ptext, long ct) {
 			chendstring = '"';
 			}
 		
-		else if (ch == (byte) 'Ò') {
+		else if (ch == (byte) 0xD2) {
 			
 			flinstring = true;
 			
-			chendstring = 'Ó';
+			chendstring = (byte) 0xD3;
 			}
 		
 		else if (ch == (byte) '\'') {
@@ -1301,7 +1301,7 @@ void timedatestring (long ptime, bigstring bs) {
 	} /*timedatestring*/
 
 
-	static byte bsellipses [] = "\x01É";
+	static byte bsellipses [] = "\x01\xC9";
 
 void ellipsize (bigstring bs, short width) {
 
@@ -2297,19 +2297,19 @@ static boolean converttextencoding( Handle h, Handle hresult, const long inputch
 	// see http://en.wikipedia.org/wiki/Byte_Order_Mark
 	if (inputcharset == kCFStringEncodingUTF8) // we handle utf-8 input
 	{
-		if (	(*h) [0] == '\xEF'
-			 && (*h) [1] == '\xBB'
-			 && (*h) [2] == '\xBF')
+		if (	(*h)[0] == 0xEF
+			 && (*h)[1] == 0xBB
+			 && (*h)[2] == 0xBF)
 				pullBytes = 3;
 	}
 	else
 	{
 		if (inputcharset == kTextEncodingUnicodeDefault) // utf-16
 		{
-			if (	(	(*h) [0] == '\xEF'
-					 && (*h) [1] == '\xFF')
-				||	(	(*h) [0] == '\xFF'
-					 && (*h) [1] == '\xFE'))
+			if (	(	(*h)[0] == 0xEF
+					 && (*h)[1] == 0xFF)
+				||	(	(*h)[0] == 0xFF
+					 && (*h)[1] == 0xFE))
 				pullBytes = 2;
 		}
 	}

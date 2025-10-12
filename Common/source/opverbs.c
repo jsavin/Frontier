@@ -822,12 +822,12 @@ boolean opverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddr
 	
 boolean opverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *hvariable) {
 
-	dbaddress adr;
+	long rawadr = 0;
 	
-	if (!loadlongfromdiskhandle (hpacked, ixload, &adr)) 
+	if (!loadlongfromdiskhandle (hpacked, ixload, &rawadr)) 
 		return (false);
 		
-	return (newoutlinevariable (false, adr, (hdloutlinevariable *) hvariable));
+	return (newoutlinevariable (false, (dbaddress) rawadr, (hdloutlinevariable *) hvariable));
 	} /*opverbunpack*/
 
 
@@ -4479,5 +4479,4 @@ boolean opstart (void) {
 	
 	return (true);
 	} /*opstart*/
-
 

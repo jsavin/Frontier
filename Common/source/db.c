@@ -92,6 +92,7 @@ static hdldatabaserecord databasedestination; /*for Save As*/
 
 // Function to offer migration dialog (placeholder for now)
 boolean offer_64bit_migration_dialog(const char* db_path) {
+    (void)db_path;
     // TODO: Implement actual dialog
     // For now, return true to auto-migrate
     return true;

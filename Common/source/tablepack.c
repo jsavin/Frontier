@@ -334,12 +334,12 @@ boolean tableverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdba
 
 boolean tableverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *h, boolean flxml) {
 
-	dbaddress adr;
+	long rawadr = 0;
 	
-	if (!loadlongfromdiskhandle (hpacked, ixload, &adr)) 
+	if (!loadlongfromdiskhandle (hpacked, ixload, &rawadr)) 
 		return (false);
 		
-	return (newtablevariable (false, adr, (hdltablevariable *) h, flxml));
+	return (newtablevariable (false, (dbaddress) rawadr, (hdltablevariable *) h, flxml));
 	} /*tableverbunpack*/
 
 
@@ -504,7 +504,6 @@ boolean tableverbfindusedblocks (hdlexternalvariable h, bigstring bspath) {
 	
 	return (fl);
 	} /*tableverbfindusedblocks*/
-
 
 
 

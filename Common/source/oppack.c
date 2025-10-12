@@ -856,7 +856,6 @@ static boolean opunpackversion2 (handlestream *packstream) {
 	*/
 	
 	register hdloutlinerecord ho;
-	register long ixstart;
 	handlestream stream;
 	hdlheadrecord hsummit, hline1, hcursor;
 	tyversion2diskheader header;
@@ -931,8 +930,6 @@ static boolean opunpackversion2 (handlestream *packstream) {
 		header.outlinesignature = conditionallongswap ('LAND');
 
 	(**ho).outlinesignature = conditionallongswap (header.outlinesignature);
-	
-	ixstart = (*packstream).pos;
 	
 	pushscratchport ();
 	

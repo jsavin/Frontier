@@ -44,7 +44,7 @@
 
 	#include "aeutils.h"
 
-	static byte bsellipses [] = "\x01É";
+	static byte bsellipses [] = "\x01\xC9";
 
 static byte filerecordpath [] = "\x04" "path";
 
@@ -1449,7 +1449,8 @@ static boolean getobjspeckeydesc (AEDesc *objdata, OSType desiredkey, AEDesc *ke
     //  than trying to parse the data structure.
 	AEKeyword		curKeyWord;
 	OSErr 			err;
-	SInt32			i, numItems;
+	SInt32			i;
+	long			numItems;
     
 	err = AECountItems((AEDescList *)objdata, &numItems);
 	if (err != noErr)
@@ -1886,7 +1887,7 @@ static boolean objtostring (AEDesc *objdesc, boolean fldisposeobj, DescType exam
 		
 		if (!insertstring (bsitem, bsobj)) {
 			
-			insertchar ('É', bsobj);
+			insertchar ((byte) 0xC9, bsobj);
 			
 			break;
 			}
@@ -2245,7 +2246,6 @@ static boolean evaluateproperty (hdltreenode htree, OSType nulltype, AEDesc *obj
 	*/
 	
 	register hdltreenode h = htree;
-	register hdltreenode hp1;
 	register tytreetype op;
 	AEDesc containerdesc;
 	OSType propkey;
@@ -2261,7 +2261,6 @@ static boolean evaluateproperty (hdltreenode htree, OSType nulltype, AEDesc *obj
 	
 	op = (**h).nodetype; /*copy into register*/
 	
-	hp1 = (**h).param1;
 	
 	switch (op) {
 		

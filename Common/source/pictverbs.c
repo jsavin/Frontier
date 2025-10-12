@@ -413,12 +413,12 @@ boolean pictverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbad
 
 boolean pictverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *hvariable) {
 
-	dbaddress adr;
+	long rawadr = 0;
 	
-	if (!loadlongfromdiskhandle (hpacked, ixload, &adr)) 
+	if (!loadlongfromdiskhandle (hpacked, ixload, &rawadr)) 
 		return (false);
 		
-	return (newpictvariable (false, adr, (hdlpictvariable *) hvariable));
+	return (newpictvariable (false, (dbaddress) rawadr, (hdlpictvariable *) hvariable));
 	} /*pictverbunpack*/
 
 
@@ -1167,7 +1167,6 @@ boolean pictstart (void) {
 	
 	return (true);
 	} /*pictstart*/
-
 
 
 

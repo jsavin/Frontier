@@ -25,6 +25,8 @@
 
 ******************************************************************************/
 
+#include <stdint.h>
+
 #include "frontier.h"
 #include "standard.h"
 
@@ -1468,7 +1470,8 @@ static boolean opmoveoutlinevisit (hdlheadrecord hnode, ptrvoid dir) {
 	
 	oppushunmarkundo (hnode);
 	
-	switch ((tydirection) dir) {
+	tydirection direction = (tydirection) (intptr_t) dir;
+	switch (direction) {
 		
 		case up:
 			fl = opmoveoutlineup ();
@@ -2808,7 +2811,5 @@ boolean opcleartmpbits (void) {
 	
 	return (opsiblingvisiter ((**outlinedata).hsummit, true, &opsettmpbitvisit, (ptrvoid) false));
 	} /*opcleartmpbits*/
-
-
 
 

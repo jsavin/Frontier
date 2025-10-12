@@ -11,7 +11,7 @@
 
 typrocessid langipcself = {0, 0};
 
-static boolean unsupported(boolean defaultValue) {
+static boolean __attribute__((unused)) unsupported(boolean defaultValue) {
     (void)defaultValue;
     return false;
 }
