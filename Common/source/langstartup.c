@@ -73,8 +73,8 @@ static boolean cb_noop_tablenode(hdlhashtable ht, hdlhashnode hn) { (void)ht; (v
 static boolean cb_noop_symbolchanged(hdlhashtable ht, const bigstring bs, hdlhashnode hn, boolean fl) { (void)ht; (void)bs; (void)hn; (void)fl; return true; }
 static short   cb_noop_compare(hdlhashtable ht, hdlhashnode h1, hdlhashnode h2) { (void)ht; (void)h1; (void)h2; return 0; }
 static boolean cb_noop_hashnode_treenode(hdlhashnode hn, hdltreenode* p) { (void)hn; (void)p; return true; }
-static boolean cb_noop_tableref(hdlhashtable* pht) { (void)pht; return true; }
-static boolean cb_noop_table(hdlhashtable ht) { (void)ht; return true; }
+static boolean __attribute__((unused)) cb_noop_tableref(hdlhashtable* pht) { (void)pht; return true; }
+static boolean __attribute__((unused)) cb_noop_table(hdlhashtable ht) { (void)ht; return true; }
 static boolean cb_noop_sourcecode(hdlhashtable ht, hdlhashnode hn, bigstring bs) { (void)ht; (void)hn; (void)bs; return true; }
 static boolean cb_noop_errmsg(bigstring bs, ptrvoid refcon) { (void)bs; (void)refcon; return true; }
 static boolean cb_noop_verb(hdltreenode n, tyvaluerecord* v) { (void)n; (void)v; return true; }
@@ -673,11 +673,11 @@ static boolean add_long_c (const char *name, long x) {
 static boolean add_dir_c (const char *name, tydirection d) {
     bigstring _bs; copyctopstring(name, _bs); return langadddirectionconst(_bs, d);
 }
-static boolean add_bool_c (const char *name, boolean b) {
-    bigstring _bs; copyctopstring(name, _bs); return langaddbooleanconst(_bs, b);
+static boolean __attribute__((unused)) add_bool_c (const char *name, boolean b) {
+	bigstring _bs; copyctopstring(name, _bs); return langaddbooleanconst(_bs, b);
 }
-static boolean add_type_c (const char *name, tyvaluetype t) {
-    bigstring _bs; copyctopstring(name, _bs); return langaddtypeconst(_bs, t);
+static boolean __attribute__((unused)) add_type_c (const char *name, tyvaluetype t) {
+	bigstring _bs; copyctopstring(name, _bs); return langaddtypeconst(_bs, t);
 }
 static boolean add_string_const_c (const char *name, bigstring val) {
     bigstring _bs; copyctopstring(name, _bs); return langaddstringconst(_bs, val);

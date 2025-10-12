@@ -224,8 +224,8 @@ boolean mousecheckautoscroll (Point pt, Rect r, boolean flhoriz, tydirection *di
 void smashrect (Rect r) { (void)r; }
 void invalrect (Rect r) { (void)r; }
 
-// DB stubs
-#ifndef HEADLESS_TEST_PORTABLE_FILE
+// DB stubs (disabled when linking the real database core)
+#if !defined(HEADLESS_LINKS_REAL_DB)
 boolean dbpushdatabase (hdldatabaserecord h) { (void)h; return false; }
 boolean dbpopdatabase (void) { return false; }
 boolean dbcopy (dbaddress a, dbaddress *b) { (void)a; if (b) *b=0; return false; }
@@ -310,7 +310,7 @@ boolean langzoomvalwindow (hdlhashtable ht, bigstring bs, tyvaluerecord v, boole
 
 // Misc flags/globals expected by opverbs/tablepack
 boolean flconvertingolddatabase = false;
-#ifndef HEADLESS_TEST_PORTABLE_FILE
+#if !defined(HEADLESS_LINKS_REAL_DB)
 boolean fldatabasesaveas = false;
 #endif
 boolean flinhibitclosedialogs = false;

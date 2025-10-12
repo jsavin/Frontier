@@ -674,7 +674,7 @@ boolean falsenoop (void) {
 #define gestalttrap 		0xA1AD
 #define unimplementedtrap	0xA09F
 
-static boolean gestaltavailable (void) {
+static boolean __attribute__((unused)) gestaltavailable (void) {
 
 		//Code change by Timothy Paustian Friday, June 9, 2000 9:55:04 PM
 		//Changed to Opaque call for Carbon

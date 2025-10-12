@@ -127,7 +127,7 @@ static boolean gettokenvisit (bigstring bsname, hdlhashnode hnode, tyvaluerecord
 	if (val.valuetype != tokenvaluetype)
 		return (false);
 		
-	return (val.data.tokenvalue == functiontoken);
+	return ((tyfunctype) val.data.tokenvalue == functiontoken);
 	} /*gettokenvisit*/
 	
 	
@@ -616,7 +616,8 @@ boolean setbinarytypeid (Handle x, OSType typeid) {
 	poke the typeid of the given binary handle
 	*/
 	
-	if (gethandlesize (x) < sizeof (OSType)) /*defensive driving*/
+	long handlesize = gethandlesize (x);
+	if (handlesize < 0 || (size_t) handlesize < sizeof (OSType)) /*defensive driving*/
 		return (false);
 	
 	**(OSType **) x = conditionallongswap (typeid);
@@ -1901,8 +1902,10 @@ boolean coercetoboolean (tyvaluerecord *v) {
 			
 			if (getbinarynumber (x, &n))
 				fl = n != 0;
-			else
-				fl = gethandlesize (x) > sizeof (OSType);
+				else {
+					long handlesize = gethandlesize (x);
+					fl = handlesize > 0 && (size_t) handlesize > sizeof (OSType);
+				}
 			
 			releaseheaptmp (x);
 			

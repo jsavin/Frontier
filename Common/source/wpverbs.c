@@ -714,12 +714,12 @@ boolean wpverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddr
 
 boolean wpverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *h) {
 
-	dbaddress adr;
+	long rawadr = 0;
 	
-	if (!loadlongfromdiskhandle (hpacked, ixload, &adr)) 
+	if (!loadlongfromdiskhandle (hpacked, ixload, &rawadr)) 
 		return (false);
 
-	return (newwpvariable (false, false, adr, (hdlwpvariable *) h));
+	return (newwpvariable (false, false, (dbaddress) rawadr, (hdlwpvariable *) h));
 	} /*wpverbunpack*/
 
 
@@ -2178,7 +2178,6 @@ boolean wpstart (void) {
 	
 	return (true);
 	} /*wpstart*/
-
 
 
 

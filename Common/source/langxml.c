@@ -2470,7 +2470,8 @@ static boolean decompilespecialtable (hdlhashtable ht, Handle *hnamevalpairs, bi
 	hdlhashnode hn;
 	bigstring attname;
 	tyvaluerecord attvalue;
-	tyvaluerecord specialval = {novaluetype};
+	tyvaluerecord specialval = {0};
+	specialval.valuetype = novaluetype;
 	Handle attstring = nil;
 	hdldatabaserecord hdb = tablegetdatabase (ht);
 	boolean fl;

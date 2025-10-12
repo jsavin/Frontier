@@ -2289,7 +2289,7 @@ boolean mergehandlestreamdata (handlestream *s, long ctreplace, ptrvoid pdata, l
 	*/
 	
 	long ctgrow = ctmerge - ctreplace;
-	char *p;
+	unsigned char *p;
 	
 	if (!growhandlestream (s, (*s).eof + ctgrow))
 		return (false);
@@ -2362,7 +2362,7 @@ boolean pullfromhandlestream (handlestream *s, long ctpull, void *pdata) {
 	provided, copy the data to it.
 	*/
 	
-	char *p;
+	unsigned char *p;
 	
 	p = *(*s).data + (*s).pos;
 	
@@ -2383,7 +2383,7 @@ long skiphandlestreamchars (handlestream *s, byte chskip) {
 	return the number of characters skipped
 	*/
 	
-	char *p = *(*s).data;
+	unsigned char *p = *(*s).data;
 	long ctskipped = 0;
 	
 	while ((*s).pos < (*s).eof) {
@@ -2402,7 +2402,7 @@ long skiphandlestreamchars (handlestream *s, byte chskip) {
 
 boolean skiphandlestreamwhitespace (handlestream *s) {
 	
-	char *p = *(*s).data;
+	unsigned char *p = *(*s).data;
 	
 	while (isspace (p [(*s).pos])) {
 		
@@ -2420,7 +2420,7 @@ long seekhandlestreamchar (handlestream *s, byte chseek)  {
 	return the number of characters skipped
 	*/
 	
-	char *p = *(*s).data;
+	unsigned char *p = *(*s).data;
 	long ctskipped = 0;
 	
 	while ((*s).pos < (*s).eof) {
@@ -2440,7 +2440,7 @@ long seekhandlestreamchar (handlestream *s, byte chseek)  {
 boolean readhandlestreamfieldtohandle (handlestream *s, byte chdelimiter, Handle *hreturned) {
 	
 	long startpos = (*s).pos;
-	char *p = *(*s).data;
+	unsigned char *p = *(*s).data;
 	boolean fl;
 	
 	while (p [(*s).pos] != chdelimiter) {
@@ -2460,7 +2460,7 @@ boolean readhandlestreamfieldtohandle (handlestream *s, byte chdelimiter, Handle
 boolean readhandlestreamfield (handlestream *s, byte chdelimiter, bigstring bsfield) {
 	
 	long startpos = (*s).pos;
-	char *p = *(*s).data;
+	unsigned char *p = *(*s).data;
 	
 	while (p [(*s).pos] != chdelimiter) {
 		

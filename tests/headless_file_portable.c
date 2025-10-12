@@ -32,14 +32,14 @@ static FILE* fp_from(hdlfilenum fnum) {
 }
 
 /* Convert bigstring <-> C */
-static void bs_to_c(const bigstring bs, char *out, size_t outsz) {
+static void __attribute__((unused)) bs_to_c(const bigstring bs, char *out, size_t outsz) {
     size_t len = stringlength(bs);
     if (len >= outsz) len = outsz - 1;
     memcpy(out, stringbaseaddress(bs), len);
     out[len] = '\0';
 }
 
-static void c_to_bs(const char *s, bigstring bs) {
+static void __attribute__((unused)) c_to_bs(const char *s, bigstring bs) {
     size_t len = strlen(s);
     if (len > lenbigstring) len = lenbigstring;
     bs[0] = (unsigned char)len;
@@ -171,7 +171,6 @@ long headless_readline(hdlfilenum fnum, char *buf, long bufsz) {
     if (!fp) return -1;
     long n = 0;
     int c = EOF;
-    int prev = -1;
     while (1) {
         c = fgetc(fp);
         if (c == EOF) {
@@ -195,7 +194,6 @@ long headless_readline(hdlfilenum fnum, char *buf, long bufsz) {
         } else {
             /* buffer full; continue scanning to a delimiter to keep position sane */
         }
-        prev = c;
     }
     buf[(n < bufsz) ? n : (bufsz - 1)] = '\0';
     if (c == EOF && n == 0) return 0; /* clean EOF */

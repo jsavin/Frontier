@@ -170,8 +170,6 @@ static boolean checktable (hdlhashtable htable, bigstring bs, boolean flcreate, 
 	with a matching named, and try to unpack the values
 	*/
 	
-		Handle hpacked;
-
 	register hdlhashtable *ht = hsubtable;
 	
 	if (findnamedtable (htable, bs, ht)) /*no problem, it exists*/
@@ -187,6 +185,7 @@ static boolean checktable (hdlhashtable htable, bigstring bs, boolean flcreate, 
 	
 	#if MACVERSION && !defined (odbengine)
 	
+	Handle hpacked;
 	hpacked = filegetresource (filegetapplicationrnum (), 'HASH', 0, bs);
 	
 	if (hpacked != nil) { /*try unpacking from resource*/

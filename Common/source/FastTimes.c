@@ -99,7 +99,6 @@ static A2NSProcPtr 		gA2NS = NULL;
 /* **** **** **** **** **** **** **** **** **** **** **** **** **** **** **** */
 
 void FastInitialize() {
-	SInt32			result;
 
 	if (!gInited) {
 
