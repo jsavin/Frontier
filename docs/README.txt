@@ -77,21 +77,6 @@ at least a Frontier.root file and launch it.
 Notes
 -----
 
-When you open the Frontier.mcp project file on Windows, CodeWarrior will
-complain that the access path
-
-	{System}Library/CFM Support/StubLibraries
-
-cannot be found. This means that you will not be able to build the Mac
-OS X version on that platforms, but it does not affect the versions for
-Windows.
-
-When you build the Frontier Win or Frontier Win Debug target, expect
-CodeWarrior to report about 240 compiler warnings, mostly about
-redeclared identifiers in Microsoft header files, some missing function
-prototypes, and some unused variables. You can ignore these warnings.
-
-
 F. GNU Tools (initially for Mac OS X only)
 ==========================================
    
