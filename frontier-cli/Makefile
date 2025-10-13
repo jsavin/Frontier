@@ -1,149 +1,108 @@
 # Frontier CLI Makefile
-# Phase 1: CLI-Based UserTalk Invocation Implementation
+# Phase 3 headless bring-up: build the CLI without UI frameworks.
 
 CC = clang
-CFLAGS = -std=c17 -Wall -Wextra -fPIC -arch arm64 -arch x86_64
-OBJCFLAGS = -fobjc-arc
-FRAMEWORKS = -framework Foundation -framework AppKit -framework Carbon -framework CoreFoundation
+CFLAGS = -std=c17 -Wall -Wextra -O0 -g -fpascal-strings \
+         -DFRONTIER_HEADLESS -DFRONTIER_USE_PORTABLE_HANDLES
+SANITIZE ?= 0
+ifeq ($(SANITIZE),1)
+  CFLAGS += -fsanitize=address,undefined -fno-omit-frame-pointer
+endif
 
 # Directories
 SRCDIR = .
 HEADERDIR = ../Common/headers
 SYSTEMHEADERDIR = ../Common/SystemHeaders
-MODERNHEADERDIR = ../build_Xcode_modern
+PORTABLEDIR = ../portable
+TESTSDIR = ../tests
 
-# CLI source files
-CLI_SOURCES = main.c cli_parser.c cli_utils.c cli_executor.c cli_database.c cli_network.c
+INCLUDES = -I$(HEADERDIR) -I$(SYSTEMHEADERDIR) -I$(PORTABLEDIR) -I../build_Xcode_modern
 
-# Frontier source files (minimal set for CLI)
-FRONTIER_SOURCES = \
-	../Common/source/lang.c \
-	../Common/source/langevaluate.c \
-	../Common/source/langvalue.c \
-	../Common/source/db.c \
-	../Common/source/file.c \
-	../Common/source/memory.c \
-	../Common/source/strings.c \
-	../Common/source/error.c \
-	../Common/source/shell.c \
-	../Common/source/shellprivate.c \
-	../Common/source/frontierstart.c \
-	../Common/source/threads.c
+# CLI sources
+CLI_SOURCES = \
+    main.c \
+    cli_parser.c \
+    cli_utils.c \
+    cli_executor.c
 
-# Headers
-HEADERS = \
-	$(HEADERDIR)/frontier.h \
-	$(HEADERDIR)/standard.h \
-	$(HEADERDIR)/db.h \
-	$(HEADERDIR)/lang.h \
-	$(HEADERDIR)/langevaluate.h \
-	$(HEADERDIR)/langvalue.h \
-	$(HEADERDIR)/file.h \
-	$(HEADERDIR)/memory.h \
-	$(HEADERDIR)/strings.h \
-	$(HEADERDIR)/error.h \
-	$(HEADERDIR)/shell.h \
-	$(HEADERDIR)/shellprivate.h \
-	$(HEADERDIR)/frontierstart.h \
-	$(HEADERDIR)/threads.h \
-	$(SYSTEMHEADERDIR)/standard.h \
-	$(MODERNHEADERDIR)/frontier_compat.h
+# Core runtime sources needed for script execution (aligned with tests/runtime_tests)
+RUNTIME_SOURCES = \
+    ../Common/source/lang.c \
+    ../Common/source/langcallbacks.c \
+    ../Common/source/langcrypt.c \
+    ../Common/source/langerror.c \
+    ../Common/source/langscan.c \
+    ../Common/source/langparser.c \
+    ../Common/source/langvalue.c \
+    ../Common/source/langevaluate.c \
+    ../Common/source/langhash.c \
+    ../Common/source/langlist.c \
+    ../Common/source/langmath.c \
+    ../Common/source/langops.c \
+    ../Common/source/langpack.c \
+    ../Common/source/langexternal.c \
+    ../Common/source/langstartup.c \
+    ../Common/source/langwarnings.c \
+    ../Common/source/langtmpstack.c \
+    ../Common/source/langtrace.c \
+    ../Common/source/langtree.c \
+    ../Common/source/langdate.c \
+    ../Common/source/langsystypes.c \
+    ../Common/source/memory.c \
+    ../Common/source/portable_handles.c \
+    ../Common/source/strings.c \
+    ../Common/source/strings_extras.c \
+    ../Common/source/FastTimes.c \
+    ../Common/source/md5.c \
+    ../Common/source/sha1dgst.c \
+    ../Common/source/whirlpool.c \
+    ../Common/source/ops.c \
+    ../Common/source/op.c \
+    ../Common/source/opinit.c \
+    ../Common/source/opexpand.c \
+    ../Common/source/opvisit.c \
+    ../Common/source/opedit.c \
+    ../Common/source/opops.c \
+    ../Common/source/oplist.c \
+    ../Common/source/opstructure.c \
+    ../Common/source/oprefcon.c \
+    ../Common/source/oppack.c \
+    ../Common/source/opverbs.c \
+    ../Common/source/opxml.c \
+    ../Common/source/langxml.c \
+    ../Common/source/tableops.c \
+    ../Common/source/tablestructure.c \
+    ../Common/source/shell_api.c \
+    ../Common/source/shell_api_headless.c
 
-# Target
+# Headless adapters mirrored from tests/
+HEADLESS_STUBS = \
+    $(TESTSDIR)/headless_shell.c \
+    $(TESTSDIR)/headless_shellhooks.c \
+    $(TESTSDIR)/headless_table_stubs.c \
+    $(TESTSDIR)/headless_wp_stubs.c \
+    $(TESTSDIR)/headless_pict_stubs.c \
+    $(TESTSDIR)/headless_menu_stubs.c \
+    $(TESTSDIR)/headless_search_stubs.c \
+    $(TESTSDIR)/headless_mac_compat.c \
+    $(TESTSDIR)/headless_langregexp_stub.c \
+    $(TESTSDIR)/headless_langipc_stub.c \
+    $(TESTSDIR)/headless_lang_runtime_more_stubs.c
+
+# Aggregate sources
+FRONTIER_SOURCES = $(RUNTIME_SOURCES) $(HEADLESS_STUBS)
+
 TARGET = frontier-cli
 
-# Default target
 all: $(TARGET)
 
-# Compile the CLI executable
-$(TARGET): $(CLI_SOURCES) $(FRONTIER_SOURCES) $(HEADERS)
-	$(CC) $(CFLAGS) $(OBJCFLAGS) \
-		-I$(HEADERDIR) \
-		-I$(SYSTEMHEADERDIR) \
-		-I$(MODERNHEADERDIR) \
+$(TARGET): $(CLI_SOURCES) $(FRONTIER_SOURCES)
+	$(CC) $(CFLAGS) $(INCLUDES) \
 		$(CLI_SOURCES) \
 		$(FRONTIER_SOURCES) \
-		$(FRAMEWORKS) \
 		-o $(TARGET)
 
-# Clean
 clean:
 	rm -f $(TARGET)
-	rm -f *.o
 
-# Test compilation
-test: $(TARGET)
-	@echo "Compilation successful!"
-	@echo "Target: $(TARGET)"
-	@echo "Architectures:"
-	@file $(TARGET)
-
-# Install (optional)
-install: $(TARGET)
-	@echo "Installing frontier-cli..."
-	@sudo cp $(TARGET) /usr/local/bin/
-	@echo "Installation complete!"
-
-# Uninstall (optional)
-uninstall:
-	@echo "Uninstalling frontier-cli..."
-	@sudo rm -f /usr/local/bin/$(TARGET)
-	@echo "Uninstallation complete!"
-
-# Development targets
-debug: CFLAGS += -g -DDEBUG
-debug: $(TARGET)
-
-# Profile build
-profile: CFLAGS += -pg
-profile: $(TARGET)
-
-# Static analysis
-analyze: CFLAGS += -fsanitize=address -fsanitize=undefined
-analyze: $(TARGET)
-
-# Documentation
-docs:
-	@echo "Generating documentation..."
-	@mkdir -p docs
-	@echo "# Frontier CLI Documentation" > docs/README.md
-	@echo "" >> docs/README.md
-	@echo "## Usage" >> docs/README.md
-	@echo "" >> docs/README.md
-	@echo "\`\`\`bash" >> docs/README.md
-	@echo "# Execute a UserTalk script" >> docs/README.md
-	@echo "./frontier-cli script.usertalk" >> docs/README.md
-	@echo "" >> docs/README.md
-	@echo "# Execute inline script" >> docs/README.md
-	@echo "./frontier-cli -e \"local(x = 5); x * 2\"" >> docs/README.md
-	@echo "" >> docs/README.md
-	@echo "# Query database" >> docs/README.md
-	@echo "./frontier-cli -d test.root -q \"db.getValue('path')\"" >> docs/README.md
-	@echo "" >> docs/README.md
-	@echo "# Start HTTP server" >> docs/README.md
-	@echo "./frontier-cli --server --port 8080" >> docs/README.md
-	@echo "\`\`\`" >> docs/README.md
-	@echo "Documentation generated in docs/README.md"
-
-# Help
-help:
-	@echo "Frontier CLI Makefile"
-	@echo ""
-	@echo "Available targets:"
-	@echo "  all        - Build the CLI executable (default)"
-	@echo "  clean      - Remove build artifacts"
-	@echo "  test       - Build and show target info"
-	@echo "  install    - Install to /usr/local/bin"
-	@echo "  uninstall  - Remove from /usr/local/bin"
-	@echo "  debug      - Build with debug symbols"
-	@echo "  profile    - Build with profiling"
-	@echo "  analyze    - Build with static analysis"
-	@echo "  docs       - Generate documentation"
-	@echo "  help       - Show this help"
-	@echo ""
-	@echo "Environment variables:"
-	@echo "  CC         - C compiler (default: clang)"
-	@echo "  CFLAGS     - C compiler flags"
-	@echo "  TARGET     - Output executable name (default: frontier-cli)"
-
-.PHONY: all clean test install uninstall debug profile analyze docs help
+.PHONY: all clean

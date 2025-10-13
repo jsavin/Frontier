@@ -110,8 +110,7 @@ char *SHA1_version="SHA1 part of OpenSSL 0.9.1c 23-Dec-1998";
 #  define	M_nl2c		nl2c
 #endif
 
-void SHA1_Init(c)
-SHA_CTX *c;
+void SHA1_Init(SHA_CTX *c)
 	{
 	c->h0=INIT_DATA_h0;
 	c->h1=INIT_DATA_h1;
@@ -123,10 +122,7 @@ SHA_CTX *c;
 	c->num=0;
 	}
 
-void SHA1_Update(c, data, len)
-SHA_CTX *c;
-register unsigned char *data;
-unsigned long len;
+void SHA1_Update(SHA_CTX *c, unsigned char *data, unsigned long len)
 	{
 	register ULONG *p;
 	int ew,ec,sw,sc;
@@ -254,9 +250,7 @@ unsigned long len;
 	p[sw]=l;
 	}
 
-void SHA1_Transform(c,b)
-SHA_CTX *c;
-unsigned char *b;
+void SHA1_Transform(SHA_CTX *c, unsigned char *b)
 	{
 	ULONG p[16];
 #ifndef B_ENDIAN
@@ -293,10 +287,7 @@ unsigned char *b;
 
 #ifndef SHA1_ASM
 
-void sha1_block(c, W, num)
-SHA_CTX *c;
-register unsigned long *W;
-int num;
+void sha1_block(SHA_CTX *c, unsigned long *W, int num)
 	{
 	register ULONG A,B,C,D,E,T;
 	ULONG X[16];
@@ -413,9 +404,7 @@ int num;
 	}
 #endif
 
-void SHA1_Final(md, c)
-unsigned char *md;
-SHA_CTX *c;
+void SHA1_Final(unsigned char *md, SHA_CTX *c)
 	{
 	register int i,j;
 	register ULONG l;
@@ -463,4 +452,3 @@ SHA_CTX *c;
 	c->num=0;
 /*	memset((char *)&c,0,sizeof(c));*/
 	}
-

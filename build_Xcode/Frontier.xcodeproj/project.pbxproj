@@ -73,7 +73,6 @@
 		5D5837F10C0E02FA00DB769C /* langmysql.c in Sources */ = {isa = PBXBuildFile; fileRef = 5D5837F00C0E02FA00DB769C /* langmysql.c */; settings = {COMPILER_FLAGS = "-fno-short-enums"; }; };
 		5D5837F30C0E035D00DB769C /* langmysql.h in Headers */ = {isa = PBXBuildFile; fileRef = 5D5837F20C0E035D00DB769C /* langmysql.h */; };
 		5D8F017F0C247FE700927B97 /* libmysqlclient.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5D8F017D0C247FE700927B97 /* libmysqlclient.a */; };
-		5D8F01800C247FE700927B97 /* libz.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5D8F017E0C247FE700927B97 /* libz.a */; };
 		5D8F026D0C2483F500927B97 /* libpaigemacho.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5D8F026C0C2483F500927B97 /* libpaigemacho.a */; };
 		5D8F026E0C2483F500927B97 /* libpaigemacho.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5D8F026C0C2483F500927B97 /* libpaigemacho.a */; };
 		5D8F02BA0C24924C00927B97 /* my_list.h in Headers */ = {isa = PBXBuildFile; fileRef = 5D8F02B60C24924C00927B97 /* my_list.h */; };
@@ -1198,20 +1197,19 @@
 		5D18A83C0AD3AD9900613FDB /* sqliteInt.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = sqliteInt.h; path = ../Common/sqlite3/sqliteInt.h; sourceTree = SOURCE_ROOT; };
 		5D18A83D0AD3AD9900613FDB /* vdbe.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = vdbe.h; path = ../Common/sqlite3/vdbe.h; sourceTree = SOURCE_ROOT; };
 		5D18A83E0AD3AD9900613FDB /* vdbeInt.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = vdbeInt.h; path = ../Common/sqlite3/vdbeInt.h; sourceTree = SOURCE_ROOT; };
-		5D4832620C17729E009E897D /* mysql.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = mysql.h; path = "../Common/MySQL/osx10.3-powerpc/include/mysql.h"; sourceTree = SOURCE_ROOT; };
+		5D4832620C17729E009E897D /* mysql.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = mysql.h; path = "../Common/MySQL/include/mysql/mysql.h"; sourceTree = SOURCE_ROOT; };
 		5D4E1E470AAA17E900DF6890 /* langsqlite.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = langsqlite.c; path = ../Common/source/langsqlite.c; sourceTree = SOURCE_ROOT; };
 		5D4E1E480AAA17E900DF6890 /* langsqlite.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = langsqlite.h; path = ../Common/headers/langsqlite.h; sourceTree = SOURCE_ROOT; };
 		5D5837F00C0E02FA00DB769C /* langmysql.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = langmysql.c; path = ../Common/source/langmysql.c; sourceTree = SOURCE_ROOT; };
 		5D5837F20C0E035D00DB769C /* langmysql.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = langmysql.h; path = ../Common/headers/langmysql.h; sourceTree = SOURCE_ROOT; };
 		5D8F017D0C247FE700927B97 /* libmysqlclient.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; name = libmysqlclient.a; path = tools/libmysqlclient.a; sourceTree = SOURCE_ROOT; };
-		5D8F017E0C247FE700927B97 /* libz.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libz.a; path = tools/libz.a; sourceTree = SOURCE_ROOT; };
 		5D8F026C0C2483F500927B97 /* libpaigemacho.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libpaigemacho.a; path = tools/libpaigemacho.a; sourceTree = SOURCE_ROOT; };
-		5D8F02B60C24924C00927B97 /* my_list.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = my_list.h; path = "../Common/MySQL/osx10.3-powerpc/include/my_list.h"; sourceTree = SOURCE_ROOT; };
-		5D8F02B70C24924C00927B97 /* mysql_time.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = mysql_time.h; path = "../Common/MySQL/osx10.3-powerpc/include/mysql_time.h"; sourceTree = SOURCE_ROOT; };
-		5D8F02B80C24924C00927B97 /* mysql_version.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = mysql_version.h; path = "../Common/MySQL/osx10.3-powerpc/include/mysql_version.h"; sourceTree = SOURCE_ROOT; };
-		5D8F02B90C24924C00927B97 /* typelib.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = typelib.h; path = "../Common/MySQL/osx10.3-powerpc/include/typelib.h"; sourceTree = SOURCE_ROOT; };
-		5D8F02BF0C2492A800927B97 /* my_alloc.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = my_alloc.h; path = "../Common/MySQL/osx10.3-powerpc/include/my_alloc.h"; sourceTree = SOURCE_ROOT; };
-		5D8F02C00C2492A800927B97 /* mysql_com.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = mysql_com.h; path = "../Common/MySQL/osx10.3-powerpc/include/mysql_com.h"; sourceTree = SOURCE_ROOT; };
+		5D8F02B60C24924C00927B97 /* my_list.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = my_list.h; path = "../Common/MySQL/include/mysql/my_list.h"; sourceTree = SOURCE_ROOT; };
+		5D8F02B70C24924C00927B97 /* mysql_time.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = mysql_time.h; path = "../Common/MySQL/include/mysql/mysql_time.h"; sourceTree = SOURCE_ROOT; };
+		5D8F02B80C24924C00927B97 /* mysql_version.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = mysql_version.h; path = "../Common/MySQL/include/mysql/mysql_version.h"; sourceTree = SOURCE_ROOT; };
+		5D8F02B90C24924C00927B97 /* typelib.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = typelib.h; path = "../Common/MySQL/include/mysql/typelib.h"; sourceTree = SOURCE_ROOT; };
+		5D8F02BF0C2492A800927B97 /* my_alloc.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = my_alloc.h; path = "../Common/MySQL/include/mysql/my_alloc.h"; sourceTree = SOURCE_ROOT; };
+		5D8F02C00C2492A800927B97 /* mysql_com.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = mysql_com.h; path = "../Common/MySQL/include/mysql/mysql_com.h"; sourceTree = SOURCE_ROOT; };
 		5D8F1DAB0C25AA5300927B97 /* libSQLite3.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libSQLite3.a; path = build/Development/libSQLite3.a; sourceTree = SOURCE_ROOT; };
 		65059B4E09968C1400410571 /* OPML.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OPML.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		65059B760996945100410571 /* OPML.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; name = OPML.icns; path = ../resources/OPML/OPML.icns; sourceTree = SOURCE_ROOT; };
@@ -1737,7 +1735,6 @@
 				6515294B072C000500411831 /* ApplicationServices.framework in Frameworks */,
 				6515294D072C000900411831 /* QuickTime.framework in Frameworks */,
 				5D8F017F0C247FE700927B97 /* libmysqlclient.a in Frameworks */,
-				5D8F01800C247FE700927B97 /* libz.a in Frameworks */,
 				5D8F026D0C2483F500927B97 /* libpaigemacho.a in Frameworks */,
 				5D8F1DAC0C25AA5400927B97 /* libSQLite3.a in Frameworks */,
 			);
@@ -2412,7 +2409,6 @@
 				5D8F017D0C247FE700927B97 /* libmysqlclient.a */,
 				5D8F026C0C2483F500927B97 /* libpaigemacho.a */,
 				5D8F1DAB0C25AA5300927B97 /* libSQLite3.a */,
-				5D8F017E0C247FE700927B97 /* libz.a */,
 				6515294C072C000900411831 /* QuickTime.framework */,
 			);
 			name = "External Frameworks and Libraries";
@@ -3330,18 +3326,15 @@
 			);
 			inputPaths = (
 				"${SRCROOT}/../Common/Paige/libpaigemacho.a",
-				"${SRCROOT}/../Common/MySQL/osx10.3-powerpc/lib/libmysqlclient.a",
-				"${SRCROOT}/../Common/MySQL/osx10.4-i686/lib/libmysqlclient.a",
 			);
 			name = "Run Script";
 			outputPaths = (
 				"${SRCROOT}/tools/libpaigemacho.a",
 				"${SRCROOT}/tools/libmysqlclient.a",
-				"${SRCROOT}/tools/libz.a",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -x\n\n#\n# paige\n#\n\ncp -f \"${SRCROOT}/../Common/Paige/libpaigemacho.a\" \"${SRCROOT}/tools/libpaigemacho.a\"\n\nranlib \"${SRCROOT}/tools/libpaigemacho.a\"\n\n#\n# build Universal Binary MySQL libraries\n#\n\nlipo -create \"${SRCROOT}/../Common/MySQL/osx10.3-powerpc/lib/libmysqlclient.a\" \"${SRCROOT}/../Common/MySQL/osx10.4-i686/lib/libmysqlclient.a\" -output \"${SRCROOT}/tools/libmysqlclient.a\"\n\nlipo -create \"${SRCROOT}/../Common/MySQL/osx10.3-powerpc/lib/libz.a\" \"${SRCROOT}/../Common/MySQL/osx10.4-i686/lib/libz.a\" -output \"${SRCROOT}/tools/libz.a\"";
+			shellScript = "set -e\n\n#\n# Ensure the MySQL client libraries exist\n#\n\"${SRCROOT}/scripts/build_mysql_client.sh\"\n\n#\n# Paige\n#\ncp -f \"${SRCROOT}/../Common/Paige/libpaigemacho.a\" \"${SRCROOT}/tools/libpaigemacho.a\"\nranlib \"${SRCROOT}/tools/libpaigemacho.a\"\n\n#\n# Copy MySQL client archive built by the script\n#\nif [ -f \"${SRCROOT}/../Common/MySQL/lib/libmysqlclient.a\" ]; then\n    cp -f \"${SRCROOT}/../Common/MySQL/lib/libmysqlclient.a\" \"${SRCROOT}/tools/libmysqlclient.a\"\n    ranlib \"${SRCROOT}/tools/libmysqlclient.a\"\nfi";
 		};
 		65ED46B809D85D3F00BEB9D3 /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -3990,6 +3983,16 @@
 				GCC_WARN_UNUSED_VALUE = NO;
 				GCC_WARN_UNUSED_VARIABLE = NO;
 				INFOPLIST_FILE = Info_Frontier.plist;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/../Common/MySQL/include",
+					"$(SRCROOT)/../Common/MySQL/include/mysql",
+				);
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/../Common/MySQL/include",
+					"$(SRCROOT)/../Common/MySQL/include/mysql",
+				);
 				LIBRARY_SEARCH_PATHS = (
 					tools,
 					"$(SRCROOT)",
@@ -4000,10 +4003,11 @@
 					"-fno-inline",
 					"-malign-mac68k",
 				);
-				OTHER_LDFLAGS = (
-					"-multiply_defined",
-					warning,
-				);
+			OTHER_LDFLAGS = (
+				"-multiply_defined",
+				warning,
+				"-lz",
+			);
 				OTHER_REZFLAGS = "-d TARGET_API_MAC_CARBON=1 -d FRONTIER_FRAMEWORK_INCLUDES=1 -i ../Common/headers";
 				PRODUCT_NAME = Frontier;
 				REZ_PREPROCESSOR_DEFINITIONS = "";
@@ -4061,6 +4065,7 @@
 				OTHER_LDFLAGS = (
 					"-multiply_defined",
 					warning,
+					"-lz",
 				);
 				OTHER_REZFLAGS = "-d TARGET_API_MAC_CARBON=1 -d FRONTIER_FRAMEWORK_INCLUDES=1 -i ../Common/headers";
 				PRODUCT_NAME = Frontier;
@@ -4111,19 +4116,26 @@
 				GCC_WARN_UNUSED_VALUE = NO;
 				GCC_WARN_UNUSED_VARIABLE = NO;
 				INFOPLIST_FILE = Info_OPML.plist;
-				LIBRARY_SEARCH_PATHS = (
-					"$(LIBRARY_SEARCH_PATHS_QUOTED_1)",
-					"$(LIBRARY_SEARCH_PATHS_QUOTED_2)",
-				);
-				LIBRARY_SEARCH_PATHS_QUOTED_1 = "\"tools\"";
+			HEADER_SEARCH_PATHS = (
+				"$(inherited)",
+				"$(SRCROOT)/../Common/MySQL/include",
+				"$(SRCROOT)/../Common/MySQL/include/mysql",
+			);
+			LIBRARY_SEARCH_PATHS = (
+				"$(LIBRARY_SEARCH_PATHS_QUOTED_1)",
+				"$(LIBRARY_SEARCH_PATHS_QUOTED_2)",
+				"$(SRCROOT)/../Common/MySQL/lib",
+			);
+			LIBRARY_SEARCH_PATHS_QUOTED_1 = "\"tools\"";
 				OTHER_CFLAGS = (
 					"-fno-inline",
 					"-malign-mac68k",
 				);
-				OTHER_LDFLAGS = (
-					"-multiply_defined",
-					warning,
-				);
+			OTHER_LDFLAGS = (
+				"-multiply_defined",
+				warning,
+				"-lz",
+			);
 				OTHER_REZFLAGS = "-d TARGET_API_MAC_CARBON=1 -d FRONTIER_FRAMEWORK_INCLUDES=1 -i ../Common/headers -d PIKE=1 -d OPMLEDITOR=1";
 				PRODUCT_NAME = OPML;
 				REZ_PREPROCESSOR_DEFINITIONS = "";
@@ -4172,19 +4184,26 @@
 				GCC_WARN_UNUSED_VALUE = NO;
 				GCC_WARN_UNUSED_VARIABLE = NO;
 				INFOPLIST_FILE = Info_OPML.plist;
-				LIBRARY_SEARCH_PATHS = (
-					"$(LIBRARY_SEARCH_PATHS_QUOTED_1)",
-					"$(LIBRARY_SEARCH_PATHS_QUOTED_2)",
-				);
-				LIBRARY_SEARCH_PATHS_QUOTED_1 = "\"tools\"";
+			HEADER_SEARCH_PATHS = (
+				"$(inherited)",
+				"$(SRCROOT)/../Common/MySQL/include",
+				"$(SRCROOT)/../Common/MySQL/include/mysql",
+			);
+			LIBRARY_SEARCH_PATHS = (
+				"$(LIBRARY_SEARCH_PATHS_QUOTED_1)",
+				"$(LIBRARY_SEARCH_PATHS_QUOTED_2)",
+				"$(SRCROOT)/../Common/MySQL/lib",
+			);
+			LIBRARY_SEARCH_PATHS_QUOTED_1 = "\"tools\"";
 				OTHER_CFLAGS = (
 					"-fno-inline",
 					"-malign-mac68k",
 				);
-				OTHER_LDFLAGS = (
-					"-multiply_defined",
-					warning,
-				);
+			OTHER_LDFLAGS = (
+				"-multiply_defined",
+				warning,
+				"-lz",
+			);
 				OTHER_REZFLAGS = "-d TARGET_API_MAC_CARBON=1 -d FRONTIER_FRAMEWORK_INCLUDES=1 -i ../Common/headers -d PIKE=1 -d OPMLEDITOR=1";
 				PRODUCT_NAME = OPML;
 				REZ_PREPROCESSOR_DEFINITIONS = "";

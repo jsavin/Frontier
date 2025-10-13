@@ -22,3 +22,4 @@ local_scripts/
 tests/core_tests
 tests/handle_tests
 tests/_results/
+Common/MySQL/
