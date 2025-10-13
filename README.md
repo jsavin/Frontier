@@ -45,16 +45,21 @@ scripts/build_mysql_client.sh
 
 ## MySQL client setup
 
-Frontier links against the MySQL C client library for historical database
-integration. The repository no longer ships prebuilt binaries; run
-`scripts/build_mysql_client.sh` to fetch and compile a MariaDB Connector/C
-release into `Common/MySQL/`. The script uses CMake, builds both `arm64` and
-`x86_64` static libraries, and creates compatibility symlinks (`libmysqlclient.a`
-and `include/mysql/`). You can override the install location by setting the
-`MYSQL_CLIENT_PREFIX` environment variable before running the script.
+Frontier links against the MySQL/MariaDB C client library for legacy database
+integration. Prebuilt binaries are no longer stored in the repo.
 
-If you already have a system-wide MySQL client installation, point
-`MYSQL_CLIENT_PREFIX` at that prefix instead of rebuilding.
+- **macOS / Linux:** run `scripts/build_mysql_client.sh` to fetch and compile
+  MariaDB Connector/C into `Common/MySQL/` (or override the install location via
+  `MYSQL_CLIENT_PREFIX`). The script builds both `arm64` and `x86_64` static
+  libraries and drops compatibility symlinks (`libmysqlclient.a` and
+  `include/mysql/`).
+- **Windows:** install the MariaDB Connector/C package separately and set the
+  environment variable `MYSQL_CLIENT_DIR` to the root of the installation (the
+  VC projects look for headers under `include\mysql` and libraries under
+  `lib`). Copying the Windows libraries into `Common\MySQL\` works as well, but
+  they remain untracked by git.
+
+See `docs/mysql_client_setup.md` for detailed guidance.
 ```
 
 > `make -C tests test` currently hits a pre-existing duplicate-symbol linker
