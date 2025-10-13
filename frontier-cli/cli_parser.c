@@ -25,7 +25,7 @@ static void cli_init_options(cli_options_t* options) {
 }
 
 // Validate CLI options for consistency
-static boolean cli_validate_options(const cli_options_t* options) {
+boolean cli_validate_options(const cli_options_t* options) {
     // Check for conflicting modes
     if (options->server_mode && options->websocket_mode) {
         fprintf(stderr, "Error: Cannot use --server and --websocket simultaneously\n");
@@ -50,6 +50,16 @@ static boolean cli_validate_options(const cli_options_t* options) {
     // Validate port number
     if (options->port < 1 || options->port > 65535) {
         fprintf(stderr, "Error: Invalid port number %d (must be 1-65535)\n", options->port);
+        return false;
+    }
+
+    if (options->database_file != NULL || options->query != NULL || options->migrate_database) {
+        fprintf(stderr, "Error: Database operations are not yet supported in the headless CLI build\n");
+        return false;
+    }
+
+    if (options->server_mode || options->websocket_mode) {
+        fprintf(stderr, "Error: Network server modes are not yet supported in the headless CLI build\n");
         return false;
     }
     

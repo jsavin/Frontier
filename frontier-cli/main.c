@@ -17,16 +17,20 @@
 
 // Frontier headers
 #include "../Common/headers/frontier.h"
-#include "../Common/headers/standard.h"
-#include "../Common/headers/db.h"
 #include "../Common/headers/lang.h"
+#include "../Common/headers/memory.h"
+#include "../Common/headers/strings.h"
+#include "../Common/headers/tablestructure.h"
+#include "../Common/headers/shell_api.h"
+#include "../Common/headers/db.h"
 
 // CLI-specific headers
 #include "cli_parser.h"
 #include "cli_executor.h"
-#include "cli_database.h"
-#include "cli_network.h"
 #include "cli_utils.h"
+
+extern long grabthreadglobals(void);
+extern long releasethreadglobals(void);
 
 // Version information
 #define FRONTIER_CLI_VERSION "1.0.0"
@@ -46,8 +50,6 @@ static boolean execute_database_mode(void);
 static boolean execute_network_mode(void);
 
 int main(int argc, char* argv[]) {
-    int result = 0;
-    
     // Parse command line arguments
     if (!cli_parse_arguments(argc, argv, &g_cli_options)) {
         fprintf(stderr, "Error: Invalid command line arguments\n");
@@ -84,7 +86,6 @@ int main(int argc, char* argv[]) {
     } else {
         fprintf(stderr, "Error: No execution mode specified\n");
         print_usage(argv[0]);
-        result = 1;
     }
     
     // Cleanup
@@ -102,25 +103,19 @@ static void print_usage(const char* program_name) {
     printf("Execution Modes:\n");
     printf("  Script Execution:\n");
     printf("    %s script.usertalk                    # Execute UserTalk script file\n", program_name);
-    printf("    %s -e \"db.open('test.root')\"         # Execute inline script\n", program_name);
+    printf("    %s -e \"3 + 4\"                         # Execute inline script\n", program_name);
     printf("\n");
-    printf("  Database Operations:\n");
-    printf("    %s -d test.root -q \"db.getValue('path')\"  # Database query\n", program_name);
-    printf("    %s -d test.root -m migrate              # Migrate database to 64-bit\n", program_name);
-    printf("\n");
-    printf("  Network Server:\n");
-    printf("    %s --server --port 8080                # HTTP server mode\n", program_name);
-    printf("    %s --websocket --port 8081             # WebSocket server mode\n", program_name);
+    printf("  (Database and server modes will return an error until Phase 3 work completes.)\n");
     printf("\n");
     
     printf("Options:\n");
     printf("  -e, --execute SCRIPT     Execute inline UserTalk script\n");
-    printf("  -d, --database FILE      Specify database file for operations\n");
-    printf("  -q, --query QUERY        Execute database query\n");
-    printf("  -m, --migrate            Migrate database to 64-bit format\n");
-    printf("  --server                 Run as HTTP server\n");
-    printf("  --websocket              Enable WebSocket support\n");
-    printf("  -p, --port PORT          Network server port (default: 8080)\n");
+    printf("  -d, --database FILE      (disabled)\n");
+    printf("  -q, --query QUERY        (disabled)\n");
+    printf("  -m, --migrate            (disabled)\n");
+    printf("  --server                 (disabled)\n");
+    printf("  --websocket              (disabled)\n");
+    printf("  -p, --port PORT          (disabled)\n");
     printf("  -v, --verbose            Verbose output\n");
     printf("  --debug                  Debug mode\n");
     printf("  -h, --help               Show this help message\n");
@@ -134,11 +129,8 @@ static void print_usage(const char* program_name) {
     printf("  # Execute inline script\n");
     printf("  %s -e \"local(x = 5); x * 2\"\n", program_name);
     printf("\n");
-    printf("  # Query database\n");
-    printf("  %s -d mydb.root -q \"db.getValue('myTable.myValue')\"\n", program_name);
-    printf("\n");
-    printf("  # Start HTTP server\n");
-    printf("  %s --server --port 8080\n", program_name);
+    printf("  # Execute a script file\n");
+    printf("  %s myscript.usertalk\n", program_name);
     printf("\n");
 }
 
@@ -159,20 +151,33 @@ static boolean initialize_frontier_runtime(void) {
         return false;
     }
     
-    // Initialize Frontier shell
-    if (!shellinit()) {
-        fprintf(stderr, "Error: Failed to initialize Frontier shell\n");
+    // Install headless shell adapter
+    shell_api_use_headless();
+
+    // Initialize core subsystems (mirrors tests/runtime_tests bring-up)
+    if (!initmemory()) {
+        fprintf(stderr, "Error: initmemory failed\n");
         return false;
     }
-    
-    // Initialize Frontier runtime
+
+    initstrings();
+
+    if (!initlang()) {
+        fprintf(stderr, "Error: initlang failed\n");
+        return false;
+    }
+
+    if (!inittablestructure()) {
+        fprintf(stderr, "Error: inittablestructure failed\n");
+        return false;
+    }
+
+    if (!langinitverbs()) {
+        fprintf(stderr, "Error: langinitverbs failed\n");
+        return false;
+    }
+
     grabthreadglobals();
-    
-    if (!frontierstart()) {
-        fprintf(stderr, "Error: Failed to start Frontier runtime\n");
-        releasethreadglobals();
-        return false;
-    }
     
     g_initialized = true;
     cli_log_info("Frontier runtime initialized successfully");
@@ -211,35 +216,13 @@ static boolean execute_script_mode(void) {
 }
 
 static boolean execute_database_mode(void) {
-    cli_log_info("Executing database mode");
-    
-    if (g_cli_options.database_file == NULL) {
-        fprintf(stderr, "Error: Database file not specified\n");
-        return false;
-    }
-    
-    if (g_cli_options.migrate_database) {
-        // Migrate database to 64-bit format
-        return cli_migrate_database(g_cli_options.database_file);
-    } else if (g_cli_options.query != NULL) {
-        // Execute database query
-        return cli_execute_database_query(g_cli_options.database_file, g_cli_options.query);
-    } else {
-        fprintf(stderr, "Error: No database operation specified\n");
-        return false;
-    }
+    (void)g_cli_options;
+    fprintf(stderr, "Error: Database operations are not yet available in the headless CLI build.\n");
+    return false;
 }
 
 static boolean execute_network_mode(void) {
-    cli_log_info("Executing network mode");
-    
-    if (g_cli_options.server_mode) {
-        // Start HTTP server
-        return cli_start_http_server(g_cli_options.port);
-    } else if (g_cli_options.websocket_mode) {
-        // Start WebSocket server
-        return cli_start_websocket_server(g_cli_options.port);
-    }
-    
+    (void)g_cli_options;
+    fprintf(stderr, "Error: Network server modes are not yet available in the headless CLI build.\n");
     return false;
 }

@@ -12,7 +12,11 @@
 #ifndef CLI_PARSER_H
 #define CLI_PARSER_H
 
-#include "../Common/SystemHeaders/standard.h"
+#include "../Common/headers/frontier.h"
+
+#ifndef boolean
+typedef unsigned char boolean;
+#endif
 
 // CLI options structure
 typedef struct {

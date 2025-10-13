@@ -39,6 +39,22 @@ SANITIZE=1 make -C tests test
 
 # CLI build (multi-arch)
 make -C frontier-cli
+
+# build MySQL client libraries (installs into Common/MySQL)
+scripts/build_mysql_client.sh
+
+## MySQL client setup
+
+Frontier links against the MySQL C client library for historical database
+integration. The repository no longer ships prebuilt binaries; run
+`scripts/build_mysql_client.sh` to fetch and compile a MariaDB Connector/C
+release into `Common/MySQL/`. The script uses CMake, builds both `arm64` and
+`x86_64` static libraries, and creates compatibility symlinks (`libmysqlclient.a`
+and `include/mysql/`). You can override the install location by setting the
+`MYSQL_CLIENT_PREFIX` environment variable before running the script.
+
+If you already have a system-wide MySQL client installation, point
+`MYSQL_CLIENT_PREFIX` at that prefix instead of rebuilding.
 ```
 
 > `make -C tests test` currently hits a pre-existing duplicate-symbol linker
