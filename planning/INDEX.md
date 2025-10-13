@@ -34,6 +34,7 @@ Change Log
 - Runtime Test Plan: `planning/phase3/0.5.23_runtime_test_plan.md`
 - Headless Developer Guides: `planning/phase3/DEVELOPER_QUICKSTART_HEADLESS.md`, `planning/phase3/headless_stubbed_behavior_matrix.md`
 - System Verb Bootstrapping & UI Abstraction: `planning/phase3/system_verbs_bootstrap_plan.md`, `planning/phase3/ui_abstraction/`
+- Frontier.root Headless Bring-up: `planning/phase3/frontier_root_headless_plan.md`
 
 ## Phase 4 — String & Text Modernization (`planning/phase4/`)
 - Modernization Overview: `planning/phase4/PHASES.md`
