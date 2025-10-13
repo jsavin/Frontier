@@ -53,11 +53,8 @@ integration. Prebuilt binaries are no longer stored in the repo.
   `MYSQL_CLIENT_PREFIX`). The script builds both `arm64` and `x86_64` static
   libraries and drops compatibility symlinks (`libmysqlclient.a` and
   `include/mysql/`).
-- **Windows:** install the MariaDB Connector/C package separately and set the
-  environment variable `MYSQL_CLIENT_DIR` to the root of the installation (the
-  VC projects look for headers under `include\mysql` and libraries under
-  `lib`). Copying the Windows libraries into `Common\MySQL\` works as well, but
-  they remain untracked by git.
+- **Windows:** legacy Visual Studio project files have been removed. Updated
+  instructions will accompany the next iteration of Windows support.
 
 See `docs/mysql_client_setup.md` for detailed guidance.
 ```
