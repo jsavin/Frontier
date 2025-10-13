@@ -292,11 +292,11 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="PaigeWinVC8CRT.lib winmm.lib libcmt.lib oldnames.lib comctl32.lib wininet.lib wsock32.lib version.lib mysqlclient.lib"
+				AdditionalDependencies="PaigeWinVC8CRT.lib winmm.lib libcmt.lib oldnames.lib comctl32.lib wininet.lib wsock32.lib version.lib libmariadb.lib mysqlclient.lib"
 				OutputFile="$(OutDir)Frontier.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="..\Common\Paige;..\Common\MySQL\win32\lib\opt"
+				AdditionalLibraryDirectories="..\Common\Paige;$(MYSQL_CLIENT_DIR)\lib"
 				ManifestFile="$(IntDir)$(TargetFileName).intermediate.manifest"
 				IgnoreAllDefaultLibraries="true"
 				GenerateDebugInformation="true"
@@ -398,11 +398,11 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="PaigeWinVC8CRT.lib winmm.lib libcmtd.lib oldnames.lib comctl32.lib wininet.lib wsock32.lib version.lib mysqlclient.lib"
+				AdditionalDependencies="PaigeWinVC8CRT.lib winmm.lib libcmtd.lib oldnames.lib comctl32.lib wininet.lib wsock32.lib version.lib libmariadb.lib mysqlclient.lib"
 				OutputFile="$(OutDir)Frontier.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="..\Common\Paige;..\Common\MySQL\win32\lib\debug"
+				AdditionalLibraryDirectories="..\Common\Paige;$(MYSQL_CLIENT_DIR)\lib"
 				ManifestFile="$(IntDir)$(TargetFileName).intermediate.manifest"
 				IgnoreAllDefaultLibraries="true"
 				GenerateDebugInformation="true"
