@@ -38,52 +38,12 @@ architecture only, but the deployment build style will compile a
 Universal Binary of Frontier which will run on both PPC and Intel Macs.
 
 
-B. Microsoft Visual Studio .NET 2005
+B. Microsoft Visual Studio (legacy)
 ====================================
 
-Build directory: build_VC2k5
-
-Getting Started:
-----------------
-
-1. Open the Frontier.sln solution file in Visual Studio.
-
-2. Select the Configuration Manager from the Build menu and switch
-the Active Solution Configuration to Debug. Click the Close button.
-
-3. Select Build Solution from the Build menu.
-
-
-C. Microsoft Visual Studio .NET 2003
-====================================
-
-Build directory: build_VC2k3
-
-Getting Started:
-----------------
-
-1. Open the Frontier.sln solution file in Visual Studio.
-
-2. Select the Configuration Manager from the Build menu and switch
-the Active Solution Configuration to Debug. Click the Close button.
-
-3. Select Build Solution from the Build menu.
-
-
-D. Microsoft Visual Studio C++ 6.0 for Windows
-==============================================
-   
-Build directory : build_VC6
-
-Getting Started
----------------
-
-1. Open the Frontier.dsp project in MS Visual Studio.
-
-2. Choose a build configuration from the Project menu. It is a good idea
-to start with the Debug build configuration.
-
-3. Build.
+The historical Visual Studio project files (`build_VC*`) have been removed.
+Windows build support will be revisited once the modern headless workflow is
+fully stabilised.
 
 
 E. Metrowerks CodeWarrior Pro for Mac or Windows

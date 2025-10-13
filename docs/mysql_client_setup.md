@@ -25,22 +25,11 @@ The script requires `cmake` and `curl`. It populates:
 - `lib/libmysqlclient.a` (symlink to `libmariadb.a`)
 - `include/mysql/` (symlink to the connector headers)
 
-## Windows (Visual Studio builds)
+## Windows builds (legacy)
 
-1. Download the MariaDB Connector/C package that matches your toolchain from
-   <https://mariadb.com/downloads/connectors/c/>. Install it somewhere outside
-   the repository (for example `C:\dev\mariadb-connector-c`).
-2. Set the environment variable `MYSQL_CLIENT_DIR` to that installation root
-   before opening the Frontier solutions. The Visual C++ projects expect to find
-   headers under `include\mysql` and libraries under `lib`.
-3. Alternatively, copy the `include` and `lib` folders from the MariaDB
-   installation into `Common\MySQL\`. The `.gitignore` entry keeps these
-   artefacts out of version control.
-
-Both Visual Studio projects now link against either `libmariadb.lib` (from the
-MariaDB connector) or `mysqlclient.lib` (for compatibility with Oracle's MySQL
-client). Ensure that the library you have installed exposes at least one of
-those names.
+Legacy Visual Studio project files have been removed. When Windows support is
+reintroduced, updated build instructions will land alongside the new project
+files.
 
 ## Verifying the setup
 
@@ -50,6 +39,4 @@ After installing the client libraries, run the CLI build as a smoke test:
 make -C frontier-cli
 ```
 
-For Visual Studio builds, rebuild the Frontier solution. If the MySQL client is
-missing you will see linker errors for `mysql_*` symbols—double-check the
-`MYSQL_CLIENT_DIR` variable and the connector installation.
+Windows build guidance will accompany the future replacement project files.
