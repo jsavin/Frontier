@@ -82,11 +82,9 @@ F. GNU Tools (initially for Mac OS X only)
    
 Build directory : build_GNU
 
-Building the Frontier kernel currently requires the Mac OS X Developer
-Tools to be installed on Mac OS X. Older tools using Project Builder, or
-newer tools using Xcode should work, using 'gcc' v3.3. Other versions of
-'gcc' might work, too, but have not been tested (on Mac OS X).
-
+The historical GNU makefiles expect the early Mac OS X developer tools and
+`gcc` 3.x. They have not been updated for the modern headless build, so expect
+setup failures unless you recreate that environment.
 Getting Started
 ---------------
 
