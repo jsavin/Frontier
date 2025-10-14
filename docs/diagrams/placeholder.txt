@@ -1,2 +1,0 @@
-This folder holds diagrams referenced by documentation.
-You can replace this placeholder with PNG/SVG as they are created.
