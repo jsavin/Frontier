@@ -12,8 +12,12 @@ Related Docs
 - planning/phase3/DEVELOPER_QUICKSTART_HEADLESS.md
 - planning/headless_stubbed_behavior_matrix.md
 
-Change Log
+ Change Log
 - 2025-10-12: Draft initial bring-up/export plan.
+- 2025-10-12: Tracked initial CLI plumbing for `--system-root` flag (read-only load path).
+- 2025-10-13: Added headless fallback that hydrates missing `system.misc`/`system.menus` tables in-memory so sanitized Frontier.root loads with warnings.
+- 2025-10-13: Noted follow-up to modernize the database save path so hydrated roots can be persisted as true v7 files.
+- 2025-10-16: Landed serializer refactor (fixed-width disk addresses, 32-bit sentinel) and added runtime round-trip tests for legacy/64-bit tables.
 
 ## Objectives
 
@@ -24,7 +28,7 @@ Change Log
 
 ## Deliverables
 
-- Headless CLI/test build that links required database modules and supports a `--frontier-root` style flag.
+- Headless CLI/test build that links required database modules and supports a `--system-root` flag.
 - Minimal integration path that opens `Frontier.root`, calls the existing startup verbs, and verifies `system.table` contents.
 - Export routine (C) that walks `system.verbs` and writes normalized text artifacts (one file per verb family or similar) to a caller-provided directory.
 - Automated checks: CLI smoke test or scripted diff validating the export output; docs updated to describe usage.
@@ -37,7 +41,8 @@ Change Log
    - Add compile-time guards or no-op implementations where the database layer expects legacy OS services.
 
 2. **Runtime Initialization Enhancements**
-   - Add CLI entry points (`--frontier-root`, `--load-system-table`) that call `dbopenfile`, set database globals, and execute the standard startup call chain (`dbstartup`, `langloadsystemtable`, etc.).
+   - Add CLI entry points (`--system-root`, `--load-system-table`) that call `dbopenfile`, set database globals, and execute the standard startup call chain (e.g., `dbopenfile`, `dbgetview`, `tableloadsystemtable`, `settablestructureglobals`).
+   - Provide a headless fallback that logs warnings and hydrates missing optional tables (`system.misc`, `system.menus`, `system.macintosh.objectmodel`) so sanitized databases are usable for scripting despite gaps.
    - Ensure headless logging surfaces missing dependency errors clearly.
    - Document required sample database locations (`databases/Guest Databases/...`) and any environment knobs.
 
@@ -54,6 +59,7 @@ Change Log
    - Update `planning/phase3/DEVELOPER_QUICKSTART_HEADLESS.md` and `frontier-cli/README.md` once features land.
    - Note in `system_verbs_bootstrap_plan.md` how the export replaces manual UserTalk dumps.
    - Track remaining dependencies (e.g. kernel binding tests) for subsequent PRs.
+   - Build or modernize the database save/migration path so hydrated Frontier.root instances can be written back to disk as v7+ without relying on legacy GUI save code.
 
 ## Risks & Mitigations
 
