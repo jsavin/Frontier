@@ -34,6 +34,10 @@
 #include "shellhooks.h"
 #include "strings.h"
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
+#include <assert.h>
+
+/* Enable to dump merge/unmerge diagnostics. */
+/* #define DEBUG_SERIALIZER 1 */
 
 
 #define safetycushionsize 0x2800 /*10K*/
@@ -1365,6 +1369,23 @@ boolean concatheapstrings (hdlstring *h1, hdlstring *h2, hdlstring *hreturned) {
 	} /%concatheapstrings%/
 */
 
+static inline __attribute__((unused)) uint32_t memory_host_to_disk_uint32(uint32_t value) {
+#if defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
+    return __builtin_bswap32(value);
+#else
+    return value;
+#endif
+}
+
+static inline __attribute__((unused)) uint32_t memory_disk_to_host_uint32(uint32_t value) {
+#if defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
+    return __builtin_bswap32(value);
+#else
+    return value;
+#endif
+}
+
+
 
 boolean pushhandle (Handle hsource, Handle hdest) {
 	
@@ -1653,17 +1674,18 @@ boolean debugmergehandles (char * filename, unsigned long linenumber, unsigned l
 	long sizefirsthandle;
 	long sizesecondhandle;
 	long sizemergedhandle;
-	long storesizefirsthandle;
+	uint32_t storesizefirsthandle;
 	register ptrbyte p;
 	
 	*hmerged = nil; /*default return value*/
 	
 	sizefirsthandle = gethandlesize (h1);
-	storesizefirsthandle = disklong (sizefirsthandle);
+	assert ((uint64_t) sizefirsthandle <= UINT32_MAX);
+	storesizefirsthandle = memory_host_to_disk_uint32 ((uint32_t) sizefirsthandle);
 	
 	sizesecondhandle = gethandlesize (h2);
 	
-	sizemergedhandle = sizeof (long) + sizefirsthandle + sizesecondhandle;
+	sizemergedhandle = (long) sizeof (uint32_t) + sizefirsthandle + sizesecondhandle;
 	
 	if (sizefirsthandle > sizesecondhandle) { /*try using h1 for result*/
 		
@@ -1671,12 +1693,12 @@ boolean debugmergehandles (char * filename, unsigned long linenumber, unsigned l
 			
 			p = (ptrbyte) *h1;
 			
-			moveright (p, p + sizeof (long), sizefirsthandle);
+			moveright (p, p + sizeof (uint32_t), sizefirsthandle);
 			
-			moveleft (&storesizefirsthandle, p, sizeof (long));
+			moveleft (&storesizefirsthandle, p, sizeof (uint32_t));
 			
 			if (h2 != nil)
-				moveleft (*h2, p + sizeof (long) + sizefirsthandle, sizesecondhandle);
+				moveleft (*h2, p + sizeof (uint32_t) + sizefirsthandle, sizesecondhandle);
 			
 			*hmerged = h1;
 			
@@ -1692,12 +1714,12 @@ boolean debugmergehandles (char * filename, unsigned long linenumber, unsigned l
 			
 			p = (ptrbyte) *h2;
 			
-			moveright (p, p + sizeof (long) + sizefirsthandle, sizesecondhandle);
+			moveright (p, p + sizeof (uint32_t) + sizefirsthandle, sizesecondhandle);
 			
-			moveleft (&storesizefirsthandle, p, sizeof (long));
+			moveleft (&storesizefirsthandle, p, sizeof (uint32_t));
 			
 			if (h1 != nil)
-				moveleft (*h1, p + sizeof (long), sizefirsthandle);
+				moveleft (*h1, p + sizeof (uint32_t), sizefirsthandle);
 			
 			*hmerged = h2;
 			
@@ -1724,9 +1746,9 @@ boolean debugmergehandles (char * filename, unsigned long linenumber, unsigned l
 	
 	p = (ptrbyte) *h;
 	
-	moveleft (&storesizefirsthandle, p, sizeof (long));
+	moveleft (&storesizefirsthandle, p, sizeof (uint32_t));
 	
-	p += sizeof (long);
+	p += sizeof (uint32_t);
 	
 	if (h1 != nil)
 		moveleft (*h1, p, sizefirsthandle);
@@ -1767,11 +1789,20 @@ boolean debugunmergehandles (char * filename, unsigned long linenumber, unsigned
 	
 	*hfirst = *hsecond = nil; /*default return values*/
 	
-	moveleft (*h, &sizefirsthandle, sizeof (long));
+	uint32_t storedsize = 0;
+    moveleft (*h, &storedsize, sizeof (uint32_t));
 
-	disktomemlong (sizefirsthandle);
+#ifdef DEBUG_SERIALIZER
+    printf("[unmerge] stored raw=0x%08x\n", storedsize);
+#endif
+
+    sizefirsthandle = (long) memory_disk_to_host_uint32 (storedsize);
+
+#ifdef DEBUG_SERIALIZER
+    printf("[unmerge] converted sizefirst=%ld\n", sizefirsthandle);
+#endif
 	
-	ix = sizeof (long);
+	ix = (long) sizeof (uint32_t);
 	
 	if (sizefirsthandle == 0)
 		h1 = nil;
@@ -1787,7 +1818,7 @@ boolean debugunmergehandles (char * filename, unsigned long linenumber, unsigned
 	
 	ix += sizefirsthandle;
 	
-	sizesecondhandle = gethandlesize (h) - sizefirsthandle - sizeof (long);
+	sizesecondhandle = gethandlesize (h) - sizefirsthandle - (long) sizeof (uint32_t);
 	
 	if (sizesecondhandle == 0) {
 		
@@ -1877,51 +1908,52 @@ boolean concathandles (Handle h1, Handle h2, Handle *hmerged) {
 	
 	
 boolean mergehandles (Handle h1, Handle h2, Handle *hmerged) {
-	
+
 	/*
 	create a new handle which is the concatenation of two handles.  the first
 	four bytes of the new handle store the size of the first handle so the merged
 	handle can be easily unpacked.
-	
+
 	6/8/90 DW: modified so it could deal with nil handles.
-	
+
 	10/7/91 dmb: try to merge result into the larger of the original handles, so 
 	that our memory overhead can be almost cut in half.
-	
+
 	2.1b3 dmb: in the unusual case the we allocated a new handle, go ahead 
 	and use temporary memory if available. this might not always be ideal, but 
 	more often than not it will be best -- we're likely Saving, and tossing 
 	the merged handle soon.
 	*/
-	
+
 	Handle h;
 	long sizefirsthandle;
 	long sizesecondhandle;
 	long sizemergedhandle;
-	long storesizefirsthandle;
+	uint32_t storesizefirsthandle;
 	register ptrbyte p;
-	
+
 	*hmerged = nil; /*default return value*/
-	
+
 	sizefirsthandle = gethandlesize (h1);
-	storesizefirsthandle = disklong (sizefirsthandle);
-	
+	assert ((uint64_t) sizefirsthandle <= UINT32_MAX);
+	storesizefirsthandle = memory_host_to_disk_uint32 ((uint32_t) sizefirsthandle);
+
 	sizesecondhandle = gethandlesize (h2);
-	
-	sizemergedhandle = sizeof (long) + sizefirsthandle + sizesecondhandle;
-	
+
+	sizemergedhandle = (long) sizeof (uint32_t) + sizefirsthandle + sizesecondhandle;
+
 	if (sizefirsthandle > sizesecondhandle) { /*try using h1 for result*/
 		
 		if (resizehandle (h1, sizemergedhandle)) {
 			
 			p = (ptrbyte) *h1;
 			
-			moveright (p, p + sizeof (long), sizefirsthandle);
+			moveright (p, p + sizeof (uint32_t), sizefirsthandle);
 			
-			moveleft (&storesizefirsthandle, p, sizeof (long));
+			moveleft (&storesizefirsthandle, p, sizeof (uint32_t));
 			
 			if (h2 != nil)
-				moveleft (*h2, p + sizeof (long) + sizefirsthandle, sizesecondhandle);
+				moveleft (*h2, p + sizeof (uint32_t) + sizefirsthandle, sizesecondhandle);
 			
 			*hmerged = h1;
 			
@@ -1930,19 +1962,19 @@ boolean mergehandles (Handle h1, Handle h2, Handle *hmerged) {
 			return (true);
 			}
 		}
-	
+
 	else if (h2 != nil) { /*try using h2 for result*/
 		
 		if (resizehandle (h2, sizemergedhandle)) {
 			
 			p = (ptrbyte) *h2;
 			
-			moveright (p, p + sizeof (long) + sizefirsthandle, sizesecondhandle);
+			moveright (p, p + sizeof (uint32_t) + sizefirsthandle, sizesecondhandle);
 			
-			moveleft (&storesizefirsthandle, p, sizeof (long));
+			moveleft (&storesizefirsthandle, p, sizeof (uint32_t));
 			
 			if (h1 != nil)
-				moveleft (*h1, p + sizeof (long), sizefirsthandle);
+				moveleft (*h1, p + sizeof (uint32_t), sizefirsthandle);
 			
 			*hmerged = h2;
 			
@@ -1951,11 +1983,11 @@ boolean mergehandles (Handle h1, Handle h2, Handle *hmerged) {
 			return (true);
 			}
 		}
-	
+
 	/*resizing didn't work; try it the old way, using a newly-allocated handle*/
-	
+
 	h = getnewhandle (sizemergedhandle, true);
-	
+
 	if (h == nil) {
 		
 		memoryerror ();
@@ -1966,25 +1998,25 @@ boolean mergehandles (Handle h1, Handle h2, Handle *hmerged) {
 		
 		return (false);
 		}
-	
+
 	p = (ptrbyte) *h;
-	
-	moveleft (&storesizefirsthandle, p, sizeof (long));
-	
-	p += sizeof (long);
-	
+
+	moveleft (&storesizefirsthandle, p, sizeof (uint32_t));
+
+	p += sizeof (uint32_t);
+
 	if (h1 != nil)
 		moveleft (*h1, p, sizefirsthandle);
-	
+
 	if (h2 != nil)
 		moveleft (*h2, p + sizefirsthandle, sizesecondhandle);
-	
+
 	*hmerged = h;
-	
+
 	disposehandle (h1);
-	
+
 	disposehandle (h2);
-	
+
 	return (true);
 	} /*mergehandles*/
 
@@ -2005,49 +2037,56 @@ boolean unmergehandles (Handle hmerged, Handle *hfirst, Handle *hsecond) {
 	2.1b3 dmb: newly-created handle is always ok as temporary memory
 	*/
 	
-	register Handle h1 = nil, h2 = nil;
-	register Handle h = hmerged;
-	long ix;
-	long sizefirsthandle, sizesecondhandle;
-	
-	*hfirst = *hsecond = nil; /*default return values*/
-	
-	moveleft (*h, &sizefirsthandle, sizeof (long));
+    register Handle h1 = nil, h2 = nil;
+    register Handle h = hmerged;
+    long ix;
+    long sizefirsthandle, sizesecondhandle;
+    uint32_t storedsize = 0;
 
-	disktomemlong (sizefirsthandle);
-	
-	ix = sizeof (long);
-	
-	if (sizefirsthandle == 0)
-		h1 = nil;
-		
-	else {
-		h1 = getnewhandle (sizefirsthandle, true);
-		
-		if (h1 == nil) 
-			goto error;
-		
-		moveleft (*h + ix, *h1, sizefirsthandle);
-		}
-	
-	ix += sizefirsthandle;
-	
-	sizesecondhandle = gethandlesize (h) - sizefirsthandle - sizeof (long);
-	
-	if (sizesecondhandle == 0) {
-		
-		h2 = nil;
-		
-		disposehandle (h);
-		}
-	else {
-		
-		h2 = h; /*second handle can safely re-use merged handle*/
-		
-		moveleft (*h2 + ix, *h2, sizesecondhandle);
-		
-		sethandlesize (h2, sizesecondhandle);
-		}
+    *hfirst = *hsecond = nil; /*default return values*/
+
+    moveleft (*h, &storedsize, sizeof (uint32_t));
+
+#ifdef DEBUG_SERIALIZER
+    printf("[unmerge] stored raw=0x%08x\n", storedsize);
+#endif
+    sizefirsthandle = (long) memory_disk_to_host_uint32 (storedsize);
+#ifdef DEBUG_SERIALIZER
+    printf("[unmerge] converted sizefirst=%ld\n", sizefirsthandle);
+#endif
+
+    ix = (long) sizeof (uint32_t);
+
+    if (sizefirsthandle == 0)
+        h1 = nil;
+
+    else {
+        h1 = getnewhandle (sizefirsthandle, true);
+
+        if (h1 == nil) 
+            goto error;
+
+        moveleft (*h + ix, *h1, sizefirsthandle);
+        }
+
+    ix += sizefirsthandle;
+
+    sizesecondhandle = gethandlesize (h) - sizefirsthandle - (long) sizeof (uint32_t);
+
+    if (sizesecondhandle == 0) {
+
+        h2 = nil;
+
+        disposehandle (h);
+        }
+    else {
+
+        h2 = h; /*second handle can safely re-use merged handle*/
+
+        moveleft (*h2 + ix, *h2, sizesecondhandle);
+
+        sethandlesize (h2, sizesecondhandle);
+        }
 	
 	*hfirst = h1; /*return handles to caller*/
 	
