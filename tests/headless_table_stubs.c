@@ -7,7 +7,39 @@
 
 #ifdef FRONTIER_HEADLESS
 
+#include "tablepack.h"
+
 hdltableformats tableformatsdata = nil;
+
+#if defined(HEADLESS_USE_REAL_TABLEPACK)
+boolean tablepushformats(hdltableformats hformats) {
+    (void)hformats;
+    return true;
+}
+
+boolean tablepopformats(void) {
+    return true;
+}
+
+boolean tablepackformats(Handle *hpackedformats) {
+    if (hpackedformats)
+        *hpackedformats = nil;
+    return true;
+}
+
+boolean tableunpackformats(Handle hpackedformats, hdltableformats hformats) {
+    (void)hpackedformats;
+    if (hformats)
+        (**hformats).fldirty = false;
+    return true;
+}
+
+boolean newtableformats(hdltableformats *hformats) {
+    if (hformats)
+        *hformats = nil;
+    return true;
+}
+#endif /* HEADLESS_USE_REAL_TABLEPACK */
 
 void tabledirty (void) {
 }

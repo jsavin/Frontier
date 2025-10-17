@@ -26,6 +26,12 @@ static void cli_init_options(cli_options_t* options) {
 
 // Validate CLI options for consistency
 boolean cli_validate_options(const cli_options_t* options) {
+    if (options->show_help || options->show_version) {
+        return true;
+    }
+
+    boolean hydration_mode = options->hydrate_system_root;
+
     // Check for conflicting modes
     if (options->server_mode && options->websocket_mode) {
         fprintf(stderr, "Error: Cannot use --server and --websocket simultaneously\n");
@@ -40,11 +46,29 @@ boolean cli_validate_options(const cli_options_t* options) {
         }
     }
     
-    // Check for script execution parameters
-    if (options->script_file == NULL && options->inline_script == NULL && 
-        options->database_file == NULL && !options->server_mode && !options->websocket_mode) {
-        fprintf(stderr, "Error: No execution mode specified\n");
-        return false;
+    if (hydration_mode) {
+        if (options->system_root == NULL) {
+            fprintf(stderr, "Error: --hydrate-system-root requires --system-root PATH\n");
+            return false;
+        }
+    } else {
+        // Check for script execution parameters
+        if (options->script_file == NULL && options->inline_script == NULL && 
+            options->database_file == NULL && !options->server_mode && !options->websocket_mode) {
+            fprintf(stderr, "Error: No execution mode specified\n");
+            return false;
+        }
+    }
+
+    if (options->system_root != NULL) {
+        if (!cli_file_exists(options->system_root)) {
+            fprintf(stderr, "Error: System root does not exist: %s\n", options->system_root);
+            return false;
+        }
+        if (!cli_file_readable(options->system_root)) {
+            fprintf(stderr, "Error: System root is not readable: %s\n", options->system_root);
+            return false;
+        }
     }
     
     // Validate port number
@@ -82,15 +106,17 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
         {"server", no_argument, 0, 's'},
         {"websocket", no_argument, 0, 'w'},
         {"port", required_argument, 0, 'p'},
+        {"system-root", required_argument, 0, 'R'},
+        {"hydrate-system-root", no_argument, 0, 'H'},
         {"verbose", no_argument, 0, 'v'},
         {"debug", no_argument, 0, 'D'},
         {"help", no_argument, 0, 'h'},
         {"version", no_argument, 0, 'V'},
         {0, 0, 0, 0}
     };
-    
+
     // Parse command line arguments
-    while ((opt = getopt_long(argc, argv, "e:d:q:mswp:vDhV", long_options, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "e:d:q:mswp:R:HvDhV", long_options, &option_index)) != -1) {
         switch (opt) {
             case 'e':
                 // Inline script execution
@@ -130,12 +156,28 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
                 }
                 options->query = strdup(optarg);
                 break;
+
+            case 'R':
+                if (options->system_root != NULL) {
+                    fprintf(stderr, "Error: Multiple --system-root options not allowed\n");
+                    return false;
+                }
+                if (strlen(optarg) > CLI_MAX_PATH_LENGTH) {
+                    fprintf(stderr, "Error: System root path too long (max %d characters)\n", CLI_MAX_PATH_LENGTH);
+                    return false;
+                }
+                options->system_root = strdup(optarg);
+                break;
                 
             case 'm':
                 // Migrate database
                 options->migrate_database = true;
                 break;
-                
+
+            case 'H':
+                options->hydrate_system_root = true;
+                break;
+
             case 's':
                 // Server mode
                 options->server_mode = true;
@@ -237,6 +279,11 @@ void cli_free_options(cli_options_t* options) {
         free(options->query);
         options->query = NULL;
     }
+
+    if (options->system_root != NULL) {
+        free(options->system_root);
+        options->system_root = NULL;
+    }
 }
 
 void cli_print_options(const cli_options_t* options) {
@@ -250,12 +297,14 @@ void cli_print_options(const cli_options_t* options) {
     printf("  Inline Script: %s\n", options->inline_script ? options->inline_script : "(none)");
     printf("  Database File: %s\n", options->database_file ? options->database_file : "(none)");
     printf("  Query: %s\n", options->query ? options->query : "(none)");
+    printf("  System Root: %s\n", options->system_root ? options->system_root : "(none)");
     printf("  Port: %d\n", options->port);
     printf("  Verbose: %s\n", options->verbose ? "yes" : "no");
     printf("  Debug: %s\n", options->debug ? "yes" : "no");
     printf("  Server Mode: %s\n", options->server_mode ? "yes" : "no");
     printf("  WebSocket Mode: %s\n", options->websocket_mode ? "yes" : "no");
     printf("  Migrate Database: %s\n", options->migrate_database ? "yes" : "no");
+    printf("  Hydrate System Root: %s\n", options->hydrate_system_root ? "yes" : "no");
     printf("  Show Help: %s\n", options->show_help ? "yes" : "no");
     printf("  Show Version: %s\n", options->show_version ? "yes" : "no");
 }

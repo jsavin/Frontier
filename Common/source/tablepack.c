@@ -28,6 +28,10 @@
 #include "frontier.h"
 #include "standard.h"
 
+#if defined(FRONTIER_HEADLESS)
+#include <stdio.h>
+#endif
+
 #include "memory.h"
 #include "quickdraw.h"
 #include "strings.h"
@@ -250,6 +254,10 @@ boolean tableverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdba
 	boolean fltempload = false;
 	boolean flmustsave = false;
 	hdlwindowinfo hinfo;
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] tableverbpack start\n");
+#endif
 	
 	if (fldatabasesaveas) {
 		
@@ -289,8 +297,12 @@ boolean tableverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdba
 	
 	fl = tablepacktable (ht, false, &hpackedtable, &flmustsave);
 	
-	if (!fl)
+	if (!fl) {
+#if defined(FRONTIER_HEADLESS)
+		fprintf(stderr, "[headless] tablepacktable failed for system table\n");
+#endif
 		goto pushaddress;
+	}
 	
 	/*only save if we're saving a copy, if the table itself is dirty (i.e. a scalar or the name of an object changed),
 		or if one of its subs changed in  a way so that the table itself actually needs saving now*/
@@ -327,8 +339,15 @@ boolean tableverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdba
 		return (false);
 	
 	memtodisklong (adr);
-	
-	return (enlargehandle (*hpacked, sizeof (adr), (ptrchar) &adr));
+
+	if (!enlargehandle (*hpacked, sizeof (adr), (ptrchar) &adr)) {
+#if defined(FRONTIER_HEADLESS)
+		fprintf(stderr, "[headless] enlargehandle failed while packing table\n");
+#endif
+		return (false);
+	}
+
+	return (true);
 	} /*tableverbpack*/
 
 
@@ -504,6 +523,3 @@ boolean tableverbfindusedblocks (hdlexternalvariable h, bigstring bspath) {
 	
 	return (fl);
 	} /*tableverbfindusedblocks*/
-
-
-

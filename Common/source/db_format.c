@@ -2,11 +2,14 @@
 #include "standard.h"
 
 #include <stdio.h>
+#include <string.h>
+#include <stdint.h>
 #include <time.h>
 
 #include "db_format.h"
 
 boolean use_64bit_format = false;
+static char last_backup_path[1024];
 
 boolean detect_database_format(const tydatabaserecord *header) {
     if (header == NULL)
@@ -45,8 +48,9 @@ boolean convert_32bit_header_to_64bit(const tydatabaserecord *old_header, tydata
     new_header->longversionMinor = old_header->longversionMinor;
 
     new_header->u.extensions.availlistblock = (dbaddress)old_header->u.extensions.availlistblock;
-    new_header->u.extensions.availlistshadow = old_header->u.extensions.availlistshadow;
-    new_header->u.extensions.flreadonly = old_header->u.extensions.flreadonly;
+    new_header->u.extensions.availlistshadow = nildbaddress;
+    new_header->u.extensions.flreadonly = false;
+    memset(new_header->u.extensions.reserved, 0, sizeof new_header->u.extensions.reserved);
 
     return true;
 }
@@ -54,6 +58,8 @@ boolean convert_32bit_header_to_64bit(const tydatabaserecord *old_header, tydata
 boolean create_root_backup(const char *original_path) {
     if (original_path == NULL)
         return false;
+
+    last_backup_path[0] = '\0';
 
     char backup_path[1024];
     time_t now = time(NULL);
@@ -95,6 +101,8 @@ boolean create_root_backup(const char *original_path) {
 
     fclose(src);
     fclose(dst);
+    strncpy(last_backup_path, backup_path, sizeof last_backup_path);
+    last_backup_path[sizeof last_backup_path - 1] = '\0';
     return true;
 }
 
@@ -167,4 +175,50 @@ boolean migrate_32bit_to_64bit(const char *db_path) {
     }
 
     return true;
+}
+
+boolean ensure_database_modern(const char *db_path, boolean *migrated) {
+    if (migrated)
+        *migrated = false;
+    if (db_path == NULL || db_path[0] == '\0')
+        return false;
+
+    FILE *fp = fopen(db_path, "rb");
+    if (!fp)
+        return false;
+
+    unsigned char hdr[2];
+    size_t n = fread(hdr, 1, sizeof hdr, fp);
+    fclose(fp);
+    if (n != sizeof hdr)
+        return false;
+
+    unsigned char version = hdr[1];
+    if (version >= 7) {
+        return true; /* already modern */
+    }
+
+    if (!migrate_32bit_to_64bit(db_path))
+        return false;
+
+    if (migrated)
+        *migrated = true;
+    return true;
+}
+
+boolean db_format_last_backup_path(char *buffer, size_t length) {
+    if (buffer == NULL || length == 0)
+        return false;
+    if (last_backup_path[0] == '\0') {
+        buffer[0] = '\0';
+        return false;
+    }
+    strncpy(buffer, last_backup_path, length);
+    if (length > 0)
+        buffer[length - 1] = '\0';
+    return true;
+}
+
+void db_format_clear_last_backup_path(void) {
+    last_backup_path[0] = '\0';
 }

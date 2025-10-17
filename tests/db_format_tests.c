@@ -70,11 +70,10 @@ static void test_convert_header(void) {
     assert(new_header.longversionMajor == old_header.longversionMajor);
     assert(new_header.longversionMinor == old_header.longversionMinor);
     assert(new_header.u.extensions.availlistblock == (dbaddress)old_header.u.extensions.availlistblock);
-    assert(new_header.u.extensions.availlistshadow.data == old_header.u.extensions.availlistshadow.data);
-    assert(new_header.u.extensions.availlistshadow.pos == old_header.u.extensions.availlistshadow.pos);
-    assert(new_header.u.extensions.availlistshadow.eof == old_header.u.extensions.availlistshadow.eof);
-    assert(new_header.u.extensions.availlistshadow.size == old_header.u.extensions.availlistshadow.size);
-    assert(new_header.u.extensions.flreadonly == old_header.u.extensions.flreadonly);
+    assert(new_header.u.extensions.availlistshadow == nildbaddress);
+    assert(!new_header.u.extensions.flreadonly);
+    for (size_t i = 0; i < sizeof new_header.u.extensions.reserved; ++i)
+        assert(new_header.u.extensions.reserved[i] == 0);
 }
 
 int main(void) {

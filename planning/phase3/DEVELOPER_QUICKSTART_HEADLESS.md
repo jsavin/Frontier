@@ -3,8 +3,8 @@
 Status
 - State: In Progress
 - Phase: 1–2
-- Last Updated: 2025-09-30
-- Notes: Headless tests are green; parser_tests included. CLI headless build pending (remove UI frameworks from frontier-cli).
+- Last Updated: 2025-10-12
+- Notes: Headless tests are green; parser_tests included. CLI builds headless with script execution only (database/network modes pending).
 
 Related Docs
 - planning/INDEX.md
@@ -17,7 +17,7 @@ Change Log
 
 What You Can Do
 - Build and run core/runtime tests without a UI.
-- Use `frontier-cli` to execute UserTalk scripts and DB operations.
+- Use `frontier-cli` to execute UserTalk scripts headless (database/network support is deferred).
 
 Key Docs
 - Tests overview: tests/README.md
@@ -30,14 +30,17 @@ Quick Steps (Typical)
 - Run runtime tests: `./tests/runtime_tests`
 - Run parser tests: `./tests/parser_tests`
 - Use CLI to run a script: `./frontier-cli -e "1 + 2"`
+- Load the canonical system tables before a run (optional): `./frontier-cli --system-root databases/Guest\ Databases/Frontier.root -e "clock.now()"`
 
 Notes
-- Headless builds must not link AppKit/Carbon/Win32; if they do, see planning/no_ui_linkage_policy.md. frontier-cli still needs this cleanup.
+- Headless builds must not link AppKit/Carbon/Win32; if they do, see planning/no_ui_linkage_policy.md.
 - Some UI-dependent verbs are stubbed in headless mode; see planning/headless_stubbed_behavior_matrix.md.
 - Database migration:
   - Legacy v≤6 opens in legacy read mode; no silent rewrite.
   - Save implies migration to v7 (header‑only, with timestamped backup). Until Save‑path migration is fully wired, saving a legacy DB fails fast (no write) to prevent format mismatch.
-  - CLI supports explicit migration (`--auto-migrate`) for non‑interactive upgrades.
+  - CLI migration flags (`--auto-migrate`, `--query`, etc.) are planned but currently disabled in the headless build.
+- `--system-root` opens the specified database read-only and exits if the system table cannot be loaded; use the sanitized sample under `databases/` for quick testing.
+- Expect warnings about missing legacy tables (`system.misc`, `system.menus`, etc.) when loading the sanitized Frontier.root. The CLI hydrates temporary replacements so scripts still run, but the warnings are a reminder that full migration work remains.
 
 Parser Regeneration (Maintainers)
 - You do not need Bison to build. The generated parser C is committed.

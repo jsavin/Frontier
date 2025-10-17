@@ -1,154 +1,159 @@
 #include "../framework/test_framework.h"
 #include "../../Common/headers/db.h"
 #include "../../Common/headers/dbinternal.h"
+#include "../../Common/headers/db_format.h"
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <assert.h>
 
-// Test database file names
-static const char* test_legacy_db = "test_migration_legacy.root";
-static const char* test_migrated_db = "test_migration_migrated.root";
-// Note: test_backup_db will be timestamped, so we can't predict the exact name
+static const char *test_legacy_db = "test_migration_legacy.root";
 
-// Create a synthetic legacy database file
+static void remove_if_exists(const char *path) {
+    if (path && unlink(path) == 0) {
+        return;
+    }
+}
+
+/* Create a minimal v6 header on disk */
 static bool create_legacy_database(void) {
+    remove_if_exists(test_legacy_db);
+
     FILE *f = fopen(test_legacy_db, "wb");
-    if (!f) return false;
-    
-    // Create a minimal 32-bit database header
+    if (!f)
+        return false;
+
     tydatabaserecord header;
-    memset(&header, 0, sizeof(header));
-    
+    memset(&header, 0, sizeof header);
     header.systemid = dbsystemidMac;
-    header.versionnumber = 6;  // Legacy version
+    header.versionnumber = 6;
     header.availlist = nildbaddress;
-    header.oldfnumdatabase = 0;
-    header.flags = 0;
-    header.views[0] = nildbaddress;
-    header.views[1] = nildbaddress;
-    header.views[2] = nildbaddress;
-    header.releasestack = NULL;
-    header.fnumdatabase = 0;
-    header.headerLength = sizeof(tydatabaserecord);
+    header.headerLength = sizeof header;
     header.longversionMajor = 6;
     header.longversionMinor = 0;
-    
-    // Write header
-    if (fwrite(&header, sizeof(header), 1, f) != 1) {
-        fclose(f);
-        return false;
-    }
-    
+
+    bool ok = fwrite(&header, sizeof header, 1, f) == 1;
     fclose(f);
-    return true;
+    return ok;
 }
 
-// Test backup creation
 static bool test_backup_creation(void) {
     TEST_ASSERT(create_legacy_database(), "Should create legacy database");
-    
-    // Test backup creation
-    TEST_ASSERT(create_root_backup(test_legacy_db), "Should create backup");
-    
-    // Verify backup file exists
-    FILE *backup = fopen(test_backup_db, "rb");
+    TEST_ASSERT(create_root_backup(test_legacy_db), "Should create timestamped backup");
+
+    char backup_path[1024];
+    TEST_ASSERT(db_format_last_backup_path(backup_path, sizeof backup_path), "Backup path should be recorded");
+    FILE *backup = fopen(backup_path, "rb");
     TEST_ASSERT(backup != NULL, "Backup file should exist");
-    if (backup) fclose(backup);
-    
+    if (backup)
+        fclose(backup);
+
+    remove_if_exists(backup_path);
+    db_format_clear_last_backup_path();
     return true;
 }
 
-// Test header conversion
 static bool test_header_conversion(void) {
-    // Read legacy header
+    TEST_ASSERT(create_legacy_database(), "Should create legacy database");
+
     FILE *f = fopen(test_legacy_db, "rb");
-    TEST_ASSERT(f != NULL, "Should be able to open legacy database");
-    
+    TEST_ASSERT(f != NULL, "Should open legacy database");
+
     tydatabaserecord old_header;
-    TEST_ASSERT(fread(&old_header, sizeof(old_header), 1, f) == 1, "Should read legacy header");
+    TEST_ASSERT(fread(&old_header, sizeof old_header, 1, f) == 1, "Should read legacy header");
     fclose(f);
-    
-    // Convert to 64-bit format
+
     tydatabaserecord_64 new_header;
+    memset(&new_header, 0, sizeof new_header);
     TEST_ASSERT(convert_32bit_header_to_64bit(&old_header, &new_header), "Should convert header");
-    
-    // Verify conversion
-    TEST_ASSERT(new_header.systemid == old_header.systemid, "systemid should be preserved");
-    TEST_ASSERT(new_header.versionnumber == 7, "version should be updated to 7");
-    TEST_ASSERT(new_header.availlist == old_header.availlist, "availlist should be converted");
-    TEST_ASSERT(new_header.oldfnumdatabase == old_header.oldfnumdatabase, "oldfnumdatabase should be preserved");
-    TEST_ASSERT(new_header.flags == old_header.flags, "flags should be preserved");
-    
-    // Test views array conversion
-    for (int i = 0; i < ctviews; i++) {
-        TEST_ASSERT(new_header.views[i] == old_header.views[i], "views should be converted");
-    }
-    
+
+    TEST_ASSERT(new_header.systemid == old_header.systemid, "systemid preserved");
+    TEST_ASSERT(new_header.versionnumber == 7, "version bumps to 7");
+    TEST_ASSERT(new_header.availlist == old_header.availlist, "availlist converted");
+    TEST_ASSERT(new_header.oldfnumdatabase == old_header.oldfnumdatabase, "oldfnum preserved");
+    TEST_ASSERT(new_header.flags == old_header.flags, "flags preserved");
+    for (int i = 0; i < ctviews; i++)
+        TEST_ASSERT(new_header.views[i] == old_header.views[i], "views converted");
+    TEST_ASSERT(new_header.u.extensions.availlistshadow == nildbaddress, "shadow reset");
+    TEST_ASSERT(!new_header.u.extensions.flreadonly, "readonly cleared");
+    for (size_t i = 0; i < sizeof new_header.u.extensions.reserved; ++i)
+        TEST_ASSERT(new_header.u.extensions.reserved[i] == 0, "reserved zeroed");
     return true;
 }
 
-// Test full migration
 static bool test_full_migration(void) {
-    // Test migration function
+    TEST_ASSERT(create_legacy_database(), "Should create legacy database");
     TEST_ASSERT(migrate_32bit_to_64bit(test_legacy_db), "Should migrate database");
-    
-    // Verify migrated file exists
+
     FILE *migrated = fopen(test_legacy_db, "rb");
     TEST_ASSERT(migrated != NULL, "Migrated file should exist");
-    
     if (migrated) {
-        // Read new header
-        tydatabaserecord_64 new_header;
-        TEST_ASSERT(fread(&new_header, sizeof(new_header), 1, migrated) == 1, "Should read new header");
+        tydatabaserecord_64 header;
+        TEST_ASSERT(fread(&header, sizeof header, 1, migrated) == 1, "Should read migrated header");
         fclose(migrated);
-        
-        // Verify new format
-        TEST_ASSERT(new_header.versionnumber == 7, "Should be version 7");
-        TEST_ASSERT(new_header.systemid == dbsystemidMac, "Should have correct system ID");
+        TEST_ASSERT(header.versionnumber == 7, "Migrated header is version 7");
     }
-    
+
+    char backup_path[1024];
+    if (db_format_last_backup_path(backup_path, sizeof backup_path)) {
+        remove_if_exists(backup_path);
+        db_format_clear_last_backup_path();
+    }
     return true;
 }
 
-// Test version detection
 static bool test_version_detection(void) {
-    // Test legacy version detection
-    tydatabaserecord legacy_header;
+    tydatabaserecord legacy_header = {0};
     legacy_header.versionnumber = 6;
-    
     TEST_ASSERT(detect_database_format(&legacy_header), "Should detect legacy format");
-    TEST_ASSERT(!use_64bit_format, "Should set use_64bit_format to false");
-    
-    // Test modern version detection
-    tydatabaserecord modern_header;
+    TEST_ASSERT(!use_64bit_format, "Legacy keeps 32-bit flag");
+
+    tydatabaserecord modern_header = {0};
     modern_header.versionnumber = 7;
-    
     TEST_ASSERT(detect_database_format(&modern_header), "Should detect modern format");
-    TEST_ASSERT(use_64bit_format, "Should set use_64bit_format to true");
-    
+    TEST_ASSERT(use_64bit_format, "Modern toggles 64-bit flag");
     return true;
 }
 
-// Test error handling
 static bool test_error_handling(void) {
-    // Test backup creation with non-existent file
-    TEST_ASSERT(!create_root_backup("non_existent_file.root"), "Should fail for non-existent file");
-    
-    // Test migration with non-existent file
-    TEST_ASSERT(!migrate_32bit_to_64bit("non_existent_file.root"), "Should fail for non-existent file");
-    
+    TEST_ASSERT(!create_root_backup("does_not_exist.root"), "Backup should fail for missing file");
+    TEST_ASSERT(!migrate_32bit_to_64bit("does_not_exist.root"), "Migration should fail for missing file");
     return true;
 }
 
-// Cleanup test files
+static bool test_ensure_modern(void) {
+    TEST_ASSERT(create_legacy_database(), "Should create legacy database");
+    boolean migrated = false;
+    TEST_ASSERT(ensure_database_modern(test_legacy_db, &migrated), "ensure_database_modern should succeed");
+    TEST_ASSERT(migrated, "Legacy file should migrate");
+
+    FILE *f = fopen(test_legacy_db, "rb");
+    TEST_ASSERT(f != NULL, "Migrated database should open");
+    tydatabaserecord_64 header;
+    TEST_ASSERT(fread(&header, sizeof header, 1, f) == 1, "Should read ensured header");
+    fclose(f);
+    TEST_ASSERT(header.versionnumber == 7, "Header upgraded to v7");
+
+    char backup_path[1024];
+    if (db_format_last_backup_path(backup_path, sizeof backup_path)) {
+        remove_if_exists(backup_path);
+        db_format_clear_last_backup_path();
+    }
+
+    migrated = false;
+    TEST_ASSERT(ensure_database_modern(test_legacy_db, &migrated), "ensure should succeed second time");
+    TEST_ASSERT(!migrated, "Already-modern db should not migrate again");
+    return true;
+}
+
 static bool test_cleanup(void) {
-    // Remove test files
-    unlink(test_legacy_db);
-    unlink(test_backup_db);
-    unlink(test_migrated_db);
-    
+    remove_if_exists(test_legacy_db);
+    char backup_path[1024];
+    if (db_format_last_backup_path(backup_path, sizeof backup_path)) {
+        remove_if_exists(backup_path);
+        db_format_clear_last_backup_path();
+    }
     return true;
 }
 
@@ -158,7 +163,8 @@ test_case_t migration_tests[] = {
     {"Full Migration", test_full_migration},
     {"Version Detection", test_version_detection},
     {"Error Handling", test_error_handling},
+    {"Ensure Modern", test_ensure_modern},
     {"Cleanup", test_cleanup},
 };
 
-int migration_test_count = 6;
+int migration_test_count = 7;
