@@ -45,35 +45,59 @@
 #include "oplist.h"
 #include "timedate.h"
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
-
+#if defined(FRONTIER_HEADLESS)
+#include <stdio.h>
+#endif
+#include <stdint.h>
+#include <limits.h>
 	#include "aeutils.h" /*PBS 03/14/02: AE OS X fix.*/
 
+/* Enable to dump detailed serializer diagnostics. */
+/* #define DEBUG_SERIALIZER 1 */
+
+#if defined(__clang__) || defined(__GNUC__)
+boolean use_64bit_format __attribute__((weak)) = false;
+static inline boolean langhash_use_64bit_format(void) {
+	return use_64bit_format;
+}
+#else
+extern boolean use_64bit_format;
+static inline boolean langhash_use_64bit_format(void) {
+	return use_64bit_format;
+}
+#endif
+
+#if defined(__clang__) || defined(__GNUC__)
+#pragma pack(push, 2)
+#else
 #pragma pack(2)
-typedef struct tydisksymbolrecord {
-	
-	long ixkey; /*in the string handle, where is this symbol's name?*/
-	
-	unsigned char valuetype; /*copied from the symbol's value record*/
-	
-	unsigned char version;
-	
-	tyvaluedata data; /*if a string, this stores an index into the string handle*/
-	} tydisksymbolrecord, *ptrdisksymbolrecord, **hdldisksymbolrecord;
+#endif
+
+typedef union tydiskvaluedata {
+	int32_t longvalue;
+	uint32_t datevalue;
+	int32_t dirvalue;
+	int16_t intvalue;
+	uint16_t uintvalue;
+	unsigned char chvalue;
+	struct { int16_t v; int16_t h; } pointvalue;
+} tydiskvaluedata;
+
+typedef struct tydisksymbolrecord { /*stored at offset 0 in the db file*/
+	int32_t ixkey; /*in the string handle, where is this symbol's name?*/
+	uint8_t valuetype; /*copied from the symbol's value record*/
+	uint8_t version;
+	tydiskvaluedata data; /*if a string, this stores an index into the string handle*/
+} tydisksymbolrecord, *ptrdisksymbolrecord, **hdldisksymbolrecord;
 
 typedef struct tyOLD42disksymbolrecord {
-	
-	long ixkey; /*in the string handle, where is this symbol's name?*/
-	
-	unsigned char valuetype; /*copied from the symbol's value record*/
-	
-	unsigned char version : 4;
-	
-	unsigned char unused : 3;
-	
-	unsigned char flsorted : 1; /*were these records packed in sort order?*/
-	
-	tyvaluedata data; /*if a string, this stores an index into the string handle*/
-	} tyOLD42disksymbolrecord, *ptrOLD42disksymbolrecord, **hdlOLD42disksymbolrecord;
+	int32_t ixkey; /*in the string handle, where is this symbol's name?*/
+	uint8_t valuetype; /*copied from the symbol's value record*/
+	uint8_t version : 4;
+	uint8_t unused : 3;
+	uint8_t flsorted : 1; /*were these records packed in sort order?*/
+	tydiskvaluedata data; /*if a string, this stores an index into the string handle*/
+} tyOLD42disksymbolrecord, *ptrOLD42disksymbolrecord, **hdlOLD42disksymbolrecord;
 
 
 // 5.0.1: bumped version number so we can clear uninitialized flags
@@ -81,16 +105,18 @@ typedef struct tyOLD42disksymbolrecord {
 
 
 typedef struct tydisktablerecord { /*new in 5.0, a header for each table*/
-	
-	short version; /*in the string handle, where is this symbol's name?*/
-	
-	short sortorder;
-	
-	unsigned long timecreated, timelastsave; /*number of seconds since 1/1/04*/
-	
-	long flags;
-	} tydisktablerecord, *ptrdisktablerecord, **hdldisktablerecord;
+	int16_t version;
+	int16_t sortorder;
+	uint32_t timecreated;
+	uint32_t timelastsave;
+	int32_t flags;
+} tydisktablerecord, *ptrdisktablerecord, **hdldisktablerecord;
 
+#if defined(__clang__) || defined(__GNUC__)
+#pragma pack(pop)
+#else
+#pragma options align=reset
+#endif
 
 typedef enum tylinetableitemflags {
 
@@ -102,13 +128,229 @@ typedef enum tylinetableitemflags {
 #define	diskvalsizeflag		(-1)
 
 typedef struct tydiskvaluerecord {		/*4.0.1b1 dmb*/
-	
 	long sizeflag;	/*always -1*/
-	
-	dbaddress adr;	/*addres of actual scalar value*/
+	dbaddress adr;	/*address of actual scalar value*/
 	} tydiskvaluerecord;
-#pragma options align=reset
 
+
+static inline int32_t host_to_disk_int32(int32_t value) {
+#if defined(SWAP_BYTE_ORDER)
+	long temp = (long) value;
+	memtodisklong (temp);
+	return (int32_t) temp;
+#else
+	return value;
+#endif
+}
+
+static inline int16_t host_to_disk_int16(int16_t value) {
+#if defined(SWAP_BYTE_ORDER)
+	short temp = (short) value;
+	memtodiskshort (temp);
+	return (int16_t) temp;
+#else
+	return value;
+#endif
+}
+
+static inline int32_t disk_to_host_int32(int32_t value) {
+#if defined(SWAP_BYTE_ORDER)
+	long temp = (long) value;
+	disktomemlong (temp);
+	return (int32_t) temp;
+#else
+	return value;
+#endif
+}
+
+static inline int16_t disk_to_host_int16(int16_t value) {
+#if defined(SWAP_BYTE_ORDER)
+	short temp = (short) value;
+	disktomemshort (temp);
+	return (int16_t) temp;
+#else
+	return value;
+#endif
+}
+
+static inline dbaddress host_to_disk_dbaddress(dbaddress value) {
+#if defined(SWAP_BYTE_ORDER)
+	if (sizeof (dbaddress) == 8) {
+		unsigned long long temp = (unsigned long long) value;
+#if defined(__clang__) || defined(__GNUC__) || defined(__GNUG__)
+		temp = __builtin_bswap64(temp);
+#else
+		temp = ((temp & 0x00000000000000FFULL) << 56) |
+		       ((temp & 0x000000000000FF00ULL) << 40) |
+		       ((temp & 0x0000000000FF0000ULL) << 24) |
+		       ((temp & 0x00000000FF000000ULL) << 8)  |
+		       ((temp & 0x000000FF00000000ULL) >> 8)  |
+		       ((temp & 0x0000FF0000000000ULL) >> 24) |
+		       ((temp & 0x00FF000000000000ULL) >> 40) |
+		       ((temp & 0xFF00000000000000ULL) >> 56);
+#endif
+		return (dbaddress) temp;
+	}
+	return (dbaddress) host_to_disk_int32((int32_t) value);
+#else
+	return value;
+#endif
+}
+
+static inline dbaddress disk_to_host_dbaddress(dbaddress value) {
+#if defined(SWAP_BYTE_ORDER)
+	if (sizeof (dbaddress) == 8) {
+		unsigned long long temp = (unsigned long long) value;
+#if defined(__clang__) || defined(__GNUC__) || defined(__GNUG__)
+		temp = __builtin_bswap64(temp);
+#else
+		temp = ((temp & 0x00000000000000FFULL) << 56) |
+		       ((temp & 0x000000000000FF00ULL) << 40) |
+		       ((temp & 0x0000000000FF0000ULL) << 24) |
+		       ((temp & 0x00000000FF000000ULL) << 8)  |
+		       ((temp & 0x000000FF00000000ULL) >> 8)  |
+		       ((temp & 0x0000FF0000000000ULL) >> 24) |
+		       ((temp & 0x00FF000000000000ULL) >> 40) |
+		       ((temp & 0xFF00000000000000ULL) >> 56);
+#endif
+		return (dbaddress) temp;
+	}
+	return (dbaddress) disk_to_host_int32((int32_t) value);
+#else
+	return value;
+#endif
+}
+
+static boolean write_disk_uint32 (handlestream *s, uint32_t value) {
+	uint32_t disk = (uint32_t) host_to_disk_int32((int32_t) value);
+	return writehandlestream (s, &disk, (long) sizeof (disk));
+}
+
+static boolean read_disk_uint32 (Handle hload, long *ixload, uint32_t *out) {
+	uint32_t disk = 0;
+	if (!loadfromhandle (hload, ixload, (long) sizeof (disk), &disk))
+		return (false);
+	*out = (uint32_t) disk_to_host_int32 ((int32_t) disk);
+	return (true);
+}
+
+static boolean write_disk_dbaddress (handlestream *s, dbaddress value) {
+	if (langhash_use_64bit_format()) {
+		dbaddress disk = host_to_disk_dbaddress (value);
+		return writehandlestream (s, &disk, (long) sizeof (dbaddress));
+	}
+	assert (value >= 0 && (unsigned long long) value <= 0xFFFFFFFFULL);
+	int32_t disk = host_to_disk_int32 ((int32_t) value);
+	return writehandlestream (s, &disk, (long) sizeof (disk));
+}
+
+static boolean read_disk_dbaddress (Handle hload, long *ixload, dbaddress *out) {
+	if (langhash_use_64bit_format()) {
+	dbaddress disk = 0;
+		if (!loadfromhandle (hload, ixload, (long) sizeof (dbaddress), &disk))
+			return (false);
+		*out = disk_to_host_dbaddress (disk);
+		return (true);
+	}
+	uint32_t legacy = 0;
+	if (!read_disk_uint32 (hload, ixload, &legacy))
+		return (false);
+	*out = (dbaddress) legacy;
+	return (true);
+}
+
+static boolean write_disk_scalar_reference (handlestream *s, dbaddress adr) {
+	int32_t diskflag = host_to_disk_int32 (diskvalsizeflag);
+	if (!writehandlestream (s, &diskflag, (long) sizeof (diskflag)))
+		return (false);
+	return write_disk_dbaddress (s, adr);
+}
+
+static void diskvalue_from_value(const tyvaluerecord *val, tydiskvaluedata *out) {
+	clearbytes(out, sizeof(*out));
+	switch (val->valuetype) {
+		case novaluetype:
+			out->chvalue = (unsigned char) val->data.chvalue;
+			break;
+		case booleanvaluetype:
+			out->chvalue = (unsigned char) (val->data.flvalue ? 1 : 0);
+			break;
+		case charvaluetype:
+			out->chvalue = (unsigned char) val->data.chvalue;
+			break;
+		case intvaluetype:
+		case tokenvaluetype:
+			out->intvalue = host_to_disk_int16((int16_t) val->data.intvalue);
+			break;
+		case pointvaluetype:
+			out->pointvalue.h = host_to_disk_int16((int16_t) val->data.pointvalue.h);
+			out->pointvalue.v = host_to_disk_int16((int16_t) val->data.pointvalue.v);
+			break;
+		case directionvaluetype:
+			out->dirvalue = host_to_disk_int32((int32_t) val->data.dirvalue);
+			break;
+		case datevaluetype:
+			out->datevalue = (uint32_t) host_to_disk_int32((int32_t) val->data.datevalue);
+			break;
+		case longvaluetype:
+		case ostypevaluetype:
+		case enumvaluetype:
+		case fixedvaluetype:
+			out->longvalue = host_to_disk_int32((int32_t) val->data.longvalue);
+			break;
+		case singlevaluetype: {
+			union { float f; int32_t i; } u;
+			u.f = val->data.singlevalue;
+			out->longvalue = host_to_disk_int32(u.i);
+			break;
+		}
+		default:
+			break;
+	}
+}
+
+static void diskvalue_to_value(const tydiskvaluedata *disk, tyvaluerecord *val) {
+	switch (val->valuetype) {
+		case novaluetype:
+			val->data.chvalue = disk->chvalue;
+			break;
+		case booleanvaluetype:
+			val->data.flvalue = (disk->chvalue != 0);
+			val->data.chvalue = disk->chvalue;
+			break;
+		case charvaluetype:
+			val->data.chvalue = disk->chvalue;
+			break;
+		case intvaluetype:
+		case tokenvaluetype:
+			val->data.intvalue = disk_to_host_int16(disk->intvalue);
+			break;
+		case pointvaluetype:
+			val->data.pointvalue.h = disk_to_host_int16(disk->pointvalue.h);
+			val->data.pointvalue.v = disk_to_host_int16(disk->pointvalue.v);
+			break;
+		case directionvaluetype:
+			val->data.dirvalue = disk_to_host_int32(disk->dirvalue);
+			break;
+		case datevaluetype:
+			val->data.datevalue = (unsigned long) disk_to_host_int32(disk->datevalue);
+			break;
+		case longvaluetype:
+		case ostypevaluetype:
+		case enumvaluetype:
+		case fixedvaluetype:
+			val->data.longvalue = disk_to_host_int32(disk->longvalue);
+			break;
+		case singlevaluetype: {
+			union { int32_t i; float f; } u;
+			u.i = disk_to_host_int32(disk->longvalue);
+			val->data.singlevalue = u.f;
+			break;
+		}
+		default:
+			break;
+	}
+}
 
 hdlhashtable currenthashtable = nil;
 
@@ -1865,9 +2107,15 @@ boolean hashnodeintable (hdlhashnode hnode, hdlhashtable htable) {
 	} /*hashnodeintable*/
 
 
-static boolean hashpackstring (handlestream *s, bigstring bs, long *ix) {
-	
-	*ix = (*s).pos;
+static boolean hashpackstring (handlestream *s, bigstring bs, int32_t *ix) {
+	if (ix == NULL)
+		return (false);
+	if ((*s).pos > INT32_MAX)
+		return (false);
+#ifdef DEBUG_SERIALIZER
+	printf("[packstring] pos=%ld str=%.*s\n", (*s).pos, (int)bs[0], bs+1);
+#endif
+	*ix = (int32_t)(*s).pos;
 
 	return (writehandlestream (s, (ptrvoid) bs, (long) stringsize (bs)));
 	} /*hashpackstring*/
@@ -1887,256 +2135,203 @@ static void hashunpackstring (Handle hget, bigstring bs, long ix) {
 	} /*hashunpackstring*/
 
 
-static boolean hashpackdata (handlestream *s, void *pdata, long ctbytes, long *ix) {
-	
-	unsigned long x = ctbytes;
-
-	*ix = (*s).pos; /*where the text item is stored*/
-	
-	memtodisklong (x);
-
-	if (!writehandlestream (s, &x, sizeof (x)))
+static boolean hashpackdata (handlestream *s, const void *pdata, long ctbytes, int32_t *ix) {
+	if (ix == NULL)
 		return (false);
-	
-	return (writehandlestream (s, pdata, ctbytes)); /*following the 4-byte length is the data*/
+	if ((*s).pos > INT32_MAX)
+		return (false);
+	if ((ctbytes < 0) || (ctbytes > INT32_MAX))
+		return (false);
+
+	*ix = (int32_t) (*s).pos; /*where the text item is stored*/
+
+	if (!write_disk_uint32 (s, (uint32_t) ctbytes))
+		return (false);
+
+	return (writehandlestream (s, (void *) pdata, ctbytes)); /*following the 4-byte length is the data*/
 	} /*hashpackdata*/
 			
 
-static boolean hashpackbinary (handlestream *s, Handle hbinary, long *ix) {
-	
-	unsigned long ctbytes;
-	
-	*ix = (*s).pos; /*where the text item is stored*/
-	
-	ctbytes = gethandlesize (hbinary); /*first 4 bytes holds the unsigned length*/
+static boolean hashpackbinary (handlestream *s, Handle hbinary, int32_t *ix) {
+	long ctbytes;
 
-	memtodisklong (ctbytes);
-
-	if (!writehandlestream (s, &ctbytes, sizeof (ctbytes)))
+	if (ix == NULL)
 		return (false);
-	
+	if ((*s).pos > INT32_MAX)
+		return (false);
+
+	*ix = (int32_t) (*s).pos; /*where the text item is stored*/
+
+	ctbytes = gethandlesize (hbinary); /*first 4 bytes holds the unsigned length*/
+	if ((ctbytes < 0) || (ctbytes > INT32_MAX))
+		return (false);
+
+	if (!write_disk_uint32 (s, (uint32_t) ctbytes))
+		return (false);
+
 	return (writehandlestreamhandle (s, hbinary)); /*following the 4-byte length is the packed text*/
 	} /*hashpackbinary*/
 
 
-static boolean hashunpackbinary (Handle hget, Handle *hbinary, long ix) {
-	
-	long ctbytes;
-	
-	if (!loadlongfromdiskhandle (hget, &ix, &ctbytes))
+static boolean hashunpackbinary (Handle hget, Handle *hbinary, int32_t ix) {
+	long lix = (long) ix;
+	uint32_t disklen = 0;
+
+	if (!read_disk_uint32 (hget, &lix, &disklen))
 		return (false);
 
-	return (loadfromhandletohandle (hget, &ix, ctbytes, false, hbinary));
+	return (loadfromhandletohandle (hget, &lix, (long) disklen, false, hbinary));
 	} /*hashunpackbinary*/
 
 
-static boolean hashpackscalar (handlestream *s, hdlhashnode hnode, long *ix) {
-	
-	/*
-	4.0.2b1 dmb: new code for disk-based scalars. for "binary" values above 
-	a certain size, we allocated a separate db block and pack the address into 
-	the table data structure instead of the data itself. see the comment in 
-	hashunpackscalar for a discussion of how this is handled at the other 
-	end (reading).
-	
-	5.1.5b9 dmb: use new hexternalpackdatabase for diskvals
-	*/
-	
+static boolean hashpackscalar (handlestream *s, hdlhashnode hnode, int32_t *ix) {
 	tydiskvaluerecord diskvalue;
 	Handle hbinary = (**hnode).val.data.binaryvalue;
-	unsigned long ctbytes;
+	long ctbytes;
 	boolean fl;
-	
-	*ix = (*s).pos; /*where the item is stored*/
-	
+
+	if (ix == NULL)
+		return (false);
+	if ((*s).pos > INT32_MAX)
+		return (false);
+
+	*ix = (int32_t) (*s).pos; /*where the item is stored*/
+
 	if ((**hnode).val.fldiskval) {	/*already a disk-based scalar. can be tricky*/
-		
 		if (flexternalmemorypack) {
-			
 			hdldatabaserecord hdb = hexternalpackdatabase;
-			
 			if (hdb)
 				dbpushdatabase (hdb);
-			
 			dbaddress diskadr = (**hnode).val.data.diskvalue;
 			fl = dbrefhandle (diskadr, &hbinary);
-			
 			if (hdb)
 				dbpopdatabase ();
-			
 			if (!fl)
 				return (false);
-			
 			fl = hashpackbinary (s, hbinary, ix);
-			
-			disposehandle (hbinary); /*we just loaded it to pack; don't change in-memory value*/
-			
+			disposehandle (hbinary);
 			return (fl);
-			}
-		
-		diskvalue.sizeflag = conditionallongswap(diskvalsizeflag);
-		
+		}
+
+		diskvalue.sizeflag = diskvalsizeflag;
 		diskvalue.adr = (**hnode).val.data.diskvalue;
-		
 		if (fldatabasesaveas) {
-		
 			if (!dbcopy (diskvalue.adr, &diskvalue.adr))
 				return (false);
-			}
-		
-		memtodisklong (diskvalue.adr);
-
-		return (writehandlestream (s, &diskvalue, sizeof (diskvalue)));
 		}
-	
-	ctbytes = gethandlesize (hbinary); /*first 4 bytes holds the unsigned length*/
-	
-	if ((ctbytes > maxinlinescalarsize) && (!flexternalmemorypack)) {	
-		
-		diskvalue.sizeflag = conditionallongswap(diskvalsizeflag);
-		
+		return (write_disk_scalar_reference (s, diskvalue.adr));
+	}
+
+	ctbytes = gethandlesize (hbinary);
+	if ((ctbytes < 0) || (ctbytes > INT32_MAX))
+		return (false);
+
+	if ((ctbytes > maxinlinescalarsize) && (!flexternalmemorypack)) {
+		diskvalue.sizeflag = diskvalsizeflag;
 		diskvalue.adr = nildbaddress;
-		
 		if (!dbassignhandle (hbinary, &diskvalue.adr))
 			return (false);
-		
-		if (!fldatabasesaveas) { /*must keep all data structures in sync*/
-		
+		if (!fldatabasesaveas) {
 			disposevaluerecord ((**hnode).val, true);
-			
 			(**hnode).val.fldiskval = true;
-			
 			(**hnode).val.data.diskvalue = diskvalue.adr;
-			}
-		
-		memtodisklong (diskvalue.adr);
-
-		return (writehandlestream (s, &diskvalue, sizeof (diskvalue)));
 		}
-	else {
+		return (write_disk_scalar_reference (s, diskvalue.adr));
+	}
 
-		memtodisklong (ctbytes);
+	if (!write_disk_uint32 (s, (uint32_t) ctbytes))
+		return (false);
 
-		if (!writehandlestream (s, &ctbytes, sizeof (ctbytes)))
-			return (false);
-		
-		return (writehandlestreamhandle (s, hbinary)); /*following the 4-byte length is the packed text*/
-		}
+	return (writehandlestreamhandle (s, hbinary)); /*following the 4-byte length is the packed text*/
 	} /*hashpackscalar*/
 
 
-static boolean hashunpackscalar (Handle hget, tyvaluerecord *val, long ix) {
-	
-	/*
-	4.0.2b1 dmb: like langunpackbinary, but this version handles scalar values  
-	that have had their own db block allocated instead of being packed inline 
-	in the table data. if the binary block length is diskvalsizeflag (-1), the  
-	next 4 bytes are the db address of the actual data.
-	
-	for such "disk-based" values, the valuerecord has the true tyvaluetype, but the 
-	fl.diskval flag is set, and the valuedata is a dbaddress. once someone actually 
-	refers to the data, it is loaded into memory*. to ensure full compatibility with 
-	all language functions, we must make the valuerecord look totally normal at that 
-	point, so there's no way that an indirect data structure can be used to preserve
-	the original dbaddress. so we must release the dbaddress and reallocate the value
-	when we save.
-	
-	if we added more indirection to the data structure -- more like tyexternalvalues -- 
-	it would no longer be so easy to confine these change to this file. there would be 
-	additional overhead in accessing large binary values. and for values that change
-	after being accessed, nothing would be gained; in both cases the original dbaddress
-	would be released and a new one allocated.
-	
-	it should be noted that if we did create an addition data structure for 
-	indirection, values referenced on a read-only basis would no longer have to be 
-	rewritten to disk each save. to do this, copyvaluerecord would have to convert 
-	diskvalues to normal scalars. other language functions that directly modify the value  
-	of a hashnode would require additional work, like s[3] = 'x' where s is a string. 
-	it's unclear what other ramifications would surface
-	
-	*see hashresolvevalue
-	
-	*/
-	
-	long ctbytes;
-	
-	if (!loadlongfromdiskhandle (hget, &ix, &ctbytes))
+static boolean hashunpackscalar (Handle hget, tyvaluerecord *val, int32_t ix) {
+	long lix = (long) ix;
+	uint32_t disklen = 0;
+
+	if (!read_disk_uint32 (hget, &lix, &disklen))
 		return (false);
-	
-	if (ctbytes == diskvalsizeflag) {
-		
+
+#ifdef DEBUG_SERIALIZER
+	printf("[unpackscalar] ix=%d disklen=0x%08x type=%d\n", ix, disklen, val->valuetype);
+#endif
+	if (disklen == (uint32_t) (int32_t) diskvalsizeflag) {
 		(*val).fldiskval = true;
-		
-		long diskadr = 0;
-		if (!loadlongfromdiskhandle (hget, &ix, &diskadr))
+		dbaddress diskadr = 0;
+		if (!read_disk_dbaddress (hget, &lix, &diskadr))
 			return (false);
-		
-		(*val).data.diskvalue = (dbaddress) diskadr;
+		(*val).data.diskvalue = diskadr;
 		return (true);
-		}
+	}
 	else {
-		return (loadfromhandletohandle (hget, &ix, ctbytes, false, &(*val).data.binaryvalue));
-		}
+		return (loadfromhandletohandle (hget, &lix, (long) disklen, false, &(*val).data.binaryvalue));
+	}
 	} /*hashunpackscalar*/
 
 
-static boolean hashpackexternal (handlestream *s, hdlexternalvariable h, long *ix, boolean *flnewdbaddress) {
-	
+static boolean hashpackexternal (handlestream *s, hdlexternalvariable h, int32_t *ix, boolean *flnewdbaddress) {
 	Handle hpacked;
-	unsigned long ctbytes;
+	long ctbytes;
 	boolean fl;
-	
-	*ix = (*s).pos; /*where the text item is stored*/
-	
+
+	if (ix == NULL)
+		return (false);
+	if ((*s).pos > INT32_MAX)
+		return (false);
+
+	*ix = (int32_t) (*s).pos; /*where the text item is stored*/
+
 	if (flexternalmemorypack)
 		fl = langexternalmemorypack (h, &hpacked, HNoNode);
 	else
 		fl = langexternalpack (h, &hpacked, flnewdbaddress);
-	
+
 	if (!fl)
 		return (false);
-	
-	ctbytes = gethandlesize (hpacked); /*first 4 bytes holds the unsigned length*/
-	
-	memtodisklong (ctbytes);
 
-	if (!writehandlestream (s, &ctbytes, sizeof (ctbytes)))
-		goto error;
-	
-	if (!writehandlestreamhandle (s, hpacked)) /*following the 4-byte length is the packed text*/
-		goto error;
-	
+	ctbytes = gethandlesize (hpacked);
+	if ((ctbytes < 0) || (ctbytes > INT32_MAX)) {
+		disposehandle (hpacked);
+		return (false);
+	}
+
+	uint32_t disk_length = (uint32_t) host_to_disk_int32 ((int32_t) ctbytes);
+
+	if (!writehandlestream (s, &disk_length, sizeof (disk_length))) {
+		disposehandle (hpacked);
+		return (false);
+	}
+
+	fl = writehandlestreamhandle (s, hpacked);
+
 	disposehandle (hpacked);
-	
-	return (true);
-	
-	error:
-	
-	disposehandle (hpacked);
-	
-	return (false);
+
+	return (fl);
 	} /*hashpackexternal*/
 
 
-static boolean hashunpackexternal (Handle hget, boolean flmemory, hdlexternalhandle *h, long ix) {
-	
-	long ctbytes;
+static boolean hashunpackexternal (Handle hget, boolean flmemory, hdlexternalhandle *h, int32_t ix) {
 	Handle hpacked;
 	boolean fl;
-	
-	if (!loadlongfromdiskhandle (hget, &ix, &ctbytes))
+	long lix = (long) ix;
+	uint32_t disk_length = 0;
+
+	if (!read_disk_uint32 (hget, &lix, &disk_length))
 		return (false);
-	
-	if (!loadfromhandletohandle (hget, &ix, ctbytes, true, &hpacked)) 
+
+	if (disk_length > (uint32_t) LONG_MAX)
 		return (false);
-	
-	if (flmemory)
-		fl = langexternalmemoryunpack (hpacked, h);
-	else
-		fl = langexternalunpack (hpacked, h);
-	
+
+	long ctbytes = (long) disk_length;
+
+	if (!loadfromhandletohandle (hget, &lix, ctbytes, true, &hpacked))
+		return (false);
+
+	fl = flmemory ? langexternalmemoryunpack (hpacked, h) : langexternalunpack (hpacked, h);
+
 	disposehandle (hpacked);
-	
+
 	return (fl);
 	} /*hashunpackexternal*/
 
@@ -2181,159 +2376,166 @@ typedef struct typackinforecord {
 
 
 static boolean hashpackvisit (bigstring bsname, hdlhashnode hnode, tyvaluerecord val, ptrvoid refcon) {
-	
+
 	/*
 	return true to terminate the search, false to continue.
-	
+
 	4/8/93 dmb: added support for code values
-	
+
 	2.1b2 dmb: filespecs must be saved as aliases since volume reference 
 	numbers aren't persistent across boots
-	
+
 	3.0.2 dmb: power pc code for doubles
-	
+
 	3.0.2 dmb: fixed memory leak when packing filespecs and code
-	
+
 	3.0.4 dmb: must set rec.data.longvalue for PPC doublevaluetype! fixes db corruption.
 
 	5.1b21 dmb: don't let unresolvable address kill the save
-	
+
 	5.1.3 dmb: smarter error reporting
-	
+
 	6.2a15 AR: added flmustsave parameter
 	*/
-	
+
 	typackinforecord *lpi = (typackinforecord *) refcon;
 	tydisksymbolrecord rec;
 	bigstring bsvalue;
-	long size;
 	Handle hpacked;
 	langerrormessagecallback savecallback;
 	ptrvoid saverefcon;
 	bigstring bspackerror;
 	boolean fl;
-	
+	int32_t name_index = 0;
+	int32_t data_index = 0;
+
 	assert (sizeof (tydisksymbolrecord) == 10L);
-	
+
 	/*
 	if (stringlength (bsname) == 0)
 		Debugger ();
-	
+
 	ccmsg (bsname, false);
 	*/
-	
+
 	if ((**hnode).fldontsave && !flexternalmemorypack) /*keep traversing the table*/
 		return (false);
-	
+
 	langtraperrors (bspackerror, &savecallback, &saverefcon);
-	
+
 	clearbytes (&rec, sizeof (rec));
-	
-	if (!hashpackstring (&lpi->s2, bsname, &rec.ixkey))
+
+	if (!hashpackstring (&lpi->s2, bsname, &name_index))
 		goto error;
-	
-	memtodisklong (rec.ixkey);
-	
-//	rec.valuetype = conditionalenumswap(val.valuetype);
+
+	rec.ixkey = host_to_disk_int32 (name_index);
+
+	/*	rec.valuetype = conditionalenumswap(val.valuetype); */
 	rec.valuetype = val.valuetype;
-	
-	rec.data = val.data;
-	
-	size = sizeof (long); // default size of value data
-	
+
 	switch (val.valuetype) {
-		
-		case oldstringvaluetype:
+		case oldstringvaluetype: {
 			copyheapstring ((hdlstring) val.data.stringvalue, bsvalue);
-			
-			if (!hashpackstring (&lpi->s2, bsvalue, &rec.data.longvalue))
+
+			data_index = 0;
+			if (!hashpackstring (&lpi->s2, bsvalue, &data_index))
 				goto error;
-			
+
+			rec.data.longvalue = host_to_disk_int32 (data_index);
 			break;
-		
-		case addressvaluetype:
+		}
+
+		case addressvaluetype: {
 			disablelangerror ();
 
 			fl = getaddresspath (val, bsvalue);
-			
+
 			enablelangerror ();
-			
-			if (!fl) // on error, bsvalue should at least be item's name; don't break the save
+
+			if (!fl) /* on error, bsvalue should at least be item's name; don't break the save */
 				;
-			
-			if (!hashpackstring (&lpi->s2, bsvalue, &rec.data.longvalue))
+
+			data_index = 0;
+			if (!hashpackstring (&lpi->s2, bsvalue, &data_index))
 				goto error;
-			
+
+			rec.data.longvalue = host_to_disk_int32 (data_index);
 			break;
-		
+		}
+
 	#ifdef oldMACVERSION	
 		case filespecvaluetype: { /*need to save as a (minimal) alias*/
-			
+
 			register hdlfilespec x = val.data.filespecvalue;
 			tyfilespec fs = **x;
 			AliasHandle halias = nil;
-			
+
 			disablelangerror ();
-			
+
 			if (filespectoalias (&fs, true, &halias)) {
-				
+
 				rec.version = 1; /*all versions were zero until now*/
-				
+
 				x = (hdlfilespec) halias;
-				}
-				
-			enablelangerror ();
-			
-			if (!hashpackbinary (&lpi->s2, (Handle) x, &rec.data.longvalue))
-				goto error;
-			
-			disposehandle ((Handle) halias); /*3.0.2*/
-			
-			break;
 			}
+			enablelangerror ();
+
+			data_index = 0;
+			if (!hashpackbinary (&lpi->s2, (Handle) x, &data_index))
+				goto error;
+
+			rec.data.longvalue = host_to_disk_int32 (data_index);
+
+			disposehandle ((Handle) halias); /*3.0.2*/
+
+			break;
+		}
 	#endif
-	
+
 		case rectvaluetype: {
 			diskrect rdisk;
-			
+
 			recttodiskrect (*val.data.rectvalue, &rdisk);
-			
-			if (!hashpackdata (&lpi->s2, &rdisk, sizeof (rdisk), &rec.data.longvalue))
+
+			data_index = 0;
+			if (!hashpackdata (&lpi->s2, &rdisk, sizeof (rdisk), &data_index))
 				goto error;
-			
+
+			rec.data.longvalue = host_to_disk_int32 (data_index);
 			break;
-			}
-		
+		}
+
 		case rgbvaluetype: {
 			diskrgb rgbdisk;
-			
+
 			rgbtodiskrgb (*val.data.rgbvalue, &rgbdisk);
-			
-			if (!hashpackdata (&lpi->s2, &rgbdisk, sizeof (rgbdisk), &rec.data.longvalue))
+
+			data_index = 0;
+			if (!hashpackdata (&lpi->s2, &rgbdisk, sizeof (rgbdisk), &data_index))
 				goto error;
-			
+
+			rec.data.longvalue = host_to_disk_int32 (data_index);
 			break;
-			}
-		
-		#if noextended
-		
-			case doublevaluetype: {
-				double x = **val.data.doublevalue;
-				extended80 x80;
-				
-					dtox80 (&x, &x80);
-				
-				if (!hashpackdata (&lpi->s2, &x80, sizeof (x80), &rec.data.longvalue))
-					goto error;
-				
-				break;
-				}
-		#else
-		
-			case doublevaluetype:
-			
-		#endif
-		
+		}
+
+	#if noextended
+		case doublevaluetype: {
+			double x = **val.data.doublevalue;
+			extended80 x80;
+
+				dtox80 (&x, &x80);
+
+			data_index = 0;
+			if (!hashpackdata (&lpi->s2, &x80, sizeof (x80), &data_index))
+				goto error;
+
+			rec.data.longvalue = host_to_disk_int32 (data_index);
+			break;
+		}
+	#else
+		case doublevaluetype:
+	#endif
+
 	#ifdef oldWIN95VERSION	
 		case filespecvaluetype:
 		case aliasvaluetype:
@@ -2343,132 +2545,111 @@ static boolean hashpackvisit (bigstring bsname, hdlhashnode hnode, tyvaluerecord
 		case patternvaluetype:
 		case objspecvaluetype:
 		case binaryvaluetype:
-			if (!hashpackscalar (&lpi->s2, hnode, &rec.data.longvalue))
+			data_index = 0;
+			if (!hashpackscalar (&lpi->s2, hnode, &data_index))
 				goto error;
-				
+
+			rec.data.longvalue = host_to_disk_int32 (data_index);
 			break;
-		
+
 		case listvaluetype:
 		case recordvaluetype:
 			if (!oppacklist (val.data.listvalue, &hpacked))
 				goto error;
-			
-			if (!hashpackbinary (&lpi->s2, hpacked, &rec.data.longvalue))
+
+			data_index = 0;
+			if (!hashpackbinary (&lpi->s2, hpacked, &data_index))
 				goto error;
-			
+
 			rec.version = 2;
-			
+
 			disposehandle (hpacked);
 
+			rec.data.longvalue = host_to_disk_int32 (data_index);
 			break;
 
 		case filespecvaluetype:
 		case aliasvaluetype:
 			if (!langpackfileval (&val, &hpacked))
 				goto error;
-			
-			if (!hashpackbinary (&lpi->s2, hpacked, &rec.data.longvalue))
+
+			data_index = 0;
+			if (!hashpackbinary (&lpi->s2, hpacked, &data_index))
 				goto error;
-			
+
 			rec.version = 2;
-			
+
 			disposehandle (hpacked);
-			
+
+			rec.data.longvalue = host_to_disk_int32 (data_index);
 			break;
 
 		case codevaluetype:
 			if (!langpacktree (val.data.codevalue, &hpacked))
 				goto error;
-			
-			if (!hashpackbinary (&lpi->s2, hpacked, &rec.data.longvalue))
+
+			data_index = 0;
+			if (!hashpackbinary (&lpi->s2, hpacked, &data_index))
 				goto error;
-			
+
 			disposehandle (hpacked); /*3.0.2*/
-			
+
+			rec.data.longvalue = host_to_disk_int32 (data_index);
 			break;
-		
+
 		case externalvaluetype: {
 			boolean flnewdbaddress = false;
-			
-			if (!hashpackexternal (&lpi->s2, (hdlexternalvariable) val.data.externalvalue, &rec.data.longvalue, &flnewdbaddress))
+
+			data_index = 0;
+			if (!hashpackexternal (&lpi->s2, (hdlexternalvariable) val.data.externalvalue, &data_index, &flnewdbaddress))
 				goto error;
-			
+
 			lpi->flmustsave = lpi->flmustsave || flnewdbaddress;
-				
+
+			rec.data.longvalue = host_to_disk_int32 (data_index);
 			break;
-			}
-			
+		}
+
 		case novaluetype:
 		case booleanvaluetype:
 		case charvaluetype:
-			size = sizeof (char);
-			
-			break;
-		
 		case intvaluetype:
 		case tokenvaluetype:
-			size = sizeof (short);
-			
-			break;
-		
 		case pointvaluetype:
-			memtodiskshort (val.data.pointvalue.h);
-			memtodiskshort (val.data.pointvalue.v);
-			
-			size = 0;
-			
-			break;
-			
 		case longvaluetype:
 		case ostypevaluetype:
 		case enumvaluetype:
 		case fixedvaluetype:
 		case singlevaluetype:
-			size = sizeof (long);
-			
-			break;
-		
 		case directionvaluetype:
-			size = sizeof (rec.data.dirvalue); // not necessarily a tydirection
-			
+		case datevaluetype:
+			diskvalue_from_value (&val, &rec.data);
 			break;
-		
-		case datevaluetype:	// *** needs xplat format
-			size = sizeof (long);
-			
-			break;
-		
+
 		default:
 			langerror (cantpackerror);
-			
 			goto error;
-		} /*switch*/
-	
-	if (size == sizeof (long))
-		memtodisklong (rec.data.longvalue);
-	
-	if (size == sizeof (short))
-		memtodiskshort (rec.data.intvalue);
-	
-	if (!writehandlestream (&lpi->s1, &rec, sizeof (rec))) 
+	}
+
+	if (!writehandlestream (&lpi->s1, &rec, sizeof (rec)))
 		goto error;
-	
+
 	languntraperrors (savecallback, saverefcon, false);
-	
-	return (false); /*keep going, kind of backwardsÉ*/
-	
+
+	return (false); /*keep going, kind of backwards*/
+
 	error:
-	
+
 	disposehandlestream (&lpi->s1); 
-	
+
 	disposehandlestream (&lpi->s2); 
-	
+
 	languntraperrors (savecallback, saverefcon, true);
-	
+
 	hashreporterror (hashpackerror, bsname, bspackerror);
-	
+
 	return (true); /*stop now, this is the error return*/
-	} /*hashpackvisit*/
+}
 
 
 boolean hashpacktable (hdlhashtable htable, boolean flmemory, Handle *hpackedtable, boolean *flmustsave) {
@@ -2496,17 +2677,19 @@ boolean hashpacktable (hdlhashtable htable, boolean flmemory, Handle *hpackedtab
 	
 	clearbytes (&header, sizeof (header));
 	
-	header.version = conditionalshortswap(tablediskversion);
+	header.version = host_to_disk_int16((int16_t)tablediskversion);
 	
-	header.timecreated = conditionallongswap((**htable).timecreated);
+	header.timecreated = (uint32_t) host_to_disk_int32((int32_t) (**htable).timecreated);
 	
-	header.timelastsave = conditionallongswap((**htable).timelastsave);
+	header.timelastsave = (uint32_t) host_to_disk_int32((int32_t) (**htable).timelastsave);
 	
-	header.sortorder = conditionalshortswap((**htable).sortorder);
+	header.sortorder = host_to_disk_int16((int16_t) (**htable).sortorder);
 	
 	#ifdef xmlfeatures
 		if ((**htable).flxml)
-			header.flags |= flxml;
+			header.flags = host_to_disk_int32(flxml);
+		else
+			header.flags = 0;
 	#endif
 	
 	clearbytes (&packrec, sizeof (packrec));
@@ -2611,15 +2794,15 @@ boolean hashunpacktable (Handle hpackedtable, boolean flmemory, hdlhashtable hta
 	
 	loadfromhandle (hrecords, &ix, sizeof (tydisktablerecord), &header);
 	
-	header.version = conditionalshortswap(header.version);
+	header.version = disk_to_host_int16(header.version);
 	
 	if (header.version > 0) { // a header has been written
 		
-		(**htable).sortorder = conditionalshortswap(header.sortorder);
+		(**htable).sortorder = (short) disk_to_host_int16(header.sortorder);
 		
-		(**htable).timecreated = conditionallongswap(header.timecreated);
+		(**htable).timecreated = (unsigned long) disk_to_host_int32((int32_t) header.timecreated);
 		
-		(**htable).timelastsave = conditionallongswap(header.timelastsave);
+		(**htable).timelastsave = (unsigned long) disk_to_host_int32((int32_t) header.timelastsave);
 		
 		if (header.version == 2) //5.0.1: forgot to initialize flags
 			header.flags = 0;
@@ -2638,6 +2821,8 @@ boolean hashunpacktable (Handle hpackedtable, boolean flmemory, hdlhashtable hta
 	
 	fl = false; /*default return value*/
 	
+	header.flags = disk_to_host_int32(header.flags);
+	
 	#ifdef xmlfeatures
 		(**htable).flxml = (header.flags & flxml) != 0;
 	#endif
@@ -2649,361 +2834,344 @@ boolean hashunpacktable (Handle hpackedtable, boolean flmemory, hdlhashtable hta
 	langtraperrors (bsunpackerror, &savecallback, &saverefcon); // hook errors so we can embellish
 	
 	while (true) {
-		
-		tydisksymbolrecord rec;
-		tyvaluerecord val;
-		
-		assert (sizeof (tydisksymbolrecord) == sizeof (tyOLD42disksymbolrecord));
-		
-			
-			if (!loadfromhandle (hrecords, &ix, sizeof (rec), &rec)) /*out of records*/
-				break;
-		
-		disktomemlong (rec.ixkey);
-//		disktomemshort (rec.valuetype);
-//		disktomemshort (rec.version);
-		
-		if (header.version < 2) // shift down from old bitfield position
-			rec.version >>= 4;
+			tydisksymbolrecord rec;
+			tyvaluerecord val;
 
-		ixstrings = conditionallongswap  (rec.data.longvalue);
-		
-		hashunpackstring (hstrings, bsname, rec.ixkey);
-		
-		if (isemptystring (bsname)) /*skip junk*/
-			continue;
-		
-		initvalue (&val, (tyvaluetype) rec.valuetype);
-		
-		
-		switch (val.valuetype) {
-			
-			case oldstringvaluetype:
-				hashunpackstring (hstrings, bsvalue, ixstrings);
-				
-				if (!newheapvalue (bsvalue + 1, (long) stringlength (bsvalue), stringvaluetype, &val))
-					goto L1;
-				
-				exemptfromtmpstack (&val);
-				
-				break;
-			
-			case addressvaluetype:
-				hashunpackstring (hstrings, bsvalue, ixstrings);
-				
-				if (!hashinsertaddress (bsname, bsvalue))
-					goto L1;
-				
-				setemptystring (bsname); /*exception -- we've already inserted it*/
-				
-				break;
-			
-			case olddoublevaluetype: {
-				Handle hextended;
-				
-				if (!hashunpackbinary (hstrings, &hextended, ixstrings))
-					goto L1;
-				
-				pullfromhandle (hextended, 2, 2, nil); /*universal -> SANE*/
-				
-				val.valuetype = doublevaluetype;
-				
-				val.data.binaryvalue = hextended;
-				
-				break;
+			assert (sizeof (tydisksymbolrecord) == sizeof (tyOLD42disksymbolrecord));
+
+				if (!loadfromhandle (hrecords, &ix, sizeof (rec), &rec)) /*out of records*/
+					break;
+
+			int32_t name_index = disk_to_host_int32 (rec.ixkey);
+//			disktomemshort (rec.valuetype);
+//			disktomemshort (rec.version);
+
+			if (header.version < 2) // shift down from old bitfield position
+				rec.version >>= 4;
+
+			ixstrings = disk_to_host_int32 (rec.data.longvalue);
+
+			hashunpackstring (hstrings, bsname, name_index);
+
+			if (isemptystring (bsname)) /*skip junk*/
+				continue;
+
+			initvalue (&val, (tyvaluetype) rec.valuetype);
+#ifdef DEBUG_SERIALIZER
+	printf("[unpack] name=%.*s type=%d version=%u raw_ix=0x%08x ix=%ld\n",
+		(int)bsname[0], bsname+1, val.valuetype, rec.version,
+		(unsigned int) rec.data.longvalue, ixstrings);
+#endif
+
+			switch (val.valuetype) {
+				case oldstringvaluetype:
+					hashunpackstring (hstrings, bsvalue, ixstrings);
+
+					if (!newheapvalue (bsvalue + 1, (long) stringlength (bsvalue), stringvaluetype, &val))
+						goto L1;
+
+					exemptfromtmpstack (&val);
+
+					break;
+
+				case addressvaluetype:
+					hashunpackstring (hstrings, bsvalue, ixstrings);
+
+					if (!hashinsertaddress (bsname, bsvalue))
+						goto L1;
+
+					setemptystring (bsname); /*exception -- we've already inserted it*/
+
+					break;
+
+				case olddoublevaluetype: {
+					Handle hextended;
+
+					if (!hashunpackbinary (hstrings, &hextended, ixstrings))
+						goto L1;
+
+					pullfromhandle (hextended, 2, 2, nil); /*universal -> SANE*/
+
+					val.valuetype = doublevaluetype;
+
+					val.data.binaryvalue = hextended;
+
+					break;
 				}
-			
-		#ifdef oldMACVERSION
-			case filespecvaluetype: { /*need to save as a (minimal) alias*/
-				tyfilespec fs;
-				boolean flresolved;
-				Handle hbinary;
-				
-				if (!hashunpackbinary (hstrings, &hbinary, ixstrings))
-					goto L1;
-				
-				if (rec.version > 0) { /*filespec is stored as an alias*/
-					
-					disablelangerror ();
-					
-					flresolved = aliastofilespec ((AliasHandle) hbinary, &fs);
-					
-					enablelangerror ();
-					
-					if (flresolved) {
-						
-						if (!sethandlecontents (&fs, filespecsize (fs), hbinary))
-							goto L1;
+
+	#ifdef oldMACVERSION
+				case filespecvaluetype: { /*need to save as a (minimal) alias*/
+					tyfilespec fs;
+					boolean flresolved;
+					Handle hbinary;
+
+					if (!hashunpackbinary (hstrings, &hbinary, ixstrings))
+						goto L1;
+
+					if (rec.version > 0) { /*filespec is stored as an alias*/
+
+						disablelangerror ();
+
+						flresolved = aliastofilespec ((AliasHandle) hbinary, &fs);
+
+						enablelangerror ();
+
+						if (flresolved) {
+
+							if (!sethandlecontents (&fs, filespecsize (fs), hbinary))
+								goto L1;
 						}
-					else
-						val.valuetype = aliasvaluetype;
+						else
+							val.valuetype = aliasvaluetype;
 					}
-				
-				val.data.binaryvalue = hbinary;
-				
-				break;
+
+					val.data.binaryvalue = hbinary;
+
+					break;
 				}
-			#endif
-			
-			case rectvaluetype: {
-				diskrect **rdisk;
-				Rect r;
-				 
-				if (!hashunpackbinary (hstrings, (Handle *) &rdisk, ixstrings))
-					goto L1;
-				
-				diskrecttorect (*rdisk, &r);
-				
-				disposehandle ((Handle) rdisk);
-				
-				if (!newheapvalue (&r, sizeof (r), rectvaluetype, &val))
-					goto L1;
-				
-				exemptfromtmpstack (&val);
-				
-				break;
+	#endif
+
+				case rectvaluetype: {
+					diskrect **rdisk;
+					Rect r;
+					 
+					if (!hashunpackbinary (hstrings, (Handle *) &rdisk, ixstrings))
+						goto L1;
+
+					diskrecttorect (*rdisk, &r);
+
+					disposehandle ((Handle) rdisk);
+
+					if (!newheapvalue (&r, sizeof (r), rectvaluetype, &val))
+						goto L1;
+
+					exemptfromtmpstack (&val);
+
+					break;
 				}
-			
-			case rgbvaluetype: { /* 2006-04-20 sethdill & aradke */
-				diskrgb **rgbdisk;
-				RGBColor rgb;
-				 
-				if (!hashunpackbinary (hstrings, (Handle *) &rgbdisk, ixstrings))
-					goto L1;
-				
-				diskrgbtorgb (*rgbdisk, &rgb);
-				
-				disposehandle ((Handle) rgbdisk);
-				
-				if (!newheapvalue (&rgb, sizeof (rgb), rgbvaluetype, &val))
-					goto L1;
-				
-				exemptfromtmpstack (&val);
-				
-				break;
+
+				case rgbvaluetype: { /* 2006-04-20 sethdill & aradke */
+					diskrgb **rgbdisk;
+					RGBColor rgb;
+					 
+					if (!hashunpackbinary (hstrings, (Handle *) &rgbdisk, ixstrings))
+						goto L1;
+
+					diskrgbtorgb (*rgbdisk, &rgb);
+
+					disposehandle ((Handle) rgbdisk);
+
+					if (!newheapvalue (&rgb, sizeof (rgb), rgbvaluetype, &val))
+						goto L1;
+
+					exemptfromtmpstack (&val);
+
+					break;
 				}
-				
-		#if noextended
-		
-			case doublevaluetype: {
-				double x;
-				extended80 **x80;
+
+	#if noextended
+				case doublevaluetype: {
+					double x;
+					extended80 **x80;
 				 
-				if (!hashunpackbinary (hstrings, (Handle *) &x80, ixstrings))
-					goto L1;
-				
+					if (!hashunpackbinary (hstrings, (Handle *) &x80, ixstrings))
+						goto L1;
+
 					x = x80tod (*x80);
 				 
-				disposehandle ((Handle) x80);	// 1/22/97 dmb: this was a leak!
-				
-				if (!setdoublevalue (x, &val))
-					goto L1;
-				
-				exemptfromtmpstack (&val);
-			
-				break;
+					disposehandle ((Handle) x80);	// 1/22/97 dmb: this was a leak!
+
+					if (!setdoublevalue (x, &val))
+						goto L1;
+
+					exemptfromtmpstack (&val);
+
+					break;
 				}
-		#else
-		
-			case doublevaluetype:
-			
-		#endif
-		
-		#if oldWIN95VERSION	
-			case filespecvaluetype: // unpack normally
-			case aliasvaluetype:	// *** needs xplat format
-		#endif
-			case stringvaluetype:
-			case passwordvaluetype:
-			case patternvaluetype:
-			case binaryvaluetype: {
-				if (!hashunpackscalar (hstrings, &val, ixstrings))
-					goto L1;
-				
-				break;
+	#else
+				case doublevaluetype:
+	#endif
+
+	#if oldWIN95VERSION
+				case filespecvaluetype: // unpack normally
+				case aliasvaluetype:    // *** needs xplat format
+	#endif
+				case stringvaluetype:
+				case passwordvaluetype:
+				case patternvaluetype:
+				case binaryvaluetype: {
+					if (!hashunpackscalar (hstrings, &val, ixstrings))
+						goto L1;
+
+					break;
 				}
-			
-			case listvaluetype:
-			case recordvaluetype:
-				if (rec.version < 2) {
+
+				case listvaluetype:
+				case recordvaluetype:
+					if (rec.version < 2) {
 						AEDesc aelist;
-						
+
 						if (!hashunpackscalar (hstrings, &val, ixstrings))
 							goto L1;
-						
+
 						if (val.fldiskval) { //yikes! we have to resolve before converting
 							Handle hbinary;
-							
+
 							if (!dbrefhandle (val.data.diskvalue, &hbinary))
 								goto L1;
-							
+
 							dbpushreleasestack (val.data.diskvalue, val.valuetype);
-							
-							fldirty = true; //table needs to be rewritten
-							
+
 							val.data.binaryvalue = hbinary;
-							
+
 							val.fldiskval = false;
-							}
-						
-							
-							{
-							DescType typecode = typeAEList;
-							
-							if (val.valuetype == recordvaluetype)
-								typecode = typeAERecord;
-						
-							newdescwithhandle (&aelist, typecode, val.data.binaryvalue);
-							}
-						
-						
+						}
+
+						{
+						DescType typecode = typeAEList;
+
+						if (val.valuetype == recordvaluetype)
+							typecode = typeAERecord;
+
+						newdescwithhandle (&aelist, typecode, val.data.binaryvalue);
+						}
+
 						if (!langipcconvertaelist (&aelist, &val))
 							goto L1;
-						
+
 						AEDisposeDesc (&aelist);
-						
+
 						exemptfromtmpstack (&val);
-					
-					
-					break;
 					}
-				
-				if (!hashunpackbinary (hstrings, &hpacked, ixstrings))
-					goto L1;
-				
-				if (!opunpacklist (hpacked, &val.data.listvalue))
-					goto L1;
-				
-				break;
+					else {
+						if (!hashunpackbinary (hstrings, &hpacked, ixstrings))
+							goto L1;
 
-			case filespecvaluetype:
-			case aliasvaluetype:
+						if (!opunpacklist (hpacked, &val.data.listvalue))
+							goto L1;
+					}
 
-				if (rec.version < 2) {
+					break;
+
+				case filespecvaluetype:
+				case aliasvaluetype:
+
+					if (rec.version < 2) {
 						tyfilespec fs;
 						boolean flresolved;
 						Handle hbinary;
-						
+
 						if (!hashunpackbinary (hstrings, &hbinary, ixstrings))
 							goto L1;
-						
+
 						if (rec.version > 0) { /*filespec is stored as an alias*/
-							
+
 							disablelangerror ();
-							
+
 							flresolved = aliastofilespec ((AliasHandle) hbinary, &fs);
-							
+
 							enablelangerror ();
-							
+
 							if (flresolved) {
-								
+
 								if (!sethandlecontents (&fs, filespecsize (fs), hbinary))
 									goto L1;
-								}
+							}
 							else
 								val.valuetype = aliasvaluetype;
-							}
-						
+						}
+
 						val.data.binaryvalue = hbinary;
-						
+
 						break;
-					
 					}
-				
-				if (!hashunpackbinary (hstrings, &hpacked, ixstrings))
-					goto L1;
-				
-				if (!langunpackfileval (hpacked, &val))
-					goto L1;
-				
-				break;
 
-			case objspecvaluetype: {
-				Handle hobjspec;
-				
-				if (!hashunpackbinary (hstrings, &hobjspec, ixstrings))
-					goto L1;
-				
-				if (gethandlesize (hobjspec) == 0) {
-					
-					disposehandle (hobjspec);
-					
-					hobjspec = nil;
+					if (!hashunpackbinary (hstrings, &hpacked, ixstrings))
+						goto L1;
+
+					if (!langunpackfileval (hpacked, &val))
+						goto L1;
+
+					break;
+
+				case objspecvaluetype: {
+					Handle hobjspec;
+
+					if (!hashunpackbinary (hstrings, &hobjspec, ixstrings))
+						goto L1;
+
+					if (gethandlesize (hobjspec) == 0) {
+
+						disposehandle (hobjspec);
+
+						hobjspec = nil;
 					}
-				
-				val.data.objspecvalue = hobjspec;
-				
-				break;
-				}
-			
-			case codevaluetype:
-				if (!hashunpackbinary (hstrings, &hpacked, ixstrings))
-					goto L1;
-				
-				if (!langunpacktree (hpacked, &val.data.codevalue))
-					goto L1;
-				
-				break;
-			
-			case externalvaluetype: {
-				hdlexternalhandle h;
-				
-				if (!hashunpackexternal (hstrings, flmemory, &h, ixstrings))
-					goto L1;
-				
-				val.data.externalvalue = (Handle) h;
-				
-				break;
-				}
-				
-			case directionvaluetype:
 
-			case booleanvaluetype:
-				if (header.version < 2)
-					rec.data.chvalue = (byte) rec.data.intvalue;
-				// fall through
-			case novaluetype:
-			case charvaluetype:
-				val.data.chvalue = rec.data.chvalue;
-				
-				break;
-			
-			case intvaluetype:
-			case tokenvaluetype:
-				val.data.intvalue = rec.data.intvalue;
-				
-				disktomemshort (val.data.intvalue); // 5.0b9 dmb: was flipping rec.data
-				break;
-			
-			case pointvaluetype:
-				val.data.pointvalue = rec.data.pointvalue;
-				
-				disktomemshort (val.data.pointvalue.h);
-				disktomemshort (val.data.pointvalue.v);
-				
-				break;
-				
-			case longvaluetype:
-			case ostypevaluetype:
-			case enumvaluetype:
-			case fixedvaluetype:
-			case singlevaluetype:
-			case datevaluetype:
-				val.data.longvalue = rec.data.longvalue;
-				
-				disktomemlong (val.data.longvalue);
-				
-				break;
-			
-			default:
-				val.data = rec.data;
-				
-				break;
-			} /*switch*/
-		
+					val.data.objspecvalue = hobjspec;
+
+					break;
+				}
+
+				case codevaluetype:
+					if (!hashunpackbinary (hstrings, &hpacked, ixstrings))
+						goto L1;
+
+					if (!langunpacktree (hpacked, &val.data.codevalue))
+						goto L1;
+
+					break;
+
+				case externalvaluetype: {
+					hdlexternalhandle h;
+
+					if (!hashunpackexternal (hstrings, flmemory, &h, ixstrings))
+						goto L1;
+
+					val.data.externalvalue = (Handle) h;
+
+					break;
+				}
+
+				case booleanvaluetype:
+					if (header.version < 2) {
+						int16_t rawbool = disk_to_host_int16 (rec.data.intvalue);
+						val.data.flvalue = (rawbool != 0);
+						val.data.chvalue = (unsigned char) (rawbool != 0);
+					}
+					else
+						diskvalue_to_value (&rec.data, &val);
+
+					break;
+
+				case novaluetype:
+				case charvaluetype:
+				case intvaluetype:
+				case tokenvaluetype:
+				case pointvaluetype:
+				case directionvaluetype:
+				case longvaluetype:
+				case ostypevaluetype:
+				case enumvaluetype:
+				case fixedvaluetype:
+				case singlevaluetype:
+				case datevaluetype:
+					diskvalue_to_value (&rec.data, &val);
+
+					break;
+
+				default:
+					diskvalue_to_value (&rec.data, &val);
+
+					break;
+			}
+
 		if (!isemptystring (bsname)) { /*needs to be inserted*/
-			
-			if (!hashinsert (bsname, val))
+			boolean ok = hashinsert (bsname, val);
+#ifdef DEBUG_SERIALIZER
+			if (!ok)
+				printf("[unpack] hashinsert failed name=%.*s type=%d\n", (int)bsname[0], bsname+1, val.valuetype);
+#endif
+			if (!ok)
 				goto L1;
 			}
 		
@@ -3016,9 +3184,12 @@ boolean hashunpacktable (Handle hpackedtable, boolean flmemory, hdlhashtable hta
 		} /*for*/
 		
 	fl = true; /*loop terminated, we will return true*/
-	
+
 	L1:
 	
+#ifdef DEBUG_SERIALIZER
+	printf("[unpack] L1 triggered name=%.*s\n", (int)bsname[0], bsname+1);
+#endif
 	languntraperrors (savecallback, saverefcon, !fl);
 	
 	sethashtable (prevhashtable);
@@ -3413,6 +3584,8 @@ boolean hashgettypestring (tyvaluerecord val, bigstring bstype) {
 
 boolean hashgetsizestring (const tyvaluerecord *val, bigstring bssize) {
 	
+	long size = 0;
+	
 	/*
 	the size string tells you how much storage is allocated for the value.  if it
 	returns non-empty, you might want to display it along with the type string.
@@ -3420,8 +3593,6 @@ boolean hashgetsizestring (const tyvaluerecord *val, bigstring bssize) {
 	we only return non-empty size strings for types where size is interesting.  not
 	for chars, ints, longs, booleans, dates, etc.
 	*/
-	
-	long size;
 	
 	switch ((*val).valuetype) {
 		
@@ -3480,8 +3651,3 @@ boolean hashvaltostrings (tyvaluerecord val, bigstring bstype, bigstring bsvalue
 	
 	return (true);
 	} /*hashvaltostrings*/
-
-
-
-
-

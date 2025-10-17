@@ -11,6 +11,10 @@
 #include "opinternal.h"
 #include "opxml.h"
 #include "ops.h"
+#include "db_format.h"
+
+/* Enable to dump detailed pack/unpack debugging. */
+/* #define DEBUG_SERIALIZER 1 */
 
 static void setup_bigstring_from_c(const char *cstr, bigstring out) {
     copyctopstring(cstr, out);
@@ -51,53 +55,60 @@ static Handle make_text_handle(const char *cstr) {
 
 static void collect_outline_text(hdloutlinerecord ho, char *out, size_t out_sz) {
     out[0] = '\0';
-    if (!ho || out_sz == 0) return;
+    if (!ho || out_sz == 0)
+        return;
     hdlheadrecord h = (**ho).hsummit;
     for (int i = 0; i < 16 && h; ++i) { /* limit to avoid infinite loops */
         bigstring bs;
         opgetheadstring(h, bs);
         char tmp[256];
         copyptocstring(bs, tmp);
-        if (i > 0) strncat(out, "|", out_sz - strlen(out) - 1);
+        if (i > 0)
+            strncat(out, "|", out_sz - strlen(out) - 1);
         strncat(out, tmp, out_sz - strlen(out) - 1);
         hdlheadrecord next = opbumpflatdown(h, true);
-        if (next == h) break;
+        if (next == h)
+            break;
         h = next;
     }
 }
 
 static void run_opml_roundtrip(void) {
-    printf("[rt] opml_roundtrip: start\n"); fflush(stdout);
+    printf("[rt] opml_roundtrip: start\n");
+    fflush(stdout);
     hdloutlinerecord ho1 = nil;
-    printf("[rt] newoutlinerecord ho1...\n"); fflush(stdout);
+    printf("[rt] newoutlinerecord ho1...\n");
+    fflush(stdout);
     assert(newoutlinerecord(&ho1));
     oppushoutline(ho1);
-    /* Set root text */
     {
-        bigstring bsroot; copyctopstring("root", bsroot);
-        printf("[rt] set root text...\n"); fflush(stdout);
+        bigstring bsroot;
+        copyctopstring("root", bsroot);
+        printf("[rt] set root text...\n");
+        fflush(stdout);
         assert(opsetheadstring((**outlinedata).hbarcursor, bsroot));
     }
-    /* Insert one child under root */
     {
-        printf("[rt] insert child headline...\n"); fflush(stdout);
+        printf("[rt] insert child headline...\n");
+        fflush(stdout);
         Handle hchild = make_text_handle("child");
         assert(hchild != nil);
         /* opinsertheadline takes ownership or retains this handle; do not free here */
         assert(opinsertheadline(hchild, right, false));
     }
 
-    /* Export to OPML */
-    printf("[rt] export to OPML...\n"); fflush(stdout);
+    printf("[rt] export to OPML...\n");
+    fflush(stdout);
     Handle hname = nil, hemail = nil, hxml = nil;
     assert(newemptyhandle(&hname));
     assert(newemptyhandle(&hemail));
     hdlhashtable hto = nil, hcloud = nil;
-    bigstring bso; setemptystring(bso);
-    tyvaluerecord vo; initvalue(&vo, novaluetype);
+    bigstring bso;
+    setemptystring(bso);
+    tyvaluerecord vo;
+    initvalue(&vo, novaluetype);
     assert(opoutlinetoxml(ho1, hname, hemail, &hxml, hto, bso, vo, hcloud));
 
-    /* Debug: dump a snippet of the OPML to stderr */
     {
         long sz = gethandlesize(hxml);
         long dump = sz;
@@ -110,14 +121,14 @@ static void run_opml_roundtrip(void) {
         }
     }
 
-    /* Create destination outline and import */
-    printf("[rt] create ho2/import from OPML...\n"); fflush(stdout);
+    printf("[rt] create ho2/import from OPML...\n");
+    fflush(stdout);
     hdloutlinerecord ho2 = nil;
     assert(newoutlinerecord(&ho2));
     assert(opxmltooutline(hxml, ho2, true, hto, bso, vo, hcloud));
 
-    /* Compare flattened texts */
-    printf("[rt] collect/compare flattened text...\n"); fflush(stdout);
+    printf("[rt] collect/compare flattened text...\n");
+    fflush(stdout);
     char a[256], b[256];
     collect_outline_text(ho1, a, sizeof a);
     collect_outline_text(ho2, b, sizeof b);
@@ -126,43 +137,327 @@ static void run_opml_roundtrip(void) {
     disposehandle(hxml);
     disposehandle(hname);
     disposehandle(hemail);
-    printf("[rt] opml_roundtrip: done\n"); fflush(stdout);
+    printf("[rt] opml_roundtrip: done\n");
+    fflush(stdout);
 }
 
 static void run_constants_smoke(void) {
-    printf("[rt] constants_smoke: start\n"); fflush(stdout);
+    printf("[rt] constants_smoke: start\n");
+    fflush(stdout);
     eval_expect("true != false", "true");
     eval_expect("nil == nil", "true");
     eval_expect("flatdown == flatdown", "true");
     eval_expect("infinity > 1000000", "true");
-    /* Type constants exist and compare equal to themselves */
     eval_expect("stringType == stringType", "true");
     eval_expect("longType == longType", "true");
-    printf("[rt] constants_smoke: done\n"); fflush(stdout);
+    printf("[rt] constants_smoke: done\n");
+    fflush(stdout);
+}
+
+static void table_add_sample_entries(hdlhashtable table, dbaddress diskAdr) {
+    bigstring bs;
+    tyvaluerecord val;
+
+    setup_bigstring_from_c("none", bs);
+    initvalue(&val, novaluetype);
+    val.data.chvalue = 0;
+    assert(hashtableassign(table, bs, val));
+
+    setup_bigstring_from_c("flag", bs);
+    initvalue(&val, booleanvaluetype);
+    val.data.flvalue = true;
+    val.data.chvalue = 1;
+    assert(hashtableassign(table, bs, val));
+
+    setup_bigstring_from_c("letter", bs);
+    initvalue(&val, charvaluetype);
+    val.data.chvalue = 'Z';
+    assert(hashtableassign(table, bs, val));
+
+    setup_bigstring_from_c("smallint", bs);
+    initvalue(&val, intvaluetype);
+    val.data.intvalue = 1234;
+    assert(hashtableassign(table, bs, val));
+
+    setup_bigstring_from_c("biglong", bs);
+    initvalue(&val, longvaluetype);
+    val.data.longvalue = 0x12345678;
+    assert(hashtableassign(table, bs, val));
+
+    setup_bigstring_from_c("point", bs);
+    initvalue(&val, pointvaluetype);
+    val.data.pointvalue.h = 320;
+    val.data.pointvalue.v = -240;
+    assert(hashtableassign(table, bs, val));
+
+    setup_bigstring_from_c("epoch", bs);
+    initvalue(&val, datevaluetype);
+    val.data.datevalue = 978307200UL;
+    assert(hashtableassign(table, bs, val));
+
+    setup_bigstring_from_c("blobRef", bs);
+    initvalue(&val, binaryvaluetype);
+    val.fldiskval = true;
+    val.data.diskvalue = diskAdr;
+    assert(hashtableassign(table, bs, val));
+}
+
+static void table_verify_sample_entries(hdlhashtable table, dbaddress expectedDiskAdr) {
+    bigstring bs;
+    tyvaluerecord out;
+    hdlhashnode node = nil;
+#ifdef DEBUG_SERIALIZER
+    char dbg[256];
+#endif
+
+    setup_bigstring_from_c("none", bs);
+#ifdef DEBUG_SERIALIZER
+    copyptocstring(bs, dbg);
+    printf("[rt] verify lookup '%s'\n", dbg);
+#endif
+    assert(hashtablelookupnode(table, bs, &node));
+    out = (**node).val;
+    assert(out.valuetype == novaluetype);
+    assert(out.data.chvalue == 0);
+
+    setup_bigstring_from_c("flag", bs);
+#ifdef DEBUG_SERIALIZER
+    copyptocstring(bs, dbg);
+    printf("[rt] verify lookup '%s'\n", dbg);
+#endif
+    assert(hashtablelookupnode(table, bs, &node));
+    out = (**node).val;
+    assert(out.valuetype == booleanvaluetype);
+    assert(out.data.flvalue);
+    assert(out.data.chvalue == 1);
+
+    setup_bigstring_from_c("letter", bs);
+#ifdef DEBUG_SERIALIZER
+    copyptocstring(bs, dbg);
+    printf("[rt] verify lookup '%s'\n", dbg);
+#endif
+    assert(hashtablelookupnode(table, bs, &node));
+    out = (**node).val;
+    assert(out.valuetype == charvaluetype);
+    assert(out.data.chvalue == 'Z');
+
+    setup_bigstring_from_c("smallint", bs);
+#ifdef DEBUG_SERIALIZER
+    copyptocstring(bs, dbg);
+    printf("[rt] verify lookup '%s'\n", dbg);
+#endif
+    assert(hashtablelookupnode(table, bs, &node));
+    out = (**node).val;
+    assert(out.valuetype == intvaluetype);
+    assert(out.data.intvalue == 1234);
+
+    setup_bigstring_from_c("biglong", bs);
+#ifdef DEBUG_SERIALIZER
+    copyptocstring(bs, dbg);
+    printf("[rt] verify lookup '%s'\n", dbg);
+#endif
+    assert(hashtablelookupnode(table, bs, &node));
+    out = (**node).val;
+    assert(out.valuetype == longvaluetype);
+    assert(out.data.longvalue == 0x12345678);
+
+    setup_bigstring_from_c("point", bs);
+#ifdef DEBUG_SERIALIZER
+    copyptocstring(bs, dbg);
+    printf("[rt] verify lookup '%s'\n", dbg);
+#endif
+    assert(hashtablelookupnode(table, bs, &node));
+    out = (**node).val;
+    assert(out.valuetype == pointvaluetype);
+    assert(out.data.pointvalue.h == 320);
+    assert(out.data.pointvalue.v == -240);
+
+    setup_bigstring_from_c("epoch", bs);
+#ifdef DEBUG_SERIALIZER
+    copyptocstring(bs, dbg);
+    printf("[rt] verify lookup '%s'\n", dbg);
+#endif
+    assert(hashtablelookupnode(table, bs, &node));
+    out = (**node).val;
+    assert(out.valuetype == datevaluetype);
+    assert(out.data.datevalue == 978307200UL);
+
+    setup_bigstring_from_c("blobRef", bs);
+#ifdef DEBUG_SERIALIZER
+    copyptocstring(bs, dbg);
+    printf("[rt] verify lookup '%s'\n", dbg);
+#endif
+    {
+        hdlhashnode prev = nil;
+        hdlhashtable prev_ht = sethashtable(table);
+        assert(hashlocate(bs, &node, &prev));
+        sethashtable(prev_ht);
+    }
+    out = (**node).val;
+    assert(out.valuetype == binaryvaluetype);
+    assert(out.fldiskval);
+#ifdef DEBUG_SERIALIZER
+    printf("[rt] blobRef diskvalue=0x%llx expected=0x%llx\n",
+           (unsigned long long) out.data.diskvalue,
+           (unsigned long long) expectedDiskAdr);
+#endif
+    assert(out.data.diskvalue == expectedDiskAdr);
+}
+
+static Handle build_roundtrip_table(boolean enable64bit, dbaddress diskAdr) {
+    boolean prev_mode = use_64bit_format;
+    use_64bit_format = enable64bit;
+
+    hdlhashtable source = nil;
+    assert(newhashtable(&source));
+    table_add_sample_entries(source, diskAdr);
+
+    Handle packed = nil;
+    boolean flmustsave = false;
+    assert(hashpacktable(source, false, &packed, &flmustsave));
+
+    assert(disposehashtable(source, true));
+    use_64bit_format = prev_mode;
+    return packed;
+}
+
+static void run_serializer_roundtrip_mode(const char *label, boolean enable64bit) {
+    printf("[rt] serializer_roundtrip (%s): start\n", label);
+    fflush(stdout);
+    dbaddress diskAdr = enable64bit ? (dbaddress)0x1122334455667788ULL : (dbaddress)0x00123456ULL;
+
+    Handle packed = build_roundtrip_table(enable64bit, diskAdr);
+
+#ifdef DEBUG_SERIALIZER
+    Handle packed_copy = nil;
+    Handle debug_first = nil;
+    Handle debug_second = nil;
+    if (copyhandle(packed, &packed_copy)) {
+        if (unmergehandles(packed_copy, &debug_first, &debug_second)) {
+            unsigned char *strbytes = debug_second ? *debug_second : NULL;
+            if (strbytes != NULL) {
+                uint32_t raw = *((uint32_t *)(strbytes + 54));
+                printf("[rt] debug sentinel (%s) 0x%08x\n", label, raw);
+            }
+            disposehandle(debug_first);
+            disposehandle(debug_second);
+        } else {
+            disposehandle(packed_copy);
+        }
+    }
+#endif
+
+    boolean prev_mode = use_64bit_format;
+    use_64bit_format = enable64bit;
+
+    hdlhashtable restored = nil;
+    assert(newhashtable(&restored));
+    if (!hashunpacktable(packed, false, restored)) {
+        printf("[rt] hashunpacktable failed (%s)\n", label);
+        use_64bit_format = prev_mode;
+        return;
+    }
+
+#ifdef DEBUG_SERIALIZER
+    long count = -1;
+    hashcountitems(restored, &count);
+    printf("[rt] restored count before verify (%s) = %ld\n", label, count);
+    boolean pushed = pushhashtable(restored);
+    printf("[rt] pushhashtable(restored) => %d\n", pushed ? 1 : 0);
+    if (pushed) {
+        if (currenthashtable == restored)
+            printf("[rt] currenthashtable matches restored after push (%s)\n", label);
+        else
+            printf("[rt] currenthashtable MISMATCH after push (%s)\n", label);
+        pophashtable();
+    }
+    for (long i = 0; i < count; ++i) {
+        hdlhashnode node = nil;
+        if (hashgetnthnode(restored, i, &node) && node != nil) {
+            bigstring key;
+            gethashkey(node, key);
+            char keybuf[256];
+            copyptocstring(key, keybuf);
+            printf("[rt] restored key[%ld] = '%s' type=%d fldiskval=%d\n",
+                   i, keybuf, (**node).val.valuetype, (**node).val.fldiskval);
+        } else {
+            printf("[rt] restored key[%ld] lookup failed\n", i);
+        }
+    }
+    bigstring probe;
+    setup_bigstring_from_c("none", probe);
+    hdlhashnode located = nil;
+    hdlhashnode located_prev = nil;
+    hdlhashtable prevht = sethashtable(restored);
+    boolean located_ok = hashlocate(probe, &located, &located_prev);
+    printf("[rt] hashlocate('none') => %d node=%p prev=%p\n", located_ok ? 1 : 0,
+           (void *)located, (void *)located_prev);
+    if (located_ok) {
+        tyvaluerecord debugval;
+        hdlhashnode debugnode = nil;
+        boolean lookup_ok = hashlookup(probe, &debugval, &debugnode);
+        printf("[rt] hashlookup('none') => %d node=%p\n", lookup_ok ? 1 : 0, (void *)debugnode);
+        boolean table_lookup_ok = hashtablelookup(restored, probe, &debugval, &debugnode);
+        printf("[rt] hashtablelookup('none') => %d node=%p\n", table_lookup_ok ? 1 : 0, (void *)debugnode);
+    }
+    sethashtable(prevht);
+#endif
+
+    table_verify_sample_entries(restored, diskAdr);
+
+    boolean dispose_ok = disposehashtable(restored, true);
+#ifdef DEBUG_SERIALIZER
+    printf("[rt] disposehashtable(%s) => %d\n", label, dispose_ok ? 1 : 0);
+#endif
+    assert(dispose_ok);
+    packed = nil;
+    use_64bit_format = prev_mode;
+    printf("[rt] serializer_roundtrip (%s): done\n", label);
+    fflush(stdout);
+}
+
+static void run_serializer_roundtrip(void) {
+    run_serializer_roundtrip_mode("legacy32", false);
+    run_serializer_roundtrip_mode("modern64", true);
 }
 
 int main(void) {
-    printf("[rt] initmemory...\n"); fflush(stdout);
+    printf("[rt] initmemory...\n");
+    fflush(stdout);
     assert(initmemory());
-    printf("[rt] initstrings...\n"); fflush(stdout);
+    printf("[rt] initstrings...\n");
+    fflush(stdout);
     initstrings();
 
-    printf("[rt] initlang...\n"); fflush(stdout);
+    printf("[rt] initlang...\n");
+    fflush(stdout);
     assert(initlang());
-    printf("[rt] inittablestructure...\n"); fflush(stdout);
+    printf("[rt] inittablestructure...\n");
+    fflush(stdout);
     assert(inittablestructure());
-    printf("[rt] langinitverbs...\n"); fflush(stdout);
+    printf("[rt] langinitverbs...\n");
+    fflush(stdout);
     assert(langinitverbs());
 
-    printf("[rt] before run_basic_script\n"); fflush(stdout);
+    printf("[rt] before run_basic_script\n");
+    fflush(stdout);
     run_basic_script();
-    printf("[rt] after run_basic_script\n"); fflush(stdout);
-    printf("[rt] before constants_smoke\n"); fflush(stdout);
+    printf("[rt] after run_basic_script\n");
+    fflush(stdout);
+    printf("[rt] before constants_smoke\n");
+    fflush(stdout);
     run_constants_smoke();
-    printf("[rt] after constants_smoke\n"); fflush(stdout);
+    printf("[rt] after constants_smoke\n");
+    fflush(stdout);
     run_opml_roundtrip();
-    printf("[rt] after run_opml_roundtrip\n"); fflush(stdout);
+    printf("[rt] after run_opml_roundtrip\n");
+    fflush(stdout);
+    printf("[rt] before serializer_roundtrip\n");
+    fflush(stdout);
+    run_serializer_roundtrip();
+    printf("[rt] after serializer_roundtrip\n");
+    fflush(stdout);
 
-    printf("runtime_tests: langrunstring and OPML round-trip passed\n");
+    printf("runtime_tests: language, OPML, and serializer round-trips passed\n");
     return 0;
 }
