@@ -134,8 +134,10 @@ typedef struct tydiskvaluerecord {		/*4.0.1b1 dmb*/
 
 
 static inline int32_t host_to_disk_int32(int32_t value) {
-#if defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
-	return (int32_t) __builtin_bswap32((uint32_t) value);
+#if defined(SWAP_BYTE_ORDER)
+	long temp = (long) value;
+	memtodisklong (temp);
+	return (int32_t) temp;
 #else
 	return value;
 #endif
@@ -143,7 +145,7 @@ static inline int32_t host_to_disk_int32(int32_t value) {
 
 static inline int16_t host_to_disk_int16(int16_t value) {
 #if defined(SWAP_BYTE_ORDER)
-	short temp = (short)value;
+	short temp = (short) value;
 	memtodiskshort (temp);
 	return (int16_t) temp;
 #else
@@ -152,8 +154,10 @@ static inline int16_t host_to_disk_int16(int16_t value) {
 }
 
 static inline int32_t disk_to_host_int32(int32_t value) {
-#if defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
-	return (int32_t) __builtin_bswap32((uint32_t) value);
+#if defined(SWAP_BYTE_ORDER)
+	long temp = (long) value;
+	disktomemlong (temp);
+	return (int32_t) temp;
 #else
 	return value;
 #endif
@@ -161,7 +165,7 @@ static inline int32_t disk_to_host_int32(int32_t value) {
 
 static inline int16_t disk_to_host_int16(int16_t value) {
 #if defined(SWAP_BYTE_ORDER)
-	short temp = (short)value;
+	short temp = (short) value;
 	disktomemshort (temp);
 	return (int16_t) temp;
 #else
@@ -2311,10 +2315,15 @@ static boolean hashunpackexternal (Handle hget, boolean flmemory, hdlexternalhan
 	Handle hpacked;
 	boolean fl;
 	long lix = (long) ix;
-	long ctbytes;
+	uint32_t disk_length = 0;
 
-	if (!loadlongfromdiskhandle (hget, &lix, &ctbytes))
+	if (!read_disk_uint32 (hget, &lix, &disk_length))
 		return (false);
+
+	if (disk_length > (uint32_t) LONG_MAX)
+		return (false);
+
+	long ctbytes = (long) disk_length;
 
 	if (!loadfromhandletohandle (hget, &lix, ctbytes, true, &hpacked))
 		return (false);
