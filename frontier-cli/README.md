@@ -3,8 +3,8 @@
 Status
 - State: In Progress
 - Phase: 1 → 2 transition
-- Last Updated: 2025-09-29
-- Notes: Headless usage supported; future builds will decouple UI frameworks per Phase 2.
+- Last Updated: 2025-10-12
+- Notes: Headless script execution works; database and network features remain disabled until Phase 3 follow-up milestones.
 
 Related Docs
 - planning/DEVELOPER_QUICKSTART_HEADLESS.md
@@ -13,255 +13,110 @@ Related Docs
 - planning/no_ui_linkage_policy.md
 
 Change Log
+- 2025-10-12: Refresh documentation to reflect headless script-only build status.
 - 2025-09-29: Initialized template sections (Status/Related Docs/Change Log).
-
-## Table of Contents
-- [Overview](#overview)
-- [Features](#features)
-- [Building](#building)
-  - [Prerequisites](#prerequisites)
-  - [Compilation](#compilation)
-  - [Installation](#installation)
-- [Usage](#usage)
-  - [Basic Script Execution](#basic-script-execution)
-  - [Database Operations](#database-operations)
-  - [Network Server](#network-server)
-  - [Help and Version](#help-and-version)
-- [Examples](#examples)
-- [API Reference](#api-reference)
-  - [Command Line Options](#command-line-options)
-  - [HTTP API](#http-api)
-  - [WebSocket API](#websocket-api)
-- [Architecture](#architecture)
-  - [Core Components](#core-components)
-  - [Integration with Frontier Runtime](#integration-with-frontier-runtime)
-- [Development](#development)
-  - [Project Structure](#project-structure)
-  - [Building for Development](#building-for-development)
-  - [Testing](#testing)
-- [Troubleshooting](#troubleshooting)
-  - [Common Issues](#common-issues)
-  - [Debug Mode](#debug-mode)
-  - [Error Messages](#error-messages)
-- [Contributing](#contributing)
-- [License](#license)
-- [Phase 1 Status](#phase-1-status)
-- [Next Steps](#next-steps)
-
-Command Line Interface for UserTalk Script Execution
 
 ## Overview
 
-Frontier CLI is a command-line tool that enables execution of UserTalk scripts without requiring the full Frontier GUI environment. It provides a headless interface for running UserTalk scripts, performing database operations, and serving as a network server for remote execution.
+Frontier CLI is a command-line client for running UserTalk scripts without the legacy GUI. The current headless build focuses on script execution so we can exercise the core runtime in Phase 3 automation work. Database operations, migrations, and network server modes exist in the codebase but remain gated until the surrounding runtime wiring and tests land.
 
 ## Features
 
-- **Script Execution**: Execute UserTalk scripts from files or inline code
-- **Database Operations**: Query and manipulate Frontier databases
-- **Database Migration**: Migrate databases to 64-bit format
-- **Network Server**: HTTP and WebSocket servers for remote execution
-- **Universal Binary**: Support for both x86_64 and ARM64 architectures
-- **Comprehensive Logging**: Verbose and debug output modes
-- **Error Handling**: Robust error reporting and recovery
+### Current Capabilities
+- Execute UserTalk scripts from files or inline code.
+- Headless operation using the shared test adapters (`FRONTIER_HEADLESS`, `shell_api_headless`).
+- Load the canonical system root database in read-only mode via `--system-root` to expose runtime tables for scripts.
+- Verbose and debug logging toggles.
+- Buildable with sanitizers for development use.
+
+### Planned Additions (Phase 3+)
+- Database queries, migration helpers, and automated backups.
+- HTTP/WebSocket server modes for remote script execution.
+- Rich CLI diagnostics for database workflows.
+- Hardened error handling around `kernelcall`/`system.verbs` routing.
 
 ## Building
 
 ### Prerequisites
-
 - macOS 10.15 or later
-- Xcode Command Line Tools
-- clang compiler
+- Xcode Command Line Tools (`clang`)
 
-### Compilation
-
-```bash
-# Build the CLI executable
-make
-
-# Build with debug symbols
-make debug
-
-# Build with profiling
-make profile
-
-# Build with static analysis
-make analyze
-
-# Show available targets
-make help
-```
-
-### Installation
+### Commands
 
 ```bash
-# Install to /usr/local/bin
-make install
+# Build the CLI executable (script execution only)
+make -C frontier-cli
 
-# Uninstall
-make uninstall
+# Optional: enable ASan/UBSan when available in the toolchain
+SANITIZE=1 make -C frontier-cli
+
+# Clean artifacts
+make -C frontier-cli clean
 ```
 
 ## Usage
 
-### Basic Script Execution
+### Script Execution
 
 ```bash
-# Execute a UserTalk script file
-./frontier-cli script.usertalk
+# Execute a script file
+./frontier-cli/frontier-cli test_script.usertalk
 
-# Execute inline script
-./frontier-cli -e "local(x = 5); x * 2"
+# Execute inline UserTalk
+./frontier-cli/frontier-cli -e "local(x = 5); x * 2"
 
-# Execute with verbose output
-./frontier-cli -v -e "local(x = 5); x * 2"
-
-# Execute with debug output
-./frontier-cli --debug -e "local(x = 5); x * 2"
-```
-
-### Database Operations
-
-```bash
-# Query database value
-./frontier-cli -d test.root -q "db.getValue('myTable.myValue')"
-
-# Migrate database to 64-bit header format (v7)
-./frontier-cli -d test.root --auto-migrate
-
-# Create new database
-./frontier-cli -d newdb.root --create
-```
-
-### Network Server
-
-```bash
-# Start HTTP server
-./frontier-cli --server --port 8080
-
-# Start WebSocket server
-./frontier-cli --websocket --port 8081
-
-# Start with custom port
-./frontier-cli --server -p 9000
+# Enable verbose logging while running inline code
+./frontier-cli/frontier-cli -v -e "clock.now()"
 ```
 
 ### Help and Version
 
 ```bash
-# Show help
-./frontier-cli --help
-
-# Show version
-./frontier-cli --version
+./frontier-cli/frontier-cli --help
+./frontier-cli/frontier-cli --version
 ```
+
+### Disabled Modes
+
+Passing database (`-d`, `-q`, `--migrate`) or server (`--server`, `--websocket`, `--port`) switches currently returns a descriptive error. These paths are reserved for later Phase 3 work once database access and system verb bootstrapping are in place.
+
+### Loading the System Root (optional)
+
+```bash
+# Load Frontier.root (or another compatible system root) before executing a script
+./frontier-cli/frontier-cli --system-root databases/Guest\ Databases/Frontier.root \
+    -e "1 + 1"
+```
+
+The system root is opened read-only. The CLI will log descriptive warnings if the file cannot be located, read, or if optional tables (e.g., `system.misc`, `system.menus`) are missing. The headless loader hydrates the tables it needs in memory so script execution can continue, but the warnings are useful cues that the legacy database still needs migration work.
 
 ## Examples
 
-### Simple Arithmetic
-
 ```bash
-./frontier-cli -e "local(x = 10, y = 20); x + y"
-# Output: 30
+# Simple arithmetic
+./frontier-cli/frontier-cli -e "local(x = 10, y = 20); x + y"
+
+# Run the sample script and capture output
+./frontier-cli/frontier-cli test_script.usertalk > /tmp/frontier_cli_output.txt
 ```
 
-### String Operations
+## Command Line Options
 
-```bash
-./frontier-cli -e "local(name = 'World'); 'Hello, ' & name & '!'"
-# Output: Hello, World!
-```
-
-### Conditional Logic
-
-```bash
-./frontier-cli -e "local(x = 15); if (x > 10) then 'Large' else 'Small' end if"
-# Output: Large
-```
-
-### Database Query
-
-```bash
-./frontier-cli -d mydb.root -q "db.getValue('config.version')"
-# Output: 1.0.0
-```
-
-## API Reference
-
-### Command Line Options
-
-| Option | Description |
-|--------|-------------|
-| `-e, --execute SCRIPT` | Execute inline UserTalk script |
-| `-d, --database FILE` | Specify database file for operations |
-| `-q, --query QUERY` | Execute database query |
-| `--auto-migrate` | Migrate legacy (v≤6) database header to v7 with a timestamped backup |
-| `--server` | Run as HTTP server |
-| `--websocket` | Enable WebSocket support |
-| `-p, --port PORT` | Network server port (default: 8080) |
-| `-v, --verbose` | Verbose output |
-| `--debug` | Debug mode |
-| `-h, --help` | Show help message |
-| `--version` | Show version information |
-
-### HTTP API
-
-When running as an HTTP server, the following endpoints are available:
-
-#### GET /status
-Returns server status information.
-
-#### GET /execute?script=...
-Execute a UserTalk script via query parameter.
-
-#### POST /execute
-Execute a UserTalk script via request body.
-
-Example:
-```bash
-curl -X POST http://localhost:8080/execute \
-  -H "Content-Type: text/plain" \
-  -d "local(x = 5); x * 2"
-```
-
-Response:
-```json
-{
-  "success": true,
-  "data": "10"
-}
-```
-
-### WebSocket API
-
-Connect to the WebSocket server and send UserTalk scripts as text messages.
-
-Example:
-```javascript
-const ws = new WebSocket('ws://localhost:8081');
-ws.onmessage = function(event) {
-    console.log('Result:', event.data);
-};
-ws.send('local(x = 5); x * 2');
-```
-
-## Architecture
-
-### Core Components
-
-- **CLI Parser** (`cli_parser.c`): Command-line argument parsing
-- **CLI Executor** (`cli_executor.c`): UserTalk script compilation and execution
-- **CLI Database** (`cli_database.c`): Database operations and migration
-- **CLI Network** (`cli_network.c`): HTTP and WebSocket server functionality
-- **CLI Utils** (`cli_utils.c`): Utility functions and logging
-
-### Integration with Frontier Runtime
-
-The CLI integrates with the existing Frontier runtime components:
-
-- **Language System**: Uses `lang.c` and `langevaluate.c` for script execution
-- **Database System**: Uses `db.c` for database operations
-- **Memory Management**: Uses Frontier's memory management system
-- **Error Handling**: Integrates with Frontier's error reporting
+| Option | Description | Status |
+| ------ | ----------- | ------ |
+| `-e, --execute SCRIPT` | Execute inline UserTalk script | Available |
+| *(script file argument)* | Execute a script from disk | Available |
+| `-v, --verbose` | Verbose logging | Available |
+| `--debug` | Enable debug logging | Available |
+| `-h, --help` | Show help message | Available |
+| `--version` | Show build/version info | Available |
+| `--system-root PATH` | Load a system root database before running scripts | Available |
+| `-d, --database FILE` | Select database for operations | Disabled (planned) |
+| `-q, --query QUERY` | Execute database query | Disabled (planned) |
+| `-m, --migrate` | Migrate database in place | Disabled (planned) |
+| `--server` | Start HTTP server | Disabled (planned) |
+| `--websocket` | Start WebSocket server | Disabled (planned) |
+| `-p, --port PORT` | Override server port | Disabled (planned) |
 
 ## Development
 
@@ -269,119 +124,60 @@ The CLI integrates with the existing Frontier runtime components:
 
 ```
 frontier-cli/
-├── main.c                 # CLI entry point
-├── cli_parser.c          # Command-line argument parsing
-├── cli_executor.c        # UserTalk script execution
-├── cli_database.c        # Database operations
-├── cli_network.c         # HTTP/WebSocket server
-├── cli_utils.c           # Utility functions
-├── cli_*.h              # Header files
-├── Makefile              # Build configuration
-├── test_script.usertalk  # Test script
-└── README.md             # This file
+├── main.c                 # CLI entry point / mode selection
+├── cli_parser.c           # Command-line parsing and validation
+├── cli_executor.c         # Script compilation and evaluation
+├── cli_database.c         # Database helpers (gated; not invoked yet)
+├── cli_network.c          # HTTP/WebSocket scaffolding (gated)
+├── cli_utils.c            # Logging and utility helpers
+├── *.h                    # Shared headers
+├── Makefile               # Script-only headless build
+├── test_script.usertalk   # Sample script for manual testing
+└── README.md              # This document
 ```
 
 ### Building for Development
 
 ```bash
-# Build with debug symbols
-make debug
+# Rebuild with sanitizers enabled
+SANITIZE=1 make -C frontier-cli clean all
 
-# Run with verbose output
-./frontier-cli -v --debug -e "local(x = 5); x * 2"
-
-# Test with sample script
-./frontier-cli test_script.usertalk
+# Run with verbose + debug to observe runtime init logging
+./frontier-cli/frontier-cli --debug -v -e "user.now()"
 ```
 
 ### Testing
 
-```bash
-# Test basic functionality
-./frontier-cli -e "local(x = 1, y = 2); x + y"
-
-# Test database operations
-./frontier-cli -d test.root -q "db.getValue('test')"
-
-# Test network server
-./frontier-cli --server --port 8080 &
-curl http://localhost:8080/status
-kill %1
-```
+For automated coverage, reuse the headless test harness in `tests/` (see `planning/phase3/DEVELOPER_QUICKSTART_HEADLESS.md`). CLI smoke testing today consists of invoking inline scripts and script files as shown above; database and network tests will be added when those modes are enabled.
 
 ## Troubleshooting
 
-### Common Issues
-
-1. **Compilation Errors**: Ensure Xcode Command Line Tools are installed
-2. **Runtime Errors**: Check that Frontier runtime components are available
-3. **Database Errors**: Verify database file permissions and format
-4. **Network Errors**: Check port availability and firewall settings
-
-### Debug Mode
-
-Enable debug mode for detailed logging:
-
-```bash
-./frontier-cli --debug -v -e "local(x = 5); x * 2"
-```
-
-### Error Messages
-
-The CLI provides detailed error messages for:
-- Invalid command-line arguments
-- Script compilation errors
-- Database operation failures
-- Network server issues
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## License
-
-This project is part of the Frontier refactoring effort and follows the same license as the main Frontier project.
+- **"Database operations are not yet supported"** – Expected when using `-d`, `-q`, or `--migrate`. Phase 3 will enable these switches once database smoke tests exist.
+- **"Network server modes are not yet supported"** – Expected when using `--server`, `--websocket`, or `--port`. Server hosting is blocked on system verb bootstrapping.
+- **"Failed to load system root database"** – Check the path passed to `--system-root`, confirm the file is readable, and ensure the canonical tables (e.g. `system.verbs`) exist in the database.
+- **Script errors** – Review CLI output; rerun with `--debug -v` to capture additional runtime logs.
 
 ## Phase 1 Status
 
-✅ **Completed**:
-- CLI application skeleton
-- Command-line argument parsing
-- UserTalk script execution
-- Database operations interface
-- Network server framework
-- Comprehensive logging system
-- Universal binary compilation
-- Documentation and examples
+✅ **Completed**
+- Headless binary that links without AppKit/Carbon/Win32.
+- Inline and file-based script execution.
+- Verbose/debug logging toggles and shared headless adapters.
 
-🔄 **In Progress**:
-- Integration testing with real UserTalk scripts
-- Performance optimization
-- Network server implementation details
+🔄 **In Progress**
+- Wiring database helpers into the headless runtime.
+- Aligning CLI smoke tests with runtime test expansion.
+- Preparing network/server paths for system verb bootstrapping.
 
-📋 **Planned**:
-- Advanced database operations
-- WebSocket server implementation
-- Security features
-- Performance benchmarking
+📋 **Planned**
+- Database migration automation (`--auto-migrate`).
+- Remote execution modes (HTTP/WebSocket).
+- Hardened error handling and regression tests.
 
 ## Next Steps
 
-Phase 1 establishes the foundation for CLI-based UserTalk invocation. The next phase will focus on:
+1. Integrate real database open/read/write flows into the headless CLI and add matching tests.
+2. Implement system verb bootstrap so CLI/server modes can exercise `kernelcall`.
+3. Document and gate database/network usage once functional, then expand runtime test coverage.
 
-1. **Hash Table Modernization**: Updating Frontier's core data structures
-2. **Performance Optimization**: Improving execution speed and memory usage
-3. **Advanced Features**: Enhanced database operations and network protocols
-4. **Integration Testing**: Comprehensive testing with real-world scenarios
-
-For more information about the Frontier refactoring project, see the main project documentation.
-- "Save failed on legacy database"
-  - Save implies migration to v7. In headless builds, saves on legacy DBs are blocked until migration is performed to avoid stamping v7 onto a v6 header layout.
-  - Fix: Run `--auto-migrate` first or upgrade via a UI save confirmation.
-
-- "Migration changed file size by 28 bytes"
-  - Expected: header layout size differs; payload is unchanged. Tests confirm safety on real databases.
+For broader context on the modernization effort, see `planning/INDEX.md` and the Phase 3 planning documents.

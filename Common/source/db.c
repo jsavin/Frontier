@@ -28,6 +28,10 @@
 #include "frontier.h"
 #include "standard.h"
 
+#if defined(FRONTIER_HEADLESS)
+#include <stdio.h>
+#endif
+
 #include "memory.h"
 #include "cursor.h"
 #include "dialogs.h"
@@ -2019,9 +2023,15 @@ boolean dbsavehandle (Handle hsave, dbaddress *adr) {
 		fl = dbassign (&a, ctbytes, *h);
 		
 	unlockhandle (h);
-	
+
 	*adr = a; /*copy into returned value*/
-	
+
+ 	if (!fl) {
+#if defined(FRONTIER_HEADLESS)
+		fprintf(stderr, "[headless] dbsavehandle failed: adr=%lld bytes=%ld\n", (long long)a, ctbytes);
+#endif
+	}
+
 	return (fl);
 	} /*dbsavehandle*/
 	

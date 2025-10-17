@@ -28,6 +28,10 @@
 #include "frontier.h"
 #include "standard.h"
 
+#if defined(FRONTIER_HEADLESS)
+#include <stdio.h>
+#endif
+
 #include "file.h"
 #include "memory.h"
 #include "strings.h"
@@ -480,9 +484,13 @@ boolean tablesavesystemtable (Handle hvariable, dbaddress *adr) {
 	tablepreflightsubsdirtyflag (hv); //6.2a15 AR
 	
 	langtraperrors (bspackerror, &savecallback, &saverefcon);
-	
+
 	fl = tableverbpack (hv, &htmp, &fldummy); /*packs table, saves to db if neccessary, pushes address on htmp*/
-	
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] tableverbpack returned %s\n", fl ? "true" : "false");
+#endif
+
 	languntraperrors (savecallback, saverefcon, !fl);
 	
 	if (!flscriptrunning)
@@ -512,6 +520,12 @@ boolean tablesavesystemtable (Handle hvariable, dbaddress *adr) {
 			
 			parsedialogstring (bs, bspackerror, nil, nil, nil, bs);
 			
+#if defined(FRONTIER_HEADLESS)
+			char cmsg[256];
+			copyptocstring (bs, cmsg);
+			fprintf (stderr, "[headless] tablesavesystemtable failed: %s\n", cmsg);
+#endif
+
 			shellerrormessage (bs);
 			}
 		}
@@ -661,5 +675,3 @@ boolean settablestructureglobals (Handle hvariable, boolean flcreatesubs) {
 	
 	return (checktablestructure (flcreatesubs)); /*sets agentstable, builtinstable, etc.*/
 	} /*settablestructureglobals*/
-
-

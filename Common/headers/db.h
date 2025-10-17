@@ -48,7 +48,11 @@
 
 typedef long long dbaddress, *ptrdbaddress, **hdldbaddress;
 
+#if defined(__clang__) || defined(__GNUC__)
+#pragma pack(push, 2)
+#else
 #pragma pack(2)
+#endif
 typedef struct tydatabaserecord { /*stored at offset 0 in the db file*/
 	
 
@@ -120,12 +124,17 @@ typedef struct tydatabaserecord_64 { /*stored at offset 0 in the db file*/
 		char growthspace [22]; /*room for new fields without format change*/
 		struct {
 			dbaddress availlistblock; /*6.2a9 AR: on-disk structure mirroring availlist, a contiguous block*/
-			handlestream availlistshadow; /*never saved to disk; in-memory structure mirroring availlist*/
+			dbaddress availlistshadow; /*in-memory handle pointer, persisted as 64-bit value for completeness*/
 			boolean flreadonly; /*6.2a9 AR: never saved to disk; if this is true, don't write to the file*/
+			unsigned char reserved[5]; /*pad to maintain 22-byte extension payload*/
 			} extensions;
 		} u;
 	} tydatabaserecord_64, *ptrdatabaserecord_64, **hdldatabaserecord_64;
+#if defined(__clang__) || defined(__GNUC__)
+#pragma pack(pop)
+#else
 #pragma options align=reset
+#endif
 	
 extern hdldatabaserecord databasedata; /*can be set by external user*/
 
@@ -207,6 +216,4 @@ extern boolean dbstatsmessage (hdldatabaserecord, boolean); /*6.2a8 AR*/
 extern boolean statsstart (void);
 
 #endif
-
-
 

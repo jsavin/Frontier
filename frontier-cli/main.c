@@ -23,6 +23,11 @@
 #include "../Common/headers/tablestructure.h"
 #include "../Common/headers/shell_api.h"
 #include "../Common/headers/db.h"
+#include "../Common/headers/file.h"
+#include "../Common/headers/tableverbs.h"
+#include "../Common/headers/langexternal.h"
+#include "../Common/headers/stringdefs.h"
+#include "../Common/headers/db_format.h"
 
 // CLI-specific headers
 #include "cli_parser.h"
@@ -39,6 +44,10 @@ extern long releasethreadglobals(void);
 // Global variables
 static cli_options_t g_cli_options = {0};
 static boolean g_initialized = false;
+static boolean g_system_root_loaded = false;
+static hdlfilenum g_system_root_fnum = 0;
+static hdldatabaserecord g_previous_database = nil;
+static char g_system_root_path[CLI_MAX_PATH_LENGTH + 1] = {0};
 
 // Function prototypes
 static void print_usage(const char* program_name);
@@ -48,6 +57,10 @@ static void cleanup_frontier_runtime(void);
 static boolean execute_script_mode(void);
 static boolean execute_database_mode(void);
 static boolean execute_network_mode(void);
+static boolean load_system_root_database(const char* path);
+static void unload_system_root_database(void);
+static boolean ensure_named_subtable(hdlhashtable parent, const unsigned char *name, hdlhashtable *out, boolean mark_dont_save);
+static boolean hydrate_system_root_database(const char* path);
 
 int main(int argc, char* argv[]) {
     // Parse command line arguments
@@ -67,7 +80,27 @@ int main(int argc, char* argv[]) {
         print_version();
         return 0;
     }
-    
+
+    if (g_cli_options.hydrate_system_root) {
+        if (g_cli_options.system_root == NULL) {
+            fprintf(stderr, "Error: --hydrate-system-root requires --system-root PATH\n");
+            return 1;
+        }
+        const char* hydrate_path = g_cli_options.system_root;
+        g_cli_options.system_root = NULL;
+        if (!initialize_frontier_runtime()) {
+            fprintf(stderr, "Error: Failed to initialize runtime for hydration\n");
+            return 1;
+        }
+        boolean hydrate_ok = hydrate_system_root_database(hydrate_path);
+        cleanup_frontier_runtime();
+        if (!hydrate_ok) {
+            fprintf(stderr, "Error: Failed to hydrate system root: %s\n", hydrate_path);
+            return 1;
+        }
+        return 0;
+    }
+
     // Initialize Frontier runtime
     if (!initialize_frontier_runtime()) {
         fprintf(stderr, "Error: Failed to initialize Frontier runtime\n");
@@ -116,6 +149,7 @@ static void print_usage(const char* program_name) {
     printf("  --server                 (disabled)\n");
     printf("  --websocket              (disabled)\n");
     printf("  -p, --port PORT          (disabled)\n");
+    printf("  --system-root PATH       Load system root database before executing scripts\n");
     printf("  -v, --verbose            Verbose output\n");
     printf("  --debug                  Debug mode\n");
     printf("  -h, --help               Show this help message\n");
@@ -178,6 +212,15 @@ static boolean initialize_frontier_runtime(void) {
     }
 
     grabthreadglobals();
+
+    if (g_cli_options.system_root != NULL) {
+        if (!load_system_root_database(g_cli_options.system_root)) {
+            cli_log_error("Failed to load system root database: %s", g_cli_options.system_root);
+            releasethreadglobals();
+            cli_cleanup_logging();
+            return false;
+        }
+    }
     
     g_initialized = true;
     cli_log_info("Frontier runtime initialized successfully");
@@ -191,6 +234,10 @@ static void cleanup_frontier_runtime(void) {
     }
     
     cli_log_info("Cleaning up Frontier runtime");
+
+    if (g_system_root_loaded) {
+        unload_system_root_database();
+    }
     
     // Cleanup Frontier runtime
     releasethreadglobals();
@@ -199,6 +246,395 @@ static void cleanup_frontier_runtime(void) {
     cli_cleanup_logging();
     
     g_initialized = false;
+}
+
+static boolean ensure_named_subtable(hdlhashtable parent, const unsigned char *name, hdlhashtable *out, boolean mark_dont_save) {
+    if (parent == nil || name == NULL) {
+        return false;
+    }
+
+    bigstring bsname;
+    copystring(name, bsname);
+
+    hdlhashtable table = nil;
+    if (findnamedtable(parent, bsname, &table)) {
+        if (out != NULL) {
+            *out = table;
+        }
+        return true;
+    }
+
+    if (tablenewsubtable(parent, bsname, &table)) {
+        if (mark_dont_save) {
+            langexternaldontsave(parent, bsname);
+        }
+        if (out != NULL) {
+            *out = table;
+        }
+        return true;
+    }
+
+    if (findnamedtable(parent, bsname, &table)) {
+        if (out != NULL) {
+            *out = table;
+        }
+        return true;
+    }
+
+    return false;
+}
+
+static boolean hydrate_system_root_database(const char* path) {
+    if (path == NULL) {
+        cli_log_error("No system root path provided for hydration");
+        return false;
+    }
+
+    if (!g_initialized) {
+        cli_log_error("Runtime must be initialized before hydrating %s", path);
+        return false;
+    }
+
+    boolean migrated = false;
+    if (!ensure_database_modern(path, &migrated)) {
+        cli_log_error("Failed to verify database format before hydration: %s", path);
+        return false;
+    }
+    if (migrated) {
+        cli_log_info("Migrated legacy system root to v7 format (backup created): %s", path);
+    }
+
+    bigstring bspath;
+    copyctopstring(path, bspath);
+
+    tyfilespec fs;
+    memset(&fs, 0, sizeof fs);
+    if (!pathtofilespec(bspath, &fs)) {
+        cli_log_error("Unable to convert system root path to filespec: %s", path);
+        return false;
+    }
+
+    hdlfilenum fnum = 0;
+    if (!openfile(&fs, &fnum, false)) {
+        cli_log_error("Unable to open system root for hydration: %s", path);
+        return false;
+    }
+
+    hdldatabaserecord previous = databasedata;
+
+    if (!dbopenfile(fnum, false)) {
+        cli_log_error("dbopenfile (read-write) failed for system root: %s", path);
+        closefile(fnum);
+        databasedata = previous;
+        return false;
+    }
+
+    dbaddress adr = nildbaddress;
+    dbgetview(cancoonview, &adr);
+
+    Handle hrootvariable = nil;
+    hdlhashtable hroot = nil;
+    if (!tableloadsystemtable(adr, &hrootvariable, &hroot, false)) {
+        cli_log_error("Failed to load system table while hydrating %s", path);
+        dbclose();
+        dbdispose();
+        databasedata = previous;
+        closefile(fnum);
+        return false;
+    }
+
+    cleartablestructureglobals();
+    rootvariable = hrootvariable;
+    roottable = hroot;
+    currenthashtable = roottable;
+
+    if (hashtablestack == nil) {
+        if (!newclearhandle(longsizeof(tytablestack), (Handle *)&hashtablestack)) {
+            cli_log_error("Failed to allocate hashtablestack while hydrating %s", path);
+            dbclose();
+            dbdispose();
+            databasedata = previous;
+            closefile(fnum);
+            return false;
+        }
+        (**hashtablestack).toptables = 0;
+    }
+
+    boolean ok = checktablestructure(true);
+    if (!ok) {
+        cli_log_warn("checktablestructure reported issues while hydrating %s", path);
+    }
+
+    boolean created_optional = false;
+    if (systemtable != nil) {
+        if (resourcestable == nil && ensure_named_subtable(systemtable, nameresourcestable, &resourcestable, false))
+            created_optional = true;
+
+        if (pathstable == nil && ensure_named_subtable(systemtable, namepathstable, &pathstable, false))
+            created_optional = true;
+
+        hdlhashtable menustable = nil;
+        bigstring bsmenus;
+        copyctopstring("menus", bsmenus);
+        if (ensure_named_subtable(systemtable, bsmenus, &menustable, false)) {
+            if (menubartable == nil && ensure_named_subtable(menustable, namemenubartable, &menubartable, false))
+                created_optional = true;
+        }
+
+        hdlhashtable macintoshtable = nil;
+        bigstring bsmacintosh;
+        copyctopstring("macintosh", bsmacintosh);
+        if (ensure_named_subtable(systemtable, bsmacintosh, &macintoshtable, false)) {
+            bigstring bsobjectmodel;
+            copyctopstring("objectmodel", bsobjectmodel);
+            if (objectmodeltable == nil && ensure_named_subtable(macintoshtable, bsobjectmodel, &objectmodeltable, false))
+                created_optional = true;
+        }
+    }
+
+    if (!tablesavesystemtable(hrootvariable, &adr)) {
+        cli_log_error("Failed to save system table while hydrating %s", path);
+        ok = false;
+    } else {
+        dbsetview(cancoonview, adr);
+        cli_log_info("Hydrated system root: %s%s", path,
+                     created_optional ? " (created optional tables)" : "");
+    }
+
+    if (!dbclose()) {
+        cli_log_warn("dbclose reported failure while hydrating %s", path);
+        ok = false;
+    }
+
+    dbdispose();
+    databasedata = previous;
+    cleartablestructureglobals();
+    currenthashtable = nil;
+
+    if (!closefile(fnum)) {
+        cli_log_warn("Failed to close hydrated system root file handle: %s", path);
+    }
+
+    return ok;
+}
+
+static boolean load_system_root_database(const char* path) {
+    if (path == NULL) {
+        return true;
+    }
+
+    if (g_system_root_loaded) {
+        cli_log_warn("System root already loaded; ignoring request for %s", path);
+        return true;
+    }
+
+    size_t len = strlen(path);
+    if (len == 0) {
+        cli_log_error("System root path is empty");
+        return false;
+    }
+    if (len > lenbigstring) {
+        cli_log_error("System root path exceeds %d characters (got %zu)", lenbigstring, len);
+        return false;
+    }
+
+    bigstring bspath;
+    copyctopstring(path, bspath);
+
+    tyfilespec fs;
+    memset(&fs, 0, sizeof fs);
+    if (!pathtofilespec(bspath, &fs)) {
+        cli_log_error("Unable to convert system root path to filespec: %s", path);
+        return false;
+    }
+
+    hdlfilenum fnum = 0;
+    if (!openfile(&fs, &fnum, true)) {
+        cli_log_error("Unable to open system root for reading: %s", path);
+        return false;
+    }
+
+    hdldatabaserecord previous = databasedata;
+
+    if (!dbopenfile(fnum, true)) {
+        cli_log_error("dbopenfile failed for system root: %s", path);
+        closefile(fnum);
+        databasedata = previous;
+        return false;
+    }
+
+    dbaddress adr = nildbaddress;
+    dbgetview(cancoonview, &adr);
+
+    Handle hrootvariable = nil;
+    hdlhashtable hroot = nil;
+    if (!tableloadsystemtable(adr, &hrootvariable, &hroot, false)) {
+        cli_log_error("Failed to load system table from %s", path);
+        cleartablestructureglobals();
+        dbdispose();
+        closefile(fnum);
+        databasedata = previous;
+        return false;
+    }
+
+    boolean structure_ready = true;
+    boolean partial_warning = false;
+    boolean applied_patch = false;
+
+    if (!settablestructureglobals(hrootvariable, true)) {
+        cli_log_warn("System table structure is invalid in %s", path);
+        cli_log_debug("systemtable=%p verbstable=%p builtinstable=%p agentstable=%p pathstable=%p resourcestable=%p menubartable=%p objectmodeltable=%p",
+                      (void *)systemtable,
+                      (void *)verbstable,
+                      (void *)builtinstable,
+                      (void *)agentstable,
+                      (void *)pathstable,
+                      (void *)resourcestable,
+                      (void *)menubartable,
+                      (void *)objectmodeltable);
+        structure_ready = false;
+
+        hdlhashtable captured_system = systemtable;
+        hdlhashtable captured_verbs = verbstable;
+        hdlhashtable captured_builtins = builtinstable;
+        hdlhashtable captured_agents = agentstable;
+        hdlhashtable captured_paths = pathstable;
+        hdlhashtable captured_resources = resourcestable;
+        hdlhashtable captured_menubar = menubartable;
+        hdlhashtable captured_objectmodel = objectmodeltable;
+
+        if (systemtable != nil) {
+            if (resourcestable == nil && ensure_named_subtable(systemtable, nameresourcestable, &resourcestable, true))
+                applied_patch = true;
+
+            if (pathstable == nil && ensure_named_subtable(systemtable, namepathstable, &pathstable, true))
+                applied_patch = true;
+
+            hdlhashtable menustable = nil;
+            bigstring bsmenus;
+            copyctopstring("menus", bsmenus);
+            if (ensure_named_subtable(systemtable, bsmenus, &menustable, true)) {
+                if (menubartable == nil && ensure_named_subtable(menustable, namemenubartable, &menubartable, true))
+                    applied_patch = true;
+            }
+
+            hdlhashtable macintoshtable = nil;
+            bigstring bsmacintosh;
+            copyctopstring("macintosh", bsmacintosh);
+            if (ensure_named_subtable(systemtable, bsmacintosh, &macintoshtable, true)) {
+                bigstring bsobjectmodel;
+                copyctopstring("objectmodel", bsobjectmodel);
+                if (objectmodeltable == nil && ensure_named_subtable(macintoshtable, bsobjectmodel, &objectmodeltable, true))
+                    applied_patch = true;
+            }
+        }
+
+        if (applied_patch) {
+            cli_log_debug("Applied fallback table creation for %s; re-validating structure", path);
+            if (settablestructureglobals(hrootvariable, false)) {
+                structure_ready = true;
+            } else {
+                cli_log_warn("System table structure still invalid after fallback initialization: %s", path);
+                cli_log_debug("systemtable=%p verbstable=%p builtinstable=%p agentstable=%p pathstable=%p resourcestable=%p menubartable=%p objectmodeltable=%p",
+                              (void *)systemtable,
+                              (void *)verbstable,
+                              (void *)builtinstable,
+                              (void *)agentstable,
+                              (void *)pathstable,
+                              (void *)resourcestable,
+                              (void *)menubartable,
+                              (void *)objectmodeltable);
+                structure_ready = false;
+            }
+        }
+
+        if (!structure_ready) {
+            cleartablestructureglobals();
+            rootvariable = hrootvariable;
+            roottable = hroot;
+            systemtable = captured_system;
+            verbstable = captured_verbs;
+            builtinstable = captured_builtins;
+            agentstable = captured_agents;
+            pathstable = captured_paths;
+            resourcestable = captured_resources;
+            menubartable = captured_menubar;
+            objectmodeltable = captured_objectmodel;
+
+            if (systemtable != nil && verbstable != nil) {
+                structure_ready = true;
+                partial_warning = true;
+            }
+        }
+
+        if (!structure_ready || systemtable == nil || verbstable == nil) {
+            dbdispose();
+            closefile(fnum);
+            databasedata = previous;
+            return false;
+        }
+
+        if (partial_warning) {
+            cli_log_warn("Proceeding with minimally hydrated system tables (optional tables may be missing) for %s", path);
+        } else if (applied_patch) {
+            cli_log_info("Loaded system root database with fallback table hydration: %s", path);
+        } else {
+            cli_log_warn("Proceeding despite partial system table validation; optional tables may be missing for %s", path);
+        }
+    }
+
+    if (!linksystemtablestructure(roottable)) {
+        cli_log_error("Unable to link system tables for %s", path);
+        cleartablestructureglobals();
+        dbdispose();
+        closefile(fnum);
+        databasedata = previous;
+        return false;
+    }
+
+    currenthashtable = roottable;
+
+    g_previous_database = previous;
+    g_system_root_fnum = fnum;
+    g_system_root_loaded = true;
+    snprintf(g_system_root_path, sizeof(g_system_root_path), "%s", path);
+
+    cli_log_info("Loaded system root database: %s", g_system_root_path);
+    return true;
+}
+
+static void unload_system_root_database(void) {
+    if (!g_system_root_loaded) {
+        return;
+    }
+
+    const char* path = (g_system_root_path[0] != '\0') ? g_system_root_path : "(unknown)";
+    cli_log_info("Unloading system root database: %s", path);
+
+    if (systemtable != nil) {
+        if (!unlinksystemtablestructure()) {
+            cli_log_warn("Failed to unlink system table structure during unload");
+        }
+    }
+
+    cleartablestructureglobals();
+    currenthashtable = nil;
+
+    if (databasedata != nil) {
+        dbdispose();
+    }
+
+    if (g_system_root_fnum != 0) {
+        if (!closefile(g_system_root_fnum)) {
+            cli_log_warn("Failed to close system root file handle");
+        }
+    }
+
+    databasedata = g_previous_database;
+    g_previous_database = nil;
+    g_system_root_fnum = 0;
+    g_system_root_loaded = false;
+    g_system_root_path[0] = '\0';
 }
 
 static boolean execute_script_mode(void) {

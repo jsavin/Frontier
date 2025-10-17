@@ -24,12 +24,14 @@ typedef struct {
     char* inline_script;        // Inline script code
     char* database_file;        // Database file path
     char* query;                // Database query
+    char* system_root;          // Path to system/root database (e.g., Frontier.root)
     int port;                   // Network server port
     boolean verbose;            // Verbose output
     boolean debug;              // Debug output
     boolean server_mode;        // HTTP server mode
     boolean websocket_mode;     // WebSocket server mode
     boolean migrate_database;   // Migrate database flag
+    boolean hydrate_system_root;// Hydrate system root tables flag
     boolean show_help;          // Show help flag
     boolean show_version;       // Show version flag
 } cli_options_t;

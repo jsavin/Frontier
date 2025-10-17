@@ -15,8 +15,7 @@ static boolean g_cli_debug = false;
 char g_cli_error_buffer[1024] = {0};
 
 static void cli_vlog(int level, const char* label, const char* format, va_list args) {
-    if (level == CLI_LOG_ERROR ||
-        (level == CLI_LOG_WARN && g_cli_verbose) ||
+    if (level == CLI_LOG_ERROR || level == CLI_LOG_WARN ||
         (level == CLI_LOG_INFO && g_cli_verbose) ||
         (level == CLI_LOG_DEBUG && g_cli_debug)) {
         time_t now = time(NULL);

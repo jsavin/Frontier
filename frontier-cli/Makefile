@@ -3,7 +3,9 @@
 
 CC = clang
 CFLAGS = -std=c17 -Wall -Wextra -O0 -g -fpascal-strings \
-         -DFRONTIER_HEADLESS -DFRONTIER_USE_PORTABLE_HANDLES
+         -DFRONTIER_HEADLESS -DFRONTIER_USE_PORTABLE_HANDLES \
+         -DHEADLESS_TEST_PORTABLE_FILE -DHEADLESS_LINKS_REAL_DB \
+         -DHEADLESS_USE_REAL_TABLEPACK
 SANITIZE ?= 0
 ifeq ($(SANITIZE),1)
   CFLAGS += -fsanitize=address,undefined -fno-omit-frame-pointer
@@ -72,6 +74,7 @@ RUNTIME_SOURCES = \
     ../Common/source/langxml.c \
     ../Common/source/tableops.c \
     ../Common/source/tablestructure.c \
+    ../Common/source/tablepack.c \
     ../Common/source/shell_api.c \
     ../Common/source/shell_api_headless.c
 
@@ -87,10 +90,20 @@ HEADLESS_STUBS = \
     $(TESTSDIR)/headless_mac_compat.c \
     $(TESTSDIR)/headless_langregexp_stub.c \
     $(TESTSDIR)/headless_langipc_stub.c \
-    $(TESTSDIR)/headless_lang_runtime_more_stubs.c
+    $(TESTSDIR)/headless_lang_runtime_more_stubs.c \
+    $(TESTSDIR)/headless_file_portable.c \
+    $(TESTSDIR)/headless_file_verbs.c \
+    $(TESTSDIR)/headless_odb_stubs.c
+
+# Database and file runtime sources required for Frontier.root access
+DATABASE_SOURCES = \
+    ../Common/source/db.c \
+    ../Common/source/db_format.c \
+    ../Common/source/odbengine.c \
+    ../Common/source/findinfile.c
 
 # Aggregate sources
-FRONTIER_SOURCES = $(RUNTIME_SOURCES) $(HEADLESS_STUBS)
+FRONTIER_SOURCES = $(RUNTIME_SOURCES) $(DATABASE_SOURCES) $(HEADLESS_STUBS)
 
 TARGET = frontier-cli
 
