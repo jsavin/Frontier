@@ -315,19 +315,24 @@ static boolean hydrate_system_root_database(const char* path) {
     }
 
     hdlfilenum fnum = 0;
+    boolean ok = false;
+    boolean file_open = false;
+    boolean db_open = false;
+    boolean dispose_rootvariable = false;
+
     if (!openfile(&fs, &fnum, false)) {
         cli_log_error("Unable to open system root for hydration: %s", path);
         return false;
     }
+    file_open = true;
 
     hdldatabaserecord previous = databasedata;
 
     if (!dbopenfile(fnum, false)) {
         cli_log_error("dbopenfile (read-write) failed for system root: %s", path);
-        closefile(fnum);
-        databasedata = previous;
-        return false;
+        goto cleanup;
     }
+    db_open = true;
 
     dbaddress adr = nildbaddress;
     dbgetview(cancoonview, &adr);
@@ -336,12 +341,10 @@ static boolean hydrate_system_root_database(const char* path) {
     hdlhashtable hroot = nil;
     if (!tableloadsystemtable(adr, &hrootvariable, &hroot, false)) {
         cli_log_error("Failed to load system table while hydrating %s", path);
-        dbclose();
-        dbdispose();
-        databasedata = previous;
-        closefile(fnum);
-        return false;
+        goto cleanup;
     }
+
+    dispose_rootvariable = true;
 
     cleartablestructureglobals();
     rootvariable = hrootvariable;
@@ -351,16 +354,12 @@ static boolean hydrate_system_root_database(const char* path) {
     if (hashtablestack == nil) {
         if (!newclearhandle(longsizeof(tytablestack), (Handle *)&hashtablestack)) {
             cli_log_error("Failed to allocate hashtablestack while hydrating %s", path);
-            dbclose();
-            dbdispose();
-            databasedata = previous;
-            closefile(fnum);
-            return false;
+            goto cleanup;
         }
         (**hashtablestack).toptables = 0;
     }
 
-    boolean ok = checktablestructure(true);
+    ok = checktablestructure(true);
     if (!ok) {
         cli_log_warn("checktablestructure reported issues while hydrating %s", path);
     }
@@ -394,25 +393,35 @@ static boolean hydrate_system_root_database(const char* path) {
 
     if (!tablesavesystemtable(hrootvariable, &adr)) {
         cli_log_error("Failed to save system table while hydrating %s", path);
-        ok = false;
-    } else {
-        dbsetview(cancoonview, adr);
-        cli_log_info("Hydrated system root: %s%s", path,
-                     created_optional ? " (created optional tables)" : "");
+        goto cleanup;
     }
 
-    if (!dbclose()) {
-        cli_log_warn("dbclose reported failure while hydrating %s", path);
-        ok = false;
+    dbsetview(cancoonview, adr);
+    cli_log_info("Hydrated system root: %s%s", path,
+                 created_optional ? " (created optional tables)" : "");
+    ok = true;
+
+cleanup:
+    if (db_open) {
+        if (!dbclose()) {
+            cli_log_warn("dbclose reported failure while hydrating %s", path);
+            ok = false;
+        }
     }
 
-    dbdispose();
+    if (dispose_rootvariable && hrootvariable != nil)
+        disposehandle(hrootvariable);
+
+    if (db_open)
+        dbdispose();
+
     databasedata = previous;
     cleartablestructureglobals();
     currenthashtable = nil;
 
-    if (!closefile(fnum)) {
+    if (file_open && !closefile(fnum)) {
         cli_log_warn("Failed to close hydrated system root file handle: %s", path);
+        ok = false;
     }
 
     return ok;
