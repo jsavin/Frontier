@@ -2,6 +2,7 @@
 
 **Target System:** Mac Mini M4 with 32GB RAM  
 **Goal:** Automated PR reviews with static analysis + local AI using Ollama
+**Note:** Automated PR reviews by Codex are configured for this repository, but Codex Bot isn't able to run tests because `clang` is unavailable in the environment it runs in. Tests must be run locally, and it's recommended that you do this prior to merging PRs where Codex Bot has found/fixed issues.
 
 ---
 
