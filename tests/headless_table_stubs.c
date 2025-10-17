@@ -7,8 +7,6 @@
 
 #ifdef FRONTIER_HEADLESS
 
-#include "tablepack.h"
-
 hdltableformats tableformatsdata = nil;
 
 #if defined(HEADLESS_USE_REAL_TABLEPACK)

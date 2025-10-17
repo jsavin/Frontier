@@ -433,6 +433,14 @@ static boolean load_system_root_database(const char* path) {
         cli_log_error("System root path is empty");
         return false;
     }
+    boolean migrated = false;
+    if (!ensure_database_modern(path, &migrated)) {
+        cli_log_error("Failed to ensure system root is modern: %s", path);
+        return false;
+    }
+    if (migrated) {
+        cli_log_info("Migrated legacy system root to v7 format (backup created): %s", path);
+    }
     if (len > lenbigstring) {
         cli_log_error("System root path exceeds %d characters (got %zu)", lenbigstring, len);
         return false;
