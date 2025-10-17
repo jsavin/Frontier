@@ -134,7 +134,7 @@ USERTALK_OBJECT_TESTS = \
 	test_usertalk_runner
 
 # Buildable test executables on this branch
-RUN_BUILDABLE = core_tests db_format_tests runtime_tests parser_tests save_migration_tests file_portable_tests file_readline_tests file_verb_tests handle_tests
+RUN_BUILDABLE = core_tests db_format_tests runtime_tests parser_tests save_migration_tests file_portable_tests file_readline_tests file_verb_tests handle_tests cli_runtime_tests
 
 # Prebuilt or auxiliary test binaries that may be present
 RUN_PREBUILT = test_64bit_direct test_migration_verification test_real_databases test_runner verify_migration_success
@@ -173,6 +173,9 @@ file_verb_tests: file_verb_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/find
 
 handle_tests: handle_tests.c ../Common/source/portable_handles.c
 	$(CC) $(CFLAGS) -DFRONTIER_USE_PORTABLE_HANDLES -I../Common/headers -I../Common/SystemHeaders handle_tests.c ../Common/source/portable_handles.c -o $@
+
+cli_runtime_tests: cli_runtime_tests.c
+	$(CC) $(CFLAGS) -I../Common/headers -I../Common/SystemHeaders cli_runtime_tests.c -o $@
 
 # Test framework object
 framework/test_framework.o: framework/test_framework.c framework/test_framework.h

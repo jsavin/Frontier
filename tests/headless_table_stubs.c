@@ -100,6 +100,7 @@ boolean tableverbnew (hdlexternalvariable *hvariable) {
     return true;
 }
 
+#if !defined(HEADLESS_USE_REAL_TABLEPACK)
 boolean tableverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddress) {
     (void) h;
     if (hpacked)
@@ -108,13 +109,17 @@ boolean tableverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdba
         *flnewdbaddress = false;
     return false;
 }
+#endif /* !HEADLESS_USE_REAL_TABLEPACK */
 
+#if !defined(HEADLESS_USE_REAL_TABLEPACK)
 boolean tableverbpacktotext (hdlexternalvariable h, Handle htext) {
     (void) h;
     (void) htext;
     return false;
 }
+#endif /* !HEADLESS_USE_REAL_TABLEPACK */
 
+#if !defined(HEADLESS_USE_REAL_TABLEPACK)
 boolean tableverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *h, boolean fldisk) {
     (void) hpacked;
     (void) ixload;
@@ -122,14 +127,18 @@ boolean tableverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *h, b
     (void) fldisk;
     return false;
 }
+#endif /* !HEADLESS_USE_REAL_TABLEPACK */
 
+#if !defined(HEADLESS_USE_REAL_TABLEPACK)
 boolean tableverbmemorypack (hdlexternalvariable h, Handle *hpacked, hdlhashnode hnode) {
     (void) h;
     (void) hpacked;
     (void) hnode;
     return false;
 }
+#endif /* !HEADLESS_USE_REAL_TABLEPACK */
 
+#if !defined(HEADLESS_USE_REAL_TABLEPACK)
 boolean tableverbmemoryunpack (Handle hpacked, long *ixload, hdlexternalvariable *h, boolean fldisk) {
     (void) hpacked;
     (void) ixload;
@@ -137,6 +146,7 @@ boolean tableverbmemoryunpack (Handle hpacked, long *ixload, hdlexternalvariable
     (void) fldisk;
     return false;
 }
+#endif /* !HEADLESS_USE_REAL_TABLEPACK */
 
 boolean tableverbfind (hdlexternalvariable h, boolean *flzoom) {
     (void) h;
@@ -150,6 +160,7 @@ boolean tableverbcontinuesearch (hdlexternalvariable h) {
     return false;
 }
 
+#if !defined(HEADLESS_USE_REAL_TABLEPACK)
 boolean tableverbgettimes (hdlexternalvariable h, long *timecreated, long *timemodified, hdlhashnode hnode) {
     (void) h;
     (void) hnode;
@@ -159,7 +170,9 @@ boolean tableverbgettimes (hdlexternalvariable h, long *timecreated, long *timem
         *timemodified = 0;
     return false;
 }
+#endif /* !HEADLESS_USE_REAL_TABLEPACK */
 
+#if !defined(HEADLESS_USE_REAL_TABLEPACK)
 boolean tableverbsettimes (hdlexternalvariable h, long timecreated, long timemodified, hdlhashnode hnode) {
     (void) h;
     (void) timecreated;
@@ -167,13 +180,16 @@ boolean tableverbsettimes (hdlexternalvariable h, long timecreated, long timemod
     (void) hnode;
     return false;
 }
+#endif /* !HEADLESS_USE_REAL_TABLEPACK */
 
+#if !defined(HEADLESS_USE_REAL_TABLEPACK)
 boolean tableverbfindusedblocks (hdlexternalvariable h, bigstring bspath) {
     (void) h;
     if (bspath)
         setemptystring(bspath);
     return false;
 }
+#endif /* !HEADLESS_USE_REAL_TABLEPACK */
 
 boolean tablewindowopen (hdlexternalvariable h, hdlwindowinfo *hinfo) {
     (void) h;
