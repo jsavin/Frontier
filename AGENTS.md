@@ -75,7 +75,7 @@ This document is a concise contributor guide for Frontier’s C/C toolchain and 
 - Follow this file’s guidance across the repo; place new cross‑platform code in `portable/` when feasible.
 - Do not reformat unrelated files; avoid editing generated `build_*` outputs.
 - When adding files, mirror existing naming and include patterns.
-- When starting a new session, first check the README.md, planning docs (in the planning directory), and recent commits to understand where we're at in the project. You can also read the last hundred or so lines of the most recent couple of files in codex_sessions to pick up context from the most recent sessions.
+- When starting a new session, ask the user if you should try to pick up from where the previous session ended. If the user says so, you can either do what the user asks, or propose the following: 1) check the README.md, planning docs (in the planning directory), 2) review recent commits to understand where we're at in the project, 3) read the last hundred or so lines of the most recent couple of files in codex_sessions to pick up context from the most recent sessions. If the user tells you to do something different, always follow their guidance instead.
 
 ## Sandbox & Approvals
 - Escalation: Always request escalated execution when needed (e.g., writing outside workspace, network access, package installs, GUI commands, or when sandboxing blocks progress).

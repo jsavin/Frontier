@@ -23,3 +23,11 @@ tests/core_tests
 tests/handle_tests
 tests/_results/
 Common/MySQL/
+
+.claude/
+.anthropic/
+.codex/
+.cache/
+.mcp/
+node_modules/
+dist/
