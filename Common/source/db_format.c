@@ -187,19 +187,24 @@ boolean ensure_database_modern(const char *db_path, boolean *migrated) {
     if (!fp)
         return false;
 
-    unsigned char hdr[2];
-    size_t n = fread(hdr, 1, sizeof hdr, fp);
+    tydatabaserecord header;
+    boolean ok = fread(&header, sizeof header, 1, fp) == 1;
     fclose(fp);
-    if (n != sizeof hdr)
+    if (!ok)
         return false;
 
-    unsigned char version = hdr[1];
-    if (version >= 7) {
+    if (!detect_database_format(&header))
+        return false;
+
+    if (use_64bit_format) {
         return true; /* already modern */
     }
 
     if (!migrate_32bit_to_64bit(db_path))
         return false;
+
+    /* Migration succeeded; future reads should treat file as modern. */
+    use_64bit_format = true;
 
     if (migrated)
         *migrated = true;
