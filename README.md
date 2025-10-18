@@ -1,7 +1,7 @@
 # Frontier Refactoring Project (develop branch status)
 
-**Last updated:** 2025-10-11  
-**State:** Modernization wave 1 delivered; headless + 64-bit aligned  
+**Last updated:** 2025-10-18  
+**State:** Modernization wave 1 delivered; headless + 64-bit aligned; headless service core vision documented  
 **Primary contacts:** planning/INDEX.md (owners per phase)
 
 This repository is actively modernising the Frontier runtime and toolchain. The
@@ -71,6 +71,7 @@ See `docs/mysql_client_setup.md` for detailed guidance.
 - `planning/adr/ADR-0010-headless-efp-routing.md` – decision record for dotted
   call routing
 - `planning/Frontier_Refactoring_Plan.md` – original modernisation plan
+- `planning/phase3/headless_daemon_vision.md` – target architecture for the headless daemon/service core
 - `codex_sessions/README.md` – how to fetch/view Codex transcript logs
 
 For daily notes and context, see the Codex session branch (instructions below).
