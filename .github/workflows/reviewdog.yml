@@ -1,0 +1,35 @@
+# .github/workflows/reviewdog.yml
+name: Static Analysis (reviewdog)
+on:
+  pull_request:
+    paths: ["**/*.c", "**/*.h"]
+jobs:
+  cppcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y cppcheck
+      - name: cppcheck via reviewdog
+        uses: reviewdog/action-cppcheck@v2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          reporter: github-pr-review
+          level: warning
+          cppcheck_flags: >
+            --enable=warning,performance,portability,style
+            --std=c11 --inline-suppr
+  clang-tidy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y clang clang-tidy cmake
+      - run: cmake -S . -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+      - run: ln -sf build/compile_commands.json .
+      - name: clang-tidy via reviewdog (changed files only)
+        uses: reviewdog/action-clang-tidy@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          reporter: github-pr-review
+          filter_mode: diff_context
+          clang_tidy_flags: >
+            -checks=clang-analyzer-*,bugprone-*,cert-*,misc-*,readability-*,-modernize-*

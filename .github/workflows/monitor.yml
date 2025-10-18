@@ -1,0 +1,56 @@
+# .github/workflows/monitor.yml
+name: Server Monitor
+on:
+  schedule: [{ cron: "*/5 * * * *" }]
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping health
+        id: ping
+        env:
+          HEALTH_URL: http://www.userland.com/default?print-friendly=true
+        run: |
+          set -e
+          if ! curl -fsS --max-time 10 "$HEALTH_URL" >/dev/null; then
+            echo "ok=false" >> $GITHUB_OUTPUT
+          else
+            echo "ok=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Notify Discord on failure
+        if: steps.ping.outputs.ok != 'true'
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_MONITOR }}
+          HEALTH_URL: http://www.userland.com/
+        run: |
+          payload='{"embeds":[{"title":"Server DOWN","description":"'"$HEALTH_URL"'","timestamp":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}]}'
+          curl -s -X POST -H "Content-Type: application/json" -d "$payload" "$DISCORD_WEBHOOK" >/dev/null
+
+      - name: Open or comment on issue
+        if: steps.ping.outputs.ok != 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const title = `Server down: http://www.userland.com/`;
+            const { data } = await github.search.issuesAndPullRequests({
+              q: `repo:${context.repo.owner}/${context.repo.repo} is:issue is:open in:title "${title}"`
+            });
+            if (data.items.length) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: data.items[0].number,
+                body: `Another failure at ${new Date().toISOString()}.`
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                labels: ['infra','bug'],
+                body: `Automated check failed at ${new Date().toISOString()}.`
+              });
+            }
