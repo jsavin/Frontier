@@ -22,7 +22,7 @@ Related Docs
 
 ## Objectives
 
-1. Enable the headless runtime/CLI to open `Frontier.root` using the real database engine.
+1. Enable the headless runtime/CLI to open the sanitized-but-complete `Frontier.root` (the one we ship with the app) using the real database engine. The root must retain `system.verbs`, `system.agents`, and other bootstrap tables so scripts work exactly as they do in the desktop build.
 2. Load the system table programmatically (equivalent of `Frontier.startup` in classic boot).
 3. Compile the kernelcall glue scripts into the headless/runtime build so UserTalk can invoke kernel verbs without the export shim.
 4. Cover the workflow with automated smoke/regression tests and refreshed documentation.
@@ -43,7 +43,7 @@ Related Docs
 
 2. **Runtime Initialization Enhancements**
    - Add CLI entry points (`--system-root`, `--load-system-table`) that call `dbopenfile`, set database globals, and execute the standard startup call chain (e.g., `dbopenfile`, `dbgetview`, `tableloadsystemtable`, `settablestructureglobals`).
-   - Provide a headless fallback that logs warnings and hydrates missing optional tables (`system.misc`, `system.menus`, `system.macintosh.objectmodel`) so sanitized databases are usable for scripting despite gaps.
+   - Keep the sanitized `Frontier.root` authoritative—avoid code-generated `system.verbs` stubs except as a last resort. Only use the fallback path to log and patch optional tables (paths, menus, macintosh.objectmodel) when older roots are encountered.
    - Ensure headless logging surfaces missing dependency errors clearly.
    - Document required sample database locations (`databases/Guest Databases/...`) and any environment knobs.
 
@@ -52,9 +52,8 @@ Related Docs
    - Add lightweight assertions around verb counts/failure modes to catch regressions.
 
 4. **Kernelcall Glue Integration**
-   - Compile the generated glue scripts into the headless build and ensure they are available to the runtime without exporting to disk.
-   - Adjust the CLI/runtime initialization so UserTalk dotted calls flow through the compiled glue into kernel implementations.
-   - Provide feature flags or build switches for iterating on the compiled glue during development.
+   - Rely on the glue scripts stored in `system.verbs` inside the shipped database. The headless runtime should simply load the root and run them through `kernel()` just like the legacy app.
+   - Drop the plan to compile glue into the binary unless we hit a hard blocker; document that a “real” root is the contract.
 
 5. **Documentation & Follow-up**
    - Update `planning/phase3/DEVELOPER_QUICKSTART_HEADLESS.md` and `frontier-cli/README.md` once features land.
