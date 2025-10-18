@@ -1,10 +1,10 @@
-# Frontier.root Headless Bring-up & Kernel Export
+# Frontier.root Headless Bring-up & Kernel Glue Integration
 
 Status
 - State: Proposed
 - Phase: 3
-- Last Updated: 2025-10-12
-- Notes: Tracks the work required to open Frontier.root headless, hydrate the system table, and emit kernelcall glue scripts from C.
+- Last Updated: 2025-10-18
+- Notes: Tracks the work required to open Frontier.root headless, hydrate the system table, and compile the kernelcall glue scripts into the runtime.
 
 Related Docs
 - planning/phase3/0.5.23_runtime_test_plan.md
@@ -18,20 +18,21 @@ Related Docs
 - 2025-10-13: Added headless fallback that hydrates missing `system.misc`/`system.menus` tables in-memory so sanitized Frontier.root loads with warnings.
 - 2025-10-13: Noted follow-up to modernize the database save path so hydrated roots can be persisted as true v7 files.
 - 2025-10-16: Landed serializer refactor (fixed-width disk addresses, 32-bit sentinel) and added runtime round-trip tests for legacy/64-bit tables.
+- 2025-10-18: Reframed kernelcall work to focus on compiling glue scripts with the runtime instead of exporting text artifacts.
 
 ## Objectives
 
 1. Enable the headless runtime/CLI to open `Frontier.root` using the real database engine.
 2. Load the system table programmatically (equivalent of `Frontier.startup` in classic boot).
-3. Export the kernelcall glue scripts to deterministic text files so Phase 3 native bindings can consume them.
+3. Compile the kernelcall glue scripts into the headless/runtime build so UserTalk can invoke kernel verbs without the export shim.
 4. Cover the workflow with automated smoke/regression tests and refreshed documentation.
 
 ## Deliverables
 
 - Headless CLI/test build that links required database modules and supports a `--system-root` flag.
 - Minimal integration path that opens `Frontier.root`, calls the existing startup verbs, and verifies `system.table` contents.
-- Export routine (C) that walks `system.verbs` and writes normalized text artifacts (one file per verb family or similar) to a caller-provided directory.
-- Automated checks: CLI smoke test or scripted diff validating the export output; docs updated to describe usage.
+- Build automation that compiles kernelcall glue scripts alongside the runtime so they can be invoked directly from UserTalk.
+- Automated checks: CLI smoke test validating system root hydration + kernelcall invocation; docs updated to describe usage.
 
 ## Work Breakdown
 
@@ -50,10 +51,10 @@ Related Docs
    - Create a headless integration test that opens `Frontier.root`, resolves a known entry (e.g. `system.verbs.kernelCall`), and exits cleanly.
    - Add lightweight assertions around verb counts/failure modes to catch regressions.
 
-4. **Kernelcall Export Implementation**
-   - Implement a C routine that enumerates `system.verbs`, retrieves script text, normalizes line endings, and writes deterministic files.
-   - Expose the routine through the CLI (e.g. `--export-system-verbs <dir>`), returning non-zero on failure.
-   - Ensure exports land outside tracked roots by default; allow override for testing.
+4. **Kernelcall Glue Integration**
+   - Compile the generated glue scripts into the headless build and ensure they are available to the runtime without exporting to disk.
+   - Adjust the CLI/runtime initialization so UserTalk dotted calls flow through the compiled glue into kernel implementations.
+   - Provide feature flags or build switches for iterating on the compiled glue during development.
 
 5. **Documentation & Follow-up**
    - Update `planning/phase3/DEVELOPER_QUICKSTART_HEADLESS.md` and `frontier-cli/README.md` once features land.
@@ -64,11 +65,11 @@ Related Docs
 ## Risks & Mitigations
 
 - **UI Dependencies Surface During DB Boot**: Keep extending headless stubs; fall back to CLI flags that skip UI-coded paths until Phase 2 adapters are in place.
-- **Export Drift Without Tests**: Introduce golden files or hash checks so CI flags unexpected diff.
+- **Compiled Glue Drift**: Add smoke tests that call representative kernel verbs so regressions are caught even without exported artifacts.
 - **Large Frontier.root Footprint**: Use the sanitized sample DB already committed; document storage requirements.
 
 ## Exit Criteria
 
-- Headless build opens `Frontier.root`, loads `system.table`, and exports kernelcall glue via CLI in an automated run.
+- Headless build opens `Frontier.root`, loads `system.table`, and makes compiled kernelcall glue available to UserTalk in an automated run.
 - Tests exercise the workflow and guard against regressions.
-- Documentation updated so other developers can run the pipeline without relying on UserTalk tooling.
+- Documentation updated so other developers can run the pipeline without relying on UserTalk tooling or manual exports.
