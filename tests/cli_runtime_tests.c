@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <dirent.h>
 #include <limits.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -81,6 +82,59 @@ static bool string_contains(const char *haystack, const char *needle) {
     if (haystack == NULL || needle == NULL)
         return false;
     return strstr(haystack, needle) != NULL;
+}
+
+static bool copy_file(const char *src, const char *dst) {
+    FILE *in = fopen(src, "rb");
+    if (in == NULL)
+        return false;
+
+    FILE *out = fopen(dst, "wb");
+    if (out == NULL) {
+        fclose(in);
+        return false;
+    }
+
+    unsigned char buffer[4096];
+    size_t nread;
+    bool ok = true;
+
+    while ((nread = fread(buffer, 1, sizeof buffer, in)) > 0) {
+        if (fwrite(buffer, 1, nread, out) != nread) {
+            ok = false;
+            break;
+        }
+    }
+
+    if (ferror(in) || ferror(out))
+        ok = false;
+
+    fclose(out);
+    fclose(in);
+    return ok;
+}
+
+static void remove_system_root_backups(const char *databases_dir) {
+    DIR *dir = opendir(databases_dir);
+    if (dir == NULL)
+        return;
+
+    const char prefix[] = "Frontier.root.";
+    size_t prefix_len = sizeof prefix - 1;
+
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != NULL) {
+        if (strncmp(entry->d_name, prefix, prefix_len) != 0)
+            continue;
+
+        char path[PATH_MAX];
+        if (snprintf(path, sizeof path, "%s/%s", databases_dir, entry->d_name) >= (int)sizeof path)
+            continue;
+
+        unlink(path);
+    }
+
+    closedir(dir);
 }
 
 static int run_cli_command(const char *args, char *output, size_t output_size) {
@@ -184,6 +238,54 @@ static void test_invalid_script_returns_error(void) {
     assert(string_contains(output, "Execution error"));
 }
 
+static void test_system_root_hydration_allows_scripts(void) {
+    char root[PATH_MAX];
+    assert(get_repo_root(root, sizeof root));
+
+    char source_path[PATH_MAX];
+    if (snprintf(source_path, sizeof source_path, "%s/databases/Frontier.root", root) >= (int)sizeof source_path) {
+        fprintf(stderr, "source_path buffer too small\n");
+        exit(1);
+    }
+
+    char temp_copy_path[PATH_MAX];
+    if (snprintf(temp_copy_path, sizeof temp_copy_path, "%s/tests/_results/Frontier.root.backup", root) >= (int)sizeof temp_copy_path) {
+        fprintf(stderr, "temp_copy_path buffer too small\n");
+        exit(1);
+    }
+
+    assert(copy_file(source_path, temp_copy_path));
+
+    char args[PATH_MAX * 2];
+    if (snprintf(args, sizeof args, "--system-root \"%s\" -e \"3 + 4\"", source_path) >= (int)sizeof args) {
+        fprintf(stderr, "CLI args buffer too small\n");
+        unlink(temp_copy_path);
+        exit(1);
+    }
+
+    char output[1024];
+    int exit_code = run_cli_command(args, output, sizeof output);
+    bool has_result = string_contains(output, "7");
+    bool failed_load = string_contains(output, "Failed to load system root database");
+    bool failed_hydrate = string_contains(output, "Failed to hydrate system root");
+    bool execution_error = string_contains(output, "Execution error");
+
+    bool restored = copy_file(temp_copy_path, source_path);
+    unlink(temp_copy_path);
+
+    char databases_dir[PATH_MAX];
+    if (snprintf(databases_dir, sizeof databases_dir, "%s/databases", root) < (int)sizeof databases_dir) {
+        remove_system_root_backups(databases_dir);
+    }
+
+    assert(exit_code == 0);
+    assert(has_result);
+    assert(!failed_load);
+    assert(!failed_hydrate);
+    assert(!execution_error);
+    assert(restored);
+}
+
 int main(int argc, char **argv) {
     (void)argc;
     (void)argv;
@@ -192,6 +294,7 @@ int main(int argc, char **argv) {
     test_inline_string_concat();
     test_script_file_execution();
     test_invalid_script_returns_error();
+    test_system_root_hydration_allows_scripts();
 
     printf("cli_runtime_tests: all tests passed\n");
     return 0;
