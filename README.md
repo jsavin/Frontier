@@ -118,12 +118,13 @@ Frontier/
 
 ## Contribution workflow
 
-1. Branch from `develop` and keep changes small.
-2. Update/consult planning docs before coding (PRs reference the appropriate
+1. Read `CONTRIBUTING.md` for branching, commit, and testing expectations.
+2. Branch from `develop` and keep changes small.
+3. Update/consult planning docs before coding (PRs reference the appropriate
    ADR/decision where possible).
-3. Run targeted tests locally; note known failures when applicable.
-4. Update docs and tests alongside code; add Codex notes if significant.
-5. Open PRs against `develop` (multi-arch + headless tests should remain green).
+4. Run targeted tests locally; note known failures when applicable.
+5. Update docs and tests alongside code; add Codex notes if significant.
+6. Open PRs against `develop` (multi-arch + headless tests should remain green).
 
 ## Next milestone snapshot
 
