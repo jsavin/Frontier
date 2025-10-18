@@ -1,4 +1,0 @@
-# Static analysis workflow temporarily disabled.
-# The previous reviewdog/cppcheck/clang-tidy jobs were causing repeated
-# failures; we'll restore the workflow once the configuration is stable.
-# (See branch chore/disable-reviewdog for original contents.)
