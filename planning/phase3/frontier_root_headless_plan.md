@@ -108,8 +108,6 @@ The classic application loads `system.root` and primes the script runtime withou
 
 ### Implications for Headless
 
-- The sanitized v6 root we ship today has historically trimmed optional tables; during development we may still hit missing `system.verbs` entries and lean on the temporary EFP shim. The goal remains to load the **real** tables from the database (after migration/startup scripts run) so dotted calls flow through `kernelcall`.
-- To match the legacy bootstrap, we must either:
-  - Restore the shipped database so it retains the `system.verbs` hierarchy and let headless boot run the normal startup scripts; or
-  - As a temporary bridge, generate wrapper tables programmatically at startup (see `planning/phase3/system_verbs_bootstrap_plan.md`). Remove this once the sanitized root carries the expected tables.
-- Tests that rely on `system.verbs.*` should be deferred until those tables exist in the headless runtime (either via DB or codegen).
+- The sanitized v6 root we ship today already contains the canonical `system.verbs`, `system.agents`, and other glue scripts. Once the CLI boot path mirrors the desktop flow, dotted lookups should call through those scripts and reach `kernelcall` without help.
+- In early bring-up we may still lean on the temporary EFP shim while wiring up the loader, but the target state is to remove it entirely once headless can load `system.verbs` from the database. Treat the shim strictly as a short-lived safety net.
+- Tests that rely on `system.verbs.*` should be aligned with that target—exercise the real glue once the loader work lands; until then, document any temporary bypasses.
