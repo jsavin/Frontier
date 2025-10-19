@@ -22,7 +22,7 @@ Related Docs
 
 ## Objectives
 
-1. Enable the headless runtime/CLI to open the sanitized-but-complete `Frontier.root` (the one we ship with the app) using the real database engine. The root must retain `system.verbs`, `system.agents`, and other bootstrap tables so scripts work exactly as they do in the desktop build.
+1. Enable the headless runtime/CLI to open the sanitized Frontier.root that ships with the project (currently a cleaned-up **v6** root) using the real database engine. The loader must mirror the desktop boot flow so `system.verbs`, `system.agents`, and other bootstrap tables hydrate from that database exactly as they do in the application build.
 2. Load the system table programmatically (equivalent of `Frontier.startup` in classic boot).
 3. Compile the kernelcall glue scripts into the headless/runtime build so UserTalk can invoke kernel verbs without the export shim.
 4. Cover the workflow with automated smoke/regression tests and refreshed documentation.
@@ -44,6 +44,7 @@ Related Docs
 2. **Runtime Initialization Enhancements**
    - Add CLI entry points (`--system-root`, `--load-system-table`) that call `dbopenfile`, set database globals, and execute the standard startup call chain (e.g., `dbopenfile`, `dbgetview`, `tableloadsystemtable`, `settablestructureglobals`).
    - Keep the sanitized `Frontier.root` authoritative—avoid code-generated `system.verbs` stubs except as a last resort. When older or trimmed roots are encountered, use a fallback that logs warnings and hydrates missing optional tables (`system.misc`, `system.menus`, `system.macintosh.objectmodel`, `system.paths`) so scripting remains usable.
+   - Because the repo ships a **v6** root, ensure the headless flow either runs the hydration/migration path (`--hydrate-system-root` / `ensure_database_modern`) or the normal startup scripts so the database upgrades itself to v7. For the final release we plan to package a pre-migrated v7 root to avoid surprising users with first-run backups or waits, but development should continue to assume the sanitized v6 root is the source of truth.
    - Ensure headless logging surfaces missing dependency errors clearly.
    - Document required sample database locations (`databases/Guest Databases/...`) and any environment knobs.
    - Document how the classic application hydrates `system.root` before any UI comes online so the headless implementation can match that behavior (see Legacy Bootstrapping below).
@@ -60,7 +61,8 @@ Related Docs
    - Update `planning/phase3/DEVELOPER_QUICKSTART_HEADLESS.md` and `frontier-cli/README.md` once features land.
    - Note in `system_verbs_bootstrap_plan.md` how the export replaces manual UserTalk dumps.
    - Track remaining dependencies (e.g. kernel binding tests) for subsequent PRs.
-   - Build or modernize the database save/migration path so hydrated Frontier.root instances can be written back to disk as v7+ without relying on legacy GUI save code.
+- Build or modernize the database save/migration path so hydrated Frontier.root instances can be written back to disk as v7+ without relying on legacy GUI save code.
+- Confirm the release packaging process snapshots a v7 copy of Frontier.root (post-migration) so production users do not see the one-time backup or migration delay that developers tolerate during bring-up.
 
 ## Risks & Mitigations
 
@@ -106,8 +108,6 @@ The classic application loads `system.root` and primes the script runtime withou
 
 ### Implications for Headless
 
-- The sanitized root we ship today lacks `system.verbs`, so headless falls back to the EFP shim (`langexternalgettable` HEADLESS block) and dotted calls bypass `system.verbs`.
-- To match the legacy bootstrap, we must either:
-  - Ship a sanitized root that still includes the `system.verbs` hierarchy; or
-  - Generate wrapper tables programmatically at startup (see `planning/phase3/system_verbs_bootstrap_plan.md`).
-- Tests that rely on `system.verbs.*` should be deferred until those tables exist in the headless runtime (either via DB or codegen).
+- The sanitized v6 root we ship today already contains the canonical `system.verbs`, `system.agents`, and other glue scripts. Once the CLI boot path mirrors the desktop flow, dotted lookups should call through those scripts and reach `kernelcall` without help.
+- In early bring-up we may still lean on the temporary EFP shim while wiring up the loader, but the target state is to remove it entirely once headless can load `system.verbs` from the database. Treat the shim strictly as a short-lived safety net.
+- Tests that rely on `system.verbs.*` should be aligned with that target—exercise the real glue once the loader work lands; until then, document any temporary bypasses.
