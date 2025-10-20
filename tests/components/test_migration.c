@@ -9,6 +9,23 @@
 #include <unistd.h>
 
 static const char *test_legacy_db = "test_migration_legacy.root";
+static const size_t legacy_view_base = 10;
+static const size_t legacy_view_stride = 4;
+
+static void write_legacy_dbaddress(unsigned char *dest, uint32_t value) {
+    dest[0] = (unsigned char)((value >> 24) & 0xFF);
+    dest[1] = (unsigned char)((value >> 16) & 0xFF);
+    dest[2] = (unsigned char)((value >> 8) & 0xFF);
+    dest[3] = (unsigned char)(value & 0xFF);
+}
+
+static dbaddress read_legacy_dbaddress_test(const unsigned char *field) {
+    uint32_t value = ((uint32_t) field[0] << 24) |
+                     ((uint32_t) field[1] << 16) |
+                     ((uint32_t) field[2] << 8)  |
+                      (uint32_t) field[3];
+    return (dbaddress) value;
+}
 
 static void remove_if_exists(const char *path) {
     if (path && unlink(path) == 0) {
@@ -24,16 +41,26 @@ static bool create_legacy_database(void) {
     if (!f)
         return false;
 
-    tydatabaserecord header;
-    memset(&header, 0, sizeof header);
-    header.systemid = dbsystemidMac;
-    header.versionnumber = 6;
-    header.availlist = nildbaddress;
-    header.headerLength = sizeof header;
-    header.longversionMajor = 6;
-    header.longversionMinor = 0;
+    unsigned char header[LEGACY_DB_HEADER_BYTES];
+    memset(header, 0, sizeof header);
+    header[0] = dbsystemidMac;
+    header[1] = 6;
+    write_legacy_dbaddress(header + legacy_view_base + 0 * legacy_view_stride, 0x0057fca4u);
+    write_legacy_dbaddress(header + legacy_view_base + 1 * legacy_view_stride, 0x00003000u);
+    write_legacy_dbaddress(header + legacy_view_base + 2 * legacy_view_stride, 0x00004006u);
+    uint32_t header_len = (uint32_t) sizeof header;
+    header[30] = (unsigned char)((header_len >> 24) & 0xFF);
+    header[31] = (unsigned char)((header_len >> 16) & 0xFF);
+    header[32] = (unsigned char)((header_len >> 8) & 0xFF);
+    header[33] = (unsigned char)(header_len & 0xFF);
+    header[34] = 0x00;
+    header[35] = 0x06;
+    header[38] = 0x00;
+    header[39] = 0x00;
+    header[40] = 0xDE;
+    header[41] = 0xAD;
 
-    bool ok = fwrite(&header, sizeof header, 1, f) == 1;
+    bool ok = fwrite(header, sizeof header, 1, f) == sizeof header;
     fclose(f);
     return ok;
 }
@@ -60,21 +87,25 @@ static bool test_header_conversion(void) {
     FILE *f = fopen(test_legacy_db, "rb");
     TEST_ASSERT(f != NULL, "Should open legacy database");
 
-    tydatabaserecord old_header;
-    TEST_ASSERT(fread(&old_header, sizeof old_header, 1, f) == 1, "Should read legacy header");
+    unsigned char old_header[LEGACY_DB_HEADER_BYTES];
+    TEST_ASSERT(fread(old_header, 1, sizeof old_header, f) == sizeof old_header, "Should read legacy header");
     fclose(f);
 
     tydatabaserecord_64 new_header;
     memset(&new_header, 0, sizeof new_header);
-    TEST_ASSERT(convert_32bit_header_to_64bit(&old_header, &new_header), "Should convert header");
+    TEST_ASSERT(convert_32bit_header_to_64bit(old_header, &new_header), "Should convert header");
 
-    TEST_ASSERT(new_header.systemid == old_header.systemid, "systemid preserved");
+    TEST_ASSERT(new_header.systemid == old_header[0], "systemid preserved");
     TEST_ASSERT(new_header.versionnumber == 7, "version bumps to 7");
-    TEST_ASSERT(new_header.availlist == old_header.availlist, "availlist converted");
-    TEST_ASSERT(new_header.oldfnumdatabase == old_header.oldfnumdatabase, "oldfnum preserved");
-    TEST_ASSERT(new_header.flags == old_header.flags, "flags preserved");
-    for (int i = 0; i < ctviews; i++)
-        TEST_ASSERT(new_header.views[i] == old_header.views[i], "views converted");
+    TEST_ASSERT(new_header.availlist == read_legacy_dbaddress_test(old_header + 2), "availlist converted");
+    TEST_ASSERT(new_header.oldfnumdatabase == 0, "oldfnum preserved");
+    TEST_ASSERT(new_header.flags == 0, "flags preserved");
+    TEST_ASSERT(new_header.views[0] == read_legacy_dbaddress_test(old_header + legacy_view_base + 0 * legacy_view_stride), "view0 converted");
+    TEST_ASSERT(new_header.views[2] == read_legacy_dbaddress_test(old_header + legacy_view_base + 2 * legacy_view_stride), "view2 converted");
+    TEST_ASSERT(new_header.headerLength == (long) sizeof(tydatabaserecord_64), "header length converted");
+    TEST_ASSERT(new_header.longversionMajor == 6, "major version converted");
+    TEST_ASSERT(new_header.longversionMinor == 0, "minor version converted");
+    TEST_ASSERT(new_header.u.extensions.availlistblock == 0x0000DEAD, "avail block converted");
     TEST_ASSERT(new_header.u.extensions.availlistshadow == nildbaddress, "shadow reset");
     TEST_ASSERT(!new_header.u.extensions.flreadonly, "readonly cleared");
     for (size_t i = 0; i < sizeof new_header.u.extensions.reserved; ++i)
@@ -93,6 +124,8 @@ static bool test_full_migration(void) {
         TEST_ASSERT(fread(&header, sizeof header, 1, migrated) == 1, "Should read migrated header");
         fclose(migrated);
         TEST_ASSERT(header.versionnumber == 7, "Migrated header is version 7");
+        TEST_ASSERT(header.views[0] == 0x0057fca4, "View[0] migrated correctly");
+        TEST_ASSERT(header.views[2] == 0x00004006, "View[2] migrated correctly");
     }
 
     char backup_path[1024];

@@ -5,6 +5,24 @@
 #include "frontier.h"
 #include "db_format.h"
 
+static const size_t legacy_view_base = 10;
+static const size_t legacy_view_stride = 4;
+
+static void write_legacy_dbaddress(unsigned char *dest, uint32_t value) {
+    dest[0] = (unsigned char)((value >> 24) & 0xFF);
+    dest[1] = (unsigned char)((value >> 16) & 0xFF);
+    dest[2] = (unsigned char)((value >> 8) & 0xFF);
+    dest[3] = (unsigned char)(value & 0xFF);
+}
+
+static dbaddress read_legacy_dbaddress_test(const unsigned char *field) {
+    uint32_t value = ((uint32_t) field[0] << 24) |
+                     ((uint32_t) field[1] << 16) |
+                     ((uint32_t) field[2] << 8)  |
+                      (uint32_t) field[3];
+    return (dbaddress) value;
+}
+
 static void reset_use_64bit_format(void) {
     use_64bit_format = false;
 }
@@ -30,46 +48,50 @@ static void test_detect_modern_database(void) {
 }
 
 static void test_convert_header(void) {
-    tydatabaserecord old_header = {0};
-    old_header.systemid = 1;
-    old_header.versionnumber = 6;
-    old_header.availlist = 0x11223344;
-    old_header.oldfnumdatabase = 42;
-    old_header.flags = 0x55AA;
-    old_header.views[0] = 0x01020304;
-    old_header.views[1] = 0x05060708;
-    old_header.views[2] = 0x090A0B0C;
-    old_header.releasestack = (Handle)0x1234;
-    old_header.fnumdatabase = 99;
-    old_header.headerLength = 256;
-    old_header.longversionMajor = 6;
-    old_header.longversionMinor = 1;
-    old_header.u.extensions.availlistblock = 0x0BADF00D;
-    old_header.u.extensions.availlistshadow.data = (Handle)0xBEEF;
-    old_header.u.extensions.availlistshadow.pos = 12;
-    old_header.u.extensions.availlistshadow.eof = 34;
-    old_header.u.extensions.availlistshadow.size = 56;
-    old_header.u.extensions.flreadonly = true;
+    unsigned char old_header[LEGACY_DB_HEADER_BYTES];
+    memset(old_header, 0, sizeof old_header);
+    old_header[0] = 1;
+    old_header[1] = 6;
+    old_header[6] = 0;
+    old_header[7] = 42;
+    old_header[8] = 0x55;
+    old_header[9] = 0xAA;
+    write_legacy_dbaddress(old_header + legacy_view_base + 0 * legacy_view_stride, 0x01020304u);
+    write_legacy_dbaddress(old_header + legacy_view_base + 1 * legacy_view_stride, 0x05060708u);
+    write_legacy_dbaddress(old_header + legacy_view_base + 2 * legacy_view_stride, 0x090A0B0Cu);
+    uint32_t header_len = (uint32_t) sizeof old_header;
+    old_header[30] = (unsigned char)((header_len >> 24) & 0xFF);
+    old_header[31] = (unsigned char)((header_len >> 16) & 0xFF);
+    old_header[32] = (unsigned char)((header_len >> 8) & 0xFF);
+    old_header[33] = (unsigned char)(header_len & 0xFF);
+    old_header[34] = 0x00;
+    old_header[35] = 0x06;
+    old_header[36] = 0x00;
+    old_header[37] = 0x01;
+    old_header[38] = 0x0B;
+    old_header[39] = 0xAD;
+    old_header[40] = 0xF0;
+    old_header[41] = 0x0D;
 
     tydatabaserecord_64 new_header;
     memset(&new_header, 0, sizeof new_header);
 
-    assert(convert_32bit_header_to_64bit(&old_header, &new_header));
+    assert(convert_32bit_header_to_64bit(old_header, &new_header));
 
-    assert(new_header.systemid == old_header.systemid);
+    assert(new_header.systemid == old_header[0]);
     assert(new_header.versionnumber == 7);
-    assert(new_header.availlist == (dbaddress)old_header.availlist);
-    assert(new_header.oldfnumdatabase == old_header.oldfnumdatabase);
-    assert(new_header.flags == old_header.flags);
-    assert(new_header.views[0] == (dbaddress)old_header.views[0]);
-    assert(new_header.views[1] == (dbaddress)old_header.views[1]);
-    assert(new_header.views[2] == (dbaddress)old_header.views[2]);
-    assert(new_header.releasestack == old_header.releasestack);
-    assert(new_header.fnumdatabase == (long)old_header.fnumdatabase);
-    assert(new_header.headerLength == (long)old_header.headerLength);
-    assert(new_header.longversionMajor == old_header.longversionMajor);
-    assert(new_header.longversionMinor == old_header.longversionMinor);
-    assert(new_header.u.extensions.availlistblock == (dbaddress)old_header.u.extensions.availlistblock);
+    assert(new_header.availlist == read_legacy_dbaddress_test(old_header + 2));
+    assert(new_header.oldfnumdatabase == 42);
+    assert(new_header.flags == 0x55AA);
+    assert(new_header.views[0] == read_legacy_dbaddress_test(old_header + legacy_view_base + 0 * legacy_view_stride));
+    assert(new_header.views[1] == read_legacy_dbaddress_test(old_header + legacy_view_base + 1 * legacy_view_stride));
+    assert(new_header.views[2] == read_legacy_dbaddress_test(old_header + legacy_view_base + 2 * legacy_view_stride));
+    assert(new_header.releasestack == 0);
+    assert(new_header.fnumdatabase == 0);
+    assert(new_header.headerLength == (long) sizeof(tydatabaserecord_64));
+    assert(new_header.longversionMajor == 6);
+    assert(new_header.longversionMinor == 1);
+    assert(new_header.u.extensions.availlistblock == 0x0BADF00D);
     assert(new_header.u.extensions.availlistshadow == nildbaddress);
     assert(!new_header.u.extensions.flreadonly);
     for (size_t i = 0; i < sizeof new_header.u.extensions.reserved; ++i)
