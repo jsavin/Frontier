@@ -35,6 +35,7 @@ Change Log
 - Headless Developer Guides: `planning/phase3/DEVELOPER_QUICKSTART_HEADLESS.md`, `planning/phase3/headless_stubbed_behavior_matrix.md`
 - System Verb Bootstrapping & UI Abstraction: `planning/phase3/system_verbs_bootstrap_plan.md`, `planning/phase3/ui_abstraction/`
 - Frontier.root Headless Bring-up & Kernel Glue Integration: `planning/phase3/frontier_root_headless_plan.md`
+- Legacy Pascal Layouts & Modernization: `planning/phase3/pascal_runtime_modernization.md`, `planning/phase3/headless_legacy_table_loader.md`
 - Headless Daemon Vision & Service Core: `planning/phase3/headless_daemon_vision.md`
 
 ## Phase 4 — String & Text Modernization (`planning/phase4/`)

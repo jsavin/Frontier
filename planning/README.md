@@ -6,10 +6,11 @@ Status
 - Last Updated: 2025-10-12
 - Notes: See `planning/phase_overview.md` for the roadmap and exit criteria.
 
-Related Docs
+-Related Docs
 - `planning/INDEX.md` – quick links into each phase
 - `planning/Frontier_Refactoring_Plan.md` – narrative goals and risks
 - `planning/phase_gates.md` – readiness checks before advancing phases
+- `planning/phase3/pascal_runtime_modernization.md` – Pascal-era data layout modernization roadmap
 
 Change Log
 - 2025-10-12: Reorganized legacy docs into phase subdirectories and refreshed status.
