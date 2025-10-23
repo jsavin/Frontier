@@ -2469,7 +2469,15 @@ boolean dbopenfile (hdlfilenum fnum, boolean flreadonly) {
 	*/
 
     tydatabaserecord diskrec;
-    unsigned char rawheader[sizeof (tydatabaserecord)];
+    /*
+     * Allocate buffer large enough for both v6 and v7 headers.
+     * We need to read the header before we know which version it is,
+     * so we size the buffer to accommodate whichever is larger.
+     * Currently tydatabaserecord (116 bytes) > tydatabaserecord_64 (88 bytes)
+     * due to larger growthspace despite 64-bit addresses.
+     */
+    #define MAX_HEADER_SIZE (sizeof(tydatabaserecord) > sizeof(tydatabaserecord_64) ? sizeof(tydatabaserecord) : sizeof(tydatabaserecord_64))
+    unsigned char rawheader[MAX_HEADER_SIZE];
     tydatabaserecord_64 diskrec64;
     boolean header_is_modern = false;
     register hdldatabaserecord hdb;
