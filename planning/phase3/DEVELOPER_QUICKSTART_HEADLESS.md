@@ -4,8 +4,7 @@ Status
 - State: In Progress
 - Phase: 1–2
 - Last Updated: 2025-10-22
-- Notes: Headless tests are green; parser_tests included. CLI builds headless with script execution only (database/network modes pending).
-  Current blocker: legacy `dbrefhandle` still needs the classic address→offset translation so the headless loader can hydrate `system.verbs.builtins` (e.g., pointer `0x00580006` lands inside the block we read, but unpacking still fails).
+- Notes: ✅ System root loading works! Legacy v6 table payloads now convert to modern format. UserTalk scripts execute successfully with loaded system tables. Database/network modes still pending.
 
 Related Docs
 - planning/INDEX.md

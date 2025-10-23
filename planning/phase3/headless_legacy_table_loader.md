@@ -3,10 +3,21 @@
 ## Purpose
 Capture the concrete steps required to decode legacy (Pascal-style) table payloads when running the headless Frontier runtime. This document complements the broader `pascal_runtime_modernization.md` note by focusing on the immediate loader work.
 
-## Current status (2025-10-20)
-- Header migration is fixed; `views[0]` now points to the correct root block in `Frontier-v7.root`.
-- Hydration still crashes inside `tableunpacktable` because the payload returned from disk is in the legacy Pascal format rather than the merged-handle layout the modern code expects.
-- A prototype shim in `tableexternal_common.c` can detect legacy payloads and allocate a replacement handle, but the conversion logic is incomplete.
+## Current status (2025-10-22)
+- ✅ **Header migration fixed**: `views[0]` points correctly to root block in `Frontier-v7.root`
+- ✅ **Table payload conversion implemented**: `tableexternal_common.c` detects legacy Pascal format `[header][strings][records]` and converts to modern two-level merged format `[outer_size][inner_merged][formats]`
+- ✅ **System root loads successfully**: UserTalk scripts execute correctly with loaded system tables
+- ✅ **Format documented**: Comprehensive documentation added to `docs/legacy_frontier_bootstrap.md`
+
+### Next: Other External Value Types
+The same legacy format issue affects other external types stored in v6 databases:
+- **scriptvaluetype**: Compiled script objects
+- **outlinevaluetype**: Outline/hierarchical data structures
+- **wordvaluetype** (wptext): Rich text/word processing objects (32KB limit, 8-bit ASCII)
+- **menuvaluetype**: Menu definitions
+- **pictvaluetype**: Picture/image data
+
+Each may need similar conversion logic when encountered during migration.
 
 ## Short-term goals
 1. **Reverse-engineer the legacy layout**
