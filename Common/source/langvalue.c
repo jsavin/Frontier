@@ -3988,7 +3988,14 @@ boolean langsearchpathlookup (bigstring bs, hdlhashtable *htable) {
 	
 	if (langfindsymbol (bs, htable, &hnode)) /*found it in local chain*/
 		return (true);
-	
+
+#if defined(FRONTIER_HEADLESS) && 0
+	if (systemtable != nil && equalstrings(bs, namesystembranch)) {
+		*htable = roottable;
+		return (true);
+	}
+#endif
+
 	/*
 	if (langtablelookup (handlertable, bs, htable))
 		return (true);

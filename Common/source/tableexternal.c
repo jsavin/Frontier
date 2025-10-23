@@ -38,6 +38,7 @@
 #include "shell.h"
 #include "shellprivate.h"
 #include "shellundo.h"
+#include "tableexternal_common.h"
 #include "langinternal.h"
 #include "langexternal.h"
 #include "opinternal.h"
@@ -209,90 +210,8 @@ boolean tableverbnew (hdlexternalvariable *hvariable) {
 
 
 boolean tableverbinmemory (hdlexternalvariable hvariable, hdlhashnode hnode) {
-	
-	/*
-	5.0a18 dmb: support database linking
-	*/
-	
-	register hdltablevariable hv = (hdltablevariable) hvariable;
-	Handle hpacked;
-	hdlhashtable htable = nil;
-	dbaddress adr;
-	langerrormessagecallback savecallback;
-	ptrvoid saverefcon;
-	hdlhashtable hparent;
-	bigstring bspath, bsunpackerror;
-	boolean fl;
-	
-	if ((**hv).flinmemory) /*nothing to do, it's already in memory*/
-		return (true);
-	
-	if ((hnode == nil) || (hnode == HNoNode))
-		hnode = nil;
-
-	dbpushdatabase ((**hv).hdatabase);
-
-	adr = (dbaddress) (**hv).variabledata;
-	
-	if (adr == nildbaddress) { /*table has never been allocated*/
-		
-		shellinternalerror (idniltableaddress, BIGSTRING ("\x2b" "nil table address.  (Creating empty table.)"));
-		
-		fl = false;
-		}
-	else {
-		
-		fl = dbrefhandle (adr, &hpacked);
-		
-		if (fl) {
-			
-			langtraperrors (bsunpackerror, &savecallback, &saverefcon);
-			
-			fl = tableunpacktable (hpacked, false, &htable); /*always disposes of hpackedtable*/
-			
-			languntraperrors (savecallback, saverefcon, !fl);
-			
-			if (!fl) {
-				
-				fllangerror = false;
-				
-				if (langexternalfindvariable ((hdlexternalvariable) hv, &hparent, bspath) &&
-					langexternalgetfullpath (hparent, bspath, bspath, nil)) {
-					
-					poptrailingchars (bsunpackerror, '.');
-					
-					lang2paramerror (tableloadingerror, bspath, bsunpackerror);
-					}
-				else
-					langerrormessage (bsunpackerror);
-				}
-			}
-		}
-	
-	dbpopdatabase ();
-
-	if (!fl)
-		return (false);
-	
-	(**hv).flinmemory = true;
-	
-	(**hv).variabledata = (long) htable; /*link into variable structure*/
-	
-	(**hv).oldaddress = adr; /*last place this table was stored*/
-	
-	if ((**hv).flmayaffectdisplay)
-		(**htable).flmayaffectdisplay = true;
-	
-	#ifdef xmlfeatures
-		(**htable).flxml = (**hv).flxml; //5.0.1
-	#endif
-
-	(**htable).hashtablerefcon = (long) hv; /*we can get from hashtable to variable rec*/
-
-	(**htable).thistableshashnode = hnode; /*The var rec is contained in the hashnode... RAB 1/3/00 */
-	
-	return (true);
-	} /*tableverbinmemory*/
+    return tableverbinmemory_common(hvariable, hnode);
+    } /*tableverbinmemory*/
 	
 
 boolean tableverbgetsize (hdlexternalvariable hvariable, long *size) {

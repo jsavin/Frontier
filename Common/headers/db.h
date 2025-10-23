@@ -140,6 +140,10 @@ extern hdldatabaserecord databasedata; /*can be set by external user*/
 
 extern boolean fldatabasesaveas;
 
+#if defined(FRONTIER_HEADLESS)
+extern boolean dbnormalizeaddress(dbaddress *adr);
+#endif
+
 
 #ifdef DATABASE_DEBUG
 
@@ -216,4 +220,3 @@ extern boolean dbstatsmessage (hdldatabaserecord, boolean); /*6.2a8 AR*/
 extern boolean statsstart (void);
 
 #endif
-

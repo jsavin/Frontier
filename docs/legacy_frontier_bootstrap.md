@@ -29,6 +29,72 @@ At this point the evaluator knows how to resolve `kernel` tokens, but there is n
 
 Because the sanitized repository root already contains `system.verbs.builtins` (and the glue scripts beneath it), nothing in this path regenerates those entries—they simply become reachable once `checktablestructure()` resolves the subtable handles.
 
+## Table Payload Format (v6 and v7 Databases)
+
+Table payloads are stored using a two-level merged handle structure created by `tablepacktable()` and unpacked by `tableunpacktable()` (`Common/source/tablepack.c`):
+
+### Modern (v7) Two-Level Merged Format
+```
+[outer_size: 4 bytes, big-endian]     ← outer merge prefix
+  [inner_merged_table]                 ← created by hashpacktable()
+  [formats_data]                       ← optional table formatting info
+```
+
+Where `inner_merged_table` is itself a merged handle:
+```
+[inner_size: 4 bytes, big-endian]     ← inner merge prefix
+  [header: 16 bytes]                   ← tydisktablerecord
+  [records: 10 bytes each]             ← tydisksymbolrecord array
+  [sentinel: 10 zero bytes]            ← marks end of records
+[strings]                              ← Pascal string pool
+```
+
+The table header (`tydisktablerecord`, 16 bytes total):
+- `version` (2 bytes): table disk version (0x03 for v5.0+)
+- `sortorder` (2 bytes): sort order flags
+- `timecreated` (4 bytes): creation timestamp
+- `timelastsave` (4 bytes): last save timestamp
+- `flags` (4 bytes): XML and other flags
+
+Each symbol record (`tydisksymbolrecord`, 10 bytes):
+- `ixkey` (4 bytes, big-endian): offset into string pool for symbol name
+- `valuetype` (1 byte): type of the value (string, int, table, etc.)
+- `version` (1 byte): record version
+- `data` (4 bytes): value data or offset into string pool
+
+### Legacy v6 Format Differences
+
+Legacy v6 databases store table payloads in Pascal-era format WITHOUT merge prefixes:
+```
+[header: 16 bytes]                    ← tydisktablerecord
+[strings]                             ← Pascal string pool
+[records: 10 bytes each]              ← tydisksymbolrecord array
+[sentinel: 10 zero bytes]             ← all zeros
+```
+
+Key differences from modern format:
+1. **No merge prefixes** – the payload is a direct concatenation with no size headers
+2. **Strings before records** – the order is reversed (legacy has strings first, modern has records first in the inner merge)
+3. **Single-level** – legacy format is flat, while modern uses two nested merges
+
+### Headless Loader Conversion
+
+The headless runtime detects legacy payloads by checking if the first 4 bytes form an invalid merge prefix (value < 16 or > payload_size - 4). When detected, `tableexternal_common.c:headless_convert_legacy_table_payload()` converts the legacy format:
+
+1. **Find the split point** – scan for record-aligned boundaries where all record `ixkey` values are valid offsets into the preceding string pool
+2. **Reorganize the data** – copy to `[header+records][strings]` order
+3. **Create inner merge** – use `mergehandles()` to create the inner structure
+4. **Create outer merge** – merge again with empty formats handle to match the two-level structure
+
+This conversion allows both v6 and v7 databases to load correctly in the headless runtime without modifying the on-disk format.
+
+### References
+- Table packing: `Common/source/tablepack.c:tablepacktable()`
+- Hash table packing: `Common/source/langhash.c:hashpacktable()`
+- Hash table unpacking: `Common/source/langhash.c:hashunpacktable()`
+- Merge utilities: `Common/source/memory.c:mergehandles()`, `unmergehandles()`
+- Legacy conversion: `Common/source/tableexternal_common.c:headless_convert_legacy_table_payload()`
+
 ## Linking Runtime-Only Tables
 - After the persisted structure is in place, the desktop links the shared runtime tables created earlier into the newly loaded root via `linksystemtablestructure()` (`Common/source/tablestructure.c:233`).
 - This inserts `system.compiler`, `system.environment`, and `system.charsets` as non-saving externals, and creates an in-memory `system.temp` that is flagged as transient (`Common/source/tablestructure.c:259`–`269`).
@@ -55,6 +121,7 @@ Because the sanitized repository root already contains `system.verbs.builtins` (
 - If `system.verbs.builtins` appears empty after loading a root, confirm that `settablestructureglobals()` is being called with `flcreatesubs == false`. Passing `true` would create a fresh table and discard the serialized one.
 - Missing kernel verbs usually indicate `langinitverbs()` (or the underlying `loadfunctionprocessor()`) was skipped, leaving the kernel token table empty even though the script side exists.
 - When porting the headless loader, mirror the desktop order: initialise the language (`initlang()` → `inittablestructure()` → `langinitverbs()`), then open the database and call `tableloadsystemtable()`, `settablestructureglobals()`, `linksystemtablestructure()`, and finally `loadsystemscripts()`. Skipping any phase breaks the handshake between the persisted glue and the C kernel.
+- Add follow-up doc that serves as a comprehensive guide to the `.root` file format: physical block layout, headers, payload records, address/variance handling, and the v6 → v7 migration specifics (including byte order and pointer width changes). This should be detailed enough for a new developer to reason about the on-disk structures while inspecting or migrating databases.
 
 ## References
 - Runtime init chain: `Common/source/shell.c:1007`

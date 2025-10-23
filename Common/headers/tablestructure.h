@@ -219,6 +219,8 @@ extern byte nameshutdowntable [];
 
 extern byte namesystembranch [];
 
+extern byte nameverbstable [];
+
 extern byte namepathstable [];
 
 extern byte nameiacgluetable [];
@@ -267,6 +269,5 @@ extern boolean inittablestructure (void);
 
 
 extern boolean tablevalidate (hdlhashtable, boolean); /*tablevalidate.c*/
-
 
 

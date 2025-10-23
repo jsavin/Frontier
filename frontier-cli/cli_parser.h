@@ -32,6 +32,7 @@ typedef struct {
     boolean websocket_mode;     // WebSocket server mode
     boolean migrate_database;   // Migrate database flag
     boolean hydrate_system_root;// Hydrate system root tables flag
+    boolean upgrade_system_root;// Upgrade system root to v7 without loading
     boolean show_help;          // Show help flag
     boolean show_version;       // Show version flag
 } cli_options_t;

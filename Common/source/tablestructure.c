@@ -497,9 +497,13 @@ boolean tablesavesystemtable (Handle hvariable, dbaddress *adr) {
 		langunhookerrors ();
 	
 	popfromhandle (htmp, sizeof (dbaddress), adr);
-	
+
 	disktomemlong (*adr); // un-swap it; tableverbpack swapped it
-	
+
+#if defined(FRONTIER_HEADLESS)
+	(void) dbnormalizeaddress(adr);
+#endif
+
 	disposehandle (htmp); /*we can get the address from the variable record, below*/
 	
 	if (!fl) {
