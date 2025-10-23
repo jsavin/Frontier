@@ -27,6 +27,8 @@
 
 #define dbinternalinclude
 
+#include <stdint.h>
+
 
 #define SMART_DB_OPENING	1
 //#undef SMART_DB_OPENING
@@ -63,15 +65,11 @@ typedef enum {
 	} tydbflagmask;
 
 
-typedef long tyvariance;
+typedef int32_t tyvariance;
 
 #pragma pack(2)
 typedef struct tysizefreeword {
-	
-//	unsigned long flfree: 1;
-	
-//	unsigned long size: 31;
-	long size;
+	int32_t size;
 	} tysizefreeword;
 
 
@@ -109,6 +107,4 @@ extern boolean dbreadtrailer (dbaddress, boolean *, long *);
 extern boolean dbreadheader (dbaddress, boolean *, long *, tyvariance *);
 
 extern boolean dbreadavailnode (dbaddress, boolean *, long *, dbaddress *);
-
-
 

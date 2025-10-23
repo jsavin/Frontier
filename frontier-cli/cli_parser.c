@@ -31,6 +31,19 @@ boolean cli_validate_options(const cli_options_t* options) {
     }
 
     boolean hydration_mode = options->hydrate_system_root;
+    boolean upgrade_mode = options->upgrade_system_root;
+
+    if (upgrade_mode) {
+        if (options->system_root == NULL) {
+            fprintf(stderr, "Error: --upgrade-system-root requires --system-root PATH\n");
+            return false;
+        }
+        if (hydration_mode) {
+            fprintf(stderr, "Error: --upgrade-system-root cannot be combined with --hydrate-system-root\n");
+            return false;
+        }
+        return true;
+    }
 
     // Check for conflicting modes
     if (options->server_mode && options->websocket_mode) {
@@ -108,6 +121,7 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
         {"port", required_argument, 0, 'p'},
         {"system-root", required_argument, 0, 'R'},
         {"hydrate-system-root", no_argument, 0, 'H'},
+        {"upgrade-system-root", no_argument, 0, 'U'},
         {"verbose", no_argument, 0, 'v'},
         {"debug", no_argument, 0, 'D'},
         {"help", no_argument, 0, 'h'},
@@ -116,7 +130,7 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
     };
 
     // Parse command line arguments
-    while ((opt = getopt_long(argc, argv, "e:d:q:mswp:R:HvDhV", long_options, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "e:d:q:mswp:R:HUvDhV", long_options, &option_index)) != -1) {
         switch (opt) {
             case 'e':
                 // Inline script execution
@@ -176,6 +190,10 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
 
             case 'H':
                 options->hydrate_system_root = true;
+                break;
+
+            case 'U':
+                options->upgrade_system_root = true;
                 break;
 
             case 's':

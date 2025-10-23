@@ -84,11 +84,21 @@ boolean cli_execute_compiled_script(usertalk_execution_t* execution) {
 
     size_t len = strlen(execution->script_source);
 
+#if defined(FRONTIER_HEADLESS)
+    extern hdlhashtable currenthashtable;
+    cli_log_debug("before execute currenthashtable=%p", (void *)currenthashtable);
+#endif
+
     if (len <= lenbigstring) {
         bigstring program;
         bigstring result;
         copyctopstring(execution->script_source, program);
-        if (!langrunstringnoerror(program, result)) {
+        extern hdlhashtable currenthashtable;
+        hdlhashtable saved_current = currenthashtable;
+        currenthashtable = nil; /* ensure langrun pushes the standard scope chain */
+        boolean ok = langrunstringnoerror(program, result);
+        currenthashtable = saved_current;
+        if (!ok) {
             cli_set_execution_error_internal(execution, "Script execution failed");
             return false;
         }
@@ -131,7 +141,14 @@ boolean cli_execute_compiled_script(usertalk_execution_t* execution) {
     tyvaluerecord resultValue; setnilvalue(&resultValue);
     bigstring empty; setstringlength(empty, 0);
     extern boolean langrunscriptcode(hdlhashtable, bigstring, hdltreenode, tyvaluerecord*, hdlhashtable, tyvaluerecord*);
+    extern hdlhashtable currenthashtable;
+    hdlhashtable saved_current = currenthashtable;
+    currenthashtable = nil;
+#if defined(FRONTIER_HEADLESS)
+    cli_log_debug("executing with currenthashtable=%p", (void *)currenthashtable);
+#endif
     boolean ok = langrunscriptcode(NULL, empty, hcode, &params, NULL, &resultValue);
+    currenthashtable = saved_current;
     disposehandle(htext);
 
     if (!ok) {
@@ -153,6 +170,9 @@ boolean cli_execute_compiled_script(usertalk_execution_t* execution) {
     }
     memcpy(execution->result, stringbaseaddress(bsresult), stringlength(bsresult));
     execution->result[stringlength(bsresult)] = '\0';
+#if defined(FRONTIER_HEADLESS)
+    cli_log_debug("after execute currenthashtable=%p", (void *)currenthashtable);
+#endif
     return true;
 }
 

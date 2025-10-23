@@ -14,6 +14,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <stdint.h>
 
 // Frontier headers
 #include "../Common/headers/frontier.h"
@@ -28,6 +29,8 @@
 #include "../Common/headers/langexternal.h"
 #include "../Common/headers/stringdefs.h"
 #include "../Common/headers/db_format.h"
+#include "../Common/headers/dbinternal.h"
+#include "../Common/headers/byteorder.h"
 
 // CLI-specific headers
 #include "cli_parser.h"
@@ -61,6 +64,7 @@ static boolean load_system_root_database(const char* path);
 static void unload_system_root_database(void);
 static boolean ensure_named_subtable(hdlhashtable parent, const unsigned char *name, hdlhashtable *out, boolean mark_dont_save);
 static boolean hydrate_system_root_database(const char* path);
+static boolean read_root_table_address(const char *path, dbaddress *adr_out, short *version_out);
 
 int main(int argc, char* argv[]) {
     // Parse command line arguments
@@ -78,6 +82,20 @@ int main(int argc, char* argv[]) {
     
     if (g_cli_options.show_version) {
         print_version();
+        return 0;
+    }
+
+    if (g_cli_options.upgrade_system_root) {
+        boolean migrated = false;
+        if (!ensure_database_modern(g_cli_options.system_root, &migrated)) {
+            fprintf(stderr, "Error: Failed to upgrade system root: %s\n", g_cli_options.system_root);
+            return 1;
+        }
+        if (migrated) {
+            printf("System root upgraded to modern format: %s\n", g_cli_options.system_root);
+        } else {
+            printf("System root already in modern format: %s\n", g_cli_options.system_root);
+        }
         return 0;
     }
 
@@ -125,6 +143,72 @@ int main(int argc, char* argv[]) {
     cleanup_frontier_runtime();
     
     return success ? 0 : 1;
+}
+
+static uint64_t read_big_endian(const unsigned char *data, size_t length) {
+    uint64_t value = 0;
+    for (size_t i = 0; i < length; ++i) {
+        value = (value << 8) | (uint64_t) data[i];
+    }
+    return value;
+}
+
+static boolean read_root_table_address(const char *path, dbaddress *adr_out, short *version_out) {
+    if (path == NULL || adr_out == NULL)
+        return false;
+
+    unsigned char header[0x40];
+    FILE *fp = fopen(path, "rb");
+    if (fp == NULL)
+        return false;
+
+    size_t bytes = fread(header, 1, sizeof header, fp);
+    fclose(fp);
+    if (bytes < 0x1E) /* need at least version + view slots */
+        return false;
+
+    short version = (short) header[1];
+    if (version_out != NULL)
+        *version_out = version;
+    cli_log_debug("raw header version=%d", version);
+
+    const size_t view_stride = 8; /* views are stored with 8-byte slots in both formats */
+    const size_t view_base = 0x0E;
+    dbaddress found = nildbaddress;
+    int found_index = -1;
+
+    if (version >= 7) {
+        for (int i = 0; i < ctviews; ++i) {
+            size_t offset = view_base + (size_t)i * view_stride;
+            if (bytes < offset + view_stride)
+                break;
+            uint64_t raw = read_big_endian(header + offset, 8);
+            if (raw != 0) {
+                found = (dbaddress) raw;
+                found_index = i;
+                break;
+            }
+        }
+    } else {
+        for (int i = 0; i < ctviews; ++i) {
+            size_t offset = view_base + (size_t)i * view_stride;
+            if (bytes < offset + 6) /* legacy stores significant bytes in the first six positions */
+                break;
+            uint64_t raw = read_big_endian(header + offset, 6);
+            if (raw != 0) {
+                found = (dbaddress) raw;
+                found_index = i;
+                break;
+            }
+        }
+    }
+
+    if (found == nildbaddress)
+        return false;
+
+    cli_log_debug("Selected view[%d] pointer = 0x%08llx", found_index, (unsigned long long)found);
+    *adr_out = found;
+    return true;
 }
 
 static void print_usage(const char* program_name) {
@@ -333,9 +417,18 @@ static boolean hydrate_system_root_database(const char* path) {
         goto cleanup;
     }
     db_open = true;
+    cli_log_debug("hydro databasedata views[0]=0x%08llx views[1]=0x%08llx views[2]=0x%08llx",
+                  (unsigned long long)((**databasedata).views[0]),
+                  (unsigned long long)((**databasedata).views[1]),
+                  (unsigned long long)((**databasedata).views[2]));
 
+    short header_version = 0;
     dbaddress adr = nildbaddress;
-    dbgetview(cancoonview, &adr);
+    if (!read_root_table_address(path, &adr, &header_version)) {
+        cli_log_error("Unable to locate root table header in %s", path);
+        goto cleanup;
+    }
+    cli_log_debug("Hydration header version=%d rootAdr=0x%08llx", header_version, (unsigned long long)adr);
 
     Handle hrootvariable = nil;
     hdlhashtable hroot = nil;
@@ -479,9 +572,22 @@ static boolean load_system_root_database(const char* path) {
         databasedata = previous;
         return false;
     }
+    cli_log_debug("databasedata views[0]=0x%08llx views[1]=0x%08llx views[2]=0x%08llx",
+                  (unsigned long long)((**databasedata).views[0]),
+                  (unsigned long long)((**databasedata).views[1]),
+                  (unsigned long long)((**databasedata).views[2]));
 
+    short header_version = 0;
     dbaddress adr = nildbaddress;
-    dbgetview(cancoonview, &adr);
+    if (!read_root_table_address(path, &adr, &header_version)) {
+        cli_log_error("Unable to locate system root table header for %s", path);
+        cleartablestructureglobals();
+        dbdispose();
+        closefile(fnum);
+        databasedata = previous;
+        return false;
+    }
+    cli_log_debug("System root header version=%d rootAdr=0x%08llx", header_version, (unsigned long long)adr);
 
     Handle hrootvariable = nil;
     hdlhashtable hroot = nil;

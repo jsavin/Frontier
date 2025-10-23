@@ -184,6 +184,44 @@ boolean langexternalgettable (bigstring bs, hdlhashtable *htable) {
         }
         pophashtable();
     }
+#if defined(FRONTIER_HEADLESS)
+    /* Direct lookup in root/system tables when sanitized database omits EFP wrappers.
+       Disabled while we validate real system.verbs glue. */
+    {
+        hdlhashtable fallback = nil;
+        hdlhashnode fallbacknode = nil;
+
+        if (systemtable != nil && equalstrings(bs, namesystembranch)) {
+            *htable = systemtable;
+            return true;
+        }
+        if (verbstable != nil && equalstrings(bs, nameverbstable)) {
+            *htable = verbstable;
+            return true;
+        }
+        if (builtinstable != nil && equalstrings(bs, namebuiltinstable)) {
+            *htable = builtinstable;
+            return true;
+        }
+        if (agentstable != nil && equalstrings(bs, nameagentstable)) {
+            *htable = agentstable;
+            return true;
+        }
+        if (roottable != nil && hashtablelookupnode(roottable, bs, &fallbacknode)) {
+            if (tablevaltotable((**fallbacknode).val, &fallback, fallbacknode)) {
+                *htable = fallback;
+                return true;
+            }
+        }
+        fallbacknode = nil;
+        if (systemtable != nil && hashtablelookupnode(systemtable, bs, &fallbacknode)) {
+            if (tablevaltotable((**fallbacknode).val, &fallback, fallbacknode)) {
+                *htable = fallback;
+                return true;
+            }
+        }
+    }
+#endif
 #endif
     return false;
     } /*langexternalgettable*/

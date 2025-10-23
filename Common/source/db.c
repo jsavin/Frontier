@@ -32,6 +32,28 @@
 #include <stdio.h>
 #endif
 
+static uint16_t db_read_be16(const unsigned char *p) {
+	return (uint16_t)((p[0] << 8) | p[1]);
+}
+
+static uint32_t db_read_be32(const unsigned char *p) {
+	return ((uint32_t)p[0] << 24) |
+	       ((uint32_t)p[1] << 16) |
+	       ((uint32_t)p[2] << 8)  |
+	        (uint32_t)p[3];
+}
+
+static uint64_t db_read_be64(const unsigned char *p) {
+	return ((uint64_t)p[0] << 56) |
+	       ((uint64_t)p[1] << 48) |
+	       ((uint64_t)p[2] << 40) |
+	       ((uint64_t)p[3] << 32) |
+	       ((uint64_t)p[4] << 24) |
+	       ((uint64_t)p[5] << 16) |
+	       ((uint64_t)p[6] << 8)  |
+	        (uint64_t)p[7];
+}
+
 #include "memory.h"
 #include "cursor.h"
 #include "dialogs.h"
@@ -56,6 +78,80 @@
 
 #define majorversion(v)		(v & 0x00f0)
 #define minorversion(v)		(v & 0x000f)
+
+static boolean dbread (dbaddress adr, long ctbytes, ptrvoid pdata);
+
+#if defined(FRONTIER_HEADLESS)
+static boolean dbfindblockforaddress(dbaddress adr, dbaddress *blockstart, long *nodebytes, tyvariance *variance, boolean *flfree) {
+	long eof = 0;
+	tyheader diskheader;
+
+	if (adr == nildbaddress)
+		return false;
+
+	if (!dbgeteof(&eof))
+		return false;
+
+	if (adr < firstphysicaladdress || adr >= (dbaddress) eof)
+		return false;
+
+	for (dbaddress candidate = adr; candidate >= firstphysicaladdress && (adr - candidate) <= 0x100000; --candidate) {
+		if (!dbread(candidate, sizeheader, &diskheader))
+			continue;
+
+		tyheader header = diskheader;
+		disktomemlong(header.variance);
+		disktomemlong(header.sizefreeword.size);
+
+		long node_size = header.sizefreeword.size & 0x7FFFFFFF;
+		boolean freeflag = (header.sizefreeword.size & 0x80000000L) != 0;
+
+		if (node_size <= 0 || node_size > eof)
+			continue;
+
+		if ((header.variance < 0) || (header.variance > node_size))
+			continue;
+
+		dbaddress data_start = candidate + sizeheader;
+		dbaddress data_end = data_start + (node_size - header.variance);
+
+		if (adr < candidate || adr >= data_end)
+			continue;
+
+		tytrailer trailer;
+		if (!dbread(candidate + sizeheader + node_size, sizetrailer, &trailer))
+			continue;
+
+		disktomemlong(trailer.sizefreeword.size);
+		if ((trailer.sizefreeword.size & 0x7FFFFFFF) != node_size)
+			continue;
+
+		if (blockstart != NULL)
+			*blockstart = candidate;
+		if (nodebytes != NULL)
+			*nodebytes = node_size;
+		if (variance != NULL)
+			*variance = header.variance;
+		if (flfree != NULL)
+			*flfree = freeflag;
+		return true;
+	}
+
+	return false;
+}
+
+boolean dbnormalizeaddress(dbaddress *adr) {
+	if (adr == NULL || *adr == nildbaddress)
+		return true;
+
+	dbaddress resolved = nildbaddress;
+	if (!dbfindblockforaddress(*adr, &resolved, NULL, NULL, NULL))
+		return false;
+
+	*adr = resolved;
+	return true;
+}
+#endif /* FRONTIER_HEADLESS */
 
 typedef enum {
 	
@@ -394,7 +490,7 @@ static boolean dbflushheader (void) {
 	
 	register hdldatabaserecord hdb = databasedata;
 	boolean fl;
-	tydatabaserecord diskrec;
+    tydatabaserecord diskrec;
 	
 	assert (sizeof (diskrec.u.growthspace) >= sizeof (diskrec.u.extensions));
 	
@@ -456,9 +552,26 @@ boolean dbreadheader (dbaddress adr, boolean *flfree, long *ctbytes, tyvariance 
 	
 	if (!dbread (adr, sizeheader, &header))
 		return (false);
-	
+
+#if defined(FRONTIER_HEADLESS)
+	{
+	unsigned char *raw = (unsigned char *) &header;
+	fprintf(stderr, "[headless] dbreadheader raw adr=0x%llx bytes=%02x%02x%02x%02x%02x%02x%02x%02x\n",
+		(unsigned long long) adr,
+		raw[0], raw[1], raw[2], raw[3],
+		raw[4], raw[5], raw[6], raw[7]);
+	}
+#endif
+
 	disktomemlong (header.variance);
 	disktomemlong (header.sizefreeword.size);
+
+#if defined(FRONTIER_HEADLESS)
+    fprintf(stderr, "[headless] dbreadheader parsed size=0x%08lx variance=0x%08lx (ct=%ld)\n",
+            (unsigned long) header.sizefreeword.size,
+            (unsigned long) header.variance,
+            (long) ((header.sizefreeword.size & 0x7FFFFFFF) - header.variance));
+#endif
 
 	*flfree = (header.sizefreeword.size & 0x80000000L) == 0x80000000L ? true : false;
 	
@@ -1097,8 +1210,12 @@ boolean dbreference (dbaddress adr, long maxbytes, ptrvoid pdata) {
 	boolean flfree;
 	tyvariance variance;
 	
-	if (!dbreadheader (adr, &flfree, &ctbytes, &variance))
-		return (false);
+    #if defined(FRONTIER_HEADLESS)
+    (void) dbnormalizeaddress(&adr);
+    #endif
+
+    if (!dbreadheader (adr, &flfree, &ctbytes, &variance))
+        return (false);
 		
 	if (flfree || (ctbytes < 0)) { /*referencing a free node -- probably a bad address*/
 		
@@ -1121,7 +1238,7 @@ boolean dbrefhandle (dbaddress adr, Handle *h) {
 	5.0.1 dmb: added freeblock error; don't fail silently
 	*/
 	
-	register dbaddress a = adr;
+    dbaddress a = adr;
 	register boolean fl;
 	register Handle hregister;
 	register long ct;
@@ -1133,18 +1250,25 @@ boolean dbrefhandle (dbaddress adr, Handle *h) {
 		
 	if (a == nildbaddress) /*defensive driving*/
 		return (false);
-	
-	if (!dbreadheader (a, &flfree, &ctbytes, &variance))
-		return (false);
-		
-	ct = ctbytes - (long) variance;
-	
-	if (flfree || (ct < 0)) { /*probably a bad address*/
-		
-		dberror (dbfreeblockerror);
-		
-		return (false);
-		}
+
+#if defined(FRONTIER_HEADLESS)
+    (void) dbnormalizeaddress(&a);
+#endif
+
+    if (!dbreadheader (a, &flfree, &ctbytes, &variance))
+        return (false);
+
+    ct = ctbytes - (long) variance;
+
+    if (flfree || (ct < 0)) { /*probably a bad address*/
+
+        dberror (dbfreeblockerror);
+#if defined(FRONTIER_HEADLESS)
+        fprintf(stderr, "[headless] dbrefhandle found free block adr=0x%llx size=%ld variance=%ld\n",
+                (unsigned long long)a, ctbytes, (long) variance);
+#endif
+        return (false);
+        }
 		
 	if (!newclearhandle (ct, h))
 		return (false);
@@ -2344,8 +2468,11 @@ boolean dbopenfile (hdlfilenum fnum, boolean flreadonly) {
 	we would end up corrupting any database files we saved.
 	*/
 
-	tydatabaserecord diskrec;
-	register hdldatabaserecord hdb;
+    tydatabaserecord diskrec;
+    unsigned char rawheader[sizeof (tydatabaserecord)];
+    tydatabaserecord_64 diskrec64;
+    boolean header_is_modern = false;
+    register hdldatabaserecord hdb;
 	
 	// Version-specific size validation will be done after reading header
 	
@@ -2356,10 +2483,38 @@ boolean dbopenfile (hdlfilenum fnum, boolean flreadonly) {
 	
 	(**hdb).fnumdatabase = (long) fnum; /*set up so dbread will work*/
 	
-	if (!dbread ((dbaddress) 0, sizeof (tydatabaserecord), &diskrec))
+	if (!dbread ((dbaddress) 0, sizeof (rawheader), &rawheader))
 		goto error;
 	
-	#ifdef SWAP_BYTE_ORDER
+    if (rawheader[1] >= 7) {
+        int i;
+        header_is_modern = true;
+        clearbytes (&diskrec, sizeof diskrec);
+        clearbytes (&diskrec64, sizeof diskrec64);
+        memcpy (&diskrec64, rawheader, sizeof diskrec64);
+
+        diskrec.systemid = diskrec64.systemid;
+        diskrec.versionnumber = diskrec64.versionnumber;
+        diskrec.availlist = (dbaddress) db_read_be64 ((const unsigned char *) &diskrec64.availlist);
+        diskrec.oldfnumdatabase = (short) db_read_be16 ((const unsigned char *) &diskrec64.oldfnumdatabase);
+        diskrec.flags = (short) db_read_be16 ((const unsigned char *) &diskrec64.flags);
+
+        for (i = 0; i < ctviews; i++)
+            diskrec.views[i] = (dbaddress) db_read_be64 ((const unsigned char *) &diskrec64.views[i]);
+
+        diskrec.releasestack = nil;
+        diskrec.fnumdatabase = 0;
+        diskrec.headerLength = (long) db_read_be32 ((const unsigned char *) &diskrec64.headerLength);
+        diskrec.longversionMajor = (short) db_read_be16 ((const unsigned char *) &diskrec64.longversionMajor);
+        diskrec.longversionMinor = (short) db_read_be16 ((const unsigned char *) &diskrec64.longversionMinor);
+
+        diskrec.u.extensions.availlistblock = (dbaddress) db_read_be64 ((const unsigned char *) &diskrec64.u.extensions.availlistblock);
+        diskrec.u.extensions.flreadonly = diskrec64.u.extensions.flreadonly;
+	}
+	else {
+		memcpy (&diskrec, rawheader, sizeof diskrec);
+		
+#ifdef SWAP_BYTE_ORDER
 		{
 		short i;
 		disktomemlong (diskrec.availlist);
@@ -2374,7 +2529,8 @@ boolean dbopenfile (hdlfilenum fnum, boolean flreadonly) {
 		disktomemshort (diskrec.longversionMajor);
 		disktomemshort (diskrec.longversionMinor);
 		}
-	#endif
+#endif
+	}
 	
 	diskrec.fnumdatabase = (long) fnum; /*this just got overwritten*/
 	
@@ -2383,6 +2539,16 @@ boolean dbopenfile (hdlfilenum fnum, boolean flreadonly) {
 	diskrec.u.extensions.flreadonly = flreadonly; /*this is an in-memory structure only*/
 
 	**hdb = diskrec;
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr,
+		"[headless] dbopenfile version=%d parsedModern=%s views(parsed)=[0x%016llx,0x%016llx,0x%016llx]\n",
+		(int)(**hdb).versionnumber,
+		header_is_modern ? "true" : "false",
+		(unsigned long long)(**hdb).views[0],
+		(unsigned long long)(**hdb).views[1],
+		(unsigned long long)(**hdb).views[2]);
+#endif
 	
 	// Detect database format and validate structure size
 	if (!detect_database_format(&(**hdb))) {
@@ -2396,6 +2562,15 @@ boolean dbopenfile (hdlfilenum fnum, boolean flreadonly) {
 	} else {
 		assert(sizeof(tydatabaserecord) == 116);  // 32-bit format (on 64-bit systems)
 	}
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr,
+		"[headless] dbopenfile post-detect use64=%s views(dec)=[0x%016llx,0x%016llx,0x%016llx]\n",
+		use_64bit_format ? "true" : "false",
+		(unsigned long long)(**hdb).views[0],
+		(unsigned long long)(**hdb).views[1],
+		(unsigned long long)(**hdb).views[2]);
+#endif
 	
     if ((**hdb).versionnumber != dbversionnumber) {
 
