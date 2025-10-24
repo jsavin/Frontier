@@ -58,7 +58,7 @@ EXTERNAL_TYPES = {
 }
 
 class DatabaseScanner:
-    def __init__(self, db_path):
+    def __init__(self, db_path, deep=False, max_depth=10):
         self.db_path = Path(db_path)
         self.type_counts = Counter()
         self.external_type_counts = Counter()
@@ -66,6 +66,10 @@ class DatabaseScanner:
         self.max_depth = 0
         self.depth_histogram = Counter()
         self.file = None
+        self.deep = deep  # Enable deep traversal following external references
+        self.max_depth_limit = max_depth  # Prevent infinite recursion
+        self.visited_addrs = set()  # Track visited addresses to prevent loops
+        self.total_entries = 0  # Total entries scanned across all tables
 
     def scan(self):
         """Scan the database and catalog types."""
@@ -121,6 +125,20 @@ class DatabaseScanner:
 
     def _scan_table_at(self, f, addr, path, depth):
         """Scan a table at the given address."""
+        # Check depth limit
+        if depth > self.max_depth_limit:
+            if self.deep:
+                print(f"{'  ' * depth}[{path}] Max depth reached, stopping")
+            return
+
+        # Check if already visited (prevent infinite loops)
+        if addr in self.visited_addrs:
+            if self.deep:
+                print(f"{'  ' * depth}[{path}] Already visited @ 0x{addr:08x}, skipping")
+            return
+
+        self.visited_addrs.add(addr)
+
         try:
             # Track depth
             self.max_depth = max(self.max_depth, depth)
@@ -143,7 +161,7 @@ class DatabaseScanner:
 
                 if is_legacy:
                     # Legacy format: [header][strings][records]
-                    self._scan_legacy_table_payload(payload, path, depth, f)
+                    self._scan_legacy_table_payload(payload, path, depth, f, addr)
                 else:
                     # Modern format: [outer_size][inner_merged][formats]
                     self._scan_modern_table_payload(payload, path, depth, f)
@@ -151,7 +169,7 @@ class DatabaseScanner:
         except Exception as e:
             print(f"  Error scanning table at {path} (depth {depth}): {e}")
 
-    def _scan_legacy_table_payload(self, payload, path, depth, f):
+    def _scan_legacy_table_payload(self, payload, path, depth, f, addr):
         """Scan legacy table format and extract value types.
 
         Based on hashunpacktable() in langhash.c, the structure is:
@@ -232,7 +250,11 @@ class DatabaseScanner:
             print(f"  [{path}] Failed to find valid strings/records split")
             return
 
-        print(f"  [{path}] Found {len(valid_records)} valid records, strings={strings_len} bytes, records start at offset {records_start}")
+        if not self.deep:
+            print(f"  [{path}] Found {len(valid_records)} valid records, strings={strings_len} bytes, records start at offset {records_start}")
+        else:
+            indent = '  ' * depth
+            print(f"{indent}[{path}] Table @ 0x{addr:08x} ({len(valid_records)} entries)")
 
         # Extract string pool (strings are between header and records)
         strings = payload[LEGACY_HEADER_SIZE:LEGACY_HEADER_SIZE + strings_len]
@@ -241,6 +263,7 @@ class DatabaseScanner:
         record_count = 0
         for rec_offset, ixkey, valuetype, version_byte, dataval in valid_records:
             record_count += 1
+            self.total_entries += 1
 
             # Track this value type
             type_name = VALUE_TYPES.get(valuetype, f'unknown_{valuetype}')
@@ -262,13 +285,18 @@ class DatabaseScanner:
             else:
                 key_name = '(out of bounds)'
 
-            print(f"  [{path}] Record {record_count}: key={key_name!r} type={type_name} dataval=0x{dataval:08x}")
+            # Show entry in tree format if deep mode
+            if self.deep:
+                indent = '  ' * (depth + 1)
+                print(f"{indent}├─ {key_name!r} [{type_name}] = 0x{dataval:08x}")
+            else:
+                print(f"  [{path}] Record {record_count}: key={key_name!r} type={type_name} dataval=0x{dataval:08x}")
 
-            # For external types, try to determine which external type
+            # For external types, try to determine which external type and recurse if deep mode
             if valuetype == 13:  # externalvaluetype
                 # dataval is the dbaddress of the external value
                 if dataval != 0:
-                    self._scan_external_at(f, dataval, f"{path}.{key_name}", depth)
+                    self._scan_external_at(f, dataval, f"{path}.{key_name}", depth, key_name)
 
             # TODO: Handle list (29) and record (30) types when we understand their format
 
@@ -327,9 +355,9 @@ class DatabaseScanner:
             # For external types, try to determine which external type
             if valuetype == 13:  # externalvaluetype
                 if dataval != 0:
-                    self._scan_external_at(f, dataval, path, depth)
+                    self._scan_external_at(f, dataval, path, depth, '')
 
-    def _scan_external_at(self, f, addr, path, depth):
+    def _scan_external_at(self, f, addr, path, depth, key_name=''):
         """Scan an external value to determine its type."""
         try:
             # Read external value header
@@ -356,8 +384,8 @@ class DatabaseScanner:
             external_type = EXTERNAL_TYPES.get(idprocessor, f'unknown_external_{idprocessor}')
             self.external_type_counts[external_type] += 1
 
-            # If it's a table, the rest of the data is the table payload
-            if idprocessor == 3:  # idtableprocessor
+            # If it's a table and deep mode is enabled, recurse into it
+            if idprocessor == 3 and self.deep:  # idtableprocessor
                 # Table external format on disk: [versionnumber][id][table_payload]
                 # The table_payload is what we need to scan
                 table_payload = ext_data[4:]  # Skip version(2) + id(2)
@@ -383,7 +411,10 @@ class DatabaseScanner:
         print("SCAN RESULTS")
         print("="*60)
 
-        print(f"\nMax nesting depth: {self.max_depth}")
+        print(f"\nTotal entries scanned: {self.total_entries}")
+        print(f"Total tables visited: {len(self.visited_addrs)}")
+        print(f"Max nesting depth: {self.max_depth}")
+
         print("\nDepth histogram:")
         for d in sorted(self.depth_histogram.keys()):
             print(f"  Depth {d:2d}: {self.depth_histogram[d]:5d} tables")
@@ -419,16 +450,24 @@ class DatabaseScanner:
                 print(f"  [{priority:6s}] {etype:20s}: {count:5d} occurrences")
 
 def main():
-    if len(sys.argv) != 2:
-        print(f"Usage: {sys.argv[0]} <database.root>")
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description='Scan a Frontier database and catalog all value types present.'
+    )
+    parser.add_argument('database', help='Path to database file (e.g., Frontier.root)')
+    parser.add_argument('--deep', action='store_true',
+                        help='Enable deep traversal following external table references')
+    parser.add_argument('--max-depth', type=int, default=10,
+                        help='Maximum recursion depth for deep traversal (default: 10)')
+
+    args = parser.parse_args()
+
+    if not Path(args.database).exists():
+        print(f"Error: {args.database} not found")
         sys.exit(1)
 
-    db_path = sys.argv[1]
-    if not Path(db_path).exists():
-        print(f"Error: {db_path} not found")
-        sys.exit(1)
-
-    scanner = DatabaseScanner(db_path)
+    scanner = DatabaseScanner(args.database, deep=args.deep, max_depth=args.max_depth)
     scanner.scan()
 
 if __name__ == '__main__':
