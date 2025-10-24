@@ -19,7 +19,7 @@ boolean detect_database_format(const tydatabaserecord *header);
 boolean convert_32bit_header_to_64bit(const unsigned char *legacy_header, tydatabaserecord_64 *new_header);
 boolean create_root_backup(const char *original_path);
 boolean migrate_32bit_to_64bit(const char *db_path);
-boolean ensure_database_modern(const char *db_path, boolean *migrated);
+boolean ensure_database_modern(const char *db_path, boolean *migrated, char *output_path, size_t output_path_size);
 boolean db_format_last_backup_path(char *buffer, size_t length);
 void db_format_clear_last_backup_path(void);
 
