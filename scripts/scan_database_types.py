@@ -46,13 +46,15 @@ VALUE_TYPES = {
 }
 
 # External type IDs (for externalvaluetype)
+# From langexternal.h tyexternalid enum
 EXTERNAL_TYPES = {
     0: 'outline',
     1: 'wptext',
-    2: 'table',
-    3: 'script',
-    4: 'menu',
-    5: 'pict',
+    2: 'headrecord',
+    3: 'table',
+    4: 'script',
+    5: 'menu',
+    6: 'pict',
 }
 
 class DatabaseScanner:
@@ -61,12 +63,16 @@ class DatabaseScanner:
         self.type_counts = Counter()
         self.external_type_counts = Counter()
         self.type_locations = defaultdict(list)
+        self.max_depth = 0
+        self.depth_histogram = Counter()
+        self.file = None
 
     def scan(self):
         """Scan the database and catalog types."""
         print(f"Scanning {self.db_path}...")
 
         with open(self.db_path, 'rb') as f:
+            self.file = f
             # Read header
             header = f.read(256)
             version = header[1]
@@ -85,23 +91,25 @@ class DatabaseScanner:
 
     def _scan_v6(self, f, header):
         """Scan v6 database format."""
-        # Extract root table address from v6 header (offset 10, 4 bytes big-endian)
+        # In v6 format, root table address is at offset 10 (4 bytes big-endian)
+        # This is the legacy location before the views array was used
         root_addr = struct.unpack('>I', header[10:14])[0]
-        print(f"Root table at: 0x{root_addr:08x}")
+        print(f"Root table at: 0x{root_addr:08x} (from offset 10)")
 
         if root_addr == 0:
             print("No root table found")
             return
 
         # Read root table
-        self._scan_table_at(f, root_addr, "root", is_v6=True)
+        self._scan_table_at(f, root_addr, "root", depth=0)
 
     def _scan_v7(self, f, header):
         """Scan v7 database format."""
         # Extract root table address from v7 header
-        # views[0] is at offset 512+32 in 64-bit header
-        f.seek(544)
-        root_addr = struct.unpack('<Q', f.read(8))[0]
+        # views[0] is at offset 0x0E (14), stored as big-endian 64-bit value
+        view_base = 0x0E
+        root_addr_bytes = header[view_base:view_base + 8]
+        root_addr = struct.unpack('>Q', root_addr_bytes)[0]
         print(f"Root table at: 0x{root_addr:08x}")
 
         if root_addr == 0:
@@ -109,11 +117,15 @@ class DatabaseScanner:
             return
 
         # Read root table
-        self._scan_table_at(f, root_addr, "root", is_v6=False)
+        self._scan_table_at(f, root_addr, "root", depth=0)
 
-    def _scan_table_at(self, f, addr, path, is_v6):
+    def _scan_table_at(self, f, addr, path, depth):
         """Scan a table at the given address."""
         try:
+            # Track depth
+            self.max_depth = max(self.max_depth, depth)
+            self.depth_histogram[depth] += 1
+
             # Read block header (8 bytes: size + variance)
             f.seek(addr)
             size_bytes, variance_bytes = struct.unpack('>II', f.read(8))
@@ -126,41 +138,236 @@ class DatabaseScanner:
                 first_bytes = struct.unpack('>I', payload[:4])[0]
                 is_legacy = first_bytes < 16 or first_bytes > (len(payload) - 4)
 
+                format_type = "legacy" if is_legacy else "modern"
+                print(f"  [{path}] Detected {format_type} table format (first_bytes=0x{first_bytes:08x}, payload_len={len(payload)})")
+
                 if is_legacy:
                     # Legacy format: [header][strings][records]
-                    self._scan_legacy_table_payload(payload, path)
+                    self._scan_legacy_table_payload(payload, path, depth, f)
                 else:
                     # Modern format: [outer_size][inner_merged][formats]
-                    self._scan_modern_table_payload(payload, path)
+                    self._scan_modern_table_payload(payload, path, depth, f)
 
         except Exception as e:
-            print(f"Error scanning table at {path}: {e}")
+            print(f"  Error scanning table at {path} (depth {depth}): {e}")
 
-    def _scan_legacy_table_payload(self, payload, path):
-        """Scan legacy table format."""
-        # Skip header (16 bytes)
-        # Find records section (after strings, 10 bytes per record)
-        # For now, just note we found a table
+    def _scan_legacy_table_payload(self, payload, path, depth, f):
+        """Scan legacy table format and extract value types.
+
+        Based on hashunpacktable() in langhash.c, the structure is:
+        - payload contains: [header][records...][strings]
+        - Records are sequential, not hash buckets
+        - Sentinel records (all zeros) are skipped
+        - String pool comes after records
+        """
+        LEGACY_HEADER_SIZE = 16  # sizeof(tydisktablerecord)
+        LEGACY_RECORD_SIZE = 10  # sizeof(tydisksymbolrecord)
+
         self.type_counts['table'] += 1
-        self.type_locations['table'].append(path)
 
-        # TODO: Parse records to find value types of entries
-        # This requires finding the strings/records split point
-        print(f"  Found legacy table: {path}")
+        if len(payload) < LEGACY_HEADER_SIZE + LEGACY_RECORD_SIZE:
+            return
 
-    def _scan_modern_table_payload(self, payload, path):
+        # Read header to understand table structure
+        header = payload[:LEGACY_HEADER_SIZE]
+        # Header structure (from tablestructure.h):
+        # - short versionnumber (2 bytes)
+        # - short sortorder (2 bytes)
+        # - long timecreated (4 bytes)
+        # - long timemodified (4 bytes)
+        # - long flags (4 bytes)
+
+        # Records start immediately after header
+        records_start = LEGACY_HEADER_SIZE
+
+        # Find where records end by scanning for structure
+        # We need to find where the string pool starts
+        # Strategy: scan records sequentially until we can't find valid records anymore
+
+        valid_records = []
+        max_string_offset = 0
+        rec_offset = records_start
+
+        # First pass: identify all records and find max string offset
+        while rec_offset + LEGACY_RECORD_SIZE <= len(payload):
+            rec = payload[rec_offset:rec_offset + LEGACY_RECORD_SIZE]
+            ixkey = struct.unpack('>I', rec[0:4])[0]
+            valuetype = rec[4]
+            version_byte = rec[5]
+            dataval = struct.unpack('>I', rec[6:10])[0]
+
+            # Check for sentinel (all zeros) - these mark end of records
+            if ixkey == 0 and valuetype == 0 and version_byte == 0 and dataval == 0:
+                # Sentinel found - records end here
+                break
+
+            # Track max string offset
+            max_string_offset = max(max_string_offset, ixkey)
+            valid_records.append((rec_offset, ixkey, valuetype, version_byte, dataval))
+            rec_offset += LEGACY_RECORD_SIZE
+
+        records_end = rec_offset
+        strings_start = records_end
+
+        # String pool starts after records
+        # In the original code, strings are in a separate handle, but in the
+        # on-disk format they're appended after records
+
+        print(f"  [{path}] Found {len(valid_records)} valid records, strings start at offset {strings_start}")
+
+        # Extract string pool (strings are between header and records)
+        strings = payload[LEGACY_HEADER_SIZE:strings_start]
+
+        # Second pass: process each record
+        record_count = 0
+        for rec_offset, ixkey, valuetype, version_byte, dataval in valid_records:
+            record_count += 1
+
+            # Track this value type
+            type_name = VALUE_TYPES.get(valuetype, f'unknown_{valuetype}')
+            self.type_counts[type_name] += 1
+
+            # Extract key name from string pool
+            # ixkey is offset into the strings section
+            if ixkey < len(strings):
+                # Pascal string: length byte followed by characters
+                str_len = strings[ixkey]
+                if ixkey + 1 + str_len <= len(strings):
+                    key_bytes = strings[ixkey + 1:ixkey + 1 + str_len]
+                    try:
+                        key_name = key_bytes.decode('ascii', errors='ignore')
+                    except:
+                        key_name = '???'
+                else:
+                    key_name = '(truncated)'
+            else:
+                key_name = '(out of bounds)'
+
+            print(f"  [{path}] Record {record_count}: key={key_name!r} type={type_name} dataval=0x{dataval:08x}")
+
+            # For external types, try to determine which external type
+            if valuetype == 13:  # externalvaluetype
+                # dataval is the dbaddress of the external value
+                if dataval != 0:
+                    self._scan_external_at(f, dataval, f"{path}.{key_name}", depth)
+
+            # TODO: Handle list (29) and record (30) types when we understand their format
+
+    def _scan_modern_table_payload(self, payload, path, depth, f):
         """Scan modern merged table format."""
         self.type_counts['table'] += 1
-        self.type_locations['table'].append(path)
 
-        # TODO: Unmerge and parse records
-        print(f"  Found modern table: {path}")
+        # Modern format: [outer_size][inner_merged][formats]
+        # First 4 bytes is outer_size
+        if len(payload) < 4:
+            return
+
+        outer_size = struct.unpack('>I', payload[0:4])[0]
+        if outer_size + 4 > len(payload):
+            return
+
+        # Inner merged: [inner_size][header+records][strings]
+        inner_merged = payload[4:4 + outer_size]
+        if len(inner_merged) < 4:
+            return
+
+        inner_size = struct.unpack('>I', inner_merged[0:4])[0]
+        if inner_size + 4 > len(inner_merged):
+            return
+
+        header_and_records = inner_merged[4:4 + inner_size]
+        strings = inner_merged[4 + inner_size:]
+
+        # Parse records from header_and_records
+        LEGACY_HEADER_SIZE = 16
+        LEGACY_RECORD_SIZE = 10
+
+        if len(header_and_records) < LEGACY_HEADER_SIZE:
+            return
+
+        records = header_and_records[LEGACY_HEADER_SIZE:]
+
+        # Parse each record
+        for rec_offset in range(0, len(records), LEGACY_RECORD_SIZE):
+            if rec_offset + LEGACY_RECORD_SIZE > len(records):
+                break
+
+            rec = records[rec_offset:rec_offset + LEGACY_RECORD_SIZE]
+            ixkey = struct.unpack('>I', rec[0:4])[0]
+            valuetype = rec[4]
+            dataval = struct.unpack('>I', rec[6:10])[0]
+
+            # Sentinel record
+            if ixkey == 0 and valuetype == 0 and dataval == 0:
+                continue
+
+            # Track this value type
+            type_name = VALUE_TYPES.get(valuetype, f'unknown_{valuetype}')
+            self.type_counts[type_name] += 1
+
+            # For external types, try to determine which external type
+            if valuetype == 13:  # externalvaluetype
+                if dataval != 0:
+                    self._scan_external_at(f, dataval, path, depth)
+
+    def _scan_external_at(self, f, addr, path, depth):
+        """Scan an external value to determine its type."""
+        try:
+            # Read external value header
+            # External values are stored on disk with a block header, then the external data
+            saved_pos = f.tell()
+            f.seek(addr)
+
+            # Read block header (8 bytes)
+            size_bytes, variance_bytes = struct.unpack('>II', f.read(8))
+
+            # Read full external value data
+            ext_data = f.read(size_bytes)
+
+            if len(ext_data) < 16:  # Need at least header: version(2) + id(2) + flags(2) + variabledata(4) + ...
+                f.seek(saved_pos)
+                return
+
+            # tydiskexternalhandle structure:
+            # - short versionnumber (2 bytes)
+            # - tyexternalid id (2 bytes, but really a short in the enum)
+            versionnumber = struct.unpack('>H', ext_data[0:2])[0]
+            idprocessor = struct.unpack('>H', ext_data[2:4])[0]
+
+            external_type = EXTERNAL_TYPES.get(idprocessor, f'unknown_external_{idprocessor}')
+            self.external_type_counts[external_type] += 1
+
+            # If it's a table, the rest of the data is the table payload
+            if idprocessor == 3:  # idtableprocessor
+                # Table external format on disk: [versionnumber][id][table_payload]
+                # The table_payload is what we need to scan
+                table_payload = ext_data[4:]  # Skip version(2) + id(2)
+
+                # Check if this is a legacy or modern table payload
+                if len(table_payload) >= 4:
+                    first_bytes = struct.unpack('>I', table_payload[:4])[0]
+                    is_legacy = first_bytes < 16 or first_bytes > (len(table_payload) - 4)
+
+                    if is_legacy:
+                        self._scan_legacy_table_payload(table_payload, f"{path}.<table>", depth + 1, f)
+                    else:
+                        self._scan_modern_table_payload(table_payload, f"{path}.<table>", depth + 1, f)
+
+            f.seek(saved_pos)
+
+        except Exception as e:
+            print(f"  Error scanning external at 0x{addr:08x}: {e}")
 
     def _report(self):
         """Generate report of findings."""
         print("\n" + "="*60)
         print("SCAN RESULTS")
         print("="*60)
+
+        print(f"\nMax nesting depth: {self.max_depth}")
+        print("\nDepth histogram:")
+        for d in sorted(self.depth_histogram.keys()):
+            print(f"  Depth {d:2d}: {self.depth_histogram[d]:5d} tables")
 
         print("\nValue Types Found:")
         for vtype, count in sorted(self.type_counts.items(), key=lambda x: -x[1]):
@@ -179,7 +386,18 @@ class DatabaseScanner:
             for vtype, count in sorted(found_complex, key=lambda x: -x[1]):
                 print(f"  {vtype:20s}: {count:5d} occurrences")
         else:
-            print("  No complex types found (incomplete scan)")
+            print("  No complex types found")
+
+        # Migration recommendations
+        print("\n" + "="*60)
+        print("MIGRATION PRIORITIES")
+        print("="*60)
+
+        if self.external_type_counts:
+            print("\nExternal type converters needed (by frequency):")
+            for etype, count in sorted(self.external_type_counts.items(), key=lambda x: -x[1]):
+                priority = "HIGH" if count > 100 else "MEDIUM" if count > 10 else "LOW"
+                print(f"  [{priority:6s}] {etype:20s}: {count:5d} occurrences")
 
 def main():
     if len(sys.argv) != 2:
