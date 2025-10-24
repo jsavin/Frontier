@@ -177,46 +177,65 @@ class DatabaseScanner:
         # - long timemodified (4 bytes)
         # - long flags (4 bytes)
 
-        # Records start immediately after header
-        records_start = LEGACY_HEADER_SIZE
+        # Find the split between strings and records by trying different candidates
+        # Format is: [header][strings][records]
+        # We try different string pool sizes and validate each one
 
-        # Find where records end by scanning for structure
-        # We need to find where the string pool starts
-        # Strategy: scan records sequentially until we can't find valid records anymore
-
+        strings_len = 0
+        records_start = 0
         valid_records = []
-        max_string_offset = 0
-        rec_offset = records_start
 
-        # First pass: identify all records and find max string offset
-        while rec_offset + LEGACY_RECORD_SIZE <= len(payload):
-            rec = payload[rec_offset:rec_offset + LEGACY_RECORD_SIZE]
-            ixkey = struct.unpack('>I', rec[0:4])[0]
-            valuetype = rec[4]
-            version_byte = rec[5]
-            dataval = struct.unpack('>I', rec[6:10])[0]
+        # Try different string pool sizes (must be 10-byte aligned)
+        for candidate_strings in range(0, len(payload) - LEGACY_HEADER_SIZE + 1, LEGACY_RECORD_SIZE):
+            candidate_records_start = LEGACY_HEADER_SIZE + candidate_strings
 
-            # Check for sentinel (all zeros) - these mark end of records
-            if ixkey == 0 and valuetype == 0 and version_byte == 0 and dataval == 0:
-                # Sentinel found - records end here
+            # Must have room for at least one record
+            if candidate_records_start + LEGACY_RECORD_SIZE > len(payload):
                 break
 
-            # Track max string offset
-            max_string_offset = max(max_string_offset, ixkey)
-            valid_records.append((rec_offset, ixkey, valuetype, version_byte, dataval))
-            rec_offset += LEGACY_RECORD_SIZE
+            # Validate this candidate by checking all records
+            valid = True
+            found_sentinel = False
+            candidate_records = []
 
-        records_end = rec_offset
-        strings_start = records_end
+            for rec_offset in range(candidate_records_start, len(payload), LEGACY_RECORD_SIZE):
+                if rec_offset + LEGACY_RECORD_SIZE > len(payload):
+                    break
 
-        # String pool starts after records
-        # In the original code, strings are in a separate handle, but in the
-        # on-disk format they're appended after records
+                rec = payload[rec_offset:rec_offset + LEGACY_RECORD_SIZE]
+                ixkey = struct.unpack('>I', rec[0:4])[0]
+                valuetype = rec[4]
+                version_byte = rec[5]
+                dataval = struct.unpack('>I', rec[6:10])[0]
 
-        print(f"  [{path}] Found {len(valid_records)} valid records, strings start at offset {strings_start}")
+                # Check for sentinel
+                if ixkey == 0 and valuetype == 0 and version_byte == 0 and dataval == 0:
+                    found_sentinel = True
+                    continue  # Sentinels are valid, keep checking
+
+                # ixkey must be valid offset into string pool
+                if ixkey >= candidate_strings:
+                    valid = False
+                    break
+
+                # This is a valid record for this candidate
+                candidate_records.append((rec_offset, ixkey, valuetype, version_byte, dataval))
+
+            # Accept this candidate if it has valid records and at least one sentinel
+            if valid and found_sentinel and (len(candidate_records) > 0 or candidate_strings > 0):
+                strings_len = candidate_strings
+                records_start = candidate_records_start
+                valid_records = candidate_records
+                break
+
+        if records_start == 0:
+            print(f"  [{path}] Failed to find valid strings/records split")
+            return
+
+        print(f"  [{path}] Found {len(valid_records)} valid records, strings={strings_len} bytes, records start at offset {records_start}")
 
         # Extract string pool (strings are between header and records)
-        strings = payload[LEGACY_HEADER_SIZE:strings_start]
+        strings = payload[LEGACY_HEADER_SIZE:LEGACY_HEADER_SIZE + strings_len]
 
         # Second pass: process each record
         record_count = 0
