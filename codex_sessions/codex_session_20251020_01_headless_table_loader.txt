@@ -1,0 +1,44 @@
+# Session Report — 2025-10-20 (Headless Frontier Loader)
+
+## Overview
+- **Project goal:** Bring the headless Frontier runtime to parity with the classic desktop build so it can open `Frontier.root`, hydrate `system.verbs.builtins`, and execute glue exactly as the original Mac application.
+- **Session focus:** Finish the v6 → v7 database header migration, capture the outstanding loader blockers, and map a concrete plan for decoding legacy table payloads (notably the Pascal-style records inherited from classic Mac OS).
+- **Related status page:** See `current_status.md` for the living backlog; this document captures today’s deep dive.
+
+## What we accomplished today
+1. **Locked in the header migration fix.**
+   - Reworked `convert_32bit_header_to_64bit` to treat the legacy header as an 88-byte struct of big-endian 32-bit fields.
+   - Regenerated the modern `Frontier-v7.root` so `views[0]` now points to `0x00000000005d1063` (the real root block) instead of the bogus `0x0000000000580006` previously produced.
+   - Added regression coverage in `tests/components/test_migration.c` and `tests/db_format_tests.c` to prevent this regression.
+   - Pushed the fix in https://github.com/jsavin/Frontier/pull/30 (merged).
+2. **Documented the Pascal-era constraints.**
+   - Noted that legacy `.root` blocks still follow Pascal conventions (Pascal strings + handle-oriented records) that must be respected until the formats are modernised.
+   - Captured this reminder in `current_status.md` so future work doesn’t overlook the classic Mac heritage.
+3. **Experimented with legacy table payload conversion.**
+   - Added a headless-only shim (`headless_convert_legacy_table_payload`) that recognises the old `tydisktablerecord + tydisksymbolrecord + string pool` layout and tries to synthesise a modern merged handle on the fly.
+   - Hydration still crashes in `tableunpacktable`, confirming that we need a more faithful reconstruction of the Pascal-style data (record ordering, offsets, and string tables).
+
+## Key findings
+- The header migration is now reliable; the remaining failure happens inside `tableunpacktable`, not `dbrefhandle`.
+- Legacy table blocks are larger Pascal bundles: `tydisktablerecord` header, classic symbol records, Pascal strings, and handle-structured metadata. The quick-and-dirty conversion we attempted isn’t enough; we must recreate the exact hrecords/hstrings expected by `hashunpacktable`.
+
+## Next steps
+1. **Reverse-engineer the legacy table block layout.**
+   - Parse the `tydisktablerecord`, symbol records, and Pascal string pool exactly as the classic code did.
+   - Rebuild proper modern handles (`hrecords` + `hstrings`) before calling `mergehandles` to feed `tableunpacktable`.
+2. **Wire the converter into `tableverbinmemory_common`.**
+   - Only run the shim when the header prefix fails the merged-handle sanity checks.
+   - Add diagnostics so we can verify record counts and offsets while iterating.
+3. **Re-run hydration once the converter is complete.**
+   - Goal: load `system.verbs.builtins` end-to-end without trimming payloads or hitting the crash.
+4. **Longer-term TODO:** catalogue all Pascal-era data shapes (Pascal strings, handle-based arrays, legacy big-endian structs) so we can modernise them after the loader works.
+
+## Open questions / follow-ups
+- Confirm which legacy helpers (`hashpacktable`, `hashunpacktable`, etc.) we can reuse versus reimplementing the minimal subset needed in the headless build.
+- Decide whether to codify the legacy layouts in dedicated structs (for clarity) or keep the byte-level parsing inside the shim.
+
+## References
+- `current_status.md` (updated)
+- PR 30 — “Fix: decode legacy database header correctly”
+- Runtime code touched: `Common/source/db_format.c`, `tests/components/test_migration.c`, `tests/db_format_tests.c`, `Common/source/tableexternal_common.c` (WIP shim)
+
