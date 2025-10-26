@@ -162,6 +162,26 @@ const char* headless_fnum_path(hdlfilenum fnum) {
     return ftable[fnum].path[0] ? ftable[fnum].path : NULL;
 }
 
+boolean headless_reopen_fnum(hdlfilenum fnum, const char *path, boolean flreadonly) {
+    if (fnum <= 0 || fnum >= MAX_FNUM || path == NULL || path[0] == '\0')
+        return false;
+    FILE *fp = fp_from(fnum);
+    if (fp) {
+        fclose(fp);
+        ftable[fnum].fp = NULL;
+    }
+    const char *mode = flreadonly ? "rb" : "rb+";
+    FILE *newfp = fopen(path, mode);
+    if (!newfp && !flreadonly)
+        newfp = fopen(path, "rb");
+    if (!newfp)
+        return false;
+    ftable[fnum].fp = newfp;
+    strncpy(ftable[fnum].path, path, sizeof(ftable[fnum].path) - 1);
+    ftable[fnum].path[sizeof(ftable[fnum].path) - 1] = '\0';
+    return true;
+}
+
 /* Read a logical line from file number handling CR, LF, and CRLF.
  * Returns number of bytes placed into buf (excluding terminator),
  * 0 on EOF with no data, or -1 on error. */

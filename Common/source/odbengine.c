@@ -423,6 +423,7 @@ pascal boolean odbOpenFile (hdlfilenum fnum, odbref *odb, boolean flreadonly) {
 	   We detect legacy by peeking at byte 1 (versionnumber). */
 	{
 		extern const char* headless_fnum_path(hdlfilenum fnum);
+		extern boolean headless_reopen_fnum(hdlfilenum fnum, const char *path, boolean flreadonly);
 		const char *path = headless_fnum_path(fnum);
 		if (path != NULL) {
 			FILE *fp = fopen(path, "rb");
@@ -436,6 +437,12 @@ pascal boolean odbOpenFile (hdlfilenum fnum, odbref *odb, boolean flreadonly) {
 						fclose(fp);
 						if (!migrate_32bit_to_64bit(path))
 							return (false);
+						char migrated_path[1024];
+						if (!db_format_last_backup_path(migrated_path, sizeof migrated_path))
+							return (false);
+						if (!headless_reopen_fnum(fnum, migrated_path, flreadonly))
+							return (false);
+						path = migrated_path;
 					}
 				}
 				fclose(fp);

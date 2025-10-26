@@ -1026,6 +1026,13 @@ boolean db_migrate_reopen_if_legacy(odbref *podb) {
             /* Perform header-only migration with backup */
             if (!migrate_32bit_to_64bit(cpath))
                 return false;
+            char migrated_path[1024];
+            if (!db_format_last_backup_path(migrated_path, sizeof migrated_path))
+                return false;
+            bigstring bsmigrated;
+            copyctopstring(migrated_path, bsmigrated);
+            if (!pathtofilespec(bsmigrated, &(**hodb).fs))
+                return false;
             /* Reopen the migrated file */
             if (!openfile(&(**hodb).fs, &(**hodb).fref, (**hodb).flreadonly))
                 return false;
