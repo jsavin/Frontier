@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 #include "frontier.h"
 #include "standard.h"
 #include "dialogs.h"
@@ -43,6 +45,12 @@ boolean db_migrate_reopen_if_legacy(odbref *podb) {
         return false;
 
     if (!migrate_32bit_to_64bit(path))
+        return false;
+    char migrated_path[1024];
+    if (!db_format_last_backup_path(migrated_path, sizeof migrated_path))
+        return false;
+    remove(path);
+    if (rename(migrated_path, path) != 0)
         return false;
 
     use_64bit_format = true;

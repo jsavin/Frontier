@@ -163,8 +163,7 @@ boolean migrate_32bit_to_64bit(const char *db_path) {
     if (db_path == NULL)
         return false;
 
-    if (!create_root_backup(db_path))
-        return false;
+    /* No longer create backup - we'll write to a new file instead */
 
     FILE *src = fopen(db_path, "rb");
     if (!src)
@@ -182,8 +181,24 @@ boolean migrate_32bit_to_64bit(const char *db_path) {
         return false;
     }
 
+    /* Create output path: <base>-v7.root */
+    char output_path[1024];
+    const char *ext = strrchr(db_path, '.');
+    if (ext && strcmp(ext, ".root") == 0) {
+        size_t base_len = ext - db_path;
+        snprintf(output_path, sizeof output_path, "%.*s-v7.root", (int)base_len, db_path);
+    } else {
+        /* If no .root extension, just append -v7 */
+        snprintf(output_path, sizeof output_path, "%s-v7", db_path);
+    }
+
+    /* Store output path for caller to retrieve */
+    strncpy(last_backup_path, output_path, sizeof last_backup_path);
+    if (sizeof last_backup_path > 0)
+        last_backup_path[sizeof last_backup_path - 1] = '\0';
+
     char temp_path[1024];
-    snprintf(temp_path, sizeof temp_path, "%s.tmp", db_path);
+    snprintf(temp_path, sizeof temp_path, "%s.tmp", output_path);
 
     FILE *dst = fopen(temp_path, "wb");
     if (!dst) {
@@ -259,8 +274,8 @@ boolean migrate_32bit_to_64bit(const char *db_path) {
     if (fflush(dst) != 0) { fclose(dst); remove(temp_path); return false; }
     if (fclose(dst) != 0) { remove(temp_path); return false; }
 
-    /* Atomically replace original */
-    if (rename(temp_path, db_path) != 0) {
+    /* Move temp file to final output path (original remains untouched) */
+    if (rename(temp_path, output_path) != 0) {
         remove(temp_path);
         return false;
     }
@@ -268,7 +283,7 @@ boolean migrate_32bit_to_64bit(const char *db_path) {
     return true;
 }
 
-boolean ensure_database_modern(const char *db_path, boolean *migrated) {
+boolean ensure_database_modern(const char *db_path, boolean *migrated, char *output_path, size_t output_path_size) {
     if (migrated)
         *migrated = false;
     if (db_path == NULL || db_path[0] == '\0')
@@ -288,13 +303,25 @@ boolean ensure_database_modern(const char *db_path, boolean *migrated) {
         return false;
 
     if (use_64bit_format) {
-        return true; /* already modern */
+        /* Already modern - return original path */
+        if (output_path && output_path_size > 0) {
+            strncpy(output_path, db_path, output_path_size);
+            if (output_path_size > 0)
+                output_path[output_path_size - 1] = '\0';
+        }
+        return true;
     }
 
     if (!migrate_32bit_to_64bit(db_path))
         return false;
 
-    /* Migration succeeded; future reads should treat file as modern. */
+    /* Migration succeeded; return path to new v7 file */
+    if (output_path && output_path_size > 0) {
+        if (!db_format_last_backup_path(output_path, output_path_size))
+            return false;
+    }
+
+    /* Future reads should treat file as modern. */
     use_64bit_format = true;
 
     if (migrated)

@@ -87,12 +87,13 @@ int main(int argc, char* argv[]) {
 
     if (g_cli_options.upgrade_system_root) {
         boolean migrated = false;
-        if (!ensure_database_modern(g_cli_options.system_root, &migrated)) {
+        char output_path[1024];
+        if (!ensure_database_modern(g_cli_options.system_root, &migrated, output_path, sizeof output_path)) {
             fprintf(stderr, "Error: Failed to upgrade system root: %s\n", g_cli_options.system_root);
             return 1;
         }
         if (migrated) {
-            printf("System root upgraded to modern format: %s\n", g_cli_options.system_root);
+            printf("System root upgraded to v7 format (written to): %s\n", output_path);
         } else {
             printf("System root already in modern format: %s\n", g_cli_options.system_root);
         }
@@ -380,12 +381,14 @@ static boolean hydrate_system_root_database(const char* path) {
     }
 
     boolean migrated = false;
-    if (!ensure_database_modern(path, &migrated)) {
+    char actual_path[1024];
+    if (!ensure_database_modern(path, &migrated, actual_path, sizeof actual_path)) {
         cli_log_error("Failed to verify database format before hydration: %s", path);
         return false;
     }
     if (migrated) {
-        cli_log_info("Migrated legacy system root to v7 format (backup created): %s", path);
+        cli_log_info("Migrated legacy system root to v7 format (written to): %s", actual_path);
+        path = actual_path;  /* Use the v7 file for hydration */
     }
 
     bigstring bspath;
@@ -536,13 +539,17 @@ static boolean load_system_root_database(const char* path) {
         return false;
     }
     boolean migrated = false;
-    if (!ensure_database_modern(path, &migrated)) {
+    char actual_path[1024];
+    if (!ensure_database_modern(path, &migrated, actual_path, sizeof actual_path)) {
         cli_log_error("Failed to ensure system root is modern: %s", path);
         return false;
     }
     if (migrated) {
-        cli_log_info("Migrated legacy system root to v7 format (backup created): %s", path);
+        cli_log_info("Migrated legacy system root to v7 format (written to): %s", actual_path);
+        path = actual_path;  /* Use the v7 file */
     }
+
+    len = strlen(path);  /* Recalculate length after potential path change */
     if (len > lenbigstring) {
         cli_log_error("System root path exceeds %d characters (got %zu)", lenbigstring, len);
         return false;

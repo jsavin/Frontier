@@ -158,25 +158,34 @@ static bool test_error_handling(void) {
 static bool test_ensure_modern(void) {
     TEST_ASSERT(create_legacy_database(), "Should create legacy database");
     boolean migrated = false;
-    TEST_ASSERT(ensure_database_modern(test_legacy_db, &migrated), "ensure_database_modern should succeed");
+    char output_path[1024];
+    TEST_ASSERT(ensure_database_modern(test_legacy_db, &migrated, output_path, sizeof output_path), "ensure_database_modern should succeed");
     TEST_ASSERT(migrated, "Legacy file should migrate");
 
-    FILE *f = fopen(test_legacy_db, "rb");
-    TEST_ASSERT(f != NULL, "Migrated database should open");
+    /* Verify v7 file was created */
+    FILE *f = fopen(output_path, "rb");
+    TEST_ASSERT(f != NULL, "V7 database should exist");
     tydatabaserecord_64 header;
-    TEST_ASSERT(fread(&header, sizeof header, 1, f) == 1, "Should read ensured header");
+    TEST_ASSERT(fread(&header, sizeof header, 1, f) == 1, "Should read v7 header");
     fclose(f);
-    TEST_ASSERT(header.versionnumber == 7, "Header upgraded to v7");
+    TEST_ASSERT(header.versionnumber == 7, "Header should be v7");
 
-    char backup_path[1024];
-    if (db_format_last_backup_path(backup_path, sizeof backup_path)) {
-        remove_if_exists(backup_path);
-        db_format_clear_last_backup_path();
-    }
+    /* Verify original is still v6 */
+    f = fopen(test_legacy_db, "rb");
+    TEST_ASSERT(f != NULL, "Original database should still exist");
+    tydatabaserecord orig_header;
+    TEST_ASSERT(fread(&orig_header, sizeof orig_header, 1, f) == 1, "Should read original header");
+    fclose(f);
+    TEST_ASSERT(orig_header.versionnumber == 6, "Original should still be v6");
+
+    /* Clean up v7 file */
+    remove_if_exists(output_path);
+    db_format_clear_last_backup_path();
 
     migrated = false;
-    TEST_ASSERT(ensure_database_modern(test_legacy_db, &migrated), "ensure should succeed second time");
-    TEST_ASSERT(!migrated, "Already-modern db should not migrate again");
+    TEST_ASSERT(ensure_database_modern(test_legacy_db, &migrated, output_path, sizeof output_path), "ensure should succeed second time");
+    TEST_ASSERT(migrated, "Should migrate again since we deleted the v7 file");
+    remove_if_exists(output_path);
     return true;
 }
 
