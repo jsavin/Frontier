@@ -20,6 +20,25 @@ The **root table** (what we scan at the database header's view[0] address) is an
 
 Users interact with the **child tables** of the root table, which we call "top-level tables" in UserTalk.
 
+### Legacy warning tables (v6 compatibility shim)
+
+All pristine v6 databases we ship (`Frontier-v6.root`, `prefs.root`, `manila.root`, `test.root`) place a compatibility payload at `views[0]`. Characteristics:
+
+- fixed 442-byte payload
+- it is **not** a table; it is the serialized `tyversion2cancoonrecord` struct that drives the Frontier “About/Agents” window (also known as the Cancoon window)
+- the first 2 bytes are the struct’s version (0x0003 in Frontier 6); the next 4 bytes (`adrroottable`) point at the true root table (e.g. 0x0000031e inside `tests/test.root`)
+- the remainder of the struct stores font/window metadata for the About window plus the text buffer used by `msg()`/agents
+
+Classic Frontier builds (pre-v6) load this table to display a “created with a newer version” warning rather than crash. Modern builds skip it and register the true top-level tables by following external references into the **modern** merged blocks elsewhere in the file (e.g. block `0x031e` in `databases/test.root`).
+
+When writing scanners or migration tools:
+
+1. Check whether the block at `views[0]` is the 442-byte Cancoon record.
+2. If so, parse the first 6 bytes to extract `version` and `adrroottable`.
+3. Continue scanning at `adrroottable`, which is a normal table stored using the merged (modern) format.
+
+See `databases/test-root-contents.png` for the intended UI view of `test.root` once the Cancoon record is resolved and real tables like `myTable` are traversed.
+
 ## UserTalk Addressing
 
 ### Full Address Notation
@@ -30,14 +49,16 @@ To reference a table in a database file:
 @["DISK-PATH-TO-ROOT-FILE.root"].tablename
 ```
 
-Example:
+Example: (macOS version)
 ```usertalk
-@["/Users/jake/dev/jsavin/Frontier/databases/Guest Databases/www/prefs.root"].prefs
+@["Macintosh HD:Users:jake:dev:jsavin:Frontier:databases:Guest Databases:www:prefs.root"].prefs
 ```
 
 This syntax:
 - `@[...]` creates a database reference
 - `.tablename` accesses a child of the database's root table
+
+*Note*: Our North Star vision for the runtime is to migrate to POSIX paths with relative paths where possible. This is not yet designed or implemented.
 
 ### Short Form (In-Scope Access)
 
@@ -47,9 +68,9 @@ When databases are opened, their top-level tables are automatically in scope:
 prefs.foo = 1
 ```
 
-Instead of the full:
+Instead of the full: (macOS version)
 ```usertalk
-@["/Users/jake/dev/jsavin/Frontier/databases/Guest Databases/www/prefs.root"].prefs.foo = 1
+@["Macintosh HD:Users:jake:dev:jsavin:Frontier:databases:Guest Databases:www:prefs.root"].prefs.foo = 1
 ```
 
 ## Runtime Database Registry

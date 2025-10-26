@@ -3,7 +3,7 @@
 Status
 - State: Living Document
 - Phases: Multi-Phase Roadmap
-- Last Updated: 2025-10-12
+- Last Updated: 2025-10-26
 - Notes: Organised to mirror the current phase plan (see `planning/phase_overview.md`).
 
 Related Docs
@@ -12,6 +12,7 @@ Related Docs
 - planning/phase3/ui_abstraction/PHASES.md
 
 Change Log
+- 2025-10-25: Captured Cancoon/About window UI preservation requirement.
 - 2025-10-12: Updated links, clarified timelines by phase.
 - 2025-09-29: Initial draft (memory management audit, hash table modernisation notes).
 
@@ -100,6 +101,7 @@ Reference Docs
 - Progress indicators for long-running migrations.
 - Batch migration tooling for multiple databases.
 - Easy rollback/downgrade support.
+- **Cancoon/About window disentanglement:** preserve the 442-byte tyversion2cancoonrecord (About/Home window state) while designing the next UI layer. Eventually we need a per-user UI app that can render the Cancoon window when the runtime runs headless (daemon or service) without losing the msg()/agent log. This will require new IPC hooks so the long-running process can surface the window state safely.
 
 ### Developer Experience
 - Better database inspection/validation tools.

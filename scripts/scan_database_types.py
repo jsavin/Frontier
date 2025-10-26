@@ -151,6 +151,10 @@ class DatabaseScanner:
             # Read payload
             payload = f.read(size_bytes)
 
+            # Check for Cancoon (About window) record before attempting table parsing.
+            if self._follow_cancoon_record_if_present(payload, path, depth, f):
+                return
+
             # Check if legacy format (no merge prefix)
             if len(payload) >= 4:
                 first_bytes = struct.unpack('>I', payload[:4])[0]
@@ -164,10 +168,36 @@ class DatabaseScanner:
                     self._scan_legacy_table_payload(payload, path, depth, f, addr)
                 else:
                     # Modern format: [outer_size][inner_merged][formats]
-                    self._scan_modern_table_payload(payload, path, depth, f)
+                    self._scan_modern_table_payload(payload, path, depth, f, addr)
 
         except Exception as e:
             print(f"  Error scanning table at {path} (depth {depth}): {e}")
+
+    def _follow_cancoon_record_if_present(self, payload, path, depth, f):
+        """Detect tyversion2cancoonrecord (442-byte About/Agents record) and follow its adrroottable."""
+        CANC_OON_SIZE = 442
+        if len(payload) != CANC_OON_SIZE:
+            return False
+
+        if len(payload) < 6:
+            return False
+
+        version = struct.unpack('>H', payload[0:2])[0]
+        if version not in (2, 3):
+            return False
+
+        adr_root = struct.unpack('>I', payload[2:6])[0]
+        if adr_root == 0:
+            return False
+
+        if self.deep:
+            indent = '  ' * depth
+            print(f"{indent}[{path}] Cancoon record (v{version}) → real root @ 0x{adr_root:08x}")
+        else:
+            print(f"  [{path}] Cancoon record (v{version}) detected; following real root @ 0x{adr_root:08x}")
+
+        self._scan_table_at(f, adr_root, path, depth)
+        return True
 
     def _scan_legacy_table_payload(self, payload, path, depth, f, addr):
         """Scan legacy table format and extract value types.
@@ -300,7 +330,7 @@ class DatabaseScanner:
 
             # TODO: Handle list (29) and record (30) types when we understand their format
 
-    def _scan_modern_table_payload(self, payload, path, depth, f):
+    def _scan_modern_table_payload(self, payload, path, depth, f, addr):
         """Scan modern merged table format."""
         self.type_counts['table'] += 1
 
@@ -313,7 +343,6 @@ class DatabaseScanner:
         if outer_size + 4 > len(payload):
             return
 
-        # Inner merged: [inner_size][header+records][strings]
         inner_merged = payload[4:4 + outer_size]
         if len(inner_merged) < 4:
             return
@@ -323,39 +352,69 @@ class DatabaseScanner:
             return
 
         header_and_records = inner_merged[4:4 + inner_size]
+        # If inner_size already includes header+records, strings follow immediately after inner_size bytes.
         strings = inner_merged[4 + inner_size:]
 
-        # Parse records from header_and_records
-        LEGACY_HEADER_SIZE = 16
-        LEGACY_RECORD_SIZE = 10
+        HEADER_SIZE = 16
+        RECORD_SIZE = 10
 
-        if len(header_and_records) < LEGACY_HEADER_SIZE:
+        if len(header_and_records) < HEADER_SIZE:
             return
 
-        records = header_and_records[LEGACY_HEADER_SIZE:]
+        records = header_and_records[HEADER_SIZE:]
 
-        # Parse each record
-        for rec_offset in range(0, len(records), LEGACY_RECORD_SIZE):
-            if rec_offset + LEGACY_RECORD_SIZE > len(records):
+        valid_records = []
+        for rec_offset in range(0, len(records), RECORD_SIZE):
+            if rec_offset + RECORD_SIZE > len(records):
                 break
 
-            rec = records[rec_offset:rec_offset + LEGACY_RECORD_SIZE]
+            rec = records[rec_offset:rec_offset + RECORD_SIZE]
             ixkey = struct.unpack('>I', rec[0:4])[0]
             valuetype = rec[4]
+            version_byte = rec[5]
             dataval = struct.unpack('>I', rec[6:10])[0]
 
-            # Sentinel record
-            if ixkey == 0 and valuetype == 0 and dataval == 0:
+            if ixkey == 0 and valuetype == 0 and version_byte == 0 and dataval == 0:
                 continue
 
-            # Track this value type
+            valid_records.append((ixkey, valuetype, dataval))
+
+        if self.deep:
+            indent = '  ' * depth
+            print(f"{indent}[{path}] Table @ 0x{addr:08x} ({len(valid_records)} entries)")
+        else:
+            print(f"  [{path}] Found {len(valid_records)} valid records")
+
+        record_num = 0
+        for ixkey, valuetype, dataval in valid_records:
+            record_num += 1
+            self.total_entries += 1
+
+            if ixkey < len(strings):
+                strlen = strings[ixkey]
+                if ixkey + 1 + strlen <= len(strings):
+                    key_bytes = strings[ixkey + 1:ixkey + 1 + strlen]
+                    try:
+                        key_name = key_bytes.decode('ascii', errors='ignore')
+                    except:
+                        key_name = '???'
+                else:
+                    key_name = '(truncated)'
+            else:
+                key_name = f'(ixkey={ixkey})'
+
             type_name = VALUE_TYPES.get(valuetype, f'unknown_{valuetype}')
             self.type_counts[type_name] += 1
 
-            # For external types, try to determine which external type
-            if valuetype == 13:  # externalvaluetype
+            if self.deep:
+                indent = '  ' * (depth + 1)
+                print(f"{indent}├─ {key_name!r} [{type_name}] = 0x{dataval:08x}")
+            else:
+                print(f"  [{path}] Record {record_num}: key={key_name!r} type={type_name} dataval=0x{dataval:08x}")
+
+            if valuetype == 13 and self.deep:
                 if dataval != 0:
-                    self._scan_external_at(f, dataval, path, depth, '')
+                    self._scan_external_at(f, dataval, f"{path}.{key_name}", depth + 1, key_name)
 
     def _scan_external_at(self, f, addr, path, depth, key_name=''):
         """Scan an external value to determine its type."""
