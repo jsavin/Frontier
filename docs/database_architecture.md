@@ -1,4 +1,5 @@
 # Frontier Database Architecture
+<!-- 2025-10-27 Codex: Documented v6→v7 migration constraints and 32-bit payload carry-over. -->
 
 ## Database Structure
 
@@ -146,7 +147,20 @@ When scanning databases:
 When migrating v6→v7:
 1. The minimal root table structure is **correct and expected**
 2. Migration must preserve the external table references
-3. All sub-tables are migrated when their blocks are copied
+3. Legacy payloads store 32-bit `dbaddress` values (and 10-byte `tydisksymbolrecord` entries). Simply copying those bytes forward leaves the migrated root in a “v7 header + v6 body” state that still depends on 32-bit readers.
+4. A true v7 database must be re-serialized with `use_64bit_format == true` so that every external record and table payload widens to 64-bit addresses. This requires loading each table with the legacy reader, flipping the format flag, and saving back through `tableverbpack()`/`hashpacktable()` before writing the new file.
+
+#### Migration Pitfalls (32-bit payloads)
+
+- The sample migrator in `Common/source/db_format.c:874-1054` only writes a new 116-byte header and then copies the remainder of the legacy file byte-for-byte into the v7 output. All block payloads—including `system`, `system.verbs`, and `system.verbs.builtins`—remain 32-bit serialized.
+- Runtime code such as `tableverbunpack()` decides how many bytes to consume based on the global `use_64bit_format` flag (set once the v7 header is seen). When a copied legacy payload arrives, the loader tries to read an 8-byte address, overruns the 4-byte legacy field, and errors out unless additional heuristics patch things up.
+- To avoid accruing more compatibility shims, the migrator must take ownership of widening those payloads. The recommended approach is:
+  1. Load each legacy table/verb through the existing 32-bit readers.
+  2. Set `use_64bit_format = true` before packing.
+  3. Re-pack with `tableverbpack()` or `hashpacktable()` so all nested addresses are emitted as 64-bit values.
+  4. Write the resulting blocks into the new file, ensuring block headers/trailers match their new sizes.
+
+Once this reserialization is in place, no runtime path outside the migrator should need to special-case 32-bit layouts.
 
 ### For CLI/Runtime
 
@@ -156,6 +170,22 @@ When loading databases:
 3. Register top-level table entries in the namespace
 4. Load external tables on-demand as accessed
 5. Register database in `system.temp.databases` (except system root)
+
+### External Table Value Record (v6 Disk Format)
+
+When a v6 table stores a child table (value type 13) the string pool slot referenced by `dataval` encodes the external record:
+
+```
+[u32 length][u16 externaldiskversionnumber][u8 tyexternalid][u8 flags][u32 dbaddress]
+```
+
+- `length` is written by `hashpackexternal()` and covers the remaining payload bytes.
+- `externaldiskversionnumber` is currently `1`.
+- `tyexternalid` identifies the processor (`idtableprocessor` = `3` for table values).
+- `flags` is the on-disk copy of the `tyexternalvariable` bitfield (`flinmemory`, `flpacked`, `flsystemtable`, etc.). Frontier does not clear these bits before persisting the record, so whatever combination was active during save is recorded verbatim.
+- `dbaddress` is the big-endian address of the child table block that `tableverbpack()` appended after the header.
+
+At load time `langexternalunpack()` consumes the version/id pair, ignores the flag byte, and passes the address to `tableverbunpack()` which rehydrates the child table.
 
 ## Scanner Findings Re-Interpreted
 

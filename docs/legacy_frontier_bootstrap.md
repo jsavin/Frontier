@@ -1,4 +1,5 @@
 # Legacy Frontier Bootstrap
+<!-- 2025-10-27 Codex: Added 64-bit migration notes for persisted tables. -->
 
 ## Purpose
 - Capture the sequence the classic Frontier desktop application follows to initialise the language runtime, hydrate the persisted object database, and expose the `system.verbs.builtins` glue that forwards into the kernel.
@@ -131,3 +132,8 @@ This conversion allows both v6 and v7 databases to load correctly in the headles
 - Runtime linking: `Common/source/tablestructure.c:233`
 - Startup scripts: `Common/source/scripts.c:675`
 - Kernel dispatch: `Common/source/langstartup.c:188`, `Common/source/langverbs.c:3562`, `Common/source/langvalue.c:7488`
+
+## Migration Considerations (2025-10-27 Codex)
+- `Common/source/db_format.c:migrate_32bit_to_64bit()` currently rewrites only the database header (bumping it to version 7) and streams the remainder of the v6 file into the output unchanged. The resulting root keeps every table payload in the legacy 32-bit layout.
+- Once the runtime sees the v7 header it enables `use_64bit_format`, so routines like `tableverbunpack()` expect 8-byte `dbaddress` fields. When they encounter copied 4-byte payloads they spill past the record unless patched with ad hoc fallbacks.
+- The long-term fix is to have the migrator load each legacy table, flip `use_64bit_format = true`, and save it back via `tableverbpack()`/`hashpacktable()` before writing it to the new file. That emits widened addresses, refreshed block sizes, and lets the CLI/runtime operate without special cases for migrated roots.
