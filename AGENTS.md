@@ -72,12 +72,20 @@ This document is a concise contributor guide for Frontier’s C/C toolchain and 
 - Sanitize for personal data/config before commit (sanitization will be performed by in‑app UserTalk tooling once modern builds run).
 
 ## Agent‑Specific Notes
-- Follow this file’s guidance across the repo; place new cross‑platform code in `portable/` when feasible.
+- Follow this file’s guidance across the repo; place new cross-platform code in `portable/` when feasible.
 - Do not reformat unrelated files; avoid editing generated `build_*` outputs.
 - When adding files, mirror existing naming and include patterns.
+- Always use built-in shell-based tools for debugging on-disk files and formats instead of writing your own code to parse the file. Only write code for this purpose if built-in shell-based utilities are unavailable, and only after asking the user first to install the tool(s) you need.
+- When new technical details surface (format quirks, runtime behavior, etc.), document them immediately in the most relevant markdown reference (e.g., `docs/database_architecture.md`) so future sessions can pick up the thread quickly.
+- <!-- 2025-10-27 Codex --> When touching the database migrator, remember the current implementation only updates the header; ensure follow-up work reserializes tables so migrated roots become fully 64-bit.
 - When starting a new session, ask the user if you should try to pick up from where the previous session ended. If the user says so, you can either do what the user asks, or propose the following: 1) check the README.md, planning docs (in the planning directory), 2) review recent commits to understand where we're at in the project, 3) read the last hundred or so lines of the most recent couple of files in codex_sessions to pick up context from the most recent sessions. If the user tells you to do something different, always follow their guidance instead.
 - If the user or Codex PR Bot says follow-up fixes are already being handled, stop and confirm before making new changes—avoid duplicating or racing their work.
+- In general, avoid creating or maintaining shims that potentially mask underlying issues unless specifically asked to do so by the user.
+- Always run tests before pushing PRs to origin. If you encounter new or unexpected test failures, stop and ask the user what to do.
+- Whenever making changes to code, make sure to summarize the change with a dated comment near the top of the file, attributed to Codex.
+- Frontier’s database allocator (headers/trailers, variance fields, avail list merging) follows the Boundary Tag Method from Knuth’s *The Art of Computer Programming* (per Dave Winer); keep that lineage in mind when debugging allocation logic or documenting format quirks.
 
 ## Sandbox & Approvals
 - Escalation: Always request escalated execution when needed (e.g., writing outside workspace, network access, package installs, GUI commands, or when sandboxing blocks progress).
 - Granting access: If escalation is required, ask the user to run `/approvals` to grant full access so the agent can run tests and necessary build steps.
+- When writing PR descriptions, include three sections: summary of changes (what/why per file or area), a "so what" explaining the impact, and clear next steps if follow-up work is expected.
