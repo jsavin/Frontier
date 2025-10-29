@@ -1,38 +1,37 @@
-# Frontier Database Format Investigation - Current Status
+# Carbon Migration – Current Status
 
-**Last Updated**: October 27, 2025 (Headless System work queue) <!-- 2025-10-27 Codex: refreshed status -->
-**Branch**: feature/headless-system-bootstrap
-**Session ID**: 019a2490-f65d-7861-b9c6-a6718394c2e8 <!-- 2025-10-27 Codex: captured current Codex session -->
+**Last Updated**: October 29, 2025  \
+**Branches in flight**: `feature/carbon-migration-plan`, `feature/headless-system-bootstrap`
 
-## Updated Plan — October 25, 2025
+## Updated Plan — October 29, 2025
 
-1. **Scanner & Docs (done)**: Documented that the 442-byte block at `views[0]` is a serialized Cancoon/About record and taught the scanner to follow its `adrroottable`. Helper script `scripts/dump_tables.py` enumerates actual modern blocks for debugging.
-2. **Next Work Items**:
-   - Re‑audit the v6→v7 migration path now that we can reliably read the v6 roots. Verify block copying and format conversion are lossless.
-   - Resume headless runtime work: load the v7 Frontier.root, bring the system table online, and ensure glue scripts can call through to our kernel implementations.
-   - Preserve Cancoon state for future UI re‑hosting (tracked in `planning/TODO_future_improvements.md`).
+We pivoted from incremental shims to a comprehensive Carbon-dependency retirement. The canonical plan now lives under [`planning/carbon_migration/`](carbon_migration/README.md).
 
-## Longer-Term Goals
-- Lock in the v6→v7 migration (Phase 1/Phase 2 deliverables) with automated verification once the parser is stable.
-- Complete headless runtime parity so server deployments can run without GUI dependencies while still exposing necessary UI state (About/Cancoon, msg log, agent status) through new channels.
-- Phase 3+ work: database hash-table modernization, headless CLI improvements, and eventual UI layer re-host.
+1. **Planning skeleton (done)**: Created the Carbon migration directory with README, inventory, phases, decision log, and status log.
+2. **Doc refresh (in progress)**: Update status/index pages and mark older Phase 2/3 docs as superseded so contributors land on the new plan.
+3. **Execution phases**: See [`carbon_migration/phases.md`](carbon_migration/phases.md) for subsystem milestones (header hygiene → runtime primitives → encoding → AppleEvents → cleanup).
 
-## Quick Status — October 28, 2025
-- Replaced the test-only file stubs with a shared stdio-backed implementation (`tests/headless_mac_compat.c`), so `openfile`/`fileseteof`/`headless_readline` now behave like the desktop code during migrations and CLI runs.
-- Trimmed the `test_migration` build to use the canonical language/runtime sources (no `FRONTIER_PORTABLE` or stubbed hash/runtime files), exposing the real symbol gaps we still need to solve.
-- Added portable guards in `osincludes_portable.h` for AppleEvents, Components, FSRefs, etc., letting headless builds consume Carbon-dependent headers without extra shims.
-- `langhash.c` compiles further under headless but now fails on a handful of legacy helpers (`getstringlist`, `recttodiskrect`, `rgbtodiskrgb`, `dtox80`, etc.). We need targeted replacements or feature gates before the portable tests link again.
+## Longer-Term Goal
+Run Frontier without any Classic Mac / Carbon APIs while keeping the headless and desktop builds unified. Completing the Carbon plan is now the primary Phase 3 objective.
 
-## Progress — October 26, 2025
-- `tests/db_format_tests` builds/runs cleanly, and a lightweight harness built from `Common/source/db_format.c` successfully migrated `databases/test.root` and `databases/Frontier-v6.root` into `<base>-v7.root`, both of which scan correctly via `scripts/scan_database_types.py`.
-- `tests/runtime_tests` now runs in the headless portable configuration (after extending the stub set with `dbnormalizeaddress`), exercising `langrunstringnoerror`, constant evaluation, OPML round-trips, and serializer round-trips—confirming kernel verbs execute end-to-end in headless mode.
-- `frontier-cli --system-root databases/Frontier-v6.root -e "3 + 4"` brings the runtime up and executes scripts; however, glue lookups such as `clock.now()` still fail because the migrated system table is missing key subtables/built-ins (`system.verbs.builtins` never materializes after `settablestructureglobals`). We removed the old “auto-hydrate” fallback to avoid masking this bug.
+## Quick Status — October 29, 2025
+- Headless build still fails when linking `langhash.c` and `strings.c` because Carbon-era helpers (`TEC*`, AppleEvents, alias manager) remain. The failures are recorded in the [inventory](carbon_migration/inventory.md).
+- Portable headers (`osincludes_portable.h`, `standard_portable.h`) were expanded, but need further work to cover extended float, TEC APIs, and AE constants.
+- Planning documents have been restructured; `_CURRENT_STATUS.md` now tracks the Carbon migration rather than the earlier v6→v7 database effort.
 
-## Immediate Next Steps (migration focus)
-1. ✅ **Doc & guidance updates** – AGENTS.md and docs now capture the v6→v7 gap and PR template requirements.
-2. ✅ **Portable header prep** – refactored `portable/*` headers and shared includes so Carbon vs portable typedef collisions are largely resolved.
-3. ✅ **Finish portable file I/O shims** – stdio-backed file routines now live in `tests/headless_mac_compat.c`, and the test harness links against the real implementations.
-4. ⏳ **Validate serialized output**: after the build is green, diff `system`/`system.verbs` blocks between v6 and migrated v7 to confirm 64-bit addresses and record sizes.
-5. 🔄 **Unblock headless `langhash` build**: provide portable equivalents or guards for `getstringlist`, rect/RGB packing helpers, and other legacy glue so `test_migration` can compile end-to-end again.
-6. ⏳ **Re-run headless CLI checks** (`defined(system.verbs)`, `clock.now()`) against the freshly migrated root; capture results and clean up instrumentation once stable.
-7. ⏳ **Add regression coverage** in migration/component tests to assert widened addresses so header-only regressions are caught automatically.
+## Progress Snapshot
+- ✅ Added stdio-backed file layer shared by headless tests/CLI (eliminated legacy file stubs).
+- ✅ Seeded Carbon migration plan, inventory, and decision log.
+- 🔄 Working on header hygiene: ensuring `frontier.h` and related headers bring in the correct portable definitions.
+
+## Immediate Next Steps
+1. **Docs** (TPM/Assistant):
+   - Update `planning/INDEX.md` to highlight the Carbon migration plan.
+   - Add deprecation banners to the relevant `planning/phase2/` and `planning/phase3/` docs so readers follow the new plan.
+2. **Header hygiene** (Assistant):
+   - Finish wiring `frontier.h`/`standard.h` to use portable equivalents under `FRONTIER_HEADLESS`.
+   - Extend `standard_portable.h` and `osincludes_portable.h` until the portable build no longer complains about missing typedefs/macros (per `inventory.md`).
+3. **Validation** (Assistant):
+   - Re-run `make -C tests test_migration` after header fixes; log results in `planning/carbon_migration/status_log.md`.
+
+Progress and blockers should continue to be logged in the Carbon migration status log and decisions documented in the decision log.

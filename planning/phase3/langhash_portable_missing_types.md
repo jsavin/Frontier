@@ -1,5 +1,7 @@
 # Headless `langhash.c` Dependency Inventory
 
+> **Superseded:** Tracking for these dependencies has moved to [planning/carbon_migration/inventory.md](../carbon_migration/inventory.md). Keep this page for archival notes only.
+
 **Last reviewed**: 2025-10-28  
 
 **Context**: Building `langhash.c` inside the headless/portable toolchain now pulls in the *real* language/runtime sources (no stubbed replacements). The current build stops with unresolved symbols and legacy QuickDraw/AE helpers that the portable layer does not yet expose. This note captures every missing type or helper reported by the compiler, along with what each symbol does in the classic build and what we likely need on the headless side.
