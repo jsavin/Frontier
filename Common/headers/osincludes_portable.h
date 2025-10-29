@@ -43,6 +43,7 @@ typedef int8_t SInt8;
 
 #ifndef Str255
 typedef unsigned char Str255[256];
+#define PORTABLE_STR255_DEFINED 1
 #endif
 
 #ifndef ConstStr255Param
@@ -277,6 +278,104 @@ typedef struct EventRecord {
     Point where;
     UInt16 modifiers;
 } EventRecord;
+#endif
+
+#ifndef FSSpec
+typedef struct FSSpec {
+    short vRefNum;
+    long parID;
+    Str255 name;
+} FSSpec;
+#define OS_PORTABLE_HAS_FSSPEC 1
+#endif
+
+#ifndef CFStringRef
+typedef const void *CFStringRef;
+#define OS_PORTABLE_HAS_CFSTRING 1
+#endif
+
+#ifndef tyjustification
+typedef short tyjustification;
+#endif
+
+#ifndef tylinespacing
+typedef short tylinespacing;
+#endif
+
+#ifndef AEDesc
+typedef struct AEDesc {
+    OSType descriptorType;
+    void *dataHandle;
+} AEDesc;
+#define OS_PORTABLE_HAS_AE_TYPES 1
+#endif
+
+#ifndef AppleEvent
+typedef AEDesc AppleEvent;
+#endif
+
+#ifndef AEEventID
+typedef OSType AEEventID;
+#endif
+
+#ifndef AEKeyword
+typedef OSType AEKeyword;
+#endif
+
+#ifndef AESendMode
+typedef unsigned long AESendMode;
+#endif
+
+#ifndef AESendPriority
+typedef unsigned long AESendPriority;
+#endif
+
+#ifndef AEIdleUPP
+typedef void *AEIdleUPP;
+#endif
+
+#ifndef AEFilterUPP
+typedef void *AEFilterUPP;
+#endif
+
+#ifndef Component
+typedef void *Component;
+#endif
+
+#ifndef ComponentInstance
+typedef void *ComponentInstance;
+#endif
+
+#ifndef typeWildCard
+#define typeWildCard '****'
+#endif
+
+#ifndef typeBoolean
+#define typeBoolean 'bool'
+#endif
+
+#ifndef typeShortInteger
+#define typeShortInteger 'shor'
+#endif
+
+#ifndef typeLongInteger
+#define typeLongInteger 'long'
+#endif
+
+#ifndef typeQDPoint
+#define typeQDPoint 'QDpt'
+#endif
+
+#ifndef DebugStr
+void DebugStr(const unsigned char *s);
+#endif
+
+#ifndef Debugger
+void Debugger(void);
+#endif
+
+#ifndef FastMilliseconds
+unsigned long FastMilliseconds(void);
 #endif
 
 #ifndef topLeft

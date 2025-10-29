@@ -25,6 +25,8 @@
 
 ******************************************************************************/
 
+#include <stdio.h> // 2025-10-27 Codex: Instrument langfindsymbol for headless trace logging.
+
 #include "frontier.h"
 #include "standard.h"
 
@@ -384,6 +386,10 @@ boolean langfindsymbol (const bigstring bs, hdlhashtable *htable, hdlhashnode *h
 	if (h == nil)
 		return (false);
 	
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[hl] langfindsymbol enter %s current=%p\n", stringbaseaddress(bs), (void *)h);
+#endif
+	
 	/*maybe treat as context-free*/
 	flspecialsymbol = flfindanyspecialsymbol || ((bs [1] == '_') && (lastchar (bs) == '_'));
 	
@@ -391,8 +397,16 @@ boolean langfindsymbol (const bigstring bs, hdlhashtable *htable, hdlhashnode *h
 	
 	while (true) { /*chain through each linked hash table*/
 		
-		if (h == nil)  /*symbol not defined*/
+		if (h == nil) { /*symbol not defined*/
+#if defined(FRONTIER_HEADLESS)
+			fprintf(stderr, "[hl] langfindsymbol miss %s\n", stringbaseaddress(bs));
+#endif
 			return (false);
+		}
+
+#if defined(FRONTIER_HEADLESS)
+		fprintf(stderr, "[hl] langfindsymbol inspect table=%p name=%s\n", (void *)h, stringbaseaddress(bs));
+#endif
 
 		//assert (validhandle ((Handle) h));
 		
@@ -404,6 +418,9 @@ boolean langfindsymbol (const bigstring bs, hdlhashtable *htable, hdlhashnode *h
 				
 				*htable = h;
 				
+#if defined(FRONTIER_HEADLESS)
+				fprintf(stderr, "[hl] langfindsymbol hit %s table=%p node=%p\n", stringbaseaddress(bs), (void *)h, (void *)*hnode);
+#endif
 				return (true);
 				}
 			
@@ -421,6 +438,10 @@ boolean langfindsymbol (const bigstring bs, hdlhashtable *htable, hdlhashnode *h
 				
 				if (!getaddressvalue (valwith, &hwith, bswith)) /*error*/
 					return (false);
+
+#if defined(FRONTIER_HEADLESS)
+				fprintf(stderr, "[hl] langfindsymbol with slot=%d table=%p name=%s\n", (int)n, (void *)hwith, stringbaseaddress(bswith));
+#endif
 				
 				if (!isemptystring (bswith)) { // not encoded as expected
 					
@@ -435,6 +456,9 @@ boolean langfindsymbol (const bigstring bs, hdlhashtable *htable, hdlhashnode *h
 					
 					*htable = hwith;
 					
+#if defined(FRONTIER_HEADLESS)
+					fprintf(stderr, "[hl] langfindsymbol with hit %s table=%p node=%p\n", stringbaseaddress(bs), (void *)hwith, (void *)*hnode);
+#endif
 					return (true);
 					}
 				
@@ -1277,6 +1301,3 @@ boolean langfollowifaddressvalue (tyvaluerecord *v) {
 
 	return (fl);
 	} /*langfollowifaddressvalue*/
-
-
-

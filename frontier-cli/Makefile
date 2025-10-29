@@ -92,7 +92,7 @@ HEADLESS_STUBS = \
     $(TESTSDIR)/headless_langregexp_stub.c \
     $(TESTSDIR)/headless_langipc_stub.c \
     $(TESTSDIR)/headless_lang_runtime_more_stubs.c \
-    $(TESTSDIR)/headless_file_portable.c \
+    ../portable/file_portable.c \
     $(TESTSDIR)/headless_file_verbs.c \
     $(TESTSDIR)/headless_odb_stubs.c
 

@@ -28,6 +28,8 @@
 #ifndef shellinclude
 #define shellinclude /*so other includes can tell if we've been loaded*/
 
+// 2025-10-27 Codex: Allow portable builds to predefine window-info handle typedefs.
+
 
 #ifndef shelltypesinclude
 	
@@ -167,7 +169,11 @@ typedef struct tyselectioninfo {
 	} tyselectioninfo;
 	
 	
+#ifdef PORTABLE_WINDOWINFO_FORWARD
+struct tywindowinfo { /*one of these records is linked into every window*/
+#else
 typedef struct tywindowinfo { /*one of these records is linked into every window*/
+#endif
 	
 	short configresnum; /*governs which content provider gets this window's messages*/
 	
@@ -261,8 +267,12 @@ typedef struct tywindowinfo { /*one of these records is linked into every window
 	
 	boolean flbeingclosed: 1; /*if true, we're inside of shellclosexxx right now*/
 	
-	boolean fldisposewhenpopped: 1; //if true, dispose was called while we were pushed
-	} tywindowinfo, *ptrwindowinfo, **hdlwindowinfo;
+    boolean fldisposewhenpopped: 1; //if true, dispose was called while we were pushed
+#ifdef PORTABLE_WINDOWINFO_FORWARD
+};
+#else
+    } tywindowinfo, *ptrwindowinfo, **hdlwindowinfo;
+#endif
 #pragma options align=reset
 
 
@@ -833,4 +843,3 @@ extern void shellwindowmenudirty (void); /*shellwindowmenu.c*/
 
 
 #endif
-

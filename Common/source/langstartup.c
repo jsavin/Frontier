@@ -38,6 +38,8 @@
 #include "langtokens.h"
 #include "tableinternal.h"
 #include "tableverbs.h"
+
+// 2025-10-27 Codex: Headless runtime should populate builtins table like classic app.
 #include "tablestructure.h"
 #include "resources.h"
 #include "WinSockNetEvents.h"
@@ -682,9 +684,16 @@ static boolean __attribute__((unused)) add_type_c (const char *name, tyvaluetype
 static boolean add_string_const_c (const char *name, bigstring val) {
     bigstring _bs; copyctopstring(name, _bs); return langaddstringconst(_bs, val);
 }
+static boolean add_keyword_c (const char *name, short token) {
+    bigstring _bs; copyctopstring(name, _bs); return langaddkeyword(_bs, token);
+}
 
 
+#ifdef FRONTIER_HEADLESS
+#define add(x,y) if (!add_keyword_c ((x), (y))) return (false)
+#else
 #define add(x,y) if (!langaddcstringkeyword ((ptrstring) x, y)) return (false)
+#endif
 
 /* Avoid writing into string literals: use cstring wrappers */
 #define addnil(x) if (!add_nil_c (x)) return (false)
@@ -815,9 +824,8 @@ static boolean langinitbuiltintable (void) {
 		return (false);
 
 #ifdef FRONTIER_HEADLESS
-    if (headless_should_log()) fprintf(stderr, "[ls] langinitbuiltintable: headless noop\n");
-    return (true);
-#else
+    if (headless_should_log()) fprintf(stderr, "[ls] langinitbuiltintable: installing builtins (headless)\n");
+#endif
 
 	pushhashtable (hbuiltinfunctions); /*converted to function ops by the parser*/
 	
@@ -860,7 +868,6 @@ static boolean langinitbuiltintable (void) {
 	pophashtable ();
 	
 	return (true);
-#endif /* FRONTIER_HEADLESS */
 	} /*langinitbuiltintable*/
 
 

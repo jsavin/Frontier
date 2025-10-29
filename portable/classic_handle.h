@@ -4,7 +4,9 @@
 
 #include <stddef.h>
 
-typedef unsigned char** Handle; /* deref yields raw byte pointer */
+#include "standard_portable.h"
+
+/* Handle type is supplied by portable_handles.h */
 
 /* API mirroring legacy macros */
 Handle ClassicNewHandle(size_t initial_size);
@@ -16,5 +18,3 @@ int ClassicSetHandleSize(Handle h, size_t new_size); /* returns non-zero on succ
 Handle ClassicDupHandle(Handle h);
 
 #endif
-
-

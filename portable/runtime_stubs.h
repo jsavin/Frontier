@@ -2,6 +2,7 @@
  * Runtime stubs header for portable Frontier
  */
 
+// 2025-10-27 Codex: Added portable string/OSType helpers for test builds.
 #ifndef RUNTIME_STUBS_H
 #define RUNTIME_STUBS_H
 
@@ -248,7 +249,7 @@ void stringreplaceall(char *str, const char *find, const char *replace);
 void *stringtodir(const char *str);
 void *stringtofloat(const char *str);
 void *stringtonumber(const char *str);
-void *stringtoostype(const char *str);
+boolean stringtoostype(bigstring bs, OSType *type);
 void *stringtotime(const char *str);
 void *subtractstrings(const char *str1, const char *str2);
 void *timedatestring(void *time);

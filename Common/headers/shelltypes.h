@@ -179,21 +179,27 @@ typedef struct tybuttonstatus {
 		
 		} tyfilespecflags;
 	
+#ifndef PORTABLE_TYFSNAME_DEFINED
 	typedef struct HFSUniStr255 tyfsname, *tyfsnameptr;
+#define PORTABLE_TYFSNAME_DEFINED 1
+#endif
 	
-	typedef struct tyfilespec {
-	
-		tyfilespecflags	flags;
-		FSRef ref;
-		tyfsname name;
+typedef struct tyfilespec {
+
+	tyfilespecflags	flags;
+	FSRef ref;
+	tyfsname name;
 		
 		} tyfilespec;
-		
+
 	typedef tyfilespec *ptrfilespec, **hdlfilespec;
 #pragma options align=reset
 		
 
+#endif /* FRONTIER_PORTABLE */
 
+#ifndef SHELLTYPES_DEFINED
+#define SHELLTYPES_DEFINED 1
 #endif
 
 #endif

@@ -32,6 +32,9 @@
 #include "cursor.h"
 #include "resources.h"
 #include "strings.h"
+#if defined(FRONTIER_HEADLESS)
+#include <stdio.h>
+#endif
 
 #ifndef odbengine
 #include "search.h"
@@ -143,10 +146,11 @@ void tablelinkformats (hdlhashtable htable, hdltableformats hformats) {
 	two-way.
 	*/
 	
-	(**htable).hashtableformats = hformats;
-	
-	(**hformats).htable = htable;
-	} /*tablelinkformats*/
+    (**htable).hashtableformats = hformats;
+    
+    if (hformats != nil)
+        (**hformats).htable = htable;
+} /*tablelinkformats*/
 
 
 
@@ -216,7 +220,12 @@ boolean findnamedtable (hdlhashtable htable, bigstring bs, hdlhashtable *hnamedt
 	pophashtable ();
 	
 	if (!fl) 
+	{
+#if defined(FRONTIER_HEADLESS)
+		fprintf(stderr, "[headless] findnamedtable miss: name=%s table=%p current=%p\n", stringbaseaddress(bs), (void *)htable, (void *)currenthashtable);
+#endif
 		return (false);
+	}
 	
 	if (!tablevaltotable ((**hnode).val, hnamedtable, hnode))
 		return (false);
@@ -1079,8 +1088,5 @@ boolean tablegetstringlist (short id, bigstring bs) {
 	
 	return (getstringlist (tablestringlist, id, bs));
 	} /*tablegetstringlist*/
-
-
-
 
 

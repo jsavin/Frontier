@@ -38,6 +38,54 @@
 #include "db.h"
 #include "langexternal.h"
 #include "tablestructure.h"
+#include "db_format.h"
+#include "byteorder.h"
+
+// 2025-10-27 Codex: Handle 64-bit dbaddress packing/unpacking for headless workloads.
+
+static inline dbaddress tablepack_host_to_disk_dbaddress(dbaddress value) {
+#if defined(SWAP_BYTE_ORDER)
+	if (sizeof (dbaddress) == 8) {
+		unsigned long long temp = (unsigned long long) value;
+#if defined(__clang__) || defined(__GNUC__) || defined(__GNUG__)
+		temp = __builtin_bswap64(temp);
+#else
+		temp = ((temp & 0x00000000000000FFULL) << 56) |
+		       ((temp & 0x000000000000FF00ULL) << 40) |
+		       ((temp & 0x0000000000FF0000ULL) << 24) |
+		       ((temp & 0x00000000FF000000ULL) << 8)  |
+		       ((temp & 0x000000FF00000000ULL) >> 8)  |
+		       ((temp & 0x0000FF0000000000ULL) >> 24) |
+		       ((temp & 0x00FF000000000000ULL) >> 40) |
+		       ((temp & 0xFF00000000000000ULL) >> 56);
+#endif
+		return (dbaddress) temp;
+	}
+#endif
+	return value;
+}
+
+static inline dbaddress tablepack_disk_to_host_dbaddress(dbaddress value) {
+#if defined(SWAP_BYTE_ORDER)
+	if (sizeof (dbaddress) == 8) {
+		unsigned long long temp = (unsigned long long) value;
+#if defined(__clang__) || defined(__GNUC__) || defined(__GNUG__)
+		temp = __builtin_bswap64(temp);
+#else
+		temp = ((temp & 0x00000000000000FFULL) << 56) |
+		       ((temp & 0x000000000000FF00ULL) << 40) |
+		       ((temp & 0x0000000000FF0000ULL) << 24) |
+		       ((temp & 0x00000000FF000000ULL) << 8)  |
+		       ((temp & 0x000000FF00000000ULL) >> 8)  |
+		       ((temp & 0x0000FF0000000000ULL) >> 24) |
+		       ((temp & 0x00FF000000000000ULL) >> 40) |
+		       ((temp & 0xFF00000000000000ULL) >> 56);
+#endif
+		return (dbaddress) temp;
+	}
+#endif
+	return value;
+}
 #include "tableinternal.h"
 #include "tableverbs.h"
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
@@ -51,6 +99,7 @@ boolean tablepacktable (hdlhashtable htable, boolean flmemory, Handle *hpacked, 
 	
 	6.2a15 AR: added flmustsave parameter.
 	*/
+// 2025-10-27 Codex: Added headless logging for table handle splits to debug root loading.
 	
 	register hdlhashtable ht = htable;
 	register hdltableformats hf;
@@ -114,9 +163,19 @@ boolean tableunpacktable (Handle hpacked, boolean flmemory, hdlhashtable *htable
 	Handle hpackedformats = nil;
 	hdlhashtable ht = nil;
 	hdltableformats hformats = nil;
+#if defined(FRONTIER_HEADLESS)
+	long merged_size = gethandlesize (hpacked);
+#endif
 	
 	if (!unmergehandles (hpacked, &hpackedtable, &hpackedformats)) /*comsumes hpacked*/
 		return (false);
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] tableunpacktable split merged=%ld table=%ld formats=%ld\n",
+	        merged_size,
+	        hpackedtable ? gethandlesize (hpackedtable) : 0L,
+	        hpackedformats ? gethandlesize (hpackedformats) : 0L);
+#endif
 	
 	if (!newhashtable (htable)) {
 		
@@ -148,8 +207,8 @@ boolean tableunpacktable (Handle hpacked, boolean flmemory, hdlhashtable *htable
 		
 		disposehandle (hpackedformats);
 		
-		if ((**hformats).fldirty) /*formats were out of date*/
-			(**ht).fldirty = true;
+	if (hformats != nil && (**hformats).fldirty) /*formats were out of date*/
+		(**ht).fldirty = true;
 		}
 	
 	return (true);
@@ -338,9 +397,21 @@ boolean tableverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdba
 	if (!fl)
 		return (false);
 	
-	memtodisklong (adr);
+	unsigned char adrbuffer[sizeof (dbaddress)];
+	long adrsize;
 
-	if (!enlargehandle (*hpacked, sizeof (adr), (ptrchar) &adr)) {
+	if (use_64bit_format && ((int)sizeof (dbaddress) == 8)) {
+		dbaddress diskadr = tablepack_host_to_disk_dbaddress(adr);
+		memcpy(adrbuffer, &diskadr, sizeof (dbaddress));
+		adrsize = (long) sizeof (dbaddress);
+	} else {
+		int32_t disk32 = (int32_t) adr;
+		memtodisklong (disk32);
+		memcpy(adrbuffer, &disk32, sizeof (disk32));
+		adrsize = (long) sizeof (disk32);
+	}
+
+	if (!enlargehandle (*hpacked, adrsize, (ptrchar) adrbuffer)) {
 #if defined(FRONTIER_HEADLESS)
 		fprintf(stderr, "[headless] enlargehandle failed while packing table\n");
 #endif
@@ -353,12 +424,47 @@ boolean tableverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdba
 
 boolean tableverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *h, boolean flxml) {
 
-	long rawadr = 0;
-	
-	if (!loadlongfromdiskhandle (hpacked, ixload, &rawadr)) 
-		return (false);
-		
-	return (newtablevariable (false, (dbaddress) rawadr, (hdltablevariable *) h, flxml));
+	dbaddress rawadr = 0;
+
+	long remaining = hpacked ? (gethandlesize(hpacked) - *ixload) : 0;
+
+	if (use_64bit_format && ((int)sizeof (dbaddress) == 8)) {
+		fprintf(stderr, "[headless] tableverbunpack use_64bit_format=true sizeof(dbaddress)=%zu remaining=%ld\n",
+		        sizeof(dbaddress), remaining);
+		if (remaining >= (long) sizeof (dbaddress)) {
+			dbaddress diskadr = 0;
+			if (!loadfromhandle (hpacked, ixload, (long) sizeof (dbaddress), &diskadr))
+				return (false);
+			rawadr = tablepack_disk_to_host_dbaddress(diskadr);
+#if defined(FRONTIER_HEADLESS)
+			fprintf(stderr, "[headless] tableverbunpack 64-bit address=0x%016llx\n", (unsigned long long) rawadr);
+#endif
+		} else if (remaining == (long) sizeof (int32_t)) {
+			uint32_t raw32 = 0;
+			if (!loadfromhandle (hpacked, ixload, (long) sizeof (raw32), &raw32))
+				return (false);
+			disktomemlong (raw32);
+			rawadr = (dbaddress) raw32;
+#if defined(FRONTIER_HEADLESS)
+			fprintf(stderr, "[headless] tableverbunpack fallback 32-bit address=0x%08x\n", raw32);
+#endif
+		} else {
+#if defined(FRONTIER_HEADLESS)
+			fprintf(stderr, "[headless] tableverbunpack unexpected remaining bytes=%ld\n", remaining);
+#endif
+			return (false);
+		}
+	} else {
+		long raw32 = 0;
+		if (!loadlongfromdiskhandle (hpacked, ixload, &raw32))
+			return (false);
+		rawadr = (dbaddress) raw32;
+#if defined(FRONTIER_HEADLESS)
+		fprintf(stderr, "[headless] tableverbunpack legacy 32-bit address=0x%08lx\n", raw32);
+#endif
+	}
+
+	return (newtablevariable (false, rawadr, (hdltablevariable *) h, flxml));
 	} /*tableverbunpack*/
 
 

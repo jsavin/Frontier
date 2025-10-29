@@ -47,35 +47,14 @@ typedef struct AEDesc {
 typedef AEDesc AppleEvent;
 #endif
 
-#ifndef AEKeyword
+#if !defined(OS_PORTABLE_HAS_AE_TYPES)
 typedef uint32_t AEKeyword;
-#endif
-
-#ifndef AEEventClass
 typedef uint32_t AEEventClass;
-#endif
-
-#ifndef AEEventID
 typedef OSType AEEventID;
-#endif
-
-#ifndef AEAddressDesc
 typedef AEDesc AEAddressDesc;
-#endif
-
-#ifndef AESendMode
 typedef uint32_t AESendMode;
-#endif
-
-#ifndef AESendPriority
 typedef uint32_t AESendPriority;
-#endif
-
-#ifndef AEIdleUPP
 typedef void *AEIdleUPP;
-#endif
-
-#ifndef AEFilterUPP
 typedef void *AEFilterUPP;
 #endif
 
@@ -454,7 +433,7 @@ typedef struct UnsignedWide {
 } UnsignedWide;
 #endif
 
-#ifndef FSSpec
+#if !defined(OS_PORTABLE_HAS_FSSPEC)
 typedef struct FSSpec {
     short vRefNum;
     long parID;
@@ -488,7 +467,7 @@ typedef UInt32 FSAliasInfoBitmap;
 #define kFSAliasInfoNone 0U
 #endif
 
-#ifndef CFStringRef
+#if !defined(OS_PORTABLE_HAS_CFSTRING)
 typedef void *CFStringRef;
 #endif
 
@@ -512,6 +491,7 @@ void SysBeep(short duration);
 void NumToString(long value, Str255 result);
 void StringToNum(ConstStr255Param str, long *value);
 
+#if !defined(FRONTIER_USE_PORTABLE_HANDLES)
 Handle NewHandle(long userSize);
 void DisposeHandle(Handle h);
 void HLock(Handle h);
@@ -520,6 +500,7 @@ long GetHandleSize(Handle h);
 OSErr SetHandleSize(Handle h, long userSize);
 long MaxBlock(void);
 OSErr MemError(void);
+#endif
 Handle GetString(short resID);
 OSStatus FSNewAlias(const void *fromFile, const FSRef *target, AliasHandle *result);
 OSStatus FSNewAliasMinimal(const FSRef *target, AliasHandle *result);
@@ -553,9 +534,11 @@ OSErr AEGetNthDesc(const AEDescList *list, long index, DescType desiredType, AEK
 void dtox80(const double *value, extended80 *out);
 double x80tod(const extended80 *value);
 
+#if !defined(FRONTIER_USE_PORTABLE_HANDLES)
 short FixRound(Fixed value);
 Fixed FixRatio(long numer, long denom);
 Fixed FixMul(Fixed a, Fixed b);
+#endif
 void DebugStr(const unsigned char *pascalString);
 void Debugger(void);
 void Microseconds(UnsignedWide *result);

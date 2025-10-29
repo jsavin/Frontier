@@ -14,6 +14,8 @@
 #include "memory.h"
 #include "tableexternal_common.h"
 
+// 2025-10-27 Codex: Log unpack errors while diagnosing headless system table loading.
+
 #if defined(FRONTIER_HEADLESS)
 static uint32_t headless_read_be32(const unsigned char *p) {
     return ((uint32_t)p[0] << 24) |
@@ -241,6 +243,14 @@ boolean tableverbinmemory_common(hdlexternalvariable hvariable, hdlhashnode hnod
 
 #if defined(FRONTIER_HEADLESS)
                 fprintf(stderr, "[headless] tableunpacktable failed adr=0x%llx\n", (unsigned long long)adr);
+                {
+                    char errbuf[256];
+                    short errlen = stringlength(bsunpackerror);
+                    short copylen = (errlen < (short)sizeof(errbuf) - 1) ? errlen : (short)sizeof(errbuf) - 1;
+                    memmove(errbuf, stringbaseaddress(bsunpackerror), copylen);
+                    errbuf[copylen] = '\0';
+                    fprintf(stderr, "[headless] tableunpacktable error: %s\n", errbuf);
+                }
 #endif
 
                 if (langexternalfindvariable((hdlexternalvariable) hv, &hparent, bspath) &&
@@ -268,6 +278,32 @@ boolean tableverbinmemory_common(hdlexternalvariable hvariable, hdlhashnode hnod
     (**hv).variabledata = (long) htable; /* link into variable structure */
 
     (**hv).oldaddress = adr; /* last place this table was stored */
+
+#if defined(FRONTIER_HEADLESS)
+    {
+        long ctitems = 0;
+        hashcountitems(htable, &ctitems);
+        fprintf(stderr, "[headless] tableverbinmemory loaded table with %ld items (adr=0x%llx)%s\n",
+                ctitems,
+                (unsigned long long)adr,
+                (adr == (**hv).oldaddress) ? "" : " *oldaddr mismatch*");
+        if (ctitems > 0) {
+            hdlhashnode dump = (**htable).hfirstsort;
+            int limit = 5;
+            while (dump != nil && limit-- > 0) {
+                bigstring bsdump;
+                gethashkey(dump, bsdump);
+                short len = stringlength(bsdump);
+                char cname[256];
+                short copylen = (len < (short)sizeof(cname)-1) ? len : (short)sizeof(cname)-1;
+                memmove(cname, stringbaseaddress(bsdump), copylen);
+                cname[copylen] = '\0';
+                fprintf(stderr, "[headless]   entry %s valuetype=%d\n", cname, (**dump).val.valuetype);
+                dump = (**dump).sortedlink;
+            }
+        }
+    }
+#endif
 
     if ((**hv).flmayaffectdisplay)
         (**htable).flmayaffectdisplay = true;

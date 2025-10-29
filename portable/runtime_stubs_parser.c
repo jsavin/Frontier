@@ -3,6 +3,8 @@
  * Node creation, parse error handling, and parser stack operations
  */
 
+// 2025-10-27 Codex: Hand off tmp-stack helpers to runtime_stubs_stack to avoid duplicate symbols.
+
 #include "runtime_stubs.h"
 #include "standard_portable.h"
 #include <stdio.h>
@@ -246,15 +248,4 @@ void *pushunarystatementlist(void *list) {
 }
 
 // Value operations
-void *pushvalueontmpstack(void *value) {
-    /*
-     * Push a value onto the temporary stack
-     */
-    if (value == NULL) {
-        return NULL;
-    }
-    
-    // TODO: Implement proper value pushing when we have the full structure
-    // For now, this is a minimal implementation
-    return NULL;
-}
+void *pushvalueontmpstack(void *value);
