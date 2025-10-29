@@ -1,10 +1,10 @@
 # Planning Index
 
 Status
-- State: In Progress
-- Phases: Foundations → Architecture → Headless Runtime → Text Modernization → Tooling
-- Last Updated: 2025-10-12
-- Notes: Headless runtime is operational; CLI build/linking cleanup remains. UTF-8 migration planning queued after headless stabilization.
+- State: Carbon Migration In Progress
+- Current Workstream: [Carbon Dependency Retirement](carbon_migration/README.md)
+- Last Updated: 2025-10-29
+- Notes: We pivoted to removing all Carbon-era dependencies. Older phase docs remain for historical context but are superseded by the Carbon plan.
 
 Purpose
 - Provide a single entry point to the phase directories and the most relevant planning documents.
@@ -14,8 +14,10 @@ Related Docs
 - planning/Frontier_Refactoring_Plan.md
 - planning/phase_gates.md
 - planning/DECISIONS.md
+- planning/carbon_migration/README.md *(current plan)*
 
 Change Log
+- 2025-10-29: Added Carbon migration plan and redirected status/index content to the new workstream.
 - 2025-10-12: Reorganized planning materials by phase and refreshed cross-links.
 
 ## Phase 1 — Foundations & Toolchain (`planning/phase1/`)
@@ -25,11 +27,13 @@ Change Log
 - QuickTime & Legacy Cleanup: `planning/phase1/0.4.6_quicktime_elimination_plan.md`
 
 ## Phase 2 — Core Architecture & Database (`planning/phase2/`)
+> **Historical context:** active work has moved to [Carbon Migration](carbon_migration/README.md). Phase 2 docs remain for reference only.
 - Database Versioning & Paths: `planning/phase2/0.5.14_database_versioning_strategy.md`, `planning/phase2/database_path_canonicalization.md`
 - 64-bit Data Structure Plan & Execution: `planning/phase2/0.5.15_64bit_data_structure_analysis.md`, `planning/phase2/0.5.19_phase1_migration_implementation_complete.md`
 - Portable Handle Runtime: `planning/phase2/0.5.21_portable_handle_runtime.md`
 
 ## Phase 3 — Headless Runtime & Automation (`planning/phase3/`)
+> **Historical context:** active work has moved to [Carbon Migration](carbon_migration/README.md). Phase 3 docs remain for reference only.
 - CLI Execution Plan & Summary: `planning/phase3/1.0_phase1_cli_implementation_plan.md`, `planning/phase3/1.1_phase1_implementation_summary.md`
 - Runtime Test Plan: `planning/phase3/0.5.23_runtime_test_plan.md`
 - Headless Developer Guides: `planning/phase3/DEVELOPER_QUICKSTART_HEADLESS.md`, `planning/phase3/headless_stubbed_behavior_matrix.md`
@@ -59,6 +63,6 @@ Change Log
 - Headless/Tests: `planning/phase3/DEVELOPER_QUICKSTART_HEADLESS.md`
 
 ## Next Steps (High Level)
-1. Complete CLI build/linking cleanup and extend coverage toward the headless service core (Phase 3/3b).
-2. Finalize UTF-8 migration work breakdown (Phase 4).
-3. Schedule parser/Bison upgrades once UTF-8/text modernization milestones are stable (Phase 5).
+1. Finish the documentation pivot (update/deprecate older Phase 2/3 docs, keep `_CURRENT_STATUS.md` synced).
+2. Execute Phase 1 of the Carbon plan (header hygiene so portable builds preprocess cleanly).
+3. Begin runtime modernization (remove remaining Carbon helpers in `langhash.c`, `strings.c`, `memory.c`) per `carbon_migration/phases.md`.

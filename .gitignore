@@ -31,3 +31,4 @@ Common/MySQL/
 .mcp/
 node_modules/
 dist/
+.obsidian/
