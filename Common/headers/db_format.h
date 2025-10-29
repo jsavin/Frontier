@@ -15,6 +15,7 @@ extern boolean use_64bit_format;
 
 #define LEGACY_DB_HEADER_BYTES 88
 
+boolean db_format_prepare_runtime(void);
 boolean detect_database_format(const tydatabaserecord *header);
 boolean convert_32bit_header_to_64bit(const unsigned char *legacy_header, tydatabaserecord_64 *new_header);
 boolean create_root_backup(const char *original_path);

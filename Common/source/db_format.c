@@ -1,15 +1,759 @@
 #include "frontier.h"
 #include "standard.h"
+#include "shell_api.h"
 
 #include <stdio.h>
+#include <stdarg.h>
+#include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
 #include <time.h>
+#if !defined(_WIN32)
+#include <sys/types.h>
+#endif
 
 #include "db_format.h"
+#include "dbinternal.h"
+#include "memory.h"
+#include "strings.h"
+#include "lang.h"
+#include "tablestructure.h"
+#include "threads.h"
+#include "tableverbs.h"
+#include "cancoon.h"
+#include "cancooninternal.h"
+#include "file.h"
+
+// 2025-10-27 Codex: Added optional migration tracing to inspect v6/v7 table layouts during conversion.
 
 boolean use_64bit_format = false;
+static boolean g_db_format_runtime_initialized = false;
+static boolean g_db_format_runtime_headless = false;
 static char last_backup_path[1024];
+
+#if defined(_WIN32)
+#define db_trace_seek _fseeki64
+typedef __int64 db_trace_off_t;
+#else
+#define db_trace_seek fseeko
+typedef off_t db_trace_off_t;
+#endif
+
+#define DB_TRACE_ENV_LEVEL "FRONTIER_DB_TRACE_LEVEL"
+#define DB_TRACE_ENV_DEPTH "FRONTIER_DB_TRACE_DEPTH"
+#define DB_TRACE_MAX_VISITED 1024
+#define DB_TRACE_MAX_PAYLOAD (8 * 1024 * 1024UL)
+#define DB_TRACE_PATH_MAX 512
+#define DB_TRACE_EXTERNAL_TABLE_ID 3  /* tyexternalid order: outline, wp, head, table */
+
+typedef struct db_trace_context db_trace_context;
+
+/* Forward declarations for helper routines used by the tracing instrumentation */
+static uint16_t read_be16(const void *ptr);
+static uint32_t read_legacy_u32(const unsigned char *field);
+static uint64_t read_be64(const unsigned char *field);
+static void db_trace_walk_table(db_trace_context *ctx, dbaddress adr, const char *path, int depth);
+
+boolean db_format_prepare_runtime(void) {
+    if (g_db_format_runtime_initialized)
+        return true;
+
+#if !defined(FRONTIER_PORTABLE)
+    if (!g_db_format_runtime_headless) {
+        shell_api_use_headless();
+        g_db_format_runtime_headless = true;
+    }
+#endif
+
+    if (!initmemory())
+        return false;
+
+    initstrings();
+
+    if (!initlang())
+        return false;
+
+    if (!inittablestructure())
+        return false;
+
+    if (!langinitverbs())
+        return false;
+
+    grabthreadglobals();
+
+    g_db_format_runtime_initialized = true;
+    return true;
+}
+
+struct db_trace_context {
+    FILE *file;
+    const char *path_label;
+    int max_depth;
+    int level;
+    size_t max_entries;
+    dbaddress visited[DB_TRACE_MAX_VISITED];
+    size_t visited_count;
+};
+
+static int db_trace_level_cache = -1;
+static int db_trace_depth_cache = -1;
+
+static int db_trace_level(void) {
+    if (db_trace_level_cache >= 0)
+        return db_trace_level_cache;
+
+    const char *env = getenv(DB_TRACE_ENV_LEVEL);
+    if (env == NULL || *env == '\0') {
+        db_trace_level_cache = 0;
+        return db_trace_level_cache;
+    }
+
+    int parsed = (int) strtol(env, NULL, 10);
+    if (parsed < 0)
+        parsed = 0;
+    db_trace_level_cache = parsed;
+    return db_trace_level_cache;
+}
+
+static int db_trace_depth_limit(void) {
+    if (db_trace_depth_cache >= 0)
+        return db_trace_depth_cache;
+
+    const char *env = getenv(DB_TRACE_ENV_DEPTH);
+    if (env == NULL || *env == '\0') {
+        db_trace_depth_cache = 1; /* default to root + immediate children */
+        return db_trace_depth_cache;
+    }
+
+    int parsed = (int) strtol(env, NULL, 10);
+    if (parsed < 0)
+        parsed = 0;
+    db_trace_depth_cache = parsed;
+    return db_trace_depth_cache;
+}
+
+static void db_trace_log(int level, const char *fmt, ...) {
+    if (db_trace_level() < level)
+        return;
+
+    va_list args;
+    va_start(args, fmt);
+    fprintf(stderr, "[db-trace] ");
+    vfprintf(stderr, fmt, args);
+    fprintf(stderr, "\n");
+    va_end(args);
+}
+
+static size_t db_trace_entry_limit(int level) {
+    return (level >= 2) ? (size_t) SIZE_MAX : (size_t) 32;
+}
+
+static boolean db_trace_add_visited(db_trace_context *ctx, dbaddress adr) {
+    for (size_t i = 0; i < ctx->visited_count; ++i) {
+        if (ctx->visited[i] == adr)
+            return false;
+    }
+
+    if (ctx->visited_count >= DB_TRACE_MAX_VISITED) {
+        db_trace_log(1, "%s: visited-table overflow, skipping addr 0x%08llx",
+                     ctx->path_label,
+                     (unsigned long long) adr);
+        return false;
+    }
+
+    ctx->visited[ctx->visited_count++] = adr;
+    return true;
+}
+
+static const char *db_trace_value_type_name(uint8_t type, char *scratch, size_t scratch_len) {
+    switch (type) {
+        case 0:  return "noval";
+        case 1:  return "char";
+        case 2:  return "int";
+        case 3:  return "long";
+        case 4:  return "oldstring";
+        case 5:  return "binary";
+        case 6:  return "boolean";
+        case 7:  return "token";
+        case 8:  return "date";
+        case 9:  return "address";
+        case 10: return "code";
+        case 11: return "double";
+        case 12: return "string";
+        case 13: return "external";
+        case 14: return "direction";
+        case 15: return "password";
+        case 16: return "ostype";
+        case 17: return "unused2";
+        case 18: return "point";
+        case 19: return "rect";
+        case 20: return "pattern";
+        case 21: return "rgb";
+        case 22: return "fixed";
+        case 23: return "single";
+        case 24: return "olddouble";
+        case 25: return "objspec";
+        case 26: return "filespec";
+        case 27: return "alias";
+        case 28: return "enum";
+        case 29: return "list";
+        case 30: return "record";
+        default:
+            if ((scratch != NULL) && (scratch_len > 0)) {
+                snprintf(scratch, scratch_len, "type_%u", (unsigned int) type);
+                return scratch;
+            }
+            return "unknown";
+    }
+}
+
+static void db_trace_copy_key(const unsigned char *strings, size_t strings_len, uint32_t ixkey, char *out, size_t out_len) {
+    if ((out == NULL) || (out_len == 0)) {
+        return;
+    }
+
+    out[0] = '\0';
+    if ((strings == NULL) || (strings_len == 0) || (ixkey >= strings_len))
+        return;
+
+    uint8_t len = strings[ixkey];
+    size_t available = 0;
+    if (ixkey + 1 < strings_len)
+        available = strings_len - (ixkey + 1);
+    size_t copy_len = len;
+    if (copy_len > available)
+        copy_len = available;
+    if (copy_len >= out_len)
+        copy_len = out_len - 1;
+
+    memcpy(out, strings + ixkey + 1, copy_len);
+    out[copy_len] = '\0';
+
+    for (size_t i = 0; i < copy_len; ++i) {
+        unsigned char c = (unsigned char) out[i];
+        if (c < 0x20 || c > 0x7E)
+            out[i] = '?';
+    }
+}
+
+static boolean db_trace_read_payload(FILE *f, dbaddress adr, unsigned char **out_payload, size_t *out_len) {
+    if ((f == NULL) || (adr == nildbaddress) || (out_payload == NULL) || (out_len == NULL))
+        return false;
+
+    unsigned char header_bytes[sizeheader];
+    if (db_trace_seek(f, (db_trace_off_t) adr, SEEK_SET) != 0)
+        return false;
+    if (fread(header_bytes, 1, sizeof header_bytes, f) != sizeof header_bytes)
+        return false;
+
+    uint32_t raw_size = read_legacy_u32(header_bytes);
+    boolean block_free = (raw_size & 0x80000000u) != 0;
+    raw_size &= 0x7FFFFFFFu;
+
+    if (block_free || raw_size == 0 || raw_size > DB_TRACE_MAX_PAYLOAD)
+        return false;
+
+    unsigned char *buffer = (unsigned char *) malloc(raw_size);
+    if (buffer == NULL)
+        return false;
+
+    if (fread(buffer, 1, raw_size, f) != raw_size) {
+        free(buffer);
+        return false;
+    }
+
+    *out_payload = buffer;
+    *out_len = raw_size;
+    return true;
+}
+
+static boolean db_trace_detect_cancoon(const unsigned char *payload, size_t payload_len, dbaddress *adr_out) {
+    const size_t kCancoonBytes = 442;
+    if ((payload == NULL) || (payload_len != kCancoonBytes) || (adr_out == NULL))
+        return false;
+
+    if (payload_len < 6)
+        return false;
+
+    uint16_t version = read_be16(payload);
+    if ((version != 2) && (version != 3))
+        return false;
+
+    dbaddress adr = (dbaddress) read_legacy_u32(payload + 2);
+    if (adr == nildbaddress)
+        return false;
+
+    *adr_out = adr;
+    return true;
+}
+
+static boolean db_trace_is_sentinel(const unsigned char *record10) {
+    for (int i = 0; i < 10; ++i) {
+        if (record10[i] != 0)
+            return false;
+    }
+    return true;
+}
+
+static boolean db_trace_find_legacy_layout(const unsigned char *payload, size_t payload_len,
+                                           size_t *strings_len_out, size_t *records_start_out,
+                                           size_t *record_count_out) {
+    const size_t header_size = 16;
+    const size_t record_size = 10;
+
+    if ((payload == NULL) || (payload_len < header_size + record_size))
+        return false;
+
+    for (size_t candidate_strings = 0; candidate_strings <= payload_len - header_size; ++candidate_strings) {
+        size_t candidate_records_start = header_size + candidate_strings;
+        if (candidate_records_start + record_size > payload_len)
+            break;
+
+        boolean valid = false;
+        boolean found_sentinel = false;
+        size_t local_records = 0;
+
+        for (size_t offset = candidate_records_start; offset + record_size <= payload_len; offset += record_size) {
+            const unsigned char *rec = payload + offset;
+            if (db_trace_is_sentinel(rec)) {
+                found_sentinel = true;
+                continue;
+            }
+
+            uint32_t ixkey = read_legacy_u32(rec);
+            if (ixkey >= candidate_strings) {
+                valid = false;
+                break;
+            }
+
+            valid = true;
+            ++local_records;
+        }
+
+        if (valid && found_sentinel) {
+            if (strings_len_out)
+                *strings_len_out = candidate_strings;
+            if (records_start_out)
+                *records_start_out = candidate_records_start;
+            if (record_count_out)
+                *record_count_out = local_records;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+static void db_trace_log_legacy_entries(db_trace_context *ctx,
+                                        const unsigned char *payload,
+                                        size_t payload_len,
+                                        const char *path,
+                                        int depth);
+
+static void db_trace_log_modern_entries(db_trace_context *ctx,
+                                        const unsigned char *payload,
+                                        size_t payload_len,
+                                        const char *path,
+                                        int depth);
+
+static void db_trace_consider_entry(db_trace_context *ctx,
+                                    const char *parent_path,
+                                    int depth,
+                                    const char *key_name,
+                                    uint8_t valuetype,
+                                    uint32_t dataval);
+
+static void db_trace_follow_external_table(db_trace_context *ctx,
+                                           dbaddress external_record,
+                                           const char *parent_path,
+                                           int depth,
+                                           const char *key_name);
+
+static void db_trace_descend(db_trace_context *ctx,
+                             const char *parent_path,
+                             const char *child_name,
+                             dbaddress table_addr,
+                             int depth);
+
+static dbaddress db_trace_read_dbaddress(const unsigned char *bytes, size_t available) {
+    if ((bytes == NULL) || (available == 0))
+        return nildbaddress;
+
+    size_t width = sizeof(dbaddress);
+    if (available < width) {
+        if (available >= 8)
+            width = 8;
+        else if (available >= 4)
+            width = 4;
+        else
+            width = available;
+    }
+
+    dbaddress value = 0;
+    for (size_t i = 0; i < width; ++i)
+        value = (value << 8) | bytes[i];
+    return value;
+}
+
+static void db_trace_log_legacy_entries(db_trace_context *ctx,
+                                        const unsigned char *payload,
+                                        size_t payload_len,
+                                        const char *path,
+                                        int depth) {
+    const size_t header_size = 16;
+    size_t strings_len = 0;
+    size_t records_start = 0;
+    size_t record_count = 0;
+
+    if (!db_trace_find_legacy_layout(payload, payload_len, &strings_len, &records_start, &record_count)) {
+        db_trace_log(1, "%s: [%s] legacy table (%d) layout unresolved (payload=%zu)",
+                     ctx->path_label, path, depth, payload_len);
+        return;
+    }
+
+    db_trace_log(1, "%s: [%s] legacy table depth=%d entries=%zu strings=%zu",
+                 ctx->path_label, path, depth, record_count, strings_len);
+
+    if (ctx->level < 2)
+        return;
+
+    const unsigned char *strings = payload + header_size;
+    size_t entries_logged = 0;
+
+    for (size_t offset = records_start; offset + 10 <= payload_len; offset += 10) {
+        const unsigned char *rec = payload + offset;
+        if (db_trace_is_sentinel(rec))
+            continue;
+
+        uint32_t ixkey = read_legacy_u32(rec);
+        uint8_t valuetype = rec[4];
+        uint32_t dataval = read_legacy_u32(rec + 6);
+
+        char key_name[96];
+        char type_name_buf[24];
+        db_trace_copy_key(strings, strings_len, ixkey, key_name, sizeof key_name);
+        const char *type_name = db_trace_value_type_name(valuetype, type_name_buf, sizeof type_name_buf);
+
+        db_trace_log(2, "%s: [%s] %-24s (%s) data=0x%08x",
+                     ctx->path_label, path, key_name[0] ? key_name : "(unnamed)",
+                     type_name, (unsigned int) dataval);
+
+        db_trace_consider_entry(ctx, path, depth, key_name, valuetype, dataval);
+
+        if (++entries_logged >= ctx->max_entries) {
+            db_trace_log(2, "%s: [%s] entry log limit reached (%zu)",
+                         ctx->path_label, path, ctx->max_entries);
+            break;
+        }
+    }
+}
+
+static void db_trace_log_modern_entries(db_trace_context *ctx,
+                                        const unsigned char *payload,
+                                        size_t payload_len,
+                                        const char *path,
+                                        int depth) {
+    if (payload_len < 4)
+        return;
+
+    uint32_t outer_size = read_legacy_u32(payload);
+    if (outer_size + 4 > payload_len)
+        return;
+
+    const unsigned char *inner_merged = payload + 4;
+    size_t inner_len = outer_size;
+    if (inner_len < 4)
+        return;
+
+    uint32_t inner_size = read_legacy_u32(inner_merged);
+    if (inner_size + 4 > inner_len)
+        return;
+
+    const unsigned char *header_and_records = inner_merged + 4;
+    const unsigned char *strings = header_and_records + inner_size;
+    size_t strings_len = inner_len - (4 + inner_size);
+
+    const size_t header_size = 16;
+    if (inner_size < header_size)
+        return;
+
+    const unsigned char *records = header_and_records + header_size;
+    size_t records_len = inner_size - header_size;
+
+    size_t record_count = 0;
+    for (size_t offset = 0; offset + 10 <= records_len; offset += 10) {
+        const unsigned char *rec = records + offset;
+        if (db_trace_is_sentinel(rec))
+            continue;
+        ++record_count;
+    }
+
+    db_trace_log(1, "%s: [%s] modern table depth=%d entries=%zu strings=%zu",
+                 ctx->path_label, path, depth, record_count, strings_len);
+
+    if (ctx->level < 2)
+        return;
+
+    size_t entries_logged = 0;
+    for (size_t offset = 0; offset + 10 <= records_len; offset += 10) {
+        const unsigned char *rec = records + offset;
+        if (db_trace_is_sentinel(rec))
+            continue;
+
+        uint32_t ixkey = read_legacy_u32(rec);
+        uint8_t valuetype = rec[4];
+        uint32_t dataval = read_legacy_u32(rec + 6);
+
+        char key_name[96];
+        char type_name_buf[24];
+        db_trace_copy_key(strings, strings_len, ixkey, key_name, sizeof key_name);
+        const char *type_name = db_trace_value_type_name(valuetype, type_name_buf, sizeof type_name_buf);
+
+        db_trace_log(2, "%s: [%s] %-24s (%s) data=0x%08x",
+                     ctx->path_label, path, key_name[0] ? key_name : "(unnamed)",
+                     type_name, (unsigned int) dataval);
+
+        db_trace_consider_entry(ctx, path, depth, key_name, valuetype, dataval);
+
+        if (++entries_logged >= ctx->max_entries) {
+            db_trace_log(2, "%s: [%s] entry log limit reached (%zu)",
+                         ctx->path_label, path, ctx->max_entries);
+            break;
+        }
+    }
+}
+
+static void db_trace_consider_entry(db_trace_context *ctx,
+                                    const char *parent_path,
+                                    int depth,
+                                    const char *key_name,
+                                    uint8_t valuetype,
+                                    uint32_t dataval) {
+    if (ctx == NULL || parent_path == NULL)
+        return;
+    if (ctx->max_depth == 0)
+        return;
+    if (depth >= ctx->max_depth)
+        return;
+    if (dataval == 0)
+        return;
+
+    if (valuetype == 13) { /* external value */
+        db_trace_follow_external_table(ctx, (dbaddress) dataval, parent_path, depth, key_name);
+    }
+}
+
+static void db_trace_follow_external_table(db_trace_context *ctx,
+                                           dbaddress external_record,
+                                           const char *parent_path,
+                                           int depth,
+                                           const char *key_name) {
+    if (external_record == nildbaddress)
+        return;
+
+    unsigned char *payload = NULL;
+    size_t payload_len = 0;
+    if (!db_trace_read_payload(ctx->file, external_record, &payload, &payload_len)) {
+        db_trace_log(2, "%s: [%s.%s] unable to read external block @0x%08llx",
+                     ctx->path_label,
+                     parent_path,
+                     (key_name && *key_name) ? key_name : "(anon)",
+                     (unsigned long long) external_record);
+        return;
+    }
+
+    if (payload_len < 6) {
+        db_trace_log(2, "%s: [%s.%s] external block too small (%zu bytes)",
+                     ctx->path_label,
+                     parent_path,
+                     (key_name && *key_name) ? key_name : "(anon)",
+                     payload_len);
+        free(payload);
+        return;
+    }
+
+    uint16_t version = read_be16(payload);
+    uint16_t proc_id = read_be16(payload + 2);
+    if (proc_id != DB_TRACE_EXTERNAL_TABLE_ID) {
+        db_trace_log(2, "%s: [%s.%s] external id=%u (not table), skipping",
+                     ctx->path_label,
+                     parent_path,
+                     (key_name && *key_name) ? key_name : "(anon)",
+                     (unsigned int) proc_id);
+        free(payload);
+        return;
+    }
+
+    size_t address_offset = 4;
+    if (payload_len <= address_offset) {
+        db_trace_log(2, "%s: [%s.%s] external table missing address payload (len=%zu)",
+                     ctx->path_label,
+                     parent_path,
+                     (key_name && *key_name) ? key_name : "(anon)",
+                     payload_len);
+        free(payload);
+        return;
+    }
+
+    dbaddress table_addr = db_trace_read_dbaddress(payload + address_offset,
+                                                   payload_len - address_offset);
+    free(payload);
+
+    if (table_addr == nildbaddress) {
+        db_trace_log(2, "%s: [%s.%s] external table has nil address (version=%u)",
+                     ctx->path_label,
+                     parent_path,
+                     (key_name && *key_name) ? key_name : "(anon)",
+                     (unsigned int) version);
+        return;
+    }
+
+    db_trace_descend(ctx, parent_path, key_name, table_addr, depth);
+}
+
+static void db_trace_descend(db_trace_context *ctx,
+                             const char *parent_path,
+                             const char *child_name,
+                             dbaddress table_addr,
+                             int depth) {
+    if (depth >= ctx->max_depth)
+        return;
+
+    char next_path[DB_TRACE_PATH_MAX];
+    if (child_name != NULL && *child_name) {
+        snprintf(next_path, sizeof next_path, "%s.%s", parent_path, child_name);
+    } else {
+        snprintf(next_path, sizeof next_path, "%s.child", parent_path);
+    }
+
+    db_trace_walk_table(ctx, table_addr, next_path, depth + 1);
+}
+
+static void db_trace_walk_table(db_trace_context *ctx, dbaddress adr, const char *path, int depth) {
+    if ((ctx == NULL) || (ctx->file == NULL) || (path == NULL))
+        return;
+    if (db_trace_level() == 0)
+        return;
+    if (adr == nildbaddress)
+        return;
+    if (depth > ctx->max_depth)
+        return;
+    if (!db_trace_add_visited(ctx, adr))
+        return;
+
+    unsigned char *payload = NULL;
+    size_t payload_len = 0;
+    if (!db_trace_read_payload(ctx->file, adr, &payload, &payload_len)) {
+        db_trace_log(1, "%s: [%s] unable to read payload @0x%08llx",
+                     ctx->path_label, path, (unsigned long long) adr);
+        return;
+    }
+
+    dbaddress redirected = nildbaddress;
+    if (db_trace_detect_cancoon(payload, payload_len, &redirected)) {
+        db_trace_log(1, "%s: [%s] Cancoon header → 0x%08llx",
+                     ctx->path_label, path, (unsigned long long) redirected);
+        free(payload);
+        db_trace_walk_table(ctx, redirected, path, depth);
+        return;
+    }
+
+    boolean legacy = true;
+    if (payload_len >= 4) {
+        uint32_t prefix = read_legacy_u32(payload);
+        if ((prefix >= 16) && (prefix <= (payload_len - 4)))
+            legacy = false;
+    }
+
+    if (legacy)
+        db_trace_log_legacy_entries(ctx, payload, payload_len, path, depth);
+    else
+        db_trace_log_modern_entries(ctx, payload, payload_len, path, depth);
+
+    free(payload);
+}
+
+static boolean db_trace_extract_root(const unsigned char *header, size_t header_len, short version, dbaddress *root_out) {
+    if ((header == NULL) || (root_out == NULL))
+        return false;
+
+    const size_t view_stride = 8;
+    const size_t view_base = 0x0E;
+    dbaddress found = nildbaddress;
+
+    if (version >= 7) {
+        for (int i = 0; i < ctviews; ++i) {
+            size_t offset = view_base + (size_t) i * view_stride;
+            if (header_len < offset + view_stride)
+                break;
+            uint64_t raw = read_be64(header + offset);
+            if (raw != 0) {
+                found = (dbaddress) raw;
+                break;
+            }
+        }
+    } else {
+        for (int i = 0; i < ctviews; ++i) {
+            size_t offset = view_base + (size_t) i * view_stride;
+            size_t legacy_bytes = 6; /* legacy files stored 48-bit addresses */
+            if (header_len < offset + legacy_bytes)
+                break;
+            uint64_t raw = 0;
+            for (size_t b = 0; b < legacy_bytes; ++b)
+                raw = (raw << 8) | header[offset + b];
+            if (raw != 0) {
+                found = (dbaddress) raw;
+                break;
+            }
+        }
+    }
+
+    if (found == nildbaddress)
+        return false;
+
+    *root_out = found;
+    return true;
+}
+
+static void db_format_trace_database_path(const char *path_label) {
+    if ((path_label == NULL) || (db_trace_level() == 0))
+        return;
+
+    FILE *f = fopen(path_label, "rb");
+    if (f == NULL) {
+        db_trace_log(1, "trace: unable to open %s", path_label);
+        return;
+    }
+
+    unsigned char header[sizeof(tydatabaserecord_64)];
+    size_t header_len = fread(header, 1, sizeof header, f);
+    if (header_len < LEGACY_DB_HEADER_BYTES) {
+        db_trace_log(1, "%s: header too small (%zu bytes)", path_label, header_len);
+        fclose(f);
+        return;
+    }
+
+    short version = (short) header[1];
+    dbaddress root = nildbaddress;
+    if (!db_trace_extract_root(header, header_len, version, &root)) {
+        db_trace_log(1, "%s: unable to locate root table pointer (version %d)", path_label, version);
+        fclose(f);
+        return;
+    }
+
+    db_trace_log(1, "%s: version=%d root=0x%08llx", path_label, version, (unsigned long long) root);
+
+    db_trace_context ctx;
+    memset(&ctx, 0, sizeof ctx);
+    ctx.file = f;
+    ctx.path_label = path_label;
+    ctx.level = db_trace_level();
+    ctx.max_depth = db_trace_depth_limit();
+    ctx.max_entries = db_trace_entry_limit(ctx.level);
+
+    db_trace_walk_table(&ctx, root, "root", 0);
+    fclose(f);
+}
 
 /* Utility helpers for big-endian encoding/decoding */
 static uint16_t read_be16(const void *ptr) {
@@ -26,6 +770,17 @@ static uint32_t read_legacy_u32(const unsigned char *field) {
 
 static dbaddress read_legacy_dbaddress32(const unsigned char *field) {
     return (dbaddress) read_legacy_u32(field);
+}
+
+static uint64_t read_be64(const unsigned char *field) {
+    return ((uint64_t) field[0] << 56) |
+           ((uint64_t) field[1] << 48) |
+           ((uint64_t) field[2] << 40) |
+           ((uint64_t) field[3] << 32) |
+           ((uint64_t) field[4] << 24) |
+           ((uint64_t) field[5] << 16) |
+           ((uint64_t) field[6] << 8)  |
+            (uint64_t) field[7];
 }
 
 static void write_be16(void *ptr, uint16_t value) {
@@ -160,127 +915,169 @@ boolean create_root_backup(const char *original_path) {
 }
 
 boolean migrate_32bit_to_64bit(const char *db_path) {
-    if (db_path == NULL)
+    if (db_path == NULL || db_path[0] == '\0')
         return false;
 
-    /* No longer create backup - we'll write to a new file instead */
-
-    FILE *src = fopen(db_path, "rb");
-    if (!src)
+    if (!db_format_prepare_runtime())
         return false;
 
-    unsigned char legacy_header[LEGACY_DB_HEADER_BYTES];
-    if (fread(legacy_header, 1, sizeof legacy_header, src) != sizeof legacy_header) {
-        fclose(src);
-        return false;
-    }
+    if (db_trace_level() > 0)
+        db_format_trace_database_path(db_path);
 
-    tydatabaserecord_64 new_header;
-    if (!convert_32bit_header_to_64bit(legacy_header, &new_header)) {
-        fclose(src);
-        return false;
-    }
-
-    /* Create output path: <base>-v7.root */
+    boolean ok = false;
+    hdlfilenum src_fnum = 0;
+    hdlfilenum dst_fnum = 0;
+    Handle hrootvariable = nil;
+    hdlhashtable hroot = nil;
+    Handle hscript = nil;
+    dbaddress root_address = nildbaddress;
+    dbaddress script_address = nildbaddress;
+    dbaddress new_root_address = nildbaddress;
+    dbaddress new_script_address = nildbaddress;
+    dbaddress new_cancoon_address = nildbaddress;
+    dbaddress view_address = nildbaddress;
+    tyversion2cancoonrecord cancoon_record;
+    uint16_t cancoon_version = 0;
+    uint16_t cancoon_flags = 0;
+    uint16_t cancoon_primary = 0;
     char output_path[1024];
+    char temp_path[1024];
+    temp_path[0] = '\0';
+    bigstring bspath;
+    bigstring bsdst;
+    tyfilespec src_fs;
+    tyfilespec dst_fs;
+    boolean prev_use64 = use_64bit_format;
+
+    /* Derive output path (<base>-v7.root) */
     const char *ext = strrchr(db_path, '.');
     if (ext && strcmp(ext, ".root") == 0) {
-        size_t base_len = ext - db_path;
-        snprintf(output_path, sizeof output_path, "%.*s-v7.root", (int)base_len, db_path);
+        size_t base_len = (size_t)(ext - db_path);
+        snprintf(output_path, sizeof output_path, "%.*s-v7.root", (int) base_len, db_path);
     } else {
-        /* If no .root extension, just append -v7 */
         snprintf(output_path, sizeof output_path, "%s-v7", db_path);
     }
 
-    /* Store output path for caller to retrieve */
     strncpy(last_backup_path, output_path, sizeof last_backup_path);
     if (sizeof last_backup_path > 0)
         last_backup_path[sizeof last_backup_path - 1] = '\0';
 
-    char temp_path[1024];
     snprintf(temp_path, sizeof temp_path, "%s.tmp", output_path);
 
-    FILE *dst = fopen(temp_path, "wb");
-    if (!dst) {
-        fclose(src);
-        return false;
+    copyctopstring(db_path, bspath);
+    if (!pathtofilespec(bspath, &src_fs))
+        goto cleanup;
+
+    if (!openfile(&src_fs, &src_fnum, true))
+        goto cleanup;
+
+    if (!dbopenfile(src_fnum, true))
+        goto cleanup;
+
+    if (use_64bit_format) {
+        ok = true; /* Already modern */
+        goto cleanup;
     }
 
-    /* Encode header fields in on-disk byte order */
-    tydatabaserecord_64 disk_header;
-    memset(&disk_header, 0, sizeof disk_header);
+    dbgetview(cancoonview, &view_address);
+    if (view_address == nildbaddress)
+        goto cleanup;
 
-    disk_header.systemid = new_header.systemid;
-    disk_header.versionnumber = new_header.versionnumber;
+    if (!dbreference(view_address, (long) sizeof cancoon_record, &cancoon_record))
+        goto cleanup;
 
-    write_dbaddress64(&disk_header.availlist, new_header.availlist);
-    write_be16(&disk_header.oldfnumdatabase, (uint16_t)new_header.oldfnumdatabase);
-    write_be16(&disk_header.flags, (uint16_t)new_header.flags);
+    cancoon_version = read_be16(&cancoon_record.versionnumber);
+    cancoon_flags = read_be16(&cancoon_record.flags);
+    cancoon_primary = read_be16(&cancoon_record.ixprimaryagent);
+    root_address = (dbaddress) read_legacy_u32((const unsigned char *) &cancoon_record.adrroottable);
+    script_address = (dbaddress) read_legacy_u32((const unsigned char *) &cancoon_record.adrscriptstring);
 
-    for (int i = 0; i < ctviews; ++i) {
-        write_dbaddress64(&disk_header.views[i], new_header.views[i]);
-#if 0
-        {
-            const unsigned char *enc = (const unsigned char *) &disk_header.views[i];
-            fprintf(stderr, "encoded view[%d]=0x%llx -> %02x %02x %02x %02x %02x %02x %02x %02x\n",
-                    i,
-                    (unsigned long long) new_header.views[i],
-                    enc[0], enc[1], enc[2], enc[3],
-                    enc[4], enc[5], enc[6], enc[7]);
-        }
-#endif
+    if (!tableloadsystemtable(root_address, &hrootvariable, &hroot, false))
+        goto cleanup;
+
+    if (script_address != nildbaddress && script_address != 0) {
+        if (!dbrefhandle(script_address, &hscript))
+            goto cleanup;
     }
 
-    /* The runtime builds these at load; leave zeroed */
-    disk_header.releasestack = 0;
-    write_be32(&disk_header.fnumdatabase, 0);
+    copyctopstring(temp_path, bsdst);
+    if (!pathtofilespec(bsdst, &dst_fs))
+        goto cleanup;
 
-    write_be32(&disk_header.headerLength, (uint32_t)new_header.headerLength);
-    write_be16(&disk_header.longversionMajor, (uint16_t)new_header.longversionMajor);
-    write_be16(&disk_header.longversionMinor, (uint16_t)new_header.longversionMinor);
+    if (!opennewfile(&dst_fs, 'LAND', 'ROOT', &dst_fnum))
+        goto cleanup;
 
-    write_dbaddress64(&disk_header.u.extensions.availlistblock, new_header.u.extensions.availlistblock);
-    disk_header.u.extensions.availlistshadow = 0;
-    disk_header.u.extensions.flreadonly = false;
-    memset(disk_header.u.extensions.reserved, 0, sizeof disk_header.u.extensions.reserved);
+    use_64bit_format = true;
 
-    /* Write new header */
-    if (fwrite(&disk_header, sizeof disk_header, 1, dst) != 1) {
-        fclose(src);
-        fclose(dst);
-        remove(temp_path);
-        return false;
+    if (!dbstartsaveas(dst_fnum))
+        goto cleanup;
+
+    if (!tablesavesystemtable(hrootvariable, &new_root_address))
+        goto cleanup;
+
+    if (new_root_address > 0xFFFFFFFFULL)
+        goto cleanup;
+
+    if (hscript != nil) {
+        new_script_address = script_address;
+        if (!dbassignhandle(hscript, &new_script_address))
+            goto cleanup;
+        if (new_script_address > 0xFFFFFFFFULL)
+            goto cleanup;
+    } else {
+        new_script_address = 0;
     }
 
-    /* Copy remainder of file (skip old header) */
-    if (fseek(src, (long)sizeof legacy_header, SEEK_SET) != 0) {
-        fclose(src);
-        fclose(dst);
-        remove(temp_path);
-        return false;
-    }
-    char buffer[64 * 1024];
-    size_t bytes;
-    while ((bytes = fread(buffer, 1, sizeof buffer, src)) > 0) {
-        if (fwrite(buffer, 1, bytes, dst) != bytes) {
-            fclose(src);
-            fclose(dst);
+    write_be16(&cancoon_record.versionnumber, cancoon_version);
+    write_be16(&cancoon_record.flags, cancoon_flags);
+    write_be16(&cancoon_record.ixprimaryagent, cancoon_primary);
+    write_be32(&cancoon_record.adrroottable, (uint32_t) new_root_address);
+    write_be32(&cancoon_record.adrscriptstring, (uint32_t) new_script_address);
+
+    if (!dbassign(&new_cancoon_address, (long) sizeof cancoon_record, &cancoon_record))
+        goto cleanup;
+
+    dbsetview(cancoonview, new_cancoon_address);
+
+    if (!dbendsaveas())
+        goto cleanup;
+
+    closefile(dst_fnum);
+    dst_fnum = 0;
+
+    if (rename(temp_path, output_path) != 0)
+        goto cleanup;
+
+    if (db_trace_level() > 0)
+        db_format_trace_database_path(output_path);
+
+    ok = true;
+
+cleanup:
+    if (hscript != nil)
+        disposehandle(hscript);
+    if (hrootvariable != nil)
+        tableverbdispose((hdlexternalvariable) hrootvariable, true);
+
+    use_64bit_format = prev_use64;
+
+    if (fldatabasesaveas)
+        dbendsaveas();
+
+    if (databasedata != nil)
+        dbdispose();
+
+    if (src_fnum != 0)
+        closefile(src_fnum);
+
+    if (!ok) {
+        if (dst_fnum != 0)
+            closefile(dst_fnum);
+        if (temp_path[0] != '\0')
             remove(temp_path);
-            return false;
-        }
     }
 
-    fclose(src);
-    if (fflush(dst) != 0) { fclose(dst); remove(temp_path); return false; }
-    if (fclose(dst) != 0) { remove(temp_path); return false; }
-
-    /* Move temp file to final output path (original remains untouched) */
-    if (rename(temp_path, output_path) != 0) {
-        remove(temp_path);
-        return false;
-    }
-
-    return true;
+    return ok;
 }
 
 boolean ensure_database_modern(const char *db_path, boolean *migrated, char *output_path, size_t output_path_size) {

@@ -53,8 +53,7 @@ typedef boolean (*langvisitlistvaluescallback) (tyvaluerecord *, ptrvoid); /*200
 
 /*prototypes*/
 
-/* Portable: provide AliasHandle typedef when not available */
-#ifdef FRONTIER_PORTABLE
+#if !defined(FRONTIER_USE_PORTABLE_HANDLES)
 typedef void* AliasHandle;
 #endif
 
@@ -134,6 +133,3 @@ extern boolean listassignvalue (tyvaluerecord *, bigstring, tyvaluerecord *, tyv
 extern boolean listdeletevalue (tyvaluerecord *, bigstring, tyvaluerecord *);
 
 extern boolean langvisitlistvalues (tyvaluerecord *, langvisitlistvaluescallback, ptrvoid); /*2003-04-28 AR*/
-
-
-

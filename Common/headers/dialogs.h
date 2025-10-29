@@ -213,11 +213,10 @@ extern short customalert (short, bigstring);
 extern boolean customdialog (short, short, dialogcallback);
 
         #ifdef FRONTIER_PORTABLE
-        typedef const unsigned char* StringPtr;
+        #if !defined(FRONTIER_USE_PORTABLE_HANDLES)
+        typedef unsigned char* StringPtr;
+        #endif
         #endif
         char X0_p2cstrcpy(char *dst, StringPtr src);
 
 #endif
-
-
-

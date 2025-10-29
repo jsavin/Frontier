@@ -33,13 +33,15 @@
 #include "strings.h"
 #include "font.h"
 #include "ops.h"
+#if !defined(FRONTIER_HEADLESS)
 #include "quickdraw.h"
 #include "resources.h"
+#include "langipc.h"
+#include "langsystem7.h"
+#endif
 #include "lang.h"
 #include "langinternal.h"
 #include "langexternal.h"
-#include "langipc.h"
-#include "langsystem7.h"
 #include "tablestructure.h"
 #include "tableverbs.h"
 #include "oplist.h"
@@ -50,7 +52,11 @@
 #endif
 #include <stdint.h>
 #include <limits.h>
+#if !defined(FRONTIER_HEADLESS)
 	#include "aeutils.h" /*PBS 03/14/02: AE OS X fix.*/
+#endif
+
+// 2025-10-27 Codex: Added headless logging to inspect serialized table handles during root load.
 
 /* Enable to dump detailed serializer diagnostics. */
 /* #define DEBUG_SERIALIZER 1 */
@@ -2317,6 +2323,28 @@ static boolean hashunpackexternal (Handle hget, boolean flmemory, hdlexternalhan
 	long lix = (long) ix;
 	uint32_t disk_length = 0;
 
+#if defined(FRONTIER_HEADLESS)
+	{
+		unsigned char *base = (unsigned char *) *hget;
+		long total = gethandlesize (hget);
+		if (lix >= 0 && (lix + 4) <= total) {
+			uint32_t raw_len = ((uint32_t) base[lix] << 24) |
+			                   ((uint32_t) base[lix + 1] << 16) |
+			                   ((uint32_t) base[lix + 2] << 8) |
+			                   ((uint32_t) base[lix + 3]);
+			long dump = 4 + (raw_len < 28 ? (long) raw_len : 28L);
+			if ((lix + dump) > total)
+				dump = total - lix;
+			fprintf(stderr, "[headless] hashunpackexternal raw[%ld] len=%u bytes:", lix, (unsigned int) raw_len);
+			for (long i = 0; i < dump; ++i)
+				fprintf(stderr, " %02x", base[lix + i]);
+			fprintf(stderr, "\n");
+		} else {
+			fprintf(stderr, "[headless] hashunpackexternal bad index %ld (total=%ld)\n", lix, total);
+		}
+	}
+#endif
+
 	if (!read_disk_uint32 (hget, &lix, &disk_length))
 		return (false);
 
@@ -2782,11 +2810,30 @@ boolean hashunpacktable (Handle hpackedtable, boolean flmemory, hdlhashtable hta
 	ptrvoid saverefcon;
 	bigstring bsunpackerror;
 	hdlhashtable prevhashtable;
+#if defined(FRONTIER_HEADLESS)
+	long debug_record_index = 0;
+#endif
 	
 	assert (sizeof(tydisktablerecord) == 16L);
 	
 	if (!unmergehandles (hpackedtable, &hrecords, &hstrings)) /*consumes hpackedtable*/
 		return (false);
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] hashunpacktable split records=%ld strings=%ld\n",
+	        hrecords ? gethandlesize (hrecords) : 0L,
+	        hstrings ? gethandlesize (hstrings) : 0L);
+	if (hrecords && gethandlesize (hrecords) >= (long) sizeof (tydisktablerecord)) {
+		unsigned char *recbytes = (unsigned char *) *hrecords;
+		fprintf(stderr, "[headless] hashunpacktable records bytes:");
+		long dump = gethandlesize (hrecords);
+		if (dump > 32)
+			dump = 32;
+		for (long i = 0; i < dump; ++i)
+			fprintf(stderr, " %02x", recbytes[i]);
+		fprintf(stderr, "\n");
+	}
+#endif
 	
 	fldirty = (**htable).fldirty; //start with current state
 	
@@ -2795,6 +2842,13 @@ boolean hashunpacktable (Handle hpackedtable, boolean flmemory, hdlhashtable hta
 	loadfromhandle (hrecords, &ix, sizeof (tydisktablerecord), &header);
 	
 	header.version = disk_to_host_int16(header.version);
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] hashunpacktable header version=%d sort=%d flags=0x%08x\n",
+	        header.version,
+	        disk_to_host_int16(header.sortorder),
+	        disk_to_host_int32(header.flags));
+#endif
 	
 	if (header.version > 0) { // a header has been written
 		
@@ -2852,6 +2906,18 @@ boolean hashunpacktable (Handle hpackedtable, boolean flmemory, hdlhashtable hta
 			ixstrings = disk_to_host_int32 (rec.data.longvalue);
 
 			hashunpackstring (hstrings, bsname, name_index);
+
+#if defined(FRONTIER_HEADLESS)
+			if (debug_record_index++ < 10) {
+				fprintf(stderr, "[headless] hashunpacktable record ixkey=%d type=%d version=%u data=0x%08x name='%.*s'\n",
+				        (int) name_index,
+				        (int) rec.valuetype,
+				        (unsigned int) rec.version,
+				        (unsigned int) disk_to_host_int32(rec.data.longvalue),
+				        (int) bsname[0],
+				        (char *) &bsname[1]);
+			}
+#endif
 
 			if (isemptystring (bsname)) /*skip junk*/
 				continue;
@@ -3006,10 +3072,11 @@ boolean hashunpacktable (Handle hpackedtable, boolean flmemory, hdlhashtable hta
 					break;
 				}
 
-				case listvaluetype:
-				case recordvaluetype:
-					if (rec.version < 2) {
-						AEDesc aelist;
+                case listvaluetype:
+                case recordvaluetype:
+#if !defined(FRONTIER_HEADLESS)
+                    if (rec.version < 2) {
+                        AEDesc aelist;
 
 						if (!hashunpackscalar (hstrings, &val, ixstrings))
 							goto L1;
@@ -3041,17 +3108,24 @@ boolean hashunpacktable (Handle hpackedtable, boolean flmemory, hdlhashtable hta
 
 						AEDisposeDesc (&aelist);
 
-						exemptfromtmpstack (&val);
-					}
-					else {
-						if (!hashunpackbinary (hstrings, &hpacked, ixstrings))
-							goto L1;
+                        exemptfromtmpstack (&val);
+                    }
+                    else {
+                        if (!hashunpackbinary (hstrings, &hpacked, ixstrings))
+                            goto L1;
 
-						if (!opunpacklist (hpacked, &val.data.listvalue))
-							goto L1;
-					}
+                        if (!opunpacklist (hpacked, &val.data.listvalue))
+                            goto L1;
+                    }
+#else
+                    if (!hashunpackbinary (hstrings, &hpacked, ixstrings))
+                        goto L1;
 
-					break;
+                    if (!opunpacklist (hpacked, &val.data.listvalue))
+                        goto L1;
+#endif
+
+                    break;
 
 				case filespecvaluetype:
 				case aliasvaluetype:
@@ -3128,6 +3202,16 @@ boolean hashunpacktable (Handle hpackedtable, boolean flmemory, hdlhashtable hta
 						goto L1;
 
 					val.data.externalvalue = (Handle) h;
+
+#if defined(FRONTIER_HEADLESS)
+					if (h != nil) {
+						dbaddress tableadr = (dbaddress) (**(hdlexternalvariable) h).variabledata;
+						fprintf(stderr, "[headless] hashunpacktable external variabledata=0x%016llx\n",
+						        (unsigned long long) tableadr);
+					} else {
+						fprintf(stderr, "[headless] hashunpacktable external variable nil\n");
+					}
+#endif
 
 					break;
 				}

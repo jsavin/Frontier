@@ -1,4 +1,5 @@
 # Frontier Test Suite Makefile
+# 2025-10-27 Codex: Link db_format sources into portable component tests (needed by migration suite).
 # Phase 1.1: Comprehensive Testing Implementation
 
 CC = clang
@@ -10,8 +11,8 @@ ifeq ($(SANITIZE),1)
   # macOS leak detection can be noisy; disable unless needed
   # export ASAN_OPTIONS=detect_leaks=0  # set in shell if desired
 endif
-CFLAGS = -Wall -Wextra -std=c99 -g -O0 -fpascal-strings -Wno-deprecated-non-prototype \
-         -DFRONTIER_USE_PORTABLE_HANDLES \
+CFLAGS = -Wall -Wextra -std=c99 -g -O0 -fpascal-strings -Wno-deprecated-non-prototype -fcommon \
+         -DFRONTIER_USE_PORTABLE_HANDLES -DFRONTIER_HEADLESS \
          -DLAND_GENERALLOG_LEVEL=LAND_LOGLEVEL_OFF -DLAND_GENERALLOG_TARGET=LAND_LOGTARGET_NONE \
          $(SAN_FLAGS)
 FRONTIER_CLI_DIR = ../frontier-cli
@@ -22,31 +23,22 @@ FRAMEWORKS = -framework CoreFoundation -framework Carbon
 
 # Frontier core source files (minimal set suitable for CLI/testing)
 # Portable core sources (subset)
-PORTABLE_SOURCES = \
-    ../portable/handle.c \
-    ../portable/classic_handle.c \
-    ../portable/platform_null.c \
-    ../portable/cli_executor.c \
-    ../portable/runtime_stubs_core.c \
-    ../portable/runtime_stubs_errors.c \
-    ../portable/runtime_stubs_hash.c \
-    ../portable/runtime_stubs_lang.c \
-    ../portable/runtime_stubs_list.c \
-    ../portable/runtime_stubs_system.c \
-    ../portable/runtime_stubs_stack.c \
-    ../portable/runtime_stubs_string.c \
-    ../portable/runtime_stubs_coerce.c \
-    ../portable/runtime_stubs_parser.c \
-    ../portable/runtime_stubs_outline.c \
-    ../portable/runtime_stubs_shell.c
-
-# TODO: progressively add language engine sources adapted for FRONTIER_PORTABLE
-FRONTIER_SOURCES = $(PORTABLE_SOURCES) \
+FRONTIER_SOURCES = \
     ../Common/source/langscan.c \
     ../Common/source/langparser.c \
     ../Common/source/langvalue.c \
     ../Common/source/langevaluate.c \
-    ../Common/source/lang.c
+    ../Common/source/lang.c \
+    ../Common/source/langhash.c \
+    ../Common/source/memory.c \
+    ../Common/source/strings.c \
+    ../Common/source/ops.c \
+    ../Common/source/tableops.c \
+    ../Common/source/tablestructure.c \
+    ../Common/source/db.c \
+    ../Common/source/dbverbs.c \
+    ../Common/source/db_format.c \
+    headless_langverbs_stub.c
 
 LANG_RUNTIME_SOURCES = \
     ../Common/source/lang.c \
@@ -158,18 +150,18 @@ runtime_tests: runtime_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c
 parser_tests: parser_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable parser_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@
 
-save_migration_tests: save_migration_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/db.c ../Common/source/db_format.c headless_file_portable.c ../Common/source/odbengine.c headless_odb_stubs.c headless_shell.c
+save_migration_tests: save_migration_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/db.c ../Common/source/db_format.c ../portable/file_portable.c ../Common/source/odbengine.c headless_odb_stubs.c headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -DHEADLESS_LINKS_REAL_DB -I../Common/headers -I../Common/SystemHeaders -I../portable save_migration_tests.c \
-		$(LANG_RUNTIME_SOURCES) ../Common/source/db.c ../Common/source/db_format.c headless_file_portable.c ../Common/source/odbengine.c headless_odb_stubs.c headless_shell.c -o $@
+		$(LANG_RUNTIME_SOURCES) ../Common/source/db.c ../Common/source/db_format.c ../portable/file_portable.c ../Common/source/odbengine.c headless_odb_stubs.c headless_shell.c -o $@
 
-file_portable_tests: file_portable_tests.c headless_file_portable.c headless_shell.c ../Common/source/portable_handles.c
-	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -I../Common/headers -I../Common/SystemHeaders -I../portable file_portable_tests.c headless_file_portable.c headless_shell.c ../Common/source/portable_handles.c -o $@
+file_portable_tests: file_portable_tests.c ../portable/file_portable.c headless_shell.c ../Common/source/portable_handles.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -I../Common/headers -I../Common/SystemHeaders -I../portable file_portable_tests.c ../portable/file_portable.c headless_shell.c ../Common/source/portable_handles.c -o $@
 
-file_readline_tests: file_readline_tests.c headless_file_portable.c headless_shell.c ../Common/source/portable_handles.c
-	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -I../Common/headers -I../Common/SystemHeaders -I../portable file_readline_tests.c headless_file_portable.c headless_shell.c ../Common/source/portable_handles.c -o $@
+file_readline_tests: file_readline_tests.c ../portable/file_portable.c headless_shell.c ../Common/source/portable_handles.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -I../Common/headers -I../Common/SystemHeaders -I../portable file_readline_tests.c ../portable/file_portable.c headless_shell.c ../Common/source/portable_handles.c -o $@
 
-file_verb_tests: file_verb_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/findinfile.c headless_file_portable.c headless_file_verbs.c headless_shell.c
-	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -I../Common/headers -I../Common/SystemHeaders -I../portable file_verb_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/findinfile.c headless_file_portable.c headless_file_verbs.c headless_shell.c -o $@
+file_verb_tests: file_verb_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/findinfile.c ../portable/file_portable.c headless_file_verbs.c headless_shell.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -I../Common/headers -I../Common/SystemHeaders -I../portable file_verb_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/findinfile.c ../portable/file_portable.c headless_file_verbs.c headless_shell.c -o $@
 
 handle_tests: handle_tests.c ../Common/source/portable_handles.c
 	$(CC) $(CFLAGS) -DFRONTIER_USE_PORTABLE_HANDLES -I../Common/headers -I../Common/SystemHeaders handle_tests.c ../Common/source/portable_handles.c -o $@
@@ -192,7 +184,7 @@ test_database: components/test_database.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES)
 	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable $^ -o $@
 
 test_migration: components/test_migration.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES)
-	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable $^ -o $@
+	$(CC) $(CFLAGS) -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable $^ -o $@
 
 test_compatibility: components/test_compatibility.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES)
 	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable $^ -o $@

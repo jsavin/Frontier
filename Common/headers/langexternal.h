@@ -180,13 +180,14 @@ typedef struct tyexternalhandle {
 */
 
 #pragma pack(2)
+// 2025-10-27 Codex: Normalize external handle layout for headless 64-bit builds (1-byte id + padding).
+
 typedef struct tydiskexternalhandle {
 	
 	short versionnumber; /*this structure is stored on disk*/
 	
-		tyexternalid id;
-		//byte unused;
-	
+	unsigned char id;
+	unsigned char unused;
 
 	} tydiskexternalhandle;
 #pragma options align=reset
@@ -314,5 +315,3 @@ extern boolean langexternalsymbolchanged (hdlhashtable htable, const bigstring b
 extern boolean langexternalsymbolinserted (hdlhashtable htable, const bigstring bsname, hdlhashnode hnode);
 
 #endif
-
-

@@ -9,6 +9,9 @@
  * (at your option) any later version.
  */
 
+// 2025-10-27 Codex: Added diagnostics around system table hydration to surface missing subtables.
+// 2025-10-27 Codex: Stop recreating system tables during headless load and follow Cancoon root pointer so persisted tables stay wired.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -25,6 +28,7 @@
 #include "../Common/headers/shell_api.h"
 #include "../Common/headers/db.h"
 #include "../Common/headers/file.h"
+#include "../Common/headers/db_format.h"
 #include "../Common/headers/tableverbs.h"
 #include "../Common/headers/langexternal.h"
 #include "../Common/headers/stringdefs.h"
@@ -65,6 +69,15 @@ static void unload_system_root_database(void);
 static boolean ensure_named_subtable(hdlhashtable parent, const unsigned char *name, hdlhashtable *out, boolean mark_dont_save);
 static boolean hydrate_system_root_database(const char* path);
 static boolean read_root_table_address(const char *path, dbaddress *adr_out, short *version_out);
+static void log_system_subtable_status(const char *phase,
+                                       hdlhashtable system,
+                                       hdlhashtable verbs,
+                                       hdlhashtable builtins,
+                                       hdlhashtable agents,
+                                       hdlhashtable paths,
+                                       hdlhashtable resources,
+                                       hdlhashtable menubar,
+                                       hdlhashtable objectmodel);
 
 int main(int argc, char* argv[]) {
     // Parse command line arguments
@@ -155,60 +168,72 @@ static uint64_t read_big_endian(const unsigned char *data, size_t length) {
 }
 
 static boolean read_root_table_address(const char *path, dbaddress *adr_out, short *version_out) {
-    if (path == NULL || adr_out == NULL)
+    (void)path; /* path only used for logging; runtime state comes from databasedata */
+
+    if (adr_out == NULL)
         return false;
 
-    unsigned char header[0x40];
-    FILE *fp = fopen(path, "rb");
-    if (fp == NULL)
+    if (databasedata == nil) {
+        cli_log_error("read_root_table_address called without an open database");
         return false;
-
-    size_t bytes = fread(header, 1, sizeof header, fp);
-    fclose(fp);
-    if (bytes < 0x1E) /* need at least version + view slots */
-        return false;
-
-    short version = (short) header[1];
-    if (version_out != NULL)
-        *version_out = version;
-    cli_log_debug("raw header version=%d", version);
-
-    const size_t view_stride = 8; /* views are stored with 8-byte slots in both formats */
-    const size_t view_base = 0x0E;
-    dbaddress found = nildbaddress;
-    int found_index = -1;
-
-    if (version >= 7) {
-        for (int i = 0; i < ctviews; ++i) {
-            size_t offset = view_base + (size_t)i * view_stride;
-            if (bytes < offset + view_stride)
-                break;
-            uint64_t raw = read_big_endian(header + offset, 8);
-            if (raw != 0) {
-                found = (dbaddress) raw;
-                found_index = i;
-                break;
-            }
-        }
-    } else {
-        for (int i = 0; i < ctviews; ++i) {
-            size_t offset = view_base + (size_t)i * view_stride;
-            if (bytes < offset + 6) /* legacy stores significant bytes in the first six positions */
-                break;
-            uint64_t raw = read_big_endian(header + offset, 6);
-            if (raw != 0) {
-                found = (dbaddress) raw;
-                found_index = i;
-                break;
-            }
-        }
     }
 
-    if (found == nildbaddress)
-        return false;
+    short header_version = (**databasedata).versionnumber;
+    if (version_out != NULL)
+        *version_out = header_version;
 
-    cli_log_debug("Selected view[%d] pointer = 0x%08llx", found_index, (unsigned long long)found);
-    *adr_out = found;
+    dbaddress view_address = nildbaddress;
+    dbgetview(cancoonview, &view_address);
+    if (view_address == nildbaddress) {
+        cli_log_error("View %d is empty in system root", cancoonview);
+        return false;
+    }
+
+    boolean flfree = false;
+    long payload_size = 0;
+    tyvariance variance = 0;
+    if (!dbreadheader(view_address, &flfree, &payload_size, &variance)) {
+        cli_log_error("Unable to read database header for view address 0x%08llx", (unsigned long long)view_address);
+        return false;
+    }
+
+    long effective_size = payload_size - (long)variance;
+    dbaddress root_address = view_address; /* fallback: treat view address as root */
+
+    if (!flfree && effective_size >= 6) {
+        unsigned char cancoon_header[6];
+        memset(cancoon_header, 0, sizeof cancoon_header);
+
+        if (dbreference(view_address, (long)sizeof cancoon_header, cancoon_header)) {
+            short cancoon_version = (short)read_big_endian(cancoon_header, 2);
+            dbaddress adr_root = (dbaddress)read_big_endian(cancoon_header + 2, 4);
+
+            if ((cancoon_version == 2 || cancoon_version == 3) && adr_root != nildbaddress) {
+                root_address = adr_root;
+                cli_log_debug("Selected view[%d] address=0x%08llx via Cancoon v%d → root=0x%08llx",
+                              cancoonview,
+                              (unsigned long long)view_address,
+                              (int)cancoon_version,
+                              (unsigned long long)root_address);
+            } else {
+                cli_log_debug("Cancoon header at 0x%08llx (v%d) points to 0x%08llx; using %s",
+                              (unsigned long long)view_address,
+                              (int)cancoon_version,
+                              (unsigned long long)adr_root,
+                              (adr_root != nildbaddress) ? "fallback view address" : "view address (nil root)");
+            }
+        } else {
+            cli_log_warn("Failed to read Cancoon header at 0x%08llx; falling back to view address",
+                         (unsigned long long)view_address);
+        }
+    } else {
+        cli_log_debug("View[%d] payload (%ld bytes) is not a Cancoon record; using address 0x%08llx",
+                      cancoonview,
+                      effective_size,
+                      (unsigned long long)view_address);
+    }
+
+    *adr_out = root_address;
     return true;
 }
 
@@ -270,33 +295,11 @@ static boolean initialize_frontier_runtime(void) {
         return false;
     }
     
-    // Install headless shell adapter
-    shell_api_use_headless();
-
-    // Initialize core subsystems (mirrors tests/runtime_tests bring-up)
-    if (!initmemory()) {
-        fprintf(stderr, "Error: initmemory failed\n");
+    if (!db_format_prepare_runtime()) {
+        fprintf(stderr, "Error: Failed to initialize Frontier runtime core\n");
+        cli_cleanup_logging();
         return false;
     }
-
-    initstrings();
-
-    if (!initlang()) {
-        fprintf(stderr, "Error: initlang failed\n");
-        return false;
-    }
-
-    if (!inittablestructure()) {
-        fprintf(stderr, "Error: inittablestructure failed\n");
-        return false;
-    }
-
-    if (!langinitverbs()) {
-        fprintf(stderr, "Error: langinitverbs failed\n");
-        return false;
-    }
-
-    grabthreadglobals();
 
     if (g_cli_options.system_root != NULL) {
         if (!load_system_root_database(g_cli_options.system_root)) {
@@ -367,6 +370,31 @@ static boolean ensure_named_subtable(hdlhashtable parent, const unsigned char *n
     }
 
     return false;
+}
+
+static void log_system_subtable_status(const char *phase,
+                                       hdlhashtable system,
+                                       hdlhashtable verbs,
+                                       hdlhashtable builtins,
+                                       hdlhashtable agents,
+                                       hdlhashtable paths,
+                                       hdlhashtable resources,
+                                       hdlhashtable menubar,
+                                       hdlhashtable objectmodel) {
+    if (phase == NULL) {
+        phase = "unknown";
+    }
+
+    cli_log_warn("system table snapshot (%s): system=%p verbs=%p builtins=%p agents=%p paths=%p resources=%p menubar=%p objectmodel=%p",
+                 phase,
+                 (void *)system,
+                 (void *)verbs,
+                 (void *)builtins,
+                 (void *)agents,
+                 (void *)paths,
+                 (void *)resources,
+                 (void *)menubar,
+                 (void *)objectmodel);
 }
 
 static boolean hydrate_system_root_database(const char* path) {
@@ -458,6 +486,7 @@ static boolean hydrate_system_root_database(const char* path) {
     ok = checktablestructure(true);
     if (!ok) {
         cli_log_warn("checktablestructure reported issues while hydrating %s", path);
+        log_system_subtable_status("hydrate: post-checktablestructure", systemtable, verbstable, builtinstable, agentstable, pathstable, resourcestable, menubartable, objectmodeltable);
     }
 
     boolean created_optional = false;
@@ -486,6 +515,15 @@ static boolean hydrate_system_root_database(const char* path) {
                 created_optional = true;
         }
     }
+    log_system_subtable_status("hydrate: after optional creation",
+                               systemtable,
+                               verbstable,
+                               builtinstable,
+                               agentstable,
+                               pathstable,
+                               resourcestable,
+                               menubartable,
+                               objectmodeltable);
 
     if (!tablesavesystemtable(hrootvariable, &adr)) {
         cli_log_error("Failed to save system table while hydrating %s", path);
@@ -523,7 +561,7 @@ cleanup:
     return ok;
 }
 
-static boolean load_system_root_database(const char* path) {
+static boolean load_system_root_database_internal(const char* path, boolean allow_hydrate) {
     if (path == NULL) {
         return true;
     }
@@ -611,7 +649,7 @@ static boolean load_system_root_database(const char* path) {
     boolean partial_warning = false;
     boolean applied_patch = false;
 
-    if (!settablestructureglobals(hrootvariable, true)) {
+    if (!settablestructureglobals(hrootvariable, false)) {
         cli_log_warn("System table structure is invalid in %s", path);
         cli_log_debug("systemtable=%p verbstable=%p builtinstable=%p agentstable=%p pathstable=%p resourcestable=%p menubartable=%p objectmodeltable=%p",
                       (void *)systemtable,
@@ -622,16 +660,8 @@ static boolean load_system_root_database(const char* path) {
                       (void *)resourcestable,
                       (void *)menubartable,
                       (void *)objectmodeltable);
+        log_system_subtable_status("load: post-checktablestructure", systemtable, verbstable, builtinstable, agentstable, pathstable, resourcestable, menubartable, objectmodeltable);
         structure_ready = false;
-
-        hdlhashtable captured_system = systemtable;
-        hdlhashtable captured_verbs = verbstable;
-        hdlhashtable captured_builtins = builtinstable;
-        hdlhashtable captured_agents = agentstable;
-        hdlhashtable captured_paths = pathstable;
-        hdlhashtable captured_resources = resourcestable;
-        hdlhashtable captured_menubar = menubartable;
-        hdlhashtable captured_objectmodel = objectmodeltable;
 
         if (systemtable != nil) {
             if (resourcestable == nil && ensure_named_subtable(systemtable, nameresourcestable, &resourcestable, true))
@@ -659,6 +689,16 @@ static boolean load_system_root_database(const char* path) {
             }
         }
 
+        log_system_subtable_status("load: after ensure_named_subtable patch",
+                                   systemtable,
+                                   verbstable,
+                                   builtinstable,
+                                   agentstable,
+                                   pathstable,
+                                   resourcestable,
+                                   menubartable,
+                                   objectmodeltable);
+
         if (applied_patch) {
             cli_log_debug("Applied fallback table creation for %s; structure now adequate", path);
             /* The fallback tables are optional - accept the structure as-is if critical tables exist */
@@ -676,25 +716,6 @@ static boolean load_system_root_database(const char* path) {
                               (void *)menubartable,
                               (void *)objectmodeltable);
                 structure_ready = false;
-            }
-        }
-
-        if (!structure_ready) {
-            cleartablestructureglobals();
-            rootvariable = hrootvariable;
-            roottable = hroot;
-            systemtable = captured_system;
-            verbstable = captured_verbs;
-            builtinstable = captured_builtins;
-            agentstable = captured_agents;
-            pathstable = captured_paths;
-            resourcestable = captured_resources;
-            menubartable = captured_menubar;
-            objectmodeltable = captured_objectmodel;
-
-            if (systemtable != nil && verbstable != nil) {
-                structure_ready = true;
-                partial_warning = true;
             }
         }
 
@@ -732,6 +753,10 @@ static boolean load_system_root_database(const char* path) {
 
     cli_log_info("Loaded system root database: %s", g_system_root_path);
     return true;
+}
+
+static boolean load_system_root_database(const char* path) {
+    return load_system_root_database_internal(path, true);
 }
 
 static void unload_system_root_database(void) {

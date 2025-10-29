@@ -3,6 +3,8 @@
  * System operations, file handling, and utilities
  */
 
+// 2025-10-27 Codex: Trim duplicate tmp-stack helpers; stack stubs provide implementations.
+
 #include "runtime_stubs.h"
 #include "standard_portable.h"
 #include <stdio.h>
@@ -40,9 +42,6 @@ void dirtostring(const char *dir) {
     (void)dir;
 }
 
-void disposetmpvalue(void *value) {
-    (void)value;
-}
 
 void dolongswap(void *data) {
     (void)data;
@@ -93,9 +92,6 @@ void *evaluateosascript(const char *script) {
     return NULL;
 }
 
-void exemptfromtmpstack(void *value) {
-    (void)value;
-}
 
 void filespecaddvalue(void *spec, void *value) {
     (void)spec;

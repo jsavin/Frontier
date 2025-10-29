@@ -1,6 +1,7 @@
 #ifndef PORTABLE_FRONTIER_H
 #define PORTABLE_FRONTIER_H
 
+#include "../Common/headers/frontierdefs.h"
 #include "standard_portable.h"
 #include "standard.h"
 #include "classic_handle.h"
@@ -20,5 +21,4 @@
 /* OSType already defined in standard_portable.h */
 
 #endif /* PORTABLE_FRONTIER_H */
-
 

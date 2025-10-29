@@ -1,0 +1,19 @@
+# Headless `langhash.c` Dependency Inventory
+
+**Last reviewed**: 2025-10-28  
+
+**Context**: Building `langhash.c` inside the headless/portable toolchain now pulls in the *real* language/runtime sources (no stubbed replacements). The current build stops with unresolved symbols and legacy QuickDraw/AE helpers that the portable layer does not yet expose. This note captures every missing type or helper reported by the compiler, along with what each symbol does in the classic build and what we likely need on the headless side.
+
+| Symbol / Type | Where `langhash.c` uses it | Legacy purpose | Headless action items |
+| --- | --- | --- | --- |
+| `getstringcharacter` | Hash seeding (`langhash.c:989`) | Macro in `standard.h` that indexes a Pascal string. Expected to work in all builds; the current error means the macro expands only when `standard.h` comes through the classic include path. | Ensure the `FRONTIER_HEADLESS` include path still defines the macro (double-check that `standard.h` is visible before we reach the macro call). |
+| `getstringlist` | Error reporting path (`langhash.c:2380`) | Loads a resource-backed string list to format hash errors. | Either stub this out to use the modern logging pathway or provide a headless-safe wrapper that pulls diagnostics from the in-memory list. |
+| `recttodiskrect`, `diskrecttorect` | Table serialization of `rect` values (`langhash.c:2526`, `3003`) | QuickDraw utilities that convert between in-memory `Rect` and the “diskrect” structure stored on disk. | Portable layer already has trivial implementations in `headless_mac_compat.c`; expose prototypes through a headless header so `langhash.c` sees them. |
+| `rgbtodiskrgb`, `diskrgbtorgb` | Packing RGB color values (`langhash.c:2539`) | Converts QuickDraw RGB triplets to the on-disk “diskrgb” representation. | Same story as rectangles—surface the portable prototypes and provide real conversions (rather than the all-zero stubs we have today). |
+| `dtox80` / `xtodouble` | Scalar coercion (`langhash.c:2554`) | Converts between IEEE doubles and the classic 80-bit extended format used in legacy tables. Implemented in `Common/source/FastTimes.c`. | Export the helper through a portable header (or wrap with `#if !FRONTIER_HEADLESS` if we plan to replace the serializer). |
+| `pushcliprgn`, `globaltolocalrgn`, `grayframerrgn`, `fillrect`, `rectinregion` | Drawing diagnostics inside the hash table viz path | QuickDraw GUI helpers. | For headless we can either stub these with no-ops or refactor the diagnostic code behind `#if !FRONTIER_HEADLESS`. The routines only affect on-screen debugging. |
+| `langipcconvertaelist`, `langipcbuildsubroutineevent` and friends | Legacy AppleEvent conversions when unpacking lists/records | Converts AppleEvent descriptors back into UserTalk values. Only needed when processing verb tables packed as AE records. | We already gated the primary `langipcconvertaelist` call behind `#if !FRONTIER_HEADLESS`, but any remaining references should either be similarly gated or redirected to a headless equivalent. |
+| `DebugStr`, `Debugger` | Assertion path (`langhash.c:8540`) | Classic Mac debugging breakpoints. | Provide no-op implementations (done in `headless_mac_compat.c`) and declare them in the portable headers so other modules can see them. |
+| `FastMilliseconds` | Profiling support (`lang.c`, indirectly used by hash logging) | Reads the OS high-resolution clock. | Headless shim should return `clock_gettime` values; we added the implementation but still need the prototype exported globally. |
+
+> **Note**: The list is intentionally exhaustive; symbols that already exist in the classic build but fail to resolve in the portable build should remain here until that build links cleanly. Update this document whenever we remove or replace an entry so future agents know what still blocks the headless path.

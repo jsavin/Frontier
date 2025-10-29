@@ -2,6 +2,7 @@
 #include "portable_handles.h"
 #include "osincludes_portable.h"
 #include "file.h"
+#include "file_portable.h"
 #include "strings.h"
 #include "quickdraw.h"
 #include "shell.h"
@@ -34,6 +35,11 @@
 #ifdef FRONTIER_HEADLESS
 
 #include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <time.h>
 
 WindowPtr shellwindow = NULL;
 hdlwindowinfo shellwindowinfo = NULL;
@@ -56,6 +62,19 @@ void HLock(Handle h) {
 
 void HUnlock(Handle h) {
     frontierUnlock(h);
+}
+
+void DebugStr(const unsigned char *s) { (void)s; }
+void Debugger(void) { }
+
+unsigned long FastMilliseconds(void) {
+    struct timespec ts;
+#if defined(CLOCK_MONOTONIC)
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+#else
+    clock_gettime(CLOCK_REALTIME, &ts);
+#endif
+    return (unsigned long)(ts.tv_sec * 1000UL + ts.tv_nsec / 1000000UL);
 }
 
 long GetHandleSize(Handle h) {
@@ -137,12 +156,12 @@ boolean popundoaction (void) { return false; }
 void ouch (void) { }
 
 // Error and path helpers
-#ifndef HEADLESS_TEST_PORTABLE_FILE
+#if !defined(FRONTIER_PORTABLE) && !defined(HEADLESS_TEST_PORTABLE_FILE)
 boolean oserror (OSErr err) { (void)err; return false; }
 boolean pathtofilespec (bigstring bs, ptrfilespec fs) { (void)bs; if (fs) memset(fs,0,sizeof(*fs)); return false; }
 #endif
 OSStatus pathtofsref (bigstring bs, FSRef *ref) { (void)bs; if (ref) memset(ref,0,sizeof(*ref)); return paramErr; }
-#ifndef HEADLESS_TEST_PORTABLE_FILE
+#if !defined(FRONTIER_PORTABLE) && !defined(HEADLESS_TEST_PORTABLE_FILE)
 boolean equalfilespecs ( const ptrfilespec fs1, const ptrfilespec fs2 ) { (void)fs1; (void)fs2; return false; }
 #endif
 boolean equalrects (Rect r1, Rect r2) { return r1.top==r2.top && r1.left==r2.left && r1.bottom==r2.bottom && r1.right==r2.right; }
@@ -262,12 +281,33 @@ boolean getrootwindow (WindowPtr w, hdlwindowinfo *hi) { (void)w; if (hi) *hi=ni
 Handle getresourcehandle (ResType t, short id) { (void)t; (void)id; return nil; }
 void loadconfigresource (short n, tyconfigrecord *cr) { (void)n; if (cr) memset(cr,0,sizeof(*cr)); }
 
-// File/FS helpers
+// File/FS helpers (implemented in portable/file_portable.c)
 boolean fileparsevolname (bigstring bs, ptrfilespec fs) { (void)bs; if (fs) memset(fs,0,sizeof(*fs)); return false; }
 OSErr macgetfsref (const ptrfilespec fs, FSRef* fsref) { (void)fs; if (fsref) memset(fsref,0,sizeof(*fsref)); return paramErr; }
 OSErr macmakefilespec (const FSRef *fsref, ptrfilespec fs) { (void)fsref; if (fs) memset(fs,0,sizeof(*fs)); return paramErr; }
 OSErr macgetfilespecparent (const ptrfilespec fs, ptrfilespec fsparent) { (void)fs; if (fsparent) memset(fsparent,0,sizeof(*fsparent)); return paramErr; }
-void fsnametobigstring (const tyfsnameptr fsname, bigstring bs) { (void)fsname; setemptystring (bs); }
+void fsnametobigstring (const tyfsnameptr fsname, bigstring bs) {
+    if (!fsname) {
+        setemptystring(bs);
+        return;
+    }
+    unsigned int len = fsname->length;
+    if (len > lenbigstring)
+        len = lenbigstring;
+    bs[0] = (unsigned char) len;
+    for (unsigned int i = 0; i < len; ++i)
+        bs[1 + i] = (unsigned char) (fsname->unicode[i] & 0xFF);
+}
+
+void bigstringtofsname (const bigstring bs, tyfsnameptr fsname) {
+    if (!fsname) return;
+    unsigned int len = bs[0];
+    if (len > 255)
+        len = 255;
+    fsname->length = (UInt16) len;
+    for (unsigned int i = 0; i < len; ++i)
+        fsname->unicode[i] = (UInt16) (unsigned char) bs[1 + i];
+}
 
 // Timing/keyboard
 long getcurrenttimezonebias (void) { return 0; }

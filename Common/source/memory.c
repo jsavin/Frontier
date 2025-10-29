@@ -1434,9 +1434,14 @@ boolean loadfromhandle (Handle hload, long *ixload, long ctload, ptrvoid pdata) 
 	
 	if (ix < 0) /*bad index*/
 		return (false);
-	
+
 	if ((ix + ct) > size) /*asked for more bytes than there are*/
+	{
+#if defined(FRONTIER_HEADLESS)
+		fprintf(stderr, "[headless] loadfromhandle fail: ix=%ld ct=%ld size=%ld\n", ix, ct, size);
+#endif
 		return (false); 
+	}
 		
 	moveleft (*h + ix, p, ct); /*copy out of the handle*/
 	

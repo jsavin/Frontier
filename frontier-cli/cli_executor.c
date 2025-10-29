@@ -94,9 +94,14 @@ boolean cli_execute_compiled_script(usertalk_execution_t* execution) {
         bigstring result;
         copyctopstring(execution->script_source, program);
         extern hdlhashtable currenthashtable;
+        extern hdlhashtable roottable;
+        extern boolean pushhashtable(hdlhashtable);
+        extern boolean pophashtable(void);
         hdlhashtable saved_current = currenthashtable;
-        currenthashtable = nil; /* ensure langrun pushes the standard scope chain */
+        currenthashtable = roottable; /* ensure globals resolve against the loaded root */
+        pushhashtable(roottable);
         boolean ok = langrunstringnoerror(program, result);
+        pophashtable();
         currenthashtable = saved_current;
         if (!ok) {
             cli_set_execution_error_internal(execution, "Script execution failed");
@@ -142,12 +147,17 @@ boolean cli_execute_compiled_script(usertalk_execution_t* execution) {
     bigstring empty; setstringlength(empty, 0);
     extern boolean langrunscriptcode(hdlhashtable, bigstring, hdltreenode, tyvaluerecord*, hdlhashtable, tyvaluerecord*);
     extern hdlhashtable currenthashtable;
+    extern hdlhashtable roottable;
+    extern boolean pushhashtable(hdlhashtable);
+    extern boolean pophashtable(void);
     hdlhashtable saved_current = currenthashtable;
-    currenthashtable = nil;
+    currenthashtable = roottable;
+    pushhashtable(roottable);
 #if defined(FRONTIER_HEADLESS)
     cli_log_debug("executing with currenthashtable=%p", (void *)currenthashtable);
 #endif
     boolean ok = langrunscriptcode(NULL, empty, hcode, &params, NULL, &resultValue);
+    pophashtable();
     currenthashtable = saved_current;
     disposehandle(htext);
 

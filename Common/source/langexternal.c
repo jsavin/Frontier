@@ -25,6 +25,8 @@
 
 ******************************************************************************/
 
+// 2025-10-27 Codex: Allow 64-bit headless builds to unpack tyexternalvariable structs wider than 16 bytes.
+
 #include "frontier.h"
 #include "standard.h"
 
@@ -156,8 +158,15 @@ boolean langexternalgettable (bigstring bs, hdlhashtable *htable) {
     
     langvaluecallback valueroutine;
     
-    if (langexternalgetinfo (bs, htable, &valueroutine))
+#if defined(FRONTIER_HEADLESS)
+    fprintf(stderr, "[hl] langexternalgettable enter %s\n", stringbaseaddress(bs));
+#endif
+    if (langexternalgetinfo (bs, htable, &valueroutine)) {
+#if defined(FRONTIER_HEADLESS)
+        fprintf(stderr, "[hl] langexternalgettable: info hit %s -> %p\n", stringbaseaddress(bs), (void *)*htable);
+#endif
         return true;
+    }
 #if defined(FRONTIER_HEADLESS)
     /* Headless fallback: look up external function processor under efptable */
     {
@@ -193,10 +202,16 @@ boolean langexternalgettable (bigstring bs, hdlhashtable *htable) {
 
         if (systemtable != nil && equalstrings(bs, namesystembranch)) {
             *htable = systemtable;
+#if defined(FRONTIER_HEADLESS)
+            fprintf(stderr, "[hl] langexternalgettable fallback system -> %p\n", (void *)systemtable);
+#endif
             return true;
         }
         if (verbstable != nil && equalstrings(bs, nameverbstable)) {
             *htable = verbstable;
+#if defined(FRONTIER_HEADLESS)
+            fprintf(stderr, "[hl] langexternalgettable fallback system.verbs -> %p\n", (void *)verbstable);
+#endif
             return true;
         }
         if (builtinstable != nil && equalstrings(bs, namebuiltinstable)) {
@@ -807,7 +822,11 @@ boolean langexternalunpack (Handle hpacked, hdlexternalhandle *h) {
 	if (hpacked == nil)
 		return (false);
 	
+#if !defined(FRONTIER_HEADLESS)
 	assert (sizeof (tyexternalvariable) == 16L);
+#else
+	assert (sizeof (tyexternalvariable) >= 16L); /* 2025-10-27 Codex: 64-bit headless builds use wider pointers */
+#endif
 	
 	rollbeachball ();
 	
@@ -820,7 +839,11 @@ boolean langexternalunpack (Handle hpacked, hdlexternalhandle *h) {
 	if (rec.versionnumber != 1)
 		goto cantunpack;
 
-	id = (tyexternalid) rec.id;
+	id = (tyexternalid) ((unsigned char) rec.id);
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] langexternalunpack version=%d id=%d\n", (int) rec.versionnumber, (int) id);
+#endif
 
 
 	switch (id) {
@@ -871,10 +894,10 @@ boolean langexternalunpack (Handle hpacked, hdlexternalhandle *h) {
 	/*(**hdata).flpathlink = rec.pathlink;*/
 	
 	*h = hdata; /*return a handle to the newly allocated external record*/
-	
+
 	return (true);
 	
-	cantunpack:
+cantunpack:
 		
 		langerror (cantunpackthisexternalerror);
 	

@@ -33,6 +33,7 @@
 #include "frontier.h"
 #include "standard.h"
 #endif
+#include <stdio.h> /* 2025-10-27 Codex: required for debug instrumentation fprintf calls. */
 
 #include "frontierconfig.h"
 #include "memory.h"

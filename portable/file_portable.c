@@ -1,0 +1,399 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+#include "frontier.h"
+#include "standard.h"
+#include "file.h"
+#include "memory.h"
+#include "file_portable.h"
+
+/*
+ * Portable/headless file layer that backs the classic Frontier file API with
+ * stdio. This is sufficient for CLI/tests that use FRONTIER_HEADLESS or
+ * FRONTIER_PORTABLE builds.
+ */
+
+typedef struct {
+    FILE *fp;
+    char path[4096];
+} fnum_entry;
+
+#define PORTABLE_MAX_FNUM 256
+static fnum_entry ftable[PORTABLE_MAX_FNUM];
+
+static hdlfilenum alloc_fnum(void) {
+    for (int i = 1; i < PORTABLE_MAX_FNUM; ++i) {
+        if (ftable[i].fp == NULL)
+            return (hdlfilenum) i;
+    }
+    return 0;
+}
+
+static fnum_entry *entry_from(hdlfilenum fnum) {
+    if (fnum <= 0 || fnum >= PORTABLE_MAX_FNUM)
+        return NULL;
+    return &ftable[fnum];
+}
+
+static FILE *fp_from(hdlfilenum fnum) {
+    fnum_entry *slot = entry_from(fnum);
+    if (!slot)
+        return NULL;
+    return slot->fp;
+}
+
+static void fsname_to_path(const tyfsname *name, char *out, size_t outsz) {
+    if (!name || !out || outsz == 0) {
+        if (out && outsz)
+            out[0] = '\0';
+        return;
+    }
+    size_t len = name->length;
+    if (len >= outsz)
+        len = outsz - 1;
+    for (size_t i = 0; i < len; ++i)
+        out[i] = (char) (name->unicode[i] & 0xFF);
+    out[len] = '\0';
+}
+
+static void path_to_fsname(const char *path, tyfsnameptr name) {
+    if (!path || !name) {
+        return;
+    }
+    size_t len = strlen(path);
+    if (len > 255)
+        len = 255;
+    name->length = (UInt16) len;
+    for (size_t i = 0; i < len; ++i)
+        name->unicode[i] = (UInt16) (unsigned char) path[i];
+}
+
+static boolean path_from_filespec(const ptrfilespec fs, char *out, size_t outsz) {
+    if (!fs || !out)
+        return false;
+    fsname_to_path(&fs->name, out, outsz);
+    return out[0] != '\0';
+}
+
+boolean pathtofilespec(bigstring bspath, ptrfilespec fs) {
+    if (!fs || isemptystring(bspath))
+        return false;
+    const unsigned char *src = (const unsigned char *) bspath;
+    unsigned int len = src[0];
+    if (len > 255)
+        len = 255;
+    fs->name.length = (UInt16) len;
+    for (unsigned int i = 0; i < len; ++i)
+        fs->name.unicode[i] = (UInt16) src[1 + i];
+    fs->flags.flvolume = false;
+    memset(&fs->ref, 0, sizeof fs->ref);
+    return true;
+}
+
+boolean filespectopath(const ptrfilespec fs, bigstring bs) {
+    if (!fs)
+        return false;
+    unsigned int len = fs->name.length;
+    if (len > 255)
+        len = 255;
+    bs[0] = (unsigned char) len;
+    for (unsigned int i = 0; i < len; ++i)
+        bs[1 + i] = (unsigned char) (fs->name.unicode[i] & 0xFF);
+    return true;
+}
+
+boolean openfile(const ptrfilespec fs, hdlfilenum *pfnum, boolean flreadonly) {
+    if (!fs || !pfnum)
+        return false;
+    char path[4096];
+    if (!path_from_filespec(fs, path, sizeof path))
+        return false;
+    const char *mode = flreadonly ? "rb" : "rb+";
+    FILE *fp = fopen(path, mode);
+    if (!fp && !flreadonly)
+        fp = fopen(path, "rb");
+    if (!fp)
+        return false;
+    hdlfilenum fnum = alloc_fnum();
+    if (!fnum) {
+        fclose(fp);
+        return false;
+    }
+    fnum_entry *slot = entry_from(fnum);
+    slot->fp = fp;
+    strncpy(slot->path, path, sizeof slot->path - 1);
+    slot->path[sizeof slot->path - 1] = '\0';
+    *pfnum = fnum;
+    return true;
+}
+
+boolean opennewfile(ptrfilespec fs, OSType creator, OSType filetype, hdlfilenum *pfnum) {
+    (void) creator;
+    (void) filetype;
+    if (!fs || !pfnum)
+        return false;
+    char path[4096];
+    if (!path_from_filespec(fs, path, sizeof path))
+        return false;
+    FILE *fp = fopen(path, "wb+");
+    if (!fp)
+        return false;
+    hdlfilenum fnum = alloc_fnum();
+    if (!fnum) {
+        fclose(fp);
+        return false;
+    }
+    fnum_entry *slot = entry_from(fnum);
+    slot->fp = fp;
+    strncpy(slot->path, path, sizeof slot->path - 1);
+    slot->path[sizeof slot->path - 1] = '\0';
+    path_to_fsname(path, &fs->name);
+    *pfnum = fnum;
+    return true;
+}
+
+boolean closefile(hdlfilenum fnum) {
+    fnum_entry *slot = entry_from(fnum);
+    if (!slot || !slot->fp)
+        return false;
+    fclose(slot->fp);
+    slot->fp = NULL;
+    slot->path[0] = '\0';
+    return true;
+}
+
+boolean filesetposition(hdlfilenum fnum, long pos) {
+    FILE *fp = fp_from(fnum);
+    if (!fp)
+        return false;
+    return fseeko(fp, (off_t) pos, SEEK_SET) == 0;
+}
+
+boolean filegetposition(hdlfilenum fnum, long *ppos) {
+    if (!ppos)
+        return false;
+    FILE *fp = fp_from(fnum);
+    if (!fp)
+        return false;
+    off_t cur = ftello(fp);
+    if (cur < 0)
+        return false;
+    *ppos = (long) cur;
+    return true;
+}
+
+boolean filegeteof(hdlfilenum fnum, long *ppos) {
+    if (!ppos)
+        return false;
+    FILE *fp = fp_from(fnum);
+    if (!fp)
+        return false;
+    off_t cur = ftello(fp);
+    if (cur < 0)
+        return false;
+    if (fseeko(fp, 0, SEEK_END) != 0)
+        return false;
+    off_t end = ftello(fp);
+    if (end < 0)
+        return false;
+    if (fseeko(fp, cur, SEEK_SET) != 0)
+        return false;
+    *ppos = (long) end;
+    return true;
+}
+
+boolean fileseteof(hdlfilenum fnum, long size) {
+    FILE *fp = fp_from(fnum);
+    if (!fp)
+        return false;
+    int fd = fileno(fp);
+    return ftruncate(fd, (off_t) size) == 0;
+}
+
+boolean filewrite(hdlfilenum fnum, long ctbytes, void *pdata) {
+    FILE *fp = fp_from(fnum);
+    if (!fp)
+        return false;
+    return fwrite(pdata, 1, (size_t) ctbytes, fp) == (size_t) ctbytes;
+}
+
+boolean fileread(hdlfilenum fnum, long ctbytes, void *pdata) {
+    FILE *fp = fp_from(fnum);
+    if (!fp)
+        return false;
+    return fread(pdata, 1, (size_t) ctbytes, fp) == (size_t) ctbytes;
+}
+
+boolean filereaddata(hdlfilenum fnum, long ctread, long *pctactual, void *pbuf) {
+    if (!pctactual)
+        return false;
+    FILE *fp = fp_from(fnum);
+    if (!fp)
+        return false;
+    size_t n = fread(pbuf, 1, (size_t) ctread, fp);
+    *pctactual = (long) n;
+    return true;
+}
+
+long filegetsize(hdlfilenum fnum) {
+    long eof = 0;
+    if (!filegeteof(fnum, &eof))
+        return -1;
+    return eof;
+}
+
+boolean fileputchar(hdlfilenum fnum, char ch) {
+    FILE *fp = fp_from(fnum);
+    if (!fp)
+        return false;
+    return fputc((unsigned char) ch, fp) != EOF;
+}
+
+boolean filegetchar(hdlfilenum fnum, char *ch) {
+    if (!ch)
+        return false;
+    FILE *fp = fp_from(fnum);
+    if (!fp)
+        return false;
+    int c = fgetc(fp);
+    if (c == EOF)
+        return false;
+    *ch = (char) c;
+    return true;
+}
+
+boolean filewritehandle(hdlfilenum fnum, Handle h) {
+    if (!h)
+        return false;
+    return filewrite(fnum, gethandlesize(h), *h);
+}
+
+boolean filereadhandle(hdlfilenum fnum, Handle *h) {
+    if (!h)
+        return false;
+    long size = filegetsize(fnum);
+    if (size < 0)
+        return false;
+    if (!newhandle(size, h))
+        return false;
+    if (!fileread(fnum, size, **h)) {
+        disposehandle(*h);
+        *h = nil;
+        return false;
+    }
+    return true;
+}
+
+boolean flushvolumechanges(const ptrfilespec fs, hdlfilenum fnum) {
+    (void) fs;
+    (void) fnum;
+    return true;
+}
+
+boolean largefilebuffer(Handle *hbuffer) {
+    if (!hbuffer)
+        return false;
+    long sz = 32 * 1024;
+    return newhandle(sz, hbuffer);
+}
+
+boolean fileisfolder(const ptrfilespec fs, boolean *out) {
+    if (out)
+        *out = false;
+    (void) fs;
+    return true;
+}
+
+boolean fileisvolume(const ptrfilespec fs) {
+    (void) fs;
+    return false;
+}
+
+boolean equalfilespecs(const ptrfilespec a, const ptrfilespec b) {
+    if (!a || !b)
+        return false;
+    if (a->name.length != b->name.length)
+        return false;
+    for (unsigned int i = 0; i < a->name.length; ++i) {
+        if (a->name.unicode[i] != b->name.unicode[i])
+            return false;
+    }
+    return true;
+}
+
+boolean getfsfile(const ptrfilespec pfs, bigstring name) {
+    if (!pfs) {
+        setemptystring(name);
+        return false;
+    }
+    unsigned int len = pfs->name.length;
+    if (len > lenbigstring)
+        len = lenbigstring;
+    name[0] = (unsigned char) len;
+    for (unsigned int i = 0; i < len; ++i)
+        name[1 + i] = (unsigned char) (pfs->name.unicode[i] & 0xFF);
+    return true;
+}
+
+long headless_readline(hdlfilenum fnum, char *buf, long bufsz) {
+    if (bufsz <= 0)
+        return -1;
+    FILE *fp = fp_from(fnum);
+    if (!fp)
+        return -1;
+    long n = 0;
+    int c = EOF;
+    while (1) {
+        c = fgetc(fp);
+        if (c == EOF)
+            break;
+        if (c == '\n')
+            break;
+        if (c == '\r') {
+            int next = fgetc(fp);
+            if (next != '\n' && next != EOF)
+                ungetc(next, fp);
+            break;
+        }
+        if (n < bufsz - 1)
+            buf[n++] = (char) c;
+    }
+    buf[(n < bufsz) ? n : (bufsz - 1)] = '\0';
+    if (c == EOF && n == 0)
+        return 0;
+    return n;
+}
+
+const char *headless_fnum_path(hdlfilenum fnum) {
+    fnum_entry *slot = entry_from(fnum);
+    if (!slot || !slot->fp)
+        return NULL;
+    return slot->path[0] ? slot->path : NULL;
+}
+
+boolean headless_reopen_fnum(hdlfilenum fnum, const char *path, boolean flreadonly) {
+    if (!path || path[0] == '\0')
+        return false;
+    fnum_entry *slot = entry_from(fnum);
+    if (!slot)
+        return false;
+    if (slot->fp) {
+        fclose(slot->fp);
+        slot->fp = NULL;
+    }
+    const char *mode = flreadonly ? "rb" : "rb+";
+    FILE *fp = fopen(path, mode);
+    if (!fp && !flreadonly)
+        fp = fopen(path, "rb");
+    if (!fp)
+        return false;
+    slot->fp = fp;
+    strncpy(slot->path, path, sizeof slot->path - 1);
+    slot->path[sizeof slot->path - 1] = '\0';
+    return true;
+}
