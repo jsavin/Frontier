@@ -8,7 +8,7 @@
 We pivoted from incremental shims to a comprehensive Carbon-dependency retirement. The canonical plan now lives under [`planning/carbon_migration/`](carbon_migration/README.md).
 
 1. **Planning skeleton (done)**: Created the Carbon migration directory with README, inventory, phases, decision log, and status log.
-2. **Doc refresh (done)**: Updated navigation/index pages and restored in-progress phase docs to their active directories so contributors land on the right plan.
+2. **Doc refresh (done)**: Updated navigation/index files and restored in-progress phase docs to their active directories so contributors land on the right plan.
 3. **Execution phases**: See [`carbon_migration/phases.md`](carbon_migration/phases.md) for subsystem milestones (header hygiene → runtime primitives → encoding → AppleEvents → cleanup).
 
 ## Longer-Term Goal
@@ -18,7 +18,7 @@ Run Frontier without any Classic Mac / Carbon APIs while keeping the headless an
 - Headless build still fails when linking `langhash.c` and `strings.c` because Carbon-era helpers (`TEC*`, AppleEvents, alias manager) remain. The failures are recorded in the [inventory](carbon_migration/inventory.md).
 - Portable headers (`osincludes_portable.h`, `standard_portable.h`) were expanded, but need further work to cover extended float, TEC APIs, and AE constants.
 - Planning documents have been restructured; `_CURRENT_STATUS.md` now tracks the Carbon migration rather than the earlier v6→v7 database effort.
-- In-progress phase docs were moved back under `planning/phase*/` with a status column (e.g., `langhash_portable_missing_types.md`) so ongoing work stays visible.
+- In-progress legacy phase docs were moved back under `planning/phase*/` so they can continue to evolve; the archive now holds completed notes only.
 
 ## Progress Snapshot
 - ✅ Added stdio-backed file layer shared by headless tests/CLI (eliminated legacy file stubs).
