@@ -15,9 +15,9 @@ We pivoted from incremental shims to a comprehensive Carbon-dependency retiremen
 Run Frontier without any Classic Mac / Carbon APIs while keeping the headless and desktop builds unified. Completing the Carbon plan is now the primary Phase 3 objective.
 
 ## Quick Status — October 30, 2025
-- First pass at compiling `langhash.c` headless revealed deeper Classic Mac ties: `memory.c` still depends on `MemError`/`MaxBlock`, `strings.c` drags in QuickDraw helpers, and `land.h` insists on AppleEvent symbols.
-- Portable headers (`standard_portable.h`, `osincludes_portable.h`) now have the minimal Pascal-string helpers `langhash.c` needs, but we’re rolling those edits back until the wider refactor lands.
-- Planning/doc structure is up to date; in-progress phase docs stay under `planning/phase*/`, and the archive now holds completed material only.
+- Completed a platform legacy audit covering memory manager hooks, STR#/resource forks, filespec/alias usage, QuickDraw helpers, AppleEvents, and header duplication. See [`platform_legacy_audit.md`](carbon_migration/platform_legacy_audit.md).
+- First pass at compiling core modules headless confirmed the audit findings: `memory.c` still depends on `MemError`/`MaxBlock`, `strings.c` references QuickDraw geometry, and `land.h` drags in AppleEvents.
+- Portable headers (`standard_portable.h`, `osincludes_portable.h`) still need guard cleanup (no more duplicate typedefs) before the refactor branches land.
 
 ## Progress Snapshot
 - ✅ Added stdio-backed file layer shared by headless tests/CLI (eliminated legacy file stubs).
@@ -25,10 +25,10 @@ Run Frontier without any Classic Mac / Carbon APIs while keeping the headless an
 - 🔄 Working on header hygiene: ensuring `frontier.h` and related headers bring in the correct portable definitions.
 
 ## Immediate Next Steps
-1. **Study Windows port** (Assistant): Catalogue how the Win32 build replaces `MemError`/`MaxBlock`, keeps `strings.c` free of QuickDraw helpers, and fences off AppleEvents so we can mirror that structure.
-2. **Memory layer refactor** (Assistant): Move `memory.c` onto the portable handle/runtime helpers (no direct `MemError`/`MaxBlock`) and update callers.
-3. **Strings refactor** (Assistant): Extract QuickDraw/UI helpers into a desktop-only module so `strings.c` remains OS-neutral for headless builds.
-4. **LAND / AppleEvents isolation** (Assistant): Gate `land.h`/`processinternal.h` usage for headless builds, aligning with the Windows approach to AppleEvents.
-5. **Portable header cleanup** (Assistant): Trim `osincludes_portable.h` to ANSI/POSIX essentials and relocate legacy Mac structs/macros to desktop-only headers.
+1. **Document call-site maps** (Assistant): Using the audit as a checklist, generate per-category call-site lists (`getstringlist`, `filespectoalias`, QuickDraw helpers, AppleEvent entry points) to scope each refactor (see “Detailed Task Breakdown” in the audit for sub-steps).
+2. **Sequence refactor PRs** (Assistant): Draft the order of themed branches (memory layer → strings/resources → filespec/alias → QuickDraw/UI split → AppleEvent isolation → header cleanup) and update `status_log.md` accordingly, following the sub-tasks captured in the audit.
+3. **Windows parity review** (Assistant): Study the Win32 project (`shell.win.h`, `frontierwindows.c`, `langwinipc.c`) for existing solutions we can adopt when replacing classic Mac APIs.
+4. **Prepare resource fork replacement plan** (Assistant): Decide on the new string/error table format so subsequent branches can drop STR# usage confidently.
+5. **Portable header guard cleanup** (Assistant): Introduce feature macros so `osincludes_portable.h` and `headless_stubs.h` no longer duplicate typedefs, paving the way for the refactor branches.
 
 Progress and blockers should continue to be logged in the Carbon migration status log and decisions documented in the decision log.

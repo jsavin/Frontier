@@ -1,3 +1,6 @@
+# 2025-10-30
+- Documented remaining platform-specific dependencies in [`platform_legacy_audit.md`](platform_legacy_audit.md) and updated `_CURRENT_STATUS.md` with the refactor roadmap.
+
 # Carbon Migration Status Log
 
 Chronological breadcrumbs for this project. Add an entry whenever we complete a meaningful milestone (phase finished, major PR merged, blocker discovered, etc.). Keep entries short and link to PRs when available.
