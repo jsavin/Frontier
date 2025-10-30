@@ -1,10 +1,24 @@
 # Headless `langhash.c` Dependency Inventory
 
-> **Superseded:** Tracking for these dependencies has moved to [planning/carbon_migration/inventory.md](../carbon_migration/inventory.md). Keep this page for archival notes only.
+Status
+- State: In Progress
+- Phase: 3 (Headless Runtime)
+- Last Updated: 2025-10-30
+- Notes: Track every legacy helper the portable build still needs; keep this list in sync with `planning/carbon_migration/inventory.md`.
 
-**Last reviewed**: 2025-10-28  
+Related Docs
+- `planning/carbon_migration/inventory.md`
+- `planning/phase3/headless_legacy_table_loader.md`
 
-**Context**: Building `langhash.c` inside the headless/portable toolchain now pulls in the *real* language/runtime sources (no stubbed replacements). The current build stops with unresolved symbols and legacy QuickDraw/AE helpers that the portable layer does not yet expose. This note captures every missing type or helper reported by the compiler, along with what each symbol does in the classic build and what we likely need on the headless side.
+Change Log
+- 2025-10-30: Restored from archive and aligned with the Carbon migration plan.
+- 2025-10-28: Captured the initial dependency inventory from the portable build.
+
+Overview
+- `langhash.c` now compiles against the real runtime in headless mode, exposing historical QuickDraw and AppleEvent helpers the portable layer lacks.
+- This document catalogs every missing symbol so we can either provide portable replacements or gate the code behind `#if !FRONTIER_HEADLESS`.
+
+Details
 
 | Symbol / Type | Where `langhash.c` uses it | Legacy purpose | Headless action items |
 | --- | --- | --- | --- |
@@ -18,4 +32,11 @@
 | `DebugStr`, `Debugger` | Assertion path (`langhash.c:8540`) | Classic Mac debugging breakpoints. | Provide no-op implementations (done in `headless_mac_compat.c`) and declare them in the portable headers so other modules can see them. |
 | `FastMilliseconds` | Profiling support (`lang.c`, indirectly used by hash logging) | Reads the OS high-resolution clock. | Headless shim should return `clock_gettime` values; we added the implementation but still need the prototype exported globally. |
 
-> **Note**: The list is intentionally exhaustive; symbols that already exist in the classic build but fail to resolve in the portable build should remain here until that build links cleanly. Update this document whenever we remove or replace an entry so future agents know what still blocks the headless path.
+Open Questions
+- Are there additional dependencies introduced when we enable the GUI debugging paths, or can they remain permanently gated for headless?
+- Which of these helpers are best solved with true portable replacements versus short-term shims while Carbon retirement proceeds?
+
+Next Steps
+- Wire the confirmed helpers (`getstringcharacter`, `dtox80`, `FastMilliseconds`) into the portable headers and close them out in the Carbon inventory.
+- Audit the `langipc` AppleEvent paths to decide whether headless needs coverage or if we can defer them until after the Carbon migration.
+- Re-run `make -C tests test_migration` once each item is addressed and strike it from this list when the build goes clean.
