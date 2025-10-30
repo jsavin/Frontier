@@ -107,5 +107,6 @@ Reference Docs
 - Better database inspection/validation tools.
 - Automated database integrity checkers.
 - Comprehensive API documentation refresh once new infrastructure lands.
+- **Strings pipeline (Phase 2 follow-up):** After libyaml-based ingestion is stable, re-enable the bespoke bison/flex YAML parser to match libyaml parity while dropping the third-party dependency. Includes full YAML subset support (indent/dedent, folded strings, metadata fields) and regression tests comparing both pipelines.
 
 These items provide a parking lot for work that spans or follows the current phases. Revisit after each phase review to reprioritise.
