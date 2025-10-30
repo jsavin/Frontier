@@ -1,71 +1,52 @@
-# Headless Legacy Table Loader Plan
+# Headless Legacy Table Loader
 
-## Purpose
-Capture the concrete steps required to decode legacy (Pascal-style) table payloads when running the headless Frontier runtime. This document complements the broader `pascal_runtime_modernization.md` note by focusing on the immediate loader work.
+Status
+- State: In Progress
+- Phase: 3 (Headless Runtime)
+- Last Updated: 2025-10-30
+- Notes: Focused on decoding legacy external payloads during the v6→v7 migration so headless builds hydrate real data.
 
-## Current status (2025-10-22)
-- ✅ **Header migration fixed**: `views[0]` points correctly to root block in `Frontier-v7.root`
-- ✅ **Table payload conversion implemented**: `tableexternal_common.c` detects legacy Pascal format `[header][strings][records]` and converts to modern two-level merged format `[outer_size][inner_merged][formats]`
-- ✅ **System root loads successfully**: UserTalk scripts execute correctly with loaded system tables
-- ✅ **Format documented**: Comprehensive documentation added to `docs/legacy_frontier_bootstrap.md`
+Related Docs
+- `planning/phase3/pascal_runtime_modernization.md`
+- `planning/phase3/langhash_portable_missing_types.md`
+- `docs/legacy_frontier_bootstrap.md`
 
-### Next: Other External Value Types
-The same legacy format issue affects other external types stored in v6 databases:
-- **scriptvaluetype**: Script external metadata (outline structure + source text; compiled code NOT persisted in v7)
-- **outlinevaluetype**: Outline/hierarchical data structures
-- **wordvaluetype** (wptext): Rich text/word processing objects (32KB limit, 8-bit ASCII, Mac Toolbox format)
-- **menuvaluetype**: Menu definitions
-- **pictvaluetype**: Picture/image data
-- **listvaluetype**: Arrays (can contain any value type including other arrays/records)
-- **recordvaluetype**: Records/maps (can contain any value type including nested structures)
+Change Log
+- 2025-10-30: Restored from archive and reformatted; added outstanding external-type work.
+- 2025-10-22: Documented current loader status and script storage decision.
 
-Each will need conversion logic for the v6→v7 migration. Complex types (arrays, records) are particularly challenging since they can recursively contain any other type.
+Overview
+- The headless CLI now unpacks v7 roots, but legacy v6 payloads still rely on Pascal-era layouts (string pools + record arrays).
+- This plan tracks the remaining conversion work needed so external value types (scripts, menus, outlines, etc.) can round-trip cleanly after migration.
 
-## v7 Format Change: Script Storage
+Current Progress
+- ✅ Header migration lands root `views[0]` at the correct block in `Frontier-v7.root`.
+- ✅ `tableexternal_common.c` detects the legacy `[header][strings][records]` layout and converts tables to the modern merged representation.
+- ✅ The migrated system table hydrates, allowing UserTalk scripts to run after load.
+- ✅ Format notes captured in `docs/legacy_frontier_bootstrap.md`.
 
-**Key Decision**: v7 format does NOT persist compiled code for scripts.
+Outstanding External Types
+- `scriptvaluetype`: metadata + outline converted; compiled code intentionally dropped (v7 recompiles on demand).
+- `outlinevaluetype`: hierarchical outline format still needs byte-level documentation.
+- `wordvaluetype` (wptext): classic Mac rich text buffer; confirm encoding expectations and size limits.
+- `menuvaluetype`: menu definitions with resource-style handles.
+- `pictvaluetype`: QuickDraw PICT payloads.
+- `listvaluetype` / `recordvaluetype`: recursive collections that may contain any other type (including additional externals).
 
-### What's Preserved
-- Script external metadata (structure, timestamps, etc.)
-- Source text (as outline data structure)
-- Script outline hierarchy and attributes
+Details
+- For each type, document the on-disk representation, provide a converter that emits the modern merged format, and add regression tests using real v6 fixtures.
+- Complex containers (lists/records) require recursive traversal and may reintroduce Pascal strings (`Str255`) inside nested structures.
 
-### What's Dropped
-- Compiled code (`codevaluetype` attachments)
-- Compilation cache/bytecode
+Decisions
+- v7 no longer stores compiled script code; source + outline are canonical and recompilation happens on first execution.
 
-### Rationale
-- JIT compilation is instant on modern hardware
-- Source is canonical; compiled form is ephemeral cache
-- Simplifies migration (one less format to convert)
-- Already proven: frontier-cli compiles on-demand successfully
-- Scripts recompile automatically when dirty/first-called
+Open Questions
+- Which external types actually ship in `Frontier.root` today? Finish the database survey to prioritize conversion work.
+- Should converters live only in the headless migrator, or be factored into a shared serialization library for both desktop and CLI builds?
+- Do we normalize legacy payloads during migration, or leave them as-is and convert lazily at load time?
 
-### Migration Strategy
-When encountering scriptvaluetype in v6:
-1. Extract script external structure (metadata + outline)
-2. Preserve source text and outline hierarchy
-3. **Discard** any attached compiled code
-4. Let runtime compile on first execution in v7
-
-## Short-term goals
-1. **Survey actual types in Frontier.root**
-   - Scan v6 database to identify which external types are actually present
-   - Prioritize conversion work based on what's used in practice
-2. **Reverse-engineer legacy layouts** (for types found)
-   - Document byte-level structure for each external type
-   - Identify merge patterns vs flat serialization
-3. **Implement converters** (prioritized by usage)
-   - Start with most common types
-   - Handle recursive types (arrays, records containing externals)
-4. **Add diagnostics and tests**
-   - Unit tests for each converter
-   - Integration tests using real v6 data
-
-## Open questions / future work
-- How many other payload types (menus, outlines, etc.) rely on the same layout? Enumerate once tables are handled.
-- Decide whether to keep the converter headless-only or factor it into a shared migration utility.
-- Once stable, consider writing a one-off tool to normalise existing `.root` files to the modern layout.
-
-*This is a living document; update as the loader prototypes evolve.*
-
+Next Steps
+- Enumerate every external type present in the sample v6 roots and update this document with status per type.
+- Reverse-engineer the remaining layouts (menus, outlines, wptext, pict) and capture documentation in both this plan and the code comments.
+- Implement conversion helpers with unit tests and integrate them into the migrator/headless loader.
+- Add integration tests that hydrate v6-derived roots and validate representative data (e.g., scripts, menus, rich text) end-to-end.

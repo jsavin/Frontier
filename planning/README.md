@@ -1,18 +1,19 @@
 # Frontier Refactoring – Planning Docs
 
 Status
-- State: In Progress
-- Phases: Foundations → Architecture → Headless Runtime → Text Modernization → Tooling
-- Last Updated: 2025-10-12
-- Notes: See `planning/phase_overview.md` for the roadmap and exit criteria.
+- State: Carbon Migration In Progress
+- Active Plan: `planning/carbon_migration/README.md`
+- Last Updated: 2025-10-30
+- Notes: Draft/Planned/In-Progress legacy docs were restored to `planning/phase*/`; only completed notes remain in `planning/archive/`.
 
--Related Docs
-- `planning/INDEX.md` – quick links into each phase
-- `planning/Frontier_Refactoring_Plan.md` – narrative goals and risks
-- `planning/phase_gates.md` – readiness checks before advancing phases
-- `planning/phase3/pascal_runtime_modernization.md` – Pascal-era data layout modernization roadmap
+Related Docs
+- `planning/INDEX.md` – navigation for active and archived workstreams
+- `planning/Frontier_Refactoring_Plan.md` – narrative goals and risks (historical)
+- `planning/phase_gates.md` – readiness checks (archived)
+- `planning/archive/phase3/pascal_runtime_modernization.md` – Pascal-era data layout modernization roadmap (archived)
 
 Change Log
+- 2025-10-30: Reactivated unfinished phase docs (moved back to `planning/phase*/`) and pointed navigation to the Carbon plan.
 - 2025-10-12: Reorganized legacy docs into phase subdirectories and refreshed status.
 - 2025-09-29: Initial skeleton (status/related/change log sections).
 
@@ -20,14 +21,10 @@ Change Log
 
 | Directory | Purpose |
 |-----------|---------|
-| `phase1/` | Toolchain, compiler, and early audit work that bootstrapped the port to modern macOS toolchains. |
-| `phase2/` | 64-bit/ARM data structure upgrades, database versioning, and portable handle runtime plans. |
-| `phase3/` | CLI & headless runtime enablement, UIServices ports/adapters, and automated runtime testing. |
-| `phase4/` | String and text modernization initiatives, including the UTF-8 transition roadmap. |
-| `phase5/` | Parser and toolchain evolution (Bison 3 migration, regenerated grammar artifacts). |
-| `adr/`, `issues/`, `phase_overview.md`, `INDEX.md` | Cross-cutting decision records, backlog, and navigation aids. |
-
-Most documents keep their historical numbering (`0.x`, `1.x`, etc.) to preserve context after the move, but the authoritative organization is now by phase. When writing new planning material, place it in the appropriate phase directory and update `phase_overview.md` / `INDEX.md` if scope or exit criteria change.
+| `carbon_migration/` | **Active.** Canonical plan for removing Carbon dependencies (inventory, phases, decision log, status log). |
+| `phase2/`, `phase3/`, `phase4/`, `phase5/` | Legacy work still in motion. Each doc retains its own Status block; update there when progress changes. |
+| `archive/phase1`, `archive/phase2`, `archive/phase3` | Completed/retired material from earlier phases (read-only). |
+| `adr/`, `issues/`, `phase_overview.md`, `INDEX.md` | Cross-cutting decision records, backlog, navigation aids. `phase_overview.md` maps both active and archived phase docs. |
 
 ## Writing Guidelines
 
