@@ -1,3 +1,4 @@
+/* 2025-10-31 Codex: Route MemError/MaxBlock through classic_handle shim. */
 #ifndef PORTABLE_FRONTIER_H
 #define PORTABLE_FRONTIER_H
 
@@ -17,8 +18,9 @@
 #define GetHandleSize(h) ClassicGetHandleSize(h)
 #define SetHandleSize(h, size) ClassicSetHandleSize(h, size)
 #define DupHandle(h) ClassicDupHandle(h)
+#define MemError() ClassicMemError()
+#define MaxBlock() ClassicMaxBlock()
 
 /* OSType already defined in standard_portable.h */
 
 #endif /* PORTABLE_FRONTIER_H */
-
