@@ -1,0 +1,5 @@
+langerrorlist:
+  - id: unknownFunction
+    text: "Unknown function."
+  - id: undefinedTable
+    text: "Table is undefined."

@@ -1,3 +1,4 @@
+/* 2025-10-31 Codex: Skip portable handle stubs when FRONTIER_USE_PORTABLE_HANDLES is active. */
 #include "frontier.h"
 #include "portable_handles.h"
 #include "osincludes_portable.h"
@@ -48,6 +49,7 @@ RGBColor whitecolor = {65535, 65535, 65535};
 // Minimal shell globals struct to satisfy references
 tyshellglobals shellglobals;
 
+#if !defined(FRONTIER_USE_PORTABLE_HANDLES)
 Handle NewHandle(long userSize) {
     return frontierAlloc(userSize);
 }
@@ -84,6 +86,7 @@ long GetHandleSize(Handle h) {
 OSErr SetHandleSize(Handle h, long userSize) {
     return frontierReAlloc(h, userSize) ? noErr : memFullErr;
 }
+#endif /* !FRONTIER_USE_PORTABLE_HANDLES */
 
 boolean shellpushglobals (WindowPtr w) {
     (void) w;
@@ -423,6 +426,7 @@ boolean opgetlangtext (hdloutlinerecord ho, boolean fl, Handle *htext) {
     (void)ho; (void)fl; if (htext) *htext = nil; return false;
 }
 
+#if !defined(FRONTIER_USE_PORTABLE_HANDLES)
 long MaxBlock(void) {
     return 1024L * 1024L; /* arbitrary large block */
 }
@@ -430,6 +434,7 @@ long MaxBlock(void) {
 OSErr MemError(void) {
     return noErr;
 }
+#endif /* !FRONTIER_USE_PORTABLE_HANDLES */
 
 short GetMBarHeight(void) {
     return 0;
@@ -447,11 +452,7 @@ void SysBeep(short duration) {
     (void)duration;
 }
 
-OSStatus TECCountAvailableTextEncodings(ItemCount *count) {
-    if (count)
-        *count = 0;
-    return noErr;
-}
+
 
 OSStatus TECGetAvailableTextEncodings(TextEncoding encodings[], ItemCount maxCount, ItemCount *actualCount) {
     (void)encodings;

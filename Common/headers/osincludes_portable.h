@@ -46,6 +46,34 @@ typedef unsigned char Str255[256];
 #define PORTABLE_STR255_DEFINED 1
 #endif
 
+#ifndef OSType
+typedef uint32_t OSType;
+#endif
+
+#ifndef ByteCount
+typedef size_t ByteCount;
+#endif
+
+#ifndef DescType
+typedef OSType DescType;
+#endif
+
+#ifndef TextPtr
+typedef unsigned char *TextPtr;
+#endif
+
+#ifndef ConstTextPtr
+typedef const unsigned char *ConstTextPtr;
+#endif
+
+#ifndef StringPtr
+typedef unsigned char *StringPtr;
+#endif
+
+#ifndef StringHandle
+typedef StringPtr *StringHandle;
+#endif
+
 #ifndef ConstStr255Param
 typedef const unsigned char *ConstStr255Param;
 #endif
@@ -167,34 +195,7 @@ typedef Handle AliasHandle;
 #define kTextEncodingMacRoman 0
 #endif
 
-#ifndef kTextUnsupportedEncodingErr
-#define kTextUnsupportedEncodingErr (-30874)
-#endif
-
-#ifndef kTextMalformedInputErr
-#define kTextMalformedInputErr (-32768)
-#endif
-
-#ifndef kTextUndefinedElementErr
-#define kTextUndefinedElementErr (-32767)
-#endif
-
-#ifndef kTECNoConversionPathErr
-#define kTECNoConversionPathErr (-32766)
-#endif
-
-#ifndef kTECPartialCharErr
-#define kTECPartialCharErr (-32765)
-#endif
-
-
-#ifndef StringPtr
-typedef unsigned char *StringPtr;
-#endif
-
-#ifndef StringHandle
-typedef StringPtr *StringHandle;
-#endif
+#include "portable/text_encoding_portable.h"
 
 #ifndef nil
 #define nil NULL
@@ -256,10 +257,6 @@ typedef void *GrafPtr;
 
 #ifndef WindowPtr
 typedef void *WindowPtr;
-#endif
-
-#ifndef OSType
-typedef uint32_t OSType;
 #endif
 
 #ifndef Point

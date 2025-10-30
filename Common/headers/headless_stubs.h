@@ -9,54 +9,7 @@
 
 #include <stddef.h>
 #include "osincludes_portable.h"
-
 #include <stdint.h>
-
-#ifndef Component
-typedef void *Component;
-#endif
-
-#ifndef ComponentInstance
-typedef void *ComponentInstance;
-#endif
-
-#ifndef ByteCount
-typedef size_t ByteCount;
-#endif
-
-#ifndef TextPtr
-typedef unsigned char *TextPtr;
-#endif
-
-#ifndef ConstTextPtr
-typedef const unsigned char *ConstTextPtr;
-#endif
-
-#ifndef DescType
-typedef OSType DescType;
-#endif
-
-#ifndef AEDesc
-typedef struct AEDesc {
-    DescType descriptorType;
-    Handle dataHandle;
-} AEDesc;
-#endif
-
-#ifndef AppleEvent
-typedef AEDesc AppleEvent;
-#endif
-
-#if !defined(OS_PORTABLE_HAS_AE_TYPES)
-typedef uint32_t AEKeyword;
-typedef uint32_t AEEventClass;
-typedef OSType AEEventID;
-typedef AEDesc AEAddressDesc;
-typedef uint32_t AESendMode;
-typedef uint32_t AESendPriority;
-typedef void *AEIdleUPP;
-typedef void *AEFilterUPP;
-#endif
 
 #ifndef AEEventHandlerUPP
 typedef OSErr (*AEEventHandlerUPP)(const AppleEvent *, AppleEvent *, long);
@@ -72,30 +25,6 @@ typedef void *ThreadTerminationUPP;
 
 #ifndef ThreadEntryUPP
 typedef void *ThreadEntryUPP;
-#endif
-
-#ifndef kCFStringEncodingUTF8
-#define kCFStringEncodingUTF8 0x08000100U
-#endif
-
-#ifndef kTextEncodingUnicodeDefault
-#define kTextEncodingUnicodeDefault 0x0100U
-#endif
-
-#ifndef kTextEncodingWindowsLatin1
-#define kTextEncodingWindowsLatin1 0x0500U
-#endif
-
-#ifndef kTextEncodingFullName
-#define kTextEncodingFullName 0U
-#endif
-
-#ifndef kTextEncodingMacRoman
-#define kTextEncodingMacRoman 0U
-#endif
-
-#ifndef verUS
-#define verUS 0U
 #endif
 
 #ifndef typeAEList
@@ -172,30 +101,6 @@ typedef void *ThreadEntryUPP;
 
 #ifndef errOSAScriptError
 #define errOSAScriptError (-2700)
-#endif
-
-#ifndef kTextUnsupportedEncodingErr
-#define kTextUnsupportedEncodingErr (-30874)
-#endif
-
-#ifndef kTextMalformedInputErr
-#define kTextMalformedInputErr (-32768)
-#endif
-
-#ifndef kTextUndefinedElementErr
-#define kTextUndefinedElementErr (-32767)
-#endif
-
-#ifndef kTECNoConversionPathErr
-#define kTECNoConversionPathErr (-32766)
-#endif
-
-#ifndef kTECPartialCharErr
-#define kTECPartialCharErr (-32765)
-#endif
-
-#ifndef errAEDescNotFound
-#define errAEDescNotFound (-1753)
 #endif
 
 #ifndef typeInsertionLoc

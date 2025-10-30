@@ -8,6 +8,9 @@ profile
 DerivedData/
 
 build/
+generated/
+tools/strings_compiler/strings_compiler
+tools/strings_compiler/*.o
 
 *.pbxuser
 *.mode1v3

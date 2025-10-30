@@ -31,7 +31,9 @@
 
 #include "font.h"
 #include "memory.h"
+#if !defined(FRONTIER_HEADLESS)
 #include "quickdraw.h"
+#endif
 #include "strings.h"
 #include "ops.h"
 #include "resources.h"
@@ -1303,6 +1305,13 @@ void timedatestring (long ptime, bigstring bs) {
 
 	static byte bsellipses [] = "\x01\xC9";
 
+#if defined(FRONTIER_HEADLESS)
+static short strings_measure_pixels (const bigstring bs) { return stringlength (bs); }
+#else
+static short strings_measure_pixels (const bigstring bs) { return stringpixels (bs); }
+#endif
+
+
 void ellipsize (bigstring bs, short width) {
 
 	/*
@@ -1350,7 +1359,7 @@ void ellipsize (bigstring bs, short width) {
 		{
 		byte len;
 		
-		if (stringpixels (bs) <= width) //nothing to do, the string fits
+		if (strings_measure_pixels (bs) <= width) //nothing to do, the string fits
 			return;
 		
 		len = stringlength (bs); //current length in characters
@@ -1358,13 +1367,13 @@ void ellipsize (bigstring bs, short width) {
 		if (len < 2) //too short to truncate
 			return;
 		
-		width -= stringpixels (bsellipses); //subtract width of ellipses
+		width -= strings_measure_pixels (bsellipses); //subtract width of ellipses
 		
 		//cut in half until it's shorter than available width
 		do
 			setstringlength (bs, len /= 2);
 		while
-			((len > 1) && (stringpixels (bs) > width));
+			((len > 1) && (strings_measure_pixels (bs) > width));
 		
 		//undo last halving, then go character by character
 		setstringlength (bs, len *= 2);
@@ -1373,7 +1382,7 @@ void ellipsize (bigstring bs, short width) {
 			
 			setstringlength (bs, --len);
 
-			if (stringpixels (bs) <= width)
+			if (strings_measure_pixels (bs) <= width)
 				break;
 			}
 

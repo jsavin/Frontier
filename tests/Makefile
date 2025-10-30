@@ -15,6 +15,14 @@ CFLAGS = -Wall -Wextra -std=c99 -g -O0 -fpascal-strings -Wno-deprecated-non-prot
          -DFRONTIER_USE_PORTABLE_HANDLES -DFRONTIER_HEADLESS \
          -DLAND_GENERALLOG_LEVEL=LAND_LOGLEVEL_OFF -DLAND_GENERALLOG_TARGET=LAND_LOGTARGET_NONE \
          $(SAN_FLAGS)
+STRINGS_COMPILER_DIR = ../tools/strings_compiler
+STRINGS_COMPILER = $(STRINGS_COMPILER_DIR)/strings_compiler
+STRINGS_INPUTS = $(wildcard ../resources/strings/*.yaml)
+GENERATED_DIR = ../generated
+STRINGS_C = $(GENERATED_DIR)/strings_tables.c
+STRINGS_H = $(GENERATED_DIR)/strings_tables.h
+STRINGS_MANIFEST = $(GENERATED_DIR)/strings_manifest.json
+GENERATED_STRINGS = $(STRINGS_C) $(STRINGS_H) $(STRINGS_MANIFEST)
 FRONTIER_CLI_DIR = ../frontier-cli
 SYSTEMHEADERDIR = ../Common/SystemHeaders
 HEADERDIR = ../Common/headers
@@ -135,7 +143,7 @@ RUN_PREBUILT = test_64bit_direct test_migration_verification test_real_databases
 ALL_TESTS = $(TEST_EXECUTABLES) $(USERTALK_OBJECT_TESTS)
 
 # Default target: build the tests we know are supported here
-all: $(RUN_BUILDABLE)
+all: strings_generated $(RUN_BUILDABLE)
 
 # Headless smoke test
 core_tests: core_tests.c ../Common/source/shell_api.c ../Common/source/shell_api_headless.c headless_shell.c
@@ -163,8 +171,9 @@ file_readline_tests: file_readline_tests.c ../portable/file_portable.c headless_
 file_verb_tests: file_verb_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/findinfile.c ../portable/file_portable.c headless_file_verbs.c headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -I../Common/headers -I../Common/SystemHeaders -I../portable file_verb_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/findinfile.c ../portable/file_portable.c headless_file_verbs.c headless_shell.c -o $@
 
-handle_tests: handle_tests.c ../Common/source/portable_handles.c
-	$(CC) $(CFLAGS) -DFRONTIER_USE_PORTABLE_HANDLES -I../Common/headers -I../Common/SystemHeaders handle_tests.c ../Common/source/portable_handles.c -o $@
+handle_tests: handle_tests.c ../Common/source/portable_handles.c ../portable/classic_handle.c
+	$(CC) $(CFLAGS) -DFRONTIER_USE_PORTABLE_HANDLES -I../Common/headers -I../Common/SystemHeaders -I../portable \
+		handle_tests.c ../Common/source/portable_handles.c ../portable/classic_handle.c -o $@
 
 cli_runtime_tests: cli_runtime_tests.c
 	$(CC) $(CFLAGS) -I../Common/headers -I../Common/SystemHeaders cli_runtime_tests.c -o $@
@@ -262,12 +271,22 @@ test-compat: test_compatibility
 	@echo "Running compatibility tests..."
 	./test_compatibility
 
+$(STRINGS_COMPILER):
+	$(MAKE) -C $(STRINGS_COMPILER_DIR)
+
+$(GENERATED_STRINGS): $(STRINGS_COMPILER) $(STRINGS_INPUTS)
+	@mkdir -p $(GENERATED_DIR)
+	$(STRINGS_COMPILER) --c-output $(STRINGS_C) --h-output $(STRINGS_H) --manifest $(STRINGS_MANIFEST) $(STRINGS_INPUTS)
+
+strings_generated: $(GENERATED_STRINGS)
+
 # Clean target
 clean:
 	rm -f $(ALL_TESTS)
 	rm -f framework/test_framework.o
 	rm -f *.root
 	rm -f test_*.root
+	rm -f $(GENERATED_STRINGS)
 
 # Install target
 install: $(ALL_TESTS)
@@ -316,4 +335,4 @@ results:
 	  bash ./run_all_tests.sh | tee "_results/all_tests.$$ts.log"; \
 	  cp "_results/all_tests.$$ts.log" "_results/all_tests.latest.log"
 
-.PHONY: all test clean install uninstall help results
+.PHONY: all test clean install uninstall help results strings_generated
