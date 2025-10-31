@@ -17,6 +17,8 @@
 
 #include "portable_handles.h"
 
+#include "appleevent_portable.h"
+
 #ifndef UInt16
 typedef uint16_t UInt16;
 #endif
@@ -297,42 +299,6 @@ typedef short tyjustification;
 
 #ifndef tylinespacing
 typedef short tylinespacing;
-#endif
-
-#ifndef AEDesc
-typedef struct AEDesc {
-    OSType descriptorType;
-    void *dataHandle;
-} AEDesc;
-#define OS_PORTABLE_HAS_AE_TYPES 1
-#endif
-
-#ifndef AppleEvent
-typedef AEDesc AppleEvent;
-#endif
-
-#ifndef AEEventID
-typedef OSType AEEventID;
-#endif
-
-#ifndef AEKeyword
-typedef OSType AEKeyword;
-#endif
-
-#ifndef AESendMode
-typedef unsigned long AESendMode;
-#endif
-
-#ifndef AESendPriority
-typedef unsigned long AESendPriority;
-#endif
-
-#ifndef AEIdleUPP
-typedef void *AEIdleUPP;
-#endif
-
-#ifndef AEFilterUPP
-typedef void *AEFilterUPP;
 #endif
 
 #ifndef Component

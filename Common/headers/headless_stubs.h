@@ -11,6 +11,8 @@
 #include "osincludes_portable.h"
 #include <stdint.h>
 
+#include "appleevent_portable.h"
+
 #ifndef AEEventHandlerUPP
 typedef OSErr (*AEEventHandlerUPP)(const AppleEvent *, AppleEvent *, long);
 #endif
@@ -27,128 +29,8 @@ typedef void *ThreadTerminationUPP;
 typedef void *ThreadEntryUPP;
 #endif
 
-#ifndef typeAEList
-#define typeAEList (DescType)0x6c697374 /* 'list' */
-#endif
-
-#ifndef typeAERecord
-#define typeAERecord (DescType)0x7265636f /* 'reco' */
-#endif
-
-#ifndef typeBoolean
-#define typeBoolean (DescType)0x626f6f6c /* 'bool' */
-#endif
-
 #ifndef typeShortInteger
 #define typeShortInteger (DescType)0x73686f72 /* 'shor' */
-#endif
-
-#ifndef typeLongInteger
-#define typeLongInteger (DescType)0x6c6f6e67 /* 'long' */
-#endif
-
-#ifndef typeQDPoint
-#define typeQDPoint (DescType)0x51447074 /* 'QDpt' */
-#endif
-
-#ifndef typeQDRectangle
-#define typeQDRectangle (DescType)0x71647274 /* 'qdrt' */
-#endif
-
-#ifndef typeEnumerated
-#define typeEnumerated (DescType)0x656e756d /* 'enum' */
-#endif
-
-#ifndef typeAlias
-#define typeAlias (DescType)0x616c6973 /* 'alis' */
-#endif
-
-#ifndef typeShortFloat
-#define typeShortFloat (DescType)0x73696e67 /* 'sing' */
-#endif
-
-#ifndef typeExtended
-#define typeExtended (DescType)0x65787465 /* 'exte' */
-#endif
-
-#ifndef typeRGBColor
-#define typeRGBColor (DescType)0x63475242 /* 'cRGB' */
-#endif
-
-#ifndef typeFixed
-#define typeFixed (DescType)0x66697864 /* 'fixd' */
-#endif
-
-#ifndef typeFSS
-#define typeFSS (DescType)0x66737320 /* 'fss ' */
-#endif
-
-#ifndef cObjectSpecifier
-#define cObjectSpecifier (DescType)0x6f626a20 /* 'obj ' */
-#endif
-
-#ifndef typeNull
-#define typeNull (DescType)0
-#endif
-
-#ifndef typeChar
-#define typeChar (DescType)0x54455854 /* 'TEXT' */
-#endif
-
-#ifndef errAECoercionFail
-#define errAECoercionFail (-1700)
-#endif
-
-#ifndef errOSAScriptError
-#define errOSAScriptError (-2700)
-#endif
-
-#ifndef typeInsertionLoc
-#define typeInsertionLoc (DescType)0x696E736C /* 'insl' */
-#endif
-
-#ifndef typeType
-#define typeType (DescType)0x74797065 /* 'type' */
-#endif
-
-#ifndef typeWildCard
-#define typeWildCard (DescType)0x2a2a2a2a /* '****' */
-#endif
-
-#ifndef typeObjectSpecifier
-#define typeObjectSpecifier (DescType)0x6F626A20 /* 'obj ' */
-#endif
-
-#ifndef typeCurrentContainer
-#define typeCurrentContainer (DescType)0x636E746E /* 'cntn' */
-#endif
-
-#ifndef formName
-#define formName (DescType)0x6e616d65 /* 'name' */
-#endif
-
-#ifndef keyAEDesiredClass
-#define keyAEDesiredClass (AEKeyword)0x77616e74 /* 'want' */
-#endif
-
-#ifndef keyAEKeyForm
-#define keyAEKeyForm (AEKeyword)0x666f726d /* 'form' */
-#endif
-
-#ifndef keyAEContainer
-#define keyAEContainer (AEKeyword)0x66726f6d /* 'from' */
-#endif
-
-#ifndef keyAEKeyData
-#define keyAEKeyData (AEKeyword)0x73656c64 /* 'seld' */
-#endif
-
-#ifndef cFile
-#define cFile (DescType)0x66696c65 /* 'file' */
-#endif
-
-#ifndef cApplication
-#define cApplication (DescType)0x63617070 /* 'capp' */
 #endif
 
 #ifndef cCell

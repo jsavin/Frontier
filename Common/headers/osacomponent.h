@@ -28,22 +28,13 @@
 #ifndef osacomponentinclude
 #define osacomponentinclude
 
-#ifdef FRONTIER_PORTABLE
-    /* Skip Component Manager & OSA in portable core */
-    typedef void* Component;
-    typedef void* ComponentInstance;
-    typedef void* AppleEvent;
+#if defined(__APPLE__) && !defined(FRONTIER_HEADLESS)
+#include <Components.h>
+#include <OSA.h>
 #else
-    #ifndef __COMPONENTS__
-        #if !defined(FRONTIER_HEADLESS)
-        #include <Components.h>
-        #endif
-    #endif
-    #ifndef __OSA__
-        #if !defined(FRONTIER_HEADLESS)
-        #include <OSA.h>
-        #endif
-    #endif
+typedef void* Component;
+typedef void* ComponentInstance;
+#include "appleevent_portable.h"
 #endif
 
 /*globals*/

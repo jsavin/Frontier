@@ -23,21 +23,21 @@ Focus: remove QuickDraw geometry and UI-only helpers from the headless path.
    - `make -C tests handle_tests`
    - `make -C tests strings_generated`
 
-## Step B — TextEncoding / TEC Macros (Next)
+## Step B — TextEncoding / TEC Macros (In progress)
 Focus: consolidate Text Encoding Converter constants and stubs.
 
-1. Move `kTextEncoding*`, `TECConvertText`, and related typedefs into a single portable shim (`portable/standard_portable.h` or new `portable/text_encoding_portable.h`).
-2. Remove duplicate definitions from `headless_stubs.h` once the shim is in place.
-3. Ensure headless code paths gracefully no-op (e.g., returning `kTextUnsupportedEncodingErr`).
-4. Rebuild key tests as in Step A.
+1. Move `kTextEncoding*`, `TECConvertText`, and related typedefs into a single portable shim (`portable/text_encoding_portable.h`). **Done**
+2. Remove duplicate definitions from `headless_stubs.h` once the shim is in place. **Done**
+3. Ensure headless code paths gracefully no-op (shim returns `kTextUnsupportedEncodingErr`; callers fall back or surface errors). **Done**
+4. Rebuild key tests as in Step A. **Done**
 
-## Step C — AppleEvent / Desktop Split
+## Step C — AppleEvent / Desktop Split (In progress)
 Focus: keep AppleEvent/Component types away from headless builds.
 
-1. Create macOS-only headers (`Common/headers/appleevent_desktop.h`) with the real AppleEvent typedefs and prototypes.
-2. Modify `land.h`, `langipc.h`, `osacomponent.h`, etc., to include either the desktop header or a small headless shim depending on build flags.
-3. Remove residual AppleEvent typedefs from `osincludes_portable.h` and `headless_stubs.h` once the split is complete.
-4. Run CLI/headless tests to confirm IPC stubs still compile.
+1. Added portable header/shim (`appleevent_portable.h`) so headless builds avoid Carbon while desktop builds keep the real API. **Done**
+2. Updated `langipc.h`, `osacomponent.h`, and `osincludes_portable.h` to route through the portable header and removed duplicate typedefs. **Done**
+3. TODO: audit remaining AppleEvent typedefs/macros in shared headers (`macconv.h`, `processinternal.h`, etc.) and confine them to desktop-only modules.
+4. Continue running CLI/headless tests as the split progresses.
 
 ## Step D — Include Audit & Regression Build
 Focus: ensure the include graph is minimal and consistent.
