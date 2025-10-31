@@ -26,6 +26,7 @@
 ******************************************************************************/
 
 #include "frontier.h"
+#include "appleevent_portable.h"
 #include "standard.h"
 
 	#include <IAC.h>

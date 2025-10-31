@@ -26,6 +26,7 @@
 ******************************************************************************/
 
 #include "frontier.h"
+#include "appleevent_portable.h"
 #include "standard.h"
 
 #include "landinternal.h"
@@ -490,7 +491,7 @@ static pascal void *eventthreadmain (void *hverb) {
 	if (landsystem7getsenderinfo (&event, &psn, &fs, &signature) != noErr)
 		ostypetostring ((**hv).idsender, fs.name);
 	
-	langgetstringlist (appleeventthreadstring, bs); // "\papple event ['^0', '^1'] from Ò^2Ó"
+	langgetstringlist (appleeventthreadstring, bs); // "\papple event ['^0', '^1'] from ^2"
 	
 	parsedialogstring (bs, class, token, fs.name, nil, bs);
 	

@@ -26,10 +26,12 @@
 ******************************************************************************/
 
 /* Macintosh Conversion */ 
+#include "appleevent_portable.h"
+
 #undef pascal
 #define pascal 
 
-#define __APPLEEVENTS__
+
 
 extern HINSTANCE shellinstance;
 extern HINSTANCE hInst;
@@ -151,7 +153,7 @@ enum {
 	keyAEVersion				= 'vers',						/* available only in vers 1.0.1 and greater */
 /* Event Class */
 	kCoreEventClass				= 'aevt',
-/* Event IDÕs */
+/* Event IDs */
 	kAEOpenApplication			= 'oapp',
 	kAEOpenDocuments			= 'odoc',
 	kAEPrintDocuments			= 'pdoc',
