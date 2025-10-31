@@ -76,6 +76,7 @@ This document is a concise contributor guide for Frontier’s C/C toolchain and 
 - Do not reformat unrelated files; avoid editing generated `build_*` outputs.
 - When adding files, mirror existing naming and include patterns.
 - Always use built-in shell-based tools for debugging on-disk files and formats instead of writing your own code to parse the file. Only write code for this purpose if built-in shell-based utilities are unavailable, and only after asking the user first to install the tool(s) you need.
+- When touching the portable/desktop boundary, follow the staged header plan in `planning/carbon_migration/header_cleanup_plan.md`. Update that doc (and `_CURRENT_STATUS.md`) if you move a type or shim so the next person knows what changed.
 - When new technical details surface (format quirks, runtime behavior, etc.), document them immediately in the most relevant markdown reference (e.g., `docs/database_architecture.md`) so future sessions can pick up the thread quickly.
 - Before archiving or mass-moving documents, verify each file’s status block. Only move docs whose `State` is `Completed`, `Done`, or `Deprecated`; if the status indicates ongoing work, leave it in place (or restore it) so in-flight plans stay editable.
 - <!-- 2025-10-27 Codex --> When touching the database migrator, remember the current implementation only updates the header; ensure follow-up work reserializes tables so migrated roots become fully 64-bit.
@@ -84,6 +85,8 @@ This document is a concise contributor guide for Frontier’s C/C toolchain and 
 - In general, avoid creating or maintaining shims that potentially mask underlying issues unless specifically asked to do so by the user.
 - Always run tests before pushing PRs to origin. If you encounter new or unexpected test failures, stop and ask the user what to do.
 - Whenever making changes to code, make sure to summarize the change with a dated comment near the top of the file, attributed to Codex.
+- Headless QuickDraw note: string width logic now lives in `strings_measure_pixels` (inside `Common/source/strings.c`). If you need pixel measurements in headless builds, prefer that helper instead of reintroducing `stringpixels`.
+- Text encoding note: TEC constants/stubs live in `portable/text_encoding_portable.h`. If you need encoding conversions, either add them there or implement a real converter—don’t reintroduce ad-hoc stubs.
 - Frontier’s database allocator (headers/trailers, variance fields, avail list merging) follows the Boundary Tag Method from Knuth’s *The Art of Computer Programming* (per Dave Winer); keep that lineage in mind when debugging allocation logic or documenting format quirks.
 
 ## Sandbox & Approvals
