@@ -38,14 +38,21 @@ Run Frontier without any Classic Mac / Carbon APIs while keeping the headless an
 - ✅ Seeded Carbon migration plan, inventory, and decision log.
 - ✅ Portable handle shim now reuses `frontierAlloc` and records `MemError`/`MaxBlock`; regression coverage lives in `tests/handle_tests.c`.
 - ✅ Scaffolded `strings_compiler` (bison/flex) to translate YAML string tables into generated headers/C sources.
-- 🔄 Working on header hygiene: ensuring `frontier.h` and related headers bring in the correct portable definitions.
+- ✅ Header hygiene Step A/B/C/D: Step D rerun (`make -C tools/strings_compiler`, `make -C tests all`, `make -C frontier-cli`) now passes after adding `portable/appleevent_portable.c`, folding the stdio/db shims into runtime builds, and trimming duplicate stubs. Remaining work is warning cleanup (pointer-sign noise in `findinfile.c`, variance casts in `db.c`).
+- ✅ AppleEvent shim decoupled from `osincludes_portable.h`; headless stubs now defer to the inline implementations provided by `appleevent_portable_shim.h` and the TEC shim.
+- ✅ Portable text-encoding bridge now lives in `portable/text_encoding_portable.{h,c}`, returning a small set of canonical encodings (UTF-8/MacRoman/Windows-1252) so `initCharsetsTable` can populate headless builds without Carbon. Missing names fall back cleanly.
+- 🆕 Logged follow-up work for db I/O wrappers and lingering Carbon helpers in [`header_cleanup_plan.md`](carbon_migration/header_cleanup_plan.md); warnings from the green Step D rebuild are tracked there.
+- 🆕 Captured the portable database shim roadmap in [`db_portable_plan.md`](carbon_migration/db_portable_plan.md); this is the path to keep the core permanently headless while migration tooling stays functional.
+- 🆕 Added a headless string-table bridge (`strings_portable.c`) that reads the generated YAML tables; missing entries currently fall back to `[list:id]` placeholders and log stderr warnings.
 
 ## Immediate Next Steps
 1. **Document call-site maps** (Assistant) — ✅: Outputs captured under `planning/carbon_migration/maps/` for STR# strings, filespec/alias, QuickDraw helpers, and AppleEvents. Use these tables to size each refactor.
 2. **Sequence refactor PRs** (Assistant) — ✅: Drafted the branch order above and linked tracer bullets in `tracer_bullets.md`; log entry added to `status_log.md`. Refer to this sequencing when planning upcoming PRs.
 3. **Windows parity review** (Assistant) — ✅: Findings captured in [`windows_parity_review.md`](carbon_migration/windows_parity_review.md); use it as input for the AppleEvent and string-table work.
 4. **Prepare resource fork replacement plan** (Assistant) — ✅: Plan captured in [`strings_replacement_plan.md`](carbon_migration/strings_replacement_plan.md) with a bison-based compiler design; next action is to backfill YAML tables and generator integration.
-5. **Portable header guard cleanup** (Assistant) — 🔄: Following [`header_cleanup_plan.md`](carbon_migration/header_cleanup_plan.md): (a) QuickDraw/UI extraction underway, (b) TextEncoding shim in place (`portable/text_encoding_portable.h`), (c) AppleEvent split in progress via `appleevent_portable.h` (desktop vs headless shim), (d) include audit/regression rebuild comes after the remaining AppleEvent work.
-6. **Integrate strings compiler** (Assistant) — ✅: libyaml-backed generator (`tools/strings_compiler/`) now drives `make strings_generated`; extend tests later as we add more tables.
+5. **Portable header guard cleanup** (Assistant) — 🔄: Following [`header_cleanup_plan.md`](carbon_migration/header_cleanup_plan.md): (a) QuickDraw/UI extraction **done**, (b) TextEncoding shim sourced via `portable/text_encoding_portable.h`, (c) AppleEvent shim decoupled and guarded (next task: corral remaining AE typedefs in `macconv.h`/Windows stubs), (d) include audit/regression rebuild to rerun once the final AppleEvent cleanups land.
+6. **Portable DB shim** (Assistant) — ✅: `portable/db_portable.(h|c)` fronts the legacy calls across tests/CLI, the stub (`tests/db_portable_stub.c`) is gone, and `save_migration_tests` now opens the migrated root via the shim (verifying `db_portable_getview`/`db_portable_refhandle`). Follow-up: broaden coverage (writes/save-as flow) as we continue the migration plan.
+7. **Integrate strings compiler** (Assistant) — ✅: libyaml-backed generator (`tools/strings_compiler/`) now drives `make strings_generated`; extend tests later as we add more tables.
+8. **Include audit & rebuild** (Assistant) — ✅: Step D commands now pass (`make -C tools/strings_compiler`, `make -C tests all`, `make -C frontier-cli`). Follow-up: scrub residual warnings (pointer-sign mismatches, db variance casts) and keep the follow-up list in `header_cleanup_plan.md` current.
 
 Progress and blockers should continue to be logged in the Carbon migration status log and decisions documented in the decision log.

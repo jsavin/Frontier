@@ -14,7 +14,9 @@ endif
 CFLAGS = -Wall -Wextra -std=c99 -g -O0 -fpascal-strings -Wno-deprecated-non-prototype -fcommon \
          -DFRONTIER_USE_PORTABLE_HANDLES -DFRONTIER_HEADLESS \
          -DLAND_GENERALLOG_LEVEL=LAND_LOGLEVEL_OFF -DLAND_GENERALLOG_TARGET=LAND_LOGTARGET_NONE \
-         $(SAN_FLAGS)
+         -DHEADLESS_LINKS_REAL_DB \
+         $(SAN_FLAGS) \
+         -I../generated
 STRINGS_COMPILER_DIR = ../tools/strings_compiler
 STRINGS_COMPILER = $(STRINGS_COMPILER_DIR)/strings_compiler
 STRINGS_INPUTS = $(wildcard ../resources/strings/*.yaml)
@@ -40,6 +42,10 @@ FRONTIER_SOURCES = \
     ../Common/source/langhash.c \
     ../Common/source/memory.c \
     ../Common/source/strings.c \
+    ../Common/source/strings_portable.c \
+    ../generated/strings_tables.c \
+    ../generated/strings_tables.c \
+    ../portable/text_encoding_portable.c \
     ../Common/source/ops.c \
     ../Common/source/tableops.c \
     ../Common/source/tablestructure.c \
@@ -73,7 +79,16 @@ LANG_RUNTIME_SOURCES = \
     ../Common/source/langsystypes.c \
     ../Common/source/memory.c \
     ../Common/source/portable_handles.c \
+    ../portable/classic_handle.c \
+    ../portable/text_encoding_portable.c \
+    ../portable/fixed_math_portable.c \
+    ../portable/appleevent_portable.c \
+    ../portable/file_portable.c \
+    ../portable/db_portable.c \
+    ../Common/source/db_format.c \
     ../Common/source/strings.c \
+    ../Common/source/strings_portable.c \
+    ../generated/strings_tables.c \
     ../Common/source/FastTimes.c \
     ../Common/source/md5.c \
     ../Common/source/sha1dgst.c \
@@ -95,6 +110,7 @@ LANG_RUNTIME_SOURCES = \
     ../Common/source/langxml.c \
     ../Common/source/tableops.c \
     ../Common/source/tablestructure.c \
+    ../Common/source/db.c \
     headless_lang_runtime_more_stubs.c \
     headless_shellhooks.c \
     headless_table_stubs.c \
@@ -104,6 +120,8 @@ LANG_RUNTIME_SOURCES = \
     headless_search_stubs.c \
     headless_mac_compat.c \
     headless_langregexp_stub.c \
+    ../Common/source/shell_api.c \
+    ../Common/source/shell_api_headless.c \
     \
     headless_langipc_stub.c
 
@@ -150,7 +168,10 @@ core_tests: core_tests.c ../Common/source/shell_api.c ../Common/source/shell_api
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders core_tests.c ../Common/source/shell_api.c ../Common/source/shell_api_headless.c headless_shell.c -o $@
 
 db_format_tests: db_format_tests.c ../Common/source/db_format.c
-	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders db_format_tests.c ../Common/source/db_format.c -o $@
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
+		db_format_tests.c \
+		../Common/source/db_format.c \
+		-o $@
 
 runtime_tests: runtime_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable runtime_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@
@@ -158,18 +179,20 @@ runtime_tests: runtime_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c
 parser_tests: parser_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable parser_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@
 
-save_migration_tests: save_migration_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/db.c ../Common/source/db_format.c ../portable/file_portable.c ../Common/source/odbengine.c headless_odb_stubs.c headless_shell.c
+save_migration_tests: save_migration_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c ../Common/source/shell_api.c ../Common/source/shell_api_headless.c headless_odb_stubs.c headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -DHEADLESS_LINKS_REAL_DB -I../Common/headers -I../Common/SystemHeaders -I../portable save_migration_tests.c \
-		$(LANG_RUNTIME_SOURCES) ../Common/source/db.c ../Common/source/db_format.c ../portable/file_portable.c ../Common/source/odbengine.c headless_odb_stubs.c headless_shell.c -o $@
+		$(LANG_RUNTIME_SOURCES) \
+		../Common/source/odbengine.c \
+		headless_odb_stubs.c headless_shell.c -o $@
 
-file_portable_tests: file_portable_tests.c ../portable/file_portable.c headless_shell.c ../Common/source/portable_handles.c
+file_portable_tests: file_portable_tests.c headless_shell.c ../Common/source/portable_handles.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -I../Common/headers -I../Common/SystemHeaders -I../portable file_portable_tests.c ../portable/file_portable.c headless_shell.c ../Common/source/portable_handles.c -o $@
 
-file_readline_tests: file_readline_tests.c ../portable/file_portable.c headless_shell.c ../Common/source/portable_handles.c
+file_readline_tests: file_readline_tests.c headless_shell.c ../Common/source/portable_handles.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -I../Common/headers -I../Common/SystemHeaders -I../portable file_readline_tests.c ../portable/file_portable.c headless_shell.c ../Common/source/portable_handles.c -o $@
 
-file_verb_tests: file_verb_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/findinfile.c ../portable/file_portable.c headless_file_verbs.c headless_shell.c
-	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -I../Common/headers -I../Common/SystemHeaders -I../portable file_verb_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/findinfile.c ../portable/file_portable.c headless_file_verbs.c headless_shell.c -o $@
+file_verb_tests: file_verb_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/findinfile.c headless_file_verbs.c headless_shell.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -I../Common/headers -I../Common/SystemHeaders -I../portable file_verb_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/findinfile.c headless_file_verbs.c headless_shell.c -o $@
 
 handle_tests: handle_tests.c ../Common/source/portable_handles.c ../portable/classic_handle.c
 	$(CC) $(CFLAGS) -DFRONTIER_USE_PORTABLE_HANDLES -I../Common/headers -I../Common/SystemHeaders -I../portable \

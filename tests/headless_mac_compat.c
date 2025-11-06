@@ -1,4 +1,6 @@
 /* 2025-10-31 Codex: Skip portable handle stubs when FRONTIER_USE_PORTABLE_HANDLES is active. */
+/* 2025-10-31 Codex: Gate legacy file/DB shims when portable implementations are linked. */
+/* 2025-11-05 Codex: Disable db stub globals when the portable DB core is linked. */
 #include "frontier.h"
 #include "portable_handles.h"
 #include "osincludes_portable.h"
@@ -13,6 +15,7 @@
 #include "opdisplay.h"
 #include "opinternal.h"
 #include "osacomponent.h"
+
 #include "cursor.h"
 #include "shelltypes.h"
 #include "langexternal.h"
@@ -159,12 +162,12 @@ boolean popundoaction (void) { return false; }
 void ouch (void) { }
 
 // Error and path helpers
-#if !defined(FRONTIER_PORTABLE) && !defined(HEADLESS_TEST_PORTABLE_FILE)
 boolean oserror (OSErr err) { (void)err; return false; }
+#if !defined(FRONTIER_PORTABLE_FILE_AVAILABLE) && !defined(FRONTIER_PORTABLE) && !defined(HEADLESS_TEST_PORTABLE_FILE)
 boolean pathtofilespec (bigstring bs, ptrfilespec fs) { (void)bs; if (fs) memset(fs,0,sizeof(*fs)); return false; }
 #endif
 OSStatus pathtofsref (bigstring bs, FSRef *ref) { (void)bs; if (ref) memset(ref,0,sizeof(*ref)); return paramErr; }
-#if !defined(FRONTIER_PORTABLE) && !defined(HEADLESS_TEST_PORTABLE_FILE)
+#if !defined(FRONTIER_PORTABLE_FILE_AVAILABLE) && !defined(FRONTIER_PORTABLE) && !defined(HEADLESS_TEST_PORTABLE_FILE)
 boolean equalfilespecs ( const ptrfilespec fs1, const ptrfilespec fs2 ) { (void)fs1; (void)fs2; return false; }
 #endif
 boolean equalrects (Rect r1, Rect r2) { return r1.top==r2.top && r1.left==r2.left && r1.bottom==r2.bottom && r1.right==r2.right; }
@@ -247,13 +250,14 @@ void smashrect (Rect r) { (void)r; }
 void invalrect (Rect r) { (void)r; }
 
 // DB stubs (disabled when linking the real database core)
-#if !defined(HEADLESS_LINKS_REAL_DB)
+#if !defined(FRONTIER_PORTABLE_DB_AVAILABLE) && !defined(HEADLESS_LINKS_REAL_DB)
 boolean dbpushdatabase (hdldatabaserecord h) { (void)h; return false; }
 boolean dbpopdatabase (void) { return false; }
 boolean dbcopy (dbaddress a, dbaddress *b) { (void)a; if (b) *b=0; return false; }
 boolean dbassignhandle (Handle h, dbaddress *adr) { (void)h; if (adr) *adr=0; return false; }
-#endif
 hdldatabaserecord databasedata = nil;
+boolean fldatabasesaveas = false;
+#endif
 
 // Process/debug stubs
 boolean debuggingcurrentprocess (void) { return false; }
@@ -368,7 +372,6 @@ void clearfilespec (ptrfilespec fs) { if (fs) memset(fs,0,sizeof(*fs)); }
 boolean cmdkeydown (void) { return false; }
 tyconfigrecord config; /* default-initialized */
 boolean copydatahandle (AEDesc *desc, Handle *hout) { (void)desc; if (hout) *hout=nil; return false; }
-void bigstringtofsname (const bigstring bs, tyfsnameptr fsname) { (void)bs; if (fsname) memset(fsname,0,sizeof(*fsname)); }
 boolean datahandletostring (AEDesc* desc, bigstring bs) { (void)desc; setemptystring(bs); return false; }
 boolean getscrap (tyscraptype t, Handle h) { (void)t; (void)h; return false; }
 boolean gettablevalue (hdlhashtable ht, bigstring bs, tyvaluerecord *v, hdlhashnode *node) { (void)ht;(void)bs;(void)v; if (node) *node=nil; return false; }
@@ -451,109 +454,20 @@ void SetPort(GrafPtr port) {
 void SysBeep(short duration) {
     (void)duration;
 }
-
-
-
-OSStatus TECGetAvailableTextEncodings(TextEncoding encodings[], ItemCount maxCount, ItemCount *actualCount) {
-    (void)encodings;
-    (void)maxCount;
-    if (actualCount)
-        *actualCount = 0;
-    return noErr;
-}
-
-OSStatus TECGetTextEncodingFromInternetName(TextEncoding *outEncoding, const unsigned char *name) {
-    (void)name;
-    if (outEncoding)
-        *outEncoding = kTextEncodingMacRoman;
-    return noErr;
-}
-
-OSStatus TECGetTextEncodingInfo(TextEncoding encoding, TextEncodingBase *base, TextEncodingVariant *variant, TextEncodingFormat *format) {
-    (void)encoding;
-    if (base)
-        *base = 0;
-    if (variant)
-        *variant = 0;
-    if (format)
-        *format = 0;
-    return noErr;
-}
-
-OSStatus TECGetTextEncodingInternetName(TextEncoding encoding, unsigned char *name) {
-    (void)encoding;
-    if (name)
-        name[0] = '\0';
-    return noErr;
-}
-
-OSStatus GetTextEncodingName(TextEncoding encoding, TextEncodingNameSelector selector, RegionCode region, TextEncoding referenceEncoding, ItemCount maxLen, unsigned long *actualLen, RegionCode *outRegion, TextEncoding *outEncoding, unsigned char *outName) {
-    (void)encoding;
-    (void)selector;
-    (void)region;
-    (void)referenceEncoding;
-    (void)maxLen;
-    if (actualLen)
-        *actualLen = 0;
-    if (outRegion)
-        *outRegion = 0;
-    if (outEncoding)
-        *outEncoding = kTextEncodingMacRoman;
-    if (outName)
-        outName[0] = '\0';
-    return noErr;
-}
-
-OSStatus TECCreateConverter(TECObjectRef *converter, TextEncoding inputEncoding, TextEncoding outputEncoding) {
-    (void)inputEncoding;
-    (void)outputEncoding;
-    if (converter)
-        *converter = (TECObjectRef)0x1;
-    return noErr;
-}
-
-OSStatus TECDisposeConverter(TECObjectRef converter) {
-    (void)converter;
-    return noErr;
-}
-
-OSStatus TECConvertText(TECObjectRef converter, ConstTextPtr inputBuf, ByteCount inputLen, ByteCount *inputRead, TextPtr outputBuf, ByteCount outputLen, ByteCount *outputProduced) {
-    (void)converter;
-    if (inputRead)
-        *inputRead = inputLen;
-    if (outputBuf && outputLen > 0 && inputBuf) {
-        ByteCount toCopy = inputLen < outputLen ? inputLen : outputLen;
-        memcpy(outputBuf, inputBuf, toCopy);
-        if (outputProduced)
-            *outputProduced = toCopy;
-        return (toCopy == inputLen) ? noErr : kTECPartialCharErr;
-    }
-    if (outputProduced)
-        *outputProduced = 0;
-    return noErr;
-}
-
-OSStatus TECFlushText(TECObjectRef converter, TextPtr outputBuf, ByteCount outputLen, ByteCount *outputProduced) {
-    (void)converter;
-    (void)outputBuf;
-    (void)outputLen;
-    if (outputProduced)
-        *outputProduced = 0;
-    return noErr;
-}
-
 Boolean macfilespecisvalid(const ptrfilespec fs) {
     (void)fs;
     return false;
 }
 
+#if !defined(FRONTIER_PORTABLE_FILE_AVAILABLE)
 Boolean filespectopath(const ptrfilespec fs, bigstring path) {
     (void)fs;
     setstringlength(path, 0);
     return false;
 }
+#endif
 
-#ifndef HEADLESS_TEST_PORTABLE_FILE
+#if !defined(FRONTIER_PORTABLE_FILE_AVAILABLE) && !defined(HEADLESS_TEST_PORTABLE_FILE)
 Boolean getfsfile(const ptrfilespec fs, bigstring name) {
     (void)fs;
     setstringlength(name, 0);
@@ -590,6 +504,7 @@ Handle GetString(short resID) {
     return NULL;
 }
 
+#if !defined(APPLEEVENT_PORTABLE_PROVIDES_IMPLS)
 OSStatus AEProcessAppleEvent(const EventRecord *event) {
     (void)event;
     return noErr;
@@ -892,6 +807,7 @@ OSErr AEGetNthDesc(const AEDescList *list, long index, DescType desiredType, AEK
     }
     return errAEEventNotHandled;
 }
+#endif /* !APPLEEVENT_PORTABLE_PROVIDES_IMPLS */
 
 void Microseconds(UnsignedWide *result) {
     static uint64_t counter = 0;
@@ -937,7 +853,7 @@ boolean windowgetfspec (WindowPtr w, ptrfilespec fs) {
 }
 
 short stringpixels (bigstring bs) {
-    return (short) (stringlength (bs));
+    return (short) (stringlength (bs) * 7);
 }
 
 boolean timetodatestring (unsigned long ptime, bigstring bs, boolean flabbreviate) {
