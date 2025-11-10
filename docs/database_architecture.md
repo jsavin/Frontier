@@ -30,13 +30,15 @@ All pristine v6 databases we ship (`Frontier-v6.root`, `prefs.root`, `manila.roo
 - the first 2 bytes are the struct’s version (0x0003 in Frontier 6); the next 4 bytes (`adrroottable`) point at the true root table (e.g. 0x0000031e inside `tests/test.root`)
 - the remainder of the struct stores font/window metadata for the About window plus the text buffer used by `msg()`/agents
 
-Classic Frontier builds (pre-v6) load this table to display a “created with a newer version” warning rather than crash. Modern builds skip it and register the true top-level tables by following external references into the **modern** merged blocks elsewhere in the file (e.g. block `0x031e` in `databases/test.root`).
+Classic Frontier builds (pre-v6) load this table to display a “created with a newer version” warning rather than crash. Modern builds skip it and register the true top-level tables by following external references into the **modern** merged blocks elsewhere in the file (e.g. block `0x031e` in `databases/test.root`). As of November 2025 the headless toolchain rewrites `views[0]` to point directly at the packed root table and no longer emits the Cancoon record, so the compatibility shim only exists in untouched legacy roots.
 
-When writing scanners or migration tools:
+When writing scanners or migration tools against legacy files:
 
 1. Check whether the block at `views[0]` is the 442-byte Cancoon record.
 2. If so, parse the first 6 bytes to extract `version` and `adrroottable`.
 3. Continue scanning at `adrroottable`, which is a normal table stored using the merged (modern) format.
+
+Modern (rewritten) v7/v8 databases skip this entire dance: `views[0]` already contains the real root table, and UI-only metadata such as table fonts/window rectangles is no longer serialized with the data.
 
 See `databases/test-root-contents.png` for the intended UI view of `test.root` once the Cancoon record is resolved and real tables like `myTable` are traversed.
 
@@ -153,6 +155,8 @@ When migrating v6→v7:
 #### Migration Pitfalls (32-bit payloads)
 
 - The sample migrator in `Common/source/db_format.c:874-1054` only writes a new 116-byte header and then copies the remainder of the legacy file byte-for-byte into the v7 output. All block payloads—including `system`, `system.verbs`, and `system.verbs.builtins`—remain 32-bit serialized.
+- Hydration now updates `views[0]` via `dbsetview()` to point at the freshly packed root table and purposely omits the Cancoon record, so modern v7 roots no longer carry UI metadata or compatibility placeholders. Legacy files that still contain the 442-byte record will continue to load, but the next “Save As” pass will drop it.
+- Headless builds skip `tablepackformats()`, so the merged payloads contain only hash data; UI state (fonts, window rectangles, scroll offsets) will be handled by a future per-user preference store.
 - Runtime code such as `tableverbunpack()` decides how many bytes to consume based on the global `use_64bit_format` flag (set once the v7 header is seen). When a copied legacy payload arrives, the loader tries to read an 8-byte address, overruns the 4-byte legacy field, and errors out unless additional heuristics patch things up.
 - To avoid accruing more compatibility shims, the migrator must take ownership of widening those payloads. The recommended approach is:
   1. Load each legacy table/verb through the existing 32-bit readers.
@@ -161,6 +165,34 @@ When migrating v6→v7:
   4. Write the resulting blocks into the new file, ensuring block headers/trailers match their new sizes.
 
 Once this reserialization is in place, no runtime path outside the migrator should need to special-case 32-bit layouts.
+
+### Table Payload Layout (confirmed from original 32-bit sources)
+
+Classic Frontier (see `../../tedchoward/Frontier/Common/source/langhash.c` and `tablepack.c`) serializes every table in two nested `mergehandles()`:
+
+1. `hashpacktable()` writes a `tydisktablerecord` header followed immediately by the contiguous array of 10-byte `tydisksymbolrecord` entries, then merges that block with the string/binary pool. This inner merge is prefixed with a 32-bit big-endian length written by `mergehandles()` itself.
+2. `tablepacktable()` merges the result with the serialized UI formats produced by `tablepackformats()` (which emits a `tyversion2tablediskrecord` plus optional outline/clay data). The outer merge again starts with a 32-bit length.
+
+Therefore a fully intact table payload looks like:
+
+```
+[outer_size: uint32 be]                           ← mergehandles() prefix
+  [inner_merged_table]
+    [inner_size: uint32 be]
+      [tydisktablerecord: 16 bytes]
+      [tydisksymbolrecord array: 10 bytes each]   ← no sentinel; count = (inner_size - 16) / 10
+    [Pascal string / binary pool]                 ← referenced by rec.data.longvalue offsets
+  [tyversion2tablediskrecord + optional outline/clay payload]
+```
+
+Key implications for migration/debugging:
+
+- Migrated v6 roots sometimes have the two length prefixes stripped (because we trimmed leading bytes while trying to “normalize” the blocks). The underlying order is still `[header][records][strings][tyversion2tablediskrecord...]`.
+- The `tyversion2tablediskrecord` area is what we keep seeing as “Lucida/Geneva” blobs in captured payloads—it is not part of the string pool.
+- Because there is no sentinel, any heuristic that searches for a 10-byte zero record will fail. Instead, identify the start of `tyversion2tablediskrecord` (its `versionnumber` field is 0x0010, `recordsize` equals `sizeof(tyversion2tablediskrecord)`) and treat the bytes before it as `[header][records][strings]`.
+- Headless builds compiled with `FRONTIER_HEADLESS` now skip `tablepackformats()`, so newly saved v7 databases omit the UI blob while still preserving the merge layout. Legacy payloads will continue to include it until we reserialize them via the migrator.
+
+These details are critical for `tableexternal_common.c` and `db_format.c` to reconstruct the proper merged handles during v6→v7 conversion, and they are the reason the previous “[header][strings][records][sentinel]” assumption failed on the `system.fonts` payload captured at `/tmp/frontier_legacy_dump_raw.bin`.
 
 ### For CLI/Runtime
 
