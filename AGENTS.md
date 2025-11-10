@@ -1,5 +1,7 @@
 # Repository Guidelines
 
+<!-- 2025-11-08 Codex: Clarified planning backlog workflow (ADRs/issues) and priority usage. -->
+
 This document is a concise contributor guide for Frontier’s C/C toolchain and test harness. Use it to navigate the repo, build locally, and submit focused changes that keep tests green.
 
 ## TBD Decisions (to revisit later)
@@ -85,6 +87,9 @@ This document is a concise contributor guide for Frontier’s C/C toolchain and 
 - Always run tests before pushing PRs to origin. If you encounter new or unexpected test failures, stop and ask the user what to do.
 - Whenever making changes to code, make sure to summarize the change with a dated comment near the top of the file, attributed to Codex.
 - Frontier’s database allocator (headers/trailers, variance fields, avail list merging) follows the Boundary Tag Method from Knuth’s *The Art of Computer Programming* (per Dave Winer); keep that lineage in mind when debugging allocation logic or documenting format quirks.
+- Track all future ADR-style decisions and upcoming issues inside `planning/TODO_future_improvements.md`; do not recreate `planning/adr` or `planning/issues`.
+- Use the shared priority ladder defined there: `P0` (must / do first), `P1` (pre-prod critical), `P2` (future/nice-to-have). Mirror those labels when filing GitHub issues or internal notes so urgency stays consistent across tools.
+- After every turn, update `planning/_CURRENT_STATUS.md` with the latest status summary and explicit next steps so the next session can resume immediately.
 
 ## Sandbox & Approvals
 - Escalation: Always request escalated execution when needed (e.g., writing outside workspace, network access, package installs, GUI commands, or when sandboxing blocks progress).
