@@ -4,8 +4,10 @@
 CC = clang
 CFLAGS = -std=c17 -Wall -Wextra -O0 -g -fpascal-strings \
          -DFRONTIER_HEADLESS -DFRONTIER_USE_PORTABLE_HANDLES \
+         -DFRONTIER_PORTABLE_STRINGS \
          -DHEADLESS_TEST_PORTABLE_FILE -DHEADLESS_LINKS_REAL_DB \
-         -DHEADLESS_USE_REAL_TABLEPACK
+         -DHEADLESS_USE_REAL_TABLEPACK \
+         -DUNIX_COMPILE -DC_LIBRARY -DNO_OS_INLINE
 SANITIZE ?= 0
 ifeq ($(SANITIZE),1)
   CFLAGS += -fsanitize=address,undefined -fno-omit-frame-pointer
@@ -18,7 +20,29 @@ SYSTEMHEADERDIR = ../Common/SystemHeaders
 PORTABLEDIR = ../portable
 TESTSDIR = ../tests
 
-INCLUDES = -I$(HEADERDIR) -I$(SYSTEMHEADERDIR) -I$(PORTABLEDIR) -I../build_Xcode_modern
+INCLUDES = -I$(HEADERDIR) -I$(SYSTEMHEADERDIR) -I$(PORTABLEDIR) -I../build_Xcode_modern -I../generated
+
+# Paige integration (WPText engine)
+THIRDPARTYDIR = ../third_party
+PAIGE_DIR = $(THIRDPARTYDIR)/Paige
+PAIGE_BUILD_DIR = $(PAIGE_DIR)/build-headless
+PAIGE_LIB = $(PAIGE_BUILD_DIR)/libpaige.a
+CMAKE_BIN = $(THIRDPARTYDIR)/cmake-install/bin/cmake
+PAIGE_ARCHES = arm64;x86_64
+
+INCLUDES += -I$(PAIGE_DIR)/PGHEADER
+LIBS = $(PAIGE_LIB)
+LDFLAGS = -Wl,-undefined,dynamic_lookup
+
+# Strings compiler integration (shared with tests)
+STRINGS_COMPILER_DIR = ../tools/strings_compiler
+STRINGS_COMPILER = $(STRINGS_COMPILER_DIR)/strings_compiler
+STRINGS_INPUTS = $(wildcard ../resources/strings/*.yaml)
+GENERATED_DIR = ../generated
+STRINGS_C = $(GENERATED_DIR)/strings_tables.c
+STRINGS_H = $(GENERATED_DIR)/strings_tables.h
+STRINGS_MANIFEST = $(GENERATED_DIR)/strings_manifest.json
+GENERATED_STRINGS = $(STRINGS_C) $(STRINGS_H) $(STRINGS_MANIFEST)
 
 # CLI sources
 CLI_SOURCES = \
@@ -54,7 +78,8 @@ RUNTIME_SOURCES = \
     ../Common/source/portable_handles.c \
     ../Common/source/strings.c \
     ../Common/source/strings_extras.c \
-    ../Common/source/FastTimes.c \
+    ../portable/text_encoding_portable.c \
+    ../portable/time_portable.c \
     ../Common/source/md5.c \
     ../Common/source/sha1dgst.c \
     ../Common/source/whirlpool.c \
@@ -84,7 +109,7 @@ HEADLESS_STUBS = \
     $(TESTSDIR)/headless_shell.c \
     $(TESTSDIR)/headless_shellhooks.c \
     $(TESTSDIR)/headless_table_stubs.c \
-    $(TESTSDIR)/headless_wp_stubs.c \
+    ../portable/wptext_runtime.c \
     $(TESTSDIR)/headless_pict_stubs.c \
     $(TESTSDIR)/headless_menu_stubs.c \
     $(TESTSDIR)/headless_search_stubs.c \
@@ -93,6 +118,10 @@ HEADLESS_STUBS = \
     $(TESTSDIR)/headless_langipc_stub.c \
     $(TESTSDIR)/headless_lang_runtime_more_stubs.c \
     ../portable/file_portable.c \
+    ../portable/appleevent_portable.c \
+    ../portable/classic_handle.c \
+    ../portable/script_portable.c \
+    ../portable/wptext_portable.c \
     $(TESTSDIR)/headless_file_verbs.c \
     $(TESTSDIR)/headless_odb_stubs.c
 
@@ -104,19 +133,36 @@ DATABASE_SOURCES = \
     ../Common/source/findinfile.c
 
 # Aggregate sources
-FRONTIER_SOURCES = $(RUNTIME_SOURCES) $(DATABASE_SOURCES) $(HEADLESS_STUBS)
+FRONTIER_SOURCES = $(RUNTIME_SOURCES) $(DATABASE_SOURCES) $(HEADLESS_STUBS) $(STRINGS_C)
 
 TARGET = frontier-cli
 
-all: $(TARGET)
+all: strings_generated $(TARGET)
 
-$(TARGET): $(CLI_SOURCES) $(FRONTIER_SOURCES)
+$(TARGET): $(CLI_SOURCES) $(FRONTIER_SOURCES) $(PAIGE_LIB)
 	$(CC) $(CFLAGS) $(INCLUDES) \
 		$(CLI_SOURCES) \
 		$(FRONTIER_SOURCES) \
-		-o $(TARGET)
+		-o $(TARGET) $(LIBS) $(LDFLAGS)
+
+$(STRINGS_COMPILER):
+	$(MAKE) -C $(STRINGS_COMPILER_DIR)
+
+$(GENERATED_STRINGS): $(STRINGS_COMPILER) $(STRINGS_INPUTS)
+	@mkdir -p $(GENERATED_DIR)
+	@if [ -z "$(STRINGS_INPUTS)" ]; then \
+		echo "No YAML string tables found under resources/strings." >&2; \
+		exit 1; \
+	fi
+	$(STRINGS_COMPILER) --c-output $(STRINGS_C) --h-output $(STRINGS_H) --manifest $(STRINGS_MANIFEST) $(STRINGS_INPUTS)
+
+strings_generated: $(GENERATED_STRINGS)
 
 clean:
 	rm -f $(TARGET)
 
-.PHONY: all clean
+$(PAIGE_LIB):
+	$(CMAKE_BIN) -S $(PAIGE_DIR) -B $(PAIGE_BUILD_DIR) -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="$(PAIGE_ARCHES)"
+	$(CMAKE_BIN) --build $(PAIGE_BUILD_DIR)
+
+.PHONY: all clean strings_generated

@@ -2,6 +2,7 @@
 #ifndef PORTABLE_FRONTIER_H
 #define PORTABLE_FRONTIER_H
 
+#include "osincludes_portable.h"
 #include "../Common/headers/frontierdefs.h"
 #include "standard_portable.h"
 #include "standard.h"
