@@ -109,6 +109,41 @@ typedef struct wp_portable_state {
 static long headless_wp_sel_start = 0;
 static long headless_wp_sel_end = 0;
 
+static boolean wp_portable_validate_rtf(const uint8_t *data, long len) {
+    if (data == NULL || len <= 6)
+        return false;
+    if (data[0] != '{')
+        return false;
+    boolean has_rtf = false;
+    for (long i = 0; i < len - 4; ++i) {
+        if (data[i] == '\\' && (i + 4) < len) {
+            if (data[i + 1] == 'r' && data[i + 2] == 't' && data[i + 3] == 'f') {
+                has_rtf = true;
+                break;
+            }
+        }
+    }
+    if (!has_rtf)
+        return false;
+
+    long braces = 0;
+    for (long i = 0; i < len; ++i) {
+        unsigned char c = data[i];
+        if (c == '\\') {
+            ++i; /* skip escaped char */
+            continue;
+        }
+        if (c == '{')
+            ++braces;
+        else if (c == '}') {
+            --braces;
+            if (braces < 0)
+                return false;
+        }
+    }
+    return braces == 0;
+}
+
 static wp_portable_state *wp_portable_state_alloc(void) {
     wp_portable_state *state = (wp_portable_state *)calloc(1, sizeof(wp_portable_state));
     return state;
@@ -542,6 +577,10 @@ static boolean wp_portable_state_pack_portable(hdlexternalvariable hv, wp_portab
     }
 
     long utf8_len = gethandlesize(hrtf);
+    if (!wp_portable_validate_rtf((const uint8_t *)*hrtf, utf8_len)) {
+        disposehandle(hrtf);
+        return false;
+    }
     state->buffersize = utf8_len;
 
     Handle hblob = nil;
@@ -802,5 +841,56 @@ boolean wpsetselection(long startsel, long endsel) {
     headless_wp_sel_end = endsel;
     return true;
 }
+
+#ifdef FRONTIER_TESTS
+Boolean wp_portable_pack_text_for_test(const char *utf8text, Handle *hpacked) {
+    if (utf8text == NULL || hpacked == NULL)
+        return false;
+    if (!wp_portable_require_runtime())
+        return false;
+
+    pg_ref doc = pgNewShell(wp_portable_pg_globals());
+    if (doc == MEM_NULL)
+        return false;
+
+    size_t textlen = strlen(utf8text);
+    if (textlen > 0) {
+        if (!pgInsertBytes(doc, (const pg_bits8_ptr)utf8text, (long)textlen, CURRENT_POSITION, data_insert_mode, 0, draw_none)) {
+            pgDispose(doc);
+            return false;
+        }
+    }
+
+    wp_portable_state *state = wp_portable_state_alloc();
+    if (state == NULL) {
+        pgDispose(doc);
+        return false;
+    }
+
+    state->doc = doc;
+    state->doc_loaded = true;
+    state->timecreated = 0;
+    state->timelastsave = 0;
+    state->ctsaves = 0;
+    state->maxpos = pgTextSize(doc);
+    state->header_valid = true;
+    state->portable_format = true;
+    state->address = nildbaddress;
+
+    Handle payload = nil;
+    boolean ok = wp_portable_state_pack_portable(nil, state, &payload);
+
+    state->doc = MEM_NULL;
+    state->doc_loaded = false;
+    wp_portable_state_free(state);
+    pgDispose(doc);
+
+    if (!ok)
+        return false;
+
+    *hpacked = payload;
+    return true;
+}
+#endif /* FRONTIER_TESTS */
 
 #endif /* FRONTIER_HEADLESS */

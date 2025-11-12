@@ -62,7 +62,7 @@
 
 ### 5. Tests & fixtures
 - [ ] Capture sample WPText payloads (legacy + portable) under `planning/carbon_migration/data/`.
-- [ ] Add unit tests covering `wp_portable_pack()`/`wp_portable_unpack()` round-trips (plaintext comparison, header validation).
+- [x] Add unit tests covering `wp_portable_pack()`/`wp_portable_unpack()` round-trips (plaintext comparison, header validation). `tests/runtime_tests` now calls `wp_portable_pack_text_for_test` and asserts the `WPRT` header, payload sizing, and brace balance for a sample UTF-8 string.
 - [ ] Extend CLI integration tests (or add a new script) that triggers WPText packing during migration and verifies the CLI no longer crashes when it hits `examples.song`.
 
 ### 6. Cleanup / follow-up

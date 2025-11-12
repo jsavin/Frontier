@@ -9,6 +9,7 @@
 - The runtime now emits the new `WPRT` portable header: packing forces a Paige-to-RTF export, prepends the `[tywpportableheader][UTF-8 RTF]` blob, and marks Paige as **conversion-only** going forward. Loading detects the magic, rehydrates RTF via Paige when needed, and still falls back to legacy trailers for older roots.
 - `wpverbpack` mirrors Save/Save As semantics: forced repacks (`flconvertingolddatabase`, `fldatabasesaveas`, dirty docs, or any v7 root) hydrate Paige, export the current payload, update timestamps/ctsaves, and call `dbassignhandle` before pushing the db address back on the packed handle. This gives the migrator a deterministic path for rewriting WPTexts.
 - Updated `planning/carbon_migration/wptext_format.md` and `planning/carbon_migration/wptext_rtf_tracker.md` to document the `WPRT` layout, note that Paige is conversion-only, and track the remaining validation work.
+- Added a headless-only helper (`wp_portable_pack_text_for_test`) plus a runtime smoke test that builds a WPText from UTF-8, packs it, and asserts the emitted handle has `WPRT` magic, consistent sizing, and balanced braces—our first automated regression that the serializer produces parseable RTF.
 
 ## Recent Updates — November 10, 2025
 - Added a UNIX/headless platform definition to Paige’s core headers plus a portable CMake configuration. The Paige build now runs with Clang via `third_party/cmake-install/bin/cmake`, stalls only on the missing memory-handle traps, and gives us concrete follow-up items instead of SDK errors.
