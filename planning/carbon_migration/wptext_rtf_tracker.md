@@ -25,35 +25,33 @@
 - [ ] Document remaining platform gaps (clipboard, menu events) before we strip additional Carbon code from the desktop target.
 
 ### 3. Portable header definition & serializer
-- [ ] Define `tywpportableheader` (`'WPRT'` magic, version, timestamps, text length, UTF-8 flag, 1 KB reserved block). Document it in `wptext_format.md`.
-- [ ] Implement `wp_portable_pack()`:
-  - [ ] Force doc into memory (`wpverbinmemory`).
-  - [ ] Call `pgExportFileFromC(...pgRTFfile..., pgExportUTF8, …)` with a memory-backed writer.
-  - [ ] Emit `[tywpportableheader][UTF‑8 RTF bytes]`.
-- [ ] Implement `wp_portable_unpack()`:
-  - [ ] Detect the magic + header.
-  - [ ] Desktop: use `pgImportFileFromC` to rehydrate Paige; headless: keep the RTF blob (future renderer TBD).
-- [ ] Update `wpverbpack`/`wpverbunpack` to switch between legacy and portable paths based on `flconvertingolddatabase` (and eventually a build flag).
+- [x] Define `tywpportableheader` (`'WPRT'` magic, version, timestamps, text length, UTF-8 flag, 1 KB reserved block). Document it in `wptext_format.md`.
+- [x] Implement `wp_portable_pack()`:
+  - [x] Force doc into memory (`wpverbinmemory`).
+  - [x] Call `pgExportFileFromC(...pgRTFfile..., pgExportUTF8, …)` with a memory-backed writer.
+  - [x] Emit `[tywpportableheader][UTF‑8 RTF bytes]`.
+- [x] Implement `wp_portable_unpack()`:
+  - [x] Detect the magic + header.
+  - [x] Desktop/headless: reuse Paige only to hydrate legacy docs, treating the UTF‑8 RTF blob as canonical storage.
+- [x] Update `wpverbpack`/`wpverbunpack` to switch between legacy and portable paths based on `flconvertingolddatabase` / `use_64bit_format` (legacy trailers are still read for back-compat).
 
 #### Detailed RTF Conversion Steps
 1. **Portable Header Finalization**
-   - [ ] Confirm exact field order/packing of `tywpportableheader` and reserve 1024 bytes for future metadata (refcons, view state, etc.).
-   - [ ] Add helper routines to read/write the header (with endian swaps) and validate the `'WPRT'` magic + version.
+   - [x] Confirm exact field order/packing of `tywpportableheader` and reserve 1024 bytes for future metadata (refcons, view state, etc.).
+   - [x] Add helper routines to read/write the header (with endian swaps) and validate the `'WPRT'` magic + version.
    - [ ] Update `wptext_format.md` with diagrams + sample hex dumps for both legacy headers and the new portable header.
 2. **Exporter Plumbing**
-   - [ ] Extend `portable/wptext_runtime.c` with an exporter helper that:
-     - [ ] Calls `wpverbinmemory` to guarantee a Paige doc exists.
-     - [ ] Uses `pgExportFileFromC` with `pgRTFfile | pgExportUTF8` into a scratch `memory_ref`.
-     - [ ] Copies the resulting RTF bytes into a classic handle, records their UTF-8 length, and updates the header timestamps/ctsaves.
-   - [ ] Embed the portable header + RTF payload into a merged handle compatible with `dbassignhandle`.
+   - [x] Extend `portable/wptext_runtime.c` with an exporter helper that:
+     - [x] Calls `wpverbinmemory` to guarantee a Paige doc exists.
+     - [x] Uses `pgExportFileFromC` with `pgRTFfile | pgExportUTF8` into a scratch `memory_ref`.
+     - [x] Copies the resulting RTF bytes into a classic handle, records their UTF-8 length, and updates the header timestamps/ctsaves.
+   - [x] Embed the portable header + RTF payload into a merged handle compatible with `dbassignhandle`.
 3. **Importer Plumbing**
-   - [ ] Teach `wp_portable_state_load_payload` to detect `'WPRT'` magic: split header and RTF sections without assuming legacy trailers.
-   - [ ] Desktop builds: invoke `pgImportFileFromC` on the UTF-8 RTF buffer to recreate a live Paige document; set `doc_loaded` immediately.
-   - [ ] Headless builds: cache the RTF handle; lazy-load Paige only if/when a future operation requires it.
-   - [ ] Maintain backward compatibility by falling back to the legacy trailer loader when no magic is present.
+   - [x] Teach the runtime to detect `'WPRT'` magic: split header/RTF without assuming legacy trailers.
+   - [x] Desktop/headless: invoke `pgImportFileFromC` as a temporary bridge so scripts still see real Paige docs; keep legacy loader as fallback.
 4. **Runtime Hooks**
-   - [ ] Update `wpverbpack`/`wpverbunpack` so migration (`flconvertingolddatabase` or new flag) forces the portable path, while classic desktop mode can still emit legacy trailers for now.
-   - [ ] Ensure timestamps (`timecreated`, `timelastsave`, `ctsaves`) survive every conversion; add logging to prove the values stay stable across pack/unpack.
+   - [x] Update `wpverbpack`/`wpverbunpack` so migration (`flconvertingolddatabase` / `use_64bit_format`) forces the portable path.
+   - [ ] Ensure timestamps (`timecreated`, `timelastsave`, `ctsaves`) survive every conversion; add logging/tests to prove the values stay stable across pack/unpack.
 5. **Validation**
    - [ ] Build fixtures covering styled text, embedded outlines, and large documents; round-trip them through the portable serializer.
    - [ ] Add unit/integration tests that inspect the stored bytes (magic, header contents, UTF-8 lengths) and verify the CLI can open/migrate roots containing the new format.

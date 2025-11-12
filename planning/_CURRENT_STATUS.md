@@ -6,8 +6,9 @@
 ## Recent Updates — November 11, 2025
 - Replaced the headless WP stub with a real Paige-backed runtime (`portable/wptext_runtime.c`). External values now carry a `wp_portable_state` with cached header timestamps plus an optional live `pg_ref`, so `wpverbinmemory`, `wpverbgetsize`, and `wpverbgettimes` behave like the legacy desktop build.
 - `wp_portable_init()` exposes `pg_globals`/`pgm_globals` through `wp_portable_pg_globals()` and `wp_portable_mem_globals()`. The CLI and runtime tests initialize Paige before evaluating scripts, which lets us unpack legacy WPText trailers, repack them, and run the migrator path without touching QuickDraw.
-- `wpverbpack` mirrors Save/Save As semantics: forced repacks (`flconvertingolddatabase`, `fldatabasesaveas`, dirty docs) hydrate Paige, export the current payload, update timestamps/ctsaves, and call `dbassignhandle` before pushing the db address back on the packed handle. This unblocks the forthcoming RTF serializer because the migrator already routes through the new pipeline.
-- Updated `planning/carbon_migration/wptext_rtf_tracker.md` with the completed wiring work and added a detailed RTF conversion plan (portable header spec, exporter/importer steps, runtime hooks, and validation strategy) so the next agent can jump straight into the serializer changes.
+- The runtime now emits the new `WPRT` portable header: packing forces a Paige-to-RTF export, prepends the `[tywpportableheader][UTF-8 RTF]` blob, and marks Paige as **conversion-only** going forward. Loading detects the magic, rehydrates RTF via Paige when needed, and still falls back to legacy trailers for older roots.
+- `wpverbpack` mirrors Save/Save As semantics: forced repacks (`flconvertingolddatabase`, `fldatabasesaveas`, dirty docs, or any v7 root) hydrate Paige, export the current payload, update timestamps/ctsaves, and call `dbassignhandle` before pushing the db address back on the packed handle. This gives the migrator a deterministic path for rewriting WPTexts.
+- Updated `planning/carbon_migration/wptext_format.md` and `planning/carbon_migration/wptext_rtf_tracker.md` to document the `WPRT` layout, note that Paige is conversion-only, and track the remaining validation work.
 
 ## Recent Updates — November 10, 2025
 - Added a UNIX/headless platform definition to Paige’s core headers plus a portable CMake configuration. The Paige build now runs with Clang via `third_party/cmake-install/bin/cmake`, stalls only on the missing memory-handle traps, and gives us concrete follow-up items instead of SDK errors.
@@ -30,11 +31,11 @@
 - `portable/wptext_portable.c` now calls the real Paige bootstrap (`pgMemStartup` / `pgInit`) and exposes `wp_portable_init()` so headless callers can initialize the engine without touching the UI stack.
 
 ## Immediate Next Steps
-1. **Portable header + documentation**
-   - Finalize the `tywpportableheader` layout (`'WPRT'` magic, version, UTF-8 length flag, 1 KB reserved block) and update `planning/carbon_migration/wptext_format.md` with diagrams/field descriptions.
-2. **RTF exporter/importer**
-   - Implement the exporter path (`pgExportFileFromC` with UTF-8 RTF) and the companion importer (`pgImportFileFromC` + headless caching) inside `portable/wptext_runtime.c`, gating the new format on `flconvertingolddatabase` (and eventually a build flag).
-3. **Migrator + tests**
-   - Re-run the v6→v7 migrator once the portable serializer exists, regenerate `databases/Frontier-v7.root`, and extend runtime/CLI tests to assert the `WPRT` header plus successful script execution against the migrated root.
+1. **Document + inspect the new header**
+   - Add diagrams/sample dumps for `tywpportableheader` to `wptext_format.md` so future agents can verify offsets/endianness without rereading the code.
+2. **Validation & tests**
+   - Extend runtime/CLI tests to assert that freshly packed WPTexts carry the `WPRT` magic, preserve timestamps, and still execute verbs (e.g., `clock.now()`) after reload.
+3. **Migrator integration**
+   - Re-run the v6→v7 migrator, regenerate `databases/Frontier-v7.root`, and document the before/after so we can land the new root plus CLI coverage that exercises `defined(system.verbs)`/`clock.now()` against the converted file.
 
 Reference: `planning/carbon_migration/wptext_rtf_tracker.md` for the full checklist and supporting subtasks.
