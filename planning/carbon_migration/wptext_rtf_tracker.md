@@ -1,6 +1,6 @@
 # WPText RTF Migration Tracker
 
-**Purpose**: Track the Paige build + WPText → RTF/UTF‑8 migration work. Move this doc to `planning/archive/` once complete to preserve the decision history.
+**Purpose**: Track the Paige build + WPText → RTF/UTF‑8 migration work. Paige is **conversion-only**: we use it strictly to read legacy blobs and emit UTF‑8 RTF during migration. Long-term editing/rendering will switch to different libraries, so avoid adding new runtime features or UI dependencies to Paige. Move this doc to `planning/archive/` once complete to preserve the decision history.
 
 ## Task Checklist
 
