@@ -1,14 +1,20 @@
 # Carbon Migration – Current Status
 
-**Last Updated**: November 10, 2025  \
+**Last Updated**: November 11, 2025  \
 **Branches in flight**: `feature/carbon-migration-plan`, `feature/headless-system-bootstrap`
+
+## Recent Updates — November 11, 2025
+- Replaced the headless WP stub with a real Paige-backed runtime (`portable/wptext_runtime.c`). External values now carry a `wp_portable_state` with cached header timestamps plus an optional live `pg_ref`, so `wpverbinmemory`, `wpverbgetsize`, and `wpverbgettimes` behave like the legacy desktop build.
+- `wp_portable_init()` exposes `pg_globals`/`pgm_globals` through `wp_portable_pg_globals()` and `wp_portable_mem_globals()`. The CLI and runtime tests initialize Paige before evaluating scripts, which lets us unpack legacy WPText trailers, repack them, and run the migrator path without touching QuickDraw.
+- `wpverbpack` mirrors Save/Save As semantics: forced repacks (`flconvertingolddatabase`, `fldatabasesaveas`, dirty docs) hydrate Paige, export the current payload, update timestamps/ctsaves, and call `dbassignhandle` before pushing the db address back on the packed handle. This unblocks the forthcoming RTF serializer because the migrator already routes through the new pipeline.
+- Updated `planning/carbon_migration/wptext_rtf_tracker.md` with the completed wiring work and added a detailed RTF conversion plan (portable header spec, exporter/importer steps, runtime hooks, and validation strategy) so the next agent can jump straight into the serializer changes.
 
 ## Recent Updates — November 10, 2025
 - Added a UNIX/headless platform definition to Paige’s core headers plus a portable CMake configuration. The Paige build now runs with Clang via `third_party/cmake-install/bin/cmake`, stalls only on the missing memory-handle traps, and gives us concrete follow-up items instead of SDK errors.
 - `third_party/Paige` now builds end-to-end on the headless toolchain: `pgMTraps` has malloc-backed handles, `pgIO` exports POSIX file I/O, and the CMake target skips `PGWIN.C/PGDLL32.C` when not on Windows. The generated `build-headless/libpaige.a` is a universal archive (arm64 + x86_64) so Intel Macs can run the same bits we test on Apple Silicon.
-- Headless builds (CLI + tests) now know how to build/link Paige: both makefiles add `../third_party/Paige/PGHEADER` to the include path, depend on `build-headless/libpaige.a`, and invoke `../third_party/cmake-install/bin/cmake` automatically. We still compile the stub WP layer for now, but the real archive is on the link line so we can switch once the serializer is ready.
-- Documented in the WPText tracker that the immediate blockers are the memory macros in `pgMTraps.h` and the platform stubs in `PGPLATFO/PGWIN.C`. The tracker now calls out the order (handle layer → graphics/device shims) so future agents can resume without re-discovery.
-- Captured the next steps below so everyone knows the Paige build is paused until we land portable `pgAllocMemory/pgMemorySize/pgRecoverMemory` equivalents and a no-op graphics layer.
+- Headless builds (CLI + tests) link against `libpaige.a`, add `../third_party/Paige/PGHEADER` to the include path, and trigger the Paige build automatically. With the new runtime layer in place, the tests no longer depend on `headless_wp_stubs.c`.
+- Documented in the WPText tracker that the immediate blockers were the memory macros in `pgMTraps.h` and the platform stubs in `PGPLATFO/PGWIN.C`, then resolved those blockers by introducing the UNIX platform module and malloc-backed handles.
+- Captured the follow-up items (portable header, serializer, migrator tests) so future agents can focus on behavior instead of rediscovering the build steps.
 
 ## Recent Updates — November 9, 2025
 - Table serializer now emits a v4 header with a 1 KB reserved block for future metadata (timestamped in `Common/source/langhash.c`). The migrator reads legacy v3 headers, zero-fills the reserved region, and legacy payload converters now pad modern headers accordingly, so we have guaranteed space for refcons/window state before touching outline/scripts.
@@ -17,86 +23,18 @@
 - Legacy table converter now reconstructs modern merged handles using the documented `[outer merge][inner header+records][strings][formats]` layout. We retired the heuristic splitter, so every legacy table (including `system.verbs.*`) hydrates without manual trimming.
 - `frontier-cli` no longer relies on `langrunstringnoerror`; we feed every inline script through `langrun`, then render results via `hashgetvaluestring`. That fixes “silent” failures for non-string values and gets `defined(system.verbs.globals)` working end-to-end.
 - `tests/cli_system_defined` still fails at `clock.now()` because the script resolution path never reaches the real implementation—`langrun` returns false with an empty error. The logs show repeated `langsearchpathlookup` misses (e.g., `script`, `scriptions`), so the remaining work is to confirm that `pathstable` is populated before evaluation and that `langsearchpathvisit` walks those addresses in headless mode.
-- Next actions: instrument `langsearchpathvisit` to prove which tables are visited, verify `system.paths` entries resolve to real tables, and unblock `clock.now()` so we can move `tests/cli_system_defined` into `RUN_PREBUILT`.
 - Added headless-only logging inside `langsearchpathvisit/langsearchpathlookup` (see `Common/source/langvalue.c`). Running `script.getText(...)` now shows each `path##` entry visit plus the final hit, proving that the search path wiring works even though deeper script helpers still fail.
 - WPText → RTF migration tracker lives at `planning/carbon_migration/wptext_rtf_tracker.md` (Paige build, portable header, serializer, tests). Refer to that document for the current checklist and status before starting any work on WP serialization.
 - Captured a dedicated Paige portability TODO (`planning/carbon_migration/paige_portability_todo.md`) so the remaining machine-layer/graf/clipboard shims are tracked separately from the RTF migration work. That document should reach ✅ on items 1–7 before we remove `tests/headless_wp_stubs.c` or rely on the real Paige runtime.
-- Added the first headless Paige machine layer (`third_party/Paige/PGPLATFO/PGUNX.C`) and wired it into the Paige build so the static library now resolves `pgMachineInit`, `pgClipGrafDevice`, `pgMeasureText`, etc., without depending on QuickDraw/GDI or the linker’s `-undefined dynamic_lookup` escape hatch. The snapshot is now vendored (not a submodule) and pinned to commit `a2fe9b1`. Next work: tie this into `wp_portable_init` and start removing the stub WP verbs.
-- `portable/wptext_portable.c` now calls the real Paige bootstrap (`pgMemStartup` + `pgInit` + `pgShutdown`) so headless builds initialize the same globals the legacy runtime used. On top of that, `portable/wptext_runtime.c` replaces the old `tests/headless_wp_stubs.c`, tracking each external’s DB address plus parsed header metadata so size/time queries work without the test-only stub.
-- Bootstrapped CMake 3.29.6 from source under `third_party/cmake-install/`; use `third_party/cmake-install/bin/cmake` for Paige builds (the system image does not provide `cmake`).
-- Captured the date/time modernization plan (Mac epoch ↔ POSIX ms with timezone heuristics) under “Phase 3 — Date/Time Representation Modernization” in `planning/TODO_future_improvements.md`. We’ll implement the converter once `clock.*` executes cleanly in headless mode.
-- Authored `planning/carbon_migration/time_portable_migration.md`, outlining the portable time module, database storage changes (Unix epoch ms + timezone), and the migration phases needed to drop all Carbon dependencies for date/time verbs.
-- Implemented the new portable time layer (`portable/time_portable.[ch]`), updated both headless builds (CLI/tests) to link it instead of `Common/source/FastTimes.c`, and refreshed the headless stubs so `timenow()` now returns Mac-epoch seconds derived from the shared snapshot helper.
-- Documented how we treat legacy `picturetype` entries: headless loaders now preserve the raw PICT bytes as opaque blobs tagged with the `"pict"` OSType (see `docs/legacy_frontier_bootstrap.md`). No decoding occurs during v6→v7 migration; future UI layers can re-interpret the data if needed.
-- Identified an upcoming blocker: serialized `menubarType` externals still depend on the classic menu editor/QuickDraw state. Rather than bolting that onto the outline/script work, track it as a separate task so we can design a modern replacement (likely an intermediate data format) once outlines are fixed.
-- Verified via CLI logs that `clock.now()` still fails because global pointers such as `systemtable` continue to reference the auto-created fallback tables (`langfindsymbol miss system` shows up before we walk `system.macintosh`). Fixing `checktablestructure`/`settablestructureglobals` so the migrated tables are wired is the next blocker before we can swap the clock verbs to the portable backend.
-- New instrumentation around `checktable`/`checktablestructure` (see `Common/source/tablestructure.c`) confirms the hydrated `system`, `verbs`, `macintosh`, etc., handles are being reused rather than recreated, so the loader wiring is no longer the blocker. The remaining lookup corruption in the logs (`macintoshcintosh…`) is just a logging artifact from printing Pascal strings without explicit termination.
-- While trying to regenerate `databases/Frontier-v7.root` from the v6 seed we hit a real regression in the legacy migrator: `dbgetview(cancoonview, …)` always returned nil because the legacy header parser treated the 32-bit view addresses as native `dbaddress` values. `dbopenfile` now reads the legacy header field-by-field (using the new big-endian helpers) so the view list points at the real root (0x5d1063).
-- With that fix the migrator gets as far as `tablesavesystemtable`, but it now dies when `tableunpacktable` chases the legacy block at `0x000083b1` (raised “Table is undefined”). That indicates the legacy table-layout detector still can’t unwrap some of the smaller tables (e.g., `system.examples`). Until that converter is finished we restored the previous `Frontier-v7.root` from `Frontier-v7.root.bak` so CLI work can continue.
-- Documented the kernel ↔ UserTalk bridge (“limbic system”) in `planning/carbon_migration/kernel_userTalk_bridge.md` so future work remembers how tokens, externals, and `system.paths` interplay. That doc is now linked from `planning/INDEX.md`.
-
-## Updated Plan — October 29, 2025
-
-We pivoted from incremental shims to a comprehensive Carbon-dependency retirement. The canonical plan now lives under [`planning/carbon_migration/`](carbon_migration/README.md).
-
-1. **Planning skeleton (done)**: Created the Carbon migration directory with README, inventory, phases, decision log, and status log.
-2. **Doc refresh (done)**: Updated the planning index/README, restored in-progress phase docs (with status tracking such as in `langhash_portable_missing_types.md`), and pointed the archive only at completed notes.
-3. **Execution phases**: See [`carbon_migration/phases.md`](carbon_migration/phases.md) for subsystem milestones (header hygiene → runtime primitives → encoding → AppleEvents → cleanup).
-
-## Longer-Term Goal
-Run Frontier without any Classic Mac / Carbon APIs while keeping the headless and desktop builds unified. Completing the Carbon plan is now the primary Phase 3 objective.
-
-- New call-site maps document the legacy touch points: see [`maps/getstringlist_map.md`](carbon_migration/maps/getstringlist_map.md), [`maps/filespec_alias_map.md`](carbon_migration/maps/filespec_alias_map.md), [`maps/quickdraw_map.md`](carbon_migration/maps/quickdraw_map.md), and [`maps/appleevent_map.md`](carbon_migration/maps/appleevent_map.md).
-- Tracer bullets for each branch (with exit criteria) live in [`tracer_bullets.md`](carbon_migration/tracer_bullets.md); treat them as acceptance gates before merging each PR.
-- Classic handle shim now tracks `MemError`/`MaxBlock`, and `make -C tests handle_tests && ./handle_tests` verifies both success/failure paths.
-- Windows parity review complete; see [`windows_parity_review.md`](carbon_migration/windows_parity_review.md) for reuse notes (IPC, feature flags, resource tables).
-- STR# replacement plan updated: Phase 1 vendors libyaml for full parity now, Phase 2 revisits the bison pipeline later (see [`strings_replacement_plan.md`](carbon_migration/strings_replacement_plan.md)).
-- Libyaml 0.2.5 is vendored under `third_party/libyaml`, and `tools/strings_compiler/` now wraps it (`strings_yaml_loader.c`) to generate C/H/manifest outputs.
-- Completed map review confirms the priority order: headless must replace STR# strings, alias serialization, QuickDraw string metrics, and AppleEvent IPC before we can drop the portable stubs.
-- Portable headers (`standard_portable.h`, `osincludes_portable.h`) now gate every typedef behind explicit feature macros, so headless builds no longer trip Str255/bigstring redefinitions when compiling the shared runtime (`make -C tests runtime_tests` rebuilt cleanly apart from existing db warnings).
-- The YAML-backed `strings_compiler` now feeds both the test suite and CLI builds: `make -C tests` and `make -C frontier-cli` automatically invoke the generator, add `generated/strings_tables.c` to the runtime sources, and define `FRONTIER_PORTABLE_STRINGS` for the new lookup helpers. `headless_lang_runtime_more_stubs.c` now pulls from the generated tables (falling back to empty strings until more YAML data lands).
-- Layering dependencies are tracked in [`carbon_migration/dependency_matrix.md`](carbon_migration/dependency_matrix.md); update that matrix whenever a layer flips state.
-- Foundation slice now builds end-to-end: `portable/quickdraw_portable.h`, `portable/appleevent_portable.c`, `portable/text_encoding_portable.c`, and the updated test CFLAGS in `tests/Makefile` (adds `FRONTIER_PORTABLE_FILE_AVAILABLE`, `FRONTIER_PORTABLE_DB_AVAILABLE`, `HEADLESS_LINKS_REAL_DB`) allow `make -C tests runtime_tests` to link the real DB/file shims without including Carbon headers.
-- Filespec/alias serialization now stores POSIX-style paths (see `langpackfileval`, `langunpackfileval`, `langhash.c`); headless builds never call `filespectoalias`/`aliastofilespec` at runtime.
-- Hydration now writes view₀ directly to the packed root table and no longer emits the legacy Cancoon record; headless builds also skip persisting table format/font metadata so regenerated v7 roots contain only data/scripts (UI prefs will move to a per-user store later).
-- Headless `checktablestructure()` no longer attempts to hydrate `system.menus`/`system.menus.bar` because the menu processor externals still depend on Carbon UI code. Desktop builds continue to link those tables; headless simply leaves the table pointer nil to avoid needless failures while we focus on runtime verbs (`clock.*`, `system.verbs.*`).
-- Added a CLI regression harness at [`tests/cli_system_defined`](../tests/cli_system_defined) that hydrates a copy of the system root and runs `defined(system.verbs)`/`clock.now()`. Wiring into `RUN_PREBUILT` is currently blocked because the legacy table converter rejects the migrated `system` payload (current splitter assumes `[header][strings][records][sentinel]` but the v6→v7 roots keep font blobs and format data ahead of the records). Fix the converter, then promote the script.
-- Latest payload inspection (`0x5d158b`) confirmed that the so-called “strings” section actually embeds QuickDraw font data, so the `ixkey < strings_len` heuristic only recovers three entries. We have now documented the real v6 packing order (see `docs/database_architecture.md`, “Table Payload Layout”), but still need to capture golden bytes under `planning/carbon_migration/` and teach the converter/tests to honor that structure.
-- Captured the first golden payload for `system.verbs.globals` under `planning/carbon_migration/data/system_verbs_globals_legacy.bin` (using `scripts/extract_legacy_table.py`), so upcoming converter/tests can diff against a stable table that will survive the UI cleanup work.
-- **Future hygiene (prioritised):**
-  - P0: Extend the v7 header with explicit offsets/lengths for `records`, `strings`, and `format blob` so the loader doesn’t rely on heuristics.
-  - P0: Add a small `formatVersion` byte near the table header so future migrations can select the right parser without guessing.
-  - P0: Add a canonical `docs/db_format.md` describing every on-disk structure (tydisktablerecord, tydisksymbolrecord, tyversion2tablediskrecord) plus byte diagrams for v6/v7.
-  - P1: Check in regression fixtures (captured table payloads) under `tests/data/` so migrator changes can diff against known-good binaries.
-
-### Refactor Branch Sequencing (draft)
-| Order | Scope | Key Deliverables | Dependencies | Notes |
-| --- | --- | --- | --- | --- |
-| 1 | Memory layer cleanup | Extend portable handle API (`classic_handle.c`) to cover `MemError/MaxBlock`, refactor `memory.c` and callers to use it. | None (prereq for later builds) | Unlocks headless build without Classic Memory Manager. |
-| 2 | Strings / resource fork replacement | Replace STR# loaders with C tables or modern data files; update all core call sites listed in [`getstringlist_map.md`](carbon_migration/maps/getstringlist_map.md). | 1 | Enables removal of resource fork APIs from headless builds. |
-| 3 | Filespec / alias abstraction | Design cross-platform path value representation, rewrite `langhash.c`, `langpack.c`, and related verbs per [`filespec_alias_map.md`](carbon_migration/maps/filespec_alias_map.md). | 2 | Removes dependency on Alias Manager for runtime features. |
-| 4 | QuickDraw extraction | Provide headless-safe string width heuristics, move remaining QuickDraw helpers behind desktop-only modules as per [`quickdraw_map.md`](carbon_migration/maps/quickdraw_map.md). | 2 | Allows headless builds to drop QuickDraw includes entirely. |
-| 5 | AppleEvent isolation | Split `langipc.c` / `osacomponent.c` into macOS-only codepaths, implement headless dispatch (inspired by Windows build) following [`appleevent_map.md`](carbon_migration/maps/appleevent_map.md). | 3 | Eliminates AppleEvent stubs from portable headers. |
-| 6 | Header / include cleanup | After subsystems migrate, prune `osincludes_portable.h` and `headless_stubs.h`, enforce clean include graph, refresh tests. | 4 & 5 | Final polish before broader refactors. |
-
-## Progress Snapshot
-- ✅ Added stdio-backed file layer shared by headless tests/CLI (eliminated legacy file stubs).
-- ✅ Seeded Carbon migration plan, inventory, and decision log.
-- ✅ Portable handle shim now reuses `frontierAlloc` and records `MemError`/`MaxBlock`; regression coverage lives in `tests/handle_tests.c`.
-- ✅ Scaffolded `strings_compiler` (bison/flex) to translate YAML string tables into generated headers/C sources.
-- 🔄 Working on header hygiene: ensuring `frontier.h` and related headers bring in the correct portable definitions.
+- Added the first headless Paige machine layer (`third_party/Paige/PGPLATFO/PGUNX.C`) and wired it into the Paige build so the static library now resolves `pgMachineInit`, `pgClipGrafDevice`, `pgMeasureText`, etc., without depending on QuickDraw/GDI or the linker’s `-undefined dynamic_lookup` escape hatch. The snapshot is now vendored (not a submodule) and pinned to commit `a2fe9b1`.
+- `portable/wptext_portable.c` now calls the real Paige bootstrap (`pgMemStartup` / `pgInit`) and exposes `wp_portable_init()` so headless callers can initialize the engine without touching the UI stack.
 
 ## Immediate Next Steps
-1. **Document call-site maps** (Assistant) — ✅: Outputs captured under `planning/carbon_migration/maps/` for STR# strings, filespec/alias, QuickDraw helpers, and AppleEvents. Use these tables to size each refactor.
-2. **Sequence refactor PRs** (Assistant) — ✅: Drafted the branch order above and linked tracer bullets in `tracer_bullets.md`; log entry added to `status_log.md`. Refer to this sequencing when planning upcoming PRs.
-3. **Windows parity review** (Assistant) — ✅: Findings captured in [`windows_parity_review.md`](carbon_migration/windows_parity_review.md); use it as input for the AppleEvent and string-table work.
-4. **Prepare resource fork replacement plan** (Assistant) — ✅: Plan captured in [`strings_replacement_plan.md`](carbon_migration/strings_replacement_plan.md) with a bison-based compiler design; next action is to backfill YAML tables and generator integration.
-5. **Portable header guard cleanup** (Assistant) — ✅ 2025-11-09: Added explicit feature macros around every typedef in `portable/standard_portable.h` and `Common/headers/osincludes_portable.h`, eliminating the Str255/bigstring redefinition spam and giving downstream refactor branches a stable include base.
-6. **Integrate strings compiler** (Assistant) — ✅ 2025-11-09: Tests and the CLI now depend on `generated/strings_tables.{c,h}`; both Makefiles build the generator, add `../generated` to the include path, and define `FRONTIER_PORTABLE_STRINGS` so the headless runtime can start consuming the emitted tables.
-7. **Layer 2 follow-up** (Assistant): Harden the legacy table converter so the CLI regression can hydrate migrated roots without crashing. Documented the `0x5d158b` payload layout (done; see docs), now update the splitter to handle `[header][records][strings][tyversion2tablediskrecord ...]` and add a regression in `tests/cli_system_defined`. Once the script passes locally, promote it into `RUN_PREBUILT` and log the verification in `carbon_migration/status_log.md`. (P0) *Status:* in progress — `defined(system.verbs)` works, but `clock.now()` still fails because the hydrator currently mangles the `system.paths` search entries (names look garbled in the current logs) and we still need a deterministic reproduction to finish the converter and link the real paths.
+1. **Portable header + documentation**
+   - Finalize the `tywpportableheader` layout (`'WPRT'` magic, version, UTF-8 length flag, 1 KB reserved block) and update `planning/carbon_migration/wptext_format.md` with diagrams/field descriptions.
+2. **RTF exporter/importer**
+   - Implement the exporter path (`pgExportFileFromC` with UTF-8 RTF) and the companion importer (`pgImportFileFromC` + headless caching) inside `portable/wptext_runtime.c`, gating the new format on `flconvertingolddatabase` (and eventually a build flag).
+3. **Migrator + tests**
+   - Re-run the v6→v7 migrator once the portable serializer exists, regenerate `databases/Frontier-v7.root`, and extend runtime/CLI tests to assert the `WPRT` header plus successful script execution against the migrated root.
 
-   *Follow-on once `clock.now()` is green:* (a) wire a headless-stub logger so every unimplemented external (menu, QuickDraw, clock, etc.) emits a one-time warning identifying the missing API; (b) keep the real `langcallbacks.errormessagecallback` active for CLI inline scripts so failures like `clock.now()` report an actual message instead of the generic “Script execution failed.” Those diagnostic hooks will make similar regressions much easier to chase.
-
-8. **Paige portable build (Assistant)** — 🔄 2025-11-10: UNIX defines now exist in `CPUDefs.h` and the Paige CMake target builds far enough to expose the missing memory/graphics trap macros. Next action is to implement a portable handle layer in `pgMTraps.h` (backed by malloc/free) plus stubbed graf-device helpers so the library finishes compiling; update `wptext_rtf_tracker.md` and rerun `third_party/cmake-install/bin/cmake --build third_party/Paige/build-headless` after each tranche. (P0 for WPText migration)
-
-Progress and blockers should continue to be logged in the Carbon migration status log and decisions documented in the decision log.
+Reference: `planning/carbon_migration/wptext_rtf_tracker.md` for the full checklist and supporting subtasks.
