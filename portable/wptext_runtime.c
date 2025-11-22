@@ -10,28 +10,29 @@
 
 extern boolean flconvertingolddatabase;
 
+#ifndef BlockMoveData
+#define BlockMoveData(src, dst, size) memmove((dst), (src), (size))
+#endif
+
+static boolean wp_portable_utf8_to_rtf(Handle hutf8, Handle *hrtf, long *out_chars);
+static boolean wp_portable_rtf_to_utf8(const uint8_t *rtf, long len, Handle *hout_utf8);
+
 #ifdef FRONTIER_HEADLESS
 
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
-#define Rect PaigeRect
-#define Point PaigePoint
-#define RgnHandle PaigeRgnHandle
-#include "PAIGE.H"
-#include "PGMEMMGR.H"
-#include "PGTRAPS.H"
-#include "PGEXCEPS.H"
-#include "PGIO.H"
-#include "DEFPROCS.H"
-#include "PGTXR.H"
-#undef Rect
-#undef Point
-#undef RgnHandle
+#include "paige_text_extractor.h"
+
+/* 2025-11-19 Codex: Replace Paige-linked headless runtime with a pure extractor + RTF writer pipeline. */
 
 /* 2025-11-10 Codex: Replace the stub headless WP runtime with a Paige-backed loader/packer.
-   2025-11-11 Codex: Add portable RTF serialization with 'WPRT' header support. */
+   2025-11-11 Codex: Add portable RTF serialization with 'WPRT' header support.
+   2025-11-17 Codex: Implement wp_portable_external_* helpers so headless builds avoid null callbacks.
+   2025-11-19 Codex: Remove Paige dependencies; rely on paige_text_extractor + RTF helpers entirely. */
 
 #define WP_FLAG_ONELINE 0x8000
 #define WP_FLAG_RULERON 0x4000
@@ -66,26 +67,26 @@ typedef struct {
 
 typedef struct {
     OSType magic;
-    unsigned short version;
-    unsigned short flags;
-    unsigned long timecreated;
-    unsigned long timelastsave;
-    unsigned long ctsaves;
-    unsigned long textlength;
-    unsigned long utf8bytelen;
-    unsigned long reservedlength;
-    unsigned char reserved[1024];
+    uint16_t version;
+    uint16_t flags;
+    uint32_t timecreated;
+    uint32_t timelastsave;
+    uint32_t ctsaves;
+    uint32_t textlength;
+    uint32_t utf8bytelen;
+    uint32_t reservedlength;
+    uint8_t reserved[1024];
 } wp_portable_diskheader;
 
 typedef struct {
-    unsigned short version;
-    unsigned short flags;
-    unsigned long timecreated;
-    unsigned long timelastsave;
-    unsigned long ctsaves;
-    unsigned long textlength;
-    unsigned long utf8bytelen;
-    unsigned long reservedlength;
+    uint16_t version;
+    uint16_t flags;
+    uint32_t timecreated;
+    uint32_t timelastsave;
+    uint32_t ctsaves;
+    uint32_t textlength;
+    uint32_t utf8bytelen;
+    uint32_t reservedlength;
 } wp_portable_header;
 
 typedef struct wp_portable_state {
@@ -99,72 +100,28 @@ typedef struct wp_portable_state {
     wp_diskheader raw_header;
     boolean header_valid;
     boolean dirty;
-    boolean doc_loaded;
-    pg_ref doc;
     boolean portable_format;
     wp_portable_header portable_header;
     long portable_payload_size;
+    Handle portable_rtf_cache;
 } wp_portable_state;
 
 static long headless_wp_sel_start = 0;
 static long headless_wp_sel_end = 0;
-
-static boolean wp_portable_validate_rtf(const uint8_t *data, long len) {
-    if (data == NULL || len <= 6)
-        return false;
-    if (data[0] != '{')
-        return false;
-    boolean has_rtf = false;
-    for (long i = 0; i < len - 4; ++i) {
-        if (data[i] == '\\' && (i + 4) < len) {
-            if (data[i + 1] == 'r' && data[i + 2] == 't' && data[i + 3] == 'f') {
-                has_rtf = true;
-                break;
-            }
-        }
-    }
-    if (!has_rtf)
-        return false;
-
-    long braces = 0;
-    for (long i = 0; i < len; ++i) {
-        unsigned char c = data[i];
-        if (c == '\\') {
-            ++i; /* skip escaped char */
-            continue;
-        }
-        if (c == '{')
-            ++braces;
-        else if (c == '}') {
-            --braces;
-            if (braces < 0)
-                return false;
-        }
-    }
-    return braces == 0;
-}
 
 static wp_portable_state *wp_portable_state_alloc(void) {
     wp_portable_state *state = (wp_portable_state *)calloc(1, sizeof(wp_portable_state));
     return state;
 }
 
-static void wp_portable_state_dispose_doc(wp_portable_state *state) {
-    if (state == NULL || !state->doc_loaded)
-        return;
-
-    if (state->doc != MEM_NULL)
-        pgDispose(state->doc);
-
-    state->doc = MEM_NULL;
-    state->doc_loaded = false;
-}
-
 static void wp_portable_state_free(wp_portable_state *state) {
     if (state == NULL)
         return;
 
-    wp_portable_state_dispose_doc(state);
+    if (state->portable_rtf_cache != nil) {
+        disposehandle(state->portable_rtf_cache);
+        state->portable_rtf_cache = nil;
+    }
     free(state);
 }
 
@@ -179,14 +136,10 @@ static void wp_portable_state_attach(hdlexternalvariable hv, wp_portable_state *
     (**hv).oldaddress = adr;
     state->address = adr;
     state->header_valid = false;
-    state->doc_loaded = false;
     state->portable_format = false;
     state->portable_payload_size = 0;
+    state->portable_rtf_cache = nil;
     memset(&state->portable_header, 0, sizeof(state->portable_header));
-}
-
-static boolean wp_portable_require_runtime(void) {
-    return wp_portable_init();
 }
 
 static boolean wp_portable_state_dbref(hdlexternalvariable hv, wp_portable_state *state, Handle *hpacked) {
@@ -302,217 +255,6 @@ static wp_portable_state *wp_portable_state_require(hdlexternalvariable hv) {
     return state;
 }
 
-static boolean wp_portable_unpack_legacy_doc(Handle hpacked, long payload_len, pg_ref *out_doc) {
-    if (hpacked == nil || out_doc == NULL)
-        return false;
-    if (!wp_portable_require_runtime())
-        return false;
-
-    pgm_globals *mem_globals = wp_portable_mem_globals();
-    pg_globals *pg_globals = wp_portable_pg_globals();
-
-    file_ref filemap = (file_ref)MemoryAlloc(mem_globals, sizeof(pg_byte), payload_len, 0);
-    if (filemap == MEM_NULL)
-        return false;
-
-    pg_byte *dest = (pg_byte *)UseMemory(filemap);
-    pgBlockMove(*hpacked, dest, payload_len);
-    UnuseMemory(filemap);
-
-    size_t position = 0;
-    pg_error ec = pgVerifyFile(filemap, pgScrapMemoryRead, position);
-
-    pg_ref doc = MEM_NULL;
-    if (ec == noErr) {
-        PG_TRY(mem_globals) {
-            doc = pgNewShell(pg_globals);
-            ec = pgReadDoc(doc, &position, NULL, 0, pgScrapMemoryRead, filemap);
-            if (ec == noErr)
-                pgSetHiliteStates(doc, deactivate_verb, no_change_verb, false);
-        }
-        PG_CATCH {
-            if (doc != MEM_NULL)
-                pgFailureDispose(doc);
-            ec = 1;
-        }
-        PG_ENDTRY;
-    }
-
-    UnuseAndDispose((memory_ref)filemap);
-
-    if (ec != noErr) {
-        if (doc != MEM_NULL)
-            pgDispose(doc);
-        return false;
-    }
-
-    *out_doc = doc;
-    return true;
-}
-
-static boolean wp_portable_import_rtf_from_bytes(const uint8_t *data, long len, pg_ref *out_doc) {
-    if (out_doc == NULL || len < 0)
-        return false;
-    if (len > 0 && data == NULL)
-        return false;
-    if (!wp_portable_require_runtime())
-        return false;
-
-    pgm_globals *mem_globals = wp_portable_mem_globals();
-    pg_globals *pg_globals = wp_portable_pg_globals();
-
-    pg_file_unit temp_unit;
-    pg_file_desc_ref temp_desc = pgOpenTempFile(mem_globals, &temp_unit);
-    if (temp_desc == MEM_NULL || temp_unit < 0)
-        return false;
-
-    pg_error err = NO_ERROR;
-    long remaining = len;
-    const uint8_t *cursor = data;
-    while (remaining > 0 && err == NO_ERROR) {
-        size_t chunk = (remaining > 32768) ? 32768 : (size_t)remaining;
-        size_t chunk_copy = chunk;
-        err = pgWriteFileBytes(temp_unit, &chunk_copy, cursor);
-        remaining -= (long)chunk_copy;
-        cursor += chunk_copy;
-    }
-
-    if (err == NO_ERROR)
-        err = pgSetFilePos(temp_unit, 0);
-
-    pg_ref doc = MEM_NULL;
-    if (err == NO_ERROR) {
-        doc = pgNewShell(pg_globals);
-        if (doc == MEM_NULL)
-            err = 1;
-    }
-
-    if (err == NO_ERROR)
-        err = pgImportFileFromC(doc, pg_rtf_type, IMPORT_EVERYTHING_FLAG, 0, temp_unit);
-
-    if (err == NO_ERROR)
-        pgSetHiliteStates(doc, deactivate_verb, no_change_verb, false);
-
-    pgCloseFile(temp_unit);
-    pgDeleteFile(temp_desc);
-    pgDisposeFileDescriptor(temp_desc);
-
-    if (err != NO_ERROR) {
-        if (doc != MEM_NULL)
-            pgDispose(doc);
-        return false;
-    }
-
-    *out_doc = doc;
-    return true;
-}
-
-static boolean wp_portable_state_load_doc(hdlexternalvariable hv, wp_portable_state *state) {
-    if (state == NULL)
-        return false;
-    if (state->doc_loaded)
-        return true;
-    if (!wp_portable_state_refresh_metadata(hv, state))
-        return false;
-
-    Handle hpacked = nil;
-    if (!wp_portable_state_dbref(hv, state, &hpacked))
-        return false;
-
-    long size = gethandlesize(hpacked);
-    boolean ok = false;
-
-    if (state->portable_format) {
-        long header_len = (long)sizeof(wp_portable_diskheader);
-        if (size < header_len) {
-            disposehandle(hpacked);
-            return false;
-        }
-        long payload_len = size - header_len;
-        const uint8_t *payload = ((const uint8_t *)*hpacked) + header_len;
-        ok = wp_portable_import_rtf_from_bytes(payload, payload_len, &state->doc);
-    } else {
-        long payload_len = size - (long)sizeof(wp_diskheader);
-        if (payload_len < 0) {
-            disposehandle(hpacked);
-            return false;
-        }
-        ok = wp_portable_unpack_legacy_doc(hpacked, payload_len, &state->doc);
-    }
-
-    disposehandle(hpacked);
-
-    if (ok)
-        state->doc_loaded = true;
-
-    return ok;
-}
-
-static boolean wp_portable_use_portable_format(const wp_portable_state *state) {
-    if (state != NULL && state->portable_format)
-        return true;
-    if (flconvertingolddatabase || use_64bit_format)
-        return true;
-    return false;
-}
-
-static boolean wp_portable_state_pack_legacy(hdlexternalvariable hv, wp_portable_state *state, Handle *out_payload) {
-    if (state == NULL || out_payload == NULL)
-        return false;
-
-    if (!wp_portable_state_load_doc(hv, state))
-        return false;
-
-    state->maxpos = pgTextSize(state->doc);
-    state->raw_header.maxpos = conditionallongswap(state->maxpos);
-
-    Handle hpackedtext = nil;
-    file_ref filemap;
-    long pos = 0;
-    pg_error ec;
-    pgm_globals *mem_globals = wp_portable_mem_globals();
-
-    filemap = (file_ref)MemoryAlloc(mem_globals, sizeof(pg_byte), 0, 0);
-    if (filemap == MEM_NULL)
-        return false;
-
-    ec = pgSaveDoc(state->doc, &pos, NULL, 0, pgScrapMemoryWrite, filemap, 0);
-    if (ec == noErr)
-        ec = pgTerminateFile(state->doc, &pos, pgScrapMemoryWrite, filemap);
-
-    if (ec != noErr) {
-        UnuseAndDispose((memory_ref)filemap);
-        return false;
-    }
-
-    pg_byte *ptext = (pg_byte *)UseMemory(filemap);
-    long len = GetMemorySize(filemap);
-    boolean ok = newfilledhandle(ptext, len, &hpackedtext);
-    UnuseAndDispose((memory_ref)filemap);
-    if (!ok)
-        return false;
-
-    state->buffersize = len;
-    state->raw_header.buffersize = conditionallongswap(len);
-
-    Handle hheader = nil;
-    if (!newfilledhandle(&state->raw_header, sizeof(state->raw_header), &hheader)) {
-        disposehandle(hpackedtext);
-        return false;
-    }
-
-    ok = pushhandle(hheader, hpackedtext);
-    disposehandle(hheader);
-
-    if (ok) {
-        *out_payload = hpackedtext;
-        state->header_valid = true;
-    } else
-        disposehandle(hpackedtext);
-
-    return ok;
-}
-
 static void wp_portable_fill_portable_header(wp_portable_state *state, long utf8_len) {
     state->portable_header.version = WP_PORTABLE_VERSION;
     state->portable_header.flags = WP_PORTABLE_FLAG_UTF8;
@@ -524,72 +266,16 @@ static void wp_portable_fill_portable_header(wp_portable_state *state, long utf8
     state->portable_header.reservedlength = 0;
 }
 
-static boolean wp_portable_state_pack_portable(hdlexternalvariable hv, wp_portable_state *state, Handle *out_payload) {
-    if (state == NULL || out_payload == NULL)
+static boolean wp_portable_wrap_rtf_payload(wp_portable_state *state, Handle hrtf, Handle *out_payload) {
+    if (state == NULL || hrtf == nil || out_payload == NULL)
         return false;
-    if (!wp_portable_state_load_doc(hv, state))
-        return false;
-    if (!wp_portable_require_runtime())
-        return false;
-
-    state->maxpos = pgTextSize(state->doc);
-
-    Handle hrtf = nil;
-    pg_file_unit temp_unit;
-    pgm_globals *mem_globals = wp_portable_mem_globals();
-    pg_file_desc_ref temp_desc = pgOpenTempFile(mem_globals, &temp_unit);
-    if (temp_desc == MEM_NULL || temp_unit < 0)
-        return false;
-
-    pg_error err = pgExportFileFromC(state->doc, pg_rtf_type, EXPORT_EVERYTHING_FLAG | EXPORT_UNICODE_FLAG, 0, NULL, false, temp_unit);
-    long eof = 0;
-    if (err == NO_ERROR)
-        err = pgGetFileEOF(temp_unit, &eof);
-
-    if (err == NO_ERROR)
-        err = pgSetFilePos(temp_unit, 0);
-
-    if (err == NO_ERROR) {
-        if (!newclearhandle(eof, &hrtf))
-            err = 1;
-    }
-
-    if (err == NO_ERROR) {
-        long remaining = eof;
-        char *dest = *hrtf;
-        while (remaining > 0 && err == NO_ERROR) {
-            size_t chunk = (remaining > 32768) ? 32768 : (size_t)remaining;
-            size_t chunk_read = chunk;
-            err = pgReadFileBytes(temp_unit, &chunk_read, dest);
-            remaining -= (long)chunk_read;
-            dest += chunk_read;
-        }
-    }
-
-    pgCloseFile(temp_unit);
-    pgDeleteFile(temp_desc);
-    pgDisposeFileDescriptor(temp_desc);
-
-    if (err != NO_ERROR) {
-        if (hrtf != nil)
-            disposehandle(hrtf);
-        return false;
-    }
 
     long utf8_len = gethandlesize(hrtf);
-    if (!wp_portable_validate_rtf((const uint8_t *)*hrtf, utf8_len)) {
-        disposehandle(hrtf);
-        return false;
-    }
-    state->buffersize = utf8_len;
-
-    Handle hblob = nil;
     size_t header_size = sizeof(wp_portable_diskheader);
-    size_t total = header_size + (size_t)utf8_len;
-    if (!newclearhandle((long)total, &hblob)) {
-        disposehandle(hrtf);
+    long total = (long)(header_size + (size_t)utf8_len);
+    Handle hblob = nil;
+    if (!newclearhandle(total, &hblob))
         return false;
-    }
 
     wp_portable_fill_portable_header(state, utf8_len);
 
@@ -608,14 +294,89 @@ static boolean wp_portable_state_pack_portable(hdlexternalvariable hv, wp_portab
     BlockMoveData(&disk, *hblob, header_size);
     BlockMoveData(*hrtf, ((uint8_t *)*hblob) + header_size, utf8_len);
 
-    disposehandle(hrtf);
-
     state->portable_format = true;
     state->portable_payload_size = utf8_len;
     state->header_valid = true;
 
     *out_payload = hblob;
     return true;
+}
+
+static boolean wp_portable_state_cache_rtf(hdlexternalvariable hv, wp_portable_state *state) {
+    if (state == NULL)
+        return false;
+    if (state->portable_rtf_cache != nil)
+        return true;
+    if (!wp_portable_state_refresh_metadata(hv, state))
+        return false;
+
+#if defined(FRONTIER_HEADLESS)
+    fprintf(stderr, "[wp-plain] cache state=%p portable=%d address=0x%llx cache=%s\n",
+        (void *)state,
+        state->portable_format ? 1 : 0,
+        (unsigned long long)state->address,
+        state->portable_rtf_cache ? "yes" : "no");
+#endif
+
+    Handle hpacked = nil;
+    if (!wp_portable_state_dbref(hv, state, &hpacked))
+        return false;
+
+    long size = gethandlesize(hpacked);
+    boolean ok = false;
+
+    if (state->portable_format) {
+        long header_len = (long)sizeof(wp_portable_diskheader);
+        if (size >= header_len) {
+            long payload_len = size - header_len;
+            Handle hcopy = nil;
+            if (newclearhandle(payload_len, &hcopy)) {
+                BlockMoveData(((const uint8_t *)*hpacked) + header_len, *hcopy, payload_len);
+                state->portable_rtf_cache = hcopy;
+                ok = true;
+#if defined(FRONTIER_HEADLESS)
+                fprintf(stderr, "[wp-plain] cache copied portable payload bytes=%ld\n", (long)payload_len);
+#endif
+            }
+        }
+    } else {
+        long payload_len = size - (long)sizeof(wp_diskheader);
+        const uint8_t *payload = (const uint8_t *)*hpacked;
+        Handle hrtf = nil;
+        long char_count = 0;
+        if (payload_len > 0) {
+            paige_extract_stats stats = {0};
+            char errbuf[256] = {0};
+            if (wptext_emit_rtf_from_paige_blob(payload, payload_len, &hrtf, &char_count, &stats,
+                    errbuf, sizeof(errbuf))) {
+                state->portable_rtf_cache = hrtf;
+                if (char_count > 0)
+                    state->maxpos = char_count;
+                ok = true;
+#if defined(FRONTIER_HEADLESS)
+                fprintf(stderr, "[wp-plain] cache built RTF bytes=%ld chars=%ld\n",
+                    gethandlesize(hrtf), char_count);
+#endif
+            } else {
+                fprintf(stdout, "[wp-plain] RTF emit failed: %s\n", errbuf[0] ? errbuf : "<unknown>");
+                fflush(stdout);
+            }
+        }
+    }
+
+    disposehandle(hpacked);
+#if defined(FRONTIER_HEADLESS)
+    fprintf(stderr, "[wp-plain] cache state=%p result=%d\n", (void *)state, ok ? 1 : 0);
+#endif
+    return ok;
+}
+
+static boolean wp_portable_state_pack_portable(hdlexternalvariable hv, wp_portable_state *state, Handle *out_payload) {
+    if (state == NULL || out_payload == NULL)
+        return false;
+    if (!wp_portable_state_cache_rtf(hv, state))
+        return false;
+    return wp_portable_wrap_rtf_payload(state, state->portable_rtf_cache, out_payload);
 }
 
 boolean wpverbgetdisplaystring(hdlexternalvariable h, bigstring bs) {
@@ -678,10 +439,8 @@ boolean wpverbpack(hdlexternalvariable hv, Handle *hpacked, boolean *flnewdbaddr
     if (state == NULL)
         return false;
 
-    boolean use_portable = wp_portable_use_portable_format(state);
-
     dbaddress adr = state->address;
-    boolean flforcepack = flconvertingolddatabase || fldatabasesaveas || state->dirty || use_portable;
+    boolean flforcepack = true;
 
     if (!flforcepack) {
         if (fldatabasesaveas) {
@@ -699,9 +458,7 @@ boolean wpverbpack(hdlexternalvariable hv, Handle *hpacked, boolean *flnewdbaddr
     }
 
     Handle hpayload = nil;
-    boolean ok = use_portable ?
-        wp_portable_state_pack_portable(hv, state, &hpayload) :
-        wp_portable_state_pack_legacy(hv, state, &hpayload);
+    boolean ok = wp_portable_state_pack_portable(hv, state, &hpayload);
 
     if (!ok)
         return false;
@@ -750,13 +507,20 @@ boolean wpverbinmemory(hdlexternalvariable h) {
     wp_portable_state *state = wp_portable_state_require(h);
     if (state == NULL)
         return false;
-    return wp_portable_state_load_doc(h, state);
+    return wp_portable_state_refresh_metadata(h, state);
 }
 
 boolean wpverbpacktotext(hdlexternalvariable h, Handle htext) {
-    (void)h;
-    (void)htext;
-    return false;
+    if (h == NULL || htext == NULL)
+        return false;
+
+    Handle hplain = nil;
+    if (!wp_portable_extract_plaintext(h, &hplain))
+        return false;
+
+    boolean ok = pushhandle(hplain, htext);
+    disposehandle(hplain);
+    return ok;
 }
 
 boolean wpverbgetsize(hdlexternalvariable h, long *size) {
@@ -842,55 +606,395 @@ boolean wpsetselection(long startsel, long endsel) {
     return true;
 }
 
+Boolean wp_portable_extract_plaintext(hdlexternalvariable hv, Handle *hout_utf8) {
+    if (hv == NULL || hout_utf8 == NULL)
+        return false;
+
+    wp_portable_state *state = wp_portable_state_require(hv);
+    if (state == NULL)
+        return false;
+
+    if (!wp_portable_state_refresh_metadata(hv, state))
+        return false;
+
+#if defined(FRONTIER_HEADLESS)
+    fprintf(stderr, "[wp-plain] extract hv=%p state=%p portable=%d address=0x%llx cache=%s\n",
+        (void *)hv,
+        (void *)state,
+        state->portable_format ? 1 : 0,
+        (unsigned long long)state->address,
+        (state->portable_rtf_cache != nil) ? "yes" : "no");
+#endif
+
+    Handle hpacked = nil;
+    if (!wp_portable_state_dbref(hv, state, &hpacked))
+        return false;
+
+    const uint8_t *bytes = (const uint8_t *)*hpacked;
+    long packed_size = gethandlesize(hpacked);
+
+    if (state->portable_format) {
+        long header_size = (long)sizeof(wp_portable_diskheader);
+        if (packed_size < header_size) {
+            disposehandle(hpacked);
+            return false;
+        }
+
+        long payload_len = packed_size - header_size;
+        const uint8_t *payload = bytes + header_size;
+        Handle hutf8 = nil;
+        if (wp_portable_rtf_to_utf8(payload, payload_len, &hutf8)) {
+            disposehandle(hpacked);
+            *hout_utf8 = hutf8;
+            return true;
+        }
+
+        fprintf(stdout, "[wp-plain] unable to decode RTF payload, returning raw bytes\n");
+        fflush(stdout);
+
+        if (!newclearhandle(payload_len, &hutf8)) {
+            disposehandle(hpacked);
+            return false;
+        }
+        BlockMoveData(payload, *hutf8, payload_len);
+        disposehandle(hpacked);
+        *hout_utf8 = hutf8;
+        return true;
+    }
+
+    paige_extract_stats stats = {0};
+    char errbuf[256] = {0};
+    boolean ok = paige_extract_text_and_styles(bytes, packed_size, hout_utf8, &stats, errbuf, sizeof(errbuf));
+    disposehandle(hpacked);
+
+    if (!ok) {
+        fprintf(stdout, "[wp-plain] extractor failed: %s\n", errbuf[0] ? errbuf : "<unknown>");
+        fflush(stdout);
+        return false;
+    }
+
+    if (stats.returned_macroman) {
+        fprintf(stdout, "[wp-plain] macromantoutf8 conversion failed, returning MacRoman bytes\n");
+        fflush(stdout);
+    }
+
+#if defined(FRONTIER_HEADLESS)
+    if (hout_utf8 != NULL && *hout_utf8 != nil) {
+        fprintf(stderr, "[wp-plain] extract ok hv=%p state=%p bytes=%ld portable=%d\n",
+            (void *)hv,
+            (void *)state,
+            gethandlesize(*hout_utf8),
+            state->portable_format ? 1 : 0);
+    }
+#endif
+
+    return true;
+}
+
+Boolean wp_portable_external_should_drop(hdlexternalvariable hv) {
+    wp_portable_state *state = wp_portable_state_from_external(hv);
+    if (state == NULL)
+        return false;
+    /*
+        For now we never drop automatically; callers decide after attempting
+        to load/convert the document.
+    */
+    return false;
+}
+
+Boolean wp_portable_external_was_legacy_ws(hdlexternalvariable hv) {
+    wp_portable_state *state = wp_portable_state_require(hv);
+    if (state == NULL)
+        return false;
+    return !state->portable_format;
+}
+
+static void wp_portable_log_event(const char *tag, hdlexternalvariable hv, const char *name_hint) {
+    const char *path = (name_hint != NULL) ? name_hint : "<unknown>";
+    fprintf(stdout, "[wp-plain] %s external=%p path=%s\n", tag, (void *)hv, path);
+    fflush(stdout);
+}
+
+void wp_portable_note_drop_logged(hdlexternalvariable hv, const char *name_hint) {
+    wp_portable_log_event("drop", hv, name_hint);
+}
+
+void wp_portable_note_conversion_logged(hdlexternalvariable hv, const char *name_hint) {
+    wp_portable_log_event("converted-to-plain-text", hv, name_hint);
+}
+
 #ifdef FRONTIER_TESTS
 Boolean wp_portable_pack_text_for_test(const char *utf8text, Handle *hpacked) {
     if (utf8text == NULL || hpacked == NULL)
         return false;
-    if (!wp_portable_require_runtime())
+
+    long textlen = (long)strlen(utf8text);
+    Handle hutf8 = nil;
+    if (!newclearhandle(textlen, &hutf8))
         return false;
+    if (textlen > 0)
+        BlockMoveData(utf8text, *hutf8, (size_t)textlen);
 
-    pg_ref doc = pgNewShell(wp_portable_pg_globals());
-    if (doc == MEM_NULL)
-        return false;
-
-    size_t textlen = strlen(utf8text);
-    if (textlen > 0) {
-        if (!pgInsertBytes(doc, (const pg_bits8_ptr)utf8text, (long)textlen, CURRENT_POSITION, data_insert_mode, 0, draw_none)) {
-            pgDispose(doc);
-            return false;
-        }
-    }
-
-    wp_portable_state *state = wp_portable_state_alloc();
-    if (state == NULL) {
-        pgDispose(doc);
+    Handle hrtf = nil;
+    long char_count = 0;
+    if (!wp_portable_utf8_to_rtf(hutf8, &hrtf, &char_count)) {
+        disposehandle(hutf8);
         return false;
     }
+    disposehandle(hutf8);
 
-    state->doc = doc;
-    state->doc_loaded = true;
-    state->timecreated = 0;
-    state->timelastsave = 0;
-    state->ctsaves = 0;
-    state->maxpos = pgTextSize(doc);
-    state->header_valid = true;
-    state->portable_format = true;
-    state->address = nildbaddress;
+    wp_portable_state temp = {0};
+    temp.maxpos = char_count;
+    temp.timecreated = 0;
+    temp.timelastsave = 0;
+    temp.ctsaves = 0;
+    temp.portable_format = true;
+    temp.header_valid = true;
 
     Handle payload = nil;
-    boolean ok = wp_portable_state_pack_portable(nil, state, &payload);
-
-    state->doc = MEM_NULL;
-    state->doc_loaded = false;
-    wp_portable_state_free(state);
-    pgDispose(doc);
-
+    boolean ok = wp_portable_wrap_rtf_payload(&temp, hrtf, &payload);
+    disposehandle(hrtf);
     if (!ok)
         return false;
 
     *hpacked = payload;
     return true;
 }
+
+Boolean wp_portable_load_portable_blob_for_test(const unsigned char *blob, long len) {
+    if (blob == NULL || len < (long)sizeof(wp_portable_diskheader))
+        return false;
+
+    wp_portable_diskheader disk;
+    BlockMoveData(blob, &disk, sizeof(disk));
+
+    if (conditionallongswap(disk.magic) != WP_PORTABLE_MAGIC)
+        return false;
+    if (conditionalshortswap(disk.version) != WP_PORTABLE_VERSION)
+        return false;
+
+    uint32_t utf8len = conditionallongswap(disk.utf8bytelen);
+    uint32_t reserved_len = conditionallongswap(disk.reservedlength);
+    if (reserved_len != 0)
+        return false;
+
+    size_t header_size = sizeof(wp_portable_diskheader);
+    if ((long)header_size + (long)utf8len != len)
+        return false;
+
+    const uint8_t *payload = blob + header_size;
+    Handle hutf8 = nil;
+    boolean ok = wp_portable_rtf_to_utf8(payload, (long)utf8len, &hutf8);
+    if (ok && hutf8 != nil)
+        disposehandle(hutf8);
+    return ok;
+}
 #endif /* FRONTIER_TESTS */
 
 #endif /* FRONTIER_HEADLESS */
+#define RTF_PREFIX "{\\rtf1\\ansi\\deff0\\pard "
+#define RTF_SUFFIX "}"
+
+static boolean wp_portable_append_bytes(Handle h, const void *data, size_t len) {
+    if (h == nil || data == NULL || len == 0)
+        return true;
+    long old_size = gethandlesize(h);
+    long new_size = old_size + (long)len;
+    if (!sethandlesize(h, new_size))
+        return false;
+    BlockMoveData(data, *h + old_size, len);
+    return true;
+}
+
+static boolean wp_portable_append_cstr(Handle h, const char *literal) {
+    if (literal == NULL)
+        return true;
+    return wp_portable_append_bytes(h, literal, strlen(literal));
+}
+
+static long wp_portable_count_utf8_chars(const unsigned char *data, long len) {
+    if (data == NULL || len <= 0)
+        return 0;
+    long count = 0;
+    for (long i = 0; i < len; ++i) {
+        unsigned char c = data[i];
+        if ((c & 0xC0) != 0x80)
+            ++count;
+    }
+    return count;
+}
+
+static boolean wp_portable_utf8_to_rtf(Handle hutf8, Handle *hrtf, long *out_chars) {
+    if (hutf8 == nil || hrtf == NULL)
+        return false;
+
+    Handle hrtf_local = nil;
+    if (!newclearhandle(0, &hrtf_local))
+        return false;
+
+    if (!wp_portable_append_cstr(hrtf_local, RTF_PREFIX)) {
+        disposehandle(hrtf_local);
+        return false;
+    }
+
+    const unsigned char *src = (const unsigned char *)*hutf8;
+    long len = gethandlesize(hutf8);
+    for (long i = 0; i < len; ++i) {
+        unsigned char c = src[i];
+        if (c == '\r' || c == '\n') {
+            if (c == '\r' && (i + 1) < len && src[i + 1] == '\n')
+                ++i;
+            if (!wp_portable_append_cstr(hrtf_local, "\\par "))
+            {
+                disposehandle(hrtf_local);
+                return false;
+            }
+            continue;
+        }
+        if (c == '\t') {
+            if (!wp_portable_append_cstr(hrtf_local, "\\tab "))
+            {
+                disposehandle(hrtf_local);
+                return false;
+            }
+            continue;
+        }
+        if (c == '\\' || c == '{' || c == '}') {
+            char esc[2] = {'\\', (char)c};
+            if (!wp_portable_append_bytes(hrtf_local, esc, sizeof(esc))) {
+                disposehandle(hrtf_local);
+                return false;
+            }
+            continue;
+        }
+        if (c < 0x20 || c == 0x7F) {
+            char buf[6];
+            snprintf(buf, sizeof(buf), "\\'%02x", c);
+            if (!wp_portable_append_cstr(hrtf_local, buf)) {
+                disposehandle(hrtf_local);
+                return false;
+            }
+            continue;
+        }
+        if (c < 0x80) {
+            if (!wp_portable_append_bytes(hrtf_local, &c, 1)) {
+                disposehandle(hrtf_local);
+                return false;
+            }
+        } else {
+            char buf[6];
+            snprintf(buf, sizeof(buf), "\\'%02x", c);
+            if (!wp_portable_append_cstr(hrtf_local, buf)) {
+                disposehandle(hrtf_local);
+                return false;
+            }
+        }
+    }
+
+    if (!wp_portable_append_cstr(hrtf_local, RTF_SUFFIX)) {
+        disposehandle(hrtf_local);
+        return false;
+    }
+
+    if (out_chars)
+        *out_chars = wp_portable_count_utf8_chars(src, len);
+
+    *hrtf = hrtf_local;
+    return true;
+}
+
+static int wp_portable_hex_value(unsigned char c) {
+    if (c >= '0' && c <= '9')
+        return c - '0';
+    if (c >= 'a' && c <= 'f')
+        return c - 'a' + 10;
+    if (c >= 'A' && c <= 'F')
+        return c - 'A' + 10;
+    return -1;
+}
+
+static boolean wp_portable_rtf_to_utf8(const uint8_t *rtf, long len, Handle *hout_utf8) {
+    if (rtf == NULL || len <= 0 || hout_utf8 == NULL)
+        return false;
+
+    Handle hout = nil;
+    if (!newclearhandle(0, &hout))
+        return false;
+
+    long i = 0;
+    while (i < len) {
+        unsigned char c = rtf[i];
+        if (c == '\\') {
+            ++i;
+            if (i >= len)
+                goto fail;
+            unsigned char next = rtf[i];
+            if (next == '\\' || next == '{' || next == '}') {
+                if (!wp_portable_append_bytes(hout, &next, 1))
+                    goto fail;
+                ++i;
+                continue;
+            }
+            if (next == '\'') {
+                if ((i + 2) >= len)
+                    goto fail;
+                int hi = wp_portable_hex_value(rtf[i + 1]);
+                int lo = wp_portable_hex_value(rtf[i + 2]);
+                if (hi < 0 || lo < 0)
+                    goto fail;
+                unsigned char byte = (unsigned char)((hi << 4) | lo);
+                if (!wp_portable_append_bytes(hout, &byte, 1))
+                    goto fail;
+                i += 3;
+                continue;
+            }
+            long word_start = i;
+            while (i < len && ((rtf[i] >= 'a' && rtf[i] <= 'z') || (rtf[i] >= 'A' && rtf[i] <= 'Z')))
+                ++i;
+            long word_len = i - word_start;
+            if (word_len <= 0)
+                goto fail;
+
+            const char *word = (const char *)(rtf + word_start);
+            boolean handled = false;
+            if (word_len == 3 && strncmp(word, "par", 3) == 0) {
+                unsigned char newline = '\r';
+                handled = wp_portable_append_bytes(hout, &newline, 1);
+            } else if (word_len == 3 && strncmp(word, "tab", 3) == 0) {
+                unsigned char tab = '\t';
+                handled = wp_portable_append_bytes(hout, &tab, 1);
+            } else if ((word_len == 3 && strncmp(word, "rtf", 3) == 0) ||
+                       (word_len == 4 && strncmp(word, "ansi", 4) == 0) ||
+                       (word_len == 4 && strncmp(word, "deff", 4) == 0) ||
+                       (word_len == 4 && strncmp(word, "pard", 4) == 0)) {
+                handled = true;
+            }
+
+            if (!handled)
+                goto fail;
+
+            while (i < len && (rtf[i] == '-' || (rtf[i] >= '0' && rtf[i] <= '9')))
+                ++i;
+            if (i < len && rtf[i] == ' ')
+                ++i;
+            continue;
+        }
+
+        if (c == '{' || c == '}') {
+            ++i;
+            continue;
+        }
+
+        if (!wp_portable_append_bytes(hout, &c, 1))
+            goto fail;
+        ++i;
+    }
+
+    *hout_utf8 = hout;
+    return true;
+
+fail:
+    if (hout != nil)
+        disposehandle(hout);
+    return false;
+}

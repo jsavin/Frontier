@@ -1,5 +1,12 @@
 # UTF-8 Transition Plan
 
+Status
+- State: Planning
+- Phase: 4 (Text Modernization)
+- Last Updated: 2025-11-20
+- Owner: Codex
+- Notes: Blueprint for migrating Frontier to UTF-8; update as phases start.
+
 ## Context and Goals
 - Frontier’s core still treats every string as Pascal `bigstring` (1-byte characters) or raw byte handles. MacRoman/ANSI assumptions leak into kernel APIs, database packs, and script verbs.
 - Modern UX (portable runtime, headless tests, CLI) would benefit from a canonical UTF-8 internal representation that aligns with contemporary platforms.

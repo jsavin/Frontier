@@ -15,6 +15,12 @@ from the PaigeImportFilter and PaigeExportFilter classes. */
 #include "pgdeftbl.h"
 #include "pgFiles.h"
 
+#if defined(__cplusplus)
+#define PG_SIZE_PTR(value) reinterpret_cast<size_t PG_FAR *>(value)
+#else
+#define PG_SIZE_PTR(value) ((size_t PG_FAR *)(value))
+#endif
+
 /* PaigeImportFilter constructor. This sets up the various members common to all filters.
 No error checking or file verification occurs just yet. */
 
@@ -71,9 +77,9 @@ pg_boolean PaigeNativeImportFilter::pgReadNextBlock (void)
          import_pg_rec->flags2 |= NO_READVIS_BIT;
 
       if (import_bits & IMPORT_CACHE_FLAG)
-         io_result = ::pgCacheReadDoc(import_pg, &file_begin, key_list, num_keys, io_proc, filemap);
+         io_result = ::pgCacheReadDoc(import_pg, PG_SIZE_PTR(&file_begin), key_list, num_keys, io_proc, filemap);
       else
-         io_result = ::pgReadDoc(import_pg, &file_begin, key_list, num_keys, io_proc, filemap);
+         io_result = ::pgReadDoc(import_pg, PG_SIZE_PTR(&file_begin), key_list, num_keys, io_proc, filemap);
 
       translator.bytes_transferred = 0;
       text_position = import_pg_rec->t_length;
@@ -214,14 +220,14 @@ pg_boolean PaigeNativeExportFilter::pgWriteNextBlock (void)
    if ((ref_to_save = copied_ref) == MEM_NULL)
       ref_to_save = export_pg;
    
-   io_result = pgSaveDoc(ref_to_save, &filepos, NULL, 0, io_proc, filemap, 0);
+   io_result = pgSaveDoc(ref_to_save, PG_SIZE_PTR(&filepos), NULL, 0, io_proc, filemap, 0);
    
    if (io_result == NO_ERROR)
       if (feature_bits & EXPORT_EMBEDDED_OBJECTS_FLAG)
-         io_result = pgSaveAllEmbedRefs(ref_to_save, io_proc, NULL, &filepos, filemap);
+         io_result = pgSaveAllEmbedRefs(ref_to_save, io_proc, NULL, PG_SIZE_PTR(&filepos), filemap);
 
    if (io_result == NO_ERROR)
-      pgTerminateFile (ref_to_save, &filepos, io_proc, filemap);
+      pgTerminateFile (ref_to_save, PG_SIZE_PTR(&filepos), io_proc, filemap);
       
    return   FALSE;
 }
@@ -234,11 +240,8 @@ pg_error PaigeNativeExportFilter::pgExportDone (void)
    if (copied_ref)
       pgDispose(copied_ref);
 
-   return   io_proc(NULL, io_set_eof, &filepos, &filepos, filemap);
+   return   io_proc(NULL, io_set_eof, PG_SIZE_PTR(&filepos), PG_SIZE_PTR(&filepos), filemap);
 }
 
 
 /************************************* Local Functions *************************************/
-
-
-

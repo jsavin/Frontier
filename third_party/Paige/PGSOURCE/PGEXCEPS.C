@@ -8,6 +8,9 @@ conventions.   Copyright 1993-1994    			*/
 	failure mechanisms with C++, SOM and other languages failure mechanisms by Tom Shaw, OITC  */
 
 #include "pgMemMgr.h"
+#if defined(FRONTIER_TESTS)
+#include <stdio.h>
+#endif
 
 #ifdef MAC_PLATFORM
 #pragma segment pgbasic4
@@ -50,6 +53,17 @@ PG_PASCAL (void) pgPushHandler (pgm_globals_ptr globals, pg_fail_info_ptr fail_i
 PG_PASCAL (void) pgFailure (pgm_globals_ptr globals, pg_error error, long message)
 {
 	pg_fail_info_ptr	handler;
+
+#if defined(FRONTIER_TESTS)
+	/* 2025-11-16 Codex: Instrument pgFailure so we can see Paige errors while
+	   bringing up the UNIX runtime. */
+	void *ret0 = __builtin_return_address(0);
+	void *ret1 = __builtin_return_address(1);
+	fprintf(stdout, "[paige] pgFailure err=%ld msg=%ld top=%p ret0=%p ret1=%p\n",
+		(long)error, message, globals ? (void *)globals->top_fail_info : NULL,
+		ret0, ret1);
+	fflush(stdout);
+#endif
 
 #ifdef PG_DEBUG
 	globals->debug_check = 0;
@@ -273,6 +287,13 @@ PG_PASCAL (void) pgDebugProc (pg_error message, unsigned long what_ref)
 	KeyScript(0);
 #endif
 
+#if defined(FRONTIER_TESTS)
+	fprintf(stderr, "[paige] pgDebugProc message=%ld ref=0x%lx\n",
+		(long)message, (unsigned long)what_ref);
+	fflush(stderr);
+	return;
+#endif
+
 #ifdef PG_DEBUG
 
 #ifdef MAC_PLATFORM
@@ -483,4 +504,3 @@ static void no_handler (pgm_globals_ptr globals)
 	else
 		globals->debug_proc(NO_ERR_HANDLER_ERR, MEM_NULL);
 }
-

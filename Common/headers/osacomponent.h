@@ -30,9 +30,13 @@
 
 #ifdef FRONTIER_PORTABLE
     /* Skip Component Manager & OSA in portable core */
-    typedef void* Component;
-    typedef void* ComponentInstance;
-    typedef void* AppleEvent;
+    #if !defined(OS_PORTABLE_HAS_COMPONENT_TYPES)
+        typedef void* Component;
+        typedef void* ComponentInstance;
+    #endif
+    #if !defined(OS_PORTABLE_HAS_APPLEEVENT)
+        typedef void* AppleEvent;
+    #endif
 #else
     #ifndef __COMPONENTS__
         #if !defined(FRONTIER_HEADLESS)
@@ -75,7 +79,6 @@ extern void osacomponentshutdown (void);
 
 
 #endif
-
 
 
 

@@ -1,4 +1,5 @@
 /* 2025-10-31 Codex: Skip portable handle stubs when FRONTIER_USE_PORTABLE_HANDLES is active. */
+/* 2025-11-11 Codex: Remove Paige handler stubs whenever HEADLESS_LINKS_REAL_PAIGE is defined. */
 #include "frontier.h"
 #include "portable_handles.h"
 #include "osincludes_portable.h"
@@ -32,6 +33,12 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+typedef long pg_word;
+typedef unsigned char *pg_char_ptr;
+typedef struct style_info *style_info_ptr;
+typedef struct font_info *font_info_ptr;
+typedef struct paige_rec *paige_rec_ptr;
 
 #ifdef FRONTIER_HEADLESS
 
@@ -159,12 +166,12 @@ boolean popundoaction (void) { return false; }
 void ouch (void) { }
 
 // Error and path helpers
-#if !defined(FRONTIER_PORTABLE) && !defined(HEADLESS_TEST_PORTABLE_FILE)
+#if !defined(FRONTIER_PORTABLE_FILE_AVAILABLE)
 boolean oserror (OSErr err) { (void)err; return false; }
 boolean pathtofilespec (bigstring bs, ptrfilespec fs) { (void)bs; if (fs) memset(fs,0,sizeof(*fs)); return false; }
 #endif
 OSStatus pathtofsref (bigstring bs, FSRef *ref) { (void)bs; if (ref) memset(ref,0,sizeof(*ref)); return paramErr; }
-#if !defined(FRONTIER_PORTABLE) && !defined(HEADLESS_TEST_PORTABLE_FILE)
+#if !defined(FRONTIER_PORTABLE_FILE_AVAILABLE)
 boolean equalfilespecs ( const ptrfilespec fs1, const ptrfilespec fs2 ) { (void)fs1; (void)fs2; return false; }
 #endif
 boolean equalrects (Rect r1, Rect r2) { return r1.top==r2.top && r1.left==r2.left && r1.bottom==r2.bottom && r1.right==r2.right; }
@@ -284,7 +291,8 @@ boolean getrootwindow (WindowPtr w, hdlwindowinfo *hi) { (void)w; if (hi) *hi=ni
 Handle getresourcehandle (ResType t, short id) { (void)t; (void)id; return nil; }
 void loadconfigresource (short n, tyconfigrecord *cr) { (void)n; if (cr) memset(cr,0,sizeof(*cr)); }
 
-// File/FS helpers (implemented in portable/file_portable.c)
+#if !defined(FRONTIER_PORTABLE_FILE_AVAILABLE)
+// File/FS helpers (implemented in portable/file_portable.c when available)
 boolean fileparsevolname (bigstring bs, ptrfilespec fs) { (void)bs; if (fs) memset(fs,0,sizeof(*fs)); return false; }
 OSErr macgetfsref (const ptrfilespec fs, FSRef* fsref) { (void)fs; if (fsref) memset(fsref,0,sizeof(*fsref)); return paramErr; }
 OSErr macmakefilespec (const FSRef *fsref, ptrfilespec fs) { (void)fsref; if (fs) memset(fs,0,sizeof(*fs)); return paramErr; }
@@ -311,6 +319,7 @@ void bigstringtofsname (const bigstring bs, tyfsnameptr fsname) {
     for (unsigned int i = 0; i < len; ++i)
         fsname->unicode[i] = (UInt16) (unsigned char) bs[1 + i];
 }
+#endif /* !FRONTIER_PORTABLE_FILE_AVAILABLE */
 
 // Timing/keyboard
 long getcurrenttimezonebias (void) { return 0; }
@@ -320,11 +329,13 @@ boolean keyboardescape (void) { return false; }
 void fontgetnumber (bigstring bs, short *num) { (void)bs; if (num) *num=0; }
 boolean getmachinename (bigstring bsname) { setemptystring (bsname); return false; }
 
+#if !defined(FRONTIER_PORTABLE_APPLEEVENTS)
 // Component/AE stubs
 boolean havecomponentmanager (void) { return false; }
 boolean newdescnull (AEDesc *desc, DescType type) { (void)type; if (desc) memset(desc,0,sizeof(*desc)); return true; }
 boolean newdescwithhandle (AEDesc *desc, DescType type, Handle h) { (void)type; (void)h; if (desc) memset(desc,0,sizeof(*desc)); return true; }
 boolean nildatahandle (AEDesc *desc) { (void)desc; return true; }
+#endif
 
 // Menu/UI verbs used by opverbs
 boolean menuedit (void) { return false; }
@@ -368,7 +379,7 @@ void clearfilespec (ptrfilespec fs) { if (fs) memset(fs,0,sizeof(*fs)); }
 boolean cmdkeydown (void) { return false; }
 tyconfigrecord config; /* default-initialized */
 boolean copydatahandle (AEDesc *desc, Handle *hout) { (void)desc; if (hout) *hout=nil; return false; }
-void bigstringtofsname (const bigstring bs, tyfsnameptr fsname) { (void)bs; if (fsname) memset(fsname,0,sizeof(*fsname)); }
+/* bigstringtofsname already provided earlier */
 boolean datahandletostring (AEDesc* desc, bigstring bs) { (void)desc; setemptystring(bs); return false; }
 boolean getscrap (tyscraptype t, Handle h) { (void)t; (void)h; return false; }
 boolean gettablevalue (hdlhashtable ht, bigstring bs, tyvaluerecord *v, hdlhashnode *node) { (void)ht;(void)bs;(void)v; if (node) *node=nil; return false; }
@@ -452,6 +463,7 @@ void SysBeep(short duration) {
     (void)duration;
 }
 
+#if !defined(FRONTIER_PORTABLE_STRINGS)
 OSStatus TECCountAvailableTextEncodings(ItemCount *count) {
     if (count)
         *count = 0;
@@ -545,25 +557,26 @@ OSStatus TECFlushText(TECObjectRef converter, TextPtr outputBuf, ByteCount outpu
         *outputProduced = 0;
     return noErr;
 }
+#endif /* !FRONTIER_PORTABLE_STRINGS */
 
 Boolean macfilespecisvalid(const ptrfilespec fs) {
     (void)fs;
     return false;
 }
 
+#if !defined(FRONTIER_PORTABLE_FILE_AVAILABLE)
 Boolean filespectopath(const ptrfilespec fs, bigstring path) {
     (void)fs;
     setstringlength(path, 0);
     return false;
 }
 
-#ifndef HEADLESS_TEST_PORTABLE_FILE
 Boolean getfsfile(const ptrfilespec fs, bigstring name) {
     (void)fs;
     setstringlength(name, 0);
     return false;
 }
-#endif
+#endif /* !FRONTIER_PORTABLE_FILE_AVAILABLE */
 
 void NumToString(long value, Str255 result) {
     char buffer[256];
@@ -594,6 +607,14 @@ Handle GetString(short resID) {
     return NULL;
 }
 
+#if !defined(FRONTIER_PORTABLE_APPLEEVENTS)
+static void appleevent_clear_desc(AEDesc *desc) {
+    if (!desc)
+        return;
+    desc->descriptorType = typeNull;
+    desc->dataHandle = NULL;
+}
+
 OSStatus AEProcessAppleEvent(const EventRecord *event) {
     (void)event;
     return noErr;
@@ -617,6 +638,8 @@ OSStatus AEDisposeDesc(AEDesc *desc) {
     return noErr;
 }
 
+#endif /* !FRONTIER_PORTABLE_APPLEEVENTS */
+
 void dtox80(const double *value, extended80 *out) {
     if (!value || !out)
         return;
@@ -632,6 +655,7 @@ double x80tod(const extended80 *value) {
     return out;
 }
 
+#if !defined(OS_PORTABLE_HAS_FIXMATH)
 short FixRound(Fixed value) {
     return (short)((value + 0x00008000L) >> 16);
 }
@@ -645,6 +669,7 @@ Fixed FixRatio(long numer, long denom) {
 Fixed FixMul(Fixed a, Fixed b) {
     return (Fixed)(((int64_t)a * (int64_t)b) >> 16);
 }
+#endif
 
 void DebugStr(const unsigned char *pascalString) {
     (void)pascalString;
@@ -748,6 +773,8 @@ OSErr GetAliasInfo(AliasHandle alias, AliasInfoType index, Str255 info) {
         setstringlength(info, 0);
     return noErr;
 }
+
+#if !defined(FRONTIER_PORTABLE_APPLEEVENTS)
 
 OSErr AEGetKeyPtr(const AppleEvent *event, AEKeyword keyword, DescType desiredType, AEKeyword *actualType, void *dataPtr, Size maximumSize, Size *actualSize) {
     (void)event;
@@ -897,6 +924,8 @@ OSErr AEGetNthDesc(const AEDescList *list, long index, DescType desiredType, AEK
     return errAEEventNotHandled;
 }
 
+#endif /* !FRONTIER_PORTABLE_APPLEEVENTS */
+
 void Microseconds(UnsignedWide *result) {
     static uint64_t counter = 0;
     counter += 100;
@@ -965,5 +994,235 @@ boolean statsblockinuse (dbaddress adr, bigstring bsitem) {
         setemptystring (bsitem);
     return false;
 }
+
+pg_word pgCharClassProc(paige_rec_ptr pg, pg_char_ptr the_char, short charsize,
+        style_info_ptr style, font_info_ptr font) {
+    (void)pg;
+    (void)the_char;
+    (void)charsize;
+    (void)style;
+    (void)font;
+    return 0;
+}
+
+typedef struct style_walk *style_walk_ptr;
+typedef struct draw_points *draw_points_ptr;
+typedef void *format_ref;
+typedef struct pg_globals *pg_globals_ptr;
+typedef short pg_short_t;
+typedef struct t_select *t_select_ptr;
+typedef void *shape_ref;
+typedef struct co_ordinate *co_ordinate_ptr;
+typedef unsigned char pg_boolean;
+typedef unsigned char pg_bits8;
+typedef pg_bits8 *pg_bits8_ptr;
+typedef void *text_ref;
+typedef struct point_start *point_start_ptr;
+typedef short pg_error;
+typedef void *file_ref;
+typedef short pg_file_key;
+typedef void *memory_ref;
+typedef struct select_pair *select_pair_ptr;
+typedef void *graf_device_ptr;
+typedef void *color_value_ptr;
+typedef void *tab_stop_ptr;
+
+extern pg_error pgScrapMemoryRead(void *data, short verb, size_t *position,
+        size_t *data_size, file_ref filemap);
+extern pg_error pgScrapMemoryWrite(void *data, short verb, size_t *position,
+        size_t *data_size, file_ref filemap);
+extern size_t pgUnicodeToBytes(pg_short_t *input_chars, pg_bits8_ptr output_bytes,
+        font_info_ptr font, size_t input_char_size);
+
+long pgCharInfoProc(paige_rec_ptr pg, style_walk_ptr style_walker, pg_char_ptr data,
+        size_t block_offset, size_t offset_begin, size_t offset_end, size_t char_offset,
+        long mask_bits) {
+    (void)pg;
+    (void)style_walker;
+    (void)data;
+    (void)block_offset;
+    (void)offset_begin;
+    (void)offset_end;
+    (void)char_offset;
+    (void)mask_bits;
+    return 0;
+}
+
+void pgDeleteStyleProc(paige_rec_ptr pg, pg_globals_ptr globals,
+        format_ref all_styles, style_info_ptr style) {
+    (void)pg;
+    (void)globals;
+    (void)all_styles;
+    (void)style;
+}
+
+void pgSaveStyleProc(paige_rec_ptr pg, style_info_ptr style_to_save) {
+    (void)pg;
+    (void)style_to_save;
+}
+
+#if !defined(HEADLESS_LINKS_REAL_PAIGE)
+void pgSetGrafDevice(paige_rec_ptr pg, short verb, graf_device_ptr device,
+        color_value_ptr bk_color) {
+    (void)pg;
+    (void)verb;
+    (void)device;
+    (void)bk_color;
+}
+#endif
+
+void pgTabDrawProc(paige_rec_ptr pg, style_walk_ptr walker, tab_stop_ptr tab,
+        draw_points_ptr draw_position) {
+    (void)pg;
+    (void)walker;
+    (void)tab;
+    (void)draw_position;
+}
+
+void pgDrawCursorProc(paige_rec_ptr pg, t_select_ptr select, short verb) {
+    (void)pg;
+    (void)select;
+    (void)verb;
+}
+
+void pgDrawHiliteProc(paige_rec_ptr pg, shape_ref rgn) {
+    (void)pg;
+    (void)rgn;
+}
+
+void pgDrawProc(paige_rec_ptr pg, style_walk_ptr walker, pg_char_ptr data,
+        pg_short_t offset, pg_short_t length, draw_points_ptr draw_position,
+        long extra, short draw_mode) {
+    (void)pg;
+    (void)walker;
+    (void)data;
+    (void)offset;
+    (void)length;
+    (void)draw_position;
+    (void)extra;
+    (void)draw_mode;
+}
+
+void pgDupStyleProc(paige_rec_ptr src_pg, paige_rec_ptr target_pg, short reason_verb,
+        format_ref all_styles, style_info_ptr style) {
+    (void)src_pg;
+    (void)target_pg;
+    (void)reason_verb;
+    (void)all_styles;
+    (void)style;
+}
+
+void pgIdleProc(paige_rec_ptr pg, short verb) {
+    (void)pg;
+    (void)verb;
+}
+
+void pgInitFont(paige_rec_ptr pg, font_info_ptr info) {
+    (void)pg;
+    (void)info;
+}
+
+void pgStyleInitProc(paige_rec_ptr pg, style_info_ptr style, font_info_ptr font) {
+    (void)pg;
+    (void)style;
+    (void)font;
+}
+
+void pgInstallFont(paige_rec_ptr pg, style_info_ptr the_style,
+        font_info_ptr the_font, style_info_ptr composite_style,
+        short style_overlay, pg_boolean include_offscreen) {
+    (void)pg;
+    (void)the_style;
+    (void)the_font;
+    (void)composite_style;
+    (void)style_overlay;
+    (void)include_offscreen;
+}
+
+void pgSpecialCharProc(paige_rec_ptr pg, style_walk_ptr walker, pg_char_ptr data,
+        pg_short_t offset, pg_short_t length, draw_points_ptr draw_position,
+        long extra, short draw_mode) {
+    (void)pg;
+    (void)walker;
+    (void)data;
+    (void)offset;
+    (void)length;
+    (void)draw_position;
+    (void)extra;
+    (void)draw_mode;
+}
+
+void pgMeasureProc(paige_rec_ptr pg, style_walk_ptr walker,
+        pg_char_ptr data, size_t length, pg_short_t slop, long *positions,
+        short *types, short measure_verb, size_t current_offset, pg_boolean scale_widths,
+        short call_order) {
+    (void)pg;
+    (void)walker;
+    (void)data;
+    (void)length;
+    (void)slop;
+    (void)positions;
+    (void)types;
+    (void)measure_verb;
+    (void)current_offset;
+    (void)scale_widths;
+    (void)call_order;
+}
+
+short pgInsertQuery(paige_rec_ptr pg, pg_char_ptr the_char, short charsize) {
+    (void)pg;
+    (void)the_char;
+    (void)charsize;
+    return 0;
+}
+
+#if !defined(HEADLESS_LINKS_REAL_PAIGE)
+pg_boolean pgReadHandlerProc(paige_rec_ptr pg, pg_file_key key, memory_ref key_data,
+        long *element_info, void *aux_data, size_t *unpacked_size) {
+    (void)pg;
+    (void)key;
+    (void)key_data;
+    (void)element_info;
+    (void)aux_data;
+    (void)unpacked_size;
+    return false;
+}
+
+pg_boolean pgWriteHandlerProc(paige_rec_ptr pg, pg_file_key key, memory_ref key_data,
+        long *element_info, void *aux_data, size_t *unpacked_size) {
+    (void)pg;
+    (void)key;
+    (void)key_data;
+    (void)element_info;
+    (void)aux_data;
+    (void)unpacked_size;
+    return false;
+}
+
+pg_boolean pgDummyReadHandler(paige_rec_ptr pg, pg_file_key key, memory_ref key_data,
+        size_t *element_info, void *aux_data, size_t *unpacked_size) {
+    (void)pg;
+    (void)key;
+    (void)key_data;
+    (void)element_info;
+    (void)aux_data;
+    (void)unpacked_size;
+    return false;
+}
+
+pg_boolean pgDummyWriteHandler(paige_rec_ptr pg, pg_file_key key, memory_ref key_data,
+        size_t *element_info, void *aux_data, size_t *unpacked_size) {
+    (void)pg;
+    (void)key;
+    (void)key_data;
+    (void)element_info;
+    (void)aux_data;
+    (void)unpacked_size;
+    return false;
+}
+
+#endif /* !HEADLESS_LINKS_REAL_PAIGE */
+
+
 
 #endif /* FRONTIER_HEADLESS */

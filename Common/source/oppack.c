@@ -28,6 +28,10 @@
 #include "frontier.h"
 #include "standard.h"
 
+/* 2025-11-14 Codex: Added outline diagnostics + fixed disk-layout structs. */
+#include <stdint.h> /* 2025-11-14 Codex: lock outline disk headers to fixed widths */
+/* 2025-11-14 Codex: Preserve fixed legacy header layout on 64-bit builds. */
+
 #include "memory.h"
 #include "font.h"
 #include "quickdraw.h"
@@ -37,14 +41,23 @@
 #include "opinternal.h"
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
 
+#if defined(FRONTIER_TESTS)
+#include <stdio.h>
+#define OP_HEADLESS_TRACE(...) fprintf(stderr, __VA_ARGS__)
+#else
+#define OP_HEADLESS_TRACE(...) ((void) 0)
+#endif
+
 #pragma pack(2)
 typedef struct tylinetableitem {
 	
-	short flags;
+	int16_t flags;
 	
-	long lenrefcon; /*number of bytes that follow -- the refcon information*/
+	int32_t lenrefcon; /*number of bytes that follow -- the refcon information*/
 	} tylinetableitem, *ptrlinetable, **hdllinetable;
 #pragma options align=reset
+
+_Static_assert (sizeof (tylinetableitem) == 6, "tylinetableitem size drift");
 
 typedef enum tylinetableitemflags {
 
@@ -86,35 +99,35 @@ typedef enum tylinetableitemflags {
 #pragma pack(2)
 typedef struct tyversion2diskheader {
 	
-	short versionnumber; /*important, this structure is saved on disk*/
+	int16_t versionnumber; /*important, this structure is saved on disk*/
 	
-	long sizelinetable; /*number of bytes in the linetable section of handle*/
+	int32_t sizelinetable; /*number of bytes in the linetable section of handle*/
 	
-	long sizetext; /*number of bytes in the text portion of handle*/
+	int32_t sizetext; /*number of bytes in the text portion of handle*/
 	
-	short lnumcursor; 
+	int16_t lnumcursor; 
 	
-	tylinespacing linespacing;
+	int16_t linespacing;
 	
-	short lineindent;
+	int16_t lineindent;
 	
 	diskfontstring fontname; 
 	
-	short fontsize, fontstyle;
+	int16_t fontsize, fontstyle;
 	
-	short vertmin, vertmax, vertcurrent; /*for structs that don't get their own file*/
+	int16_t vertmin, vertmax, vertcurrent; /*for structs that don't get their own file*/
 	
-	short horizmin, horizmax, horizcurrent;
+	int16_t horizmin, horizmax, horizcurrent;
 	
-	unsigned long timecreated, timelastsave;
+	int32_t timecreated, timelastsave;
 	
-	unsigned long ctsaves;
+	int32_t ctsaves;
 	
-	boolean fltextmode;
+	int16_t fltextmode;
 	
 	diskrect windowrect; /*the size and position of the window that displays the outline*/
 	
-	long outlinesignature; /*client info*/
+	int32_t outlinesignature; /*client info*/
 	
 	RGBColor backcolor;
 	
@@ -122,14 +135,16 @@ typedef struct tyversion2diskheader {
 	
 	OSType platform; /*Mac or Win*/
 	
-	short lnumcursor_hiword;
+	int16_t lnumcursor_hiword;
 	
-	short vertcurrent_hiword; //vert min, max aren't really used
+	int16_t vertcurrent_hiword; //vert min, max aren't really used
 	
-	short horizcurrent_hiword; //horiz min, max aren't really used
+	int16_t horizcurrent_hiword; //horiz min, max aren't really used
 	
-	short waste [3]; /*room to grow*/
+	int16_t waste [3]; /*room to grow*/
 	} tyversion2diskheader;
+
+_Static_assert (sizeof (tyversion2diskheader) == 120, "tyversion2diskheader must remain 120 bytes");
 
 
 typedef struct tyoppackinfo {
@@ -386,6 +401,8 @@ boolean oppack (Handle *hpackedoutline) {
 	boolean flpoppedhoists = false;
 	boolean flerror = false;
 	long lnumcursor;
+	long textbytes = 0;
+	long linetablebytes = 0;
 	
 	h = *hpackedoutline; /*copy into register*/
 	
@@ -478,19 +495,23 @@ boolean oppack (Handle *hpackedoutline) {
 	
 	opwriteeditbuffer (); /*if a headline is being edited, update text handle*/
 	
-	if (!opoutlinetotext (hsummit, &packstream, &header.sizetext)) {
+	if (!opoutlinetotext (hsummit, &packstream, &textbytes)) {
 		
 		flerror = true;
 		
 		goto exit;
 		}
-		
-	if (!opoutlinetotable (hsummit, &packstream, &header.sizelinetable)) {
+	
+	header.sizetext = (int32_t) textbytes;
+	
+	if (!opoutlinetotable (hsummit, &packstream, &linetablebytes)) {
 	
 		flerror = true;
 		
 		goto exit;
 		}
+	
+	header.sizelinetable = (int32_t) linetablebytes;
 	
 	memtodisklong (header.sizetext);
 	memtodisklong (header.sizelinetable);
@@ -945,8 +966,16 @@ static boolean opunpackversion2 (handlestream *packstream) {
 	
 	popport ();
 	
-	if (!fl)
+	if (!fl) {
+#if defined(FRONTIER_TESTS)
+		OP_HEADLESS_TRACE ("[headless] opunpackv2 textfail text=%ld linetable=%ld pos=%ld eof=%ld\n",
+			(long) header.sizetext,
+			(long) header.sizelinetable,
+			(long) (*packstream).pos,
+			(long) (*packstream).eof);
+#endif
 		return (false);
+	}
 	
 	(*packstream).pos += header.sizetext;
 	
@@ -958,8 +987,15 @@ static boolean opunpackversion2 (handlestream *packstream) {
 	
 	opsetexpandedbits (hsummit, true); /*all 1st level items are expanded*/
 	
-	if (!optabletooutline (&stream, hsummit))
+	if (!optabletooutline (&stream, hsummit)) {
+#if defined(FRONTIER_TESTS)
+		OP_HEADLESS_TRACE ("[headless] opunpackv2 tablefail bytes=%ld pos=%ld eof=%ld\n",
+			(long) header.sizelinetable,
+			(long) stream.pos,
+			(long) stream.eof);
+#endif
 		return (false);
+	}
 	
 	(*packstream).pos += header.sizelinetable;
 	

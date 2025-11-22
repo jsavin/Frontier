@@ -216,7 +216,7 @@ static long make_style (pg_ref import_pg, pg_char_ptr name, long html_element, l
 		font_info			font;
 		font_info_ptr		use_font;
 		
-		pg_rec = UseMemory(import_pg);
+		pg_rec = (paige_rec_ptr)UseMemory(import_pg);
 		paige_globals = pg_rec->globals;
 		UnuseMemory(import_pg);
 

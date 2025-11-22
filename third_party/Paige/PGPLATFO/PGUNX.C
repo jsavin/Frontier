@@ -18,6 +18,12 @@
 #include "PGSELECT.H"
 #include "PGSHAPES.H"
 
+/* 2025-11-11 Codex: Keep pgUNX exports under C linkage for headless builds. */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifndef MAX_OFFSCREEN
 #define MAX_OFFSCREEN 48000
 #endif
@@ -342,3 +348,7 @@ PG_PASCAL (short) pgGetCharWidth(paige_rec_ptr pg_rec, style_info_ptr style, pg_
     (void)the_char;
     return HEADLESS_ADVANCE_WIDTH;
 }
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif

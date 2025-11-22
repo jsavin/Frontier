@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "frontier.h"
 #include "memory.h"
@@ -15,6 +16,18 @@
 #include "db_format.h"
 #include "tableexternal_common.h"
 #include "../portable/wptext_portable.h"
+
+#ifndef TABLE_DISK_VERSION
+#define TABLE_DISK_VERSION 0x04
+#endif
+
+#ifndef TABLE_HEADER_RESERVED_BYTES
+#define TABLE_HEADER_RESERVED_BYTES 1024
+#endif
+
+#ifndef WP_PORTABLE_HEADER_BYTES
+#define WP_PORTABLE_HEADER_BYTES 1056
+#endif
 
 /* Enable to dump detailed pack/unpack debugging. */
 /* #define DEBUG_SERIALIZER 1 */
@@ -514,10 +527,10 @@ static void run_wptext_rtf_smoke(void) {
     assert(version == 1);
     uint16_t flags = read_be16(bytes + 6);
     assert((flags & 0x0001u) != 0);
-    uint32_t utf8len = read_be32u(bytes + 28);
-    uint32_t reserved_len = read_be32u(bytes + 32);
+    uint32_t utf8len = read_be32u(bytes + 24);
+    uint32_t reserved_len = read_be32u(bytes + 28);
     assert(reserved_len == 0);
-    const long header_len = 32 + 1024;
+    const long header_len = WP_PORTABLE_HEADER_BYTES;
     assert(size == (long)header_len + (long)utf8len);
     const uint8_t *payload = bytes + header_len;
     assert(payload[0] == '{');
@@ -527,7 +540,51 @@ static void run_wptext_rtf_smoke(void) {
     fflush(stdout);
 }
 
+static void run_wptext_portable_roundtrip(void) {
+    Handle hpacked = nil;
+    assert(wp_portable_pack_text_for_test("Portable roundtrip", &hpacked));
+    long size = gethandlesize(hpacked);
+    const unsigned char *bytes = (const unsigned char *) *hpacked;
+    assert(size > WP_PORTABLE_HEADER_BYTES);
+    assert(wp_portable_load_portable_blob_for_test(bytes, size));
+    disposehandle(hpacked);
+}
+
+static void run_wptext_portable_reservedlen_failure(void) {
+    Handle hpacked = nil;
+    assert(wp_portable_pack_text_for_test("Reserved check", &hpacked));
+    Handle corrupt = nil;
+    assert(copyhandle(hpacked, &corrupt));
+    unsigned char *bytes = (unsigned char *) *corrupt;
+    long size = gethandlesize(corrupt);
+    /* Overwrite reservedlength (big-endian) with 1 to trigger validation failure. */
+    bytes[28] = 0x00;
+    bytes[29] = 0x00;
+    bytes[30] = 0x00;
+    bytes[31] = 0x01;
+    assert(!wp_portable_load_portable_blob_for_test(bytes, size));
+    disposehandle(corrupt);
+    disposehandle(hpacked);
+}
+
 int main(void) {
+    const char *regen_path = getenv("FRONTIER_REGEN_ROOT");
+    if (regen_path != NULL && *regen_path != '\0') {
+        printf("[rt] FRONTIER_REGEN_ROOT=%s (starting migration)\n", regen_path);
+        fflush(stdout);
+        if (!migrate_32bit_to_64bit(regen_path)) {
+            fprintf(stderr, "[rt] migrate_32bit_to_64bit failed for %s\n", regen_path);
+            return 1;
+        }
+        char migrated_path[1024];
+        if (db_format_last_backup_path(migrated_path, sizeof migrated_path) && migrated_path[0] != '\0')
+            printf("[rt] migration complete: %s\n", migrated_path);
+        else
+            printf("[rt] migration complete\n");
+        fflush(stdout);
+        return 0;
+    }
+
     printf("[rt] initmemory...\n");
     fflush(stdout);
     assert(initmemory());
@@ -572,6 +629,8 @@ int main(void) {
     printf("[rt] after serializer_roundtrip\n");
     fflush(stdout);
     run_wptext_rtf_smoke();
+    run_wptext_portable_roundtrip();
+    run_wptext_portable_reservedlen_failure();
 
     printf("runtime_tests: language, OPML, and serializer round-trips passed\n");
     wp_portable_shutdown();

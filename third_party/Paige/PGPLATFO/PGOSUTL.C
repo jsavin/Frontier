@@ -357,7 +357,7 @@ count, not byte count. The function returns a byte count of valid chars. RELEASE
 function works correctly even for non-unicode libraries. */
 
 PG_PASCAL (size_t) pgUnicodeToBytes (pg_short_t PG_FAR *input_chars, pg_bits8_ptr output_bytes,
-		font_info_ptr font, long input_char_size)
+		font_info_ptr font, size_t input_char_size)
 {
 	register		pg_short_t PG_FAR	*input;
 	register		pg_bits8_ptr		output;
@@ -447,8 +447,8 @@ PG_PASCAL (size_t) pgUnicodeToUnicode (pg_short_t PG_FAR *the_chars, size_t num_
 /* pgStandardReadProc is the default file-read function. The I/O functions are
 macros that need to be mapped to the machine (see pgMTraps.h).  */
 
-PG_PASCAL (pg_error) pgStandardReadProc (void PG_FAR *data, short verb, long PG_FAR *position,
-		long PG_FAR *data_size, file_ref filemap)
+PG_PASCAL (pg_error) pgStandardReadProc (void PG_FAR *data, short verb, size_t PG_FAR *position,
+		size_t PG_FAR *data_size, file_ref filemap)
 {
 	pg_file_unit	f_ref;
 	pg_error		error;
@@ -506,8 +506,8 @@ PG_PASCAL (pg_error) pgStandardReadProc (void PG_FAR *data, short verb, long PG_
 /* pgStandardWriteProc is the default file-write function. This is Mac-specific,
 but simply change it to match your device.   */
 
-PG_PASCAL (pg_error) pgStandardWriteProc (void PG_FAR *data, short verb, long PG_FAR *position,
-		long PG_FAR *data_size, file_ref filemap)
+PG_PASCAL (pg_error) pgStandardWriteProc (void PG_FAR *data, short verb, size_t PG_FAR *position,
+		size_t PG_FAR *data_size, file_ref filemap)
 {
 	pg_file_unit	   		f_ref;
 	pg_error				error;
@@ -566,8 +566,8 @@ PG_PASCAL (pg_error) pgStandardWriteProc (void PG_FAR *data, short verb, long PG
 /* pgOSReadProc is the same as pgStandardReadProc except the filemap is not a memory_ref,
 rather it is a pg_file_unit.  */
 
-PG_PASCAL (pg_error) pgOSReadProc (void PG_FAR *data, short verb, long PG_FAR *position,
-		long PG_FAR *data_size, file_ref filemap)
+PG_PASCAL (pg_error) pgOSReadProc (void PG_FAR *data, short verb, size_t PG_FAR *position,
+		size_t PG_FAR *data_size, file_ref filemap)
 {
 	pg_file_unit	f_ref;
 	pg_error		error;
@@ -626,8 +626,8 @@ PG_PASCAL (pg_error) pgOSReadProc (void PG_FAR *data, short verb, long PG_FAR *p
 /* pgOSWriteProc is the same as pgStandardWriteProc except the filemap is not a memory_ref,
 rather it is a pg_file_unit.  */
 
-PG_PASCAL (pg_error) pgOSWriteProc (void PG_FAR *data, short verb, long PG_FAR *position,
-		long PG_FAR *data_size, file_ref filemap)
+PG_PASCAL (pg_error) pgOSWriteProc (void PG_FAR *data, short verb, size_t PG_FAR *position,
+		size_t PG_FAR *data_size, file_ref filemap)
 {
 	pg_file_unit	   			f_ref;
 	pg_error					error;

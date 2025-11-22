@@ -38,9 +38,34 @@ When writing scanners or migration tools against legacy files:
 2. If so, parse the first 6 bytes to extract `version` and `adrroottable`.
 3. Continue scanning at `adrroottable`, which is a normal table stored using the merged (modern) format.
 
-Modern (rewritten) v7/v8 databases skip this entire dance: `views[0]` already contains the real root table, and UI-only metadata such as table fonts/window rectangles is no longer serialized with the data.
+Modern (rewritten) v7/v8 databases skip this entire dance: `views[0]` already contains the real root table, and UI-only metadata such as table fonts/window rectangles is no longer serialized with the data. Anything UI-centric (cursor location, window rects, fonts, scroll offsets, etc.) must be zeroed or omitted during migration so shared roots remain multi-user-safe; desktop builds can stash per-user state in a future preference store instead of the database.
 
 See `databases/test-root-contents.png` for the intended UI view of `test.root` once the Cancoon record is resolved and real tables like `myTable` are traversed.
+
+### Table payload layouts (legacy vs modern)
+
+All tables eventually serialize to the same logical pieces:
+
+```
+[tydisktablerecord header][records][strings][formats?]
+```
+
+The difference is in how those pieces are packed:
+
+| Era | On-disk layout | Notes |
+|-----|----------------|-------|
+| **Modern (v4 header, v7 roots)** | `[uint32 outer_len][ merged_handle ][formats]`, where `merged_handle = [uint32 inner_len][header][records][strings]` | Header includes a 1 KB reserved slab (version ≥4). `records` are 12-byte `tydisksymbolrecord` rows (4-byte string offset, 1-byte valuetype, 1-byte version, 4-byte data). |
+| **Legacy (v6 roots)** | `[header][strings][records][formats]` (no merge prefix) | Header is version 0–3 and only 16 bytes. `records` are the old 10-byte bitfield struct (`tyOLD42disksymbolrecord`). Strings immediately follow the header and are Pascal-encoded (`length byte` + characters). |
+
+When migrating:
+
+- **Modern detection**: read the first 4 bytes. If they form a plausible `outer_len` such that `sizeof(uint32) + outer_len <= payload_len`, treat it as modern and leave it intact.
+- **Legacy detection**: otherwise treat it as legacy, peel the `[header][strings][records]` segments, and rebuild them into the modern merged format. This requires:
+  - Preserving the original 16-byte header (and padding to 16 + 1024 bytes when writing the v4 header).
+  - Re-encoding each 10-byte record as the 12-byte modern struct (expand the bitfield version, keep the 4-byte string index/data intact).
+  - Copying the strings block verbatim so every Pascal string offset still points at the same name.
+
+This rewrite guarantees 64-bit hosts see identical tables regardless of whether the source data came from a 32-bit v6 root or was already modernized.
 
 ## UserTalk Addressing
 

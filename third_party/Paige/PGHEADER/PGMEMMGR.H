@@ -112,6 +112,19 @@ typedef unsigned long memory_ref;	/* Basic memory reference */
 #endif
 typedef memory_ref PG_FAR *memory_ref_ptr;
 
+#if defined(FRONTIER_TESTS)
+#if defined(__cplusplus)
+extern "C" {
+#endif
+void pg_trace_handle_watch(memory_ref ref, const char *tag);
+const char *pg_trace_handle_tag(memory_ref ref);
+long pg_trace_handle_access(memory_ref ref);
+void pg_trace_handle_forget(memory_ref ref);
+#if defined(__cplusplus)
+}
+#endif
+#endif
+
 typedef size_t PG_FAR *available_ptr;		/* Used for virtual memory map */
 typedef pg_handle PG_FAR *master_list_ptr;
 

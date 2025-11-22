@@ -35,6 +35,7 @@
 #include "opinternal.h"
 #include "oplist.h"
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
+#include <stdint.h>
 
 
 /*
@@ -53,7 +54,11 @@ goals.  so here goes!
 
 #define oplistversionnumber 1
 
+#if defined(__clang__) || defined(__GNUC__)
+#pragma pack(push, 2)
+#else
 #pragma pack(2)
+#endif
 typedef struct tylistrecord {
 	
 	struct tyoutlinerecord ** houtline; /*the list is stored in an outline*/
@@ -72,7 +77,7 @@ typedef struct tydisklistrecord {
 	
 	short versionnumber; /*this structure is saved on disk*/
 	
-	unsigned long ctoutlinebytes; /*size of the packed outline record*/
+	uint32_t ctoutlinebytes; /*size of the packed outline record*/
 	
 	short ctitems; /*save this instead of recomputing every time we load*/
 	
@@ -84,7 +89,11 @@ typedef struct tydisklistrecord {
 	
 	/*packed outline record is stored at end of this record*/
 	} tydisklistrecord;
+#if defined(__clang__) || defined(__GNUC__)
+#pragma pack(pop)
+#else
 #pragma options align=reset
+#endif
 
 
 static hdllistrecord hcurrentlist = nil;
@@ -857,4 +866,3 @@ boolean opvisitlist (hdllistrecord hlist, opvisitlistcallback visit, ptrvoid ref
 
 	return (true);
 	} /*opvisitlist*/
-

@@ -1,11 +1,15 @@
 # Post-PR-43 Accomplishments
 
-_Last updated: 2025-11-11_
+Status
+- State: Completed
+- Phase: Carbon Migration (Foundations)
+- Last Updated: 2025-11-11
+- Notes: Captures work between PR #43 and the Paige/WPRT milestone.
 
 > 2025-11-11 Codex: Initial summary capturing all work completed after PR #43 landed on origin.
 
 ## Planning & Documentation
-- Reorganized the entire planning tree: archived the legacy phase folders, introduced `planning/carbon_migration/` (README, inventory, phases, decision/status logs), refreshed `planning/INDEX.md`, and created `_CURRENT_STATUS.md` as the hand-off source of truth.
+- Reorganized the entire planning tree: archived the legacy phase folders, introduced `planning/phase3/carbon_migration/` (README, inventory, phases, decision/status logs), refreshed `planning/INDEX.md`, and created `_CURRENT_STATUS.md` as the hand-off source of truth.
 - Added durable guidance to `AGENTS.md`, new design docs (`kernel_userTalk_bridge.md`, `outline_script_payload.md`, `wptext_format.md`, `wptext_rtf_tracker.md`), and ensured every significant discovery is mirrored in both AGENTS and the current-status doc.
 - Captured the Carbon/Paige modernization direction, page-by-page, so future contributors can follow the same roadmap without rediscovery.
 
@@ -27,7 +31,7 @@ _Last updated: 2025-11-11_
 
 ## Test & Tooling Improvements
 - Updated `tests/runtime_tests` to build/link with Paige, ensuring the serializer code paths are executed during CI-like runs.
-- Captured new fixtures (`scripts/extract_legacy_table.py`, `planning/carbon_migration/data/` seeds) for future regression coverage across table, outline, and WPText payloads.
+- Captured new fixtures (`scripts/extract_legacy_table.py`, `planning/phase3/carbon_migration/data/` seeds) for future regression coverage across table, outline, and WPText payloads.
 
 ## Miscellaneous Highlights
 - Documented the kernel↔UserTalk “limbic system,” clarified the legacy table bootstrap path, and recorded outstanding gaps (menubar, PICT, WPText) so downstream agents have focused TODOs.

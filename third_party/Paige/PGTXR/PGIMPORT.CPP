@@ -19,6 +19,12 @@ This source file contains all the default member and non-member functions for th
 #include "pgHText.h"
 #include "pgFrame.h"
 
+#if defined(__cplusplus)
+#define PG_SIZE_PTR(value) reinterpret_cast<size_t PG_FAR *>(value)
+#else
+#define PG_SIZE_PTR(value) ((size_t PG_FAR *)(value))
+#endif
+
 #define TEST_UNICODE_FLAG     0x0001
 
 static pg_error read_buffer (pg_char_ptr buffer, long PG_FAR *bytesize, long PG_FAR *position,
@@ -111,7 +117,7 @@ pg_error PaigeImportFilter:: pgInitImportFile (pg_globals_ptr globals, pg_file_u
    
    if ((file_eof = last_position) == UNKNOWN_POSITION) {
    
-      result = io_proc((void PG_FAR *)&file_eof, io_get_eof, &filepos, &filepos, filemap);
+      result = io_proc((void PG_FAR *)&file_eof, io_get_eof, PG_SIZE_PTR(&filepos), PG_SIZE_PTR(&filepos), filemap);
       filepos = file_begin;
    }
    
@@ -1295,7 +1301,7 @@ static pg_error read_buffer (pg_char_ptr buffer, long PG_FAR *bytesize, long PG_
       *bytesize = distance_to_end;
    
    trans_buffer = (pg_bits8_ptr)buffer;
-   result = io_proc((void PG_FAR *)buffer, io_data_direct, position, bytesize, filemap);
+   result = io_proc((void PG_FAR *)buffer, io_data_direct, PG_SIZE_PTR(position), PG_SIZE_PTR(bytesize), filemap);
 
    if (result == NO_ERROR) {
       
@@ -1335,4 +1341,3 @@ static pg_error read_buffer (pg_char_ptr buffer, long PG_FAR *bytesize, long PG_
 
    return      result;
 }
-

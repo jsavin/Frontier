@@ -22,8 +22,14 @@ All other code (hopefully) is universal and does not need to be changed. */
 #ifndef PAIGE_H
 #define PAIGE_H
 
+/* 2025-11-11 Codex: Ensure exported Paige APIs keep C linkage under C++. */
+
 #include "pgMemMgr.h"
 #include "Userdefs.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* Fixed tab stop array size in paragraph info records: */
 
@@ -2179,10 +2185,6 @@ struct style_walk {
 
 #define pgGetDefaultPar(pg, def_par)  pgGetParInfoRec(pg, 0, def_par)
 #define pgGetDefaultFont(pg, def_font)  pgGetFontInfoRec(pg, 0, def_font)
-
-#ifdef __cplusplus
-extern	"C" {
-#endif
 
 
 extern PG_PASCAL (void) pgPrepareStyleWalk (paige_rec_ptr pg, size_t offset,

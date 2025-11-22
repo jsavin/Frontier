@@ -1,5 +1,14 @@
 # Carbon Migration – Status Archive
 
+Status
+- State: Archived
+- Phase: Carbon Migration
+- Last Updated: 2025-11-20
+- Owner: Codex
+- Notes: Historical snapshots of `_CURRENT_STATUS.md`; not an active plan.
+
+> Purpose: historical snapshots of `_CURRENT_STATUS.md` milestones and major accomplishments. Use this to seed progress reports; do not treat entries here as active work.
+
 **Snapshot:** Archived on November 17, 2025 (post cleanup of `_CURRENT_STATUS.md`).  
 
 ## Archived Updates (for reference)
@@ -45,7 +54,7 @@
 - `wp_portable_init()` exposes `pg_globals`/`pgm_globals` through `wp_portable_pg_globals()` and `wp_portable_mem_globals()`. The CLI and runtime tests initialize Paige before evaluating scripts, which lets us unpack legacy WPText trailers, repack them, and run the migrator path without touching QuickDraw.
 - The runtime now emits the new `WPRT` portable header: packing forces a Paige-to-RTF export, prepends the `[tywpportableheader][UTF-8 RTF]` blob, and marks Paige as **conversion-only** going forward. Loading detects the magic, rehydrates RTF via Paige when needed, and still falls back to legacy trailers for older roots.
 - `wpverbpack` mirrors Save/Save As semantics: forced repacks (`flconvertingolddatabase`, `fldatabasesaveas`, dirty docs, or any v7 root) hydrate Paige, export the current payload, update timestamps/ctsaves, and call `dbassignhandle` before pushing the db address back on the packed handle. This gives the migrator a deterministic path for rewriting WPTexts.
-- Updated `planning/carbon_migration/wptext_format.md` and `planning/carbon_migration/wptext_rtf_tracker.md` to document the `WPRT` layout, note that Paige is conversion-only, and track the remaining validation work.
+- Updated `planning/phase3/carbon_migration/wptext_format.md` and `planning/phase3/carbon_migration/wptext_rtf_tracker.md` to document the `WPRT` layout, note that Paige is conversion-only, and track the remaining validation work.
 - Added a headless-only helper (`wp_portable_pack_text_for_test`) plus a runtime smoke test that builds a WPText from UTF-8, packs it, and asserts the emitted handle has `WPRT` magic, consistent sizing, and balanced braces—our first automated regression that the serializer produces parseable RTF.
 
 ## Recent Updates — November 10, 2025
@@ -63,8 +72,8 @@
 - `frontier-cli` no longer relies on `langrunstringnoerror`; we feed every inline script through `langrun`, then render results via `hashgetvaluestring`. That fixes “silent” failures for non-string values and gets `defined(system.verbs.globals)` working end-to-end.
 - `tests/cli_system_defined` still fails at `clock.now()` because the script resolution path never reaches the real implementation—`langrun` returns false with an empty error. The logs show repeated `langsearchpathlookup` misses (e.g., `script`, `scriptions`), so the remaining work is to confirm that `pathstable` is populated before evaluation and that `langsearchpathvisit` walks those addresses in headless mode.
 - Added headless-only logging inside `langsearchpathvisit/langsearchpathlookup` (see `Common/source/langvalue.c`). Running `script.getText(...)` now shows each `path##` entry visit plus the final hit, proving that the search path wiring works even though deeper script helpers still fail.
-- WPText → RTF migration tracker lives at `planning/carbon_migration/wptext_rtf_tracker.md` (Paige build, portable header, serializer, tests). Refer to that document for the current checklist and status before starting any work on WP serialization.
-- Captured a dedicated Paige portability TODO (`planning/carbon_migration/paige_portability_todo.md`) so the remaining machine-layer/graf/clipboard shims are tracked separately from the RTF migration work. That document should reach ✅ on items 1–7 before we remove `tests/headless_wp_stubs.c` or rely on the real Paige runtime.
+- WPText → RTF migration tracker lives at `planning/phase3/carbon_migration/wptext_rtf_tracker.md` (Paige build, portable header, serializer, tests). Refer to that document for the current checklist and status before starting any work on WP serialization.
+- Captured a dedicated Paige portability TODO (`planning/phase3/carbon_migration/paige_portability_todo.md`) so the remaining machine-layer/graf/clipboard shims are tracked separately from the RTF migration work. That document should reach ✅ on items 1–7 before we remove `tests/headless_wp_stubs.c` or rely on the real Paige runtime.
 - Added the first headless Paige machine layer (`third_party/Paige/PGPLATFO/PGUNX.C`) and wired it into the Paige build so the static library now resolves `pgMachineInit`, `pgClipGrafDevice`, `pgMeasureText`, etc., without depending on QuickDraw/GDI or the linker’s `-undefined dynamic_lookup` escape hatch. The snapshot is now vendored (not a submodule) and pinned to commit `a2fe9b1`.
 - `portable/wptext_portable.c` now calls the real Paige bootstrap (`pgMemStartup` / `pgInit`) and exposes `wp_portable_init()` so headless callers can initialize the engine without touching the UI stack.
 
@@ -76,4 +85,4 @@
 3. **Regression + migrator run**
    - Once both underflows are resolved, rerun `FRONTIER_REGEN_ROOT=databases/Frontier-v6.root ./tests/runtime_tests` (normal + guard malloc) to confirm the WPText smoke test and resume the broader `advance_style_run` / migration validation.
 
-Reference: `planning/carbon_migration/wptext_rtf_tracker.md` for the full checklist and supporting subtasks.
+Reference: `planning/phase3/carbon_migration/wptext_rtf_tracker.md` for the full checklist and supporting subtasks.

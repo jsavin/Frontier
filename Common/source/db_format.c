@@ -995,6 +995,9 @@ boolean migrate_32bit_to_64bit(const char *db_path) {
     if (!tableloadsystemtable(root_address, &hrootvariable, &hroot, false))
         goto cleanup;
 
+    if (!langhash_materialize_disk_values(hroot))
+        goto cleanup;
+
     if (script_address != nildbaddress && script_address != 0) {
         if (!dbrefhandle(script_address, &hscript))
             goto cleanup;

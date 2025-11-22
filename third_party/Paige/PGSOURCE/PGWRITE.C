@@ -26,6 +26,25 @@
 #include "pgHText.h"
 #include "pgFrame.h"
 
+/* 2025-11-11 Codex: Keep pgWrite exports under C linkage when building as C++. */
+/* 2025-11-16 Codex: Instrument doc-info packing paths when running Frontier tests. */
+
+#if defined(FRONTIER_TESTS)
+#include <stdio.h>
+#if defined(__has_builtin)
+#if __has_builtin(__builtin_return_address)
+#define PG_DOCINFO_HAS_RETURN_ADDR 1
+#else
+#define PG_DOCINFO_HAS_RETURN_ADDR 0
+#endif
+#else
+#define PG_DOCINFO_HAS_RETURN_ADDR 0
+#endif
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define CLR_LINE_SAVE_BIT (long) (~(long)NO_LINE_SAVE_BIT)
 
@@ -54,6 +73,18 @@ static void pack_font_info (pack_walk_ptr walker, font_info_ptr info);
 static void output_opt_character_ref(pack_walk_ptr walker, memory_ref ref);
 static void load_overlapping_blocks (paige_rec_ptr pg, long offset_to);
 
+#if defined(FRONTIER_TESTS)
+static pg_boolean pg_docinfo_logging = FALSE;
+static size_t pg_docinfo_handle_size(memory_ref ref) {
+	return (ref != MEM_NULL) ? GetByteSize(ref) : 0;
+}
+#if PG_DOCINFO_HAS_RETURN_ADDR
+#define PG_DOCINFO_CALLER() __builtin_return_address(0)
+#else
+#define PG_DOCINFO_CALLER() NULL
+#endif
+#endif
+
 #ifndef UNICODE
 static void save_unicode_block (paige_rec_ptr pg, pack_walk_ptr walker, text_block_ptr block);
 #endif
@@ -64,7 +95,7 @@ write. Its job is to process the data to make it writeable. The resulting
 data is in key_data.   */
 
 PG_PASCAL (pg_boolean) pgWriteHandlerProc (paige_rec_ptr pg, pg_file_key key, memory_ref key_data,
-		long PG_FAR *element_info, void PG_FAR *aux_data, long PG_FAR *unpacked_size)
+		long PG_FAR *element_info, void PG_FAR *aux_data, size_t PG_FAR *unpacked_size)
 {
 	pack_walk					walker;
 	register paige_rec_ptr		pgr;
@@ -219,8 +250,14 @@ PG_PASCAL (pg_boolean) pgWriteHandlerProc (paige_rec_ptr pg, pg_file_key key, me
 				general_ref = pgr->par_style_run;
 			}
 			
-			*unpacked_size = 0;			
-			*element_info = pgPackStyleRun(&walker, general_ref, unpacked_size);
+			if (unpacked_size)
+				*unpacked_size = 0;
+			{
+				long style_unpacked = 0;
+				*element_info = pgPackStyleRun(&walker, general_ref, &style_unpacked);
+				if (unpacked_size)
+					*unpacked_size = (size_t)style_unpacked;
+			}
 
 			break;
 
@@ -364,28 +401,55 @@ PG_PASCAL (pg_boolean) pgWriteHandlerProc (paige_rec_ptr pg, pg_file_key key, me
 			break;
 
 		case doc_info_key:
+#if defined(FRONTIER_TESTS) && !defined(FRONTIER_DISABLE_DOCINFO)
+			if (pgr->io_mask_bits & EXPORT_PAGE_INFO_FLAG) {
+				fprintf(stdout, "[pg-docinfo] pgWrite skip doc=%p io_mask=0x%lx\n", (void *)pg, (unsigned long)pgr->io_mask_bits);
+				fflush(stdout);
+			}
+			else {
+				pg_docinfo_logging = TRUE;
+				fprintf(stdout, "[pg-docinfo] pgWrite doc=%p handles title=%p subject=%p author=%p operator=%p keywords=%p comment=%p doccomm=%p\n",
+					(void *)pg,
+					(void *)pgr->doc_info.title,
+					(void *)pgr->doc_info.subject,
+					(void *)pgr->doc_info.author,
+					(void *)pgr->doc_info.wp_operator,
+					(void *)pgr->doc_info.keywords,
+					(void *)pgr->doc_info.comment,
+					(void *)pgr->doc_info.doccomm);
+				fprintf(stdout, "[pg-docinfo] pgWrite sizes title=%zu subject=%zu author=%zu operator=%zu keywords=%zu comment=%zu doccomm=%zu\n",
+					pg_docinfo_handle_size(pgr->doc_info.title),
+					pg_docinfo_handle_size(pgr->doc_info.subject),
+					pg_docinfo_handle_size(pgr->doc_info.author),
+					pg_docinfo_handle_size(pgr->doc_info.wp_operator),
+					pg_docinfo_handle_size(pgr->doc_info.keywords),
+					pg_docinfo_handle_size(pgr->doc_info.comment),
+					pg_docinfo_handle_size(pgr->doc_info.doccomm));
+				fflush(stdout);
+			}
+#endif
 			if (pgr->io_mask_bits & EXPORT_PAGE_INFO_FLAG)
 				break;
 
 			if (!pgr->shared_flags) {
-			
+		
 				pgPackNum(&walker, long_data, pgr->doc_info.attributes);
 				pgPackNum(&walker, short_data, pgr->doc_info.exclusion_inset);
 				pgPackNum(&walker, long_data, pgr->doc_info.repeat_slop);
-	
+		
 				pgPackCoOrdinate(&walker, &pgr->doc_info.repeat_offset);
 				pgPackRect(&walker, &pgr->doc_info.print_target);
 				pgPackRect(&walker, &pgr->doc_info.margins);
-	
+		
 				pgPackNum(&walker, short_data, pgr->doc_info.num_pages);
 				pgPackNum(&walker, long_data, pgr->doc_info.ref_con);
-	
+		
 				pgPackNumbers(&walker, pgr->doc_info.future, PG_FUTURE, long_data);
-	
+		
 				pgPackNum(&walker, long_data, pgr->doc_info.max_chars_per_line);
 				pgPackNum(&walker, short_data, pgr->doc_info.minimum_widow);
 				pgPackNum(&walker, short_data, pgr->doc_info.minimum_orphan);
-	
+		
 				pgPackNum(&walker, long_data, pgr->doc_info.section_attributes);
 				pgPackNum(&walker, short_data, pgr->doc_info.scroll_inset);
 				pgPackNum(&walker, short_data, pgr->doc_info.caret_width_extra);
@@ -420,7 +484,16 @@ PG_PASCAL (pg_boolean) pgWriteHandlerProc (paige_rec_ptr pg, pg_file_key key, me
 				pgPackNum(&walker, long_data, pgr->doc_info.backuptime);
 				pgPackNum(&walker, long_data, pgr->doc_info.edittime);
 				pgPackNum(&walker, long_data, pgr->doc_info.id);
-	
+		
+				#if defined(FRONTIER_DISABLE_DOCINFO)
+					pgPackBytes(&walker, (pg_bits8_ptr)&walker, 0);
+					pgPackBytes(&walker, (pg_bits8_ptr)&walker, 0);
+					pgPackBytes(&walker, (pg_bits8_ptr)&walker, 0);
+					pgPackBytes(&walker, (pg_bits8_ptr)&walker, 0);
+					pgPackBytes(&walker, (pg_bits8_ptr)&walker, 0);
+					pgPackBytes(&walker, (pg_bits8_ptr)&walker, 0);
+					pgPackBytes(&walker, (pg_bits8_ptr)&walker, 0);
+				#else
 				output_opt_character_ref(&walker, pgr->doc_info.title);
 				output_opt_character_ref(&walker, pgr->doc_info.subject);
 				output_opt_character_ref(&walker, pgr->doc_info.author);
@@ -428,15 +501,21 @@ PG_PASCAL (pg_boolean) pgWriteHandlerProc (paige_rec_ptr pg, pg_file_key key, me
 				output_opt_character_ref(&walker, pgr->doc_info.keywords);
 				output_opt_character_ref(&walker, pgr->doc_info.comment);
 				output_opt_character_ref(&walker, pgr->doc_info.doccomm);
+				#endif
 
 				pgPackNum(&walker, long_data, pgr->doc_info.gutter_color);
 				pgPackNum(&walker, long_data, pgr->doc_info.page_borders);
 
 				*unpacked_size = sizeof(pg_doc_info);
 			}
-			
+
+#if defined(FRONTIER_TESTS)
+			pg_docinfo_logging = FALSE;
+#endif
+		
 			break;
 		
+
 		case containers_key:
 			if (pgr->io_mask_bits & EXPORT_CONTAINERS_FLAG)
 				break;
@@ -527,9 +606,14 @@ PG_PASCAL (pg_boolean) pgWriteHandlerProc (paige_rec_ptr pg, pg_file_key key, me
 		
 		case par_exclusions_key:
 			if (GetMemorySize(pgr->par_exclusions)) {
-			
-				*unpacked_size = 0;			
-				*element_info = pgPackStyleRun(&walker, pgr->par_exclusions, unpacked_size);
+				if (unpacked_size)
+					*unpacked_size = 0;
+				{
+					long exclusion_unpacked = 0;
+					*element_info = pgPackStyleRun(&walker, pgr->par_exclusions, &exclusion_unpacked);
+					if (unpacked_size)
+						*unpacked_size = (size_t)exclusion_unpacked;
+				}
 			}
 
 			break;
@@ -544,7 +628,12 @@ PG_PASCAL (pg_boolean) pgWriteHandlerProc (paige_rec_ptr pg, pg_file_key key, me
 				else
 					hyperlinks = pgr->target_hyperlinks;
 				
-				*element_info = pgPackHyperlinks(&walker, hyperlinks, unpacked_size);
+				{
+					long hyperlink_unpacked = 0;
+					*element_info = pgPackHyperlinks(&walker, hyperlinks, &hyperlink_unpacked);
+					if (unpacked_size)
+						*unpacked_size = (size_t)hyperlink_unpacked;
+				}
 			}
 			
 			break;
@@ -735,6 +824,34 @@ PG_PASCAL (pg_error) pgSaveDoc (pg_ref pg, size_t PG_FAR *file_position, const p
 		for (key_qty = (pg_short_t)GetMemorySize(handlers_to_use); key_qty; ++handlers, --key_qty) {
 			
 			result = NO_ERROR;
+
+#if defined(FRONTIER_TESTS)
+			if (handlers->key == doc_info_key) {
+				pg_docinfo_logging = TRUE;
+				fprintf(stdout, "[pg-docinfo] pgSaveDoc doc=%p handler=%p file_pos=%zu caller=%p\n",
+					(void *)pg,
+					(void *)handlers,
+					(size_t)(file_position ? *file_position : 0),
+					PG_DOCINFO_CALLER());
+				fprintf(stdout, "[pg-docinfo] pgSaveDoc handles title=%p subject=%p author=%p operator=%p keywords=%p comment=%p doccomm=%p\n",
+					(void *)pg_rec->doc_info.title,
+					(void *)pg_rec->doc_info.subject,
+					(void *)pg_rec->doc_info.author,
+					(void *)pg_rec->doc_info.wp_operator,
+					(void *)pg_rec->doc_info.keywords,
+					(void *)pg_rec->doc_info.comment,
+					(void *)pg_rec->doc_info.doccomm);
+				fprintf(stdout, "[pg-docinfo] pgSaveDoc sizes title=%zu subject=%zu author=%zu operator=%zu keywords=%zu comment=%zu doccomm=%zu\n",
+					pg_docinfo_handle_size(pg_rec->doc_info.title),
+					pg_docinfo_handle_size(pg_rec->doc_info.subject),
+					pg_docinfo_handle_size(pg_rec->doc_info.author),
+					pg_docinfo_handle_size(pg_rec->doc_info.wp_operator),
+					pg_docinfo_handle_size(pg_rec->doc_info.keywords),
+					pg_docinfo_handle_size(pg_rec->doc_info.comment),
+					pg_docinfo_handle_size(pg_rec->doc_info.doccomm));
+				fflush(stdout);
+			}
+#endif
 
 			if ((handlers->key == text_key) || (handlers->key == line_key)) {
 				
@@ -1880,7 +1997,18 @@ static void pack_font_info (pack_walk_ptr walker, font_info_ptr info)
 static void output_opt_character_ref(pack_walk_ptr walker, memory_ref ref)
 {
 	if (ref) {
-		pgPackBytes(walker, (pg_bits8_ptr)UseMemory(ref), GetByteSize(ref));
+		size_t byte_count = GetByteSize(ref);
+#if defined(FRONTIER_TESTS)
+		if (pg_docinfo_logging) {
+			fprintf(stdout, "[pg-docinfo] output_opt_character_ref ref=%p size=%zu walker=%p caller=%p\n",
+				(void *)ref,
+				byte_count,
+				(void *)walker,
+				PG_DOCINFO_CALLER());
+			fflush(stdout);
+		}
+#endif
+		pgPackBytes(walker, (pg_bits8_ptr)UseMemory(ref), byte_count);
 		UnuseMemory(ref);
 	}
 	else pgPackBytes(walker, (pg_bits8_ptr)walker, 0);
@@ -1932,3 +2060,6 @@ static void save_unicode_block (paige_rec_ptr pg, pack_walk_ptr walker, text_blo
 
 
 
+#ifdef __cplusplus
+} /* extern "C" */
+#endif

@@ -18,6 +18,12 @@ from the PaigeExportFilter class. */
 #include "pgEmbed.h"
 #include "pgdeftbl.h"
 
+#if defined(__cplusplus)
+#define PG_SIZE_PTR(value) reinterpret_cast<size_t PG_FAR *>(value)
+#else
+#define PG_SIZE_PTR(value) ((size_t PG_FAR *)(value))
+#endif
+
 /* PaigeRTFExportFilter constructor. This sets up the various members common to all filters.
 No error checking or file verification occurs just yet. */
 
@@ -170,7 +176,7 @@ pg_error PaigeRTFExportFilter::pgExportDone (void)
    
    PG_ENDTRY;
 
-   return   io_proc(NULL, io_set_eof, &filepos, &filepos, filemap);
+   return   io_proc(NULL, io_set_eof, PG_SIZE_PTR(&filepos), PG_SIZE_PTR(&filepos), filemap);
 }
 
 

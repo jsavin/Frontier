@@ -4,7 +4,11 @@ mapping tables,  can be shared by all importers. */
 #include "CPUDEFS.H"
 #include "pgdeftbl.h"
 
-#ifdef MAC_PLATFORM
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#if defined(MAC_PLATFORM) || defined(UNIX_COMPILE)
 
 // Default cross-font table (if input == ansi):
 
@@ -345,4 +349,8 @@ pg_char PG_FAR cross_symbolfont_table[HIGH_CHARS_QTY] = {
 pg_char PG_FAR def_font_type[] = {L"fnil\0"};
 #else
 pg_char PG_FAR def_font_type[] = {"fnil\0"};
+#endif
+
+#ifdef __cplusplus
+}
 #endif

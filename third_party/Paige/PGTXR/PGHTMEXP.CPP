@@ -22,6 +22,12 @@ from the PaigeExportFilter class. */
 
 #define LIST_TAB_DIVIDE		8
 
+#if defined(__cplusplus)
+#define PG_SIZE_PTR(value) reinterpret_cast<size_t PG_FAR *>(value)
+#else
+#define PG_SIZE_PTR(value) ((size_t PG_FAR *)(value))
+#endif
+
 static long translate_color (color_value_ptr color, long PG_FAR *redcolor,
          long PG_FAR *greencolor, long PG_FAR *bluecolor);
 static pg_boolean plain_styles (style_info_ptr style);
@@ -207,7 +213,7 @@ pg_error PaigeHTMLExportFilter::pgExportDone (void)
 
     pgFlushOutputBuffer();
 
-   return   io_proc(NULL, io_set_eof, &filepos, &filepos, filemap);
+   return   io_proc(NULL, io_set_eof, PG_SIZE_PTR(&filepos), PG_SIZE_PTR(&filepos), filemap);
 }
 
 
@@ -713,7 +719,7 @@ void PaigeHTMLExportFilter::OutputImage (memory_ref embed, embed_callback callba
 	}
 	
 	callback(export_pg_rec, embed_ptr, embed_url_image, EMBED_SAVE_IMAGE, embed_ptr->user_refcon,
-			(long)&image, image_ctr);
+			(generic_var)&image, (void *)&image_ctr);
 	
 	if (image.URL[0]) {
 		
@@ -1926,4 +1932,3 @@ static pg_boolean has_colons (pg_char_ptr URL)
 	
 	return	FALSE;
 }
-

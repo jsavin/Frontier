@@ -1,9 +1,11 @@
 # Database Validation Plan
 
-**Status**: Planning
-**Phase**: 3 (Headless Runtime)
-**Priority**: High
-**Estimated Duration**: 2-3 days
+Status
+- State: Planning
+- Phase: 3 (Headless Runtime)
+- Last Updated: 2025-11-20
+- Owner: Codex
+- Notes: Validation strategy for v6→v7 database traversal/migration; update when milestones complete.
 
 ## Context
 

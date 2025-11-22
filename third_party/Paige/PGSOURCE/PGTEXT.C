@@ -1067,7 +1067,7 @@ determine any line widths, rather, the lines are simply moved vertically. Note
 the only time we can get away with this is for wrap shapes that have a consistent
 width throughout.  */
 
-PG_PASCAL (void) pgPaginateStarts (paige_rec_ptr pg, text_block_ptr block, long initial_offset,
+PG_PASCAL (void) pgPaginateStarts (paige_rec_ptr pg, text_block_ptr block, size_t initial_offset,
 		smart_update_ptr update_info)
 {
 	register point_start_ptr		starts;
@@ -1084,7 +1084,7 @@ PG_PASCAL (void) pgPaginateStarts (paige_rec_ptr pg, text_block_ptr block, long 
 	init_starting_line_rect(pg, &line_info);
 	
 	if (line_info.repeating || line_info.end_r)
-		paginate_multi_rect_shape(pg, block, (pg_short_t)(initial_offset - block->begin),
+		paginate_multi_rect_shape(pg, block, (pg_short_t)((long)initial_offset - block->begin),
 				&shift_begin, &shift_end, &line_info);
 	else
 	if (paginate_amt = (line_info.fit_rect.top_left.v - starts->bounds.top_left.v)) {
@@ -1813,7 +1813,7 @@ static void update_vertical_line (paige_rec_ptr pg, pg_measure_ptr line_info,
 
 	new_line_height = ascent + descent + leading;
 	
-	//ее TRS/OITC Variable line spacing
+	// TRS/OITC Variable line spacing
 	if (par_style->leading_variable > new_line_height) {
 		new_line_height = (short)par_style->leading_variable;
 		leading = 0;

@@ -21,6 +21,10 @@
 #include "pgSubRef.h"
 #include "pgTables.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 static void split_subref_list (text_block_ptr block1, text_block_ptr block2);
 static void inval_selections (paige_rec_ptr pg);
 static long find_breaking_char (paige_rec_ptr pg, text_block_ptr block,
@@ -31,7 +35,7 @@ static long find_breaking_char (paige_rec_ptr pg, text_block_ptr block,
 /* pgInitTextblock initializes a new text_block. Offset_begin is the
 absolute offset beginning while the_text is the text (or NULL if none). */
 
-PG_PASCAL (void) pgInitTextblock (paige_rec_ptr pg_rec, long offset_begin,
+PG_PASCAL (void) pgInitTextblock (paige_rec_ptr pg_rec, size_t offset_begin,
 			text_ref the_text, text_block_ptr block, pg_boolean cache_text)
 {
 	point_start_ptr			starts;
@@ -40,7 +44,7 @@ PG_PASCAL (void) pgInitTextblock (paige_rec_ptr pg_rec, long offset_begin,
 
 	pgFillBlock(block, sizeof(text_block), 0);
 	
-	block->begin = block->end = offset_begin;
+	block->begin = block->end = (long)offset_begin;
 	block->file_os = CURRENT_OS;
 
 	if (the_text) {
@@ -169,6 +173,10 @@ PG_PASCAL (void) pgTextLoadProc (paige_rec_ptr pg, text_block_ptr block)
 				pgMapCharacters(pg, block);
 	}
 }
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
 
 
 /* pgBlockToUnicode gets called after a text block is read and we have determined that its
@@ -501,7 +509,7 @@ if block_num is non-NULL, the block number is returned (0 to n).
 If want_build is TRUE, the block is recalculated if necessary. The will_access_text
 param is passed to  (if called).  */
 
-PG_PASCAL (text_block_ptr) pgFindTextBlock (paige_rec_ptr pg_rec, long offset,
+PG_PASCAL (text_block_ptr) pgFindTextBlock (paige_rec_ptr pg_rec, size_t offset,
 			pg_short_t PG_FAR *block_num, pg_boolean want_build,
 			pg_boolean will_access_text)
 {
@@ -512,7 +520,7 @@ PG_PASCAL (text_block_ptr) pgFindTextBlock (paige_rec_ptr pg_rec, long offset,
 	num_blocks = (pg_short_t)GetMemorySize(pg_rec->t_blocks) - 1;
 	block = (text_block_ptr) UseMemory(pg_rec->t_blocks);
 	
-	wanted_offset = offset;
+	wanted_offset = (long)offset;
 	block_ctr = 0;
 
 	while (num_blocks) {
@@ -718,8 +726,8 @@ The memory_ref for the text is returned in the_ref;  the maximum size of text --
 which is the offset to end of text block -- is returned in max_length. The
 max_length param can be NULL if you just want the pointer. */
 
-PG_PASCAL (pg_char_ptr) pgTextFromOffset (paige_rec_ptr pg, long offset,
-		text_ref PG_FAR *the_ref, long PG_FAR *max_length)
+PG_PASCAL (pg_char_ptr) pgTextFromOffset (paige_rec_ptr pg, size_t offset,
+		text_ref PG_FAR *the_ref, size_t PG_FAR *max_length)
 {
 	register text_block_ptr		block;
 	register pg_char_ptr		text_result;
@@ -732,9 +740,9 @@ PG_PASCAL (pg_char_ptr) pgTextFromOffset (paige_rec_ptr pg, long offset,
 	*the_ref = block->text;
 	
 	if (max_length)
-		*max_length = block->end - offset;
+		*max_length = block->end - (long)offset;
 
-	local_offset = offset - block->begin;
+	local_offset = (long)offset - block->begin;
 
 	UnuseMemory(pg->t_blocks);
 	

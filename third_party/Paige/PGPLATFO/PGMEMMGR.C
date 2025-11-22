@@ -12,6 +12,8 @@ single "PG_CATCH". */
 
 /* Updated by TR Shaw, OITC, Inc. 30 Apr 1995 for cross platform I/O */
 
+/* 2025-11-16 Codex: Add FRONTIER_TESTS handle tracing for doc-info debugging. */
+
 #include "pgMemMgr.h"
 #include "pgMTraps.h"
 #include "pgExceps.h"
@@ -19,6 +21,26 @@ single "PG_CATCH". */
 #include "pgIO.h"
 #include "pgUtils.h"
 #include "pgOSUtl.h"
+#if defined(FRONTIER_TESTS)
+#include <stdlib.h>
+#include <stdio.h>
+extern memory_ref frontier_docinfo_subject_ref;
+#endif
+#if defined(FRONTIER_TESTS)
+#include <stdio.h>
+#include <dlfcn.h>
+#include <execinfo.h>
+#include <string.h>
+#if defined(__has_builtin)
+#if __has_builtin(__builtin_return_address)
+#define PG_TRACE_CALLER() __builtin_return_address(0)
+#else
+#define PG_TRACE_CALLER() NULL
+#endif
+#else
+#define PG_TRACE_CALLER() NULL
+#endif
+#endif
 
 #ifdef MAC_PLATFORM
 
@@ -38,6 +60,173 @@ typedef struct {
 	long			swap_file_offsets[2];
 } purged_mem_rec, PG_FAR *purged_mem_ptr;
 
+
+#if defined(FRONTIER_TESTS)
+/* 2025-11-16 Codex: Trace selected handles (doc-info) to debug corrupt frees. */
+#define PG_HANDLE_TRACE_LIMIT 64
+typedef struct pg_handle_trace_entry {
+	memory_ref ref;
+	const char *tag;
+} pg_handle_trace_entry;
+
+static pg_handle_trace_entry pg_handle_trace_table[PG_HANDLE_TRACE_LIMIT];
+
+static const char *pg_trace_handle_find(memory_ref ref)
+{
+	if (!ref)
+		return NULL;
+	for (int i = 0; i < PG_HANDLE_TRACE_LIMIT; ++i)
+		if (pg_handle_trace_table[i].ref == ref)
+			return pg_handle_trace_table[i].tag;
+	return NULL;
+}
+
+void pg_trace_handle_forget(memory_ref ref)
+{
+	if (!ref)
+		return;
+	for (int i = 0; i < PG_HANDLE_TRACE_LIMIT; ++i)
+		if (pg_handle_trace_table[i].ref == ref) {
+			pg_handle_trace_table[i].ref = MEM_NULL;
+			pg_handle_trace_table[i].tag = NULL;
+			return;
+		}
+}
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
+void pg_trace_handle_watch(memory_ref ref, const char *tag)
+{
+	if (!ref || tag == NULL)
+		return;
+	for (int i = 0; i < PG_HANDLE_TRACE_LIMIT; ++i)
+		if (pg_handle_trace_table[i].ref == ref) {
+			pg_handle_trace_table[i].tag = tag;
+			return;
+		}
+	for (int i = 0; i < PG_HANDLE_TRACE_LIMIT; ++i)
+		if (pg_handle_trace_table[i].ref == MEM_NULL) {
+			pg_handle_trace_table[i].ref = ref;
+			pg_handle_trace_table[i].tag = tag;
+			fprintf(stdout, "[pg-handle] watch ref=%p tag=%s\n", (void *)ref, tag);
+			fflush(stdout);
+			return;
+		}
+}
+#if defined(__cplusplus)
+}
+#endif
+
+const char *pg_trace_handle_tag(memory_ref ref)
+{
+	return pg_trace_handle_find(ref);
+}
+
+long pg_trace_handle_access(memory_ref ref)
+{
+	if (!ref)
+		return -999;
+	mem_rec_ptr data = pgMemoryPtr(ref);
+	long access = data ? (long)data->access : -999;
+	pgFreePtr(ref);
+	return access;
+}
+
+static void pg_trace_handle_pre_event(const char *event, memory_ref ref, void *caller)
+{
+	if (!event || !ref)
+		return;
+	const char *tag = pg_trace_handle_find(ref);
+	if (!tag)
+		return;
+#if defined(UNIX_PLATFORM)
+	pg_unix_slot slot = *((pg_unix_slot *)ref);
+	void *slot_ptr = (void *)slot;
+	void *payload = slot ? (void *)pg_unix_payload(slot) : NULL;
+	size_t size = slot ? pg_unix_handle_size(slot) : 0;
+#else
+	void *slot_ptr = NULL;
+	void *payload = NULL;
+	size_t size = 0;
+#endif
+	fprintf(stdout,
+	        "[pg-handle] %s ref=%p tag=%s slot=%p payload=%p size=%zu caller=%p\n",
+	        event,
+	        (void *)ref,
+	        tag,
+	        slot_ptr,
+	        payload,
+	        (size_t)size,
+	        caller);
+	fflush(stdout);
+#if defined(FRONTIER_TESTS)
+	if (slot_ptr) {
+		mem_rec_ptr trace_hdr = pgMemoryPtr(ref);
+		if (trace_hdr) {
+			fprintf(stdout,
+			        "[pg-handle] %s-header ref=%p tag=%s globals=%p master_index=%p rec_size=%d num_recs=%zu access=%ld qty=%ld purge=0x%02x\n",
+			        event,
+			        (void *)ref,
+			        tag,
+			        (void *)trace_hdr->globals,
+			        (void *)trace_hdr->master_index,
+			        (int)trace_hdr->rec_size,
+			        (size_t)trace_hdr->num_recs,
+			        (long)trace_hdr->access,
+			        (long)trace_hdr->qty_used,
+			        (int)trace_hdr->purge);
+			fflush(stdout);
+			pgFreePtr(ref);
+		} else {
+			fprintf(stdout,
+			        "[pg-handle] %s-header ref=%p tag=%s header=INVALID\n",
+			        event,
+			        (void *)ref,
+			        tag);
+			fflush(stdout);
+		}
+	}
+#endif
+}
+
+static void pg_trace_handle_event(const char *event, memory_ref ref, mem_rec_ptr data, void *caller)
+{
+	const char *tag = pg_trace_handle_find(ref);
+	if (!tag || !event)
+		return;
+	const char *symbol = NULL;
+	long offset = 0;
+	if (caller) {
+		Dl_info info;
+		if (dladdr(caller, &info) && info.dli_sname) {
+			symbol = info.dli_sname;
+			offset = (long)((char *)caller - (char *)info.dli_saddr);
+		}
+	}
+	fprintf(stdout,
+		"[pg-handle] %s ref=%p tag=%s access=%ld size=%ld purge=0x%02x rec_size=%d qty=%ld caller=%p",
+		event,
+		(void *)ref,
+		tag,
+		data ? (long)data->access : 0L,
+		data ? (long)pgMemorySize(ref) : 0L,
+		data ? (int)data->purge : 0,
+		data ? (int)data->rec_size : 0,
+		data ? (long)data->qty_used : 0L,
+		caller);
+	if (symbol)
+		fprintf(stdout, " (%s+0x%lx)", symbol, offset);
+	fprintf(stdout, "\n");
+	fflush(stdout);
+	if (!strcmp(event, "unuse-underflow")) {
+		void *stack[16];
+		int depth = backtrace(stack, 16);
+		backtrace_symbols_fd(stack, depth, fileno(stdout));
+		fflush(stdout);
+	}
+}
+#endif
 
 typedef enum {
 	access_dont_care,
@@ -67,6 +256,53 @@ static void extend_master_list (pgm_globals_ptr mem_globals);
 static void unuse_all_memory (pgm_globals_ptr mem_globals, long memory_id, pg_boolean failed_unuse);
 static void dispose_all_memory (pgm_globals_ptr mem_globals, long memory_id, pg_boolean dispose_failed);
 static void resize_purged_memory (memory_ref ref);
+
+#if defined(UNIX_PLATFORM)
+typedef struct pg_unix_master_table {
+	size_t		capacity;
+	pg_handle		*entries;
+} pg_unix_master_table;
+
+static pg_unix_master_table *pg_unix_master_from_handle(pg_handle handle)
+{
+	return (pg_unix_master_table *)handle;
+}
+
+static master_list_ptr pg_unix_master_list(pg_handle handle)
+{
+	pg_unix_master_table *table = pg_unix_master_from_handle(handle);
+	return table ? (master_list_ptr)table->entries : NULL;
+}
+
+static size_t pg_unix_master_capacity(pg_handle handle)
+{
+	pg_unix_master_table *table = pg_unix_master_from_handle(handle);
+	return table ? table->capacity : 0;
+}
+
+static pg_handle pg_unix_create_master_table(size_t capacity)
+{
+	pg_unix_master_table *table = (pg_unix_master_table *)malloc(sizeof(*table));
+	if (!table)
+		return NULL;
+	table->entries = (pg_handle *)calloc(capacity, sizeof(pg_handle));
+	if (!table->entries) {
+		free(table);
+		return NULL;
+	}
+	table->capacity = capacity;
+	return (pg_handle)table;
+}
+
+static void pg_unix_destroy_master_table(pg_handle handle)
+{
+	pg_unix_master_table *table = pg_unix_master_from_handle(handle);
+	if (!table)
+		return;
+	free(table->entries);
+	free(table);
+}
+#endif
 
 
 #ifdef PG_DEBUG
@@ -106,13 +342,18 @@ PG_PASCAL (void) pgMemStartup (pgm_globals_ptr mem_globals, long max_memory)
 
 	PG_TRY(mem_globals) {
 	
-		mem_globals->master_handle = pgAllocMemoryClear(DEF_MASTER_QTY * MASTER_ENTRY_SIZE);
 		mem_globals->spare_tire = pgAllocMemory(SPARE_TIRE_SIZE);
+#if defined(UNIX_PLATFORM)
+		mem_globals->master_handle = pg_unix_create_master_table(DEF_MASTER_QTY);
 		pgFailZero(mem_globals, PG_LONGWORD(generic_var)mem_globals->master_handle);
-
+		mem_globals->master_list = pg_unix_master_list(mem_globals->master_handle);
+#else
+		mem_globals->master_handle = pgAllocMemoryClear(DEF_MASTER_QTY * MASTER_ENTRY_SIZE);
+		pgFailZero(mem_globals, PG_LONGWORD(generic_var)mem_globals->master_handle);
 #ifdef WINDOWS_PLATFORM
 // Keep the master list locked because these entries ARE the memory_ref(s):
 		mem_globals->master_list = (master_list_ptr)GlobalLock(mem_globals->master_handle);
+#endif
 #endif
 		mem_globals->debug_flags = DEF_DEBUG_BITS;
 		mem_globals->next_mem_id = mem_globals->current_id = MINIMUM_ID;
@@ -176,6 +417,34 @@ PG_PASCAL (void) pgMemShutdown (pgm_globals_ptr mem_globals)
 		}
 	
 		DisposeHandle(mem_globals->master_handle);
+	}
+
+#endif
+
+#ifdef UNIX_PLATFORM
+
+	if (mem_globals->spare_tire)
+		pgFreeMemory(mem_globals->spare_tire);
+	
+	if (mem_globals->master_handle) {
+
+		master_list = pg_unix_master_list(mem_globals->master_handle);
+		master_qty = (long)pg_unix_master_capacity(mem_globals->master_handle);
+	
+		while (master_qty) {
+			if (*master_list) {
+#ifdef PG_DEBUG
+				check_bad_ref((memory_ref)master_list, access_zero);
+#endif
+				DisposeMemory((memory_ref)master_list);
+			}
+			++master_list;
+			--master_qty;
+		}
+	
+		pg_unix_destroy_master_table(mem_globals->master_handle);
+		mem_globals->master_handle = NULL;
+		mem_globals->master_list = NULL;
 	}
 
 #endif
@@ -375,6 +644,9 @@ PG_PASCAL (void PG_FAR*) UseMemory (memory_ref ref)
 #endif
 	++data->qty_used;
 	++data;
+#if defined(FRONTIER_TESTS)
+	pg_trace_handle_event("use", ref, data - 1, PG_TRACE_CALLER());
+#endif
 	
 	return	(void PG_FAR *) data;
 }
@@ -658,6 +930,10 @@ PG_PASCAL (pg_handle) DetachMemory (memory_ref ref)
 	ref_storage = (master_list_ptr)storage_index;
 #endif
 
+#ifdef UNIX_PLATFORM
+	ref_storage = (master_list_ptr)storage_index;
+#endif
+
 	result = *ref_storage;
 	*ref_storage = NULL;
 	
@@ -680,9 +956,16 @@ PG_PASCAL (memory_ref) DisposeMemory (memory_ref ref)
 		return MEM_NULL;
 	#endif
 
+#if defined(FRONTIER_TESTS)
+	pg_trace_handle_pre_event("dispose-pre", ref, PG_TRACE_CALLER());
+#endif
 	data = pgMemoryPtr(ref);
 	globals = data->globals;
 	storage_index = data->master_index;
+#if defined(FRONTIER_TESTS)
+	pg_trace_handle_event("dispose", ref, data, PG_TRACE_CALLER());
+	pg_trace_handle_forget(ref);
+#endif
 	
 	if (data->purge & PURGED_FLAG)
 		globals->purge(ref, globals, dispose_purge);
@@ -735,6 +1018,11 @@ PG_PASCAL (memory_ref) DisposeMemory (memory_ref ref)
 #endif
 
 #ifdef WINDOWS_PLATFORM
+	ref_storage = (master_list_ptr) storage_index;
+	*ref_storage = NULL;
+#endif
+
+#ifdef UNIX_PLATFORM
 	ref_storage = (master_list_ptr) storage_index;
 	*ref_storage = NULL;
 #endif
@@ -1161,6 +1449,12 @@ PG_PASCAL (memory_ref) InitMemoryRef (pgm_globals_ptr mem_globals, pg_handle bas
 	storage_list += storage_index;
 	*storage_list = base_ref;
 	new_ref = (memory_ref)base_ref;
+#elif defined(UNIX_PLATFORM)
+	remaining_qty = pg_unix_master_capacity(globals->master_handle) - storage_index - 1;
+	storage_list = pg_unix_master_list(globals->master_handle);
+	storage_list += storage_index;
+	*storage_list = base_ref;
+	new_ref = (memory_ref)storage_list;
 #endif
 
 #ifdef WINDOWS_PLATFORM
@@ -1170,6 +1464,9 @@ PG_PASCAL (memory_ref) InitMemoryRef (pgm_globals_ptr mem_globals, pg_handle bas
 	storage_list += storage_index;
 	*storage_list = base_ref;
 	new_ref = (memory_ref)storage_list;
+	storage_index = (size_t)storage_list;
+#endif
+#if defined(UNIX_PLATFORM)
 	storage_index = (size_t)storage_list;
 #endif
 	
@@ -1744,6 +2041,9 @@ PG_PASCAL (memory_ref) pgAllocateNewRef (pgm_globals_ptr mem_globals, pg_short_t
 		data->purge = 0x0080;
 		data->globals = mem_globals;
 		data->mem_id = mem_globals->current_id;
+#if defined(FRONTIER_TESTS)
+	pg_trace_handle_event(zero_fill ? "alloc-clear" : "alloc", new_ref, data, PG_TRACE_CALLER());
+#endif
 #ifdef PG_DEBUG
 #ifdef MAC_PLATFORM
 		BlockMoveData(file,data->file,DEBUG_INFO_SIZE);
@@ -1850,6 +2150,16 @@ PG_PASCAL (void) UnuseMemory (memory_ref ref)
 	data->access -= 1;
 	new_access = data->access;
 	pgFreePtr(ref);
+#if defined(FRONTIER_TESTS)
+	const char *trace_event = (new_access < 0) ? "unuse-underflow" : "unuse";
+	pg_trace_handle_event(trace_event, ref, data, PG_TRACE_CALLER());
+	if (new_access < 0) {
+		fprintf(stdout, "[pg-handle-debug] unuse-underflow ref=%p watch=%p access=%d\n", (void *)ref, (void *)frontier_docinfo_subject_ref, (int)new_access);
+		fflush(stdout);
+		new_access = 0;
+		data->access = 0;
+	}
+#endif
 	
 	if (!new_access)
 		pgUnlockMemory(ref);
@@ -2966,6 +3276,32 @@ static void extend_master_list (pgm_globals_ptr mem_globals)
 	mem_globals->master_list = (master_list_ptr)GlobalLock(next_master);
 	mem_globals->next_master = 0;
 
+#endif
+
+#ifdef UNIX_PLATFORM
+	pg_unix_master_table *table = pg_unix_master_from_handle(mem_globals->master_handle);
+	size_t old_capacity = table ? table->capacity : 0;
+	size_t new_capacity = old_capacity + DEF_MASTER_QTY;
+	pg_handle *new_entries;
+
+	for (;;) {
+		new_entries = (pg_handle *)realloc(table->entries, new_capacity * sizeof(pg_handle));
+		if (new_entries)
+			break;
+		pgFailNIL(mem_globals, (void PG_FAR*) mem_globals->spare_tire);
+		pgFreeMemory(mem_globals->spare_tire);
+		mem_globals->spare_tire = NULL;
+		mem_globals->total_unpurged -= SPARE_TIRE_SIZE;
+		err = MemoryPurge(mem_globals, mem_globals->purge_threshold + extend_size, MEM_NULL);
+		pgFailError(mem_globals, err);
+		mem_globals->last_error = NO_ERROR;
+	}
+
+	pgFillBlock(&new_entries[old_capacity], DEF_MASTER_QTY * sizeof(pg_handle), 0);
+	table->entries = new_entries;
+	table->capacity = new_capacity;
+	mem_globals->master_list = new_entries;
+	mem_globals->next_master = old_capacity;
 #endif
 
 	mem_globals->total_unpurged += (DEF_MASTER_QTY * MASTER_ENTRY_SIZE);

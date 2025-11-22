@@ -2,20 +2,23 @@
 #define FRONTIER_TIME_PORTABLE_H
 
 #include <stdint.h>
-#include <time.h>
 
-static inline uint64_t frontier_milliseconds_now(void){
-#if defined(CLOCK_MONOTONIC)
-    struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (uint64_t)ts.tv_sec*1000ULL + (uint64_t)ts.tv_nsec/1000000ULL;
-#else
-    struct timespec ts; clock_gettime(CLOCK_REALTIME, &ts);
-    return (uint64_t)ts.tv_sec*1000ULL + (uint64_t)ts.tv_nsec/1000000ULL;
+#define FRONTIER_TIMESTAMP_FLAG_DST 0x0001
+
+typedef struct frontier_timestamp_v7 {
+    uint64_t unix_ms;
+    int32_t tz_minutes;
+    uint16_t flags;
+} frontier_timestamp_v7;
+
+uint64_t frontier_time_wallclock_millis(void);
+uint64_t frontier_time_monotonic_millis(void);
+uint64_t frontier_time_monotonic_micros(void);
+int32_t frontier_time_local_offset_minutes(void);
+void frontier_time_snapshot(frontier_timestamp_v7 *out_timestamp);
+void frontier_time_sleep_millis(uint32_t millis);
+
+#define FastMilliseconds() ((long)frontier_time_wallclock_millis())
+
 #endif
-}
-
-#define FastMilliseconds() ((long)frontier_milliseconds_now())
-
-#endif
-
 

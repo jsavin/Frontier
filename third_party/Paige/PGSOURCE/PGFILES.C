@@ -20,11 +20,18 @@ reuse of this code for extensions that extend the structure - TRS OITC, Inc. Boa
 #include "PackDefs.h"
 #include "pgFiles.h"
 
+/* 2025-11-11 Codex: Keep pgFiles definitions under C linkage when built as C++
+   and align handler signatures with their headers. */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* pgDummyReadHandler is a do-nothing read handler function that can be used to
 create a handler that does nothing for reading. */
 
 PG_PASCAL (pg_boolean) pgDummyReadHandler (paige_rec_ptr pg, pg_file_key key, memory_ref key_data,
-		long PG_FAR *element_info, void PG_FAR *aux_data, long PG_FAR *unpacked_size)
+		long PG_FAR *element_info, void PG_FAR *aux_data, size_t PG_FAR *unpacked_size)
 {
 #ifdef MAC_PLATFORM
 #pragma unused (pg, key, key_data, element_info, aux_data)
@@ -40,7 +47,7 @@ PG_PASCAL (pg_boolean) pgDummyReadHandler (paige_rec_ptr pg, pg_file_key key, me
 create a handler that does nothing for writing. */
 
 PG_PASCAL (pg_boolean) pgDummyWriteHandler (paige_rec_ptr pg, pg_file_key key, memory_ref key_data,
-		long PG_FAR *element_info, void PG_FAR *aux_data, long PG_FAR *unpacked_size)
+		long PG_FAR *element_info, void PG_FAR *aux_data, size_t PG_FAR *unpacked_size)
 {
 #ifdef MAC_PLATFORM
 #pragma unused (pg, key, element_info, aux_data)
@@ -389,3 +396,6 @@ PG_PASCAL (pg_short_t) pgHexToByte (pg_bits8 hex_byte)
 	return	result;
 }
 
+#ifdef __cplusplus
+} /* extern "C" */
+#endif

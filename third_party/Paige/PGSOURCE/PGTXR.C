@@ -16,6 +16,8 @@ that can be called from both C and C++. */
 #include "pgHText.h"
 #include "pgTables.h"
 #include "pgFrame.h"
+#include <stdarg.h>
+#include <stdio.h>
 
 static long make_style (pg_ref import_pg, pg_char_ptr name, long stylebits, short pointsize,
 				pg_char_ptr fontname, par_info_ptr par);
@@ -36,6 +38,21 @@ static pg_boolean compare_messages (pg_char_ptr msg1, pg_char_ptr msg2);
 /* pgBeginImport sets up a pg_ref to receive very fast importing. Using this method, PAIGE
 does not need to go through all the gyrations with style, paragraph and miscellaneious formatting. */
 
+#if defined(FRONTIER_TESTS)
+static void frontier_pg_log(const char *fmt, ...)
+{
+	va_list ap;
+	va_start(ap, fmt);
+	fprintf(stderr, "[pgImport] ");
+	vfprintf(stderr, fmt, ap);
+	fprintf(stderr, "\n");
+	va_end(ap);
+}
+#define FRONTIER_PG_LOG(fmt, ...) frontier_pg_log(fmt, ##__VA_ARGS__)
+#else
+#define FRONTIER_PG_LOG(fmt, ...) ((void)0)
+#endif
+
 PG_PASCAL (void) pgBeginImport (pg_ref pg, long import_position)
 {
 	paige_rec_ptr		pg_rec;
@@ -55,9 +72,14 @@ PG_PASCAL (void) pgBeginImport (pg_ref pg, long import_position)
 	import_ptr = (pg_import_ptr) UseMemory(import_ref);
 	import_ptr->previous_import = pg_rec->import_control;
 	pg_rec->import_control = import_ref;
+	FRONTIER_PG_LOG("begin import pg=0x%llx import_ref=0x%llx t_blocks(before)=0x%llx",
+		(unsigned long long)pg,
+		(unsigned long long)import_ref,
+		(unsigned long long)import_ptr->t_blocks);
 	
 	import_ptr->target_pos = import_position;
 	import_ptr->t_blocks = MemoryAllocClearID(mem_globals, sizeof(text_block), 1, 4, memory_id);
+	FRONTIER_PG_LOG("import t_blocks allocated handle=0x%llx", (unsigned long long)import_ptr->t_blocks);
 	block = (text_block_ptr) UseMemory(import_ptr->t_blocks);
 	pgInitTextblock(pg_rec, 0, MEM_NULL, block, FALSE);
 	UnuseMemory(import_ptr->t_blocks);
@@ -290,6 +312,10 @@ PG_PASCAL (pg_boolean) pgInsertText (pg_ref pg, pg_char_ptr data, long length,
 		long				inserted_default, previous_cache_pos;
 		
 		import_ptr = (pg_import_ptr) UseMemory(pg_rec->import_control);
+		FRONTIER_PG_LOG("insert import_ptr=0x%llx t_blocks=0x%llx length=%ld",
+			(unsigned long long)import_ptr,
+			(unsigned long long)import_ptr->t_blocks,
+			length);
 		num_blocks = GetMemorySize(import_ptr->t_blocks);
 		block = (text_block_ptr) UseMemoryRecord(import_ptr->t_blocks, num_blocks - 1, USE_ALL_RECS, TRUE);
 		block->file_os = import_ptr->file_os;
@@ -1511,4 +1537,3 @@ static pg_boolean compare_messages (pg_char_ptr msg1, pg_char_ptr msg2)
 	
 	return	TRUE;
 }
-

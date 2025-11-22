@@ -41,6 +41,15 @@
 
 #endif
 
+#ifdef UNIX_COMPILE
+
+#define PRETAG_DEF_FONT (pg_char_ptr)"Monaco\0"
+#define PRETAG_DEF_POINTSIZE 10
+#define CODETAG_DEF_FONT (pg_char_ptr)"Monaco\0"
+#define CODETAG_DEF_POINTSIZE 9
+
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -238,4 +247,3 @@ extern PG_PASCAL (void) CreateHTMLStyles (pg_ref pg, pg_char_ptr def_font, long 
 #ifdef __cplusplus
 	}
 #endif
-

@@ -20,11 +20,15 @@
 	Revision History
 	03/27/95	1.0b1	TRS - Initial beta for external customer Paige release
 	03/18/96	1.4 GC - Moved pgScrapMemoryRead/Write
+	11/17/25	Headless Codex - Avoid decrementing pseudo-file handles in pgScrapMemoryRead.
 */
 
 #include "pgIO.h"
 #include "pgosutl.h"
 #include "defprocs.h"
+#if defined(FRONTIER_TESTS)
+#include <stdio.h>
+#endif
 
 
 /* Names indicate functions in this file */
@@ -712,8 +716,8 @@ PG_C (void) pgSetTypeCreator(const pgm_globals_ptr mem_globals, long creator, lo
 /* This is a "fake" file I/O proc that sends the data to a memory_ref instead of
 a file.	*/
 
-PG_PASCAL (pg_error) pgScrapMemoryWrite (void PG_FAR *data, short verb, long PG_FAR *position,
-		long PG_FAR *data_size, file_ref filemap)
+PG_PASCAL (pg_error) pgScrapMemoryWrite (void PG_FAR *data, short verb, size_t PG_FAR *position,
+		size_t PG_FAR *data_size, file_ref filemap)
 {
 	pg_bits8_ptr		new_data, source_data;
 	size_t				ref_size;
@@ -784,8 +788,24 @@ PG_PASCAL (pg_error) pgScrapMemoryRead (void PG_FAR *data, short verb, size_t PG
 	}
 	else {
 		pg_bits8_ptr	the_data, target_data;
+		mem_rec_ptr	file_rec;
 		
-		the_data = (pg_bits8_ptr) UseMemory(filemap);
+#if defined(FRONTIER_TESTS)
+		const char *frontier_scrap_tag = pg_trace_handle_tag(filemap);
+		long frontier_scrap_access_before = frontier_scrap_tag ? pg_trace_handle_access(filemap) : 0;
+#endif
+		file_rec = pgMemoryPtr(filemap);
+		the_data = file_rec ? (pg_bits8_ptr)(file_rec + 1) : NULL;
+#if defined(FRONTIER_TESTS)
+		fprintf(stdout, "[pg-scrap] use filemap=%p tag=%s access_before=%ld verb=%d pos=%lu size=%lu\n",
+			(void *)filemap, frontier_scrap_tag ? frontier_scrap_tag : "<unwatched>",
+			frontier_scrap_access_before, (int)verb,
+			(unsigned long)*position,
+			(unsigned long)(data_size ? *data_size : 0));
+		fflush(stdout);
+#endif
+		if (!the_data)
+			return NO_MEMORY_ERR;
 		the_data += *position;
 		
 		if (verb == io_data_indirect) {
@@ -797,7 +817,16 @@ PG_PASCAL (pg_error) pgScrapMemoryRead (void PG_FAR *data, short verb, size_t PG
 			target_data = (pg_bits8_ptr) data;
 
 		pgBlockMove(the_data, target_data, *data_size);
-		UnuseMemory(filemap);
+		pgFreePtr(filemap);
+#if defined(FRONTIER_TESTS)
+		long frontier_scrap_access_after = pg_trace_handle_access(filemap);
+		fprintf(stdout, "[pg-scrap] release filemap=%p tag=%s access_after=%ld verb=%d pos=%lu size=%lu\n",
+			(void *)filemap, frontier_scrap_tag ? frontier_scrap_tag : "<unwatched>",
+			frontier_scrap_access_after, (int)verb,
+			(unsigned long)*position,
+			(unsigned long)(data_size ? *data_size : 0));
+		fflush(stdout);
+#endif
 		
 		if (verb == io_data_indirect)
 			UnuseMemory((memory_ref)data);

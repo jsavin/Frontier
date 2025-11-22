@@ -71,5 +71,27 @@ extern pg_short_t PG_FAR ascii_unicode_table[HIGH_CHARS_QTY];
 #endif
 #endif
 
+#ifdef UNIX_COMPILE
+
+#define BULLET_CROSS_CHAR			0x95
+#define LEFTQUOTE_CROSS_CHAR		0x91
+#define RIGHTQUOTE_CROSS_CHAR		0x92
+#define LEFTDBLQUOTE_CROSS_CHAR		0x93
+#define RIGHTDBLQUOTE_CROSS_CHAR	0x94
+
+#define FILETYPE_STR_SIZE	4
+
+#ifdef UNICODE
+#define FILETYPE_TEXT	L"TEXT"
+#define FILETYPE_RTF	L"RTF "
+#define FILETYPE_HTML	L"HTML"
+#define FILETYPE_PAIGE	L"paig"
+#else
+#define FILETYPE_TEXT	"TEXT"
+#define FILETYPE_RTF	"RTF "
+#define FILETYPE_HTML	"HTML"
+#define FILETYPE_PAIGE	"paig"
+#endif
 #endif
 
+#endif

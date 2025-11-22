@@ -1,0 +1,3 @@
+/Users/jake/dev/jsavin/Frontier/third_party/cmake-src/Source/Checks/Curses-build/CMakeFiles/CheckCurses.dir
+/Users/jake/dev/jsavin/Frontier/third_party/cmake-src/Source/Checks/Curses-build/CMakeFiles/edit_cache.dir
+/Users/jake/dev/jsavin/Frontier/third_party/cmake-src/Source/Checks/Curses-build/CMakeFiles/rebuild_cache.dir

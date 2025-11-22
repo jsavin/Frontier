@@ -5,6 +5,8 @@ CC = clang
 CFLAGS = -std=c17 -Wall -Wextra -O0 -g -fpascal-strings \
          -DFRONTIER_HEADLESS -DFRONTIER_USE_PORTABLE_HANDLES \
          -DFRONTIER_PORTABLE_STRINGS \
+         -DFRONTIER_PORTABLE_FILE_AVAILABLE -DFRONTIER_PORTABLE_DB_AVAILABLE \
+         -DFRONTIER_PORTABLE_APPLEEVENTS \
          -DHEADLESS_TEST_PORTABLE_FILE -DHEADLESS_LINKS_REAL_DB \
          -DHEADLESS_USE_REAL_TABLEPACK \
          -DUNIX_COMPILE -DC_LIBRARY -DNO_OS_INLINE
@@ -110,6 +112,7 @@ HEADLESS_STUBS = \
     $(TESTSDIR)/headless_shellhooks.c \
     $(TESTSDIR)/headless_table_stubs.c \
     ../portable/wptext_runtime.c \
+    ../portable/paige_text_extractor.c \
     $(TESTSDIR)/headless_pict_stubs.c \
     $(TESTSDIR)/headless_menu_stubs.c \
     $(TESTSDIR)/headless_search_stubs.c \

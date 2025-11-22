@@ -1,6 +1,13 @@
 # TODO: Future Improvements
 
 Status
+- State: In Progress
+- Phase: Multi-Phase Roadmap
+- Last Updated: 2025-11-20 (Night)
+- Owner: Codex
+- Notes: Master backlog for post-carbon follow-ups; items move to `_STATUS_ARCHIVE.md` once completed.
+
+Status
 - State: Living Document
 - Phases: Multi-Phase Roadmap
 - Last Updated: 2025-11-08
@@ -276,6 +283,20 @@ Scope
 - Update docs/tests to cover the multi-host scenario (local guest, remote runtime, shared namespace) so future shells don’t regress this behaviour.
 
 ## Future Considerations (Phase 4/5 and Beyond)
+
+
+## Phase 3+ — Rich Text Type (Future Consideration)
+
+**Priority:** P2 — Nice-to-have once migration/parity work is done.
+
+Goals
+- Define a native `richtextType` that can carry lightweight RTF/HTML payloads without hard depending on Paige.
+- Update coercion and serialization paths (`string()`, `langexternalpacktotext`, migrator) to treat `richtextType` as a first-class value.
+- Expose verbs for converting to/from Markdown/HTML when the runtime grows those emitters.
+
+Notes
+- This stays on the shelf until the WPText extractor + styled RTF exporter land and we understand how often users need richer formats.
+- Capture design decisions/TODOs under `planning/paige_text_extractor.md` so the work can restart when timing is right.
 
 ### WPText → RTF Migration [P2]
 - Canonicalize `WPText` objects to UTF-8 aware RTF, keeping minimal metadata (creator, conversion info) for backward compatibility.

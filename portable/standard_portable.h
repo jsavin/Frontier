@@ -73,9 +73,11 @@ typedef unsigned short ushort;
 #define FRONTIER_PORTABLE_DEFINED_USHORT 1
 #endif
 
+#if !defined(OS_PORTABLE_HAS_STR255)
 #ifndef FRONTIER_PORTABLE_DEFINED_STR255
 typedef unsigned char Str255[256];
 #define FRONTIER_PORTABLE_DEFINED_STR255 1
+#endif
 #endif
 
 #ifndef FRONTIER_PORTABLE_DEFINED_BIGSTRING
@@ -261,8 +263,6 @@ static inline boolean filenotfounderror(void){ return false; }
 static inline boolean filespectopath(const struct tyfilespec* fs, bigstring bs){ (void)fs; setemptystring(bs); return false; }
 static inline boolean equalfilespecs(const struct tyfilespec* a, const struct tyfilespec* b){ (void)a; (void)b; return false; }
 static inline boolean getfsfile(const struct tyfilespec* pfs, bigstring name){ (void)pfs; setemptystring(name); return false; }
-static inline void DebugStr(const unsigned char* s){ (void)s; }
-static inline void Debugger(void){}
 static inline boolean langportable_err_noop(unsigned char* bs, void* refcon){ (void)bs; (void)refcon; return true; }
 #endif
 

@@ -7,6 +7,8 @@ in different (and hopefully appropriate) source files. */
 #ifndef DEFPROCS_H
 #define DEFPROCS_H
 
+/* 2025-11-11 Codex: Align default handler prototypes with the shared pg_handler_proc type. */
+
 #include "Paige.h"
 
 #ifdef __cplusplus
@@ -142,9 +144,9 @@ extern PG_PASCAL (pg_boolean) pgReadHandlerProc (paige_rec_ptr pg, pg_file_key k
 extern PG_PASCAL (pg_boolean) pgWriteHandlerProc (paige_rec_ptr pg, pg_file_key key, memory_ref key_data,
 		long PG_FAR *element_info, void PG_FAR *aux_data, size_t PG_FAR *unpacked_size);
 extern PG_PASCAL (pg_boolean) pgDummyReadHandler (paige_rec_ptr pg, pg_file_key key, memory_ref key_data,
-		size_t PG_FAR *element_info, void PG_FAR *aux_data, size_t PG_FAR *unpacked_size);
+		long PG_FAR *element_info, void PG_FAR *aux_data, size_t PG_FAR *unpacked_size);
 extern PG_PASCAL (pg_boolean) pgDummyWriteHandler (paige_rec_ptr pg, pg_file_key key, memory_ref key_data,
-		size_t PG_FAR *element_info, void PG_FAR *aux_data, size_t PG_FAR *unpacked_size);
+		long PG_FAR *element_info, void PG_FAR *aux_data, size_t PG_FAR *unpacked_size);
 extern PG_PASCAL (pg_error) pgStandardReadProc (void PG_FAR *data, short verb, size_t PG_FAR *position,
 		size_t PG_FAR *data_size, file_ref filemap);
 extern PG_PASCAL (pg_error) pgStandardWriteProc (void PG_FAR *data, short verb, size_t PG_FAR *position,

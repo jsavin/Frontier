@@ -1067,6 +1067,7 @@ extern boolean setfilespecvalue (ptrfilespec, tyvaluerecord *);
 extern boolean setexternalvalue (Handle, tyvaluerecord *);
 
 extern boolean langhashtablelookup (hdlhashtable htable, const bigstring bs, tyvaluerecord *vreturned, hdlhashnode *); /*6.1d4 AR*/
+extern boolean langhash_materialize_disk_values(hdlhashtable htable);
 
 extern boolean langassigntextvalue (hdlhashtable ht, bigstring bs, Handle h); /*6.1d4 AR*/
 
@@ -1303,6 +1304,5 @@ extern boolean langcleartarget (tyvaluerecord *prevtarget);
 extern boolean langsettarget (hdlhashtable htable, bigstring bsname, tyvaluerecord *prevtarget);
 
 #endif
-
 
 

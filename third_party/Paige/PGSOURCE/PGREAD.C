@@ -29,6 +29,61 @@
 #include "pgTables.h"
 #include "pgSubref.h"
 #include "pgFrame.h"
+#if defined(FRONTIER_TESTS)
+#include <stdio.h>
+#include <string.h>
+
+#endif
+
+/* 2025-11-11 Codex: Keep pgRead exports using C linkage under C++. */
+/* 2025-11-17 Codex: Guard doc-info preview logging so Use/Unuse stay balanced. */
+/* 2025-11-17 Codex: Track docinfo.subject handles for LLDB tracing. */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#if defined(FRONTIER_TESTS)
+memory_ref __attribute__((used)) frontier_docinfo_subject_ref = MEM_NULL;
+memory_ref __attribute__((used)) frontier_docinfo_subject_current(void) { return frontier_docinfo_subject_ref; }
+
+static void frontier_docinfo_watch(const char *tag, memory_ref ref) {
+    if (!tag)
+        return;
+    if (ref != MEM_NULL && strcmp(tag, "docinfo.subject") == 0)
+        frontier_docinfo_subject_ref = ref;
+    pg_trace_handle_watch(ref, tag);
+}
+#endif
+
+#if defined(FRONTIER_DISABLE_DOCINFO)
+static void frontier_docinfo_skip_character_ref(pack_walk_ptr walker)
+{
+    long predicted = pgGetUnpackedSize(walker);
+    if (predicted)
+        pgUnpackBytes(walker, MEM_NULL);
+}
+
+static void frontier_docinfo_skip_and_clear(pack_walk_ptr walker, memory_ref PG_FAR *ref)
+{
+    frontier_docinfo_skip_character_ref(walker);
+    if (ref && *ref != MEM_NULL) {
+        DisposeMemory(*ref);
+        *ref = MEM_NULL;
+    }
+}
+#endif
+
+#if defined(FRONTIER_TESTS)
+static void frontier_docinfo_log(const char *label, long predicted_size, memory_ref ref) {
+	long actual_size = 0;
+	if (ref != MEM_NULL)
+		actual_size = GetMemorySize(ref);
+	fprintf(stdout, "[paige-docinfo] %s predicted=%ld actual=%ld ref=%p\n",
+		label, predicted_size, actual_size, (void *)ref);
+	fflush(stdout);
+}
+#endif
 
 // Definition to fix Win16 bug:
 #define REASONABLE_WIN16_SIZE	600
@@ -63,6 +118,7 @@ static void fix_hyperlink_run (paige_rec_ptr pg, memory_ref run);
 static void unpack_refcon (paige_rec_ptr pg, pack_walk_ptr walker, long PG_FAR *refcon);
 static pg_boolean equal_constants (pg_bits8_ptr str1, pg_bits8_ptr str2, short size);
 static void input_opt_character_ref(pgm_globals_ptr mem_globals, pack_walk_ptr walker, memory_ref PG_FAR *ref);
+static void input_opt_character_ref_impl(pgm_globals_ptr mem_globals, pack_walk_ptr walker, memory_ref PG_FAR *ref);
 static void unpack_fontsize_text (paige_rec_ptr pg, pack_walk_ptr walker, pg_char_ptr name);
 static void convert_for_unicode (paige_rec_ptr pg);
 
@@ -77,7 +133,7 @@ is to process key_data whose type is indicated by key.  */
 	was a bug in versions prior 0x0001000A. TRS/OITC */
 
 PG_PASCAL (pg_boolean) pgReadHandlerProc (paige_rec_ptr pg, pg_file_key key, memory_ref key_data,
-		long PG_FAR *element_info, void PG_FAR *aux_data, long PG_FAR *unpacked_size)
+		long PG_FAR *element_info, void PG_FAR *aux_data, size_t PG_FAR *unpacked_size)
 {
 	pack_walk					walker;
 	register paige_rec_ptr		pgr;
@@ -628,13 +684,107 @@ text_block arrays: */
 				pgr->doc_info.edittime = pgUnpackNum(&walker);
 				pgr->doc_info.id = pgUnpackNum(&walker);
 	
-				input_opt_character_ref(pg->globals->mem_globals, &walker, &pgr->doc_info.title);
-				input_opt_character_ref(pg->globals->mem_globals, &walker, &pgr->doc_info.subject);
-				input_opt_character_ref(pg->globals->mem_globals, &walker, &pgr->doc_info.author);
-				input_opt_character_ref(pg->globals->mem_globals, &walker, &pgr->doc_info.wp_operator);
-				input_opt_character_ref(pg->globals->mem_globals, &walker, &pgr->doc_info.keywords);
-				input_opt_character_ref(pg->globals->mem_globals, &walker, &pgr->doc_info.comment);
-				input_opt_character_ref(pg->globals->mem_globals, &walker, &pgr->doc_info.doccomm);
+				#if defined(FRONTIER_DISABLE_DOCINFO)
+				frontier_docinfo_skip_and_clear(&walker, &pgr->doc_info.title);
+				frontier_docinfo_skip_and_clear(&walker, &pgr->doc_info.subject);
+				frontier_docinfo_skip_and_clear(&walker, &pgr->doc_info.author);
+				frontier_docinfo_skip_and_clear(&walker, &pgr->doc_info.wp_operator);
+				frontier_docinfo_skip_and_clear(&walker, &pgr->doc_info.keywords);
+				frontier_docinfo_skip_and_clear(&walker, &pgr->doc_info.comment);
+				frontier_docinfo_skip_and_clear(&walker, &pgr->doc_info.doccomm);
+				#else
+				#if defined(FRONTIER_TESTS)
+		long frontier_predicted_title = pgGetUnpackedSize(&walker);
+		#endif
+		input_opt_character_ref(pg->globals->mem_globals, &walker, &pgr->doc_info.title);
+		#if defined(FRONTIER_TESTS)
+		frontier_docinfo_log("title", frontier_predicted_title, pgr->doc_info.title);
+		fprintf(stdout, "[pg-docinfo] doc_info_key field=title handle=%p size=%zu\n",
+			(void *)pgr->doc_info.title,
+			pg_docinfo_handle_size(pgr->doc_info.title));
+		fflush(stdout);
+		frontier_docinfo_watch("docinfo.title", pgr->doc_info.title);
+		#endif
+				#if defined(FRONTIER_TESTS)
+		long frontier_predicted_subject = pgGetUnpackedSize(&walker);
+		#endif
+		input_opt_character_ref(pg->globals->mem_globals, &walker, &pgr->doc_info.subject);
+		#if defined(FRONTIER_TESTS)
+		frontier_docinfo_log("subject", frontier_predicted_subject, pgr->doc_info.subject);
+		fprintf(stdout, "[pg-docinfo] doc_info_key field=subject handle=%p size=%zu\n",
+			(void *)pgr->doc_info.subject,
+			pg_docinfo_handle_size(pgr->doc_info.subject));
+		fflush(stdout);
+		frontier_docinfo_watch("docinfo.subject", pgr->doc_info.subject);
+		#endif
+				#if defined(FRONTIER_TESTS)
+		long frontier_predicted_author = pgGetUnpackedSize(&walker);
+		#endif
+		input_opt_character_ref(pg->globals->mem_globals, &walker, &pgr->doc_info.author);
+		#if defined(FRONTIER_TESTS)
+		frontier_docinfo_log("author", frontier_predicted_author, pgr->doc_info.author);
+		fprintf(stdout, "[pg-docinfo] doc_info_key field=author handle=%p size=%zu\n",
+			(void *)pgr->doc_info.author,
+			pg_docinfo_handle_size(pgr->doc_info.author));
+		fflush(stdout);
+		frontier_docinfo_watch("docinfo.author", pgr->doc_info.author);
+		#endif
+				#if defined(FRONTIER_TESTS)
+		long frontier_predicted_wp_operator = pgGetUnpackedSize(&walker);
+		#endif
+		input_opt_character_ref(pg->globals->mem_globals, &walker, &pgr->doc_info.wp_operator);
+		#if defined(FRONTIER_TESTS)
+		frontier_docinfo_log("wp_operator", frontier_predicted_wp_operator, pgr->doc_info.wp_operator);
+		fprintf(stdout, "[pg-docinfo] doc_info_key field=wp_operator handle=%p size=%zu\n",
+			(void *)pgr->doc_info.wp_operator,
+			pg_docinfo_handle_size(pgr->doc_info.wp_operator));
+		fflush(stdout);
+		frontier_docinfo_watch("docinfo.operator", pgr->doc_info.wp_operator);
+		#endif
+				#if defined(FRONTIER_TESTS)
+		long frontier_predicted_keywords = pgGetUnpackedSize(&walker);
+		#endif
+		input_opt_character_ref(pg->globals->mem_globals, &walker, &pgr->doc_info.keywords);
+		#if defined(FRONTIER_TESTS)
+		frontier_docinfo_log("keywords", frontier_predicted_keywords, pgr->doc_info.keywords);
+		fprintf(stdout, "[pg-docinfo] doc_info_key field=keywords handle=%p size=%zu\n",
+			(void *)pgr->doc_info.keywords,
+			pg_docinfo_handle_size(pgr->doc_info.keywords));
+		fflush(stdout);
+		frontier_docinfo_watch("docinfo.keywords", pgr->doc_info.keywords);
+		#endif
+				#if defined(FRONTIER_TESTS)
+		long frontier_predicted_comment = pgGetUnpackedSize(&walker);
+		#endif
+		input_opt_character_ref(pg->globals->mem_globals, &walker, &pgr->doc_info.comment);
+		#if defined(FRONTIER_TESTS)
+		frontier_docinfo_log("comment", frontier_predicted_comment, pgr->doc_info.comment);
+		fprintf(stdout, "[pg-docinfo] doc_info_key field=comment handle=%p size=%zu\n",
+			(void *)pgr->doc_info.comment,
+			pg_docinfo_handle_size(pgr->doc_info.comment));
+		fflush(stdout);
+		frontier_docinfo_watch("docinfo.comment", pgr->doc_info.comment);
+		#endif
+				#if defined(FRONTIER_TESTS)
+		long frontier_predicted_doccomm = pgGetUnpackedSize(&walker);
+		#endif
+		input_opt_character_ref(pg->globals->mem_globals, &walker, &pgr->doc_info.doccomm);
+		#if defined(FRONTIER_TESTS)
+		frontier_docinfo_log("doccomm", frontier_predicted_doccomm, pgr->doc_info.doccomm);
+		fprintf(stdout, "[pg-docinfo] doc_info_key field=doccomm handle=%p size=%zu\n",
+			(void *)pgr->doc_info.doccomm,
+			pg_docinfo_handle_size(pgr->doc_info.doccomm));
+		fflush(stdout);
+		frontier_docinfo_watch("docinfo.doccomm", pgr->doc_info.doccomm);
+		#endif
+				#endif /* FRONTIER_DISABLE_DOCINFO */
+#if defined(FRONTIER_TESTS) && !defined(FRONTIER_DISABLE_DOCINFO)
+			fprintf(stdout, "[pg-docinfo] snapshot named_styles=%p subject=%p title=%p\n",
+				(void *)pgr->named_styles,
+				(void *)pgr->doc_info.subject,
+				(void *)pgr->doc_info.title);
+			fflush(stdout);
+#endif
 				}
 			}
 			
@@ -722,6 +872,19 @@ text_block arrays: */
 						--run_ctr;
 					}
 
+#if defined(FRONTIER_TESTS)
+					fprintf(stdout, "[pg-read] named_styles cleanup pg=%p ref=%p docinfo.title=%p subject=%p author=%p comment=%p doccomm=%p\n",
+						(void *)pg,
+						(void *)pg->named_styles,
+						(void *)pgr->doc_info.title,
+						(void *)pgr->doc_info.subject,
+						(void *)pgr->doc_info.author,
+						(void *)pgr->doc_info.comment,
+						(void *)pgr->doc_info.doccomm);
+					fflush(stdout);
+				pg_trace_handle_watch(pgr->named_styles, "pg.named_styles");
+#endif
+
 					UnuseMemory(pg->named_styles);
 				}
 			}
@@ -757,6 +920,13 @@ text_block arrays: */
 			break;
 	}
 
+#if defined(FRONTIER_TESTS)
+	fprintf(stdout, "[pg-read] cleanup key=%ld walker_ref=%p key_data=%p\n",
+		(long)key,
+		(void *)walker.data_ref,
+		(void *)key_data);
+	fflush(stdout);
+#endif
 	UnuseMemory(walker.data_ref);
 
 	return	TRUE;
@@ -817,6 +987,10 @@ PG_PASCAL (pg_error) pgReadDoc (pg_ref pg, size_t PG_FAR *file_position, const p
 			proc_to_read = pgStandardReadProc;
 
 		data_ref = MemoryAlloc(mem_globals, 1, 0, 0);
+#if defined(FRONTIER_TESTS)
+		if (data_ref)
+			pg_trace_handle_watch(data_ref, "pg.walker_data");
+#endif
 
 		data_size = sizeof(long);
 		if (result = proc_to_read(&file_size, io_get_eof, file_position, &data_size, filemap))
@@ -1014,7 +1188,11 @@ PG_PASCAL (pg_error) pgReadDoc (pg_ref pg, size_t PG_FAR *file_position, const p
 			fix_pg_from_done_handlers(pg_rec, handlers_to_use);
 
 			DisposeMemory(handlers_to_use);
-			DisposeMemory(data_ref);
+	#if defined(FRONTIER_TESTS)
+		pg_trace_handle_forget(data_ref);
+#else
+		DisposeMemory(data_ref);
+#endif
 		}
 
 		if (!wait_terminated)
@@ -1938,8 +2116,18 @@ static void fix_pg_from_done_handlers (paige_rec_ptr pg, memory_ref handlers)
    	 	pg->platform = PAIGE_PLATFORM;
    	 
    	 if (pg->url_list_ref) {
-   	 	
-   	 	DisposeMemory(pg->url_list_ref);
+#if defined(FRONTIER_TESTS)
+   	 	fprintf(stderr, "[pg-read] ignoring url_list_ref=%p (legacy pointer)\n", (void *)pg->url_list_ref);
+   	 	fflush(stderr);
+#else
+   	 	PG_TRY(pg->globals->mem_globals) {
+   	 		DisposeMemory(pg->url_list_ref);
+   	 	}
+   	 	PG_CATCH {
+   	 		/* ignore */
+   	 	}
+   	 	PG_ENDTRY;
+#endif
    	 	pg->url_list_ref = MEM_NULL;
    	 }
 }
@@ -2286,13 +2474,76 @@ static pg_boolean equal_constants (pg_bits8_ptr str1, pg_bits8_ptr str2, short s
 
 static void input_opt_character_ref(pgm_globals_ptr mem_globals, pack_walk_ptr walker, memory_ref PG_FAR *ref)
 {
-	long	input_byte_size = pgGetUnpackedSize(walker);
-	
-	if (input_byte_size) {
-		*ref = MemoryAlloc(mem_globals, 1, input_byte_size, 0);
-		pgUnpackBytes(walker, *ref);
+#if defined(FRONTIER_TESTS)
+	if (ref && *ref != MEM_NULL) {
+		const char *frontier_existing_tag = pg_trace_handle_tag(*ref);
+		if (frontier_existing_tag != NULL) {
+			void PG_FAR *frontier_existing_ptr = UseMemory(*ref);
+			if (frontier_existing_ptr) {
+				size_t frontier_existing_size = GetByteSize(*ref);
+				size_t frontier_preview = frontier_existing_size < 48 ? frontier_existing_size : 48;
+				fprintf(stdout, "[pg-docinfo] reuse-before tag=%s size=%zu preview=",
+					frontier_existing_tag, (size_t)frontier_existing_size);
+				for (size_t frontier_i = 0; frontier_i < frontier_preview; ++frontier_i)
+					fprintf(stdout, "%02x", ((const unsigned char *)frontier_existing_ptr)[frontier_i]);
+				if (frontier_preview)
+					fputc('\n', stdout);
+				fflush(stdout);
+				UnuseMemory(*ref);
+			}
+		}
 	}
-	else *ref = MEM_NULL;
+#endif
+	input_opt_character_ref_impl(mem_globals, walker, ref);
+}
+
+static void input_opt_character_ref_impl(pgm_globals_ptr mem_globals, pack_walk_ptr walker, memory_ref PG_FAR *ref)
+{
+	long	input_byte_size = pgGetUnpackedSize(walker);
+#if defined(FRONTIER_TESTS)
+	fprintf(stdout, "[paige-docinfo] input_opt bytes=%ld remain=%ld code=%u\n",
+		input_byte_size, walker->remaining_ctr, (unsigned)(walker->data[0] & 0xFF));
+	fflush(stdout);
+#endif
+
+	if (input_byte_size) {
+		if (*ref == MEM_NULL)
+			*ref = MemoryAlloc(mem_globals, 1, input_byte_size, 0);
+		else
+			SetMemorySize(*ref, input_byte_size);
+#if defined(FRONTIER_TESTS)
+		const char *frontier_docinfo_tag = pg_trace_handle_tag(*ref);
+		long frontier_docinfo_access_before = frontier_docinfo_tag ? pg_trace_handle_access(*ref) : 0;
+		fprintf(stdout, "[pg-docinfo] unpack ref=%p tag=%s access_before=%ld size=%ld\n",
+			(void *)(*ref), frontier_docinfo_tag ? frontier_docinfo_tag : "<unwatched>",
+			frontier_docinfo_access_before, (long)input_byte_size);
+		fflush(stdout);
+#endif
+		pgUnpackBytes(walker, *ref);
+#if defined(FRONTIER_TESTS)
+		{
+			long frontier_docinfo_access_after = pg_trace_handle_access(*ref);
+			fprintf(stdout, "[pg-docinfo] unpack-after ref=%p tag=%s access_after=%ld\n",
+				(void *)(*ref), frontier_docinfo_tag ? frontier_docinfo_tag : "<unwatched>",
+				frontier_docinfo_access_after);
+			fflush(stdout);
+		}
+#endif
+	}
+	else {
+		if (*ref != MEM_NULL) {
+#if defined(FRONTIER_TESTS)
+			const char *frontier_docinfo_tag = pg_trace_handle_tag(*ref);
+			long frontier_docinfo_access_before = frontier_docinfo_tag ? pg_trace_handle_access(*ref) : 0;
+			fprintf(stdout, "[pg-docinfo] dispose ref=%p tag=%s access_before=%ld\n",
+				(void *)(*ref), frontier_docinfo_tag ? frontier_docinfo_tag : "<unwatched>",
+				frontier_docinfo_access_before);
+			fflush(stdout);
+#endif
+			DisposeMemory(*ref);
+		}
+		*ref = MEM_NULL;
+	}
 }
 
 /* convert_for_unicode makes the necessary conversions to and from Unicode systems. */
@@ -2328,3 +2579,6 @@ static void convert_for_unicode (paige_rec_ptr pg)
 	UnuseMemory(pg->t_blocks);
 }
 		
+#ifdef __cplusplus
+} /* extern "C" */
+#endif

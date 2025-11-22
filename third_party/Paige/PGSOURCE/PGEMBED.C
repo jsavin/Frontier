@@ -1121,6 +1121,9 @@ PG_PASCAL (pg_boolean) pgEmbedReadHandler (paige_rec_ptr pg, pg_file_key key, me
       
       if (!pg->url_list_ref)
             pg->url_list_ref = MemoryAllocID(mem_globals, sizeof(memory_ref), 0, 32, pg->mem_id);
+#if defined(FRONTIER_TESTS)
+            pg_trace_handle_watch(pg->url_list_ref, "pg.url_list");
+#endif
       
       unpack_url(pg, &walker);
       UnuseMemory(walker.data_ref);

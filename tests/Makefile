@@ -2,6 +2,8 @@
 # 2025-10-27 Codex: Link db_format sources into portable component tests (needed by migration suite).
 # 2025-11-07 Codex: Add portable include path for core/db_format tests so headless
 #                   builds can find classic_handle and friends.
+# 2025-11-11 Codex: Define HEADLESS_LINKS_REAL_PAIGE so tests skip Paige stubs once the real library links.
+# 2025-11-17 Codex: Hook Paige's CMake build into this Makefile so source edits retrigger libpaige.a.
 # Phase 1.1: Comprehensive Testing Implementation
 
 CC = clang
@@ -13,12 +15,18 @@ ifeq ($(SANITIZE),1)
   # macOS leak detection can be noisy; disable unless needed
   # export ASAN_OPTIONS=detect_leaks=0  # set in shell if desired
 endif
+
+# Enable Paige debug instrumentation + wp runtime guards when tests are built
+FRONTIER_TESTS ?= 1
 CFLAGS = -Wall -Wextra -std=c99 -g -O0 -fpascal-strings -Wno-deprecated-non-prototype -fcommon \
          -DFRONTIER_USE_PORTABLE_HANDLES -DFRONTIER_HEADLESS \
          -DFRONTIER_PORTABLE_STRINGS \
          -DFRONTIER_PORTABLE_FILE_AVAILABLE -DFRONTIER_PORTABLE_DB_AVAILABLE \
+         -DFRONTIER_PORTABLE_APPLEEVENTS \
+         -DHEADLESS_LINKS_REAL_PAIGE \
          -DHEADLESS_LINKS_REAL_DB \
          -DHEADLESS_USE_REAL_TABLEPACK \
+         -DFRONTIER_DISABLE_DOCINFO=1 \
          -DLAND_GENERALLOG_LEVEL=LAND_LOGLEVEL_OFF -DLAND_GENERALLOG_TARGET=LAND_LOGTARGET_NONE \
          -DUNIX_COMPILE -DC_LIBRARY -DNO_OS_INLINE \
          $(SAN_FLAGS) \
@@ -40,12 +48,27 @@ FRAMEWORKS = -framework CoreFoundation -framework Carbon
 # Paige integration (WPText engine)
 THIRDPARTYDIR = ../third_party
 PAIGE_DIR = $(THIRDPARTYDIR)/Paige
-PAIGE_BUILD_DIR = $(PAIGE_DIR)/build-headless
+PAIGE_BUILD_DIR_RELEASE = $(PAIGE_DIR)/build-headless
+PAIGE_BUILD_DIR_DEBUG = $(PAIGE_DIR)/build-headless-debug
+ifeq ($(FRONTIER_TESTS),1)
+  PAIGE_BUILD_DIR = $(PAIGE_BUILD_DIR_DEBUG)
+  PAIGE_BUILD_TYPE = Debug
+  PAIGE_TESTS_FLAG = ON
+else
+  PAIGE_BUILD_DIR = $(PAIGE_BUILD_DIR_RELEASE)
+  PAIGE_BUILD_TYPE = Release
+  PAIGE_TESTS_FLAG = OFF
+endif
 PAIGE_LIB = $(PAIGE_BUILD_DIR)/libpaige.a
 CMAKE_BIN = $(THIRDPARTYDIR)/cmake-install/bin/cmake
 PAIGE_ARCHES = arm64;x86_64
+PAIGE_CONFIG = $(PAIGE_BUILD_DIR)/CMakeCache.txt
+PAIGE_SOURCES := $(shell find $(PAIGE_DIR) -type f \( -name '*.C' -o -name '*.CPP' -o -name '*.c' -o -name '*.cpp' -o -name '*.H' -o -name '*.h' \))
 
-CFLAGS += -I$(PAIGE_DIR)/PGHEADER -DFRONTIER_TESTS=1
+CFLAGS += -I$(PAIGE_DIR)/PGHEADER
+ifeq ($(FRONTIER_TESTS),1)
+  CFLAGS += -DFRONTIER_TESTS=1
+endif
 LIBS = $(PAIGE_LIB)
 LDFLAGS = -Wl,-undefined,dynamic_lookup
 LINK_LIBS = $(PAIGE_LIB) $(LDFLAGS)
@@ -130,6 +153,7 @@ LANG_RUNTIME_SOURCES = \
     headless_shellhooks.c \
     headless_table_stubs.c \
     ../portable/wptext_runtime.c \
+    ../portable/paige_text_extractor.c \
     headless_pict_stubs.c \
     headless_menu_stubs.c \
     headless_search_stubs.c \
@@ -160,6 +184,7 @@ TEST_EXECUTABLES = \
 	test_compatibility \
 	test_64bit_structures \
 	test_dbnew \
+	paige_text_tests \
 	db_format_tests
 
 # UserTalk object test executables
@@ -171,7 +196,7 @@ USERTALK_OBJECT_TESTS = \
 	test_usertalk_runner
 
 # Buildable test executables on this branch
-RUN_BUILDABLE = core_tests db_format_tests runtime_tests parser_tests save_migration_tests file_portable_tests file_readline_tests file_verb_tests handle_tests cli_runtime_tests
+RUN_BUILDABLE = core_tests db_format_tests runtime_tests parser_tests save_migration_tests file_portable_tests file_readline_tests file_verb_tests handle_tests cli_runtime_tests paige_text_tests
 
 # Prebuilt or auxiliary test binaries that may be present
 RUN_PREBUILT = test_64bit_direct test_migration_verification test_real_databases test_runner verify_migration_success
@@ -243,6 +268,9 @@ test_64bit_structures: components/test_64bit_structures.c $(TEST_FRAMEWORK) $(FR
 
 test_dbnew: components/test_dbnew.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES)
 	$(CC) $(CFLAGS) -I$(SYSTEMHEADERDIR) -I../Common/SystemHeaders -I$(HEADERDIR) -I$(MODERNHEADERDIR) -I../portable $^ -o $@ $(LINK_LIBS) $(FRAMEWORKS)
+
+paige_text_tests: components/paige_text_tests.c $(TEST_FRAMEWORK) components/macromantoutf8_stub.c components/newclearhandle_stub.c ../Common/source/portable_handles.c ../portable/classic_handle.c ../portable/paige_text_extractor.c
+	$(CC) $(CFLAGS) -I../Common/headers -I../portable components/paige_text_tests.c framework/test_framework.c components/macromantoutf8_stub.c components/newclearhandle_stub.c ../Common/source/portable_handles.c ../portable/classic_handle.c ../portable/paige_text_extractor.c -DFRONTIER_PORTABLE -o $@ $(LDFLAGS)
 
 
 # UserTalk object test executables
@@ -333,9 +361,13 @@ clean:
 	rm -f $(GENERATED_STRINGS)
 	# Paige build artifacts retained under third_party/Paige/build-headless
 
-$(PAIGE_LIB):
-	$(CMAKE_BIN) -S $(PAIGE_DIR) -B $(PAIGE_BUILD_DIR) -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="$(PAIGE_ARCHES)"
-	$(CMAKE_BIN) --build $(PAIGE_BUILD_DIR)
+
+$(PAIGE_CONFIG):
+	@mkdir -p $(PAIGE_BUILD_DIR)
+	$(CMAKE_BIN) -S $(PAIGE_DIR) -B $(PAIGE_BUILD_DIR) -DCMAKE_BUILD_TYPE=$(PAIGE_BUILD_TYPE) -DCMAKE_OSX_ARCHITECTURES="$(PAIGE_ARCHES)" -DFRONTIER_TESTS=$(PAIGE_TESTS_FLAG) -DFRONTIER_DISABLE_DOCINFO=ON
+
+$(PAIGE_LIB): $(PAIGE_CONFIG) $(PAIGE_SOURCES)
+	$(CMAKE_BIN) --build $(PAIGE_BUILD_DIR) --target paige
 # Install target
 install: $(ALL_TESTS)
 	@echo "Installing test executables..."

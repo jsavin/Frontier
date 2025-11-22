@@ -1,5 +1,12 @@
 # Modernization Decision Log
 
+Status
+- State: In Progress
+- Phase: Multi-Phase
+- Last Updated: 2025-11-20
+- Owner: Codex
+- Notes: Central index of ADR topics; update when decisions move between Draft/Proposed/Accepted.
+
 Purpose
 - Central index of cross-cutting decisions and their status. Each entry links to an ADR or topic doc.
 

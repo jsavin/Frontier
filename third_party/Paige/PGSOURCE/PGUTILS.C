@@ -19,6 +19,33 @@ any of those libraries exist with this code.   */
 #include "pgShapes.h"
 #include "pgEdit.h"
 
+#if defined(FRONTIER_TESTS)
+#include <stdio.h>
+static void pg_calltexthook_log_missing(const char *slot, short verb, short reason_verb,
+		long style_index, const style_info_ptr style_used)
+{
+	fprintf(stdout,
+		"[pg-style] missing %s proc style=%p style_index=%ld verb=%d reason=%d class=0x%lx delete=%p copy=%p activate=%p\n",
+		slot,
+		(void *)style_used,
+		(long)style_index,
+		(int)verb,
+		(int)reason_verb,
+		(long)style_used->class_bits,
+		(void *)style_used->procs.delete_text,
+		(void *)style_used->procs.copy_text,
+		(void *)style_used->procs.activate_proc);
+	fflush(stdout);
+}
+#define PG_CALLTEXTHOOK_LOG_IF_NULL(slot, fnptr) \
+	do { \
+		if ((fnptr) == NULL) \
+			pg_calltexthook_log_missing(slot, verb, reason_verb, run->style_item, style_used); \
+	} while (0)
+#else
+#define PG_CALLTEXTHOOK_LOG_IF_NULL(slot, fnptr) ((void)0)
+#endif
+
 
 /* pgUniqueID returns an ID number unique to pg (won't be used anywhere else). */
 
@@ -983,6 +1010,7 @@ PG_PASCAL (void) pgCallTextHook (paige_rec_ptr pg, paige_rec_ptr src_option,
 			switch (verb) {
 				
 				case call_for_copy:
+					PG_CALLTEXTHOOK_LOG_IF_NULL("copy_text", style_used->procs.copy_text);
 					style_used->procs.copy_text(src_option, pg, reason_verb,
 							style_used, run->offset, beginning_offset, text,
 							caller_size);
@@ -990,12 +1018,14 @@ PG_PASCAL (void) pgCallTextHook (paige_rec_ptr pg, paige_rec_ptr src_option,
 					break;
 					
 				case call_for_delete:
+					PG_CALLTEXTHOOK_LOG_IF_NULL("delete_text", style_used->procs.delete_text);
 					style_used->procs.delete_text(pg, reason_verb, style_used,
 						run->offset, beginning_offset, text, caller_size);
 					
 					break;
 					
 				case call_for_activate:
+					PG_CALLTEXTHOOK_LOG_IF_NULL("activate", style_used->procs.activate_proc);
 
 					active_range.begin = offset_to_find;
 					active_range.end = run[1].offset;
@@ -1340,7 +1370,5 @@ PG_PASCAL (long) pgMax (long value1, long value2)
 #endif
 
 /***************************  Local Functions  ***********************/
-
-
 
 

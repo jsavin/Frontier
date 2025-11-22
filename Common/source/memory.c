@@ -35,6 +35,9 @@
 #include "strings.h"
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
 #include <assert.h>
+#if defined(FRONTIER_HEADLESS)
+#include <dlfcn.h> /*dladdr symbolization for debugging*/
+#endif
 
 /* Enable to dump merge/unmerge diagnostics. */
 /* #define DEBUG_SERIALIZER 1 */
@@ -650,8 +653,12 @@ static long getidealchunksize (void) {
 	
 	4/20/93 dmb: tweaked algorith; if more than 64K is available, grab half
 	*/
+#if defined(FRONTIER_HEADLESS)
+	/* Classic Mac's MaxBlock call doesn't exist on headless builds. */
+	return 256 * 1024;
+#else
 	register long ctgrab = MaxBlock ();
-	
+
 	if (ctgrab < 0x4000)
 		ctgrab -= 0x0400;
 	else
@@ -661,6 +668,7 @@ static long getidealchunksize (void) {
 			ctgrab >>= 1;
 	
 	return (ctgrab);
+#endif
 
 
 	} /*getidealchunksize*/
@@ -1438,7 +1446,19 @@ boolean loadfromhandle (Handle hload, long *ixload, long ctload, ptrvoid pdata) 
 	if ((ix + ct) > size) /*asked for more bytes than there are*/
 	{
 #if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[headless] loadfromhandle fail: ix=%ld ct=%ld size=%ld\n", ix, ct, size);
+		void *caller = __builtin_return_address(0);
+		void *parent = __builtin_return_address(1);
+		const char *caller_name = "<unknown>";
+		const char *parent_name = "<unknown>";
+		Dl_info info = {0};
+		if (dladdr(caller, &info) && info.dli_sname != NULL)
+			caller_name = info.dli_sname;
+		Dl_info parent_info = {0};
+		if (dladdr(parent, &parent_info) && parent_info.dli_sname != NULL)
+			parent_name = parent_info.dli_sname;
+		fprintf(stderr,
+		        "[headless] loadfromhandle fail: ix=%ld ct=%ld size=%ld caller=%s(%p) parent=%s(%p)\n",
+		        ix, ct, size, caller_name, caller, parent_name, parent);
 #endif
 		return (false); 
 	}
@@ -1560,18 +1580,22 @@ boolean loadhandleremains (long ix, Handle hsource, Handle *hdest) {
 	
 boolean pushlongondiskhandle (long x, Handle hpush) {
 	
-	memtodisklong (x);
+	int32_t disk32 = (int32_t) x;
+	memtodisklong (disk32);
 	
-	return (enlargehandle (hpush, sizeof (long), &x));
+	return (enlargehandle (hpush, (long) sizeof (disk32), &disk32));
 	} /*pushlongtodiskhandle*/
 
 
 boolean loadlongfromdiskhandle (Handle hload, long *ixload, long *x) {
 	
-	if (!loadfromhandle (hload, ixload, sizeof (long), x))
+	int32_t disk32 = 0;
+	
+	if (!loadfromhandle (hload, ixload, (long) sizeof (disk32), &disk32))
 		return (false);
 	
-	disktomemlong (*x);
+	disktomemlong (disk32);
+	*x = (long) disk32;
 	
 	return (true);
 	} /*loadlongfromdiskhandle*/

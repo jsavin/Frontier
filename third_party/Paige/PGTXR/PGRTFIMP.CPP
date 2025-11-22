@@ -158,10 +158,12 @@ pg_boolean PaigeRTFImportFilter::pgReadNextBlock (void)
 	
 // Zero-out embed_ref stuff from possible previous embedded insertion.
 
-		current_style.procs = paige_globals->def_style.procs;
-		current_style.embed_entry = current_style.embed_style_refcon
-				= current_style.embed_refcon = current_style.embed_id = 0;
-		current_style.embed_object = MEM_NULL;
+			current_style.procs = paige_globals->def_style.procs;
+			current_style.embed_entry = NULL;
+			current_style.embed_style_refcon = 0;
+			current_style.embed_refcon = 0;
+			current_style.embed_id = 0;
+			current_style.embed_object = MEM_NULL;
 		current_style.char_bytes = 0;
 		current_style.class_bits = 0;
 	}
@@ -2419,4 +2421,3 @@ static short convert_twips (paige_rec_ptr pg, short twipsvalue)
 	
 	return	(short)result;
 }
-

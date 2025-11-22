@@ -25,6 +25,10 @@
 #include "pgTables.h"
 #include "pgGrafx.h"
 
+#if defined(FRONTIER_TESTS)
+#include <stdio.h>
+#endif
+
 
 struct glitter_info {
 	style_walk		walker;					/* Copy of walker for line or par begin */
@@ -1919,6 +1923,8 @@ static short block_should_delete (paige_rec_ptr pg, text_block_ptr block,
 }
 
 
+/* 2025-11-11 Codex: Guard style run advancement against empty/overflow cases. */
+
 /* This increments all the style runs affected by offset. The length can also
 be negative (which would be the case for a deletion).  If include_equal_offsets
 is TRUE, the advance begins at an offset equal to the offset parameters.  */
@@ -1937,10 +1943,17 @@ static void advance_style_run (style_ref the_run, long offset, long length,
 	if (include_equal_offsets)
 		--minimum_offset;
 
+	run = (style_run_ptr) UseMemory(the_run);
 	num_runs = (pg_short_t)GetMemorySize(the_run);
+	if (num_runs <= 0) {
+		UnuseMemory(the_run);
+		return;
+	}
 
-	for (run = (style_run_ptr) UseMemory(the_run); minimum_offset >= run->offset; ++run, --num_runs) ;
-	
+	while ((num_runs > 1) && (minimum_offset >= run->offset)) {
+		++run;
+		--num_runs;
+	}
 	if (num_runs > 1)
 		if ((run->offset == run[1].offset) || (!run->offset)) {
 
@@ -3797,4 +3810,3 @@ static pg_boolean is_subref_char (text_block_ptr block, pg_char_ptr text, pg_sho
 
 	return pgIsValidSubref(block, (long)offset);
 }
-

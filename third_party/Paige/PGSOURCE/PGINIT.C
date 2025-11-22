@@ -10,6 +10,9 @@ Copyright 1994 by DataPak Software, Inc.  All rights reserved. Software by GAR. 
 #include "pgFiles.h"
 #include "pgSubRef.h"
 #include "pgExceps.h"
+#if defined(FRONTIER_TESTS)
+#include <stdio.h>
+#endif
 
 #ifdef MAC_PLATFORM
 #pragma segment initpg
@@ -107,6 +110,13 @@ PG_PASCAL (void) pgSetStandardProcs (pg_globals_ptr globals)
 	global_vars->def_hooks.insert_query = pgInsertQuery;
 	global_vars->def_hooks.subset_glitter = pgSubsetGlitter;
 	global_vars->def_hooks.background_image = pgBkImageProc;
+#if defined(FRONTIER_TESTS)
+	fprintf(stdout, "[paige] pgSetStandardProcs line_init=%p font_proc=%p set_device=%p\n",
+		global_vars->def_hooks.line_init,
+		global_vars->def_hooks.font_proc,
+		global_vars->def_hooks.set_device);
+	fflush(stdout);
+#endif
 
 /* Default style functions: */
 
@@ -198,4 +208,3 @@ PG_PASCAL (void) pgInitOneHandler (pg_handler_ptr handler, pg_file_key key)
 	handler->read_data_proc = pgStandardReadProc;
 	handler->write_data_proc = pgStandardWriteProc;
 }
-

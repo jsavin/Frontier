@@ -3,8 +3,13 @@
 #ifndef PGBASICS_H
 #define PGBASICS_H
 
+/* 2025-11-11 Codex: Force pgBasics prototypes to use C linkage under C++. */
 
 #include "Paige.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 
 #define EXTRA_STRUCT_RSRV	16
@@ -15,5 +20,8 @@ extern PG_PASCAL (long) pgInCacheList (pgm_globals_ptr mem_globals, pg_ref pg);
 extern PG_PASCAL (void) pgDrawGeneralBorders (paige_rec_ptr pg, long border_info, long border_color,
 				long shading, rectangle_ptr bounds, pg_boolean no_insets);
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif

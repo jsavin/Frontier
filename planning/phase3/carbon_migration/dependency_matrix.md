@@ -1,0 +1,19 @@
+# Carbon Migration Dependency Matrix
+
+Status
+- State: In Progress
+- Phase: Carbon Migration
+- Last Updated: 2025-11-20
+- Owner: Codex
+- Notes: Tracks layer sequencing and status; update when layers advance.
+
+| Layer | Scope & Deliverables | Key Files / Paths | Depends On | Unblocks | Status |
+| --- | --- | --- | --- | --- | --- |
+| 1. Foundation Shims | Portable replacements for QuickDraw serialization helpers, AppleEvent typedefs, and core text-encoding hooks so headless builds no longer include Carbon headers. | `portable/quickdraw_portable.h`, `portable/appleevent_portable.c`, `portable/text_encoding_portable.c`, `Common/headers/headless_stubs.h`, `tests/Makefile` (CFLAGS), `tests/headless_mac_compat.c`. | Portable handles (`Common/source/portable_handles.c`, `portable/classic_handle.c`). | Layer 2 file/DB shims, langhash/langpack rebuild. | ✅ Completed — QuickDraw/AppleEvent/TEC shims landed; runtime/tests/CLI now link the real DB + file layers. |
+| 2. File / DB Ports | Share the stdio-backed file API and real DB core instead of stubbed implementations; ensure headless builds define `FRONTIER_PORTABLE_FILE_AVAILABLE`, `FRONTIER_PORTABLE_DB_AVAILABLE`, and wire CLI/tests through the shared code. | `portable/file_portable.c`, `Common/source/db.c`, `Common/source/db_format.c`, `Common/source/shell_api_headless.c`, `tests/Makefile`. | Layer 1 (foundation types). | Alias/path refactor (Layer 3) plus runtime symbol resolution. | ⚙️ In progress — langpack/langhash now emit POSIX paths (no Alias Manager); `tests/cli_system_defined` hydrates a copy of the system root and will be promoted once view₀ wiring lands. |
+| 3. Alias & Path Abstraction | Replace `filespectoalias`, `aliastofilespec`, and STR#-era conversions with POSIX-style paths, update `langhash.c`, `langpack.c`, and verbs accordingly. | `planning/phase3/carbon_migration/maps/filespec_alias_map.md`, `Common/source/langhash.c`, `Common/source/langpack.c`, `tests/components/test_migration.c`. | Layers 1–2. | QuickDraw UI split, AppleEvent IPC split. | ⏳ Pending. |
+| 4. UI Extraction | Move outline/QuickDraw UI code behind desktop-only modules (`Common/source/op*.c`, `Common/source/opdisplay_desktop.c`). | `planning/phase3/carbon_migration/quickdraw_refactoring_plan.md`, `Common/source/opdisplay.c`, `Common/source/opdisplay_desktop.c`. | Layers 1–3. | Headless CLI parity, future desktop host. | ⏳ Pending. |
+
+**Notes**
+- Layer sequencing mirrors the tracer bullets in `planning/phase3/carbon_migration/tracer_bullets.md`; keep that file updated when moving a row.
+- When a layer flips to ✅, update `_CURRENT_STATUS.md` and reference the relevant commits/PRs so later agents know where to resume.

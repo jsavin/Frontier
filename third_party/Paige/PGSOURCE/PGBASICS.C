@@ -18,6 +18,24 @@ cannot omit this file from your app!   */
 #include "pgShapes.h"
 #include "pgUtils.h"
 #include "machine.h"
+#if defined(FRONTIER_TESTS)
+#include <stdio.h>
+#if defined(__has_builtin)
+#if __has_builtin(__builtin_return_address)
+#define PG_DOCINFO_HAS_RETURN_ADDR 1
+#else
+#define PG_DOCINFO_HAS_RETURN_ADDR 0
+#endif
+#else
+#define PG_DOCINFO_HAS_RETURN_ADDR 0
+#endif
+static size_t pg_docinfo_handle_size(memory_ref ref) { return (ref != MEM_NULL) ? GetByteSize(ref) : 0; }
+#if PG_DOCINFO_HAS_RETURN_ADDR
+#define PG_DOCINFO_CALLER() __builtin_return_address(0)
+#else
+#define PG_DOCINFO_CALLER() NULL
+#endif
+#endif
 #include "defprocs.h"
 #include "pgBasics.h"
 #include "pgTxtWid.h"
@@ -27,6 +45,10 @@ cannot omit this file from your app!   */
 #include "pgTables.h"
 #include "pgGrafx.h"
 #include "pgFrame.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* Values for borders. */
 
@@ -638,6 +660,11 @@ PG_PASCAL (pg_ref) pgNew (const pg_globals_ptr globals, const generic_var def_de
 
 		pg_rec->bk_color = globals->def_bk_color;
 		pgBlockMove(&globals->def_hooks, &pg_rec->procs, sizeof(pg_hooks));
+#if defined(FRONTIER_TESTS)
+		fprintf(stdout, "[paige] pgNew hooks font_proc=%p line_init=%p set_device=%p\n",
+			pg_rec->procs.font_proc, pg_rec->procs.line_init, pg_rec->procs.set_device);
+		fflush(stdout);
+#endif
 		
 		pg_rec->autoscroll_mode = bits_emulate_or;
 
@@ -692,6 +719,12 @@ PG_PASCAL (pg_ref) pgNew (const pg_globals_ptr globals, const generic_var def_de
 		pg_rec->exclusions = MemoryAlloc(globals->mem_globals, sizeof(long), 0, 4);
 		pg_rec->buf_special = MemoryAlloc(globals->mem_globals, sizeof(pg_char), 0, 24);
 		pg_rec->named_styles = MemoryAlloc(globals->mem_globals, sizeof(named_stylesheet), 0, 0);
+#if defined(FRONTIER_TESTS)
+	fprintf(stderr, "[pg-named_styles] alloc pg=%p ref=%p\n",
+		(void *)pg_rec, (void *)pg_rec->named_styles);
+	fflush(stderr);
+	pg_trace_handle_watch(pg_rec->named_styles, "pg.named_styles");
+#endif
 		pg_rec->hyperlinks = MemoryAllocClear(globals->mem_globals, sizeof(pg_hyperlink), 1, 2);
 		pg_rec->target_hyperlinks = MemoryAllocClear(globals->mem_globals, sizeof(pg_hyperlink), 1, 2);
 		pg_rec->subref_stack = MemoryAlloc(globals->mem_globals, sizeof(paige_sub_rec), 0, 2);
@@ -764,7 +797,8 @@ PG_PASCAL (pg_ref) pgNew (const pg_globals_ptr globals, const generic_var def_de
 
 	UnuseMemory(pg);
 	
-	globals->pg_extend((void PG_FAR *) pg, pg_new);
+	if (globals->pg_extend)
+		globals->pg_extend((void PG_FAR *) pg, pg_new);
 
 	return pg;
 }
@@ -839,12 +873,23 @@ PG_PASCAL (void) pgShareRefs (pg_ref pg, pg_ref shared_from, long shared_flags)
 	DisposeMemory(pg_rec->t_formats);
 	DisposeMemory(pg_rec->par_formats);
 	DisposeMemory(pg_rec->fonts);
+#if defined(FRONTIER_TESTS)
+	fprintf(stderr, "[pg-share] dispose named_styles pg=%p ref=%p shared_pg=%p\n",
+		(void *)pg, (void *)pg_rec->named_styles, (void *)shared_from);
+	fflush(stderr);
+#endif
 	DisposeMemory(pg_rec->named_styles);
 	
 	pg_rec->t_formats = shared_rec->t_formats;
 	pg_rec->par_formats = shared_rec->par_formats;
 	pg_rec->fonts = shared_rec->fonts;
 	pg_rec->named_styles = shared_rec->named_styles;
+#if defined(FRONTIER_TESTS)
+	fprintf(stderr, "[pg-share] adopt named_styles pg=%p ref=%p from=%p\n",
+		(void *)pg, (void *)pg_rec->named_styles, (void *)shared_from);
+	fflush(stderr);
+	pg_trace_handle_watch(pg_rec->named_styles, "pg.named_styles");
+#endif
 
 	if (shared_flags & SHARED_GRAF_DEVICE) {
 
@@ -893,10 +938,22 @@ PG_PASCAL (void) pgDispose (pg_ref pg)
 	short				i;
 	
 	globals = pgGetGlobals(pg);
-	globals->pg_extend((void PG_FAR *) pg, pg_dispose);
+	if (globals->pg_extend)
+		globals->pg_extend((void PG_FAR *) pg, pg_dispose);
 	mem_globals = globals->mem_globals;
 
 	pg_rec = (paige_rec_ptr) UseMemory(pg);
+#if defined(FRONTIER_TESTS)
+	fprintf(stdout, "[pg-dispose] start pg=%p doc_len=%ld flags=0x%lx flags2=0x%lx shared=0x%lx exclusions=%p exclude_area=%p\n",
+		(void *)pg,
+		pg_rec ? pg_rec->t_length : 0,
+		pg_rec ? (long)pg_rec->flags : 0,
+		pg_rec ? (long)pg_rec->flags2 : 0,
+		pg_rec ? pg_rec->shared_flags : 0,
+		pg_rec ? (void *)pg_rec->exclusions : NULL,
+		pg_rec ? (void *)pg_rec->exclude_area : NULL);
+	fflush(stdout);
+#endif
 	
 	if ((cache_index = pgInCacheList(mem_globals, pg) > 0)) {
 		
@@ -914,11 +971,33 @@ PG_PASCAL (void) pgDispose (pg_ref pg)
 	}
 	
 	pgCallTextHook(pg_rec, NULL, pgdispose_reason, 0, pg_rec->t_length, call_for_delete, 0, 0, 0);
+#if defined(FRONTIER_TESTS)
+	fprintf(stdout, "[pg-dispose] after call_text_hook pg=%p\n", (void *)pg);
+	fflush(stdout);
+#endif
 
+#if defined(FRONTIER_TESTS)
+	fprintf(stdout, "[pg-dispose] before frames pg=%p flags2=0x%lx exclusions=%p exclude_area=%p\n",
+		(void *)pg,
+		(long)pg_rec->flags2,
+		(void *)pg_rec->exclusions,
+		(void *)pg_rec->exclude_area);
+	fflush(stdout);
+#endif
 	pgDisposeFrames(pg_rec);
+#if defined(FRONTIER_TESTS)
+	fprintf(stdout, "[pg-dispose] after frames pg=%p\n", (void *)pg);
+	fflush(stdout);
+#endif
 
 	if (!(pg_rec->shared_flags & SHARED_FORMATS))
 		pgWillDeleteFormats(pg_rec, pg_rec->globals, pgdispose_reason, pg_rec->t_formats, pg_rec->par_formats);
+#if defined(FRONTIER_TESTS)
+	fprintf(stdout, "[pg-dispose] after delete_formats pg=%p shared=0x%lx\n",
+		(void *)pg,
+		pg_rec->shared_flags);
+	fflush(stdout);
+#endif
 
 	if (pg_rec->merge_save)
 		pgDispose(pg_rec->merge_save);
@@ -928,9 +1007,17 @@ PG_PASCAL (void) pgDispose (pg_ref pg)
 		DisposeMemory(pg_rec->list_columns);
 
 	pgDisposeAllSubRefs(pg_rec->t_blocks);
+#if defined(FRONTIER_TESTS)
+	fprintf(stdout, "[pg-dispose] after subrefs pg=%p\n", (void *)pg);
+	fflush(stdout);
+#endif
 
 	if (!(pg_rec->flags & NO_DEVICE_BIT) && !(pg_rec->shared_flags & SHARED_GRAF_DEVICE))
 		pgCloseDevice(pg_rec->globals, &pg_rec->port);
+#if defined(FRONTIER_TESTS)
+	fprintf(stdout, "[pg-dispose] after close_device pg=%p\n", (void *)pg);
+	fflush(stdout);
+#endif
 
 	memory_id = pg_rec->mem_id;
 	UnuseMemory(pg);
@@ -960,7 +1047,8 @@ PG_PASCAL (void) pgFailureDispose (pg_ref pg)
 		return;
 
 	if (globals = pgGetGlobals(pg))
-		globals->pg_extend((void PG_FAR*) pg, pg_dispose);
+		if (globals->pg_extend)
+			globals->pg_extend((void PG_FAR*) pg, pg_dispose);
 
 	pg_rec = (paige_rec_ptr) UseMemory(pg);
 
@@ -1005,6 +1093,15 @@ a file "open" or some similar feature.  */
 
 PG_PASCAL (pg_ref) pgNewShell (const pg_globals_ptr globals)
 {
+#if defined(FRONTIER_TESTS)
+	fprintf(stdout, "[paige] pgNewShell globals=%p def_hooks.line_init=%p font_proc=%p set_device=%p\n",
+		(void *)globals,
+		globals ? globals->def_hooks.line_init : NULL,
+		globals ? globals->def_hooks.font_proc : NULL,
+		globals ? globals->def_hooks.set_device : NULL);
+	fflush(stdout);
+#endif
+
 	return	pgNew(globals, (generic_var)USE_NO_DEVICE, (shape_ref)MEM_NULL, (shape_ref)MEM_NULL, (shape_ref)MEM_NULL, 0);
 }
 
@@ -1296,7 +1393,7 @@ PG_PASCAL (void) pgSetDocInfo (pg_ref pg, const pg_doc_ptr doc_info,
 		|| (doc_info->repeat_offset.v != pg_rec->doc_info.repeat_offset.v)
 		|| (doc_info->minimum_orphan != pg_rec->doc_info.minimum_orphan)
 		|| (doc_info->minimum_widow != pg_rec->doc_info.minimum_widow));
-	
+
 	if (page_info_changed)
 		pg_rec->port.clip_info.change_flags |= CLIP_PAGE_CHANGED;
 
@@ -1307,6 +1404,34 @@ PG_PASCAL (void) pgSetDocInfo (pg_ref pg, const pg_doc_ptr doc_info,
 		if (page_info_changed)
 			pg_rec->flags |= DOC_BOUNDS_DIRTY;
 	}
+
+#if defined(FRONTIER_TESTS)
+	if (doc_info != NULL) {
+		fprintf(stdout,
+			"[pg-docinfo] pgSetDocInfo pg=%p inval=%d draw=%d title=%p subject=%p author=%p operator=%p keywords=%p comment=%p doccomm=%p caller=%p\n",
+			(void *)pg,
+			(int)inval_text,
+			(int)draw_mode,
+			(void *)doc_info->title,
+			(void *)doc_info->subject,
+			(void *)doc_info->author,
+			(void *)doc_info->wp_operator,
+			(void *)doc_info->keywords,
+			(void *)doc_info->comment,
+			(void *)doc_info->doccomm,
+			PG_DOCINFO_CALLER());
+		fprintf(stdout,
+			"[pg-docinfo] pgSetDocInfo sizes title=%zu subject=%zu author=%zu operator=%zu keywords=%zu comment=%zu doccomm=%zu\n",
+			pg_docinfo_handle_size(doc_info->title),
+			pg_docinfo_handle_size(doc_info->subject),
+			pg_docinfo_handle_size(doc_info->author),
+			pg_docinfo_handle_size(doc_info->wp_operator),
+			pg_docinfo_handle_size(doc_info->keywords),
+			pg_docinfo_handle_size(doc_info->comment),
+			pg_docinfo_handle_size(doc_info->doccomm));
+		fflush(stdout);
+	}
+#endif
 
 	pgBlockMove(doc_info, &pg_rec->doc_info, sizeof(pg_doc_info));
 
@@ -2009,8 +2134,11 @@ static shape_ref copy_shape_param (pg_globals_ptr globals, shape_ref shape_param
 {
 	if (shape_param)
 		return	MemoryDuplicate(shape_param);
-	
-	return	pgRectToShape(globals->mem_globals, NULL);
+
+	rectangle zero_rect;
+	zero_rect.top_left.h = zero_rect.top_left.v = 0;
+	zero_rect.bot_right.h = zero_rect.bot_right.v = 0;
+	return	pgRectToShape(globals->mem_globals, &zero_rect);
 }
 
 
@@ -2336,3 +2464,6 @@ static void draw_border_line (paige_rec_ptr pg, co_ordinate_ptr begin_pt,
 	}
 }
 
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
