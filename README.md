@@ -1,7 +1,7 @@
 # Frontier Refactoring Project (develop branch status)
 
-**Last updated:** 2025-10-18  
-**State:** Modernization wave 1 delivered; headless + 64-bit aligned; headless service core vision documented  
+**Last updated:** 2025-11-23  
+**State:** Modernization wave 2 in progress; headless + 64-bit aligned; v7 on-disk format moving to portable big-endian  
 **Primary contacts:** planning/INDEX.md (owners per phase)
 
 This repository is actively modernising the Frontier runtime and toolchain. The
@@ -12,19 +12,10 @@ tests can exercise real UserTalk without `system.verbs.*` being loaded.
 
 ## Highlights
 
-- **64-bit/ARM readiness** – All core builds and tests compile cleanly on both
-  architectures. Database headers were revved for 64-bit alignment; migration
-  coverage lives in `tests/save_migration_tests`.
-- **Portable/headless runtime** – The `portable/` layer + headless stubs power
-  CLI/testing without UI dependencies (see planning/EFP_HEADLESS_NOTES.md for
-  scope/removal criteria).
-- **Modernised test harness** – Cross-platform C test suite with sanitiser
-  presets (`SANITIZE=1 make -C tests`). New test binaries:
-  - `file_portable_tests`
-  - `file_readline_tests`
-  - `file_verb_tests` (UserTalk `file.*` exercises headless EFP routing)
-- **Branch hygiene** – Large Codex session logs moved off `develop` and live in
-  the dedicated `codex-sessions` branch (see below for how to fetch).
+- **64-bit/ARM + big-endian v7** – Core builds/tests compile on `arm64`/`x86_64`; v7 headers/trailers and table addresses now write big-endian for cross-arch parity (see `docs/database_architecture.md`).
+- **Paige-free headless runtime** – The `portable/` layer + headless stubs power CLI/testing without UI deps; wptext now uses the Paige-free extractor/RTF path.
+- **Modernised test harness** – Cross-platform C test suite with sanitiser presets (`SANITIZE=1 make -C tests`). Key binaries: `file_portable_tests`, `file_readline_tests`, `file_verb_tests`, `runtime_tests`, `db_format_tests`.
+- **Branch hygiene** – Large Codex session logs live on the `codex-sessions` branch (see below).
 
 ## Quick start
 
@@ -33,6 +24,7 @@ tests can exercise real UserTalk without `system.verbs.*` being loaded.
 make -C tests file_verb_tests && ./tests/file_verb_tests
 ./tests/file_portable_tests
 ./tests/file_readline_tests
+make -C tests runtime_tests
 
 # sanitiser run
 SANITIZE=1 make -C tests test
@@ -59,9 +51,6 @@ integration. Prebuilt binaries are no longer stored in the repo.
 See `docs/mysql_client_setup.md` for detailed guidance.
 ```
 
-> `make -C tests test` currently hits a pre-existing duplicate-symbol linker
-> issue in `runtime_tests`; tracked in planning/ISSUES.md.
-
 ## Planning & docs (read these first)
 
 - `planning/INDEX.md` – roadmap + ownership
@@ -72,6 +61,7 @@ See `docs/mysql_client_setup.md` for detailed guidance.
   call routing
 - `planning/Frontier_Refactoring_Plan.md` – original modernisation plan
 - `planning/phase3/headless_daemon_vision.md` – target architecture for the headless daemon/service core
+- `planning/big_endian_portability_audit.md` – current BE v7 portability audit/tasks
 - `codex_sessions/README.md` – how to fetch/view Codex transcript logs
 
 For daily notes and context, see the Codex session branch (instructions below).
@@ -84,7 +74,8 @@ For daily notes and context, see the Codex session branch (instructions below).
 | arm64 build         | ✅     | `make -C frontier-cli` builds universal binary |
 | Headless runtime    | ✅     | Portable stubs cover runtime/IO; EFP shim in place |
 | Tests (targeted)    | ✅     | `file_portable`, `file_readline`, `file_verb` |
-| Tests (full suite)  | ⚠️     | `runtime_tests` link failure (known issue) |
+| Tests (runtime/db)  | ✅     | `runtime_tests`, `db_format_tests` (warnings remain) |
+| CLI runtime         | ⚠️     | `cli_runtime_tests` built; re-enable `clock.now()` once v7 BE work finishes |
 | Docs/Planning       | ✅     | Planning/ADR files updated alongside code |
 | Codex transcripts   | ✅     | Stored on `codex-sessions` branch/worktree |
 
@@ -128,12 +119,9 @@ Frontier/
 
 ## Next milestone snapshot
 
-- Remove temporary headless shim once `Frontier.root` can load in headless
-  builds (restores classic `system.verbs.* → kernelcall → EFP` routing).
-- Fix duplicate-symbol linker issue in `runtime_tests` so `make -C tests test`
-  is green.
-- Bring CI online (provider TBD) and enable coverage/static analysis once tool
-  chain is finalised.
+- Finish big-endian v7 portability (header/trailer/table/avail) and add cross-arch goldens.
+- Re-enable full CLI runtime coverage (e.g., `clock.now()` regression).
+- Bring CI online (provider TBD) and enable coverage/static analysis once tool chain is finalised.
 
 For day-by-day progress see the `codex-sessions` branch and
 planning/INDEX.md.
