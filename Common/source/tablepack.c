@@ -42,50 +42,7 @@
 #include "byteorder.h"
 
 // 2025-10-27 Codex: Handle 64-bit dbaddress packing/unpacking for headless workloads.
-
-static inline dbaddress tablepack_host_to_disk_dbaddress(dbaddress value) {
-#if defined(SWAP_BYTE_ORDER)
-	if (sizeof (dbaddress) == 8) {
-		unsigned long long temp = (unsigned long long) value;
-#if defined(__clang__) || defined(__GNUC__) || defined(__GNUG__)
-		temp = __builtin_bswap64(temp);
-#else
-		temp = ((temp & 0x00000000000000FFULL) << 56) |
-		       ((temp & 0x000000000000FF00ULL) << 40) |
-		       ((temp & 0x0000000000FF0000ULL) << 24) |
-		       ((temp & 0x00000000FF000000ULL) << 8)  |
-		       ((temp & 0x000000FF00000000ULL) >> 8)  |
-		       ((temp & 0x0000FF0000000000ULL) >> 24) |
-		       ((temp & 0x00FF000000000000ULL) >> 40) |
-		       ((temp & 0xFF00000000000000ULL) >> 56);
-#endif
-		return (dbaddress) temp;
-	}
-#endif
-	return value;
-}
-
-static inline dbaddress tablepack_disk_to_host_dbaddress(dbaddress value) {
-#if defined(SWAP_BYTE_ORDER)
-	if (sizeof (dbaddress) == 8) {
-		unsigned long long temp = (unsigned long long) value;
-#if defined(__clang__) || defined(__GNUC__) || defined(__GNUG__)
-		temp = __builtin_bswap64(temp);
-#else
-		temp = ((temp & 0x00000000000000FFULL) << 56) |
-		       ((temp & 0x000000000000FF00ULL) << 40) |
-		       ((temp & 0x0000000000FF0000ULL) << 24) |
-		       ((temp & 0x00000000FF000000ULL) << 8)  |
-		       ((temp & 0x000000FF00000000ULL) >> 8)  |
-		       ((temp & 0x0000FF0000000000ULL) >> 24) |
-		       ((temp & 0x00FF000000000000ULL) >> 40) |
-		       ((temp & 0xFF00000000000000ULL) >> 56);
-#endif
-		return (dbaddress) temp;
-	}
-#endif
-	return value;
-}
+// 2025-11-20 Codex: Emit table addresses in canonical big-endian form for portable v7 roots.
 #include "tableinternal.h"
 #include "tableverbs.h"
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
@@ -414,14 +371,11 @@ boolean tableverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdba
 	long adrsize;
 
 	if (use_64bit_format && ((int)sizeof (dbaddress) == 8)) {
-		dbaddress diskadr = tablepack_host_to_disk_dbaddress(adr);
-		memcpy(adrbuffer, &diskadr, sizeof (dbaddress));
+		db_format_write_be64(adrbuffer, (uint64_t) adr);
 		adrsize = (long) sizeof (dbaddress);
 	} else {
-		int32_t disk32 = (int32_t) adr;
-		memtodisklong (disk32);
-		memcpy(adrbuffer, &disk32, sizeof (disk32));
-		adrsize = (long) sizeof (disk32);
+		db_format_write_be32(adrbuffer, (uint32_t) adr);
+		adrsize = (long) sizeof (uint32_t);
 	}
 
 	if (!enlargehandle (*hpacked, adrsize, (ptrchar) adrbuffer)) {
@@ -445,22 +399,24 @@ boolean tableverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *h, b
 		fprintf(stderr, "[headless] tableverbunpack use_64bit_format=true sizeof(dbaddress)=%zu remaining=%ld\n",
 		        sizeof(dbaddress), remaining);
 		if (remaining >= (long) sizeof (dbaddress)) {
-			dbaddress diskadr = 0;
-			if (!loadfromhandle (hpacked, ixload, (long) sizeof (dbaddress), &diskadr))
+			unsigned char adrbytes[sizeof (dbaddress)];
+			if (!loadfromhandle (hpacked, ixload, (long) sizeof (dbaddress), adrbytes))
 				return (false);
-			rawadr = tablepack_disk_to_host_dbaddress(diskadr);
+			rawadr = (dbaddress) db_format_read_be64(adrbytes);
 #if defined(FRONTIER_HEADLESS)
 			fprintf(stderr, "[headless] tableverbunpack 64-bit address=0x%016llx\n", (unsigned long long) rawadr);
 #endif
 		} else if (remaining == (long) sizeof (int32_t)) {
-			uint32_t raw32 = 0;
-			if (!loadfromhandle (hpacked, ixload, (long) sizeof (raw32), &raw32))
+			unsigned char raw32[sizeof (uint32_t)];
+			if (!loadfromhandle (hpacked, ixload, (long) sizeof (raw32), raw32))
 				return (false);
-			disktomemlong (raw32);
-			rawadr = (dbaddress) raw32;
+			{
+				uint32_t raw32_val = db_format_read_be32(raw32);
+				rawadr = (dbaddress) raw32_val;
 #if defined(FRONTIER_HEADLESS)
-			fprintf(stderr, "[headless] tableverbunpack fallback 32-bit address=0x%08x\n", raw32);
+				fprintf(stderr, "[headless] tableverbunpack fallback 32-bit address=0x%08x\n", raw32_val);
 #endif
+			}
 		} else {
 #if defined(FRONTIER_HEADLESS)
 			fprintf(stderr, "[headless] tableverbunpack unexpected remaining bytes=%ld\n", remaining);
@@ -468,13 +424,16 @@ boolean tableverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *h, b
 			return (false);
 		}
 	} else {
-		long raw32 = 0;
-		if (!loadlongfromdiskhandle (hpacked, ixload, &raw32))
+		unsigned char raw32[sizeof (uint32_t)];
+		if (!loadfromhandle (hpacked, ixload, (long) sizeof (raw32), raw32))
 			return (false);
-		rawadr = (dbaddress) raw32;
+		{
+			uint32_t raw32_val = db_format_read_be32(raw32);
+			rawadr = (dbaddress) raw32_val;
 #if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[headless] tableverbunpack legacy 32-bit address=0x%08lx\n", raw32);
+			fprintf(stderr, "[headless] tableverbunpack legacy 32-bit address=0x%08lx\n", (unsigned long) raw32_val);
 #endif
+		}
 	}
 
 	return (newtablevariable (false, rawadr, (hdltablevariable *) h, flxml));

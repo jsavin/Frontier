@@ -32,6 +32,27 @@
 #include <stdio.h>
 #endif
 
+
+#include "memory.h"
+#include "cursor.h"
+#include "dialogs.h"
+#include "error.h"
+#include "file.h"
+#include "resources.h"
+#include "strings.h"
+#include "shell.h"
+#include "db.h"
+#include "db_format.h"
+#include "dbinternal.h"
+#include "ops.h" //6.2b3 AR: for numbertostring
+#include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
+
+#include "frontierdebug.h" //6.2b7 AR
+
+#define dberrorlist 256
+
+// 2025-11-23 Codex: Widened block header/trailer to 64-bit BE and updated avail links for v7 roots.
+// 2025-11-20 Codex: Write modern headers and record metadata with explicit big-endian encoding for portability.
 // 2025-11-16 Codex: Keep dbgetsize locals wide enough so dbgetsizeandvariance
 // writes don't corrupt the caller's stack on 64-bit builds.
 static uint16_t db_read_be16(const unsigned char *p) {
@@ -56,23 +77,29 @@ static uint64_t db_read_be64(const unsigned char *p) {
 	        (uint64_t)p[7];
 }
 
-#include "memory.h"
-#include "cursor.h"
-#include "dialogs.h"
-#include "error.h"
-#include "file.h"
-#include "resources.h"
-#include "strings.h"
-#include "shell.h"
-#include "db.h"
-#include "db_format.h"
-#include "dbinternal.h"
-#include "ops.h" //6.2b3 AR: for numbertostring
-#include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
+static void db_prepare_modern_header(const tydatabaserecord *src, tydatabaserecord_64 *dst) {
+	int i;
 
-#include "frontierdebug.h" //6.2b7 AR
+	clearbytes(dst, sizeof *dst);
+	dst->systemid = src->systemid;
+	dst->versionnumber = src->versionnumber;
+	dst->availlist = src->availlist;
+	dst->oldfnumdatabase = src->oldfnumdatabase;
+	dst->flags = src->flags;
 
-#define dberrorlist 256
+	for (i = 0; i < ctviews; ++i)
+		dst->views[i] = src->views[i];
+
+	dst->releasestack = nil;
+	dst->fnumdatabase = 0;
+	dst->headerLength = src->headerLength;
+	dst->longversionMajor = src->longversionMajor;
+	dst->longversionMinor = src->longversionMinor;
+
+	dst->u.extensions.availlistblock = src->u.extensions.availlistblock;
+	dst->u.extensions.availlistshadow = nildbaddress;
+	dst->u.extensions.flreadonly = src->u.extensions.flreadonly;
+}
 
 #define setdirty(hdb) 		((**hdb).flags |= dbdirtymask)
 #define cleardirty(hdb)		((**hdb).flags &= ~dbdirtymask)
@@ -86,7 +113,6 @@ static boolean dbread (dbaddress adr, long ctbytes, ptrvoid pdata);
 #if defined(FRONTIER_HEADLESS)
 static boolean dbfindblockforaddress(dbaddress adr, dbaddress *blockstart, long *nodebytes, tyvariance *variance, boolean *flfree) {
 	long eof = 0;
-	tyheader diskheader;
 
 	if (adr == nildbaddress)
 		return false;
@@ -98,34 +124,35 @@ static boolean dbfindblockforaddress(dbaddress adr, dbaddress *blockstart, long 
 		return false;
 
 	for (dbaddress candidate = adr; candidate >= firstphysicaladdress && (adr - candidate) <= 0x100000; --candidate) {
-		if (!dbread(candidate, sizeheader, &diskheader))
+		boolean freeflag = false;
+		long node_size = 0;
+		tyvariance node_variance = 0;
+
+		if (!dbreadheader(candidate, &freeflag, &node_size, &node_variance))
 			continue;
-
-		tyheader header = diskheader;
-		disktomemlong(header.variance);
-		disktomemlong(header.sizefreeword.size);
-
-		long node_size = header.sizefreeword.size & 0x7FFFFFFF;
-		boolean freeflag = (header.sizefreeword.size & 0x80000000L) != 0;
 
 		if (node_size <= 0 || node_size > eof)
 			continue;
 
-		if ((header.variance < 0) || (header.variance > node_size))
+		if ((node_variance < 0) || (node_variance > node_size))
 			continue;
 
 		dbaddress data_start = candidate + sizeheader;
-		dbaddress data_end = data_start + (node_size - header.variance);
+		dbaddress data_end = data_start + (node_size - node_variance);
 
 		if (adr < candidate || adr >= data_end)
 			continue;
 
-		tytrailer trailer;
-		if (!dbread(candidate + sizeheader + node_size, sizetrailer, &trailer))
+		boolean trailer_free = false;
+		long trailer_size = 0;
+
+		if (!dbreadtrailer(candidate + sizeheader + node_size, &trailer_free, &trailer_size))
 			continue;
 
-		disktomemlong(trailer.sizefreeword.size);
-		if ((trailer.sizefreeword.size & 0x7FFFFFFF) != node_size)
+		if (trailer_size != node_size)
+			continue;
+
+		if (trailer_free != freeflag)
 			continue;
 
 		if (blockstart != NULL)
@@ -133,7 +160,7 @@ static boolean dbfindblockforaddress(dbaddress adr, dbaddress *blockstart, long 
 		if (nodebytes != NULL)
 			*nodebytes = node_size;
 		if (variance != NULL)
-			*variance = header.variance;
+			*variance = node_variance;
 		if (flfree != NULL)
 			*flfree = freeflag;
 		return true;
@@ -421,68 +448,6 @@ static boolean dbread (dbaddress adr, long ctbytes, ptrvoid pdata) {
 	} /*dbread*/
 	
 
-static boolean dbwriteswap (dbaddress adr, long ctbytes, ptrvoid pdata) {
-	boolean res;
-
-	if (!dbseek (adr))
-		return (false);
-
-#ifdef SWAP_BYTE_ORDER
-	if (ctbytes == sizeof (long))
-		{
-		memtodisklong (*((long *)pdata));
-		}
-
-	if (ctbytes == sizeof(short))
-		{
-		memtodiskshort (*((short*)pdata));
-		}
-#endif
-	
-	res = filewrite ((hdlfilenum)((**databasedata).fnumdatabase), ctbytes, pdata);
-
-#ifdef SWAP_BYTE_ORDER
-	if (ctbytes == sizeof (long))
-		{
-		disktomemlong (*((long *)pdata));
-		}
-
-	if (ctbytes == sizeof(short))
-		{
-		disktomemshort (*((short*)pdata));
-		}
-#endif
-
-	return (res);
-	} /*dbwriteswap*/
-	
-
-static boolean dbreadswap (dbaddress adr, long ctbytes, ptrvoid pdata) {
-	boolean res;
-
-	if (!dbseek (adr))
-		return (false);
-				
-	res = fileread ((hdlfilenum)((**databasedata).fnumdatabase), ctbytes, pdata); 
-
-#ifdef SWAP_BYTE_ORDER
-	if (ctbytes == sizeof (long))
-		{
-		disktomemlong (*((long *)pdata));
-		}
-	else
-		{
-		if (ctbytes == sizeof(short))
-			{
-			disktomemshort (*((short*)pdata));
-			}
-		}
-#endif
-
-	return (res);
-	} /*dbreadswap*/
-	
-
 boolean dbgeteof (long *eof) {
 
 	return (filegeteof ((hdlfilenum)((**databasedata).fnumdatabase), eof));
@@ -525,24 +490,36 @@ static boolean dbflushheader (void) {
 			clearbytes (&diskrec.u.growthspace, sizeof (diskrec.u.growthspace)); /*in-memory structure only*/
 		#endif
 
-		#ifdef SWAP_BYTE_ORDER
-			{
-			short i;
-			memtodisklong (diskrec.availlist);
-			memtodisklong (diskrec.u.extensions.availlistblock);
-			memtodiskshort (diskrec.flags);
-			for (i = 0; i < ctviews; i++)
+		if (use_64bit_format) {
+			unsigned char diskheader[sizeof (tydatabaserecord_64)];
+			tydatabaserecord_64 diskrec64;
+
+			db_prepare_modern_header(&diskrec, &diskrec64);
+
+			if (!db_format_write_header64(&diskrec64, diskheader, sizeof (diskheader)))
+				return (false);
+
+			fl = dbwrite ((dbaddress) 0, (long) sizeof (diskheader), diskheader);
+		} else {
+			#ifdef SWAP_BYTE_ORDER
 				{
-				memtodisklong (diskrec.views[i]);
+				short i;
+				memtodisklong (diskrec.availlist);
+				memtodisklong (diskrec.u.extensions.availlistblock);
+				memtodiskshort (diskrec.flags);
+				for (i = 0; i < ctviews; i++)
+					{
+					memtodisklong (diskrec.views[i]);
+					}
+			//	memtodisklong (diskrec.fnumdatabase);
+				memtodisklong (diskrec.headerLength);
+				memtodiskshort (diskrec.longversionMajor);
+				memtodiskshort (diskrec.longversionMinor);
 				}
-		//	memtodisklong (diskrec.fnumdatabase);
-			memtodisklong (diskrec.headerLength);
-			memtodiskshort (diskrec.longversionMajor);
-			memtodiskshort (diskrec.longversionMinor);
-			}
-		#endif
-		
-		fl = dbwrite ((dbaddress) 0, sizeof (tydatabaserecord), &diskrec);
+			#endif
+			
+			fl = dbwrite ((dbaddress) 0, sizeof (tydatabaserecord), &diskrec);
+		}
 		
 		#ifndef FRONTIER_HEADLESS
 		/*flush file buffers*/ {
@@ -564,54 +541,80 @@ static boolean dbflushheader (void) {
 	
 
 boolean dbreadheader (dbaddress adr, boolean *flfree, long *ctbytes, tyvariance *variance) {
-	
-	tyheader header;
-	
-	if (!dbread (adr, sizeheader, &header))
-		return (false);
+
+	uint64_t raw_size = 0;
+	tyvariance disk_variance = 0;
+
+	if (use_64bit_format) {
+		tyheader64 header;
+
+		if (!dbread (adr, sizeheader_v7, &header))
+			return (false);
+
+		raw_size = db_format_read_be64((unsigned char *) &header.sizefreeword.size);
+		disk_variance = (tyvariance) db_format_read_be32((unsigned char *) &header.variance);
+	}
+	else {
+		tyheader32 header;
+
+		if (!dbread (adr, sizeheader_v6, &header))
+			return (false);
+
+		raw_size = (uint64_t) db_format_read_be32((unsigned char *) &header.sizefreeword.size);
+		disk_variance = (tyvariance) db_format_read_be32((unsigned char *) &header.variance);
+	}
 
 #if defined(FRONTIER_HEADLESS)
 	{
-	unsigned char *raw = (unsigned char *) &header;
-	fprintf(stderr, "[headless] dbreadheader raw adr=0x%llx bytes=%02x%02x%02x%02x%02x%02x%02x%02x\n",
-		(unsigned long long) adr,
-		raw[0], raw[1], raw[2], raw[3],
-		raw[4], raw[5], raw[6], raw[7]);
+	unsigned long long raw_dbg = (unsigned long long) raw_size;
+	fprintf(stderr, "[headless] dbreadheader parsed raw=0x%016llx variance=0x%08x\n",
+		raw_dbg,
+		(unsigned int) disk_variance);
 	}
 #endif
 
-	disktomemlong (header.variance);
-	disktomemlong (header.sizefreeword.size);
+	{
+		uint64_t freeflag = use_64bit_format ? 0x8000000000000000ULL : 0x80000000ULL;
+		uint64_t sizemask = use_64bit_format ? 0x7FFFFFFFFFFFFFFFULL : 0x7FFFFFFFULL;
 
-#if defined(FRONTIER_HEADLESS)
-    fprintf(stderr, "[headless] dbreadheader parsed size=0x%08lx variance=0x%08lx (ct=%ld)\n",
-            (unsigned long) header.sizefreeword.size,
-            (unsigned long) header.variance,
-            (long) ((header.sizefreeword.size & 0x7FFFFFFF) - header.variance));
-#endif
+		*flfree = (raw_size & freeflag) != 0;
+		*ctbytes = (long) (raw_size & sizemask);
+	}
 
-	*flfree = (header.sizefreeword.size & 0x80000000L) == 0x80000000L ? true : false;
-	
-	*ctbytes = header.sizefreeword.size & 0x7FFFFFFFL;
-	
-	*variance = header.variance;
-	
+	*variance = disk_variance;
+
 	return (true);
 	} /*dbreadheader*/
 	
 
 boolean dbreadtrailer (dbaddress adr, boolean *flfree, long *ctbytes) {
 
-	tytrailer trailer;
-	
-	if (!dbread (adr, sizetrailer, &trailer))
-		return (false);
-		
-	disktomemlong (trailer.sizefreeword.size);
+	uint64_t raw_size = 0;
 
-	*flfree = (trailer.sizefreeword.size & 0x80000000L) == 0x80000000L ? true : false;
-	
-	*ctbytes = trailer.sizefreeword.size & 0x7FFFFFFFL;
+	if (use_64bit_format) {
+		tytrailer64 trailer;
+
+		if (!dbread (adr, sizetrailer_v7, &trailer))
+			return (false);
+		
+		raw_size = db_format_read_be64((unsigned char *) &trailer.sizefreeword.size);
+	}
+	else {
+		tytrailer32 trailer;
+
+		if (!dbread (adr, sizetrailer_v6, &trailer))
+			return (false);
+		
+		raw_size = (uint64_t) db_format_read_be32((unsigned char *) &trailer.sizefreeword.size);
+	}
+
+	{
+		uint64_t freeflag = use_64bit_format ? 0x8000000000000000ULL : 0x80000000ULL;
+		uint64_t sizemask = use_64bit_format ? 0x7FFFFFFFFFFFFFFFULL : 0x7FFFFFFFULL;
+
+		*flfree = (raw_size & freeflag) != 0;
+		*ctbytes = (long) (raw_size & sizemask);
+	}
 	
 	return (true);
 	} /*dbreadtrailer*/
@@ -619,34 +622,55 @@ boolean dbreadtrailer (dbaddress adr, boolean *flfree, long *ctbytes) {
 
 static boolean dbwriteheader (dbaddress adr, boolean flfree, long ctbytes, tyvariance variance) {
 
-	tyheader header;
-	
-	header.sizefreeword.size = ctbytes;
+	uint64_t raw_size = (uint64_t) ctbytes;
 
 	if (flfree)
-		header.sizefreeword.size |= 0x80000000L;
-	
-	header.variance = variance;
-	
-	memtodisklong (header.variance);
-	memtodisklong (header.sizefreeword.size);
+		raw_size |= (use_64bit_format ? 0x8000000000000000ULL : 0x80000000ULL);
 
-	return (dbwrite (adr, sizeheader, &header));
+	if (use_64bit_format) {
+		tyheader64 header;
+
+		clearbytes(&header, sizeof header);
+		db_format_write_be64(&header.sizefreeword.size, raw_size);
+		db_format_write_be32(&header.variance, (uint32_t) variance);
+
+		return (dbwrite (adr, sizeheader_v7, &header));
+	}
+	else {
+		tyheader32 header;
+
+		clearbytes(&header, sizeof header);
+		db_format_write_be32(&header.sizefreeword.size, (uint32_t) raw_size);
+		db_format_write_be32(&header.variance, (uint32_t) variance);
+
+		return (dbwrite (adr, sizeheader_v6, &header));
+	}
 	} /*dbwriteheader*/
 	
 	
 static boolean dbwritetrailer (dbaddress adr, boolean flfree, long ctbytes) {
 
-	tytrailer trailer;
-	
-	trailer.sizefreeword.size = ctbytes; 
+	uint64_t raw_size = (uint64_t) ctbytes; 
 
 	if (flfree)
-		trailer.sizefreeword.size |= 0x80000000L;
-	
-	memtodisklong (trailer.sizefreeword.size);
+		raw_size |= (use_64bit_format ? 0x8000000000000000ULL : 0x80000000ULL);
 
-	return (dbwrite (adr, sizetrailer, &trailer));
+	if (use_64bit_format) {
+		tytrailer64 trailer;
+
+		clearbytes(&trailer, sizeof trailer);
+		db_format_write_be64(&trailer.sizefreeword.size, raw_size);
+
+		return (dbwrite (adr, sizetrailer_v7, &trailer));
+	}
+	else {
+		tytrailer32 trailer;
+
+		clearbytes(&trailer, sizeof trailer);
+		db_format_write_be32(&trailer.sizefreeword.size, (uint32_t) raw_size);
+
+		return (dbwrite (adr, sizetrailer_v6, &trailer));
+	}
 	} /*dbwritetrailer*/
 
 
@@ -671,8 +695,21 @@ boolean dbreadavailnode (dbaddress adr, boolean *flfree, long *ctbytes, dbaddres
 	
 	if (!dbreadheader (adr, flfree, ctbytes, &variance))
 		return (false);
-			
-	return (dbreadswap (adr + sizeheader, sizeof (dbaddress), link));
+
+	{
+		long link_bytes = use_64bit_format ? (long) sizeof (uint64_t) : (long) sizeof (uint32_t);
+		unsigned char raw[sizeof (uint64_t)];
+
+		if (!dbread (adr + sizeheader, link_bytes, raw))
+			return (false);
+
+		if (use_64bit_format)
+			*link = (dbaddress) db_format_read_be64(raw);
+		else
+			*link = (dbaddress) db_format_read_be32(raw);
+	}
+
+	return (true);
 	} /*dbreadavailnode*/
 	
 
@@ -684,9 +721,19 @@ static boolean dbwriteavailnode (dbaddress adr, long ctbytes, dbaddress nextlink
 	
 	if (!dbwriteheader (adr, true, ctbytes, 0L))
 		return (false);
-	
-	if (!dbwriteswap (adr + sizeheader, sizeof (dbaddress), &nextlink))
-		return (false);
+
+	{
+		long link_bytes = use_64bit_format ? (long) sizeof (uint64_t) : (long) sizeof (uint32_t);
+		unsigned char raw[sizeof (uint64_t)];
+
+		if (use_64bit_format)
+			db_format_write_be64(raw, (uint64_t) nextlink);
+		else
+			db_format_write_be32(raw, (uint32_t) nextlink);
+
+		if (!dbwrite (adr + sizeheader, link_bytes, raw))
+			return (false);
+	}
 
 	if (!dbwritetrailer (adr + sizeheader + ctbytes, true, ctbytes))
 		return (false);
@@ -713,7 +760,17 @@ static boolean dbsetavaillink (dbaddress adr, dbaddress link) {
 		return (true);
 		}
 		
-	return (dbwriteswap (adr + sizeheader, sizeof (dbaddress), &link));
+	{
+		long link_bytes = use_64bit_format ? (long) sizeof (uint64_t) : (long) sizeof (uint32_t);
+		unsigned char raw[sizeof (uint64_t)];
+
+		if (use_64bit_format)
+			db_format_write_be64(raw, (uint64_t) link);
+		else
+			db_format_write_be32(raw, (uint32_t) link);
+
+		return (dbwrite (adr + sizeheader, link_bytes, raw));
+	}
 	} /*dbsetavaillink*/
 	
 	
@@ -913,7 +970,8 @@ static boolean dbwriteshadowavaillist (void) {
 	if ((**hdb).u.extensions.availlistshadow.eof > 0) { /*there's something to be saved*/
 	
 		long nodebytes = (**hdb).u.extensions.availlistshadow.eof;
-		long databytes, dummy;
+		long databytes;
+		tyvariance variance = 0;
 		Handle h = nil;
 		
 		if (!dballocate (nodebytes, nil, &adrblock))
@@ -931,22 +989,28 @@ static boolean dbwriteshadowavaillist (void) {
 		assert (databytes == nodebytes || databytes == nodebytes - (long) sizeof (tyavailnodeshadow));
 
 		
-		#ifdef SWAP_BYTE_ORDER
-			/*switch byte order*/ {
-			long ix;
-			long ct = databytes / sizeof (tyavailnodeshadow);
-			register tyavailnodeshadow* p = (tyavailnodeshadow *) *h;
+		{
+		long ix;
+		long ct = databytes / sizeof (tyavailnodeshadow);
+		register tyavailnodeshadow* p = (tyavailnodeshadow *) *h;
 
-			for (ix = 0; ix < ct; ix++) {
-				memtodisklong (p[ix].adr);
-				memtodisklong (p[ix].size);
-				}
+		for (ix = 0; ix < ct; ix++) {
+			dbaddress adr_be = p[ix].adr;
+			uint64_t size_be = (uint64_t) p[ix].size;
+
+			if (use_64bit_format) {
+				db_format_write_be64((unsigned char *) &p[ix].adr, (uint64_t) adr_be);
+				db_format_write_be64((unsigned char *) &p[ix].size, size_be);
+			} else {
+				db_format_write_be32((unsigned char *) &p[ix].adr, (uint32_t) adr_be);
+				db_format_write_be32((unsigned char *) &p[ix].size, (uint32_t) size_be);
 			}
-		#endif
+			}
+		}
 
 		lockhandle (h);
 		
-		fl = dbreadheader (adrblock, &flfree, &nodebytes, &dummy);
+		fl = dbreadheader (adrblock, &flfree, &nodebytes, &variance);
 		
 		assert (databytes <= nodebytes);
 		
@@ -1005,18 +1069,21 @@ static boolean dbreadshadowavaillist (void) {
 	if (!dbrefhandle (adrblock, (Handle*) &h))
 		return (false);
 
-#ifdef SWAP_BYTE_ORDER
-	/*switch byte order*/ {
+	{
 		long ix;
 		long ct = gethandlesize ((Handle) h) / sizeof (tyavailnodeshadow);
 		register tyavailnodeshadow* p = *h;
 
 		for (ix = 0; ix < ct; ix++) {
-			disktomemlong (p[ix].adr);
-			disktomemlong (p[ix].size);
+			if (use_64bit_format) {
+				p[ix].adr = (dbaddress) db_format_read_be64((unsigned char *) &p[ix].adr);
+				p[ix].size = (int64_t) db_format_read_be64((unsigned char *) &p[ix].size);
+			} else {
+				p[ix].adr = (dbaddress) db_format_read_be32((unsigned char *) &p[ix].adr);
+				p[ix].size = (int64_t) db_format_read_be32((unsigned char *) &p[ix].size);
 			}
 		}
-#endif
+	}
 
 	/*Test consistency of cached shadow avail list*/
 	
@@ -1090,9 +1157,10 @@ static boolean dbshadowavaillist (void) {
 	
 	while (availrec.adr != nildbaddress) {
 		
-		if (!dbreadavailnode (availrec.adr, &flfree, &availrec.size, &nextavail) ||
+		long avail_size = 0;
+		if (!dbreadavailnode (availrec.adr, &flfree, &avail_size, &nextavail) ||
 			!flfree ||
-			availrec.adr + availrec.size > dbeof) {
+			availrec.adr + avail_size > dbeof) {
 
 			availrec.adr = nildbaddress;
 			
@@ -1101,6 +1169,7 @@ static boolean dbshadowavaillist (void) {
 			break;
 			}
 		
+		availrec.size = (int64_t) avail_size;
 		if (!writehandlestream (&s, &availrec, sizeof (availrec)))
 			goto error;
 		
@@ -1133,8 +1202,7 @@ static boolean dbinsertavailshadow (long ixshadow, dbaddress adr, long ctbytes) 
 	assert ((ixshadow >= 0) && (ixshadow <= s.eof / (long) sizeof (tyavailnodeshadow)));
 	
 	avail.adr = adr;
-	
-	avail.size = ctbytes;
+	avail.size = (int64_t) ctbytes;
 	
 	s.pos = ixshadow * sizeof (tyavailnodeshadow);
 	
@@ -1173,7 +1241,7 @@ static boolean dbsetavailshadow (long ixshadow, dbaddress adr, long ctbytes) {
 	
 	avail.adr = adr;
 	
-	avail.size = ctbytes;
+	avail.size = (int64_t) ctbytes;
 	
 	s.pos = ixshadow * sizeof (tyavailnodeshadow);
 	

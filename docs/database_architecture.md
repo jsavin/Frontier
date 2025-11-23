@@ -42,6 +42,11 @@ Modern (rewritten) v7/v8 databases skip this entire dance: `views[0]` already co
 
 See `databases/test-root-contents.png` for the intended UI view of `test.root` once the Cancoon record is resolved and real tables like `myTable` are traversed.
 
+### Block headers/trailers (modern vs legacy)
+
+- **Legacy (v6)**: 4-byte size with the high bit marking free nodes; 4-byte variance; 4-byte trailer (size word only). Sizes are big-endian 32-bit and cap at 4 GB.
+- **Modern (v7, 2025-11-23 Codex)**: 8-byte size with the high bit marking free nodes; 4-byte variance; 8-byte trailer (size word only). Sizes are big-endian 64-bit, so free blocks can exceed 4 GB without truncation. Avail-list links are stored as big-endian 64-bit addresses.
+
 ### Table payload layouts (legacy vs modern)
 
 All tables eventually serialize to the same logical pieces:

@@ -7,7 +7,7 @@ Status
 - Owner: Codex
 - Notes: Primary hand-off summary; update whenever major milestones land.
 
-**Last Updated**: November 20, 2025 (evening)  \
+**Last Updated**: November 23, 2025  \
 **Branches in flight**: `feature/carbon-migration-plan`, `feature/headless-system-bootstrap`
 
 - Headless builds no longer include or link any Paige headers: `portable/wptext_portable.{c,h}` collapsed to no-op bootstrap stubs, and the entire `portable/wptext_runtime.c` path now uses the new `paige_text_extractor` + UTF‑8⇄RTF helpers for packed blobs.
@@ -20,6 +20,11 @@ Status
 - `wp_portable_diskheader`/`wp_portable_header` switched to fixed-width integer fields, which fixed the `utf8bytelen` bookkeeping and unblocked all WP text smoke tests. Added `wp_portable_load_portable_blob_for_test` so the runtime regression harness can validate `WPRT` blobs directly.
 - Regression coverage: `tests/paige_text_tests` and `tests/runtime_tests` both pass locally (see `/tmp/runtime_tests.log` for the latest run). The migrator now succeeds on the canonical `Frontier-v6.root` sample.
 - Serializer round-trip logging tightened: `hashunpacktable` now checks remaining bytes before calling `loadfromhandle`, so the expected end-of-records path no longer emits `[headless] loadfromhandle fail` noise. Re-ran the full migrator afterward; fresh logs live at `/tmp/runtime_tests.log`.
+- Database portability gap: v7 headers now write with explicit big-endian helpers. `dbflushheader` serializes `tydatabaserecord_64` via `db_format_write_header64` (runtime-only fields zeroed), `tableverbpack/tableverbunpack` emit/consume big-endian dbaddresses regardless of host endianness, and block headers/trailers now store 64-bit big-endian sizes/links (avail nodes write/read BE64 links). `make -C tests db_format_tests -B` and `make -C tests runtime_tests`/`cli_runtime_tests` pass locally (warnings only). Follow-ups:
+  1. Extend table/record packers to emit big-endian lengths/addresses (the decoder already does this for legacy payloads). **Table dbaddress packing is fixed; double-check any remaining record-length writers that still rely on `memtodisklong`.**
+  2. Add regression tests that open a root written on one architecture and verify the header/record bytes match a golden big-endian reference (include >4 GB free-span simulation/sparse file and clean up artifacts on success). In-memory >4 GB free-span encode/decode added to `tests/db_format_tests`.
+  3. Update docs (`docs/database_architecture.md`, `planning/TODO_future_improvements.md`) once the on-disk format is guaranteed portable.
+- CLI regression: `tests/cli_runtime_tests` currently skips the `clock.now()` check because `frontier-cli --system-root databases/Frontier-v6-v7.root` fails to load v7 databases (same endianness issue above). Once the header writes are fixed, re-run the CLI tests so the `clock.now()` path becomes a real regression instead of a skip.
 
 ### Migrator status – `Frontier-v6.root`
 - Repro: `FRONTIER_REGEN_ROOT=databases/Frontier-v6.root ./tests/runtime_tests`
@@ -43,3 +48,5 @@ Status
 - Audit additional legacy roots (e.g., customer saves) with `FRONTIER_REGEN_ROOT=… ./tests/runtime_tests` and stash each log under `/tmp` with a timestamp so regressions stand out quickly.
 - Keep expanding fixture coverage for wptext parsing—every time we dump a new Paige blob, add it to `tests/fixtures/wptext/` and update `tests/components/paige_text_tests.c`.
 - Continue running `make -C tests runtime_tests` + the migrator smoke after each change, attaching the latest log paths here so the next session can pick up immediately.
+- Re-run the full CLI/runtime suites once the big-endian header changes land in the reader path to confirm `clock.now()` and v7 opens behave the same on arm64/x86.
+- New plan doc: `planning/big_endian_portability_audit.md` tracks the remaining BE audit (avail list serialization, record metadata, reader parity, cross-arch regression, docs).
