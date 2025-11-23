@@ -29,6 +29,7 @@
 
 #include <stdint.h>
 
+// 2025-11-23 Codex: Added 64-bit block header/trailer layout for v7 roots; legacy sizes remain for v6.
 
 #define SMART_DB_OPENING	1
 //#undef SMART_DB_OPENING
@@ -55,8 +56,6 @@
 
 
 #define minblocksize 32L
-#define sizeheader (long)sizeof(tyheader)
-#define sizetrailer (long)sizeof(tytrailer)
 #define firstphysicaladdress (long)sizeof(tydatabaserecord)
 
 
@@ -68,23 +67,47 @@ typedef enum {
 typedef int32_t tyvariance;
 
 #pragma pack(2)
-typedef struct tysizefreeword {
+typedef struct tysizefreeword32 {
 	int32_t size;
-	} tysizefreeword;
+	} tysizefreeword32;
+
+typedef struct tysizefreeword64 {
+	int64_t size;
+	} tysizefreeword64;
 
 
-typedef struct tyheader {
+typedef struct tyheader32 {
 
-	tysizefreeword sizefreeword;
+	tysizefreeword32 sizefreeword;
 	
 	tyvariance variance;
-	} tyheader, *ptrheader, **hdlheader;
+	} tyheader32, *ptrheader32, **hdlheader32;
 	
-	
-typedef struct tytrailer {
+typedef struct tyheader64 {
 
-	tysizefreeword sizefreeword;
-	} tytrailer, *ptrtrailer, **hdltrailer;
+	tysizefreeword64 sizefreeword;
+	
+	tyvariance variance;
+	} tyheader64, *ptrheader64, **hdlheader64;
+	
+typedef struct tytrailer32 {
+
+	tysizefreeword32 sizefreeword;
+	} tytrailer32, *ptrtrailer32, **hdltrailer32;
+
+typedef struct tytrailer64 {
+
+	tysizefreeword64 sizefreeword;
+	} tytrailer64, *ptrtrailer64, **hdltrailer64;
+
+extern boolean use_64bit_format;
+
+#define sizeheader_v6 (long) sizeof (tyheader32)
+#define sizeheader_v7 (long) sizeof (tyheader64)
+#define sizetrailer_v6 (long) sizeof (tytrailer32)
+#define sizetrailer_v7 (long) sizeof (tytrailer64)
+#define sizeheader (use_64bit_format ? sizeheader_v7 : sizeheader_v6)
+#define sizetrailer (use_64bit_format ? sizetrailer_v7 : sizetrailer_v6)
 
 
 #define dbshadow
@@ -107,4 +130,3 @@ extern boolean dbreadtrailer (dbaddress, boolean *, long *);
 extern boolean dbreadheader (dbaddress, boolean *, long *, tyvariance *);
 
 extern boolean dbreadavailnode (dbaddress, boolean *, long *, dbaddress *);
-

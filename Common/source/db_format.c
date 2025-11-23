@@ -25,6 +25,7 @@
 #include "file.h"
 
 // 2025-10-27 Codex: Added optional migration tracing to inspect v6/v7 table layouts during conversion.
+// 2025-11-20 Codex: Added v7 header serializer and shared big-endian helpers to keep modern roots portable.
 
 boolean use_64bit_format = false;
 static boolean g_db_format_runtime_initialized = false;
@@ -783,31 +784,32 @@ static uint64_t read_be64(const unsigned char *field) {
             (uint64_t) field[7];
 }
 
-static void write_be16(void *ptr, uint16_t value) {
-    unsigned char *p = (unsigned char *) ptr;
-    p[0] = (unsigned char)((value >> 8) & 0xFF);
-    p[1] = (unsigned char)(value & 0xFF);
-}
+boolean db_format_write_header64(const tydatabaserecord_64 *src, unsigned char *dest, size_t dest_size) {
+    if ((src == NULL) || (dest == NULL) || (dest_size < sizeof(tydatabaserecord_64)))
+        return false;
 
-static void write_be32(void *ptr, uint32_t value) {
-    unsigned char *p = (unsigned char *) ptr;
-    p[0] = (unsigned char)((value >> 24) & 0xFF);
-    p[1] = (unsigned char)((value >> 16) & 0xFF);
-    p[2] = (unsigned char)((value >> 8) & 0xFF);
-    p[3] = (unsigned char)(value & 0xFF);
-}
+    memset(dest, 0, dest_size);
+    dest[0] = src->systemid;
+    dest[1] = src->versionnumber;
 
-static void write_dbaddress64(void *ptr, dbaddress value) {
-    unsigned char *p = (unsigned char *) ptr;
-    uint64_t v = (uint64_t) value;
-    p[0] = (unsigned char)((v >> 56) & 0xFF);
-    p[1] = (unsigned char)((v >> 48) & 0xFF);
-    p[2] = (unsigned char)((v >> 40) & 0xFF);
-    p[3] = (unsigned char)((v >> 32) & 0xFF);
-    p[4] = (unsigned char)((v >> 24) & 0xFF);
-    p[5] = (unsigned char)((v >> 16) & 0xFF);
-    p[6] = (unsigned char)((v >> 8) & 0xFF);
-    p[7] = (unsigned char)(v & 0xFF);
+    db_format_write_dbaddress64(dest + offsetof(tydatabaserecord_64, availlist), src->availlist);
+    db_format_write_be16(dest + offsetof(tydatabaserecord_64, oldfnumdatabase), (uint16_t) src->oldfnumdatabase);
+    db_format_write_be16(dest + offsetof(tydatabaserecord_64, flags), (uint16_t) src->flags);
+
+    for (int i = 0; i < ctviews; ++i) {
+        size_t offset = offsetof(tydatabaserecord_64, views) + (size_t) i * sizeof(dbaddress);
+        db_format_write_dbaddress64(dest + offset, src->views[i]);
+    }
+
+    db_format_write_be32(dest + offsetof(tydatabaserecord_64, headerLength), (uint32_t) src->headerLength);
+    db_format_write_be16(dest + offsetof(tydatabaserecord_64, longversionMajor), (uint16_t) src->longversionMajor);
+    db_format_write_be16(dest + offsetof(tydatabaserecord_64, longversionMinor), (uint16_t) src->longversionMinor);
+
+    db_format_write_dbaddress64(dest + offsetof(tydatabaserecord_64, u.extensions.availlistblock), src->u.extensions.availlistblock);
+    db_format_write_dbaddress64(dest + offsetof(tydatabaserecord_64, u.extensions.availlistshadow), src->u.extensions.availlistshadow);
+    dest[offsetof(tydatabaserecord_64, u.extensions.flreadonly)] = src->u.extensions.flreadonly ? 1u : 0u;
+
+    return true;
 }
 
 boolean detect_database_format(const tydatabaserecord *header) {
@@ -1031,11 +1033,11 @@ boolean migrate_32bit_to_64bit(const char *db_path) {
         new_script_address = 0;
     }
 
-    write_be16(&cancoon_record.versionnumber, cancoon_version);
-    write_be16(&cancoon_record.flags, cancoon_flags);
-    write_be16(&cancoon_record.ixprimaryagent, cancoon_primary);
-    write_be32(&cancoon_record.adrroottable, (uint32_t) new_root_address);
-    write_be32(&cancoon_record.adrscriptstring, (uint32_t) new_script_address);
+    db_format_write_be16(&cancoon_record.versionnumber, cancoon_version);
+    db_format_write_be16(&cancoon_record.flags, cancoon_flags);
+    db_format_write_be16(&cancoon_record.ixprimaryagent, cancoon_primary);
+    db_format_write_be32(&cancoon_record.adrroottable, (uint32_t) new_root_address);
+    db_format_write_be32(&cancoon_record.adrscriptstring, (uint32_t) new_script_address);
 
     if (!dbassign(&new_cancoon_address, (long) sizeof cancoon_record, &cancoon_record))
         goto cleanup;
