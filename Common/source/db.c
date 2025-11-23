@@ -1077,10 +1077,10 @@ static boolean dbreadshadowavaillist (void) {
 		for (ix = 0; ix < ct; ix++) {
 			if (use_64bit_format) {
 				p[ix].adr = (dbaddress) db_format_read_be64((unsigned char *) &p[ix].adr);
-				p[ix].size = (long) db_format_read_be64((unsigned char *) &p[ix].size);
+				p[ix].size = (int64_t) db_format_read_be64((unsigned char *) &p[ix].size);
 			} else {
 				p[ix].adr = (dbaddress) db_format_read_be32((unsigned char *) &p[ix].adr);
-				p[ix].size = (long) db_format_read_be32((unsigned char *) &p[ix].size);
+				p[ix].size = (int64_t) db_format_read_be32((unsigned char *) &p[ix].size);
 			}
 		}
 	}
@@ -1157,9 +1157,10 @@ static boolean dbshadowavaillist (void) {
 	
 	while (availrec.adr != nildbaddress) {
 		
-		if (!dbreadavailnode (availrec.adr, &flfree, &availrec.size, &nextavail) ||
+		long avail_size = 0;
+		if (!dbreadavailnode (availrec.adr, &flfree, &avail_size, &nextavail) ||
 			!flfree ||
-			availrec.adr + availrec.size > dbeof) {
+			availrec.adr + avail_size > dbeof) {
 
 			availrec.adr = nildbaddress;
 			
@@ -1168,6 +1169,7 @@ static boolean dbshadowavaillist (void) {
 			break;
 			}
 		
+		availrec.size = (int64_t) avail_size;
 		if (!writehandlestream (&s, &availrec, sizeof (availrec)))
 			goto error;
 		
@@ -1200,8 +1202,7 @@ static boolean dbinsertavailshadow (long ixshadow, dbaddress adr, long ctbytes) 
 	assert ((ixshadow >= 0) && (ixshadow <= s.eof / (long) sizeof (tyavailnodeshadow)));
 	
 	avail.adr = adr;
-	
-	avail.size = ctbytes;
+	avail.size = (int64_t) ctbytes;
 	
 	s.pos = ixshadow * sizeof (tyavailnodeshadow);
 	
@@ -1240,7 +1241,7 @@ static boolean dbsetavailshadow (long ixshadow, dbaddress adr, long ctbytes) {
 	
 	avail.adr = adr;
 	
-	avail.size = ctbytes;
+	avail.size = (int64_t) ctbytes;
 	
 	s.pos = ixshadow * sizeof (tyavailnodeshadow);
 	

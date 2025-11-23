@@ -115,8 +115,8 @@ extern boolean use_64bit_format;
 typedef struct availnodeshadow {
 	
 	dbaddress adr;
-	
-	long size;
+
+	int64_t size;
 	// next record in this array is the next free block
 	} tyavailnodeshadow, ** hdlavaillistshadow;
 #pragma options align=reset
