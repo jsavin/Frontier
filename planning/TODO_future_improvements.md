@@ -30,6 +30,12 @@ Priority Key
 - **P1 (Pre-Prod Critical):** Required before wider rollout/production; can follow P0 work.
 - **P2 (Future / Nice-to-Have):** Valuable improvements once P0/P1 are on track.
 
+## Dependency Cleanup
+- **P1** — Unvendor temporary build dependencies (CMake + Paige) once WPText Phase 3 (font tables) lands.
+  - Drop `third_party/cmake-src/` + the local installer after downstream build tooling is verified.
+  - Remove the Paige submodule/shims once our native RTF generator is fully validated.
+  - Update `_CURRENT_STATUS.md` / `docs/database_architecture.md` when Paige is fully removed so future work knows the dependency is gone.
+
 ## Phase 1/2 — Memory Management Audit (Rolling)
 
 **Priority:** P0 — Must stay ahead of crash/UB risk  
