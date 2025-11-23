@@ -64,7 +64,7 @@ See `docs/mysql_client_setup.md` for detailed guidance.
 - `planning/big_endian_portability_audit.md` – current BE v7 portability audit/tasks
 - `codex_sessions/README.md` – how to fetch/view Codex transcript logs
 
-For daily notes and context, see the Codex session branch (instructions below).
+For in-flight work/status, see `planning/_CURRENT_STATUS.md`. Historical session context lives in `planning/progress_reports/README.md`.
 
 ## Current status matrix
 
@@ -79,18 +79,9 @@ For daily notes and context, see the Codex session branch (instructions below).
 | Docs/Planning       | ✅     | Planning/ADR files updated alongside code |
 | Codex transcripts   | ✅     | Stored on `codex-sessions` branch/worktree |
 
-## Codex session logs
+## Historical progress
 
-Large transcript files live on the `codex-sessions` branch. Fetch once and keep
-them in a separate worktree so they do not clutter `develop`:
-
-```bash
-git fetch origin codex-sessions
-git worktree add ../Frontier-codex-sessions codex-sessions   # once
-```
-
-Drop new transcripts into `../Frontier-codex-sessions/codex_sessions/`, commit
-there, and push. Details are in `codex_sessions/README.md`.
+Historical session summaries live under `planning/progress_reports/README.md`.
 
 ## Repository layout (quick tour)
 
