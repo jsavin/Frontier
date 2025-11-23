@@ -3,6 +3,8 @@
 #include "langexternal.h"
 #include "pictverbs.h"
 #include "strings.h"
+#include "db.h"
+#include "db_format.h"
 
 #ifdef FRONTIER_HEADLESS
 
@@ -55,19 +57,40 @@ boolean pictverbmemoryunpack (Handle hpacked, long *ixload, hdlexternalvariable 
 }
 
 boolean pictverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddress) {
-    (void) h;
-    if (hpacked)
-        *hpacked = nil;
-    if (flnewdbaddress)
+    if ((h == nil) || (hpacked == nil))
+        return false;
+
+    dbaddress adr = (**h).oldaddress;
+    if (adr == nildbaddress)
+        adr = (dbaddress) (**h).variabledata;
+    if (adr == nildbaddress)
+        return false;
+
+    if (fldatabasesaveas || use_64bit_format) {
+        Handle hcopy = nil;
+        if (!dbrefhandle(adr, &hcopy))
+            return false;
+        dbaddress copy = adr;
+        boolean ok = dbassignhandle(hcopy, &copy);
+        disposehandle(hcopy);
+        if (!ok)
+            return false;
+        adr = copy;
+        if (flnewdbaddress)
+            *flnewdbaddress = true;
+    } else if (flnewdbaddress) {
         *flnewdbaddress = false;
-    return false;
+    }
+
+    (**h).oldaddress = adr;
+    return pushlongondiskhandle((long) adr, *hpacked);
 }
 
 boolean pictverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *hv) {
-    (void) hpacked;
-    (void) ixload;
-    (void) hv;
-    return false;
+    long rawadr = 0;
+    if (!loadlongfromdiskhandle(hpacked, ixload, &rawadr))
+        return false;
+    return langnewexternalvariable(false, rawadr, hv);
 }
 
 boolean pictverbpacktotext (hdlexternalvariable h, Handle htext) {

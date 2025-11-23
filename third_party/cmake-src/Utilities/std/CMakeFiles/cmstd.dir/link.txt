@@ -1,0 +1,2 @@
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ar qc libcmstd.a CMakeFiles/cmstd.dir/cm/bits/fs_path.cxx.o CMakeFiles/cmstd.dir/cm/bits/string_view.cxx.o
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ranlib libcmstd.a

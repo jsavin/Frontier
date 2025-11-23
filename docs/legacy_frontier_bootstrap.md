@@ -20,6 +20,10 @@ The following sections walk these phases in more detail.
 - `langinitverbs()` loads constants, keywords (including the `kernel` token), and the kernel function processor definitions from resources (`Common/source/langstartup.c:969`).
 - `langinitbuiltins()` seeds the kernel’s token table by reading the `'EFP#'` resource with id `idlangverbs` and registering each verb with the `langfunctionvalue` handler (`Common/source/langverbs.c:3562`).
 
+### Guest Databases and `system.compiler.files`
+- Frontier 5 introduced “Guest Databases” (additional `.root` files that stay open beside the system root). Each guest is mirrored under `system.compiler.files`, where the subtable name is the full path to the guest and the entries mirror the guest’s top-level tables.
+- When compiled code runs, the kernel consults `system.compiler.files` so guest tables behave as if they were in scope globally. The headless loader must preserve that behaviour—whether by reconstructing the table exactly or by substituting an equivalent registry—so compiled scripts continue to resolve guest data without extra plumbing.
+
 At this point the evaluator knows how to resolve `kernel` tokens, but there is no user database loaded and `roottable` still points at the transient scaffolding built by `inittablestructure()`.
 
 ## Loading the Root Database
@@ -77,6 +81,8 @@ Key differences from modern format:
 1. **No merge prefixes** – the payload is a direct concatenation with no size headers
 2. **Strings before records** – the order is reversed (legacy has strings first, modern has records first in the inner merge)
 3. **Single-level** – legacy format is flat, while modern uses two nested merges
+
+_2025-11-07 update_: Capturing the migrated `system` table (`adr = 0x5d158b`) revealed that the “strings” section in production roots often embeds QuickDraw font blobs and table format runs ahead of the actual `tydisksymbolrecord` array. Those blobs are persisted verbatim from the legacy desktop builds, so the splitter must tolerate `[header][font blobs][records][format tail]` instead of assuming a pure Pascal string pool. The converter/debug docs should use real payload dumps (see `/tmp/frontier_legacy_dump_*.bin`) as fixtures when refining the parser.
 
 ### Headless Loader Conversion
 
@@ -137,3 +143,8 @@ This conversion allows both v6 and v7 databases to load correctly in the headles
 - `Common/source/db_format.c:migrate_32bit_to_64bit()` currently rewrites only the database header (bumping it to version 7) and streams the remainder of the v6 file into the output unchanged. The resulting root keeps every table payload in the legacy 32-bit layout.
 - Once the runtime sees the v7 header it enables `use_64bit_format`, so routines like `tableverbunpack()` expect 8-byte `dbaddress` fields. When they encounter copied 4-byte payloads they spill past the record unless patched with ad hoc fallbacks.
 - The long-term fix is to have the migrator load each legacy table, flip `use_64bit_format = true`, and save it back via `tableverbpack()`/`hashpacktable()` before writing it to the new file. That emits widened addresses, refreshed block sizes, and lets the CLI/runtime operate without special cases for migrated roots.
+- Hydration now updates `views[0]` via `dbsetview()` to point directly at the packed root table (the legacy Cancoon record is intentionally omitted), so `read_root_table_address()` can always rediscover the entrypoint without special-casing the compatibility shim.
+
+### Mac-Specific Glue (`system.macintosh.*`)
+- The `system.macintosh` hierarchy is dedicated to OSA/AppleEvent compliance on classic macOS shells. For example, `system.macintosh.required.quitApplication` handles the `kAEQuitApplication` event by relaying to `finderEvent(...)`, and the constants it needs live under `system.macintosh.constants`.
+- Headless/CLI builds must *not* rely on these tables: if a headless feature appears to require `system.macintosh.*`, treat it as a bug and refactor the caller to use platform-neutral pathways (kernel verbs, RPC adapters, etc.). Only the desktop UI layer should wire AppleEvents into these scripts.

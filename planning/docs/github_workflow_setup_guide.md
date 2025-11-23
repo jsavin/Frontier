@@ -1,5 +1,12 @@
 ## GitHub Integrations for UserLanders / Frontier
 
+Status
+- State: Reference
+- Phase: Tooling
+- Last Updated: 2025-11-20
+- Owner: Codex
+- Notes: Living guide for GitHub/CI integrations; update when we adopt new tooling.
+
 ### Reliability & Safety
 
 - **Dependabot (built-in, free)**: Auto-PRs for vulnerable or outdated dependencies.\
@@ -322,4 +329,3 @@ change-template: "- $TITLE (#$NUMBER) @$AUTHOR"
   with:
     fail_ci_if_error: true
 ```
-

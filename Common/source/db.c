@@ -32,6 +32,8 @@
 #include <stdio.h>
 #endif
 
+// 2025-11-16 Codex: Keep dbgetsize locals wide enough so dbgetsizeandvariance
+// writes don't corrupt the caller's stack on 64-bit builds.
 static uint16_t db_read_be16(const unsigned char *p) {
 	return (uint16_t)((p[0] << 8) | p[1]);
 }
@@ -187,6 +189,7 @@ boolean fldatabasesaveas = false; /*only true during Save As operation*/
 
 
 static hdldatabaserecord databasedestination; /*for Save As*/
+static hdldatabaserecord dbsaveas_source = nil; /*remember the original db while Save As runs*/
 
 
 
@@ -378,6 +381,20 @@ static void dbswapglobals (void) {
 		databasedestination = htemp;
 		}
 	} /*dbswapglobals*/
+
+static inline hdldatabaserecord db_begin_source_read(void) {
+	if (fldatabasesaveas && dbsaveas_source != nil) {
+		hdldatabaserecord previous = databasedata;
+		databasedata = dbsaveas_source;
+		return previous;
+	}
+	return nil;
+}
+
+static inline void db_end_source_read(hdldatabaserecord previous) {
+	if (previous != nil)
+		databasedata = previous;
+}
 
 
 static boolean dbseek (dbaddress adr) {
@@ -1260,6 +1277,13 @@ boolean dbrefhandle (dbaddress adr, Handle *h) {
 
     ct = ctbytes - (long) variance;
 
+#if defined(FRONTIER_HEADLESS)
+    if (a == 0x76e) {
+        fprintf(stderr, "[headless] dbrefhandle watch adr=0x%llx size=%ld variance=%ld flfree=%d\n",
+            (unsigned long long)a, ctbytes, (long)variance, flfree ? 1 : 0);
+    }
+#endif
+
     if (flfree || (ct < 0)) { /*probably a bad address*/
 
         dberror (dbfreeblockerror);
@@ -1272,12 +1296,24 @@ boolean dbrefhandle (dbaddress adr, Handle *h) {
 		
 	if (!newclearhandle (ct, h))
 		return (false);
+
+#if defined(FRONTIER_HEADLESS)
+    if (a == 0x76e) {
+        fprintf(stderr, "[headless] dbrefhandle watch allocated handle size=%ld\n", ct);
+    }
+#endif
 	
 	hregister = *h;
 	
 	lockhandle (hregister);
 	
 	fl = dbread (a + sizeheader, ct, *hregister);
+
+#if defined(FRONTIER_HEADLESS)
+    if (a == 0x76e) {
+        fprintf(stderr, "[headless] dbrefhandle watch dbread result=%d\n", fl ? 1 : 0);
+    }
+#endif
 	
 	unlockhandle (hregister);
 	
@@ -1943,7 +1979,8 @@ static boolean dbgetsize (dbaddress adr, long *logicalsize) {
 	of logical bytes it is using.
 	*/
 	
-	tyvariance size, variance;
+	long size;
+	tyvariance variance;
 	
 	*logicalsize = 0;
 	
@@ -1978,12 +2015,20 @@ boolean dbcopy (dbaddress adrorig, dbaddress *adrcopy) {
 		
 		return (true);
 		}
-	
-	if (!dbgetsize (adrorig, &size))
+
+	hdldatabaserecord source_db = db_begin_source_read();
+	if (!dbgetsize (adrorig, &size)) {
+#if defined(FRONTIER_HEADLESS)
+		fprintf(stderr, "[headless-db] dbgetsize failed for adr=0x%llx\n", (unsigned long long) adrorig);
+#endif
+		db_end_source_read(source_db);
 		return (false);
+	}
+	db_end_source_read(source_db);
 	
-	if (!newhandle (size, &hnew)) /*not enough room in the heap*/
+	if (!newhandle (size, &hnew)) { /*not enough room in the heap*/
 		return (false);
+	}
 	
 	h = hnew; /*copy into register*/
 	
@@ -1991,14 +2036,37 @@ boolean dbcopy (dbaddress adrorig, dbaddress *adrcopy) {
 	
 	flreturned = false; /*default*/
 	
+	source_db = db_begin_source_read();
 	if (dbreference (adrorig, size, *h))
 	
+		flreturned = true;
+	else {
+#if defined(FRONTIER_HEADLESS)
+		fprintf(stderr, "[headless-db] dbreference failed for adr=0x%llx size=%ld\n",
+		        (unsigned long long) adrorig, size);
+#endif
+	}
+	db_end_source_read(source_db);
+
+	if (flreturned)
 		flreturned = dballocate (size, *h, adrcopy);
+	else {
+#if defined(FRONTIER_HEADLESS)
+		fprintf(stderr, "[headless-db] dbcopy aborted before allocation adr=0x%llx size=%ld\n",
+		        (unsigned long long) adrorig, size);
+#endif
+		flreturned = false;
+	}
 	
 	unlockhandle (h);
 	
 	disposehandle (h);
-	
+
+	if (!flreturned) {
+#if defined(FRONTIER_HEADLESS)
+		fprintf(stderr, "[headless-db] dballocate failed during dbcopy size=%ld\n", size);
+#endif
+	}
 	return (flreturned);
 	} /*dbcopy*/
 	
@@ -2421,7 +2489,10 @@ boolean dbnew (hdlfilenum fnum) {
 	
 	register hdldatabaserecord hdb;
 	
-	assert (sizeof (tydatabaserecord) == 88);
+	{
+		const size_t expected_header_size = (sizeof (void *) == 8) ? 116u : 88u;
+		assert (sizeof (tydatabaserecord) == expected_header_size);
+	}
 	
 	if (!newclearhandle (sizeof (tydatabaserecord), (Handle *) &databasedata))
 		return (false);
@@ -2479,6 +2550,7 @@ boolean dbopenfile (hdlfilenum fnum, boolean flreadonly) {
     #define MAX_HEADER_SIZE (sizeof(tydatabaserecord) > sizeof(tydatabaserecord_64) ? sizeof(tydatabaserecord) : sizeof(tydatabaserecord_64))
     unsigned char rawheader[MAX_HEADER_SIZE];
     tydatabaserecord_64 diskrec64;
+    int i;
     boolean header_is_modern = false;
     register hdldatabaserecord hdb;
 	
@@ -2521,17 +2593,15 @@ boolean dbopenfile (hdlfilenum fnum, boolean flreadonly) {
 	}
 	else {
 		memcpy (&diskrec, rawheader, sizeof diskrec);
+
+        diskrec.availlist = (dbaddress) db_read_be32(rawheader + 2);
+        for (i = 0; i < ctviews; i++)
+            diskrec.views[i] = (dbaddress) db_read_be32(rawheader + 10 + (size_t) i * 4);
 		
 #ifdef SWAP_BYTE_ORDER
 		{
-		short i;
-		disktomemlong (diskrec.availlist);
 		disktomemlong (diskrec.u.extensions.availlistblock);
 		disktomemshort (diskrec.flags);
-		for (i = 0; i < ctviews; i++)
-			{
-			disktomemlong (diskrec.views[i]);
-			}
 //		disktomemlong (diskrec.fnumdatabase);
 		disktomemlong (diskrec.headerLength);
 		disktomemshort (diskrec.longversionMajor);
@@ -2645,6 +2715,7 @@ boolean dbstartsaveas (hdlfilenum fnum) {
 	register boolean fl;
 		
 	fldatabasesaveas = true; /*set global; enables databasehandle swapping*/
+	dbsaveas_source = databasedata;
 	
 	dbswapglobals ();
 	
@@ -2653,6 +2724,8 @@ boolean dbstartsaveas (hdlfilenum fnum) {
 	dbswapglobals ();
 	
 	fldatabasesaveas = fl;
+	if (!fl)
+		dbsaveas_source = nil;
 	
 	return (fl);
 	} /*dbstartsaveas*/
@@ -2674,6 +2747,7 @@ boolean dbendsaveas (void) {
 	dbswapglobals ();
 	
 	fldatabasesaveas = false;
+	dbsaveas_source = nil;
 	
 	return (fl);
 	} /*dbendsaveas*/

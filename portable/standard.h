@@ -7,5 +7,3 @@
 #define standardinclude
 
 #endif /* PORTABLE_STANDARD_H */
-
-

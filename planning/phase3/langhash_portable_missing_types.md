@@ -4,10 +4,10 @@ Status
 - State: In Progress
 - Phase: 3 (Headless Runtime)
 - Last Updated: 2025-10-30
-- Notes: Track every legacy helper the portable build still needs; keep this list in sync with `planning/carbon_migration/inventory.md`.
+- Notes: Track every legacy helper the portable build still needs; keep this list in sync with `planning/phase3/carbon_migration/inventory.md`.
 
 Related Docs
-- `planning/carbon_migration/inventory.md`
+- `planning/phase3/carbon_migration/inventory.md`
 - `planning/phase3/headless_legacy_table_loader.md`
 
 Change Log

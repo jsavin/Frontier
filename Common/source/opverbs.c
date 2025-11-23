@@ -580,11 +580,22 @@ static boolean opverbinmemory (hdloutlinevariable hv) {
 	
 	fl = dbrefhandle (adr, &hpackedoutline);
 	
-	if (fl) {
+	if (!fl) {
+#if defined(FRONTIER_HEADLESS)
+		fprintf(stderr, "[headless] opverbinmemory dbrefhandle failed adr=0x%llx\n",
+		        (unsigned long long) adr);
+#endif
+	} else {
 
 		fl = opunpack (hpackedoutline, &ix, &ho);
 		
 		disposehandle (hpackedoutline);
+
+#if defined(FRONTIER_HEADLESS)
+		if (!fl)
+			fprintf(stderr, "[headless] opverbinmemory opunpack failed adr=0x%llx\n",
+			        (unsigned long long) adr);
+#endif
 		}
 
 	dbpopdatabase ();
@@ -777,15 +788,25 @@ boolean opverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddr
 	if (!fldatabasesaveas && !(**ho).fldirty && !(**ho).fldirtyview) /*don't need to update the db version of the outline*/
 		goto pushaddress;
 	
-	if (!opverbpackoutline (ho, &hpackedoutline))
+	if (!opverbpackoutline (ho, &hpackedoutline)) {
+#if defined(FRONTIER_HEADLESS)
+		fprintf(stderr, "[headless] opverbpackoutline failed for outline at adr=0x%llx\n",
+		        (unsigned long long) (**hv).oldaddress);
+#endif
 		return (false);
+	}
 	
 	fl = dbassignhandle (hpackedoutline, &adr);
 	
 	disposehandle (hpackedoutline);
 	
-	if (!fl)
+	if (!fl) {
+#if defined(FRONTIER_HEADLESS)
+		fprintf(stderr, "[headless] dbassignhandle failed for outline adr=0x%llx\n",
+		        (unsigned long long) (**hv).oldaddress);
+#endif
 		return (false);
+	}
 	
 	if (fldatabasesaveas && !fltempload)
 		goto pushaddress;
@@ -4479,4 +4500,3 @@ boolean opstart (void) {
 	
 	return (true);
 	} /*opstart*/
-

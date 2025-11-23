@@ -1,5 +1,7 @@
 # Repository Guidelines
 
+<!-- 2025-11-08 Codex: Clarified planning backlog workflow (ADRs/issues) and priority usage. -->
+
 This document is a concise contributor guide for Frontier’s C/C toolchain and test harness. Use it to navigate the repo, build locally, and submit focused changes that keep tests green.
 
 ## TBD Decisions (to revisit later)
@@ -76,15 +78,27 @@ This document is a concise contributor guide for Frontier’s C/C toolchain and 
 - Do not reformat unrelated files; avoid editing generated `build_*` outputs.
 - When adding files, mirror existing naming and include patterns.
 - Always use built-in shell-based tools for debugging on-disk files and formats instead of writing your own code to parse the file. Only write code for this purpose if built-in shell-based utilities are unavailable, and only after asking the user first to install the tool(s) you need.
+- Frontier logging is reliable in headless builds now—exhaust the existing `[headless]`/`[wp-plain]` instrumentation or add lightweight stderr logs before reaching for LLDB. Keep the tmux/LLDB workflow as a fallback, not the default.
 - When new technical details surface (format quirks, runtime behavior, etc.), document them immediately in the most relevant markdown reference (e.g., `docs/database_architecture.md`) so future sessions can pick up the thread quickly.
+- During v6→v7 migrations only three external types may be copied verbatim: `binaryType`, `PICT`, and (when encountered) `CARD`. Every other non-scalar (menus, outlines, scripts, WPTexts, tables, etc.) must be fully decoded and reserialized so bugs are not masked by opaque blobs.
+- Treat the kernel↔UserTalk bridge doc (`planning/phase3/carbon_migration/kernel_userTalk_bridge.md`) as canonical for token/search-path behavior; consult/update it whenever you learn new details about runtime dispatch or table hydration.
 - Before archiving or mass-moving documents, verify each file’s status block. Only move docs whose `State` is `Completed`, `Done`, or `Deprecated`; if the status indicates ongoing work, leave it in place (or restore it) so in-flight plans stay editable.
-- <!-- 2025-10-27 Codex --> When touching the database migrator, remember the current implementation only updates the header; ensure follow-up work reserializes tables so migrated roots become fully 64-bit.
-- When starting a new session, ask the user if you should try to pick up from where the previous session ended. If the user says so, you can either do what the user asks, or propose the following: 1) check the README.md, planning docs (in the planning directory), 2) review recent commits to understand where we're at in the project, 3) read the last hundred or so lines of the most recent couple of files in codex_sessions to pick up context from the most recent sessions. If the user tells you to do something different, always follow their guidance instead.
+- When touching the database migrator, remember the current implementation only updates the header; ensure follow-up work reserializes tables so migrated roots become fully 64-bit.
+- Treat `system.macintosh.*` as UI-only AppleEvent glue. Headless/CLI builds should never depend on it; if you see headless code reaching into that hierarchy, stop and refactor the caller to use platform-neutral hooks.
+- Paige is strictly a **conversion tool**: use it only to deserialize legacy WPText blobs and emit UTF‑8 RTF during migration. Do not add new runtime features, UI code, or editing paths that depend on Paige once data is in the v7 format.
+- Whenever you hit inscrutable behavior in a legacy/third-party component (especially anything that used to depend on Carbon/QuickDraw), verify we aren’t still linking a test stub or placeholder implementation before debugging the symptoms. Document any such findings and prefer swapping in the real portable code paths over chasing UI-era bugs.
+- When a logging/instrumentation approach keeps failing, escalate quickly to interactive debugging (LLDB via tmux, watchpoints, etc.) and state that plan explicitly so we stop burning tokens on a stuck instrumentation path.
+- When starting a new session, ask the user if you should try to pick up from where the previous session ended. If the user says so, you can either do what the user asks, or propose the following: 1) check the `README.md`, planning docs (in the planning directory), 2) review recent commits to understand where we're at in the project, 3) read `planning/_CURRENT_STATUS.md` to pick up context from the most recent sessions.
 - If the user or Codex PR Bot says follow-up fixes are already being handled, stop and confirm before making new changes—avoid duplicating or racing their work.
 - In general, avoid creating or maintaining shims that potentially mask underlying issues unless specifically asked to do so by the user.
 - Always run tests before pushing PRs to origin. If you encounter new or unexpected test failures, stop and ask the user what to do.
 - Whenever making changes to code, make sure to summarize the change with a dated comment near the top of the file, attributed to Codex.
 - Frontier’s database allocator (headers/trailers, variance fields, avail list merging) follows the Boundary Tag Method from Knuth’s *The Art of Computer Programming* (per Dave Winer); keep that lineage in mind when debugging allocation logic or documenting format quirks.
+- Track all future ADR-style decisions and upcoming issues inside `planning/TODO_future_improvements.md`; do not recreate `planning/adr` or `planning/issues`.
+- Use the shared priority ladder defined there: `P0` (must / do first), `P1` (pre-prod critical), `P2` (future/nice-to-have). Mirror those labels when filing GitHub issues or internal notes so urgency stays consistent across tools.
+- After every turn, update `planning/_CURRENT_STATUS.md` with the latest status summary and explicit next steps so the next session can resume immediately.
+- When migrating or saving non-scalar data (outlines, WPTexts, menus, scripts, tables, etc.) in v7+, strip cursor/window/font/UI metadata entirely; zero those fields and plan to store per-user preferences elsewhere so headless builds stay multi-user safe.
+- Prefer evidence over inference when interpreting identifiers or historical formats. If a name looks familiar (e.g., “WS” or “Word”), confirm its meaning via code/docs/logs before pursuing a theory to avoid chasing unrelated artifacts.
 
 ## Sandbox & Approvals
 - Escalation: Always request escalated execution when needed (e.g., writing outside workspace, network access, package installs, GUI commands, or when sandboxing blocks progress).

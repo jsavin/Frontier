@@ -15,13 +15,57 @@
 #include "tableexternal_common.h"
 
 // 2025-10-27 Codex: Log unpack errors while diagnosing headless system table loading.
+// 2025-11-14 Codex: Rebuild the legacy table converter so v6 payloads without merge
+// prefixes are reconstructed deterministically (header + records + strings + formats).
 
 #if defined(FRONTIER_HEADLESS)
+#ifndef TABLE_HEADER_RESERVED_BYTES
+#define TABLE_HEADER_RESERVED_BYTES 1024
+#endif
+
+#ifndef TABLE_HEADER_RESERVED_VERSION
+#define TABLE_HEADER_RESERVED_VERSION 4
+#endif
+
 static uint32_t headless_read_be32(const unsigned char *p) {
     return ((uint32_t)p[0] << 24) |
            ((uint32_t)p[1] << 16) |
            ((uint32_t)p[2] << 8)  |
             (uint32_t)p[3];
+}
+
+static size_t headless_calc_header_span(const unsigned char *header, size_t available) {
+    size_t span = 16; /* sizeof(tydisktablerecord) */
+    if (available >= span + TABLE_HEADER_RESERVED_BYTES) {
+        int16_t version = (int16_t)(((int16_t)header[0] << 8) | header[1]);
+        if (version >= TABLE_HEADER_RESERVED_VERSION)
+            span += TABLE_HEADER_RESERVED_BYTES;
+    }
+    if (span > available)
+        span = available;
+    return span;
+}
+
+static boolean headless_payload_looks_modern(const unsigned char *payload, size_t payload_len) {
+    if ((payload == NULL) || (payload_len < sizeof(uint32_t) * 2))
+        return false;
+
+    uint32_t outer_len = headless_read_be32(payload);
+    size_t outer_total = sizeof(uint32_t) + (size_t) outer_len;
+    if (outer_total > payload_len)
+        return false;
+    if (outer_len < sizeof(uint32_t))
+        return false;
+
+    const unsigned char *outer_first = payload + sizeof(uint32_t);
+    uint32_t inner_len = headless_read_be32(outer_first);
+    size_t inner_total = sizeof(uint32_t) + (size_t) inner_len;
+    if (inner_total > outer_len)
+        return false;
+    if (inner_len < 16)
+        return false;
+
+    return true;
 }
 
 static boolean headless_convert_legacy_table_payload(const unsigned char *payload, size_t payload_len, Handle *hout) {
@@ -31,109 +75,205 @@ static boolean headless_convert_legacy_table_payload(const unsigned char *payloa
     if ((payload == NULL) || (hout == NULL))
         return false;
 
-    if (payload_len < legacy_header_size + legacy_record_size)
+    if (payload_len < legacy_header_size)
         return false;
 
-    /* The legacy format is [header][strings][records][sentinel] WITHOUT the merge prefix.
-     * The modern format expects [size][header+records][strings].
-     * We need to find where strings end and records begin, then reorganize.
-     * Records are 10 bytes each. Each record has an ixkey field (first 4 bytes, big-endian)
-     * that's an offset into the string pool.
-     */
-
+    const unsigned char *header_src = NULL;
+    size_t header_bytes = legacy_header_size;
+    const unsigned char *records_only_src = NULL;
+    size_t records_only_len = 0;
+    const unsigned char *strings_src = NULL;
     size_t strings_len = 0;
-    size_t records_start = 0;
+    const unsigned char *formats_src = NULL;
+    size_t formats_len = 0;
+    boolean layout_ready = false;
 
-    /* Try different string pool sizes. Records start after strings and are 10-byte aligned. */
-    for (size_t candidate_strings = 0; candidate_strings <= payload_len - legacy_header_size; candidate_strings++) {
-        size_t candidate_records_start = legacy_header_size + candidate_strings;
+    const unsigned char *outer_first = payload;
+    size_t outer_first_len = payload_len;
+    const unsigned char *outer_second = NULL;
+    size_t outer_second_len = 0;
 
-        /* Records must be aligned */
-        if ((candidate_records_start - legacy_header_size) % legacy_record_size != 0)
-            continue;
-
-        if (candidate_records_start + legacy_record_size > payload_len)
-            break;  /* Not enough room for even one record */
-
-        boolean valid = true;
-        boolean found_sentinel = false;
-        size_t record_count = 0;
-
-        /* Check all potential records from candidate_records_start to end */
-        for (size_t rec_offset = candidate_records_start; rec_offset + legacy_record_size <= payload_len; rec_offset += legacy_record_size) {
-            const unsigned char *rec = payload + rec_offset;
-            uint32_t ixkey = headless_read_be32(rec);
-            uint8_t valuetype = rec[4];
-            uint8_t version = rec[5];
-            uint32_t dataval = headless_read_be32(rec + 6);
-
-            record_count++;
-
-            /* Check for sentinel (all zeros) */
-            if ((ixkey == 0) && (valuetype == 0) && (version == 0) && (dataval == 0)) {
-                found_sentinel = true;
-                continue;  /* Sentinel is valid, keep checking following records */
-            }
-
-            /* ixkey must be a valid offset into the string pool */
-            if (ixkey >= candidate_strings) {
-                valid = false;
-                break;
-            }
-        }
-
-        if (valid && found_sentinel && record_count > 0) {
-            strings_len = candidate_strings;
-            records_start = candidate_records_start;
-            fprintf(stderr, "[headless] found valid split: strings=%zu records_start=%zu records=%zu\n",
-                    strings_len, records_start, record_count);
-            break;
+    if (payload_len >= sizeof(uint32_t)) {
+        uint32_t first_len = headless_read_be32(payload);
+        if ((size_t) first_len + sizeof(uint32_t) <= payload_len) {
+            outer_first = payload + sizeof(uint32_t);
+            outer_first_len = first_len;
+            outer_second_len = payload_len - sizeof(uint32_t) - first_len;
+            if (outer_second_len > 0)
+                outer_second = payload + sizeof(uint32_t) + first_len;
         }
     }
 
-    if (records_start == 0)
-        return false;  /* Couldn't find valid split point */
+    if (outer_first_len >= sizeof(uint32_t)) {
+        uint32_t inner_len = headless_read_be32(outer_first);
+        if ((size_t) inner_len + sizeof(uint32_t) <= outer_first_len) {
+            const unsigned char *inner_body = outer_first + sizeof(uint32_t);
+            size_t strings_available = outer_first_len - sizeof(uint32_t) - inner_len;
+            if (inner_len >= legacy_header_size) {
+                size_t candidate_header_bytes = headless_calc_header_span(inner_body, inner_len);
+                if (inner_len >= candidate_header_bytes) {
+                    size_t rec_bytes = inner_len - candidate_header_bytes;
+                    if ((rec_bytes % legacy_record_size) == 0) {
+                        header_src = inner_body;
+                        header_bytes = candidate_header_bytes;
+                        records_only_src = inner_body + candidate_header_bytes;
+                        records_only_len = rec_bytes;
+                        strings_src = inner_body + inner_len;
+                        strings_len = strings_available;
+                        formats_src = outer_second;
+                        formats_len = outer_second_len;
+                        layout_ready = true;
+#if defined(FRONTIER_HEADLESS)
+                        fprintf(stderr, "[headless] legacy table lengths path header=%zu records=%zu strings=%zu formats=%zu\n",
+                                header_bytes,
+                                records_only_len / legacy_record_size,
+                                strings_len,
+                                formats_len);
+#endif
+                    }
+                }
+            }
+        }
+    }
 
-    /* Now create handles in the modern format: h1=[header+records], h2=[strings] */
-    size_t records_len = payload_len - records_start;
-    size_t h1_size = legacy_header_size + records_len;
+    if (!layout_ready) {
+        size_t header_span = headless_calc_header_span(payload, payload_len);
+        size_t records_start = 0;
+        size_t records_end = 0;
+        size_t derived_strings_len = 0;
+        size_t formats_start = payload_len;
+
+        if (payload_len >= legacy_record_size) {
+            for (size_t pos = payload_len - legacy_record_size;;) {
+                if (memcmp(payload + pos, "\0\0\0\0\0\0\0\0\0\0", legacy_record_size) == 0) {
+                    records_end = pos;
+                    formats_start = pos + legacy_record_size;
+                    break;
+                }
+                if (pos == 0)
+                    break;
+                pos--;
+            }
+        }
+
+        if (records_end > header_span) {
+            size_t strings_upper_bound = records_end - header_span;
+            size_t pos = records_end;
+            size_t record_count = 0;
+            while (pos >= header_span + legacy_record_size) {
+                size_t next_pos = pos - legacy_record_size;
+                const unsigned char *rec = payload + next_pos;
+                uint32_t ixkey = headless_read_be32(rec);
+                if (ixkey >= strings_upper_bound)
+                    break;
+                records_start = next_pos;
+                pos = next_pos;
+                record_count++;
+            }
+
+            if (record_count == 0)
+                records_end = 0;
+            else
+                derived_strings_len = (records_start > header_span) ? (records_start - header_span) : 0;
+        }
+
+        if (records_end == 0) {
+            for (size_t candidate_strings = 0; candidate_strings <= payload_len - header_span; candidate_strings++) {
+                size_t candidate_records_start = header_span + candidate_strings;
+
+                if ((candidate_records_start - header_span) % legacy_record_size != 0)
+                    continue;
+
+                if (candidate_records_start + legacy_record_size > payload_len)
+                    break;
+
+                boolean valid = true;
+                size_t record_count = 0;
+
+                for (size_t rec_offset = candidate_records_start; rec_offset + legacy_record_size <= payload_len; rec_offset += legacy_record_size) {
+                    const unsigned char *rec = payload + rec_offset;
+                    uint32_t ixkey = headless_read_be32(rec);
+                    record_count++;
+
+                    if (ixkey >= candidate_strings) {
+                        valid = false;
+                        break;
+                    }
+                }
+
+                if (valid && record_count > 0) {
+                    derived_strings_len = candidate_strings;
+                    records_start = candidate_records_start;
+                    records_end = candidate_records_start + record_count * legacy_record_size;
+                    formats_start = records_end;
+#if defined(FRONTIER_HEADLESS)
+                    fprintf(stderr, "[headless] fallback split strings=%zu records=%zu tail=%zu\n",
+                            derived_strings_len,
+                            (records_end - records_start) / legacy_record_size,
+                            payload_len > formats_start ? payload_len - formats_start : 0);
+#endif
+                    break;
+                }
+            }
+        }
+
+        if (records_start > header_span && records_end > records_start) {
+            header_src = payload;
+            header_bytes = header_span;
+            records_only_src = payload + records_start;
+            records_only_len = records_end - records_start;
+            strings_src = payload + header_span;
+            strings_len = derived_strings_len;
+            formats_src = (formats_start < payload_len) ? (payload + formats_start) : NULL;
+            formats_len = (formats_start < payload_len) ? (payload_len - formats_start) : 0;
+            layout_ready = true;
+        }
+    }
+
+    if (!layout_ready)
+        return false;
 
     Handle h1 = nil;
     Handle h2 = nil;
 
+    size_t h1_size = header_bytes + records_only_len;
     if (!newhandle((long)h1_size, &h1))
         return false;
 
-    /* h1 = header + records */
-    memcpy(*h1, payload, legacy_header_size);  /* Copy header */
-    memcpy(*h1 + legacy_header_size, payload + records_start, records_len);  /* Copy records */
+    memcpy(*h1, header_src, header_bytes);
+    if (records_only_len > 0)
+        memcpy(*h1 + header_bytes, records_only_src, records_only_len);
 
-    /* h2 = strings */
     if (strings_len > 0) {
         if (!newhandle((long)strings_len, &h2)) {
             disposehandle(h1);
             return false;
         }
-        memcpy(*h2, payload + legacy_header_size, strings_len);  /* Copy strings */
+        memcpy(*h2, strings_src, strings_len);
     }
 
-    /* Use mergehandles to create the inner merged table (what hashpacktable creates) */
     Handle h_inner_merged = nil;
     if (!mergehandles(h1, h2, &h_inner_merged)) {
-        /* mergehandles consumes h1 and h2 on success, but we need to clean up on failure */
         if (h1) disposehandle(h1);
         if (h2) disposehandle(h2);
         return false;
     }
 
-    /* Now merge again with empty formats to create the outer structure (what tablepacktable creates) */
-    Handle h_formats = nil;  /* No formats in legacy payload */
+    Handle h_formats = nil;
+    if (formats_len > 0 && formats_src != NULL) {
+        if (!newhandle((long)formats_len, &h_formats)) {
+            disposehandle(h_inner_merged);
+            return false;
+        }
+        memcpy(*h_formats, formats_src, formats_len);
+    }
+
     if (!mergehandles(h_inner_merged, h_formats, hout)) {
         if (h_inner_merged) disposehandle(h_inner_merged);
+        if (h_formats) disposehandle(h_formats);
         return false;
     }
 
-    fprintf(stderr, "[headless] created two-level merged handle\n");
     return true;
 }
 #endif /* FRONTIER_HEADLESS */
@@ -186,14 +326,15 @@ boolean tableverbinmemory_common(hdlexternalvariable hvariable, hdlhashnode hnod
         if (!fl) {
             fprintf(stderr, "[headless] dbrefhandle failed adr=0x%llx\n", (unsigned long long)adr);
         } else {
+            long hsize_long = gethandlesize(hpacked);
             fprintf(stderr, "[headless] dbrefhandle ok adr=0x%llx size=%ld\n",
-                    (unsigned long long)adr, gethandlesize(hpacked));
-            if (payload_offset > 0 && payload_offset < gethandlesize(hpacked)) {
+                    (unsigned long long)adr, hsize_long);
+            if (payload_offset > 0 && payload_offset < hsize_long) {
                 pullfromhandle(hpacked, 0, payload_offset, nil);
                 fprintf(stderr, "[headless] trimmed leading %ld bytes from packed table\n", payload_offset);
             }
-            if (gethandlesize(hpacked) > 0) {
-                size_t dump = gethandlesize(hpacked) < 32 ? gethandlesize(hpacked) : 32;
+            if (hsize_long > 0) {
+                size_t dump = hsize_long < 32 ? (size_t) hsize_long : 32;
                 unsigned char *bytes = (unsigned char *) *hpacked;
                 fprintf(stderr, "[headless] hpacked first bytes:");
                 for (size_t i = 0; i < dump; ++i)
@@ -202,29 +343,17 @@ boolean tableverbinmemory_common(hdlexternalvariable hvariable, hdlhashnode hnod
             }
 
             if (fl) {
-                size_t hsize = (size_t) gethandlesize(hpacked);
-                if (hsize >= 4) {
-                    unsigned char *bytes = (unsigned char *) *hpacked;
-                    uint32_t prefix = headless_read_be32(bytes);
-                    if ((prefix < 16) || (prefix > (hsize - 4))) {
-                        fprintf(stderr, "[headless] detected legacy table payload prefix=0x%08x len=%zu\n", prefix, hsize);
-                        Handle hlegacy = nil;
-                        if (headless_convert_legacy_table_payload(bytes, hsize, &hlegacy)) {
-                            disposehandle(hpacked);
-                            hpacked = hlegacy;
-                            fprintf(stderr, "[headless] converted legacy table payload to merged handle\n");
-                            size_t merged_size = (size_t) gethandlesize(hpacked);
-                            unsigned char *merged_bytes = (unsigned char *) *hpacked;
-                            uint32_t merged_len = headless_read_be32(merged_bytes);
-                            fprintf(stderr, "[headless] merged len prefix=%u total=%zu\n", merged_len, merged_size);
-                            size_t dump = merged_size < 32 ? merged_size : 32;
-                            fprintf(stderr, "[headless] merged first bytes:");
-                            for (size_t i = 0; i < dump; ++i)
-                                fprintf(stderr, " %02x", merged_bytes[i]);
-                            fprintf(stderr, "\n");
-                        } else {
-                            fprintf(stderr, "[headless] legacy table conversion failed\n");
-                        }
+                size_t hsize = (size_t) hsize_long;
+                unsigned char *bytes = (unsigned char *) *hpacked;
+                if (!headless_payload_looks_modern(bytes, hsize)) {
+                    fprintf(stderr, "[headless] legacy table payload detected len=%zu\n", hsize);
+                    Handle hlegacy = nil;
+                    if (headless_convert_legacy_table_payload(bytes, hsize, &hlegacy)) {
+                        disposehandle(hpacked);
+                        hpacked = hlegacy;
+                        fprintf(stderr, "[headless] converted legacy table payload to merged handle\n");
+                    } else {
+                        fprintf(stderr, "[headless] legacy table conversion failed\n");
                     }
                 }
             }

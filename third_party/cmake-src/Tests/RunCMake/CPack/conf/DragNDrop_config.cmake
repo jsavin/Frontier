@@ -1,0 +1,1 @@
+set(HDIUTIL_EXECUTABLE "/usr/bin/hdiutil")

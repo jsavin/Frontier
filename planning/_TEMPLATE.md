@@ -3,7 +3,7 @@
 Status
 - State: Draft | In Progress | Completed | Archived
 - Phase: Unknown
-- Last Updated: YYYY-MM-DD
+- Last Updated: YYYY-MM-DD (DAY_SHIFT)
 - Owner: (optional)
 - Last Reviewed: (optional)
 - Notes: Brief context or caveats.

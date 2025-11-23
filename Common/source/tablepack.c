@@ -106,8 +106,13 @@ boolean tablepacktable (hdlhashtable htable, boolean flmemory, Handle *hpacked, 
 	Handle hpackedtable, hpackedformats;
 	register boolean fl;
 	
-	if (!hashpacktable (ht, flmemory, &hpackedtable, flmustsave))
+	if (!hashpacktable (ht, flmemory, &hpackedtable, flmustsave)) {
+#if defined(FRONTIER_HEADLESS)
+		fprintf(stderr, "[headless] tablepacktable hashpacktable failed flmemory=%d table=%p\n",
+			(int)flmemory, (void *)ht);
+#endif
 		return (false);
+	}
 	
 	hf = (hdltableformats) (**ht).hashtableformats; /*copy into register*/
 	
@@ -124,12 +129,20 @@ boolean tablepacktable (hdlhashtable htable, boolean flmemory, Handle *hpacked, 
 		if (!fl) {
 			
 			disposehandle (hpackedtable);
-			
+#if defined(FRONTIER_HEADLESS)
+			fprintf(stderr, "[headless] tablepacktable tablepackformats failed table=%p\n", (void *)ht);
+#endif
 			return (false);
 			}
 		}
 	
 	fl = mergehandles (hpackedtable, hpackedformats, hpacked);
+	if (!fl) {
+#if defined(FRONTIER_HEADLESS)
+		fprintf(stderr, "[headless] tablepacktable mergehandles failed table=%p tableHandle=%p formats=%p\n",
+			(void *)ht, (void *)hpackedtable, (void *)hpackedformats);
+#endif
+	}
 	
 	/*
 	disposehandle (hpackedtable);

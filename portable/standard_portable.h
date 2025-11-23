@@ -1,4 +1,5 @@
 /* standard_portable.h - Minimal portable types/macros for core */
+// 2025-11-09 Codex: Guard classic typedefs with explicit macros to prevent duplicate definitions.
 
 #ifndef FRONTIER_STANDARD_PORTABLE_H
 #define FRONTIER_STANDARD_PORTABLE_H
@@ -27,22 +28,82 @@
 #endif
 
 /* Basic types */
+#ifndef FRONTIER_PORTABLE_DEFINED_BYTE
 typedef unsigned char byte;
-typedef unsigned short word;
-typedef unsigned long dword;
-typedef unsigned int uint;
-typedef int sint;
-typedef long slong;
-typedef unsigned long ulong;
-typedef unsigned char uchar;
-typedef unsigned short ushort;
+#define FRONTIER_PORTABLE_DEFINED_BYTE 1
+#endif
 
+#ifndef FRONTIER_PORTABLE_DEFINED_WORD
+typedef unsigned short word;
+#define FRONTIER_PORTABLE_DEFINED_WORD 1
+#endif
+
+#ifndef FRONTIER_PORTABLE_DEFINED_DWORD
+typedef unsigned long dword;
+#define FRONTIER_PORTABLE_DEFINED_DWORD 1
+#endif
+
+#ifndef FRONTIER_PORTABLE_DEFINED_UINT
+typedef unsigned int uint;
+#define FRONTIER_PORTABLE_DEFINED_UINT 1
+#endif
+
+#ifndef FRONTIER_PORTABLE_DEFINED_SINT
+typedef int sint;
+#define FRONTIER_PORTABLE_DEFINED_SINT 1
+#endif
+
+#ifndef FRONTIER_PORTABLE_DEFINED_SLONG
+typedef long slong;
+#define FRONTIER_PORTABLE_DEFINED_SLONG 1
+#endif
+
+#ifndef FRONTIER_PORTABLE_DEFINED_ULONG
+typedef unsigned long ulong;
+#define FRONTIER_PORTABLE_DEFINED_ULONG 1
+#endif
+
+#ifndef FRONTIER_PORTABLE_DEFINED_UCHAR
+typedef unsigned char uchar;
+#define FRONTIER_PORTABLE_DEFINED_UCHAR 1
+#endif
+
+#ifndef FRONTIER_PORTABLE_DEFINED_USHORT
+typedef unsigned short ushort;
+#define FRONTIER_PORTABLE_DEFINED_USHORT 1
+#endif
+
+#if !defined(OS_PORTABLE_HAS_STR255)
+#ifndef FRONTIER_PORTABLE_DEFINED_STR255
 typedef unsigned char Str255[256];
+#define FRONTIER_PORTABLE_DEFINED_STR255 1
+#endif
+#endif
+
+#ifndef FRONTIER_PORTABLE_DEFINED_BIGSTRING
 typedef Str255 bigstring;
+#define FRONTIER_PORTABLE_DEFINED_BIGSTRING 1
+#endif
+
+#ifndef FRONTIER_PORTABLE_DEFINED_PTRVOID
 typedef void* ptrvoid;
+#define FRONTIER_PORTABLE_DEFINED_PTRVOID 1
+#endif
+
+#ifndef FRONTIER_PORTABLE_DEFINED_PTRBYTE
 typedef unsigned char* ptrbyte;
+#define FRONTIER_PORTABLE_DEFINED_PTRBYTE 1
+#endif
+
+#ifndef FRONTIER_PORTABLE_DEFINED_PTRSTRING
 typedef unsigned char* ptrstring;
+#define FRONTIER_PORTABLE_DEFINED_PTRSTRING 1
+#endif
+
+#ifndef FRONTIER_PORTABLE_DEFINED_HDLSTRING
 typedef unsigned char** hdlstring;
+#define FRONTIER_PORTABLE_DEFINED_HDLSTRING 1
+#endif
 
 /* These types are now defined in portable_types.h */
 /* Forward declare filespec for portable stubs */
@@ -51,7 +112,10 @@ struct tyfilespec;
 
 /* Essential types are defined in shelltypes.h when included */
 
+#ifndef FRONTIER_PORTABLE_DEFINED_RECTPARAM
 typedef const struct Rect* rectparam; /* minimal for portable prototypes */
+#define FRONTIER_PORTABLE_DEFINED_RECTPARAM 1
+#endif
 
 /* Direction enums and related used widely in headers */
 typedef enum tydirection {
@@ -76,11 +140,34 @@ typedef enum tybitdirection {
     rightbit = 0x08
 } tybitdirection;
 
+typedef enum tylinespacing {
+    singlespaced = 1,
+    oneandalittlespaced = 2,
+    oneandaquarterspaced = 3,
+    oneandahalfspaced = 4,
+    doublespaced = 5,
+    triplespaced = 6
+} tylinespacing;
+
+typedef enum tyjustification {
+    leftjustified,
+    centerjustified,
+    rightjustified,
+    fulljustified,
+    unknownjustification
+} tyjustification;
+
 /* These types are now defined in portable_types.h */
 
+#ifndef FRONTIER_PORTABLE_DEFINED_HDLFILENUM
 typedef short hdlfilenum;
+#define FRONTIER_PORTABLE_DEFINED_HDLFILENUM 1
+#endif
 
+#ifndef FRONTIER_PORTABLE_DEFINED_CALLBACK
 typedef boolean (*callback)(void);
+#define FRONTIER_PORTABLE_DEFINED_CALLBACK 1
+#endif
 #ifndef pascal
 #define pascal
 #endif
@@ -176,8 +263,6 @@ static inline boolean filenotfounderror(void){ return false; }
 static inline boolean filespectopath(const struct tyfilespec* fs, bigstring bs){ (void)fs; setemptystring(bs); return false; }
 static inline boolean equalfilespecs(const struct tyfilespec* a, const struct tyfilespec* b){ (void)a; (void)b; return false; }
 static inline boolean getfsfile(const struct tyfilespec* pfs, bigstring name){ (void)pfs; setemptystring(name); return false; }
-static inline void DebugStr(const unsigned char* s){ (void)s; }
-static inline void Debugger(void){}
 static inline boolean langportable_err_noop(unsigned char* bs, void* refcon){ (void)bs; (void)refcon; return true; }
 #endif
 
@@ -196,5 +281,3 @@ static inline boolean langportable_err_noop(unsigned char* bs, void* refcon){ (v
 #endif
 
 #endif /* FRONTIER_STANDARD_PORTABLE_H */
-
-

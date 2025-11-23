@@ -11,6 +11,7 @@ build/
 generated/
 tools/strings_compiler/strings_compiler
 tools/strings_compiler/*.o
+third_party/Paige/build*/
 
 *.pbxuser
 *.mode1v3

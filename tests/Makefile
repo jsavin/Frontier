@@ -1,5 +1,9 @@
 # Frontier Test Suite Makefile
 # 2025-10-27 Codex: Link db_format sources into portable component tests (needed by migration suite).
+# 2025-11-07 Codex: Add portable include path for core/db_format tests so headless
+#                   builds can find classic_handle and friends.
+# 2025-11-11 Codex: Define HEADLESS_LINKS_REAL_PAIGE so tests skip Paige stubs once the real library links.
+# 2025-11-17 Codex: Hook Paige's CMake build into this Makefile so source edits retrigger libpaige.a.
 # Phase 1.1: Comprehensive Testing Implementation
 
 CC = clang
@@ -11,10 +15,22 @@ ifeq ($(SANITIZE),1)
   # macOS leak detection can be noisy; disable unless needed
   # export ASAN_OPTIONS=detect_leaks=0  # set in shell if desired
 endif
+
+# Enable Paige debug instrumentation + wp runtime guards when tests are built
+FRONTIER_TESTS ?= 1
 CFLAGS = -Wall -Wextra -std=c99 -g -O0 -fpascal-strings -Wno-deprecated-non-prototype -fcommon \
          -DFRONTIER_USE_PORTABLE_HANDLES -DFRONTIER_HEADLESS \
+         -DFRONTIER_PORTABLE_STRINGS \
+         -DFRONTIER_PORTABLE_FILE_AVAILABLE -DFRONTIER_PORTABLE_DB_AVAILABLE \
+         -DFRONTIER_PORTABLE_APPLEEVENTS \
+         -DHEADLESS_LINKS_REAL_PAIGE \
+         -DHEADLESS_LINKS_REAL_DB \
+         -DHEADLESS_USE_REAL_TABLEPACK \
+         -DFRONTIER_DISABLE_DOCINFO=1 \
          -DLAND_GENERALLOG_LEVEL=LAND_LOGLEVEL_OFF -DLAND_GENERALLOG_TARGET=LAND_LOGTARGET_NONE \
-         $(SAN_FLAGS)
+         -DUNIX_COMPILE -DC_LIBRARY -DNO_OS_INLINE \
+         $(SAN_FLAGS) \
+         -I../generated
 STRINGS_COMPILER_DIR = ../tools/strings_compiler
 STRINGS_COMPILER = $(STRINGS_COMPILER_DIR)/strings_compiler
 STRINGS_INPUTS = $(wildcard ../resources/strings/*.yaml)
@@ -29,6 +45,34 @@ HEADERDIR = ../Common/headers
 MODERNHEADERDIR = ../build_Xcode_modern
 FRAMEWORKS = -framework CoreFoundation -framework Carbon
 
+# Paige integration (WPText engine)
+THIRDPARTYDIR = ../third_party
+PAIGE_DIR = $(THIRDPARTYDIR)/Paige
+PAIGE_BUILD_DIR_RELEASE = $(PAIGE_DIR)/build-headless
+PAIGE_BUILD_DIR_DEBUG = $(PAIGE_DIR)/build-headless-debug
+ifeq ($(FRONTIER_TESTS),1)
+  PAIGE_BUILD_DIR = $(PAIGE_BUILD_DIR_DEBUG)
+  PAIGE_BUILD_TYPE = Debug
+  PAIGE_TESTS_FLAG = ON
+else
+  PAIGE_BUILD_DIR = $(PAIGE_BUILD_DIR_RELEASE)
+  PAIGE_BUILD_TYPE = Release
+  PAIGE_TESTS_FLAG = OFF
+endif
+PAIGE_LIB = $(PAIGE_BUILD_DIR)/libpaige.a
+CMAKE_BIN = $(THIRDPARTYDIR)/cmake-install/bin/cmake
+PAIGE_ARCHES = arm64;x86_64
+PAIGE_CONFIG = $(PAIGE_BUILD_DIR)/CMakeCache.txt
+PAIGE_SOURCES := $(shell find $(PAIGE_DIR) -type f \( -name '*.C' -o -name '*.CPP' -o -name '*.c' -o -name '*.cpp' -o -name '*.H' -o -name '*.h' \))
+
+CFLAGS += -I$(PAIGE_DIR)/PGHEADER
+ifeq ($(FRONTIER_TESTS),1)
+  CFLAGS += -DFRONTIER_TESTS=1
+endif
+LIBS = $(PAIGE_LIB)
+LDFLAGS = -Wl,-undefined,dynamic_lookup
+LINK_LIBS = $(PAIGE_LIB) $(LDFLAGS)
+
 # Frontier core source files (minimal set suitable for CLI/testing)
 # Portable core sources (subset)
 FRONTIER_SOURCES = \
@@ -42,6 +86,8 @@ FRONTIER_SOURCES = \
     ../Common/source/strings.c \
     ../Common/source/ops.c \
     ../Common/source/tableops.c \
+    ../Common/source/tableexternal_common.c \
+    ../Common/source/tablepack.c \
     ../Common/source/tablestructure.c \
     ../Common/source/db.c \
     ../Common/source/dbverbs.c \
@@ -74,11 +120,12 @@ LANG_RUNTIME_SOURCES = \
     ../Common/source/memory.c \
     ../Common/source/portable_handles.c \
     ../Common/source/strings.c \
-    ../Common/source/FastTimes.c \
+    ../portable/time_portable.c \
     ../Common/source/md5.c \
     ../Common/source/sha1dgst.c \
     ../Common/source/whirlpool.c \
     ../Common/source/strings_extras.c \
+    ../portable/text_encoding_portable.c \
     ../Common/source/ops.c \
     ../Common/source/op.c \
     ../Common/source/opinit.c \
@@ -94,11 +141,19 @@ LANG_RUNTIME_SOURCES = \
     ../Common/source/opxml.c \
     ../Common/source/langxml.c \
     ../Common/source/tableops.c \
+    ../Common/source/tableexternal_common.c \
+    ../Common/source/tablepack.c \
     ../Common/source/tablestructure.c \
+    ../Common/source/db.c \
+    ../Common/source/db_format.c \
+    ../Common/source/shell_api_headless.c \
+    ../Common/source/shell_api.c \
+    ../portable/file_portable.c \
     headless_lang_runtime_more_stubs.c \
     headless_shellhooks.c \
     headless_table_stubs.c \
-    headless_wp_stubs.c \
+    ../portable/wptext_runtime.c \
+    ../portable/paige_text_extractor.c \
     headless_pict_stubs.c \
     headless_menu_stubs.c \
     headless_search_stubs.c \
@@ -106,6 +161,12 @@ LANG_RUNTIME_SOURCES = \
     headless_langregexp_stub.c \
     \
     headless_langipc_stub.c
+LANG_RUNTIME_SOURCES += \
+    ../portable/classic_handle.c \
+    ../portable/appleevent_portable.c \
+    ../portable/script_portable.c \
+    ../portable/wptext_portable.c \
+    ../generated/strings_tables.c
 
 # CLI source files
 CLI_SOURCES =
@@ -123,6 +184,7 @@ TEST_EXECUTABLES = \
 	test_compatibility \
 	test_64bit_structures \
 	test_dbnew \
+	paige_text_tests \
 	db_format_tests
 
 # UserTalk object test executables
@@ -134,7 +196,7 @@ USERTALK_OBJECT_TESTS = \
 	test_usertalk_runner
 
 # Buildable test executables on this branch
-RUN_BUILDABLE = core_tests db_format_tests runtime_tests parser_tests save_migration_tests file_portable_tests file_readline_tests file_verb_tests handle_tests cli_runtime_tests
+RUN_BUILDABLE = core_tests db_format_tests runtime_tests parser_tests save_migration_tests file_portable_tests file_readline_tests file_verb_tests handle_tests cli_runtime_tests paige_text_tests
 
 # Prebuilt or auxiliary test binaries that may be present
 RUN_PREBUILT = test_64bit_direct test_migration_verification test_real_databases test_runner verify_migration_success
@@ -143,40 +205,43 @@ RUN_PREBUILT = test_64bit_direct test_migration_verification test_real_databases
 ALL_TESTS = $(TEST_EXECUTABLES) $(USERTALK_OBJECT_TESTS)
 
 # Default target: build the tests we know are supported here
-all: strings_generated $(RUN_BUILDABLE)
+all: $(PAIGE_LIB) strings_generated $(RUN_BUILDABLE)
+
+$(RUN_BUILDABLE): $(PAIGE_LIB)
 
 # Headless smoke test
 core_tests: core_tests.c ../Common/source/shell_api.c ../Common/source/shell_api_headless.c headless_shell.c
-	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders core_tests.c ../Common/source/shell_api.c ../Common/source/shell_api_headless.c headless_shell.c -o $@
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable core_tests.c ../Common/source/shell_api.c ../Common/source/shell_api_headless.c headless_shell.c -o $@ $(LINK_LIBS)
 
-db_format_tests: db_format_tests.c ../Common/source/db_format.c
-	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders db_format_tests.c ../Common/source/db_format.c -o $@
+db_format_tests: db_format_tests.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
+		db_format_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@ $(LINK_LIBS)
 
 runtime_tests: runtime_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c
-	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable runtime_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable runtime_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@ $(LINK_LIBS)
 
 parser_tests: parser_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c
-	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable parser_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable parser_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@ $(LINK_LIBS)
 
-save_migration_tests: save_migration_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/db.c ../Common/source/db_format.c ../portable/file_portable.c ../Common/source/odbengine.c headless_odb_stubs.c headless_shell.c
+save_migration_tests: save_migration_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_odb_stubs.c headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -DHEADLESS_LINKS_REAL_DB -I../Common/headers -I../Common/SystemHeaders -I../portable save_migration_tests.c \
-		$(LANG_RUNTIME_SOURCES) ../Common/source/db.c ../Common/source/db_format.c ../portable/file_portable.c ../Common/source/odbengine.c headless_odb_stubs.c headless_shell.c -o $@
+		$(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_odb_stubs.c headless_shell.c -o $@ $(LINK_LIBS)
 
 file_portable_tests: file_portable_tests.c ../portable/file_portable.c headless_shell.c ../Common/source/portable_handles.c
-	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -I../Common/headers -I../Common/SystemHeaders -I../portable file_portable_tests.c ../portable/file_portable.c headless_shell.c ../Common/source/portable_handles.c -o $@
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -I../Common/headers -I../Common/SystemHeaders -I../portable file_portable_tests.c ../portable/file_portable.c headless_shell.c ../Common/source/portable_handles.c -o $@ $(LINK_LIBS)
 
 file_readline_tests: file_readline_tests.c ../portable/file_portable.c headless_shell.c ../Common/source/portable_handles.c
-	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -I../Common/headers -I../Common/SystemHeaders -I../portable file_readline_tests.c ../portable/file_portable.c headless_shell.c ../Common/source/portable_handles.c -o $@
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -I../Common/headers -I../Common/SystemHeaders -I../portable file_readline_tests.c ../portable/file_portable.c headless_shell.c ../Common/source/portable_handles.c -o $@ $(LINK_LIBS)
 
 file_verb_tests: file_verb_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/findinfile.c ../portable/file_portable.c headless_file_verbs.c headless_shell.c
-	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -I../Common/headers -I../Common/SystemHeaders -I../portable file_verb_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/findinfile.c ../portable/file_portable.c headless_file_verbs.c headless_shell.c -o $@
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -I../Common/headers -I../Common/SystemHeaders -I../portable file_verb_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/findinfile.c ../portable/file_portable.c headless_file_verbs.c headless_shell.c -o $@ $(LINK_LIBS)
 
 handle_tests: handle_tests.c ../Common/source/portable_handles.c ../portable/classic_handle.c
 	$(CC) $(CFLAGS) -DFRONTIER_USE_PORTABLE_HANDLES -I../Common/headers -I../Common/SystemHeaders -I../portable \
-		handle_tests.c ../Common/source/portable_handles.c ../portable/classic_handle.c -o $@
+		handle_tests.c ../Common/source/portable_handles.c ../portable/classic_handle.c -o $@ $(LINK_LIBS)
 
 cli_runtime_tests: cli_runtime_tests.c
-	$(CC) $(CFLAGS) -I../Common/headers -I../Common/SystemHeaders cli_runtime_tests.c -o $@
+	$(CC) $(CFLAGS) -I../Common/headers -I../Common/SystemHeaders cli_runtime_tests.c -o $@ $(LINK_LIBS)
 
 # Test framework object
 framework/test_framework.o: framework/test_framework.c framework/test_framework.h
@@ -184,42 +249,45 @@ framework/test_framework.o: framework/test_framework.c framework/test_framework.
 
 # Main test executables
 test_usertalk_objects: components/test_usertalk_objects.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES) $(CLI_SOURCES)
-	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable -I$(FRONTIER_CLI_DIR) $^ -o $@
+	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable -I$(FRONTIER_CLI_DIR) $^ -o $@ $(LINK_LIBS)
 
 test_cli_integration: components/test_cli_integration.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES) $(CLI_SOURCES)
-	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable -I$(FRONTIER_CLI_DIR) $^ -o $@
+	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable -I$(FRONTIER_CLI_DIR) $^ -o $@ $(LINK_LIBS)
 
 test_database: components/test_database.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES)
-	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable $^ -o $@
+	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable $^ -o $@ $(LINK_LIBS)
 
 test_migration: components/test_migration.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES)
-	$(CC) $(CFLAGS) -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable $^ -o $@
+	$(CC) $(CFLAGS) -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable $^ -o $@ $(LINK_LIBS)
 
 test_compatibility: components/test_compatibility.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES)
-	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable $^ -o $@
+	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable $^ -o $@ $(LINK_LIBS)
 
 test_64bit_structures: components/test_64bit_structures.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES)
-	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable $^ -o $@
+	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable $^ -o $@ $(LINK_LIBS)
 
 test_dbnew: components/test_dbnew.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES)
-	$(CC) $(CFLAGS) -I$(SYSTEMHEADERDIR) -I../Common/SystemHeaders -I$(HEADERDIR) -I$(MODERNHEADERDIR) -I../portable $^ $(FRAMEWORKS) -o $@
+	$(CC) $(CFLAGS) -I$(SYSTEMHEADERDIR) -I../Common/SystemHeaders -I$(HEADERDIR) -I$(MODERNHEADERDIR) -I../portable $^ -o $@ $(LINK_LIBS) $(FRAMEWORKS)
+
+paige_text_tests: components/paige_text_tests.c $(TEST_FRAMEWORK) components/macromantoutf8_stub.c components/newclearhandle_stub.c ../Common/source/portable_handles.c ../portable/classic_handle.c ../portable/paige_text_extractor.c
+	$(CC) $(CFLAGS) -I../Common/headers -I../portable components/paige_text_tests.c framework/test_framework.c components/macromantoutf8_stub.c components/newclearhandle_stub.c ../Common/source/portable_handles.c ../portable/classic_handle.c ../portable/paige_text_extractor.c -DFRONTIER_PORTABLE -o $@ $(LDFLAGS)
 
 
 # UserTalk object test executables
 test_usertalk_runner: components/usertalk_objects/test_usertalk_objects.c components/usertalk_objects/test_runner.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES) $(CLI_SOURCES)
-	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable $^ -o $@
+	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable $^ -o $@ $(LINK_LIBS)
 
 test_basic_types: components/usertalk_objects/test_basic_types.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES) $(CLI_SOURCES)
-	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable -I$(FRONTIER_CLI_DIR) $^ -o $@
+	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable -I$(FRONTIER_CLI_DIR) $^ -o $@ $(LINK_LIBS)
 
 test_collections: components/usertalk_objects/test_collections.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES) $(CLI_SOURCES)
-	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable -I$(FRONTIER_CLI_DIR) $^ -o $@
+	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable -I$(FRONTIER_CLI_DIR) $^ -o $@ $(LINK_LIBS)
 
 test_complex_objects: components/usertalk_objects/test_complex_objects.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES) $(CLI_SOURCES)
-	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable -I$(FRONTIER_CLI_DIR) $^ -o $@
+	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable -I$(FRONTIER_CLI_DIR) $^ -o $@ $(LINK_LIBS)
 
 test_database_persistence: components/usertalk_objects/test_database_persistence.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES) $(CLI_SOURCES)
-	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable -I$(FRONTIER_CLI_DIR) $^ -o $@
+	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable -I$(FRONTIER_CLI_DIR) $^ -o $@ $(LINK_LIBS)
 
 
 # Test targets
@@ -276,6 +344,10 @@ $(STRINGS_COMPILER):
 
 $(GENERATED_STRINGS): $(STRINGS_COMPILER) $(STRINGS_INPUTS)
 	@mkdir -p $(GENERATED_DIR)
+	@if [ -z "$(STRINGS_INPUTS)" ]; then \
+		echo "No YAML string tables found under resources/strings." >&2; \
+		exit 1; \
+	fi
 	$(STRINGS_COMPILER) --c-output $(STRINGS_C) --h-output $(STRINGS_H) --manifest $(STRINGS_MANIFEST) $(STRINGS_INPUTS)
 
 strings_generated: $(GENERATED_STRINGS)
@@ -287,7 +359,15 @@ clean:
 	rm -f *.root
 	rm -f test_*.root
 	rm -f $(GENERATED_STRINGS)
+	# Paige build artifacts retained under third_party/Paige/build-headless
 
+
+$(PAIGE_CONFIG):
+	@mkdir -p $(PAIGE_BUILD_DIR)
+	$(CMAKE_BIN) -S $(PAIGE_DIR) -B $(PAIGE_BUILD_DIR) -DCMAKE_BUILD_TYPE=$(PAIGE_BUILD_TYPE) -DCMAKE_OSX_ARCHITECTURES="$(PAIGE_ARCHES)" -DFRONTIER_TESTS=$(PAIGE_TESTS_FLAG) -DFRONTIER_DISABLE_DOCINFO=ON
+
+$(PAIGE_LIB): $(PAIGE_CONFIG) $(PAIGE_SOURCES)
+	$(CMAKE_BIN) --build $(PAIGE_BUILD_DIR) --target paige
 # Install target
 install: $(ALL_TESTS)
 	@echo "Installing test executables..."

@@ -1,5 +1,12 @@
 # Project Phase Overview
 
+Status
+- State: In Progress
+- Phase: Multi-Phase Roadmap
+- Last Updated: 2025-11-20
+- Owner: Codex
+- Notes: High-level snapshot of active phases; update when focus shifts.
+
 > **Context:** Carbon migration is the current focus. Legacy phase docs with open work now reside in `planning/phase*/`; completed notes remain in `planning/archive/`.
 
 This roadmap organizes the Frontier modernization effort into five major phases. Use the table below to find both the active follow-ups and the archived historical notes for each phase.
@@ -18,4 +25,4 @@ This roadmap organizes the Frontier modernization effort into five major phases.
 - `planning/INDEX.md` serves as the high-level pointer to planning content.
 - `planning/adr/` and `planning/issues/` track decision records and open work respectively.
 
-When new planning documents are created for active work, add them under `planning/carbon_migration/` (or another current plan) and note the relationship in this overview as the roadmap evolves.
+When new planning documents are created for active work, add them under `planning/phase3/carbon_migration/` (or another current plan) and note the relationship in this overview as the roadmap evolves.

@@ -2,7 +2,7 @@
 
 Status
 - State: Carbon Migration In Progress
-- Active Plan: `planning/carbon_migration/README.md`
+- Active Plan: `planning/phase3/carbon_migration/README.md`
 - Last Updated: 2025-10-30
 - Notes: Draft/Planned/In-Progress legacy docs were restored to `planning/phase*/`; only completed notes remain in `planning/archive/`.
 

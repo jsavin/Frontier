@@ -1,5 +1,12 @@
 # Planning Index
 
+Status
+- State: In Progress
+- Phase: Carbon Migration / Runtime Modernization
+- Last Updated: 2025-11-20 (Night)
+- Owner: Codex
+- Notes: Entry point for active planning docs; keep this in sync with `_CURRENT_STATUS.md`.
+
 > **Active Plan:** Follow the [Carbon Dependency Retirement workstream](carbon_migration/README.md). Legacy phase docs with open work now live under `planning/phase*/`; completed notes stay in the archive.
 
 Status
@@ -16,7 +23,7 @@ Related Docs
 - planning/Frontier_Refactoring_Plan.md
 - planning/phase_gates.md
 - planning/DECISIONS.md
-- planning/carbon_migration/README.md *(current plan)*
+- planning/phase3/carbon_migration/README.md *(current plan)*
 
 Change Log
 - 2025-10-30: Reactivated in-progress phase docs (moved back to `planning/phase*/`) and highlighted the Carbon plan as the primary workstream.
@@ -24,7 +31,7 @@ Change Log
 - 2025-10-12: Reorganized planning materials by phase and refreshed cross-links.
 
 ## Active Workstreams
-- **Carbon Migration** – `planning/carbon_migration/`
+- **Carbon Migration** – `planning/phase3/carbon_migration/`
   - [Plan overview](carbon_migration/README.md)
   - [Inventory](carbon_migration/inventory.md)
   - [Phases](carbon_migration/phases.md)

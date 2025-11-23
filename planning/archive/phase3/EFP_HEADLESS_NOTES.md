@@ -1,4 +1,4 @@
-> **Archived:** This Phase 3 document is preserved for historical context. The active plan lives in [`planning/carbon_migration/README.md`](../../carbon_migration/README.md).
+> **Archived:** This Phase 3 document is preserved for historical context. The active plan lives in [`planning/phase3/carbon_migration/README.md`](../../carbon_migration/README.md).
 
 EFPs and Headless Routing
 

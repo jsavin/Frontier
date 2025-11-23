@@ -44,6 +44,7 @@ typedef int8_t SInt8;
 #ifndef Str255
 typedef unsigned char Str255[256];
 #define PORTABLE_STR255_DEFINED 1
+#define OS_PORTABLE_HAS_STR255 1
 #endif
 
 #ifndef ConstStr255Param
@@ -192,6 +193,10 @@ typedef Handle AliasHandle;
 typedef unsigned char *StringPtr;
 #endif
 
+#ifndef UniversalProcPtr
+typedef void (*UniversalProcPtr)(void);
+#endif
+
 #ifndef StringHandle
 typedef StringPtr *StringHandle;
 #endif
@@ -294,14 +299,6 @@ typedef const void *CFStringRef;
 #define OS_PORTABLE_HAS_CFSTRING 1
 #endif
 
-#ifndef tyjustification
-typedef short tyjustification;
-#endif
-
-#ifndef tylinespacing
-typedef short tylinespacing;
-#endif
-
 #ifndef AEDesc
 typedef struct AEDesc {
     OSType descriptorType;
@@ -312,10 +309,23 @@ typedef struct AEDesc {
 
 #ifndef AppleEvent
 typedef AEDesc AppleEvent;
+#define OS_PORTABLE_HAS_APPLEEVENT 1
+#endif
+
+#ifndef AEAddressDesc
+typedef AEDesc AEAddressDesc;
+#endif
+
+#ifndef AEReturnID
+typedef SInt16 AEReturnID;
 #endif
 
 #ifndef AEEventID
 typedef OSType AEEventID;
+#endif
+
+#ifndef AEEventClass
+typedef OSType AEEventClass;
 #endif
 
 #ifndef AEKeyword
@@ -340,6 +350,7 @@ typedef void *AEFilterUPP;
 
 #ifndef Component
 typedef void *Component;
+#define OS_PORTABLE_HAS_COMPONENT_TYPES 1
 #endif
 
 #ifndef ComponentInstance
@@ -366,16 +377,32 @@ typedef void *ComponentInstance;
 #define typeQDPoint 'QDpt'
 #endif
 
+#ifndef OS_PORTABLE_HAS_FIXMATH
+static inline short frontier_portable_FixRound(Fixed value) {
+    return (short)((value + 0x00008000L) >> 16);
+}
+static inline Fixed frontier_portable_FixRatio(long numer, long denom) {
+    if (denom == 0)
+        return 0;
+    return (Fixed)(((int64_t)numer << 16) / denom);
+}
+static inline Fixed frontier_portable_FixMul(Fixed a, Fixed b) {
+    return (Fixed)(((int64_t)a * (int64_t)b) >> 16);
+}
+#define FixRound(v) frontier_portable_FixRound(v)
+#define FixRatio(n, d) frontier_portable_FixRatio((n), (d))
+#define FixMul(a, b) frontier_portable_FixMul((a), (b))
+#define OS_PORTABLE_HAS_FIXMATH 1
+#endif
+
 #ifndef DebugStr
 void DebugStr(const unsigned char *s);
+#define OS_PORTABLE_HAS_DEBUGSTR 1
 #endif
 
 #ifndef Debugger
 void Debugger(void);
-#endif
-
-#ifndef FastMilliseconds
-unsigned long FastMilliseconds(void);
+#define OS_PORTABLE_HAS_DEBUGGER 1
 #endif
 
 #ifndef topLeft

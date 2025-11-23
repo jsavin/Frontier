@@ -13,6 +13,8 @@ The v6→v7 database format migration involves:
 2. **Table payload conversion** (✅ Complete - see tableexternal_common.c)
 3. **Other external type conversions** (❌ TODO - documented below)
 
+**2025-11-07 update**: Runtime saves now emit the modern Cancoon header whenever `use_64bit_format` is enabled (`dbflushheader()` in `Common/source/db.c`). This guarantees that view₀ and the root pointer survive hydration/reload of migrated v7 databases, removing the loader regression we observed earlier. The outstanding work in this doc still focuses on widening the *payloads* so we can eventually drop all 32-bit fallbacks.
+
 ## Completed Conversions
 
 ### ✅ Table Type (tablevaluetype = externalvaluetype with idtableprocessor)

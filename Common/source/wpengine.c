@@ -4702,5 +4702,3 @@ boolean wpcleartabs (void) {
 	
 	return (cttabs > 0);
 	} /*wpcleartabs*/
-
-

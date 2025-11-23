@@ -12,11 +12,8 @@
 
 #include <stdint.h>
 
-#ifndef Component
+#if !defined(OS_PORTABLE_HAS_COMPONENT_TYPES)
 typedef void *Component;
-#endif
-
-#ifndef ComponentInstance
 typedef void *ComponentInstance;
 #endif
 
@@ -36,18 +33,12 @@ typedef const unsigned char *ConstTextPtr;
 typedef OSType DescType;
 #endif
 
-#ifndef AEDesc
+#if !defined(OS_PORTABLE_HAS_AE_TYPES)
 typedef struct AEDesc {
     DescType descriptorType;
     Handle dataHandle;
 } AEDesc;
-#endif
-
-#ifndef AppleEvent
 typedef AEDesc AppleEvent;
-#endif
-
-#if !defined(OS_PORTABLE_HAS_AE_TYPES)
 typedef uint32_t AEKeyword;
 typedef uint32_t AEEventClass;
 typedef OSType AEEventID;
@@ -491,7 +482,6 @@ void SysBeep(short duration);
 void NumToString(long value, Str255 result);
 void StringToNum(ConstStr255Param str, long *value);
 
-#if !defined(FRONTIER_USE_PORTABLE_HANDLES)
 Handle NewHandle(long userSize);
 void DisposeHandle(Handle h);
 void HLock(Handle h);
@@ -500,7 +490,6 @@ long GetHandleSize(Handle h);
 OSErr SetHandleSize(Handle h, long userSize);
 long MaxBlock(void);
 OSErr MemError(void);
-#endif
 Handle GetString(short resID);
 OSStatus FSNewAlias(const void *fromFile, const FSRef *target, AliasHandle *result);
 OSStatus FSNewAliasMinimal(const FSRef *target, AliasHandle *result);
@@ -534,13 +523,12 @@ OSErr AEGetNthDesc(const AEDescList *list, long index, DescType desiredType, AEK
 void dtox80(const double *value, extended80 *out);
 double x80tod(const extended80 *value);
 
-#if !defined(FRONTIER_USE_PORTABLE_HANDLES)
-short FixRound(Fixed value);
-Fixed FixRatio(long numer, long denom);
-Fixed FixMul(Fixed a, Fixed b);
-#endif
+#if !defined(OS_PORTABLE_HAS_DEBUGSTR)
 void DebugStr(const unsigned char *pascalString);
+#endif
+#if !defined(OS_PORTABLE_HAS_DEBUGGER)
 void Debugger(void);
+#endif
 void Microseconds(UnsignedWide *result);
 UInt32 TickCount(void);
 long FreeMem(void);

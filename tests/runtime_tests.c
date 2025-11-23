@@ -1,6 +1,8 @@
 #include <assert.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "frontier.h"
 #include "memory.h"
@@ -12,9 +14,25 @@
 #include "opxml.h"
 #include "ops.h"
 #include "db_format.h"
+#include "tableexternal_common.h"
+#include "../portable/wptext_portable.h"
+
+#ifndef TABLE_DISK_VERSION
+#define TABLE_DISK_VERSION 0x04
+#endif
+
+#ifndef TABLE_HEADER_RESERVED_BYTES
+#define TABLE_HEADER_RESERVED_BYTES 1024
+#endif
+
+#ifndef WP_PORTABLE_HEADER_BYTES
+#define WP_PORTABLE_HEADER_BYTES 1056
+#endif
 
 /* Enable to dump detailed pack/unpack debugging. */
 /* #define DEBUG_SERIALIZER 1 */
+
+static Handle build_roundtrip_table(boolean enable64bit, dbaddress diskAdr);
 
 static void setup_bigstring_from_c(const char *cstr, bigstring out) {
     copyctopstring(cstr, out);
@@ -304,6 +322,57 @@ static void table_verify_sample_entries(hdlhashtable table, dbaddress expectedDi
     assert(out.data.diskvalue == expectedDiskAdr);
 }
 
+static uint16_t read_be16(const unsigned char *p) {
+    return (uint16_t) (((uint16_t)p[0] << 8) | (uint16_t)p[1]);
+}
+
+static uint32_t read_be32u(const unsigned char *p) {
+    return ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) | ((uint32_t)p[2] << 8) | (uint32_t)p[3];
+}
+
+static void verify_zero_block(const unsigned char *p, size_t len) {
+    for (size_t i = 0; i < len; ++i)
+        assert(p[i] == 0);
+}
+
+static void run_table_header_regression_mode(const char *label, boolean enable64bit) {
+    printf("[rt] table_header_regression (%s): start\n", label);
+    fflush(stdout);
+    dbaddress diskAdr = enable64bit ? (dbaddress)0xAABBCCDDEEFF0011ULL : (dbaddress)0x0055AA33ULL;
+    Handle packed = build_roundtrip_table(enable64bit, diskAdr);
+
+    Handle copy = nil;
+    assert(copyhandle(packed, &copy));
+
+    Handle hrecords = nil;
+    Handle hstrings = nil;
+    assert(unmergehandles(copy, &hrecords, &hstrings));
+
+    if (hstrings != nil)
+        disposehandle(hstrings);
+
+    assert(hrecords != nil);
+    size_t expected_header = 16 + (size_t)TABLE_HEADER_RESERVED_BYTES;
+    long record_bytes = gethandlesize(hrecords);
+    assert(record_bytes >= (long)expected_header);
+
+    unsigned char *bytes = (unsigned char *) *hrecords;
+    uint16_t disk_version = read_be16(bytes);
+    assert(disk_version == TABLE_DISK_VERSION);
+    verify_zero_block(bytes + 16, (size_t)TABLE_HEADER_RESERVED_BYTES);
+
+    disposehandle(hrecords);
+    disposehandle(packed);
+
+    printf("[rt] table_header_regression (%s): done\n", label);
+    fflush(stdout);
+}
+
+static void run_table_header_regression(void) {
+    run_table_header_regression_mode("legacy32", false);
+    run_table_header_regression_mode("modern64", true);
+}
+
 static Handle build_roundtrip_table(boolean enable64bit, dbaddress diskAdr) {
     boolean prev_mode = use_64bit_format;
     use_64bit_format = enable64bit;
@@ -316,7 +385,7 @@ static Handle build_roundtrip_table(boolean enable64bit, dbaddress diskAdr) {
     boolean flmustsave = false;
     assert(hashpacktable(source, false, &packed, &flmustsave));
 
-    assert(disposehashtable(source, true));
+    assert(disposehashtable(source, false));
     use_64bit_format = prev_mode;
     return packed;
 }
@@ -405,7 +474,7 @@ static void run_serializer_roundtrip_mode(const char *label, boolean enable64bit
 
     table_verify_sample_entries(restored, diskAdr);
 
-    boolean dispose_ok = disposehashtable(restored, true);
+    boolean dispose_ok = disposehashtable(restored, false);
 #ifdef DEBUG_SERIALIZER
     printf("[rt] disposehashtable(%s) => %d\n", label, dispose_ok ? 1 : 0);
 #endif
@@ -421,7 +490,101 @@ static void run_serializer_roundtrip(void) {
     run_serializer_roundtrip_mode("modern64", true);
 }
 
+static boolean validate_rtf_bytes(const uint8_t *data, long len) {
+    if (data == NULL || len <= 0)
+        return false;
+    if (data[0] != '{')
+        return false;
+    long depth = 0;
+    for (long i = 0; i < len; ++i) {
+        unsigned char c = data[i];
+        if (c == '\\') {
+            ++i;
+            continue;
+        }
+        if (c == '{')
+            ++depth;
+        else if (c == '}') {
+            --depth;
+            if (depth < 0)
+                return false;
+        }
+    }
+    return depth == 0;
+}
+
+static void run_wptext_rtf_smoke(void) {
+    printf("[rt] wptext RTF smoke test...\n");
+    fflush(stdout);
+    Handle hpacked = nil;
+    assert(wp_portable_pack_text_for_test("Hello RTF world!", &hpacked));
+    long size = gethandlesize(hpacked);
+    assert(size > 1056);
+    const unsigned char *bytes = (const unsigned char *)*hpacked;
+    uint32_t magic = read_be32u(bytes);
+    assert(magic == (uint32_t)'WPRT');
+    uint16_t version = read_be16(bytes + 4);
+    assert(version == 1);
+    uint16_t flags = read_be16(bytes + 6);
+    assert((flags & 0x0001u) != 0);
+    uint32_t utf8len = read_be32u(bytes + 24);
+    uint32_t reserved_len = read_be32u(bytes + 28);
+    assert(reserved_len == 0);
+    const long header_len = WP_PORTABLE_HEADER_BYTES;
+    assert(size == (long)header_len + (long)utf8len);
+    const uint8_t *payload = bytes + header_len;
+    assert(payload[0] == '{');
+    assert(validate_rtf_bytes(payload, utf8len));
+    disposehandle(hpacked);
+    printf("[rt] wptext RTF smoke test passed.\n");
+    fflush(stdout);
+}
+
+static void run_wptext_portable_roundtrip(void) {
+    Handle hpacked = nil;
+    assert(wp_portable_pack_text_for_test("Portable roundtrip", &hpacked));
+    long size = gethandlesize(hpacked);
+    const unsigned char *bytes = (const unsigned char *) *hpacked;
+    assert(size > WP_PORTABLE_HEADER_BYTES);
+    assert(wp_portable_load_portable_blob_for_test(bytes, size));
+    disposehandle(hpacked);
+}
+
+static void run_wptext_portable_reservedlen_failure(void) {
+    Handle hpacked = nil;
+    assert(wp_portable_pack_text_for_test("Reserved check", &hpacked));
+    Handle corrupt = nil;
+    assert(copyhandle(hpacked, &corrupt));
+    unsigned char *bytes = (unsigned char *) *corrupt;
+    long size = gethandlesize(corrupt);
+    /* Overwrite reservedlength (big-endian) with 1 to trigger validation failure. */
+    bytes[28] = 0x00;
+    bytes[29] = 0x00;
+    bytes[30] = 0x00;
+    bytes[31] = 0x01;
+    assert(!wp_portable_load_portable_blob_for_test(bytes, size));
+    disposehandle(corrupt);
+    disposehandle(hpacked);
+}
+
 int main(void) {
+    const char *regen_path = getenv("FRONTIER_REGEN_ROOT");
+    if (regen_path != NULL && *regen_path != '\0') {
+        printf("[rt] FRONTIER_REGEN_ROOT=%s (starting migration)\n", regen_path);
+        fflush(stdout);
+        if (!migrate_32bit_to_64bit(regen_path)) {
+            fprintf(stderr, "[rt] migrate_32bit_to_64bit failed for %s\n", regen_path);
+            return 1;
+        }
+        char migrated_path[1024];
+        if (db_format_last_backup_path(migrated_path, sizeof migrated_path) && migrated_path[0] != '\0')
+            printf("[rt] migration complete: %s\n", migrated_path);
+        else
+            printf("[rt] migration complete\n");
+        fflush(stdout);
+        return 0;
+    }
+
     printf("[rt] initmemory...\n");
     fflush(stdout);
     assert(initmemory());
@@ -438,6 +601,9 @@ int main(void) {
     printf("[rt] langinitverbs...\n");
     fflush(stdout);
     assert(langinitverbs());
+    printf("[rt] wp_portable_init...\n");
+    fflush(stdout);
+    assert(wp_portable_init());
 
     printf("[rt] before run_basic_script\n");
     fflush(stdout);
@@ -452,12 +618,21 @@ int main(void) {
     run_opml_roundtrip();
     printf("[rt] after run_opml_roundtrip\n");
     fflush(stdout);
+    printf("[rt] before table_header_regression\n");
+    fflush(stdout);
+    run_table_header_regression();
+    printf("[rt] after table_header_regression\n");
+    fflush(stdout);
     printf("[rt] before serializer_roundtrip\n");
     fflush(stdout);
     run_serializer_roundtrip();
     printf("[rt] after serializer_roundtrip\n");
     fflush(stdout);
+    run_wptext_rtf_smoke();
+    run_wptext_portable_roundtrip();
+    run_wptext_portable_reservedlen_failure();
 
     printf("runtime_tests: language, OPML, and serializer round-trips passed\n");
+    wp_portable_shutdown();
     return 0;
 }
