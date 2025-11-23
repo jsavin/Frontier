@@ -12,10 +12,10 @@ tests can exercise real UserTalk without `system.verbs.*` being loaded.
 
 ## Highlights
 
-- **64-bit/ARM + big-endian v7** – Core builds/tests compile on `arm64`/`x86_64`; v7 headers/trailers and table addresses now write big-endian for cross-arch parity (see `docs/database_architecture.md`).
-- **Paige-free headless runtime** – The `portable/` layer + headless stubs power CLI/testing without UI deps; wptext now uses the Paige-free extractor/RTF path.
-- **Modernised test harness** – Cross-platform C test suite with sanitiser presets (`SANITIZE=1 make -C tests`). Key binaries: `file_portable_tests`, `file_readline_tests`, `file_verb_tests`, `runtime_tests`, `db_format_tests`.
-- **Branch hygiene** – Large Codex session logs live on the `codex-sessions` branch (see below).
+- **64-bit/ARM + big-endian v7** – Core builds/tests compile on `arm64`/`x86_64`; v7 headers/trailers and table addresses now write big-endian for cross-arch parity (see `docs/database_architecture.md`). Migration coverage lives in `tests/save_migration_tests` and `tests/runtime_tests`.
+- **Portable/headless + Paige-free** – The `portable/` layer + headless stubs power CLI/testing without UI deps; wptext now uses the Paige-free extractor/RTF path while still allowing tests to link the real Paige for parity checks.
+- **Modernised test harness** – Cross-platform C test suite with sanitiser presets (`SANITIZE=1 make -C tests`). Key binaries: `file_portable_tests`, `file_readline_tests`, `file_verb_tests`, `runtime_tests`, `db_format_tests`, `cli_runtime_tests`.
+- **Branch hygiene** – Large Codex session logs live on the `codex-sessions` branch; planning docs capture status/decisions in `planning/_CURRENT_STATUS.md`, `planning/DECISIONS.md`, and `planning/big_endian_portability_audit.md`.
 
 ## Quick start
 
