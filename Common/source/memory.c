@@ -25,6 +25,9 @@
 
 ******************************************************************************/
 
+/* 2025-11-24 Codex: Normalize BE writes/coverage for v7 portability. */
+
+
 #include "frontier.h"
 #include "standard.h"
 
@@ -34,6 +37,7 @@
 #include "shellhooks.h"
 #include "strings.h"
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
+#include "db_format.h" /* 2025-11-23 Codex: BE helpers for memory serialization */
 #include <assert.h>
 #if defined(FRONTIER_HEADLESS)
 #include <dlfcn.h> /*dladdr symbolization for debugging*/
@@ -1581,7 +1585,7 @@ boolean loadhandleremains (long ix, Handle hsource, Handle *hdest) {
 boolean pushlongondiskhandle (long x, Handle hpush) {
 	
 	int32_t disk32 = (int32_t) x;
-	memtodisklong (disk32);
+	db_format_write_be32(&disk32, (uint32_t) disk32);
 	
 	return (enlargehandle (hpush, (long) sizeof (disk32), &disk32));
 	} /*pushlongtodiskhandle*/

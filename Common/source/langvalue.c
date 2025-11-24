@@ -24,6 +24,9 @@
 
 ******************************************************************************/
 
+/* 2025-11-24 Codex: Normalize BE writes/coverage for v7 portability. */
+
+
 #ifdef FRONTIER_PORTABLE
 #include "../portable/os_portable.h"
 #include "../portable/frontier.h"
@@ -61,6 +64,7 @@
 	#include "osacomponent.h"
 
 #include "timedate.h"
+#include "db_format.h" /* 2025-11-23 Codex: BE helpers for packed typeids */
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
 
 
@@ -593,7 +597,7 @@ boolean setbinaryvalue (Handle x, OSType typeid, tyvaluerecord *val) {
 	either way.
 	*/
 	
-	memtodisklong (typeid);
+	db_format_write_be32(&typeid, (uint32_t) typeid);
 
 	// kw - 2005-12-12 filemaker empty string fix
 	// we need to be able to handle empty strings that arrive as a binary['utxt']
@@ -3353,7 +3357,7 @@ boolean coercetobinary (tyvaluerecord *val) {
 				}
 		} /*switch*/
 	
-	memtodisklong (typeid);
+	db_format_write_be32(&typeid, (uint32_t) typeid);
 
 	if (!insertinhandle ((*v).data.binaryvalue, 0L, &typeid, sizeof (typeid)))
 		return (false);

@@ -25,6 +25,9 @@
 
 ******************************************************************************/
 
+/* 2025-11-24 Codex: BE32 sysverb type writes. */
+
+
 #include "frontier.h"
 #include "standard.h"
 
@@ -58,6 +61,7 @@
 #include "tableverbs.h"  //6.1b7 AR: we need gettablevalue
 #include "tableinternal.h" //6.1b7 AR: we need tablepacktable and tableunpacktable
 #include "serialnumber.h" //7.1b34 dmb: new isvalidserialnumber verb
+#include "db_format.h" /* 2025-11-23 Codex: BE helper for sys verbs */
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
 
 #define systemevents (osMask | activMask)
@@ -260,7 +264,7 @@ static boolean getscrapverb (hdltreenode hparam1, tyvaluerecord *v) {
 		return (true); /*not a runtime error; return value is false*/
 		}
 	
-	memtodisklong (type);
+	db_format_write_be32(&type, (uint32_t) type);
 	
 	if (!insertinhandle (hscrap, 0L, &type, sizeof (type))) {
 		

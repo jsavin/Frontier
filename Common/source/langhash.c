@@ -25,6 +25,9 @@
 
 ******************************************************************************/
 
+/* 2025-11-24 Codex: Normalize BE writes/coverage for v7 portability. */
+
+
 #include "frontier.h"
 #include "standard.h"
 
@@ -48,6 +51,7 @@
 #include "oplist.h"
 /* 2025-11-20 Codex: Skip loadfromhandle when less than one record remains so EOF scans stay silent. */
 #include "timedate.h"
+#include "db_format.h" /* 2025-11-23 Codex: BE helpers for table metadata */
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
 #if defined(FRONTIER_HEADLESS)
 #include "../portable/wptext_portable.h"
@@ -296,7 +300,7 @@ typedef struct tydiskvaluerecord {		/*4.0.1b1 dmb*/
 static inline int32_t host_to_disk_int32(int32_t value) {
 #if defined(SWAP_BYTE_ORDER)
 	long temp = (long) value;
-	memtodisklong (temp);
+	db_format_write_be32(&temp, (uint32_t) temp);
 	return (int32_t) temp;
 #else
 	return value;

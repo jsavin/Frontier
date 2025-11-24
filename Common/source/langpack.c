@@ -25,8 +25,14 @@
 
 ******************************************************************************/
 
+/* 2025-11-24 Codex: Normalize BE writes/coverage for v7 portability. */
+
+
 #include "frontier.h"
 #include "standard.h"
+
+/* 2025-11-23 Codex: Pack lang values with explicit BE helpers for v7 portability. */
+#include <stdint.h>
 
 #include "memory.h"
 #include "strings.h"
@@ -40,6 +46,7 @@
 #include "langexternal.h"
 #include "langsystem7.h"
 #include "tablestructure.h"
+#include "db_format.h" /* 2025-11-23 Codex: BE helpers for packed values */
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
 #include "file.h" // 2006-09-15 creedon
 
@@ -125,7 +132,7 @@ boolean langpackvalue (tyvaluerecord val, Handle *h, hdlhashnode hnode) {
 	
 	header.typeid = langexternalgettypeid (val);
 	
-	memtodisklong (header.typeid);
+	db_format_write_be32(&header.typeid, (uint32_t) header.typeid);
 
 	if (!newfilledhandle (&header, sizeof (header), (Handle *) &hpackedvalue))
 		return (false);
@@ -160,7 +167,7 @@ boolean langpackvalue (tyvaluerecord val, Handle *h, hdlhashnode hnode) {
 		case ostypevaluetype:
 		case enumvaluetype:
 		case fixedvaluetype:
-			memtodisklong (val.data.longvalue);
+			db_format_write_be32(&val.data.longvalue, (uint32_t) val.data.longvalue);
 
 			fl = langpackdata (sizeof (val.data.longvalue), &val.data.longvalue, hpackedvalue);
 			
@@ -175,7 +182,7 @@ boolean langpackvalue (tyvaluerecord val, Handle *h, hdlhashnode hnode) {
 			break;
 		
 		case datevaluetype:
-			memtodisklong (val.data.longvalue);
+			db_format_write_be32(&val.data.longvalue, (uint32_t) val.data.longvalue);
 
 			fl = langpackdata (sizeof (val.data.datevalue), &val.data.datevalue, hpackedvalue);
 			

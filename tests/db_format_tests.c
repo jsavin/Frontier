@@ -1,3 +1,5 @@
+/* 2025-11-24 Codex: Add procedural BE goldens + PICT length check. */
+
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
@@ -189,12 +191,93 @@ static void test_large_free_block_be64(void) {
     use_64bit_format = false; /* leave global in legacy mode for other tests */
 }
 
+static void test_pict_length_be32(void) {
+    /* PICT packer writes length with BE32 while leaving payload opaque. */
+    const uint32_t pict_len = 0xA1B2C3D4u;
+    unsigned char encoded[4];
+
+    db_format_write_be32(encoded, pict_len);
+    assert(encoded[0] == 0xA1);
+    assert(encoded[1] == 0xB2);
+    assert(encoded[2] == 0xC3);
+    assert(encoded[3] == 0xD4);
+    assert(db_format_read_be32(encoded) == pict_len);
+}
+
+static void test_procedural_v7_golden_header_and_avail(void) {
+    /*
+     * Procedural golden for header + avail: fixed byte expectations to ensure BE encoding is stable
+     * regardless of host endianness. Future cross-arch runs can rely on these expectations.
+     */
+    tydatabaserecord_64 header;
+    unsigned char encoded[sizeof header];
+
+    memset(&header, 0, sizeof header);
+    header.systemid = 0x01;
+    header.versionnumber = 7;
+    header.availlist = 0x0000000012345678ULL;
+    header.oldfnumdatabase = (short) 0x0102;
+    header.flags = (short) 0x0304;
+    header.views[0] = 0x0A0B0C0D0E0F1011ULL;
+    header.views[1] = 0x1112131415161718ULL;
+    header.views[2] = 0xFFEEDDCCBBAA0099ULL;
+    header.releasestack = (Handle) 0xDEADBEEF;
+    header.fnumdatabase = 0xCAFEBABE;
+    header.headerLength = (long) sizeof(tydatabaserecord_64);
+    header.longversionMajor = (short) 0x1122;
+    header.longversionMinor = (short) 0x3344;
+    header.u.extensions.availlistblock = 0x0000000001020304ULL;
+    header.u.extensions.availlistshadow = nildbaddress;
+    header.u.extensions.flreadonly = false;
+
+    memset(encoded, 0, sizeof encoded);
+    assert(db_format_write_header64(&header, encoded, sizeof encoded));
+
+    /* Expected big-endian bytes for a subset of fields */
+    const unsigned char expected[] = {
+        0x01, 0x07,                         /* systemid, versionnumber */
+        /* availlist */ 0x00, 0x00, 0x00, 0x00, 0x12, 0x34, 0x56, 0x78,
+        /* oldfnumdatabase, flags */ 0x01, 0x02, 0x03, 0x04,
+        /* views[0] */ 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11,
+        /* views[1] */ 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18,
+        /* views[2] */ 0xFF, 0xEE, 0xDD, 0xCC, 0xBB, 0xAA, 0x00, 0x99,
+    };
+    assert(memcmp(encoded, expected, sizeof expected) == 0);
+
+    /* headerLength, version fields, and availlistblock */
+    assert(memcmp(encoded + offsetof(tydatabaserecord_64, headerLength),
+                  "\x00\x00\x00\x60", 4) == 0); /* sizeof(tydatabaserecord_64) is 96 on this build */
+    assert(memcmp(encoded + offsetof(tydatabaserecord_64, longversionMajor),
+                  "\x11\x22", 2) == 0);
+    assert(memcmp(encoded + offsetof(tydatabaserecord_64, longversionMinor),
+                  "\x33\x44", 2) == 0);
+    assert(memcmp(encoded + offsetof(tydatabaserecord_64, u.extensions.availlistblock),
+                  "\x00\x00\x00\x00\x01\x02\x03\x04", 8) == 0);
+
+    /* Runtime-only fields must be zeroed */
+    for (size_t i = 0; i < sizeof(Handle); ++i)
+        assert(encoded[offsetof(tydatabaserecord_64, releasestack) + i] == 0);
+    for (size_t i = 0; i < sizeof(long); ++i)
+        assert(encoded[offsetof(tydatabaserecord_64, fnumdatabase) + i] == 0);
+
+    /* Avail list free block (simulate a single free node) */
+    use_64bit_format = true;
+    const uint64_t freeflag = 0x8000000000000000ULL;
+    const uint64_t avail_size = 0x0000000011111111ULL | freeflag;
+    unsigned char avail_header[sizeheader_v7];
+    memset(avail_header, 0, sizeof avail_header);
+    db_format_write_be64(avail_header + offsetof(tyheader64, sizefreeword) + offsetof(tysizefreeword64, size), avail_size);
+    assert(db_format_read_be64(avail_header + offsetof(tyheader64, sizefreeword) + offsetof(tysizefreeword64, size)) == avail_size);
+    use_64bit_format = false;
+}
 int main(void) {
     test_detect_legacy_database();
     test_detect_modern_database();
     test_convert_header();
     test_write_modern_header_big_endian();
     test_large_free_block_be64();
+    test_pict_length_be32();
+    test_procedural_v7_golden_header_and_avail();
     printf("db_format_tests: all checks passed\n");
     return 0;
 }

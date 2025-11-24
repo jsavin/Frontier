@@ -25,6 +25,9 @@
 
 ******************************************************************************/
 
+/* 2025-11-24 Codex: Normalize BE writes/coverage for v7 portability. */
+
+
 #include "frontier.h"
 #include "standard.h"
 
@@ -536,7 +539,7 @@ pascal boolean odbSaveFile (odbref odb) {
 	if (!tablesavesystemtable ((**hc).hrootvariable, &info.adrroottable))
 		return (false);
 	
-	memtodisklong (info.adrroottable);
+	db_format_write_be32(&info.adrroottable, (uint32_t) info.adrroottable);
 
 	clearbytes (&info.waste, sizeof (info.waste));
 	

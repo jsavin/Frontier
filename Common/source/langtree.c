@@ -25,14 +25,21 @@
 
 ******************************************************************************/
 
+/* 2025-11-24 Codex: Normalize BE writes/coverage for v7 portability. */
+
+
 #include "frontier.h"
 #include "standard.h"
+
+/* 2025-11-23 Codex: Make tree packers explicitly BE for v7 portability. */
+#include <stdint.h>
 
 #include "error.h"
 #include "memory.h"
 #include "lang.h"
 #include "langinternal.h"
 #include "tablestructure.h"
+#include "db_format.h" /* 2025-11-23 Codex: BE helpers for tree packing */
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
 
 #pragma pack(2)
@@ -1028,7 +1035,7 @@ static boolean langpacktreevisit (hdltreenode htree, ptrvoid refcon) {
 	
 	(*pn).paraminfo = paraminfo;
 	
-	memtodisklong ((*pn).nodevalsize);
+	db_format_write_be32(&(*pn).nodevalsize, (uint32_t) (*pn).nodevalsize);
 	memtodiskshort ((*pn).lnum);
 	memtodiskshort ((*pn).charnum);
 
@@ -1069,8 +1076,8 @@ boolean langpacktree (hdltreenode htree, Handle *hpacked) {
 		}
 	
 	memtodiskshort ((**info.hdisktree).version);	/*I can not find where this is set*/
-	memtodisklong ((**info.hdisktree).ctnodes);
-	memtodisklong ((**info.hdisktree).flags);
+	db_format_write_be32(&(**info.hdisktree).ctnodes, (uint32_t) (**info.hdisktree).ctnodes);
+	db_format_write_be32(&(**info.hdisktree).flags, (uint32_t) (**info.hdisktree).flags);
 	
 	return (mergehandles ((Handle) info.hdisktree, info.htreenodevalues, hpacked));
 } /*langpacktree*/

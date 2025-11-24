@@ -25,6 +25,9 @@
 
 ******************************************************************************/
 
+/* 2025-11-24 Codex: Normalize BE writes/coverage for v7 portability. */
+
+
 #include "frontier.h"
 #include "standard.h"
 
@@ -39,6 +42,7 @@
 #include "tablestructure.h"
 #include "timedate.h"
 #include "langinternal.h" /* 2006-02-26 creedon */
+#include "db_format.h" /* 2025-11-23 Codex: BE helper for hex serialization */
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
 
 
@@ -1922,7 +1926,7 @@ void numbertohexstring (long number, bigstring bshex) {
 
 	if ((number < -32768) || (number > 32767))  {
 		
-		memtodisklong (number);
+		db_format_write_be32(&number, (uint32_t) number);
 
 		bytestohexstring (&number, sizeof (long), bshex);
 		}

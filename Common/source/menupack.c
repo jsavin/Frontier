@@ -25,6 +25,9 @@
 
 ******************************************************************************/
 
+/* 2025-11-24 Codex: BE menu script/outline addresses for v7 saves. */
+
+
 #include "frontier.h"
 #include "standard.h"
 
@@ -38,6 +41,7 @@
 #include "opinternal.h"
 #include "menueditor.h"
 #include "menuinternal.h"
+#include "db_format.h" /* 2025-11-23 Codex: BE helpers for menu metadata */
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
 
 	
@@ -57,7 +61,7 @@ boolean mesetmenuiteminfo (hdlheadrecord hnode, const tymenuiteminfo *item) {
 	
 	tymenuiteminfo info = *item;
 
-	memtodisklong (info.linkedscript.adrlink);
+	db_format_write_be32(&info.linkedscript.adrlink, (uint32_t) info.linkedscript.adrlink);
 	
 	return (opsetrefcon (hnode, &info, sizeof (info)));
 	} /*mesetmenuiteminfo*/
@@ -369,7 +373,7 @@ static boolean mesavemenustructure (tysavedmenuinfo *info, dbaddress *adr) {
 	if (!mesaveoutline (outlinedata, &(*info).adroutline))
 		return (false);
 	
-	memtodisklong ((*info).adroutline);
+	db_format_write_be32(&(*info).adroutline, (uint32_t) (*info).adroutline);
 	
 	return (dbassign (adr, sizeof (tysavedmenuinfo), info));
 	} /*mesavemenustructure*/

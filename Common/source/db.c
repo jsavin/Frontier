@@ -25,6 +25,9 @@
 
 ******************************************************************************/
 
+/* 2025-11-24 Codex: Legacy header writes now use BE helpers for v7 parity. */
+
+
 #include "frontier.h"
 #include "standard.h"
 
@@ -501,23 +504,19 @@ static boolean dbflushheader (void) {
 
 			fl = dbwrite ((dbaddress) 0, (long) sizeof (diskheader), diskheader);
 		} else {
-			#ifdef SWAP_BYTE_ORDER
-				{
-				short i;
-				memtodisklong (diskrec.availlist);
-				memtodisklong (diskrec.u.extensions.availlistblock);
-				memtodiskshort (diskrec.flags);
-				for (i = 0; i < ctviews; i++)
-					{
-					memtodisklong (diskrec.views[i]);
-					}
-			//	memtodisklong (diskrec.fnumdatabase);
-				memtodisklong (diskrec.headerLength);
-				memtodiskshort (diskrec.longversionMajor);
-				memtodiskshort (diskrec.longversionMinor);
-				}
-			#endif
-			
+			short i;
+
+			db_format_write_be32(&diskrec.availlist, (uint32_t) diskrec.availlist);
+			db_format_write_be32(&diskrec.u.extensions.availlistblock, (uint32_t) diskrec.u.extensions.availlistblock);
+			db_format_write_be16(&diskrec.flags, (uint16_t) diskrec.flags);
+			for (i = 0; i < ctviews; i++) {
+				db_format_write_be32(&diskrec.views[i], (uint32_t) diskrec.views[i]);
+			}
+			/* fnumdatabase stays runtime-only; not written for legacy headers */
+			db_format_write_be32(&diskrec.headerLength, (uint32_t) diskrec.headerLength);
+			db_format_write_be16(&diskrec.longversionMajor, (uint16_t) diskrec.longversionMajor);
+			db_format_write_be16(&diskrec.longversionMinor, (uint16_t) diskrec.longversionMinor);
+
 			fl = dbwrite ((dbaddress) 0, sizeof (tydatabaserecord), &diskrec);
 		}
 		
