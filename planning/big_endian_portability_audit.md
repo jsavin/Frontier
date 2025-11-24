@@ -29,6 +29,13 @@
    - Add a golden byte-level check: write a minimal v7 DB on host, compare header/table/avail bytes to a saved BE reference.
    - Add a free-list exercise: allocate/free blocks, persist, reopen, and verify avail list bytes unchanged on arm64/x86.
 
+## Outstanding 64-bit/BE cleanup
+- **Legacy packers still 32-bit:** Outline/OP packing (`oppack.c` `header.sizetext/sizelinetable`), lang tree packers, and regex/langpack metadata still use `memtodisklong`/32-bit sizes. Convert these to explicit BE helpers with fixed-width fields so all v7-era disk writes are 64-bit clean, even if practical payloads stay <4 GB.
+- **Tables/records:** Verify record-length writers (tablepack/oppack/langpack) aren’t leaking host-endian or 32-bit sizes. Replace remaining `memtodisklong` with `db_format_write_be32/64` as appropriate.
+- **Shadow avail cache:** Confirm any shadow flush paths use 64-bit size/links after the header/trailer and cache struct widening (int64_t).
+- **Cross-arch goldens:** Add a minimal v7 root written on one arch and assert byte-for-byte equality on another; include a >4 GB free-span simulation in the suite.
+- **Docs/status:** Once the above lands, record the “fully 64-bit/BE” milestone in `_CURRENT_STATUS.md` and update `docs/database_architecture.md` with the final field widths.
+
 ## Risks / Notes
 - Avoid partial endian flips: change writers/readers together to prevent free-list corruption.
 - Runtime-only fields must stay zeroed on disk (`releasestack`, `fnumdatabase`, in-memory shadows).
