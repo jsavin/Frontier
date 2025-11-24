@@ -1,10 +1,10 @@
 # Backup Naming Strategy Analysis
 
 Status
-- State: Unknown
-- Phase: Unknown
-- Last Updated: 2025-09-29
-- Notes: To be aligned with migration/CLI behavior in Phases 1–2.
+- State: In Progress (placeholder until prod decision)
+- Phase: Phase 3 (migration runtime)
+- Last Updated: 2025-11-24
+- Notes: Current behavior preserves v6 roots in place and writes migrated outputs with `-v7` suffix before the extension. Keep this policy until we revisit pre-prod; revisit naming/backup strategy before production rollout.
 
 Related Docs
 
