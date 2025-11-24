@@ -9,8 +9,8 @@
 - Document the final on-disk layout and migration expectations.
 
 ## Work Items
-1. **Avail list serialization (P0)**
-   - Status: **Done**. Decision: use BE 64-bit `adr` + BE 64-bit `size` (no 4 GB cap) to avoid future format bumps and protect large roots (6–10 GB). Block headers/trailers now store 64-bit sizes in BE; avail links read/write in BE64. Regression: in-memory >4 GB free-span encode/decode lives in `tests/db_format_tests.c` (no artifacts).
+1. **Avail list serialization (P0) — Done**
+   - Decision: use BE 64-bit `adr` + BE 64-bit `size` (no 4 GB cap) to avoid future format bumps and protect large roots (6–10 GB). Block headers/trailers now store 64-bit sizes in BE; avail links read/write in BE64. Regression: in-memory >4 GB free-span encode/decode lives in `tests/db_format_tests.c` (no artifacts).
    - Next: audit any remaining 32-bit size math and shadow flush paths to ensure end-to-end 64-bit.
 2. **Record/block metadata audit (P0)**
    - Find any remaining `memtodisklong`/host-order writes for record lengths/addresses in save paths (`dbwritedatablock`, packers).
