@@ -18,7 +18,7 @@ Status
 - Extended `tests/runtime_tests` with the `wptext RTF smoke test` and ran `FRONTIER_REGEN_ROOT=databases/Frontier-v6.root ./tests/runtime_tests` to completion—latest log saved at `/tmp/runtime_tests.log`.
 
 ## Planning & Documentation
-- Marked Phase 1/Phase 2 of `planning/paige_text_extractor.md` as completed and recorded the Phase 3 (font tables) plan as `Planned (P1)`.
+- Marked Phase 1/Phase 2 of `planning/phase3/paige_text_extractor.md` as completed and recorded the Phase 3 (font tables) plan as `Planned (P1)`.
 - Updated `_CURRENT_STATUS.md` with the extractor milestone, portable header validation, and migrator success so future sessions can resume quickly.
 - Documented the handling of loadfromhandle EOF reads, cleaned up serializer warnings, and noted where logs are stored for future triage.
 

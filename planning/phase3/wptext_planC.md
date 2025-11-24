@@ -5,7 +5,7 @@ Status
 - Phase: Paige Migration
 - Last Updated: 2025-11-20
 - Owner: Codex
-- Notes: Historical record of the plain-text fallback (Plan C). Actual implementation now ships the richer Paige extractor per `planning/paige_text_extractor.md`.
+- Notes: Historical record of the plain-text fallback (Plan C). Actual implementation now ships the richer Paige extractor per `planning/phase3/paige_text_extractor.md`.
 
 **Context**  
 - Date: November 17, 2025  

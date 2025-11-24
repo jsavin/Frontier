@@ -302,7 +302,7 @@ Goals
 
 Notes
 - This stays on the shelf until the WPText extractor + styled RTF exporter land and we understand how often users need richer formats.
-- Capture design decisions/TODOs under `planning/paige_text_extractor.md` so the work can restart when timing is right.
+- Capture design decisions/TODOs under `planning/phase3/paige_text_extractor.md` so the work can restart when timing is right.
 
 ### WPText → RTF Migration [P2]
 - Canonicalize `WPText` objects to UTF-8 aware RTF, keeping minimal metadata (creator, conversion info) for backward compatibility.

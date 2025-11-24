@@ -23,7 +23,7 @@ Decisions & Topics
 - Unicode Strategy — ADR 0008 (TBD)
 - WPText → RTF Migration — ADR 0009 (Accepted; Paige is conversion-only, portable RTF/UTF-8 pipeline is canonical)
 - EFP Routing in Headless — ADR 0010 (Proposed)
-- V7 On-Disk Endianness — (Accepted; v7 headers/trailers/table/avail write big-endian; see `planning/big_endian_portability_audit.md`, `docs/database_architecture.md`)
+- V7 On-Disk Endianness — (Accepted; v7 headers/trailers/table/avail write big-endian; see `planning/phase3/big_endian_portability_audit.md`, `docs/database_architecture.md`)
 
 Related Indexes
 - Overall plan: planning/Frontier_Refactoring_Plan.md
@@ -47,6 +47,6 @@ Related Indexes
 
 ### Notes
 - WPText decision: Paige is conversion-only; headless/CLI/runtime paths use the portable extractor + RTF/UTF-8 helpers. Portable `WPRT` is the canonical on-disk format (see `planning/progress_reports/2025-11-20-paige_portable_milestone.md`).
-- V7 endianness: modern roots write big-endian for headers/trailers/table addresses and avail list links; sizes are 64-bit BE. Tracking and tests in `planning/big_endian_portability_audit.md` and `tests/db_format_tests.c`.
+- V7 endianness: modern roots write big-endian for headers/trailers/table addresses and avail list links; sizes are 64-bit BE. Tracking and tests in `planning/phase3/big_endian_portability_audit.md` and `tests/db_format_tests.c`.
 
 Pre‑issue stubs (to copy to GitHub later) live in `planning/issues/`.
