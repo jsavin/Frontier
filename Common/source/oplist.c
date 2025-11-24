@@ -25,6 +25,9 @@
 
 ******************************************************************************/
 
+/* 2025-11-24 Codex: Guard load size with size_t to avoid sign issues. */
+
+
 #include "frontier.h"
 #include "standard.h"
 
@@ -689,8 +692,12 @@ boolean opunpacklist (Handle hpacked, hdllistrecord *hnewlist) {
 	disktomemshort (info.recordsize);
 	
 	// load remaining data in record
-	if (!loadfromhandle (hpacked, &ixload, min (sizeof (info), info.recordsize) - sizeof (info.recordsize), &info.versionnumber))
-		goto error;
+	{
+		const size_t record_bytes = min ((size_t) sizeof (info), (size_t) info.recordsize);
+
+		if (!loadfromhandle (hpacked, &ixload, (long) (record_bytes - sizeof (info.recordsize)), &info.versionnumber))
+			goto error;
+	}
 	
 	disktomemshort (info.versionnumber);
 	

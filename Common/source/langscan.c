@@ -25,6 +25,9 @@
 
 ******************************************************************************/
 
+/* 2025-11-24 Codex: Normalize BE writes/coverage for v7 portability. */
+
+
 #ifdef FRONTIER_PORTABLE
 #include "../portable/os_portable.h"
 #include "../portable/frontier.h"
@@ -45,6 +48,7 @@
 #include "lang.h"
 #include "langinternal.h"
 #include "langparser.h"
+#include "db_format.h" /* 2025-11-23 Codex: BE helpers for OSTypes */
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
 
 
@@ -773,7 +777,7 @@ static boolean parsepopcharconst (tyvaluerecord *val) {
 					
 					moveleft (ch4, &osvalue, 4L);
 					
-					memtodisklong (osvalue);
+					db_format_write_be32(&osvalue, (uint32_t) osvalue);
 
 					setostypevalue (osvalue, val);
 					

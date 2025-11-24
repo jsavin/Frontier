@@ -25,6 +25,9 @@
 
 ******************************************************************************/
 
+/* 2025-11-24 Codex: BE32 wp header counters for v7 portability. */
+
+
 #include "frontier.h"
 
 #include "PAIGE.H"
@@ -60,6 +63,7 @@
 #include "wpinternal.h"
 #include "op.h"
 #include "opinternal.h"
+#include "db_format.h" /* 2025-11-23 Codex: BE helpers for wp headers */
 
 
 #define flrulers false /*set to false to remove all rulers add-on package calls*/
@@ -2130,8 +2134,8 @@ static boolean wppackheader (long buffersize, Handle *hpacked) {
 	wpgetmaxpos (&header.maxpos);
 	
 	/* can not use other macros while using ++ or as a parameter to a function*/
-	memtodisklong (header.ctsaves);
-	memtodisklong (header.maxpos);
+	db_format_write_be32(&header.ctsaves, (uint32_t) header.ctsaves);
+	db_format_write_be32(&header.maxpos, (uint32_t) header.maxpos);
 	
 	header.flags |= floneline_mask * (**hwp).floneline;
 	

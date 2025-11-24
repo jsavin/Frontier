@@ -1,3 +1,5 @@
+/* 2025-11-24 Codex: Clamp header comparisons with uint64 for BE safety. */
+
 #include "frontier.h"
 #include "standard.h"
 #include "shell_api.h"
@@ -1020,14 +1022,14 @@ boolean migrate_32bit_to_64bit(const char *db_path) {
     if (!tablesavesystemtable(hrootvariable, &new_root_address))
         goto cleanup;
 
-    if (new_root_address > 0xFFFFFFFFULL)
+    if ((uint64_t) new_root_address > 0xFFFFFFFFULL)
         goto cleanup;
 
     if (hscript != nil) {
         new_script_address = script_address;
         if (!dbassignhandle(hscript, &new_script_address))
             goto cleanup;
-        if (new_script_address > 0xFFFFFFFFULL)
+        if ((uint64_t) new_script_address > 0xFFFFFFFFULL)
             goto cleanup;
     } else {
         new_script_address = 0;

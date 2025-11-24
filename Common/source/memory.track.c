@@ -25,6 +25,9 @@
 
 ******************************************************************************/
 
+/* 2025-11-24 Codex: Normalize BE writes/coverage for v7 portability. */
+
+
 #include <standard.h>
 
 
@@ -1418,7 +1421,7 @@ boolean loadhandleremains (long ix, Handle hsource, Handle *hdest) {
 	
 boolean pushlongondiskhandle (long x, Handle hpush) {
 	
-	memtodisklong (x);
+	db_format_write_be32(&x, (uint32_t) x);
 	
 	return (enlargehandle (hpush, sizeof (long), &x));
 	} /*pushlongtodiskhandle*/

@@ -25,9 +25,14 @@
 
 ******************************************************************************/
 
+/* 2025-11-24 Codex: Normalize BE writes/coverage for v7 portability. */
+
+
 #include "frontier.h"
 #include "standard.h"
 
+/* 2025-11-23 Codex: Keep regexp pack headers explicitly BE for v7 portability. */
+#include <stdint.h>
 
 #include "error.h"
 #include "memory.h"
@@ -47,6 +52,7 @@
 #include "kernelverbs.h"
 #include "kernelverbdefs.h"
 #include "search.h"
+#include "db_format.h" /* 2025-11-23 Codex: BE helpers for regexp pack */
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
 
 #include "langregexp.h"
@@ -1939,7 +1945,7 @@ boolean regexpcompile (const char *patternstr, int options, bigstring bserror, H
 	rec.pcreversionmajor = PCRE_MAJOR;
 	rec.pcreversionminor = PCRE_MINOR;
 	
-	memtodisklong (rec.type);
+	db_format_write_be32(&rec.type, (uint32_t) rec.type);
 	memtodiskshort (rec.systemid);
 	memtodiskshort (rec.version);			/* don't need to byte-swap anything else because we	*/
 	memtodiskshort (rec.pcreversionmajor);	/* reject the pattern if it wasn't compiled on the	*/

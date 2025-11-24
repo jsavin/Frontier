@@ -25,12 +25,16 @@
 
 ******************************************************************************/
 
+/* 2025-11-24 Codex: Ensure outline header sizes use BE helpers. */
+
+
 #include "frontier.h"
 #include "standard.h"
 
 /* 2025-11-14 Codex: Added outline diagnostics + fixed disk-layout structs. */
 #include <stdint.h> /* 2025-11-14 Codex: lock outline disk headers to fixed widths */
 /* 2025-11-14 Codex: Preserve fixed legacy header layout on 64-bit builds. */
+/* 2025-11-23 Codex: Write outline header sizes with BE helpers for v7 portability. */
 
 #include "memory.h"
 #include "font.h"
@@ -39,6 +43,7 @@
 #include "ops.h"
 #include "op.h"
 #include "opinternal.h"
+#include "db_format.h" /* 2025-11-23 Codex: explicit BE writes for outline headers */
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
 
 #if defined(FRONTIER_TESTS)
@@ -513,8 +518,8 @@ boolean oppack (Handle *hpackedoutline) {
 	
 	header.sizelinetable = (int32_t) linetablebytes;
 	
-	memtodisklong (header.sizetext);
-	memtodisklong (header.sizelinetable);
+	db_format_write_be32(&header.sizetext, (uint32_t) header.sizetext);
+	db_format_write_be32(&header.sizelinetable, (uint32_t) header.sizelinetable);
 	
 	/*move the header into handle*/ {
 		

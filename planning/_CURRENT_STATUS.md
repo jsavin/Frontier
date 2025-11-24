@@ -9,6 +9,9 @@ Status
 
 **Last Updated**: November 23, 2025  \
 **Branches in flight**: `feature/carbon-migration-plan`, `feature/headless-system-bootstrap`
+- 2025-11-23 23:59 CST (Codex): Reviewed current status and next steps; no code changes this session, priorities unchanged.
+- 2025-11-24 00:05 CST (Codex): Started BE/64-bit sweep on packers (outline/langpack/langtree/regexp now use explicit BE helpers for length/type fields); remaining packers/writers still need conversion; tests not run this pass.
+- 2025-11-24 01:03 CST (Codex): Completed BE/64-bit sweep (db header fields, menu/lang/wptree/odb/cancoon/wpengine/memory/shell sysverbs/pict all use BE helpers). Added procedural byte-level goldens + PICT length check to `tests/db_format_tests`; tests re-run (`make -C tests db_format_tests`, `make -C tests runtime_tests`) and pass with existing `__builtin_return_address` warning. Ready for PR; cross-arch coverage now enforced via procedural goldens until CI runs on x86.
 
 - Headless builds no longer include or link any Paige headers: `portable/wptext_portable.{c,h}` collapsed to no-op bootstrap stubs, and the entire `portable/wptext_runtime.c` path now uses the new `paige_text_extractor` + UTF‑8⇄RTF helpers for packed blobs.
 - `wp_portable_state_pack_portable` now caches real RTF payloads derived from the extractor (or copies RTF payloads for existing `WPRT` blobs) and wraps them with the portable header without ever touching `pg*` APIs. The same helper feeds `wpverbpack` so v7 saves always emit portable `WPRT` handles.

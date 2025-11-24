@@ -25,8 +25,14 @@
 
 ******************************************************************************/
 
+/* 2025-11-24 Codex: BE32 pict length; payload stays opaque. */
+
+
 #include "frontier.h"
 #include "standard.h"
+
+/* 2025-11-23 Codex: Keep PICT packing lengths explicitly BE; payload stays opaque. */
+#include <stdint.h>
 
 #include "bitmaps.h"
 #include "file.h"
@@ -43,6 +49,7 @@
 #include "process.h"
 #include "pict.h"
 #include "timedate.h"
+#include "db_format.h" /* 2025-11-23 Codex: BE helpers for pict length fields */
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
 
 
@@ -172,7 +179,8 @@ boolean pictpack (hdlpictrecord hpict, Handle *hpacked) {
 	
 	header.pictbytes = gethandlesize ((Handle) (**hp).macpicture);
 
-	memtodisklong (header.pictbytes);
+	/* Only the length field is normalized; PICT payload remains opaque. */
+	db_format_write_be32(&header.pictbytes, (uint32_t) header.pictbytes);
 	
 	if (*hpacked == nil) { /*must allocate a new one*/
 		
