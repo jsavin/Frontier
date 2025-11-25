@@ -789,17 +789,23 @@ static uint64_t read_be64(const unsigned char *field) {
 /* 2025-11-24 Codex: Decode raw header into a consistent in-memory record (legacy vs v7). */
 boolean db_format_decode_header(const unsigned char *rawheader, size_t raw_len, boolean *header_is_modern, tydatabaserecord *out) {
     int i;
+    int header_version = 0;
+    size_t needed = 0;
 
     if ((rawheader == NULL) || (header_is_modern == NULL) || (out == NULL))
+        return false;
+
+    if (!db_format_header_version(rawheader, raw_len, &header_version))
         return false;
 
     *header_is_modern = false;
     memset(out, 0, sizeof *out);
 
-    if (raw_len < sizeof(tydatabaserecord_64))
+    needed = (header_version >= 7) ? sizeof(tydatabaserecord_64) : sizeof(tydatabaserecord);
+    if (raw_len < needed)
         return false;
 
-    if (rawheader[1] >= 7) {
+    if (header_version >= 7) {
         tydatabaserecord_64 diskrec64;
 
         *header_is_modern = true;

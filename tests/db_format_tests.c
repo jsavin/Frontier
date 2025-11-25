@@ -208,6 +208,7 @@ static void test_header_version_and_loader_switch(void) {
     const size_t max_header = (sizeof(tydatabaserecord) > sizeof(tydatabaserecord_64) ? sizeof(tydatabaserecord) : sizeof(tydatabaserecord_64));
     unsigned char legacy_raw[max_header];
     unsigned char modern_raw[max_header];
+    unsigned char truncated_legacy[sizeof(tydatabaserecord_64)]; /* smaller than legacy header */
     int version = 0;
     boolean header_is_modern = false;
     tydatabaserecord decoded;
@@ -222,6 +223,13 @@ static void test_header_version_and_loader_switch(void) {
     assert(!header_is_modern);
     assert(db_format_load_legacy_adapter(&decoded, true));
     assert(use_64bit_format == false);
+
+    /* Decode should fail if buffer is smaller than legacy header size. */
+    memset(truncated_legacy, 0, sizeof truncated_legacy);
+    truncated_legacy[1] = 6;
+    header_is_modern = false;
+    memset(&decoded, 0, sizeof decoded);
+    assert(!db_format_decode_header(truncated_legacy, sizeof truncated_legacy, &header_is_modern, &decoded));
 
     memset(&decoded, 0, sizeof decoded);
     memset(modern_raw, 0, sizeof modern_raw);
