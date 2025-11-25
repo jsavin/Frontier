@@ -58,28 +58,6 @@
 // 2025-11-20 Codex: Write modern headers and record metadata with explicit big-endian encoding for portability.
 // 2025-11-16 Codex: Keep dbgetsize locals wide enough so dbgetsizeandvariance
 // writes don't corrupt the caller's stack on 64-bit builds.
-static uint16_t db_read_be16(const unsigned char *p) {
-	return (uint16_t)((p[0] << 8) | p[1]);
-}
-
-static uint32_t db_read_be32(const unsigned char *p) {
-	return ((uint32_t)p[0] << 24) |
-	       ((uint32_t)p[1] << 16) |
-	       ((uint32_t)p[2] << 8)  |
-	        (uint32_t)p[3];
-}
-
-static uint64_t db_read_be64(const unsigned char *p) {
-	return ((uint64_t)p[0] << 56) |
-	       ((uint64_t)p[1] << 48) |
-	       ((uint64_t)p[2] << 40) |
-	       ((uint64_t)p[3] << 32) |
-	       ((uint64_t)p[4] << 24) |
-	       ((uint64_t)p[5] << 16) |
-	       ((uint64_t)p[6] << 8)  |
-	        (uint64_t)p[7];
-}
-
 static void db_prepare_modern_header(const tydatabaserecord *src, tydatabaserecord_64 *dst) {
 	int i;
 
@@ -2590,6 +2568,8 @@ boolean dbnew (hdlfilenum fnum) {
 	} /*dbnew*/
 	
 
+/* 2025-11-24 Codex: Route dbopenfile through v7 reader or legacy adapter. */
+
 boolean dbopenfile (hdlfilenum fnum, boolean flreadonly) {
 	
 	/*
@@ -2616,9 +2596,9 @@ boolean dbopenfile (hdlfilenum fnum, boolean flreadonly) {
      */
     #define MAX_HEADER_SIZE (sizeof(tydatabaserecord) > sizeof(tydatabaserecord_64) ? sizeof(tydatabaserecord) : sizeof(tydatabaserecord_64))
     unsigned char rawheader[MAX_HEADER_SIZE];
-    tydatabaserecord_64 diskrec64;
-    int i;
     boolean header_is_modern = false;
+	int header_version = 0;
+	
     register hdldatabaserecord hdb;
 	
 	// Version-specific size validation will be done after reading header
@@ -2633,48 +2613,21 @@ boolean dbopenfile (hdlfilenum fnum, boolean flreadonly) {
 	if (!dbread ((dbaddress) 0, sizeof (rawheader), &rawheader))
 		goto error;
 	
-    if (rawheader[1] >= 7) {
-        int i;
-        header_is_modern = true;
-        clearbytes (&diskrec, sizeof diskrec);
-        clearbytes (&diskrec64, sizeof diskrec64);
-        memcpy (&diskrec64, rawheader, sizeof diskrec64);
+	if (!db_format_header_version(rawheader, sizeof rawheader, &header_version))
+		goto error;
 
-        diskrec.systemid = diskrec64.systemid;
-        diskrec.versionnumber = diskrec64.versionnumber;
-        diskrec.availlist = (dbaddress) db_read_be64 ((const unsigned char *) &diskrec64.availlist);
-        diskrec.oldfnumdatabase = (short) db_read_be16 ((const unsigned char *) &diskrec64.oldfnumdatabase);
-        diskrec.flags = (short) db_read_be16 ((const unsigned char *) &diskrec64.flags);
+	header_is_modern = header_version >= 7;
+	
+	if (!db_format_decode_header(rawheader, sizeof rawheader, &header_is_modern, &diskrec))
+		goto error;
 
-        for (i = 0; i < ctviews; i++)
-            diskrec.views[i] = (dbaddress) db_read_be64 ((const unsigned char *) &diskrec64.views[i]);
-
-        diskrec.releasestack = nil;
-        diskrec.fnumdatabase = 0;
-        diskrec.headerLength = (long) db_read_be32 ((const unsigned char *) &diskrec64.headerLength);
-        diskrec.longversionMajor = (short) db_read_be16 ((const unsigned char *) &diskrec64.longversionMajor);
-        diskrec.longversionMinor = (short) db_read_be16 ((const unsigned char *) &diskrec64.longversionMinor);
-
-        diskrec.u.extensions.availlistblock = (dbaddress) db_read_be64 ((const unsigned char *) &diskrec64.u.extensions.availlistblock);
-        diskrec.u.extensions.flreadonly = diskrec64.u.extensions.flreadonly;
-	}
-	else {
-		memcpy (&diskrec, rawheader, sizeof diskrec);
-
-        diskrec.availlist = (dbaddress) db_read_be32(rawheader + 2);
-        for (i = 0; i < ctviews; i++)
-            diskrec.views[i] = (dbaddress) db_read_be32(rawheader + 10 + (size_t) i * 4);
-		
-#ifdef SWAP_BYTE_ORDER
-		{
-		disktomemlong (diskrec.u.extensions.availlistblock);
-		disktomemshort (diskrec.flags);
-//		disktomemlong (diskrec.fnumdatabase);
-		disktomemlong (diskrec.headerLength);
-		disktomemshort (diskrec.longversionMajor);
-		disktomemshort (diskrec.longversionMinor);
-		}
-#endif
+	/* Route to legacy adapter (v6) or strict v7 reader. */
+	if (header_version <= 6) {
+		if (!db_format_load_legacy_adapter(&diskrec, flreadonly))
+			goto error;
+	} else {
+		if (!db_format_load_v7_reader(&diskrec, flreadonly))
+			goto error;
 	}
 	
 	diskrec.fnumdatabase = (long) fnum; /*this just got overwritten*/
