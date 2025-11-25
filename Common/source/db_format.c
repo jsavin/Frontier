@@ -654,7 +654,7 @@ static void db_trace_walk_table(db_trace_context *ctx, dbaddress adr, const char
 
     dbaddress redirected = nildbaddress;
     if (db_trace_detect_cancoon(payload, payload_len, &redirected)) {
-        db_trace_log(1, "%s: [%s] Cancoon header → 0x%08llx",
+        db_trace_log(1, "%s: [%s] Cancoon header â 0x%08llx",
                      ctx->path_label, path, (unsigned long long) redirected);
         free(payload);
         db_trace_walk_table(ctx, redirected, path, depth);
@@ -784,6 +784,89 @@ static uint64_t read_be64(const unsigned char *field) {
            ((uint64_t) field[5] << 16) |
            ((uint64_t) field[6] << 8)  |
             (uint64_t) field[7];
+}
+
+/* 2025-11-24 Codex: Decode raw header into a consistent in-memory record (legacy vs v7). */
+boolean db_format_decode_header(const unsigned char *rawheader, size_t raw_len, boolean *header_is_modern, tydatabaserecord *out) {
+    int i;
+
+    if ((rawheader == NULL) || (header_is_modern == NULL) || (out == NULL))
+        return false;
+
+    *header_is_modern = false;
+    memset(out, 0, sizeof *out);
+
+    if (raw_len < sizeof(tydatabaserecord_64))
+        return false;
+
+    if (rawheader[1] >= 7) {
+        tydatabaserecord_64 diskrec64;
+
+        *header_is_modern = true;
+        memset(&diskrec64, 0, sizeof diskrec64);
+        memcpy(&diskrec64, rawheader, sizeof diskrec64);
+
+        out->systemid = diskrec64.systemid;
+        out->versionnumber = diskrec64.versionnumber;
+        out->availlist = (dbaddress) read_be64((const unsigned char *) &diskrec64.availlist);
+        out->oldfnumdatabase = (short) read_be16((const unsigned char *) &diskrec64.oldfnumdatabase);
+        out->flags = (short) read_be16((const unsigned char *) &diskrec64.flags);
+
+        for (i = 0; i < ctviews; i++)
+            out->views[i] = (dbaddress) read_be64((const unsigned char *) &diskrec64.views[i]);
+
+        out->releasestack = nil;
+        out->fnumdatabase = 0;
+        out->headerLength = (long) db_format_read_be32((const unsigned char *) &diskrec64.headerLength);
+        out->longversionMajor = (short) read_be16((const unsigned char *) &diskrec64.longversionMajor);
+        out->longversionMinor = (short) read_be16((const unsigned char *) &diskrec64.longversionMinor);
+
+        out->u.extensions.availlistblock = (dbaddress) db_format_read_be64((const unsigned char *) &diskrec64.u.extensions.availlistblock);
+        out->u.extensions.flreadonly = diskrec64.u.extensions.flreadonly;
+    } else {
+        memcpy(out, rawheader, sizeof *out);
+
+        out->availlist = (dbaddress) read_legacy_dbaddress32(rawheader + 2);
+        for (i = 0; i < ctviews; i++)
+            out->views[i] = (dbaddress) read_legacy_dbaddress32(rawheader + 10 + (size_t) i * 4);
+
+#ifdef SWAP_BYTE_ORDER
+        {
+        disktomemlong (out->u.extensions.availlistblock);
+        disktomemshort (out->flags);
+//      disktomemlong (out->fnumdatabase);
+        disktomemlong (out->headerLength);
+        disktomemshort (out->longversionMajor);
+        disktomemshort (out->longversionMinor);
+        }
+#endif
+    }
+
+    return true;
+}
+
+boolean db_format_header_version(const unsigned char *rawheader, size_t raw_len, int *out_version) {
+    if (rawheader == NULL || out_version == NULL || raw_len < 2)
+        return false;
+    *out_version = rawheader[1];
+    return true;
+}
+
+/* 2025-11-24 Codex: Stubs for split reader paths (legacy adapter vs v7). */
+boolean db_format_load_legacy_adapter(const tydatabaserecord *decoded_header, boolean flreadonly) {
+    #pragma unused (decoded_header, flreadonly)
+    /* Stub: legacy adapter path; sets global format to legacy for readers.
+       TODO: widen legacy payloads before writing via v7 packers. */
+    use_64bit_format = false;
+    return true;
+}
+
+boolean db_format_load_v7_reader(const tydatabaserecord *decoded_header, boolean flreadonly) {
+    #pragma unused (decoded_header, flreadonly)
+    /* Stub: v7 reader path; sets global format to modern for readers.
+       TODO: enforce strict v7 read path here. */
+    use_64bit_format = true;
+    return true;
 }
 
 boolean db_format_write_header64(const tydatabaserecord_64 *src, unsigned char *dest, size_t dest_size) {

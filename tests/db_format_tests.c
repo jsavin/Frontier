@@ -204,6 +204,39 @@ static void test_pict_length_be32(void) {
     assert(db_format_read_be32(encoded) == pict_len);
 }
 
+static void test_header_version_and_loader_switch(void) {
+    const size_t max_header = (sizeof(tydatabaserecord) > sizeof(tydatabaserecord_64) ? sizeof(tydatabaserecord) : sizeof(tydatabaserecord_64));
+    unsigned char legacy_raw[max_header];
+    unsigned char modern_raw[max_header];
+    int version = 0;
+    boolean header_is_modern = false;
+    tydatabaserecord decoded;
+    boolean prev_use64 = use_64bit_format;
+
+    memset(&decoded, 0, sizeof decoded);
+    memset(legacy_raw, 0, sizeof legacy_raw);
+    legacy_raw[1] = 6; /* legacy v6 */
+    assert(db_format_header_version(legacy_raw, sizeof legacy_raw, &version));
+    assert(version == 6);
+    assert(db_format_decode_header(legacy_raw, sizeof legacy_raw, &header_is_modern, &decoded));
+    assert(!header_is_modern);
+    assert(db_format_load_legacy_adapter(&decoded, true));
+    assert(use_64bit_format == false);
+
+    memset(&decoded, 0, sizeof decoded);
+    memset(modern_raw, 0, sizeof modern_raw);
+    modern_raw[1] = 7; /* modern v7 */
+    header_is_modern = false;
+    assert(db_format_header_version(modern_raw, sizeof modern_raw, &version));
+    assert(version == 7);
+    assert(db_format_decode_header(modern_raw, sizeof modern_raw, &header_is_modern, &decoded));
+    assert(header_is_modern);
+    assert(db_format_load_v7_reader(&decoded, true));
+    assert(use_64bit_format == true);
+
+    use_64bit_format = prev_use64;
+}
+
 static void test_procedural_v7_golden_header_and_avail(void) {
     /*
      * Procedural golden for header + avail: fixed byte expectations to ensure BE encoding is stable
@@ -277,6 +310,7 @@ int main(void) {
     test_write_modern_header_big_endian();
     test_large_free_block_be64();
     test_pict_length_be32();
+    test_header_version_and_loader_switch();
     test_procedural_v7_golden_header_and_avail();
     printf("db_format_tests: all checks passed\n");
     return 0;

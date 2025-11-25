@@ -75,6 +75,11 @@ boolean db_format_prepare_runtime(void);
 boolean detect_database_format(const tydatabaserecord *header);
 boolean convert_32bit_header_to_64bit(const unsigned char *legacy_header, tydatabaserecord_64 *new_header);
 boolean db_format_write_header64(const tydatabaserecord_64 *src, unsigned char *dest, size_t dest_size);
+boolean db_format_decode_header(const unsigned char *rawheader, size_t raw_len, boolean *header_is_modern, tydatabaserecord *out);
+/* 2025-11-24 Codex: Entry points for v7 reader vs legacy adapter. */
+boolean db_format_load_legacy_adapter(const tydatabaserecord *decoded_header, boolean flreadonly);
+boolean db_format_load_v7_reader(const tydatabaserecord *decoded_header, boolean flreadonly);
+boolean db_format_header_version(const unsigned char *rawheader, size_t raw_len, int *out_version);
 boolean create_root_backup(const char *original_path);
 boolean migrate_32bit_to_64bit(const char *db_path);
 boolean ensure_database_modern(const char *db_path, boolean *migrated, char *output_path, size_t output_path_size);
