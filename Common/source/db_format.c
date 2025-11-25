@@ -654,7 +654,7 @@ static void db_trace_walk_table(db_trace_context *ctx, dbaddress adr, const char
 
     dbaddress redirected = nildbaddress;
     if (db_trace_detect_cancoon(payload, payload_len, &redirected)) {
-        db_trace_log(1, "%s: [%s] Cancoon header â 0x%08llx",
+        db_trace_log(1, "%s: [%s] Cancoon header -> 0x%08llx",
                      ctx->path_label, path, (unsigned long long) redirected);
         free(payload);
         db_trace_walk_table(ctx, redirected, path, depth);
