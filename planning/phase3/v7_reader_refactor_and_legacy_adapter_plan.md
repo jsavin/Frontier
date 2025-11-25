@@ -1,3 +1,8 @@
+# Status
+- State: In Progress (Phase 3)
+- Last Updated: 2025-11-24 (Codex)
+- Notes: Version-based router + header decode guard merged; loaders currently stubbed (legacy keeps use_64bit_format=false, v7 sets it true). Next step is real legacy widening + strict v7 reader on branch `feature/legacy_adapter_widening_and_v7_reader`; runtime/CLI stabilization will follow separately.
+
 # Reader Split Plan – v7 BE/64-bit Path vs Legacy Adapter
 **Last Updated:** 2025-11-24 — Codex
 

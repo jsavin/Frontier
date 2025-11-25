@@ -6,6 +6,8 @@ Status
 - Last Updated: 2025-11-20 (Evening)
 - Owner: Codex
 - Notes: Primary hand-off summary; update whenever major milestones land.
+- 2025-11-24 02:00 CST (Codex): Landed version-based reader router + header decode guard; tests updated. Next: implement legacy adapter widening and strict v7 reader on branch `feature/legacy_adapter_widening_and_v7_reader`, then tackle runtime/CLI stabilization separately.
+
 
 **Last Updated**: November 23, 2025  \
 **Branches in flight**: `feature/carbon-migration-plan`, `feature/headless-system-bootstrap`

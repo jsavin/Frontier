@@ -66,3 +66,5 @@
 - Avoid partial endian flips: change writers/readers together to prevent free-list corruption.
 - Runtime-only fields must stay zeroed on disk (`releasestack`, `fnumdatabase`, in-memory shadows).
 - v7 artifacts in-repo are ephemeral; regenerate after changes to validate byte-for-byte parity.
+
+- 2025-11-24 Codex: Version-based reader router/header decode guard merged; procedural goldens remain. Legacy widening + strict v7 reader planned on feature/legacy_adapter_widening_and_v7_reader.
