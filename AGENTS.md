@@ -100,7 +100,6 @@ This document is a concise contributor guide for Frontier’s C/C toolchain and 
 - After every turn, update `planning/_CURRENT_STATUS.md` with the latest status summary and explicit next steps so the next session can resume immediately.
 - When migrating or saving non-scalar data (outlines, WPTexts, menus, scripts, tables, etc.) in v7+, strip cursor/window/font/UI metadata entirely; zero those fields and plan to store per-user preferences elsewhere so headless builds stay multi-user safe.
 - Prefer evidence over inference when interpreting identifiers or historical formats. If a name looks familiar (e.g., “WS” or “Word”), confirm its meaning via code/docs/logs before pursuing a theory to avoid chasing unrelated artifacts.
-- For modern BE64 paths, avoid format forks inside shared functions: fork legacy vs modern logic into separate functions/files so the modern code stays branch-free and clean; keep legacy-only code isolated.
 
 ## Sandbox & Approvals
 - Escalation: Always request escalated execution when needed (e.g., writing outside workspace, network access, package installs, GUI commands, or when sandboxing blocks progress).

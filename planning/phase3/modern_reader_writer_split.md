@@ -16,7 +16,9 @@
    - Move remaining reader logic out of `db_format.c` into `db_reader_legacy.c` / `db_reader_modern.c`; delete reader helpers left in `db_format.c`.
    - Consolidate BE64 header/block writers in `db_writer_modern.c`; remove modern write helpers from `db_format.c`.
    - Keep `db_format.c` for shared utilities only (BE helpers, adapter state, detection, migrate helpers).
+   - Seed `Common/source/legacy/` with the 32-bit pack/unpack forks (`tablepack_legacy.c` plus `langexternal_legacy.c` / `opverbs_legacy.c`) so modern canonical names can drop runtime format branching.
    - Update all build targets (tests, frontier-cli) to use the split modules; remove duplicate inclusions.
+   - After the split stabilizes, remove the `use_64bit_format` global: switch all consumers to `db_format_mode_current()`/explicit mode args and delete the symbol.
 2) **Core Delegation (db.c)**
    - Keep `dbread`/`dbwrite` exported for the split modules; remove unused `db_prepare_modern_header`.
    - Make `dbwriteheader/dbwritetrailer` BE64-only (modern writer) with no legacy branches.
