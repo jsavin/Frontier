@@ -8,6 +8,8 @@
 - Keep legacy reads isolated; use a modern write context to emit BE64 v7 files without Cancoon/view drift.
 - Preserve headless focus: modern writer only; legacy writer retired/stubbed.
 - Ensure v7 roots do not carry the legacy Cancoon record present in v≤6 roots; view0 should be the modern root only.
+- Maintain a strict fork: modern code should be branch-free for BE64; legacy handling should live in separate functions/files so modern logic stays clean.
+- Naming split: modern packers keep canonical names in modern files/dirs; legacy packers live in `legacy_*/` dirs and are suffixed with `_legacy` entry points so the modern path remains the default going forward.
 
 ## Plan
 1) **File/Module Layout**

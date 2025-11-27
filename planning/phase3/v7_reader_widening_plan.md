@@ -12,6 +12,7 @@
 - V7 reader: enforce strict v7 decode (no legacy heuristics) and keep BE/64-bit invariants.
 - Preserve current behavior until widening is complete; add targeted tests to prove widening.
 - Critical: validate end-to-end round-trip (legacy → widened in-memory → BE64 write → modern read) for payloads and a migrated root; do not declare completion without these checks.
+- Naming: modern packers keep canonical names; legacy packers are `_legacy` in `legacy_*/` dirs so modern BE64 remains the default API surface.
 
 ## Task Breakdown (granular)
 1) **Identify 32-bit legacy unpack/pack touchpoints** (tablepack, record packers, lang packers) used during migration. (**Done**)

@@ -13,6 +13,8 @@ Status
 - 2025-11-26 (Codex): Migrator default path (`migrate_32bit_to_64bit`) now drops Cancoon like the explicit drop helper; v7 outputs should be Cancoon-free by default once writer logic is fixed.
 - 2025-11-26 (Codex): Legacy-vs-modern use_64bit_format now tracks the active database handle (adapter keeps legacy reads 32-bit; destination writes are BE64). `langexternalpack` forces legacy reads while materializing externals. `FRONTIER_REGEN_ROOT=databases/Frontier-v6.root ./tests/runtime_tests` now completes and emits `databases/Frontier-v6-v7.root` (warnings unchanged).
 - 2025-11-26 (Codex): Payload widening round-trip is **critical**: plan updated to add synthetic legacy→modern→modern-read equality tests, file-level migrated root validation, and BE64 payload widening (tables/records/externals) before claiming the split complete. See `planning/phase3/modern_reader_writer_split.md`.
+- 2025-11-26 (Codex): Design principle: keep modern BE64 code branch-free—fork legacy vs modern logic into separate functions/files instead of runtime format branches.
+- 2025-11-26 (Codex): Naming decision: modern packers keep canonical names; legacy packers move to `legacy_*/` dirs with `_legacy` entry points so modern remains the default surface.
 
 **Branches in flight**: `feature/carbon-migration-plan`, `feature/headless-system-bootstrap`, `feature/legacy_adapter_widening_and_v7_reader`
 
