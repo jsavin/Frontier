@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 #
 # 2025-11-26 Codex: Helper to push planning/*.md docs to origin/develop.
+# 2025-11-27 Codex: Auto-stashes local work, checks out develop, copies planning docs from the source branch, commits, pushes, and restores your work.
 # Usage: tools/sync_planning_docs.sh ["commit message"]
-# Captures planning/*.md diffs from the current branch, applies them onto
-# develop, commits, pushes, then returns to the starting branch.
 
 set -euo pipefail
 
@@ -11,43 +10,52 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
 
 msg="${1:-"docs: sync planning docs"}"
-current_branch="$(git rev-parse --abbrev-ref HEAD)"
+source_branch="$(git rev-parse --abbrev-ref HEAD)"
+stash_name="sync-planning-docs-$(date +%s)"
+stash_created=0
 
-patch="$(mktemp)"
-trap 'rm -f "$patch"' EXIT
+cleanup() {
+  # Return to the original branch if needed.
+  if git rev-parse --abbrev-ref HEAD >/dev/null 2>&1; then
+    if [ "$(git rev-parse --abbrev-ref HEAD)" != "$source_branch" ]; then
+      git checkout "$source_branch" >/dev/null 2>&1 || true
+    fi
+  fi
+  # Restore stash if still pending.
+  if [ "$stash_created" -eq 1 ]; then
+    git stash pop >/dev/null 2>&1 || true
+  fi
+}
+trap cleanup EXIT
 
-# Capture planning/.md changes (tracked/untracked)
-if ! git diff --binary -- planning/*.md > "$patch"; then
-  echo "Failed to capture planning diffs" >&2
-  exit 1
-fi
+# Stash everything (including untracked) to avoid clobbering local work.
+git stash push --include-untracked -m "$stash_name" >/dev/null 2>&1 && stash_created=1 || true
 
-# Also include untracked .md files under planning/
-untracked=$(git ls-files --others --exclude-standard planning/*.md || true)
-for f in $untracked; do
-  git diff --binary -- /dev/null "$f" >> "$patch" || true
-done
-
-if ! grep -q "diff --git" "$patch"; then
-  echo "No planning/.md changes to sync."
-  exit 0
-fi
-
-echo "Syncing planning docs from $current_branch to develop..."
+echo "Syncing planning docs from $source_branch to develop..."
 git checkout develop
 git pull --ff-only
 
-git apply "$patch"
+# Copy all planning/*.md from the source branch onto develop.
+while IFS= read -r file; do
+  dir="$(dirname "$file")"
+  mkdir -p "$dir"
+  git show "$source_branch:$file" > "$file"
+done < <(git ls-tree -r --name-only "$source_branch" planning | grep '\.md$')
+
 git add planning/*.md
 
 if git diff --cached --quiet; then
-  echo "No staged planning changes after apply; aborting."
-  git checkout "$current_branch"
+  echo "No staged planning changes after copy; aborting." >&2
   exit 0
 fi
 
 git commit -m "$msg"
 git push origin develop
 
-git checkout "$current_branch"
+git checkout "$source_branch"
+if [ "$stash_created" -eq 1 ]; then
+  git stash pop >/dev/null 2>&1 || echo "Warning: stash pop had conflicts; please resolve manually."
+  stash_created=0
+fi
+
 echo "Planning docs synced to origin/develop."
