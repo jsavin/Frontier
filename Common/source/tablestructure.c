@@ -38,6 +38,7 @@
 #include "timedate.h"
 #include "resources.h"
 #include "langinternal.h"
+#include "db_format.h"
 #include "langexternal.h"
 #include "tableinternal.h"
 #include "tableverbs.h"
@@ -490,15 +491,32 @@ boolean tablesavesystemtable (Handle hvariable, dbaddress *adr) {
 #if defined(FRONTIER_HEADLESS)
 	fprintf(stderr, "[headless] tableverbpack returned %s\n", fl ? "true" : "false");
 #endif
+    if (fl && db_format_adapter_force_repack()) {
+        /* Ensure legacy-derived addresses are normalized to BE64 for view storage. */
+        db_format_adapter_enable_wide_writes(NULL);
+    }
 
 	languntraperrors (savecallback, saverefcon, !fl);
 	
 	if (!flscriptrunning)
 		langunhookerrors ();
 	
-	popfromhandle (htmp, sizeof (dbaddress), adr);
+	{
+		long adrsize = db_format_mode_current().use_64bit_format ? (long) sizeof(dbaddress) : (long) sizeof(uint32_t);
+		long hsize = gethandlesize(htmp);
+		long ix = hsize - adrsize;
+		unsigned char adrbytes[sizeof(dbaddress)];
 
-	disktomemlong (*adr); // un-swap it; tableverbpack swapped it
+		if (ix < 0 || adrsize > (long) sizeof(adrbytes) || hsize < adrsize || !loadfromhandle(htmp, &ix, adrsize, adrbytes)) {
+			fl = false;
+		} else {
+			if (db_format_mode_current().use_64bit_format)
+				*adr = (dbaddress) db_format_read_be64(adrbytes);
+			else
+				*adr = (dbaddress) db_format_read_be32(adrbytes);
+			sethandlesize(htmp, hsize - adrsize); /* drop the address trailer */
+		}
+	}
 
 #if defined(FRONTIER_HEADLESS)
 	(void) dbnormalizeaddress(adr);

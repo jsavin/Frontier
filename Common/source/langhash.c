@@ -219,15 +219,10 @@ static boolean langhash_materialize_external(tyvaluerecord *val) {
 /* #define DEBUG_SERIALIZER 1 */
 
 #if defined(__clang__) || defined(__GNUC__)
-boolean use_64bit_format __attribute__((weak)) = false;
 static inline boolean langhash_use_64bit_format(void) {
-	return use_64bit_format;
-}
+	return db_format_mode_current().use_64bit_format;
+	}
 #else
-extern boolean use_64bit_format;
-static inline boolean langhash_use_64bit_format(void) {
-	return use_64bit_format;
-}
 #endif
 
 #if defined(__clang__) || defined(__GNUC__)
@@ -2811,6 +2806,35 @@ static boolean hashpackvisit (bigstring bsname, hdlhashnode hnode, tyvaluerecord
 
 		case externalvaluetype: {
 			boolean flnewdbaddress = false;
+
+            hdlexternalvariable hv = (hdlexternalvariable) val.data.externalvalue;
+            if (hv != nil && !(**hv).flinmemory) {
+                dbaddress adr = (dbaddress) (**hv).variabledata;
+                Handle htmp = nil;
+                boolean okref = false;
+
+                if (adr != nildbaddress && adr != 0)
+                    okref = dbrefhandle(adr, &htmp);
+
+                if (htmp != nil)
+                    disposehandle(htmp);
+
+                if (!okref) {
+                    (**hnode).fldontsave = true; /* skip this node when packing */
+#if defined(FRONTIER_HEADLESS)
+                    fprintf(stderr,
+                            "[headless] hashpackexternal dropping name='%.*s' adr=0x%llx (free/unreadable)\n",
+                            (int) bsname[0],
+                            (char *) &bsname[1],
+                            (unsigned long long) adr);
+#endif
+                    val.fldiskval = false;
+                    (**hv).flinmemory = true;
+                    (**hv).variabledata = 0;
+                    (**hv).oldaddress = nildbaddress;
+                    return false;
+                }
+            }
 
 			data_index = 0;
 				if (!hashpackexternal (&lpi->s2, (hdlexternalvariable) val.data.externalvalue, &data_index, &flnewdbaddress)) {

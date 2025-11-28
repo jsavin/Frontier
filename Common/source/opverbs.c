@@ -62,6 +62,7 @@
 #include "wpengine.h"
 #include "opbuttons.h"
 #include "file.h" // 2006-09-17 creedon
+#include "db_format.h"
 
 
 
@@ -757,15 +758,29 @@ boolean opverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddr
 	dbaddress adr;
 	hdlwindowinfo hinfo;
 	boolean fltempload = false;
-	
+    const boolean adapter_repack = db_format_adapter_force_repack();
+    db_format_mode prev_mode = db_format_mode_current();
+    db_format_mode working_mode = prev_mode;
+
 	if (!(**hv).flinmemory) { /*simple case, outline is resident in the db*/
 		
-		if (flconvertingolddatabase) {
+		if (flconvertingolddatabase || adapter_repack) {
 			
-			if (!opverbinmemory (hv))
+			if (adapter_repack) {
+                working_mode.use_64bit_format = false; /* legacy read while loading source */
+                db_format_mode_push(&working_mode);
+            }
+
+			if (!opverbinmemory (hv)) {
+                if (adapter_repack)
+                    db_format_mode_pop();
 				return (false);
+            }
 			
 			fltempload = true;
+
+			if (adapter_repack)
+                db_format_mode_pop();
 			}
 		else {
 		
@@ -785,6 +800,15 @@ boolean opverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddr
 	
 	adr = (**hv).oldaddress; /*place where this outline used to be stored*/
 	
+	if (adapter_repack) {
+		(**ho).fldirty = true;
+		(**ho).fldirtyview = true;
+		db_format_adapter_enable_wide_writes(NULL);
+        working_mode.use_64bit_format = true; /* write modern */
+        db_format_mode_push(&working_mode);
+		*flnewdbaddress = true;
+	}
+
 	if (!fldatabasesaveas && !(**ho).fldirty && !(**ho).fldirtyview) /*don't need to update the db version of the outline*/
 		goto pushaddress;
 	
@@ -827,6 +851,9 @@ boolean opverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddr
 		}
 	
 	pushaddress:
+	if (adapter_repack)
+        db_format_mode_pop();
+    db_format_mode_apply(&prev_mode);
 	
 	if (!fldatabasesaveas) {
 	

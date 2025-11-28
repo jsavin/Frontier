@@ -1,4 +1,8 @@
 /* 2025-11-24 Codex: Clamp header comparisons with uint64 for BE safety. */
+/* 2025-11-25 Codex: Implement legacy adapter widening + strict v7 reader entry points. */
+/* 2025-11-26 Codex: Shift version-specific readers/writers into dedicated modules. */
+/* 2025-11-27 Codex: Add migration breadcrumbs to chase drop-Cancoon failures. */
+/* 2025-11-27 Codex: During migration, drop externals whose addresses point at free blocks. */
 
 #include "frontier.h"
 #include "standard.h"
@@ -20,6 +24,7 @@
 #include "strings.h"
 #include "lang.h"
 #include "tablestructure.h"
+#include "tableinternal.h"
 #include "threads.h"
 #include "tableverbs.h"
 #include "cancoon.h"
@@ -28,11 +33,18 @@
 
 // 2025-10-27 Codex: Added optional migration tracing to inspect v6/v7 table layouts during conversion.
 // 2025-11-20 Codex: Added v7 header serializer and shared big-endian helpers to keep modern roots portable.
+// 2025-11-25 Codex: Implement legacy adapter widening + strict v7 reader entry points.
 
-boolean use_64bit_format = false;
-static boolean g_db_format_runtime_initialized = false;
+_Thread_local boolean use_64bit_format = false; /* compatibility shim until callers drop the symbol */
+static _Thread_local boolean g_db_format_runtime_initialized = false;
 static boolean g_db_format_runtime_headless = false;
 static char last_backup_path[1024];
+static boolean g_legacy_adapter_active = false;
+static boolean g_legacy_adapter_force_repack = false;
+static tydatabaserecord_64 g_legacy_widened_header;
+static hdldatabaserecord g_legacy_source_db = nil;
+static _Thread_local db_format_mode g_mode_stack[4];
+static _Thread_local int g_mode_depth = 0;
 
 #if defined(_WIN32)
 #define db_trace_seek _fseeki64
@@ -806,29 +818,34 @@ boolean db_format_decode_header(const unsigned char *rawheader, size_t raw_len, 
         return false;
 
     if (header_version >= 7) {
-        tydatabaserecord_64 diskrec64;
-
         *header_is_modern = true;
-        memset(&diskrec64, 0, sizeof diskrec64);
-        memcpy(&diskrec64, rawheader, sizeof diskrec64);
+        out->systemid = rawheader[0];
+        out->versionnumber = rawheader[1];
+        out->availlist = (dbaddress) read_be64(rawheader + offsetof(tydatabaserecord_64, availlist));
+        out->oldfnumdatabase = (short) read_be16(rawheader + offsetof(tydatabaserecord_64, oldfnumdatabase));
+        out->flags = (short) read_be16(rawheader + offsetof(tydatabaserecord_64, flags));
 
-        out->systemid = diskrec64.systemid;
-        out->versionnumber = diskrec64.versionnumber;
-        out->availlist = (dbaddress) read_be64((const unsigned char *) &diskrec64.availlist);
-        out->oldfnumdatabase = (short) read_be16((const unsigned char *) &diskrec64.oldfnumdatabase);
-        out->flags = (short) read_be16((const unsigned char *) &diskrec64.flags);
-
-        for (i = 0; i < ctviews; i++)
-            out->views[i] = (dbaddress) read_be64((const unsigned char *) &diskrec64.views[i]);
+        for (i = 0; i < ctviews; i++) {
+            size_t offset = offsetof(tydatabaserecord_64, views) + (size_t) i * sizeof(dbaddress);
+            dbaddress view = (dbaddress) read_be64(rawheader + offset);
+            /* Normalize if a legacy 32-bit view was shifted into the high dword. */
+            if ((view & 0xFFFFFFFF00000000ULL) != 0 && (view & 0xFFFFFFFFULL) == 0) {
+                view = (dbaddress) ((uint64_t) view >> 32);
+            }
+            out->views[i] = view;
+#if defined(FRONTIER_HEADLESS)
+            fprintf(stderr, "[headless] decode v7 view[%d]=0x%016llx\n", i, (unsigned long long) view);
+#endif
+        }
 
         out->releasestack = nil;
         out->fnumdatabase = 0;
-        out->headerLength = (long) db_format_read_be32((const unsigned char *) &diskrec64.headerLength);
-        out->longversionMajor = (short) read_be16((const unsigned char *) &diskrec64.longversionMajor);
-        out->longversionMinor = (short) read_be16((const unsigned char *) &diskrec64.longversionMinor);
+        out->headerLength = (long) db_format_read_be32(rawheader + offsetof(tydatabaserecord_64, headerLength));
+        out->longversionMajor = (short) read_be16(rawheader + offsetof(tydatabaserecord_64, longversionMajor));
+        out->longversionMinor = (short) read_be16(rawheader + offsetof(tydatabaserecord_64, longversionMinor));
 
-        out->u.extensions.availlistblock = (dbaddress) db_format_read_be64((const unsigned char *) &diskrec64.u.extensions.availlistblock);
-        out->u.extensions.flreadonly = diskrec64.u.extensions.flreadonly;
+        out->u.extensions.availlistblock = (dbaddress) db_format_read_be64(rawheader + offsetof(tydatabaserecord_64, u.extensions.availlistblock));
+        out->u.extensions.flreadonly = rawheader[offsetof(tydatabaserecord_64, u.extensions.flreadonly)];
     } else {
         memcpy(out, rawheader, sizeof *out);
 
@@ -851,28 +868,155 @@ boolean db_format_decode_header(const unsigned char *rawheader, size_t raw_len, 
     return true;
 }
 
-boolean db_format_header_version(const unsigned char *rawheader, size_t raw_len, int *out_version) {
-    if (rawheader == NULL || out_version == NULL || raw_len < 2)
+/* 2025-11-25 Codex: Legacy adapter widening + strict v7 reader. */
+boolean db_format_widen_legacy_header(const tydatabaserecord *decoded_header, boolean flreadonly, tydatabaserecord_64 *widened_out) {
+    int i;
+    if ((decoded_header == NULL) || (widened_out == NULL))
         return false;
-    *out_version = rawheader[1];
+    if (decoded_header->versionnumber > 6)
+        return false;
+
+    memset(widened_out, 0, sizeof *widened_out);
+    widened_out->systemid = decoded_header->systemid;
+    widened_out->versionnumber = 7;
+    widened_out->availlist = decoded_header->availlist;
+    widened_out->oldfnumdatabase = decoded_header->oldfnumdatabase;
+    widened_out->flags = decoded_header->flags;
+    for (i = 0; i < ctviews; ++i)
+        widened_out->views[i] = decoded_header->views[i];
+
+    widened_out->releasestack = nil;
+    widened_out->fnumdatabase = 0;
+
+    if (decoded_header->headerLength > 0)
+        widened_out->headerLength = decoded_header->headerLength;
+    else
+        widened_out->headerLength = (long) LEGACY_DB_HEADER_BYTES;
+
+    if (widened_out->headerLength < (long) sizeof (tydatabaserecord_64))
+        widened_out->headerLength = (long) sizeof (tydatabaserecord_64);
+
+    widened_out->longversionMajor = decoded_header->longversionMajor != 0 ? decoded_header->longversionMajor : 6;
+    widened_out->longversionMinor = decoded_header->longversionMinor != 0 ? decoded_header->longversionMinor : 1;
+
+    widened_out->u.extensions.availlistblock = decoded_header->u.extensions.availlistblock;
+    widened_out->u.extensions.availlistshadow = nildbaddress;
+    widened_out->u.extensions.flreadonly = flreadonly;
+    memset(widened_out->u.extensions.reserved, 0, sizeof widened_out->u.extensions.reserved);
+
     return true;
 }
 
-/* 2025-11-24 Codex: Stubs for split reader paths (legacy adapter vs v7). */
-boolean db_format_load_legacy_adapter(const tydatabaserecord *decoded_header, boolean flreadonly) {
-    #pragma unused (decoded_header, flreadonly)
-    /* Stub: legacy adapter path; sets global format to legacy for readers.
-       TODO: widen legacy payloads before writing via v7 packers. */
-    use_64bit_format = false;
+boolean db_format_load_legacy_adapter(const tydatabaserecord *decoded_header, boolean flreadonly, tydatabaserecord_64 *widened_out) {
+    long header_len = 0;
+    tydatabaserecord header_copy;
+    tydatabaserecord_64 widened;
+
+    if (decoded_header == NULL)
+        return false;
+    if (decoded_header->versionnumber > 6)
+        return false;
+
+    header_len = decoded_header->headerLength;
+    if (header_len <= 0)
+        header_len = (long) LEGACY_DB_HEADER_BYTES;
+    if (header_len < (long) LEGACY_DB_HEADER_BYTES)
+        return false;
+
+    header_copy = *decoded_header;
+    header_copy.headerLength = header_len;
+
+    /* Keep legacy read path active; widening happens before writing. */
+    db_format_mode legacy = {false, g_legacy_adapter_force_repack, false};
+    db_format_mode_apply(&legacy);
+    g_legacy_adapter_active = false;
+    g_legacy_adapter_force_repack = false;
+
+    memset(&g_legacy_widened_header, 0, sizeof g_legacy_widened_header);
+    if (!db_format_widen_legacy_header(&header_copy, flreadonly, &widened))
+        return false;
+
+    g_legacy_adapter_active = true;
+    g_legacy_adapter_force_repack = true;
+    g_legacy_widened_header = widened;
+
+    if (widened_out != NULL)
+        *widened_out = widened;
+
     return true;
 }
 
 boolean db_format_load_v7_reader(const tydatabaserecord *decoded_header, boolean flreadonly) {
-    #pragma unused (decoded_header, flreadonly)
-    /* Stub: v7 reader path; sets global format to modern for readers.
-       TODO: enforce strict v7 read path here. */
-    use_64bit_format = true;
+    #pragma unused (flreadonly)
+    long header_len = 0;
+    if (decoded_header == NULL)
+        return false;
+    if (decoded_header->versionnumber < 7)
+        return false;
+
+    header_len = decoded_header->headerLength;
+    if (header_len <= 0)
+        header_len = (long) sizeof (tydatabaserecord_64);
+    if (header_len < (long) sizeof (tydatabaserecord_64))
+        return false;
+
+    db_format_mode modern = {true, g_legacy_adapter_force_repack, false};
+    db_format_mode_apply(&modern);
+    g_legacy_adapter_active = false;
+    g_legacy_adapter_force_repack = false;
+    memset(&g_legacy_widened_header, 0, sizeof g_legacy_widened_header);
+    g_legacy_widened_header.systemid = dbsystemidMac; /* canonical default */
+    g_legacy_widened_header.versionnumber = dbversionnumber;
+    g_legacy_widened_header.headerLength = (long) sizeof(tydatabaserecord_64);
+    g_legacy_widened_header.longversionMajor = 7;
+    g_legacy_widened_header.longversionMinor = 0;
     return true;
+}
+
+boolean db_format_adapter_enable_wide_writes(const tydatabaserecord_64 **widened_header_out) {
+    if (!g_legacy_adapter_active)
+        return false;
+
+    db_format_mode modern = {true, true, false};
+    db_format_mode_apply(&modern);
+
+    if (databasedata != nil) {
+        if ((**databasedata).headerLength < (long) sizeof (tydatabaserecord_64))
+            (**databasedata).headerLength = (long) sizeof (tydatabaserecord_64);
+        if ((**databasedata).longversionMajor == 0)
+            (**databasedata).longversionMajor = 6;
+        if ((**databasedata).longversionMinor == 0)
+            (**databasedata).longversionMinor = 1;
+    }
+
+    if (widened_header_out != NULL)
+        *widened_header_out = &g_legacy_widened_header;
+
+    return true;
+}
+
+boolean db_format_adapter_force_repack(void) {
+    return g_legacy_adapter_force_repack;
+}
+
+void db_format_adapter_mark_address(dbaddress *adr_out) {
+    if (!g_legacy_adapter_active || adr_out == NULL)
+        return;
+
+    if (g_legacy_widened_header.headerLength < (long) sizeof (tydatabaserecord_64))
+        g_legacy_widened_header.headerLength = (long) sizeof (tydatabaserecord_64);
+}
+
+boolean db_format_adapter_is_active(void) {
+    return g_legacy_adapter_active;
+}
+
+void db_format_set_legacy_source_db(hdldatabaserecord hdb) {
+    g_legacy_source_db = hdb;
+}
+
+boolean db_format_is_legacy_db(hdldatabaserecord hdb) {
+    return (hdb != nil) && (hdb == g_legacy_source_db);
 }
 
 boolean db_format_write_header64(const tydatabaserecord_64 *src, unsigned char *dest, size_t dest_size) {
@@ -907,16 +1051,10 @@ boolean detect_database_format(const tydatabaserecord *header) {
     if (header == NULL)
         return false;
 
-    if (header->versionnumber <= 6) {
-        use_64bit_format = false;
+    if (header->versionnumber <= 6)
         return true;  /* Legacy 32-bit format */
-    }
-
-    if (header->versionnumber >= 7) {
-        use_64bit_format = true;
+    if (header->versionnumber >= 7)
         return true;  /* New 64-bit format */
-    }
-
     return false;  /* Unsupported version */
 }
 
@@ -1007,15 +1145,60 @@ boolean create_root_backup(const char *original_path) {
     return true;
 }
 
-boolean migrate_32bit_to_64bit(const char *db_path) {
+/* During migration, skip externals whose addresses point at free blocks so packing won't fail. */
+static void db_format_sanitize_root_externals(hdlhashtable hroot) {
+    if (hroot == nil)
+        return;
+
+    long ix = 0;
+    hdlhashnode hnode = nil;
+    while (hashgetnthnode(hroot, ix++, &hnode)) {
+        if (hnode == nil)
+            continue;
+
+        tyvaluerecord *val = &(**hnode).val;
+        if (val->valuetype != externalvaluetype)
+            continue;
+
+        hdlexternalvariable hv = (hdlexternalvariable) val->data.externalvalue;
+        if (hv == nil)
+            continue;
+
+        if ((**hv).flinmemory)
+            continue;
+
+        dbaddress adr = (dbaddress) (**hv).variabledata;
+        boolean ok = false;
+        Handle htmp = nil;
+
+        if (adr != nildbaddress && adr != 0)
+            ok = dbrefhandle(adr, &htmp);
+
+        if (htmp != nil)
+            disposehandle(htmp);
+
+        if (ok)
+            continue; /* block exists; keep it */
+
+        bigstring bsname;
+        gethashkey(hnode, bsname);
+        fprintf(stderr,
+                "[headless] migrate dropping external name='%.*s' adr=0x%llx (free/unreadable)\n",
+                (int) bsname[0],
+                (char *) &bsname[1],
+                (unsigned long long) adr);
+
+        (**hnode).fldontsave = true;
+        (**hv).flinmemory = true;
+        (**hv).variabledata = 0;
+        (**hv).oldaddress = nildbaddress;
+        val->fldiskval = false;
+    }
+}
+
+static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     if (db_path == NULL || db_path[0] == '\0')
         return false;
-
-    if (!db_format_prepare_runtime())
-        return false;
-
-    if (db_trace_level() > 0)
-        db_format_trace_database_path(db_path);
 
     boolean ok = false;
     hdlfilenum src_fnum = 0;
@@ -1040,7 +1223,17 @@ boolean migrate_32bit_to_64bit(const char *db_path) {
     bigstring bsdst;
     tyfilespec src_fs;
     tyfilespec dst_fs;
-    boolean prev_use64 = use_64bit_format;
+    db_format_mode modern_mode = {true, false, false};
+    db_format_mode_push(&modern_mode);
+    const char *fail_step = "init";
+    const long header_len_final = (long) sizeof(tydatabaserecord_64);
+
+    fail_step = "prepare runtime";
+    if (!db_format_prepare_runtime())
+        goto cleanup;
+
+    if (db_trace_level() > 0)
+        db_format_trace_database_path(db_path);
 
     /* Derive output path (<base>-v7.root) */
     const char *ext = strrchr(db_path, '.');
@@ -1058,24 +1251,23 @@ boolean migrate_32bit_to_64bit(const char *db_path) {
     snprintf(temp_path, sizeof temp_path, "%s.tmp", output_path);
 
     copyctopstring(db_path, bspath);
+    fail_step = "pathtofilespec(src)";
     if (!pathtofilespec(bspath, &src_fs))
         goto cleanup;
 
+    fail_step = "openfile(src)";
     if (!openfile(&src_fs, &src_fnum, true))
         goto cleanup;
 
+    fail_step = "dbopenfile(src)";
     if (!dbopenfile(src_fnum, true))
         goto cleanup;
-
-    if (use_64bit_format) {
-        ok = true; /* Already modern */
-        goto cleanup;
-    }
 
     dbgetview(cancoonview, &view_address);
     if (view_address == nildbaddress)
         goto cleanup;
 
+    fail_step = "dbreference(Cancoon)";
     if (!dbreference(view_address, (long) sizeof cancoon_record, &cancoon_record))
         goto cleanup;
 
@@ -1085,29 +1277,55 @@ boolean migrate_32bit_to_64bit(const char *db_path) {
     root_address = (dbaddress) read_legacy_u32((const unsigned char *) &cancoon_record.adrroottable);
     script_address = (dbaddress) read_legacy_u32((const unsigned char *) &cancoon_record.adrscriptstring);
 
+    fail_step = "tableloadsystemtable(root)";
     if (!tableloadsystemtable(root_address, &hrootvariable, &hroot, false))
         goto cleanup;
 
+    fail_step = "langhash_materialize_disk_values(root)";
     if (!langhash_materialize_disk_values(hroot))
         goto cleanup;
 
+    /* Force full repack of the root table under the adapter so legacy blocks are rewritten in BE64. */
+    if (db_format_adapter_force_repack()) {
+        hdltablevariable hv = (hdltablevariable) hrootvariable;
+        hdlhashtable ht = (hdlhashtable) (**hv).variabledata;
+        if (ht != nil) {
+            (**ht).fldirty = true;
+            (**ht).flsubsdirty = true;
+            (**hv).oldaddress = nildbaddress; /* force new allocation */
+        }
+        (**hv).flinmemory = true;
+    }
+    /* Load root into memory before switching to 64-bit writes. */
+    fail_step = "tableverbinmemory(root)";
+    if (!tableverbinmemory((hdlexternalvariable) hrootvariable, HNoNode))
+        goto cleanup;
+
+    db_format_sanitize_root_externals(hroot);
+
     if (script_address != nildbaddress && script_address != 0) {
+        fail_step = "dbrefhandle(script)";
         if (!dbrefhandle(script_address, &hscript))
             goto cleanup;
     }
 
     copyctopstring(temp_path, bsdst);
+    fail_step = "pathtofilespec(dst)";
     if (!pathtofilespec(bsdst, &dst_fs))
         goto cleanup;
 
+    fail_step = "opennewfile(dst)";
     if (!opennewfile(&dst_fs, 'LAND', 'ROOT', &dst_fnum))
         goto cleanup;
 
-    use_64bit_format = true;
-
+    fail_step = "dbstartsaveas";
     if (!dbstartsaveas(dst_fnum))
         goto cleanup;
 
+    /* Switch the destination into BE64 write mode before any assigns. */
+    db_format_adapter_enable_wide_writes(NULL);
+
+    fail_step = "tablesavesystemtable(root)";
     if (!tablesavesystemtable(hrootvariable, &new_root_address))
         goto cleanup;
 
@@ -1116,6 +1334,7 @@ boolean migrate_32bit_to_64bit(const char *db_path) {
 
     if (hscript != nil) {
         new_script_address = script_address;
+        fail_step = "dbassignhandle(script)";
         if (!dbassignhandle(hscript, &new_script_address))
             goto cleanup;
         if ((uint64_t) new_script_address > 0xFFFFFFFFULL)
@@ -1124,28 +1343,57 @@ boolean migrate_32bit_to_64bit(const char *db_path) {
         new_script_address = 0;
     }
 
-    db_format_write_be16(&cancoon_record.versionnumber, cancoon_version);
-    db_format_write_be16(&cancoon_record.flags, cancoon_flags);
-    db_format_write_be16(&cancoon_record.ixprimaryagent, cancoon_primary);
-    db_format_write_be32(&cancoon_record.adrroottable, (uint32_t) new_root_address);
-    db_format_write_be32(&cancoon_record.adrscriptstring, (uint32_t) new_script_address);
+    if (drop_cancoon) {
+        /* Modern v7 root: drop legacy Cancoon and point view0 at the root table only. */
+        for (int i = 0; i < ctviews; ++i)
+            dbsetview(i, nildbaddress);
+        dbsetview(cancoonview, new_root_address);
+        new_cancoon_address = nildbaddress;
+    } else {
+        /* Legacy-compatible: rewrite Cancoon with updated pointers. */
+        db_format_write_be16(&cancoon_record.versionnumber, cancoon_version);
+        db_format_write_be16(&cancoon_record.flags, cancoon_flags);
+        db_format_write_be16(&cancoon_record.ixprimaryagent, cancoon_primary);
+        db_format_write_be32(&cancoon_record.adrroottable, (uint32_t) new_root_address);
+        db_format_write_be32(&cancoon_record.adrscriptstring, (uint32_t) new_script_address);
 
-    if (!dbassign(&new_cancoon_address, (long) sizeof cancoon_record, &cancoon_record))
-        goto cleanup;
+        fail_step = "dbassign(Cancoon)";
+        if (!dbassign(&new_cancoon_address, (long) sizeof cancoon_record, &cancoon_record))
+            goto cleanup;
 
-    dbsetview(cancoonview, new_cancoon_address);
+        dbsetview(cancoonview, new_cancoon_address);
+    }
 
+    fail_step = "dbendsaveas";
     if (!dbendsaveas())
         goto cleanup;
+
+    if (databasedata != nil) {
+        (**databasedata).headerLength = header_len_final;
+        (**databasedata).versionnumber = dbversionnumber;
+        if ((**databasedata).longversionMajor == 0)
+            (**databasedata).longversionMajor = 7;
+        if ((**databasedata).longversionMinor == 0)
+            (**databasedata).longversionMinor = 0;
+    }
 
     closefile(dst_fnum);
     dst_fnum = 0;
 
+    fail_step = "rename(tmp->final)";
     if (rename(temp_path, output_path) != 0)
         goto cleanup;
 
     if (db_trace_level() > 0)
         db_format_trace_database_path(output_path);
+    fprintf(stderr,
+            "[headless] migrate drop=%d ok view0=0x%llx new_root=0x%llx new_script=0x%llx header_len=%ld outfile=%s\n",
+            drop_cancoon,
+            (unsigned long long) ((databasedata != nil) ? (**databasedata).views[cancoonview] : 0),
+            (unsigned long long) new_root_address,
+            (unsigned long long) new_script_address,
+            (databasedata != nil) ? (**databasedata).headerLength : 0,
+            output_path);
 
     ok = true;
 
@@ -1155,7 +1403,7 @@ cleanup:
     if (hrootvariable != nil)
         tableverbdispose((hdlexternalvariable) hrootvariable, true);
 
-    use_64bit_format = prev_use64;
+    db_format_mode_pop();
 
     if (fldatabasesaveas)
         dbendsaveas();
@@ -1173,7 +1421,39 @@ cleanup:
             remove(temp_path);
     }
 
+    if (!ok) {
+        fprintf(stderr,
+                "[headless] migrate drop=%d fail at %s view=0x%llx root=0x%llx new_root=0x%llx script=0x%llx new_script=0x%llx cancoon=0x%llx new_cancoon=0x%llx tmp=%s\n",
+                drop_cancoon,
+                fail_step,
+                (unsigned long long) view_address,
+                (unsigned long long) root_address,
+                (unsigned long long) new_root_address,
+                (unsigned long long) script_address,
+                (unsigned long long) new_script_address,
+                (unsigned long long) view_address,
+                (unsigned long long) new_cancoon_address,
+                temp_path);
+    } else if (db_trace_level() > 0) {
+        fprintf(stderr,
+                "[headless] migrate drop=%d ok view=0x%llx root=0x%llx new_root=0x%llx new_script=0x%llx outfile=%s\n",
+                drop_cancoon,
+                (unsigned long long) view_address,
+                (unsigned long long) root_address,
+                (unsigned long long) new_root_address,
+                (unsigned long long) new_script_address,
+                output_path);
+    }
+
     return ok;
+}
+
+boolean migrate_32bit_to_64bit(const char *db_path) {
+    return migrate_internal(db_path, true);
+}
+
+boolean migrate_32bit_to_64bit_drop_cancoon(const char *db_path) {
+    return migrate_internal(db_path, true);
 }
 
 boolean ensure_database_modern(const char *db_path, boolean *migrated, char *output_path, size_t output_path_size) {
@@ -1195,7 +1475,7 @@ boolean ensure_database_modern(const char *db_path, boolean *migrated, char *out
     if (!detect_database_format(&header))
         return false;
 
-    if (use_64bit_format) {
+    if (db_format_mode_current().use_64bit_format) {
         /* Already modern - return original path */
         if (output_path && output_path_size > 0) {
             strncpy(output_path, db_path, output_path_size);
@@ -1205,7 +1485,7 @@ boolean ensure_database_modern(const char *db_path, boolean *migrated, char *out
         return true;
     }
 
-    if (!migrate_32bit_to_64bit(db_path))
+    if (!migrate_internal(db_path, true))
         return false;
 
     /* Migration succeeded; return path to new v7 file */
@@ -1215,8 +1495,6 @@ boolean ensure_database_modern(const char *db_path, boolean *migrated, char *out
     }
 
     /* Future reads should treat file as modern. */
-    use_64bit_format = true;
-
     if (migrated)
         *migrated = true;
     return true;
@@ -1237,4 +1515,43 @@ boolean db_format_last_backup_path(char *buffer, size_t length) {
 
 void db_format_clear_last_backup_path(void) {
     last_backup_path[0] = '\0';
+}
+
+void db_format_force_strict_v7_reader(void) {
+    g_legacy_adapter_active = false;
+    g_legacy_adapter_force_repack = false;
+    memset(&g_legacy_widened_header, 0, sizeof g_legacy_widened_header);
+    db_format_mode mode = {true, false, false};
+    db_format_mode_apply(&mode);
+}
+void db_format_mode_apply(const db_format_mode *mode) {
+    use_64bit_format = mode->use_64bit_format; /* compatibility shim; remove once callers stop exporting it */
+    g_legacy_adapter_force_repack = mode->adapter_repack;
+}
+
+void db_format_mode_push(const db_format_mode *mode) {
+    db_format_mode effective = {false, false, false};
+    if (mode != NULL)
+        effective = *mode;
+    if (g_mode_depth < (int) (sizeof g_mode_stack / sizeof g_mode_stack[0]))
+        g_mode_stack[g_mode_depth++] = effective;
+    db_format_mode_apply(&effective);
+}
+
+void db_format_mode_pop(void) {
+    if (g_mode_depth > 0)
+        g_mode_depth--;
+    if (g_mode_depth > 0)
+        db_format_mode_apply(&g_mode_stack[g_mode_depth - 1]);
+    else {
+        db_format_mode reset = {false, false, false};
+        db_format_mode_apply(&reset);
+    }
+}
+
+db_format_mode db_format_mode_current(void) {
+    if (g_mode_depth > 0)
+        return g_mode_stack[g_mode_depth - 1];
+    db_format_mode empty = {use_64bit_format, g_legacy_adapter_force_repack, false};
+    return empty;
 }

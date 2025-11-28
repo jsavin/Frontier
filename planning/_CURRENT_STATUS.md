@@ -3,58 +3,26 @@
 Status
 - State: In Progress
 - Phase: Carbon Migration / Runtime Modernization
-- Last Updated: 2025-11-24 (Evening)
+- Last Updated: 2025-11-28 (Midday)
 - Owner: Codex
-- Notes: Primary hand-off summary; update whenever major milestones land.
-- 2025-11-24 02:00 CST (Codex): Landed version-based reader router + header decode guard; tests updated. Next: implement legacy adapter widening and strict v7 reader on branch `feature/legacy_adapter_widening_and_v7_reader`, then tackle runtime/CLI stabilization separately.
+- Notes: Primary hand-off summary for active work only.
+- 2025-11-28 (Codex): Migration runs now complete with canonical v7 headers: `version=7`, `headerLength=88`, view0 set to the new root, other views zeroed, Cancoon dropped. Free-block externals are skipped during packing so the packer no longer dies on stale addresses. Header logging is gated by `FRONTIER_DB_TRACE_HEADERS`. Added runtime header regression (migration path) and unit test for canonical header size/version.
+- 2025-11-27 (Codex): Seeded legacy packer fork (`Common/source/legacy/*_legacy.c`) and adjusted modern `tablepack.c` to default BE64. Added thread-local format mode stack (`db_format_mode_push/pop`) and removed `use_64bit_format` flips across packers/tests/stubs; all tests rebuilt and pass (`db_format_tests`, `runtime_tests`, `cli_runtime_tests`). BE64 view0 serialization now covered by unit test. Outstanding warnings trimmed to none in tests (runtime retains known logs only).
+- 2025-11-26 (Codex): Reader/writer split into `db_reader_legacy.c`, `db_reader_modern.c`, `db_writer_modern.c`; `make -C tests db_format_tests` passes with the longstanding `__builtin_return_address` warning and an unused helper in `db.c`.
+- 2025-11-26 (Codex): Detailed split plan lives at `planning/phase3/modern_reader_writer_split.md`.
+- 2025-11-26 (Codex): Payload widening round-trip is **critical**: plan updated to add synthetic legacy→modern→modern-read equality tests, file-level migrated root validation, and BE64 payload widening (tables/records/externals) before claiming the split complete. See `planning/phase3/modern_reader_writer_split.md`.
+- 2025-11-26 (Codex): Design principle: keep modern BE64 code branch-free—fork legacy vs modern logic into separate functions/files instead of runtime format branches.
+- 2025-11-26 (Codex): Naming decision: modern packers keep canonical names; legacy packers move to `legacy_*/` dirs with `_legacy` entry points so modern remains the default surface.
 
+**Branches in flight**: `feature/carbon-migration-plan`, `feature/headless-system-bootstrap`, `feature/legacy_adapter_widening_and_v7_reader`
 
-**Last Updated**: November 23, 2025  \
-**Branches in flight**: `feature/carbon-migration-plan`, `feature/headless-system-bootstrap`
-- 2025-11-23 23:59 CST (Codex): Reviewed current status and next steps; no code changes this session, priorities unchanged.
-- 2025-11-24 00:05 CST (Codex): Started BE/64-bit sweep on packers (outline/langpack/langtree/regexp now use explicit BE helpers for length/type fields); remaining packers/writers still need conversion; tests not run this pass.
-- 2025-11-24 01:03 CST (Codex): Completed BE/64-bit sweep (db header fields, menu/lang/wptree/odb/cancoon/wpengine/memory/shell sysverbs/pict all use BE helpers). Added procedural byte-level goldens + PICT length check to `tests/db_format_tests`; tests re-run (`make -C tests db_format_tests`, `make -C tests runtime_tests`) and pass with existing `__builtin_return_address` warning. Ready for PR; cross-arch coverage now enforced via procedural goldens until CI runs on x86.
-- 2025-11-24 01:15 CST (Codex): PR merged (`feature/v7-be64-writers-completion`); branch deleted. Next focus: split legacy adapter vs clean v7 reader, re-enable CLI `clock.now()` once reader parity is in, and keep procedural goldens as cross-arch sentinels until x86 CI is available.
-- 2025-11-24 01:18 CST (Codex): Drafted reader split plan at `planning/phase3/v7_reader_refactor_and_legacy_adapter_plan.md` (PR breakdown for legacy adapter + clean v7 reader + coverage).
-- 2025-11-24 02:15 CST (Codex): Added widening plan at `planning/phase3/v7_reader_widening_plan.md` (legacy widening + strict v7 reader tasks). Router/decode guard already merged; widening work will proceed on `feature/legacy_adapter_widening_and_v7_reader`.
-
-- Headless builds no longer include or link any Paige headers: `portable/wptext_portable.{c,h}` collapsed to no-op bootstrap stubs, and the entire `portable/wptext_runtime.c` path now uses the new `paige_text_extractor` + UTF‑8⇄RTF helpers for packed blobs.
-- `wp_portable_state_pack_portable` now caches real RTF payloads derived from the extractor (or copies RTF payloads for existing `WPRT` blobs) and wraps them with the portable header without ever touching `pg*` APIs. The same helper feeds `wpverbpack` so v7 saves always emit portable `WPRT` handles.
-- `wp_portable_extract_plaintext` decodes the new RTF payloads back into UTF‑8 handles (with a logged fallback if an unexpected control word shows up). `langhash_prepare_wordprocessor_value` and `wpverbpacktotext` now consume the Paige-free parser exclusively, and `langhash_materialize_external` converts `wptext` externals during table loads so migrator/CLI callers see plain strings immediately.
-- `paige_text_extractor` now resizes handles through the runtime memory API (`gethandlesize/sethandlesize`) and guards against overflow, so chunk concatenation works even when we run against OS-managed handles. `tests/paige_text_tests` covers the real Paige fixtures (`hello_macroman`, `examples_testText`) with the new logic.
-- Phase 2 RTF emission is live: the extractor now captures Paige style/paragraph/font metadata, `wptext_emit_rtf_from_paige_blob` streams proper RTF (fonts, inline styling) without Paige, and `wp_portable_state_cache_rtf` uses it to populate `WPRT` handles. Added a CLI helper (`tools/wptext_dump_rtf.c`) plus a regression test that verifies the emitted RTF for the `hello_macroman` fixture.
-- `FRONTIER_REGEN_ROOT=databases/Frontier-v6.root ./tests/runtime_tests` now completes end-to-end; latest log lives at `/tmp/runtime_migrate_run2.log` and produced `databases/Frontier-v6-v7.root` without tripping the Paige extractor fallback path.
-- Table serialization now writes a v4 header with the reserved 1 KB padding. `hashunpacktable` skips the reserved block when reading, so both 32‑bit and 64‑bit tables now satisfy the new `table_header_regression` checks.
-- `wp_portable_diskheader`/`wp_portable_header` switched to fixed-width integer fields, which fixed the `utf8bytelen` bookkeeping and unblocked all WP text smoke tests. Added `wp_portable_load_portable_blob_for_test` so the runtime regression harness can validate `WPRT` blobs directly.
-- Regression coverage: `tests/paige_text_tests` and `tests/runtime_tests` both pass locally (see `/tmp/runtime_tests.log` for the latest run). The migrator now succeeds on the canonical `Frontier-v6.root` sample.
-- Serializer round-trip logging tightened: `hashunpacktable` now checks remaining bytes before calling `loadfromhandle`, so the expected end-of-records path no longer emits `[headless] loadfromhandle fail` noise. Re-ran the full migrator afterward; fresh logs live at `/tmp/runtime_tests.log`.
-- Database portability gap: v7 headers now write with explicit big-endian helpers. `dbflushheader` serializes `tydatabaserecord_64` via `db_format_write_header64` (runtime-only fields zeroed), `tableverbpack/tableverbunpack` emit/consume big-endian dbaddresses regardless of host endianness, and block headers/trailers now store 64-bit big-endian sizes/links (avail nodes write/read BE64 links). `make -C tests db_format_tests -B` and `make -C tests runtime_tests`/`cli_runtime_tests` pass locally (warnings only). Follow-ups (tracked in `planning/phase3/big_endian_portability_audit.md`):
-  1. Extend table/record packers to emit big-endian lengths/addresses (the decoder already does this for legacy payloads). **Table dbaddress packing is fixed; double-check any remaining record-length writers that still rely on `memtodisklong`.**
-  2. Add regression tests that open a root written on one architecture and verify the header/record bytes match a golden big-endian reference (include >4 GB free-span simulation/sparse file and clean up artifacts on success). In-memory >4 GB free-span encode/decode added to `tests/db_format_tests`.
-  3. Update docs (`docs/database_architecture.md`, `planning/TODO_future_improvements.md`) once the on-disk format is guaranteed portable.
-- CLI regression: `tests/cli_runtime_tests` currently skips the `clock.now()` check because `frontier-cli --system-root databases/Frontier-v6-v7.root` fails to load v7 databases (same endianness issue above). Once the header writes are fixed, re-run the CLI tests so the `clock.now()` path becomes a real regression instead of a skip.
-
-### Migrator status – `Frontier-v6.root`
-- Repro: `FRONTIER_REGEN_ROOT=databases/Frontier-v6.root ./tests/runtime_tests`
-- Outcome: Success as of Nov 20. See `/tmp/runtime_migrate_run2.log` for the full transcript; the run emitted `databases/Frontier-v6-v7.root` with every wptext external converted through `paige_text_extractor`.
-- Follow-ups:
-  * Keep `/tmp/runtime_migrate.log` around for comparison (that log still shows the pre-fix crash for reference).
-  * Spot-check the generated `Frontier-v6-v7.root` in follow-on tests once the v7 reader path is wired up.
-
-## Medium-Term Goals
-- Finish the wptext plain-text conversion so every `langhash_prepare_wordprocessor_value` either returns UTF-8 text or a clearly logged placeholder, then ensure the migrator packs those values without leaning on Paige.
-- Confirm runtime parity between the headless bootstrap and UI routes (e.g., `system.verbs → kernelcall → EFP`) once wptext and doc-info no longer destabilize the migrator.
-- Keep the automation/IPC boundary documented so headless builds can safely expose JSON-RPC while UI builds retain OSA, as tracked in `planning/TODO_future_improvements.md`.
-
-## Long-Term Goals
-- Finish the Phase 2 runtime context refactor so simultaneous CLI/headless clients share `FrontierContext` backend handles without touching globals.
-- Land the Phase 3 concurrency/task-context plan, widen paging/tracing to multi-threaded guard-malloc tests, and keep `planning/TODO_future_improvements.md` aligned with heading priorities.
-- Expand developer tooling (OSS compliance, doc server, LSP work) so future IDE/bridge projects and release automation can rely on the documented TODO backlog.
+## Open Items
+- Payload widening/round-trip still pending: need synthetic legacy→modern→modern-read equality tests and file-level validation on migrated roots (tables/records/externals), plus strict modern reader routing for v7 opens.
+- Remaining warnings: none in tests; runtime still logs headless traces. (Keep an eye on any new warnings after payload widening work.)
+- Re-run migrator/CLI smoke on additional legacy roots once payload widening lands; stash logs.
 
 ## Next Steps
-- Wire the v7 reader/materializer to consume `WPRT` externals directly, so downstream tooling can hydrate RTF payloads without any Paige hooks (document behavior in `docs/database_architecture.md` once done).
-- Audit additional legacy roots (e.g., customer saves) with `FRONTIER_REGEN_ROOT=… ./tests/runtime_tests` and stash each log under `/tmp` with a timestamp so regressions stand out quickly.
-- Keep expanding fixture coverage for wptext parsing—every time we dump a new Paige blob, add it to `tests/fixtures/wptext/` and update `tests/components/paige_text_tests.c`.
-- Continue running `make -C tests runtime_tests` + the migrator smoke after each change, attaching the latest log paths here so the next session can pick up immediately.
-- Re-run the full CLI/runtime suites once the big-endian header changes land in the reader path to confirm `clock.now()` and v7 opens behave the same on arm64/x86.
-- New plan doc: `planning/phase3/big_endian_portability_audit.md` tracks the remaining BE audit (avail list serialization, record metadata, reader parity, cross-arch regression, docs).
+- Build payload widening + round-trip tests: synthetic legacy payloads repacked via modern writer, then decoded via modern reader; assert logical equality and BE64-only encodings.
+- Route runtime/CLI v7 opens through the strict modern reader once payload widening is ready; rerun `make -C tests runtime_tests` and `make -C tests cli_runtime_tests`.
+- Add byte-level regressions for adapter-widened payloads (table/record/externals) to guard the new split.
+- Re-run `FRONTIER_REGEN_ROOT=… ./tests/runtime_tests` on additional legacy roots after widening; stash logs under `/tmp` with timestamps.

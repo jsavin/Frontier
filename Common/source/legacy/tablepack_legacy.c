@@ -48,9 +48,10 @@
 #include "tableverbs.h"
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
 
+// 2025-11-27 Codex: Legacy 32-bit table pack/unpack fork retained for migration/testing.
 
 
-boolean tablepacktable (hdlhashtable htable, boolean flmemory, Handle *hpacked, boolean *flmustsave) {
+boolean tablepacktable_legacy (hdlhashtable htable, boolean flmemory, Handle *hpacked, boolean *flmustsave) {
 	
 	/*
 	10/6/91 dmb: mergehandles now consumes both source handles.
@@ -66,7 +67,7 @@ boolean tablepacktable (hdlhashtable htable, boolean flmemory, Handle *hpacked, 
 	
 	if (!hashpacktable (ht, flmemory, &hpackedtable, flmustsave)) {
 #if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[headless] tablepacktable hashpacktable failed flmemory=%d table=%p\n",
+		fprintf(stderr, "[headless] tablepacktable_legacy hashpacktable failed flmemory=%d table=%p\n",
 			(int)flmemory, (void *)ht);
 #endif
 		return (false);
@@ -88,7 +89,7 @@ boolean tablepacktable (hdlhashtable htable, boolean flmemory, Handle *hpacked, 
 			
 			disposehandle (hpackedtable);
 #if defined(FRONTIER_HEADLESS)
-			fprintf(stderr, "[headless] tablepacktable tablepackformats failed table=%p\n", (void *)ht);
+			fprintf(stderr, "[headless] tablepacktable_legacy tablepackformats failed table=%p\n", (void *)ht);
 #endif
 			return (false);
 			}
@@ -97,7 +98,7 @@ boolean tablepacktable (hdlhashtable htable, boolean flmemory, Handle *hpacked, 
 	fl = mergehandles (hpackedtable, hpackedformats, hpacked);
 	if (!fl) {
 #if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[headless] tablepacktable mergehandles failed table=%p tableHandle=%p formats=%p\n",
+		fprintf(stderr, "[headless] tablepacktable_legacy mergehandles failed table=%p tableHandle=%p formats=%p\n",
 			(void *)ht, (void *)hpackedtable, (void *)hpackedformats);
 #endif
 	}
@@ -109,10 +110,10 @@ boolean tablepacktable (hdlhashtable htable, boolean flmemory, Handle *hpacked, 
 	*/
 	
 	return (fl);
-	} /*tablepacktable*/
+	} /*tablepacktable_legacy*/
 
 
-boolean tableunpacktable (Handle hpacked, boolean flmemory, hdlhashtable *htable) {
+boolean tableunpacktable_legacy (Handle hpacked, boolean flmemory, hdlhashtable *htable) {
 	
 	/*
 	9/24/91 dmb: don't treat format unpacking failure as a fatal error.
@@ -142,7 +143,7 @@ boolean tableunpacktable (Handle hpacked, boolean flmemory, hdlhashtable *htable
 		return (false);
 
 #if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] tableunpacktable split merged=%ld table=%ld formats=%ld\n",
+	fprintf(stderr, "[headless] tableunpacktable_legacy split merged=%ld table=%ld formats=%ld\n",
 	        merged_size,
 	        hpackedtable ? gethandlesize (hpackedtable) : 0L,
 	        hpackedformats ? gethandlesize (hpackedformats) : 0L);
@@ -194,10 +195,10 @@ boolean tableunpacktable (Handle hpacked, boolean flmemory, hdlhashtable *htable
 		
 		return (false);
 		}
-	} /*tableunpacktable*/
+	} /*tableunpacktable_legacy*/
 
 
-boolean tableverbmemorypack (hdlexternalvariable h, Handle *hpacked, hdlhashnode hnode) {
+boolean tableverbmemorypack_legacy (hdlexternalvariable h, Handle *hpacked, hdlhashnode hnode) {
 	
 	register hdlexternalvariable hv = h;
 	register hdlhashtable ht;
@@ -215,7 +216,7 @@ boolean tableverbmemorypack (hdlexternalvariable h, Handle *hpacked, hdlhashnode
 	
 	tablecheckwindowrect (ht); 
 	
-	fl = tablepacktable (ht, true, &hpush, &fldummy);
+	fl = tablepacktable_legacy (ht, true, &hpush, &fldummy);
 	
 	if (fltempload)
 		tableverbunload (hv);
@@ -228,10 +229,10 @@ boolean tableverbmemorypack (hdlexternalvariable h, Handle *hpacked, hdlhashnode
 		}
 	
 	return (fl);
-	} /*tableverbmemorypack*/
+	} /*tableverbmemorypack_legacy*/
 
 
-boolean tableverbmemoryunpack (Handle hpacked, long *ixload, hdlexternalvariable *h, boolean flxml) {
+boolean tableverbmemoryunpack_legacy (Handle hpacked, long *ixload, hdlexternalvariable *h, boolean flxml) {
 	
 	/*
 	create a new outline variable -- not in memory.
@@ -246,7 +247,7 @@ boolean tableverbmemoryunpack (Handle hpacked, long *ixload, hdlexternalvariable
 	if (!loadhandleremains (*ixload, hpacked, &hpackedtable))
 		return (false);
 	
-	if (!tableunpacktable (hpackedtable, true, &htable)) /*always disposes of hpackedtable*/
+	if (!tableunpacktable_legacy (hpackedtable, true, &htable)) /*always disposes of hpackedtable*/
 		return (false);
 	
 	ht = htable; /*move into register*/
@@ -263,10 +264,10 @@ boolean tableverbmemoryunpack (Handle hpacked, long *ixload, hdlexternalvariable
 	(**ht).fldirty = true;
 	
 	return (true); /*in memory*/
-	} /*tableverbmemoryunpack*/
+	} /*tableverbmemoryunpack_legacy*/
 
 
-boolean tableverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddress) {
+boolean tableverbpack_legacy (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddress) {
 	
 	/*
 	12/4/91 dmb: set windowinfo's dirty bit to false after save
@@ -284,17 +285,12 @@ boolean tableverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdba
 	boolean fltempload = false;
 	boolean flmustsave = false;
 	hdlwindowinfo hinfo;
-    db_format_mode prev_mode = db_format_mode_current();
-    db_format_mode modern_mode = prev_mode;
-	const boolean adapter_repack = db_format_adapter_force_repack() && (databasedata != nil);
-
-	/* Modern path: always emit BE64 addresses. */
-    modern_mode.use_64bit_format = true;
-    db_format_mode_push(&modern_mode);
+	const boolean adapter_repack = db_format_adapter_force_repack();
+    db_format_mode legacy_mode = {false, adapter_repack, false};
+    db_format_mode_push(&legacy_mode);
 
 #if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] tableverbpack start flinmemory=%d adapter_repack=%d databasedata=%p\n",
-	        (int) (**hv).flinmemory, (int) adapter_repack, (void *) databasedata);
+	fprintf(stderr, "[headless] tableverbpack_legacy start\n");
 #endif
 	
 	if (fldatabasesaveas) {
@@ -307,26 +303,22 @@ boolean tableverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdba
 		*flnewdbaddress = true; /*it's in another database even*/
 		}
 
-	if (!(**hv).flinmemory) {
-		if (adapter_repack) {
-            db_format_mode legacy_load = modern_mode;
-            legacy_load.use_64bit_format = false; /* legacy read while loading source */
-            db_format_mode_push(&legacy_load);
-			fltempload = true;
-			if (!tableverbinmemory (hv, HNoNode)) {
-                db_format_mode_pop();
-				return (false);
-            }
+	if (adapter_repack && !(**hv).flinmemory) {
+		fltempload = true;
+		if (!tableverbinmemory(hv, HNoNode)) {
             db_format_mode_pop();
-		} else { /*not in memory, just push the old db address*/
-		
-			adr = (dbaddress) (**hv).variabledata;
-			
-			*flnewdbaddress = false;
-
-			goto pushaddress;
-		}
+			return (false);
+        }
 	}
+
+	if (!(**hv).flinmemory && !adapter_repack) { /*not in memory, just push the old db address*/
+		
+		adr = (dbaddress) (**hv).variabledata;
+		
+		*flnewdbaddress = false;
+
+		goto pushaddress;
+		}
 		
 	adr = (**hv).oldaddress;
 	
@@ -343,31 +335,29 @@ boolean tableverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdba
 	
 	assert (fldatabasesaveas || (((**ht).fldirty || (**ht).flsubsdirty) == !tablenosubsdirty (ht)));
 	
+	if (!fldatabasesaveas && !(**ht).flsubsdirty && !(**ht).fldirty) { /*none of our subs are dirty, old address still good*/
+
+		*flnewdbaddress = false;
+
+		goto pushaddress;
+		}
+	
 	/*it's in memory and either the table itself or one of its subs are dirty, so pack the table*/
 	
-	fl = tablepacktable (ht, false, &hpackedtable, &flmustsave);
+	fl = tablepacktable_legacy (ht, false, &hpackedtable, &flmustsave);
 	
 	if (!fl) {
 #if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[headless] tablepacktable failed for system table\n");
+		fprintf(stderr, "[headless] tablepacktable_legacy failed for system table\n");
 #endif
-			goto pushaddress;
-		}
-
+		goto pushaddress;
+	}
+	
 	/*only save if we're saving a copy, if the table itself is dirty (i.e. a scalar or the name of an object changed),
 		or if one of its subs changed in  a way so that the table itself actually needs saving now*/
 	
-	if (fldatabasesaveas || (**ht).fldirty || flmustsave) {
-		if (databasedata != nil)
-			fl = dbsavehandle (hpackedtable, &adr);
-		else {
-#if defined(FRONTIER_HEADLESS)
-			fprintf(stderr, "[headless] tableverbpack skipping dbsavehandle; databasedata is nil\n");
-#endif
-			fl = true;
-			adr = 0;
-		}
-	}
+	if (fldatabasesaveas || (**ht).fldirty || flmustsave)
+		fl = dbsavehandle (hpackedtable, &adr);
 	
 	
 	disposehandle (hpackedtable);
@@ -390,8 +380,8 @@ boolean tableverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdba
 		shellsetwindowchanges (hinfo, false);
 	
 	pushaddress:
-    db_format_mode_pop(); /* restore previous mode */
-
+	db_format_mode_pop(); /* restore previous mode */
+	
 	if (fltempload)
 		tableverbunload (hv);
 	
@@ -417,17 +407,17 @@ boolean tableverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdba
 	}
 
 	return (true);
-	} /*tableverbpack*/
+	} /*tableverbpack_legacy*/
 
 
-boolean tableverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *h, boolean flxml) {
+boolean tableverbunpack_legacy (Handle hpacked, long *ixload, hdlexternalvariable *h, boolean flxml) {
 
 	dbaddress rawadr = 0;
 
 	long remaining = hpacked ? (gethandlesize(hpacked) - *ixload) : 0;
 
 	if (db_format_mode_current().use_64bit_format && ((int)sizeof (dbaddress) == 8)) {
-		fprintf(stderr, "[headless] tableverbunpack use_64bit_format=true sizeof(dbaddress)=%zu remaining=%ld\n",
+		fprintf(stderr, "[headless] tableverbunpack_legacy use_64bit_format=true sizeof(dbaddress)=%zu remaining=%ld\n",
 		        sizeof(dbaddress), remaining);
 		if (remaining >= (long) sizeof (dbaddress)) {
 			unsigned char adrbytes[sizeof (dbaddress)];
@@ -435,7 +425,7 @@ boolean tableverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *h, b
 				return (false);
 			rawadr = (dbaddress) db_format_read_be64(adrbytes);
 #if defined(FRONTIER_HEADLESS)
-			fprintf(stderr, "[headless] tableverbunpack 64-bit address=0x%016llx\n", (unsigned long long) rawadr);
+			fprintf(stderr, "[headless] tableverbunpack_legacy 64-bit address=0x%016llx\n", (unsigned long long) rawadr);
 #endif
 		} else if (remaining == (long) sizeof (int32_t)) {
 			unsigned char raw32[sizeof (uint32_t)];
@@ -445,12 +435,12 @@ boolean tableverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *h, b
 				uint32_t raw32_val = db_format_read_be32(raw32);
 				rawadr = (dbaddress) raw32_val;
 #if defined(FRONTIER_HEADLESS)
-				fprintf(stderr, "[headless] tableverbunpack fallback 32-bit address=0x%08x\n", raw32_val);
+				fprintf(stderr, "[headless] tableverbunpack_legacy fallback 32-bit address=0x%08x\n", raw32_val);
 #endif
 			}
 		} else {
 #if defined(FRONTIER_HEADLESS)
-			fprintf(stderr, "[headless] tableverbunpack unexpected remaining bytes=%ld\n", remaining);
+			fprintf(stderr, "[headless] tableverbunpack_legacy unexpected remaining bytes=%ld\n", remaining);
 #endif
 			return (false);
 		}
@@ -462,13 +452,13 @@ boolean tableverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *h, b
 			uint32_t raw32_val = db_format_read_be32(raw32);
 			rawadr = (dbaddress) raw32_val;
 #if defined(FRONTIER_HEADLESS)
-			fprintf(stderr, "[headless] tableverbunpack legacy 32-bit address=0x%08lx\n", (unsigned long) raw32_val);
+			fprintf(stderr, "[headless] tableverbunpack_legacy legacy 32-bit address=0x%08lx\n", (unsigned long) raw32_val);
 #endif
 		}
 	}
 
 	return (newtablevariable (false, rawadr, (hdltablevariable *) h, flxml));
-	} /*tableverbunpack*/
+	} /*tableverbunpack_legacy*/
 
 
 static boolean tablepacktotextvisit (bigstring bsname, hdlhashnode hnode, tyvaluerecord val, ptrvoid refcon) {
@@ -502,7 +492,7 @@ static boolean tablepacktotextvisit (bigstring bsname, hdlhashnode hnode, tyvalu
 	} /*tablepacktotextvisit*/
 
 
-boolean tableverbpacktotext (hdlexternalvariable h, Handle htext) {
+boolean tableverbpack_legacytotext (hdlexternalvariable h, Handle htext) {
 	
 	/*
 	12/23/92 dmb: hashinversesearch now takes table as param; don't push/pop
@@ -534,10 +524,10 @@ boolean tableverbpacktotext (hdlexternalvariable h, Handle htext) {
 		tableverbunload (hv);
 	
 	return (fl);
-	} /*tableverbpacktotext*/
+	} /*tableverbpack_legacytotext*/
 
 
-boolean tableverbgettimes (hdlexternalvariable h, long *timecreated, long *timemodified, hdlhashnode hnode) {
+boolean tableverbgettimes_legacy (hdlexternalvariable h, long *timecreated, long *timemodified, hdlhashnode hnode) {
 	
 	register hdlexternalvariable hv = h;
 	register hdlhashtable ht;
@@ -552,10 +542,10 @@ boolean tableverbgettimes (hdlexternalvariable h, long *timecreated, long *timem
 	*timemodified = (**ht).timelastsave;
 	
 	return (true);
-	} /*tableverbgettimes*/
+	} /*tableverbgettimes_legacy*/
 
 
-boolean tableverbsettimes (hdlexternalvariable h, long timecreated, long timemodified, hdlhashnode hnode) {
+boolean tableverbsettimes_legacy (hdlexternalvariable h, long timecreated, long timemodified, hdlhashnode hnode) {
 	
 	register hdlexternalvariable hv = h;
 	register hdlhashtable ht;
@@ -570,7 +560,7 @@ boolean tableverbsettimes (hdlexternalvariable h, long timecreated, long timemod
 	(**ht).timelastsave = timemodified;
 	
 	return (true);
-	} /*tableverbsettimes*/
+	} /*tableverbsettimes_legacy*/
 
 
 static boolean findusedblocksvisit (hdlhashnode hnode, ptrvoid refcon) {
@@ -605,7 +595,7 @@ static boolean findusedblocksvisit (hdlhashnode hnode, ptrvoid refcon) {
 	} /*findusedblocksvisit*/
 
 
-boolean tableverbfindusedblocks (hdlexternalvariable h, bigstring bspath) {
+boolean tableverbfindusedblocks_legacy (hdlexternalvariable h, bigstring bspath) {
 	
 	register hdlexternalvariable hv = h;
 	register hdlhashtable ht;
@@ -631,4 +621,4 @@ boolean tableverbfindusedblocks (hdlexternalvariable h, bigstring bspath) {
 		tableverbunload (hv);
 	
 	return (fl);
-	} /*tableverbfindusedblocks*/
+	} /*tableverbfindusedblocks_legacy*/

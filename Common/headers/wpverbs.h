@@ -54,6 +54,13 @@ extern boolean wpverbinmemory (hdlexternalvariable);
 
 extern boolean wpverbpacktotext (hdlexternalvariable, Handle);
 
+/* Legacy (32-bit) pack/unpack shims used during migration. */
+extern boolean wpverbmemorypack_legacy (hdlexternalvariable, Handle *);
+extern boolean wpverbmemoryunpack_legacy (Handle, long *, hdlexternalvariable *);
+extern boolean wpverbpack_legacy (hdlexternalvariable, Handle *, boolean *);
+extern boolean wpverbunpack_legacy (Handle, long *, hdlexternalvariable *);
+extern boolean wpverbpacktotext_legacy (hdlexternalvariable, Handle);
+
 extern boolean wpverbgetsize (hdlexternalvariable, long *);
 
 extern boolean wpverbgettimes (hdlexternalvariable, long *, long *);
@@ -67,5 +74,4 @@ extern boolean wpedit (hdlexternalvariable, hdlwindowinfo, ptrfilespec, bigstrin
 extern boolean wpverbfind (hdlexternalvariable, boolean *);
 
 extern boolean wpstart (void);
-
 

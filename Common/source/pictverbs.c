@@ -335,15 +335,30 @@ boolean pictverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbad
 	dbaddress adr;
 	hdlwindowinfo hinfo;
 	boolean fltempload = false;
+	const boolean adapter_repack = db_format_adapter_force_repack();
+    db_format_mode prev_mode = db_format_mode_current();
+    db_format_mode working_mode = prev_mode;
 	
 	if (!(**hv).flinmemory) { /*simple case, pict is resident in the db*/
 		
-		if (flconvertingolddatabase) {
+		if (flconvertingolddatabase || adapter_repack) {
 			
+			if (adapter_repack) {
+                working_mode.use_64bit_format = false; /* legacy read while loading source */
+                db_format_mode_push(&working_mode);
+            }
+
 			if (!pictverbinmemory (hv))
+            {
+                if (adapter_repack)
+                    db_format_mode_pop();
 				return (false);
+            }
 			
 			fltempload = true;
+
+			if (adapter_repack)
+                db_format_mode_pop();
 			}
 		else {
 		
@@ -362,6 +377,14 @@ boolean pictverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbad
 	pictverbcheckwindowrect (hp);
 	
 	adr = (**hv).oldaddress; /*place where this pict used to be stored*/
+
+	if (adapter_repack) {
+		(**hp).fldirty = true;
+		db_format_adapter_enable_wide_writes(NULL);
+        working_mode.use_64bit_format = true; /* write modern */
+        db_format_mode_push(&working_mode);
+		*flnewdbaddress = true;
+	}
 	
 	if (!fldatabasesaveas && !(**hp).fldirty) /*don't need to update the db version of the pict*/
 		goto pushaddress;
@@ -396,7 +419,7 @@ boolean pictverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbad
 		shellsetwindowchanges (hinfo, false);
 		}
 	
-	pushaddress:
+pushaddress:
 	
 	if (!fldatabasesaveas) {
 	
@@ -407,6 +430,10 @@ boolean pictverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbad
 	else
 		*flnewdbaddress = true;	
 	
+	if (adapter_repack)
+        db_format_mode_pop();
+    db_format_mode_apply(&prev_mode);
+
 	return (pushlongondiskhandle (adr, *hpacked));
 	} /*pictverbpack*/
 
@@ -1167,7 +1194,3 @@ boolean pictstart (void) {
 	
 	return (true);
 	} /*pictstart*/
-
-
-
-

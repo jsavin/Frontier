@@ -1,7 +1,7 @@
 # Status
 - State: In Progress (Phase 3)
-- Last Updated: 2025-11-24 (Codex)
-- Notes: Version-based router + header decode guard merged; loaders currently stubbed (legacy keeps use_64bit_format=false, v7 sets it true). Next step is real legacy widening + strict v7 reader on branch `feature/legacy_adapter_widening_and_v7_reader`; runtime/CLI stabilization will follow separately.
+- Last Updated: 2025-11-26 (Codex)
+- Notes: **Done:** Version-based router + header decode guard merged (PR #49). Legacy loader now widens the header for v7 packers and keeps legacy reads; strict v7 loader gates on header size/version. **In Progress:** Reader/writer code forked into dedicated files (`db_reader_legacy.c`, `db_reader_modern.c`, `db_writer_modern.c`); build errors cleared with the new split. Next: finish adapter widening for tables/records, drop legacy Cancoon/view writes on the modern path, and wire runtime/CLI to the strict reader.
 
 # Reader Split Plan – v7 BE/64-bit Path vs Legacy Adapter
 **Last Updated:** 2025-11-24 — Codex
@@ -14,13 +14,17 @@
 
 ## Proposed PR Breakdown
 
+### PR 0 (Done): Router + Header Guard
+- Landed in PR #49: version-based reader router plus header decode guard to reject undersized/legacy headers early.
+
 ### PR 1: Introduce Legacy Adapter + V7 Reader Skeleton
 - Add a legacy adapter module that:
   - Detects v6 roots, reads legacy payloads, widens addresses/sizes in-memory.
   - Feeds widened structures into existing v7 packers for output (no new format mutations).
 - Add a v7-only reader entry point that assumes BE/64-bit payloads (no legacy heuristics), gated by header detection.
 - Wire migrator/open paths to choose adapter vs v7 reader based on detected version.
-- Tests: unit coverage for adapter (legacy header → widened in-memory), ensure procedural BE goldens still pass.
+- Status: reader/writer sources forked into dedicated files; adapter keeps legacy reads 32-bit while writes are BE64, and migrator now drops Cancoon by default with `migrate_32bit_to_64bit` succeeding on `Frontier-v6.root`. Remaining: clean modern writer view header bytes and route runtime/CLI to strict reader.
+- Tests: unit coverage for adapter (legacy header → widened in-memory, cached for wide writes) **Done for header path**; table writer/repack BE64 regression and record reference BE64 check added; BE64 view0 serialization test added; procedural BE goldens still pass; runtime/CLI suites pass (clock.now still skipped due to frontier-cli exit=1).
 
 ### PR 2: Route Runtime/CLI to Clean V7 Reader and Drop Forks
 - Update runtime/CLI open paths to call the v7 reader for v7 roots; use adapter only during migration.

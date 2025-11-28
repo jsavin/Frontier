@@ -227,6 +227,9 @@ extern boolean langexternalsetdirty (hdlexternalhandle, boolean);
 extern boolean langexternalpack (hdlexternalhandle, Handle *, boolean *);
 
 extern boolean langexternalunpack (Handle, hdlexternalhandle *);
+/* Legacy (32-bit) pack/unpack shims used during migration. */
+extern boolean langexternalpack_legacy (hdlexternalhandle, Handle *, boolean *);
+extern boolean langexternalunpack_legacy (Handle, hdlexternalhandle *);
 
 extern boolean langexternalmemorypack (hdlexternalhandle, Handle *, hdlhashnode);
 
@@ -287,6 +290,7 @@ extern boolean langexternalgettimes (hdlexternalhandle, long *, long *, hdlhashn
 extern boolean langexternalsettimes (hdlexternalhandle, long, long, hdlhashnode);
 
 extern boolean langexternalfindusedblocks (hdlexternalhandle, bigstring);
+extern boolean langexternalpacktotext_legacy (hdlexternalhandle, Handle);
 
 extern boolean langexternaltitleclick (Point, hdlexternalvariable);
 

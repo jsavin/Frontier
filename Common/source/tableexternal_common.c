@@ -10,6 +10,7 @@
 #include "langinternal.h"
 #include "tableinternal.h"
 #include "dbinternal.h"
+#include "db_format.h"
 #include "strings.h"
 #include "memory.h"
 #include "tableexternal_common.h"
