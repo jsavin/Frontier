@@ -615,15 +615,30 @@ boolean wpverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddr
 	dbaddress adr;
 	hdlwindowinfo hinfo;
 	boolean fltempload = false;
+	const boolean adapter_repack = db_format_adapter_force_repack();
+    db_format_mode prev_mode = db_format_mode_current();
+    db_format_mode working_mode = prev_mode;
 	
 	if (!(**hv).flinmemory) { /*simple case, wp doc is resident in the db*/
 		
-		if (flconvertingolddatabase) {
+		if (flconvertingolddatabase || adapter_repack) {
 			
+			if (adapter_repack) {
+                working_mode.use_64bit_format = false; /* legacy read while loading source */
+                db_format_mode_push(&working_mode);
+            }
+
 			if (!wpverbinmemory (h))
+            {
+                if (adapter_repack)
+                    db_format_mode_pop();
 				return (false);
+            }
 			
 			fltempload = true;
+
+			if (adapter_repack)
+                db_format_mode_pop();
 			}
 		else {
 		
@@ -663,6 +678,15 @@ boolean wpverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddr
 	hwp = (hdlwprecord) (**hv).variabledata;
 	
 	wpverbcheckwindowrect (hwp);
+
+	if (adapter_repack) {
+		(**hwp).fldirty = true;
+		(**hwp).fldirtyview = true;
+		db_format_adapter_enable_wide_writes(NULL);
+        working_mode.use_64bit_format = true; /* write modern */
+        db_format_mode_push(&working_mode);
+		*flnewdbaddress = true;
+	}
 	
 	if (!fldatabasesaveas && !(**hwp).fldirty && !(**hwp).fldirtyview) /*don't need to update the db version of the wpdoc*/
 		goto pushaddress;
@@ -698,18 +722,22 @@ boolean wpverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddr
 		}
 	
 	pushaddress:
+		
+		if (!fldatabasesaveas) {
+		
+			*flnewdbaddress = ((**hv).oldaddress != adr);
+				
+			(**hv).oldaddress = adr;
+			}
+		else
+			*flnewdbaddress = true;	
 	
-	if (!fldatabasesaveas) {
-	
-		*flnewdbaddress = ((**hv).oldaddress != adr);
-			
-		(**hv).oldaddress = adr;
-		}
-	else
-		*flnewdbaddress = true;	
-	
-	return (pushlongondiskhandle (adr, *hpacked));
-	} /*wpverbpack*/
+		if (adapter_repack)
+            db_format_mode_pop();
+        db_format_mode_apply(&prev_mode);
+		
+		return (pushlongondiskhandle (adr, *hpacked));
+		} /*wpverbpack*/
 
 
 boolean wpverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *h) {
@@ -2178,6 +2206,3 @@ boolean wpstart (void) {
 	
 	return (true);
 	} /*wpstart*/
-
-
-

@@ -66,7 +66,7 @@ boolean pictverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbad
     if (adr == nildbaddress)
         return false;
 
-    if (fldatabasesaveas || use_64bit_format) {
+    if (fldatabasesaveas || db_format_mode_current().use_64bit_format) {
         Handle hcopy = nil;
         if (!dbrefhandle(adr, &hcopy))
             return false;

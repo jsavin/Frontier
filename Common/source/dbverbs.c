@@ -55,7 +55,7 @@
 #include "process.h"
 #include "processinternal.h"
 #include "odbinternal.h"
-#include "db_format.h" /* use_64bit_format + migration */
+#include "db_format.h" /* migration helpers */
 
 /*
 if we're generating cfm (powerpc), we're linking to an odb engine shared 
@@ -1009,7 +1009,7 @@ boolean db_get_path_for_odb(odbref odb, bigstring out) {
 boolean db_migrate_reopen_if_legacy(odbref *podb) {
     if (podb == NULL || *podb == NULL)
         return false;
-    if (use_64bit_format)
+    if (db_format_mode_current().use_64bit_format)
         return true; /* already modern */
 
     hdlodbrecord hodb;

@@ -1,4 +1,5 @@
 // 2025-11-20 Codex: Add shared big-endian helpers and a serializer for v7 headers to keep disk format portable.
+// 2025-11-26 Codex: Move reader/writer entry points into dedicated headers to simplify version splits.
 /*
  * db_format.h - Helpers for detecting and migrating Frontier database headers.
  */
@@ -15,7 +16,11 @@
 extern "C" {
 #endif
 
-extern boolean use_64bit_format;
+typedef struct db_format_mode {
+    boolean use_64bit_format;
+    boolean adapter_repack;
+    boolean drop_cancoon;
+} db_format_mode;
 
 #define LEGACY_DB_HEADER_BYTES 88
 
@@ -74,17 +79,32 @@ static inline void db_format_write_dbaddress64(void *ptr, dbaddress value) {
 boolean db_format_prepare_runtime(void);
 boolean detect_database_format(const tydatabaserecord *header);
 boolean convert_32bit_header_to_64bit(const unsigned char *legacy_header, tydatabaserecord_64 *new_header);
+boolean db_format_widen_legacy_header(const tydatabaserecord *decoded_header, boolean flreadonly, tydatabaserecord_64 *widened_out);
 boolean db_format_write_header64(const tydatabaserecord_64 *src, unsigned char *dest, size_t dest_size);
 boolean db_format_decode_header(const unsigned char *rawheader, size_t raw_len, boolean *header_is_modern, tydatabaserecord *out);
 /* 2025-11-24 Codex: Entry points for v7 reader vs legacy adapter. */
-boolean db_format_load_legacy_adapter(const tydatabaserecord *decoded_header, boolean flreadonly);
+boolean db_format_load_legacy_adapter(const tydatabaserecord *decoded_header, boolean flreadonly, tydatabaserecord_64 *widened_out);
 boolean db_format_load_v7_reader(const tydatabaserecord *decoded_header, boolean flreadonly);
 boolean db_format_header_version(const unsigned char *rawheader, size_t raw_len, int *out_version);
+/* 2025-11-25 Codex: Legacy adapter state helpers for widening + wide writes. */
+boolean db_format_adapter_enable_wide_writes(const tydatabaserecord_64 **widened_header_out);
+boolean db_format_adapter_force_repack(void);
+void db_format_adapter_mark_address(dbaddress *adr_out);
+boolean db_format_adapter_is_active(void);
+void db_format_set_legacy_source_db(hdldatabaserecord hdb);
+boolean db_format_is_legacy_db(hdldatabaserecord hdb);
 boolean create_root_backup(const char *original_path);
 boolean migrate_32bit_to_64bit(const char *db_path);
+boolean migrate_32bit_to_64bit_drop_cancoon(const char *db_path);
 boolean ensure_database_modern(const char *db_path, boolean *migrated, char *output_path, size_t output_path_size);
 boolean db_format_last_backup_path(char *buffer, size_t length);
 void db_format_clear_last_backup_path(void);
+void db_format_force_strict_v7_reader(void);
+/* Scoped mode helpers (thread-local) to avoid global races. */
+void db_format_mode_push(const db_format_mode *mode);
+void db_format_mode_pop(void);
+db_format_mode db_format_mode_current(void);
+void db_format_mode_apply(const db_format_mode *mode);
 
 #ifdef __cplusplus
 } /* extern "C" */

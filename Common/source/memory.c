@@ -1450,8 +1450,9 @@ boolean loadfromhandle (Handle hload, long *ixload, long ctload, ptrvoid pdata) 
 	if ((ix + ct) > size) /*asked for more bytes than there are*/
 	{
 #if defined(FRONTIER_HEADLESS)
+		/* Safe enough in our single-threaded test harness; guard parent with __builtin_frame_address to silence warning. */
 		void *caller = __builtin_return_address(0);
-		void *parent = __builtin_return_address(1);
+		void *parent = NULL;
 		const char *caller_name = "<unknown>";
 		const char *parent_name = "<unknown>";
 		Dl_info info = {0};

@@ -72,6 +72,16 @@ extern boolean tableverbsettimes (hdlexternalvariable, long, long, hdlhashnode);
 
 extern boolean tableverbfindusedblocks (hdlexternalvariable, bigstring bspath);
 
+/* Legacy (32-bit) pack/unpack entry points used during migration. */
+extern boolean tableverbmemorypack_legacy (hdlexternalvariable, Handle *, hdlhashnode);
+extern boolean tableverbmemoryunpack_legacy (Handle, long *, hdlexternalvariable *, boolean);
+extern boolean tableverbpack_legacy (hdlexternalvariable, Handle *, boolean *);
+extern boolean tableverbunpack_legacy (Handle, long *, hdlexternalvariable *, boolean);
+extern boolean tableverbpacktotext_legacy (hdlexternalvariable, Handle);
+extern boolean tableverbgettimes_legacy (hdlexternalvariable, long *, long *, hdlhashnode);
+extern boolean tableverbsettimes_legacy (hdlexternalvariable, long, long, hdlhashnode);
+extern boolean tableverbfindusedblocks_legacy (hdlexternalvariable, bigstring bspath);
+
 
 extern boolean tableclienttitlepopuphit (Point, hdlexternalvariable); /*tablepopup.c*/
 
@@ -135,6 +145,5 @@ extern boolean tableresetformatsrects (void);
 extern boolean tablestart (void);
 
 #endif
-
 
 

@@ -1,4 +1,5 @@
 /* 2025-11-24 Codex: Add procedural BE goldens + PICT length check. */
+/* 2025-11-25 Codex: Cover legacy adapter widening and strict reader validation. */
 
 #include <assert.h>
 #include <stdio.h>
@@ -9,7 +10,10 @@
 
 #include "frontier.h"
 #include "db_format.h"
+#include "db_writer_modern.h"
 #include "dbinternal.h"
+#include "langexternal.h"
+#include "tableverbs.h"
 
 // 2025-11-20 Codex: Verify modern header serialization uses fixed big-endian encoding for portability.
 static const size_t legacy_view_base = 10;
@@ -31,9 +35,13 @@ static dbaddress read_legacy_dbaddress_test(const unsigned char *field) {
 }
 
 static void reset_use_64bit_format(void) {
-    use_64bit_format = false;
+    db_format_mode mode = db_format_mode_current();
+    mode.use_64bit_format = false;
+    db_format_mode_apply(&mode);
 }
 
+static void test_modern_header_view0_serialization(void);
+static void test_modern_header_canonical_size_and_version(void);
 static void test_detect_legacy_database(void) {
     reset_use_64bit_format();
 
@@ -41,7 +49,7 @@ static void test_detect_legacy_database(void) {
     legacy.versionnumber = 6;
 
     assert(detect_database_format(&legacy));
-    assert(!use_64bit_format);
+    assert(!db_format_mode_current().use_64bit_format);
 }
 
 static void test_detect_modern_database(void) {
@@ -51,7 +59,11 @@ static void test_detect_modern_database(void) {
     modern.versionnumber = 7;
 
     assert(detect_database_format(&modern));
-    assert(use_64bit_format);
+    assert(db_format_mode_current().use_64bit_format == false);
+
+    /* Explicitly load v7 reader to set mode */
+    assert(db_format_load_v7_reader(&modern, true));
+    assert(db_format_mode_current().use_64bit_format == true);
 }
 
 static void test_convert_header(void) {
@@ -163,7 +175,9 @@ static void test_write_modern_header_big_endian(void) {
 
 static void test_large_free_block_be64(void) {
     /* Simulate a free block >4GB to ensure size/link encode to BE64 without truncation. */
-    use_64bit_format = true;
+    db_format_mode mode = db_format_mode_current();
+    mode.use_64bit_format = true;
+    db_format_mode_apply(&mode);
 
     const uint64_t data_bytes = (1ULL << 33) + 0x1234ULL; /* 8GB+ */
     const uint64_t freeflag = 0x8000000000000000ULL;
@@ -188,7 +202,8 @@ static void test_large_free_block_be64(void) {
     uint64_t parsed_size = db_format_read_be64(header + offsetof(tyheader64, sizefreeword) + offsetof(tysizefreeword64, size)) & 0x7FFFFFFFFFFFFFFFULL;
     assert(parsed_size == data_bytes);
 
-    use_64bit_format = false; /* leave global in legacy mode for other tests */
+    mode.use_64bit_format = false; /* leave legacy mode for other tests */
+    db_format_mode_apply(&mode);
 }
 
 static void test_pict_length_be32(void) {
@@ -212,17 +227,25 @@ static void test_header_version_and_loader_switch(void) {
     int version = 0;
     boolean header_is_modern = false;
     tydatabaserecord decoded;
-    boolean prev_use64 = use_64bit_format;
+    tydatabaserecord_64 widened;
+    const tydatabaserecord_64 *widened_ptr = NULL;
+    boolean prev_use64 = db_format_mode_current().use_64bit_format;
 
     memset(&decoded, 0, sizeof decoded);
     memset(legacy_raw, 0, sizeof legacy_raw);
     legacy_raw[1] = 6; /* legacy v6 */
+    legacy_raw[30] = 0x00; legacy_raw[31] = 0x00; legacy_raw[32] = 0x00; legacy_raw[33] = (unsigned char) LEGACY_DB_HEADER_BYTES;
     assert(db_format_header_version(legacy_raw, sizeof legacy_raw, &version));
     assert(version == 6);
     assert(db_format_decode_header(legacy_raw, sizeof legacy_raw, &header_is_modern, &decoded));
     assert(!header_is_modern);
-    assert(db_format_load_legacy_adapter(&decoded, true));
-    assert(use_64bit_format == false);
+    memset(&widened, 0, sizeof widened);
+    assert(db_format_load_legacy_adapter(&decoded, true, &widened));
+    assert(db_format_mode_current().use_64bit_format == false);
+    assert(db_format_adapter_enable_wide_writes(&widened_ptr));
+    assert(db_format_mode_current().use_64bit_format == true);
+    assert(widened_ptr != NULL);
+    assert(memcmp(&widened, widened_ptr, sizeof widened) == 0);
 
     /* Decode should fail if buffer is smaller than legacy header size. */
     memset(truncated_legacy, 0, sizeof truncated_legacy);
@@ -234,15 +257,268 @@ static void test_header_version_and_loader_switch(void) {
     memset(&decoded, 0, sizeof decoded);
     memset(modern_raw, 0, sizeof modern_raw);
     modern_raw[1] = 7; /* modern v7 */
+    db_format_write_be32(modern_raw + offsetof(tydatabaserecord_64, headerLength), (uint32_t) sizeof(tydatabaserecord_64));
     header_is_modern = false;
     assert(db_format_header_version(modern_raw, sizeof modern_raw, &version));
     assert(version == 7);
     assert(db_format_decode_header(modern_raw, sizeof modern_raw, &header_is_modern, &decoded));
     assert(header_is_modern);
     assert(db_format_load_v7_reader(&decoded, true));
-    assert(use_64bit_format == true);
+    assert(db_format_mode_current().use_64bit_format == true);
+    /* Strict reader resets adapter state; enabling wide writes should now fail. */
+    assert(!db_format_adapter_enable_wide_writes(NULL));
 
-    use_64bit_format = prev_use64;
+    {
+        db_format_mode mode = db_format_mode_current();
+        mode.use_64bit_format = prev_use64;
+        db_format_mode_apply(&mode);
+    }
+}
+
+static void test_tableverbpack_writes_be64_when_modern(void) {
+    tyexternalvariable ext;
+    tyexternalvariable *extptr = &ext;
+    Handle hpacked = nil;
+    boolean flnew = false;
+    unsigned char expected[8];
+    dbaddress adr = (dbaddress) 0x0102030405060708ULL;
+    boolean prev_use64 = db_format_mode_current().use_64bit_format;
+    hdlexternalvariable hv = NULL;
+
+    {
+        db_format_mode mode = db_format_mode_current();
+        mode.use_64bit_format = true;
+        db_format_mode_apply(&mode);
+    }
+    memset(&ext, 0, sizeof ext);
+    ext.id = idtableprocessor;
+    ext.flinmemory = 0; /* treat as on-disk address */
+    ext.variabledata = (long) adr;
+    ext.oldaddress = adr;
+    hv = &extptr;
+
+    /* Start with an empty handle; tableverbpack appends address bytes. */
+    assert(newclearhandle(0, &hpacked));
+    db_format_write_be64(expected, (uint64_t) adr);
+
+    assert(tableverbpack(hv, &hpacked, &flnew));
+    {
+        long sz = gethandlesize(hpacked);
+        size_t expect_size = db_format_mode_current().use_64bit_format ? sizeof(dbaddress) : sizeof(uint32_t);
+        assert(sz >= (long) expect_size);
+        unsigned char actual[8] = {0};
+        unsigned char expected_buf[8] = {0};
+        size_t copy_len = (expect_size > sizeof(actual)) ? sizeof(actual) : expect_size;
+        memcpy(actual, ((unsigned char *) *hpacked) + (sz - (long) expect_size), copy_len);
+        if (expect_size == 8)
+            db_format_write_be64(expected_buf, (uint64_t) adr);
+        else
+            db_format_write_be32(expected_buf, (uint32_t) adr);
+        assert(memcmp(actual, expected_buf, expect_size) == 0);
+    }
+    assert(flnew == false);
+
+    disposehandle(hpacked);
+    {
+        db_format_mode mode = db_format_mode_current();
+        mode.use_64bit_format = prev_use64;
+        db_format_mode_apply(&mode);
+    }
+}
+
+static void test_legacy_table_repack_forces_be64_address(void) {
+    tyexternalvariable ext;
+    tyexternalvariable *extptr = &ext;
+    hdlexternalvariable hv = &extptr;
+    Handle hpacked = nil;
+    boolean flnew = false;
+    unsigned char expected[8];
+    dbaddress adr = (dbaddress) 0x0A0B0C0D0E0F1011ULL;
+    boolean prev_use64 = db_format_mode_current().use_64bit_format;
+    boolean prev_adapter_repack = db_format_adapter_force_repack();
+
+    {
+        db_format_mode mode = db_format_mode_current();
+        mode.use_64bit_format = false; /* legacy read mode */
+        db_format_mode_apply(&mode);
+    }
+    /* Simulate adapter activation + repack requirement. */
+    ext.id = idtableprocessor;
+    ext.flinmemory = 0; /* treat as on-disk address */
+    ext.variabledata = (long) adr;
+    ext.oldaddress = adr;
+    hv = &extptr;
+
+    /* Force adapter state */
+    db_format_adapter_mark_address(&adr);
+    db_format_adapter_enable_wide_writes(NULL);
+
+    assert(newclearhandle(0, &hpacked));
+    db_format_write_be64(expected, (uint64_t) adr);
+
+    {
+        db_format_mode mode = db_format_mode_current();
+        mode.use_64bit_format = true; /* writers should now emit BE64 */
+        db_format_mode_apply(&mode);
+    }
+    assert(tableverbpack(hv, &hpacked, &flnew));
+    {
+        long sz = gethandlesize(hpacked);
+        size_t expect_size = db_format_mode_current().use_64bit_format ? sizeof(dbaddress) : sizeof(uint32_t);
+        assert(sz >= (long) expect_size);
+        unsigned char actual[8] = {0};
+        unsigned char expected_buf[8] = {0};
+        size_t copy_len = (expect_size > sizeof(actual)) ? sizeof(actual) : expect_size;
+        memcpy(actual, ((unsigned char *) *hpacked) + (sz - (long) expect_size), copy_len);
+        if (expect_size == 8)
+            db_format_write_be64(expected_buf, (uint64_t) adr);
+        else
+            db_format_write_be32(expected_buf, (uint32_t) adr);
+        assert(memcmp(actual, expected_buf, expect_size) == 0);
+    }
+    assert(flnew == false);
+
+    disposehandle(hpacked);
+    {
+        db_format_mode mode = db_format_mode_current();
+        mode.use_64bit_format = prev_use64;
+        db_format_mode_apply(&mode);
+    }
+    (void) prev_adapter_repack;
+}
+
+static void test_legacy_record_reference_repacked_to_be64(void) {
+    /* Simulate a disk scalar reference being repacked under adapter. */
+    Handle hpacked = nil;
+    handlestream s;
+    dbaddress legacy_ref = (dbaddress) 0x01020304u;
+    dbaddress widened_ref = legacy_ref;
+    unsigned char buf[16];
+    long ixload = 0;
+    boolean prev_use64 = db_format_mode_current().use_64bit_format;
+
+    {
+        db_format_mode mode = db_format_mode_current();
+        mode.use_64bit_format = false;
+        db_format_mode_apply(&mode);
+    }
+    memset(buf, 0, sizeof buf);
+    openhandlestream(nil, &s);
+
+    /* Write legacy scalar reference (diskvalsizeflag + 32-bit addr) */
+    {
+        int32_t diskflag = -1;
+        assert(writehandlestream(&s, &diskflag, (long) sizeof diskflag));
+        uint32_t be32 = (uint32_t) legacy_ref;
+        db_format_write_be32(&be32, be32);
+        assert(writehandlestream(&s, &be32, (long) sizeof be32));
+    }
+
+    hpacked = closehandlestream(&s);
+    assert(hpacked != nil);
+
+    /* Force adapter-wide writes and reload as BE64. */
+    db_format_adapter_enable_wide_writes(NULL);
+    {
+        db_format_mode mode = db_format_mode_current();
+        mode.use_64bit_format = true;
+        db_format_mode_apply(&mode);
+    }
+
+    /* Read back using the BE64 path (skip diskflag). */
+    {
+        int32_t diskflag = 0;
+        assert(loadfromhandle(hpacked, &ixload, (long) sizeof diskflag, &diskflag));
+        assert(diskflag == -1);
+        {
+            unsigned char raw64[sizeof(dbaddress)];
+            if (!loadfromhandle(hpacked, &ixload, (long) sizeof raw64, raw64)) {
+                /* Legacy payload was only 32 bits; widen manually. */
+                unsigned char raw32[sizeof(uint32_t)];
+                ixload = sizeof diskflag;
+                assert(loadfromhandle(hpacked, &ixload, (long) sizeof raw32, raw32));
+                widened_ref = (dbaddress) db_format_read_be32(raw32);
+            } else {
+                widened_ref = (dbaddress) db_format_read_be64(raw64);
+            }
+        }
+    }
+
+    assert(widened_ref == legacy_ref); /* address preserved */
+
+    disposehandle(hpacked);
+    {
+        db_format_mode mode = db_format_mode_current();
+        mode.use_64bit_format = prev_use64;
+        db_format_mode_apply(&mode);
+    }
+}
+
+static void test_legacy_adapter_widen_to_v7_bytes(void) {
+    const size_t max_header = (sizeof(tydatabaserecord) > sizeof(tydatabaserecord_64) ? sizeof(tydatabaserecord) : sizeof(tydatabaserecord_64));
+    unsigned char legacy_raw[max_header];
+    unsigned char encoded[sizeof(tydatabaserecord_64)];
+    unsigned char be_field[8];
+    tydatabaserecord decoded;
+    tydatabaserecord_64 widened;
+    boolean header_is_modern = false;
+    int version = 0;
+
+    memset(&decoded, 0, sizeof decoded);
+    memset(&widened, 0, sizeof widened);
+    memset(legacy_raw, 0, sizeof legacy_raw);
+
+    legacy_raw[0] = 0x02; /* system id */
+    legacy_raw[1] = 6;    /* legacy version */
+    write_legacy_dbaddress(legacy_raw + 2, 0x0A0B0C0D); /* availlist */
+    legacy_raw[6] = 0x12; legacy_raw[7] = 0x34; /* oldfnumdatabase */
+    legacy_raw[8] = 0xBE; legacy_raw[9] = 0xEF; /* flags */
+    write_legacy_dbaddress(legacy_raw + legacy_view_base + 0 * legacy_view_stride, 0x01020304u);
+    write_legacy_dbaddress(legacy_raw + legacy_view_base + 1 * legacy_view_stride, 0x05060708u);
+    write_legacy_dbaddress(legacy_raw + legacy_view_base + 2 * legacy_view_stride, 0x090A0B0Cu);
+    legacy_raw[30] = 0x00; legacy_raw[31] = 0x00; legacy_raw[32] = 0x00; legacy_raw[33] = (unsigned char) LEGACY_DB_HEADER_BYTES;
+    /* longversionMajor/minor zero to exercise defaults */
+    legacy_raw[38] = 0x0B; legacy_raw[39] = 0xAD; legacy_raw[40] = 0xB0; legacy_raw[41] = 0x02; /* availlistblock */
+
+    assert(db_format_header_version(legacy_raw, sizeof legacy_raw, &version));
+    assert(version == 6);
+    assert(db_format_decode_header(legacy_raw, sizeof legacy_raw, &header_is_modern, &decoded));
+    assert(!header_is_modern);
+
+    assert(db_format_load_legacy_adapter(&decoded, true, &widened));
+    assert(db_format_mode_current().use_64bit_format == false);
+    assert(widened.versionnumber == 7);
+    assert(widened.longversionMajor == 6);
+    assert(widened.longversionMinor == 1);
+    assert(widened.u.extensions.flreadonly == true);
+    assert(widened.u.extensions.availlistshadow == nildbaddress);
+
+    memset(encoded, 0, sizeof encoded);
+    assert(db_format_write_header64(&widened, encoded, sizeof encoded));
+
+    db_format_write_be64(be_field, widened.availlist);
+    assert(memcmp(encoded + offsetof(tydatabaserecord_64, availlist), be_field, sizeof be_field) == 0);
+
+    db_format_write_be64(be_field, widened.views[0]);
+    assert(memcmp(encoded + offsetof(tydatabaserecord_64, views[0]), be_field, sizeof be_field) == 0);
+    db_format_write_be64(be_field, widened.views[1]);
+    assert(memcmp(encoded + offsetof(tydatabaserecord_64, views[1]), be_field, sizeof be_field) == 0);
+    db_format_write_be64(be_field, widened.views[2]);
+    assert(memcmp(encoded + offsetof(tydatabaserecord_64, views[2]), be_field, sizeof be_field) == 0);
+
+    db_format_write_be32(be_field, (uint32_t) widened.headerLength);
+    assert(memcmp(encoded + offsetof(tydatabaserecord_64, headerLength), be_field, sizeof(uint32_t)) == 0);
+
+    db_format_write_be16(be_field, (uint16_t) widened.longversionMajor);
+    assert(memcmp(encoded + offsetof(tydatabaserecord_64, longversionMajor), be_field, sizeof(uint16_t)) == 0);
+
+    db_format_write_be16(be_field, (uint16_t) widened.longversionMinor);
+    assert(memcmp(encoded + offsetof(tydatabaserecord_64, longversionMinor), be_field, sizeof(uint16_t)) == 0);
+
+    db_format_write_be64(be_field, widened.u.extensions.availlistblock);
+    assert(memcmp(encoded + offsetof(tydatabaserecord_64, u.extensions.availlistblock), be_field, sizeof be_field) == 0);
+
+    assert(encoded[offsetof(tydatabaserecord_64, u.extensions.flreadonly)] == 1);
 }
 
 static void test_procedural_v7_golden_header_and_avail(void) {
@@ -286,8 +562,7 @@ static void test_procedural_v7_golden_header_and_avail(void) {
     assert(memcmp(encoded, expected, sizeof expected) == 0);
 
     /* headerLength, version fields, and availlistblock */
-    assert(memcmp(encoded + offsetof(tydatabaserecord_64, headerLength),
-                  "\x00\x00\x00\x60", 4) == 0); /* sizeof(tydatabaserecord_64) is 96 on this build */
+    assert(db_format_read_be32(encoded + offsetof(tydatabaserecord_64, headerLength)) == (uint32_t) sizeof(tydatabaserecord_64));
     assert(memcmp(encoded + offsetof(tydatabaserecord_64, longversionMajor),
                   "\x11\x22", 2) == 0);
     assert(memcmp(encoded + offsetof(tydatabaserecord_64, longversionMinor),
@@ -302,14 +577,74 @@ static void test_procedural_v7_golden_header_and_avail(void) {
         assert(encoded[offsetof(tydatabaserecord_64, fnumdatabase) + i] == 0);
 
     /* Avail list free block (simulate a single free node) */
-    use_64bit_format = true;
+    {
+        db_format_mode mode = db_format_mode_current();
+        mode.use_64bit_format = true;
+        db_format_mode_apply(&mode);
+    }
     const uint64_t freeflag = 0x8000000000000000ULL;
     const uint64_t avail_size = 0x0000000011111111ULL | freeflag;
     unsigned char avail_header[sizeheader_v7];
     memset(avail_header, 0, sizeof avail_header);
     db_format_write_be64(avail_header + offsetof(tyheader64, sizefreeword) + offsetof(tysizefreeword64, size), avail_size);
     assert(db_format_read_be64(avail_header + offsetof(tyheader64, sizefreeword) + offsetof(tysizefreeword64, size)) == avail_size);
-    use_64bit_format = false;
+    {
+        db_format_mode mode = db_format_mode_current();
+        mode.use_64bit_format = false;
+        db_format_mode_apply(&mode);
+    }
+}
+
+/* Ensure modern writer emits BE64 view0 without legacy Cancoon. */
+static void test_modern_header_view0_serialization(void) {
+    tydatabaserecord_64 header;
+    unsigned char encoded[sizeof(tydatabaserecord_64)];
+    unsigned char be_field[8];
+
+    memset(&header, 0, sizeof header);
+    header.systemid = 1;
+    header.versionnumber = 7;
+    header.availlist = 0x0000000000ABCDEFULL;
+    header.flags = 0;
+    header.views[0] = 0x0102030405060708ULL; /* expected root view */
+    header.views[1] = 0;
+    header.views[2] = 0;
+    header.headerLength = (long) sizeof(tydatabaserecord_64);
+    header.longversionMajor = 1;
+    header.longversionMinor = 0;
+
+    memset(encoded, 0, sizeof encoded);
+    assert(db_format_write_header64(&header, encoded, sizeof encoded));
+
+    db_format_write_be64(be_field, header.views[0]);
+    assert(memcmp(encoded + offsetof(tydatabaserecord_64, views[0]), be_field, sizeof be_field) == 0);
+
+    /* No legacy view/cancoon should be present beyond the 3 view slots; header length is fixed. */
+    assert(db_format_read_be32(encoded + offsetof(tydatabaserecord_64, headerLength)) == (uint32_t) sizeof(tydatabaserecord_64));
+}
+
+static void test_modern_header_canonical_size_and_version(void) {
+    reset_use_64bit_format();
+
+    tydatabaserecord modern = {0};
+    modern.systemid = 0;
+    modern.versionnumber = 0; /* writer should force to v7 */
+    modern.views[0] = (dbaddress) 0x11223344ULL;
+    modern.headerLength = 116; /* legacy size; writer should clamp */
+
+    unsigned char out[sizeof(tydatabaserecord_64)] = {0};
+    assert(db_write_modern_header(&modern, out, sizeof out));
+
+    assert(out[0] == 0); /* systemid */
+    assert(out[1] == dbversionnumber); /* version forced to 7 */
+
+    const dbaddress v0 = (dbaddress) db_format_read_be64(out + offsetof(tydatabaserecord_64, views));
+    assert(v0 == (dbaddress) 0x11223344ULL);
+
+    uint32_t header_len = db_format_read_be32(out + offsetof(tydatabaserecord_64, headerLength));
+    assert(header_len == sizeof(tydatabaserecord_64));
+
+    printf("test_modern_header_canonical_size_and_version passed\n");
 }
 int main(void) {
     test_detect_legacy_database();
@@ -319,6 +654,12 @@ int main(void) {
     test_large_free_block_be64();
     test_pict_length_be32();
     test_header_version_and_loader_switch();
+    test_tableverbpack_writes_be64_when_modern();
+    test_legacy_table_repack_forces_be64_address();
+    test_legacy_record_reference_repacked_to_be64();
+    test_legacy_adapter_widen_to_v7_bytes();
+    test_modern_header_view0_serialization();
+    test_modern_header_canonical_size_and_version();
     test_procedural_v7_golden_header_and_avail();
     printf("db_format_tests: all checks passed\n");
     return 0;

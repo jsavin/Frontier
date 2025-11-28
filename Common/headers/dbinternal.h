@@ -25,6 +25,11 @@
 
 ******************************************************************************/
 
+// 2025-11-26 Codex: Expose raw db read/write helpers for split reader/writer modules.
+
+#ifndef FRONTIER_DBINTERNAL_H
+#define FRONTIER_DBINTERNAL_H
+
 #define dbinternalinclude
 
 #include <stdint.h>
@@ -100,14 +105,12 @@ typedef struct tytrailer64 {
 	tysizefreeword64 sizefreeword;
 	} tytrailer64, *ptrtrailer64, **hdltrailer64;
 
-extern boolean use_64bit_format;
-
 #define sizeheader_v6 (long) sizeof (tyheader32)
 #define sizeheader_v7 (long) sizeof (tyheader64)
 #define sizetrailer_v6 (long) sizeof (tytrailer32)
 #define sizetrailer_v7 (long) sizeof (tytrailer64)
-#define sizeheader (use_64bit_format ? sizeheader_v7 : sizeheader_v6)
-#define sizetrailer (use_64bit_format ? sizetrailer_v7 : sizetrailer_v6)
+#define sizeheader (db_format_mode_current().use_64bit_format ? sizeheader_v7 : sizeheader_v6)
+#define sizetrailer (db_format_mode_current().use_64bit_format ? sizetrailer_v7 : sizetrailer_v6)
 
 
 #define dbshadow
@@ -124,9 +127,13 @@ typedef struct availnodeshadow {
 /*prototypes*/
 
 extern boolean dbgeteof (long *);
+extern boolean dbwrite (dbaddress, long, ptrvoid);
+extern boolean dbread (dbaddress, long, ptrvoid);
 
 extern boolean dbreadtrailer (dbaddress, boolean *, long *);
 
 extern boolean dbreadheader (dbaddress, boolean *, long *, tyvariance *);
 
 extern boolean dbreadavailnode (dbaddress, boolean *, long *, dbaddress *);
+
+#endif /* FRONTIER_DBINTERNAL_H */

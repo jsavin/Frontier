@@ -57,6 +57,7 @@
 #include "menuverbs.h" /*7.0b6 PBS*/
 #include "op.h" /*7.0b6 PBS*/
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
+#include "db_format.h"
 
 
 /*
@@ -770,6 +771,10 @@ boolean langexternalpack (hdlexternalhandle h, Handle *hpacked, boolean *flnewdb
 	
 	tydiskexternalhandle rec;
 	register hdlexternalvariable hv = (hdlexternalvariable) h;
+    db_format_mode prev_mode = db_format_mode_current();
+    db_format_mode working_mode = prev_mode;
+    db_format_mode_push(&working_mode);
+	boolean ok = false;
 	
 	rollbeachball ();
 	
@@ -785,28 +790,44 @@ boolean langexternalpack (hdlexternalhandle h, Handle *hpacked, boolean *flnewdb
 	
 	if (!newfilledhandle (&rec, sizeof (rec), hpacked))
 		return (false);
+
+    db_format_adapter_mark_address(&(**hv).oldaddress);
+	if (db_format_adapter_force_repack()) {
+        working_mode.use_64bit_format = false; /* keep legacy reads while materializing externals */
+        db_format_mode_push(&working_mode);
+    }
 		
 	switch ((**hv).id) {
 		
 		case idoutlineprocessor: case idscriptprocessor:
-			return (opverbpack (hv, hpacked, flnewdbaddress));
+			ok = opverbpack (hv, hpacked, flnewdbaddress);
+			break;
 		
 		case idwordprocessor:
-			return (wpverbpack (hv, hpacked, flnewdbaddress));
+			ok = wpverbpack (hv, hpacked, flnewdbaddress);
+			break;
 		
 		case idtableprocessor:
-			return (tableverbpack (hv, hpacked, flnewdbaddress));
+			ok = tableverbpack (hv, hpacked, flnewdbaddress);
+			break;
 			
 		case idmenuprocessor:
-			return (menuverbpack (hv, hpacked, flnewdbaddress));
+			ok = menuverbpack (hv, hpacked, flnewdbaddress);
+			break;
 		
 		case idpictprocessor:
-			return (pictverbpack (hv, hpacked, flnewdbaddress));
+			ok = pictverbpack (hv, hpacked, flnewdbaddress);
+			break;
 		
 		
 		default:
-			return (false);
+			ok = false;
+			break;
 		} /*switch*/
+	if (db_format_adapter_force_repack())
+        db_format_mode_pop(); /* pop temporary legacy load */
+    db_format_mode_pop(); /* pop outer push */
+	return ok;
 	} /*langexternalpack*/
 	
 	

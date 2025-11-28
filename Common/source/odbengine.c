@@ -510,11 +510,11 @@ pascal boolean odbSaveFile (odbref odb) {
     setemptystring (bserror);
 
     /* Save implies migration to modern (v7) format. */
-    if (!use_64bit_format) {
+    if (!db_format_mode_current().use_64bit_format) {
         extern boolean db_migrate_reopen_if_legacy(odbref *podb);
         if (!db_migrate_reopen_if_legacy(&odb))
             return (false);
-        /* After migration/reopen, use_64bit_format will be set during open. */
+        /* After migration/reopen, mode will be set during open. */
     }
 	
 	setcancoonglobals (hc);

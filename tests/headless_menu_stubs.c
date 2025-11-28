@@ -76,7 +76,7 @@ boolean menuverbpack (hdlexternalvariable h, Handle *hp, boolean *flnew) {
         return false;
     }
 
-    if (fldatabasesaveas || use_64bit_format) {
+    if (fldatabasesaveas || db_format_mode_current().use_64bit_format) {
         dbaddress copy = adr;
         if (!headless_menu_dup_block(adr, &copy))
             return false;

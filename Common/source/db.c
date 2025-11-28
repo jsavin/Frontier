@@ -26,6 +26,8 @@
 ******************************************************************************/
 
 /* 2025-11-24 Codex: Legacy header writes now use BE helpers for v7 parity. */
+/* 2025-11-25 Codex: Update dbopenfile to route through widened legacy adapter signature. */
+/* 2025-11-26 Codex: Expose raw db read/write for split reader/writer modules. */
 
 
 #include "frontier.h"
@@ -46,6 +48,8 @@
 #include "shell.h"
 #include "db.h"
 #include "db_format.h"
+#include "db_reader.h"
+#include "db_writer_modern.h"
 #include "dbinternal.h"
 #include "ops.h" //6.2b3 AR: for numbertostring
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
@@ -58,29 +62,8 @@
 // 2025-11-20 Codex: Write modern headers and record metadata with explicit big-endian encoding for portability.
 // 2025-11-16 Codex: Keep dbgetsize locals wide enough so dbgetsizeandvariance
 // writes don't corrupt the caller's stack on 64-bit builds.
-static void db_prepare_modern_header(const tydatabaserecord *src, tydatabaserecord_64 *dst) {
-	int i;
 
-	clearbytes(dst, sizeof *dst);
-	dst->systemid = src->systemid;
-	dst->versionnumber = src->versionnumber;
-	dst->availlist = src->availlist;
-	dst->oldfnumdatabase = src->oldfnumdatabase;
-	dst->flags = src->flags;
-
-	for (i = 0; i < ctviews; ++i)
-		dst->views[i] = src->views[i];
-
-	dst->releasestack = nil;
-	dst->fnumdatabase = 0;
-	dst->headerLength = src->headerLength;
-	dst->longversionMajor = src->longversionMajor;
-	dst->longversionMinor = src->longversionMinor;
-
-	dst->u.extensions.availlistblock = src->u.extensions.availlistblock;
-	dst->u.extensions.availlistshadow = nildbaddress;
-	dst->u.extensions.flreadonly = src->u.extensions.flreadonly;
-}
+static void db_sync_use64_to_current_db(void);
 
 #define setdirty(hdb) 		((**hdb).flags |= dbdirtymask)
 #define cleardirty(hdb)		((**hdb).flags &= ~dbdirtymask)
@@ -88,8 +71,6 @@ static void db_prepare_modern_header(const tydatabaserecord *src, tydatabasereco
 
 #define majorversion(v)		(v & 0x00f0)
 #define minorversion(v)		(v & 0x000f)
-
-static boolean dbread (dbaddress adr, long ctbytes, ptrvoid pdata);
 
 #if defined(FRONTIER_HEADLESS)
 static boolean dbfindblockforaddress(dbaddress adr, dbaddress *blockstart, long *nodebytes, tyvariance *variance, boolean *flfree) {
@@ -189,8 +170,9 @@ typedef enum {
 
 hdldatabaserecord databasedata; /*the global database handle*/
 
-// Global flag for format detection
-extern boolean use_64bit_format;
+static inline boolean db_use64(void) {
+    return db_format_mode_current().use_64bit_format;
+}
 
 boolean fldatabasesaveas = false; /*only true during Save As operation*/
 
@@ -358,6 +340,8 @@ boolean dbpushdatabase (hdldatabaserecord hdatabase) {
 	
 	if (hdatabase != nil)
 		databasedata = hdatabase;
+
+	db_sync_use64_to_current_db();
 	
 	return (true);
 	} /*dbpushdatabase*/
@@ -369,6 +353,7 @@ boolean dbpopdatabase (void) {
 		return (false);
 	
 	databasedata = databasestack [--topdatabasestack];
+	db_sync_use64_to_current_db();
 	
 	return (true);
 	} /*dbpopdatabase*/
@@ -387,21 +372,34 @@ static void dbswapglobals (void) {
 		databasedata = databasedestination;
 		
 		databasedestination = htemp;
+		db_sync_use64_to_current_db();
 		}
 	} /*dbswapglobals*/
+
+static void db_sync_use64_to_current_db(void) {
+	if (fldatabasesaveas && dbsaveas_source != nil && db_format_adapter_is_active()) {
+		/* Legacy source stays 32-bit; destination writes are modern BE64. */
+        db_format_mode mode = db_format_mode_current();
+        mode.use_64bit_format = !db_format_is_legacy_db(databasedata);
+        db_format_mode_apply(&mode);
+	}
+}
 
 static inline hdldatabaserecord db_begin_source_read(void) {
 	if (fldatabasesaveas && dbsaveas_source != nil) {
 		hdldatabaserecord previous = databasedata;
 		databasedata = dbsaveas_source;
+		db_sync_use64_to_current_db();
 		return previous;
 	}
 	return nil;
 }
 
 static inline void db_end_source_read(hdldatabaserecord previous) {
-	if (previous != nil)
+	if (previous != nil) {
 		databasedata = previous;
+		db_sync_use64_to_current_db();
+	}
 }
 
 
@@ -411,7 +409,7 @@ static boolean dbseek (dbaddress adr) {
 	} /*dbseek*/
 		
 	
-static boolean dbwrite (dbaddress adr, long ctbytes, ptrvoid pdata) {
+boolean dbwrite (dbaddress adr, long ctbytes, ptrvoid pdata) {
 	
 	if (!dbseek (adr))
 		return (false);
@@ -420,7 +418,7 @@ static boolean dbwrite (dbaddress adr, long ctbytes, ptrvoid pdata) {
 	} /*dbwrite*/
 	
 
-static boolean dbread (dbaddress adr, long ctbytes, ptrvoid pdata) {
+boolean dbread (dbaddress adr, long ctbytes, ptrvoid pdata) {
 
 	if (!dbseek (adr))
 		return (false);
@@ -457,6 +455,9 @@ static boolean dbflushheader (void) {
 	
 	assert (sizeof (diskrec.u.growthspace) >= sizeof (diskrec.u.extensions));
 	
+	/* If we opened via legacy adapter, flip to wide writes before flushing. */
+	db_format_adapter_enable_wide_writes(NULL);
+
 	if (isdirty (hdb)) { /*changes made to header*/
 		
 		cleardirty (hdb); /*clear it*/
@@ -471,31 +472,13 @@ static boolean dbflushheader (void) {
 			clearbytes (&diskrec.u.growthspace, sizeof (diskrec.u.growthspace)); /*in-memory structure only*/
 		#endif
 
-		if (use_64bit_format) {
+		{
 			unsigned char diskheader[sizeof (tydatabaserecord_64)];
-			tydatabaserecord_64 diskrec64;
 
-			db_prepare_modern_header(&diskrec, &diskrec64);
-
-			if (!db_format_write_header64(&diskrec64, diskheader, sizeof (diskheader)))
+			if (!db_write_modern_header(&diskrec, diskheader, sizeof (diskheader)))
 				return (false);
 
 			fl = dbwrite ((dbaddress) 0, (long) sizeof (diskheader), diskheader);
-		} else {
-			short i;
-
-			db_format_write_be32(&diskrec.availlist, (uint32_t) diskrec.availlist);
-			db_format_write_be32(&diskrec.u.extensions.availlistblock, (uint32_t) diskrec.u.extensions.availlistblock);
-			db_format_write_be16(&diskrec.flags, (uint16_t) diskrec.flags);
-			for (i = 0; i < ctviews; i++) {
-				db_format_write_be32(&diskrec.views[i], (uint32_t) diskrec.views[i]);
-			}
-			/* fnumdatabase stays runtime-only; not written for legacy headers */
-			db_format_write_be32(&diskrec.headerLength, (uint32_t) diskrec.headerLength);
-			db_format_write_be16(&diskrec.longversionMajor, (uint16_t) diskrec.longversionMajor);
-			db_format_write_be16(&diskrec.longversionMinor, (uint16_t) diskrec.longversionMinor);
-
-			fl = dbwrite ((dbaddress) 0, sizeof (tydatabaserecord), &diskrec);
 		}
 		
 		#ifndef FRONTIER_HEADLESS
@@ -522,7 +505,7 @@ boolean dbreadheader (dbaddress adr, boolean *flfree, long *ctbytes, tyvariance 
 	uint64_t raw_size = 0;
 	tyvariance disk_variance = 0;
 
-	if (use_64bit_format) {
+	if (db_use64()) {
 		tyheader64 header;
 
 		if (!dbread (adr, sizeheader_v7, &header))
@@ -530,6 +513,12 @@ boolean dbreadheader (dbaddress adr, boolean *flfree, long *ctbytes, tyvariance 
 
 		raw_size = db_format_read_be64((unsigned char *) &header.sizefreeword.size);
 		disk_variance = (tyvariance) db_format_read_be32((unsigned char *) &header.variance);
+
+		/* Normalize legacy-shifted headers where size/variance landed in the high word. */
+		if ((raw_size & 0xFFFFFFFFULL) == 0 && (raw_size >> 32) != 0)
+			raw_size >>= 32;
+		if ((disk_variance & 0xFFFF) == 0 && ((disk_variance >> 16) != 0))
+			disk_variance = (tyvariance) (disk_variance >> 16);
 	}
 	else {
 		tyheader32 header;
@@ -543,16 +532,23 @@ boolean dbreadheader (dbaddress adr, boolean *flfree, long *ctbytes, tyvariance 
 
 #if defined(FRONTIER_HEADLESS)
 	{
-	unsigned long long raw_dbg = (unsigned long long) raw_size;
-	fprintf(stderr, "[headless] dbreadheader parsed raw=0x%016llx variance=0x%08x\n",
-		raw_dbg,
-		(unsigned int) disk_variance);
+	static int log_headers = -1;
+	if (log_headers < 0) {
+		const char *env = getenv("FRONTIER_DB_TRACE_HEADERS");
+		log_headers = (env != NULL && *env != '\0') ? 1 : 0;
+	}
+	if (log_headers) {
+		unsigned long long raw_dbg = (unsigned long long) raw_size;
+		fprintf(stderr, "[headless] dbreadheader parsed raw=0x%016llx variance=0x%08x\n",
+		        raw_dbg,
+		        (unsigned int) disk_variance);
+	}
 	}
 #endif
 
 	{
-		uint64_t freeflag = use_64bit_format ? 0x8000000000000000ULL : 0x80000000ULL;
-		uint64_t sizemask = use_64bit_format ? 0x7FFFFFFFFFFFFFFFULL : 0x7FFFFFFFULL;
+		uint64_t freeflag = db_use64() ? 0x8000000000000000ULL : 0x80000000ULL;
+		uint64_t sizemask = db_use64() ? 0x7FFFFFFFFFFFFFFFULL : 0x7FFFFFFFULL;
 
 		*flfree = (raw_size & freeflag) != 0;
 		*ctbytes = (long) (raw_size & sizemask);
@@ -568,7 +564,7 @@ boolean dbreadtrailer (dbaddress adr, boolean *flfree, long *ctbytes) {
 
 	uint64_t raw_size = 0;
 
-	if (use_64bit_format) {
+	if (db_use64()) {
 		tytrailer64 trailer;
 
 		if (!dbread (adr, sizetrailer_v7, &trailer))
@@ -586,8 +582,8 @@ boolean dbreadtrailer (dbaddress adr, boolean *flfree, long *ctbytes) {
 	}
 
 	{
-		uint64_t freeflag = use_64bit_format ? 0x8000000000000000ULL : 0x80000000ULL;
-		uint64_t sizemask = use_64bit_format ? 0x7FFFFFFFFFFFFFFFULL : 0x7FFFFFFFULL;
+		uint64_t freeflag = db_use64() ? 0x8000000000000000ULL : 0x80000000ULL;
+		uint64_t sizemask = db_use64() ? 0x7FFFFFFFFFFFFFFFULL : 0x7FFFFFFFULL;
 
 		*flfree = (raw_size & freeflag) != 0;
 		*ctbytes = (long) (raw_size & sizemask);
@@ -599,55 +595,13 @@ boolean dbreadtrailer (dbaddress adr, boolean *flfree, long *ctbytes) {
 
 static boolean dbwriteheader (dbaddress adr, boolean flfree, long ctbytes, tyvariance variance) {
 
-	uint64_t raw_size = (uint64_t) ctbytes;
-
-	if (flfree)
-		raw_size |= (use_64bit_format ? 0x8000000000000000ULL : 0x80000000ULL);
-
-	if (use_64bit_format) {
-		tyheader64 header;
-
-		clearbytes(&header, sizeof header);
-		db_format_write_be64(&header.sizefreeword.size, raw_size);
-		db_format_write_be32(&header.variance, (uint32_t) variance);
-
-		return (dbwrite (adr, sizeheader_v7, &header));
-	}
-	else {
-		tyheader32 header;
-
-		clearbytes(&header, sizeof header);
-		db_format_write_be32(&header.sizefreeword.size, (uint32_t) raw_size);
-		db_format_write_be32(&header.variance, (uint32_t) variance);
-
-		return (dbwrite (adr, sizeheader_v6, &header));
-	}
+	return db_write_modern_block_header(adr, flfree, ctbytes, variance);
 	} /*dbwriteheader*/
 	
 	
 static boolean dbwritetrailer (dbaddress adr, boolean flfree, long ctbytes) {
 
-	uint64_t raw_size = (uint64_t) ctbytes; 
-
-	if (flfree)
-		raw_size |= (use_64bit_format ? 0x8000000000000000ULL : 0x80000000ULL);
-
-	if (use_64bit_format) {
-		tytrailer64 trailer;
-
-		clearbytes(&trailer, sizeof trailer);
-		db_format_write_be64(&trailer.sizefreeword.size, raw_size);
-
-		return (dbwrite (adr, sizetrailer_v7, &trailer));
-	}
-	else {
-		tytrailer32 trailer;
-
-		clearbytes(&trailer, sizeof trailer);
-		db_format_write_be32(&trailer.sizefreeword.size, (uint32_t) raw_size);
-
-		return (dbwrite (adr, sizetrailer_v6, &trailer));
-	}
+	return db_write_modern_block_trailer(adr, flfree, ctbytes);
 	} /*dbwritetrailer*/
 
 
@@ -674,13 +628,13 @@ boolean dbreadavailnode (dbaddress adr, boolean *flfree, long *ctbytes, dbaddres
 		return (false);
 
 	{
-		long link_bytes = use_64bit_format ? (long) sizeof (uint64_t) : (long) sizeof (uint32_t);
+		long link_bytes = db_use64() ? (long) sizeof (uint64_t) : (long) sizeof (uint32_t);
 		unsigned char raw[sizeof (uint64_t)];
 
 		if (!dbread (adr + sizeheader, link_bytes, raw))
 			return (false);
 
-		if (use_64bit_format)
+		if (db_use64())
 			*link = (dbaddress) db_format_read_be64(raw);
 		else
 			*link = (dbaddress) db_format_read_be32(raw);
@@ -700,10 +654,10 @@ static boolean dbwriteavailnode (dbaddress adr, long ctbytes, dbaddress nextlink
 		return (false);
 
 	{
-		long link_bytes = use_64bit_format ? (long) sizeof (uint64_t) : (long) sizeof (uint32_t);
+		long link_bytes = db_use64() ? (long) sizeof (uint64_t) : (long) sizeof (uint32_t);
 		unsigned char raw[sizeof (uint64_t)];
 
-		if (use_64bit_format)
+		if (db_use64())
 			db_format_write_be64(raw, (uint64_t) nextlink);
 		else
 			db_format_write_be32(raw, (uint32_t) nextlink);
@@ -738,10 +692,10 @@ static boolean dbsetavaillink (dbaddress adr, dbaddress link) {
 		}
 		
 	{
-		long link_bytes = use_64bit_format ? (long) sizeof (uint64_t) : (long) sizeof (uint32_t);
+		long link_bytes = db_use64() ? (long) sizeof (uint64_t) : (long) sizeof (uint32_t);
 		unsigned char raw[sizeof (uint64_t)];
 
-		if (use_64bit_format)
+		if (db_use64())
 			db_format_write_be64(raw, (uint64_t) link);
 		else
 			db_format_write_be32(raw, (uint32_t) link);
@@ -975,7 +929,7 @@ static boolean dbwriteshadowavaillist (void) {
 			dbaddress adr_be = p[ix].adr;
 			uint64_t size_be = (uint64_t) p[ix].size;
 
-			if (use_64bit_format) {
+			if (db_use64()) {
 				db_format_write_be64((unsigned char *) &p[ix].adr, (uint64_t) adr_be);
 				db_format_write_be64((unsigned char *) &p[ix].size, size_be);
 			} else {
@@ -1052,7 +1006,7 @@ static boolean dbreadshadowavaillist (void) {
 		register tyavailnodeshadow* p = *h;
 
 		for (ix = 0; ix < ct; ix++) {
-			if (use_64bit_format) {
+			if (db_use64()) {
 				p[ix].adr = (dbaddress) db_format_read_be64((unsigned char *) &p[ix].adr);
 				p[ix].size = (int64_t) db_format_read_be64((unsigned char *) &p[ix].size);
 			} else {
@@ -2617,17 +2571,20 @@ boolean dbopenfile (hdlfilenum fnum, boolean flreadonly) {
 		goto error;
 
 	header_is_modern = header_version >= 7;
-	
-	if (!db_format_decode_header(rawheader, sizeof rawheader, &header_is_modern, &diskrec))
-		goto error;
 
-	/* Route to legacy adapter (v6) or strict v7 reader. */
 	if (header_version <= 6) {
-		if (!db_format_load_legacy_adapter(&diskrec, flreadonly))
+		if (!db_read_legacy(rawheader, sizeof rawheader, &diskrec))
 			goto error;
+		if (!db_format_load_legacy_adapter(&diskrec, flreadonly, NULL))
+			goto error;
+		db_format_set_legacy_source_db(hdb);
 	} else {
+		if (!db_read_modern(rawheader, sizeof rawheader, &diskrec))
+			goto error;
 		if (!db_format_load_v7_reader(&diskrec, flreadonly))
 			goto error;
+		db_format_force_strict_v7_reader();
+		db_format_set_legacy_source_db(nil);
 	}
 	
 	diskrec.fnumdatabase = (long) fnum; /*this just got overwritten*/
@@ -2655,7 +2612,7 @@ boolean dbopenfile (hdlfilenum fnum, boolean flreadonly) {
 	}
 	
 	// Version-specific size validation
-	if (use_64bit_format) {
+	if (db_use64()) {
 		assert(sizeof(tydatabaserecord_64) == 88);  // 64-bit format
 	} else {
 		assert(sizeof(tydatabaserecord) == 116);  // 32-bit format (on 64-bit systems)
@@ -2664,11 +2621,19 @@ boolean dbopenfile (hdlfilenum fnum, boolean flreadonly) {
 #if defined(FRONTIER_HEADLESS)
 	fprintf(stderr,
 		"[headless] dbopenfile post-detect use64=%s views(dec)=[0x%016llx,0x%016llx,0x%016llx]\n",
-		use_64bit_format ? "true" : "false",
+		db_use64() ? "true" : "false",
 		(unsigned long long)(**hdb).views[0],
 		(unsigned long long)(**hdb).views[1],
 		(unsigned long long)(**hdb).views[2]);
 #endif
+
+	if (db_use64()) {
+		for (int i = 0; i < ctviews; ++i) {
+			uint64_t view = (uint64_t) (**hdb).views[i];
+			if ((view & 0xFFFFFFFF00000000ULL) != 0 && (view & 0xFFFFFFFFULL) == 0)
+				(**hdb).views[i] = (dbaddress) (view >> 32);
+		}
+	}
 	
     if ((**hdb).versionnumber != dbversionnumber) {
 
@@ -2689,14 +2654,14 @@ boolean dbopenfile (hdlfilenum fnum, boolean flreadonly) {
          * modern (v7) format. For legacy files (v<=6), defer version
          * changes until an explicit migration is performed (e.g., Save).
          */
-        if (use_64bit_format)
+        if (db_use64())
             (**hdb).versionnumber = dbversionnumber; /* we can only write what we know */
         
         setdirty (hdb);
         }
 		
 	// Check if this is a legacy database that should be migrated
-	if (!use_64bit_format && (**hdb).versionnumber <= 6) {
+	if (!db_use64() && (**hdb).versionnumber <= 6) {
 		// Offer migration to 64-bit format
 		if (offer_64bit_migration_dialog("current_database_path")) {
 			// TODO: Get actual database path
@@ -2736,6 +2701,9 @@ boolean dbstartsaveas (hdlfilenum fnum) {
 		
 	fldatabasesaveas = true; /*set global; enables databasehandle swapping*/
 	dbsaveas_source = databasedata;
+
+	/* 2025-11-25 Codex: Enable wide writes when legacy adapter is active. */
+	db_format_adapter_enable_wide_writes(NULL);
 	
 	dbswapglobals ();
 	

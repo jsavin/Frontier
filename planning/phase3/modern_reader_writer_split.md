@@ -1,5 +1,5 @@
 # Modern Reader/Writer Split Plan
-**Last Updated:** 2025-11-26 — Codex  
+**Last Updated:** 2025-11-27 — Codex  
 **State:** Draft / In Progress  
 **Scope:** Complete the clean fork between legacy (v6) reads and modern (v7, BE64) reads/writes; retire legacy write code for headless use and ensure v7 outputs drop legacy Cancoon/view blocks.
 
@@ -13,12 +13,12 @@
 
 ## Plan
 1) **File/Module Layout**
-   - Move remaining reader logic out of `db_format.c` into `db_reader_legacy.c` / `db_reader_modern.c`; delete reader helpers left in `db_format.c`.
-   - Consolidate BE64 header/block writers in `db_writer_modern.c`; remove modern write helpers from `db_format.c`.
-   - Keep `db_format.c` for shared utilities only (BE helpers, adapter state, detection, migrate helpers).
-   - Seed `Common/source/legacy/` with the 32-bit pack/unpack forks (`tablepack_legacy.c` plus `langexternal_legacy.c` / `opverbs_legacy.c`) so modern canonical names can drop runtime format branching.
-   - Update all build targets (tests, frontier-cli) to use the split modules; remove duplicate inclusions.
-   - After the split stabilizes, remove the `use_64bit_format` global: switch all consumers to `db_format_mode_current()`/explicit mode args and delete the symbol.
+   - Move remaining reader logic out of `db_format.c` into `db_reader_legacy.c` / `db_reader_modern.c`; delete reader helpers left in `db_format.c`. **Done.**
+   - Consolidate BE64 header/block writers in `db_writer_modern.c`; remove modern write helpers from `db_format.c`. **In progress (view0/Cancoon fix pending).**
+   - Keep `db_format.c` for shared utilities only (BE helpers, adapter state, detection, migrate helpers). **In progress.**
+   - Seed `Common/source/legacy/` with the 32-bit pack/unpack forks (`tablepack_legacy.c` plus `langexternal_legacy.c` / `opverbs_legacy.c`) so modern canonical names can drop runtime format branching. **Done.**
+   - Update all build targets (tests, frontier-cli) to use the split modules; remove duplicate inclusions. **Done.**
+   - Remove the `use_64bit_format` global: switch all consumers to `db_format_mode_current()`/explicit mode args and delete the symbol. **Mode API now used everywhere; compatibility symbol remains only in db_format.c.**
 2) **Core Delegation (db.c)**
    - Keep `dbread`/`dbwrite` exported for the split modules; remove unused `db_prepare_modern_header`.
    - Make `dbwriteheader/dbwritetrailer` BE64-only (modern writer) with no legacy branches.
@@ -28,15 +28,16 @@
    - Drop Cancoon/view0 legacy block entirely when writing v7; set `views[0]` to the new root only.
    - Verify packing uses modern block/header writers and BE64 addresses throughout.
    - Widen payloads (tables/records/externals) to BE64 during migration: legacy read → widen in-memory → write via modern packers with `use_64bit_format=true` and BE endianness for lengths/addresses. No mixed-width writers.
+   - Current blocker (2025-11-27): `tablesavesystemtable` fails during migration because `hashpackexternal(menu)` sees a free block at adr=0xf709 when Cancoon is dropped. Need to materialize/repair menu/applescripts/suites externals (or guard against free-block references) before packing.
 4) **Tests/Validation**
-   - Add byte-level regressions: modern header/block write outputs; adapter-widened payload → modern bytes (table/record).
-   - Add synthetic round-trip: build a tiny legacy-packed table payload (externals + scalars), decode with legacy reader, widen + repack via modern writer, decode with modern reader, and assert logical equality (types/keys/values; addresses may differ). Fail on any 32-bit or mixed-endian remnant.
-   - File-level round-trip: migrate canonical v6 root to v7, reopen with modern reader, and verify sentinel tables/externals logically match legacy reads. Confirm view0/variance and Cancoon removal.
-   - Re-enable `runtime_tests`/`cli_runtime_tests` once the modern path is clean; log paths in `_CURRENT_STATUS.md`.
-   - Rerun `FRONTIER_REGEN_ROOT=databases/Frontier-v6.root ./tests/runtime_tests`; verify view0 variance and Cancoon drop.
+   - Add byte-level regressions: modern header/block write outputs; adapter-widened payload → modern bytes (table/record). **BE64 view0 header serialization added.**
+   - Add synthetic round-trip: build a tiny legacy-packed table payload (externals + scalars), decode with legacy reader, widen + repack via modern writer, decode with modern reader, and assert logical equality (types/keys/values; addresses may differ). Fail on any 32-bit or mixed-endian remnant. **Pending.**
+   - File-level round-trip: migrate canonical v6 root to v7, reopen with modern reader, and verify sentinel tables/externals logically match legacy reads. Confirm view0/variance and Cancoon removal. **Pending (blocked on writer fix).**
+   - Re-enable `runtime_tests`/`cli_runtime_tests` once the modern path is clean; log paths in `_CURRENT_STATUS.md`. **Done (tests passing).**
+   - Rerun `FRONTIER_REGEN_ROOT=databases/Frontier-v6.root ./tests/runtime_tests`; verify view0 variance and Cancoon drop. **Pending after writer fix.**
 5) **Docs/Tracking**
-   - Update `_CURRENT_STATUS.md` and the two phase3 docs with milestones as each slice lands.
-   - Track remaining warnings (`__builtin_return_address`, unused helpers) for cleanup after BE64 path is solid.
+   - Update `_CURRENT_STATUS.md` and the two phase3 docs with milestones as each slice lands. **Partial (current status updated).**
+   - Track remaining warnings (`__builtin_return_address`, unused helpers) for cleanup after BE64 path is solid. **Warnings cleared in tests; runtime logs only.**
 
 ## Notes
 - Headless: only modern writer needed; legacy writer can stay stubbed/unused.

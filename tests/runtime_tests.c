@@ -330,6 +330,17 @@ static uint32_t read_be32u(const unsigned char *p) {
     return ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) | ((uint32_t)p[2] << 8) | (uint32_t)p[3];
 }
 
+static uint64_t read_be64u(const unsigned char *p) {
+    return ((uint64_t)p[0] << 56) |
+           ((uint64_t)p[1] << 48) |
+           ((uint64_t)p[2] << 40) |
+           ((uint64_t)p[3] << 32) |
+           ((uint64_t)p[4] << 24) |
+           ((uint64_t)p[5] << 16) |
+           ((uint64_t)p[6] << 8)  |
+            (uint64_t)p[7];
+}
+
 static void verify_zero_block(const unsigned char *p, size_t len) {
     for (size_t i = 0; i < len; ++i)
         assert(p[i] == 0);
@@ -374,8 +385,10 @@ static void run_table_header_regression(void) {
 }
 
 static Handle build_roundtrip_table(boolean enable64bit, dbaddress diskAdr) {
-    boolean prev_mode = use_64bit_format;
-    use_64bit_format = enable64bit;
+    db_format_mode mode = db_format_mode_current();
+    boolean prev_mode = mode.use_64bit_format;
+    mode.use_64bit_format = enable64bit;
+    db_format_mode_apply(&mode);
 
     hdlhashtable source = nil;
     assert(newhashtable(&source));
@@ -386,7 +399,8 @@ static Handle build_roundtrip_table(boolean enable64bit, dbaddress diskAdr) {
     assert(hashpacktable(source, false, &packed, &flmustsave));
 
     assert(disposehashtable(source, false));
-    use_64bit_format = prev_mode;
+    mode.use_64bit_format = prev_mode;
+    db_format_mode_apply(&mode);
     return packed;
 }
 
@@ -416,14 +430,17 @@ static void run_serializer_roundtrip_mode(const char *label, boolean enable64bit
     }
 #endif
 
-    boolean prev_mode = use_64bit_format;
-    use_64bit_format = enable64bit;
+    db_format_mode mode = db_format_mode_current();
+    boolean prev_mode = mode.use_64bit_format;
+    mode.use_64bit_format = enable64bit;
+    db_format_mode_apply(&mode);
 
     hdlhashtable restored = nil;
     assert(newhashtable(&restored));
     if (!hashunpacktable(packed, false, restored)) {
         printf("[rt] hashunpacktable failed (%s)\n", label);
-        use_64bit_format = prev_mode;
+        mode.use_64bit_format = prev_mode;
+        db_format_mode_apply(&mode);
         return;
     }
 
@@ -480,7 +497,8 @@ static void run_serializer_roundtrip_mode(const char *label, boolean enable64bit
 #endif
     assert(dispose_ok);
     packed = nil;
-    use_64bit_format = prev_mode;
+    mode.use_64bit_format = prev_mode;
+    db_format_mode_apply(&mode);
     printf("[rt] serializer_roundtrip (%s): done\n", label);
     fflush(stdout);
 }
@@ -582,6 +600,44 @@ int main(void) {
         else
             printf("[rt] migration complete\n");
         fflush(stdout);
+        /* Regression: inspect migrated header for canonical v7 layout. */
+        {
+            const char *path = (migrated_path[0] != '\0') ? migrated_path : regen_path;
+            unsigned char header[88];
+            FILE *fp = fopen(path, "rb");
+            if (!fp) {
+                fprintf(stderr, "[rt] failed to open migrated file for header check: %s\n", path);
+                return 1;
+            }
+            size_t n = fread(header, 1, sizeof header, fp);
+            fclose(fp);
+            if (n < sizeof header) {
+                fprintf(stderr, "[rt] migrated header truncated (%zu bytes)\n", n);
+                return 1;
+            }
+            uint8_t systemid = header[0];
+            uint8_t version = header[1];
+            uint32_t header_len = read_be32u(header + 54);
+            uint64_t v0 = read_be64u(header + 14);
+            uint64_t v1 = read_be64u(header + 22);
+            uint64_t v2 = read_be64u(header + 30);
+            if (version != 7 || header_len != sizeof(tydatabaserecord_64) || v0 == 0 || v1 != 0 || v2 != 0) {
+                fprintf(stderr,
+                        "[rt] migrated header regression failed sys=%u ver=%u hlen=%u views=[0x%llx,0x%llx,0x%llx]\n",
+                        (unsigned) systemid,
+                        (unsigned) version,
+                        (unsigned) header_len,
+                        (unsigned long long) v0,
+                        (unsigned long long) v1,
+                        (unsigned long long) v2);
+                return 1;
+            }
+            printf("[rt] migrated header ok sys=%u ver=%u hlen=%u view0=0x%llx\n",
+                   (unsigned) systemid,
+                   (unsigned) version,
+                   (unsigned) header_len,
+                   (unsigned long long) v0);
+        }
         return 0;
     }
 

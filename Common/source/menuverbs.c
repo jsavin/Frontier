@@ -352,6 +352,9 @@ boolean menuverbpack (hdlexternalvariable hvariable, Handle *hpacked, boolean *f
 	boolean fltempload = false;
 	boolean flpreservelinks;
 	hdlwindowinfo hinfo;
+	const boolean adapter_repack = db_format_adapter_force_repack();
+    db_format_mode prev_mode = db_format_mode_current();
+    db_format_mode working_mode = prev_mode;
 	
 	if (fldatabasesaveas) {
 		
@@ -362,6 +365,17 @@ boolean menuverbpack (hdlexternalvariable hvariable, Handle *hpacked, boolean *f
 			
 		*flnewdbaddress = true;
 		}
+	
+	if (adapter_repack && !(**hv).flinmemory) {
+        working_mode.use_64bit_format = false; /* legacy read while loading source */
+        db_format_mode_push(&working_mode);
+		fltempload = true;
+		if (!menuverbinmemory(hv)) {
+            db_format_mode_pop();
+			return (false);
+        }
+        db_format_mode_pop();
+	}
 	
 	if (!(**hv).flinmemory) { /*simple case, menu is resident in the db*/
 		
@@ -375,6 +389,14 @@ boolean menuverbpack (hdlexternalvariable hvariable, Handle *hpacked, boolean *f
 	adr = (**hv).oldaddress; /*place where this menubar used to be stored*/
 	
 	hm = (hdlmenurecord) (**hv).variabledata;
+
+	if (adapter_repack) {
+		(*flnewdbaddress) = true;
+		(**hm).fldirty = true;
+		db_format_adapter_enable_wide_writes(NULL);
+        working_mode.use_64bit_format = true; /* write modern */
+        db_format_mode_push(&working_mode);
+	}
 	
 	flpreservelinks = fldatabasesaveas && !fltempload;
 	
@@ -398,8 +420,12 @@ boolean menuverbpack (hdlexternalvariable hvariable, Handle *hpacked, boolean *f
 	if (menuwindowopen ((hdlexternalvariable) hv, &hinfo) && (hinfo != nil))
 		shellsetwindowchanges (hinfo, false);
 	
-	pushaddress:
+pushaddress:
 	
+    if (adapter_repack)
+        db_format_mode_pop();
+    db_format_mode_apply(&prev_mode);
+
 	return (pushlongondiskhandle (adr, *hpacked));
 	} /*menuverbpack*/
 
@@ -2345,6 +2371,3 @@ boolean menustart (void) {
 	
 	return (true);
 	} /*menustart*/
-
-
-

@@ -66,6 +66,15 @@ extern boolean opverbscriptunpack (Handle, long *, hdlexternalvariable *);
 
 extern boolean opverbpacktotext (hdlexternalvariable, Handle);
 
+/* Legacy (32-bit) pack/unpack shims used during migration. */
+extern boolean opverbmemorypack_legacy (hdlexternalvariable, Handle *);
+extern boolean opverbmemoryunpack_legacy (Handle, long *, hdlexternalvariable *);
+extern boolean opverbscriptmemoryunpack_legacy (Handle, long *, hdlexternalvariable *);
+extern boolean opverbpack_legacy (hdlexternalvariable, Handle *, boolean *);
+extern boolean opverbunpack_legacy (Handle, long *, hdlexternalvariable *);
+extern boolean opverbscriptunpack_legacy (Handle, long *, hdlexternalvariable *);
+extern boolean opverbpacktotext_legacy (hdlexternalvariable, Handle);
+
 extern boolean opverbgetsize (hdlexternalvariable, long *);
 
 extern boolean opverbgettimes (hdlexternalvariable, long *, long *);
@@ -101,6 +110,5 @@ extern boolean opverbgetvariable (hdlexternalvariable *);
 extern boolean opverbgettargetdata (short);
 
 extern boolean opstart (void);
-
 
 

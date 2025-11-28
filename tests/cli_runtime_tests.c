@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 static bool get_repo_root(char *out, size_t out_size) {
@@ -114,6 +115,18 @@ static bool copy_file(const char *src, const char *dst) {
     return ok;
 }
 
+static void ensure_results_dir(const char *root) {
+    char path[PATH_MAX];
+    if (snprintf(path, sizeof path, "%s/tests/_results", root) >= (int)sizeof path) {
+        fprintf(stderr, "results dir path too small\n");
+        exit(1);
+    }
+    struct stat st;
+    if (stat(path, &st) == 0 && S_ISDIR(st.st_mode))
+        return;
+    (void) mkdir(path, 0755);
+}
+
 static void remove_system_root_backups(const char *databases_dir) {
     DIR *dir = opendir(databases_dir);
     if (dir == NULL)
@@ -211,6 +224,7 @@ static void test_inline_string_concat(void) {
 static void test_script_file_execution(void) {
     char root[PATH_MAX];
     assert(get_repo_root(root, sizeof root));
+    ensure_results_dir(root);
 
     char script_path[PATH_MAX];
     if (snprintf(script_path, sizeof script_path, "%s/tests/_results/cli_runtime_script.usertalk", root) >= (int)sizeof script_path) {
@@ -241,6 +255,7 @@ static void test_invalid_script_returns_error(void) {
 static void test_system_root_hydration_allows_scripts(void) {
     char root[PATH_MAX];
     assert(get_repo_root(root, sizeof root));
+    ensure_results_dir(root);
 
     char source_path[PATH_MAX];
     if (snprintf(source_path, sizeof source_path, "%s/databases/Frontier.root", root) >= (int)sizeof source_path) {

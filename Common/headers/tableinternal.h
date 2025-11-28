@@ -215,6 +215,10 @@ extern boolean tablepacktable (hdlhashtable, boolean, Handle *, boolean *); /*ta
 
 extern boolean tableunpacktable (Handle, boolean, hdlhashtable *);
 
+/* Legacy (32-bit) pack/unpack entry points used during migration. */
+extern boolean tablepacktable_legacy (hdlhashtable, boolean, Handle *, boolean *);
+extern boolean tableunpacktable_legacy (Handle, boolean, hdlhashtable *);
+
 
 extern boolean tablekindpopuphit (Point); /*tablepopup.c*/
 

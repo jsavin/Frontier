@@ -90,10 +90,14 @@ FRONTIER_SOURCES = \
     ../Common/source/tableops.c \
     ../Common/source/tableexternal_common.c \
     ../Common/source/tablepack.c \
+    ../Common/source/legacy/tablepack_legacy.c \
     ../Common/source/tablestructure.c \
     ../Common/source/db.c \
     ../Common/source/dbverbs.c \
     ../Common/source/db_format.c \
+    ../Common/source/db_reader_legacy.c \
+    ../Common/source/db_reader_modern.c \
+    ../Common/source/db_writer_modern.c \
     headless_langverbs_stub.c
 
 LANG_RUNTIME_SOURCES = \
@@ -112,6 +116,7 @@ LANG_RUNTIME_SOURCES = \
     ../Common/source/langpack.c \
     \
     ../Common/source/langexternal.c \
+    ../Common/source/legacy/langexternal_legacy.c \
     ../Common/source/langstartup.c \
     ../Common/source/langwarnings.c \
     ../Common/source/langtmpstack.c \
@@ -140,14 +145,19 @@ LANG_RUNTIME_SOURCES = \
     ../Common/source/oprefcon.c \
     ../Common/source/oppack.c \
     ../Common/source/opverbs.c \
+    ../Common/source/legacy/opverbs_legacy.c \
     ../Common/source/opxml.c \
     ../Common/source/langxml.c \
     ../Common/source/tableops.c \
     ../Common/source/tableexternal_common.c \
+    ../Common/source/legacy/tablepack_legacy.c \
     ../Common/source/tablepack.c \
     ../Common/source/tablestructure.c \
     ../Common/source/db.c \
     ../Common/source/db_format.c \
+    ../Common/source/db_reader_legacy.c \
+    ../Common/source/db_reader_modern.c \
+    ../Common/source/db_writer_modern.c \
     ../Common/source/shell_api_headless.c \
     ../Common/source/shell_api.c \
     ../portable/file_portable.c \
