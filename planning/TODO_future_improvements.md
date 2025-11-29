@@ -326,6 +326,8 @@ Notes
 - Automated database integrity checkers.
 - Comprehensive API documentation refresh once new infrastructure lands.
 - **Strings pipeline (Phase 2 follow-up):** After libyaml-based ingestion is stable, re-enable the bespoke bison/flex YAML parser to match libyaml parity while dropping the third-party dependency. Includes full YAML subset support (indent/dedent, folded strings, metadata fields) and regression tests comparing both pipelines.
+- **Canonical v6 migration fixture [P1]:** Build and commit a documented v6 `.root` containing every datatype we need to validate (tables, outlines, scripts, WPText, binaries, PICT, CARD, menubars, etc.). Document its structure so migration tests can E2E v6→v7 and assert payload/content correctness against the known layout.
+- **Global state isolation [P1]:** see planning/phase3/global_state_isolation_plan.md for the detailed roadmap to replace globals (format modes, outline/menu/editor state, lang/runtime state) with per-context parameters so components can run in isolation and be thread-safe.
 
 ### UserTalk Language Server & Bridge (Phase 5+ exploration) [P2]
 - **Background:** IDE exploration keeps coming up; we need a language server to power auto-complete, hover docs, and go-to-definition for UserTalk plus a bridge for scripting from Python/Rust/Objective-C.

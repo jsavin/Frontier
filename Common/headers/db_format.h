@@ -22,6 +22,10 @@ typedef struct db_format_mode {
     boolean drop_cancoon;
 } db_format_mode;
 
+typedef struct db_context {
+    db_format_mode mode;
+} db_context;
+
 #define LEGACY_DB_HEADER_BYTES 88
 
 static inline uint16_t db_format_read_be16(const unsigned char *p) {
