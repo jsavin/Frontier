@@ -73,3 +73,50 @@
   - Externals (outline/wptext/menu/pict/script/binary) deserialize without free-block hits and reserialize in BE64.
   - No leftover legacy views/headers; headerLength = 88, version = 7 after migration.
 
+## ASCII Layout (root table)
+
+```
+root (table)
+├─ int32_small = 1234
+├─ int32_negative = -4321
+├─ int64_like_string = "0x1_0000_0000"
+├─ boolean_true = true
+├─ boolean_false = false
+├─ date_epoch = 1970-01-01T00:00:00Z
+├─ date_far_future = 2099-12-31T23:59:59Z
+├─ string_ascii = "Hello, Frontier!"
+├─ string_extended = "café …" (high-bit chars)
+├─ binary_small = 16-byte blob 0x00..0x0F
+├─ table_mixed (table)
+│  ├─ a = 1
+│  ├─ b = "two"
+│  ├─ c = true
+│  ├─ d = date(2000-01-01)
+│  ├─ e = binary (small)
+│  └─ f (table)
+│     ├─ x = 10
+│     └─ y = "sub"
+├─ record_simple (record)
+│  ├─ name = "rec"
+│  ├─ version = 1
+│  └─ flags = 0x01
+├─ list_strings = ["alpha", "beta", "gamma"]
+├─ list_mixed = [1, "two", true, date(2000-01-01)]
+├─ outline_basic (outline)
+│  ├─ root
+│  │  ├─ child1
+│  │  └─ child2
+│  │     └─ grandchild (with note/body)
+├─ wptext_basic (wp text with bold/italic span + newline)
+├─ menu_sample (menu)
+│  ├─ Item One (enabled)
+│  ├─ Item Two (disabled)
+│  ├─ Separator
+│  └─ Sub → [Sub Item]
+├─ pict_small (PICT graphic)
+├─ script_hello = dialog.alert("hello")
+├─ script_dbops = script that reads/writes table_mixed
+└─ card_note (card-equivalent) title/body
+
+view0 → root table
+```
