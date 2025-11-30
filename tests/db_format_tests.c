@@ -646,6 +646,112 @@ static void test_modern_header_canonical_size_and_version(void) {
 
     printf("test_modern_header_canonical_size_and_version passed\n");
 }
+
+static void test_db_context_two_modes_isolated_mode_only(void) {
+    db_format_mode baseline = db_format_mode_current();
+    db_context legacy;
+    db_context modern;
+
+    db_context_init(&legacy);
+    db_context_init(&modern);
+
+    legacy.mode.use_64bit_format = false;
+    modern.mode.use_64bit_format = true;
+
+    db_context_apply(&legacy);
+    assert(!db_format_mode_current().use_64bit_format);
+
+    db_context_apply(&modern);
+    assert(db_format_mode_current().use_64bit_format);
+
+    db_context_apply(&legacy);
+    assert(!db_format_mode_current().use_64bit_format);
+
+    db_format_mode_apply(&baseline);
+}
+
+static void test_db_context_database_swap(void) {
+    db_format_mode baseline_mode = db_format_mode_current();
+    hdldatabaserecord baseline_db = databasedata;
+
+    hdldatabaserecord hdb1 = nil;
+    hdldatabaserecord hdb2 = nil;
+    assert(newclearhandle(longsizeof(tydatabaserecord), (Handle *) &hdb1));
+    assert(newclearhandle(longsizeof(tydatabaserecord), (Handle *) &hdb2));
+    (**hdb1).fnumdatabase = 111;
+    (**hdb2).fnumdatabase = 222;
+
+    db_context ctx1;
+    db_context ctx2;
+    db_context_init(&ctx1);
+    db_context_init(&ctx2);
+    ctx1.database = hdb1;
+    ctx2.database = hdb2;
+
+    db_context_apply(&ctx1);
+    assert(databasedata == hdb1);
+    db_context_apply(&ctx2);
+    assert(databasedata == hdb2);
+
+    db_format_mode_apply(&baseline_mode);
+    databasedata = baseline_db;
+    disposehandle((Handle) hdb1);
+    disposehandle((Handle) hdb2);
+}
+
+static void test_db_context_two_modes_isolated_db_state(void) {
+    db_format_mode baseline = db_format_mode_current();
+    db_context legacy;
+    db_context modern;
+
+    db_context_init(&legacy);
+    db_context_init(&modern);
+
+    legacy.mode.use_64bit_format = false;
+    modern.mode.use_64bit_format = true;
+
+    db_context_apply(&legacy);
+    assert(!db_format_mode_current().use_64bit_format);
+
+    db_context_apply(&modern);
+    assert(db_format_mode_current().use_64bit_format);
+
+    db_context_apply(&legacy);
+    assert(!db_format_mode_current().use_64bit_format);
+
+    db_format_mode_apply(&baseline);
+}
+
+static void test_dbswapglobals_context_scoped(void) {
+    db_format_mode baseline_mode = db_format_mode_current();
+    hdldatabaserecord baseline_db = databasedata;
+
+    hdldatabaserecord hsrc = nil;
+    hdldatabaserecord hdst = nil;
+    assert(newclearhandle(longsizeof(tydatabaserecord), (Handle *) &hsrc));
+    assert(newclearhandle(longsizeof(tydatabaserecord), (Handle *) &hdst));
+    (**hsrc).fnumdatabase = 111;
+    (**hdst).fnumdatabase = 222;
+
+    db_context ctx;
+    db_context_init(&ctx);
+    ctx.database = hsrc;
+    ctx.saveas.active = true;
+    ctx.saveas.destination = hdst;
+    ctx.saveas.source = hsrc;
+
+    dbswapglobals_context(&ctx);
+
+    assert(databasedata == baseline_db);
+    assert(ctx.database == hdst);
+    assert(ctx.saveas.destination == hsrc);
+    assert(ctx.saveas.active);
+
+    db_format_mode_apply(&baseline_mode);
+    databasedata = baseline_db;
+    disposehandle((Handle) hsrc);
+    disposehandle((Handle) hdst);
+}
 int main(void) {
     test_detect_legacy_database();
     test_detect_modern_database();
@@ -661,6 +767,10 @@ int main(void) {
     test_modern_header_view0_serialization();
     test_modern_header_canonical_size_and_version();
     test_procedural_v7_golden_header_and_avail();
+    test_db_context_two_modes_isolated_mode_only();
+    test_db_context_database_swap();
+    test_db_context_two_modes_isolated_db_state();
+    test_dbswapglobals_context_scoped();
     printf("db_format_tests: all checks passed\n");
     return 0;
 }

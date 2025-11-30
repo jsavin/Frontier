@@ -49,7 +49,7 @@
 	#include "shellprivate.h"
 #include "timedate.h"
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
-#include "db_format.h" /* use_64bit_format flag */
+#include "db_format.h" /* format mode */
 
 #pragma pack(2)
 typedef struct tycancoonrecord { /*one of these for every cancoon file that's open*/
@@ -546,7 +546,11 @@ pascal boolean odbSaveFile (odbref odb) {
 	if (!dbassign (&adr, sizeof (info), &info))
 		return (false);
 	
-	dbflushreleasestack (); /*release all the db objects that were saved up*/
+	{
+		db_context ctx;
+		db_context_init(&ctx);
+		dbflushreleasestack_context(&ctx); /*release all the db objects that were saved up*/
+	}
 	
 	dbsetview (cancoonview, adr);
 	
