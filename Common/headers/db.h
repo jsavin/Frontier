@@ -1,6 +1,9 @@
 
 /*	$Id$    */
 
+/*****************************************************************************/
+/* 2025-11-29 Codex: Add Save As destination getter for context-aware callers. */
+/* 2025-11-30 Codex: Widen Save As context signatures for scoped state. */
 /******************************************************************************
 
     UserLand Frontier(tm) -- High performance Web content management,
@@ -35,6 +38,8 @@
 #pragma message( "**Compiling " __FILE__ )
 #endif
 
+
+typedef struct db_context db_context;
 
 #ifndef memoryinclude
 	#include "memory.h"
@@ -210,8 +215,12 @@ extern boolean dbopenfile (hdlfilenum, boolean);
 extern boolean dbclose (void);
 
 extern boolean dbstartsaveas (hdlfilenum);
+extern boolean dbstartsaveas_context(db_context *context, hdlfilenum fnum);
+
+extern boolean dbgetdestinationdatabase (hdldatabaserecord *);
 
 extern boolean dbendsaveas (void);
+extern boolean dbendsaveas_context(db_context *context);
 
 extern boolean statsblockinuse (dbaddress, bigstring); /*dbstats.c*/
 

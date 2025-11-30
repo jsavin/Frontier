@@ -28,6 +28,8 @@
 /* 2025-11-24 Codex: Legacy header writes now use BE helpers for v7 parity. */
 /* 2025-11-25 Codex: Update dbopenfile to route through widened legacy adapter signature. */
 /* 2025-11-26 Codex: Expose raw db read/write for split reader/writer modules. */
+/* 2025-11-29 Codex: Add Save As destination accessor and context wrappers for db stack ops. */
+/* 2025-11-30 Codex: Scope Save As state through db_context guards to stop global leaks. */
 
 
 #include "frontier.h"
@@ -317,13 +319,88 @@ static boolean dbseteof (long eof) {
 short topdatabasestack = 0;
 
 hdldatabaserecord databasestack [ctdatabasestack];
+static db_context g_default_db_context;
+typedef struct db_context_guard {
+    db_format_mode prev_mode;
+    db_saveas_state prev_saveas;
+    hdldatabaserecord prev_db;
+} db_context_guard;
+
+static db_context *db_context_refresh_default(void) {
+    db_context_init(&g_default_db_context);
+    return &g_default_db_context;
+}
+
+void db_saveas_state_snapshot(db_saveas_state *state) {
+    if (state == NULL)
+        return;
+    state->active = fldatabasesaveas;
+    state->destination = databasedestination;
+    state->source = dbsaveas_source;
+}
+
+void db_saveas_state_apply(const db_saveas_state *state) {
+    if (state == NULL)
+        return;
+    fldatabasesaveas = state->active;
+    databasedestination = state->destination;
+    dbsaveas_source = state->source;
+    db_sync_use64_to_current_db();
+}
+
+static void db_context_guard_enter(const db_context *context, db_context_guard *guard) {
+    if (guard != NULL) {
+        guard->prev_mode = db_format_mode_current();
+        db_saveas_state_snapshot(&guard->prev_saveas);
+        guard->prev_db = databasedata;
+    }
+    if (context != NULL) {
+        db_format_mode_apply(&context->mode);
+        if (context->database != nil)
+            databasedata = context->database;
+        db_saveas_state_apply(&context->saveas);
+    }
+}
+
+static void db_context_guard_exit(const db_context_guard *guard) {
+    if (guard == NULL)
+        return;
+    db_format_mode_apply(&guard->prev_mode);
+    databasedata = guard->prev_db;
+    db_saveas_state_apply(&guard->prev_saveas);
+}
+
+static void db_context_guard_exit_with_saveas(const db_context_guard *guard, const db_saveas_state *state) {
+    if (guard == NULL)
+        return;
+    db_format_mode_apply(&guard->prev_mode);
+    databasedata = guard->prev_db;
+    if (state != NULL)
+        db_saveas_state_apply(state);
+    else
+        db_saveas_state_apply(&guard->prev_saveas);
+}
 
 
-static boolean dbrelease (dbaddress); /*6.2b2: Dropped from db.h and declared static*/
+static boolean dbrelease_internal (dbaddress); /*6.2b2: Dropped from db.h and declared static*/
 static boolean dballocate (long databytes, ptrvoid pdata, dbaddress *paddress); /*6.2b14 AR: forward declaration for dbwriteshadowavaillist*/
+static boolean dbstartsaveas_internal(hdlfilenum fnum);
+static boolean dbendsaveas_internal(void);
+boolean dbassign_context(const db_context *context, dbaddress *padr, long newsize, ptrvoid pdata);
+boolean dbreference_context(const db_context *context, dbaddress adr, long maxbytes, ptrvoid pdata);
+boolean dbreference_handle_context(const db_context *context, dbaddress adr, Handle *h);
+boolean dballocate_context(const db_context *context, long databytes, ptrvoid pdata, dbaddress *paddress);
+boolean dbendsaveas_context(db_context *context);
+boolean dbstartsaveas_context(db_context *context, hdlfilenum fnum);
+boolean dbpushdatabase_context(const db_context *context, hdldatabaserecord hdatabase);
+boolean dbpopdatabase_context(const db_context *context);
+boolean dbrelease_context(const db_context *context, dbaddress adr);
+boolean dbassign_internal(dbaddress *padr, long newsize, ptrvoid pdata);
+boolean dbcopy_internal(dbaddress adrorig, dbaddress *adrcopy);
+boolean dbreference_internal(dbaddress adr, long maxbytes, ptrvoid pdata);
+boolean dbgetsize_internal(dbaddress adr, long *logicalsize);
 
 boolean dbpushdatabase (hdldatabaserecord hdatabase) {
-	
 	/*
 	when you want to temporarily work with a different databaserecord, call this
 	routine, do your stuff and then call dbpopdatabase.
@@ -357,6 +434,23 @@ boolean dbpopdatabase (void) {
 	
 	return (true);
 	} /*dbpopdatabase*/
+
+/* Context-aware push/pop to avoid leaking mode/handle changes. */
+boolean dbpushdatabase_context(const db_context *context, hdldatabaserecord hdatabase) {
+    db_context_guard guard;
+    db_context_guard_enter(context, &guard);
+    boolean ok = dbpushdatabase(hdatabase);
+    db_context_guard_exit(&guard);
+    return ok;
+}
+
+boolean dbpopdatabase_context(const db_context *context) {
+    db_context_guard guard;
+    db_context_guard_enter(context, &guard);
+    boolean ok = dbpopdatabase();
+    db_context_guard_exit(&guard);
+    return ok;
+}
 
 
 static void dbswapglobals (void) {
@@ -456,7 +550,11 @@ static boolean dbflushheader (void) {
 	assert (sizeof (diskrec.u.growthspace) >= sizeof (diskrec.u.extensions));
 	
 	/* If we opened via legacy adapter, flip to wide writes before flushing. */
-	db_format_adapter_enable_wide_writes(NULL);
+    {
+        db_context ctx;
+        db_context_init(&ctx);
+        db_format_adapter_enable_wide_writes_context(&ctx, NULL);
+    }
 
 	if (isdirty (hdb)) { /*changes made to header*/
 		
@@ -800,7 +898,7 @@ static boolean dbfindpreviousavail (dbaddress adr, dbaddress *prev, long *ixshad
 
 #ifdef SMART_DB_OPENING	
 
-static void dbclearshadowavaillist (void) {
+static void dbclearshadowavaillist_impl (void) {
 	
 	/*
 	6.2b12 AR: This function MUST be called before modifying the linked list
@@ -826,7 +924,7 @@ static void dbclearshadowavaillist (void) {
 			
 			dbflushheader ();		
 			
-			if (!dbrelease (adrblock)) {
+			if (!dbrelease_internal (adrblock)) {
 				#ifdef DATABASE_DEBUG
 					char str[256];
 
@@ -838,7 +936,22 @@ static void dbclearshadowavaillist (void) {
 			}
 			
 	return;
-	} /*dbclearshadowavaillist*/
+	} /*dbclearshadowavaillist_impl*/
+
+static void dbclearshadowavaillist (void) {
+    db_context_guard guard;
+    db_context_guard_enter(db_context_refresh_default(), &guard);
+    dbclearshadowavaillist_impl();
+    db_context_guard_exit(&guard);
+}
+
+boolean dbclearshadowavaillist_context(const db_context *context) {
+    db_context_guard guard;
+    db_context_guard_enter(context, &guard);
+    dbclearshadowavaillist();
+    db_context_guard_exit(&guard);
+    return true;
+}
 
 
 static void dbdisposeshadowavaillist (void) {
@@ -862,7 +975,7 @@ static void dbdisposeshadowavaillist (void) {
 #endif
 
 
-static boolean dbwriteshadowavaillist (void) {
+static boolean dbwriteshadowavaillist_impl (void) {
 
 	/*
 	6.2a9 AR: If there's an in-memory shadow avail list, write it to a faked new data block
@@ -893,7 +1006,7 @@ static boolean dbwriteshadowavaillist (void) {
 	if ((**hdb).u.extensions.flreadonly || fldatabasesaveas)
 		return (true); /*we're done already*/
 	
-	dbclearshadowavaillist ();
+	dbclearshadowavaillist_impl();
 		
 	if ((**hdb).u.extensions.availlistshadow.data == nil)
 		return (true); /*we're done already*/
@@ -967,6 +1080,22 @@ error:
 
 	return (fl);
 	}/*dbwriteshadowavaillist*/
+
+boolean dbwriteshadowavaillist (void) {
+    db_context_guard guard;
+    db_context_guard_enter(db_context_refresh_default(), &guard);
+    boolean ok = dbwriteshadowavaillist_impl();
+    db_context_guard_exit(&guard);
+    return ok;
+}
+
+boolean dbwriteshadowavaillist_context(const db_context *context) {
+    db_context_guard guard;
+    db_context_guard_enter(context, &guard);
+    boolean ok = dbwriteshadowavaillist_impl();
+    db_context_guard_exit(&guard);
+    return ok;
+}
 
 
 static boolean dbreadshadowavaillist (void) {
@@ -1205,7 +1334,7 @@ static boolean dbsetsize (dbaddress adr, long size, tyvariance variance) {
 	} /*dbsetsize*/
 	
 
-boolean dbreference (dbaddress adr, long maxbytes, ptrvoid pdata) {
+boolean dbreference_internal (dbaddress adr, long maxbytes, ptrvoid pdata) {
 
 	/*
 	copy into pdata the database block located at address.  the number
@@ -1241,7 +1370,12 @@ boolean dbreference (dbaddress adr, long maxbytes, ptrvoid pdata) {
 		}
 	
 	return (dbread (adr + sizeheader, min (maxbytes, ctbytes - (long) variance), pdata));
-	} /*dbreference*/
+	} /*dbreference_internal*/
+
+boolean dbreference (dbaddress adr, long maxbytes, ptrvoid pdata) {
+    db_context *ctx = db_context_refresh_default();
+    return dbreference_context(ctx, adr, maxbytes, pdata);
+}
 	
 
 boolean dbrefhandle (dbaddress adr, Handle *h) {
@@ -1353,7 +1487,7 @@ static boolean dballocate (long databytes, ptrvoid pdata, dbaddress *paddress) {
 	dbclearshadowavaillist (); /*6.2b12 AR*/
 #endif
 
-	dbswapglobals (); /*use databasedestination*/
+	dbswapglobals_context(db_context_refresh_default()); /*use databasedestination*/
 	
 	smallestinterestingblock = max (databytes, (long) minblocksize);
 	
@@ -1524,14 +1658,14 @@ static boolean dballocate (long databytes, ptrvoid pdata, dbaddress *paddress) {
 	
 	success:
 	
-	dbswapglobals (); /*restore*/
+	dbswapglobals_context(db_context_refresh_default()); /*restore*/
 	
 	return (true); /*the allocation was successful*/
 	
 	
 	failure:
 	
-	dbswapglobals (); /*restore*/
+	dbswapglobals_context(db_context_refresh_default()); /*restore*/
 	
 	return (false);
 	} /*dballocate*/
@@ -1792,7 +1926,7 @@ static boolean dbmergeright (dbaddress adr, long ctbytes, boolean* ptrflmergedri
 	} /*dbmergeright*/
 	
 	
-static boolean dbrelease (dbaddress adr) {
+static boolean dbrelease_internal (dbaddress adr) {
 
 	/*
 	release the database block at adr.
@@ -1889,25 +2023,25 @@ static boolean dbrelease (dbaddress adr) {
 	dbheaderdirty ();
 	
 	return (true);
-	} /*dbrelease*/
+	} /*dbrelease_internal*/
 	
 
 	
 
 static boolean dbmove (ptrvoid pdata, long ctbytes, dbaddress adr) {
-	
+
 	/*
 	copy the data from memory (pdata) to the data part of the block at adr.
 	
 	call this when you know that the size of the object you're writing is the
 	same as the object this block was created to hold.
 	*/
-	
+
 	return (dbwrite (adr + sizeheader, ctbytes, pdata)); 
 	} /*dbmove*/
-	
 
-boolean dbassign (dbaddress *padr, long newsize, ptrvoid pdata) {
+
+boolean dbassign_internal (dbaddress *padr, long newsize, ptrvoid pdata) {
 	
 	/*
 	we want to move new data into the database block whose address is adr.
@@ -1932,7 +2066,7 @@ boolean dbassign (dbaddress *padr, long newsize, ptrvoid pdata) {
 	boolean flfree;
 	
 	adr = *padr; /*copy into a register*/
-	
+
 	if (fldatabasesaveas || (adr == nildbaddress)) /*no previous allocation, create a new one*/
 		return (dballocate (newsize, pdata, padr)); 
 	
@@ -1948,7 +2082,7 @@ boolean dbassign (dbaddress *padr, long newsize, ptrvoid pdata) {
 	
 	if (newsize > cttotal) { /*there isn't enough room*/
 
-		if (!dbrelease (adr)) { //ignore return value, don't want to abort saving
+		if (!dbrelease_internal (adr)) { //ignore return value, don't want to abort saving
 			#ifdef DATABASE_DEBUG
 				char str[256];
 
@@ -1968,10 +2102,15 @@ boolean dbassign (dbaddress *padr, long newsize, ptrvoid pdata) {
 			return (false);
 		
 	return (dbmove (pdata, newsize, adr)); /*copy the data into a big-enough block*/
-	} /*dbassign*/
+	} /*dbassign_internal*/
+
+boolean dbassign (dbaddress *padr, long newsize, ptrvoid pdata) {
+    db_context *ctx = db_context_refresh_default();
+    return dbassign_context(ctx, padr, newsize, pdata);
+}
 	
 	
-static boolean dbgetsize (dbaddress adr, long *logicalsize) {
+boolean dbgetsize_internal (dbaddress adr, long *logicalsize) {
 
 	/*
 	give me the address of a database block and I'll return the number
@@ -1992,10 +2131,10 @@ static boolean dbgetsize (dbaddress adr, long *logicalsize) {
 	*logicalsize = size - variance;
 	
 	return (true);
-	} /*dbgetsize*/
+	} /*dbgetsize_internal*/
 
 
-boolean dbcopy (dbaddress adrorig, dbaddress *adrcopy) {
+boolean dbcopy_internal (dbaddress adrorig, dbaddress *adrcopy) {
 	
 	/*
 	create a copy of the database block pointed to by adrorig.  return
@@ -2016,7 +2155,7 @@ boolean dbcopy (dbaddress adrorig, dbaddress *adrcopy) {
 		}
 
 	hdldatabaserecord source_db = db_begin_source_read();
-	if (!dbgetsize (adrorig, &size)) {
+	if (!dbgetsize_internal (adrorig, &size)) {
 #if defined(FRONTIER_HEADLESS)
 		fprintf(stderr, "[headless-db] dbgetsize failed for adr=0x%llx\n", (unsigned long long) adrorig);
 #endif
@@ -2067,7 +2206,12 @@ boolean dbcopy (dbaddress adrorig, dbaddress *adrcopy) {
 #endif
 	}
 	return (flreturned);
-	} /*dbcopy*/
+	} /*dbcopy_internal*/
+
+boolean dbcopy (dbaddress adrorig, dbaddress *adrcopy) {
+    db_context *ctx = db_context_refresh_default();
+    return dbcopy_context(ctx, adrorig, adrcopy);
+}
 	
 	
 static boolean dballocstring (dbaddress *adr, bigstring bs) {
@@ -2083,7 +2227,7 @@ static boolean dbrefstring (dbaddress adr, bigstring bs) {
 	if (adr == nildbaddress) /*nil adr represents an empty string, saves time & space*/
 		return (true);
 		
-	return (dbreference (adr, sizeof (bigstring), bs));
+	return (dbreference_internal (adr, sizeof (bigstring), bs));
 	} /*dbrefstring*/
 	
 	
@@ -2092,13 +2236,13 @@ static boolean dbassignstring (dbaddress *adr, bigstring bs) {
 	if (*adr == nildbaddress) 
 		return (dballocstring (adr, bs));
 	else
-		return (dbassign (adr, (long) stringlength(bs) + 1, bs));
+		return (dbassign_internal (adr, (long) stringlength(bs) + 1, bs));
 	} /*dbassignstring*/
 	
 	
 static boolean dbreleasestring (dbaddress adr) {
 
-	if (!dbrelease (adr)) {
+    if (!dbrelease_internal (adr)) {
 		#ifdef DATABASE_DEBUG
 			char str[256];
 
@@ -2243,7 +2387,7 @@ void dbsetview (short viewnumber, dbaddress adrtext) {
 
 	register hdldatabaserecord hdb;
 	
-	dbswapglobals ();
+	dbswapglobals_context(db_context_refresh_default());
 	
 	hdb = databasedata; /*move into register*/
 	
@@ -2253,7 +2397,7 @@ void dbsetview (short viewnumber, dbaddress adrtext) {
 	
 	dbflushheader ();
 	
-	dbswapglobals ();
+	dbswapglobals_context(db_context_refresh_default());
 	} /*dbsetview*/
 
 
@@ -2329,7 +2473,7 @@ boolean debug_dbpushreleasestack (dbaddress adr, long valtype, long line, char *
 	} /*dbpushreleasestack*/
 
 
-boolean dbflushreleasestack (void) {
+static boolean dbflushreleasestack_impl (void) {
 	
 	/*
 	release all the chunks accumulated in the database's releasestack.
@@ -2354,7 +2498,7 @@ boolean dbflushreleasestack (void) {
 
 			info = ((tydbreleasestackframe*)(*h)) [i];
 			
-			if (!dbrelease (info.adr)) {
+			if (!dbrelease_internal (info.adr)) {
 
 				bigstring bsfile;
 				char str[256];
@@ -2377,12 +2521,27 @@ boolean dbflushreleasestack (void) {
 #endif
 	 
 	return (true);
-	} /*dbflushreleasestack*/
+} /*dbflushreleasestack_impl*/
+
+boolean dbflushreleasestack (void) {
+    db_context_guard guard;
+    db_context_guard_enter(db_context_refresh_default(), &guard);
+    boolean ok = dbflushreleasestack_impl();
+    db_context_guard_exit(&guard);
+    return ok;
+} /*dbflushreleasestack*/
+
+boolean dbrelease_context(const db_context *context, dbaddress adr) {
+    db_context_guard guard;
+    db_context_guard_enter(context, &guard);
+    boolean ok = dbrelease_internal(adr);
+    db_context_guard_exit(&guard);
+    return ok;
+}
 
 #else
 	
-boolean dbpushreleasestack (dbaddress adr, long valtype) {
-#pragma unused(valtype)
+static boolean dbpushreleasestack_impl (dbaddress adr) {
 
 	/*
 	the chunk of db space pointed to by adr is being logically released, but
@@ -2409,10 +2568,20 @@ boolean dbpushreleasestack (dbaddress adr, long valtype) {
 		}
 		
 	return (enlargehandle (hstack, sizeof (adr), &adr));
-	} /*dbpushreleasestack*/
+	} /*dbpushreleasestack_impl*/
 
 
-boolean dbflushreleasestack (void) {
+boolean dbpushreleasestack (dbaddress adr, long valtype) {
+#pragma unused(valtype)
+    db_context_guard guard;
+    db_context_guard_enter(db_context_refresh_default(), &guard);
+    boolean ok = dbpushreleasestack_impl(adr);
+    db_context_guard_exit(&guard);
+    return ok;
+}
+
+
+static boolean dbflushreleasestack_impl_nondebug (void) {
 	
 	/*
 	release all the chunks accumulated in the database's releasestack.
@@ -2434,7 +2603,7 @@ boolean dbflushreleasestack (void) {
 			
 			rollbeachball (); /*dmb 4.1b9*/
 			
-			dbrelease (((ptrdbaddress) (*h)) [i]);
+						dbrelease_internal (((ptrdbaddress) (*h)) [i]);
 			}
 
 		disposehandle (h);
@@ -2447,17 +2616,52 @@ boolean dbflushreleasestack (void) {
 #endif
 	
 	return (true);
+	} /*dbflushreleasestack_impl_nondebug*/
+
+boolean dbflushreleasestack (void) {
+    db_context_guard guard;
+    db_context_guard_enter(db_context_refresh_default(), &guard);
+    boolean ok = dbflushreleasestack_impl_nondebug();
+    db_context_guard_exit(&guard);
+    return ok;
 	} /*dbflushreleasestack*/
 
 #endif
 
+boolean dbflushreleasestack_context(const db_context *context) {
+    db_context_guard guard;
+    db_context_guard_enter(context, &guard);
+#ifdef DATABASE_DEBUG
+    boolean ok = dbflushreleasestack_impl();
+#else
+    boolean ok = dbflushreleasestack_impl_nondebug();
+#endif
+    db_context_guard_exit(&guard);
+    return ok;
+}
 
-static void dbzeroreleasestack (void) {
+
+static void dbzeroreleasestack_impl (void) {
 	
 	disposehandle ((**databasedata).releasestack);
 	
 	(**databasedata).releasestack = nil;
-	} /*dbzeroreleasestack*/
+	} /*dbzeroreleasestack_impl*/
+
+static void dbzeroreleasestack (void) {
+    db_context_guard guard;
+    db_context_guard_enter(db_context_refresh_default(), &guard);
+    dbzeroreleasestack_impl();
+    db_context_guard_exit(&guard);
+}
+
+boolean dbzeroreleasestack_context(const db_context *context) {
+    db_context_guard guard;
+    db_context_guard_enter(context, &guard);
+    dbzeroreleasestack_impl();
+    db_context_guard_exit(&guard);
+    return true;
+}
 
 
 boolean dbdispose (void) {
@@ -2695,7 +2899,7 @@ boolean dbclose (void) {
 	} /*dbclose*/
 
 
-boolean dbstartsaveas (hdlfilenum fnum) {
+static boolean dbstartsaveas_internal(hdlfilenum fnum) {
 	
 	register boolean fl;
 		
@@ -2703,7 +2907,11 @@ boolean dbstartsaveas (hdlfilenum fnum) {
 	dbsaveas_source = databasedata;
 
 	/* 2025-11-25 Codex: Enable wide writes when legacy adapter is active. */
-	db_format_adapter_enable_wide_writes(NULL);
+    {
+        db_context ctx;
+        db_context_init(&ctx);
+        db_format_adapter_enable_wide_writes_context(&ctx, NULL);
+    }
 	
 	dbswapglobals ();
 	
@@ -2716,10 +2924,24 @@ boolean dbstartsaveas (hdlfilenum fnum) {
 		dbsaveas_source = nil;
 	
 	return (fl);
-	} /*dbstartsaveas*/
+	} /*dbstartsaveas_internal*/
 
+boolean dbstartsaveas (hdlfilenum fnum) {
+    db_context *ctx = db_context_refresh_default();
+    return dbstartsaveas_context(ctx, fnum);
+}
 
-boolean dbendsaveas (void) {
+boolean dbgetdestinationdatabase (hdldatabaserecord *hdb) {
+    if (hdb == NULL)
+        return (false);
+    db_context *ctx = db_context_refresh_default();
+    if (!ctx->saveas.active || ctx->saveas.destination == nil)
+        return (false);
+    *hdb = ctx->saveas.destination;
+    return (true);
+    } /*dbgetdestinationdatabase*/
+
+static boolean dbendsaveas_internal (void) {
 	
 	register boolean fl;
 	
@@ -2738,4 +2960,80 @@ boolean dbendsaveas (void) {
 	dbsaveas_source = nil;
 	
 	return (fl);
-	} /*dbendsaveas*/
+	} /*dbendsaveas_internal*/
+
+boolean dbendsaveas (void) {
+    db_context *ctx = db_context_refresh_default();
+    return dbendsaveas_context(ctx);
+}
+
+/* Thread-safe context wrapper for dballocate to avoid global flips. */
+boolean dballocate_context(const db_context *context, long databytes, ptrvoid pdata, dbaddress *paddress) {
+    db_context_guard guard;
+    db_context_guard_enter(context, &guard);
+    boolean ok = dballocate(databytes, pdata, paddress);
+    db_context_guard_exit(&guard);
+    return ok;
+}
+
+/* Context-aware Save As completion to keep destination scoped. */
+boolean dbendsaveas_context(db_context *context) {
+    db_context_guard guard;
+    db_context_guard_enter(context, &guard);
+    boolean ok = dbendsaveas_internal();
+    db_saveas_state applied_state;
+    db_saveas_state_snapshot(&applied_state);
+    const db_saveas_state *restore_state = &applied_state;
+    if (context != NULL) {
+        context->saveas = applied_state;
+        context->database = nil;
+        if (context != &g_default_db_context)
+            restore_state = &guard.prev_saveas;
+    }
+    if (context == &g_default_db_context)
+        db_saveas_state_apply(&applied_state);
+    db_context_guard_exit_with_saveas(&guard, restore_state);
+    return ok;
+}
+
+boolean dbstartsaveas_context(db_context *context, hdlfilenum fnum) {
+    db_context_guard guard;
+    db_context_guard_enter(context, &guard);
+    boolean ok = dbstartsaveas_internal(fnum);
+    db_saveas_state applied_state;
+    db_saveas_state_snapshot(&applied_state);
+    const db_saveas_state *restore_state = &applied_state;
+    if (context != NULL) {
+        context->saveas = applied_state;
+        if (context->saveas.destination != nil)
+            context->database = context->saveas.destination;
+        if (context != &g_default_db_context)
+            restore_state = &guard.prev_saveas;
+    }
+    if (context == &g_default_db_context)
+        db_saveas_state_apply(&applied_state);
+    db_context_guard_exit_with_saveas(&guard, restore_state);
+    return ok;
+}
+
+/* Context-aware wrapper for Save As swapping globals. */
+void dbswapglobals_context(db_context *context) {
+    if (context == NULL)
+        context = db_context_refresh_default();
+
+    db_context_guard guard;
+    db_context_guard_enter(context, &guard);
+    dbswapglobals();
+    db_saveas_state_snapshot(&context->saveas);
+    context->database = databasedata;
+    const db_saveas_state *restore_state = (&context->saveas == &g_default_db_context.saveas) ? &context->saveas : &guard.prev_saveas;
+    db_context_guard_exit_with_saveas(&guard, restore_state);
+}
+/* Context-aware default wrapper for dbclose to preserve globals while enabling contexts. */
+boolean dbclose_context(const db_context *context) {
+    db_context_guard guard;
+    db_context_guard_enter(context, &guard);
+    boolean ok = dbclose();
+    db_context_guard_exit(&guard);
+    return ok;
+}

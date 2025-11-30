@@ -1,5 +1,7 @@
 // 2025-11-20 Codex: Add shared big-endian helpers and a serializer for v7 headers to keep disk format portable.
 // 2025-11-26 Codex: Move reader/writer entry points into dedicated headers to simplify version splits.
+// 2025-11-29 Codex: Add context wrappers for adapter wide writes and Save As completion.
+// 2025-11-30 Codex: Extend db_context with Save As state and expose scoped helpers.
 /*
  * db_format.h - Helpers for detecting and migrating Frontier database headers.
  */
@@ -11,6 +13,7 @@
 #include <stddef.h>
 
 #include "db.h"
+#include "lang.h" /* for hdlhashtable */
 
 #ifdef __cplusplus
 extern "C" {
@@ -21,6 +24,18 @@ typedef struct db_format_mode {
     boolean adapter_repack;
     boolean drop_cancoon;
 } db_format_mode;
+
+typedef struct db_saveas_state {
+    boolean active;
+    hdldatabaserecord destination;
+    hdldatabaserecord source;
+} db_saveas_state;
+
+struct db_context {
+    db_format_mode mode;
+    hdldatabaserecord database;
+    db_saveas_state saveas;
+};
 
 #define LEGACY_DB_HEADER_BYTES 88
 
@@ -88,6 +103,7 @@ boolean db_format_load_v7_reader(const tydatabaserecord *decoded_header, boolean
 boolean db_format_header_version(const unsigned char *rawheader, size_t raw_len, int *out_version);
 /* 2025-11-25 Codex: Legacy adapter state helpers for widening + wide writes. */
 boolean db_format_adapter_enable_wide_writes(const tydatabaserecord_64 **widened_header_out);
+boolean db_format_adapter_enable_wide_writes_context(const db_context *context, const tydatabaserecord_64 **widened_header_out);
 boolean db_format_adapter_force_repack(void);
 void db_format_adapter_mark_address(dbaddress *adr_out);
 boolean db_format_adapter_is_active(void);
@@ -105,6 +121,32 @@ void db_format_mode_push(const db_format_mode *mode);
 void db_format_mode_pop(void);
 db_format_mode db_format_mode_current(void);
 void db_format_mode_apply(const db_format_mode *mode);
+void db_saveas_state_snapshot(db_saveas_state *state);
+void db_saveas_state_apply(const db_saveas_state *state);
+void db_context_init(db_context *context);
+void db_context_apply(const db_context *context);
+boolean hashpacktable_context(const db_context *context, hdlhashtable ht, boolean flsave, Handle *hpacked, boolean *flmustsave);
+boolean hashunpacktable_context(const db_context *context, Handle hpacked, boolean flmemory, hdlhashtable htable);
+boolean dbassignhandle_context(const db_context *context, Handle h, dbaddress *adr);
+boolean dbrefhandle_context(const db_context *context, dbaddress adr, Handle *h);
+boolean dbcopy_context(const db_context *context, dbaddress src, dbaddress *dest);
+boolean dbassign_context(const db_context *context, dbaddress *padr, long newsize, ptrvoid pdata);
+boolean dbreference_context(const db_context *context, dbaddress adr, long ctbytes, ptrvoid pdata);
+boolean dballocate_context(const db_context *context, long databytes, ptrvoid pdata, dbaddress *paddress);
+boolean dbreference_handle_context(const db_context *context, dbaddress adr, Handle *h);
+boolean dbendsaveas_context(db_context *context);
+boolean dbstartsaveas_context(db_context *context, hdlfilenum fnum);
+boolean dbpushdatabase_context(const db_context *context, hdldatabaserecord hdatabase);
+boolean dbpopdatabase_context(const db_context *context);
+boolean dbflushreleasestack_context(const db_context *context);
+boolean dbzeroreleasestack_context(const db_context *context);
+boolean dbrelease_context(const db_context *context, dbaddress adr);
+boolean dbwriteshadowavaillist_context(const db_context *context);
+boolean dbclearshadowavaillist_context(const db_context *context);
+void dbswapglobals_context(db_context *context);
+boolean dbassign_internal(dbaddress *padr, long newsize, ptrvoid pdata);
+boolean dbcopy_internal(dbaddress adrorig, dbaddress *adrcopy);
+boolean dbreference_internal(dbaddress adr, long maxbytes, ptrvoid pdata);
 
 #ifdef __cplusplus
 } /* extern "C" */

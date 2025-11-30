@@ -3,16 +3,15 @@
 Status
 - State: In Progress
 - Phase: Carbon Migration / Runtime Modernization
-- Last Updated: 2025-11-28 (Midday)
+- Last Updated: 2025-11-30 (Midday)
 - Owner: Codex
 - Notes: Primary hand-off summary for active work only.
-- 2025-11-28 (Codex): Migration runs now complete with canonical v7 headers: `version=7`, `headerLength=88`, view0 set to the new root, other views zeroed, Cancoon dropped. Free-block externals are skipped during packing so the packer no longer dies on stale addresses. Header logging is gated by `FRONTIER_DB_TRACE_HEADERS`. Added runtime header regression (migration path) and unit test for canonical header size/version.
-- 2025-11-27 (Codex): Seeded legacy packer fork (`Common/source/legacy/*_legacy.c`) and adjusted modern `tablepack.c` to default BE64. Added thread-local format mode stack (`db_format_mode_push/pop`) and removed `use_64bit_format` flips across packers/tests/stubs; all tests rebuilt and pass (`db_format_tests`, `runtime_tests`, `cli_runtime_tests`). BE64 view0 serialization now covered by unit test. Outstanding warnings trimmed to none in tests (runtime retains known logs only).
-- 2025-11-26 (Codex): Reader/writer split into `db_reader_legacy.c`, `db_reader_modern.c`, `db_writer_modern.c`; `make -C tests db_format_tests` passes with the longstanding `__builtin_return_address` warning and an unused helper in `db.c`.
-- 2025-11-26 (Codex): Detailed split plan lives at `planning/phase3/modern_reader_writer_split.md`.
-- 2025-11-26 (Codex): Payload widening round-trip is **critical**: plan updated to add synthetic legacy→modern→modern-read equality tests, file-level migrated root validation, and BE64 payload widening (tables/records/externals) before claiming the split complete. See `planning/phase3/modern_reader_writer_split.md`.
-- 2025-11-26 (Codex): Design principle: keep modern BE64 code branch-free—fork legacy vs modern logic into separate functions/files instead of runtime format branches.
-- 2025-11-26 (Codex): Naming decision: modern packers keep canonical names; legacy packers move to `legacy_*/` dirs with `_legacy` entry points so modern remains the default surface.
+- 2025-11-30 (Codex): Save As swaps now run through context-aware guards (`dbswapglobals_context`) so allocations/view updates respect scoped Save As state without ambient globals; release-stack push/flush/zero now wrap default contexts; `db_format_tests` remain green.
+- 2025-11-30 (Codex): Scoped Save As state into `db_context` (save-as snapshots + guards), refreshed default-context wrappers, and reworked migrator Save As to rely on its context destination handle; `make -C tests db_format_tests` and `./db_format_tests` pass after the refactor.
+- 2025-11-29 (Codex): Context sweep for DB/adapter: stack/release helpers wrapped, internal assign/copy helpers exposed, TLS `use_64bit_format` shim removed (mode tracked via `g_mode_state`), and two-context regression added to `db_format_tests`.
+- 2025-11-28 (Codex): Added `db_context` pack/assign/ref wrappers and dropped `use_64bit_format` from packers/tests; canonical v7 headers validated with a new header regression.
+- 2025-11-27 (Codex): Legacy packers forked to `legacy_*` with modern packers defaulting to BE64; format-mode stack (`db_format_mode_push/pop`) in place and core suites (`db_format_tests`, `runtime_tests`, `cli_runtime_tests`) green.
+- 2025-11-26 (Codex): Reader/writer split into legacy vs modern modules; modern headers serialized in BE64 with validation hooks; payload widening + round-trip tests still pending (see plan).
 
 **Branches in flight**: `feature/carbon-migration-plan`, `feature/headless-system-bootstrap`, `feature/legacy_adapter_widening_and_v7_reader`
 
@@ -22,6 +21,7 @@ Status
 - Re-run migrator/CLI smoke on additional legacy roots once payload widening lands; stash logs.
 
 ## Next Steps
+- Follow `planning/phase3/db_context_completion_plan.md`: migrate Save As swap/free-list/release-stack paths and callers (incl. headless) to explicit `db_context`, then trim legacy wrappers and validate with broader test suites.
 - Build payload widening + round-trip tests: synthetic legacy payloads repacked via modern writer, then decoded via modern reader; assert logical equality and BE64-only encodings.
 - Route runtime/CLI v7 opens through the strict modern reader once payload widening is ready; rerun `make -C tests runtime_tests` and `make -C tests cli_runtime_tests`.
 - Add byte-level regressions for adapter-widened payloads (table/record/externals) to guard the new split.

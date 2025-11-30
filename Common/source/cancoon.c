@@ -1112,8 +1112,11 @@ boolean ccsavefile (ptrfilespec fs, hdlfilenum fnum, short rnum, boolean flsavea
 	if (!dbassign (&adr, sizeof (info), &info))
 		goto exit;
 	
-	if (!flsaveas)
-		dbflushreleasestack (); /*release all the db objects that were saved up*/
+	if (!flsaveas) {
+		db_context ctx;
+		db_context_init(&ctx);
+		dbflushreleasestack_context(&ctx); /*release all the db objects that were saved up*/
+	}
 	
 	dbsetview (cancoonview, adr);
 	
@@ -1743,7 +1746,6 @@ boolean ccstart (void) {
 	
 	return (ccwindowstart ());
 	} /*ccstart*/
-
 
 
 

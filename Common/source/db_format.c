@@ -3,6 +3,8 @@
 /* 2025-11-26 Codex: Shift version-specific readers/writers into dedicated modules. */
 /* 2025-11-27 Codex: Add migration breadcrumbs to chase drop-Cancoon failures. */
 /* 2025-11-27 Codex: During migration, drop externals whose addresses point at free blocks. */
+/* 2025-11-29 Codex: Thread migrator reads/writes through explicit db_contexts to avoid global Save As swaps. */
+/* 2025-11-30 Codex: Scope db_context operations with Save As state guards for thread safety. */
 
 #include "frontier.h"
 #include "standard.h"
@@ -31,11 +33,15 @@
 #include "cancooninternal.h"
 #include "file.h"
 
+/* Internal DB helpers used for context-wrapped operations. */
+extern boolean dbassign_internal(dbaddress *padr, long newsize, ptrvoid pdata);
+extern boolean dbcopy_internal(dbaddress adrorig, dbaddress *adrcopy);
+extern boolean dbgetsize_internal(dbaddress adr, long *logicalsize);
+
 // 2025-10-27 Codex: Added optional migration tracing to inspect v6/v7 table layouts during conversion.
 // 2025-11-20 Codex: Added v7 header serializer and shared big-endian helpers to keep modern roots portable.
 // 2025-11-25 Codex: Implement legacy adapter widening + strict v7 reader entry points.
 
-_Thread_local boolean use_64bit_format = false; /* compatibility shim until callers drop the symbol */
 static _Thread_local boolean g_db_format_runtime_initialized = false;
 static boolean g_db_format_runtime_headless = false;
 static char last_backup_path[1024];
@@ -45,6 +51,35 @@ static tydatabaserecord_64 g_legacy_widened_header;
 static hdldatabaserecord g_legacy_source_db = nil;
 static _Thread_local db_format_mode g_mode_stack[4];
 static _Thread_local int g_mode_depth = 0;
+static _Thread_local db_format_mode g_mode_state = {false, false, false}; /* current mode when stack is empty */
+
+typedef struct db_context_guard {
+    db_format_mode prev_mode;
+    db_saveas_state prev_saveas;
+    hdldatabaserecord prev_db;
+} db_context_guard;
+
+static void db_context_guard_enter(const db_context *context, db_context_guard *guard) {
+    if (guard != NULL) {
+        guard->prev_mode = db_format_mode_current();
+        db_saveas_state_snapshot(&guard->prev_saveas);
+        guard->prev_db = databasedata;
+    }
+    if (context != NULL) {
+        db_format_mode_apply(&context->mode);
+        if (context->database != nil)
+            databasedata = context->database;
+        db_saveas_state_apply(&context->saveas);
+    }
+}
+
+static void db_context_guard_exit(const db_context_guard *guard) {
+    if (guard == NULL)
+        return;
+    db_format_mode_apply(&guard->prev_mode);
+    databasedata = guard->prev_db;
+    db_saveas_state_apply(&guard->prev_saveas);
+}
 
 #if defined(_WIN32)
 #define db_trace_seek _fseeki64
@@ -995,6 +1030,14 @@ boolean db_format_adapter_enable_wide_writes(const tydatabaserecord_64 **widened
     return true;
 }
 
+boolean db_format_adapter_enable_wide_writes_context(const db_context *context, const tydatabaserecord_64 **widened_header_out) {
+    db_context_guard guard;
+    db_context_guard_enter(context, &guard);
+    boolean ok = db_format_adapter_enable_wide_writes(widened_header_out);
+    db_context_guard_exit(&guard);
+    return ok;
+}
+
 boolean db_format_adapter_force_repack(void) {
     return g_legacy_adapter_force_repack;
 }
@@ -1146,7 +1189,7 @@ boolean create_root_backup(const char *original_path) {
 }
 
 /* During migration, skip externals whose addresses point at free blocks so packing won't fail. */
-static void db_format_sanitize_root_externals(hdlhashtable hroot) {
+static void db_format_sanitize_root_externals(hdlhashtable hroot, const db_context *context) {
     if (hroot == nil)
         return;
 
@@ -1171,8 +1214,12 @@ static void db_format_sanitize_root_externals(hdlhashtable hroot) {
         boolean ok = false;
         Handle htmp = nil;
 
-        if (adr != nildbaddress && adr != 0)
-            ok = dbrefhandle(adr, &htmp);
+        if (adr != nildbaddress && adr != 0) {
+            if (context != NULL)
+                ok = dbrefhandle_context(context, adr, &htmp);
+            else
+                ok = dbrefhandle(adr, &htmp);
+        }
 
         if (htmp != nil)
             disposehandle(htmp);
@@ -1206,6 +1253,10 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     Handle hrootvariable = nil;
     hdlhashtable hroot = nil;
     Handle hscript = nil;
+    db_context source_context;
+    db_context dest_context;
+    boolean have_dest_context = false;
+    boolean saved_root = false;
     dbaddress root_address = nildbaddress;
     dbaddress script_address = nildbaddress;
     dbaddress new_root_address = nildbaddress;
@@ -1216,6 +1267,9 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     uint16_t cancoon_version = 0;
     uint16_t cancoon_flags = 0;
     uint16_t cancoon_primary = 0;
+    db_format_mode entry_mode = db_format_mode_current();
+    db_format_mode prev_mode;
+    hdldatabaserecord prev_db = nil;
     char output_path[1024];
     char temp_path[1024];
     temp_path[0] = '\0';
@@ -1223,8 +1277,6 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     bigstring bsdst;
     tyfilespec src_fs;
     tyfilespec dst_fs;
-    db_format_mode modern_mode = {true, false, false};
-    db_format_mode_push(&modern_mode);
     const char *fail_step = "init";
     const long header_len_final = (long) sizeof(tydatabaserecord_64);
 
@@ -1263,12 +1315,20 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     if (!dbopenfile(src_fnum, true))
         goto cleanup;
 
+    db_context_init(&source_context);
+    source_context.mode = db_format_mode_current();
+    source_context.database = databasedata;
+
+    db_context_init(&dest_context);
+    dest_context.mode = source_context.mode;
+    dest_context.database = nil;
+
     dbgetview(cancoonview, &view_address);
     if (view_address == nildbaddress)
         goto cleanup;
 
     fail_step = "dbreference(Cancoon)";
-    if (!dbreference(view_address, (long) sizeof cancoon_record, &cancoon_record))
+    if (!dbreference_context(&source_context, view_address, (long) sizeof cancoon_record, &cancoon_record))
         goto cleanup;
 
     cancoon_version = read_be16(&cancoon_record.versionnumber);
@@ -1301,11 +1361,11 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     if (!tableverbinmemory((hdlexternalvariable) hrootvariable, HNoNode))
         goto cleanup;
 
-    db_format_sanitize_root_externals(hroot);
+    db_format_sanitize_root_externals(hroot, &source_context);
 
     if (script_address != nildbaddress && script_address != 0) {
         fail_step = "dbrefhandle(script)";
-        if (!dbrefhandle(script_address, &hscript))
+        if (!dbrefhandle_context(&source_context, script_address, &hscript))
             goto cleanup;
     }
 
@@ -1319,14 +1379,37 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
         goto cleanup;
 
     fail_step = "dbstartsaveas";
-    if (!dbstartsaveas(dst_fnum))
+    if (!dbstartsaveas_context(&dest_context, dst_fnum))
         goto cleanup;
 
+    if (dest_context.database == nil) {
+        fail_step = "destination-handle";
+        goto cleanup;
+    }
+
+    dest_context.mode = source_context.mode;
+    dest_context.mode.use_64bit_format = true;
+    dest_context.mode.adapter_repack = db_format_adapter_force_repack();
+    dest_context.mode.drop_cancoon = false;
+    have_dest_context = true;
+
     /* Switch the destination into BE64 write mode before any assigns. */
-    db_format_adapter_enable_wide_writes(NULL);
+    if (have_dest_context)
+        db_format_adapter_enable_wide_writes_context(&dest_context, NULL);
+    else
+        db_format_adapter_enable_wide_writes(NULL);
 
     fail_step = "tablesavesystemtable(root)";
-    if (!tablesavesystemtable(hrootvariable, &new_root_address))
+    prev_mode = db_format_mode_current();
+    prev_db = databasedata;
+    if (have_dest_context)
+        db_context_apply(&dest_context);
+    saved_root = tablesavesystemtable(hrootvariable, &new_root_address);
+    if (have_dest_context) {
+        db_format_mode_apply(&prev_mode);
+        databasedata = prev_db;
+    }
+    if (!saved_root)
         goto cleanup;
 
     if ((uint64_t) new_root_address > 0xFFFFFFFFULL)
@@ -1335,7 +1418,7 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     if (hscript != nil) {
         new_script_address = script_address;
         fail_step = "dbassignhandle(script)";
-        if (!dbassignhandle(hscript, &new_script_address))
+        if (!dbassignhandle_context(&dest_context, hscript, &new_script_address))
             goto cleanup;
         if ((uint64_t) new_script_address > 0xFFFFFFFFULL)
             goto cleanup;
@@ -1358,15 +1441,20 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
         db_format_write_be32(&cancoon_record.adrscriptstring, (uint32_t) new_script_address);
 
         fail_step = "dbassign(Cancoon)";
-        if (!dbassign(&new_cancoon_address, (long) sizeof cancoon_record, &cancoon_record))
+        if (!dbassign_context(&dest_context, &new_cancoon_address, (long) sizeof cancoon_record, &cancoon_record))
             goto cleanup;
 
         dbsetview(cancoonview, new_cancoon_address);
     }
 
     fail_step = "dbendsaveas";
-    if (!dbendsaveas())
-        goto cleanup;
+    if (have_dest_context) {
+        if (!dbendsaveas_context(&dest_context))
+            goto cleanup;
+    } else {
+        if (!dbendsaveas())
+            goto cleanup;
+    }
 
     if (databasedata != nil) {
         (**databasedata).headerLength = header_len_final;
@@ -1403,10 +1491,12 @@ cleanup:
     if (hrootvariable != nil)
         tableverbdispose((hdlexternalvariable) hrootvariable, true);
 
-    db_format_mode_pop();
-
-    if (fldatabasesaveas)
-        dbendsaveas();
+    if (fldatabasesaveas) {
+        if (have_dest_context)
+            dbendsaveas_context(&dest_context);
+        else
+            dbendsaveas();
+    }
 
     if (databasedata != nil)
         dbdispose();
@@ -1444,6 +1534,8 @@ cleanup:
                 (unsigned long long) new_script_address,
                 output_path);
     }
+
+    db_format_mode_apply(&entry_mode);
 
     return ok;
 }
@@ -1525,7 +1617,7 @@ void db_format_force_strict_v7_reader(void) {
     db_format_mode_apply(&mode);
 }
 void db_format_mode_apply(const db_format_mode *mode) {
-    use_64bit_format = mode->use_64bit_format; /* compatibility shim; remove once callers stop exporting it */
+    g_mode_state = *mode;
     g_legacy_adapter_force_repack = mode->adapter_repack;
 }
 
@@ -1552,6 +1644,87 @@ void db_format_mode_pop(void) {
 db_format_mode db_format_mode_current(void) {
     if (g_mode_depth > 0)
         return g_mode_stack[g_mode_depth - 1];
-    db_format_mode empty = {use_64bit_format, g_legacy_adapter_force_repack, false};
-    return empty;
+    db_format_mode current = g_mode_state;
+    current.adapter_repack = g_legacy_adapter_force_repack;
+    return current;
+}
+
+void db_context_init(db_context *context) {
+    if (context == NULL)
+        return;
+    context->mode = db_format_mode_current();
+    context->database = databasedata;
+    db_saveas_state_snapshot(&context->saveas);
+}
+
+void db_context_apply(const db_context *context) {
+    if (context == NULL)
+        return;
+    db_format_mode_apply(&context->mode);
+    if (context->database != nil)
+        databasedata = context->database;
+}
+
+boolean hashpacktable_context(const db_context *context, hdlhashtable ht, boolean flsave, Handle *hpacked, boolean *flmustsave) {
+    db_context_guard guard;
+    db_context_guard_enter(context, &guard);
+    boolean ok = hashpacktable(ht, flsave, hpacked, flmustsave);
+    db_context_guard_exit(&guard);
+    return ok;
+}
+
+boolean hashunpacktable_context(const db_context *context, Handle hpacked, boolean flmemory, hdlhashtable htable) {
+    db_context_guard guard;
+    db_context_guard_enter(context, &guard);
+    boolean ok = hashunpacktable(hpacked, flmemory, htable);
+    db_context_guard_exit(&guard);
+    return ok;
+}
+
+boolean dbassignhandle_context(const db_context *context, Handle h, dbaddress *adr) {
+    db_context_guard guard;
+    db_context_guard_enter(context, &guard);
+    boolean ok = dbassignhandle(h, adr);
+    db_context_guard_exit(&guard);
+    return ok;
+}
+
+boolean dbrefhandle_context(const db_context *context, dbaddress adr, Handle *h) {
+    db_context_guard guard;
+    db_context_guard_enter(context, &guard);
+    boolean ok = dbrefhandle(adr, h);
+    db_context_guard_exit(&guard);
+    return ok;
+}
+
+boolean dbcopy_context(const db_context *context, dbaddress src, dbaddress *dest) {
+    db_context_guard guard;
+    db_context_guard_enter(context, &guard);
+    boolean ok = dbcopy_internal(src, dest);
+    db_context_guard_exit(&guard);
+    return ok;
+}
+
+boolean dbassign_context(const db_context *context, dbaddress *padr, long newsize, ptrvoid pdata) {
+    db_context_guard guard;
+    db_context_guard_enter(context, &guard);
+    boolean ok = dbassign_internal(padr, newsize, pdata);
+    db_context_guard_exit(&guard);
+    return ok;
+}
+
+boolean dbreference_context(const db_context *context, dbaddress adr, long ctbytes, ptrvoid pdata) {
+    db_context_guard guard;
+    db_context_guard_enter(context, &guard);
+    boolean ok = dbreference_internal(adr, ctbytes, pdata);
+    db_context_guard_exit(&guard);
+    return ok;
+}
+
+boolean dbreference_handle_context(const db_context *context, dbaddress adr, Handle *h) {
+    db_context_guard guard;
+    db_context_guard_enter(context, &guard);
+    boolean ok = dbrefhandle(adr, h);
+    db_context_guard_exit(&guard);
+    return ok;
 }
