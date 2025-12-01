@@ -45,6 +45,17 @@ static boolean headless_menu_dup_block(dbaddress source, dbaddress *dest) {
         return false;
     }
 
+    long hsize = gethandlesize(hpayload);
+    hdldatabaserecord hdest = nil;
+    (void) dbgetdestinationdatabase(&hdest);
+    fprintf(stderr,
+            "[headless] menu dup source=0x%llx hsize=%ld saveas=%d current=%p dest=%p\n",
+            (unsigned long long) source,
+            hsize,
+            (int) fldatabasesaveas,
+            (void *) databasedata,
+            (void *) hdest);
+
     if (payload_offset > 0) {
         long hsize = gethandlesize(hpayload);
         if (payload_offset < hsize)
@@ -76,7 +87,8 @@ boolean menuverbpack (hdlexternalvariable h, Handle *hp, boolean *flnew) {
         return false;
     }
 
-    if (fldatabasesaveas || db_format_mode_current().use_64bit_format) {
+    db_format_mode mode = db_format_mode_current();
+    if (fldatabasesaveas || mode.use_64bit_format) {
         dbaddress copy = adr;
         if (!headless_menu_dup_block(adr, &copy))
             return false;

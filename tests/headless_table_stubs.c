@@ -5,9 +5,17 @@
 #include "tableformats.h"
 #include "strings.h"
 
-#ifdef FRONTIER_HEADLESS
+/* 2025-12-01 Codex: Allow headless builds that link the real DB to use full table lookups. */
 
+#ifdef FRONTIER_HEADLESS
 hdltableformats tableformatsdata = nil;
+#if defined(HEADLESS_LINKS_REAL_DB)
+
+/* Using the real table layer; skip stub implementations to avoid duplicate symbols. */
+WindowPtr tableformatswindow = nil;
+hdlwindowinfo tableformatswindowinfo = nil;
+
+#else
 
 #if defined(HEADLESS_USE_REAL_TABLEPACK)
 boolean tablepushformats(hdltableformats hformats) {
@@ -221,12 +229,14 @@ boolean tableclienttitlepopuphit (Point pt, hdlexternalvariable h) {
     return false;
 }
 
+#if !defined(HEADLESS_LINKS_REAL_DB)
 boolean tablevaltotable (tyvaluerecord val, hdlhashtable *htable, hdlhashnode hnode) {
     (void) val;
     (void) htable;
     (void) hnode;
     return false;
 }
+#endif
 
 boolean tableedit (hdlexternalvariable h, hdlwindowinfo win, ptrfilespec fs, bigstring bs, rectparam rzoom) {
     (void) h;
@@ -242,4 +252,5 @@ boolean tablesymbolsresorted (hdlhashtable htable) {
     return false;
 }
 
+#endif /* HEADLESS_LINKS_REAL_DB */
 #endif /* FRONTIER_HEADLESS */

@@ -379,12 +379,14 @@ boolean pictverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbad
 	adr = (**hv).oldaddress; /*place where this pict used to be stored*/
 
 	if (adapter_repack) {
-		(**hp).fldirty = true;
-		db_format_adapter_enable_wide_writes(NULL);
+        (**hp).fldirty = true;
+        db_context ctx;
+        db_context_init(&ctx);
+        db_format_adapter_enable_wide_writes_context(&ctx, NULL);
         working_mode.use_64bit_format = true; /* write modern */
         db_format_mode_push(&working_mode);
-		*flnewdbaddress = true;
-	}
+        *flnewdbaddress = true;
+    }
 	
 	if (!fldatabasesaveas && !(**hp).fldirty) /*don't need to update the db version of the pict*/
 		goto pushaddress;

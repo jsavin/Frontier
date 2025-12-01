@@ -25,6 +25,8 @@
 
 ******************************************************************************/
 
+/* 2025-12-01 Codex: Avoid unpacking table format metadata in headless builds to keep migration tests UI-free. */
+
 #include "frontier.h"
 #include "standard.h"
 
@@ -44,6 +46,7 @@
 
 // 2025-10-27 Codex: Handle 64-bit dbaddress packing/unpacking for headless workloads.
 // 2025-11-20 Codex: Emit table addresses in canonical big-endian form for portable v7 roots.
+// 2025-11-28 Codex: Route hash pack/unpack through db_context wrappers to avoid TLS-only mode.
 #include "tableinternal.h"
 #include "tableverbs.h"
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
@@ -63,8 +66,10 @@ boolean tablepacktable (hdlhashtable htable, boolean flmemory, Handle *hpacked, 
 	register hdltableformats hf;
 	Handle hpackedtable, hpackedformats;
 	register boolean fl;
+    db_context context;
+    db_context_init(&context);
 	
-	if (!hashpacktable (ht, flmemory, &hpackedtable, flmustsave)) {
+	if (!hashpacktable_context (&context, ht, flmemory, &hpackedtable, flmustsave)) {
 #if defined(FRONTIER_HEADLESS)
 		fprintf(stderr, "[headless] tablepacktable hashpacktable failed flmemory=%d table=%p\n",
 			(int)flmemory, (void *)ht);
@@ -156,10 +161,17 @@ boolean tableunpacktable (Handle hpacked, boolean flmemory, hdlhashtable *htable
 		}
 	
 	ht = *htable; /*move into register*/
+    db_context context;
+    db_context_init(&context);
 	
-	if (!hashunpacktable (hpackedtable, flmemory, ht)) /*always disposes of hpackedtable*/
-		goto error;
+if (!hashunpacktable_context (&context, hpackedtable, flmemory, ht)) /*always disposes of hpackedtable*/
+	goto error;
 	
+#if defined(FRONTIER_HEADLESS)
+	if (hpackedformats != nil) {
+		disposehandle (hpackedformats); /* UI-only metadata not needed in headless tests */
+    }
+#else
 	if (hpackedformats != nil) {
 	
 		if (!newtableformats (&hformats))
@@ -181,6 +193,7 @@ boolean tableunpacktable (Handle hpacked, boolean flmemory, hdlhashtable *htable
 	if (hformats != nil && (**hformats).fldirty) /*formats were out of date*/
 		(**ht).fldirty = true;
 		}
+#endif
 	
 	return (true);
 	
@@ -287,6 +300,7 @@ boolean tableverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdba
     db_format_mode prev_mode = db_format_mode_current();
     db_format_mode modern_mode = prev_mode;
 	const boolean adapter_repack = db_format_adapter_force_repack() && (databasedata != nil);
+    boolean mode64_for_save = false;
 
 	/* Modern path: always emit BE64 addresses. */
     modern_mode.use_64bit_format = true;
@@ -336,7 +350,9 @@ boolean tableverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdba
 		*flnewdbaddress = true;
 		(**ht).flsubsdirty = true;
 		(**ht).fldirty = true;
-		db_format_adapter_enable_wide_writes(NULL);
+        db_context ctx;
+        db_context_init(&ctx);
+        db_format_adapter_enable_wide_writes_context(&ctx, NULL);
 	}
 	
 	tablecheckwindowrect (ht);
@@ -390,6 +406,16 @@ boolean tableverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdba
 		shellsetwindowchanges (hinfo, false);
 	
 	pushaddress:
+    /* Decide whether to emit a 64-bit address trailer before restoring any stacked modes. */
+    mode64_for_save = db_format_mode_current().use_64bit_format;
+#if defined(FRONTIER_HEADLESS)
+    if (!mode64_for_save && fldatabasesaveas) {
+        hdldatabaserecord hdest = nil;
+        if (dbgetdestinationdatabase(&hdest) && (hdest != nil) && !db_format_is_legacy_db(hdest))
+            mode64_for_save = true;
+    }
+#endif
+
     db_format_mode_pop(); /* restore previous mode */
 
 	if (fltempload)
@@ -401,7 +427,7 @@ boolean tableverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdba
 	unsigned char adrbuffer[sizeof (dbaddress)];
 	long adrsize;
 
-	if (db_format_mode_current().use_64bit_format && ((int)sizeof (dbaddress) == 8)) {
+	if (mode64_for_save && ((int)sizeof (dbaddress) == 8)) {
 		db_format_write_be64(adrbuffer, (uint64_t) adr);
 		adrsize = (long) sizeof (dbaddress);
 	} else {

@@ -25,11 +25,14 @@
 
 ******************************************************************************/
 
+/* 2025-12-01 Codex: Add headless diagnostics around dbclose/dbflushheader failures during migration tests. */
+
 /* 2025-11-24 Codex: Legacy header writes now use BE helpers for v7 parity. */
 /* 2025-11-25 Codex: Update dbopenfile to route through widened legacy adapter signature. */
 /* 2025-11-26 Codex: Expose raw db read/write for split reader/writer modules. */
 /* 2025-11-29 Codex: Add Save As destination accessor and context wrappers for db stack ops. */
 /* 2025-11-30 Codex: Scope Save As state through db_context guards to stop global leaks. */
+/* 2025-12-01 Codex: Route Save As writes (alloc/view) through destination-scoped contexts. */
 
 
 #include "frontier.h"
@@ -77,6 +80,7 @@ static void db_sync_use64_to_current_db(void);
 #if defined(FRONTIER_HEADLESS)
 static boolean dbfindblockforaddress(dbaddress adr, dbaddress *blockstart, long *nodebytes, tyvariance *variance, boolean *flfree) {
 	long eof = 0;
+    const long header_size = (databasedata != nil && db_format_is_legacy_db(databasedata)) ? sizeheader_v6 : sizeheader;
 
 	if (adr == nildbaddress)
 		return false;
@@ -101,7 +105,7 @@ static boolean dbfindblockforaddress(dbaddress adr, dbaddress *blockstart, long 
 		if ((node_variance < 0) || (node_variance > node_size))
 			continue;
 
-		dbaddress data_start = candidate + sizeheader;
+		dbaddress data_start = candidate + header_size;
 		dbaddress data_end = data_start + (node_size - node_variance);
 
 		if (adr < candidate || adr >= data_end)
@@ -109,8 +113,22 @@ static boolean dbfindblockforaddress(dbaddress adr, dbaddress *blockstart, long 
 
 		boolean trailer_free = false;
 		long trailer_size = 0;
+		dbaddress trailer_pos = candidate + header_size + node_size;
 
-		if (!dbreadtrailer(candidate + sizeheader + node_size, &trailer_free, &trailer_size))
+		if (trailer_pos >= (dbaddress) eof) {
+#if defined(FRONTIER_HEADLESS)
+			fprintf(stderr,
+				"[headless] dbfindblockforaddress candidate=0x%llx size=%ld variance=%ld eof=%ld trailer=0x%llx\n",
+				(unsigned long long) candidate,
+				node_size,
+				(long) node_variance,
+				eof,
+				(unsigned long long) trailer_pos);
+#endif
+			continue;
+		}
+
+		if (!dbreadtrailer(trailer_pos, &trailer_free, &trailer_size))
 			continue;
 
 		if (trailer_size != node_size)
@@ -355,10 +373,10 @@ static void db_context_guard_enter(const db_context *context, db_context_guard *
         guard->prev_db = databasedata;
     }
     if (context != NULL) {
-        db_format_mode_apply(&context->mode);
         if (context->database != nil)
             databasedata = context->database;
         db_saveas_state_apply(&context->saveas);
+        db_format_mode_apply(&context->mode);
     }
 }
 
@@ -453,6 +471,27 @@ boolean dbpopdatabase_context(const db_context *context) {
 }
 
 
+/* Scope Save As operations onto the destination handle without mutating caller globals. */
+static db_context *db_context_for_saveas_destination(db_context *ctx, boolean *using_destination) {
+    if (ctx == NULL)
+        return NULL;
+
+    db_context_init(ctx);
+
+    if (ctx->saveas.active && ctx->saveas.destination != nil) {
+        ctx->database = ctx->saveas.destination;
+        ctx->mode.use_64bit_format = !db_format_is_legacy_db(ctx->database);
+        if (using_destination != NULL)
+            *using_destination = true;
+        return ctx;
+    }
+
+    if (using_destination != NULL)
+        *using_destination = false;
+    return NULL;
+} /*db_context_for_saveas_destination*/
+
+
 static void dbswapglobals (void) {
 	
 	/*
@@ -505,19 +544,66 @@ static boolean dbseek (dbaddress adr) {
 	
 boolean dbwrite (dbaddress adr, long ctbytes, ptrvoid pdata) {
 	
-	if (!dbseek (adr))
+	if (!dbseek (adr)) {
+#if defined(FRONTIER_HEADLESS)
+		fprintf(stderr, "[headless] dbwrite seek failed fnum=%ld adr=0x%llx bytes=%ld\n",
+		        databasedata ? (long) (**databasedata).fnumdatabase : -1L,
+		        (unsigned long long) adr,
+		        ctbytes);
+#endif
 		return (false);
+	}
 		
-	return (filewrite ((hdlfilenum)((**databasedata).fnumdatabase), ctbytes, pdata)); 
+	if (!filewrite ((hdlfilenum)((**databasedata).fnumdatabase), ctbytes, pdata)) {
+#if defined(FRONTIER_HEADLESS)
+		fprintf(stderr, "[headless] dbwrite filewrite failed fnum=%ld adr=0x%llx bytes=%ld\n",
+		        databasedata ? (long) (**databasedata).fnumdatabase : -1L,
+		        (unsigned long long) adr,
+		        ctbytes);
+#endif
+		return (false);
+	}
+
+	return (true);
 	} /*dbwrite*/
 	
 
 boolean dbread (dbaddress adr, long ctbytes, ptrvoid pdata) {
+    hdldatabaserecord previous = db_begin_source_read();
 
-	if (!dbseek (adr))
+	if (!dbseek (adr)) {
+#if defined(FRONTIER_HEADLESS)
+		fprintf(stderr, "[headless] dbread seek failed fnum=%ld adr=0x%llx bytes=%ld saveas=%d source=%p current=%p dest=%p\n",
+			(long) ((**databasedata).fnumdatabase),
+			(unsigned long long) adr,
+			ctbytes,
+			(int) fldatabasesaveas,
+			(void *) dbsaveas_source,
+			(void *) databasedata,
+			(void *) databasedestination);
+#endif
+        db_end_source_read(previous);
 		return (false);
-				
-	return (fileread ((hdlfilenum)((**databasedata).fnumdatabase), ctbytes, pdata)); 
+	}
+
+	if (!fileread ((hdlfilenum)((**databasedata).fnumdatabase), ctbytes, pdata)) {
+#if defined(FRONTIER_HEADLESS)
+		fprintf(stderr, "[headless] dbread read failed fnum=%ld adr=0x%llx bytes=%ld saveas=%d source=%p current=%p dest=%p\n",
+			(long) ((**databasedata).fnumdatabase),
+			(unsigned long long) adr,
+			ctbytes,
+			(int) fldatabasesaveas,
+			(void *) dbsaveas_source,
+			(void *) databasedata,
+			(void *) databasedestination);
+#endif
+        db_end_source_read(previous);
+		return (false);
+	}
+
+    db_end_source_read(previous);
+
+	return (true);
 	} /*dbread*/
 	
 
@@ -546,8 +632,17 @@ static boolean dbflushheader (void) {
 	register hdldatabaserecord hdb = databasedata;
 	boolean fl;
     tydatabaserecord diskrec;
+	boolean use64log = db_use64();
 	
 	assert (sizeof (diskrec.u.growthspace) >= sizeof (diskrec.u.extensions));
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] dbflushheader enter databasedata=%p fnum=%ld dirty=%d use64=%d\n",
+	        (void *) hdb,
+	        hdb ? (long) (**hdb).fnumdatabase : -1L,
+	        hdb ? (int) isdirty(hdb) : 0,
+	        (int) use64log);
+#endif
 	
 	/* If we opened via legacy adapter, flip to wide writes before flushing. */
     {
@@ -573,10 +668,22 @@ static boolean dbflushheader (void) {
 		{
 			unsigned char diskheader[sizeof (tydatabaserecord_64)];
 
-			if (!db_write_modern_header(&diskrec, diskheader, sizeof (diskheader)))
+			if (!db_write_modern_header(&diskrec, diskheader, sizeof (diskheader))) {
+#if defined(FRONTIER_HEADLESS)
+				fprintf(stderr, "[headless] dbflushheader db_write_modern_header failed\n");
+#endif
 				return (false);
+			}
 
 			fl = dbwrite ((dbaddress) 0, (long) sizeof (diskheader), diskheader);
+
+#if defined(FRONTIER_HEADLESS)
+			if (!fl) {
+				fprintf(stderr, "[headless] dbflushheader dbwrite failed fnum=%ld len=%zu\n",
+				        hdb ? (long) (**hdb).fnumdatabase : -1L,
+				        sizeof (diskheader));
+			}
+#endif
 		}
 		
 		#ifndef FRONTIER_HEADLESS
@@ -602,8 +709,12 @@ boolean dbreadheader (dbaddress adr, boolean *flfree, long *ctbytes, tyvariance 
 
 	uint64_t raw_size = 0;
 	tyvariance disk_variance = 0;
+	boolean use64 = db_use64();
 
-	if (db_use64()) {
+	if (databasedata != nil && db_format_is_legacy_db(databasedata))
+		use64 = false;
+
+	if (use64) {
 		tyheader64 header;
 
 		if (!dbread (adr, sizeheader_v7, &header))
@@ -645,8 +756,8 @@ boolean dbreadheader (dbaddress adr, boolean *flfree, long *ctbytes, tyvariance 
 #endif
 
 	{
-		uint64_t freeflag = db_use64() ? 0x8000000000000000ULL : 0x80000000ULL;
-		uint64_t sizemask = db_use64() ? 0x7FFFFFFFFFFFFFFFULL : 0x7FFFFFFFULL;
+		uint64_t freeflag = use64 ? 0x8000000000000000ULL : 0x80000000ULL;
+		uint64_t sizemask = use64 ? 0x7FFFFFFFFFFFFFFFULL : 0x7FFFFFFFULL;
 
 		*flfree = (raw_size & freeflag) != 0;
 		*ctbytes = (long) (raw_size & sizemask);
@@ -661,8 +772,12 @@ boolean dbreadheader (dbaddress adr, boolean *flfree, long *ctbytes, tyvariance 
 boolean dbreadtrailer (dbaddress adr, boolean *flfree, long *ctbytes) {
 
 	uint64_t raw_size = 0;
+	boolean use64 = db_use64();
 
-	if (db_use64()) {
+	if (databasedata != nil && db_format_is_legacy_db(databasedata))
+		use64 = false;
+
+	if (use64) {
 		tytrailer64 trailer;
 
 		if (!dbread (adr, sizetrailer_v7, &trailer))
@@ -680,8 +795,8 @@ boolean dbreadtrailer (dbaddress adr, boolean *flfree, long *ctbytes) {
 	}
 
 	{
-		uint64_t freeflag = db_use64() ? 0x8000000000000000ULL : 0x80000000ULL;
-		uint64_t sizemask = db_use64() ? 0x7FFFFFFFFFFFFFFFULL : 0x7FFFFFFFULL;
+		uint64_t freeflag = use64 ? 0x8000000000000000ULL : 0x80000000ULL;
+		uint64_t sizemask = use64 ? 0x7FFFFFFFFFFFFFFFULL : 0x7FFFFFFFULL;
 
 		*flfree = (raw_size & freeflag) != 0;
 		*ctbytes = (long) (raw_size & sizemask);
@@ -1478,6 +1593,7 @@ static boolean dballocate (long databytes, ptrvoid pdata, dbaddress *paddress) {
 	tyvariance variance;
 	long smallestinterestingblock;
 	long ctalloc;
+    const char *fail_step = "start";
 	
 #if fldebug
 	allocs++;
@@ -1487,7 +1603,15 @@ static boolean dballocate (long databytes, ptrvoid pdata, dbaddress *paddress) {
 	dbclearshadowavaillist (); /*6.2b12 AR*/
 #endif
 
-	dbswapglobals_context(db_context_refresh_default()); /*use databasedestination*/
+    db_context_guard guard;
+    db_context swap_ctx;
+    boolean using_destination = false;
+    db_context *apply_ctx = db_context_for_saveas_destination(&swap_ctx, &using_destination);
+    db_context_guard_enter(apply_ctx, &guard);
+
+#if !defined(FRONTIER_HEADLESS)
+    (void) using_destination;
+#endif
 	
 	smallestinterestingblock = max (databytes, (long) minblocksize);
 	
@@ -1545,9 +1669,10 @@ static boolean dballocate (long databytes, ptrvoid pdata, dbaddress *paddress) {
 			splits++;
 #endif
 
-			goto success;
+		goto success;
 			} /*splitting into two blocks*/
-		
+			
+        fail_step = "dbwritedatablock(assign)";
 		if (!dbwritedatablock (nomad, databytes, nodebytes, pdata))
 			goto failure;
 		
@@ -1573,6 +1698,7 @@ static boolean dballocate (long databytes, ptrvoid pdata, dbaddress *paddress) {
 	
 	while (nomad != nildbaddress) { /*look at each element on the avail list, first-fit*/
 		
+        fail_step = "dbreadavailnode";
 		if (!dbreadavailnode (nomad, &flfree, &nodebytes, &nextnomad))
 			goto failure;
 		
@@ -1585,6 +1711,7 @@ static boolean dballocate (long databytes, ptrvoid pdata, dbaddress *paddress) {
 		
 		if (variance >= (minblocksize + sizeheader + sizetrailer)) { /*split into two blocks*/
 			
+            fail_step = "dbwriteheaderandtrailer";
 			newnodebytes = nodebytes - (databytes + sizeheader + sizetrailer);
 			
 			if (!dbwriteheaderandtrailer (nomad, true, newnodebytes, (tyvariance) 0))
@@ -1592,6 +1719,7 @@ static boolean dballocate (long databytes, ptrvoid pdata, dbaddress *paddress) {
 				
 			nomad += sizeheader + newnodebytes + sizetrailer;
 			
+            fail_step = "dbwritedatablock(split)";
 			if (!dbwritedatablock (nomad, databytes, databytes, pdata))
 				goto failure;
 				
@@ -1614,6 +1742,7 @@ static boolean dballocate (long databytes, ptrvoid pdata, dbaddress *paddress) {
 
 		*paddress = nomad;
 		
+        fail_step = "dbsetavaillink";
 		if (!dbsetavaillink (prevnomad, nextnomad)) /*unlink node from avail list*/
 			goto failure;
 		
@@ -1631,6 +1760,7 @@ static boolean dballocate (long databytes, ptrvoid pdata, dbaddress *paddress) {
 	newallocs++;
 #endif
 
+    fail_step = "dbgeteof";
 	if (!dbgeteof (&origeof))
 		goto failure;
 	
@@ -1647,25 +1777,38 @@ static boolean dballocate (long databytes, ptrvoid pdata, dbaddress *paddress) {
 		variance = 0;
 		}
 		
+    fail_step = "dbseteof";
 	if (!dbseteof (origeof + sizeheader + ctalloc + sizetrailer))
 		goto failure;
 		
+    fail_step = "dbwritedatablock(eof)";
 	if (!dbwritedatablock (origeof, databytes, ctalloc, pdata)) 	
 		goto failure;
 	
  	*paddress = origeof; /*this is the address of the block we allocated*/
 	
 	
-	success:
-	
-	dbswapglobals_context(db_context_refresh_default()); /*restore*/
+success:
+
+	db_context_guard_exit(&guard);
 	
 	return (true); /*the allocation was successful*/
 	
 	
-	failure:
-	
-	dbswapglobals_context(db_context_refresh_default()); /*restore*/
+failure:
+
+#if defined(FRONTIER_HEADLESS)
+    fprintf(stderr,
+            "[headless] dballocate failure step=%s size=%ld saveas=%d current=%p dest=%p using_dest=%d\n",
+            fail_step,
+            databytes,
+            (int) fldatabasesaveas,
+            (void *) databasedata,
+            (void *) databasedestination,
+            using_destination ? 1 : 0);
+#endif
+
+	db_context_guard_exit(&guard);
 	
 	return (false);
 	} /*dballocate*/
@@ -2067,8 +2210,19 @@ boolean dbassign_internal (dbaddress *padr, long newsize, ptrvoid pdata) {
 	
 	adr = *padr; /*copy into a register*/
 
-	if (fldatabasesaveas || (adr == nildbaddress)) /*no previous allocation, create a new one*/
-		return (dballocate (newsize, pdata, padr)); 
+	if (fldatabasesaveas || (adr == nildbaddress)) { /*no previous allocation, create a new one*/
+		boolean ok = dballocate (newsize, pdata, padr);
+#if defined(FRONTIER_HEADLESS)
+        if (!ok) {
+            fprintf(stderr,
+                    "[headless] dballocate failed size=%ld saveas=%d dest=%p\n",
+                    newsize,
+                    (int) fldatabasesaveas,
+                    (void *) databasedestination);
+        }
+#endif
+        return ok;
+    }
 	
 	if (!dbreadheader (adr, &flfree, &cttotal, &ctunused)) /*find out how much space we have in block*/
 		return (false);
@@ -2318,6 +2472,8 @@ boolean dbassignhandle (Handle h, dbaddress *adr) {
 	*/
 	
 	register boolean fl;
+    long hsize = (h != nil) ? gethandlesize(h) : 0;
+    dbaddress original = *adr;
 	
 	if (*adr == nildbaddress) /*creating a new guy*/
 	
@@ -2328,9 +2484,20 @@ boolean dbassignhandle (Handle h, dbaddress *adr) {
 	
 	lockhandle (h);
 	
-	fl = dbassign (adr, (long) gethandlesize (h), *h);
+	fl = dbassign (adr, hsize, *h);
 	
 	unlockhandle (h);
+
+#if defined(FRONTIER_HEADLESS)
+    if (!fl) {
+        fprintf(stderr,
+                "[headless] dbassignhandle failed adr_in=0x%llx size=%ld saveas=%d dest=%p\n",
+                (unsigned long long) original,
+                hsize,
+                (int) fldatabasesaveas,
+                (void *) databasedestination);
+    }
+#endif
 	
 	return (fl);
 	} /*dbassignhandle*/
@@ -2384,10 +2551,13 @@ boolean dbnewarray (ctelements, sizeelement, pdata, adr) short ctelements, sizee
 	
 
 void dbsetview (short viewnumber, dbaddress adrtext) {
-
-	register hdldatabaserecord hdb;
 	
-	dbswapglobals_context(db_context_refresh_default());
+	register hdldatabaserecord hdb;
+    db_context_guard guard;
+    db_context swap_ctx;
+    db_context *apply_ctx = db_context_for_saveas_destination(&swap_ctx, NULL);
+
+    db_context_guard_enter(apply_ctx, &guard);
 	
 	hdb = databasedata; /*move into register*/
 	
@@ -2397,7 +2567,7 @@ void dbsetview (short viewnumber, dbaddress adrtext) {
 	
 	dbflushheader ();
 	
-	dbswapglobals_context(db_context_refresh_default());
+	db_context_guard_exit(&guard);
 	} /*dbsetview*/
 
 
@@ -2643,7 +2813,20 @@ boolean dbflushreleasestack_context(const db_context *context) {
 
 static void dbzeroreleasestack_impl (void) {
 	
-	disposehandle ((**databasedata).releasestack);
+	if (databasedata == nil)
+		return;
+
+	Handle hstack = (**databasedata).releasestack;
+	if (hstack == nil)
+		return;
+
+	/* Defensive: guard against stale or invalid handles during Save As teardown. */
+	if ((uintptr_t) hstack < 0x1000) {
+		(**databasedata).releasestack = nil;
+		return;
+	}
+
+	disposehandle (hstack);
 	
 	(**databasedata).releasestack = nil;
 	} /*dbzeroreleasestack_impl*/
@@ -2728,6 +2911,8 @@ boolean dbnew (hdlfilenum fnum) {
 
 /* 2025-11-24 Codex: Route dbopenfile through v7 reader or legacy adapter. */
 
+/* 2025-11-30 Codex: Add headless failure breadcrumbs so migration tests can pinpoint dbopenfile failures. */
+
 boolean dbopenfile (hdlfilenum fnum, boolean flreadonly) {
 	
 	/*
@@ -2756,26 +2941,30 @@ boolean dbopenfile (hdlfilenum fnum, boolean flreadonly) {
     unsigned char rawheader[MAX_HEADER_SIZE];
     boolean header_is_modern = false;
 	int header_version = 0;
+    const char *fail_step = "alloc";
 	
-    register hdldatabaserecord hdb;
+    register hdldatabaserecord hdb = nil;
 	
 	// Version-specific size validation will be done after reading header
 	
 	if (!newclearhandle (longsizeof (tydatabaserecord), (Handle *) &databasedata))
-		return (false);
+		goto error;
 	
 	hdb = databasedata; /*copy into register*/
 	
 	(**hdb).fnumdatabase = (long) fnum; /*set up so dbread will work*/
 	
+    fail_step = "dbread";
 	if (!dbread ((dbaddress) 0, sizeof (rawheader), &rawheader))
 		goto error;
 	
+    fail_step = "header-version";
 	if (!db_format_header_version(rawheader, sizeof rawheader, &header_version))
 		goto error;
 
 	header_is_modern = header_version >= 7;
 
+    fail_step = "legacy-read";
 	if (header_version <= 6) {
 		if (!db_read_legacy(rawheader, sizeof rawheader, &diskrec))
 			goto error;
@@ -2783,8 +2972,10 @@ boolean dbopenfile (hdlfilenum fnum, boolean flreadonly) {
 			goto error;
 		db_format_set_legacy_source_db(hdb);
 	} else {
+        fail_step = "modern-read";
 		if (!db_read_modern(rawheader, sizeof rawheader, &diskrec))
 			goto error;
+        fail_step = "modern-reader";
 		if (!db_format_load_v7_reader(&diskrec, flreadonly))
 			goto error;
 		db_format_force_strict_v7_reader();
@@ -2880,7 +3071,11 @@ boolean dbopenfile (hdlfilenum fnum, boolean flreadonly) {
 	return (true);
 	
 	error:
-	
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] dbopenfile fail at %s\n", fail_step);
+#endif
+
 	disposehandle ((Handle) hdb);
 	
 	databasedata = nil;
@@ -2894,6 +3089,13 @@ boolean dbclose (void) {
 	dbzeroreleasestack (); /*don't release chunks accumulated in release stack*/
 	
 	setdirty (databasedata);
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] dbclose enter databasedata=%p fnum=%ld dirty=%d\n",
+	        (void *) databasedata,
+	        databasedata ? (long) (**databasedata).fnumdatabase : -1L,
+	        databasedata ? (int) isdirty(databasedata) : 0);
+#endif
 	
 	return (dbflushheader ());
 	} /*dbclose*/
@@ -2947,9 +3149,30 @@ static boolean dbendsaveas_internal (void) {
 	
 	if (!fldatabasesaveas)
 		return (false);
+
+    if (databasedata == nil || databasedestination == nil)
+        return (false);
+
+#if defined(FRONTIER_HEADLESS)
+    {
+        boolean valid_data = validhandle((Handle) databasedata);
+        boolean valid_dest = validhandle((Handle) databasedestination);
+        fprintf(stderr,
+                "[headless] saveas end enter data=%p master=%p dest=%p dest_master=%p valid(data)=%d valid(dest)=%d\n",
+                (void *) databasedata,
+                valid_data ? (void *) (*databasedata) : NULL,
+                (void *) databasedestination,
+                valid_dest ? (void *) (*databasedestination) : NULL,
+                valid_data ? 1 : 0,
+                valid_dest ? 1 : 0);
+    }
+#endif
 		
 	dbswapglobals ();
 	
+    if (databasedata != nil)
+        (**databasedata).releasestack = nil; /* destination Save As handle shouldn't carry stale release stack */
+
 	fl = dbclose ();
 	
 	dbdispose ();
@@ -2978,6 +3201,12 @@ boolean dballocate_context(const db_context *context, long databytes, ptrvoid pd
 
 /* Context-aware Save As completion to keep destination scoped. */
 boolean dbendsaveas_context(db_context *context) {
+    db_context local_ctx;
+    if (context != NULL && context->saveas.active && context->saveas.source != nil) {
+        local_ctx = *context;
+        local_ctx.database = context->saveas.source; /* ensure swap restores source */
+        context = &local_ctx;
+    }
     db_context_guard guard;
     db_context_guard_enter(context, &guard);
     boolean ok = dbendsaveas_internal();
@@ -2987,11 +3216,7 @@ boolean dbendsaveas_context(db_context *context) {
     if (context != NULL) {
         context->saveas = applied_state;
         context->database = nil;
-        if (context != &g_default_db_context)
-            restore_state = &guard.prev_saveas;
     }
-    if (context == &g_default_db_context)
-        db_saveas_state_apply(&applied_state);
     db_context_guard_exit_with_saveas(&guard, restore_state);
     return ok;
 }
@@ -3005,8 +3230,11 @@ boolean dbstartsaveas_context(db_context *context, hdlfilenum fnum) {
     const db_saveas_state *restore_state = &applied_state;
     if (context != NULL) {
         context->saveas = applied_state;
-        if (context->saveas.destination != nil)
-            context->database = context->saveas.destination;
+        /* Keep the source handle associated with the context; callers can
+           temporarily point database at the destination when they need to
+           write into the Save As target. */
+        if (context->saveas.source != nil)
+            context->database = context->saveas.source;
         if (context != &g_default_db_context)
             restore_state = &guard.prev_saveas;
     }
@@ -3026,8 +3254,7 @@ void dbswapglobals_context(db_context *context) {
     dbswapglobals();
     db_saveas_state_snapshot(&context->saveas);
     context->database = databasedata;
-    const db_saveas_state *restore_state = (&context->saveas == &g_default_db_context.saveas) ? &context->saveas : &guard.prev_saveas;
-    db_context_guard_exit_with_saveas(&guard, restore_state);
+    db_context_guard_exit_with_saveas(&guard, &guard.prev_saveas);
 }
 /* Context-aware default wrapper for dbclose to preserve globals while enabling contexts. */
 boolean dbclose_context(const db_context *context) {

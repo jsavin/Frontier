@@ -44,6 +44,7 @@
 
 // 2025-10-27 Codex: Handle 64-bit dbaddress packing/unpacking for headless workloads.
 // 2025-11-20 Codex: Emit table addresses in canonical big-endian form for portable v7 roots.
+// 2025-11-28 Codex: Legacy fork now uses db_context wrappers to match modern mode plumbing.
 #include "tableinternal.h"
 #include "tableverbs.h"
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
@@ -64,8 +65,10 @@ boolean tablepacktable_legacy (hdlhashtable htable, boolean flmemory, Handle *hp
 	register hdltableformats hf;
 	Handle hpackedtable, hpackedformats;
 	register boolean fl;
+    db_context context;
+    db_context_init(&context);
 	
-	if (!hashpacktable (ht, flmemory, &hpackedtable, flmustsave)) {
+	if (!hashpacktable_context (&context, ht, flmemory, &hpackedtable, flmustsave)) {
 #if defined(FRONTIER_HEADLESS)
 		fprintf(stderr, "[headless] tablepacktable_legacy hashpacktable failed flmemory=%d table=%p\n",
 			(int)flmemory, (void *)ht);
@@ -157,8 +160,10 @@ boolean tableunpacktable_legacy (Handle hpacked, boolean flmemory, hdlhashtable 
 		}
 	
 	ht = *htable; /*move into register*/
+    db_context context;
+    db_context_init(&context);
 	
-	if (!hashunpacktable (hpackedtable, flmemory, ht)) /*always disposes of hpackedtable*/
+	if (!hashunpacktable_context (&context, hpackedtable, flmemory, ht)) /*always disposes of hpackedtable*/
 		goto error;
 	
 	if (hpackedformats != nil) {
@@ -328,7 +333,9 @@ boolean tableverbpack_legacy (hdlexternalvariable h, Handle *hpacked, boolean *f
 		*flnewdbaddress = true;
 		(**ht).flsubsdirty = true;
 		(**ht).fldirty = true;
-		db_format_adapter_enable_wide_writes(NULL);
+        db_context ctx;
+        db_context_init(&ctx);
+        db_format_adapter_enable_wide_writes_context(&ctx, NULL);
 	}
 	
 	tablecheckwindowrect (ht);
