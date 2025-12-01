@@ -1,12 +1,13 @@
 #include "../framework/test_framework.h"
 #include "../../Common/headers/db.h"
-#include "../../Common/headers/dbinternal.h"
 #include "../../Common/headers/db_format.h"
+#include "../../Common/headers/db_reader.h"
+#include "../../Common/headers/dbinternal.h"
+#include "test_migration_shim.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 static const char *test_legacy_db = "test_migration_legacy.root";
 static const size_t legacy_view_base = 10;
@@ -29,32 +30,11 @@ static dbaddress read_legacy_dbaddress_test(const unsigned char *field) {
 }
 
 static void remove_if_exists(const char *path) {
-    if (path && unlink(path) == 0) {
-        return;
-    }
+    test_remove_if_exists(path);
 }
 
 static bool copy_file(const char *src, const char *dst) {
-    FILE *fin = fopen(src, "rb");
-    if (!fin)
-        return false;
-    FILE *fout = fopen(dst, "wb");
-    if (!fout) {
-        fclose(fin);
-        return false;
-    }
-    char buf[8192];
-    size_t n;
-    bool ok = true;
-    while ((n = fread(buf, 1, sizeof buf, fin)) > 0) {
-        if (fwrite(buf, 1, n, fout) != n) {
-            ok = false;
-            break;
-        }
-    }
-    fclose(fin);
-    fclose(fout);
-    return ok;
+    return test_copy_file(src, dst);
 }
 
 /* Create a minimal v6 header on disk */
@@ -108,12 +88,14 @@ static bool test_backup_creation(void) {
 static bool test_header_conversion(void) {
     TEST_ASSERT(create_legacy_database(), "Should create legacy database");
 
-    FILE *f = fopen(test_legacy_db, "rb");
-    TEST_ASSERT(f != NULL, "Should open legacy database");
+    bigstring bs; tyfilespec fs; hdlfilenum fnum = 0;
+    copyctopstring(test_legacy_db, bs);
+    TEST_ASSERT(pathtofilespec(bs, &fs), "pathtofilespec legacy");
+    TEST_ASSERT(openfile(&fs, &fnum, true), "openfile legacy");
 
     unsigned char old_header[LEGACY_DB_HEADER_BYTES];
-    TEST_ASSERT(fread(old_header, 1, sizeof old_header, f) == sizeof old_header, "Should read legacy header");
-    fclose(f);
+    TEST_ASSERT(fileread(fnum, sizeof old_header, old_header), "Should read legacy header");
+    closefile(fnum);
 
     tydatabaserecord_64 new_header;
     memset(&new_header, 0, sizeof new_header);
@@ -141,16 +123,17 @@ static bool test_full_migration(void) {
     TEST_ASSERT(create_legacy_database(), "Should create legacy database");
     TEST_ASSERT(migrate_32bit_to_64bit(test_legacy_db), "Should migrate database");
 
-    FILE *migrated = fopen(test_legacy_db, "rb");
-    TEST_ASSERT(migrated != NULL, "Migrated file should exist");
-    if (migrated) {
+    copyctopstring(test_legacy_db, bs);
+    TEST_ASSERT(pathtofilespec(bs, &fs), "pathtofilespec migrated");
+    TEST_ASSERT(openfile(&fs, &fnum, true), "openfile migrated");
+    {
         tydatabaserecord_64 header;
-        TEST_ASSERT(fread(&header, sizeof header, 1, migrated) == 1, "Should read migrated header");
-        fclose(migrated);
+        TEST_ASSERT(fileread(fnum, sizeof header, &header), "Should read migrated header");
         TEST_ASSERT(header.versionnumber == 7, "Migrated header is version 7");
         TEST_ASSERT(header.views[0] == 0x0057fca4, "View[0] migrated correctly");
         TEST_ASSERT(header.views[2] == 0x00004006, "View[2] migrated correctly");
     }
+    closefile(fnum);
 
     char backup_path[1024];
     if (db_format_last_backup_path(backup_path, sizeof backup_path)) {
@@ -196,20 +179,28 @@ static bool test_ensure_modern(void) {
     TEST_ASSERT(migrated, "Legacy file should migrate");
 
     /* Verify v7 file was created */
-    FILE *f = fopen(output_path, "rb");
-    TEST_ASSERT(f != NULL, "V7 database should exist");
-    tydatabaserecord_64 header;
-    TEST_ASSERT(fread(&header, sizeof header, 1, f) == 1, "Should read v7 header");
-    fclose(f);
+    bigstring bs; tyfilespec fs; hdlfilenum fnum = 0;
+    copyctopstring(output_path, bs);
+    TEST_ASSERT(pathtofilespec(bs, &fs), "pathtofilespec v7");
+    TEST_ASSERT(openfile(&fs, &fnum, true), "openfile v7");
+    {
+        tydatabaserecord_64 header;
+        TEST_ASSERT(fileread(fnum, sizeof header, &header), "Should read v7 header");
+        TEST_ASSERT(header.versionnumber == 7, "Header should be v7");
+    }
+    closefile(fnum);
     TEST_ASSERT(header.versionnumber == 7, "Header should be v7");
 
     /* Verify original is still v6 */
-    f = fopen(test_legacy_db, "rb");
-    TEST_ASSERT(f != NULL, "Original database should still exist");
-    tydatabaserecord orig_header;
-    TEST_ASSERT(fread(&orig_header, sizeof orig_header, 1, f) == 1, "Should read original header");
-    fclose(f);
-    TEST_ASSERT(orig_header.versionnumber == 6, "Original should still be v6");
+    copyctopstring(test_legacy_db, bs);
+    TEST_ASSERT(pathtofilespec(bs, &fs), "pathtofilespec original");
+    TEST_ASSERT(openfile(&fs, &fnum, true), "openfile original");
+    {
+        tydatabaserecord orig_header;
+        TEST_ASSERT(fileread(fnum, sizeof orig_header, &orig_header), "Should read original header");
+        TEST_ASSERT(orig_header.versionnumber == 6, "Original should still be v6");
+    }
+    closefile(fnum);
 
     /* Clean up v7 file */
     remove_if_exists(output_path);
@@ -238,20 +229,18 @@ static bool test_fixture_migration(void) {
 
     const char *v7_path = (output_path[0] != '\0') ? output_path : tmp_v6;
 
-    FILE *f = fopen(v7_path, "rb");
-    TEST_ASSERT(f != NULL, "Migrated fixture should exist");
-    if (f != NULL) {
+    copyctopstring(v7_path, bs);
+    TEST_ASSERT(pathtofilespec(bs, &fs), "pathtofilespec fixture v7");
+    TEST_ASSERT(openfile(&fs, &fnum, true), "openfile fixture v7");
+    {
         tydatabaserecord_64 header;
-        TEST_ASSERT(fread(&header, sizeof header, 1, f) == 1, "Read migrated header");
-        fclose(f);
+        TEST_ASSERT(fileread(fnum, sizeof header, &header), "Read migrated header");
         TEST_ASSERT(header.versionnumber == 7, "Migrated fixture version = 7");
         TEST_ASSERT(header.headerLength == (long) sizeof(tydatabaserecord_64), "Migrated header length = 88");
     }
+    closefile(fnum);
 
     /* Open via dbopenfile to ensure header and views parse */
-    bigstring bs;
-    tyfilespec fs;
-    hdlfilenum fnum = 0;
     copyctopstring(v7_path, bs);
     TEST_ASSERT(pathtofilespec(bs, &fs), "pathtofilespec(v7)");
     TEST_ASSERT(openfile(&fs, &fnum, true), "openfile(v7)");

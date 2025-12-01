@@ -100,6 +100,18 @@ FRONTIER_SOURCES = \
     ../Common/source/db_writer_modern.c \
     headless_langverbs_stub.c
 
+# Minimal headless-safe DB stack for migration tests (avoids UI/QuickDraw deps)
+MIGRATION_SOURCES = \
+    ../Common/source/db.c \
+    ../Common/source/db_format.c \
+    ../Common/source/db_reader_legacy.c \
+    ../Common/source/db_reader_modern.c \
+    ../Common/source/db_writer_modern.c \
+    ../Common/source/memory.c \
+    ../Common/source/strings.c \
+    ../Common/source/portable_handles.c \
+    ../portable/file_portable.c
+
 LANG_RUNTIME_SOURCES = \
     ../Common/source/lang.c \
     ../Common/source/langcallbacks.c \
@@ -269,8 +281,8 @@ test_cli_integration: components/test_cli_integration.c $(TEST_FRAMEWORK) $(FRON
 test_database: components/test_database.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES)
 	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable $^ -o $@ $(LINK_LIBS)
 
-test_migration: components/test_migration.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES)
-	$(CC) $(CFLAGS) -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable $^ -o $@ $(LINK_LIBS)
+test_migration: components/test_migration.c $(TEST_FRAMEWORK) $(MIGRATION_SOURCES)
+	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable $^ -o $@ $(LINK_LIBS)
 
 test_compatibility: components/test_compatibility.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES)
 	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable $^ -o $@ $(LINK_LIBS)
