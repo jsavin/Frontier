@@ -20,12 +20,12 @@
   - `boolean_false`: false
   - `real_number`: 3.14159
   - `nil_value`: nil
-  - `date_epoch`: 1970-01-01T00:00:00Z
-  - `date_far_future`: 2099-12-31T23:59:59Z
+  - `date_epoch`: 1970-01-01 00:00:00 (local date/time; no TZ)
+  - `date_far_future`: 2099-12-31 23:59:59 (local date/time; no TZ)
   - `string_ascii`: `"Hello, Frontier!"`
   - `string_extended`: includes high-bit characters (e.g., `café`) to verify encoding.
   - `binary_small`: 16-byte blob (0x00..0x0F) to verify binaryType.
-  - `address_value`: an address literal (e.g., `0x00001000`) to exercise address type storage.
+  - `address_value`: a live odb address (pick a small allocated block; e.g., point at `binary_small` once created).
 
 - **Tables / Records**
   - `table_mixed`: keys `a:int`, `b:string`, `c:bool`, `d:date`, `e:binary` (small blob), `f:subtable`.
