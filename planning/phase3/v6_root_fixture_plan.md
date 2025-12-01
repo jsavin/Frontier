@@ -82,6 +82,7 @@ root (table)
 ├─ int64_like_string = "0x1_0000_0000"
 ├─ boolean_true = true
 ├─ boolean_false = false
+├─ real_number = 3.14159
 ├─ date_epoch = 1970-01-01T00:00:00Z
 ├─ date_far_future = 2099-12-31T23:59:59Z
 ├─ string_ascii = "Hello, Frontier!"
@@ -104,12 +105,14 @@ root (table)
 ├─ list_strings = ["alpha", "beta", "gamma"]
 ├─ list_mixed = [1, "two", true, date(2000-01-01)]
 ├─ list_with_record = [ { recname = "r1", recval = 42 }, "tail" ]
+├─ list_with_table = [ { k = "v" }, table_mixed ] (non-scalar element reuse)
 ├─ outline_basic (outline)
 │  ├─ root (refcon: "root-ref")
 │  │  ├─ child1 (refcon: "c1")
 │  │  └─ child2 (refcon: "c2")
 │  │     └─ grandchild (refcon: "gc"; with note/body)
 ├─ wptext_basic (wp text with bold/italic span + newline)
+├─ wptext_stylesheet (wp text with multiple styled runs and blank line)
 ├─ menu_sample (menu)
 │  ├─ Item One (enabled)
 │  ├─ Item Two (disabled)
