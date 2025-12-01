@@ -18,26 +18,34 @@
   - `int64_like_string`: literal `"0x1_0000_0000"` to catch widening.
   - `boolean_true`: true
   - `boolean_false`: false
+  - `real_number`: 3.14159
+  - `nil_value`: nil
   - `date_epoch`: 1970-01-01T00:00:00Z
   - `date_far_future`: 2099-12-31T23:59:59Z
   - `string_ascii`: `"Hello, Frontier!"`
   - `string_extended`: includes high-bit characters (e.g., `café`) to verify encoding.
   - `binary_small`: 16-byte blob (0x00..0x0F) to verify binaryType.
+  - `address_value`: an address literal (e.g., `0x00001000`) to exercise address type storage.
 
 - **Tables / Records**
   - `table_mixed`: keys `a:int`, `b:string`, `c:bool`, `d:date`, `e:binary` (small blob), `f:subtable`.
     - `f:subtable` with `x:int`, `y:string`.
-  - `record_simple`: legacy record with fields `name`, `version`, `flags` (small ints/strings).
+  - `record_simple`: legacy record with fields `name`, `flags`, `tag`, `subtable` (non-scalar), and `empty_slot` (nil).
+  - `record_empty`: empty record.
 
 - **Lists / Arrays**
   - `list_strings`: `["alpha", "beta", "gamma"]`
   - `list_mixed`: `[1, "two", true, date(2000-01-01)]`
+  - `list_with_record`: `[ { recname = "r1", recval = 42 }, "tail" ]`
+  - `list_with_table`: `[ { k = "v" }, table_mixed ]`
+  - `list_empty`: `[]`
 
 - **Outlines**
-  - `outline_basic`: root headline `"root"` with two children `"child1"`, `"child2"`, and a nested grandchild under child2 `"grandchild"`. Include one headline with a note/body text to verify outline text storage.
+  - `outline_basic`: root headline `"root"` with refcon, children `child1`, `child2` (refcons), and a nested `grandchild` (refcon) with note/body to verify outline text/refcon storage.
 
 - **WPText**
   - `wptext_basic`: short paragraph with bold/italic span and a newline to confirm formatting survives.
+  - `wptext_stylesheet`: multiple styled runs and a blank line.
 
 - **Menus**
   - `menu_sample`: menu `"Sample"` with items:
@@ -83,11 +91,13 @@ root (table)
 ├─ boolean_true = true
 ├─ boolean_false = false
 ├─ real_number = 3.14159
+├─ nil_value = nil
 ├─ date_epoch = 1970-01-01T00:00:00Z
 ├─ date_far_future = 2099-12-31T23:59:59Z
 ├─ string_ascii = "Hello, Frontier!"
 ├─ string_extended = "café …" (high-bit chars)
 ├─ binary_small = 16-byte blob 0x00..0x0F
+├─ address_value = 0x00001000 (address literal)
 ├─ table_mixed (table)
 │  ├─ a = 1
 │  ├─ b = "two"
@@ -102,10 +112,13 @@ root (table)
 │  ├─ flags = 1 (small int)
 │  ├─ tag = "sample" (string)
 │  └─ subtable = { nested:int = 5, nested_str = "nest" } (non-scalar value)
+│  └─ empty_slot = nil
+├─ record_empty (record with no fields)
 ├─ list_strings = ["alpha", "beta", "gamma"]
 ├─ list_mixed = [1, "two", true, date(2000-01-01)]
 ├─ list_with_record = [ { recname = "r1", recval = 42 }, "tail" ]
 ├─ list_with_table = [ { k = "v" }, table_mixed ] (non-scalar element reuse)
+├─ list_empty = [ ]
 ├─ outline_basic (outline)
 │  ├─ root (refcon: "root-ref")
 │  │  ├─ child1 (refcon: "c1")
