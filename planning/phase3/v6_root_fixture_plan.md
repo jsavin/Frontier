@@ -25,8 +25,8 @@
   - `string_ascii`: `"Hello, Frontier!"`
   - `string_extended`: includes high-bit characters (e.g., `café`) to verify encoding.
   - `binary_small`: 16-byte blob (0x00..0x0F) to verify binaryType.
-  - `addressValueLocal`: live odb address inside this file (e.g., `binarySmall`).
-  - `addressValueGuest`: live odb address into `Frontier.root` (Guest DB).
+  - `addressValueSystem`: live odb address into `Frontier.root` (system DB).
+  - `addressValueGuest`: live odb address inside this file (`test.root` guest DB, e.g., `binarySmall`).
 
 - **Tables / Records**
   - `table_mixed`: keys `a:int`, `b:string`, `c:bool`, `d:date`, `e:binary` (small blob), `f:subtable`.
@@ -95,8 +95,8 @@ root (table)
 ├─ stringAscii = "Hello, Frontier!"
 ├─ stringExtended = "café …" (high-bit chars)
 ├─ binarySmall = 16-byte blob 0x00..0x0F
-├─ addressValueLocal = (odb address pointing into this file, e.g., binarySmall)
-├─ addressValueGuest = (odb address pointing into Frontier.root for guest DB ref)
+├─ addressValueSystem = (odb address pointing into Frontier.root for system DB ref)
+├─ addressValueGuest = (odb address pointing into this test.root guest DB, e.g., binarySmall)
 ├─ tableMixed (table)
 │  ├─ a = 1
 │  ├─ b = "two"
