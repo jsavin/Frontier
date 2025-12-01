@@ -12,6 +12,7 @@ Status
 - 2025-11-28 (Codex): Added `db_context` pack/assign/ref wrappers and dropped `use_64bit_format` from packers/tests; canonical v7 headers validated with a new header regression.
 - 2025-11-27 (Codex): Legacy packers forked to `legacy_*` with modern packers defaulting to BE64; format-mode stack (`db_format_mode_push/pop`) in place and core suites (`db_format_tests`, `runtime_tests`, `cli_runtime_tests`) green.
 - 2025-11-26 (Codex): Reader/writer split into legacy vs modern modules; modern headers serialized in BE64 with validation hooks; payload widening + round-trip tests still pending (see plan).
+- 2025-11-30 (Codex): Added v6 fixture plan + file (`tests/fixtures/v6/test.root`) under `testData` namespace; migration test added (fails to build `test_migration` target on headless stubs due to legacy QuickDraw/timedate symbols—left as known issue).
 - 2025-11-30 (Codex): Started `feature/v6-root-fixture`; drafted `planning/phase3/v6_root_fixture_plan.md` defining a legacy-authored v6 root covering all datatypes for migration regression. Pending: user to author the fixture in the legacy Windows app.
 
 **Branches in flight**: `feature/carbon-migration-plan`, `feature/headless-system-bootstrap`, `feature/legacy_adapter_widening_and_v7_reader`
