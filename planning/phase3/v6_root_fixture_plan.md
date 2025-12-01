@@ -49,14 +49,12 @@
   - `wptext_stylesheet`: multiple styled runs and a blank line.
 
 - **Menus**
-  - `menu_sample`: menu `"Sample"` with items:
-    1. `"Item One"` (enabled)
-    2. `"Item Two"` (disabled)
-    3. Separator
-    4. Submenu `"Sub"` with `"Sub Item"`
-
-- **PICT**
-  - `pict_small`: small drawn rectangle (any simple PICT) to exercise the legacy PICT external type.
+  - `menuSample`: menu titled `"menuSample"` with submenu/items:
+    - Submenu `"menuSample"` containing:
+      1. `"Item One"` (enabled) → script msg("Item One")
+      2. `"Item Two"` (disabled) → script msg("Item Two")
+      3. Separator
+      4. Submenu `"Sub"` with `"Sub Item"` → script msg("Sub Item")
 
 - **Scripts**
   - `scriptHello`: simple script `dialog.alert(\"hello\")` to confirm script storage and external refs.
@@ -111,7 +109,7 @@ root (table)
    │  ├─ name = "rec"
    │  ├─ flags = 1 (small int)
    │  ├─ tag = "sample" (string)
-   │  ├─ subtable = { nested:int = 5, nestedStr = "nest" } (non-scalar value)
+   │  ├─ subtable = { nestedInt = 5, nestedStr = "nest" } (non-scalar value)
    │  └─ emptySlot = nil
    ├─ recordEmpty (record with no fields)
    ├─ listStrings = ["alpha", "beta", "gamma"]
@@ -126,12 +124,11 @@ root (table)
    │  │     └─ grandchild (refcon: "gc"; with note/body)
    ├─ wptextBasic (wp text with bold/italic span + newline)
    ├─ wptextStylesheet (wp text with multiple styled runs and blank line)
-   ├─ menuSample (menu)
-   │  ├─ Item One (enabled)
-   │  ├─ Item Two (disabled)
+   ├─ menuSample (menu titled "menuSample"; items call msg())
+   │  ├─ Item One (enabled; msg("Item One"))
+   │  ├─ Item Two (disabled; msg("Item Two"))
    │  ├─ Separator
-   │  └─ Sub → [Sub Item]
-   ├─ pictSmall (PICT graphic)
+   │  └─ Sub → [Sub Item (msg("Sub Item"))]
    ├─ scriptHello = dialog.alert("hello")
    ├─ scriptDbOps = script that reads/writes tableMixed
    └─ (no card_type in fixture; can backfill from Frontier.root if needed later)
