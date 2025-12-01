@@ -61,9 +61,6 @@
   - `script_hello`: simple script `dialog.alert(\"hello\")` to confirm script storage and external refs.
   - `script_dbops`: script that reads/writes `table_mixed` to ensure serialized references resolve.
 
-- **WPText/Card-like**
-  - `card_note`: single-card equivalent (if supported) with title `"Card Note"` and body `"card body"` to cover CARD if encountered.
-
 - **Views**
   - View0 should reference the root table.
   - No additional views unless the app forces them; if present, document addresses.
@@ -134,7 +131,7 @@ root (table)
 ├─ pict_small (PICT graphic)
 ├─ script_hello = dialog.alert("hello")
 ├─ script_dbops = script that reads/writes table_mixed
-└─ card_note (card-equivalent) title/body
+└─ (no card_type in fixture; can backfill from Frontier.root if needed later)
 
 view0 → root table
 ```
