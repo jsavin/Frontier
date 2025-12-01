@@ -91,7 +91,7 @@ root (table)
 ├─ realNumber = 3.14159
 ├─ nilValue = nil
 ├─ dateEpoch = 1970-01-01 00:00:00 (local)
-├─ dateFarFuture = 2099-12-31 23:59:59 (local)
+├─ dateFarFuture = 2049-12-31 23:59:59 (local; use latest date v6 accepts)
 ├─ stringAscii = "Hello, Frontier!"
 ├─ stringExtended = "café …" (high-bit chars)
 ├─ binarySmall = 16-byte blob 0x00..0x0F
