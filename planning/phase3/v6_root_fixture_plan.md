@@ -84,7 +84,7 @@
 root (table)
 ├─ int32_small = 1234
 ├─ int32_negative = -4321
-├─ int64_like_string = "0x1_0000_0000"
+├─ string_large_number_literal = "0x1_0000_0000"
 ├─ boolean_true = true
 ├─ boolean_false = false
 ├─ real_number = 3.14159
