@@ -3,7 +3,7 @@
 #include "../../Common/headers/db_format.h"
 #include "../../Common/headers/db_reader.h"
 #include "../../Common/headers/dbinternal.h"
-#include "test_migration_shim.h"
+#include "test_migration_portable.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,11 +30,11 @@ static dbaddress read_legacy_dbaddress_test(const unsigned char *field) {
 }
 
 static void remove_if_exists(const char *path) {
-    test_remove_if_exists(path);
+    tm_remove_if_exists(path);
 }
 
 static bool copy_file(const char *src, const char *dst) {
-    return test_copy_file(src, dst);
+    return tm_filecopy_path(src, dst);
 }
 
 /* Create a minimal v6 header on disk */
