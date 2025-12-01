@@ -98,8 +98,8 @@ root (table)
 │     └─ y = "sub"
 ├─ record_simple (record; name→value pairs)
 │  ├─ name = "rec"
-│  ├─ version = 1
-│  └─ flags = 1 (small int)
+│  ├─ flags = 1 (small int)
+│  └─ tag = "sample" (string)
 ├─ list_strings = ["alpha", "beta", "gamma"]
 ├─ list_mixed = [1, "two", true, date(2000-01-01)]
 ├─ outline_basic (outline)
