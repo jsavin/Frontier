@@ -222,6 +222,11 @@ typedef boolean (*callback)(void);
 
 #ifndef fldebug
 #define fldebug 0
+
+/* Allow callers to disable inline stub fallbacks when linking real portable implementations. */
+#ifndef FRONTIER_ALLOW_PORTABLE_STUBS
+#define FRONTIER_ALLOW_PORTABLE_STUBS 1
+#endif
 #endif
 
 #ifndef intinfinity
@@ -256,7 +261,7 @@ static inline void SetPort(GrafPtr p){ (void)p; }
 #endif
 
 /* Portable stubs for file/path helpers used by langvalue */
-#ifdef FRONTIER_PORTABLE
+#if defined(FRONTIER_PORTABLE) && FRONTIER_ALLOW_PORTABLE_STUBS
 /* Portable file helper stubs */
 static inline boolean pathtofilespec(bigstring bs, struct tyfilespec* fs){ (void)bs; (void)fs; return false; }
 static inline boolean filenotfounderror(void){ return false; }

@@ -8,6 +8,11 @@
 #include "classic_handle.h"
  
 /* Map Handle and core primitives */
+#ifndef FRONTIER_ALLOW_PORTABLE_STUBS
+#define FRONTIER_ALLOW_PORTABLE_STUBS 1
+#endif
+
+#if FRONTIER_ALLOW_PORTABLE_STUBS
 
 static inline boolean newhandle(long sz, Handle* ph) { *ph = NewHandle((size_t)sz); return (*ph)!=NULL; }
 static inline boolean newemptyhandle(Handle* ph) { *ph = NewHandle(0); return (*ph)!=NULL; }
@@ -35,7 +40,7 @@ static inline void texthandletostring(Handle h, bigstring bs) {
     memcpy(stringbaseaddress(bs), p, (size_t)copy);
     (void)0;
 }
+#endif /* FRONTIER_ALLOW_PORTABLE_STUBS */
 
 #endif
-
 
