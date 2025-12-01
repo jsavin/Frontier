@@ -58,8 +58,8 @@
   - `pict_small`: small drawn rectangle (any simple PICT) to exercise the legacy PICT external type.
 
 - **Scripts**
-  - `script_hello`: simple script `dialog.alert(\"hello\")` to confirm script storage and external refs.
-  - `script_dbops`: script that reads/writes `table_mixed` to ensure serialized references resolve.
+  - `scriptHello`: simple script `dialog.alert(\"hello\")` to confirm script storage and external refs.
+  - `scriptDbops`: script that reads/writes `tableMixed` to ensure serialized references resolve.
 
 - **Views**
   - View0 should reference the root table.
@@ -82,20 +82,20 @@
 
 ```
 root (table)
-├─ int32_small = 1234
-├─ int32_negative = -4321
-├─ string_large_number_literal = "0x1_0000_0000"
-├─ boolean_true = true
-├─ boolean_false = false
-├─ real_number = 3.14159
-├─ nil_value = nil
-├─ date_epoch = 1970-01-01T00:00:00Z
-├─ date_far_future = 2099-12-31T23:59:59Z
-├─ string_ascii = "Hello, Frontier!"
-├─ string_extended = "café …" (high-bit chars)
-├─ binary_small = 16-byte blob 0x00..0x0F
-├─ address_value = 0x00001000 (address literal)
-├─ table_mixed (table)
+├─ int32Small = 1234
+├─ int32Negative = -4321
+├─ stringLargeNumberLiteral = "0x1_0000_0000"
+├─ booleanTrue = true
+├─ booleanFalse = false
+├─ realNumber = 3.14159
+├─ nilValue = nil
+├─ dateEpoch = 1970-01-01 00:00:00 (local)
+├─ dateFarFuture = 2099-12-31 23:59:59 (local)
+├─ stringAscii = "Hello, Frontier!"
+├─ stringExtended = "café …" (high-bit chars)
+├─ binarySmall = 16-byte blob 0x00..0x0F
+├─ addressValue = (odb address, e.g., binarySmall)
+├─ tableMixed (table)
 │  ├─ a = 1
 │  ├─ b = "two"
 │  ├─ c = true
@@ -104,33 +104,33 @@ root (table)
 │  └─ f (table)
 │     ├─ x = 10
 │     └─ y = "sub"
-├─ record_simple (record; name→value pairs)
+├─ recordSimple (record; name→value pairs)
 │  ├─ name = "rec"
 │  ├─ flags = 1 (small int)
 │  ├─ tag = "sample" (string)
-│  └─ subtable = { nested:int = 5, nested_str = "nest" } (non-scalar value)
-│  └─ empty_slot = nil
-├─ record_empty (record with no fields)
-├─ list_strings = ["alpha", "beta", "gamma"]
-├─ list_mixed = [1, "two", true, date(2000-01-01)]
-├─ list_with_record = [ { recname = "r1", recval = 42 }, "tail" ]
-├─ list_with_table = [ { k = "v" }, table_mixed ] (non-scalar element reuse)
-├─ list_empty = [ ]
-├─ outline_basic (outline)
+│  ├─ subtable = { nested:int = 5, nestedStr = "nest" } (non-scalar value)
+│  └─ emptySlot = nil
+├─ recordEmpty (record with no fields)
+├─ listStrings = ["alpha", "beta", "gamma"]
+├─ listMixed = [1, "two", true, date(2000-01-01)]
+├─ listWithRecord = [ { recname = "r1", recval = 42 }, "tail" ]
+├─ listWithTable = [ { k = "v" }, tableMixed ] (non-scalar element reuse)
+├─ listEmpty = [ ]
+├─ outlineBasic (outline)
 │  ├─ root (refcon: "root-ref")
 │  │  ├─ child1 (refcon: "c1")
 │  │  └─ child2 (refcon: "c2")
 │  │     └─ grandchild (refcon: "gc"; with note/body)
-├─ wptext_basic (wp text with bold/italic span + newline)
-├─ wptext_stylesheet (wp text with multiple styled runs and blank line)
-├─ menu_sample (menu)
+├─ wptextBasic (wp text with bold/italic span + newline)
+├─ wptextStylesheet (wp text with multiple styled runs and blank line)
+├─ menuSample (menu)
 │  ├─ Item One (enabled)
 │  ├─ Item Two (disabled)
 │  ├─ Separator
 │  └─ Sub → [Sub Item]
-├─ pict_small (PICT graphic)
-├─ script_hello = dialog.alert("hello")
-├─ script_dbops = script that reads/writes table_mixed
+├─ pictSmall (PICT graphic)
+├─ scriptHello = dialog.alert("hello")
+├─ scriptDbops = script that reads/writes tableMixed
 └─ (no card_type in fixture; can backfill from Frontier.root if needed later)
 
 view0 → root table
