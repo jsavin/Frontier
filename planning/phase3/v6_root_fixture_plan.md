@@ -96,10 +96,10 @@ root (table)
 │  └─ f (table)
 │     ├─ x = 10
 │     └─ y = "sub"
-├─ record_simple (record)
+├─ record_simple (record; name→value pairs)
 │  ├─ name = "rec"
 │  ├─ version = 1
-│  └─ flags = 0x01
+│  └─ flags = 1 (small int)
 ├─ list_strings = ["alpha", "beta", "gamma"]
 ├─ list_mixed = [1, "two", true, date(2000-01-01)]
 ├─ outline_basic (outline)
