@@ -25,7 +25,8 @@
   - `string_ascii`: `"Hello, Frontier!"`
   - `string_extended`: includes high-bit characters (e.g., `café`) to verify encoding.
   - `binary_small`: 16-byte blob (0x00..0x0F) to verify binaryType.
-  - `address_value`: a live odb address (pick a small allocated block; e.g., point at `binary_small` once created).
+  - `addressValueLocal`: live odb address inside this file (e.g., `binarySmall`).
+  - `addressValueGuest`: live odb address into `Frontier.root` (Guest DB).
 
 - **Tables / Records**
   - `table_mixed`: keys `a:int`, `b:string`, `c:bool`, `d:date`, `e:binary` (small blob), `f:subtable`.
@@ -59,7 +60,7 @@
 
 - **Scripts**
   - `scriptHello`: simple script `dialog.alert(\"hello\")` to confirm script storage and external refs.
-  - `scriptDbops`: script that reads/writes `tableMixed` to ensure serialized references resolve.
+  - `scriptDbOps`: script that reads/writes `tableMixed` to ensure serialized references resolve.
 
 - **Views**
   - View0 should reference the root table.
@@ -94,7 +95,8 @@ root (table)
 ├─ stringAscii = "Hello, Frontier!"
 ├─ stringExtended = "café …" (high-bit chars)
 ├─ binarySmall = 16-byte blob 0x00..0x0F
-├─ addressValue = (odb address, e.g., binarySmall)
+├─ addressValueLocal = (odb address pointing into this file, e.g., binarySmall)
+├─ addressValueGuest = (odb address pointing into Frontier.root for guest DB ref)
 ├─ tableMixed (table)
 │  ├─ a = 1
 │  ├─ b = "two"
@@ -130,7 +132,7 @@ root (table)
 │  └─ Sub → [Sub Item]
 ├─ pictSmall (PICT graphic)
 ├─ scriptHello = dialog.alert("hello")
-├─ scriptDbops = script that reads/writes tableMixed
+├─ scriptDbOps = script that reads/writes tableMixed
 └─ (no card_type in fixture; can backfill from Frontier.root if needed later)
 
 view0 → root table
