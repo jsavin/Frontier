@@ -107,10 +107,10 @@ MIGRATION_SOURCES = \
     ../Common/source/db_reader_legacy.c \
     ../Common/source/db_reader_modern.c \
     ../Common/source/db_writer_modern.c \
-    ../Common/source/memory.c \
-    ../Common/source/strings.c \
     ../Common/source/portable_handles.c \
-    ../portable/file_portable.c
+    ../portable/file_portable.c \
+    ../portable/text_encoding_portable.c \
+    components/test_migration_portable.c
 
 LANG_RUNTIME_SOURCES = \
     ../Common/source/lang.c \

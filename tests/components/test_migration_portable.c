@@ -48,3 +48,4 @@ void tm_remove_if_exists(const char *path) {
     if (pathtofilespec(bs, &fs))
         filedelete(&fs);
 }
+#include "../../Common/headers/strings.h"
