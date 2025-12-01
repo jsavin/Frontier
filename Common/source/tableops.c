@@ -46,6 +46,7 @@
 #include "tableverbs.h"
 #include "claybrowser.h"
 
+/* 2025-12-01 Codex: Clamp headless table lookup logs to string length to keep debug output readable. */
 
 
 #ifdef fldebug
@@ -218,17 +219,30 @@ boolean findnamedtable (hdlhashtable htable, bigstring bs, hdlhashtable *hnamedt
 	fl = langfindsymbol (bs, &htable, &hnode);
 	
 	pophashtable ();
+#if defined(FRONTIER_HEADLESS)
+    fprintf(stderr, "[headless] findnamedtable lookup name=%.*s table=%p result=%d hnode=%p\n",
+            (int) stringlength(bs), stringbaseaddress(bs), (void *)htable, (int) fl, (void *)hnode);
+#endif
 	
 	if (!fl) 
 	{
 #if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[headless] findnamedtable miss: name=%s table=%p current=%p\n", stringbaseaddress(bs), (void *)htable, (void *)currenthashtable);
+		fprintf(stderr, "[headless] findnamedtable miss: name=%.*s table=%p current=%p\n", (int) stringlength(bs), stringbaseaddress(bs), (void *)htable, (void *)currenthashtable);
 #endif
 		return (false);
 	}
 	
-	if (!tablevaltotable ((**hnode).val, hnamedtable, hnode))
-		return (false);
+    {
+        boolean table_ok = tablevaltotable ((**hnode).val, hnamedtable, hnode);
+#if defined(FRONTIER_HEADLESS)
+        fprintf(stderr, "[headless] findnamedtable tableval result=%d valtype=%d htable=%p\n",
+                (int) table_ok,
+                (int) (**hnode).val.valuetype,
+                (void *) (table_ok ? *hnamedtable : nil));
+#endif
+        if (!table_ok)
+            return (false);
+    }
 	
 	
 	(***hnamedtable).parenthashtable = htable; /*retain parental link*/
@@ -1088,5 +1102,3 @@ boolean tablegetstringlist (short id, bigstring bs) {
 	
 	return (getstringlist (tablestringlist, id, bs));
 	} /*tablegetstringlist*/
-
-

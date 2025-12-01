@@ -24,6 +24,7 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ******************************************************************************/
+/* 2025-11-30 Codex: Declare portable file APIs for headless/portable test builds. */
 
 #ifndef fileinclude
 #define fileinclude
@@ -552,5 +553,35 @@ extern boolean filestart (void); /*6.1b15 AR*/
 
 
 #endif /* FRONTIER_PORTABLE */
+
+#if defined(FRONTIER_PORTABLE) || defined(FRONTIER_HEADLESS)
+/* Portable file_portable.c prototypes for headless/portable builds */
+extern boolean pathtofilespec (bigstring, ptrfilespec);
+extern boolean filespectopath (const ptrfilespec, bigstring);
+extern boolean openfile (const ptrfilespec, hdlfilenum *, boolean);
+extern boolean opennewfile (ptrfilespec, OSType, OSType, hdlfilenum *);
+extern boolean closefile (hdlfilenum);
+extern boolean filesetposition (hdlfilenum, long);
+extern boolean filegetposition (hdlfilenum, long *);
+extern boolean filegeteof (hdlfilenum, long *);
+extern boolean fileseteof (hdlfilenum, long);
+extern boolean filewrite (hdlfilenum, long, void *);
+extern boolean fileread (hdlfilenum, long, void *);
+extern boolean filereaddata (hdlfilenum, long, long *, void *);
+extern long filegetsize (hdlfilenum);
+extern boolean filegetchar (hdlfilenum, char *);
+extern boolean fileputchar (hdlfilenum, char);
+extern boolean filewritehandle (hdlfilenum, Handle);
+extern boolean filereadhandle (hdlfilenum, Handle *);
+extern boolean flushvolumechanges (const ptrfilespec, hdlfilenum);
+extern boolean largefilebuffer (Handle *);
+extern boolean fileisfolder (const ptrfilespec, boolean *);
+extern boolean fileisvolume (const ptrfilespec);
+extern boolean equalfilespecs (const ptrfilespec, const ptrfilespec);
+extern boolean getfsfile (const ptrfilespec, bigstring);
+extern const char *headless_fnum_path (hdlfilenum);
+extern boolean headless_reopen_fnum (hdlfilenum, const char *, boolean);
+extern long headless_readline (hdlfilenum, char *, long);
+#endif /* FRONTIER_PORTABLE || FRONTIER_HEADLESS */
 
 #endif	//fileinclude

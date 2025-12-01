@@ -51,6 +51,8 @@
 #include "claycallbacks.h"
 #include "cancoon.h"
 
+/* 2025-12-01 Codex: Add headless diagnostics for tablevaltotable to trace migration lookups. */
+
 
 
 boolean tablevaltotable (tyvaluerecord val, hdlhashtable *htable, hdlhashnode hnode) {
@@ -62,14 +64,38 @@ boolean tablevaltotable (tyvaluerecord val, hdlhashtable *htable, hdlhashnode hn
 	
 	hdltablevariable hvariable;
 	short errorcode;
+
+#if defined(FRONTIER_HEADLESS)
+    fprintf(stderr, "[headless] tablevaltotable enter valtype=%d external=0x%llx hnode=%p\n",
+            (int) val.valuetype,
+            (unsigned long long) val.data.externalvalue,
+            (void *) hnode);
+#endif
 	
-	if (!gettablevariable (val, &hvariable, &errorcode))
+	if (!gettablevariable (val, &hvariable, &errorcode)) {
+#if defined(FRONTIER_HEADLESS)
+        fprintf(stderr, "[headless] tablevaltotable gettablevariable failed err=%d valtype=%d\n", (int) errorcode, (int) val.valuetype);
+#endif
 		return (false);
+    }
 	
-	if (!tableverbinmemory ((hdlexternalvariable) hvariable, hnode))
+	if (!tableverbinmemory ((hdlexternalvariable) hvariable, hnode)) {
+#if defined(FRONTIER_HEADLESS)
+        fprintf(stderr, "[headless] tablevaltotable tableverbinmemory failed valtype=%d oldaddr=%llx hnode=%p\n",
+                (int) val.valuetype,
+                (unsigned long long) (**hvariable).oldaddress,
+                (void *) hnode);
+#endif
 		return (false);
+    }
 	
 	*htable = (hdlhashtable) (**hvariable).variabledata;
+
+#if defined(FRONTIER_HEADLESS)
+    fprintf(stderr, "[headless] tablevaltotable ok htable=%p flinmemory=%d\n",
+            (void *) *htable,
+            (**hvariable).flinmemory);
+#endif
 	
 	return (true);
 	} /*tablevaltotable*/
@@ -398,8 +424,9 @@ boolean tableedit (hdlexternalvariable hvariable, hdlwindowinfo hparent, ptrfile
 		return (false);
 	
 	getwindowinfo (w, &hi);
-	
-	if ( fs != nil ) {
+
+#if !defined(FRONTIER_HEADLESS)
+	if (fs != nil) {
 	
 		(**hi).fspec = *fs;
 		
@@ -409,6 +436,7 @@ boolean tableedit (hdlexternalvariable hvariable, hdlwindowinfo hparent, ptrfile
 				
 		
 		}
+#endif
 	
 	if (!tableverbsetupdisplay (ht, hi)) {
 		

@@ -31,6 +31,7 @@
 	2006-03-04 aradke: disable MS Visual C++ warning about unknown pragmas
 	so it won't complain about "#pragma unused(foo)"
 */
+/* 2025-11-30 Codex: Allow portable builds to skip headless stubs when linking real helpers. */
 
 #ifndef __FRONTIER_H__
 #define __FRONTIER_H__
@@ -55,7 +56,7 @@
 
 #include "frontierdefs.h"	/* global pre-processor defines */
 
-#if defined(FRONTIER_HEADLESS)
+#if defined(FRONTIER_HEADLESS) && (!defined(FRONTIER_ALLOW_PORTABLE_STUBS) || FRONTIER_ALLOW_PORTABLE_STUBS)
 #include "headless_stubs.h"
 #endif
 

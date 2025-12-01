@@ -4,6 +4,7 @@
 #                   builds can find classic_handle and friends.
 # 2025-11-11 Codex: Define HEADLESS_LINKS_REAL_PAIGE so tests skip Paige stubs once the real library links.
 # 2025-11-17 Codex: Hook Paige's CMake build into this Makefile so source edits retrigger libpaige.a.
+# 2025-12-01 Codex: Link real tableexternal code for migration tests to avoid stubbed table lookups.
 # Phase 1.1: Comprehensive Testing Implementation
 
 CC = clang
@@ -100,16 +101,10 @@ FRONTIER_SOURCES = \
     ../Common/source/db_writer_modern.c \
     headless_langverbs_stub.c
 
-# Minimal headless-safe DB stack for migration tests (avoids UI/QuickDraw deps)
+# Migration tests use the same headless runtime slice as runtime_tests to avoid test-only forks.
 MIGRATION_SOURCES = \
-    ../Common/source/db.c \
-    ../Common/source/db_format.c \
-    ../Common/source/db_reader_legacy.c \
-    ../Common/source/db_reader_modern.c \
-    ../Common/source/db_writer_modern.c \
-    ../Common/source/portable_handles.c \
-    ../portable/file_portable.c \
-    ../portable/text_encoding_portable.c \
+    $(LANG_RUNTIME_SOURCES) \
+    headless_shell.c \
     components/test_migration_portable.c
 
 LANG_RUNTIME_SOURCES = \
@@ -161,6 +156,7 @@ LANG_RUNTIME_SOURCES = \
     ../Common/source/opxml.c \
     ../Common/source/langxml.c \
     ../Common/source/tableops.c \
+    ../Common/source/tableexternal.c \
     ../Common/source/tableexternal_common.c \
     ../Common/source/legacy/tablepack_legacy.c \
     ../Common/source/tablepack.c \
@@ -282,7 +278,7 @@ test_database: components/test_database.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES)
 	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable $^ -o $@ $(LINK_LIBS)
 
 test_migration: components/test_migration.c $(TEST_FRAMEWORK) $(MIGRATION_SOURCES)
-	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -DFRONTIER_ALLOW_PORTABLE_STUBS=0 -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable $^ -o $@ $(LINK_LIBS)
+	$(CC) $(CFLAGS) -DTEST_MIGRATION_HAS_RUNTIME=1 -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable $^ -o $@ $(LINK_LIBS)
 
 test_compatibility: components/test_compatibility.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES)
 	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable $^ -o $@ $(LINK_LIBS)

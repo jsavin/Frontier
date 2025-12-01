@@ -792,7 +792,7 @@ boolean langexternalpack (hdlexternalhandle h, Handle *hpacked, boolean *flnewdb
 		return (false);
 
     db_format_adapter_mark_address(&(**hv).oldaddress);
-	if (db_format_adapter_force_repack()) {
+    if (db_format_adapter_force_repack()) {
         working_mode.use_64bit_format = false; /* keep legacy reads while materializing externals */
         db_format_mode_push(&working_mode);
     }

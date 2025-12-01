@@ -44,6 +44,7 @@
 #include "tableverbs.h"
 #include "tablestructure.h"
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
+// 2025-11-28 Codex: Apply db_context wrappers when loading HASH resources.
 
 
 /*
@@ -197,7 +198,9 @@ static boolean checktable (hdlhashtable htable, bigstring bs, boolean flcreate, 
 		
 		DetachResource (hpacked);
 		
-		hashunpacktable (hpacked, true, *ht); /*he always disposes of hpackedtable*/
+        db_context context;
+        db_context_init(&context);
+		hashunpacktable_context (&context, hpacked, true, *ht); /*he always disposes of hpackedtable*/
 		}
 	
 	#endif
@@ -486,6 +489,9 @@ boolean tablesavesystemtable (Handle hvariable, dbaddress *adr) {
 	
 	langtraperrors (bspackerror, &savecallback, &saverefcon);
 
+#if defined(FRONTIER_HEADLESS)
+    fprintf(stderr, "[headless] tablesavesystemtable enter mode64=%d\n", db_format_mode_current().use_64bit_format ? 1 : 0);
+#endif
 	fl = tableverbpack (hv, &htmp, &fldummy); /*packs table, saves to db if neccessary, pushes address on htmp*/
 
 #if defined(FRONTIER_HEADLESS)
@@ -493,33 +499,58 @@ boolean tablesavesystemtable (Handle hvariable, dbaddress *adr) {
 #endif
     if (fl && db_format_adapter_force_repack()) {
         /* Ensure legacy-derived addresses are normalized to BE64 for view storage. */
-        db_format_adapter_enable_wide_writes(NULL);
+        db_context ctx;
+        db_context_init(&ctx);
+        db_format_adapter_enable_wide_writes_context(&ctx, NULL);
     }
 
 	languntraperrors (savecallback, saverefcon, !fl);
 	
 	if (!flscriptrunning)
 		langunhookerrors ();
-	
+
 	{
-		long adrsize = db_format_mode_current().use_64bit_format ? (long) sizeof(dbaddress) : (long) sizeof(uint32_t);
+    boolean mode64 = db_format_mode_current().use_64bit_format;
+#if defined(FRONTIER_HEADLESS)
+        /* Save As to modern roots can leave the mode stack in a legacy state; prefer the destination DB type. */
+        if (!mode64 && fldatabasesaveas) {
+            hdldatabaserecord hdest = nil;
+            if (dbgetdestinationdatabase(&hdest) && (hdest != nil) && !db_format_is_legacy_db(hdest))
+                mode64 = true;
+        }
+#endif
+    long adrsize = mode64 ? (long) sizeof(dbaddress) : (long) sizeof(uint32_t);
 		long hsize = gethandlesize(htmp);
 		long ix = hsize - adrsize;
 		unsigned char adrbytes[sizeof(dbaddress)];
 
+#if defined(FRONTIER_HEADLESS)
+        fprintf(stderr,
+                "[headless] tablesavesystemtable trailer hsize=%ld adrsize=%ld ix=%ld\n",
+                hsize, adrsize, ix);
+#endif
+
 		if (ix < 0 || adrsize > (long) sizeof(adrbytes) || hsize < adrsize || !loadfromhandle(htmp, &ix, adrsize, adrbytes)) {
 			fl = false;
 		} else {
-			if (db_format_mode_current().use_64bit_format)
+			if (mode64)
 				*adr = (dbaddress) db_format_read_be64(adrbytes);
 			else
 				*adr = (dbaddress) db_format_read_be32(adrbytes);
 			sethandlesize(htmp, hsize - adrsize); /* drop the address trailer */
 		}
+
+#if defined(FRONTIER_HEADLESS)
+        fprintf(stderr,
+                "[headless] tablesavesystemtable adr=%llx adrsize=%ld mode64=%d\n",
+                fl ? (unsigned long long) *adr : 0ULL,
+                adrsize,
+                mode64 ? 1 : 0);
+#endif
 	}
 
 #if defined(FRONTIER_HEADLESS)
-	(void) dbnormalizeaddress(adr);
+    /* Keep the recorded address as written; normalization can corrupt modern Save As destinations. */
 #endif
 
 	disposehandle (htmp); /*we can get the address from the variable record, below*/

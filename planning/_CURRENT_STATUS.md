@@ -3,9 +3,12 @@
 Status
 - State: In Progress
 - Phase: Carbon Migration / Runtime Modernization
-- Last Updated: 2025-11-30 (Midday)
+- Last Updated: 2025-12-01 (Afternoon)
 - Owner: Codex
 - Notes: Primary hand-off summary for active work only.
+- 2025-12-01 (Codex): Linked migration tests to the real table layer (HEADLESS_LINKS_REAL_DB), dropped format unpacking in headless, and fixed writable opens so `test_migration` passes end-to-end on the v6 fixture (no more Save As/dbclose crash).
+- 2025-11-30 (Codex): Headless migration test now builds with portable file helpers and a local `copyctopstring` stub; heavy migration cases are temporarily skipped until the full runtime is linked (no crashes; backup/header checks pass).
+- 2025-11-30 (Codex): Added a lightweight v6 fixture header check in `test_migration` (fixture file now present under `tests/fixtures/v6/test.root`); migrate/ensure/fixture paths still skip until the runtime slice is wired.
 - 2025-11-30 (Codex): Save As swaps now run through context-aware guards (`dbswapglobals_context`) so allocations/view updates respect scoped Save As state without ambient globals; release-stack push/flush/zero now wrap default contexts; `db_format_tests` remain green.
 - 2025-11-30 (Codex): Scoped Save As state into `db_context` (save-as snapshots + guards), refreshed default-context wrappers, and reworked migrator Save As to rely on its context destination handle; `make -C tests db_format_tests` and `./db_format_tests` pass after the refactor.
 - 2025-11-29 (Codex): Context sweep for DB/adapter: stack/release helpers wrapped, internal assign/copy helpers exposed, TLS `use_64bit_format` shim removed (mode tracked via `g_mode_state`), and two-context regression added to `db_format_tests`.
@@ -15,10 +18,11 @@ Status
 - 2025-11-30 (Codex): Added v6 fixture plan + file (`tests/fixtures/v6/test.root`) under `testData` namespace; migration test added (fails to build `test_migration` target on headless stubs due to legacy QuickDraw/timedate symbols—left as known issue).
 - 2025-11-30 (Codex): Started `feature/v6-root-fixture`; drafted `planning/phase3/v6_root_fixture_plan.md` defining a legacy-authored v6 root covering all datatypes for migration regression. Pending: user to author the fixture in the legacy Windows app.
 
-**Branches in flight**: `feature/carbon-migration-plan`, `feature/headless-system-bootstrap`, `feature/legacy_adapter_widening_and_v7_reader`
+**Branches in flight**: `feature/carbon-migration-plan`, `feature/headless-system-bootstrap`, `feature/legacy_adapter_widening_and_v7_reader`, `feature/v6-root-fixture`
 
 ## Open Items
 - Payload widening/round-trip still pending: need synthetic legacy→modern→modern-read equality tests and file-level validation on migrated roots (tables/records/externals), plus strict modern reader routing for v7 opens.
+- Migration runtime is now linked in `test_migration`; keep an eye on headless-only logging volume and rerun broader suites with HEADLESS_LINKS_REAL_DB to ensure no UI symbol leaks.
 - Remaining warnings: none in tests; runtime still logs headless traces. (Keep an eye on any new warnings after payload widening work.)
 - Re-run migrator/CLI smoke on additional legacy roots once payload widening lands; stash logs.
 
@@ -28,3 +32,4 @@ Status
 - Route runtime/CLI v7 opens through the strict modern reader once payload widening is ready; rerun `make -C tests runtime_tests` and `make -C tests cli_runtime_tests`.
 - Add byte-level regressions for adapter-widened payloads (table/record/externals) to guard the new split.
 - Re-run `FRONTIER_REGEN_ROOT=… ./tests/runtime_tests` on additional legacy roots after widening; stash logs under `/tmp` with timestamps.
+- Debug `test_migration` fixture regression: migrated v7 root opens with a zero-item system table (see `/tmp/test_migration6.log`); verify view addresses/write targets and ensure table packer writes BE64 payloads into the destination.

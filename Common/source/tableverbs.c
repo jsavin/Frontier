@@ -40,7 +40,9 @@
 #include "tablestructure.h"
 #include "tableinternal.h"
 #include "tableverbs.h"
+#include "db_format.h"
 #include "kernelverbdefs.h"
+// 2025-11-28 Codex: Use db_context wrappers when packing tables to avoid TLS globals.
 
 
 
@@ -494,7 +496,9 @@ static boolean tablepacktableverb (hdltreenode hparam1, tyvaluerecord *v) {
 	if (!getstringvalue (hparam1, 2, bs))
 		return (false);
 	
-	fl = hashpacktable (htable, true, &hpacked, &fldummy);
+    db_context context;
+    db_context_init(&context);
+	fl = hashpacktable_context (&context, htable, true, &hpacked, &fldummy);
 	
 	if (fl) {
 		
@@ -947,9 +951,6 @@ boolean tableinitverbs (void) {
 	
 	return (loadfunctionprocessor (idtableverbs, &tablefunctionvalue));
 	} /*tableinitverbs*/
-
-
-
 
 
 

@@ -18,6 +18,7 @@
 // 2025-10-27 Codex: Log unpack errors while diagnosing headless system table loading.
 // 2025-11-14 Codex: Rebuild the legacy table converter so v6 payloads without merge
 // prefixes are reconstructed deterministically (header + records + strings + formats).
+// 2025-11-28 Codex: Use db_context when dereferencing externals during headless packing.
 
 #if defined(FRONTIER_HEADLESS)
 #ifndef TABLE_HEADER_RESERVED_BYTES
@@ -321,7 +322,9 @@ boolean tableverbinmemory_common(hdlexternalvariable hvariable, hdlhashnode hnod
         shellinternalerror(idniltableaddress, BIGSTRING ("\x2b" "nil table address.  (Creating empty table.)"));
         fl = false;
     } else {
-        fl = dbrefhandle(adr, &hpacked);
+        db_context context;
+        db_context_init(&context);
+        fl = dbrefhandle_context(&context, adr, &hpacked);
 
 #if defined(FRONTIER_HEADLESS)
         if (!fl) {

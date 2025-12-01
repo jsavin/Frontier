@@ -52,6 +52,7 @@
 /* 2025-11-20 Codex: Skip loadfromhandle when less than one record remains so EOF scans stay silent. */
 #include "timedate.h"
 #include "db_format.h" /* 2025-11-23 Codex: BE helpers for table metadata */
+// 2025-11-28 Codex: Use db_context when dereferencing externals during hash packing.
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
 #if defined(FRONTIER_HEADLESS)
 #include "../portable/wptext_portable.h"
@@ -218,12 +219,6 @@ static boolean langhash_materialize_external(tyvaluerecord *val) {
 /* Enable to dump detailed serializer diagnostics. */
 /* #define DEBUG_SERIALIZER 1 */
 
-#if defined(__clang__) || defined(__GNUC__)
-static inline boolean langhash_use_64bit_format(void) {
-	return db_format_mode_current().use_64bit_format;
-	}
-#else
-#endif
 
 #if defined(__clang__) || defined(__GNUC__)
 #pragma pack(push, 2)
@@ -394,7 +389,7 @@ static boolean read_disk_uint32 (Handle hload, long *ixload, uint32_t *out) {
 }
 
 static boolean write_disk_dbaddress (handlestream *s, dbaddress value) {
-	if (langhash_use_64bit_format()) {
+	if (db_format_mode_current().use_64bit_format) {
 		dbaddress disk = host_to_disk_dbaddress (value);
 		return writehandlestream (s, &disk, (long) sizeof (dbaddress));
 	}
@@ -404,8 +399,8 @@ static boolean write_disk_dbaddress (handlestream *s, dbaddress value) {
 }
 
 static boolean read_disk_dbaddress (Handle hload, long *ixload, dbaddress *out) {
-	if (langhash_use_64bit_format()) {
-	dbaddress disk = 0;
+	if (db_format_mode_current().use_64bit_format) {
+		 dbaddress disk = 0;
 		if (!loadfromhandle (hload, ixload, (long) sizeof (dbaddress), &disk))
 			return (false);
 		*out = disk_to_host_dbaddress (disk);
@@ -2812,9 +2807,11 @@ static boolean hashpackvisit (bigstring bsname, hdlhashnode hnode, tyvaluerecord
                 dbaddress adr = (dbaddress) (**hv).variabledata;
                 Handle htmp = nil;
                 boolean okref = false;
+                db_context context;
+                db_context_init(&context);
 
                 if (adr != nildbaddress && adr != 0)
-                    okref = dbrefhandle(adr, &htmp);
+                    okref = dbrefhandle_context(&context, adr, &htmp);
 
                 if (htmp != nil)
                     disposehandle(htmp);

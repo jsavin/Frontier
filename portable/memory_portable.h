@@ -1,11 +1,10 @@
 /* memory_portable.h - portable shim for Frontier memory.h API under FRONTIER_PORTABLE */
+/* 2025-11-30 Codex: Pull in frontier.h first to avoid macro redefinitions when stubs are disabled. */
 #ifndef FRONTIER_MEMORY_PORTABLE_H
 #define FRONTIER_MEMORY_PORTABLE_H
 
-#include "standard_portable.h"
-#include <string.h>
 #include "frontier.h"
-#include "classic_handle.h"
+#include <string.h>
  
 /* Map Handle and core primitives */
 #ifndef FRONTIER_ALLOW_PORTABLE_STUBS
@@ -43,4 +42,3 @@ static inline void texthandletostring(Handle h, bigstring bs) {
 #endif /* FRONTIER_ALLOW_PORTABLE_STUBS */
 
 #endif
-

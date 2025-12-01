@@ -41,9 +41,12 @@ extern boolean dbgetsize_internal(dbaddress adr, long *logicalsize);
 // 2025-10-27 Codex: Added optional migration tracing to inspect v6/v7 table layouts during conversion.
 // 2025-11-20 Codex: Added v7 header serializer and shared big-endian helpers to keep modern roots portable.
 // 2025-11-25 Codex: Implement legacy adapter widening + strict v7 reader entry points.
+// 2025-11-30 Codex: Guard headless runtime tracking when portable builds skip UI hooks.
 
 static _Thread_local boolean g_db_format_runtime_initialized = false;
+#if !defined(FRONTIER_PORTABLE)
 static boolean g_db_format_runtime_headless = false;
+#endif
 static char last_backup_path[1024];
 static boolean g_legacy_adapter_active = false;
 static boolean g_legacy_adapter_force_repack = false;
@@ -66,10 +69,11 @@ static void db_context_guard_enter(const db_context *context, db_context_guard *
         guard->prev_db = databasedata;
     }
     if (context != NULL) {
-        db_format_mode_apply(&context->mode);
         if (context->database != nil)
             databasedata = context->database;
         db_saveas_state_apply(&context->saveas);
+        g_mode_depth = 0; /* reset stacked overrides before applying explicit context */
+        db_format_mode_apply(&context->mode);
     }
 }
 
@@ -1248,6 +1252,7 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
         return false;
 
     boolean ok = false;
+    db_saveas_state entry_saveas;
     hdlfilenum src_fnum = 0;
     hdlfilenum dst_fnum = 0;
     Handle hrootvariable = nil;
@@ -1268,8 +1273,6 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     uint16_t cancoon_flags = 0;
     uint16_t cancoon_primary = 0;
     db_format_mode entry_mode = db_format_mode_current();
-    db_format_mode prev_mode;
-    hdldatabaserecord prev_db = nil;
     char output_path[1024];
     char temp_path[1024];
     temp_path[0] = '\0';
@@ -1279,6 +1282,8 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     tyfilespec dst_fs;
     const char *fail_step = "init";
     const long header_len_final = (long) sizeof(tydatabaserecord_64);
+
+    db_saveas_state_snapshot(&entry_saveas);
 
     fail_step = "prepare runtime";
     if (!db_format_prepare_runtime())
@@ -1386,6 +1391,9 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
         fail_step = "destination-handle";
         goto cleanup;
     }
+    /* From here on, writes should target the destination handle. */
+    dest_context.database = dest_context.saveas.destination;
+    db_saveas_state_apply(&dest_context.saveas);
 
     dest_context.mode = source_context.mode;
     dest_context.mode.use_64bit_format = true;
@@ -1400,17 +1408,47 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
         db_format_adapter_enable_wide_writes(NULL);
 
     fail_step = "tablesavesystemtable(root)";
-    prev_mode = db_format_mode_current();
-    prev_db = databasedata;
-    if (have_dest_context)
-        db_context_apply(&dest_context);
-    saved_root = tablesavesystemtable(hrootvariable, &new_root_address);
+    /* Read from the source handle while Save As remains active for destination writes. */
+    db_context_guard save_guard;
+    db_context save_ctx = source_context;
     if (have_dest_context) {
-        db_format_mode_apply(&prev_mode);
-        databasedata = prev_db;
+        save_ctx.mode = dest_context.mode; /* write modern BE64 payloads into the destination */
+        save_ctx.saveas = dest_context.saveas;
+#if defined(FRONTIER_HEADLESS)
+        fprintf(stderr,
+                "[headless] migrate save_ctx.mode use64=%d adapter=%d drop=%d dest_db=%p src_db=%p\n",
+                save_ctx.mode.use_64bit_format ? 1 : 0,
+                save_ctx.mode.adapter_repack ? 1 : 0,
+                save_ctx.mode.drop_cancoon ? 1 : 0,
+                (void *) save_ctx.saveas.destination,
+                (void *) save_ctx.saveas.source);
+#endif
     }
-    if (!saved_root)
+    db_context_guard_enter(have_dest_context ? &save_ctx : &source_context, &save_guard);
+#if defined(FRONTIER_HEADLESS)
+    fprintf(stderr,
+            "[headless] migrate guard applied mode use64=%d adapter=%d drop=%d depth=%d current_db=%p\n",
+            db_format_mode_current().use_64bit_format ? 1 : 0,
+            db_format_mode_current().adapter_repack ? 1 : 0,
+            db_format_mode_current().drop_cancoon ? 1 : 0,
+            g_mode_depth,
+            (void *) databasedata);
+#endif
+
+    saved_root = tablesavesystemtable(hrootvariable, &new_root_address);
+    if (!saved_root) {
+        db_context_guard_exit(&save_guard);
         goto cleanup;
+    }
+    if (have_dest_context && dest_context.database != nil) {
+        long eof = 0;
+        filegeteof((hdlfilenum) (**dest_context.database).fnumdatabase, &eof);
+        fprintf(stderr, "[headless] migrate write checkpoint fnum=%ld eof=%ld\n",
+                (long) (**dest_context.database).fnumdatabase, eof);
+    }
+    db_context_guard_exit(&save_guard);
+    if (have_dest_context)
+        db_saveas_state_apply(&dest_context.saveas); /* restore destination after source read */
 
     if ((uint64_t) new_root_address > 0xFFFFFFFFULL)
         goto cleanup;
@@ -1447,15 +1485,6 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
         dbsetview(cancoonview, new_cancoon_address);
     }
 
-    fail_step = "dbendsaveas";
-    if (have_dest_context) {
-        if (!dbendsaveas_context(&dest_context))
-            goto cleanup;
-    } else {
-        if (!dbendsaveas())
-            goto cleanup;
-    }
-
     if (databasedata != nil) {
         (**databasedata).headerLength = header_len_final;
         (**databasedata).versionnumber = dbversionnumber;
@@ -1465,6 +1494,25 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
             (**databasedata).longversionMinor = 0;
     }
 
+#if defined(FRONTIER_HEADLESS)
+    if (have_dest_context && dest_context.saveas.destination != nil) {
+        fprintf(stderr,
+                "[headless] saveas pre-close dest=%p master=%p source=%p\n",
+                (void *) dest_context.saveas.destination,
+                validhandle((Handle) dest_context.saveas.destination) ? (void *) (*dest_context.saveas.destination) : NULL,
+                (void *) dest_context.saveas.source);
+    }
+#endif
+
+    fail_step = "dbendsaveas";
+    if (have_dest_context) {
+        if (!dbendsaveas_context(&dest_context))
+            goto cleanup;
+    } else {
+        if (!dbendsaveas())
+            goto cleanup;
+    }
+
     closefile(dst_fnum);
     dst_fnum = 0;
 
@@ -1472,15 +1520,17 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     if (rename(temp_path, output_path) != 0)
         goto cleanup;
 
+    dbaddress view_for_log = new_root_address;
+
     if (db_trace_level() > 0)
         db_format_trace_database_path(output_path);
     fprintf(stderr,
             "[headless] migrate drop=%d ok view0=0x%llx new_root=0x%llx new_script=0x%llx header_len=%ld outfile=%s\n",
             drop_cancoon,
-            (unsigned long long) ((databasedata != nil) ? (**databasedata).views[cancoonview] : 0),
+            (unsigned long long) view_for_log,
             (unsigned long long) new_root_address,
             (unsigned long long) new_script_address,
-            (databasedata != nil) ? (**databasedata).headerLength : 0,
+            header_len_final,
             output_path);
 
     ok = true;
@@ -1536,6 +1586,7 @@ cleanup:
     }
 
     db_format_mode_apply(&entry_mode);
+    db_saveas_state_apply(&entry_saveas);
 
     return ok;
 }

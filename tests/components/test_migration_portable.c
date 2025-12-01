@@ -1,6 +1,8 @@
+/* 2025-11-30 Codex: Use only the portable file helpers and implement local copy/delete helpers. */
+
 #include "test_migration_portable.h"
-#include "../../portable/standard.h"
-#include "../../portable/strings_portable.h"
+#include "../../Common/headers/strings.h"
+#include <stdio.h>
 
 boolean tm_pathtofilespec(const char *path, tyfilespec *fs) {
     bigstring bs;
@@ -8,11 +10,11 @@ boolean tm_pathtofilespec(const char *path, tyfilespec *fs) {
     return pathtofilespec(bs, fs);
 }
 
-boolean tm_openfile(const tyfilespec *fs, hdlfilenum *fnum, boolean readonly) {
+boolean tm_openfile(tyfilespec *fs, hdlfilenum *fnum, boolean readonly) {
     return openfile(fs, fnum, readonly);
 }
 
-boolean tm_opennewfile(const tyfilespec *fs, OSType creator, OSType filetype, hdlfilenum *fnum) {
+boolean tm_opennewfile(tyfilespec *fs, OSType creator, OSType filetype, hdlfilenum *fnum) {
     return opennewfile(fs, creator, filetype, fnum);
 }
 
@@ -34,19 +36,35 @@ boolean tm_filegeteof(hdlfilenum fnum, long *eof) {
 
 boolean tm_filecopy_path(const char *src, const char *dst) {
     bigstring bssrc, bsdst; tyfilespec fssrc, fsdst;
+    hdlfilenum srcf = 0, dstf = 0;
     copyctopstring(src, bssrc);
     copyctopstring(dst, bsdst);
     if (!pathtofilespec(bssrc, &fssrc) || !pathtofilespec(bsdst, &fsdst))
         return false;
-    return filecopy(&fssrc, &fsdst);
+    if (!openfile(&fssrc, &srcf, true))
+        return false;
+    boolean ok = opennewfile(&fsdst, 'LAND', 'ROOT', &dstf);
+    if (ok) {
+        long eof = 0;
+        ok = filegeteof(srcf, &eof);
+        char buffer[4096];
+        while (ok && eof > 0) {
+            long chunk = eof > (long) sizeof buffer ? (long) sizeof buffer : eof;
+            ok = fileread(srcf, chunk, buffer) && filewrite(dstf, chunk, buffer);
+            eof -= chunk;
+        }
+    }
+    if (srcf != 0)
+        closefile(srcf);
+    if (dstf != 0)
+        closefile(dstf);
+    if (!ok)
+        tm_remove_if_exists(dst);
+    return ok;
 }
 
 void tm_remove_if_exists(const char *path) {
     if (path == NULL)
         return;
-    bigstring bs; tyfilespec fs;
-    copyctopstring(path, bs);
-    if (pathtofilespec(bs, &fs))
-        filedelete(&fs);
+    remove(path);
 }
-#include "../../Common/headers/strings.h"

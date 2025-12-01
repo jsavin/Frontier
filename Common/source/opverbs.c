@@ -803,7 +803,9 @@ boolean opverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddr
 	if (adapter_repack) {
 		(**ho).fldirty = true;
 		(**ho).fldirtyview = true;
-		db_format_adapter_enable_wide_writes(NULL);
+        db_context ctx;
+        db_context_init(&ctx);
+        db_format_adapter_enable_wide_writes_context(&ctx, NULL);
         working_mode.use_64bit_format = true; /* write modern */
         db_format_mode_push(&working_mode);
 		*flnewdbaddress = true;

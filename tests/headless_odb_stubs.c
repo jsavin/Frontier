@@ -26,14 +26,13 @@ void swapinthreadglobals (hdlthreadglobals ht) { (void)ht; }
 
 boolean tablevalidate (hdlhashtable ht, boolean fl) { (void)ht; (void)fl; return true; }
 
-/* Save-path migration helper stub for headless tests */
-extern boolean use_64bit_format;
 /* provided by headless_file_portable.c */
 extern const char* headless_fnum_path(hdlfilenum fnum);
 
 boolean db_migrate_reopen_if_legacy(odbref *podb) {
     (void)podb;
-    if (use_64bit_format)
+    db_format_mode mode = db_format_mode_current();
+    if (mode.use_64bit_format)
         return true;
 
     if (databasedata == nil)
@@ -53,6 +52,7 @@ boolean db_migrate_reopen_if_legacy(odbref *podb) {
     if (rename(migrated_path, path) != 0)
         return false;
 
-    use_64bit_format = true;
+    mode.use_64bit_format = true;
+    db_format_mode_apply(&mode);
     return true;
 }
