@@ -11,6 +11,7 @@
 static const char *test_legacy_db = "test_migration_legacy.root";
 static const size_t legacy_view_base = 10;
 static const size_t legacy_view_stride = 4;
+static const char *fixture_v6_path = "tests/fixtures/v6/test.root";
 
 static void write_legacy_dbaddress(unsigned char *dest, uint32_t value) {
     dest[0] = (unsigned char)((value >> 24) & 0xFF);
@@ -31,6 +32,29 @@ static void remove_if_exists(const char *path) {
     if (path && unlink(path) == 0) {
         return;
     }
+}
+
+static bool copy_file(const char *src, const char *dst) {
+    FILE *fin = fopen(src, "rb");
+    if (!fin)
+        return false;
+    FILE *fout = fopen(dst, "wb");
+    if (!fout) {
+        fclose(fin);
+        return false;
+    }
+    char buf[8192];
+    size_t n;
+    bool ok = true;
+    while ((n = fread(buf, 1, sizeof buf, fin)) > 0) {
+        if (fwrite(buf, 1, n, fout) != n) {
+            ok = false;
+            break;
+        }
+    }
+    fclose(fin);
+    fclose(fout);
+    return ok;
 }
 
 /* Create a minimal v6 header on disk */
@@ -137,15 +161,24 @@ static bool test_full_migration(void) {
 }
 
 static bool test_version_detection(void) {
+    db_format_mode prev_mode = db_format_mode_current();
+    db_format_mode mode = prev_mode;
+    mode.use_64bit_format = false;
+    db_format_mode_apply(&mode);
+
     tydatabaserecord legacy_header = {0};
     legacy_header.versionnumber = 6;
     TEST_ASSERT(detect_database_format(&legacy_header), "Should detect legacy format");
-    TEST_ASSERT(!use_64bit_format, "Legacy keeps 32-bit flag");
+    TEST_ASSERT(!db_format_mode_current().use_64bit_format, "Legacy keeps 32-bit flag");
 
     tydatabaserecord modern_header = {0};
     modern_header.versionnumber = 7;
     TEST_ASSERT(detect_database_format(&modern_header), "Should detect modern format");
-    TEST_ASSERT(use_64bit_format, "Modern toggles 64-bit flag");
+    TEST_ASSERT(!db_format_mode_current().use_64bit_format, "Detection is side-effect free");
+    TEST_ASSERT(db_format_load_v7_reader(&modern_header, true), "Modern reader loads");
+    TEST_ASSERT(db_format_mode_current().use_64bit_format, "Modern toggles 64-bit flag");
+
+    db_format_mode_apply(&prev_mode);
     return true;
 }
 
@@ -189,6 +222,50 @@ static bool test_ensure_modern(void) {
     return true;
 }
 
+static bool test_fixture_migration(void) {
+    /* Copy fixture so we don't mutate the source in-tree. */
+    const char *tmp_v6 = "test_fixture_copy.root";
+    remove_if_exists(tmp_v6);
+    remove_if_exists("test_fixture_copy.root.v7");
+
+    TEST_ASSERT(copy_file(fixture_v6_path, tmp_v6), "Copy v6 fixture");
+
+    boolean migrated = false;
+    char output_path[1024];
+    memset(output_path, 0, sizeof output_path);
+    TEST_ASSERT(ensure_database_modern(tmp_v6, &migrated, output_path, sizeof output_path), "ensure_database_modern on fixture");
+    TEST_ASSERT(migrated, "Fixture should migrate to v7");
+
+    const char *v7_path = (output_path[0] != '\0') ? output_path : tmp_v6;
+
+    FILE *f = fopen(v7_path, "rb");
+    TEST_ASSERT(f != NULL, "Migrated fixture should exist");
+    if (f != NULL) {
+        tydatabaserecord_64 header;
+        TEST_ASSERT(fread(&header, sizeof header, 1, f) == 1, "Read migrated header");
+        fclose(f);
+        TEST_ASSERT(header.versionnumber == 7, "Migrated fixture version = 7");
+        TEST_ASSERT(header.headerLength == (long) sizeof(tydatabaserecord_64), "Migrated header length = 88");
+    }
+
+    /* Open via dbopenfile to ensure header and views parse */
+    bigstring bs;
+    tyfilespec fs;
+    hdlfilenum fnum = 0;
+    copyctopstring(v7_path, bs);
+    TEST_ASSERT(pathtofilespec(bs, &fs), "pathtofilespec(v7)");
+    TEST_ASSERT(openfile(&fs, &fnum, true), "openfile(v7)");
+    TEST_ASSERT(dbopenfile(fnum, true), "dbopenfile(v7)");
+    TEST_ASSERT(dbclose(), "dbclose(v7)");
+    TEST_ASSERT(closefile(fnum), "closefile(v7)");
+
+    remove_if_exists(tmp_v6);
+    if (v7_path != tmp_v6)
+        remove_if_exists(v7_path);
+    db_format_clear_last_backup_path();
+    return true;
+}
+
 static bool test_cleanup(void) {
     remove_if_exists(test_legacy_db);
     char backup_path[1024];
@@ -206,7 +283,8 @@ test_case_t migration_tests[] = {
     {"Version Detection", test_version_detection},
     {"Error Handling", test_error_handling},
     {"Ensure Modern", test_ensure_modern},
+    {"Fixture Migration", test_fixture_migration},
     {"Cleanup", test_cleanup},
 };
 
-int migration_test_count = 7;
+int migration_test_count = 8;
