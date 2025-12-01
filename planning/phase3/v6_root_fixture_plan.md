@@ -79,61 +79,62 @@
   - Externals (outline/wptext/menu/pict/script/binary) deserialize without free-block hits and reserialize in BE64.
   - No leftover legacy views/headers; headerLength = 88, version = 7 after migration.
 
-## ASCII Layout (root table)
+## ASCII Layout (root table → testData)
 
 ```
 root (table)
-├─ int32Small = 1234
-├─ int32Negative = -4321
-├─ stringLargeNumberLiteral = "0x1_0000_0000"
-├─ booleanTrue = true
-├─ booleanFalse = false
-├─ realNumber = 3.14159
-├─ nilValue = nil
-├─ dateEpoch = 1970-01-01 00:00:00 (local)
-├─ dateFarFuture = 2030-12-31 23:59:59 (local; latest date that sticks)
-├─ stringAscii = "Hello, Frontier!"
-├─ stringExtended = "café …" (high-bit chars)
-├─ binarySmall = 16-byte blob 0x00..0x0F
-├─ addressValueSystem = (odb address pointing into Frontier.root for system DB ref)
-├─ addressValueGuest = (odb address pointing into this test.root guest DB, e.g., binarySmall)
-├─ tableMixed (table)
-│  ├─ a = 1
-│  ├─ b = "two"
-│  ├─ c = true
-│  ├─ d = date(2000-01-01)
-│  ├─ e = binary (small)
-│  └─ f (table)
-│     ├─ x = 10
-│     └─ y = "sub"
-├─ recordSimple (record; name→value pairs)
-│  ├─ name = "rec"
-│  ├─ flags = 1 (small int)
-│  ├─ tag = "sample" (string)
-│  ├─ subtable = { nested:int = 5, nestedStr = "nest" } (non-scalar value)
-│  └─ emptySlot = nil
-├─ recordEmpty (record with no fields)
-├─ listStrings = ["alpha", "beta", "gamma"]
-├─ listMixed = [1, "two", true, date(2000-01-01)]
-├─ listWithRecord = [ { recname = "r1", recval = 42 }, "tail" ]
-├─ listWithTable = [ { k = "v" }, tableMixed ] (non-scalar element reuse)
-├─ listEmpty = [ ]
-├─ outlineBasic (outline)
-│  ├─ root (refcon: "root-ref")
-│  │  ├─ child1 (refcon: "c1")
-│  │  └─ child2 (refcon: "c2")
-│  │     └─ grandchild (refcon: "gc"; with note/body)
-├─ wptextBasic (wp text with bold/italic span + newline)
-├─ wptextStylesheet (wp text with multiple styled runs and blank line)
-├─ menuSample (menu)
-│  ├─ Item One (enabled)
-│  ├─ Item Two (disabled)
-│  ├─ Separator
-│  └─ Sub → [Sub Item]
-├─ pictSmall (PICT graphic)
-├─ scriptHello = dialog.alert("hello")
-├─ scriptDbOps = script that reads/writes tableMixed
-└─ (no card_type in fixture; can backfill from Frontier.root if needed later)
+└─ testData (table)
+   ├─ int32Small = 1234
+   ├─ int32Negative = -4321
+   ├─ stringLargeNumberLiteral = "0x1_0000_0000"
+   ├─ booleanTrue = true
+   ├─ booleanFalse = false
+   ├─ realNumber = 3.14159
+   ├─ nilValue = nil
+   ├─ dateEpoch = 1970-01-01 00:00:00 (local)
+   ├─ dateFarFuture = 2030-12-31 23:59:59 (local; latest date that sticks)
+   ├─ stringAscii = "Hello, Frontier!"
+   ├─ stringExtended = "café …" (set via QuickScript/char() to ensure correct bytes)
+   ├─ binarySmall = 16-byte blob 0x00..0x0F
+   ├─ addressValueSystem = (odb address pointing into Frontier.root for system DB ref)
+   ├─ addressValueGuest = (odb address pointing into this test.root guest DB, e.g., binarySmall)
+   ├─ tableMixed (table)
+   │  ├─ a = 1
+   │  ├─ b = "two"
+   │  ├─ c = true
+   │  ├─ d = date(2000-01-01)
+   │  ├─ e = binary (small)
+   │  └─ f (table)
+   │     ├─ x = 10
+   │     └─ y = "sub"
+   ├─ recordSimple (record; name→value pairs)
+   │  ├─ name = "rec"
+   │  ├─ flags = 1 (small int)
+   │  ├─ tag = "sample" (string)
+   │  ├─ subtable = { nested:int = 5, nestedStr = "nest" } (non-scalar value)
+   │  └─ emptySlot = nil
+   ├─ recordEmpty (record with no fields)
+   ├─ listStrings = ["alpha", "beta", "gamma"]
+   ├─ listMixed = [1, "two", true, date(2000-01-01)]
+   ├─ listWithRecord = [ { recname = "r1", recval = 42 }, "tail" ]
+   ├─ listWithTable = [ { k = "v" }, tableMixed ] (non-scalar element reuse)
+   ├─ listEmpty = [ ]
+   ├─ outlineBasic (outline)
+   │  ├─ root (refcon: "root-ref")
+   │  │  ├─ child1 (refcon: "c1")
+   │  │  └─ child2 (refcon: "c2")
+   │  │     └─ grandchild (refcon: "gc"; with note/body)
+   ├─ wptextBasic (wp text with bold/italic span + newline)
+   ├─ wptextStylesheet (wp text with multiple styled runs and blank line)
+   ├─ menuSample (menu)
+   │  ├─ Item One (enabled)
+   │  ├─ Item Two (disabled)
+   │  ├─ Separator
+   │  └─ Sub → [Sub Item]
+   ├─ pictSmall (PICT graphic)
+   ├─ scriptHello = dialog.alert("hello")
+   ├─ scriptDbOps = script that reads/writes tableMixed
+   └─ (no card_type in fixture; can backfill from Frontier.root if needed later)
 
 view0 → root table
 ```
