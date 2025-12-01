@@ -24,12 +24,12 @@
   - `date_far_future`: 2099-12-31 23:59:59 (local date/time; no TZ)
   - `string_ascii`: `"Hello, Frontier!"`
   - `string_extended`: includes high-bit characters (e.g., `café`) to verify encoding.
-  - `binary_small`: 16-byte blob (0x00..0x0F) to verify binaryType.
+  - `binarySmall`: 16-byte blob (0x00..0x0F) with binary type `TEST` to verify binaryType metadata.
   - `addressValueSystem`: live odb address into `Frontier.root` (system DB).
   - `addressValueGuest`: live odb address inside this file (`test.root` guest DB, e.g., `binarySmall`).
 
 - **Tables / Records**
-  - `table_mixed`: keys `a:int`, `b:string`, `c:bool`, `d:date`, `e:binary` (small blob), `f:subtable`.
+    - `table_mixed`: keys `a:int`, `b:string`, `c:bool`, `d:date`, `e:binary` (small blob, type `TEST`), `f:subtable`.
     - `f:subtable` with `x:int`, `y:string`.
   - `record_simple`: legacy record with fields `name`, `flags`, `tag`, `subtable` (non-scalar), and `empty_slot` (nil).
   - `record_empty`: empty record.
@@ -95,7 +95,7 @@ root (table)
    ├─ dateFarFuture = 2030-12-31 23:59:59 (local; latest date that sticks)
    ├─ stringAscii = "Hello, Frontier!"
    ├─ stringExtended = "café …" (set via QuickScript/char() to ensure correct bytes)
-   ├─ binarySmall = 16-byte blob 0x00..0x0F
+   ├─ binarySmall = 16-byte blob 0x00..0x0F (binary type 'TEST')
    ├─ addressValueSystem = (odb address pointing into Frontier.root for system DB ref)
    ├─ addressValueGuest = (odb address pointing into this test.root guest DB, e.g., binarySmall)
    ├─ tableMixed (table)
@@ -103,7 +103,7 @@ root (table)
    │  ├─ b = "two"
    │  ├─ c = true
    │  ├─ d = date(2000-01-01)
-   │  ├─ e = binary (small)
+   │  ├─ e = binary (small, type 'TEST')
    │  └─ f (table)
    │     ├─ x = 10
    │     └─ y = "sub"
