@@ -99,14 +99,16 @@ root (table)
 ├─ record_simple (record; name→value pairs)
 │  ├─ name = "rec"
 │  ├─ flags = 1 (small int)
-│  └─ tag = "sample" (string)
+│  ├─ tag = "sample" (string)
+│  └─ subtable = { nested:int = 5, nested_str = "nest" } (non-scalar value)
 ├─ list_strings = ["alpha", "beta", "gamma"]
 ├─ list_mixed = [1, "two", true, date(2000-01-01)]
+├─ list_with_record = [ { recname = "r1", recval = 42 }, "tail" ]
 ├─ outline_basic (outline)
-│  ├─ root
-│  │  ├─ child1
-│  │  └─ child2
-│  │     └─ grandchild (with note/body)
+│  ├─ root (refcon: "root-ref")
+│  │  ├─ child1 (refcon: "c1")
+│  │  └─ child2 (refcon: "c2")
+│  │     └─ grandchild (refcon: "gc"; with note/body)
 ├─ wptext_basic (wp text with bold/italic span + newline)
 ├─ menu_sample (menu)
 │  ├─ Item One (enabled)
