@@ -1,5 +1,6 @@
 #include "test_migration_portable.h"
 #include "../../portable/standard.h"
+#include "../../portable/strings_portable.h"
 
 boolean tm_pathtofilespec(const char *path, tyfilespec *fs) {
     bigstring bs;
