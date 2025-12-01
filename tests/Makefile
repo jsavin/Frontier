@@ -282,7 +282,7 @@ test_database: components/test_database.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES)
 	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable $^ -o $@ $(LINK_LIBS)
 
 test_migration: components/test_migration.c $(TEST_FRAMEWORK) $(MIGRATION_SOURCES)
-	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable $^ -o $@ $(LINK_LIBS)
+	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -DFRONTIER_ALLOW_PORTABLE_STUBS=0 -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable $^ -o $@ $(LINK_LIBS)
 
 test_compatibility: components/test_compatibility.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES)
 	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable $^ -o $@ $(LINK_LIBS)
