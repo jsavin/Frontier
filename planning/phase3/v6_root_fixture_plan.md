@@ -112,11 +112,11 @@ root (table)
    │  ├─ subtable = { nestedInt = 5, nestedStr = "nest" } (non-scalar value)
    │  └─ emptySlot = nil
    ├─ recordEmpty (record with no fields)
-   ├─ listStrings = ["alpha", "beta", "gamma"]
-   ├─ listMixed = [1, "two", true, date(2000-01-01)]
-   ├─ listWithRecord = [ { recname = "r1", recval = 42 }, "tail" ]
-   ├─ listWithTable = [ { k = "v" }, tableMixed ] (non-scalar element reuse)
-   ├─ listEmpty = [ ]
+   ├─ listStrings = {"alpha", "beta", "gamma"}
+   ├─ listMixed = {1, "two", true, date(2000-01-01)}
+   ├─ listWithRecord = {{recname:"r1", recval:42}, "tail"}
+   ├─ listWithTable = {{k:"v"}, tableMixed} (non-scalar element reuse)
+   ├─ listEmpty = { }
    ├─ outlineBasic (outline)
    │  ├─ root (refcon: "root-ref")
    │  │  ├─ child1 (refcon: "c1")
@@ -125,10 +125,10 @@ root (table)
    ├─ wptextBasic (wp text with bold/italic span + newline)
    ├─ wptextStylesheet (wp text with multiple styled runs and blank line)
    ├─ menuSample (menu titled "menuSample"; items call msg())
-   │  ├─ Item One (enabled; msg("Item One"))
-   │  ├─ Item Two (disabled; msg("Item Two"))
+   │  ├─ Item One (enabled; msg ("Item One!"))
+   │  ├─ Item Two (disabled; msg ("Item Two!"))
    │  ├─ Separator
-   │  └─ Sub → [Sub Item (msg("Sub Item"))]
+   │  └─ Sub → [Sub Item (msg ("Sub Item!"))]
    ├─ scriptHello = dialog.alert("hello")
    ├─ scriptDbOps = script that reads/writes tableMixed
    └─ (no card_type in fixture; can backfill from Frontier.root if needed later)
