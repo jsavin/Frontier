@@ -19,7 +19,7 @@ endif
 
 # Enable Paige debug instrumentation + wp runtime guards when tests are built
 FRONTIER_TESTS ?= 1
-CWARNING_SUPPRESS ?= -Wno-nonportable-include-path  # Suppress Paige header case warnings (third-party code)
+CWARNING_SUPPRESS ?= -Wno-nonportable-include-path -Wno-error=implicit-function-declaration  # Suppress Paige header case warnings (third-party code)
 CFLAGS = -Wall -Wextra -std=c99 -g -O0 -fpascal-strings -Wno-deprecated-non-prototype -fcommon \
          -DFRONTIER_USE_PORTABLE_HANDLES -DFRONTIER_HEADLESS \
          -DFRONTIER_PORTABLE_STRINGS \
