@@ -1078,6 +1078,15 @@ boolean db_format_write_header64(const tydatabaserecord_64 *src, unsigned char *
     db_format_write_be16(dest + offsetof(tydatabaserecord_64, oldfnumdatabase), (uint16_t) src->oldfnumdatabase);
     db_format_write_be16(dest + offsetof(tydatabaserecord_64, flags), (uint16_t) src->flags);
 
+#if defined(FRONTIER_HEADLESS)
+    /* Verify structure layout matches disk format */
+    if (offsetof(tydatabaserecord_64, views) != 16) {
+        fprintf(stderr, "[headless] FATAL: tydatabaserecord_64.views offset=%zu expected=16\n",
+                offsetof(tydatabaserecord_64, views));
+        return false;
+    }
+#endif
+
     for (int i = 0; i < ctviews; ++i) {
         size_t offset = offsetof(tydatabaserecord_64, views) + (size_t) i * sizeof(dbaddress);
         db_format_write_dbaddress64(dest + offset, src->views[i]);

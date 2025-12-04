@@ -2876,7 +2876,7 @@ boolean dbnew (hdlfilenum fnum) {
 	register hdldatabaserecord hdb;
 	
 	{
-		const size_t expected_header_size = (sizeof (void *) == 8) ? 116u : 88u;
+		const size_t expected_header_size = (sizeof (void *) == 8) ? 118u : 90u;  /* Updated for 2-byte padding before views */
 		assert (sizeof (tydatabaserecord) == expected_header_size);
 	}
 	
@@ -2934,7 +2934,7 @@ boolean dbopenfile (hdlfilenum fnum, boolean flreadonly) {
      * Allocate buffer large enough for both v6 and v7 headers.
      * We need to read the header before we know which version it is,
      * so we size the buffer to accommodate whichever is larger.
-     * Currently tydatabaserecord (116 bytes) > tydatabaserecord_64 (88 bytes)
+     * Currently tydatabaserecord (118 bytes with padding) > tydatabaserecord_64 (90 bytes)
      * due to larger growthspace despite 64-bit addresses.
      */
     #define MAX_HEADER_SIZE (sizeof(tydatabaserecord) > sizeof(tydatabaserecord_64) ? sizeof(tydatabaserecord) : sizeof(tydatabaserecord_64))
@@ -3008,9 +3008,9 @@ boolean dbopenfile (hdlfilenum fnum, boolean flreadonly) {
 	
 	// Version-specific size validation
 	if (db_use64()) {
-		assert(sizeof(tydatabaserecord_64) == 88);  // 64-bit format
+		assert(sizeof(tydatabaserecord_64) == 90);  // 64-bit format with 2-byte padding
 	} else {
-		assert(sizeof(tydatabaserecord) == 116);  // 32-bit format (on 64-bit systems)
+		assert(sizeof(tydatabaserecord) == 118);  // 32-bit format (on 64-bit systems) with 2-byte padding
 	}
 
 #if defined(FRONTIER_HEADLESS)

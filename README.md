@@ -1,7 +1,7 @@
 # Frontier Refactoring Project (develop branch status)
 
-**Last updated:** 2025-11-23  
-**State:** Modernization wave 2 in progress; headless + 64-bit aligned; v7 on-disk format moving to portable big-endian  
+**Last updated:** 2025-12-04
+**State:** Modernization wave 2 in progress; headless + 64-bit aligned; v7 on-disk format (90-byte header with alignment padding) using portable big-endian
 **Primary contacts:** planning/INDEX.md (owners per phase)
 
 This repository is actively modernising the Frontier runtime and toolchain. The
@@ -69,7 +69,7 @@ For in-flight work/status, see `planning/_CURRENT_STATUS.md`. Historical session
 
 | Area               | Status | Notes                                                                                   |
 | ------------------ | :----: | --------------------------------------------------------------------------------------- |
-| 64-bit alignment   |   ✅    | DB header rev complete; save/migration tests green                                      |
+| 64-bit alignment   |   ✅    | DB header alignment fix complete (90-byte v7 header); structure tests passing          |
 | arm64 build        |   ✅    | `make -C frontier-cli` builds universal binary                                          |
 | Headless runtime   |   ✅    | Portable stubs cover runtime/IO; EFP shim in place                                      |
 | Tests (targeted)   |   ✅    | `file_portable`, `file_readline`, `file_verb`                                           |

@@ -1,7 +1,7 @@
 # Status
 - State: In Progress (Phase 3)
-- Last Updated: 2025-11-26 (Codex)
-- Notes: **Done:** Version-based router + header decode guard merged (PR #49). Legacy loader now widens the header for v7 packers and keeps legacy reads; strict v7 loader gates on header size/version. **In Progress:** Reader/writer code forked into dedicated files (`db_reader_legacy.c`, `db_reader_modern.c`, `db_writer_modern.c`); build errors cleared with the new split. Next: finish adapter widening for tables/records, drop legacy Cancoon/view writes on the modern path, and wire runtime/CLI to the strict reader.
+- Last Updated: 2025-12-04 (Claude)
+- Notes: **Done:** Version-based router + header decode guard merged (PR #49). Structure alignment fix completed (tydatabaserecord_64 now 90 bytes with 2-byte padding at offset 14-16 to ensure views array at offset 16). Legacy loader now widens the header for v7 packers and keeps legacy reads; strict v7 loader gates on header size/version. **In Progress:** Reader/writer code forked into dedicated files (`db_reader_legacy.c`, `db_reader_modern.c`, `db_writer_modern.c`); build errors cleared with the new split. Next: finish adapter widening for tables/records, drop legacy Cancoon/view writes on the modern path, and wire runtime/CLI to the strict reader.
 
 # Reader Split Plan – v7 BE/64-bit Path vs Legacy Adapter
 **Last Updated:** 2025-11-24 — Codex

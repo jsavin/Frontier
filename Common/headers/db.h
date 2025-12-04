@@ -75,9 +75,11 @@ typedef struct tydatabaserecord { /*stored at offset 0 in the db file*/
 	dbaddress availlist; /*avail list is singly-linked, nil terminated*/
 	
 	short oldfnumdatabase; /*only applies when database record is in memory*/
-	
+
 	short flags; /*any changes to header since it was last flushed?*/
-	
+
+	unsigned char _pad[2]; /* Explicit padding to align views to 8-byte boundary (offset 16) */
+
 	dbaddress views [ctviews]; /*addresses of the root of each view*/
 	
 	Handle releasestack; /*holds addresses of nodes waiting to be released*/
@@ -125,6 +127,7 @@ typedef struct tydatabaserecord_64 { /*stored at offset 0 in the db file*/
 	dbaddress availlist; /*avail list is singly-linked, nil terminated*/
 	short oldfnumdatabase; /*only applies when database record is in memory*/
 	short flags; /*any changes to header since it was last flushed?*/
+	unsigned char _pad[2]; /* Explicit padding to align views to 8-byte boundary (offset 16) */
 	dbaddress views [ctviews]; /*addresses of the root of each view*/
 	Handle releasestack; /*holds addresses of nodes waiting to be released*/
 	long fnumdatabase; /* file handle while in memory - New to version 5*/

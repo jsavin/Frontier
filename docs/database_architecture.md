@@ -1,4 +1,5 @@
 # Frontier Database Architecture
+<!-- 2025-12-04 Claude: Updated v7 header size to 90 bytes with alignment padding documentation. -->
 <!-- 2025-10-27 Codex: Documented v6→v7 migration constraints and 32-bit payload carry-over. -->
 
 ## Database Structure
@@ -45,7 +46,7 @@ See `databases/test-root-contents.png` for the intended UI view of `test.root` o
 ### Block headers/trailers (modern vs legacy)
 
 - **Legacy (v6)**: 4-byte size with the high bit marking free nodes; 4-byte variance; 4-byte trailer (size word only). Sizes are big-endian 32-bit and cap at 4 GB.
-- **Modern (v7, 2025-11-23 Codex)**: 8-byte size with the high bit marking free nodes; 4-byte variance; 8-byte trailer (size word only). Sizes are big-endian 64-bit, so free blocks can exceed 4 GB without truncation. Avail-list links are stored as big-endian 64-bit addresses.
+- **Modern (v7, 2025-12-04 Codex)**: 8-byte size with the high bit marking free nodes; 4-byte variance; 8-byte trailer (size word only). Sizes are big-endian 64-bit, so free blocks can exceed 4 GB without truncation. Avail-list links are stored as big-endian 64-bit addresses. **Database header is 90 bytes** (tydatabaserecord_64) with explicit 2-byte padding at offset 14-16 to ensure the views array is properly aligned to offset 16.
 
 ### Table payload layouts (legacy vs modern)
 

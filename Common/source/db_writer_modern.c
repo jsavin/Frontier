@@ -22,8 +22,14 @@ boolean db_write_modern_header(const tydatabaserecord *in, unsigned char *outbuf
     diskrec64.availlist = in->availlist;
     diskrec64.oldfnumdatabase = in->oldfnumdatabase;
     diskrec64.flags = in->flags;
+
+    /*
+     * Copy views from in-memory structure.
+     * dbaddress is typedef'd as long long (64-bit).
+     */
     for (int i = 0; i < ctviews; ++i)
         diskrec64.views[i] = in->views[i];
+
     diskrec64.releasestack = nil;
     diskrec64.fnumdatabase = 0;
     diskrec64.headerLength = (long) sizeof(tydatabaserecord_64); /* force modern size */

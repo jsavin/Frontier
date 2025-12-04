@@ -3,9 +3,10 @@
 Status
 - State: In Progress
 - Phase: Carbon Migration / Runtime Modernization
-- Last Updated: 2025-12-01 (Afternoon)
+- Last Updated: 2025-12-04 (Afternoon)
 - Owner: Codex
 - Notes: Primary hand-off summary for active work only.
+- **2025-12-04 (Claude - Critical Fix)**: Fixed structure alignment bug in v7 database header. Both `tydatabaserecord` and `tydatabaserecord_64` now have explicit 2-byte padding after `flags` field to ensure `views` array starts at offset 16 (8-byte aligned). Updated sizes: tydatabaserecord=118 bytes, tydatabaserecord_64=90 bytes. All database documentation updated to reflect corrected format.
 - 2025-12-01 (Codex): Linked migration tests to the real table layer (HEADLESS_LINKS_REAL_DB), dropped format unpacking in headless, and fixed writable opens so `test_migration` passes end-to-end on the v6 fixture (no more Save As/dbclose crash).
 - 2025-11-30 (Codex): Headless migration test now builds with portable file helpers and a local `copyctopstring` stub; heavy migration cases are temporarily skipped until the full runtime is linked (no crashes; backup/header checks pass).
 - 2025-11-30 (Codex): Added a lightweight v6 fixture header check in `test_migration` (fixture file now present under `tests/fixtures/v6/test.root`); migrate/ensure/fixture paths still skip until the runtime slice is wired.
