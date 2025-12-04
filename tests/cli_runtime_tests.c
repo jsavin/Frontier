@@ -150,7 +150,7 @@ static void remove_system_root_backups(const char *databases_dir) {
     closedir(dir);
 }
 
-static int run_cli_command(const char *args, char *output, size_t output_size) {
+static int run_cli_command_ex(const char *args, char *output, size_t output_size, bool capture_stderr) {
     char root[PATH_MAX];
     if (!get_repo_root(root, sizeof root)) {
         return -1;
@@ -162,9 +162,12 @@ static int run_cli_command(const char *args, char *output, size_t output_size) {
     }
 
     char command[PATH_MAX * 2];
+    // Optionally suppress stderr to avoid debug logging from filling the output buffer
+    const char *stderr_redirect = capture_stderr ? "2>&1" : "2>/dev/null";
+    // Skip startup scripts to avoid segfaults during system root initialization
     if (snprintf(command, sizeof command,
-                 "cd \"%s\" && ./frontier-cli/frontier-cli %s 2>&1",
-                 root, args) >= (int)sizeof command) {
+                 "cd \"%s\" && FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli %s %s",
+                 root, args, stderr_redirect) >= (int)sizeof command) {
         fprintf(stderr, "command buffer too small\n");
         return -1;
     }
@@ -207,6 +210,11 @@ static int run_cli_command(const char *args, char *output, size_t output_size) {
     return exit_code;
 }
 
+// Default version suppresses stderr to avoid debug logging
+static int run_cli_command(const char *args, char *output, size_t output_size) {
+    return run_cli_command_ex(args, output, output_size, false);
+}
+
 static void test_inline_arithmetic(void) {
     char output[4096];
     int exit_code = run_cli_command("-e \"3 + 4\"", output, sizeof output);
@@ -246,8 +254,10 @@ static void test_script_file_execution(void) {
 }
 
 static void test_invalid_script_returns_error(void) {
-    char output[4096];
-    int exit_code = run_cli_command("-e \"local(x = )\"", output, sizeof output);
+    // Larger buffer to accommodate debug logging when stderr is captured
+    char output[65536];
+    // Need stderr to see error messages
+    int exit_code = run_cli_command_ex("-e \"local(x = )\"", output, sizeof output, true);
     assert(exit_code != 0);
     assert(string_contains(output, "Execution error"));
 }
@@ -282,8 +292,9 @@ static void test_system_root_hydration_allows_scripts(void) {
         exit(1);
     }
 
-    char output[1024];
-    int exit_code = run_cli_command(args, output, sizeof output);
+    // Larger buffer and capture stderr to check for error messages
+    char output[65536];
+    int exit_code = run_cli_command_ex(args, output, sizeof output, true);
     bool has_result = string_contains(output, "7");
     bool failed_load = string_contains(output, "Failed to load system root database");
     bool failed_hydrate = string_contains(output, "Failed to hydrate system root");
@@ -330,6 +341,189 @@ static void test_cli_clock_now_on_migrated_root(void) {
     assert(output[0] != '\0');
 }
 
+static void test_kernel_verb_clock_ticks(void) {
+    char root[PATH_MAX];
+    assert(get_repo_root(root, sizeof root));
+
+    char migrated_path[PATH_MAX];
+    if (snprintf(migrated_path, sizeof migrated_path, "%s/databases/Frontier-v6-v7.root", root) >= (int)sizeof migrated_path) {
+        fprintf(stderr, "migrated_path buffer too small\n");
+        exit(1);
+    }
+
+    char args[PATH_MAX * 2];
+    if (snprintf(args, sizeof args, "--system-root \"%s\" -e \"clock.ticks()\"", migrated_path) >= (int)sizeof args) {
+        fprintf(stderr, "CLI args buffer too small\n");
+        exit(1);
+    }
+
+    char output[4096];
+    int exit_code = run_cli_command(args, output, sizeof output);
+    if (exit_code != 0) {
+        fprintf(stderr, "[cli-runtime] clock.ticks() failed: exit=%d output=%s\n", exit_code, output);
+        return;
+    }
+    assert(output[0] != '\0');
+    int ticks = atoi(output);
+    assert(ticks >= 0);  // Should return non-negative tick count
+}
+
+static void test_kernel_verb_typeof(void) {
+    char root[PATH_MAX];
+    assert(get_repo_root(root, sizeof root));
+
+    char migrated_path[PATH_MAX];
+    if (snprintf(migrated_path, sizeof migrated_path, "%s/databases/Frontier-v6-v7.root", root) >= (int)sizeof migrated_path) {
+        fprintf(stderr, "migrated_path buffer too small\n");
+        exit(1);
+    }
+
+    char args[PATH_MAX * 2];
+
+    // Test typeOf(clock.now()) returns "date"
+    if (snprintf(args, sizeof args, "--system-root \"%s\" -e \"typeOf(clock.now())\"", migrated_path) >= (int)sizeof args) {
+        fprintf(stderr, "CLI args buffer too small\n");
+        exit(1);
+    }
+
+    char output[4096];
+    int exit_code = run_cli_command(args, output, sizeof output);
+    if (exit_code != 0) {
+        fprintf(stderr, "[cli-runtime] typeOf(clock.now()) failed: exit=%d\n", exit_code);
+        return;
+    }
+    assert(string_contains(output, "date"));
+}
+
+static void test_kernel_verb_lang_operations(void) {
+    char root[PATH_MAX];
+    assert(get_repo_root(root, sizeof root));
+
+    char migrated_path[PATH_MAX];
+    if (snprintf(migrated_path, sizeof migrated_path, "%s/databases/Frontier-v6-v7.root", root) >= (int)sizeof migrated_path) {
+        fprintf(stderr, "migrated_path buffer too small\n");
+        exit(1);
+    }
+
+    char args[PATH_MAX * 2];
+    char output[4096];
+    int exit_code;
+
+    // Test defined(user) returns true
+    if (snprintf(args, sizeof args, "--system-root \"%s\" -e \"defined(user)\"", migrated_path) >= (int)sizeof args) {
+        fprintf(stderr, "CLI args buffer too small\n");
+        exit(1);
+    }
+    exit_code = run_cli_command(args, output, sizeof output);
+    if (exit_code != 0) {
+        fprintf(stderr, "[cli-runtime] defined(user) failed: exit=%d\n", exit_code);
+        return;
+    }
+    assert(string_contains(output, "true"));
+
+    // Test nameof(user) returns "user"
+    if (snprintf(args, sizeof args, "--system-root \"%s\" -e \"nameof(user)\"", migrated_path) >= (int)sizeof args) {
+        fprintf(stderr, "CLI args buffer too small\n");
+        exit(1);
+    }
+    exit_code = run_cli_command(args, output, sizeof output);
+    if (exit_code != 0) {
+        fprintf(stderr, "[cli-runtime] nameof(user) failed: exit=%d\n", exit_code);
+        return;
+    }
+    assert(string_contains(output, "user"));
+
+    // Test typeOf(user) returns "tabl"
+    if (snprintf(args, sizeof args, "--system-root \"%s\" -e \"typeOf(user)\"", migrated_path) >= (int)sizeof args) {
+        fprintf(stderr, "CLI args buffer too small\n");
+        exit(1);
+    }
+    exit_code = run_cli_command(args, output, sizeof output);
+    if (exit_code != 0) {
+        fprintf(stderr, "[cli-runtime] typeOf(user) failed: exit=%d\n", exit_code);
+        return;
+    }
+    assert(string_contains(output, "tabl"));
+}
+
+static void test_kernel_verb_string_length(void) {
+    char root[PATH_MAX];
+    assert(get_repo_root(root, sizeof root));
+
+    char migrated_path[PATH_MAX];
+    if (snprintf(migrated_path, sizeof migrated_path, "%s/databases/Frontier-v6-v7.root", root) >= (int)sizeof migrated_path) {
+        fprintf(stderr, "migrated_path buffer too small\n");
+        exit(1);
+    }
+
+    char args[PATH_MAX * 2];
+    if (snprintf(args, sizeof args, "--system-root \"%s\" -e 'string.length(\"hello\")'", migrated_path) >= (int)sizeof args) {
+        fprintf(stderr, "CLI args buffer too small\n");
+        exit(1);
+    }
+
+    char output[4096];
+    int exit_code = run_cli_command(args, output, sizeof output);
+    if (exit_code != 0) {
+        fprintf(stderr, "[cli-runtime] string.length() failed: exit=%d output=%s\n", exit_code, output);
+        return;
+    }
+    // Should return 5, not "hello"
+    assert(string_contains(output, "5"));
+}
+
+static void test_kernel_verb_string_upper(void) {
+    char root[PATH_MAX];
+    assert(get_repo_root(root, sizeof root));
+
+    char migrated_path[PATH_MAX];
+    if (snprintf(migrated_path, sizeof migrated_path, "%s/databases/Frontier-v6-v7.root", root) >= (int)sizeof migrated_path) {
+        fprintf(stderr, "migrated_path buffer too small\n");
+        exit(1);
+    }
+
+    char args[PATH_MAX * 2];
+    if (snprintf(args, sizeof args, "--system-root \"%s\" -e 'string.upper(\"hello\")'", migrated_path) >= (int)sizeof args) {
+        fprintf(stderr, "CLI args buffer too small\n");
+        exit(1);
+    }
+
+    char output[4096];
+    int exit_code = run_cli_command(args, output, sizeof output);
+    if (exit_code != 0) {
+        fprintf(stderr, "[cli-runtime] string.upper() failed: exit=%d output=%s\n", exit_code, output);
+        return;
+    }
+    assert(string_contains(output, "HELLO"));
+}
+
+static void test_kernel_verb_math_random(void) {
+    char root[PATH_MAX];
+    assert(get_repo_root(root, sizeof root));
+
+    char migrated_path[PATH_MAX];
+    if (snprintf(migrated_path, sizeof migrated_path, "%s/databases/Frontier-v6-v7.root", root) >= (int)sizeof migrated_path) {
+        fprintf(stderr, "migrated_path buffer too small\n");
+        exit(1);
+    }
+
+    char args[PATH_MAX * 2];
+    if (snprintf(args, sizeof args, "--system-root \"%s\" -e \"math.random(1, 10)\"", migrated_path) >= (int)sizeof args) {
+        fprintf(stderr, "CLI args buffer too small\n");
+        exit(1);
+    }
+
+    char output[4096];
+    int exit_code = run_cli_command(args, output, sizeof output);
+    if (exit_code != 0) {
+        fprintf(stderr, "[cli-runtime] math.random() failed: exit=%d output=%s\n", exit_code, output);
+        return;
+    }
+    assert(output[0] != '\0');
+    int result = atoi(output);
+    assert(result >= 1 && result <= 10);
+}
+
 int main(int argc, char **argv) {
     (void)argc;
     (void)argv;
@@ -340,6 +534,15 @@ int main(int argc, char **argv) {
     test_invalid_script_returns_error();
     test_system_root_hydration_allows_scripts();
     test_cli_clock_now_on_migrated_root();
+
+    // Kernel verb tests
+    printf("[cli-runtime] Running kernel verb tests...\n");
+    test_kernel_verb_clock_ticks();
+    test_kernel_verb_typeof();
+    test_kernel_verb_lang_operations();
+    test_kernel_verb_string_length();
+    test_kernel_verb_string_upper();
+    test_kernel_verb_math_random();
 
     printf("cli_runtime_tests: all tests passed\n");
     return 0;

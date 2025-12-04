@@ -26,6 +26,7 @@
 ******************************************************************************/
 
 /* 2025-11-24 Codex: Normalize BE writes/coverage for v7 portability. */
+/* 2025-12-02 Codex: Skip free-block drops for externals during Save-As repack so migrated scripts persist. */
 
 
 #include "frontier.h"
@@ -1869,8 +1870,23 @@ boolean hashresolvevalue (hdlhashtable htable, hdlhashnode hnode) {
 	
 		unlockhandle ((Handle) hn);
 		
-		if (!fl)
+		if (!fl) {
+#if defined(FRONTIER_HEADLESS)
+			bigstring bspathtemp;
+			copyheapstring ((hdlstring) (**hn).val.data.addressvalue, bspathtemp);
+			fprintf(stderr, "[headless] hashresolvevalue: failed to encode path entry %s\n", stringbaseaddress (bspathtemp));
+#endif
 			return (false);
+        }
+#if defined(FRONTIER_HEADLESS)
+		else {
+			bigstring bspathtemp;
+			hdlhashtable hresolved = nil;
+			if (getaddressvalue ((**hn).val, &hresolved, bspathtemp)) {
+				fprintf(stderr, "[headless] hashresolvevalue: resolved %s -> table=%p\n", stringbaseaddress (bspathtemp), (void *) hresolved);
+			}
+		}
+#endif
 		}
 
 	if ((**hn).val.fldiskval) {
@@ -2799,11 +2815,30 @@ static boolean hashpackvisit (bigstring bsname, hdlhashnode hnode, tyvaluerecord
 			rec.data.longvalue = host_to_disk_int32 (data_index);
 			break;
 
-		case externalvaluetype: {
-			boolean flnewdbaddress = false;
+        case externalvaluetype: {
+            boolean flnewdbaddress = false;
 
             hdlexternalvariable hv = (hdlexternalvariable) val.data.externalvalue;
-            if (hv != nil && !(**hv).flinmemory) {
+        if (hv != nil && !(**hv).flinmemory) {
+            /* When repacking a legacy root during Save As, the destination file is empty and
+               legacy 32-bit addresses can look “free” against the BE64 allocator. Skip the
+               free-block drop in that case so script externals are repacked instead of lost. */
+            const boolean skip_free_check =
+                fldatabasesaveas && (db_format_adapter_force_repack() || db_format_adapter_is_active());
+#if defined(FRONTIER_HEADLESS)
+            if (equalstrings(bsname, "\x03" "now") || equalstrings(bsname, "\x08" "idleTime")) {
+                fprintf(stderr,
+                        "[headless] hashpackexternal inspect name='%.*s' flinmemory=%d skip_free_check=%d adr=0x%llx old=0x%llx\n",
+                        (int) bsname[0],
+                        (char *) &bsname[1],
+                        (int) (**hv).flinmemory,
+                        (int) skip_free_check,
+                        (unsigned long long) (**hv).variabledata,
+                        (unsigned long long) (**hv).oldaddress);
+            }
+#endif
+
+            if (!skip_free_check) {
                 dbaddress adr = (dbaddress) (**hv).variabledata;
                 Handle htmp = nil;
                 boolean okref = false;
@@ -2832,6 +2867,7 @@ static boolean hashpackvisit (bigstring bsname, hdlhashnode hnode, tyvaluerecord
                     return false;
                 }
             }
+        }
 
 			data_index = 0;
 				if (!hashpackexternal (&lpi->s2, (hdlexternalvariable) val.data.externalvalue, &data_index, &flnewdbaddress)) {
@@ -2845,6 +2881,10 @@ static boolean hashpackvisit (bigstring bsname, hdlhashnode hnode, tyvaluerecord
 						(void *)diag,
 						external_id);
 #endif
+					if (fldatabasesaveas && db_format_adapter_is_active()) {
+						(**hnode).fldontsave = true; /* skip unreadable legacy external during migration */
+						return false; /* continue traversal */
+					}
 					HASH_PACK_FAIL("hashpackexternal");
 				}
 

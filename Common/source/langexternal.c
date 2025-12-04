@@ -2545,6 +2545,12 @@ boolean langexternalvaltocode (tyvaluerecord val, hdltreenode *hcode) {
 		return (false);
 	
 	opverbgetlinkedcode (hv, hcode);
+
+#if defined(FRONTIER_HEADLESS)
+    if (getenv("FRONTIER_HEADLESS_LOG")) {
+        fprintf(stderr, "[hl] langexternalvaltocode: hv=%p linked=%p\n", (void *)hv, (void *)*hcode);
+    }
+#endif
 	
 	return (true); /*return true even if *hcode is nil*/
 	} /*langexternalvaltocode*/

@@ -26,6 +26,7 @@
 ******************************************************************************/
 
 /* 2025-11-24 Codex: Normalize BE writes/coverage for v7 portability. */
+/* 2025-12-02 Codex: Guard against runaway recursive disposes when corrupted trees are freed headlessly. */
 
 
 #include "frontier.h"
@@ -332,9 +333,25 @@ boolean langdisposetree (hdltreenode htree) {
 
 	register hdltreenode h = htree;
 	register short ctparams;
+	static _Thread_local int dispose_depth = 0;
+	const int kMaxDisposeDepth = 1024;
 	
 	if (h == nil)
 		return (true);
+
+	dispose_depth++;
+	if (dispose_depth > kMaxDisposeDepth) {
+#if defined(FRONTIER_HEADLESS)
+		fprintf(stderr,
+		        "[headless] langdisposetree depth overflow h=0x%p link=0x%p param1=0x%p ctparams=%d\n",
+		        (void *) h,
+		        (void *) ((**h).link),
+		        (void *) ((**h).param1),
+		        (int) (**h).ctparams);
+#endif
+		dispose_depth--;
+		return (false);
+	}
 
 	if (h == herrornode)
 		herrornode = NULL;
@@ -378,6 +395,8 @@ boolean langdisposetree (hdltreenode htree) {
 	#else
 		freetreenode (h);
 	#endif
+
+	dispose_depth--;
 	
 	return (true);
 	} /*langdisposetree*/

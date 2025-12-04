@@ -97,10 +97,11 @@ boolean cli_execute_compiled_script(usertalk_execution_t* execution) {
         extern hdlhashtable roottable;
         extern boolean pushhashtable(hdlhashtable);
         extern boolean pophashtable(void);
+        extern boolean langrunstring(const bigstring, bigstring);
         hdlhashtable saved_current = currenthashtable;
         currenthashtable = roottable; /* ensure globals resolve against the loaded root */
         pushhashtable(roottable);
-        boolean ok = langrunstringnoerror(program, result);
+        boolean ok = langrunstring(program, result);
         pophashtable();
         currenthashtable = saved_current;
         if (!ok) {

@@ -303,6 +303,13 @@ boolean tableverbinmemory_common(hdlexternalvariable hvariable, hdlhashnode hnod
     long payload_offset = 0;
 
 #if defined(FRONTIER_HEADLESS)
+    if ((**hv).hdatabase == nil) {
+        fprintf(stderr, "[headless] tableverbinmemory nil database for variable adr=0x%llx\n",
+                (unsigned long long) adr);
+    }
+#endif
+
+#if defined(FRONTIER_HEADLESS)
     {
         dbaddress normalized = adr;
         if (dbnormalizeaddress(&normalized)) {
@@ -319,6 +326,9 @@ boolean tableverbinmemory_common(hdlexternalvariable hvariable, hdlhashnode hnod
 #endif
 
     if (adr == nildbaddress) { /* table has never been allocated */
+#if defined(FRONTIER_HEADLESS)
+        fprintf(stderr, "[headless] tableverbinmemory nil table address (never saved)\n");
+#endif
         shellinternalerror(idniltableaddress, BIGSTRING ("\x2b" "nil table address.  (Creating empty table.)"));
         fl = false;
     } else {
@@ -422,7 +432,7 @@ boolean tableverbinmemory_common(hdlexternalvariable hvariable, hdlhashnode hnod
                 (adr == (**hv).oldaddress) ? "" : " *oldaddr mismatch*");
         if (ctitems > 0) {
             hdlhashnode dump = (**htable).hfirstsort;
-            int limit = 5;
+            int limit = (ctitems < 20) ? (int)ctitems : 20; /*dump everything for small tables*/
             while (dump != nil && limit-- > 0) {
                 bigstring bsdump;
                 gethashkey(dump, bsdump);
@@ -431,7 +441,8 @@ boolean tableverbinmemory_common(hdlexternalvariable hvariable, hdlhashnode hnod
                 short copylen = (len < (short)sizeof(cname)-1) ? len : (short)sizeof(cname)-1;
                 memmove(cname, stringbaseaddress(bsdump), copylen);
                 cname[copylen] = '\0';
-                fprintf(stderr, "[headless]   entry %s valuetype=%d\n", cname, (**dump).val.valuetype);
+                fprintf(stderr, "[headless]   entry %s valuetype=%d dontsave=%d\n",
+                        cname, (**dump).val.valuetype, (int)(**dump).fldontsave);
                 dump = (**dump).sortedlink;
             }
         }

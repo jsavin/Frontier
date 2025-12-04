@@ -1,5 +1,6 @@
 /* 2025-10-31 Codex: Skip portable handle stubs when FRONTIER_USE_PORTABLE_HANDLES is active. */
 /* 2025-11-11 Codex: Remove Paige handler stubs whenever HEADLESS_LINKS_REAL_PAIGE is defined. */
+/* 2025-12-02 Codex: Skip the opgetlangtext stub when the headless runtime links the real implementation. */
 #include "frontier.h"
 #include "portable_handles.h"
 #include "osincludes_portable.h"
@@ -356,7 +357,7 @@ boolean scriptgetnametype (bigstring bsname, long *signature) { (void)bsname; if
 boolean scriptgettypename (long signature, bigstring bsname) { (void)signature; setemptystring (bsname); return false; }
 
 // Lang target helpers
-boolean langinitbuiltins (void) { return true; }
+// langinitbuiltins() now provided by langverbs.c (real implementation with kernel verbs)
 boolean langfindtargetwindow (short id, WindowPtr *w) { (void)id; if (w) *w=NULL; return false; }
 boolean langsettarget (hdlhashtable ht, bigstring bs, tyvaluerecord *prev) { (void)ht;(void)bs;(void)prev; return false; }
 boolean langcleartarget (tyvaluerecord *prev) { (void)prev; return false; }
@@ -432,10 +433,12 @@ boolean osagetsource (const tyvaluerecord *osaval, OSType *idserver, tyvaluereco
     (void)osaval; (void)idserver; (void)vsource; return false;
 }
 
+#if !defined(HEADLESS_USE_REAL_OPLANGTEXT)
 // oplangtext stub
 boolean opgetlangtext (hdloutlinerecord ho, boolean fl, Handle *htext) {
     (void)ho; (void)fl; if (htext) *htext = nil; return false;
 }
+#endif
 
 #if !defined(FRONTIER_USE_PORTABLE_HANDLES)
 long MaxBlock(void) {

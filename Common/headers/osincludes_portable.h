@@ -413,4 +413,73 @@ void Debugger(void);
 #define botRight(r) (((Point *) &(r))[1])
 #endif
 
+// ============================================================================
+// Phase 3: Portable Handle API Redirection
+// ============================================================================
+// When FRONTIER_USE_PORTABLE_HANDLES is defined, redirect all Classic Mac
+// Handle APIs to the portable implementation to ensure ALL code paths use
+// the same memory manager. This prevents link order issues where system
+// NewHandle() might be called instead of ClassicNewHandle().
+//
+// Location: This must be in osincludes_portable.h (not frontier_compat.h)
+// because frontier.h -> osincludes_portable.h is the include path for all
+// source files. The macros must be defined before any code includes
+// "memory.h" or calls handle functions.
+//
+// 2025-12-03 Codex: Fix handle system to use frontierAlloc() as single
+// chokepoint for all memory allocation. See planning/_CURRENT_STATUS.md.
+// ============================================================================
+
+#if defined(FRONTIER_USE_PORTABLE_HANDLES)
+    // Include the Classic Handle API wrapper
+    #ifndef FRONTIER_CLASSIC_HANDLE_H
+        #include "../portable/classic_handle.h"
+    #endif
+
+    // Redirect all Mac Handle Toolbox APIs to portable implementations
+    // These macros ensure that even direct calls like "h = NewHandle(100)"
+    // in legacy code (e.g., memory.c) will use the portable layer.
+
+    #ifndef NewHandle
+    #define NewHandle(size) ClassicNewHandle(size)
+    #endif
+
+    #ifndef DisposeHandle
+    #define DisposeHandle(h) ClassicDisposeHandle(h)
+    #endif
+
+    #ifndef HLock
+    #define HLock(h) ClassicHLock(h)
+    #endif
+
+    #ifndef HUnlock
+    #define HUnlock(h) ClassicHUnlock(h)
+    #endif
+
+    #ifndef GetHandleSize
+    #define GetHandleSize(h) ClassicGetHandleSize(h)
+    #endif
+
+    #ifndef SetHandleSize
+    // Note: Mac SetHandleSize returns void; result is in MemError()
+    // Classic layer returns 0 on success, -1 on failure
+    // We map to match Mac behavior (ignore return value)
+    #define SetHandleSize(h, size) \
+        do { (void)ClassicSetHandleSize(h, size); } while(0)
+    #endif
+
+    #ifndef MemError
+    #define MemError() ClassicMemError()
+    #endif
+
+    #ifndef MaxBlock
+    #define MaxBlock() ClassicMaxBlock()
+    #endif
+
+    #ifndef DupHandle
+    #define DupHandle(h) ClassicDupHandle(h)
+    #endif
+
+#endif /* FRONTIER_USE_PORTABLE_HANDLES */
+
 #endif /* OSINCLUDES_PORTABLE_H */

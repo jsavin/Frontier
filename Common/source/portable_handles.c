@@ -13,6 +13,7 @@
 #include <string.h>
 #include <errno.h>
 #include <limits.h>
+#include <stdio.h>
 
 #include "frontierdefs.h"
 #include "portable_handles.h"

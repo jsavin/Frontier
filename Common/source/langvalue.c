@@ -25,6 +25,10 @@
 ******************************************************************************/
 
 /* 2025-11-24 Codex: Normalize BE writes/coverage for v7 portability. */
+/* 2025-12-02 Codex: Instrument dotted lookup targets so headless can trace table/name pairs. */
+/* 2025-12-01 Codex: Avoid re-entering the search path when a dotted lookup already resolved the target table. */
+/* 2025-12-02 Codex: Treat missing kernel valueroutines as runtime errors in headless builds instead of aborting. */
+/* 2025-12-02 Codex: Log headless nodecode resolution for troubleshooting missing kernel bindings. */
 
 
 #ifdef FRONTIER_PORTABLE
@@ -3718,9 +3722,27 @@ static boolean langsearchpathvisit (tysearchpathcallback visit, bigstring bsname
 		
 		if (!getaddressvalue ((**nomad).val, &hsearch, bs)) /*address error*/
 			goto next;
+
+#if defined(FRONTIER_HEADLESS)
+		{
+			bigstring bsdebug;
+			copystring (bs, bsdebug);
+			fprintf (stderr, "[headless] langsearchpathvisit: path entry %s -> %p\n",
+				stringbaseaddress (bsdebug), (void *) hsearch);
+		}
+#endif
 		
 		if (!langgettableval (hsearch, bs, &hsearch)) /*not the address of a table*/
 			goto next;
+		
+#if defined(FRONTIER_HEADLESS)
+		{
+			bigstring bsdebug;
+			copystring (bs, bsdebug);
+			fprintf (stderr, "[headless] langsearchpathvisit: resolved leaf %s -> %p\n",
+				stringbaseaddress (bsdebug), (void *) hsearch);
+		}
+#endif
 		
 		if ((*visit) (hsearch, bsname, htable))
 			return (true);
@@ -3896,7 +3918,18 @@ boolean langgetdotparams (hdltreenode htree, hdlhashtable *htable, bigstring bsn
 		return (langgettableitemname (*htable, &valindex, bsname));
 		}
 	
-	return (langgetidentifier ((**h).param2, bsname));
+	if (!langgetidentifier ((**h).param2, bsname))
+		return (false);
+
+#if defined(FRONTIER_HEADLESS)
+	{
+		char cname[256];
+		copyptocstring (bsname, cname);
+		fprintf (stderr, "[headless] langgetdotparams result table=%p name=%s\n", (void *) *htable, cname);
+	}
+#endif
+
+	return (true);
 	} /*langgetdotparams*/
 
 
@@ -4047,10 +4080,29 @@ boolean langgetdottedsymbolval (hdltreenode htree, hdlhashtable *htable, bigstri
 	
 	if (!langgetdotparams (htree, ht, bs))
 		return (false);
+
+#if defined(FRONTIER_HEADLESS)
+	{
+		char cname[256];
+		copyptocstring (bs, cname);
+		fprintf (stderr, "[headless] langgetdottedsymbolval post-dotparams table=%p name=%s\n", (void *) *ht, cname);
+	}
+#endif
 	
 	if (*ht == nil)
 		langsearchpathlookup (bs, ht); /*always sets ht*/
 	
+#if defined(FRONTIER_HEADLESS)
+	{
+		char cname[256];
+		copyptocstring (bs, cname);
+		fprintf (stderr, "[headless] langgetdottedsymbolval target table=%p name=%s\n", (void *) *ht, cname);
+	}
+#endif
+
+	if (*ht == nil) /*2/5/91 dmb: search path failed; langsymbolreference will report the error*/
+		return (langsymbolreference (*ht, bs, val, hnode));
+
 	return (langsymbolreference (*ht, bs, val, hnode));
 	} /*langgetdottedsymbolval*/
 
@@ -4385,6 +4437,13 @@ boolean evaluatereadonlyparam (hdltreenode hparam, tyvaluerecord *vparam) {
 		case dotop:  // use dotvalue w/out the copyvaluerecord
 			if (!langgetdotparams (hparam, &htable, bs))
 				return (false);
+#if defined(FRONTIER_HEADLESS)
+			{
+				char cname[256];
+				copyptocstring (bs, cname);
+				fprintf (stderr, "[headless] evaluatereadonlyparam dot table=%p name=%s\n", (void *) htable, cname);
+			}
+#endif
 			
 			break;
 		
@@ -7512,11 +7571,18 @@ boolean kernelfunctionvalue (hdlhashtable htable, bigstring bsverb, hdltreenode 
 	
     valueroutine = (**ht).valueroutine;
 
-    assert (valueroutine != nil); /*this was checked at compile time in pushkernelcall*/
-    fprintf(stderr, "[hl] kernelfunctionvalue: table verb dispatch\n");
 #if defined(FRONTIER_HEADLESS)
-    /* debug disabled */
+    if (valueroutine == nil) {
+        fprintf(stderr, "[hl] kernelfunctionvalue: missing valueroutine table=%p verb=%s\n", (void *)ht, stringbaseaddress(bsverb));
+    } else {
+        fprintf(stderr, "[hl] kernelfunctionvalue: table verb dispatch\n");
+    }
 #endif
+
+    if (valueroutine == nil) { /*defensive: avoid abort when compiler failed to bind efp table*/
+        langparamerror (notefperror, bsverb);
+        return (false);
+    }
 	
     fl = hashtablelookupnode (ht, bsverb, &hnode); /*get the token value*/
     if (fl) fprintf(stderr, "[hl] kernel verb=%s\n", stringbaseaddress(bsverb));
@@ -7571,15 +7637,21 @@ boolean kernelfunctionvalue (hdlhashtable htable, bigstring bsverb, hdltreenode 
 			return (langipckernelfunction (ht, bsverb, hparam1, vreturned));
 		}
 	setemptystring (bserror);
-	
+
+	#ifdef FRONTIER_HEADLESS
+	fprintf(stderr, "[hl] calling verb '%s' token=%d\n", stringbaseaddress(bsverb), (int)val.data.tokenvalue);
+	#endif
+
 	if (flprofiling) {
-		
+
 		if (!langpusherrorcallback (kernelerrorroutine, (long) hnode))
 			return (false);
 		}
-	
+
     fl = (*valueroutine) (val.data.tokenvalue, hparam1, vreturned, bserror);
-    fprintf(stderr, "[hl] valueroutine called, token=%d, result=%d\n", (int)val.data.tokenvalue, (int)fl);
+    #ifdef FRONTIER_HEADLESS
+    fprintf(stderr, "[hl] verb '%s' token=%d returned %d\n", stringbaseaddress(bsverb), (int)val.data.tokenvalue, (int)fl);
+    #endif
 	
 	if (!fl && !isemptystring (bserror)) {
 		
@@ -8003,6 +8075,9 @@ static boolean isentrypoint (hdltreenode hcode, bigstring bsname, bigstring bspr
 	error reporting
 	*/
 
+	if (hcode == nil) /* no code to inspect */
+		return (false);
+
 	if ((**hcode).nodetype == moduleop) { // it's a proc, or a wrapper
 		
 		hdltreenode hp2 = (**hcode).param2;
@@ -8052,6 +8127,9 @@ static hdltreenode langgetentrypoint (hdltreenode hcode, bigstring bsname, hdlha
 	boolean foundbody = false;
 	bigstring bsidentifier;
 	
+	if (hcode == nil)
+		return (nil);
+
 	if (isentrypoint (hcode, bsname, bsidentifier))
 		return (hcode);
 
@@ -8103,6 +8181,22 @@ static hdltreenode langgetentrypoint (hdltreenode hcode, bigstring bsname, hdlha
 boolean langgetnodecode (hdlhashtable ht, bigstring bs, hdlhashnode hnode, hdltreenode *hcode) {
 
 	tyvaluerecord val = (**hnode).val;
+#if defined(FRONTIER_HEADLESS)
+    if (getenv("FRONTIER_HEADLESS_LOG")) {
+        fprintf(stderr, "[hl] langgetnodecode: table=%p name=%s valuetype=%d valueroutine=%p\n",
+                (void *) ht,
+                stringbaseaddress(bs),
+                (int) val.valuetype,
+                (void *) ((ht != nil) ? (**ht).valueroutine : nil));
+    }
+#endif
+#if defined(FRONTIER_HEADLESS)
+    if (getenv("FRONTIER_HEADLESS_SCRIPT_LOG")) {
+        fprintf(stderr, "[headless-script] langgetnodecode enter hnode=0x%p ext=0x%p\n",
+                (void *) hnode,
+                (void *) val.data.externalvalue);
+    }
+#endif
 	
 	switch (val.valuetype) {
 		
@@ -8118,6 +8212,15 @@ boolean langgetnodecode (hdlhashtable ht, bigstring bs, hdlhashnode hnode, hdltr
 				
 				langseterrorline (herrornode);	/*4.1b4 dmb: compiling screws up the line/char globals*/
 				}
+            
+#if defined(FRONTIER_HEADLESS)
+            if (getenv("FRONTIER_HEADLESS_SCRIPT_LOG")) {
+                fprintf(stderr,
+                        "[headless-script] langgetnodecode post-compile hnode=0x%p hcode=0x%p\n",
+                        (void *) hnode,
+                        (void *) ((hcode != nil) ? *hcode : nil));
+            }
+#endif
 			
 			break; /*get entry point*/
 			

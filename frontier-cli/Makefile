@@ -7,8 +7,9 @@ CFLAGS = -std=c17 -Wall -Wextra -O0 -g -fpascal-strings \
          -DFRONTIER_PORTABLE_STRINGS \
          -DFRONTIER_PORTABLE_FILE_AVAILABLE -DFRONTIER_PORTABLE_DB_AVAILABLE \
          -DFRONTIER_PORTABLE_APPLEEVENTS \
+         -DHEADLESS_USE_REAL_OPLANGTEXT \
          -DHEADLESS_TEST_PORTABLE_FILE -DHEADLESS_LINKS_REAL_DB \
-         -DHEADLESS_USE_REAL_TABLEPACK \
+         -DHEADLESS_USE_REAL_TABLEPACK -DHEADLESS_USE_REAL_TABLEVALTOTABLE \
          -DUNIX_COMPILE -DC_LIBRARY -DNO_OS_INLINE
 SANITIZE ?= 0
 ifeq ($(SANITIZE),1)
@@ -51,7 +52,8 @@ CLI_SOURCES = \
     main.c \
     cli_parser.c \
     cli_utils.c \
-    cli_executor.c
+    cli_executor.c \
+    headless_scripts_loader.c
 
 # Core runtime sources needed for script execution (aligned with tests/runtime_tests)
 RUNTIME_SOURCES = \
@@ -76,6 +78,7 @@ RUNTIME_SOURCES = \
     ../Common/source/langtree.c \
     ../Common/source/langdate.c \
     ../Common/source/langsystypes.c \
+    ../Common/source/langverbs.c \
     ../Common/source/memory.c \
     ../Common/source/portable_handles.c \
     ../Common/source/strings.c \
@@ -96,6 +99,7 @@ RUNTIME_SOURCES = \
     ../Common/source/opstructure.c \
     ../Common/source/oprefcon.c \
     ../Common/source/oppack.c \
+    ../Common/source/oplangtext.c \
     ../Common/source/opverbs.c \
     ../Common/source/opxml.c \
     ../Common/source/langxml.c \
@@ -132,15 +136,25 @@ HEADLESS_STUBS = \
 DATABASE_SOURCES = \
     ../Common/source/db.c \
     ../Common/source/db_format.c \
+    ../Common/source/db_reader_legacy.c \
+    ../Common/source/db_reader_modern.c \
+    ../Common/source/db_writer_modern.c \
     ../Common/source/odbengine.c \
     ../Common/source/findinfile.c
 
+# Generated kernel verb initialization
+KERNEL_VERBS_C = $(GENERATED_DIR)/kernel_verbs_init.c
+
 # Aggregate sources
-FRONTIER_SOURCES = $(RUNTIME_SOURCES) $(DATABASE_SOURCES) $(HEADLESS_STUBS) $(STRINGS_C)
+FRONTIER_SOURCES = $(RUNTIME_SOURCES) $(DATABASE_SOURCES) $(HEADLESS_STUBS) $(STRINGS_C) $(KERNEL_VERBS_C)
 
 TARGET = frontier-cli
 
-all: strings_generated $(TARGET)
+# Kernel verbs compiler
+EFP_COMPILER = $(CURDIR)/../tools/efp_compiler/parse_rc.py
+KERNELVERBS_RC = ../Common/resources/Win32/kernelverbs.rc
+
+all: strings_generated kernel_verbs_generated $(TARGET)
 
 $(TARGET): $(CLI_SOURCES) $(FRONTIER_SOURCES) $(PAIGE_LIB)
 	$(CC) $(CFLAGS) $(INCLUDES) \
@@ -161,6 +175,12 @@ $(GENERATED_STRINGS): $(STRINGS_COMPILER) $(STRINGS_INPUTS)
 
 strings_generated: $(GENERATED_STRINGS)
 
+$(KERNEL_VERBS_C): $(EFP_COMPILER) $(KERNELVERBS_RC)
+	@mkdir -p $(GENERATED_DIR)
+	python3 $(EFP_COMPILER) $(KERNELVERBS_RC) $(KERNEL_VERBS_C)
+
+kernel_verbs_generated: $(KERNEL_VERBS_C)
+
 clean:
 	rm -f $(TARGET)
 
@@ -168,4 +188,4 @@ $(PAIGE_LIB):
 	$(CMAKE_BIN) -S $(PAIGE_DIR) -B $(PAIGE_BUILD_DIR) -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="$(PAIGE_ARCHES)"
 	$(CMAKE_BIN) --build $(PAIGE_BUILD_DIR)
 
-.PHONY: all clean strings_generated
+.PHONY: all clean strings_generated kernel_verbs_generated

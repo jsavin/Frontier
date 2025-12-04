@@ -161,3 +161,29 @@ Status
    - Once both underflows are resolved, rerun `FRONTIER_REGEN_ROOT=databases/Frontier-v6.root ./tests/runtime_tests` (normal + guard malloc) to confirm the WPText smoke test and resume the broader `advance_style_run` / migration validation.
 
 Reference: `planning/phase3/carbon_migration/wptext_rtf_tracker.md` for the full checklist and supporting subtasks.
+
+## Archived from _CURRENT_STATUS — 2025-12-02
+- 2025-12-01 (Codex): Save As now reads headers from the destination DB; `FRONTIER_REGEN_ROOT=databases/Frontier-v6.root ./tests/runtime_tests` succeeds and emits a v7 system root at `databases/Frontier-v6-v7.root`. `frontier-cli --system-root … -e "clock.now()"` currently segfaults; needs investigation before enabling the glue tests.
+- 2025-12-01 (Codex): Headless address normalization now skips legacy/v6 roots to avoid mis-marking live blocks as free during migration; migrated `system.verbs.builtins.clock` is still empty, so the packer is dropping the compiled script externals and needs a follow-up fix.
+- 2025-11-28 (Codex): Migration runs now complete with canonical v7 headers: `version=7`, `headerLength=88`, view0 set to the new root, other views zeroed, Cancoon dropped. Free-block externals are skipped during packing so the packer no longer dies on stale addresses. Header logging is gated by `FRONTIER_DB_TRACE_HEADERS`. Added runtime header regression (migration path) and unit test for canonical header size/version.
+- 2025-11-27 (Codex): Seeded legacy packer fork (`Common/source/legacy/*_legacy.c`) and adjusted modern `tablepack.c` to default BE64. Added thread-local format mode stack (`db_format_mode_push/pop`) and removed `use_64bit_format` flips across packers/tests/stubs; all tests rebuilt and pass (`db_format_tests`, `runtime_tests`, `cli_runtime_tests`). BE64 view0 serialization now covered by unit test. Outstanding warnings trimmed to none in tests (runtime retains known logs only).
+- 2025-11-26 (Codex): Reader/writer split into `db_reader_legacy.c`, `db_reader_modern.c`, `db_writer_modern.c`; `make -C tests db_format_tests` passes with the longstanding `__builtin_return_address` warning and an unused helper in `db.c`.
+- 2025-11-26 (Codex): Detailed split plan lives at `planning/phase3/modern_reader_writer_split.md`.
+- 2025-11-26 (Codex): Payload widening round-trip is **critical**: plan updated to add synthetic legacy→modern→modern-read equality tests, file-level migrated root validation, and BE64 payload widening (tables/records/externals) before claiming the split complete. See `planning/phase3/modern_reader_writer_split.md`.
+- 2025-11-26 (Codex): Design principle: keep modern BE64 code branch-free—fork legacy vs modern logic into separate functions/files instead of runtime format branches.
+- 2025-11-26 (Codex): Naming decision: modern packers keep canonical names; legacy packers move to `legacy_*/` dirs with `_legacy` entry points so modern remains the default surface.
+- Branches in flight (historic): `feature/carbon-migration-plan`, `feature/headless-system-bootstrap`, `feature/legacy_adapter_widening_and_v7_reader`.
+- 2025-12-02 (Codex): Confirmed `_CURRENT_STATUS.md` per request; ready to collect crash details for `frontier-cli --system-root databases/Frontier-v6-v7.root -e "clock.now()"` so next session can resume with debugging in hand.
+- 2025-12-02 (Codex): Added mode presets + scoped `modern_write_repack` pushes around Save As boundaries (migrator, Cancoon, CLI hydrate, ODB saves); `make -C tests db_format_tests` and `make -C tests save_migration_tests` now pass with adapter isolation in place.
+- 2025-12-02 (Codex): Reproduced the CLI segfault under LLDB; crash occurs immediately after `findnamedtable` probes `system.temp` (first miss, second hit, then null PC). Need to verify temp table creation/linkage during `load_system_root_database` and ensure `system.temp` stays in-memory-only like the UI build.
+- Historic Open Items:
+  - CLI segfault when running `frontier-cli --system-root databases/Frontier-v6-v7.root -e "clock.now()"`; load path currently dies after probing `system.temp` and failing to resolve `clock.*`.
+  - Migrated v7 root is missing `system.verbs.builtins.clock` contents (legacy has 9 scripts); migrator/packing is dropping those externals.
+  - Adapter repack flag still logs as `0` during Save As despite migration success; confirm whether it is still needed or if the current rewrite is sufficient.
+- Historic Next Steps:
+  - Debug the `frontier-cli` crash on `clock.now()` against `databases/Frontier-v6-v7.root`: capture useful LLDB context (regs/frames), inspect `system.temp` creation/linkage, and verify script execution push/pop state.
+  - Fix migrator/packing for `system.verbs.builtins.clock`: force compiled script externals to load/repack instead of being dropped as “free” blocks, regenerate v7 root, and re-test `clock.now()/ticks/waitSeconds`.
+  - Verify Save As adapter state (`adapter_repack`) and confirm whether any remaining legacy globals need to be forced dirty during migration.
+  - Re-run runtime/CLI regression suites once the crash is resolved; keep the regenerated v7 root in place for the glue tests.
+  - See also: planning/phase3/adapter_mode_isolation.md for the mode-split plan (legacy read vs modern write/repack vs modern read).
+  - Capture the refreshed `frontier-cli` crash stack now that adapter mode isolation is active and verify the repack logs (`adapter_repack=1`) during Save As.

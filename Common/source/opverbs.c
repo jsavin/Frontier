@@ -925,10 +925,18 @@ boolean opverbgetlangtext (hdlexternalvariable hvariable, boolean flpretty, Hand
 		fl = true;
 	else
 		fl = opgetlangtext (ho, flpretty, htext);
-	
-	if (fltempload)
+
+	if (fltempload) {
+		/* 2025-12-02 Codex: Lock handle before unload to prevent relocation during opdisposeoutline */
+		if (fl && (htext != nil) && (*htext != nil))
+			lockhandle (*htext);
+
 		opverbunload ((hdlexternalvariable) hv, (**hv).oldaddress);
-	
+
+		if (fl && (htext != nil) && (*htext != nil))
+			unlockhandle (*htext);
+	}
+
 	return (fl);
 	} /*opverbgetlangtext*/
 

@@ -26,7 +26,19 @@ local_scripts/
 tests/core_tests
 tests/handle_tests
 tests/_results/
+tests/runtime_tests
+tests/cli_runtime_tests
 Common/MySQL/
+
+# Build artifacts
+*.o
+*.dSYM/
+frontier-cli/frontier-cli
+frontier-cli/*.dSYM/
+
+# Database backups
+*.root.bak
+*.root.prev*
 
 .claude/
 .anthropic/

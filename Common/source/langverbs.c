@@ -673,6 +673,7 @@ static boolean copyexemptvalue (const tyvaluerecord *v, tyvaluerecord *vcopy) {
 	} /*copyexemptvalue*/
 
 
+#ifndef FRONTIER_HEADLESS
 boolean langcleartarget (tyvaluerecord *prevtarget) {
 	
 	/*
@@ -701,11 +702,13 @@ boolean langcleartarget (tyvaluerecord *prevtarget) {
 		fl = false;
 	
 	pophashtable ();
-	
+
 	return (fl);
 	} /*langcleartarget*/
+#endif /* FRONTIER_HEADLESS */
 
 
+#ifndef FRONTIER_HEADLESS
 boolean langsettarget (hdlhashtable htable, bigstring bsname, tyvaluerecord *prevtarget) {
 	
 	/*
@@ -752,9 +755,10 @@ boolean langsettarget (hdlhashtable htable, bigstring bsname, tyvaluerecord *pre
 		return (false);
 	
 	exemptfromtmpstack (&val);
-	
+
 	return (true);
 	} /*langsettarget*/
+#endif /* FRONTIER_HEADLESS */
 
 
 static boolean langgettarget (hdlhashtable *htable, bigstring bsname) {
@@ -914,6 +918,7 @@ static boolean disposevaluefunc (hdltreenode hparam1, tyvaluerecord *vreturned) 
 
 
 
+#ifndef FRONTIER_HEADLESS
 boolean langzoomvalwindow (hdlhashtable htable, bigstring bs, tyvaluerecord val, boolean flmakevisible) {
 	
 	/*
@@ -930,8 +935,10 @@ boolean langzoomvalwindow (hdlhashtable htable, bigstring bs, tyvaluerecord val,
 	
 	return (langexternalzoomfrom (val, htable, bs, &rzoom));
 	} /*langzoomvalwindow*/
+#endif /* FRONTIER_HEADLESS */
 
 
+#ifndef FRONTIER_HEADLESS
 boolean langfindtargetwindow (short id, WindowPtr *targetwindow) {
 	
 	/*
@@ -988,9 +995,11 @@ boolean langfindtargetwindow (short id, WindowPtr *targetwindow) {
 		return (false);
 	
 	*targetwindow = w;
-	
+
 	return (true);
 	} /*langfindtargetwindow*/
+
+#endif /* FRONTIER_HEADLESS */
 
 
 static boolean editvalue (hdltreenode hparam1, tyvaluerecord *vreturned) {
@@ -1535,10 +1544,10 @@ static boolean locksemaphoreverb (hdltreenode hparam1, tyvaluerecord *vreturned)
 			local (adr = @semaphores.values [semaphorename])
 			local (startticks = clock.ticks ())
 			while defined (adr^)
-				sys.systemtask () Çgive up the processor
-				if (clock.ticks () - startticks) > timeoutticks  Çwaited more than timeoutticks, get out
+				sys.systemtask () ï¿½give up the processor
+				if (clock.ticks () - startticks) > timeoutticks  ï¿½waited more than timeoutticks, get out
 					scriptError ("Semaphore timer expired after " + timeoutticks + " sixtieths of a second.")
-			new (booleantype, adr) Çclaim the semaphore
+			new (booleantype, adr) ï¿½claim the semaphore
 			return (true)
 	*/
 	
@@ -1671,7 +1680,11 @@ langreleasesemaphores (hdlprocessrecord xxxhp)
 	} /*langreleasesemaphores*/
 
 
+#ifdef FRONTIER_HEADLESS
+boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vreturned, bigstring bserror) {
+#else
 static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vreturned, bigstring bserror) {
+#endif
 	
 	/*
 	9/26/91 dmb: use getdatevalue for time/date verbs so that string coercion 
@@ -3560,17 +3573,23 @@ remaining very basic verbs, implemented in lang.c
 
 
 boolean langinitbuiltins (void) {
-	
+
 	/*
-	9/15/92 dmb: initialize randSeed with current date/time so we don't get 
+	9/15/92 dmb: initialize randSeed with current date/time so we don't get
 	the same sequence each time
-	
+
 	2.1b5 dmb: use new loadfunctionprocessor for resource-based initialization
+
+	Headless: kernel verbs are initialized via headless_init_kernel_verbs() during startup
 	*/
 
 	srand (timenow ());	 // 3/10/97 dmb - was: qd.randSeed = timenow ();
 
+	#ifdef FRONTIER_HEADLESS
+	return (true);  /* kernel verbs already initialized via headless_init_kernel_verbs() */
+	#else
 	return (loadfunctionprocessor (idlangverbs, &langfunctionvalue));
+	#endif
 	} /*langinitbuiltins*/
 
 
