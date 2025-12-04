@@ -51,6 +51,7 @@ boolean db_read_modern(const unsigned char *rawheader, size_t raw_len, tydatabas
     out->u.extensions.availlistblock = (dbaddress) db_format_read_be64(rawheader + offsetof(tydatabaserecord_64, u.extensions.availlistblock));
     out->u.extensions.flreadonly = rawheader[offsetof(tydatabaserecord_64, u.extensions.flreadonly)];
 
-    db_format_mode_push_modern_read();
+    db_format_mode mode = {true, false, false};  /* 64-bit modern format */
+    db_format_mode_push(&mode);
     return true;
 }

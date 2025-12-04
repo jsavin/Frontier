@@ -358,9 +358,8 @@ boolean scriptgettypename (long signature, bigstring bsname) { (void)signature; 
 
 // Lang target helpers
 // langinitbuiltins() now provided by langverbs.c (real implementation with kernel verbs)
+// langsettarget() and langcleartarget() now provided by langverbs.c (real implementation)
 boolean langfindtargetwindow (short id, WindowPtr *w) { (void)id; if (w) *w=NULL; return false; }
-boolean langsettarget (hdlhashtable ht, bigstring bs, tyvaluerecord *prev) { (void)ht;(void)bs;(void)prev; return false; }
-boolean langcleartarget (tyvaluerecord *prev) { (void)prev; return false; }
 boolean langzoomvalwindow (hdlhashtable ht, bigstring bs, tyvaluerecord v, boolean fl) { (void)ht;(void)bs;(void)v;(void)fl; return false; }
 
 // Misc flags/globals expected by opverbs/tablepack
