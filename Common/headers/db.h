@@ -45,6 +45,12 @@ typedef struct db_context db_context;
 	#include "memory.h"
 #endif
 
+/* 2025-12-01 Codex: Expose tyvariance for public helpers. */
+#ifndef TYVARIANCE_DEFINED
+#define TYVARIANCE_DEFINED 1
+typedef int32_t tyvariance;
+#endif
+
 #define nildbaddress 0L
 
 
@@ -183,6 +189,8 @@ extern boolean dbrefhandle (dbaddress, Handle *);
 extern boolean dbassign (dbaddress *, long, ptrvoid);
 
 extern boolean dbcopy (dbaddress, dbaddress *);
+
+extern boolean dbsetsize_public (dbaddress, long, tyvariance);
 
 extern boolean dballochandle (Handle, dbaddress *);
 

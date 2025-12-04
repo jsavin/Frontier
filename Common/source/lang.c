@@ -1389,26 +1389,47 @@ boolean langbuildparamlist (tyvaluerecord * listval, hdltreenode *hparams) {
 
 
 boolean langrunscriptcode (hdlhashtable htable, bigstring bsverb, hdltreenode hcode, tyvaluerecord *vparams, hdlhashtable hcontext, tyvaluerecord *vreturned) {
-	
+
 	/*
 	02/04/02 dmb: the guts of langrunscript
 
 	2004-11-03 aradke: Accept nil for vparams, meaning the function
 	doesn't take any parameters, so we simply bypass langbuildparamlist.
 	*/
-	
+
 	boolean fl = false;
 	boolean flchained;
 	tyvaluerecord val;
 	hdltreenode hfunctioncall;
 	hdltreenode hparamlist = nil;
 	boolean fltmpval;
-	
-	if (!setaddressvalue (htable, bsverb, &val))
+
+	#ifdef FRONTIER_HEADLESS
+	fprintf(stderr, "[hl] langrunscriptcode: entry (htable=%p, hcode=%p)\n", (void*)htable, (void*)hcode);
+	#endif
+
+	if (!setaddressvalue (htable, bsverb, &val)) {
+		#ifdef FRONTIER_HEADLESS
+		fprintf(stderr, "[hl] langrunscriptcode: setaddressvalue failed\n");
+		#endif
 		goto exit;
-	
-	if (!pushfunctionreference (val, &hfunctioncall))
+	}
+
+	#ifdef FRONTIER_HEADLESS
+	fprintf(stderr, "[hl] langrunscriptcode: setaddressvalue ok\n");
+	fprintf(stderr, "[hl] langrunscriptcode: calling pushfunctionreference\n");
+	#endif
+
+	if (!pushfunctionreference (val, &hfunctioncall)) {
+		#ifdef FRONTIER_HEADLESS
+		fprintf(stderr, "[hl] langrunscriptcode: pushfunctionreference failed\n");
+		#endif
 		goto exit;
+	}
+
+	#ifdef FRONTIER_HEADLESS
+	fprintf(stderr, "[hl] langrunscriptcode: pushfunctionreference ok\n");
+	#endif
 	
 /*	if (hcontext != nil)
 		pushhashtable (hcontext);
@@ -1443,9 +1464,21 @@ boolean langrunscriptcode (hdlhashtable htable, bigstring bsverb, hdltreenode hc
 			}
 		}
 	
-	if (!pushfunctioncall (hfunctioncall, hparamlist, &hcode)) /*consumes input parameters*/
+	#ifdef FRONTIER_HEADLESS
+	fprintf(stderr, "[hl] langrunscriptcode: calling pushfunctioncall\n");
+	#endif
+
+	if (!pushfunctioncall (hfunctioncall, hparamlist, &hcode)) { /*consumes input parameters*/
+		#ifdef FRONTIER_HEADLESS
+		fprintf(stderr, "[hl] langrunscriptcode: pushfunctioncall failed\n");
+		#endif
 		goto exit;
-		
+	}
+
+	#ifdef FRONTIER_HEADLESS
+	fprintf(stderr, "[hl] langrunscriptcode: pushfunctioncall ok\n");
+	#endif
+
 	if (hcontext != nil) {
 
 		if (flchained)
@@ -1453,8 +1486,16 @@ boolean langrunscriptcode (hdlhashtable htable, bigstring bsverb, hdltreenode hc
 		else
 			chainhashtable (hcontext); /*establishes outer local context*/
 		}
-	
+
+	#ifdef FRONTIER_HEADLESS
+	fprintf(stderr, "[hl] langrunscriptcode: calling evaluatelist\n");
+	#endif
+
 	fl = evaluatelist (hcode, vreturned);
+
+	#ifdef FRONTIER_HEADLESS
+	fprintf(stderr, "[hl] langrunscriptcode: evaluatelist returned %d\n", fl);
+	#endif
 	
 	fltmpval = exemptfromtmpstack (vreturned); /*must survive disposing of local scope chain*/
 	
@@ -1472,18 +1513,22 @@ boolean langrunscriptcode (hdlhashtable htable, bigstring bsverb, hdltreenode hc
 	langdisposetree (hcode);
 
 	exit:
-	
+
+	#ifdef FRONTIER_HEADLESS
+	fprintf(stderr, "[hl] langrunscriptcode: exit (fl=%d)\n", fl);
+	#endif
+
 	return (fl);
 	} /*langrunscriptcode*/
 
 
 boolean langrunscript (bigstring bsscriptname, tyvaluerecord *vparams, hdlhashtable hcontext, tyvaluerecord *vreturned) {
-	
+
 	/*
 	5.0.2b6 rab/dmb: new verb
-	
+
 	5.0.2b7 dmb: preserve errormessagecallback through the call
-	
+
 	6.0a9 dmb: was langipcrunscript, moved here and don't create new process
 
 	6.0a14 dmb: fixed potential memory leak in error case.
@@ -1492,7 +1537,11 @@ boolean langrunscript (bigstring bsscriptname, tyvaluerecord *vparams, hdlhashta
 
 	8.0.4 dmb: handle running code values
 	*/
-	
+
+	#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[lang] langrunscript enter: scriptname='%.*s'\n", (int)bsscriptname[0], &bsscriptname[1]);
+	#endif
+
 	bigstring bsverb;
 	boolean fl = false;
 	hdltreenode hcode;
@@ -1533,16 +1582,28 @@ boolean langrunscript (bigstring bsscriptname, tyvaluerecord *vparams, hdlhashta
 		hcode = vhandler.data.codevalue;
 	}
 	else if ((**htable).valueroutine == nil) { /*not a kernel table*/
-		
+
+		#if defined(FRONTIER_HEADLESS)
+		fprintf(stderr, "[lang] langrunscript: non-kernel table, checking for code\n");
+		#endif
+
 		if (!langexternalvaltocode (vhandler, &hcode)) {
 
 			langparamerror (notfunctionerror, bsverb);
 
 			return (false);
 			}
-		
+
+		#if defined(FRONTIER_HEADLESS)
+		fprintf(stderr, "[lang] langrunscript: hcode=%p, needs_compilation=%d\n", (void *)hcode, (hcode == nil) ? 1 : 0);
+		#endif
+
 		if (hcode == nil) { /*needs compilation*/
-			
+
+			#if defined(FRONTIER_HEADLESS)
+			fprintf(stderr, "[lang] langrunscript: calling langcompilescript\n");
+			#endif
+
 			if (!langcompilescript (handlernode, &hcode))
 				return (false);
 			}

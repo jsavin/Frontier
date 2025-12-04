@@ -26,6 +26,7 @@
 ******************************************************************************/
 
 // 2025-11-26 Codex: Expose raw db read/write helpers for split reader/writer modules.
+// 2025-12-01 Codex: Advertise Save As destination header helper for migration tooling.
 
 #ifndef FRONTIER_DBINTERNAL_H
 #define FRONTIER_DBINTERNAL_H
@@ -69,7 +70,10 @@ typedef enum {
 	} tydbflagmask;
 
 
+#ifndef TYVARIANCE_DEFINED
+#define TYVARIANCE_DEFINED 1
 typedef int32_t tyvariance;
+#endif
 
 #pragma pack(2)
 typedef struct tysizefreeword32 {
@@ -133,6 +137,7 @@ extern boolean dbread (dbaddress, long, ptrvoid);
 extern boolean dbreadtrailer (dbaddress, boolean *, long *);
 
 extern boolean dbreadheader (dbaddress, boolean *, long *, tyvariance *);
+extern boolean dbreadheader_destination (dbaddress, boolean *, long *, tyvariance *);
 
 extern boolean dbreadavailnode (dbaddress, boolean *, long *, dbaddress *);
 

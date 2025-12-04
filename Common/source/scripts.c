@@ -65,6 +65,13 @@
 #include "osacomponent.h"
 #include "error.h"
 
+#if defined(FRONTIER_HEADLESS)
+#include <stdio.h>
+#define HEADLESS_LOG(fmt, ...) fprintf(stderr, "[headless] " fmt "\n", ##__VA_ARGS__)
+#else
+#define HEADLESS_LOG(...) ((void)0)
+#endif
+
 static boolean scriptdebuggereventloop (void);
 
 	#include "aeutils.h"
@@ -590,6 +597,10 @@ static boolean newprocessvisit (hdlhashnode hnode, ptrvoid refcon) {
 	if (!fl)
 		return (true);
 	
+#if defined(FRONTIER_HEADLESS)
+	HEADLESS_LOG("loadsystemscripts: scheduling process for node=%p", (void *)hnode);
+#endif
+
 		if (!newprocess (hcode, true, &systemscripterrorroutine, (long) hnode, &hprocess))
 			return (false);
 		
@@ -681,12 +692,32 @@ boolean loadsystemscripts (void) {
 	2.1b4 dmb: disabled calls to preload stuff in builtins, apps & traps. 
 	it this stuff isn't used, why force it into memory?
 	*/
+	boolean ok = true;
+
+#if defined(FRONTIER_HEADLESS)
+	HEADLESS_LOG("loadsystemscripts: running system.startup");
+#endif
 	
-	scriptrunstartupscripts (); /*run all scripts in startup table*/
+	ok = scriptrunstartupscripts (); /*run all scripts in startup table*/
+
+#if defined(FRONTIER_HEADLESS)
+	HEADLESS_LOG("loadsystemscripts: system.startup %s", ok ? "succeeded" : "FAILED");
+#endif
+
+	if (!ok)
+		return (false);
 	
-	scriptloadagents (); /*load all scripts in agents table*/
+#if defined(FRONTIER_HEADLESS)
+	HEADLESS_LOG("loadsystemscripts: loading system.agents");
+#endif
 	
-	return (true);
+	ok = scriptloadagents (); /*load all scripts in agents table*/
+
+#if defined(FRONTIER_HEADLESS)
+	HEADLESS_LOG("loadsystemscripts: system.agents %s", ok ? "succeeded" : "FAILED");
+#endif
+	
+	return (ok);
 	} /*loadsystemscripts*/
 
 
@@ -4164,6 +4195,3 @@ boolean initscripts (void) {
 	return (true);
 #endif
 	} /*initscripts*/
-
-
-

@@ -50,6 +50,8 @@
 #include <stdio.h>
 #endif
 
+// 2025-12-02 Codex: Log headless EFP registration to chase missing kernel valueroutines.
+
 #ifdef FRONTIER_HEADLESS
 static int headless_should_log(void) {
     static int inited = 0;
@@ -134,6 +136,16 @@ boolean newfunctionprocessor (bigstring bsname, langvaluecallback valuecallback,
 	(**ht).flverbsrequirewindow = flwindow;
 	
 	(**ht).valueroutine = valuecallback;
+
+#if defined(FRONTIER_HEADLESS)
+    if (headless_should_log()) {
+        fprintf(stderr, "[ls] newfunctionprocessor: name=%s table=%p valueroutine=%p flwindow=%d\n",
+                stringbaseaddress(bsname),
+                (void *) ht,
+                (void *) valuecallback,
+                (int) flwindow);
+    }
+#endif
 	
 	return (true);
 	} /*newfunctionprocessor*/

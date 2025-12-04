@@ -25,6 +25,9 @@
 
 ******************************************************************************/
 
+/* 2025-12-02 Codex: Add headless logging to trace langtext failures during script compilation. */
+/* 2025-12-03 Codex: Harden handle stream init/logging for headless script extraction. */
+
 #include "frontier.h"
 #include "standard.h"
 
@@ -34,6 +37,16 @@
 #include "langinternal.h"
 #include "op.h"
 #include "opinternal.h"
+
+#if defined(FRONTIER_HEADLESS)
+static void oplang_headless_sig_to_cstr(OSType sig, char out[5]) {
+	out[0] = (char) ((sig >> 24) & 0xFF);
+	out[1] = (char) ((sig >> 16) & 0xFF);
+	out[2] = (char) ((sig >> 8) & 0xFF);
+	out[3] = (char) (sig & 0xFF);
+	out[4] = '\0';
+}
+#endif
 
 
 
@@ -391,6 +404,24 @@ boolean opgetlangtext (hdloutlinerecord houtline, boolean flpretty, Handle *htex
 	Handle bslastcomment;
 	OSType signature = (**ho).outlinesignature;
 	handlestream s;
+#if defined(FRONTIER_HEADLESS)
+	boolean log_script = false;
+	const char *fail_reason = "unknown";
+	char sigbuf[5];
+
+	log_script = getenv("FRONTIER_HEADLESS_SCRIPT_LOG") != nil;
+	if (log_script)
+		oplang_headless_sig_to_cstr(signature, sigbuf);
+
+	if (log_script) {
+		fprintf(stderr,
+		        "[headless-script] opgetlangtext enter ho=0x%p sig=%s summit=0x%p hbuffer=0x%p\n",
+		        (void *) ho,
+		        sigbuf,
+		        (void *) ((**ho).hsummit),
+		        (void *) ((**ho).hbuffer));
+	}
+#endif
 	
 	
 	if ((**ho).hbuffer != nil) { /*the user is editing text, ibeam cursor mode*/
@@ -405,9 +436,22 @@ boolean opgetlangtext (hdloutlinerecord houtline, boolean flpretty, Handle *htex
 	
 	setemptystring (bs);
 	
-	*htext = nil;
+	clearbytes (&s, sizeof (s));
 	
 	openhandlestream (nil, &s); //handle will be created on first write
+
+#if defined(FRONTIER_HEADLESS)
+	if (log_script) {
+		fprintf(stderr,
+		        "[headless-script] opgetlangtext stream-init data=0x%p size=%ld eof=%ld pos=%ld\n",
+		        (void *) s.data,
+		        (long) s.size,
+		        (long) s.eof,
+		        (long) s.pos);
+	}
+#endif
+	
+	*htext = nil;
 	
 	if (signature != 'LAND') {
 		
@@ -415,8 +459,15 @@ boolean opgetlangtext (hdloutlinerecord houtline, boolean flpretty, Handle *htex
 			goto error;
 		
 		*htext = closehandlestream (&s);
+#if defined(FRONTIER_HEADLESS)
+		if (log_script) {
+			fprintf(stderr,
+			        "[headless-script] opgetlangtext close (non-LAND) htext=0x%p size=%ld\n",
+			        (void *) *htext,
+			        (long) ((*htext == nil) ? 0 : gethandlesize (*htext)));
+		}
+#endif
 		
-
 			if (signature == 'ascr')
 				langaddapplescriptsyntax (*htext);
 			
@@ -439,32 +490,68 @@ boolean opgetlangtext (hdloutlinerecord houtline, boolean flpretty, Handle *htex
 	plastcomment = &bslastcomment; /*make available to visit routine*/
 	
 	flmakeitpretty = flpretty;
-	
-	if (!opsiblingvisiter ((**houtline).hsummit, false, &oplangtextvisit, &s))
+
+	if ((**houtline).hsummit == nil) {
+#if defined(FRONTIER_HEADLESS)
+		fail_reason = "nil-summit";
+		if (log_script)
+			fprintf(stderr, "[headless-script] opgetlangtext summit=nil signature=%s\n", sigbuf);
+#endif
 		goto error;
+	}
+	
+	if (!opsiblingvisiter ((**houtline).hsummit, false, &oplangtextvisit, &s)) {
+#if defined(FRONTIER_HEADLESS)
+		fail_reason = "visit";
+#endif
+		goto error;
+	}
 	
 	filledstring ('}', langtextlastlevel, bs); /*close all outstanding levels with }s*/
 	
-	if (!writehandlestreamstring (&s, bs))
+	if (!writehandlestreamstring (&s, bs)) {
+#if defined(FRONTIER_HEADLESS)
+		fail_reason = "write-close";
+#endif
 		goto error;
+	}
 	
 	if (flmakeitpretty)
-		if (!writehandlestreamhandle (&s, bslastcomment))
+		if (!writehandlestreamhandle (&s, bslastcomment)) {
+#if defined(FRONTIER_HEADLESS)
+			fail_reason = "write-comment";
+#endif
 			goto error;
+		}
 	
 	disposehandle (bslastcomment);
 	
 	*htext = closehandlestream (&s);
+#if defined(FRONTIER_HEADLESS)
+	if (log_script) {
+		fprintf(stderr,
+		        "[headless-script] opgetlangtext close (LAND) htext=0x%p size=%ld\n",
+		        (void *) *htext,
+		        (long) ((*htext == nil) ? 0 : gethandlesize (*htext)));
+	}
+#endif
 	
 	return (true);
 	
 	error: {
+
+#if defined(FRONTIER_HEADLESS)
+		if (log_script) {
+			fprintf(stderr,
+			        "[headless-script] opgetlangtext failed signature=%s summit=0x%p reason=%s\n",
+			        sigbuf,
+			        (void *) ((**houtline).hsummit),
+			        (fail_reason != nil) ? fail_reason : "unknown");
+		}
+#endif
 	
 		disposehandlestream (&s);
 		
 		return (false);
 		}
 	} /*opgetlangtext*/
-
-
-

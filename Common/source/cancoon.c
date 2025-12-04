@@ -1081,13 +1081,41 @@ boolean ccsavefile (ptrfilespec fs, hdlfilenum fnum, short rnum, boolean flsavea
 		}
 	*/
 	
-	if (!tablesavesystemtable ((**hc).hrootvariable, &info.adrroottable))
-		goto exit;
+    {
+        boolean repack_scope = false;
+        db_format_mode_push_modern_write_repack();
+        repack_scope = true;
+        if (!tablesavesystemtable((**hc).hrootvariable, &info.adrroottable)) {
+            if (repack_scope) {
+                db_format_mode_pop();
+                repack_scope = false;
+            }
+            goto exit;
+        }
+        if (repack_scope) {
+            db_format_mode_pop();
+            repack_scope = false;
+        }
+    }
 	
 	info.windowinfo [ixcancooninfo].flhidden = (**shellwindowinfo).flhidden;
 
-	if (!dbassignhandle ((**hc).hscriptstring, &info.adrscriptstring))
-		goto exit;
+    {
+        boolean repack_scope = false;
+        db_format_mode_push_modern_write_repack();
+        repack_scope = true;
+        if (!dbassignhandle((**hc).hscriptstring, &info.adrscriptstring)) {
+            if (repack_scope) {
+                db_format_mode_pop();
+                repack_scope = false;
+            }
+            goto exit;
+        }
+        if (repack_scope) {
+            db_format_mode_pop();
+            repack_scope = false;
+        }
+    }
 	
 	db_format_write_be32(&info.adrroottable, (uint32_t) info.adrroottable);
 	db_format_write_be32(&info.adrscriptstring, (uint32_t) info.adrscriptstring);
@@ -1109,8 +1137,22 @@ boolean ccsavefile (ptrfilespec fs, hdlfilenum fnum, short rnum, boolean flsavea
 	
 	memtodiskshort (info.ixprimaryagent);
 	
-	if (!dbassign (&adr, sizeof (info), &info))
-		goto exit;
+    {
+        boolean repack_scope = false;
+        db_format_mode_push_modern_write_repack();
+        repack_scope = true;
+        if (!dbassign(&adr, sizeof (info), &info)) {
+            if (repack_scope) {
+                db_format_mode_pop();
+                repack_scope = false;
+            }
+            goto exit;
+        }
+        if (repack_scope) {
+            db_format_mode_pop();
+            repack_scope = false;
+        }
+    }
 	
 	if (!flsaveas) {
 		db_context ctx;

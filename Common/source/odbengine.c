@@ -536,15 +536,43 @@ pascal boolean odbSaveFile (odbref odb) {
 	
 	info.versionnumber = conditionalshortswap (cancoonversionnumber);
 	
-	if (!tablesavesystemtable ((**hc).hrootvariable, &info.adrroottable))
-		return (false);
+    {
+        boolean repack_scope = false;
+        db_format_mode_push_modern_write_repack();
+        repack_scope = true;
+        if (!tablesavesystemtable((**hc).hrootvariable, &info.adrroottable)) {
+            if (repack_scope) {
+                db_format_mode_pop();
+                repack_scope = false;
+            }
+            return (false);
+        }
+        if (repack_scope) {
+            db_format_mode_pop();
+            repack_scope = false;
+        }
+    }
 	
 	db_format_write_be32(&info.adrroottable, (uint32_t) info.adrroottable);
 
 	clearbytes (&info.waste, sizeof (info.waste));
 	
-	if (!dbassign (&adr, sizeof (info), &info))
-		return (false);
+    {
+        boolean repack_scope = false;
+        db_format_mode_push_modern_write_repack();
+        repack_scope = true;
+        if (!dbassign(&adr, sizeof (info), &info)) {
+            if (repack_scope) {
+                db_format_mode_pop();
+                repack_scope = false;
+            }
+            return (false);
+        }
+        if (repack_scope) {
+            db_format_mode_pop();
+            repack_scope = false;
+        }
+    }
 	
 	{
 		db_context ctx;

@@ -482,6 +482,11 @@ void SysBeep(short duration);
 void NumToString(long value, Str255 result);
 void StringToNum(ConstStr255Param str, long *value);
 
+// 2025-12-03 Codex: When FRONTIER_USE_PORTABLE_HANDLES is defined,
+// these functions are provided by the portable handle layer and
+// redirected via macros in osincludes_portable.h. Don't declare them
+// here to avoid conflicts with the macro definitions.
+#ifndef FRONTIER_USE_PORTABLE_HANDLES
 Handle NewHandle(long userSize);
 void DisposeHandle(Handle h);
 void HLock(Handle h);
@@ -490,6 +495,7 @@ long GetHandleSize(Handle h);
 OSErr SetHandleSize(Handle h, long userSize);
 long MaxBlock(void);
 OSErr MemError(void);
+#endif /* FRONTIER_USE_PORTABLE_HANDLES */
 Handle GetString(short resID);
 OSStatus FSNewAlias(const void *fromFile, const FSRef *target, AliasHandle *result);
 OSStatus FSNewAliasMinimal(const FSRef *target, AliasHandle *result);

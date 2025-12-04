@@ -32,6 +32,7 @@
 #include "../Common/headers/tableverbs.h"
 #include "../Common/headers/langexternal.h"
 #include "../Common/headers/stringdefs.h"
+#include "../Common/headers/scripts.h"
 #include "../Common/headers/db_format.h"
 #include "../Common/headers/dbinternal.h"
 #include "../Common/headers/byteorder.h"
@@ -329,7 +330,7 @@ static void cleanup_frontier_runtime(void) {
     
     // Cleanup Frontier runtime
     releasethreadglobals();
-    
+
     // Cleanup CLI components
     cli_cleanup_logging();
     
@@ -525,9 +526,22 @@ static boolean hydrate_system_root_database(const char* path) {
                                menubartable,
                                objectmodeltable);
 
-    if (!tablesavesystemtable(hrootvariable, &adr)) {
-        cli_log_error("Failed to save system table while hydrating %s", path);
-        goto cleanup;
+    {
+        boolean repack_scope = false;
+        db_format_mode_push_modern_write_repack();
+        repack_scope = true;
+        if (!tablesavesystemtable(hrootvariable, &adr)) {
+            if (repack_scope) {
+                db_format_mode_pop();
+                repack_scope = false;
+            }
+            cli_log_error("Failed to save system table while hydrating %s", path);
+            goto cleanup;
+        }
+        if (repack_scope) {
+            db_format_mode_pop();
+            repack_scope = false;
+        }
     }
 
     dbsetview(cancoonview, adr);
@@ -737,6 +751,15 @@ static boolean load_system_root_database_internal(const char* path, boolean allo
 
     if (!linksystemtablestructure(roottable)) {
         cli_log_error("Unable to link system tables for %s", path);
+        cleartablestructureglobals();
+        dbdispose();
+        closefile(fnum);
+        databasedata = previous;
+        return false;
+    }
+
+    if (!loadsystemscripts()) {
+        cli_log_error("loadsystemscripts failed for %s", path);
         cleartablestructureglobals();
         dbdispose();
         closefile(fnum);
