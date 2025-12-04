@@ -106,6 +106,7 @@ RUNTIME_SOURCES = \
     ../Common/source/tableops.c \
     ../Common/source/tablestructure.c \
     ../Common/source/tableexternal_common.c \
+    ../Common/source/tableexternal.c \
     ../Common/source/tablepack.c \
     ../Common/source/shell_api.c \
     ../Common/source/shell_api_headless.c
