@@ -19,7 +19,7 @@ endif
 
 # Enable Paige debug instrumentation + wp runtime guards when tests are built
 FRONTIER_TESTS ?= 1
-CWARNING_SUPPRESS ?= -Wno-nonportable-include-path  # Suppress Paige header case warnings (third-party code)
+CWARNING_SUPPRESS ?= -Wno-nonportable-include-path -Wno-error=implicit-function-declaration  # Suppress Paige header case warnings (third-party code)
 CFLAGS = -Wall -Wextra -std=c99 -g -O0 -fpascal-strings -Wno-deprecated-non-prototype -fcommon \
          -DFRONTIER_USE_PORTABLE_HANDLES -DFRONTIER_HEADLESS \
          -DFRONTIER_PORTABLE_STRINGS \
@@ -98,8 +98,7 @@ FRONTIER_SOURCES = \
     ../Common/source/db_format.c \
     ../Common/source/db_reader_legacy.c \
     ../Common/source/db_reader_modern.c \
-    ../Common/source/db_writer_modern.c \
-    headless_langverbs_stub.c
+    ../Common/source/db_writer_modern.c
 
 # Migration tests use the same headless runtime slice as runtime_tests to avoid test-only forks.
 MIGRATION_SOURCES = \
@@ -125,6 +124,7 @@ LANG_RUNTIME_SOURCES = \
     ../Common/source/langexternal.c \
     ../Common/source/legacy/langexternal_legacy.c \
     ../Common/source/langstartup.c \
+    ../Common/source/langverbs.c \
     ../Common/source/langwarnings.c \
     ../Common/source/langtmpstack.c \
     ../Common/source/langtrace.c \

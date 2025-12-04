@@ -528,7 +528,8 @@ static boolean hydrate_system_root_database(const char* path) {
 
     {
         boolean repack_scope = false;
-        db_format_mode_push_modern_write_repack();
+        db_format_mode mode = {true, true, false};  /* 64-bit, adapter_repack, no drop_cancoon */
+        db_format_mode_push(&mode);
         repack_scope = true;
         if (!tablesavesystemtable(hrootvariable, &adr)) {
             if (repack_scope) {

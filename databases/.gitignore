@@ -1,0 +1,3 @@
+# Ignore migrated v7 databases
+*-v7.root
+*-v7-v7.root

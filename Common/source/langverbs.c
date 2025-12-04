@@ -615,45 +615,56 @@ static boolean presskeyverb (char ch) {
 
 
 
+#ifdef FRONTIER_HEADLESS
 static boolean langclosehiddenwindow (tyvaluerecord val) {
-	
+	/*
+	In headless mode, there are no windows to close.
+	Just verify the value is valid and return true.
+	*/
+	(void)val;
+	return (true);
+	} /*langclosehiddenwindow*/
+#else
+static boolean langclosehiddenwindow (tyvaluerecord val) {
+
 	/*
 	2.1b3 dmb: don't close hidden window if its globals are current
 
 	5.0a22 dmb: don't generate runtime errors trying to clear the target
 
-	5.1.4 dmb: note: we return true is val is a val is a valid 
+	5.1.4 dmb: note: we return true is val is a val is a valid
 	address of an existing item.
 	*/
-	
+
 	hdlhashtable htable;
 	bigstring bsname;
 	hdlwindowinfo hinfo;
 	boolean fl;
 	hdlhashnode hnode;
-	
+
 	assert (val.valuetype == addressvaluetype); /*08/04/2000 AR*/
 
 	disablelangerror ();
 
 	fl = getaddressvalue (val, &htable, bsname);
-	
+
 	if (fl)
 		fl = langsymbolreference (htable, bsname, &val, &hnode);
-	
+
 	enablelangerror ();
-	
+
 	if (!fl)
 		return (false);
-	
+
 	if (langexternalwindowopen (val, &hinfo)) {
-		
+
 		if (((**hinfo).flhidden) && (hinfo != shellwindowinfo))
 			shellclosewindow ((**hinfo).macwindow);
 		}
-	
+
 	return (true);
 	} /*langclosehiddenwindow*/
+#endif
 
 
 static boolean copyexemptvalue (const tyvaluerecord *v, tyvaluerecord *vcopy) {
@@ -673,72 +684,69 @@ static boolean copyexemptvalue (const tyvaluerecord *v, tyvaluerecord *vcopy) {
 	} /*copyexemptvalue*/
 
 
-#ifndef FRONTIER_HEADLESS
 boolean langcleartarget (tyvaluerecord *prevtarget) {
-	
+
 	/*
 	5.0a22 dmb: added prevtarget parameter
 	*/
-	
+
 	tyvaluerecord val;
 	boolean fl = true;
 	hdlhashnode hnode;
-	
+
 	if (prevtarget != nil)
 		setnilvalue (prevtarget);
 
 	pushouterlocaltable ();
-	
+
 	if (hashlookup (nametargetval, &val, &hnode)) {
-		
+
 		if (langclosehiddenwindow (val))
 			if (prevtarget != nil)
 				copyexemptvalue (&val, prevtarget);
-		
+
 		if (fl)
 			fl = hashdelete (nametargetval, true, true);
 		}
 	else
 		fl = false;
-	
+
 	pophashtable ();
 
 	return (fl);
 	} /*langcleartarget*/
-#endif /* FRONTIER_HEADLESS */
 
 
-#ifndef FRONTIER_HEADLESS
 boolean langsettarget (hdlhashtable htable, bigstring bsname, tyvaluerecord *prevtarget) {
-	
+
 	/*
-	6/22/91 dmb: if existing target is open but hidden, close the window 
+	6/22/91 dmb: if existing target is open but hidden, close the window
 	so the script doesn't accumulate a jillion hidden window (or so).
 
 	5.0a22 dmb: added prevtarget parameter
 
-	5.1.4 dmb: if the old target isn't valid (langclosehiddenwindow returns false), 
+	5.1.4 dmb: if the old target isn't valid (langclosehiddenwindow returns false),
 	set prevtarget to nil
 	*/
-	
+
 	tyvaluerecord val, oldval;
 	boolean flhadtarget;
 	boolean fl;
 	hdlhashnode hnode;
-	
+
 	if (!setaddressvalue (htable, bsname, &val))
 		return (false);
-	
+
 	pushouterlocaltable ();
-	
+
 	flhadtarget = langgetsymbolval (nametargetval, &oldval, &hnode);
-	
+
 	if (flhadtarget) { /*we're smashing existing target*/
-		
+
 		if (!equalhandles ((Handle) val.data.addressvalue, (Handle) oldval.data.addressvalue)) /*changing*/
 			if (!langclosehiddenwindow (oldval))
 				setnilvalue (&oldval);
-		
+
 		if (prevtarget != nil)
 			copyexemptvalue (&oldval, prevtarget);
 		}
@@ -746,19 +754,18 @@ boolean langsettarget (hdlhashtable htable, bigstring bsname, tyvaluerecord *pre
 		if (prevtarget != nil)
 			setnilvalue (prevtarget);
 		}
-	
+
 	fl = hashassign (nametargetval, val);
-	
+
 	pophashtable ();
-	
+
 	if (!fl)
 		return (false);
-	
+
 	exemptfromtmpstack (&val);
 
 	return (true);
 	} /*langsettarget*/
-#endif /* FRONTIER_HEADLESS */
 
 
 static boolean langgettarget (hdlhashtable *htable, bigstring bsname) {
@@ -1083,26 +1090,28 @@ static boolean langgettargetfunc (hdltreenode hparam1, tyvaluerecord *vreturned)
 	
 	fl = langgettarget (&htable, bsname);
 
-	if (!fl) {
-		
+#ifndef FRONTIER_HEADLESS
+	if (!fl) {  /* Fallback to implicit target from frontmost window (GUI only) */
+
 		WindowPtr target;
 		hdlexternalvariable hvariable;
-		
+
 		htable = nil;
-		
+
 		setemptystring (bsname);
-		
+
 		if (langfindtargetwindow (-1, &target)) {
-			
+
 			shellpushglobals (target);
-			
+
 			if ((*shellglobals.getvariableroutine) (&hvariable))
 				fl = langexternalfindvariable (hvariable, &htable, bsname);
-			
+
 			shellpopglobals ();
 			}
 		}
-	
+#endif
+
 	if (fl)
 		return (setaddressvalue (htable, bsname, vreturned));
 	else
@@ -1152,22 +1161,24 @@ static boolean langsettargetfunc (hdltreenode hparam1, tyvaluerecord *vreturned)
 	
 	if (!langsettarget (htable, bsname, vreturned))
 		return (false);
-	
+
+#ifndef FRONTIER_HEADLESS
 	if (!langzoomvalwindow (htable, bsname, val, false)) {
-		
+
 		disposevaluerecord (*vreturned, false);
-		
+
 		disablelangerror ();
-		
+
 		langcleartarget (nil);
-		
+
 		enablelangerror ();
-		
+
 		return (false);
 		}
-	
+#endif
+
 //	5.0a22 dmb: vretured is already set now. was - setbooleanvalue (true, vreturned);
-	
+
 	pushtmpstackvalue (vreturned);
 	
 	return (true);

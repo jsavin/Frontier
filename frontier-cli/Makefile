@@ -106,6 +106,7 @@ RUNTIME_SOURCES = \
     ../Common/source/tableops.c \
     ../Common/source/tablestructure.c \
     ../Common/source/tableexternal_common.c \
+    ../Common/source/tableexternal.c \
     ../Common/source/tablepack.c \
     ../Common/source/shell_api.c \
     ../Common/source/shell_api_headless.c
@@ -151,8 +152,9 @@ FRONTIER_SOURCES = $(RUNTIME_SOURCES) $(DATABASE_SOURCES) $(HEADLESS_STUBS) $(ST
 TARGET = frontier-cli
 
 # Kernel verbs compiler
-EFP_COMPILER = $(CURDIR)/../tools/efp_compiler/parse_rc.py
-KERNELVERBS_RC = ../Common/resources/Win32/kernelverbs.rc
+# NOTE: efp_compiler not available in repo - using pre-generated kernel_verbs_init.c
+# EFP_COMPILER = $(CURDIR)/../tools/efp_compiler/parse_rc.py
+# KERNELVERBS_RC = ../Common/resources/Win32/kernelverbs.rc
 
 all: strings_generated kernel_verbs_generated $(TARGET)
 
@@ -175,11 +177,13 @@ $(GENERATED_STRINGS): $(STRINGS_COMPILER) $(STRINGS_INPUTS)
 
 strings_generated: $(GENERATED_STRINGS)
 
-$(KERNEL_VERBS_C): $(EFP_COMPILER) $(KERNELVERBS_RC)
-	@mkdir -p $(GENERATED_DIR)
-	python3 $(EFP_COMPILER) $(KERNELVERBS_RC) $(KERNEL_VERBS_C)
+# Kernel verbs generation disabled - using pre-generated file
+# $(KERNEL_VERBS_C): $(EFP_COMPILER) $(KERNELVERBS_RC)
+# 	@mkdir -p $(GENERATED_DIR)
+# 	python3 $(EFP_COMPILER) $(KERNELVERBS_RC) $(KERNEL_VERBS_C)
 
-kernel_verbs_generated: $(KERNEL_VERBS_C)
+kernel_verbs_generated:
+	@# No-op: using pre-generated kernel_verbs_init.c
 
 clean:
 	rm -f $(TARGET)

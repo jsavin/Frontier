@@ -358,9 +358,8 @@ boolean scriptgettypename (long signature, bigstring bsname) { (void)signature; 
 
 // Lang target helpers
 // langinitbuiltins() now provided by langverbs.c (real implementation with kernel verbs)
+// langsettarget() and langcleartarget() now provided by langverbs.c (real implementation)
 boolean langfindtargetwindow (short id, WindowPtr *w) { (void)id; if (w) *w=NULL; return false; }
-boolean langsettarget (hdlhashtable ht, bigstring bs, tyvaluerecord *prev) { (void)ht;(void)bs;(void)prev; return false; }
-boolean langcleartarget (tyvaluerecord *prev) { (void)prev; return false; }
 boolean langzoomvalwindow (hdlhashtable ht, bigstring bs, tyvaluerecord v, boolean fl) { (void)ht;(void)bs;(void)v;(void)fl; return false; }
 
 // Misc flags/globals expected by opverbs/tablepack
@@ -401,6 +400,7 @@ void scriptsetcallbacks (hdloutlinerecord ho) { (void)ho; }
 boolean shellfindcallbacks (short id, short *ix) { (void)id; if (ix) *ix=0; return false; }
 boolean browsergetrefcon (hdlheadrecord hnode, tybrowserinfo *info) { (void)hnode; if (info) memset(info,0,sizeof(*info)); return false; }
 boolean memoryerror (void) { return false; }
+boolean notifyuser (bigstring bs) { (void)bs; /* no UI notifications in headless */ return true; }
 
 
 // opdisplay default helpers
