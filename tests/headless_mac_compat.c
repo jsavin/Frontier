@@ -400,6 +400,7 @@ void scriptsetcallbacks (hdloutlinerecord ho) { (void)ho; }
 boolean shellfindcallbacks (short id, short *ix) { (void)id; if (ix) *ix=0; return false; }
 boolean browsergetrefcon (hdlheadrecord hnode, tybrowserinfo *info) { (void)hnode; if (info) memset(info,0,sizeof(*info)); return false; }
 boolean memoryerror (void) { return false; }
+boolean notifyuser (bigstring bs) { (void)bs; /* no UI notifications in headless */ return true; }
 
 
 // opdisplay default helpers

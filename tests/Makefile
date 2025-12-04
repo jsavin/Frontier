@@ -98,8 +98,7 @@ FRONTIER_SOURCES = \
     ../Common/source/db_format.c \
     ../Common/source/db_reader_legacy.c \
     ../Common/source/db_reader_modern.c \
-    ../Common/source/db_writer_modern.c \
-    headless_langverbs_stub.c
+    ../Common/source/db_writer_modern.c
 
 # Migration tests use the same headless runtime slice as runtime_tests to avoid test-only forks.
 MIGRATION_SOURCES = \
@@ -125,6 +124,7 @@ LANG_RUNTIME_SOURCES = \
     ../Common/source/langexternal.c \
     ../Common/source/legacy/langexternal_legacy.c \
     ../Common/source/langstartup.c \
+    ../Common/source/langverbs.c \
     ../Common/source/langwarnings.c \
     ../Common/source/langtmpstack.c \
     ../Common/source/langtrace.c \
