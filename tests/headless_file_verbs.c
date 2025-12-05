@@ -106,10 +106,8 @@ extern long headless_readline(hdlfilenum fnum, char *buf, long bufsz);
 
 static boolean fv_valueproc(short token, hdltreenode hparam1, tyvaluerecord *vreturned, bigstring bserror) {
     register tyvaluerecord *v = vreturned;
+    tyfilespec fs;
 
-    setbooleanvalue(false, v);
-
-    tyfilespec fs; clearbytes(&fs, sizeof fs);
     switch (token) {
         case fv_filefrompath: {
             bigstring bspath, bsfile;
@@ -204,7 +202,7 @@ static boolean fv_valueproc(short token, hdltreenode hparam1, tyvaluerecord *vre
             if (!getlongvalue(hparam1, 2, &ct)) return false;
             if (!fifreadhandle(&fs, ct, &h)) return true; /* returns nil/false */
             if ((ct < longinfinity) && (ct != gethandlesize(h))) { disposehandle(h); return true; }
-            return setbinaryvalue(h, '\?\?\?\?', v);
+            return setbinaryvalue(h, 0x3F3F3F3F, v);  /* '????' as hex literal */
         }
         case fv_write: {
             Handle hdata = nil;
@@ -296,7 +294,7 @@ boolean fileinitverbs(void) {
     ADD_VERB(BIGSTRING("\pisalias"), fv_isalias);
     ADD_VERB(BIGSTRING("\pisvisible"), fv_isvisible);
     ADD_VERB(BIGSTRING("\psetvisible"), fv_setvisible);
-    ADD_VERB(BIGSTRING("\pfollowlias"), fv_followalias);
+    ADD_VERB(BIGSTRING("\pfollowAlias"), fv_followalias);
     ADD_VERB(BIGSTRING("\pmove"), fv_move);
     ADD_VERB(BIGSTRING("\peject"), fv_eject);
     ADD_VERB(BIGSTRING("\pisejectable"), fv_isejectable);

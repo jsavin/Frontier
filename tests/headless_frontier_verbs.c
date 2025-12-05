@@ -119,7 +119,7 @@ boolean frontierinitverbs(void) {
 	ADD_VERB(BIGSTRING("\preclaimmemory"), frv_reclaimMemory);
 	ADD_VERB(BIGSTRING("\pversion"), frv_version);
 	ADD_VERB(BIGSTRING("\phashstats"), frv_hashStats);
-	ADD_VERB(BIGSTRING("\pgethashloopccount"), frv_getHashLoopCount);
+	ADD_VERB(BIGSTRING("\pgethashloopcount"), frv_getHashLoopCount);
 	ADD_VERB(BIGSTRING("\phideapplication"), frv_hideApplication);
 	ADD_VERB(BIGSTRING("\pisvalidserialnumber"), frv_isValidSerialNumber);
 	ADD_VERB(BIGSTRING("\pshowapplication"), frv_showApplication);
