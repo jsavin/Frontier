@@ -52,6 +52,158 @@ The DocServer documentation is **essential** for all verb implementations. It pr
 
 ---
 
+## Frontier Runtime Architecture & Design
+
+**Source:** Matt Neuberg's "The Definitive Guide - Frontier" (47 chapters, comprehensive reference)
+**Location:** `docs/Frontier - The Definitive Guide - by Matt Neuberg/`
+
+Understanding how Frontier's runtime works is essential for implementing verbs that integrate properly. Key concepts:
+
+### The Persistent Database Model
+
+**Frontier.root (The Core Database)**
+- Central to all operations; Frontier is nearly non-functional without it
+- Hierarchical, hash-indexed name-value storage for rapid access
+- Contains: system verbs, scripts, configuration, all user-defined code and data
+- Every verb execution operates in context of this persistent database
+
+**Guest Databases**
+- Additional databases can be opened alongside Frontier.root
+- Managed by kernel via in-memory table at `system.compiler.files`
+- All top-level items in guest databases exist in global scope in UserTalk domain
+- Per CLAUDE.md instructions: This is critical for understanding context switching
+
+### Variable Scope & Lifetime
+
+**Local Variables** (within scripts)
+- Created when script starts, destroyed when script ends
+- Only accessible within the containing script
+- Temporary and not visible to other scripts unless explicitly passed
+
+**Database Entries** (persistent globals)
+- Paths like `workspace.myVar` or `system.config.value`
+- Persist across script execution and survive restarts
+- Globally accessible from any script
+- Stored permanently in database on disk
+
+**Critical for Implementation:** Verbs need to understand whether they're operating on temporary local state or persistent global state, and manage both appropriately.
+
+### The Type System & Coercion
+
+**31 UserTalk Datatypes** including:
+- Scalars: String, Integer, Long, Boolean, Point, Rectangle, Date, Keyword, Enum
+- Collections: Table (hash-indexed), Record, List, Outline (hierarchical)
+- Special: Handle, Pointer, Verb, Font, Script, WPText
+- Type designation: Internally via string4 codes; user-facing via `system.compiler.language.constants`
+
+**Coercion Rules**
+- Automatic conversion between compatible types
+- No strong typing: any object can change types mid-execution
+- Parameter mismatch resolved via coercion, not type error
+- Integer division yields integer (not float)
+- String coercion produces displayable representation
+
+**For Verbs:** Must handle flexible input types, apply coercion intelligently, and validate type assumptions where needed.
+
+### Verb Execution & Parameter Passing
+
+**Verb Definition Pattern (Eponymous Handler)**
+```
+on verbName (param1, param2, ...)
+  // handler code
+  return value
+```
+Requirements:
+- Handler name must match script object's final path element
+- Handler must use `on` keyword and be at script's top level (summit level)
+- Parameters received are part of the handler signature
+
+**Parameter Passing Conventions**
+- **By value (default):** Changes to parameters don't affect caller's variables
+- **By reference (using @):** Caller passes `@variable` to allow verb to modify caller's variable
+  - Example: `date.get(clockValue, @day, @month, @year)` - three parameters passed by address
+  - Critical pattern: many verbs use this to return multiple values
+
+**Return Values**
+- Implicit: Last expression evaluated (if no explicit return)
+- Explicit: `return value` statement
+- All verbs return a value (nil if none specified)
+
+**For Implementation:** Understand when verbs should accept addresses vs. values; common pattern is returning multiple values via address parameters.
+
+### Special Evaluation Rules
+
+Four verbs treat parameters specially (DO NOT evaluate them):
+- `defined(objectReference)` - Check object existence without error
+- `parentOf(objectReference)` - Get parent table
+- `sizeOf(objectReference)` - Get object size
+- `nameOf(objectReference)` - Get object name
+
+These allow safe introspection of the database structure without causing errors if objects don't exist.
+
+**For Implementation:** These patterns inform how to safely check for object existence and metadata within verbs.
+
+### Threading Model
+
+**Frontier is Multithreaded**
+- Main agent thread runs background processes
+- Each script execution creates a temporary script thread (destroyed on completion)
+- Status shows thread count ("1 thread" = idle)
+- Implies: Scripts can run simultaneously; verbs should be thread-safe where applicable
+
+**Yielding & Concurrency**
+- `sys.systemTask()` yields time to other processes
+- `clock.waitSixtieths()` or `clock.waitSeconds()` for pausing
+- Semaphores available for preventing collisions (`semaphore.lock()`, `semaphore.unlock()`)
+
+**For Implementation:** Some verbs may need to coordinate with concurrency model; timing/blocking operations must yield properly.
+
+### The Target Concept
+
+**What is the Target**
+- Current window or editor context (database, script editor, outline editor, etc.)
+- Some verbs operate on implicit target if not explicitly addressed
+- Maintained across script executions based on user interaction
+- Persists in headless mode as a logical concept (though no visible window)
+
+**For Verb Implementation:** Understand that target can be queried/set and affects scope of some operations.
+
+### Key Implementation Patterns (from The Definitive Guide)
+
+1. **Database Access Pattern:**
+   - Check existence with `defined()` before accessing
+   - Use hierarchical paths: `workspace.category.item`
+   - Understand persistence implications
+
+2. **Parameter Address Pattern:**
+   - For multiple returns: Pass parameters by address
+   - Caller uses `@variable` syntax
+   - Handler uses address parameter to modify caller's variables
+
+3. **Error Handling Pattern:**
+   - Check preconditions with `defined()`
+   - Use `dialog.notify()` for headless-safe user messages (queues for GUI mode, logs in headless)
+   - Return boolean success/failure status
+
+4. **Type Coercion Pattern:**
+   - Accept flexible input types
+   - Apply coercion rules appropriately
+   - Document expected types and coercion behavior
+
+5. **Scope Management Pattern:**
+   - Local variables for temporary computation
+   - Database entries for persistent state
+   - Pass addresses for outgoing values
+
+### Critical 1-Based Array Indexing
+
+Unlike C and most modern languages, Frontier uses **1-based array indexing:**
+- First element is `array[1]` (not `array[0]`)
+- Second element is `array[2]`, etc.
+- Must be remembered when implementing any list/string operations
+
+---
+
 ## Phase 3 Structure: 5 Major Stages
 
 ### Stage 1: Categorization & Assessment (Foundation)
@@ -352,6 +504,20 @@ Document for users/developers:
 ---
 
 ## Key Files & Locations
+
+**Frontier Runtime Architecture** (ESSENTIAL FOUNDATIONAL KNOWLEDGE):
+- Book: `docs/Frontier - The Definitive Guide - by Matt Neuberg/`
+- Key chapters for verb implementation:
+  - ch03.html: The Database (persistent model, scope, lifetime)
+  - ch04.html: What a UserTalk Script Is Like
+  - ch05.html: Handlers and Parameters (verb signature patterns)
+  - ch06.html: Referring to Database Entries (path syntax)
+  - ch07.html: The Scope of Variables and Handlers
+  - ch08.html: Addresses (parameter passing by reference with @)
+  - ch09.html: Special Evaluation (defined, parentOf, sizeOf, nameOf)
+  - ch10.html: Datatypes (31 types, coercion rules, 1-based indexing)
+  - ch21.html: Threading & Semaphores
+  - ch46.html: Verbs Reference (comprehensive verb listing)
 
 **UserTalk Verb Documentation** (ESSENTIAL REFERENCE):
 - `docs/usertalk/docserver.userland.com/` - Complete processor documentation (70+ processors)
