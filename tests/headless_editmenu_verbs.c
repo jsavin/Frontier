@@ -9,89 +9,89 @@
 
 /* Token enum for all verbs in the editmenu processor */
 enum {
-    ediv_editmenu_verb0 = 0,
-    ediv_editmenu_verb1 = 1,
-    ediv_editmenu_verb2 = 2,
-    ediv_editmenu_verb3 = 3,
-    ediv_editmenu_verb4 = 4,
-    ediv_editmenu_verb5 = 5,
-    ediv_editmenu_verb6 = 6,
-    ediv_editmenu_verb7 = 7,
-    ediv_editmenu_verb8 = 8,
-    ediv_editmenu_verb9 = 9,
-    ediv_editmenu_verb10 = 10,
-    ediv_editmenu_verb11 = 11,
-    ediv_editmenu_verb12 = 12,
-    ediv_editmenu_verb13 = 13,
-    ediv_editmenu_verb14 = 14,
-    ediv_editmenu_verb15 = 15
+    ediv_stripmarkup = 0,
+    ediv_deindexpage = 1,
+    ediv_indexpage = 2,
+    ediv_cleanindex = 3,
+    ediv_mergeresults = 4,
+    ediv_mrcalendar = 5,
+    ediv_getaddressday = 6,
+    ediv_getdayaddress = 7,
+    ediv_getfirstaddress = 8,
+    ediv_getfirstday = 9,
+    ediv_getlastaddress = 10,
+    ediv_getlastday = 11,
+    ediv_getmostrecentaddress = 12,
+    ediv_getmostrecentday = 13,
+    ediv_getnextaddress = 14,
+    ediv_getnextday = 15
 };
 
 static boolean editmenu_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
     switch(token) {
-        case ediv_editmenu_verb0:
+        case ediv_stripmarkup:
             /* Verb #0 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case ediv_editmenu_verb1:
+        case ediv_deindexpage:
             /* Verb #1 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case ediv_editmenu_verb2:
+        case ediv_indexpage:
             /* Verb #2 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case ediv_editmenu_verb3:
+        case ediv_cleanindex:
             /* Verb #3 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case ediv_editmenu_verb4:
+        case ediv_mergeresults:
             /* Verb #4 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case ediv_editmenu_verb5:
+        case ediv_mrcalendar:
             /* Verb #5 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case ediv_editmenu_verb6:
+        case ediv_getaddressday:
             /* Verb #6 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case ediv_editmenu_verb7:
+        case ediv_getdayaddress:
             /* Verb #7 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case ediv_editmenu_verb8:
+        case ediv_getfirstaddress:
             /* Verb #8 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case ediv_editmenu_verb9:
+        case ediv_getfirstday:
             /* Verb #9 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case ediv_editmenu_verb10:
+        case ediv_getlastaddress:
             /* Verb #10 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case ediv_editmenu_verb11:
+        case ediv_getlastday:
             /* Verb #11 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case ediv_editmenu_verb12:
+        case ediv_getmostrecentaddress:
             /* Verb #12 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case ediv_editmenu_verb13:
+        case ediv_getmostrecentday:
             /* Verb #13 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case ediv_editmenu_verb14:
+        case ediv_getnextaddress:
             /* Verb #14 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case ediv_editmenu_verb15:
+        case ediv_getnextday:
             /* Verb #15 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
@@ -120,22 +120,22 @@ boolean editmenuinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\peditmenu_verb0"), ediv_editmenu_verb0);
-    ADD_VERB(BIGSTRING("\peditmenu_verb1"), ediv_editmenu_verb1);
-    ADD_VERB(BIGSTRING("\peditmenu_verb2"), ediv_editmenu_verb2);
-    ADD_VERB(BIGSTRING("\peditmenu_verb3"), ediv_editmenu_verb3);
-    ADD_VERB(BIGSTRING("\peditmenu_verb4"), ediv_editmenu_verb4);
-    ADD_VERB(BIGSTRING("\peditmenu_verb5"), ediv_editmenu_verb5);
-    ADD_VERB(BIGSTRING("\peditmenu_verb6"), ediv_editmenu_verb6);
-    ADD_VERB(BIGSTRING("\peditmenu_verb7"), ediv_editmenu_verb7);
-    ADD_VERB(BIGSTRING("\peditmenu_verb8"), ediv_editmenu_verb8);
-    ADD_VERB(BIGSTRING("\peditmenu_verb9"), ediv_editmenu_verb9);
-    ADD_VERB(BIGSTRING("\peditmenu_verb10"), ediv_editmenu_verb10);
-    ADD_VERB(BIGSTRING("\peditmenu_verb11"), ediv_editmenu_verb11);
-    ADD_VERB(BIGSTRING("\peditmenu_verb12"), ediv_editmenu_verb12);
-    ADD_VERB(BIGSTRING("\peditmenu_verb13"), ediv_editmenu_verb13);
-    ADD_VERB(BIGSTRING("\peditmenu_verb14"), ediv_editmenu_verb14);
-    ADD_VERB(BIGSTRING("\peditmenu_verb15"), ediv_editmenu_verb15);
+    ADD_VERB(BIGSTRING("\pstripmarkup"), ediv_stripmarkup);
+    ADD_VERB(BIGSTRING("\pdeindexpage"), ediv_deindexpage);
+    ADD_VERB(BIGSTRING("\pindexpage"), ediv_indexpage);
+    ADD_VERB(BIGSTRING("\pcleanindex"), ediv_cleanindex);
+    ADD_VERB(BIGSTRING("\pmergeresults"), ediv_mergeresults);
+    ADD_VERB(BIGSTRING("\pmrcalendar"), ediv_mrcalendar);
+    ADD_VERB(BIGSTRING("\pgetaddressday"), ediv_getaddressday);
+    ADD_VERB(BIGSTRING("\pgetdayaddress"), ediv_getdayaddress);
+    ADD_VERB(BIGSTRING("\pgetfirstaddress"), ediv_getfirstaddress);
+    ADD_VERB(BIGSTRING("\pgetfirstday"), ediv_getfirstday);
+    ADD_VERB(BIGSTRING("\pgetlastaddress"), ediv_getlastaddress);
+    ADD_VERB(BIGSTRING("\pgetlastday"), ediv_getlastday);
+    ADD_VERB(BIGSTRING("\pgetmostrecentaddress"), ediv_getmostrecentaddress);
+    ADD_VERB(BIGSTRING("\pgetmostrecentday"), ediv_getmostrecentday);
+    ADD_VERB(BIGSTRING("\pgetnextaddress"), ediv_getnextaddress);
+    ADD_VERB(BIGSTRING("\pgetnextday"), ediv_getnextday);
 
     #undef ADD_VERB
 

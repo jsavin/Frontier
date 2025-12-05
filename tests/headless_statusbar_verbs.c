@@ -9,34 +9,34 @@
 
 /* Token enum for all verbs in the statusbar processor */
 enum {
-    stav_statusbar_verb0 = 0,
-    stav_statusbar_verb1 = 1,
-    stav_statusbar_verb2 = 2,
-    stav_statusbar_verb3 = 3,
-    stav_statusbar_verb4 = 4
+    stav_msg = 0,
+    stav_setsections = 1,
+    stav_getsections = 2,
+    stav_getsectionone = 3,
+    stav_getmessage = 4
 };
 
 static boolean statusbar_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
     switch(token) {
-        case stav_statusbar_verb0:
+        case stav_msg:
             /* Verb #0 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case stav_statusbar_verb1:
+        case stav_setsections:
             /* Verb #1 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case stav_statusbar_verb2:
+        case stav_getsections:
             /* Verb #2 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case stav_statusbar_verb3:
+        case stav_getsectionone:
             /* Verb #3 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case stav_statusbar_verb4:
+        case stav_getmessage:
             /* Verb #4 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
@@ -65,11 +65,11 @@ boolean statusbarinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pstatusbar_verb0"), stav_statusbar_verb0);
-    ADD_VERB(BIGSTRING("\pstatusbar_verb1"), stav_statusbar_verb1);
-    ADD_VERB(BIGSTRING("\pstatusbar_verb2"), stav_statusbar_verb2);
-    ADD_VERB(BIGSTRING("\pstatusbar_verb3"), stav_statusbar_verb3);
-    ADD_VERB(BIGSTRING("\pstatusbar_verb4"), stav_statusbar_verb4);
+    ADD_VERB(BIGSTRING("\pmsg"), stav_msg);
+    ADD_VERB(BIGSTRING("\psetsections"), stav_setsections);
+    ADD_VERB(BIGSTRING("\pgetsections"), stav_getsections);
+    ADD_VERB(BIGSTRING("\pgetsectionone"), stav_getsectionone);
+    ADD_VERB(BIGSTRING("\pgetmessage"), stav_getmessage);
 
     #undef ADD_VERB
 

@@ -9,59 +9,59 @@
 
 /* Token enum for all verbs in the filemenu processor */
 enum {
-    filv_filemenu_verb0 = 0,
-    filv_filemenu_verb1 = 1,
-    filv_filemenu_verb2 = 2,
-    filv_filemenu_verb3 = 3,
-    filv_filemenu_verb4 = 4,
-    filv_filemenu_verb5 = 5,
-    filv_filemenu_verb6 = 6,
-    filv_filemenu_verb7 = 7,
-    filv_filemenu_verb8 = 8,
-    filv_filemenu_verb9 = 9
+    filv_stripmarkup = 0,
+    filv_deindexpage = 1,
+    filv_indexpage = 2,
+    filv_cleanindex = 3,
+    filv_mergeresults = 4,
+    filv_mrcalendar = 5,
+    filv_getaddressday = 6,
+    filv_getdayaddress = 7,
+    filv_getfirstaddress = 8,
+    filv_getfirstday = 9
 };
 
 static boolean filemenu_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
     switch(token) {
-        case filv_filemenu_verb0:
+        case filv_stripmarkup:
             /* Verb #0 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case filv_filemenu_verb1:
+        case filv_deindexpage:
             /* Verb #1 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case filv_filemenu_verb2:
+        case filv_indexpage:
             /* Verb #2 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case filv_filemenu_verb3:
+        case filv_cleanindex:
             /* Verb #3 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case filv_filemenu_verb4:
+        case filv_mergeresults:
             /* Verb #4 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case filv_filemenu_verb5:
+        case filv_mrcalendar:
             /* Verb #5 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case filv_filemenu_verb6:
+        case filv_getaddressday:
             /* Verb #6 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case filv_filemenu_verb7:
+        case filv_getdayaddress:
             /* Verb #7 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case filv_filemenu_verb8:
+        case filv_getfirstaddress:
             /* Verb #8 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case filv_filemenu_verb9:
+        case filv_getfirstday:
             /* Verb #9 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
@@ -90,16 +90,16 @@ boolean filemenuinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pfilemenu_verb0"), filv_filemenu_verb0);
-    ADD_VERB(BIGSTRING("\pfilemenu_verb1"), filv_filemenu_verb1);
-    ADD_VERB(BIGSTRING("\pfilemenu_verb2"), filv_filemenu_verb2);
-    ADD_VERB(BIGSTRING("\pfilemenu_verb3"), filv_filemenu_verb3);
-    ADD_VERB(BIGSTRING("\pfilemenu_verb4"), filv_filemenu_verb4);
-    ADD_VERB(BIGSTRING("\pfilemenu_verb5"), filv_filemenu_verb5);
-    ADD_VERB(BIGSTRING("\pfilemenu_verb6"), filv_filemenu_verb6);
-    ADD_VERB(BIGSTRING("\pfilemenu_verb7"), filv_filemenu_verb7);
-    ADD_VERB(BIGSTRING("\pfilemenu_verb8"), filv_filemenu_verb8);
-    ADD_VERB(BIGSTRING("\pfilemenu_verb9"), filv_filemenu_verb9);
+    ADD_VERB(BIGSTRING("\pstripmarkup"), filv_stripmarkup);
+    ADD_VERB(BIGSTRING("\pdeindexpage"), filv_deindexpage);
+    ADD_VERB(BIGSTRING("\pindexpage"), filv_indexpage);
+    ADD_VERB(BIGSTRING("\pcleanindex"), filv_cleanindex);
+    ADD_VERB(BIGSTRING("\pmergeresults"), filv_mergeresults);
+    ADD_VERB(BIGSTRING("\pmrcalendar"), filv_mrcalendar);
+    ADD_VERB(BIGSTRING("\pgetaddressday"), filv_getaddressday);
+    ADD_VERB(BIGSTRING("\pgetdayaddress"), filv_getdayaddress);
+    ADD_VERB(BIGSTRING("\pgetfirstaddress"), filv_getfirstaddress);
+    ADD_VERB(BIGSTRING("\pgetfirstday"), filv_getfirstday);
 
     #undef ADD_VERB
 

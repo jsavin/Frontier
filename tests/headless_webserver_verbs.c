@@ -9,44 +9,44 @@
 
 /* Token enum for all verbs in the webserver processor */
 enum {
-    webv_webserver_verb0 = 0,
-    webv_webserver_verb1 = 1,
-    webv_webserver_verb2 = 2,
-    webv_webserver_verb3 = 3,
-    webv_webserver_verb4 = 4,
-    webv_webserver_verb5 = 5,
-    webv_webserver_verb6 = 6
+    webv_supervisor = 0,
+    webv_re = 1,
+    webv_compile = 2,
+    webv_match = 3,
+    webv_replace = 4,
+    webv_extract = 5,
+    webv_split = 6
 };
 
 static boolean webserver_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
     switch(token) {
-        case webv_webserver_verb0:
+        case webv_supervisor:
             /* Verb #0 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case webv_webserver_verb1:
+        case webv_re:
             /* Verb #1 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case webv_webserver_verb2:
+        case webv_compile:
             /* Verb #2 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case webv_webserver_verb3:
+        case webv_match:
             /* Verb #3 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case webv_webserver_verb4:
+        case webv_replace:
             /* Verb #4 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case webv_webserver_verb5:
+        case webv_extract:
             /* Verb #5 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case webv_webserver_verb6:
+        case webv_split:
             /* Verb #6 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
@@ -75,13 +75,13 @@ boolean webserverinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pwebserver_verb0"), webv_webserver_verb0);
-    ADD_VERB(BIGSTRING("\pwebserver_verb1"), webv_webserver_verb1);
-    ADD_VERB(BIGSTRING("\pwebserver_verb2"), webv_webserver_verb2);
-    ADD_VERB(BIGSTRING("\pwebserver_verb3"), webv_webserver_verb3);
-    ADD_VERB(BIGSTRING("\pwebserver_verb4"), webv_webserver_verb4);
-    ADD_VERB(BIGSTRING("\pwebserver_verb5"), webv_webserver_verb5);
-    ADD_VERB(BIGSTRING("\pwebserver_verb6"), webv_webserver_verb6);
+    ADD_VERB(BIGSTRING("\psupervisor"), webv_supervisor);
+    ADD_VERB(BIGSTRING("\pre"), webv_re);
+    ADD_VERB(BIGSTRING("\pcompile"), webv_compile);
+    ADD_VERB(BIGSTRING("\pmatch"), webv_match);
+    ADD_VERB(BIGSTRING("\preplace"), webv_replace);
+    ADD_VERB(BIGSTRING("\pextract"), webv_extract);
+    ADD_VERB(BIGSTRING("\psplit"), webv_split);
 
     #undef ADD_VERB
 

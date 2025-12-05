@@ -9,34 +9,34 @@
 
 /* Token enum for all verbs in the searchengine processor */
 enum {
-    seav_searchengine_verb0 = 0,
-    seav_searchengine_verb1 = 1,
-    seav_searchengine_verb2 = 2,
-    seav_searchengine_verb3 = 3,
-    seav_searchengine_verb4 = 4
+    seav_stripmarkup = 0,
+    seav_deindexpage = 1,
+    seav_indexpage = 2,
+    seav_cleanindex = 3,
+    seav_mergeresults = 4
 };
 
 static boolean searchengine_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
     switch(token) {
-        case seav_searchengine_verb0:
+        case seav_stripmarkup:
             /* Verb #0 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case seav_searchengine_verb1:
+        case seav_deindexpage:
             /* Verb #1 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case seav_searchengine_verb2:
+        case seav_indexpage:
             /* Verb #2 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case seav_searchengine_verb3:
+        case seav_cleanindex:
             /* Verb #3 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case seav_searchengine_verb4:
+        case seav_mergeresults:
             /* Verb #4 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
@@ -65,11 +65,11 @@ boolean searchengineinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\psearchengine_verb0"), seav_searchengine_verb0);
-    ADD_VERB(BIGSTRING("\psearchengine_verb1"), seav_searchengine_verb1);
-    ADD_VERB(BIGSTRING("\psearchengine_verb2"), seav_searchengine_verb2);
-    ADD_VERB(BIGSTRING("\psearchengine_verb3"), seav_searchengine_verb3);
-    ADD_VERB(BIGSTRING("\psearchengine_verb4"), seav_searchengine_verb4);
+    ADD_VERB(BIGSTRING("\pstripmarkup"), seav_stripmarkup);
+    ADD_VERB(BIGSTRING("\pdeindexpage"), seav_deindexpage);
+    ADD_VERB(BIGSTRING("\pindexpage"), seav_indexpage);
+    ADD_VERB(BIGSTRING("\pcleanindex"), seav_cleanindex);
+    ADD_VERB(BIGSTRING("\pmergeresults"), seav_mergeresults);
 
     #undef ADD_VERB
 

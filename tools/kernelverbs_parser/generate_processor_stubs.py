@@ -138,9 +138,16 @@ def generate_processor_stub(processor: EFPProcessor, verb_names: List[str]) -> s
 
 def extract_verb_names(rc_content: str, processor_name: str, verb_count: int) -> List[str]:
     """
-    Try to extract actual verb names from RC file for a processor.
+    Extract actual verb names from RC file for a processor.
 
-    Falls back to generic names if not found.
+    Searches for the processor block in the RC file and extracts verb names
+    from the string list following the processor definition. The RC file format is:
+      "processor_name\0",
+      true/false,                    // window required
+      number,                        // verb count
+      "verb1\0", "verb2\0", ...     // verb names
+
+    Falls back to generic names if extraction fails.
 
     Args:
         rc_content: Raw RC file content
@@ -148,12 +155,70 @@ def extract_verb_names(rc_content: str, processor_name: str, verb_count: int) ->
         verb_count: Expected number of verbs
 
     Returns:
-        List of verb names
+        List of verb names (actual or generic fallback)
     """
-    # This is a simplified extraction - in reality verb names are scattered
-    # throughout the RC file in various formats. For now, return generic names.
-    # TODO: Parse RC file more carefully to extract actual verb names
-    return [f"{processor_name}_verb{i}" for i in range(verb_count)]
+    try:
+        # Find the processor block: look for "processor_name\0", optionally with trailing comma
+        processor_pattern = rf'"{processor_name}\\0"\s*,'
+        processor_match = re.search(processor_pattern, rc_content)
+
+        if not processor_match:
+            return [f"verb{i}" for i in range(verb_count)]
+
+        # Start after the processor name
+        start_pos = processor_match.end()
+        remaining_content = rc_content[start_pos:]
+
+        # The next content should be: true/false, then the verb count
+        # We need to skip to the verb list. Look for pattern of:
+        # - optional whitespace/comments
+        # - true or false or a number
+        # - the verb count number
+        # Then collect the quoted strings after that
+
+        # Skip ahead to find the verb count (should be a number like "30,")
+        # Pattern: whitespace, true/false, whitespace, digit(s), whitespace
+        skip_pattern = r'(true|false)\s*,\s*(\d+)\s*,'
+
+        skip_match = re.search(skip_pattern, remaining_content)
+        if not skip_match:
+            return [f"verb{i}" for i in range(verb_count)]
+
+        # Start collecting verbs from after the verb count
+        verb_start_pos = skip_match.end()
+        verb_content = remaining_content[verb_start_pos:]
+
+        # Extract all quoted strings (verb names) until we hit:
+        # - An unquoted processor name (like "dialog\0" or "clock\0" without being a verb)
+        # - End of expected verb count
+        verb_pattern = r'"([^"\\]+)\\0"'
+
+        verbs = []
+        for match in re.finditer(verb_pattern, verb_content):
+            verb_name = match.group(1)
+
+            # Stop if we've collected enough verbs
+            if len(verbs) >= verb_count:
+                break
+
+            # Add the verb name
+            verbs.append(verb_name)
+
+        # If we got the expected number of verbs, return them
+        if len(verbs) == verb_count:
+            return verbs
+
+        # If we got some but not all, pad with generic names
+        if len(verbs) > 0:
+            remaining = verb_count - len(verbs)
+            verbs.extend([f"verb{len(verbs) + i}" for i in range(remaining)])
+            return verbs
+
+    except Exception:
+        pass
+
+    # Fallback: return generic names
+    return [f"verb{i}" for i in range(verb_count)]
 
 
 def main() -> None:

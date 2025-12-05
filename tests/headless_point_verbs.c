@@ -9,19 +9,19 @@
 
 /* Token enum for all verbs in the point processor */
 enum {
-    poiv_point_verb0 = 0,
-    poiv_point_verb1 = 1
+    poiv_now = 0,
+    poiv_set = 1
 };
 
 static boolean point_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
     switch(token) {
-        case poiv_point_verb0:
+        case poiv_now:
             /* Verb #0 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case poiv_point_verb1:
+        case poiv_set:
             /* Verb #1 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
@@ -50,8 +50,8 @@ boolean pointinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\ppoint_verb0"), poiv_point_verb0);
-    ADD_VERB(BIGSTRING("\ppoint_verb1"), poiv_point_verb1);
+    ADD_VERB(BIGSTRING("\pnow"), poiv_now);
+    ADD_VERB(BIGSTRING("\pset"), poiv_set);
 
     #undef ADD_VERB
 

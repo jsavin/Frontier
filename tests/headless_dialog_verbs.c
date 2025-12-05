@@ -9,104 +9,104 @@
 
 /* Token enum for all verbs in the dialog processor */
 enum {
-    diav_dialog_verb0 = 0,
-    diav_dialog_verb1 = 1,
-    diav_dialog_verb2 = 2,
-    diav_dialog_verb3 = 3,
-    diav_dialog_verb4 = 4,
-    diav_dialog_verb5 = 5,
-    diav_dialog_verb6 = 6,
-    diav_dialog_verb7 = 7,
-    diav_dialog_verb8 = 8,
-    diav_dialog_verb9 = 9,
-    diav_dialog_verb10 = 10,
-    diav_dialog_verb11 = 11,
-    diav_dialog_verb12 = 12,
-    diav_dialog_verb13 = 13,
-    diav_dialog_verb14 = 14,
-    diav_dialog_verb15 = 15,
-    diav_dialog_verb16 = 16,
-    diav_dialog_verb17 = 17,
-    diav_dialog_verb18 = 18
+    diav_alert = 0,
+    diav_run = 1,
+    diav_runmodeless = 2,
+    diav_runcard = 3,
+    diav_runmodalcard = 4,
+    diav_ismodalcard = 5,
+    diav_setmodalcardtimeout = 6,
+    diav_getvalue = 7,
+    diav_setvalue = 8,
+    diav_setitemenable = 9,
+    diav_showitem = 10,
+    diav_hideitem = 11,
+    diav_twoway = 12,
+    diav_threeway = 13,
+    diav_ask = 14,
+    diav_getint = 15,
+    diav_notify = 16,
+    diav_getuserinfo = 17,
+    diav_getpassword = 18
 };
 
 static boolean dialog_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
     switch(token) {
-        case diav_dialog_verb0:
+        case diav_alert:
             /* Verb #0 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case diav_dialog_verb1:
+        case diav_run:
             /* Verb #1 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case diav_dialog_verb2:
+        case diav_runmodeless:
             /* Verb #2 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case diav_dialog_verb3:
+        case diav_runcard:
             /* Verb #3 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case diav_dialog_verb4:
+        case diav_runmodalcard:
             /* Verb #4 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case diav_dialog_verb5:
+        case diav_ismodalcard:
             /* Verb #5 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case diav_dialog_verb6:
+        case diav_setmodalcardtimeout:
             /* Verb #6 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case diav_dialog_verb7:
+        case diav_getvalue:
             /* Verb #7 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case diav_dialog_verb8:
+        case diav_setvalue:
             /* Verb #8 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case diav_dialog_verb9:
+        case diav_setitemenable:
             /* Verb #9 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case diav_dialog_verb10:
+        case diav_showitem:
             /* Verb #10 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case diav_dialog_verb11:
+        case diav_hideitem:
             /* Verb #11 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case diav_dialog_verb12:
+        case diav_twoway:
             /* Verb #12 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case diav_dialog_verb13:
+        case diav_threeway:
             /* Verb #13 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case diav_dialog_verb14:
+        case diav_ask:
             /* Verb #14 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case diav_dialog_verb15:
+        case diav_getint:
             /* Verb #15 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case diav_dialog_verb16:
+        case diav_notify:
             /* Verb #16 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case diav_dialog_verb17:
+        case diav_getuserinfo:
             /* Verb #17 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case diav_dialog_verb18:
+        case diav_getpassword:
             /* Verb #18 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
@@ -135,25 +135,25 @@ boolean dialoginitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pdialog_verb0"), diav_dialog_verb0);
-    ADD_VERB(BIGSTRING("\pdialog_verb1"), diav_dialog_verb1);
-    ADD_VERB(BIGSTRING("\pdialog_verb2"), diav_dialog_verb2);
-    ADD_VERB(BIGSTRING("\pdialog_verb3"), diav_dialog_verb3);
-    ADD_VERB(BIGSTRING("\pdialog_verb4"), diav_dialog_verb4);
-    ADD_VERB(BIGSTRING("\pdialog_verb5"), diav_dialog_verb5);
-    ADD_VERB(BIGSTRING("\pdialog_verb6"), diav_dialog_verb6);
-    ADD_VERB(BIGSTRING("\pdialog_verb7"), diav_dialog_verb7);
-    ADD_VERB(BIGSTRING("\pdialog_verb8"), diav_dialog_verb8);
-    ADD_VERB(BIGSTRING("\pdialog_verb9"), diav_dialog_verb9);
-    ADD_VERB(BIGSTRING("\pdialog_verb10"), diav_dialog_verb10);
-    ADD_VERB(BIGSTRING("\pdialog_verb11"), diav_dialog_verb11);
-    ADD_VERB(BIGSTRING("\pdialog_verb12"), diav_dialog_verb12);
-    ADD_VERB(BIGSTRING("\pdialog_verb13"), diav_dialog_verb13);
-    ADD_VERB(BIGSTRING("\pdialog_verb14"), diav_dialog_verb14);
-    ADD_VERB(BIGSTRING("\pdialog_verb15"), diav_dialog_verb15);
-    ADD_VERB(BIGSTRING("\pdialog_verb16"), diav_dialog_verb16);
-    ADD_VERB(BIGSTRING("\pdialog_verb17"), diav_dialog_verb17);
-    ADD_VERB(BIGSTRING("\pdialog_verb18"), diav_dialog_verb18);
+    ADD_VERB(BIGSTRING("\palert"), diav_alert);
+    ADD_VERB(BIGSTRING("\prun"), diav_run);
+    ADD_VERB(BIGSTRING("\prunmodeless"), diav_runmodeless);
+    ADD_VERB(BIGSTRING("\pruncard"), diav_runcard);
+    ADD_VERB(BIGSTRING("\prunmodalcard"), diav_runmodalcard);
+    ADD_VERB(BIGSTRING("\pismodalcard"), diav_ismodalcard);
+    ADD_VERB(BIGSTRING("\psetmodalcardtimeout"), diav_setmodalcardtimeout);
+    ADD_VERB(BIGSTRING("\pgetvalue"), diav_getvalue);
+    ADD_VERB(BIGSTRING("\psetvalue"), diav_setvalue);
+    ADD_VERB(BIGSTRING("\psetitemenable"), diav_setitemenable);
+    ADD_VERB(BIGSTRING("\pshowitem"), diav_showitem);
+    ADD_VERB(BIGSTRING("\phideitem"), diav_hideitem);
+    ADD_VERB(BIGSTRING("\ptwoway"), diav_twoway);
+    ADD_VERB(BIGSTRING("\pthreeway"), diav_threeway);
+    ADD_VERB(BIGSTRING("\pask"), diav_ask);
+    ADD_VERB(BIGSTRING("\pgetint"), diav_getint);
+    ADD_VERB(BIGSTRING("\pnotify"), diav_notify);
+    ADD_VERB(BIGSTRING("\pgetuserinfo"), diav_getuserinfo);
+    ADD_VERB(BIGSTRING("\pgetpassword"), diav_getpassword);
 
     #undef ADD_VERB
 

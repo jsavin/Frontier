@@ -9,44 +9,44 @@
 
 /* Token enum for all verbs in the mainwindow processor */
 enum {
-    maiv_mainwindow_verb0 = 0,
-    maiv_mainwindow_verb1 = 1,
-    maiv_mainwindow_verb2 = 2,
-    maiv_mainwindow_verb3 = 3,
-    maiv_mainwindow_verb4 = 4,
-    maiv_mainwindow_verb5 = 5,
-    maiv_mainwindow_verb6 = 6
+    maiv_stripmarkup = 0,
+    maiv_deindexpage = 1,
+    maiv_indexpage = 2,
+    maiv_cleanindex = 3,
+    maiv_mergeresults = 4,
+    maiv_mrcalendar = 5,
+    maiv_getaddressday = 6
 };
 
 static boolean mainwindow_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
     switch(token) {
-        case maiv_mainwindow_verb0:
+        case maiv_stripmarkup:
             /* Verb #0 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case maiv_mainwindow_verb1:
+        case maiv_deindexpage:
             /* Verb #1 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case maiv_mainwindow_verb2:
+        case maiv_indexpage:
             /* Verb #2 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case maiv_mainwindow_verb3:
+        case maiv_cleanindex:
             /* Verb #3 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case maiv_mainwindow_verb4:
+        case maiv_mergeresults:
             /* Verb #4 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case maiv_mainwindow_verb5:
+        case maiv_mrcalendar:
             /* Verb #5 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case maiv_mainwindow_verb6:
+        case maiv_getaddressday:
             /* Verb #6 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
@@ -75,13 +75,13 @@ boolean mainwindowinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pmainwindow_verb0"), maiv_mainwindow_verb0);
-    ADD_VERB(BIGSTRING("\pmainwindow_verb1"), maiv_mainwindow_verb1);
-    ADD_VERB(BIGSTRING("\pmainwindow_verb2"), maiv_mainwindow_verb2);
-    ADD_VERB(BIGSTRING("\pmainwindow_verb3"), maiv_mainwindow_verb3);
-    ADD_VERB(BIGSTRING("\pmainwindow_verb4"), maiv_mainwindow_verb4);
-    ADD_VERB(BIGSTRING("\pmainwindow_verb5"), maiv_mainwindow_verb5);
-    ADD_VERB(BIGSTRING("\pmainwindow_verb6"), maiv_mainwindow_verb6);
+    ADD_VERB(BIGSTRING("\pstripmarkup"), maiv_stripmarkup);
+    ADD_VERB(BIGSTRING("\pdeindexpage"), maiv_deindexpage);
+    ADD_VERB(BIGSTRING("\pindexpage"), maiv_indexpage);
+    ADD_VERB(BIGSTRING("\pcleanindex"), maiv_cleanindex);
+    ADD_VERB(BIGSTRING("\pmergeresults"), maiv_mergeresults);
+    ADD_VERB(BIGSTRING("\pmrcalendar"), maiv_mrcalendar);
+    ADD_VERB(BIGSTRING("\pgetaddressday"), maiv_getaddressday);
 
     #undef ADD_VERB
 

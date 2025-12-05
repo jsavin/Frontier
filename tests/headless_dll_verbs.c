@@ -9,29 +9,29 @@
 
 /* Token enum for all verbs in the dll processor */
 enum {
-    dllv_dll_verb0 = 0,
-    dllv_dll_verb1 = 1,
-    dllv_dll_verb2 = 2,
-    dllv_dll_verb3 = 3
+    dllv_call = 0,
+    dllv_load = 1,
+    dllv_unload = 2,
+    dllv_isloaded = 3
 };
 
 static boolean dll_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
     switch(token) {
-        case dllv_dll_verb0:
+        case dllv_call:
             /* Verb #0 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case dllv_dll_verb1:
+        case dllv_load:
             /* Verb #1 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case dllv_dll_verb2:
+        case dllv_unload:
             /* Verb #2 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case dllv_dll_verb3:
+        case dllv_isloaded:
             /* Verb #3 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
@@ -60,10 +60,10 @@ boolean dllinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pdll_verb0"), dllv_dll_verb0);
-    ADD_VERB(BIGSTRING("\pdll_verb1"), dllv_dll_verb1);
-    ADD_VERB(BIGSTRING("\pdll_verb2"), dllv_dll_verb2);
-    ADD_VERB(BIGSTRING("\pdll_verb3"), dllv_dll_verb3);
+    ADD_VERB(BIGSTRING("\pcall"), dllv_call);
+    ADD_VERB(BIGSTRING("\pload"), dllv_load);
+    ADD_VERB(BIGSTRING("\punload"), dllv_unload);
+    ADD_VERB(BIGSTRING("\pisloaded"), dllv_isloaded);
 
     #undef ADD_VERB
 

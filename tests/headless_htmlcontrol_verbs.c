@@ -9,49 +9,49 @@
 
 /* Token enum for all verbs in the htmlcontrol processor */
 enum {
-    htmv_htmlcontrol_verb0 = 0,
-    htmv_htmlcontrol_verb1 = 1,
-    htmv_htmlcontrol_verb2 = 2,
-    htmv_htmlcontrol_verb3 = 3,
-    htmv_htmlcontrol_verb4 = 4,
-    htmv_htmlcontrol_verb5 = 5,
-    htmv_htmlcontrol_verb6 = 6,
-    htmv_htmlcontrol_verb7 = 7
+    htmv_back = 0,
+    htmv_forward = 1,
+    htmv_refresh = 2,
+    htmv_home = 3,
+    htmv_stop = 4,
+    htmv_navigate = 5,
+    htmv_isoffline = 6,
+    htmv_setoffline = 7
 };
 
 static boolean htmlcontrol_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
     switch(token) {
-        case htmv_htmlcontrol_verb0:
+        case htmv_back:
             /* Verb #0 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case htmv_htmlcontrol_verb1:
+        case htmv_forward:
             /* Verb #1 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case htmv_htmlcontrol_verb2:
+        case htmv_refresh:
             /* Verb #2 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case htmv_htmlcontrol_verb3:
+        case htmv_home:
             /* Verb #3 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case htmv_htmlcontrol_verb4:
+        case htmv_stop:
             /* Verb #4 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case htmv_htmlcontrol_verb5:
+        case htmv_navigate:
             /* Verb #5 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case htmv_htmlcontrol_verb6:
+        case htmv_isoffline:
             /* Verb #6 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case htmv_htmlcontrol_verb7:
+        case htmv_setoffline:
             /* Verb #7 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
@@ -80,14 +80,14 @@ boolean htmlcontrolinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\phtmlcontrol_verb0"), htmv_htmlcontrol_verb0);
-    ADD_VERB(BIGSTRING("\phtmlcontrol_verb1"), htmv_htmlcontrol_verb1);
-    ADD_VERB(BIGSTRING("\phtmlcontrol_verb2"), htmv_htmlcontrol_verb2);
-    ADD_VERB(BIGSTRING("\phtmlcontrol_verb3"), htmv_htmlcontrol_verb3);
-    ADD_VERB(BIGSTRING("\phtmlcontrol_verb4"), htmv_htmlcontrol_verb4);
-    ADD_VERB(BIGSTRING("\phtmlcontrol_verb5"), htmv_htmlcontrol_verb5);
-    ADD_VERB(BIGSTRING("\phtmlcontrol_verb6"), htmv_htmlcontrol_verb6);
-    ADD_VERB(BIGSTRING("\phtmlcontrol_verb7"), htmv_htmlcontrol_verb7);
+    ADD_VERB(BIGSTRING("\pback"), htmv_back);
+    ADD_VERB(BIGSTRING("\pforward"), htmv_forward);
+    ADD_VERB(BIGSTRING("\prefresh"), htmv_refresh);
+    ADD_VERB(BIGSTRING("\phome"), htmv_home);
+    ADD_VERB(BIGSTRING("\pstop"), htmv_stop);
+    ADD_VERB(BIGSTRING("\pnavigate"), htmv_navigate);
+    ADD_VERB(BIGSTRING("\pisoffline"), htmv_isoffline);
+    ADD_VERB(BIGSTRING("\psetoffline"), htmv_setoffline);
 
     #undef ADD_VERB
 

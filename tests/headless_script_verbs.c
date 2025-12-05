@@ -9,74 +9,74 @@
 
 /* Token enum for all verbs in the script processor */
 enum {
-    scrv_script_verb0 = 0,
-    scrv_script_verb1 = 1,
-    scrv_script_verb2 = 2,
-    scrv_script_verb3 = 3,
-    scrv_script_verb4 = 4,
-    scrv_script_verb5 = 5,
-    scrv_script_verb6 = 6,
-    scrv_script_verb7 = 7,
-    scrv_script_verb8 = 8,
-    scrv_script_verb9 = 9,
-    scrv_script_verb10 = 10,
-    scrv_script_verb11 = 11,
-    scrv_script_verb12 = 12
+    scrv_compile = 0,
+    scrv_uncompile = 1,
+    scrv_getcode = 2,
+    scrv_getlanguage = 3,
+    scrv_setlanguage = 4,
+    scrv_makecomment = 5,
+    scrv_uncomment = 6,
+    scrv_iscomment = 7,
+    scrv_getbreakpoint = 8,
+    scrv_setbreakpoint = 9,
+    scrv_clearbreakpoint = 10,
+    scrv_startprofile = 11,
+    scrv_stopprofile = 12
 };
 
 static boolean script_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
     switch(token) {
-        case scrv_script_verb0:
+        case scrv_compile:
             /* Verb #0 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case scrv_script_verb1:
+        case scrv_uncompile:
             /* Verb #1 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case scrv_script_verb2:
+        case scrv_getcode:
             /* Verb #2 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case scrv_script_verb3:
+        case scrv_getlanguage:
             /* Verb #3 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case scrv_script_verb4:
+        case scrv_setlanguage:
             /* Verb #4 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case scrv_script_verb5:
+        case scrv_makecomment:
             /* Verb #5 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case scrv_script_verb6:
+        case scrv_uncomment:
             /* Verb #6 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case scrv_script_verb7:
+        case scrv_iscomment:
             /* Verb #7 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case scrv_script_verb8:
+        case scrv_getbreakpoint:
             /* Verb #8 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case scrv_script_verb9:
+        case scrv_setbreakpoint:
             /* Verb #9 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case scrv_script_verb10:
+        case scrv_clearbreakpoint:
             /* Verb #10 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case scrv_script_verb11:
+        case scrv_startprofile:
             /* Verb #11 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case scrv_script_verb12:
+        case scrv_stopprofile:
             /* Verb #12 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
@@ -105,19 +105,19 @@ boolean scriptinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pscript_verb0"), scrv_script_verb0);
-    ADD_VERB(BIGSTRING("\pscript_verb1"), scrv_script_verb1);
-    ADD_VERB(BIGSTRING("\pscript_verb2"), scrv_script_verb2);
-    ADD_VERB(BIGSTRING("\pscript_verb3"), scrv_script_verb3);
-    ADD_VERB(BIGSTRING("\pscript_verb4"), scrv_script_verb4);
-    ADD_VERB(BIGSTRING("\pscript_verb5"), scrv_script_verb5);
-    ADD_VERB(BIGSTRING("\pscript_verb6"), scrv_script_verb6);
-    ADD_VERB(BIGSTRING("\pscript_verb7"), scrv_script_verb7);
-    ADD_VERB(BIGSTRING("\pscript_verb8"), scrv_script_verb8);
-    ADD_VERB(BIGSTRING("\pscript_verb9"), scrv_script_verb9);
-    ADD_VERB(BIGSTRING("\pscript_verb10"), scrv_script_verb10);
-    ADD_VERB(BIGSTRING("\pscript_verb11"), scrv_script_verb11);
-    ADD_VERB(BIGSTRING("\pscript_verb12"), scrv_script_verb12);
+    ADD_VERB(BIGSTRING("\pcompile"), scrv_compile);
+    ADD_VERB(BIGSTRING("\puncompile"), scrv_uncompile);
+    ADD_VERB(BIGSTRING("\pgetcode"), scrv_getcode);
+    ADD_VERB(BIGSTRING("\pgetlanguage"), scrv_getlanguage);
+    ADD_VERB(BIGSTRING("\psetlanguage"), scrv_setlanguage);
+    ADD_VERB(BIGSTRING("\pmakecomment"), scrv_makecomment);
+    ADD_VERB(BIGSTRING("\puncomment"), scrv_uncomment);
+    ADD_VERB(BIGSTRING("\piscomment"), scrv_iscomment);
+    ADD_VERB(BIGSTRING("\pgetbreakpoint"), scrv_getbreakpoint);
+    ADD_VERB(BIGSTRING("\psetbreakpoint"), scrv_setbreakpoint);
+    ADD_VERB(BIGSTRING("\pclearbreakpoint"), scrv_clearbreakpoint);
+    ADD_VERB(BIGSTRING("\pstartprofile"), scrv_startprofile);
+    ADD_VERB(BIGSTRING("\pstopprofile"), scrv_stopprofile);
 
     #undef ADD_VERB
 

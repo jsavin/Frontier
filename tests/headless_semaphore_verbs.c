@@ -9,19 +9,19 @@
 
 /* Token enum for all verbs in the semaphore processor */
 enum {
-    semv_semaphore_verb0 = 0,
-    semv_semaphore_verb1 = 1
+    semv_lock = 0,
+    semv_unlock = 1
 };
 
 static boolean semaphore_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
     switch(token) {
-        case semv_semaphore_verb0:
+        case semv_lock:
             /* Verb #0 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case semv_semaphore_verb1:
+        case semv_unlock:
             /* Verb #1 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
@@ -50,8 +50,8 @@ boolean semaphoreinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\psemaphore_verb0"), semv_semaphore_verb0);
-    ADD_VERB(BIGSTRING("\psemaphore_verb1"), semv_semaphore_verb1);
+    ADD_VERB(BIGSTRING("\plock"), semv_lock);
+    ADD_VERB(BIGSTRING("\punlock"), semv_unlock);
 
     #undef ADD_VERB
 

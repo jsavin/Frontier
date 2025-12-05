@@ -9,49 +9,49 @@
 
 /* Token enum for all verbs in the bit processor */
 enum {
-    bitv_bit_verb0 = 0,
-    bitv_bit_verb1 = 1,
-    bitv_bit_verb2 = 2,
-    bitv_bit_verb3 = 3,
-    bitv_bit_verb4 = 4,
-    bitv_bit_verb5 = 5,
-    bitv_bit_verb6 = 6,
-    bitv_bit_verb7 = 7
+    bitv_get = 0,
+    bitv_set = 1,
+    bitv_clear = 2,
+    bitv_logicaland = 3,
+    bitv_logicalor = 4,
+    bitv_logicalxor = 5,
+    bitv_shiftleft = 6,
+    bitv_shiftright = 7
 };
 
 static boolean bit_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
     switch(token) {
-        case bitv_bit_verb0:
+        case bitv_get:
             /* Verb #0 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case bitv_bit_verb1:
+        case bitv_set:
             /* Verb #1 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case bitv_bit_verb2:
+        case bitv_clear:
             /* Verb #2 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case bitv_bit_verb3:
+        case bitv_logicaland:
             /* Verb #3 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case bitv_bit_verb4:
+        case bitv_logicalor:
             /* Verb #4 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case bitv_bit_verb5:
+        case bitv_logicalxor:
             /* Verb #5 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case bitv_bit_verb6:
+        case bitv_shiftleft:
             /* Verb #6 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case bitv_bit_verb7:
+        case bitv_shiftright:
             /* Verb #7 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
@@ -80,14 +80,14 @@ boolean bitinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pbit_verb0"), bitv_bit_verb0);
-    ADD_VERB(BIGSTRING("\pbit_verb1"), bitv_bit_verb1);
-    ADD_VERB(BIGSTRING("\pbit_verb2"), bitv_bit_verb2);
-    ADD_VERB(BIGSTRING("\pbit_verb3"), bitv_bit_verb3);
-    ADD_VERB(BIGSTRING("\pbit_verb4"), bitv_bit_verb4);
-    ADD_VERB(BIGSTRING("\pbit_verb5"), bitv_bit_verb5);
-    ADD_VERB(BIGSTRING("\pbit_verb6"), bitv_bit_verb6);
-    ADD_VERB(BIGSTRING("\pbit_verb7"), bitv_bit_verb7);
+    ADD_VERB(BIGSTRING("\pget"), bitv_get);
+    ADD_VERB(BIGSTRING("\pset"), bitv_set);
+    ADD_VERB(BIGSTRING("\pclear"), bitv_clear);
+    ADD_VERB(BIGSTRING("\plogicaland"), bitv_logicaland);
+    ADD_VERB(BIGSTRING("\plogicalor"), bitv_logicalor);
+    ADD_VERB(BIGSTRING("\plogicalxor"), bitv_logicalxor);
+    ADD_VERB(BIGSTRING("\pshiftleft"), bitv_shiftleft);
+    ADD_VERB(BIGSTRING("\pshiftright"), bitv_shiftright);
 
     #undef ADD_VERB
 

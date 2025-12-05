@@ -9,79 +9,79 @@
 
 /* Token enum for all verbs in the frontier processor */
 enum {
-    frov_frontier_verb0 = 0,
-    frov_frontier_verb1 = 1,
-    frov_frontier_verb2 = 2,
-    frov_frontier_verb3 = 3,
-    frov_frontier_verb4 = 4,
-    frov_frontier_verb5 = 5,
-    frov_frontier_verb6 = 6,
-    frov_frontier_verb7 = 7,
-    frov_frontier_verb8 = 8,
-    frov_frontier_verb9 = 9,
-    frov_frontier_verb10 = 10,
-    frov_frontier_verb11 = 11,
-    frov_frontier_verb12 = 12,
-    frov_frontier_verb13 = 13
+    frov_stripmarkup = 0,
+    frov_deindexpage = 1,
+    frov_indexpage = 2,
+    frov_cleanindex = 3,
+    frov_mergeresults = 4,
+    frov_mrcalendar = 5,
+    frov_getaddressday = 6,
+    frov_getdayaddress = 7,
+    frov_getfirstaddress = 8,
+    frov_getfirstday = 9,
+    frov_getlastaddress = 10,
+    frov_getlastday = 11,
+    frov_getmostrecentaddress = 12,
+    frov_getmostrecentday = 13
 };
 
 static boolean frontier_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
     switch(token) {
-        case frov_frontier_verb0:
+        case frov_stripmarkup:
             /* Verb #0 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case frov_frontier_verb1:
+        case frov_deindexpage:
             /* Verb #1 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case frov_frontier_verb2:
+        case frov_indexpage:
             /* Verb #2 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case frov_frontier_verb3:
+        case frov_cleanindex:
             /* Verb #3 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case frov_frontier_verb4:
+        case frov_mergeresults:
             /* Verb #4 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case frov_frontier_verb5:
+        case frov_mrcalendar:
             /* Verb #5 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case frov_frontier_verb6:
+        case frov_getaddressday:
             /* Verb #6 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case frov_frontier_verb7:
+        case frov_getdayaddress:
             /* Verb #7 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case frov_frontier_verb8:
+        case frov_getfirstaddress:
             /* Verb #8 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case frov_frontier_verb9:
+        case frov_getfirstday:
             /* Verb #9 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case frov_frontier_verb10:
+        case frov_getlastaddress:
             /* Verb #10 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case frov_frontier_verb11:
+        case frov_getlastday:
             /* Verb #11 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case frov_frontier_verb12:
+        case frov_getmostrecentaddress:
             /* Verb #12 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case frov_frontier_verb13:
+        case frov_getmostrecentday:
             /* Verb #13 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
@@ -110,20 +110,20 @@ boolean frontierinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pfrontier_verb0"), frov_frontier_verb0);
-    ADD_VERB(BIGSTRING("\pfrontier_verb1"), frov_frontier_verb1);
-    ADD_VERB(BIGSTRING("\pfrontier_verb2"), frov_frontier_verb2);
-    ADD_VERB(BIGSTRING("\pfrontier_verb3"), frov_frontier_verb3);
-    ADD_VERB(BIGSTRING("\pfrontier_verb4"), frov_frontier_verb4);
-    ADD_VERB(BIGSTRING("\pfrontier_verb5"), frov_frontier_verb5);
-    ADD_VERB(BIGSTRING("\pfrontier_verb6"), frov_frontier_verb6);
-    ADD_VERB(BIGSTRING("\pfrontier_verb7"), frov_frontier_verb7);
-    ADD_VERB(BIGSTRING("\pfrontier_verb8"), frov_frontier_verb8);
-    ADD_VERB(BIGSTRING("\pfrontier_verb9"), frov_frontier_verb9);
-    ADD_VERB(BIGSTRING("\pfrontier_verb10"), frov_frontier_verb10);
-    ADD_VERB(BIGSTRING("\pfrontier_verb11"), frov_frontier_verb11);
-    ADD_VERB(BIGSTRING("\pfrontier_verb12"), frov_frontier_verb12);
-    ADD_VERB(BIGSTRING("\pfrontier_verb13"), frov_frontier_verb13);
+    ADD_VERB(BIGSTRING("\pstripmarkup"), frov_stripmarkup);
+    ADD_VERB(BIGSTRING("\pdeindexpage"), frov_deindexpage);
+    ADD_VERB(BIGSTRING("\pindexpage"), frov_indexpage);
+    ADD_VERB(BIGSTRING("\pcleanindex"), frov_cleanindex);
+    ADD_VERB(BIGSTRING("\pmergeresults"), frov_mergeresults);
+    ADD_VERB(BIGSTRING("\pmrcalendar"), frov_mrcalendar);
+    ADD_VERB(BIGSTRING("\pgetaddressday"), frov_getaddressday);
+    ADD_VERB(BIGSTRING("\pgetdayaddress"), frov_getdayaddress);
+    ADD_VERB(BIGSTRING("\pgetfirstaddress"), frov_getfirstaddress);
+    ADD_VERB(BIGSTRING("\pgetfirstday"), frov_getfirstday);
+    ADD_VERB(BIGSTRING("\pgetlastaddress"), frov_getlastaddress);
+    ADD_VERB(BIGSTRING("\pgetlastday"), frov_getlastday);
+    ADD_VERB(BIGSTRING("\pgetmostrecentaddress"), frov_getmostrecentaddress);
+    ADD_VERB(BIGSTRING("\pgetmostrecentday"), frov_getmostrecentday);
 
     #undef ADD_VERB
 

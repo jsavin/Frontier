@@ -9,24 +9,24 @@
 
 /* Token enum for all verbs in the speaker processor */
 enum {
-    spev_speaker_verb0 = 0,
-    spev_speaker_verb1 = 1,
-    spev_speaker_verb2 = 2
+    spev_beep = 0,
+    spev_sound = 1,
+    spev_playnamedsound = 2
 };
 
 static boolean speaker_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
     switch(token) {
-        case spev_speaker_verb0:
+        case spev_beep:
             /* Verb #0 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case spev_speaker_verb1:
+        case spev_sound:
             /* Verb #1 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case spev_speaker_verb2:
+        case spev_playnamedsound:
             /* Verb #2 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
@@ -55,9 +55,9 @@ boolean speakerinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pspeaker_verb0"), spev_speaker_verb0);
-    ADD_VERB(BIGSTRING("\pspeaker_verb1"), spev_speaker_verb1);
-    ADD_VERB(BIGSTRING("\pspeaker_verb2"), spev_speaker_verb2);
+    ADD_VERB(BIGSTRING("\pbeep"), spev_beep);
+    ADD_VERB(BIGSTRING("\psound"), spev_sound);
+    ADD_VERB(BIGSTRING("\pplaynamedsound"), spev_playnamedsound);
 
     #undef ADD_VERB
 

@@ -9,19 +9,19 @@
 
 /* Token enum for all verbs in the rgb processor */
 enum {
-    rgbv_rgb_verb0 = 0,
-    rgbv_rgb_verb1 = 1
+    rgbv_now = 0,
+    rgbv_set = 1
 };
 
 static boolean rgb_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
     switch(token) {
-        case rgbv_rgb_verb0:
+        case rgbv_now:
             /* Verb #0 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case rgbv_rgb_verb1:
+        case rgbv_set:
             /* Verb #1 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
@@ -50,8 +50,8 @@ boolean rgbinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\prgb_verb0"), rgbv_rgb_verb0);
-    ADD_VERB(BIGSTRING("\prgb_verb1"), rgbv_rgb_verb1);
+    ADD_VERB(BIGSTRING("\pnow"), rgbv_now);
+    ADD_VERB(BIGSTRING("\pset"), rgbv_set);
 
     #undef ADD_VERB
 

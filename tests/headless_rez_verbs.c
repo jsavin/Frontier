@@ -9,84 +9,84 @@
 
 /* Token enum for all verbs in the rez processor */
 enum {
-    rezv_rez_verb0 = 0,
-    rezv_rez_verb1 = 1,
-    rezv_rez_verb2 = 2,
-    rezv_rez_verb3 = 3,
-    rezv_rez_verb4 = 4,
-    rezv_rez_verb5 = 5,
-    rezv_rez_verb6 = 6,
-    rezv_rez_verb7 = 7,
-    rezv_rez_verb8 = 8,
-    rezv_rez_verb9 = 9,
-    rezv_rez_verb10 = 10,
-    rezv_rez_verb11 = 11,
-    rezv_rez_verb12 = 12,
-    rezv_rez_verb13 = 13,
-    rezv_rez_verb14 = 14
+    rezv_stripmarkup = 0,
+    rezv_deindexpage = 1,
+    rezv_indexpage = 2,
+    rezv_cleanindex = 3,
+    rezv_mergeresults = 4,
+    rezv_mrcalendar = 5,
+    rezv_getaddressday = 6,
+    rezv_getdayaddress = 7,
+    rezv_getfirstaddress = 8,
+    rezv_getfirstday = 9,
+    rezv_getlastaddress = 10,
+    rezv_getlastday = 11,
+    rezv_getmostrecentaddress = 12,
+    rezv_getmostrecentday = 13,
+    rezv_getnextaddress = 14
 };
 
 static boolean rez_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
     switch(token) {
-        case rezv_rez_verb0:
+        case rezv_stripmarkup:
             /* Verb #0 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case rezv_rez_verb1:
+        case rezv_deindexpage:
             /* Verb #1 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case rezv_rez_verb2:
+        case rezv_indexpage:
             /* Verb #2 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case rezv_rez_verb3:
+        case rezv_cleanindex:
             /* Verb #3 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case rezv_rez_verb4:
+        case rezv_mergeresults:
             /* Verb #4 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case rezv_rez_verb5:
+        case rezv_mrcalendar:
             /* Verb #5 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case rezv_rez_verb6:
+        case rezv_getaddressday:
             /* Verb #6 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case rezv_rez_verb7:
+        case rezv_getdayaddress:
             /* Verb #7 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case rezv_rez_verb8:
+        case rezv_getfirstaddress:
             /* Verb #8 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case rezv_rez_verb9:
+        case rezv_getfirstday:
             /* Verb #9 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case rezv_rez_verb10:
+        case rezv_getlastaddress:
             /* Verb #10 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case rezv_rez_verb11:
+        case rezv_getlastday:
             /* Verb #11 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case rezv_rez_verb12:
+        case rezv_getmostrecentaddress:
             /* Verb #12 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case rezv_rez_verb13:
+        case rezv_getmostrecentday:
             /* Verb #13 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case rezv_rez_verb14:
+        case rezv_getnextaddress:
             /* Verb #14 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
@@ -115,21 +115,21 @@ boolean rezinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\prez_verb0"), rezv_rez_verb0);
-    ADD_VERB(BIGSTRING("\prez_verb1"), rezv_rez_verb1);
-    ADD_VERB(BIGSTRING("\prez_verb2"), rezv_rez_verb2);
-    ADD_VERB(BIGSTRING("\prez_verb3"), rezv_rez_verb3);
-    ADD_VERB(BIGSTRING("\prez_verb4"), rezv_rez_verb4);
-    ADD_VERB(BIGSTRING("\prez_verb5"), rezv_rez_verb5);
-    ADD_VERB(BIGSTRING("\prez_verb6"), rezv_rez_verb6);
-    ADD_VERB(BIGSTRING("\prez_verb7"), rezv_rez_verb7);
-    ADD_VERB(BIGSTRING("\prez_verb8"), rezv_rez_verb8);
-    ADD_VERB(BIGSTRING("\prez_verb9"), rezv_rez_verb9);
-    ADD_VERB(BIGSTRING("\prez_verb10"), rezv_rez_verb10);
-    ADD_VERB(BIGSTRING("\prez_verb11"), rezv_rez_verb11);
-    ADD_VERB(BIGSTRING("\prez_verb12"), rezv_rez_verb12);
-    ADD_VERB(BIGSTRING("\prez_verb13"), rezv_rez_verb13);
-    ADD_VERB(BIGSTRING("\prez_verb14"), rezv_rez_verb14);
+    ADD_VERB(BIGSTRING("\pstripmarkup"), rezv_stripmarkup);
+    ADD_VERB(BIGSTRING("\pdeindexpage"), rezv_deindexpage);
+    ADD_VERB(BIGSTRING("\pindexpage"), rezv_indexpage);
+    ADD_VERB(BIGSTRING("\pcleanindex"), rezv_cleanindex);
+    ADD_VERB(BIGSTRING("\pmergeresults"), rezv_mergeresults);
+    ADD_VERB(BIGSTRING("\pmrcalendar"), rezv_mrcalendar);
+    ADD_VERB(BIGSTRING("\pgetaddressday"), rezv_getaddressday);
+    ADD_VERB(BIGSTRING("\pgetdayaddress"), rezv_getdayaddress);
+    ADD_VERB(BIGSTRING("\pgetfirstaddress"), rezv_getfirstaddress);
+    ADD_VERB(BIGSTRING("\pgetfirstday"), rezv_getfirstday);
+    ADD_VERB(BIGSTRING("\pgetlastaddress"), rezv_getlastaddress);
+    ADD_VERB(BIGSTRING("\pgetlastday"), rezv_getlastday);
+    ADD_VERB(BIGSTRING("\pgetmostrecentaddress"), rezv_getmostrecentaddress);
+    ADD_VERB(BIGSTRING("\pgetmostrecentday"), rezv_getmostrecentday);
+    ADD_VERB(BIGSTRING("\pgetnextaddress"), rezv_getnextaddress);
 
     #undef ADD_VERB
 

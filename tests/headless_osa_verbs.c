@@ -9,19 +9,19 @@
 
 /* Token enum for all verbs in the osa processor */
 enum {
-    osav_osa_verb0 = 0,
-    osav_osa_verb1 = 1
+    osav_compile = 0,
+    osav_getsource = 1
 };
 
 static boolean osa_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
     switch(token) {
-        case osav_osa_verb0:
+        case osav_compile:
             /* Verb #0 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case osav_osa_verb1:
+        case osav_getsource:
             /* Verb #1 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
@@ -50,8 +50,8 @@ boolean osainitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\posa_verb0"), osav_osa_verb0);
-    ADD_VERB(BIGSTRING("\posa_verb1"), osav_osa_verb1);
+    ADD_VERB(BIGSTRING("\pcompile"), osav_compile);
+    ADD_VERB(BIGSTRING("\pgetsource"), osav_getsource);
 
     #undef ADD_VERB
 

@@ -9,14 +9,14 @@
 
 /* Token enum for all verbs in the python processor */
 enum {
-    pytv_python_verb0 = 0
+    pytv_doscript = 0
 };
 
 static boolean python_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
     switch(token) {
-        case pytv_python_verb0:
+        case pytv_doscript:
             /* Verb #0 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
@@ -45,7 +45,7 @@ boolean pythoninitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\ppython_verb0"), pytv_python_verb0);
+    ADD_VERB(BIGSTRING("\pdoscript"), pytv_doscript);
 
     #undef ADD_VERB
 

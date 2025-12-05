@@ -9,19 +9,19 @@
 
 /* Token enum for all verbs in the clipboard processor */
 enum {
-    cliv_clipboard_verb0 = 0,
-    cliv_clipboard_verb1 = 1
+    cliv_stripmarkup = 0,
+    cliv_deindexpage = 1
 };
 
 static boolean clipboard_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
     switch(token) {
-        case cliv_clipboard_verb0:
+        case cliv_stripmarkup:
             /* Verb #0 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case cliv_clipboard_verb1:
+        case cliv_deindexpage:
             /* Verb #1 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
@@ -50,8 +50,8 @@ boolean clipboardinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pclipboard_verb0"), cliv_clipboard_verb0);
-    ADD_VERB(BIGSTRING("\pclipboard_verb1"), cliv_clipboard_verb1);
+    ADD_VERB(BIGSTRING("\pstripmarkup"), cliv_stripmarkup);
+    ADD_VERB(BIGSTRING("\pdeindexpage"), cliv_deindexpage);
 
     #undef ADD_VERB
 

@@ -9,34 +9,34 @@
 
 /* Token enum for all verbs in the launch processor */
 enum {
-    lauv_launch_verb0 = 0,
-    lauv_launch_verb1 = 1,
-    lauv_launch_verb2 = 2,
-    lauv_launch_verb3 = 3,
-    lauv_launch_verb4 = 4
+    lauv_stripmarkup = 0,
+    lauv_deindexpage = 1,
+    lauv_indexpage = 2,
+    lauv_cleanindex = 3,
+    lauv_mergeresults = 4
 };
 
 static boolean launch_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
     switch(token) {
-        case lauv_launch_verb0:
+        case lauv_stripmarkup:
             /* Verb #0 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case lauv_launch_verb1:
+        case lauv_deindexpage:
             /* Verb #1 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case lauv_launch_verb2:
+        case lauv_indexpage:
             /* Verb #2 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case lauv_launch_verb3:
+        case lauv_cleanindex:
             /* Verb #3 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case lauv_launch_verb4:
+        case lauv_mergeresults:
             /* Verb #4 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
@@ -65,11 +65,11 @@ boolean launchinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\plaunch_verb0"), lauv_launch_verb0);
-    ADD_VERB(BIGSTRING("\plaunch_verb1"), lauv_launch_verb1);
-    ADD_VERB(BIGSTRING("\plaunch_verb2"), lauv_launch_verb2);
-    ADD_VERB(BIGSTRING("\plaunch_verb3"), lauv_launch_verb3);
-    ADD_VERB(BIGSTRING("\plaunch_verb4"), lauv_launch_verb4);
+    ADD_VERB(BIGSTRING("\pstripmarkup"), lauv_stripmarkup);
+    ADD_VERB(BIGSTRING("\pdeindexpage"), lauv_deindexpage);
+    ADD_VERB(BIGSTRING("\pindexpage"), lauv_indexpage);
+    ADD_VERB(BIGSTRING("\pcleanindex"), lauv_cleanindex);
+    ADD_VERB(BIGSTRING("\pmergeresults"), lauv_mergeresults);
 
     #undef ADD_VERB
 

@@ -9,19 +9,19 @@
 
 /* Token enum for all verbs in the rectangle processor */
 enum {
-    recv_rectangle_verb0 = 0,
-    recv_rectangle_verb1 = 1
+    recv_get = 0,
+    recv_set = 1
 };
 
 static boolean rectangle_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
     switch(token) {
-        case recv_rectangle_verb0:
+        case recv_get:
             /* Verb #0 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case recv_rectangle_verb1:
+        case recv_set:
             /* Verb #1 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
@@ -50,8 +50,8 @@ boolean rectangleinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\prectangle_verb0"), recv_rectangle_verb0);
-    ADD_VERB(BIGSTRING("\prectangle_verb1"), recv_rectangle_verb1);
+    ADD_VERB(BIGSTRING("\pget"), recv_get);
+    ADD_VERB(BIGSTRING("\pset"), recv_set);
 
     #undef ADD_VERB
 

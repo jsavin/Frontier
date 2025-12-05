@@ -9,19 +9,19 @@
 
 /* Token enum for all verbs in the base64 processor */
 enum {
-    basv_base64_verb0 = 0,
-    basv_base64_verb1 = 1
+    basv_encode = 0,
+    basv_decode = 1
 };
 
 static boolean base64_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
     switch(token) {
-        case basv_base64_verb0:
+        case basv_encode:
             /* Verb #0 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case basv_base64_verb1:
+        case basv_decode:
             /* Verb #1 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
@@ -50,8 +50,8 @@ boolean base64initverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pbase64_verb0"), basv_base64_verb0);
-    ADD_VERB(BIGSTRING("\pbase64_verb1"), basv_base64_verb1);
+    ADD_VERB(BIGSTRING("\pencode"), basv_encode);
+    ADD_VERB(BIGSTRING("\pdecode"), basv_decode);
 
     #undef ADD_VERB
 

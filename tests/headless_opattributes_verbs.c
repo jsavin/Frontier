@@ -9,34 +9,34 @@
 
 /* Token enum for all verbs in the opattributes processor */
 enum {
-    opav_opattributes_verb0 = 0,
-    opav_opattributes_verb1 = 1,
-    opav_opattributes_verb2 = 2,
-    opav_opattributes_verb3 = 3,
-    opav_opattributes_verb4 = 4
+    opav_addgroup = 0,
+    opav_getall = 1,
+    opav_getone = 2,
+    opav_makeempty = 3,
+    opav_setone = 4
 };
 
 static boolean opattributes_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
     switch(token) {
-        case opav_opattributes_verb0:
+        case opav_addgroup:
             /* Verb #0 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case opav_opattributes_verb1:
+        case opav_getall:
             /* Verb #1 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case opav_opattributes_verb2:
+        case opav_getone:
             /* Verb #2 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case opav_opattributes_verb3:
+        case opav_makeempty:
             /* Verb #3 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case opav_opattributes_verb4:
+        case opav_setone:
             /* Verb #4 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
@@ -65,11 +65,11 @@ boolean opattributesinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\popattributes_verb0"), opav_opattributes_verb0);
-    ADD_VERB(BIGSTRING("\popattributes_verb1"), opav_opattributes_verb1);
-    ADD_VERB(BIGSTRING("\popattributes_verb2"), opav_opattributes_verb2);
-    ADD_VERB(BIGSTRING("\popattributes_verb3"), opav_opattributes_verb3);
-    ADD_VERB(BIGSTRING("\popattributes_verb4"), opav_opattributes_verb4);
+    ADD_VERB(BIGSTRING("\paddgroup"), opav_addgroup);
+    ADD_VERB(BIGSTRING("\pgetall"), opav_getall);
+    ADD_VERB(BIGSTRING("\pgetone"), opav_getone);
+    ADD_VERB(BIGSTRING("\pmakeempty"), opav_makeempty);
+    ADD_VERB(BIGSTRING("\psetone"), opav_setone);
 
     #undef ADD_VERB
 

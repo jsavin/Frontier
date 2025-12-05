@@ -9,29 +9,29 @@
 
 /* Token enum for all verbs in the kb processor */
 enum {
-    kbv_kb_verb0 = 0,
-    kbv_kb_verb1 = 1,
-    kbv_kb_verb2 = 2,
-    kbv_kb_verb3 = 3
+    kbv_optionkey = 0,
+    kbv_cmdkey = 1,
+    kbv_shiftkey = 2,
+    kbv_controlkey = 3
 };
 
 static boolean kb_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
     switch(token) {
-        case kbv_kb_verb0:
+        case kbv_optionkey:
             /* Verb #0 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case kbv_kb_verb1:
+        case kbv_cmdkey:
             /* Verb #1 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case kbv_kb_verb2:
+        case kbv_shiftkey:
             /* Verb #2 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case kbv_kb_verb3:
+        case kbv_controlkey:
             /* Verb #3 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
@@ -60,10 +60,10 @@ boolean kbinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pkb_verb0"), kbv_kb_verb0);
-    ADD_VERB(BIGSTRING("\pkb_verb1"), kbv_kb_verb1);
-    ADD_VERB(BIGSTRING("\pkb_verb2"), kbv_kb_verb2);
-    ADD_VERB(BIGSTRING("\pkb_verb3"), kbv_kb_verb3);
+    ADD_VERB(BIGSTRING("\poptionkey"), kbv_optionkey);
+    ADD_VERB(BIGSTRING("\pcmdkey"), kbv_cmdkey);
+    ADD_VERB(BIGSTRING("\pshiftkey"), kbv_shiftkey);
+    ADD_VERB(BIGSTRING("\pcontrolkey"), kbv_controlkey);
 
     #undef ADD_VERB
 

@@ -9,44 +9,44 @@
 
 /* Token enum for all verbs in the clock processor */
 enum {
-    clov_clock_verb0 = 0,
-    clov_clock_verb1 = 1,
-    clov_clock_verb2 = 2,
-    clov_clock_verb3 = 3,
-    clov_clock_verb4 = 4,
-    clov_clock_verb5 = 5,
-    clov_clock_verb6 = 6
+    clov_now = 0,
+    clov_set = 1,
+    clov_sleepfor = 2,
+    clov_ticks = 3,
+    clov_milliseconds = 4,
+    clov_waitseconds = 5,
+    clov_waitsixtieths = 6
 };
 
 static boolean clock_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
     switch(token) {
-        case clov_clock_verb0:
+        case clov_now:
             /* Verb #0 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case clov_clock_verb1:
+        case clov_set:
             /* Verb #1 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case clov_clock_verb2:
+        case clov_sleepfor:
             /* Verb #2 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case clov_clock_verb3:
+        case clov_ticks:
             /* Verb #3 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case clov_clock_verb4:
+        case clov_milliseconds:
             /* Verb #4 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case clov_clock_verb5:
+        case clov_waitseconds:
             /* Verb #5 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case clov_clock_verb6:
+        case clov_waitsixtieths:
             /* Verb #6 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
@@ -75,13 +75,13 @@ boolean clockinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pclock_verb0"), clov_clock_verb0);
-    ADD_VERB(BIGSTRING("\pclock_verb1"), clov_clock_verb1);
-    ADD_VERB(BIGSTRING("\pclock_verb2"), clov_clock_verb2);
-    ADD_VERB(BIGSTRING("\pclock_verb3"), clov_clock_verb3);
-    ADD_VERB(BIGSTRING("\pclock_verb4"), clov_clock_verb4);
-    ADD_VERB(BIGSTRING("\pclock_verb5"), clov_clock_verb5);
-    ADD_VERB(BIGSTRING("\pclock_verb6"), clov_clock_verb6);
+    ADD_VERB(BIGSTRING("\pnow"), clov_now);
+    ADD_VERB(BIGSTRING("\pset"), clov_set);
+    ADD_VERB(BIGSTRING("\psleepfor"), clov_sleepfor);
+    ADD_VERB(BIGSTRING("\pticks"), clov_ticks);
+    ADD_VERB(BIGSTRING("\pmilliseconds"), clov_milliseconds);
+    ADD_VERB(BIGSTRING("\pwaitseconds"), clov_waitseconds);
+    ADD_VERB(BIGSTRING("\pwaitsixtieths"), clov_waitsixtieths);
 
     #undef ADD_VERB
 

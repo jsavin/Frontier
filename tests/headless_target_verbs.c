@@ -9,24 +9,24 @@
 
 /* Token enum for all verbs in the target processor */
 enum {
-    tarv_target_verb0 = 0,
-    tarv_target_verb1 = 1,
-    tarv_target_verb2 = 2
+    tarv_get = 0,
+    tarv_set = 1,
+    tarv_clear = 2
 };
 
 static boolean target_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
     switch(token) {
-        case tarv_target_verb0:
+        case tarv_get:
             /* Verb #0 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case tarv_target_verb1:
+        case tarv_set:
             /* Verb #1 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case tarv_target_verb2:
+        case tarv_clear:
             /* Verb #2 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
@@ -55,9 +55,9 @@ boolean targetinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\ptarget_verb0"), tarv_target_verb0);
-    ADD_VERB(BIGSTRING("\ptarget_verb1"), tarv_target_verb1);
-    ADD_VERB(BIGSTRING("\ptarget_verb2"), tarv_target_verb2);
+    ADD_VERB(BIGSTRING("\pget"), tarv_get);
+    ADD_VERB(BIGSTRING("\pset"), tarv_set);
+    ADD_VERB(BIGSTRING("\pclear"), tarv_clear);
 
     #undef ADD_VERB
 
