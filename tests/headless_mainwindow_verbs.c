@@ -20,45 +20,45 @@
 
 /* Token enum for all verbs in the mainwindow processor */
 enum {
-    maiv_stripmarkup = 0,
-    maiv_deindexpage = 1,
-    maiv_indexpage = 2,
-    maiv_cleanindex = 3,
-    maiv_mergeresults = 4,
-    maiv_mrcalendar = 5,
-    maiv_getaddressday = 6
+    maiv_showflag = 0,
+    maiv_hideflag = 1,
+    maiv_showpopup = 2,
+    maiv_hidepopup = 3,
+    maiv_showbuttons = 4,
+    maiv_hidebuttons = 5,
+    maiv_showserverstats = 6
 };
 
 static boolean mainwindow_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
     switch(token) {
-        case maiv_stripmarkup:
-            /* Verb #0: mainwindow.stripmarkup - not yet implemented */
+        case maiv_showflag:
+            /* Verb #0: mainwindow.showflag - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case maiv_deindexpage:
-            /* Verb #1: mainwindow.deindexpage - not yet implemented */
+        case maiv_hideflag:
+            /* Verb #1: mainwindow.hideflag - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case maiv_indexpage:
-            /* Verb #2: mainwindow.indexpage - not yet implemented */
+        case maiv_showpopup:
+            /* Verb #2: mainwindow.showpopup - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case maiv_cleanindex:
-            /* Verb #3: mainwindow.cleanindex - not yet implemented */
+        case maiv_hidepopup:
+            /* Verb #3: mainwindow.hidepopup - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case maiv_mergeresults:
-            /* Verb #4: mainwindow.mergeresults - not yet implemented */
+        case maiv_showbuttons:
+            /* Verb #4: mainwindow.showbuttons - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case maiv_mrcalendar:
-            /* Verb #5: mainwindow.mrcalendar - not yet implemented */
+        case maiv_hidebuttons:
+            /* Verb #5: mainwindow.hidebuttons - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case maiv_getaddressday:
-            /* Verb #6: mainwindow.getaddressday - not yet implemented */
+        case maiv_showserverstats:
+            /* Verb #6: mainwindow.showserverstats - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         default:
@@ -86,13 +86,13 @@ boolean mainwindowinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pstripmarkup"), maiv_stripmarkup);
-    ADD_VERB(BIGSTRING("\pdeindexpage"), maiv_deindexpage);
-    ADD_VERB(BIGSTRING("\pindexpage"), maiv_indexpage);
-    ADD_VERB(BIGSTRING("\pcleanindex"), maiv_cleanindex);
-    ADD_VERB(BIGSTRING("\pmergeresults"), maiv_mergeresults);
-    ADD_VERB(BIGSTRING("\pmrcalendar"), maiv_mrcalendar);
-    ADD_VERB(BIGSTRING("\pgetaddressday"), maiv_getaddressday);
+    ADD_VERB(BIGSTRING("\pshowflag"), maiv_showflag);
+    ADD_VERB(BIGSTRING("\phideflag"), maiv_hideflag);
+    ADD_VERB(BIGSTRING("\pshowpopup"), maiv_showpopup);
+    ADD_VERB(BIGSTRING("\phidepopup"), maiv_hidepopup);
+    ADD_VERB(BIGSTRING("\pshowbuttons"), maiv_showbuttons);
+    ADD_VERB(BIGSTRING("\phidebuttons"), maiv_hidebuttons);
+    ADD_VERB(BIGSTRING("\pshowserverstats"), maiv_showserverstats);
 
     #undef ADD_VERB
 

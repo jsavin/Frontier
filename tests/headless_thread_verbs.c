@@ -20,95 +20,95 @@
 
 /* Token enum for all verbs in the thread processor */
 enum {
-    thrv_stripmarkup = 0,
-    thrv_deindexpage = 1,
-    thrv_indexpage = 2,
-    thrv_cleanindex = 3,
-    thrv_mergeresults = 4,
-    thrv_mrcalendar = 5,
-    thrv_getaddressday = 6,
-    thrv_getdayaddress = 7,
-    thrv_getfirstaddress = 8,
-    thrv_getfirstday = 9,
-    thrv_getlastaddress = 10,
-    thrv_getlastday = 11,
-    thrv_getmostrecentaddress = 12,
-    thrv_getmostrecentday = 13,
-    thrv_getnextaddress = 14,
-    thrv_getnextday = 15,
-    thrv_navigate = 16
+    thrv_exists = 0,
+    thrv_evaluate = 1,
+    thrv_callscript = 2,
+    thrv_getcurrentid = 3,
+    thrv_getcount = 4,
+    thrv_getnthid = 5,
+    thrv_sleep = 6,
+    thrv_sleepfor = 7,
+    thrv_sleepticks = 8,
+    thrv_issleeping = 9,
+    thrv_wake = 10,
+    thrv_kill = 11,
+    thrv_gettimeslice = 12,
+    thrv_settimeslice = 13,
+    thrv_getdefaulttimeslice = 14,
+    thrv_setdefaulttimeslice = 15,
+    thrv_getstats = 16
 };
 
 static boolean thread_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
     switch(token) {
-        case thrv_stripmarkup:
-            /* Verb #0: thread.stripmarkup - not yet implemented */
+        case thrv_exists:
+            /* Verb #0: thread.exists - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case thrv_deindexpage:
-            /* Verb #1: thread.deindexpage - not yet implemented */
+        case thrv_evaluate:
+            /* Verb #1: thread.evaluate - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case thrv_indexpage:
-            /* Verb #2: thread.indexpage - not yet implemented */
+        case thrv_callscript:
+            /* Verb #2: thread.callscript - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case thrv_cleanindex:
-            /* Verb #3: thread.cleanindex - not yet implemented */
+        case thrv_getcurrentid:
+            /* Verb #3: thread.getcurrentid - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case thrv_mergeresults:
-            /* Verb #4: thread.mergeresults - not yet implemented */
+        case thrv_getcount:
+            /* Verb #4: thread.getcount - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case thrv_mrcalendar:
-            /* Verb #5: thread.mrcalendar - not yet implemented */
+        case thrv_getnthid:
+            /* Verb #5: thread.getnthid - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case thrv_getaddressday:
-            /* Verb #6: thread.getaddressday - not yet implemented */
+        case thrv_sleep:
+            /* Verb #6: thread.sleep - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case thrv_getdayaddress:
-            /* Verb #7: thread.getdayaddress - not yet implemented */
+        case thrv_sleepfor:
+            /* Verb #7: thread.sleepfor - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case thrv_getfirstaddress:
-            /* Verb #8: thread.getfirstaddress - not yet implemented */
+        case thrv_sleepticks:
+            /* Verb #8: thread.sleepticks - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case thrv_getfirstday:
-            /* Verb #9: thread.getfirstday - not yet implemented */
+        case thrv_issleeping:
+            /* Verb #9: thread.issleeping - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case thrv_getlastaddress:
-            /* Verb #10: thread.getlastaddress - not yet implemented */
+        case thrv_wake:
+            /* Verb #10: thread.wake - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case thrv_getlastday:
-            /* Verb #11: thread.getlastday - not yet implemented */
+        case thrv_kill:
+            /* Verb #11: thread.kill - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case thrv_getmostrecentaddress:
-            /* Verb #12: thread.getmostrecentaddress - not yet implemented */
+        case thrv_gettimeslice:
+            /* Verb #12: thread.gettimeslice - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case thrv_getmostrecentday:
-            /* Verb #13: thread.getmostrecentday - not yet implemented */
+        case thrv_settimeslice:
+            /* Verb #13: thread.settimeslice - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case thrv_getnextaddress:
-            /* Verb #14: thread.getnextaddress - not yet implemented */
+        case thrv_getdefaulttimeslice:
+            /* Verb #14: thread.getdefaulttimeslice - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case thrv_getnextday:
-            /* Verb #15: thread.getnextday - not yet implemented */
+        case thrv_setdefaulttimeslice:
+            /* Verb #15: thread.setdefaulttimeslice - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case thrv_navigate:
-            /* Verb #16: thread.navigate - not yet implemented */
+        case thrv_getstats:
+            /* Verb #16: thread.getstats - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         default:
@@ -136,23 +136,23 @@ boolean threadinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pstripmarkup"), thrv_stripmarkup);
-    ADD_VERB(BIGSTRING("\pdeindexpage"), thrv_deindexpage);
-    ADD_VERB(BIGSTRING("\pindexpage"), thrv_indexpage);
-    ADD_VERB(BIGSTRING("\pcleanindex"), thrv_cleanindex);
-    ADD_VERB(BIGSTRING("\pmergeresults"), thrv_mergeresults);
-    ADD_VERB(BIGSTRING("\pmrcalendar"), thrv_mrcalendar);
-    ADD_VERB(BIGSTRING("\pgetaddressday"), thrv_getaddressday);
-    ADD_VERB(BIGSTRING("\pgetdayaddress"), thrv_getdayaddress);
-    ADD_VERB(BIGSTRING("\pgetfirstaddress"), thrv_getfirstaddress);
-    ADD_VERB(BIGSTRING("\pgetfirstday"), thrv_getfirstday);
-    ADD_VERB(BIGSTRING("\pgetlastaddress"), thrv_getlastaddress);
-    ADD_VERB(BIGSTRING("\pgetlastday"), thrv_getlastday);
-    ADD_VERB(BIGSTRING("\pgetmostrecentaddress"), thrv_getmostrecentaddress);
-    ADD_VERB(BIGSTRING("\pgetmostrecentday"), thrv_getmostrecentday);
-    ADD_VERB(BIGSTRING("\pgetnextaddress"), thrv_getnextaddress);
-    ADD_VERB(BIGSTRING("\pgetnextday"), thrv_getnextday);
-    ADD_VERB(BIGSTRING("\pnavigate"), thrv_navigate);
+    ADD_VERB(BIGSTRING("\pexists"), thrv_exists);
+    ADD_VERB(BIGSTRING("\pevaluate"), thrv_evaluate);
+    ADD_VERB(BIGSTRING("\pcallscript"), thrv_callscript);
+    ADD_VERB(BIGSTRING("\pgetcurrentid"), thrv_getcurrentid);
+    ADD_VERB(BIGSTRING("\pgetcount"), thrv_getcount);
+    ADD_VERB(BIGSTRING("\pgetnthid"), thrv_getnthid);
+    ADD_VERB(BIGSTRING("\psleep"), thrv_sleep);
+    ADD_VERB(BIGSTRING("\psleepfor"), thrv_sleepfor);
+    ADD_VERB(BIGSTRING("\psleepticks"), thrv_sleepticks);
+    ADD_VERB(BIGSTRING("\pissleeping"), thrv_issleeping);
+    ADD_VERB(BIGSTRING("\pwake"), thrv_wake);
+    ADD_VERB(BIGSTRING("\pkill"), thrv_kill);
+    ADD_VERB(BIGSTRING("\pgettimeslice"), thrv_gettimeslice);
+    ADD_VERB(BIGSTRING("\psettimeslice"), thrv_settimeslice);
+    ADD_VERB(BIGSTRING("\pgetdefaulttimeslice"), thrv_getdefaulttimeslice);
+    ADD_VERB(BIGSTRING("\psetdefaulttimeslice"), thrv_setdefaulttimeslice);
+    ADD_VERB(BIGSTRING("\pgetstats"), thrv_getstats);
 
     #undef ADD_VERB
 

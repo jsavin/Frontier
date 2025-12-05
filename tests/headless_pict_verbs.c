@@ -20,30 +20,30 @@
 
 /* Token enum for all verbs in the pict processor */
 enum {
-    picv_now = 0,
-    picv_set = 1,
-    picv_sleepfor = 2,
-    picv_ticks = 3
+    picv_scheduleupdate = 0,
+    picv_expressions = 1,
+    picv_getpicture = 2,
+    picv_setpicture = 3
 };
 
 static boolean pict_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
     switch(token) {
-        case picv_now:
-            /* Verb #0: pict.now - not yet implemented */
+        case picv_scheduleupdate:
+            /* Verb #0: pict.scheduleupdate - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case picv_set:
-            /* Verb #1: pict.set - not yet implemented */
+        case picv_expressions:
+            /* Verb #1: pict.expressions - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case picv_sleepfor:
-            /* Verb #2: pict.sleepfor - not yet implemented */
+        case picv_getpicture:
+            /* Verb #2: pict.getpicture - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case picv_ticks:
-            /* Verb #3: pict.ticks - not yet implemented */
+        case picv_setpicture:
+            /* Verb #3: pict.setpicture - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         default:
@@ -71,10 +71,10 @@ boolean pictinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pnow"), picv_now);
-    ADD_VERB(BIGSTRING("\pset"), picv_set);
-    ADD_VERB(BIGSTRING("\psleepfor"), picv_sleepfor);
-    ADD_VERB(BIGSTRING("\pticks"), picv_ticks);
+    ADD_VERB(BIGSTRING("\pscheduleupdate"), picv_scheduleupdate);
+    ADD_VERB(BIGSTRING("\pexpressions"), picv_expressions);
+    ADD_VERB(BIGSTRING("\pgetpicture"), picv_getpicture);
+    ADD_VERB(BIGSTRING("\psetpicture"), picv_setpicture);
 
     #undef ADD_VERB
 

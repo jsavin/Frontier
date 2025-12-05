@@ -20,80 +20,80 @@
 
 /* Token enum for all verbs in the menu processor */
 enum {
-    menv_now = 0,
-    menv_set = 1,
-    menv_sleepfor = 2,
-    menv_ticks = 3,
-    menv_milliseconds = 4,
-    menv_waitseconds = 5,
-    menv_waitsixtieths = 6,
-    menv_date = 7,
-    menv_get = 8,
-    menv_set = 9,
-    menv_abbrevstring = 10,
-    menv_dayofweek = 11,
-    menv_daysinmonth = 12,
-    menv_daystring = 13
+    menv_zoomscript = 0,
+    menv_buildmenubar = 1,
+    menv_clearmenubar = 2,
+    menv_isinstalled = 3,
+    menv_install = 4,
+    menv_remove = 5,
+    menv_getscript = 6,
+    menv_setscript = 7,
+    menv_addmenucommand = 8,
+    menv_deletemenucommand = 9,
+    menv_addsubmenu = 10,
+    menv_deletesubmenu = 11,
+    menv_getcommandkey = 12,
+    menv_setcommandkey = 13
 };
 
 static boolean menu_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
     switch(token) {
-        case menv_now:
-            /* Verb #0: menu.now - not yet implemented */
+        case menv_zoomscript:
+            /* Verb #0: menu.zoomscript - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case menv_set:
-            /* Verb #1: menu.set - not yet implemented */
+        case menv_buildmenubar:
+            /* Verb #1: menu.buildmenubar - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case menv_sleepfor:
-            /* Verb #2: menu.sleepfor - not yet implemented */
+        case menv_clearmenubar:
+            /* Verb #2: menu.clearmenubar - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case menv_ticks:
-            /* Verb #3: menu.ticks - not yet implemented */
+        case menv_isinstalled:
+            /* Verb #3: menu.isinstalled - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case menv_milliseconds:
-            /* Verb #4: menu.milliseconds - not yet implemented */
+        case menv_install:
+            /* Verb #4: menu.install - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case menv_waitseconds:
-            /* Verb #5: menu.waitseconds - not yet implemented */
+        case menv_remove:
+            /* Verb #5: menu.remove - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case menv_waitsixtieths:
-            /* Verb #6: menu.waitsixtieths - not yet implemented */
+        case menv_getscript:
+            /* Verb #6: menu.getscript - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case menv_date:
-            /* Verb #7: menu.date - not yet implemented */
+        case menv_setscript:
+            /* Verb #7: menu.setscript - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case menv_get:
-            /* Verb #8: menu.get - not yet implemented */
+        case menv_addmenucommand:
+            /* Verb #8: menu.addmenucommand - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case menv_set:
-            /* Verb #9: menu.set - not yet implemented */
+        case menv_deletemenucommand:
+            /* Verb #9: menu.deletemenucommand - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case menv_abbrevstring:
-            /* Verb #10: menu.abbrevstring - not yet implemented */
+        case menv_addsubmenu:
+            /* Verb #10: menu.addsubmenu - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case menv_dayofweek:
-            /* Verb #11: menu.dayofweek - not yet implemented */
+        case menv_deletesubmenu:
+            /* Verb #11: menu.deletesubmenu - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case menv_daysinmonth:
-            /* Verb #12: menu.daysinmonth - not yet implemented */
+        case menv_getcommandkey:
+            /* Verb #12: menu.getcommandkey - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case menv_daystring:
-            /* Verb #13: menu.daystring - not yet implemented */
+        case menv_setcommandkey:
+            /* Verb #13: menu.setcommandkey - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         default:
@@ -121,20 +121,20 @@ boolean menuinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pnow"), menv_now);
-    ADD_VERB(BIGSTRING("\pset"), menv_set);
-    ADD_VERB(BIGSTRING("\psleepfor"), menv_sleepfor);
-    ADD_VERB(BIGSTRING("\pticks"), menv_ticks);
-    ADD_VERB(BIGSTRING("\pmilliseconds"), menv_milliseconds);
-    ADD_VERB(BIGSTRING("\pwaitseconds"), menv_waitseconds);
-    ADD_VERB(BIGSTRING("\pwaitsixtieths"), menv_waitsixtieths);
-    ADD_VERB(BIGSTRING("\pdate"), menv_date);
-    ADD_VERB(BIGSTRING("\pget"), menv_get);
-    ADD_VERB(BIGSTRING("\pset"), menv_set);
-    ADD_VERB(BIGSTRING("\pabbrevstring"), menv_abbrevstring);
-    ADD_VERB(BIGSTRING("\pdayofweek"), menv_dayofweek);
-    ADD_VERB(BIGSTRING("\pdaysinmonth"), menv_daysinmonth);
-    ADD_VERB(BIGSTRING("\pdaystring"), menv_daystring);
+    ADD_VERB(BIGSTRING("\pzoomscript"), menv_zoomscript);
+    ADD_VERB(BIGSTRING("\pbuildmenubar"), menv_buildmenubar);
+    ADD_VERB(BIGSTRING("\pclearmenubar"), menv_clearmenubar);
+    ADD_VERB(BIGSTRING("\pisinstalled"), menv_isinstalled);
+    ADD_VERB(BIGSTRING("\pinstall"), menv_install);
+    ADD_VERB(BIGSTRING("\premove"), menv_remove);
+    ADD_VERB(BIGSTRING("\pgetscript"), menv_getscript);
+    ADD_VERB(BIGSTRING("\psetscript"), menv_setscript);
+    ADD_VERB(BIGSTRING("\paddmenucommand"), menv_addmenucommand);
+    ADD_VERB(BIGSTRING("\pdeletemenucommand"), menv_deletemenucommand);
+    ADD_VERB(BIGSTRING("\paddsubmenu"), menv_addsubmenu);
+    ADD_VERB(BIGSTRING("\pdeletesubmenu"), menv_deletesubmenu);
+    ADD_VERB(BIGSTRING("\pgetcommandkey"), menv_getcommandkey);
+    ADD_VERB(BIGSTRING("\psetcommandkey"), menv_setcommandkey);
 
     #undef ADD_VERB
 

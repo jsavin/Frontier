@@ -20,85 +20,85 @@
 
 /* Token enum for all verbs in the rez processor */
 enum {
-    rezv_stripmarkup = 0,
-    rezv_deindexpage = 1,
-    rezv_indexpage = 2,
-    rezv_cleanindex = 3,
-    rezv_mergeresults = 4,
-    rezv_mrcalendar = 5,
-    rezv_getaddressday = 6,
-    rezv_getdayaddress = 7,
-    rezv_getfirstaddress = 8,
-    rezv_getfirstday = 9,
-    rezv_getlastaddress = 10,
-    rezv_getlastday = 11,
-    rezv_getmostrecentaddress = 12,
-    rezv_getmostrecentday = 13,
-    rezv_getnextaddress = 14
+    rezv_getresource = 0,
+    rezv_putresource = 1,
+    rezv_getnamedresource = 2,
+    rezv_putnamedresource = 3,
+    rezv_countrestypes = 4,
+    rezv_getnthrestype = 5,
+    rezv_countresources = 6,
+    rezv_getnthresource = 7,
+    rezv_getnthresinfo = 8,
+    rezv_resourceexists = 9,
+    rezv_namedresourceexists = 10,
+    rezv_deleteresource = 11,
+    rezv_deletenamedresource = 12,
+    rezv_getresourceattributes = 13,
+    rezv_setresourceattributes = 14
 };
 
 static boolean rez_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
     switch(token) {
-        case rezv_stripmarkup:
-            /* Verb #0: rez.stripmarkup - not yet implemented */
+        case rezv_getresource:
+            /* Verb #0: rez.getresource - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case rezv_deindexpage:
-            /* Verb #1: rez.deindexpage - not yet implemented */
+        case rezv_putresource:
+            /* Verb #1: rez.putresource - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case rezv_indexpage:
-            /* Verb #2: rez.indexpage - not yet implemented */
+        case rezv_getnamedresource:
+            /* Verb #2: rez.getnamedresource - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case rezv_cleanindex:
-            /* Verb #3: rez.cleanindex - not yet implemented */
+        case rezv_putnamedresource:
+            /* Verb #3: rez.putnamedresource - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case rezv_mergeresults:
-            /* Verb #4: rez.mergeresults - not yet implemented */
+        case rezv_countrestypes:
+            /* Verb #4: rez.countrestypes - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case rezv_mrcalendar:
-            /* Verb #5: rez.mrcalendar - not yet implemented */
+        case rezv_getnthrestype:
+            /* Verb #5: rez.getnthrestype - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case rezv_getaddressday:
-            /* Verb #6: rez.getaddressday - not yet implemented */
+        case rezv_countresources:
+            /* Verb #6: rez.countresources - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case rezv_getdayaddress:
-            /* Verb #7: rez.getdayaddress - not yet implemented */
+        case rezv_getnthresource:
+            /* Verb #7: rez.getnthresource - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case rezv_getfirstaddress:
-            /* Verb #8: rez.getfirstaddress - not yet implemented */
+        case rezv_getnthresinfo:
+            /* Verb #8: rez.getnthresinfo - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case rezv_getfirstday:
-            /* Verb #9: rez.getfirstday - not yet implemented */
+        case rezv_resourceexists:
+            /* Verb #9: rez.resourceexists - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case rezv_getlastaddress:
-            /* Verb #10: rez.getlastaddress - not yet implemented */
+        case rezv_namedresourceexists:
+            /* Verb #10: rez.namedresourceexists - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case rezv_getlastday:
-            /* Verb #11: rez.getlastday - not yet implemented */
+        case rezv_deleteresource:
+            /* Verb #11: rez.deleteresource - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case rezv_getmostrecentaddress:
-            /* Verb #12: rez.getmostrecentaddress - not yet implemented */
+        case rezv_deletenamedresource:
+            /* Verb #12: rez.deletenamedresource - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case rezv_getmostrecentday:
-            /* Verb #13: rez.getmostrecentday - not yet implemented */
+        case rezv_getresourceattributes:
+            /* Verb #13: rez.getresourceattributes - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case rezv_getnextaddress:
-            /* Verb #14: rez.getnextaddress - not yet implemented */
+        case rezv_setresourceattributes:
+            /* Verb #14: rez.setresourceattributes - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         default:
@@ -126,21 +126,21 @@ boolean rezinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pstripmarkup"), rezv_stripmarkup);
-    ADD_VERB(BIGSTRING("\pdeindexpage"), rezv_deindexpage);
-    ADD_VERB(BIGSTRING("\pindexpage"), rezv_indexpage);
-    ADD_VERB(BIGSTRING("\pcleanindex"), rezv_cleanindex);
-    ADD_VERB(BIGSTRING("\pmergeresults"), rezv_mergeresults);
-    ADD_VERB(BIGSTRING("\pmrcalendar"), rezv_mrcalendar);
-    ADD_VERB(BIGSTRING("\pgetaddressday"), rezv_getaddressday);
-    ADD_VERB(BIGSTRING("\pgetdayaddress"), rezv_getdayaddress);
-    ADD_VERB(BIGSTRING("\pgetfirstaddress"), rezv_getfirstaddress);
-    ADD_VERB(BIGSTRING("\pgetfirstday"), rezv_getfirstday);
-    ADD_VERB(BIGSTRING("\pgetlastaddress"), rezv_getlastaddress);
-    ADD_VERB(BIGSTRING("\pgetlastday"), rezv_getlastday);
-    ADD_VERB(BIGSTRING("\pgetmostrecentaddress"), rezv_getmostrecentaddress);
-    ADD_VERB(BIGSTRING("\pgetmostrecentday"), rezv_getmostrecentday);
-    ADD_VERB(BIGSTRING("\pgetnextaddress"), rezv_getnextaddress);
+    ADD_VERB(BIGSTRING("\pgetresource"), rezv_getresource);
+    ADD_VERB(BIGSTRING("\pputresource"), rezv_putresource);
+    ADD_VERB(BIGSTRING("\pgetnamedresource"), rezv_getnamedresource);
+    ADD_VERB(BIGSTRING("\pputnamedresource"), rezv_putnamedresource);
+    ADD_VERB(BIGSTRING("\pcountrestypes"), rezv_countrestypes);
+    ADD_VERB(BIGSTRING("\pgetnthrestype"), rezv_getnthrestype);
+    ADD_VERB(BIGSTRING("\pcountresources"), rezv_countresources);
+    ADD_VERB(BIGSTRING("\pgetnthresource"), rezv_getnthresource);
+    ADD_VERB(BIGSTRING("\pgetnthresinfo"), rezv_getnthresinfo);
+    ADD_VERB(BIGSTRING("\presourceexists"), rezv_resourceexists);
+    ADD_VERB(BIGSTRING("\pnamedresourceexists"), rezv_namedresourceexists);
+    ADD_VERB(BIGSTRING("\pdeleteresource"), rezv_deleteresource);
+    ADD_VERB(BIGSTRING("\pdeletenamedresource"), rezv_deletenamedresource);
+    ADD_VERB(BIGSTRING("\pgetresourceattributes"), rezv_getresourceattributes);
+    ADD_VERB(BIGSTRING("\psetresourceattributes"), rezv_setresourceattributes);
 
     #undef ADD_VERB
 

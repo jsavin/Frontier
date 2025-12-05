@@ -20,80 +20,80 @@
 
 /* Token enum for all verbs in the frontier processor */
 enum {
-    frov_stripmarkup = 0,
-    frov_deindexpage = 1,
-    frov_indexpage = 2,
-    frov_cleanindex = 3,
-    frov_mergeresults = 4,
-    frov_mrcalendar = 5,
-    frov_getaddressday = 6,
-    frov_getdayaddress = 7,
-    frov_getfirstaddress = 8,
-    frov_getfirstday = 9,
-    frov_getlastaddress = 10,
-    frov_getlastday = 11,
-    frov_getmostrecentaddress = 12,
-    frov_getmostrecentday = 13
+    frov_getprogrampath = 0,
+    frov_getfilepath = 1,
+    frov_enableagents = 2,
+    frov_requesttofront = 3,
+    frov_isruntime = 4,
+    frov_countthreads = 5,
+    frov_ispowerpc = 6,
+    frov_reclaimmemory = 7,
+    frov_version = 8,
+    frov_hashstats = 9,
+    frov_gethashloopcount = 10,
+    frov_hideapplication = 11,
+    frov_isvalidserialnumber = 12,
+    frov_showapplication = 13
 };
 
 static boolean frontier_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
     switch(token) {
-        case frov_stripmarkup:
-            /* Verb #0: frontier.stripmarkup - not yet implemented */
+        case frov_getprogrampath:
+            /* Verb #0: frontier.getprogrampath - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case frov_deindexpage:
-            /* Verb #1: frontier.deindexpage - not yet implemented */
+        case frov_getfilepath:
+            /* Verb #1: frontier.getfilepath - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case frov_indexpage:
-            /* Verb #2: frontier.indexpage - not yet implemented */
+        case frov_enableagents:
+            /* Verb #2: frontier.enableagents - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case frov_cleanindex:
-            /* Verb #3: frontier.cleanindex - not yet implemented */
+        case frov_requesttofront:
+            /* Verb #3: frontier.requesttofront - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case frov_mergeresults:
-            /* Verb #4: frontier.mergeresults - not yet implemented */
+        case frov_isruntime:
+            /* Verb #4: frontier.isruntime - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case frov_mrcalendar:
-            /* Verb #5: frontier.mrcalendar - not yet implemented */
+        case frov_countthreads:
+            /* Verb #5: frontier.countthreads - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case frov_getaddressday:
-            /* Verb #6: frontier.getaddressday - not yet implemented */
+        case frov_ispowerpc:
+            /* Verb #6: frontier.ispowerpc - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case frov_getdayaddress:
-            /* Verb #7: frontier.getdayaddress - not yet implemented */
+        case frov_reclaimmemory:
+            /* Verb #7: frontier.reclaimmemory - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case frov_getfirstaddress:
-            /* Verb #8: frontier.getfirstaddress - not yet implemented */
+        case frov_version:
+            /* Verb #8: frontier.version - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case frov_getfirstday:
-            /* Verb #9: frontier.getfirstday - not yet implemented */
+        case frov_hashstats:
+            /* Verb #9: frontier.hashstats - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case frov_getlastaddress:
-            /* Verb #10: frontier.getlastaddress - not yet implemented */
+        case frov_gethashloopcount:
+            /* Verb #10: frontier.gethashloopcount - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case frov_getlastday:
-            /* Verb #11: frontier.getlastday - not yet implemented */
+        case frov_hideapplication:
+            /* Verb #11: frontier.hideapplication - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case frov_getmostrecentaddress:
-            /* Verb #12: frontier.getmostrecentaddress - not yet implemented */
+        case frov_isvalidserialnumber:
+            /* Verb #12: frontier.isvalidserialnumber - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case frov_getmostrecentday:
-            /* Verb #13: frontier.getmostrecentday - not yet implemented */
+        case frov_showapplication:
+            /* Verb #13: frontier.showapplication - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         default:
@@ -121,20 +121,20 @@ boolean frontierinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pstripmarkup"), frov_stripmarkup);
-    ADD_VERB(BIGSTRING("\pdeindexpage"), frov_deindexpage);
-    ADD_VERB(BIGSTRING("\pindexpage"), frov_indexpage);
-    ADD_VERB(BIGSTRING("\pcleanindex"), frov_cleanindex);
-    ADD_VERB(BIGSTRING("\pmergeresults"), frov_mergeresults);
-    ADD_VERB(BIGSTRING("\pmrcalendar"), frov_mrcalendar);
-    ADD_VERB(BIGSTRING("\pgetaddressday"), frov_getaddressday);
-    ADD_VERB(BIGSTRING("\pgetdayaddress"), frov_getdayaddress);
-    ADD_VERB(BIGSTRING("\pgetfirstaddress"), frov_getfirstaddress);
-    ADD_VERB(BIGSTRING("\pgetfirstday"), frov_getfirstday);
-    ADD_VERB(BIGSTRING("\pgetlastaddress"), frov_getlastaddress);
-    ADD_VERB(BIGSTRING("\pgetlastday"), frov_getlastday);
-    ADD_VERB(BIGSTRING("\pgetmostrecentaddress"), frov_getmostrecentaddress);
-    ADD_VERB(BIGSTRING("\pgetmostrecentday"), frov_getmostrecentday);
+    ADD_VERB(BIGSTRING("\pgetprogrampath"), frov_getprogrampath);
+    ADD_VERB(BIGSTRING("\pgetfilepath"), frov_getfilepath);
+    ADD_VERB(BIGSTRING("\penableagents"), frov_enableagents);
+    ADD_VERB(BIGSTRING("\prequesttofront"), frov_requesttofront);
+    ADD_VERB(BIGSTRING("\pisruntime"), frov_isruntime);
+    ADD_VERB(BIGSTRING("\pcountthreads"), frov_countthreads);
+    ADD_VERB(BIGSTRING("\pispowerpc"), frov_ispowerpc);
+    ADD_VERB(BIGSTRING("\preclaimmemory"), frov_reclaimmemory);
+    ADD_VERB(BIGSTRING("\pversion"), frov_version);
+    ADD_VERB(BIGSTRING("\phashstats"), frov_hashstats);
+    ADD_VERB(BIGSTRING("\pgethashloopcount"), frov_gethashloopcount);
+    ADD_VERB(BIGSTRING("\phideapplication"), frov_hideapplication);
+    ADD_VERB(BIGSTRING("\pisvalidserialnumber"), frov_isvalidserialnumber);
+    ADD_VERB(BIGSTRING("\pshowapplication"), frov_showapplication);
 
     #undef ADD_VERB
 

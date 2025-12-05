@@ -20,235 +20,235 @@
 
 /* Token enum for all verbs in the op processor */
 enum {
-    opv_addgroup = 0,
-    opv_getall = 1,
-    opv_getone = 2,
-    opv_makeempty = 3,
-    opv_setone = 4,
-    opv_script = 5,
-    opv_compile = 6,
-    opv_uncompile = 7,
-    opv_getcode = 8,
-    opv_getlanguage = 9,
-    opv_setlanguage = 10,
-    opv_makecomment = 11,
-    opv_uncomment = 12,
-    opv_iscomment = 13,
-    opv_getbreakpoint = 14,
-    opv_setbreakpoint = 15,
-    opv_clearbreakpoint = 16,
-    opv_startprofile = 17,
-    opv_stopprofile = 18,
-    opv_osa = 19,
-    opv_compile = 20,
-    opv_getsource = 21,
-    opv_table = 22,
-    opv_move = 23,
-    opv_copy = 24,
-    opv_rename = 25,
-    opv_moveandrename = 26,
-    opv_assign = 27,
-    opv_validate = 28,
-    opv_sortby = 29,
-    opv_getcursor = 30,
-    opv_getselection = 31,
-    opv_go = 32,
-    opv_goto = 33,
-    opv_gotoname = 34,
-    opv_jettison = 35,
-    opv_packtable = 36,
-    opv_emptytable = 37,
-    opv_getdisplaysettings = 38,
-    opv_setdisplaysettings = 39,
-    opv_getsortorder = 40,
-    opv_menu = 41,
-    opv_zoomscript = 42,
-    opv_buildmenubar = 43,
-    opv_clearmenubar = 44
+    opv_getlinetext = 0,
+    opv_level = 1,
+    opv_countsubs = 2,
+    opv_countsummits = 3,
+    opv_go = 4,
+    opv_firstsummit = 5,
+    opv_expand = 6,
+    opv_collapse = 7,
+    opv_subsexpanded = 8,
+    opv_insert = 9,
+    opv_find = 10,
+    opv_sort = 11,
+    opv_setlinetext = 12,
+    opv_reorg = 13,
+    opv_promote = 14,
+    opv_demote = 15,
+    opv_hoist = 16,
+    opv_dehoist = 17,
+    opv_deletesubs = 18,
+    opv_deleteline = 19,
+    opv_tabkeyreorg = 20,
+    opv_flatcursorkeys = 21,
+    opv_getdisplay = 22,
+    opv_setdisplay = 23,
+    opv_getcursor = 24,
+    opv_setcursor = 25,
+    opv_getrefcon = 26,
+    opv_setrefcon = 27,
+    opv_getexpansionstate = 28,
+    opv_setexpansionstate = 29,
+    opv_getscrollstate = 30,
+    opv_setscrollstate = 31,
+    opv_getsuboutline = 32,
+    opv_insertoutline = 33,
+    opv_setmodified = 34,
+    opv_getselection = 35,
+    opv_getheadnumber = 36,
+    opv_visitall = 37,
+    opv_getselectedsuboutlines = 38,
+    opv_xmltooutline = 39,
+    opv_outlinetoxml = 40,
+    opv_sethtmlformatting = 41,
+    opv_gethtmlformatting = 42,
+    opv_setdynamic = 43,
+    opv_getdynamic = 44
 };
 
 static boolean op_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
     switch(token) {
-        case opv_addgroup:
-            /* Verb #0: op.addgroup - not yet implemented */
+        case opv_getlinetext:
+            /* Verb #0: op.getlinetext - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case opv_getall:
-            /* Verb #1: op.getall - not yet implemented */
+        case opv_level:
+            /* Verb #1: op.level - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case opv_getone:
-            /* Verb #2: op.getone - not yet implemented */
+        case opv_countsubs:
+            /* Verb #2: op.countsubs - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case opv_makeempty:
-            /* Verb #3: op.makeempty - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case opv_setone:
-            /* Verb #4: op.setone - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case opv_script:
-            /* Verb #5: op.script - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case opv_compile:
-            /* Verb #6: op.compile - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case opv_uncompile:
-            /* Verb #7: op.uncompile - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case opv_getcode:
-            /* Verb #8: op.getcode - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case opv_getlanguage:
-            /* Verb #9: op.getlanguage - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case opv_setlanguage:
-            /* Verb #10: op.setlanguage - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case opv_makecomment:
-            /* Verb #11: op.makecomment - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case opv_uncomment:
-            /* Verb #12: op.uncomment - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case opv_iscomment:
-            /* Verb #13: op.iscomment - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case opv_getbreakpoint:
-            /* Verb #14: op.getbreakpoint - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case opv_setbreakpoint:
-            /* Verb #15: op.setbreakpoint - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case opv_clearbreakpoint:
-            /* Verb #16: op.clearbreakpoint - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case opv_startprofile:
-            /* Verb #17: op.startprofile - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case opv_stopprofile:
-            /* Verb #18: op.stopprofile - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case opv_osa:
-            /* Verb #19: op.osa - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case opv_compile:
-            /* Verb #20: op.compile - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case opv_getsource:
-            /* Verb #21: op.getsource - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case opv_table:
-            /* Verb #22: op.table - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case opv_move:
-            /* Verb #23: op.move - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case opv_copy:
-            /* Verb #24: op.copy - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case opv_rename:
-            /* Verb #25: op.rename - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case opv_moveandrename:
-            /* Verb #26: op.moveandrename - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case opv_assign:
-            /* Verb #27: op.assign - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case opv_validate:
-            /* Verb #28: op.validate - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case opv_sortby:
-            /* Verb #29: op.sortby - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case opv_getcursor:
-            /* Verb #30: op.getcursor - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case opv_getselection:
-            /* Verb #31: op.getselection - not yet implemented */
+        case opv_countsummits:
+            /* Verb #3: op.countsummits - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_go:
-            /* Verb #32: op.go - not yet implemented */
+            /* Verb #4: op.go - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case opv_goto:
-            /* Verb #33: op.goto - not yet implemented */
+        case opv_firstsummit:
+            /* Verb #5: op.firstsummit - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case opv_gotoname:
-            /* Verb #34: op.gotoname - not yet implemented */
+        case opv_expand:
+            /* Verb #6: op.expand - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case opv_jettison:
-            /* Verb #35: op.jettison - not yet implemented */
+        case opv_collapse:
+            /* Verb #7: op.collapse - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case opv_packtable:
-            /* Verb #36: op.packtable - not yet implemented */
+        case opv_subsexpanded:
+            /* Verb #8: op.subsexpanded - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case opv_emptytable:
-            /* Verb #37: op.emptytable - not yet implemented */
+        case opv_insert:
+            /* Verb #9: op.insert - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case opv_getdisplaysettings:
-            /* Verb #38: op.getdisplaysettings - not yet implemented */
+        case opv_find:
+            /* Verb #10: op.find - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case opv_setdisplaysettings:
-            /* Verb #39: op.setdisplaysettings - not yet implemented */
+        case opv_sort:
+            /* Verb #11: op.sort - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case opv_getsortorder:
-            /* Verb #40: op.getsortorder - not yet implemented */
+        case opv_setlinetext:
+            /* Verb #12: op.setlinetext - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case opv_menu:
-            /* Verb #41: op.menu - not yet implemented */
+        case opv_reorg:
+            /* Verb #13: op.reorg - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case opv_zoomscript:
-            /* Verb #42: op.zoomscript - not yet implemented */
+        case opv_promote:
+            /* Verb #14: op.promote - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case opv_buildmenubar:
-            /* Verb #43: op.buildmenubar - not yet implemented */
+        case opv_demote:
+            /* Verb #15: op.demote - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case opv_clearmenubar:
-            /* Verb #44: op.clearmenubar - not yet implemented */
+        case opv_hoist:
+            /* Verb #16: op.hoist - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
+        case opv_dehoist:
+            /* Verb #17: op.dehoist - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
+        case opv_deletesubs:
+            /* Verb #18: op.deletesubs - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
+        case opv_deleteline:
+            /* Verb #19: op.deleteline - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
+        case opv_tabkeyreorg:
+            /* Verb #20: op.tabkeyreorg - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
+        case opv_flatcursorkeys:
+            /* Verb #21: op.flatcursorkeys - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
+        case opv_getdisplay:
+            /* Verb #22: op.getdisplay - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
+        case opv_setdisplay:
+            /* Verb #23: op.setdisplay - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
+        case opv_getcursor:
+            /* Verb #24: op.getcursor - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
+        case opv_setcursor:
+            /* Verb #25: op.setcursor - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
+        case opv_getrefcon:
+            /* Verb #26: op.getrefcon - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
+        case opv_setrefcon:
+            /* Verb #27: op.setrefcon - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
+        case opv_getexpansionstate:
+            /* Verb #28: op.getexpansionstate - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
+        case opv_setexpansionstate:
+            /* Verb #29: op.setexpansionstate - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
+        case opv_getscrollstate:
+            /* Verb #30: op.getscrollstate - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
+        case opv_setscrollstate:
+            /* Verb #31: op.setscrollstate - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
+        case opv_getsuboutline:
+            /* Verb #32: op.getsuboutline - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
+        case opv_insertoutline:
+            /* Verb #33: op.insertoutline - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
+        case opv_setmodified:
+            /* Verb #34: op.setmodified - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
+        case opv_getselection:
+            /* Verb #35: op.getselection - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
+        case opv_getheadnumber:
+            /* Verb #36: op.getheadnumber - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
+        case opv_visitall:
+            /* Verb #37: op.visitall - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
+        case opv_getselectedsuboutlines:
+            /* Verb #38: op.getselectedsuboutlines - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
+        case opv_xmltooutline:
+            /* Verb #39: op.xmltooutline - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
+        case opv_outlinetoxml:
+            /* Verb #40: op.outlinetoxml - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
+        case opv_sethtmlformatting:
+            /* Verb #41: op.sethtmlformatting - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
+        case opv_gethtmlformatting:
+            /* Verb #42: op.gethtmlformatting - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
+        case opv_setdynamic:
+            /* Verb #43: op.setdynamic - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
+        case opv_getdynamic:
+            /* Verb #44: op.getdynamic - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         default:
@@ -276,51 +276,51 @@ boolean opinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\paddgroup"), opv_addgroup);
-    ADD_VERB(BIGSTRING("\pgetall"), opv_getall);
-    ADD_VERB(BIGSTRING("\pgetone"), opv_getone);
-    ADD_VERB(BIGSTRING("\pmakeempty"), opv_makeempty);
-    ADD_VERB(BIGSTRING("\psetone"), opv_setone);
-    ADD_VERB(BIGSTRING("\pscript"), opv_script);
-    ADD_VERB(BIGSTRING("\pcompile"), opv_compile);
-    ADD_VERB(BIGSTRING("\puncompile"), opv_uncompile);
-    ADD_VERB(BIGSTRING("\pgetcode"), opv_getcode);
-    ADD_VERB(BIGSTRING("\pgetlanguage"), opv_getlanguage);
-    ADD_VERB(BIGSTRING("\psetlanguage"), opv_setlanguage);
-    ADD_VERB(BIGSTRING("\pmakecomment"), opv_makecomment);
-    ADD_VERB(BIGSTRING("\puncomment"), opv_uncomment);
-    ADD_VERB(BIGSTRING("\piscomment"), opv_iscomment);
-    ADD_VERB(BIGSTRING("\pgetbreakpoint"), opv_getbreakpoint);
-    ADD_VERB(BIGSTRING("\psetbreakpoint"), opv_setbreakpoint);
-    ADD_VERB(BIGSTRING("\pclearbreakpoint"), opv_clearbreakpoint);
-    ADD_VERB(BIGSTRING("\pstartprofile"), opv_startprofile);
-    ADD_VERB(BIGSTRING("\pstopprofile"), opv_stopprofile);
-    ADD_VERB(BIGSTRING("\posa"), opv_osa);
-    ADD_VERB(BIGSTRING("\pcompile"), opv_compile);
-    ADD_VERB(BIGSTRING("\pgetsource"), opv_getsource);
-    ADD_VERB(BIGSTRING("\ptable"), opv_table);
-    ADD_VERB(BIGSTRING("\pmove"), opv_move);
-    ADD_VERB(BIGSTRING("\pcopy"), opv_copy);
-    ADD_VERB(BIGSTRING("\prename"), opv_rename);
-    ADD_VERB(BIGSTRING("\pmoveandrename"), opv_moveandrename);
-    ADD_VERB(BIGSTRING("\passign"), opv_assign);
-    ADD_VERB(BIGSTRING("\pvalidate"), opv_validate);
-    ADD_VERB(BIGSTRING("\psortby"), opv_sortby);
-    ADD_VERB(BIGSTRING("\pgetcursor"), opv_getcursor);
-    ADD_VERB(BIGSTRING("\pgetselection"), opv_getselection);
+    ADD_VERB(BIGSTRING("\pgetlinetext"), opv_getlinetext);
+    ADD_VERB(BIGSTRING("\plevel"), opv_level);
+    ADD_VERB(BIGSTRING("\pcountsubs"), opv_countsubs);
+    ADD_VERB(BIGSTRING("\pcountsummits"), opv_countsummits);
     ADD_VERB(BIGSTRING("\pgo"), opv_go);
-    ADD_VERB(BIGSTRING("\pgoto"), opv_goto);
-    ADD_VERB(BIGSTRING("\pgotoname"), opv_gotoname);
-    ADD_VERB(BIGSTRING("\pjettison"), opv_jettison);
-    ADD_VERB(BIGSTRING("\ppacktable"), opv_packtable);
-    ADD_VERB(BIGSTRING("\pemptytable"), opv_emptytable);
-    ADD_VERB(BIGSTRING("\pgetdisplaysettings"), opv_getdisplaysettings);
-    ADD_VERB(BIGSTRING("\psetdisplaysettings"), opv_setdisplaysettings);
-    ADD_VERB(BIGSTRING("\pgetsortorder"), opv_getsortorder);
-    ADD_VERB(BIGSTRING("\pmenu"), opv_menu);
-    ADD_VERB(BIGSTRING("\pzoomscript"), opv_zoomscript);
-    ADD_VERB(BIGSTRING("\pbuildmenubar"), opv_buildmenubar);
-    ADD_VERB(BIGSTRING("\pclearmenubar"), opv_clearmenubar);
+    ADD_VERB(BIGSTRING("\pfirstsummit"), opv_firstsummit);
+    ADD_VERB(BIGSTRING("\pexpand"), opv_expand);
+    ADD_VERB(BIGSTRING("\pcollapse"), opv_collapse);
+    ADD_VERB(BIGSTRING("\psubsexpanded"), opv_subsexpanded);
+    ADD_VERB(BIGSTRING("\pinsert"), opv_insert);
+    ADD_VERB(BIGSTRING("\pfind"), opv_find);
+    ADD_VERB(BIGSTRING("\psort"), opv_sort);
+    ADD_VERB(BIGSTRING("\psetlinetext"), opv_setlinetext);
+    ADD_VERB(BIGSTRING("\preorg"), opv_reorg);
+    ADD_VERB(BIGSTRING("\ppromote"), opv_promote);
+    ADD_VERB(BIGSTRING("\pdemote"), opv_demote);
+    ADD_VERB(BIGSTRING("\phoist"), opv_hoist);
+    ADD_VERB(BIGSTRING("\pdehoist"), opv_dehoist);
+    ADD_VERB(BIGSTRING("\pdeletesubs"), opv_deletesubs);
+    ADD_VERB(BIGSTRING("\pdeleteline"), opv_deleteline);
+    ADD_VERB(BIGSTRING("\ptabkeyreorg"), opv_tabkeyreorg);
+    ADD_VERB(BIGSTRING("\pflatcursorkeys"), opv_flatcursorkeys);
+    ADD_VERB(BIGSTRING("\pgetdisplay"), opv_getdisplay);
+    ADD_VERB(BIGSTRING("\psetdisplay"), opv_setdisplay);
+    ADD_VERB(BIGSTRING("\pgetcursor"), opv_getcursor);
+    ADD_VERB(BIGSTRING("\psetcursor"), opv_setcursor);
+    ADD_VERB(BIGSTRING("\pgetrefcon"), opv_getrefcon);
+    ADD_VERB(BIGSTRING("\psetrefcon"), opv_setrefcon);
+    ADD_VERB(BIGSTRING("\pgetexpansionstate"), opv_getexpansionstate);
+    ADD_VERB(BIGSTRING("\psetexpansionstate"), opv_setexpansionstate);
+    ADD_VERB(BIGSTRING("\pgetscrollstate"), opv_getscrollstate);
+    ADD_VERB(BIGSTRING("\psetscrollstate"), opv_setscrollstate);
+    ADD_VERB(BIGSTRING("\pgetsuboutline"), opv_getsuboutline);
+    ADD_VERB(BIGSTRING("\pinsertoutline"), opv_insertoutline);
+    ADD_VERB(BIGSTRING("\psetmodified"), opv_setmodified);
+    ADD_VERB(BIGSTRING("\pgetselection"), opv_getselection);
+    ADD_VERB(BIGSTRING("\pgetheadnumber"), opv_getheadnumber);
+    ADD_VERB(BIGSTRING("\pvisitall"), opv_visitall);
+    ADD_VERB(BIGSTRING("\pgetselectedsuboutlines"), opv_getselectedsuboutlines);
+    ADD_VERB(BIGSTRING("\pxmltooutline"), opv_xmltooutline);
+    ADD_VERB(BIGSTRING("\poutlinetoxml"), opv_outlinetoxml);
+    ADD_VERB(BIGSTRING("\psethtmlformatting"), opv_sethtmlformatting);
+    ADD_VERB(BIGSTRING("\pgethtmlformatting"), opv_gethtmlformatting);
+    ADD_VERB(BIGSTRING("\psetdynamic"), opv_setdynamic);
+    ADD_VERB(BIGSTRING("\pgetdynamic"), opv_getdynamic);
 
     #undef ADD_VERB
 

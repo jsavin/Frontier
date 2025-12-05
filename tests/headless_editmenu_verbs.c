@@ -20,90 +20,90 @@
 
 /* Token enum for all verbs in the editmenu processor */
 enum {
-    ediv_stripmarkup = 0,
-    ediv_deindexpage = 1,
-    ediv_indexpage = 2,
-    ediv_cleanindex = 3,
-    ediv_mergeresults = 4,
-    ediv_mrcalendar = 5,
-    ediv_getaddressday = 6,
-    ediv_getdayaddress = 7,
-    ediv_getfirstaddress = 8,
-    ediv_getfirstday = 9,
-    ediv_getlastaddress = 10,
-    ediv_getlastday = 11,
-    ediv_getmostrecentaddress = 12,
-    ediv_getmostrecentday = 13,
-    ediv_getnextaddress = 14,
-    ediv_getnextday = 15
+    ediv_undo = 0,
+    ediv_cut = 1,
+    ediv_copy = 2,
+    ediv_paste = 3,
+    ediv_clear = 4,
+    ediv_selectall = 5,
+    ediv_getfont = 6,
+    ediv_getfontsize = 7,
+    ediv_setfont = 8,
+    ediv_setfontsize = 9,
+    ediv_plaintext = 10,
+    ediv_setbold = 11,
+    ediv_setitalic = 12,
+    ediv_setunderline = 13,
+    ediv_setoutline = 14,
+    ediv_setshadow = 15
 };
 
 static boolean editmenu_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
     switch(token) {
-        case ediv_stripmarkup:
-            /* Verb #0: editmenu.stripmarkup - not yet implemented */
+        case ediv_undo:
+            /* Verb #0: editmenu.undo - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case ediv_deindexpage:
-            /* Verb #1: editmenu.deindexpage - not yet implemented */
+        case ediv_cut:
+            /* Verb #1: editmenu.cut - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case ediv_indexpage:
-            /* Verb #2: editmenu.indexpage - not yet implemented */
+        case ediv_copy:
+            /* Verb #2: editmenu.copy - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case ediv_cleanindex:
-            /* Verb #3: editmenu.cleanindex - not yet implemented */
+        case ediv_paste:
+            /* Verb #3: editmenu.paste - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case ediv_mergeresults:
-            /* Verb #4: editmenu.mergeresults - not yet implemented */
+        case ediv_clear:
+            /* Verb #4: editmenu.clear - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case ediv_mrcalendar:
-            /* Verb #5: editmenu.mrcalendar - not yet implemented */
+        case ediv_selectall:
+            /* Verb #5: editmenu.selectall - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case ediv_getaddressday:
-            /* Verb #6: editmenu.getaddressday - not yet implemented */
+        case ediv_getfont:
+            /* Verb #6: editmenu.getfont - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case ediv_getdayaddress:
-            /* Verb #7: editmenu.getdayaddress - not yet implemented */
+        case ediv_getfontsize:
+            /* Verb #7: editmenu.getfontsize - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case ediv_getfirstaddress:
-            /* Verb #8: editmenu.getfirstaddress - not yet implemented */
+        case ediv_setfont:
+            /* Verb #8: editmenu.setfont - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case ediv_getfirstday:
-            /* Verb #9: editmenu.getfirstday - not yet implemented */
+        case ediv_setfontsize:
+            /* Verb #9: editmenu.setfontsize - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case ediv_getlastaddress:
-            /* Verb #10: editmenu.getlastaddress - not yet implemented */
+        case ediv_plaintext:
+            /* Verb #10: editmenu.plaintext - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case ediv_getlastday:
-            /* Verb #11: editmenu.getlastday - not yet implemented */
+        case ediv_setbold:
+            /* Verb #11: editmenu.setbold - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case ediv_getmostrecentaddress:
-            /* Verb #12: editmenu.getmostrecentaddress - not yet implemented */
+        case ediv_setitalic:
+            /* Verb #12: editmenu.setitalic - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case ediv_getmostrecentday:
-            /* Verb #13: editmenu.getmostrecentday - not yet implemented */
+        case ediv_setunderline:
+            /* Verb #13: editmenu.setunderline - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case ediv_getnextaddress:
-            /* Verb #14: editmenu.getnextaddress - not yet implemented */
+        case ediv_setoutline:
+            /* Verb #14: editmenu.setoutline - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case ediv_getnextday:
-            /* Verb #15: editmenu.getnextday - not yet implemented */
+        case ediv_setshadow:
+            /* Verb #15: editmenu.setshadow - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         default:
@@ -131,22 +131,22 @@ boolean editmenuinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pstripmarkup"), ediv_stripmarkup);
-    ADD_VERB(BIGSTRING("\pdeindexpage"), ediv_deindexpage);
-    ADD_VERB(BIGSTRING("\pindexpage"), ediv_indexpage);
-    ADD_VERB(BIGSTRING("\pcleanindex"), ediv_cleanindex);
-    ADD_VERB(BIGSTRING("\pmergeresults"), ediv_mergeresults);
-    ADD_VERB(BIGSTRING("\pmrcalendar"), ediv_mrcalendar);
-    ADD_VERB(BIGSTRING("\pgetaddressday"), ediv_getaddressday);
-    ADD_VERB(BIGSTRING("\pgetdayaddress"), ediv_getdayaddress);
-    ADD_VERB(BIGSTRING("\pgetfirstaddress"), ediv_getfirstaddress);
-    ADD_VERB(BIGSTRING("\pgetfirstday"), ediv_getfirstday);
-    ADD_VERB(BIGSTRING("\pgetlastaddress"), ediv_getlastaddress);
-    ADD_VERB(BIGSTRING("\pgetlastday"), ediv_getlastday);
-    ADD_VERB(BIGSTRING("\pgetmostrecentaddress"), ediv_getmostrecentaddress);
-    ADD_VERB(BIGSTRING("\pgetmostrecentday"), ediv_getmostrecentday);
-    ADD_VERB(BIGSTRING("\pgetnextaddress"), ediv_getnextaddress);
-    ADD_VERB(BIGSTRING("\pgetnextday"), ediv_getnextday);
+    ADD_VERB(BIGSTRING("\pundo"), ediv_undo);
+    ADD_VERB(BIGSTRING("\pcut"), ediv_cut);
+    ADD_VERB(BIGSTRING("\pcopy"), ediv_copy);
+    ADD_VERB(BIGSTRING("\ppaste"), ediv_paste);
+    ADD_VERB(BIGSTRING("\pclear"), ediv_clear);
+    ADD_VERB(BIGSTRING("\pselectall"), ediv_selectall);
+    ADD_VERB(BIGSTRING("\pgetfont"), ediv_getfont);
+    ADD_VERB(BIGSTRING("\pgetfontsize"), ediv_getfontsize);
+    ADD_VERB(BIGSTRING("\psetfont"), ediv_setfont);
+    ADD_VERB(BIGSTRING("\psetfontsize"), ediv_setfontsize);
+    ADD_VERB(BIGSTRING("\pplaintext"), ediv_plaintext);
+    ADD_VERB(BIGSTRING("\psetbold"), ediv_setbold);
+    ADD_VERB(BIGSTRING("\psetitalic"), ediv_setitalic);
+    ADD_VERB(BIGSTRING("\psetunderline"), ediv_setunderline);
+    ADD_VERB(BIGSTRING("\psetoutline"), ediv_setoutline);
+    ADD_VERB(BIGSTRING("\psetshadow"), ediv_setshadow);
 
     #undef ADD_VERB
 

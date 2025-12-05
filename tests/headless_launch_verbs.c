@@ -20,35 +20,35 @@
 
 /* Token enum for all verbs in the launch processor */
 enum {
-    lauv_stripmarkup = 0,
-    lauv_deindexpage = 1,
-    lauv_indexpage = 2,
-    lauv_cleanindex = 3,
-    lauv_mergeresults = 4
+    lauv_applemenu = 0,
+    lauv_application = 1,
+    lauv_appwithdocument = 2,
+    lauv_resource = 3,
+    lauv_anything = 4
 };
 
 static boolean launch_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
     switch(token) {
-        case lauv_stripmarkup:
-            /* Verb #0: launch.stripmarkup - not yet implemented */
+        case lauv_applemenu:
+            /* Verb #0: launch.applemenu - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case lauv_deindexpage:
-            /* Verb #1: launch.deindexpage - not yet implemented */
+        case lauv_application:
+            /* Verb #1: launch.application - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case lauv_indexpage:
-            /* Verb #2: launch.indexpage - not yet implemented */
+        case lauv_appwithdocument:
+            /* Verb #2: launch.appwithdocument - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case lauv_cleanindex:
-            /* Verb #3: launch.cleanindex - not yet implemented */
+        case lauv_resource:
+            /* Verb #3: launch.resource - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case lauv_mergeresults:
-            /* Verb #4: launch.mergeresults - not yet implemented */
+        case lauv_anything:
+            /* Verb #4: launch.anything - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         default:
@@ -76,11 +76,11 @@ boolean launchinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pstripmarkup"), lauv_stripmarkup);
-    ADD_VERB(BIGSTRING("\pdeindexpage"), lauv_deindexpage);
-    ADD_VERB(BIGSTRING("\pindexpage"), lauv_indexpage);
-    ADD_VERB(BIGSTRING("\pcleanindex"), lauv_cleanindex);
-    ADD_VERB(BIGSTRING("\pmergeresults"), lauv_mergeresults);
+    ADD_VERB(BIGSTRING("\papplemenu"), lauv_applemenu);
+    ADD_VERB(BIGSTRING("\papplication"), lauv_application);
+    ADD_VERB(BIGSTRING("\pappwithdocument"), lauv_appwithdocument);
+    ADD_VERB(BIGSTRING("\presource"), lauv_resource);
+    ADD_VERB(BIGSTRING("\panything"), lauv_anything);
 
     #undef ADD_VERB
 

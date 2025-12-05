@@ -169,42 +169,33 @@ def extract_verb_names(rc_content: str, processor_name: str, verb_count: int) ->
         List of verb names (actual or generic fallback)
     """
     try:
-        # Find the processor block: look for "processor_name\0", optionally with trailing comma
-        processor_pattern = rf'"{processor_name}\\0"\s*,'
-        processor_match = re.search(processor_pattern, rc_content)
+        # Find the ACTUAL processor definition block
+        # Must match: "processor_name\0", followed by true/false and a number
+        # This prevents matching data type references that just have "name\0",
+        # Allow for comments (//...) between elements
+        processor_block_pattern = rf'"{processor_name}\\0"\s*,\s*(?://[^\n]*)?\s*(true|false)\s*,\s*(?://[^\n]*)?\s*(\d+)\s*,\s*(?://[^\n]*)?'
+        processor_match = re.search(processor_block_pattern, rc_content, re.MULTILINE)
 
         if not processor_match:
             return [f"verb{i}" for i in range(verb_count)]
 
-        # Start after the processor name
-        start_pos = processor_match.end()
-        remaining_content = rc_content[start_pos:]
-
-        # The next content should be: true/false, then the verb count
-        # We need to skip to the verb list. Look for pattern of:
-        # - optional whitespace/comments
-        # - true or false or a number
-        # - the verb count number
-        # Then collect the quoted strings after that
-
-        # Skip ahead to find the verb count (should be a number like "30,")
-        # Pattern: whitespace, true/false, whitespace, digit(s), whitespace
-        skip_pattern = r'(true|false)\s*,\s*(\d+)\s*,'
-
-        skip_match = re.search(skip_pattern, remaining_content)
-        if not skip_match:
-            return [f"verb{i}" for i in range(verb_count)]
+        # Verify the verb count matches what we expect
+        found_verb_count = int(processor_match.group(2))
+        if found_verb_count != verb_count:
+            print(f"Warning: Expected {verb_count} verbs for {processor_name}, "
+                  f"but RC file declares {found_verb_count}", file=sys.stderr)
 
         # Start collecting verbs from after the verb count
-        verb_start_pos = skip_match.end()
-        verb_content = remaining_content[verb_start_pos:]
+        verb_start_pos = processor_match.end()
+        verb_content = rc_content[verb_start_pos:]
 
-        # Extract all quoted strings (verb names) until we hit:
-        # - An unquoted processor name (like "dialog\0" or "clock\0" without being a verb)
-        # - End of expected verb count
+        # Extract verb names - quoted strings followed by \0
+        # Stop at verb_count to avoid picking up the next processor
         verb_pattern = r'"([^"\\]+)\\0"'
 
         verbs = []
+        seen_verbs = set()  # Track duplicates
+
         for match in re.finditer(verb_pattern, verb_content):
             verb_name = match.group(1)
 
@@ -212,7 +203,15 @@ def extract_verb_names(rc_content: str, processor_name: str, verb_count: int) ->
             if len(verbs) >= verb_count:
                 break
 
-            # Add the verb name
+            # Detect and warn about duplicates
+            if verb_name in seen_verbs:
+                print(f"Warning: Duplicate verb '{verb_name}' in {processor_name} processor "
+                      f"(index {len(verbs)}), renaming to '{verb_name}_{len(verbs)}'",
+                      file=sys.stderr)
+                # Append index to make it unique
+                verb_name = f"{verb_name}_{len(verbs)}"
+
+            seen_verbs.add(verb_name)
             verbs.append(verb_name)
 
         # If we got the expected number of verbs, return them
@@ -225,8 +224,8 @@ def extract_verb_names(rc_content: str, processor_name: str, verb_count: int) ->
             verbs.extend([f"verb{len(verbs) + i}" for i in range(remaining)])
             return verbs
 
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"Error extracting verbs for {processor_name}: {e}", file=sys.stderr)
 
     # Fallback: return generic names
     return [f"verb{i}" for i in range(verb_count)]

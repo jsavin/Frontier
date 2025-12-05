@@ -20,40 +20,40 @@
 
 /* Token enum for all verbs in the search processor */
 enum {
-    seav_stripmarkup = 0,
-    seav_deindexpage = 1,
-    seav_indexpage = 2,
-    seav_cleanindex = 3,
-    seav_mergeresults = 4,
-    seav_mrcalendar = 5
+    seav_reset = 0,
+    seav_findnext = 1,
+    seav_replace = 2,
+    seav_replaceall = 3,
+    seav_findtextdialog = 4,
+    seav_replacetextdialog = 5
 };
 
 static boolean search_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
     switch(token) {
-        case seav_stripmarkup:
-            /* Verb #0: search.stripmarkup - not yet implemented */
+        case seav_reset:
+            /* Verb #0: search.reset - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case seav_deindexpage:
-            /* Verb #1: search.deindexpage - not yet implemented */
+        case seav_findnext:
+            /* Verb #1: search.findnext - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case seav_indexpage:
-            /* Verb #2: search.indexpage - not yet implemented */
+        case seav_replace:
+            /* Verb #2: search.replace - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case seav_cleanindex:
-            /* Verb #3: search.cleanindex - not yet implemented */
+        case seav_replaceall:
+            /* Verb #3: search.replaceall - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case seav_mergeresults:
-            /* Verb #4: search.mergeresults - not yet implemented */
+        case seav_findtextdialog:
+            /* Verb #4: search.findtextdialog - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case seav_mrcalendar:
-            /* Verb #5: search.mrcalendar - not yet implemented */
+        case seav_replacetextdialog:
+            /* Verb #5: search.replacetextdialog - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         default:
@@ -81,12 +81,12 @@ boolean searchinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pstripmarkup"), seav_stripmarkup);
-    ADD_VERB(BIGSTRING("\pdeindexpage"), seav_deindexpage);
-    ADD_VERB(BIGSTRING("\pindexpage"), seav_indexpage);
-    ADD_VERB(BIGSTRING("\pcleanindex"), seav_cleanindex);
-    ADD_VERB(BIGSTRING("\pmergeresults"), seav_mergeresults);
-    ADD_VERB(BIGSTRING("\pmrcalendar"), seav_mrcalendar);
+    ADD_VERB(BIGSTRING("\preset"), seav_reset);
+    ADD_VERB(BIGSTRING("\pfindnext"), seav_findnext);
+    ADD_VERB(BIGSTRING("\preplace"), seav_replace);
+    ADD_VERB(BIGSTRING("\preplaceall"), seav_replaceall);
+    ADD_VERB(BIGSTRING("\pfindtextdialog"), seav_findtextdialog);
+    ADD_VERB(BIGSTRING("\preplacetextdialog"), seav_replacetextdialog);
 
     #undef ADD_VERB
 
