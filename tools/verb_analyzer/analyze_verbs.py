@@ -299,7 +299,9 @@ def generate_report(analyzer: VerbAnalyzer, output_file: Path):
 if __name__ == '__main__':
     import sys
 
-    repo_root = Path('/Users/jake/dev/jsavin/Frontier')
+    # Use relative path from script location to find repo root
+    script_dir = Path(__file__).parent.resolve()  # tools/verb_analyzer/
+    repo_root = script_dir.parent.parent  # Navigate up to repo root
 
     analyzer = VerbAnalyzer(repo_root)
     analyzer.extract_verbs_from_rc()
