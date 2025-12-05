@@ -1,0 +1,73 @@
+#include "frontier.h"
+#include "standard.h"
+
+#include "memory.h"
+#include "strings.h"
+#include "lang.h"
+#include "langinternal.h"
+#include "tablestructure.h"
+
+/* Token enum for all verbs in the opattributes processor */
+enum {
+    opav_opattributes_verb0 = 0,
+    opav_opattributes_verb1 = 1,
+    opav_opattributes_verb2 = 2,
+    opav_opattributes_verb3 = 3,
+    opav_opattributes_verb4 = 4
+};
+
+static boolean opattributes_valueproc(short token, hdltreenode hparam1,
+                                     tyvaluerecord *vreturned,
+                                     bigstring bserror) {
+    switch(token) {
+        case opav_opattributes_verb0:
+            /* TODO: Implement opattributes.opattributes_verb0 */
+            return false;
+        case opav_opattributes_verb1:
+            /* TODO: Implement opattributes.opattributes_verb1 */
+            return false;
+        case opav_opattributes_verb2:
+            /* TODO: Implement opattributes.opattributes_verb2 */
+            return false;
+        case opav_opattributes_verb3:
+            /* TODO: Implement opattributes.opattributes_verb3 */
+            return false;
+        case opav_opattributes_verb4:
+            /* TODO: Implement opattributes.opattributes_verb4 */
+            return false;
+        default:
+            return false;
+    }
+}
+
+boolean opattributesinitverbs(void) {
+    hdlhashtable htable = nil;
+    bigstring bsname;
+
+    copystring(BIGSTRING("\popattributes"), bsname);
+
+    if (!newfunctionprocessor(bsname, &opattributes_valueproc, false, &htable))
+        return false;
+
+    pushhashtable(htable);
+
+    #define ADD_VERB(name, tok) do { \
+        bigstring bs; \
+        copystring(name, bs); \
+        if (!langaddkeyword(bs, tok)) { \
+            pophashtable(); \
+            return false; \
+        } \
+    } while(0)
+
+    ADD_VERB(BIGSTRING("\popattributes_verb0"), opav_opattributes_verb0);
+    ADD_VERB(BIGSTRING("\popattributes_verb1"), opav_opattributes_verb1);
+    ADD_VERB(BIGSTRING("\popattributes_verb2"), opav_opattributes_verb2);
+    ADD_VERB(BIGSTRING("\popattributes_verb3"), opav_opattributes_verb3);
+    ADD_VERB(BIGSTRING("\popattributes_verb4"), opav_opattributes_verb4);
+
+    #undef ADD_VERB
+
+    pophashtable();
+    return true;
+}

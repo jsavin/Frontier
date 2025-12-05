@@ -25,8 +25,60 @@ from pathlib import Path
 # 2. Add the processor name to this whitelist
 # 3. Run make to regenerate kernel_verbs_init.c
 HEADLESS_IMPLEMENTED: Set[str] = {
-    'file',      # tests/headless_file_verbs.c
-    'frontier',  # tests/headless_frontier_verbs.c
+    # Already implemented in main codebase:
+    'file',              # fileverbs.c
+    'string',            # stringverbs.c
+    'table',             # tableverbs.c
+    'xml',               # langxml.c
+    'html',              # langhtml.c
+    'window',            # shellwindowverbs.c (windowinitverbs)
+    'db',                # dbverbs.c
+    're',                # langregexp.c
+    'sys',               # shellsysverbs.c
+    'lang',              # langstartup.c
+    'crypt',             # langcrypt.c
+    'math',              # langmath.c
+    'sqlite',            # langsqlite.c
+    'mysql',             # langmysql.c
+
+    # New headless stubs (not yet implemented):
+    'frontier',          # tests/headless_frontier_verbs.c
+    'op',                # tests/headless_op_verbs.c
+    'opattributes',      # tests/headless_opattributes_verbs.c
+    'script',            # tests/headless_script_verbs.c
+    'osa',               # tests/headless_osa_verbs.c
+    'menu',              # tests/headless_menu_verbs.c
+    'pict',              # tests/headless_pict_verbs.c
+    'clock',             # tests/headless_clock_verbs.c
+    'date',              # tests/headless_date_verbs.c
+    'dialog',            # tests/headless_dialog_verbs.c
+    'kb',                # tests/headless_kb_verbs.c
+    'mouse',             # tests/headless_mouse_verbs.c
+    'point',             # tests/headless_point_verbs.c
+    'rectangle',         # tests/headless_rectangle_verbs.c
+    'rgb',               # tests/headless_rgb_verbs.c
+    'speaker',           # tests/headless_speaker_verbs.c
+    'target',            # tests/headless_target_verbs.c
+    'bit',               # tests/headless_bit_verbs.c
+    'semaphore',         # tests/headless_semaphore_verbs.c
+    'base64',            # tests/headless_base64_verbs.c
+    'tcp',               # tests/headless_tcp_verbs.c
+    'dll',               # tests/headless_dll_verbs.c
+    'python',            # tests/headless_python_verbs.c
+    'htmlcontrol',       # tests/headless_htmlcontrol_verbs.c
+    'statusbar',         # tests/headless_statusbar_verbs.c
+    'rez',               # tests/headless_rez_verbs.c
+    'search',            # tests/headless_search_verbs.c
+    'filemenu',          # tests/headless_filemenu_verbs.c
+    'editmenu',          # tests/headless_editmenu_verbs.c
+    'launch',            # tests/headless_launch_verbs.c
+    'clipboard',         # tests/headless_clipboard_verbs.c
+    'thread',            # tests/headless_thread_verbs.c
+    'mainwindow',        # tests/headless_mainwindow_verbs.c
+    'searchengine',      # tests/headless_searchengine_verbs.c
+    'mrcalendar',        # tests/headless_mrcalendar_verbs.c
+    'webserver',         # tests/headless_webserver_verbs.c
+    'inetd',             # tests/headless_inetd_verbs.c
 }
 
 # Regex pattern constants with documentation

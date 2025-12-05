@@ -133,7 +133,44 @@ HEADLESS_STUBS = \
     ../portable/wptext_portable.c \
     $(TESTSDIR)/headless_frontier_verbs.c \
     $(TESTSDIR)/headless_file_verbs.c \
-    $(TESTSDIR)/headless_odb_stubs.c
+    $(TESTSDIR)/headless_odb_stubs.c \
+    $(TESTSDIR)/headless_op_verbs.c \
+    $(TESTSDIR)/headless_opattributes_verbs.c \
+    $(TESTSDIR)/headless_script_verbs.c \
+    $(TESTSDIR)/headless_osa_verbs.c \
+    $(TESTSDIR)/headless_table_verbs.c \
+    $(TESTSDIR)/headless_menu_verbs.c \
+    $(TESTSDIR)/headless_pict_verbs.c \
+    $(TESTSDIR)/headless_clock_verbs.c \
+    $(TESTSDIR)/headless_date_verbs.c \
+    $(TESTSDIR)/headless_dialog_verbs.c \
+    $(TESTSDIR)/headless_kb_verbs.c \
+    $(TESTSDIR)/headless_mouse_verbs.c \
+    $(TESTSDIR)/headless_point_verbs.c \
+    $(TESTSDIR)/headless_rectangle_verbs.c \
+    $(TESTSDIR)/headless_rgb_verbs.c \
+    $(TESTSDIR)/headless_speaker_verbs.c \
+    $(TESTSDIR)/headless_target_verbs.c \
+    $(TESTSDIR)/headless_bit_verbs.c \
+    $(TESTSDIR)/headless_semaphore_verbs.c \
+    $(TESTSDIR)/headless_base64_verbs.c \
+    $(TESTSDIR)/headless_tcp_verbs.c \
+    $(TESTSDIR)/headless_dll_verbs.c \
+    $(TESTSDIR)/headless_python_verbs.c \
+    $(TESTSDIR)/headless_htmlcontrol_verbs.c \
+    $(TESTSDIR)/headless_statusbar_verbs.c \
+    $(TESTSDIR)/headless_rez_verbs.c \
+    $(TESTSDIR)/headless_search_verbs.c \
+    $(TESTSDIR)/headless_filemenu_verbs.c \
+    $(TESTSDIR)/headless_editmenu_verbs.c \
+    $(TESTSDIR)/headless_launch_verbs.c \
+    $(TESTSDIR)/headless_clipboard_verbs.c \
+    $(TESTSDIR)/headless_thread_verbs.c \
+    $(TESTSDIR)/headless_mainwindow_verbs.c \
+    $(TESTSDIR)/headless_searchengine_verbs.c \
+    $(TESTSDIR)/headless_mrcalendar_verbs.c \
+    $(TESTSDIR)/headless_webserver_verbs.c \
+    $(TESTSDIR)/headless_inetd_verbs.c
 
 # Database and file runtime sources required for Frontier.root access
 DATABASE_SOURCES = \
