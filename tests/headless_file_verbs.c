@@ -106,6 +106,7 @@ extern long headless_readline(hdlfilenum fnum, char *buf, long bufsz);
 
 static boolean fv_valueproc(short token, hdltreenode hparam1, tyvaluerecord *vreturned, bigstring bserror) {
     register tyvaluerecord *v = vreturned;
+
     setbooleanvalue(false, v);
 
     tyfilespec fs; clearbytes(&fs, sizeof fs);

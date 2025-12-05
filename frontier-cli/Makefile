@@ -126,10 +126,12 @@ HEADLESS_STUBS = \
     $(TESTSDIR)/headless_langipc_stub.c \
     $(TESTSDIR)/headless_lang_runtime_more_stubs.c \
     ../portable/file_portable.c \
+    ../Common/source/file_portable_posix.c \
     ../portable/appleevent_portable.c \
     ../portable/classic_handle.c \
     ../portable/script_portable.c \
     ../portable/wptext_portable.c \
+    $(TESTSDIR)/headless_frontier_verbs.c \
     $(TESTSDIR)/headless_file_verbs.c \
     $(TESTSDIR)/headless_odb_stubs.c
 
