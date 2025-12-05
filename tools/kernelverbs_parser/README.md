@@ -131,14 +131,72 @@ The whitelist approach prevents common errors:
 
 Some processors in `kernelverbs.rc` are wrapped in `#ifdef` directives (e.g., `#ifdef flregexpverbs`). The parser does **not** preprocess these directives - it reads the file as-is.
 
-This means:
-- If the `#ifdef` block is present in the source, the parser will find it
-- The whitelist approach handles this safely - conditionally compiled processors won't be in `HEADLESS_IMPLEMENTED` unless explicitly added
-- No link errors will occur from missing processors
+### How the Whitelist Approach Handles This
 
-If you need to handle conditional compilation:
-1. Ensure the processor is only added to `HEADLESS_IMPLEMENTED` when it should be included
-2. Or preprocess `kernelverbs.rc` before parsing (using `cpp` or similar)
+The whitelist-based design provides automatic safety for conditionally compiled processors:
+
+1. **Parser discovers all processors**: Regardless of `#ifdef` blocks, the parser finds all processor definitions in the source file
+2. **Whitelist controls output**: Only processors in `HEADLESS_IMPLEMENTED` are included in generated code
+3. **Safe by default**: Conditionally compiled processors won't cause link errors unless explicitly whitelisted
+4. **No preprocessing needed**: The parser doesn't need to preprocess the RC file
+
+### Handling Strategies for Future Needs
+
+If you need more sophisticated conditional compilation handling:
+
+#### Strategy 1: Conditional Whitelist (Recommended)
+Use Python to conditionally populate `HEADLESS_IMPLEMENTED` based on environment variables or build flags:
+
+```python
+# In parse_kernelverbs.py
+if os.getenv('ENABLE_REGEX_VERBS'):
+    HEADLESS_IMPLEMENTED.add('regex')
+```
+
+Then build with: `ENABLE_REGEX_VERBS=1 make`
+
+#### Strategy 2: Multiple Whitelist Files
+Create variant whitelist files for different configurations:
+
+```python
+# parse_kernelverbs.py could accept a whitelist config file
+WHITELIST_FILE = os.getenv('WHITELIST_CONFIG', 'whitelist_headless.txt')
+```
+
+#### Strategy 3: Preprocessor Support
+If RC file preprocessing is needed, preprocess before parsing:
+
+```bash
+# In Makefile
+cpp -E Common/resources/Win32/kernelverbs.rc | \
+    python3 tools/kernelverbs_parser/parse_kernelverbs.py - generated/kernel_verbs_init.c
+```
+
+This would require updating the parser to read from stdin.
+
+#### Strategy 4: Dynamic Registration
+Register processors at runtime rather than compile-time:
+
+Instead of generating init calls, register all discovered processors dynamically:
+
+```c
+// In headless_init_kernel_verbs()
+for (each processor in discovered_list) {
+    if (implementation_exists(processor)) {
+        register_processor(processor);
+    }
+}
+```
+
+### Current Behavior
+
+Currently, the parser:
+- ✅ Discovers all 51 processors regardless of `#ifdef` blocks
+- ✅ Only generates code for whitelisted processors (currently file and frontier)
+- ✅ Prevents link errors for unimplemented processors automatically
+- ❌ Does not preprocess or evaluate `#ifdef` conditions
+
+This is the correct default behavior for a headless implementation.
 
 ## Maintenance
 

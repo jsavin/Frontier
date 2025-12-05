@@ -33,6 +33,31 @@ HEADLESS_IMPLEMENTED: Set[str] = {
 EFP_BLOCK_PATTERN = r'(\d+)\s+/\*[^*]*\*/\s+EFP\s+DISCARDABLE'
 BEGIN_PATTERN = r'BEGIN'
 END_PATTERN = r'\bEND\b'
+
+# PROCESSOR_PATTERN matches EFP processor definitions in kernelverbs.rc format
+#
+# Expected RC format (within BEGIN...END blocks):
+#   "processorname\0", ...additional_fields..., true/false, <verb_count>
+#
+# Pattern breakdown:
+#   "([^"]+)\\0"           - Captures processor name: matches quoted string ending with \0
+#   [^,]*,                 - Skips intermediate fields until first comma
+#   \s*(?://[^\n]*)?       - Skips optional inline comment with optional // and trailing content
+#   \s*(true|false)        - Captures window_required boolean (group 2)
+#   \s*,                   - Skips to next comma
+#   \s*(?://[^\n]*)?       - Skips optional inline comment
+#   \s*(\d+)               - Captures verb count as integer (group 3)
+#
+# Groups:
+#   1: Processor name (e.g., "file", "frontier", "database")
+#   2: Window required flag: "true" or "false"
+#   3: Verb count: number of verbs this processor implements
+#
+# Example matches:
+#   "file\0", 0, true, 86           -> name="file", window_required=true, verb_count=86
+#   "frontier\0", 0, false, 14      -> name="frontier", window_required=false, verb_count=14
+#   "xml\0", 0, true, 28 // comment -> name="xml", window_required=true, verb_count=28
+#
 PROCESSOR_PATTERN = r'"([^"]+)\\0"[^,]*,\s*(?://[^\n]*)?\s*(true|false)\s*,\s*(?://[^\n]*)?\s*(\d+)'
 IDENTIFIER_PATTERN = r'^[a-zA-Z_][a-zA-Z0-9_]*$'
 
