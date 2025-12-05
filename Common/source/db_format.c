@@ -38,6 +38,12 @@ extern boolean dbassign_internal(dbaddress *padr, long newsize, ptrvoid pdata);
 extern boolean dbcopy_internal(dbaddress adrorig, dbaddress *adrcopy);
 extern boolean dbgetsize_internal(dbaddress adr, long *logicalsize);
 
+/* Headless verb initialization functions */
+#ifdef FRONTIER_HEADLESS
+extern boolean frontierinitverbs(void);
+extern boolean fileinitverbs(void);
+#endif
+
 // 2025-10-27 Codex: Added optional migration tracing to inspect v6/v7 table layouts during conversion.
 // 2025-11-20 Codex: Added v7 header serializer and shared big-endian helpers to keep modern roots portable.
 // 2025-11-25 Codex: Implement legacy adapter widening + strict v7 reader entry points.
@@ -132,6 +138,15 @@ boolean db_format_prepare_runtime(void) {
 
     if (!langinitverbs())
         return false;
+
+#ifdef FRONTIER_HEADLESS
+    /* Initialize headless verb processors */
+    if (!frontierinitverbs())
+        return false;
+
+    if (!fileinitverbs())
+        return false;
+#endif
 
     grabthreadglobals();
 
