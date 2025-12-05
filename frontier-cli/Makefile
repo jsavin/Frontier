@@ -154,9 +154,8 @@ FRONTIER_SOURCES = $(RUNTIME_SOURCES) $(DATABASE_SOURCES) $(HEADLESS_STUBS) $(ST
 TARGET = frontier-cli
 
 # Kernel verbs compiler
-# NOTE: efp_compiler not available in repo - using pre-generated kernel_verbs_init.c
-# EFP_COMPILER = $(CURDIR)/../tools/efp_compiler/parse_rc.py
-# KERNELVERBS_RC = ../Common/resources/Win32/kernelverbs.rc
+KERNELVERBS_PARSER = ../tools/kernelverbs_parser/parse_kernelverbs.py
+KERNELVERBS_RC = ../Common/resources/Win32/kernelverbs.rc
 
 all: strings_generated kernel_verbs_generated $(TARGET)
 
@@ -179,13 +178,13 @@ $(GENERATED_STRINGS): $(STRINGS_COMPILER) $(STRINGS_INPUTS)
 
 strings_generated: $(GENERATED_STRINGS)
 
-# Kernel verbs generation disabled - using pre-generated file
-# $(KERNEL_VERBS_C): $(EFP_COMPILER) $(KERNELVERBS_RC)
-# 	@mkdir -p $(GENERATED_DIR)
-# 	python3 $(EFP_COMPILER) $(KERNELVERBS_RC) $(KERNEL_VERBS_C)
+# Kernel verbs auto-generation from kernelverbs.rc
+$(KERNEL_VERBS_C): $(KERNELVERBS_PARSER) $(KERNELVERBS_RC)
+	@mkdir -p $(GENERATED_DIR)
+	@echo "Generating kernel_verbs_init.c from kernelverbs.rc..."
+	@python3 $(KERNELVERBS_PARSER) $(KERNELVERBS_RC) $(KERNEL_VERBS_C)
 
-kernel_verbs_generated:
-	@# No-op: using pre-generated kernel_verbs_init.c
+kernel_verbs_generated: $(KERNEL_VERBS_C)
 
 clean:
 	rm -f $(TARGET)

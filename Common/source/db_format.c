@@ -40,8 +40,7 @@ extern boolean dbgetsize_internal(dbaddress adr, long *logicalsize);
 
 /* Headless verb initialization functions */
 #ifdef FRONTIER_HEADLESS
-extern boolean frontierinitverbs(void);
-extern boolean fileinitverbs(void);
+extern boolean headless_init_kernel_verbs(void);  /* Auto-generated from kernelverbs.rc */
 #endif
 
 // 2025-10-27 Codex: Added optional migration tracing to inspect v6/v7 table layouts during conversion.
@@ -140,11 +139,8 @@ boolean db_format_prepare_runtime(void) {
         return false;
 
 #ifdef FRONTIER_HEADLESS
-    /* Initialize headless verb processors */
-    if (!frontierinitverbs())
-        return false;
-
-    if (!fileinitverbs())
+    /* Initialize all headless verb processors (auto-generated) */
+    if (!headless_init_kernel_verbs())
         return false;
 #endif
 
