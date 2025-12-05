@@ -89,14 +89,14 @@ class TestStubGeneration(unittest.TestCase):
         self.assertIn("return false;", c_code)
 
     def test_switch_cases_have_comments(self):
-        """Test that switch cases include TODO comments."""
+        """Test that switch cases include verb index and name comments."""
         proc = EFPProcessor("1099", "test", False, 2)
         verb_names = ["get", "set"]
         c_code = generate_processor_stub(proc, verb_names)
 
-        # Each case should have a TODO comment
-        self.assertIn('/* TODO: Implement test.get */', c_code)
-        self.assertIn('/* TODO: Implement test.set */', c_code)
+        # Each case should have a comment with verb number and name
+        self.assertIn('/* Verb #0: test.get - not yet implemented */', c_code)
+        self.assertIn('/* Verb #1: test.set - not yet implemented */', c_code)
 
     def test_init_function_signature(self):
         """Test init function has correct signature."""
@@ -215,28 +215,27 @@ class TestVerbNameExtraction(unittest.TestCase):
         """Test that generic names are used when RC content is empty."""
         verb_names = extract_verb_names("", "test", 3)
         self.assertEqual(len(verb_names), 3)
-        self.assertEqual(verb_names[0], "test_verb0")
-        self.assertEqual(verb_names[1], "test_verb1")
-        self.assertEqual(verb_names[2], "test_verb2")
+        self.assertEqual(verb_names[0], "verb0")
+        self.assertEqual(verb_names[1], "verb1")
+        self.assertEqual(verb_names[2], "verb2")
 
     def test_fallback_to_generic_names_missing_processor(self):
         """Test that generic names are used when processor not found in RC."""
         rc_content = '"other\\0",'
         verb_names = extract_verb_names(rc_content, "notfound", 2)
-        self.assertEqual(verb_names, ["notfound_verb0", "notfound_verb1"])
+        self.assertEqual(verb_names, ["verb0", "verb1"])
 
     def test_returns_correct_count(self):
         """Test that extraction returns correct number of verb names."""
         verb_names = extract_verb_names("", "date", 5)
         self.assertEqual(len(verb_names), 5)
 
-    def test_processor_name_in_generic_names(self):
-        """Test that processor name is included in generic verb names."""
+    def test_generic_names_format(self):
+        """Test that generic fallback names have simple verb{N} format."""
         verb_names = extract_verb_names("", "file", 3)
         for i, name in enumerate(verb_names):
-            self.assertTrue(name.startswith("file_"),
-                          f"Verb name '{name}' should start with 'file_'")
-            self.assertEqual(name, f"file_verb{i}")
+            self.assertEqual(name, f"verb{i}",
+                           f"Fallback should use simple verb{{N}} format")
 
 
 class TestIntegrationStubGeneration(unittest.TestCase):
