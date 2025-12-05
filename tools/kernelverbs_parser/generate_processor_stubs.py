@@ -29,6 +29,55 @@ from parse_kernelverbs import (
 )
 
 
+def validate_stub_generation_paths(input_path: str, output_dir: str) -> bool:
+    """
+    Validate that input RC file and output directory are valid for stub generation.
+
+    Returns True if valid, False otherwise.
+    Prints detailed error messages to stderr on validation failure.
+    """
+    input_file = Path(input_path)
+    output_path = Path(output_dir)
+
+    # Check if input file exists
+    if not input_file.exists():
+        print(f"ERROR: Input file not found: {input_path}", file=sys.stderr)
+        print(f"Expected: kernelverbs.rc file", file=sys.stderr)
+        return False
+
+    # Validate it's the expected filename
+    if input_file.name != 'kernelverbs.rc':
+        print(f"WARNING: Input file is not named 'kernelverbs.rc': {input_file.name}", file=sys.stderr)
+        print(f"This may work but is unexpected.", file=sys.stderr)
+
+    # Check that input is under a reasonable path structure
+    try:
+        parts = input_file.parts
+        if 'Common' not in parts or 'resources' not in parts:
+            print(f"WARNING: Input file not in expected Common/resources/ path", file=sys.stderr)
+            print(f"  Path: {input_path}", file=sys.stderr)
+            print(f"  Expected something like: Common/resources/Win32/kernelverbs.rc", file=sys.stderr)
+    except:
+        pass  # Path analysis failed, continue anyway
+
+    # Ensure output directory exists or can be created
+    if not output_path.exists():
+        try:
+            print(f"Creating output directory: {output_path}", file=sys.stderr)
+            output_path.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            print(f"ERROR: Cannot create output directory: {output_path}", file=sys.stderr)
+            print(f"  Reason: {e}", file=sys.stderr)
+            return False
+
+    # Check output path looks like tests directory
+    if output_path.name != 'tests':
+        print(f"WARNING: Output directory is not named 'tests': {output_path.name}", file=sys.stderr)
+        print(f"  Stub files are typically generated to 'tests/' directory", file=sys.stderr)
+
+    return True
+
+
 def generate_processor_stub(processor: EFPProcessor, verb_names: List[str]) -> str:
     """
     Generate a complete C stub file for a processor.
@@ -246,9 +295,9 @@ def main() -> None:
     if len(sys.argv) > 3 and sys.argv[3] == '--implemented':
         implemented = set(sys.argv[4].split(','))
 
-    # Validate input file exists
-    if not Path(input_path).exists():
-        print(f"Error: Input file not found: {input_path}", file=sys.stderr)
+    # Validate paths before proceeding
+    if not validate_stub_generation_paths(input_path, output_dir):
+        print("\nValidation failed. Please check paths and try again.", file=sys.stderr)
         sys.exit(1)
 
     # Parse RC file

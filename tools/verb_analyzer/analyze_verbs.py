@@ -8,145 +8,205 @@ Categorizes verbs by implementation status:
 - Platform-Specific: Has #ifdef guards
 - GUI-Dependent: Uses FRONTIER_HEADLESS guards
 - Unimplemented Stubs: New processors, all verbs return false
+
+This script now uses programmatic extraction from kernelverbs.rc
+instead of hardcoded verb mappings.
 """
 
+import sys
 import re
 from pathlib import Path
 from typing import Dict, List, Set, Tuple
 from collections import defaultdict
+
+# Import from kernelverbs_parser
+sys.path.insert(0, str(Path(__file__).parent.parent / 'kernelverbs_parser'))
+from parse_kernelverbs import parse_kernelverbs_rc, EFPProcessor
+from generate_processor_stubs import extract_verb_names
+
+
+def validate_repo_root(repo_root: Path) -> bool:
+    """
+    Validate that repo_root is actually the Frontier repository root.
+
+    Checks for presence of key files/directories that should exist in the repo.
+    Returns True if valid, False otherwise.
+    """
+    required_paths = [
+        repo_root / "Common/resources/Win32/kernelverbs.rc",
+        repo_root / "Common/headers",
+        repo_root / "Common/source",
+        repo_root / "tests",
+        repo_root / "tools",
+    ]
+
+    missing = []
+    for path in required_paths:
+        if not path.exists():
+            missing.append(str(path.relative_to(repo_root)))
+
+    if missing:
+        print(f"ERROR: Repository root validation failed.", file=sys.stderr)
+        print(f"Expected directory: {repo_root}", file=sys.stderr)
+        print(f"Missing required paths:", file=sys.stderr)
+        for path in missing:
+            print(f"  - {path}", file=sys.stderr)
+        print(f"\nThis may indicate:", file=sys.stderr)
+        print(f"  1. Script is running from wrong directory", file=sys.stderr)
+        print(f"  2. Repository structure has changed", file=sys.stderr)
+        print(f"  3. Repository is not fully checked out", file=sys.stderr)
+        return False
+
+    return True
+
 
 class VerbAnalyzer:
     def __init__(self, repo_root: Path):
         self.repo_root = repo_root
         self.verbs_by_processor = {}  # processor -> [verb names]
         self.implementations = defaultdict(list)  # processor.verb -> status
+        self.processors = []  # List[EFPProcessor]
 
     def extract_verbs_from_rc(self):
-        """Extract verb names from kernelverbs.rc"""
+        """
+        Extract verb names from kernelverbs.rc using programmatic parsing.
+
+        This replaces the old hardcoded verb mappings with dynamic extraction
+        using the same logic as the stub generator.
+        """
         rc_file = self.repo_root / "Common/resources/Win32/kernelverbs.rc"
 
+        if not rc_file.exists():
+            raise FileNotFoundError(f"kernelverbs.rc not found at {rc_file}")
+
+        # Parse RC file to discover all processors
+        print(f"Parsing {rc_file}...", file=sys.stderr)
+        self.processors, had_errors = parse_kernelverbs_rc(str(rc_file))
+
+        if had_errors:
+            print(f"Warning: Errors encountered while parsing RC file", file=sys.stderr)
+
+        print(f"Discovered {len(self.processors)} processors", file=sys.stderr)
+
+        # Read RC content for verb extraction
         with open(rc_file, 'r', encoding='utf-8', errors='replace') as f:
-            content = f.read()
+            rc_content = f.read()
 
-        # Parse each EFP block
-        current_processor = None
-        in_efp_block = False
-        verbs_in_current = []
+        # Extract verb names for each processor
+        for proc in self.processors:
+            verb_names = extract_verb_names(rc_content, proc.name, proc.verb_count)
+            self.verbs_by_processor[proc.name] = verb_names
 
-        for line in content.split('\n'):
-            # Detect processor name
-            processor_match = re.search(r'"([a-z_]+)\\0"', line)
-            if processor_match and in_efp_block:
-                processor_name = processor_match.group(1)
-                if current_processor and verbs_in_current:
-                    self.verbs_by_processor[current_processor] = verbs_in_current.copy()
-                current_processor = processor_name
-                verbs_in_current = []
+            # Report if we got placeholder names (extraction failed)
+            if verb_names and verb_names[0].startswith('verb'):
+                print(f"Warning: {proc.name} has placeholder verb names (extraction may have failed)",
+                      file=sys.stderr)
 
-            # Detect EFP block start
-            if 'EFP' in line and 'DISCARDABLE' in line:
-                in_efp_block = True
-
-        # Fallback: use hardcoded processor-verb mapping for completeness
-        self._load_known_verbs()
-
-    def _load_known_verbs(self):
-        """Load known verbs from kernelverbs.rc by manual inspection"""
-        known = {
-            'file': ['created', 'modified', 'type', 'creator', 'setcreated', 'setmodified',
-                    'settype', 'setcreator', 'isfolder', 'isvolume', 'islocked', 'lock',
-                    'unlock', 'copy', 'copydatafork', 'copyresourcefork', 'delete', 'rename',
-                    'exists', 'size', 'fullpath', 'getpath', 'setpath', 'filefrompath',
-                    'folderfrompath', 'getsystemfolderpath', 'getspecialfolderpath', 'new',
-                    'newfolder', 'newalias', 'getfiledialog', 'putfiledialog', 'getfolderdialog',
-                    'getdiskdialog', 'geticonpos', 'seticonpos', 'getversion', 'setversion',
-                    'getfullversion', 'setfullversion', 'getcomment', 'setcomment', 'getlabel',
-                    'setlabel', 'findapplication', 'isbusy', 'hasbundle', 'setbundle', 'isalias',
-                    'isvisible', 'setvisible', 'followalias', 'move', 'eject', 'isejectable',
-                    'freespaceonvolume', 'volumesize', 'volumeblocksize', 'filesonvolume',
-                    'foldersonvolume', 'unmountvolume', 'mountservervolume', 'findinfile',
-                    'countlines', 'open', 'close', 'endoffile', 'setendoffile', 'getendoffile',
-                    'setposition', 'getposition', 'readline', 'writeline', 'read', 'write',
-                    'compare', 'writewholefile', 'getpathchar', 'freespaceonvolumedouble',
-                    'volumesizedouble', 'getmp3info', 'readwholefile', 'getLabelIndex',
-                    'setLabelIndex', 'getLabelNames', 'getPosixPath'],
-            'string': ['length', 'upper', 'lower', 'cat', 'contains', 'find', 'delete',
-                      'insert', 'mid', 'replace', 'trim', 'padLeft', 'padRight', 'reverse',
-                      'getChar', 'setChar', 'split', 'join', 'format', 'toNumber', 'toString',
-                      'compare', 'equals', 'startsWith', 'endsWith', 'substring', 'indexOf',
-                      'lastIndexOf', 'countFields', 'getNthField', 'setNthField', 'deleteField',
-                      'insertField', 'getLineNumber', 'getLineText', 'getLines', 'getWords',
-                      'getSentences', 'getParagraphs', 'stripMarkup', 'encodeHTML', 'decodeHTML',
-                      'encodeURL', 'decodeURL', 'encodeBase64', 'decodeBase64', 'md5', 'sha1',
-                      'trim'],
-        }
-
-        # Initialize stubs for all 51 processors
-        stub_processors = [
-            'op', 'opattributes', 'script', 'osa', 'table', 'menu', 'pict', 'clock', 'date',
-            'dialog', 'kb', 'mouse', 'point', 'rectangle', 'rgb', 'speaker', 'target', 'bit',
-            'semaphore', 'base64', 'tcp', 'dll', 'python', 'htmlcontrol', 'statusbar',
-            'rez', 'search', 'filemenu', 'editmenu', 'launch', 'clipboard', 'thread',
-            'mainwindow', 'searchengine', 'mrcalendar', 'webserver', 'inetd', 'frontier'
-        ]
-
-        for proc in stub_processors:
-            if proc not in self.verbs_by_processor:
-                self.verbs_by_processor[proc] = []
-
-        # Merge with known verbs
-        for proc, verbs in known.items():
-            if proc not in self.verbs_by_processor:
-                self.verbs_by_processor[proc] = verbs
+        print(f"Extracted verbs for {len(self.verbs_by_processor)} processors", file=sys.stderr)
 
     def analyze_implementations(self):
         """Analyze implementation status of each verb"""
 
-        # Analyze implemented processors
+        # Map of processors to their implementation files
+        # This is somewhat manual but reflects actual file structure
         impl_files = {
             'file': 'tests/headless_file_verbs.c',
+            'frontier': 'tests/headless_frontier_verbs.c',
             'string': 'Common/source/stringverbs.c',
             'table': 'Common/source/tableverbs.c',
             'menu': 'Common/source/menuverbs.c',
             'window': 'Common/source/shellwindowverbs.c',
-            'dialog': 'Common/source/langverbs.c',  # Rough approximation
+            'dialog': 'Common/source/langverbs.c',
             'date': 'Common/source/langdate.c',
+            'op': 'Common/source/opverbs.c',
+            'math': 'Common/source/langmath.c',
+            'xml': 'Common/source/langxml.c',
         }
 
         # Check each file for platform-specific code and missing impls
         for processor, filepath in impl_files.items():
             full_path = self.repo_root / filepath
             if full_path.exists():
+                print(f"Analyzing {processor} in {filepath}...", file=sys.stderr)
                 self._analyze_file(processor, full_path)
+            else:
+                print(f"Warning: {filepath} not found, marking {processor} as stub",
+                      file=sys.stderr)
 
-        # All stub verbs are unimplemented
-        stub_procs = set(self.verbs_by_processor.keys()) - set(impl_files.keys())
+        # All unanalyzed processors are stubs
+        analyzed_procs = set(impl_files.keys())
+        stub_procs = set(self.verbs_by_processor.keys()) - analyzed_procs
+
+        print(f"Marking {len(stub_procs)} processors as unimplemented stubs", file=sys.stderr)
+
         for proc in stub_procs:
             for verb in self.verbs_by_processor.get(proc, []):
                 self.implementations[f'{proc}.{verb}'] = ['unimplemented_stub']
 
     def _analyze_file(self, processor: str, filepath: Path):
         """Analyze a single implementation file"""
-        with open(filepath, 'r', encoding='utf-8', errors='replace') as f:
-            content = f.read()
+        try:
+            with open(filepath, 'r', encoding='utf-8', errors='replace') as f:
+                content = f.read()
+        except Exception as e:
+            print(f"Error reading {filepath}: {e}", file=sys.stderr)
+            return
 
         # Look for platform-specific patterns
-        has_platform_guards = bool(re.search(r'#ifdef.*WIN|#ifdef.*MAC|#if defined.*WIN|#if defined.*MAC', content))
-        has_headless_guards = bool(re.search(r'#ifdef FRONTIER_HEADLESS|#if defined\(FRONTIER_HEADLESS\)', content))
+        has_platform_guards = bool(re.search(
+            r'#ifdef.*WIN|#ifdef.*MAC|#if defined.*WIN|#if defined.*MAC',
+            content
+        ))
+        has_headless_guards = bool(re.search(
+            r'#ifdef FRONTIER_HEADLESS|#if defined\(FRONTIER_HEADLESS\)',
+            content
+        ))
 
-        for verb in self.verbs_by_processor.get(processor, []):
-            case_pattern = f'case.*{verb}:|{verb}_'
+        # Check for "not implemented" pattern in stubs
+        has_not_implemented = bool(re.search(
+            r'copystring.*not implemented|return false.*not implemented',
+            content,
+            re.IGNORECASE
+        ))
+
+        verbs = self.verbs_by_processor.get(processor, [])
+        print(f"  Checking {len(verbs)} verbs for {processor}", file=sys.stderr)
+
+        for verb in verbs:
+            # Look for verb references (case statements, function names, etc.)
+            # Use processor prefix to be more specific
+            prefix = processor[:3] + 'v'  # e.g., "filv", "strv", "datv"
+            case_pattern = rf'case\s+{prefix}_{verb}:|{prefix}_{verb}\s*='
+
             if re.search(case_pattern, content, re.IGNORECASE):
                 status = []
 
-                if has_platform_guards:
-                    status.append('platform_specific')
-                if has_headless_guards:
-                    status.append('gui_dependent')
-                if not status:
-                    status.append('implemented')
+                # Check if this specific verb returns "not implemented"
+                # Look for the verb's case block and check if it has stub implementation
+                verb_block_match = re.search(
+                    rf'case\s+{prefix}_{verb}:.*?(?=case\s+\w+:|default:|\}})',
+                    content,
+                    re.IGNORECASE | re.DOTALL
+                )
+
+                if verb_block_match:
+                    verb_block = verb_block_match.group(0)
+                    if 'not implemented' in verb_block.lower():
+                        status.append('unimplemented_stub')
+                    elif has_platform_guards:
+                        status.append('platform_specific')
+                    elif has_headless_guards:
+                        status.append('gui_dependent')
+                    else:
+                        status.append('implemented')
+                else:
+                    # Found verb enum but not implementation - likely missing
+                    status.append('missing')
 
                 self.implementations[f'{processor}.{verb}'] = status
+            else:
+                # Verb not found in file
+                self.implementations[f'{processor}.{verb}'] = ['missing']
 
 
 def generate_report(analyzer: VerbAnalyzer, output_file: Path):
@@ -171,16 +231,18 @@ def generate_report(analyzer: VerbAnalyzer, output_file: Path):
         elif 'implemented' in statuses:
             fully_implemented.append(verb_key)
 
+    total_verbs = sum(len(verbs) for verbs in analyzer.verbs_by_processor.values())
+
     # Generate markdown
     lines = [
         '# Frontier Verb Implementation Status Report',
         '',
-        '**Generated**: Phase 1 Complete - All 51 Processors Initialized',
+        '**Generated**: Programmatic analysis from kernelverbs.rc',
         '',
         '## Executive Summary',
         '',
-        f'- **Total Processors**: 51',
-        f'- **Total Verbs**: 707',
+        f'- **Total Processors**: {len(analyzer.processors)}',
+        f'- **Total Verbs**: {total_verbs}',
         f'- **Fully Implemented**: {len(fully_implemented)}',
         f'- **Platform-Specific**: {len(platform_specific)}',
         f'- **GUI-Dependent (Headless)**: {len(gui_dependent)}',
@@ -191,7 +253,7 @@ def generate_report(analyzer: VerbAnalyzer, output_file: Path):
         '',
         '### Category 1: Unimplemented Stubs (Ready for Phase 2 Testing)',
         '',
-        f'**Count**: {len(unimplemented_stubs)} verbs across 37 stub processors',
+        f'**Count**: {len(unimplemented_stubs)} verbs across multiple stub processors',
         '',
         'These processors have been generated but contain only stub implementations that return',
         '"not implemented". This is by design - they are ready for systematic testing to discover',
@@ -204,7 +266,7 @@ def generate_report(analyzer: VerbAnalyzer, output_file: Path):
     # Group unimplemented stubs by processor
     stubs_by_proc = defaultdict(list)
     for verb_key in unimplemented_stubs:
-        proc, verb = verb_key.split('.')
+        proc, verb = verb_key.split('.', 1)
         stubs_by_proc[proc].append(verb)
 
     for proc in sorted(stubs_by_proc.keys()):
@@ -275,10 +337,32 @@ def generate_report(analyzer: VerbAnalyzer, output_file: Path):
 
     lines.extend([
         '',
+        '## Verb Details by Processor',
+        '',
+        'Complete listing of all verbs organized by processor:',
+        '',
+    ])
+
+    # Add detailed processor-by-processor breakdown
+    for proc in sorted(analyzer.verbs_by_processor.keys()):
+        verbs = analyzer.verbs_by_processor[proc]
+        lines.append(f'### {proc} ({len(verbs)} verbs)')
+        lines.append('')
+
+        for verb in verbs:
+            verb_key = f'{proc}.{verb}'
+            status = analyzer.implementations.get(verb_key, ['unknown'])
+            status_str = ', '.join(status)
+            lines.append(f'- `{verb}` - {status_str}')
+
+        lines.append('')
+
+    lines.extend([
+        '',
         '## Next Steps',
         '',
         '### Phase 2: Systematic Testing',
-        '1. Create test harness to run all 707 verbs',
+        '1. Create test harness to run all verbs',
         '2. Document which verbs work in headless mode',
         '3. Categorize failures into actionable buckets',
         '4. Build implementation roadmap based on real data',
@@ -288,6 +372,12 @@ def generate_report(analyzer: VerbAnalyzer, output_file: Path):
         '2. Implement platform-specific versions for macOS/Linux',
         '3. Document GUI-incompatible verbs and provide error messages',
         '4. Test incrementally with real UserTalk scripts',
+        '',
+        '---',
+        '',
+        '*This report was generated programmatically by analyzing kernelverbs.rc and*',
+        '*implementation files. Verb names are extracted directly from the RC file*',
+        '*rather than hardcoded mappings.*',
     ])
 
     with open(output_file, 'w') as f:
@@ -297,20 +387,44 @@ def generate_report(analyzer: VerbAnalyzer, output_file: Path):
 
 
 if __name__ == '__main__':
-    import sys
-
     # Use relative path from script location to find repo root
     script_dir = Path(__file__).parent.resolve()  # tools/verb_analyzer/
     repo_root = script_dir.parent.parent  # Navigate up to repo root
 
-    analyzer = VerbAnalyzer(repo_root)
-    analyzer.extract_verbs_from_rc()
-    analyzer.analyze_implementations()
+    print(f"Script directory: {script_dir}", file=sys.stderr)
+    print(f"Repository root: {repo_root}", file=sys.stderr)
 
-    output = repo_root / 'planning/phase3/VERB_IMPLEMENTATION_STATUS.md'
+    # Validate repo root before proceeding
+    if not validate_repo_root(repo_root):
+        print("\nFailed to validate repository root. Exiting.", file=sys.stderr)
+        sys.exit(1)
+
+    print("Repository root validated successfully.", file=sys.stderr)
+    print("", file=sys.stderr)
+
+    analyzer = VerbAnalyzer(repo_root)
+
+    try:
+        analyzer.extract_verbs_from_rc()
+        analyzer.analyze_implementations()
+    except Exception as e:
+        print(f"\nError during analysis: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
+
+    output = repo_root / 'planning/VERB_IMPLEMENTATION_STATUS.md'
     output.parent.mkdir(parents=True, exist_ok=True)
 
-    result = generate_report(analyzer, output)
-    print(f"Generated report: {result}")
-    print(f"\nSummary:")
-    print(f"  Unimplemented stubs: {len(analyzer.implementations)}")
+    try:
+        result = generate_report(analyzer, output)
+        print(f"\n✓ Generated report: {result}", file=sys.stderr)
+        print(f"\nSummary:", file=sys.stderr)
+        print(f"  Total processors: {len(analyzer.processors)}", file=sys.stderr)
+        print(f"  Total verbs: {sum(len(v) for v in analyzer.verbs_by_processor.values())}", file=sys.stderr)
+        print(f"  Categorized: {len(analyzer.implementations)}", file=sys.stderr)
+    except Exception as e:
+        print(f"\nError generating report: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
