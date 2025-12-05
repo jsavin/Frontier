@@ -131,6 +131,84 @@ Requirements:
 
 **For Implementation:** Understand when verbs should accept addresses vs. values; common pattern is returning multiple values via address parameters.
 
+### Parameter Default Values
+
+**Declaring Default Values in Handler Definition**
+```
+on myVerb (param1 = defaultValue1, param2 = defaultValue2)
+  // implementation
+```
+
+- Defaults specified with `=` syntax in the `on` line parameter list
+- Can be any valid expression
+- Any parameter with a default can be omitted from the call
+- If a value is provided in the call, it overrides the default
+
+**Calling with Default Parameters**
+```
+myVerb()                    → uses all defaults
+myVerb(10)                  → uses 10 for param1, default for param2
+myVerb(10, 20)              → uses 10 for param1, 20 for param2
+```
+
+**Real Examples from Documentation:**
+```
+on addThree (a = 1, b = 2, c = 3)
+  return (a + b + c)
+
+addThree()              → 6     [1 + 2 + 3]
+addThree(10)            → 15    [10 + 2 + 3]
+addThree(10, 20)        → 33    [10 + 20 + 3]
+addThree(10, 20, 30)    → 60    [10 + 20 + 30]
+```
+
+**Critical for Implementation:** Default parameters make verbs more flexible and user-friendly. Many built-in verbs use them for optional configuration parameters.
+
+### Named Parameters
+
+**Syntax for Named Parameter Calls**
+```
+verb(paramName1:value1, paramName2:value2)
+```
+
+- Parameter names match the handler's parameter definitions
+- Can be called in any order (not positional)
+- Makes code self-documenting
+
+**Real Examples from Documentation:**
+```
+on addThree (a = 1, b = 2, c = 3)
+  return (a + b + c)
+
+addThree(c:30)                → 33    [defaults for a, b; 30 for c: 1+2+30]
+addThree(c:30, b:20)          → 51    [default for a; 20 for b, 30 for c: 1+20+30]
+addThree(c:30, a:5)           → 38    [5 for a, default for b, 30 for c: 5+2+30]
+```
+
+**Mixing Positional and Named Parameters**
+
+You can mix both syntaxes with **one strict rule:**
+- **All unnamed (positional) values must come FIRST**
+- All named parameters must come AFTER positional ones
+- Positional values assigned left-to-right to parameters
+
+```
+on addThreeAndMultiplyToo (a, b, c)
+  return (a + (2 * b) + (3 * c))
+
+addThreeAndMultiplyToo(5, c:1, b:32)
+  → 72    [a=5 (positional), b=32 (named), c=1 (named)]
+```
+
+**For Implementation:** Named parameters allow:
+- More readable code (parameter purpose is explicit)
+- Calling in any order
+- Adding new parameters to existing handlers safely (can be omitted by callers)
+- Combining flexibility with clarity
+
+**Important Note on Built-in Verbs:**
+When looking up verbs in documentation, parameter names shown are descriptive (for clarity), not necessarily the actual parameter names in the implementation. To call a built-in verb with named parameters, check the database to find the actual parameter names.
+
 ### Special Evaluation Rules
 
 Four verbs treat parameters specially (DO NOT evaluate them):
