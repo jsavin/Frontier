@@ -239,10 +239,10 @@ def main() -> None:
     Exit code 2 is specifically for CI to detect accidental breakage in kernelverbs.rc.
     """
     if len(sys.argv) != 3:
-        print("Usage: parse_kernelverbs.py <input.rc> <output.c>")
-        print()
-        print("Example:")
-        print("  python3 parse_kernelverbs.py Common/resources/Win32/kernelverbs.rc generated/kernel_verbs_init.c")
+        print("Usage: parse_kernelverbs.py <input.rc> <output.c>", file=sys.stderr)
+        print(file=sys.stderr)
+        print("Example:", file=sys.stderr)
+        print("  python3 parse_kernelverbs.py Common/resources/Win32/kernelverbs.rc generated/kernel_verbs_init.c", file=sys.stderr)
         sys.exit(1)
 
     input_path = sys.argv[1]
@@ -254,7 +254,7 @@ def main() -> None:
         sys.exit(1)
 
     # Parse the RC file
-    print(f"Parsing {input_path}...")
+    print(f"Parsing {input_path}...", file=sys.stderr)
     processors, had_parsing_errors = parse_kernelverbs_rc(input_path)
 
     if not processors:
@@ -265,17 +265,17 @@ def main() -> None:
     implemented = [p for p in processors if p.name in HEADLESS_IMPLEMENTED]
     unimplemented = [p for p in processors if p.name not in HEADLESS_IMPLEMENTED]
 
-    print(f"Found {len(processors)} verb processors:")
-    print(f"\nImplemented in headless mode ({len(implemented)}):")
+    print(f"Found {len(processors)} verb processors:", file=sys.stderr)
+    print(f"\nImplemented in headless mode ({len(implemented)}):", file=sys.stderr)
     for proc in implemented:
-        print(f"  ✓ {proc.name:20s} (EFP {proc.efp_id:4s}, {proc.verb_count:3d} verbs)")
+        print(f"  ✓ {proc.name:20s} (EFP {proc.efp_id:4s}, {proc.verb_count:3d} verbs)", file=sys.stderr)
 
-    print(f"\nNot yet implemented ({len(unimplemented)}):")
+    print(f"\nNot yet implemented ({len(unimplemented)}):", file=sys.stderr)
     for proc in unimplemented:
-        print(f"  - {proc.name:20s} (EFP {proc.efp_id:4s}, {proc.verb_count:3d} verbs)")
+        print(f"  - {proc.name:20s} (EFP {proc.efp_id:4s}, {proc.verb_count:3d} verbs)", file=sys.stderr)
 
     # Generate the C code
-    print(f"\nGenerating {output_path}...")
+    print(f"\nGenerating {output_path}...", file=sys.stderr)
     c_code = generate_kernel_verbs_init_c(processors, input_path)
 
     # Ensure output directory exists
@@ -289,14 +289,14 @@ def main() -> None:
     impl_verbs = sum(p.verb_count for p in implemented)
     total_verbs = sum(p.verb_count for p in processors)
 
-    print(f"✓ Generated {output_path}")
-    print(f"  Implemented processors: {len(implemented)} of {len(processors)}")
-    print(f"  Implemented verbs: {impl_verbs} of {total_verbs}")
-    print()
-    print("To add more processors:")
-    print("  1. Implement tests/headless_<processor>_verbs.c with <processor>initverbs()")
-    print("  2. Add processor name to HEADLESS_IMPLEMENTED in parse_kernelverbs.py")
-    print("  3. Run make to regenerate")
+    print(f"✓ Generated {output_path}", file=sys.stderr)
+    print(f"  Implemented processors: {len(implemented)} of {len(processors)}", file=sys.stderr)
+    print(f"  Implemented verbs: {impl_verbs} of {total_verbs}", file=sys.stderr)
+    print(file=sys.stderr)
+    print("To add more processors:", file=sys.stderr)
+    print("  1. Implement tests/headless_<processor>_verbs.c with <processor>initverbs()", file=sys.stderr)
+    print("  2. Add processor name to HEADLESS_IMPLEMENTED in parse_kernelverbs.py", file=sys.stderr)
+    print("  3. Run make to regenerate", file=sys.stderr)
 
     # Exit with appropriate code: 2 if parsing errors, 0 on success
     if had_parsing_errors:
