@@ -55,6 +55,18 @@ tests/runtime_tests.dSYM/
 tools/**/*.dSYM/
 scripts/**/__pycache__/
 
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.eggs/
+
+# Test executables
+tests/db_format_tests
+tests/runtime_tests
+tests/runtime_tests.dSYM/
+
 # Database backups
 *.root.bak
 *.root.prev*
