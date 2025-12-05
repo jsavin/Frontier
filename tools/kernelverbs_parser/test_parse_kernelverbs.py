@@ -20,7 +20,7 @@ from parse_kernelverbs import (
     parse_kernelverbs_rc,
     generate_kernel_verbs_init_c,
     EFPProcessor,
-    HEADLESS_IMPLEMENTED,
+    HEADLESS_REGISTERED,
 )
 
 
@@ -334,10 +334,10 @@ END
         # Should include only whitelisted processors in forward declarations
         self.assertIn("fileinitverbs", c_code)
         self.assertIn("frontierinitverbs", c_code)
+        self.assertIn("xmlinitverbs", c_code)  # xml is now whitelisted
 
         # Should NOT include unwhitelisted processors
         self.assertNotIn("databaseinitverbs", c_code)
-        self.assertNotIn("xmlinitverbs", c_code)
 
     def test_generated_code_structure(self):
         """Test that generated C code has proper structure"""
@@ -548,12 +548,12 @@ class TestIntegration(unittest.TestCase):
         self.assertIn("fileinitverbs", c_code, "Should include file processor")
         self.assertIn("frontierinitverbs", c_code, "Should include frontier processor")
 
-        # Verify unimplemented processors are NOT in generated code
-        # (they shouldn't be called even if discovered)
+        # Verify that init calls are present for whitelisted processors
+        # Now all 51 processors are whitelisted (14 real + 37 stubs)
         code_lines = c_code.split('\n')
         implementation_lines = [l for l in code_lines if 'initverbs()' in l and not l.strip().startswith('*')]
-        # Should only have init calls for whitelisted processors
-        self.assertLessEqual(len(implementation_lines), 4, "Should have limited init calls (extern decls + actual calls)")
+        # Should have init calls for all 51 whitelisted processors (extern decls + actual calls)
+        self.assertGreaterEqual(len(implementation_lines), 51, "Should have extern declarations and calls for all 51 whitelisted processors")
 
 
 if __name__ == '__main__':

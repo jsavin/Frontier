@@ -25,7 +25,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from parse_kernelverbs import (
     parse_kernelverbs_rc,
     EFPProcessor,
-    HEADLESS_IMPLEMENTED
+    HEADLESS_REGISTERED
 )
 
 
@@ -166,7 +166,7 @@ def main() -> None:
     output_dir = sys.argv[2]
 
     # Parse optional --implemented flag
-    implemented = set(HEADLESS_IMPLEMENTED)
+    implemented = set(HEADLESS_REGISTERED)
     if len(sys.argv) > 3 and sys.argv[3] == '--implemented':
         implemented = set(sys.argv[4].split(','))
 

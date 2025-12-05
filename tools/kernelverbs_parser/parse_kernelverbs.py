@@ -24,7 +24,7 @@ from pathlib import Path
 # 1. Implement tests/headless_<processor>_verbs.c with <processor>initverbs()
 # 2. Add the processor name to this whitelist
 # 3. Run make to regenerate kernel_verbs_init.c
-HEADLESS_IMPLEMENTED: Set[str] = {
+HEADLESS_REGISTERED: Set[str] = {
     # Already implemented in main codebase:
     'file',              # fileverbs.c
     'string',            # stringverbs.c
@@ -210,12 +210,12 @@ def generate_kernel_verbs_init_c(processors: List[EFPProcessor], rc_path: str) -
         String containing the complete C source file
 
     Note:
-        Uses the module-level HEADLESS_IMPLEMENTED whitelist to filter which
+        Uses the module-level HEADLESS_REGISTERED whitelist to filter which
         processors get initialization calls in the generated code.
     """
     # Filter to only implemented processors using module-level whitelist
-    implemented_procs = [p for p in processors if p.name in HEADLESS_IMPLEMENTED]
-    unimplemented_procs = [p for p in processors if p.name not in HEADLESS_IMPLEMENTED]
+    implemented_procs = [p for p in processors if p.name in HEADLESS_REGISTERED]
+    unimplemented_procs = [p for p in processors if p.name not in HEADLESS_REGISTERED]
 
     lines = [
         "/* Auto-generated from kernelverbs.rc - DO NOT EDIT BY HAND */",
@@ -225,7 +225,7 @@ def generate_kernel_verbs_init_c(processors: List[EFPProcessor], rc_path: str) -
         " * To regenerate, run: make in frontier-cli directory",
         " *",
         " * NOTE: Only processors with headless implementations are included.",
-        " * See HEADLESS_IMPLEMENTED whitelist in parse_kernelverbs.py.",
+        " * See HEADLESS_REGISTERED whitelist in parse_kernelverbs.py.",
         " */",
         "",
         "#include \"frontier.h\"",
@@ -254,7 +254,7 @@ def generate_kernel_verbs_init_c(processors: List[EFPProcessor], rc_path: str) -
         f" * Implemented verbs: {total_implemented_verbs} of {total_all_verbs} total",
         " *",
         " * To add more processors, implement them in tests/headless_*_verbs.c",
-        " * and add to HEADLESS_IMPLEMENTED whitelist in parse_kernelverbs.py.",
+        " * and add to HEADLESS_REGISTERED whitelist in parse_kernelverbs.py.",
         " *",
         " * Returns: true if all processors initialized successfully, false otherwise",
         " */",
@@ -314,8 +314,8 @@ def main() -> None:
         sys.exit(1)
 
     # Use the module-level whitelist to categorize processors
-    implemented = [p for p in processors if p.name in HEADLESS_IMPLEMENTED]
-    unimplemented = [p for p in processors if p.name not in HEADLESS_IMPLEMENTED]
+    implemented = [p for p in processors if p.name in HEADLESS_REGISTERED]
+    unimplemented = [p for p in processors if p.name not in HEADLESS_REGISTERED]
 
     print(f"Found {len(processors)} verb processors:", file=sys.stderr)
     print(f"\nImplemented in headless mode ({len(implemented)}):", file=sys.stderr)
@@ -347,7 +347,7 @@ def main() -> None:
     print(file=sys.stderr)
     print("To add more processors:", file=sys.stderr)
     print("  1. Implement tests/headless_<processor>_verbs.c with <processor>initverbs()", file=sys.stderr)
-    print("  2. Add processor name to HEADLESS_IMPLEMENTED in parse_kernelverbs.py", file=sys.stderr)
+    print("  2. Add processor name to HEADLESS_REGISTERED in parse_kernelverbs.py", file=sys.stderr)
     print("  3. Run make to regenerate", file=sys.stderr)
 
     # Exit with appropriate code: 2 if parsing errors, 0 on success
