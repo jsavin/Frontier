@@ -15,8 +15,26 @@ Example:
 
 import sys
 import re
-from typing import List, Dict
+from typing import List, Set
 from pathlib import Path
+
+# Whitelist of processors that have headless implementations
+# Only these processors will be included in the generated init function.
+# To add a new processor:
+# 1. Implement tests/headless_<processor>_verbs.c with <processor>initverbs()
+# 2. Add the processor name to this whitelist
+# 3. Run make to regenerate kernel_verbs_init.c
+HEADLESS_IMPLEMENTED: Set[str] = {
+    'file',      # tests/headless_file_verbs.c
+    'frontier',  # tests/headless_frontier_verbs.c
+}
+
+# Regex pattern constants with documentation
+EFP_BLOCK_PATTERN = r'(\d+)\s+/\*[^*]*\*/\s+EFP\s+DISCARDABLE'
+BEGIN_PATTERN = r'BEGIN'
+END_PATTERN = r'\bEND\b'
+PROCESSOR_PATTERN = r'"([^"]+)\\0"[^,]*,\s*(?://[^\n]*)?\s*(true|false)\s*,\s*(?://[^\n]*)?\s*(\d+)'
+IDENTIFIER_PATTERN = r'^[a-zA-Z_][a-zA-Z0-9_]*$'
 
 
 class EFPProcessor:
@@ -38,60 +56,53 @@ def parse_kernelverbs_rc(rc_path: str) -> List[EFPProcessor]:
     Parse kernelverbs.rc and extract all EFP processor definitions.
 
     Returns a list of EFPProcessor objects, one for each processor.
+
+    Raises:
+        SystemExit: If processor names are invalid C identifiers
     """
     with open(rc_path, 'r', encoding='utf-8', errors='replace') as f:
         content = f.read()
 
     processors = []
+    seen_names: Set[str] = set()
 
-    # Find all EFP blocks
-    # Pattern: <number> /*comment*/ EFP DISCARDABLE
-    efp_pattern = r'(\d+)\s+/\*[^*]*\*/\s+EFP\s+DISCARDABLE'
-
-    for match in re.finditer(efp_pattern, content):
+    # Find all EFP blocks: <number> /*comment*/ EFP DISCARDABLE
+    for match in re.finditer(EFP_BLOCK_PATTERN, content):
         efp_id = match.group(1)
         block_start = match.end()
 
-        # Find the BEGIN...END block
-        begin_match = re.search(r'BEGIN', content[block_start:block_start + 100])
+        # Find the BEGIN...END block (limit search to reasonable distance)
+        begin_match = re.search(BEGIN_PATTERN, content[block_start:block_start + 100])
         if not begin_match:
             continue
 
         block_content_start = block_start + begin_match.end()
 
         # Find matching END
-        end_match = re.search(r'\bEND\b', content[block_content_start:])
+        end_match = re.search(END_PATTERN, content[block_content_start:])
         if not end_match:
             continue
 
         block_content = content[block_content_start:block_content_start + end_match.start()]
 
-        # Parse the block content
-        # Format:
-        #   N,                      // Number of "blocks" in this resource
-        #       "processor1\0",      // Processor name
-        #       true/false,         // Window required
-        #           count,          // Verb count
-        #           "verb1\0",
-        #           ...
-        #       "processor2\0",     // Another processor (if N > 1)
-        #       ...
-
-        # Some EFPs have multiple processors in one block
-        # We need to find each processor name and its associated verb count
-
-        # Split by processor name patterns to find all sub-blocks
-        # Pattern: "name\0", followed by comma, then newline/tabs/spaces/comments, true/false, comma, newline/tabs/spaces/comments, then number
-        # Example:
-        #   "op\0",			//Function Processor Name
-        #       true,			//Window required
-        #           45,			//Count of verbs
-        # Use (?:...) for non-capturing groups to skip comments
-        # Pattern matches: name, then optionally whitespace/comment, then true/false, then optionally whitespace/comment, then number
-        processor_pattern = r'"([^"]+)\\0"[^,]*,\s*(?://[^\n]*)?\s*(true|false)\s*,\s*(?://[^\n]*)?\s*(\d+)'
-
-        for proc_match in re.finditer(processor_pattern, block_content):
+        # Parse processors in block with validation
+        for proc_match in re.finditer(PROCESSOR_PATTERN, block_content):
             processor_name = proc_match.group(1)
+
+            # Validate processor name is a valid C identifier
+            if not re.match(IDENTIFIER_PATTERN, processor_name):
+                print(f"Warning: Skipping processor '{processor_name}' (EFP {efp_id}): "
+                      f"not a valid C identifier", file=sys.stderr)
+                continue
+
+            # Check for duplicates
+            if processor_name in seen_names:
+                print(f"Warning: Skipping duplicate processor '{processor_name}' (EFP {efp_id})",
+                      file=sys.stderr)
+                continue
+
+            seen_names.add(processor_name)
+
             window_required = proc_match.group(2) == 'true'
             verb_count = int(proc_match.group(3))
 
@@ -111,19 +122,12 @@ def generate_kernel_verbs_init_c(processors: List[EFPProcessor], rc_path: str) -
 
     Returns:
         String containing the complete C source file
-    """
-    # Whitelist of processors that have headless implementations
-    # Only these processors will be included in the generated init function.
-    # To add a new processor:
-    # 1. Implement tests/headless_<processor>_verbs.c with <processor>initverbs()
-    # 2. Add the processor name to this whitelist
-    # 3. Run make to regenerate kernel_verbs_init.c
-    HEADLESS_IMPLEMENTED = {
-        'file',      # tests/headless_file_verbs.c
-        'frontier',  # tests/headless_frontier_verbs.c
-    }
 
-    # Filter to only implemented processors
+    Note:
+        Uses the module-level HEADLESS_IMPLEMENTED whitelist to filter which
+        processors get initialization calls in the generated code.
+    """
+    # Filter to only implemented processors using module-level whitelist
     implemented_procs = [p for p in processors if p.name in HEADLESS_IMPLEMENTED]
     unimplemented_procs = [p for p in processors if p.name not in HEADLESS_IMPLEMENTED]
 
@@ -214,8 +218,7 @@ def main() -> None:
         print("Warning: No EFP processors found in input file", file=sys.stderr)
         sys.exit(1)
 
-    # Get the whitelist from the generation function
-    HEADLESS_IMPLEMENTED = {'file', 'frontier'}
+    # Use the module-level whitelist to categorize processors
     implemented = [p for p in processors if p.name in HEADLESS_IMPLEMENTED]
     unimplemented = [p for p in processors if p.name not in HEADLESS_IMPLEMENTED]
 
