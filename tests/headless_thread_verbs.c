@@ -33,55 +33,72 @@ static boolean thread_valueproc(short token, hdltreenode hparam1,
                                      bigstring bserror) {
     switch(token) {
         case thrv_thread_verb0:
-            /* TODO: Implement thread.thread_verb0 */
+            /* Verb #0 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case thrv_thread_verb1:
-            /* TODO: Implement thread.thread_verb1 */
+            /* Verb #1 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case thrv_thread_verb2:
-            /* TODO: Implement thread.thread_verb2 */
+            /* Verb #2 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case thrv_thread_verb3:
-            /* TODO: Implement thread.thread_verb3 */
+            /* Verb #3 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case thrv_thread_verb4:
-            /* TODO: Implement thread.thread_verb4 */
+            /* Verb #4 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case thrv_thread_verb5:
-            /* TODO: Implement thread.thread_verb5 */
+            /* Verb #5 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case thrv_thread_verb6:
-            /* TODO: Implement thread.thread_verb6 */
+            /* Verb #6 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case thrv_thread_verb7:
-            /* TODO: Implement thread.thread_verb7 */
+            /* Verb #7 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case thrv_thread_verb8:
-            /* TODO: Implement thread.thread_verb8 */
+            /* Verb #8 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case thrv_thread_verb9:
-            /* TODO: Implement thread.thread_verb9 */
+            /* Verb #9 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case thrv_thread_verb10:
-            /* TODO: Implement thread.thread_verb10 */
+            /* Verb #10 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case thrv_thread_verb11:
-            /* TODO: Implement thread.thread_verb11 */
+            /* Verb #11 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case thrv_thread_verb12:
-            /* TODO: Implement thread.thread_verb12 */
+            /* Verb #12 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case thrv_thread_verb13:
-            /* TODO: Implement thread.thread_verb13 */
+            /* Verb #13 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case thrv_thread_verb14:
-            /* TODO: Implement thread.thread_verb14 */
+            /* Verb #14 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case thrv_thread_verb15:
-            /* TODO: Implement thread.thread_verb15 */
+            /* Verb #15 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case thrv_thread_verb16:
-            /* TODO: Implement thread.thread_verb16 */
+            /* Verb #16 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         default:
             return false;

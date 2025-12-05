@@ -61,139 +61,184 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
                                      bigstring bserror) {
     switch(token) {
         case opv_op_verb0:
-            /* TODO: Implement op.op_verb0 */
+            /* Verb #0 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb1:
-            /* TODO: Implement op.op_verb1 */
+            /* Verb #1 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb2:
-            /* TODO: Implement op.op_verb2 */
+            /* Verb #2 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb3:
-            /* TODO: Implement op.op_verb3 */
+            /* Verb #3 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb4:
-            /* TODO: Implement op.op_verb4 */
+            /* Verb #4 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb5:
-            /* TODO: Implement op.op_verb5 */
+            /* Verb #5 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb6:
-            /* TODO: Implement op.op_verb6 */
+            /* Verb #6 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb7:
-            /* TODO: Implement op.op_verb7 */
+            /* Verb #7 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb8:
-            /* TODO: Implement op.op_verb8 */
+            /* Verb #8 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb9:
-            /* TODO: Implement op.op_verb9 */
+            /* Verb #9 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb10:
-            /* TODO: Implement op.op_verb10 */
+            /* Verb #10 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb11:
-            /* TODO: Implement op.op_verb11 */
+            /* Verb #11 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb12:
-            /* TODO: Implement op.op_verb12 */
+            /* Verb #12 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb13:
-            /* TODO: Implement op.op_verb13 */
+            /* Verb #13 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb14:
-            /* TODO: Implement op.op_verb14 */
+            /* Verb #14 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb15:
-            /* TODO: Implement op.op_verb15 */
+            /* Verb #15 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb16:
-            /* TODO: Implement op.op_verb16 */
+            /* Verb #16 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb17:
-            /* TODO: Implement op.op_verb17 */
+            /* Verb #17 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb18:
-            /* TODO: Implement op.op_verb18 */
+            /* Verb #18 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb19:
-            /* TODO: Implement op.op_verb19 */
+            /* Verb #19 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb20:
-            /* TODO: Implement op.op_verb20 */
+            /* Verb #20 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb21:
-            /* TODO: Implement op.op_verb21 */
+            /* Verb #21 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb22:
-            /* TODO: Implement op.op_verb22 */
+            /* Verb #22 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb23:
-            /* TODO: Implement op.op_verb23 */
+            /* Verb #23 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb24:
-            /* TODO: Implement op.op_verb24 */
+            /* Verb #24 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb25:
-            /* TODO: Implement op.op_verb25 */
+            /* Verb #25 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb26:
-            /* TODO: Implement op.op_verb26 */
+            /* Verb #26 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb27:
-            /* TODO: Implement op.op_verb27 */
+            /* Verb #27 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb28:
-            /* TODO: Implement op.op_verb28 */
+            /* Verb #28 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb29:
-            /* TODO: Implement op.op_verb29 */
+            /* Verb #29 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb30:
-            /* TODO: Implement op.op_verb30 */
+            /* Verb #30 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb31:
-            /* TODO: Implement op.op_verb31 */
+            /* Verb #31 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb32:
-            /* TODO: Implement op.op_verb32 */
+            /* Verb #32 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb33:
-            /* TODO: Implement op.op_verb33 */
+            /* Verb #33 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb34:
-            /* TODO: Implement op.op_verb34 */
+            /* Verb #34 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb35:
-            /* TODO: Implement op.op_verb35 */
+            /* Verb #35 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb36:
-            /* TODO: Implement op.op_verb36 */
+            /* Verb #36 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb37:
-            /* TODO: Implement op.op_verb37 */
+            /* Verb #37 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb38:
-            /* TODO: Implement op.op_verb38 */
+            /* Verb #38 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb39:
-            /* TODO: Implement op.op_verb39 */
+            /* Verb #39 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb40:
-            /* TODO: Implement op.op_verb40 */
+            /* Verb #40 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb41:
-            /* TODO: Implement op.op_verb41 */
+            /* Verb #41 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb42:
-            /* TODO: Implement op.op_verb42 */
+            /* Verb #42 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb43:
-            /* TODO: Implement op.op_verb43 */
+            /* Verb #43 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case opv_op_verb44:
-            /* TODO: Implement op.op_verb44 */
+            /* Verb #44 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         default:
             return false;

@@ -24,28 +24,36 @@ static boolean htmlcontrol_valueproc(short token, hdltreenode hparam1,
                                      bigstring bserror) {
     switch(token) {
         case htmv_htmlcontrol_verb0:
-            /* TODO: Implement htmlcontrol.htmlcontrol_verb0 */
+            /* Verb #0 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case htmv_htmlcontrol_verb1:
-            /* TODO: Implement htmlcontrol.htmlcontrol_verb1 */
+            /* Verb #1 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case htmv_htmlcontrol_verb2:
-            /* TODO: Implement htmlcontrol.htmlcontrol_verb2 */
+            /* Verb #2 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case htmv_htmlcontrol_verb3:
-            /* TODO: Implement htmlcontrol.htmlcontrol_verb3 */
+            /* Verb #3 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case htmv_htmlcontrol_verb4:
-            /* TODO: Implement htmlcontrol.htmlcontrol_verb4 */
+            /* Verb #4 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case htmv_htmlcontrol_verb5:
-            /* TODO: Implement htmlcontrol.htmlcontrol_verb5 */
+            /* Verb #5 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case htmv_htmlcontrol_verb6:
-            /* TODO: Implement htmlcontrol.htmlcontrol_verb6 */
+            /* Verb #6 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case htmv_htmlcontrol_verb7:
-            /* TODO: Implement htmlcontrol.htmlcontrol_verb7 */
+            /* Verb #7 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         default:
             return false;

@@ -18,10 +18,12 @@ static boolean mouse_valueproc(short token, hdltreenode hparam1,
                                      bigstring bserror) {
     switch(token) {
         case mouv_mouse_verb0:
-            /* TODO: Implement mouse.mouse_verb0 */
+            /* Verb #0 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case mouv_mouse_verb1:
-            /* TODO: Implement mouse.mouse_verb1 */
+            /* Verb #1 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         default:
             return false;

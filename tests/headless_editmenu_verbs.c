@@ -32,52 +32,68 @@ static boolean editmenu_valueproc(short token, hdltreenode hparam1,
                                      bigstring bserror) {
     switch(token) {
         case ediv_editmenu_verb0:
-            /* TODO: Implement editmenu.editmenu_verb0 */
+            /* Verb #0 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case ediv_editmenu_verb1:
-            /* TODO: Implement editmenu.editmenu_verb1 */
+            /* Verb #1 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case ediv_editmenu_verb2:
-            /* TODO: Implement editmenu.editmenu_verb2 */
+            /* Verb #2 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case ediv_editmenu_verb3:
-            /* TODO: Implement editmenu.editmenu_verb3 */
+            /* Verb #3 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case ediv_editmenu_verb4:
-            /* TODO: Implement editmenu.editmenu_verb4 */
+            /* Verb #4 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case ediv_editmenu_verb5:
-            /* TODO: Implement editmenu.editmenu_verb5 */
+            /* Verb #5 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case ediv_editmenu_verb6:
-            /* TODO: Implement editmenu.editmenu_verb6 */
+            /* Verb #6 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case ediv_editmenu_verb7:
-            /* TODO: Implement editmenu.editmenu_verb7 */
+            /* Verb #7 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case ediv_editmenu_verb8:
-            /* TODO: Implement editmenu.editmenu_verb8 */
+            /* Verb #8 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case ediv_editmenu_verb9:
-            /* TODO: Implement editmenu.editmenu_verb9 */
+            /* Verb #9 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case ediv_editmenu_verb10:
-            /* TODO: Implement editmenu.editmenu_verb10 */
+            /* Verb #10 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case ediv_editmenu_verb11:
-            /* TODO: Implement editmenu.editmenu_verb11 */
+            /* Verb #11 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case ediv_editmenu_verb12:
-            /* TODO: Implement editmenu.editmenu_verb12 */
+            /* Verb #12 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case ediv_editmenu_verb13:
-            /* TODO: Implement editmenu.editmenu_verb13 */
+            /* Verb #13 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case ediv_editmenu_verb14:
-            /* TODO: Implement editmenu.editmenu_verb14 */
+            /* Verb #14 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case ediv_editmenu_verb15:
-            /* TODO: Implement editmenu.editmenu_verb15 */
+            /* Verb #15 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         default:
             return false;

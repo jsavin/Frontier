@@ -46,94 +46,124 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
                                      bigstring bserror) {
     switch(token) {
         case datv_date_verb0:
-            /* TODO: Implement date.date_verb0 */
+            /* Verb #0 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case datv_date_verb1:
-            /* TODO: Implement date.date_verb1 */
+            /* Verb #1 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case datv_date_verb2:
-            /* TODO: Implement date.date_verb2 */
+            /* Verb #2 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case datv_date_verb3:
-            /* TODO: Implement date.date_verb3 */
+            /* Verb #3 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case datv_date_verb4:
-            /* TODO: Implement date.date_verb4 */
+            /* Verb #4 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case datv_date_verb5:
-            /* TODO: Implement date.date_verb5 */
+            /* Verb #5 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case datv_date_verb6:
-            /* TODO: Implement date.date_verb6 */
+            /* Verb #6 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case datv_date_verb7:
-            /* TODO: Implement date.date_verb7 */
+            /* Verb #7 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case datv_date_verb8:
-            /* TODO: Implement date.date_verb8 */
+            /* Verb #8 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case datv_date_verb9:
-            /* TODO: Implement date.date_verb9 */
+            /* Verb #9 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case datv_date_verb10:
-            /* TODO: Implement date.date_verb10 */
+            /* Verb #10 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case datv_date_verb11:
-            /* TODO: Implement date.date_verb11 */
+            /* Verb #11 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case datv_date_verb12:
-            /* TODO: Implement date.date_verb12 */
+            /* Verb #12 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case datv_date_verb13:
-            /* TODO: Implement date.date_verb13 */
+            /* Verb #13 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case datv_date_verb14:
-            /* TODO: Implement date.date_verb14 */
+            /* Verb #14 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case datv_date_verb15:
-            /* TODO: Implement date.date_verb15 */
+            /* Verb #15 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case datv_date_verb16:
-            /* TODO: Implement date.date_verb16 */
+            /* Verb #16 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case datv_date_verb17:
-            /* TODO: Implement date.date_verb17 */
+            /* Verb #17 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case datv_date_verb18:
-            /* TODO: Implement date.date_verb18 */
+            /* Verb #18 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case datv_date_verb19:
-            /* TODO: Implement date.date_verb19 */
+            /* Verb #19 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case datv_date_verb20:
-            /* TODO: Implement date.date_verb20 */
+            /* Verb #20 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case datv_date_verb21:
-            /* TODO: Implement date.date_verb21 */
+            /* Verb #21 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case datv_date_verb22:
-            /* TODO: Implement date.date_verb22 */
+            /* Verb #22 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case datv_date_verb23:
-            /* TODO: Implement date.date_verb23 */
+            /* Verb #23 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case datv_date_verb24:
-            /* TODO: Implement date.date_verb24 */
+            /* Verb #24 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case datv_date_verb25:
-            /* TODO: Implement date.date_verb25 */
+            /* Verb #25 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case datv_date_verb26:
-            /* TODO: Implement date.date_verb26 */
+            /* Verb #26 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case datv_date_verb27:
-            /* TODO: Implement date.date_verb27 */
+            /* Verb #27 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case datv_date_verb28:
-            /* TODO: Implement date.date_verb28 */
+            /* Verb #28 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case datv_date_verb29:
-            /* TODO: Implement date.date_verb29 */
+            /* Verb #29 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         default:
             return false;

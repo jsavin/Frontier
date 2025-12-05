@@ -20,16 +20,20 @@ static boolean kb_valueproc(short token, hdltreenode hparam1,
                                      bigstring bserror) {
     switch(token) {
         case kbv_kb_verb0:
-            /* TODO: Implement kb.kb_verb0 */
+            /* Verb #0 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case kbv_kb_verb1:
-            /* TODO: Implement kb.kb_verb1 */
+            /* Verb #1 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case kbv_kb_verb2:
-            /* TODO: Implement kb.kb_verb2 */
+            /* Verb #2 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case kbv_kb_verb3:
-            /* TODO: Implement kb.kb_verb3 */
+            /* Verb #3 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         default:
             return false;

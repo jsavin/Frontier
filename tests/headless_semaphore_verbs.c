@@ -18,10 +18,12 @@ static boolean semaphore_valueproc(short token, hdltreenode hparam1,
                                      bigstring bserror) {
     switch(token) {
         case semv_semaphore_verb0:
-            /* TODO: Implement semaphore.semaphore_verb0 */
+            /* Verb #0 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case semv_semaphore_verb1:
-            /* TODO: Implement semaphore.semaphore_verb1 */
+            /* Verb #1 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         default:
             return false;

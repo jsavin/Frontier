@@ -86,7 +86,8 @@ def generate_processor_stub(processor: EFPProcessor, verb_names: List[str]) -> s
         token_name = f"{prefix}_{verb_names[i]}"
         lines.extend([
             f"        case {token_name}:",
-            f"            /* TODO: Implement {proc_name}.{verb_names[i]} */",
+            f"            /* Verb #{i} - not yet implemented */",
+            f"            if (bserror) copystring(BIGSTRING(\"\\pnot implemented\"), bserror);",
             f"            return false;",
         ])
 

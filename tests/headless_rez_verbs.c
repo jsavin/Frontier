@@ -31,49 +31,64 @@ static boolean rez_valueproc(short token, hdltreenode hparam1,
                                      bigstring bserror) {
     switch(token) {
         case rezv_rez_verb0:
-            /* TODO: Implement rez.rez_verb0 */
+            /* Verb #0 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case rezv_rez_verb1:
-            /* TODO: Implement rez.rez_verb1 */
+            /* Verb #1 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case rezv_rez_verb2:
-            /* TODO: Implement rez.rez_verb2 */
+            /* Verb #2 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case rezv_rez_verb3:
-            /* TODO: Implement rez.rez_verb3 */
+            /* Verb #3 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case rezv_rez_verb4:
-            /* TODO: Implement rez.rez_verb4 */
+            /* Verb #4 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case rezv_rez_verb5:
-            /* TODO: Implement rez.rez_verb5 */
+            /* Verb #5 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case rezv_rez_verb6:
-            /* TODO: Implement rez.rez_verb6 */
+            /* Verb #6 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case rezv_rez_verb7:
-            /* TODO: Implement rez.rez_verb7 */
+            /* Verb #7 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case rezv_rez_verb8:
-            /* TODO: Implement rez.rez_verb8 */
+            /* Verb #8 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case rezv_rez_verb9:
-            /* TODO: Implement rez.rez_verb9 */
+            /* Verb #9 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case rezv_rez_verb10:
-            /* TODO: Implement rez.rez_verb10 */
+            /* Verb #10 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case rezv_rez_verb11:
-            /* TODO: Implement rez.rez_verb11 */
+            /* Verb #11 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case rezv_rez_verb12:
-            /* TODO: Implement rez.rez_verb12 */
+            /* Verb #12 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case rezv_rez_verb13:
-            /* TODO: Implement rez.rez_verb13 */
+            /* Verb #13 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case rezv_rez_verb14:
-            /* TODO: Implement rez.rez_verb14 */
+            /* Verb #14 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         default:
             return false;

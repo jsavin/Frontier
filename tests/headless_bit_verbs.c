@@ -24,28 +24,36 @@ static boolean bit_valueproc(short token, hdltreenode hparam1,
                                      bigstring bserror) {
     switch(token) {
         case bitv_bit_verb0:
-            /* TODO: Implement bit.bit_verb0 */
+            /* Verb #0 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case bitv_bit_verb1:
-            /* TODO: Implement bit.bit_verb1 */
+            /* Verb #1 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case bitv_bit_verb2:
-            /* TODO: Implement bit.bit_verb2 */
+            /* Verb #2 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case bitv_bit_verb3:
-            /* TODO: Implement bit.bit_verb3 */
+            /* Verb #3 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case bitv_bit_verb4:
-            /* TODO: Implement bit.bit_verb4 */
+            /* Verb #4 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case bitv_bit_verb5:
-            /* TODO: Implement bit.bit_verb5 */
+            /* Verb #5 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case bitv_bit_verb6:
-            /* TODO: Implement bit.bit_verb6 */
+            /* Verb #6 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case bitv_bit_verb7:
-            /* TODO: Implement bit.bit_verb7 */
+            /* Verb #7 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         default:
             return false;

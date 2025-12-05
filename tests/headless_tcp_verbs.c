@@ -39,73 +39,96 @@ static boolean tcp_valueproc(short token, hdltreenode hparam1,
                                      bigstring bserror) {
     switch(token) {
         case tcpv_tcp_verb0:
-            /* TODO: Implement tcp.tcp_verb0 */
+            /* Verb #0 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case tcpv_tcp_verb1:
-            /* TODO: Implement tcp.tcp_verb1 */
+            /* Verb #1 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case tcpv_tcp_verb2:
-            /* TODO: Implement tcp.tcp_verb2 */
+            /* Verb #2 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case tcpv_tcp_verb3:
-            /* TODO: Implement tcp.tcp_verb3 */
+            /* Verb #3 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case tcpv_tcp_verb4:
-            /* TODO: Implement tcp.tcp_verb4 */
+            /* Verb #4 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case tcpv_tcp_verb5:
-            /* TODO: Implement tcp.tcp_verb5 */
+            /* Verb #5 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case tcpv_tcp_verb6:
-            /* TODO: Implement tcp.tcp_verb6 */
+            /* Verb #6 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case tcpv_tcp_verb7:
-            /* TODO: Implement tcp.tcp_verb7 */
+            /* Verb #7 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case tcpv_tcp_verb8:
-            /* TODO: Implement tcp.tcp_verb8 */
+            /* Verb #8 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case tcpv_tcp_verb9:
-            /* TODO: Implement tcp.tcp_verb9 */
+            /* Verb #9 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case tcpv_tcp_verb10:
-            /* TODO: Implement tcp.tcp_verb10 */
+            /* Verb #10 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case tcpv_tcp_verb11:
-            /* TODO: Implement tcp.tcp_verb11 */
+            /* Verb #11 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case tcpv_tcp_verb12:
-            /* TODO: Implement tcp.tcp_verb12 */
+            /* Verb #12 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case tcpv_tcp_verb13:
-            /* TODO: Implement tcp.tcp_verb13 */
+            /* Verb #13 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case tcpv_tcp_verb14:
-            /* TODO: Implement tcp.tcp_verb14 */
+            /* Verb #14 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case tcpv_tcp_verb15:
-            /* TODO: Implement tcp.tcp_verb15 */
+            /* Verb #15 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case tcpv_tcp_verb16:
-            /* TODO: Implement tcp.tcp_verb16 */
+            /* Verb #16 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case tcpv_tcp_verb17:
-            /* TODO: Implement tcp.tcp_verb17 */
+            /* Verb #17 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case tcpv_tcp_verb18:
-            /* TODO: Implement tcp.tcp_verb18 */
+            /* Verb #18 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case tcpv_tcp_verb19:
-            /* TODO: Implement tcp.tcp_verb19 */
+            /* Verb #19 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case tcpv_tcp_verb20:
-            /* TODO: Implement tcp.tcp_verb20 */
+            /* Verb #20 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case tcpv_tcp_verb21:
-            /* TODO: Implement tcp.tcp_verb21 */
+            /* Verb #21 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case tcpv_tcp_verb22:
-            /* TODO: Implement tcp.tcp_verb22 */
+            /* Verb #22 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         default:
             return false;

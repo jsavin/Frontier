@@ -26,34 +26,44 @@ static boolean filemenu_valueproc(short token, hdltreenode hparam1,
                                      bigstring bserror) {
     switch(token) {
         case filv_filemenu_verb0:
-            /* TODO: Implement filemenu.filemenu_verb0 */
+            /* Verb #0 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case filv_filemenu_verb1:
-            /* TODO: Implement filemenu.filemenu_verb1 */
+            /* Verb #1 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case filv_filemenu_verb2:
-            /* TODO: Implement filemenu.filemenu_verb2 */
+            /* Verb #2 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case filv_filemenu_verb3:
-            /* TODO: Implement filemenu.filemenu_verb3 */
+            /* Verb #3 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case filv_filemenu_verb4:
-            /* TODO: Implement filemenu.filemenu_verb4 */
+            /* Verb #4 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case filv_filemenu_verb5:
-            /* TODO: Implement filemenu.filemenu_verb5 */
+            /* Verb #5 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case filv_filemenu_verb6:
-            /* TODO: Implement filemenu.filemenu_verb6 */
+            /* Verb #6 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case filv_filemenu_verb7:
-            /* TODO: Implement filemenu.filemenu_verb7 */
+            /* Verb #7 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case filv_filemenu_verb8:
-            /* TODO: Implement filemenu.filemenu_verb8 */
+            /* Verb #8 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case filv_filemenu_verb9:
-            /* TODO: Implement filemenu.filemenu_verb9 */
+            /* Verb #9 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         default:
             return false;

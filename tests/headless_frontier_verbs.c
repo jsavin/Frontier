@@ -1,131 +1,132 @@
-/* headless_frontier_verbs.c - Frontier processor verbs for headless mode */
-
 #include "frontier.h"
 #include "standard.h"
+
 #include "memory.h"
 #include "strings.h"
 #include "lang.h"
 #include "langinternal.h"
 #include "tablestructure.h"
-#include "file.h"
 
-/* Global to track the currently open database file */
-static tyfilespec headless_frontier_filespec;
-static boolean headless_frontier_filespec_valid = false;
-
-/* Called by main() after opening database */
-boolean headless_set_frontier_file(tyfilespec *fs) {
-	if (fs == NULL)
-		return false;
-
-	headless_frontier_filespec = *fs;
-	headless_frontier_filespec_valid = true;
-	return true;
-}
-
-/* Token definitions for frontier processor */
+/* Token enum for all verbs in the frontier processor */
 enum {
-	frv_getProgramPath = 0,      /* token 0 */
-	frv_getFilePath = 1,         /* token 1 - CRITICAL */
-	frv_enableAgents = 2,        /* token 2 */
-	frv_requestToFront = 3,      /* token 3 */
-	frv_isRuntime = 4,           /* token 4 */
-	frv_countThreads = 5,        /* token 5 */
-	frv_isNative = 6,            /* token 6 (originally isPowerPC) */
-	frv_reclaimMemory = 7,       /* token 7 */
-	frv_version = 8,             /* token 8 */
-	frv_hashStats = 9,           /* token 9 */
-	frv_getHashLoopCount = 10,   /* token 10 */
-	frv_hideApplication = 11,    /* token 11 */
-	frv_isValidSerialNumber = 12,/* token 12 */
-	frv_showApplication = 13     /* token 13 */
+    frov_frontier_verb0 = 0,
+    frov_frontier_verb1 = 1,
+    frov_frontier_verb2 = 2,
+    frov_frontier_verb3 = 3,
+    frov_frontier_verb4 = 4,
+    frov_frontier_verb5 = 5,
+    frov_frontier_verb6 = 6,
+    frov_frontier_verb7 = 7,
+    frov_frontier_verb8 = 8,
+    frov_frontier_verb9 = 9,
+    frov_frontier_verb10 = 10,
+    frov_frontier_verb11 = 11,
+    frov_frontier_verb12 = 12,
+    frov_frontier_verb13 = 13
 };
 
 static boolean frontier_valueproc(short token, hdltreenode hparam1,
-                                   tyvaluerecord *vreturned, bigstring bserror) {
-	tyvaluerecord *v = vreturned;
-
-	#pragma unused(hparam1)
-
-	switch (token) {
-		case frv_getFilePath: {
-			/* Return filespec of currently open database */
-			if (!headless_frontier_filespec_valid) {
-				copystring(BIGSTRING("\pNo database file is open"), bserror);
-				return false;
-			}
-			return setfilespecvalue(&headless_frontier_filespec, v);
-		}
-
-		case frv_getProgramPath: {
-			/* Return filespec of frontier-cli executable */
-			/* TODO: Implement by storing executable path at startup */
-			langerrormessage(BIGSTRING("\pfrontier.getProgramPath not yet implemented"));
-			return false;
-		}
-
-		case frv_version: {
-			/* Return Frontier version string */
-			bigstring bsversion;
-			copystring(BIGSTRING("\p11.0.0-headless"), bsversion);
-			return setstringvalue(bsversion, v);
-		}
-
-		case frv_isRuntime: {
-			/* Headless is always runtime (not development environment) */
-			return setbooleanvalue(true, v);
-		}
-
-		case frv_isNative: {
-			/* Always true on modern systems (no emulation) */
-			return setbooleanvalue(true, v);
-		}
-
-		default:
-			/* All other verbs stubbed for now */
-			copystring(BIGSTRING("\pfrontier verb not implemented in headless mode"), bserror);
-			return false;
-	}
+                                     tyvaluerecord *vreturned,
+                                     bigstring bserror) {
+    switch(token) {
+        case frov_frontier_verb0:
+            /* Verb #0 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
+        case frov_frontier_verb1:
+            /* Verb #1 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
+        case frov_frontier_verb2:
+            /* Verb #2 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
+        case frov_frontier_verb3:
+            /* Verb #3 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
+        case frov_frontier_verb4:
+            /* Verb #4 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
+        case frov_frontier_verb5:
+            /* Verb #5 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
+        case frov_frontier_verb6:
+            /* Verb #6 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
+        case frov_frontier_verb7:
+            /* Verb #7 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
+        case frov_frontier_verb8:
+            /* Verb #8 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
+        case frov_frontier_verb9:
+            /* Verb #9 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
+        case frov_frontier_verb10:
+            /* Verb #10 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
+        case frov_frontier_verb11:
+            /* Verb #11 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
+        case frov_frontier_verb12:
+            /* Verb #12 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
+        case frov_frontier_verb13:
+            /* Verb #13 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
+        default:
+            return false;
+    }
 }
 
 boolean frontierinitverbs(void) {
-	hdlhashtable htable = nil;
-	bigstring bsname;
+    hdlhashtable htable = nil;
+    bigstring bsname;
 
-	copystring(BIGSTRING("\pfrontier"), bsname);
+    copystring(BIGSTRING("\pfrontier"), bsname);
 
-	if (!newfunctionprocessor(bsname, &frontier_valueproc, true, &htable))
-		return false;
+    if (!newfunctionprocessor(bsname, &frontier_valueproc, false, &htable))
+        return false;
 
-	pushhashtable(htable);
+    pushhashtable(htable);
 
-	/* Register all 14 verbs as defined in kernelverbs.rc */
-	#define ADD_VERB(name, tok) do { \
-		bigstring bs; \
-		copystring(name, bs); \
-		if (!langaddkeyword(bs, tok)) { \
-			pophashtable(); \
-			return false; \
-		} \
-	} while(0)
+    #define ADD_VERB(name, tok) do { \
+        bigstring bs; \
+        copystring(name, bs); \
+        if (!langaddkeyword(bs, tok)) { \
+            pophashtable(); \
+            return false; \
+        } \
+    } while(0)
 
-	ADD_VERB(BIGSTRING("\pgetprogrampath"), frv_getProgramPath);
-	ADD_VERB(BIGSTRING("\pgetfilepath"), frv_getFilePath);
-	ADD_VERB(BIGSTRING("\penableagents"), frv_enableAgents);
-	ADD_VERB(BIGSTRING("\prequesttofront"), frv_requestToFront);
-	ADD_VERB(BIGSTRING("\pisruntime"), frv_isRuntime);
-	ADD_VERB(BIGSTRING("\pcountthreads"), frv_countThreads);
-	ADD_VERB(BIGSTRING("\pisnative"), frv_isNative);  /* was ispowerpc */
-	ADD_VERB(BIGSTRING("\preclaimmemory"), frv_reclaimMemory);
-	ADD_VERB(BIGSTRING("\pversion"), frv_version);
-	ADD_VERB(BIGSTRING("\phashstats"), frv_hashStats);
-	ADD_VERB(BIGSTRING("\pgethashloopcount"), frv_getHashLoopCount);
-	ADD_VERB(BIGSTRING("\phideapplication"), frv_hideApplication);
-	ADD_VERB(BIGSTRING("\pisvalidserialnumber"), frv_isValidSerialNumber);
-	ADD_VERB(BIGSTRING("\pshowapplication"), frv_showApplication);
+    ADD_VERB(BIGSTRING("\pfrontier_verb0"), frov_frontier_verb0);
+    ADD_VERB(BIGSTRING("\pfrontier_verb1"), frov_frontier_verb1);
+    ADD_VERB(BIGSTRING("\pfrontier_verb2"), frov_frontier_verb2);
+    ADD_VERB(BIGSTRING("\pfrontier_verb3"), frov_frontier_verb3);
+    ADD_VERB(BIGSTRING("\pfrontier_verb4"), frov_frontier_verb4);
+    ADD_VERB(BIGSTRING("\pfrontier_verb5"), frov_frontier_verb5);
+    ADD_VERB(BIGSTRING("\pfrontier_verb6"), frov_frontier_verb6);
+    ADD_VERB(BIGSTRING("\pfrontier_verb7"), frov_frontier_verb7);
+    ADD_VERB(BIGSTRING("\pfrontier_verb8"), frov_frontier_verb8);
+    ADD_VERB(BIGSTRING("\pfrontier_verb9"), frov_frontier_verb9);
+    ADD_VERB(BIGSTRING("\pfrontier_verb10"), frov_frontier_verb10);
+    ADD_VERB(BIGSTRING("\pfrontier_verb11"), frov_frontier_verb11);
+    ADD_VERB(BIGSTRING("\pfrontier_verb12"), frov_frontier_verb12);
+    ADD_VERB(BIGSTRING("\pfrontier_verb13"), frov_frontier_verb13);
 
-	#undef ADD_VERB
+    #undef ADD_VERB
 
-	pophashtable();
-	return true;
+    pophashtable();
+    return true;
 }

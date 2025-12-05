@@ -23,25 +23,32 @@ static boolean mainwindow_valueproc(short token, hdltreenode hparam1,
                                      bigstring bserror) {
     switch(token) {
         case maiv_mainwindow_verb0:
-            /* TODO: Implement mainwindow.mainwindow_verb0 */
+            /* Verb #0 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case maiv_mainwindow_verb1:
-            /* TODO: Implement mainwindow.mainwindow_verb1 */
+            /* Verb #1 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case maiv_mainwindow_verb2:
-            /* TODO: Implement mainwindow.mainwindow_verb2 */
+            /* Verb #2 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case maiv_mainwindow_verb3:
-            /* TODO: Implement mainwindow.mainwindow_verb3 */
+            /* Verb #3 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case maiv_mainwindow_verb4:
-            /* TODO: Implement mainwindow.mainwindow_verb4 */
+            /* Verb #4 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case maiv_mainwindow_verb5:
-            /* TODO: Implement mainwindow.mainwindow_verb5 */
+            /* Verb #5 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case maiv_mainwindow_verb6:
-            /* TODO: Implement mainwindow.mainwindow_verb6 */
+            /* Verb #6 - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         default:
             return false;
