@@ -23,11 +23,25 @@ The Makefile calls this automatically when building.
 
 ## What It Does
 
-1. Parses `kernelverbs.rc` to find all EFP blocks
+1. Parses `kernelverbs.rc` to find all EFP blocks (51 processors, 707 verbs)
 2. Extracts processor names, verb counts, and other metadata
-3. Generates `kernel_verbs_init.c` with:
-   - Forward declarations for all `<processor>initverbs()` functions
-   - A `headless_init_kernel_verbs()` function that calls them all
+3. Filters to only processors with headless implementations (whitelist in `HEADLESS_IMPLEMENTED`)
+4. Generates `kernel_verbs_init.c` with:
+   - Forward declarations for implemented `<processor>initverbs()` functions
+   - A `headless_init_kernel_verbs()` function that calls only implemented processors
+
+## Whitelist Approach
+
+The parser uses a **whitelist** to only generate code for processors that have headless implementations. This prevents link errors for unimplemented processors.
+
+Currently implemented processors (in `HEADLESS_IMPLEMENTED` set):
+- `file` - File system operations (86 verbs)
+- `frontier` - Application-level operations (14 verbs)
+
+To add a processor:
+1. Implement `tests/headless_<processor>_verbs.c`
+2. Add processor name to `HEADLESS_IMPLEMENTED` in `parse_kernelverbs.py`
+3. Run `make` to regenerate
 
 ## Generated Output
 
@@ -36,19 +50,22 @@ The generated file looks like:
 ```c
 /* Auto-generated from kernelverbs.rc - DO NOT EDIT BY HAND */
 
-extern boolean opinitverbs(void);          /* EFP 1000: op (45 verbs) */
+/* Forward declarations for IMPLEMENTED verb processor initialization functions */
 extern boolean fileinitverbs(void);        /* EFP 1007: file (86 verbs) */
 extern boolean frontierinitverbs(void);    /* EFP 1016: frontier (14 verbs) */
-/* ... 48 more processors ... */
 
+/**
+ * headless_init_kernel_verbs - Initialize all kernel verb processors
+ *
+ * Implemented processors: 2 of 51 total
+ * Implemented verbs: 100 of 707 total
+ */
 boolean headless_init_kernel_verbs(void) {
-    if (!opinitverbs())
-        return false;
-
     if (!fileinitverbs())
         return false;
 
-    /* ... */
+    if (!frontierinitverbs())
+        return false;
 
     return true;
 }
@@ -69,11 +86,12 @@ The parser currently finds **51 verb processors** with **707 total verbs**:
 
 ## Implementation Requirements
 
-For each processor found, you need to create a corresponding init function:
+To add a new processor to the headless implementation:
 
-1. Create `tests/headless_<processor>_verbs.c`
-2. Implement `<processor>initverbs()` function
-3. Add the file to `frontier-cli/Makefile` HEADLESS_STUBS
+1. Create `tests/headless_<processor>_verbs.c` with the init function
+2. Add the file to `frontier-cli/Makefile` HEADLESS_STUBS section
+3. Add processor name to `HEADLESS_IMPLEMENTED` in `parse_kernelverbs.py`
+4. Run `make` to regenerate `kernel_verbs_init.c`
 
 Example for the `file` processor:
 
@@ -100,30 +118,42 @@ boolean fileinitverbs(void) {
 }
 ```
 
-## Error Handling
+## Safety and Error Prevention
 
-If a processor init function is missing at link time, you'll get an "undefined symbol" error:
+The whitelist approach prevents common errors:
 
-```
-Undefined symbols for architecture arm64:
-  "_opinitverbs", referenced from:
-      _headless_init_kernel_verbs in kernel_verbs_init.o
-```
+- **No link errors**: Only implemented processors are included in generated code
+- **Explicit opt-in**: Processors must be added to `HEADLESS_IMPLEMENTED` to be included
+- **Clear diagnostics**: Parser output shows implemented vs. unimplemented processors
+- **Build safety**: If you forget to add a processor to the whitelist, it simply won't be initialized (no crash)
 
-This means you need to implement `opinitverbs()` in `tests/headless_op_verbs.c`.
+## Conditional Compilation
+
+Some processors in `kernelverbs.rc` are wrapped in `#ifdef` directives (e.g., `#ifdef flregexpverbs`). The parser does **not** preprocess these directives - it reads the file as-is.
+
+This means:
+- If the `#ifdef` block is present in the source, the parser will find it
+- The whitelist approach handles this safely - conditionally compiled processors won't be in `HEADLESS_IMPLEMENTED` unless explicitly added
+- No link errors will occur from missing processors
+
+If you need to handle conditional compilation:
+1. Ensure the processor is only added to `HEADLESS_IMPLEMENTED` when it should be included
+2. Or preprocess `kernelverbs.rc` before parsing (using `cpp` or similar)
 
 ## Maintenance
 
 The parser is designed to be simple and robust:
-- ~200 lines of Python
+- ~250 lines of Python with type hints
 - Uses regex to extract processor definitions
 - Handles comments and variable whitespace
+- Whitelist-based filtering for safety
 - No external dependencies beyond Python 3
 
 To update:
 1. Modify `kernelverbs.rc` as needed
 2. Run `make` - the parser runs automatically
 3. Implement any new processor init functions
+4. Add processor names to `HEADLESS_IMPLEMENTED` whitelist
 
 ## Testing
 
