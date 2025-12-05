@@ -1,25 +1,67 @@
-# Kernelverbs Parser
+# Kernelverbs Parser & Stub Generator
 
-Automatically generates `kernel_verbs_init.c` from the Windows resource file `kernelverbs.rc`.
+Automatically generates C stub files for all 51 verb processors and central initialization code from the Windows resource file `kernelverbs.rc`.
 
 ## Overview
 
-Frontier's kernel verbs are defined in `Common/resources/Win32/kernelverbs.rc` using the EFP (External Function Processor) resource format. This tool parses that file and generates C initialization code that calls all the verb processor init functions.
+Frontier's kernel verbs are defined in `Common/resources/Win32/kernelverbs.rc` using the EFP (External Function Processor) resource format. This toolset:
 
-## Usage
+1. **`parse_kernelverbs.py`** - Parses the RC file and generates `kernel_verbs_init.c` which initializes all registered processors
+2. **`generate_processor_stubs.py`** - Generates skeleton `headless_<processor>_verbs.c` files for all unimplemented processors
+3. **Unit Tests** - Comprehensive tests for both tools with 37 test cases
+
+## Tools at a Glance
+
+| Tool | Purpose | Input | Output |
+|------|---------|-------|--------|
+| `parse_kernelverbs.py` | Discover all processors & generate init calls | `kernelverbs.rc` | `kernel_verbs_init.c` |
+| `generate_processor_stubs.py` | Create stub implementations for verbs | `kernelverbs.rc` + processor list | `headless_<proc>_verbs.c` files |
+| `test_parse_kernelverbs.py` | Unit tests for parser | N/A | Test results |
+| `test_generate_stubs.py` | Unit tests for stub generator | N/A | Test results |
+
+## Quick Start
+
+### Using the Tools
+
+The Makefile automatically runs both tools during the build process:
 
 ```bash
-python3 parse_kernelverbs.py <input.rc> <output.c>
+make -C frontier-cli
 ```
 
-Example:
+This will:
+1. Run `parse_kernelverbs.py` to generate `kernel_verbs_init.c`
+2. Run `generate_processor_stubs.py` to create/update all processor stub files
+3. Compile everything
+
+### Manual Usage
+
+#### Parse kernelverbs.rc (generate init code)
+
 ```bash
 python3 tools/kernelverbs_parser/parse_kernelverbs.py \
     Common/resources/Win32/kernelverbs.rc \
     generated/kernel_verbs_init.c
 ```
 
-The Makefile calls this automatically when building.
+#### Generate processor stubs (all 51 at once)
+
+```bash
+python3 tools/kernelverbs_parser/generate_processor_stubs.py \
+    Common/resources/Win32/kernelverbs.rc \
+    tests
+```
+
+This creates/updates `headless_<processor>_verbs.c` files in the `tests/` directory.
+
+#### Run unit tests
+
+```bash
+cd tools/kernelverbs_parser
+python3 -m unittest test_parse_kernelverbs test_generate_stubs -v
+```
+
+Expected output: **37 tests pass** with real kernelverbs.rc file
 
 ## What It Does
 
@@ -198,28 +240,129 @@ Currently, the parser:
 
 This is the correct default behavior for a headless implementation.
 
+## Common Tasks
+
+### Add a New Processor to Headless Implementation
+
+1. **Implement the processor**: Create or edit `tests/headless_<processor>_verbs.c`
+   - Implement the `<processor>_valueproc` function
+   - Implement the `<processor>initverbs()` function
+   - Register verbs using the ADD_VERB macro
+
+2. **Add to whitelist**: Edit `parse_kernelverbs.py`
+   ```python
+   HEADLESS_REGISTERED.add('myprocessor')
+   ```
+
+3. **Rebuild**: Run `make -C frontier-cli`
+   - The parser will auto-discover your processor
+   - Generated code will include initialization calls
+
+### Regenerate All Stubs (After RC Changes)
+
+If `kernelverbs.rc` is modified:
+
+```bash
+cd tools/kernelverbs_parser
+python3 generate_processor_stubs.py \
+    ../../Common/resources/Win32/kernelverbs.rc \
+    ../../tests
+make -C ../../frontier-cli
+```
+
+### Debug Verb Name Issues
+
+If verbs aren't registering correctly:
+
+1. **Check extraction warnings**:
+   ```bash
+   python3 generate_processor_stubs.py \
+       ../../Common/resources/Win32/kernelverbs.rc \
+       ../../tests 2>&1 | grep -i warning
+   ```
+
+2. **Verify verb names in generated file**:
+   ```bash
+   grep "enum {" -A 5 ../../tests/headless_<processor>_verbs.c
+   ```
+
+3. **Look for placeholder names**: If you see `verb0`, `verb1`, extraction failed
+   - The RC file may have missing verb definitions
+   - Check for duplicate processor names in RC file
+
+### Debug Parser Issues
+
+If `kernel_verbs_init.c` isn't generating correctly:
+
+1. **Check if processors are discovered**:
+   ```bash
+   python3 parse_kernelverbs.py \
+       ../../Common/resources/Win32/kernelverbs.rc \
+       /tmp/test_output.c 2>&1
+   ```
+
+2. **Check generated code**:
+   ```bash
+   head -30 /tmp/test_output.c
+   ```
+
+3. **Verify whitelist**: Check that your processor is in `HEADLESS_REGISTERED`
+
+## Troubleshooting
+
+### Tests Fail
+
+**Problem**: Tests fail with "kernelverbs.rc not found"
+- **Solution**: Ensure you're running from `tools/kernelverbs_parser` directory and `kernelverbs.rc` is at `Common/resources/Win32/kernelverbs.rc`
+
+**Problem**: Stub generation creates files with placeholder verb names
+- **Cause**: `extract_verb_names()` couldn't find actual verb names in RC file
+- **Solution**:
+  1. Verify RC file structure for that processor
+  2. Check for duplicate verb names (generator warns about these)
+  3. Ensure processor definition includes proper `true/false` and verb count
+
+**Problem**: "redefinition of enumerator" compilation error
+- **Cause**: RC file has duplicate verb names for a processor
+- **Solution**:
+  1. Check RC file for duplicate entries
+  2. Run generator with stderr redirected to see warnings
+  3. The generator will auto-rename duplicates with `_1`, `_2` suffix
+
+### Build Issues
+
+**Problem**: Processors don't initialize on startup
+- **Check**: Is processor in `HEADLESS_REGISTERED` whitelist?
+- **Check**: Does stub file exist and compile?
+- **Check**: Does `kernel_verbs_init.c` have init call?
+
+**Problem**: "undefined reference" linker error
+- **Cause**: Processor stub file not in Makefile
+- **Solution**: Add to `HEADLESS_STUBS` in `frontier-cli/Makefile`
+
 ## Maintenance
 
-The parser is designed to be simple and robust:
-- ~250 lines of Python with type hints
+The tools are designed to be simple and robust:
+
+**parse_kernelverbs.py**:
+- ~300 lines of Python with type hints
 - Uses regex to extract processor definitions
-- Handles comments and variable whitespace
 - Whitelist-based filtering for safety
-- No external dependencies beyond Python 3
+- No external dependencies
 
-To update:
-1. Modify `kernelverbs.rc` as needed
-2. Run `make` - the parser runs automatically
-3. Implement any new processor init functions
-4. Add processor names to `HEADLESS_IMPLEMENTED` whitelist
+**generate_processor_stubs.py**:
+- ~150 lines of Python with type hints
+- Extracts real verb names from RC content
+- Auto-detects and handles duplicates
+- Generates syntactically valid C code
+- No external dependencies
 
-## Testing
+**Testing**:
+- 37 comprehensive unit tests
+- Tests both tools with real kernelverbs.rc
+- All tests pass in ~10ms
+- No external test framework needed (uses stdlib unittest)
 
-The parser includes basic validation:
-- Checks that input file exists
-- Warns if no processors found
-- Reports statistics (processor count, verb count)
-- Creates output directory if needed
 
 ## Integration with Build System
 
