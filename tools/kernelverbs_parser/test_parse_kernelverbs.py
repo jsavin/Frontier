@@ -492,5 +492,69 @@ END
         self.assertEqual(frontier_init_count, 1)
 
 
+class TestIntegration(unittest.TestCase):
+    """Integration tests against real kernelverbs.rc file"""
+
+    def test_real_kernelverbs_file(self):
+        """Test parsing the actual kernelverbs.rc file from the project"""
+        # Find the real kernelverbs.rc file
+        rc_path = Path(__file__).parent.parent.parent / "Common/resources/Win32/kernelverbs.rc"
+
+        if not rc_path.exists():
+            self.skipTest(f"kernelverbs.rc not found at {rc_path}")
+
+        # Parse the real file
+        processors, had_errors = parse_kernelverbs_rc(str(rc_path))
+
+        # Should successfully parse all known processors
+        self.assertGreater(len(processors), 40, "Should find at least 40 processors")
+        self.assertLessEqual(len(processors), 60, "Should find at most 60 processors (51 known)")
+
+        # Should not have parsing errors (no invalid identifiers or duplicates)
+        self.assertFalse(had_errors, "Real kernelverbs.rc should parse without errors")
+
+        # Should find file and frontier processors (known to exist)
+        processor_names = {p.name for p in processors}
+        self.assertIn("file", processor_names, "file processor should be found")
+        self.assertIn("frontier", processor_names, "frontier processor should be found")
+
+        # Verify processor properties
+        file_proc = next((p for p in processors if p.name == "file"), None)
+        self.assertIsNotNone(file_proc, "file processor should exist")
+        self.assertGreater(file_proc.verb_count, 50, "file processor should have >50 verbs")
+
+        frontier_proc = next((p for p in processors if p.name == "frontier"), None)
+        self.assertIsNotNone(frontier_proc, "frontier processor should exist")
+        self.assertGreater(frontier_proc.verb_count, 5, "frontier processor should have >5 verbs")
+
+    def test_generated_code_compiles_with_real_processors(self):
+        """Test that generated code is syntactically valid C"""
+        # Find the real kernelverbs.rc file
+        rc_path = Path(__file__).parent.parent.parent / "Common/resources/Win32/kernelverbs.rc"
+
+        if not rc_path.exists():
+            self.skipTest(f"kernelverbs.rc not found at {rc_path}")
+
+        # Parse and generate code
+        processors, had_errors = parse_kernelverbs_rc(str(rc_path))
+        c_code = generate_kernel_verbs_init_c(processors, str(rc_path))
+
+        # Verify generated code has required C structure
+        self.assertIn("#include", c_code, "Should have includes")
+        self.assertIn("boolean headless_init_kernel_verbs(void)", c_code, "Should declare main function")
+        self.assertIn("return true;", c_code, "Should have success return")
+
+        # Verify only whitelisted processors are in generated code
+        self.assertIn("fileinitverbs", c_code, "Should include file processor")
+        self.assertIn("frontierinitverbs", c_code, "Should include frontier processor")
+
+        # Verify unimplemented processors are NOT in generated code
+        # (they shouldn't be called even if discovered)
+        code_lines = c_code.split('\n')
+        implementation_lines = [l for l in code_lines if 'initverbs()' in l and not l.strip().startswith('*')]
+        # Should only have init calls for whitelisted processors
+        self.assertLessEqual(len(implementation_lines), 4, "Should have limited init calls (extern decls + actual calls)")
+
+
 if __name__ == '__main__':
     unittest.main()

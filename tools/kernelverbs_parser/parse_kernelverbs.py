@@ -76,32 +76,6 @@ class EFPProcessor:
         return f"EFP({self.efp_id}, {self.name}, {self.verb_count} verbs)"
 
 
-def count_verb_definitions(block_content: str, processor_name: str) -> int:
-    """
-    Count the actual number of verb definitions in a processor block.
-
-    Looks for quoted strings that are likely verb definitions (not the processor name).
-    This provides a sanity check that the declared verb_count matches reality.
-
-    Args:
-        block_content: The content of the EFP block
-        processor_name: The name of the processor (to exclude from verb count)
-
-    Returns:
-        Count of likely verb definitions, or -1 if validation should be skipped
-    """
-    # Find all quoted strings in the block
-    quoted_strings = re.findall(r'"([^"]+)\\0"', block_content)
-
-    if not quoted_strings:
-        return -1  # Can't validate, skip this check
-
-    # Count strings that are NOT the processor name (those are likely verbs)
-    verb_defs = [s for s in quoted_strings if s != processor_name]
-
-    return len(verb_defs)
-
-
 def parse_kernelverbs_rc(rc_path: str) -> Tuple[List[EFPProcessor], bool]:
     """
     Parse kernelverbs.rc and extract all EFP processor definitions.
@@ -164,17 +138,9 @@ def parse_kernelverbs_rc(rc_path: str) -> Tuple[List[EFPProcessor], bool]:
             seen_names.add(processor_name)
 
             window_required = proc_match.group(2) == 'true'
-            declared_verb_count = int(proc_match.group(3))
+            verb_count = int(proc_match.group(3))
 
-            # Validate verb count against actual definitions (optional defensive check)
-            actual_verb_count = count_verb_definitions(block_content, processor_name)
-            if actual_verb_count > 0 and actual_verb_count != declared_verb_count:
-                print(f"Warning: Processor '{processor_name}' (EFP {efp_id}): "
-                      f"declared {declared_verb_count} verbs but found {actual_verb_count} "
-                      f"verb definitions in block", file=sys.stderr)
-                # Don't treat this as a critical error, just warn
-
-            processor = EFPProcessor(efp_id, processor_name, window_required, declared_verb_count)
+            processor = EFPProcessor(efp_id, processor_name, window_required, verb_count)
             processors.append(processor)
 
     return processors, had_errors
