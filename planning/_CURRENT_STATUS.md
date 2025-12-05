@@ -2,10 +2,11 @@
 
 Status
 - State: In Progress
-- Phase: Carbon Migration / Runtime Modernization
-- Last Updated: 2025-12-04 (Afternoon)
+- Phase: Carbon Migration / Runtime Modernization + Verb Processor Automation
+- Last Updated: 2025-12-04 (Evening)
 - Owner: Codex
 - Notes: Primary hand-off summary for active work only.
+- **2025-12-04 (Claude - Kernel Verbs Automation)**: Completed automated kernel verb initialization system. Created `tools/kernelverbs_parser/parse_kernelverbs.py` that extracts all 51 EFP processor definitions (707 total verbs) from `kernelverbs.rc`. Generates `kernel_verbs_init.c` with whitelist-based filtering (currently 2 implemented: file 86 verbs, frontier 14 verbs). Integrated into Makefile with auto-regeneration. Addressed all critical code review issues. Ready for merge as PR #59. See `planning/progress_reports/2025-12-04-kernel-verbs-automation-milestone.md` for full details.
 - **2025-12-04 (Claude - Critical Fix)**: Fixed structure alignment bug in v7 database header. Both `tydatabaserecord` and `tydatabaserecord_64` now have explicit 2-byte padding after `flags` field to ensure `views` array starts at offset 16 (8-byte aligned). Updated sizes: tydatabaserecord=118 bytes, tydatabaserecord_64=90 bytes. All database documentation updated to reflect corrected format.
 - 2025-12-01 (Codex): Linked migration tests to the real table layer (HEADLESS_LINKS_REAL_DB), dropped format unpacking in headless, and fixed writable opens so `test_migration` passes end-to-end on the v6 fixture (no more Save As/dbclose crash).
 - 2025-11-30 (Codex): Headless migration test now builds with portable file helpers and a local `copyctopstring` stub; heavy migration cases are temporarily skipped until the full runtime is linked (no crashes; backup/header checks pass).

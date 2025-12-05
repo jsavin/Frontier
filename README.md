@@ -14,6 +14,7 @@ tests can exercise real UserTalk without `system.verbs.*` being loaded.
 
 - **64-bit/ARM + big-endian v7** – Core builds/tests compile on `arm64`/`x86_64`; v7 headers/trailers and table addresses now write big-endian for cross-arch parity (see `docs/database_architecture.md`). Migration coverage lives in `tests/save_migration_tests` and `tests/runtime_tests`.
 - **Portable/headless + Paige-free** – The `portable/` layer + headless stubs power CLI/testing without UI deps; wptext now uses the Paige-free extractor/RTF path while still allowing tests to link the real Paige for parity checks.
+- **Automated kernel verb generation** – New Python-based parser (`tools/kernelverbs_parser/`) automatically generates `kernel_verbs_init.c` from `kernelverbs.rc`, extracting all 51 EFP processor definitions (707 total verbs). Whitelist-based approach ensures only implemented processors are initialized, making it scalable to add new verb processors. See `tools/kernelverbs_parser/README.md` for details.
 - **Modernised test harness** – Cross-platform C test suite with sanitiser presets (`SANITIZE=1 make -C tests`). Key binaries: `file_portable_tests`, `file_readline_tests`, `file_verb_tests`, `runtime_tests`, `db_format_tests`, `cli_runtime_tests`.
 - **Paige → portable milestone** – v6→v7 migrator now converts wptexts via the C extractor/RTF helpers; canonical `Frontier-v6.root` migration succeeds (`FRONTIER_REGEN_ROOT=databases/Frontier-v6.root ./tests/runtime_tests`), logs under `/tmp/…`. See `planning/progress_reports/2025-11-20-paige_portable_milestone.md`.
 - **Planning/status ledger** – Current work lives in `planning/_CURRENT_STATUS.md`; decisions and BE audit in `planning/DECISIONS.md` and `planning/big_endian_portability_audit.md`. Historical milestone summaries live in `planning/progress_reports/README.md`.
@@ -92,6 +93,7 @@ Frontier/
 ├── portable/             # Portable runtime layer + stubs
 ├── frontier-cli/         # Multi-arch CLI build
 ├── tests/                # Cross-platform C test suite
+├── tools/                # Build tools (kernelverbs_parser, strings_compiler)
 ├── planning/             # Roadmap, ADRs, decisions, quickstarts
 ├── codex_sessions/       # README pointer (actual logs in codex-sessions branch, no longer used)
 └── build_*               # Build scaffolding (Xcode/GNU)
