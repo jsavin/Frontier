@@ -15,7 +15,7 @@ Example:
 
 import sys
 import re
-from typing import List, Set
+from typing import List, Set, Tuple
 from pathlib import Path
 
 # Whitelist of processors that have headless implementations
@@ -76,20 +76,53 @@ class EFPProcessor:
         return f"EFP({self.efp_id}, {self.name}, {self.verb_count} verbs)"
 
 
-def parse_kernelverbs_rc(rc_path: str) -> List[EFPProcessor]:
+def count_verb_definitions(block_content: str, processor_name: str) -> int:
+    """
+    Count the actual number of verb definitions in a processor block.
+
+    Looks for quoted strings that are likely verb definitions (not the processor name).
+    This provides a sanity check that the declared verb_count matches reality.
+
+    Args:
+        block_content: The content of the EFP block
+        processor_name: The name of the processor (to exclude from verb count)
+
+    Returns:
+        Count of likely verb definitions, or -1 if validation should be skipped
+    """
+    # Find all quoted strings in the block
+    quoted_strings = re.findall(r'"([^"]+)\\0"', block_content)
+
+    if not quoted_strings:
+        return -1  # Can't validate, skip this check
+
+    # Count strings that are NOT the processor name (those are likely verbs)
+    verb_defs = [s for s in quoted_strings if s != processor_name]
+
+    return len(verb_defs)
+
+
+def parse_kernelverbs_rc(rc_path: str) -> Tuple[List[EFPProcessor], bool]:
     """
     Parse kernelverbs.rc and extract all EFP processor definitions.
 
-    Returns a list of EFPProcessor objects, one for each processor.
+    Returns a tuple of (processor list, had_errors flag).
 
-    Raises:
-        SystemExit: If processor names are invalid C identifiers
+    The had_errors flag indicates whether any processors were skipped due to
+    validation errors (as opposed to just being unimplemented).
+
+    Args:
+        rc_path: Path to the kernelverbs.rc file
+
+    Returns:
+        Tuple of (list of EFPProcessor objects, bool indicating if errors occurred)
     """
     with open(rc_path, 'r', encoding='utf-8', errors='replace') as f:
         content = f.read()
 
     processors = []
     seen_names: Set[str] = set()
+    had_errors = False
 
     # Find all EFP blocks: <number> /*comment*/ EFP DISCARDABLE
     for match in re.finditer(EFP_BLOCK_PATTERN, content):
@@ -116,25 +149,35 @@ def parse_kernelverbs_rc(rc_path: str) -> List[EFPProcessor]:
 
             # Validate processor name is a valid C identifier
             if not re.match(IDENTIFIER_PATTERN, processor_name):
-                print(f"Warning: Skipping processor '{processor_name}' (EFP {efp_id}): "
+                print(f"Error: Skipping processor '{processor_name}' (EFP {efp_id}): "
                       f"not a valid C identifier", file=sys.stderr)
+                had_errors = True
                 continue
 
             # Check for duplicates
             if processor_name in seen_names:
-                print(f"Warning: Skipping duplicate processor '{processor_name}' (EFP {efp_id})",
+                print(f"Error: Skipping duplicate processor '{processor_name}' (EFP {efp_id})",
                       file=sys.stderr)
+                had_errors = True
                 continue
 
             seen_names.add(processor_name)
 
             window_required = proc_match.group(2) == 'true'
-            verb_count = int(proc_match.group(3))
+            declared_verb_count = int(proc_match.group(3))
 
-            processor = EFPProcessor(efp_id, processor_name, window_required, verb_count)
+            # Validate verb count against actual definitions (optional defensive check)
+            actual_verb_count = count_verb_definitions(block_content, processor_name)
+            if actual_verb_count > 0 and actual_verb_count != declared_verb_count:
+                print(f"Warning: Processor '{processor_name}' (EFP {efp_id}): "
+                      f"declared {declared_verb_count} verbs but found {actual_verb_count} "
+                      f"verb definitions in block", file=sys.stderr)
+                # Don't treat this as a critical error, just warn
+
+            processor = EFPProcessor(efp_id, processor_name, window_required, declared_verb_count)
             processors.append(processor)
 
-    return processors
+    return processors, had_errors
 
 
 def generate_kernel_verbs_init_c(processors: List[EFPProcessor], rc_path: str) -> str:
@@ -219,7 +262,16 @@ def generate_kernel_verbs_init_c(processors: List[EFPProcessor], rc_path: str) -
 
 
 def main() -> None:
-    """Main entry point"""
+    """
+    Main entry point.
+
+    Exits with:
+      0: Success
+      1: Fatal errors (missing input, no processors found, I/O errors)
+      2: Parsing errors (invalid identifiers, duplicates in RC file)
+
+    Exit code 2 is specifically for CI to detect accidental breakage in kernelverbs.rc.
+    """
     if len(sys.argv) != 3:
         print("Usage: parse_kernelverbs.py <input.rc> <output.c>")
         print()
@@ -237,7 +289,7 @@ def main() -> None:
 
     # Parse the RC file
     print(f"Parsing {input_path}...")
-    processors = parse_kernelverbs_rc(input_path)
+    processors, had_parsing_errors = parse_kernelverbs_rc(input_path)
 
     if not processors:
         print("Warning: No EFP processors found in input file", file=sys.stderr)
@@ -279,6 +331,12 @@ def main() -> None:
     print("  1. Implement tests/headless_<processor>_verbs.c with <processor>initverbs()")
     print("  2. Add processor name to HEADLESS_IMPLEMENTED in parse_kernelverbs.py")
     print("  3. Run make to regenerate")
+
+    # Exit with appropriate code: 2 if parsing errors, 0 on success
+    if had_parsing_errors:
+        print("\nNote: Parser encountered errors while processing kernelverbs.rc", file=sys.stderr)
+        print("      (See messages above for details)", file=sys.stderr)
+        sys.exit(2)
 
 
 if __name__ == '__main__':

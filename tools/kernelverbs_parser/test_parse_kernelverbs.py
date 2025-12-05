@@ -70,12 +70,13 @@ BEGIN
 END
 '''
         self.temp_file = self.create_temp_rc(rc_content)
-        processors = parse_kernelverbs_rc(self.temp_file)
+        processors, had_errors = parse_kernelverbs_rc(self.temp_file)
 
         self.assertEqual(len(processors), 1)
         self.assertEqual(processors[0].name, "file")
         self.assertEqual(processors[0].verb_count, 86)
         self.assertEqual(processors[0].window_required, True)
+        self.assertFalse(had_errors)
 
     def test_parse_multiple_processors(self):
         """Test parsing multiple processors in one RC file"""
@@ -102,7 +103,7 @@ BEGIN
 END
 '''
         self.temp_file = self.create_temp_rc(rc_content)
-        processors = parse_kernelverbs_rc(self.temp_file)
+        processors, had_errors = parse_kernelverbs_rc(self.temp_file)
 
         self.assertEqual(len(processors), 3)
         names = {p.name for p in processors}
@@ -124,7 +125,7 @@ BEGIN
 END
 '''
         self.temp_file = self.create_temp_rc(rc_content)
-        processors = parse_kernelverbs_rc(self.temp_file)
+        processors, had_errors = parse_kernelverbs_rc(self.temp_file)
 
         self.assertEqual(len(processors), 2)
         file_proc = next(p for p in processors if p.name == "file")
@@ -148,7 +149,7 @@ BEGIN
 END
 '''
         self.temp_file = self.create_temp_rc(rc_content)
-        processors = parse_kernelverbs_rc(self.temp_file)
+        processors, had_errors = parse_kernelverbs_rc(self.temp_file)
 
         self.assertEqual(len(processors), 2)
         requires_win = next((p for p in processors if p.name == "requires_window"), None)
@@ -163,7 +164,7 @@ END
         """Test parsing an empty RC file"""
         rc_content = ""
         self.temp_file = self.create_temp_rc(rc_content)
-        processors = parse_kernelverbs_rc(self.temp_file)
+        processors, had_errors = parse_kernelverbs_rc(self.temp_file)
 
         self.assertEqual(len(processors), 0)
 
@@ -175,7 +176,7 @@ END
 // No actual EFP blocks here
 '''
         self.temp_file = self.create_temp_rc(rc_content)
-        processors = parse_kernelverbs_rc(self.temp_file)
+        processors, had_errors = parse_kernelverbs_rc(self.temp_file)
 
         self.assertEqual(len(processors), 0)
 
@@ -221,7 +222,7 @@ END
         old_stderr = sys.stderr
         sys.stderr = StringIO()
 
-        processors = parse_kernelverbs_rc(self.temp_file)
+        processors, had_errors = parse_kernelverbs_rc(self.temp_file)
 
         stderr_output = sys.stderr.getvalue()
         sys.stderr = old_stderr
@@ -233,6 +234,9 @@ END
         # Should have warned about invalid names
         self.assertIn("invalid-name", stderr_output)
         self.assertIn("123invalid", stderr_output)
+
+        # Should set error flag
+        self.assertTrue(had_errors)
 
     def test_duplicate_processor_skipped(self):
         """Test that duplicate processor names are skipped"""
@@ -259,7 +263,7 @@ END
         old_stderr = sys.stderr
         sys.stderr = StringIO()
 
-        processors = parse_kernelverbs_rc(self.temp_file)
+        processors, had_errors = parse_kernelverbs_rc(self.temp_file)
 
         stderr_output = sys.stderr.getvalue()
         sys.stderr = old_stderr
@@ -271,6 +275,9 @@ END
 
         # Should have warned about duplicate
         self.assertIn("duplicate", stderr_output.lower())
+
+        # Should set error flag
+        self.assertTrue(had_errors)
 
     def test_nonexistent_file(self):
         """Test handling of nonexistent input file"""
@@ -319,7 +326,7 @@ BEGIN
 END
 '''
         self.temp_file = self.create_temp_rc(rc_content)
-        processors = parse_kernelverbs_rc(self.temp_file)
+        processors, had_errors = parse_kernelverbs_rc(self.temp_file)
 
         # Generate code with current whitelist
         c_code = generate_kernel_verbs_init_c(processors, self.temp_file)
@@ -348,7 +355,7 @@ BEGIN
 END
 '''
         self.temp_file = self.create_temp_rc(rc_content)
-        processors = parse_kernelverbs_rc(self.temp_file)
+        processors, had_errors = parse_kernelverbs_rc(self.temp_file)
         c_code = generate_kernel_verbs_init_c(processors, self.temp_file)
 
         # Check for required elements
@@ -380,7 +387,7 @@ BEGIN
 END
 '''
         self.temp_file = self.create_temp_rc(rc_content)
-        processors = parse_kernelverbs_rc(self.temp_file)
+        processors, had_errors = parse_kernelverbs_rc(self.temp_file)
         c_code = generate_kernel_verbs_init_c(processors, self.temp_file)
 
         # Should have summary comments
@@ -448,7 +455,7 @@ BEGIN
 END
 '''
         self.temp_file = self.create_temp_rc(rc_content)
-        processors = parse_kernelverbs_rc(self.temp_file)
+        processors, had_errors = parse_kernelverbs_rc(self.temp_file)
 
         # Parser should handle multiple processors
         self.assertGreaterEqual(len(processors), 4)
@@ -473,7 +480,7 @@ BEGIN
 END
 '''
         self.temp_file = self.create_temp_rc(rc_content)
-        processors = parse_kernelverbs_rc(self.temp_file)
+        processors, had_errors = parse_kernelverbs_rc(self.temp_file)
         c_code = generate_kernel_verbs_init_c(processors, self.temp_file)
 
         # Count occurrences of each init call
