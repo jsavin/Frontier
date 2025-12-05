@@ -34,7 +34,26 @@ Common/MySQL/
 *.o
 *.dSYM/
 frontier-cli/frontier-cli
-frontier-cli/*.dSYM/
+frontier-cli/frontier-cli.dSYM/
+tests/cli_runtime_tests
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+*.egg
+
+# Test executables
+tests/db_format_tests
+tests/runtime_tests
+tests/runtime_tests.dSYM/
+
+# Tools debug symbols
+tools/**/*.dSYM/
+scripts/**/__pycache__/
 
 # Database backups
 *.root.bak

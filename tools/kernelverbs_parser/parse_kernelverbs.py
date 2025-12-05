@@ -24,9 +24,61 @@ from pathlib import Path
 # 1. Implement tests/headless_<processor>_verbs.c with <processor>initverbs()
 # 2. Add the processor name to this whitelist
 # 3. Run make to regenerate kernel_verbs_init.c
-HEADLESS_IMPLEMENTED: Set[str] = {
-    'file',      # tests/headless_file_verbs.c
-    'frontier',  # tests/headless_frontier_verbs.c
+HEADLESS_REGISTERED: Set[str] = {
+    # Already implemented in main codebase:
+    'file',              # fileverbs.c
+    'string',            # stringverbs.c
+    'table',             # tableverbs.c
+    'xml',               # langxml.c
+    'html',              # langhtml.c
+    'window',            # shellwindowverbs.c (windowinitverbs)
+    'db',                # dbverbs.c
+    're',                # langregexp.c
+    'sys',               # shellsysverbs.c
+    'lang',              # langstartup.c
+    'crypt',             # langcrypt.c
+    'math',              # langmath.c
+    'sqlite',            # langsqlite.c
+    'mysql',             # langmysql.c
+
+    # New headless stubs (not yet implemented):
+    'frontier',          # tests/headless_frontier_verbs.c
+    'op',                # tests/headless_op_verbs.c
+    'opattributes',      # tests/headless_opattributes_verbs.c
+    'script',            # tests/headless_script_verbs.c
+    'osa',               # tests/headless_osa_verbs.c
+    'menu',              # tests/headless_menu_verbs.c
+    'pict',              # tests/headless_pict_verbs.c
+    'clock',             # tests/headless_clock_verbs.c
+    'date',              # tests/headless_date_verbs.c
+    'dialog',            # tests/headless_dialog_verbs.c
+    'kb',                # tests/headless_kb_verbs.c
+    'mouse',             # tests/headless_mouse_verbs.c
+    'point',             # tests/headless_point_verbs.c
+    'rectangle',         # tests/headless_rectangle_verbs.c
+    'rgb',               # tests/headless_rgb_verbs.c
+    'speaker',           # tests/headless_speaker_verbs.c
+    'target',            # tests/headless_target_verbs.c
+    'bit',               # tests/headless_bit_verbs.c
+    'semaphore',         # tests/headless_semaphore_verbs.c
+    'base64',            # tests/headless_base64_verbs.c
+    'tcp',               # tests/headless_tcp_verbs.c
+    'dll',               # tests/headless_dll_verbs.c
+    'python',            # tests/headless_python_verbs.c
+    'htmlcontrol',       # tests/headless_htmlcontrol_verbs.c
+    'statusbar',         # tests/headless_statusbar_verbs.c
+    'rez',               # tests/headless_rez_verbs.c
+    'search',            # tests/headless_search_verbs.c
+    'filemenu',          # tests/headless_filemenu_verbs.c
+    'editmenu',          # tests/headless_editmenu_verbs.c
+    'launch',            # tests/headless_launch_verbs.c
+    'clipboard',         # tests/headless_clipboard_verbs.c
+    'thread',            # tests/headless_thread_verbs.c
+    'mainwindow',        # tests/headless_mainwindow_verbs.c
+    'searchengine',      # tests/headless_searchengine_verbs.c
+    'mrcalendar',        # tests/headless_mrcalendar_verbs.c
+    'webserver',         # tests/headless_webserver_verbs.c
+    'inetd',             # tests/headless_inetd_verbs.c
 }
 
 # Regex pattern constants with documentation
@@ -158,12 +210,12 @@ def generate_kernel_verbs_init_c(processors: List[EFPProcessor], rc_path: str) -
         String containing the complete C source file
 
     Note:
-        Uses the module-level HEADLESS_IMPLEMENTED whitelist to filter which
+        Uses the module-level HEADLESS_REGISTERED whitelist to filter which
         processors get initialization calls in the generated code.
     """
     # Filter to only implemented processors using module-level whitelist
-    implemented_procs = [p for p in processors if p.name in HEADLESS_IMPLEMENTED]
-    unimplemented_procs = [p for p in processors if p.name not in HEADLESS_IMPLEMENTED]
+    implemented_procs = [p for p in processors if p.name in HEADLESS_REGISTERED]
+    unimplemented_procs = [p for p in processors if p.name not in HEADLESS_REGISTERED]
 
     lines = [
         "/* Auto-generated from kernelverbs.rc - DO NOT EDIT BY HAND */",
@@ -173,7 +225,7 @@ def generate_kernel_verbs_init_c(processors: List[EFPProcessor], rc_path: str) -
         " * To regenerate, run: make in frontier-cli directory",
         " *",
         " * NOTE: Only processors with headless implementations are included.",
-        " * See HEADLESS_IMPLEMENTED whitelist in parse_kernelverbs.py.",
+        " * See HEADLESS_REGISTERED whitelist in parse_kernelverbs.py.",
         " */",
         "",
         "#include \"frontier.h\"",
@@ -202,7 +254,7 @@ def generate_kernel_verbs_init_c(processors: List[EFPProcessor], rc_path: str) -
         f" * Implemented verbs: {total_implemented_verbs} of {total_all_verbs} total",
         " *",
         " * To add more processors, implement them in tests/headless_*_verbs.c",
-        " * and add to HEADLESS_IMPLEMENTED whitelist in parse_kernelverbs.py.",
+        " * and add to HEADLESS_REGISTERED whitelist in parse_kernelverbs.py.",
         " *",
         " * Returns: true if all processors initialized successfully, false otherwise",
         " */",
@@ -262,8 +314,8 @@ def main() -> None:
         sys.exit(1)
 
     # Use the module-level whitelist to categorize processors
-    implemented = [p for p in processors if p.name in HEADLESS_IMPLEMENTED]
-    unimplemented = [p for p in processors if p.name not in HEADLESS_IMPLEMENTED]
+    implemented = [p for p in processors if p.name in HEADLESS_REGISTERED]
+    unimplemented = [p for p in processors if p.name not in HEADLESS_REGISTERED]
 
     print(f"Found {len(processors)} verb processors:", file=sys.stderr)
     print(f"\nImplemented in headless mode ({len(implemented)}):", file=sys.stderr)
@@ -295,7 +347,7 @@ def main() -> None:
     print(file=sys.stderr)
     print("To add more processors:", file=sys.stderr)
     print("  1. Implement tests/headless_<processor>_verbs.c with <processor>initverbs()", file=sys.stderr)
-    print("  2. Add processor name to HEADLESS_IMPLEMENTED in parse_kernelverbs.py", file=sys.stderr)
+    print("  2. Add processor name to HEADLESS_REGISTERED in parse_kernelverbs.py", file=sys.stderr)
     print("  3. Run make to regenerate", file=sys.stderr)
 
     # Exit with appropriate code: 2 if parsing errors, 0 on success
