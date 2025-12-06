@@ -25,14 +25,17 @@
 
 ******************************************************************************/
 
-/* 2025-11-24 Codex: Ensure outline header sizes use BE helpers. */
-
+/*
+ * 2025-12-05: MODERN outline packer for v4 portable format (64-bit timestamps, NO font/UI fields).
+ * This file handles WRITING v7 database outline payloads with the portable header.
+ * Legacy v6 databases use oppack_legacy.c for reading old v2/v3 format.
+ * See planning/phase3/carbon_migration/outline_script_payload.md for format details.
+ */
 
 #include "frontier.h"
 #include "standard.h"
 
-/* 2025-11-14 Codex: Added outline diagnostics + fixed disk-layout structs. */
-#include <stdint.h> /* 2025-11-14 Codex: lock outline disk headers to fixed widths */
+#include <stdint.h>
 /* 2025-11-14 Codex: Preserve fixed legacy header layout on 64-bit builds. */
 /* 2025-11-23 Codex: Write outline header sizes with BE helpers for v7 portability. */
 
@@ -97,61 +100,48 @@ typedef enum tylinetableitemflags {
 	#define diskchnotequals			((byte) 0xad)	/* '�' */
 	#define diskchdivide			((byte) 0xf7)	/* '�' */
 
-#define opversionnumber 2
+#define opversionnumber 4  /* v4 = portable header format */
 
 #define hibyte(x) (x & 0xff00)
-	
+
+/*
+ * V4 Portable Header Format (headless/modern)
+ * Drops all QuickDraw/UI fields (fonts, colors, scroll positions, window rects).
+ * Keeps only runtime-relevant metadata.
+ * See planning/phase3/carbon_migration/outline_script_payload.md
+ */
 #pragma pack(2)
-typedef struct tyversion2diskheader {
-	
-	int16_t versionnumber; /*important, this structure is saved on disk*/
-	
-	int32_t sizelinetable; /*number of bytes in the linetable section of handle*/
-	
-	int32_t sizetext; /*number of bytes in the text portion of handle*/
-	
-	int16_t lnumcursor; 
-	
-	int16_t linespacing;
-	
-	int16_t lineindent;
-	
-	diskfontstring fontname; 
-	
-	int16_t fontsize, fontstyle;
-	
-	int16_t vertmin, vertmax, vertcurrent; /*for structs that don't get their own file*/
+typedef struct typortablediskheader {
 
-	int16_t horizmin, horizmax, horizcurrent;
+	int16_t versionnumber; /* 4 for portable format */
 
-	unsigned char _pad[6]; /*padding for 8-byte alignment of timecreated*/
+	int32_t sizelinetable; /* bytes in linetable section */
 
-	int64_t timecreated, timelastsave;
+	int32_t sizetext; /* bytes in text portion */
 
-	int32_t ctsaves;
-	
-	int16_t fltextmode;
-	
-	diskrect windowrect; /*the size and position of the window that displays the outline*/
-	
-	int32_t outlinesignature; /*client info*/
-	
-	RGBColor backcolor;
-	
-	RGBColor forecolor;
-	
-	OSType platform; /*Mac or Win*/
-	
-	int16_t lnumcursor_hiword;
-	
-	int16_t vertcurrent_hiword; //vert min, max aren't really used
-	
-	int16_t horizcurrent_hiword; //horiz min, max aren't really used
-	
-	int16_t waste [3]; /*room to grow*/
-	} tyversion2diskheader;
+	int16_t lnumcursor; /* cursor line number (low word) */
 
-_Static_assert (sizeof (tyversion2diskheader) == 134, "tyversion2diskheader must be 134 bytes (with padding)");
+	int16_t lnumcursor_hiword; /* cursor line number (high word) */
+
+	unsigned char _pad[4]; /* padding for 8-byte alignment of timecreated */
+
+	int64_t timecreated; /* seconds since Mac epoch (1904-01-01) */
+
+	int64_t timelastsave; /* seconds since Mac epoch (1904-01-01) */
+
+	int32_t ctsaves; /* number of times saved */
+
+	int16_t fltextmode; /* stored as byte (non-zero = true) */
+
+	int32_t outlinesignature; /* caller-defined cookie */
+
+	OSType platform; /* 'mac ' or 'win ' for character mapping */
+
+	byte reserved[1024]; /* zeroed expansion area for future metadata */
+
+	} typortablediskheader;
+
+_Static_assert (sizeof (typortablediskheader) == 1068, "typortablediskheader must be 1068 bytes");
 
 
 typedef struct tyoppackinfo {
@@ -403,7 +393,7 @@ boolean oppack (Handle *hpackedoutline) {
 	register Handle h;
 	register long ixheader;
 	handlestream packstream;
-	tyversion2diskheader header;
+	typortablediskheader header;
 	boolean flallocated = false;
 	boolean flpoppedhoists = false;
 	boolean flerror = false;
@@ -441,62 +431,27 @@ boolean oppack (Handle *hpackedoutline) {
 	ixheader = packstream.pos - sizeof (header); //we're pointing past header now
 	
 	flpoppedhoists = oppopallhoists ();
-	
+
+	/* V4 Portable Header - only runtime-relevant fields */
 	header.versionnumber = conditionalshortswap(opversionnumber);
-	
+
 	header.platform = conditionallongswap (thisplatform);
 
 	opgetnodeline ((**ho).hbarcursor, &lnumcursor);
-	
+
 	memlongtodiskwords (lnumcursor, header.lnumcursor, header.lnumcursor_hiword);
-	
-	header.linespacing = conditionalenumswap((**ho).linespacing);
-	
-	header.lineindent = conditionalshortswap((**ho).lineindent);
-	
+
 	header.fltextmode = (**ho).fltextmode;
-	
-	header.vertmin = conditionalshortswap((**ho).vertscrollinfo.min);
-	
-	header.vertmax = conditionalshortswap((**ho).vertscrollinfo.max);
-	
-	memlongtodiskwords ((**ho).vertscrollinfo.cur, header.vertcurrent, header.vertcurrent_hiword);
-	
-	header.horizmin = conditionalshortswap((**ho).horizscrollinfo.min);
-	
-	header.horizmax = conditionalshortswap((**ho).horizscrollinfo.max);
-	
-	memlongtodiskwords ((**ho).horizscrollinfo.cur, header.horizcurrent, header.horizcurrent_hiword);
 
 	header.timecreated = conditionallonglongswap((**ho).timecreated);
 
 	header.timelastsave = conditionallonglongswap((**ho).timelastsave);
-	
-	/*timestamp (&header.timelastsave);*/ /*dmb 4.1b13: don't stamp it; opdirty sets it as true mode date*/
-	
+
 	header.ctsaves = conditionallongswap(++(**ho).ctsaves);
-	
-	header.forecolor = (**ho).forecolor;
-	
-	memtodiskshort (header.forecolor.red);
-	memtodiskshort (header.forecolor.green);
-	memtodiskshort (header.forecolor.blue);
-	
-	header.backcolor = (**ho).backcolor;
-	
-	memtodiskshort (header.backcolor.red);
-	memtodiskshort (header.backcolor.green);
-	memtodiskshort (header.backcolor.blue);
-	
-	diskgetfontname ((**ho).fontnum, header.fontname);
-	
-	header.fontsize = conditionalshortswap((**ho).fontsize);
-	
-	header.fontstyle = conditionalshortswap((**ho).fontstyle);
-	
-	recttodiskrect (&(**ho).windowrect, &header.windowrect);
-	
+
 	header.outlinesignature = conditionallongswap((**ho).outlinesignature);
+
+	/* reserved[] is already zeroed by clearbytes() above */
 	
 	hsummit = (**ho).hsummit; /*copy into register*/
 	
@@ -869,98 +824,58 @@ static boolean opunpacktexttooutline (long platform, handlestream *packstream, h
 	} /*opunpacktexttooutline*/
 
 	
-static boolean opunpackversion2 (handlestream *packstream) {
-	
-	/*
-	12/28/90 dmb: set hline1 according to vertcurrent -- used to be left at summit
-	
-	2/9/93 dmb: push/popstyle around texttooutline so that recalc isn't needed
-	
-	2.1b4 dmb: pushscratchport before measuring text
-	
-	3.0.4b8 dmb: use of scratchport is now more thorough
+static boolean opunpackversion4 (handlestream *packstream) {
 
-	5.0b11 dmb: added platform logic. map character if platform changes
+	/*
+	2025-12-05: V4 Portable Header unpacker - reads only runtime-relevant fields.
+	Skips all QuickDraw/UI fields (fonts, colors, scroll positions, window rects).
 	*/
-	
+
 	register hdloutlinerecord ho;
 	handlestream stream;
 	hdlheadrecord hsummit, hline1, hcursor;
-	tyversion2diskheader header;
-	short fontnum;
+	typortablediskheader header;
 	long lnumcursor;
 	boolean fl;
-	
+
 	ho = outlinedata; /*copy into register*/
-	
+
 	if (!readhandlestream (packstream, &header, sizeof (header)))
 		return (false);
-	
-	(**ho).linespacing = conditionalenumswap (header.linespacing);
-	
-	(**ho).lineindent = conditionalshortswap (header.lineindent);
-	
+
+	/* V4 Portable Header - read only runtime-relevant fields */
+
 	(**ho).fltextmode = (boolean) conditionalshortswap (header.fltextmode);
-	
-	(**ho).vertscrollinfo.min = conditionalshortswap (header.vertmin);
-	
-	(**ho).vertscrollinfo.max = conditionalshortswap (header.vertmax);
-	
-	(**ho).vertscrollinfo.cur = diskwordstomemlong (header.vertcurrent, header.vertcurrent_hiword);
-	
-	(**ho).horizscrollinfo.min = conditionalshortswap (header.horizmin);
-	
-	(**ho).horizscrollinfo.max = conditionalshortswap (header.horizmax);
-	
-	(**ho).horizscrollinfo.cur = diskwordstomemlong (header.horizcurrent, header.horizcurrent_hiword);
 
 	(**ho).timecreated = conditionallonglongswap (header.timecreated);
 
 	(**ho).timelastsave = conditionallonglongswap (header.timelastsave);
-	
+
 	(**ho).ctsaves = conditionallongswap (header.ctsaves);
-	
-	disktomemshort (header.backcolor.red);
-	disktomemshort (header.backcolor.green);
-	disktomemshort (header.backcolor.blue);
-	
-	if (memcmp (&header.backcolor, &blackcolor, sizeof (RGBColor)) == 0)
-		header.backcolor = whitecolor;
-	
-	// (**ho).backcolor = header.backcolor;
-	
-	diskgetfontnum (header.fontname, &fontnum);
-	
-	if (isemptystring (header.fontname)) //it was munged in beta
-		(**ho).fontnum = config.defaultfont;
-	else
-		(**ho).fontnum = fontnum;
-	
-	if (header.fontsize == 0) //it was munged in beta
-		(**ho).fontsize = config.defaultsize;
-	else
-		(**ho).fontsize = conditionalshortswap (header.fontsize);
-	
-	(**ho).fontstyle = conditionalshortswap (header.fontstyle);
-	
-	diskrecttorect (&header.windowrect, &(**ho).windowrect);
-	
+
 	disktomemlong (header.platform);
-	
+
 	disktomemlong (header.sizetext);
-	
+
 	disktomemlong (header.sizelinetable);
-	
+
 	if (header.platform == 0)
 		header.platform = macplatform;
-	
+
 	if (header.outlinesignature == 0)
 		header.outlinesignature = conditionallongswap ('LAND');
 
 	(**ho).outlinesignature = conditionallongswap (header.outlinesignature);
-	
+
+	/* Set default UI values (not stored in v4) */
+	(**ho).fontnum = config.defaultfont;
+	(**ho).fontsize = config.defaultsize;
+	(**ho).fontstyle = 0;
+	(**ho).linespacing = singlespacing;
+	(**ho).lineindent = 0;
+
 	pushscratchport ();
-	
+
 	pushstyle ((**ho).fontnum, (**ho).fontsize, (**ho).fontstyle);
 	
 	stream = *packstream;
@@ -1061,27 +976,15 @@ boolean opunpack (Handle hpackedoutline, long *ixload, hdloutlinerecord *houtlin
 	
 	oppushoutline (ho);
 	
-	switch (versionnumber) {
-		
-		case 2:
-		case 3:
-			fl = opunpackversion2 (&packstream);
-			
-			break;
-		
-		default:
-			if ((hibyte (versionnumber) != hibyte (opversionnumber)) || versionnumber < 2) {
-			
-				shellinternalerror (idbadopversionnumber, STR_bad_outline_version_number);
-				
-				fl = false;
-				}
-			else
-				fl = opunpackversion2 (&packstream);
-			
-			break;
-		
-		} /*switch*/
+	/* Modern oppack only handles v4 portable format */
+	if (versionnumber == 4) {
+		fl = opunpackversion4 (&packstream);
+	}
+	else {
+		/* Legacy v2/v3 should be handled by oppack_legacy.c */
+		shellinternalerror (idbadopversionnumber, STR_bad_outline_version_number);
+		fl = false;
+	}
 	
 	oppopoutline ();
 	
