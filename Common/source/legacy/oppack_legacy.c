@@ -25,7 +25,12 @@
 
 ******************************************************************************/
 
-/* 2025-11-24 Codex: Ensure outline header sizes use BE helpers. */
+/*
+ * 2025-12-05: LEGACY outline packer for v2/v3 format (32-bit timestamps, 120-byte header).
+ * This file handles READING old v6 database outline payloads only.
+ * Modern v7 databases use oppack_modern.c with v4 portable header (64-bit timestamps, no font fields).
+ * See planning/phase3/carbon_migration/outline_script_payload.md for format details.
+ */
 
 
 #include "frontier.h"
@@ -89,13 +94,13 @@ typedef enum tylinetableitemflags {
 #define winplatform 'win '
 
 	#define thisplatform macplatform
-	#define diskchcomment			((byte) 0xab)	/* '«' */
+	#define diskchcomment			((byte) 0xab)	/* 'ï¿½' */
 	#define diskchendcomment		((byte) 0xbb)
 	#define diskchopencurlyquote	((byte) 0x93)
 	#define diskchclosecurlyquote	((byte) 0x94)
 	#define diskchtrademark			((byte) 0x99)
-	#define diskchnotequals			((byte) 0xad)	/* '­' */
-	#define diskchdivide			((byte) 0xf7)	/* '÷' */
+	#define diskchnotequals			((byte) 0xad)	/* 'ï¿½' */
+	#define diskchdivide			((byte) 0xf7)	/* 'ï¿½' */
 
 #define opversionnumber 2
 
@@ -372,7 +377,7 @@ static boolean opoutlinetotext (hdlheadrecord hnode, handlestream *textstream, l
 	} /*opoutlinetotext*/
 
 
-boolean oppack (Handle *hpackedoutline) {
+boolean oppack_legacy (Handle *hpackedoutline) {
 	
 	/*
 	create a packed, contiguous version of the current outline record.
@@ -551,7 +556,7 @@ boolean oppack (Handle *hpackedoutline) {
 	} /*oppack*/
 
 
-boolean oppackoutline (hdloutlinerecord houtline, Handle *hpackedoutline) {
+boolean oppackoutline_legacy (hdloutlinerecord houtline, Handle *hpackedoutline) {
 	
 	boolean fl;
 	
@@ -1020,7 +1025,7 @@ static boolean opunpackversion2 (handlestream *packstream) {
 	} /*opunpackversion2*/
 	
 	
-boolean opunpack (Handle hpackedoutline, long *ixload, hdloutlinerecord *houtline) {
+boolean opunpack_legacy (Handle hpackedoutline, long *ixload, hdloutlinerecord *houtline) {
 	
 	/*
 	9/25/91 dmb: added call to testheapspace to try to improve low-mem handling
@@ -1105,7 +1110,7 @@ boolean opunpack (Handle hpackedoutline, long *ixload, hdloutlinerecord *houtlin
 	} /*opunpack*/
 
 
-boolean opunpackoutline (Handle hpackedoutline, hdloutlinerecord *houtline) {
+boolean opunpackoutline_legacy (Handle hpackedoutline, hdloutlinerecord *houtline) {
 	
 	long ixload = 0;
 	
@@ -1113,7 +1118,7 @@ boolean opunpackoutline (Handle hpackedoutline, hdloutlinerecord *houtline) {
 	} /*opunpackoutline*/
 
 
-boolean optextscraptooutline (hdloutlinerecord houtline, Handle htext, hdlheadrecord *hnode) {
+boolean optextscraptooutline_legacy (hdloutlinerecord houtline, Handle htext, hdlheadrecord *hnode) {
 #pragma unused (houtline)
 
 	/*
@@ -1244,7 +1249,7 @@ static boolean outscrapvisit (hdlheadrecord hnode, ptrvoid refcon) {
 	} /*outscrapvisit*/
 
 
-boolean opoutlinetotextstream (hdloutlinerecord houtline, boolean flomitcomments, handlestream *s) {
+boolean opoutlinetotextstream_legacy (hdloutlinerecord houtline, boolean flomitcomments, handlestream *s) {
 	
 	/*
 	convert the outline into a block of tab-indented text, each
@@ -1273,7 +1278,7 @@ boolean opoutlinetotextstream (hdloutlinerecord houtline, boolean flomitcomments
 	} /*opoutlinetotextstream*/
 
 
-boolean opoutlinetotextscrap (hdloutlinerecord houtline, boolean flomitcomments, Handle htext) {
+boolean opoutlinetotextscrap_legacy (hdloutlinerecord houtline, boolean flomitcomments, Handle htext) {
 	
 	/*
 	stick the handle into a handlestream and pass it on through...
@@ -1292,7 +1297,7 @@ boolean opoutlinetotextscrap (hdloutlinerecord houtline, boolean flomitcomments,
 	} /*opoutlinetotextscrap*/
 
 
-boolean opoutlinetonewtextscrap (hdloutlinerecord houtline, Handle *htext) {
+boolean opoutlinetonewtextscrap_legacy (hdloutlinerecord houtline, Handle *htext) {
 	
 	/*
 	similar to opoutlinetotextscrap above, but allocated new handle
@@ -1313,7 +1318,7 @@ boolean opoutlinetonewtextscrap (hdloutlinerecord houtline, Handle *htext) {
 
 
 /*
-boolean opsuboutlinetonewtextscrap (hdlheadrecord hnode, Handle *htext) {
+boolean opsuboutlinetonewtextscrap_legacy (hdlheadrecord hnode, Handle *htext) {
 	
 	/%
 	similar to opoutlinetotextscrap above, but allocated new handle and 

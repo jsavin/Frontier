@@ -6,6 +6,10 @@
 #include "langexternal.h"
 #include "opverbs.h"
 
+/* Forward declarations for legacy oppack functions (oppack_legacy.c) */
+extern boolean opunpack_legacy (Handle hpackedoutline, long *ixload, hdloutlinerecord *houtline);
+extern boolean opunpackoutline_legacy (Handle hpackedoutline, hdloutlinerecord *houtline);
+
 boolean opverbmemorypack_legacy (hdlexternalvariable h, Handle *hpacked) {
     return opverbmemorypack(h, hpacked);
 }

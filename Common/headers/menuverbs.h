@@ -63,9 +63,9 @@ extern boolean menuverbpacktotext (hdlexternalvariable, Handle);
 
 extern boolean menuverbgetsize (hdlexternalvariable, long *);
 
-extern boolean menuverbgettimes (hdlexternalvariable, long *, long *);
+extern boolean menuverbgettimes (hdlexternalvariable, int64_t *, int64_t *);
 
-extern boolean menuverbsettimes (hdlexternalvariable, long, long);
+extern boolean menuverbsettimes (hdlexternalvariable, int64_t, int64_t);
 
 extern boolean menuverbfindusedblocks (hdlexternalvariable, bigstring);
 

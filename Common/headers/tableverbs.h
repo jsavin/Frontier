@@ -66,9 +66,9 @@ extern boolean tableverbunpack (Handle, long *, hdlexternalvariable *, boolean);
 
 extern boolean tableverbpacktotext (hdlexternalvariable, Handle);
 
-extern boolean tableverbgettimes (hdlexternalvariable, long *, long *, hdlhashnode);
+extern boolean tableverbgettimes (hdlexternalvariable, int64_t *, int64_t *, hdlhashnode);
 
-extern boolean tableverbsettimes (hdlexternalvariable, long, long, hdlhashnode);
+extern boolean tableverbsettimes (hdlexternalvariable, int64_t, int64_t, hdlhashnode);
 
 extern boolean tableverbfindusedblocks (hdlexternalvariable, bigstring bspath);
 

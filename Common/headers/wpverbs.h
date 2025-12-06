@@ -63,9 +63,9 @@ extern boolean wpverbpacktotext_legacy (hdlexternalvariable, Handle);
 
 extern boolean wpverbgetsize (hdlexternalvariable, long *);
 
-extern boolean wpverbgettimes (hdlexternalvariable, long *, long *);
+extern boolean wpverbgettimes (hdlexternalvariable, int64_t *, int64_t *);
 
-extern boolean wpverbsettimes (hdlexternalvariable, long, long);
+extern boolean wpverbsettimes (hdlexternalvariable, int64_t, int64_t);
 
 extern boolean wpwindowopen (hdlexternalvariable, hdlwindowinfo *);
 

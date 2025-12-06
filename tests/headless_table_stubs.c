@@ -176,7 +176,7 @@ boolean tableverbcontinuesearch (hdlexternalvariable h) {
 }
 
 #if !defined(HEADLESS_USE_REAL_TABLEPACK)
-boolean tableverbgettimes (hdlexternalvariable h, long *timecreated, long *timemodified, hdlhashnode hnode) {
+boolean tableverbgettimes (hdlexternalvariable h, int64_t *timecreated, int64_t *timemodified, hdlhashnode hnode) {
     (void) h;
     (void) hnode;
     if (timecreated)

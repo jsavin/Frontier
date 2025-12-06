@@ -189,8 +189,8 @@ typedef struct tyfileinfo { // flattens interface for getting file information
 	boolean fltemp; // Windows "temp" file attribute
 	
 	OSType filecreator, filetype; // the creator ID and file type
-	
-	unsigned long timecreated, timemodified, timeaccessed; // the creation and modification date for the file
+
+	int64_t timecreated, timemodified, timeaccessed; // the creation and modification date for the file
 	
 	unsigned long long sizedataforkhigh, sizedatafork, sizeresourcefork; // the size of the file's two forks
 	

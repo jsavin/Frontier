@@ -48,6 +48,8 @@
 #include "langinternal.h"
 #include "langxml.h" //7.1b44 dmb
 #include "tablestructure.h"
+#include "oppack_legacy.h" /* 2025-12-05: For legacy v2/v3 outline format dispatch */
+#include "byteorder.h" /* 2025-12-05: For version number byte swapping */
 #include "tableverbs.h"
 #include "process.h"
 #include "op.h"
@@ -580,16 +582,36 @@ static boolean opverbinmemory (hdloutlinevariable hv) {
 	adr = (dbaddress) (**hv).variabledata;
 	
 	fl = dbrefhandle (adr, &hpackedoutline);
-	
+
 	if (!fl) {
 #if defined(FRONTIER_HEADLESS)
 		fprintf(stderr, "[headless] opverbinmemory dbrefhandle failed adr=0x%llx\n",
 		        (unsigned long long) adr);
 #endif
 	} else {
+		/* 2025-12-05: Dispatch based on outline format version */
+		short versionnumber;
+		boolean islegacy = false;
 
-		fl = opunpack (hpackedoutline, &ix, &ho);
-		
+		if (gethandlesize(hpackedoutline) >= sizeof(short)) {
+			versionnumber = *(short *)(*hpackedoutline);
+			disktomemshort(versionnumber);
+
+			/* v2/v3 are legacy formats, v4 is modern */
+			islegacy = (versionnumber == 2 || versionnumber == 3);
+
+#if defined(FRONTIER_HEADLESS)
+			fprintf(stderr, "[headless] opverbinmemory outline version=%d %s adr=0x%llx\n",
+			        (int)versionnumber, islegacy ? "LEGACY" : "MODERN",
+			        (unsigned long long) adr);
+#endif
+		}
+
+		if (islegacy)
+			fl = opunpack_legacy (hpackedoutline, &ix, &ho);
+		else
+			fl = opunpack (hpackedoutline, &ix, &ho);
+
 		disposehandle (hpackedoutline);
 
 #if defined(FRONTIER_HEADLESS)
@@ -1072,7 +1094,7 @@ boolean opverbpacktotext (hdlexternalvariable h, Handle htext) {
 	} /*opverbpacktotext*/
 
 
-boolean opverbgettimes (hdlexternalvariable h, long *timecreated, long *timemodified) {
+boolean opverbgettimes (hdlexternalvariable h, int64_t *timecreated, int64_t *timemodified) {
 	
 	register hdloutlinevariable hv = (hdloutlinevariable) h;
 	register hdloutlinerecord ho;
@@ -1090,7 +1112,7 @@ boolean opverbgettimes (hdlexternalvariable h, long *timecreated, long *timemodi
 	} /*opverbgettimes*/
 
 
-boolean opverbsettimes (hdlexternalvariable h, long timecreated, long timemodified) {
+boolean opverbsettimes (hdlexternalvariable h, int64_t timecreated, int64_t timemodified) {
 	
 	register hdloutlinevariable hv = (hdloutlinevariable) h;
 	register hdloutlinerecord ho;

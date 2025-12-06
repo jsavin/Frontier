@@ -3,3 +3,7 @@ the system root. All top-level items in guest databases are in global scope in t
 kernel leveraging the in-memory "table" at system.compiler.files.
 - Frontier has the concept of the current "target" which is generally a window. That might be a database or it might be an editor window for a non-scalar like a script, outline, or WPText object (which we're now persisting as RTF in UTF-8).
 - Legacy Frontier source code is available at /Users/jake/dev/tedchoward/Frontier
+- When you're asked to fix something in a critical area (serialization, database format, byte alignment, byte ordering, etc.) you should always 1) first search the `planning/` directory for relevant documentation, 2) ask the user: "I found X in the planning docs - does this change align with that plan?" and 3) only proceed after user confirmation.
+- When touching files in certain directories, the commit message should reference the relevant planning doc(s), to force conscious acknowledgment.
+- Any change to a typedev struct with "disk" in the name should trigger a question to the user before implementation.
+- The v7 database format should not contain any font, font size, or font style information *except* within stored RTF objects.

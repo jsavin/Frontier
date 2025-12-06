@@ -111,8 +111,8 @@ boolean menuverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *h) {
 }
 boolean menuverbpacktotext (hdlexternalvariable h, Handle htext) { (void)h;(void)htext; return false; }
 boolean menuverbgetsize (hdlexternalvariable h, long *size) { (void)h; if (size) *size=0; return true; }
-boolean menuverbgettimes (hdlexternalvariable h, long *tc, long *tm) { (void)h; if (tc) *tc=0; if (tm) *tm=0; return false; }
-boolean menuverbsettimes (hdlexternalvariable h, long tc, long tm) { (void)h;(void)tc;(void)tm; return false; }
+boolean menuverbgettimes (hdlexternalvariable h, int64_t *tc, int64_t *tm) { (void)h; if (tc) *tc=0; if (tm) *tm=0; return false; }
+boolean menuverbsettimes (hdlexternalvariable h, int64_t tc, int64_t tm) { (void)h;(void)tc;(void)tm; return false; }
 boolean menuverbfindusedblocks (hdlexternalvariable h, bigstring bspath) { (void)h; if (bspath) setemptystring(bspath); return false; }
 boolean menuverbfind (hdlexternalvariable h, boolean *flzoom) { (void)h; if (flzoom) *flzoom=false; return false; }
 boolean menuverbdispose (hdlexternalvariable h, boolean fldisk) { (void)h;(void)fldisk; return true; }

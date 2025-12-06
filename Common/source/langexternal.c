@@ -2789,7 +2789,7 @@ boolean langexternalcontinuesearch (hdlexternalvariable hvariable) {
 	} /*langexternalcontinuesearch*/
 
 
-boolean langexternalgettimes (hdlexternalhandle h, long *timecreated, long *timemodified, hdlhashnode hnode) {
+boolean langexternalgettimes (hdlexternalhandle h, int64_t *timecreated, int64_t *timemodified, hdlhashnode hnode) {
 	
 	register hdlexternalvariable hdata = (hdlexternalvariable) h;
 	
@@ -2817,7 +2817,7 @@ boolean langexternalgettimes (hdlexternalhandle h, long *timecreated, long *time
 	} /*langexternalgettimes*/
 
 
-boolean langexternalsettimes (hdlexternalhandle h, long timecreated, long timemodified, hdlhashnode hnode) {
+boolean langexternalsettimes (hdlexternalhandle h, int64_t timecreated, int64_t timemodified, hdlhashnode hnode) {
 	
 	register hdlexternalvariable hdata = (hdlexternalvariable) h;
 	

@@ -53,9 +53,9 @@ extern boolean pictverbpacktotext (hdlexternalvariable, Handle);
 
 extern boolean pictverbgetsize (hdlexternalvariable, long *);
 
-extern boolean pictverbgettimes (hdlexternalvariable, long *, long *);
+extern boolean pictverbgettimes (hdlexternalvariable, int64_t *, int64_t *);
 
-extern boolean pictverbsettimes (hdlexternalvariable, long, long);
+extern boolean pictverbsettimes (hdlexternalvariable, int64_t, int64_t);
 
 extern boolean pictwindowopen (hdlexternalvariable, hdlwindowinfo *);
 

@@ -38,8 +38,8 @@ typedef struct typictrecord {
 	PicHandle macpicture; /*the structure that's passed off to DrawPicture*/
 	
 	Rect windowrect; /*the size of the window that last displayed this pict*/
-	
-	long timecreated, timelastsave; /*maybe we'll use these at some later date?*/
+
+	int64_t timecreated, timelastsave; /*maybe we'll use these at some later date?*/
 	
 	long ctsaves; /*the number of times this structure has been saved*/
 	
@@ -60,8 +60,15 @@ typedef struct typictrecord {
 	boolean flevalexpressions: 1; /*if true, parse all text that begins with an = sign*/
 	
 	boolean flscaletofitwindow: 1; /*if true, scale window down to fit inside window*/
-	
+
 	} typictrecord, *ptrpictrecord, **hdlpictrecord;
+
+/* 2025-12-05: Verify 8-byte alignment of 64-bit timestamp fields under #pragma pack(2) */
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+_Static_assert(offsetof(typictrecord, timecreated) % 8 == 0, "typictrecord.timecreated must be 8-byte aligned");
+_Static_assert(offsetof(typictrecord, timelastsave) % 8 == 0, "typictrecord.timelastsave must be 8-byte aligned");
+#endif
+
 #pragma options align=reset
 	
 	

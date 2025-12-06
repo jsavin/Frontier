@@ -92,7 +92,7 @@ boolean wpverbgetsize (hdlexternalvariable h, long *size) {
     return true;
 }
 
-boolean wpverbgettimes (hdlexternalvariable h, long *timecreated, long *timemodified) {
+boolean wpverbgettimes (hdlexternalvariable h, int64_t *timecreated, int64_t *timemodified) {
     (void) h;
     if (timecreated)
         *timecreated = 0;
@@ -101,7 +101,7 @@ boolean wpverbgettimes (hdlexternalvariable h, long *timecreated, long *timemodi
     return false;
 }
 
-boolean wpverbsettimes (hdlexternalvariable h, long timecreated, long timemodified) {
+boolean wpverbsettimes (hdlexternalvariable h, int64_t timecreated, int64_t timemodified) {
     (void) h;
     (void) timecreated;
     (void) timemodified;

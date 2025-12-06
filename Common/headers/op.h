@@ -237,10 +237,12 @@ typedef struct tyoutlinerecord {
 	Rect windowrect; /*the size and position of window that last displayed outline*/
 	
 	tyscrollinfo vertscrollinfo; /*vertical scrollbar info*/
-	
+
 	tyscrollinfo horizscrollinfo; /*horiz scrollbar info*/
-	
-	unsigned long timecreated, timelastsave; /*number of seconds since 1/1/04*/
+
+	unsigned char _pad[2]; /*padding for 8-byte alignment of timecreated*/
+
+	int64_t timecreated, timelastsave; /*number of seconds since 1/1/04*/
 	
 	long ctsaves; /*the number of times this structure has been saved*/
 	
@@ -448,6 +450,13 @@ typedef struct tyoutlinerecord {
 	
 	long outlinerefcon; /*for use by application*/
 	} tyoutlinerecord;
+
+/* 2025-12-05: Verify 8-byte alignment of 64-bit timestamp fields under #pragma pack(2) */
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+_Static_assert(offsetof(tyoutlinerecord, timecreated) % 8 == 0, "tyoutlinerecord.timecreated must be 8-byte aligned");
+_Static_assert(offsetof(tyoutlinerecord, timelastsave) % 8 == 0, "tyoutlinerecord.timelastsave must be 8-byte aligned");
+#endif
+
 #pragma options align=reset
 
 
