@@ -135,7 +135,7 @@ Requirements:
 
 **Declaring Default Values in Handler Definition**
 ```
-on myVerb (param1 = defaultValue1, param2 = defaultValue2)
+on myVerb (param1=defaultValue1, param2=defaultValue2)
   // implementation
 ```
 
@@ -153,7 +153,7 @@ myVerb(10, 20)              → uses 10 for param1, 20 for param2
 
 **Real Examples from Documentation:**
 ```
-on addThree (a = 1, b = 2, c = 3)
+on addThree (a=1, b=2, c=3)
   return (a + b + c)
 
 addThree()              → 6     [1 + 2 + 3]
@@ -177,7 +177,7 @@ verb(paramName1:value1, paramName2:value2)
 
 **Real Examples from Documentation:**
 ```
-on addThree (a = 1, b = 2, c = 3)
+on addThree (a=1, b=2, c=3)
   return (a + b + c)
 
 addThree(c:30)                → 33    [defaults for a, b; 30 for c: 1+2+30]
@@ -187,22 +187,34 @@ addThree(c:30, a:5)           → 38    [5 for a, default for b, 30 for c: 5+2+3
 
 **Mixing Positional and Named Parameters**
 
-You can mix both syntaxes with **one strict rule:**
-- **All unnamed (positional) values must come FIRST**
-- All named parameters must come AFTER positional ones
-- Positional values assigned left-to-right to parameters
+You can mix both syntaxes with **specific rules:**
+- **Ordered (positional) parameters come FIRST** and must start with the first parameter
+- Ordered parameters can continue in sequence for any number of parameters (1st, 2nd, 3rd, etc.)
+- **Named parameters come AFTER** all ordered parameters
+- Named parameters can consist of any number of name:value pairs in any order
+- **No ordered parameters can follow named parameters**
 
+**Examples:**
 ```
 on addThreeAndMultiplyToo (a, b, c)
   return (a + (2 * b) + (3 * c))
 
-addThreeAndMultiplyToo(5, c:1, b:32)
-  → 72    [a=5 (positional), b=32 (named), c=1 (named)]
+addThreeAndMultiplyToo(5, b:32, c:1)
+  → 72    [a=5 (ordered), b=32 (named), c=1 (named)]
+
+addThreeAndMultiplyToo(5, 32, c:1)
+  → 72    [a=5, b=32 (ordered), c=1 (named)]
+
+addThreeAndMultiplyToo(5, 32, 1)
+  → 107   [a=5, b=32, c=1 (all ordered)]
+
+addThreeAndMultiplyToo(c:1, a:5, b:32)
+  → 72    [c=1, a=5, b=32 (all named, any order)]
 ```
 
 **For Implementation:** Named parameters allow:
 - More readable code (parameter purpose is explicit)
-- Calling in any order
+- Flexible calling: can use ordered params, named params, or both
 - Adding new parameters to existing handlers safely (can be omitted by callers)
 - Combining flexibility with clarity
 
