@@ -36,13 +36,13 @@ Time and timing operations are essential system utilities with no GUI dependenci
 
 | # | Verb Name | Signature | Description |
 |---|-----------|-----------|-------------|
-| 1 | `now` | `clock.now() -> long` | Get current time (seconds since epoch) |
-| 2 | `set` | `clock.set(time)` | Set system time (requires admin privileges) |
-| 3 | `sleepfor` | `clock.sleepFor(seconds)` | Sleep for specified seconds |
-| 4 | `ticks` | `clock.ticks() -> long` | Get system ticks since startup (1/60th second units) |
-| 5 | `milliseconds` | `clock.milliseconds() -> long` | Get milliseconds since startup |
-| 6 | `waitseconds` | `clock.waitSeconds(seconds)` | Wait/yield for seconds (non-blocking) |
-| 7 | `waitsixtieths` | `clock.waitSixtieths(sixtieths)` | Wait/yield for sixtieths of second (non-blocking) |
+| 1 | `now` | `clock.now() -> int64` | Get current time (seconds since epoch) - **64-bit to prevent 2040 overflow** |
+| 2 | `set` | `clock.set(time: int64)` | Set system time (requires admin privileges) |
+| 3 | `sleepfor` | `clock.sleepFor(seconds: int)` | Sleep for specified seconds |
+| 4 | `ticks` | `clock.ticks() -> int64` | Get system ticks since startup (1/60th second units) - **64-bit to prevent wraparound** |
+| 5 | `milliseconds` | `clock.milliseconds() -> int64` | Get milliseconds since startup - **64-bit to prevent wraparound** |
+| 6 | `waitseconds` | `clock.waitSeconds(seconds: double)` | Wait/yield for seconds (non-blocking) |
+| 7 | `waitsixtieths` | `clock.waitSixtieths(sixtieths: int)` | Wait/yield for sixtieths of second (non-blocking) |
 
 **Note:** Documentation shows additional verbs (idleTime, timerExpired, timeStamp) not in kernelverbs.rc - these may be UserTalk wrappers or later additions.
 
@@ -102,8 +102,29 @@ nanosleep() with 16.67ms per sixtieth
 - Time zone considerations for `clock.now()`
 - Leap seconds (generally ignored by Unix time)
 
+**Type System Architecture - IMPORTANT:**
+
+UserTalk integer types need to be consistently 64-bit in the new world:
+- **CRITICAL:** `clock.now()` must return 64-bit to handle timestamps past 2040
+- **Consistency Issue:** If `clock.now()` returns int64 but other arithmetic operations use 32-bit ints, we have a type system mismatch
+- **Architectural Question:** Should ALL UserTalk integers be 64-bit by default?
+
+This raises a system-wide design decision:
+1. **Option A:** All UserTalk ints default to 64-bit (simplest, most consistent)
+2. **Option B:** Keep int/long distinction with explicit 64-bit types for time operations (complex, error-prone)
+3. **Option C:** Use compiler flags/settings to control integer width across system (fragile, non-portable)
+
+**Recommendation:** Consider moving to 64-bit integers as the default for all UserTalk arithmetic. This:
+- Solves 2040 timestamp overflow permanently
+- Prevents integer overflow bugs in general scripting
+- Aligns with modern language design (Python 3, JavaScript, many languages now use 64-bit by default)
+- Maintains backward compatibility for most use cases (32-bit values still work in 64-bit context)
+- Requires careful testing of database serialization (format compatibility)
+
+See: TODO_future_improvements.md for long-term integer type modernization plan
+
 **Type Coercion:**
-- Time values are long integers
+- Time values are 64-bit signed integers
 - Fractional seconds truncated for sleepFor/waitSeconds
 - waitSixtieths allows finer granularity (1/60 sec = ~16.67ms)
 
@@ -288,9 +309,16 @@ clock.set(clock.now())           → may fail with permission error
 - High-precision timing may need special APIs (clock_gettime with CLOCK_MONOTONIC)
 
 **Long-Running Processes:**
-- Tick/millisecond counters wrap on 32-bit systems
-- Consider 64-bit counters for milliseconds to avoid wraparound
-- Document wraparound behavior
+- Tick/millisecond counters wrap on 32-bit systems (~24 days for ticks, ~49 days for milliseconds)
+- **CRITICAL:** Using 64-bit for ticks/milliseconds prevents wraparound on long-running daemons
+- This reinforces the argument for 64-bit UserTalk integers as default
+
+**Integer Type System Consistency:**
+- If clock verbs return 64-bit int64 values, user scripts will mix int and int64 types
+- Arithmetic between int and int64 requires implicit casting rules (complex, error-prone)
+- **Consider:** Making all UserTalk integers 64-bit to eliminate this confusion
+- Database serialization must preserve format compatibility across upgrades
+- This is a pre-implementation decision that affects runtime design
 
 ---
 
