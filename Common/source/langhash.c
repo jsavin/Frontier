@@ -3185,11 +3185,13 @@ boolean hashunpacktable (Handle hpackedtable, boolean flmemory, hdlhashtable hta
 	/* Dispatch based on version */
 	if (version_peek >= 0x05) {
 		/* v0x05+: Modern format with 64-bit timestamps */
+		/* Note: loadfromhandle() performs raw byte copy without byte swapping */
 		loadfromhandle (hrecords, &ix, sizeof (tydisktablerecord), &header);
 		header.version = disk_to_host_int16(header.version);
 	}
 	else {
 		/* v0x04 and earlier: Legacy format with 32-bit timestamps */
+		/* Note: loadfromhandle() performs raw byte copy without byte swapping */
 		loadfromhandle (hrecords, &ix, sizeof (tydisktablerecord_v4), &header_v4);
 		/* Convert v4 header to v5 format for processing */
 		header.version = disk_to_host_int16(header_v4.version);
@@ -3225,6 +3227,8 @@ boolean hashunpacktable (Handle hpackedtable, boolean flmemory, hdlhashtable hta
 		/* Handle timestamps based on version */
 		if (header.version >= 0x05) {
 			/* v0x05+: 64-bit timestamps, read big-endian format */
+			/* Note: Using db_format_read_be64() instead of conditionallonglongswap() */
+			/* for consistency with modern db_format code (both are functionally equivalent) */
 			(**htable).timecreated = db_format_read_be64((const unsigned char *)&header.timecreated);
 			(**htable).timelastsave = db_format_read_be64((const unsigned char *)&header.timelastsave);
 		}
