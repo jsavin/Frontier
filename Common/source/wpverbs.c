@@ -891,7 +891,7 @@ boolean wpverbpacktotext (hdlexternalvariable h, Handle htext) {
 	} /*wpverbpacktotext*/
 
 
-boolean wpverbgettimes (hdlexternalvariable h, long *timecreated, long *timemodified) {
+boolean wpverbgettimes (hdlexternalvariable h, int64_t *timecreated, int64_t *timemodified) {
 	
 	register hdlexternalvariable hv = h;
 	register hdlwprecord hwp;

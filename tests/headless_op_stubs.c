@@ -83,7 +83,7 @@ boolean opverbgetsize (hdlexternalvariable h, long *size) {
     return true;
 }
 
-boolean opverbgettimes (hdlexternalvariable h, long *timecreated, long *timemodified) {
+boolean opverbgettimes (hdlexternalvariable h, int64_t *timecreated, int64_t *timemodified) {
     (void) h;
     if (timecreated)
         *timecreated = 0;
