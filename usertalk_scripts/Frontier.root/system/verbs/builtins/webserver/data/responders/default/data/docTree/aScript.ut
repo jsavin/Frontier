@@ -1,0 +1,1 @@
+return (user.prefs.name + ", " + clock.now ())

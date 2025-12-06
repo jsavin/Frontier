@@ -1,0 +1,1 @@
+on listenCallback (newStream, refcon) {	local (s);	tcp.closeListen (system.verbs.builtins.tcp.examples.listenStream);	s = tcp.readStream (newStream, 10000);	wp.newTextObject (s, @scratchpad.request);	tcp.writeStream (newStream, "HTTP/1.0 200 OK\r\n\r\n" + "OH THE BUZZING");	tcp.closeStream (newStream)}

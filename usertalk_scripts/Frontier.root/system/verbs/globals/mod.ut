@@ -1,0 +1,1 @@
+on mod (num, base) {	if base == 0 {		scriptError ("Can't divide by zero.")};	return (num % base)}

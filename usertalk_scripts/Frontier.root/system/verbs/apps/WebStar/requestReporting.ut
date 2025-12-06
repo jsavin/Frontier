@@ -1,0 +1,1 @@
+on requestReporting (messages, status, id, client_version, appID = WebStar.id) { «Request real-time status reports be sent to caller	return (appleEvent (appID, 'WWW½', 'RqRp', 'Kmsg', boolean (messages), 'Ksta', boolean (status), 'Kpid', long (id), 'Kver', client_version))}

@@ -1,0 +1,1 @@
+on sendcommand (host, command, user, password, url) { «Send a raw FTP command	return (appleEvent (AnArchie.id, 'Arch', 'SCmd', 'FTPh', string (host), 'FTPc', string (command), 'ArGU', string (user), 'ArGp', string (password), 'ArUR', string (url)))}

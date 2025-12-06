@@ -1,0 +1,1 @@
+on decode (adrSource) {	«Bottleneck for decoding data.		«If we change the encoding method in the future,		«then this is the only decoding script that needs to be updated.		«adrSource is the address of the data to be decoded.	return (binary (base64.decode (adrSource^)))}

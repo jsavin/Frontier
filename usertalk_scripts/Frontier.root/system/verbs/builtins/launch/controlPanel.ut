@@ -1,0 +1,1 @@
+on controlPanel (name) {	local (path);	path = file.getSpecialFolderPath ("", "Control Panels", false) + name;	if not file.exists (path) {		scriptError ("There's no Control Panel named " + name + ".")};	return (launch.anything (path))}

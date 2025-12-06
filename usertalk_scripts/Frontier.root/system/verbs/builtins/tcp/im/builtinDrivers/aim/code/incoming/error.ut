@@ -1,0 +1,1 @@
+on ERROR (adrSelf, data) {	local {		errorCode = string.nthField(data,':',1);		errorArg = string.nthField(data,':',2)};	return(tcp.im.builtinDrivers.aim.code.core._callsub(adrSelf, "ERROR", {adrSelf, errorCode, errorArg}, adrSelf^._adrSubCallbacks ))}

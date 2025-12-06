@@ -1,0 +1,1 @@
+on simpleFind (db, searchString, theCell, theLayout = 0, reportError = false) {	on doIt () {		with objectModel, filemaker {			return (get (database [db].layout[theLayout].record[cell [theCell] contains searchString]))}};	if reportError {		return (doIt ())}	else {		try {			return (doIt ())}		else {			return (false)}}}

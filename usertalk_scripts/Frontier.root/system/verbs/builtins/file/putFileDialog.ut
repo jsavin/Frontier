@@ -1,0 +1,1 @@
+on putFileDialog (prompt, adr) {	kernel (file.putfiledialog)}

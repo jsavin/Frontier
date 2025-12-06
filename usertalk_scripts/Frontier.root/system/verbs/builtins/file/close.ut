@@ -1,0 +1,1 @@
+on close (path) {	kernel (file.close)}

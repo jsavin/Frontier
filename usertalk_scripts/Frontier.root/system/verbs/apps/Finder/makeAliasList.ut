@@ -1,0 +1,1 @@
+on makeAliasList (path) { «make an AppleEvent list of one alias of path	«For compatibility.  Not needed with Scriptable Finder and new scripts	return ({alias (path)})}

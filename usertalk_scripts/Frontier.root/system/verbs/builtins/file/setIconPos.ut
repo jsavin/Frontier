@@ -1,0 +1,1 @@
+on setIconPos (path, h, v) {	kernel (file.seticonpos)}

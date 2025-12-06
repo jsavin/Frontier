@@ -1,0 +1,1 @@
+on getPathChar () {	保ld code:		剃ase sys.os ()			卻sMacOS				咬eturn (":")			卻sWin95			卻sWinNT				咬eturn ("\\")		咬eturn (false)	kernel (file.getPathChar)}

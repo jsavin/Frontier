@@ -1,0 +1,1 @@
+loop {	msg (html.processmacros ("{clock.now () + string.memavailstring ()}"));	html.shutdown ()}

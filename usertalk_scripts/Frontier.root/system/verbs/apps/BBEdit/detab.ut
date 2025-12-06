@@ -1,0 +1,1 @@
+on detab (n, selectionOnly = nil) { «Replace tabs with runs of spaces.	return (appleEvent (BBEdit.id, 'R*ch', 'Detb', '----', short (n), 'Osel', boolean (selectionOnly)))}

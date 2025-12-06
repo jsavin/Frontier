@@ -1,0 +1,1 @@
+on homeLink () {	local (thisPage = address (html.getPageTableAddress ()^.adrObject));	local (homePage = address (@html.getPageTableAddress ()^.adrSiteRootTable^.[html.getPref ("defaultFileName")]));	if thisPage == homePage {		return ("")};	return ("\r<p><a href=\"default.wsf\">Home Page...</a>");	return ("")}

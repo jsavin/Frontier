@@ -1,0 +1,1 @@
+on hideWindow (db, reportError = false) {	on doIt () {		return (filemaker.hideWindow (db))};	if reportError {		return (doIt ())}	else {		try {			return (doIt ())}		else {			return (false)}}}

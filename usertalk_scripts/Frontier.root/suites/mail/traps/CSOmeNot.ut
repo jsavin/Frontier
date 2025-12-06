@@ -1,0 +1,1 @@
+on eNot (whatEvent, theList) {	mail.init ();	local (i);	for i = 1 to sizeOf (user.mail.agents) {		local (adr = @user.mail.agents [i]);		if typeOf (adr^) == scriptType {			adr^ ("Eudora", whatEvent, theList)}};	return (true)}

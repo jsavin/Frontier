@@ -1,0 +1,1 @@
+on yesNo (prompt) {	return (dialog.twoWay (prompt, "Yes", "No"))}

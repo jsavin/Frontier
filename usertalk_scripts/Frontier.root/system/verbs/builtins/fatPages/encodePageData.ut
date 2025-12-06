@@ -1,0 +1,1 @@
+on encodePageData (adrPageData) {	local (data);	pack (adrPageData^, @data);	return (string (data))}

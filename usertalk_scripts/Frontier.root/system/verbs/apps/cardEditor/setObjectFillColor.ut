@@ -1,0 +1,1 @@
+on setObjectFillColor (name, color) {	new (tableType, @atts);	atts.filc = rgb (color);	return (cardEditor.setObjectAttributes (name, @atts))}

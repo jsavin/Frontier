@@ -1,0 +1,1 @@
+on bringToFront (reportError = false) {	on doIt () {		filemaker.bringToFront ()};	if reportError {		return (doIt ())}	else {		try {			return (doIt ())}		else {			return (false)}}}

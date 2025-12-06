@@ -1,0 +1,1 @@
+on setNotification (flturnon) {	if flturnon {		Eudora.turnNotificationOn ()}	else {		Eudora.turnNotificationOff ()}}

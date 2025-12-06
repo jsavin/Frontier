@@ -1,0 +1,1 @@
+on firstOfMonth (param1) {	kernel (date.firstOfMonth)}

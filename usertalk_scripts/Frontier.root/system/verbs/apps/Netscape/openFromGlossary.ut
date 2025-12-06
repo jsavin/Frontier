@@ -1,0 +1,1 @@
+on openFromGlossary (name) { «Loads a URL, using the html suite glossary	local (s = html.refGlossary (name));	s = string.nthField (s, '"', 2); «pick out first double-quoted string	return (netscape.openUrl (s))};openfromglossary ("Aretha")

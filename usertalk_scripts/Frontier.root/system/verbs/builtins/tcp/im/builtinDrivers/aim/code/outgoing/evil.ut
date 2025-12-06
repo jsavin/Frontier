@@ -1,0 +1,1 @@
+on evil(adrSelf, user, flAnon=false) {	local {		acode = "norm"};	if flAnon {		acode="anon"};		tcp.im.builtinDrivers.aim.code.core.flap_to_toc(adrSelf, 2,"toc_evil "+ tcp.im.builtinDrivers.aim.code.util.normalize(user)+" "+ acode);		return(true)}

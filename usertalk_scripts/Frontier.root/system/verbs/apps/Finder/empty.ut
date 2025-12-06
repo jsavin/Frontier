@@ -1,0 +1,1 @@
+on empty (obj = nil) { «Empty the trash	if Finder.isScriptable () {		return (appleEvent (Finder.id, 'fndr', 'empt', '----', objspec(obj)))}	else {		return (Finder.emptyTrash ())}}

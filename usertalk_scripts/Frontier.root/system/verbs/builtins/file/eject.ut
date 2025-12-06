@@ -1,0 +1,1 @@
+on eject (path) {	kernel (file.eject)}

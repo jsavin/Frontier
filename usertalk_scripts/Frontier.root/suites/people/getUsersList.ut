@@ -1,0 +1,1 @@
+on getUsersList () {	«Return a list of all users.	local (i, usersList = {});	local (adrUsersTable = @user.people.users);	for i = 1 to sizeOf (adrUsersTable^) {		if people.userExists (nameOf (adrUsersTable^ [i]), @adrUsersTable^ [i]) {			usersList = usersList + nameOf (adrUsersTable^ [i])}};	return (usersList)}

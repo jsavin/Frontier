@@ -1,0 +1,1 @@
+on nextWeek (param1) {	kernel (date.nextWeek)}

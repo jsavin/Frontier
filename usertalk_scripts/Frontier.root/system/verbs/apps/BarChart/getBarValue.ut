@@ -1,0 +1,1 @@
+on getBarValue (n) { «returns the value of the indicated bar	return (appleEvent (BarChart.id, 'BARC', 'gval', '----', short (n)))}

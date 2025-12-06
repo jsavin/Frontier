@@ -1,0 +1,1 @@
+on plainText () {	kernel (editmenu.plaintext)}

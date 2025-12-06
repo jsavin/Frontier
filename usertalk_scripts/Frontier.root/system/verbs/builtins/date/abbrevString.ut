@@ -1,0 +1,1 @@
+on abbrevString (param1) {	kernel (date.abbrevString)}

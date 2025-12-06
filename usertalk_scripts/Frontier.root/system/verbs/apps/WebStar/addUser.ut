@@ -1,0 +1,1 @@
+on addUser (x, password, realm, appID = WebStar.id) { «Add a user and password for a specific security realm	return (appleEvent (appID, 'WWW½', 'AUsr', '----', x, 'AUpw', password, 'AUrm', realm))}

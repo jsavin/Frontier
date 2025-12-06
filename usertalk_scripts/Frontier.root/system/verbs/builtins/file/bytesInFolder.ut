@@ -1,0 +1,1 @@
+on bytesInFolder (path) {	on visit (path) {		rollBeachBall (); «he hits the disk and always goes to infinite depth		bytes = bytes + file.size (path);		return (true)}; «keep traversing	bytes = 0;	file.visitFolder (path, infinity, @visit);	return (bytes)}

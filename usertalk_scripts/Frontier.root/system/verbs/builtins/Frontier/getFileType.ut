@@ -1,0 +1,1 @@
+on getFileType (type) { //5.0	«Given an object type, return the proper file type for that type of file.		«Friday, January 09, 1998 at 2:12:11 AM by PBS	local (s = "FATP");	case type {		wptextType {			s = "FTwp"};		menubarType {			s = "FTmb"};		outlineType {			s = "FTop"};		scriptType {			s = "FTsc"};		tableType {			s = "FTtb"}};	return (s)}

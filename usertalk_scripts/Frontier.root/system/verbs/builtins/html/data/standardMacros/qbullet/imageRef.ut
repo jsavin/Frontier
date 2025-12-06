@@ -1,0 +1,1 @@
+on imageRef (name) {	if not (string.lower (name) endswith ".gif") {		name = name + ".gif"};	hw = html.data.standardmacros.qBullet.heightWidth.[name - ".gif"];	return ("<img src=\"" + html.data.standardmacros.qbullet.url + name + "\" height=" + string.nthField (hw, ',', 1) + " width=" + string.nthField (hw, ',', 2) + ">")}

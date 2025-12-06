@@ -1,0 +1,1 @@
+on formstart (cgicall) {	return ("<form method=\"post\" action=\"" + cgicall + "\"><p>")}

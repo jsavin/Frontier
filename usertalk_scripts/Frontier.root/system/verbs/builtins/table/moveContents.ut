@@ -1,0 +1,1 @@
+on moveContents (adr1, adr2) {	while (sizeof (adr1^) > 0) {		if not table.move (@adr1^ [1], adr2) {			return (false)}};	return (true)}

@@ -1,0 +1,1 @@
+on getAll (adrtable, adrwindow=nil) {	if adrwindow == nil {		adrwindow = window.frontMost ()};	local (adrparent = parentOf (adrwindow^));	if defined (adrparent^) {		local (adratts = @adrparent^.["/atts"]);		if defined (adratts^) {			adrtable^ = adratts^;			return (true)}};	return (false)};«bundle //test code	«getAll (@scratchpad.atts)

@@ -1,0 +1,1 @@
+on canEdit (adrobject) {	if typeOf (adrobject^) == binarytype {		if getbinarytype (adrobject^) == 'CARD' {			return true}};	return false}

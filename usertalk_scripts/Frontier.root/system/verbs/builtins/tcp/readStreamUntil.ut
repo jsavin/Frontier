@@ -1,0 +1,1 @@
+on readStreamUntil (stream, pattern, timeOutSecs, adrBuffer) { //6.1	kernel (tcp.readstreamuntil)}

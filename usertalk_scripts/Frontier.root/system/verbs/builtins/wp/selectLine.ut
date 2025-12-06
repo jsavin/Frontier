@@ -1,0 +1,1 @@
+on selectLine () {	kernel (wp.selectline)}

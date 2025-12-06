@@ -1,0 +1,1 @@
+on replace (cp, repl, s, maxReplacements = infinity, adrReplacementCount = nil, adrCallback = nil) {	kernel (re.replace)}

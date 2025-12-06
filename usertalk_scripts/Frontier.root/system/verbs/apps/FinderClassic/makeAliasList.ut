@@ -1,0 +1,1 @@
+on makeAliasList (path) { «make an AppleEvent list of one alias of path	local (x);	putAppleListItem (alias (path), 1, @x);	return (x)}

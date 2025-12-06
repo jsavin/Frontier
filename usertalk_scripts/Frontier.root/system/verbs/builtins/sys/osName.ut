@@ -1,0 +1,1 @@
+on osName () {	case sys.os () {		"MacOS" {			return ("Macintosh OS")};		"Win95" {			return ("Windows 95")};		"WinNT" {			return ("Windows NT")}}};«bundle «test code	«dialog.alert (osName ())

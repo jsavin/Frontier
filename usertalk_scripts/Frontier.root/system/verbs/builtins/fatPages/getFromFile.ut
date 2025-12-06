@@ -1,0 +1,1 @@
+on getFromFile (f) { «Thu, May 8, 1997 at 8:24:11 AM by DW	local (pageSource = fatPages.readSourceFile (f));	local (url = string (f));	url = "file:///" + string.urlEncode (url);	url = string.replaceAll (url, "%3A", "/");	return (fatPages.getPageData (pageSource, url))}

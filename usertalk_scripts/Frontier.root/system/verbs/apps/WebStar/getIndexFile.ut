@@ -1,0 +1,1 @@
+on getIndexFile (appID = WebStar.id) { «gets index file setting	with objectModel, WebStar.eventInfo {		return (core.get (appID, IndexFile))}}

@@ -1,0 +1,1 @@
+on appWithDocument (appPath, docPath) {	kernel (launch.appWithDocument)}

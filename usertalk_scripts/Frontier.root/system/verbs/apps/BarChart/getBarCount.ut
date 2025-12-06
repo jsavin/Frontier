@@ -1,0 +1,1 @@
+on getBarCount () { «returns the number of bars in the target window	return (appleEvent (BarChart.id, 'BARC', 'gcnt'))}

@@ -1,0 +1,1 @@
+on encode(data) {	local {		chars = "\\(){}[]$\"";		i;		letter};	for i = 1 to sizeOf(chars) {		letter = chars[i];		data = string.replaceAll(data, letter,"\\"+letter)};	return '"' + data + '"'};msg(encode("}{"))

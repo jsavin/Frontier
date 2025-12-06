@@ -1,0 +1,1 @@
+on go(adrSelf) {	tcp.im.builtinDrivers.aim.code.core.connect(adrSelf);	thread.callscript(@tcp.im.builtinDrivers.aim.code.core.process_loop, {adrSelf}, @tcp.im.builtinDrivers.aim.code.util.emptyTable)}

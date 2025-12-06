@@ -1,0 +1,1 @@
+on myAddress () {	return (appleEvent(netEvents.id, 'WAPI', 'MYIP'))}

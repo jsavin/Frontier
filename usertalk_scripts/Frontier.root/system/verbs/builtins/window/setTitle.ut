@@ -1,0 +1,1 @@
+on setTitle (adr, title) {	kernel (window.setTitle)}

@@ -1,0 +1,1 @@
+on printWindow (windowpath) {	if not Finder.windowVerb ('pwin', windowpath) {		return (false)};	return (Finder.bringToFront ())}

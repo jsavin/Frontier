@@ -1,0 +1,1 @@
+on getResource (path, resourcetype, id, adr) {	kernel (rez.getresource)}

@@ -1,0 +1,1 @@
+on closeMessage (msgObj) {	with objectModel, Eudora, eventInfo {		return(core.close (id, msgObj, nil))}} « need NIL to work around Frontier

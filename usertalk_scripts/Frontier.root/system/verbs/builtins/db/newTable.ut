@@ -1,0 +1,1 @@
+on newTable (f, path) {	kernel (db.newTable)}

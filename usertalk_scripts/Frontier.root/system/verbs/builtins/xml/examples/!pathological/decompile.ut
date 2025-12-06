@@ -1,0 +1,1 @@
+with xml.examples.pathological {	wp.newtextobject (xml.decompile (@tableStructure), @xText)}

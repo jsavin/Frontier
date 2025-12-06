@@ -1,0 +1,1 @@
+on typeFATP (path) {	«open or run a file of type FATP, containing "fat page" data	Frontier.bringToFront ();	if fatPages.getFileData (path) {		Frontier.finderToFront = false};	return (true)}

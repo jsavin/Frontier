@@ -1,0 +1,1 @@
+on setFullVersion (path, version) {	kernel (file.setfullversion)}

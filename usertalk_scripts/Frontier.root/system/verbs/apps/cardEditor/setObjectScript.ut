@@ -1,0 +1,1 @@
+on setObjectScript (name, script) {	new (tableType, @atts);	atts.scri = string (script);	return (cardEditor.setObjectAttributes (name, @atts))}

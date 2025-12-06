@@ -1,0 +1,1 @@
+on countVolumes () {	local (count = 0);	fileloop (fname in "") {		count++};	return (count)}

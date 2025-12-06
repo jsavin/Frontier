@@ -1,0 +1,1 @@
+on unlockAll () { «for emergencies only	«delete all the locks in system.compiler.semaphores		«Sat, Apr 27, 1996 at 10:16:42 AM by DW		local (i);	for i = sizeof (system.compiler.semaphores) downto 1 {		delete (@system.compiler.semaphores [i])}}

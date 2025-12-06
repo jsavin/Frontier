@@ -1,0 +1,1 @@
+on start(adrSelf) {	msg("Started")};

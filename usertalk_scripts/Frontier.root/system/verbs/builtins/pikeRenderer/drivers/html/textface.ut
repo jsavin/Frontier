@@ -1,0 +1,1 @@
+on textface (fontname, adrprestring, adrpoststring) {	adrprestring^ = adrprestring^ + "<font face=\"" + fontname + "\">";	adrpoststring^ = adrpoststring^ + "</font>"}

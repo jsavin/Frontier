@@ -1,0 +1,1 @@
+on err_disconnect(adrSelf) {	try {		tcp.closeStream(adrSelf^._socket)};	tcp.im.builtinDrivers.aim.code.core.derror(adrSelf, "We've been unexpectedly disconnected");	if adrSelf^._debug > 1 {		scriptError("Error: Accidentially disconnected")};	«take out the script error here, figure out if I want to reconnect. 	}

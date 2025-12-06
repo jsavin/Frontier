@@ -1,0 +1,1 @@
+on getFirstRecord (fnum) {	return (systemEvent ('ubas', 'rec1', 'fref', short (fnum)))}

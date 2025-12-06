@@ -1,0 +1,1 @@
+on visitAllUsers (adrCallback) {	local (i, userName);	for i = 1 to sizeOf (user.people.users) {		userName = nameOf (user.people.users [i]);		if people.userExists (userName) {			try {				adrCallback^ (userName)}}};	return (true)}

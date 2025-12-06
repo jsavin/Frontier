@@ -1,0 +1,1 @@
+on getIndent () {	kernel (wp.getindent)}

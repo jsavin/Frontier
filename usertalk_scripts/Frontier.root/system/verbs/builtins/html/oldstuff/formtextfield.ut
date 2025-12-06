@@ -1,0 +1,1 @@
+on formtextfield (prompt, example, length, maxlength, name) {	return ("<b>" + prompt + ":</b> (e.g. " + example + ")<br>\r<input size=" + length + " maxlength=" + maxlength + " name=\"" + name + "\"><p>")}

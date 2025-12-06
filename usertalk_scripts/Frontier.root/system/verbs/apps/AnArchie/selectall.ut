@@ -1,0 +1,1 @@
+on selectall () { «select all	return (appleEvent (AnArchie.id, 'core', 'slct'))}

@@ -1,0 +1,1 @@
+on getActions (appID = WebStar.id) { «gets WebSTAR action settings	with objectModel, WebStar.eventInfo {		return (core.get (appID, actions))}}

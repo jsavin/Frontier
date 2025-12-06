@@ -1,0 +1,1 @@
+on get (type, adr) {	kernel (clipboard.get)}

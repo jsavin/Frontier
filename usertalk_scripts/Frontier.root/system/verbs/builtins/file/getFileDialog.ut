@@ -1,0 +1,1 @@
+on getFileDialog (prompt, adr, type) {	kernel (file.getfiledialog)}

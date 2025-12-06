@@ -1,0 +1,1 @@
+on quickTime () {	kernel (window.quicktime)}

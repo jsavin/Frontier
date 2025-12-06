@@ -1,0 +1,1 @@
+on getMessageCount () {	«Changes		«3/31/01; 7:43:20 PM by DW			«Created.	with mailToTheFuture.data {		local (params = {"username":user.mailToTheFuture.username, "password":user.mailToTheFuture.password});		return (soap.rpc.client (path, "getMessageCount", @params, server, port))}};bundle { //test code	dialog.alert (getMessageCount ())}

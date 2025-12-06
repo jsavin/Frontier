@@ -1,0 +1,1 @@
+on volumeFromPath (path) {	if path == "" { «defensive driving		return ("")};	path = string.nthField (path, ':', 1) + ':';	case sys.os () {		"WinNT";		"Win95" {			path = path + "\\"}};	return (path)}

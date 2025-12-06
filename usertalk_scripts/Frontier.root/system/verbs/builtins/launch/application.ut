@@ -1,0 +1,1 @@
+on application (path) {	kernel (launch.application)}

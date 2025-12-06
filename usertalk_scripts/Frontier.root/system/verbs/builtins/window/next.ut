@@ -1,0 +1,1 @@
+on next (adr) {	kernel (window.next)}

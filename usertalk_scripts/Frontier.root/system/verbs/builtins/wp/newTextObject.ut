@@ -1,0 +1,1 @@
+on newTextObject (s, adr) {	«10/31/97 at 12:24:59 PM by DW -- moved from toys.newTextObject	local (oldTarget);	if not defined (adr^) {		new (wpTextType, adr)}	else {		if typeof (adr^) != wpTextType {			new (wpTextType, adr)}};	oldTarget = target.set (adr);	wp.setText (s);	try {target.set (oldTarget)};	return (true)}

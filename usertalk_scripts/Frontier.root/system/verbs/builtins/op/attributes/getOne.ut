@@ -1,0 +1,1 @@
+on getOne (attname, adrval) {	local (attstable);	if not op.attributes.getAll (@attstable) {		return (false)};	if not defined (attstable.[attname]) {		return (false)};	adrval^ = attstable.[attname];	return (true)};«bundle //test code	«local (name)	«getOne ("f", @name)	«dialog.alert (name)

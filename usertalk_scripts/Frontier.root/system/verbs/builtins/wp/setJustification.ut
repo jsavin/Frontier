@@ -1,0 +1,1 @@
+on setJustification (setting) {	kernel (wp.setjustification)}

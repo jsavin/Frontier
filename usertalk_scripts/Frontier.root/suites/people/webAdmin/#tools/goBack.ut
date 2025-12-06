@@ -1,0 +1,1 @@
+try {	local (referer = html.getPageTableAddress ()^.requestHeaders.referer);	html.getPageTableAddress ()^.newURL = referer};return ("")

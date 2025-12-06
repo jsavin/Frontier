@@ -1,0 +1,1 @@
+on sleep () {	return (finderEvent (Finder.id, Finder.class, 'slep'))}

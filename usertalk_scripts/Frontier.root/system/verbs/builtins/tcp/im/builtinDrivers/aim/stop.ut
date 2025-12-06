@@ -1,0 +1,1 @@
+on stop() {	if not defined(temp.im.aim) {		return(false)};		tcp.im.builtinDrivers.aim.code.core.disconnect(@temp.im.aim)};stop()

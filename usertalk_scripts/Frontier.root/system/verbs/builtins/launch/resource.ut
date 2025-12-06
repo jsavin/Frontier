@@ -1,0 +1,1 @@
+on resource (resourcetype, id) {	kernel (launch.resource)}

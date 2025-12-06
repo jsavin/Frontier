@@ -1,0 +1,1 @@
+local (s, header);s = system.verbs.builtins.tcp.examples.httpGet(-834179601,"foo", 84, @header);dialog.notify (s);dialog.notify (header)

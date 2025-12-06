@@ -1,0 +1,1 @@
+on paste () {	kernel (editmenu.paste)}

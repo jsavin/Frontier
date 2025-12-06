@@ -1,0 +1,1 @@
+«Changes	«4/8/02; 11:32:08 PM by JES		«Created. if not defined (user.google) {	new (tableType, @user.google)};if not defined (user.google.key) {	user.google.key = ""};if not defined (system.temp.google) {	new (tabletype, @system.temp.google)}

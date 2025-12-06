@@ -1,0 +1,1 @@
+on newFile (path) {	local (windowtitle = file.fileFromPath (path));	return (appleEvent (ubase.id, 'UBAS', 'newf', '----', filespec (path), 'wtit', windowtitle))}

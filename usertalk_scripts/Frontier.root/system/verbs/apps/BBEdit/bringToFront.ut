@@ -1,0 +1,1 @@
+on bringToFront () {	if not app.start ("BBEdit") {		return (false)};	return (sys.bringAppToFront (BBEdit.id))}

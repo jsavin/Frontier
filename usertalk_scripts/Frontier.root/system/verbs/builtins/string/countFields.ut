@@ -1,0 +1,1 @@
+on countFields (s, chdelim) {	kernel (string.countFields)}

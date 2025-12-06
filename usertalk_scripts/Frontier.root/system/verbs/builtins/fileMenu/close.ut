@@ -1,0 +1,1 @@
+on close () {	kernel (filemenu.close)}

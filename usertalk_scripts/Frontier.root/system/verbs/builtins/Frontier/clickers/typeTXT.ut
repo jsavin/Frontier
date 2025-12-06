@@ -1,0 +1,1 @@
+on typeTXT (path) {	return (frontier.clickers.typeTEXT (path))}

@@ -1,0 +1,1 @@
+on exists (obj) { «Tell if an object exists	return (core.exists (Fetch.id, obj))}

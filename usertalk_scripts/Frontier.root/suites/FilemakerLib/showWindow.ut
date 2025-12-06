@@ -1,0 +1,1 @@
+on showWindow (db, reportError = false) {	on doIt () {		filemaker.showWindow (db)};	if reportError {		return (doIt ())}	else {		try {			return (doIt ())}		else {			return (false)}}}

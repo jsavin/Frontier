@@ -1,0 +1,1 @@
+on setObjectAttributes (name, tableAdr) {	local (result);	tableEvent (tableAdr, @result, 0, card.id, 'saob', 'prm1', string (name));	adrResult = @result.['----'];	if not defined (adrResult^) {		return (false)};	return (adrResult^)}

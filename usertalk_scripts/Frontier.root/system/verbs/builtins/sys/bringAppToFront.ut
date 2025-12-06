@@ -1,0 +1,1 @@
+on bringAppToFront (appname) {	kernel (sys.bringapptofront)}

@@ -1,0 +1,1 @@
+on fetch (file, host = nil, path = nil, user = nil, password = nil, url = nil) { «fetch a file via ftp	return (appleEvent (Fetch.id, 'Arch', 'Ftch', '----', alias (file), 'FTPh', string (host), 'FTPc', string (path), 'ArGU', string (user), 'ArGp', string (password), 'ArUR', string (url)))}

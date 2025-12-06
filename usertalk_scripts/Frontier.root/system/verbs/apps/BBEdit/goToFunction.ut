@@ -1,0 +1,1 @@
+on goToFunction (s) { «Select the text indicated by the designated function name (source files only).	return (appleEvent (BBEdit.id, 'R*ch', 'Gfcn', '----', string (s)))}

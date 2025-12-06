@@ -1,0 +1,1 @@
+on targetSet (adroutline) {	semaphores.lock (string (adroutline), 30 * 60);	target.set (adroutline)}

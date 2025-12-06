@@ -1,0 +1,1 @@
+on getDefMimeType (appID = WebStar.id) { «gets default mime-type setting	with objectModel, WebStar.eventInfo {		return (core.get (appID, defMimeType))}}

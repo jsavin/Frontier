@@ -1,0 +1,1 @@
+on postCatcher () {	«Other scripts may need to be called when a prefs page is posted. Call them from this script.		«6/19/01; 11:44:08 AM by PBS	return (true)}

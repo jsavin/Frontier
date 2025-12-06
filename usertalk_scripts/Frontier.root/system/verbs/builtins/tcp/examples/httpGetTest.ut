@@ -1,0 +1,1 @@
+local (ct=0, s);loop {	s = tcp.httpClient (method:"GET", server:"betty.userland.com", port:81, path:"samples.tellTime.cgi", debug:true);	if ct == 0 {		edit (@scratchpad.httpCommand);		edit (@scratchpad.httpResult);		window.about ()};	msg (ct++)}

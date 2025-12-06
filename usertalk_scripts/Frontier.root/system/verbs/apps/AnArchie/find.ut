@@ -1,0 +1,1 @@
+on find (s, server = nil, matches = nil, caseSensitivity = nil, regularExpression = nil, window = nil) { «query archie server	return (appleEvent (AnArchie.id, 'Arch', 'Find', '----', string (s), 'ArFS', string (server), 'ArFM', long (matches), 'ArFC', boolean (caseSensitivity), 'ArFR', boolean (regularExpression), 'ArFW', boolean (window)))}

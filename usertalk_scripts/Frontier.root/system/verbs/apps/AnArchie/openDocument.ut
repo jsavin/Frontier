@@ -1,0 +1,1 @@
+on openDocument (file) {	return (required.openDocument (AnArchie.id, file))}

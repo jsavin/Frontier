@@ -1,0 +1,1 @@
+on addBar (label, value) { «add a new bar to the target window, with indicated label and value	return (appleEvent (BarChart.id, 'BARC', 'abar', '----', string (label), 'vbar', long (value)))}

@@ -1,0 +1,1 @@
+on playNamedSound (name) {	kernel (speaker.playNamedSound)}

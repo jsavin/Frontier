@@ -1,0 +1,1 @@
+on getNthID (n) {	kernel (thread.getNthID)}

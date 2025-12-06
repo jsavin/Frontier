@@ -1,0 +1,1 @@
+on lastOfMonth (param1) {	kernel (date.lastOfMonth)}

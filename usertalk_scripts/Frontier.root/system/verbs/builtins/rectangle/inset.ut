@@ -1,0 +1,1 @@
+on inset (rect, dh, dv) {	local (t, l, b, r);	rectangle.get (rect, @t, @l, @b, @r);	return (rectangle.set (t + dv, l + dh, b - dv, r - dh))}

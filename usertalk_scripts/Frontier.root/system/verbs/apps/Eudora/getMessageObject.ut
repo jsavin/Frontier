@@ -1,0 +1,1 @@
+on getMessageObject (mailboxName, messageID) {	with objectModel, Eudora, eventInfo {		return(mailfolder[""].mailbox[mailboxName].message[messageID])}}

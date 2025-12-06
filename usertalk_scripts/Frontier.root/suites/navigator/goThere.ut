@@ -1,0 +1,1 @@
+on goThere (name) {	if navigator.setTarget (name) {		«Sun, Nov 10, 1996 at 9:28:26 AM by DW			«if the address begins with http:// send the url to the web browser		local (s = string.nthfield (op.getlinetext (), ';', 2));		if string.lower (s) beginswith "http://" {			webBrowser.openURL (s)}		else {			edit (s)}}}

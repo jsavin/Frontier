@@ -1,0 +1,1 @@
+«Here is an example of fetching with string informationmsg(anarchie.fetch("HD:", "netcom.com", "/pub/leonardr/Aladdin/StuffIt_Expander_3.0.7.hqx"));«Here is the same method using an ftpRecwith anarchie, eventInfo {	ftpRec = {'name': "StuffIt_Expander_3.0.7.hqx", path:  "/pub/leonardr/Aladdin/", host: "netcom.com"};	msg(fetch("HD:", "", ftpRec))}

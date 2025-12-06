@@ -1,0 +1,1 @@
+local (adrObject);bundle { //get the currently selected object	adrObject = webEdit.getSelectedObject ();	if adrObject == false {		return (false)}};s = webEdit.undoCheckOut (adrObject);webEdit.notify (s);return (true)

@@ -1,0 +1,1 @@
+on get (num, bit) {	kernel (bit.get)}

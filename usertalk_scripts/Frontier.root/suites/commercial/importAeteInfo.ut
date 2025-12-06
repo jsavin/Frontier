@@ -1,0 +1,1 @@
+on importAeteInfo () {	«Sat, Dec 6, 1997 at 1:42:14 AM by PBS		«Changed references to commercial.appname to temp.appname.	return (commercial.parseAete ([temp.appname].appInfo.path, @[temp.appname]))}

@@ -1,0 +1,1 @@
+on notice (occurrence = nil, messages = nil) { «Eudora sends this event to notify an application that something happened	return (appleEvent (Eudora.id, 'CSOm', 'eNot', 'eWHp', occurrence, 'eMLs', messages))}

@@ -1,0 +1,1 @@
+on setCardSize (width, height) {	local (atts);	new (tableType, @atts);	atts.rbor = width;	atts.bbor = height;	return (cardEditor.setCardAttributes (@atts))}

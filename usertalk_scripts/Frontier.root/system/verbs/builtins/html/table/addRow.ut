@@ -1,0 +1,1 @@
+on addRow (adrTable) {	«Add a row the Frontier table.	local (adrRow = @adrTable^.rows.[string.padWithZeros (sizeOf (adrTable^.rows) + 1, 5)]);	new (tableType, adrRow);	return (adrRow)}

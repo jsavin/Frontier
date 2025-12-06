@@ -1,0 +1,1 @@
+on getMessageReplyTo (msgObj) { «Get the data for an object	with objectModel, Eudora, eventInfo {		return (core.get (id, msgObj.field ["Reply-To"]) - "Reply-To: ")}}

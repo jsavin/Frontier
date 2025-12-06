@@ -1,0 +1,1 @@
+on bringToFront () {	if not app.start ("Fetch") {		return (false)};	return (sys.bringAppToFront (Fetch.id))}

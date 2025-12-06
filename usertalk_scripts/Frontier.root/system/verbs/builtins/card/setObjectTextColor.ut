@@ -1,0 +1,1 @@
+on setObjectTextColor (name, color) {	new (tableType, @atts);	atts.txtc = rgb (color);	return (card.setObjectAttributes (name, @atts))}

@@ -1,0 +1,1 @@
+on sleepFor (countseconds) {	kernel (clock.sleepfor)}

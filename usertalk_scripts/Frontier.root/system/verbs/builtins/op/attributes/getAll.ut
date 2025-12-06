@@ -1,0 +1,1 @@
+on getAll (adrtable) {	local (data);	try {data = op.getrefcon ()} else {return (false)};	if typeof (data) != binarytype { //has no attributes		return (false)};	unpack (@data, adrtable);	return (true)};bundle { //test code	getAll (@scratchpad.atts)}

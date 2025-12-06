@@ -1,0 +1,1 @@
+on noSuite () {	local (s = system.menus.data.currentSuite);		if not menu.clearMenubar () {		return (false)};		try { «if a suite was running and it defined a "closeSuite" script, run it		s^.closeSuite ()};		return (menu.installMainMenu ())}

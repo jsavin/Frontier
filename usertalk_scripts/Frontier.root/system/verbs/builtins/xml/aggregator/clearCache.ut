@@ -1,0 +1,1 @@
+on clearCache (adrdata=nil) {	«Changes		«12/27/01; 1:33:07 PM by PBS			«adrdata is a new optional parameter. If nil, get it from xml.aggregator.init.		if adrdata == nil { //PBS 12/27/01: now an optional parameter		adrdata = xml.aggregator.init ()};	new (tabletype, @adrdata^.cache)}

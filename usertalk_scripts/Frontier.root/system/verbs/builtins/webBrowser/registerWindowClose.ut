@@ -1,0 +1,1 @@
+on registerwindowclose (x) { «Notifies that the sending application would like to receive WindowClose events.	case sys.os () {		"MacOS" {			return (appleEvent (user.webBrowser.currentid, 'WWW!', 'RGWC', '----', x))}}}

@@ -1,0 +1,1 @@
+on askDialog (prompt, adr) {	complexevent (@x, app.id, 'app1', 'askd', '----', string (prompt), 'dflt', string (adr^));	if not defined (x.ansr) {		return (false)};	adr^ = x.ansr;	return (x.['----'])}

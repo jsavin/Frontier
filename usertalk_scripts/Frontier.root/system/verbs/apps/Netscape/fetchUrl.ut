@@ -1,0 +1,1 @@
+on fetchUrl (openUrlIn = nil) { «Loads a URL	return (appleEvent (netscape.id, 'FURL', 'FURL', 'cwin', openUrlIn))}

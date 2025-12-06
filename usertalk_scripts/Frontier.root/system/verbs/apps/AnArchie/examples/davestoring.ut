@@ -1,0 +1,1 @@
+anarchie.bringtofront ();fileloop (f in "UserLand:New Releases:DavesWorld Web Site:DaveNet:") {	local (fname = file.filefrompath (f));	msg (fname);	anarchie.store (f, "magnet.mednet.net", "/home/html/zisk/DaveNet/" + fname, "", "secret", "secret")}

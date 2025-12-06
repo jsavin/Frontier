@@ -1,0 +1,1 @@
+on countRecords (fnum) {	return (systemEvent ('ubas', 'crec', 'fref', short (fnum)))}

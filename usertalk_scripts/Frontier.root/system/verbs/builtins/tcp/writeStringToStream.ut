@@ -1,0 +1,1 @@
+on writeStringToStream (stream, data, chunksize, timeout) { //6.1	kernel (tcp.writeStringToStream)}

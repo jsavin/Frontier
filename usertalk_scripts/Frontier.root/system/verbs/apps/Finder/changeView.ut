@@ -1,0 +1,1 @@
+on changeView (windowpath, view) { « set the view of the indicated folder's window	«retained for compatibility	local (fwindow);	if not Finder.makeWindow (windowpath, 0, @fwindow) {		return (false)};	return (finderEvent (Finder.id, Finder.class, 'view', '----', fwindow, 'fmsc', view))}

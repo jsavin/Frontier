@@ -1,0 +1,1 @@
+on beginprogress (n, withMessage) { «Initialize a progress indicator.	case sys.os () {		"MacCn";		"MacOS" {			return (appleEvent (user.webBrowser.currentid, 'WWW!', 'PRBG', '----', long (n), 'PMSG', string (withMessage)))}}}

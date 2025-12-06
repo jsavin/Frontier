@@ -1,0 +1,1 @@
+on openDocument (file) {	filemaker.bringtofront(); «added 3/12/96 PBS	return (required.openDocument (Filemaker.id, file))}

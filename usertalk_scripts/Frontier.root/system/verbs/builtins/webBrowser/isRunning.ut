@@ -1,0 +1,1 @@
+local (i, supportedBrowsers);try {	if sys.appIsRunning (user.webBrowser.currentid) {		return (true)}};supportedBrowsers = webBrowser.supportedBrowsers ();for i = 1 to sizeOf (supportedBrowsers) {	if sys.appIsRunning (supportedBrowsers [i]) {		user.webBrowser.currentid = supportedBrowsers [i];		return (true)}};user.webBrowser.currentid = 'NONE';return (false)

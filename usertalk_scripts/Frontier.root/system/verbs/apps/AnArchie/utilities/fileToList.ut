@@ -1,0 +1,1 @@
+on fileToList (path) {	local(fileText, fList = {});		bundle { « get the text!		file.open(path);		fileText = file.read(path, infinity);		file.close(path)};		numLines = string.countFields(fileText, cr);	loop (x=1;x<=numLines;x++) {		fList = fList + string.nthField(fileText, cr, x)};		return(fList)};

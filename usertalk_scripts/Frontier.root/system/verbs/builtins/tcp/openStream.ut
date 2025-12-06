@@ -1,0 +1,1 @@
+on openStream (adr, port) { «Create a new stream	on kernelOpenName (adr, port) {		kernel (tcp.openNameStream)};	on kernelOpenAddr (adr, port) {		kernel (tcp.openAddrStream)};	if typeOf (adr) != longType {		return (kernelOpenName (adr, port))}	else {		return (kernelOpenAddr (adr, port))}}

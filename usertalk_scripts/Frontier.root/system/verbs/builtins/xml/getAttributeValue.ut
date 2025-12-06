@@ -1,0 +1,1 @@
+on getAttributeValue (adrtable, name) { //return the value of the attribute with the indicated name	kernel (xml.getAttributeValue)}

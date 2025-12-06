@@ -1,0 +1,1 @@
+on getPeerPort (stream) {	kernel (tcp.getPeerPort)}

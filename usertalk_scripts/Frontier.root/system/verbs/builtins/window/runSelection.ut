@@ -1,0 +1,1 @@
+on runSelection () {	kernel (window.runSelection)}

@@ -1,0 +1,1 @@
+on version () {	return (file.getVersion (cardEditor.appinfo.path))}

@@ -1,0 +1,1 @@
+«new in 1.0b15 -- handle assorted idle tasks in Card Editor	«it runs once per secondif defined (cardEditor.tmpFileSpec) {	required.openDocument (0, cardEditor.tmpFileSpec); «send-to-self	delete (@cardEditor.tmpFileSpec)};return (true)

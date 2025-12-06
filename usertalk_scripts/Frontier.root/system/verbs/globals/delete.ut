@@ -1,0 +1,1 @@
+on delete (adr) {	kernel (lang.delete)}

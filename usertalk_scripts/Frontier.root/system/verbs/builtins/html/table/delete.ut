@@ -1,0 +1,1 @@
+on delete (adrTable) {	«Delete the Frontier table.	system.verbs.globals.delete (adrTable)}

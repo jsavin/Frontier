@@ -1,0 +1,1 @@
+on nameToAddress (domainname) { «Turn a domain name into a 4-byte number	return (appleEvent (netEvents.id, 'WAPI', 'N2AD', '----', string (domainname)))};«bundle «test code	«netEvents.nameToAddress ("www.scripting.com")		«-825485308

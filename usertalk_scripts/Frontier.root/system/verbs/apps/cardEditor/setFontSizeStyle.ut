@@ -1,0 +1,1 @@
+on setFontSizeStyle (name, font, size, style) {	local (atts);	new (tabletype, @atts);	atts.font = font;	atts.size = size;	atts.styl = style;	return (cardEditor.setObjectAttributes (name, @atts))}

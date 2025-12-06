@@ -1,0 +1,1 @@
+on registerviewer (x, registerviewerFor, as = nil, flags = nil) { «Notifies that the sending application is able to handle all documents for the specified MIMEType.	case sys.os () {		"MacOS" {			return (appleEvent (user.webBrowser.currentid, 'WWW!', 'RGVW', '----', x, 'MIME', string (registerviewerFor), 'FTYP', string4 (as), 'FLGS', long (flags)))}}}

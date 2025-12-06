@@ -1,0 +1,1 @@
+«on threeWay (prompt, button1, button2, button3) 	«local (buttonhit)	«card.run (@dialog.cards.threeWay)	«return (buttonhit)on threeWay (prompt, button1, button2, button3) {	kernel (dialog.threeway)};dialog.alert (dialog.threeWay ("Let's Have Fun!", "One", "Two", "Three"))

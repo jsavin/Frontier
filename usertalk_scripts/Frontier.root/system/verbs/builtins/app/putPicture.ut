@@ -1,0 +1,1 @@
+on putPicture (pictinfo) {	return (appleEvent (app.id, 'app1', 'ppic', '----', pictinfo))}

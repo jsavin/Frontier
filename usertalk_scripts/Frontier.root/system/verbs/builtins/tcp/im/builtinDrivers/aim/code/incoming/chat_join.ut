@@ -1,0 +1,1 @@
+on CHAT_JOIN(adrSelf, data) {	local {		roomID = string.nthField(data,':',1);		roomName = string.nthField(data,':',2)};	return(tcp.im.builtinDrivers.aim.code.core._callsub(adrSelf, "CHAT_JOIN", {adrSelf, roomID, roomName}, adrSelf^._adrSubCallbacks ))}

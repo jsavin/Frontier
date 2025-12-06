@@ -1,0 +1,1 @@
+on newTable (adrserver, path) {	return (appleEvent (adrserver, 'ODBF', 'NEWT', '----', string (path)))}

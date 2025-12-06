@@ -1,0 +1,1 @@
+on shiftLeft (n, dist) {	kernel (bit.shiftLeft)}

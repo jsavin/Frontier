@@ -1,0 +1,1 @@
+local (adrtable);if Frontier.tools.nodetypes.findnodetype ("", @adrtable) {	local (adrscript = @adrtable^.expand);	if defined (adrscript^) {		return (adrscript^ ())}	else {		return (false)}};return (false)

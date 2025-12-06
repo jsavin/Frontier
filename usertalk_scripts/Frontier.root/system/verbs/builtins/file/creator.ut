@@ -1,0 +1,1 @@
+on creator (path) {	kernel (file.creator)}

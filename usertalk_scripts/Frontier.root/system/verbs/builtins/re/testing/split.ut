@@ -1,0 +1,1 @@
+local (s = "<title>test</title>\r<body>\rtest body\r</body>");local (patRef);patRef = re.compile ("<[^>]*>");dialog.notify (re.split (patRef, s));patRef = re.compile ("(<[^>]*>)");dialog.notify (re.split (patRef, s, maxSplits:4))

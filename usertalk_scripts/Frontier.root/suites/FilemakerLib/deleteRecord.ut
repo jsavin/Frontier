@@ -1,0 +1,1 @@
+on deleteRecord (db, recordNum, foundSet = true, reportError = false) {	on doIt () {		with objectModel, filemaker {			if foundSet {				return (delete (window [db].record [recordNum]))}			else {				return (delete (database [db].record [recordNum]))}}};	if reportError {		return (doIt ())}	else {		try {			return (doIt ())}		else {			return (false)}}}

@@ -1,0 +1,1 @@
+on visitPaths (callback) {	local (f);	for f in FinderMenu.getSelectionList () {		if not callback^ (f) {			return (false)}};	return (true)}

@@ -1,0 +1,1 @@
+on readWholeFile (f) {	«10/31/97 at 1:02:04 PM by DW -- moved from toys.readWholeFile	local (s);	file.open (f);	s = file.read (f, infinity);	file.close (f);	return (s)}

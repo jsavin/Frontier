@@ -1,0 +1,1 @@
+on setLanguage (adrScript, language) {	kernel (script.setLanguage)}

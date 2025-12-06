@@ -1,0 +1,1 @@
+on getValue (pref, value) {		case string.lower (pref) {		"NONE" {			}};//do nothing	return (value)}

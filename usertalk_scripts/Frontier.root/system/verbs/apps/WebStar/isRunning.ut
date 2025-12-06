@@ -1,0 +1,1 @@
+on isRunning (appID = WebStar.id) {	return (sys.appIsRunning (appID))}

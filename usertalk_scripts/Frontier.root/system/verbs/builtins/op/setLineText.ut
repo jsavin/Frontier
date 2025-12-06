@@ -1,0 +1,1 @@
+on setLineText (s) {	kernel (op.setlinetext)}

@@ -1,0 +1,1 @@
+on filespec (path) {	kernel (lang.filespec)}

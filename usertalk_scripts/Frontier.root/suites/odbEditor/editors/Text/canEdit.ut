@@ -1,0 +1,1 @@
+on canEdit (adr) {	local (type = typeOf (adr^));	return (type == stringType) or (type == wptexttype)}

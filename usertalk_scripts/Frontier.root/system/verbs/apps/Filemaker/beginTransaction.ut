@@ -1,0 +1,1 @@
+on beginTransaction () { «Begin a transaction	return (appleEvent (Filemaker.id, 'misc', 'begi'))}

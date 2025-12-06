@@ -1,0 +1,1 @@
+on detachServiceFromUser (userName, serviceName) {	«Remove a service from a user.	local (adrUser);	if not (people.userExists (userName)) {		return (false)};	if not (people.serviceExists (serviceName)) {		return (false)};	adrUser = people.getUserTable (userName);	«adrUser^.services.[serviceName].enabled = false	delete (@adrUser^.services.[serviceName]);	return (true)}

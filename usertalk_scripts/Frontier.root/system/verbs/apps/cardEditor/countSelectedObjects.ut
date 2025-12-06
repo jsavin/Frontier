@@ -1,0 +1,1 @@
+on countSelectedObjects () {	return (appleEvent (cardEditor.id, 'IOWA', 'ctso'))}

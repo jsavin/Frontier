@@ -1,0 +1,1 @@
+local (stream, s);netEvents.launch ();stream = netEvents.listenStream (80);s = netEvents.readStream (stream, 10000);wp.newtextobject (s, @scratchpad.request);netEvents.writeStream (stream, "HTTP/1.0 200 OK\r\n\r\n" + "OH THE BUZZING");netEvents.closeStream (stream)

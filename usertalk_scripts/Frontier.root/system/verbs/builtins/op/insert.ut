@@ -1,0 +1,1 @@
+on insert (s, dir) {	kernel (op.insert)}

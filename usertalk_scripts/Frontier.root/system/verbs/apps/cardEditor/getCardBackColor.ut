@@ -1,0 +1,1 @@
+on getCardBackColor () {	local (atts);	if not cardEditor.getCardAttributes (@atts) {		return ("")};	return (atts.bakc)}

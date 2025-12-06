@@ -1,0 +1,1 @@
+on boolean (val) {	kernel (lang.boolean)}

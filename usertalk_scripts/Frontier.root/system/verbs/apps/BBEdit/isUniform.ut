@@ -1,0 +1,1 @@
+on isUniform (obj, prop) { «Is the value of the specified property the same for all objects in the set?	return (misc.isUniform (BBEdit.id, obj, prop))}

@@ -1,0 +1,1 @@
+on hasBundle (path) {	kernel (file.hasBundle)}

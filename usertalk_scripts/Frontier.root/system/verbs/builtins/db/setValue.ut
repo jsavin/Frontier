@@ -1,0 +1,1 @@
+on setValue (f, path, val) {	kernel (db.setValue)}

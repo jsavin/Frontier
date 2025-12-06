@@ -1,0 +1,1 @@
+on codeCenter (s) {	return ("<code><center> " + s + " </center></code>")}

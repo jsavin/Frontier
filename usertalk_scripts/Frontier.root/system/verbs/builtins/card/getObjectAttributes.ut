@@ -1,0 +1,1 @@
+on getObjectAttributes (name, tableAdr) {	local (adrResult);	complexevent (tableAdr, 0, card.id, 'gaob', 'prm1', string (name));	adrResult = @tableAdr^.['----'];	if not defined (adrResult^) {		return (false)};	return (adrResult^)}

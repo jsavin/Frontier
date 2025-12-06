@@ -1,0 +1,1 @@
+local (adrobject = @people.dw.notepad);local (nomad = parentOf (adrobject^), newnomad);loop {	newnomad = parentOf (nomad^);	if newnomad == "" {		break};	nomad = newnomad}

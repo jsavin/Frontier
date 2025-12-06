@@ -1,0 +1,1 @@
+on copy () {	kernel (editmenu.copy)}

@@ -1,0 +1,1 @@
+on activate (n, flags = nil) { «Tells the Web browser to bring itself to the front and show WindowID.	return (appleEvent (msExplorer.id, 'WWW!', 'ACTV', '----', long (n), 'FLGS', long (flags)))}

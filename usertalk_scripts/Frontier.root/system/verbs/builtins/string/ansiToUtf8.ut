@@ -1,0 +1,1 @@
+on ansiToUtf8 (s) {	kernel (string.ansiToUtf8)}

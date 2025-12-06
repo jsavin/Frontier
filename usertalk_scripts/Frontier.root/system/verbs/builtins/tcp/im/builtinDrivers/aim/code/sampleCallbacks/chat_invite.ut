@@ -1,0 +1,1 @@
+on CHAT_INVITE(adrSelf, roomName, roomId, screenName, message) {	return("CHAT_INVITE")}

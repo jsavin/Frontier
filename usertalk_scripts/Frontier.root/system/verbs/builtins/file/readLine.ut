@@ -1,0 +1,1 @@
+on readLine (path) {	kernel (file.readline)}

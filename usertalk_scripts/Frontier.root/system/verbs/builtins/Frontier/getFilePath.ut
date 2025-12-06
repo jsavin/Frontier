@@ -1,0 +1,1 @@
+on getFilePath () {	kernel (Frontier.getfilepath)}

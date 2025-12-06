@@ -1,0 +1,1 @@
+on set (obj, setTo) { «Set an object's data	return (core.set (Fetch.id, obj, setTo))}

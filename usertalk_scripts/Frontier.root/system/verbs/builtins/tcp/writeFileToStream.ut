@@ -1,0 +1,1 @@
+on writeFileToStream (stream, f, prefix="", suffix="") { //6.2b10	kernel (tcp.writeFileToStream)}

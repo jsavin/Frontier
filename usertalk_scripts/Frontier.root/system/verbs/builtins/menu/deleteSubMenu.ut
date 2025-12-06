@@ -1,0 +1,1 @@
+on deleteSubMenu (adrmenubar, menuTitle) {	kernel (menu.deleteSubMenu)}

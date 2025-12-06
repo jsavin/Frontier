@@ -1,0 +1,1 @@
+on latinToMac (s) { //new in 7.0	kernel (string.latinToMac)}

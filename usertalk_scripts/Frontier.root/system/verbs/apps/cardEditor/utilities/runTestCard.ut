@@ -1,0 +1,1 @@
+birdrun.launch ();birdrun.bringtofront ();birdrun.runPackedCard (system.misc.cards.userinfo);frontier.bringtofront ()

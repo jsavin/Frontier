@@ -1,0 +1,1 @@
+on openUrl (url) {	webbrowser.openUrl (url);	webbrowser.bringToFront ()}

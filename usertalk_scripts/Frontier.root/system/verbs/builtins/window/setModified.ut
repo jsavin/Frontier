@@ -1,0 +1,1 @@
+on setModified (adr, modified) {	kernel (window.setModified)}

@@ -1,0 +1,1 @@
+on getValue (type) {	local (x);	if not clipboard.get (type, @x) {		return (false)};	unpack (@x, @x);	return (x)}

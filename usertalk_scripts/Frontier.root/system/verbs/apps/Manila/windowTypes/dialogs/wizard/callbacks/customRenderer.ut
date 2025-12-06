@@ -1,0 +1,1 @@
+on customRenderer (partialaddress, defaultvalue, adrxmltable) {	local (pta = html.getpagetableaddress ());	local (htmltext = "", indentlevel = 0);		on add (s) {		htmltext = htmltext + string.filledString ("\t", indentlevel) + s + "\r"};		case string.lower (partialaddress) {		"NOP" {			}};//do nothing		return (htmltext)}

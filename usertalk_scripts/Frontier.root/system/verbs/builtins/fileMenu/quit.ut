@@ -1,0 +1,1 @@
+on quit () {	kernel (filemenu.quit)}

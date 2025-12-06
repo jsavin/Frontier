@@ -1,0 +1,1 @@
+local (i);for i = 1 to 100 {	msg (i + "; " + string.memAvailString ());	Netscape.displaytext (html.processmacros (string (html.utilities.testtext)))}

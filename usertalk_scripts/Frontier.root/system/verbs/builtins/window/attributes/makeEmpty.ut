@@ -1,0 +1,1 @@
+on makeEmpty (adrwindow=nil) {	if adrwindow == nil {		adrwindow = window.frontmost ()};	local (adrparent = parentOf (adrwindow^));	if defined (adrparent^) {		local (adratts = @adrparent^.["/atts"]);		new (tableType, adratts)};	return (true)};«bundle //testing	«makeEmpty ()

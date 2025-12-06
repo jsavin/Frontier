@@ -1,0 +1,1 @@
+on copyContents (adrSource, adrDest) {	«Changes		«7/22/05; 2:55:31 PM by JES			«Changed parameter names from adr1 and adr2 to adrSource and adrDest.	local (i);	for i = 1 to sizeof (adrSource^) {		if not table.copy (@adrSource^ [i], adrDest) {			return (false)}};	return (true)}

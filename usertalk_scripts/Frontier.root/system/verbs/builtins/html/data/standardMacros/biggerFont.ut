@@ -1,0 +1,1 @@
+on biggerfont (s) {	local (fonton = "<font size=+2><b>", fontoff = "</b></font>");	return (fonton + s + fontoff)}

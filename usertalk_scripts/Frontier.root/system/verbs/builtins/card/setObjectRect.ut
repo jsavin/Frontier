@@ -1,0 +1,1 @@
+on setObjectRect (name, rectangle) {	new (tableType, @atts);	atts.rect = rect (rectangle);	return (card.setObjectAttributes (name, @atts))}

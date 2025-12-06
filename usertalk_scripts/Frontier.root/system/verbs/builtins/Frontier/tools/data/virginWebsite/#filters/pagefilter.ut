@@ -1,0 +1,1 @@
+on pageFilter (pta) {	if typeOf (pta^.template) == outlineType or typeOf (pta^.template) == wpTextType {		table.assign (@pta^.template, string (pta^.template))};	if typeOf (pta^.template) == stringType and not pta^.indirectTemplate {		pta^.template = string.replace (pta^.template, "<title>", "[[title]]")};	html.addPageToGlossary (pta);	return (true)}

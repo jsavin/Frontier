@@ -1,0 +1,1 @@
+on getMinAppSize (path) {	local (x, n);	if not rez.getResource (path, 'SIZE', 0, @x) { «try user-defined size 1st		if not rez.getResource (path, 'SIZE', -1, @x) {			return (0)}};	return (long (binary (string.mid (x, 7, 4))))}

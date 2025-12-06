@@ -1,0 +1,1 @@
+on print (obj) { «Print an object	return (appleEvent (Filemaker.id, 'aevt', 'pdoc', '----', objspec (obj)))}

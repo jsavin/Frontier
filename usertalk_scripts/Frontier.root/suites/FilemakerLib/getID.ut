@@ -1,0 +1,1 @@
+on getID (db, recordNum, foundSet = true, reportError = false) {	on doIt () {		with objectModel, filemaker {			if foundSet {				return (get (window [db].record [recordNum].uniqueID))}			else {				return (get (database [db].record [recordNum].uniqueID))}}};	if reportError {		return (doIt ())}	else {		try {			return (doIt ())}		else {			return (false)}}}

@@ -1,0 +1,1 @@
+on condition (screenname, message) {	if user.im.responders.manila.prefs.allowedScreenNames contains screenName {		local (firstWord = string.nthField (searchEngine.stripMarkup (message), " ", 1));		return (string.lower (firstWord) == "manila")}	else {		return (false)}}

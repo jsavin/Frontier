@@ -1,0 +1,1 @@
+on getAccessControls (appID = WebStar.id) { «gets WebSTAR access control settings	with objectModel, WebStar.eventInfo {		return (core.get (appID, accessControls))}}

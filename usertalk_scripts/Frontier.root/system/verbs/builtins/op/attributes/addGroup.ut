@@ -1,0 +1,1 @@
+on addGroup (adrtable) {	local (atts);	if not op.attributes.getAll (@atts) {		new (tabletype, @atts)};		local (adrnewitem);	for adrnewitem in adrtable {		atts.[nameof (adrnewitem^)] = adrnewitem^};		local (data);	pack (atts, @data);	op.setrefcon (data);		return (true)}

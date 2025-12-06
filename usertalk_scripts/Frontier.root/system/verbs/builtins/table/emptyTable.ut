@@ -1,0 +1,1 @@
+on emptyTable (tableAdr) { «remove all objects in the table	kernel (table.emptytable)}

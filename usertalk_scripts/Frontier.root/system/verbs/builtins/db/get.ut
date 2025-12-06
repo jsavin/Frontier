@@ -1,0 +1,1 @@
+on get (celladdress) {	return (celladdress^)}

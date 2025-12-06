@@ -1,0 +1,1 @@
+on moveMessage (msgObj, where) {	with objectModel, Eudora, eventInfo {		return (core.move (id, msgObj, where))}}

@@ -1,0 +1,1 @@
+on setPath (path) {	kernel (file.setpath)}

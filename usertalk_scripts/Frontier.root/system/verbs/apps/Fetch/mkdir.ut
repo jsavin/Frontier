@@ -1,0 +1,1 @@
+on mkdir (host, path, user, password, url) { «Make directory	return (appleEvent (Fetch.id, 'Arch', 'MkDr', 'FTPh', string (host), 'FTPc', string (path), 'ArGU', string (user), 'ArGp', string (password), 'ArUR', string (url)))}

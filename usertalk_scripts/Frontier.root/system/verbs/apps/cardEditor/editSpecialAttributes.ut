@@ -1,0 +1,1 @@
+on editSpecialAttributes (param1) {	return (appleEvent (cardEditor.id, 'IOWA', 'esat', 'prm1', string (param1)))}

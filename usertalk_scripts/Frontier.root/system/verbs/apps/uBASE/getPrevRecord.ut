@@ -1,0 +1,1 @@
+on getPrevRecord (fnum, key) {	return (systemEvent ('ubas', 'recp', 'fref', short (fnum), 'key ', string (key)))}

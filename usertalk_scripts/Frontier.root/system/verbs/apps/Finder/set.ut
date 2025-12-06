@@ -1,0 +1,1 @@
+on set (obj, setTo) { «Set an object's data	return (appleEvent (Finder.id, 'core', 'setd', '----', Finder.finderSpec (obj), 'data', setTo))}

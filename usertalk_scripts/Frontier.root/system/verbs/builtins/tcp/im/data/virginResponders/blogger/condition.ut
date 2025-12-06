@@ -1,0 +1,1 @@
+on condition (screenname, message) {	return (tcp.im.builtinResponders.blogger.condition (screenname, message))}

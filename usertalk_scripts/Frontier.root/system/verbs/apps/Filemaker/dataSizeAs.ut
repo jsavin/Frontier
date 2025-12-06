@@ -1,0 +1,1 @@
+on dataSizeAs (obj, as = nil) { «Return the size in bytes of an object	return (appleEvent (FileMaker.id, 'core', 'dsiz', '----', objspec (obj), 'rtyp', string4 (as)))}

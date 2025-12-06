@@ -1,0 +1,1 @@
+on unsort (db, reportError = false) {	on doIt () {		with objectModel, filemaker, database [db] {			sort (database [db])};		return (true)};	if reportError {		return (doIt ())}	else {		try {			return (doIt ())}		else {			return (false)}}}

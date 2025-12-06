@@ -1,0 +1,1 @@
+on setType (path, type) {	kernel (file.settype)}

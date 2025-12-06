@@ -1,0 +1,1 @@
+on displayText (s) { «new 1/3/96 DW -- preview a string in web browser	«it's really useful for debugging scripts that build HTML text	local (f = Netscape.getScriptPrefsFolder () + "Frontier Page Preview");	file.writeWholeFile (f, s, 'TEXT', Netscape.id, clock.now ());	Netscape.openDocument (f);	return (true)}

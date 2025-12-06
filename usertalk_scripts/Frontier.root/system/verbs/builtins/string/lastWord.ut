@@ -1,0 +1,1 @@
+on lastWord (s) {	kernel (string.lastword)}

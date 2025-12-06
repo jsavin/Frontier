@@ -1,0 +1,1 @@
+on getSubOutline (flindent=true) {	«Friday, January 28, 2000 at 7:53:07 PM by AR		«In the target window, get all the text that the bar cursor points to, leaving the outline unchanged.		«If flindent is true we indent each level with a tab.		«Kernelized in Frontier 6.2a6.	kernel (op.getsuboutline)}

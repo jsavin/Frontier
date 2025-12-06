@@ -1,0 +1,1 @@
+on setShadow (flshadow) {	kernel (editmenu.setshadow)}
