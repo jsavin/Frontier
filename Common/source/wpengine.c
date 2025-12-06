@@ -110,10 +110,10 @@ static hdlwprecord wpstack [ctwpstack];
 
 #pragma pack(2)
 typedef struct tywpheader { /*format of text item header stored on disk*/
-	
+
 	short versionnumber; /*important, this structure is saved on disk*/
-	
-	long timecreated, timelastsave;
+
+	int64_t timecreated, timelastsave;
 	
 	long ctsaves; /*the number of times the structure has been saved on disk*/
 	
@@ -145,10 +145,10 @@ typedef struct tywpheader { /*format of text item header stored on disk*/
 
 #pragma pack(2)
 typedef struct tyOLD42wpheader { /*format of text item header stored on disk*/
-	
+
 	short versionnumber; /*important, this structure is saved on disk*/
-	
-	long timecreated, timelastsave;
+
+	int64_t timecreated, timelastsave;
 	
 	long ctsaves; /*the number of times the structure has been saved on disk*/
 	
@@ -2124,10 +2124,10 @@ static boolean wppackheader (long buffersize, Handle *hpacked) {
 	header.versionnumber = conditionalshortswap (1);
 	
 	/*timestamp (&header.timelastsave);*/ /*dmb 4.1b13: don't stamp it; wpdirty sets it as true mode date*/
-	
-	header.timecreated = conditionallongswap ((**hwp).timecreated);
-	
-	header.timelastsave = conditionallongswap ((**hwp).timelastsave);
+
+	header.timecreated = conditionallonglongswap ((**hwp).timecreated);
+
+	header.timelastsave = conditionallonglongswap ((**hwp).timelastsave);
 	
 	header.ctsaves = ++(**hwp).ctsaves;
 	
@@ -2296,10 +2296,10 @@ boolean wpunpack (Handle hpacked, hdlwprecord *hwp) {
 	pwp = **hwp; /*move into register*/
 	
 	wpsetavailbounds ((pg_ref) (*pwp).wpbuffer); /*adjust bounds for current page setup*/
-	
-	(*pwp).timecreated = conditionallongswap (header.timecreated);
-	
-	(*pwp).timelastsave = conditionallongswap (header.timelastsave);
+
+	(*pwp).timecreated = conditionallonglongswap (header.timecreated);
+
+	(*pwp).timelastsave = conditionallonglongswap (header.timelastsave);
 	
 	(*pwp).ctsaves = conditionallongswap (header.ctsaves);
 	

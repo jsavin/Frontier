@@ -489,8 +489,8 @@ typedef struct tyhashtable {
 	
 	
 	short sortorder; /*up to the application to understand what this means*/
-	
-	unsigned long timecreated, timelastsave; /*number of seconds since 1/1/04*/
+
+	int64_t timecreated, timelastsave; /*number of seconds since 1/1/04*/
 	
 	langvaluecallback valueroutine; /*for EFP's -- C routine that evaluates verbs*/
 	

@@ -89,13 +89,13 @@ typedef enum tylinetableitemflags {
 #define winplatform 'win '
 
 	#define thisplatform macplatform
-	#define diskchcomment			((byte) 0xab)	/* '«' */
+	#define diskchcomment			((byte) 0xab)	/* 'ï¿½' */
 	#define diskchendcomment		((byte) 0xbb)
 	#define diskchopencurlyquote	((byte) 0x93)
 	#define diskchclosecurlyquote	((byte) 0x94)
 	#define diskchtrademark			((byte) 0x99)
-	#define diskchnotequals			((byte) 0xad)	/* '­' */
-	#define diskchdivide			((byte) 0xf7)	/* '÷' */
+	#define diskchnotequals			((byte) 0xad)	/* 'ï¿½' */
+	#define diskchdivide			((byte) 0xf7)	/* 'ï¿½' */
 
 #define opversionnumber 2
 
@@ -123,9 +123,9 @@ typedef struct tyversion2diskheader {
 	int16_t vertmin, vertmax, vertcurrent; /*for structs that don't get their own file*/
 	
 	int16_t horizmin, horizmax, horizcurrent;
-	
-	int32_t timecreated, timelastsave;
-	
+
+	int64_t timecreated, timelastsave;
+
 	int32_t ctsaves;
 	
 	int16_t fltextmode;
@@ -149,7 +149,7 @@ typedef struct tyversion2diskheader {
 	int16_t waste [3]; /*room to grow*/
 	} tyversion2diskheader;
 
-_Static_assert (sizeof (tyversion2diskheader) == 120, "tyversion2diskheader must remain 120 bytes");
+_Static_assert (sizeof (tyversion2diskheader) == 128, "tyversion2diskheader must be 128 bytes");
 
 
 typedef struct tyoppackinfo {
@@ -465,10 +465,10 @@ boolean oppack (Handle *hpackedoutline) {
 	header.horizmax = conditionalshortswap((**ho).horizscrollinfo.max);
 	
 	memlongtodiskwords ((**ho).horizscrollinfo.cur, header.horizcurrent, header.horizcurrent_hiword);
-	
-	header.timecreated = conditionallongswap((**ho).timecreated);
-	
-	header.timelastsave = conditionallongswap((**ho).timelastsave);
+
+	header.timecreated = conditionallonglongswap((**ho).timecreated);
+
+	header.timelastsave = conditionallonglongswap((**ho).timelastsave);
 	
 	/*timestamp (&header.timelastsave);*/ /*dmb 4.1b13: don't stamp it; opdirty sets it as true mode date*/
 	
@@ -911,10 +911,10 @@ static boolean opunpackversion2 (handlestream *packstream) {
 	(**ho).horizscrollinfo.max = conditionalshortswap (header.horizmax);
 	
 	(**ho).horizscrollinfo.cur = diskwordstomemlong (header.horizcurrent, header.horizcurrent_hiword);
-	
-	(**ho).timecreated = conditionallongswap (header.timecreated);
-	
-	(**ho).timelastsave = conditionallongswap (header.timelastsave);
+
+	(**ho).timecreated = conditionallonglongswap (header.timecreated);
+
+	(**ho).timelastsave = conditionallonglongswap (header.timelastsave);
 	
 	(**ho).ctsaves = conditionallongswap (header.ctsaves);
 	

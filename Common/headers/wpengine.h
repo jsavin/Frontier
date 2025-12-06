@@ -107,10 +107,10 @@ typedef struct tywprecord {
 	tyscrollinfo vertscrollinfo; /*vertical scrollbar info*/
 	
 	tyscrollinfo horizscrollinfo; /*horiz scrollbar info*/
-	
+
 	long ctsaves; /*the number of times this structure has been saved to disk*/
-	
-	long timelastsave, timecreated; 
+
+	int64_t timelastsave, timecreated; 
 	
 	dbaddress adr; /*where this edit record came from in the database*/
 	

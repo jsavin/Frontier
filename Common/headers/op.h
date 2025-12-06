@@ -237,10 +237,10 @@ typedef struct tyoutlinerecord {
 	Rect windowrect; /*the size and position of window that last displayed outline*/
 	
 	tyscrollinfo vertscrollinfo; /*vertical scrollbar info*/
-	
+
 	tyscrollinfo horizscrollinfo; /*horiz scrollbar info*/
-	
-	unsigned long timecreated, timelastsave; /*number of seconds since 1/1/04*/
+
+	int64_t timecreated, timelastsave; /*number of seconds since 1/1/04*/
 	
 	long ctsaves; /*the number of times this structure has been saved*/
 	

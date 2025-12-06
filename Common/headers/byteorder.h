@@ -42,32 +42,42 @@
 	#define SWAP_BYTE_ORDER	1
 
 	#define conditionallongswap(x) dolongswap(x)
+	#define conditionallonglongswap(x) dolonglongswap(x)
 	#define conditionalshortswap(x) doshortswap(x)
 	#define conditionalenumswap(x) doshortswap(x)
 	#define disklong(x) dolongswap(x)
+	#define disklonglong(x) dolonglongswap(x)
 	#define memlong(x) dolongswap(x)
+	#define memlonglong(x) dolonglongswap(x)
 	#define diskshort(x) doshortswap(x)
 	#define memshort(x) doshortswap(x)
 	#define disktomemshort(x) shortswap(x)
 	#define disktomemlong(x)  longswap(x)
+	#define disktomlonglong(x)  longlongswap(x)
 	#define memtodiskshort(x) shortswap(x)
 	#define memtodisklong(x) longswap(x)
+	#define memtodisklonglong(x) longlongswap(x)
 
 #elif defined(__BIG_ENDIAN__) && ((__BIG_ENDIAN__ == 1) || !defined (__LITTLE_ENDIAN__))
 
 	#undef SWAP_BYTE_ORDER
 
 	#define conditionallongswap(x) x
+	#define conditionallonglongswap(x) x
 	#define conditionalshortswap(x) x
 	#define conditionalenumswap(x) x
 	#define disklong(x) x
+	#define disklonglong(x) x
 	#define memlong(x) x
+	#define memlonglong(x) x
 	#define diskshort(x) x
 	#define memshort(x) x
 	#define disktomemshort(x)
 	#define disktomemlong(x)
+	#define disktomlonglong(x)
 	#define memtodiskshort(x)
 	#define memtodisklong(x)
+	#define memtodisklonglong(x)
 
 #else
 
@@ -107,6 +117,7 @@
 
 
 #define longswap(foo)	do {foo = dolongswap(foo);} while (0)
+#define longlongswap(foo)	do {foo = dolonglongswap(foo);} while (0)
 #define shortswap(foo)	do {foo = doshortswap(foo);} while (0)
 
 
@@ -115,6 +126,7 @@
 	/* using system sdk functions from CFByteOrder.h */
 
 	#define dolongswap(foo)			CFSwapInt32(foo)
+	#define dolonglongswap(foo)		CFSwapInt64(foo)
 	#define doshortswap(foo)		CFSwapInt16(foo)
 	
 #elif (defined(__i386__) && defined(__GNUC__))
@@ -128,6 +140,13 @@
 		return (foo);
 		} /*dolongswap*/
 
+	inline long long dolonglongswap (long long foo) {
+
+		__asm__("mov foo,%rax\nbswap %rax\nmov %rax,foo\n");
+
+		return (foo);
+		} /*dolonglongswap*/
+
 	inline short doshortswap (short foo) {
 
 		__asm__("mov foo,%ax\n mov %al,%bh\nmov %ah,%bl\nmov %bx,foo");
@@ -138,7 +157,7 @@
 #elif defined(WIN32)
 
 	/* using Intel x86 assembly code syntax */
-	
+
 	__inline long dolongswap (long foo) {
 
 		_asm
@@ -151,6 +170,18 @@
 		return (foo);
 		} /*dolongswap*/
 
+	__inline long long dolonglongswap (long long foo) {
+
+		_asm
+			{
+			mov rax,foo
+			bswap rax
+			mov foo,rax
+			}
+
+		return (foo);
+		} /*dolonglongswap*/
+
 	__inline short doshortswap (short foo) {
 
 		_asm
@@ -160,23 +191,37 @@
 			mov bl,ah
 			mov foo,bx
 			}
-		
+
 		return (foo);
 		} /*doshortswap*/
 
 #else
 
 	/* portable code using only C operators */
-	
+
 	inline long dolongswap (long foo) {
 
 		foo = ((((foo) >> 24) & 0x000000ff)
 				| (((foo) & 0x00ff0000) >> 8)
 				| (((foo) & 0x0000ff00) << 8)
 				| (((foo) & 0x000000ff) << 24));
-		
+
 		return (foo);
 		} /*dolongswap*/
+
+	inline long long dolonglongswap (long long foo) {
+
+		foo = ((((foo) >> 56) & 0x00000000000000ffLL)
+				| (((foo) >> 40) & 0x000000000000ff00LL)
+				| (((foo) >> 24) & 0x0000000000ff0000LL)
+				| (((foo) >> 8)  & 0x00000000ff000000LL)
+				| (((foo) << 8)  & 0x000000ff00000000LL)
+				| (((foo) << 24) & 0x0000ff0000000000LL)
+				| (((foo) << 40) & 0x00ff000000000000LL)
+				| (((foo) << 56) & 0xff00000000000000LL));
+
+		return (foo);
+		} /*dolonglongswap*/
 
 	inline short doshortswap (short foo) {
 

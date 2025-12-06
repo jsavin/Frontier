@@ -38,8 +38,8 @@ typedef struct typictrecord {
 	PicHandle macpicture; /*the structure that's passed off to DrawPicture*/
 	
 	Rect windowrect; /*the size of the window that last displayed this pict*/
-	
-	long timecreated, timelastsave; /*maybe we'll use these at some later date?*/
+
+	int64_t timecreated, timelastsave; /*maybe we'll use these at some later date?*/
 	
 	long ctsaves; /*the number of times this structure has been saved*/
 	

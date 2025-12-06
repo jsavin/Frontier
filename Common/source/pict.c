@@ -58,12 +58,12 @@
 
 #pragma pack(2)
 typedef struct tydiskpictrecord {
-	
+
 	short versionnumber; /*this structure is stored on disk*/
-	
-	diskrect windowrect; 
-	
-	long timecreated, timelastsave; /*maybe we'll use these at some later date?*/
+
+	diskrect windowrect;
+
+	int64_t timecreated, timelastsave; /*maybe we'll use these at some later date?*/
 	
 	long ctsaves; /*the number of times this structure has been saved*/
 	
@@ -86,12 +86,12 @@ typedef struct tydiskpictrecord {
 
 #pragma pack(2)
 typedef struct tyOLD42diskpictrecord {
-	
+
 	short versionnumber; /*this structure is stored on disk*/
-	
-	diskrect windowrect; 
-	
-	long timecreated, timelastsave; /*maybe we'll use these at some later date?*/
+
+	diskrect windowrect;
+
+	int64_t timecreated, timelastsave; /*maybe we'll use these at some later date?*/
 	
 	long ctsaves; /*the number of times this structure has been saved*/
 	
@@ -156,11 +156,11 @@ boolean pictpack (hdlpictrecord hpict, Handle *hpacked) {
 	header.versionnumber = conditionalshortswap (1);
 	
 	recttodiskrect (&(**hpict).windowrect, &header.windowrect);
-	
-	header.timecreated = conditionallongswap ((**hp).timecreated);
-	
-	header.timelastsave = conditionallongswap ((**hp).timelastsave);
-	
+
+	header.timecreated = conditionallonglongswap ((**hp).timecreated);
+
+	header.timelastsave = conditionallonglongswap ((**hp).timelastsave);
+
 	/*timestamp (&header.timelastsave);*/ /*dmb 4.1b13: don't stamp it; pictdirty sets it as true mode date*/
 	++((**hp).ctsaves);
 
@@ -233,10 +233,10 @@ boolean pictunpack (Handle hpacked, long *ixload, hdlpictrecord *hpict) {
 	hp = *hpict; /*copy into register*/
 	
 	diskrecttorect (&header.windowrect, &(**hp).windowrect);
-	
-	(**hp).timecreated = conditionallongswap (header.timecreated);
-	
-	(**hp).timelastsave = conditionallongswap (header.timelastsave);
+
+	(**hp).timecreated = conditionallonglongswap (header.timecreated);
+
+	(**hp).timelastsave = conditionallonglongswap (header.timelastsave);
 	
 	(**hp).ctsaves = conditionallongswap (header.ctsaves);
 	

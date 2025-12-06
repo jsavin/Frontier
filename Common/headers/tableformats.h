@@ -145,10 +145,10 @@ typedef struct tyversion1tablediskrecord { /*packed version of tableformats, sui
 	tylinespacing linespacing;
 	
 	short vertmin, vertmax, vertcurrent; /*values for the scrollbars*/
-	
+
 	short horizmin, horizmax, horizcurrent; /*values for the scrollbars*/
-	
-	long timecreated, timelastsave; /*maybe we'll use these at some later date?*/
+
+	int64_t timecreated, timelastsave; /*maybe we'll use these at some later date?*/
 	
 	long ctsaves; /*the number of times this structure has been saved*/
 	

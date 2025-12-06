@@ -563,8 +563,8 @@ boolean tableverbpacktotext (hdlexternalvariable h, Handle htext) {
 	} /*tableverbpacktotext*/
 
 
-boolean tableverbgettimes (hdlexternalvariable h, long *timecreated, long *timemodified, hdlhashnode hnode) {
-	
+boolean tableverbgettimes (hdlexternalvariable h, int64_t *timecreated, int64_t *timemodified, hdlhashnode hnode) {
+
 	register hdlexternalvariable hv = h;
 	register hdlhashtable ht;
 	
@@ -581,8 +581,8 @@ boolean tableverbgettimes (hdlexternalvariable h, long *timecreated, long *timem
 	} /*tableverbgettimes*/
 
 
-boolean tableverbsettimes (hdlexternalvariable h, long timecreated, long timemodified, hdlhashnode hnode) {
-	
+boolean tableverbsettimes (hdlexternalvariable h, int64_t timecreated, int64_t timemodified, hdlhashnode hnode) {
+
 	register hdlexternalvariable hv = h;
 	register hdlhashtable ht;
 	
