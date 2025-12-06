@@ -363,14 +363,21 @@ static void run_table_header_regression_mode(const char *label, boolean enable64
         disposehandle(hstrings);
 
     assert(hrecords != nil);
-    size_t expected_header = 16 + (size_t)TABLE_HEADER_RESERVED_BYTES;
+
+    /* v6 (legacy32): v0x04 uses 16-byte header + reserved bytes */
+    /* v7 (modern64): v0x05 uses 32-byte header + reserved bytes */
+    size_t expected_header_size = enable64bit ? 32 : 16;
+    size_t expected_total = expected_header_size + (size_t)TABLE_HEADER_RESERVED_BYTES;
     long record_bytes = gethandlesize(hrecords);
-    assert(record_bytes >= (long)expected_header);
+    assert(record_bytes >= (long)expected_total);
 
     unsigned char *bytes = (unsigned char *) *hrecords;
     uint16_t disk_version = read_be16(bytes);
-    assert(disk_version == TABLE_DISK_VERSION);
-    verify_zero_block(bytes + 16, (size_t)TABLE_HEADER_RESERVED_BYTES);
+    uint16_t expected_version = enable64bit ? 0x05 : 0x04;
+    assert(disk_version == expected_version);
+
+    /* Reserved bytes start after the header */
+    verify_zero_block(bytes + expected_header_size, (size_t)TABLE_HEADER_RESERVED_BYTES);
 
     disposehandle(hrecords);
     disposehandle(packed);
