@@ -489,7 +489,7 @@ boolean menuverbgettimes (hdlexternalvariable h, int64_t *timecreated, int64_t *
 	} /*menuverbgettimes*/
 
 
-boolean menuverbsettimes (hdlexternalvariable h, long timecreated, long timemodified) {
+boolean menuverbsettimes (hdlexternalvariable h, int64_t timecreated, int64_t timemodified) {
 	
 	register hdlmenuvariable hv = (hdlmenuvariable) h;
 	register hdlmenurecord hm;

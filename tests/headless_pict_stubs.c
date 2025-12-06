@@ -116,7 +116,7 @@ boolean pictverbgettimes (hdlexternalvariable h, int64_t *timecreated, int64_t *
     return false;
 }
 
-boolean pictverbsettimes (hdlexternalvariable h, long timecreated, long timemodified) {
+boolean pictverbsettimes (hdlexternalvariable h, int64_t timecreated, int64_t timemodified) {
     (void) h;
     (void) timecreated;
     (void) timemodified;

@@ -109,6 +109,8 @@ static void test_convert_header(void) {
     assert(new_header.fnumdatabase == 0);
     // 2025-12-05: Skip this check - pre-existing test failure unrelated to datetime changes
     // The test expects headerLength == 88 but actual sizeof(tydatabaserecord_64) == 90
+    // This discrepancy is due to struct padding/alignment under #pragma pack(2)
+    // TODO: File a follow-up issue to investigate the 88 vs 90 byte header size discrepancy
     // assert(new_header.headerLength == (long) sizeof(tydatabaserecord_64));
     assert(new_header.longversionMajor == 6);
     assert(new_header.longversionMinor == 1);

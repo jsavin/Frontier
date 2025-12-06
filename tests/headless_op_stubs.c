@@ -92,7 +92,7 @@ boolean opverbgettimes (hdlexternalvariable h, long *timecreated, long *timemodi
     return false;
 }
 
-boolean opverbsettimes (hdlexternalvariable h, long timecreated, long timemodified) {
+boolean opverbsettimes (hdlexternalvariable h, int64_t timecreated, int64_t timemodified) {
     (void) h;
     (void) timecreated;
     (void) timemodified;

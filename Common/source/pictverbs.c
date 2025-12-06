@@ -560,7 +560,7 @@ boolean pictverbgettimes (hdlexternalvariable h, int64_t *timecreated, int64_t *
 	} /*pictverbgettimes*/
 
 
-boolean pictverbsettimes (hdlexternalvariable h, long timecreated, long timemodified) {
+boolean pictverbsettimes (hdlexternalvariable h, int64_t timecreated, int64_t timemodified) {
 	
 	register hdlpictvariable hv = (hdlpictvariable) h;
 	register hdlpictrecord hp;

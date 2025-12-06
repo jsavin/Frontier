@@ -79,7 +79,7 @@ extern boolean opverbgetsize (hdlexternalvariable, long *);
 
 extern boolean opverbgettimes (hdlexternalvariable, int64_t *, int64_t *);
 
-extern boolean opverbsettimes (hdlexternalvariable, long, long);
+extern boolean opverbsettimes (hdlexternalvariable, int64_t, int64_t);
 
 extern boolean opverbnew (short, Handle, hdlexternalvariable *);
 

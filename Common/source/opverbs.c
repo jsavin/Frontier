@@ -1112,7 +1112,7 @@ boolean opverbgettimes (hdlexternalvariable h, int64_t *timecreated, int64_t *ti
 	} /*opverbgettimes*/
 
 
-boolean opverbsettimes (hdlexternalvariable h, long timecreated, long timemodified) {
+boolean opverbsettimes (hdlexternalvariable h, int64_t timecreated, int64_t timemodified) {
 	
 	register hdloutlinevariable hv = (hdloutlinevariable) h;
 	register hdloutlinerecord ho;
