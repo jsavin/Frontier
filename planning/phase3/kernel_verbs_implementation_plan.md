@@ -343,6 +343,101 @@ Unlike C and most modern languages, Frontier uses **1-based array indexing:**
 - Test type coercion behavior experimentally for edge cases (guide notes this can be surprising)
 - Document any assumptions about evaluation order in verb implementations
 
+### SCNS: Simple Cross-Network Scripting
+
+**Overview**
+SCNS is a kernel feature that enables calling remote scripting endpoints as if they were local verbs. This allows UserTalk scripts to transparently invoke RPC services (XML-RPC, JSON-RPC, etc.) on remote servers.
+
+**Syntax**
+```
+local (endpoint = "protocol://server:port/path");
+[endpoint].function.name (param1, param2);
+```
+
+**How It Works**
+1. **URL Parsing:** The bracketed expression `[endpoint]` is evaluated as a URL string
+2. **Remote Detection:** Code detects the bracketed expression is followed by dot operators (dotted name chain)
+3. **Protocol Handler Lookup:** Extracts protocol (xmlrpc, json-rpc, etc.) from URL
+4. **Handler Discovery:**
+   - First looks in `user.remoteCallers.[protocol]` for custom handler
+   - Falls back to `Frontier.remoteCallers.[protocol]` for built-in handler
+5. **Function Name Construction:** Walks the dotted name chain to build procedure name
+6. **Handler Invocation:** Calls the protocol handler with parameters: (server, procedureName, paramList)
+7. **Response Handling:** Handler parses protocol-specific response and returns result
+
+**Real Examples**
+```usertalk
+// XML-RPC call to betty.userland.com
+local (endpoint = "xmlrpc://betty.userland.com/RPC2");
+[endpoint].examples.getStateName (40);
+// → Calls examples.getStateName(40) on XML-RPC server
+// → Server returns state name for index 40
+
+// Local testing endpoint
+local (endpoint = "xmlrpc://127.0.0.1:5335/RPC2");
+[endpoint].radio.helloworld ("Dave");
+// → Calls radio.helloworld("Dave") on local XML-RPC server on port 5335
+```
+
+**Implementation Details (from source code)**
+
+The SCNS implementation in `Common/source/langxml.c` includes:
+
+- **langisremotefunction()**: Detects if a code tree represents a remote function call by checking for:
+  - Bracket operator containing URL-like string
+  - Followed by dot operators (dotted name chain)
+
+- **parseremotefunction()**: Parses protocol URLs:
+  - Extracts protocol name (before `:`)
+  - Validates `://` prefix format
+  - Extracts server/path information
+  - Handles optional port numbers (commented out in current code)
+
+- **findprotocolhandler()**: Locates handler script by protocol:
+  - Checks user's custom handlers in `user.remoteCallers.[protocol]`
+  - Falls back to system handlers in `Frontier.remoteCallers.[protocol]`
+  - Returns error if protocol not supported
+
+- **langremotefunctioncall()**: Executes remote call:
+  - Decompiles the dotted name chain to build procedure name
+  - Creates parameter list: [server, procedureName, originalParams]
+  - Invokes protocol handler script
+  - Returns handler's response to caller
+
+**Protocol Handler Requirements**
+
+A protocol handler is a UserTalk script that must:
+1. Accept parameters: (server, procedureName, params)
+2. Establish connection to remote server using specified protocol
+3. Format and send request (XML-RPC, JSON-RPC, etc.)
+4. Parse response according to protocol specification
+5. Return the parsed result or error
+
+**Example Handler Structure**
+```usertalk
+on xmlrpc (server, procedureName, params)
+  // 1. Parse server URL to get host:port/path
+  // 2. Format XML-RPC request with procedureName and params
+  // 3. Send HTTP POST request
+  // 4. Parse XML response
+  // 5. Return result or error
+```
+
+**Current Implementation Status**
+- **Core mechanism:** Fully implemented in kernel (`langxml.c`)
+- **Protocol handlers:** Need to be registered in database at `user.remoteCallers` or `Frontier.remoteCallers`
+- **Built-in protocols:** Would typically include xmlrpc, json-rpc, etc.
+- **Port handling:** Code exists but commented out (likely for future use)
+
+**For Headless Mode Considerations**
+- SCNS requires `tcp.*` verbs to be implemented for network connectivity
+- HTTP client functionality needed for protocol handlers
+- May require special handling for timeouts/connection failures in headless environment
+
+**Key Source Files**
+- `Common/source/langxml.c` - SCNS core implementation
+- `Common/source/langvalue.c` - Integration with verb call evaluation
+
 ---
 
 ## Phase 3 Structure: 5 Major Stages
