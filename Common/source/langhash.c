@@ -256,15 +256,29 @@ typedef struct tyOLD42disksymbolrecord {
 
 // 5.0.1: bumped version number so we can clear uninitialized flags
 // 2025-11-19 Codex: bump to 0x04 to reserve 1KB of header padding for future metadata.
-#define tablediskversion 0x04
+// 2025-12-05: bump to 0x05 for 64-bit timestamps (beyond 2040 support)
+#define tablediskversion 0x05
 
 
-typedef struct tydisktablerecord { /*new in 5.0, a header for each table*/
+/* Legacy v0x04 structure with 32-bit timestamps - for reading old databases */
+typedef struct tydisktablerecord_v4 {
 	int16_t version;
 	int16_t sortorder;
 	uint32_t timecreated;
 	uint32_t timelastsave;
 	int32_t flags;
+} tydisktablerecord_v4;
+
+
+/* Modern v0x05 structure with 64-bit timestamps - for v7 databases */
+typedef struct tydisktablerecord { /*current disk format*/
+	int16_t version;           /* 2 bytes - 0x05 */
+	int16_t sortorder;         /* 2 bytes */
+	uint32_t _pad;             /* 4 bytes - padding for 8-byte alignment */
+	uint64_t timecreated;      /* 8 bytes - 64-bit timestamp */
+	uint64_t timelastsave;     /* 8 bytes - 64-bit timestamp */
+	int32_t flags;             /* 4 bytes */
+	/* Followed by TABLE_HEADER_RESERVED_BYTES (1024 bytes) */
 } tydisktablerecord, *ptrdisktablerecord, **hdldisktablerecord;
 
 #if defined(__clang__) || defined(__GNUC__)
@@ -2972,14 +2986,17 @@ boolean hashpacktable (hdlhashtable htable, boolean flmemory, Handle *hpackedtab
 	Handle h1, h2;
 	
 	clearbytes (&header, sizeof (header));
-	
+
 	header.version = host_to_disk_int16((int16_t)tablediskversion);
-	
-	header.timecreated = (uint32_t) host_to_disk_int32((int32_t) (**htable).timecreated);
-	
-	header.timelastsave = (uint32_t) host_to_disk_int32((int32_t) (**htable).timelastsave);
-	
+
 	header.sortorder = host_to_disk_int16((int16_t) (**htable).sortorder);
+
+	header._pad = 0; /* padding for 8-byte alignment */
+
+	/* Write 64-bit timestamps in big-endian format */
+	db_format_write_be64(&header.timecreated, (uint64_t) (**htable).timecreated);
+
+	db_format_write_be64(&header.timelastsave, (uint64_t) (**htable).timelastsave);
 	
 	#ifdef xmlfeatures
 		if ((**htable).flxml)
@@ -3078,6 +3095,7 @@ boolean hashunpacktable (Handle hpackedtable, boolean flmemory, hdlhashtable hta
 	hdlhashnode hlastnode = nil;
 	boolean flsorted = true; // 6.10.97 dmb: no longer do any auto-sorting here
 	tydisktablerecord header;
+	tydisktablerecord_v4 header_v4;
 	long ix = 0;
 	long ixstrings;
 	Handle hpacked;
@@ -3089,8 +3107,10 @@ boolean hashunpacktable (Handle hpackedtable, boolean flmemory, hdlhashtable hta
 #if defined(FRONTIER_HEADLESS)
 	long debug_record_index = 0;
 #endif
-	
-	assert (sizeof(tydisktablerecord) == 16L);
+
+	/* v0x04 and earlier use 16-byte header, v0x05 uses 32-byte header */
+	assert (sizeof(tydisktablerecord_v4) == 16L);
+	assert (sizeof(tydisktablerecord) == 32L);
 	
 	if (!unmergehandles (hpackedtable, &hrecords, &hstrings)) /*consumes hpackedtable*/
 		return (false);
@@ -3112,12 +3132,33 @@ boolean hashunpacktable (Handle hpackedtable, boolean flmemory, hdlhashtable hta
 #endif
 	
 	fldirty = (**htable).fldirty; //start with current state
-	
+
 	/*see if this is a 5.0 table, with a header*/
-	
-	loadfromhandle (hrecords, &ix, sizeof (tydisktablerecord), &header);
-	
-	header.version = disk_to_host_int16(header.version);
+
+	/* Peek at version to determine which structure to read */
+	int16_t version_peek;
+	long ix_peek = ix;
+	loadfromhandle (hrecords, &ix_peek, sizeof(int16_t), &version_peek);
+	version_peek = disk_to_host_int16(version_peek);
+
+	/* Dispatch based on version */
+	if (version_peek >= 0x05) {
+		/* v0x05+: Modern format with 64-bit timestamps */
+		loadfromhandle (hrecords, &ix, sizeof (tydisktablerecord), &header);
+		header.version = disk_to_host_int16(header.version);
+	}
+	else {
+		/* v0x04 and earlier: Legacy format with 32-bit timestamps */
+		loadfromhandle (hrecords, &ix, sizeof (tydisktablerecord_v4), &header_v4);
+		/* Convert v4 header to v5 format for processing */
+		header.version = disk_to_host_int16(header_v4.version);
+		header.sortorder = header_v4.sortorder; /* will be byte-swapped below */
+		header._pad = 0;
+		/* Widen 32-bit timestamps to 64-bit */
+		header.timecreated = (uint64_t) disk_to_host_int32((int32_t) header_v4.timecreated);
+		header.timelastsave = (uint64_t) disk_to_host_int32((int32_t) header_v4.timelastsave);
+		header.flags = header_v4.flags; /* will be byte-swapped below */
+	}
 
 #if TABLE_HEADER_RESERVED_BYTES > 0
 	if (header.version >= TABLE_HEADER_RESERVED_VERSION) {
@@ -3137,25 +3178,34 @@ boolean hashunpacktable (Handle hpackedtable, boolean flmemory, hdlhashtable hta
 #endif
 	
 	if (header.version > 0) { // a header has been written
-		
+
 		(**htable).sortorder = (short) disk_to_host_int16(header.sortorder);
-		
-		(**htable).timecreated = (unsigned long) disk_to_host_int32((int32_t) header.timecreated);
-		
-		(**htable).timelastsave = (unsigned long) disk_to_host_int32((int32_t) header.timelastsave);
-		
+
+		/* Handle timestamps based on version */
+		if (header.version >= 0x05) {
+			/* v0x05+: 64-bit timestamps, read big-endian format */
+			(**htable).timecreated = db_format_read_be64((const unsigned char *)&header.timecreated);
+			(**htable).timelastsave = db_format_read_be64((const unsigned char *)&header.timelastsave);
+		}
+		else {
+			/* v0x04 and earlier: 32-bit timestamps widened to 64-bit */
+			/* Already converted during header read above */
+			(**htable).timecreated = header.timecreated;
+			(**htable).timelastsave = header.timelastsave;
+		}
+
 		if (header.version == 2) //5.0.1: forgot to initialize flags
 			header.flags = 0;
-		
+
 		flsorted = true;
 		}
 	else {
 		header.version = 0;
-		
+
 		header.flags = 0;
-		
+
 		(**htable).timecreated = (**htable).timelastsave = timenow (); //5.0.1
-		
+
 		ix = 0;
 		}
 	
