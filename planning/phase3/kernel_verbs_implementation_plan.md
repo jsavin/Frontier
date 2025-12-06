@@ -292,6 +292,57 @@ Unlike C and most modern languages, Frontier uses **1-based array indexing:**
 - Second element is `array[2]`, etc.
 - Must be remembered when implementing any list/string operations
 
+### Operator Precedence & Evaluation
+
+**Precedence Hierarchy (Highest to Lowest):**
+
+1. **Function/Verb calls** - parentheses
+2. **Unary operators** - `++` (prefix), `--` (prefix), `!`, `@`, `^`
+3. **Multiplication/Division** - `*`, `/`, `%`
+4. **Addition/Subtraction** - `+`, `-`
+5. **Comparison operators** - `<`, `<=`, `>`, `>=`, `==`, `!=`
+6. **String/List operators** - `beginsWith`, `contains`, `endsWith`
+7. **Logical AND** - `&&` (short-circuits)
+8. **Logical OR** - `||` (short-circuits)
+9. **Assignment** - `=` (lowest precedence)
+
+**Key Rule from The Definitive Guide:**
+> "If an expression contains more than one arithmetic operator, the pairs are evaluated in left-to-right order, except that multiplication and division are evaluated before addition and subtraction. To override this order of evaluation, enclose in parentheses any expressions to be evaluated first."
+
+**Examples:**
+- `2 + 1 * 3` = 5 (multiplication first: 1 * 3 = 3, then 2 + 3 = 5)
+- `(2 + 1) * 3` = 9 (parentheses force: 2 + 1 = 3, then 3 * 3 = 9)
+- `x = y + 1` (addition happens before assignment, as intended)
+
+**Associativity:**
+- **Left-to-right:** All binary arithmetic operators, comparison operators, logical AND/OR
+- **Right-to-left:** Assignment operator, unary operators
+
+**Short-Circuit Evaluation (Critical for Implementation):**
+- `&&` (AND): If first operand is false, second operand is never evaluated
+- `||` (OR): If first operand is true, second operand is never evaluated
+- Implications: Code in second operand might not execute; side effects may not occur
+
+**Type Coercion During Evaluation:**
+- Pairwise evaluation: `3 + 4 + "5"` evaluates as `(3 + 4) + "5"` = `7 + "5"` = `"75"`
+- Each operation coerces types as needed for next operation
+- Type precedence affects coercion: boolean < short < point/long/char/string4/direction < date < single/fixed < double < rect/rgb/alias/address < string < binary < list < record
+
+**Increment/Decrement Operators:**
+- **Prefix** (`++x`, `--x`): Operation happens before surrounding expression
+- **Postfix** (`x++`, `x--`): Operation happens after surrounding expression
+
+**Special Evaluation Notes:**
+- `defined()`, `parentOf()`, `sizeOf()`, `nameOf()` don't evaluate their parameters (special forms)
+- `evaluate()` verb takes a string and evaluates it as a UserTalk expression at runtime
+- Square brackets `[]` in object references force extra evaluation
+
+**Recommendation for Verbs:**
+- Always use parentheses in complex expressions for clarity, even when not strictly necessary
+- Be aware of short-circuit evaluation when implementing verbs that produce side effects
+- Test type coercion behavior experimentally for edge cases (guide notes this can be surprising)
+- Document any assumptions about evaluation order in verb implementations
+
 ---
 
 ## Phase 3 Structure: 5 Major Stages
@@ -600,13 +651,15 @@ Document for users/developers:
 - Key chapters for verb implementation:
   - ch03.html: The Database (persistent model, scope, lifetime)
   - ch04.html: What a UserTalk Script Is Like
-  - ch05.html: Handlers and Parameters (verb signature patterns)
+  - ch05.html: Handlers and Parameters (verb signature patterns, defaults, named parameters)
   - ch06.html: Referring to Database Entries (path syntax)
   - ch07.html: The Scope of Variables and Handlers
   - ch08.html: Addresses (parameter passing by reference with @)
-  - ch09.html: Special Evaluation (defined, parentOf, sizeOf, nameOf)
-  - ch10.html: Datatypes (31 types, coercion rules, 1-based indexing)
+  - ch09.html: Special Evaluation (defined, parentOf, sizeOf, nameOf, evaluate)
+  - ch10.html: Datatypes (31 types, coercion rules, 1-based indexing, type precedence)
+  - ch15.html: Math (arithmetic operators, operator precedence, unary operators)
   - ch21.html: Threading & Semaphores
+  - ch44.html: Operators (comprehensive operator reference, short-circuit evaluation)
   - ch46.html: Verbs Reference (comprehensive verb listing)
 
 **UserTalk Verb Documentation** (ESSENTIAL REFERENCE):
