@@ -10,17 +10,21 @@
 
 ## Executive Summary
 
-| Category | Count | Verbs | Priority | Headless Potential |
-|----------|-------|-------|----------|-------------------|
-| ✅ Core Functionality | TBD | TBD | HIGH | ✅ Full |
-| ⚠️ Partial (Some verbs work) | TBD | TBD | HIGH | ✅ Partial |
-| 📱 GUI-Dependent (Headless-Safe) | TBD | TBD | MEDIUM-HIGH | ✅ Stdio Alternative |
-| 🖥️ GUI-Dependent (UI-Only) | TBD | TBD | LOW | ❌ Not feasible |
-| ❌ Platform-Specific | TBD | TBD | MEDIUM | ⚠️ Per-OS code |
-| ❌ External Service Required | TBD | TBD | LOW | ❌ Not feasible |
-| **TOTAL** | **37** | **~407** | — | — |
+| Category                         | Count  | Verbs    | Priority    | Headless Potential  |
+| -------------------------------- | ------ | -------- | ----------- | ------------------- |
+| ✅ Core Functionality             | TBD    | TBD      | HIGH        | ✅ Full              |
+| ⚠️ Partial (Some verbs work)     | TBD    | TBD      | HIGH        | ✅ Partial           |
+| 📱 GUI-Dependent (Headless-Safe) | TBD    | TBD      | MEDIUM-HIGH | ✅ Stdio Alternative |
+| 🖥️ GUI-Dependent (UI-Only)      | TBD    | TBD      | LOW         | ❌ Not feasible      |
+| ⚠️ Platform-Specific (Required)   | TBD    | TBD      | MEDIUM      | ⚠️ Per-OS code      |
+| ⚠️ Platform-Specific (Optional)   | TBD    | TBD      | LOW         | ⚠️ If available      |
+| **TOTAL**                        | **37** | **~407** | —           | —                   |
 
-**Key Insight:** GUI-Dependent verbs that provide simple dialogs, file pickers, and input prompts can often be implemented using stdio alternatives, making them feasible for headless mode and daemon scenarios.
+**Key Insights:**
+1. GUI-Dependent verbs that provide simple dialogs, file pickers, and input prompts can often be implemented using stdio alternatives, making them feasible for headless mode and daemon scenarios.
+2. **No external service dependencies found.** All 37 processors can be self-contained or gracefully degrade.
+3. Platform-Specific (Optional) processors can gracefully fail if their platform/runtime is unavailable (e.g., Python, Windows DLLs, macOS OSA).
+4. Obsolete processors (rez - resource forks) are excluded from headless scope.
 
 ---
 
@@ -217,18 +221,30 @@
 
 ---
 
-### ❌ Platform-Specific (Expected: 5-10 processors)
+### ⚠️ Platform-Specific (Required) (Expected: 5-8 processors)
 
-[Require OS integration (file metadata, system calls, etc.); need per-OS implementation]
+[Require OS integration (file metadata, system calls, etc.); need per-OS implementation for full functionality]
+
+**Examples:**
+- **sys:** OS-specific operations (processes, environment, shell commands)
+- **file:** File metadata operations (dates, types, creators, locks)
+- **launch:** Application launching (varies by OS)
 
 - [ ] Processor placeholder 1
 - [ ] Processor placeholder 2
 
 ---
 
-### ❌ External Service Required (Expected: 2-5 processors)
+### ⚠️ Platform-Specific (Optional) (Expected: 3-4 processors)
 
-[Require third-party services, specialized hardware, or deep infrastructure integration]
+[Optional runtime dependencies; can gracefully degrade if platform/language not available]
+
+**Examples:**
+- **python:** Requires Python interpreter (gracefully fail if not available)
+- **dll:** Windows DLL calling (Windows-only, can stub on other platforms)
+- **osa:** macOS Open Scripting Architecture (macOS-only, can stub on other platforms)
+
+**Handling Strategy:** Return error/unsupported message rather than crashing
 
 - [ ] Processor placeholder 1
 - [ ] Processor placeholder 2
@@ -305,14 +321,16 @@ etc.
 - Partial: [count]
 - GUI-dependent (Headless-Safe): [count]
 - GUI-dependent (UI-Only): [count]
-- Platform-specific: [count]
-- External service: [count]
+- Platform-specific (Required): [count]
+- Platform-specific (Optional): [count]
+- ~~External service required:~~ **0 (none found)**
 
 **Headless Implementation Potential:**
 - Fully implementable in headless: [count] ([~N] verbs)
-- Partially implementable (with stdio): [count] ([~N] verbs)
-- Requires GUI context: [count] ([~N] verbs)
-- Not suitable for headless: [count] ([~N] verbs)
+- Partially implementable (with stdio alternatives): [count] ([~N] verbs)
+- Requires platform/runtime availability: [count] ([~N] verbs)
+- Requires GUI context (truly UI-only): [count] ([~N] verbs)
+- Obsolete/not applicable: [count] ([~N] verbs)
 
 **By Complexity:**
 - Low: [count] ([~N] verbs)
