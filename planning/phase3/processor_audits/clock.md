@@ -62,14 +62,19 @@ Time and timing operations are essential system utilities with no GUI dependenci
 ### Key Implementation Notes
 
 **Time Representations:**
-- `clock.now()` - Unix timestamp (seconds since 1970-01-01 00:00:00 UTC)
+- `clock.now()` - **Frontier timestamp** (seconds since 1904-01-01 00:00:00 UTC - Mac epoch)
+  - **CRITICAL:** Uses Mac epoch (1904), NOT Unix epoch (1970)
+  - See `date_time_format_standard.md` for complete specification
+  - Type: `int64_t` (64-bit signed) to prevent 2040 overflow
+  - Compatible with legacy Frontier database timestamps
 - `clock.ticks()` - System uptime in 1/60th second units (legacy Mac tick count)
 - `clock.milliseconds()` - Milliseconds since process/system startup
 
 **Platform Time APIs:**
 ```c
-// clock.now() - Current time
-time_t now = time(NULL);  // POSIX standard
+// clock.now() - Current time in Frontier format (1904 epoch)
+time_t unix_now = time(NULL);  // POSIX standard (1970 epoch)
+int64_t frontier_now = unix_now + 2082844800LL;  // Convert to 1904 epoch
 
 // clock.ticks() - System ticks (1/60 second)
 // macOS: mach_absolute_time() or clock_gettime(CLOCK_MONOTONIC)
@@ -109,9 +114,11 @@ nanosleep() with 16.67ms per sixtieth
 From docserver.userland.com/clock/:
 
 **clock.now()**
-- Returns current time as long integer (Unix timestamp)
-- Seconds since January 1, 1970 00:00:00 UTC
-- Standard for date/time operations
+- Returns current time as 64-bit signed integer (Frontier timestamp)
+- Seconds since January 1, 1904 00:00:00 UTC (Mac epoch)
+- **NOT Unix epoch** - offset by 2,082,844,800 seconds (66 years)
+- Compatible with all Frontier database object timestamps
+- Range: Effectively unlimited (64-bit prevents 2040 overflow)
 
 **clock.set(time)**
 - Sets system clock to specified time
@@ -268,10 +275,12 @@ clock.set(clock.now())           → may fail with permission error
 - In headless mode without GUI event loop, may simplify to sleep
 - Consider implementing with `sys.systemTask()` calls to yield properly
 
-**Time Zones:**
-- `clock.now()` returns UTC time
+**Time Zones & Epoch:**
+- `clock.now()` returns UTC time in Frontier format (1904 epoch)
 - Local time conversion handled by date processor
-- Be consistent about UTC vs local time
+- **IMPORTANT:** All database timestamps (timecreated, timemodified) use same 1904 epoch
+- External APIs (HTTP, file metadata) use Unix epoch - conversion needed at boundaries
+- See `date_time_format_standard.md` for conversion helpers
 
 **Precision Limitations:**
 - Ticks (1/60 sec) = 16.67ms resolution
@@ -298,7 +307,9 @@ clock.set(clock.now())           → may fail with permission error
 **Standards:**
 - POSIX time APIs: time(), gettimeofday(), nanosleep(), clock_gettime()
 - Windows time APIs: GetTickCount64(), Sleep(), GetSystemTime()
-- Unix timestamp: seconds since 1970-01-01 00:00:00 UTC
+- **Frontier epoch:** seconds since 1904-01-01 00:00:00 UTC (Mac Classic standard)
+- **Unix epoch offset:** +2,082,844,800 seconds to convert from Unix to Frontier
+- See `planning/phase3/date_time_format_standard.md` for complete specification
 
 ---
 
