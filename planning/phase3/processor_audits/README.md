@@ -9,20 +9,22 @@ This directory contains detailed audits for each of the 50 processors in Frontie
 
 ## Current Status
 
-**Completed Audits:** 15/50 processors (30%)
+**Completed Audits:** 17/50 processors (34%)
 
 ### Audits Embedded in processor_audit.md (10 processors)
 Quick-win processors with detailed audits in the main file:
 - rgb, point, rectangle, math, semaphore, clipboard, base64, kb, mouse, speaker
 
-### Individual Audit Files (5 processors)
+### Individual Audit Files (7 processors)
 - ✅ [bit.md](bit.md) - 8 verbs - Core Functionality - Ready for implementation
 - ✅ [clock.md](clock.md) - 7 verbs - Core Functionality - Ready for implementation
 - ✅ [crypt.md](crypt.md) - 5 verbs - Core Functionality - EXTREME Quick Win (code exists!)
 - ✅ [date.md](date.md) - 30 verbs - Core Functionality - Ready for implementation
+- ✅ [launch.md](launch.md) - 5 verbs - GUI-Dependent - NOT recommended for headless
 - ✅ [string.md](string.md) - 60 verbs - Core Functionality - Phased implementation (encoding complexity)
+- ✅ [sys.md](sys.md) - 16 verbs - Partial Headless (9/16 verbs) - Phased implementation
 
-### Pending Audits (35 processors)
+### Pending Audits (33 processors)
 See [processor_audit.md](processor_audit.md) for the complete list and categorization.
 
 ---
@@ -40,8 +42,7 @@ See [processor_audit.md](processor_audit.md) for the complete list and categoriz
 ## Next Processors to Audit
 
 **Core Functionality (High Priority):**
-- sys (16 verbs) - system operations
-- launch (5 verbs) - process launching
+- file (86 verbs) - largest processor, file operations
 
 **Network/Database:**
 - tcp (23 verbs)
@@ -57,4 +58,4 @@ See [processor_audit.md](processor_audit.md) for the complete list and categoriz
 
 **Total Processors:** 50
 **Total Verbs:** 705
-**Estimated Audit Completion:** 30% complete (15/50 processors)
+**Estimated Audit Completion:** 34% complete (17/50 processors)
