@@ -1,6 +1,6 @@
 # Processor Audit: `thread`
 
-**Status:** ⚠️ **GUI-Dependent** (17 Kernel Verbs + 5 Scripts)
+**Status:** ✅ **HEADLESS-COMPATIBLE** (17 Kernel Verbs + 5 Scripts)
 **Audit Date:** 2025-12-06
 **Auditor:** Claude (Haiku 4.5)
 
@@ -12,8 +12,8 @@
 |----------|-------|
 | **Processor Name** | `thread` |
 | **EFP ID** | 1018 |
-| **Verb Count** | 17 (kernel verbs) + 5 (script utilities) |
-| **Window Required** | YES ⚠️ |
+| **Verb Count** | 17 (kernel verbs) + 5 (script utilities) = 22 total |
+| **Window Required** | NO (kernelverbs.rc flag is legacy artifact) |
 | **Documentation** | [thread/](../../../docs/usertalk/docserver.userland.com/thread/index.html) |
 | **Script Implementation** | `system.verbs.builtins.thread` (Frontier.root) |
 
@@ -21,16 +21,15 @@
 
 ## Category Assessment
 
-**Category:** ⚠️ **Threading/Concurrency** (GUI-Dependent)
+**Category:** ✅ **UserTalk Runtime Cooperative Threading** (HEADLESS-COMPATIBLE)
 
 **Rationale:**
-Thread processor provides multithreading and asynchronous script execution capabilities. However, the kernelverbs.rc file indicates `Window required = true`, suggesting GUI context dependencies. Thread processor is primarily used for launching scripts in separate threads for concurrent execution, event handling, and GUI responsiveness.
+Thread processor provides UserTalk runtime threading - Frontier's own cooperative multithreading mechanism built for classic MacOS legacy. Thread processor enables launching UserTalk scripts as runtime threads for background execution, with runtime-level thread management (scheduling, sleep/wake, thread introspection). Completely headless-compatible as all operations are runtime-managed, not OS/GUI-dependent.
 
-**Headless Compatibility:** ⚠️ **Partial** (Marked as window-required, but core functionality may work without GUI)
+**Headless Compatibility:** ✅ **FULL** (17/17 kernel verbs are headless-compatible)
 
-**GUI Blocking Verbs:**
-- Likely most verbs require event loop or window context for proper thread scheduling
-- Not recommended for pure headless operation
+**Note on Window Flag:**
+The `Window required = true` flag in kernelverbs.rc is a legacy artifact. Thread processor does not depend on GUI windows, event loops, or display context. It operates entirely within the UserTalk runtime.
 
 ---
 
@@ -72,55 +71,64 @@ Thread processor provides multithreading and asynchronous script execution capab
 
 ## Implementation Analysis
 
-### Complexity: **MEDIUM-HIGH** (GUI-Dependent)
+### Complexity: **MEDIUM** (Runtime Thread Management)
 
 ### Dependencies
 
 - **Other Processors:**
-  - system.verbs.builtins (for callback/event handling)
-  - UI event loop (for thread scheduling)
+  - script (compilation for thread execution)
+  - system.verbs.builtins (thread management utilities)
 - **External Services:** None
-- **OS-Specific Functionality:** YES (threading, synchronization)
-  - Requires OS thread primitives (Windows/Mac)
-  - Event loop integration (GUI event dispatch)
-- **GUI/Window Context:** YES ⚠️ - Window required for proper thread management
+- **OS-Specific Functionality:** NO (runtime-managed, not OS-managed)
+- **GUI/Window Context:** NO - Operates entirely within UserTalk runtime
+- **Event Loop:** NO - Uses Frontier's own cooperative thread scheduler
 
 ### Key Implementation Notes
 
 **Architecture:**
 
+Frontier's UserTalk runtime implements cooperative multithreading:
+
 ```
-User Script
+Main Script Thread
     ↓
 thread.evaluate() or thread.callScript()
     ↓
-Kernel creates new thread (OS-level)
+Runtime Scheduler creates new UserTalk thread
     ↓
-Thread runs in parallel with main event loop
+Thread added to scheduler's thread queue
+    ↓
+Scheduler time-slices between all runnable threads
     ↓
 Results available via getStats, getStackDump
     ↓
-Main loop checks for sleeping/completed threads
+Scheduler manages sleep/wake/kill state transitions
 ```
 
-**Thread Lifecycle:**
-1. **Create**: `thread.evaluate()` or `thread.callScript()` creates thread
-2. **Execute**: Script runs in separate OS thread
-3. **Sleep**: `thread.sleep()` pauses execution (voluntary)
-4. **Wake**: `thread.wake()` resumes paused thread
-5. **Kill**: `thread.kill()` terminates thread
-6. **Stats**: `thread.getStats()` provides execution information
+**Thread Lifecycle (Runtime-Managed):**
+1. **Create**: `thread.evaluate()` or `thread.callScript()` creates runtime thread
+2. **Execute**: Script runs concurrently (time-sliced by scheduler)
+3. **Sleep**: `thread.sleep()` removes from runnable queue (voluntary yield)
+4. **Wake**: `thread.wake()` returns to runnable queue
+5. **Kill**: `thread.kill()` terminates and removes from scheduler
+6. **Stats**: `thread.getStats()` provides execution information from scheduler
 
 **Core Verbs:**
 
-- **evaluate**: Takes script string, executes in separate thread, returns immediately (async)
+- **evaluate**: Takes script string, executes in separate runtime thread, returns immediately (async)
+  - Thread added to scheduler
+  - Runs concurrently with caller via time-slicing
+
 - **callScript**: Takes script address + parameters, calls with params in thread context
+  - Parameters passed to thread-local execution environment
+  - Result available after completion
+
 - **getStats**: Returns table with thread info including:
-  - Thread ID
+  - Thread ID (runtime-assigned)
   - Status (running, sleeping, etc.)
-  - Stack trace (array of call frames)
-  - Time slice quantum
-  - Statistics (CPU time, etc.)
+  - Stack trace (array of call frames in thread)
+  - Time slice quantum (ticks per scheduling cycle)
+  - Statistics (thread-local execution info)
 
 **Script Utilities:**
 
@@ -273,39 +281,46 @@ thread.getStats(@stats)            // Shows error info
 
 ## Priority & Sequencing
 
-**Priority:** 🟡 **MEDIUM** (Tier 2 - Advanced Use Case)
+**Priority:** 🏆 **CRITICAL** (Tier 1 - Core Runtime Feature)
 
-**Recommended Implementation Order:** Late (after core I/O processors)
+**Recommended Implementation Order:** Early (after script compilation, before higher-level processors)
 
 **Prerequisites:**
-- Event loop implementation
-- Window context availability
-- OS-specific threading APIs
+- Script compilation (script processor)
+- Runtime execution engine
+- Scheduler framework for thread management
 
 **Notes:**
-- Recommended NOT to implement for pure headless operation
-- Threading in headless context is questionable (no event loop)
-- May cause race conditions in headless mode
-- Consider disabling for headless builds
+- Essential for background script execution
+- Enables concurrent processing within headless Frontier
+- Core feature for asynchronous operations
+- Long-term TODO: Migrate to OS-managed threads for multi-core support (see TODO_future_improvements.md)
 
 ---
 
 ## Headless Compatibility Analysis
 
-**Fully Compatible:** ❌ NO (0/17 verbs)
+**Fully Compatible:** ✅ YES (17/17 verbs)
 
-**Incompatibilities:**
-- Window required (kernelverbs.rc says true)
-- Event loop dependency for thread scheduling
-- Thread scheduling tied to UI event dispatch
-- Time slicing coordination with GUI updates
-- Stack trace capture may depend on GUI context
+**Headless-Compatible Verbs (17):**
+- Thread creation: evaluate, callScript (2)
+- Thread management: exists, kill, sleep, wake, sleepFor, sleepTicks, isSleeping (7)
+- ID/count queries: getCurrentID, getCount, getNthID (3)
+- Time slicing: getTimeSlice, setTimeSlice, getDefaultTimeSlice, setDefaultTimeSlice (4)
+- Introspection: getStats, getStackDump (2)
 
-**Recommendation:** ⚠️ **Skip for Headless**
-- Threading without event loop is unreliable
-- Race conditions likely in headless context
-- Consider disabling thread processor for headless builds
-- Alternative: Simple inline execution only (no true threading)
+**Why Fully Compatible:**
+- Operates entirely within UserTalk runtime
+- No GUI windows or event loops required
+- Cooperative scheduler is runtime-managed
+- All operations are data/state management for threading
+- Perfect fit for headless background operations
+
+**Recommendation:** ✅ **ESSENTIAL FOR HEADLESS**
+- Threading is core to headless operation
+- Enables background script execution
+- Supports asynchronous processing
+- No GUI or window dependencies whatsoever
 
 ---
 
@@ -380,9 +395,10 @@ thread.getStats(@stats)            // Shows error info
 
 ## Audit Notes
 
-- **Key Finding**: kernelverbs.rc marks window as `true` - GUI context required
-- **Script Count Mismatch**: 17 kernel verbs but 22 .ut files (5 utilities/helpers)
-- **Architecture**: Full multithreading with thread pool management
-- **Recommendation**: Low priority for headless implementation
+- **Key Finding**: kernelverbs.rc `Window required = true` flag is a legacy artifact
+- **Actual Architecture**: Frontier's own cooperative threading scheduler within UserTalk runtime
+- **Headless Viability**: 100% compatible - no GUI dependencies whatsoever
+- **Implementation**: Medium complexity - requires scheduler and thread state management
+- **Recommendation**: HIGH PRIORITY for headless implementation (core feature for background operations)
 
 ---

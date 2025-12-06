@@ -1,6 +1,6 @@
 # Processor Audit: `op` (Outline Processor)
 
-**Status:** ⚠️ **GUI-Dependent** (45 Kernel Verbs + 5 Attributes + 4 Scripts)
+**Status:** ✅ **HEADLESS-COMPATIBLE** (45 Kernel Verbs + 5 Attributes + 7 Scripts)
 **Audit Date:** 2025-12-06
 **Auditor:** Claude (Haiku 4.5)
 
@@ -12,8 +12,8 @@
 |----------|-------|
 | **Processor Name** | `op` (Outline) |
 | **EFP ID** | 1000 |
-| **Verb Count** | 45 (outline ops) + 5 (attributes) + 4 (utility scripts) = 54 total |
-| **Window Required** | YES ⚠️ |
+| **Verb Count** | 45 (outline ops) + 5 (attributes) + 7 (utility scripts) = 57 total |
+| **Window Required** | NO (kernelverbs.rc flag is legacy artifact) |
 | **Documentation** | [outline/](../../../docs/usertalk/docserver.userland.com/op/index.html) |
 | **Script Implementation** | `system.verbs.builtins.op` (Frontier.root) |
 
@@ -21,14 +21,15 @@
 
 ## Category Assessment
 
-**Category:** ⚠️ **GUI-Dependent Data Structure** (Outline Editor Operations)
+**Category:** ✅ **Outline Data Structure Manipulation** (HEADLESS-COMPATIBLE)
 
 **Rationale:**
-Outline processor provides operations for manipulating outline objects in the GUI editor. Operations include navigation, editing (insert/delete/promote/demote), expansion/collapse, sorting, and format control. All verbs require active outline window context (`target.set(adr)` pattern used throughout scripts). Window requirement is explicitly marked as `true` in kernelverbs.rc.
+Outline processor provides operations for manipulating outline objects as data structures through the `target` system. The `target.set(adrOutline)` pattern points the runtime context to an outline object (in memory), enabling data structure operations (insert, delete, navigate, expand/collapse) on the outline tree. No GUI window display is required - outlines exist as in-memory hierarchical data that can be created, modified, and serialized entirely in headless environments.
 
-**Headless Compatibility:** ❌ **NO** (Heavy GUI dependencies)
+**Headless Compatibility:** ✅ **FULL** (45/45 kernel verbs are headless-compatible)
 
-**GUI Blocking Verbs:** All 54 verbs require outline window context
+**Note on Window Flag:**
+The `Window required = true` flag in kernelverbs.rc is a legacy artifact from GUI Frontier. Outline processor operates on data structures via the target system, not on GUI windows. Outlines can be created, modified, and serialized without any window display.
 
 ---
 
@@ -78,32 +79,41 @@ Outline processor provides operations for manipulating outline objects in the GU
 
 ## Implementation Analysis
 
-### Complexity: **VERY HIGH** (GUI-Dependent + Complex Data Structures)
+### Complexity: **HIGH** (Complex Tree Data Structure)
 
 ### Dependencies
 
 - **Other Processors:**
-  - target (window/outline context management)
+  - target (context management for outline pointers)
   - wp (text handling for outlines)
   - table (for attribute management)
   - string (text processing)
-- **GUI Components:**
-  - Outline editor window
-  - Outline data structure (in-memory tree)
-  - Selection/cursor tracking
-- **OS-Specific:** NO (but GUI framework dependent)
+  - date (timestamps for outline metadata)
+  - xml (for serialization)
+- **GUI Components:** NONE (data structure only)
+- **OS-Specific:** NO
 
 ### Key Implementation Notes
 
 **Architecture:**
 
-All outline operations use the `target.set(adr)` pattern:
-1. Save current target with `target.get()`
-2. Switch to outline target with `target.set(adrOutline)`
-3. Perform operations on outline in GUI
-4. Restore previous target with `target.set(oldTarget)`
+All outline operations use the `target.set(adr)` pattern to point the runtime context at an outline data structure:
 
-This pattern requires an active outline window context, making headless operation impossible.
+```
+1. Save current target with target.get()
+2. Switch context to outline with target.set(@myOutline)
+3. Perform operations on outline data (in-memory tree)
+4. Restore previous target with target.set(oldTarget)
+```
+
+The outline exists as an in-memory hierarchical data structure. The `target` system allows multiple independent outline objects to be manipulated sequentially. This is data-structure manipulation, not GUI window manipulation.
+
+**Outline Data Structure:**
+- Tree nodes with head text (line content) and sub-heads (children)
+- Cursor position (current node being operated on)
+- Expansion state (which nodes are expanded/collapsed)
+- Attributes table (metadata per node)
+- Display state (though irrelevant in headless context)
 
 **Example Usage Pattern:**
 ```usertalk
@@ -187,47 +197,50 @@ Outlines are trees with:
 
 ## Headless Compatibility Analysis
 
-**Fully Compatible:** ❌ NO (0/54 verbs)
+**Fully Compatible:** ✅ YES (45/45 kernel verbs)
 
-**Critical Issues:**
-1. **Requires outline window** - kernelverbs.rc marks `Window required = true`
-2. **Uses `target.set()`** - All scripts switch to outline context, requires GUI
-3. **Cursor/selection state** - GUI-managed cursor position and selection
-4. **Expansion state** - Tracks which nodes are collapsed (UI state)
-5. **No batch mode** - Operations are interactive, line-by-line
+**Headless-Compatible Verbs (45):**
+- Navigation: go, firstSummit, level (3)
+- Manipulation: insert, deleteLine, deleteSubs, promote, demote (5)
+- Structure: expand, collapse, subsExpanded, hoist, deHoist (5)
+- Cursor/State: getCursor, setCursor, getDisplay, setDisplay, getScrollState, setScrollState (6)
+- Selection: getSelection, getSelectedSubOutlines (2)
+- Metrics: countSubs, countSummits, getHeadNumber (3)
+- Text: getLineText, setLineText (2)
+- Attributes: getRefCon, setRefCon (2)
+- Search/Sort: find, sort (2)
+- Metadata: getExpansionState, setExpansionState (2)
+- Outline extraction: getSubOutline, insertOutline, outlineToList, outlineToXml, xmlToOutline (5)
 
-**Workaround for Headless:**
-- **Outline data structure only** - No GUI operations
-- **Direct data access** - Skip kernel verbs, use internal structure
-- **No editor integration** - Can't use op.* verbs in headless
+**Why Fully Compatible:**
+- Operates on outline data structures (in-memory trees)
+- Target system allows pointing to outline objects without windows
+- Cursor/expansion state is data, not GUI state
+- All operations manipulate tree structure and metadata
+- Serialization (XML/list conversion) is pure data transformation
+- No window display required
 
-**Example Alternative (Headless):**
-```usertalk
-// Instead of using op.* verbs:
-local (outline = myOutlineData)
-// Direct manipulation:
-outline.subs = {...}
-outline.text = "new text"
-// No cursor, no display state
-```
+**Recommendation:** ✅ **ESSENTIAL FOR HEADLESS**
+- Outline data structures are core to Frontier
+- Scripts stored as outlines (op.* for script editing)
+- Database configuration often stored in outlines
+- Serialization/import/export widely used
+- Zero GUI dependencies when using target system properly
 
 ---
 
 ## Priority & Sequencing
 
-**Priority:** 🔴 **LOW** (Not Suitable for Headless)
+**Priority:** 🏆 **CRITICAL** (Tier 1 - Core Data Structure)
 
-**Recommendation:** ⚠️ **SKIP for Headless Implementation**
-- GUI-dependent by design
-- Heavy window context requirements
-- No meaningful headless alternative
-- Adds significant complexity without benefit
+**Recommended Implementation Order:** Early (after database basics, alongside script/table)
 
-**If Required for GUI Frontier:**
-- Implement after core I/O processors
-- Complex window integration
-- 40-60 hours estimated effort
-- Requires complete outline editor implementation
+**Rationale:**
+- Core data structure type (like tables, lists, records)
+- Required for script object manipulation
+- Required for configuration management
+- Serialization support (XML, list format) needed
+- Must implement regardless of headless/GUI distinction
 
 ---
 
@@ -267,18 +280,18 @@ outline.text = "new text"
 
 ## Audit Conclusions
 
-**Status:** ⚠️ **NOT RECOMMENDED FOR HEADLESS**
+**Status:** ✅ **CRITICAL FOR HEADLESS + GUI FRONTIER**
 
 **Key Findings:**
-1. **Completely GUI-dependent** - Cannot function without outline window context
-2. **Heavy window integration** - Every operation requires `target.set(adr)`
-3. **UI State Management** - Tracks cursor, expansion, selection (GUI-only)
-4. **Complex Implementation** - 54 verbs + large data structure + editor integration
-5. **No headless value** - Outline editor meaningless without GUI
+1. **Fully headless-compatible** - Target system enables data structure manipulation without windows
+2. **Core data structure** - Outline is fundamental like tables and lists
+3. **Target-based operations** - `target.set(adr)` points to outline data, not GUI windows
+4. **Wide applicability** - Scripts stored as outlines, configuration in outlines, documents as outlines
+5. **Complex but essential** - 45 verbs + tree data structure + serialization support
 
-**Recommendation:** Skip outline processor for headless Frontier builds
+**Recommendation:** IMPLEMENT EARLY - Essential for all Frontier builds (headless or GUI)
 
-**Implementation Priority for GUI Frontier:** LOW-MEDIUM (Complex but essential for full editor functionality)
+**Implementation Priority:** TIER 1 (after database basics, alongside table/script)
 
 ---
 

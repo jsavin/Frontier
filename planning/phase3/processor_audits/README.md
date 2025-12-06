@@ -24,14 +24,14 @@ Quick-win processors with detailed audits in the main file:
 - ✅ [file.md](file.md) - 86 verbs - Core Functionality - Phased implementation (Tier 1: 37 verbs, Tier 2-3: 20 verbs, Skip: 29 verbs)
 - ✅ [inetd.md](inetd.md) - 1 kernel verb (+5 script verbs) - Core Network - Critical for web server
 - ✅ [launch.md](launch.md) - 5 verbs - GUI-Dependent - NOT recommended for headless
-- ✅ [op.md](op.md) - 45 verbs + 5 attributes - GUI-Dependent outline processor - SKIP for headless
-- ✅ [script.md](script.md) - 13 verbs - Mixed (62% headless-compatible compilation)
+- ✅ [op.md](op.md) - 45 verbs + 5 attributes + 7 scripts - CRITICAL core data structure - 100% headless-compatible
+- ✅ [script.md](script.md) - 13 verbs + 2 scripts - Mixed (62% headless-compatible compilation)
 - ✅ [string.md](string.md) - 60 verbs - Core Functionality - Phased implementation (encoding complexity)
 - ✅ [sys.md](sys.md) - 16 verbs - Partial Headless (9/16 verbs) - Phased implementation
 - ✅ [table.md](table.md) - 18 verbs + 13 scripts - Mixed (65% headless-compatible, 35% GUI-dependent)
 - ✅ [tcp.md](tcp.md) - 23 verbs - Core Network - Foundation for all network operations
-- ✅ [thread.md](thread.md) - 17 verbs + 5 scripts - GUI-Dependent threading - NOT recommended for headless
-- ✅ [webserver.md](webserver.md) - 7 verbs - Core Network - Mostly UserTalk scripts (needs script review)
+- ✅ [thread.md](thread.md) - 17 verbs + 5 scripts - CRITICAL UserTalk runtime threading - 100% headless-compatible
+- ✅ [webserver.md](webserver.md) - 7 verbs + 66 scripts - Core Network - HTTP server functionality
 
 ### Pending Audits (29 processors)
 See [processor_audit.md](processor_audit.md) for the complete list and categorization.
