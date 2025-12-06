@@ -1094,7 +1094,7 @@ boolean opverbpacktotext (hdlexternalvariable h, Handle htext) {
 	} /*opverbpacktotext*/
 
 
-boolean opverbgettimes (hdlexternalvariable h, long *timecreated, long *timemodified) {
+boolean opverbgettimes (hdlexternalvariable h, int64_t *timecreated, int64_t *timemodified) {
 	
 	register hdloutlinevariable hv = (hdloutlinevariable) h;
 	register hdloutlinerecord ho;

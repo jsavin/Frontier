@@ -137,6 +137,12 @@ typedef struct typortablediskheader {
 
 	OSType platform; /* 'mac ' or 'win ' for character mapping */
 
+	/* Reserved expansion area: 1020 bytes instead of 1024 because:
+	 * Total header = 1068 bytes (spec requirement)
+	 * Fields above = 48 bytes (2+4+4+2+2+4+8+8+4+2+4+4 = 48)
+	 * Reserved = 1068 - 48 = 1020 bytes
+	 * The _Static_assert below verifies total struct size is exactly 1068 bytes.
+	 */
 	byte reserved[1020]; /* zeroed expansion area for future metadata */
 
 	} typortablediskheader;

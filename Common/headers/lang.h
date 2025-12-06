@@ -495,11 +495,17 @@ typedef struct tyhashtable {
 	int64_t timecreated, timelastsave; /*number of seconds since 1/1/04*/
 	
 	langvaluecallback valueroutine; /*for EFP's -- C routine that evaluates verbs*/
-	
+
 	short cttmpstack;
-	
+
 	tyvaluerecord tmpstack []; /*temps generated during expression evaluation*/
 	} tyhashtable, *ptrhashtable, **hdlhashtable;
+
+/* 2025-12-05: Verify 8-byte alignment of 64-bit timestamp fields under #pragma pack(2) */
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+_Static_assert(offsetof(tyhashtable, timecreated) % 8 == 0, "tyhashtable.timecreated must be 8-byte aligned");
+_Static_assert(offsetof(tyhashtable, timelastsave) % 8 == 0, "tyhashtable.timelastsave must be 8-byte aligned");
+#endif
 	
 
 typedef boolean (*langerrorcallback) (long, long, short, hdlhashtable *, bigstring);

@@ -77,7 +77,7 @@ extern boolean opverbpacktotext_legacy (hdlexternalvariable, Handle);
 
 extern boolean opverbgetsize (hdlexternalvariable, long *);
 
-extern boolean opverbgettimes (hdlexternalvariable, long *, long *);
+extern boolean opverbgettimes (hdlexternalvariable, int64_t *, int64_t *);
 
 extern boolean opverbsettimes (hdlexternalvariable, long, long);
 

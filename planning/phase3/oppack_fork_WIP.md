@@ -57,6 +57,14 @@ Migration works automatically through dispatch - no additional code needed!
 2. **Save v7**: `opverbpack()` → `oppackoutline()` → `oppack()` modern (writes v4)
 3. **Result**: Outline automatically upgraded from v2/v3 → v4 during migration
 
+**Timestamp Widening**:
+When migrating from v6→v7, 32-bit timestamps are automatically widened to 64-bit through natural C type conversion:
+- Legacy unpacker (`opunpack_legacy`) reads 32-bit values from disk into `uint32_t` variables
+- These values are assigned to `int64_t` fields in the in-memory `tyoutlinerecord` structure
+- C's implicit conversion safely widens the 32-bit unsigned values to 64-bit signed values
+- Modern packer (`oppack`) writes the full 64-bit values to v7 disk format
+- No data loss occurs because all valid 32-bit timestamps (0 to 2^32-1) fit within int64_t range
+
 ### 4. v4 Portable Header - DONE ✓
 
 Implemented v4 portable header per planning docs (1068 bytes total):
@@ -101,6 +109,16 @@ The _Static_assert in oppack_modern.c ensures struct size is exactly 1068 bytes 
 ✓ **Compile-time tests**: All pass (struct size, alignment verified by _Static_assert)
 ✓ **db_format_tests**: Pass (database format tests still work)
 ✓ **runtime_tests**: Pass (language and serializer round-trips work)
+
+**Note on deleted test files**:
+The following standalone test files were removed during development as they were superseded by the comprehensive db_format_tests:
+- `test_64bit_direct.c` - Early verification of 64-bit timestamp storage (now covered by db_format_tests)
+- `test_migration_verification.c` - Manual migration checks (now covered by save_migration_tests)
+- `test_real_databases.c` - Ad-hoc testing with user databases (functionality verified in db_format_tests)
+- `test_64bit_simple.c`, `test_64bit_verification.c`, `test_struct_layout.c`, `test_v7_load.c` - Exploratory tests consolidated into final test suite
+- Various test runner scaffolds and debug utilities that are no longer needed
+
+All functionality from these deleted tests is now covered by the maintained test suite (db_format_tests, save_migration_tests, runtime_tests).
 
 **Integration testing** (to be done with real databases):
 1. **v6 Read**: Load v6 database with v2/v3 outlines → verify dispatch to oppack_legacy

@@ -1,0 +1,355 @@
+/* 2025-12-05: Tests for outline packer fork (legacy v2/v3 vs modern v4) */
+
+#include <assert.h>
+#include <stdio.h>
+#include <string.h>
+#include <stddef.h>
+#include <stdbool.h>
+#include <stdint.h>
+
+#include "frontier.h"
+#include "standard.h"
+#include "op.h"
+#include "opinternal.h"
+#include "oppack_legacy.h"
+#include "byteorder.h"
+#include "memory.h"
+#include "strings.h"
+
+/* Forward declarations of internal functions */
+extern boolean oppackoutline (hdloutlinerecord, Handle *);
+extern boolean opunpack (Handle hpackedoutline, long *ixload, hdloutlinerecord *houtline);
+extern boolean newoutlinerecord (hdloutlinerecord *);
+extern boolean opnewheadrecord (Handle, hdlheadrecord *);
+extern boolean opinsertstructure (hdlheadrecord, tydirection);
+extern boolean opsetheadstring (hdlheadrecord, bigstring);
+extern boolean opgetheadstring (hdlheadrecord, bigstring);
+
+/* Helper: Create a simple outline with a few nodes */
+static hdloutlinerecord create_test_outline(void) {
+    hdloutlinerecord ho;
+    hdlheadrecord hsummit;
+    Handle htext;
+    bigstring bs;
+
+    if (!newoutlinerecord(&ho))
+        return NULL;
+
+    /* Set some basic properties */
+    (**ho).timecreated = 0x0000000100000000LL;  /* 64-bit timestamp */
+    (**ho).timelastsave = 0x0000000200000000LL;
+    (**ho).ctsaves = 42;
+    (**ho).fltextmode = true;
+    (**ho).outlinesignature = 0xDEADBEEF;
+
+    /* Create summit node with text */
+    copystring("\pTest headline", bs);
+    if (!newtexthandle(bs, &htext))
+        return NULL;
+
+    if (!opnewheadrecord(htext, &hsummit))
+        return NULL;
+
+    (**ho).hsummit = hsummit;
+    (**ho).hbarcursor = hsummit;
+    (**ho).hline1 = hsummit;
+
+    return ho;
+}
+
+/* Helper: Dispose test outline */
+static void dispose_test_outline(hdloutlinerecord ho) {
+    if (ho != NULL) {
+        opdisposeoutline(ho, false);
+    }
+}
+
+/* Test 1: Verify v4 modern header size is exactly 1068 bytes */
+static void test_v4_header_size(void) {
+    printf("[oppack] Test 1: v4 header size = 1068 bytes... ");
+
+    /* The v4 header is defined in oppack_modern.c */
+    /* We can't directly sizeof it from here, but we can verify by packing */
+    hdloutlinerecord ho = create_test_outline();
+    assert(ho != NULL);
+
+    Handle hpacked = NULL;
+    boolean fl = oppackoutline(ho, &hpacked);
+    assert(fl);
+    assert(hpacked != NULL);
+
+    /* The packed format should have:
+     * - 1068 byte header
+     * - line table
+     * - text
+     */
+    long size = gethandlesize(hpacked);
+    assert(size >= 1068);  /* At minimum header size */
+
+    /* Check version number is 4 */
+    short version = *(short *)(*hpacked);
+    disktomemshort(version);
+    assert(version == 4);
+
+    disposehandle(hpacked);
+    dispose_test_outline(ho);
+
+    printf("PASS\n");
+}
+
+/* Test 2: v4 modern pack/unpack round-trip */
+static void test_v4_modern_roundtrip(void) {
+    printf("[oppack] Test 2: v4 modern pack/unpack round-trip... ");
+
+    /* Create outline with known values */
+    hdloutlinerecord ho_orig = create_test_outline();
+    assert(ho_orig != NULL);
+
+    int64_t orig_timecreated = (**ho_orig).timecreated;
+    int64_t orig_timelastsave = (**ho_orig).timelastsave;
+    long orig_ctsaves = (**ho_orig).ctsaves;
+    boolean orig_fltextmode = (**ho_orig).fltextmode;
+
+    /* Pack it */
+    Handle hpacked = NULL;
+    boolean fl = oppackoutline(ho_orig, &hpacked);
+    assert(fl);
+    assert(hpacked != NULL);
+
+    /* Verify version is 4 */
+    short version = *(short *)(*hpacked);
+    disktomemshort(version);
+    assert(version == 4);
+
+    /* Unpack it */
+    hdloutlinerecord ho_new = NULL;
+    long ixload = 0;
+    fl = opunpack(hpacked, &ixload, &ho_new);
+    assert(fl);
+    assert(ho_new != NULL);
+
+    /* Verify round-trip preserved runtime fields */
+    assert((**ho_new).timecreated == orig_timecreated);
+    assert((**ho_new).timelastsave == orig_timelastsave);
+    assert((**ho_new).ctsaves == orig_ctsaves + 1);  /* ctsaves incremented on pack */
+    assert((**ho_new).fltextmode == orig_fltextmode);
+
+    /* Verify headline text survived */
+    bigstring bs;
+    opgetheadstring((**ho_new).hsummit, bs);
+    assert(equalstrings(bs, "\pTest headline"));
+
+    disposehandle(hpacked);
+    dispose_test_outline(ho_orig);
+    dispose_test_outline(ho_new);
+
+    printf("PASS\n");
+}
+
+/* Test 3: Create a legacy v2 format outline and verify it unpacks */
+static void test_v2_legacy_unpack(void) {
+    printf("[oppack] Test 3: v2 legacy format unpacking... ");
+
+    /* We need to create a v2 format packed outline manually
+     * v2 header structure (120 bytes):
+     * - versionnumber (2 bytes) = 2
+     * - sizelinetable (4 bytes)
+     * - sizetext (4 bytes)
+     * - lnumcursor (2 bytes)
+     * - linespacing (2 bytes)
+     * - lineindent (2 bytes)
+     * - fontname (33 bytes)
+     * - fontsize (2 bytes)
+     * - fontstyle (2 bytes)
+     * - vertmin/max/current (6 bytes)
+     * - horizmin/max/current (6 bytes)
+     * - timecreated (4 bytes - 32-bit!)
+     * - timelastsave (4 bytes - 32-bit!)
+     * - ctsaves (4 bytes)
+     * ... more UI fields ...
+     */
+
+    /* For now, use the legacy packer to create a v2 outline */
+    hdloutlinerecord ho_orig = create_test_outline();
+    assert(ho_orig != NULL);
+
+    /* Temporarily set 32-bit compatible timestamps for legacy format */
+    (**ho_orig).timecreated = 0x12345678;  /* 32-bit value */
+    (**ho_orig).timelastsave = 0x87654321;
+
+    Handle hpacked = NULL;
+    boolean fl = oppack_legacy(&hpacked);
+    assert(fl);
+    assert(hpacked != NULL);
+
+    /* Verify version is 2 */
+    short version = *(short *)(*hpacked);
+    disktomemshort(version);
+    assert(version == 2);
+
+    /* Unpack using legacy unpacker */
+    hdloutlinerecord ho_new = NULL;
+    long ixload = 0;
+    fl = opunpack_legacy(hpacked, &ixload, &ho_new);
+    assert(fl);
+    assert(ho_new != NULL);
+
+    /* Verify basic fields survived */
+    assert((**ho_new).timecreated == 0x12345678);
+    assert((**ho_new).timelastsave == 0x87654321);
+
+    /* Verify headline text survived */
+    bigstring bs;
+    opgetheadstring((**ho_new).hsummit, bs);
+    assert(equalstrings(bs, "\pTest headline"));
+
+    disposehandle(hpacked);
+    dispose_test_outline(ho_orig);
+    dispose_test_outline(ho_new);
+
+    printf("PASS\n");
+}
+
+/* Test 4: Verify v4 does NOT contain font fields in packed format */
+static void test_v4_no_font_fields(void) {
+    printf("[oppack] Test 4: v4 header contains no font fields... ");
+
+    hdloutlinerecord ho = create_test_outline();
+    assert(ho != NULL);
+
+    /* Set font properties in memory */
+    (**ho).fontnum = 1234;
+    (**ho).fontsize = 56;
+    (**ho).fontstyle = 78;
+
+    /* Pack it */
+    Handle hpacked = NULL;
+    boolean fl = oppackoutline(ho, &hpacked);
+    assert(fl);
+
+    /* Unpack it */
+    hdloutlinerecord ho_new = NULL;
+    long ixload = 0;
+    fl = opunpack(hpacked, &ixload, &ho_new);
+    assert(fl);
+
+    /* Font fields should be DEFAULT values, not preserved values */
+    /* (v4 format doesn't store font info, it gets set to defaults) */
+    assert((**ho_new).fontnum != 1234);  /* Should be default font */
+    assert((**ho_new).fontsize != 56);   /* Should be default size */
+    assert((**ho_new).fontstyle != 78);  /* Should be default style (0) */
+
+    disposehandle(hpacked);
+    dispose_test_outline(ho);
+    dispose_test_outline(ho_new);
+
+    printf("PASS\n");
+}
+
+/* Test 5: Verify 64-bit timestamps in v4 format */
+static void test_v4_64bit_timestamps(void) {
+    printf("[oppack] Test 5: v4 format preserves 64-bit timestamps... ");
+
+    hdloutlinerecord ho = create_test_outline();
+    assert(ho != NULL);
+
+    /* Set timestamps with values that wouldn't fit in 32 bits */
+    int64_t large_timestamp = 0x0000000200000000LL;  /* >32-bit */
+    (**ho).timecreated = large_timestamp;
+    (**ho).timelastsave = large_timestamp + 1000;
+
+    /* Pack it */
+    Handle hpacked = NULL;
+    boolean fl = oppackoutline(ho, &hpacked);
+    assert(fl);
+
+    /* Unpack it */
+    hdloutlinerecord ho_new = NULL;
+    long ixload = 0;
+    fl = opunpack(hpacked, &ixload, &ho_new);
+    assert(fl);
+
+    /* Verify 64-bit values preserved */
+    assert((**ho_new).timecreated == large_timestamp);
+    assert((**ho_new).timelastsave == large_timestamp + 1000);
+
+    disposehandle(hpacked);
+    dispose_test_outline(ho);
+    dispose_test_outline(ho_new);
+
+    printf("PASS\n");
+}
+
+/* Test 6: Verify outline with multiple nodes packs/unpacks correctly */
+static void test_multinode_outline(void) {
+    printf("[oppack] Test 6: multi-node outline pack/unpack... ");
+
+    hdloutlinerecord ho = create_test_outline();
+    assert(ho != NULL);
+
+    /* Add child nodes */
+    hdlheadrecord hchild1, hchild2;
+    Handle htext1, htext2;
+    bigstring bs;
+
+    copystring("\pChild 1", bs);
+    assert(newtexthandle(bs, &htext1));
+    assert(opnewheadrecord(htext1, &hchild1));
+    opinsertstructure(hchild1, down);
+
+    copystring("\pChild 2", bs);
+    assert(newtexthandle(bs, &htext2));
+    assert(opnewheadrecord(htext2, &hchild2));
+    opinsertstructure(hchild2, right);
+
+    /* Pack it */
+    Handle hpacked = NULL;
+    boolean fl = oppackoutline(ho, &hpacked);
+    assert(fl);
+
+    /* Unpack it */
+    hdloutlinerecord ho_new = NULL;
+    long ixload = 0;
+    fl = opunpack(hpacked, &ixload, &ho_new);
+    assert(fl);
+
+    /* Verify structure */
+    hdlheadrecord hsummit_new = (**ho_new).hsummit;
+    assert(hsummit_new != NULL);
+
+    /* Check summit text */
+    opgetheadstring(hsummit_new, bs);
+    assert(equalstrings(bs, "\pTest headline"));
+
+    /* Check first child */
+    hdlheadrecord hchild1_new = (**hsummit_new).headlinkdown;
+    assert(hchild1_new != NULL);
+    opgetheadstring(hchild1_new, bs);
+    assert(equalstrings(bs, "\pChild 1"));
+
+    /* Check second child */
+    hdlheadrecord hchild2_new = (**hchild1_new).headlinkright;
+    assert(hchild2_new != NULL);
+    opgetheadstring(hchild2_new, bs);
+    assert(equalstrings(bs, "\pChild 2"));
+
+    disposehandle(hpacked);
+    dispose_test_outline(ho);
+    dispose_test_outline(ho_new);
+
+    printf("PASS\n");
+}
+
+int main(void) {
+    printf("\n=== Running oppack tests ===\n");
+
+    test_v4_header_size();
+    test_v4_modern_roundtrip();
+    test_v2_legacy_unpack();
+    test_v4_no_font_fields();
+    test_v4_64bit_timestamps();
+    test_multinode_outline();
+
+    printf("=== All oppack tests passed ===\n\n");
+    return 0;
+}

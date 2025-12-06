@@ -107,7 +107,7 @@ boolean pictverbgetsize (hdlexternalvariable h, long *size) {
     return true;
 }
 
-boolean pictverbgettimes (hdlexternalvariable h, long *timecreated, long *timemodified) {
+boolean pictverbgettimes (hdlexternalvariable h, int64_t *timecreated, int64_t *timemodified) {
     (void) h;
     if (timecreated)
         *timecreated = 0;

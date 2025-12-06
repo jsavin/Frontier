@@ -60,8 +60,15 @@ typedef struct typictrecord {
 	boolean flevalexpressions: 1; /*if true, parse all text that begins with an = sign*/
 	
 	boolean flscaletofitwindow: 1; /*if true, scale window down to fit inside window*/
-	
+
 	} typictrecord, *ptrpictrecord, **hdlpictrecord;
+
+/* 2025-12-05: Verify 8-byte alignment of 64-bit timestamp fields under #pragma pack(2) */
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+_Static_assert(offsetof(typictrecord, timecreated) % 8 == 0, "typictrecord.timecreated must be 8-byte aligned");
+_Static_assert(offsetof(typictrecord, timelastsave) % 8 == 0, "typictrecord.timelastsave must be 8-byte aligned");
+#endif
+
 #pragma options align=reset
 	
 	

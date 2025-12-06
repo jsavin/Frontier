@@ -468,7 +468,7 @@ boolean menuverbpacktotext (hdlexternalvariable hvariable, Handle htext) {
 	} /*menuverbpacktotext*/
 
 
-boolean menuverbgettimes (hdlexternalvariable h, long *timecreated, long *timemodified) {
+boolean menuverbgettimes (hdlexternalvariable h, int64_t *timecreated, int64_t *timemodified) {
 	
 	register hdlmenuvariable hv = (hdlmenuvariable) h;
 	register hdlmenurecord hm;

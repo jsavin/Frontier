@@ -538,7 +538,7 @@ boolean wpverbgetsize(hdlexternalvariable h, long *size) {
     return true;
 }
 
-boolean wpverbgettimes(hdlexternalvariable h, long *timecreated, long *timemodified) {
+boolean wpverbgettimes(hdlexternalvariable h, int64_t *timecreated, int64_t *timemodified) {
     wp_portable_state *state = wp_portable_state_require(h);
     if (state == NULL)
         return false;

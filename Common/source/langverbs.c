@@ -494,7 +494,7 @@ typedef enum tylangtoken { /*verbs that are processed by langverbs.c*/
 
 
 
-static boolean gettimesverb (hdltreenode hparam1, long *timecreated, long *timemodified) {
+static boolean gettimesverb (hdltreenode hparam1, int64_t *timecreated, int64_t *timemodified) {
 	
 	/*
 	get the creation date and modification date of the object indicated in hparam1
@@ -531,25 +531,25 @@ static boolean settimesverb (tylangtoken token, hdltreenode hparam1, tyvaluereco
 	bigstring bs;
 	tyvaluerecord v;
 	hdlexternalvariable hv;
-	unsigned long timecreated = 0;
-	unsigned long timemodified = 0;
+	int64_t timecreated = 0;
+	int64_t timemodified = 0;
 	unsigned long newtime;
 	hdlhashnode hnode;
-	
+
 	if (!getvarvalue (hparam1, 1, &htable, bs, &v, &hnode))
 		return (false);
-	
+
 	flnextparamislast = true;
-	
+
 	if (!getdatevalue (hparam1, 2, &newtime))
 		return (false);
-	
+
 	if (v.valuetype != externalvaluetype)
 		return (setbooleanvalue (false, vreturned));
-	
+
 	hv = (hdlexternalvariable) v.data.externalvalue;
-	
-	if (!langexternalgettimes (hv, (long *)(&timecreated), (long *)(&timemodified), hnode))
+
+	if (!langexternalgettimes (hv, &timecreated, &timemodified, hnode))
 		return (false);
 	
 	if (token == settimecreatedfunc)
@@ -2944,7 +2944,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 	
 		
 		case timecreatedfunc: {
-			long timecreated, timemodified;
+			int64_t timecreated, timemodified;
 			
 			if (!gettimesverb (hparam1, &timecreated, &timemodified))
 				return (setbooleanvalue (false, v));
@@ -2953,7 +2953,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 		
 		case timemodifiedfunc: {
-			long timecreated, timemodified;
+			int64_t timecreated, timemodified;
 			
 			if (!gettimesverb (hparam1, &timecreated, &timemodified))
 				return (setbooleanvalue (false, v));

@@ -170,6 +170,13 @@ typedef struct tywprecord {
 	
 	boolean fleditingnow; //between pre- and postedit?
 	} tywprecord;
+
+/* 2025-12-05: Verify 8-byte alignment of 64-bit timestamp fields under #pragma pack(2) */
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+_Static_assert(offsetof(tywprecord, timecreated) % 8 == 0, "tywprecord.timecreated must be 8-byte aligned");
+_Static_assert(offsetof(tywprecord, timelastsave) % 8 == 0, "tywprecord.timelastsave must be 8-byte aligned");
+#endif
+
 #pragma options align=reset
 
 
