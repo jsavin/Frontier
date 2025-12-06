@@ -269,6 +269,12 @@ typedef struct tydisktablerecord_v4 {
 	int32_t flags;
 } tydisktablerecord_v4;
 
+/* Temporarily override pack(2) to allow 8-byte alignment for 64-bit timestamps */
+#if defined(__clang__) || defined(__GNUC__)
+#pragma pack(push, 8)
+#else
+#pragma pack(8)
+#endif
 
 /* Modern v0x05 structure with 64-bit timestamps - for v7 databases */
 typedef struct tydisktablerecord { /*current disk format*/
@@ -281,10 +287,11 @@ typedef struct tydisktablerecord { /*current disk format*/
 	/* Followed by TABLE_HEADER_RESERVED_BYTES (1024 bytes) */
 } tydisktablerecord, *ptrdisktablerecord, **hdldisktablerecord;
 
+/* Restore pack(2) for following structures */
 #if defined(__clang__) || defined(__GNUC__)
 #pragma pack(pop)
 #else
-#pragma options align=reset
+#pragma pack(2)
 #endif
 
 typedef enum tylinetableitemflags {
@@ -2981,43 +2988,77 @@ boolean hashpacktable (hdlhashtable htable, boolean flmemory, Handle *hpackedtab
 	*/
 	
 	register boolean fl = false;
-	tydisktablerecord header;
 	typackinforecord packrec;
 	Handle h1, h2;
-	
-	clearbytes (&header, sizeof (header));
+	boolean use_64bit = db_format_mode_current().use_64bit_format;
 
-	header.version = host_to_disk_int16((int16_t)tablediskversion);
+	/* Check database format mode to determine which version to write */
+	if (use_64bit) {
+		/* v7 mode: Write v0x05 with 64-bit timestamps */
+		tydisktablerecord header;
+		clearbytes (&header, sizeof (header));
 
-	header.sortorder = host_to_disk_int16((int16_t) (**htable).sortorder);
+		header.version = host_to_disk_int16((int16_t)tablediskversion);
+		header.sortorder = host_to_disk_int16((int16_t) (**htable).sortorder);
+		header._pad = 0; /* padding for 8-byte alignment */
 
-	header._pad = 0; /* padding for 8-byte alignment */
+		/* Write 64-bit timestamps in big-endian format */
+		db_format_write_be64(&header.timecreated, (uint64_t) (**htable).timecreated);
+		db_format_write_be64(&header.timelastsave, (uint64_t) (**htable).timelastsave);
 
-	/* Write 64-bit timestamps in big-endian format */
-	db_format_write_be64(&header.timecreated, (uint64_t) (**htable).timecreated);
+		#ifdef xmlfeatures
+			if ((**htable).flxml)
+				header.flags = host_to_disk_int32(flxml);
+			else
+				header.flags = 0;
+		#endif
 
-	db_format_write_be64(&header.timelastsave, (uint64_t) (**htable).timelastsave);
-	
-	#ifdef xmlfeatures
-		if ((**htable).flxml)
-			header.flags = host_to_disk_int32(flxml);
-		else
-			header.flags = 0;
-	#endif
-	
-	clearbytes (&packrec, sizeof (packrec));
-	
-	packrec.flmustsave = *flmustsave;
+		clearbytes (&packrec, sizeof (packrec));
+		packrec.flmustsave = *flmustsave;
+		openhandlestream (nil, &packrec.s1);
+		openhandlestream (nil, &packrec.s2);
 
-	openhandlestream (nil, &packrec.s1);
+		if (!writehandlestream (&packrec.s1, &header, sizeof (header)))
+			goto exit;
+	}
+	else {
+		/* v6 mode: Write v0x04 with 32-bit timestamps for backward compatibility */
+		tydisktablerecord_v4 header_v4;
+		clearbytes (&header_v4, sizeof (header_v4));
 
-	openhandlestream (nil, &packrec.s2);
+		header_v4.version = host_to_disk_int16((int16_t)0x04);
+		header_v4.sortorder = host_to_disk_int16((int16_t) (**htable).sortorder);
 
-	if (!writehandlestream (&packrec.s1, &header, sizeof (header)))
-		goto exit;
+		/* Truncate 64-bit timestamps to 32-bit for v6 compatibility */
+		header_v4.timecreated = (uint32_t) host_to_disk_int32((int32_t) (**htable).timecreated);
+		header_v4.timelastsave = (uint32_t) host_to_disk_int32((int32_t) (**htable).timelastsave);
+
+		#ifdef xmlfeatures
+			if ((**htable).flxml)
+				header_v4.flags = host_to_disk_int32(flxml);
+			else
+				header_v4.flags = 0;
+		#endif
+
+		clearbytes (&packrec, sizeof (packrec));
+		packrec.flmustsave = *flmustsave;
+		openhandlestream (nil, &packrec.s1);
+		openhandlestream (nil, &packrec.s2);
+
+		if (!writehandlestream (&packrec.s1, &header_v4, sizeof (header_v4)))
+			goto exit;
 
 #if TABLE_HEADER_RESERVED_BYTES > 0
-	if (tablediskversion >= TABLE_HEADER_RESERVED_VERSION) {
+		/* v0x04 also has reserved bytes */
+		unsigned char reserved[TABLE_HEADER_RESERVED_BYTES] = {0};
+		if (!writehandlestream(&packrec.s1, reserved, sizeof(reserved)))
+			goto exit;
+#endif
+	}
+
+#if TABLE_HEADER_RESERVED_BYTES > 0
+	/* Write reserved bytes for v0x05 */
+	if (use_64bit) {
 		unsigned char reserved[TABLE_HEADER_RESERVED_BYTES] = {0};
 		if (!writehandlestream(&packrec.s1, reserved, sizeof(reserved)))
 			goto exit;
