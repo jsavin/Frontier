@@ -55,6 +55,12 @@ Priority Key
 - Requires updating: runtime arithmetic operations to use 64-bit math
 - Requires updating: `system.compiler.language.constants.infinity` to 64-bit value
 
+**Related Question - Floating Point Types:**
+- **TODO:** Investigate current floating point implementation (32-bit float vs 64-bit double?)
+- If currently 32-bit: consider moving to 64-bit doubles for consistency and precision
+- This is not blocking the 64-bit integer decision but should be investigated and decided as part of the overall type system modernization
+- May affect: math operations, date/time calculations with fractional seconds, financial calculations, scientific scripts
+
 **Scope of Work:**
 1. Update runtime arithmetic operations to use 64-bit signed integer math (add, subtract, multiply, divide, modulo, comparisons)
 2. Update `system.compiler.language.constants.infinity` from legacy value 2,147,483,647 (max 32-bit signed) to 9,223,372,036,854,775,807 (max 64-bit signed)
