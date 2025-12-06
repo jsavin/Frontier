@@ -490,6 +490,8 @@ typedef struct tyhashtable {
 	
 	short sortorder; /*up to the application to understand what this means*/
 
+	unsigned char _pad[6]; /*padding for 8-byte alignment of timecreated*/
+
 	int64_t timecreated, timelastsave; /*number of seconds since 1/1/04*/
 	
 	langvaluecallback valueroutine; /*for EFP's -- C routine that evaluates verbs*/

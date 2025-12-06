@@ -63,6 +63,8 @@ typedef struct tydiskpictrecord {
 
 	diskrect windowrect;
 
+	unsigned char _pad[6]; /*padding for 8-byte alignment of timecreated*/
+
 	int64_t timecreated, timelastsave; /*maybe we'll use these at some later date?*/
 	
 	long ctsaves; /*the number of times this structure has been saved*/
@@ -90,6 +92,8 @@ typedef struct tyOLD42diskpictrecord {
 	short versionnumber; /*this structure is stored on disk*/
 
 	diskrect windowrect;
+
+	unsigned char _pad[6]; /*padding for 8-byte alignment of timecreated*/
 
 	int64_t timecreated, timelastsave; /*maybe we'll use these at some later date?*/
 	

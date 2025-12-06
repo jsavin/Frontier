@@ -240,6 +240,8 @@ typedef struct tyoutlinerecord {
 
 	tyscrollinfo horizscrollinfo; /*horiz scrollbar info*/
 
+	unsigned char _pad[2]; /*padding for 8-byte alignment of timecreated*/
+
 	int64_t timecreated, timelastsave; /*number of seconds since 1/1/04*/
 	
 	long ctsaves; /*the number of times this structure has been saved*/

@@ -121,8 +121,10 @@ typedef struct tyversion2diskheader {
 	int16_t fontsize, fontstyle;
 	
 	int16_t vertmin, vertmax, vertcurrent; /*for structs that don't get their own file*/
-	
+
 	int16_t horizmin, horizmax, horizcurrent;
+
+	unsigned char _pad[6]; /*padding for 8-byte alignment of timecreated*/
 
 	int64_t timecreated, timelastsave;
 
@@ -149,7 +151,7 @@ typedef struct tyversion2diskheader {
 	int16_t waste [3]; /*room to grow*/
 	} tyversion2diskheader;
 
-_Static_assert (sizeof (tyversion2diskheader) == 128, "tyversion2diskheader must be 128 bytes");
+_Static_assert (sizeof (tyversion2diskheader) == 134, "tyversion2diskheader must be 134 bytes (with padding)");
 
 
 typedef struct tyoppackinfo {

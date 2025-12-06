@@ -285,9 +285,9 @@ extern boolean langexternalsearch (tyvaluerecord, boolean *);
 
 extern boolean langexternalcontinuesearch (hdlexternalvariable);
 
-extern boolean langexternalgettimes (hdlexternalhandle, long *, long *, hdlhashnode);
+extern boolean langexternalgettimes (hdlexternalhandle, int64_t *, int64_t *, hdlhashnode);
 
-extern boolean langexternalsettimes (hdlexternalhandle, long, long, hdlhashnode);
+extern boolean langexternalsettimes (hdlexternalhandle, int64_t, int64_t, hdlhashnode);
 
 extern boolean langexternalfindusedblocks (hdlexternalhandle, bigstring);
 extern boolean langexternalpacktotext_legacy (hdlexternalhandle, Handle);

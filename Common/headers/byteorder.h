@@ -142,9 +142,7 @@
 
 	inline long long dolonglongswap (long long foo) {
 
-		__asm__("mov foo,%rax\nbswap %rax\nmov %rax,foo\n");
-
-		return (foo);
+		return __builtin_bswap64(foo);
 		} /*dolonglongswap*/
 
 	inline short doshortswap (short foo) {
@@ -172,14 +170,27 @@
 
 	__inline long long dolonglongswap (long long foo) {
 
-		_asm
-			{
-			mov rax,foo
-			bswap rax
-			mov foo,rax
-			}
-
-		return (foo);
+		#if defined(_WIN64)
+			/* 64-bit Windows: use 64-bit registers */
+			_asm
+				{
+				mov rax,foo
+				bswap rax
+				mov foo,rax
+				}
+			return (foo);
+		#else
+			/* 32-bit Windows: use portable C implementation */
+			foo = ((((foo) >> 56) & 0x00000000000000ffLL)
+					| (((foo) >> 40) & 0x000000000000ff00LL)
+					| (((foo) >> 24) & 0x0000000000ff0000LL)
+					| (((foo) >> 8)  & 0x00000000ff000000LL)
+					| (((foo) << 8)  & 0x000000ff00000000LL)
+					| (((foo) << 24) & 0x0000ff0000000000LL)
+					| (((foo) << 40) & 0x00ff000000000000LL)
+					| (((foo) << 56) & 0xff00000000000000LL));
+			return (foo);
+		#endif
 		} /*dolonglongswap*/
 
 	__inline short doshortswap (short foo) {

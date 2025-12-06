@@ -113,6 +113,8 @@ typedef struct tywpheader { /*format of text item header stored on disk*/
 
 	short versionnumber; /*important, this structure is saved on disk*/
 
+	unsigned char _pad[6]; /*padding for 8-byte alignment of timecreated*/
+
 	int64_t timecreated, timelastsave;
 	
 	long ctsaves; /*the number of times the structure has been saved on disk*/
@@ -147,6 +149,8 @@ typedef struct tywpheader { /*format of text item header stored on disk*/
 typedef struct tyOLD42wpheader { /*format of text item header stored on disk*/
 
 	short versionnumber; /*important, this structure is saved on disk*/
+
+	unsigned char _pad[6]; /*padding for 8-byte alignment of timecreated*/
 
 	int64_t timecreated, timelastsave;
 	
