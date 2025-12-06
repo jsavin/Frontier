@@ -38,8 +38,8 @@ Priority Key
 
 ## Phase 1/2 — UserTalk Runtime: 64-bit Signed Integers as Default Type
 
-**Priority:** P0 — CRITICAL ARCHITECTURAL DECISION. Must be finalized BEFORE runtime implementation begins.
-**Timeline:** Decide and lock in during Phase 1 planning; impacts all subsequent runtime work and database format.
+**Priority:** P0 — CRITICAL ARCHITECTURAL DECISION. Must be finalized BEFORE processor verb implementation begins.
+**Timeline:** Decide and lock in during Phase 1 planning; impacts all runtime arithmetic operations.
 
 **Rationale:**
 - `clock.now()` must return 64-bit integers to prevent 2040 timestamp overflow
@@ -48,37 +48,32 @@ Priority Key
 - Modern languages (Python 3, JavaScript, Go) default to 64-bit integers
 - Maintains backward compatibility: 32-bit values work fine in 64-bit context
 
-**Decision Required:**
-- **YES: Make all UserTalk signed integers 64-bit by default** (RECOMMENDED)
-  - Eliminates overflow/wraparound bugs across entire scripting ecosystem
-  - Simplifies type system (single int type, not int/long distinction)
-  - Database format impact: must re-run all migrations after this change
-  - Requires updating: runtime type system, database serialization, integer coercion rules, all arithmetic operations
+**Decision:** YES - Make all UserTalk signed integers 64-bit by default (RECOMMENDED)
+- Eliminates overflow/wraparound bugs across entire scripting ecosystem
+- Simplifies type system (single int type, not int/long distinction)
+- **NO database format change required** (we're the only ones using the modern format)
+- Requires updating: runtime arithmetic operations to use 64-bit math
+- Requires updating: `system.compiler.language.constants.infinity` to 64-bit value
 
-- OR **NO: Keep int/long distinction**
-  - Requires explicit int64 types for clock operations
-  - Complex casting rules between int and int64
-  - Error-prone when scripts mix 32-bit and 64-bit arithmetic
-  - NOT RECOMMENDED due to cognitive overhead and bugs
-
-**Scope (if YES chosen):**
-- Update runtime type system to make all signed integers 64-bit
-- Modify database format version number and serialization format
-- Update all arithmetic operations to use 64-bit math
-- Re-run v6→v7→v8 migrations after format change
-- Update documentation to reflect new integer semantics
-- Comprehensive testing of type coercion and arithmetic
+**Scope of Work:**
+1. Update runtime arithmetic operations to use 64-bit signed integer math (add, subtract, multiply, divide, modulo, comparisons)
+2. Update `system.compiler.language.constants.infinity` to be the maximum 64-bit signed integer value (9,223,372,036,854,775,807)
+   - This constant is used in many functions (e.g., `string.mid(s, 11, infinity)` to trim first 10 chars)
+   - Must be generated in the code that builds in-memory constants
+3. Test all integer arithmetic edge cases (overflow, underflow, comparisons)
+4. Update documentation to reflect new integer semantics
 
 **Impact:**
-- **Database Format:** Version number changes; existing v7 databases must be re-migrated
+- **Database Format:** NO CHANGE (we control both format and reader)
+- **Runtime:** All integer arithmetic operations now 64-bit
 - **Performance:** 64-bit ops slightly cheaper on 64-bit platforms (majority case)
 - **Compatibility:** Safe on both 32-bit and 64-bit platforms (truncates on 32-bit, but rare)
-- **Scripts:** Transparent change for most scripts; fixes latent bugs
+- **Scripts:** Transparent change for most scripts; fixes latent bugs (no code changes needed)
 
 **Timeline:**
-- Decision: Immediately (blocks Phase 1 planning)
-- Implementation: Early Phase 1 (before runtime interpreter)
-- Database migration: After implementation, before Phase 1 completion
+- Decision: Immediately (unlocks Phase 1 planning)
+- Implementation: Early Phase 1 (before processor verb implementation)
+- Testing: Comprehensive integer arithmetic test suite
 
 **Related Items:**
 - Phase 3 — Date/Time Representation Modernization (line 260)
@@ -311,11 +306,11 @@ Reference Docs
 ## Phase 3 — Date/Time Representation Modernization
 
 **Priority:** P1 — Needed for accurate headless behavior and future interop.
-**Depends on:** Phase 1/2 decision to use 64-bit signed integers (see above)
-**Timeline:** Start once the `clock.*` and `script.*` verbs run cleanly via search paths AND after 64-bit integer decision is locked in.
+**Depends on:** Phase 1/2 64-bit integer implementation (see above)
+**Timeline:** Start once the `clock.*` and `script.*` verbs run cleanly via search paths AND after 64-bit integer work is complete.
 
 Goals
-- Preserve the legacy Mac epoch semantics (seconds since the Frontier "fixed date") so migrated databases remain faithful.
+- Preserve the legacy Mac epoch semantics (seconds since the Frontier "fixed date") so databases remain faithful.
 - Add a portable conversion layer that can emit and consume POSIX-friendly timestamps (milliseconds since the Unix epoch) without losing timezone fidelity.
 - Codify the historical timezone heuristic (user override → server-configured TZ → local system clock) so headless/CLI builds match the classic UI.
 - **NOTE:** Once all UserTalk integers are 64-bit, timestamps are automatically safe past 2040 and don't need special int64 handling in user scripts.

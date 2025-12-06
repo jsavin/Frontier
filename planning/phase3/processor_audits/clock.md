@@ -102,26 +102,26 @@ nanosleep() with 16.67ms per sixtieth
 - Time zone considerations for `clock.now()`
 - Leap seconds (generally ignored by Unix time)
 
-**Type System Architecture - IMPORTANT:**
+**Type System Architecture - P0 DECISION MADE:**
 
-UserTalk integer types need to be consistently 64-bit in the new world:
+UserTalk integer types will be consistently 64-bit in the new world:
 - **CRITICAL:** `clock.now()` must return 64-bit to handle timestamps past 2040
-- **Consistency Issue:** If `clock.now()` returns int64 but other arithmetic operations use 32-bit ints, we have a type system mismatch
-- **Architectural Question:** Should ALL UserTalk integers be 64-bit by default?
+- **CRITICAL:** `clock.ticks()` and `clock.milliseconds()` must be 64-bit to prevent wraparound on long-running daemons
 
-This raises a system-wide design decision:
-1. **Option A:** All UserTalk ints default to 64-bit (simplest, most consistent)
-2. **Option B:** Keep int/long distinction with explicit 64-bit types for time operations (complex, error-prone)
-3. **Option C:** Use compiler flags/settings to control integer width across system (fragile, non-portable)
-
-**Recommendation:** Consider moving to 64-bit integers as the default for all UserTalk arithmetic. This:
+**Decision:** All UserTalk signed integers default to 64-bit
 - Solves 2040 timestamp overflow permanently
 - Prevents integer overflow bugs in general scripting
-- Aligns with modern language design (Python 3, JavaScript, many languages now use 64-bit by default)
-- Maintains backward compatibility for most use cases (32-bit values still work in 64-bit context)
-- Requires careful testing of database serialization (format compatibility)
+- Aligns with modern language design (Python 3, JavaScript)
+- Maintains backward compatibility for most use cases (32-bit values work in 64-bit context)
 
-See: TODO_future_improvements.md for long-term integer type modernization plan
+**Implementation Impact:**
+- Update runtime arithmetic operations to use 64-bit math
+- Update `system.compiler.language.constants.infinity` to maximum 64-bit signed value (9,223,372,036,854,775,807)
+  - This constant is used in functions like `string.mid(s, 11, infinity)` for end-of-string operations
+- NO database format change required (we control both format and reader)
+- Scripts require no code changes (transparent upgrade)
+
+See: `planning/TODO_future_improvements.md` for implementation plan
 
 **Type Coercion:**
 - Time values are 64-bit signed integers
@@ -308,17 +308,16 @@ clock.set(clock.now())           → may fail with permission error
 - OS sleep granularity varies (typically 1-15ms)
 - High-precision timing may need special APIs (clock_gettime with CLOCK_MONOTONIC)
 
-**Long-Running Processes:**
-- Tick/millisecond counters wrap on 32-bit systems (~24 days for ticks, ~49 days for milliseconds)
-- **CRITICAL:** Using 64-bit for ticks/milliseconds prevents wraparound on long-running daemons
-- This reinforces the argument for 64-bit UserTalk integers as default
+**Long-Running Daemons:**
+- With 32-bit systems: tick counters wrap every ~24 days, millisecond counters every ~49 days
+- **SOLVED:** Using 64-bit for all integers prevents wraparound on long-running daemons
+- This was a key driver for the P0 decision to make all UserTalk integers 64-bit
 
-**Integer Type System Consistency:**
-- If clock verbs return 64-bit int64 values, user scripts will mix int and int64 types
-- Arithmetic between int and int64 requires implicit casting rules (complex, error-prone)
-- **Consider:** Making all UserTalk integers 64-bit to eliminate this confusion
-- Database serialization must preserve format compatibility across upgrades
-- This is a pre-implementation decision that affects runtime design
+**Implementation Notes:**
+- No database format change required (we own both format and reader)
+- Runtime upgrade is transparent to scripts (no code changes needed)
+- Affects only internal arithmetic operations and the `infinity` constant
+- Existing scripts continue to work without modification
 
 ---
 
