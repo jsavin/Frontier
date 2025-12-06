@@ -116,8 +116,9 @@ UserTalk integer types will be consistently 64-bit in the new world:
 
 **Implementation Impact:**
 - Update runtime arithmetic operations to use 64-bit math
-- Update `system.compiler.language.constants.infinity` to maximum 64-bit signed value (9,223,372,036,854,775,807)
+- Update `system.compiler.language.constants.infinity` from legacy 2,147,483,647 (32-bit max) to 9,223,372,036,854,775,807 (64-bit max)
   - This constant is used in functions like `string.mid(s, 11, infinity)` for end-of-string operations
+  - Generated in the code that builds in-memory language constants
 - NO database format change required (we control both format and reader)
 - Scripts require no code changes (transparent upgrade)
 

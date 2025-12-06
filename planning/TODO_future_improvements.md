@@ -57,7 +57,7 @@ Priority Key
 
 **Scope of Work:**
 1. Update runtime arithmetic operations to use 64-bit signed integer math (add, subtract, multiply, divide, modulo, comparisons)
-2. Update `system.compiler.language.constants.infinity` to be the maximum 64-bit signed integer value (9,223,372,036,854,775,807)
+2. Update `system.compiler.language.constants.infinity` from legacy value 2,147,483,647 (max 32-bit signed) to 9,223,372,036,854,775,807 (max 64-bit signed)
    - This constant is used in many functions (e.g., `string.mid(s, 11, infinity)` to trim first 10 chars)
    - Must be generated in the code that builds in-memory constants
 3. Test all integer arithmetic edge cases (overflow, underflow, comparisons)
