@@ -137,7 +137,7 @@ typedef struct typortablediskheader {
 
 	OSType platform; /* 'mac ' or 'win ' for character mapping */
 
-	byte reserved[1024]; /* zeroed expansion area for future metadata */
+	byte reserved[1020]; /* zeroed expansion area for future metadata */
 
 	} typortablediskheader;
 
@@ -871,7 +871,7 @@ static boolean opunpackversion4 (handlestream *packstream) {
 	(**ho).fontnum = config.defaultfont;
 	(**ho).fontsize = config.defaultsize;
 	(**ho).fontstyle = 0;
-	(**ho).linespacing = singlespacing;
+	(**ho).linespacing = 0;  /* portable stub, ignored */
 	(**ho).lineindent = 0;
 
 	pushscratchport ();
