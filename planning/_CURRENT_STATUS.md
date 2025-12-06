@@ -2,10 +2,11 @@
 
 Status
 - State: In Progress
-- Phase: Carbon Migration / Runtime Modernization + Verb Processor Automation
-- Last Updated: 2025-12-04 (Evening)
-- Owner: Codex
+- Phase: Carbon Migration / Runtime Modernization + Verb Processor Automation + Phase 3 Verb Porting Prep
+- Last Updated: 2025-12-05 (Afternoon)
+- Owner: Codex / Claude
 - Notes: Primary hand-off summary for active work only.
+- **2025-12-05 (Claude - Phase 3 Verb Porting Preparation)**: Completed comprehensive preparation for Phase 3 kernel verb implementation. Created three major planning documents: (1) `planning/phase3/kernel_verbs_implementation_plan.md` - 818-line master plan covering UserTalk documentation, Frontier runtime architecture, parameter handling, operator precedence, and SCNS (Simple Cross-Network Scripting). (2) `planning/phase3/processor_audit.md` - template/skeleton for Stage 1 categorization of all 37 stub processors with innovative stdio alternatives for GUI verbs (dialogs, file pickers). Analyzed external service dependencies and found none - all 37 processors are self-contained. Split platform-specific into Required (sys, file, launch) and Optional (python, dll, osa - gracefully degrade). (3) Updated implementation plan with correct UserTalk syntax (no spaces in param=value), accurate parameter mixing rules (ordered must start with first param, named after), and comprehensive operator precedence. Key insight: Many GUI-dependent verbs can be implemented using stdio (alert→println, file picker→directory listing), greatly expanding headless viability. Ready to begin actual processor audit in next session.
 - **2025-12-04 (Claude - Kernel Verbs Automation)**: Completed automated kernel verb initialization system. Created `tools/kernelverbs_parser/parse_kernelverbs.py` that extracts all 51 EFP processor definitions (707 total verbs) from `kernelverbs.rc`. Generates `kernel_verbs_init.c` with whitelist-based filtering (currently 2 implemented: file 86 verbs, frontier 14 verbs). Integrated into Makefile with auto-regeneration. Addressed all critical code review issues. Ready for merge as PR #59. See `planning/progress_reports/2025-12-04-kernel-verbs-automation-milestone.md` for full details.
 - **2025-12-04 (Claude - Critical Fix)**: Fixed structure alignment bug in v7 database header. Both `tydatabaserecord` and `tydatabaserecord_64` now have explicit 2-byte padding after `flags` field to ensure `views` array starts at offset 16 (8-byte aligned). Updated sizes: tydatabaserecord=118 bytes, tydatabaserecord_64=90 bytes. All database documentation updated to reflect corrected format.
 - 2025-12-01 (Codex): Linked migration tests to the real table layer (HEADLESS_LINKS_REAL_DB), dropped format unpacking in headless, and fixed writable opens so `test_migration` passes end-to-end on the v6 fixture (no more Save As/dbclose crash).
@@ -29,6 +30,16 @@ Status
 - Re-run migrator/CLI smoke on additional legacy roots once payload widening lands; stash logs.
 
 ## Next Steps
+
+### Verb Porting (Phase 3 - Top Priority)
+- **Immediate:** Begin Stage 1 (Processor Audit) - systematically review all 37 stub processors using `planning/phase3/processor_audit.md` template. Fill in categorization, complexity estimates, and dependencies for each processor.
+- **Stage 1 Output:** Populated `processor_audit.md` with full assessment of all processors, quick-win identification, and implementation sequencing recommendations.
+- **Stage 2:** Set up comprehensive test framework (test templates, CI integration, coverage tracking).
+- **Stage 3:** Implement quick-win processors (base64, bit, clock, rgb, point, rectangle, semaphore - estimated 5-10 low-complexity processors).
+- **Key Resource:** Refer to `planning/phase3/kernel_verbs_implementation_plan.md` (818 lines) for UserTalk semantics, operator precedence, parameter handling, Frontier runtime architecture, and SCNS details.
+- **GUI Verbs Strategy:** Implement dialog/file picker verbs using stdio alternatives (printf/readln for alerts, directory listing for file pickers) to maximize headless functionality.
+
+### Database Migration (Ongoing)
 - Follow `planning/phase3/db_context_completion_plan.md`: migrate Save As swap/free-list/release-stack paths and callers (incl. headless) to explicit `db_context`, then trim legacy wrappers and validate with broader test suites.
 - Build payload widening + round-trip tests: synthetic legacy payloads repacked via modern writer, then decoded via modern reader; assert logical equality and BE64-only encodings.
 - Route runtime/CLI v7 opens through the strict modern reader once payload widening is ready; rerun `make -C tests runtime_tests` and `make -C tests cli_runtime_tests`.
