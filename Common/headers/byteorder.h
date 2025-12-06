@@ -53,7 +53,7 @@
 	#define memshort(x) doshortswap(x)
 	#define disktomemshort(x) shortswap(x)
 	#define disktomemlong(x)  longswap(x)
-	#define disktomlonglong(x)  longlongswap(x)
+	#define disktomemlonglong(x)  longlongswap(x)
 	#define memtodiskshort(x) shortswap(x)
 	#define memtodisklong(x) longswap(x)
 	#define memtodisklonglong(x) longlongswap(x)
@@ -74,7 +74,7 @@
 	#define memshort(x) x
 	#define disktomemshort(x)
 	#define disktomemlong(x)
-	#define disktomlonglong(x)
+	#define disktomemlonglong(x)
 	#define memtodiskshort(x)
 	#define memtodisklong(x)
 	#define memtodisklonglong(x)

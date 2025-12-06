@@ -130,6 +130,8 @@ typedef struct tytableformats { /*one of these for every window that's open*/
 
 /* This is an old version structure used only for conversion purposes*/
 
+#pragma pack(push, 8)  /* Temporarily allow 8-byte alignment for int64_t fields */
+
 typedef struct tyversion1tablediskrecord { /*packed version of tableformats, suitable for disk storage*/
 
 	short versionnumber; /*this record is stored on disk*/
@@ -148,7 +150,7 @@ typedef struct tyversion1tablediskrecord { /*packed version of tableformats, sui
 
 	short horizmin, horizmax, horizcurrent; /*values for the scrollbars*/
 
-	unsigned char _pad[2]; /*padding for 8-byte alignment of timecreated*/
+	unsigned char _pad[6]; /*padding for 8-byte alignment of timecreated*/
 
 	int64_t timecreated, timelastsave; /*maybe we'll use these at some later date?*/
 	
@@ -170,7 +172,12 @@ typedef struct tyversion1tablediskrecord { /*packed version of tableformats, sui
 	
 	/*the variable-length intarrays are tacked on at the end of this record*/
 	} tyversion1tablediskrecord, *ptrversion1tablediskrecord, **hdlversion1tablediskrecord;
-	
+
+#pragma pack(pop)  /* Restore previous packing */
+
+_Static_assert(offsetof(tyversion1tablediskrecord, timecreated) % 8 == 0, "tyversion1tablediskrecord.timecreated must be 8-byte aligned");
+_Static_assert(offsetof(tyversion1tablediskrecord, timelastsave) % 8 == 0, "tyversion1tablediskrecord.timelastsave must be 8-byte aligned");
+
 
 typedef struct tyversion2tablediskrecord { /*packed version of tableformats, suitable for disk storage*/
 	
