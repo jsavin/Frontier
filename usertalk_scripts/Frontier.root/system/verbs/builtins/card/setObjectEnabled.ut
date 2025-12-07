@@ -1,0 +1,1 @@
+on setObjectEnabled (name, flag) {	new (tableType, @atts);	atts.enab = boolean (flag);	return (card.setObjectAttributes (name, @atts))}

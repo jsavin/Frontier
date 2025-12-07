@@ -1,0 +1,1 @@
+«start up all daemons with startup set truelocal (adrtable = @user.inetd.config);local (ct = sizeof (adrtable^), i, nomad);for i = 1 to ct {	nomad = @adrtable^ [i];	while typeof (nomad^) == addresstype {nomad = nomad^};	if defined (nomad^.startup) {		if nomad^.startup {			try {inetd.startOne (nomad)}}}}

@@ -1,0 +1,1 @@
+on textcolor (textsize, adrprestring, adrpoststring) {	adrprestring^ = adrprestring^ + "<font color=\"" + myrules.textcolor + "\">";	adrpoststring^ = adrpoststring^ + "</font>"}

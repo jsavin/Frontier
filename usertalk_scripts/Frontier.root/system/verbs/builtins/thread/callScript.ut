@@ -1,0 +1,1 @@
+on callScript (adrScript, paramList, adrParamTable) { //6.1	kernel (thread.callScript)}

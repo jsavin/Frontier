@@ -1,0 +1,1 @@
+local (scriptCode = "Sub Main\r\nsdfj adh asdflh\r\nEnd Sub");com.callScript (scriptCode, "VBScript", "Main", {})

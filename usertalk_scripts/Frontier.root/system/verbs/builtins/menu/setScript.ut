@@ -1,0 +1,1 @@
+on setScript (val) {	kernel (menu.setscript)}

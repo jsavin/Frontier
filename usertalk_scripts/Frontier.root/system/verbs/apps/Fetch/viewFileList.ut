@@ -1,0 +1,1 @@
+on viewFileList (obj) { «list the contents of a remote directory in a text window	return (appleEvent (Fetch.id, 'FTCh', 'VwFL', '----', objspec (obj)))}

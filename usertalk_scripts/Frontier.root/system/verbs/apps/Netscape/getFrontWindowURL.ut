@@ -1,0 +1,1 @@
+on getFrontWindowURL () {	local (windowlist, windowinfo);	windowlist = netscape.getWindowList ();	if sizeof (windowlist) == 0 {		return ("")};	windowinfo = netscape.getWindowInfo (windowlist [1]);	return (windowinfo [1])};«bundle «test code	«dialog.alert (getFrontWindowURL ())

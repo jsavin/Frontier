@@ -1,0 +1,1 @@
+on geturl (s) { «Open a FileMaker Pro database using a URL specification	return (appleEvent (Filemaker.id, 'GURL', 'GURL', '----', string (s)))}

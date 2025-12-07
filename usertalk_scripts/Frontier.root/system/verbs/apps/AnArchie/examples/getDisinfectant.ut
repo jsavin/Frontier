@@ -1,0 +1,1 @@
+on getDisinfectant () {	if (file.getFolderDialog("Select Destination for Disinfectant", @dest)) {		anarchie.mget("disinfectant", "/pub/disinfectant/", "ftp.acns.nwu.edu", dest)}}

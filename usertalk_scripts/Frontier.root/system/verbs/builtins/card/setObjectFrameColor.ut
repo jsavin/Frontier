@@ -1,0 +1,1 @@
+on setObjectFrameColor (name, color) {	new (tableType, @atts);	atts.frmc = rgb (color);	return (card.setObjectAttributes (name, @atts))}

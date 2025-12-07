@@ -1,0 +1,1 @@
+on getPatternInfo (cp, adrInfoTable) {	kernel (re.getPatternInfo)}

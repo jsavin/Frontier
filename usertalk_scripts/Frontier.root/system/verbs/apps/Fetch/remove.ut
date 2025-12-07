@@ -1,0 +1,1 @@
+on remove (host, path, user, password, url) { «delete a file or directory	return (appleEvent (Fetch.id, 'Arch', 'Rmve', 'FTPh', string (host), 'FTPc', string (path), 'ArGU', string (user), 'ArGp', string (password), 'ArUR', string (url)))}

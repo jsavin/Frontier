@@ -1,0 +1,1 @@
+on goHome () {	return (appleEvent (netscape.id, 'MOSS', 'home', '----', ""))}

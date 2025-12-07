@@ -1,0 +1,1 @@
+on httpReadUrl (url) { //factor some oft-occurring code	«9/27/99; 8:00:51 PM by DW		«Pass us an http url and we return the result.	local (urllist = string.urlsplit (url));	return (string.httpResultSplit (tcp.httpClient (server:urllist [2], path:urllist [3])))};«bundle //test code	«dialog.alert (httpReadUrl ("http://www.scripting.com/default.html"))

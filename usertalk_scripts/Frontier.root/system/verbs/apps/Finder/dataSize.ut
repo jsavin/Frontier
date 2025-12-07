@@ -1,0 +1,1 @@
+on dataSize (obj, as = nil) { «Return the size in bytes of an object	«Note:  for most Finder objects, the results are essentially meaningless	return (appleEvent (Finder.id, 'core', 'dsiz', '----', Finder.finderSpec (obj), 'rtyp', string4 (as)))}

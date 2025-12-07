@@ -1,0 +1,1 @@
+on addToGlossary (name, value) {	user.html.glossary.[name] = value;	return (true)}

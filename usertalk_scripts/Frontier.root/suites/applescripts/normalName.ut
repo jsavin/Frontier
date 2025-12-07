@@ -1,0 +1,1 @@
+on normalName (name) { «turn a file system name into an odb name	local (len = sizeof (name), i, ch);	for i = len downto 1 {		ch = name [i];		if (ch == '.') or (ch == ' ') or (ch == '/') or (ch == '\\') {			name = string.delete (name, i, 1);			name [i] = string.upper (name [i])}};	return (name)}

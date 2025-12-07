@@ -1,0 +1,1 @@
+on CountRecords (db, foundSet = true, reportError = false) {	on doIt () {		with objectModel, filemaker {			if foundSet {				return (count (window[db], record))}			else {				return (count (database [db], record))}}};	if reportError {		return (doIt ())}	else {		try {			return (doIt ())}		else {			return (false)}}}

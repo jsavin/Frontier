@@ -1,0 +1,1 @@
+local (x = number (clock.now () - Frontier.shipdate) / 60);msg (string.addCommas (x) + " minutes since last release of Frontier.");clock.sleepFor (60) «sleep for 60 seconds

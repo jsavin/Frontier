@@ -1,0 +1,1 @@
+on memAvailString () {	return ((memAvail () / 1024) + "K");	}«return (string.kBytes (memAvail ()))

@@ -1,0 +1,1 @@
+on make (new, at = nil, withProperties = nil) { «Make a new element	return (appleEvent (BBEdit.id, 'core', 'crel', 'kocl', string4 (new), 'insh', at, 'prdt', withProperties))}

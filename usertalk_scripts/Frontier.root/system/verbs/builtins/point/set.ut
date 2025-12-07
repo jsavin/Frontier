@@ -1,0 +1,1 @@
+on set (h, v) {	kernel (point.set)}

@@ -1,0 +1,1 @@
+on setFileCreator (creator) {	local (list = finderMenu.getSelectionList ());	for f in list {		file.setCreator (f, creator);		msg ("Set creator of \"" + file.fileFromPath (f) + "\" to '" + creator + "'")};	msg ("")}

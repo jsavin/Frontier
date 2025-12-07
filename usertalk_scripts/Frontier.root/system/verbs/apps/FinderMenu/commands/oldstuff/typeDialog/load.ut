@@ -1,0 +1,1 @@
+path = "Macintosh HD:Apps:Frontier:Dialogs:Creator & Type Dialog.DW";rez.getResource (path, 'DLOG', 25000, @findermenu.commands.typeDialog.DLOG);rez.getResource (path, 'DITL', 25000, @findermenu.commands.typeDialog.DITL)

@@ -1,0 +1,1 @@
+on pageFilter (adrPageTable) {	html.addPageToGlossary (adrPageTable);	return (true)}

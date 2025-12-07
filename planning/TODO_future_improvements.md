@@ -36,9 +36,76 @@ Priority Key
   - Remove the Paige submodule/shims once our native RTF generator is fully validated.
   - Update `_CURRENT_STATUS.md` / `docs/database_architecture.md` when Paige is fully removed so future work knows the dependency is gone.
 
+## Phase 1/2 — UserTalk Runtime: 64-bit Signed Integers as Default Type
+
+**Priority:** P0 — CRITICAL ARCHITECTURAL DECISION. Must be finalized BEFORE processor verb implementation begins.
+**Timeline:** Decide and lock in during Phase 1 planning; impacts all runtime arithmetic operations.
+
+**Rationale:**
+- `clock.now()` must return 64-bit integers to prevent 2040 timestamp overflow
+- `clock.ticks()` and `clock.milliseconds()` must be 64-bit to prevent wraparound on long-running daemons (~24-49 days)
+- Mixing 32-bit and 64-bit types in UserTalk scripts creates complex casting rules and type confusion
+- Modern languages (Python 3, JavaScript, Go) default to 64-bit integers
+- Maintains backward compatibility: 32-bit values work fine in 64-bit context
+
+**Decision:** YES - Make all UserTalk signed integers 64-bit by default (RECOMMENDED)
+- Eliminates overflow/wraparound bugs across entire scripting ecosystem
+- Simplifies type system (single int type, not int/long distinction)
+- **NO database format change required** (we're the only ones using the modern format)
+- Requires updating: runtime arithmetic operations to use 64-bit math
+- Requires updating: `system.compiler.language.constants.infinity` to 64-bit value
+
+**Related Decision - Floating Point Types:**
+
+Legacy Frontier had (from `tedchoward/Frontier/Common/headers/lang.h`):
+- **singlevaluetype (23):** C `float` (32-bit single-precision)
+- **doublevaluetype (11):** C `double` (64-bit double-precision, stored as Handle)
+
+Type distinctions in legacy:
+- `int` (16-bit short)
+- `long` (32-bit)
+- `float`/`single` (32-bit)
+- `double` (64-bit)
+
+**Decision: Floating Point Strategy**
+- **Recommendation:** Keep doubles as 64-bit (already the precision type in legacy)
+- Consider deprecating or simplifying the float/single distinction (legacy inconsistency)
+- For UserTalk: default to `double` for all floating point, keep legacy `float` for compatibility if needed
+- This aligns with the 64-bit precision theme (64-bit integers, 64-bit floats)
+- May affect: math operations, date/time calculations with fractional seconds, financial calculations, scientific scripts
+
+This decision is parallel to but separate from the integer 64-bit work; can be decided concurrently.
+
+**Scope of Work:**
+1. Update runtime arithmetic operations to use 64-bit signed integer math (add, subtract, multiply, divide, modulo, comparisons)
+2. Update `system.compiler.language.constants.infinity` from legacy value 2,147,483,647 (max 32-bit signed) to 9,223,372,036,854,775,807 (max 64-bit signed)
+   - This constant is used in many functions (e.g., `string.mid(s, 11, infinity)` to trim first 10 chars)
+   - Must be generated in the code that builds in-memory constants
+3. Test all integer arithmetic edge cases (overflow, underflow, comparisons)
+4. Update documentation to reflect new integer semantics
+
+**Impact:**
+- **Database Format:** NO CHANGE (we control both format and reader)
+- **Runtime:** All integer arithmetic operations now 64-bit
+- **Performance:** 64-bit ops slightly cheaper on 64-bit platforms (majority case)
+- **Compatibility:** Safe on both 32-bit and 64-bit platforms (truncates on 32-bit, but rare)
+- **Scripts:** Transparent change for most scripts; fixes latent bugs (no code changes needed)
+
+**Timeline:**
+- Decision: Immediately (unlocks Phase 1 planning)
+- Implementation: Early Phase 1 (before processor verb implementation)
+- Testing: Comprehensive integer arithmetic test suite
+
+**Related Items:**
+- Phase 3 — Date/Time Representation Modernization (line 260)
+- Phase 3 — Hash Table Modernisation (line 202)
+- Clock processor audit at `planning/phase3/processor_audits/clock.md`
+
+---
+
 ## Phase 1/2 — Memory Management Audit (Rolling)
 
-**Priority:** P0 — Must stay ahead of crash/UB risk  
+**Priority:** P0 — Must stay ahead of crash/UB risk
 **Timeline:** Begin immediately; finish core audit alongside Phase 2 architecture work.
 
 Goals
@@ -199,9 +266,39 @@ Scope
 Reference Docs
 - `planning/Frontier_Refactoring_Plan.md`
 - `planning/0.5.13_usertalk_language_summary.md`
+## Phase 3 — File Verb Enhancements: settype/setcreator Cross-Platform
+
+**Priority:** P2 — Nice-to-have enhancement for file verb completeness
+**Timeline:** After Phase 1 file processor implementation is complete and stable.
+
+Goals
+- Extend `file.settype()` and `file.setcreator()` to work on Windows and Linux (currently stub with error on non-Mac).
+- Enable cross-platform type/creator code manipulation via file extension updates or extended attributes.
+
+Background
+- Legacy Frontier implemented `file.type()` and `file.creator()` getters on Windows (extension-based type codes), but `file.settype()` and `file.setcreator()` were Mac-only.
+- Implementation strategy: follow the legacy behavior initially (stub setters with "not implemented" error); extend in P2.
+
+Proposed Changes
+- **Windows:** `file.settype()` updates file extension; `file.setcreator()` stores in extended attributes (if available).
+- **Linux:** `file.settype()` stores in `user.file.type` xattr; `file.setcreator()` stores in `user.file.creator` xattr.
+- **macOS:** Already implemented; keep existing behavior.
+
+Scope
+- Add helper functions in file processor to extract/update type codes from filenames.
+- Implement xattr storage/retrieval on Linux.
+- Implement extended attribute handling on Windows (if available; fallback gracefully).
+- Add tests covering type code round-trips on each platform.
+
+Effort
+- Estimated 5-10 hours after Phase 1 file processor foundation is stable.
+
+Reference Docs
+- `planning/phase3/processor_audits/file.md` - File processor audit (section: P2 Enhancements)
+
 ## Phase 3 — Hash Table Modernisation
 
-**Priority:** P1 — Needed before Phase 3 ships to users  
+**Priority:** P1 — Needed before Phase 3 ships to users
 **Timeline:** Execute after core architecture upgrades stabilise (Phase 2 exit).
 
 Background
@@ -259,13 +356,15 @@ Reference Docs
 
 ## Phase 3 — Date/Time Representation Modernization
 
-**Priority:** P1 — Needed for accurate headless behavior and future interop.  
-**Timeline:** Start once the `clock.*` and `script.*` verbs run cleanly via search paths.
+**Priority:** P1 — Needed for accurate headless behavior and future interop.
+**Depends on:** Phase 1/2 64-bit integer implementation (see above)
+**Timeline:** Start once the `clock.*` and `script.*` verbs run cleanly via search paths AND after 64-bit integer work is complete.
 
 Goals
-- Preserve the legacy Mac epoch semantics (seconds since the Frontier “fixed date”) so migrated databases remain faithful.
+- Preserve the legacy Mac epoch semantics (seconds since the Frontier "fixed date") so databases remain faithful.
 - Add a portable conversion layer that can emit and consume POSIX-friendly timestamps (milliseconds since the Unix epoch) without losing timezone fidelity.
 - Codify the historical timezone heuristic (user override → server-configured TZ → local system clock) so headless/CLI builds match the classic UI.
+- **NOTE:** Once all UserTalk integers are 64-bit, timestamps are automatically safe past 2040 and don't need special int64 handling in user scripts.
 
 Scope
 - Document the current behavior in the docserver (`clock.now`, table metadata) and `docs/database_architecture.md`, noting when the portable formatter should be used.

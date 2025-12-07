@@ -1,0 +1,1 @@
+on appIsIACAware (path) {	local (x, flags);	if not rez.getResource (path, 'SIZE', -1, @x) {		return (false)};	flags = short (binary (string.mid (x, 1, 2)));	return (((flags / 64) % 2) != 0)}

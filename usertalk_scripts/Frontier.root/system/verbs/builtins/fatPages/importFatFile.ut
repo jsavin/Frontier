@@ -1,0 +1,1 @@
+on importFatFile (f) { //for importer scripts, no user confirmation	local (atts);	local (pageSource = fatPages.readSourceFile (f));	if not fatPages.getPageAtts (@pageSource, @atts) {		fatPages.noObjectError (f)};	if not defined (atts.pageData) {		fatPages.noObjectError (f)};	fatPages.unpackOdbObject (@atts, atts.adrPageData, f, false, false);	return (atts.adrPageData)}

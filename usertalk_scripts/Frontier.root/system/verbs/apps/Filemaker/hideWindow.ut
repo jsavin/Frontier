@@ -1,0 +1,1 @@
+on hideWindow (db) { «Hides a database window	with objectModel, Filemaker {		return (set (database[db].window[1].visible, false))}}

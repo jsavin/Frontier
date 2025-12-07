@@ -1,0 +1,1 @@
+on isRunning () {	return (sys.appIsRunning (BBEdit.id))}

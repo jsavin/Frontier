@@ -1,0 +1,1 @@
+on clear (num, bit) {	kernel (bit.clear)}

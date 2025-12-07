@@ -1,0 +1,1 @@
+on editWindow (data, refcon) {	return (appleEvent (app.id, 'app1', 'ewin', '----', data, 'refc', refcon, 'titl', string (title)))}

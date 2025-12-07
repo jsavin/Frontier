@@ -1,0 +1,1 @@
+on remove (adr) {	kernel (menu.remove)}

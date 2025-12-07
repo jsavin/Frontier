@@ -1,0 +1,1 @@
+on insertDateTime () {	«Insert the current date and time. Called from the Edit menu.		«10/16/00; 7:39:26 PM by PBS	clock.timeStamp ()}

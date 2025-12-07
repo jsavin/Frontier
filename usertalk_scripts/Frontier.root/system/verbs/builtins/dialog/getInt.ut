@@ -1,0 +1,1 @@
+on getInt (prompt, adr) {	kernel (dialog.getInt)}

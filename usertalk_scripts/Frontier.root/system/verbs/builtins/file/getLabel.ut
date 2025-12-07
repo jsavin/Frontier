@@ -1,0 +1,1 @@
+on getLabel (path) {	kernel (file.getLabel)}

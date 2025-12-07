@@ -1,0 +1,1 @@
+on close (f) {	kernel (db.close)}

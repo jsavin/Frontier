@@ -1,0 +1,1 @@
+on open (path) {	kernel (file.open)}

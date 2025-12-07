@@ -1,0 +1,1 @@
+on callScript (adrScript, paramList, adrParamTable) {	kernel (lang.callScript)}

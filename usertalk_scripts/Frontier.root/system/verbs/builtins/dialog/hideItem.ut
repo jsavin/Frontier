@@ -1,0 +1,1 @@
+on hideItem (itemnumber) {	kernel (dialog.hideitem)}

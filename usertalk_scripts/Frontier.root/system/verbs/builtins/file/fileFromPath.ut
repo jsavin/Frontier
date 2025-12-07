@@ -1,0 +1,1 @@
+on fileFromPath (path) {	kernel (file.filefrompath)}

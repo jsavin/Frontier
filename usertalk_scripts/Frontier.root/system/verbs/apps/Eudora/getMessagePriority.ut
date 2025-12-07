@@ -1,0 +1,1 @@
+on getMessagePriority (msgObj) {	with objectModel, Eudora, eventInfo {		return (core.get (id, msgObj.priority))}}

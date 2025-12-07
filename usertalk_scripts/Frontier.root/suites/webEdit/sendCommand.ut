@@ -1,0 +1,1 @@
+on sendCommand (server, port, procedureName, adrParamList, fldebug) {	return (betty.rpc.client (server, port, procedureName, adrParamList, fldebug))}

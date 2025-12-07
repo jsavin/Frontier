@@ -1,0 +1,1 @@
+on move (path, folder) {	kernel (file.move)}

@@ -1,0 +1,1 @@
+on caseSensitive (fnum, flag) {	if uBASE.countRecords (fnum) != 0 {		scriptError ("You should only change the caseSensitive flag for a new database")};	return (systemEvent ('ubas', 'case', 'fref', short (fnum), '----', boolean (flag)))}

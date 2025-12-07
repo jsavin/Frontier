@@ -1,0 +1,1 @@
+on isPlaying () {	kernel (quicktime.isplaying)}

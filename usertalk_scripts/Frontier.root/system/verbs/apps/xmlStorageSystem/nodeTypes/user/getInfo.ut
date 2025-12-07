@@ -1,0 +1,1 @@
+local (infotext =  "");on add (s) {	infotext = infotext + s + "\r"};local (atts);if op.attributes.getall (@atts) {	try {add ("Logged on: " + date (atts.whenLoggedOn))};	try {add ("Using: " + atts.userAgent)};	playlist.notifydialog (infotext)}

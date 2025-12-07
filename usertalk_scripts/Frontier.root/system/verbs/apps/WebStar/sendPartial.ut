@@ -1,0 +1,1 @@
+on sendPartial (x, connection, more, appID = WebStar.id) {	appleEvent (appID, 'WWW½', 'SPar', '----', x, 'Kcid', connection, 'Kmor', boolean (more))}

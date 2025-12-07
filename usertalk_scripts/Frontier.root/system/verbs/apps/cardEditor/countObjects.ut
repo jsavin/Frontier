@@ -1,0 +1,1 @@
+on countObjects () {	return (appleEvent (cardEditor.id, 'IOWA', 'ctob'))}

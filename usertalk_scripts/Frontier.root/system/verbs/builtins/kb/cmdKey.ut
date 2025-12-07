@@ -1,0 +1,1 @@
+on cmdKey () {	kernel (kb.cmdkey)}

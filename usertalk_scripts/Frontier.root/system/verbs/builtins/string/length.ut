@@ -1,0 +1,1 @@
+on length (n) {	kernel (string.length)}

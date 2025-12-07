@@ -1,0 +1,1 @@
+on insertAtEndOfList (headstring) {	if op.countSubs (1) == 0 { «no first-level subs		return (op.insert (headstring, right))}	else {		op.go (right, 1); «move to first subhead of cursor		op.go (down, infinity); «move to last subhead of cursor		return (op.insert (headstring, down))}} «insert new head down from last head

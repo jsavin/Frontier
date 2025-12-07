@@ -1,0 +1,1 @@
+on close (adr) {	kernel (window.close)}

@@ -1,0 +1,1 @@
+on countStories (adrSitePrefs) {	«Changes		«9/6/01; 8:19:39 PM by JES			«Changed params from a list to a record of named parameters, for SOAP compatibility.	with adrSitePrefs^ {		local (params = {"username":username, "password":string (password), "siteName":sitename});		return (manila.callHandler (host, port, "manila.message.countStories", @params, rpcPath:rpcPath))}}

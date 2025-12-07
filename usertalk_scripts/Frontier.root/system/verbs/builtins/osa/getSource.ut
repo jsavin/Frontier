@@ -1,0 +1,1 @@
+on getSource (adrCode, adrScript) {	kernel (osa.getSource)}

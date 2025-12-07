@@ -1,0 +1,1 @@
+on count (obj, class) { «Return the number of elements of a particular class within an object	return (appleEvent (Filemaker.id, 'core', 'cnte', '----', objspec (obj), 'kocl', string4 (class)))}

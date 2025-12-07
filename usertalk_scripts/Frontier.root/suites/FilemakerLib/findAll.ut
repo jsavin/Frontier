@@ -1,0 +1,1 @@
+on findAll (db, reportError = false) {	on doIt () {		with objectModel, filemaker {			return (show (database [db].record[all]))}};	if reportError {		return (doIt ())}	else {		try {			return (doIt ())}		else {			return (false)}}}

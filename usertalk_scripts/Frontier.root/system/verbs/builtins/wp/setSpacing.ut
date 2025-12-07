@@ -1,0 +1,1 @@
+on setSpacing (n) {	kernel (wp.setspacing)}

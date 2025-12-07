@@ -1,0 +1,1 @@
+on saveAs (adr) {	«Handle the Save As command for changing the subject of a message.		local (subject);	if window.attributes.getOne ("subject", @subject, adr) {		if dialog.ask ("Change title to:", @subject) {			local (adrtype = parentOf (this^));			return (adrtype^.save (adr, subject:subject))}};		return (false)};bundle { //debugging	saveAs (window.frontmost ())}

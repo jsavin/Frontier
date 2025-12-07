@@ -1,0 +1,1 @@
+on compile (s, adrtable) {	kernel (xml.compile)}

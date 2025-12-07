@@ -1,0 +1,1 @@
+on freeSpaceOnVolume (path) {	kernel (file.freespaceonvolume)}

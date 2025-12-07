@@ -1,0 +1,1 @@
+on getSize (adr, adrhoriz, adrvert) {	kernel (window.getsize)}

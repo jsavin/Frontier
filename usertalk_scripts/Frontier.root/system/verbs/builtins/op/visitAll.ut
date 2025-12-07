@@ -1,0 +1,1 @@
+on visitAll (adrOutline, adrCallback) {	kernel (op.visitall)}

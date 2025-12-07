@@ -1,0 +1,1 @@
+on getNamedValues (tableAdr) {	local (adrResult);	complexevent (tableAdr, 0, card.id, 'rnov');	adrResult = @tableAdr^.['----'];	if not defined (adrResult^) {		return (false)};	return (adrResult^)}

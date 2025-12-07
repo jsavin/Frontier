@@ -1,0 +1,1 @@
+on printMessage (msgObj) { «Print the specified message	with objectModel, Eudora, eventInfo {		return (core.print (id, msgObj))}}

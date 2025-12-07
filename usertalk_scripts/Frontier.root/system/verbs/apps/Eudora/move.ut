@@ -1,0 +1,1 @@
+on move (obj, moveTo) { «Move object to a new location	return (appleEvent (Eudora.id, 'core', 'move', '----', obj, 'insh', moveTo))}

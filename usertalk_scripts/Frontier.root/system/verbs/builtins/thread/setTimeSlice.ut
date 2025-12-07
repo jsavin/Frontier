@@ -1,0 +1,1 @@
+on setTimeSlice (timeSlice) {	kernel (thread.setTimeSlice)}

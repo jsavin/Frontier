@@ -1,0 +1,1 @@
+on condition (screenname, message) {	return (message beginswith "<methodCall>" or message beginswith "<?xml version=" and message contains "<methodCall>")}

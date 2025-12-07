@@ -1,0 +1,1 @@
+«Returns a string that is context sensitive as to whether you have Eudora send	«or queue messages, allowing you to do the opposite.on queueMenuMessage () {	case Eudora.getSetting (25) {		"y" { «message sent immediately			return ("Queue Message")};		"n" {			return ("Send Message")}}}

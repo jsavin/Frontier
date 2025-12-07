@@ -1,0 +1,1 @@
+on writeLine (path, linestring) {	kernel (file.writeline)}

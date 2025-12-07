@@ -1,0 +1,1 @@
+on compile (pattern, flCaseSensitive = false, flDotMatchesAll = true, flMultiLine = true, flAutoCapture = true, flGreedyQuantifiers = true, flMatchEmptyString = true, flExtendedMode = false) {	kernel (re.compile)}

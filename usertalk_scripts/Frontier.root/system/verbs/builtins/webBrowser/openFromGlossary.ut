@@ -1,0 +1,1 @@
+on openFromGlossary (name) { «Loads a URL, using the glossary	html.data.adrpagetable = @websites.["#data"];	local (s = html.refGlossary (name));	s = string.nthField (s, '"', 2); «pick out first double-quoted string	return (webBrowser.openUrl (s))}

@@ -1,0 +1,1 @@
+on deHoistAll () {	local (atleastone = false);	while (op.deHoist ()) {		atleastone = true};	return (atleastone)}

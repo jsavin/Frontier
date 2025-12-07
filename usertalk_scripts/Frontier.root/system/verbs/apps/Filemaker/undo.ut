@@ -1,0 +1,1 @@
+on undo () { «Undo the action of the previous event or user interaction	return (appleEvent (Filemaker.id, 'misc', 'undo'))}

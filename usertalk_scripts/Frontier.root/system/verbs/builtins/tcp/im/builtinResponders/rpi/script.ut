@@ -1,0 +1,1 @@
+on script (driverName, screenName, message) {	«Changes		«9/19/02; 3:28:15 PM by AR			«Pass driverName and screenName on to tcp.im.rpi.server, so they can be made available to RPI handlers.		«5/15/02; 9:15:32 PM by JB			«Created.	tcp.im.rpi.server (message, driverName:driverName, screenName:screenName)}

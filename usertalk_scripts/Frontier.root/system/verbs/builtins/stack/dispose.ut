@@ -1,0 +1,1 @@
+on dispose (adrStack) {	delete (adrstack);	return (true)}

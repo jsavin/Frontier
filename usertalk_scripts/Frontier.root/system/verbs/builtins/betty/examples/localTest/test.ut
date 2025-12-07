@@ -1,0 +1,1 @@
+local (params = {22, 23, 24, 25});dialog.alert (betty.rpc.client (procedureName:"examples.getStateNames", adrparamlist:@params, fldebug:true));«save off debugging infolocal (adrtable = parentof (this^));wp.newTextObject (params [1], @adrtable^.rpcRequest);try {delete (@adrtable^.rpcReturn)};adrtable^.rpcReturn = params [2]

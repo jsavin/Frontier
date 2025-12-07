@@ -1,0 +1,1 @@
+on showClipboard () {	if not finderEvent (Finder.id, Finder.class, 'shcl') {		return (false)};	return (Finder.bringToFront ())}

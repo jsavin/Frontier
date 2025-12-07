@@ -1,0 +1,1 @@
+on idleTime () {	local (ticks = gestalt ('idle'));	if ticks == -1 {		scriptError ("Can't determine idle time because the IdleTime INIT is not currently installed.")};	return (ticks / 60)}

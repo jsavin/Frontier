@@ -1,0 +1,1 @@
+on getPackedTable () {	local (x = systemEvent ('iowa', 'gptb'));	setBinaryType (x, tableType);	return (x)};getPackedTable ()

@@ -1,0 +1,1 @@
+on getFrontWindowURL () {	case sys.os () {		"MacOS" {			local (windowlist, windowinfo);			windowlist = webBrowser.getWindowList ();			if sizeof (windowlist) == 0 {				return ("")};			windowinfo = webBrowser.getWindowInfo (windowlist [1]);			return (windowinfo [1])}}}

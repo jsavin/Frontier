@@ -1,0 +1,1 @@
+on popScope (adrmsg) {	local (adrtable = @adrmsg^.scopestack);	delete (@adrtable^[sizeOf (adrtable^)]);	return}

@@ -1,0 +1,1 @@
+on join (s, strList) {	kernel (re.join)}

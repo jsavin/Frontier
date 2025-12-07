@@ -1,0 +1,1 @@
+on getCount () {	kernel (thread.getCount)}

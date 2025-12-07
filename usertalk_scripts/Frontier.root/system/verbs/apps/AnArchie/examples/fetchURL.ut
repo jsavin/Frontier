@@ -1,0 +1,1 @@
+on fetchURL () {	if (dialog.ask("Enter the URL to fetch", @url)) {		with anarchie, examples {			ftpRec = urlToFTPRec(url);			if (file.getFolderDialog("Select a destination for "+ftpRec['name'], @dest)) {				fetch(dest, "", ftpRec)}}}}

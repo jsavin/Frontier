@@ -1,0 +1,1 @@
+on getNoDNS (appID = WebStar.id) {	with objectModel, WebStar.eventInfo {		return (core.get (appID, noDNS))}}

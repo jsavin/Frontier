@@ -1,0 +1,1 @@
+on lock (path) {	kernel (file.lock)}

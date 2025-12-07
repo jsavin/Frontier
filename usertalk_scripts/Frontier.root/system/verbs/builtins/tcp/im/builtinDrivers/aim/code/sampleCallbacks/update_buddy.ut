@@ -1,0 +1,1 @@
+on UPDATE_BUDDY (adrSelf, screenName, flOnline, pctWarn, timeSignon, minIdle, flAolUser, oscarAdmin, flUnavailable) {	return(msg("on update buddy"))}

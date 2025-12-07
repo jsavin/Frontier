@@ -1,0 +1,1 @@
+on getUserInfo (adrObject) {	local (server = webEdit.getCurrentServer (adrObject));	local (adrPrefs = @user.webEdit.servers.[server]);	local (password = adrPrefs^.password);	password = webEdit.promptForPassword (password, server);	if password == false {		return (false)};	return ({adrPrefs^.userName, password, adrPrefs^.host, adrPrefs^.port})}

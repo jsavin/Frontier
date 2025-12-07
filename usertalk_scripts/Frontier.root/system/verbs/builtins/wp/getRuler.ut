@@ -1,0 +1,1 @@
+on getRuler () {	kernel (wp.getruler)}

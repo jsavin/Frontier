@@ -1,0 +1,1 @@
+on setObjectText (name, text) {	new (tableType, @atts);	atts.text = string (text);	return (card.setObjectAttributes (name, @atts))}

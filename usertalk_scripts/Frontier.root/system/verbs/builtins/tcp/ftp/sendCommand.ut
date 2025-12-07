@@ -1,0 +1,1 @@
+on sendCommand (adrconnectiontable, command) {	tcp.writeStream (adrconnectiontable^.commandStream, command + "\r\n"); // just poke our command right out	return (tcp.ftp.readResponse (adrconnectiontable))}

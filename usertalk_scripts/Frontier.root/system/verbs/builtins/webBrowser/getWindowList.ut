@@ -1,0 +1,1 @@
+on getWindowList () { «Lists the IDs of all the hypertext windows	case sys.os () {		"MacOS" {			return (appleEvent (user.webBrowser.currentid, 'WWW!', 'LSTW'))}}}

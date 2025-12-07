@@ -1,0 +1,1 @@
+on sendText (s, domain, path, account, password) {	local (tempfile = file.getSpecialFolderPath ("", "Temporary Items", true) + "tempfile");	file.writeWholeFile (tempfile, s, 'TEXT', BBEdit.id, clock.now ());	ftpClient.launch ();	ftpClient.store (tempfile, domain, path, account, password);	file.delete (tempfile)}

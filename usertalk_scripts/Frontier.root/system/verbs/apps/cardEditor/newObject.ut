@@ -1,0 +1,1 @@
+on newObject (param1, param2, param3, param4) {	return (appleEvent (cardEditor.id, 'IOWA', 'newo', 'prm1', long (param1), 'prm2', string (param2), 'prm3', string (param3), 'prm4', string (param4)))}

@@ -1,0 +1,1 @@
+on getUserServiceTable (userName, serviceName) {	«Get the address of a user's attached service table.	local (adrUser = people.getUserTable (userName));	if not (people.userExists (userName, adrUser)) {		return (false)};	if not (people.serviceExists (serviceName)) {		return (false)};	return (@adrUser^.services.[serviceName].data)}

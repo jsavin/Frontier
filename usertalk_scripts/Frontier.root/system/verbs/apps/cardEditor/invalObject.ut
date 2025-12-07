@@ -1,0 +1,1 @@
+on invalObject (name) {	new (tableType, @atts);	atts.inva = true;	return (cardEditor.setObjectAttributes (name, @atts))}

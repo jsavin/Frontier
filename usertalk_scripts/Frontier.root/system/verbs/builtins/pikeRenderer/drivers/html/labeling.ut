@@ -1,0 +1,1 @@
+on labeling (labelingstyle, ctAtLevel, adrprestring, adrpoststring) {	case string.lower (labelingstyle) {		"numeric" {			adrprestring^ = adrprestring^ + ctAtLevel + ".&nbsp;"}}}

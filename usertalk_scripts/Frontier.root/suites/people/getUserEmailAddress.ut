@@ -1,0 +1,1 @@
+on getUserEmailAddress (userName) {	«Return the user's email address. Return false if the user doesn't exist.	local (adrUser = people.getUserTable (userName));	if not (people.userExists (userName, adrUser)) {		return (false)};	if not defined (adrUser^.emailAddress) {		adrUser^.emailAddress = ""};	return (string (adrUser^.emailAddress))}

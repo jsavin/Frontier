@@ -1,0 +1,1 @@
+on CHAT_LEFT(adrSelf, roomId) {	return(tcp.im.builtinDrivers.aim.code.core._callsub(adrSelf, "CHAT_LEFT", {adrSelf, roomId}, adrSelf^._adrSubCallbacks ))}

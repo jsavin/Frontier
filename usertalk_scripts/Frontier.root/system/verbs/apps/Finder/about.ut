@@ -1,0 +1,1 @@
+on about () { «bring up the Finder's About window	«For compatibility...new Scriptable Finder scripts		«should consider open (aboutThisMacintosh)	if Finder.isScriptable () {		Finder.open (objspec (Finder.aboutThisMacintosh))};	if not finderEvent (Finder.id, 'aevt', 'abou') {		return (false)};	return (Finder.bringToFront ())}

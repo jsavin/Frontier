@@ -1,0 +1,1 @@
+on getErrorFile (appID = WebStar.id) { «gets error file setting	with objectModel, WebStar.eventInfo {		return (core.get (appID, errorFile))}}

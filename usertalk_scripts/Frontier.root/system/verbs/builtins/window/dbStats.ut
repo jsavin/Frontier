@@ -1,0 +1,1 @@
+on dbStats () {	kernel (window.dbstats)}

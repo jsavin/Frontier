@@ -1,0 +1,1 @@
+on mountServerVolume (networkpath, username, password) {	kernel (file.mountServerVolume)}

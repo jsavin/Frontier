@@ -1,0 +1,1 @@
+on getPath () {	kernel (file.getpath)}

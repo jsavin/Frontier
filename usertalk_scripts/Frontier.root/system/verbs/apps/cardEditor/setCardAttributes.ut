@@ -1,0 +1,1 @@
+on setCardAttributes (tableAdr) {	local (result);	tableEvent (tableAdr, @result, cardEditor.id, 'IOWA', 'sacd');	adrResult = @result.['----'];	if not defined (adrResult^) {		return (false)};	return (adrResult^)}

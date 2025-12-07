@@ -1,0 +1,1 @@
+on deleteObject (param1) {	return (appleEvent (cardEditor.id, 'IOWA', 'deob', 'prm1', string (param1)))}

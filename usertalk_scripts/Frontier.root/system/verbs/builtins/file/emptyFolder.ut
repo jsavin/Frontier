@@ -1,0 +1,1 @@
+on emptyFolder (folder) {	«10/31/97 at 7:44:37 AM by DW -- moved from toys.emptyFolder	if file.exists (folder) {		local (f);		fileloop (f in folder) {			if file.isFolder (f) {				file.deleteFolder (f)}			else {				file.delete (f)}}}}

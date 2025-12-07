@@ -1,0 +1,1 @@
+on get () {	kernel (target.get)}

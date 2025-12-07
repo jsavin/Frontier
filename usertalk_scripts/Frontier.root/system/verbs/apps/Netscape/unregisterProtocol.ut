@@ -1,0 +1,1 @@
+on unregisterProtocol (x, forProtocol = nil) { «reverses the effects of “register protocol”	pack (x, @x);	setbinarytype (@x, 'sign');	return (appleEvent (Netscape.id, 'WWW!', 'UNRP', '----', x, 'PROT', string (forProtocol)))}

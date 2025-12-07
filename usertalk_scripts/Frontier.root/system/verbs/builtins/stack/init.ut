@@ -1,0 +1,1 @@
+if not defined (user.stack) {	new (tableType, @user.stack)};if not defined (user.stack.pool) {	new (tableType, @user.stack.pool)}

@@ -1,0 +1,1 @@
+on addElement (adrparent, localname) {	return (xml.addTable (adrparent, localname))}

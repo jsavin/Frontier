@@ -1,0 +1,1 @@
+on openDocument (file) {	return (required.openDocument (msExplorer.id, file))}

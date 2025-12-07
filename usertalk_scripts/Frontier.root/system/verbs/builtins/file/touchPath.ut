@@ -1,0 +1,1 @@
+on touchPath (f) { «set mod date on the file and all containing folders	«10/31/97 at 1:30:52 PM by DW -- moved from toys.touchPath	local (now = clock.now ());	loop {		file.setmodified (f, now);		f = file.folderfrompath (f);		if not file.exists (f) {			break}}}

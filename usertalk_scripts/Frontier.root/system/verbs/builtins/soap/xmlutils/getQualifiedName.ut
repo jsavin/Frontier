@@ -1,0 +1,1 @@
+on getQualifiedName (adrmsg, qname) {	local (ix = string.patternMatch (":", qname));	if ix > 0 {		local (uri, localpart);		uri = soap.xmlutils.namespacePrefixToURI (adrmsg, string.mid (qname, 1, ix-1));		localpart = string.delete (qname, 1, ix);		return ({"namespace":uri, "localpart":localpart})};	return ({"namespace":nil, "localpart":qname})}

@@ -1,0 +1,1 @@
+剃alled on startup, it fixes up the root window	咸ithout this fix, all the elements of the root window pile up at the top	剃alled from startup.startupScript	俟at, Nov 22, 1997 at 12:37:15 PM by DW咨arget.set (@root)卻p.firstSummit ()卻p.fullCollapse ()卻p.findNext ("websites")咸p.setTextMode (false)卻p.expand (1)咨arget.clear ()window.zoom (@root);window.zoom (@root)

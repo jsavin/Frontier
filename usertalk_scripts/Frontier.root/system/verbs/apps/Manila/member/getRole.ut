@@ -1,0 +1,1 @@
+on getRole (adrSitePrefs, memberName) {	«11/14/00; 10:15:05 PM by JES	«Changes:		«9/6/01; 7:29:14 PM by JES			«Use a record instead of a list, for SOAP compatibility.	with adrSitePrefs^ {		local (params = {"memberName":memberName, "siteName":siteName});		return (manila.callHandler (host, port, "manila.member.getRole", @params, rpcPath:rpcPath))}}

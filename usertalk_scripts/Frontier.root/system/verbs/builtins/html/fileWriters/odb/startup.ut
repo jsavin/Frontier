@@ -1,0 +1,1 @@
+on startup (adrObject, adrStorage) {	return (true)}

@@ -1,0 +1,1 @@
+on computer (x, has = nil) { «Test attributes of this computer	return (appleEvent (Finder.id, 'fndr', 'gstl', '----', string4 (x), 'has ', long (has)))}

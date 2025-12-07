@@ -1,0 +1,1 @@
+on isEjectable (path) {	kernel (file.isejectable)}

@@ -1,0 +1,1 @@
+on namespaceURIToPrefix (adrmsg, uri) {	local (adrtable = @adrmsg^.scopestack);	local (i, j, adr);	for i = sizeof (adrtable^) downto 1 {		adr = @adrtable^[i].namespaces;		for j = sizeof (adr^) downto 1 {			if (adr^[j] == uri) {				return (nameOf (adr^[j]))}}};	return ("")}

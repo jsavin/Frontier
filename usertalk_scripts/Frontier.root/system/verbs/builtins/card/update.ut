@@ -1,0 +1,1 @@
+on update () {	card.details.notsupported ("update")}

@@ -1,0 +1,1 @@
+on print (obj) { «Print the specified message	return (appleEvent (Eudora.id, 'aevt', 'pdoc', '----', objspec (obj)))}

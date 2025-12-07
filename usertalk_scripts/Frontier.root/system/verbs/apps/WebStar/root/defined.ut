@@ -1,0 +1,1 @@
+on defined (adrserver, path) {	return (appleEvent (adrserver, 'ODBF', 'DEFI', '----', string (path)))}

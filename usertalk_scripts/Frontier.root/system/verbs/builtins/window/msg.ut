@@ -1,0 +1,1 @@
+on msg (s) {	kernel (window.msg)}

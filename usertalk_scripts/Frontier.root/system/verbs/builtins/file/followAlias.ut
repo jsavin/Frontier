@@ -1,0 +1,1 @@
+on followAlias (path) {	kernel (file.followAlias)}

@@ -1,0 +1,1 @@
+on getWindowPosition () { «returns rectangle, window's position on desktop	return (appleEvent (app.id, 'app1', 'gwps'))}

@@ -1,0 +1,1 @@
+on setObjectSeeThru (name, flag) {	new (tableType, @atts);	atts.tran = boolean (flag);	return (cardEditor.setObjectAttributes (name, @atts))}

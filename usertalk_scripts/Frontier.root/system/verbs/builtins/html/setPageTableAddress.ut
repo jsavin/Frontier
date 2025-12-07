@@ -1,0 +1,1 @@
+on setPageTableAddress (adrPageTable) {	«Store the page table address	local (adrAddressesTable = @system.temp.pageTableAddresses);	if not defined (adrAddressesTable^) {		new (tableType, adrAddressesTable)};	adrPageTableStorage = @adrAddressesTable^.[thread.getCurrentID ()];	adrPageTableStorage^ = adrPageTable; //store it	return (adrPageTableStorage)}

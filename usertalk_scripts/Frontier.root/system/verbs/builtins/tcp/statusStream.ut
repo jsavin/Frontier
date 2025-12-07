@@ -1,0 +1,1 @@
+on statusStream (stream, adrBytesPending) { «Get the status of a stream	kernel (tcp.statusStream)}

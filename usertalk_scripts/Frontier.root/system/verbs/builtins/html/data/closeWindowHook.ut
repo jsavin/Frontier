@@ -1,0 +1,1 @@
+on addToChangedPages (adrpage) { «4.2	«Add a changed web page to the outline at user.html.changedPages.		«Changes:			«10/12/99; 2:45:15 PM by PBS				«New preference, user.html.prefs.addToChangedPages, specifies whether or not this feature is on or off. It's off by default.	if user.html.prefs.addToChangedPages {		html.addToChangedPages (adrpage)};	return (true)}

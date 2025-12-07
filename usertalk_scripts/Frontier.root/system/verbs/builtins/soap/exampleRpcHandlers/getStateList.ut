@@ -1,0 +1,1 @@
+on getStateList (numlist) {	local (num, namelist = {});	for num in numlist {		namelist = namelist + states.nthState (num)};	return (namelist)}

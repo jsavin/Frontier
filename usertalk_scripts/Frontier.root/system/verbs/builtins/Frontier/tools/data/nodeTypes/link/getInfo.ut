@@ -1,0 +1,1 @@
+local (infotext =  "");on add (s) {	infotext = infotext + s + "\r"};local (atts);if op.attributes.getall (@atts) {	try {add ("Url: " + atts.url)};	dialog.notify (infotext)}

@@ -1,0 +1,1 @@
+on eject (obj = nil) { «Eject the specified disk(s), or every ejectable disk if no parameter is specified	if typeOf (obj) != '????' {		obj = Finder.finderSpec (obj)};	return (appleEvent (Finder.id, 'fndr', 'ejct', '----', obj))}

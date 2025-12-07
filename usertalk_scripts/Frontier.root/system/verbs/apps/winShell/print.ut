@@ -1,0 +1,1 @@
+on print (f) {	«Print a file.	return (boolean (dll.call (winShell.getDllPath (), "shellprint", string (f))))}

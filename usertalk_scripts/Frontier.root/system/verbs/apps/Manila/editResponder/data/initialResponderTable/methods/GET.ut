@@ -1,0 +1,1 @@
+on GET (pta) {	return (manila.editResponder.respond (pta))}

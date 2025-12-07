@@ -1,0 +1,1 @@
+on importSuite () {	return (menu.importSuite (@extensions.odbc, "ODBC QueryTool"))};importSuite()

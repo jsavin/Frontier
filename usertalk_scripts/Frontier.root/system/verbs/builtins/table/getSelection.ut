@@ -1,0 +1,1 @@
+on getSelection () {	kernel (table.getSelection)}

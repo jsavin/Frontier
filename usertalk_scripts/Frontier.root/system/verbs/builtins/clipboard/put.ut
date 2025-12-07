@@ -1,0 +1,1 @@
+on put (type, adr) {	kernel (clipboard.put)}

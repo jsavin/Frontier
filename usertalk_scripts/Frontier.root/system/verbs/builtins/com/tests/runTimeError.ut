@@ -1,0 +1,1 @@
+local (scriptCode = "Sub Main\r\nDim s\r\nSet s = CreateObject (\"Foo.Bar\")\r\nEnd Sub");com.callScript (scriptCode, "VBScript", "Main", {})

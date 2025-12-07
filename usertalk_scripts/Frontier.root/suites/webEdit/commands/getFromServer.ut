@@ -1,0 +1,1 @@
+local (adrObject);bundle { //get the current selected object	adrObject = webEdit.getSelectedObject ();	if adrObject == false {		return (false)}};if webEdit.getFromServer (adrObject) {	edit (adrObject)};return (true)

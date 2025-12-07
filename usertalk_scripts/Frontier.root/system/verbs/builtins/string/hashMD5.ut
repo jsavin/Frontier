@@ -1,0 +1,1 @@
+on hashMD5 (s, flTranslate = true) { //6.1	kernel (string.hashMD5)}

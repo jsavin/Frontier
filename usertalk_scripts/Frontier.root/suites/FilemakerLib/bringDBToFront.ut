@@ -1,0 +1,1 @@
+on bringDBToFront (db, theLayout = 0, reportError = false) {	on doIt () {		with objectModel, filemaker {			goTo (database [db].layout [theLayout])}};	if reportError {		return (doIt ())}	else {		try {			return (doIt ())}		else {			return (false)}}}

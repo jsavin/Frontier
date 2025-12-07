@@ -1,0 +1,1 @@
+on ferror(adrSelf,errorstr) {	tcp.im.builtinDrivers.aim.code.core.derror(adrSelf,errorstr);	scriptError(errorStr)}

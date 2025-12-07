@@ -1,0 +1,1 @@
+on setTextMode (bool) {	kernel (wp.settextmode)}

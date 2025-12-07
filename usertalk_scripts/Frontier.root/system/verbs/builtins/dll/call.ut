@@ -1,0 +1,1 @@
+on call (dllPath, procedureName, param1, paramN) {	kernel (dll.call)}

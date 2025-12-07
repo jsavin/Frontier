@@ -1,0 +1,1 @@
+on setMessageSubject (msgObj, msgSubject) {	with objectModel, Eudora, eventInfo {		return (core.set (id, msgObj.field["Subject"], msgSubject))}}

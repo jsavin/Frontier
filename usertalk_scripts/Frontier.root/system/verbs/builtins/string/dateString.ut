@@ -1,0 +1,1 @@
+on dateString (d = clock.now ()) {	kernel (string.datestring)}

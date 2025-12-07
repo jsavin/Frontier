@@ -1,0 +1,1 @@
+«on twoWay (prompt, button1, button2) 	«local (buttonhit)	«card.run (@dialog.cards.twoWay)	«return (buttonhit == 1)on twoWay (prompt, button1, button2) {	kernel (dialog.twoway)}

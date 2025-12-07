@@ -1,0 +1,1 @@
+on twiddle (flag) { «Exchange the first and last characters of the selection range, or the two characters directly adjacent to the insertion point.	return (appleEvent (BBEdit.id, 'R*ch', 'Twdl', '----', boolean (flag)))}

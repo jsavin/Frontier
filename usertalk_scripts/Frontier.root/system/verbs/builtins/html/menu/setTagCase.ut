@@ -1,0 +1,1 @@
+on setTagCase (tag) {	if html.menu.useLowerCaseTags () {		return (string.lower (tag))};	return (string.upper (tag))}

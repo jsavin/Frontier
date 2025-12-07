@@ -1,0 +1,1 @@
+on writeStream (stream, data) { «Write data from an open stream	return (appleEvent (netEvents.id, 'WAPI', 'WRIT', '----', long (stream), 'DATA', string (data)))}

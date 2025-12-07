@@ -1,0 +1,1 @@
+on setBar (n, blabel, bval) { «set the label and value of one of the bars	return (appleEvent (BarChart.id, 'BARC', 'sbar', '----', short (n), 'lbar', string (blabel), 'vbar', long (bval)))}

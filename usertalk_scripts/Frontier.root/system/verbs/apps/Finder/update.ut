@@ -1,0 +1,1 @@
+on update (obj) { «Update the display of the specified object(s) to match their on-disk representation	return (appleEvent (Finder.id, 'fndr', 'fupd', '----', Finder.finderSpec (obj)))}

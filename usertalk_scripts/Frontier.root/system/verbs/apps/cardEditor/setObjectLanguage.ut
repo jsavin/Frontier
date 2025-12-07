@@ -1,0 +1,1 @@
+on setObjectLanguage (name, idLanguage) {	new (tableType, @atts);	atts.lang = number (idLanguage);	return (cardEditor.setObjectAttributes (name, @atts))}

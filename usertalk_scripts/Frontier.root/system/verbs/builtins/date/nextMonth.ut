@@ -1,0 +1,1 @@
+on nextMonth (param1) {	kernel (date.nextMonth)}

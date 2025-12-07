@@ -1,0 +1,1 @@
+on targetClear (adroutline) {	target.clear ();	semaphores.unlock (string (adroutline))}

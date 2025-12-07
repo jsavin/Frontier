@@ -1,0 +1,1 @@
+on doScript (scriptName) { «Execute a script	setEventInteraction (false);	return (appleEvent (Filemaker.id, 'misc', 'dosc', '----', scriptName))}

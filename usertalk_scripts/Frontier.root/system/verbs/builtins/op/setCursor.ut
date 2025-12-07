@@ -1,0 +1,1 @@
+on setCursor (marker) {	kernel (op.setcursor)}

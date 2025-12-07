@@ -1,0 +1,1 @@
+on countResTypes (path) {	kernel (rez.countrestypes)}

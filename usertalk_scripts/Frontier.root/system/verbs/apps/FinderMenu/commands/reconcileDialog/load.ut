@@ -1,0 +1,1 @@
+path = "Macintosh HD:Desktop Folder:Reconcile Dialog.DW";rez.getResource (path, 'DLOG', 25000, @findermenu.commands.reconcileDialog.DLOG);rez.getResource (path, 'DITL', 25000, @findermenu.commands.reconcileDialog.DITL)

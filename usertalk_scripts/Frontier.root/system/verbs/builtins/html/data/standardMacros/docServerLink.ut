@@ -1,0 +1,1 @@
+on docServerLink (verbname) {	return ("<a href=\"http://www.scripting.com/docserver/" + verbname + ".html\">" + verbname + "</a>")}

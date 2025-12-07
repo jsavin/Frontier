@@ -1,0 +1,1 @@
+on serviceExists (serviceName, adrService=nil) {	«Does a service exist? Return true or false.	if adrService == nil {		adrService = people.getServiceTable (serviceName)};	if not defined (adrService^) {		return (false)}; //This service doesn't have a table.	if not (adrService^.enabled) {		return (false)}; //This service's enabled flag is off.	return (true)}

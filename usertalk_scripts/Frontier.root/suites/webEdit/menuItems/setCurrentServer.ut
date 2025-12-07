@@ -1,0 +1,1 @@
+return ("Set Current Server (" + user.webEdit.prefs.currentServer + ")")

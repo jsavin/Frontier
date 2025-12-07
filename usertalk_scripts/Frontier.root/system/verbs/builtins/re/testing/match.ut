@@ -1,0 +1,1 @@
+local (patternRef);patternRef = re.compile ("([a-z]+)");dialog.notify (re.match (patternRef, "Hello World!"))

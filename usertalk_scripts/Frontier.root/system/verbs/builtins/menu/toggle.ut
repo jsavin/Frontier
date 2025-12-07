@@ -1,0 +1,1 @@
+on toggle (adr) {	if menu.isInstalled (adr) {		return (menu.remove (adr))}	else {		return (menu.install (adr))}}

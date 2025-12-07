@@ -1,0 +1,1 @@
+on reveal (path) { «Show the indicated object in its folder's window	if not Finder.folderVerb ('srev', path) {		return (false)};	return (Finder.bringToFront ())}

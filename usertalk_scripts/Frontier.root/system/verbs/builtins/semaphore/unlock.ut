@@ -1,0 +1,1 @@
+on unlock (name) {	kernel (semaphore.unlock)}

@@ -1,0 +1,1 @@
+on filledString (ch, ct) {	kernel (string.filledstring)}

@@ -1,0 +1,1 @@
+on runFileMenuScript (itemname) {	thread.callScript (@Frontier.tools.windowTypes.commands.[itemname], {});	return (true)}

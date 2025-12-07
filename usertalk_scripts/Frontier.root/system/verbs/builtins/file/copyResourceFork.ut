@@ -1,0 +1,1 @@
+on copyResourceFork (sourcepath, destpath) {	kernel (file.copyresourcefork)}

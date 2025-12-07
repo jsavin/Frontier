@@ -1,0 +1,1 @@
+on setFontSize (fontsize) {	return (appleEvent (app.id, 'app1', 'sfsz', '----', short (fontsize)))}

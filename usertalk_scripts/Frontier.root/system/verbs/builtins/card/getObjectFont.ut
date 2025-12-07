@@ -1,0 +1,1 @@
+on getObjectFont (name, adrFontName, adrFontSize, adrFontStyle) {	local (atts);	if not card.getObjectAttributes (name, @atts) {		return (false)};	adrFontName^ = atts.font;	adrFontSize^ = atts.size;	adrFontStyle^ = atts.styl;	return (true)}

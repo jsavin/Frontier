@@ -1,0 +1,1 @@
+on getSelect (adrstart, adrend) {	kernel (wp.getselect)}

@@ -1,0 +1,1 @@
+on sort (obj, by) { «Return the specified object(s) in a sorted list	«NOTE:  Finder can sort by the properties corresponding to what it can sort by in		«a Finder window representing a folder	return (appleEvent (Finder.id, 'DATA', 'SORT', '----', Finder.finderSpec (obj), 'by  ', string4 (by)))}

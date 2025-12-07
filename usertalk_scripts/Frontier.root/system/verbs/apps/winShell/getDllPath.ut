@@ -1,0 +1,1 @@
+return (frontier.pathString + "DLLs\\ScriptControlDLL.dll")

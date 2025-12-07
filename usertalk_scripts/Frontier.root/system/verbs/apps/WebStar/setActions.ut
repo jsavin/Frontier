@@ -1,0 +1,1 @@
+on setActions (actionString, appID = WebStar.id) { «Set WebSTAR actions to actionString	with objectModel, WebStar.eventInfo {		return (core.set (appID, actions, actionString))}}

@@ -1,0 +1,1 @@
+on select (obj) { «Select the specified object(s)	return (appleEvent (Finder.id, 'misc', 'slct', '----', Finder.finderSpec (obj)))}

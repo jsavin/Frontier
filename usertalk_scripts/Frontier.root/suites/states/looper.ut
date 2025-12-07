@@ -1,0 +1,1 @@
+window.about ();for i = 1 to 50 {	msg (states.nthState (i))}

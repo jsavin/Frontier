@@ -1,0 +1,1 @@
+on duplicate (path) { «execute the Duplicate command on the indicated file/folder	return (Finder.folderVerb ('sdup', path))}

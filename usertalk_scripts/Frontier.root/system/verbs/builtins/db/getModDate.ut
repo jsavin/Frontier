@@ -1,0 +1,1 @@
+on getModDate (f, path) {	kernel (db.getModDate)}

@@ -1,0 +1,1 @@
+on nextYear (param1) {	kernel (date.nextYear)}

@@ -1,0 +1,1 @@
+on set (obj, setTo) { «Set an object's data	return (appleEvent (Eudora.id, 'core', 'setd', '----', objspec (obj), 'data', setTo))}

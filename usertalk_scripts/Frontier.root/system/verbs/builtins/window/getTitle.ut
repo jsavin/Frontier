@@ -1,0 +1,1 @@
+on getTitle (adr) {	kernel (window.getTitle)}

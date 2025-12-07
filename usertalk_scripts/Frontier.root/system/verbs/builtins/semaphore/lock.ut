@@ -1,0 +1,1 @@
+on lock (name, timeoutticks) {	kernel (semaphore.lock)}

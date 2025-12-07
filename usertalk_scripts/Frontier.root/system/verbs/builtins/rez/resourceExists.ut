@@ -1,0 +1,1 @@
+on resourceExists (path, resourcetype, id) {	kernel (rez.resourceexists)}

@@ -1,0 +1,1 @@
+on getStateNames (num1, num2, num3, num4) {	on gs (num) {		return (states.nthState (num) + "\r")};	return (gs (num1) + gs (num2) + gs (num3) + gs (num4))}

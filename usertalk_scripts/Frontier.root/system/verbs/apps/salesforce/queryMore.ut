@@ -1,0 +1,1 @@
+on queryMore (adrSession, queryLocator) {	«Changes		«4/20/06; 4:53:24 AM by JES			«Created. Get more records for a given query.	return (salesforce.callApi (adrSession, nameOf (this^), {"queryLocator":queryLocator}))}

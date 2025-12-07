@@ -1,0 +1,1 @@
+on runFromFile (path, defaultitem, callback) {	«a frontend for loadFromFile		«use this if you're going to use the dialog once in a run of your script		return (dialog.run (dialog.loadFromFile (path), defaultitem, callback))}

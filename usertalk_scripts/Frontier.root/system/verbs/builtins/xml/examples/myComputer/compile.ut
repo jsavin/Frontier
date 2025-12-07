@@ -1,0 +1,1 @@
+with xml.examples.myComputer {	xml.compile (string (taggedText), @tableStructure)}

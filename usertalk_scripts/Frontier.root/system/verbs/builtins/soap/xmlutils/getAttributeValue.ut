@@ -1,0 +1,1 @@
+on getAttributeValue (adrelement, name) {	if defined (adrelement^.["/atts"].[name]) {		return (adrelement^.["/atts"].[name])};	return (false)}

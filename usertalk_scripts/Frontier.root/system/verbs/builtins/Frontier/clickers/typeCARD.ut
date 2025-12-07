@@ -1,0 +1,1 @@
+on typeCARD (path) {	local (loadcard = kb.cmdKey ());	Frontier.bringToFront ();	Frontier.finderToFront = false;		if loadcard {		local (adr = @user.cards.[file.fileFromPath (path)]);		card.import (adr, path);		table.gotoAddress (adr)}	else {		card.runFromFile (path)};		return (true)}

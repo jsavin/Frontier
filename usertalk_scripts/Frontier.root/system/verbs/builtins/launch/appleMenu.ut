@@ -1,0 +1,1 @@
+on appleMenu (itemname) {	kernel (launch.applemenu)}

@@ -1,0 +1,1 @@
+on abs (number) {	kernel (lang.abs)}

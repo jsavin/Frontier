@@ -1,0 +1,1 @@
+on displayString (val) {	kernel (lang.displayString)}

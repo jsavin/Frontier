@@ -1,0 +1,1 @@
+on push (adrStack, val) {	local (top = adrStack^.top + 1);	local (adrElement = @adrStack^.vals.["item" + top]);	adrElement^ = val;	adrStack^.top = top;	return (true)}

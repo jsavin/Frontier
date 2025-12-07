@@ -1,0 +1,1 @@
+on ansiToUtf16 (s) {	kernel (string.ansiToUtf16)}

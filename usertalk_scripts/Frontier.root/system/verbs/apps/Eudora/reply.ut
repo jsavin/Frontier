@@ -1,0 +1,1 @@
+on reply (obj, everyone = nil, quoting = nil, self = nil) { «Reply to a message	return (appleEvent (Eudora.id, 'CSOm', 'eRep', '----', objspec (obj), 'eQTx', boolean (quoting), 'eRAl', boolean (everyone), 'eSlf', boolean (self)))}

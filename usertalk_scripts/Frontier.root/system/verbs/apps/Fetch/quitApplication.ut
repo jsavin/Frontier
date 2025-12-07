@@ -1,0 +1,1 @@
+on quitApplication () {	return (required.quitApplication (Fetch.id))}

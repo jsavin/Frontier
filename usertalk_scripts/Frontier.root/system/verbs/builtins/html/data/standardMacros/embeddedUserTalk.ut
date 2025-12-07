@@ -1,0 +1,1 @@
+on embeddedUserTalk (scriptstring, displaytext) {	scriptstring = string.urlEncode (scriptstring);	return ("<a href=\"usrtlk:" + scriptstring + "\">" + displaytext + "</a>")}

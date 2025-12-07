@@ -1,0 +1,1 @@
+on getStats (adrTable) {	kernel (thread.getStats)}

@@ -1,0 +1,1 @@
+if not defined (user.metaWeblog) {	new (tabletype, @user.metaWeblog)};if not defined (user.metaWeblog.username) {	user.metaWeblog.username = ""};if not defined (user.metaWeblog.password) {	user.metaWeblog.password = ""};if not defined (user.metaWeblog.blogid) {	user.metaWeblog.blogid = 0}

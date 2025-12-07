@@ -1,0 +1,1 @@
+on getSortOrder () {	kernel (table.getSortOrder)}

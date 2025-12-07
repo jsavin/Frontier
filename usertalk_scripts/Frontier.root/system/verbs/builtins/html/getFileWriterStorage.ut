@@ -1,0 +1,1 @@
+local (adrTable = @system.temp.fileWriters);local (currentID = thread.getCurrentID ());local (adrStorage);if not defined (adrTable^) {	new (tableType, adrTable)};adrStorage = @adrTable^.[currentID];return (adrStorage)

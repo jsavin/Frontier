@@ -1,0 +1,1 @@
+on frontmost () {	kernel (window.frontmost)}

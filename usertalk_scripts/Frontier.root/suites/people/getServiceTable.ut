@@ -1,0 +1,1 @@
+on getServiceTable (serviceName) {	«Return the address of a service's table.		«This is a private verb, not to be documented.	return (@user.people.services.[serviceName])}

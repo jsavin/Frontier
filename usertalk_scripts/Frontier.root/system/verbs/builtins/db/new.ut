@@ -1,0 +1,1 @@
+on new (f) {	kernel (db.new)}

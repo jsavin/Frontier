@@ -1,0 +1,1 @@
+local (infoText =  "");on add (s) {	infoText = infoText + s + "\r"};local (atts);if op.attributes.getAll (@atts) {	add ("Posted: " + atts.postTime);	add ("Message number: " + atts.msgNum);	dialog.notify (infoText)}

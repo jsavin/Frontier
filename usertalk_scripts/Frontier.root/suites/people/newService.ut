@@ -1,0 +1,1 @@
+on newService (serviceName) {	«Register a service. Return false if the service already exists.	local (adrService = people.getServiceTable (serviceName));	if people.serviceExists (serviceName, adrService) {		return (false)};	new (tableType, adrService);	adrService^.enabled = true;	return (true)}

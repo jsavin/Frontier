@@ -1,0 +1,1 @@
+on sound (duration, amplitude, frequency) {	kernel (speaker.sound)}

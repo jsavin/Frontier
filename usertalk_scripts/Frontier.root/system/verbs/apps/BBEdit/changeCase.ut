@@ -1,0 +1,1 @@
+on changeCase (x, selectionOnly = nil) { «Changes the case of text in an editing window.	return (appleEvent (BBEdit.id, 'R*ch', 'Case', '----', x, 'Osel', boolean (selectionOnly)))}
