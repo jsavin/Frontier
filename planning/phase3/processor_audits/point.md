@@ -31,10 +31,10 @@ Point processor manages point (x, y coordinate pair) data structures. Pure data 
 
 ## Verb Inventory
 
-| Verb | Parameters | Returns | Headless |
-|------|-----------|---------|----------|
-| `get` | (pointType value) | table {x, y} | ✅ YES |
-| `set` | (number x, number y) | pointType | ✅ YES |
+| Verb  | Parameters                | Returns   | Headless |
+| ----- | ------------------------- | --------- | -------- |
+| `get` | (pointType value, @x, @y) | boolean   | ✅ YES    |
+| `set` | (number x, number y)      | pointType | ✅ YES    |
 
 ---
 
@@ -54,12 +54,11 @@ Point processor manages point (x, y coordinate pair) data structures. Pure data 
 Points are represented as a kernel type containing x and y coordinates:
 
 ```c
-// point.get - Extract coordinates
-table pointget(pointType pt) {
-    local (result = {})
-    result.x = pt.h    // horizontal coordinate
-    result.y = pt.v    // vertical coordinate
-    return result
+// point.get - Extract coordinates into passed-in variables
+boolean pointget(pointType pt, address adrX, address adrY) {
+    adrX^ = pt.h    // horizontal coordinate
+    adrY^ = pt.v    // vertical coordinate
+    return true
 }
 
 // point.set - Create point from coordinates
@@ -122,15 +121,17 @@ pointType pointset(number x, number y) {
 local (pt = point.set(10, 20))
 
 // Test get
-local (coords = point.get(pt))
-assert(coords.x == 10)
-assert(coords.y == 20)
+local (x, y)
+point.get(pt, @x, @y)
+assert(x == 10)
+assert(y == 20)
 
 // Round-trip
 local (pt2 = point.set(100, 200))
-local (c2 = point.get(pt2))
-assert(c2.x == 100)
-assert(c2.y == 200)
+local (x2, y2)
+point.get(pt2, @x2, @y2)
+assert(x2 == 100)
+assert(y2 == 200)
 ```
 
 **Edge Cases:**

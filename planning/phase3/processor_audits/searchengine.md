@@ -12,7 +12,7 @@
 |----------|-------|
 | **Processor Name** | `searchengine` |
 | **EFP ID** | 1021 (subprocessor of html) |
-| **Verb Count** | 5 verbs |
+| **Verb Count** | 20 script verbs |
 | **Window Required** | NO |
 | **Implementation Type** | Script utilities |
 
@@ -25,19 +25,34 @@
 **Rationale:**
 Searchengine processor provides full-text search indexing and query functionality. Pure data structure and text processing operations with no GUI dependencies.
 
-**Headless Compatibility:** ✅ **Full** (5/5 verbs)
+**Headless Compatibility:** ✅ **Full** (20/20 verbs)
 
 ---
 
-## Verb Inventory
+## Verb Inventory (20 verbs)
 
-| Verb | Purpose | Headless |
-|------|---------|----------|
-| `stripMarkup` | Remove HTML/markup from text | ✅ YES |
-| `deIndexPage` | Remove page from search index | ✅ YES |
-| `indexPage` | Add page to search index | ✅ YES |
-| `cleanIndex` | Optimize and clean index | ✅ YES |
-| `mergeResults` | Merge multiple search results | ✅ YES |
+| Verb | Parameters | Returns | Headless |
+|------|-----------|---------|----------|
+| `stripMarkup` | (string htmlText) | string | ✅ YES |
+| `cleanText` | (string s) | string | ✅ YES |
+| `checkStopWords` | (string s, address adrStopWords=@searchEngine.data.stopWords) | boolean | ✅ YES |
+| `indexPage` | (string pageID, string url, string title, string pageText, address adrIndex, address adrStopWordsTable) | any | ✅ YES |
+| `deIndexPage` | (string pageID, address adrIndex=nil, string siteName=nil) | any | ✅ YES |
+| `mergeResults` | (list tableList, address adrTable) | boolean | ✅ YES |
+| `doSearch` | (list sites, string urlThisPage, address adrCaller, string args="", address adrPrefs=@user.searchEngine.prefs) | string | ✅ YES |
+| `searchMacro` | (list sites, address adrPrefs=@user.searchEngine.prefs) | string | ✅ YES |
+| `createPreview` | (string s, string title, string url, any pageID, address adrPreviews, any lastModified=nil) | address | ✅ YES |
+| `getIndexAddress` | (string indexName) | address | ✅ YES |
+| `getPreviewsAddress` | (string siteName) | address | ✅ YES |
+| `init` | (address adrUserTable=@user.searchEngine) | boolean | ✅ YES |
+| `indexFolder` | (string folder, string siteName, string baseURL, address adrStopWords=nil) | boolean | ✅ YES |
+| `indexLocalSite` | (address adrSite, string siteName, address adrStopWords=@searchEngine.data.stopWords) | boolean | ✅ YES |
+| `indexCurrentPage` | (varies) | any | ✅ YES |
+| `indexLocalPage` | (varies) | any | ✅ YES |
+| `indexRemotePage` | (varies) | any | ✅ YES |
+| `indexViaHTTP` | (varies) | any | ✅ YES |
+| `replaceAll` | (string haystack, string needle, any replacement, boolean flCaseless=false) | string | ✅ YES |
+| `saveIndex` | (string siteName=nil, address adrIndex=nil) | boolean | ✅ YES |
 
 ---
 
@@ -56,38 +71,51 @@ Searchengine processor provides full-text search indexing and query functionalit
 
 ### Key Implementation Notes
 
-**Simple Inverted Index Approach:**
+**Core Search Operations:**
 
 ```c
 // searchengine.stripMarkup - Remove HTML markup
-string searchenginestripmarkup(string html) {
+string searchenginestripmarkup(string htmlText) {
     // Remove <tag> and </tag> patterns
-    // Remove script content
-    // Decode HTML entities
-    return stripHTMLTags(html);
+    // Remove script content and Frontier macros
+    // Compact whitespace
+    // Returns text-only string
+    return stripHTMLTags(htmlText);
 }
 
-// searchengine.indexPage - Add page to index
-void searchengineindexpage(string pageId, string content) {
-    // Extract words from content
-    // Build inverted index: word -> [pageId, ...]
-    // Store in index table
-    addToIndex(pageId, content);
+// searchengine.indexPage - Add page to search index
+any searchengineindexpage(string pageID, string url, string title, string pageText, address adrIndex, address adrStopWordsTable) {
+    // Extract and process words from page content
+    // Build inverted index: word -> [pageID, ...]
+    // Store metadata (URL, title) with page reference
+    // Respect stop words table
+    return addPageToIndex(pageID, url, title, pageText, adrIndex, adrStopWordsTable);
 }
 
-// searchengine.deIndexPage - Remove from index
-void searchenginedeindexpage(string pageId) {
-    // Find all words for this page
-    // Remove page from inverted index
-    removeFromIndex(pageId);
+// searchengine.deIndexPage - Remove page from index
+any searchenginedeindexpage(string pageID, address adrIndex=nil, string siteName=nil) {
+    // Find all words for this page in index
+    // Remove page references from inverted index
+    // Clean up empty word entries
+    return removePageFromIndex(pageID, adrIndex, siteName);
 }
 
-// searchengine.mergeResults - Merge result sets
-table searchenginemergeresults(table results1, table results2) {
-    // Combine two search result tables
-    // Remove duplicates
-    // Maintain relevance ranking
-    return mergeResultSets(results1, results2);
+// searchengine.mergeResults - Merge multiple search result sets
+boolean searchenginemergeresults(list tableList, address adrTable) {
+    // Combine multiple result tables
+    // Add 4000 to score for each additional table containing result
+    // Higher scores = more relevant matches
+    return mergeResultSets(tableList, adrTable);
+}
+
+// searchengine.doSearch - Run full-text search query
+string searchenginedosearch(list sites, string urlThisPage, address adrCaller, string args="", address adrPrefs=@user.searchEngine.prefs) {
+    // Parse search query from args
+    // Handle AND/OR search type
+    // Search across multiple site indexes
+    // Build paginated HTML results with preview text
+    // Returns HTML results page with search form
+    return performSearch(sites, urlThisPage, adrCaller, args, adrPrefs);
 }
 ```
 

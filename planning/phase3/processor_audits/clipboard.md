@@ -12,7 +12,7 @@
 |----------|-------|
 | **Processor Name** | `clipboard` |
 | **EFP ID** | 1015 |
-| **Verb Count** | 2 kernel verbs |
+| **Verb Count** | 4 kernel verbs |
 | **Window Required** | NO |
 | **Implementation Type** | Kernel verbs |
 
@@ -25,7 +25,7 @@
 **Rationale:**
 Clipboard processor manages text data exchange. In a headless environment, implements as in-memory text buffer rather than OS clipboard. Provides same interface without GUI dependency.
 
-**Headless Compatibility:** ✅ **Full** (2/2 verbs)
+**Headless Compatibility:** ✅ **Full** (4/4 verbs)
 
 **Headless Strategy:** Replace OS clipboard with in-memory buffer per thread/execution context.
 
@@ -33,10 +33,12 @@ Clipboard processor manages text data exchange. In a headless environment, imple
 
 ## Verb Inventory
 
-| Verb | Parameters | Returns | Headless |
-|------|-----------|---------|----------|
-| `get` | () | string | ✅ YES (in-memory buffer) |
-| `put` | (string) | void | ✅ YES (in-memory buffer) |
+| Verb       | Parameters                   | Returns | Headless                 |
+| ---------- | ---------------------------- | ------- | ------------------------ |
+| `get`      | (string4 type, address addr) | boolean | ✅ YES (in-memory buffer) |
+| `getValue` | (string4 type)               | any     | ✅ YES (in-memory buffer) |
+| `put`      | (string4 type, address addr) | boolean | ✅ YES (in-memory buffer) |
+| `putValue` | (any value)                  | boolean | ✅ YES (in-memory buffer) |
 
 ---
 
@@ -53,51 +55,94 @@ Clipboard processor manages text data exchange. In a headless environment, imple
 
 **Headless Implementation Strategy:**
 
-In headless mode, implement clipboard as per-thread in-memory text buffer:
+In headless mode, implement clipboard as per-thread in-memory buffer supporting typed data:
 
 ```c
 // Headless clipboard: thread-local storage
 struct HeadlessClipboard {
-    string content;
+    binary content;          // Binary data in clipboard
+    string4 type;            // Resource type (e.g., 'TEXT', 'PICT')
     time_t lastModified;
 };
 
-// clipboard.get - Retrieve clipboard content
-string clipboardget() {
+// clipboard.get - Retrieve clipboard content as binary with type
+// Returns true if clipboard has data of specified type, false if empty or type mismatch
+boolean clipboardget(string type, address addr) {
     HeadlessClipboard* clip = getThreadClipboard();
-    return clip->content;
+    if (clip->content == NULL || clip->type != type) {
+        return false;
+    }
+    addr^ = clip->content;   // Assign binary value to address
+    return true;
 }
 
-// clipboard.put - Set clipboard content
-void clipboardput(string text) {
+// clipboard.getValue - Retrieve clipboard content as interpreted value
+// Attempts to unpack binary data as the corresponding Frontier datatype
+any clipboardgetvalue(string type) {
     HeadlessClipboard* clip = getThreadClipboard();
-    clip->content = text;
+    if (clip->content == NULL || clip->type != type) {
+        return NULL;
+    }
+    return unpackBinary(clip->content, type);  // Convert binary to appropriate type
+}
+
+// clipboard.put - Set clipboard content from binary at address
+// Creates item of type type from data at addr and replaces clipboard contents
+boolean clipboardput(string type, address addr) {
+    HeadlessClipboard* clip = getThreadClipboard();
+    clip->content = addr^;          // Get binary from address
+    clip->type = type;
     clip->lastModified = time(NULL);
+    return true;
+}
+
+// clipboard.putValue - Set clipboard content from any value
+// Places value into clipboard, sets type appropriately (type of value or binary type)
+boolean clipboardputvalue(any value) {
+    HeadlessClipboard* clip = getThreadClipboard();
+    if (getBinaryType(value) != NULL) {
+        clip->type = getBinaryType(value);
+        clip->content = value;
+    } else {
+        clip->type = typeOf(value);  // e.g., 'TEXT' for string
+        clip->content = packBinary(value, typeOf(value));
+    }
+    clip->lastModified = time(NULL);
+    return true;
 }
 ```
 
-**Headless Advantages:**
-- No OS clipboard dependencies
-- Each thread has isolated clipboard
-- Predictable behavior (no external interference)
-- Works in all environments (servers, containers, etc.)
+**Key Design Notes:**
+- **Type-aware storage**: Each clipboard operation specifies a resource type (string4) like 'TEXT', 'PICT'
+- **Binary vs. Value variants**: `get`/`put` work with binary data at addresses; `getValue`/`putValue` work with interpreted values
+- **Thread isolation**: Each thread has isolated clipboard (safe for multi-threaded operation)
+- **No OS dependency**: In-memory implementation requires no OS clipboard access
+- **Automatic type conversion**: `getValue`/`putValue` handle type conversion automatically
 
 ---
 
 ## Headless Compatibility Analysis
 
-**Fully Compatible:** ✅ 2/2 verbs (100%)
+**Fully Compatible:** ✅ 4/4 verbs (100%)
+
+**Verb Breakdown:**
+- **`get` (binary)**: Retrieves clipboard as binary data - headless compatible (in-memory storage)
+- **`getValue` (typed)**: Retrieves clipboard as interpreted value - headless compatible (unpacks binary)
+- **`put` (binary)**: Sets clipboard from binary at address - headless compatible (in-memory storage)
+- **`putValue` (typed)**: Sets clipboard from any value - headless compatible (auto type detection)
 
 **Use Cases in Headless:**
-- Script-to-script data exchange within thread
-- Scripted editing operations (cut/copy/paste simulation)
-- Testing clipboard-dependent code
-- Text manipulation workflows
+- Text exchange via clipboard (TEXT type)
+- Binary data exchange (PICT, AIFF, etc.)
+- Script-to-script data passing within threads
+- Simulating copy/paste operations in tests
+- Multi-format clipboard operations
 
-**Limitations in Headless:**
-- Cannot exchange with OS clipboard (by design - not needed)
-- Each thread has isolated clipboard (not shared with other processes)
-- This is acceptable for headless use cases
+**Advantages in Headless:**
+- No OS clipboard dependencies
+- Each thread has isolated clipboard (thread-safe)
+- Supports both binary and typed operations
+- Automatic type conversion via getValue/putValue variants
 
 ---
 
@@ -132,37 +177,60 @@ void clipboardput(string text) {
 
 ## Testing Strategy
 
-**Basic Get/Put:**
+**Basic Binary Operations (get/put):**
 ```usertalk
-// Initially empty
-assert(clipboard.get() == "")
+// Put TEXT data
+local (s = "Hello, World!")
+clipboard.put('TEXT', @s)
+assert(clipboard.get('TEXT', @result) == true)
+assert(result == "Hello, World!")
 
-// Put and get
-clipboard.put("Hello, World!")
-assert(clipboard.get() == "Hello, World!")
+// Type mismatch returns false
+assert(clipboard.get('PICT', @result) == false)
 
-// Overwrite
-clipboard.put("New content")
-assert(clipboard.get() == "New content")
+// Put binary PICT data
+local (binaryData = newBinary('PICT'))
+clipboard.put('PICT', @binaryData)
+assert(clipboard.get('PICT', @result) == true)
+```
 
-// Empty
-clipboard.put("")
-assert(clipboard.get() == "")
+**Value Operations (getValue/putValue):**
+```usertalk
+// putValue with string (auto-detects type as TEXT)
+clipboard.putValue("Sample text")
+assert(clipboard.getValue('TEXT') == "Sample text")
+
+// putValue with number (auto-detects type)
+clipboard.putValue(42)
+// getValue unpacks it back as a number
+assert(clipboard.getValue(typeOf(42)) == 42)
+
+// putValue with binary value
+local (binaryData = newBinary('PICT'))
+clipboard.putValue(binaryData)
+assert(clipboard.getValue('PICT') == binaryData)
 ```
 
 **Thread Isolation:**
 ```usertalk
-clipboard.put("Thread 1 content")
+// Thread 1: set TEXT
+clipboard.putValue("Thread 1 data")
+assert(clipboard.getValue('TEXT') == "Thread 1 data")
 
-// In another thread:
+// Thread 2: set different data
 thread.evaluate("
-    clipboard.put('Thread 2 content')
-    assert(clipboard.get() == 'Thread 2 content')
+    clipboard.putValue('Thread 2 data')
+    assert(clipboard.getValue('TEXT') == 'Thread 2 data')
 ")
 
-// Back in thread 1:
-assert(clipboard.get() == "Thread 1 content")  // Should be unchanged
+// Back in thread 1: should be unchanged
+assert(clipboard.getValue('TEXT') == "Thread 1 data")
 ```
+
+**Edge Cases:**
+- Empty clipboard returns false from get/NULL from getValue
+- Type parameter ('TEXT', 'PICT', etc.) determines storage type
+- putValue automatically detects and stores appropriate type
 
 ---
 
@@ -196,12 +264,14 @@ assert(clipboard.get() == "Thread 1 content")  // Should be unchanged
 **Status:** ✅ **Viable for Headless** (100% compatible)
 
 **Key Findings:**
-1. Both verbs are trivial text buffer operations
-2. No GUI or OS clipboard required
-3. Thread-local per-thread clipboard makes sense for headless
-4. Trivial implementation effort (2-3 hours)
+1. All four verbs are trivial typed buffer operations
+2. Two binary variants (get/put) for raw data at addresses
+3. Two value variants (getValue/putValue) for typed automatic conversions
+4. No GUI or OS clipboard required
+5. Thread-local per-thread clipboard provides thread safety
+6. Simple implementation effort (2-3 hours)
 
-**Recommendation:** MEDIUM priority (useful utility, quick win with simple implementation)
+**Recommendation:** MEDIUM priority (useful utility for clipboard-dependent code, quick win with simple implementation)
 
 ---
 

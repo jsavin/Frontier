@@ -33,7 +33,7 @@ Rectangle processor manages rectangle (bounding box) data structures with four c
 
 | Verb | Parameters | Returns | Headless |
 |------|-----------|---------|----------|
-| `get` | (rectType value) | table {left, top, right, bottom} | ✅ YES |
+| `get` | (rectType value, @left, @top, @right, @bottom) | boolean | ✅ YES |
 | `set` | (number l, number t, number r, number b) | rectType | ✅ YES |
 
 ---
@@ -54,14 +54,13 @@ Rectangle processor manages rectangle (bounding box) data structures with four c
 Rectangles are represented as kernel type containing four boundary coordinates:
 
 ```c
-// rectangle.get - Extract boundaries
-table rectangleget(rectType rect) {
-    local (result = {})
-    result.left = rect.left
-    result.top = rect.top
-    result.right = rect.right
-    result.bottom = rect.bottom
-    return result
+// rectangle.get - Extract boundaries into passed-in variables
+boolean rectangleget(rectType rect, address adrLeft, address adrTop, address adrRight, address adrBottom) {
+    adrLeft^ = rect.left
+    adrTop^ = rect.top
+    adrRight^ = rect.right
+    adrBottom^ = rect.bottom
+    return true
 }
 
 // rectangle.set - Create rectangle from boundaries
@@ -126,19 +125,21 @@ rectType rectangleset(number left, number top, number right, number bottom) {
 local (rect = rectangle.set(10, 20, 100, 200))
 
 // Test get
-local (bounds = rectangle.get(rect))
-assert(bounds.left == 10)
-assert(bounds.top == 20)
-assert(bounds.right == 100)
-assert(bounds.bottom == 200)
+local (left, top, right, bottom)
+rectangle.get(rect, @left, @top, @right, @bottom)
+assert(left == 10)
+assert(top == 20)
+assert(right == 100)
+assert(bottom == 200)
 
 // Round-trip
 local (rect2 = rectangle.set(0, 0, 640, 480))
-local (b2 = rectangle.get(rect2))
-assert(b2.left == 0)
-assert(b2.top == 0)
-assert(b2.right == 640)
-assert(b2.bottom == 480)
+local (l, t, r, b)
+rectangle.get(rect2, @l, @t, @r, @b)
+assert(l == 0)
+assert(t == 0)
+assert(r == 640)
+assert(b == 480)
 ```
 
 **Edge Cases:**

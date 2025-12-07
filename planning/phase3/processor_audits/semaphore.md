@@ -12,7 +12,7 @@
 |----------|-------|
 | **Processor Name** | `semaphore` |
 | **EFP ID** | 1005 |
-| **Verb Count** | 2 kernel verbs |
+| **Verb Count** | 3 kernel verbs |
 | **Window Required** | NO |
 | **Implementation Type** | Kernel verbs |
 
@@ -25,7 +25,7 @@
 **Rationale:**
 Semaphore processor provides mutex/lock operations for thread synchronization. Essential for safe concurrent access to shared resources in a multi-threaded environment.
 
-**Headless Compatibility:** ✅ **Full** (2/2 verbs)
+**Headless Compatibility:** ✅ **Full** (3/3 verbs)
 
 ---
 
@@ -33,8 +33,9 @@ Semaphore processor provides mutex/lock operations for thread synchronization. E
 
 | Verb | Parameters | Returns | Headless |
 |------|-----------|---------|----------|
-| `lock` | (semaphore) | void | ✅ YES |
-| `unlock` | (semaphore) | void | ✅ YES |
+| `lock` | (string name, number timeoutTicks) | boolean | ✅ YES |
+| `unlock` | (string name) | boolean | ✅ YES |
+| `unlockAll` | () | boolean | ✅ YES |
 
 ---
 
@@ -52,19 +53,29 @@ Semaphore processor provides mutex/lock operations for thread synchronization. E
 
 **Thread Synchronization:**
 
-Semaphores (binary mutexes) are wrapper types around OS synchronization primitives:
+Semaphores use string-based named locks, allowing them to be accessed from multiple threads by name:
 
 ```c
-// semaphore.lock - Acquire mutex lock
-void semaphorelock(semaphoreType sem) {
+// semaphore.lock - Acquire mutex lock by name with timeout
+boolean semaphorelock(string name, number timeoutTicks) {
     // OS-specific: pthread_mutex_lock, EnterCriticalSection, etc.
-    mutex_acquire(sem.handle)
+    // Named semaphore allows access from multiple code paths
+    // timeoutTicks: timeout in system ticks (0 = no wait, infinite = wait forever)
+    return mutex_acquire_with_timeout(getSemaphoreHandle(name), timeoutTicks)
 }
 
-// semaphore.unlock - Release mutex lock
-void semaphoreunlock(semaphoreType sem) {
+// semaphore.unlock - Release mutex lock by name
+boolean semaphoreunlock(string name) {
     // OS-specific: pthread_mutex_unlock, LeaveCriticalSection, etc.
-    mutex_release(sem.handle)
+    mutex_release(getSemaphoreHandle(name))
+    return true
+}
+
+// semaphore.unlockAll - Release all locks
+boolean semaphoreunlockall() {
+    // Release all acquired semaphores
+    releaseAllSemaphores()
+    return true
 }
 ```
 

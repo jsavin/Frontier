@@ -12,7 +12,7 @@
 |----------|-------|
 | **Processor Name** | `html` |
 | **EFP ID** | 1021 |
-| **Verb Count** | 23 kernel verbs + 5 subprocessor categories (searchengine, mrcalendar, webserver, inetd) |
+| **Verb Count** | 29 kernel verbs + 5 html.table subverbs + 5 subprocessor categories (searchengine, mrcalendar, webserver, inetd) |
 | **Window Required** | NO |
 | **Implementation Type** | Kernel verbs + script utilities |
 
@@ -25,37 +25,53 @@
 **Rationale:**
 HTML processor provides utilities for generating, processing, and manipulating HTML content. All operations are text-based with no GUI dependencies. Core functionality for web server operation.
 
-**Headless Compatibility:** ✅ **Full** (23/23 verbs)
+**Headless Compatibility:** ✅ **Full** (34/34 verbs - 29 core + 5 html.table)
 
 ---
 
-## Core Verb Inventory (23 verbs)
+## Core Verb Inventory (29 verbs + 5 html.table subverbs = 34 total)
 
-| Verb | Purpose | Headless |
-|------|---------|----------|
-| `processMacros` | Expand embedded macros in HTML | ✅ YES |
-| `urlDecode` | Decode URL-encoded strings | ✅ YES |
-| `urlEncode` | Encode strings for URLs | ✅ YES |
-| `parseHttpArgs` | Parse HTTP query strings | ✅ YES |
-| `iso8859Encode` | Convert to ISO-8859-1 encoding | ✅ YES |
-| `getGifHeightWidth` | Parse GIF header for dimensions | ✅ YES |
-| `getJpegHeightWidth` | Parse JPEG header for dimensions | ✅ YES |
-| `buildPageTable` | Build page structure from HTML | ✅ YES |
-| `refGlossary` | Reference glossary lookup | ✅ YES |
-| `getPref` | Get preference value | ✅ YES |
-| `getOneDirective` | Get single directive from HTML | ✅ YES |
-| `runDirective` | Execute HTML directive | ✅ YES |
-| `runDirectives` | Execute multiple directives | ✅ YES |
-| `runOutlineDirectives` | Execute directives in outline | ✅ YES |
-| `cleanForExport` | Clean HTML for export | ✅ YES |
-| `normalizeName` | Normalize element names | ✅ YES |
-| `glossaryPatcher` | Patch glossary references | ✅ YES |
-| `expandUrls` | Expand URL references | ✅ YES |
-| `traversalSkip` | Handle traversal skip logic | ✅ YES |
-| `getPageTableAddress` | Get page table address | ✅ YES |
-| `neuterMacros` | Disable macro expansion | ✅ YES |
-| `neuterTags` | Disable HTML tags | ✅ YES |
-| `drawCalendar` | Generate calendar HTML | ✅ YES |
+| Verb | Parameters | Returns | Headless |
+|------|-----------|---------|----------|
+| `processMacros` | (string s, boolean plainprocessing=false, address adrPageTable=nil) | string | ✅ YES |
+| `getOneDirective` | (string directiveName, any s) | any | ✅ YES |
+| `runDirective` | (string linetext, address adrPageTable=@websites.["#data"]) | string | ✅ YES |
+| `runDirectives` | (string text, address adrPageTable=@websites.["#data"]) | any | ✅ YES |
+| `runOutlineDirectives` | (address adroutline, address adrPageTable=@websites.["#data"]) | any | ✅ YES |
+| `getGifHeightWidth` | (any f) | list | ✅ YES |
+| `getJpegHeightWidth` | (any f) | list | ✅ YES |
+| `getPngHeightWidth` | (any f) | list | ✅ YES |
+| `normalizeName` | (string name, address adrPageTable=nil, address adrObject=nil) | string | ✅ YES |
+| `refGlossary` | (string name) | string | ✅ YES |
+| `getPref` | (string prefName, address adrPageTable=nil) | any | ✅ YES |
+| `getPagePref` | (string prefName, address adrPage, address adrPageTable=@websites.["#data"]) | any | ✅ YES |
+| `getPageTableAddress` | () | address | ✅ YES |
+| `deletePageTableAddress` | () | boolean | ✅ YES |
+| `getFileName` | (string name, address adrPageTable=@websites.["#data"]) | string | ✅ YES |
+| `getPath` | (address adrSource, address adrDest, address adrPageTable=nil) | string | ✅ YES |
+| `getFileURL` | (any f) | string | ✅ YES |
+| `getOutlineHTML` | (address adroutline, string indentstring, string outdentstring, string linestartstring, string lineendstring, boolean flprettyPrint=true) | string | ✅ YES |
+| `getOneTagValue` | (string htmltext, string tagname) | string | ✅ YES |
+| `getLink` | (string linetext, string url, string whatTarget=nil, string anchor=nil, string class=nil, string title=nil, string accesskey=nil, string hreflang=nil, string tabindex=nil, string onmouseover="", string onmouseout="", string onclick="") | string | ✅ YES |
+| `buildObject` | (address adrObject, address adrPageTable=@websites.["#data"], string templateName=nil) | string | ✅ YES |
+| `buildOnePage` | (address adrPage, address adrPageTable=@websites.["#data"]) | any | ✅ YES |
+| `buildFromOutline` | (address adroutline) | number | ✅ YES |
+| `buildGlossary` | (address adrGlossary=table.getCursorAddress(), boolean flinteract=false, address adrFilterScript=nil) | boolean | ✅ YES |
+| `neuterMacros` | (string s, address adrTable) | string | ✅ YES |
+| `neuterTags` | (string s, address adrTable) | string | ✅ YES |
+| `neuterJavaScript` | (string s, any legalProtocolSchemes=nil) | string | ✅ YES |
+| `traversalSkip` | (address adr) | boolean | ✅ YES |
+| `addPageToGlossary` | (address adrPageTable) | boolean | ✅ YES |
+
+### HTML.Table Subverbs (5 verbs)
+
+| Verb | Parameters | Returns | Headless |
+|------|-----------|---------|----------|
+| `table.new` | (number border=0, number cellspacing=0, number cellpadding=0, number cols=1, string method="html") | address | ✅ YES |
+| `table.addColumn` | (address adrTable, string title="", string type="string", string align="left", string size="", string link="", boolean flLink=false) | address | ✅ YES |
+| `table.addRow` | (address adrTable) | address | ✅ YES |
+| `table.render` | (address adrTable) | string | ✅ YES |
+| `table.delete` | (address adrTable) | void | ✅ YES |
 
 ---
 
@@ -88,33 +104,64 @@ The html processor also includes these subprocessor categories:
 **Core HTML Operations:**
 
 ```c
-// html.urlEncode - URL-encode strings
-string htmlurlencode(string text) {
-    // Encode special characters for URLs
-    // Space -> %20, &, =, etc.
-    return urlEncodeString(text);
+// html.processMacros - Expand embedded macros in HTML text
+string htmlprocessmacros(string s, boolean plainprocessing=false, address adrPageTable=nil) {
+    // Parse HTML text and expand macro directives
+    // Macros: «directive» syntax
+    // Returns processed HTML string
+    return processMacros(s, plainprocessing, adrPageTable);
 }
 
-// html.urlDecode - URL-decode strings
-string htmlurldecode(string encoded) {
-    // Decode %xx sequences
-    // + -> space
-    return urlDecodeString(encoded);
+// html.getOneDirective - Extract and execute single directive
+any htmlgetnedirective(string directiveName, any s) {
+    // Extract directive value from HTML or outline
+    // Executes directive and returns result
+    return executeDirective(directiveName, s);
 }
 
-// html.parseHttpArgs - Parse query string
-table htmlparsehttpargs(string queryString) {
-    // Parse "name1=value1&name2=value2"
-    // Return table with keys and values
-    return parseQueryString(queryString);
+// html.normalizeName - Normalize filename according to preferences
+string htmlnormalizename(string name, address adrPageTable=nil, address adrObject=nil) {
+    // Apply naming conventions: drop non-alphas, lowercase, max length
+    // Returns normalized name string
+    return applyNamingConventions(name, adrPageTable, adrObject);
 }
 
-// html.processMacros - Expand macros
-string htmlprocessmacros(string html) {
-    // Find macro references in HTML
-    // Expand macros from glossary
-    // Return expanded HTML
-    return expandMacros(html);
+// html.getOutlineHTML - Generate HTML from outline structure
+string htmlgetoutlinehtml(address adroutline, string indentstring, string outdentstring, string linestartstring, string lineendstring, boolean flprettyPrint=true) {
+    // Traverse outline and wrap each line with formatting strings
+    // Returns HTML representation of outline
+    return renderOutlineAsHTML(adroutline, indentstring, outdentstring, linestartstring, lineendstring, flprettyPrint);
+}
+
+// html.getGifHeightWidth - Parse GIF header for dimensions
+list htmlgetgifheightwidth(any f) {
+    // Read binary GIF file
+    // Extract width and height from GIF89a or GIF87a header
+    // Returns {height, width}
+    return parseGIFDimensions(f);
+}
+
+// html.getJpegHeightWidth - Parse JPEG header for dimensions
+list htmlgetjpegheightwidth(any f) {
+    // Read binary JPEG file
+    // Scan for SOF (Start of Frame) marker
+    // Extract width and height
+    // Returns {height, width}
+    return parseJPEGDimensions(f);
+}
+
+// html.refGlossary - Look up term in glossary
+string htmlrefglossary(string name) {
+    // Search glossary table for name
+    // Return glossary definition/link
+    return lookupGlossaryTerm(name);
+}
+
+// html.getPref - Get preference value
+any htmlgetpref(string prefName, address adrPageTable=nil) {
+    // Look up preference in page table
+    // Return preference value
+    return getPreferenceValue(prefName, adrPageTable);
 }
 ```
 

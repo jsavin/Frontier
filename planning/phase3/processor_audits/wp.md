@@ -12,7 +12,7 @@
 |----------|-------|
 | **Processor Name** | `wp` |
 | **EFP ID** | 1003 |
-| **Verb Count** | 27 kernel verbs (21 standard, 9 variable-related if flvariables enabled) |
+| **Verb Count** | 27 kernel verbs |
 | **Window Required** | NO |
 | **Implementation Type** | Kernel verbs |
 | **Data Type** | WPText (formatted text with RTF-style attributes) |
@@ -32,56 +32,37 @@ WP (word processing) processor provides operations on formatted text (WPText) ob
 
 ---
 
-## Core Verb Inventory (21 verbs)
+## Verb Inventory (27 verbs)
 
-| Verb | Category | Purpose | Headless |
-|------|----------|---------|----------|
-| `inTextMode` | State | Check if in text editing mode | ✅ YES |
-| `setTextMode` | State | Set text mode | ✅ YES |
-| `getText` | Retrieve | Get all text | ✅ YES |
-| `setText` | Modify | Set all text | ✅ YES |
-| `getSelText` | Retrieve | Get selected text | ✅ YES |
-| `getDisplay` | Format | Get display preferences | ✅ YES |
-| `setDisplay` | Format | Set display preferences | ✅ YES |
-| `getSelect` | Selection | Get selection range | ✅ YES |
-| `setSelect` | Selection | Set selection range | ✅ YES |
-| `insert` | Modify | Insert text | ✅ YES |
-| `getIndent` | Format | Get indentation | ✅ YES |
-| `setIndent` | Format | Set indentation | ✅ YES |
-| `getLeftMargin` | Format | Get left margin | ✅ YES |
-| `setLeftMargin` | Format | Set left margin | ✅ YES |
-| `getRightMargin` | Format | Get right margin | ✅ YES |
-| `setRightMargin` | Format | Set right margin | ✅ YES |
-| `setSpacing` | Format | Set line spacing | ✅ YES |
-| `setJustification` | Format | Set text justification | ✅ YES |
-| `setTab` | Format | Set tab stops | ✅ YES |
-| `clearTabs` | Format | Clear tab stops | ✅ YES |
-| `getruler` | Format | Get ruler settings | ✅ YES |
-| `setruler` | Format | Set ruler settings | ✅ YES |
-
-### Additional Verbs (when flvariables enabled)
-
-| Verb | Purpose | Headless |
-|------|---------|----------|
-| `newVariable` | Create embedded variable | ✅ YES |
-| `deleteVariable` | Delete variable | ✅ YES |
-| `getNthVariable` | Get variable by index | ✅ YES |
-| `setVariableValue` | Set variable value | ✅ YES |
-| `getVariableValue` | Get variable value | ✅ YES |
-| `insertVariable` | Insert variable reference | ✅ YES |
-| `getEvaluate` | Get evaluation status | ✅ YES |
-| `setEvaluate` | Set evaluation status | ✅ YES |
-| `hiliteVariables` | Highlight variables in display | ✅ YES |
-
-### Text Navigation (3 verbs)
-
-| Verb | Purpose | Headless |
-|------|---------|----------|
-| `go` | Move cursor | ✅ YES |
-| `selectWord` | Select word at cursor | ✅ YES |
-| `selectLine` | Select line at cursor | ✅ YES |
-| `selectParagraph` | Select paragraph | ✅ YES |
-| `rulerlength` | Get ruler length | ✅ YES |
+| Verb | UserTalk Signature | Returns | Headless |
+|------|-------------------|---------|----------|
+| `getText` | `wp.getText()` | string | ✅ YES |
+| `setText` | `wp.setText(text)` | boolean | ✅ YES |
+| `getSelText` | `wp.getSelText()` | string | ✅ YES |
+| `getDisplay` | `wp.getDisplay()` | boolean | ✅ YES (no-op) |
+| `setDisplay` | `wp.setDisplay(fldisplay)` | boolean | ✅ YES (no-op) |
+| `getIndent` | `wp.getIndent()` | integer | ✅ YES |
+| `setIndent` | `wp.setIndent(indent)` | boolean | ✅ YES |
+| `getLeftMargin` | `wp.getLeftMargin()` | integer | ✅ YES |
+| `setLeftMargin` | `wp.setLeftMargin(leftmargin)` | boolean | ✅ YES |
+| `getRightMargin` | `wp.getRightMargin()` | integer | ✅ YES |
+| `setRightMargin` | `wp.setRightMargin(rightmargin)` | boolean | ✅ YES |
+| `setSpacing` | `wp.setSpacing(spacing)` | boolean | ✅ YES |
+| `setJustification` | `wp.setJustification(justification)` | boolean | ✅ YES |
+| `setTab` | `wp.setTab(pos, type, fill)` | boolean | ✅ YES |
+| `clearTabs` | `wp.clearTabs()` | boolean | ✅ YES |
+| `getSelect` | `wp.getSelect(@startsel, @endsel)` | boolean | ✅ YES |
+| `setSelect` | `wp.setSelect(startsel, endsel)` | boolean | ✅ YES |
+| `insert` | `wp.insert(text)` | boolean | ✅ YES |
+| `go` | `wp.go(dir, distance)` | boolean | ✅ YES |
+| `selectWord` | `wp.selectWord()` | boolean | ✅ YES |
+| `selectLine` | `wp.selectLine()` | boolean | ✅ YES |
+| `selectParagraph` | `wp.selectParagraph()` | boolean | ✅ YES |
+| `rulerLength` | `wp.rulerLength()` | integer | ✅ YES |
+| `getRuler` | `wp.getRuler()` | boolean | ✅ YES |
+| `inTextMode` | `wp.inTextMode()` | boolean | ✅ YES |
+| `setTextMode` | `wp.setTextMode(flenter)` | boolean | ✅ YES |
+| `newTextObject` | `wp.newTextObject(@adrVar, initialText)` | boolean | ✅ YES |
 
 ---
 

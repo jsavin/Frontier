@@ -33,7 +33,7 @@ RGB processor manages RGB color (red, green, blue) data structures. Pure data st
 
 | Verb | Parameters | Returns | Headless |
 |------|-----------|---------|----------|
-| `get` | (rgbType value) | table {red, green, blue} | ✅ YES |
+| `get` | (rgbType value, @red, @green, @blue) | boolean | ✅ YES |
 | `set` | (number r, number g, number b) | rgbType | ✅ YES |
 
 ---
@@ -54,13 +54,12 @@ RGB processor manages RGB color (red, green, blue) data structures. Pure data st
 RGB colors are represented as kernel type containing three color components (0-255 or 0.0-1.0):
 
 ```c
-// rgb.get - Extract color components
-table rgbget(rgbType color) {
-    local (result = {})
-    result.red = color.red
-    result.green = color.green
-    result.blue = color.blue
-    return result
+// rgb.get - Extract color components into passed-in variables
+boolean rgbget(rgbType color, address adrRed, address adrGreen, address adrBlue) {
+    adrRed^ = color.red
+    adrGreen^ = color.green
+    adrBlue^ = color.blue
+    return true
 }
 
 // rgb.set - Create color from components
@@ -125,24 +124,27 @@ rgbType rgbset(number red, number green, number blue) {
 local (color = rgb.set(255, 128, 0))  // Orange
 
 // Test get
-local (components = rgb.get(color))
-assert(components.red == 255)
-assert(components.green == 128)
-assert(components.blue == 0)
+local (red, green, blue)
+rgb.get(color, @red, @green, @blue)
+assert(red == 255)
+assert(green == 128)
+assert(blue == 0)
 
 // Round-trip - white
 local (white = rgb.set(255, 255, 255))
-local (w = rgb.get(white))
-assert(w.red == 255)
-assert(w.green == 255)
-assert(w.blue == 255)
+local (r, g, b)
+rgb.get(white, @r, @g, @b)
+assert(r == 255)
+assert(g == 255)
+assert(b == 255)
 
 // Round-trip - black
 local (black = rgb.set(0, 0, 0))
-local (b = rgb.get(black))
-assert(b.red == 0)
-assert(b.green == 0)
-assert(b.blue == 0)
+local (r2, g2, b2)
+rgb.get(black, @r2, @g2, @b2)
+assert(r2 == 0)
+assert(g2 == 0)
+assert(b2 == 0)
 ```
 
 **Edge Cases:**

@@ -31,22 +31,22 @@ XML processor provides bidirectional conversion between Frontier data structures
 
 ## Verb Inventory
 
-| Verb | Purpose | Headless |
-|------|---------|----------|
-| `addTable` | Add table to XML structure | ✅ YES |
-| `addValue` | Add value to XML structure | ✅ YES |
-| `compile` | Parse XML string to structure | ✅ YES |
-| `decompile` | Convert structure to XML string | ✅ YES |
-| `getAddress` | Get address of element in structure | ✅ YES |
-| `getAddressList` | Get list of addresses matching path | ✅ YES |
-| `getAttribute` | Get XML attribute value | ✅ YES |
-| `getAttributeValue` | Get attribute value by name | ✅ YES |
-| `getValue` | Get value at path | ✅ YES |
-| `valToString` | Convert value to XML string | ✅ YES |
-| `frontierValueToTaggedText` | Frontier value to XML with type tags | ✅ YES |
-| `structToFrontierValue` | Convert XML struct to Frontier value | ✅ YES |
-| `getPathAddress` | Get address of path | ✅ YES |
-| `convertToDisplayName` | Convert element name to display name | ✅ YES |
+| Verb | Parameters | Returns | Headless |
+|------|-----------|---------|----------|
+| `addTable` | (address adrParent, string name) | address | ✅ YES |
+| `addValue` | (address adrParent, string name, any value) | address | ✅ YES |
+| `compile` | (string s, address adrTable) | boolean | ✅ YES |
+| `decompile` | (address adrTable) | string | ✅ YES |
+| `getAddress` | (address adrTable, string name) | address | ✅ YES |
+| `getAddressList` | (address adrTable, string name) | list | ✅ YES |
+| `getAttribute` | (address adrTable, string name) | address | ✅ YES |
+| `getAttributeValue` | (address adrTable, string name) | any | ✅ YES |
+| `getValue` | (address adrTable, string name) | any | ✅ YES |
+| `valToString` | (any val, number indentLevel) | string | ✅ YES |
+| `frontierValueToTaggedText` | (address adrFrontierValue, number indentlevel) | string | ✅ YES |
+| `structToFrontierValue` | (address adrstruct, address adrFrontierVal) | boolean | ✅ YES |
+| `getPathAddress` | (address adrTable, string path, address adrResult) | boolean | ✅ YES |
+| `convertToDisplayName` | (string name) | string | ✅ YES |
 
 ---
 
@@ -69,27 +69,50 @@ XML processor provides bidirectional conversion between Frontier data structures
 **Two-Way XML Conversion:**
 
 ```c
-// xml.compile - Parse XML to Frontier structure
-table xmlcompile(string xmlText) {
-    // Parse XML string
-    // Build nested table structure
-    // Return table with type information
-    return parseXML(xmlText);
+// xml.compile - Parse XML text into table structure
+boolean xmlcompile(string s, address adrTable) {
+    // Parse XML string into nested table at address
+    // Returns true if successful
+    adrTable^ = parseXMLString(s);
+    return true;
 }
 
-// xml.decompile - Convert Frontier structure to XML
-string xmldecompile(table data) {
-    // Walk Frontier table structure
-    // Generate XML with proper element names
+// xml.decompile - Convert table structure back to XML string
+string xmldecompile(address adrTable) {
+    // Walk the nested table structure at address
+    // Generate XML with proper element names and types
     // Handle all Frontier types (scalar, table, list, binary, etc.)
-    return generateXML(data);
+    return generateXMLFromTable(adrTable^);
 }
 
-// xml.getValue - Query path in XML structure
-value xmlgetvalue(table data, string path) {
-    // Navigate path in structure
-    // Return value at path
-    return getValueAtPath(data, path);
+// xml.getValue - Get value from XML table by element name
+any xmlgetvalue(address adrTable, string name) {
+    // Navigate table structure to find element by name
+    // Return the value of that element
+    return findValueByName(adrTable^, name);
+}
+
+// xml.addValue - Add a new value to XML table
+address xmladdvalue(address adrParent, string name, any value) {
+    // Create new element with given name and value in parent table
+    // Returns address of newly created element
+    return addElementToTable(adrParent^, name, value);
+}
+
+// xml.getAddress - Get address of named element
+address xmlgetaddress(address adrTable, string name) {
+    // Find element by name in table
+    // Return its address
+    return getElementAddress(adrTable^, name);
+}
+
+// xml.getPathAddress - Get address using slash-separated path
+boolean xmlgetpathaddress(address adrTable, string path, address adrResult) {
+    // Navigate path (e.g., "root/element/child")
+    // Store result address in adrResult
+    // Return true if found, false if not
+    adrResult^ = navigatePath(adrTable^, path);
+    return (adrResult^ != NULL);
 }
 ```
 
