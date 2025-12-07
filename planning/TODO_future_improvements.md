@@ -55,11 +55,26 @@ Priority Key
 - Requires updating: runtime arithmetic operations to use 64-bit math
 - Requires updating: `system.compiler.language.constants.infinity` to 64-bit value
 
-**Related Question - Floating Point Types:**
-- **TODO:** Investigate current floating point implementation (32-bit float vs 64-bit double?)
-- If currently 32-bit: consider moving to 64-bit doubles for consistency and precision
-- This is not blocking the 64-bit integer decision but should be investigated and decided as part of the overall type system modernization
+**Related Decision - Floating Point Types:**
+
+Legacy Frontier had (from `tedchoward/Frontier/Common/headers/lang.h`):
+- **singlevaluetype (23):** C `float` (32-bit single-precision)
+- **doublevaluetype (11):** C `double` (64-bit double-precision, stored as Handle)
+
+Type distinctions in legacy:
+- `int` (16-bit short)
+- `long` (32-bit)
+- `float`/`single` (32-bit)
+- `double` (64-bit)
+
+**Decision: Floating Point Strategy**
+- **Recommendation:** Keep doubles as 64-bit (already the precision type in legacy)
+- Consider deprecating or simplifying the float/single distinction (legacy inconsistency)
+- For UserTalk: default to `double` for all floating point, keep legacy `float` for compatibility if needed
+- This aligns with the 64-bit precision theme (64-bit integers, 64-bit floats)
 - May affect: math operations, date/time calculations with fractional seconds, financial calculations, scientific scripts
+
+This decision is parallel to but separate from the integer 64-bit work; can be decided concurrently.
 
 **Scope of Work:**
 1. Update runtime arithmetic operations to use 64-bit signed integer math (add, subtract, multiply, divide, modulo, comparisons)
