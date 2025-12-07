@@ -102,9 +102,9 @@ These are likely implemented as UserTalk scripts:
 
 **Volume Info (8 verbs):**
 - `isvolume` - Check if path is volume
-- `freespaceonvolume` - Get free space (32-bit)
+- `freespaceonvolume` - Get free space (32-bit in legacy, 64-bit in modern headless)
 - `freespaceonvolumedouble` - Get free space (64-bit)
-- `volumesize` - Get volume size (32-bit)
+- `volumesize` - Get volume size (32-bit in legacy, 64-bit in modern headless)
 - `volumesizedouble` - Get volume size (64-bit)
 - `volumeblocksize` - Get block size
 - `filesonvolume` - Count files on volume

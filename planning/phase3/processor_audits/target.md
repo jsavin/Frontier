@@ -33,11 +33,11 @@ Target processor manages the current "target" (execution context) - typically a 
 
 ## Verb Inventory
 
-| Verb | Parameters | Returns | Headless |
-|------|-----------|---------|----------|
-| `get` | () | address | ✅ YES (current context) |
-| `set` | (address) | address | ✅ YES (push context) |
-| `clear` | () | void | ✅ YES (pop context) |
+| Verb    | Parameters | Returns          | Headless                |
+| ------- | ---------- | ---------------- | ----------------------- |
+| `get`   | ()         | address          | ✅ YES (current context) |
+| `set`   | (address)  | address or (nil) | ✅ YES (push context)    |
+| `clear` | ()         | false            | ✅ YES (pop context)     |
 
 ---
 
