@@ -29,8 +29,7 @@ File operations processor with ~30-35 essential kernel primitives, ~25-30 script
 **Headless Compatibility:** ✅ **Partial** (~50-60/86 verbs compatible)
 
 **Blocking Verbs:**
-- GUI dialogs: getfiledialog, putfiledialog, getfolderdialog, getdiskdialog
-- Mac Classic legacy: resource forks, type/creator codes, aliases, bundles, labels, versions, comments, icon positions
+- Mac Classic legacy: resource forks, type/creator codes, bundles, labels, versions, comments, icon positions
 - Finder integration: findapplication, isvisible, setvisible
 
 ---
@@ -119,21 +118,26 @@ These are likely implemented as UserTalk scripts:
 
 **Total Tier 3: 12 verbs**
 
-### Tier 4: Mac Classic Legacy (NOT Recommended)
+### Tier 4: Mac Classic Legacy (PARTIAL Implementation)
 
 **Resource Forks (OBSOLETE - Mac OS 9):**
-- `copyresourcefork` - Copy resource fork (obsolete concept)
+- `copyresourcefork` - Copy resource fork (obsolete concept) - SKIP
 
-**Type/Creator Codes (OBSOLETE - Mac OS Classic):**
-- `type` - Get 4-char type code
-- `creator` - Get 4-char creator code
-- `settype` - Set type code
-- `setcreator` - Set creator code
+**Type/Creator Codes (Implement Getters Only):**
+- `type` - Get 4-char type code (extension-based: ".txt" → "txt ", >4 chars → "????") - IMPLEMENT
+- `creator` - Get 4-char creator code (spaces on non-Mac platforms) - IMPLEMENT
+- `settype` - Set type code (NOT implemented on Windows in legacy) - STUB (error on non-Mac)
+- `setcreator` - Set creator code (NOT implemented on Windows in legacy) - STUB (error on non-Mac)
 
-**Aliases (Mac-Specific):**
-- `newalias` - Create Mac alias
-- `isalias` - Check if file is alias
-- `followalias` - Resolve alias to target
+**Aliases (Mac-Specific - KEEP):**
+- `newalias` - Create Mac alias (macOS semantic alias, not symlink)
+- `isalias` - Check if file is Mac alias
+- `followalias` - Resolve Mac alias to target
+
+**Links (Cross-Platform - NEW):**
+- `newlink` - Create symlink/junction (POSIX symlinks on Unix/Mac, NTFS junctions on Windows)
+- `islink` - Check if file is symlink/junction
+- `followlink` - Resolve symlink/junction to target
 
 **File Attributes (Mac Classic):**
 - `hasbundle` - Check bundle bit
@@ -158,19 +162,21 @@ These are likely implemented as UserTalk scripts:
 
 **Total Tier 4: ~23 verbs** (skip for headless)
 
-### Tier 5: GUI-Dependent (NOT for Headless)
+### Tier 5: Dialog Verbs (Headless-Compatible via stdio)
 
-**Dialog Verbs:**
-- `getfiledialog` - Show open file dialog
-- `putfiledialog` - Show save file dialog
-- `getfolderdialog` - Show folder selection dialog
-- `getdiskdialog` - Show disk selection dialog
+**Dialog Verbs (Implemented as stdio-based interactive prompts):**
+- `getfiledialog` - Interactive file selection prompt (with path completion)
+- `putfiledialog` - Interactive file save prompt (with path completion)
+- `getfolderdialog` - Interactive folder selection prompt
+- `getdiskdialog` - Interactive disk/volume selection prompt
 
-**Visibility:**
-- `isvisible` - Check if file is visible in Finder
-- `setvisible` - Set file visibility flag
+**Rationale:** Instead of GUI dialogs, implement as stdio prompts with readline-style input. Enables interactive applications over terminal/SSH while maintaining portability.
 
-**Total Tier 5: 6 verbs** (GUI only)
+**Visibility (Mac Classic - NOT Implemented):**
+- `isvisible` - Check if file is visible in Finder (skip - Finder-specific)
+- `setvisible` - Set file visibility flag (skip - Finder-specific)
+
+**Total Tier 5: 4 verbs implemented (as prompts), 2 verbs skipped (Finder-specific)**
 
 ### Tier 6: Specialized
 
@@ -188,10 +194,14 @@ These are likely implemented as UserTalk scripts:
 | **Tier 1: Core Primitives** | 37 | ✅ YES | C kernel verbs (essential) |
 | **Tier 2: Script Helpers** | ~8 | ✅ YES | UserTalk scripts (auto-work) |
 | **Tier 3: Volume Ops** | 12 | ✅ YES | C kernel verbs |
-| **Tier 4: Mac Legacy** | ~23 | ❌ NO | Skip (obsolete) |
-| **Tier 5: GUI Dialogs** | 6 | ❌ NO | Skip (GUI-dependent) |
+| **Tier 4: Type/Creator** | 4 | ✅ YES | Getters implement (type, creator); Setters stub (error on non-Mac) |
+| **Tier 4: Aliases** | 3 | ✅ YES | Keep Mac-specific aliases (newalias, isalias, followalias) |
+| **Tier 4: Links** | 3 | ✅ YES | New cross-platform verbs (newlink, islink, followlink) |
+| **Tier 4: Other Legacy** | ~16 | ❌ NO | Skip (resource forks, bundles, labels, versions, comments, icons) |
+| **Tier 5: Dialog Verbs** | 4 | ✅ YES | stdio-based interactive prompts |
+| **Tier 5: Visibility** | 2 | ❌ NO | Skip (Finder-specific) |
 | **Tier 6: Specialized** | 1 | ⚠️ MAYBE | Optional (MP3 metadata) |
-| **TOTAL** | **86** | **~57 YES** | **~49 kernel + 8 script** |
+| **TOTAL** | **86** | **~67 YES** | **~49 kernel + 8 script + 4 type/creator + 6 aliases/links + 4 dialogs** |
 
 ---
 
@@ -279,11 +289,12 @@ on readWholeFile(path)
 - Replaced by file extensions and MIME types
 - Skip type/creator/settype/setcreator verbs
 
-**Aliases vs Symlinks:**
-- Mac "aliases" are different from Unix symlinks
-- Symlinks are portable (Unix, macOS, Windows 10+)
-- Skip `newalias`, use symlinks if needed
-- `followalias` could work with symlinks via readlink()
+**Aliases (Mac-Specific) & Links (Cross-Platform):**
+- **Mac aliases:** Semantic shortcuts that survive refactoring, specific to macOS; keep `newalias`, `isalias`, `followalias`
+- **Symlinks/Junctions:** Path-based links, portable across platforms; implement new `newlink`, `islink`, `followlink`
+  - **Unix/macOS:** Standard POSIX symlinks via `symlink()`
+  - **Windows:** NTFS junctions via `CreateSymbolicLink()` (requires appropriate permissions)
+- **Strategy:** Both coexist; users choose `file.newAlias()` for macOS semantics or `file.newLink()` for portability
 
 **Volume Operations:**
 Essential for server operations:
@@ -463,7 +474,7 @@ file.delete("/tmp/locked-file")              → error
 
 ## Implementation Effort
 
-**Estimated Time:** 40-60 hours (phased approach)
+**Estimated Time:** 50-75 hours (phased approach)
 
 **Phase 1: Core Primitives (20-30 hours)**
 - File I/O: open, close, read, write, readline, writeline (8-12 hours)
@@ -476,20 +487,28 @@ file.delete("/tmp/locked-file")              → error
 - Volume info: freespaceonvolume, volumesize, etc. (4-6 hours)
 - Volume mgmt: eject, mount, unmount (2-3 hours)
 
-**Phase 3: Script-Based (Auto)**
+**Phase 3: Aliases & Links (5-10 hours)**
+- Mac aliases: newalias, isalias, followalias (2-3 hours, macOS-specific)
+- Cross-platform links: newlink, islink, followlink (3-7 hours, Unix/Windows variation)
+
+**Phase 4: Dialog Verbs (5-10 hours)**
+- Interactive prompts: getfiledialog, putfiledialog, getfolderdialog, getdiskdialog
+- Implementation: readline-style input with path completion/history (5-10 hours)
+
+**Phase 5: Script-Based (Auto)**
 - Most script verbs will work once primitives exist
 - May need to verify/update scripts
 
-**Phase 4: Testing (10-12 hours)**
+**Phase 6: Testing (10-12 hours)**
 - Unit tests for all Tier 1 verbs
-- Integration tests
+- Integration tests for aliases/links/dialogs
 - Platform-specific testing (macOS, Linux, Windows)
 - Edge case and error handling tests
 
 **NOT Implementing:**
-- Tier 4: Mac Legacy (~23 verbs) - obsolete
-- Tier 5: GUI Dialogs (6 verbs) - GUI-dependent
-- Saved: ~20-30 hours
+- Tier 4: Other Mac Legacy (~20 verbs) - resource forks, type/creator, bundles, labels, versions, comments, icons, finder attributes
+- Tier 5: Finder Integration (2 verbs) - isvisible, setvisible
+- Saved: ~15-20 hours
 
 **Confidence:** MEDIUM-HIGH - Core POSIX file operations are well-understood, but scope is large
 
@@ -519,31 +538,47 @@ file.delete("/tmp/locked-file")              → error
 
 **Phase 3 (Medium Priority - 5-10 hours):**
 9. Volume management: mount, unmount, eject
-10. Specialized: getmp3info (optional)
+10. File Aliases: newalias, isalias, followalias (macOS-specific)
 
-**Skip (Not for Headless):**
-- All Tier 4 (Mac Legacy) - ~23 verbs
-- All Tier 5 (GUI Dialogs) - 6 verbs
+**Phase 4 (High Priority - 5-10 hours):**
+11. Cross-platform Links: newlink, islink, followlink (new verbs for portability)
+
+**Phase 5 (High Priority - 5-10 hours):**
+12. Dialog Prompts: getfiledialog, putfiledialog, getfolderdialog, getdiskdialog (stdio-based interactive)
+
+**Phase 6 (Optional):**
+13. Specialized: getmp3info (optional)
+
+**Skip (Not Implementing):**
+- Tier 4 (Other Mac Legacy) - ~20 verbs (resource forks, type/creator, bundles, labels, versions, comments, icons)
+- Tier 5 (Finder Integration) - 2 verbs (isvisible, setvisible)
 
 ---
 
 ## Headless Compatibility Analysis
 
-**Fully Compatible: ~57/86 verbs**
+**Fully Compatible: ~67/86 verbs**
 
 **Tier 1 - Core Primitives (37 verbs):** ✅ ALL headless-compatible
 **Tier 2 - Script Helpers (~8 verbs):** ✅ ALL headless-compatible (built on Tier 1)
 **Tier 3 - Volume Ops (12 verbs):** ✅ ALL headless-compatible
+**Tier 4 - Type/Creator Getters (2 verbs):** ✅ Headless-compatible (extension-based type codes)
+**Tier 4 - Type/Creator Setters (2 verbs):** ⚠️ Stubbed (error on non-Mac, following legacy)
+**Tier 4 - Aliases (3 verbs):** ✅ Mac-specific aliases (headless-compatible on macOS)
+**Tier 4 - Links (3 verbs - NEW):** ✅ Cross-platform symlinks/junctions (headless-compatible)
+**Tier 5 - Dialog Verbs (4 verbs):** ✅ stdio-based interactive prompts (headless-compatible)
 
-**Not Compatible: ~29/86 verbs**
+**Not Compatible: ~18/86 verbs**
 
-**Tier 4 - Mac Legacy (~23 verbs):** ❌ Skip (obsolete concepts)
-- Resource forks, type/creator codes, aliases, bundles, labels, versions, comments, icons
+**Tier 4 - Other Mac Legacy (~16 verbs):** ❌ Skip (Finder-specific, no cross-platform equivalents)
+- Resource forks, bundles, labels, versions, comments, icons
 
-**Tier 5 - GUI Dialogs (6 verbs):** ❌ Skip (require GUI)
-- getfiledialog, putfiledialog, getfolderdialog, getdiskdialog, isvisible, setvisible
+**Tier 5 - Finder Integration (2 verbs):** ❌ Skip (Finder-specific)
+- isvisible, setvisible - Finder metadata only
 
-**Recommendation:** Implement Tier 1-3 (57 verbs), skip Tier 4-5 (29 verbs)
+**Recommendation:** Implement Tiers 1-3 + Type/Creator + Aliases + Links + Dialog Prompts (67 verbs), skip Other Mac Legacy + Finder Integration (18 verbs)
+
+**P2 Future Enhancement:** Extend settype/setcreator to work on Windows/Linux (rename extension or extended attributes)
 
 ---
 
@@ -622,15 +657,27 @@ These will automatically work once kernel primitives are implemented. May need t
 - Modern macOS uses extended attributes
 - Skip `copyresourcefork` entirely
 
-**Type/Creator Codes:**
-- 4-character file type identifiers (e.g., "TEXT", "ttxt", "APPL")
-- Replaced by file extensions (.txt, .jpg, .app)
-- Skip type, creator, settype, setcreator verbs
+**Type/Creator Codes (Implement Getters Only):**
+- **file.type()** - Get extension as 4-char code (".txt" → "txt ", ">4 chars → "????")
+- **file.creator()** - Get creator code (spaces on non-Mac)
+- **file.settype() / file.setcreator()** - NOT implemented on Windows in legacy; follow legacy pattern (error on non-Mac)
+- **P2 TODO:** Extend settype/setcreator to work on all platforms (rename extension on Windows/Linux)
 
-**Aliases:**
-- Mac-specific file references (different from Unix symlinks)
-- Could potentially work with symlinks using readlink()
-- Skip `newalias`, `isalias`, `followalias` for Phase 1
+**Aliases & Links:**
+- **Aliases (macOS):** Implement `newalias`, `isalias`, `followalias` for semantic Mac aliases (survive refactoring)
+- **Links (Cross-platform):** Implement new `newlink`, `islink`, `followlink` for portable symlinks/junctions
+  - Unix/Mac: Standard POSIX `symlink()`
+  - Windows: NTFS junctions via `CreateSymbolicLink()`
+- **Strategy:** Both coexist; users choose based on portability needs
+
+**Dialog Verbs (stdio-based interactive prompts):**
+- **`getfiledialog()`** - Interactive file selection prompt with path completion and history
+- **`putfiledialog()`** - Interactive file save prompt with path suggestions
+- **`getfolderdialog()`** - Interactive folder selection prompt
+- **`getdiskdialog()`** - Interactive disk/volume selection prompt
+- **Implementation:** Use readline-style prompts to enable interactive scripts in terminal/SSH sessions
+- **Benefits:** Portable (works anywhere), no GUI dependencies, server-side friendly
+- **Fallback:** Non-interactive environments can error or accept stdin input
 
 **Finder Attributes:**
 - Labels (color tags), comments, version strings, icon positions
@@ -690,6 +737,17 @@ This provides essential file operations in ~15-20 hours.
 
 ---
 
+## P2 Enhancements (Future)
+
+**P2 TODO: Extend settype/setcreator to all platforms**
+- Currently: settype/setcreator error on non-Mac (follow legacy behavior)
+- Enhancement: Implement cross-platform settype (rename file extension) and setcreator (store as metadata)
+- Windows: settype could update file extension or extended attributes
+- Linux: settype could update xattr user.file.type, setcreator could store xattr user.file.creator
+- Effort: ~5-10 hours for future implementation
+
+---
+
 ## References
 
 **Documentation:**
@@ -716,22 +774,28 @@ This provides essential file operations in ~15-20 hours.
 5. ⏳ Implement timestamp conversion (1904 ↔ 1970 epoch)
 6. ⏳ Write unit tests for each verb
 7. ⏳ Test on macOS, Linux, Windows
-8. ⏳ Continue with Phase 2-4 as prioritized
-9. ⏳ Update implementation status
+8. ⏳ Phase 2: Path & Volume operations
+9. ⏳ Phase 3: Mac Aliases (newalias, isalias, followalias)
+10. ⏳ Phase 4: Cross-platform Links (newlink, islink, followlink)
+11. ⏳ Phase 5: Dialog Prompts (getfiledialog, putfiledialog, getfolderdialog, getdiskdialog)
+12. ⏳ Update implementation status
 
 ---
 
 **Audit Status:** ✅ Complete and Approved for Phased Implementation
 
 **Implementation Strategy:**
-- **Phase 1 (Critical):** Core file I/O + basic operations (25 verbs, 20-30 hours)
-- **Phase 2-3:** Paths, volumes, metadata (32 verbs, 15-25 hours)
-- **Skip:** Mac Legacy + GUI dialogs (29 verbs)
+- **Phase 1 (Critical):** Core file I/O + basic operations (37 verbs, 20-30 hours)
+- **Phase 2 (High Priority):** Paths, volumes, metadata (25 verbs, 10-15 hours)
+- **Phase 3-4 (High Priority):** Aliases + Cross-platform Links (6 verbs, 10-15 hours)
+- **Phase 5 (High Priority):** Dialog Prompts (4 verbs, 5-10 hours)
+- **Skip:** Other Mac Legacy (~20 verbs - resource forks, type/creator, etc.) + Finder Integration (2 verbs)
 - **Auto-work:** Script-based helpers once primitives exist
 
 **Key Success Factors:**
-1. Platform abstraction layer for portability
+1. Platform abstraction layer for portability (file I/O, aliases, links)
 2. Proper 1904 epoch handling
 3. Secure path validation (prevent traversal attacks)
 4. Comprehensive error handling
-5. Script verb compatibility
+5. Interactive prompt implementation (readline-style with path completion)
+6. Careful distinction between semantic aliases (Mac) and path-based links (cross-platform)

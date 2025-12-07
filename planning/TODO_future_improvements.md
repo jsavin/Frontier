@@ -266,9 +266,39 @@ Scope
 Reference Docs
 - `planning/Frontier_Refactoring_Plan.md`
 - `planning/0.5.13_usertalk_language_summary.md`
+## Phase 3 — File Verb Enhancements: settype/setcreator Cross-Platform
+
+**Priority:** P2 — Nice-to-have enhancement for file verb completeness
+**Timeline:** After Phase 1 file processor implementation is complete and stable.
+
+Goals
+- Extend `file.settype()` and `file.setcreator()` to work on Windows and Linux (currently stub with error on non-Mac).
+- Enable cross-platform type/creator code manipulation via file extension updates or extended attributes.
+
+Background
+- Legacy Frontier implemented `file.type()` and `file.creator()` getters on Windows (extension-based type codes), but `file.settype()` and `file.setcreator()` were Mac-only.
+- Implementation strategy: follow the legacy behavior initially (stub setters with "not implemented" error); extend in P2.
+
+Proposed Changes
+- **Windows:** `file.settype()` updates file extension; `file.setcreator()` stores in extended attributes (if available).
+- **Linux:** `file.settype()` stores in `user.file.type` xattr; `file.setcreator()` stores in `user.file.creator` xattr.
+- **macOS:** Already implemented; keep existing behavior.
+
+Scope
+- Add helper functions in file processor to extract/update type codes from filenames.
+- Implement xattr storage/retrieval on Linux.
+- Implement extended attribute handling on Windows (if available; fallback gracefully).
+- Add tests covering type code round-trips on each platform.
+
+Effort
+- Estimated 5-10 hours after Phase 1 file processor foundation is stable.
+
+Reference Docs
+- `planning/phase3/processor_audits/file.md` - File processor audit (section: P2 Enhancements)
+
 ## Phase 3 — Hash Table Modernisation
 
-**Priority:** P1 — Needed before Phase 3 ships to users  
+**Priority:** P1 — Needed before Phase 3 ships to users
 **Timeline:** Execute after core architecture upgrades stabilise (Phase 2 exit).
 
 Background

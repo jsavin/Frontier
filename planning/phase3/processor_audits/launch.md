@@ -1,6 +1,6 @@
 # Processor Audit: `launch`
 
-**Status:** ❌ **Not Recommended for Headless Implementation**
+**Status:** ✅ **Partial Headless Compatibility** (3/5 verbs)
 **Audit Date:** 2025-12-05
 **Auditor:** Claude (Sonnet 4.5)
 
@@ -13,7 +13,7 @@
 | **Processor Name** | `launch` |
 | **EFP ID** | 1007 (lang block) |
 | **Verb Count** | 5 |
-| **Window Required** | NO (but effectively YES - all verbs are GUI-dependent) |
+| **Window Required** | NO (core verbs are headless-compatible; Mac-specific ones skipped) |
 | **Documentation** | [launch/](../../../docs/usertalk/docserver.userland.com/launch/index.html) |
 | **Stub Implementation** | [headless_launch_verbs.c](../../../tests/headless_launch_verbs.c) |
 
@@ -21,28 +21,34 @@
 
 ## Category Assessment
 
-**Category:** ❌ **GUI-Dependent / Desktop Integration**
+**Category:** ✅ **Mixed - Core + Legacy Mac-Specific**
 
 **Rationale:**
-All verbs in the launch processor are designed for Mac OS Classic desktop environment and require GUI/Finder integration. These verbs launch applications, open documents with applications, and interact with the Finder. None are applicable to headless server operation.
+Core launch verbs (`application`, `appWithDocument`, `anything`) are process-spawning utilities that work on any platform (Windows, macOS, Linux). Legacy verbs (`appleMenu`, `resource`) are Mac OS Classic specific and can be skipped. The processor supports headless server operation via basic process launching (e.g., watchdog daemons, automation).
 
-**Headless Compatibility:** ❌ **None** (0/5 verbs compatible)
+**Headless Compatibility:** ✅ **Partial** (3/5 verbs compatible)
 
-**Blocking Verbs:** ALL (5/5)
+**Blocking Verbs:**
+- Mac-specific: `appleMenu`, `resource` (can skip)
 
 ---
 
 ## Verb Inventory
 
-### All Verbs (GUI-Dependent)
+### Headless-Compatible Verbs (3/5)
 
-| # | Verb Name | Signature | Description | Why Not Headless-Compatible |
-|---|-----------|-----------|-------------|------------------------------|
-| 1 | `applemenu` | `launch.appleMenu(itemname) -> boolean` | Launch item from Apple menu | Requires Mac OS Classic Apple menu |
-| 2 | `application` | `launch.application(path) -> boolean` | Launch application | Requires GUI/desktop environment |
-| 3 | `appwithdocument` | `launch.appWithDocument(apppath, docpath) -> boolean` | Launch app with document | Requires GUI/desktop environment |
-| 4 | `resource` | `launch.resource(path) -> boolean` | Launch Mac code resource | Mac Classic only (resource forks) |
-| 5 | `anything` | `launch.anything(path) -> boolean` | Launch any file via Finder | Requires Finder (Mac GUI) |
+| # | Verb Name | Signature | Description | Headless Status |
+|---|-----------|-----------|-------------|-----------------|
+| 1 | `application` | `launch.application(path) -> boolean` | Launch application/executable | ✅ IMPLEMENT (spawn process) |
+| 2 | `appwithdocument` | `launch.appWithDocument(apppath, docpath) -> boolean` | Launch app with document argument | ✅ IMPLEMENT (spawn with args) |
+| 3 | `anything` | `launch.anything(path) -> boolean` | Launch any file (generic file opener) | ✅ IMPLEMENT (spawn appropriate handler) |
+
+### Mac-Specific Legacy Verbs (2/5 - SKIP)
+
+| # | Verb Name | Signature | Description | Why Skip |
+|---|-----------|-----------|-------------|----------|
+| 4 | `applemenu` | `launch.appleMenu(itemname) -> boolean` | Launch item from Apple menu | Mac OS Classic only |
+| 5 | `resource` | `launch.resource(path) -> boolean` | Launch Mac code resource | Mac resource fork (obsolete) |
 
 **Note:** Documentation shows additional verbs (controlPanel, usingID) not in kernelverbs.rc - these are Mac OS Classic specific and likely obsolete.
 
@@ -50,14 +56,14 @@ All verbs in the launch processor are designed for Mac OS Classic desktop enviro
 
 ## Implementation Analysis
 
-### Complexity: **VERY HIGH** (for modern cross-platform headless)
+### Complexity: **LOW to MEDIUM** (core verbs use standard process spawning)
 
 ### Dependencies
 
-- **Other Processors:** sys (for application management)
+- **Other Processors:** sys (optional; similar capabilities)
 - **External Services:** None
-- **OS-Specific Functionality:** YES (all verbs Mac OS Classic specific)
-- **GUI/Window Context:** YES (all verbs)
+- **OS-Specific Functionality:** YES (process spawning varies by platform)
+- **GUI/Window Context:** NO (core verbs are headless-compatible)
 
 ### Key Implementation Notes
 
@@ -103,18 +109,17 @@ ShellExecute(NULL, "open", "C:\\Documents\\file.pdf", NULL, NULL, SW_SHOWNORMAL)
 ```
 
 **Headless Server Reality:**
-In headless mode, these operations don't make sense:
-- No GUI to display launched applications
-- No user to interact with launched apps
-- No desktop environment (Finder, Windows Explorer, etc.)
-- Server processes should use `sys.unixShellCommand()` or direct process spawning instead
+Core launch verbs ARE valid in headless mode:
+- `launch.application()` spawns processes (watchdog daemons, helper executables)
+- `launch.appWithDocument()` spawns with arguments (batch processing)
+- `launch.anything()` opens files with handlers (format conversion, processing)
+- Example: keepFrontierRunning.exe monitored Frontier process and relaunched if crashed
 
-**Modern Alternatives:**
-For headless server operations, use:
-- `sys.unixShellCommand()` / `sys.winShellCommand()` - Execute programs directly
-- Process spawning APIs (fork/exec on Unix, CreateProcess on Windows)
-- Background daemon/service management
-- Containerized processes (Docker, systemd)
+**Implementation Strategy:**
+- **Unix/Linux:** Use `fork()/execvp()` or `posix_spawn()` for process launching
+- **Windows:** Use `CreateProcess()` for process launching
+- **macOS:** Use `fork()/execvp()` (or `NSTask` for app bundles)
+- Skip GUI-specific features (appleMenu, Finder integration)
 
 **Edge Cases:**
 - macOS resource forks are obsolete (macOS X+ uses extended attributes)
@@ -172,45 +177,64 @@ From docserver.userland.com/launch/:
 
 ## Testing Requirements
 
-**Not Recommended for Implementation**
+**Core Verbs (Headless-Compatible):**
+- `launch.application()`: Test spawning executables on Unix/Windows/macOS
+- `launch.appWithDocument()`: Test spawning with command-line arguments
+- `launch.anything()`: Test file handler association (generic open)
+- Test error handling: non-existent paths, permission errors, invalid executables
+- Test return values: success/failure
+- Test with various executable types (scripts, binaries, applications)
 
-If implemented for modern desktop Frontier:
-- Test on macOS with actual GUI session
-- Test on Linux with X11/Wayland session
-- Test on Windows with desktop session
-- Test error handling for non-existent applications
-- Test with various file types (documents, apps, etc.)
-
-**Not Applicable to Headless:**
-All verbs require GUI/desktop environment and cannot be tested in headless mode.
+**Mac-Specific Verbs (Skip Testing):**
+- appleMenu, resource - Mac Classic only, not testable on modern platforms
 
 ---
 
 ## Implementation Effort
 
-**Estimated Time:** N/A - **Not Recommended**
+**Estimated Time:** 12-18 hours (core verbs only)
 
-If pursued:
-- Modernization: 12-20 hours (rewrite for modern OS APIs)
-- Platform abstraction: 8-12 hours
-- Testing: 6-8 hours
-- Documentation: 2 hours
-- **Total: 28-42 hours** for limited benefit in headless context
+**Phase 1: Process Spawning Implementation (8-12 hours)**
+- Unix/Linux: `fork()/execvp()` or `posix_spawn()` (3-4 hours)
+- Windows: `CreateProcess()` implementation (3-4 hours)
+- macOS: `fork()/execvp()` or `NSTask` wrapper (2-3 hours)
 
-**Confidence:** LOW - Requires fundamental redesign for modern platforms
+**Phase 2: File Handler Association (2-3 hours)**
+- `launch.anything()` - determine file handler by extension/MIME type
+- Platform-specific file association lookup
+
+**Phase 3: Testing & Documentation (2-3 hours)**
+- Unit tests for each verb on all platforms
+- Integration testing with real executables
+- Documentation and examples
+
+**Confidence:** MEDIUM-HIGH - Process spawning is well-understood cross-platform operation
 
 ---
 
 ## Priority & Sequencing
 
-**Priority:** ⛔ **NOT RECOMMENDED** (Phase 4 - Desktop GUI Features)
+**Priority:** 🟡 **MEDIUM-HIGH** (Phase 2 - Core Automation/System Integration)
 
-**Recommended Implementation Order:** N/A (defer indefinitely for headless)
+**Recommended Implementation Order:** Phase 2, after file processor
 
 **Blockers/Prerequisites:**
-- GUI mode implementation
-- Desktop environment integration
-- Modern platform-specific APIs
+- sys processor already has similar capabilities (alternative)
+- File processor implementation (for launch.anything())
+
+**Implementation Sequence:**
+
+**Phase 1 (High Priority):**
+1. Implement `launch.application()` - spawn executable
+2. Implement `launch.appWithDocument()` - spawn with arguments
+
+**Phase 2 (Medium Priority):**
+3. Implement `launch.anything()` - file handler-based opening
+4. Add comprehensive cross-platform testing
+
+**Skip:**
+- `appleMenu` - Mac Classic only
+- `resource` - Mac Classic resource forks (obsolete)
 
 **Alternative Approach:**
 For headless server needs, recommend:
@@ -223,18 +247,18 @@ For headless server needs, recommend:
 
 ## Headless Compatibility Analysis
 
-**Fully Compatible:** ❌ None (0/5 verbs)
+**Fully Compatible:** ✅ 3/5 verbs
 
-**Partially Compatible:** ❌ None
+**Core Process Spawning (Headless-Compatible):**
+- ✅ `launch.application()` - Spawn executable (watchdog daemons, automation)
+- ✅ `launch.appWithDocument()` - Spawn with arguments (batch processing)
+- ✅ `launch.anything()` - File handler-based opening (format conversion, processing)
 
-**Not Compatible:** ✅ All (5/5 verbs)
-- ❌ applemenu - Mac Classic Apple menu (obsolete)
-- ❌ application - Requires desktop environment
-- ❌ appwithdocument - Requires desktop environment
-- ❌ resource - Mac Classic resource forks (obsolete)
-- ❌ anything - Requires Finder/desktop integration
+**Mac-Specific Legacy (Not Compatible):**
+- ❌ `appleMenu` - Mac Classic Apple menu (obsolete)
+- ❌ `resource` - Mac Classic resource forks (obsolete)
 
-**Recommendation:** **Do not implement** for headless mode. Return "not available in headless mode" for all verbs.
+**Recommendation:** **Implement 3 core verbs** for headless process spawning. Skip 2 Mac-specific verbs. Estimated effort: 12-18 hours.
 
 ---
 
@@ -312,13 +336,15 @@ Modern systems use sandboxing, permissions, and user confirmation for security.
 - Desktop environments vary (GNOME, KDE, XFCE, etc.)
 - File associations handled differently
 
-**Why Headless Doesn't Need This:**
-Headless servers should:
-- Use direct process spawning (fork/exec, CreateProcess)
-- Use service managers (systemd, launchd, Windows Services)
-- Use background daemons
-- Use containerization (Docker, LXC)
-- NOT launch GUI applications
+**Why Headless DOES Need This:**
+Headless servers often need process spawning for:
+- Watchdog daemons (e.g., keepFrontierRunning.exe monitoring Frontier process)
+- Batch processing (spawn external tools for format conversion, processing)
+- Automation (trigger helper scripts, post-processors)
+- Integration (launch external services, webhooks)
+
+Modern alternatives (systemd, Docker, etc.) don't replace UserTalk script automation.
+The launch.* verbs provide script-level process control, which is essential for automation.
 
 ---
 
@@ -386,49 +412,54 @@ If GUI mode is ever implemented:
 
 ## Recommendation
 
-**For Headless Frontier:** ⛔ **DO NOT IMPLEMENT**
+**For Headless Frontier:** ✅ **IMPLEMENT 3 CORE VERBS**
 
-**Rationale:**
-1. All 5 verbs require GUI/desktop environment
-2. Mac OS Classic legacy (1984-2001) - obsolete concepts
-3. Not applicable to server/headless operation
-4. Modern alternatives exist (sys.unixShellCommand, process spawning)
-5. Would require 28-42 hours for minimal benefit
-6. Security concerns with arbitrary application launching
+**Rationale for Implementation:**
+1. `launch.application()`, `launch.appWithDocument()`, `launch.anything()` are process-spawning utilities
+2. Essential for headless automation (watchdog daemons, batch processing, integration)
+3. Real-world example: keepFrontierRunning.exe relied on process spawning
+4. Effort is reasonable (12-18 hours for cross-platform implementation)
+5. Complements sys.unixShellCommand() with more structured API
 
-**Alternative:**
-1. Return "not implemented in headless mode" for all launch.* verbs
-2. Document that users should use `sys.unixShellCommand()` for process launching
-3. Consider future `process.*` processor for proper process management
-4. Consider future `desktop.*` processor if GUI Frontier is ever built
+**Skip Mac-Specific Verbs:**
+- `appleMenu` - Mac Classic Apple menu (obsolete)
+- `resource` - Mac Classic resource forks (obsolete)
 
-**User Migration:**
-For scripts using launch verbs:
-```usertalk
-// Old (won't work in headless):
-launch.application("/Applications/MyApp.app")
+**Implementation Priority:** Phase 2 (Medium-High) - After file processor, before dialog system
 
-// New (headless compatible):
-sys.unixShellCommand("open /Applications/MyApp.app")  // macOS
-sys.unixShellCommand("/Applications/MyApp.app/Contents/MacOS/MyApp &")  // Direct
+**Estimated Timeline:**
+- Phase 1: Core process spawning (8-12 hours)
+- Phase 2: File handler association (2-3 hours)
+- Phase 3: Testing & documentation (2-3 hours)
+- **Total: 12-18 hours**
 
-// Or for background processes:
-sys.unixShellCommand("nohup /usr/bin/myapp > /dev/null 2>&1 &")
-```
+**Future Enhancement:**
+Consider future `desktop.*` processor if GUI Frontier is ever built for Mac/Windows platforms.
 
 ---
 
 ## Next Steps
 
-1. ✅ Audit complete - **not recommended for implementation**
-2. ❌ Skip implementation of launch processor
-3. ✅ Document as "Not available in headless mode" in user documentation
-4. ⏳ Create user migration guide for scripts using launch verbs
-5. ⏳ Consider `process.*` processor for proper headless process management
-6. ⏳ Update implementation status as "Deferred - GUI-dependent"
+1. ✅ Audit complete - **ready for implementation**
+2. ⏳ Implement Phase 1: `launch.application()` and `launch.appWithDocument()`
+3. ⏳ Implement Phase 2: `launch.anything()` with file handler association
+4. ⏳ Write comprehensive tests across Unix/Windows/macOS platforms
+5. ⏳ Skip: `appleMenu`, `resource` (Mac Classic obsolete verbs)
+6. ⏳ Update implementation status as "Headless-Compatible (3/5 verbs)"
+7. ⏳ Document examples for watchdog daemons, batch processing, automation
 
 ---
 
-**Audit Status:** ✅ Complete - **Not Recommended for Headless Implementation**
+**Audit Status:** ✅ Complete - **Partial Headless Implementation Recommended** (3/5 verbs)
 
-**Implementation Strategy:** Return error "Not available in headless mode" for all verbs. Recommend users migrate to `sys.unixShellCommand()` or future `process.*` verbs.
+**Core Verbs (Implement):**
+- `launch.application()` - Spawn executable process
+- `launch.appWithDocument()` - Spawn with command-line arguments
+- `launch.anything()` - Open file with associated handler
+
+**Legacy Verbs (Skip):**
+- `appleMenu` - Mac Classic obsolete
+- `resource` - Mac Classic resource forks (obsolete)
+
+**Implementation Priority:** Phase 2 (Medium-High)
+**Estimated Effort:** 12-18 hours

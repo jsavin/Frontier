@@ -67,14 +67,13 @@ Table processor provides operations for manipulating Frontier's table (hash tabl
 | **Sorting** | sortBy | ✅ Headless | Sort table by column(s) |
 | **Query** | getSortOrder | ✅ Headless | Get current sort order |
 
-### Utility Scripts (13+ UserTalk implementations)
+### Utility Scripts (12+ UserTalk implementations)
 
 | Script | Complexity | Headless | Description |
 |--------|-----------|----------|-------------|
 | tableToXml | HIGH | ✅ YES | Serialize table to XML (complex type handling) |
 | tableToFiles | EXTREME | ✅ YES | Export table to file/folder hierarchy (9KB script) |
 | xmlToTable | HIGH | ✅ YES | Deserialize XML to table |
-| outlineToXml | - | ⚠️ PARTIAL | Uses `target.set()` for outline context |
 | compareContents | MEDIUM | ✅ YES | Compare two tables |
 | copyContents | MEDIUM | ✅ YES | Copy table contents |
 | moveContents | MEDIUM | ✅ YES | Move table contents |

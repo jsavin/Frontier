@@ -24,19 +24,20 @@
 **Category:** ⚠️ **Script Compilation & Debugging** (Mostly Headless, Some GUI)
 
 **Rationale:**
-Script processor provides operations for compiling, decompiling, and managing UserTalk scripts. Operations include compile/uncompile (headless-compatible), but debugging/breakpoint features require editor context (GUI-dependent). Core compilation is fully headless-compatible.
+Script processor provides operations for compiling, decompiling, and managing UserTalk scripts. All core operations are headless-compatible: compilation/decompilation, source access, breakpoint metadata management, and profiling. Breakpoints and profiling are NOT editor-dependent; they're metadata storage and performance analysis tools essential for headless automation and web server profiling.
 
-**Headless Compatibility:** ⚠️ **PARTIAL** (~70% compatible, ~30% GUI-dependent)
+**Headless Compatibility:** ✅ **HIGH** (~92% compatible, ~8% optional)
 
-**GUI-Only Verbs:**
-- getBreakpoint, setBreakpoint, clearBreakpoint (3 debugging ops)
-- startProfile, stopProfile (2 profiling ops - may need GUI context)
-- Total GUI-dependent: ~5 of 13 (38%)
-
-**Headless-Compatible Verbs:**
-- compile, uncompile, getCode, getLanguage, setLanguage (5 core)
+**Core Headless-Compatible Verbs:**
+- compile, uncompile, getCode, getLanguage, setLanguage (5 core compilation)
 - makeComment, uncomment, isComment (3 formatting)
-- Total Headless: ~8 of 13 (62%)
+- getBreakpoint, setBreakpoint, clearBreakpoint (3 breakpoint metadata)
+- startProfile, stopProfile (2 profiling tools - essential for server-side performance analysis)
+- scriptToOutline (1 data transformation)
+- Total Headless: ~13 of 13 (100%)
+
+**Optional/Enhancement Verbs:**
+- None - all core verbs are headless-compatible
 
 ---
 
@@ -54,18 +55,19 @@ Script processor provides operations for compiling, decompiling, and managing Us
 | **Comments** | makeComment | ✅ Headless | Convert lines to comments |
 | | uncomment | ✅ Headless | Remove comment markers |
 | | isComment | ✅ Headless | Check if line is comment |
-| **Debugging** | getBreakpoint | ❌ GUI-Only | Get breakpoint state (editor context) |
-| | setBreakpoint | ❌ GUI-Only | Set breakpoint (editor context) |
-| | clearBreakpoint | ❌ GUI-Only | Clear breakpoint (editor context) |
-| **Profiling** | startProfile | ❌ GUI-Only | Start execution profiler |
-| | stopProfile | ❌ GUI-Only | Stop profiler and show results |
+| **Debugging** | getBreakpoint | ✅ Headless | Get breakpoint metadata on script-outline headlines |
+| | setBreakpoint | ✅ Headless | Set breakpoint metadata on script-outline headlines |
+| | clearBreakpoint | ✅ Headless | Clear breakpoint metadata on script-outline headlines |
+| **Profiling** | startProfile | ✅ Headless | Start execution profiler (essential for web server profiling) |
+| | stopProfile | ✅ Headless | Stop profiler and return performance statistics |
+| **Data Xform** | scriptToOutline | ✅ Headless | Convert script text to outline structure |
 
 ### Utility Scripts (2 UserTalk implementations)
 
 | Script | Headless | Description |
 |--------|----------|-------------|
 | newScriptObject | ✅ YES | Create new script object at address |
-| scriptToOutline | ⚠️ PARTIAL | Convert script to outline (may need editor) |
+| scriptToOutline | ✅ YES | Convert script text to outline structure (pure data transformation) |
 | removeSource | ✅ YES | Remove script source (keep compiled) |
 
 ---
@@ -103,23 +105,29 @@ Script objects in Frontier contain:
    - uncomment(adrScript, lineRange) - Remove // from lines
    - isComment(adrScript, lineNum) - Check if line is comment
 
-3. **Debugging** - Editor integration only
-   - getBreakpoint(adrScript, lineNum) - Query breakpoint status
-   - setBreakpoint(adrScript, lineNum) - Enable breakpoint
-   - clearBreakpoint(adrScript, lineNum) - Disable breakpoint
-   - Requires editor window to display and manage breakpoints
+3. **Debugging** - Breakpoint metadata management
+   - getBreakpoint(adrScript, lineNum) - Query breakpoint status on script-outline headlines
+   - setBreakpoint(adrScript, lineNum) - Set breakpoint metadata on script-outline headlines
+   - clearBreakpoint(adrScript, lineNum) - Clear breakpoint metadata on script-outline headlines
+   - Pure metadata operations; no GUI required
 
-4. **Profiling** - Performance measurement
-   - startProfile() - Begin execution timing
-   - stopProfile() - End timing and generate report
-   - Likely needs GUI window to show results
+4. **Profiling** - Performance analysis and reporting
+   - startProfile() - Begin execution timing for all verb calls
+   - stopProfile() - End timing and return verb call statistics
+   - Essential for server-side performance analysis (e.g., web server profiling via /profile/ path)
+
+5. **Data Transformation** - Script-to-structure conversion
+   - scriptToOutline() - Convert script text to outline structure
+   - Pure data transformation, no GUI required
 
 **Headless Strategy:**
-For headless operation:
-- Use compile/uncompile for all script operations
+For headless operation, ALL verbs are supported:
+- Use compile/uncompile for script operations
 - Use getCode/setLanguage for script manipulation
 - Use comment verbs for code formatting
-- Skip debugging (breakpoints, profiling) entirely
+- Use breakpoint verbs for debugging metadata (stored on script-outline headlines)
+- Use profiling verbs for server-side performance analysis
+- Use scriptToOutline for script-to-outline transformations
 
 ---
 
@@ -129,26 +137,29 @@ For headless operation:
 - ✅ 13 kernel verbs defined in kernelverbs.rc
 - ✅ 3 UserTalk utility scripts
 - ⏳ Compiler implementation (complex)
-- ⏳ Debugging infrastructure (editor-dependent)
-- ⏳ Profiling engine (performance measurement)
+- ⏳ Debugging infrastructure (breakpoint metadata on script-outline headlines)
+- ⏳ Profiling engine (verb call execution timing and statistics)
 
 **What Needs Implementation:**
 
-**Tier 1 - Core (Headless-Compatible):**
+**Tier 1 - Core Compilation (Headless-Compatible):**
 1. **compile()** - UserTalk compiler + bytecode generation
 2. **uncompile()** - Decompiler + bytecode interpretation
 3. **getCode()** - Read script source from object
 4. **getLanguage()** - Language detection/retrieval
 5. **setLanguage()** - Language switching
 
-**Tier 2 - Support (Headless-Compatible):**
+**Tier 2 - Support Operations (Headless-Compatible):**
 1. **makeComment/uncomment** - Text processing
 2. **isComment** - Line parsing
 3. **newScriptObject** - Create scripts
 
-**Tier 3 - GUI-Dependent (Skip for Headless):**
-1. **getBreakpoint/setBreakpoint/clearBreakpoint** - Debugging UI
-2. **startProfile/stopProfile** - Profiling UI
+**Tier 3 - Debugging & Profiling (Headless-Compatible):**
+1. **getBreakpoint/setBreakpoint/clearBreakpoint** - Breakpoint metadata on script-outline headlines
+2. **startProfile/stopProfile** - Performance profiling for all verb calls
+
+**Tier 4 - Data Transformation (Headless-Compatible):**
+1. **scriptToOutline()** - Convert script text to outline structure
 
 ---
 
@@ -201,21 +212,24 @@ script.isComment (@myScript, 1)         // true
 
 ## Headless Compatibility Analysis
 
-**Fully Compatible:** ⚠️ PARTIAL (8/13 verbs = 62%)
+**Fully Compatible:** ✅ ALL VERBS (13/13 kernel + 3 utility = 16 total = 100%)
 
-**Headless-Compatible Verbs (8):**
+**Core Headless-Compatible Verbs (13):**
 - Compilation: compile, uncompile, getCode, getLanguage, setLanguage (5)
 - Comments: makeComment, uncomment, isComment (3)
+- Debugging: getBreakpoint, setBreakpoint, clearBreakpoint (3) - metadata on script-outline headlines
+- Profiling: startProfile, stopProfile (2) - verb call timing and statistics
 
-**GUI-Only Verbs (5):**
-- Debugging: getBreakpoint, setBreakpoint, clearBreakpoint (3)
-- Profiling: startProfile, stopProfile (2)
+**Utility Scripts (3):**
+- newScriptObject, scriptToOutline, removeSource (3) - all headless-compatible
 
 **Headless Strategy:**
-✅ **VIABLE FOR HEADLESS** (use 8 compatible verbs)
+✅ **FULLY VIABLE FOR HEADLESS** (all verbs compatible)
 - Implement core compilation (Tier 1)
 - Implement comment operations (Tier 2)
-- Skip debugging/profiling entirely
+- Implement debugging metadata management (Tier 3)
+- Implement profiling for performance analysis (Tier 3)
+- Implement data transformations (Tier 4)
 
 ---
 
@@ -250,20 +264,21 @@ script.isComment (@myScript, 1)         // true
 
 ## Summary
 
-**Status:** ⚠️ **VIABLE FOR HEADLESS** (62% compatible)
+**Status:** ✅ **FULLY VIABLE FOR HEADLESS** (100% compatible)
 
 **Key Findings:**
-1. **Core functionality is headless-compatible** (compile/uncompile/getCode)
-2. **Debugging features require GUI** (breakpoints, profiling)
-3. **Comment operations are text-based** (fully headless)
-4. **Compiler is complex but essential** (UserTalk execution foundation)
+1. **All core functionality is headless-compatible** (compile/uncompile/getCode/comments)
+2. **Debugging features are metadata-only** (breakpoints stored on script-outline headlines, no GUI required)
+3. **Profiling is essential for server operation** (verb call timing for performance analysis on web servers)
+4. **Data transformation is pure** (scriptToOutline is text-to-structure conversion, no GUI required)
+5. **Compiler is complex but essential** (UserTalk execution foundation)
 
 **Headless Implementation Strategy:**
-- Implement 8 compatible verbs (62% of processor)
-- Skip 5 GUI-dependent verbs (debugging/profiling)
-- Result: Fully functional script compilation for headless use
+- Implement all 13 kernel verbs + 3 utility scripts (100% of processor)
+- All verbs are headless-compatible
+- Result: Fully functional script compilation, debugging, and profiling for headless use
 
-**Recommendation:** HIGH PRIORITY but COMPLEX (compiler implementation)
+**Recommendation:** HIGH PRIORITY but COMPLEX (compiler implementation is fundamental)
 
 ---
 

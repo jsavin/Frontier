@@ -1,6 +1,6 @@
 # Processor Audit: `string`
 
-**Status:** ✅ Ready for Implementation (Complex - Encoding Issues)
+**Status:** ✅ Ready for Implementation (Straightforward - 60 verbs)
 **Audit Date:** 2025-12-05
 **Auditor:** Claude (Sonnet 4.5)
 
@@ -33,27 +33,32 @@ String manipulation is fundamental to any scripting environment. Provides compre
 
 ---
 
-## ⚠️ CRITICAL: Character Encoding Complexity
+## Character Encoding Strategy (Simplified)
 
-**Historical Context:**
-- Frontier string processing was designed in the 8-bit ASCII/extended ASCII era
-- Strings are treated as **byte buffers** (not necessarily valid character sequences)
-- **No enforcement** of Mac vs Windows character sets in storage
-- **Cannot assume UTF-8** at this level (even though it would be ideal)
+**Bigstring Type:**
+- Frontier's native string type is **bigstring** (Pascal Str255 format)
+- Fixed 256-byte buffer with first byte indicating length
+- Strings are treated as **byte buffers** (no inherent character set metadata)
+- No enforcement of character set in storage—caller must track encoding
 
-**Implications:**
-- **Byte-safe operations** (length, mid, delete, insert) work on any encoding
-- **Character-sensitive operations** (upper, lower, isAlpha) assume specific encodings
-- **Conversion verbs exist precisely because of encoding chaos:**
+**Encoding Conversion Approach:**
+- **Conversion verbs are simple in-place transformations:**
   - `latinToMac` / `macToLatin` - Mac Roman ↔ ISO Latin-1
-  - `utf8ToAnsi` / `ansiToUtf8` - UTF-8 ↔ Windows ANSI
+  - `utf8ToAnsi` / `ansiToUtf8` - UTF-8 ↔ Windows ANSI (with assumptions)
   - `utf16ToAnsi` / `ansiToUtf16` - UTF-16 ↔ Windows ANSI
   - `macRomanToUtf8` / `utf8ToMacRoman` - Mac Roman ↔ UTF-8
+- Verbs assume caller knows the source encoding and converts in-place
+- No charset metadata in stringType; caller is responsible for tracking
+
+**Long-Term Vision (Phase 3+):**
+- Convert all bigstrings to UTF-8 internally by default
+- Then conversion verbs become no-ops (or simple codepath shortcuts)
+- Eventually: extend stringType with charset metadata (more complex; defer for now)
 
 **Implementation Strategy:**
-1. **Tier 1**: Implement byte-safe operations first (no encoding assumptions)
-2. **Tier 2**: Implement character-sensitive operations (document encoding behavior)
-3. **Tier 3**: Implement encoding converters (complex, platform-specific)
+1. **Tier 1**: Implement byte-safe operations (encoding-agnostic)
+2. **Tier 2**: Implement character-sensitive operations (document encoding assumptions)
+3. **Tier 3**: Implement encoding converters (simple in-place transforms, no platform-specific complexity)
 4. **Defer**: HTML/HTTP-specific verbs (processhtmlmacros, davenetmassager)
 
 ---
@@ -190,33 +195,33 @@ static boolean stringfunctionvalue(short token, hdltreenode hparam1,
 - `mactolatin[]` - 256-byte lookup table for Mac Roman → ISO Latin-1
 - Tables already exist in stringverbs.c!
 
-**UTF-8/UTF-16 Conversion:**
-- Uses portable text encoding layer (`text_encoding_portable.c`)
-- Platform-specific APIs:
-  - POSIX: iconv() or manual UTF-8 handling
-  - Windows: MultiByteToWideChar() / WideCharToMultiByte()
-- Already abstracted in codebase
+**Encoding Conversion Implementation:**
+- Character set conversion tables already exist in stringverbs.c
+- Conversion verbs (`ansiToUtf8`, `utf8ToAnsi`, `macRomanToUtf8`, etc.) do simple byte-level transformations
+- Assume caller knows the source encoding and handles conversion in-place
+- No platform-specific complexity; straightforward lookup table or byte-mapping operations
 
-**Critical Encoding Notes:**
+**Encoding Behavior (By Design):**
 
-1. **`string.length(s)` returns BYTE count, not character count!**
-   - "hello" → 5 (ASCII)
-   - "café" (UTF-8) → 5 bytes (c=1, a=1, f=1, é=2)
-   - "café" (Latin-1) → 4 bytes
+1. **`string.length(s)` returns BYTE count (not character count)**
+   - "hello" → 5 bytes
+   - "café" (UTF-8) → 5 bytes (c=1, a=1, f=1, é=2 bytes)
+   - This is the documented behavior; not a limitation
 
-2. **`string.mid(s, pos, len)` operates on BYTE offsets!**
-   - Splitting UTF-8 string mid-character will produce invalid UTF-8
+2. **`string.mid(s, pos, len)` operates on BYTE offsets**
+   - Simple byte extraction; works on any encoding
+   - Caller is responsible for ensuring valid character boundaries
    - Safe for ASCII and single-byte encodings
 
-3. **`string.upper() / lower()` behavior:**
-   - Assumes single-byte encoding (ASCII/Latin-1/Mac Roman)
-   - Will NOT work correctly on UTF-8 multi-byte characters
-   - "café" (UTF-8) → might corrupt the é
+3. **`string.upper() / lower()` assume single-byte encoding**
+   - Works correctly on ASCII/Latin-1/Mac Roman
+   - Will not handle UTF-8 multi-byte characters correctly
+   - This is documented behavior; users should use conversion verbs if needed
 
-4. **Word/field parsing:**
-   - Uses ASCII whitespace/separator assumptions
-   - May break on UTF-8 if separator is multi-byte
-   - `setWordChar()` / `getWordChar()` use single bytes
+4. **Word/field parsing uses ASCII delimiters**
+   - Standard space/tab/newline whitespace assumptions
+   - Works correctly for ASCII and single-byte encodings
+   - Documented limitation; no need to "fix" for initial implementation
 
 **URL Encoding:**
 - Standard percent-encoding (%20 for space, etc.)
@@ -234,13 +239,13 @@ static boolean stringfunctionvalue(short token, hdltreenode hparam1,
 - Byte-oriented operations (encoding-safe)
 
 **Implementation Task:**
-1. Port existing stringverbs.c code to kernel verb system
-2. Test byte-safe operations first (Tier 1)
-3. Test character operations with known encodings (Tier 2)
-4. Test encoding converters carefully (Tier 3)
-5. Document encoding assumptions for each verb
-6. Add UTF-8 validation helpers?
-7. Consider deprecating hashMD5 (use crypt.MD5)
+1. Port existing stringverbs.c code to kernel verb system (2347 lines already written!)
+2. Implement Tier 1: byte-safe operations (straightforward port)
+3. Implement Tier 2: character operations (document encoding behavior)
+4. Implement Tier 3: encoding converters (simple in-place transformations)
+5. Document encoding assumptions for each verb category
+6. Consider deprecating hashMD5 (use crypt.MD5 instead)
+7. Plan Phase 3+: Convert bigstrings to UTF-8 by default
 
 ---
 
@@ -248,28 +253,29 @@ static boolean stringfunctionvalue(short token, hdltreenode hparam1,
 
 From docserver.userland.com/string/:
 
-**Common Pitfalls (from encoding perspective):**
+**Encoding Behavior by Verb Category:**
 
 ```usertalk
-// SAFE - byte operations
+// Byte-level operations (encoding-independent)
 string.length("hello")              → 5 bytes
 string.mid("hello", 1, 3)           → "ell"
 string.delete("hello", 2, 2)        → "heo"
 
-// UNSAFE - assumes encoding
-string.upper("café")                → depends on encoding!
-// If UTF-8: might corrupt → "CAFé" or garbage
-// If Latin-1: works → "CAFÉ"
+// Character operations (single-byte encoding only)
+string.upper("HELLO")               → "HELLO" (works)
+string.upper("café")                → encoding-dependent
+// Assumes ASCII/Latin-1/Mac Roman; UTF-8 requires conversion
 
-// Encoding conversions
+// Encoding conversions (in-place transformations)
 string.utf8ToAnsi("café")           → convert UTF-8 to Windows ANSI
 string.ansiToUtf8("café")           → convert Windows ANSI to UTF-8
+string.macRomanToUtf8("café")       → convert Mac Roman to UTF-8
 
 // URL encoding (byte-safe)
 string.urlEncode("hello world")     → "hello%20world"
 string.urlDecode("hello%20world")   → "hello world"
 
-// Pattern matching (byte-level)
+// Pattern matching (byte-level, encoding-independent)
 string.patternMatch("*.txt", "file.txt")  → true
 string.patternMatch("test*", "testing")   → true
 

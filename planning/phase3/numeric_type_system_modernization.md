@@ -58,26 +58,53 @@ typedef union tyvaluedata {
 - ✅ Runtime arithmetic operations: add, subtract, multiply, divide, modulo, comparisons
 - ✅ `system.compiler.language.constants.infinity`: 2,147,483,647 → 9,223,372,036,854,775,807
 - ✅ Type coercion and implicit conversions
-- ❌ Database format: NO CHANGE (we own both format and reader)
+- ✅ Database format: Type storage widths change (handled in v6→v7 migration)
 - ❌ Script code: Transparent upgrade (no user code changes needed)
 
 ### Decision 2: Floating Point Type Strategy
 
-**Recommendation:** 64-bit double as default floating point type
+**Recommendation:** Unify all floating point to 64-bit IEEE 754 double
 
 **Rationale:**
-- Legacy already distinguished: `double` (64-bit precision) vs `single` (32-bit space optimization)
-- 64-bit double was the "real" type; 32-bit single was the exception
-- Aligns with 64-bit integer decision (consistent "64-bit precision" theme)
-- Reduces type system complexity (one primary float type instead of two)
-- Better precision for financial, scientific, and timing calculations
+- **Historical reality:** Legacy Frontier defaulted float literals to extended precision (80-bit on Mac/Carbon SANE format, 64-bit IEEE on Windows/GCC due to platform limitations)
+- **Platform inconsistency:** Extended precision required conditional compilation and platform-specific storage formats, with Windows already using 64-bit double as fallback
+- **No production dependency:** No known UserLand-run production apps relied on extended precision semantics vs. 64-bit precision
+- **Portability:** 64-bit IEEE 754 double is universally supported across all platforms (Windows, Mac, Linux, embedded), while extended precision is disappearing from modern hardware
+- **Simplicity:** Eliminates platform-specific code paths and type system complexity (no more 32-bit float, 64-bit double, 80-bit extended)
+- **Standards alignment:** 64-bit double is the de facto default in modern languages (Python, JavaScript, Go, Rust)
+
+**Breaking change (documented):** Mac users upgrading from extended precision will see minor precision loss in edge cases (extended precision has ~20 decimal digits; 64-bit double has ~15). This is acceptable because:
+  - The precision loss is negligible for typical applications
+  - Windows was already using 64-bit, so cross-platform scripts expect this precision level
+  - The gain in portability and simplicity outweighs the precision trade-off
 
 **What Changes:**
-- ✅ Default floating point type: 64-bit double
-- ✅ Consider deprecating 32-bit float (but keep for legacy compatibility if needed)
-- ⚠️ May require floating point arithmetic updates (minimal impact)
-- ❌ Database format: NO CHANGE
-- ❌ Script code: Transparent upgrade
+- ✅ Default floating point type: 64-bit IEEE 754 double (unified across all platforms)
+- ✅ Deprecate 32-bit float (remove unless legacy compatibility specifically requires it)
+- ✅ Remove extended precision support (platform-specific code paths)
+- ✅ Database format: Type storage widths change (handled in v6→v7 migration)
+- ✅ Script code: Transparent for most code; documented minor precision change on Mac
+
+### Decision 3: Short Integer Arithmetic Promotion
+
+**Recommendation:** All integer arithmetic (including `short` values) uses 64-bit signed integer semantics
+
+**Rationale:**
+- **Historical context:** In legacy Frontier, the default integer type was `long` (32-bit), not `short` (16-bit). Testing confirms `local (n=1)` returns a 32-bit long, indicating short was never the primary integer type.
+- **No production dependency:** No known UserLand-run production apps relied on 16-bit overflow semantics for short values.
+- **Simplicity & safety:** One consistent integer arithmetic path eliminates subtle bugs from mixing 16-bit and 64-bit operations.
+- **Backward compatibility:** The `short` type remains valid as a declaration/storage type; it simply promotes to 64-bit during arithmetic.
+
+**Breaking change (documented):** Bitwise operations (`bit.shiftLeft`, `bit.shiftRight`, etc.) on short values will operate on the promoted 64-bit representation. Scripts expecting 16-bit wraparound behavior will see different results. This is acceptable because:
+  - Bitwise operations on shorts are rare edge cases
+  - Anyone explicitly using bitwise ops likely expects modern semantics anyway
+  - The change is an intentional design decision with clear rationale
+
+**What Changes:**
+- ✅ All integer arithmetic: 64-bit operations regardless of source type (short/long)
+- ✅ Bitwise operations: Operate on 64-bit promoted values
+- ✅ Database format: Type storage widths change (handled in v6→v7 migration)
+- ✅ Script code: Transparent for arithmetic; documented change for bitwise ops
 
 ---
 
@@ -136,10 +163,10 @@ typedef union tyvaluedata {
 ## Impact Analysis
 
 ### Database Format
-- **Integer representation:** May change internal storage
-- **Versioning:** No format version change required (we control both reader and writer)
-- **Migration:** Not needed (modern format is ours alone)
-- **Compatibility:** All v6→v7→v8 migrations remain valid
+- **Storage changes:** Yes — type widths change (short 2→8 bytes, long 4→8 bytes, float 4→8 bytes, exte 10→8 bytes on Mac)
+- **Versioning:** No new format version bump; changes handled as part of v6→v7 migration
+- **Migration path:** v6 reader must handle legacy byte widths; v7 reader/writer use new 8-byte sizes
+- **Legacy compatibility:** v6 format support remains in legacy reader path; v7+ format uses modernized numeric storage
 
 ### Scripts
 - **User code:** Transparent upgrade (no changes required)
