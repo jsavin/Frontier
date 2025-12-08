@@ -746,6 +746,11 @@ static boolean mepackmenustructure_modern(tysavedmenuinfo *legacy, Handle *hpack
 
 	/* Pack linked scripts (outline refcons) into hpackedscripts. */
 	{
+		boolean pushed = false;
+		if (menudata != nil && (**menudata).menuoutline != nil) {
+			oppushoutline((**menudata).menuoutline);
+			pushed = true;
+		}
 		hdlheadrecord hsummit;
 		typackinfo packinfo;
 		packinfo.hpackedscripts = hpackedscripts;
@@ -754,6 +759,8 @@ static boolean mepackmenustructure_modern(tysavedmenuinfo *legacy, Handle *hpack
 		if (!opsiblingvisiter(hsummit, false, &mepackscriptvisit, &packinfo))
 			goto exit;
 		hpackedscripts = packinfo.hpackedscripts; /* may have moved */
+		if (pushed)
+			oppopoutline();
 	}
 
 	/* Pack menu outline itself. */
@@ -811,6 +818,7 @@ static boolean meunpackmenustructure_modern(Handle hpacked, hdlmenurecord *hmenu
 
 	/* Replay script unpack on the attached outline. */
 	if (hpackedscripts != nil) {
+		oppushoutline(ho);
 		hdlheadrecord hsummit;
 		typackinfo packinfo;
 		packinfo.hpackedscripts = hpackedscripts;
@@ -818,6 +826,7 @@ static boolean meunpackmenustructure_modern(Handle hpacked, hdlmenurecord *hmenu
 		opoutermostsummit(&hsummit);
 		if (!opsiblingvisiter(hsummit, false, &meunpackscriptvisit, &packinfo))
 			goto exit;
+		oppopoutline();
 	}
 
 	fl = true;

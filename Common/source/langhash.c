@@ -139,7 +139,7 @@ static boolean langhash_prepare_wordprocessor_value(bigstring bsname, hdlhashnod
 	if (!langexternalgetfullpath(currenthashtable, bsname, bspath, nil))
 		copystring(bsname, bspath);
 
-	if ((size_t) bspath[0] >= sizeof pathbuf)
+	if ((unsigned char) bspath[0] >= (unsigned char) (sizeof pathbuf - 1))
 		return false; /* path would overflow */
 	copyptocstring(bspath, pathbuf);
 
@@ -2909,7 +2909,7 @@ static boolean hashpackvisit_legacy (bigstring bsname, hdlhashnode hnode, tyvalu
 	ccmsg (bsname, false);
 	*/
 
-	if ((**hnode).fldontsave && !flexternalmemorypack) /*keep traversing the table*/
+	if (hnode != nil && (**hnode).fldontsave && !flexternalmemorypack) /*keep traversing the table*/
 		return (false);
 
 	langtraperrors (bspackerror, &savecallback, &saverefcon);

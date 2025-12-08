@@ -5037,8 +5037,13 @@ boolean getintvalue (hdltreenode hfirst, short pnum, short *intval) {
 	
 	if (!getintparam (hfirst, pnum, &val)) 
 		return (false);
-		
-	*intval = val.data.intvalue;
+	
+	{
+		int64_t v = val.data.intvalue;
+		if (v < SHRT_MIN || v > SHRT_MAX)
+			return (false);
+		*intval = (short) v;
+	}
 	
 	return (true);
 	} /*getintvalue*/
@@ -5051,7 +5056,12 @@ boolean getlongvalue (hdltreenode hfirst, short pnum, long *lval) {
 	if (!getlongparam (hfirst, pnum, &val)) 
 		return (false);
 		
-	*lval = val.data.longvalue;
+	{
+		int64_t v = val.data.longvalue;
+		if (v < LONG_MIN || v > LONG_MAX)
+			return (false);
+		*lval = (long) v;
+	}
 	
 	return (true);
 	} /*getlongvalue*/
@@ -5077,7 +5087,12 @@ boolean getdatevalue (hdltreenode hfirst, short pnum, unsigned long *dateval) {
 	if (!getdateparam (hfirst, pnum, &val)) 
 		return (false);
 	
-	*dateval = val.data.datevalue;
+	{
+		int64_t v = val.data.datevalue;
+		if (v < 0 || (uint64_t) v > ULONG_MAX)
+			return (false);
+		*dateval = (unsigned long) v;
+	}
 	
 	return (true);
 	} /*getdatevalue*/
