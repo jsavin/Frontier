@@ -53,7 +53,7 @@ This document is a concise contributor guide for Frontier’s C/C toolchain and 
 ## Testing Guidelines
 - Add unit/integration tests under `tests/components/` or `tests/examples/`.
 - Use the provided framework (`tests/framework/test_framework.h`).
-- Run locally: `make -C tests test` and with sanitizers.
+- Run locally: `./tools/run_headless_tests.sh` (rebuilds CLI, runs v6→v7 migration, refreshes `databases/Frontier-v6-v7.root`, then executes `make -C tests test`); also run with sanitizers when needed.
 - Prefer deterministic tests and avoid filesystem/network writes unless required.
 
 ## Commit & Pull Request Guidelines
@@ -102,6 +102,7 @@ This document is a concise contributor guide for Frontier’s C/C toolchain and 
 - When migrating or saving non-scalar data (outlines, WPTexts, menus, scripts, tables, etc.) in v7+, strip cursor/window/font/UI metadata entirely; zero those fields and plan to store per-user preferences elsewhere so headless builds stay multi-user safe.
 - Prefer evidence over inference when interpreting identifiers or historical formats. If a name looks familiar (e.g., “WS” or “Word”), confirm its meaning via code/docs/logs before pursuing a theory to avoid chasing unrelated artifacts.
 - For modern BE64 paths, avoid format forks inside shared functions: fork legacy vs modern logic into separate functions/files so the modern code stays branch-free and clean; keep legacy-only code isolated.
+- Tests must exercise production code paths. If a helper isn’t exposed, add a minimal `FRONTIER_TESTS` shim that calls the real code rather than inventing dummies or bypassing runtime expectations. If reaching a code path isn’t obvious, pause and ask before introducing hacks or placeholders.
 
 ## Sandbox & Approvals
 - Escalation: Always request escalated execution when needed (e.g., writing outside workspace, network access, package installs, GUI commands, or when sandboxing blocks progress).

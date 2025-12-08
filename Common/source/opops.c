@@ -28,6 +28,7 @@
 #include "frontier.h"
 #include "standard.h"
 
+/* 2025-12-08 Codex: Add headless-only guards to trap outline handle clobbering during packing. */
 #include "memory.h"
 #include "strings.h"
 #include "quickdraw.h"
@@ -41,6 +42,9 @@
 #include "search.h"
 #include "timedate.h"
 #include "process.h"
+#if defined(FRONTIER_HEADLESS)
+extern const char *langhash_materialize_current_path;
+#endif
 
 
 #pragma pack(2)
@@ -108,6 +112,16 @@ boolean oppushoutline (hdloutlinerecord houtline) {
 		}
 	
 	outlinestack [topoutlinestack++] = outlinedata;
+#if defined(FRONTIER_HEADLESS)
+	{
+		const char *ctx = (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>";
+		fprintf(stderr, "[headless] oppushoutline path=%s new=%p newdata=%p old=%p\n",
+		        ctx,
+		        (void *) houtline,
+		        houtline == nil ? NULL : *houtline,
+		        (void *) outlinedata);
+	}
+#endif
 	
 	outlinedata = houtline;
 	
@@ -125,6 +139,17 @@ boolean oppopoutline (void) {
 	if (topoutlinestack <= 0)
 		return (false);
 	
+#if defined(FRONTIER_HEADLESS)
+	{
+		const char *ctx = (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>";
+		fprintf(stderr, "[headless] oppopoutline path=%s current=%p currentdata=%p restoring=%p\n",
+		        ctx,
+		        (void *) ho,
+		        ho == nil ? NULL : *ho,
+		        (void *) outlinestack[topoutlinestack - 1]);
+	}
+#endif
+
 	outlinedata = outlinestack [--topoutlinestack];
 	
 	if (ho) {
@@ -670,9 +695,32 @@ hdlheadrecord opbumpflatup (hdlheadrecord hnode, boolean flexpanded) {
 	in mis-expanded outlines
 	*/
 	
+#if defined(FRONTIER_HEADLESS)
+	const char *path_for_log = (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>";
+#define OPBUMP_ASSERT(stage, current) do { \
+	if ((current) == NULL) { \
+		fprintf(stderr, "[headless] opbumpflatup cursor nil (%s) path=%s\n", stage, path_for_log); \
+		__builtin_trap(); \
+	} \
+	if (!validhandle((Handle) (current))) { \
+		fprintf(stderr, "[headless] opbumpflatup cursor invalid (%s) path=%s cursor=%p\n", stage, path_for_log, (void *) (current)); \
+		__builtin_trap(); \
+	} \
+	if (*(current) == NULL) { \
+		fprintf(stderr, "[headless] opbumpflatup cursor data nil (%s) path=%s cursor=%p\n", stage, path_for_log, (void *) (current)); \
+		__builtin_trap(); \
+	} \
+} while (0)
+	OPBUMP_ASSERT("entry", hnode);
+#endif
+
 	hdlheadrecord origh = hnode;
 	hdlheadrecord lasth;
 	
+#if defined(FRONTIER_HEADLESS)
+	OPBUMP_ASSERT("pre-headlinkup", hnode);
+#endif
+
 	if ((**hnode).headlinkup == hnode) { /*no way up*/
 		
 		if ((**hnode).headlinkleft != hnode) /*not at summit*/
@@ -682,6 +730,10 @@ hdlheadrecord opbumpflatup (hdlheadrecord hnode, boolean flexpanded) {
 		}
 	
 	hnode = (**hnode).headlinkup; /*go to previous sibling*/
+
+#if defined(FRONTIER_HEADLESS)
+	OPBUMP_ASSERT("post-headlinkup", hnode);
+#endif
 	
 	if (flexpanded && !(**hnode).flexpanded) { /*special case*/
 		
@@ -696,6 +748,10 @@ hdlheadrecord opbumpflatup (hdlheadrecord hnode, boolean flexpanded) {
 	
 	while (true) {
 		
+#if defined(FRONTIER_HEADLESS)
+		OPBUMP_ASSERT("loop", hnode);
+#endif
+
 		lasth = hnode;
 		
 		hnode = opgetlastsubhead (hnode);
@@ -703,6 +759,9 @@ hdlheadrecord opbumpflatup (hdlheadrecord hnode, boolean flexpanded) {
 		if (hnode == lasth)
 			return (hnode);
 		} /*while*/
+#if defined(FRONTIER_HEADLESS)
+#undef OPBUMP_ASSERT
+#endif
 	} /*opbumpflatup*/
 
 
@@ -1112,7 +1171,7 @@ boolean opcontainsnode (hdlheadrecord hlookunder, hdlheadrecord hlookfor) {
 	return (scanrecord.flfoundit);
 	} /*opcontainsnode*/
 	
-	
+
 void opgetnodeline (hdlheadrecord hnode, long *lnum) {
 	
 	/*
@@ -1126,22 +1185,108 @@ void opgetnodeline (hdlheadrecord hnode, long *lnum) {
 	register hdlheadrecord nomad = hnode;
 	register hdlheadrecord lastnomad;
 	register long ct = 0;
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] opgetnodeline enter path=%s hnode=%p hdata=%p outlinedata=%p odata=%p\n",
+	        (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
+	        (void *) hnode,
+	        (hnode == NULL) ? NULL : *hnode,
+	        (void *) outlinedata,
+	        (outlinedata == NULL) ? NULL : *outlinedata);
+	const hdloutlinerecord initial_outlinedata = outlinedata;
+	const ptroutlinerecord initial_outline_record = (initial_outlinedata != NULL) ? *initial_outlinedata : NULL;
+	const char *path_for_log = (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>";
+	const hdlheadrecord initial_node = hnode;
+	const ptrheadrecord initial_node_record = (hnode != NULL && validhandle((Handle) hnode)) ? *hnode : NULL;
+
+#define OPGETNODELINE_ASSERT(stage) do { \
+	if (initial_outlinedata != outlinedata) { \
+		fprintf(stderr, "[headless] opgetnodeline outline pointer changed (%s) path=%s initial=%p current=%p\n", \
+		        stage, path_for_log, (void *) initial_outlinedata, (void *) outlinedata); \
+		__builtin_trap(); \
+	} \
+	if ((nomad == NULL) || !validhandle((Handle) nomad)) { \
+		fprintf(stderr, "[headless] opgetnodeline cursor invalid (%s) path=%s nomad=%p valid=%d\n", \
+		        stage, path_for_log, (void *) nomad, (nomad == NULL) ? 0 : validhandle((Handle) nomad)); \
+		__builtin_trap(); \
+	} \
+	if (*nomad == NULL) { \
+		fprintf(stderr, "[headless] opgetnodeline cursor data nil (%s) path=%s nomad=%p\n", \
+		        stage, path_for_log, (void *) nomad); \
+		__builtin_trap(); \
+	} \
+	if (hnode != initial_node || initial_node_record != NULL) { \
+		if (hnode == NULL || !validhandle((Handle) hnode) || *hnode == NULL) { \
+			fprintf(stderr, "[headless] opgetnodeline target node invalidated (%s) path=%s hnode=%p valid=%d\n", \
+			        stage, path_for_log, (void *) hnode, (hnode == NULL) ? 0 : validhandle((Handle) hnode)); \
+			__builtin_trap(); \
+		} \
+		if (*hnode != initial_node_record) { \
+			fprintf(stderr, "[headless] opgetnodeline target node moved (%s) path=%s initial_node=%p current_node=%p\n", \
+			        stage, path_for_log, (void *) initial_node_record, (void *) *hnode); \
+			__builtin_trap(); \
+		} \
+	} \
+	if (outlinedata == NULL) { \
+		fprintf(stderr, "[headless] opgetnodeline outlinedata nil (%s) path=%s initial=%p\n", \
+		        stage, path_for_log, (void *) initial_outlinedata); \
+		__builtin_trap(); \
+	} \
+	if (!validhandle((Handle) outlinedata)) { \
+		fprintf(stderr, "[headless] opgetnodeline outline handle invalid (%s) path=%s outlinedata=%p\n", \
+		        stage, path_for_log, (void *) outlinedata); \
+		__builtin_trap(); \
+	} \
+	if (*outlinedata == NULL) { \
+		fprintf(stderr, "[headless] opgetnodeline outline data nil (%s) path=%s outlinedata=%p\n", \
+		        stage, path_for_log, (void *) outlinedata); \
+		__builtin_trap(); \
+	} \
+	if ((initial_outline_record != NULL) && (*outlinedata != initial_outline_record)) { \
+		fprintf(stderr, "[headless] opgetnodeline outline data moved (%s) path=%s initial_data=%p current_data=%p\n", \
+		        stage, path_for_log, (void *) initial_outline_record, (void *) *outlinedata); \
+		__builtin_trap(); \
+	} \
+} while (0)
+
+	OPGETNODELINE_ASSERT("entry");
+#endif
 	
 	while (true) {
 		
+#if defined(FRONTIER_HEADLESS)
+		OPGETNODELINE_ASSERT("pre-bump");
+#endif
+
 		lastnomad = nomad;
 		
 		nomad = opbumpflatup (nomad, true);
 		
+#if defined(FRONTIER_HEADLESS)
+		OPGETNODELINE_ASSERT("post-bump");
+#endif
+
 		if (nomad == lastnomad) {
 			
 			*lnum = ct;
+#if defined(FRONTIER_HEADLESS)
+			fprintf(stderr, "[headless] opgetnodeline exit path=%s lnum=%ld hnode=%p hdata=%p outlinedata=%p odata=%p\n",
+			        (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
+			        *lnum,
+			        (void *) hnode,
+			        (hnode == NULL) ? NULL : *hnode,
+			        (void *) outlinedata,
+			        (outlinedata == NULL) ? NULL : *outlinedata);
+#endif
 			
 			return;
 			}
 			
 		ct++;
 		} /*while*/
+#if defined(FRONTIER_HEADLESS)
+#undef OPGETNODELINE_ASSERT
+#endif
 	} /*opgetnodeline*/
 
 
@@ -1814,6 +1959,3 @@ void opcopyformatting (hdloutlinerecord hsource, hdloutlinerecord hdest) {
 	
 	(**ho2).windowrect = (**ho1).windowrect;
 	} /*opcopyformatting*/
-
-
-

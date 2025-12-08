@@ -1,5 +1,6 @@
 /* standard_portable.h - Minimal portable types/macros for core */
 // 2025-11-09 Codex: Guard classic typedefs with explicit macros to prevent duplicate definitions.
+// 2025-12-06 Codex: Raise longinfinity to 64-bit max to align with modern numeric plan.
 
 #ifndef FRONTIER_STANDARD_PORTABLE_H
 #define FRONTIER_STANDARD_PORTABLE_H
@@ -236,7 +237,7 @@ typedef boolean (*callback)(void);
 #define intminusinfinity (-32768)
 #endif
 #ifndef longinfinity
-#define longinfinity ((long)0x7FFFFFFF)
+#define longinfinity ((long)0x7FFFFFFFFFFFFFFFLL)
 #endif
 
 #ifndef FixRound

@@ -11,6 +11,7 @@
 #include "standard.h"
 #include "byteorder.h"
 #include "memory.h"
+#include "db_format.h"
 
 /* Test 1: Verify v4 header struct size */
 static void test_v4_header_struct_size(void) {
@@ -75,17 +76,24 @@ static void test_version_dispatch_logic(void) {
 static void test_64bit_timestamp_byteorder(void) {
     printf("[oppack] Test 3: 64-bit timestamp byte order... ");
 
-    int64_t test_value = 0x0102030405060708LL;
-    int64_t swapped = conditionallonglongswap(test_value);
-    int64_t unswapped = conditionallonglongswap(swapped);
+    uint64_t test_value = 0x0102030405060708ULL;
+    unsigned char buf[8];
+
+    db_format_write_be64(buf, test_value);
+    uint64_t roundtrip = db_format_read_be64(buf);
 
     /* Round trip should preserve value */
-    assert(unswapped == test_value);
+    assert(roundtrip == test_value);
 
-    /* On little-endian systems, swapped should be different */
-    #if __LITTLE_ENDIAN__
-    assert(swapped != test_value);
-    #endif
+    /* Verify explicit byte order */
+    assert(buf[0] == 0x01);
+    assert(buf[1] == 0x02);
+    assert(buf[2] == 0x03);
+    assert(buf[3] == 0x04);
+    assert(buf[4] == 0x05);
+    assert(buf[5] == 0x06);
+    assert(buf[6] == 0x07);
+    assert(buf[7] == 0x08);
 
     printf("PASS\n");
 }

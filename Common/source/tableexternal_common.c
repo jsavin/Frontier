@@ -14,6 +14,21 @@
 #include "strings.h"
 #include "memory.h"
 #include "tableexternal_common.h"
+#if defined(FRONTIER_HEADLESS)
+/* Exported debug context from langhash_materialize_disk_values. */
+extern const char *langhash_materialize_current_path;
+
+static boolean __attribute__((unused)) headless_materialize_trace_enabled(void) {
+    static short initialized = 0;
+    static boolean enabled = false;
+    if (!initialized) {
+        const char *env = getenv("FRONTIER_MATERIALIZE_TRACE");
+        enabled = (env != NULL && env[0] != '\0' && env[0] != '0');
+        initialized = 1;
+    }
+    return enabled;
+}
+#endif
 
 // 2025-10-27 Codex: Log unpack errors while diagnosing headless system table loading.
 // 2025-11-14 Codex: Rebuild the legacy table converter so v6 payloads without merge
@@ -377,6 +392,9 @@ boolean tableverbinmemory_common(hdlexternalvariable hvariable, hdlhashnode hnod
         if (fl) {
             langtraperrors(bsunpackerror, &savecallback, &saverefcon);
 
+            fprintf(stderr, "[headless] tableunpacktable enter path=%s adr=0x%llx\n",
+                    (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
+                    (unsigned long long) adr);
             fl = tableunpacktable(hpacked, false, &htable); /* always disposes of hpackedtable */
 
             languntraperrors(savecallback, saverefcon, !fl);
@@ -386,6 +404,20 @@ boolean tableverbinmemory_common(hdlexternalvariable hvariable, hdlhashnode hnod
 
 #if defined(FRONTIER_HEADLESS)
                 fprintf(stderr, "[headless] tableunpacktable failed adr=0x%llx\n", (unsigned long long)adr);
+                if (langhash_materialize_current_path != NULL) {
+                    fprintf(stderr, "[headless] materialize context path=%s\n", langhash_materialize_current_path);
+                }
+                if (langhash_materialize_current_path == NULL) {
+                    if (langexternalfindvariable((hdlexternalvariable) hv, &hparent, bspath) &&
+                        langexternalgetfullpath(hparent, bspath, bspath, nil)) {
+                        short plen = stringlength(bspath);
+                        char cpath[256];
+                        short pcopy = (plen < (short) sizeof(cpath) - 1) ? plen : (short) sizeof(cpath) - 1;
+                        memmove(cpath, stringbaseaddress(bspath), pcopy);
+                        cpath[pcopy] = '\0';
+                        fprintf(stderr, "[headless] materialize context path=%s (computed)\n", cpath);
+                    }
+                }
                 {
                     char errbuf[256];
                     short errlen = stringlength(bsunpackerror);

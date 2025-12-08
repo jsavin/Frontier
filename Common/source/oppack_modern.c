@@ -31,11 +31,13 @@
  * Legacy v6 databases use oppack_legacy.c for reading old v2/v3 format.
  * See planning/phase3/carbon_migration/outline_script_payload.md for format details.
  */
+/* 2025-12-08 Codex: Use memcpy for outline timestamps/ctsaves to tolerate packed legacy alignment. */
 
 #include "frontier.h"
 #include "standard.h"
 
 #include <stdint.h>
+#include <string.h>
 /* 2025-11-14 Codex: Preserve fixed legacy header layout on 64-bit builds. */
 /* 2025-11-23 Codex: Write outline header sizes with BE helpers for v7 portability. */
 
@@ -54,6 +56,9 @@
 #define OP_HEADLESS_TRACE(...) fprintf(stderr, __VA_ARGS__)
 #else
 #define OP_HEADLESS_TRACE(...) ((void) 0)
+#endif
+#if defined(FRONTIER_HEADLESS)
+extern const char *langhash_materialize_current_path;
 #endif
 
 #pragma pack(2)
@@ -411,8 +416,51 @@ boolean oppack (Handle *hpackedoutline) {
 	long linetablebytes = 0;
 	
 	h = *hpackedoutline; /*copy into register*/
-	
+
 	clearbytes (&header, sizeof (header)); /*assure all bits set to 0*/
+
+#if defined(FRONTIER_HEADLESS)
+	const long hosize = gethandlesize((Handle) ho);
+	hdlheadrecord hcursor_early = (ho == NULL || *ho == NULL) ? NULL : (**ho).hbarcursor;
+	const long hcursor_size_early = (hcursor_early == NULL) ? 0 : gethandlesize((Handle) hcursor_early);
+	if (ho == nil || *ho == NULL || hosize <= 0 || !validhandle((Handle) ho)) {
+		const char *ctx = (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>";
+		fprintf(stderr, "[headless] oppack abort path=%s outlinedata=%p hdata=%p hsize=%ld valid=%d\n",
+		        ctx,
+		        (void *) ho,
+		        ho == nil ? NULL : *ho,
+		        hosize,
+		        ho == nil ? 0 : validhandle((Handle) ho));
+		return (false);
+	}
+	if (hcursor_early == NULL || hcursor_size_early != (long) sizeof (tyheadrecord)) {
+		fprintf(stderr, "[headless] oppack abort early cursor mismatch path=%s ho=%p hodata=%p hcursor=%p hcursor_data=%p hcursor_size=%ld expected=%ld\n",
+		        (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
+		        (void *) ho,
+		        *ho,
+		        (void *) hcursor_early,
+		        (hcursor_early == NULL) ? NULL : *hcursor_early,
+		        hcursor_size_early,
+		        (long) sizeof (tyheadrecord));
+		return (false);
+	}
+	fprintf(stderr, "[headless] oppack enter path=%s ho=%p hdata=%p hsize=%ld\n",
+	        (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
+	        (void *) ho,
+	        ho == nil ? NULL : *ho,
+	        hosize);
+#endif
+
+#if defined(FRONTIER_HEADLESS)
+	if (ho == nil || *ho == nil || !validhandle((Handle) ho)) {
+		fprintf(stderr, "[headless] oppack abort path=%s outlinedata=%p hdata=%p valid=%d\n",
+		        (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
+		        (void *) ho,
+		        ho == nil ? NULL : *ho,
+		        ho == nil ? 0 : validhandle((Handle) ho));
+		__builtin_trap();
+	}
+#endif
 	
 	if (h == nil) { /*the normal case, allocate a new handle*/
 		
@@ -433,30 +481,152 @@ boolean oppack (Handle *hpackedoutline) {
 		
 		packstream.pos = packstream.eof;
 		
-		if (!writehandlestream (&packstream, &header, sizeof (header)))
-			return (false);
+			if (!writehandlestream (&packstream, &header, sizeof (header)))
+				return (false);
+			}
+			
+			ixheader = packstream.pos - sizeof (header); //we're pointing past header now
+
+#if defined(FRONTIER_HEADLESS)
+			fprintf(stderr, "[headless] oppack debug stream-init path=%s hpacked=%p pos=%ld eof=%ld\n",
+			        (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
+			        (void *) h,
+			        (long) packstream.pos,
+			        (long) packstream.eof);
+#endif
+			
+#if defined(FRONTIER_HEADLESS)
+			if (outlinedata != ho || outlinedata == NULL || *outlinedata == NULL || !validhandle((Handle) outlinedata)) {
+				fprintf(stderr, "[headless] oppack abort before hoist pop path=%s outlinedata=%p hdata=%p ho=%p hodata=%p valid=%d\n",
+			        (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
+			        (void *) outlinedata,
+			        outlinedata == NULL ? NULL : *outlinedata,
+			        (void *) ho,
+			        ho == NULL ? NULL : *ho,
+			        outlinedata == NULL ? 0 : validhandle((Handle) outlinedata));
+			__builtin_trap();
 		}
-	
-	ixheader = packstream.pos - sizeof (header); //we're pointing past header now
-	
-	flpoppedhoists = oppopallhoists ();
+		fprintf(stderr, "[headless] oppack debug pre-hoists path=%s outlinedata=%p hdata=%p ho=%p hodata=%p\n",
+		        (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
+		        (void *) outlinedata,
+		        outlinedata == NULL ? NULL : *outlinedata,
+		        (void *) ho,
+		        ho == NULL ? NULL : *ho);
+#endif
+
+		flpoppedhoists = oppopallhoists ();
+
+#if defined(FRONTIER_HEADLESS)
+		fprintf(stderr, "[headless] oppack debug post-hoists path=%s outlinedata=%p hdata=%p ho=%p hodata=%p flpopped=%d\n",
+		        (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
+		        (void *) outlinedata,
+		        outlinedata == NULL ? NULL : *outlinedata,
+		        (void *) ho,
+		        ho == NULL ? NULL : *ho,
+		        flpoppedhoists);
+		if (ho == nil || *ho == nil || !validhandle((Handle) ho)) {
+			fprintf(stderr, "[headless] oppack abort after hoist pop path=%s outlinedata=%p hdata=%p valid=%d\n",
+			        (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
+			        (void *) ho,
+			        ho == nil ? NULL : *ho,
+		        ho == nil ? 0 : validhandle((Handle) ho));
+		__builtin_trap();
+	}
+#endif
 
 	/* V4 Portable Header - only runtime-relevant fields */
 	header.versionnumber = conditionalshortswap(opversionnumber);
 
 	header.platform = conditionallongswap (thisplatform);
 
+#if defined(FRONTIER_HEADLESS)
+	if (*ho == NULL) {
+		fprintf(stderr, "[headless] oppack abort before header fill path=%s outlinedata=%p hdata=%p\n",
+		        (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
+		        (void *) ho,
+		        NULL);
+		__builtin_trap();
+	}
+	/* 2025-12-07 Codex: sanity-check handle size matches widened tyoutlinerecord */
+	const long hosize_checked = gethandlesize((Handle) ho);
+	if (hosize_checked != (long) sizeof (tyoutlinerecord)) {
+		fprintf(stderr, "[headless] oppack abort handle size mismatch path=%s ho=%p hdata=%p hsize=%ld expected=%ld\n",
+		        (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
+		        (void *) ho,
+		        *ho,
+		        hosize_checked,
+		        (long) sizeof (tyoutlinerecord));
+		__builtin_trap();
+	}
+	hdlheadrecord hcursor = (**ho).hbarcursor;
+	fprintf(stderr, "[headless] oppack pre-opgetnodeline ho=%p hodata=%p hcursor=%p hcursor_data=%p hcursor_size=%ld\n",
+	        (void *) ho,
+	        *ho,
+	        (void *) hcursor,
+	        (hcursor == NULL) ? NULL : *hcursor,
+	        (hcursor == NULL) ? -1L : gethandlesize((Handle) hcursor));
+	fflush(stderr);
+	const long hcursor_size = (hcursor == NULL) ? 0 : gethandlesize((Handle) hcursor);
+	if (hcursor == NULL || !validhandle((Handle) hcursor) || *hcursor == NULL) {
+		fprintf(stderr, "[headless] oppack abort cursor invalid path=%s hcursor=%p valid=%d data=%p ho=%p hodata=%p\n",
+		        (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
+		        (void *) hcursor,
+		        (hcursor == NULL) ? 0 : validhandle((Handle) hcursor),
+		        (hcursor == NULL) ? NULL : *hcursor,
+		        (void *) ho,
+		        *ho);
+		__builtin_trap();
+	}
+	if (hcursor_size != (long) sizeof (tyheadrecord)) {
+		fprintf(stderr, "[headless] oppack abort cursor size mismatch path=%s hcursor=%p hsize=%ld expected=%ld\n",
+		        (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
+		        (void *) hcursor,
+		        hcursor_size,
+		        (long) sizeof (tyheadrecord));
+		__builtin_trap();
+	}
+#endif
+
 	opgetnodeline ((**ho).hbarcursor, &lnumcursor);
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] oppack cursor line=%ld ho=%p hdata=%p hsize=%ld\n",
+	        lnumcursor,
+	        (void *) ho,
+	        *ho,
+	        gethandlesize((Handle) ho));
+	fflush(stderr);
+	if (*ho == NULL || !validhandle((Handle) ho)) {
+		fprintf(stderr, "[headless] oppack abort after opgetnodeline path=%s outlinedata=%p hdata=%p valid=%d\n",
+		        (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
+		        (void *) ho,
+		        (ho == NULL) ? NULL : *ho,
+		        (ho == NULL) ? 0 : validhandle((Handle) ho));
+		__builtin_trap();
+	}
+#endif
 
 	memlongtodiskwords (lnumcursor, header.lnumcursor, header.lnumcursor_hiword);
 
 	header.fltextmode = (**ho).fltextmode;
 
-	header.timecreated = conditionallonglongswap((**ho).timecreated);
+	/* 64-bit timestamp fields may be only 2-byte aligned under the packed legacy layout. */
+	{
+		int64_t timecreated_local = 0;
+		int64_t timelastsave_local = 0;
+		long ctsaves_local = 0;
 
-	header.timelastsave = conditionallonglongswap((**ho).timelastsave);
+		memcpy(&timecreated_local, &(**ho).timecreated, sizeof(timecreated_local));
+		memcpy(&timelastsave_local, &(**ho).timelastsave, sizeof(timelastsave_local));
+		memcpy(&ctsaves_local, &(**ho).ctsaves, sizeof(ctsaves_local));
 
-	header.ctsaves = conditionallongswap(++(**ho).ctsaves);
+		db_format_write_be64(&header.timecreated, (uint64_t) timecreated_local);
+		db_format_write_be64(&header.timelastsave, (uint64_t) timelastsave_local);
+
+		++ctsaves_local;
+		memcpy(&(**ho).ctsaves, &ctsaves_local, sizeof(ctsaves_local));
+		db_format_write_be32(&header.ctsaves, (uint32_t) ctsaves_local);
+	}
 
 	header.outlinesignature = conditionallongswap((**ho).outlinesignature);
 
@@ -856,11 +1026,16 @@ static boolean opunpackversion4 (handlestream *packstream) {
 
 	(**ho).fltextmode = (boolean) conditionalshortswap (header.fltextmode);
 
-	(**ho).timecreated = conditionallonglongswap (header.timecreated);
+	/* Stored under packed alignment; avoid unaligned 64-bit writes. */
+	{
+		int64_t timecreated_local = (int64_t) db_format_read_be64((unsigned char *) &header.timecreated);
+		int64_t timelastsave_local = (int64_t) db_format_read_be64((unsigned char *) &header.timelastsave);
+		long ctsaves_local = (long) db_format_read_be32((unsigned char *) &header.ctsaves);
 
-	(**ho).timelastsave = conditionallonglongswap (header.timelastsave);
-
-	(**ho).ctsaves = conditionallongswap (header.ctsaves);
+		memcpy(&(**ho).timecreated, &timecreated_local, sizeof(timecreated_local));
+		memcpy(&(**ho).timelastsave, &timelastsave_local, sizeof(timelastsave_local));
+		memcpy(&(**ho).ctsaves, &ctsaves_local, sizeof(ctsaves_local));
+	}
 
 	disktomemlong (header.platform);
 
@@ -1251,5 +1426,3 @@ boolean opsuboutlinetonewtextscrap (hdlheadrecord hnode, Handle *htext) {
 	return (false);
 	} /%opsuboutlinetonewtextscrap%/
 */
-
-

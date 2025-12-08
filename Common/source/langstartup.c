@@ -200,75 +200,9 @@ boolean langaddkeywordlist (hdlhashtable htable, byte * bskeywords[], short ctke
 */
 
 boolean loadfunctionprocessor (short id, langvaluecallback valuecallback) {
-	
-	/*
-	2.1b5 dmb: having learning that our use of lots of string literals, and 
-	hence the "Seperate STRS" option in Think C was making us victim of an 
-	'040 instruction cache bug in Think C's run-time implementation of same, 
-	it's time to create the kernel tables directly from resources.  that's 
-	what this routine does.
-	
-	2006-04-16 aradke: swap byte-order on Intel Macs
-	*/
-	
-	bigstring bsname;
-	hdlhashtable htable;
-	short flwindow;
-	long ix = 0;
-	Handle hefps;
-	short ctefps;
-	short ctverbs;
-	short ixverb = 0;
-	boolean fl = true;
-	
-	hefps = getresourcehandle ('EFP#', id);
-	
-	assert (hefps != nil);
-	
-	if (hefps == nil)
-		return (false);
-	
-	if (!loadfromhandle (hefps, &ix, 2, &ctefps))
-		return (false);
-	
-	reztomemshort (ctefps);
-	
-	while (--ctefps >= 0) {
-		
-		copyrezstring (BIGSTRING (*hefps + ix), bsname);
-		
-		ix += stringsize (bsname);
-		
-		if (!loadfromhandle (hefps, &ix, 2, &flwindow))
-			return (false);
-		
-		reztomemshort (flwindow);
-		
-		if (!newfunctionprocessor (bsname, valuecallback, (boolean) flwindow, &htable))
-			return (false);
-		
-		if (!loadfromhandle (hefps, &ix, 2, &ctverbs))
-			return (false);
-		
-		reztomemshort (ctverbs);
-		
-		pushhashtable (htable); 
-		
-		while (--ctverbs >= 0 && fl) {
-			
-			copyrezstring (BIGSTRING (*hefps + ix), bsname);
-			
-			ix += stringsize (bsname);
-			
-			fl = langaddkeyword ((ptrstring) bsname, ixverb++);
-			}
-		
-		pophashtable ();
-		}
-
-	releaseresourcehandle (hefps);
-	
-	return (fl);
+	(void) id;
+	(void) valuecallback;
+	return true; /* headless-only fork: resource-based verb loading removed */
 	} /*loadfunctionprocessor*/
 
 

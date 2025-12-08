@@ -300,7 +300,7 @@ boolean fiffindinfile (const ptrfilespec fs, bigstring pattern, long *idx) {
 	
 	while (true) {
 		
-		register char *pbuffer = *hbuffer;
+		register char *pbuffer = (char *) *hbuffer;
 		register char *pbufferend = pbuffer + ctbytes;
 		register char chfirst = pattern [1];
 		
@@ -425,11 +425,11 @@ boolean fifcomparefiles (const ptrfilespec fs1, const ptrfilespec fs2) {
 		
 		//lockhandle (hbuffer1);
 		
-		p1 = *hbuffer1; /*copy into register*/
+		p1 = (char *) *hbuffer1; /*copy into register*/
 		
 		//lockhandle (hbuffer2);
 		
-		p2 = *hbuffer2; /*copy into register*/
+		p2 = (char *) *hbuffer2; /*copy into register*/
 		
 		for (ix = 0; ix < ctbytes1; ix++) {
 			
@@ -500,7 +500,7 @@ boolean fifcharcounter (const ptrfilespec fs, char chlookfor, long *count) {
 		
 		//lockhandle (hbuffer);
 		
-		pbuffer = *hbuffer; /*copy into register*/
+		pbuffer = (char *) *hbuffer; /*copy into register*/
 		
 		for (ix = 0; ix < ct; ix++) {
 			
@@ -1060,7 +1060,5 @@ boolean fifgetendoffile (const ptrfilespec fs, long *eof) {
 	
 	return (fl);
 	} /*fifseteof*/
-
-
 
 

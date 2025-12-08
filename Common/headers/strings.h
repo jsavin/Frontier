@@ -173,7 +173,7 @@ extern void copyheapstring (hdlstring, bigstring);
 
 extern boolean pushheapstring (hdlstring, bigstring);
 
-extern void timedatestring (long, bigstring);
+extern void timedatestring (int64_t, bigstring);
 
 extern void ellipsize (bigstring, short);
 

@@ -976,14 +976,44 @@ short stringpixels (bigstring bs) {
     return (short) (stringlength (bs));
 }
 
-boolean timetodatestring (unsigned long ptime, bigstring bs, boolean flabbreviate) {
-    (void) ptime;
-    (void) flabbreviate;
-    setemptystring (bs);
-    return false;
+boolean timetodatestring (int64_t ptime, bigstring bs, boolean flabbreviate) {
+    (void) flabbreviate; /* ignored; classic output uses numeric form */
+    const int64_t frontier_epoch_offset = 2082844800LL; /* seconds between 1904 and 1970 */
+    time_t unix_secs = (ptime > frontier_epoch_offset) ? (time_t) (ptime - frontier_epoch_offset) : (time_t) 0;
+    struct tm tmbuf;
+    if (localtime_r(&unix_secs, &tmbuf) == NULL) {
+        setemptystring(bs);
+        return false;
+    }
+    int month = tmbuf.tm_mon + 1;
+    int day = tmbuf.tm_mday;
+    int year = tmbuf.tm_year + 1900;
+    char buf[32];
+    snprintf(buf, sizeof(buf), "%d/%d/%04d", month, day, year);
+    copyctopstring(buf, bs);
+    return true;
 }
 
-boolean timetotimestring (unsigned long ptime, bigstring bs, boolean fl) { (void)ptime; (void)fl; setemptystring(bs); return false; }
+boolean timetotimestring (int64_t ptime, bigstring bs, boolean fl) {
+    const int64_t frontier_epoch_offset = 2082844800LL; /* seconds between 1904 and 1970 */
+    time_t unix_secs = (ptime > frontier_epoch_offset) ? (time_t) (ptime - frontier_epoch_offset) : (time_t) 0;
+    struct tm tmbuf;
+    if (localtime_r(&unix_secs, &tmbuf) == NULL) {
+        setemptystring(bs);
+        return false;
+    }
+    int hour12 = tmbuf.tm_hour % 12;
+    if (hour12 == 0)
+        hour12 = 12;
+    const char *ampm = (tmbuf.tm_hour >= 12) ? "PM" : "AM";
+    char buf[32];
+    if (fl)
+        snprintf(buf, sizeof(buf), "%d:%02d:%02d %s", hour12, tmbuf.tm_min, tmbuf.tm_sec, ampm);
+    else
+        snprintf(buf, sizeof(buf), "%d:%02d %s", hour12, tmbuf.tm_min, ampm);
+    copyctopstring(buf, bs);
+    return true;
+}
 
 boolean unixshellcall (Handle hcommand, Handle hreturn) {
     (void) hcommand;

@@ -43,6 +43,11 @@
 #include <dlfcn.h> /*dladdr symbolization for debugging*/
 #endif
 
+static inline void store_handle_out (Handle value, Handle *dest) {
+	/* 2025-12-09 Codex: guard against misaligned out-params in packed callers. */
+	moveleft (&value, dest, sizeof (Handle));
+} /*store_handle_out*/
+
 /* Enable to dump merge/unmerge diagnostics. */
 /* #define DEBUG_SERIALIZER 1 */
 
@@ -344,6 +349,12 @@ void disposehandle (Handle h) {
 	
 	if (h != nil) {
 		
+		#if defined(FRONTIER_HEADLESS)
+			const long _dispose_size = gethandlesize(h);
+			if (_dispose_size == 904) { /* outline handle size we keep crashing on */
+				fprintf(stderr, "[headless] disposehandle outline-size h=%p size=%ld\n", (void *) h, _dispose_size);
+			}
+		#endif
 
 		#if (MEMTRACKER == 1)
 			debugremovememhandle(h);
@@ -551,16 +562,16 @@ void movefromhandle (Handle h, ptrvoid pdest, long length) {
 		
 		if (h == nil) {
 			
-			*hreturned = nil;
+			store_handle_out (nil, hreturned);
 			
 			memoryerror ();
 			
 			return (false);
 			}
-			
+		
 		clearhandle (h);
 		
-		*hreturned = h;
+		store_handle_out (h, hreturned);
 		
 		return (true);
 		} /*newclearhandle*/
@@ -577,7 +588,7 @@ void movefromhandle (Handle h, ptrvoid pdest, long length) {
 		
 		if (h == nil) {
 			
-			*hreturned = nil;
+			store_handle_out (nil, hreturned);
 			
 			memoryerror ();
 			
@@ -586,7 +597,7 @@ void movefromhandle (Handle h, ptrvoid pdest, long length) {
 		
 		moveleft (pdata, *h, ctbytes);
 			
-		*hreturned = h;
+		store_handle_out (h, hreturned);
 		
 		return (true);
 		} /*newfilledhandle*/
@@ -602,7 +613,7 @@ boolean newclearhandle (long size, Handle *hreturned) {
 	
 	if (h == nil) {
 		
-		*hreturned = nil;
+		store_handle_out (nil, hreturned);
 		
 		memoryerror ();
 		
@@ -611,7 +622,7 @@ boolean newclearhandle (long size, Handle *hreturned) {
 		
 	clearhandle (h);
 	
-	*hreturned = h;
+	store_handle_out (h, hreturned);
 	
 	return (true);
 	} /*newclearhandle*/
@@ -628,7 +639,7 @@ boolean newfilledhandle (ptrvoid pdata, long size, Handle *hreturned) {
 	
 	if (h == nil) {
 		
-		*hreturned = nil;
+		store_handle_out (nil, hreturned);
 		
 		memoryerror ();
 		
@@ -637,7 +648,7 @@ boolean newfilledhandle (ptrvoid pdata, long size, Handle *hreturned) {
 	
 	moveleft (pdata, *h, ctbytes);
 		
-	*hreturned = h;
+	store_handle_out (h, hreturned);
 	
 	return (true);
 	} /*newfilledhandle*/
@@ -1511,7 +1522,8 @@ boolean debugloadfromhandletohandle (char * filename, unsigned long linenumber, 
 		return (false);
 		}
 	
-	*hnew = h;
+	/* 2025-12-09 Codex: avoid misaligned Handle stores when caller passes packed structs. */
+	moveleft (&h, hnew, sizeof (Handle));
 	
 	return (true);
 	} /*loadfromhandletohandle*/
@@ -1563,7 +1575,8 @@ boolean loadfromhandletohandle (Handle hload, long *ixload, long ctload, boolean
 		return (false);
 		}
 	
-	*hnew = h;
+	/* 2025-12-09 Codex: avoid misaligned Handle stores when caller passes packed structs. */
+	moveleft (&h, hnew, sizeof (Handle));
 	
 	return (true);
 	} /*loadfromhandletohandle*/

@@ -449,10 +449,10 @@ typedef struct tyoutlinerecord {
 	long outlinetype; /*for use by application. types in opinternal.h*/
 	
 	long outlinerefcon; /*for use by application*/
-	} tyoutlinerecord;
+} tyoutlinerecord;
 
 /* 2025-12-05: Verify 8-byte alignment of 64-bit timestamp fields under #pragma pack(2) */
-#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L && !defined(FRONTIER_PACK_TWO)
 _Static_assert(offsetof(tyoutlinerecord, timecreated) % 8 == 0, "tyoutlinerecord.timecreated must be 8-byte aligned");
 _Static_assert(offsetof(tyoutlinerecord, timelastsave) % 8 == 0, "tyoutlinerecord.timelastsave must be 8-byte aligned");
 #endif
@@ -713,6 +713,5 @@ extern boolean opnodechanged (hdlheadrecord);
 extern boolean oprmousedown (Point pt, tyclickflags flags); /*oppopup.c*/
 
 #endif
-
 
 

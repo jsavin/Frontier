@@ -111,6 +111,9 @@ enum {
 static boolean file_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
+    (void) hparam1;
+    (void) vreturned;
+
     switch(token) {
         case filv_created:
             /* Verb #0: file.created - not yet implemented */
@@ -572,4 +575,10 @@ boolean fileinitverbs(void) {
 
     pophashtable();
     return true;
+}
+
+/* Exported callback used by headless kernel verb bootstrap */
+boolean headless_file_verbs_callback(short token, hdltreenode hparam1,
+                                     tyvaluerecord *vreturned, bigstring bserror) {
+    return file_valueproc(token, hparam1, vreturned, bserror);
 }

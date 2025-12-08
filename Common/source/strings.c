@@ -31,6 +31,8 @@
 #include "frontier.h"
 #include "standard.h"
 
+#include <stdint.h>
+#include <stdlib.h>
 
 #include "font.h"
 #include "memory.h"
@@ -1289,18 +1291,27 @@ boolean pushheapstring (hdlstring hsource, bigstring bsdest) {
 	} /*pushheapstring*/
 
 
-void timedatestring (long ptime, bigstring bs) {
+void timedatestring (int64_t ptime, bigstring bs) {
 	bigstring bstime;
 
 	timetodatestring (ptime, bs, false);	
 
 	getstringlist (interfacelistnumber, timedateseperatorstring, bstime);
 
+#if defined(FRONTIER_HEADLESS)
+	copyctopstring ("; ", bstime);
+#else
+	/* Fallback if the interface list isn't populated. */
+	if (stringlength (bstime) == 0)
+		copyctopstring ("; ", bstime);
+#endif
+
 	pushstring (bstime, bs);
 
 	timetotimestring (ptime, bstime, true);
 		
 	pushstring (bstime, bs);
+
 
 	} /*timedatestring*/
 
@@ -1838,56 +1849,58 @@ boolean stringtoostype (bigstring bs, OSType *type) {
 
 boolean hexstringtonumber (bigstring bshex, long *n) {
 	
-	register long x = 0;
-	register char ch;
-	register short i;
-	register short len;
-	bigstring bs;
-	boolean fl = true;
-	boolean flsignextend;
+	short len = stringlength (bshex);
+	char temp [lenbigstring + 1];
+	char *p;
+	char *digitsstart;
+	size_t digits = 0;
+	uint64_t accum;
 	
-	copystring (bshex, bs);
+	moveleft (stringbaseaddress (bshex), temp, len);
+	temp [len] = '\0';
 	
-	stringdeletechars (bs, chspace);
+	p = temp;
+	while ((*p != '\0') && isspace ((unsigned char) *p))
+		++p;
 	
-	subtractstrings (bs, bshexprefix, bs);
+	if ((p [0] == '0') && ((p [1] == 'x') || (p [1] == 'X')))
+		p += 2;
 	
-	flsignextend = stringlength (bs) == 4;
+	while (*p == '0')
+		++p;
 	
-	popleadingchars (bs, '0');
+	digitsstart = p;
+	while ((digits < 16) && isxdigit ((unsigned char) p [digits]))
+		++digits;
 	
-	alllower (bs);
-	
-	len = min (stringlength (bs), 8);
-	
-	for (i = 1; i <= len; ++i) {
-		
-		x <<= 4; /*one nibble per character*/
-		
-		ch = getstringcharacter (bs, i - 1);
-		
-		if (isxdigit (ch))
-			x += hextoint (ch);
-		
-		else {
-			fl = false;
-			
-			break;
-			}
+	if (digits == 0) {
+		*n = 0;
+		return (true);
 		}
 	
-	if (flsignextend) { /*need so sign-extend as an integer*/
-		
-		i = x;
-		
-		x = i;
+	{
+		char saved = digitsstart [digits];
+		digitsstart [digits] = '\0';
+		accum = strtoull (digitsstart, NULL, 16);
+		digitsstart [digits] = saved;
 		}
 	
-	*n = x;
+	if (digits <= 4)
+		*n = (long) (int16_t) accum;
+	else if (digits <= 8)
+		*n = (long) (int32_t) accum;
+	else
+		*n = (long) (int64_t) accum;
 	
-	return (fl);
+	p = digitsstart + digits;
+	while (*p != '\0') {
+		if (!isspace ((unsigned char) *p))
+			return (false);
+		++p;
+		}
+	
+	return (true);
 	} /*hexstringtonumber*/
-
 
 void bytestohexstring (ptrvoid pdata, long ctbytes, bigstring bshex) {
 	
@@ -1919,29 +1932,35 @@ void bytestohexstring (ptrvoid pdata, long ctbytes, bigstring bshex) {
 
 
 void numbertohexstring (long number, bigstring bshex) {
-	
+
 	/*
 	5.0a21 dmb: set byte order to little-endian (Motorola)
+	2025-12-XX Codex: Emit BE16/BE32/BE64 so hexstringtonumber can round-trip 64-bit values.
 	*/
 
-	if ((number < -32768) || (number > 32767))  {
-		
-		db_format_write_be32(&number, (uint32_t) number);
+	{
+		unsigned char buf[sizeof (uint64_t)];
+		size_t width = 0;
 
-		bytestohexstring (&number, sizeof (long), bshex);
-		}
-	
-	else {
-		
-		short x = number;
-		
-		memtodiskshort (x);
+		if ((number >= -32768) && (number <= 32767)) {
+			int16_t x = (int16_t) number;
+			db_format_write_be16 (buf, (uint16_t) x);
+			width = sizeof (int16_t);
+			}
+		else if ((number >= INT32_MIN) && (number <= INT32_MAX)) {
+			int32_t x = (int32_t) number;
+			db_format_write_be32 (buf, (uint32_t) x);
+			width = sizeof (int32_t);
+			}
+		else {
+			int64_t x = (int64_t) number;
+			db_format_write_be64 (buf, (uint64_t) x);
+			width = sizeof (int64_t);
+			}
 
-		bytestohexstring (&x, sizeof (short), bshex);
+		bytestohexstring (buf, (long) width, bshex);
 		}
 	} /*numbertohexstring*/
-
-
 boolean bytestohex (Handle hbytes, Handle *hhex) {
 	
 	register byte *pbytes;

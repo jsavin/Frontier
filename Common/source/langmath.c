@@ -56,6 +56,8 @@ typedef enum tymathtoken { /*verbs that are processed by langmath.c*/
 	
 	sqrtfunc,
 
+	randomfunc,
+
 	cmathverbs
 	} tymathtoken;
 
@@ -292,6 +294,29 @@ static boolean mathfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			return (setdoublevalue (d, v));
 			}
 
+#ifdef FRONTIER_HEADLESS
+		case randomfunc: {
+			long lower, upper;
+
+			if (!getlongvalue (hp1, 1, &lower))
+				break;
+
+			flnextparamislast = true;
+
+			if (!getlongvalue (hp1, 2, &upper))
+				break;
+
+			if (lower > upper) {
+				errornum = badrandomboundserror;
+				break;
+			}
+
+			long n = rand ();
+			n = lower + (labs (n) % (upper - lower + 1));
+			return (setlongvalue (n, v));
+			}
+#endif /* FRONTIER_HEADLESS */
+
 		default:
 			errornum = notimplementederror;
 			
@@ -311,7 +336,28 @@ boolean mathinitverbs (void) {
 	
 	/*
 	2004-12-29 smd: new math verbs
+	2025-12-08 Codex: headless builds register math verbs programmatically (no resources).
 	*/
+
+#ifdef FRONTIER_HEADLESS
+	hdlhashtable htable = nil;
+
+	if (!newfunctionprocessor (BIGSTRING ("\pmath"), &mathfunctionvalue, false, &htable))
+		return (false);
+
+	pushhashtable (htable);
+	if (!langaddkeyword (BIGSTRING ("\pmin"), minfunc))
+		return (false);
+	if (!langaddkeyword (BIGSTRING ("\pmax"), maxfunc))
+		return (false);
+	if (!langaddkeyword (BIGSTRING ("\psqrt"), sqrtfunc))
+		return (false);
+	if (!langaddkeyword (BIGSTRING ("\prandom"), randomfunc))
+		return (false);
+	pophashtable ();
+	return (true);
+#else
 	
 	return (loadfunctionprocessor (idmathverbs, &mathfunctionvalue));
+#endif
 	} /*mathinitverbs*/

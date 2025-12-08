@@ -51,6 +51,11 @@
 #include "db_format.h" /* 2025-11-23 Codex: explicit BE writes for outline headers */
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
 
+#if defined(FRONTIER_HEADLESS)
+/* Current materialize path for error context. */
+extern const char *langhash_materialize_current_path;
+#endif
+
 #if defined(FRONTIER_TESTS)
 #include <stdio.h>
 #define OP_HEADLESS_TRACE(...) fprintf(stderr, __VA_ARGS__)
@@ -953,6 +958,19 @@ static boolean opunpackversion2 (handlestream *packstream) {
 	disktomemlong (header.sizetext);
 	
 	disktomemlong (header.sizelinetable);
+
+#if defined(FRONTIER_HEADLESS)
+	{
+		const char *ctx = (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>";
+        (void) ctx; /* trace-only when enabled */
+		OP_HEADLESS_TRACE("[headless] opunpackv2 header path=%s text=%ld linetable=%ld platform=%ld outlineSig=%08lx\n",
+		                  ctx,
+		                  (long) header.sizetext,
+		                  (long) header.sizelinetable,
+		                  (long) header.platform,
+		                  (unsigned long) header.outlinesignature);
+	}
+#endif
 	
 	if (header.platform == 0)
 		header.platform = macplatform;
@@ -986,12 +1004,40 @@ static boolean opunpackversion2 (handlestream *packstream) {
 #endif
 		return (false);
 	}
+
+	if (hsummit == nil) {
+#if defined(FRONTIER_HEADLESS)
+		OP_HEADLESS_TRACE("[headless] opunpackv2 hsummit nil path=%s\n",
+		                  (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>");
+#endif
+		return (false);
+	}
 	
 	(*packstream).pos += header.sizetext;
 	
 	stream = *packstream;
 	
 	stream.eof = stream.pos + header.sizelinetable;
+
+#if defined(FRONTIER_HEADLESS)
+	if (header.sizelinetable > 0 && (*packstream).data != NULL && *(*packstream).data != NULL) {
+		long stream_size = gethandlesize ((*packstream).data);
+		long available = stream_size - (*packstream).pos;
+		if (available > 0) {
+			size_t dump = (size_t) header.sizelinetable;
+			if ((long) dump > available)
+				dump = (size_t) available;
+			if (dump > 32)
+				dump = 32;
+			unsigned char *bytes = (unsigned char *) *(*packstream).data + (*packstream).pos;
+            (void) bytes; /* trace-only when enabled */
+			OP_HEADLESS_TRACE("[headless] opunpackv2 linetable first bytes:");
+			for (size_t i = 0; i < dump; ++i)
+				OP_HEADLESS_TRACE(" %02x", bytes[i]);
+			OP_HEADLESS_TRACE("\n");
+		}
+	}
+#endif
 	
 	opsetsummit (ho, hsummit);
 	
@@ -1010,13 +1056,27 @@ static boolean opunpackversion2 (handlestream *packstream) {
 	(*packstream).pos += header.sizelinetable;
 	
 	hline1 = oprepeatedbump (flatdown, (**ho).vertscrollinfo.cur, hsummit, true);
-	
+	if (hline1 == nil) {
+#if defined(FRONTIER_HEADLESS)
+		OP_HEADLESS_TRACE("[headless] opunpackv2 hline1 nil cur=%ld path=%s\n",
+		                  (long) (**ho).vertscrollinfo.cur,
+		                  (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>");
+#endif
+		return (false);
+	}
 	(**ho).hline1 = hline1;
 	
 	lnumcursor = diskwordstomemlong (header.lnumcursor, header.lnumcursor_hiword);
 
 	hcursor = oprepeatedbump (flatdown, lnumcursor, hsummit, true);
-	
+	if (hcursor == nil) {
+#if defined(FRONTIER_HEADLESS)
+		OP_HEADLESS_TRACE("[headless] opunpackv2 hcursor nil lnum=%ld path=%s\n",
+		                  (long) lnumcursor,
+		                  (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>");
+#endif
+		return (false);
+	}
 	(**ho).hbarcursor = hcursor;
 	
 	opsetctexpanded (ho); /*don't bother saving this on disk, we re-compute*/
@@ -1114,7 +1174,7 @@ boolean opunpackoutline_legacy (Handle hpackedoutline, hdloutlinerecord *houtlin
 	
 	long ixload = 0;
 	
-	return (opunpack (hpackedoutline, &ixload, houtline));
+	return (opunpack_legacy (hpackedoutline, &ixload, houtline));
 	} /*opunpackoutline*/
 
 
@@ -1342,5 +1402,3 @@ boolean opsuboutlinetonewtextscrap_legacy (hdlheadrecord hnode, Handle *htext) {
 	return (false);
 	} /%opsuboutlinetonewtextscrap%/
 */
-
-

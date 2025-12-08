@@ -11,6 +11,7 @@
 
 #include "frontier.h"
 #include "standard.h"
+#include <stdlib.h>
 
 #include "memory.h"
 #include "strings.h"
@@ -229,9 +230,26 @@ static boolean lang_valueproc(short token, hdltreenode hparam1,
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_random:
-            /* Verb #36: lang.random - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+        {
+            long lower, upper;
+
+            if (!getlongvalue(hparam1, 1, &lower))
+                return false;
+
+            flnextparamislast = true;
+            if (!getlongvalue(hparam1, 2, &upper))
+                return false;
+
+            if (lower > upper) {
+                if (bserror)
+                    copystring(BIGSTRING("\pbounds error"), bserror);
+                return false;
+            }
+
+            long n = rand();
+            n = lower + (labs(n) % (upper - lower + 1));
+            return setlongvalue(n, vreturned);
+        }
         case lanv_evaluate:
             /* Verb #37: lang.evaluate - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);

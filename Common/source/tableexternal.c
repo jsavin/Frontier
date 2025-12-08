@@ -396,6 +396,8 @@ boolean tableedit (hdlexternalvariable hvariable, hdlwindowinfo hparent, ptrfile
 	bigstring bsname;
 	WindowPtr w;
 	hdlwindowinfo hi;
+
+    (void) fs;
 	
 	if (!tableverbinmemory ((hdlexternalvariable) hv, HNoNode)) // couldn't swap it into memory
 		return (false);
