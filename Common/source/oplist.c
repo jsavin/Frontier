@@ -838,9 +838,10 @@ boolean opunpacklist (Handle hpacked, hdllistrecord *hnewlist) {
 	
 	(**hlist).isrecord = info.isrecord;
 	
-	/* Hold on to any existing outline; don't dispose it up front so we don't free
-	   memory that could alias with incoming packed payloads under ASan. */
-	ho = nil;
+	/* Dispose any existing outline before replacing it. */
+	ho = (**hlist).houtline;
+	if (ho != nil)
+		opdisposeoutline (ho, false);
 	(**hlist).houtline = nil; /* don't leave it dangling */
 
 	/* Dispatch to legacy or modern outline unpacker based on on-disk version. */
@@ -857,10 +858,10 @@ boolean opunpacklist (Handle hpacked, hdllistrecord *hnewlist) {
 			        ctx, (int) outline_version);
 		}
 #endif
-		if (outline_version == 4)
-			fl = opunpackoutline (hpackedoutline, &ho);
-		else
+		if (outline_version == 2 || outline_version == 3)
 			fl = opunpackoutline_legacy (hpackedoutline, &ho);
+		else
+			fl = opunpackoutline (hpackedoutline, &ho);
 	}
 	
 	disposehandle (hpackedoutline);

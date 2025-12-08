@@ -764,8 +764,10 @@ static boolean mepackmenustructure_modern(tysavedmenuinfo *legacy, Handle *hpack
 	/* Merge: menu header + outline + scripts */
 	if (!mergehandles(hpackedmenu, hpackedoutline, &hpackedmenu))
 		goto exit;
+	hpackedoutline = nil; /* consumed by merge */
 	if (!mergehandles(hpackedmenu, hpackedscripts, hpacked))
 		goto exit;
+	hpackedscripts = nil; /* consumed by merge */
 
 	fl = true;
 

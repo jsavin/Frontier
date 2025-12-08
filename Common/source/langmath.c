@@ -307,8 +307,8 @@ static boolean mathfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 				break;
 
 			if (lower > upper) {
-				errornum = badrandomboundserror;
-				break;
+				langerror (badrandomboundserror);
+				return (false);
 			}
 
 			long n = rand ();
