@@ -1115,14 +1115,18 @@ boolean db_format_write_header64(const tydatabaserecord_64 *src, unsigned char *
 }
 
 boolean detect_database_format(const tydatabaserecord *header) {
-    if (header == NULL)
-        return false;
+	if (header == NULL)
+		return false;
 
-    if (header->versionnumber <= 6)
-        return true;  /* Legacy 32-bit format */
-    if (header->versionnumber >= 7)
-        return true;  /* New 64-bit format */
-    return false;  /* Unsupported version */
+	/* Reject out-of-range version numbers before deciding legacy/modern. */
+	if (header->versionnumber < 1 || header->versionnumber > 10)
+		return false;
+
+	if (header->versionnumber <= 6)
+		return true;  /* Legacy 32-bit format */
+	if (header->versionnumber >= 7)
+		return true;  /* New 64-bit format */
+	return false;  /* Unsupported version */
 }
 
 boolean convert_32bit_header_to_64bit(const unsigned char *legacy_header, tydatabaserecord_64 *new_header) {

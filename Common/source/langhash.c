@@ -139,6 +139,8 @@ static boolean langhash_prepare_wordprocessor_value(bigstring bsname, hdlhashnod
 	if (!langexternalgetfullpath(currenthashtable, bsname, bspath, nil))
 		copystring(bsname, bspath);
 
+	if ((size_t) bspath[0] >= sizeof pathbuf)
+		return false; /* path would overflow */
 	copyptocstring(bspath, pathbuf);
 
 	tyvaluerecord replacement;
@@ -185,6 +187,12 @@ static boolean langhash_materialize_table_internal(hdlhashtable htable, const ch
 		const char *prior_path = langhash_materialize_current_path;
 
 		gethashkey(nomad, bsname);
+		size_t need = (size_t) bsname[0] + 1; /* name + dot/null */
+		if (path != NULL && path[0] != '\0')
+			need += strlen(path) + 1; /* dot + existing path */
+		if (need >= sizeof(nodepath))
+			return false; /* avoid overflow on deep nesting */
+
 		if (path != NULL && path[0] != '\0')
 			snprintf(nodepath, sizeof(nodepath), "%s.%.*s", path, (int) bsname[0], (char *) &bsname[1]);
 		else

@@ -38,6 +38,8 @@ typedef union tyvaluedata {
 | **Mixed precision** | Scripts forced to reason about type widths; error-prone arithmetic mixing |
 | **Handle-based doubles** | Inefficient storage for double values |
 
+**Note:** In the modern (v7) on-disk format, `singlevaluetype` payloads are stored in the 64-bit `doublebits` slot (BE64) to keep disk layout contiguous; runtime semantics remain 32-bit to callers.
+
 ---
 
 ## P0 Decision: 64-Bit Precision Architecture
@@ -292,4 +294,3 @@ These can be investigated during implementation.
 **Document History:**
 - 2025-12-06: Created based on audit findings and user decisions
 - Status: Ready for team review and approval
-
