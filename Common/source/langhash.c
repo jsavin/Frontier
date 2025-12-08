@@ -198,6 +198,17 @@ static boolean langhash_materialize_table_internal(hdlhashtable htable, const ch
 		else
 			snprintf(nodepath, sizeof(nodepath), "%.*s", (int) bsname[0], (char *) &bsname[1]);
 
+		if (need >= sizeof(nodepath)) {
+#if defined(FRONTIER_HEADLESS)
+			if (langhash_materialize_trace_enabled()) {
+				fprintf(stderr, "[headless] materialize path overflow path=%s name=%.*s need=%zu limit=%zu\n",
+				        path ? path : "<nil>", (int) bsname[0], (char *) &bsname[1],
+				        need, sizeof(nodepath));
+			}
+#endif
+			return false; /* avoid overflow on deep nesting */
+		}
+
 		strncpy(langhash_materialize_path_buf, nodepath, sizeof(langhash_materialize_path_buf) - 1);
 		langhash_materialize_path_buf[sizeof(langhash_materialize_path_buf) - 1] = '\0';
 		langhash_materialize_current_path = langhash_materialize_path_buf;

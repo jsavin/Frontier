@@ -614,7 +614,7 @@ boolean oppack (Handle *hpackedoutline) {
 	{
 		int64_t timecreated_local = 0;
 		int64_t timelastsave_local = 0;
-		long ctsaves_local = 0;
+		int32_t ctsaves_local = 0;
 
 		memcpy(&timecreated_local, &(**ho).timecreated, sizeof(timecreated_local));
 		memcpy(&timelastsave_local, &(**ho).timelastsave, sizeof(timelastsave_local));
@@ -1030,7 +1030,7 @@ static boolean opunpackversion4 (handlestream *packstream) {
 	{
 		int64_t timecreated_local = (int64_t) db_format_read_be64((unsigned char *) &header.timecreated);
 		int64_t timelastsave_local = (int64_t) db_format_read_be64((unsigned char *) &header.timelastsave);
-		long ctsaves_local = (long) db_format_read_be32((unsigned char *) &header.ctsaves);
+		int32_t ctsaves_local = (int32_t) db_format_read_be32((unsigned char *) &header.ctsaves);
 
 		memcpy(&(**ho).timecreated, &timecreated_local, sizeof(timecreated_local));
 		memcpy(&(**ho).timelastsave, &timelastsave_local, sizeof(timelastsave_local));
