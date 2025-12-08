@@ -170,6 +170,10 @@ OSStatus TECCreateConverter(TECObjectRef *converter, TextEncoding inputEncoding,
     if (!find_encoding_by_value(inputEncoding) || !find_encoding_by_value(outputEncoding))
         return kTECNoConversionPathErr;
 
+    /* We only support identity passthrough; mismatched encodings would corrupt data. */
+    if (inputEncoding != outputEncoding)
+        return kTECNoConversionPathErr;
+
     portable_tec_converter *ctx = (portable_tec_converter *) malloc(sizeof(portable_tec_converter));
     if (!ctx)
         return memFullErr;

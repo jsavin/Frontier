@@ -132,7 +132,7 @@ boolean opnewlist (hdllistrecord *hlist, boolean isrecord) {
 	if (!newclearhandle (sizeof (tylistrecord), (Handle *) hlist))
 		return (false);
 	
-	moveleft (hlist, &h, sizeof (hdllistrecord)); /*handle out-param may be unaligned*/
+	memcpy (&h, hlist, sizeof (hdllistrecord)); /*handle out-param may be unaligned*/
 
 	if (!newoutlinerecord (&houtline)) { 
 		
@@ -749,7 +749,7 @@ boolean opunpacklist (Handle hpacked, hdllistrecord *hnewlist) {
 	if (!opnewlist (hnewlist, false)) /*create an empty list*/
 		goto error;
 	
-	moveleft (hnewlist, &hlist, sizeof (hdllistrecord));
+	memcpy (&hlist, hnewlist, sizeof (hdllistrecord));
 	
 	clearbytes (&info, sizeof (info));
 	

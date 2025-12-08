@@ -347,15 +347,19 @@ boolean mathinitverbs (void) {
 
 	pushhashtable (htable);
 	if (!langaddkeyword (BIGSTRING ("\pmin"), minfunc))
-		return (false);
+		goto fail;
 	if (!langaddkeyword (BIGSTRING ("\pmax"), maxfunc))
-		return (false);
+		goto fail;
 	if (!langaddkeyword (BIGSTRING ("\psqrt"), sqrtfunc))
-		return (false);
+		goto fail;
 	if (!langaddkeyword (BIGSTRING ("\prandom"), randomfunc))
-		return (false);
+		goto fail;
 	pophashtable ();
 	return (true);
+
+fail:
+	pophashtable ();
+	return (false);
 #else
 	
 	return (loadfunctionprocessor (idmathverbs, &mathfunctionvalue));
