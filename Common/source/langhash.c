@@ -218,11 +218,25 @@ static boolean langhash_materialize_table_internal(hdlhashtable htable, const ch
 			        nodepath, (int) val->valuetype, val->fldiskval ? 1 : 0);
 		}
 
-		if (!langhash_materialize_value(val, nodepath))
+		if (!langhash_materialize_value(val, nodepath)) {
+#if defined(FRONTIER_HEADLESS)
+			if (langhash_materialize_trace_enabled()) {
+				fprintf(stderr, "[headless] materialize value failed path=%s type=%d\n",
+				        nodepath, (int) val->valuetype);
+			}
+#endif
 			return false;
+		}
 		if (val->valuetype == externalvaluetype) {
-			if (!langhash_materialize_external(val, nodepath))
+			if (!langhash_materialize_external(val, nodepath)) {
+#if defined(FRONTIER_HEADLESS)
+				if (langhash_materialize_trace_enabled()) {
+					fprintf(stderr, "[headless] materialize external failed path=%s type=%d\n",
+					        nodepath, (int) val->valuetype);
+				}
+#endif
 				return false;
+			}
 		}
 
 		langhash_materialize_current_path = prior_path;
