@@ -287,7 +287,6 @@ static boolean init_efp_1002(langvaluecallback valuecallback) {
 
 static boolean init_efp_1003(langvaluecallback valuecallback) {
     hdlhashtable htable;
-    short ixverb = 0;
 
     /* Processor: wp (0 verbs) */
     if (!newfunctionprocessor(BIGSTRING("\002wp"), valuecallback, true, &htable))

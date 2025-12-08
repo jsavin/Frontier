@@ -29,6 +29,7 @@
 /* 2025-12-01 Codex: Avoid re-entering the search path when a dotted lookup already resolved the target table. */
 /* 2025-12-02 Codex: Treat missing kernel valueroutines as runtime errors in headless builds instead of aborting. */
 /* 2025-12-02 Codex: Log headless nodecode resolution for troubleshooting missing kernel bindings. */
+/* 2025-12-07 Codex: Widen in-memory numeric values to 64-bit and update coercion/string conversions. */
 
 
 #ifdef FRONTIER_PORTABLE
@@ -41,6 +42,8 @@
 #include "standard.h"
 #endif
 #include <stdio.h> /* 2025-10-27 Codex: required for debug instrumentation fprintf calls. */
+#include <stdint.h>
+#include <limits.h>
 
 #include "frontierconfig.h"
 #include "memory.h"
@@ -204,7 +207,7 @@ boolean setcharvalue (byte ch, tyvaluerecord *val) {
 	} /*setcharvalue*/
 
 
-boolean setintvalue (short x, tyvaluerecord *val) {
+boolean setintvalue (int64_t x, tyvaluerecord *val) {
 	
 	/*
 	set val to be a the integer value x.  can't fail.
@@ -220,7 +223,7 @@ boolean setintvalue (short x, tyvaluerecord *val) {
 	} /*setintvalue*/
 
 
-boolean setlongvalue (long x, tyvaluerecord *val) {
+boolean setlongvalue (int64_t x, tyvaluerecord *val) {
 	
 	/*
 	set val to be a the long value x.  can't fail.
@@ -236,7 +239,7 @@ boolean setlongvalue (long x, tyvaluerecord *val) {
 	} /*setlongvalue*/
 
 
-boolean setdatevalue (unsigned long x, tyvaluerecord *val) {
+boolean setdatevalue (int64_t x, tyvaluerecord *val) {
 
 	/*
 	set val to be a the date value x.  can't fail.
@@ -1161,7 +1164,7 @@ static boolean stringtolong (tyvaluerecord *val) {
 	5/7/93 dmb: don't accept hex strings that don't begin with "0x"
 	*/
 	
-	long x;
+	int64_t x;
 	bigstring bs;
 	double d;
 	tydirection dir;
@@ -1173,31 +1176,41 @@ static boolean stringtolong (tyvaluerecord *val) {
 	
 	if (isallnumeric (bs)) {
 		
-		stringtonumber (bs, &x);
+		long parsed;
+		
+		stringtonumber (bs, &parsed);
+		
+		x = (int64_t) parsed;
 		
 		goto exit;
 		}
 	
-	if (patternmatch (bshexprefix, bs) && hexstringtonumber (bs, &x))
-		goto exit;
+	if (patternmatch (bshexprefix, bs)) {
+		long hx;
+		
+		if (hexstringtonumber (bs, &hx)) {
+			x = (int64_t) hx;
+			goto exit;
+			}
+		}
 	
 	if (stringtofloat (bs, &d)) {
 		
-		x = (long) d;
+		x = (int64_t) d;
 		
 		goto exit;
 		}
 	
 	if (stringtodir (bs, &dir)) {
 		
-		x = (long) dir;
+		x = (int64_t) dir;
 		
 		goto exit;
 		}
 	
 	if (stringisboolean (bs, &flboolean)) {
 		
-		x= (long) flboolean;
+		x= (int64_t) flboolean;
 		
 		goto exit;
 		}
@@ -1953,7 +1966,7 @@ static boolean longrangeerror (double f) {
 	
 	bigstring bs;
 	
-	if ((f > 2147483647.0) || (f < -2147483648.0)) {
+	if ((f > (double) INT64_MAX) || (f < (double) INT64_MIN)) {
 		
 		floattostring (f, bs);
 		
@@ -1974,7 +1987,7 @@ boolean coercetolong (tyvaluerecord *v) {
 	3.0.2 dmb: range check when coercing floats
 	*/
 	
-	register long x;
+	register int64_t x;
 	register double f;
 	
 	switch ((*v).valuetype) {
@@ -1986,32 +1999,32 @@ boolean coercetolong (tyvaluerecord *v) {
 			if (flinhibitnilcoercion)
 				return (false);
 			
-			x = (long) 0;
+			x = (int64_t) 0;
 			
 			break;
 		
 		case booleanvaluetype:
-			x = (long) (*v).data.flvalue;
+			x = (int64_t) (*v).data.flvalue;
 			
 			break;
 		
 		case charvaluetype:
-			x = (long) (*v).data.chvalue;
+			x = (int64_t) (*v).data.chvalue;
 			
 			break;
 		
 		case intvaluetype:
-			x = (long) (*v).data.intvalue;
+			x = (int64_t) (*v).data.intvalue;
 			
 			break;
 		
 		case directionvaluetype:
-			x = (long) (*v).data.dirvalue;
+			x = (int64_t) (*v).data.dirvalue;
 			
 			break;
 		
 		case datevaluetype:
-			x = (long) (*v).data.datevalue;
+			x = (int64_t) (*v).data.datevalue;
 			
 			break;
 		
@@ -2020,12 +2033,12 @@ boolean coercetolong (tyvaluerecord *v) {
 		
 		case ostypevaluetype:
 		case pointvaluetype:
-			x = (long) (*v).data.ostypevalue;
+			x = (int64_t) (*v).data.ostypevalue;
 			
 			break;
 
 		case fixedvaluetype:
-			x = (long) FixRound ((*v).data.fixedvalue);
+			x = (int64_t) FixRound ((*v).data.fixedvalue);
 			
 			break;
 			
@@ -2035,7 +2048,7 @@ boolean coercetolong (tyvaluerecord *v) {
 			if (longrangeerror (f))
 				return (false);
 			
-			x = (long) f;
+			x = (int64_t) f;
 			
 			break;
 		
@@ -2045,7 +2058,7 @@ boolean coercetolong (tyvaluerecord *v) {
 			if (longrangeerror (f))
 				return (false);
 			
-			x = (long) f;
+			x = (int64_t) f;
 			
 			break;
 		
@@ -2056,7 +2069,7 @@ boolean coercetolong (tyvaluerecord *v) {
 			if (!getbinarynumber (h, &n))
 				return (binarytoscalar (v, longvaluetype));
 			
-			x = n;
+			x = (int64_t) n;
 			
 			releaseheaptmp (h);
 			
@@ -2101,7 +2114,7 @@ boolean coercetoint (tyvaluerecord *v) {
 	pass though coercetolongfortype
 	*/
 	
-	register long x;
+	int64_t x;
 	
 	switch ((*v).valuetype) {
 		
@@ -2123,7 +2136,7 @@ boolean coercetoint (tyvaluerecord *v) {
 			if (!getbinarynumber (h, &n))
 				return (binarytoscalar (v, intvaluetype));
 			
-			x = n;
+			x = (int64_t) n;
 			
 			releaseheaptmp (h);
 			
@@ -2149,28 +2162,7 @@ boolean coercetoint (tyvaluerecord *v) {
 			x = (*v).data.longvalue;
 		}
 	
-	if (x > intinfinity) {
-		
-		if (x == longinfinity) /*the one exception to the rule*/
-		
-			x = intinfinity; /*trade the long version of infinity for the short version*/
-			
-		else {
-			
-			langlongparamerror (inttoolargeerror, x);
-			
-			return (false);
-			}
-		}
-	
-	if (x < intminusinfinity) {
-		
-		langlongparamerror (inttoosmallerror, x);
-		
-		return (false);
-		}
-	
-	return (setintvalue ((short) x, v));
+	return (setintvalue (x, v));
 	} /*coercetoint*/
 
 
@@ -2362,11 +2354,11 @@ static boolean coercetodate (tyvaluerecord *v) {
 		
 		case stringvaluetype: {
 			bigstring bs;
-			unsigned long ltime;
+			int64_t ltime;
 			
 			pullstringvalue (v, bs);
 			
-			if (!stringtotime (bs, &ltime)) {
+			if (!stringtotime (bs, (unsigned long *) &ltime)) {
 				
 				langerror (datecoerceerror);
 				
@@ -3096,7 +3088,7 @@ boolean coercetostring (tyvaluerecord *val) {
 			break;
 			
 		case intvaluetype:
-			shorttostring ((*v).data.intvalue, bs);
+			numbertostring ((long) (*v).data.intvalue, bs);
 			
 			break;
 			
@@ -5045,8 +5037,13 @@ boolean getintvalue (hdltreenode hfirst, short pnum, short *intval) {
 	
 	if (!getintparam (hfirst, pnum, &val)) 
 		return (false);
-		
-	*intval = val.data.intvalue;
+	
+	{
+		int64_t v = val.data.intvalue;
+		if (v < SHRT_MIN || v > SHRT_MAX)
+			return (false);
+		*intval = (short) v;
+	}
 	
 	return (true);
 	} /*getintvalue*/
@@ -5059,7 +5056,12 @@ boolean getlongvalue (hdltreenode hfirst, short pnum, long *lval) {
 	if (!getlongparam (hfirst, pnum, &val)) 
 		return (false);
 		
-	*lval = val.data.longvalue;
+	{
+		int64_t v = val.data.longvalue;
+		if (v < LONG_MIN || v > LONG_MAX)
+			return (false);
+		*lval = (long) v;
+	}
 	
 	return (true);
 	} /*getlongvalue*/
@@ -5085,7 +5087,12 @@ boolean getdatevalue (hdltreenode hfirst, short pnum, unsigned long *dateval) {
 	if (!getdateparam (hfirst, pnum, &val)) 
 		return (false);
 	
-	*dateval = val.data.datevalue;
+	{
+		int64_t v = val.data.datevalue;
+		if (v < 0 || (uint64_t) v > ULONG_MAX)
+			return (false);
+		*dateval = (unsigned long) v;
+	}
 	
 	return (true);
 	} /*getdatevalue*/
@@ -6210,16 +6217,22 @@ boolean addvalue (tyvaluerecord v1, tyvaluerecord v2, tyvaluerecord *vreturned) 
 			
 			break;
 		
-		case intvaluetype:
-			(*vreturned).data.intvalue = v1.data.intvalue + v2.data.intvalue;
+		case intvaluetype: {
+			int64_t x = v1.data.intvalue + v2.data.intvalue;
+			
+			(*vreturned).data.intvalue = x;
 			
 			break;
+			}
 		
 		case longvaluetype:	
-		case ostypevaluetype:
-			(*vreturned).data.longvalue = v1.data.longvalue + v2.data.longvalue;
+		case ostypevaluetype: {
+			int64_t x = v1.data.longvalue + v2.data.longvalue;
+			
+			(*vreturned).data.longvalue = x;
 			
 			break;
+			}
 			
 		case directionvaluetype:
 			(*vreturned).data.dirvalue = (tydirection) ((short) v1.data.dirvalue + (short) v2.data.dirvalue);
@@ -6331,16 +6344,22 @@ boolean subtractvalue (tyvaluerecord v1, tyvaluerecord v2, tyvaluerecord *vretur
 			
 			break;
 		
-		case intvaluetype:
-			(*vreturned).data.intvalue = v1.data.intvalue - v2.data.intvalue;
+		case intvaluetype: {
+			int64_t x = v1.data.intvalue - v2.data.intvalue;
+			
+			(*vreturned).data.intvalue = x;
 			
 			break;
+			}
 		
 		case longvaluetype:	
-		case ostypevaluetype:
-			(*vreturned).data.longvalue = v1.data.longvalue - v2.data.longvalue;
+		case ostypevaluetype: {
+			int64_t x = v1.data.longvalue - v2.data.longvalue;
+			
+			(*vreturned).data.longvalue = x;
 			
 			break;
+			}
 			
 		case directionvaluetype:
 			(*vreturned).data.dirvalue = (tydirection) ((short) v1.data.dirvalue - (short) v2.data.dirvalue);
@@ -6429,15 +6448,21 @@ boolean multiplyvalue (tyvaluerecord v1, tyvaluerecord v2, tyvaluerecord *vretur
 			
 			break;
 		
-		case intvaluetype:
-			(*vreturned).data.intvalue = v1.data.intvalue * v2.data.intvalue;
+		case intvaluetype: {
+			int64_t x = v1.data.intvalue * v2.data.intvalue;
+			
+			(*vreturned).data.intvalue = x;
 			
 			break;
+			}
 		
-		case longvaluetype:	
-			(*vreturned).data.longvalue = v1.data.longvalue * v2.data.longvalue;
+		case longvaluetype:	{
+			int64_t x = v1.data.longvalue * v2.data.longvalue;
+			
+			(*vreturned).data.longvalue = x;
 			
 			break;
+			}
 			
 		case directionvaluetype:
 			(*vreturned).data.dirvalue = (tydirection) ((short) v1.data.dirvalue * (short) v2.data.dirvalue);
@@ -6483,7 +6508,7 @@ static boolean nonzerovalue (tyvaluerecord val) {
 	9/17/91 dmb: pulled code from dividevalue so it can be shared by modvalue
 	*/
 	
-	register long denom;
+	register int64_t denom;
 	
 	switch (val.valuetype) {
 		
@@ -6574,15 +6599,21 @@ boolean dividevalue (tyvaluerecord v1, tyvaluerecord v2, tyvaluerecord *vreturne
 			
 			break;
 			
-		case intvaluetype:
-			(*vreturned).data.intvalue = v1.data.intvalue / v2.data.intvalue;
+		case intvaluetype: {
+			int64_t x = v1.data.intvalue / v2.data.intvalue;
+			
+			(*vreturned).data.intvalue = x;
 			
 			break;
+			}
 			
-		case longvaluetype:
-			(*vreturned).data.longvalue = v1.data.longvalue / v2.data.longvalue;
+		case longvaluetype: {
+			int64_t x = v1.data.longvalue / v2.data.longvalue;
+			
+			(*vreturned).data.longvalue = x;
 			
 			break;
+			}
 			
 		case directionvaluetype:
 			(*vreturned).data.dirvalue = (tydirection) ((short) v1.data.dirvalue / (short) v2.data.dirvalue);
@@ -6654,15 +6685,21 @@ boolean modvalue (tyvaluerecord v1, tyvaluerecord v2, tyvaluerecord *vreturned) 
 			
 			break;
 		
-		case intvaluetype:
-			(*vreturned).data.intvalue = v1.data.intvalue % v2.data.intvalue;
+		case intvaluetype: {
+			int64_t x = v1.data.intvalue % v2.data.intvalue;
+			
+			(*vreturned).data.intvalue = x;
 			
 			break;
+			}
 		
-		case longvaluetype:	
-			(*vreturned).data.longvalue = v1.data.longvalue % v2.data.longvalue;
+		case longvaluetype:	{
+			int64_t x = v1.data.longvalue % v2.data.longvalue;
+			
+			(*vreturned).data.longvalue = x;
 			
 			break;
+			}
 		
 		case directionvaluetype:
 			(*vreturned).data.dirvalue = (tydirection) ((short) v1.data.dirvalue % (short) v2.data.dirvalue);

@@ -165,9 +165,12 @@ OSStatus TECCreateConverter(TECObjectRef *converter, TextEncoding inputEncoding,
     if (!converter)
         return paramErr;
 
+    *converter = NULL;
+
     if (!find_encoding_by_value(inputEncoding) || !find_encoding_by_value(outputEncoding))
         return kTECNoConversionPathErr;
 
+    /* We only support identity passthrough; mismatched encodings would corrupt data. */
     if (inputEncoding != outputEncoding)
         return kTECNoConversionPathErr;
 

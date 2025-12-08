@@ -27,6 +27,11 @@ static boolean headless_menu_dup_block(dbaddress source, dbaddress *dest) {
     dbaddress normalized = source;
     long payload_offset = 0;
     Handle hpayload = nil;
+    if (dest == NULL) {
+        fprintf(stderr, "[headless] menu dup missing dest pointer\n");
+        return false;
+    }
+    *dest = nildbaddress;
     if (dbnormalizeaddress(&normalized)) {
         if (normalized != source) {
             dbaddress data_start = normalized + sizeheader;

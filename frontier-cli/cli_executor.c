@@ -1,4 +1,7 @@
 #include "cli_executor.h"
+#include "cli_executor.h"
+
+/* 2025-12-08 Codex: Route long inline CLI scripts through langrunhandle so compiled evals return results without bogus empty verb names. */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -89,6 +92,7 @@ boolean cli_execute_compiled_script(usertalk_execution_t* execution) {
     cli_log_debug("before execute currenthashtable=%p", (void *)currenthashtable);
 #endif
 
+    /* For short scripts, prefer langrunstring to avoid compiler overhead */
     if (len <= lenbigstring) {
         bigstring program;
         bigstring result;
@@ -99,15 +103,21 @@ boolean cli_execute_compiled_script(usertalk_execution_t* execution) {
         extern boolean pophashtable(void);
         extern boolean langrunstring(const bigstring, bigstring);
         hdlhashtable saved_current = currenthashtable;
-        currenthashtable = roottable; /* ensure globals resolve against the loaded root */
-        pushhashtable(roottable);
+        hdlhashtable target_table = (roottable != NULL) ? roottable : saved_current;
+        currenthashtable = target_table;
+        boolean pushed = (target_table != NULL) ? pushhashtable(target_table) : false;
         boolean ok = langrunstring(program, result);
-        pophashtable();
+        if (pushed)
+            pophashtable();
         currenthashtable = saved_current;
         if (!ok) {
             cli_set_execution_error_internal(execution, "Script execution failed");
             return false;
         }
+
+#if defined(FRONTIER_HEADLESS)
+        cli_log_debug("langrunstring ok; result length=%ld", (long) stringlength(result));
+#endif
 
         execution->result = cli_malloc((size_t)stringlength(result) + 1);
         if (execution->result == NULL) {
@@ -136,44 +146,17 @@ boolean cli_execute_compiled_script(usertalk_execution_t* execution) {
     memcpy(*htext, execution->script_source, len);
     HUnlock(htext);
 
-    hdltreenode hcode = NULL;
-    if (!langcompiletext(htext, false, &hcode)) {
-        disposehandle(htext);
-        cli_set_execution_error_internal(execution, "Failed to compile script");
-        return false;
-    }
-
-    tyvaluerecord params; setnilvalue(&params);
-    tyvaluerecord resultValue; setnilvalue(&resultValue);
-    bigstring empty; setstringlength(empty, 0);
-    extern boolean langrunscriptcode(hdlhashtable, bigstring, hdltreenode, tyvaluerecord*, hdlhashtable, tyvaluerecord*);
-    extern hdlhashtable currenthashtable;
-    extern hdlhashtable roottable;
-    extern boolean pushhashtable(hdlhashtable);
-    extern boolean pophashtable(void);
-    hdlhashtable saved_current = currenthashtable;
-    currenthashtable = roottable;
-    pushhashtable(roottable);
-#if defined(FRONTIER_HEADLESS)
-    cli_log_debug("executing with currenthashtable=%p", (void *)currenthashtable);
-#endif
-    boolean ok = langrunscriptcode(NULL, empty, hcode, &params, NULL, &resultValue);
-    pophashtable();
-    currenthashtable = saved_current;
-    disposehandle(htext);
-
-    if (!ok) {
+    bigstring bsresult;
+    setemptystring(bsresult);
+    if (!langrunhandle(htext, bsresult)) {
         cli_set_execution_error_internal(execution, "Failed to execute script");
         return false;
     }
 
-    if (!coercetostring(&resultValue)) {
-        cli_set_execution_error_internal(execution, "Unable to coerce result to string");
-        return false;
-    }
+#if defined(FRONTIER_HEADLESS)
+    cli_log_debug("langrunhandle ok; result length=%ld", (long) stringlength(bsresult));
+#endif
 
-    bigstring bsresult;
-    copyheapstring(resultValue.data.stringvalue, bsresult);
     execution->result = cli_malloc((size_t)stringlength(bsresult) + 1);
     if (execution->result == NULL) {
         cli_set_execution_error_internal(execution, "Out of memory while copying result");

@@ -131,6 +131,7 @@ LANG_RUNTIME_SOURCES = \
     ../Common/source/langtree.c \
     ../Common/source/langdate.c \
     ../Common/source/langsystypes.c \
+    ../Common/source/kernel_verbs_headless.c \
     ../Common/source/memory.c \
     ../Common/source/portable_handles.c \
     ../Common/source/strings.c \
@@ -156,6 +157,8 @@ LANG_RUNTIME_SOURCES = \
     ../Common/source/legacy/opverbs_legacy.c \
     ../Common/source/opxml.c \
     ../Common/source/langxml.c \
+    headless_file_verbs.c \
+    headless_frontier_verbs.c \
     ../Common/source/tableops.c \
     ../Common/source/tableexternal.c \
     ../Common/source/tableexternal_common.c \
@@ -191,6 +194,7 @@ LANG_RUNTIME_SOURCES += \
 
 # CLI source files
 CLI_SOURCES =
+CLI_BIN = ../frontier-cli/frontier-cli
 
 # Test framework
 TEST_FRAMEWORK = framework/test_framework.c
@@ -217,7 +221,7 @@ USERTALK_OBJECT_TESTS = \
 	test_usertalk_runner
 
 # Buildable test executables on this branch
-RUN_BUILDABLE = core_tests db_format_tests runtime_tests parser_tests save_migration_tests file_portable_tests file_readline_tests file_verb_tests handle_tests cli_runtime_tests paige_text_tests oppack_tests
+RUN_BUILDABLE = core_tests db_format_tests runtime_tests parser_tests save_migration_tests file_portable_tests file_readline_tests file_verb_tests handle_tests cli_runtime_tests paige_text_tests oppack_tests hashpack_modern_tests langvalue_64_tests
 
 # Prebuilt or auxiliary test binaries that may be present
 RUN_PREBUILT = test_64bit_direct test_migration_verification test_real_databases test_runner verify_migration_success
@@ -242,6 +246,14 @@ oppack_tests: oppack_tests.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
 		oppack_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@ $(LINK_LIBS)
 
+hashpack_modern_tests: hashpack_modern_tests.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
+		hashpack_modern_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@ $(LINK_LIBS)
+
+langvalue_64_tests: langvalue_64_tests.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
+		langvalue_64_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@ $(LINK_LIBS)
+
 runtime_tests: runtime_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable runtime_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@ $(LINK_LIBS)
 
@@ -258,15 +270,18 @@ file_portable_tests: file_portable_tests.c ../portable/file_portable.c headless_
 file_readline_tests: file_readline_tests.c ../portable/file_portable.c headless_shell.c ../Common/source/portable_handles.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -I../Common/headers -I../Common/SystemHeaders -I../portable file_readline_tests.c ../portable/file_portable.c headless_shell.c ../Common/source/portable_handles.c -o $@ $(LINK_LIBS)
 
-file_verb_tests: file_verb_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/findinfile.c ../portable/file_portable.c headless_file_verbs.c headless_shell.c
-	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -I../Common/headers -I../Common/SystemHeaders -I../portable file_verb_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/findinfile.c ../portable/file_portable.c headless_file_verbs.c headless_shell.c -o $@ $(LINK_LIBS)
+file_verb_tests: file_verb_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/findinfile.c headless_shell.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -I../Common/headers -I../Common/SystemHeaders -I../portable file_verb_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/findinfile.c headless_shell.c -o $@ $(LINK_LIBS)
 
 handle_tests: handle_tests.c ../Common/source/portable_handles.c ../portable/classic_handle.c
 	$(CC) $(CFLAGS) -DFRONTIER_USE_PORTABLE_HANDLES -I../Common/headers -I../Common/SystemHeaders -I../portable \
 		handle_tests.c ../Common/source/portable_handles.c ../portable/classic_handle.c -o $@ $(LINK_LIBS)
 
-cli_runtime_tests: cli_runtime_tests.c
+cli_runtime_tests: cli_runtime_tests.c $(CLI_BIN)
 	$(CC) $(CFLAGS) -I../Common/headers -I../Common/SystemHeaders cli_runtime_tests.c -o $@ $(LINK_LIBS)
+
+$(CLI_BIN):
+	$(MAKE) -C ../frontier-cli frontier-cli
 
 # Test framework object
 framework/test_framework.o: framework/test_framework.c framework/test_framework.h
@@ -316,7 +331,7 @@ test_database_persistence: components/usertalk_objects/test_database_persistence
 
 
 # Test targets
-test: $(RUN_BUILDABLE)
+test: strings_generated $(RUN_BUILDABLE)
 	@echo "Running all tests..."
 	@set -e; \
 	for test in $(RUN_BUILDABLE) $(RUN_PREBUILT); do \

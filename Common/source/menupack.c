@@ -239,14 +239,14 @@ static boolean mesavescriptvisit (hdlheadrecord hnode, ptrvoid refcon) {
 			return (false);
 		}
 	
-	if (ho != (**menudata).scriptoutline) { /*don't reclaim the active script…*/
+	if (ho != (**menudata).scriptoutline) { /*don't reclaim the active script'*/
 		
 		opdisposeoutline (ho, false); /*reclaim the script*/
 	
 		item.linkedscript.houtline = nil; /*force us to look to disk*/
 		}
 		
-	else { /*…just clear its madechanges bit*/
+	else { /*'just clear its madechanges bit*/
 		
 		windowsetchanges ((**menudata).scriptwindow, false);
 		
@@ -379,7 +379,8 @@ static boolean mesavemenustructure (tysavedmenuinfo *info, dbaddress *adr) {
 	} /*mesavemenustructure*/
 
 
-boolean mepackmenustructure (tysavedmenuinfo *info, Handle *hpacked) {
+/* Legacy (v<=6) pack/unpack helpers */
+static boolean mepackmenustructure_legacy (tysavedmenuinfo *info, Handle *hpacked) {
 	
 	/*
 	analogous to mesavemenustructure above, except we're packing everything 
@@ -423,7 +424,7 @@ boolean mepackmenustructure (tysavedmenuinfo *info, Handle *hpacked) {
 	disposehandle (packinfo.hpackedscripts);
 	
 	return (fl);
-	} /*mepackmenustructure*/
+	} /*mepackmenustructure_legacy*/
 
 
 boolean mesavemenurecord (hdlmenurecord hmenurecord, boolean flpreservelinks, boolean flmemory, dbaddress *adr, Handle *hpacked) {
@@ -645,7 +646,7 @@ static boolean meunpackscriptvisit (hdlheadrecord hnode, ptrvoid refcon) {
 	} /*meunpackscriptvisit*/
 
 
-boolean meunpackmenustructure (Handle hpacked, hdlmenurecord *hmenurecord) {
+static boolean meunpackmenustructure_legacy (Handle hpacked, hdlmenurecord *hmenurecord) {
 	
 	/*
 	analagous to meloadmenurecord below, except the entire structure is 
@@ -708,7 +709,150 @@ boolean meunpackmenustructure (Handle hpacked, hdlmenurecord *hmenurecord) {
 //	oppopoutline (); /*restore global*/
 	
 	return (fl);
-	} /*meunpackmenustructure*/
+	} /*meunpackmenustructure_legacy*/
+
+/* Modern (v7+) pack/unpack. For now, reuse legacy implementation but keep the fork explicit. */
+/* Modern (v7+) pack/unpack with BE64 addresses and reserved padding. */
+typedef struct tysavedmenuinfo_v7 {
+	uint16_t versionnumber;     /* v7+ marker */
+	uint16_t _pad;              /* align to 64-bit */
+	uint64_t adroutline;        /* BE64 address of menubar outline */
+	uint64_t lnumcursor;        /* BE64 line number of current selection */
+	uint32_t flags;             /* preserve autosmash/menuactive flags (expanded) */
+	uint32_t menuactiveitem;    /* active item enum */
+	uint8_t  reserved[1024];    /* 1KB future padding */
+} tysavedmenuinfo_v7;
+
+static boolean mepackmenustructure_modern(tysavedmenuinfo *legacy, Handle *hpacked) {
+	tysavedmenuinfo_v7 modern;
+	clearbytes(&modern, sizeof(modern));
+
+	modern.versionnumber = host_to_disk_uint16(2);
+	modern.adroutline = host_to_disk_uint64((uint64_t) legacy->adroutline);
+	modern.lnumcursor = host_to_disk_uint64((uint64_t) legacy->lnumcursor);
+	modern.flags = host_to_disk_uint32((uint32_t) legacy->flags);
+	modern.menuactiveitem = host_to_disk_uint32((uint32_t) legacy->menuactivelayer);
+
+	Handle hpackedmenu = nil;
+	Handle hpackedoutline = nil;
+	Handle hpackedscripts = nil;
+	boolean fl = false;
+
+	if (!newfilledhandle(&modern, sizeof(modern), &hpackedmenu))
+		goto exit;
+
+	if (!newemptyhandle(&hpackedscripts))
+		goto exit;
+
+	/* Pack linked scripts (outline refcons) into hpackedscripts. */
+	{
+		boolean pushed = false;
+		if (menudata != nil && (**menudata).menuoutline != nil) {
+			oppushoutline((**menudata).menuoutline);
+			pushed = true;
+		}
+		hdlheadrecord hsummit;
+		typackinfo packinfo;
+		packinfo.hpackedscripts = hpackedscripts;
+		packinfo.ixpackedscripts = 0;
+		opoutermostsummit(&hsummit);
+		if (!opsiblingvisiter(hsummit, false, &mepackscriptvisit, &packinfo))
+			goto exit;
+		hpackedscripts = packinfo.hpackedscripts; /* may have moved */
+		if (pushed)
+			oppopoutline();
+	}
+
+	/* Pack menu outline itself. */
+	hpackedoutline = nil;
+	if (!oppack(&hpackedoutline))
+		goto exit;
+
+	/* Merge: menu header + outline + scripts */
+	if (!mergehandles(hpackedmenu, hpackedoutline, &hpackedmenu))
+		goto exit;
+	hpackedoutline = nil; /* consumed by merge */
+	if (!mergehandles(hpackedmenu, hpackedscripts, hpacked))
+		goto exit;
+	hpackedscripts = nil; /* consumed by merge */
+
+	fl = true;
+
+exit:
+	if (!fl) {
+		if (hpackedmenu) disposehandle(hpackedmenu);
+		if (hpackedoutline) disposehandle(hpackedoutline);
+		if (hpackedscripts) disposehandle(hpackedscripts);
+	}
+	return fl;
+}
+
+static boolean meunpackmenustructure_modern(Handle hpacked, hdlmenurecord *hmenurecord) {
+	tysavedmenuinfo_v7 modern;
+	long ix = 0;
+	hdloutlinerecord ho = nil;
+	Handle hpackedscripts = nil;
+	boolean fl = false;
+
+	if (!loadfromhandle(hpacked, &ix, sizeof(modern), &modern))
+		return false;
+
+	tysavedmenuinfo legacy;
+	clearbytes(&legacy, sizeof(legacy));
+	legacy.versionnumber = 1; /* not used downstream */
+	legacy.adroutline = (dbaddress) disk_to_host_uint64(modern.adroutline);
+	legacy.lnumcursor = (short) disk_to_host_uint64(modern.lnumcursor);
+	legacy.flags = (short) disk_to_host_uint32(modern.flags);
+	legacy.menuactivelayer = (short) disk_to_host_uint32(modern.menuactiveitem);
+
+	/* Remaining handle contains outline + scripts. */
+	if (!opunpack(hpacked, &ix, &ho))
+		goto exit;
+
+	/* Any trailing data are packed scripts; walk and attach. */
+	if (!loadhandleremains(ix, hpacked, &hpackedscripts))
+		goto exit;
+
+	if (!mesetupmenurecord(&legacy, ho, hmenurecord))
+		goto exit;
+
+	/* Replay script unpack on the attached outline. */
+	if (hpackedscripts != nil) {
+		oppushoutline(ho);
+		hdlheadrecord hsummit;
+		typackinfo packinfo;
+		packinfo.hpackedscripts = hpackedscripts;
+		packinfo.ixpackedscripts = 0;
+		opoutermostsummit(&hsummit);
+		if (!opsiblingvisiter(hsummit, false, &meunpackscriptvisit, &packinfo))
+			goto exit;
+		oppopoutline();
+	}
+
+	fl = true;
+
+exit:
+	if (hpackedscripts) disposehandle(hpackedscripts);
+	if (!fl && ho != nil)
+		opdisposeoutline(ho, false);
+	return fl;
+}
+
+/* Public entrypoints: dispatch based on current format mode. */
+boolean mepackmenustructure (tysavedmenuinfo *info, Handle *hpacked) {
+	db_format_mode mode = db_format_mode_current();
+	if (mode.use_64bit_format)
+		return mepackmenustructure_modern(info, hpacked);
+	return mepackmenustructure_legacy(info, hpacked);
+}
+
+boolean meunpackmenustructure (Handle hpacked, hdlmenurecord *hmenurecord) {
+	/* Peek at the current mode; legacy loader handles v<=6 payloads. */
+	db_format_mode mode = db_format_mode_current();
+	if (mode.use_64bit_format)
+		return meunpackmenustructure_modern(hpacked, hmenurecord);
+	return meunpackmenustructure_legacy(hpacked, hmenurecord);
+}
 
 
 boolean meloadmenurecord (dbaddress adr, hdlmenurecord *hmenurecord) { 
@@ -830,5 +974,3 @@ boolean mescraphook (Handle hscrap) {
 	
 	return (true); /*keep going*/
 	} /*mescraphook*/
-
-

@@ -98,7 +98,8 @@ RUNTIME_SOURCES = \
     ../Common/source/oplist.c \
     ../Common/source/opstructure.c \
     ../Common/source/oprefcon.c \
-    ../Common/source/oppack.c \
+    ../Common/source/oppack_modern.c \
+    ../Common/source/legacy/oppack_legacy.c \
     ../Common/source/oplangtext.c \
     ../Common/source/opverbs.c \
     ../Common/source/opxml.c \
@@ -159,6 +160,8 @@ HEADLESS_STUBS = \
     $(TESTSDIR)/headless_python_verbs.c \
     $(TESTSDIR)/headless_htmlcontrol_verbs.c \
     $(TESTSDIR)/headless_statusbar_verbs.c \
+    $(TESTSDIR)/headless_string_verbs.c \
+    $(TESTSDIR)/headless_window_verbs.c \
     $(TESTSDIR)/headless_rez_verbs.c \
     $(TESTSDIR)/headless_search_verbs.c \
     $(TESTSDIR)/headless_filemenu_verbs.c \

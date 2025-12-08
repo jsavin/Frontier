@@ -1114,15 +1114,22 @@ boolean db_format_write_header64(const tydatabaserecord_64 *src, unsigned char *
     return true;
 }
 
-boolean detect_database_format(const tydatabaserecord *header) {
-    if (header == NULL)
-        return false;
+/* Allow headroom for future format bumps without silently accepting garbage. */
+#define DB_FORMAT_MAX_VERSION 10
 
-    if (header->versionnumber <= 6)
-        return true;  /* Legacy 32-bit format */
-    if (header->versionnumber >= 7)
-        return true;  /* New 64-bit format */
-    return false;  /* Unsupported version */
+boolean detect_database_format(const tydatabaserecord *header) {
+	if (header == NULL)
+		return false;
+
+	/* Reject out-of-range version numbers before deciding legacy/modern. */
+	if (header->versionnumber < 1 || header->versionnumber > DB_FORMAT_MAX_VERSION)
+		return false;
+
+	if (header->versionnumber <= 6)
+		return true;  /* Legacy 32-bit format */
+	if (header->versionnumber >= 7)
+		return true;  /* New 64-bit format */
+	return false;  /* Unsupported version */
 }
 
 boolean convert_32bit_header_to_64bit(const unsigned char *legacy_header, tydatabaserecord_64 *new_header) {
@@ -1303,11 +1310,22 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     const char *fail_step = "init";
     const long header_len_final = (long) sizeof(tydatabaserecord_64);
 
+#if defined(FRONTIER_HEADLESS)
+    fprintf(stderr, "[headless] migrate start path=%s drop=%d\n", db_path, drop_cancoon ? 1 : 0);
+#endif
+
     db_saveas_state_snapshot(&entry_saveas);
+
+    /* Force legacy read mode while pulling from the v6 source; we restore at cleanup. */
+    db_format_mode legacy_mode = {false, false, false};
+    db_format_mode_push(&legacy_mode);
 
     fail_step = "prepare runtime";
     if (!db_format_prepare_runtime())
         goto cleanup;
+#if defined(FRONTIER_HEADLESS)
+    fprintf(stderr, "[headless] migrate after prepare runtime\n");
+#endif
 
     if (db_trace_level() > 0)
         db_format_trace_database_path(db_path);
@@ -1556,6 +1574,7 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     ok = true;
 
 cleanup:
+    db_format_mode_pop(); /* restore prior mode before exit */
     if (hscript != nil)
         disposehandle(hscript);
     if (hrootvariable != nil)
@@ -1637,6 +1656,10 @@ boolean ensure_database_modern(const char *db_path, boolean *migrated, char *out
 
     if (!detect_database_format(&header))
         return false;
+
+    /* Seed format mode from the on-disk header so we don't remigrate already-modern roots. */
+    db_format_mode detected_mode = {header.versionnumber >= 7, false, false};
+    db_format_mode_apply(&detected_mode);
 
     if (db_format_mode_current().use_64bit_format) {
         /* Already modern - return original path */

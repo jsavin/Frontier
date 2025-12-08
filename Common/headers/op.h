@@ -63,7 +63,7 @@ typedef struct tyoutlinerecord *ptroutlinerecord, **hdloutlinerecord; /*forward 
 
 typedef struct tyheadrecord *ptrheadrecord, **hdlheadrecord;/*forward declaration*/
 
-#pragma pack(2)
+#pragma pack(push, 2)
 typedef struct tyheadrecord {
 	
 	struct tyheadrecord **headlinkdown, **headlinkup, **headlinkleft, **headlinkright;
@@ -112,6 +112,7 @@ typedef struct tyheadrecord {
 	
 	Handle headstring; /*text of headline lives in its own block*/
 	} tyheadrecord;
+#pragma pack(pop)
 
 
 typedef struct tyhoistelement {
@@ -449,16 +450,13 @@ typedef struct tyoutlinerecord {
 	long outlinetype; /*for use by application. types in opinternal.h*/
 	
 	long outlinerefcon; /*for use by application*/
-	} tyoutlinerecord;
+} tyoutlinerecord;
 
-/* 2025-12-05: Verify 8-byte alignment of 64-bit timestamp fields under #pragma pack(2) */
+/* 2025-12-05: Verify 8-byte alignment of 64-bit timestamp fields under all packing modes. */
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
 _Static_assert(offsetof(tyoutlinerecord, timecreated) % 8 == 0, "tyoutlinerecord.timecreated must be 8-byte aligned");
 _Static_assert(offsetof(tyoutlinerecord, timelastsave) % 8 == 0, "tyoutlinerecord.timelastsave must be 8-byte aligned");
 #endif
-
-#pragma options align=reset
-
 
 #define getheadstring(h,bs)	texthandletostring ((**(h)).headstring, bs)
 
@@ -713,6 +711,3 @@ extern boolean opnodechanged (hdlheadrecord);
 extern boolean oprmousedown (Point pt, tyclickflags flags); /*oppopup.c*/
 
 #endif
-
-
-

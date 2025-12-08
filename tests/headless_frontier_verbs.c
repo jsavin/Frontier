@@ -39,6 +39,9 @@ enum {
 static boolean frontier_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
+    (void) hparam1;
+    (void) vreturned;
+
     switch(token) {
         case frov_getprogrampath:
             /* Verb #0: frontier.getprogrampath - not yet implemented */
@@ -140,4 +143,10 @@ boolean frontierinitverbs(void) {
 
     pophashtable();
     return true;
+}
+
+/* Exported callback used by headless kernel verb bootstrap */
+boolean headless_frontier_verbs_callback(short token, hdltreenode hparam1,
+                                         tyvaluerecord *vreturned, bigstring bserror) {
+    return frontier_valueproc(token, hparam1, vreturned, bserror);
 }

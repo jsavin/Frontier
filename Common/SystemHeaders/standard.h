@@ -29,6 +29,8 @@
 standard.h -- standard types and constants
 */
 
+/* 2025-12-06 Codex: Raise longinfinity to 64-bit max to align with modern numeric plan. */
+
 #ifndef standardinclude
 #define standardinclude /*so other modules can tell that we've been included*/
 
@@ -154,7 +156,7 @@ typedef enum tyjustification {
 #define false 0
 
 #define infinity 32767
-#define longinfinity (long)0x7FFFFFFF
+#define longinfinity ((long)0x7FFFFFFFFFFFFFFFLL)
 #define intinfinity 32767
 #define intminusinfinity -32768
 
@@ -325,6 +327,5 @@ extern void shutdownCOM( void );
 #endif
 
 #endif
-
 
 

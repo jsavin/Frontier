@@ -11,6 +11,8 @@
 /* Portable shim for frontier.h includes */
 /* Map legacy Handle macros to ClassicHandle API */
 
+#undef SetHandleSize
+
 /* Handle type and macros */
 #define NewHandle(size) ClassicNewHandle(size)
 #define DisposeHandle(h) ClassicDisposeHandle(h)

@@ -28,6 +28,9 @@ tests/handle_tests
 tests/_results/
 tests/runtime_tests
 tests/cli_runtime_tests
+tests/*_tests
+tests/*_tests.dSYM/
+tests/verbs_test.tmp
 Common/MySQL/
 
 # Build artifacts

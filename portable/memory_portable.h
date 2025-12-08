@@ -19,7 +19,7 @@ static inline void disposehandle(Handle h) { DisposeHandle(h); }
 static inline void lockhandle(Handle h) { HLock(h); }
 static inline void unlockhandle(Handle h) { HUnlock(h); }
 static inline long gethandlesize(Handle h) { return (long)GetHandleSize(h); }
-static inline boolean sethandlesize(Handle h, long sz) { return SetHandleSize(h, (size_t)sz)!=0; }
+static inline boolean sethandlesize(Handle h, long sz) { return ClassicSetHandleSize(h, (size_t)sz)!=0; }
 static inline boolean minhandlesize(Handle h, long sz) { long cur = gethandlesize(h); return cur >= sz || sethandlesize(h, sz); }
 Handle ClassicDupHandle(Handle h);
 static inline boolean copyhandle(Handle h, Handle* ph) { *ph = ClassicDupHandle(h); return (*ph)!=NULL; }

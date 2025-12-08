@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <string.h>
 
+/* 2025-12-08 Codex: Validate the v7 artifact emitted by migrate_32bit_to_64bit; do not overwrite source. */
+
 #include "frontier.h"
 #include "memory.h"
 #include "strings.h"
@@ -11,10 +13,6 @@
 #include "file.h"
 #include "odbinternal.h"
 #include "db_format.h"
-
-static void setup_bigstring_from_c(const char *cstr, bigstring out) {
-    copyctopstring(cstr, out);
-}
 
 static void analyze_header(const char *path, int *out_version) {
     FILE *f = fopen(path, "rb");
@@ -61,11 +59,17 @@ int main(void) {
     // Perform migration to modern format
     assert(migrate_32bit_to_64bit(dst));
 
-    // Verify header is now v7
+    // Verify header is now v7 (migrator writes a new file, preserves source)
+    char migrated_path[1024];
+    if (!db_format_last_backup_path(migrated_path, sizeof migrated_path)) {
+        strncpy(migrated_path, "test_save_migration-v7.root", sizeof migrated_path);
+        migrated_path[sizeof migrated_path - 1] = '\0';
+    }
+
     int ver_after = 0;
-    analyze_header(dst, &ver_after);
+    analyze_header(migrated_path, &ver_after);
     assert(ver_after >= 7);
 
-    printf("save_migration_tests: migration applied (v%d -> v%d)\n", ver_before, ver_after);
+    printf("save_migration_tests: migration applied (v%d -> v%d) output=%s\n", ver_before, ver_after, migrated_path);
     return 0;
 }

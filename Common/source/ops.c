@@ -25,6 +25,8 @@
 
 ******************************************************************************/
 
+/* 2025-12-07 Codex: Modernize numeric/string helpers for 64-bit values. */
+
 #include "frontier.h"
 #include "standard.h"
 
@@ -40,6 +42,11 @@
 #include "shell.h"
 #include "sysshellcall.h" // 2007-06-30 creedon
 
+#include <ctype.h>
+#include <inttypes.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 static tydirection directions [ctdirections] = {
 	
@@ -242,7 +249,18 @@ void shorttostring (short shortval, bigstring bs) {
 
 void numbertostring (long longval, bigstring bs) {
 	
-	NumToString (longval, bs);
+	char buffer [32];
+	int len = snprintf (buffer, sizeof (buffer), "%lld", (long long) longval);
+	
+	if (len < 0)
+		len = 0;
+	if (len > 255)
+		len = 255;
+	
+	bs [0] = (unsigned char) len;
+	
+	if (len > 0)
+		memmove (&bs [1], buffer, (size_t) len);
 
 	} /*numbertostring*/
 
@@ -275,7 +293,18 @@ boolean stringtonumber (bigstring bs, long *longval) {
 		*longval = 0;
 		}
 	else {	
-			StringToNum (bs, longval);
+			char buffer [256];
+			short len = stringlength (bs);
+			
+			if (len > 255)
+				len = 255;
+			
+			for (i = 0; i < len; ++i)
+				buffer [i] = (char) bs [i + 1];
+			
+			buffer [len] = '\0';
+			
+			*longval = (long) strtoll (buffer, NULL, 10);
 		}
 	
 	return (true);

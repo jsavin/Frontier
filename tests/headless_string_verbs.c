@@ -85,6 +85,8 @@ enum {
 static boolean string_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
+    bigstring bs;
+
     switch(token) {
         case strv_delete:
             /* Verb #0: string.delete - not yet implemented */
@@ -179,13 +181,17 @@ static boolean string_valueproc(short token, hdltreenode hparam1,
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case strv_upper:
-            /* Verb #23: string.upper - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Headless: uppercase the argument and return the string */
+            if (!getstringvalue(hparam1, 1, bs))
+                return false;
+            uppertext(stringbaseaddress(bs), stringlength(bs));
+            return setstringvalue(bs, vreturned);
         case strv_lower:
-            /* Verb #24: string.lower - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Headless: lowercase the argument and return the string */
+            if (!getstringvalue(hparam1, 1, bs))
+                return false;
+            lowertext(stringbaseaddress(bs), stringlength(bs));
+            return setstringvalue(bs, vreturned);
         case strv_filledstring:
             /* Verb #25: string.filledstring - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
@@ -203,9 +209,10 @@ static boolean string_valueproc(short token, hdltreenode hparam1,
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case strv_length:
-            /* Verb #29: string.length - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Headless: return character count of the argument */
+            if (!getstringvalue(hparam1, 1, bs))
+                return false;
+            return setlongvalue((long) stringlength(bs), vreturned);
         case strv_isalpha:
             /* Verb #30: string.isalpha - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);

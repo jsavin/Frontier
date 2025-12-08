@@ -71,9 +71,9 @@ extern boolean timegreaterthan (unsigned long, unsigned long);
 
 extern boolean timelessthan (unsigned long, unsigned long);
 
-extern boolean timetotimestring (unsigned long, bigstring, boolean);
+extern boolean timetotimestring (int64_t, bigstring, boolean);
 
-extern boolean timetodatestring (unsigned long, bigstring, boolean);
+extern boolean timetodatestring (int64_t, bigstring, boolean);
 
 extern boolean stringtotime (bigstring, unsigned long *);
 

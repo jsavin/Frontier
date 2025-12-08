@@ -11,6 +11,7 @@
 
 #include "frontier.h"
 #include "standard.h"
+#include <stdlib.h>
 
 #include "memory.h"
 #include "strings.h"
@@ -22,7 +23,8 @@
 enum {
     matv_min = 0,
     matv_max = 1,
-    matv_sqrt = 2
+    matv_sqrt = 2,
+    matv_random = 3
 };
 
 static boolean math_valueproc(short token, hdltreenode hparam1,
@@ -41,6 +43,26 @@ static boolean math_valueproc(short token, hdltreenode hparam1,
             /* Verb #2: math.sqrt - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
+        case matv_random: {
+            long lower, upper;
+
+            if (!getlongvalue(hparam1, 1, &lower))
+                return false;
+
+            flnextparamislast = true;
+            if (!getlongvalue(hparam1, 2, &upper))
+                return false;
+
+            if (lower > upper) {
+                if (bserror)
+                    copystring(BIGSTRING("\pbounds error"), bserror);
+                return false;
+            }
+
+            long n = rand();
+            n = lower + (labs(n) % (upper - lower + 1));
+            return setlongvalue(n, vreturned);
+        }
         default:
             return false;
     }
@@ -69,6 +91,7 @@ boolean mathinitverbs(void) {
     ADD_VERB(BIGSTRING("\pmin"), matv_min);
     ADD_VERB(BIGSTRING("\pmax"), matv_max);
     ADD_VERB(BIGSTRING("\psqrt"), matv_sqrt);
+    ADD_VERB(BIGSTRING("\prandom"), matv_random);
 
     #undef ADD_VERB
 

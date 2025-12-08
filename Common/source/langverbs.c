@@ -25,8 +25,11 @@
 
 ******************************************************************************/
 
+/* 2025-12-07 Codex: Promote bitwise verbs to 64-bit operands/results. */
+
 #include "frontier.h"
 #include "standard.h"
+#include <stdint.h>
 
 #include "langxcmd.h"
 
@@ -1417,9 +1420,11 @@ static boolean callscriptverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	} /*callscriptverb*/
 
 
-static boolean getbitparams (hdltreenode hparam1, unsigned long *bits, unsigned short *bitnum, short ixerror) {
+static boolean getbitparams (hdltreenode hparam1, uint64_t *bits, uint16_t *bitnum, short ixerror) {
 	
-	if (!getlongvalue (hparam1, 1, (long *) bits))
+	long templong = 0;
+	
+	if (!getlongvalue (hparam1, 1, &templong))
 		return (false);
 	
 	flnextparamislast = true;
@@ -1427,7 +1432,9 @@ static boolean getbitparams (hdltreenode hparam1, unsigned long *bits, unsigned 
 	if (!getintvalue (hparam1, 2, (short *) bitnum))
 		return (false);
 	
-	if (*bitnum > 31) {
+	*bits = (uint64_t) (int64_t) templong;
+	
+	if (*bitnum > 63) {
 		
 		langerror (ixerror);
 		
@@ -1438,113 +1445,161 @@ static boolean getbitparams (hdltreenode hparam1, unsigned long *bits, unsigned 
 	} /*getbitparams*/
 	
 	
-static boolean getbitnumparams (hdltreenode hparam1, unsigned long *bits1, unsigned long *bits2) {
+static boolean getbitnumparams (hdltreenode hparam1, uint64_t *bits1, uint64_t *bits2) {
 	
-	if (!getlongvalue (hparam1, 1, (long *) bits1))
+	long temp1 = 0;
+	long temp2 = 0;
+	
+	if (!getlongvalue (hparam1, 1, &temp1))
 		return (false);
 	
 	flnextparamislast = true;
 	
-	if (!getlongvalue (hparam1, 2, (long *) bits2))
+	if (!getlongvalue (hparam1, 2, &temp2))
 		return (false);
+	
+	*bits1 = (uint64_t) (int64_t) temp1;
+	*bits2 = (uint64_t) (int64_t) temp2;
 	
 	return (true);
 	} /*getbitnumparams*/
+
+static inline int64_t bitop_get (uint64_t bits, uint16_t bitnum) {
+	return (int64_t) ((bits >> bitnum) & 1);
+	}
+
+static inline int64_t bitop_set (uint64_t bits, uint16_t bitnum) {
+	return (int64_t) (bits | ((uint64_t) 1 << bitnum));
+	}
+
+static inline int64_t bitop_clear (uint64_t bits, uint16_t bitnum) {
+	return (int64_t) (bits & (~((uint64_t) 1 << bitnum)));
+	}
+
+static inline int64_t bitop_and (uint64_t bits1, uint64_t bits2) {
+	return (int64_t) (bits1 & bits2);
+	}
+
+static inline int64_t bitop_or (uint64_t bits1, uint64_t bits2) {
+	return (int64_t) (bits1 | bits2);
+	}
+
+static inline int64_t bitop_xor (uint64_t bits1, uint64_t bits2) {
+	return (int64_t) (bits1 ^ bits2);
+	}
+
+static inline int64_t bitop_shift_left (uint64_t bits, uint16_t dist) {
+	return (int64_t) (bits << dist);
+	}
+
+static inline int64_t bitop_shift_right (uint64_t bits, uint16_t dist) {
+	return (int64_t) (bits >> dist);
+	}
+
+#ifdef FRONTIER_TESTS
+int64_t langverbs_test_bitand (uint64_t a, uint64_t b) { return bitop_and (a, b); }
+int64_t langverbs_test_bitor (uint64_t a, uint64_t b) { return bitop_or (a, b); }
+int64_t langverbs_test_bitxor (uint64_t a, uint64_t b) { return bitop_xor (a, b); }
+int64_t langverbs_test_bitset (uint64_t a, uint16_t bitnum) { return bitop_set (a, bitnum); }
+int64_t langverbs_test_bitclear (uint64_t a, uint16_t bitnum) { return bitop_clear (a, bitnum); }
+int64_t langverbs_test_shift_left (uint64_t a, uint16_t dist) { return bitop_shift_left (a, dist); }
+int64_t langverbs_test_shift_right (uint64_t a, uint16_t dist) { return bitop_shift_right (a, dist); }
+#endif
 	
 	
 static boolean bitgetverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	
-	unsigned long bits;
-	unsigned short bitnum;
+	uint64_t bits;
+	uint16_t bitnum;
 	
 	if (!getbitparams (hparam1, &bits, &bitnum, bitindexerror))
 		return (false);
 	
-	return (setbooleanvalue ((bits >> bitnum) & 1, vreturned));
+	return (setbooleanvalue (bitop_get (bits, bitnum), vreturned));
 	} /*bitgetverb*/
 	
 
 static boolean bitsetverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	
-	unsigned long bits;
-	unsigned short bitnum;
+	uint64_t bits;
+	uint16_t bitnum;
 	
 	if (!getbitparams (hparam1, &bits, &bitnum, bitindexerror))
 		return (false);
 	
-	return (setlongvalue (bits | ((unsigned long) 1 << bitnum), vreturned));
+	return (setlongvalue (bitop_set (bits, bitnum), vreturned));
 	} /*bitsetverb*/
 
 
 static boolean bitclearverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	
-	unsigned long bits;
-	unsigned short bitnum;
+	uint64_t bits;
+	uint16_t bitnum;
 	
 	if (!getbitparams (hparam1, &bits, &bitnum, bitindexerror))
 		return (false);
 	
-	return (setlongvalue (bits & (~((unsigned long) 1 << bitnum)), vreturned));
+	return (setlongvalue (bitop_clear (bits, bitnum), vreturned));
 	} /*bitclearverb*/
 
 
 static boolean bitandverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	
-	unsigned long bits1;
-	unsigned long bits2;
+	uint64_t bits1;
+	uint64_t bits2;
 	
 	if (!getbitnumparams (hparam1, &bits1, &bits2))
 		return (false);
 	
-	return (setlongvalue (bits1 & bits2, vreturned));
+	return (setlongvalue (bitop_and (bits1, bits2), vreturned));
 	} /*bitandverb*/
 
 
 static boolean bitorverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	
-	unsigned long bits1;
-	unsigned long bits2;
+	uint64_t bits1;
+	uint64_t bits2;
 	
 	if (!getbitnumparams (hparam1, &bits1, &bits2))
 		return (false);
 	
-	return (setlongvalue (bits1 | bits2, vreturned));
+	return (setlongvalue (bitop_or (bits1, bits2), vreturned));
 	} /*bitorverb*/
 
 
 static boolean bitxorverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	
-	unsigned long bits1;
-	unsigned long bits2;
+	uint64_t bits1;
+	uint64_t bits2;
 	
 	if (!getbitnumparams (hparam1, &bits1, &bits2))
 		return (false);
 	
-	return (setlongvalue (bits1 ^ bits2, vreturned));
+	return (setlongvalue (bitop_xor (bits1, bits2), vreturned));
 	} /*bitxorverb*/
 
 
 static boolean bitshiftleftverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	
-	unsigned long bits;
-	unsigned short bitdist;
+	uint64_t bits;
+	uint16_t bitdist;
 	
 	if (!getbitparams (hparam1, &bits, &bitdist, bitshiftdisterror))
 		return (false);
 	
-	return (setlongvalue (bits << bitdist, vreturned));
+	return (setlongvalue (bitop_shift_left (bits, bitdist), vreturned));
 	} /*bitshiftleftverb*/
 
 
 static boolean bitshiftrightverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	
-	unsigned long bits;
-	unsigned short bitdist;
+	uint64_t bits;
+	uint16_t bitdist;
 	
 	if (!getbitparams (hparam1, &bits, &bitdist, bitshiftdisterror))
 		return (false);
 	
-	return (setlongvalue (bits >> bitdist, vreturned));
+	return (setlongvalue (bitop_shift_right (bits, bitdist), vreturned));
 	} /*bitshiftrightverb*/
 
 
@@ -1582,7 +1637,7 @@ static boolean locksemaphoreverb (hdltreenode hparam1, tyvaluerecord *vreturned)
 		if (!langbackgroundtask (true))
 			return (false);
 		
-		if (gettickcount () - startticks >= (unsigned long) timeoutticks) {
+		if ((unsigned long) (gettickcount () - startticks) >= (unsigned long) timeoutticks) {
 		
 			numbertostring (timeoutticks, bsticks);
 			
@@ -2779,10 +2834,25 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			
 			if (!getstringvalue (hparam1, 1, bs))
 				break;
-			
+
+			#ifdef FRONTIER_HEADLESS
+			{
+				char cbuf[1024]; /* plenty for Pascal-style bigstring */
+				c_from_bs (bs, cbuf, sizeof cbuf);
+				fputs ("[notifydialog] ", stdout);
+				fputs (cbuf, stdout);
+				fputs ("\nPress Enter to continue...", stdout);
+				fflush (stdout);
+				int ch;
+				while ((ch = getchar ()) != '\n' && ch != EOF) {
+					continue;
+				}
+				return setbooleanvalue (true, v);
+			}
+			#else
 			(*v).data.flvalue = notifyuser (bs);
-			
 			return (true);
+			#endif
 
 		case getuserinfodialogfunc:
 			return (getuserinfofunc (hparam1, v));
@@ -3209,7 +3279,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 
 			lockhandle (buf);
 
-			charbuffer = *buf;
+				charbuffer = (char *) *buf;
 
 			if (fwsNetEventReadStream (stream, (unsigned long *)(&len), charbuffer)) {
 				unlockhandle (buf);
@@ -3241,7 +3311,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 
 			lockhandle (buf);
 
-			charbuffer = *buf;
+				charbuffer = (char *) *buf;
 
 			if (fwsNetEventWriteStream (stream, len, charbuffer)) {
 				unlockhandle (buf);
@@ -3602,7 +3672,3 @@ boolean langinitbuiltins (void) {
 	return (loadfunctionprocessor (idlangverbs, &langfunctionvalue));
 	#endif
 	} /*langinitbuiltins*/
-
-
-
-

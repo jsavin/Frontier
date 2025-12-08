@@ -593,7 +593,7 @@ static boolean opverbinmemory (hdloutlinevariable hv) {
 		short versionnumber;
 		boolean islegacy = false;
 
-		if (gethandlesize(hpackedoutline) >= sizeof(short)) {
+		if (gethandlesize(hpackedoutline) >= (long) sizeof(short)) {
 			versionnumber = *(short *)(*hpackedoutline);
 			disktomemshort(versionnumber);
 

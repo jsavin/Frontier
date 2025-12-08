@@ -577,6 +577,7 @@ cleanup:
 }
 
 static boolean load_system_root_database_internal(const char* path, boolean allow_hydrate) {
+    (void) allow_hydrate;
     if (path == NULL) {
         return true;
     }

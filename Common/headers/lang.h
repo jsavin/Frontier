@@ -283,10 +283,10 @@ typedef enum tyvaluetype { /*use care -- these are saved on disk inside symbol t
 	/*new types must be added at end of list, these get saved on disk*/
 	
 	ctvaluetypes
-	
+
 	} tyvaluetype;
 
-#pragma pack(2)
+#pragma pack(push, 2)
 typedef struct tydiskvalue {	/*4.0.2b1 dmb*/
 
 	dbaddress adr;
@@ -294,6 +294,7 @@ typedef struct tydiskvalue {	/*4.0.2b1 dmb*/
 	Handle hvalue;
 	
 	} tydiskvalue, *ptrdiskvalue, **hdldiskvalue;
+#pragma pack(pop)
 
 
 typedef union tyvaluedata {
@@ -302,11 +303,11 @@ typedef union tyvaluedata {
 	
 	byte chvalue;
 	
-	short intvalue;
+	int64_t intvalue;
 	
-	long longvalue;
+	int64_t longvalue;
 	
-	unsigned long datevalue;
+	int64_t datevalue;
 	
 	tydirection dirvalue;
 
@@ -501,7 +502,12 @@ typedef struct tyhashtable {
 	tyvaluerecord tmpstack []; /*temps generated during expression evaluation*/
 	} tyhashtable, *ptrhashtable, **hdlhashtable;
 
-/* 2025-12-05: Verify 8-byte alignment of 64-bit timestamp fields under #pragma pack(2) */
+/*
+2025-12-05: Verify 8-byte alignment of 64-bit timestamp fields under all packing modes.
+Note: pack(2) is applied only to legacy disk structs (see tydiskvalue push/pop above);
+this struct remains naturally aligned, and the padding above enforces 8-byte alignment.
+If a future packing change breaks this, the static assertions will fail at compile time.
+*/
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
 _Static_assert(offsetof(tyhashtable, timecreated) % 8 == 0, "tyhashtable.timecreated must be 8-byte aligned");
 _Static_assert(offsetof(tyhashtable, timelastsave) % 8 == 0, "tyhashtable.timelastsave must be 8-byte aligned");
@@ -671,8 +677,6 @@ typedef struct tablestack {
 	
 	hdlhashtable stack [cthashtables];
 	} tytablestack, *ptrtablestack, **hdltablestack;
-
-#pragma options align=reset
 /*globals*/	
 
 extern boolean flscriptrunning; /*if true, a script is currently executing in this thread*/
@@ -1028,11 +1032,11 @@ extern boolean setbooleanvalue (boolean, tyvaluerecord *);
 
 extern boolean setcharvalue (byte, tyvaluerecord *);
 
-extern boolean setintvalue (short, tyvaluerecord *);
+extern boolean setintvalue (int64_t, tyvaluerecord *);
 
-extern boolean setlongvalue (long, tyvaluerecord *);
+extern boolean setlongvalue (int64_t, tyvaluerecord *);
 
-extern boolean setdatevalue (unsigned long, tyvaluerecord *);
+extern boolean setdatevalue (int64_t, tyvaluerecord *);
 
 extern boolean setdirectionvalue (tydirection, tyvaluerecord *);
 
@@ -1312,5 +1316,3 @@ extern boolean langcleartarget (tyvaluerecord *prevtarget);
 extern boolean langsettarget (hdlhashtable htable, bigstring bsname, tyvaluerecord *prevtarget);
 
 #endif
-
-
