@@ -296,23 +296,33 @@ static boolean mathfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 
 #ifdef FRONTIER_HEADLESS
 		case randomfunc: {
-			long lower, upper;
+			long lower32, upper32;
 
-			if (!getlongvalue (hp1, 1, &lower))
+			if (!getlongvalue (hp1, 1, &lower32))
 				break;
 
 			flnextparamislast = true;
 
-			if (!getlongvalue (hp1, 2, &upper))
+			if (!getlongvalue (hp1, 2, &upper32))
 				break;
+
+			int64_t lower = (int64_t) lower32;
+			int64_t upper = (int64_t) upper32;
 
 			if (lower > upper) {
 				langerror (badrandomboundserror);
 				return (false);
 			}
 
-			long n = rand ();
-			n = lower + (labs (n) % (upper - lower + 1));
+			/* 2025-12-09 Codex: avoid signed overflow when computing range size. */
+			uint64_t span = (uint64_t) (upper - lower) + 1u;
+			if (span == 0) { /* wrapped */
+				langerror (badrandomboundserror);
+				return (false);
+			}
+
+			uint64_t r = (uint64_t) (unsigned int) rand ();
+			int64_t n = lower + (int64_t) (r % span);
 			return (setlongvalue (n, v));
 			}
 #endif /* FRONTIER_HEADLESS */

@@ -844,13 +844,15 @@ boolean opunpacklist (Handle hpacked, hdllistrecord *hnewlist) {
 		opdisposeoutline (ho, false);
 	(**hlist).houtline = nil; /* don't leave it dangling */
 
-	/* Dispatch to legacy or modern outline unpacker based on on-disk version. */
-	{
-		short outline_version = 0;
-		if (hpackedoutline != nil && gethandlesize(hpackedoutline) >= (long) sizeof(outline_version)) {
-			moveleft(*hpackedoutline, &outline_version, sizeof(outline_version));
-			disktomemshort(outline_version);
-		}
+		/* Dispatch to legacy or modern outline unpacker based on on-disk version. */
+		{
+			short outline_version = 0;
+			if (hpackedoutline != nil && gethandlesize(hpackedoutline) >= (long) sizeof(outline_version)) {
+				short outline_version_local = 0;
+				moveleft(*hpackedoutline, &outline_version_local, sizeof(outline_version_local));
+				disktomemshort(outline_version_local);
+				outline_version = outline_version_local;
+			}
 #if defined(FRONTIER_HEADLESS)
 		{
 			const char *ctx = (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>";

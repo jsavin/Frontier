@@ -286,8 +286,7 @@ typedef enum tyvaluetype { /*use care -- these are saved on disk inside symbol t
 
 	} tyvaluetype;
 
-#pragma pack(2)
-#define FRONTIER_PACK_TWO 1
+#pragma pack(push, 2)
 typedef struct tydiskvalue {	/*4.0.2b1 dmb*/
 
 	dbaddress adr;
@@ -295,6 +294,7 @@ typedef struct tydiskvalue {	/*4.0.2b1 dmb*/
 	Handle hvalue;
 	
 	} tydiskvalue, *ptrdiskvalue, **hdldiskvalue;
+#pragma pack(pop)
 
 
 typedef union tyvaluedata {
@@ -502,7 +502,12 @@ typedef struct tyhashtable {
 	tyvaluerecord tmpstack []; /*temps generated during expression evaluation*/
 	} tyhashtable, *ptrhashtable, **hdlhashtable;
 
-/* 2025-12-05: Verify 8-byte alignment of 64-bit timestamp fields under all packing modes. */
+/*
+2025-12-05: Verify 8-byte alignment of 64-bit timestamp fields under all packing modes.
+Note: pack(2) is applied only to legacy disk structs (see tydiskvalue push/pop above);
+this struct remains naturally aligned, and the padding above enforces 8-byte alignment.
+If a future packing change breaks this, the static assertions will fail at compile time.
+*/
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
 _Static_assert(offsetof(tyhashtable, timecreated) % 8 == 0, "tyhashtable.timecreated must be 8-byte aligned");
 _Static_assert(offsetof(tyhashtable, timelastsave) % 8 == 0, "tyhashtable.timelastsave must be 8-byte aligned");
@@ -672,8 +677,6 @@ typedef struct tablestack {
 	
 	hdlhashtable stack [cthashtables];
 	} tytablestack, *ptrtablestack, **hdltablestack;
-
-#pragma options align=reset
 /*globals*/	
 
 extern boolean flscriptrunning; /*if true, a script is currently executing in this thread*/

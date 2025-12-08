@@ -63,7 +63,7 @@ typedef struct tyoutlinerecord *ptroutlinerecord, **hdloutlinerecord; /*forward 
 
 typedef struct tyheadrecord *ptrheadrecord, **hdlheadrecord;/*forward declaration*/
 
-#pragma pack(2)
+#pragma pack(push, 2)
 typedef struct tyheadrecord {
 	
 	struct tyheadrecord **headlinkdown, **headlinkup, **headlinkleft, **headlinkright;
@@ -112,6 +112,7 @@ typedef struct tyheadrecord {
 	
 	Handle headstring; /*text of headline lives in its own block*/
 	} tyheadrecord;
+#pragma pack(pop)
 
 
 typedef struct tyhoistelement {
@@ -457,9 +458,6 @@ _Static_assert(offsetof(tyoutlinerecord, timecreated) % 8 == 0, "tyoutlinerecord
 _Static_assert(offsetof(tyoutlinerecord, timelastsave) % 8 == 0, "tyoutlinerecord.timelastsave must be 8-byte aligned");
 #endif
 
-#pragma options align=reset
-
-
 #define getheadstring(h,bs)	texthandletostring ((**(h)).headstring, bs)
 
 #define opisfatheadlines(ho) ((**(ho)).flfatheadlines)
@@ -713,4 +711,3 @@ extern boolean opnodechanged (hdlheadrecord);
 extern boolean oprmousedown (Point pt, tyclickflags flags); /*oppopup.c*/
 
 #endif
-
