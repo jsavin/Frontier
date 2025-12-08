@@ -1114,12 +1114,15 @@ boolean db_format_write_header64(const tydatabaserecord_64 *src, unsigned char *
     return true;
 }
 
+/* Allow headroom for future format bumps without silently accepting garbage. */
+#define DB_FORMAT_MAX_VERSION 10
+
 boolean detect_database_format(const tydatabaserecord *header) {
 	if (header == NULL)
 		return false;
 
 	/* Reject out-of-range version numbers before deciding legacy/modern. */
-	if (header->versionnumber < 1 || header->versionnumber > 10)
+	if (header->versionnumber < 1 || header->versionnumber > DB_FORMAT_MAX_VERSION)
 		return false;
 
 	if (header->versionnumber <= 6)

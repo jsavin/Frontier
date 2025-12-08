@@ -300,6 +300,7 @@ boolean fiffindinfile (const ptrfilespec fs, bigstring pattern, long *idx) {
 	
 	while (true) {
 		
+		/* Handle is unsigned char** in legacy Mac code; cast is explicit for clarity. */
 		register char *pbuffer = (char *) *hbuffer;
 		register char *pbufferend = pbuffer + ctbytes;
 		register char chfirst = pattern [1];
@@ -425,10 +426,12 @@ boolean fifcomparefiles (const ptrfilespec fs1, const ptrfilespec fs2) {
 		
 		//lockhandle (hbuffer1);
 		
+		/* Handle is unsigned char** in legacy Mac code; cast is explicit for clarity. */
 		p1 = (char *) *hbuffer1; /*copy into register*/
 		
 		//lockhandle (hbuffer2);
 		
+		/* Handle is unsigned char** in legacy Mac code; cast is explicit for clarity. */
 		p2 = (char *) *hbuffer2; /*copy into register*/
 		
 		for (ix = 0; ix < ctbytes1; ix++) {
@@ -500,6 +503,7 @@ boolean fifcharcounter (const ptrfilespec fs, char chlookfor, long *count) {
 		
 		//lockhandle (hbuffer);
 		
+		/* Handle is unsigned char** in legacy Mac code; cast is explicit for clarity. */
 		pbuffer = (char *) *hbuffer; /*copy into register*/
 		
 		for (ix = 0; ix < ct; ix++) {
@@ -1060,5 +1064,4 @@ boolean fifgetendoffile (const ptrfilespec fs, long *eof) {
 	
 	return (fl);
 	} /*fifseteof*/
-
 

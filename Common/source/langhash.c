@@ -139,7 +139,8 @@ static boolean langhash_prepare_wordprocessor_value(bigstring bsname, hdlhashnod
 	if (!langexternalgetfullpath(currenthashtable, bsname, bspath, nil))
 		copystring(bsname, bspath);
 
-	if ((unsigned char) bspath[0] >= (unsigned char) (sizeof pathbuf - 1))
+	/* Pascal string length byte must fit plus NUL. */
+	if ((size_t) bspath[0] >= (sizeof pathbuf) - 1)
 		return false; /* path would overflow */
 	copyptocstring(bspath, pathbuf);
 
@@ -187,27 +188,24 @@ static boolean langhash_materialize_table_internal(hdlhashtable htable, const ch
 		const char *prior_path = langhash_materialize_current_path;
 
 		gethashkey(nomad, bsname);
-		size_t need = (size_t) bsname[0] + 1; /* name + dot/null */
-		if (path != NULL && path[0] != '\0')
-			need += strlen(path) + 1; /* dot + existing path */
-		if (need >= sizeof(nodepath))
-			return false; /* avoid overflow on deep nesting */
-
-		if (path != NULL && path[0] != '\0')
-			snprintf(nodepath, sizeof(nodepath), "%s.%.*s", path, (int) bsname[0], (char *) &bsname[1]);
-		else
-			snprintf(nodepath, sizeof(nodepath), "%.*s", (int) bsname[0], (char *) &bsname[1]);
-
-		if (need >= sizeof(nodepath)) {
+			size_t need = (size_t) bsname[0] + 1; /* name + dot/null */
+			if (path != NULL && path[0] != '\0')
+				need += strlen(path) + 1; /* dot + existing path */
+			if (need >= sizeof(nodepath)) {
 #if defined(FRONTIER_HEADLESS)
-			if (langhash_materialize_trace_enabled()) {
-				fprintf(stderr, "[headless] materialize path overflow path=%s name=%.*s need=%zu limit=%zu\n",
-				        path ? path : "<nil>", (int) bsname[0], (char *) &bsname[1],
-				        need, sizeof(nodepath));
-			}
+				if (langhash_materialize_trace_enabled()) {
+					fprintf(stderr, "[headless] materialize path overflow path=%s name=%.*s need=%zu limit=%zu\n",
+					        path ? path : "<nil>", (int) bsname[0], (char *) &bsname[1],
+					        need, sizeof(nodepath));
+				}
 #endif
-			return false; /* avoid overflow on deep nesting */
-		}
+				return false; /* avoid overflow on deep nesting */
+			}
+
+			if (path != NULL && path[0] != '\0')
+				snprintf(nodepath, sizeof(nodepath), "%s.%.*s", path, (int) bsname[0], (char *) &bsname[1]);
+			else
+				snprintf(nodepath, sizeof(nodepath), "%.*s", (int) bsname[0], (char *) &bsname[1]);
 
 		strncpy(langhash_materialize_path_buf, nodepath, sizeof(langhash_materialize_path_buf) - 1);
 		langhash_materialize_path_buf[sizeof(langhash_materialize_path_buf) - 1] = '\0';
@@ -667,11 +665,12 @@ static void diskvalue_from_value_legacy(const tyvaluerecord *val, tydiskvaluedat
 static void diskvalue_from_value_v7(const tyvaluerecord *val, tydiskvaluedata_v7 *out) {
 	clearbytes(out, sizeof(*out));
 	switch (val->valuetype) {
-		case novaluetype:
-		case booleanvaluetype:
-		case charvaluetype:
-			out->longvalue = host_to_disk_int64((int64_t) val->data.chvalue);
-			break;
+	case novaluetype:
+	case booleanvaluetype:
+	case charvaluetype:
+		/* Small scalar types share the 64-bit longvalue slot to keep the modern record compact and simple. */
+		out->longvalue = host_to_disk_int64((int64_t) val->data.chvalue);
+		break;
 		case intvaluetype:
 		case tokenvaluetype:
 			out->longvalue = host_to_disk_int64((int64_t) val->data.intvalue);
