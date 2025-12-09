@@ -737,6 +737,7 @@ static boolean mepackmenustructure_modern(tysavedmenuinfo *legacy, Handle *hpack
 	Handle hpackedoutline = nil;
 	Handle hpackedscripts = nil;
 	boolean fl = false;
+	boolean pushed_outline = false;
 
 	if (!newfilledhandle(&modern, sizeof(modern), &hpackedmenu))
 		goto exit;
@@ -746,10 +747,9 @@ static boolean mepackmenustructure_modern(tysavedmenuinfo *legacy, Handle *hpack
 
 	/* Pack linked scripts (outline refcons) into hpackedscripts. */
 	{
-		boolean pushed = false;
 		if (menudata != nil && (**menudata).menuoutline != nil) {
 			oppushoutline((**menudata).menuoutline);
-			pushed = true;
+			pushed_outline = true;
 		}
 		hdlheadrecord hsummit;
 		typackinfo packinfo;
@@ -759,8 +759,10 @@ static boolean mepackmenustructure_modern(tysavedmenuinfo *legacy, Handle *hpack
 		if (!opsiblingvisiter(hsummit, false, &mepackscriptvisit, &packinfo))
 			goto exit;
 		hpackedscripts = packinfo.hpackedscripts; /* may have moved */
-		if (pushed)
+		if (pushed_outline) {
 			oppopoutline();
+			pushed_outline = false;
+		}
 	}
 
 	/* Pack menu outline itself. */
@@ -779,6 +781,8 @@ static boolean mepackmenustructure_modern(tysavedmenuinfo *legacy, Handle *hpack
 	fl = true;
 
 exit:
+	if (pushed_outline)
+		oppopoutline();
 	if (!fl) {
 		if (hpackedmenu) disposehandle(hpackedmenu);
 		if (hpackedoutline) disposehandle(hpackedoutline);
@@ -793,6 +797,7 @@ static boolean meunpackmenustructure_modern(Handle hpacked, hdlmenurecord *hmenu
 	hdloutlinerecord ho = nil;
 	Handle hpackedscripts = nil;
 	boolean fl = false;
+	boolean pushed_outline = false;
 
 	if (!loadfromhandle(hpacked, &ix, sizeof(modern), &modern))
 		return false;
@@ -819,6 +824,7 @@ static boolean meunpackmenustructure_modern(Handle hpacked, hdlmenurecord *hmenu
 	/* Replay script unpack on the attached outline. */
 	if (hpackedscripts != nil) {
 		oppushoutline(ho);
+		pushed_outline = true;
 		hdlheadrecord hsummit;
 		typackinfo packinfo;
 		packinfo.hpackedscripts = hpackedscripts;
@@ -827,11 +833,14 @@ static boolean meunpackmenustructure_modern(Handle hpacked, hdlmenurecord *hmenu
 		if (!opsiblingvisiter(hsummit, false, &meunpackscriptvisit, &packinfo))
 			goto exit;
 		oppopoutline();
+		pushed_outline = false;
 	}
 
 	fl = true;
 
 exit:
+	if (pushed_outline)
+		oppopoutline();
 	if (hpackedscripts) disposehandle(hpackedscripts);
 	if (!fl && ho != nil)
 		opdisposeoutline(ho, false);
