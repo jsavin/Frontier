@@ -26,7 +26,7 @@
 ******************************************************************************/
 
 /* 2025-11-24 Codex: Normalize BE writes/coverage for v7 portability. */
-
+/* 2025-12-09 Codex: Guard TEC converter disposal so failed converter creation during migration does not crash. */
 
 #include "frontier.h"
 #include "standard.h"
@@ -2292,8 +2292,8 @@ boolean isTextEncodingAvailable( bigstring bsEncodingName )
 static boolean converttextencoding( Handle h, Handle hresult, const long inputcharset, const long outputcharset, long * OSStatusCode )
 {
 
-	TECObjectRef converter;		
-	OSStatus status;
+	TECObjectRef converter = NULL;		
+	OSStatus status = noErr;
 	ByteCount ctorigbytes, ctoutputbytes, ctflushedbytes;		
 	long sizeoutputbuffer;
 	long pullBytes = 0;
@@ -2301,7 +2301,7 @@ static boolean converttextencoding( Handle h, Handle hresult, const long inputch
 
 	status = TECCreateConverter (&converter, inputcharset, outputcharset);
 	if ( status != noErr ) {
-		TECDisposeConverter (converter);
+		converter = NULL;
 		*OSStatusCode = (long) status;
 		return ( false );
 	}
@@ -2312,7 +2312,8 @@ static boolean converttextencoding( Handle h, Handle hresult, const long inputch
 		sizeoutputbuffer = 32;
 
 	if (!sethandlesize (hresult, sizeoutputbuffer)) {  // out of memory
-		TECDisposeConverter (converter);
+		if (converter != NULL)
+			TECDisposeConverter (converter);
 		return (false);
 	}
 
@@ -2343,7 +2344,8 @@ static boolean converttextencoding( Handle h, Handle hresult, const long inputch
 	
 	if ( status != noErr )
 	{
-		TECDisposeConverter (converter);
+		if (converter != NULL)
+			TECDisposeConverter (converter);
 		
 		*OSStatusCode = (long) status;
 		return ( false );
@@ -2351,7 +2353,8 @@ static boolean converttextencoding( Handle h, Handle hresult, const long inputch
 
 	TECFlushText (converter, (TextPtr)(*hresult), sizeoutputbuffer, &ctflushedbytes);
 
-	TECDisposeConverter (converter);
+	if (converter != NULL)
+		TECDisposeConverter (converter);
 
 	sethandlesize (hresult, ctoutputbytes + ctflushedbytes);
 	
