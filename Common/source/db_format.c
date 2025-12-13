@@ -1397,7 +1397,6 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
             (**ht).flsubsdirty = true;
             (**hv).oldaddress = nildbaddress; /* force new allocation */
         }
-        (**hv).flinmemory = true;
     }
     /* Load root into memory before switching to 64-bit writes. */
     fail_step = "tableverbinmemory(root)";
@@ -1477,6 +1476,13 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     if (!saved_root) {
         db_context_guard_exit(&save_guard);
         goto cleanup;
+    }
+    /* Ensure subsequent opens don’t reuse the in-memory system table. */
+    cleartablestructureglobals();
+    if (hrootvariable != nil) {
+        /* false => dispose contents; handle freed below via cleartablestructureglobals */
+        tableverbdispose((hdlexternalvariable) hrootvariable, false);
+        hrootvariable = nil;
     }
     if (have_dest_context && dest_context.database != nil) {
         long eof = 0;
@@ -1770,6 +1776,10 @@ boolean hashpacktable_context(const db_context *context, hdlhashtable ht, boolea
 boolean hashunpacktable_context(const db_context *context, Handle hpacked, boolean flmemory, hdlhashtable htable) {
     db_context_guard guard;
     db_context_guard_enter(context, &guard);
+#if defined(FRONTIER_HEADLESS)
+    fprintf(stderr, "[headless] hashunpacktable_context enter htable=%p flmemory=%d\n",
+            (void *) htable, (int) flmemory);
+#endif
     boolean ok = hashunpacktable(hpacked, flmemory, htable);
     db_context_guard_exit(&guard);
     return ok;

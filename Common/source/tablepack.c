@@ -164,6 +164,11 @@ boolean tableunpacktable (Handle hpacked, boolean flmemory, hdlhashtable *htable
     db_context context;
     db_context_init(&context);
 	
+	/* Trace which unpacker is reached. */
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] tableunpacktable calling hashunpacktable_context ht=%p flmemory=%d\n",
+	        (void *) ht, (int) flmemory);
+#endif
 if (!hashunpacktable_context (&context, hpackedtable, flmemory, ht)) /*always disposes of hpackedtable*/
 	goto error;
 	

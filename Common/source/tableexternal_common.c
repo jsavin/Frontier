@@ -306,6 +306,13 @@ boolean tableverbinmemory_common(hdlexternalvariable hvariable, hdlhashnode hnod
     bigstring bspath, bsunpackerror;
     boolean fl;
 
+#if defined(FRONTIER_HEADLESS)
+    fprintf(stderr, "[headless] tableverbinmemory enter hvariable=%p hnode=%p flinmemory=%d\n",
+            (void *) hvariable,
+            (void *) hnode,
+            (hvariable && *hvariable) ? (**hvariable).flinmemory : -1);
+#endif
+
     if ((**hv).flinmemory) /* nothing to do, it's already in memory */
         return true;
 
@@ -322,6 +329,8 @@ boolean tableverbinmemory_common(hdlexternalvariable hvariable, hdlhashnode hnod
         fprintf(stderr, "[headless] tableverbinmemory nil database for variable adr=0x%llx\n",
                 (unsigned long long) adr);
     }
+    fprintf(stderr, "[headless] tableverbinmemory dbpush database=%p adr=0x%llx\n",
+            (void *)(**hv).hdatabase, (unsigned long long) adr);
 #endif
 
 #if defined(FRONTIER_HEADLESS)
