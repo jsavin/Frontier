@@ -160,7 +160,13 @@ HEADLESS_STUBS = \
     $(TESTSDIR)/headless_python_verbs.c \
     $(TESTSDIR)/headless_htmlcontrol_verbs.c \
     $(TESTSDIR)/headless_statusbar_verbs.c \
+    $(TESTSDIR)/headless_sys_verbs.c \
     $(TESTSDIR)/headless_string_verbs.c \
+    $(TESTSDIR)/headless_db_verbs.c \
+    $(TESTSDIR)/headless_html_verbs.c \
+    $(TESTSDIR)/headless_re_verbs.c \
+    $(TESTSDIR)/headless_sqlite_verbs.c \
+    $(TESTSDIR)/headless_mysql_verbs.c \
     $(TESTSDIR)/headless_window_verbs.c \
     $(TESTSDIR)/headless_rez_verbs.c \
     $(TESTSDIR)/headless_search_verbs.c \

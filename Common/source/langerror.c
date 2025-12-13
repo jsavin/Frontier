@@ -135,15 +135,11 @@ void langostypeparamerror (short stringnum, OSType x) {
 
 
 void parseerror (bigstring bs) {
+	/* 2025-12-09 Codex: bs is a C string from yacc/lex; copy to Pascal safely. */
+	bigstring bscopy; /* must work on a copy */
 
-	bigstring bscopy; /*must work on a copy!*/
-	
-	copystring (bs, bscopy); 
-	
-	convertcstring (bscopy); /*convert a c string to pascal format*/
-	
+	copyctopstring ((ptrstring) bs, bscopy);
 	langparamerror (parsererror, bscopy);
 	} /*parseerror*/
-
 
 

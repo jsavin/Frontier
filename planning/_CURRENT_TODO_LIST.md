@@ -4,6 +4,17 @@ Status: In Progress (branch `docs/numeric-type-system-modernization`)
 Last Updated: 2025-12-09
 Owner: Codex
 
+## Runtime bootstrap / CLI regressions (develop)
+- [ ] Diagnose symbol-name corruption and CLI segfault on `Frontier-v6.root`
+  - [x] Capture failing traversal: first bad name is `scriptibutes` immediately after `opattributes` during `langfindsymbol` walk; crash follows in same table.
+  - [ ] Force logging of legacy `hashunpacktable` name indices/bytes (headless) so we can see the exact length/index in the v6 path before corruption.
+  - [ ] Compare legacy `hashunpacktable` against the last known-good (PR #59) for string offset/length handling; audit refcon/handle lifetime for string pool reuse.
+  - [ ] Confirm modern packer is not reusing stale string lengths when emitting v7 tables; once fixed, regenerate v7 root and re-run CLI.
+- [ ] Restore headless CLI baseline (exit=1/segfaults)
+  - [ ] Re-run `./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root -e "3+4"` after fixes; ensure `cli_runtime_tests` no longer exit 139 and startup script dependencies are satisfied.
+- [x] Migration crash (Paige text conversion) — fixed
+  - [x] Guarded `converttextencoding` to only dispose TEC converters when creation succeeded; reran `SANITIZE=1 make -C tests save_migration_tests && ./tests/save_migration_tests` cleanly.
+
 ## Work Items
 - [x] Align in-memory numeric storage to 64-bit
   - [x] Widen `tyvaluedata` int/long/date fields to 64-bit (legacy+modern hydration paths)

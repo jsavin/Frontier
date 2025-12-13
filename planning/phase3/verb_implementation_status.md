@@ -1,5 +1,7 @@
 # Frontier Verb Processor Implementation Status
 
+> 2025-12-08 Codex: The original draft assumed full auto-registration of all 51 processors (PR #60). The current headless build uses the curated `kernel_verbs_headless.c` registration set plus a handful of linked stubs; bulk auto-registration is intentionally disabled after stability issues. Treat the counts below as planning guidance, not a reflection of what is presently wired into headless. Update after the next registration pass.
+
 **Generated**: December 4, 2025 - After Phase 1 Complete (All 51 Processors Initialized)
 
 ## Executive Summary
