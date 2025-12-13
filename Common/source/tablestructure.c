@@ -728,9 +728,6 @@ boolean settablestructureglobals (Handle hvariable, boolean flcreatesubs) {
 	if (ht == nil)
 		return (false);
 
-	/* Ensure the root variable reflects its on-disk residency before we cache globals. */
-	(**hv).flinmemory = false;
-	
 	cleartablestructureglobals ();
 	
 	rootvariable = (Handle) hv;
