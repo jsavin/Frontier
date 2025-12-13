@@ -415,7 +415,12 @@ boolean tableloadsystemtable (dbaddress adr, Handle *hvariable, hdlhashtable *ht
 	register hdlexternalvariable hv;
 	register hdlhashtable ht;
 	hdlhashtable hsubtable;
-	
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] tableloadsystemtable adr=0x%llx flcreate=%d\n",
+	        (unsigned long long) adr, (int) flcreate);
+#endif
+
 	assert (sizeof (tyexternalvariable) == sizeof (tytablevariable));
 	
 	if (adr == nildbaddress) { /*start an empty table*/
@@ -439,12 +444,12 @@ boolean tableloadsystemtable (dbaddress adr, Handle *hvariable, hdlhashtable *ht
 		
 		hv = (hdlexternalvariable) *hvariable;
 		
-		if (!tableverbinmemory (hv, HNoNode)) {
-			
-			disposehandle ((Handle) hv);
-			
-			return (false);
-			}
+	if (!tableverbinmemory (hv, HNoNode)) {
+		
+		disposehandle ((Handle) hv);
+		
+		return (false);
+		}
 		}
 	
 	ht = (hdlhashtable) (**hv).variabledata;
@@ -657,6 +662,9 @@ boolean cleartablestructureglobals (void) {
 	/*
 	dmb 9/24/90: clear globals; root table is about to be disposed
 	*/
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] cleartablestructureglobals\n");
+#endif
 	
 	rootvariable = nil;
 	
@@ -719,6 +727,11 @@ boolean settablestructureglobals (Handle hvariable, boolean flcreatesubs) {
 	
 	if (ht == nil)
 		return (false);
+
+#if defined(FRONTIER_HEADLESS)
+	/* Ensure the root variable reflects its on-disk residency before we cache globals. */
+	(**hv).flinmemory = false;
+#endif
 	
 	cleartablestructureglobals ();
 	

@@ -506,6 +506,11 @@ static boolean ccloadsystemtable (hdlcancoonrecord hcancoon, dbaddress adr, bool
 	Handle hvariable;
 	hdlhashtable htable;
 	
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] ccloadsystemtable adr=0x%llx flcreate=%d\n",
+	        (unsigned long long) adr, (int) flcreate);
+#endif
+
 	fldisablesymbolcallbacks = true; /*so table insertions wont trigger callbacks*/
 	
 	fl = tableloadsystemtable (adr, &hvariable, &htable, flcreate);
@@ -1788,6 +1793,5 @@ boolean ccstart (void) {
 	
 	return (ccwindowstart ());
 	} /*ccstart*/
-
 
 

@@ -99,6 +99,7 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
+    /* Always hydrate the system root in headless/CLI; defaults to g_cli_options.system_root if provided. */
     if (g_cli_options.upgrade_system_root) {
         boolean migrated = false;
         char output_path[1024];
@@ -114,32 +115,19 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
-    if (g_cli_options.hydrate_system_root) {
-        if (g_cli_options.system_root == NULL) {
-            fprintf(stderr, "Error: --hydrate-system-root requires --system-root PATH\n");
-            return 1;
-        }
-        const char* hydrate_path = g_cli_options.system_root;
-        g_cli_options.system_root = NULL;
-        if (!initialize_frontier_runtime()) {
-            fprintf(stderr, "Error: Failed to initialize runtime for hydration\n");
-            return 1;
-        }
-        boolean hydrate_ok = hydrate_system_root_database(hydrate_path);
-        cleanup_frontier_runtime();
-        if (!hydrate_ok) {
-            fprintf(stderr, "Error: Failed to hydrate system root: %s\n", hydrate_path);
-            return 1;
-        }
-        return 0;
-    }
-
-    // Initialize Frontier runtime
+    /* Always initialize runtime and hydrate system root (default path). */
     if (!initialize_frontier_runtime()) {
         fprintf(stderr, "Error: Failed to initialize Frontier runtime\n");
         return 1;
     }
-    
+    if (g_cli_options.system_root != NULL) {
+        if (!hydrate_system_root_database(g_cli_options.system_root)) {
+            fprintf(stderr, "Error: Failed to load system root: %s\n", g_cli_options.system_root);
+            cleanup_frontier_runtime();
+            return 1;
+        }
+    }
+
     // Execute based on mode
     boolean success = false;
     
@@ -399,6 +387,12 @@ static void log_system_subtable_status(const char *phase,
 }
 
 static boolean hydrate_system_root_database(const char* path) {
+    /* Always start from a clean slate; useful to confirm entry. */
+#if defined(FRONTIER_HEADLESS)
+    fprintf(stderr, "[headless] hydrate_system_root_database enter path=%s\n", path ? path : "(nil)");
+#endif
+    cleartablestructureglobals();
+
     if (path == NULL) {
         cli_log_error("No system root path provided for hydration");
         return false;
@@ -464,6 +458,9 @@ static boolean hydrate_system_root_database(const char* path) {
 
     Handle hrootvariable = nil;
     hdlhashtable hroot = nil;
+    /* Reset any cached state from previous loads. */
+    cleartablestructureglobals();
+    /* Load directly from disk. */
     if (!tableloadsystemtable(adr, &hrootvariable, &hroot, false)) {
         cli_log_error("Failed to load system table while hydrating %s", path);
         goto cleanup;
@@ -471,7 +468,6 @@ static boolean hydrate_system_root_database(const char* path) {
 
     dispose_rootvariable = true;
 
-    cleartablestructureglobals();
     rootvariable = hrootvariable;
     roottable = hroot;
     currenthashtable = roottable;
@@ -601,6 +597,8 @@ static boolean load_system_root_database_internal(const char* path, boolean allo
     if (migrated) {
         cli_log_info("Migrated legacy system root to v7 format (written to): %s", actual_path);
         path = actual_path;  /* Use the v7 file */
+        /* After migration, tear down any in-memory v6 root before reloading v7. */
+        cleartablestructureglobals();
     }
 
     len = strlen(path);  /* Recalculate length after potential path change */
@@ -652,6 +650,8 @@ static boolean load_system_root_database_internal(const char* path, boolean allo
 
     Handle hrootvariable = nil;
     hdlhashtable hroot = nil;
+    /* Always clear cached globals before loading. */
+    cleartablestructureglobals();
     if (!tableloadsystemtable(adr, &hrootvariable, &hroot, false)) {
         cli_log_error("Failed to load system table from %s", path);
         cleartablestructureglobals();
