@@ -3359,7 +3359,8 @@ static boolean hashpackvisit_modern (bigstring bsname, hdlhashnode hnode, tyvalu
 	if (!hashpackstring (&lpi->s2, bsname, &name_index))
 		HASH_PACK_FAIL("hashpackstring(name)");
 
-	/* Manually populate packed record buffer (big-endian, fixed layout). */
+	/* Manually populate packed record buffer (big-endian, fixed layout).
+	   See planning/phase3/big_endian_portability_audit.md for BE64 guidance. */
 	int32_t ix_be = host_to_disk_int32 (name_index);
 	memcpy(recbuf + 0, &ix_be, sizeof(int32_t));
 	recbuf[4] = (uint8_t) val.valuetype;
@@ -3625,12 +3626,12 @@ static boolean hashpackvisit_modern (bigstring bsname, hdlhashnode hnode, tyvalu
 			memcpy(recbuf + 8, &rec_data_local, sizeof(rec_data_local));
 			break;
 
-		default:
-			langerror (cantpackerror);
-			HASH_PACK_FAIL("langerror(default)");
-	}
+	default:
+		langerror (cantpackerror);
+		HASH_PACK_FAIL("langerror(default)");
+}
 
-	/* stamp version byte */
+	/* Stamp final version byte before writing the record. */
 	recbuf[5] = rec_version;
 
 	if (!writehandlestream (&lpi->s1, recbuf, sizeof (recbuf)))
@@ -3894,6 +3895,8 @@ boolean hashunpacktable (Handle hpackedtable, boolean flmemory, hdlhashtable hta
 	boolean header_present = false;
 	const long total_bytes = gethandlesize(hrecords);
 	const int16_t max_supported_version = 10; /* future headroom */
+	/* Peek at the first two bytes; only treat as a header when the version is in-range
+	   and the packed records area is large enough to hold the corresponding header. */
 	if (total_bytes >= (long) sizeof (tydisktablerecord_v4)) {
 		long ix_peek = ix;
 		if (loadfromhandle (hrecords, &ix_peek, sizeof(int16_t), &version_peek)) {
@@ -3903,7 +3906,7 @@ boolean hashunpacktable (Handle hpackedtable, boolean flmemory, hdlhashtable hta
 		}
 	}
 
-	if (header_present && version_peek >= 0x05) {
+	if (header_present && version_peek >= 0x05 && total_bytes >= (long) sizeof (tydisktablerecord)) {
 		/* v0x05+: Modern format with 64-bit timestamps */
 		/* Note: loadfromhandle() performs raw byte copy without byte swapping */
 		loadfromhandle (hrecords, &ix, sizeof (tydisktablerecord), &header);
@@ -3929,7 +3932,6 @@ boolean hashunpacktable (Handle hpackedtable, boolean flmemory, hdlhashtable hta
 		header.sortorder = 0;
 		header.timecreated = 0;
 		header.timelastsave = 0;
-		ix = 0;
 	}
 
 #if TABLE_HEADER_RESERVED_BYTES > 0
@@ -4002,7 +4004,8 @@ boolean hashunpacktable (Handle hpackedtable, boolean flmemory, hdlhashtable hta
 	long ixrecord = 0;
 	while (true) {
 			tydisksymbolrecord rec;
-			unsigned char recbuf[sizeof(tydisksymbolrecord_v7)];
+	/* Buffer mirrors the manual BE64 layout written in hashpackvisit_modern. */
+	unsigned char recbuf[sizeof(tydisksymbolrecord_v7)];
 			tyvaluerecord val;
 			long remaining;
 			boolean modern_rec = modern_records;
@@ -4100,27 +4103,6 @@ boolean hashunpacktable (Handle hpackedtable, boolean flmemory, hdlhashtable hta
 			        (int) rec.valuetype,
 			        (unsigned int) rec.version,
 			        (int) modern_rec);
-#endif
-
-#if defined(FRONTIER_HEADLESS)
-			if (debug_record_index < 20) {
-				long hsize = gethandlesize(hstrings);
-				if (name_index < 0 || name_index >= hsize) {
-					fprintf(stderr, "[headless] hashunpacktable name ix OOB ix=%d hsize=%ld\n",
-					        (int) name_index, hsize);
-				} else {
-					const unsigned char *s = (const unsigned char *)(*hstrings + name_index);
-					unsigned int slen = s[0];
-					long avail = hsize - name_index - 1;
-					if ((long) slen > avail)
-						slen = (unsigned int) (avail < 0 ? 0 : avail);
-					fprintf(stderr, "[headless] hashunpacktable name bytes ix=%d len=%u: ",
-					        (int) name_index, slen);
-					for (unsigned int i = 0; i < slen && i < 32; ++i)
-						fprintf(stderr, "%02x ", s[1 + i]);
-					fprintf(stderr, "\n");
-				}
-			}
 #endif
 
 #if defined(FRONTIER_HEADLESS)
