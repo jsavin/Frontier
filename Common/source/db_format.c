@@ -1480,6 +1480,7 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     /* Ensure subsequent opens don’t reuse the in-memory system table. */
     cleartablestructureglobals();
     if (hrootvariable != nil) {
+        /* false => dispose contents; handle freed below via cleartablestructureglobals */
         tableverbdispose((hdlexternalvariable) hrootvariable, false);
         hrootvariable = nil;
     }

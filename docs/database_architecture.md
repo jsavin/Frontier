@@ -73,6 +73,20 @@ When migrating:
 
 This rewrite guarantees 64-bit hosts see identical tables regardless of whether the source data came from a 32-bit v6 root or was already modernized.
 
+#### v7 hash record layout (big-endian)
+
+Modern hash/table records are written in an explicit big-endian layout to avoid struct padding issues:
+
+```
+Bytes 0-3  : name index (int32_t, BE)
+Byte  4    : valuetype (uint8_t)
+Byte  5    : version   (uint8_t)
+Bytes 6-7  : reserved/padding (must be zero)
+Bytes 8-15 : data union (BE64: long/double/date/etc.; 32-bit indices are stored widened in this slot)
+```
+
+Compile-time asserts enforce `sizeof(tydisksymbolrecord_v7) == 16` and `offsetof(...data) == 8`. Reader and writer both use a manual 16-byte buffer (`recbuf`) to guarantee identical on-disk layout across platforms.
+
 ## UserTalk Addressing
 
 ### Full Address Notation

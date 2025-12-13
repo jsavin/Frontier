@@ -39,6 +39,7 @@
 #include "strings.h"
 #include "font.h"
 #include "ops.h"
+#include <stddef.h> /* for offsetof static asserts */
 #include <stdlib.h> /* getenv for materialize tracing */
 #include <string.h> /* memcpy for BE64 double/int conversions */
 #if !defined(FRONTIER_HEADLESS)
@@ -62,10 +63,17 @@
 #endif
 // 2025-11-28 Codex: Use db_context when dereferencing externals during hash packing.
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
+
+/* Ensure the manual BE layout matches the on-disk record definition. */
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+_Static_assert(sizeof(tydisksymbolrecord_v7) == 16, "tydisksymbolrecord_v7 must be 16 bytes");
+_Static_assert(offsetof(tydisksymbolrecord_v7, data) == 8, "tydisksymbolrecord_v7.data offset must be 8");
+#endif
 #if defined(FRONTIER_HEADLESS)
 #include "../portable/wptext_portable.h"
 #include <stdio.h>
 #include <errno.h>
+#include <stdbool.h>
 #define WP_PLACEHOLDER_TEXT "WPText not migrated because it was too old to read."
 extern boolean getstringlist(short listid, short stringid, bigstring bs);
 extern void recttodiskrect(Rect *, diskrect *);
@@ -163,6 +171,27 @@ static boolean langhash_materialize_external(tyvaluerecord *val, const char *pat
 /* Exposed for debug logging in tableunpacktable errors. */
 const char *langhash_materialize_current_path = NULL;
 static char langhash_materialize_path_buf[512];
+#if defined(FRONTIER_HEADLESS)
+/* Hash unpack diagnostics */
+static FILE *hashunpack_log = NULL;
+static boolean hashunpack_log_init = false;
+static void close_hashunpack_log(void) {
+	if (hashunpack_log != NULL) {
+		fclose(hashunpack_log);
+		hashunpack_log = NULL;
+	}
+}
+static boolean is_safe_log_path(const char *path) {
+	if (path == NULL || *path == '\0')
+		return false;
+	/* reject absolute paths and parent traversals */
+	if (path[0] == '/')
+		return false;
+	if (strstr(path, "..") != NULL)
+		return false;
+	return true;
+}
+#endif
 static boolean langhash_materialize_trace_enabled(void) {
 	static short initialized = 0;
 	static boolean enabled = false;
@@ -3843,8 +3872,6 @@ boolean hashunpacktable (Handle hpackedtable, boolean flmemory, hdlhashtable hta
 	bigstring bsunpackerror;
 	hdlhashtable prevhashtable = nil;
 #if defined(FRONTIER_HEADLESS)
-	static FILE *hashunpack_log = NULL;
-	static boolean hashunpack_log_init = false;
 	long debug_record_index = 0;
 	fprintf(stderr, "[headless] hashunpacktable enter htable=%p flmemory=%d\n",
 	        (void *) htable, (int) flmemory);
@@ -3861,12 +3888,16 @@ boolean hashunpacktable (Handle hpackedtable, boolean flmemory, hdlhashtable hta
 	if (!hashunpack_log_init) {
 		hashunpack_log_init = true;
 		const char *logpath = getenv("FRONTIER_HASHUNPACK_LOG");
-		if (logpath != NULL && *logpath != '\0') {
+		if (is_safe_log_path(logpath)) {
 			hashunpack_log = fopen(logpath, "w");
 			if (hashunpack_log == NULL) {
 				fprintf(stderr, "[headless] hashunpacktable: failed to open log %s: %s\n",
 				        logpath, strerror(errno));
+			} else {
+				atexit(close_hashunpack_log);
 			}
+		} else if (logpath && *logpath) {
+			fprintf(stderr, "[headless] hashunpacktable: unsafe log path ignored: %s\n", logpath);
 		}
 	}
 
@@ -3926,7 +3957,7 @@ boolean hashunpacktable (Handle hpackedtable, boolean flmemory, hdlhashtable hta
 		header.flags = header_v4.flags; /* will be byte-swapped below */
 	}
 	else {
-		/* No valid header present; fall back to legacy no-header behavior */
+		/* No valid header present (version 0 reserved for headerless legacy tables); fall back to legacy no-header behavior. */
 		header.version = 0;
 		header.flags = 0;
 		header.sortorder = 0;
