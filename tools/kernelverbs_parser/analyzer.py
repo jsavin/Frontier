@@ -101,43 +101,48 @@ class VerbImplementationAnalyzer:
             print(f"Error reading {file_path}: {e}")
             return ""
 
-    def extract_case_implementation(self, source: str, case_label: str) -> str:
+    def extract_case_implementation(self, source: str, case_labels: List[str]) -> tuple:
         """
         Extract code for a specific case in a switch statement.
 
         Args:
             source: Source code containing switch statement
-            case_label: Case label to find (e.g., "filv_exists")
+            case_labels: Possible case labels to find (try each in order)
 
         Returns:
-            Code for that case, or empty string if not found
+            Tuple of (case_source, line_number) or ("", 0) if not found
         """
-        # Find the case statement
-        pattern = rf'case\s+{re.escape(case_label)}\s*:'
-        match = re.search(pattern, source)
+        # Try each possible case label
+        for case_label in case_labels:
+            # Find the case statement
+            pattern = rf'case\s+{re.escape(case_label)}\s*:'
+            match = re.search(pattern, source)
 
-        if not match:
-            return ""
+            if match:
+                # Calculate line number
+                line_num = source[:match.start()].count('\n') + 1
 
-        # Extract from case to next break/case/default/}
-        start = match.end()
+                # Extract from case to next break/case/default/}
+                start = match.end()
 
-        # Find the end (next case, default, or closing brace)
-        end_pattern = r'(^\s*case\s+\w+\s*:|^\s*default\s*:|^\s*\})'
-        remaining = source[start:]
-        end_match = re.search(end_pattern, remaining, re.MULTILINE)
+                # Find the end (next case, default, or closing brace)
+                end_pattern = r'(^\s*case\s+\w+\s*:|^\s*default\s*:|^\s*\})'
+                remaining = source[start:]
+                end_match = re.search(end_pattern, remaining, re.MULTILINE)
 
-        if end_match:
-            end = start + end_match.start()
-        else:
-            # Take until end of file (shouldn't happen)
-            end = len(source)
+                if end_match:
+                    end = start + end_match.start()
+                else:
+                    # Take until end of file (shouldn't happen)
+                    end = len(source)
 
-        return source[start:end]
+                return (source[start:end], line_num)
+
+        return ("", 0)
 
     def analyze_verb_implementation(self, source: str, processor_name: str,
                                    verb_name: str, token: int,
-                                   impl_file: str) -> VerbImplementation:
+                                   impl_file: str, line_num: int = 0) -> VerbImplementation:
         """
         Analyze a single verb implementation.
 
@@ -178,12 +183,6 @@ class VerbImplementationAnalyzer:
         # Estimate complexity
         complexity = estimate_complexity(source) if is_implemented else 1
 
-        # Find line number (approximate - just find the case statement)
-        case_label = f"{processor_name[0:3]}v_{verb_name}"  # e.g., filv_exists
-        pattern = rf'case\s+{re.escape(case_label)}\s*:'
-        match = re.search(pattern, source)
-        line_num = source[:match.start()].count('\n') + 1 if match else 0
-
         return VerbImplementation(
             processor=processor_name,
             verb_name=verb_name,
@@ -201,12 +200,9 @@ class VerbImplementationAnalyzer:
         """
         Extract verb names from the enum definition in the source file.
 
-        The enum format is:
-            enum {
-                filv_created = 0,
-                filv_modified = 1,
-                ...
-            };
+        Handles multiple enum formats:
+            enum { filv_created = 0, ... };
+            typedef enum tyfiletoken { filecreatedfunc, ... } tyfiletoken;
 
         Args:
             source: Source code
@@ -215,24 +211,59 @@ class VerbImplementationAnalyzer:
         Returns:
             List of verb names (without prefix)
         """
-        # Find enum block
-        enum_pattern = r'enum\s*\{([^}]+)\}'
-        match = re.search(enum_pattern, source, re.DOTALL)
+        # Try multiple enum patterns
+        enum_patterns = [
+            # Headless style: enum { filv_created = 0, ... }
+            r'enum\s*\{([^}]+)\}',
+            # Legacy typedef style: typedef enum tyXtoken { ... } tyXtoken
+            r'typedef\s+enum\s+\w*\s*\{([^}]+)\}',
+        ]
 
-        if not match:
+        enum_body = None
+        for pattern in enum_patterns:
+            match = re.search(pattern, source, re.DOTALL)
+            if match:
+                enum_body = match.group(1)
+                break
+
+        if not enum_body:
             return []
 
-        enum_body = match.group(1)
+        # Try multiple token naming patterns
+        # 1. Headless style: filv_created, filv_modified
+        # 2. Legacy style: filecreatedfunc, filemodifiedfunc
+        # 3. Alternative: file_created, file_modified
 
-        # Extract verb tokens (e.g., filv_created, filv_modified)
-        # Pattern: processor_prefix + v_ + verb_name
-        prefix = processor_name[0:3] + "v_"  # e.g., "filv_"
+        prefixes = [
+            processor_name[0:3] + "v_",  # e.g., "filv_"
+            processor_name,               # e.g., "file"
+            processor_name + "_",         # e.g., "file_"
+        ]
 
-        # Find all enum entries
-        pattern = rf'{re.escape(prefix)}(\w+)\s*='
-        matches = re.findall(pattern, enum_body)
+        suffixes = ["", "func", "_func"]
 
-        return matches
+        # Try each prefix/suffix combination
+        for prefix in prefixes:
+            for suffix in suffixes:
+                if suffix:
+                    pattern = rf'{re.escape(prefix)}(\w+){re.escape(suffix)}\s*[,=]'
+                else:
+                    pattern = rf'{re.escape(prefix)}(\w+)\s*[,=]'
+
+                matches = re.findall(pattern, enum_body)
+
+                if matches:
+                    # Clean up verb names (remove trailing "func" if present in name itself)
+                    cleaned = []
+                    for match in matches:
+                        # Remove common suffixes from verb names
+                        verb_name = match
+                        if verb_name.endswith('func'):
+                            verb_name = verb_name[:-4]
+                        cleaned.append(verb_name)
+                    return cleaned
+
+        return []
 
     def analyze_processor(self, processor_name: str, verb_count: int) -> List[VerbImplementation]:
         """
@@ -294,13 +325,23 @@ class VerbImplementationAnalyzer:
 
         # Analyze each verb
         for i, verb_name in enumerate(verb_names):
-            # Extract case implementation (if exists)
-            case_label = f"{processor_name[0:3]}v_{verb_name}"
-            case_source = self.extract_case_implementation(source, case_label)
+            # Generate possible case labels (try multiple formats)
+            # 1. Headless style: filv_created
+            # 2. Legacy style: filecreatedfunc
+            # 3. Alternative: file_created
+            possible_labels = [
+                f"{processor_name[0:3]}v_{verb_name}",  # filv_created
+                f"{processor_name}{verb_name}func",      # filecreatedfunc
+                f"{processor_name}_{verb_name}",         # file_created
+                f"{processor_name}{verb_name}",          # filecreated
+            ]
+
+            # Extract case implementation (tries all possible labels)
+            case_source, line_num = self.extract_case_implementation(source, possible_labels)
 
             if case_source:
                 impl = self.analyze_verb_implementation(
-                    case_source, processor_name, verb_name, i, impl_file
+                    case_source, processor_name, verb_name, i, impl_file, line_num
                 )
             else:
                 # No case found - assume stub
