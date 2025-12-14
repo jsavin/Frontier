@@ -438,7 +438,9 @@ static void test_record_size_compile_time_assertion(void) {
      */
     assert(sizeof(langhash_test_disksymbolrecord_v7) > 0);
     assert(sizeof(langhash_test_diskvaluedata_v7) > 0);
-    /* Header offset must be exactly 8 bytes (controlled struct definition) */
+    /* Header offset must be exactly 8 bytes (controlled struct definition):
+     * ixkey(4 bytes) + valuetype(1 byte) + version(1 byte) + _pad(2 bytes) = 8 bytes
+     */
     assert(offsetof(langhash_test_disksymbolrecord_v7, data) == 8);
 
     printf("PASS\n");
