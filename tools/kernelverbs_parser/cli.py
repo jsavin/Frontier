@@ -106,13 +106,16 @@ def cmd_report(args):
     if args.output:
         output_path = args.output
     else:
-        # Generate date-tagged filename: COVERAGE_REPORT-YYYY-MM-DD-NN.md
+        # Generate date-tagged filename in reports/coverage/verb-binding/: YYYY-MM-DD-NN.md
+        reports_dir = project_root / "reports/coverage/verb-binding"
+        reports_dir.mkdir(parents=True, exist_ok=True)
+
         today = datetime.now().strftime("%Y-%m-%d")
 
         # Find next sequential number for today
         seq_num = 1
         while True:
-            candidate = script_dir / f"COVERAGE_REPORT-{today}-{seq_num:02d}.md"
+            candidate = reports_dir / f"{today}-{seq_num:02d}.md"
             if not candidate.exists():
                 output_path = str(candidate)
                 break
