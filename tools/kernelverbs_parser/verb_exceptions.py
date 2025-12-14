@@ -18,6 +18,20 @@ PATTERN_C_EXCEPTIONS = {
     'pict': {
         'expressions': 'evalfunc',
     },
+    'frontier': {
+        # frontier verbs are in shellsysverbs.c with irregular mappings
+        'getprogrampath': 'programpathfunc',
+        'getfilepath': 'filepathfunc',
+        'enableagents': 'agentsenablefunc',
+        'ispowerpc': 'isnativefunc',
+        'version': 'frontierversionfunc',
+    },
+    'sys': {
+        # sys verbs are in shellsysverbs.c with irregular mappings
+        'osversion': 'systemversionfunc',
+        'appisrunning': 'apprunningfunc',
+        'frontmostapp': 'frontappfunc',
+    },
 }
 
 # Pattern D: Multi-processor consolidation

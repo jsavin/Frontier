@@ -69,26 +69,25 @@ class VerbImplementationAnalyzer:
             if langverbs_path.exists():
                 return str(langverbs_path.absolute())
 
-        # Prefer Common/source (real implementations) over headless stubs
-        search_patterns = [
-            project_root / f"Common/source/{processor_name}verbs.c",
-            project_root / f"Common/source/lang{processor_name}.c",
-            project_root / f"tests/headless_{processor_name}_verbs.c",
-        ]
-
-        # Special cases
+        # Special cases (check these first - they override standard patterns)
         special_cases = {
-            'frontier': [
-                project_root / 'Common/source/frontierverbs.c',
-                project_root / 'Common/source/langstartup.c'
-            ],
+            'frontier': [project_root / 'Common/source/shellsysverbs.c'],  # frontier and sys share this file
             'sys': [project_root / 'Common/source/shellsysverbs.c'],
             'window': [project_root / 'Common/source/shellwindowverbs.c'],
             'opattributes': [project_root / 'Common/source/opverbs.c'],  # Often in same file as op
         }
 
+        # Start with special cases if they exist
+        search_patterns = []
         if processor_name in special_cases:
             search_patterns.extend(special_cases[processor_name])
+
+        # Then add standard patterns (prefer Common/source over headless stubs)
+        search_patterns.extend([
+            project_root / f"Common/source/{processor_name}verbs.c",
+            project_root / f"Common/source/lang{processor_name}.c",
+            project_root / f"tests/headless_{processor_name}_verbs.c",
+        ])
 
         # Try each pattern
         for pattern in search_patterns:
