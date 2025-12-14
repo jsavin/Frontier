@@ -168,15 +168,62 @@ IDENTIFIER_PATTERN = r'^[a-zA-Z_][a-zA-Z0-9_]*$'
 class EFPProcessor:
     """Represents an External Function Processor from kernelverbs.rc"""
 
-    def __init__(self, efp_id: str, name: str, window_required: bool, verb_count: int):
+    def __init__(self, efp_id: str, name: str, window_required: bool, verb_count: int, verb_names: List[str] = None):
         self.efp_id = efp_id
         self.name = name
         self.window_required = window_required
         self.verb_count = verb_count
+        self.verb_names = verb_names if verb_names is not None else []
         self.init_func = f"{name}initverbs"
 
     def __repr__(self):
         return f"EFP({self.efp_id}, {self.name}, {self.verb_count} verbs)"
+
+
+def extract_verb_names(block_content: str, start_pos: int, expected_count: int) -> List[str]:
+    """
+    Extract verb names from the RC block content after a processor definition.
+
+    Format in RC file:
+        "processorname\0",
+            true/false,
+                count,
+                "verb1\0",
+                "verb2\0",
+                ...
+
+    Args:
+        block_content: The content between BEGIN...END
+        start_pos: Position after the processor definition line
+        expected_count: Expected number of verbs
+
+    Returns:
+        List of verb names (without \0 terminators)
+    """
+    verb_names = []
+
+    # Pattern to match quoted strings with \0 terminator
+    # Matches: "verbname\0"
+    verb_pattern = r'"([^"]+)\\0"'
+
+    # Search from start_pos onward for verb names
+    remaining = block_content[start_pos:]
+
+    for match in re.finditer(verb_pattern, remaining):
+        verb_name = match.group(1)
+
+        # Stop if we hit the next processor definition (which also has \0)
+        # This is a heuristic: if the "verb" looks like a processor name, we've gone too far
+        # Processor names are typically lowercase single words without special chars
+        # Actual verbs are also lowercase, so we use count as the primary limiter
+
+        verb_names.append(verb_name)
+
+        # Stop when we've found the expected number
+        if len(verb_names) >= expected_count:
+            break
+
+    return verb_names
 
 
 def parse_kernelverbs_rc(rc_path: str) -> Tuple[List[EFPProcessor], bool]:
@@ -243,7 +290,15 @@ def parse_kernelverbs_rc(rc_path: str) -> Tuple[List[EFPProcessor], bool]:
             window_required = proc_match.group(2) == 'true'
             verb_count = int(proc_match.group(3))
 
-            processor = EFPProcessor(efp_id, processor_name, window_required, verb_count)
+            # Extract verb names from the RC block
+            # The verbs start after the processor definition line
+            verb_names = extract_verb_names(block_content, proc_match.end(), verb_count)
+
+            if len(verb_names) != verb_count:
+                print(f"Warning: Processor '{processor_name}' expected {verb_count} verbs, "
+                      f"found {len(verb_names)}", file=sys.stderr)
+
+            processor = EFPProcessor(efp_id, processor_name, window_required, verb_count, verb_names)
             processors.append(processor)
 
     return processors, had_errors
