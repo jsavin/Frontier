@@ -11,3 +11,4 @@
 - Don't ever create PRs that would merge with the tedchoward upstream fork.
 - If you ever need to check how the legacy Frontier app implemented something in 32-bit-land, look at the code under `../tedchoward/Frontier/`.
 - When the user asks you a question, always answer it first before jumping into work.
+- Always ask the user first before pushing changes to origin/develop.
