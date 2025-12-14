@@ -35,6 +35,16 @@ PATTERN_D_EXCEPTIONS = {
         'notify': 'notifytdialogfunc',           # Typo in C (extra 't')
         'getpassword': 'askpassworddialogfunc',  # Different verb entirely
     },
+    'clock': {
+        # RC verb names differ from C enum tokens
+        'now': 'timefunc',
+        'set': 'settimefunc',
+        'sleepfor': 'sleepfunc',
+        'ticks': 'tickcountfunc',
+        'milliseconds': 'millisecondcountfunc',
+        'waitseconds': 'delayfunc',
+        'waitsixtieths': 'delaysixtiethsfunc',
+    },
 }
 
 
