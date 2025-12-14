@@ -25,6 +25,13 @@ from verb_exceptions import (
     generate_pattern_d_candidates
 )
 
+# Constants for validation and limits
+MIN_VERB_NAME_LENGTH = 2  # Minimum characters for a valid verb name
+# MIN_EXTRACTED_VERBS prevents false positives in enum extraction:
+# - Processors with 1 verb are extremely rare (none in the 51 we analyzed)
+# - Single matches often indicate partial pattern detection (e.g., matching "table" in comments)
+# - Requiring 2+ matches indicates the pattern succeeded across multiple enum entries
+MIN_EXTRACTED_VERBS = 2
 
 class VerbImplementationAnalyzer:
     """
@@ -40,6 +47,7 @@ class VerbImplementationAnalyzer:
         """
         self.processors = processors
         self.implementations = []
+        self._file_cache: Dict[str, str] = {}  # Cache file contents to avoid redundant I/O
 
     def find_implementation_file(self, processor_name: str) -> Optional[str]:
         """
@@ -98,18 +106,37 @@ class VerbImplementationAnalyzer:
 
     def read_source_file(self, file_path: str) -> str:
         """
-        Read source file contents.
+        Read source file contents with caching.
+
+        Uses file cache to avoid redundant I/O when multiple processors
+        share the same implementation file (e.g., Pattern D processors in langverbs.c).
 
         Args:
             file_path: Path to source file
 
         Returns:
-            File contents as string
+            File contents as string, or empty string if read fails
         """
+        # Check cache first
+        if file_path in self._file_cache:
+            return self._file_cache[file_path]
+
+        try:
+            # Validate path is within project to prevent directory traversal
+            path = Path(file_path).resolve()
+            project_root = Path(__file__).parent.parent.parent.resolve()
+            path.relative_to(project_root)  # Raises ValueError if outside project
+        except ValueError:
+            print(f"Error: File path outside project root: {file_path}")
+            return ""
+
         try:
             with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
-                return f.read()
-        except Exception as e:
+                content = f.read()
+                # Cache the result for future access
+                self._file_cache[file_path] = content
+                return content
+        except (IOError, OSError) as e:
             print(f"Error reading {file_path}: {e}")
             return ""
 
@@ -138,6 +165,7 @@ class VerbImplementationAnalyzer:
                 start = match.end()
 
                 # Find the end (next case, default, or closing brace)
+                # Pattern matches: "case label:" at start of line OR "default:" OR "}" at start of line
                 end_pattern = r'(^\s*case\s+\w+\s*:|^\s*default\s*:|^\s*\})'
                 remaining = source[start:]
                 end_match = re.search(end_pattern, remaining, re.MULTILINE)
@@ -261,8 +289,12 @@ class VerbImplementationAnalyzer:
         for prefix in prefixes:
             for suffix in suffixes:
                 if suffix:
+                    # Match: prefix + captured verb name + suffix + (comma or equals)
+                    # Example: "filecreatedfunc," → captures "created"
                     pattern = rf'{re.escape(prefix)}(\w+){re.escape(suffix)}\s*[,=]'
                 else:
+                    # Match: prefix + captured verb name + (comma or equals)
+                    # Example: "file_created," → captures "created"
                     pattern = rf'{re.escape(prefix)}(\w+)\s*[,=]'
 
                 matches = re.findall(pattern, enum_body)
@@ -276,11 +308,12 @@ class VerbImplementationAnalyzer:
                         if verb_name.endswith('func'):
                             verb_name = verb_name[:-4]
                         # Skip empty or very short names (likely false matches)
-                        if len(verb_name) > 1:
+                        if len(verb_name) >= MIN_VERB_NAME_LENGTH:
                             cleaned.append(verb_name)
 
                     # Only return if we got reasonable matches
-                    if cleaned and len(cleaned) >= 2:
+                    # Require at least MIN_EXTRACTED_VERBS to avoid false positives from partial patterns
+                    if cleaned and len(cleaned) >= MIN_EXTRACTED_VERBS:
                         return cleaned
 
         # Strategy 2: Legacy pattern with NO processor prefix
@@ -431,29 +464,3 @@ class VerbImplementationAnalyzer:
             all_implementations.extend(impls)
 
         return all_implementations
-
-
-if __name__ == '__main__':
-    # Simple test
-    from parse_kernelverbs import EFPProcessor
-
-    # Create test processors
-    test_processors = [
-        EFPProcessor("1000", "file", True, 86),
-        EFPProcessor("1001", "frontier", False, 14),
-    ]
-
-    analyzer = VerbImplementationAnalyzer(test_processors)
-
-    # Test file discovery
-    print("File discovery test:")
-    for proc in test_processors:
-        file_path = analyzer.find_implementation_file(proc.name)
-        print(f"  {proc.name}: {file_path}")
-
-    print("\nAnalyzing processors...")
-    implementations = analyzer.analyze_all_processors()
-
-    print(f"\nTotal implementations found: {len(implementations)}")
-    print(f"Implemented: {sum(1 for i in implementations if i.is_implemented)}")
-    print(f"Stubbed: {sum(1 for i in implementations if not i.is_implemented)}")

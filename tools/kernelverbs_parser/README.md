@@ -48,6 +48,62 @@ python3 cli.py dry-run
 python3 cli.py analyze --json verb_metadata.json
 ```
 
+### Command Line Help
+
+View all available commands and options:
+
+```bash
+python3 cli.py --help
+```
+
+View help for a specific subcommand:
+
+```bash
+python3 cli.py analyze --help
+python3 cli.py report --help
+python3 cli.py verify --help
+python3 cli.py dry-run --help
+```
+
+### Common Usage Examples
+
+**Example 1: Analyze and see results**
+```bash
+python3 cli.py analyze
+# Output: Shows all 51 processors with detected implementations
+```
+
+**Example 2: Generate a dated coverage report**
+```bash
+python3 cli.py report
+# Output: Report written to: reports/coverage/verb-binding/2025-12-14-01.md
+```
+
+**Example 3: Save report to custom file**
+```bash
+python3 cli.py report -o my_analysis.md
+# Output: Report written to: my_analysis.md
+```
+
+**Example 4: Print report to console**
+```bash
+python3 cli.py report -o -
+# Output: Prints markdown table directly to stdout
+```
+
+**Example 5: Verify analyzer consistency**
+```bash
+python3 cli.py verify
+# Exit 0: Current state is consistent
+# Exit 1: Whitelist is out of sync with analyzer output
+```
+
+**Example 6: See proposed changes without applying**
+```bash
+python3 cli.py dry-run
+# Shows processors to add/remove from whitelist
+```
+
 ### Run Unit Tests
 
 ```bash

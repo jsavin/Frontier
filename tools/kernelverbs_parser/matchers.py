@@ -72,10 +72,36 @@ STUB_INDICATORS = [
     r'return;\s*/\*\s*stub',
 ]
 
-# Compile patterns once for efficiency
-_carbon_patterns = [re.compile(p, re.IGNORECASE) for p in CARBON_API_PATTERNS]
-_ui_adapter_patterns = [re.compile(p, re.IGNORECASE) for p in UI_ADAPTER_PATTERNS]
-_stub_patterns = [re.compile(p, re.IGNORECASE) for p in STUB_INDICATORS]
+# Compile patterns once for efficiency with error handling
+def _compile_patterns(patterns: List[str], name: str) -> List:
+    """
+    Compile regex patterns with error handling.
+
+    Args:
+        patterns: List of regex pattern strings
+        name: Name of pattern group (for error messages)
+
+    Returns:
+        List of compiled regex patterns
+
+    Raises:
+        ValueError: If any pattern is malformed
+    """
+    compiled = []
+    for i, pattern in enumerate(patterns):
+        try:
+            compiled.append(re.compile(pattern, re.IGNORECASE))
+        except re.error as e:
+            raise ValueError(f"{name}[{i}]: Invalid regex pattern: {pattern!r}\n{e}")
+    return compiled
+
+try:
+    _carbon_patterns = _compile_patterns(CARBON_API_PATTERNS, "CARBON_API_PATTERNS")
+    _ui_adapter_patterns = _compile_patterns(UI_ADAPTER_PATTERNS, "UI_ADAPTER_PATTERNS")
+    _stub_patterns = _compile_patterns(STUB_INDICATORS, "STUB_INDICATORS")
+except ValueError as e:
+    # Fail loudly at module load time if patterns are malformed
+    raise ImportError(f"Failed to compile matchers patterns:\n{e}")
 
 
 def detect_carbon_apis(source: str) -> bool:
