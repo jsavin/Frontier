@@ -77,6 +77,8 @@ def cmd_report(args):
     """
     Generate coverage report.
     """
+    from datetime import datetime
+
     # Find project root
     script_dir = Path(__file__).parent
     project_root = script_dir.parent.parent
@@ -100,13 +102,32 @@ def cmd_report(args):
     writer = VerbMetadataWriter(implementations)
     report = writer.generate_report()
 
-    # Output to file or stdout
+    # Determine output filename
     if args.output:
-        with open(args.output, 'w') as f:
-            f.write(report)
-        print(f"Report written to: {args.output}")
+        output_path = args.output
     else:
+        # Generate date-tagged filename: COVERAGE_REPORT-YYYY-MM-DD-NN.md
+        today = datetime.now().strftime("%Y-%m-%d")
+
+        # Find next sequential number for today
+        seq_num = 1
+        while True:
+            candidate = script_dir / f"COVERAGE_REPORT-{today}-{seq_num:02d}.md"
+            if not candidate.exists():
+                output_path = str(candidate)
+                break
+            seq_num += 1
+            if seq_num > 99:
+                print(f"ERROR: Too many reports for {today}", file=sys.stderr)
+                return 1
+
+    # Output to file or stdout
+    if output_path == '-':
         print(report)
+    else:
+        with open(output_path, 'w') as f:
+            f.write(report)
+        print(f"Report written to: {output_path}")
 
     return 0
 
@@ -225,8 +246,14 @@ Examples:
   # Analyze all processors and show summary
   python3 cli.py analyze
 
-  # Generate coverage report
+  # Generate coverage report (auto-named with date)
+  python3 cli.py report
+
+  # Generate coverage report to specific file
   python3 cli.py report -o verb_coverage.md
+
+  # Generate coverage report to stdout
+  python3 cli.py report -o -
 
   # Check what would change (dry-run)
   python3 cli.py dry-run
@@ -248,7 +275,7 @@ Examples:
 
     # report subcommand
     report_parser = subparsers.add_parser('report', help='Generate coverage report')
-    report_parser.add_argument('-o', '--output', metavar='FILE', help='Output file (default: stdout)')
+    report_parser.add_argument('-o', '--output', metavar='FILE', help='Output file (default: auto-generate COVERAGE_REPORT-YYYY-MM-DD-NN.md, or use "-" for stdout)')
     report_parser.set_defaults(func=cmd_report)
 
     # dry-run subcommand
