@@ -45,6 +45,46 @@ PATTERN_D_EXCEPTIONS = {
         'waitseconds': 'delayfunc',
         'waitsixtieths': 'delaysixtiethsfunc',
     },
+    'rectangle': {
+        # All rectangle verbs need full mapping
+        'get': 'getrectfunc',
+        'set': 'setrectfunc',
+    },
+    'speaker': {
+        # RC verb names differ from C enum tokens
+        'beep': 'sysbeepfunc',
+        'sound': 'soundfunc',
+        'playnamedsound': 'playsoundfunc',
+    },
+    'target': {
+        # All target verbs need full mapping
+        'get': 'gettargetfunc',
+        'set': 'settargetfunc',
+        'clear': 'cleartargetfunc',
+    },
+    'kb': {
+        # Standard pattern works - all match {verb}func
+        # But adding for completeness
+        'optionkey': 'optionkeyfunc',
+        'cmdkey': 'cmdkeyfunc',
+        'shiftkey': 'shiftkeyfunc',
+        'controlkey': 'controlkeyfunc',
+    },
+    'mouse': {
+        # RC verb names need mouse prefix
+        'button': 'mousebuttonfunc',
+        'location': 'mouselocationfunc',
+    },
+    'point': {
+        # All point verbs need full mapping
+        'get': 'getpointfunc',
+        'set': 'setpointfunc',
+    },
+    'rgb': {
+        # All rgb verbs need full mapping
+        'get': 'getrgbfunc',
+        'set': 'setrgbfunc',
+    },
 }
 
 
