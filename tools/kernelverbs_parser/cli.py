@@ -53,11 +53,11 @@ def cmd_analyze(args):
 
     print(f"\n=== Analysis Results ===")
     print(f"Total processors: {stats['total_processors']}")
-    print(f"Total verbs: {stats['total_verbs']}")
-    print(f"Implemented: {stats['implemented_verbs']} ({100*stats['implemented_verbs']//stats['total_verbs']}%)")
-    print(f"Stubbed: {stats['stubbed_verbs']} ({100*stats['stubbed_verbs']//stats['total_verbs']}%)")
-    print(f"UI adapters: {stats['ui_adapter_verbs']}")
-    print(f"Carbon dependencies: {stats['carbon_dep_verbs']}")
+    print(f"Total verbs analyzed: {stats['total_verbs']}")
+    print(f"Detected as implemented: {stats['implemented_verbs']} ({100*stats['implemented_verbs']//stats['total_verbs']}%)")
+    print(f"Detected as stubbed: {stats['stubbed_verbs']} ({100*stats['stubbed_verbs']//stats['total_verbs']}%)")
+    print(f"UI adapters detected: {stats['ui_adapter_verbs']}")
+    print(f"Carbon dependencies detected: {stats['carbon_dep_verbs']}")
 
     # Generate whitelist
     whitelist = writer.generate_whitelist()

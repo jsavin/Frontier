@@ -154,46 +154,72 @@ class VerbMetadataWriter:
                 by_processor[verb.processor] = []
             by_processor[verb.processor].append(verb)
 
-        lines = ["# Kernel Verb Implementation Status", ""]
+        lines = ["# Automatic Verb Binding - Coverage Analysis", ""]
+        lines.append("*This report analyzes the implementation status of Frontier's 707 kernel verbs")
+        lines.append("across 51 processors. It detects which verbs are implemented vs. stubbed.*")
+        lines.append("")
 
         # Summary statistics
         total = len(self.verbs)
-        implemented = sum(1 for v in self.verbs if v.is_implemented)
-        stubbed = total - implemented
+        detected = sum(1 for v in self.verbs if v.is_implemented)
+        stubbed = total - detected
         ui_adapter = sum(1 for v in self.verbs if v.uses_ui_adapter)
         carbon_deps = sum(1 for v in self.verbs if v.has_carbon_deps)
 
         lines.append("## Summary")
         lines.append("")
-        lines.append(f"- **Total verbs:** {total}")
-        lines.append(f"- **Implemented:** {implemented} ({100*implemented//total}%)")
-        lines.append(f"- **Stubbed:** {stubbed} ({100*stubbed//total}%)")
-        lines.append(f"- **UI adapters:** {ui_adapter}")
-        lines.append(f"- **Carbon dependencies:** {carbon_deps}")
+        lines.append(f"- **Total verbs analyzed:** {total}")
+        lines.append(f"- **Detected as implemented:** {detected} ({100*detected//total}%)")
+        lines.append(f"- **Detected as stubbed:** {stubbed} ({100*stubbed//total}%)")
+        lines.append(f"- **UI adapters detected:** {ui_adapter}")
+        lines.append(f"- **Carbon API dependencies detected:** {carbon_deps}")
         lines.append("")
 
-        # Per-processor breakdown
-        lines.append("## Processor Breakdown")
+        # Per-processor summary table
+        lines.append("## Processor Coverage Summary")
         lines.append("")
-        lines.append("| Processor | Total | Impl | Stub | UI Adapter | Carbon | Status |")
-        lines.append("|-----------|-------|------|------|------------|--------|--------|")
+        lines.append("| Processor | Total Verbs | Detected (%) | Stubbed (%) | Missing (%) |")
+        lines.append("|-----------|-------------|--------------|-------------|-------------|")
 
         for processor in sorted(by_processor.keys()):
             verbs = by_processor[processor]
             proc_total = len(verbs)
-            proc_impl = sum(1 for v in verbs if v.is_implemented)
-            proc_stub = proc_total - proc_impl
+            proc_detected = sum(1 for v in verbs if v.is_implemented)
+            proc_stubbed = sum(1 for v in verbs if not v.is_implemented)
+            # Note: For now, "missing" is 0 since we detect all verbs from RC file
+            # This placeholder allows future enhancement if needed
+            proc_missing = 0
+
+            detected_pct = 100 * proc_detected // proc_total if proc_total > 0 else 0
+            stubbed_pct = 100 * proc_stubbed // proc_total if proc_total > 0 else 0
+            missing_pct = 100 * proc_missing // proc_total if proc_total > 0 else 0
+
+            lines.append(f"| {processor} | {proc_total} | {detected_pct}% ({proc_detected}) | {stubbed_pct}% ({proc_stubbed}) | {missing_pct}% ({proc_missing}) |")
+
+        lines.append("")
+        lines.append("## Detailed Processor Coverage")
+        lines.append("")
+
+        # Detailed per-processor breakdown
+        lines.append("| Processor | Total | Detected | Stubbed | UI Adapter | Carbon | Status |")
+        lines.append("|-----------|-------|----------|---------|------------|--------|--------|")
+
+        for processor in sorted(by_processor.keys()):
+            verbs = by_processor[processor]
+            proc_total = len(verbs)
+            proc_detected = sum(1 for v in verbs if v.is_implemented)
+            proc_stubbed = proc_total - proc_detected
             proc_ui = sum(1 for v in verbs if v.uses_ui_adapter)
             proc_carbon = sum(1 for v in verbs if v.has_carbon_deps)
 
-            if proc_impl == 0:
+            if proc_detected == 0:
                 status = "Not Started"
-            elif proc_stub == 0:
+            elif proc_stubbed == 0:
                 status = "Complete"
             else:
-                status = f"{100*proc_impl//proc_total}%"
+                status = f"{100*proc_detected//proc_total}%"
 
-            lines.append(f"| {processor} | {proc_total} | {proc_impl} | {proc_stub} | {proc_ui} | {proc_carbon} | {status} |")
+            lines.append(f"| {processor} | {proc_total} | {proc_detected} | {proc_stubbed} | {proc_ui} | {proc_carbon} | {status} |")
 
         lines.append("")
         return "\n".join(lines)
