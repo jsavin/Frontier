@@ -78,6 +78,16 @@ Status
 - Confirm runtime parity between the headless bootstrap and UI routes (e.g., `system.verbs → kernelcall → EFP`) once wptext and doc-info no longer destabilize the migrator.
 - Keep the automation/IPC boundary documented so headless builds can safely expose JSON-RPC while UI builds retain OSA, as tracked in `planning/TODO_future_improvements.md`.
 
+---
+
+## 2025-12-13 Archive (pre-PR #75 merge snapshot)
+
+Archived the December 7–9 `_CURRENT_STATUS.md` (hash name corruption chase, TEC converter fix, headless verb additions). See git history on branch `fix/hash-unpack-hardening` for full detail; highlights:
+- Added defensive bounds checks/logging in `hashunpacktable`, manual BE buffer packing for v7 symbol records, and CLI hydration/migration fixes.
+- Fixed TEC converter disposal crash during migration.
+- Implemented headless `string.upper/lower/length` and `math.random`; CLI inline eval uses `langrunhandle`.
+- Migration tests passed; CLI still failing stubbed verbs (`clock.*`).
+
 ## Long-Term Goals
 - Finish the Phase 2 runtime context refactor so simultaneous CLI/headless clients share `FrontierContext` backend handles without touching globals.
 - Land the Phase 3 concurrency/task-context plan, widen paging/tracing to multi-threaded guard-malloc tests, and keep `planning/TODO_future_improvements.md` aligned with heading priorities.
