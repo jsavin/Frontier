@@ -1,7 +1,7 @@
 # Frontier Refactoring Project (develop branch status)
 
-**Last updated:** 2025-12-04
-**State:** Modernization wave 2 in progress; headless + 64-bit aligned; v7 on-disk format (90-byte header with alignment padding) using portable big-endian
+**Last updated:** 2025-12-13
+**State:** Modernization wave 2 in progress; headless + 64-bit aligned; v7 on-disk format (90-byte header with alignment padding) using portable big-endian; hash corruption resistance hardening complete
 **Primary contacts:** planning/INDEX.md (owners per phase)
 
 This repository is actively modernising the Frontier runtime and toolchain. The
@@ -12,9 +12,10 @@ tests can exercise real UserTalk without `system.verbs.*` being loaded.
 
 ## Highlights
 
-- **64-bit/ARM + big-endian v7** – Core builds/tests compile on `arm64`/`x86_64`; v7 headers/trailers and table addresses now write big-endian for cross-arch parity (see `docs/database_architecture.md`). Migration coverage lives in `tests/save_migration_tests` and `tests/runtime_tests`.
+- **64-bit/ARM + big-endian v7** – Core builds/tests compile on `arm64`/`x86_64`; v7 headers/trailers and table addresses now write big-endian for cross-arch parity (see `docs/database_architecture.md`). Hash pack/unpack now uses explicit 16-byte BE buffers with bounds-checked string unpacking, header detection guards, and optional logging (`FRONTIER_HASHUNPACK_LOG`). Migration coverage lives in `tests/save_migration_tests` and `tests/runtime_tests`.
 - **Portable/headless + Paige-free** – The `portable/` layer + headless stubs power CLI/testing without UI deps; wptext now uses the Paige-free extractor/RTF path while still allowing tests to link the real Paige for parity checks.
-- **Automated kernel verb generation** – New Python-based parser (`tools/kernelverbs_parser/`) automatically generates `kernel_verbs_init.c` from `kernelverbs.rc`, extracting all 51 EFP processor definitions (707 total verbs). Whitelist-based approach ensures only implemented processors are initialized, making it scalable to add new verb processors. See `tools/kernelverbs_parser/README.md` for details.
+- **Automated kernel verb generation** – New Python-based parser (`tools/kernelverbs_parser/`) automatically generates `kernel_verbs_init.c` from `kernelverbs.rc`, extracting all 51 EFP processor definitions (707 total verbs). Whitelist-based approach ensures only implemented processors are initialized. Automatic verb binding architecture documented in `planning/phase3/kernel_verb_porting/automatic_verb_binding_architecture.md` provides roadmap for eliminating manual whitelist maintenance. See `tools/kernelverbs_parser/README.md` for details.
+- **Headless verb implementations** – Initial kernel verbs implemented for headless runtime: `string.upper`, `string.lower`, `string.length`, and `math.random` (with bounds checks). CLI inline evaluation (`-e`) now uses `langrunhandle` for proper script execution.
 - **Modernised test harness** – Cross-platform C test suite with sanitiser presets (`SANITIZE=1 make -C tests`). Key binaries: `file_portable_tests`, `file_readline_tests`, `file_verb_tests`, `runtime_tests`, `db_format_tests`, `cli_runtime_tests`.
 - **Paige → portable milestone** – v6→v7 migrator now converts wptexts via the C extractor/RTF helpers; canonical `Frontier-v6.root` migration succeeds (`FRONTIER_REGEN_ROOT=databases/Frontier-v6.root ./tests/runtime_tests`), logs under `/tmp/…`. See `planning/progress_reports/2025-11-20-paige_portable_milestone.md`.
 - **Planning/status ledger** – Current work lives in `planning/_CURRENT_STATUS.md`; decisions and BE audit in `planning/DECISIONS.md` and `planning/big_endian_portability_audit.md`. Historical milestone summaries live in `planning/progress_reports/README.md`.
@@ -61,6 +62,7 @@ See `docs/mysql_client_setup.md` for detailed guidance.
 - `planning/adr/ADR-0010-headless-efp-routing.md` – decision record for dotted call routing
 - `planning/Frontier_Refactoring_Plan.md` – original modernisation plan
 - `planning/phase3/headless_daemon_vision.md` – target architecture for the headless daemon/service core
+- `planning/phase3/kernel_verb_porting/` – kernel verb porting guides and automatic binding architecture
 - `planning/big_endian_portability_audit.md` – current BE v7 portability audit/tasks
 - `codex_sessions/README.md` – how to fetch/view Codex transcript logs
 
@@ -71,11 +73,13 @@ For in-flight work/status, see `planning/_CURRENT_STATUS.md`. Historical session
 | Area               | Status | Notes                                                                                   |
 | ------------------ | :----: | --------------------------------------------------------------------------------------- |
 | 64-bit alignment   |   ✅    | DB header alignment fix complete (90-byte v7 header); structure tests passing          |
+| Hash serialization |   ✅    | Hash pack/unpack hardened with explicit BE buffers, bounds checks, header detection    |
 | arm64 build        |   ✅    | `make -C frontier-cli` builds universal binary                                          |
-| Headless runtime   |   ✅    | Portable stubs cover runtime/IO; EFP shim in place                                      |
+| Headless runtime   |   ✅    | Portable stubs cover runtime/IO; EFP shim in place; table globals reset cleanly         |
 | Tests (targeted)   |   ✅    | `file_portable`, `file_readline`, `file_verb`                                           |
-| Tests (runtime/db) |   ✅    | `runtime_tests`, `db_format_tests` (Paige warnings remain, needed for data validation)  |
-| CLI runtime        |   ⚠️   | `cli_runtime_tests` built; re-enable `clock.now()` once v7 endianness work is completed |
+| Tests (runtime/db) |   ✅    | `runtime_tests`, `db_format_tests`; full `SANITIZE=1` passes                            |
+| CLI runtime        |   ⚠️   | `cli_runtime_tests` passes but still reports exit=1 for stubbed verbs (`clock.*`)       |
+| Kernel verbs       |   🚧    | Initial verbs implemented; ~600 verbs remaining (see kernel_verb_porting/)              |
 | Docs/Planning      |   ✅    | Planning/ADR files updated alongside code                                               |
 | Codex transcripts  |   ✅    | Stored on `codex-sessions` branch/worktree                                              |
 
@@ -111,8 +115,9 @@ Frontier/
 
 ## Next milestone snapshot
 
-- Finish big-endian v7 portability (header/trailer/table/avail) and add cross-arch goldens.
-- Re-enable full CLI runtime coverage (e.g., `clock.now()` regression).
+- Continue kernel verb porting (implement remaining headless/kernel verbs needed for CLI runtime, prioritize `clock.*` and `date.*` verbs).
+- Refactor BE pack/unpack helpers to reduce manual memcpy repetition (issue #77).
+- Add cross-arch BE64 serialization verification with golden blobs on x86_64/arm64 (issue #78).
 - Bring CI online (provider TBD) and enable coverage/static analysis once tool chain is finalised.
 
 For day-by-day progress see the `codex-sessions` branch and
