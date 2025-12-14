@@ -56,10 +56,11 @@ class VerbImplementationAnalyzer:
         script_dir = Path(__file__).parent
         project_root = script_dir.parent.parent
 
+        # Prefer Common/source (real implementations) over headless stubs
         search_patterns = [
-            project_root / f"tests/headless_{processor_name}_verbs.c",
             project_root / f"Common/source/{processor_name}verbs.c",
             project_root / f"Common/source/lang{processor_name}.c",
+            project_root / f"tests/headless_{processor_name}_verbs.c",
         ]
 
         # Special cases
