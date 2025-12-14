@@ -408,6 +408,22 @@
 
 ---
 
+## Post-Merge Work
+
+### Edge Case Test Coverage
+Code review feedback #5 identified missing edge case tests. These should be added after merge:
+
+1. **Processor with 0 verbs** - Test behavior with empty verb list
+2. **Empty C source file** - RC has verbs but source file is empty
+3. **Duplicate case labels** - How analyzer handles switch statements with duplicates
+4. **Unicode in verb names** - UTF-8 characters in RC verb names or source
+5. **Large source files** - Performance testing with very large C files
+6. **Concurrent access patterns** - Thread safety of analyzer instance
+
+These tests improve robustness and graceful error handling. Priority: Low (nice-to-have post-merge).
+
+---
+
 ## Next Steps
 
 **Immediate:** Begin Phase 1.1 - Create VerbImplementation dataclass in `metadata_writer.py`
