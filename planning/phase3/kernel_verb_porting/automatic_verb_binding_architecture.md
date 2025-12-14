@@ -1465,6 +1465,588 @@ Frontier/
 
 ---
 
+## Dry-Run and Verification
+
+### Dry-Run Capability
+
+**Purpose**: Allow developers to preview generated code changes before committing.
+
+**Implementation**:
+```python
+# tools/kernelverbs_parser/parse_kernelverbs.py
+
+def generate_kernel_verbs_init_c(processors: List[EFPProcessor],
+                                rc_path: str,
+                                output_path: str = None,
+                                dry_run: bool = False) -> str:
+    """
+    Generate kernel verbs init code.
+
+    Args:
+        processors: List of parsed processors
+        rc_path: Path to kernelverbs.rc
+        output_path: Where to write generated code (required if not dry_run)
+        dry_run: If True, print instead of writing
+
+    Returns:
+        Generated code as string
+    """
+    analyzer = VerbImplementationAnalyzer()
+    tests_dir = Path(__file__).parent.parent.parent / "tests"
+
+    # Auto-detect implemented processors
+    implemented_procs = []
+    for proc in processors:
+        impl_file = tests_dir / f"headless_{proc.name}_verbs.c"
+        if impl_file.exists():
+            impls = analyzer.analyze_processor_file(impl_file)
+            impl_count = sum(1 for v in impls.values() if v.is_implemented)
+            if impl_count > 0:
+                implemented_procs.append({
+                    'processor': proc,
+                    'impl_count': impl_count,
+                    'total_count': len(impls),
+                })
+
+    # Generate code
+    generated_code = _format_init_code(implemented_procs)
+
+    if dry_run:
+        print("=" * 70)
+        print("DRY RUN: Would generate the following code")
+        print("=" * 70)
+        print(generated_code)
+        print("=" * 70)
+
+        if output_path and os.path.exists(output_path):
+            with open(output_path, 'r') as f:
+                current_code = f.read()
+
+            if current_code == generated_code:
+                print("\n✓ Generated code matches current file (no changes)")
+            else:
+                print("\n⚠ Generated code differs from current file")
+                print("\nDiff:")
+                import difflib
+                diff = difflib.unified_diff(
+                    current_code.splitlines(keepends=True),
+                    generated_code.splitlines(keepends=True),
+                    fromfile='current',
+                    tofile='generated',
+                    lineterm=''
+                )
+                print(''.join(diff))
+
+        return generated_code
+
+    # Actually write file
+    if not output_path:
+        raise ValueError("output_path required when not in dry-run mode")
+
+    with open(output_path, 'w') as f:
+        f.write(generated_code)
+
+    print(f"✓ Generated {output_path}")
+    print(f"  {len(implemented_procs)} processors, "
+          f"{sum(p['impl_count'] for p in implemented_procs)} verbs")
+
+    return generated_code
+
+
+# Add CLI flag support
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Generate kernel verb initialization code')
+    parser.add_argument('--input', default='Common/resources/Win32/kernelverbs.rc',
+                       help='Path to kernelverbs.rc')
+    parser.add_argument('--output', default='generated/kernel_verbs_init.c',
+                       help='Output path for generated code')
+    parser.add_argument('--dry-run', action='store_true',
+                       help='Print generated code without writing')
+    parser.add_argument('--verify', action='store_true',
+                       help='Exit 1 if generated code differs from current file')
+
+    args = parser.parse_args()
+
+    # Parse RC file
+    processors = parse_kernelverbs_rc(args.input)
+
+    # Generate (with dry-run if requested)
+    generated = generate_kernel_verbs_init_c(
+        processors,
+        args.input,
+        args.output,
+        dry_run=args.dry_run or args.verify
+    )
+
+    # Verify mode: exit 1 if differs
+    if args.verify:
+        if os.path.exists(args.output):
+            with open(args.output, 'r') as f:
+                current = f.read()
+            if current != generated:
+                print("\n❌ VERIFICATION FAILED: Generated code differs from committed version")
+                print("Run: python3 tools/kernelverbs_parser/parse_kernelverbs.py")
+                sys.exit(1)
+        print("\n✓ VERIFICATION PASSED: Generated code matches committed version")
+```
+
+**Usage Examples**:
+```bash
+# Preview what would be generated
+python3 tools/kernelverbs_parser/parse_kernelverbs.py --dry-run
+
+# Verify current file is up to date (for CI)
+python3 tools/kernelverbs_parser/parse_kernelverbs.py --verify
+
+# Actually generate
+python3 tools/kernelverbs_parser/parse_kernelverbs.py
+```
+
+### Test Infrastructure Integration
+
+#### Unit Tests for Analyzer Logic
+
+**File**: `tools/kernelverbs_parser/test_verb_analyzer.py`
+
+**Coverage**:
+```python
+import pytest
+from analyze_implementations import VerbImplementationAnalyzer
+
+class TestStubDetection:
+    """Test stub pattern detection."""
+
+    def test_explicit_stub_pattern(self):
+        """Detect explicit 'not implemented' stubs."""
+        code = '''
+            case filv_type:
+                if (bserror) copystring(BIGSTRING("\\pnot implemented"), bserror);
+                return false;
+        '''
+        analyzer = VerbImplementationAnalyzer()
+        assert analyzer._is_stub_implementation(code) == True
+
+    def test_trivial_return_false(self):
+        """Detect trivial return false as stub."""
+        code = '''
+            case filv_creator:
+                return false;
+        '''
+        analyzer = VerbImplementationAnalyzer()
+        assert analyzer._is_stub_implementation(code) == True
+
+    def test_real_implementation(self):
+        """Don't flag real implementations as stubs."""
+        code = '''
+            case filv_created:
+                struct stat st;
+                bigstring path;
+                if (!getpathvalue(hparam1, 1, path)) return false;
+                if (stat(path, &st) != 0) return false;
+                return setlongvalue(st.st_ctime, vreturned);
+        '''
+        analyzer = VerbImplementationAnalyzer()
+        assert analyzer._is_stub_implementation(code) == False
+
+
+class TestUIAdapterDetection:
+    """Test UI adapter pattern detection."""
+
+    def test_adapter_function_call(self):
+        """Detect adapter_* function calls."""
+        code = '''
+            case dv_alert:
+                bigstring message;
+                DialogResult result;
+                if (!getstringvalue(hparam1, 1, message)) return false;
+                if (!adapter_alert(message, &result)) return false;
+                return setlongvalue(result, vreturned);
+        '''
+        analyzer = VerbImplementationAnalyzer()
+        assert analyzer._uses_ui_adapter(code) == True
+        assert analyzer._has_carbon_dependencies(code) == False
+
+    def test_stderr_adapter_pattern(self):
+        """Detect fprintf(stderr, ...) adapter pattern."""
+        code = '''
+            case dv_notify:
+                bigstring message;
+                if (!getstringvalue(hparam1, 1, message)) return false;
+                fprintf(stderr, "[ALERT] %s\\n", stringbaseaddress(message));
+                return setbooleanvalue(true, vreturned);
+        '''
+        analyzer = VerbImplementationAnalyzer()
+        assert analyzer._uses_ui_adapter(code) == True
+
+    def test_adapter_comment_annotation(self):
+        """Detect UI adapter comment annotations."""
+        code = '''
+            case dv_ask:
+                // UI adapter: read from stdin instead of dialog
+                bigstring prompt, result;
+                if (!getstringvalue(hparam1, 1, prompt)) return false;
+                printf("%s: ", stringbaseaddress(prompt));
+                fgets(result, sizeof(result), stdin);
+                return setstringvalue(result, vreturned);
+        '''
+        analyzer = VerbImplementationAnalyzer()
+        assert analyzer._uses_ui_adapter(code) == True
+
+
+class TestCarbonDependencyDetection:
+    """Test Carbon API dependency detection."""
+
+    def test_windowptr_usage(self):
+        """Detect WindowPtr usage."""
+        code = '''
+            case windowv_show:
+                WindowPtr w;
+                if (!getwindowptr(hparam1, 1, &w)) return false;
+                ShowWindow(w);
+                return setbooleanvalue(true, vreturned);
+        '''
+        analyzer = VerbImplementationAnalyzer()
+        assert analyzer._has_carbon_dependencies(code) == True
+        assert analyzer._uses_ui_adapter(code) == False
+
+    def test_carbon_include(self):
+        """Detect Carbon framework includes."""
+        code = '''
+            #include <Carbon/Carbon.h>
+
+            case menuv_new:
+                MenuRef menu = NewMenu(128, "\\pFile");
+                return setmenuvalue(menu, vreturned);
+        '''
+        analyzer = VerbImplementationAnalyzer()
+        assert analyzer._has_carbon_dependencies(code) == True
+
+    def test_portable_code_no_deps(self):
+        """Don't flag portable code."""
+        code = '''
+            case strv_upper:
+                bigstring bs;
+                if (!getstringvalue(hparam1, 1, bs)) return false;
+                allupper(bs);
+                return setstringvalue(bs, vreturned);
+        '''
+        analyzer = VerbImplementationAnalyzer()
+        assert analyzer._has_carbon_dependencies(code) == False
+        assert analyzer._uses_ui_adapter(code) == False
+
+
+class TestAnnotationParsing:
+    """Test annotation parsing."""
+
+    def test_parse_single_annotation(self):
+        """Parse single annotation tag."""
+        code = '''
+            case filv_type:
+                /* @STUB @OBSOLETE */
+                if (bserror) copystring(BIGSTRING("\\pnot implemented"), bserror);
+                return false;
+        '''
+        from analyze_implementations import parse_annotations
+        annotations = parse_annotations(code)
+        assert '@STUB' in annotations
+        assert '@OBSOLETE' in annotations
+
+    def test_parse_with_description(self):
+        """Parse annotations with description text."""
+        code = '''
+            case filv_creator:
+                /* @STUB @OBSOLETE - Mac creator/type codes not supported */
+                return false;
+        '''
+        from analyze_implementations import parse_annotations
+        annotations = parse_annotations(code)
+        assert '@STUB' in annotations
+        assert '@OBSOLETE' in annotations
+
+    def test_ui_adapter_annotation(self):
+        """Parse @UI_ADAPTER annotation."""
+        code = '''
+            case dv_alert:
+                /* @IMPLEMENTED @UI_ADAPTER */
+                return adapter_alert(message, &result);
+        '''
+        from analyze_implementations import parse_annotations
+        annotations = parse_annotations(code)
+        assert '@IMPLEMENTED' in annotations
+        assert '@UI_ADAPTER' in annotations
+
+
+# Run with: pytest tools/kernelverbs_parser/test_verb_analyzer.py
+```
+
+**Test Execution**:
+```bash
+# Run unit tests
+pytest tools/kernelverbs_parser/test_verb_analyzer.py -v
+
+# Run with coverage
+pytest tools/kernelverbs_parser/test_verb_analyzer.py --cov=analyze_implementations --cov-report=html
+```
+
+#### Makefile Integration
+
+**Add to**: `Makefile` (or `tests/Makefile`)
+
+```makefile
+# Verify kernel verb bindings are up to date
+.PHONY: verify-verb-bindings
+verify-verb-bindings:
+	@echo "Verifying kernel verb bindings are up to date..."
+	@python3 tools/kernelverbs_parser/parse_kernelverbs.py --verify
+
+# Regenerate kernel verb bindings
+.PHONY: regenerate-verb-bindings
+regenerate-verb-bindings:
+	@echo "Regenerating kernel verb bindings..."
+	@python3 tools/kernelverbs_parser/parse_kernelverbs.py
+	@echo "✓ Done. Review changes and commit if correct."
+
+# Generate verb status report
+.PHONY: verb-status
+verb-status:
+	@echo "Analyzing kernel verb implementations..."
+	@python3 tools/kernelverbs_parser/analyze_implementations.py \
+		--tests-dir tests \
+		--output-md planning/phase3/verb_implementation_status.md \
+		--output-json generated/verb_status.json
+	@echo "✓ Reports generated:"
+	@echo "  - planning/phase3/verb_implementation_status.md"
+	@echo "  - generated/verb_status.json"
+
+# Add verification to main test target
+test: verify-verb-bindings
+	@echo "Running test suite..."
+	make -C tests test
+
+# Integration test: regenerate, compile, test
+.PHONY: test-verb-bindings
+test-verb-bindings:
+	@echo "Testing verb binding system..."
+	@echo "1. Regenerating bindings..."
+	python3 tools/kernelverbs_parser/parse_kernelverbs.py
+	@echo "2. Rebuilding tests..."
+	make -C tests clean
+	make -C tests
+	@echo "3. Running runtime tests..."
+	make -C tests runtime_tests
+	@echo "✓ Verb binding system tests passed"
+```
+
+**Usage**:
+```bash
+# Verify bindings are current (CI usage)
+make verify-verb-bindings
+
+# Regenerate bindings after adding new implementation
+make regenerate-verb-bindings
+
+# Generate status report
+make verb-status
+
+# Full integration test
+make test-verb-bindings
+```
+
+#### CI Integration
+
+**GitHub Actions Example**:
+```yaml
+# .github/workflows/ci.yml
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  verify-verb-bindings:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Verify kernel verb bindings are up to date
+        run: |
+          python3 tools/kernelverbs_parser/parse_kernelverbs.py --verify
+
+      - name: Generate status report (for artifacts)
+        run: |
+          python3 tools/kernelverbs_parser/analyze_implementations.py \
+            --tests-dir tests \
+            --output-md /tmp/verb_status.md \
+            --output-json /tmp/verb_status.json
+
+      - name: Upload verb status report
+        uses: actions/upload-artifact@v3
+        with:
+          name: verb-status-report
+          path: |
+            /tmp/verb_status.md
+            /tmp/verb_status.json
+
+  test:
+    runs-on: macos-latest
+    needs: verify-verb-bindings
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build and test
+        run: |
+          make -C tests
+          make -C tests test
+```
+
+#### Pre-Commit Hook (Optional)
+
+**File**: `.git/hooks/pre-commit` (or document in CONTRIBUTING.md)
+
+```bash
+#!/bin/bash
+# Pre-commit hook: verify kernel verb bindings are up to date
+
+echo "Checking kernel verb bindings..."
+
+python3 tools/kernelverbs_parser/parse_kernelverbs.py --verify
+
+if [ $? -ne 0 ]; then
+    echo ""
+    echo "❌ Kernel verb bindings are out of date!"
+    echo ""
+    echo "To fix, run:"
+    echo "  make regenerate-verb-bindings"
+    echo ""
+    echo "To skip this check (not recommended):"
+    echo "  git commit --no-verify"
+    echo ""
+    exit 1
+fi
+
+echo "✓ Kernel verb bindings are up to date"
+```
+
+**Installation Instructions** (in CONTRIBUTING.md):
+```bash
+# Install pre-commit hook (optional but recommended)
+cp docs/pre-commit.sample .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+```
+
+### Migration Verification Strategy
+
+**Purpose**: Ensure transition from manual whitelist to auto-detection is safe.
+
+**Phase 1: Baseline Capture**
+```bash
+# Before enabling auto-detection, capture current state
+python3 tools/kernelverbs_parser/parse_kernelverbs.py > /tmp/baseline_init.c
+cp generated/kernel_verbs_init.c generated/kernel_verbs_init.c.manual
+
+# Generate status report with manual whitelist
+python3 tools/kernelverbs_parser/analyze_implementations.py \
+    --tests-dir tests \
+    --output-json /tmp/baseline_status.json
+```
+
+**Phase 2: Enable Auto-Detection**
+```python
+# In parse_kernelverbs.py, add flag to switch modes
+USE_AUTO_DETECTION = True  # Set to False to use manual whitelist
+
+if USE_AUTO_DETECTION:
+    implemented_procs = auto_detect_implementations(processors, tests_dir)
+else:
+    implemented_procs = [p for p in processors if p.name in HEADLESS_REGISTERED]
+```
+
+**Phase 3: Compare Results**
+```bash
+# Generate with auto-detection
+USE_AUTO_DETECTION=1 python3 tools/kernelverbs_parser/parse_kernelverbs.py \
+    > /tmp/autodetect_init.c
+
+# Diff against baseline
+diff -u /tmp/baseline_init.c /tmp/autodetect_init.c
+
+# Expected: no differences (or only additions for newly implemented processors)
+```
+
+**Phase 4: Validation Tests**
+```bash
+# Compile with auto-detected bindings
+make -C tests clean
+make -C tests
+
+# Run full test suite
+make -C tests test
+
+# Verify all tests pass
+./tests/runtime_tests
+./tests/cli_runtime_tests
+```
+
+**Phase 5: Commit Auto-Detection**
+```bash
+# If validation passes, commit the switch
+git add tools/kernelverbs_parser/parse_kernelverbs.py
+git commit -m "switch: enable automatic verb binding detection
+
+Verified that auto-detection produces identical output to manual
+whitelist. All tests pass.
+
+Baseline comparison: /tmp/baseline_init.c vs /tmp/autodetect_init.c
+No differences detected."
+```
+
+### Rollback Plan
+
+**If auto-detection produces incorrect results:**
+
+```bash
+# Quick rollback: revert to manual whitelist
+git revert HEAD
+
+# Or: temporarily disable auto-detection
+# In parse_kernelverbs.py:
+USE_AUTO_DETECTION = False  # Back to manual whitelist
+
+# Regenerate with manual whitelist
+python3 tools/kernelverbs_parser/parse_kernelverbs.py
+
+# File bug report with details
+# Include: diff output, false positives/negatives, affected processors
+```
+
+### Quality Gates
+
+**Before merging auto-detection implementation:**
+
+- [ ] All unit tests pass (stub detection, UI adapter detection, Carbon detection)
+- [ ] Dry-run mode works correctly
+- [ ] Verify mode works correctly
+- [ ] Manual whitelist → auto-detection produces identical output
+- [ ] All existing tests pass with auto-generated bindings
+- [ ] Status report generation works
+- [ ] JSON metadata is valid and complete
+- [ ] Documentation updated (README.md, CONTRIBUTING.md)
+- [ ] Makefile targets work (`verify-verb-bindings`, `regenerate-verb-bindings`)
+- [ ] CI integration tested
+
+**Before removing manual whitelist:**
+
+- [ ] Auto-detection has been stable for at least 2 weeks
+- [ ] No false positives/negatives reported
+- [ ] At least 3 new processor implementations successfully detected
+- [ ] Team consensus that auto-detection is reliable
+
 ## Success Criteria
 
 ### Phase 1 Success Criteria
