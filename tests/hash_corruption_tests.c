@@ -14,6 +14,16 @@
 /* 2025-12-13 Codex: Hash corruption resistance tests for unpack resilience.
  * Tests cover OOB name indices, truncated records, header edge cases, and
  * type/version mismatches that could cause invalid memory reads or data corruption.
+ *
+ * NOTE: Modern v7 format uses big-endian encoding for all disk writes.
+ * These tests verify corruption handling regardless of host endianness.
+ * For cross-arch byte-level validation, see:
+ * - planning/phase3/big_endian_portability_audit.md
+ * - planning/phase2/0.5.16_hash_table_modernization_strategy.md
+ *
+ * TESTING: Run with sanitizers to catch undefined behavior:
+ *   SANITIZE=1 make -C tests hash_corruption_tests
+ *   ./tests/hash_corruption_tests
  */
 
 static void setup_mode_modern(void) {
@@ -426,15 +436,17 @@ static void test_record_padding_nonzero(void) {
 static void test_record_size_compile_time_assertion(void) {
     printf("[hash_corruption] struct size compile-time assertion... ");
 
-    /* Verify that modern symbol record header is 8 bytes (ixkey + valuetype + version + pad)
-     * and data payload follows. The test header uses struct instead of union, so sizes
+    /* Verify that modern symbol record header is exactly 8 bytes.
+     * Header layout: ixkey=4 + valuetype=1 + version=1 + _pad=2 = 8 bytes.
+     * Data payload follows at offset 8.
+     *
+     * Note: The test header uses struct instead of union, so total size
      * may differ from the actual langhash.c implementation (which uses union).
-     * For now, we just verify sizes are consistent and non-zero.
      */
     assert(sizeof(langhash_test_disksymbolrecord_v7) > 0);
     assert(sizeof(langhash_test_diskvaluedata_v7) > 0);
-    /* Header should be at least 8 bytes (ixkey=4, valuetype=1, version=1, pad=2) */
-    assert(offsetof(langhash_test_disksymbolrecord_v7, data) >= 8);
+    /* Header offset must be exactly 8 bytes (controlled struct definition) */
+    assert(offsetof(langhash_test_disksymbolrecord_v7, data) == 8);
 
     printf("PASS\n");
 }
