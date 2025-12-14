@@ -36,6 +36,19 @@ Frontier has ~700 kernel verbs across 51 processors that need to be ported from 
 - Token-based dispatch with function pointers
 - Auto-generated registration code
 
+### Key Architectural Concept: UI Adapters
+
+**Important**: Not all "UI-dependent" verbs are incompatible with headless mode. The existing kernel verb porting architecture defines **UI adapter patterns** that allow UI-centric verbs to work in headless mode through alternative implementations:
+
+- **dialog.ask()** - Can use stdin/environment variables instead of GUI dialogs
+- **dialog.alert()** - Can print to stderr instead of showing alerts
+- **wp.*** and **op.*** verbs - Can operate on in-memory data structures without requiring windows
+- **script.*** verbs - Can compile/execute scripts without UI
+
+The automatic verb binding system must distinguish between:
+1. **Carbon API dependencies** - Direct use of Carbon/QuickDraw APIs (incompatible with headless)
+2. **UI adapter implementations** - Headless-compatible alternatives to UI operations
+
 ### The Gap
 
 **Manual whitelist maintenance**: The system uses `HEADLESS_REGISTERED` set to track which processors are implemented. There's no automatic detection of:
@@ -300,7 +313,8 @@ class VerbImplementation:
     is_implemented: bool      # True if real code, False if stub
     impl_file: str            # Source file path
     impl_line: int            # Line number of implementation
-    has_ui_deps: bool         # True if uses Carbon/UI APIs
+    has_carbon_deps: bool     # True if uses Carbon/UI APIs directly
+    uses_ui_adapter: bool     # True if uses UI adapter pattern (headless-compatible)
     platform_specific: bool   # True if has #ifdef POSIX/Windows
     complexity: int           # Lines of code in implementation
 
@@ -315,14 +329,26 @@ class VerbImplementationAnalyzer:
         r'getstringlist\(langerrorlist,\s*unimplementedverberror',
     ]
 
-    # Patterns that indicate UI/Carbon dependencies
-    UI_DEPENDENCY_PATTERNS = [
+    # Patterns that indicate DIRECT Carbon/UI API usage (not adapter-based)
+    # Note: These patterns detect Carbon API calls that would prevent
+    # headless compilation. Verbs using UI adapter patterns (dialog.ask
+    # via stdio, wp/op operations on in-memory data) should NOT be flagged.
+    CARBON_API_PATTERNS = [
         r'\bWindowPtr\b', r'\bGrafPtr\b', r'\bMenuRef\b',
         r'\bDialogRef\b', r'\bControlRef\b', r'\bEventRecord\b',
         r'\bGetNewWindow\b', r'\bShowWindow\b', r'\bDrawMenuBar\b',
         r'#include\s*<Carbon', r'#include\s*<QuickDraw',
         r'#include\s*<Menus\.h>', r'#include\s*<Windows\.h>',
         r'\bshellwindow\b', r'\bwindowgetfspec\b',
+    ]
+
+    # Patterns that indicate UI adapter usage (headless-compatible)
+    UI_ADAPTER_PATTERNS = [
+        r'\badapter_alert\b', r'\badapter_ask\b', r'\badapter_notify\b',
+        r'\bheadless_dialog_\w+\b',
+        r'fprintf\s*\(\s*stderr.*ALERT',
+        r'// UI adapter:',
+        r'/\* UI adapter:',
     ]
 
     # Patterns that indicate platform-specific code
@@ -362,7 +388,8 @@ class VerbImplementationAnalyzer:
                 is_implemented=not self._is_stub_implementation(case_code),
                 impl_file=str(filepath),
                 impl_line=self._find_line_number(content, token),
-                has_ui_deps=self._has_ui_dependencies(case_code),
+                has_carbon_deps=self._has_carbon_dependencies(case_code),
+                uses_ui_adapter=self._uses_ui_adapter(case_code),
                 platform_specific=self._detect_platform_specific(case_code),
                 complexity=self._estimate_complexity(case_code)
             )
@@ -388,9 +415,32 @@ class VerbImplementationAnalyzer:
 
         return False
 
-    def _has_ui_dependencies(self, code: str) -> bool:
-        """Detect UI/Carbon dependencies."""
-        for pattern in self.UI_DEPENDENCY_PATTERNS:
+    def _has_carbon_dependencies(self, code: str) -> bool:
+        """
+        Detect DIRECT Carbon/UI API dependencies.
+
+        Returns True only if code uses Carbon APIs directly,
+        not if it uses UI adapter patterns (which are headless-compatible).
+        """
+        # First check if using UI adapter (headless-compatible)
+        if self._uses_ui_adapter(code):
+            return False
+
+        # Then check for direct Carbon API usage
+        for pattern in self.CARBON_API_PATTERNS:
+            if re.search(pattern, code):
+                return True
+        return False
+
+    def _uses_ui_adapter(self, code: str) -> bool:
+        """
+        Detect UI adapter pattern usage.
+
+        UI adapters allow verbs to work in headless mode by providing
+        alternative implementations (e.g., dialog.ask via stdio,
+        wp/op operations on in-memory data without windows).
+        """
+        for pattern in self.UI_ADAPTER_PATTERNS:
             if re.search(pattern, code):
                 return True
         return False
@@ -526,8 +576,10 @@ class StatusReportGenerator:
         total = len(all_impls)
         implemented = sum(1 for v in all_impls.values() if v.is_implemented)
         stubbed = total - implemented
-        ui_flagged = sum(1 for v in all_impls.values()
-                        if v.is_implemented and v.has_ui_deps)
+        carbon_flagged = sum(1 for v in all_impls.values()
+                            if v.is_implemented and v.has_carbon_deps)
+        ui_adapter_count = sum(1 for v in all_impls.values()
+                              if v.is_implemented and v.uses_ui_adapter)
 
         # Group by processor
         by_processor = {}
@@ -545,7 +597,8 @@ class StatusReportGenerator:
             f"- **Total verbs**: {total}",
             f"- **Implemented**: {implemented} ({implemented/total*100:.1f}%)",
             f"- **Stubbed**: {stubbed} ({stubbed/total*100:.1f}%)",
-            f"- **Has UI deps**: {ui_flagged} ({ui_flagged/total*100:.1f}% - flagged for review)\n",
+            f"- **Uses UI adapter**: {ui_adapter_count} ({ui_adapter_count/total*100:.1f}% - headless-compatible)",
+            f"- **Has Carbon deps**: {carbon_flagged} ({carbon_flagged/total*100:.1f}% - ⚠️ needs review)\n",
             "## By Processor\n",
         ]
 
@@ -570,14 +623,23 @@ class StatusReportGenerator:
                     lines.append(f"- `{processor}.{v.verb_name}`")
                 lines.append("")
 
-                # List implemented verbs with warnings
+                # List implemented verbs with UI adapters
                 impl = [v for v in impls if v.is_implemented]
-                if any(v.has_ui_deps for v in impl):
-                    lines.append("**⚠️ Implemented with UI dependencies:**")
-                    for v in impl:
-                        if v.has_ui_deps:
-                            lines.append(f"- `{processor}.{v.verb_name}` "
-                                       f"({v.impl_file}:{v.impl_line})")
+                ui_adapter_verbs = [v for v in impl if v.uses_ui_adapter]
+                if ui_adapter_verbs:
+                    lines.append("**✓ Implemented with UI adapter (headless-compatible):**")
+                    for v in ui_adapter_verbs:
+                        lines.append(f"- `{processor}.{v.verb_name}` "
+                                   f"({v.impl_file}:{v.impl_line})")
+                    lines.append("")
+
+                # List implemented verbs with Carbon deps (needs review)
+                carbon_verbs = [v for v in impl if v.has_carbon_deps]
+                if carbon_verbs:
+                    lines.append("**⚠️ Implemented with Carbon dependencies (needs review):**")
+                    for v in carbon_verbs:
+                        lines.append(f"- `{processor}.{v.verb_name}` "
+                                   f"({v.impl_file}:{v.impl_line})")
                     lines.append("")
 
         return "\n".join(lines)
@@ -611,7 +673,8 @@ class StatusReportGenerator:
             proc_data['verbs'][impl.verb_name] = {
                 'token': impl.token,
                 'implemented': impl.is_implemented,
-                'has_ui_deps': impl.has_ui_deps,
+                'has_carbon_deps': impl.has_carbon_deps,
+                'uses_ui_adapter': impl.uses_ui_adapter,
                 'platform_specific': impl.platform_specific,
                 'complexity': impl.complexity,
                 'file': impl.impl_file,
@@ -753,7 +816,8 @@ static boolean file_valueproc(short token, hdltreenode hparam1,
 - `@PORTABLE` - Fully portable across platforms
 - `@PLATFORM_POSIX` - POSIX-specific implementation
 - `@PLATFORM_WIN32` - Windows-specific implementation
-- `@NO_UI` - Override heuristic, no UI dependencies
+- `@UI_ADAPTER` - Uses UI adapter pattern (headless-compatible)
+- `@CARBON_DEPS` - Has direct Carbon API dependencies (needs review)
 - `@OBSOLETE` - Legacy feature, intentionally not implemented
 
 **Parser Support:**
@@ -780,15 +844,22 @@ def analyze_verb_with_annotations(case_code: str) -> VerbImplementation:
         # Fall back to heuristics
         is_implemented = not self._is_stub_implementation(case_code)
 
-    # Similar for UI dependencies
-    if '@NO_UI' in annotations:
-        has_ui_deps = False
+    # Check for UI adapter vs Carbon dependencies
+    if '@UI_ADAPTER' in annotations:
+        uses_ui_adapter = True
+        has_carbon_deps = False
+    elif '@CARBON_DEPS' in annotations:
+        uses_ui_adapter = False
+        has_carbon_deps = True
     else:
-        has_ui_deps = self._has_ui_dependencies(case_code)
+        # Fall back to heuristics
+        uses_ui_adapter = self._uses_ui_adapter(case_code)
+        has_carbon_deps = self._has_carbon_dependencies(case_code)
 
     return VerbImplementation(
         is_implemented=is_implemented,
-        has_ui_deps=has_ui_deps,
+        has_carbon_deps=has_carbon_deps,
+        uses_ui_adapter=uses_ui_adapter,
         # ...
     )
 ```
@@ -843,7 +914,8 @@ boolean headless_init_kernel_verbs(void) {
 - **Total verbs**: 707
 - **Implemented**: 423 (59.8%)
 - **Stubbed**: 284 (40.2%)
-- **Has UI deps**: 12 (1.7% - flagged for review)
+- **Uses UI adapter**: 45 (6.4% - headless-compatible)
+- **Has Carbon deps**: 3 (0.4% - ⚠️ needs review)
 
 ## By Processor
 
@@ -890,8 +962,10 @@ boolean headless_init_kernel_verbs(void) {
 - `dialog.notify` ✓ (stderr adapter)
 - `dialog.getNumber` ✓ (returns 0)
 
-**⚠️ Implemented with UI dependencies**:
-- None (adapters use stderr instead of Carbon)
+**✓ Implemented with UI adapter (headless-compatible)**:
+- `dialog.alert` (tests/headless_dialog_verbs.c:45)
+- `dialog.notify` (tests/headless_dialog_verbs.c:58)
+- `dialog.getNumber` (tests/headless_dialog_verbs.c:71)
 
 **Not implemented** (16 verbs):
 - `dialog.ask` - Needs stdin implementation
@@ -928,7 +1002,8 @@ boolean headless_init_kernel_verbs(void) {
         "created": {
           "token": 0,
           "implemented": true,
-          "has_ui_deps": false,
+          "has_carbon_deps": false,
+          "uses_ui_adapter": false,
           "platform_specific": false,
           "complexity": 8,
           "file": "tests/headless_file_verbs.c",
@@ -937,7 +1012,8 @@ boolean headless_init_kernel_verbs(void) {
         "modified": {
           "token": 1,
           "implemented": true,
-          "has_ui_deps": false,
+          "has_carbon_deps": false,
+          "uses_ui_adapter": false,
           "platform_specific": false,
           "complexity": 8,
           "file": "tests/headless_file_verbs.c",
@@ -946,7 +1022,8 @@ boolean headless_init_kernel_verbs(void) {
         "type": {
           "token": 2,
           "implemented": false,
-          "has_ui_deps": false,
+          "has_carbon_deps": false,
+          "uses_ui_adapter": false,
           "platform_specific": false,
           "complexity": 2,
           "file": "tests/headless_file_verbs.c",
