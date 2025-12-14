@@ -1,117 +1,179 @@
-# Kernelverbs Parser & Stub Generator
+# Kernelverbs Parser & Verb Binding Analyzer
 
-Automatically generates C stub files for all 51 verb processors and central initialization code from the Windows resource file `kernelverbs.rc`.
+Automatically analyzes Frontier's kernel verb implementations and generates comprehensive coverage reports. Includes tools for parsing the RC file, analyzing verb implementations, and generating stub files.
 
 ## Overview
 
 Frontier's kernel verbs are defined in `Common/resources/Win32/kernelverbs.rc` using the EFP (External Function Processor) resource format. This toolset:
 
-1. **`parse_kernelverbs.py`** - Parses the RC file and generates `kernel_verbs_init.c` which initializes all registered processors
-2. **`generate_processor_stubs.py`** - Generates skeleton `headless_<processor>_verbs.c` files for all unimplemented processors
-3. **Unit Tests** - Comprehensive tests for both tools with 37 test cases
+1. **`parse_kernelverbs.py`** - Parses the RC file to extract processor and verb definitions
+2. **`analyzer.py`** - Analyzes C source code to determine which verbs are implemented vs. stubbed
+3. **`cli.py`** - Command-line interface for analysis and reporting
+4. **`verb_exceptions.py`** - Exception tables for inconsistent verb naming patterns
+5. **Unit Tests** - Comprehensive tests with 31 test cases
 
 ## Tools at a Glance
 
 | Tool | Purpose | Input | Output |
 |------|---------|-------|--------|
-| `parse_kernelverbs.py` | Discover all processors & generate init calls | `kernelverbs.rc` | `kernel_verbs_init.c` |
-| `generate_processor_stubs.py` | Create stub implementations for verbs | `kernelverbs.rc` + processor list | `headless_<proc>_verbs.c` files |
-| `test_parse_kernelverbs.py` | Unit tests for parser | N/A | Test results |
-| `test_generate_stubs.py` | Unit tests for stub generator | N/A | Test results |
+| `parse_kernelverbs.py` | Discover all processors and verbs | `kernelverbs.rc` | Processor metadata (51 processors, 707 verbs) |
+| `analyzer.py` | Analyze C source for implementations | C source files + RC data | VerbImplementation records with status |
+| `cli.py` | Command-line interface for analysis | C source files | Reports, JSON, verification |
+| `verb_exceptions.py` | Exception tables for naming patterns | N/A | Pattern C/D mappings |
+| `test_analyzer.py` | Unit tests for analyzer | N/A | Test results (31/31 passing) |
 
 ## Quick Start
 
-### Using the Tools
-
-The Makefile automatically runs both tools during the build process:
-
-```bash
-make -C frontier-cli
-```
-
-This will:
-1. Run `parse_kernelverbs.py` to generate `kernel_verbs_init.c`
-2. Run `generate_processor_stubs.py` to create/update all processor stub files
-3. Compile everything
-
-### Manual Usage
-
-#### Parse kernelverbs.rc (generate init code)
-
-```bash
-python3 tools/kernelverbs_parser/parse_kernelverbs.py \
-    Common/resources/Win32/kernelverbs.rc \
-    generated/kernel_verbs_init.c
-```
-
-#### Generate processor stubs (all 51 at once)
-
-```bash
-python3 tools/kernelverbs_parser/generate_processor_stubs.py \
-    Common/resources/Win32/kernelverbs.rc \
-    tests
-```
-
-This creates/updates `headless_<processor>_verbs.c` files in the `tests/` directory.
-
-#### Run unit tests
+### Analyze Verb Implementations
 
 ```bash
 cd tools/kernelverbs_parser
-python3 -m unittest test_parse_kernelverbs test_generate_stubs -v
+
+# Analyze all processors (suppress verbose output)
+python3 cli.py analyze
+
+# Generate coverage report (auto-dated filename)
+python3 cli.py report
+
+# Generate report to specific file
+python3 cli.py report -o my_report.md
+
+# Check whitelist consistency
+python3 cli.py verify
+
+# Show changes without applying
+python3 cli.py dry-run
+
+# Export metadata to JSON
+python3 cli.py analyze --json verb_metadata.json
 ```
 
-Expected output: **37 tests pass** with real kernelverbs.rc file
+### Command Line Help
 
-## What It Does
+View all available commands and options:
 
-1. Parses `kernelverbs.rc` to find all EFP blocks (51 processors, 707 verbs)
-2. Extracts processor names, verb counts, and other metadata
-3. Filters to only processors with headless implementations (whitelist in `HEADLESS_IMPLEMENTED`)
-4. Generates `kernel_verbs_init.c` with:
-   - Forward declarations for implemented `<processor>initverbs()` functions
-   - A `headless_init_kernel_verbs()` function that calls only implemented processors
-
-## Whitelist Approach
-
-The parser uses a **whitelist** to only generate code for processors that have headless implementations. This prevents link errors for unimplemented processors.
-
-Currently implemented processors (in `HEADLESS_IMPLEMENTED` set):
-- `file` - File system operations (86 verbs)
-- `frontier` - Application-level operations (14 verbs)
-
-To add a processor:
-1. Implement `tests/headless_<processor>_verbs.c`
-2. Add processor name to `HEADLESS_IMPLEMENTED` in `parse_kernelverbs.py`
-3. Run `make` to regenerate
-
-## Generated Output
-
-The generated file looks like:
-
-```c
-/* Auto-generated from kernelverbs.rc - DO NOT EDIT BY HAND */
-
-/* Forward declarations for IMPLEMENTED verb processor initialization functions */
-extern boolean fileinitverbs(void);        /* EFP 1007: file (86 verbs) */
-extern boolean frontierinitverbs(void);    /* EFP 1016: frontier (14 verbs) */
-
-/**
- * headless_init_kernel_verbs - Initialize all kernel verb processors
- *
- * Implemented processors: 2 of 51 total
- * Implemented verbs: 100 of 707 total
- */
-boolean headless_init_kernel_verbs(void) {
-    if (!fileinitverbs())
-        return false;
-
-    if (!frontierinitverbs())
-        return false;
-
-    return true;
-}
+```bash
+python3 cli.py --help
 ```
+
+View help for a specific subcommand:
+
+```bash
+python3 cli.py analyze --help
+python3 cli.py report --help
+python3 cli.py verify --help
+python3 cli.py dry-run --help
+```
+
+### Common Usage Examples
+
+**Example 1: Analyze and see results**
+```bash
+python3 cli.py analyze
+# Output: Shows all 51 processors with detected implementations
+```
+
+**Example 2: Generate a dated coverage report**
+```bash
+python3 cli.py report
+# Output: Report written to: reports/coverage/verb-binding/2025-12-14-01.md
+```
+
+**Example 3: Save report to custom file**
+```bash
+python3 cli.py report -o my_analysis.md
+# Output: Report written to: my_analysis.md
+```
+
+**Example 4: Print report to console**
+```bash
+python3 cli.py report -o -
+# Output: Prints markdown table directly to stdout
+```
+
+**Example 5: Verify analyzer consistency**
+```bash
+python3 cli.py verify
+# Exit 0: Current state is consistent
+# Exit 1: Whitelist is out of sync with analyzer output
+```
+
+**Example 6: See proposed changes without applying**
+```bash
+python3 cli.py dry-run
+# Shows processors to add/remove from whitelist
+```
+
+### Run Unit Tests
+
+```bash
+cd tools/kernelverbs_parser
+python3 -m unittest test_analyzer -v
+```
+
+Expected output: **31 tests pass** in ~0.25 seconds
+
+## What The Analyzer Does
+
+The analyzer automatically determines which kernel verbs are implemented vs. stubbed by:
+
+1. **Parsing `kernelverbs.rc`** - Discovers 51 processors with 707 total verbs
+2. **Extracting verb names** - Gets canonical names from RC file
+3. **Finding implementation files** - Locates C source files using pattern matching
+4. **Extracting enum tokens** - Parses C enum definitions and case statements
+5. **Matching verbs to implementations** - Maps RC verbs to C implementations using:
+   - **Pattern A**: Standard `{processor}{verb}func` naming (e.g., `filecreatedfunc`)
+   - **Pattern B**: Simple `{verb}func` naming (e.g., `movefunc`)
+   - **Pattern C**: Exception tables for inconsistent naming (op, pict, frontier, sys)
+   - **Pattern D**: Multi-processor consolidation in `langverbs.c` (10 processors)
+6. **Generating reports** - Creates detailed coverage reports with verb-by-verb status
+
+## Coverage Results
+
+**As of 2025-12-14:**
+- **27/51 processors detected** (53%)
+- **400/707 verbs implemented** (56%)
+- **9/51 GUI-dependent processors** correctly stubbed for headless
+- **19/51 non-GUI processors** needing investigation
+
+### Processors by Status
+
+**Fully Detected (100%):**
+- frontier, kb, math, mouse, pict, point, rectangle, rgb, speaker
+
+**Mostly Detected (70-99%):**
+- op (97%), xml (92%), html (91%), string (90%), date (86%), menu (85%), clock (85%), db (84%), lang (74%), dialog (73%), file (69%)
+
+**GUI-Dependent (Correctly Stubbed):**
+- window, editmenu, filemenu, statusbar, htmlcontrol, mainwindow, clipboard, launch, mrcalendar
+
+**Genuinely Stubbed (Headless Only):**
+- script, thread, tcp, base64, bit, dll, re, rez, and 14 more
+
+## Coverage Reports
+
+The analyzer generates detailed markdown reports showing:
+
+**Example from `COVERAGE_REPORT-2025-12-14-02.md`:**
+
+```markdown
+### frontier
+
+**Status:** 14/14 verbs (100% implemented, 0 stubbed)
+
+| # | Verb | Status | Location |
+|---|------|--------|----------|
+| 0 | `getprogrampath` | ✅ Implemented | shellsysverbs.c:712 |
+| 1 | `getfilepath` | ✅ Implemented | shellsysverbs.c:721 |
+| 2 | `enableagents` | ✅ Implemented | shellsysverbs.c:739 |
+...
+```
+
+Each processor shows:
+- Verb count with implementation percentage
+- Per-verb status (✅ Implemented or ⬜ Stub)
+- Source file location with line numbers
+- GUI processor identification
 
 ## Discovered Processors
 
@@ -126,254 +188,278 @@ The parser currently finds **51 verb processors** with **707 total verbs**:
 - lang (58 verbs) - Language runtime
 - ... and 44 more
 
-## Implementation Requirements
+## Pattern Matching & Exception Tables
 
-To add a new processor to the headless implementation:
+The analyzer handles four distinct verb naming patterns:
 
-1. Create `tests/headless_<processor>_verbs.c` with the init function
-2. Add the file to `frontier-cli/Makefile` HEADLESS_STUBS section
-3. Add processor name to `HEADLESS_IMPLEMENTED` in `parse_kernelverbs.py`
-4. Run `make` to regenerate `kernel_verbs_init.c`
+### Pattern A: Standard Direct Mapping
+**Format:** `{processor}{verb}func`
+- **Example:** `file` processor: `created` → `filecreatedfunc`
+- **Processors:** file, string, html, xml, db, menu, table, and others
+- **Automation:** 100%
 
-Example for the `file` processor:
+### Pattern B: Type-Prefix Mapping
+**Format:** `{verb}func`
+- **Example:** `move` → `movefunc`
+- **Automation:** 95%+
 
-```c
-/* tests/headless_file_verbs.c */
+### Pattern C: Inconsistent Naming (Exception Tables)
+**Format:** Special mappings required
+- **Example:** `op.getlinetext` → `linetextfunc` (not `getlinetextfunc`)
+- **Processors:** op (3 exceptions), pict (1), frontier (5), sys (3)
+- **Exception tables:** See `verb_exceptions.py`
+- **Automation:** 90%+ with tables
 
-boolean fileinitverbs(void) {
-    hdlhashtable htable = nil;
-    bigstring bsname;
+### Pattern D: Multi-Processor Consolidation
+**Format:** Multiple processors in single file (langverbs.c)
+- **Processors:** dialog, clock, date, kb, mouse, point, rectangle, rgb, speaker, target
+- **Transformation rules:** Generate candidates and try combinations
+- **Exception tables:** For special cases (e.g., dialog.notify → notifytdialogfunc)
+- **Automation:** 70-100% depending on processor
 
-    copystring(BIGSTRING("\pfile"), bsname);
+## Using Exception Tables
 
-    if (!newfunctionprocessor(bsname, &file_valueproc, false, &htable))
-        return false;
+Exception tables in `verb_exceptions.py` codify irregular verb-to-C mappings:
 
-    pushhashtable(htable);
+```python
+PATTERN_C_EXCEPTIONS = {
+    'op': {
+        'getlinetext': 'linetextfunc',      # Missing "get" prefix
+        'subsexpanded': 'getexpandedfunc',  # Completely different
+        'getselection': 'getselectfunc',    # Truncated
+    },
+    'frontier': {
+        'getprogrampath': 'programpathfunc',  # Missing "get"
+        'ispowerpc': 'isnativefunc',          # Renamed
+        'version': 'frontierversionfunc',     # Added prefix
+    },
+}
 
-    /* Register all verbs using ADD_VERB macro */
-    ADD_VERB(BIGSTRING("\pcreated"), fv_created);
-    /* ... 85 more verbs ... */
+PATTERN_D_PROCESSORS = {
+    'dialog', 'clock', 'date', 'kb', 'mouse',
+    'point', 'rectangle', 'rgb', 'speaker', 'target'
+}
 
-    pophashtable();
-    return true;
+PATTERN_D_EXCEPTIONS = {
+    'dialog': {
+        'notify': 'notifytdialogfunc',        # Typo in C code
+        'getpassword': 'askpassworddialogfunc', # Different verb
+    },
 }
 ```
 
-## Safety and Error Prevention
+To add new exceptions:
+1. Identify the RC verb and actual C token
+2. Add entry to appropriate table in `verb_exceptions.py`
+3. Run analyzer to verify detection
+4. Update coverage report
 
-The whitelist approach prevents common errors:
+## Adding New Exception Table Entries
 
-- **No link errors**: Only implemented processors are included in generated code
-- **Explicit opt-in**: Processors must be added to `HEADLESS_IMPLEMENTED` to be included
-- **Clear diagnostics**: Parser output shows implemented vs. unimplemented processors
-- **Build safety**: If you forget to add a processor to the whitelist, it simply won't be initialized (no crash)
+When investigating a processor and discovering unmapped verbs, you can add them to the exception tables:
 
-## Conditional Compilation
+### For Pattern C Processors (op, pict, frontier, sys)
 
-Some processors in `kernelverbs.rc` are wrapped in `#ifdef` directives (e.g., `#ifdef flregexpverbs`). The parser does **not** preprocess these directives - it reads the file as-is.
-
-### How the Whitelist Approach Handles This
-
-The whitelist-based design provides automatic safety for conditionally compiled processors:
-
-1. **Parser discovers all processors**: Regardless of `#ifdef` blocks, the parser finds all processor definitions in the source file
-2. **Whitelist controls output**: Only processors in `HEADLESS_IMPLEMENTED` are included in generated code
-3. **Safe by default**: Conditionally compiled processors won't cause link errors unless explicitly whitelisted
-4. **No preprocessing needed**: The parser doesn't need to preprocess the RC file
-
-### Handling Strategies for Future Needs
-
-If you need more sophisticated conditional compilation handling:
-
-#### Strategy 1: Conditional Whitelist (Recommended)
-Use Python to conditionally populate `HEADLESS_IMPLEMENTED` based on environment variables or build flags:
+Edit `verb_exceptions.py` and add to the appropriate processor's dict in `PATTERN_C_EXCEPTIONS`:
 
 ```python
-# In parse_kernelverbs.py
-if os.getenv('ENABLE_REGEX_VERBS'):
-    HEADLESS_IMPLEMENTED.add('regex')
-```
-
-Then build with: `ENABLE_REGEX_VERBS=1 make`
-
-#### Strategy 2: Multiple Whitelist Files
-Create variant whitelist files for different configurations:
-
-```python
-# parse_kernelverbs.py could accept a whitelist config file
-WHITELIST_FILE = os.getenv('WHITELIST_CONFIG', 'whitelist_headless.txt')
-```
-
-#### Strategy 3: Preprocessor Support
-If RC file preprocessing is needed, preprocess before parsing:
-
-```bash
-# In Makefile
-cpp -E Common/resources/Win32/kernelverbs.rc | \
-    python3 tools/kernelverbs_parser/parse_kernelverbs.py - generated/kernel_verbs_init.c
-```
-
-This would require updating the parser to read from stdin.
-
-#### Strategy 4: Dynamic Registration
-Register processors at runtime rather than compile-time:
-
-Instead of generating init calls, register all discovered processors dynamically:
-
-```c
-// In headless_init_kernel_verbs()
-for (each processor in discovered_list) {
-    if (implementation_exists(processor)) {
-        register_processor(processor);
-    }
+PATTERN_C_EXCEPTIONS = {
+    'op': {
+        'getlinetext': 'linetextfunc',  # Add new entries here
+        'newverb': 'newverbfunc',
+    },
 }
 ```
 
-### Current Behavior
-
-Currently, the parser:
-- ✅ Discovers all 51 processors regardless of `#ifdef` blocks
-- ✅ Only generates code for whitelisted processors (currently file and frontier)
-- ✅ Prevents link errors for unimplemented processors automatically
-- ❌ Does not preprocess or evaluate `#ifdef` conditions
-
-This is the correct default behavior for a headless implementation.
-
-## Common Tasks
-
-### Add a New Processor to Headless Implementation
-
-1. **Implement the processor**: Create or edit `tests/headless_<processor>_verbs.c`
-   - Implement the `<processor>_valueproc` function
-   - Implement the `<processor>initverbs()` function
-   - Register verbs using the ADD_VERB macro
-
-2. **Add to whitelist**: Edit `parse_kernelverbs.py`
-   ```python
-   HEADLESS_REGISTERED.add('myprocessor')
-   ```
-
-3. **Rebuild**: Run `make -C frontier-cli`
-   - The parser will auto-discover your processor
-   - Generated code will include initialization calls
-
-### Regenerate All Stubs (After RC Changes)
-
-If `kernelverbs.rc` is modified:
-
+Then verify with:
 ```bash
-cd tools/kernelverbs_parser
-python3 generate_processor_stubs.py \
-    ../../Common/resources/Win32/kernelverbs.rc \
-    ../../tests
-make -C ../../frontier-cli
+python3 -m unittest test_analyzer.TestExceptionTables -v
 ```
 
-### Debug Verb Name Issues
+### For Pattern D Processors (dialog, clock, date, kb, mouse, point, rectangle, rgb, speaker, target)
 
-If verbs aren't registering correctly:
+Edit `verb_exceptions.py` and add to the appropriate processor's dict in `PATTERN_D_EXCEPTIONS`:
 
-1. **Check extraction warnings**:
+```python
+PATTERN_D_EXCEPTIONS = {
+    'dialog': {
+        'notify': 'notifytdialogfunc',  # Add new entries here
+        'newverb': 'newverbdialogfunc',
+    },
+}
+```
+
+The `generate_pattern_d_candidates()` function will automatically try your exception mapping first.
+
+### Testing Your Changes
+
+After adding exception table entries:
+
+1. Run the analyzer on the processor:
    ```bash
-   python3 generate_processor_stubs.py \
-       ../../Common/resources/Win32/kernelverbs.rc \
-       ../../tests 2>&1 | grep -i warning
+   python3 cli.py analyze
    ```
 
-2. **Verify verb names in generated file**:
+2. Check the coverage report:
    ```bash
-   grep "enum {" -A 5 ../../tests/headless_<processor>_verbs.c
+   python3 cli.py report
    ```
 
-3. **Look for placeholder names**: If you see `verb0`, `verb1`, extraction failed
-   - The RC file may have missing verb definitions
-   - Check for duplicate processor names in RC file
+3. Look for your processor in the output to verify detection improved
 
-### Debug Parser Issues
+## Investigating Low-Coverage Processors
 
-If `kernel_verbs_init.c` isn't generating correctly:
+If a processor shows 0% or very low coverage, use these debugging steps:
 
-1. **Check if processors are discovered**:
-   ```bash
-   python3 parse_kernelverbs.py \
-       ../../Common/resources/Win32/kernelverbs.rc \
-       /tmp/test_output.c 2>&1
-   ```
+### 1. Check if Implementation File Exists
 
-2. **Check generated code**:
-   ```bash
-   head -30 /tmp/test_output.c
-   ```
+```bash
+python3 -c "from analyzer import VerbImplementationAnalyzer; a = VerbImplementationAnalyzer([]); print(a.find_implementation_file('processorname'))"
+```
 
-3. **Verify whitelist**: Check that your processor is in `HEADLESS_REGISTERED`
+If this returns `None`, the implementation file doesn't exist in expected locations.
+
+### 2. Analyze the Implementation File
+
+Once you find the file, examine it for:
+
+- **Enum definitions**: Look for `enum { ... }` blocks containing verb tokens
+- **Case statements**: Search for `case` labels matching possible verb names
+- **Pattern matching**: Check which of the 4 patterns the processor uses
+
+### 3. Verify Verb Name Extraction
+
+Extract verb names directly from the C source:
+
+```python
+from analyzer import VerbImplementationAnalyzer
+analyzer = VerbImplementationAnalyzer([])
+source = open('path/to/file.c').read()
+verbs = analyzer.extract_verb_names_from_enum(source, 'processorname')
+print(verbs)
+```
+
+### 4. Debug Case Extraction
+
+If verbs are extracted but not matched to implementations:
+
+```python
+case_source, line = analyzer.extract_case_implementation(source, ['verbfunc', 'verb_func'])
+print(f"Found: {line}")
+```
+
+### 5. Add Exception Table Entry
+
+If the verb doesn't follow standard patterns, add an exception table entry (see above) and re-run.
+
+## Running Unit Tests
+
+Execute all 31 unit tests:
+
+```bash
+python3 -m unittest test_analyzer -v
+```
+
+Expected output:
+```
+Ran 31 tests in 0.254s
+OK
+```
+
+Test categories:
+- **TestExceptionTables** (7 tests): Exception table lookups and Pattern D candidate generation
+- **TestFileDiscovery** (6 tests): Implementation file discovery for all processor patterns
+- **TestEnumExtraction** (3 tests): Enum definition parsing from C source
+- **TestCaseExtraction** (3 tests): Case statement extraction from switch blocks
+- **TestVerbImplementationAnalysis** (3 tests): Stub detection and implementation analysis
+- **TestPatternMatchers** (3 tests): Carbon API and UI adapter pattern detection
+- **TestAnalyzerIntegration** (4 tests): Real-world processor analysis
+- **TestMetadataWriter** (2 tests): Metadata statistics and whitelist generation
 
 ## Troubleshooting
 
-### Tests Fail
+### Analyzer Reports 0% Coverage for a Processor
 
-**Problem**: Tests fail with "kernelverbs.rc not found"
-- **Solution**: Ensure you're running from `tools/kernelverbs_parser` directory and `kernelverbs.rc` is at `Common/resources/Win32/kernelverbs.rc`
+1. **Check implementation file location**:
+   ```bash
+   python3 cli.py analyze 2>&1 | grep "processorname"
+   ```
+   Look for "Warning: No implementation file found"
 
-**Problem**: Stub generation creates files with placeholder verb names
-- **Cause**: `extract_verb_names()` couldn't find actual verb names in RC file
-- **Solution**:
-  1. Verify RC file structure for that processor
-  2. Check for duplicate verb names (generator warns about these)
-  3. Ensure processor definition includes proper `true/false` and verb count
+2. **Verify file paths** match expected locations:
+   - `Common/source/{processor}verbs.c`
+   - `Common/source/lang{processor}.c`
+   - `tests/headless_{processor}_verbs.c`
+   - Special cases: `shellsysverbs.c`, `shellwindowverbs.c`
 
-**Problem**: "redefinition of enumerator" compilation error
-- **Cause**: RC file has duplicate verb names for a processor
-- **Solution**:
-  1. Check RC file for duplicate entries
-  2. Run generator with stderr redirected to see warnings
-  3. The generator will auto-rename duplicates with `_1`, `_2` suffix
+3. **Check for Pattern D** processors:
+   - If processor is in `PATTERN_D_PROCESSORS`, it should be in `langverbs.c`
+   - Verify `langverbs.c` exists at `Common/source/langverbs.c`
 
-### Build Issues
+### Verbs Detected but No Implementations Found
 
-**Problem**: Processors don't initialize on startup
-- **Check**: Is processor in `HEADLESS_REGISTERED` whitelist?
-- **Check**: Does stub file exist and compile?
-- **Check**: Does `kernel_verbs_init.c` have init call?
+1. **Enum extraction succeeded** but **case extraction failed**
+   - The verb name was found in the enum but has no case statement
+   - This is a legitimate stub - the verb is declared but not implemented
 
-**Problem**: "undefined reference" linker error
-- **Cause**: Processor stub file not in Makefile
-- **Solution**: Add to `HEADLESS_STUBS` in `frontier-cli/Makefile`
+2. **Case extraction found something** but **marked as stub**:
+   - The analyzer detected a stub marker in the implementation
+   - Look for `/* not implemented */`, `/* TODO */`, or similar
+   - Remove the stub marker if the implementation is complete
+
+### False Positives (Implemented Verbs Marked as Stubs)
+
+If real implementations are marked as stubs:
+
+1. **Check for stub markers** in the case body that shouldn't be there
+2. **Add annotation** to the implementation if heuristics fail:
+   ```c
+   case verbfunc: { /* @implemented */
+       // Real implementation here
+   }
+   ```
+
+### Coverage Report Missing Data
+
+If the coverage report is incomplete or doesn't show a processor:
+
+1. Run with verbose output:
+   ```bash
+   python3 cli.py analyze
+   ```
+
+2. Check the processor is discovered:
+   ```bash
+   python3 parse_kernelverbs.py ../../Common/resources/Win32/kernelverbs.rc /tmp/test.c
+   ```
+
+3. Verify `test_analyzer.py` passes:
+   ```bash
+   python3 -m unittest test_analyzer.TestAnalyzerIntegration -v
+   ```
 
 ## Maintenance
 
-The tools are designed to be simple and robust:
+The analyzer tools are designed to be simple and maintainable:
 
-**parse_kernelverbs.py**:
-- ~300 lines of Python with type hints
-- Uses regex to extract processor definitions
-- Whitelist-based filtering for safety
+**analyzer.py**:
+- ~460 lines of Python with type hints
+- Pattern matching on C source without modification
+- Exception table lookups for irregular mappings
 - No external dependencies
 
-**generate_processor_stubs.py**:
-- ~150 lines of Python with type hints
-- Extracts real verb names from RC content
-- Auto-detects and handles duplicates
-- Generates syntactically valid C code
-- No external dependencies
+**verb_exceptions.py**:
+- ~194 lines of Python with exception table dicts
+- Helper functions for pattern detection
+- Easy to extend with new processor exceptions
 
-**Testing**:
-- 37 comprehensive unit tests
-- Tests both tools with real kernelverbs.rc
-- All tests pass in ~10ms
-- No external test framework needed (uses stdlib unittest)
+**cli.py**:
+- ~300 lines of Python
+- Command-line interface for analysis, reporting, and verification
+- Auto-dating report filenames with sequential numbering
 
-
-## Integration with Build System
-
-The Makefile target looks like:
-
-```makefile
-$(KERNEL_VERBS_C): $(KERNELVERBS_RC) $(KERNELVERBS_PARSER)
-    @mkdir -p $(GENERATED_DIR)
-    python3 $(KERNELVERBS_PARSER) $(KERNELVERBS_RC) $(KERNEL_VERBS_C)
-```
-
-This ensures the generated file is rebuilt whenever:
-- `kernelverbs.rc` changes
-- The parser script changes
+**test_analyzer.py**:
+- 31 comprehensive unit tests
+- Tests all patterns, exceptions, and edge cases
+- All tests pass in ~0.25 seconds
+- Uses stdlib unittest (no external dependencies)

@@ -31,13 +31,14 @@ Priority Key
 - **P2 (Future / Nice-to-Have):** Valuable improvements once P0/P1 are on track.
 
 ## Dependency Cleanup
-- **P1** — Unvendor temporary build dependencies (CMake + Paige) once WPText Phase 3 (font tables) lands.
+- **P1** — [#81](https://github.com/jsavin/Frontier/issues/81) — Unvendor temporary build dependencies (CMake + Paige) once WPText Phase 3 (font tables) lands.
   - Drop `third_party/cmake-src/` + the local installer after downstream build tooling is verified.
   - Remove the Paige submodule/shims once our native RTF generator is fully validated.
   - Update `_CURRENT_STATUS.md` / `docs/database_architecture.md` when Paige is fully removed so future work knows the dependency is gone.
 
 ## Phase 1/2 — UserTalk Runtime: 64-bit Signed Integers as Default Type
 
+**GitHub Issue:** [#82](https://github.com/jsavin/Frontier/issues/82)
 **Priority:** P0 — CRITICAL ARCHITECTURAL DECISION. Must be finalized BEFORE processor verb implementation begins.
 **Timeline:** Decide and lock in during Phase 1 planning; impacts all runtime arithmetic operations.
 
@@ -56,6 +57,8 @@ Priority Key
 - Requires updating: `system.compiler.language.constants.infinity` to 64-bit value
 
 **Related Decision - Floating Point Types:**
+
+**GitHub Issue:** [#83](https://github.com/jsavin/Frontier/issues/83)
 
 Legacy Frontier had (from `tedchoward/Frontier/Common/headers/lang.h`):
 - **singlevaluetype (23):** C `float` (32-bit single-precision)
@@ -105,6 +108,7 @@ This decision is parallel to but separate from the integer 64-bit work; can be d
 
 ## Phase 1/2 — Memory Management Audit (Rolling)
 
+**GitHub Issue:** [#84](https://github.com/jsavin/Frontier/issues/84)
 **Priority:** P0 — Must stay ahead of crash/UB risk
 **Timeline:** Begin immediately; finish core audit alongside Phase 2 architecture work.
 
@@ -140,6 +144,7 @@ Process
 
 ## Phase 2 — UI Boundary via Ports & Adapters
 
+**GitHub Issue:** [#85](https://github.com/jsavin/Frontier/issues/85)
 **Priority:** P0 — Core must stay UI-agnostic for headless + CLI builds.  
 **Timeline:** Active during Phase 2 UI abstraction.
 
@@ -160,6 +165,7 @@ Reference Docs
 
 ## Phase 2 — Global Runtime Context & Lifecycle
 
+**GitHub Issue:** [#86](https://github.com/jsavin/Frontier/issues/86)
 **Priority:** P0 — Blocks reentrancy, testing, and future threading.  
 **Timeline:** Start now alongside UI boundary refactor.
 
@@ -175,6 +181,7 @@ Scope
 
 ## Phase 2 — Headless EFP Routing Parity
 
+**GitHub Issue:** [#87](https://github.com/jsavin/Frontier/issues/87)
 **Priority:** P0 — Needed to keep headless/kernel routing consistent.  
 **Timeline:** Execute during current headless bootstrap work.
 
@@ -194,6 +201,7 @@ Reference Docs
 
 ## Phase 2 — Networking Architecture & Security
 
+**GitHub Issue:** [#88](https://github.com/jsavin/Frontier/issues/88)
 **Priority:** P0 — Default CLI/server exposure must be safe.  
 **Timeline:** Implement before broad CLI distribution.
 
@@ -213,6 +221,7 @@ Reference Docs
 
 ## Phase 2 — OSA / IPC Strategy
 
+**GitHub Issue:** [#89](https://github.com/jsavin/Frontier/issues/89)
 **Priority:** P1 — Necessary before macOS UI + headless automation converge.  
 **Timeline:** Design alongside networking work; implement before desktop beta.
 
@@ -232,6 +241,7 @@ Reference Docs
 
 ## Phase 2 — File I/O & Path Policy
 
+**GitHub Issue:** [#90](https://github.com/jsavin/Frontier/issues/90)
 **Priority:** P1 — Prevents path bugs as we move cross-platform.  
 **Timeline:** Align with database migration tooling updates.
 
@@ -250,6 +260,7 @@ Reference Docs
 
 ## Phase 2 — Unicode Strategy
 
+**GitHub Issue:** [#91](https://github.com/jsavin/Frontier/issues/91)
 **Priority:** P1 — Required before accepting modern data + APIs.  
 **Timeline:** Start once memory audit stabilizes; finish before major format changes.
 
@@ -268,6 +279,7 @@ Reference Docs
 - `planning/0.5.13_usertalk_language_summary.md`
 ## Phase 3 — File Verb Enhancements: settype/setcreator Cross-Platform
 
+**GitHub Issue:** [#92](https://github.com/jsavin/Frontier/issues/92)
 **Priority:** P2 — Nice-to-have enhancement for file verb completeness
 **Timeline:** After Phase 1 file processor implementation is complete and stable.
 
@@ -298,6 +310,7 @@ Reference Docs
 
 ## Phase 3 — Hash Table Modernisation
 
+**GitHub Issue:** [#93](https://github.com/jsavin/Frontier/issues/93)
 **Priority:** P1 — Needed before Phase 3 ships to users
 **Timeline:** Execute after core architecture upgrades stabilise (Phase 2 exit).
 
@@ -321,6 +334,7 @@ Reference Docs
 
 ## Phase 3 — Concurrency Model & Task Contexts
 
+**GitHub Issue:** [#94](https://github.com/jsavin/Frontier/issues/94)
 **Priority:** P1 — Needed before headless/server builds scale.  
 **Timeline:** Kick off during late Phase 2; land early Phase 3.
 
@@ -340,6 +354,7 @@ Reference Docs
 
 ## Phase 3 — Headless Migration Options
 
+**GitHub Issue:** [#95](https://github.com/jsavin/Frontier/issues/95)
 **Priority:** P2 — Useful once CLI/adapter work is steady  
 **Timeline:** After Phase 3 CLI/adapter work is stable.
 
@@ -356,6 +371,7 @@ Reference Docs
 
 ## Phase 3 — Date/Time Representation Modernization
 
+**GitHub Issue:** [#96](https://github.com/jsavin/Frontier/issues/96)
 **Priority:** P1 — Needed for accurate headless behavior and future interop.
 **Depends on:** Phase 1/2 64-bit integer implementation (see above)
 **Timeline:** Start once the `clock.*` and `script.*` verbs run cleanly via search paths AND after 64-bit integer work is complete.
@@ -374,6 +390,7 @@ Scope
 
 ## Phase 3 — Remote Runtime + Local Guest Databases
 
+**GitHub Issue:** [#97](https://github.com/jsavin/Frontier/issues/97)
 **Priority:** P1 — Critical for the North Star multi-client workflow (but not required for the first headless runtime milestone).  
 **Timeline:** Design after the base headless runtime is stable; implement before remote/daemon scenarios ship broadly.
 
@@ -392,6 +409,7 @@ Scope
 
 ## Phase 3+ — Rich Text Type (Future Consideration)
 
+**GitHub Issue:** [#98](https://github.com/jsavin/Frontier/issues/98)
 **Priority:** P2 — Nice-to-have once migration/parity work is done.
 
 Goals
@@ -404,16 +422,25 @@ Notes
 - Capture design decisions/TODOs under `planning/phase3/paige_text_extractor.md` so the work can restart when timing is right.
 
 ### WPText → RTF Migration [P2]
+
+**GitHub Issue:** [#99](https://github.com/jsavin/Frontier/issues/99)
+
 - Canonicalize `WPText` objects to UTF-8 aware RTF, keeping minimal metadata (creator, conversion info) for backward compatibility.
 - Provide conversion verbs/tooling for `WPText ↔ RTF`, plus CLI commands to export/import `.rtf`.
 - Maintain readers for legacy `WPText` while flagging new writes as RTF; update storage to drop the 32KB ceiling and test round-trips.
 
 ### Performance Optimisations [P2]
+
+**GitHub Issue:** [#100](https://github.com/jsavin/Frontier/issues/100)
+
 - Investigate memory-mapped I/O for large database files.
 - Optional compression for on-disk data.
 - Improved caching strategies for frequently accessed tables.
 
 ### User Experience Enhancements [P2]
+
+**GitHub Issue:** [#101](https://github.com/jsavin/Frontier/issues/101)
+
 - Progress indicators for long-running migrations.
 - Batch migration tooling for multiple databases.
 - Easy rollback/downgrade support.
@@ -421,6 +448,9 @@ Notes
 - **Per-user view preferences:** move table font choices, window rects, scroll offsets, etc., out of the shared `.root` and into a user-owned preference store so multiple operators don’t stomp each other’s view state; tackle once the clean v7 rewrite lands.
 
 ### Developer Experience [P1]
+
+**GitHub Issue:** [#102](https://github.com/jsavin/Frontier/issues/102)
+
 - Better database inspection/validation tools.
 - Automated database integrity checkers.
 - Comprehensive API documentation refresh once new infrastructure lands.
@@ -429,6 +459,9 @@ Notes
 - **Global state isolation [P1]:** see planning/phase3/global_state_isolation_plan.md for the detailed roadmap to replace globals (format modes, outline/menu/editor state, lang/runtime state) with per-context parameters so components can run in isolation and be thread-safe.
 
 ### UserTalk Language Server & Bridge (Phase 5+ exploration) [P2]
+
+**GitHub Issue:** [#103](https://github.com/jsavin/Frontier/issues/103)
+
 - **Background:** IDE exploration keeps coming up; we need a language server to power auto-complete, hover docs, and go-to-definition for UserTalk plus a bridge for scripting from Python/Rust/Objective-C.
 - **Language Server Goals:** Define an LSP-compliant service that can parse `.ftop`/database-backed scripts, expose incremental parse trees, surface runtime metadata (verbs, tables, glossary), and cache per-database symbol indexes so IDEs can offer completions without launching the full Frontier runtime.
 - **Bridge Goals:** Provide foreign-function shims so host languages can evaluate UserTalk snippets, call verbs, and subscribe to table change events. Target initial bindings for Python (automation/testing), Rust (systems integrations), and Objective-C (macOS app embedding).
