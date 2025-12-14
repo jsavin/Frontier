@@ -1,6 +1,4 @@
-- Frontier has a concept of "guest databases" which are any databases that are opened that aren't 
-the system root. All top-level items in guest databases are in global scope in the UserTalk domain. This is managed by the
-kernel leveraging the in-memory "table" at system.compiler.files.
+- Frontier has a concept of "guest databases" which are any databases that are opened that aren't the system root. All top-level items in guest databases are in global scope in the UserTalk domain. This is managed by the kernel leveraging the in-memory "table" at system.compiler.files.
 - Frontier has the concept of the current "target" which is generally a window. That might be a database or it might be an editor window for a non-scalar like a script, outline, or WPText object (which we're now persisting as RTF in UTF-8).
 - Legacy Frontier source code is available at /Users/jake/dev/tedchoward/Frontier
 - When you're asked to fix something in a critical area (serialization, database format, byte alignment, byte ordering, etc.) you should always 1) first search the `planning/` directory for relevant documentation, 2) ask the user: "I found X in the planning docs - does this change align with that plan?" and 3) only proceed after user confirmation.
@@ -8,3 +6,8 @@ kernel leveraging the in-memory "table" at system.compiler.files.
 - Any change to a typedev struct with "disk" in the name should trigger a question to the user before implementation.
 - The v7 database format should not contain any font, font size, or font style information *except* within stored RTF objects.
 - Run the headless test flow with `./tools/run_headless_tests.sh` (rebuilds CLI, migrates `databases/Frontier-v6.root` to `databases/Frontier-v6-v7.root`, then runs `make -C tests test`); use this as the standard before/after change check.
+- Whenever you're about to start new development work, always create a branch for that work if the local tree is currently on "develop".
+- You have permission to use the `gh` command.
+- Don't ever create PRs that would merge with the tedchoward upstream fork.
+- If you ever need to check how the legacy Frontier app implemented something in 32-bit-land, look at the code under `../tedchoward/Frontier/`.
+- When the user asks you a question, always answer it first before jumping into work.

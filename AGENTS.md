@@ -103,6 +103,8 @@ This document is a concise contributor guide for Frontier’s C/C toolchain and 
 - Prefer evidence over inference when interpreting identifiers or historical formats. If a name looks familiar (e.g., “WS” or “Word”), confirm its meaning via code/docs/logs before pursuing a theory to avoid chasing unrelated artifacts.
 - For modern BE64 paths, avoid format forks inside shared functions: fork legacy vs modern logic into separate functions/files so the modern code stays branch-free and clean; keep legacy-only code isolated.
 - Tests must exercise production code paths. If a helper isn’t exposed, add a minimal `FRONTIER_TESTS` shim that calls the real code rather than inventing dummies or bypassing runtime expectations. If reaching a code path isn’t obvious, pause and ask before introducing hacks or placeholders.
+- Whenever you're about to start new development work, always create a branch for that work if the local tree is currently on "develop".
+- You have permission to use the `gh` command.
 
 ## Sandbox & Approvals
 - Escalation: Always request escalated execution when needed (e.g., writing outside workspace, network access, package installs, GUI commands, or when sandboxing blocks progress).
