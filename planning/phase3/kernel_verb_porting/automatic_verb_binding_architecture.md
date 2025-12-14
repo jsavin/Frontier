@@ -64,7 +64,7 @@ The Frontier kernel verb system uses a sophisticated two-tier dispatch architect
 
 ### Source Definition: `kernelverbs.rc`
 
-**Location:** `/Users/jake/dev/jsavin/Frontier/Common/resources/Win32/kernelverbs.rc`
+**Location:** `Common/resources/Win32/kernelverbs.rc`
 
 This Windows resource file contains **51 EFP (External Function Processor) blocks** defining all kernel verbs.
 
@@ -156,7 +156,7 @@ boolean fileinitverbs(void) {
 ### Existing Automation Tools
 
 #### Parser: `parse_kernelverbs.py`
-**Location:** `/Users/jake/dev/jsavin/Frontier/tools/kernelverbs_parser/parse_kernelverbs.py`
+**Location:** `tools/kernelverbs_parser/parse_kernelverbs.py`
 
 **Purpose:** Extract processor definitions from RC file and generate initialization code
 
@@ -184,7 +184,7 @@ HEADLESS_REGISTERED: Set[str] = {
 ```
 
 #### Stub Generator: `generate_processor_stubs.py`
-**Location:** `/Users/jake/dev/jsavin/Frontier/tools/kernelverbs_parser/generate_processor_stubs.py`
+**Location:** `tools/kernelverbs_parser/generate_processor_stubs.py`
 
 **Purpose:** Auto-generate skeleton `.c` files for unimplemented processors
 
