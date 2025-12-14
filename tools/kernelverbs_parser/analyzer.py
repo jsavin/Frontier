@@ -229,11 +229,14 @@ class VerbImplementationAnalyzer:
         if not enum_body:
             return []
 
-        # Try multiple token naming patterns
-        # 1. Headless style: filv_created, filv_modified
-        # 2. Legacy style: filecreatedfunc, filemodifiedfunc
-        # 3. Alternative: file_created, file_modified
+        # Remove C comments from enum body to avoid false matches
+        # Remove /* ... */ style comments
+        enum_body = re.sub(r'/\*.*?\*/', '', enum_body, flags=re.DOTALL)
+        # Remove // style comments
+        enum_body = re.sub(r'//.*?$', '', enum_body, flags=re.MULTILINE)
 
+        # Strategy 1: Try processor-prefixed patterns (headless style)
+        # e.g., filv_created, file_created, filecreatedfunc
         prefixes = [
             processor_name[0:3] + "v_",  # e.g., "filv_"
             processor_name,               # e.g., "file"
@@ -260,8 +263,24 @@ class VerbImplementationAnalyzer:
                         verb_name = match
                         if verb_name.endswith('func'):
                             verb_name = verb_name[:-4]
-                        cleaned.append(verb_name)
-                    return cleaned
+                        # Skip empty or very short names (likely false matches)
+                        if len(verb_name) > 1:
+                            cleaned.append(verb_name)
+
+                    # Only return if we got reasonable matches
+                    if cleaned and len(cleaned) >= 2:
+                        return cleaned
+
+        # Strategy 2: Legacy pattern with NO processor prefix
+        # Just extract all identifiers ending with "func"
+        # e.g., linetextfunc, levelfunc, movefunc
+        pattern = r'(\w+func)\s*[,=]'
+        matches = re.findall(pattern, enum_body)
+
+        if matches:
+            # Remove the "func" suffix to get verb names
+            # linetextfunc -> linetext
+            return [m[:-4] for m in matches if m.endswith('func')]
 
         return []
 
@@ -327,11 +346,13 @@ class VerbImplementationAnalyzer:
         for i, verb_name in enumerate(verb_names):
             # Generate possible case labels (try multiple formats)
             # 1. Headless style: filv_created
-            # 2. Legacy style: filecreatedfunc
-            # 3. Alternative: file_created
+            # 2. Legacy with prefix: filecreatedfunc
+            # 3. Legacy without prefix: linetextfunc (most common!)
+            # 4. Alternative: file_created
             possible_labels = [
-                f"{processor_name[0:3]}v_{verb_name}",  # filv_created
-                f"{processor_name}{verb_name}func",      # filecreatedfunc
+                f"{processor_name[0:3]}v_{verb_name}",  # filv_created (headless)
+                f"{processor_name}{verb_name}func",      # filecreatedfunc (legacy with prefix)
+                f"{verb_name}func",                      # linetextfunc (legacy NO prefix - MOST COMMON!)
                 f"{processor_name}_{verb_name}",         # file_created
                 f"{processor_name}{verb_name}",          # filecreated
             ]
