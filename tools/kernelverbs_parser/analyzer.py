@@ -19,6 +19,11 @@ from matchers import (
     parse_annotations,
     estimate_complexity
 )
+from verb_exceptions import (
+    get_pattern_c_exception,
+    is_pattern_d_processor,
+    generate_pattern_d_candidates
+)
 
 
 class VerbImplementationAnalyzer:
@@ -41,10 +46,11 @@ class VerbImplementationAnalyzer:
         Find the C source file containing verb implementations for a processor.
 
         Search order:
-        1. tests/headless_{processor}_verbs.c
+        1. Check if Pattern D processor (consolidated in langverbs.c)
         2. Common/source/{processor}verbs.c
         3. Common/source/lang{processor}.c
-        4. Special cases (frontier → frontierverbs.c, etc.)
+        4. tests/headless_{processor}_verbs.c
+        5. Special cases (frontier → frontierverbs.c, etc.)
 
         Args:
             processor_name: Name of the processor (e.g., "file", "frontier")
@@ -55,6 +61,13 @@ class VerbImplementationAnalyzer:
         # Find project root (two levels up from tools/kernelverbs_parser)
         script_dir = Path(__file__).parent
         project_root = script_dir.parent.parent
+
+        # Pattern D: Multi-processor consolidation
+        # These processors are all implemented in langverbs.c
+        if is_pattern_d_processor(processor_name):
+            langverbs_path = project_root / "Common/source/langverbs.c"
+            if langverbs_path.exists():
+                return str(langverbs_path.absolute())
 
         # Prefer Common/source (real implementations) over headless stubs
         search_patterns = [
@@ -284,17 +297,19 @@ class VerbImplementationAnalyzer:
 
         return []
 
-    def analyze_processor(self, processor_name: str, verb_count: int) -> List[VerbImplementation]:
+    def analyze_processor(self, processor) -> List[VerbImplementation]:
         """
         Analyze all verbs in a processor.
 
         Args:
-            processor_name: Name of the processor
-            verb_count: Number of verbs in this processor
+            processor: EFPProcessor object containing name, verb_count, and verb_names
 
         Returns:
             List of VerbImplementation records
         """
+        processor_name = processor.name
+        verb_count = processor.verb_count
+
         # Find implementation file
         impl_file = self.find_implementation_file(processor_name)
 
@@ -324,38 +339,56 @@ class VerbImplementationAnalyzer:
             print(f"Warning: Could not read source file: {impl_file}")
             return []
 
-        # Extract verb names from enum
-        verb_names = self.extract_verb_names_from_enum(source, processor_name)
+        # Use RC verb names as source of truth (preferred)
+        # Fall back to enum extraction only if RC parsing failed
+        if processor.verb_names and len(processor.verb_names) == verb_count:
+            verb_names = processor.verb_names
+        else:
+            # Fallback: Extract verb names from enum
+            verb_names = self.extract_verb_names_from_enum(source, processor_name)
 
-        if not verb_names:
-            print(f"Warning: Could not extract verb names for {processor_name} (expected enum not found)")
-            # Fall back to generic names
-            verb_names = [f"verb{i}" for i in range(verb_count)]
+            if not verb_names:
+                print(f"Warning: Could not extract verb names for {processor_name} (expected enum not found)")
+                # Fall back to generic names
+                verb_names = [f"verb{i}" for i in range(verb_count)]
 
-        if len(verb_names) != verb_count:
-            print(f"Warning: Verb count mismatch for {processor_name}: enum has {len(verb_names)}, RC has {verb_count}")
-            # Pad or truncate to match
-            if len(verb_names) < verb_count:
-                verb_names.extend([f"verb{i}" for i in range(len(verb_names), verb_count)])
-            else:
-                verb_names = verb_names[:verb_count]
+            if len(verb_names) != verb_count:
+                print(f"Warning: Verb count mismatch for {processor_name}: enum has {len(verb_names)}, RC has {verb_count}")
+                # Pad or truncate to match
+                if len(verb_names) < verb_count:
+                    verb_names.extend([f"verb{i}" for i in range(len(verb_names), verb_count)])
+                else:
+                    verb_names = verb_names[:verb_count]
 
         implementations = []
 
         # Analyze each verb
         for i, verb_name in enumerate(verb_names):
-            # Generate possible case labels (try multiple formats)
-            # 1. Headless style: filv_created
-            # 2. Legacy with prefix: filecreatedfunc
-            # 3. Legacy without prefix: linetextfunc (most common!)
-            # 4. Alternative: file_created
-            possible_labels = [
-                f"{processor_name[0:3]}v_{verb_name}",  # filv_created (headless)
-                f"{processor_name}{verb_name}func",      # filecreatedfunc (legacy with prefix)
-                f"{verb_name}func",                      # linetextfunc (legacy NO prefix - MOST COMMON!)
-                f"{processor_name}_{verb_name}",         # file_created
-                f"{processor_name}{verb_name}",          # filecreated
-            ]
+            # Generate possible case labels using exception tables and pattern detection
+            possible_labels = []
+
+            # Pattern C: Check exception table first
+            exception = get_pattern_c_exception(processor_name, verb_name)
+            if exception:
+                possible_labels.append(exception)
+
+            # Pattern D: Multi-processor consolidation (langverbs.c)
+            if is_pattern_d_processor(processor_name):
+                possible_labels.extend(generate_pattern_d_candidates(processor_name, verb_name))
+            else:
+                # Standard patterns (Pattern A, B)
+                # 1. Headless style: filv_created
+                # 2. Legacy with prefix: filecreatedfunc
+                # 3. Legacy without prefix: linetextfunc (most common!)
+                # 4. Alternative: file_created
+                possible_labels.extend([
+                    f"{processor_name[0:3]}v_{verb_name}",  # filv_created (headless)
+                    f"{processor_name}{verb_name}func",      # filecreatedfunc (legacy with prefix)
+                    f"{verb_name}func",                      # linetextfunc (legacy NO prefix - MOST COMMON!)
+                    f"{processor_name}_{verb_name}",         # file_created
+                    f"{processor_name}{verb_name}",          # filecreated
+                ])
+
 
             # Extract case implementation (tries all possible labels)
             case_source, line_num = self.extract_case_implementation(source, possible_labels)
@@ -395,7 +428,7 @@ class VerbImplementationAnalyzer:
         for processor in self.processors:
             print(f"Analyzing processor: {processor.name} ({processor.verb_count} verbs)")
 
-            impls = self.analyze_processor(processor.name, processor.verb_count)
+            impls = self.analyze_processor(processor)
             all_implementations.extend(impls)
 
         return all_implementations
