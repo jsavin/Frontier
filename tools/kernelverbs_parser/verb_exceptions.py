@@ -34,11 +34,11 @@ PATTERN_C_EXCEPTIONS = {
     },
     'crypt': {
         # crypt verbs in langcrypt.c use lowercase C enum tokens
-        # RC has mixed case (hmacMD5, MD5, SHA1) but C has lowercase (hmacmd5func, md5func, sha1func)
-        'hmacMD5': 'hmacmd5func',
-        'MD5': 'md5func',
-        'SHA1': 'sha1func',
-        'hmacSHA1': 'hmacsha1func',
+        # Note: verb names are normalized to lowercase in parse_kernelverbs.py
+        'hmacmd5': 'hmacmd5func',
+        'md5': 'md5func',
+        'sha1': 'sha1func',
+        'hmacsha1': 'hmacsha1func',
     },
     'file': {
         # file verbs in fileverbs.c have complex naming patterns:
@@ -47,15 +47,15 @@ PATTERN_C_EXCEPTIONS = {
         # 3. Space verbs with prefix: freespaceonvolume → volumefreespacefunc
         # 4. Dialog verbs with prefix: getfiledialog → sfgetfilefunc
         # 5. Version verbs: getversion → getshortversionfunc, getfullversion → setlongversionfunc
-        # 6. Mixed case verbs lowercase: getLabelIndex → getlabelindexfunc
+        # Note: verb names are normalized to lowercase in parse_kernelverbs.py
         'close': 'closefilefunc',
         'eject': 'volumeejectfunc',
         'findapplication': 'filelaunchfunc',
         'freespaceonvolume': 'volumefreespacefunc',
         'freespaceonvolumedouble': 'volumefreespacedoublefunc',
-        'getLabelIndex': 'getlabelindexfunc',
-        'getLabelNames': 'getlabelnamesfunc',
-        'getPosixPath': 'getposixpathfunc',
+        'getlabelindex': 'getlabelindexfunc',
+        'getlabelnames': 'getlabelnamesfunc',
+        'getposixpath': 'getposixpathfunc',
         'getdiskdialog': 'sfgetdiskfunc',
         'getfiledialog': 'sfgetfilefunc',
         'getfolderdialog': 'sfgetfolderfunc',
@@ -64,7 +64,7 @@ PATTERN_C_EXCEPTIONS = {
         'isejectable': 'volumeisejectablefunc',
         'open': 'openfilefunc',
         'putfiledialog': 'sfputfilefunc',
-        'setLabelIndex': 'setlabelindexfunc',
+        'setlabelindex': 'setlabelindexfunc',
         'setcreated': 'setfilecreatedfunc',
         'setcreator': 'setfilecreatorfunc',
         'setfullversion': 'setlongversionfunc',
@@ -74,28 +74,23 @@ PATTERN_C_EXCEPTIONS = {
     },
     'table': {
         # table verbs in tableverbs.c have consistent mapping with {verb}func pattern
+        # Note: verb names are normalized to lowercase in parse_kernelverbs.py
         'getsortorder': 'sortorderfunc',
-        'getCursor': 'getcursorfunc',
+        'getcursor': 'getcursorfunc',
         'go': 'gofunc',
         'goto': 'gotofunc',
-        'gotoName': 'gotonamefunc',
-        'sortBy': 'sortbyfunc',
-        # RC uses lowercase, add both for compatibility
-        'getcursor': 'getcursorfunc',
         'gotoname': 'gotonamefunc',
         'sortby': 'sortbyfunc',
     },
     'string': {
         # string verbs in stringverbs.c - mostly case-sensitive naming issues
-        'hashMD5': 'hashmd5func',
-        'innerCaseName': 'innercasefunc',
+        # Note: verb names are normalized to lowercase in parse_kernelverbs.py
+        'hashmd5': 'hashmd5func',
+        'innercasename': 'innercasefunc',
         'lower': 'lowercasefunc',
         'upper': 'uppercasefunc',
-        'parseHttpArgs': 'parseargsfunc',
-        'processhtmlmacros': 'processmacrosfunc',
-        # RC uses lowercase, add both for compatibility
-        'innercasename': 'innercasefunc',
         'parsehttpargs': 'parseargsfunc',
+        'processhtmlmacros': 'processmacrosfunc',
     },
     'lang': {
         # lang verbs in langverbs.c
@@ -103,8 +98,9 @@ PATTERN_C_EXCEPTIONS = {
     },
     'db': {
         # db verbs in dbverbs.c
-        'isTable': 'istablefunc',
-        'newTable': 'newtablefunc',
+        # Note: verb names are normalized to lowercase in parse_kernelverbs.py
+        'istable': 'istablefunc',
+        'newtable': 'newtablefunc',
     },
     'op': {
         # Add existing exceptions
