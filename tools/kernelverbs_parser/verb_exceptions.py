@@ -32,6 +32,51 @@ PATTERN_C_EXCEPTIONS = {
         'appisrunning': 'apprunningfunc',
         'frontmostapp': 'frontappfunc',
     },
+    'crypt': {
+        # crypt verbs in langcrypt.c use lowercase C enum tokens
+        # RC has mixed case (hmacMD5, MD5, SHA1) but C has lowercase (hmacmd5func, md5func, sha1func)
+        'hmacMD5': 'hmacmd5func',
+        'MD5': 'md5func',
+        'SHA1': 'sha1func',
+        'hmacSHA1': 'hmacsha1func',
+    },
+    'file': {
+        # file verbs in fileverbs.c have complex naming patterns:
+        # 1. File I/O verbs with infix: open → openfilefunc, close → closefilefunc
+        # 2. Volume verbs with prefix: eject → volumeejectfunc, isejectable → volumeisejectablefunc
+        # 3. Space verbs with prefix: freespaceonvolume → volumefreespacefunc
+        # 4. Dialog verbs with prefix: getfiledialog → sfgetfilefunc
+        # 5. Version verbs: getversion → getshortversionfunc, getfullversion → setlongversionfunc
+        # 6. Mixed case verbs lowercase: getLabelIndex → getlabelindexfunc
+        'close': 'closefilefunc',
+        'eject': 'volumeejectfunc',
+        'findapplication': 'filelaunchfunc',
+        'freespaceonvolume': 'volumefreespacefunc',
+        'freespaceonvolumedouble': 'volumefreespacedoublefunc',
+        'getLabelIndex': 'getlabelindexfunc',
+        'getLabelNames': 'getlabelnamesfunc',
+        'getPosixPath': 'getposixpathfunc',
+        'getdiskdialog': 'sfgetdiskfunc',
+        'getfiledialog': 'sfgetfilefunc',
+        'getfolderdialog': 'sfgetfolderfunc',
+        'getfullversion': 'setlongversionfunc',
+        'getversion': 'getshortversionfunc',
+        'isejectable': 'volumeisejectablefunc',
+        'open': 'openfilefunc',
+        'putfiledialog': 'sfputfilefunc',
+        'setLabelIndex': 'setlabelindexfunc',
+        'setcreated': 'setfilecreatedfunc',
+        'setcreator': 'setfilecreatorfunc',
+        'setfullversion': 'setlongversionfunc',
+        'setmodified': 'setfilemodifiedfunc',
+        'settype': 'setfiletypefunc',
+        'setversion': 'setshortversionfunc',
+    },
+    'table': {
+        # table verbs in tableverbs.c have one inconsistent mapping:
+        # RC has "getsortorder" but C has "sortorderfunc" (missing "get" prefix)
+        'getsortorder': 'sortorderfunc',
+    },
 }
 
 # Pattern D: Multi-processor consolidation
