@@ -91,13 +91,13 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case sysv_getenvironmentvariable:
-            /* Verb: sys.getenvironmentvariable - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: sys.getenvironmentvariable - implemented in shellsysverbs.c */
+            /* This stub should never be reached */
+            break;
         case sysv_setenvironmentvariable:
-            /* Verb: sys.setenvironmentvariable - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: sys.setenvironmentvariable - implemented in shellsysverbs.c */
+            /* This stub should never be reached */
+            break;
         case sysv_unixshellcommand:
             /* Verb: sys.unixshellcommand - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);

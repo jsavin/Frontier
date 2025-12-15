@@ -575,6 +575,14 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 			/* Convert C string to Pascal string and return */
 			{
 				bigstring result;
+				size_t len = strlen (value);
+
+				/* Check for buffer overflow - bigstring max content length is 255 */
+				if (len > 255) {
+					langerrormessage (BIGSTRING ("\pCan't get environment variable because value exceeds 255 characters"));
+					return (false);
+				}
+
 				copyctopstring (value, result);
 				return (setstringvalue (result, v));
 			}
@@ -595,12 +603,16 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 			nullterminate (varname);
 			nullterminate (varvalue);
 
-			/* Set environment variable */
+			/* Set environment variable
+			 * POSIX setenv() third parameter (overwrite=1) replaces existing value if present
+			 * Windows _putenv_s() always overwrites, no flag needed
+			 */
 			#ifdef WIN95VERSION
 			if (_putenv_s ((char *)varname, (char *)varvalue) != 0) {
 			#else
 			if (setenv ((char *)varname, (char *)varvalue, 1) != 0) {
 			#endif
+				langerrormessage (BIGSTRING ("\pCan't set environment variable because system call failed"));
 				return (false);
 			}
 

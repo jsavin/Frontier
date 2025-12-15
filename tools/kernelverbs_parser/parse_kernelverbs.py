@@ -230,6 +230,8 @@ def extract_verb_names(block_content: str, start_pos: int, expected_count: int) 
 
         # Normalize to lowercase for consistent matching in analyzer
         # RC file may have camelCase (getCursor, gotoName) but C code uses lowercase
+        # ASSUMPTION: All C case labels use lowercase naming (e.g., getcursorfunc, gotonamefunc)
+        # If this assumption is violated, patterns will fail to match and verbs will be missed
         verb_names.append(verb_name.lower())
 
         # Stop when we've found the expected number
