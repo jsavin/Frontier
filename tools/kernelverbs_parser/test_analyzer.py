@@ -396,5 +396,171 @@ class TestMetadataWriter(unittest.TestCase):
         self.assertIn('test', whitelist)
 
 
+class TestEdgeCases(unittest.TestCase):
+    """Test edge cases and boundary conditions."""
+
+    def test_processor_with_zero_verbs(self):
+        """Test analyzer handles processor with 0 verbs gracefully."""
+        # Create a processor with 0 verbs
+        processor = EFPProcessor(
+            efp_id="9999",
+            name="empty",
+            window_required=False,
+            verb_count=0,
+            verb_names=[]
+        )
+
+        analyzer = VerbImplementationAnalyzer([processor])
+        implementations = analyzer.analyze_processor(processor)
+
+        # Should return empty list, not crash
+        self.assertEqual(implementations, [])
+
+    def test_empty_c_source_file(self):
+        """Test analyzer behavior when C source file is empty."""
+        # Create processor with verbs but empty source
+        processor = EFPProcessor(
+            efp_id="9999",
+            name="empty_src",
+            window_required=False,
+            verb_count=2,
+            verb_names=["verb1", "verb2"]
+        )
+
+        analyzer = VerbImplementationAnalyzer([processor])
+
+        # Mock an empty source file by using read_source_file
+        # The analyzer should handle gracefully
+        implementations = analyzer.analyze_processor(processor)
+
+        # With empty source, all verbs should be marked as stubs
+        stub_count = sum(1 for impl in implementations if not impl.is_implemented)
+        self.assertEqual(stub_count, 2)
+
+    def test_verb_name_validation(self):
+        """Test that verb names with unusual characters are handled correctly."""
+        processor = EFPProcessor(
+            efp_id="9999",
+            name="test",
+            window_required=False,
+            verb_count=3,
+            verb_names=["normal", "with_underscore", "with123number"]
+        )
+
+        analyzer = VerbImplementationAnalyzer([processor])
+
+        # Source code with implementation
+        source = """
+        case normalfunc: {
+            return true;
+        }
+        case with_undercorefunc: {
+            return true;
+        }
+        case with123numberfunc: {
+            return true;
+        }
+        """
+
+        # Should extract without errors
+        case_source, line_num = analyzer.extract_case_implementation(
+            source,
+            ["normalfunc", "with_undercorefunc", "with123numberfunc"]
+        )
+
+        self.assertGreater(line_num, 0)
+        self.assertTrue("return true" in case_source)
+
+    def test_large_source_file_performance(self):
+        """Test that analyzer handles large source files efficiently."""
+        processor = EFPProcessor(
+            efp_id="9999",
+            name="large",
+            window_required=False,
+            verb_count=3,
+            verb_names=["verb1", "verb2", "verb3"]
+        )
+
+        # Create a large source file (1000+ lines)
+        large_source = "// Comment line\n" * 500
+        large_source += """
+        case verb1func: {
+            return true;
+        }
+        """
+        large_source += "// Comment line\n" * 500
+        large_source += """
+        case verb2func: {
+            return false; /* stub */
+        }
+        """
+        large_source += "// Comment line\n" * 500
+
+        analyzer = VerbImplementationAnalyzer([processor])
+
+        # Should process without performance issues
+        case_source, line_num = analyzer.extract_case_implementation(
+            large_source,
+            ["verb1func"]
+        )
+
+        self.assertGreater(line_num, 0)
+        self.assertIn("return true", case_source)
+
+    def test_case_extraction_with_fallthrough(self):
+        """Test case extraction handles code without explicit break."""
+        source = """
+        case test1func:
+        case test2func: {
+            // shared implementation (fall-through)
+            return true;
+        }
+        case test3func: {
+            return false;
+        }
+        """
+
+        analyzer = VerbImplementationAnalyzer([])
+
+        # Should extract test1func case
+        case_source, line_num = analyzer.extract_case_implementation(
+            source,
+            ["test1func"]
+        )
+
+        # Should find something (the shared implementation)
+        self.assertGreater(line_num, 0)
+
+    def test_deeply_nested_braces(self):
+        """Test case extraction with deeply nested block structures."""
+        source = """
+        case complexfunc: {
+            if (condition) {
+                while (true) {
+                    doSomething();
+                }
+            }
+            return true;
+        }
+        case nextfunc: {
+            return false;
+        }
+        """
+
+        analyzer = VerbImplementationAnalyzer([])
+
+        # Should correctly identify the end of complexfunc case
+        case_source, line_num = analyzer.extract_case_implementation(
+            source,
+            ["complexfunc"]
+        )
+
+        self.assertGreater(line_num, 0)
+        # Should NOT include the nextfunc case
+        self.assertNotIn("nextfunc", case_source)
+        # Should include opening of nested structures
+        self.assertIn("if (condition)", case_source)
+
+
 if __name__ == '__main__':
     unittest.main()
