@@ -6,17 +6,28 @@ Parses the Windows resource file containing EFP (External Function Processor)
 definitions and generates C initialization code that calls all verb processor
 init functions.
 
+With --analyze flag, automatically detects implemented verbs and generates
+the HEADLESS_REGISTERED whitelist.
+
 Usage:
-    python3 parse_kernelverbs.py <input.rc> <output.c>
+    python3 parse_kernelverbs.py <input.rc> <output.c> [--analyze]
 
 Example:
-    python3 parse_kernelverbs.py Common/resources/Win32/kernelverbs.rc generated/kernel_verbs_init.c
+    python3 parse_kernelverbs.py Common/resources/Win32/kernelverbs.rc generated/kernel_verbs_init.c --analyze
 """
 
 import sys
 import re
 from typing import List, Set, Tuple
 from pathlib import Path
+
+# Try to import analyzer for automatic verb detection (optional)
+try:
+    from analyzer import VerbImplementationAnalyzer
+    from metadata_writer import VerbMetadataWriter
+    ANALYZER_AVAILABLE = True
+except ImportError:
+    ANALYZER_AVAILABLE = False
 
 
 def validate_input_paths(input_path: str, output_path: str) -> bool:
@@ -304,24 +315,27 @@ def parse_kernelverbs_rc(rc_path: str) -> Tuple[List[EFPProcessor], bool]:
     return processors, had_errors
 
 
-def generate_kernel_verbs_init_c(processors: List[EFPProcessor], rc_path: str) -> str:
+def generate_kernel_verbs_init_c(processors: List[EFPProcessor], rc_path: str, whitelist: Set[str] = None) -> str:
     """
     Generate the C source code for kernel_verbs_init.c
 
     Args:
         processors: List of EFPProcessor objects
         rc_path: Path to the source kernelverbs.rc (for comments)
+        whitelist: Set of processor names to include (default: HEADLESS_REGISTERED)
 
     Returns:
         String containing the complete C source file
 
     Note:
-        Uses the module-level HEADLESS_REGISTERED whitelist to filter which
-        processors get initialization calls in the generated code.
+        If whitelist is not provided, uses the module-level HEADLESS_REGISTERED.
     """
-    # Filter to only implemented processors using module-level whitelist
-    implemented_procs = [p for p in processors if p.name in HEADLESS_REGISTERED]
-    unimplemented_procs = [p for p in processors if p.name not in HEADLESS_REGISTERED]
+    if whitelist is None:
+        whitelist = HEADLESS_REGISTERED
+
+    # Filter to only implemented processors using the provided whitelist
+    implemented_procs = [p for p in processors if p.name in whitelist]
+    unimplemented_procs = [p for p in processors if p.name not in whitelist]
 
     lines = [
         "/* Auto-generated from kernelverbs.rc - DO NOT EDIT BY HAND */",
@@ -385,6 +399,39 @@ def generate_kernel_verbs_init_c(processors: List[EFPProcessor], rc_path: str) -
     return "\n".join(lines)
 
 
+def generate_whitelist_from_analyzer(processors: List[EFPProcessor]) -> Set[str]:
+    """
+    Automatically generate HEADLESS_REGISTERED whitelist by analyzing implementations.
+
+    Uses the VerbImplementationAnalyzer to detect which processors have real
+    implementations vs. stubs, and returns the whitelist accordingly.
+
+    Args:
+        processors: List of EFPProcessor objects from RC file
+
+    Returns:
+        Set of processor names that have implementations
+    """
+    if not ANALYZER_AVAILABLE:
+        print("Error: Analyzer not available for automatic whitelist generation", file=sys.stderr)
+        return set()
+
+    try:
+        print("Running automatic verb binding analyzer...", file=sys.stderr)
+        analyzer = VerbImplementationAnalyzer(processors)
+        implementations = analyzer.analyze_all_processors()
+
+        # Generate whitelist from analyzer results
+        writer = VerbMetadataWriter(implementations)
+        whitelist = writer.generate_whitelist()
+
+        # Return as set
+        return set(whitelist)
+    except Exception as e:
+        print(f"Error running analyzer: {e}", file=sys.stderr)
+        return set()
+
+
 def main() -> None:
     """
     Main entry point.
@@ -396,15 +443,30 @@ def main() -> None:
 
     Exit code 2 is specifically for CI to detect accidental breakage in kernelverbs.rc.
     """
-    if len(sys.argv) != 3:
-        print("Usage: parse_kernelverbs.py <input.rc> <output.c>", file=sys.stderr)
+    # Parse command-line arguments
+    analyze_mode = False
+    if len(sys.argv) < 3:
+        print("Usage: parse_kernelverbs.py <input.rc> <output.c> [--analyze]", file=sys.stderr)
+        print(file=sys.stderr)
+        print("Arguments:", file=sys.stderr)
+        print("  <input.rc>     Path to kernelverbs.rc", file=sys.stderr)
+        print("  <output.c>     Path to kernel_verbs_init.c output", file=sys.stderr)
+        print("  --analyze      Enable automatic verb binding detection (optional)", file=sys.stderr)
         print(file=sys.stderr)
         print("Example:", file=sys.stderr)
         print("  python3 parse_kernelverbs.py Common/resources/Win32/kernelverbs.rc generated/kernel_verbs_init.c", file=sys.stderr)
+        print("  python3 parse_kernelverbs.py Common/resources/Win32/kernelverbs.rc generated/kernel_verbs_init.c --analyze", file=sys.stderr)
         sys.exit(1)
 
     input_path = sys.argv[1]
     output_path = sys.argv[2]
+
+    if len(sys.argv) > 3 and sys.argv[3] == '--analyze':
+        analyze_mode = True
+        if not ANALYZER_AVAILABLE:
+            print("Warning: --analyze requested but analyzer not available", file=sys.stderr)
+            print("         Falling back to hardcoded whitelist", file=sys.stderr)
+            analyze_mode = False
 
     # Validate paths before proceeding
     if not validate_input_paths(input_path, output_path):
@@ -419,9 +481,18 @@ def main() -> None:
         print("Warning: No EFP processors found in input file", file=sys.stderr)
         sys.exit(1)
 
-    # Use the module-level whitelist to categorize processors
-    implemented = [p for p in processors if p.name in HEADLESS_REGISTERED]
-    unimplemented = [p for p in processors if p.name not in HEADLESS_REGISTERED]
+    # Determine whitelist: auto-detect via analyzer or use hardcoded
+    if analyze_mode:
+        whitelist = generate_whitelist_from_analyzer(processors)
+        if not whitelist:
+            print("Warning: Analyzer returned empty whitelist, using hardcoded", file=sys.stderr)
+            whitelist = HEADLESS_REGISTERED
+    else:
+        whitelist = HEADLESS_REGISTERED
+
+    # Use the determined whitelist to categorize processors
+    implemented = [p for p in processors if p.name in whitelist]
+    unimplemented = [p for p in processors if p.name not in whitelist]
 
     print(f"Found {len(processors)} verb processors:", file=sys.stderr)
     print(f"\nImplemented in headless mode ({len(implemented)}):", file=sys.stderr)
@@ -434,7 +505,7 @@ def main() -> None:
 
     # Generate the C code
     print(f"\nGenerating {output_path}...", file=sys.stderr)
-    c_code = generate_kernel_verbs_init_c(processors, input_path)
+    c_code = generate_kernel_verbs_init_c(processors, input_path, whitelist)
 
     # Ensure output directory exists
     output_dir = Path(output_path).parent

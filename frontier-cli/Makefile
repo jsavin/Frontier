@@ -199,9 +199,10 @@ FRONTIER_SOURCES = $(RUNTIME_SOURCES) $(DATABASE_SOURCES) $(HEADLESS_STUBS) $(ST
 
 TARGET = frontier-cli
 
-# Kernel verbs compiler
+# Kernel verbs compiler and analyzer
 KERNELVERBS_PARSER = ../tools/kernelverbs_parser/parse_kernelverbs.py
 KERNELVERBS_RC = ../Common/resources/Win32/kernelverbs.rc
+KERNELVERBS_CLI = ../tools/kernelverbs_parser/cli.py
 
 all: strings_generated kernel_verbs_generated $(TARGET)
 
@@ -225,12 +226,37 @@ $(GENERATED_STRINGS): $(STRINGS_COMPILER) $(STRINGS_INPUTS)
 strings_generated: $(GENERATED_STRINGS)
 
 # Kernel verbs auto-generation from kernelverbs.rc
+# Uses --analyze flag to automatically detect implemented verbs from C source
 $(KERNEL_VERBS_C): $(KERNELVERBS_PARSER) $(KERNELVERBS_RC)
 	@mkdir -p $(GENERATED_DIR)
 	@echo "Generating kernel_verbs_init.c from kernelverbs.rc..."
-	@python3 $(KERNELVERBS_PARSER) $(KERNELVERBS_RC) $(KERNEL_VERBS_C)
+	@python3 $(KERNELVERBS_PARSER) $(KERNELVERBS_RC) $(KERNEL_VERBS_C) --analyze
 
 kernel_verbs_generated: $(KERNEL_VERBS_C)
+
+# Verb binding verification and reporting targets
+.PHONY: verify-verb-bindings regenerate-verb-bindings verb-status test-verb-bindings
+
+verify-verb-bindings:
+	@echo "Verifying verb binding analyzer against current state..."
+	@python3 $(KERNELVERBS_CLI) verify
+	@echo "✓ Verb binding verification passed"
+
+regenerate-verb-bindings:
+	@echo "Regenerating kernel_verbs_init.c with automatic verb detection..."
+	@rm -f $(KERNEL_VERBS_C)
+	@$(MAKE) kernel_verbs_generated
+	@echo "✓ Verb bindings regenerated"
+
+verb-status:
+	@echo "Generating verb binding coverage report..."
+	@python3 $(KERNELVERBS_CLI) report
+	@echo "✓ Coverage report generated in reports/coverage/verb-binding/"
+
+test-verb-bindings:
+	@echo "Running verb binding unit tests..."
+	@cd $$(dirname $(KERNELVERBS_CLI)) && python3 -m unittest test_analyzer -v
+	@echo "✓ All verb binding tests passed"
 
 clean:
 	rm -f $(TARGET)
