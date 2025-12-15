@@ -360,8 +360,9 @@ static boolean file_valueproc(short token, hdltreenode hparam1,
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case filv_mountservervolume:
-            /* Verb #61: file.mountservervolume - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            /* file.mountservervolume - error stub */
+            if (bserror)
+                copystring(BIGSTRING("\pCan't mount server volumes because it requires administrator privileges"), bserror);
             return false;
         case filv_findinfile:
             /* Verb #62: file.findinfile - not yet implemented */

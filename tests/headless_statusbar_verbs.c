@@ -32,24 +32,29 @@ static boolean statusbar_valueproc(short token, hdltreenode hparam1,
                                      bigstring bserror) {
     switch(token) {
         case stav_msg:
-            /* Verb #0: statusbar.msg - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            /* statusbar.msg - error stub */
+            if (bserror)
+                copystring(BIGSTRING("\pCan't use status bar verbs because GUI is not available in headless mode"), bserror);
             return false;
         case stav_setsections:
-            /* Verb #1: statusbar.setsections - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            /* statusbar.setsections - error stub */
+            if (bserror)
+                copystring(BIGSTRING("\pCan't use status bar verbs because GUI is not available in headless mode"), bserror);
             return false;
         case stav_getsections:
-            /* Verb #2: statusbar.getsections - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            /* statusbar.getsections - error stub */
+            if (bserror)
+                copystring(BIGSTRING("\pCan't use status bar verbs because GUI is not available in headless mode"), bserror);
             return false;
         case stav_getsectionone:
-            /* Verb #3: statusbar.getsectionone - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            /* statusbar.getsectionone - error stub */
+            if (bserror)
+                copystring(BIGSTRING("\pCan't use status bar verbs because GUI is not available in headless mode"), bserror);
             return false;
         case stav_getmessage:
-            /* Verb #4: statusbar.getmessage - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            /* statusbar.getmessage - error stub */
+            if (bserror)
+                copystring(BIGSTRING("\pCan't use status bar verbs because GUI is not available in headless mode"), bserror);
             return false;
         default:
             return false;

@@ -14,3 +14,4 @@
 - Always ask the user first before pushing changes to origin/develop.
 - When deciding where to track future work, use documents in the planning directory by default for work directly related to getting the headless Frontier runtime working on modern systems, and use GitHub issues (via the `gh` command) for future improvements beyond functional parity with the legacy Frontier runtime.
 - Error messages exposed to end-users in the UserTalk realm always take the form of: "Can't do X because Y. [Try Z instead.]"
+- Never delete a local or remote branch without confirming with the user first.

@@ -64,6 +64,27 @@
 // 2025-11-28 Codex: Use db_context when dereferencing externals during hash packing.
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
 
+/* Forward declare disk record types needed for static assertions */
+typedef union tydiskvaluedata_v7 {
+	uint64_t longvalue;      /* for int/long/token, etc. */
+	uint64_t datevalue;      /* 64-bit Mac epoch */
+	uint64_t doublebits;     /* IEEE 754 double bits */
+	int32_t dirvalue;        /* directions stay 32-bit */
+	struct { int16_t v; int16_t h; } pointvalue; /* 16-bit coords */
+	uint32_t ostypevalue;    /* 32-bit OSType */
+	uint32_t enumvalue;      /* 32-bit enum */
+	int32_t fixedvalue;      /* fixed stays 32-bit */
+	int32_t tokenvalue;      /* token stays 32-bit (in practice 16-bit) */
+} tydiskvaluedata_v7;
+
+typedef struct tydisksymbolrecord_v7 {
+	int32_t ixkey;       /* index into string handle */
+	uint8_t valuetype;   /* copied from value record */
+	uint8_t version;     /* packed flags/version */
+	uint16_t _pad;       /* align to 8-byte data */
+	tydiskvaluedata_v7 data; /* inline scalar storage */
+} tydisksymbolrecord_v7, *ptrdisksymbolrecord_v7, **hdldisksymbolrecord_v7;
+
 /* Ensure the manual BE layout matches the on-disk record definition. */
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
 _Static_assert(sizeof(tydisksymbolrecord_v7) == 16, "tydisksymbolrecord_v7 must be 16 bytes");
@@ -391,18 +412,6 @@ typedef union tydiskvaluedata {
 } tydiskvaluedata;
 
 /* v7+ value payloads: 64-bit numerics, BE on disk */
-typedef union tydiskvaluedata_v7 {
-	uint64_t longvalue;      /* for int/long/token, etc. */
-	uint64_t datevalue;      /* 64-bit Mac epoch */
-	uint64_t doublebits;     /* IEEE 754 double bits */
-	int32_t dirvalue;        /* directions stay 32-bit */
-	struct { int16_t v; int16_t h; } pointvalue; /* 16-bit coords */
-	uint32_t ostypevalue;    /* 32-bit OSType */
-	uint32_t enumvalue;      /* 32-bit enum */
-	int32_t fixedvalue;      /* fixed stays 32-bit */
-	int32_t tokenvalue;      /* token stays 32-bit (in practice 16-bit) */
-} tydiskvaluedata_v7;
-
 typedef struct tydisksymbolrecord { /*stored at offset 0 in the db file*/
 	int32_t ixkey; /*in the string handle, where is this symbol's name?*/
 	uint8_t valuetype; /*copied from the symbol's value record*/
@@ -418,14 +427,6 @@ typedef struct tyOLD42disksymbolrecord {
 	uint8_t flsorted : 1; /*were these records packed in sort order?*/
 	tydiskvaluedata data; /*if a string, this stores an index into the string handle*/
 } tyOLD42disksymbolrecord, *ptrOLD42disksymbolrecord, **hdlOLD42disksymbolrecord;
-
-typedef struct tydisksymbolrecord_v7 {
-	int32_t ixkey;       /* index into string handle */
-	uint8_t valuetype;   /* copied from value record */
-	uint8_t version;     /* packed flags/version */
-	uint16_t _pad;       /* align to 8-byte data */
-	tydiskvaluedata_v7 data; /* inline scalar storage */
-} tydisksymbolrecord_v7, *ptrdisksymbolrecord_v7, **hdldisksymbolrecord_v7;
 
 
 // 5.0.1: bumped version number so we can clear uninitialized flags
