@@ -73,9 +73,47 @@ PATTERN_C_EXCEPTIONS = {
         'setversion': 'setshortversionfunc',
     },
     'table': {
-        # table verbs in tableverbs.c have one inconsistent mapping:
-        # RC has "getsortorder" but C has "sortorderfunc" (missing "get" prefix)
+        # table verbs in tableverbs.c have consistent mapping with {verb}func pattern
         'getsortorder': 'sortorderfunc',
+        'getCursor': 'getcursorfunc',
+        'go': 'gofunc',
+        'goto': 'gotofunc',
+        'gotoName': 'gotonamefunc',
+        'sortBy': 'sortbyfunc',
+    },
+    'string': {
+        # string verbs in stringverbs.c - mostly case-sensitive naming issues
+        'hashMD5': 'hashmd5func',
+        'innerCaseName': 'innercasefunc',
+        'lower': 'lowercasefunc',
+        'upper': 'uppercasefunc',
+        'parseHttpArgs': 'parseargsfunc',
+        'processhtmlmacros': 'processmacrosfunc',
+    },
+    'db': {
+        # db verbs in dbverbs.c
+        'isTable': 'istablefunc',
+        'newTable': 'newtablefunc',
+    },
+    'op': {
+        # Add existing exceptions
+        'getlinetext': 'linetextfunc',
+        'subsexpanded': 'getexpandedfunc',
+        'getselection': 'getselectfunc',
+        # New exception
+        'tabkeyreorg': 'tabkeyreorgfunc',
+    },
+    'menu': {
+        # menu verbs in menuverbs.c
+        'getscript': 'getscriptfunc',
+    },
+    'html': {
+        # html verbs (some in langhtml.c)
+        'drawcalendar': 'htmlcalendardrawfunc',
+    },
+    'inetd': {
+        # inetd verbs in langhtml.c
+        'supervisor': 'inetdsupervisorfunc',
     },
 }
 
@@ -103,6 +141,13 @@ PATTERN_D_EXCEPTIONS = {
         'milliseconds': 'millisecondcountfunc',
         'waitseconds': 'delayfunc',
         'waitsixtieths': 'delaysixtiethsfunc',
+    },
+    'date': {
+        # date verbs in langverbs.c - extracted time components
+        'hour': 'datehourfunc',
+        'minute': 'dateminutefunc',
+        'month': 'datemonthfunc',
+        'year': 'dateyearfunc',
     },
     'rectangle': {
         # All rectangle verbs need full mapping
