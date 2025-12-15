@@ -152,21 +152,21 @@ For each verb, the audit context will help determine:
 
 | #   | Verb Name             | Status                                                                           | Notes                                                                |
 | --- | --------------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| 1   | `DDEevent`            | [ ] HAS_IMPL / [ ] LEGIT_STUB / [x] NEEDS_REVIEW / [ ] MAC_LEGACY / [ ] DEFERRED | Purpose uncertain                                                    |
-| 2   | `callxcmd`            | [ ] HAS_IMPL / [ ] LEGIT_STUB / [x] NEEDS_REVIEW / [ ] MAC_LEGACY / [ ] DEFERRED | Purpose uncertain                                                    |
-| 3   | `countapplelistitems` | [ ] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [x] DEFERRED | Requires OSA integration, Mac only                                   |
+| 1   | `DDEevent`            | [ ] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [x] DEFERRED | Mac-only Apple event; trigger "not implemented" error in UserTalk   |
+| 2   | `callxcmd`            | [ ] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [x] DEFERRED | Mac Classic XCMD interface, trigger "not implemented" error in UserTalk |
+| 3   | `countapplelistitems` | [ ] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [x] DEFERRED | OSA integration, trigger "not implemented" error in UserTalk         |
 | 4   | `delete`              | [x] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [ ] DEFERRED | UserTalk wrapper (kernel lang.delete), type coercion verb            |
 | 5   | `edit`                | [ ] HAS_IMPL / [x] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [ ] DEFERRED | Requires GUI                                                         |
-| 6   | `flushmemory`         | [ ] HAS_IMPL / [ ] LEGIT_STUB / [x] NEEDS_REVIEW / [ ] MAC_LEGACY / [ ] DEFERRED | Memory management tool                                               |
-| 7   | `getapplelistitem`    | [ ] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [x] DEFERRED | Requires OSA integration, Mac only                                   |
-| 8   | `geteventattribute`   | [ ] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [x] DEFERRED | Requires AppleScript support, Mac only                               |
-| 9   | `putapplelistitem`    | [ ] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [x] DEFERRED | Requires OSA integration, Mac only                                   |
+| 6   | `flushmemory`         | [x] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [ ] DEFERRED | C: flushmemfunc (langverbs.c:2620), simplify to noop returning true  |
+| 7   | `getapplelistitem`    | [ ] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [x] DEFERRED | OSA integration, trigger "not implemented" error in UserTalk         |
+| 8   | `geteventattribute`   | [ ] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [x] DEFERRED | AppleScript support, trigger "not implemented" error in UserTalk     |
+| 9   | `putapplelistitem`    | [ ] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [x] DEFERRED | OSA integration, trigger "not implemented" error in UserTalk         |
 | 10  | `rollbeachball`       | [ ] HAS_IMPL / [x] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [ ] DEFERRED | Requires GUI                                                         |
 | 11  | `scripterror`         | [ ] HAS_IMPL / [x] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [ ] DEFERRED | Core runtime functionality for tripping UserTalk errors              |
-| 12  | `seteventinteraction` | [ ] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [x] DEFERRED | Requires AppleScript support, Mac only                               |
+| 12  | `seteventinteraction` | [ ] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [x] DEFERRED | AppleScript support, trigger "not implemented" error in UserTalk     |
 | 13  | `short`               | [x] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [ ] DEFERRED | UserTalk wrapper (kernel lang.short), type coercion verb            |
 | 14  | `string4`             | [x] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [ ] DEFERRED | UserTalk wrapper (kernel lang.string4), type coercion verb          |
-| 15  | `transactionEvent`    | [ ] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [x] DEFERRED | Requires AppleScript support, Mac only                               |
+| 15  | `transactionEvent`    | [ ] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [x] DEFERRED | AppleScript support, trigger "not implemented" error in UserTalk     |
 
 ### menu (12/14 detected, 86% coverage)
 
@@ -365,3 +365,77 @@ For each verb, the audit context will help determine:
 | #   | Verb Name                   | Status                                                                           | Notes                                                        |
 | --- | --------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------ |
 | 1   | `frontiervaluetotaggedtext` | [x] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [ ] DEFERRED | UserTalk script in langxml.c (no C kernel implementation)    |
+
+---
+
+## Phase 3 Stub Implementation Strategy
+
+Based on comprehensive investigation of all NEEDS_REVIEW and DEFERRED verbs, the following strategy has been established for stubbing unimplemented verbs in headless mode:
+
+### Category 1: Trigger "Not Implemented" Errors
+
+**OSA/AppleScript Verbs** - These require Mac OS inter-application scripting capabilities with no headless equivalent:
+- `lang.DDEevent` - Mac-only Apple event communication
+- `lang.callxcmd` - Mac Classic XCMD external command interface
+- `lang.countapplelistitems` - Apple list manipulation
+- `lang.getapplelistitem` - Apple list access
+- `lang.putapplelistitem` - Apple list modification
+- `lang.geteventattribute` - Apple event attribute access
+- `lang.seteventinteraction` - Apple event interaction control
+- `lang.transactionEvent` - Apple transaction event handling
+
+**GUI-Only Verbs** - These require graphical windows/dialogs with no headless equivalent:
+- `window.dbstats` - Database statistics visualization window
+- `dialog.*` (hideitem, ismodalcard, runcard, setmodalcardtimeout, showitem) - Modal dialog operations
+- `statusbar.*` (all verbs) - Status bar operations
+- `window.getposition`, `window.setposition` - Window positioning
+
+**Admin-Required Operations** - These require elevated privileges unavailable in normal execution:
+- `clock.set` - Requires admin/root to set system time
+- `file.mountservervolume` - Requires admin to mount network volumes programmatically
+
+**Platform-Specific (Unavailable)** - These are for platforms not yet supported:
+- `sys.winshellcommand` - Windows-specific shell command execution
+
+**Optional Database Systems** - External databases not included in standard distribution:
+- All `mysql.*` verbs (23 total) - MySQL driver not available
+- All `sqlite.*` verbs (15 total) - SQLite driver not available
+
+### Category 2: Return Silent Success (Noop with True)
+
+**Non-Critical Display Operations** - These don't affect script logic; safe to succeed silently:
+- `table.getdisplaysettings` - Returns true (no actual display settings in headless)
+- `table.setdisplaysettings` - Returns true (display settings irrelevant in headless)
+
+**Memory Management Legacy Code** - Modern GC makes these unnecessary:
+- `lang.flushmemory` - Returns true (memory is automatically managed on modern systems)
+
+### Category 3: Delegate to Object State
+
+**Window Modification Tracking** - Modern architecture delegates to object's dirty flag:
+- `window.isModified(adr)` - Finds the object and returns its `fldirty` flag value
+- `window.setModified(adr, modified)` - Finds the object and updates its `fldirty` flag
+
+This maintains backward compatibility while using the proper object-based dirty tracking model.
+
+### Category 4: Keep Hybrid UserTalk/C Implementation
+
+**Modern Multi-Platform Paths** - These use platform detection in UserTalk with C kernel calls:
+- `file.getspecialfolderpath` - UserTalk logic for platform selection, C kernel for actual paths
+- `file.getsystemfolderpath` - UserTalk logic for platform selection, C kernel for actual paths
+
+This approach allows flexibility to update modern path strategies without changing C code.
+
+### Category 5: Already Implemented
+
+**Unix Shell Commands** - Already works on Unix-like systems:
+- `sys.unixshellcommand` - Already has full C implementation (calls unixshellcall)
+
+---
+
+## Implementation Notes
+
+- **Error Messages:** All "not implemented" errors should be raised at the UserTalk level with clear, user-friendly messages explaining why the operation is unavailable in headless mode.
+- **Script Continuity:** Where possible (Categories 2 and 3), verbs should succeed silently or with sensible defaults to allow legacy scripts to continue without modification.
+- **Future Expansion:** As support for Windows, optional databases, or GUI modes is added, these categories can be updated with actual implementations.
+- **Testing:** Each stub implementation should be tested to ensure it doesn't break existing scripts that might call these verbs.
