@@ -119,9 +119,17 @@ Add tests for scenarios identified in Phase 1 code review:
   - Pattern C processors: op (1/45 remaining), pict (0/4)
   - Pattern D processors: dialog, clock, date (any edge cases?)
 
-### 2.3 Developer Experience Improvements (Priority: Low)
+### 2.3 [DEFERRED TO PHASE 4] Developer Experience Improvements
 
-#### Task 2.3.1: Enhanced CLI Help
+This work has been deferred to Phase 4 (after Phase 3 kernel verb implementation) to prioritize actual verb implementation work.
+
+### Phase 3: Kernel Verb Implementation (Future)
+
+This phase will involve writing C implementations for the highest-priority stubbed verbs identified by the coverage analysis.
+
+### Phase 4: Developer Experience Improvements (Future, Priority: Low)
+
+#### Task 4.1: Enhanced CLI Help
 - **Description:** Add more comprehensive documentation to CLI
 - **Improvements:**
   - Add `--verbose` flag showing verb-by-verb analysis
@@ -129,14 +137,14 @@ Add tests for scenarios identified in Phase 1 code review:
   - Add `--format` option for different output formats (JSON, CSV, HTML)
   - Add `--compare` option to show diff between two reports
 
-#### Task 2.3.2: Debugging Utilities
+#### Task 4.2: Debugging Utilities
 - **Description:** Add developer-friendly debugging tools
 - **Tools:**
   - `debug-processor.py` - Deep dive into single processor
   - `compare-reports.py` - Compare two coverage reports
   - `validate-exceptions.py` - Verify exception table entries
 
-#### Task 2.3.3: Documentation Improvements
+#### Task 4.3: Documentation Improvements
 - **Description:** Enhance README and planning docs
 - **Updates:**
   - Add troubleshooting section for common issues
@@ -144,9 +152,9 @@ Add tests for scenarios identified in Phase 1 code review:
   - Add examples of extending analyzer for new processors
   - Create quick-start guide for new developers
 
-### 2.4 CI/CD Integration Preparation (Priority: Low)
+### Phase 5: CI/CD Integration Preparation (Future, Priority: Low)
 
-#### Task 2.4.1: GitHub Actions Workflow
+#### Task 5.1: GitHub Actions Workflow
 - **Description:** Create automated workflow for CI
 - **Workflow:**
   - Run analyzer on every PR to `develop`
@@ -154,7 +162,7 @@ Add tests for scenarios identified in Phase 1 code review:
   - Comment on PR if coverage regression detected
   - Generate coverage report as PR artifact
 
-#### Task 2.4.2: Coverage Regression Detection
+#### Task 5.2: Coverage Regression Detection
 - **Description:** Automatically flag coverage regressions
 - **Features:**
   - Track coverage metrics over time
@@ -166,27 +174,37 @@ Add tests for scenarios identified in Phase 1 code review:
 
 ## Implementation Phases
 
-### Phase 2.A: Edge Case Testing (Week 1-2)
+### Phase 2.A: Edge Case Testing ✅ COMPLETE
 - Implement 6 edge case test classes in `test_analyzer.py`
 - All new tests passing with 100% coverage
 - Document edge case handling in README
 
 **Success Criteria:**
-- All 6 edge case tests pass
-- Total test suite: 37+ tests
-- Documentation updated
+- ✅ All 6 edge case tests pass
+- ✅ Total test suite: 37+ tests
+- ✅ Documentation updated
 
-### Phase 2.B: Analyzer Robustness (Week 2-3)
+### Phase 2.B: Analyzer Robustness ✅ COMPLETE
 - Investigate Phase 1 patterns for improvements
 - Add 5-10 more exception table entries
 - Enhance error messages and logging
 
 **Success Criteria:**
-- Coverage improves from 56% to 58%+
-- No new test failures
-- Better error messages for debugging
+- ✅ Coverage improves from 60% to 61%+
+- ✅ No new test failures
+- ✅ 21 new exception table entries added
 
-### Phase 2.C: Developer Experience (Week 3-4)
+### Phase 3: Kernel Verb Implementation ⏳ NOT STARTED
+- Write C implementations for highest-priority stubbed verbs
+- Focus on headless-compatible processors first
+- Update verb_exceptions.py as new implementations are discovered
+
+**Success Criteria:**
+- Coverage improves to 70%+
+- At least 5-10 new verb implementations
+- Integration with build system
+
+### Phase 4: Developer Experience (Future)
 - Add enhanced CLI options
 - Create debugging utilities
 - Update documentation
@@ -196,7 +214,7 @@ Add tests for scenarios identified in Phase 1 code review:
 - 2-3 utility scripts created
 - README updated with examples
 
-### Phase 2.D: CI/CD Setup (Week 4)
+### Phase 5: CI/CD Setup (Future)
 - Create GitHub Actions workflow
 - Set up coverage tracking
 - Document integration approach
