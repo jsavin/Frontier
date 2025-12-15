@@ -80,6 +80,10 @@ PATTERN_C_EXCEPTIONS = {
         'goto': 'gotofunc',
         'gotoName': 'gotonamefunc',
         'sortBy': 'sortbyfunc',
+        # RC uses lowercase, add both for compatibility
+        'getcursor': 'getcursorfunc',
+        'gotoname': 'gotonamefunc',
+        'sortby': 'sortbyfunc',
     },
     'string': {
         # string verbs in stringverbs.c - mostly case-sensitive naming issues
@@ -89,6 +93,13 @@ PATTERN_C_EXCEPTIONS = {
         'upper': 'uppercasefunc',
         'parseHttpArgs': 'parseargsfunc',
         'processhtmlmacros': 'processmacrosfunc',
+        # RC uses lowercase, add both for compatibility
+        'innercasename': 'innercasefunc',
+        'parsehttpargs': 'parseargsfunc',
+    },
+    'lang': {
+        # lang verbs in langverbs.c
+        'flushmemory': 'flushmemfunc',
     },
     'db': {
         # db verbs in dbverbs.c
