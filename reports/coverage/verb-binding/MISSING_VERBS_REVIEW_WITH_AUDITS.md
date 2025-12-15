@@ -153,11 +153,11 @@ For each verb, the audit context will help determine:
 | #   | Verb Name             | Status                                                                           | Notes                                                                |
 | --- | --------------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
 | 1   | `DDEevent`            | [ ] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [x] DEFERRED | Mac-only Apple event; trigger "not implemented" error in UserTalk   |
-| 2   | `callxcmd`            | [ ] HAS_IMPL / [ ] LEGIT_STUB / [x] NEEDS_REVIEW / [ ] MAC_LEGACY / [ ] DEFERRED | Purpose uncertain                                                    |
+| 2   | `callxcmd`            | [ ] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [x] DEFERRED | Mac Classic XCMD interface, trigger "not implemented" error in UserTalk |
 | 3   | `countapplelistitems` | [ ] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [x] DEFERRED | OSA integration, trigger "not implemented" error in UserTalk         |
 | 4   | `delete`              | [x] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [ ] DEFERRED | UserTalk wrapper (kernel lang.delete), type coercion verb            |
 | 5   | `edit`                | [ ] HAS_IMPL / [x] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [ ] DEFERRED | Requires GUI                                                         |
-| 6   | `flushmemory`         | [ ] HAS_IMPL / [ ] LEGIT_STUB / [x] NEEDS_REVIEW / [ ] MAC_LEGACY / [ ] DEFERRED | Memory management tool                                               |
+| 6   | `flushmemory`         | [x] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [ ] DEFERRED | C: flushmemfunc (langverbs.c:2620), simplify to noop returning true  |
 | 7   | `getapplelistitem`    | [ ] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [x] DEFERRED | OSA integration, trigger "not implemented" error in UserTalk         |
 | 8   | `geteventattribute`   | [ ] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [x] DEFERRED | AppleScript support, trigger "not implemented" error in UserTalk     |
 | 9   | `putapplelistitem`    | [ ] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [x] DEFERRED | OSA integration, trigger "not implemented" error in UserTalk         |
