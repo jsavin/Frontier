@@ -152,21 +152,21 @@ For each verb, the audit context will help determine:
 
 | #   | Verb Name             | Status                                                                           | Notes                                                                |
 | --- | --------------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| 1   | `DDEevent`            | [ ] HAS_IMPL / [ ] LEGIT_STUB / [x] NEEDS_REVIEW / [ ] MAC_LEGACY / [ ] DEFERRED | Purpose uncertain                                                    |
+| 1   | `DDEevent`            | [ ] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [x] DEFERRED | Mac-only Apple event; trigger "not implemented" error in UserTalk   |
 | 2   | `callxcmd`            | [ ] HAS_IMPL / [ ] LEGIT_STUB / [x] NEEDS_REVIEW / [ ] MAC_LEGACY / [ ] DEFERRED | Purpose uncertain                                                    |
-| 3   | `countapplelistitems` | [ ] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [x] DEFERRED | Requires OSA integration, Mac only                                   |
+| 3   | `countapplelistitems` | [ ] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [x] DEFERRED | OSA integration, trigger "not implemented" error in UserTalk         |
 | 4   | `delete`              | [x] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [ ] DEFERRED | UserTalk wrapper (kernel lang.delete), type coercion verb            |
 | 5   | `edit`                | [ ] HAS_IMPL / [x] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [ ] DEFERRED | Requires GUI                                                         |
 | 6   | `flushmemory`         | [ ] HAS_IMPL / [ ] LEGIT_STUB / [x] NEEDS_REVIEW / [ ] MAC_LEGACY / [ ] DEFERRED | Memory management tool                                               |
-| 7   | `getapplelistitem`    | [ ] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [x] DEFERRED | Requires OSA integration, Mac only                                   |
-| 8   | `geteventattribute`   | [ ] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [x] DEFERRED | Requires AppleScript support, Mac only                               |
-| 9   | `putapplelistitem`    | [ ] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [x] DEFERRED | Requires OSA integration, Mac only                                   |
+| 7   | `getapplelistitem`    | [ ] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [x] DEFERRED | OSA integration, trigger "not implemented" error in UserTalk         |
+| 8   | `geteventattribute`   | [ ] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [x] DEFERRED | AppleScript support, trigger "not implemented" error in UserTalk     |
+| 9   | `putapplelistitem`    | [ ] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [x] DEFERRED | OSA integration, trigger "not implemented" error in UserTalk         |
 | 10  | `rollbeachball`       | [ ] HAS_IMPL / [x] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [ ] DEFERRED | Requires GUI                                                         |
 | 11  | `scripterror`         | [ ] HAS_IMPL / [x] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [ ] DEFERRED | Core runtime functionality for tripping UserTalk errors              |
-| 12  | `seteventinteraction` | [ ] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [x] DEFERRED | Requires AppleScript support, Mac only                               |
+| 12  | `seteventinteraction` | [ ] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [x] DEFERRED | AppleScript support, trigger "not implemented" error in UserTalk     |
 | 13  | `short`               | [x] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [ ] DEFERRED | UserTalk wrapper (kernel lang.short), type coercion verb            |
 | 14  | `string4`             | [x] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [ ] DEFERRED | UserTalk wrapper (kernel lang.string4), type coercion verb          |
-| 15  | `transactionEvent`    | [ ] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [x] DEFERRED | Requires AppleScript support, Mac only                               |
+| 15  | `transactionEvent`    | [ ] HAS_IMPL / [ ] LEGIT_STUB / [ ] NEEDS_REVIEW / [ ] MAC_LEGACY / [x] DEFERRED | AppleScript support, trigger "not implemented" error in UserTalk     |
 
 ### menu (12/14 detected, 86% coverage)
 
