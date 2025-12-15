@@ -481,8 +481,115 @@ Data-driven stub generation working! Future stub additions only require updating
 - UserTalk-level error propagation tests (optional enhancement)
 - Backward compatibility verification (covered by existing test suite)
 
+---
+
+## Phase 3.E: Verb Binding Coverage Improvements (2025-12-15)
+
+**Context:** After completing Phase 3.B-3.D (stub implementation), shifted focus to improving verb binding accuracy before implementing additional verbs.
+
+**Motivation:** The analyzer had 56% coverage (400/707 verbs detected as implemented), meaning 307 verbs were marked as stubbed. Analysis of MISSING_VERBS_REVIEW_WITH_AUDITS.md identified false negatives - HAS_IMPL verbs missed by the analyzer.
+
+### Step 1: Exception Table Enhancement (Commit 0deb9957)
+
+**Problem:** Analyzer missed 27 HAS_IMPL verbs because exception table had incomplete mappings.
+
+**Root Cause:** Initial audit found verbs with irregular C mappings not yet in exception table:
+- `lang.flushmemory` → `flushmemfunc` (unusual naming)
+- `string` verbs with case sensitivity issues
+- `table` verbs with case sensitivity issues
+- `db` verbs with irregular mappings
+- `html.drawcalendar` → `htmlcalendardrawfunc`
+- `inetd.supervisor` → `inetdsupervisorfunc`
+
+**Changes Made:**
+1. Added 7 new exception entries to `verb_exceptions.py` PATTERN_C_EXCEPTIONS:
+   - `lang.flushmemory` → `flushmemfunc`
+   - `string.innercasename` (camelCase variant support)
+   - `string.parsehttpargs` (camelCase variant support)
+   - `table.getcursor` (camelCase variant support)
+   - `table.gotoname` (camelCase variant support)
+   - `table.sortby` (camelCase variant support)
+   - `db.istable`, `db.newtable` (irregular mappings)
+
+2. Added entries for Pattern D exceptions (multi-processor consolidation):
+   - `html.drawcalendar`
+   - `inetd.supervisor`
+
+**Result:** Coverage improved from 56% to 61% (400 → 438 verbs detected)
+
+**Note:** This identified a deeper issue: RC file uses camelCase verb names (getCursor, gotoName) but exception table only handled one variant, causing misses.
+
+### Step 2: Verb Name Normalization Refactoring (Commit ceb82be7)
+
+**Problem:** RC file has mixed-case verb names (camelCase like `getCursor`, `gotoName`) but C code uses lowercase function names. The analyzer's pattern matching wasn't accounting for this case difference.
+
+**Root Cause Analysis:**
+- RC file: `getCursor`, `gotoName` (camelCase - from legacy uppercase ID naming)
+- C code: `getcursorfunc`, `gotonamefunc` (lowercase - function naming)
+- Exception table: Had both `getCursor` and `getcursor` entries (duplication, inconsistent)
+- Pattern matching: Case-sensitive, so wouldn't match `getCursor` → `getcursorfunc`
+
+**Solution:** Rather than making regex case-insensitive (which could over-match), normalize verb names at source in the parser.
+
+**Changes Made:**
+1. Modified `tools/kernelverbs_parser/parse_kernelverbs.py` function `extract_verb_names()`:
+   - Added `.lower()` normalization to all verb names extracted from RC
+   - This ensures all 707 verbs are normalized to lowercase before analyzer processing
+   - Location: Line ~230 in extract_verb_names()
+
+2. Updated ALL exception table entries to use lowercase only:
+   - `crypt` processor: All entries normalized to lowercase (hmacmd5, md5, sha1, etc.)
+   - `file` processor: All entries normalized to lowercase (40+ entries)
+   - `db` processor: Normalized `istable`, `newtable`
+   - `string` processor: Normalized all entries to lowercase only
+   - `table` processor: Removed camelCase variants, kept only lowercase
+
+**Result:** Coverage improved from 61% to 67% (438 → 477 verbs detected)
+- This represents +11 percentage points from the starting 56%
+- 230 verbs remaining as stubbed (32%)
+- All tests passing with no regressions
+
+**Key Insight:** Case normalization at source prevents duplication in exception tables and makes the codebase easier to maintain. Future verb additions only need lowercase entries in exceptions.
+
+### Verification
+
+Both changes passed full test suite:
+```bash
+./tools/run_headless_tests.sh
+# All tests PASS
+```
+
+No regressions introduced. The improvements are purely additive to analyzer accuracy.
+
+### Files Modified
+
+1. **`tools/kernelverbs_parser/verb_exceptions.py`**
+   - Added 7 new exception entries (Commit 0deb9957)
+   - Normalized all camelCase entries to lowercase (Commit ceb82be7)
+   - Removed duplicate entry variants after normalization
+
+2. **`tools/kernelverbs_parser/parse_kernelverbs.py`**
+   - Modified `extract_verb_names()` to call `.lower()` on all verb names (Commit ceb82be7)
+   - Single line change with significant impact on accuracy
+
+### Metrics Summary
+
+| Metric | Before | After | Change |
+|--------|--------|-------|--------|
+| Detected (Implemented) | 400/707 (56%) | 477/707 (67%) | +77 verbs |
+| Stubbed | 307/707 (44%) | 230/707 (33%) | -77 verbs |
+| Exception Entries | ~85 | ~92 | +7 new mappings |
+
+### Next Steps
+
+1. **Phase 3.F:** Identify high-priority missing verbs (230 remaining) that can work in headless mode
+2. **Phase 3.G:** Implement missing headless-compatible verbs with test-first approach
+3. **Future:** Address remaining stubbed verbs (GUI-only, optional databases)
+
+---
+
 ## Next Steps
 
-1. **Phase 3.D:** Create PR to develop branch
-2. **Phase 4:** Developer Experience improvements (CLI enhancements, debugging tools)
+1. **Phase 3.F:** Identify high-priority missing verbs that can work headless
+2. **Phase 4:** Implement identified missing verbs with tests
 3. **Phase 5:** CI/CD integration (automated coverage tracking)

@@ -6,6 +6,7 @@
 - Any change to a typedev struct with "disk" in the name should trigger a question to the user before implementation.
 - The v7 database format should not contain any font, font size, or font style information *except* within stored RTF objects.
 - Run the headless test flow with `./tools/run_headless_tests.sh` (rebuilds CLI, migrates `databases/Frontier-v6.root` to `databases/Frontier-v6-v7.root`, then runs `make -C tests test`); use this as the standard before/after change check.
+- Run the verb binding analyzer with `cd tools/kernelverbs_parser && python3 cli.py analyze` (shows current verb detection: implemented vs stubbed). Use `python3 cli.py report` to generate detailed coverage reports. Use `python3 cli.py report -o -` for stdout output.
 - Whenever you're about to start new development work, always create a branch for that work if the local tree is currently on "develop".
 - You have permission to use the `gh` command.
 - Don't ever create PRs that would merge with the tedchoward upstream fork.
