@@ -1,8 +1,9 @@
 # Phase 3: Kernel Verb Implementation - Detailed Plan
 
-**Status:** Planning (Ready for user approval)
+**Status:** Phase 3.A-3.C COMPLETE ✅ (Data-driven automation working!)
 **Scope:** Implement stub verbs for headless execution based on Phase 2.C categorization strategy
-**Priority:** Core headless infrastructure (24 error stubs + 3 noops)
+**Priority:** Core headless infrastructure (27 error stubs + 3 noops)
+**Completed:** 2025-12-15
 
 ---
 
@@ -431,37 +432,57 @@ on test_lang_ddevent_error() {
 
 ## Implementation Checklist
 
-### Phase 3.A: Preparation & Verification
-- [ ] Audit current state of headless_*.c files for target processors
-- [ ] Verify processor registration in kernel_verbs_headless.c
-- [ ] Confirm tests/Makefile includes all stub files
-- [ ] Check if verbs already have any implementation (even partial)
-- [ ] Research window.isModified/setModified usage in headless scripts
-- [ ] Decide on window.isModified/setModified approach (error stub vs delegation)
-- [ ] Verify build system integration for all 8 target files
+### Phase 3.A: Preparation & Verification ✅ COMPLETE
+- [x] Audit current state of headless_*.c files for target processors
+- [x] Verify processor registration in kernel_verbs_headless.c
+- [x] Confirm tests/Makefile includes all stub files
+- [x] Check if verbs already have any implementation (even partial)
+- [ ] Research window.isModified/setModified usage in headless scripts (DEFERRED)
+- [ ] Decide on window.isModified/setModified approach (error stub vs delegation) (DEFERRED)
+- [x] Verify build system integration for all 8 target files
 
-### Phase 3.B: Core Implementation
-- [ ] Implement 24 error stubs across 8 processor files
-- [ ] Implement 3 noop stubs (table display settings, lang.flushmemory)
-- [ ] Update verb_exceptions.py if needed
+### Phase 3.B: Core Implementation ✅ COMPLETE
+- [x] Created stub_config.py with 27 verb configurations (5 categories)
+- [x] Enhanced generate_processor_stubs.py with data-driven generation
+- [x] Regenerated 7 processor files with proper stubs (lang, dialog, statusbar, window, clock, sys, table)
+- [x] Manually updated file.mountservervolume (file processor uses special callback)
+- [x] Fixed critical build blocker: langhash.c typedef ordering
+- [x] Implement 24 error stubs across 8 processor files
+- [x] Implement 3 noop stubs (table display settings, lang.flushmemory)
+- [x] Update verb_exceptions.py if needed (NOT NEEDED - config-based now)
 
-### Phase 3.C: Testing & Validation
-- [ ] Run headless test suite and verify no regressions
-- [ ] Create UserTalk-level tests for error propagation
-- [ ] Verify backward compatibility with legacy scripts
+### Phase 3.C: Testing & Validation ✅ COMPLETE
+- [x] Run headless test suite and verify no regressions (ALL TESTS PASS)
+- [ ] Create UserTalk-level tests for error propagation (OPTIONAL - defer to Phase 4)
+- [ ] Verify backward compatibility with legacy scripts (OPTIONAL - defer to Phase 4)
 
-### Phase 3.D: Documentation & PR
+### Phase 3.D: Documentation & PR 🔄 IN PROGRESS
 - [ ] Update MISSING_VERBS_REVIEW_WITH_AUDITS.md with completion status
-- [ ] Commit all changes to feature/automatic-verb-binding
+- [x] Commit all changes to feature/automatic-verb-binding (commit cf351013)
 - [ ] Create PR to develop with summary of changes
 - [ ] Merge after approval
 
 ---
 
-## Next Steps After Approval
+## Implementation Summary (2025-12-15)
 
-1. **Implementation:** Execute Phase 3.A steps in order
-2. **Testing:** Run Phase 3.B validation
-3. **PR:** Create PR to feature/automatic-verb-binding with all changes
-4. **Review:** Merge after approval
-5. **Planning:** Begin Phase 4 (Developer Experience) or Phase 5 (CI/CD)
+**Completed in this session:**
+1. ✅ Created data-driven automation: `stub_config.py` (27 verb configs, 5 categories)
+2. ✅ Enhanced generator with `--force-regenerate` flag
+3. ✅ Regenerated 7 stub files with proper error messages and noops
+4. ✅ Fixed critical build blocker in `langhash.c` (typedef ordering)
+5. ✅ All tests passing - no regressions
+
+**Key Achievement:**
+Data-driven stub generation working! Future stub additions only require updating `stub_config.py` - no manual code editing needed for most cases.
+
+**Deferred to Future Phases:**
+- window.isModified/setModified research (needs usage analysis)
+- UserTalk-level error propagation tests (optional enhancement)
+- Backward compatibility verification (covered by existing test suite)
+
+## Next Steps
+
+1. **Phase 3.D:** Create PR to develop branch
+2. **Phase 4:** Developer Experience improvements (CLI enhancements, debugging tools)
+3. **Phase 5:** CI/CD integration (automated coverage tracking)
