@@ -24,7 +24,37 @@ Frontier's kernel verbs are defined in `Common/resources/Win32/kernelverbs.rc` u
 
 ## Quick Start
 
-### Analyze Verb Implementations
+### Build Integration (Recommended)
+
+The analyzer is now integrated into the build process. Run from `frontier-cli/`:
+
+```bash
+cd frontier-cli
+
+# Build with automatic verb binding detection
+make
+
+# Verify verb binding consistency
+make verify-verb-bindings
+
+# Generate coverage report
+make verb-status
+
+# Regenerate kernel_verbs_init.c with latest detection
+make regenerate-verb-bindings
+
+# Run verb binding tests
+make test-verb-bindings
+```
+
+The build automatically:
+- Analyzes C source to detect implemented verbs
+- Generates `kernel_verbs_init.c` with only detected processors
+- Reports which verbs are implemented vs. stubbed
+
+### Manual Analysis
+
+For detailed analysis without rebuilding:
 
 ```bash
 cd tools/kernelverbs_parser
@@ -438,28 +468,64 @@ If the coverage report is incomplete or doesn't show a processor:
    python3 -m unittest test_analyzer.TestAnalyzerIntegration -v
    ```
 
+## Build Integration
+
+The analyzer is automatically invoked during the build process:
+
+1. **Makefile Integration**: `frontier-cli/Makefile` runs analyzer with `--analyze` flag
+   - Automatic detection of implemented verbs from C source
+   - No manual whitelist maintenance needed
+   - Generates `kernel_verbs_init.c` with detected processors
+
+2. **Available Build Targets**:
+   - `make` - Build with automatic verb detection (default)
+   - `make verify-verb-bindings` - Verify analyzer consistency
+   - `make verb-status` - Generate coverage report
+   - `make regenerate-verb-bindings` - Force regenerate
+   - `make test-verb-bindings` - Run analyzer tests
+
+3. **How It Works**:
+   - `parse_kernelverbs.py --analyze` imports analyzer module
+   - Analyzer scans all C source files for implementations
+   - Whitelist generated from actual detections
+   - Only processors with real implementations included in init code
+
 ## Maintenance
 
 The analyzer tools are designed to be simple and maintainable:
 
 **analyzer.py**:
-- ~460 lines of Python with type hints
+- ~467 lines of Python with type hints
 - Pattern matching on C source without modification
 - Exception table lookups for irregular mappings
+- File caching for performance
 - No external dependencies
 
 **verb_exceptions.py**:
-- ~194 lines of Python with exception table dicts
+- ~193 lines of Python with exception table dicts
 - Helper functions for pattern detection
 - Easy to extend with new processor exceptions
+- Supports Pattern C (inconsistent naming) and Pattern D (multi-processor consolidation)
 
 **cli.py**:
-- ~300 lines of Python
+- ~302 lines of Python
 - Command-line interface for analysis, reporting, and verification
 - Auto-dating report filenames with sequential numbering
+
+**metadata_writer.py**:
+- ~298 lines of Python
+- VerbImplementation dataclass with serialization
+- Coverage report generation with processor summary tables
+- Whitelist generation from implementation metadata
 
 **test_analyzer.py**:
 - 31 comprehensive unit tests
 - Tests all patterns, exceptions, and edge cases
-- All tests pass in ~0.25 seconds
+- All tests pass in ~0.07 seconds
 - Uses stdlib unittest (no external dependencies)
+
+**parse_kernelverbs.py**:
+- ~530 lines of Python
+- Supports `--analyze` flag for automatic verb detection
+- Falls back to hardcoded whitelist if analyzer unavailable
+- Generates `kernel_verbs_init.c` with detected processors
