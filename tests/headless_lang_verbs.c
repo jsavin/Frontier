@@ -11,7 +11,6 @@
 
 #include "frontier.h"
 #include "standard.h"
-#include <stdlib.h>
 
 #include "memory.h"
 #include "strings.h"
@@ -86,252 +85,243 @@ static boolean lang_valueproc(short token, hdltreenode hparam1,
                                      bigstring bserror) {
     switch(token) {
         case lanv_scripterror:
-            /* Verb #0: lang.scripterror - not yet implemented */
+            /* Verb: lang.scripterror - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_new:
-            /* Verb #1: lang.new - not yet implemented */
+            /* Verb: lang.new - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_delete:
-            /* Verb #2: lang.delete - not yet implemented */
+            /* Verb: lang.delete - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_edit:
-            /* Verb #3: lang.edit - not yet implemented */
+            /* Verb: lang.edit - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_close:
-            /* Verb #4: lang.close - not yet implemented */
+            /* Verb: lang.close - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_timecreated:
-            /* Verb #5: lang.timecreated - not yet implemented */
+            /* Verb: lang.timecreated - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_timemodified:
-            /* Verb #6: lang.timemodified - not yet implemented */
+            /* Verb: lang.timemodified - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_settimecreated:
-            /* Verb #7: lang.settimecreated - not yet implemented */
+            /* Verb: lang.settimecreated - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_settimemodified:
-            /* Verb #8: lang.settimemodified - not yet implemented */
+            /* Verb: lang.settimemodified - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_boolean:
-            /* Verb #9: lang.boolean - not yet implemented */
+            /* Verb: lang.boolean - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_char:
-            /* Verb #10: lang.char - not yet implemented */
+            /* Verb: lang.char - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_short:
-            /* Verb #11: lang.short - not yet implemented */
+            /* Verb: lang.short - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_long:
-            /* Verb #12: lang.long - not yet implemented */
+            /* Verb: lang.long - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_date:
-            /* Verb #13: lang.date - not yet implemented */
+            /* Verb: lang.date - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_direction:
-            /* Verb #14: lang.direction - not yet implemented */
+            /* Verb: lang.direction - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_string4:
-            /* Verb #15: lang.string4 - not yet implemented */
+            /* Verb: lang.string4 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_string:
-            /* Verb #16: lang.string - not yet implemented */
+            /* Verb: lang.string - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_displaystring:
-            /* Verb #17: lang.displaystring - not yet implemented */
+            /* Verb: lang.displaystring - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_address:
-            /* Verb #18: lang.address - not yet implemented */
+            /* Verb: lang.address - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_binary:
-            /* Verb #19: lang.binary - not yet implemented */
+            /* Verb: lang.binary - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_getbinarytype:
-            /* Verb #20: lang.getbinarytype - not yet implemented */
+            /* Verb: lang.getbinarytype - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_setbinarytype:
-            /* Verb #21: lang.setbinarytype - not yet implemented */
+            /* Verb: lang.setbinarytype - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_point:
-            /* Verb #22: lang.point - not yet implemented */
+            /* Verb: lang.point - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_rect:
-            /* Verb #23: lang.rect - not yet implemented */
+            /* Verb: lang.rect - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_rgb:
-            /* Verb #24: lang.rgb - not yet implemented */
+            /* Verb: lang.rgb - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_pattern:
-            /* Verb #25: lang.pattern - not yet implemented */
+            /* Verb: lang.pattern - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_fixed:
-            /* Verb #26: lang.fixed - not yet implemented */
+            /* Verb: lang.fixed - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_single:
-            /* Verb #27: lang.single - not yet implemented */
+            /* Verb: lang.single - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_double:
-            /* Verb #28: lang.double - not yet implemented */
+            /* Verb: lang.double - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_filespec:
-            /* Verb #29: lang.filespec - not yet implemented */
+            /* Verb: lang.filespec - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_alias:
-            /* Verb #30: lang.alias - not yet implemented */
+            /* Verb: lang.alias - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_list:
-            /* Verb #31: lang.list - not yet implemented */
+            /* Verb: lang.list - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_record:
-            /* Verb #32: lang.record - not yet implemented */
+            /* Verb: lang.record - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_enum:
-            /* Verb #33: lang.enum - not yet implemented */
+            /* Verb: lang.enum - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_memavail:
-            /* Verb #34: lang.memavail - not yet implemented */
+            /* Verb: lang.memavail - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_flushmemory:
-            /* Verb #35: lang.flushmemory - not yet implemented */
+            /* lang.flushmemory - noop stub (safe no-op) */
+            (void)hparam1;  /* Suppress unused parameter warning */
+            return true;
+        case lanv_random:
+            /* Verb: lang.random - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case lanv_random:
-        {
-            long lower, upper;
-
-            if (!getlongvalue(hparam1, 1, &lower))
-                return false;
-
-            flnextparamislast = true;
-            if (!getlongvalue(hparam1, 2, &upper))
-                return false;
-
-            if (lower > upper) {
-                if (bserror)
-                    copystring(BIGSTRING("\pbounds error"), bserror);
-                return false;
-            }
-
-            long n = rand();
-            n = lower + (labs(n) % (upper - lower + 1));
-            return setlongvalue(n, vreturned);
-        }
         case lanv_evaluate:
-            /* Verb #37: lang.evaluate - not yet implemented */
+            /* Verb: lang.evaluate - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_evaluatethread:
-            /* Verb #38: lang.evaluatethread - not yet implemented */
+            /* Verb: lang.evaluatethread - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_rollbeachball:
-            /* Verb #39: lang.rollbeachball - not yet implemented */
+            /* Verb: lang.rollbeachball - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_abs:
-            /* Verb #40: lang.abs - not yet implemented */
+            /* Verb: lang.abs - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_seteventtimeout:
-            /* Verb #41: lang.seteventtimeout - not yet implemented */
+            /* Verb: lang.seteventtimeout - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_seteventtransactionid:
-            /* Verb #42: lang.seteventtransactionid - not yet implemented */
+            /* Verb: lang.seteventtransactionid - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_seteventinteraction:
-            /* Verb #43: lang.seteventinteraction - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            /* lang.seteventinteraction - error stub */
+            if (bserror)
+                copystring(BIGSTRING("\pCan't call OSA verbs because AppleScript is not available in headless mode"), bserror);
             return false;
         case lanv_geteventattribute:
-            /* Verb #44: lang.geteventattribute - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            /* lang.geteventattribute - error stub */
+            if (bserror)
+                copystring(BIGSTRING("\pCan't call OSA verbs because AppleScript is not available in headless mode"), bserror);
             return false;
         case lanv_coerceappleitem:
-            /* Verb #45: lang.coerceappleitem - not yet implemented */
+            /* Verb: lang.coerceappleitem - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_getapplelistitem:
-            /* Verb #46: lang.getapplelistitem - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            /* lang.getapplelistitem - error stub */
+            if (bserror)
+                copystring(BIGSTRING("\pCan't call OSA verbs because AppleScript is not available in headless mode"), bserror);
             return false;
         case lanv_putapplelistitem:
-            /* Verb #47: lang.putapplelistitem - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            /* lang.putapplelistitem - error stub */
+            if (bserror)
+                copystring(BIGSTRING("\pCan't call OSA verbs because AppleScript is not available in headless mode"), bserror);
             return false;
         case lanv_countapplelistitems:
-            /* Verb #48: lang.countapplelistitems - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            /* lang.countapplelistitems - error stub */
+            if (bserror)
+                copystring(BIGSTRING("\pCan't call OSA verbs because AppleScript is not available in headless mode"), bserror);
             return false;
         case lanv_systemevent:
-            /* Verb #49: lang.systemevent - not yet implemented */
+            /* Verb: lang.systemevent - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_DDEevent:
-            /* Verb #50: lang.DDEevent - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            /* lang.DDEevent - error stub */
+            if (bserror)
+                copystring(BIGSTRING("\pCan't call OSA verbs because AppleScript is not available in headless mode"), bserror);
             return false;
         case lanv_transactionEvent:
-            /* Verb #51: lang.transactionEvent - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            /* lang.transactionEvent - error stub */
+            if (bserror)
+                copystring(BIGSTRING("\pCan't call OSA verbs because AppleScript is not available in headless mode"), bserror);
             return false;
         case lanv_msg:
-            /* Verb #52: lang.msg - not yet implemented */
+            /* Verb: lang.msg - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_callxcmd:
-            /* Verb #53: lang.callxcmd - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            /* lang.callxcmd - error stub */
+            if (bserror)
+                copystring(BIGSTRING("\pCan't call OSA verbs because AppleScript is not available in headless mode"), bserror);
             return false;
         case lanv_calldll:
-            /* Verb #54: lang.calldll - not yet implemented */
+            /* Verb: lang.calldll - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_packwindow:
-            /* Verb #55: lang.packwindow - not yet implemented */
+            /* Verb: lang.packwindow - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_unpackwindow:
-            /* Verb #56: lang.unpackwindow - not yet implemented */
+            /* Verb: lang.unpackwindow - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_callscript:
-            /* Verb #57: lang.callscript - not yet implemented */
+            /* Verb: lang.callscript - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         default:

@@ -58,127 +58,130 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
                                      bigstring bserror) {
     switch(token) {
         case winv_isopen:
-            /* Verb #0: window.isopen - not yet implemented */
+            /* Verb: window.isopen - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case winv_open:
-            /* Verb #1: window.open - not yet implemented */
+            /* Verb: window.open - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case winv_isfront:
-            /* Verb #2: window.isfront - not yet implemented */
+            /* Verb: window.isfront - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case winv_bringtofront:
-            /* Verb #3: window.bringtofront - not yet implemented */
+            /* Verb: window.bringtofront - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case winv_sendtoback:
-            /* Verb #4: window.sendtoback - not yet implemented */
+            /* Verb: window.sendtoback - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case winv_frontmost:
-            /* Verb #5: window.frontmost - not yet implemented */
+            /* Verb: window.frontmost - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case winv_next:
-            /* Verb #6: window.next - not yet implemented */
+            /* Verb: window.next - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case winv_isvisible:
-            /* Verb #7: window.isvisible - not yet implemented */
+            /* Verb: window.isvisible - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case winv_show:
-            /* Verb #8: window.show - not yet implemented */
+            /* Verb: window.show - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case winv_hide:
-            /* Verb #9: window.hide - not yet implemented */
+            /* Verb: window.hide - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case winv_close:
-            /* Verb #10: window.close - not yet implemented */
+            /* Verb: window.close - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case winv_update:
-            /* Verb #11: window.update - not yet implemented */
+            /* Verb: window.update - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case winv_ismenuscript:
-            /* Verb #12: window.ismenuscript - not yet implemented */
+            /* Verb: window.ismenuscript - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case winv_getposition:
-            /* Verb #13: window.getposition - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            /* window.getposition - error stub */
+            if (bserror)
+                copystring(BIGSTRING("\pCan't use window verbs because GUI is not available in headless mode"), bserror);
             return false;
         case winv_setposition:
-            /* Verb #14: window.setposition - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            /* window.setposition - error stub */
+            if (bserror)
+                copystring(BIGSTRING("\pCan't use window verbs because GUI is not available in headless mode"), bserror);
             return false;
         case winv_getsize:
-            /* Verb #15: window.getsize - not yet implemented */
+            /* Verb: window.getsize - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case winv_setsize:
-            /* Verb #16: window.setsize - not yet implemented */
+            /* Verb: window.setsize - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case winv_zoom:
-            /* Verb #17: window.zoom - not yet implemented */
+            /* Verb: window.zoom - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case winv_runselection:
-            /* Verb #18: window.runselection - not yet implemented */
+            /* Verb: window.runselection - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case winv_scroll:
-            /* Verb #19: window.scroll - not yet implemented */
+            /* Verb: window.scroll - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case winv_msg:
-            /* Verb #20: window.msg - not yet implemented */
+            /* Verb: window.msg - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case winv_dbstats:
-            /* Verb #21: window.dbstats - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            /* window.dbstats - error stub */
+            if (bserror)
+                copystring(BIGSTRING("\pCan't use window verbs because GUI is not available in headless mode"), bserror);
             return false;
         case winv_quickscript:
-            /* Verb #22: window.quickscript - not yet implemented */
+            /* Verb: window.quickscript - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case winv_ismodified:
-            /* Verb #23: window.ismodified - not yet implemented */
+            /* Verb: window.ismodified - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case winv_setmodified:
-            /* Verb #24: window.setmodified - not yet implemented */
+            /* Verb: window.setmodified - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case winv_gettitle:
-            /* Verb #25: window.gettitle - not yet implemented */
+            /* Verb: window.gettitle - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case winv_settitle:
-            /* Verb #26: window.settitle - not yet implemented */
+            /* Verb: window.settitle - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case winv_about:
-            /* Verb #27: window.about - not yet implemented */
+            /* Verb: window.about - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case winv_getfile:
-            /* Verb #28: window.getfile - not yet implemented */
+            /* Verb: window.getfile - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case winv_isreadonly:
-            /* Verb #29: window.isreadonly - not yet implemented */
+            /* Verb: window.isreadonly - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case winv_setquickscript:
-            /* Verb #30: window.setquickscript - not yet implemented */
+            /* Verb: window.setquickscript - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         default:

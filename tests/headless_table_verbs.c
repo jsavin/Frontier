@@ -45,75 +45,75 @@ static boolean table_valueproc(short token, hdltreenode hparam1,
                                      bigstring bserror) {
     switch(token) {
         case tabv_move:
-            /* Verb #0: table.move - not yet implemented */
+            /* Verb: table.move - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case tabv_copy:
-            /* Verb #1: table.copy - not yet implemented */
+            /* Verb: table.copy - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case tabv_rename:
-            /* Verb #2: table.rename - not yet implemented */
+            /* Verb: table.rename - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case tabv_moveandrename:
-            /* Verb #3: table.moveandrename - not yet implemented */
+            /* Verb: table.moveandrename - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case tabv_assign:
-            /* Verb #4: table.assign - not yet implemented */
+            /* Verb: table.assign - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case tabv_validate:
-            /* Verb #5: table.validate - not yet implemented */
+            /* Verb: table.validate - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case tabv_sortby:
-            /* Verb #6: table.sortby - not yet implemented */
+            /* Verb: table.sortby - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case tabv_getcursor:
-            /* Verb #7: table.getcursor - not yet implemented */
+            /* Verb: table.getcursor - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case tabv_getselection:
-            /* Verb #8: table.getselection - not yet implemented */
+            /* Verb: table.getselection - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case tabv_go:
-            /* Verb #9: table.go - not yet implemented */
+            /* Verb: table.go - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case tabv_goto:
-            /* Verb #10: table.goto - not yet implemented */
+            /* Verb: table.goto - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case tabv_gotoname:
-            /* Verb #11: table.gotoname - not yet implemented */
+            /* Verb: table.gotoname - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case tabv_jettison:
-            /* Verb #12: table.jettison - not yet implemented */
+            /* Verb: table.jettison - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case tabv_packtable:
-            /* Verb #13: table.packtable - not yet implemented */
+            /* Verb: table.packtable - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case tabv_emptytable:
-            /* Verb #14: table.emptytable - not yet implemented */
+            /* Verb: table.emptytable - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case tabv_getdisplaysettings:
-            /* Verb #15: table.getdisplaysettings - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* table.getdisplaysettings - noop stub (safe no-op) */
+            (void)hparam1;  /* Suppress unused parameter warning */
+            return true;
         case tabv_setdisplaysettings:
-            /* Verb #16: table.setdisplaysettings - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* table.setdisplaysettings - noop stub (safe no-op) */
+            (void)hparam1;  /* Suppress unused parameter warning */
+            return true;
         case tabv_getsortorder:
-            /* Verb #17: table.getsortorder - not yet implemented */
+            /* Verb: table.getsortorder - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         default:

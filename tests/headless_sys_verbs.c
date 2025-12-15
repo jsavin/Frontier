@@ -43,68 +43,69 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
                                      bigstring bserror) {
     switch(token) {
         case sysv_osversion:
-            /* Verb #0: sys.osversion - not yet implemented */
+            /* Verb: sys.osversion - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case sysv_systemtask:
-            /* Verb #1: sys.systemtask - not yet implemented */
+            /* Verb: sys.systemtask - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case sysv_browsenetwork:
-            /* Verb #2: sys.browsenetwork - not yet implemented */
+            /* Verb: sys.browsenetwork - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case sysv_appisrunning:
-            /* Verb #3: sys.appisrunning - not yet implemented */
+            /* Verb: sys.appisrunning - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case sysv_frontmostapp:
-            /* Verb #4: sys.frontmostapp - not yet implemented */
+            /* Verb: sys.frontmostapp - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case sysv_bringapptofront:
-            /* Verb #5: sys.bringapptofront - not yet implemented */
+            /* Verb: sys.bringapptofront - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case sysv_countapps:
-            /* Verb #6: sys.countapps - not yet implemented */
+            /* Verb: sys.countapps - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case sysv_getnthapp:
-            /* Verb #7: sys.getnthapp - not yet implemented */
+            /* Verb: sys.getnthapp - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case sysv_getapppath:
-            /* Verb #8: sys.getapppath - not yet implemented */
+            /* Verb: sys.getapppath - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case sysv_memavail:
-            /* Verb #9: sys.memavail - not yet implemented */
+            /* Verb: sys.memavail - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case sysv_machine:
-            /* Verb #10: sys.machine - not yet implemented */
+            /* Verb: sys.machine - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case sysv_os:
-            /* Verb #11: sys.os - not yet implemented */
+            /* Verb: sys.os - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case sysv_getenvironmentvariable:
-            /* Verb #12: sys.getenvironmentvariable - not yet implemented */
+            /* Verb: sys.getenvironmentvariable - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case sysv_setenvironmentvariable:
-            /* Verb #13: sys.setenvironmentvariable - not yet implemented */
+            /* Verb: sys.setenvironmentvariable - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case sysv_unixshellcommand:
-            /* Verb #14: sys.unixshellcommand - not yet implemented */
+            /* Verb: sys.unixshellcommand - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case sysv_winshellcommand:
-            /* Verb #15: sys.winshellcommand - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            /* sys.winshellcommand - error stub */
+            if (bserror)
+                copystring(BIGSTRING("\pCan't run Windows shell commands because they are not available on this platform"), bserror);
             return false;
         default:
             return false;

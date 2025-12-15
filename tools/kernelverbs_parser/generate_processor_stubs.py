@@ -27,6 +27,7 @@ from parse_kernelverbs import (
     EFPProcessor,
     HEADLESS_REGISTERED
 )
+from stub_config import get_stub_implementation
 
 
 def validate_stub_generation_paths(input_path: str, output_dir: str) -> bool:
@@ -140,16 +141,15 @@ def generate_processor_stub(processor: EFPProcessor, verb_names: List[str]) -> s
         '    switch(token) {',
     ])
 
-    # Generate switch cases for all verbs (all returning false for now)
+    # Generate switch cases for all verbs using stub_config
     for i in range(verb_count):
         prefix = f"{proc_name[0:3]}v"
         token_name = f"{prefix}_{verb_names[i]}"
-        lines.extend([
-            f"        case {token_name}:",
-            f"            /* Verb #{i}: {proc_name}.{verb_names[i]} - not yet implemented */",
-            f"            if (bserror) copystring(BIGSTRING(\"\\pnot implemented\"), bserror);",
-            f"            return false;",
-        ])
+        verb_name = verb_names[i]
+
+        # Get stub implementation from config
+        stub_lines = get_stub_implementation(proc_name, verb_name, token_name)
+        lines.extend(stub_lines)
 
     lines.extend([
         '        default:',
@@ -283,17 +283,22 @@ def extract_verb_names(rc_content: str, processor_name: str, verb_count: int) ->
 def main() -> None:
     """Main entry point."""
     if len(sys.argv) < 3:
-        print("Usage: generate_processor_stubs.py <input.rc> <output_dir> [--implemented proc1,proc2,...]",
+        print("Usage: generate_processor_stubs.py <input.rc> <output_dir> [--implemented proc1,proc2,...] [--force-regenerate proc1,proc2,...]",
               file=sys.stderr)
         sys.exit(1)
 
     input_path = sys.argv[1]
     output_dir = sys.argv[2]
 
-    # Parse optional --implemented flag
+    # Parse optional --implemented and --force-regenerate flags
     implemented = set(HEADLESS_REGISTERED)
-    if len(sys.argv) > 3 and sys.argv[3] == '--implemented':
-        implemented = set(sys.argv[4].split(','))
+    force_regenerate = set()
+
+    for i in range(3, len(sys.argv)):
+        if sys.argv[i] == '--implemented' and i + 1 < len(sys.argv):
+            implemented = set(sys.argv[i + 1].split(','))
+        elif sys.argv[i] == '--force-regenerate' and i + 1 < len(sys.argv):
+            force_regenerate = set(sys.argv[i + 1].split(','))
 
     # Validate paths before proceeding
     if not validate_stub_generation_paths(input_path, output_dir):
@@ -308,10 +313,14 @@ def main() -> None:
         print("Error: No EFP processors found in input file", file=sys.stderr)
         sys.exit(1)
 
-    # Separate implemented vs unimplemented
-    unimplemented = [p for p in processors if p.name not in implemented]
-
-    print(f"Found {len(unimplemented)} unimplemented processors to generate", file=sys.stderr)
+    # Separate implemented vs unimplemented, accounting for force_regenerate
+    if force_regenerate:
+        # Force regeneration of specific processors even if they're in implemented list
+        unimplemented = [p for p in processors if p.name not in implemented or p.name in force_regenerate]
+        print(f"Found {len(unimplemented)} processors to generate ({len(force_regenerate)} forced)", file=sys.stderr)
+    else:
+        unimplemented = [p for p in processors if p.name not in implemented]
+        print(f"Found {len(unimplemented)} unimplemented processors to generate", file=sys.stderr)
 
     # Create output directory
     output_path = Path(output_dir)

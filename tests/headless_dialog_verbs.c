@@ -46,79 +46,84 @@ static boolean dialog_valueproc(short token, hdltreenode hparam1,
                                      bigstring bserror) {
     switch(token) {
         case diav_alert:
-            /* Verb #0: dialog.alert - not yet implemented */
+            /* Verb: dialog.alert - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case diav_run:
-            /* Verb #1: dialog.run - not yet implemented */
+            /* Verb: dialog.run - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case diav_runmodeless:
-            /* Verb #2: dialog.runmodeless - not yet implemented */
+            /* Verb: dialog.runmodeless - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case diav_runcard:
-            /* Verb #3: dialog.runcard - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            /* dialog.runcard - error stub */
+            if (bserror)
+                copystring(BIGSTRING("\pCan't use modal dialog verbs because GUI is not available in headless mode"), bserror);
             return false;
         case diav_runmodalcard:
-            /* Verb #4: dialog.runmodalcard - not yet implemented */
+            /* Verb: dialog.runmodalcard - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case diav_ismodalcard:
-            /* Verb #5: dialog.ismodalcard - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            /* dialog.ismodalcard - error stub */
+            if (bserror)
+                copystring(BIGSTRING("\pCan't use modal dialog verbs because GUI is not available in headless mode"), bserror);
             return false;
         case diav_setmodalcardtimeout:
-            /* Verb #6: dialog.setmodalcardtimeout - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            /* dialog.setmodalcardtimeout - error stub */
+            if (bserror)
+                copystring(BIGSTRING("\pCan't use modal dialog verbs because GUI is not available in headless mode"), bserror);
             return false;
         case diav_getvalue:
-            /* Verb #7: dialog.getvalue - not yet implemented */
+            /* Verb: dialog.getvalue - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case diav_setvalue:
-            /* Verb #8: dialog.setvalue - not yet implemented */
+            /* Verb: dialog.setvalue - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case diav_setitemenable:
-            /* Verb #9: dialog.setitemenable - not yet implemented */
+            /* Verb: dialog.setitemenable - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case diav_showitem:
-            /* Verb #10: dialog.showitem - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            /* dialog.showitem - error stub */
+            if (bserror)
+                copystring(BIGSTRING("\pCan't use modal dialog verbs because GUI is not available in headless mode"), bserror);
             return false;
         case diav_hideitem:
-            /* Verb #11: dialog.hideitem - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            /* dialog.hideitem - error stub */
+            if (bserror)
+                copystring(BIGSTRING("\pCan't use modal dialog verbs because GUI is not available in headless mode"), bserror);
             return false;
         case diav_twoway:
-            /* Verb #12: dialog.twoway - not yet implemented */
+            /* Verb: dialog.twoway - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case diav_threeway:
-            /* Verb #13: dialog.threeway - not yet implemented */
+            /* Verb: dialog.threeway - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case diav_ask:
-            /* Verb #14: dialog.ask - not yet implemented */
+            /* Verb: dialog.ask - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case diav_getint:
-            /* Verb #15: dialog.getint - not yet implemented */
+            /* Verb: dialog.getint - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case diav_notify:
-            /* Verb #16: dialog.notify - not yet implemented */
+            /* Verb: dialog.notify - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case diav_getuserinfo:
-            /* Verb #17: dialog.getuserinfo - not yet implemented */
+            /* Verb: dialog.getuserinfo - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case diav_getpassword:
-            /* Verb #18: dialog.getpassword - not yet implemented */
+            /* Verb: dialog.getpassword - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         default:
