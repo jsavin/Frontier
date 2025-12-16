@@ -52,10 +52,22 @@ static boolean clock_valueproc(short token, hdltreenode hparam1,
                 copystring(BIGSTRING("\pCan't set system time because it requires administrator privileges"), bserror);
             return false;
 
-        case clov_sleepfor:
-            /* Verb: clock.sleepfor - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+        case clov_sleepfor: {
+            /* Verb: clock.sleepfor - headless implementation using portable sleep */
+            long ctseconds;
+
+            flnextparamislast = true;
+
+            if (!getlongvalue(hparam1, 1, &ctseconds))
+                return false;
+
+            /* Sleep for the specified number of seconds */
+            if (ctseconds > 0)
+                frontier_time_sleep_millis((uint32_t)(ctseconds * 1000));
+
+            (*vreturned).data.flvalue = true;
+            return true;
+        }
 
         case clov_ticks:
             /* Verb: clock.ticks - implemented using portable gettickcount() */
@@ -69,15 +81,42 @@ static boolean clock_valueproc(short token, hdltreenode hparam1,
                 return false;
             return setlongvalue(getmilliseconds(), vreturned);
 
-        case clov_waitseconds:
-            /* Verb: clock.waitseconds - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+        case clov_waitseconds: {
+            /* Verb: clock.waitseconds - headless implementation using portable sleep */
+            long ctseconds;
 
-        case clov_waitsixtieths:
-            /* Verb: clock.waitsixtieths - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            flnextparamislast = true;
+
+            if (!getlongvalue(hparam1, 1, &ctseconds))
+                return false;
+
+            /* Sleep for the specified number of seconds */
+            if (ctseconds > 0)
+                frontier_time_sleep_millis((uint32_t)(ctseconds * 1000));
+
+            (*vreturned).data.flvalue = true;
+            return true;
+        }
+
+        case clov_waitsixtieths: {
+            /* Verb: clock.waitsixtieths - headless implementation using portable sleep */
+            /* Sixtieths = 1/60th second, convert to milliseconds: ticks * 1000 / 60 ≈ ticks * 50 / 3 */
+            long ctsixtieths;
+
+            flnextparamislast = true;
+
+            if (!getlongvalue(hparam1, 1, &ctsixtieths))
+                return false;
+
+            /* Convert 60ths of a second to milliseconds */
+            if (ctsixtieths > 0) {
+                uint32_t millis = (uint32_t)((ctsixtieths * 1000) / 60);
+                frontier_time_sleep_millis(millis);
+            }
+
+            (*vreturned).data.flvalue = true;
+            return true;
+        }
 
         default:
             return false;
