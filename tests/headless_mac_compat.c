@@ -394,8 +394,8 @@ boolean isfilewindow (WindowPtr w) { (void)w; return false; }
 boolean ismouserightclick (void) { return false; }
 void killundo (void) { }
 void rollbeachball (void) { }
-void secondstodatetime (long secs, short *yr, short *mon, short *day, short *doy, short *hr, short *min) { (void)secs; if(yr) *yr=0; if(mon) *mon=0; if(day) *day=0; if(doy) *doy=0; if(hr) *hr=0; if(min) *min=0; }
-void secondstodayofweek (long secs, short *dow) { (void)secs; if (dow) *dow=0; }
+void secondstodatetime (int64_t secs, short *yr, short *mon, short *day, short *doy, short *hr, short *min) { (void)secs; if(yr) *yr=0; if(mon) *mon=0; if(day) *day=0; if(doy) *doy=0; if(hr) *hr=0; if(min) *min=0; }
+void secondstodayofweek (int64_t secs, short *dow) { (void)secs; if (dow) *dow=0; }
 void setfserrorparam ( const ptrfilespec fs ) { (void)fs; }
 boolean setoserrorparam (bigstring bs) { (void)bs; return false; }
 void scriptsetcallbacks (hdloutlinerecord ho) { (void)ho; }

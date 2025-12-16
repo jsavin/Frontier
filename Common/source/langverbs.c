@@ -1946,15 +1946,17 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 		
 		case getdatefunc: {
-			unsigned long secs;
+			unsigned long temp_secs;
+			int64_t secs;
 			short day, month, year, hour, minute, second;
-			
+
 			if (!langcheckparamcount (hparam1, 7)) /*preflight before changing values*/
 				return (false);
-			
-			if (!getdatevalue (hparam1, 1, &secs))
+
+			if (!getdatevalue (hparam1, 1, &temp_secs))
 				return (false);
-			
+
+			secs = (int64_t)temp_secs;
 			secondstodatetime (secs, &day, &month, &year, &hour, &minute, &second);
 			
 			if (!setintvarparam (hparam1, 2, day))

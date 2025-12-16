@@ -79,7 +79,7 @@ boolean datenetstandardstring (long localdate, tyvaluerecord *vreturn) {
 	short dayofweek;
 	bigstring bs;
 	long ctz = getcurrenttimezonebias();
-	long gmtdate = localdate - ctz;
+	int64_t gmtdate = localdate - ctz;
 	
 	openhandlestream (nil, &s);
 

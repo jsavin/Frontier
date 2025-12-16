@@ -148,18 +148,3 @@ boolean base64decodehandle (Handle h64, Handle htext) {
     sethandlesize(htext, 0);
     return pushhandle(h64, htext);
 }
-
-// Minimal date helper
-long datetimetoseconds (short day, short month, short year, short hour, short minute, short second) {
-    struct tm t;
-    memset(&t, 0, sizeof t);
-    t.tm_mday = day;
-    t.tm_mon = month - 1;
-    t.tm_year = (year >= 1900 ? year - 1900 : year);
-    t.tm_hour = hour;
-    t.tm_min = minute;
-    t.tm_sec = second;
-    time_t epoch = timegm(&t);
-    if (epoch == (time_t)-1) epoch = 0;
-    return (long) epoch;
-}

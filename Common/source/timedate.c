@@ -385,11 +385,12 @@ boolean stringtotime (bigstring bsdate, unsigned long *ptime) {
 	} /*stringtotime*/
 
 
-long datetimetoseconds (short day, short month, short year, short hour, short minute, short second) {
+int64_t datetimetoseconds (short day, short month, short year, short hour, short minute, short second) {
 
 	/*
 	5.0a12 dmb: Win version, must handle hour, minute, second wraparound
 	2025-12-15 Codex: Portable implementation using standard C library
+	2025-12-15: Migrated return type from long to int64_t for Y2040 safety
 	*/
 
     #if defined(FRONTIER_HEADLESS)
@@ -415,15 +416,15 @@ long datetimetoseconds (short day, short month, short year, short hour, short mi
             return 0;
 
         /* Convert from Unix epoch (1970) to Mac epoch (1904) */
-        return (long)(unix_secs + FRONTIER_EPOCH_TO_UNIX_OFFSET);
+        return (int64_t)(unix_secs + FRONTIER_EPOCH_TO_UNIX_OFFSET);
     #else
         unsigned long secs = convertDateTimeToSeconds(day, month, year, hour, minute, second) + kCFAbsoluteTimeIntervalSince1904;
-        return (secs);
+        return (int64_t)secs;
     #endif
 	} /*datetimetoseconds*/
 
 
-void secondstodatetime (long secs, short *day, short *month, short *year, short *hour, short *minute, short *second) {
+void secondstodatetime (int64_t secs, short *day, short *month, short *year, short *hour, short *minute, short *second) {
 
     #if defined(FRONTIER_HEADLESS)
         /* Portable implementation using gmtime_r */
@@ -465,7 +466,7 @@ void secondstodatetime (long secs, short *day, short *month, short *year, short 
 	} /*secondstodatetime*/
 
 
-void secondstodayofweek (long secs, short *dayofweek) {
+void secondstodayofweek (int64_t secs, short *dayofweek) {
 
     #if defined(FRONTIER_HEADLESS)
         /* Portable implementation using gmtime_r */
