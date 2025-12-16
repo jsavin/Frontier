@@ -550,8 +550,79 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 			return (sysos (v));
 			break;
 
-		
-		
+		case getenvironmentvariablefunc: {
+			bigstring varname;
+			char *value;
+
+			flnextparamislast = true;
+
+			if (!getstringvalue (hparam1, 1, varname))
+				return (false);
+
+			/* Convert Pascal string to C string */
+			nullterminate (varname);
+
+			/* Get environment variable value */
+			value = getenv ((char *)varname);
+
+			if (value == NULL) {
+				/* Variable not found - return empty string */
+				bigstring emptystr;
+				setemptystring (emptystr);
+				return (setstringvalue (emptystr, v));
+			}
+
+			/* Convert C string to Pascal string and return */
+			{
+				bigstring result;
+				size_t len = strlen (value);
+
+				/* Check for buffer overflow - bigstring max content length is 255 */
+				if (len > 255) {
+					langerrormessage (BIGSTRING ("\pCan't get environment variable because value exceeds 255 characters"));
+					return (false);
+				}
+
+				copyctopstring (value, result);
+				return (setstringvalue (result, v));
+			}
+		}
+
+		case setenvironmentvariablefunc: {
+			bigstring varname, varvalue;
+
+			if (!getstringvalue (hparam1, 1, varname))
+				return (false);
+
+			flnextparamislast = true;
+
+			if (!getstringvalue (hparam1, 2, varvalue))
+				return (false);
+
+			/* Convert Pascal strings to C strings */
+			nullterminate (varname);
+			nullterminate (varvalue);
+
+			/* Set environment variable
+			 * POSIX setenv() third parameter (overwrite=1) replaces existing value if present
+			 * Windows _putenv_s() always overwrites, no flag needed
+			 */
+			#ifdef WIN95VERSION
+			if (_putenv_s ((char *)varname, (char *)varvalue) != 0) {
+			#else
+			if (setenv ((char *)varname, (char *)varvalue, 1) != 0) {
+			#endif
+				langerrormessage (BIGSTRING ("\pCan't set environment variable because system call failed"));
+				return (false);
+			}
+
+			(*v).data.flvalue = true;
+
+			return (true);
+		}
+
+
+
 			case unixshellcommandfunc: { /*7.0b51 PBS: call shell on OS X*/
 			
 				Handle hcommand, hreturn;

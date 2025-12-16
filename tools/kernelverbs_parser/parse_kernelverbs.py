@@ -228,7 +228,11 @@ def extract_verb_names(block_content: str, start_pos: int, expected_count: int) 
         # Processor names are typically lowercase single words without special chars
         # Actual verbs are also lowercase, so we use count as the primary limiter
 
-        verb_names.append(verb_name)
+        # Normalize to lowercase for consistent matching in analyzer
+        # RC file may have camelCase (getCursor, gotoName) but C code uses lowercase
+        # ASSUMPTION: All C case labels use lowercase naming (e.g., getcursorfunc, gotonamefunc)
+        # If this assumption is violated, patterns will fail to match and verbs will be missed
+        verb_names.append(verb_name.lower())
 
         # Stop when we've found the expected number
         if len(verb_names) >= expected_count:
