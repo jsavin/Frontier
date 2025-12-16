@@ -1,6 +1,7 @@
 /* 2025-10-31 Codex: Skip portable handle stubs when FRONTIER_USE_PORTABLE_HANDLES is active. */
 /* 2025-11-11 Codex: Remove Paige handler stubs whenever HEADLESS_LINKS_REAL_PAIGE is defined. */
 /* 2025-12-02 Codex: Skip the opgetlangtext stub when the headless runtime links the real implementation. */
+/* 2025-12-15 Codex: Update TickCount() to use portable time layer. */
 #include "frontier.h"
 #include "portable_handles.h"
 #include "osincludes_portable.h"
@@ -28,6 +29,7 @@
 #include "kb.h"
 #include "cancoon.h"
 #include "opxml.h"
+#include "time_portable.h"
 #include "error.h"
 #include "claybrowser.h"
 
@@ -930,18 +932,20 @@ OSErr AEGetNthDesc(const AEDescList *list, long index, DescType desiredType, AEK
 #endif /* !FRONTIER_PORTABLE_APPLEEVENTS */
 
 void Microseconds(UnsignedWide *result) {
-    static uint64_t counter = 0;
-    counter += 100;
+    // 2025-12-15 Codex: Use portable monotonic time layer
+    uint64_t us = frontier_time_monotonic_micros();
     if (result) {
-        result->hi = (uint32_t)(counter >> 32);
-        result->lo = (uint32_t)(counter & 0xffffffffu);
+        result->hi = (uint32_t)(us >> 32);
+        result->lo = (uint32_t)(us & 0xffffffffu);
     }
 }
 
 UInt32 TickCount(void) {
-    UnsignedWide wide;
-    Microseconds(&wide);
-    return (UInt32)((wide.hi << 16) ^ wide.lo);
+    // 2025-12-15 Codex: Use portable monotonic time layer
+    // Legacy Mac ticks are 1/60th second intervals
+    uint64_t ms = frontier_time_monotonic_millis();
+    // Convert milliseconds to 60ths of a second: ms * 60 / 1000 = ms * 3 / 50
+    return (UInt32)((ms * 3ULL) / 50ULL);
 }
 
 long FreeMem(void) {
