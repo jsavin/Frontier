@@ -59,6 +59,13 @@ typedef struct tyinternationalinfo {
 /* #define getlongermilliseconds() (unsigned long long)FastMilliseconds() */
 #define getmilliseconds() (long)FastMilliseconds()
 
+/*
+ * Frontier epoch offset: seconds from Unix epoch (1970-01-01) to Mac epoch (1904-01-01)
+ * = 66 years * 365.25 days/year * 24 hours/day * 3600 seconds/hour
+ * = 2,082,844,800 seconds
+ */
+#define FRONTIER_EPOCH_TO_UNIX_OFFSET 2082844800LL
+
 /*prototypes*/
 
 extern void timestamp (long *);

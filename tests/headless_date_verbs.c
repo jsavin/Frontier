@@ -273,7 +273,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
             if (!getlongvalue(hparam1, 1, &date))
                 return false;
 
-            return setlongvalue((unsigned long)date + (7 * 24 * 60 * 60), vreturned);
+            return setlongvalue(date + (7L * 24L * 60L * 60L), vreturned);
         }
 
         case datv_nextyear: {
@@ -309,7 +309,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
             if (!getlongvalue(hparam1, 1, &date))
                 return false;
 
-            return setlongvalue((unsigned long)date - (7 * 24 * 60 * 60), vreturned);
+            return setlongvalue(date - (7L * 24L * 60L * 60L), vreturned);
         }
 
         case datv_prevyear: {
@@ -347,7 +347,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
             if (!getlongvalue(hparam1, 1, &date))
                 return false;
 
-            return setlongvalue((unsigned long)date + (24 * 60 * 60), vreturned);
+            return setlongvalue(date + (24L * 60L * 60L), vreturned);
         }
 
         case datv_weeksinmonth: {
@@ -376,7 +376,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
             if (!getlongvalue(hparam1, 1, &date))
                 return false;
 
-            return setlongvalue((unsigned long)date - (24 * 60 * 60), vreturned);
+            return setlongvalue(date - (24L * 60L * 60L), vreturned);
         }
 
         case datv_getcurrenttimezone: {

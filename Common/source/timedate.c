@@ -402,7 +402,7 @@ long datetimetoseconds (short day, short month, short year, short hour, short mi
         t.tm_hour = hour;
         t.tm_min = minute;
         t.tm_sec = second;
-        t.tm_isdst = -1;  /* Let the system determine DST */
+        t.tm_isdst = -1;  /* Ignored by timegm/mkgmtime (always interprets as UTC) */
 
         /* Use timegm for UTC time (portable on Unix/Linux/macOS) */
         #if defined(_WIN32)
@@ -415,8 +415,7 @@ long datetimetoseconds (short day, short month, short year, short hour, short mi
             return 0;
 
         /* Convert from Unix epoch (1970) to Mac epoch (1904) */
-        const int64_t frontier_epoch_offset = 2082844800LL;
-        return (long)(unix_secs + frontier_epoch_offset);
+        return (long)(unix_secs + FRONTIER_EPOCH_TO_UNIX_OFFSET);
     #else
         unsigned long secs = convertDateTimeToSeconds(day, month, year, hour, minute, second) + kCFAbsoluteTimeIntervalSince1904;
         return (secs);
@@ -428,8 +427,7 @@ void secondstodatetime (long secs, short *day, short *month, short *year, short 
 
     #if defined(FRONTIER_HEADLESS)
         /* Portable implementation using gmtime_r */
-        const int64_t frontier_epoch_offset = 2082844800LL;
-        time_t unix_secs = (secs > frontier_epoch_offset) ? (time_t)(secs - frontier_epoch_offset) : (time_t)0;
+        time_t unix_secs = (secs > FRONTIER_EPOCH_TO_UNIX_OFFSET) ? (time_t)(secs - FRONTIER_EPOCH_TO_UNIX_OFFSET) : (time_t)0;
 
         struct tm tmbuf;
         #if defined(_WIN32)
@@ -471,8 +469,7 @@ void secondstodayofweek (long secs, short *dayofweek) {
 
     #if defined(FRONTIER_HEADLESS)
         /* Portable implementation using gmtime_r */
-        const int64_t frontier_epoch_offset = 2082844800LL;
-        time_t unix_secs = (secs > frontier_epoch_offset) ? (time_t)(secs - frontier_epoch_offset) : (time_t)0;
+        time_t unix_secs = (secs > FRONTIER_EPOCH_TO_UNIX_OFFSET) ? (time_t)(secs - FRONTIER_EPOCH_TO_UNIX_OFFSET) : (time_t)0;
 
         struct tm tmbuf;
         #if defined(_WIN32)

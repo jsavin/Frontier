@@ -61,6 +61,12 @@ static boolean clock_valueproc(short token, hdltreenode hparam1,
             if (!getlongvalue(hparam1, 1, &ctseconds))
                 return false;
 
+            /* Validate non-negative duration */
+            if (ctseconds < 0) {
+                if (bserror) copystring(BIGSTRING("\pCan't sleep because negative duration is invalid"), bserror);
+                return false;
+            }
+
             /* Sleep for the specified number of seconds */
             if (ctseconds > 0)
                 frontier_time_sleep_millis((uint32_t)(ctseconds * 1000));
@@ -90,6 +96,12 @@ static boolean clock_valueproc(short token, hdltreenode hparam1,
             if (!getlongvalue(hparam1, 1, &ctseconds))
                 return false;
 
+            /* Validate non-negative duration */
+            if (ctseconds < 0) {
+                if (bserror) copystring(BIGSTRING("\pCan't wait because negative duration is invalid"), bserror);
+                return false;
+            }
+
             /* Sleep for the specified number of seconds */
             if (ctseconds > 0)
                 frontier_time_sleep_millis((uint32_t)(ctseconds * 1000));
@@ -109,8 +121,14 @@ static boolean clock_valueproc(short token, hdltreenode hparam1,
                 return false;
 
             /* Convert 60ths of a second to milliseconds */
+            if (ctsixtieths < 0) {
+                if (bserror) copystring(BIGSTRING("\pCan't wait because negative duration is invalid"), bserror);
+                return false;
+            }
+
             if (ctsixtieths > 0) {
-                uint32_t millis = (uint32_t)((ctsixtieths * 1000) / 60);
+                /* Prevent overflow by casting to int64_t before multiplication */
+                uint32_t millis = (uint32_t)(((int64_t)ctsixtieths * 1000) / 60);
                 frontier_time_sleep_millis(millis);
             }
 
