@@ -28,6 +28,13 @@
 
 #import <Foundation/Foundation.h>
 
+// Mac epoch (Jan 1, 1904) to CF epoch (Jan 1, 2001) offset
+// = 97 years * 365.25 days/year * 24 hours/day * 3600 seconds/hour
+// = 3,061,152,000 seconds
+#ifndef kCFAbsoluteTimeIntervalSince1904
+#define kCFAbsoluteTimeIntervalSince1904 3061152000.0
+#endif
+
 CFAbsoluteTime stringToTime(CFStringRef dateString) {
     CFLocaleRef locale = CFLocaleCopyCurrent();
     CFAbsoluteTime timeInterval = 0;
