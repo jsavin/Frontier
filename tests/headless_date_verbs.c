@@ -70,7 +70,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
     switch(token) {
         case datv_get: {
             /* Verb: date.get(date, @day, @month, @year, @hour, @minute, @second) - Extract all components */
-            long date;
+            int64_t date;
             short day, month, year, hour, minute, second;
             tyvaluerecord v;
             hdlhashtable ht;
@@ -133,7 +133,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
         case datv_set: {
             /* Verb: date.set(day, month, year, hour, minute, second) - Construct date from components */
             short day, month, year, hour, minute, second;
-            long date;
+            int64_t date;
 
             if (!getintvalue(hparam1, 1, &day))
                 return false;
@@ -160,7 +160,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
         }
         case datv_abbrevstring: {
             /* Verb: date.abbrevstring(date) - Return abbreviated date string */
-            long date;
+            int64_t date;
             bigstring bs;
 
             flnextparamislast = true;
@@ -174,7 +174,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
         case datv_dayofweek: {
             /* Verb: date.dayofweek(date) - Return day of week (1=Sunday, 7=Saturday) */
-            long date;
+            int64_t date;
             short dayofweek;
 
             flnextparamislast = true;
@@ -188,7 +188,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
         case datv_daysinmonth: {
             /* Verb: date.daysinmonth(date) - Return number of days in month */
-            long date;
+            int64_t date;
             short day, month, year, hour, minute, second;
 
             flnextparamislast = true;
@@ -202,7 +202,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
         case datv_daystring: {
             /* Verb: date.daystring(date) - Return day of week as string */
-            long date;
+            int64_t date;
             short dayofweek;
 
             flnextparamislast = true;
@@ -216,7 +216,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
         case datv_firstofmonth: {
             /* Verb: date.firstofmonth(date) - Return first day of month */
-            long date;
+            int64_t date;
 
             flnextparamislast = true;
 
@@ -228,7 +228,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
         case datv_lastofmonth: {
             /* Verb: date.lastofmonth(date) - Return last day of month */
-            long date;
+            int64_t date;
 
             flnextparamislast = true;
 
@@ -239,8 +239,8 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
         }
 
         case datv_longstring: {
-            /* Verb: date.longstring(date) - Return long date string */
-            long date;
+            /* Verb: date.longstring(date) - Return int64_t date string */
+            int64_t date;
             bigstring bs;
 
             flnextparamislast = true;
@@ -254,7 +254,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
         case datv_nextmonth: {
             /* Verb: date.nextmonth(date) - Return date one month in future */
-            long date;
+            int64_t date;
 
             flnextparamislast = true;
 
@@ -266,7 +266,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
         case datv_nextweek: {
             /* Verb: date.nextweek(date) - Return date one week in future */
-            long date;
+            int64_t date;
 
             flnextparamislast = true;
 
@@ -278,7 +278,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
         case datv_nextyear: {
             /* Verb: date.nextyear(date) - Return date one year in future */
-            long date;
+            int64_t date;
 
             flnextparamislast = true;
 
@@ -290,7 +290,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
         case datv_prevmonth: {
             /* Verb: date.prevmonth(date) - Return date one month in past */
-            long date;
+            int64_t date;
 
             flnextparamislast = true;
 
@@ -302,7 +302,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
         case datv_prevweek: {
             /* Verb: date.prevweek(date) - Return date one week in past */
-            long date;
+            int64_t date;
 
             flnextparamislast = true;
 
@@ -314,7 +314,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
         case datv_prevyear: {
             /* Verb: date.prevyear(date) - Return date one year in past */
-            long date;
+            int64_t date;
 
             flnextparamislast = true;
 
@@ -326,7 +326,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
         case datv_shortstring: {
             /* Verb: date.shortstring(date) - Return short date string */
-            long date;
+            int64_t date;
             bigstring bs;
 
             flnextparamislast = true;
@@ -340,7 +340,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
         case datv_tomorrow: {
             /* Verb: date.tomorrow(date) - Return tomorrow's date */
-            long date;
+            int64_t date;
 
             flnextparamislast = true;
 
@@ -352,7 +352,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
         case datv_weeksinmonth: {
             /* Verb: date.weeksinmonth(date) - Return number of weeks in month */
-            long date;
+            int64_t date;
             short day, month, year, hour, minute, second;
             short days;
 
@@ -369,7 +369,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
         case datv_yesterday: {
             /* Verb: date.yesterday(date) - Return yesterday's date */
-            long date;
+            int64_t date;
 
             flnextparamislast = true;
 
@@ -389,7 +389,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
         case datv_netstandardstring: {
             /* Verb: date.netstandardstring(date) - Return RFC 822 date string */
-            long date;
+            int64_t date;
 
             flnextparamislast = true;
 
@@ -440,7 +440,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
         case datv_day: {
             /* Verb: date.day(date) - Extract day component */
-            long date;
+            int64_t date;
             short day, month, year, hour, minute, second;
 
             flnextparamislast = true;
@@ -454,7 +454,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
         case datv_month: {
             /* Verb: date.month(date) - Extract month component */
-            long date;
+            int64_t date;
             short day, month, year, hour, minute, second;
 
             flnextparamislast = true;
@@ -468,7 +468,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
         case datv_year: {
             /* Verb: date.year(date) - Extract year component */
-            long date;
+            int64_t date;
             short day, month, year, hour, minute, second;
 
             flnextparamislast = true;
@@ -482,7 +482,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
         case datv_hour: {
             /* Verb: date.hour(date) - Extract hour component */
-            long date;
+            int64_t date;
             short day, month, year, hour, minute, second;
 
             flnextparamislast = true;
@@ -496,7 +496,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
         case datv_minute: {
             /* Verb: date.minute(date) - Extract minute component */
-            long date;
+            int64_t date;
             short day, month, year, hour, minute, second;
 
             flnextparamislast = true;
@@ -510,7 +510,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
         case datv_seconds: {
             /* Verb: date.seconds(date) - Extract seconds component */
-            long date;
+            int64_t date;
             short day, month, year, hour, minute, second;
 
             flnextparamislast = true;

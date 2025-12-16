@@ -84,11 +84,11 @@ extern boolean timetodatestring (int64_t, bigstring, boolean);
 
 extern boolean stringtotime (bigstring, unsigned long *);
 
-extern long datetimetoseconds (short, short, short, short, short, short);
+extern int64_t datetimetoseconds (short, short, short, short, short, short);
 
-extern void secondstodatetime (long, short *, short *, short *, short *, short *, short *);
+extern void secondstodatetime (int64_t, short *, short *, short *, short *, short *, short *);
 
-extern void secondstodayofweek (long, short *);
+extern void secondstodayofweek (int64_t, short *);
 
 
 extern unsigned long nextmonth(unsigned long date);
