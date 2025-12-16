@@ -1,22 +1,28 @@
 # Table Timestamp Fix - 64-bit Migration
 
-**Status**: Planning
+**Status**: ✅ COMPLETED (PR #63)
 **Date**: 2025-12-05
+**Completion Date**: 2025-12-05
+**Completed In**: PR #63 (ef62a788)
 **Related**:
 - planning/phase2/64bit_datetime_fields_plan.md
 - planning/phase3/modern_reader_writer_split.md
 - planning/phase3/carbon_migration/outline_script_payload.md
 
-## Problem
+## Problem (Now Fixed!)
 
-Hash tables (tyhashtable) currently write **32-bit timestamps** to disk despite using 64-bit timestamps in memory. This violates the core requirement of PR #62 and will fail for dates after February 6, 2040.
+Hash tables (tyhashtable) ~~currently write~~ **previously wrote 32-bit timestamps** to disk despite using 64-bit timestamps in memory. This violated the core requirement of PR #62 and would fail for dates after February 6, 2040.
 
-**Location**: Common/source/langhash.c lines 2978-2980
+**Status**: ✅ Fixed in PR #63
 
+The broken code that was writing truncated timestamps:
 ```c
+// OLD - BROKEN CODE (lines 2978-2980, now removed)
 header.timecreated = (uint32_t) host_to_disk_int32((int32_t) (**htable).timecreated);
 header.timelastsave = (uint32_t) host_to_disk_int32((int32_t) (**htable).timelastsave);
 ```
+
+The fix implements v0x05 format with proper 64-bit timestamp handling.
 
 **Current disk structure** (tydisktablerecord, 16 bytes):
 ```c

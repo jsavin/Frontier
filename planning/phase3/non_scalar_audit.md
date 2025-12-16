@@ -51,25 +51,22 @@ header.timecreated = conditionallonglongswap ((**hp).timecreated);
 header.timelastsave = conditionallonglongswap ((**hp).timelastsave);
 ```
 
-### ❌ Tables (tyhashtable)
-**Status**: NON-COMPLIANT - **CRITICAL ISSUE**
+### ✅ Tables (tyhashtable)
+**Status**: COMPLIANT (Fixed in PR #63)
 
 - **In-memory**: `int64_t timecreated, timelastsave` (Common/headers/lang.h:506) ✅
-- **Disk format**: tydisktablerecord with `uint32_t` timestamps ❌
-- **Problem**: langhash.c:2978-2980 writes 32-bit timestamps despite 64-bit in-memory values
-- **Impact**: Tables will FAIL for dates after February 6, 2040
+- **Disk format**: tydisktablerecord_v4 (legacy, 32-bit) and tydisktablerecord (v0x05, 64-bit) ✅
+- **Packing**: langhash.c uses `db_format_write_be64()` for v0x05 format (lines 3731-3732) ✅
+- **Unpacking**: Auto-dispatches v0x04 (legacy, 32-bit) vs v0x05 (modern, 64-bit) (lines 3941-3959) ✅
+- **Migration**: v0x04 tables upgraded to v0x05 on save to v7 format ✅
 
-**Broken Code**:
-```c
-// langhash.c:2978-2980 - WRONG!
-header.timecreated = (uint32_t) host_to_disk_int32((int32_t) (**htable).timecreated);
-header.timelastsave = (uint32_t) host_to_disk_int32((int32_t) (**htable).timelastsave);
-```
+**Implementation Details**:
+- v0x05 struct has proper 8-byte alignment with `uint32_t _pad` field
+- Version dispatch checks header version field before reading appropriate struct
+- Legacy v0x04 timestamps are widened to 64-bit on read
+- Modern v0x05 timestamps are read as native 64-bit big-endian
 
-**Solution**: Detailed planning doc exists at `planning/phase3/table_timestamp_fix.md`
-- Create v0x05 disk format with 64-bit timestamps
-- Fork pack/unpack into legacy (v0x04, 32-bit) and modern (v0x05, 64-bit)  
-- Follow pattern from oppack_legacy.c / oppack_modern.c split
+**Completed in**: PR #63
 
 ### ✅ Menus (tymenurecord)
 **Status**: COMPLIANT (delegates to outlines)
@@ -86,20 +83,18 @@ header.timelastsave = (uint32_t) host_to_disk_int32((int32_t) (**htable).timelas
 | Outlines | int64_t ✅ | 64-bit ✅   | 32→64 ✅   | Yes ✅         | ✅ PASS |
 | WPText   | int64_t ✅ | 64-bit ✅   | 64-bit ✅  | Yes ✅         | ✅ PASS |
 | Pictures | int64_t ✅ | 64-bit ✅   | 64-bit ✅  | Yes ✅         | ✅ PASS |
-| Tables   | int64_t ✅ | **32-bit ❌** | 32-bit ❌  | Yes ✅         | ❌ FAIL |
+| Tables   | int64_t ✅ | 64-bit ✅   | 32→64 ✅   | Yes ✅         | ✅ PASS |
 | Menus    | (outline) | (outline)  | (outline) | (outline)     | ✅ PASS |
 
 ## Action Items
 
-1. **CRITICAL**: Implement table timestamp fix per planning/phase3/table_timestamp_fix.md
-   - Priority: HIGH (blocks v7 format for tables)
-   - Estimated effort: Medium (follow established oppack fork pattern)
-   - Dependencies: None (pattern already proven with outlines)
+✅ **COMPLETE**: All non-scalar types now fully compliant with v7 64-bit timestamp format!
 
-2. **Testing**: Add table round-trip tests for 2040+ timestamps
-   - Create table_timestamp_tests.c
-   - Verify v0x04 → v0x05 migration
-   - Test boundary values (2^32, 2040, 2050)
+**Completed Item**:
+- ✅ Table timestamp fix implemented in PR #63
+- ✅ v0x04 → v0x05 migration implemented and tested (save_migration_tests.c)
+- ✅ Struct sizes verified with static assertions (16 bytes v0x04, 32 bytes v0x05)
+- ✅ Big-endian format verified (db_format_write_be64 / db_format_read_be64)
 
 ## References
 
