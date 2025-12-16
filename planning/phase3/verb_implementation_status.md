@@ -74,7 +74,7 @@ They are ready for Phase 2 systematic testing.
 | **opattributes** | 5 | Yes | Outline attributes | MEDIUM |
 | **osa** | 2 | No | Apple Script events | MEDIUM |
 | **pict** | 4 | Yes | Picture/image operations | MEDIUM |
-| **clock** | 7 | No | Clock/timing operations | MEDIUM |
+| **clock** | 7 | No | Clock/timing operations (COMPLETE) | ✓ DONE |
 | **kb** | 4 | No | Keyboard input | MEDIUM |
 | **mouse** | 2 | No | Mouse input | MEDIUM |
 | **point** | 2 | No | Point data structure | MEDIUM |
@@ -174,7 +174,8 @@ These are specialized features that may not be critical for Phase 1:
 ### Phase 3 Priorities (Based on Expected Outcomes)
 
 **Tier 1 (Should Work, High Impact)**:
-- [ ] **date** (30 verbs) - Time/date handling, rarely GUI-dependent
+- [x] **clock** (7 verbs) - Time/clock operations ✓ COMPLETE (2025-12-15) - Uses portable time layer
+- [ ] **date** (30 verbs) - Time/date handling, rarely GUI-dependent (NEXT PRIORITY)
 - [ ] **op** (non-GUI subset, ~30 of 45 verbs) - Outline operations
 - [ ] **clipboard** (2 verbs) - System clipboard access
 - [ ] **bit** (8 verbs) - Bit manipulation, pure logic

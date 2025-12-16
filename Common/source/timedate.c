@@ -25,6 +25,10 @@
 
 ******************************************************************************/
 
+#if defined(FRONTIER_HEADLESS) && !defined(_WIN32)
+#define _GNU_SOURCE  /* For timegm() on Linux */
+#endif
+
 #include "frontier.h"
 #include "standard.h"
 
@@ -382,36 +386,111 @@ boolean stringtotime (bigstring bsdate, unsigned long *ptime) {
 
 
 long datetimetoseconds (short day, short month, short year, short hour, short minute, short second) {
-	
+
 	/*
 	5.0a12 dmb: Win version, must handle hour, minute, second wraparound
+	2025-12-15 Codex: Portable implementation using standard C library
 	*/
 
-    
+    #if defined(FRONTIER_HEADLESS)
+        /* Portable implementation using timegm/mktime */
+        struct tm t;
+        memset(&t, 0, sizeof(t));
+        t.tm_mday = day;
+        t.tm_mon = month - 1;  /* tm_mon is 0-based */
+        t.tm_year = year - 1900;  /* tm_year is years since 1900 */
+        t.tm_hour = hour;
+        t.tm_min = minute;
+        t.tm_sec = second;
+        t.tm_isdst = -1;  /* Ignored by timegm/mkgmtime (always interprets as UTC) */
+
+        /* Use timegm for UTC time (portable on Unix/Linux/macOS) */
+        #if defined(_WIN32)
+        time_t unix_secs = _mkgmtime(&t);
+        #else
+        time_t unix_secs = timegm(&t);
+        #endif
+
+        if (unix_secs == (time_t)-1)
+            return 0;
+
+        /* Convert from Unix epoch (1970) to Mac epoch (1904) */
+        return (long)(unix_secs + FRONTIER_EPOCH_TO_UNIX_OFFSET);
+    #else
         unsigned long secs = convertDateTimeToSeconds(day, month, year, hour, minute, second) + kCFAbsoluteTimeIntervalSince1904;
-
-
-	
-	return (secs);
+        return (secs);
+    #endif
 	} /*datetimetoseconds*/
 
 
 void secondstodatetime (long secs, short *day, short *month, short *year, short *hour, short *minute, short *second) {
-	
-    
-        CFAbsoluteTime timeInterval = ((uint32_t) secs) - kCFAbsoluteTimeIntervalSince1904;
-        
-        convertSecondsToDateTime(timeInterval, day, month, year, hour, minute, second);
 
+    #if defined(FRONTIER_HEADLESS)
+        /* Portable implementation using gmtime_r */
+        time_t unix_secs = (secs > FRONTIER_EPOCH_TO_UNIX_OFFSET) ? (time_t)(secs - FRONTIER_EPOCH_TO_UNIX_OFFSET) : (time_t)0;
+
+        struct tm tmbuf;
+        #if defined(_WIN32)
+        if (gmtime_s(&tmbuf, &unix_secs) != 0) {
+            if (day) *day = 0;
+            if (month) *month = 0;
+            if (year) *year = 0;
+            if (hour) *hour = 0;
+            if (minute) *minute = 0;
+            if (second) *second = 0;
+            return;
+        }
+        #else
+        if (gmtime_r(&unix_secs, &tmbuf) == NULL) {
+            if (day) *day = 0;
+            if (month) *month = 0;
+            if (year) *year = 0;
+            if (hour) *hour = 0;
+            if (minute) *minute = 0;
+            if (second) *second = 0;
+            return;
+        }
+        #endif
+
+        if (day) *day = tmbuf.tm_mday;
+        if (month) *month = tmbuf.tm_mon + 1;  /* tm_mon is 0-based */
+        if (year) *year = tmbuf.tm_year + 1900;
+        if (hour) *hour = tmbuf.tm_hour;
+        if (minute) *minute = tmbuf.tm_min;
+        if (second) *second = tmbuf.tm_sec;
+    #else
+        CFAbsoluteTime timeInterval = ((uint32_t) secs) - kCFAbsoluteTimeIntervalSince1904;
+        convertSecondsToDateTime(timeInterval, day, month, year, hour, minute, second);
+    #endif
 	} /*secondstodatetime*/
 
 
 void secondstodayofweek (long secs, short *dayofweek) {
-	
-    
+
+    #if defined(FRONTIER_HEADLESS)
+        /* Portable implementation using gmtime_r */
+        time_t unix_secs = (secs > FRONTIER_EPOCH_TO_UNIX_OFFSET) ? (time_t)(secs - FRONTIER_EPOCH_TO_UNIX_OFFSET) : (time_t)0;
+
+        struct tm tmbuf;
+        #if defined(_WIN32)
+        if (gmtime_s(&tmbuf, &unix_secs) != 0) {
+            if (dayofweek) *dayofweek = 1;  /* Default to Sunday */
+            return;
+        }
+        #else
+        if (gmtime_r(&unix_secs, &tmbuf) == NULL) {
+            if (dayofweek) *dayofweek = 1;  /* Default to Sunday */
+            return;
+        }
+        #endif
+
+        /* tm_wday: 0=Sunday, 1=Monday, ..., 6=Saturday */
+        /* Frontier uses: 1=Sunday, 2=Monday, ..., 7=Saturday */
+        if (dayofweek) *dayofweek = tmbuf.tm_wday + 1;
+    #else
         CFAbsoluteTime timeInterval = ((uint32_t)secs) - kCFAbsoluteTimeIntervalSince1904;
         *dayofweek = convertSecondsToDayOfWeek(timeInterval);
-
+    #endif
 	} /*secondstodayofweek*/
 
 

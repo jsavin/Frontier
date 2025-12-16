@@ -7,6 +7,9 @@
  * This is a stub implementation for Phase 1 testing.
  * All verbs currently return false/"not implemented".
  * See docs/verb_implementation_status.md for implementation roadmap.
+ *
+ * 2025-12-15 Codex: Implemented clock.now, clock.ticks, clock.milliseconds
+ * using portable time layer (frontier_time_*).
  */
 
 #include "frontier.h"
@@ -17,6 +20,8 @@
 #include "lang.h"
 #include "langinternal.h"
 #include "tablestructure.h"
+#include "timedate.h"
+#include "time_portable.h"
 
 /* Token enum for all verbs in the clock processor */
 enum {
@@ -32,36 +37,105 @@ enum {
 static boolean clock_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
+    (void)bserror;  /* Suppress unused parameter warning for implemented verbs */
+
     switch(token) {
         case clov_now:
-            /* Verb: clock.now - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: clock.now - implemented using portable timenow() */
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+            return setdatevalue(timenow(), vreturned);
+
         case clov_set:
             /* clock.set - error stub */
             if (bserror)
                 copystring(BIGSTRING("\pCan't set system time because it requires administrator privileges"), bserror);
             return false;
-        case clov_sleepfor:
-            /* Verb: clock.sleepfor - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+
+        case clov_sleepfor: {
+            /* Verb: clock.sleepfor - headless implementation using portable sleep */
+            long ctseconds;
+
+            flnextparamislast = true;
+
+            if (!getlongvalue(hparam1, 1, &ctseconds))
+                return false;
+
+            /* Validate non-negative duration */
+            if (ctseconds < 0) {
+                if (bserror) copystring(BIGSTRING("\pCan't sleep because negative duration is invalid"), bserror);
+                return false;
+            }
+
+            /* Sleep for the specified number of seconds */
+            if (ctseconds > 0)
+                frontier_time_sleep_millis((uint32_t)(ctseconds * 1000));
+
+            (*vreturned).data.flvalue = true;
+            return true;
+        }
+
         case clov_ticks:
-            /* Verb: clock.ticks - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: clock.ticks - implemented using portable gettickcount() */
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+            return setlongvalue(gettickcount(), vreturned);
+
         case clov_milliseconds:
-            /* Verb: clock.milliseconds - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case clov_waitseconds:
-            /* Verb: clock.waitseconds - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case clov_waitsixtieths:
-            /* Verb: clock.waitsixtieths - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: clock.milliseconds - implemented using portable getmilliseconds() */
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+            return setlongvalue(getmilliseconds(), vreturned);
+
+        case clov_waitseconds: {
+            /* Verb: clock.waitseconds - headless implementation using portable sleep */
+            long ctseconds;
+
+            flnextparamislast = true;
+
+            if (!getlongvalue(hparam1, 1, &ctseconds))
+                return false;
+
+            /* Validate non-negative duration */
+            if (ctseconds < 0) {
+                if (bserror) copystring(BIGSTRING("\pCan't wait because negative duration is invalid"), bserror);
+                return false;
+            }
+
+            /* Sleep for the specified number of seconds */
+            if (ctseconds > 0)
+                frontier_time_sleep_millis((uint32_t)(ctseconds * 1000));
+
+            (*vreturned).data.flvalue = true;
+            return true;
+        }
+
+        case clov_waitsixtieths: {
+            /* Verb: clock.waitsixtieths - headless implementation using portable sleep */
+            /* Sixtieths = 1/60th second, convert to milliseconds: ticks * 1000 / 60 ≈ ticks * 50 / 3 */
+            long ctsixtieths;
+
+            flnextparamislast = true;
+
+            if (!getlongvalue(hparam1, 1, &ctsixtieths))
+                return false;
+
+            /* Convert 60ths of a second to milliseconds */
+            if (ctsixtieths < 0) {
+                if (bserror) copystring(BIGSTRING("\pCan't wait because negative duration is invalid"), bserror);
+                return false;
+            }
+
+            if (ctsixtieths > 0) {
+                /* Prevent overflow by casting to int64_t before multiplication */
+                uint32_t millis = (uint32_t)(((int64_t)ctsixtieths * 1000) / 60);
+                frontier_time_sleep_millis(millis);
+            }
+
+            (*vreturned).data.flvalue = true;
+            return true;
+        }
+
         default:
             return false;
     }

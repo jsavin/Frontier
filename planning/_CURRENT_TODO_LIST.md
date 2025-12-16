@@ -4,8 +4,14 @@ Status: In Progress (Updated 2025-12-13)
 Owner: Codex
 
 ## Runtime / CLI Stabilization
-- [ ] Implement headless/kernel clock verbs (`clock.now`, `clock.ticks`, related date coercions) so `cli_runtime_tests` stop exiting 1.
-- [ ] Re-run `make -C tests cli_runtime_tests` after clock/date wiring and confirm real pass/fail instead of exit=1 skips.
+- [x] Implement headless/kernel clock verbs (`clock.now`, `clock.ticks`, `clock.milliseconds`, `clock.sleepfor`, `clock.waitseconds`, `clock.waitsixtieths`).
+  - Implemented using portable time layer (`frontier_time_*` functions) for cross-platform compatibility
+  - All clock verbs tested and integrated with CLI runtime
+  - Existing `cli_runtime_tests` covers `clock.now()` and `clock.ticks()` validation
+  - Date coercions working through `timenow()` with Mac epoch offset (2,082,844,800 seconds)
+- [x] Confirm `make -C tests cli_runtime_tests` passes with real clock verb implementations (no more exit=1 skips).
+- [ ] Implement remaining date verbs (`date.*` functions) for full CLI coverage.
+  - Related: `docs/verb_implementation_status.md` references date verb roadmap
 
 ## Hash / Serialization Follow-Ups
 - [ ] Add corruption/bounds tests for hash unpack (OOB name index, truncated records, header edge cases). Ref: Issue #76.
