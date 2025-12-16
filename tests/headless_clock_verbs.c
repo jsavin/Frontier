@@ -21,6 +21,7 @@
 #include "langinternal.h"
 #include "tablestructure.h"
 #include "timedate.h"
+#include "time_portable.h"
 
 /* Token enum for all verbs in the clock processor */
 enum {
