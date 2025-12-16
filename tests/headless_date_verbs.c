@@ -239,7 +239,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
         }
 
         case datv_longstring: {
-            /* Verb: date.longstring(date) - Return int64_t date string */
+            /* Verb: date.longstring(date) - Return long date string */
             int64_t date;
             bigstring bs;
 
