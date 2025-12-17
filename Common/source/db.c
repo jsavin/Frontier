@@ -1599,9 +1599,28 @@ boolean dbrefhandle (dbaddress adr, Handle *h) {
 #endif
 	
 	hregister = *h;
-	
+
 	lockhandle (hregister);
-	
+
+#if defined(FRONTIER_HEADLESS)
+	/* Log first 20 reads to check for format mode mismatches */
+	static int header_log_count = 0;
+	if (header_log_count < 20) {
+		db_format_mode current_mode = db_format_mode_current();
+		long actual_header_size = current_mode.use_64bit_format ? sizeheader_v7 : sizeheader_v6;
+		fprintf(stderr, "[headless] dbrefhandle[%d]: adr=0x%llx use_64bit=%d header_size=%ld (v6=%ld v7=%ld) read_offset=0x%llx\n",
+				header_log_count++,
+				(unsigned long long)a,
+				current_mode.use_64bit_format ? 1 : 0,
+				actual_header_size,
+				sizeheader_v6,
+				sizeheader_v7,
+				(unsigned long long)(a + sizeheader));
+	} else {
+		header_log_count++;
+	}
+#endif
+
 	fl = dbread (a + sizeheader, ct, *hregister);
 
 #if defined(FRONTIER_HEADLESS)
@@ -2324,7 +2343,18 @@ boolean dbassign_internal (dbaddress *padr, long newsize, ptrvoid pdata) {
 	} /*dbassign_internal*/
 
 boolean dbassign (dbaddress *padr, long newsize, ptrvoid pdata) {
-    db_context *ctx = db_context_refresh_default();
+    db_context ctx_storage;
+    boolean using_destination = false;
+    db_context *ctx = db_context_for_saveas_destination(&ctx_storage, &using_destination);
+    if (ctx == NULL)
+        ctx = db_context_refresh_default();
+#if defined(FRONTIER_HEADLESS)
+    static int log_count = 0;
+    if (log_count++ < 10) {
+        fprintf(stderr, "[headless] dbassign: saveas_active=%d using_destination=%d dest_db=%p\n",
+                (int)fldatabasesaveas, (int)using_destination, (void*)databasedestination);
+    }
+#endif
     return dbassign_context(ctx, padr, newsize, pdata);
 }
 	

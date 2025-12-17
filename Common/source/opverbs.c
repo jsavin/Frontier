@@ -576,19 +576,34 @@ static boolean opverbinmemory (hdloutlinevariable hv) {
 	
 	if ((**hv).flinmemory) /*nothing to do, it's already in memory*/
 		return (true);
-	
+
 	dbpushdatabase ((**hv).hdatabase);
 
 	adr = (dbaddress) (**hv).variabledata;
-	
+
+#if defined(FRONTIER_HEADLESS)
+	static int load_count = 0;
+	if (load_count++ < 10) {
+		fprintf(stderr, "[headless] opverbinmemory: about to dbrefhandle adr=0x%llx\n",
+		        (unsigned long long)adr);
+	}
+#endif
+
 	fl = dbrefhandle (adr, &hpackedoutline);
 
 	if (!fl) {
 #if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[headless] opverbinmemory dbrefhandle failed adr=0x%llx\n",
+		fprintf(stderr, "[headless] opverbinmemory: dbrefhandle FAILED adr=0x%llx\n",
 		        (unsigned long long) adr);
 #endif
 	} else {
+#if defined(FRONTIER_HEADLESS)
+		long packed_size = gethandlesize(hpackedoutline);
+		if (load_count <= 10) {
+			fprintf(stderr, "[headless] opverbinmemory: dbrefhandle OK adr=0x%llx size=%ld\n",
+			        (unsigned long long)adr, packed_size);
+		}
+#endif
 		/* 2025-12-05: Dispatch based on outline format version */
 		short versionnumber;
 		boolean islegacy = false;
