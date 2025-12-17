@@ -210,7 +210,14 @@ static boolean pictverbinmemory (hdlpictvariable hv) {
 	
 	if ((**hv).flinmemory) /*nothing to do, it's already in memory*/
 		return (true);
-	
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] pictverbinmemory: about to push hdatabase=%p (current=%p) variabledata=0x%llx\n",
+	        (void*)(**hv).hdatabase,
+	        (void*)databasedata,
+	        (unsigned long long)(**hv).variabledata);
+#endif
+
 	dbpushdatabase ((**hv).hdatabase);
 
 	adr = (dbaddress) (**hv).variabledata;

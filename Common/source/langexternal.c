@@ -2590,20 +2590,28 @@ boolean langexternalgetvalsize (tyvaluerecord val, long *size) {
 
 
 boolean langnewexternalvariable (boolean flinmemory, long variabledata, hdlexternalvariable *h) {
-	
+
 	tyexternalvariable item;
-	
+
 	clearbytes (&item, sizeof (item));
-	
+
 	item.flinmemory = flinmemory;
-	
+
 	item.variabledata = variabledata;
 
 	item.hdatabase = databasedata; // 5.0a18 dmb
-	
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] langnewexternalvariable: flinmemory=%d variabledata=0x%llx captured_db=%p (current=%p)\n",
+	        (int)flinmemory,
+	        (unsigned long long)variabledata,
+	        (void*)item.hdatabase,
+	        (void*)databasedata);
+#endif
+
 	//item.hexternaltable = nil;
 	//copystring (emptystring, item.bsexternalname);
-	
+
 	return (newfilledhandle (&item, sizeof (item), (Handle *) h));
 	} /*langnewexternalvariable*/
 
@@ -2926,17 +2934,24 @@ tyvaluetype langexternalgetvaluetype (OSType typeid) {
 
 
 boolean langexternalrefdata (hdlexternalvariable hv, Handle *hdata) {
-	
+
 	boolean fl;
-	
+
 	assert (!(**hv).flinmemory);
-	
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] langexternalrefdata: hdatabase=%p variabledata=0x%llx (current=%p)\n",
+	        (void*)(**hv).hdatabase,
+	        (unsigned long long)(**hv).variabledata,
+	        (void*)databasedata);
+#endif
+
 	dbpushdatabase ((**hv).hdatabase);
-	
+
 	fl = dbrefhandle ((dbaddress) (**hv).variabledata, hdata);
-	
+
 	dbpopdatabase ();
-	
+
 	return (fl);
 	} /*langexternalrefdata*/
 

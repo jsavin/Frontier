@@ -319,6 +319,13 @@ boolean tableverbinmemory_common(hdlexternalvariable hvariable, hdlhashnode hnod
     if ((hnode == nil) || (hnode == HNoNode))
         hnode = nil;
 
+#if defined(FRONTIER_HEADLESS)
+    fprintf(stderr, "[headless] tableverbinmemory_common: about to push hdatabase=%p (current=%p) variabledata=0x%llx\n",
+            (void*)(**hv).hdatabase,
+            (void*)databasedata,
+            (unsigned long long)(**hv).variabledata);
+#endif
+
     dbpushdatabase((**hv).hdatabase);
 
     adr = (dbaddress) (**hv).variabledata;

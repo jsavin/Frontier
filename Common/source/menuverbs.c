@@ -169,7 +169,14 @@ static boolean menuverbinmemory (hdlmenuvariable hvariable) {
 	
 	if ((**hv).flinmemory)
 		return (true);
-	
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] menuverbinmemory: about to push hdatabase=%p (current=%p) variabledata=0x%llx\n",
+	        (void*)(**hv).hdatabase,
+	        (void*)databasedata,
+	        (unsigned long long)(**hv).variabledata);
+#endif
+
 	dbpushdatabase ((**hv).hdatabase);
 
 	adr = (dbaddress) (**hv).variabledata;

@@ -451,33 +451,47 @@ boolean dbpushdatabase (hdldatabaserecord hdatabase) {
 	when you want to temporarily work with a different databaserecord, call this
 	routine, do your stuff and then call dbpopdatabase.
 	*/
-	
+
 	if (topdatabasestack >= ctdatabasestack) {
-		
+
 		DebugStr (STR_database_stack_overflow);
-		
+
 		return (false);
 		}
-	
+
 	databasestack [topdatabasestack++] = databasedata;
-	
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] dbpushdatabase: old=%p new=%p stack_depth=%d\n",
+	        (void*)databasedata,
+	        (void*)hdatabase,
+	        topdatabasestack);
+#endif
+
 	if (hdatabase != nil)
 		databasedata = hdatabase;
 
 	db_sync_use64_to_current_db();
-	
+
 	return (true);
 	} /*dbpushdatabase*/
 		
 
 boolean dbpopdatabase (void) {
-	
+
 	if (topdatabasestack <= 0)
 		return (false);
-	
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] dbpopdatabase: old=%p restored=%p stack_depth=%d\n",
+	        (void*)databasedata,
+	        (void*)databasestack[topdatabasestack - 1],
+	        topdatabasestack);
+#endif
+
 	databasedata = databasestack [--topdatabasestack];
 	db_sync_use64_to_current_db();
-	
+
 	return (true);
 	} /*dbpopdatabase*/
 
@@ -3216,9 +3230,15 @@ boolean dbclose (void) {
 
 
 static boolean dbstartsaveas_internal(hdlfilenum fnum) {
-	
+
 	register boolean fl;
-		
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] dbstartsaveas BEGIN: source_db=%p dest_db=%p\n",
+	        (void*)databasedata,
+	        (void*)databasedestination);
+#endif
+
 	fldatabasesaveas = true; /*set global; enables databasehandle swapping*/
 	dbsaveas_source = databasedata;
 
@@ -3227,17 +3247,42 @@ static boolean dbstartsaveas_internal(hdlfilenum fnum) {
 	 * for all subsequent writes during migration. Using _context() here would
 	 * undo the mode change when the guard exits. */
     db_format_adapter_enable_wide_writes(NULL);
-	
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] dbstartsaveas: fldatabasesaveas=true dbsaveas_source=%p databasedata=%p\n",
+	        (void*)dbsaveas_source,
+	        (void*)databasedata);
+#endif
+
 	dbswapglobals ();
-	
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] dbstartsaveas: after swap, databasedata=%p databasedestination=%p\n",
+	        (void*)databasedata,
+	        (void*)databasedestination);
+#endif
+
 	fl = dbnew (fnum);
-	
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] dbstartsaveas: after dbnew, fl=%d databasedata=%p\n",
+	        (int)fl,
+	        (void*)databasedata);
+#endif
+
 	dbswapglobals ();
-	
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] dbstartsaveas END: after final swap, databasedata=%p databasedestination=%p fl=%d\n",
+	        (void*)databasedata,
+	        (void*)databasedestination,
+	        (int)fl);
+#endif
+
 	fldatabasesaveas = fl;
 	if (!fl)
 		dbsaveas_source = nil;
-	
+
 	return (fl);
 	} /*dbstartsaveas_internal*/
 

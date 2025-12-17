@@ -351,16 +351,24 @@ boolean opverbdispose (hdlexternalvariable hvariable, boolean fldisk) {
 
 
 static boolean newoutlinevariable (boolean flinmemory, long variabledata, hdloutlinevariable *h) {
-	
+
 	tyoutlinevariable item;
-	
+
 	clearbytes (&item, sizeof (item));
-	
+
 	item.flinmemory = flinmemory;
-	
+
 	item.variabledata = variabledata;
-	
+
 	item.hdatabase = databasedata; // 5.0a18 dmb
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] newoutlinevariable: flinmemory=%d variabledata=0x%llx captured_db=%p (current=%p)\n",
+	        (int)flinmemory,
+	        (unsigned long long)variabledata,
+	        (void*)item.hdatabase,
+	        (void*)databasedata);
+#endif
 
 	return (newfilledhandle (&item, sizeof (item), (Handle *) h));
 	} /*newoutlinevariable*/
@@ -577,6 +585,13 @@ static boolean opverbinmemory (hdloutlinevariable hv) {
 	if ((**hv).flinmemory) /*nothing to do, it's already in memory*/
 		return (true);
 
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] opverbinmemory: about to push hdatabase=%p (current_db=%p) variabledata=0x%llx\n",
+	        (void*)(**hv).hdatabase,
+	        (void*)databasedata,
+	        (unsigned long long)(**hv).variabledata);
+#endif
+
 	dbpushdatabase ((**hv).hdatabase);
 
 	adr = (dbaddress) (**hv).variabledata;
@@ -635,6 +650,11 @@ static boolean opverbinmemory (hdloutlinevariable hv) {
 			        (unsigned long long) adr);
 #endif
 		}
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] opverbinmemory: about to pop database (current=%p)\n",
+	        (void*)databasedata);
+#endif
 
 	dbpopdatabase ();
 	
