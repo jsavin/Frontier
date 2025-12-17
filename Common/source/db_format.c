@@ -1240,11 +1240,17 @@ static void db_format_sanitize_root_externals(hdlhashtable hroot, const db_conte
 
         /* Clear oldaddress on all in-memory externals to force new allocation during save */
         if ((**hv).flinmemory) {
+            bigstring bsname;
+            gethashkey(hnode, bsname);
+            fprintf(stderr, "[headless] migrate clearing oldaddress name='%.*s' id=%d\n",
+                    (int) bsname[0], (char *) &bsname[1], (int) (**hv).id);
             (**hv).oldaddress = nildbaddress;
 
             /* Recurse into table externals to clear oldaddress on nested values */
             if ((**hv).id == idtableprocessor) {
                 hdlhashtable childtable = (hdlhashtable) (**hv).variabledata;
+                fprintf(stderr, "[headless] migrate recursing into table '%.*s'\n",
+                        (int) bsname[0], (char *) &bsname[1]);
                 db_format_sanitize_root_externals(childtable, context);
             }
             continue;
@@ -1443,7 +1449,7 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
 
     dest_context.mode = source_context.mode;
     dest_context.mode.use_64bit_format = true;
-    dest_context.mode.adapter_repack = db_format_adapter_force_repack();
+    dest_context.mode.adapter_repack = true;  /* Force repack during migration to ensure nested tables are saved */
     dest_context.mode.drop_cancoon = false;
     have_dest_context = true;
 
@@ -1728,6 +1734,10 @@ void db_format_force_strict_v7_reader(void) {
 void db_format_mode_apply(const db_format_mode *mode) {
     g_mode_state = *mode;
     g_legacy_adapter_force_repack = mode->adapter_repack;
+#if defined(FRONTIER_HEADLESS)
+    fprintf(stderr, "[headless] db_format_mode_apply adapter_repack=%d\n",
+            (int) mode->adapter_repack);
+#endif
 }
 
 void db_format_mode_push(const db_format_mode *mode) {
@@ -1745,15 +1755,23 @@ void db_format_mode_pop(void) {
     if (g_mode_depth > 0)
         db_format_mode_apply(&g_mode_stack[g_mode_depth - 1]);
     else {
-        db_format_mode reset = {false, false, false};
+        /* When popping the last mode, restore base state but preserve adapter_repack flag
+           which is managed independently via db_format_mode_apply during migration */
+        db_format_mode reset = g_mode_state;
+        reset.use_64bit_format = false;
+        reset.drop_cancoon = false;
+        /* Do NOT reset adapter_repack here - it should persist across mode stack changes */
         db_format_mode_apply(&reset);
     }
 }
 
 db_format_mode db_format_mode_current(void) {
+    db_format_mode current;
     if (g_mode_depth > 0)
-        return g_mode_stack[g_mode_depth - 1];
-    db_format_mode current = g_mode_state;
+        current = g_mode_stack[g_mode_depth - 1];
+    else
+        current = g_mode_state;
+    /* Always use the global adapter_repack flag which is kept in sync by mode_apply */
     current.adapter_repack = g_legacy_adapter_force_repack;
     return current;
 }

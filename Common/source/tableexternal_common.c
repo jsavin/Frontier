@@ -461,7 +461,11 @@ boolean tableverbinmemory_common(hdlexternalvariable hvariable, hdlhashnode hnod
 
     (**hv).variabledata = (long) htable; /* link into variable structure */
 
-    (**hv).oldaddress = adr; /* last place this table was stored */
+    /* During migration/repack, clear oldaddress to force new allocation */
+    if (db_format_mode_current().adapter_repack && databasedata != nil)
+        (**hv).oldaddress = nildbaddress;
+    else
+        (**hv).oldaddress = adr; /* last place this table was stored */
 
 #if defined(FRONTIER_HEADLESS)
     {

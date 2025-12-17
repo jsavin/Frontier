@@ -109,6 +109,7 @@ RUNTIME_SOURCES = \
     ../Common/source/tableexternal_common.c \
     ../Common/source/tableexternal.c \
     ../Common/source/tablepack.c \
+    ../Common/source/tableverbs.c \
     ../Common/source/shell_api.c \
     ../Common/source/shell_api_headless.c
 
@@ -139,7 +140,6 @@ HEADLESS_STUBS = \
     $(TESTSDIR)/headless_opattributes_verbs.c \
     $(TESTSDIR)/headless_script_verbs.c \
     $(TESTSDIR)/headless_osa_verbs.c \
-    $(TESTSDIR)/headless_table_verbs.c \
     $(TESTSDIR)/headless_menu_verbs.c \
     $(TESTSDIR)/headless_pict_verbs.c \
     $(TESTSDIR)/headless_clock_verbs.c \

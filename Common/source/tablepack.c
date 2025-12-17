@@ -304,7 +304,7 @@ boolean tableverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdba
 	hdlwindowinfo hinfo;
     db_format_mode prev_mode = db_format_mode_current();
     db_format_mode modern_mode = prev_mode;
-	const boolean adapter_repack = db_format_adapter_force_repack() && (databasedata != nil);
+	const boolean adapter_repack = prev_mode.adapter_repack && (databasedata != nil);
     boolean mode64_for_save = false;
 
 	/* Modern path: always emit BE64 addresses. */
@@ -312,8 +312,8 @@ boolean tableverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdba
     db_format_mode_push(&modern_mode);
 
 #if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] tableverbpack start flinmemory=%d adapter_repack=%d databasedata=%p\n",
-	        (int) (**hv).flinmemory, (int) adapter_repack, (void *) databasedata);
+	fprintf(stderr, "[headless] tableverbpack start flinmemory=%d adapter_repack=%d (prev_mode.adapter_repack=%d) databasedata=%p\n",
+	        (int) (**hv).flinmemory, (int) adapter_repack, (int) prev_mode.adapter_repack, (void *) databasedata);
 #endif
 	
 	if (fldatabasesaveas) {
