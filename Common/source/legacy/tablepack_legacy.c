@@ -343,9 +343,8 @@ boolean tableverbpack_legacy (hdlexternalvariable h, Handle *hpacked, boolean *f
 		*flnewdbaddress = true;
 		(**ht).flsubsdirty = true;
 		(**ht).fldirty = true;
-        db_context ctx;
-        db_context_init(&ctx);
-        db_format_adapter_enable_wide_writes_context(&ctx, NULL);
+        /* Call the non-context version directly so the mode persists. */
+        db_format_adapter_enable_wide_writes(NULL);
 	}
 	
 	tablecheckwindowrect (ht);

@@ -844,20 +844,9 @@ boolean opverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddr
 		return (false);
 	}
 
-	/* During migration, use context-based dbassignhandle to ensure v7 format */
-	if (adapter_repack) {
-		db_context write_ctx;
-		db_context_init(&write_ctx);
-		write_ctx.mode.use_64bit_format = true;
-		write_ctx.mode.adapter_repack = true;
-#if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[headless] opverbpack: using context for v7 write use_64bit=%d adapter_repack=%d\n",
-		        (int) write_ctx.mode.use_64bit_format, (int) write_ctx.mode.adapter_repack);
-#endif
-		fl = dbassignhandle_context(&write_ctx, hpackedoutline, &adr);
-	} else {
-		fl = dbassignhandle (hpackedoutline, &adr);
-	}
+	/* During migration, dbassignhandle will use the global v7 write mode set by
+	 * db_format_adapter_enable_wide_writes() in dbstartsaveas_internal(). */
+	fl = dbassignhandle (hpackedoutline, &adr);
 
 #if defined(FRONTIER_HEADLESS)
 	db_format_mode check_mode = db_format_mode_current();

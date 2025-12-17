@@ -694,12 +694,9 @@ static boolean dbflushheader (void) {
 	        (int) use64log);
 #endif
 	
-	/* If we opened via legacy adapter, flip to wide writes before flushing. */
-    {
-        db_context ctx;
-        db_context_init(&ctx);
-        db_format_adapter_enable_wide_writes_context(&ctx, NULL);
-    }
+	/* If we opened via legacy adapter, flip to wide writes before flushing.
+	 * Call the non-context version directly so the mode persists. */
+    db_format_adapter_enable_wide_writes(NULL);
 
 	if (isdirty (hdb)) { /*changes made to header*/
 		
@@ -1657,7 +1654,25 @@ static boolean dballocate (long databytes, ptrvoid pdata, dbaddress *paddress) {
     db_context swap_ctx;
     boolean using_destination = false;
     db_context *apply_ctx = db_context_for_saveas_destination(&swap_ctx, &using_destination);
+#if defined(FRONTIER_HEADLESS)
+    static int call_count = 0;
+    if (call_count++ < 5) {
+        fprintf(stderr, "[headless] dballocate: using_destination=%d apply_ctx=%p\n",
+                (int) using_destination, (void *) apply_ctx);
+        if (apply_ctx != NULL) {
+            fprintf(stderr, "[headless] dballocate: context mode use_64bit=%d adapter_repack=%d\n",
+                    (int) apply_ctx->mode.use_64bit_format, (int) apply_ctx->mode.adapter_repack);
+        }
+    }
+#endif
     db_context_guard_enter(apply_ctx, &guard);
+#if defined(FRONTIER_HEADLESS)
+    if (call_count <= 5) {
+        db_format_mode current_after = db_format_mode_current();
+        fprintf(stderr, "[headless] dballocate: after guard enter, current mode use_64bit=%d adapter_repack=%d\n",
+                (int) current_after.use_64bit_format, (int) current_after.adapter_repack);
+    }
+#endif
 
 #if !defined(FRONTIER_HEADLESS)
     (void) using_destination;
@@ -3158,12 +3173,11 @@ static boolean dbstartsaveas_internal(hdlfilenum fnum) {
 	fldatabasesaveas = true; /*set global; enables databasehandle swapping*/
 	dbsaveas_source = databasedata;
 
-	/* 2025-11-25 Codex: Enable wide writes when legacy adapter is active. */
-    {
-        db_context ctx;
-        db_context_init(&ctx);
-        db_format_adapter_enable_wide_writes_context(&ctx, NULL);
-    }
+	/* 2025-12-16: Enable wide writes when legacy adapter is active.
+	 * Call the non-context version directly so the mode persists globally
+	 * for all subsequent writes during migration. Using _context() here would
+	 * undo the mode change when the guard exits. */
+    db_format_adapter_enable_wide_writes(NULL);
 	
 	dbswapglobals ();
 	

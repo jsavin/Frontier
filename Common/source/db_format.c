@@ -55,6 +55,7 @@ static boolean g_db_format_runtime_headless = false;
 static char last_backup_path[1024];
 static boolean g_legacy_adapter_active = false;
 static boolean g_legacy_adapter_force_repack = false;
+static boolean g_legacy_adapter_mode_locked = false; /* Prevents v7->v6 downgrades during migration */
 static tydatabaserecord_64 g_legacy_widened_header;
 static hdldatabaserecord g_legacy_source_db = nil;
 static _Thread_local db_format_mode g_mode_stack[4];
@@ -85,7 +86,31 @@ static void db_context_guard_enter(const db_context *context, db_context_guard *
 static void db_context_guard_exit(const db_context_guard *guard) {
     if (guard == NULL)
         return;
-    db_format_mode_apply(&guard->prev_mode);
+    /* During migration (adapter active), do NOT restore the previous mode if it would
+     * downgrade us from v7 to v6 writes. The adapter_enable_wide_writes() sets a
+     * persistent global mode that must remain active for all subsequent writes. */
+#if defined(FRONTIER_HEADLESS)
+    static int debug_count = 0;
+    if (debug_count++ < 5) {
+        fprintf(stderr, "[headless] db_context_guard_exit: adapter_active=%d prev.use64=%d current.use64=%d\n",
+                (int) g_legacy_adapter_active,
+                (int) guard->prev_mode.use_64bit_format,
+                (int) g_mode_state.use_64bit_format);
+    }
+#endif
+    if (g_legacy_adapter_active &&
+        guard->prev_mode.use_64bit_format == false &&
+        g_mode_state.use_64bit_format == true) {
+        /* Keep the current v7 write mode instead of restoring v6 mode */
+#if defined(FRONTIER_HEADLESS)
+        static int warn_count = 0;
+        if (warn_count++ < 3) {
+            fprintf(stderr, "[headless] db_context_guard_exit: NOT restoring prev mode (would downgrade v7->v6)\n");
+        }
+#endif
+    } else {
+        db_format_mode_apply(&guard->prev_mode);
+    }
     databasedata = guard->prev_db;
     db_saveas_state_apply(&guard->prev_saveas);
 }
@@ -1033,6 +1058,12 @@ boolean db_format_adapter_enable_wide_writes(const tydatabaserecord_64 **widened
     db_format_mode modern = {true, true, false};
     db_format_mode_apply(&modern);
 
+    /* Lock the mode to prevent v7->v6 downgrades during migration */
+    g_legacy_adapter_mode_locked = true;
+#if defined(FRONTIER_HEADLESS)
+    fprintf(stderr, "[headless] db_format_adapter_enable_wide_writes: mode LOCKED (v7 writes enforced)\n");
+#endif
+
     if (databasedata != nil) {
         if ((**databasedata).headerLength < (long) sizeof (tydatabaserecord_64))
             (**databasedata).headerLength = (long) sizeof (tydatabaserecord_64);
@@ -1456,11 +1487,9 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     dest_context.mode.drop_cancoon = false;
     have_dest_context = true;
 
-    /* Switch the destination into BE64 write mode before any assigns. */
-    if (have_dest_context)
-        db_format_adapter_enable_wide_writes_context(&dest_context, NULL);
-    else
-        db_format_adapter_enable_wide_writes(NULL);
+    /* Switch the destination into BE64 write mode before any assigns.
+     * Call the non-context version directly so the mode persists globally. */
+    db_format_adapter_enable_wide_writes(NULL);
 
     fail_step = "tablesavesystemtable(root)";
     /* Read from the source handle while Save As remains active for destination writes. */
@@ -1735,11 +1764,32 @@ void db_format_force_strict_v7_reader(void) {
     db_format_mode_apply(&mode);
 }
 void db_format_mode_apply(const db_format_mode *mode) {
+    /* During migration with mode lock active, prevent downgrading from v7 to v6 writes */
+    if (g_legacy_adapter_mode_locked &&
+        g_mode_state.use_64bit_format == true &&
+        mode->use_64bit_format == false) {
+#if defined(FRONTIER_HEADLESS)
+        static int lock_count = 0;
+        if (lock_count++ < 3) {
+            fprintf(stderr, "[headless] db_format_mode_apply: BLOCKED v7->v6 downgrade (mode locked)\n");
+        }
+#endif
+        /* Keep adapter_repack flag but preserve v7 write mode */
+        g_legacy_adapter_force_repack = mode->adapter_repack;
+        return;
+    }
+
     g_mode_state = *mode;
     g_legacy_adapter_force_repack = mode->adapter_repack;
 #if defined(FRONTIER_HEADLESS)
     if (mode->use_64bit_format == 0 && mode->adapter_repack == 1) {
-        fprintf(stderr, "[headless] WARNING: db_format_mode_apply use_64bit=0 but adapter_repack=1!\n");
+        static int warn_count = 0;
+        if (warn_count++ < 3) {
+            fprintf(stderr, "[headless] WARNING: db_format_mode_apply use_64bit=0 but adapter_repack=1!\n");
+            fprintf(stderr, "[headless]   This will cause v6 addresses to be written during migration!\n");
+            /* Print call location hint */
+            fprintf(stderr, "[headless]   Check who called db_format_mode_apply with this invalid mode\n");
+        }
     }
     fprintf(stderr, "[headless] db_format_mode_apply use_64bit=%d adapter_repack=%d drop_cancoon=%d\n",
             (int) mode->use_64bit_format, (int) mode->adapter_repack, (int) mode->drop_cancoon);

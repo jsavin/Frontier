@@ -503,10 +503,9 @@ boolean tablesavesystemtable (Handle hvariable, dbaddress *adr) {
 	fprintf(stderr, "[headless] tableverbpack returned %s\n", fl ? "true" : "false");
 #endif
     if (fl && db_format_adapter_force_repack()) {
-        /* Ensure legacy-derived addresses are normalized to BE64 for view storage. */
-        db_context ctx;
-        db_context_init(&ctx);
-        db_format_adapter_enable_wide_writes_context(&ctx, NULL);
+        /* Ensure legacy-derived addresses are normalized to BE64 for view storage.
+         * Call the non-context version directly so the mode persists. */
+        db_format_adapter_enable_wide_writes(NULL);
     }
 
 	languntraperrors (savecallback, saverefcon, !fl);
