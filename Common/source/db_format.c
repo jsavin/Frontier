@@ -1238,8 +1238,17 @@ static void db_format_sanitize_root_externals(hdlhashtable hroot, const db_conte
         if (hv == nil)
             continue;
 
-        if ((**hv).flinmemory)
+        /* Clear oldaddress on all in-memory externals to force new allocation during save */
+        if ((**hv).flinmemory) {
+            (**hv).oldaddress = nildbaddress;
+
+            /* Recurse into table externals to clear oldaddress on nested values */
+            if ((**hv).id == idtableprocessor) {
+                hdlhashtable childtable = (hdlhashtable) (**hv).variabledata;
+                db_format_sanitize_root_externals(childtable, context);
+            }
             continue;
+        }
 
         dbaddress adr = (dbaddress) (**hv).variabledata;
         boolean ok = false;

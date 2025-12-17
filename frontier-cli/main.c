@@ -412,6 +412,7 @@ static boolean hydrate_system_root_database(const char* path) {
     if (migrated) {
         cli_log_info("Migrated legacy system root to v7 format (written to): %s", actual_path);
         path = actual_path;  /* Use the v7 file for hydration */
+        /* Freshly-migrated database is already fully hydrated - skip the save step below */
     }
 
     bigstring bspath;
@@ -522,7 +523,9 @@ static boolean hydrate_system_root_database(const char* path) {
                                menubartable,
                                objectmodeltable);
 
-    {
+    /* Only save if we made changes (created optional tables). Skip for freshly-migrated databases.
+     * Also skip if no optional tables were created - v7 databases are already complete. */
+    if ((!migrated && created_optional)) {
         boolean repack_scope = false;
         db_format_mode mode = {true, true, false};  /* 64-bit, adapter_repack, no drop_cancoon */
         db_format_mode_push(&mode);
@@ -539,6 +542,8 @@ static boolean hydrate_system_root_database(const char* path) {
             db_format_mode_pop();
             repack_scope = false;
         }
+    } else {
+        cli_log_debug("Skipping save for freshly-migrated database: %s", path);
     }
 
     dbsetview(cancoonview, adr);
@@ -554,15 +559,19 @@ cleanup:
         }
     }
 
-    if (dispose_rootvariable && hrootvariable != nil)
-        disposehandle(hrootvariable);
+    /* On failure, dispose root variable, clear globals, and restore previous database */
+    if (!ok) {
+        if (dispose_rootvariable && hrootvariable != nil)
+            disposehandle(hrootvariable);
 
-    if (db_open)
-        dbdispose();
+        if (db_open)
+            dbdispose();
 
-    databasedata = previous;
-    cleartablestructureglobals();
-    currenthashtable = nil;
+        databasedata = previous;
+        cleartablestructureglobals();
+        currenthashtable = nil;
+    }
+    /* On success, database remains open and globals remain set for runtime use */
 
     if (file_open && !closefile(fnum)) {
         cli_log_warn("Failed to close hydrated system root file handle: %s", path);
