@@ -2561,9 +2561,28 @@ boolean dbassignhandle (Handle h, dbaddress *adr) {
                 hsize,
                 (int) fldatabasesaveas,
                 (void *) databasedestination);
+    } else {
+        static int verify_count = 0;
+        if (verify_count++ < 10) {
+            fprintf(stderr, "[headless] dbassignhandle SUCCESS adr=0x%llx size=%ld\n",
+                    (unsigned long long)*adr, hsize);
+            /* Verify write by reading back first 16 bytes */
+            if (hsize >= 16) {
+                unsigned char verify_buf[16];
+                if (dbreference(*adr, 16, verify_buf)) {
+                    fprintf(stderr, "[headless] dbassignhandle verify: %02x %02x %02x %02x %02x %02x %02x %02x | %02x %02x %02x %02x %02x %02x %02x %02x\n",
+                            verify_buf[0], verify_buf[1], verify_buf[2], verify_buf[3],
+                            verify_buf[4], verify_buf[5], verify_buf[6], verify_buf[7],
+                            verify_buf[8], verify_buf[9], verify_buf[10], verify_buf[11],
+                            verify_buf[12], verify_buf[13], verify_buf[14], verify_buf[15]);
+                } else {
+                    fprintf(stderr, "[headless] dbassignhandle verify: read-back FAILED\n");
+                }
+            }
+        }
     }
 #endif
-	
+
 	return (fl);
 	} /*dbassignhandle*/
 	
