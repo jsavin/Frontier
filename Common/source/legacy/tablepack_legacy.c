@@ -53,14 +53,19 @@
 
 
 boolean tablepacktable_legacy (hdlhashtable htable, boolean flmemory, Handle *hpacked, boolean *flmustsave) {
-	
+
 	/*
 	10/6/91 dmb: mergehandles now consumes both source handles.
-	
+
 	6.2a15 AR: added flmustsave parameter.
 	*/
 // 2025-10-27 Codex: Added headless logging for table handle splits to debug root loading.
-	
+
+#ifdef FRONTIER_HEADLESS
+	fprintf(stderr, "[headless] FATAL ERROR: tablepacktable_legacy called - should use modern packer only!\n");
+	assert(false && "Legacy v6 packer should never be used in headless mode");
+#endif
+
 	register hdlhashtable ht = htable;
 	register hdltableformats hf;
 	Handle hpackedtable, hpackedformats;
@@ -273,15 +278,20 @@ boolean tableverbmemoryunpack_legacy (Handle hpacked, long *ixload, hdlexternalv
 
 
 boolean tableverbpack_legacy (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddress) {
-	
+
 	/*
 	12/4/91 dmb: set windowinfo's dirty bit to false after save
-	
+
 	6.2a15 AR: Rely on flsubsdirty flag in hashtable instead of calling tablenosubsdirty.
 	Set new flnewdbaddress parameter appropriately -- we only guarantee it to be accurate
 	if the function returns true.
 	*/
-	
+
+#ifdef FRONTIER_HEADLESS
+	fprintf(stderr, "[headless] FATAL ERROR: tableverbpack_legacy called - should use modern packer only!\n");
+	assert(false && "Legacy v6 packer should never be used in headless mode");
+#endif
+
 	register hdlexternalvariable hv = h;
 	register hdlhashtable ht;
 	dbaddress adr;

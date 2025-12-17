@@ -355,9 +355,9 @@ boolean tableverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdba
 		*flnewdbaddress = true;
 		(**ht).flsubsdirty = true;
 		(**ht).fldirty = true;
-        db_context ctx;
-        db_context_init(&ctx);
-        db_format_adapter_enable_wide_writes_context(&ctx, NULL);
+        /* Enable wide writes for migration - do NOT use context guard version
+           because we want the mode to persist, not be restored after the call */
+        db_format_adapter_enable_wide_writes(NULL);
 	}
 	
 	tablecheckwindowrect (ht);

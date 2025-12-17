@@ -1024,6 +1024,9 @@ boolean db_format_load_v7_reader(const tydatabaserecord *decoded_header, boolean
 }
 
 boolean db_format_adapter_enable_wide_writes(const tydatabaserecord_64 **widened_header_out) {
+#if defined(FRONTIER_HEADLESS)
+    fprintf(stderr, "[headless] db_format_adapter_enable_wide_writes: adapter_active=%d\n", (int) g_legacy_adapter_active);
+#endif
     if (!g_legacy_adapter_active)
         return false;
 
@@ -1735,8 +1738,11 @@ void db_format_mode_apply(const db_format_mode *mode) {
     g_mode_state = *mode;
     g_legacy_adapter_force_repack = mode->adapter_repack;
 #if defined(FRONTIER_HEADLESS)
-    fprintf(stderr, "[headless] db_format_mode_apply adapter_repack=%d\n",
-            (int) mode->adapter_repack);
+    if (mode->use_64bit_format == 0 && mode->adapter_repack == 1) {
+        fprintf(stderr, "[headless] WARNING: db_format_mode_apply use_64bit=0 but adapter_repack=1!\n");
+    }
+    fprintf(stderr, "[headless] db_format_mode_apply use_64bit=%d adapter_repack=%d drop_cancoon=%d\n",
+            (int) mode->use_64bit_format, (int) mode->adapter_repack, (int) mode->drop_cancoon);
 #endif
 }
 
@@ -1754,15 +1760,10 @@ void db_format_mode_pop(void) {
         g_mode_depth--;
     if (g_mode_depth > 0)
         db_format_mode_apply(&g_mode_stack[g_mode_depth - 1]);
-    else {
-        /* When popping the last mode, restore base state but preserve adapter_repack flag
-           which is managed independently via db_format_mode_apply during migration */
-        db_format_mode reset = g_mode_state;
-        reset.use_64bit_format = false;
-        reset.drop_cancoon = false;
-        /* Do NOT reset adapter_repack here - it should persist across mode stack changes */
-        db_format_mode_apply(&reset);
-    }
+    /* When popping the last mode from the stack, do NOT call db_format_mode_apply -
+       the base mode was set by db_format_adapter_enable_wide_writes and should remain
+       in effect. Calling db_format_mode_apply here would overwrite it with whatever
+       mode was last pushed/popped, which could have use_64bit_format=false. */
 }
 
 db_format_mode db_format_mode_current(void) {
@@ -1773,6 +1774,15 @@ db_format_mode db_format_mode_current(void) {
         current = g_mode_state;
     /* Always use the global adapter_repack flag which is kept in sync by mode_apply */
     current.adapter_repack = g_legacy_adapter_force_repack;
+#if defined(FRONTIER_HEADLESS)
+    static int call_count = 0;
+    if (call_count++ < 20) {
+        fprintf(stderr, "[headless] db_format_mode_current: depth=%d use_64bit=%d (stack=%d state=%d) adapter_repack=%d\n",
+                g_mode_depth, (int) current.use_64bit_format,
+                g_mode_depth > 0 ? (int) g_mode_stack[g_mode_depth - 1].use_64bit_format : -1,
+                (int) g_mode_state.use_64bit_format, (int) current.adapter_repack);
+    }
+#endif
     return current;
 }
 

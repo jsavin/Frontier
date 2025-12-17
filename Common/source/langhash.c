@@ -381,6 +381,11 @@ static boolean langhash_materialize_external(tyvaluerecord *val, const char *pat
 				return false;
 			}
 			hdlhashtable child = (hdlhashtable)(**hv).variabledata;
+			/* During adapter_repack (migration), mark materialized tables as dirty to force save */
+			if (db_format_mode_current().adapter_repack && child != nil) {
+				(**child).fldirty = true;
+				(**child).flsubsdirty = true;
+			}
 			boolean ok = langhash_materialize_table_internal(child, path);
 			langhash_materialize_current_path = prior_path;
 			return ok;
@@ -3718,6 +3723,11 @@ boolean hashpacktable (hdlhashtable htable, boolean flmemory, Handle *hpackedtab
 	Handle h1, h2;
 
 	/* Check database format mode to determine which version to write */
+#if defined(FRONTIER_HEADLESS)
+	db_format_mode current_mode = db_format_mode_current();
+	fprintf(stderr, "[headless] hashpacktable use_64bit=%d (current mode: use_64bit=%d adapter_repack=%d)\n",
+	        (int) use_64bit, (int) current_mode.use_64bit_format, (int) current_mode.adapter_repack);
+#endif
 	if (use_64bit) {
 		/* v7 mode: Write v0x05 with 64-bit timestamps */
 		tydisktablerecord header;
