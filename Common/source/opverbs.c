@@ -830,20 +830,12 @@ boolean opverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddr
 	if (adapter_repack) {
 		(**ho).fldirty = true;
 		(**ho).fldirtyview = true;
-        /* Enable wide writes for migration - do NOT use context guard version */
-        db_format_adapter_enable_wide_writes(NULL);
-        working_mode.use_64bit_format = true; /* write modern */
-#if defined(FRONTIER_HEADLESS)
-        fprintf(stderr, "[headless] opverbpack: pushing write mode use_64bit=%d adapter_repack=%d\n",
-                (int) working_mode.use_64bit_format, (int) working_mode.adapter_repack);
-#endif
-        db_format_mode_push(&working_mode);
 		*flnewdbaddress = true;
 	}
 
 	if (!fldatabasesaveas && !(**ho).fldirty && !(**ho).fldirtyview) /*don't need to update the db version of the outline*/
 		goto pushaddress;
-	
+
 	if (!opverbpackoutline (ho, &hpackedoutline)) {
 #if defined(FRONTIER_HEADLESS)
 		fprintf(stderr, "[headless] opverbpackoutline failed for outline at adr=0x%llx\n",
@@ -852,7 +844,20 @@ boolean opverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddr
 		return (false);
 	}
 
-	fl = dbassignhandle (hpackedoutline, &adr);
+	/* During migration, use context-based dbassignhandle to ensure v7 format */
+	if (adapter_repack) {
+		db_context write_ctx;
+		db_context_init(&write_ctx);
+		write_ctx.mode.use_64bit_format = true;
+		write_ctx.mode.adapter_repack = true;
+#if defined(FRONTIER_HEADLESS)
+		fprintf(stderr, "[headless] opverbpack: using context for v7 write use_64bit=%d adapter_repack=%d\n",
+		        (int) write_ctx.mode.use_64bit_format, (int) write_ctx.mode.adapter_repack);
+#endif
+		fl = dbassignhandle_context(&write_ctx, hpackedoutline, &adr);
+	} else {
+		fl = dbassignhandle (hpackedoutline, &adr);
+	}
 
 #if defined(FRONTIER_HEADLESS)
 	db_format_mode check_mode = db_format_mode_current();
@@ -889,8 +894,7 @@ boolean opverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddr
 		}
 	
 	pushaddress:
-	if (adapter_repack)
-        db_format_mode_pop();
+	/* No longer using mode stack for adapter_repack - using context instead */
     db_format_mode_apply(&prev_mode);
 	
 	if (!fldatabasesaveas) {
