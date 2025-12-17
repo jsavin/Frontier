@@ -97,8 +97,8 @@ FRONTIER_SOURCES = \
     ../Common/source/dbverbs.c \
     ../Common/source/db_format.c \
     ../Common/source/db_reader_legacy.c \
-    ../Common/source/db_reader_modern.c \
-    ../Common/source/db_writer_modern.c
+    ../Common/source/db_reader_v7.c \
+    ../Common/source/db_writer_v7.c
 
 # Migration tests use the same headless runtime slice as runtime_tests to avoid test-only forks.
 MIGRATION_SOURCES = \
@@ -169,8 +169,8 @@ LANG_RUNTIME_SOURCES = \
     ../Common/source/db.c \
     ../Common/source/db_format.c \
     ../Common/source/db_reader_legacy.c \
-    ../Common/source/db_reader_modern.c \
-    ../Common/source/db_writer_modern.c \
+    ../Common/source/db_reader_v7.c \
+    ../Common/source/db_writer_v7.c \
     ../Common/source/shell_api_headless.c \
     ../Common/source/shell_api.c \
     ../portable/file_portable.c \

@@ -16,7 +16,7 @@ extern "C" {
 
 boolean db_format_header_version(const unsigned char *rawheader, size_t raw_len, int *out_version);
 boolean db_read_legacy(const unsigned char *rawheader, size_t raw_len, tydatabaserecord *out);
-boolean db_read_modern(const unsigned char *rawheader, size_t raw_len, tydatabaserecord *out);
+boolean db_read_v7(const unsigned char *rawheader, size_t raw_len, tydatabaserecord *out);
 boolean db_format_load_legacy_adapter(const tydatabaserecord *decoded_header, boolean flreadonly, tydatabaserecord_64 *widened_out);
 boolean db_format_load_v7_reader(const tydatabaserecord *decoded_header, boolean flreadonly);
 

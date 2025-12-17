@@ -1,14 +1,14 @@
-/* 2025-11-26 Codex: Modern (v7+) BE64 writer helpers split from db_format.c. */
+/* 2025-11-26 Codex: V7 BE64 writer helpers split from db_format.c. */
 
 #include "frontier.h"
 #include "standard.h"
 
 #include <string.h>
 
-#include "db_writer_modern.h"
+#include "db_writer_v7.h"
 #include "db_format.h"
 
-boolean db_write_modern_header(const tydatabaserecord *in, unsigned char *outbuf, size_t out_len) {
+boolean db_write_v7_header(const tydatabaserecord *in, unsigned char *outbuf, size_t out_len) {
     tydatabaserecord_64 diskrec64;
     if (in == NULL || outbuf == NULL)
         return false;
@@ -32,7 +32,7 @@ boolean db_write_modern_header(const tydatabaserecord *in, unsigned char *outbuf
 
     diskrec64.releasestack = nil;
     diskrec64.fnumdatabase = 0;
-    diskrec64.headerLength = (long) sizeof(tydatabaserecord_64); /* force modern size */
+    diskrec64.headerLength = (long) sizeof(tydatabaserecord_64); /* force v7 size */
     diskrec64.longversionMajor = (in->longversionMajor == 0) ? 7 : in->longversionMajor;
     diskrec64.longversionMinor = (in->longversionMinor == 0) ? 0 : in->longversionMinor;
     diskrec64.u.extensions.availlistblock = in->u.extensions.availlistblock;
@@ -43,7 +43,7 @@ boolean db_write_modern_header(const tydatabaserecord *in, unsigned char *outbuf
     return db_format_write_header64(&diskrec64, outbuf, out_len);
 }
 
-boolean db_write_modern_block_header(dbaddress adr, boolean flfree, long ctbytes, tyvariance variance) {
+boolean db_write_v7_block_header(dbaddress adr, boolean flfree, long ctbytes, tyvariance variance) {
     uint64_t raw_size = (uint64_t) ctbytes;
     tyheader64 header;
 
@@ -57,7 +57,7 @@ boolean db_write_modern_block_header(dbaddress adr, boolean flfree, long ctbytes
     return dbwrite(adr, sizeheader_v7, &header);
 }
 
-boolean db_write_modern_block_trailer(dbaddress adr, boolean flfree, long ctbytes) {
+boolean db_write_v7_block_trailer(dbaddress adr, boolean flfree, long ctbytes) {
     uint64_t raw_size = (uint64_t) ctbytes;
     tytrailer64 trailer;
 

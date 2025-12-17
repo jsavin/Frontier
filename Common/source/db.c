@@ -54,7 +54,7 @@
 #include "db.h"
 #include "db_format.h"
 #include "db_reader.h"
-#include "db_writer_modern.h"
+#include "db_writer_v7.h"
 #include "dbinternal.h"
 #include "ops.h" //6.2b3 AR: for numbertostring
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
@@ -64,7 +64,7 @@
 #define dberrorlist 256
 
 // 2025-11-23 Codex: Widened block header/trailer to 64-bit BE and updated avail links for v7 roots.
-// 2025-11-20 Codex: Write modern headers and record metadata with explicit big-endian encoding for portability.
+// 2025-11-20 Codex: Write v7 headers and record metadata with explicit big-endian encoding for portability.
 // 2025-11-16 Codex: Keep dbgetsize locals wide enough so dbgetsizeandvariance
 // writes don't corrupt the caller's stack on 64-bit builds.
 
@@ -561,7 +561,7 @@ static void dbswapglobals (void) {
 
 static void db_sync_use64_to_current_db(void) {
 	if (fldatabasesaveas && dbsaveas_source != nil && db_format_adapter_is_active()) {
-		/* Legacy source stays 32-bit; destination writes are modern BE64. */
+		/* Legacy source stays 32-bit; destination writes are v7 BE64. */
         db_format_mode mode = db_format_mode_current();
         mode.use_64bit_format = !db_format_is_legacy_db(databasedata);
         db_format_mode_apply(&mode);
@@ -718,9 +718,9 @@ static boolean dbflushheader (void) {
 		{
 			unsigned char diskheader[sizeof (tydatabaserecord_64)];
 
-			if (!db_write_modern_header(&diskrec, diskheader, sizeof (diskheader))) {
+			if (!db_write_v7_header(&diskrec, diskheader, sizeof (diskheader))) {
 #if defined(FRONTIER_HEADLESS)
-				fprintf(stderr, "[headless] dbflushheader db_write_modern_header failed\n");
+				fprintf(stderr, "[headless] dbflushheader db_write_v7_header failed\n");
 #endif
 				return (false);
 			}
@@ -858,13 +858,13 @@ boolean dbreadtrailer (dbaddress adr, boolean *flfree, long *ctbytes) {
 
 static boolean dbwriteheader (dbaddress adr, boolean flfree, long ctbytes, tyvariance variance) {
 
-	return db_write_modern_block_header(adr, flfree, ctbytes, variance);
+	return db_write_v7_block_header(adr, flfree, ctbytes, variance);
 	} /*dbwriteheader*/
 	
 	
 static boolean dbwritetrailer (dbaddress adr, boolean flfree, long ctbytes) {
 
-	return db_write_modern_block_trailer(adr, flfree, ctbytes);
+	return db_write_v7_block_trailer(adr, flfree, ctbytes);
 	} /*dbwritetrailer*/
 
 
@@ -3023,7 +3023,7 @@ boolean dbopenfile (hdlfilenum fnum, boolean flreadonly) {
 		db_format_set_legacy_source_db(hdb);
 	} else {
         fail_step = "modern-read";
-		if (!db_read_modern(rawheader, sizeof rawheader, &diskrec))
+		if (!db_read_v7(rawheader, sizeof rawheader, &diskrec))
 			goto error;
         fail_step = "modern-reader";
 		if (!db_format_load_v7_reader(&diskrec, flreadonly))
@@ -3096,7 +3096,7 @@ boolean dbopenfile (hdlfilenum fnum, boolean flreadonly) {
 		
         /*
          * Only bump the in-memory header version when operating in the
-         * modern (v7) format. For legacy files (v<=6), defer version
+         * v7 format. For legacy files (v<=6), defer version
          * changes until an explicit migration is performed (e.g., Save).
          */
         if (db_use64())

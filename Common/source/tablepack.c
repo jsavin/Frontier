@@ -303,13 +303,13 @@ boolean tableverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdba
 	boolean flmustsave = false;
 	hdlwindowinfo hinfo;
     db_format_mode prev_mode = db_format_mode_current();
-    db_format_mode modern_mode = prev_mode;
+    db_format_mode v7_mode = prev_mode;
 	const boolean adapter_repack = prev_mode.adapter_repack && (databasedata != nil);
     boolean mode64_for_save = false;
 
 	/* Modern path: always emit BE64 addresses. */
-    modern_mode.use_64bit_format = true;
-    db_format_mode_push(&modern_mode);
+    v7_mode.use_64bit_format = true;
+    db_format_mode_push(&v7_mode);
 
 #if defined(FRONTIER_HEADLESS)
 	fprintf(stderr, "[headless] tableverbpack start flinmemory=%d adapter_repack=%d (prev_mode.adapter_repack=%d) databasedata=%p\n",
@@ -328,7 +328,7 @@ boolean tableverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdba
 
 	if (!(**hv).flinmemory) {
 		if (adapter_repack) {
-            db_format_mode legacy_load = modern_mode;
+            db_format_mode legacy_load = v7_mode;
             legacy_load.use_64bit_format = false; /* legacy read while loading source */
             db_format_mode_push(&legacy_load);
 			fltempload = true;

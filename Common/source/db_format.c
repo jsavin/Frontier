@@ -44,7 +44,7 @@ extern boolean headless_init_kernel_verbs(void);  /* Auto-generated from kernelv
 #endif
 
 // 2025-10-27 Codex: Added optional migration tracing to inspect v6/v7 table layouts during conversion.
-// 2025-11-20 Codex: Added v7 header serializer and shared big-endian helpers to keep modern roots portable.
+// 2025-11-20 Codex: Added v7 header serializer and shared big-endian helpers to keep v7 roots portable.
 // 2025-11-25 Codex: Implement legacy adapter widening + strict v7 reader entry points.
 // 2025-11-30 Codex: Guard headless runtime tracking when portable builds skip UI hooks.
 
@@ -415,7 +415,7 @@ static void db_trace_log_legacy_entries(db_trace_context *ctx,
                                         const char *path,
                                         int depth);
 
-static void db_trace_log_modern_entries(db_trace_context *ctx,
+static void db_trace_log_v7_entries(db_trace_context *ctx,
                                         const unsigned char *payload,
                                         size_t payload_len,
                                         const char *path,
@@ -513,7 +513,7 @@ static void db_trace_log_legacy_entries(db_trace_context *ctx,
     }
 }
 
-static void db_trace_log_modern_entries(db_trace_context *ctx,
+static void db_trace_log_v7_entries(db_trace_context *ctx,
                                         const unsigned char *payload,
                                         size_t payload_len,
                                         const char *path,
@@ -553,7 +553,7 @@ static void db_trace_log_modern_entries(db_trace_context *ctx,
         ++record_count;
     }
 
-    db_trace_log(1, "%s: [%s] modern table depth=%d entries=%zu strings=%zu",
+    db_trace_log(1, "%s: [%s] v7 table depth=%d entries=%zu strings=%zu",
                  ctx->path_label, path, depth, record_count, strings_len);
 
     if (ctx->level < 2)
@@ -733,7 +733,7 @@ static void db_trace_walk_table(db_trace_context *ctx, dbaddress adr, const char
     if (legacy)
         db_trace_log_legacy_entries(ctx, payload, payload_len, path, depth);
     else
-        db_trace_log_modern_entries(ctx, payload, payload_len, path, depth);
+        db_trace_log_v7_entries(ctx, payload, payload_len, path, depth);
 
     free(payload);
 }
@@ -849,18 +849,18 @@ static uint64_t read_be64(const unsigned char *field) {
 }
 
 /* 2025-11-24 Codex: Decode raw header into a consistent in-memory record (legacy vs v7). */
-boolean db_format_decode_header(const unsigned char *rawheader, size_t raw_len, boolean *header_is_modern, tydatabaserecord *out) {
+boolean db_format_decode_header(const unsigned char *rawheader, size_t raw_len, boolean *header_is_v7, tydatabaserecord *out) {
     int i;
     int header_version = 0;
     size_t needed = 0;
 
-    if ((rawheader == NULL) || (header_is_modern == NULL) || (out == NULL))
+    if ((rawheader == NULL) || (header_is_v7 == NULL) || (out == NULL))
         return false;
 
     if (!db_format_header_version(rawheader, raw_len, &header_version))
         return false;
 
-    *header_is_modern = false;
+    *header_is_v7 = false;
     memset(out, 0, sizeof *out);
 
     needed = (header_version >= 7) ? sizeof(tydatabaserecord_64) : sizeof(tydatabaserecord);
@@ -868,7 +868,7 @@ boolean db_format_decode_header(const unsigned char *rawheader, size_t raw_len, 
         return false;
 
     if (header_version >= 7) {
-        *header_is_modern = true;
+        *header_is_v7 = true;
         out->systemid = rawheader[0];
         out->versionnumber = rawheader[1];
         out->availlist = (dbaddress) read_be64(rawheader + offsetof(tydatabaserecord_64, availlist));
@@ -1124,7 +1124,7 @@ boolean detect_database_format(const tydatabaserecord *header) {
 	if (header == NULL)
 		return false;
 
-	/* Reject out-of-range version numbers before deciding legacy/modern. */
+	/* Reject out-of-range version numbers before deciding legacy/v7. */
 	if (header->versionnumber < 1 || header->versionnumber > DB_FORMAT_MAX_VERSION)
 		return false;
 
@@ -1467,7 +1467,7 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     db_context_guard save_guard;
     db_context save_ctx = source_context;
     if (have_dest_context) {
-        save_ctx.mode = dest_context.mode; /* write modern BE64 payloads into the destination */
+        save_ctx.mode = dest_context.mode; /* write v7 BE64 payloads into the destination */
         save_ctx.saveas = dest_context.saveas;
 #if defined(FRONTIER_HEADLESS)
         fprintf(stderr,
@@ -1662,7 +1662,7 @@ boolean migrate_32bit_to_64bit_drop_cancoon(const char *db_path) {
     return migrate_internal(db_path, true);
 }
 
-boolean ensure_database_modern(const char *db_path, boolean *migrated, char *output_path, size_t output_path_size) {
+boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_path, size_t output_path_size) {
     if (migrated)
         *migrated = false;
     if (db_path == NULL || db_path[0] == '\0')
@@ -1681,12 +1681,12 @@ boolean ensure_database_modern(const char *db_path, boolean *migrated, char *out
     if (!detect_database_format(&header))
         return false;
 
-    /* Seed format mode from the on-disk header so we don't remigrate already-modern roots. */
+    /* Seed format mode from the on-disk header so we don't remigrate already-v7 roots. */
     db_format_mode detected_mode = {header.versionnumber >= 7, false, false};
     db_format_mode_apply(&detected_mode);
 
     if (db_format_mode_current().use_64bit_format) {
-        /* Already modern - return original path */
+        /* Already v7 - return original path */
         if (output_path && output_path_size > 0) {
             strncpy(output_path, db_path, output_path_size);
             if (output_path_size > 0)
@@ -1704,7 +1704,7 @@ boolean ensure_database_modern(const char *db_path, boolean *migrated, char *out
             return false;
     }
 
-    /* Future reads should treat file as modern. */
+    /* Future reads should treat file as v7. */
     if (migrated)
         *migrated = true;
     return true;

@@ -63,7 +63,7 @@ static size_t headless_calc_header_span(const unsigned char *header, size_t avai
     return span;
 }
 
-static boolean headless_payload_looks_modern(const unsigned char *payload, size_t payload_len) {
+static boolean headless_payload_looks_v7(const unsigned char *payload, size_t payload_len) {
     if ((payload == NULL) || (payload_len < sizeof(uint32_t) * 2))
         return false;
 
@@ -383,7 +383,7 @@ boolean tableverbinmemory_common(hdlexternalvariable hvariable, hdlhashnode hnod
             if (fl) {
                 size_t hsize = (size_t) hsize_long;
                 unsigned char *bytes = (unsigned char *) *hpacked;
-                if (!headless_payload_looks_modern(bytes, hsize)) {
+                if (!headless_payload_looks_v7(bytes, hsize)) {
                     fprintf(stderr, "[headless] legacy table payload detected len=%zu\n", hsize);
                     Handle hlegacy = nil;
                     if (headless_convert_legacy_table_payload(bytes, hsize, &hlegacy)) {
