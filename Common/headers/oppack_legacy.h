@@ -28,7 +28,7 @@
 /*
  * 2025-12-05: Legacy outline packer header for v2/v3 format (32-bit timestamps).
  * These functions handle READING old v6 database outline/script payloads.
- * Modern v7 databases use oppack_modern.c with v4 portable header.
+ * V7 databases use oppack_v7.c with v4 portable header.
  * See planning/phase3/carbon_migration/outline_script_payload.md
  */
 

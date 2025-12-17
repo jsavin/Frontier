@@ -151,7 +151,7 @@ LANG_RUNTIME_SOURCES = \
     ../Common/source/oplist.c \
     ../Common/source/opstructure.c \
     ../Common/source/oprefcon.c \
-    ../Common/source/oppack_modern.c \
+    ../Common/source/oppack_v7.c \
     ../Common/source/legacy/oppack_legacy.c \
     ../Common/source/opverbs.c \
     ../Common/source/legacy/opverbs_legacy.c \

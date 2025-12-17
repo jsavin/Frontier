@@ -817,18 +817,26 @@ boolean opverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddr
 		}
 	
 	ho = (hdloutlinerecord) (**hv).variabledata;
-	
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] opverbpack: flinmemory=%d ho=%p oldaddress=0x%llx\n",
+	        (int) (**hv).flinmemory, (void *) ho, (unsigned long long) (**hv).oldaddress);
+#endif
+
 	opverbcheckwindowrect (ho);
-	
+
 	adr = (**hv).oldaddress; /*place where this outline used to be stored*/
-	
+
 	if (adapter_repack) {
 		(**ho).fldirty = true;
 		(**ho).fldirtyview = true;
-        db_context ctx;
-        db_context_init(&ctx);
-        db_format_adapter_enable_wide_writes_context(&ctx, NULL);
+        /* Enable wide writes for migration - do NOT use context guard version */
+        db_format_adapter_enable_wide_writes(NULL);
         working_mode.use_64bit_format = true; /* write modern */
+#if defined(FRONTIER_HEADLESS)
+        fprintf(stderr, "[headless] opverbpack: pushing write mode use_64bit=%d adapter_repack=%d\n",
+                (int) working_mode.use_64bit_format, (int) working_mode.adapter_repack);
+#endif
         db_format_mode_push(&working_mode);
 		*flnewdbaddress = true;
 	}
@@ -843,11 +851,17 @@ boolean opverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddr
 #endif
 		return (false);
 	}
-	
+
 	fl = dbassignhandle (hpackedoutline, &adr);
-	
+
+#if defined(FRONTIER_HEADLESS)
+	db_format_mode check_mode = db_format_mode_current();
+	fprintf(stderr, "[headless] opverbpack: dbassignhandle oldadr=0x%llx -> newadr=0x%llx (use_64bit=%d)\n",
+	        (unsigned long long) (**hv).oldaddress, (unsigned long long) adr, (int) check_mode.use_64bit_format);
+#endif
+
 	disposehandle (hpackedoutline);
-	
+
 	if (!fl) {
 #if defined(FRONTIER_HEADLESS)
 		fprintf(stderr, "[headless] dbassignhandle failed for outline adr=0x%llx\n",

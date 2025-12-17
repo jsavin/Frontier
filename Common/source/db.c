@@ -371,18 +371,46 @@ static void db_context_guard_enter(const db_context *context, db_context_guard *
         guard->prev_mode = db_format_mode_current();
         db_saveas_state_snapshot(&guard->prev_saveas);
         guard->prev_db = databasedata;
+#if defined(FRONTIER_HEADLESS)
+        static int call_count = 0;
+        if (call_count++ < 5) {
+            fprintf(stderr, "[headless] db_context_guard_enter: prev_mode captured use_64bit=%d adapter_repack=%d\n",
+                    (int) guard->prev_mode.use_64bit_format, (int) guard->prev_mode.adapter_repack);
+        }
+#endif
     }
     if (context != NULL) {
         if (context->database != nil)
             databasedata = context->database;
         db_saveas_state_apply(&context->saveas);
+#if defined(FRONTIER_HEADLESS)
+        static int call_count2 = 0;
+        if (call_count2++ < 5) {
+            fprintf(stderr, "[headless] db_context_guard_enter: applying mode use_64bit=%d adapter_repack=%d\n",
+                    (int) context->mode.use_64bit_format, (int) context->mode.adapter_repack);
+        }
+#endif
         db_format_mode_apply(&context->mode);
+#if defined(FRONTIER_HEADLESS)
+        if (call_count2 <= 5) {
+            db_format_mode current_after = db_format_mode_current();
+            fprintf(stderr, "[headless] db_context_guard_enter: after apply, current mode use_64bit=%d adapter_repack=%d\n",
+                    (int) current_after.use_64bit_format, (int) current_after.adapter_repack);
+        }
+#endif
     }
 }
 
 static void db_context_guard_exit(const db_context_guard *guard) {
     if (guard == NULL)
         return;
+#if defined(FRONTIER_HEADLESS)
+    static int call_count = 0;
+    if (call_count++ < 5) {
+        fprintf(stderr, "[headless] db_context_guard_exit: restoring prev mode use_64bit=%d adapter_repack=%d\n",
+                (int) guard->prev_mode.use_64bit_format, (int) guard->prev_mode.adapter_repack);
+    }
+#endif
     db_format_mode_apply(&guard->prev_mode);
     databasedata = guard->prev_db;
     db_saveas_state_apply(&guard->prev_saveas);
@@ -480,7 +508,29 @@ static db_context *db_context_for_saveas_destination(db_context *ctx, boolean *u
 
     if (ctx->saveas.active && ctx->saveas.destination != nil) {
         ctx->database = ctx->saveas.destination;
-        ctx->mode.use_64bit_format = !db_format_is_legacy_db(ctx->database);
+        /* During migration (adapter active), always use v7 format for destination writes.
+           The destination database handle may still be marked as legacy, but we're writing
+           the new v7 format data. */
+        boolean adapter_active = db_format_adapter_is_active();
+        boolean is_legacy = db_format_is_legacy_db(ctx->database);
+#if defined(FRONTIER_HEADLESS)
+        static int call_count = 0;
+        if (call_count++ < 5) {
+            fprintf(stderr, "[headless] db_context_for_saveas_destination: adapter_active=%d is_legacy=%d\n",
+                    (int) adapter_active, (int) is_legacy);
+        }
+#endif
+        if (adapter_active) {
+            ctx->mode.use_64bit_format = true;
+        } else {
+            ctx->mode.use_64bit_format = !is_legacy;
+        }
+#if defined(FRONTIER_HEADLESS)
+        if (call_count <= 5) {
+            fprintf(stderr, "[headless] db_context_for_saveas_destination: set use_64bit_format=%d\n",
+                    (int) ctx->mode.use_64bit_format);
+        }
+#endif
         if (using_destination != NULL)
             *using_destination = true;
         return ctx;

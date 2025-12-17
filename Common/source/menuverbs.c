@@ -393,9 +393,8 @@ boolean menuverbpack (hdlexternalvariable hvariable, Handle *hpacked, boolean *f
 	if (adapter_repack) {
 		(*flnewdbaddress) = true;
 		(**hm).fldirty = true;
-        db_context ctx;
-        db_context_init(&ctx);
-        db_format_adapter_enable_wide_writes_context(&ctx, NULL);
+        /* Enable wide writes for migration - do NOT use context guard version */
+        db_format_adapter_enable_wide_writes(NULL);
         working_mode.use_64bit_format = true; /* write modern */
         db_format_mode_push(&working_mode);
 	}
