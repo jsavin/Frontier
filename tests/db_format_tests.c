@@ -10,7 +10,7 @@
 
 #include "frontier.h"
 #include "db_format.h"
-#include "db_writer_modern.h"
+/* #include "db_writer_modern.h" */ /* Pre-existing issue: header doesn't exist */
 #include "dbinternal.h"
 #include "langexternal.h"
 #include "tableverbs.h"
