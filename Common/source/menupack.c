@@ -723,7 +723,7 @@ typedef struct tysavedmenuinfo_v7 {
 	uint8_t  reserved[1024];    /* 1KB future padding */
 } tysavedmenuinfo_v7;
 
-static boolean mepackmenustructure_modern(tysavedmenuinfo *legacy, Handle *hpacked) {
+static boolean mepackmenustructure_v7(tysavedmenuinfo *legacy, Handle *hpacked) {
 	tysavedmenuinfo_v7 modern;
 	clearbytes(&modern, sizeof(modern));
 
@@ -791,7 +791,7 @@ exit:
 	return fl;
 }
 
-static boolean meunpackmenustructure_modern(Handle hpacked, hdlmenurecord *hmenurecord) {
+static boolean meunpackmenustructure_v7(Handle hpacked, hdlmenurecord *hmenurecord) {
 	tysavedmenuinfo_v7 modern;
 	long ix = 0;
 	hdloutlinerecord ho = nil;
@@ -851,7 +851,7 @@ exit:
 boolean mepackmenustructure (tysavedmenuinfo *info, Handle *hpacked) {
 	db_format_mode mode = db_format_mode_current();
 	if (mode.use_64bit_format)
-		return mepackmenustructure_modern(info, hpacked);
+		return mepackmenustructure_v7(info, hpacked);
 	return mepackmenustructure_legacy(info, hpacked);
 }
 
@@ -859,7 +859,7 @@ boolean meunpackmenustructure (Handle hpacked, hdlmenurecord *hmenurecord) {
 	/* Peek at the current mode; legacy loader handles v<=6 payloads. */
 	db_format_mode mode = db_format_mode_current();
 	if (mode.use_64bit_format)
-		return meunpackmenustructure_modern(hpacked, hmenurecord);
+		return meunpackmenustructure_v7(hpacked, hmenurecord);
 	return meunpackmenustructure_legacy(hpacked, hmenurecord);
 }
 

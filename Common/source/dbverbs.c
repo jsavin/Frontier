@@ -1010,7 +1010,7 @@ boolean db_migrate_reopen_if_legacy(odbref *podb) {
     if (podb == NULL || *podb == NULL)
         return false;
     if (db_format_mode_current().use_64bit_format)
-        return true; /* already modern */
+        return true; /* already v7 */
 
     hdlodbrecord hodb;
     for (hodb = hodblist; hodb != nil; hodb = (**hodb).hnext) {

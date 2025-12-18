@@ -26,7 +26,7 @@
 ******************************************************************************/
 
 /*
- * 2025-12-05: MODERN outline packer for v4 portable format (64-bit timestamps, NO font/UI fields).
+ * 2025-12-05: V7 outline packer for v4 portable format (64-bit timestamps, NO font/UI fields).
  * This file handles WRITING v7 database outline payloads with the portable header.
  * Legacy v6 databases use oppack_legacy.c for reading old v2/v3 format.
  * See planning/phase3/carbon_migration/outline_script_payload.md for format details.
@@ -110,7 +110,7 @@ typedef enum tylinetableitemflags {
 #define hibyte(x) (x & 0xff00)
 
 /*
- * V4 Portable Header Format (headless/modern)
+ * V4 Portable Header Format (v7/portable)
  * Drops all QuickDraw/UI fields (fonts, colors, scroll positions, window rects).
  * Keeps only runtime-relevant metadata.
  * See planning/phase3/carbon_migration/outline_script_payload.md
@@ -1160,7 +1160,7 @@ boolean opunpack (Handle hpackedoutline, long *ixload, hdloutlinerecord *houtlin
 	
 	oppushoutline (ho);
 	
-	/* Modern oppack only handles v4 portable format */
+	/* V7 oppack only handles v4 portable format */
 	if (versionnumber == 4) {
 		fl = opunpackversion4 (&packstream);
 	}

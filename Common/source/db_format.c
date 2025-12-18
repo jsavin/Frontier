@@ -44,7 +44,7 @@ extern boolean headless_init_kernel_verbs(void);  /* Auto-generated from kernelv
 #endif
 
 // 2025-10-27 Codex: Added optional migration tracing to inspect v6/v7 table layouts during conversion.
-// 2025-11-20 Codex: Added v7 header serializer and shared big-endian helpers to keep modern roots portable.
+// 2025-11-20 Codex: Added v7 header serializer and shared big-endian helpers to keep v7 roots portable.
 // 2025-11-25 Codex: Implement legacy adapter widening + strict v7 reader entry points.
 // 2025-11-30 Codex: Guard headless runtime tracking when portable builds skip UI hooks.
 
@@ -55,6 +55,7 @@ static boolean g_db_format_runtime_headless = false;
 static char last_backup_path[1024];
 static boolean g_legacy_adapter_active = false;
 static boolean g_legacy_adapter_force_repack = false;
+static boolean g_legacy_adapter_mode_locked = false; /* Prevents v7->v6 downgrades during migration */
 static tydatabaserecord_64 g_legacy_widened_header;
 static hdldatabaserecord g_legacy_source_db = nil;
 static _Thread_local db_format_mode g_mode_stack[4];
@@ -85,7 +86,31 @@ static void db_context_guard_enter(const db_context *context, db_context_guard *
 static void db_context_guard_exit(const db_context_guard *guard) {
     if (guard == NULL)
         return;
-    db_format_mode_apply(&guard->prev_mode);
+    /* During migration (adapter active), do NOT restore the previous mode if it would
+     * downgrade us from v7 to v6 writes. The adapter_enable_wide_writes() sets a
+     * persistent global mode that must remain active for all subsequent writes. */
+#if defined(FRONTIER_HEADLESS)
+    static int debug_count = 0;
+    if (debug_count++ < 5) {
+        fprintf(stderr, "[headless] db_context_guard_exit: adapter_active=%d prev.use64=%d current.use64=%d\n",
+                (int) g_legacy_adapter_active,
+                (int) guard->prev_mode.use_64bit_format,
+                (int) g_mode_state.use_64bit_format);
+    }
+#endif
+    if (g_legacy_adapter_active &&
+        guard->prev_mode.use_64bit_format == false &&
+        g_mode_state.use_64bit_format == true) {
+        /* Keep the current v7 write mode instead of restoring v6 mode */
+#if defined(FRONTIER_HEADLESS)
+        static int warn_count = 0;
+        if (warn_count++ < 3) {
+            fprintf(stderr, "[headless] db_context_guard_exit: NOT restoring prev mode (would downgrade v7->v6)\n");
+        }
+#endif
+    } else {
+        db_format_mode_apply(&guard->prev_mode);
+    }
     databasedata = guard->prev_db;
     db_saveas_state_apply(&guard->prev_saveas);
 }
@@ -415,7 +440,7 @@ static void db_trace_log_legacy_entries(db_trace_context *ctx,
                                         const char *path,
                                         int depth);
 
-static void db_trace_log_modern_entries(db_trace_context *ctx,
+static void db_trace_log_v7_entries(db_trace_context *ctx,
                                         const unsigned char *payload,
                                         size_t payload_len,
                                         const char *path,
@@ -513,7 +538,7 @@ static void db_trace_log_legacy_entries(db_trace_context *ctx,
     }
 }
 
-static void db_trace_log_modern_entries(db_trace_context *ctx,
+static void db_trace_log_v7_entries(db_trace_context *ctx,
                                         const unsigned char *payload,
                                         size_t payload_len,
                                         const char *path,
@@ -553,7 +578,7 @@ static void db_trace_log_modern_entries(db_trace_context *ctx,
         ++record_count;
     }
 
-    db_trace_log(1, "%s: [%s] modern table depth=%d entries=%zu strings=%zu",
+    db_trace_log(1, "%s: [%s] v7 table depth=%d entries=%zu strings=%zu",
                  ctx->path_label, path, depth, record_count, strings_len);
 
     if (ctx->level < 2)
@@ -733,7 +758,7 @@ static void db_trace_walk_table(db_trace_context *ctx, dbaddress adr, const char
     if (legacy)
         db_trace_log_legacy_entries(ctx, payload, payload_len, path, depth);
     else
-        db_trace_log_modern_entries(ctx, payload, payload_len, path, depth);
+        db_trace_log_v7_entries(ctx, payload, payload_len, path, depth);
 
     free(payload);
 }
@@ -849,18 +874,18 @@ static uint64_t read_be64(const unsigned char *field) {
 }
 
 /* 2025-11-24 Codex: Decode raw header into a consistent in-memory record (legacy vs v7). */
-boolean db_format_decode_header(const unsigned char *rawheader, size_t raw_len, boolean *header_is_modern, tydatabaserecord *out) {
+boolean db_format_decode_header(const unsigned char *rawheader, size_t raw_len, boolean *header_is_v7, tydatabaserecord *out) {
     int i;
     int header_version = 0;
     size_t needed = 0;
 
-    if ((rawheader == NULL) || (header_is_modern == NULL) || (out == NULL))
+    if ((rawheader == NULL) || (header_is_v7 == NULL) || (out == NULL))
         return false;
 
     if (!db_format_header_version(rawheader, raw_len, &header_version))
         return false;
 
-    *header_is_modern = false;
+    *header_is_v7 = false;
     memset(out, 0, sizeof *out);
 
     needed = (header_version >= 7) ? sizeof(tydatabaserecord_64) : sizeof(tydatabaserecord);
@@ -868,7 +893,7 @@ boolean db_format_decode_header(const unsigned char *rawheader, size_t raw_len, 
         return false;
 
     if (header_version >= 7) {
-        *header_is_modern = true;
+        *header_is_v7 = true;
         out->systemid = rawheader[0];
         out->versionnumber = rawheader[1];
         out->availlist = (dbaddress) read_be64(rawheader + offsetof(tydatabaserecord_64, availlist));
@@ -1024,11 +1049,20 @@ boolean db_format_load_v7_reader(const tydatabaserecord *decoded_header, boolean
 }
 
 boolean db_format_adapter_enable_wide_writes(const tydatabaserecord_64 **widened_header_out) {
+#if defined(FRONTIER_HEADLESS)
+    fprintf(stderr, "[headless] db_format_adapter_enable_wide_writes: adapter_active=%d\n", (int) g_legacy_adapter_active);
+#endif
     if (!g_legacy_adapter_active)
         return false;
 
     db_format_mode modern = {true, true, false};
     db_format_mode_apply(&modern);
+
+    /* Lock the mode to prevent v7->v6 downgrades during migration */
+    g_legacy_adapter_mode_locked = true;
+#if defined(FRONTIER_HEADLESS)
+    fprintf(stderr, "[headless] db_format_adapter_enable_wide_writes: mode LOCKED (v7 writes enforced)\n");
+#endif
 
     if (databasedata != nil) {
         if ((**databasedata).headerLength < (long) sizeof (tydatabaserecord_64))
@@ -1121,7 +1155,7 @@ boolean detect_database_format(const tydatabaserecord *header) {
 	if (header == NULL)
 		return false;
 
-	/* Reject out-of-range version numbers before deciding legacy/modern. */
+	/* Reject out-of-range version numbers before deciding legacy/v7. */
 	if (header->versionnumber < 1 || header->versionnumber > DB_FORMAT_MAX_VERSION)
 		return false;
 
@@ -1219,6 +1253,61 @@ boolean create_root_backup(const char *original_path) {
     return true;
 }
 
+/* During v6→v7 migration, update external object database handles to point to destination.
+ * This fixes the issue where externals captured v6 source database handle during initial load,
+ * but need to reference v7 destination database after migration.
+ * See: planning/phase3/kernel_verb_porting/DATABASE_HANDLE_MISMATCH_CONFIRMED.md */
+static void db_format_fixup_external_handles(hdlhashtable hroot, hdldatabaserecord dest_db) {
+    if (hroot == nil || dest_db == nil)
+        return;
+
+    long ix = 0;
+    hdlhashnode hnode = nil;
+    long fixed_count = 0;
+
+    while (hashgetnthnode(hroot, ix++, &hnode)) {
+        if (hnode == nil)
+            continue;
+
+        tyvaluerecord *val = &(**hnode).val;
+        if (val->valuetype != externalvaluetype)
+            continue;
+
+        hdlexternalvariable hv = (hdlexternalvariable) val->data.externalvalue;
+        if (hv == nil)
+            continue;
+
+        hdldatabaserecord old_db = (**hv).hdatabase;
+
+        /* Update database handle to point to destination */
+        (**hv).hdatabase = dest_db;
+        fixed_count++;
+
+#if defined(FRONTIER_HEADLESS)
+        if (fixed_count <= 10) {  /* Log first 10 to avoid spam */
+            bigstring bsname;
+            gethashkey(hnode, bsname);
+            fprintf(stderr, "[headless] migrate fixed external handle name='%.*s' id=%d flinmemory=%d old_db=%p new_db=%p\n",
+                    (int) bsname[0], (char *) &bsname[1],
+                    (int) (**hv).id, (int) (**hv).flinmemory,
+                    (void*)old_db, (void*)dest_db);
+        }
+#endif
+
+        /* Recurse into table externals to fix nested values */
+        if ((**hv).id == idtableprocessor) {
+            hdlhashtable childtable = (hdlhashtable) (**hv).variabledata;
+            if (childtable != nil) {
+                db_format_fixup_external_handles(childtable, dest_db);
+            }
+        }
+    }
+
+#if defined(FRONTIER_HEADLESS)
+    fprintf(stderr, "[headless] migrate fixed %ld external handles in total\n", fixed_count);
+#endif
+}
+
 /* During migration, skip externals whose addresses point at free blocks so packing won't fail. */
 static void db_format_sanitize_root_externals(hdlhashtable hroot, const db_context *context) {
     if (hroot == nil)
@@ -1240,11 +1329,17 @@ static void db_format_sanitize_root_externals(hdlhashtable hroot, const db_conte
 
         /* Clear oldaddress on all in-memory externals to force new allocation during save */
         if ((**hv).flinmemory) {
+            bigstring bsname;
+            gethashkey(hnode, bsname);
+            fprintf(stderr, "[headless] migrate clearing oldaddress name='%.*s' id=%d\n",
+                    (int) bsname[0], (char *) &bsname[1], (int) (**hv).id);
             (**hv).oldaddress = nildbaddress;
 
             /* Recurse into table externals to clear oldaddress on nested values */
             if ((**hv).id == idtableprocessor) {
                 hdlhashtable childtable = (hdlhashtable) (**hv).variabledata;
+                fprintf(stderr, "[headless] migrate recursing into table '%.*s'\n",
+                        (int) bsname[0], (char *) &bsname[1]);
                 db_format_sanitize_root_externals(childtable, context);
             }
             continue;
@@ -1443,22 +1538,26 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
 
     dest_context.mode = source_context.mode;
     dest_context.mode.use_64bit_format = true;
-    dest_context.mode.adapter_repack = db_format_adapter_force_repack();
+    dest_context.mode.adapter_repack = true;  /* Force repack during migration to ensure nested tables are saved */
     dest_context.mode.drop_cancoon = false;
     have_dest_context = true;
 
-    /* Switch the destination into BE64 write mode before any assigns. */
-    if (have_dest_context)
-        db_format_adapter_enable_wide_writes_context(&dest_context, NULL);
-    else
-        db_format_adapter_enable_wide_writes(NULL);
+    /* Switch the destination into BE64 write mode before any assigns.
+     * Call the non-context version directly so the mode persists globally. */
+    db_format_adapter_enable_wide_writes(NULL);
+
+    /* Fix up external object database handles to point to destination.
+     * Externals were loaded with source database handles; update them to destination handles
+     * before saving to prevent post-migration access failures. */
+    fail_step = "fixup_external_handles";
+    db_format_fixup_external_handles(hroot, dest_context.database);
 
     fail_step = "tablesavesystemtable(root)";
     /* Read from the source handle while Save As remains active for destination writes. */
     db_context_guard save_guard;
     db_context save_ctx = source_context;
     if (have_dest_context) {
-        save_ctx.mode = dest_context.mode; /* write modern BE64 payloads into the destination */
+        save_ctx.mode = dest_context.mode; /* write v7 BE64 payloads into the destination */
         save_ctx.saveas = dest_context.saveas;
 #if defined(FRONTIER_HEADLESS)
         fprintf(stderr,
@@ -1653,7 +1752,7 @@ boolean migrate_32bit_to_64bit_drop_cancoon(const char *db_path) {
     return migrate_internal(db_path, true);
 }
 
-boolean ensure_database_modern(const char *db_path, boolean *migrated, char *output_path, size_t output_path_size) {
+boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_path, size_t output_path_size) {
     if (migrated)
         *migrated = false;
     if (db_path == NULL || db_path[0] == '\0')
@@ -1672,12 +1771,12 @@ boolean ensure_database_modern(const char *db_path, boolean *migrated, char *out
     if (!detect_database_format(&header))
         return false;
 
-    /* Seed format mode from the on-disk header so we don't remigrate already-modern roots. */
+    /* Seed format mode from the on-disk header so we don't remigrate already-v7 roots. */
     db_format_mode detected_mode = {header.versionnumber >= 7, false, false};
     db_format_mode_apply(&detected_mode);
 
     if (db_format_mode_current().use_64bit_format) {
-        /* Already modern - return original path */
+        /* Already v7 - return original path */
         if (output_path && output_path_size > 0) {
             strncpy(output_path, db_path, output_path_size);
             if (output_path_size > 0)
@@ -1695,7 +1794,7 @@ boolean ensure_database_modern(const char *db_path, boolean *migrated, char *out
             return false;
     }
 
-    /* Future reads should treat file as modern. */
+    /* Future reads should treat file as v7. */
     if (migrated)
         *migrated = true;
     return true;
@@ -1726,8 +1825,36 @@ void db_format_force_strict_v7_reader(void) {
     db_format_mode_apply(&mode);
 }
 void db_format_mode_apply(const db_format_mode *mode) {
+    /* During migration with mode lock active, prevent downgrading from v7 to v6 writes */
+    if (g_legacy_adapter_mode_locked &&
+        g_mode_state.use_64bit_format == true &&
+        mode->use_64bit_format == false) {
+#if defined(FRONTIER_HEADLESS)
+        static int lock_count = 0;
+        if (lock_count++ < 3) {
+            fprintf(stderr, "[headless] db_format_mode_apply: BLOCKED v7->v6 downgrade (mode locked)\n");
+        }
+#endif
+        /* Keep adapter_repack flag but preserve v7 write mode */
+        g_legacy_adapter_force_repack = mode->adapter_repack;
+        return;
+    }
+
     g_mode_state = *mode;
     g_legacy_adapter_force_repack = mode->adapter_repack;
+#if defined(FRONTIER_HEADLESS)
+    if (mode->use_64bit_format == 0 && mode->adapter_repack == 1) {
+        static int warn_count = 0;
+        if (warn_count++ < 3) {
+            fprintf(stderr, "[headless] WARNING: db_format_mode_apply use_64bit=0 but adapter_repack=1!\n");
+            fprintf(stderr, "[headless]   This will cause v6 addresses to be written during migration!\n");
+            /* Print call location hint */
+            fprintf(stderr, "[headless]   Check who called db_format_mode_apply with this invalid mode\n");
+        }
+    }
+    fprintf(stderr, "[headless] db_format_mode_apply use_64bit=%d adapter_repack=%d drop_cancoon=%d\n",
+            (int) mode->use_64bit_format, (int) mode->adapter_repack, (int) mode->drop_cancoon);
+#endif
 }
 
 void db_format_mode_push(const db_format_mode *mode) {
@@ -1744,17 +1871,29 @@ void db_format_mode_pop(void) {
         g_mode_depth--;
     if (g_mode_depth > 0)
         db_format_mode_apply(&g_mode_stack[g_mode_depth - 1]);
-    else {
-        db_format_mode reset = {false, false, false};
-        db_format_mode_apply(&reset);
-    }
+    /* When popping the last mode from the stack, do NOT call db_format_mode_apply -
+       the base mode was set by db_format_adapter_enable_wide_writes and should remain
+       in effect. Calling db_format_mode_apply here would overwrite it with whatever
+       mode was last pushed/popped, which could have use_64bit_format=false. */
 }
 
 db_format_mode db_format_mode_current(void) {
+    db_format_mode current;
     if (g_mode_depth > 0)
-        return g_mode_stack[g_mode_depth - 1];
-    db_format_mode current = g_mode_state;
+        current = g_mode_stack[g_mode_depth - 1];
+    else
+        current = g_mode_state;
+    /* Always use the global adapter_repack flag which is kept in sync by mode_apply */
     current.adapter_repack = g_legacy_adapter_force_repack;
+#if defined(FRONTIER_HEADLESS)
+    static int call_count = 0;
+    if (call_count++ < 20) {
+        fprintf(stderr, "[headless] db_format_mode_current: depth=%d use_64bit=%d (stack=%d state=%d) adapter_repack=%d\n",
+                g_mode_depth, (int) current.use_64bit_format,
+                g_mode_depth > 0 ? (int) g_mode_stack[g_mode_depth - 1].use_64bit_format : -1,
+                (int) g_mode_state.use_64bit_format, (int) current.adapter_repack);
+    }
+#endif
     return current;
 }
 

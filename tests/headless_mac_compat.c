@@ -384,7 +384,7 @@ boolean copydatahandle (AEDesc *desc, Handle *hout) { (void)desc; if (hout) *hou
 /* bigstringtofsname already provided earlier */
 boolean datahandletostring (AEDesc* desc, bigstring bs) { (void)desc; setemptystring(bs); return false; }
 boolean getscrap (tyscraptype t, Handle h) { (void)t; (void)h; return false; }
-boolean gettablevalue (hdlhashtable ht, bigstring bs, tyvaluerecord *v, hdlhashnode *node) { (void)ht;(void)bs;(void)v; if (node) *node=nil; return false; }
+/* Removed gettablevalue stub - real implementation is in tableverbs.c */
 boolean getuntitledfilename (bigstring bs) { setemptystring(bs); return false; }
 boolean getwinparam (hdltreenode node, short id, hdlwindowinfo *hi) { (void)node; (void)id; if (hi) *hi=nil; return false; }
 tyshellglobals globalsarray[1];

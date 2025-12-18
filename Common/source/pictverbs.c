@@ -210,7 +210,14 @@ static boolean pictverbinmemory (hdlpictvariable hv) {
 	
 	if ((**hv).flinmemory) /*nothing to do, it's already in memory*/
 		return (true);
-	
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] pictverbinmemory: about to push hdatabase=%p (current=%p) variabledata=0x%llx\n",
+	        (void*)(**hv).hdatabase,
+	        (void*)databasedata,
+	        (unsigned long long)(**hv).variabledata);
+#endif
+
 	dbpushdatabase ((**hv).hdatabase);
 
 	adr = (dbaddress) (**hv).variabledata;
@@ -380,9 +387,8 @@ boolean pictverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbad
 
 	if (adapter_repack) {
         (**hp).fldirty = true;
-        db_context ctx;
-        db_context_init(&ctx);
-        db_format_adapter_enable_wide_writes_context(&ctx, NULL);
+        /* Enable wide writes for migration - do NOT use context guard version */
+        db_format_adapter_enable_wide_writes(NULL);
         working_mode.use_64bit_format = true; /* write modern */
         db_format_mode_push(&working_mode);
         *flnewdbaddress = true;
