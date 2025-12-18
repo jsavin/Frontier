@@ -1,9 +1,28 @@
 Status
-- State: In Progress
-- Phase: Carbon Migration
-- Last Updated: 2025-11-20
+- State: Deferred - Phase 1 Complete, Phases 2-5 Pending
+- Phase: Carbon Migration (deprioritized in favor of kernel verb porting)
+- Last Updated: 2025-12-17
 - Owner: Codex
-- Notes: Chronological log of day-by-day updates; append new entries at the top.
+- Notes: Chronological log of day-by-day updates; append new entries at the top. Phase 1 (header hygiene) is 80% complete. Phases 2-5 deferred to allow focus on verb porting (P0 priority).
+
+# 2025-12-17
+
+**Strategic Pivot: Carbon Migration Deferred to P2**
+
+- Completed comprehensive analysis of Carbon migration progress: Phase 1 (header hygiene) is 80% complete with solid foundation
+- Kernel verb porting determined to be higher priority: currently at 68% coverage (479/707 verbs), with clear path to completion
+- Decision: Keep Carbon migration plan and docs intact, but defer Phase 2-5 work until after verb porting reaches functional completeness
+- Phase 1 work can be completed incrementally (2-3 hours remaining) in parallel with verb porting if needed
+- Created GitHub issue #120 to track deferred phases 2-5 work for future resumption (Q1-Q2 2026 or later)
+- Estimated timeline if fully resumed: 4-5 weeks to complete all remaining phases; currently planned as incremental work alongside verb porting completion
+
+**Rationale:**
+- Verb porting is on critical path for "headless runtime works"
+- Carbon migration is technical debt cleanup (important but not a blocker)
+- Momentum on verb porting (recent PRs adding clock/date/env verbs) should be maintained
+- Carbon removal creates natural cleanup opportunities as verbs are completed (e.g., TEC removal when string.* verbs done)
+
+See: planning/phase3/database_architecture/MULTI_DATABASE_PREVENTION_STRATEGY.md for related architectural work
 
 # 2025-11-09
 - Rebuilt `tableexternal_common.c` to consume the documented legacy layout (`[outer merge][inner header+records][strings][formats]`) so migrated tables unpack without guesswork; captured a golden `system.verbs.globals` payload under `planning/phase3/carbon_migration/data/` for future tests.

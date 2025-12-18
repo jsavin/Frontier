@@ -1,11 +1,13 @@
 # Carbon Dependency Retirement Plan
 
 Status
-- State: In Progress
-- Phase: Carbon Migration
-- Last Updated: 2025-11-20 (Night)
+- State: **DEFERRED - Phase 1 Complete, Phases 2-5 Pending** (2025-12-17)
+- Phase: Carbon Migration (deprioritized in favor of kernel verb porting)
+- Last Updated: 2025-12-17 (Strategic deferral decision)
 - Owner: Codex
-- Notes: Canonical plan for removing Carbon dependencies; keep inventory/status logs in sync.
+- Notes: Canonical plan for removing Carbon dependencies. **Phase 1 (header hygiene) is 80% complete and functional.** Phases 2-5 deferred to prioritize kernel verb porting (P0). See status_log.md for deferral rationale. GitHub issue #120 tracks future resumption.
+
+**IMPORTANT**: This plan is still valid and will be resumed incrementally alongside verb porting completion. Estimated 4-5 weeks to complete all phases if prioritized; currently planned for Q1-Q2 2026 as secondary workstream.
 
 **Maintainers:** @you (TPM), @assistant (implementation)
 
