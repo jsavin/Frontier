@@ -1253,6 +1253,61 @@ boolean create_root_backup(const char *original_path) {
     return true;
 }
 
+/* During v6→v7 migration, update external object database handles to point to destination.
+ * This fixes the issue where externals captured v6 source database handle during initial load,
+ * but need to reference v7 destination database after migration.
+ * See: planning/phase3/kernel_verb_porting/DATABASE_HANDLE_MISMATCH_CONFIRMED.md */
+static void db_format_fixup_external_handles(hdlhashtable hroot, hdldatabaserecord dest_db) {
+    if (hroot == nil || dest_db == nil)
+        return;
+
+    long ix = 0;
+    hdlhashnode hnode = nil;
+    long fixed_count = 0;
+
+    while (hashgetnthnode(hroot, ix++, &hnode)) {
+        if (hnode == nil)
+            continue;
+
+        tyvaluerecord *val = &(**hnode).val;
+        if (val->valuetype != externalvaluetype)
+            continue;
+
+        hdlexternalvariable hv = (hdlexternalvariable) val->data.externalvalue;
+        if (hv == nil)
+            continue;
+
+        hdldatabaserecord old_db = (**hv).hdatabase;
+
+        /* Update database handle to point to destination */
+        (**hv).hdatabase = dest_db;
+        fixed_count++;
+
+#if defined(FRONTIER_HEADLESS)
+        if (fixed_count <= 10) {  /* Log first 10 to avoid spam */
+            bigstring bsname;
+            gethashkey(hnode, bsname);
+            fprintf(stderr, "[headless] migrate fixed external handle name='%.*s' id=%d flinmemory=%d old_db=%p new_db=%p\n",
+                    (int) bsname[0], (char *) &bsname[1],
+                    (int) (**hv).id, (int) (**hv).flinmemory,
+                    (void*)old_db, (void*)dest_db);
+        }
+#endif
+
+        /* Recurse into table externals to fix nested values */
+        if ((**hv).id == idtableprocessor) {
+            hdlhashtable childtable = (hdlhashtable) (**hv).variabledata;
+            if (childtable != nil) {
+                db_format_fixup_external_handles(childtable, dest_db);
+            }
+        }
+    }
+
+#if defined(FRONTIER_HEADLESS)
+    fprintf(stderr, "[headless] migrate fixed %ld external handles in total\n", fixed_count);
+#endif
+}
+
 /* During migration, skip externals whose addresses point at free blocks so packing won't fail. */
 static void db_format_sanitize_root_externals(hdlhashtable hroot, const db_context *context) {
     if (hroot == nil)
@@ -1490,6 +1545,12 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     /* Switch the destination into BE64 write mode before any assigns.
      * Call the non-context version directly so the mode persists globally. */
     db_format_adapter_enable_wide_writes(NULL);
+
+    /* Fix up external object database handles to point to destination.
+     * Externals were loaded with source database handles; update them to destination handles
+     * before saving to prevent post-migration access failures. */
+    fail_step = "fixup_external_handles";
+    db_format_fixup_external_handles(hroot, dest_context.database);
 
     fail_step = "tablesavesystemtable(root)";
     /* Read from the source handle while Save As remains active for destination writes. */
