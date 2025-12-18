@@ -758,24 +758,30 @@ static void test_dbswapglobals_context_scoped(void) {
     disposehandle((Handle) hdst);
 }
 int main(void) {
+    /* Phase 1: Tests requiring unlocked mode - MUST run before any mode-locking tests */
+    test_legacy_adapter_widen_to_v7_bytes();
+    test_db_context_two_modes_isolated_mode_only();
+    test_db_context_two_modes_isolated_db_state();
+
+    /* Phase 2: Neutral tests - don't lock mode and don't require free mode switching */
     test_detect_legacy_database();
     test_detect_modern_database();
     test_convert_header();
     test_write_modern_header_big_endian();
     test_large_free_block_be64();
     test_pict_length_be32();
-    test_header_version_and_loader_switch();
     test_tableverbpack_writes_be64_when_modern();
-    test_legacy_table_repack_forces_be64_address();
-    test_legacy_record_reference_repacked_to_be64();
-    test_legacy_adapter_widen_to_v7_bytes();
     test_modern_header_view0_serialization();
     test_modern_header_canonical_size_and_version();
     test_procedural_v7_golden_header_and_avail();
-    test_db_context_two_modes_isolated_mode_only();
     test_db_context_database_swap();
-    test_db_context_two_modes_isolated_db_state();
     test_dbswapglobals_context_scoped();
+
+    /* Phase 3: Tests that lock mode - MUST run LAST (mode lock is never reset) */
+    test_header_version_and_loader_switch();
+    test_legacy_table_repack_forces_be64_address();
+    test_legacy_record_reference_repacked_to_be64();
+
     printf("db_format_tests: all checks passed\n");
     return 0;
 }
