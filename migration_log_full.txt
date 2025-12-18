@@ -1,0 +1,405 @@
+[headless-tests] rebuilding CLI...
+clang -std=c17 -Wall -Wextra -O0 -g -fpascal-strings -DFRONTIER_HEADLESS -DFRONTIER_USE_PORTABLE_HANDLES -DFRONTIER_PORTABLE_STRINGS -DFRONTIER_PORTABLE_FILE_AVAILABLE -DFRONTIER_PORTABLE_DB_AVAILABLE -DFRONTIER_PORTABLE_APPLEEVENTS -DHEADLESS_USE_REAL_OPLANGTEXT -DHEADLESS_TEST_PORTABLE_FILE -DHEADLESS_LINKS_REAL_DB -DHEADLESS_USE_REAL_TABLEPACK -DHEADLESS_USE_REAL_TABLEVALTOTABLE -DUNIX_COMPILE -DC_LIBRARY -DNO_OS_INLINE -I../Common/headers -I../Common/SystemHeaders -I../portable -I../build_Xcode_modern -I../generated -I../third_party/Paige/PGHEADER \
+		main.c cli_parser.c cli_utils.c cli_executor.c headless_scripts_loader.c \
+		../Common/source/lang.c ../Common/source/langcallbacks.c ../Common/source/langcrypt.c ../Common/source/langerror.c ../Common/source/langscan.c ../Common/source/langparser.c ../Common/source/langvalue.c ../Common/source/langevaluate.c ../Common/source/langhash.c ../Common/source/langlist.c ../Common/source/langmath.c ../Common/source/langops.c ../Common/source/langpack.c ../Common/source/langexternal.c ../Common/source/langstartup.c ../Common/source/langwarnings.c ../Common/source/langtmpstack.c ../Common/source/langtrace.c ../Common/source/langtree.c ../Common/source/langdate.c ../Common/source/langsystypes.c ../Common/source/langverbs.c ../Common/source/memory.c ../Common/source/portable_handles.c ../Common/source/strings.c ../Common/source/strings_extras.c ../portable/text_encoding_portable.c ../portable/time_portable.c ../Common/source/md5.c ../Common/source/sha1dgst.c ../Common/source/whirlpool.c ../Common/source/ops.c ../Common/source/op.c ../Common/source/opinit.c ../Common/source/opexpand.c ../Common/source/opvisit.c ../Common/source/opedit.c ../Common/source/opops.c ../Common/source/oplist.c ../Common/source/opstructure.c ../Common/source/oprefcon.c ../Common/source/oppack_v7.c ../Common/source/legacy/oppack_legacy.c ../Common/source/oplangtext.c ../Common/source/opverbs.c ../Common/source/opxml.c ../Common/source/langxml.c ../Common/source/tableops.c ../Common/source/tablestructure.c ../Common/source/tableexternal_common.c ../Common/source/tableexternal.c ../Common/source/tablepack.c ../Common/source/tableverbs.c ../Common/source/shell_api.c ../Common/source/shell_api_headless.c ../Common/source/db.c ../Common/source/db_format.c ../Common/source/db_reader_legacy.c ../Common/source/db_reader_v7.c ../Common/source/db_writer_v7.c ../Common/source/odbengine.c ../Common/source/findinfile.c ../tests/headless_shell.c ../tests/headless_shellhooks.c ../tests/headless_table_stubs.c ../portable/wptext_runtime.c ../portable/paige_text_extractor.c ../tests/headless_pict_stubs.c ../tests/headless_menu_stubs.c ../tests/headless_search_stubs.c ../tests/headless_mac_compat.c ../tests/headless_langregexp_stub.c ../tests/headless_langipc_stub.c ../tests/headless_lang_runtime_more_stubs.c ../portable/file_portable.c ../Common/source/file_portable_posix.c ../portable/appleevent_portable.c ../portable/classic_handle.c ../portable/script_portable.c ../portable/wptext_portable.c ../tests/headless_frontier_verbs.c ../tests/headless_file_verbs.c ../tests/headless_odb_stubs.c ../tests/headless_op_verbs.c ../tests/headless_opattributes_verbs.c ../tests/headless_script_verbs.c ../tests/headless_osa_verbs.c ../tests/headless_menu_verbs.c ../tests/headless_pict_verbs.c ../tests/headless_clock_verbs.c ../tests/headless_date_verbs.c ../tests/headless_dialog_verbs.c ../tests/headless_kb_verbs.c ../tests/headless_mouse_verbs.c ../tests/headless_point_verbs.c ../tests/headless_rectangle_verbs.c ../tests/headless_rgb_verbs.c ../tests/headless_speaker_verbs.c ../tests/headless_target_verbs.c ../tests/headless_bit_verbs.c ../tests/headless_semaphore_verbs.c ../tests/headless_base64_verbs.c ../tests/headless_tcp_verbs.c ../tests/headless_dll_verbs.c ../tests/headless_python_verbs.c ../tests/headless_htmlcontrol_verbs.c ../tests/headless_statusbar_verbs.c ../tests/headless_sys_verbs.c ../tests/headless_string_verbs.c ../tests/headless_db_verbs.c ../tests/headless_html_verbs.c ../tests/headless_re_verbs.c ../tests/headless_sqlite_verbs.c ../tests/headless_mysql_verbs.c ../tests/headless_window_verbs.c ../tests/headless_rez_verbs.c ../tests/headless_search_verbs.c ../tests/headless_filemenu_verbs.c ../tests/headless_editmenu_verbs.c ../tests/headless_launch_verbs.c ../tests/headless_clipboard_verbs.c ../tests/headless_thread_verbs.c ../tests/headless_mainwindow_verbs.c ../tests/headless_searchengine_verbs.c ../tests/headless_mrcalendar_verbs.c ../tests/headless_webserver_verbs.c ../tests/headless_inetd_verbs.c ../generated/strings_tables.c ../generated/kernel_verbs_init.c \
+		-o frontier-cli ../third_party/Paige/build-headless/libpaige.a -Wl,-undefined,dynamic_lookup
+../Common/source/langerror.c:141:18: warning: passing 'ptrstring' (aka 'unsigned char *') to parameter of type 'const char *' converts between pointers to integer types where one is of the unique plain 'char' type and the other is not [-Wpointer-sign]
+  141 |         copyctopstring ((ptrstring) bs, bscopy);
+      |                         ^~~~~~~~~~~~~~
+../Common/headers/strings.h:159:41: note: passing argument to parameter here
+  159 | extern void copyctopstring (const char *, bigstring);
+      |                                         ^
+1 warning generated.
+../Common/source/langhash.c:3658:4: warning: label followed by a declaration is a C23 extension [-Wc23-extensions]
+ 3658 |                         tydiskvaluedata_v7 rec_data_local;
+      |                         ^
+1 warning generated.
+../portable/wptext_runtime.c:827:16: warning: unused function 'wp_portable_utf8_to_rtf' [-Wunused-function]
+  827 | static boolean wp_portable_utf8_to_rtf(Handle hutf8, Handle *hrtf, long *out_chars) {
+      |                ^~~~~~~~~~~~~~~~~~~~~~~
+1 warning generated.
+../tests/headless_op_verbs.c:70:54: warning: unused parameter 'hparam1' [-Wunused-parameter]
+   70 | static boolean op_valueproc(short token, hdltreenode hparam1,
+      |                                                      ^
+../tests/headless_op_verbs.c:71:53: warning: unused parameter 'vreturned' [-Wunused-parameter]
+   71 |                                      tyvaluerecord *vreturned,
+      |                                                     ^
+2 warnings generated.
+../tests/headless_opattributes_verbs.c:30:64: warning: unused parameter 'hparam1' [-Wunused-parameter]
+   30 | static boolean opattributes_valueproc(short token, hdltreenode hparam1,
+      |                                                                ^
+../tests/headless_opattributes_verbs.c:31:53: warning: unused parameter 'vreturned' [-Wunused-parameter]
+   31 |                                      tyvaluerecord *vreturned,
+      |                                                     ^
+2 warnings generated.
+../tests/headless_script_verbs.c:38:58: warning: unused parameter 'hparam1' [-Wunused-parameter]
+   38 | static boolean script_valueproc(short token, hdltreenode hparam1,
+      |                                                          ^
+../tests/headless_script_verbs.c:39:53: warning: unused parameter 'vreturned' [-Wunused-parameter]
+   39 |                                      tyvaluerecord *vreturned,
+      |                                                     ^
+2 warnings generated.
+../tests/headless_osa_verbs.c:27:55: warning: unused parameter 'hparam1' [-Wunused-parameter]
+   27 | static boolean osa_valueproc(short token, hdltreenode hparam1,
+      |                                                       ^
+../tests/headless_osa_verbs.c:28:53: warning: unused parameter 'vreturned' [-Wunused-parameter]
+   28 |                                      tyvaluerecord *vreturned,
+      |                                                     ^
+2 warnings generated.
+../tests/headless_menu_verbs.c:39:56: warning: unused parameter 'hparam1' [-Wunused-parameter]
+   39 | static boolean menu_valueproc(short token, hdltreenode hparam1,
+      |                                                        ^
+../tests/headless_menu_verbs.c:40:53: warning: unused parameter 'vreturned' [-Wunused-parameter]
+   40 |                                      tyvaluerecord *vreturned,
+      |                                                     ^
+2 warnings generated.
+../tests/headless_pict_verbs.c:29:56: warning: unused parameter 'hparam1' [-Wunused-parameter]
+   29 | static boolean pict_valueproc(short token, hdltreenode hparam1,
+      |                                                        ^
+../tests/headless_pict_verbs.c:30:53: warning: unused parameter 'vreturned' [-Wunused-parameter]
+   30 |                                      tyvaluerecord *vreturned,
+      |                                                     ^
+2 warnings generated.
+../tests/headless_date_verbs.c:79:43: warning: incompatible pointer types passing 'int64_t *' (aka 'long long *') to parameter of type 'long *' [-Wincompatible-pointer-types]
+   79 |             if (!getlongvalue(hparam1, 1, &date))
+      |                                           ^~~~~
+../Common/headers/lang.h:1231:56: note: passing argument to parameter here
+ 1231 | extern boolean getlongvalue (hdltreenode, short, long *);
+      |                                                        ^
+../tests/headless_date_verbs.c:168:43: warning: incompatible pointer types passing 'int64_t *' (aka 'long long *') to parameter of type 'long *' [-Wincompatible-pointer-types]
+  168 |             if (!getlongvalue(hparam1, 1, &date))
+      |                                           ^~~~~
+../Common/headers/lang.h:1231:56: note: passing argument to parameter here
+ 1231 | extern boolean getlongvalue (hdltreenode, short, long *);
+      |                                                        ^
+../tests/headless_date_verbs.c:182:43: warning: incompatible pointer types passing 'int64_t *' (aka 'long long *') to parameter of type 'long *' [-Wincompatible-pointer-types]
+  182 |             if (!getlongvalue(hparam1, 1, &date))
+      |                                           ^~~~~
+../Common/headers/lang.h:1231:56: note: passing argument to parameter here
+ 1231 | extern boolean getlongvalue (hdltreenode, short, long *);
+      |                                                        ^
+../tests/headless_date_verbs.c:196:43: warning: incompatible pointer types passing 'int64_t *' (aka 'long long *') to parameter of type 'long *' [-Wincompatible-pointer-types]
+  196 |             if (!getlongvalue(hparam1, 1, &date))
+      |                                           ^~~~~
+../Common/headers/lang.h:1231:56: note: passing argument to parameter here
+ 1231 | extern boolean getlongvalue (hdltreenode, short, long *);
+      |                                                        ^
+../tests/headless_date_verbs.c:210:43: warning: incompatible pointer types passing 'int64_t *' (aka 'long long *') to parameter of type 'long *' [-Wincompatible-pointer-types]
+  210 |             if (!getlongvalue(hparam1, 1, &date))
+      |                                           ^~~~~
+../Common/headers/lang.h:1231:56: note: passing argument to parameter here
+ 1231 | extern boolean getlongvalue (hdltreenode, short, long *);
+      |                                                        ^
+../tests/headless_date_verbs.c:223:43: warning: incompatible pointer types passing 'int64_t *' (aka 'long long *') to parameter of type 'long *' [-Wincompatible-pointer-types]
+  223 |             if (!getlongvalue(hparam1, 1, &date))
+      |                                           ^~~~~
+../Common/headers/lang.h:1231:56: note: passing argument to parameter here
+ 1231 | extern boolean getlongvalue (hdltreenode, short, long *);
+      |                                                        ^
+../tests/headless_date_verbs.c:235:43: warning: incompatible pointer types passing 'int64_t *' (aka 'long long *') to parameter of type 'long *' [-Wincompatible-pointer-types]
+  235 |             if (!getlongvalue(hparam1, 1, &date))
+      |                                           ^~~~~
+../Common/headers/lang.h:1231:56: note: passing argument to parameter here
+ 1231 | extern boolean getlongvalue (hdltreenode, short, long *);
+      |                                                        ^
+../tests/headless_date_verbs.c:248:43: warning: incompatible pointer types passing 'int64_t *' (aka 'long long *') to parameter of type 'long *' [-Wincompatible-pointer-types]
+  248 |             if (!getlongvalue(hparam1, 1, &date))
+      |                                           ^~~~~
+../Common/headers/lang.h:1231:56: note: passing argument to parameter here
+ 1231 | extern boolean getlongvalue (hdltreenode, short, long *);
+      |                                                        ^
+../tests/headless_date_verbs.c:261:43: warning: incompatible pointer types passing 'int64_t *' (aka 'long long *') to parameter of type 'long *' [-Wincompatible-pointer-types]
+  261 |             if (!getlongvalue(hparam1, 1, &date))
+      |                                           ^~~~~
+../Common/headers/lang.h:1231:56: note: passing argument to parameter here
+ 1231 | extern boolean getlongvalue (hdltreenode, short, long *);
+      |                                                        ^
+../tests/headless_date_verbs.c:273:43: warning: incompatible pointer types passing 'int64_t *' (aka 'long long *') to parameter of type 'long *' [-Wincompatible-pointer-types]
+  273 |             if (!getlongvalue(hparam1, 1, &date))
+      |                                           ^~~~~
+../Common/headers/lang.h:1231:56: note: passing argument to parameter here
+ 1231 | extern boolean getlongvalue (hdltreenode, short, long *);
+      |                                                        ^
+../tests/headless_date_verbs.c:285:43: warning: incompatible pointer types passing 'int64_t *' (aka 'long long *') to parameter of type 'long *' [-Wincompatible-pointer-types]
+  285 |             if (!getlongvalue(hparam1, 1, &date))
+      |                                           ^~~~~
+../Common/headers/lang.h:1231:56: note: passing argument to parameter here
+ 1231 | extern boolean getlongvalue (hdltreenode, short, long *);
+      |                                                        ^
+../tests/headless_date_verbs.c:297:43: warning: incompatible pointer types passing 'int64_t *' (aka 'long long *') to parameter of type 'long *' [-Wincompatible-pointer-types]
+  297 |             if (!getlongvalue(hparam1, 1, &date))
+      |                                           ^~~~~
+../Common/headers/lang.h:1231:56: note: passing argument to parameter here
+ 1231 | extern boolean getlongvalue (hdltreenode, short, long *);
+      |                                                        ^
+../tests/headless_date_verbs.c:309:43: warning: incompatible pointer types passing 'int64_t *' (aka 'long long *') to parameter of type 'long *' [-Wincompatible-pointer-types]
+  309 |             if (!getlongvalue(hparam1, 1, &date))
+      |                                           ^~~~~
+../Common/headers/lang.h:1231:56: note: passing argument to parameter here
+ 1231 | extern boolean getlongvalue (hdltreenode, short, long *);
+      |                                                        ^
+../tests/headless_date_verbs.c:321:43: warning: incompatible pointer types passing 'int64_t *' (aka 'long long *') to parameter of type 'long *' [-Wincompatible-pointer-types]
+  321 |             if (!getlongvalue(hparam1, 1, &date))
+      |                                           ^~~~~
+../Common/headers/lang.h:1231:56: note: passing argument to parameter here
+ 1231 | extern boolean getlongvalue (hdltreenode, short, long *);
+      |                                                        ^
+../tests/headless_date_verbs.c:334:43: warning: incompatible pointer types passing 'int64_t *' (aka 'long long *') to parameter of type 'long *' [-Wincompatible-pointer-types]
+  334 |             if (!getlongvalue(hparam1, 1, &date))
+      |                                           ^~~~~
+../Common/headers/lang.h:1231:56: note: passing argument to parameter here
+ 1231 | extern boolean getlongvalue (hdltreenode, short, long *);
+      |                                                        ^
+../tests/headless_date_verbs.c:347:43: warning: incompatible pointer types passing 'int64_t *' (aka 'long long *') to parameter of type 'long *' [-Wincompatible-pointer-types]
+  347 |             if (!getlongvalue(hparam1, 1, &date))
+      |                                           ^~~~~
+../Common/headers/lang.h:1231:56: note: passing argument to parameter here
+ 1231 | extern boolean getlongvalue (hdltreenode, short, long *);
+      |                                                        ^
+../tests/headless_date_verbs.c:361:43: warning: incompatible pointer types passing 'int64_t *' (aka 'long long *') to parameter of type 'long *' [-Wincompatible-pointer-types]
+  361 |             if (!getlongvalue(hparam1, 1, &date))
+      |                                           ^~~~~
+../Common/headers/lang.h:1231:56: note: passing argument to parameter here
+ 1231 | extern boolean getlongvalue (hdltreenode, short, long *);
+      |                                                        ^
+../tests/headless_date_verbs.c:376:43: warning: incompatible pointer types passing 'int64_t *' (aka 'long long *') to parameter of type 'long *' [-Wincompatible-pointer-types]
+  376 |             if (!getlongvalue(hparam1, 1, &date))
+      |                                           ^~~~~
+../Common/headers/lang.h:1231:56: note: passing argument to parameter here
+ 1231 | extern boolean getlongvalue (hdltreenode, short, long *);
+      |                                                        ^
+../tests/headless_date_verbs.c:396:43: warning: incompatible pointer types passing 'int64_t *' (aka 'long long *') to parameter of type 'long *' [-Wincompatible-pointer-types]
+  396 |             if (!getlongvalue(hparam1, 1, &date))
+      |                                           ^~~~~
+../Common/headers/lang.h:1231:56: note: passing argument to parameter here
+ 1231 | extern boolean getlongvalue (hdltreenode, short, long *);
+      |                                                        ^
+../tests/headless_date_verbs.c:448:43: warning: incompatible pointer types passing 'int64_t *' (aka 'long long *') to parameter of type 'long *' [-Wincompatible-pointer-types]
+  448 |             if (!getlongvalue(hparam1, 1, &date))
+      |                                           ^~~~~
+../Common/headers/lang.h:1231:56: note: passing argument to parameter here
+ 1231 | extern boolean getlongvalue (hdltreenode, short, long *);
+      |                                                        ^
+../tests/headless_date_verbs.c:462:43: warning: incompatible pointer types passing 'int64_t *' (aka 'long long *') to parameter of type 'long *' [-Wincompatible-pointer-types]
+  462 |             if (!getlongvalue(hparam1, 1, &date))
+      |                                           ^~~~~
+../Common/headers/lang.h:1231:56: note: passing argument to parameter here
+ 1231 | extern boolean getlongvalue (hdltreenode, short, long *);
+      |                                                        ^
+../tests/headless_date_verbs.c:476:43: warning: incompatible pointer types passing 'int64_t *' (aka 'long long *') to parameter of type 'long *' [-Wincompatible-pointer-types]
+  476 |             if (!getlongvalue(hparam1, 1, &date))
+      |                                           ^~~~~
+../Common/headers/lang.h:1231:56: note: passing argument to parameter here
+ 1231 | extern boolean getlongvalue (hdltreenode, short, long *);
+      |                                                        ^
+../tests/headless_date_verbs.c:490:43: warning: incompatible pointer types passing 'int64_t *' (aka 'long long *') to parameter of type 'long *' [-Wincompatible-pointer-types]
+  490 |             if (!getlongvalue(hparam1, 1, &date))
+      |                                           ^~~~~
+../Common/headers/lang.h:1231:56: note: passing argument to parameter here
+ 1231 | extern boolean getlongvalue (hdltreenode, short, long *);
+      |                                                        ^
+../tests/headless_date_verbs.c:504:43: warning: incompatible pointer types passing 'int64_t *' (aka 'long long *') to parameter of type 'long *' [-Wincompatible-pointer-types]
+  504 |             if (!getlongvalue(hparam1, 1, &date))
+      |                                           ^~~~~
+../Common/headers/lang.h:1231:56: note: passing argument to parameter here
+ 1231 | extern boolean getlongvalue (hdltreenode, short, long *);
+      |                                                        ^
+../tests/headless_date_verbs.c:518:43: warning: incompatible pointer types passing 'int64_t *' (aka 'long long *') to parameter of type 'long *' [-Wincompatible-pointer-types]
+  518 |             if (!getlongvalue(hparam1, 1, &date))
+      |                                           ^~~~~
+../Common/headers/lang.h:1231:56: note: passing argument to parameter here
+ 1231 | extern boolean getlongvalue (hdltreenode, short, long *);
+      |                                                        ^
+25 warnings generated.
+../tests/headless_dialog_verbs.c:44:58: warning: unused parameter 'hparam1' [-Wunused-parameter]
+   44 | static boolean dialog_valueproc(short token, hdltreenode hparam1,
+      |                                                          ^
+../tests/headless_dialog_verbs.c:45:53: warning: unused parameter 'vreturned' [-Wunused-parameter]
+   45 |                                      tyvaluerecord *vreturned,
+      |                                                     ^
+2 warnings generated.
+../tests/headless_kb_verbs.c:29:54: warning: unused parameter 'hparam1' [-Wunused-parameter]
+   29 | static boolean kb_valueproc(short token, hdltreenode hparam1,
+      |                                                      ^
+../tests/headless_kb_verbs.c:30:53: warning: unused parameter 'vreturned' [-Wunused-parameter]
+   30 |                                      tyvaluerecord *vreturned,
+      |                                                     ^
+2 warnings generated.
+../tests/headless_mouse_verbs.c:27:57: warning: unused parameter 'hparam1' [-Wunused-parameter]
+   27 | static boolean mouse_valueproc(short token, hdltreenode hparam1,
+      |                                                         ^
+../tests/headless_mouse_verbs.c:28:53: warning: unused parameter 'vreturned' [-Wunused-parameter]
+   28 |                                      tyvaluerecord *vreturned,
+      |                                                     ^
+2 warnings generated.
+../tests/headless_point_verbs.c:27:57: warning: unused parameter 'hparam1' [-Wunused-parameter]
+   27 | static boolean point_valueproc(short token, hdltreenode hparam1,
+      |                                                         ^
+../tests/headless_point_verbs.c:28:53: warning: unused parameter 'vreturned' [-Wunused-parameter]
+   28 |                                      tyvaluerecord *vreturned,
+      |                                                     ^
+2 warnings generated.
+../tests/headless_rectangle_verbs.c:27:61: warning: unused parameter 'hparam1' [-Wunused-parameter]
+   27 | static boolean rectangle_valueproc(short token, hdltreenode hparam1,
+      |                                                             ^
+../tests/headless_rectangle_verbs.c:28:53: warning: unused parameter 'vreturned' [-Wunused-parameter]
+   28 |                                      tyvaluerecord *vreturned,
+      |                                                     ^
+2 warnings generated.
+../tests/headless_rgb_verbs.c:27:55: warning: unused parameter 'hparam1' [-Wunused-parameter]
+   27 | static boolean rgb_valueproc(short token, hdltreenode hparam1,
+      |                                                       ^
+../tests/headless_rgb_verbs.c:28:53: warning: unused parameter 'vreturned' [-Wunused-parameter]
+   28 |                                      tyvaluerecord *vreturned,
+      |                                                     ^
+2 warnings generated.
+../tests/headless_speaker_verbs.c:28:59: warning: unused parameter 'hparam1' [-Wunused-parameter]
+   28 | static boolean speaker_valueproc(short token, hdltreenode hparam1,
+      |                                                           ^
+../tests/headless_speaker_verbs.c:29:53: warning: unused parameter 'vreturned' [-Wunused-parameter]
+   29 |                                      tyvaluerecord *vreturned,
+      |                                                     ^
+2 warnings generated.
+../tests/headless_target_verbs.c:28:58: warning: unused parameter 'hparam1' [-Wunused-parameter]
+   28 | static boolean target_valueproc(short token, hdltreenode hparam1,
+      |                                                          ^
+../tests/headless_target_verbs.c:29:53: warning: unused parameter 'vreturned' [-Wunused-parameter]
+   29 |                                      tyvaluerecord *vreturned,
+      |                                                     ^
+2 warnings generated.
+../tests/headless_bit_verbs.c:33:55: warning: unused parameter 'hparam1' [-Wunused-parameter]
+   33 | static boolean bit_valueproc(short token, hdltreenode hparam1,
+      |                                                       ^
+../tests/headless_bit_verbs.c:34:53: warning: unused parameter 'vreturned' [-Wunused-parameter]
+   34 |                                      tyvaluerecord *vreturned,
+      |                                                     ^
+2 warnings generated.
+../tests/headless_semaphore_verbs.c:27:61: warning: unused parameter 'hparam1' [-Wunused-parameter]
+   27 | static boolean semaphore_valueproc(short token, hdltreenode hparam1,
+      |                                                             ^
+../tests/headless_semaphore_verbs.c:28:53: warning: unused parameter 'vreturned' [-Wunused-parameter]
+   28 |                                      tyvaluerecord *vreturned,
+      |                                                     ^
+2 warnings generated.
+../tests/headless_base64_verbs.c:27:58: warning: unused parameter 'hparam1' [-Wunused-parameter]
+   27 | static boolean base64_valueproc(short token, hdltreenode hparam1,
+      |                                                          ^
+../tests/headless_base64_verbs.c:28:53: warning: unused parameter 'vreturned' [-Wunused-parameter]
+   28 |                                      tyvaluerecord *vreturned,
+      |                                                     ^
+2 warnings generated.
+../tests/headless_tcp_verbs.c:48:55: warning: unused parameter 'hparam1' [-Wunused-parameter]
+   48 | static boolean tcp_valueproc(short token, hdltreenode hparam1,
+      |                                                       ^
+../tests/headless_tcp_verbs.c:49:53: warning: unused parameter 'vreturned' [-Wunused-parameter]
+   49 |                                      tyvaluerecord *vreturned,
+      |                                                     ^
+2 warnings generated.
+../tests/headless_dll_verbs.c:29:55: warning: unused parameter 'hparam1' [-Wunused-parameter]
+   29 | static boolean dll_valueproc(short token, hdltreenode hparam1,
+      |                                                       ^
+../tests/headless_dll_verbs.c:30:53: warning: unused parameter 'vreturned' [-Wunused-parameter]
+   30 |                                      tyvaluerecord *vreturned,
+      |                                                     ^
+2 warnings generated.
+../tests/headless_python_verbs.c:26:58: warning: unused parameter 'hparam1' [-Wunused-parameter]
+   26 | static boolean python_valueproc(short token, hdltreenode hparam1,
+      |                                                          ^
+../tests/headless_python_verbs.c:27:53: warning: unused parameter 'vreturned' [-Wunused-parameter]
+   27 |                                      tyvaluerecord *vreturned,
+      |                                                     ^
+2 warnings generated.
+../tests/headless_htmlcontrol_verbs.c:33:63: warning: unused parameter 'hparam1' [-Wunused-parameter]
+   33 | static boolean htmlcontrol_valueproc(short token, hdltreenode hparam1,
+      |                                                               ^
+../tests/headless_htmlcontrol_verbs.c:34:53: warning: unused parameter 'vreturned' [-Wunused-parameter]
+   34 |                                      tyvaluerecord *vreturned,
+      |                                                     ^
+2 warnings generated.
+../tests/headless_statusbar_verbs.c:30:61: warning: unused parameter 'hparam1' [-Wunused-parameter]
+   30 | static boolean statusbar_valueproc(short token, hdltreenode hparam1,
+      |                                                             ^
+../tests/headless_statusbar_verbs.c:31:53: warning: unused parameter 'vreturned' [-Wunused-parameter]
+   31 |                                      tyvaluerecord *vreturned,
+      |                                                     ^
+2 warnings generated.
+../tests/headless_sys_verbs.c:41:55: warning: unused parameter 'hparam1' [-Wunused-parameter]
+   41 | static boolean sys_valueproc(short token, hdltreenode hparam1,
+      |                                                       ^
+../tests/headless_sys_verbs.c:42:53: warning: unused parameter 'vreturned' [-Wunused-parameter]
+   42 |                                      tyvaluerecord *vreturned,
+      |                                                     ^
+../tests/headless_sys_verbs.c:113:1: warning: non-void function does not return a value in all control paths [-Wreturn-type]
+  113 | }
+      | ^
+3 warnings generated.
+../tests/headless_db_verbs.c:38:54: warning: unused parameter 'hparam1' [-Wunused-parameter]
+   38 | static boolean db_valueproc(short token, hdltreenode hparam1,
+      |                                                      ^
+../tests/headless_db_verbs.c:39:53: warning: unused parameter 'vreturned' [-Wunused-parameter]
+   39 |                                      tyvaluerecord *vreturned,
+      |                                                     ^
+2 warnings generated.
+../tests/headless_html_verbs.c:48:56: warning: unused parameter 'hparam1' [-Wunused-parameter]
+   48 | static boolean html_valueproc(short token, hdltreenode hparam1,
+      |                                                        ^
+../tests/headless_html_verbs.c:49:53: warning: unused parameter 'vreturned' [-Wunused-parameter]
+   49 |                                      tyvaluerecord *vreturned,
+      |                                                     ^
+2 warnings generated.
+../tests/headless_re_verbs.c:35:54: warning: unused parameter 'hparam1' [-Wunused-parameter]
+   35 | static boolean re_valueproc(short token, hdltreenode hparam1,
+      |                                                      ^
+../tests/headless_re_verbs.c:36:53: warning: unused parameter 'vreturned' [-Wunused-parameter]
+   36 |                                      tyvaluerecord *vreturned,
+      |                                                     ^
+2 warnings generated.
+../tests/headless_sqlite_verbs.c:42:58: warning: unused parameter 'hparam1' [-Wunused-parameter]
+   42 | static boolean sqlite_valueproc(short token, hdltreenode hparam1,
+      |                                                          ^
+../tests/headless_sqlite_verbs.c:43:53: warning: unused parameter 'vreturned' [-Wunused-parameter]
+   43 |                                      tyvaluerecord *vreturned,
+      |                                                     ^
+2 warnings generated.
+../tests/headless_mysql_verbs.c:52:57: warning: unused parameter 'hparam1' [-Wunused-parameter]
+   52 | static boolean mysql_valueproc(short token, hdltreenode hparam1,
+      |                                                         ^
+../tests/headless_mysql_verbs.c:53:53: warning: unused parameter 'vreturned' [-Wunused-parameter]
+   53 |                                      tyvaluerecord *vreturned,
+      |                                                     ^
+2 warnings generated.
+../tests/headless_window_verbs.c:56:58: warning: unused parameter 'hparam1' [-Wunused-parameter]
+   56 | static boolean window_valueproc(short token, hdltreenode hparam1,
+      |                                                          ^
+../tests/headless_window_verbs.c:57:53: warning: unused parameter 'vreturned' [-Wunused-parameter]
+   57 |                                      tyvaluerecord *vreturned,
+      |                                                     ^
+2 warnings generated.
+../tests/headless_rez_verbs.c:40:55: warning: unused parameter 'hparam1' [-Wunused-parameter]
+   40 | static boolean rez_valueproc(short token, hdltreenode hparam1,
+      |                                                       ^
+../tests/headless_rez_verbs.c:41:53: warning: unused parameter 'vreturned' [-Wunused-parameter]
+   41 |                                      tyvaluerecord *vreturned,
+      |                                                     ^
+2 warnings generated.
+../tests/headless_search_verbs.c:31:58: warning: unused parameter 'hparam1' [-Wunused-parameter]
+   31 | static boolean search_valueproc(short token, hdltreenode hparam1,
+      |                                                          ^
+../tests/headless_search_verbs.c:32:53: warning: unused parameter 'vreturned' [-Wunused-parameter]
+   32 |                                      tyvaluerecord *vreturned,
+      |                                                     ^
+2 warnings generated.
+../tests/headless_filemenu_verbs.c:35:60: warning: unused parameter 'hparam1' [-Wunused-parameter]
+   35 | static boolean filemenu_valueproc(short token, hdltreenode hparam1,
+      |                                                            ^
+../tests/headless_filemenu_verbs.c:36:53: warning: unused parameter 'vreturned' [-Wunused-parameter]
+   36 |                                      tyvaluerecord *vreturned,
+      |                                                     ^
+2 warnings generated.
+../tests/headless_editmenu_verbs.c:41:60: warning: unused parameter 'hparam1' [-Wunused-parameter]
+   41 | static boolean editmenu_valueproc(short token, hdltreenode hparam1,
+      |                                                            ^
+../tests/headless_editmenu_verbs.c:42:53: warning: unused parameter 'vreturned' [-Wunused-parameter]
+   42 |                                      tyvaluerecord *vreturned,
+      |                                                     ^
+2 warnings generated.

@@ -1,8 +1,9 @@
 # Database Path Canonicalization and Cross-DB References
 
 Status
-- State: Draft
+- State: 📋 Draft/Deferred
 - Last Updated: 2025-09-30
+- Notes: **NOT ACTIVE** - Early-stage exploration for future multi-database path handling. Depends on Phase 3 completion.
 
 Problem
 - Frontier stores and exchanges references to objects in “guest” databases using native platform path strings (e.g., `"Macintosh HD:Applications:Frontier:Guest Databases:www:myWebsite.root"`).

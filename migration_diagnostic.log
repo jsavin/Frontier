@@ -1,0 +1,38 @@
+Error: Unexpected argument 'databases/Frontier-v6-v7.root'
+Error: Invalid command line arguments
+Frontier CLI - Command Line Interface for UserTalk Script Execution
+Version 1.0.0 (Dec 17 2025)
+
+Usage: ./frontier-cli [OPTIONS] [SCRIPT_FILE]
+
+Execution Modes:
+  Script Execution:
+    ./frontier-cli script.usertalk                    # Execute UserTalk script file
+    ./frontier-cli -e "3 + 4"                         # Execute inline script
+
+  (Database and server modes will return an error until Phase 3 work completes.)
+
+Options:
+  -e, --execute SCRIPT     Execute inline UserTalk script
+  -d, --database FILE      (disabled)
+  -q, --query QUERY        (disabled)
+  -m, --migrate            (disabled)
+  --server                 (disabled)
+  --websocket              (disabled)
+  -p, --port PORT          (disabled)
+  --system-root PATH       Load system root database before executing scripts
+  -v, --verbose            Verbose output
+  --debug                  Debug mode
+  -h, --help               Show this help message
+  --version                Show version information
+
+Examples:
+  # Execute a UserTalk script
+  ./frontier-cli myscript.usertalk
+
+  # Execute inline script
+  ./frontier-cli -e "local(x = 5); x * 2"
+
+  # Execute a script file
+  ./frontier-cli myscript.usertalk
+
