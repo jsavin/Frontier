@@ -4,7 +4,7 @@
 **Status**: Accepted
 **Author**: System Architecture Analysis
 **Related**: PR #117 (external database handle mismatch fix)
-**Implementation Plan**: planning/MULTI_DATABASE_PREVENTION_STRATEGY.md
+**Implementation Plan**: planning/phase3/database_architecture/MULTI_DATABASE_PREVENTION_STRATEGY.md
 
 ---
 
