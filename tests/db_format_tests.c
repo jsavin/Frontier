@@ -10,7 +10,7 @@
 
 #include "frontier.h"
 #include "db_format.h"
-/* #include "db_writer_modern.h" */ /* Pre-existing issue: header doesn't exist */
+#include "db_writer_v7.h"
 #include "dbinternal.h"
 #include "langexternal.h"
 #include "tableverbs.h"
@@ -638,7 +638,7 @@ static void test_modern_header_canonical_size_and_version(void) {
     modern.headerLength = 116; /* legacy size; writer should clamp */
 
     unsigned char out[sizeof(tydatabaserecord_64)] = {0};
-    assert(db_write_modern_header(&modern, out, sizeof out));
+    assert(db_write_v7_header((const tydatabaserecord *)&modern, out, sizeof out));
 
     assert(out[0] == 0); /* systemid */
     assert(out[1] == dbversionnumber); /* version forced to 7 */
