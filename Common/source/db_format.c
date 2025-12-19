@@ -1283,6 +1283,80 @@ static void db_format_sanitize_root_externals(hdlhashtable hroot, const db_conte
     }
 }
 
+static boolean db_format_force_materialize_external_tables_recursive(
+    hdlhashtable htable,
+    const db_context *context,
+    int depth
+) {
+    if (htable == nil || depth > 50) /* prevent infinite recursion */
+        return true;
+
+    long ix = 0;
+    hdlhashnode hnode = nil;
+
+    while (hashgetnthnode(htable, ix++, &hnode)) {
+        if (hnode == nil)
+            continue;
+
+        tyvaluerecord *val = &(**hnode).val;
+        if (val->valuetype != externalvaluetype)
+            continue;
+
+        hdlexternalvariable hv = (hdlexternalvariable) val->data.externalvalue;
+        if (hv == nil || (**hv).id != idtableprocessor)
+            continue;
+
+        dbaddress v6_adr = (dbaddress) (**hv).variabledata;
+        boolean was_in_memory = (**hv).flinmemory;
+        bigstring bsname;
+        gethashkey(hnode, bsname);
+
+#if defined(FRONTIER_HEADLESS)
+        fprintf(stderr, "[headless] force-materializing '%.*s' v6_adr=0x%llx was_in_memory=%d\n",
+                (int) bsname[0], (char *) &bsname[1],
+                (unsigned long long) v6_adr, (int) was_in_memory);
+#endif
+
+        /* Load into memory if not already loaded */
+        if (!was_in_memory) {
+            if (!tableverbinmemory(hv, hnode)) {
+#if defined(FRONTIER_HEADLESS)
+                fprintf(stderr, "[headless] force-materialize failed for '%.*s'\n",
+                        (int) bsname[0], (char *) &bsname[1]);
+#endif
+                return false;
+            }
+
+            /* Verify it's now in memory */
+            if (!(**hv).flinmemory) {
+#if defined(FRONTIER_HEADLESS)
+                fprintf(stderr, "[headless] flinmemory not set for '%.*s'\n",
+                        (int) bsname[0], (char *) &bsname[1]);
+#endif
+                return false;
+            }
+        }
+
+        /* Clear oldaddress to force new allocation in v7 (even if was already in memory) */
+        (**hv).oldaddress = nildbaddress;
+
+        /* Recurse into newly-loaded table */
+        hdlhashtable child = (hdlhashtable) (**hv).variabledata;
+        if (!db_format_force_materialize_external_tables_recursive(
+                child, context, depth + 1))
+            return false;
+    }
+    return true;
+}
+
+static boolean db_format_force_materialize_external_tables(
+    hdlhashtable hroot,
+    const db_context *context
+) {
+    return db_format_force_materialize_external_tables_recursive(
+        hroot, context, 0);
+}
+
 static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     if (db_path == NULL || db_path[0] == '\0')
         return false;
@@ -1395,6 +1469,10 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
 
     fail_step = "langhash_materialize_disk_values(root)";
     if (!langhash_materialize_disk_values(hroot))
+        goto cleanup;
+
+    fail_step = "force_materialize_external_tables(root)";
+    if (!db_format_force_materialize_external_tables(hroot, &source_context))
         goto cleanup;
 
     /* Force full repack of the root table under the adapter so legacy blocks are rewritten in BE64. */
