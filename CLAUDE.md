@@ -18,4 +18,50 @@
 - Never delete a local or remote branch without confirming with the user first.
 - When implementing new kernel verbs in C: (1) Add case statement in appropriate verb function (e.g., `sysverbfunc` in shellsysverbs.c), (2) Use `getstringvalue(hparam1, N, varname)` to extract parameters, (3) Convert Pascal strings to C strings with `nullterminate(varname)`, (4) Convert C strings back to Pascal with `copyctopstring(cstr, result)`, (5) Use `setstringvalue(result, v)` or `setlongvalue()` to return values, (6) Mark last parameter with `flnextparamislast = true`, (7) Run `./tools/run_headless_tests.sh` to verify no regressions.
 - Creating new C test files that call UserTalk requires complex initialization (langinitverbs, environment setup, etc.). Defer detailed test infrastructure work to someone familiar with the test harness. Verify implementations work via `./tools/run_headless_tests.sh` instead.
-- **Database migration testing** (v6→v7): Use `make -C tests save_migration_tests && ./tests/save_migration_tests` to run migration. Then test with: `FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root tests/test_save_migration-v7.root -e "defined(system.verbs.globals)"` to verify external access. See planning/phase3/MIGRATION_VALIDATION_REPORT.md for detailed test procedures and known issues.
+- Currently, the UserTalk system.startup.startupScript is known to fail because not all of the verbs that it uses have bindings yet. Always test the bootstrapping of the CLI runtime using the `FRONTIER_HEADLESS_SKIP_STARTUP` environment variable that disables the startup scripts.
+
+## Running frontier-cli
+
+The frontier-cli executable must be run from the project root directory (NOT from within frontier-cli/ or tests/). Syntax:
+
+```bash
+# Execute inline UserTalk code (no database):
+./frontier-cli/frontier-cli -e "1+1"
+
+# Execute with system root database loaded:
+./frontier-cli/frontier-cli --system-root databases/Frontier-v6-v7.root -e "sizeOf(system)"
+
+# Skip startup scripts (use when testing bootstrapping):
+FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli -e "1+1"
+```
+
+## Database Migration (v6→v7)
+
+**Running migration:**
+```bash
+# Clean rebuild and run migration test:
+make -C tests clean && make -C tests save_migration_tests
+./tests/save_migration_tests
+
+# Output: tests/test_save_migration-v7.root (v7 migrated database)
+```
+
+**Testing migrated database:**
+```bash
+# Test database loads and system table is accessible:
+FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root tests/test_save_migration-v7.root -e "defined(system)"
+
+# Test external table variables (critical - tests Issue #123 fix):
+FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root tests/test_save_migration-v7.root -e "sizeOf(system.verbs.globals)"
+
+# Test workspace access:
+FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root tests/test_save_migration-v7.root -e "defined(workspace)"
+```
+
+**Full integration test suite:**
+```bash
+# Runs migration + all headless tests:
+./tools/run_headless_tests.sh
+```
+
+See `planning/phase3/MIGRATION_VALIDATION_REPORT.md` for detailed test procedures and known issues.

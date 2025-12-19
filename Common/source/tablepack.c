@@ -307,8 +307,9 @@ boolean tableverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdba
 	const boolean adapter_repack = db_format_adapter_force_repack() && (databasedata != nil);
     boolean mode64_for_save = false;
 
-	/* Modern path: always emit BE64 addresses. */
+	/* Modern path: always emit BE64 addresses. Preserve adapter_repack from parent mode. */
     modern_mode.use_64bit_format = true;
+    /* Don't override adapter_repack - keep whatever was set by parent context (migration, etc.) */
     db_format_mode_push(&modern_mode);
 
 #if defined(FRONTIER_HEADLESS)
@@ -365,9 +366,20 @@ boolean tableverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdba
 	assert (fldatabasesaveas || (((**ht).fldirty || (**ht).flsubsdirty) == !tablenosubsdirty (ht)));
 	
 	/*it's in memory and either the table itself or one of its subs are dirty, so pack the table*/
-	
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] tableverbpack calling tablepacktable fldirty=%d flsubsdirty=%d mode_use64=%d\n",
+	        (**ht).fldirty ? 1 : 0, (**ht).flsubsdirty ? 1 : 0,
+	        db_format_mode_current().use_64bit_format ? 1 : 0);
+#endif
+
+	/* Ensure packing uses modern mode, not whatever mode is on stack for loading */
+	db_format_mode_push(&modern_mode);
+
 	fl = tablepacktable (ht, false, &hpackedtable, &flmustsave);
-	
+
+	db_format_mode_pop(); /* restore previous mode */
+
 	if (!fl) {
 #if defined(FRONTIER_HEADLESS)
 		fprintf(stderr, "[headless] tablepacktable failed for system table\n");
@@ -379,6 +391,9 @@ boolean tableverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdba
 		or if one of its subs changed in  a way so that the table itself actually needs saving now*/
 	
 	if (fldatabasesaveas || (**ht).fldirty || flmustsave) {
+#if defined(FRONTIER_HEADLESS)
+		dbaddress adr_before = adr;
+#endif
 		if (databasedata != nil)
 			fl = dbsavehandle (hpackedtable, &adr);
 		else {
@@ -388,6 +403,10 @@ boolean tableverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdba
 			fl = true;
 			adr = 0;
 		}
+#if defined(FRONTIER_HEADLESS)
+		fprintf(stderr, "[headless] tableverbpack dbsavehandle adr: 0x%llx → 0x%llx\n",
+		        (unsigned long long) adr_before, (unsigned long long) adr);
+#endif
 	}
 	
 	
@@ -411,6 +430,10 @@ boolean tableverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdba
 		shellsetwindowchanges (hinfo, false);
 	
 	pushaddress:
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] tableverbpack pushaddress adr=0x%llx oldaddress=0x%llx variabledata=0x%llx\n",
+	        (unsigned long long) adr, (unsigned long long) (**hv).oldaddress, (unsigned long long) (**hv).variabledata);
+#endif
     /* Decide whether to emit a 64-bit address trailer before restoring any stacked modes. */
     mode64_for_save = db_format_mode_current().use_64bit_format;
 #if defined(FRONTIER_HEADLESS)

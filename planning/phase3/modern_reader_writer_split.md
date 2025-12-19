@@ -42,4 +42,7 @@
 ## Notes
 - Headless: only modern writer needed; legacy writer can stay stubbed/unused.
 - Keep PICT/opaque payloads untouched; only normalize headers/addresses and record/table metadata lengths in BE64.
-- Payload widening + round-trip validation are critical: don’t call the split “done” until synthetic and file-level legacy→modern→modern-read checks pass and `runtime_tests`/`cli_runtime_tests` succeed on a migrated root.
+- Payload widening + round-trip validation are critical: don't call the split "done" until synthetic and file-level legacy→modern→modern-read checks pass and `runtime_tests`/`cli_runtime_tests` succeed on a migrated root.
+
+## Known Issues
+- **Issue #123 (2025-12-18)**: Root table unpacked with legacy 32-bit reader despite v7 database format. When v7 database opens, `dbopenfile` correctly detects `version=7` and sets `use64=1`, but the root table's `hashunpacktable` calls show `use64=0` (legacy path). Child tables correctly use `use64=1` (modern path). This causes external table variables unpacked from root to have invalid v6 addresses instead of v7 addresses. Migration writes correct 64-bit addresses, but unpacking uses wrong reader. Root cause: `hashunpacktable` not respecting database format mode for root table unpack. Needs fix in root table loading path to use modern v7 reader consistently. See `docs/external_table_variable_management.md` and `planning/phase3/ISSUE_123_SOLUTION_DESIGN.md` for details.

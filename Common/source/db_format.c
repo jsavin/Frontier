@@ -1475,14 +1475,14 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     if (!db_format_force_materialize_external_tables(hroot, &source_context))
         goto cleanup;
 
-    /* Force full repack of the root table under the adapter so legacy blocks are rewritten in BE64. */
-    if (db_format_adapter_force_repack()) {
+    /* Force full repack of the root table so legacy blocks are rewritten in BE64. */
+    {
         hdltablevariable hv = (hdltablevariable) hrootvariable;
         hdlhashtable ht = (hdlhashtable) (**hv).variabledata;
         if (ht != nil) {
             (**ht).fldirty = true;
             (**ht).flsubsdirty = true;
-            (**hv).oldaddress = nildbaddress; /* force new allocation */
+            (**hv).oldaddress = nildbaddress; /* force new allocation during migration */
         }
     }
     /* Load root into memory before switching to 64-bit writes. */
@@ -1521,7 +1521,7 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
 
     dest_context.mode = source_context.mode;
     dest_context.mode.use_64bit_format = true;
-    dest_context.mode.adapter_repack = db_format_adapter_force_repack();
+    dest_context.mode.adapter_repack = true;  /* ALWAYS repack during migration */
     dest_context.mode.drop_cancoon = false;
     have_dest_context = true;
 

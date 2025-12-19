@@ -2,7 +2,9 @@
 
 **Date**: 2025-12-18
 **Issue**: #123 - Table content access fails post-migration (P0 Blocker)
-**Status**: Solution Designed, Pending Approval
+**Status**: Root Cause Identified - Reader/Writer Fork Issue
+
+**UPDATE 2025-12-18 Evening**: After implementing materialization fix and testing, discovered the actual root cause is a **reader/writer fork issue**. Root table unpacks with legacy 32-bit reader (`use64=0`) despite v7 database format (`use64=1`). Child tables correctly use modern reader. Migration writes correct 64-bit addresses, but root table unpacking uses wrong reader path. Problem is in `hashunpacktable` not respecting database format mode for root table. See "Actual Root Cause" section below.
 
 ---
 
@@ -332,9 +334,67 @@ If very large databases (>100MB) cause memory pressure:
 
 ---
 
+## Actual Root Cause (Discovered 2025-12-18 Evening)
+
+### The Real Problem
+
+After implementing the materialization fix and extensive testing, discovered the issue is **NOT** with address conversion during migration. The problem is a **reader/writer fork bug** in how the root table is unpacked.
+
+### Evidence
+
+**Migration phase (WRITING):**
+```
+[headless] tableverbpack dbsavehandle adr: 0x0 → 0x62bb33  ✓ Correct v7 address allocated
+[headless] tableverbpack pushaddress adr=0x62bb33           ✓ Correct address written
+```
+
+**Reopening v7 database (READING):**
+```
+[headless] dbopenfile version=7 use64=true                  ✓ Database detected as v7
+[headless] hashunpacktable name='system' use64=0            ✗ ROOT table uses LEGACY reader!
+[headless] hashunpacktable name='verbs' use64=1             ✓ Child tables use MODERN reader
+```
+
+**Access attempt:**
+```
+[headless] tableverbinmemory flinmemory=0 adr=0x62bb33
+[headless] dbnormalizeaddress failed for adr=0x62bb33       ✗ Valid v7 address treated as invalid
+```
+
+### Why It Happens
+
+1. Database opens correctly in v7 mode: `dbopenfile` detects `version=7` and sets `use64=true`
+2. Root table loads via `tableloadsystemtable()` → `hashunpacktable()`
+3. **BUG**: Root table unpacking uses `use64=0` (legacy 32-bit reader) instead of `use64=1`
+4. External variable addresses are read as 32-bit and stored incorrectly
+5. Child tables (system.verbs, etc.) correctly use `use64=1` when unpacked
+6. Later access to external tables fails because addresses are corrupt from root unpack
+
+### The Fix Needed
+
+Not address conversion or materialization - those work correctly. The fix is:
+
+**Ensure `hashunpacktable()` respects the database format mode when unpacking the root table.**
+
+The root table unpack path needs to check `db_format_mode_current().use_64bit_format` or the database version and use the modern v7 reader path, not the legacy v6 path.
+
+### Materialization Fix Status
+
+The materialization code implemented IS correct and necessary:
+- ✓ All external tables loaded into memory during migration
+- ✓ All `oldaddress` fields cleared to force new v7 allocations
+- ✓ New v7 addresses correctly allocated and written
+- ✓ `adapter_repack` flag correctly set for migration context
+
+The problem is simply that the ROOT table uses the wrong READER when the v7 file is opened.
+
+---
+
 ## References
 
 - Issue #123: https://github.com/jsavin/Frontier/issues/123
 - PR #117: External handle mismatch fix (prerequisite)
 - ADR-001: Multi-database context management
 - `planning/phase3/MIGRATION_VALIDATION_REPORT.md`: Root cause validation
+- `planning/phase3/modern_reader_writer_split.md`: Reader/writer fork architecture
+- `docs/external_table_variable_management.md`: External table lifecycle documentation
