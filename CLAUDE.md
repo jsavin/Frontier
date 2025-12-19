@@ -65,3 +65,52 @@ FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root tests
 ```
 
 See `planning/phase3/MIGRATION_VALIDATION_REPORT.md` for detailed test procedures and known issues.
+
+## Architectural Patterns to Avoid
+
+### Mode Stack Push/Pop Issues ⚠️
+
+The `db_format_mode_current()` push/pop pattern has proven problematic and has caused multiple bugs:
+
+**Problem**: When you push a different mode (e.g., legacy reader mode for loading v6 tables), any recursive operations inherit that mode. If you forget to pop, or if recursive calls don't pop properly, child operations see wrong format state.
+
+**Example from Issue #123**: During migration, we pushed `legacy_load.use_64bit_format = false` to read v6 tables, but recursive child table packing inherited this mode and wrote v4 headers instead of v5. This caused all tables to have wrong format.
+
+**Best practices**:
+1. Use explicit context guards (`db_context_guard`) when switching modes for recursive operations
+2. Never rely on mode stack state being restored automatically
+3. Consider using explicit context parameters instead of global mode state
+4. When in doubt, check `db_format_mode_current()` at the point where it's used, don't assume it's what you set earlier
+
+**See**: `planning/phase3/modern_reader_writer_split.md` - Known Issues section, Issue #123
+
+### Reader/Writer Fork Architecture
+
+Frontier has separate legacy (v6, 32-bit) and modern (v7, 64-bit BE) reader/writer code paths. This is intentional but creates gotchas:
+
+**Gotcha 1**: The DATABASE format mode and TABLE header version are NOT the same thing:
+- `dbopenfile()` sets `db_format_mode.use_64bit_format` based on DATABASE version
+- `hashunpacktable()` used to check only TABLE header version, not database mode
+- Result: Root table could unpack with wrong reader even if database is v7
+
+**Gotcha 2**: Table packing must always respect the OUTPUT database format:
+- Don't rely on mode stack state inherited from earlier operations
+- Explicitly push modern mode before packing if writing to v7 database
+- Always validate you're writing correct header versions (version=5 for v7, version=4 for v6)
+
+**See**: `docs/external_table_variable_management.md` - Address format differences between v6 and v7
+
+### External Table Variable Migration
+
+External table variables store either:
+- Memory pointers (`flinmemory=1`) - no migration issues
+- Database addresses (`flinmemory=0`) - **addresses are format-dependent and fail if written wrong**
+
+**Critical**: If `flinmemory=0` tables are migrated with wrong address format:
+- v6 addresses (32-bit) stored in v7 database don't point to valid blocks
+- `dbnormalizeaddress()` fails when trying to access them
+- Error: `dbnormalizeaddress failed for adr=0x62bb33`
+
+**Safe approach**: Force external tables into memory (`flinmemory=1`) during migration to avoid address format issues entirely.
+
+**See**: `docs/external_table_variable_management.md` - Migration patterns section
