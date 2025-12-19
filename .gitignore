@@ -74,6 +74,11 @@ tests/runtime_tests.dSYM/
 *.root.bak
 *.root.prev*
 
+# Log files (test artifacts, build logs, etc.)
+*.log
+tests/*.log
+build_Xcode_modern/*.log
+
 .claude/
 .anthropic/
 .codex/
