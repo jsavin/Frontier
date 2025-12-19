@@ -37,19 +37,30 @@ static int get_repo_root(char *buf, size_t bufsize) {
         exe_path[len] = '\0';
     }
 
-    char *dir = dirname(exe_path);
+    char dir_copy[PATH_MAX];
+    strncpy(dir_copy, exe_path, sizeof(dir_copy) - 1);
+    dir_copy[sizeof(dir_copy) - 1] = '\0';
+
     /* Walk up to find repo root (contains databases/ directory) */
-    while (strlen(dir) > 1) {
+    while (strlen(dir_copy) > 1) {
         char test_path[PATH_MAX];
-        snprintf(test_path, sizeof(test_path), "%s/databases", dir);
+        snprintf(test_path, sizeof(test_path), "%s/databases", dir_copy);
         if (access(test_path, F_OK) == 0) {
-            if (strlen(dir) >= bufsize) {
+            if (strlen(dir_copy) >= bufsize) {
                 return 0;
             }
-            strcpy(buf, dir);
+            strcpy(buf, dir_copy);
             return 1;
         }
-        dir = dirname(dir);
+
+        /* Use dirname safely by working on a copy */
+        char *parent = dirname(dir_copy);
+        if (parent == NULL || strcmp(parent, dir_copy) == 0) {
+            /* Reached root or error */
+            break;
+        }
+        strncpy(dir_copy, parent, sizeof(dir_copy) - 1);
+        dir_copy[sizeof(dir_copy) - 1] = '\0';
     }
     return 0;
 }
