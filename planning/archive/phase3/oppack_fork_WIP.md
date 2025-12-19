@@ -1,8 +1,13 @@
 # Outline Packer Fork - COMPLETED
 
-**Status**: Implementation Complete
+**Status**: ✅ Implementation Complete
+**Archived**: 2025-12-17
 **Date**: 2025-12-05
 **Branch**: feature/64bit-datetime-fields
+
+---
+
+**ARCHIVED**: This document describes completed work. The legacy/modern oppack split is implemented and merged to develop.
 **Related**: planning/phase3/carbon_migration/outline_script_payload.md
 
 ## What's Been Done

@@ -4,6 +4,11 @@
 **Date**: 2025-12-05
 **Completion Date**: 2025-12-05
 **Completed In**: PR #63 (ef62a788)
+**Archived**: 2025-12-17
+
+---
+
+**ARCHIVED**: This document describes completed work. Merged to develop on 2025-12-15 (PR #115).
 **Related**:
 - planning/phase2/64bit_datetime_fields_plan.md
 - planning/phase3/modern_reader_writer_split.md

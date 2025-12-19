@@ -1,9 +1,14 @@
 # 64-bit DateTime Fields Implementation Plan
 
 **Branch:** `feature/64bit-datetime-fields`
-**Status:** In Progress
+**Status:** ✅ Completed
+**Archived:** 2025-12-17
 **Date:** 2025-12-05
 **Objective:** Convert all time fields from 32-bit to 64-bit to prevent 2040 overflow
+
+---
+
+**ARCHIVED**: This document describes completed work. DateTime field upgrade merged to develop (PR #62, commit 91bb4138). Table timestamp fix merged separately (PR #63, commit ef62a788).
 
 ---
 

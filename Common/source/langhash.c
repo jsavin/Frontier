@@ -3741,6 +3741,10 @@ boolean hashpacktable (hdlhashtable htable, boolean flmemory, Handle *hpackedtab
 		db_format_write_be64(&header.timecreated, (uint64_t) (**htable).timecreated);
 		db_format_write_be64(&header.timelastsave, (uint64_t) (**htable).timelastsave);
 
+#if defined(FRONTIER_HEADLESS)
+		fprintf(stderr, "[headless] hashpacktable writing v7 header version=%d use64=1\n", tablediskversion);
+#endif
+
 		#ifdef xmlfeatures
 			if ((**htable).flxml)
 				header.flags = host_to_disk_int32(flxml);
@@ -4040,8 +4044,20 @@ boolean hashunpacktable (Handle hpackedtable, boolean flmemory, hdlhashtable hta
 	++flunpackingtable;
 	
 	langtraperrors (bsunpackerror, &savecallback, &saverefcon); // hook errors so we can embellish
-	
-	boolean v7_records = (header.version >= tablediskversion);
+
+	/* Determine reader mode: respect database format mode first, then fall back to table header version.
+	 * This ensures v7 databases always use v7 reader, even for tables with old header versions.
+	 * CRITICAL FIX (Issue #123): Must check db_format_mode, not just header.version */
+	boolean v7_records = db_format_mode_current().use_64bit_format || (header.version >= tablediskversion);
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] hashunpacktable name='%.*s' use64=%d (db_format=%d || header.version=%d>=%d)\n",
+	        (int) bsname[0], (char *) &bsname[1],
+	        v7_records ? 1 : 0,
+	        db_format_mode_current().use_64bit_format ? 1 : 0,
+	        header.version,
+	        tablediskversion);
+#endif
 
 	long ixrecord = 0;
 	while (true) {
