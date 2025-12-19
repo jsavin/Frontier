@@ -351,16 +351,24 @@ boolean opverbdispose (hdlexternalvariable hvariable, boolean fldisk) {
 
 
 static boolean newoutlinevariable (boolean flinmemory, long variabledata, hdloutlinevariable *h) {
-	
+
 	tyoutlinevariable item;
-	
+
 	clearbytes (&item, sizeof (item));
-	
+
 	item.flinmemory = flinmemory;
-	
+
 	item.variabledata = variabledata;
-	
+
 	item.hdatabase = databasedata; // 5.0a18 dmb
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] newoutlinevariable: flinmemory=%d variabledata=0x%llx captured_db=%p (current=%p)\n",
+	        (int)flinmemory,
+	        (unsigned long long)variabledata,
+	        (void*)item.hdatabase,
+	        (void*)databasedata);
+#endif
 
 	return (newfilledhandle (&item, sizeof (item), (Handle *) h));
 	} /*newoutlinevariable*/
@@ -576,19 +584,41 @@ static boolean opverbinmemory (hdloutlinevariable hv) {
 	
 	if ((**hv).flinmemory) /*nothing to do, it's already in memory*/
 		return (true);
-	
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] opverbinmemory: about to push hdatabase=%p (current_db=%p) variabledata=0x%llx\n",
+	        (void*)(**hv).hdatabase,
+	        (void*)databasedata,
+	        (unsigned long long)(**hv).variabledata);
+#endif
+
 	dbpushdatabase ((**hv).hdatabase);
 
 	adr = (dbaddress) (**hv).variabledata;
-	
+
+#if defined(FRONTIER_HEADLESS)
+	static int load_count = 0;
+	if (load_count++ < 10) {
+		fprintf(stderr, "[headless] opverbinmemory: about to dbrefhandle adr=0x%llx\n",
+		        (unsigned long long)adr);
+	}
+#endif
+
 	fl = dbrefhandle (adr, &hpackedoutline);
 
 	if (!fl) {
 #if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[headless] opverbinmemory dbrefhandle failed adr=0x%llx\n",
+		fprintf(stderr, "[headless] opverbinmemory: dbrefhandle FAILED adr=0x%llx\n",
 		        (unsigned long long) adr);
 #endif
 	} else {
+#if defined(FRONTIER_HEADLESS)
+		long packed_size = gethandlesize(hpackedoutline);
+		if (load_count <= 10) {
+			fprintf(stderr, "[headless] opverbinmemory: dbrefhandle OK adr=0x%llx size=%ld\n",
+			        (unsigned long long)adr, packed_size);
+		}
+#endif
 		/* 2025-12-05: Dispatch based on outline format version */
 		short versionnumber;
 		boolean islegacy = false;
@@ -620,6 +650,11 @@ static boolean opverbinmemory (hdloutlinevariable hv) {
 			        (unsigned long long) adr);
 #endif
 		}
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] opverbinmemory: about to pop database (current=%p)\n",
+	        (void*)databasedata);
+#endif
 
 	dbpopdatabase ();
 	
@@ -817,25 +852,25 @@ boolean opverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddr
 		}
 	
 	ho = (hdloutlinerecord) (**hv).variabledata;
-	
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] opverbpack: flinmemory=%d ho=%p oldaddress=0x%llx\n",
+	        (int) (**hv).flinmemory, (void *) ho, (unsigned long long) (**hv).oldaddress);
+#endif
+
 	opverbcheckwindowrect (ho);
-	
+
 	adr = (**hv).oldaddress; /*place where this outline used to be stored*/
-	
+
 	if (adapter_repack) {
 		(**ho).fldirty = true;
 		(**ho).fldirtyview = true;
-        db_context ctx;
-        db_context_init(&ctx);
-        db_format_adapter_enable_wide_writes_context(&ctx, NULL);
-        working_mode.use_64bit_format = true; /* write modern */
-        db_format_mode_push(&working_mode);
 		*flnewdbaddress = true;
 	}
 
 	if (!fldatabasesaveas && !(**ho).fldirty && !(**ho).fldirtyview) /*don't need to update the db version of the outline*/
 		goto pushaddress;
-	
+
 	if (!opverbpackoutline (ho, &hpackedoutline)) {
 #if defined(FRONTIER_HEADLESS)
 		fprintf(stderr, "[headless] opverbpackoutline failed for outline at adr=0x%llx\n",
@@ -843,11 +878,19 @@ boolean opverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddr
 #endif
 		return (false);
 	}
-	
+
+	/* During migration, dbassignhandle will use the global v7 write mode set by
+	 * db_format_adapter_enable_wide_writes() in dbstartsaveas_internal(). */
 	fl = dbassignhandle (hpackedoutline, &adr);
-	
+
+#if defined(FRONTIER_HEADLESS)
+	db_format_mode check_mode = db_format_mode_current();
+	fprintf(stderr, "[headless] opverbpack: dbassignhandle oldadr=0x%llx -> newadr=0x%llx (use_64bit=%d)\n",
+	        (unsigned long long) (**hv).oldaddress, (unsigned long long) adr, (int) check_mode.use_64bit_format);
+#endif
+
 	disposehandle (hpackedoutline);
-	
+
 	if (!fl) {
 #if defined(FRONTIER_HEADLESS)
 		fprintf(stderr, "[headless] dbassignhandle failed for outline adr=0x%llx\n",
@@ -875,8 +918,7 @@ boolean opverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddr
 		}
 	
 	pushaddress:
-	if (adapter_repack)
-        db_format_mode_pop();
+	/* No longer using mode stack for adapter_repack - using context instead */
     db_format_mode_apply(&prev_mode);
 	
 	if (!fldatabasesaveas) {

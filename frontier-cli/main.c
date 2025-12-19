@@ -103,7 +103,7 @@ int main(int argc, char* argv[]) {
     if (g_cli_options.upgrade_system_root) {
         boolean migrated = false;
         char output_path[1024];
-        if (!ensure_database_modern(g_cli_options.system_root, &migrated, output_path, sizeof output_path)) {
+        if (!ensure_database_v7(g_cli_options.system_root, &migrated, output_path, sizeof output_path)) {
             fprintf(stderr, "Error: Failed to upgrade system root: %s\n", g_cli_options.system_root);
             return 1;
         }
@@ -405,7 +405,7 @@ static boolean hydrate_system_root_database(const char* path) {
 
     boolean migrated = false;
     char actual_path[1024];
-    if (!ensure_database_modern(path, &migrated, actual_path, sizeof actual_path)) {
+    if (!ensure_database_v7(path, &migrated, actual_path, sizeof actual_path)) {
         cli_log_error("Failed to verify database format before hydration: %s", path);
         return false;
     }
@@ -599,7 +599,7 @@ static boolean load_system_root_database_internal(const char* path, boolean allo
     }
     boolean migrated = false;
     char actual_path[1024];
-    if (!ensure_database_modern(path, &migrated, actual_path, sizeof actual_path)) {
+    if (!ensure_database_v7(path, &migrated, actual_path, sizeof actual_path)) {
         cli_log_error("Failed to ensure system root is modern: %s", path);
         return false;
     }

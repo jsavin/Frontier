@@ -1088,7 +1088,7 @@ boolean ccsavefile (ptrfilespec fs, hdlfilenum fnum, short rnum, boolean flsavea
 	
     {
         boolean repack_scope = false;
-        db_format_mode_push_modern_write_repack();
+        db_format_mode_push_v7_write_repack();
         repack_scope = true;
         if (!tablesavesystemtable((**hc).hrootvariable, &info.adrroottable)) {
             if (repack_scope) {
@@ -1107,7 +1107,7 @@ boolean ccsavefile (ptrfilespec fs, hdlfilenum fnum, short rnum, boolean flsavea
 
     {
         boolean repack_scope = false;
-        db_format_mode_push_modern_write_repack();
+        db_format_mode_push_v7_write_repack();
         repack_scope = true;
         if (!dbassignhandle((**hc).hscriptstring, &info.adrscriptstring)) {
             if (repack_scope) {
@@ -1144,7 +1144,7 @@ boolean ccsavefile (ptrfilespec fs, hdlfilenum fnum, short rnum, boolean flsavea
 	
     {
         boolean repack_scope = false;
-        db_format_mode_push_modern_write_repack();
+        db_format_mode_push_v7_write_repack();
         repack_scope = true;
         if (!dbassign(&adr, sizeof (info), &info)) {
             if (repack_scope) {

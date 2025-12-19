@@ -96,7 +96,7 @@ boolean detect_database_format(const tydatabaserecord *header);
 boolean convert_32bit_header_to_64bit(const unsigned char *legacy_header, tydatabaserecord_64 *new_header);
 boolean db_format_widen_legacy_header(const tydatabaserecord *decoded_header, boolean flreadonly, tydatabaserecord_64 *widened_out);
 boolean db_format_write_header64(const tydatabaserecord_64 *src, unsigned char *dest, size_t dest_size);
-boolean db_format_decode_header(const unsigned char *rawheader, size_t raw_len, boolean *header_is_modern, tydatabaserecord *out);
+boolean db_format_decode_header(const unsigned char *rawheader, size_t raw_len, boolean *header_is_v7, tydatabaserecord *out);
 /* 2025-11-24 Codex: Entry points for v7 reader vs legacy adapter. */
 boolean db_format_load_legacy_adapter(const tydatabaserecord *decoded_header, boolean flreadonly, tydatabaserecord_64 *widened_out);
 boolean db_format_load_v7_reader(const tydatabaserecord *decoded_header, boolean flreadonly);
@@ -112,7 +112,7 @@ boolean db_format_is_legacy_db(hdldatabaserecord hdb);
 boolean create_root_backup(const char *original_path);
 boolean migrate_32bit_to_64bit(const char *db_path);
 boolean migrate_32bit_to_64bit_drop_cancoon(const char *db_path);
-boolean ensure_database_modern(const char *db_path, boolean *migrated, char *output_path, size_t output_path_size);
+boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_path, size_t output_path_size);
 boolean db_format_last_backup_path(char *buffer, size_t length);
 void db_format_clear_last_backup_path(void);
 void db_format_force_strict_v7_reader(void);

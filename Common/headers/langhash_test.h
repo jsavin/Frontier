@@ -31,8 +31,8 @@ typedef struct langhash_test_disksymbolrecord_v7 {
 } langhash_test_disksymbolrecord_v7;
 
 /* Expose value pack/unpack helpers for tests (guarded by FRONTIER_TESTS in langhash.c). */
-void langhash_test_value_to_disk_modern(const tyvaluerecord *val, langhash_test_disksymbolrecord_v7 *rec);
-void langhash_test_value_from_disk_modern(const langhash_test_disksymbolrecord_v7 *rec, tyvaluerecord *val);
+void langhash_test_value_to_disk_v7(const tyvaluerecord *val, langhash_test_disksymbolrecord_v7 *rec);
+void langhash_test_value_from_disk_v7(const langhash_test_disksymbolrecord_v7 *rec, tyvaluerecord *val);
 
 #ifdef __cplusplus
 } /* extern "C" */

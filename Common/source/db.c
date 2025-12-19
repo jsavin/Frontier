@@ -54,7 +54,7 @@
 #include "db.h"
 #include "db_format.h"
 #include "db_reader.h"
-#include "db_writer_modern.h"
+#include "db_writer_v7.h"
 #include "dbinternal.h"
 #include "ops.h" //6.2b3 AR: for numbertostring
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
@@ -64,7 +64,7 @@
 #define dberrorlist 256
 
 // 2025-11-23 Codex: Widened block header/trailer to 64-bit BE and updated avail links for v7 roots.
-// 2025-11-20 Codex: Write modern headers and record metadata with explicit big-endian encoding for portability.
+// 2025-11-20 Codex: Write v7 headers and record metadata with explicit big-endian encoding for portability.
 // 2025-11-16 Codex: Keep dbgetsize locals wide enough so dbgetsizeandvariance
 // writes don't corrupt the caller's stack on 64-bit builds.
 
@@ -371,18 +371,46 @@ static void db_context_guard_enter(const db_context *context, db_context_guard *
         guard->prev_mode = db_format_mode_current();
         db_saveas_state_snapshot(&guard->prev_saveas);
         guard->prev_db = databasedata;
+#if defined(FRONTIER_HEADLESS)
+        static int call_count = 0;
+        if (call_count++ < 5) {
+            fprintf(stderr, "[headless] db_context_guard_enter: prev_mode captured use_64bit=%d adapter_repack=%d\n",
+                    (int) guard->prev_mode.use_64bit_format, (int) guard->prev_mode.adapter_repack);
+        }
+#endif
     }
     if (context != NULL) {
         if (context->database != nil)
             databasedata = context->database;
         db_saveas_state_apply(&context->saveas);
+#if defined(FRONTIER_HEADLESS)
+        static int call_count2 = 0;
+        if (call_count2++ < 5) {
+            fprintf(stderr, "[headless] db_context_guard_enter: applying mode use_64bit=%d adapter_repack=%d\n",
+                    (int) context->mode.use_64bit_format, (int) context->mode.adapter_repack);
+        }
+#endif
         db_format_mode_apply(&context->mode);
+#if defined(FRONTIER_HEADLESS)
+        if (call_count2 <= 5) {
+            db_format_mode current_after = db_format_mode_current();
+            fprintf(stderr, "[headless] db_context_guard_enter: after apply, current mode use_64bit=%d adapter_repack=%d\n",
+                    (int) current_after.use_64bit_format, (int) current_after.adapter_repack);
+        }
+#endif
     }
 }
 
 static void db_context_guard_exit(const db_context_guard *guard) {
     if (guard == NULL)
         return;
+#if defined(FRONTIER_HEADLESS)
+    static int call_count = 0;
+    if (call_count++ < 5) {
+        fprintf(stderr, "[headless] db_context_guard_exit: restoring prev mode use_64bit=%d adapter_repack=%d\n",
+                (int) guard->prev_mode.use_64bit_format, (int) guard->prev_mode.adapter_repack);
+    }
+#endif
     db_format_mode_apply(&guard->prev_mode);
     databasedata = guard->prev_db;
     db_saveas_state_apply(&guard->prev_saveas);
@@ -423,33 +451,47 @@ boolean dbpushdatabase (hdldatabaserecord hdatabase) {
 	when you want to temporarily work with a different databaserecord, call this
 	routine, do your stuff and then call dbpopdatabase.
 	*/
-	
+
 	if (topdatabasestack >= ctdatabasestack) {
-		
+
 		DebugStr (STR_database_stack_overflow);
-		
+
 		return (false);
 		}
-	
+
 	databasestack [topdatabasestack++] = databasedata;
-	
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] dbpushdatabase: old=%p new=%p stack_depth=%d\n",
+	        (void*)databasedata,
+	        (void*)hdatabase,
+	        topdatabasestack);
+#endif
+
 	if (hdatabase != nil)
 		databasedata = hdatabase;
 
 	db_sync_use64_to_current_db();
-	
+
 	return (true);
 	} /*dbpushdatabase*/
 		
 
 boolean dbpopdatabase (void) {
-	
+
 	if (topdatabasestack <= 0)
 		return (false);
-	
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] dbpopdatabase: old=%p restored=%p stack_depth=%d\n",
+	        (void*)databasedata,
+	        (void*)databasestack[topdatabasestack - 1],
+	        topdatabasestack);
+#endif
+
 	databasedata = databasestack [--topdatabasestack];
 	db_sync_use64_to_current_db();
-	
+
 	return (true);
 	} /*dbpopdatabase*/
 
@@ -480,7 +522,29 @@ static db_context *db_context_for_saveas_destination(db_context *ctx, boolean *u
 
     if (ctx->saveas.active && ctx->saveas.destination != nil) {
         ctx->database = ctx->saveas.destination;
-        ctx->mode.use_64bit_format = !db_format_is_legacy_db(ctx->database);
+        /* During migration (adapter active), always use v7 format for destination writes.
+           The destination database handle may still be marked as legacy, but we're writing
+           the new v7 format data. */
+        boolean adapter_active = db_format_adapter_is_active();
+        boolean is_legacy = db_format_is_legacy_db(ctx->database);
+#if defined(FRONTIER_HEADLESS)
+        static int call_count = 0;
+        if (call_count++ < 5) {
+            fprintf(stderr, "[headless] db_context_for_saveas_destination: adapter_active=%d is_legacy=%d\n",
+                    (int) adapter_active, (int) is_legacy);
+        }
+#endif
+        if (adapter_active) {
+            ctx->mode.use_64bit_format = true;
+        } else {
+            ctx->mode.use_64bit_format = !is_legacy;
+        }
+#if defined(FRONTIER_HEADLESS)
+        if (call_count <= 5) {
+            fprintf(stderr, "[headless] db_context_for_saveas_destination: set use_64bit_format=%d\n",
+                    (int) ctx->mode.use_64bit_format);
+        }
+#endif
         if (using_destination != NULL)
             *using_destination = true;
         return ctx;
@@ -511,7 +575,7 @@ static void dbswapglobals (void) {
 
 static void db_sync_use64_to_current_db(void) {
 	if (fldatabasesaveas && dbsaveas_source != nil && db_format_adapter_is_active()) {
-		/* Legacy source stays 32-bit; destination writes are modern BE64. */
+		/* Legacy source stays 32-bit; destination writes are v7 BE64. */
         db_format_mode mode = db_format_mode_current();
         mode.use_64bit_format = !db_format_is_legacy_db(databasedata);
         db_format_mode_apply(&mode);
@@ -644,12 +708,9 @@ static boolean dbflushheader (void) {
 	        (int) use64log);
 #endif
 	
-	/* If we opened via legacy adapter, flip to wide writes before flushing. */
-    {
-        db_context ctx;
-        db_context_init(&ctx);
-        db_format_adapter_enable_wide_writes_context(&ctx, NULL);
-    }
+	/* If we opened via legacy adapter, flip to wide writes before flushing.
+	 * Call the non-context version directly so the mode persists. */
+    db_format_adapter_enable_wide_writes(NULL);
 
 	if (isdirty (hdb)) { /*changes made to header*/
 		
@@ -668,9 +729,9 @@ static boolean dbflushheader (void) {
 		{
 			unsigned char diskheader[sizeof (tydatabaserecord_64)];
 
-			if (!db_write_modern_header(&diskrec, diskheader, sizeof (diskheader))) {
+			if (!db_write_v7_header(&diskrec, diskheader, sizeof (diskheader))) {
 #if defined(FRONTIER_HEADLESS)
-				fprintf(stderr, "[headless] dbflushheader db_write_modern_header failed\n");
+				fprintf(stderr, "[headless] dbflushheader db_write_v7_header failed\n");
 #endif
 				return (false);
 			}
@@ -808,13 +869,13 @@ boolean dbreadtrailer (dbaddress adr, boolean *flfree, long *ctbytes) {
 
 static boolean dbwriteheader (dbaddress adr, boolean flfree, long ctbytes, tyvariance variance) {
 
-	return db_write_modern_block_header(adr, flfree, ctbytes, variance);
+	return db_write_v7_block_header(adr, flfree, ctbytes, variance);
 	} /*dbwriteheader*/
 	
 	
 static boolean dbwritetrailer (dbaddress adr, boolean flfree, long ctbytes) {
 
-	return db_write_modern_block_trailer(adr, flfree, ctbytes);
+	return db_write_v7_block_trailer(adr, flfree, ctbytes);
 	} /*dbwritetrailer*/
 
 
@@ -1552,9 +1613,28 @@ boolean dbrefhandle (dbaddress adr, Handle *h) {
 #endif
 	
 	hregister = *h;
-	
+
 	lockhandle (hregister);
-	
+
+#if defined(FRONTIER_HEADLESS)
+	/* Log first 20 reads to check for format mode mismatches */
+	static int header_log_count = 0;
+	if (header_log_count < 20) {
+		db_format_mode current_mode = db_format_mode_current();
+		long actual_header_size = current_mode.use_64bit_format ? sizeheader_v7 : sizeheader_v6;
+		fprintf(stderr, "[headless] dbrefhandle[%d]: adr=0x%llx use_64bit=%d header_size=%ld (v6=%ld v7=%ld) read_offset=0x%llx\n",
+				header_log_count++,
+				(unsigned long long)a,
+				current_mode.use_64bit_format ? 1 : 0,
+				actual_header_size,
+				sizeheader_v6,
+				sizeheader_v7,
+				(unsigned long long)(a + sizeheader));
+	} else {
+		header_log_count++;
+	}
+#endif
+
 	fl = dbread (a + sizeheader, ct, *hregister);
 
 #if defined(FRONTIER_HEADLESS)
@@ -1607,7 +1687,25 @@ static boolean dballocate (long databytes, ptrvoid pdata, dbaddress *paddress) {
     db_context swap_ctx;
     boolean using_destination = false;
     db_context *apply_ctx = db_context_for_saveas_destination(&swap_ctx, &using_destination);
+#if defined(FRONTIER_HEADLESS)
+    static int call_count = 0;
+    if (call_count++ < 5) {
+        fprintf(stderr, "[headless] dballocate: using_destination=%d apply_ctx=%p\n",
+                (int) using_destination, (void *) apply_ctx);
+        if (apply_ctx != NULL) {
+            fprintf(stderr, "[headless] dballocate: context mode use_64bit=%d adapter_repack=%d\n",
+                    (int) apply_ctx->mode.use_64bit_format, (int) apply_ctx->mode.adapter_repack);
+        }
+    }
+#endif
     db_context_guard_enter(apply_ctx, &guard);
+#if defined(FRONTIER_HEADLESS)
+    if (call_count <= 5) {
+        db_format_mode current_after = db_format_mode_current();
+        fprintf(stderr, "[headless] dballocate: after guard enter, current mode use_64bit=%d adapter_repack=%d\n",
+                (int) current_after.use_64bit_format, (int) current_after.adapter_repack);
+    }
+#endif
 
 #if !defined(FRONTIER_HEADLESS)
     (void) using_destination;
@@ -2259,7 +2357,18 @@ boolean dbassign_internal (dbaddress *padr, long newsize, ptrvoid pdata) {
 	} /*dbassign_internal*/
 
 boolean dbassign (dbaddress *padr, long newsize, ptrvoid pdata) {
-    db_context *ctx = db_context_refresh_default();
+    db_context ctx_storage;
+    boolean using_destination = false;
+    db_context *ctx = db_context_for_saveas_destination(&ctx_storage, &using_destination);
+    if (ctx == NULL)
+        ctx = db_context_refresh_default();
+#if defined(FRONTIER_HEADLESS)
+    static int log_count = 0;
+    if (log_count++ < 10) {
+        fprintf(stderr, "[headless] dbassign: saveas_active=%d using_destination=%d dest_db=%p\n",
+                (int)fldatabasesaveas, (int)using_destination, (void*)databasedestination);
+    }
+#endif
     return dbassign_context(ctx, padr, newsize, pdata);
 }
 	
@@ -2496,9 +2605,28 @@ boolean dbassignhandle (Handle h, dbaddress *adr) {
                 hsize,
                 (int) fldatabasesaveas,
                 (void *) databasedestination);
+    } else {
+        static int verify_count = 0;
+        if (verify_count++ < 10) {
+            fprintf(stderr, "[headless] dbassignhandle SUCCESS adr=0x%llx size=%ld\n",
+                    (unsigned long long)*adr, hsize);
+            /* Verify write by reading back first 16 bytes */
+            if (hsize >= 16) {
+                unsigned char verify_buf[16];
+                if (dbreference(*adr, 16, verify_buf)) {
+                    fprintf(stderr, "[headless] dbassignhandle verify: %02x %02x %02x %02x %02x %02x %02x %02x | %02x %02x %02x %02x %02x %02x %02x %02x\n",
+                            verify_buf[0], verify_buf[1], verify_buf[2], verify_buf[3],
+                            verify_buf[4], verify_buf[5], verify_buf[6], verify_buf[7],
+                            verify_buf[8], verify_buf[9], verify_buf[10], verify_buf[11],
+                            verify_buf[12], verify_buf[13], verify_buf[14], verify_buf[15]);
+                } else {
+                    fprintf(stderr, "[headless] dbassignhandle verify: read-back FAILED\n");
+                }
+            }
+        }
     }
 #endif
-	
+
 	return (fl);
 	} /*dbassignhandle*/
 	
@@ -2973,7 +3101,7 @@ boolean dbopenfile (hdlfilenum fnum, boolean flreadonly) {
 		db_format_set_legacy_source_db(hdb);
 	} else {
         fail_step = "modern-read";
-		if (!db_read_modern(rawheader, sizeof rawheader, &diskrec))
+		if (!db_read_v7(rawheader, sizeof rawheader, &diskrec))
 			goto error;
         fail_step = "modern-reader";
 		if (!db_format_load_v7_reader(&diskrec, flreadonly))
@@ -3046,7 +3174,7 @@ boolean dbopenfile (hdlfilenum fnum, boolean flreadonly) {
 		
         /*
          * Only bump the in-memory header version when operating in the
-         * modern (v7) format. For legacy files (v<=6), defer version
+         * v7 format. For legacy files (v<=6), defer version
          * changes until an explicit migration is performed (e.g., Save).
          */
         if (db_use64())
@@ -3102,29 +3230,59 @@ boolean dbclose (void) {
 
 
 static boolean dbstartsaveas_internal(hdlfilenum fnum) {
-	
+
 	register boolean fl;
-		
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] dbstartsaveas BEGIN: source_db=%p dest_db=%p\n",
+	        (void*)databasedata,
+	        (void*)databasedestination);
+#endif
+
 	fldatabasesaveas = true; /*set global; enables databasehandle swapping*/
 	dbsaveas_source = databasedata;
 
-	/* 2025-11-25 Codex: Enable wide writes when legacy adapter is active. */
-    {
-        db_context ctx;
-        db_context_init(&ctx);
-        db_format_adapter_enable_wide_writes_context(&ctx, NULL);
-    }
-	
+	/* 2025-12-16: Enable wide writes when legacy adapter is active.
+	 * Call the non-context version directly so the mode persists globally
+	 * for all subsequent writes during migration. Using _context() here would
+	 * undo the mode change when the guard exits. */
+    db_format_adapter_enable_wide_writes(NULL);
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] dbstartsaveas: fldatabasesaveas=true dbsaveas_source=%p databasedata=%p\n",
+	        (void*)dbsaveas_source,
+	        (void*)databasedata);
+#endif
+
 	dbswapglobals ();
-	
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] dbstartsaveas: after swap, databasedata=%p databasedestination=%p\n",
+	        (void*)databasedata,
+	        (void*)databasedestination);
+#endif
+
 	fl = dbnew (fnum);
-	
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] dbstartsaveas: after dbnew, fl=%d databasedata=%p\n",
+	        (int)fl,
+	        (void*)databasedata);
+#endif
+
 	dbswapglobals ();
-	
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] dbstartsaveas END: after final swap, databasedata=%p databasedestination=%p fl=%d\n",
+	        (void*)databasedata,
+	        (void*)databasedestination,
+	        (int)fl);
+#endif
+
 	fldatabasesaveas = fl;
 	if (!fl)
 		dbsaveas_source = nil;
-	
+
 	return (fl);
 	} /*dbstartsaveas_internal*/
 

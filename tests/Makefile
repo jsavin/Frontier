@@ -97,8 +97,8 @@ FRONTIER_SOURCES = \
     ../Common/source/dbverbs.c \
     ../Common/source/db_format.c \
     ../Common/source/db_reader_legacy.c \
-    ../Common/source/db_reader_modern.c \
-    ../Common/source/db_writer_modern.c
+    ../Common/source/db_reader_v7.c \
+    ../Common/source/db_writer_v7.c
 
 # Migration tests use the same headless runtime slice as runtime_tests to avoid test-only forks.
 MIGRATION_SOURCES = \
@@ -151,7 +151,7 @@ LANG_RUNTIME_SOURCES = \
     ../Common/source/oplist.c \
     ../Common/source/opstructure.c \
     ../Common/source/oprefcon.c \
-    ../Common/source/oppack_modern.c \
+    ../Common/source/oppack_v7.c \
     ../Common/source/legacy/oppack_legacy.c \
     ../Common/source/opverbs.c \
     ../Common/source/legacy/opverbs_legacy.c \
@@ -165,11 +165,12 @@ LANG_RUNTIME_SOURCES = \
     ../Common/source/legacy/tablepack_legacy.c \
     ../Common/source/tablepack.c \
     ../Common/source/tablestructure.c \
+    ../Common/source/tableverbs.c \
     ../Common/source/db.c \
     ../Common/source/db_format.c \
     ../Common/source/db_reader_legacy.c \
-    ../Common/source/db_reader_modern.c \
-    ../Common/source/db_writer_modern.c \
+    ../Common/source/db_reader_v7.c \
+    ../Common/source/db_writer_v7.c \
     ../Common/source/shell_api_headless.c \
     ../Common/source/shell_api.c \
     ../portable/file_portable.c \
@@ -221,7 +222,7 @@ USERTALK_OBJECT_TESTS = \
 	test_usertalk_runner
 
 # Buildable test executables on this branch
-RUN_BUILDABLE = core_tests db_format_tests runtime_tests parser_tests save_migration_tests file_portable_tests file_readline_tests file_verb_tests handle_tests cli_runtime_tests paige_text_tests oppack_tests hashpack_modern_tests hash_corruption_tests langvalue_64_tests
+RUN_BUILDABLE = core_tests db_format_tests runtime_tests parser_tests save_migration_tests file_portable_tests file_readline_tests file_verb_tests handle_tests cli_runtime_tests paige_text_tests oppack_tests hashpack_modern_tests hash_corruption_tests langvalue_64_tests table_verb_tests
 
 # Prebuilt or auxiliary test binaries that may be present
 RUN_PREBUILT = test_64bit_direct test_migration_verification test_real_databases test_runner verify_migration_success
@@ -257,6 +258,9 @@ hash_corruption_tests: hash_corruption_tests.c
 langvalue_64_tests: langvalue_64_tests.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
 		langvalue_64_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@ $(LINK_LIBS)
+
+table_verb_tests: table_verb_tests.c
+	$(CC) -std=c99 -Wall -Wextra -g -O0 table_verb_tests.c -o $@
 
 runtime_tests: runtime_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable runtime_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@ $(LINK_LIBS)

@@ -1,4 +1,4 @@
-/* 2025-11-26 Codex: Modern reader fork for v7+ BE64 headers. */
+/* 2025-11-26 Codex: V7 reader fork for v7+ BE64 headers. */
 
 #include "frontier.h"
 #include "standard.h"
@@ -16,7 +16,7 @@ static uint64_t read_be64(const unsigned char *field) {
     return db_format_read_be64(field);
 }
 
-boolean db_read_modern(const unsigned char *rawheader, size_t raw_len, tydatabaserecord *out) {
+boolean db_read_v7(const unsigned char *rawheader, size_t raw_len, tydatabaserecord *out) {
     int header_version = 0;
     int i;
     size_t needed = sizeof (tydatabaserecord_64);
@@ -51,7 +51,7 @@ boolean db_read_modern(const unsigned char *rawheader, size_t raw_len, tydatabas
     out->u.extensions.availlistblock = (dbaddress) db_format_read_be64(rawheader + offsetof(tydatabaserecord_64, u.extensions.availlistblock));
     out->u.extensions.flreadonly = rawheader[offsetof(tydatabaserecord_64, u.extensions.flreadonly)];
 
-    db_format_mode mode = {true, false, false};  /* 64-bit modern format */
+    db_format_mode mode = {true, false, false};  /* 64-bit v7 format */
     db_format_mode_push(&mode);
     return true;
 }

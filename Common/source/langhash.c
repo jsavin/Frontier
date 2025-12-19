@@ -381,6 +381,11 @@ static boolean langhash_materialize_external(tyvaluerecord *val, const char *pat
 				return false;
 			}
 			hdlhashtable child = (hdlhashtable)(**hv).variabledata;
+			/* During adapter_repack (migration), mark materialized tables as dirty to force save */
+			if (db_format_mode_current().adapter_repack && child != nil) {
+				(**child).fldirty = true;
+				(**child).flsubsdirty = true;
+			}
 			boolean ok = langhash_materialize_table_internal(child, path);
 			langhash_materialize_current_path = prior_path;
 			return ok;
@@ -700,7 +705,7 @@ static void diskvalue_from_value_v7(const tyvaluerecord *val, tydiskvaluedata_v7
 	case novaluetype:
 	case booleanvaluetype:
 	case charvaluetype:
-		/* Small scalar types share the 64-bit longvalue slot to keep the modern record compact and simple. */
+		/* Small scalar types share the 64-bit longvalue slot to keep the v7 record compact and simple. */
 		out->longvalue = host_to_disk_int64((int64_t) val->data.chvalue);
 		break;
 		case intvaluetype:
@@ -2913,17 +2918,17 @@ typedef struct typackinforecord {
 /* Legacy pack visitor (v<=6) */
 static boolean hashpackvisit_legacy (bigstring bsname, hdlhashnode hnode, tyvaluerecord val, ptrvoid refcon);
 
-/* Modern pack visitor (v7+) */
-static boolean hashpackvisit_modern (bigstring bsname, hdlhashnode hnode, tyvaluerecord val, ptrvoid refcon);
+/* V7 pack visitor */
+static boolean hashpackvisit_v7 (bigstring bsname, hdlhashnode hnode, tyvaluerecord val, ptrvoid refcon);
 
-/* Dispatcher that selects legacy vs modern based on format flag */
+/* Dispatcher that selects legacy vs v7 based on format flag */
 static boolean hashpackvisit (bigstring bsname, hdlhashnode hnode, tyvaluerecord val, ptrvoid refcon);
 
 /* Dispatcher implementation */
 static boolean hashpackvisit (bigstring bsname, hdlhashnode hnode, tyvaluerecord val, ptrvoid refcon) {
 	typackinforecord *lpi = (typackinforecord *) refcon;
 	if (lpi != NULL && lpi->use_64bit)
-		return hashpackvisit_modern (bsname, hnode, val, refcon);
+		return hashpackvisit_v7 (bsname, hnode, val, refcon);
 	return hashpackvisit_legacy (bsname, hnode, val, refcon);
 }
 
@@ -3002,7 +3007,7 @@ static boolean hashpackvisit_legacy (bigstring bsname, hdlhashnode hnode, tyvalu
 	rec.valuetype = val.valuetype;
 #if defined(FRONTIER_HEADLESS)
 	if (val.valuetype == listvaluetype) {
-		fprintf(stderr, "[headless] hashpackvisit_modern WRITE list name='%.*s' path=%s\n",
+		fprintf(stderr, "[headless] hashpackvisit_v7 WRITE list name='%.*s' path=%s\n",
 		        bsname[0], bsname + 1,
 		        (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>");
 		unsigned char dumpbuf[sizeof (rec)];
@@ -3323,8 +3328,8 @@ return (true); /*stop now, this is the error return*/
 }
 
 #if defined(FRONTIER_TESTS)
-/* Test entry points to exercise modern pack/unpack. */
-void langhash_test_value_to_disk_modern(const tyvaluerecord *val, langhash_test_disksymbolrecord_v7 *rec_out) {
+/* Test entry points to exercise v7 pack/unpack. */
+void langhash_test_value_to_disk_v7(const tyvaluerecord *val, langhash_test_disksymbolrecord_v7 *rec_out) {
     tydisksymbolrecord_v7 rec_local;
     clearbytes(&rec_local, sizeof(rec_local));
     rec_local.valuetype = val->valuetype;
@@ -3334,7 +3339,7 @@ void langhash_test_value_to_disk_modern(const tyvaluerecord *val, langhash_test_
     memcpy(rec_out, &rec_local, sizeof(rec_local));
 }
 
-void langhash_test_value_from_disk_modern(const langhash_test_disksymbolrecord_v7 *rec_in, tyvaluerecord *val) {
+void langhash_test_value_from_disk_v7(const langhash_test_disksymbolrecord_v7 *rec_in, tyvaluerecord *val) {
     tydisksymbolrecord_v7 rec_local;
     memcpy(&rec_local, rec_in, sizeof(rec_local));
     initvalue(val, (tyvaluetype) rec_local.valuetype);
@@ -3344,7 +3349,7 @@ void langhash_test_value_from_disk_modern(const langhash_test_disksymbolrecord_v
 
 
 /* Modern pack visitor (v7+; BE64 numerics) */
-static boolean hashpackvisit_modern (bigstring bsname, hdlhashnode hnode, tyvaluerecord val, ptrvoid refcon) {
+static boolean hashpackvisit_v7 (bigstring bsname, hdlhashnode hnode, tyvaluerecord val, ptrvoid refcon) {
 
 	/*
 	Matches legacy logic but writes modern scalar payloads (64-bit ints/doubles, Mac-epoch date).
@@ -3402,7 +3407,7 @@ static boolean hashpackvisit_modern (bigstring bsname, hdlhashnode hnode, tyvalu
 	if (val.valuetype == listvaluetype) {
 		const Handle hlist = (Handle) val.data.listvalue;
 		const long hsize = (hlist == nil) ? -1L : gethandlesize(hlist);
-		fprintf(stderr, "[headless] hashpackvisit_modern list encounter path=%s name='%.*s' hlist=%p hdata=%p valid=%d size=%ld fldiskval=%d\n",
+		fprintf(stderr, "[headless] hashpackvisit_v7 list encounter path=%s name='%.*s' hlist=%p hdata=%p valid=%d size=%ld fldiskval=%d\n",
 		        (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
 		        bsname[0], bsname + 1,
 		        (void *) hlist,
@@ -3414,7 +3419,7 @@ static boolean hashpackvisit_modern (bigstring bsname, hdlhashnode hnode, tyvalu
 #endif
 
 #if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] hashpackvisit_modern path=%s name='%.*s' valuetype=%d\n",
+	fprintf(stderr, "[headless] hashpackvisit_v7 path=%s name='%.*s' valuetype=%d\n",
 	        (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
 	        bsname[0], bsname + 1,
 	        val.valuetype);
@@ -3678,7 +3683,7 @@ error:
 
 #if defined(FRONTIER_HEADLESS)
 	if (hashpack_fail_file != NULL) {
-		fprintf(stderr, "[headless] hashpackvisit_modern failed name='%.*s' valuetype=%d reason=%s at %s:%d\n",
+		fprintf(stderr, "[headless] hashpackvisit_v7 failed name='%.*s' valuetype=%d reason=%s at %s:%d\n",
 			(int)bsname[0], (char *)&bsname[1],
 			(int)val.valuetype,
 			hashpack_fail_reason ? hashpack_fail_reason : "unknown",
@@ -3719,10 +3724,10 @@ boolean hashpacktable (hdlhashtable htable, boolean flmemory, Handle *hpackedtab
 
 	/* Check database format mode to determine which version to write */
 #if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] hashpacktable use_64bit=%d htable=%p timelastsave=%llu\n",
-	        use_64bit ? 1 : 0, (void *)htable, (unsigned long long)(**htable).timelastsave);
+	db_format_mode current_mode = db_format_mode_current();
+	fprintf(stderr, "[headless] hashpacktable use_64bit=%d (current mode: use_64bit=%d adapter_repack=%d)\n",
+	        (int) use_64bit, (int) current_mode.use_64bit_format, (int) current_mode.adapter_repack);
 #endif
-
 	if (use_64bit) {
 		/* v7 mode: Write v0x05 with 64-bit timestamps */
 		tydisktablerecord header;
@@ -4041,13 +4046,14 @@ boolean hashunpacktable (Handle hpackedtable, boolean flmemory, hdlhashtable hta
 	langtraperrors (bsunpackerror, &savecallback, &saverefcon); // hook errors so we can embellish
 
 	/* Determine reader mode: respect database format mode first, then fall back to table header version.
-	 * This ensures v7 databases always use modern reader, even for tables with old header versions. */
-	boolean modern_records = db_format_mode_current().use_64bit_format || (header.version >= tablediskversion);
+	 * This ensures v7 databases always use v7 reader, even for tables with old header versions.
+	 * CRITICAL FIX (Issue #123): Must check db_format_mode, not just header.version */
+	boolean v7_records = db_format_mode_current().use_64bit_format || (header.version >= tablediskversion);
 
 #if defined(FRONTIER_HEADLESS)
 	fprintf(stderr, "[headless] hashunpacktable name='%.*s' use64=%d (db_format=%d || header.version=%d>=%d)\n",
 	        (int) bsname[0], (char *) &bsname[1],
-	        modern_records ? 1 : 0,
+	        v7_records ? 1 : 0,
 	        db_format_mode_current().use_64bit_format ? 1 : 0,
 	        header.version,
 	        tablediskversion);
@@ -4056,11 +4062,11 @@ boolean hashunpacktable (Handle hpackedtable, boolean flmemory, hdlhashtable hta
 	long ixrecord = 0;
 	while (true) {
 			tydisksymbolrecord rec;
-	/* Buffer mirrors the manual BE64 layout written in hashpackvisit_modern. */
+	/* Buffer mirrors the manual BE64 layout written in hashpackvisit_v7. */
 	unsigned char recbuf[sizeof(tydisksymbolrecord_v7)];
 			tyvaluerecord val;
 			long remaining;
-			boolean modern_rec = modern_records;
+			boolean v7_rec = v7_records;
 			int32_t name_index = 0;
 			int64_t data_index64 = 0;
 			tydiskvaluedata_v7 rec_data_v7;
@@ -4069,7 +4075,7 @@ boolean hashunpacktable (Handle hpackedtable, boolean flmemory, hdlhashtable hta
 			assert (sizeof (tydisksymbolrecord) == sizeof (tyOLD42disksymbolrecord));
 
 			remaining = gethandlesize (hrecords) - ix;
-			if (modern_records) {
+			if (v7_records) {
 				if (remaining < (long) sizeof (tydisksymbolrecord_v7)) /*out of records*/
 					break;
 				if (!loadfromhandle (hrecords, &ix, sizeof (recbuf), recbuf)) /*unexpected failure*/
@@ -4100,7 +4106,7 @@ boolean hashunpacktable (Handle hpackedtable, boolean flmemory, hdlhashtable hta
 //			disktomemshort (rec.valuetype);
 //			disktomemshort (rec.version);
 
-			if (!modern_rec && header.version < 2) // shift down from old bitfield position
+			if (!v7_rec && header.version < 2) // shift down from old bitfield position
 				rec.version >>= 4;
 
 			/* string/binary offsets remain 32-bit but are stored in a widened slot on disk */
@@ -4140,7 +4146,7 @@ boolean hashunpacktable (Handle hpackedtable, boolean flmemory, hdlhashtable hta
 				        slen,
 				        (int) slen,
 				        (char *) (bsname + 1),
-				        (int) modern_rec,
+				        (int) v7_rec,
 				        (long long) data_index64);
 				fprintf(hashunpack_log, "  raw:");
 				for (unsigned int i = 0; i < slen && i < 32; ++i)
@@ -4154,7 +4160,7 @@ boolean hashunpacktable (Handle hpackedtable, boolean flmemory, hdlhashtable hta
 			        bsname[0], bsname + 1,
 			        (int) rec.valuetype,
 			        (unsigned int) rec.version,
-			        (int) modern_rec);
+			        (int) v7_rec);
 #endif
 
 #if defined(FRONTIER_HEADLESS)
@@ -4491,7 +4497,7 @@ boolean hashunpacktable (Handle hpackedtable, boolean flmemory, hdlhashtable hta
 				}
 
 				case booleanvaluetype:
-					if (modern_rec) {
+					if (v7_rec) {
 						diskvalue_to_value_v7 (&rec_data_v7, &val);
 					} else if (header.version < 2) {
 						int16_t rawbool = disk_to_host_int16 (rec.data.intvalue);
@@ -4515,7 +4521,7 @@ boolean hashunpacktable (Handle hpackedtable, boolean flmemory, hdlhashtable hta
 				case fixedvaluetype:
 				case singlevaluetype:
 				case datevaluetype:
-					if (modern_rec)
+					if (v7_rec)
 						diskvalue_to_value_v7 (&rec_data_v7, &val);
 					else
 						diskvalue_to_value_legacy (&rec.data, &val);
@@ -4523,7 +4529,7 @@ boolean hashunpacktable (Handle hpackedtable, boolean flmemory, hdlhashtable hta
 					break;
 
 				default:
-					if (modern_rec)
+					if (v7_rec)
 						diskvalue_to_value_v7 (&rec_data_v7, &val);
 					else
 						diskvalue_to_value_legacy (&rec.data, &val);

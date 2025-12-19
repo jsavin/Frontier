@@ -303,18 +303,18 @@ boolean tableverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdba
 	boolean flmustsave = false;
 	hdlwindowinfo hinfo;
     db_format_mode prev_mode = db_format_mode_current();
-    db_format_mode modern_mode = prev_mode;
-	const boolean adapter_repack = db_format_adapter_force_repack() && (databasedata != nil);
+    db_format_mode v7_mode = prev_mode;
+	const boolean adapter_repack = prev_mode.adapter_repack && (databasedata != nil);
     boolean mode64_for_save = false;
 
-	/* Modern path: always emit BE64 addresses. Preserve adapter_repack from parent mode. */
-    modern_mode.use_64bit_format = true;
+	/* V7 path: always emit BE64 addresses. Preserve adapter_repack from parent mode. */
+    v7_mode.use_64bit_format = true;
     /* Don't override adapter_repack - keep whatever was set by parent context (migration, etc.) */
-    db_format_mode_push(&modern_mode);
+    db_format_mode_push(&v7_mode);
 
 #if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] tableverbpack start flinmemory=%d adapter_repack=%d databasedata=%p\n",
-	        (int) (**hv).flinmemory, (int) adapter_repack, (void *) databasedata);
+	fprintf(stderr, "[headless] tableverbpack start flinmemory=%d adapter_repack=%d (prev_mode.adapter_repack=%d) databasedata=%p\n",
+	        (int) (**hv).flinmemory, (int) adapter_repack, (int) prev_mode.adapter_repack, (void *) databasedata);
 #endif
 	
 	if (fldatabasesaveas) {
@@ -329,7 +329,7 @@ boolean tableverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdba
 
 	if (!(**hv).flinmemory) {
 		if (adapter_repack) {
-            db_format_mode legacy_load = modern_mode;
+            db_format_mode legacy_load = v7_mode;
             legacy_load.use_64bit_format = false; /* legacy read while loading source */
             db_format_mode_push(&legacy_load);
 			fltempload = true;
@@ -356,9 +356,9 @@ boolean tableverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdba
 		*flnewdbaddress = true;
 		(**ht).flsubsdirty = true;
 		(**ht).fldirty = true;
-        db_context ctx;
-        db_context_init(&ctx);
-        db_format_adapter_enable_wide_writes_context(&ctx, NULL);
+        /* Enable wide writes for migration - do NOT use context guard version
+           because we want the mode to persist, not be restored after the call */
+        db_format_adapter_enable_wide_writes(NULL);
 	}
 	
 	tablecheckwindowrect (ht);
@@ -373,8 +373,9 @@ boolean tableverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdba
 	        db_format_mode_current().use_64bit_format ? 1 : 0);
 #endif
 
-	/* Ensure packing uses modern mode, not whatever mode is on stack for loading */
-	db_format_mode_push(&modern_mode);
+	/* Ensure packing uses v7 mode, not whatever mode is on stack for loading
+	 * CRITICAL FIX (Issue #123): Explicitly push v7 mode to prevent inherited legacy mode */
+	db_format_mode_push(&v7_mode);
 
 	fl = tablepacktable (ht, false, &hpackedtable, &flmustsave);
 

@@ -15,9 +15,9 @@
 extern "C" {
 #endif
 
-boolean db_write_modern_header(const tydatabaserecord *in, unsigned char *outbuf, size_t out_len);
-boolean db_write_modern_block_header(dbaddress adr, boolean flfree, long ctbytes, tyvariance variance);
-boolean db_write_modern_block_trailer(dbaddress adr, boolean flfree, long ctbytes);
+boolean db_write_v7_header(const tydatabaserecord *in, unsigned char *outbuf, size_t out_len);
+boolean db_write_v7_block_header(dbaddress adr, boolean flfree, long ctbytes, tyvariance variance);
+boolean db_write_v7_block_trailer(dbaddress adr, boolean flfree, long ctbytes);
 
 #ifdef __cplusplus
 } /* extern "C" */

@@ -98,7 +98,7 @@ RUNTIME_SOURCES = \
     ../Common/source/oplist.c \
     ../Common/source/opstructure.c \
     ../Common/source/oprefcon.c \
-    ../Common/source/oppack_modern.c \
+    ../Common/source/oppack_v7.c \
     ../Common/source/legacy/oppack_legacy.c \
     ../Common/source/oplangtext.c \
     ../Common/source/opverbs.c \
@@ -109,6 +109,7 @@ RUNTIME_SOURCES = \
     ../Common/source/tableexternal_common.c \
     ../Common/source/tableexternal.c \
     ../Common/source/tablepack.c \
+    ../Common/source/tableverbs.c \
     ../Common/source/shell_api.c \
     ../Common/source/shell_api_headless.c
 
@@ -139,7 +140,6 @@ HEADLESS_STUBS = \
     $(TESTSDIR)/headless_opattributes_verbs.c \
     $(TESTSDIR)/headless_script_verbs.c \
     $(TESTSDIR)/headless_osa_verbs.c \
-    $(TESTSDIR)/headless_table_verbs.c \
     $(TESTSDIR)/headless_menu_verbs.c \
     $(TESTSDIR)/headless_pict_verbs.c \
     $(TESTSDIR)/headless_clock_verbs.c \
@@ -186,8 +186,8 @@ DATABASE_SOURCES = \
     ../Common/source/db.c \
     ../Common/source/db_format.c \
     ../Common/source/db_reader_legacy.c \
-    ../Common/source/db_reader_modern.c \
-    ../Common/source/db_writer_modern.c \
+    ../Common/source/db_reader_v7.c \
+    ../Common/source/db_writer_v7.c \
     ../Common/source/odbengine.c \
     ../Common/source/findinfile.c
 
