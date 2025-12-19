@@ -80,6 +80,7 @@ static boolean validate_v7_addresses(FILE *f) {
     return (root_adr > 0 && root_adr < 0x10000000);  /* Reasonable limit */
 }
 
+
 int main(void) {
     fprintf(stderr, "\n=== Migration Format and Data Integrity Validation ===\n\n");
 

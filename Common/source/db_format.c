@@ -1383,64 +1383,137 @@ static boolean db_format_force_materialize_external_tables_recursive(
     const db_context *context,
     int depth
 ) {
-    if (htable == nil || depth > 50) /* prevent infinite recursion */
+#if defined(FRONTIER_HEADLESS)
+    fprintf(stderr, "[diag] materialize_recursive: depth=%d htable=%p\n", depth, (void *)htable);
+#endif
+
+    if (htable == nil || depth > 50) { /* prevent infinite recursion */
+#if defined(FRONTIER_HEADLESS)
+        if (depth > 50)
+            fprintf(stderr, "[diag]   skipping: depth_limit_exceeded depth=%d\n", depth);
+#endif
         return true;
+    }
 
     long ix = 0;
     hdlhashnode hnode = nil;
+    long node_count = 0;
+    long external_count = 0;
+    long materialized_count = 0;
 
     while (hashgetnthnode(htable, ix++, &hnode)) {
         if (hnode == nil)
             continue;
 
-        tyvaluerecord *val = &(**hnode).val;
-        if (val->valuetype != externalvaluetype)
-            continue;
-
-        hdlexternalvariable hv = (hdlexternalvariable) val->data.externalvalue;
-        if (hv == nil || (**hv).id != idtableprocessor)
-            continue;
-
-        dbaddress v6_adr = (dbaddress) (**hv).variabledata;
-        boolean was_in_memory = (**hv).flinmemory;
+        node_count++;
         bigstring bsname;
         gethashkey(hnode, bsname);
 
+        tyvaluerecord *val = &(**hnode).val;
 #if defined(FRONTIER_HEADLESS)
-        fprintf(stderr, "[headless] force-materializing '%.*s' v6_adr=0x%llx was_in_memory=%d\n",
-                (int) bsname[0], (char *) &bsname[1],
+        fprintf(stderr, "[diag]   node[%ld] name='%.*s' valuetype=%d\n",
+                node_count, (int) bsname[0], (char *) &bsname[1], (int) val->valuetype);
+#endif
+
+        if (val->valuetype != externalvaluetype) {
+#if defined(FRONTIER_HEADLESS)
+            fprintf(stderr, "[diag]     skip: not external valuetype\n");
+#endif
+            continue;
+        }
+
+        hdlexternalvariable hv = (hdlexternalvariable) val->data.externalvalue;
+        if (hv == nil) {
+#if defined(FRONTIER_HEADLESS)
+            fprintf(stderr, "[diag]     skip: hv is nil\n");
+#endif
+            continue;
+        }
+
+        int var_id = (**hv).id;
+#if defined(FRONTIER_HEADLESS)
+        fprintf(stderr, "[diag]     external: id=%d", var_id);
+#endif
+
+        if (var_id != idtableprocessor) {
+#if defined(FRONTIER_HEADLESS)
+            fprintf(stderr, " skip: not idtableprocessor\n");
+#endif
+            continue;
+        }
+
+        external_count++;
+        dbaddress v6_adr = (dbaddress) (**hv).variabledata;
+        boolean was_in_memory = (**hv).flinmemory;
+
+#if defined(FRONTIER_HEADLESS)
+        fprintf(stderr, " v6_adr=0x%llx was_in_memory=%d\n",
                 (unsigned long long) v6_adr, (int) was_in_memory);
 #endif
 
         /* Load into memory if not already loaded */
         if (!was_in_memory) {
+#if defined(FRONTIER_HEADLESS)
+            fprintf(stderr, "[diag]     calling tableverbinmemory for '%.*s'\n",
+                    (int) bsname[0], (char *) &bsname[1]);
+#endif
+
             if (!tableverbinmemory(hv, hnode)) {
 #if defined(FRONTIER_HEADLESS)
-                fprintf(stderr, "[headless] force-materialize failed for '%.*s'\n",
+                fprintf(stderr, "[diag]     ERROR: tableverbinmemory failed for '%.*s'\n",
                         (int) bsname[0], (char *) &bsname[1]);
 #endif
                 return false;
             }
+
+#if defined(FRONTIER_HEADLESS)
+            fprintf(stderr, "[diag]     tableverbinmemory succeeded, checking flinmemory\n");
+#endif
 
             /* Verify it's now in memory */
             if (!(**hv).flinmemory) {
 #if defined(FRONTIER_HEADLESS)
-                fprintf(stderr, "[headless] flinmemory not set for '%.*s'\n",
+                fprintf(stderr, "[diag]     ERROR: flinmemory not set after tableverbinmemory for '%.*s'\n",
                         (int) bsname[0], (char *) &bsname[1]);
 #endif
                 return false;
             }
+
+            materialized_count++;
+        } else {
+#if defined(FRONTIER_HEADLESS)
+            fprintf(stderr, "[diag]     already in memory, not materializing\n");
+#endif
         }
 
         /* Clear oldaddress to force new allocation in v7 (even if was already in memory) */
+#if defined(FRONTIER_HEADLESS)
+        dbaddress old_oldaddr = (**hv).oldaddress;
+#endif
         (**hv).oldaddress = nildbaddress;
+
+#if defined(FRONTIER_HEADLESS)
+        fprintf(stderr, "[diag]     cleared oldaddress: was=0x%llx now=nil\n",
+                (unsigned long long) old_oldaddr);
+#endif
 
         /* Recurse into newly-loaded table */
         hdlhashtable child = (hdlhashtable) (**hv).variabledata;
+#if defined(FRONTIER_HEADLESS)
+        fprintf(stderr, "[diag]     recursing into child table '%.*s' depth_next=%d child=%p\n",
+                (int) bsname[0], (char *) &bsname[1], depth + 1, (void *)child);
+#endif
+
         if (!db_format_force_materialize_external_tables_recursive(
                 child, context, depth + 1))
             return false;
     }
+
+#if defined(FRONTIER_HEADLESS)
+    fprintf(stderr, "[diag] materialize_recursive: depth=%d complete: nodes=%ld externals=%ld materialized=%ld\n",
+            depth, node_count, external_count, materialized_count);
+#endif
+
     return true;
 }
 

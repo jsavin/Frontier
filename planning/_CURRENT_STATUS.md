@@ -3,11 +3,12 @@
 Status
 - State: In Progress
 - Phase: Carbon Migration / Runtime Modernization + Verb Porting
-- Last Updated: 2025-12-18
+- Last Updated: 2025-12-19
 - Owner: Codex / Claude
 - Notes: Active snapshot only; older entries moved to `_STATUS_ARCHIVE.md`.
 
 Recent Updates
+- **2025-12-19 (Mode Stack Refactor - Planning Complete)**: Completed comprehensive planning for full mode stack to explicit context refactor. Decision made: pursue Option B (full refactor) instead of Option A (incremental) because stability is paramount and incremental approach just kicks the pebble down the road. Created detailed implementation plan (`planning/phase3/MODE_STACK_REFACTOR_PLAN.md`) covering 5 phases over 8-13 days: Phase 1 (core serialization), Phase 2 (DB operations), Phase 3 (format readers/writers), Phase 4 (migration code), Phase 5 (cleanup). Also created quick-start guide (`MODE_STACK_REFACTOR_QUICKSTART.md`) for easy resumption. Root cause analysis: mode stack is global state that implicitly propagates through recursive operations, causing every Issue #123 bug (reader fork, writer fork, invalid addresses). New architecture uses explicit `db_context` structure passed through all operations, making mode deterministic and preventing inheritance bugs. Ready to begin implementation Phase 1: converting langhash.c and tablepack.c to context-based (~25 call sites).
 - **2025-12-18 Evening (Issue #123 RESOLVED - PR #124)**: Fixed external table access failures post-migration. Root cause was **reader/writer fork issue**: root table unpacked with legacy 32-bit reader (`use64=0`) despite v7 database format (`use64=1`), while child tables correctly used modern reader. Two critical bugs fixed: (1) `hashunpacktable()` reader selection logic now respects database format mode (lines 4034-4036 in langhash.c); (2) `tableverbpack()` mode stack issue - now explicitly pushes modern mode before packing to prevent inherited legacy mode (lines 376-381 in tablepack.c). Enhanced `save_migration_tests.c` with 4-phase validation: version check, migration execution, format validation, and external table accessibility testing. All 6/6 validation checks passing. Comprehensive documentation created: `docs/external_table_variable_management.md` (498 lines, lifecycle/states/migration), updated `planning/phase3/ISSUE_123_SOLUTION_DESIGN.md` with actual root cause analysis and evidence, and enhanced `CLAUDE.md` with new "Architectural Patterns to Avoid" section documenting mode stack issues and reader/writer fork gotchas. **PR #124** (`fix/issue-123-migration-validation` branch) submitted with all commits and awaits bot review. Mode stack push/pop mechanism flagged as architectural debt for future refactoring (Issue #123 repeatedly exposed this pattern causing bugs).
 - **2025-12-15 (PR #109 merged)**: Completed Phase 3.E-F automatic verb binding improvements. Phase 3.E: Added 7 missing exception table entries and normalized verb names to lowercase in parser, improving coverage from 56% → 67% (477 verbs detected). Phase 3.F: Implemented `sys.getenvironmentvariable()` and `sys.setenvironmentvariable()` with POSIX cross-platform support and buffer overflow protection (length check for >255 char values). Added platform-specific documentation and updated planning docs. See `planning/phase3/kernel_verb_porting/automatic_verb_binding_phase3_plan.md` for full Phase 3.E-F details. Coverage now 68% (479/707 verbs).
 - **2025-12-13 (PR #75 merged)**: Hardened hash pack/unpack with explicit 16-byte BE buffers, bounds-checked `hashunpackstring`, header detection guards, optional logging (`FRONTIER_HASHUNPACK_LOG`), and compile-time layout asserts. Table globals now reset cleanly after migration/load; CLI always hydrates the system root and clears globals before/after migrations. Docs updated (`docs/database_architecture.md` v7 hash record layout). Full `SANITIZE=1 make -C tests test` passes; CLI still reports exit=1 for stubbed verbs (clock.*) but harness marks tests as passed.
@@ -16,7 +17,7 @@ Recent Updates
 
 Open Items (active)
 - **Issue #123 (RESOLVED in PR #124)**: External table access post-migration. Root cause: reader/writer fork issue where root table unpacking used legacy 32-bit reader despite v7 database format. Fixed reader selection in `hashunpacktable()` and mode stack corruption in `tableverbpack()`. Awaiting bot review on PR #124.
-- **Architecture Debt**: Mode stack push/pop mechanism (`db_format_mode_push/pop`) repeatedly causes bugs. Exposed twice in Issue #123 fix session. Flag for future refactoring to use explicit context passing instead of global stack manipulation.
+- **MODE STACK REFACTOR (CRITICAL - PLANNED)**: Full refactor of mode stack to explicit context passing. Planning complete (see `planning/phase3/MODE_STACK_REFACTOR_PLAN.md`). Ready to begin Phase 1 implementation. This addresses the architectural debt that caused all Issue #123 bugs. Decision: pursue full refactor (Option B) for long-term stability. LOE: 8-13 days (2-3 weeks). No blockers.
 - Implement remaining headless/kernel verbs needed for CLI runtime (`clock.now`, `clock.ticks`, etc.) so `cli_runtime_tests` no longer exit=1.
 - Follow-ups filed:
   - #76: Add corruption/bounds tests for hash unpack (OOB name index, truncated records, header edge cases).
@@ -25,8 +26,9 @@ Open Items (active)
 - Continue Phase 3 verb porting per processor audits; prioritize quick wins (clock/date/dialog stubs to reduce CLI gaps).
 
 Next Steps
+- **PRIORITY 1**: Begin mode stack refactor Phase 1 (core serialization, 2-3 days) - see `planning/phase3/MODE_STACK_REFACTOR_QUICKSTART.md` for step-by-step guide. Create branch `refactor/explicit-context-no-mode-stack` and start with context initialization API in `db_format.c`, then convert `langhash.c` and `tablepack.c` to use explicit context (~25 call sites).
 - Merge PR #124 after bot review and address any issues found.
-- Plan mode stack refactoring (use explicit context instead of global push/pop) to address architectural debt.
-- Address CLI verb gaps (clock/date) and re-run `cli_runtime_tests` expecting clean exit codes.
-- Add targeted hash unpack corruption tests (issue #76) once helper macros land or in parallel.
-- Plan a cross-arch sanity check for v7 hash/table records (issue #78) after helper refactor (#77).
+- Continue mode stack refactor through Phases 2-5 (8-13 days total) to permanently eliminate architectural debt.
+- Address CLI verb gaps (clock/date) and re-run `cli_runtime_tests` expecting clean exit codes (lower priority, after refactor).
+- Add targeted hash unpack corruption tests (issue #76) once helper macros land or in parallel (lower priority).
+- Plan a cross-arch sanity check for v7 hash/table records (issue #78) after helper refactor (#77) (lower priority).

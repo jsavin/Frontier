@@ -469,6 +469,14 @@ static boolean hydrate_system_root_database(const char* path) {
 
     dispose_rootvariable = true;
 
+    /* Materialize all disk values (including nested external tables with flinmemory=0).
+     * This is critical for v7 databases that may have external tables with stale v6 addresses.
+     * Without this, accessing nested tables like system.verbs.colors will fail. */
+    if (!langhash_materialize_disk_values(hroot)) {
+        cli_log_error("Failed to materialize disk values in system root while hydrating %s", path);
+        goto cleanup;
+    }
+
     rootvariable = hrootvariable;
     roottable = hroot;
     currenthashtable = roottable;

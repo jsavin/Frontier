@@ -328,20 +328,36 @@ boolean tableverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdba
 		}
 
 	if (!(**hv).flinmemory) {
+#if defined(FRONTIER_HEADLESS)
+		fprintf(stderr, "[diag] tableverbpack: table is on-disk flinmemory=0 adapter_repack=%d\n",
+		        adapter_repack ? 1 : 0);
+#endif
 		if (adapter_repack) {
+#if defined(FRONTIER_HEADLESS)
+			fprintf(stderr, "[diag]   pushing legacy_load mode use64=false for v6 read\n");
+#endif
             db_format_mode legacy_load = v7_mode;
             legacy_load.use_64bit_format = false; /* legacy read while loading source */
             db_format_mode_push(&legacy_load);
 			fltempload = true;
+#if defined(FRONTIER_HEADLESS)
+			fprintf(stderr, "[diag]   calling tableverbinmemory for on-disk table\n");
+#endif
 			if (!tableverbinmemory (hv, HNoNode)) {
+#if defined(FRONTIER_HEADLESS)
+				fprintf(stderr, "[diag]   ERROR: tableverbinmemory failed, popping mode\n");
+#endif
                 db_format_mode_pop();
 				return (false);
             }
+#if defined(FRONTIER_HEADLESS)
+			fprintf(stderr, "[diag]   tableverbinmemory succeeded, popping legacy mode\n");
+#endif
             db_format_mode_pop();
 		} else { /*not in memory, just push the old db address*/
-		
+
 			adr = (dbaddress) (**hv).variabledata;
-			
+
 			*flnewdbaddress = false;
 
 			goto pushaddress;
@@ -371,15 +387,36 @@ boolean tableverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdba
 	fprintf(stderr, "[headless] tableverbpack calling tablepacktable fldirty=%d flsubsdirty=%d mode_use64=%d\n",
 	        (**ht).fldirty ? 1 : 0, (**ht).flsubsdirty ? 1 : 0,
 	        db_format_mode_current().use_64bit_format ? 1 : 0);
+	fprintf(stderr, "[diag] pre-push: current mode use_64=%d adapter_repack=%d\n",
+	        db_format_mode_current().use_64bit_format ? 1 : 0,
+	        db_format_mode_current().adapter_repack ? 1 : 0);
 #endif
 
 	/* Ensure packing uses v7 mode, not whatever mode is on stack for loading
 	 * CRITICAL FIX (Issue #123): Explicitly push v7 mode to prevent inherited legacy mode */
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[diag] pushing v7_mode: use_64=%d\n", v7_mode.use_64bit_format ? 1 : 0);
+#endif
 	db_format_mode_push(&v7_mode);
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[diag] post-push: current mode use_64=%d adapter_repack=%d\n",
+	        db_format_mode_current().use_64bit_format ? 1 : 0,
+	        db_format_mode_current().adapter_repack ? 1 : 0);
+#endif
 
 	fl = tablepacktable (ht, false, &hpackedtable, &flmustsave);
 
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[diag] tablepacktable returned fl=%d\n", fl ? 1 : 0);
+#endif
+
 	db_format_mode_pop(); /* restore previous mode */
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[diag] post-pop: current mode use_64=%d\n",
+	        db_format_mode_current().use_64bit_format ? 1 : 0);
+#endif
 
 	if (!fl) {
 #if defined(FRONTIER_HEADLESS)
