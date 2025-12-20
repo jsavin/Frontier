@@ -227,6 +227,11 @@ extern boolean langexternalsetdirty (hdlexternalhandle, boolean);
 extern boolean langexternalpack (hdlexternalhandle, Handle *, boolean *);
 
 extern boolean langexternalunpack (Handle, hdlexternalhandle *);
+
+/* Context-aware internal version (used by db_format layer) */
+struct db_context; /* forward declaration */
+extern boolean langexternalpack_internal (const struct db_context *, hdlexternalhandle, Handle *, boolean *);
+
 /* Legacy (32-bit) pack/unpack shims used during migration. */
 extern boolean langexternalpack_legacy (hdlexternalhandle, Handle *, boolean *);
 extern boolean langexternalunpack_legacy (Handle, hdlexternalhandle *);

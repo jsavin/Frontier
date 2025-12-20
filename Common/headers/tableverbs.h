@@ -64,6 +64,12 @@ extern boolean tableverbpack (hdlexternalvariable, Handle *, boolean *);
 
 extern boolean tableverbunpack (Handle, long *, hdlexternalvariable *, boolean);
 
+/* Context-aware internal versions (used by langexternal layer) */
+struct db_context; /* forward declaration */
+extern boolean tableverbpack_internal (const struct db_context *, hdlexternalvariable, Handle *, boolean *);
+
+extern boolean tableverbunpack_internal (const struct db_context *, Handle, long *, hdlexternalvariable *, boolean);
+
 extern boolean tableverbpacktotext (hdlexternalvariable, Handle);
 
 extern boolean tableverbgettimes (hdlexternalvariable, int64_t *, int64_t *, hdlhashnode);

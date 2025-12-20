@@ -767,68 +767,88 @@ boolean langexternalsetdirty (hdlexternalhandle h, boolean fldirty) {
 	} /*langexternalsetdirty*/
 
 
-boolean langexternalpack (hdlexternalhandle h, Handle *hpacked, boolean *flnewdbaddress) {
-	
+boolean langexternalpack_internal (const db_context *ctx, hdlexternalhandle h, Handle *hpacked, boolean *flnewdbaddress) {
+
 	tydiskexternalhandle rec;
 	register hdlexternalvariable hv = (hdlexternalvariable) h;
-    db_format_mode prev_mode = db_format_mode_current();
-    db_format_mode working_mode = prev_mode;
-    db_format_mode_push(&working_mode);
+	db_context working_context, legacy_context;
+	boolean adapter_repack;
 	boolean ok = false;
-	
+
+	/* Initialize working context from provided context or global state */
+	if (ctx != NULL) {
+		working_context = *ctx;
+	} else {
+		db_context_init(&working_context);
+	}
+
+	adapter_repack = db_format_adapter_force_repack();
+
 	rollbeachball ();
-	
+
 	/*
 	clearbytes (&rec, sizeof (rec));
-	
+
 	rec.flpathlink = (**h).flpathlink;
 	*/
-	
+
 	rec.versionnumber = conditionalshortswap (externaldiskversionnumber);
-	
+
 	rec.id = (byte) (**hv).id;
-	
+
 	if (!newfilledhandle (&rec, sizeof (rec), hpacked))
 		return (false);
 
     db_format_adapter_mark_address(&(**hv).oldaddress);
-    if (db_format_adapter_force_repack()) {
-        working_mode.use_64bit_format = false; /* keep legacy reads while materializing externals */
-        db_format_mode_push(&working_mode);
+    if (adapter_repack) {
+		/* Create legacy context for reading v6 while materializing externals */
+        legacy_context = working_context;
+        legacy_context.mode.use_64bit_format = false;
+		db_context_apply(&legacy_context);
     }
 		
 	switch ((**hv).id) {
-		
+
 		case idoutlineprocessor: case idscriptprocessor:
 			ok = opverbpack (hv, hpacked, flnewdbaddress);
 			break;
-		
+
 		case idwordprocessor:
 			ok = wpverbpack (hv, hpacked, flnewdbaddress);
 			break;
-		
+
 		case idtableprocessor:
-			ok = tableverbpack (hv, hpacked, flnewdbaddress);
+			/* Use internal version with explicit context to avoid mode stack issues */
+			ok = tableverbpack_internal (&working_context, hv, hpacked, flnewdbaddress);
 			break;
-			
+
 		case idmenuprocessor:
 			ok = menuverbpack (hv, hpacked, flnewdbaddress);
 			break;
-		
+
 		case idpictprocessor:
 			ok = pictverbpack (hv, hpacked, flnewdbaddress);
 			break;
-		
-		
+
+
 		default:
 			ok = false;
 			break;
 		} /*switch*/
-	if (db_format_adapter_force_repack())
-        db_format_mode_pop(); /* pop temporary legacy load */
-    db_format_mode_pop(); /* pop outer push */
+
+	if (adapter_repack) {
+		/* Restore working context after legacy read */
+		db_context_apply(&working_context);
+	}
+
 	return ok;
-	} /*langexternalpack*/
+	} /*langexternalpack_internal*/
+
+
+boolean langexternalpack (hdlexternalhandle h, Handle *hpacked, boolean *flnewdbaddress) {
+	/* Wrapper for backward compatibility - uses global mode state */
+	return langexternalpack_internal (NULL, h, hpacked, flnewdbaddress);
+}
 	
 	
 boolean langexternalunpack (Handle hpacked, hdlexternalhandle *h) {
