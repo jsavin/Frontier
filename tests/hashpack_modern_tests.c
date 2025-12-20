@@ -30,12 +30,12 @@ static void teardown_mode(void) {
 /* Minimal mirror of modern disk symbol for byte checks (matches langhash.c). */
 /* Helper to pack/unpack a single scalar via modern value converters (no handles). */
 static void pack_value(const tyvaluerecord *vin, langhash_test_disksymbolrecord_v7 *rec) {
-    langhash_test_value_to_disk_modern(vin, rec);
+    langhash_test_value_to_disk_v7(vin, rec);
 }
 
 static void unpack_value(const langhash_test_disksymbolrecord_v7 *rec, tyvaluerecord *vout) {
     memset(vout, 0, sizeof(*vout));
-    langhash_test_value_from_disk_modern(rec, vout);
+    langhash_test_value_from_disk_v7(rec, vout);
 }
 
 static void test_be64_int_roundtrip(void) {

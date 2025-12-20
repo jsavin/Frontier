@@ -85,13 +85,13 @@ static void test_string_oob_index(void) {
 
 /* Helper to pack a value into a modern disk record (same as hashpack_modern_tests) */
 static void pack_value(const tyvaluerecord *vin, langhash_test_disksymbolrecord_v7 *rec) {
-    langhash_test_value_to_disk_modern(vin, rec);
+    langhash_test_value_to_disk_v7(vin, rec);
 }
 
 /* Helper to unpack a modern disk record to value */
 static void unpack_value(const langhash_test_disksymbolrecord_v7 *rec, tyvaluerecord *vout) {
     memset(vout, 0, sizeof(*vout));
-    langhash_test_value_from_disk_modern(rec, vout);
+    langhash_test_value_from_disk_v7(rec, vout);
 }
 
 /* ============================================================================
@@ -160,7 +160,7 @@ static void test_invalid_valuetype(void) {
 
     tyvaluerecord vout;
     memset(&vout, 0, sizeof(vout));
-    langhash_test_value_from_disk_modern(&rec, &vout);
+    langhash_test_value_from_disk_v7(&rec, &vout);
 
     /* Verify unpack didn't crash.
      * Per langhash.c diskvalue_to_value_v7() line 825, invalid types hit the
