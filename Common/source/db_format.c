@@ -2056,6 +2056,32 @@ void db_context_init(db_context *context) {
     db_saveas_state_snapshot(&context->saveas);
 }
 
+void db_context_init_with_mode(db_context *context, const db_format_mode *mode) {
+    if (context == NULL || mode == NULL)
+        return;
+    db_context_init(context);
+    context->mode = *mode;
+}
+
+void db_context_init_legacy_read(db_context *context, hdldatabaserecord db) {
+    db_format_mode legacy_mode = {false, false, false};
+    db_context_init_with_mode(context, &legacy_mode);
+    context->database = db;
+}
+
+void db_context_init_v7_write(db_context *context, hdldatabaserecord db) {
+    db_format_mode v7_mode = {true, false, false};
+    db_context_init_with_mode(context, &v7_mode);
+    context->database = db;
+}
+
+void db_context_clone_with_mode(const db_context *src, db_context *dst, const db_format_mode *mode) {
+    if (src == NULL || dst == NULL || mode == NULL)
+        return;
+    *dst = *src;  /* Shallow copy */
+    dst->mode = *mode;
+}
+
 void db_context_apply(const db_context *context) {
     if (context == NULL)
         return;
