@@ -2091,23 +2091,17 @@ void db_context_apply(const db_context *context) {
 }
 
 boolean hashpacktable_context(const db_context *context, hdlhashtable ht, boolean flsave, Handle *hpacked, boolean *flmustsave) {
-    db_context_guard guard;
-    db_context_guard_enter(context, &guard);
-    boolean ok = hashpacktable(ht, flsave, hpacked, flmustsave);
-    db_context_guard_exit(&guard);
-    return ok;
+    /* Call internal version with explicit context - no more context guard needed */
+    return hashpacktable_internal(context, ht, flsave, hpacked, flmustsave);
 }
 
 boolean hashunpacktable_context(const db_context *context, Handle hpacked, boolean flmemory, hdlhashtable htable) {
-    db_context_guard guard;
-    db_context_guard_enter(context, &guard);
 #if defined(FRONTIER_HEADLESS)
-    fprintf(stderr, "[headless] hashunpacktable_context enter htable=%p flmemory=%d\n",
-            (void *) htable, (int) flmemory);
+    fprintf(stderr, "[headless] hashunpacktable_context enter htable=%p flmemory=%d ctx=%p\n",
+            (void *) htable, (int) flmemory, (void *) context);
 #endif
-    boolean ok = hashunpacktable(hpacked, flmemory, htable);
-    db_context_guard_exit(&guard);
-    return ok;
+    /* Call internal version with explicit context - no more context guard needed */
+    return hashunpacktable_internal(context, hpacked, flmemory, htable);
 }
 
 boolean dbassignhandle_context(const db_context *context, Handle h, dbaddress *adr) {

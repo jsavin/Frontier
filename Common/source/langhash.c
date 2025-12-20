@@ -624,8 +624,8 @@ static boolean read_disk_uint32 (Handle hload, long *ixload, uint32_t *out) {
 	return (true);
 }
 
-static boolean write_disk_dbaddress (handlestream *s, dbaddress value) {
-	if (db_format_mode_current().use_64bit_format) {
+static boolean write_disk_dbaddress (handlestream *s, dbaddress value, boolean use_64bit) {
+	if (use_64bit) {
 		dbaddress disk = host_to_disk_dbaddress (value);
 		return writehandlestream (s, &disk, (long) sizeof (dbaddress));
 	}
@@ -634,8 +634,8 @@ static boolean write_disk_dbaddress (handlestream *s, dbaddress value) {
 	return writehandlestream (s, &disk, (long) sizeof (disk));
 }
 
-static boolean read_disk_dbaddress (Handle hload, long *ixload, dbaddress *out) {
-	if (db_format_mode_current().use_64bit_format) {
+static boolean read_disk_dbaddress (Handle hload, long *ixload, dbaddress *out, boolean use_64bit) {
+	if (use_64bit) {
 		 dbaddress disk = 0;
 		if (!loadfromhandle (hload, ixload, (long) sizeof (dbaddress), &disk))
 			return (false);
@@ -649,11 +649,11 @@ static boolean read_disk_dbaddress (Handle hload, long *ixload, dbaddress *out) 
 	return (true);
 }
 
-static boolean write_disk_scalar_reference (handlestream *s, dbaddress adr) {
+static boolean write_disk_scalar_reference (handlestream *s, dbaddress adr, boolean use_64bit) {
 	int32_t diskflag = host_to_disk_int32 (diskvalsizeflag);
 	if (!writehandlestream (s, &diskflag, (long) sizeof (diskflag)))
 		return (false);
-	return write_disk_dbaddress (s, adr);
+	return write_disk_dbaddress (s, adr, use_64bit);
 }
 
 static void diskvalue_from_value_legacy(const tyvaluerecord *val, tydiskvaluedata *out) {
@@ -2701,7 +2701,7 @@ static boolean hashunpackbinary (Handle hget, Handle *hbinary, int32_t ix) {
 	} /*hashunpackbinary*/
 
 
-static boolean hashpackscalar (handlestream *s, hdlhashnode hnode, int32_t *ix) {
+static boolean hashpackscalar (handlestream *s, hdlhashnode hnode, int32_t *ix, boolean use_64bit) {
 	tydiskvaluerecord diskvalue;
 	Handle hbinary = (**hnode).val.data.binaryvalue;
 	long ctbytes;
@@ -2736,7 +2736,7 @@ static boolean hashpackscalar (handlestream *s, hdlhashnode hnode, int32_t *ix) 
 			if (!dbcopy (diskvalue.adr, &diskvalue.adr))
 				return (false);
 		}
-		return (write_disk_scalar_reference (s, diskvalue.adr));
+		return (write_disk_scalar_reference (s, diskvalue.adr, use_64bit));
 	}
 
 	ctbytes = gethandlesize (hbinary);
@@ -2753,7 +2753,7 @@ static boolean hashpackscalar (handlestream *s, hdlhashnode hnode, int32_t *ix) 
 			(**hnode).val.fldiskval = true;
 			(**hnode).val.data.diskvalue = diskvalue.adr;
 		}
-		return (write_disk_scalar_reference (s, diskvalue.adr));
+		return (write_disk_scalar_reference (s, diskvalue.adr, use_64bit));
 	}
 
 	if (!write_disk_uint32 (s, (uint32_t) ctbytes))
@@ -2763,7 +2763,7 @@ static boolean hashpackscalar (handlestream *s, hdlhashnode hnode, int32_t *ix) 
 	} /*hashpackscalar*/
 
 
-static boolean hashunpackscalar (Handle hget, tyvaluerecord *val, int32_t ix) {
+static boolean hashunpackscalar (Handle hget, tyvaluerecord *val, int32_t ix, boolean use_64bit) {
 	long lix = (long) ix;
 	uint32_t disklen = 0;
 
@@ -2776,7 +2776,7 @@ static boolean hashunpackscalar (Handle hget, tyvaluerecord *val, int32_t ix) {
 	if (disklen == (uint32_t) (int32_t) diskvalsizeflag) {
 		(*val).fldiskval = true;
 		dbaddress diskadr = 0;
-		if (!read_disk_dbaddress (hget, &lix, &diskadr))
+		if (!read_disk_dbaddress (hget, &lix, &diskadr, use_64bit))
 			return (false);
 		(*val).data.diskvalue = diskadr;
 		return (true);
@@ -3132,7 +3132,7 @@ static boolean hashpackvisit_legacy (bigstring bsname, hdlhashnode hnode, tyvalu
 		case objspecvaluetype:
 		case binaryvaluetype:
 			data_index = 0;
-				if (!hashpackscalar (&lpi->s2, hnode, &data_index)) {
+				if (!hashpackscalar (&lpi->s2, hnode, &data_index, lpi->use_64bit)) {
 #if defined(FRONTIER_HEADLESS)
 					tyvaluerecord *node_val = &(**hnode).val;
 					fprintf(stderr, "[headless] hashpackscalar diagnostics name='%.*s' valuetype=%d fldiskval=%d fldatabasesaveas=%d flexternalmemorypack=%d disk=0x%llx handle=%p\n",
@@ -3580,7 +3580,7 @@ static boolean hashpackvisit_v7 (bigstring bsname, hdlhashnode hnode, tyvaluerec
 
 			if (val.valuetype == stringvaluetype || val.valuetype == passwordvaluetype || val.valuetype == patternvaluetype || val.valuetype == objspecvaluetype || val.valuetype == binaryvaluetype) {
 				data_index = 0;
-				if (!hashpackscalar (&lpi->s2, hnode, &data_index))
+				if (!hashpackscalar (&lpi->s2, hnode, &data_index, lpi->use_64bit))
 					HASH_PACK_FAIL("hashpackscalar");
 			}
 			else if (val.valuetype == listvaluetype || val.valuetype == recordvaluetype || val.valuetype == filespecvaluetype || val.valuetype == aliasvaluetype || val.valuetype == codevaluetype) {
@@ -3699,34 +3699,41 @@ error:
 }
 
 
-boolean hashpacktable (hdlhashtable htable, boolean flmemory, Handle *hpackedtable, boolean *flmustsave) {
-	
+boolean hashpacktable_internal (const db_context *ctx, hdlhashtable htable, boolean flmemory, Handle *hpackedtable, boolean *flmustsave) {
+
 	/*
 	traverse the current symbol table, creating two packages of information
 	that can be unpacked back into an in-memory hash table.
-	
+
 	the first, hrecords, is an array of disksymbolrecords.  each record can
 	have one or two indexes to strings in the hstrings package.
-	
+
 	then merge the two handles returning one packet for the caller to save.
-	
+
 	10/6/91 dmb: mergehandles now consumes both source handles
-	
+
 	2/2/93 dmb: check result of pushpackstack
-	
-	3/30/93 dmb: 
+
+	3/30/93 dmb:
 	*/
-	
+
 	register boolean fl = false;
 	typackinforecord packrec;
-	boolean use_64bit = db_format_mode_current().use_64bit_format;
+	boolean use_64bit;
 	Handle h1, h2;
 
-	/* Check database format mode to determine which version to write */
+	/* Check database format mode: use context if provided, else global state */
+	if (ctx != NULL) {
+		use_64bit = ctx->mode.use_64bit_format;
+	} else {
+		use_64bit = db_format_mode_current().use_64bit_format;
+	}
+
 #if defined(FRONTIER_HEADLESS)
 	db_format_mode current_mode = db_format_mode_current();
-	fprintf(stderr, "[headless] hashpacktable use_64bit=%d (current mode: use_64bit=%d adapter_repack=%d)\n",
-	        (int) use_64bit, (int) current_mode.use_64bit_format, (int) current_mode.adapter_repack);
+	fprintf(stderr, "[headless] hashpacktable_internal use_64bit=%d (ctx=%p ctx_mode=%d current_mode: use_64bit=%d adapter_repack=%d)\n",
+	        (int) use_64bit, (void *) ctx, ctx ? (int) ctx->mode.use_64bit_format : -1,
+	        (int) current_mode.use_64bit_format, (int) current_mode.adapter_repack);
 #endif
 	if (use_64bit) {
 		/* v7 mode: Write v0x05 with 64-bit timestamps */
@@ -3827,11 +3834,17 @@ boolean hashpacktable (hdlhashtable htable, boolean flmemory, Handle *hpackedtab
 	exit:
 
 	return (fl);
-	} /*hashpacktable*/
+	} /*hashpacktable_internal*/
 
 
-boolean hashunpacktable (Handle hpackedtable, boolean flmemory, hdlhashtable htable) {
-	
+boolean hashpacktable (hdlhashtable htable, boolean flmemory, Handle *hpackedtable, boolean *flmustsave) {
+	/* Wrapper for backward compatibility - uses global mode state */
+	return hashpacktable_internal (NULL, htable, flmemory, hpackedtable, flmustsave);
+}
+
+
+boolean hashunpacktable_internal (const db_context *ctx, Handle hpackedtable, boolean flmemory, hdlhashtable htable) {
+
 	/*
 	unpack a hashtable packed by hashpacktable.  first explode the packed handle
 	into two handles.
@@ -4045,16 +4058,25 @@ boolean hashunpacktable (Handle hpackedtable, boolean flmemory, hdlhashtable hta
 	
 	langtraperrors (bsunpackerror, &savecallback, &saverefcon); // hook errors so we can embellish
 
-	/* Determine reader mode: respect database format mode first, then fall back to table header version.
+	/* Determine reader mode: use context if provided, else global state, then fall back to table header version.
 	 * This ensures v7 databases always use v7 reader, even for tables with old header versions.
 	 * CRITICAL FIX (Issue #123): Must check db_format_mode, not just header.version */
-	boolean v7_records = db_format_mode_current().use_64bit_format || (header.version >= tablediskversion);
+	boolean use_64bit_mode;
+	if (ctx != NULL) {
+		use_64bit_mode = ctx->mode.use_64bit_format;
+	} else {
+		use_64bit_mode = db_format_mode_current().use_64bit_format;
+	}
+	boolean v7_records = use_64bit_mode || (header.version >= tablediskversion);
 
 #if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] hashunpacktable name='%.*s' use64=%d (db_format=%d || header.version=%d>=%d)\n",
+	db_format_mode current_mode = db_format_mode_current();
+	fprintf(stderr, "[headless] hashunpacktable_internal name='%.*s' use64=%d (ctx=%p ctx_mode=%d use_64bit_mode=%d current=%d || header.version=%d>=%d)\n",
 	        (int) bsname[0], (char *) &bsname[1],
 	        v7_records ? 1 : 0,
-	        db_format_mode_current().use_64bit_format ? 1 : 0,
+	        (void *) ctx, ctx ? (int) ctx->mode.use_64bit_format : -1,
+	        use_64bit_mode ? 1 : 0,
+	        current_mode.use_64bit_format ? 1 : 0,
 	        header.version,
 	        tablediskversion);
 #endif
@@ -4322,7 +4344,7 @@ boolean hashunpacktable (Handle hpackedtable, boolean flmemory, hdlhashtable hta
 				case passwordvaluetype:
 				case patternvaluetype:
 				case binaryvaluetype: {
-					if (!hashunpackscalar (hstrings, &val, ixstrings))
+					if (!hashunpackscalar (hstrings, &val, ixstrings, v7_rec))
 						goto L1;
 
 					break;
@@ -4334,7 +4356,7 @@ boolean hashunpacktable (Handle hpackedtable, boolean flmemory, hdlhashtable hta
                     if (rec.version < 2) {
                         AEDesc aelist;
 
-						if (!hashunpackscalar (hstrings, &val, ixstrings))
+						if (!hashunpackscalar (hstrings, &val, ixstrings, v7_rec))
 							goto L1;
 
 						if (val.fldiskval) { //yikes! we have to resolve before converting
@@ -4583,7 +4605,13 @@ boolean hashunpacktable (Handle hpackedtable, boolean flmemory, hdlhashtable hta
 		hashreporterror (hashunpackerror, bsname, bsunpackerror);
 	
 	return (fl);
-	} /*hashunpacktable*/
+	} /*hashunpacktable_internal*/
+
+
+boolean hashunpacktable (Handle hpackedtable, boolean flmemory, hdlhashtable htable) {
+	/* Wrapper for backward compatibility - uses global mode state */
+	return hashunpacktable_internal (NULL, hpackedtable, flmemory, htable);
+}
 
 
 boolean hashcountitems (hdlhashtable htable, long *ctitems) {
