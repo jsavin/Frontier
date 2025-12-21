@@ -86,9 +86,24 @@ static void db_context_guard_enter(const db_context *context, db_context_guard *
 static void db_context_guard_exit(const db_context_guard *guard) {
     if (guard == NULL)
         return;
-    /* During migration (adapter active), do NOT restore the previous mode if it would
-     * downgrade us from v7 to v6 writes. The adapter_enable_wide_writes() sets a
-     * persistent global mode that must remain active for all subsequent writes. */
+
+    /* CRITICAL MIGRATION INVARIANT: During v6→v7 migration (adapter_active=1), we MUST NOT
+     * restore the previous mode if it would downgrade from v7→v6. The migration process requires
+     * stable v7 write mode throughout all operations.
+     *
+     * Why This Matters (see docs/mode_stack_refactor_learnings.md - "Four Address Spaces"):
+     * 1. On-disk v6 addresses (32-bit LE) → Read from source database
+     * 2. In-memory pointers (64-bit) → Loaded into memory during packing
+     * 3. Expanded structures (64-bit padded) → Prepared for v7 format
+     * 4. On-disk v7 addresses (64-bit BE) → Written to destination database
+     *
+     * If we restored v6 mode during migration, child operations would write data in v6 format
+     * into the v7 destination database, causing format corruption. The adapter_enable_wide_writes()
+     * call sets mode.use_64bit_format=true and locks it to prevent exactly this scenario.
+     *
+     * This guard exists for backward compatibility with legacy code that still uses the
+     * deprecated db_context_guard pattern. It is NOT used by the refactored code path.
+     */
 #if defined(FRONTIER_HEADLESS)
     static int debug_count = 0;
     if (debug_count++ < 5) {
