@@ -64,6 +64,61 @@ tracking issue or planning doc entry.
 
 ---
 
+## Developer Tools Setup
+
+For code analysis, static analysis, and understanding the codebase structure, install the analysis tooling:
+
+### Quick Setup
+
+```bash
+# Install all development analysis tools at once
+./scripts/install_dev_tools.sh
+```
+
+### Manual Installation
+
+If you prefer to install individually:
+
+```bash
+brew install cflow universal-ctags clang-tools ripgrep tree bear
+```
+
+### What Gets Installed
+
+- **cflow** — Call graph analysis to identify dead code
+- **universal-ctags** — Symbol indexing and cross-reference analysis
+- **clang-tools** — LLVM static analysis (clang-check, clang-tidy, clang-format)
+- **ripgrep** — Fast pattern searching across codebase
+- **tree** — Directory structure visualization
+- **bear** — Compilation database generation for advanced analysis
+
+### Using the Tools
+
+See `DEVELOPER_SETUP.md` for comprehensive documentation including:
+- Detailed usage examples for each tool
+- Workflow examples for finding dead code
+- Analyzing logging patterns
+- Mapping module dependencies
+- CI/CD integration
+
+Quick examples:
+
+```bash
+# Identify potentially unused functions
+cflow Common/source/*.c | grep "^[a-z_]*$"
+
+# Find all logging statements
+rg "fprintf\(stderr" --type c
+
+# Find GUI-related code
+rg "window|menu|dialog" --type c -l
+
+# Generate call graph for specific file
+cflow Common/source/db_format.c | head -50
+```
+
+---
+
 ## Configuration and Best Practices
 
 Add this to your personal or repo `.gitconfig` to make rebasing safer and cleaner:
