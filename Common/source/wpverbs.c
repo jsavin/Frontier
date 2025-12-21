@@ -636,15 +636,10 @@ boolean wpverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handl
 		db_format_mode_apply(&ctx->mode);
 	}
 
-	/* Load external into memory if it's still on disk */
+	/* Precondition: external must be in memory */
 	if (!(**hv).flinmemory) {
-		fltempload = true;
-		if (!wpverbinmemory (ctx, (hdlexternalvariable) hv)) {
-#if defined(FRONTIER_HEADLESS)
-			fprintf(stderr, "[headless] wpverbpack_internal: wpverbinmemory failed\n");
-#endif
-			return (false);
-		}
+		/* This is a programming error - caller should have loaded it */
+		return (false);
 	}
 
 	/*the doc is in memory, either as a WP-Engine structure or a packed handle*/

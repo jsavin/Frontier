@@ -357,15 +357,10 @@ boolean tableverbpack_internal (const db_context *ctx, hdlexternalvariable h, Ha
 	        (int) (**hv).flinmemory, (int) adapter_repack, (void *) databasedata);
 #endif
 
-	/* Load external into memory if it's still on disk */
+	/* Precondition: external must be in memory */
 	if (!(**hv).flinmemory) {
-		fltempload = true;
-		if (!tableverbinmemory (ctx, hv, HNoNode)) {
-#if defined(FRONTIER_HEADLESS)
-			fprintf(stderr, "[headless] tableverbpack_internal: tableverbinmemory failed\n");
-#endif
-			return (false);
-		}
+		/* This is a programming error - caller should have loaded it */
+		return (false);
 	}
 
 	adr = (**hv).oldaddress;
