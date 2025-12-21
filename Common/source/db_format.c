@@ -1703,13 +1703,12 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
      * Call the non-context version directly so the mode persists globally. */
     db_format_adapter_enable_wide_writes(NULL);
 
-    /* Fix up external object database handles to point to destination.
-     * Externals were loaded with source database handles; update them to destination handles
-     * before saving to prevent post-migration access failures. */
-    fail_step = "fixup_external_handles";
-    db_format_fixup_external_handles(hroot, dest_context.database);
-
     fail_step = "tablesavesystemtable(root)";
+    /*
+     * NOTE: External database handles are NOT updated here because WP packing
+     * needs to READ Paige data from SOURCE while WRITING RTF to DESTINATION.
+     * The fixup happens AFTER packing completes.
+     */
     /*
     2025-12-20: NO GUARDS - set mode explicitly for table save
     Apply destination mode directly for v7 writes during migration
