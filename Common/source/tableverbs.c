@@ -136,7 +136,7 @@ boolean gettablevalue (hdltreenode hfirst, short pnum, hdlhashtable *htable) {
 	if (!gettableparam (hfirst, pnum, htable, bsname, &hv, &hnode))
 		return (false);
 	
-	if (!tableverbinmemory ((hdlexternalvariable) hv, hnode)) /*couldn't swap it into memory*/
+	if (!tableverbinmemory (NULL, (hdlexternalvariable) hv, hnode)) /*couldn't swap it into memory*/
 		return (false);
 	
 	*htable = (hdlhashtable) (**hv).variabledata;

@@ -444,7 +444,7 @@ boolean tableloadsystemtable (dbaddress adr, Handle *hvariable, hdlhashtable *ht
 		
 		hv = (hdlexternalvariable) *hvariable;
 		
-	if (!tableverbinmemory (hv, HNoNode)) {
+	if (!tableverbinmemory (NULL, hv, HNoNode)) {
 		
 		disposehandle ((Handle) hv);
 		

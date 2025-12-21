@@ -606,15 +606,7 @@ boolean wpverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handl
 
 	/*
 	6.2a15 AR: added flnewdbaddress parameter
-	2025-12-20: Pure packing function with explicit context
-
-	Preconditions:
-	  - flinmemory=1 (caller has loaded external into memory)
-	  - ctx specifies the output format mode
-
-	Postconditions:
-	  - WP document packed and address written to *hpacked
-	  - Returns true on success, false on failure
+	2025-12-19: Internal version with explicit context parameter for mode stack elimination
 	*/
 
 	register hdlwpvariable hv = (hdlwpvariable) h;
@@ -625,22 +617,48 @@ boolean wpverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handl
 	hdlwindowinfo hinfo;
 	boolean fltempload = false;
 	const boolean adapter_repack = db_format_adapter_force_repack();
+	db_context working_context, legacy_context;
 
-	/*
-	2025-12-20: Set mode from context before any database I/O
-	This ensures writes use the correct format (v7 during migration)
-	*/
+	/* Initialize context from parameter or global state */
 	if (ctx != NULL) {
-		if (ctx->database != nil)
-			databasedata = ctx->database;
-		db_format_mode_apply(&ctx->mode);
+		working_context = *ctx;
+	} else {
+		db_context_init(&working_context);
 	}
 
-	/* Precondition: external must be in memory */
-	if (!(**hv).flinmemory) {
-		/* This is a programming error - caller should have loaded it */
-		return (false);
-	}
+	if (!(**hv).flinmemory) { /*simple case, wp doc is resident in the db*/
+
+		if (flconvertingolddatabase || adapter_repack) {
+
+			if (adapter_repack) {
+				legacy_context = working_context;
+				legacy_context.mode.use_64bit_format = false; /* legacy read while loading source */
+				db_context_apply(&legacy_context);
+			}
+
+			if (!wpverbinmemory (h))
+			{
+				if (adapter_repack)
+					db_context_apply(&working_context);
+				return (false);
+			}
+
+			fltempload = true;
+
+			if (adapter_repack)
+				db_context_apply(&working_context);
+			}
+		else {
+
+			adr = (dbaddress) (**hv).variabledata;
+
+			if (fldatabasesaveas)
+				if (!dbcopy (adr, &adr))
+					return (false);
+
+			goto pushaddress;
+			}
+		}
 
 	/*the doc is in memory, either as a WP-Engine structure or a packed handle*/
 
@@ -672,6 +690,10 @@ boolean wpverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handl
 	if (adapter_repack) {
 		(**hwp).fldirty = true;
 		(**hwp).fldirtyview = true;
+		/* Enable wide writes for migration - do NOT use context guard version */
+		db_format_adapter_enable_wide_writes(NULL);
+		/* Apply working context (which should have use_64bit_format=true for v7 output) */
+		db_context_apply(&working_context);
 		*flnewdbaddress = true;
 	}
 
@@ -709,7 +731,11 @@ boolean wpverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handl
 		}
 
 	pushaddress:
-		/* NO mode management - uses whatever mode is currently set */
+		/* Ensure working context is applied before writing address */
+		if (adapter_repack) {
+			/* Make sure we're using v7 format for writing the address */
+			db_context_apply(&working_context);
+		}
 
 		if (!fldatabasesaveas) {
 
@@ -745,44 +771,42 @@ boolean wpverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *h) {
 	} /*wpverbunpack*/
 
 
-boolean wpverbinmemory (const db_context *ctx, hdlexternalvariable h) {
-
+boolean wpverbinmemory (hdlexternalvariable h) {
+	
 	/*
-	6/6/91 dmb: after loading, set dirty bit if value has never been
+	6/6/91 dmb: after loading, set dirty bit if value has never been 
 	saved to disk
-
+	
 	11/14/01 dmb: always marked as dirty when expanding from in-memory packed state
-
+	
 	5.0a18 dmb: support database linking
-
-	2025-12-20: Added explicit context parameter - uses ctx for reading, not global mode
 	*/
-
+	
 	register hdlwpvariable hv = (hdlwpvariable) h;
 	hdlwprecord hwp;
 	boolean flinmemory = (**hv).flinmemory;
 	boolean fl;
-	dbaddress adr;  /* DISK ADDRESS from v6 or v7 database */
+	dbaddress adr;
 	Handle hpackedwp;
 	boolean fldirty;
-
+	
 	if (flinmemory && !(**hv).flpacked) /*nothing to do, it's already unpacked & in memory*/
 		return (true);
-
+	
 	if (flinmemory) { /*don't need to read packed wp from database*/
-
+		
 		adr = (**hv).oldaddress;
-
-		hpackedwp = (Handle) (**hv).variabledata;  /* IN-MEMORY HANDLE */
-
+		
+		hpackedwp = (Handle) (**hv).variabledata;
+		
 		fldirty = true; /*otherwise, wouldn't have been kept in memory*/
 		}
 	else {
-		adr = (dbaddress) (**hv).variabledata;  /* DISK ADDRESS - format depends on source DB */
-
-		if (!langexternalrefdata_context (ctx, (hdlexternalvariable) hv, &hpackedwp))
+		adr = (dbaddress) (**hv).variabledata;
+		
+		if (!langexternalrefdata ((hdlexternalvariable) hv, &hpackedwp))
 			return (false);
-
+		
 		fldirty = false; /*clean version from disk*/
 		}
 

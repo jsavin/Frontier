@@ -133,7 +133,7 @@ static boolean validate (hdlhashtable htable, boolean flalert) {
 				if (flonlyinmemory)
 					goto nextx;
 					
-				if (!tableverbinmemory ((hdlexternalvariable) hvariable, x)) {
+				if (!tableverbinmemory (NULL, (hdlexternalvariable) hvariable, x)) {
 					
 					if (flalert)
 						shellinternalerror (iderrorloadingtable, BIGSTRING ("\x13" "error loading table"));

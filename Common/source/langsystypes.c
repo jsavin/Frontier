@@ -231,7 +231,7 @@ static boolean getostypevalnamevisit (bigstring bsname, hdlhashnode hnode, tyval
 		return (false);
 	
 	/*
-	if (!tableverbinmemory ((hdlexternalvariable) hv))
+	if (!tableverbinmemory (NULL, (hdlexternalvariable) hv))
 		return (false);
 	*/
 	

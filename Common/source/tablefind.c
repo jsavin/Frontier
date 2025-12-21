@@ -344,7 +344,7 @@ boolean tableverbfind (hdlexternalvariable hvariable, boolean *flzoom) {
 	
 	fltempload = !(**hv).flinmemory;
 	
-	if (!tableverbinmemory ((hdlexternalvariable) hv, HNoNode))
+	if (!tableverbinmemory (NULL, (hdlexternalvariable) hv, HNoNode))
 		return (false);
 	
 	ht = (hdlhashtable) (**hv).variabledata; 

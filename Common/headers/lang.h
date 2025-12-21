@@ -922,6 +922,12 @@ extern boolean hashpacktable (hdlhashtable, boolean, Handle *, boolean *);
 
 extern boolean hashunpacktable (Handle, boolean, hdlhashtable);
 
+/* Context-aware internal versions (used by db_format layer) */
+struct db_context; /* forward declaration */
+extern boolean hashpacktable_internal (const struct db_context *, hdlhashtable, boolean, Handle *, boolean *);
+
+extern boolean hashunpacktable_internal (const struct db_context *, Handle, boolean, hdlhashtable);
+
 extern boolean hashcountitems (hdlhashtable, long *);
 
 extern boolean hashsortedsearch (hdlhashtable, const bigstring, long *);

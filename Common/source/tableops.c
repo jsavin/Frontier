@@ -466,7 +466,7 @@ boolean findvariablesearch (hdlhashtable intable, hdlexternalvariable forvariabl
 				if (flonlyinmemory)
 					goto nextx;
 					
-				if (!tableverbinmemory (hv, x))
+				if (!tableverbinmemory (NULL, hv, x))
 					return (false);
 					
 				fltempload = true;
@@ -741,7 +741,7 @@ static boolean parentsearch (hdlhashtable intable, hdlhashtable fortable, boolea
 				if (flonlyinmemory)	/*can't find it if it isn't in memory*/
 					goto nextx;
 				
-				if (!tableverbinmemory (hv, x))
+				if (!tableverbinmemory (NULL, hv, x))
 					return (false);
 					
 				fltempload = true;

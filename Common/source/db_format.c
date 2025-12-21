@@ -86,9 +86,24 @@ static void db_context_guard_enter(const db_context *context, db_context_guard *
 static void db_context_guard_exit(const db_context_guard *guard) {
     if (guard == NULL)
         return;
-    /* During migration (adapter active), do NOT restore the previous mode if it would
-     * downgrade us from v7 to v6 writes. The adapter_enable_wide_writes() sets a
-     * persistent global mode that must remain active for all subsequent writes. */
+
+    /* CRITICAL MIGRATION INVARIANT: During v6→v7 migration (adapter_active=1), we MUST NOT
+     * restore the previous mode if it would downgrade from v7→v6. The migration process requires
+     * stable v7 write mode throughout all operations.
+     *
+     * Why This Matters (see docs/mode_stack_refactor_learnings.md - "Four Address Spaces"):
+     * 1. On-disk v6 addresses (32-bit LE) → Read from source database
+     * 2. In-memory pointers (64-bit) → Loaded into memory during packing
+     * 3. Expanded structures (64-bit padded) → Prepared for v7 format
+     * 4. On-disk v7 addresses (64-bit BE) → Written to destination database
+     *
+     * If we restored v6 mode during migration, child operations would write data in v6 format
+     * into the v7 destination database, causing format corruption. The adapter_enable_wide_writes()
+     * call sets mode.use_64bit_format=true and locks it to prevent exactly this scenario.
+     *
+     * This guard exists for backward compatibility with legacy code that still uses the
+     * deprecated db_context_guard pattern. It is NOT used by the refactored code path.
+     */
 #if defined(FRONTIER_HEADLESS)
     static int debug_count = 0;
     if (debug_count++ < 5) {
@@ -1080,11 +1095,17 @@ boolean db_format_adapter_enable_wide_writes(const tydatabaserecord_64 **widened
 }
 
 boolean db_format_adapter_enable_wide_writes_context(const db_context *context, const tydatabaserecord_64 **widened_header_out) {
-    db_context_guard guard;
-    db_context_guard_enter(context, &guard);
-    boolean ok = db_format_adapter_enable_wide_writes(widened_header_out);
-    db_context_guard_exit(&guard);
-    return ok;
+    /*
+    2025-12-20: Explicit context - NO GUARDS, NO SAVE/RESTORE
+    Set mode directly from context, call function, done.
+    Caller ensures correct database is active.
+    */
+    if (context != NULL) {
+        if (context->database != nil)
+            databasedata = context->database;
+        db_format_mode_apply(&context->mode);
+    }
+    return db_format_adapter_enable_wide_writes(widened_header_out);
 }
 
 boolean db_format_adapter_force_repack(void) {
@@ -1458,7 +1479,7 @@ static boolean db_format_force_materialize_external_tables_recursive(
                     (int) bsname[0], (char *) &bsname[1]);
 #endif
 
-            if (!tableverbinmemory(hv, hnode)) {
+            if (!tableverbinmemory(NULL, hv, hnode)) {
 #if defined(FRONTIER_HEADLESS)
                 fprintf(stderr, "[diag]     ERROR: tableverbinmemory failed for '%.*s'\n",
                         (int) bsname[0], (char *) &bsname[1]);
@@ -1655,7 +1676,7 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     }
     /* Load root into memory before switching to 64-bit writes. */
     fail_step = "tableverbinmemory(root)";
-    if (!tableverbinmemory((hdlexternalvariable) hrootvariable, HNoNode))
+    if (!tableverbinmemory(NULL, (hdlexternalvariable) hrootvariable, HNoNode))
         goto cleanup;
 
     db_format_sanitize_root_externals(hroot, &source_context);
@@ -1697,19 +1718,21 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
      * Call the non-context version directly so the mode persists globally. */
     db_format_adapter_enable_wide_writes(NULL);
 
-    /* Fix up external object database handles to point to destination.
-     * Externals were loaded with source database handles; update them to destination handles
-     * before saving to prevent post-migration access failures. */
-    fail_step = "fixup_external_handles";
-    db_format_fixup_external_handles(hroot, dest_context.database);
-
     fail_step = "tablesavesystemtable(root)";
-    /* Read from the source handle while Save As remains active for destination writes. */
-    db_context_guard save_guard;
+    /*
+     * NOTE: External database handles are NOT updated here because WP packing
+     * needs to READ Paige data from SOURCE while WRITING RTF to DESTINATION.
+     * The fixup happens AFTER packing completes.
+     */
+    /*
+    2025-12-20: NO GUARDS - set mode explicitly for table save
+    Apply destination mode directly for v7 writes during migration
+    */
     db_context save_ctx = source_context;
     if (have_dest_context) {
         save_ctx.mode = dest_context.mode; /* write v7 BE64 payloads into the destination */
         save_ctx.saveas = dest_context.saveas;
+        save_ctx.database = dest_context.database;
 #if defined(FRONTIER_HEADLESS)
         fprintf(stderr,
                 "[headless] migrate save_ctx.mode use64=%d adapter=%d drop=%d dest_db=%p src_db=%p\n",
@@ -1720,10 +1743,18 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
                 (void *) save_ctx.saveas.source);
 #endif
     }
-    db_context_guard_enter(have_dest_context ? &save_ctx : &source_context, &save_guard);
+
+    /* Set mode directly - NO GUARD, NO SAVE/RESTORE */
+    if (have_dest_context) {
+        if (save_ctx.database != nil)
+            databasedata = save_ctx.database;
+        db_format_mode_apply(&save_ctx.mode);
+        db_saveas_state_apply(&save_ctx.saveas);
+    }
+
 #if defined(FRONTIER_HEADLESS)
     fprintf(stderr,
-            "[headless] migrate guard applied mode use64=%d adapter=%d drop=%d depth=%d current_db=%p\n",
+            "[headless] migrate mode applied (NO GUARD) use64=%d adapter=%d drop=%d depth=%d current_db=%p\n",
             db_format_mode_current().use_64bit_format ? 1 : 0,
             db_format_mode_current().adapter_repack ? 1 : 0,
             db_format_mode_current().drop_cancoon ? 1 : 0,
@@ -1733,7 +1764,6 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
 
     saved_root = tablesavesystemtable(hrootvariable, &new_root_address);
     if (!saved_root) {
-        db_context_guard_exit(&save_guard);
         goto cleanup;
     }
     /* Ensure subsequent opens don’t reuse the in-memory system table. */
@@ -1749,9 +1779,7 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
         fprintf(stderr, "[headless] migrate write checkpoint fnum=%ld eof=%ld\n",
                 (long) (**dest_context.database).fnumdatabase, eof);
     }
-    db_context_guard_exit(&save_guard);
-    if (have_dest_context)
-        db_saveas_state_apply(&dest_context.saveas); /* restore destination after source read */
+    /* 2025-12-20: NO GUARD EXIT - mode remains as set for subsequent operations */
 
     if ((uint64_t) new_root_address > 0xFFFFFFFFULL)
         goto cleanup;
@@ -2056,6 +2084,32 @@ void db_context_init(db_context *context) {
     db_saveas_state_snapshot(&context->saveas);
 }
 
+void db_context_init_with_mode(db_context *context, const db_format_mode *mode) {
+    if (context == NULL || mode == NULL)
+        return;
+    db_context_init(context);
+    context->mode = *mode;
+}
+
+void db_context_init_legacy_read(db_context *context, hdldatabaserecord db) {
+    db_format_mode legacy_mode = {false, false, false};
+    db_context_init_with_mode(context, &legacy_mode);
+    context->database = db;
+}
+
+void db_context_init_v7_write(db_context *context, hdldatabaserecord db) {
+    db_format_mode v7_mode = {true, false, false};
+    db_context_init_with_mode(context, &v7_mode);
+    context->database = db;
+}
+
+void db_context_clone_with_mode(const db_context *src, db_context *dst, const db_format_mode *mode) {
+    if (src == NULL || dst == NULL || mode == NULL)
+        return;
+    *dst = *src;  /* Shallow copy */
+    dst->mode = *mode;
+}
+
 void db_context_apply(const db_context *context) {
     if (context == NULL)
         return;
@@ -2065,69 +2119,99 @@ void db_context_apply(const db_context *context) {
 }
 
 boolean hashpacktable_context(const db_context *context, hdlhashtable ht, boolean flsave, Handle *hpacked, boolean *flmustsave) {
-    db_context_guard guard;
-    db_context_guard_enter(context, &guard);
-    boolean ok = hashpacktable(ht, flsave, hpacked, flmustsave);
-    db_context_guard_exit(&guard);
-    return ok;
+    /* Call internal version with explicit context - no more context guard needed */
+    return hashpacktable_internal(context, ht, flsave, hpacked, flmustsave);
 }
 
 boolean hashunpacktable_context(const db_context *context, Handle hpacked, boolean flmemory, hdlhashtable htable) {
-    db_context_guard guard;
-    db_context_guard_enter(context, &guard);
 #if defined(FRONTIER_HEADLESS)
-    fprintf(stderr, "[headless] hashunpacktable_context enter htable=%p flmemory=%d\n",
-            (void *) htable, (int) flmemory);
+    fprintf(stderr, "[headless] hashunpacktable_context enter htable=%p flmemory=%d ctx=%p\n",
+            (void *) htable, (int) flmemory, (void *) context);
 #endif
-    boolean ok = hashunpacktable(hpacked, flmemory, htable);
-    db_context_guard_exit(&guard);
-    return ok;
+    /* Call internal version with explicit context - no more context guard needed */
+    return hashunpacktable_internal(context, hpacked, flmemory, htable);
 }
 
 boolean dbassignhandle_context(const db_context *context, Handle h, dbaddress *adr) {
-    db_context_guard guard;
-    db_context_guard_enter(context, &guard);
-    boolean ok = dbassignhandle(h, adr);
-    db_context_guard_exit(&guard);
-    return ok;
+    /*
+    2025-12-20: Explicit context - NO GUARDS, NO SAVE/RESTORE
+    Set mode directly from context, call function, done.
+    Caller ensures correct database is active.
+    */
+    if (context != NULL) {
+        if (context->database != nil)
+            databasedata = context->database;
+        db_format_mode_apply(&context->mode);
+    }
+    return dbassignhandle(h, adr);
 }
 
 boolean dbrefhandle_context(const db_context *context, dbaddress adr, Handle *h) {
-    db_context_guard guard;
-    db_context_guard_enter(context, &guard);
-    boolean ok = dbrefhandle(adr, h);
-    db_context_guard_exit(&guard);
-    return ok;
+    /*
+    2025-12-20: Explicit context - NO GUARDS, NO SAVE/RESTORE
+    Set mode directly from context, call function, done.
+    Caller ensures correct database is active.
+    */
+    if (context != NULL) {
+        if (context->database != nil)
+            databasedata = context->database;
+        db_format_mode_apply(&context->mode);
+    }
+    return dbrefhandle(adr, h);
 }
 
 boolean dbcopy_context(const db_context *context, dbaddress src, dbaddress *dest) {
-    db_context_guard guard;
-    db_context_guard_enter(context, &guard);
-    boolean ok = dbcopy_internal(src, dest);
-    db_context_guard_exit(&guard);
-    return ok;
+    /*
+    2025-12-20: Explicit context - NO GUARDS, NO SAVE/RESTORE
+    Set mode directly from context, call function, done.
+    Caller ensures correct database is active.
+    */
+    if (context != NULL) {
+        if (context->database != nil)
+            databasedata = context->database;
+        db_format_mode_apply(&context->mode);
+    }
+    return dbcopy_internal(src, dest);
 }
 
 boolean dbassign_context(const db_context *context, dbaddress *padr, long newsize, ptrvoid pdata) {
-    db_context_guard guard;
-    db_context_guard_enter(context, &guard);
-    boolean ok = dbassign_internal(padr, newsize, pdata);
-    db_context_guard_exit(&guard);
-    return ok;
+    /*
+    2025-12-20: Explicit context - NO GUARDS, NO SAVE/RESTORE
+    Set mode directly from context, call function, done.
+    Caller ensures correct database is active.
+    */
+    if (context != NULL) {
+        if (context->database != nil)
+            databasedata = context->database;
+        db_format_mode_apply(&context->mode);
+    }
+    return dbassign_internal(padr, newsize, pdata);
 }
 
 boolean dbreference_context(const db_context *context, dbaddress adr, long ctbytes, ptrvoid pdata) {
-    db_context_guard guard;
-    db_context_guard_enter(context, &guard);
-    boolean ok = dbreference_internal(adr, ctbytes, pdata);
-    db_context_guard_exit(&guard);
-    return ok;
+    /*
+    2025-12-20: Explicit context - NO GUARDS, NO SAVE/RESTORE
+    Set mode directly from context, call function, done.
+    Caller ensures correct database is active.
+    */
+    if (context != NULL) {
+        if (context->database != nil)
+            databasedata = context->database;
+        db_format_mode_apply(&context->mode);
+    }
+    return dbreference_internal(adr, ctbytes, pdata);
 }
 
 boolean dbreference_handle_context(const db_context *context, dbaddress adr, Handle *h) {
-    db_context_guard guard;
-    db_context_guard_enter(context, &guard);
-    boolean ok = dbrefhandle(adr, h);
-    db_context_guard_exit(&guard);
-    return ok;
+    /*
+    2025-12-20: Explicit context - NO GUARDS, NO SAVE/RESTORE
+    Set mode directly from context, call function, done.
+    Caller ensures correct database is active.
+    */
+    if (context != NULL) {
+        if (context->database != nil)
+            databasedata = context->database;
+        db_format_mode_apply(&context->mode);
+    }
+    return dbrefhandle(adr, h);
 }

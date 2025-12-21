@@ -74,6 +74,11 @@ tests/runtime_tests.dSYM/
 *.root.bak
 *.root.prev*
 
+# Editor backups and temporary files (filesystem artifacts)
+*.bak
+*.bak[0-9]*
+.!*
+
 # Log files (test artifacts, build logs, etc.)
 *.log
 tests/*.log

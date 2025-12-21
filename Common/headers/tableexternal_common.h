@@ -11,6 +11,6 @@
 #define TABLE_HEADER_RESERVED_VERSION 4
 #endif
 
-boolean tableverbinmemory_common(hdlexternalvariable hvariable, hdlhashnode hnode);
+boolean tableverbinmemory_common(const struct db_context *ctx, hdlexternalvariable hvariable, hdlhashnode hnode);
 
 #endif /* TABLEEXTERNAL_COMMON_H */

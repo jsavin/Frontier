@@ -50,7 +50,11 @@ extern boolean wpverbpack (hdlexternalvariable, Handle *, boolean *);
 
 extern boolean wpverbunpack (Handle, long *, hdlexternalvariable *);
 
-extern boolean wpverbinmemory (hdlexternalvariable);
+/* Context-aware internal version (used by langexternal layer) */
+struct db_context; /* forward declaration */
+extern boolean wpverbpack_internal (const struct db_context *, hdlexternalvariable, Handle *, boolean *);
+
+extern boolean wpverbinmemory (const struct db_context *, hdlexternalvariable);
 
 extern boolean wpverbpacktotext (hdlexternalvariable, Handle);
 
