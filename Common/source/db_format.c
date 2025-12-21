@@ -69,6 +69,14 @@ typedef struct db_context_guard {
 } db_context_guard;
 
 static void db_context_guard_enter(const db_context *context, db_context_guard *guard) {
+    /* DEPRECATED: This function implements the guard pattern for backward compatibility.
+     *
+     * New code should use explicit context passing (langexternalpack_internal pattern).
+     * The guard pattern still exists for legacy callers in db.c, but the refactored code
+     * path (database layer, table packing, external variable handling) no longer uses it.
+     *
+     * See docs/mode_stack_refactor_learnings.md for architectural guidance.
+     */
     if (guard != NULL) {
         guard->prev_mode = db_format_mode_current();
         db_saveas_state_snapshot(&guard->prev_saveas);
@@ -84,6 +92,9 @@ static void db_context_guard_enter(const db_context *context, db_context_guard *
 }
 
 static void db_context_guard_exit(const db_context_guard *guard) {
+    /* DEPRECATED: This function implements the guard pattern for backward compatibility.
+     * See db_context_guard_enter() deprecation notice above.
+     */
     if (guard == NULL)
         return;
 
