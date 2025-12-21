@@ -2,7 +2,7 @@
 # Frontier Development Tools Installation Script
 #
 # This script installs all static analysis and code quality tools needed for Frontier development.
-# Tools include: cflow, ctags, clang-tools, ripgrep, tree, bear
+# Tools include: cflow, ctags, llvm (clang-tools), ripgrep, tree, bear
 #
 # Usage: ./scripts/install_dev_tools.sh
 # Or:    curl -fsSL https://raw.githubusercontent.com/jsavin/Frontier/develop/scripts/install_dev_tools.sh | bash
@@ -32,80 +32,97 @@ echo -e "${YELLOW}Prerequisites check:${NC}"
 echo "✓ Homebrew installed: $(brew --version | head -1)"
 echo ""
 
-# List of tools to install
-declare -A TOOLS=(
-    [cflow]="call graph analysis"
-    [universal-ctags]="symbol indexing and cross-reference"
-    [clang-tools]="LLVM static analysis"
-    [ripgrep]="fast pattern search"
-    [tree]="directory visualization"
-    [bear]="compilation database generation"
-)
-
-# Track installation status
-failed=()
-succeeded=()
-
 echo -e "${YELLOW}Installing tools...${NC}"
 echo ""
 
-for tool in "${!TOOLS[@]}"; do
-    description="${TOOLS[$tool]}"
-    echo -n "Installing ${BLUE}${tool}${NC} (${description})... "
+# Track installation status
+succeeded=0
+failed=0
+failed_list=""
 
-    if brew install "$tool" &> /dev/null; then
+# Define tools as separate variables for clarity
+install_tool() {
+    local package=$1
+    local command=$2
+    local description=$3
+
+    echo -n "Installing ${BLUE}${package}${NC} (${description})... "
+
+    if brew install "$package" &> /dev/null; then
         echo -e "${GREEN}✓${NC}"
-        succeeded+=("$tool")
+        ((succeeded++))
     else
         echo -e "${RED}✗${NC}"
-        failed+=("$tool")
+        ((failed++))
+        failed_list="$failed_list\n  $package"
     fi
-done
+}
+
+# Install each tool
+install_tool "cflow" "cflow" "call graph analysis"
+install_tool "universal-ctags" "ctags" "symbol indexing and cross-reference"
+install_tool "llvm" "clang-check" "LLVM toolchain and clang-tools"
+install_tool "ripgrep" "rg" "fast pattern search"
+install_tool "tree" "tree" "directory visualization"
+install_tool "bear" "bear" "compilation database generation"
 
 echo ""
 echo -e "${BLUE}================================================${NC}"
 echo -e "${BLUE}Installation Summary${NC}"
 echo -e "${BLUE}================================================${NC}"
-
-if [ ${#succeeded[@]} -gt 0 ]; then
-    echo -e "${GREEN}Successfully installed (${#succeeded[@]})${NC}:"
-    for tool in "${succeeded[@]}"; do
-        echo "  ✓ $tool"
-    done
-    echo ""
-fi
-
-if [ ${#failed[@]} -gt 0 ]; then
-    echo -e "${RED}Failed to install (${#failed[@]})${NC}:"
-    for tool in "${failed[@]}"; do
-        echo "  ✗ $tool"
-    done
-    echo ""
-    echo -e "${YELLOW}Try installing manually:${NC}"
-    for tool in "${failed[@]}"; do
-        echo "  brew install $tool"
-    done
-fi
-
 echo ""
+
+if [ $succeeded -gt 0 ]; then
+    echo -e "${GREEN}Successfully installed ($succeeded tools)${NC}:"
+    [ -x "$(command -v cflow)" ] && echo "  ✓ cflow"
+    [ -x "$(command -v ctags)" ] && echo "  ✓ universal-ctags"
+    [ -x "/opt/homebrew/opt/llvm/bin/clang-check" ] && echo "  ✓ llvm (clang-tools)"
+    [ -x "$(command -v rg)" ] && echo "  ✓ ripgrep"
+    [ -x "$(command -v tree)" ] && echo "  ✓ tree"
+    [ -x "$(command -v bear)" ] && echo "  ✓ bear"
+    echo ""
+fi
+
+if [ $failed -gt 0 ]; then
+    echo -e "${RED}Failed to install ($failed tools)${NC}:"
+    echo -e "$failed_list"
+    echo ""
+fi
+
 echo -e "${YELLOW}Verification:${NC}"
 echo ""
 
 # Verify installations
 all_good=true
-for tool in "${!TOOLS[@]}"; do
-    if command -v "$tool" &> /dev/null || brew list "$tool" &> /dev/null; then
-        version=$(eval "$tool" --version 2>&1 | head -1 || echo "installed")
-        echo -e "  ${GREEN}✓${NC} $tool: $version"
+verify_tool() {
+    local package=$1
+    local command=$2
+
+    if command -v "$command" &> /dev/null; then
+        version=$("$command" --version 2>&1 | head -1)
+        echo -e "  ${GREEN}✓${NC} $package: $version"
     else
-        echo -e "  ${RED}✗${NC} $tool: NOT FOUND"
+        echo -e "  ${RED}✗${NC} $package: NOT FOUND"
         all_good=false
     fi
-done
+}
+
+verify_tool "cflow" "cflow"
+verify_tool "universal-ctags" "ctags"
+verify_tool "llvm" "/opt/homebrew/opt/llvm/bin/clang-check"
+verify_tool "ripgrep" "rg"
+verify_tool "tree" "tree"
+verify_tool "bear" "bear"
 
 echo ""
 if [ "$all_good" = true ]; then
     echo -e "${GREEN}✓ All tools installed successfully!${NC}"
+    echo ""
+    echo "Note: llvm tools (clang-check, clang-format, clang-tidy) are installed at:"
+    echo "  /opt/homebrew/opt/llvm/bin/"
+    echo ""
+    echo "To use them from the command line, add to your shell profile (~/.bash_profile, ~/.zprofile, etc.):"
+    echo "  export PATH=\"/opt/homebrew/opt/llvm/bin:\$PATH\""
     echo ""
     echo "Next steps:"
     echo "  1. Read the development guide: DEVELOPER_SETUP.md"
@@ -114,6 +131,11 @@ if [ "$all_good" = true ]; then
     exit 0
 else
     echo -e "${RED}✗ Some tools failed to install${NC}"
-    echo "Please install missing tools manually using: brew install <tool>"
+    echo "Please install missing tools manually:"
+    echo "  brew install cflow universal-ctags llvm ripgrep tree bear"
+    echo ""
+    echo "Note: llvm tools are installed to /opt/homebrew/opt/llvm/bin/"
+    echo "To use clang tools from the command line, add to your shell profile:"
+    echo "  export PATH=\"/opt/homebrew/opt/llvm/bin:\$PATH\""
     exit 1
 fi
