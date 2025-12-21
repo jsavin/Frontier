@@ -357,13 +357,15 @@ boolean tableverbpack_internal (const db_context *ctx, hdlexternalvariable h, Ha
 	        (int) (**hv).flinmemory, (int) adapter_repack, (void *) databasedata);
 #endif
 
-	/* Precondition check: external must be in memory */
+	/* Load external into memory if it's still on disk */
 	if (!(**hv).flinmemory) {
-		/* This is a programming error - caller should have loaded it */
+		fltempload = true;
+		if (!tableverbinmemory (ctx, hv, HNoNode)) {
 #if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[headless] tableverbpack_internal: PRECONDITION VIOLATED - flinmemory=0\n");
+			fprintf(stderr, "[headless] tableverbpack_internal: tableverbinmemory failed\n");
 #endif
-		return (false);
+			return (false);
+		}
 	}
 
 	adr = (**hv).oldaddress;

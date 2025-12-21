@@ -826,13 +826,15 @@ boolean opverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handl
 
 	adapter_repack = db_format_adapter_force_repack();
 
-	/* Precondition check: external must be in memory */
+	/* Load external into memory if it's still on disk */
 	if (!(**hv).flinmemory) {
-		/* This is a programming error - caller should have loaded it */
+		fltempload = true;
+		if (!opverbinmemory (ctx, (hdlexternalvariable) hv)) {
 #if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[headless] opverbpack_internal: PRECONDITION VIOLATED - flinmemory=0\n");
+			fprintf(stderr, "[headless] opverbpack_internal: opverbinmemory failed\n");
 #endif
-		return (false);
+			return (false);
+		}
 	}
 
 	ho = (hdloutlinerecord) (**hv).variabledata;
