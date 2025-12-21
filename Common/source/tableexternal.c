@@ -79,7 +79,7 @@ boolean tablevaltotable (tyvaluerecord val, hdlhashtable *htable, hdlhashnode hn
 		return (false);
     }
 	
-	if (!tableverbinmemory ((hdlexternalvariable) hvariable, hnode)) {
+	if (!tableverbinmemory (NULL, (hdlexternalvariable) hvariable, hnode)) {
 #if defined(FRONTIER_HEADLESS)
         fprintf(stderr, "[headless] tablevaltotable tableverbinmemory failed valtype=%d oldaddr=%llx hnode=%p\n",
                 (int) val.valuetype,
@@ -198,7 +198,7 @@ boolean tableverbdispose (hdlexternalvariable hvariable, boolean fldisk) {
 	
 	if (fldisk) { /*load table into memory so that all items can release their db nodes*/
 		
-		if (!tableverbinmemory ((hdlexternalvariable) hv, HNoNode))
+		if (!tableverbinmemory (NULL, (hdlexternalvariable) hv, HNoNode))
 			return (false);
 		}
 	
@@ -235,8 +235,8 @@ boolean tableverbnew (hdlexternalvariable *hvariable) {
 } /*tableverbnew*/
 
 
-boolean tableverbinmemory (hdlexternalvariable hvariable, hdlhashnode hnode) {
-    return tableverbinmemory_common(hvariable, hnode);
+boolean tableverbinmemory (const db_context *ctx, hdlexternalvariable hvariable, hdlhashnode hnode) {
+    return tableverbinmemory_common(ctx, hvariable, hnode);
     } /*tableverbinmemory*/
 	
 
@@ -245,7 +245,7 @@ boolean tableverbgetsize (hdlexternalvariable hvariable, long *size) {
 	register hdlexternalvariable hv = hvariable;
 	long ctitems;
 	
-	if (!tableverbinmemory (hv, HNoNode))
+	if (!tableverbinmemory (NULL, hv, HNoNode))
 		return (false);
 		
 	hashcountitems ((hdlhashtable) (**hv).variabledata, &ctitems);
@@ -285,7 +285,7 @@ boolean tableverbsetdirty (hdlexternalvariable hvariable, boolean fldirty) {
 	
 	register hdltablevariable hv = (hdltablevariable) hvariable;
 	
-	if (!tableverbinmemory ((hdlexternalvariable) hv, HNoNode))
+	if (!tableverbinmemory (NULL, (hdlexternalvariable) hv, HNoNode))
 		return (false);
 	
 	(**(hdlhashtable) (**hv).variabledata).fldirty = fldirty;
@@ -399,7 +399,7 @@ boolean tableedit (hdlexternalvariable hvariable, hdlwindowinfo hparent, ptrfile
 
     (void) fs;
 	
-	if (!tableverbinmemory ((hdlexternalvariable) hv, HNoNode)) // couldn't swap it into memory
+	if (!tableverbinmemory (NULL, (hdlexternalvariable) hv, HNoNode)) // couldn't swap it into memory
 		return (false);
 	
 	ht = (hdlhashtable) (**hv).variabledata;

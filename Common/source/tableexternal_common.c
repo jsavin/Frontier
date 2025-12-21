@@ -295,11 +295,15 @@ static boolean headless_convert_legacy_table_payload(const unsigned char *payloa
 }
 #endif /* FRONTIER_HEADLESS */
 
-boolean tableverbinmemory_common(hdlexternalvariable hvariable, hdlhashnode hnode) {
+boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvariable, hdlhashnode hnode) {
+    /*
+    2025-12-20: Added explicit context parameter - uses ctx for reading, not global mode
+    */
+
     register hdltablevariable hv = (hdltablevariable) hvariable;
     Handle hpacked;
     hdlhashtable htable = nil;
-    dbaddress adr;
+    dbaddress adr;  /* DISK ADDRESS from v6 or v7 database */
     langerrormessagecallback savecallback;
     ptrvoid saverefcon;
     hdlhashtable hparent;
@@ -307,10 +311,11 @@ boolean tableverbinmemory_common(hdlexternalvariable hvariable, hdlhashnode hnod
     boolean fl;
 
 #if defined(FRONTIER_HEADLESS)
-    fprintf(stderr, "[headless] tableverbinmemory enter hvariable=%p hnode=%p flinmemory=%d\n",
+    fprintf(stderr, "[headless] tableverbinmemory enter hvariable=%p hnode=%p flinmemory=%d use_64bit=%d\n",
             (void *) hvariable,
             (void *) hnode,
-            (hvariable && *hvariable) ? (**hvariable).flinmemory : -1);
+            (hvariable && *hvariable) ? (**hvariable).flinmemory : -1,
+            ctx ? ctx->mode.use_64bit_format : -1);
 #endif
 
     if ((**hv).flinmemory) /* nothing to do, it's already in memory */
@@ -319,16 +324,14 @@ boolean tableverbinmemory_common(hdlexternalvariable hvariable, hdlhashnode hnod
     if ((hnode == nil) || (hnode == HNoNode))
         hnode = nil;
 
+    adr = (dbaddress) (**hv).variabledata;  /* DISK ADDRESS - format depends on source DB */
+
 #if defined(FRONTIER_HEADLESS)
-    fprintf(stderr, "[headless] tableverbinmemory_common: about to push hdatabase=%p (current=%p) variabledata=0x%llx\n",
+    fprintf(stderr, "[headless] tableverbinmemory_common: reading from hdatabase=%p adr=0x%llx use_64bit=%d (NO PUSH)\n",
             (void*)(**hv).hdatabase,
-            (void*)databasedata,
-            (unsigned long long)(**hv).variabledata);
+            (unsigned long long)adr,
+            ctx ? ctx->mode.use_64bit_format : -1);
 #endif
-
-    dbpushdatabase((**hv).hdatabase);
-
-    adr = (dbaddress) (**hv).variabledata;
     long payload_offset = 0;
 
 #if defined(FRONTIER_HEADLESS)
@@ -363,9 +366,8 @@ boolean tableverbinmemory_common(hdlexternalvariable hvariable, hdlhashnode hnod
         shellinternalerror(idniltableaddress, BIGSTRING ("\x2b" "nil table address.  (Creating empty table.)"));
         fl = false;
     } else {
-        db_context context;
-        db_context_init(&context);
-        fl = dbrefhandle_context(&context, adr, &hpacked);
+        /* Use passed context for reading - format determined by caller */
+        fl = dbrefhandle_context(ctx, adr, &hpacked);
 
 #if defined(FRONTIER_HEADLESS)
         if (!fl) {
@@ -459,7 +461,7 @@ boolean tableverbinmemory_common(hdlexternalvariable hvariable, hdlhashnode hnod
         }
     }
 
-    dbpopdatabase();
+    /* NO dbpopdatabase - we never pushed, no global state to restore */
 
     if (!fl)
         return false;

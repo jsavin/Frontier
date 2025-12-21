@@ -311,6 +311,8 @@ extern boolean langexternalcloseregisteredwindows (boolean);
 
 extern boolean langexternalrefdata (hdlexternalvariable, Handle *);
 
+extern boolean langexternalrefdata_context (const struct db_context *, hdlexternalvariable, Handle *);
+
 boolean langexternalsetreadonly (hdlexternalvariable hv, boolean flreadonly); /*7.0b6 PBS*/
 
 boolean langexternalgetreadonly (hdlexternalvariable hv); /*7.0b6 PBS*/

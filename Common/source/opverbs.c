@@ -570,41 +570,36 @@ static boolean opverbpackoutline (hdloutlinerecord houtline, Handle *hpacked) {
 	} /*opverbpackoutline*/
 
 
-static boolean opverbinmemory (hdloutlinevariable hv) {
+boolean opverbinmemory (const db_context *ctx, hdlexternalvariable hvariable) {
 
 	/*
 	5.0a18 dmb: support database linking
+	2025-12-20: Exported for use by ensure_external_in_memory() helper
+	              Changed parameter to hdlexternalvariable to match other verbinmemory functions
+	2025-12-20: Added explicit context parameter - uses ctx for reading, not global mode
 	*/
-	
+
+	hdloutlinevariable hv = (hdloutlinevariable) hvariable;
 	hdloutlinerecord ho;
 	register boolean fl;
-	dbaddress adr;
+	dbaddress adr;  /* DISK ADDRESS from v6 or v7 database */
 	Handle hpackedoutline;
 	long ix = 0;
-	
+
 	if ((**hv).flinmemory) /*nothing to do, it's already in memory*/
 		return (true);
 
+	adr = (dbaddress) (**hv).variabledata;  /* DISK ADDRESS - format depends on source DB */
+
 #if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] opverbinmemory: about to push hdatabase=%p (current_db=%p) variabledata=0x%llx\n",
+	fprintf(stderr, "[headless] opverbinmemory: reading from hdatabase=%p adr=0x%llx use_64bit=%d (NO PUSH)\n",
 	        (void*)(**hv).hdatabase,
-	        (void*)databasedata,
-	        (unsigned long long)(**hv).variabledata);
+	        (unsigned long long)adr,
+	        ctx ? ctx->mode.use_64bit_format : -1);
 #endif
 
-	dbpushdatabase ((**hv).hdatabase);
-
-	adr = (dbaddress) (**hv).variabledata;
-
-#if defined(FRONTIER_HEADLESS)
-	static int load_count = 0;
-	if (load_count++ < 10) {
-		fprintf(stderr, "[headless] opverbinmemory: about to dbrefhandle adr=0x%llx\n",
-		        (unsigned long long)adr);
-	}
-#endif
-
-	fl = dbrefhandle (adr, &hpackedoutline);
+	/* Read with explicit context - NO global state changes */
+	fl = dbrefhandle_context (ctx, adr, &hpackedoutline);
 
 	if (!fl) {
 #if defined(FRONTIER_HEADLESS)
@@ -614,10 +609,8 @@ static boolean opverbinmemory (hdloutlinevariable hv) {
 	} else {
 #if defined(FRONTIER_HEADLESS)
 		long packed_size = gethandlesize(hpackedoutline);
-		if (load_count <= 10) {
-			fprintf(stderr, "[headless] opverbinmemory: dbrefhandle OK adr=0x%llx size=%ld\n",
-			        (unsigned long long)adr, packed_size);
-		}
+		fprintf(stderr, "[headless] opverbinmemory: dbrefhandle OK adr=0x%llx size=%ld\n",
+		        (unsigned long long)adr, packed_size);
 #endif
 		/* 2025-12-05: Dispatch based on outline format version */
 		short versionnumber;
@@ -651,14 +644,9 @@ static boolean opverbinmemory (hdloutlinevariable hv) {
 #endif
 		}
 
-#if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] opverbinmemory: about to pop database (current=%p)\n",
-	        (void*)databasedata);
-#endif
+	/* NO dbpopdatabase - we never pushed, no global state to restore */
 
-	dbpopdatabase ();
-	
-	if (!fl) 
+	if (!fl)
 		return (false);
 	
 	(**hv).flinmemory = true;
@@ -802,12 +790,21 @@ boolean opverbscriptmemoryunpack (Handle hpacked, long *ixload, hdlexternalvaria
 	} /*opverbscriptmemoryunpack*/
 
 
-boolean opverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddress) {
+boolean opverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddress) {
 
 	/*
 	6.2a15 AR: added flnewdbaddress parameter
+	2025-12-20: Pure packing function with explicit context
+
+	Preconditions:
+	  - flinmemory=1 (caller has loaded external into memory)
+	  - ctx specifies the output format mode
+
+	Postconditions:
+	  - Outline packed and address written to *hpacked
+	  - Returns true on success, false on failure
 	*/
-	
+
 	register hdloutlinevariable hv = (hdloutlinevariable) h;
 	register hdloutlinerecord ho;
 	register boolean fl;
@@ -815,42 +812,29 @@ boolean opverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddr
 	dbaddress adr;
 	hdlwindowinfo hinfo;
 	boolean fltempload = false;
-    const boolean adapter_repack = db_format_adapter_force_repack();
-    db_format_mode prev_mode = db_format_mode_current();
-    db_format_mode working_mode = prev_mode;
+	boolean adapter_repack;
 
-	if (!(**hv).flinmemory) { /*simple case, outline is resident in the db*/
-		
-		if (flconvertingolddatabase || adapter_repack) {
-			
-			if (adapter_repack) {
-                working_mode.use_64bit_format = false; /* legacy read while loading source */
-                db_format_mode_push(&working_mode);
-            }
+	/*
+	2025-12-20: Set mode from context before any database I/O
+	This ensures writes use the correct format (v7 during migration)
+	*/
+	if (ctx != NULL) {
+		if (ctx->database != nil)
+			databasedata = ctx->database;
+		db_format_mode_apply(&ctx->mode);
+	}
 
-			if (!opverbinmemory (hv)) {
-                if (adapter_repack)
-                    db_format_mode_pop();
-				return (false);
-            }
-			
-			fltempload = true;
+	adapter_repack = db_format_adapter_force_repack();
 
-			if (adapter_repack)
-                db_format_mode_pop();
-			}
-		else {
-		
-			adr = (dbaddress) (**hv).variabledata;
-			
-			if (fldatabasesaveas)
-				if (!dbcopy (adr, &adr))
-					return (false);
-			
-			goto pushaddress;
-			}
-		}
-	
+	/* Precondition check: external must be in memory */
+	if (!(**hv).flinmemory) {
+		/* This is a programming error - caller should have loaded it */
+#if defined(FRONTIER_HEADLESS)
+		fprintf(stderr, "[headless] opverbpack_internal: PRECONDITION VIOLATED - flinmemory=0\n");
+#endif
+		return (false);
+	}
+
 	ho = (hdloutlinerecord) (**hv).variabledata;
 
 #if defined(FRONTIER_HEADLESS)
@@ -879,8 +863,7 @@ boolean opverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddr
 		return (false);
 	}
 
-	/* During migration, dbassignhandle will use the global v7 write mode set by
-	 * db_format_adapter_enable_wide_writes() in dbstartsaveas_internal(). */
+	/* During migration, dbassignhandle will use the global v7 write mode set by caller */
 	fl = dbassignhandle (hpackedoutline, &adr);
 
 #if defined(FRONTIER_HEADLESS)
@@ -898,40 +881,45 @@ boolean opverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddr
 #endif
 		return (false);
 	}
-	
+
 	if (fldatabasesaveas && !fltempload)
 		goto pushaddress;
-	
+
 	if (!opwindowopen ((hdlexternalvariable) hv, &hinfo) /* (**ho).flwindowopen*/ ) /*it's been saved, we can reclaim some memory*/
 		opverbunload ((hdlexternalvariable) hv, adr);
-	
+
 	else {
-		
+
 		assert (!fltempload);
-		
+
 		(**ho).fldirty = false; /*we just saved off a new db version*/
-		
+
 		(**ho).fldirtyview = false;
-		
+
 		if (hinfo != nil)
 			shellsetwindowchanges (hinfo, false);
 		}
-	
+
 	pushaddress:
-	/* No longer using mode stack for adapter_repack - using context instead */
-    db_format_mode_apply(&prev_mode);
-	
+	/* NO mode management - uses whatever mode is currently set */
+
 	if (!fldatabasesaveas) {
-	
+
 		*flnewdbaddress = ((**hv).oldaddress != adr);
-			
+
 		(**hv).oldaddress = adr;
 		}
 	else
-		*flnewdbaddress = true;	
-	
+		*flnewdbaddress = true;
+
 	return (pushlongondiskhandle (adr, *hpacked));
-	} /*opverbpack*/
+	} /*opverbpack_internal*/
+
+
+boolean opverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddress) {
+	/* Wrapper for backward compatibility - uses global mode state */
+	return opverbpack_internal (NULL, h, hpacked, flnewdbaddress);
+}
 	
 	
 boolean opverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *hvariable) {
@@ -978,7 +966,7 @@ boolean opverbgetlangtext (hdlexternalvariable hvariable, boolean flpretty, Hand
 	
 	fltempload = !(**hv).flinmemory;
 	
-	if (!opverbinmemory (hv))
+	if (!opverbinmemory (NULL, hv))
 		return (false);
 	
 	ho = (hdloutlinerecord) (**hv).variabledata;
@@ -1012,7 +1000,7 @@ boolean opverbgetsize (hdlexternalvariable hvariable, long *size) {
 	register hdloutlinerecord ho;
 	register long ctheads;
 	
-	if (!opverbinmemory (hv))
+	if (!opverbinmemory (NULL, hv))
 		return (false);
 	
 	ho = (hdloutlinerecord) (**hv).variabledata;
@@ -1084,7 +1072,7 @@ boolean opverbsetdirty (hdlexternalvariable hvariable, boolean fldirty) {
 	register hdloutlinevariable hv = (hdloutlinevariable) hvariable;
 	register hdloutlinerecord ho;
 	
-	if (!opverbinmemory (hv))
+	if (!opverbinmemory (NULL, hv))
 		return (false);
 	
 	ho = (hdloutlinerecord) (**hv).variabledata;
@@ -1110,7 +1098,7 @@ boolean opverbpacktotext (hdlexternalvariable h, Handle htext) {
 	Handle hprogram;
 	boolean fltempload = !(**hv).flinmemory;
 	
-	if (!opverbinmemory (hv))
+	if (!opverbinmemory (NULL, hv))
 		return (false);
 	
 	ho = (hdloutlinerecord) (**hv).variabledata;
@@ -1141,7 +1129,7 @@ boolean opverbgettimes (hdlexternalvariable h, int64_t *timecreated, int64_t *ti
 	register hdloutlinevariable hv = (hdloutlinevariable) h;
 	register hdloutlinerecord ho;
 	
-	if (!opverbinmemory (hv))
+	if (!opverbinmemory (NULL, hv))
 		return (false);
 	
 	ho = (hdloutlinerecord) (**hv).variabledata;
@@ -1159,7 +1147,7 @@ boolean opverbsettimes (hdlexternalvariable h, int64_t timecreated, int64_t time
 	register hdloutlinevariable hv = (hdloutlinevariable) h;
 	register hdloutlinerecord ho;
 	
-	if (!opverbinmemory (hv))
+	if (!opverbinmemory (NULL, hv))
 		return (false);
 	
 	ho = (hdloutlinerecord) (**hv).variabledata;
@@ -1389,7 +1377,7 @@ boolean getoutlinevalue (hdltreenode hfirst, short pnum, hdloutlinerecord *houtl
 		return (false);
 		}
 	
-	if (!opverbinmemory (hv))
+	if (!opverbinmemory (NULL, hv))
 		return (false);
 	
 	*houtline = (hdloutlinerecord) (**hv).variabledata;
@@ -1406,7 +1394,7 @@ boolean opverbarrayreference (hdlexternalvariable hvariable, long ix, hdlheadrec
 	
 	*hnode = nil;
 	
-	if (!opverbinmemory (hv)) /*couldn't swap into memory*/
+	if (!opverbinmemory (NULL, hv)) /*couldn't swap into memory*/
 		return (false);
 		
 	oppushoutline ((hdloutlinerecord) (**hv).variabledata); /*assume it's in memory*/
@@ -1453,7 +1441,7 @@ boolean opedit (hdlexternalvariable hvariable, hdlwindowinfo hparent, ptrfilespe
 	hdlwindowinfo hi;
 	short id;
 
-	if (!opverbinmemory (hv)) // couldn't swap it into memory
+	if (!opverbinmemory (NULL, hv)) // couldn't swap it into memory
 		return (false);
 	
 	ho = (hdloutlinerecord) (**hv).variabledata; // assume it's in memory
@@ -1597,7 +1585,7 @@ boolean opvaltoscript (tyvaluerecord val, hdloutlinerecord *houtline) {
 	if ((**hv).id != idscriptprocessor)
 		return (false);
 	
-	if (!opverbinmemory (hv))
+	if (!opverbinmemory (NULL, hv))
 		return (false);
 	
 	*houtline = (hdloutlinerecord) (**hv).variabledata;
@@ -2046,7 +2034,7 @@ static boolean opsettypeverb (hdltreenode hparam1, tyvaluerecord *v) {
 	if (!scriptgetnametype (bsname, &signature)) /*unknown, let verb return false*/
 		return (true);
 	
-	if (!opverbinmemory (hv))
+	if (!opverbinmemory (NULL, hv))
 		return (false);
 	
 	ho = (hdloutlinerecord) (**hv).variabledata;
@@ -3964,7 +3952,7 @@ static boolean opfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord 
 				return (false);
 				}
 			
-			if (!opverbinmemory (hv))
+			if (!opverbinmemory (NULL, hv))
 				return (false);
 			
 			flnextparamislast = true;
@@ -4301,7 +4289,7 @@ boolean opverbfind (hdlexternalvariable hvariable, boolean *flzoom) {
 	
 	fltempload = !(**hv).flinmemory;
 	
-	if (!opverbinmemory (hv))
+	if (!opverbinmemory (NULL, hv))
 		return (false);
 	
 	ho = (hdloutlinerecord) (**hv).variabledata;

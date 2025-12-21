@@ -50,6 +50,77 @@ The global mode stack pattern (`db_format_mode_push/pop/current`) has caused eve
 
 ## Architecture Design
 
+### 0. Fundamental Principle: Single Decision Point
+
+**CRITICAL**: The entire refactor is built on this architectural principle:
+
+**Four Address Spaces During Migration**:
+1. **On-disk v6 addresses** (32-bit LE): Addresses stored in v6 database files
+2. **In-memory pointers** (64-bit): When `flinmemory=1`, variabledata is a memory pointer
+3. **Expanded/aligned structures**: Objects in memory prepared for v7 format
+4. **On-disk v7 addresses** (64-bit BE): New addresses written to v7 database
+
+**Single Decision Point Rule**:
+- **ONE decision point for reading**: One place decides "use v6 32-bit LE reader" vs "use v7 64-bit BE reader"
+- **ONE decision point for writing**: One place decides "use v6 writer" vs "use v7 writer"
+- **If there are multiple code branches making these decisions, the design is WRONG**
+
+**Mode Management Hierarchy**:
+1. **Top-level caller** (e.g., migration driver, langexternalpack_internal): Sets mode ONCE
+2. **All child functions** inherit and use that mode - they DO NOT call db_context_apply()
+3. **NO mode switching** inside individual pack/unpack functions (opverbpack_internal, wpverbpack_internal, etc.)
+
+**Example During Migration**:
+```c
+// langexternalpack_internal - THE ONLY PLACE THAT MANAGES MODE
+boolean langexternalpack_internal(const db_context *ctx, ...) {
+    db_context working_context;
+    if (ctx != NULL) {
+        working_context = *ctx;  // Inherit output format from caller
+    } else {
+        db_context_init(&working_context);
+    }
+
+    // If need to load from v6 during migration, switch mode temporarily
+    if (adapter_repack && !flinmemory) {
+        db_context legacy_read_ctx = working_context;
+        legacy_read_ctx.mode.use_64bit_format = false;
+        legacy_read_ctx.mode.adapter_repack = false;
+        db_context_apply(&legacy_read_ctx);
+
+        // Load from v6
+        load_external_from_disk(...);
+
+        // Restore output format
+        db_context_apply(&working_context);
+    }
+
+    // Now pack - all child pack functions use the current global mode
+    // NO child function should call db_context_apply()
+    switch (type) {
+        case idoutlineprocessor:
+            opverbpack_internal(&working_context, ...);  // Just passes context, doesn't apply it
+            break;
+    }
+}
+
+// opverbpack_internal - NEVER CALLS db_context_apply()
+boolean opverbpack_internal(const db_context *ctx, ...) {
+    // Just use the context for information, don't apply it
+    // The global mode is already set correctly by the caller
+
+    // NO db_context_apply() calls here!
+    pack_outline(...);
+    return pushlongondiskhandle(adr, *hpacked);  // Uses current global mode
+}
+```
+
+**Why This Matters**:
+- Prevents mode flip-flopping during recursive operations
+- Makes debugging trivial: mode is set once at top level
+- Eliminates race conditions and hidden state bugs
+- Each function has clear responsibility: caller manages mode, children operate with it
+
 ### 1. Enhanced Context Structure
 
 Located in `Common/headers/db_format.h`:

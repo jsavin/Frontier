@@ -767,7 +767,59 @@ boolean langexternalsetdirty (hdlexternalhandle h, boolean fldirty) {
 	} /*langexternalsetdirty*/
 
 
+static boolean ensure_external_in_memory (const db_context *ctx, hdlexternalvariable hv) {
+
+	/*
+	2025-12-20: Type-specific external loading dispatcher with explicit context
+
+	Preconditions:
+	  - ctx specifies the read format (v6 or v7)
+
+	Postconditions:
+	  - If returns true: (**hv).flinmemory == 1, variabledata is IN-MEMORY POINTER
+	  - If returns false: external could not be loaded
+	  - No global mode changes
+
+	This function passes context explicitly to child *verbinmemory functions.
+	*/
+
+	if ((**hv).flinmemory)
+		return (true); /* already in memory */
+
+	switch ((**hv).id) {
+
+		case idoutlineprocessor:
+		case idscriptprocessor:
+			return (opverbinmemory (ctx, hv));
+
+		case idwordprocessor:
+			return (wpverbinmemory (ctx, hv));
+
+		case idtableprocessor:
+			return (tableverbinmemory (ctx, hv, HNoNode));
+
+		case idmenuprocessor:
+		case idpictprocessor:
+			/* TODO: Update menuverbinmemory/pictverbinmemory to take context parameter */
+			/* For now, these types are not supported in migration */
+			return (false);
+
+		default:
+			return (false);
+		}
+	} /*ensure_external_in_memory*/
+
+
 boolean langexternalpack_internal (const db_context *ctx, hdlexternalhandle h, Handle *hpacked, boolean *flnewdbaddress) {
+
+	/*
+	2025-12-20: THE ONLY FUNCTION THAT MANAGES MODE FOR EXTERNAL PACKING
+
+	Single Decision Point Pattern:
+	  - This function decides when to use v6 read mode vs v7 write mode
+	  - Child pack functions are pure operations - they don't manage mode
+	  - Mode transitions happen in ONE place (here) for entire operation
+	*/
 
 	tydiskexternalhandle rec;
 	register hdlexternalvariable hv = (hdlexternalvariable) h;
@@ -786,39 +838,67 @@ boolean langexternalpack_internal (const db_context *ctx, hdlexternalhandle h, H
 
 	rollbeachball ();
 
-	/*
-	clearbytes (&rec, sizeof (rec));
-
-	rec.flpathlink = (**h).flpathlink;
-	*/
-
+	/* Setup disk header */
 	rec.versionnumber = conditionalshortswap (externaldiskversionnumber);
-
 	rec.id = (byte) (**hv).id;
 
 	if (!newfilledhandle (&rec, sizeof (rec), hpacked))
 		return (false);
 
-    db_format_adapter_mark_address(&(**hv).oldaddress);
-    if (adapter_repack) {
-		/* Create legacy context for reading v6 while materializing externals */
-        legacy_context = working_context;
-        legacy_context.mode.use_64bit_format = false;
-		db_context_apply(&legacy_context);
-    }
-		
+	/* Mark address for migration tracking */
+	db_format_adapter_mark_address(&(**hv).oldaddress);
+
+	/* ================================================================
+	 * SINGLE DECISION POINT: Load from v6 with explicit context, pack to v7
+	 * NO GLOBAL MODE CHANGES - all context passed explicitly
+	 * ================================================================
+	 */
+	if (adapter_repack && !(**hv).flinmemory) {
+		/* Create v6 read context for loading from source database */
+		legacy_context = working_context;
+		legacy_context.mode.use_64bit_format = false;
+		legacy_context.mode.adapter_repack = false;  /* Pure read mode */
+
+#if defined(FRONTIER_HEADLESS)
+		fprintf(stderr, "[headless] langexternalpack: loading external from v6 id=%d (explicit context)\n",
+		        (int)(**hv).id);
+#endif
+
+		/* Load external into memory using explicit v6 context */
+		if (!ensure_external_in_memory (&legacy_context, hv)) {
+			return (false);
+		}
+
+#if defined(FRONTIER_HEADLESS)
+		fprintf(stderr, "[headless] langexternalpack: loaded, now flinmemory=%d\n",
+		        (int)(**hv).flinmemory);
+#endif
+
+		/* Prepare v7 write context for packing to destination */
+		working_context.mode.use_64bit_format = true;
+		working_context.mode.adapter_repack = true;
+
+#if defined(FRONTIER_HEADLESS)
+		fprintf(stderr, "[headless] langexternalpack: using v7 write context (no global mode set)\n");
+#endif
+	}
+
+	/* ================================================================
+	 * Pack with output format mode - children don't change mode
+	 * ================================================================
+	 */
 	switch ((**hv).id) {
 
-		case idoutlineprocessor: case idscriptprocessor:
-			ok = opverbpack (hv, hpacked, flnewdbaddress);
+		case idoutlineprocessor:
+		case idscriptprocessor:
+			ok = opverbpack_internal (&working_context, hv, hpacked, flnewdbaddress);
 			break;
 
 		case idwordprocessor:
-			ok = wpverbpack (hv, hpacked, flnewdbaddress);
+			ok = wpverbpack_internal (&working_context, hv, hpacked, flnewdbaddress);
 			break;
 
 		case idtableprocessor:
-			/* Use internal version with explicit context to avoid mode stack issues */
 			ok = tableverbpack_internal (&working_context, hv, hpacked, flnewdbaddress);
 			break;
 
@@ -830,18 +910,13 @@ boolean langexternalpack_internal (const db_context *ctx, hdlexternalhandle h, H
 			ok = pictverbpack (hv, hpacked, flnewdbaddress);
 			break;
 
-
 		default:
 			ok = false;
 			break;
-		} /*switch*/
+		}
 
-	if (adapter_repack) {
-		/* Restore working context after legacy read */
-		db_context_apply(&working_context);
-	}
-
-	return ok;
+	/* Mode remains in output format - caller will manage further transitions if needed */
+	return (ok);
 	} /*langexternalpack_internal*/
 
 
@@ -1439,7 +1514,7 @@ static boolean fullpathsearch (hdlhashtable intable, hdlhashtable fortable, bigs
 			if (flonlyinmemory)	/*can't find it if it isn't in memory*/
 				goto nextx;
 			
-			if (!tableverbinmemory (hv, x))
+			if (!tableverbinmemory (NULL, hv, x))
 				return (false);
 				
 			fltempload = true;
@@ -2974,6 +3049,29 @@ boolean langexternalrefdata (hdlexternalvariable hv, Handle *hdata) {
 
 	return (fl);
 	} /*langexternalrefdata*/
+
+
+boolean langexternalrefdata_context (const db_context *ctx, hdlexternalvariable hv, Handle *hdata) {
+	/*
+	2025-12-20: Context-aware version - uses explicit context for reading, NO global state changes
+	*/
+
+	boolean fl;
+
+	assert (!(**hv).flinmemory);
+
+#if defined(FRONTIER_HEADLESS)
+	fprintf(stderr, "[headless] langexternalrefdata_context: reading from hdatabase=%p adr=0x%llx use_64bit=%d (NO PUSH)\n",
+	        (void*)(**hv).hdatabase,
+	        (unsigned long long)(**hv).variabledata,
+	        ctx ? ctx->mode.use_64bit_format : -1);
+#endif
+
+	/* Read with explicit context - NO database push, NO global state changes */
+	fl = dbrefhandle_context (ctx, (dbaddress) (**hv).variabledata, hdata);  /* DISK ADDRESS */
+
+	return (fl);
+	} /*langexternalrefdata_context*/
 
 
 boolean langexternalsymbolchanged (hdlhashtable htable, const bigstring bsname, hdlhashnode hnode, boolean flvalue) {

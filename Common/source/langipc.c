@@ -2684,7 +2684,7 @@ static boolean apptablevisit (bigstring bsname, hdlhashnode hnode, tyvaluerecord
 	
 	fltempload = !(**hv).flinmemory;
 	
-	if (!tableverbinmemory ((hdlexternalvariable) hv, hnode))
+	if (!tableverbinmemory (NULL, (hdlexternalvariable) hv, hnode))
 		return (false);
 	
 	ht = (hdlhashtable) (**hv).variabledata; 

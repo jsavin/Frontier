@@ -219,7 +219,7 @@ boolean tableverbmemorypack_legacy (hdlexternalvariable h, Handle *hpacked, hdlh
 	
 	fltempload = !(**hv).flinmemory;
 	
-	if (!tableverbinmemory (hv, hnode))
+	if (!tableverbinmemory (NULL, hv, hnode))
 		return (false);
 	
 	ht = (hdlhashtable) (**hv).variabledata; 
@@ -312,7 +312,7 @@ boolean tableverbpack_legacy (hdlexternalvariable h, Handle *hpacked, boolean *f
 		
 		fltempload = !(**hv).flinmemory;
 		
-		if (!tableverbinmemory (hv, HNoNode))
+		if (!tableverbinmemory (NULL, hv, HNoNode))
 			return (false);
 		
 		*flnewdbaddress = true; /*it's in another database even*/
@@ -320,7 +320,7 @@ boolean tableverbpack_legacy (hdlexternalvariable h, Handle *hpacked, boolean *f
 
 	if (adapter_repack && !(**hv).flinmemory) {
 		fltempload = true;
-		if (!tableverbinmemory(hv, HNoNode)) {
+		if (!tableverbinmemory(NULL, hv, HNoNode)) {
             db_format_mode_pop();
 			return (false);
         }
@@ -525,7 +525,7 @@ boolean tableverbpack_legacytotext (hdlexternalvariable h, Handle htext) {
 	register boolean fl;
 	boolean fltempload = !(**hv).flinmemory;
 	
-	if (!tableverbinmemory (hv, HNoNode))
+	if (!tableverbinmemory (NULL, hv, HNoNode))
 		return (false);
 	
 	ht = (hdlhashtable) (**hv).variabledata;
@@ -548,7 +548,7 @@ boolean tableverbgettimes_legacy (hdlexternalvariable h, long *timecreated, long
 	register hdlexternalvariable hv = h;
 	register hdlhashtable ht;
 	
-	if (!tableverbinmemory (hv, hnode))
+	if (!tableverbinmemory (NULL, hv, hnode))
 		return (false);
 	
 	ht = (hdlhashtable) (**hv).variabledata;
@@ -566,7 +566,7 @@ boolean tableverbsettimes_legacy (hdlexternalvariable h, long timecreated, long 
 	register hdlexternalvariable hv = h;
 	register hdlhashtable ht;
 	
-	if (!tableverbinmemory (hv, hnode))
+	if (!tableverbinmemory (NULL, hv, hnode))
 		return (false);
 	
 	ht = (hdlhashtable) (**hv).variabledata;
@@ -620,7 +620,7 @@ boolean tableverbfindusedblocks_legacy (hdlexternalvariable h, bigstring bspath)
 	
 	fltempload = !(**hv).flinmemory;
 	
-	if (!tableverbinmemory (hv, HNoNode))
+	if (!tableverbinmemory (NULL, hv, HNoNode))
 		return (false);
 	
 	if (!statsblockinuse ((**hv).oldaddress, bspath))

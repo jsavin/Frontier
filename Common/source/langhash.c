@@ -374,7 +374,7 @@ static boolean langhash_materialize_external(tyvaluerecord *val, const char *pat
 				fprintf(stderr, "[headless] materialize external path=%s id=table\n",
 				        path ? path : "<nil>");
 			}
-			if (!tableverbinmemory(hv, HNoNode)) {
+			if (!tableverbinmemory(NULL, hv, HNoNode)) {
 				fprintf(stderr, "[headless] materialize external table load failed path=%s\n",
 				        path ? path : "<nil>");
 				langhash_materialize_current_path = prior_path;

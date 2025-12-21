@@ -503,7 +503,8 @@ boolean wpverbunpack(Handle hpacked, long *ixload, hdlexternalvariable *h) {
     return true;
 }
 
-boolean wpverbinmemory(hdlexternalvariable h) {
+boolean wpverbinmemory(const db_context *ctx, hdlexternalvariable h) {
+    (void) ctx;  /* Context not used in portable implementation */
     wp_portable_state *state = wp_portable_state_require(h);
     if (state == NULL)
         return false;

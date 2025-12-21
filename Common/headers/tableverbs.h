@@ -110,7 +110,7 @@ extern boolean tableverbgettypestring (hdlexternalvariable, bigstring);
 
 extern boolean tableverbgetsize (hdlexternalvariable, long *);
 
-extern boolean tableverbinmemory (hdlexternalvariable, hdlhashnode);
+extern boolean tableverbinmemory (const struct db_context *, hdlexternalvariable, hdlhashnode);
 
 extern boolean tableverbdispose (hdlexternalvariable, boolean);
 
