@@ -14,6 +14,11 @@
 - When the user asks you a question, always answer it first before jumping into work.
 - Always ask the user first before pushing changes to origin/develop.
 - When deciding where to track future work, use documents in the planning directory by default for work directly related to getting the headless Frontier runtime working on modern systems, and use GitHub issues (via the `gh` command) for future improvements beyond functional parity with the legacy Frontier runtime.
+- **Planning directory structure**:
+  - `planning/phase3/` - Active Phase 3 implementation work and analysis
+  - `planning/architectural_decision_records/` - Architectural decisions and design standards that affect current and future work (e.g., MODE_SINGLE_DECISION_POINT.md)
+  - `planning/archive/` - Completed work and historical reference materials
+  - When making architectural decisions that will affect multiple work areas, document them in `planning/architectural_decision_records/`
 - Error messages exposed to end-users in the UserTalk realm always take the form of: "Can't do X because Y. [Try Z instead.]"
 - Never delete a local or remote branch without confirming with the user first.
 - When implementing new kernel verbs in C: (1) Add case statement in appropriate verb function (e.g., `sysverbfunc` in shellsysverbs.c), (2) Use `getstringvalue(hparam1, N, varname)` to extract parameters, (3) Convert Pascal strings to C strings with `nullterminate(varname)`, (4) Convert C strings back to Pascal with `copyctopstring(cstr, result)`, (5) Use `setstringvalue(result, v)` or `setlongvalue()` to return values, (6) Mark last parameter with `flnextparamislast = true`, (7) Run `./tools/run_headless_tests.sh` to verify no regressions.
