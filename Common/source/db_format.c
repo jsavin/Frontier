@@ -1847,9 +1847,13 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     if (have_dest_context) {
         if (!dbendsaveas_context(&dest_context))
             goto cleanup;
+        /* dbendsaveas_context already disposed the destination database.
+         * Set databasedata to nil to prevent double-free in cleanup. */
+        databasedata = nil;
     } else {
         if (!dbendsaveas())
             goto cleanup;
+        databasedata = nil;
     }
 
     closefile(dst_fnum);
@@ -1882,10 +1886,16 @@ cleanup:
         tableverbdispose((hdlexternalvariable) hrootvariable, true);
 
     if (fldatabasesaveas) {
-        if (have_dest_context)
+        if (have_dest_context) {
             dbendsaveas_context(&dest_context);
-        else
+            /* dbendsaveas_context() calls dbdispose() internally, so clear databasedata
+             * to prevent double-free in cleanup section below. */
+            databasedata = nil;
+        } else {
             dbendsaveas();
+            /* dbendsaveas() also disposes destination, clear pointer */
+            databasedata = nil;
+        }
     }
 
     if (databasedata != nil)

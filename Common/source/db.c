@@ -577,7 +577,8 @@ static void db_sync_use64_to_current_db(void) {
 	if (fldatabasesaveas && dbsaveas_source != nil && db_format_adapter_is_active()) {
 		/* Legacy source stays 32-bit; destination writes are v7 BE64. */
         db_format_mode mode = db_format_mode_current();
-        mode.use_64bit_format = !db_format_is_legacy_db(databasedata);
+        /* Guard against accessing databasedata if it's nil (e.g., after dbdispose in cleanup) */
+        mode.use_64bit_format = (databasedata != nil) && !db_format_is_legacy_db(databasedata);
         db_format_mode_apply(&mode);
 	}
 }
@@ -2948,9 +2949,16 @@ boolean dbflushreleasestack_context(const db_context *context) {
 
 
 static void dbzeroreleasestack_impl (void) {
-	
+
 	if (databasedata == nil)
 		return;
+
+	/* Defensive check: databasedata might point to freed memory during cleanup.
+	 * Check for obviously invalid pointer values before dereferencing. */
+	if ((uintptr_t) databasedata < 0x1000) {
+		databasedata = nil;
+		return;
+	}
 
 	Handle hstack = (**databasedata).releasestack;
 	if (hstack == nil)
@@ -2968,10 +2976,12 @@ static void dbzeroreleasestack_impl (void) {
 	} /*dbzeroreleasestack_impl*/
 
 static void dbzeroreleasestack (void) {
-    db_context_guard guard;
-    db_context_guard_enter(db_context_refresh_default(), &guard);
+    /* Direct call - no guards needed during database disposal.
+     * Context restoration is meaningless when destroying the database.
+     * The guard pattern previously caused a bug: guard_exit restored
+     * databasedata pointer, then dbdispose() freed it, leaving a
+     * dangling pointer that caused segfaults during program exit. */
     dbzeroreleasestack_impl();
-    db_context_guard_exit(&guard);
 }
 
 boolean dbzeroreleasestack_context(const db_context *context) {
