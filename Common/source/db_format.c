@@ -1554,6 +1554,38 @@ static boolean db_format_force_materialize_external_tables(
         hroot, context, 0);
 }
 
+/* Helper: Clean up migration database handles to ensure proper disposal and nil-setting.
+ * Addresses PR #137 issue - prevents double-free by handling three disposal scenarios:
+ * 1. Success path already called dbendsaveas*() - nothing to do (fldatabasesaveas=false)
+ * 2. Error path with active Save As - call dbendsaveas*() to teardown
+ * 3. Error path with allocated destination but no active Save As - direct disposal
+ *
+ * NOTE: This is part of addressing Issue #138 - making disposal patterns explicit.
+ * Related to Issue #135/#136 - eliminating push/pop anti-patterns in favor of
+ * deterministic, explicit cleanup. */
+static void cleanup_migration_database(db_context *dest_context, boolean have_dest_context) {
+    if (fldatabasesaveas) {
+        /* Error path: Save As is active, need to teardown partial state.
+         * dbendsaveas*() calls dbdispose() internally and sets fldatabasesaveas = false.
+         * Return value ignored: we're in cleanup/error handling, disposal is best-effort. */
+        if (have_dest_context) {
+            dbendsaveas_context(dest_context);
+        } else {
+            dbendsaveas();
+        }
+        databasedata = nil;
+    } else if (databasedata != nil) {
+        /* Rare error path: destination allocated but Save As not started yet.
+         * Example scenario:
+         * 1. dbstartsaveas_context() succeeds → databasedata = destination
+         * 2. Early validation fails (e.g., source corrupt) → goto cleanup
+         * 3. fldatabasesaveas still false, but databasedata needs disposal */
+        dbdispose();
+        databasedata = nil;
+    }
+    /* else: databasedata already nil (normal success path), nothing to do */
+}
+
 static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     if (db_path == NULL || db_path[0] == '\0')
         return false;
@@ -1888,43 +1920,10 @@ cleanup:
     if (hrootvariable != nil)
         tableverbdispose((hdlexternalvariable) hrootvariable, true);
 
-    /* Cleanup: End Save As operation if active (error paths only).
-     * NOTE: If we took the success path (lines 1847-1857), dbendsaveas*() was already
-     * called there, which sets fldatabasesaveas = false (see dbendsaveas_internal line
-     * 3351 in db.c). So this section only executes for error paths where we need to
-     * teardown partial Save As state.
-     *
-     * CRITICAL: dbendsaveas*() ALWAYS calls dbdispose() on destination database,
-     * even on failure (see dbendsaveas_internal line 3341 in db.c).
-     * We must nil out databasedata immediately to prevent double-free.
-     *
-     * Return value ignored: We're in cleanup/error handling, disposal is best-effort. */
-    if (fldatabasesaveas) {
-        if (have_dest_context) {
-            dbendsaveas_context(&dest_context);
-            databasedata = nil;
-        } else {
-            dbendsaveas();
-            databasedata = nil;
-        }
-    }
-
-    /* Final disposal: If Save As wasn't active but we opened a destination database,
-     * dispose it. This handles the rare case where dbstartsaveas_context() succeeded
-     * (allocating destination database and setting databasedata) but an error occurred
-     * before we set fldatabasesaveas = true (which happens inside the actual migration
-     * logic, not during setup).
-     *
-     * Example failure scenario:
-     * 1. dbstartsaveas_context() succeeds → databasedata = destination, but fldatabasesaveas still false
-     * 2. Early validation fails (e.g., source database corrupt) → goto cleanup
-     * 3. fldatabasesaveas is false, so we skip lines 1892-1900
-     * 4. But databasedata != nil, so we need to dispose it here
-     */
-    if (databasedata != nil) {
-        dbdispose();
-        databasedata = nil;  /* Ensure invariant: databasedata is nil after cleanup */
-    }
+    /* Database cleanup: Handle disposal in all three scenarios (see helper for details).
+     * This helper function was extracted to improve testability and make the complex
+     * cleanup logic easier to reason about (PR #137 review feedback). */
+    cleanup_migration_database(&dest_context, have_dest_context);
 
     if (src_fnum != 0)
         closefile(src_fnum);

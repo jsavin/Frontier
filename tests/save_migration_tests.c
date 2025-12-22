@@ -130,6 +130,13 @@ int main(void) {
     }
     MIGRATION_TEST_PASS("Migration completed without errors");
 
+    // Verify cleanup state (PR #137 regression test)
+    extern boolean fldatabasesaveas;  // Exported from db.c
+    if (!fldatabasesaveas)
+        MIGRATION_TEST_PASS("Save-as flag properly reset after migration");
+    else
+        MIGRATION_TEST_FAIL("Save-as flag not reset (cleanup incomplete)");
+
     // Verify header is now v7 (migrator writes a new file, preserves source)
     char migrated_path[1024];
     if (!db_format_last_backup_path(migrated_path, sizeof migrated_path)) {

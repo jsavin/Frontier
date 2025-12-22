@@ -2957,7 +2957,12 @@ static void dbzeroreleasestack_impl (void) {
 	if (hstack == nil)
 		return;
 
-	/* Defensive: validate handle appears valid before dereferencing during cleanup */
+	/* Defensive: validate handle before dereferencing during cleanup.
+	 * This protects against edge cases where releasestack could contain a stale pointer
+	 * (e.g., if a previous disposal attempt failed partway through, or if memory corruption
+	 * occurred during error handling). validhandle() uses OS-level handle validation
+	 * rather than heuristic pointer checks, making this more robust than checking address ranges.
+	 * If invalid, nil it out to prevent crashes - disposal is best-effort during teardown. */
 	if (!validhandle(hstack)) {
 		(**databasedata).releasestack = nil;
 		return;
@@ -2971,9 +2976,15 @@ static void dbzeroreleasestack_impl (void) {
 static void dbzeroreleasestack (void) {
     /* Direct call - no guards needed during database disposal.
      * Context restoration is meaningless when destroying the database.
+     *
      * The guard pattern previously caused a bug: guard_exit restored
      * databasedata pointer, then dbdispose() freed it, leaving a
-     * dangling pointer that caused segfaults during program exit. */
+     * dangling pointer that caused segfaults during program exit.
+     *
+     * This fix is part of a broader effort to eliminate push/pop anti-patterns
+     * in favor of deterministic, explicit context management (see Issues #135, #136).
+     * The guard removal here aligns with the mode stack refactor (PR #125) which
+     * eliminated similar hidden state restoration during disposal operations. */
     dbzeroreleasestack_impl();
 }
 
