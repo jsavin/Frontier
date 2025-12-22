@@ -5,21 +5,25 @@
 
 ---
 
-## Immediate Next Steps (Awaiting User Approval)
+## Immediate Next Steps
 
-### 1. Review and Approve Strategic Plans
+### 1. Strategic Plan Approval Status
 
-**Status**: ⏳ Awaiting user review
+**IFDEF Cleanup Plan**:
+- ✅ **APPROVED** (2025-12-20) - `planning/phase3/code-cleanup/IFDEF_CLEANUP_STRATEGY.md`
+- Ready for Phase 1 execution
 
-**Documents to review**:
-- [ ] `planning/IFDEF_CLEANUP_STRATEGY.md` - 6-month ifdef elimination plan
-- [ ] `planning/LOGGING_INFRASTRUCTURE_PLAN.md` - 10-week logging infrastructure redesign
-- [ ] `planning/DEAD_CODE_REMOVAL_STRATEGY.md` - 8-week dead code removal plan
+**Logging Infrastructure Plan**:
+- ⏳ **Awaiting approval** - `planning/phase3/LOGGING_INFRASTRUCTURE_PLAN.md`
+- Decision: Approve Option A (lightweight macro-based) as recommended?
 
-**Decisions needed**:
+**Dead Code Removal Plan**:
+- ⏳ **Awaiting approval** - `planning/phase3/code-cleanup/DEAD_CODE_REMOVAL_STRATEGY.md`
+- Decision: Approve 5-phase approach (explicit markers → obsolete platforms → GUI stubbing)?
+
+**Decisions still needed**:
 - [ ] Approve logging infrastructure Option A (lightweight macro-based) as recommended
 - [ ] Approve dead code removal phasing (explicit markers → GUI stubbing → legacy formats)
-- [ ] Approve ifdef cleanup sequencing (dead code first → logging → feature flags)
 - [ ] Confirm PIKE variant removal (29 blocks for different product)
 - [ ] Confirm optional database backend flags (FRONTIER_SQLITE, FRONTIER_MYSQL, FRONTIER_PYTHON)
 
