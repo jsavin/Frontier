@@ -222,24 +222,6 @@ boolean popupmenuhit (Rect r, boolean flgeneva9, fillpopupcallback fillpopuprout
 	} /*popupmenuhit*/
 
 
-#ifdef xxxWIN95VERSION
-
-	short popupfont = -1;
-
-	static void initpopupfont (void) {
-		
-		if (popupfont == -1) {
-			
-			fontgetnumber ("\x0d" "MS Sans Serif", &popupfont);
-
-			if (popupfont == 0)
-				fontgetnumber ("\x05" "Ariel", &popupfont);
-			}
-		} /*initpopupfont*/
-
-#else
-	#define initpopupfont() ((void *) 0)
-#endif
 
 
 

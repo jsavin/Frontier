@@ -2438,10 +2438,6 @@ boolean wpgettexthandle (Handle *htext) {
 	
 	UnuseMemory (wpbuffer);
 	
-	#ifdef xxxWIN95VERSION
-		if (fl)
-			fl = wpcr2crlf (h);
-	#endif
 	
 	if (fl)
 		*htext = h;
@@ -2503,10 +2499,6 @@ boolean wpgetseltexthandle (Handle *htext) {
 		
 		UnuseAndDispose ((memory_ref) text);
 
-		#ifdef xxxWIN95VERSION
-			if (htext != nil)
-				wpcr2crlf (*htext);
-		#endif
 		}
 	
 	return (*htext != nil);
@@ -3743,10 +3735,6 @@ static boolean wpexportscrap (void *scrap, tyscraptype totype, Handle *htext, bo
 			
 			UnuseAndDispose ((memory_ref) text);
 			
-			#ifdef xxxWIN95VERSION
-				if (htext != nil)
-					wpcr2crlf (*htext);
-			#endif
 
 			break;
 			}

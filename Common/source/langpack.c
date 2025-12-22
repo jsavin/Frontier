@@ -864,10 +864,6 @@ boolean langvaluetotextscrap (tyvaluerecord val, Handle htext) {
 	
 	if (val.valuetype == externalvaluetype) {
 		pushchar (chreturn, bstype);
-
-		#ifdef xxxWIN95VERSION
-			pushchar (chlinefeed, bstype);
-		#endif
 		}
 	else {
 		pushchar (chtab, bstype);
@@ -881,10 +877,6 @@ boolean langvaluetotextscrap (tyvaluerecord val, Handle htext) {
 	
 	pushchar (chreturn, bsvalue);
 
-	#ifdef xxxWIN95VERSION
-		pushchar (chlinefeed, bsvalue);
-	#endif
-	
 	return (pushtexthandle (bsvalue, htext));
 	} /*langvaluetotextscrap*/
 

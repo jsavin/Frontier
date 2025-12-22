@@ -311,9 +311,6 @@ static boolean oplangtextvisit (hdlheadrecord hnode, ptrvoid refcon) {
 		
 		setstringwithchar (chreturn, bs); /*return goes before the head string*/
 
-	#ifdef xxxWIN95VERSION
-		pushchar (chlinefeed, bs);
-	#endif
 		
 		if (flmakeitpretty) {
 			

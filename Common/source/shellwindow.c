@@ -56,11 +56,6 @@
 
 
 
-#ifdef xxxWIN95VERSION
-	static byte bschangedwindowsuffix [] = "\x02" " *";
-#endif
-
-
 static hdlwindowinfo hfirstwindow = nil; /*head of the window list*/
 
 
@@ -2489,18 +2484,7 @@ boolean shellsetwindowchanges (hdlwindowinfo hinfo, boolean fldirty) {
 		return (true);
 	
 	if ((**hw).flmadechanges != fl) { /*changing state*/
-		
-		#ifdef xxxWIN95VERSION
-			bigstring bstitle;
-			
-			shellgetwindowtitle (hw, bstitle);
-			
-			if (fl)
-				pushstring (bschangedwindowsuffix, bstitle);
 
-			windowsettitle ((**hw).macwindow, bstitle);
-		#endif
-		
 		(**hw).flmadechanges = fl;
 		
 		shellwindowmenudirty ();
@@ -2704,11 +2688,6 @@ boolean shellbringtofront (hdlwindowinfo hinfo) {
 boolean shellsetwindowtitle (hdlwindowinfo hinfo, bigstring bstitle) {
 	
 	setheapstring (bstitle, (**hinfo).hwindowtitle);
-	
-	#ifdef xxxWIN95VERSION
-		if ((**hinfo).flmadechanges)
-			pushstring (bschangedwindowsuffix, bstitle);
-	#endif
 
 	windowsettitle ((**hinfo).macwindow, bstitle);
 	

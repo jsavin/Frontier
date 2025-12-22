@@ -1309,15 +1309,6 @@ boolean stringtoaddress (tyvaluerecord *val) {
 		
 		if (!langexpandtodotparams (bs, &htable, bs)) {
 		
-			#ifdef xxxversion5orgreater
-			
-			hdlwindowinfo hinfo;
-			
-			if (flextendedsymbolsearch && shellfindnamedwindow (bs, &hinfo))
-				htable = currenthashtable;
-			else
-			
-			#endif
 			
 			return (false);
 			}
