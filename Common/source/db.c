@@ -196,6 +196,14 @@ static inline boolean db_use64(void) {
 
 boolean fldatabasesaveas = false; /*only true during Save As operation*/
 
+#ifdef FRONTIER_TESTS
+/* Test-only accessor for cleanup state validation (PR #137 regression test).
+ * Provides controlled access to internal state without exposing global directly.
+ * Tests should use this instead of 'extern boolean fldatabasesaveas'. */
+boolean db_test_is_saveas_active(void) {
+	return fldatabasesaveas;
+}
+#endif
 
 
 static hdldatabaserecord databasedestination; /*for Save As*/
@@ -2962,9 +2970,11 @@ static void dbzeroreleasestack_impl (void) {
 	 * (e.g., if a previous disposal attempt failed partway through, or if memory corruption
 	 * occurred during error handling). validhandle() uses OS-level handle validation
 	 * rather than heuristic pointer checks, making this more robust than checking address ranges.
-	 * If invalid, nil it out to prevent crashes - disposal is best-effort during teardown. */
+	 * If invalid, skip disposal entirely - we can't safely access the structure. */
 	if (!validhandle(hstack)) {
-		(**databasedata).releasestack = nil;
+		/* Can't safely nil out releasestack if hstack is invalid - would require
+		 * dereferencing databasedata which might also point to freed memory.
+		 * Best we can do during teardown is return safely. */
 		return;
 	}
 

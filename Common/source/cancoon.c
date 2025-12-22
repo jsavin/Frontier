@@ -1172,9 +1172,11 @@ boolean ccsavefile (ptrfilespec fs, hdlfilenum fnum, short rnum, boolean flsavea
 	
 	exit:
 
-	if (flsaveas)
-		dbendsaveas ();
-	
+	if (flsaveas) {
+		dbendsaveas (); /* Internally calls dbdispose() on databasedata */
+		databasedata = nil; /* Prevent double-free before reassignment */
+	}
+
 	databasedata = (**cancoonglobals).hdatabase; // may not be same as cancoondata
 	
 	return (fl);

@@ -131,8 +131,8 @@ int main(void) {
     MIGRATION_TEST_PASS("Migration completed without errors");
 
     // Verify cleanup state (PR #137 regression test)
-    extern boolean fldatabasesaveas;  // Exported from db.c
-    if (!fldatabasesaveas)
+    // Use test-only accessor instead of accessing global directly
+    if (!db_test_is_saveas_active())
         MIGRATION_TEST_PASS("Save-as flag properly reset after migration");
     else
         MIGRATION_TEST_FAIL("Save-as flag not reset (cleanup incomplete)");

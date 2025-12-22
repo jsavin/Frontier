@@ -154,6 +154,11 @@ extern hdldatabaserecord databasedata; /*can be set by external user*/
 
 extern boolean fldatabasesaveas;
 
+#ifdef FRONTIER_TESTS
+/* Test-only accessor for cleanup state validation (see db.c) */
+extern boolean db_test_is_saveas_active(void);
+#endif
+
 #if defined(FRONTIER_HEADLESS)
 extern boolean dbnormalizeaddress(dbaddress *adr);
 #endif
