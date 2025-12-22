@@ -1,5 +1,12 @@
 # Frontier Verb Processor Status - Quick Reference
 
+## Status
+- State: Quick Reference
+- Phase: 3
+- Last Updated: 2025-12-21
+- Notes: Quick reference for verb implementation status
+
+
 > 2025-12-08 Codex: This quick reference assumes the bulk auto-registration from PR #60. That path was rolled back; headless currently uses the curated `kernel_verbs_headless.c` registration list and a small set of linked stubs. Treat the counts below as planning guidance until a stable registration pass is re-landed.
 
 **As of**: December 4, 2025 - Phase 1 Complete

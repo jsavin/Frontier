@@ -1,6 +1,7 @@
-# Test Fix Results
+# Test Fix Results - Intermediate Progress Notes
 
 **Date**: 2025-12-21
+**Status**: 🗂️ ARCHIVED - Intermediate debugging notes (see test_fix_final_status.md for final resolution)
 **Tests Modified**:
 - `test_tableverbpack_writes_be64_when_modern` (re-enabled)
 - `test_legacy_table_repack_forces_be64_address` (fixed)
