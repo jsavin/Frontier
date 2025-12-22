@@ -2978,6 +2978,11 @@ static void dbzeroreleasestack (void) {
 }
 
 boolean dbzeroreleasestack_context(const db_context *context) {
+    /* Context-aware wrapper - guards ARE needed here.
+     * Unlike dbzeroreleasestack() which is called during permanent disposal,
+     * this variant is called with an explicit context that must be temporarily
+     * applied and then restored. The caller expects their context to remain
+     * unchanged after this call, so guards are appropriate and necessary. */
     db_context_guard guard;
     db_context_guard_enter(context, &guard);
     dbzeroreleasestack_impl();

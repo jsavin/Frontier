@@ -1878,6 +1878,9 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
 
     ok = true;
 
+    /* Postcondition check: Success path should have nil'd databasedata */
+    assert(databasedata == nil);
+
 cleanup:
     db_format_mode_pop(); /* restore prior mode before exit */
     if (hscript != nil)
@@ -1885,10 +1888,17 @@ cleanup:
     if (hrootvariable != nil)
         tableverbdispose((hdlexternalvariable) hrootvariable, true);
 
-    /* Cleanup: End Save As operation if active.
-     * NOTE: dbendsaveas*() ALWAYS calls dbdispose() on destination database,
+    /* Cleanup: End Save As operation if active (error paths only).
+     * NOTE: If we took the success path (lines 1847-1857), dbendsaveas*() was already
+     * called there, which sets fldatabasesaveas = false (see dbendsaveas_internal line
+     * 3351 in db.c). So this section only executes for error paths where we need to
+     * teardown partial Save As state.
+     *
+     * CRITICAL: dbendsaveas*() ALWAYS calls dbdispose() on destination database,
      * even on failure (see dbendsaveas_internal line 3341 in db.c).
-     * We must nil out databasedata immediately to prevent double-free. */
+     * We must nil out databasedata immediately to prevent double-free.
+     *
+     * Return value ignored: We're in cleanup/error handling, disposal is best-effort. */
     if (fldatabasesaveas) {
         if (have_dest_context) {
             dbendsaveas_context(&dest_context);
@@ -1899,9 +1909,18 @@ cleanup:
         }
     }
 
-    /* If Save As wasn't active but we opened a destination database for migration,
-     * we still need to dispose it. This handles the case where dbstartsaveas succeeded
-     * but we hit an error before fldatabasesaveas was set. */
+    /* Final disposal: If Save As wasn't active but we opened a destination database,
+     * dispose it. This handles the rare case where dbstartsaveas_context() succeeded
+     * (allocating destination database and setting databasedata) but an error occurred
+     * before we set fldatabasesaveas = true (which happens inside the actual migration
+     * logic, not during setup).
+     *
+     * Example failure scenario:
+     * 1. dbstartsaveas_context() succeeds → databasedata = destination, but fldatabasesaveas still false
+     * 2. Early validation fails (e.g., source database corrupt) → goto cleanup
+     * 3. fldatabasesaveas is false, so we skip lines 1892-1900
+     * 4. But databasedata != nil, so we need to dispose it here
+     */
     if (databasedata != nil) {
         dbdispose();
         databasedata = nil;  /* Ensure invariant: databasedata is nil after cleanup */
