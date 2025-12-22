@@ -130,6 +130,13 @@ int main(void) {
     }
     MIGRATION_TEST_PASS("Migration completed without errors");
 
+    // Verify cleanup state (PR #137 regression test)
+    // Use test-only accessor instead of accessing global directly
+    if (!db_test_is_saveas_active())
+        MIGRATION_TEST_PASS("Save-as flag properly reset after migration");
+    else
+        MIGRATION_TEST_FAIL("Save-as flag not reset (cleanup incomplete)");
+
     // Verify header is now v7 (migrator writes a new file, preserves source)
     char migrated_path[1024];
     if (!db_format_last_backup_path(migrated_path, sizeof migrated_path)) {

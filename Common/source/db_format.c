@@ -1554,6 +1554,38 @@ static boolean db_format_force_materialize_external_tables(
         hroot, context, 0);
 }
 
+/* Helper: Clean up migration database handles to ensure proper disposal and nil-setting.
+ * Addresses PR #137 issue - prevents double-free by handling three disposal scenarios:
+ * 1. Success path already called dbendsaveas*() - nothing to do (fldatabasesaveas=false)
+ * 2. Error path with active Save As - call dbendsaveas*() to teardown
+ * 3. Error path with allocated destination but no active Save As - direct disposal
+ *
+ * NOTE: This is part of addressing Issue #138 - making disposal patterns explicit.
+ * Related to Issue #135/#136 - eliminating push/pop anti-patterns in favor of
+ * deterministic, explicit cleanup. */
+static void cleanup_migration_database(db_context *dest_context, boolean have_dest_context) {
+    if (fldatabasesaveas) {
+        /* Error path: Save As is active, need to teardown partial state.
+         * dbendsaveas*() calls dbdispose() internally and sets fldatabasesaveas = false.
+         * Return value ignored: we're in cleanup/error handling, disposal is best-effort. */
+        if (have_dest_context) {
+            dbendsaveas_context(dest_context);
+        } else {
+            dbendsaveas();
+        }
+        databasedata = nil;
+    } else if (databasedata != nil) {
+        /* Rare error path: destination allocated but Save As not started yet.
+         * Example scenario:
+         * 1. dbstartsaveas_context() succeeds → databasedata = destination
+         * 2. Early validation fails (e.g., source corrupt) → goto cleanup
+         * 3. fldatabasesaveas still false, but databasedata needs disposal */
+        dbdispose();
+        databasedata = nil;
+    }
+    /* else: databasedata already nil (normal success path), nothing to do */
+}
+
 static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     if (db_path == NULL || db_path[0] == '\0')
         return false;
@@ -1847,9 +1879,13 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     if (have_dest_context) {
         if (!dbendsaveas_context(&dest_context))
             goto cleanup;
+        /* dbendsaveas_context already disposed the destination database.
+         * Set databasedata to nil to prevent double-free in cleanup. */
+        databasedata = nil;
     } else {
         if (!dbendsaveas())
             goto cleanup;
+        databasedata = nil;
     }
 
     closefile(dst_fnum);
@@ -1874,6 +1910,9 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
 
     ok = true;
 
+    /* Postcondition check: Success path should have nil'd databasedata */
+    assert(databasedata == nil);
+
 cleanup:
     db_format_mode_pop(); /* restore prior mode before exit */
     if (hscript != nil)
@@ -1881,15 +1920,10 @@ cleanup:
     if (hrootvariable != nil)
         tableverbdispose((hdlexternalvariable) hrootvariable, true);
 
-    if (fldatabasesaveas) {
-        if (have_dest_context)
-            dbendsaveas_context(&dest_context);
-        else
-            dbendsaveas();
-    }
-
-    if (databasedata != nil)
-        dbdispose();
+    /* Database cleanup: Handle disposal in all three scenarios (see helper for details).
+     * This helper function was extracted to improve testability and make the complex
+     * cleanup logic easier to reason about (PR #137 review feedback). */
+    cleanup_migration_database(&dest_context, have_dest_context);
 
     if (src_fnum != 0)
         closefile(src_fnum);
@@ -1927,6 +1961,9 @@ cleanup:
 
     db_format_mode_apply(&entry_mode);
     db_saveas_state_apply(&entry_saveas);
+
+    /* Postcondition: databasedata should be nil after cleanup */
+    assert(databasedata == nil);
 
     return ok;
 }
