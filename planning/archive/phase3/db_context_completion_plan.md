@@ -3,9 +3,11 @@
 Goal: Finish deglobalizing DB operations by routing Save As, free-list/release-stack logic, and headless callers through `db_context`, eliminating ambient `databasedata`/`databasedestination` reliance and the `fldatabasesaveas` swap assumptions.
 
 ## Status
-- State: In Progress
-- Last Updated: 2025-11-30
+- State: Completed - Core infrastructure in place
+- Phase: 3 (DB Context Completion)
+- Last Updated: 2025-12-22
 - Owner: Codex
+- Notes: db_context infrastructure complete with context-aware shims for pack/unpack and core DB APIs. Remaining work (dbverbs/db.c full adoption) deferred. Preserved in archive for reference.
 
 ## Current State
 - Context wrappers exist for core ops (`dbassign/ref/copy`, adapter enable, Save As start/end, push/pop, release stack, shadow avail list). Default context (`g_default_db_context`) is in place for public wrappers.

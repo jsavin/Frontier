@@ -1,5 +1,11 @@
 # Global State Isolation and Thread-Safe Parameterization
 
+## Status
+- State: In Progress - DB/serializer (P0) partially complete; dbverbs/db.c (P0) pending
+- Phase: 3 (Global State Isolation)
+- Last Updated: 2025-12-22
+- Notes: db_context infrastructure in place for pack/unpack and core DB APIs; remaining work on dbverbs/db.c stack and headless adoption pending
+
 ## Goals
 - Remove or encapsulate global mutable state so components can be used in isolation (per-thread/per-context) without cross-talk.
 - Allow tests/headless tools to instantiate only what they need without dragging a full app-global environment.
