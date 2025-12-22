@@ -2957,6 +2957,12 @@ static void dbzeroreleasestack_impl (void) {
 	if (hstack == nil)
 		return;
 
+	/* Defensive: validate handle appears valid before dereferencing during cleanup */
+	if (!validhandle(hstack)) {
+		(**databasedata).releasestack = nil;
+		return;
+	}
+
 	disposehandle (hstack);
 
 	(**databasedata).releasestack = nil;

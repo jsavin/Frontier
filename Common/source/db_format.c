@@ -1902,8 +1902,10 @@ cleanup:
     /* If Save As wasn't active but we opened a destination database for migration,
      * we still need to dispose it. This handles the case where dbstartsaveas succeeded
      * but we hit an error before fldatabasesaveas was set. */
-    if (databasedata != nil)
+    if (databasedata != nil) {
         dbdispose();
+        databasedata = nil;  /* Ensure invariant: databasedata is nil after cleanup */
+    }
 
     if (src_fnum != 0)
         closefile(src_fnum);
@@ -1941,6 +1943,9 @@ cleanup:
 
     db_format_mode_apply(&entry_mode);
     db_saveas_state_apply(&entry_saveas);
+
+    /* Postcondition: databasedata should be nil after cleanup */
+    assert(databasedata == nil);
 
     return ok;
 }
