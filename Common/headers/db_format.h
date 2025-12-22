@@ -107,6 +107,7 @@ boolean db_format_adapter_enable_wide_writes_context(const db_context *context, 
 boolean db_format_adapter_force_repack(void);
 void db_format_adapter_mark_address(dbaddress *adr_out);
 boolean db_format_adapter_is_active(void);
+void db_format_adapter_reset(void);
 void db_format_set_legacy_source_db(hdldatabaserecord hdb);
 boolean db_format_is_legacy_db(hdldatabaserecord hdb);
 boolean create_root_backup(const char *original_path);

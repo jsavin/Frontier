@@ -385,16 +385,13 @@ boolean tableverbpack_internal (const db_context *ctx, hdlexternalvariable h, Ha
 	fprintf(stderr, "[headless] tableverbpack_internal calling tablepacktable_internal fldirty=%d flsubsdirty=%d use_64bit=%d\n",
 	        (**ht).fldirty ? 1 : 0, (**ht).flsubsdirty ? 1 : 0,
 	        current_mode.use_64bit_format ? 1 : 0);
-	fprintf(stderr, "[diag] current_mode: use_64=%d adapter_repack=%d\n",
-	        current_mode.use_64bit_format ? 1 : 0,
-	        adapter_repack ? 1 : 0);
 #endif
 
 	/* Use current global mode (set by caller) for packing */
 	fl = tablepacktable_internal (ctx, ht, false, &hpackedtable, &flmustsave);
-
 #if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[diag] tablepacktable_internal returned fl=%d\n", fl ? 1 : 0);
+	fprintf(stderr, "[headless] tablepacktable_internal returned fl=%d\n", fl ? 1 : 0);
+	fflush(stderr);
 #endif
 
 	if (!fl) {
@@ -426,7 +423,6 @@ boolean tableverbpack_internal (const db_context *ctx, hdlexternalvariable h, Ha
 #endif
 	}
 
-
 	disposehandle (hpackedtable);
 
 	if (!fl)
@@ -453,13 +449,11 @@ boolean tableverbpack_internal (const db_context *ctx, hdlexternalvariable h, Ha
 #endif
     /* Decide whether to emit a 64-bit address trailer - use current mode */
     mode64_for_save = current_mode.use_64bit_format;
-#if defined(FRONTIER_HEADLESS)
     if (!mode64_for_save && fldatabasesaveas) {
         hdldatabaserecord hdest = nil;
         if (dbgetdestinationdatabase(&hdest) && (hdest != nil) && !db_format_is_legacy_db(hdest))
             mode64_for_save = true;
     }
-#endif
 
 	if (fltempload)
 		tableverbunload (hv);
