@@ -2953,25 +2953,12 @@ static void dbzeroreleasestack_impl (void) {
 	if (databasedata == nil)
 		return;
 
-	/* Defensive check: databasedata might point to freed memory during cleanup.
-	 * Check for obviously invalid pointer values before dereferencing. */
-	if ((uintptr_t) databasedata < 0x1000) {
-		databasedata = nil;
-		return;
-	}
-
 	Handle hstack = (**databasedata).releasestack;
 	if (hstack == nil)
 		return;
 
-	/* Defensive: guard against stale or invalid handles during Save As teardown. */
-	if ((uintptr_t) hstack < 0x1000) {
-		(**databasedata).releasestack = nil;
-		return;
-	}
-
 	disposehandle (hstack);
-	
+
 	(**databasedata).releasestack = nil;
 	} /*dbzeroreleasestack_impl*/
 

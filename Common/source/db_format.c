@@ -1885,19 +1885,23 @@ cleanup:
     if (hrootvariable != nil)
         tableverbdispose((hdlexternalvariable) hrootvariable, true);
 
+    /* Cleanup: End Save As operation if active.
+     * NOTE: dbendsaveas*() ALWAYS calls dbdispose() on destination database,
+     * even on failure (see dbendsaveas_internal line 3341 in db.c).
+     * We must nil out databasedata immediately to prevent double-free. */
     if (fldatabasesaveas) {
         if (have_dest_context) {
             dbendsaveas_context(&dest_context);
-            /* dbendsaveas_context() calls dbdispose() internally, so clear databasedata
-             * to prevent double-free in cleanup section below. */
             databasedata = nil;
         } else {
             dbendsaveas();
-            /* dbendsaveas() also disposes destination, clear pointer */
             databasedata = nil;
         }
     }
 
+    /* If Save As wasn't active but we opened a destination database for migration,
+     * we still need to dispose it. This handles the case where dbstartsaveas succeeded
+     * but we hit an error before fldatabasesaveas was set. */
     if (databasedata != nil)
         dbdispose();
 
