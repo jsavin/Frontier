@@ -1124,6 +1124,14 @@ boolean db_format_adapter_is_active(void) {
     return g_legacy_adapter_active;
 }
 
+void db_format_adapter_reset(void) {
+    g_legacy_adapter_active = false;
+    g_legacy_adapter_force_repack = false;
+    g_legacy_adapter_mode_locked = false;
+    memset(&g_legacy_widened_header, 0, sizeof g_legacy_widened_header);
+    g_legacy_source_db = nil;
+}
+
 void db_format_set_legacy_source_db(hdldatabaserecord hdb) {
     g_legacy_source_db = hdb;
 }
