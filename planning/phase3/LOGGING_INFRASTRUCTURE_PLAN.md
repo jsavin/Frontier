@@ -584,20 +584,30 @@ $ FRONTIER_LOG_COMPONENT=db,hash,table FRONTIER_LOG_LEVEL=trace ./frontier-cli -
 
 **Tasks**:
 1. Create `Common/headers/logging.h`
+   - Define log levels, components, and public API
+   - Add format control macros (plain-text vs JSON)
 2. Create `Common/source/logging.c`
+   - Implement both plain-text and JSON formatters
+   - Parse `FRONTIER_LOG_FORMAT` env var (default: plain-text)
+   - Parse `FRONTIER_LOG_LEVEL` and `FRONTIER_LOG_COMPONENT` env vars
 3. Add to build system (Makefile, Xcode project)
 4. Add `log_init()` call to main() in frontier-cli
-5. Write unit tests for logging system
+5. Write unit tests for logging system (both formats)
 
 **Testing**:
 ```bash
-# Test environment variable parsing
+# Test plain-text format (default)
 FRONTIER_LOG_LEVEL=debug ./frontier-cli -e "1+1"
+
+# Test JSON format
+FRONTIER_LOG_FORMAT=json FRONTIER_LOG_LEVEL=debug ./frontier-cli -e "1+1"
+
+# Test environment variable parsing
 FRONTIER_LOG_COMPONENT=db ./frontier-cli -e "1+1"
-FRONTIER_LOG_LEVEL=trace FRONTIER_LOG_COMPONENT=db,hash ./frontier-cli -e "1+1"
+FRONTIER_LOG_LEVEL=trace FRONTIER_LOG_COMPONENT=db,hash FRONTIER_LOG_FORMAT=json ./frontier-cli -e "1+1"
 ```
 
-**Deliverable**: Working logging infrastructure with zero impact on existing code
+**Deliverable**: Working logging infrastructure with both plain-text and JSON output, zero impact on existing code
 
 ---
 
@@ -1028,7 +1038,9 @@ if (log_enabled(LOG_LEVEL_DEBUG, LOG_COMP_HASH)) {
 
 ---
 
-## Output Formats
+## Output Formats (MVP Features)
+
+Both plain-text and JSON formats are implemented in Phase 1. Select format via `FRONTIER_LOG_FORMAT` environment variable.
 
 ### Plain-Text (Default)
 
@@ -1042,13 +1054,15 @@ if (log_enabled(LOG_LEVEL_DEBUG, LOG_COMP_HASH)) {
 **Example**:
 ```bash
 FRONTIER_LOG_LEVEL=debug ./frontier-cli -e "..."
+# or explicitly:
+FRONTIER_LOG_FORMAT=text FRONTIER_LOG_LEVEL=debug ./frontier-cli -e "..."
 ```
 
 ### JSON Output
 
 **Use case**: Structured logging for machine parsing (AI agents, automation, integration)
 
-**Implementation** (~100 lines):
+**Implementation** (~100 lines, included in Phase 1):
 ```c
 void log_write_json(log_level_t level, log_component_t component,
                     const char *file, int line, const char *fmt, ...) {
@@ -1075,7 +1089,7 @@ FRONTIER_LOG_FORMAT=json FRONTIER_LOG_LEVEL=debug ./frontier-cli -e "..."
 **Example output**:
 ```json
 {"timestamp":1703100735,"level":"DEBUG","component":"db","file":"db.c","line":1234,"message":"Opening database at path=/tmp/test.root"}
-{"timestamp":1703100736,"level":"TRACE","component":"hash","file":"langhash.c","line":789,"message":"Entering hashunprocesstable, adr=0x12345678"}
+{"timestamp":1703100736,"level":"TRACE","component":"hash","file":"langhash.c","line":789,"message":"Entering hashunpacktable, adr=0x12345678"}
 ```
 
 ### File Persistence
@@ -1094,7 +1108,7 @@ FRONTIER_LOG_FORMAT=json ./frontier-cli -e "..." 2> machine.json
 
 ---
 
-## Future Improvements
+## Future Improvements (Phase 4+)
 
 ### Runtime Log Level Control (Daemon Mode)
 
@@ -1154,7 +1168,7 @@ Response:
 
 | Week | Task | Deliverable | Risk |
 |------|------|-------------|------|
-| 1 | Implement logging.h/logging.c | Working infrastructure | LOW |
+| 1 | Implement logging.h/logging.c with plain-text + JSON | Plain-text and JSON output, both formats working | LOW |
 | 2 | Migrate langhash.c (58 statements) | -58 fprintf, -10 ifdefs | LOW |
 | 3 | Migrate db.c, db_format.c (93 statements) | -93 fprintf, -20 ifdefs | MEDIUM |
 | 4 | Migrate tableexternal_common.c, tablepack.c (44) | -44 fprintf, -15 ifdefs | LOW |
@@ -1183,9 +1197,10 @@ Response:
 
 - **fprintf(stderr) count**: ~0 (except for fatal errors before logging init)
 - **Debug ifdef blocks**: 0
+- **Output formats**: Both plain-text and JSON (selectable via FRONTIER_LOG_FORMAT)
 - **Runtime control**: Yes (FRONTIER_LOG_LEVEL env var)
 - **Per-component filtering**: Yes (FRONTIER_LOG_COMPONENT env var)
-- **Consistent formatting**: Yes (`[COMPONENT-LEVEL] file:line: message`)
+- **Consistent formatting**: Yes (plain-text: `[COMPONENT-LEVEL] file:line: message`, JSON: structured fields)
 
 ### Impact
 
