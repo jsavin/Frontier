@@ -1,7 +1,8 @@
 # Logging Infrastructure Plan
 
 **Created**: 2025-12-20
-**Status**: DRAFT - Awaiting user approval
+**Status**: ✅ APPROVED - Ready for implementation
+**Approved**: 2025-12-20
 **Context**: Replace 352 fprintf(stderr) statements and 76 debug ifdefs with structured runtime logging
 
 ---
@@ -1027,41 +1028,25 @@ if (log_enabled(LOG_LEVEL_DEBUG, LOG_COMP_HASH)) {
 
 ---
 
-## Future Extensions (Optional)
+## Output Formats
 
-### Extension 1: File Output
+### Plain-Text (Default)
 
-**Use case**: Log to file instead of stderr
+**Usage**: Default format, human-friendly for interactive CLI debugging
 
-**Implementation** (~50 lines):
-```c
-// In logging.c
-static FILE *g_log_file = NULL;
-
-void log_set_output_file(const char *path) {
-    if (g_log_file && g_log_file != stderr) {
-        fclose(g_log_file);
-    }
-    g_log_file = fopen(path, "a");
-    if (!g_log_file) {
-        fprintf(stderr, "[LOG] Failed to open log file '%s', using stderr\n", path);
-        g_log_file = stderr;
-    }
-}
-
-// In log_write(), replace fprintf(stderr, ...) with fprintf(g_log_file, ...)
+```
+[DB-DEBUG] db.c:1234: Opening database at path=/tmp/test.root
+[HASH-TRACE] langhash.c:789: Entering hashunpacktable, adr=0x12345678
 ```
 
-**Usage**:
+**Example**:
 ```bash
-FRONTIER_LOG_FILE=/tmp/frontier.log ./frontier-cli -e "..."
+FRONTIER_LOG_LEVEL=debug ./frontier-cli -e "..."
 ```
 
----
+### JSON Output
 
-### Extension 2: JSON Output
-
-**Use case**: Structured logging for machine parsing
+**Use case**: Structured logging for machine parsing (AI agents, automation, integration)
 
 **Implementation** (~100 lines):
 ```c
@@ -1082,28 +1067,86 @@ void log_write_json(log_level_t level, log_component_t component,
 }
 ```
 
-**Usage**: Set `FRONTIER_LOG_FORMAT=json`
+**Usage**:
+```bash
+FRONTIER_LOG_FORMAT=json FRONTIER_LOG_LEVEL=debug ./frontier-cli -e "..."
+```
+
+**Example output**:
+```json
+{"timestamp":1703100735,"level":"DEBUG","component":"db","file":"db.c","line":1234,"message":"Opening database at path=/tmp/test.root"}
+{"timestamp":1703100736,"level":"TRACE","component":"hash","file":"langhash.c","line":789,"message":"Entering hashunprocesstable, adr=0x12345678"}
+```
+
+### File Persistence
+
+Logs are written to stderr by default. For persistence, use standard shell redirection:
+
+```bash
+# Capture to file
+FRONTIER_LOG_LEVEL=debug ./frontier-cli -e "..." 2> debug.log
+
+# Both JSON to file for AI/automation, plain-text to console
+FRONTIER_LOG_FORMAT=json ./frontier-cli -e "..." 2> machine.json
+
+# For long-running service: UserTalk logger captures stderr and routes to database/files as configured
+```
 
 ---
 
-### Extension 3: Timestamp Prefix
+## Future Improvements
 
-**Use case**: Include timestamp in log output
+### Runtime Log Level Control (Daemon Mode)
 
-**Implementation** (~20 lines):
-```c
-// In log_write(), before component prefix:
-time_t now = time(NULL);
-struct tm *tm = localtime(&now);
-fprintf(stderr, "[%04d-%02d-%02d %02d:%02d:%02d] ",
-        tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday,
-        tm->tm_hour, tm->tm_min, tm->tm_sec);
+**Context**: Once Frontier runs as a long-running service with a web server, we need to change log levels dynamically without restarting.
+
+**Architecture**:
+```
+Web Server (port 8000)
+  ↓
+REST endpoint: POST /log/setRuntimeLogLevel
+  ↓
+UserTalk glue: system.verbs.builtins.log.setRuntimeLogLevel(level, components={})
+  ↓
+C functions: log_set_level(), log_set_component_enabled()
+  ↓
+Runtime log state updated (thread-safe via UserTalk caller)
 ```
 
-**Output**:
+**C-side support** (already built-in):
+- `log_set_level(log_level_t level)` - Update global log level
+- `log_set_component_enabled(log_component_t component, bool enabled)` - Update per-component
+- `log_is_enabled()` - Checks both level and component state at runtime
+
+**UserTalk-side implementation** (future):
+```usertalk
+system.verbs.builtins.log.setRuntimeLogLevel = {
+    local (level = "", components = {}) {
+        // Parse level string (error, warn, info, debug, trace)
+        // Parse components array
+        // Call C logging functions to update state
+        // Return status
+    }
+}
 ```
-[2025-12-20 14:32:15] [DB-DEBUG] db.c:1234: Opening database
+
+**REST integration** (future):
 ```
+POST /log/setRuntimeLogLevel
+Content-Type: application/json
+{"level":"debug","components":["db","hash","table"]}
+
+Response:
+{"status":"ok","level":"debug","components":["db","hash","table"]}
+```
+
+**Benefits**:
+- No process restart needed to change verbosity
+- Diagnose production issues without downtime
+- AI agents can dynamically adjust logging while debugging
+- Component-specific debugging while service continues
+
+**Timeline**: Phase 4+ (after initial logging infrastructure and daemon architecture stabilization)
 
 ---
 
