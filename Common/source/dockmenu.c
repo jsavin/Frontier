@@ -27,7 +27,7 @@
 
 /*
 Implement right-click menus in the system tray icon or dock menu.
-Broken out from FrontierWinMain.c
+(Legacy: originally from FrontierWinMain.c platform-specific entry point)
 7.1b22 11/08/01 PBS
 */
 

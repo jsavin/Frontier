@@ -1,6 +1,6 @@
 # Frontier Refactoring Project (develop branch status)
 
-**Last updated:** 2025-12-13
+**Last updated:** 2025-12-22
 **State:** Modernization wave 2 in progress; headless + 64-bit aligned; v7 on-disk format (90-byte header with alignment padding) using portable big-endian; hash corruption resistance hardening complete
 **Primary contacts:** planning/INDEX.md (owners per phase)
 
@@ -96,7 +96,8 @@ Frontier/
 ├── tools/                # Build tools (kernelverbs_parser, strings_compiler)
 ├── planning/             # Roadmap, ADRs, decisions, quickstarts
 ├── codex_sessions/       # README pointer (actual logs in codex-sessions branch, no longer used)
-└── build_*               # Build scaffolding (Xcode/GNU)
+├── reports/              # Static analysis and progress reports (generated)
+└── build_Xcode_modern/   # Xcode build configuration (multi-arch)
 ```
 
 ## Contribution workflow
