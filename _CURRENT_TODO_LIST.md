@@ -14,15 +14,15 @@
 - Ready for Phase 1 execution
 
 **Logging Infrastructure Plan**:
-- ⏳ **Awaiting approval** - `planning/phase3/LOGGING_INFRASTRUCTURE_PLAN.md`
-- Decision: Approve Option A (lightweight macro-based) as recommended?
+- ✅ **APPROVED** (2025-12-20) - `planning/phase3/LOGGING_INFRASTRUCTURE_PLAN.md`
+- Plain-text default + JSON output support
+- Future improvements tracked in GitHub Issue #129
 
 **Dead Code Removal Plan**:
 - ⏳ **Awaiting approval** - `planning/phase3/code-cleanup/DEAD_CODE_REMOVAL_STRATEGY.md`
 - Decision: Approve 5-phase approach (explicit markers → obsolete platforms → GUI stubbing)?
 
 **Decisions still needed**:
-- [ ] Approve logging infrastructure Option A (lightweight macro-based) as recommended
 - [ ] Approve dead code removal phasing (explicit markers → GUI stubbing → legacy formats)
 - [ ] Confirm PIKE variant removal (29 blocks for different product)
 - [ ] Confirm optional database backend flags (FRONTIER_SQLITE, FRONTIER_MYSQL, FRONTIER_PYTHON)
