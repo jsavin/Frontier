@@ -12,7 +12,7 @@ The codebase uses a **"xxx" prefix convention** to mark disabled code blocks. Th
 
 **Quick wins**:
 - Remove 15+ "xxx"-prefixed ifdef blocks (xxxWIN95VERSION, xxxPIKE, xxxfldebug, etc.)
-- Remove 3 explicit dead code markers (OBSOLETE, NEVER, NeverDefine_For_Reference)
+- Remove 2 explicit dead code markers (OBSOLETE, NEVER)
 - Clean up 76 debug ifdef blocks by migrating to runtime logging
 
 **Total reduction**: ~94 ifdef blocks can be removed or converted to runtime control (27% of total)
@@ -62,7 +62,7 @@ The codebase uses a **"xxx" prefix convention** to mark disabled code blocks. Th
 |---------|-------|-------|--------|
 | `OBSOLETE` | 1 | whirlpool.c:618 | **DELETE** 1000+ line obsolete crypto lookup table |
 | `NEVER` | 1 | langevaluate.c:897 | **DELETE** error reporting code |
-| `NeverDefine_For_Reference` | 1 | WinSockNetEvents.c:50 | **CONVERT** to comment block |
+| `NeverDefine_For_Reference` | 1 | WinSockNetEvents.c:50 | **KEEP** as-is (defensive guard) |
 
 **Example** (whirlpool.c):
 ```c
@@ -79,25 +79,29 @@ The codebase uses a **"xxx" prefix convention** to mark disabled code blocks. Th
 // (delete entire 1000+ line block)
 ```
 
-**Special case** - NeverDefine_For_Reference:
+**Special case** - NeverDefine_For_Reference (Defensive Guard):
+
+This is NOT dead code - it's a defensive pattern designed to trigger if the symbol is ever accidentally defined:
+
 ```c
-// BEFORE:
 #ifdef NeverDefine_For_Reference
     For reference I am listing the error codes from the windows winsock.h file here
     #define WSABASEERR 10000
     ...
 #endif
-
-// AFTER:
-/*
- * Reference: Windows Sockets error codes from winsock.h
- * WSABASEERR 10000
- * ...
- */
 ```
 
-**Risk**: NONE - explicitly marked as dead
-**Estimated removal**: ~1200 lines
+**Purpose**: Protection against accidental definition via:
+- Makefile flags
+- Compiler preprocessor definitions
+- Grep/replace mistakes in build system
+
+If `NeverDefine_For_Reference` is ever accidentally defined, the block compiles as-is and serves as a guard/documentation.
+
+**Action**: **KEEP as-is** - This is intentional defensive programming
+
+**Risk**: NONE - no action needed
+**Estimated removal**: 0 lines (not removing this)
 
 ---
 
