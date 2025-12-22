@@ -35,7 +35,9 @@ Common/MySQL/
 
 # Build artifacts
 *.o
+*.a
 *.dSYM/
+a.out
 frontier-cli/frontier-cli
 frontier-cli/frontier-cli.dSYM/
 tests/cli_runtime_tests

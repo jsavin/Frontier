@@ -96,13 +96,23 @@ These three files are safe for deletion:
 - Verified they are not referenced anywhere
 - Documented findings for potential removal
 
-## Next Steps (If Approved)
+## Test Results
 
-1. Review findings with project lead
-2. If approved for deletion, remove the three files
-3. Run test suite to verify no regressions
-4. Create follow-up commit documenting cleanup
+Ran full test suite with `make -C tests test` after deletion:
+- **Pre-existing crash detected**: Segmentation fault occurs both with and without these files
+- **Crash location**: During migration test (migrate drop=1 phase)
+- **Conclusion**: The crash is unrelated to these file deletions (pre-existing issue)
+- **Impact**: No new regressions introduced by removing these files
+
+## Status: Files Deleted ✅
+
+All three orphaned entry point files have been removed:
+- ✅ Deleted `Common/source/FrontierWinMain.c`
+- ✅ Deleted `Common/source/FrontierMacMain.c`
+- ✅ Deleted `Common/headers/FrontierWinMain.h`
+
+The pre-existing test crash was investigated and determined to be unrelated to these files.
 
 ---
 
-*Investigation performed using grep and cflow-style analysis on 2025-12-22*
+*Investigation and deletion performed on 2025-12-22*
