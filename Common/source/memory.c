@@ -42,6 +42,7 @@
 #if defined(FRONTIER_HEADLESS)
 #include <dlfcn.h> /*dladdr symbolization for debugging*/
 #endif
+#include "logging.h"
 
 static inline void store_handle_out (Handle value, Handle *dest) {
 	/* 2025-12-09 Codex: guard against misaligned out-params in packed callers. */
@@ -352,7 +353,7 @@ void disposehandle (Handle h) {
 		#if defined(FRONTIER_HEADLESS)
 			const long _dispose_size = gethandlesize(h);
 			if (_dispose_size == 904) { /* outline handle size we keep crashing on */
-				fprintf(stderr, "[headless] disposehandle outline-size h=%p size=%ld\n", (void *) h, _dispose_size);
+				log_trace(LOG_COMP_GENERAL, "disposehandle outline-size h=%p size=%ld", (void *) h, _dispose_size);
 			}
 		#endif
 
@@ -1472,8 +1473,7 @@ boolean loadfromhandle (Handle hload, long *ixload, long ctload, ptrvoid pdata) 
 		Dl_info parent_info = {0};
 		if (dladdr(parent, &parent_info) && parent_info.dli_sname != NULL)
 			parent_name = parent_info.dli_sname;
-		fprintf(stderr,
-		        "[headless] loadfromhandle fail: ix=%ld ct=%ld size=%ld caller=%s(%p) parent=%s(%p)\n",
+		log_error(LOG_COMP_GENERAL, "loadfromhandle fail: ix=%ld ct=%ld size=%ld caller=%s(%p) parent=%s(%p)",
 		        ix, ct, size, caller_name, caller, parent_name, parent);
 #endif
 		return (false); 
