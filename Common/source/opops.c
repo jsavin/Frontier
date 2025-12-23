@@ -42,6 +42,7 @@
 #include "search.h"
 #include "timedate.h"
 #include "process.h"
+#include "logging.h"
 #if defined(FRONTIER_HEADLESS)
 extern const char *langhash_materialize_current_path;
 #endif
@@ -115,7 +116,7 @@ boolean oppushoutline (hdloutlinerecord houtline) {
 #if defined(FRONTIER_HEADLESS)
 	{
 		const char *ctx = (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>";
-		fprintf(stderr, "[headless] oppushoutline path=%s new=%p newdata=%p old=%p\n",
+		log_trace(LOG_COMP_OP, "oppushoutline path=%s new=%p newdata=%p old=%p",
 		        ctx,
 		        (void *) houtline,
 		        houtline == nil ? NULL : *houtline,
@@ -142,7 +143,7 @@ boolean oppopoutline (void) {
 #if defined(FRONTIER_HEADLESS)
 	{
 		const char *ctx = (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>";
-		fprintf(stderr, "[headless] oppopoutline path=%s current=%p currentdata=%p restoring=%p\n",
+		log_trace(LOG_COMP_OP, "oppopoutline path=%s current=%p currentdata=%p restoring=%p",
 		        ctx,
 		        (void *) ho,
 		        ho == nil ? NULL : *ho,
@@ -697,17 +698,23 @@ hdlheadrecord opbumpflatup (hdlheadrecord hnode, boolean flexpanded) {
 	
 #if defined(FRONTIER_HEADLESS)
 	const char *path_for_log = (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>";
+
+	/*
+	 * Development-time assertion for outline cursor integrity.
+	 * Logs error context with path information before calling __builtin_trap()
+	 * to enable post-mortem analysis in headless runtime.
+	 */
 #define OPBUMP_ASSERT(stage, current) do { \
 	if ((current) == NULL) { \
-		fprintf(stderr, "[headless] opbumpflatup cursor nil (%s) path=%s\n", stage, path_for_log); \
+		log_error(LOG_COMP_OP, "opbumpflatup cursor nil (%s) path=%s", stage, path_for_log); \
 		__builtin_trap(); \
 	} \
 	if (!validhandle((Handle) (current))) { \
-		fprintf(stderr, "[headless] opbumpflatup cursor invalid (%s) path=%s cursor=%p\n", stage, path_for_log, (void *) (current)); \
+		log_error(LOG_COMP_OP, "opbumpflatup cursor invalid (%s) path=%s cursor=%p", stage, path_for_log, (void *) (current)); \
 		__builtin_trap(); \
 	} \
 	if (*(current) == NULL) { \
-		fprintf(stderr, "[headless] opbumpflatup cursor data nil (%s) path=%s cursor=%p\n", stage, path_for_log, (void *) (current)); \
+		log_error(LOG_COMP_OP, "opbumpflatup cursor data nil (%s) path=%s cursor=%p", stage, path_for_log, (void *) (current)); \
 		__builtin_trap(); \
 	} \
 } while (0)
@@ -1187,7 +1194,7 @@ void opgetnodeline (hdlheadrecord hnode, long *lnum) {
 	register long ct = 0;
 
 #if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] opgetnodeline enter path=%s hnode=%p hdata=%p outlinedata=%p odata=%p\n",
+	log_trace(LOG_COMP_OP, "opgetnodeline enter path=%s hnode=%p hdata=%p outlinedata=%p odata=%p",
 	        (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
 	        (void *) hnode,
 	        (hnode == NULL) ? NULL : *hnode,
@@ -1199,51 +1206,57 @@ void opgetnodeline (hdlheadrecord hnode, long *lnum) {
 	const hdlheadrecord initial_node = hnode;
 	const ptrheadrecord initial_node_record = (hnode != NULL && validhandle((Handle) hnode)) ? *hnode : NULL;
 
+	/*
+	 * Development-time assertion for outline data integrity.
+	 * Verifies that the outline pointer hasn't been clobbered during outline operations.
+	 * Logs error context with before/after pointers before calling __builtin_trap()
+	 * to enable post-mortem analysis in headless runtime.
+	 */
 #define OPGETNODELINE_ASSERT(stage) do { \
 	if (initial_outlinedata != outlinedata) { \
-		fprintf(stderr, "[headless] opgetnodeline outline pointer changed (%s) path=%s initial=%p current=%p\n", \
+		log_error(LOG_COMP_OP, "opgetnodeline outline pointer changed (%s) path=%s initial=%p current=%p", \
 		        stage, path_for_log, (void *) initial_outlinedata, (void *) outlinedata); \
 		__builtin_trap(); \
 	} \
 	if ((nomad == NULL) || !validhandle((Handle) nomad)) { \
-		fprintf(stderr, "[headless] opgetnodeline cursor invalid (%s) path=%s nomad=%p valid=%d\n", \
+		log_error(LOG_COMP_OP, "opgetnodeline cursor invalid (%s) path=%s nomad=%p valid=%d", \
 		        stage, path_for_log, (void *) nomad, (nomad == NULL) ? 0 : validhandle((Handle) nomad)); \
 		__builtin_trap(); \
 	} \
 	if (*nomad == NULL) { \
-		fprintf(stderr, "[headless] opgetnodeline cursor data nil (%s) path=%s nomad=%p\n", \
+		log_error(LOG_COMP_OP, "opgetnodeline cursor data nil (%s) path=%s nomad=%p", \
 		        stage, path_for_log, (void *) nomad); \
 		__builtin_trap(); \
 	} \
 	if (hnode != initial_node || initial_node_record != NULL) { \
 		if (hnode == NULL || !validhandle((Handle) hnode) || *hnode == NULL) { \
-			fprintf(stderr, "[headless] opgetnodeline target node invalidated (%s) path=%s hnode=%p valid=%d\n", \
+			log_error(LOG_COMP_OP, "opgetnodeline target node invalidated (%s) path=%s hnode=%p valid=%d", \
 			        stage, path_for_log, (void *) hnode, (hnode == NULL) ? 0 : validhandle((Handle) hnode)); \
 			__builtin_trap(); \
 		} \
 		if (*hnode != initial_node_record) { \
-			fprintf(stderr, "[headless] opgetnodeline target node moved (%s) path=%s initial_node=%p current_node=%p\n", \
+			log_error(LOG_COMP_OP, "opgetnodeline target node moved (%s) path=%s initial_node=%p current_node=%p", \
 			        stage, path_for_log, (void *) initial_node_record, (void *) *hnode); \
 			__builtin_trap(); \
 		} \
 	} \
 	if (outlinedata == NULL) { \
-		fprintf(stderr, "[headless] opgetnodeline outlinedata nil (%s) path=%s initial=%p\n", \
+		log_error(LOG_COMP_OP, "opgetnodeline outlinedata nil (%s) path=%s initial=%p", \
 		        stage, path_for_log, (void *) initial_outlinedata); \
 		__builtin_trap(); \
 	} \
 	if (!validhandle((Handle) outlinedata)) { \
-		fprintf(stderr, "[headless] opgetnodeline outline handle invalid (%s) path=%s outlinedata=%p\n", \
+		log_error(LOG_COMP_OP, "opgetnodeline outline handle invalid (%s) path=%s outlinedata=%p", \
 		        stage, path_for_log, (void *) outlinedata); \
 		__builtin_trap(); \
 	} \
 	if (*outlinedata == NULL) { \
-		fprintf(stderr, "[headless] opgetnodeline outline data nil (%s) path=%s outlinedata=%p\n", \
+		log_error(LOG_COMP_OP, "opgetnodeline outline data nil (%s) path=%s outlinedata=%p", \
 		        stage, path_for_log, (void *) outlinedata); \
 		__builtin_trap(); \
 	} \
 	if ((initial_outline_record != NULL) && (*outlinedata != initial_outline_record)) { \
-		fprintf(stderr, "[headless] opgetnodeline outline data moved (%s) path=%s initial_data=%p current_data=%p\n", \
+		log_error(LOG_COMP_OP, "opgetnodeline outline data moved (%s) path=%s initial_data=%p current_data=%p", \
 		        stage, path_for_log, (void *) initial_outline_record, (void *) *outlinedata); \
 		__builtin_trap(); \
 	} \
@@ -1270,7 +1283,7 @@ void opgetnodeline (hdlheadrecord hnode, long *lnum) {
 			
 			*lnum = ct;
 #if defined(FRONTIER_HEADLESS)
-			fprintf(stderr, "[headless] opgetnodeline exit path=%s lnum=%ld hnode=%p hdata=%p outlinedata=%p odata=%p\n",
+			log_trace(LOG_COMP_OP, "opgetnodeline exit path=%s lnum=%ld hnode=%p hdata=%p outlinedata=%p odata=%p",
 			        (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
 			        *lnum,
 			        (void *) hnode,
