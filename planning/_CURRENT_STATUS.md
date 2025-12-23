@@ -28,7 +28,14 @@ Open Items (active)
 
 Next Steps (Recommended Priority Order)
 
-**Immediate** (Unblock architecture & testing):
+**Immediate** (Foundational & unblocking):
+0. **Logging Infrastructure Refactor** (PRIORITIZED - ~2-3 days)
+   - Create logging.h/logging.c with runtime log level control
+   - Replace 76 debug ifdef blocks incrementally
+   - Migrate database layer debug ifdefs first (highest-impact subsystem)
+   - Reference: `planning/phase3/code-cleanup/IFDEF_CLEANUP_STRATEGY.md` (Sections 2A-2B)
+   - Reason: Foundational infrastructure improving all future work; enables runtime debugging without rebuild
+
 1. **Phase 1 Mode Stack Refactor Prerequisites**: Complete Issues #135 & #136
    - Issue #135: Refactor outline (op) management from push/pop to deterministic context (~3-5 days)
    - Issue #136: Audit external object processing for push/pop anti-patterns (~1-2 days)

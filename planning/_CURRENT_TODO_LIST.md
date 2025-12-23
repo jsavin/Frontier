@@ -234,15 +234,26 @@ These block deployment and major system decisions. All require design/planning b
   - `oldMACVERSION` (3 blocks - v7 format doesn't use Mac aliases)
   - Commented `WIN95VERSION` blocks (2 blocks)
 
-**Phase 2-3: Debug Infrastructure Migration (MEDIUM RISK)** - Design first
-- [ ] Create logging infrastructure (logging.h/logging.c)
+**Phase 2-3: Debug Infrastructure Migration (MEDIUM RISK)** - PRIORITIZED
+- [ ] **Create logging infrastructure** (logging.h/logging.c) - PRIORITY TASK
+  - Scope: Medium - Foundational for all future work
+  - LOE: ~2-3 days (design, implementation, basic integration)
   - Runtime-controlled log levels via environment variables
-  - Component-based filtering (DB, Hash, Table, Pack, etc.)
-  - Replace 76 debug ifdef blocks incrementally
+  - Component-based filtering (DB, Hash, Table, Pack, Eval, Lang, OP, Parse)
+  - Replaces 76 debug ifdef blocks incrementally
+  - Reference: Detailed design in `planning/phase3/code-cleanup/IFDEF_CLEANUP_STRATEGY.md` (Section 2A-2B)
+  - Deliverables:
+    * logging.h/logging.c with API: log_error/warn/info/debug/trace per component
+    * Environment variable configuration (FRONTIER_LOG_LEVEL, FRONTIER_LOG_COMPONENT)
+    * Example migrations documented in strategy doc
+    * Initial integration with key subsystems (database, hash tables)
 
-- [ ] Migrate database layer debug ifdefs (db.c, db_format.c, tablepack.c)
+- [ ] **Migrate database layer debug ifdefs** (db.c, db_format.c, tablepack.c)
+  - Scope: Medium - ~40-50 debug blocks
+  - Depends on: Logging infrastructure (above)
   - Estimated 55+ `fldebug` blocks → `log_debug()` calls
-  - Phase 2 of logging migration
+  - LOE: ~2-3 days
+  - Phase 2 of logging migration; highest-impact subsystem
 
 **Phase 4: Feature Flag Cleanup (APPROVED DECISIONS)**
 - ✅ **PIKE removal** (29 blocks): APPROVED - will implement Week 13 per roadmap
