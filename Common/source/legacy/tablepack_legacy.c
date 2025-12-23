@@ -63,7 +63,7 @@ boolean tablepacktable_legacy (hdlhashtable htable, boolean flmemory, Handle *hp
 // 2025-10-27 Codex: Added headless logging for table handle splits to debug root loading.
 
 #ifdef FRONTIER_HEADLESS
-	log_error(LOG_COMP_TABLE, "FATAL ERROR: tablepacktable_legacy called - should use modern packer only!");
+	log_error(LOG_COMP_TABLE, "tablepacktable_legacy called - should use modern packer only!");
 	assert(false && "Legacy v6 packer should never be used in headless mode");
 #endif
 
@@ -289,7 +289,7 @@ boolean tableverbpack_legacy (hdlexternalvariable h, Handle *hpacked, boolean *f
 	*/
 
 #ifdef FRONTIER_HEADLESS
-	log_error(LOG_COMP_TABLE, "FATAL ERROR: tableverbpack_legacy called - should use modern packer only!");
+	log_error(LOG_COMP_TABLE, "tableverbpack_legacy called - should use modern packer only!");
 	assert(false && "Legacy v6 packer should never be used in headless mode");
 #endif
 
