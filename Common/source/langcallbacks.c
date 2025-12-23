@@ -33,6 +33,7 @@
 #include "langinternal.h"
 #include "shell.h"
 #include "memory.h"
+#include "logging.h"
 
 
 /*
@@ -204,7 +205,7 @@ boolean langerrormessage (bigstring bs) {
     {
         char cs[256]; /* bigstring max length is 255 */
         copyptocstring(bs, cs);
-        fprintf(stderr, "%s\n", cs);
+        log_error(LOG_COMP_LANG, "%s", cs);
     }
 	
 	if (!langerrorenabled ())

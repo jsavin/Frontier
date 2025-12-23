@@ -50,6 +50,7 @@
 #include "langparser.h"
 #include "db_format.h" /* 2025-11-23 Codex: BE helpers for OSTypes */
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
+#include "logging.h"
 
 
 
@@ -924,7 +925,7 @@ static tokentype langscanner (hdltreenode *nodetoken) {
                 char identbuf[64];
                 copyptocstring(bs, identbuf);
                 if (strcmp(identbuf, "true") == 0 || strcmp(identbuf, "false") == 0 || strcmp(identbuf, "stringType") == 0) {
-                    fprintf(stderr, "[scan] ident '%s' const_lookup=%s\n", identbuf, fl ? "hit" : "miss");
+                    log_trace(LOG_COMP_PARSE, "ident '%s' const_lookup=%s", identbuf, fl ? "hit" : "miss");
                 }
             }
         }
@@ -951,7 +952,7 @@ static tokentype langscanner (hdltreenode *nodetoken) {
                 char identbuf2[64];
                 copyptocstring(bs, identbuf2);
                 if (strcmp(identbuf2, "true") == 0 || strcmp(identbuf2, "false") == 0 || strcmp(identbuf2, "stringType") == 0) {
-                    fprintf(stderr, "[scan] ident '%s' -> identifier (not constant)\n", identbuf2);
+                    log_trace(LOG_COMP_PARSE, "ident '%s' -> identifier (not constant)", identbuf2);
                 }
             }
         }
