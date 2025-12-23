@@ -2777,7 +2777,7 @@ static boolean hashunpackscalar (Handle hget, tyvaluerecord *val, int32_t ix, bo
 	} /*hashunpackscalar*/
 
 
-static boolean hashpackexternal (handlestream *s, hdlexternalvariable h, int32_t *ix, boolean *flnewdbaddress) {
+static boolean hashpackexternal (handlestream *s, hdlexternalvariable h, int32_t *ix, boolean *flnewdbaddress, const db_context *ctx) {
 	Handle hpacked;
 	long ctbytes;
 	boolean fl;
@@ -2792,7 +2792,7 @@ static boolean hashpackexternal (handlestream *s, hdlexternalvariable h, int32_t
 	if (flexternalmemorypack)
 		fl = langexternalmemorypack (h, &hpacked, HNoNode);
 	else
-		fl = langexternalpack (h, &hpacked, flnewdbaddress);
+		fl = langexternalpack_internal (ctx, h, &hpacked, flnewdbaddress);  /* Phase 1: Pass explicit context */
 
 	if (!fl)
 		return (false);
@@ -2901,6 +2901,7 @@ typedef struct typackinforecord {
 	handlestream s2;
 	boolean flmustsave;
 	boolean use_64bit;
+	const db_context *context;  /* Phase 1: Explicit context passing to eliminate global mode dependency */
 	} typackinforecord;
 #pragma options align=reset
 
@@ -3240,7 +3241,7 @@ static boolean hashpackvisit_legacy (bigstring bsname, hdlhashnode hnode, tyvalu
         }
 
 			data_index = 0;
-				if (!hashpackexternal (&lpi->s2, (hdlexternalvariable) val.data.externalvalue, &data_index, &flnewdbaddress)) {
+				if (!hashpackexternal (&lpi->s2, (hdlexternalvariable) val.data.externalvalue, &data_index, &flnewdbaddress, lpi->context)) {
 #if defined(FRONTIER_HEADLESS)
 					hdlexternalvariable diag = (hdlexternalvariable) val.data.externalvalue;
 					int external_id = 0;
@@ -3621,7 +3622,7 @@ static boolean hashpackvisit_v7 (bigstring bsname, hdlhashnode hnode, tyvaluerec
 			}
 
 			data_index = 0;
-			if (!hashpackexternal (&lpi->s2, (hdlexternalvariable) val.data.externalvalue, &data_index, &flnewdbaddress))
+			if (!hashpackexternal (&lpi->s2, (hdlexternalvariable) val.data.externalvalue, &data_index, &flnewdbaddress, lpi->context))
 				HASH_PACK_FAIL("hashpackexternal");
 
 			lpi->flmustsave = lpi->flmustsave || flnewdbaddress;
@@ -3752,6 +3753,7 @@ boolean hashpacktable_internal (const db_context *ctx, hdlhashtable htable, bool
 		clearbytes (&packrec, sizeof (packrec));
 		packrec.flmustsave = *flmustsave;
 		packrec.use_64bit = true;
+		packrec.context = ctx;  /* Phase 1: Thread context through pack operations */
 		openhandlestream (nil, &packrec.s1);
 		openhandlestream (nil, &packrec.s2);
 
@@ -3780,6 +3782,7 @@ boolean hashpacktable_internal (const db_context *ctx, hdlhashtable htable, bool
 		clearbytes (&packrec, sizeof (packrec));
 		packrec.flmustsave = *flmustsave;
 		packrec.use_64bit = false;
+		packrec.context = ctx;  /* Phase 1: Thread context through pack operations */
 		openhandlestream (nil, &packrec.s1);
 		openhandlestream (nil, &packrec.s2);
 
