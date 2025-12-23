@@ -1023,12 +1023,7 @@ static boolean opunpackversion2 (handlestream *packstream) {
 			if (dump > 32)
 				dump = 32;
 			unsigned char *bytes = (unsigned char *) *(*packstream).data + (*packstream).pos;
-			char hexbuf[256];
-			int offset = 0;
-			offset += snprintf(hexbuf + offset, sizeof(hexbuf) - offset, "opunpackv2 linetable first bytes:");
-			for (size_t i = 0; i < dump && offset < (int)sizeof(hexbuf) - 4; ++i)
-				offset += snprintf(hexbuf + offset, sizeof(hexbuf) - offset, " %02x", bytes[i]);
-			log_trace(LOG_COMP_PACK, "%s", hexbuf);
+		log_hex_dump(LOG_COMP_PACK, LOG_LEVEL_TRACE, bytes, dump, "opunpackv2 linetable first bytes");
 		}
 	}
 #endif
