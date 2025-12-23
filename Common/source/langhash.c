@@ -2836,10 +2836,11 @@ static boolean hashunpackexternal (Handle hget, boolean flmemory, hdlexternalhan
 			long dump = 4 + (raw_len < 28 ? (long) raw_len : 28L);
 			if ((lix + dump) > total)
 				dump = total - lix;
-			fprintf(stderr, "[headless] hashunpackexternal raw[%ld] len=%u bytes:", lix, (unsigned int) raw_len);
-			for (long i = 0; i < dump; ++i)
-				fprintf(stderr, " %02x", base[lix + i]);
-			fprintf(stderr, "\n");
+			if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_HASH)) {
+				char label[128];
+				snprintf(label, sizeof(label), "hashunpackexternal raw[%ld] len=%u bytes", lix, (unsigned int) raw_len);
+				log_hex_dump(LOG_COMP_HASH, LOG_LEVEL_TRACE, base + lix, dump, label);
+			}
 		} else {
 			log_error(LOG_COMP_HASH, "hashunpackexternal bad index %ld (total=%ld)", lix, total);
 		}
@@ -2997,15 +2998,14 @@ static boolean hashpackvisit_legacy (bigstring bsname, hdlhashnode hnode, tyvalu
 	rec.valuetype = val.valuetype;
 #if defined(FRONTIER_HEADLESS)
 	if (val.valuetype == listvaluetype) {
-		fprintf(stderr, "[headless] hashpackvisit_v7 WRITE list name='%.*s' path=%s\n",
-		        bsname[0], bsname + 1,
-		        (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>");
-		unsigned char dumpbuf[sizeof (rec)];
-		memcpy(dumpbuf, &rec, sizeof(rec));
-		fprintf(stderr, "[headless]   rec bytes:");
-		for (size_t i = 0; i < sizeof(rec); ++i)
-			fprintf(stderr, " %02x", dumpbuf[i]);
-		fprintf(stderr, "\n");
+		if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_HASH)) {
+			log_trace(LOG_COMP_HASH, "hashpackvisit_v7 WRITE list name='%.*s' path=%s",
+			          bsname[0], bsname + 1,
+			          (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>");
+			unsigned char dumpbuf[sizeof (rec)];
+			memcpy(dumpbuf, &rec, sizeof(rec));
+			log_hex_dump(LOG_COMP_HASH, LOG_LEVEL_TRACE, dumpbuf, sizeof(rec), "rec bytes");
+		}
 	}
 #endif
 
@@ -3923,13 +3923,10 @@ boolean hashunpacktable_internal (const db_context *ctx, Handle hpackedtable, bo
 	        hstrings ? gethandlesize (hstrings) : 0L);
 	if (hrecords && gethandlesize (hrecords) >= (long) sizeof (tydisktablerecord)) {
 		unsigned char *recbytes = (unsigned char *) *hrecords;
-		fprintf(stderr, "[headless] hashunpacktable records bytes:");
 		long dump = gethandlesize (hrecords);
 		if (dump > 32)
 			dump = 32;
-		for (long i = 0; i < dump; ++i)
-			fprintf(stderr, " %02x", recbytes[i]);
-		fprintf(stderr, "\n");
+		log_hex_dump(LOG_COMP_HASH, LOG_LEVEL_TRACE, recbytes, dump, "hashunpacktable records bytes");
 	}
 #endif
 	
@@ -4136,11 +4133,12 @@ boolean hashunpacktable_internal (const db_context *ctx, Handle hpackedtable, bo
 					long avail = hsize - name_index - 1;
 					if ((long) slen > avail)
 						slen = (unsigned int) (avail < 0 ? 0 : avail);
-					fprintf(stderr, "[headless] hashunpacktable name bytes ix=%d len=%u: ",
-					        (int) name_index, slen);
-					for (unsigned int i = 0; i < slen && i < 32; ++i)
-						fprintf(stderr, "%02x ", s[1 + i]);
-					fprintf(stderr, "\n");
+					if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_HASH)) {
+						char label[128];
+						snprintf(label, sizeof(label), "hashunpacktable name bytes ix=%d len=%u", (int) name_index, slen);
+						size_t dump = (slen < 32) ? slen : 32;
+						log_hex_dump(LOG_COMP_HASH, LOG_LEVEL_TRACE, (unsigned char *)(s + 1), dump, label);
+					}
 				}
 			}
 #endif
@@ -4402,10 +4400,7 @@ boolean hashunpacktable_internal (const db_context *ctx, Handle hpackedtable, bo
                         if (dump > 32) dump = 32;
                         if (dump > 0) {
                             unsigned char *bytes = (unsigned char *) *hpacked;
-                            fprintf(stderr, "[headless] list packed bytes:");
-                            for (size_t i = 0; i < dump; ++i)
-                                fprintf(stderr, " %02x", bytes[i]);
-                            fprintf(stderr, "\n");
+                            log_hex_dump(LOG_COMP_HASH, LOG_LEVEL_TRACE, bytes, dump, "list packed bytes");
                         }
                     }
 
