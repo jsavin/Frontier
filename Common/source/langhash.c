@@ -3129,14 +3129,14 @@ static boolean hashpackvisit_legacy (bigstring bsname, hdlhashnode hnode, tyvalu
 				if (!hashpackscalar (&lpi->s2, hnode, &data_index, lpi->use_64bit)) {
 #if defined(FRONTIER_HEADLESS)
 					tyvaluerecord *node_val = &(**hnode).val;
-log_trace(LOG_COMP_HASH,
-         "hashpackscalar diagnostics name='%.*s' valuetype=%d fldiskval=%d "
-         "fldatabasesaveas=%d flexternalmemorypack=%d disk=0x%llx handle=%p",
-         (int)bsname[0], (char *)&bsname[1],
-         (int)(*node_val).valuetype, (int)(*node_val).fldiskval,
-         (int)fldatabasesaveas, (int)flexternalmemorypack,
-         (unsigned long long)(*node_val).data.diskvalue,
-         (void *)(*node_val).data.binaryvalue);
+					log_trace(LOG_COMP_HASH,
+					         "hashpackscalar diagnostics name='%.*s' valuetype=%d fldiskval=%d "
+					         "fldatabasesaveas=%d flexternalmemorypack=%d disk=0x%llx handle=%p",
+					         (int)bsname[0], (char *)&bsname[1],
+					         (int)(*node_val).valuetype, (int)(*node_val).fldiskval,
+					         (int)fldatabasesaveas, (int)flexternalmemorypack,
+					         (unsigned long long)(*node_val).data.diskvalue,
+					         (void *)(*node_val).data.binaryvalue);
 #endif
 					HASH_PACK_FAIL("hashpackscalar");
 				}
@@ -3201,13 +3201,13 @@ log_trace(LOG_COMP_HASH,
                 fldatabasesaveas && (db_format_adapter_force_repack() || db_format_adapter_is_active());
 #if defined(FRONTIER_HEADLESS)
             if (equalstrings(bsname, (ptrstring) "\x03" "now") || equalstrings(bsname, (ptrstring) "\x08" "idleTime")) {
-log_trace(LOG_COMP_HASH,
-         "hashpackexternal inspect name='%.*s' flinmemory=%d skip_free_check=%d "
-         "adr=0x%llx old=0x%llx",
-         (int) bsname[0], (char *) &bsname[1],
-         (int) (**hv).flinmemory, (int) skip_free_check,
-         (unsigned long long) (**hv).variabledata,
-         (unsigned long long) (**hv).oldaddress);
+                log_trace(LOG_COMP_HASH,
+                         "hashpackexternal inspect name='%.*s' flinmemory=%d skip_free_check=%d "
+                         "adr=0x%llx old=0x%llx",
+                         (int) bsname[0], (char *) &bsname[1],
+                         (int) (**hv).flinmemory, (int) skip_free_check,
+                         (unsigned long long) (**hv).variabledata,
+                         (unsigned long long) (**hv).oldaddress);
             }
 #endif
 
@@ -3227,9 +3227,9 @@ log_trace(LOG_COMP_HASH,
                 if (!okref) {
                     (**hnode).fldontsave = true; /* skip this node when packing */
 #if defined(FRONTIER_HEADLESS)
-log_trace(LOG_COMP_HASH,
-         "hashpackexternal dropping name='%.*s' adr=0x%llx (free/unreadable)",
-         (int) bsname[0], (char *) &bsname[1], (unsigned long long) adr);
+                    log_trace(LOG_COMP_HASH,
+                             "hashpackexternal dropping name='%.*s' adr=0x%llx (free/unreadable)",
+                             (int) bsname[0], (char *) &bsname[1], (unsigned long long) adr);
 #endif
                     val.fldiskval = false;
                     (**hv).flinmemory = true;
@@ -3393,27 +3393,27 @@ static boolean hashpackvisit_v7 (bigstring bsname, hdlhashnode hnode, tyvaluerec
 	if (val.valuetype == listvaluetype) {
 		const Handle hlist = (Handle) val.data.listvalue;
 		const long hsize = (hlist == nil) ? -1L : gethandlesize(hlist);
-log_trace(LOG_COMP_HASH,
-         "hashpackvisit_v7 list encounter path=%s name='%.*s' hlist=%p hdata=%p "
-         "valid=%d size=%ld fldiskval=%d",
-         (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
-         bsname[0], bsname + 1, (void *) hlist, hlist == nil ? NULL : *hlist,
-         (hlist == nil) ? 0 : validhandle(hlist), hsize, val.fldiskval);
+		log_trace(LOG_COMP_HASH,
+		         "hashpackvisit_v7 list encounter path=%s name='%.*s' hlist=%p hdata=%p "
+		         "valid=%d size=%ld fldiskval=%d",
+		         (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
+		         bsname[0], bsname + 1, (void *) hlist, hlist == nil ? NULL : *hlist,
+		         (hlist == nil) ? 0 : validhandle(hlist), hsize, val.fldiskval);
 	}
 #endif
 
 #if defined(FRONTIER_HEADLESS)
-log_trace(LOG_COMP_HASH,
-         "hashpackvisit_v7 path=%s name='%.*s' valuetype=%d",
-         (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
-         bsname[0], bsname + 1, val.valuetype);
+	log_trace(LOG_COMP_HASH,
+	         "hashpackvisit_v7 path=%s name='%.*s' valuetype=%d",
+	         (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
+	         bsname[0], bsname + 1, val.valuetype);
 	if (val.valuetype == listvaluetype) {
 		const Handle hlist = (Handle) val.data.listvalue;
 		const long hsize = (hlist == nil) ? -1L : gethandlesize(hlist);
-log_trace(LOG_COMP_HASH,
-         "list debug hlist=%p hdata=%p valid=%d size=%ld fldiskval=%d",
-         (void *) hlist, hlist == nil ? NULL : *hlist,
-         (hlist == nil) ? 0 : validhandle(hlist), hsize, val.fldiskval);
+		log_trace(LOG_COMP_HASH,
+		         "list debug hlist=%p hdata=%p valid=%d size=%ld fldiskval=%d",
+		         (void *) hlist, hlist == nil ? NULL : *hlist,
+		         (hlist == nil) ? 0 : validhandle(hlist), hsize, val.fldiskval);
 	}
 #endif
 
