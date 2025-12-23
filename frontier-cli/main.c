@@ -21,6 +21,7 @@
 
 // Frontier headers
 #include "../Common/headers/frontier.h"
+#include "../Common/headers/logging.h"
 #include "../Common/headers/lang.h"
 #include "../Common/headers/memory.h"
 #include "../Common/headers/strings.h"
@@ -81,6 +82,9 @@ static void log_system_subtable_status(const char *phase,
                                        hdlhashtable objectmodel);
 
 int main(int argc, char* argv[]) {
+    // Initialize logging system (reads FRONTIER_LOG_LEVEL, FRONTIER_LOG_COMPONENT, FRONTIER_LOG_FORMAT env vars)
+    log_init();
+
     // Parse command line arguments
     if (!cli_parse_arguments(argc, argv, &g_cli_options)) {
         fprintf(stderr, "Error: Invalid command line arguments\n");

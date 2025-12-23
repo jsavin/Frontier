@@ -57,6 +57,7 @@ CLI_SOURCES = \
 
 # Core runtime sources needed for script execution (aligned with tests/runtime_tests)
 RUNTIME_SOURCES = \
+    ../Common/source/logging.c \
     ../Common/source/lang.c \
     ../Common/source/langcallbacks.c \
     ../Common/source/langcrypt.c \

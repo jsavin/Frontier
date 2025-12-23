@@ -107,6 +107,7 @@ MIGRATION_SOURCES = \
     components/test_migration_portable.c
 
 LANG_RUNTIME_SOURCES = \
+    ../Common/source/logging.c \
     ../Common/source/lang.c \
     ../Common/source/langcallbacks.c \
     ../Common/source/langcrypt.c \
@@ -284,6 +285,9 @@ file_verb_tests: file_verb_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/find
 handle_tests: handle_tests.c ../Common/source/portable_handles.c ../portable/classic_handle.c
 	$(CC) $(CFLAGS) -DFRONTIER_USE_PORTABLE_HANDLES -I../Common/headers -I../Common/SystemHeaders -I../portable \
 		handle_tests.c ../Common/source/portable_handles.c ../portable/classic_handle.c -o $@ $(LINK_LIBS)
+
+test_logging: test_logging.c ../Common/source/logging.c
+	$(CC) $(CFLAGS) -I../Common/headers -I../Common/SystemHeaders test_logging.c ../Common/source/logging.c -o $@
 
 cli_runtime_tests: cli_runtime_tests.c $(CLI_BIN)
 	$(CC) $(CFLAGS) -I../Common/headers -I../Common/SystemHeaders cli_runtime_tests.c -o $@ $(LINK_LIBS)
