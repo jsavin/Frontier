@@ -42,6 +42,7 @@
 #include "tablestructure.h"
 #include "db_format.h" /* 2025-11-23 Codex: BE helpers for tree packing */
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
+#include "logging.h"
 
 #pragma pack(2)
 typedef struct tydisktreenode {
@@ -342,8 +343,7 @@ boolean langdisposetree (hdltreenode htree) {
 	dispose_depth++;
 	if (dispose_depth > kMaxDisposeDepth) {
 #if defined(FRONTIER_HEADLESS)
-		fprintf(stderr,
-		        "[headless] langdisposetree depth overflow h=0x%p link=0x%p param1=0x%p ctparams=%d\n",
+		log_error(LOG_COMP_PARSE, "langdisposetree depth overflow h=0x%p link=0x%p param1=0x%p ctparams=%d",
 		        (void *) h,
 		        (void *) ((**h).link),
 		        (void *) ((**h).param1),

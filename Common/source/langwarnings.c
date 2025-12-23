@@ -7,6 +7,7 @@
 #include "strings.h"
 #include "langwarnings.h"
 #include "langinternal.h"
+#include "logging.h"
 
 static void format_timestamp(char *out, size_t outlen) {
     time_t now = time(NULL);
@@ -44,7 +45,7 @@ void langwarning_emit(const char *category, const char *message, bool raise_scri
 
 #if defined(FRONTIER_HEADLESS)
     (void) raise_script_error_in_ui;
-    fprintf(stderr, "%s\n", line);
+    log_warn(LOG_COMP_PARSE, "%s", line);
 #else
     log_to_file(line);
     if (raise_script_error_in_ui) {
