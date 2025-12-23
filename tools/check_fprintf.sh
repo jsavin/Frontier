@@ -17,11 +17,12 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-# Files exempt from this check (legacy compatibility)
-# Add patterns here if needed for legitimate use cases
+# Files exempt from this check (legitimate use cases)
+# Add patterns here if needed for special circumstances
 EXEMPT_PATTERNS=(
     "test_"           # Test files may have fprintf for diagnostics
     "legacy"          # Legacy support code
+    "logging.c"       # Logging system itself uses fprintf for bootstrap/meta-logging
 )
 
 # Color output
