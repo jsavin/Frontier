@@ -303,3 +303,33 @@ void log_write(log_level_t level, log_component_t component,
         }
     }
 }
+
+void log_hex_dump(log_component_t component, log_level_t level,
+                  const unsigned char *data, size_t length, const char *label) {
+    if (!log_is_enabled(level, component) || !data || length == 0) {
+        return;
+    }
+
+    // Format hex dump with label and hex values
+    char buf[512];  // Enough for ~32 bytes of hex (2 chars per byte + spaces)
+    size_t pos = 0;
+
+    // Add label
+    if (label) {
+        pos = snprintf(buf, sizeof(buf), "%s:", label);
+    }
+
+    // Add hex bytes (limit to 32 bytes per line for readability)
+    size_t limit = (length > 32) ? 32 : length;
+    for (size_t i = 0; i < limit && pos < sizeof(buf) - 3; i++) {
+        pos += snprintf(buf + pos, sizeof(buf) - pos, " %02x", data[i]);
+    }
+
+    // Indicate if truncated
+    if (length > limit && pos < sizeof(buf) - 4) {
+        pos += snprintf(buf + pos, sizeof(buf) - pos, " ...");
+    }
+
+    // Log the formatted hex dump
+    log_write(level, component, __FILE__, __LINE__, "%s", buf);
+}

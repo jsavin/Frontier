@@ -3,6 +3,7 @@
 
 #include <stdarg.h>
 #include <stdbool.h>
+#include <stddef.h>  /* for size_t */
 
 /*
  * Logging Infrastructure
@@ -157,5 +158,22 @@ void log_write(log_level_t level, log_component_t component,
  */
 #define log_enabled(level, component) \
     log_is_enabled(level, component)
+
+// ============================================================================
+// Utility Functions
+// ============================================================================
+
+/**
+ * Log a hex dump of binary data.
+ *
+ * Format: label: 00 01 02 03 04 05 ... (up to 32 bytes per line)
+ * Useful for debugging binary structures and serialized data.
+ *
+ * Example:
+ *   log_hex_dump(LOG_COMP_HASH, LOG_LEVEL_TRACE, buffer, sizeof(buffer), "record bytes");
+ *   Output: [hash-TRACE] file.c:42: record bytes: 00 01 02 03 04 05 ...
+ */
+void log_hex_dump(log_component_t component, log_level_t level,
+                  const unsigned char *data, size_t length, const char *label);
 
 #endif /* logging_h */
