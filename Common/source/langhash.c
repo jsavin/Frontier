@@ -2787,12 +2787,8 @@ static boolean hashpackexternal (handlestream *s, hdlexternalvariable h, int32_t
 	if ((*s).pos > INT32_MAX)
 		return (false);
 
-	/* Phase 1: Verify context is present (logs warning if missing but continues with global mode fallback) */
-	#if defined(FRONTIER_HEADLESS)
-	if (ctx == NULL) {
-		log_warn(LOG_COMP_HASH, "hashpackexternal: NULL context - will use global mode stack (legacy path acceptable)");
-	}
-	#endif
+	/* Phase 1: Context should always be initialized by hashpacktable_internal */
+	assert(ctx != NULL);  /* Defensive check: context is initialized in hashpacktable_internal or db_context_init */
 
 	*ix = (int32_t) (*s).pos; /*where the text item is stored*/
 
@@ -3722,11 +3718,14 @@ boolean hashpacktable_internal (const db_context *ctx, hdlhashtable htable, bool
 	typackinforecord packrec;
 	boolean use_64bit;
 	Handle h1, h2;
+	db_context working_context;
 
-	/* Check database format mode: use context if provided, else global state */
+	/* Phase 1: Initialize working context (never NULL for child operations) */
 	if (ctx != NULL) {
+		working_context = *ctx;
 		use_64bit = ctx->mode.use_64bit_format;
 	} else {
+		db_context_init(&working_context);
 		use_64bit = db_format_mode_current().use_64bit_format;
 	}
 
@@ -3763,7 +3762,7 @@ boolean hashpacktable_internal (const db_context *ctx, hdlhashtable htable, bool
 		clearbytes (&packrec, sizeof (packrec));
 		packrec.flmustsave = *flmustsave;
 		packrec.use_64bit = true;
-		packrec.context = ctx;  /* Phase 1: Thread context through pack operations */
+		packrec.context = &working_context;  /* Phase 1: Always initialized, never NULL */
 		openhandlestream (nil, &packrec.s1);
 		openhandlestream (nil, &packrec.s2);
 
@@ -3792,7 +3791,7 @@ boolean hashpacktable_internal (const db_context *ctx, hdlhashtable htable, bool
 		clearbytes (&packrec, sizeof (packrec));
 		packrec.flmustsave = *flmustsave;
 		packrec.use_64bit = false;
-		packrec.context = ctx;  /* Phase 1: Thread context through pack operations */
+		packrec.context = &working_context;  /* Phase 1: Always initialized, never NULL */
 		openhandlestream (nil, &packrec.s1);
 		openhandlestream (nil, &packrec.s2);
 
