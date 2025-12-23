@@ -47,6 +47,7 @@
 #include "BASE64.H" //for xmlvaltostring
 #include "langxml.h" /*7.0b21 PBS*/
 #include "process.h"
+#include "logging.h"
 
 #define stringerrorlist 264
 #define notimplementederror 1
@@ -1867,15 +1868,14 @@ boolean xmlcompile (Handle htext, xmladdress *xmladr) {
 	long tickcount;
 	
 	openhandlestream (htext, &source);
-#ifdef FRONTIER_HEADLESS
-	fprintf(stderr, "[xml] compile: start\n");
-#endif
-	
+
+	log_trace(LOG_COMP_PARSE, "compile: start");
+
     #ifdef FRONTIER_HEADLESS
     /* Headless: avoid external table processor dependency; use root table directly */
     nomadtable = (*xmladr).ht;
     (**nomadtable).parenthashtable = (*xmladr).ht; /* satisfy downstream assert */
-    fprintf(stderr, "[xml] compile: using root table as nomad\n");
+    log_trace(LOG_COMP_PARSE, "compile: using root table as nomad");
     #else
     if (!langassignnewtablevalue ((*xmladr).ht, (*xmladr).bs, &nomadtable)) {
         return (false);
@@ -1883,23 +1883,18 @@ boolean xmlcompile (Handle htext, xmladdress *xmladr) {
     #endif
 	
 	assert ((**nomadtable).parenthashtable == (*xmladr).ht);
-	
+
 	if (!newxmltoken (&token) || !newxmltoken (&lookaheadtoken) || !newxmltoken (&closetoken)) {
-#ifdef FRONTIER_HEADLESS
-	fprintf(stderr, "[xml] compile: newxmltoken failed\n");
-#endif
+		log_error(LOG_COMP_PARSE, "compile: newxmltoken failed");
 		goto exit;
 	}
-	
+
 	if (!newhashtable (&namespaces)) {
-#ifdef FRONTIER_HEADLESS
-	fprintf(stderr, "[xml] compile: newhashtable(namespaces) failed\n");
-#endif
+		log_error(LOG_COMP_PARSE, "compile: newhashtable(namespaces) failed");
 		goto exit;
 	}
-#ifdef FRONTIER_HEADLESS
-	fprintf(stderr, "[xml] compile: setup ok, parsing tokens...\n");
-#endif
+
+	log_trace(LOG_COMP_PARSE, "compile: setup ok, parsing tokens...");
 	
 	while (true) {
 
