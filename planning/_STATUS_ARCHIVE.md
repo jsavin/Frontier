@@ -80,6 +80,21 @@ Status
 
 ---
 
+## 2025-12-22 Archive (pre-PR #137 merge snapshot)
+
+Archived the December 8–22 `_CURRENT_STATUS.md` (migration double-free fix, cleanup helper extraction, test accessor implementation). See git history on branch `fix/migration-double-free` for full detail; highlights:
+- Fixed critical segmentation fault caused by double-free in `cleanup_migration_database()`.
+- Root cause: `dbendsaveas_context()` internally calls `dbdispose()`, but cleanup code unconditionally called it again.
+- Solution: Set `databasedata = nil` immediately after `dbendsaveas*()` calls to prevent double-free.
+- Removed context guards from `dbzeroreleasestack()` (guard patterns during disposal cause dangling pointers).
+- Added defensive `validhandle()` check before dereferencing in cleanup.
+- Extracted `cleanup_migration_database()` helper function to improve testability and document three distinct cleanup scenarios.
+- Added cleanup state validation test (`save_migration_tests.c` now validates `fldatabasesaveas` flag properly reset).
+- Created test accessor function `db_test_is_saveas_active()` for clean test isolation.
+- All commits include planning doc references per CLAUDE.md guidelines.
+- Follow-up issues filed: #138 (P1: make disposal explicit), #139 (P2: cleanup path duplication), #140 (P1: audit context guards), #141 (P2: final cleanup restructuring), #142 (P2: error path test coverage), #143 (P2: cleanup_migration_database error scenarios).
+- **PR #137** merged with 7 commits addressing comprehensive code review feedback across multiple rounds.
+
 ## 2025-12-13 Archive (pre-PR #75 merge snapshot)
 
 Archived the December 7–9 `_CURRENT_STATUS.md` (hash name corruption chase, TEC converter fix, headless verb additions). See git history on branch `fix/hash-unpack-hardening` for full detail; highlights:
