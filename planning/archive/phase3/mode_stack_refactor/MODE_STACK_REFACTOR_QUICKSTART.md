@@ -1,6 +1,7 @@
 # Mode Stack Refactor - Quick Start Guide
 
-**Last Updated**: 2025-12-19
+**Last Updated**: 2025-12-23
+**Detailed Phase 1 Plan**: See `planning/phase3/MODE_STACK_REFACTOR_PHASE1_DETAILED_v2.md` (production-ready for Sonnet)
 **Full Plan**: See `MODE_STACK_REFACTOR_PLAN.md`
 
 ## TL;DR

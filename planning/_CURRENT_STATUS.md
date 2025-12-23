@@ -3,11 +3,12 @@
 Status
 - State: In Progress
 - Phase: Carbon Migration / Runtime Modernization + Verb Porting
-- Last Updated: 2025-12-22
+- Last Updated: 2025-12-23
 - Owner: Codex / Claude
 - Notes: Active snapshot only; older entries moved to `_STATUS_ARCHIVE.md`.
 
 Recent Updates
+- **2025-12-23 (Phase 1 Mode Stack Refactor Plan - Production Ready)**: Refreshed and enhanced the Phase 1 detailed plan for the Mode Stack Refactor based on comprehensive system-architect feedback. Plan is now production-ready for autonomous execution by Claude Sonnet. Critical improvements: added infrastructure audit step (Step 0.1), explicit coding conventions, granular substeps for helper function conversion, byte-level validation (table headers), Issue #123 regression tests, pre-commit validation, and emergency rollback procedures. Plan explicitly addresses root cause of migration segfault (writing legacy-format v4 headers into v7 database due to mode stack inheritance). Each step 30min-3hrs, clear success/failure criteria, determinism testing at every step. Reference: `planning/phase3/MODE_STACK_REFACTOR_PHASE1_DETAILED_v2.md`
 - **2025-12-23 (Logging Infrastructure COMPLETE - 100% Migration)**: Completed all 6 phases of logging infrastructure migration! Summary: migrated 377 fprintf(stderr) statements to structured logging across all user-facing code. Phases 3.2-3.6 completed:
   - PR #155: Phase 3.2 (13 statements) - trivial files with single/few logs
   - PR #157: Phase 3.3 (18 statements) - simple multi-statement files
