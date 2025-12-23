@@ -1230,6 +1230,148 @@ Response:
 
 ---
 
+## Phase 2 Migration Strategy & Roadmap
+
+### Status
+
+**Phase 1**: ✅ Complete (PR #144)
+- Logging infrastructure implemented (logging.h, logging.c, 9 unit tests)
+- All components and log levels defined
+- log_hex_dump() utility function created
+
+**Phase 2**: 🔄 In Progress
+- PR #146: Initial langhash.c migration (20-30 fprintf migrated)
+- Remaining: 43 in langhash.c + 47 in db.c + 46 in db_format.c + others
+
+### Phase 2 Approach: Pattern-Based Hybrid Strategy
+
+After analysis, the remaining 136 fprintf statements in langhash.c/db.c/db_format.c require targeted solutions per pattern type rather than generic regex.
+
+#### **Pattern 1: Hex Dumps (Streaming fprintf)**
+
+**Count**: ~8-12 instances across langhash.c, db.c, db_format.c
+
+**Solution**: Refactor to use existing `log_hex_dump()` with buffer approach
+
+**Before**:
+```c
+fprintf(stderr, "[headless] raw[%ld] bytes:", ix);
+for (long i = 0; i < dump; ++i)
+    fprintf(stderr, " %02x", base[lix + i]);
+fprintf(stderr, "\n");
+```
+
+**After**:
+```c
+if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_HASH)) {
+    char label[128];
+    snprintf(label, sizeof(label), "raw[%ld] bytes", ix);
+    log_hex_dump(LOG_COMP_HASH, LOG_LEVEL_TRACE, base + lix, dump, label);
+}
+```
+
+**Benefits**:
+- Leverages existing log_hex_dump() infrastructure
+- Conditional guard prevents expensive snprintf when disabled
+- Cleaner, more readable code
+
+#### **Pattern 2: Multi-line Format Strings (Clean Split)**
+
+**Count**: ~20-25 instances
+
+**Solution**: Line-join refactor + regex migration
+
+**Before**:
+```c
+fprintf(stderr, "[headless] hashpackvisit_v7 path=%s name='%.*s' valuetype=%d\n",
+        path, bsname[0], bsname + 1, val.valuetype);
+```
+
+**After**:
+```c
+log_trace(LOG_COMP_HASH, "hashpackvisit_v7 path=%s name='%.*s' valuetype=%d",
+          path, bsname[0], bsname + 1, val.valuetype);
+```
+
+**Process**:
+1. Join multi-line fprintf to single line (remove newlines/indentation)
+2. Apply regex migration (reuses Phase 1 patterns)
+3. Test
+
+#### **Pattern 3: Complex Multi-line with Conditionals**
+
+**Count**: ~10-15 instances
+
+**Solution**: Manual migration per instance
+
+**Process**:
+1. Carefully migrate complex expressions and conditionals
+2. Use manual judgment for code safety
+3. Create helper macros only if pattern repeats 10+ times
+
+### Phase 2 Implementation Schedule
+
+#### **Phase 2A: Infrastructure Setup** (30 min) - ✅ COMPLETED
+1. ✅ Create `tools/check_fprintf.sh` enforcement script
+2. ✅ Create `docs/LOGGING_STANDARDS.md` with guidelines
+3. ✅ Update this plan with Phase 2 strategy
+4. ⏳ Update CLAUDE.md with enforcement rules
+5. ⏳ Commit Phase 2A work
+
+#### **Phase 2B: Hex Dump Migration** (1-2 hours) - ⏳ PENDING
+1. Find hex dump patterns: `grep -n "for.*fprintf.*%02x" langhash.c db.c db_format.c`
+2. Refactor each to use log_hex_dump() with buffer
+3. Test with `./tools/run_headless_tests.sh`
+4. Commit changes
+
+**Target**: Zero streaming fprintf hex dumps
+
+#### **Phase 2C: Multi-line Simple Migration** (2-3 hours) - ⏳ PENDING
+1. Identify multi-line fprintf with simple args
+2. Line-join refactor (Vim: select lines → `:%s/\n\s\+/ /g`)
+3. Apply Phase 1 regex migration
+4. Test with `./tools/run_headless_tests.sh`
+5. Commit changes
+
+**Target**: Zero multi-line fprintf in langhash.c
+
+#### **Phase 2D: Complex Manual Migration** (3-4 hours) - ⏳ DEFERRED
+- Manual migration of remaining complex cases
+- Requires Sonnet model for careful code analysis
+- To be scheduled after Phase 2C completion
+
+### Expected Results
+
+| File | Before | After | Mechanism |
+|------|--------|-------|-----------|
+| langhash.c | 58 fprintf | 0 fprintf | Phases 2B-2C |
+| db.c | 47 fprintf | 0 fprintf | Phase 2D (Sonnet) |
+| db_format.c | 46 fprintf | 0 fprintf | Phase 2D (Sonnet) |
+| Others | 153 fprintf | TBD | Future phases |
+
+### Test Strategy
+
+After each phase:
+1. Build: `make -C frontier-cli clean && make -C frontier-cli`
+2. Test: `./tools/run_headless_tests.sh`
+3. Verify: `./tools/check_fprintf.sh` (should show same violations, just moved)
+
+### Documentation
+
+- ✅ `docs/LOGGING_STANDARDS.md` - How to use logging macros
+- ✅ `Common/headers/logging.h` - API reference
+- ⏳ `CLAUDE.md` - Updated with enforcement rules
+- ✅ This plan document
+
+### Prevention of Future fprintf
+
+1. **Automated Check**: `tools/check_fprintf.sh` detects new fprintf(stderr)
+2. **CI Integration**: Fails build if fprintf detected (with exemption list for legit uses)
+3. **Documentation**: `docs/LOGGING_STANDARDS.md` explains why and how
+4. **Code Review**: Enforce "use log_* macros, not fprintf"
+
+---
+
 ## Alternatives Considered (Not Recommended)
 
 ### Alternative 1: Keep fprintf + Remove Ifdefs
