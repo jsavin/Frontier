@@ -28,10 +28,6 @@
 #include "frontier.h"
 #include "standard.h"
 
-#if defined(FRONTIER_HEADLESS)
-#include <stdio.h>
-#endif
-
 #include "file.h"
 #include "memory.h"
 #include "strings.h"
@@ -44,6 +40,7 @@
 #include "tableverbs.h"
 #include "tablestructure.h"
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
+#include "logging.h"
 // 2025-11-28 Codex: Apply db_context wrappers when loading HASH resources.
 
 
@@ -416,10 +413,8 @@ boolean tableloadsystemtable (dbaddress adr, Handle *hvariable, hdlhashtable *ht
 	register hdlhashtable ht;
 	hdlhashtable hsubtable;
 
-#if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] tableloadsystemtable adr=0x%llx flcreate=%d\n",
-	        (unsigned long long) adr, (int) flcreate);
-#endif
+	log_debug(LOG_COMP_TABLE, "tableloadsystemtable adr=0x%llx flcreate=%d",
+	          (unsigned long long) adr, (int) flcreate);
 
 	assert (sizeof (tyexternalvariable) == sizeof (tytablevariable));
 	
@@ -491,17 +486,15 @@ boolean tablesavesystemtable (Handle hvariable, dbaddress *adr) {
 		langhookerrors ();
 		
 	tablepreflightsubsdirtyflag (hv); //6.2a15 AR
-	
+
 	langtraperrors (bspackerror, &savecallback, &saverefcon);
 
-#if defined(FRONTIER_HEADLESS)
-    fprintf(stderr, "[headless] tablesavesystemtable enter mode64=%d\n", db_format_mode_current().use_64bit_format ? 1 : 0);
-#endif
+	log_debug(LOG_COMP_TABLE, "tablesavesystemtable enter mode64=%d",
+	          db_format_mode_current().use_64bit_format ? 1 : 0);
+
 	fl = tableverbpack (hv, &htmp, &fldummy); /*packs table, saves to db if neccessary, pushes address on htmp*/
 
-#if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] tableverbpack returned %s\n", fl ? "true" : "false");
-#endif
+	log_debug(LOG_COMP_TABLE, "tableverbpack returned %s", fl ? "true" : "false");
     if (fl && db_format_adapter_force_repack()) {
         /* Ensure legacy-derived addresses are normalized to BE64 for view storage.
          * Call the non-context version directly so the mode persists. */
@@ -528,11 +521,8 @@ boolean tablesavesystemtable (Handle hvariable, dbaddress *adr) {
 		long ix = hsize - adrsize;
 		unsigned char adrbytes[sizeof(dbaddress)];
 
-#if defined(FRONTIER_HEADLESS)
-        fprintf(stderr,
-                "[headless] tablesavesystemtable trailer hsize=%ld adrsize=%ld ix=%ld\n",
-                hsize, adrsize, ix);
-#endif
+		log_debug(LOG_COMP_TABLE, "tablesavesystemtable trailer hsize=%ld adrsize=%ld ix=%ld",
+		          hsize, adrsize, ix);
 
 		if (ix < 0 || adrsize > (long) sizeof(adrbytes) || hsize < adrsize || !loadfromhandle(htmp, &ix, adrsize, adrbytes)) {
 			fl = false;
@@ -544,13 +534,10 @@ boolean tablesavesystemtable (Handle hvariable, dbaddress *adr) {
 			sethandlesize(htmp, hsize - adrsize); /* drop the address trailer */
 		}
 
-#if defined(FRONTIER_HEADLESS)
-        fprintf(stderr,
-                "[headless] tablesavesystemtable adr=%llx adrsize=%ld mode64=%d\n",
-                fl ? (unsigned long long) *adr : 0ULL,
-                adrsize,
-                mode64 ? 1 : 0);
-#endif
+		log_debug(LOG_COMP_TABLE, "tablesavesystemtable adr=%llx adrsize=%ld mode64=%d",
+		          fl ? (unsigned long long) *adr : 0ULL,
+		          adrsize,
+		          mode64 ? 1 : 0);
 	}
 
 #if defined(FRONTIER_HEADLESS)
@@ -572,16 +559,14 @@ boolean tablesavesystemtable (Handle hvariable, dbaddress *adr) {
 		
 		else {
 			bigstring bs;
-			
+
 			getstringlist (langerrorlist, tablesavingerror, bs);
-			
+
 			parsedialogstring (bs, bspackerror, nil, nil, nil, bs);
-			
-#if defined(FRONTIER_HEADLESS)
+
 			char cmsg[256];
 			copyptocstring (bs, cmsg);
-			fprintf (stderr, "[headless] tablesavesystemtable failed: %s\n", cmsg);
-#endif
+			log_error(LOG_COMP_TABLE, "tablesavesystemtable failed: %s", cmsg);
 
 			shellerrormessage (bs);
 			}
@@ -661,10 +646,9 @@ boolean cleartablestructureglobals (void) {
 	/*
 	dmb 9/24/90: clear globals; root table is about to be disposed
 	*/
-#if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] cleartablestructureglobals\n");
-#endif
-	
+
+	log_debug(LOG_COMP_TABLE, "cleartablestructureglobals");
+
 	rootvariable = nil;
 	
 	roottable = nil;
