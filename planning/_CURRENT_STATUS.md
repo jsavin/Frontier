@@ -26,10 +26,44 @@ Open Items (active)
   - #78: Cross-arch BE64 serialization verification (golden blobs on x86_64/arm64).
 - Continue Phase 3 verb porting per processor audits; prioritize quick wins (clock/date/dialog stubs to reduce CLI gaps).
 
-Next Steps
-- **PRIORITY 1**: Begin mode stack refactor Phase 1 (core serialization, 2-3 days) - see `planning/phase3/MODE_STACK_REFACTOR_QUICKSTART.md` for step-by-step guide. Create branch `refactor/explicit-context-no-mode-stack` and start with context initialization API in `db_format.c`, then convert `langhash.c` and `tablepack.c` to use explicit context (~25 call sites).
-- Merge PR #124 after bot review and address any issues found.
-- Continue mode stack refactor through Phases 2-5 (8-13 days total) to permanently eliminate architectural debt.
-- Address CLI verb gaps (clock/date) and re-run `cli_runtime_tests` expecting clean exit codes (lower priority, after refactor).
-- Add targeted hash unpack corruption tests (issue #76) once helper macros land or in parallel (lower priority).
-- Plan a cross-arch sanity check for v7 hash/table records (issue #78) after helper refactor (#77) (lower priority).
+Next Steps (Recommended Priority Order)
+
+**Immediate** (Unblock architecture & testing):
+1. **Phase 1 Mode Stack Refactor Prerequisites**: Complete Issues #135 & #136
+   - Issue #135: Refactor outline (op) management from push/pop to deterministic context (~3-5 days)
+   - Issue #136: Audit external object processing for push/pop anti-patterns (~1-2 days)
+   - Reason: Blocks clean mode stack refactor Phase 1; prevents same push/pop anti-pattern bugs
+
+2. **PR #137 Follow-Ups**: Complete Issues #138 & #140
+   - Issue #138: Make dbendsaveas disposal explicit (~4-6 hours)
+   - Issue #140: Audit db_context_guard usage in disposal paths (~2-4 hours)
+   - Reason: Code quality, prevents future double-free regressions
+
+**Short-term** (Code cleanup & quick wins):
+3. **Phase 1 Code Cleanup Completion**: ~3 blocks remaining
+   - Remove `oldMACVERSION` blocks (3 in langhash.c)
+   - Remove commented `WIN95VERSION` blocks (already mostly cleaned)
+   - ~50 lines total; low-risk cleanup
+
+4. **Issue #121**: Implement 28 error stubs for remaining verbs (~3-4 hours)
+   - Quick win; unblocks CLI testing
+   - Can be done in parallel with other work
+
+**Medium-term** (Testing & infrastructure):
+5. **Issue #77**: Add BE pack/unpack helper macros (~4-6 hours)
+   - Foundation for #78 and #79
+   - Reduces manual memcpy repetition
+
+6. **Issue #78**: Cross-arch BE64 serialization verification (~6-8 hours, depends on #77)
+   - Ensures v7 database format portability
+
+7. **Issue #79**: Extended type bounds tests for hash unpack (~6-8 hours)
+   - Comprehensive edge case coverage
+
+**Later** (Major refactors - requires decisions):
+- Begin full mode stack refactor Phase 1 (after prerequisites complete; ~2-3 days)
+  - Reference: `planning/phase3/MODE_STACK_REFACTOR_QUICKSTART.md`
+  - Branch: `refactor/explicit-context-no-mode-stack`
+- Continue mode stack Phases 2-5 (8-13 days total)
+- Address remaining architectural P0s (#86, #87, #85, #88) requiring design decisions
+- Deferred: PIKE removal implementation (approved; scheduled for Phase 4, Week 13)

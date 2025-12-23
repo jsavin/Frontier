@@ -212,18 +212,25 @@ These block deployment and major system decisions. All require design/planning b
 ### Code Cleanup Follow-Ups (IFDEF Cleanup - Approved Strategy)
 **Reference**: `planning/phase3/code-cleanup/IFDEF_CLEANUP_STRATEGY.md` (approved)
 
-**Phase 1: Quick Wins (LOW RISK)** - Ready to start
-- [ ] Remove "xxx"-prefixed dead code blocks (~15 blocks, ~150 lines)
+**Phase 1: Quick Wins (LOW RISK)** - Mostly Complete
+- [x] Remove "xxx"-prefixed dead code blocks (~15 blocks, ~150 lines) ✅ DONE (Commit 3e73fffb)
   - `xxxWIN95VERSION`, `xxxPIKE`, `xxxfldebug`, `xxxver`, etc.
   - Files: strings.c, shellwindow.c, langpack.c, shellwindowmenu.c, others
   - Impact: Clean up disabled code by convention
 
-- [ ] Remove explicit dead code markers (~3 blocks)
+- [x] Remove explicit dead code markers (~3 blocks) ✅ DONE (Commit 46c5ff58)
   - `OBSOLETE` (whirlpool.c: ~1000 lines of obsolete crypto tables)
   - `NEVER` (langevaluate.c: error reporting code)
   - **Keep**: `NeverDefine_For_Reference` (defensive guard pattern)
 
-- [ ] Remove obsolete platform code (~5 blocks)
+- [x] Remove orphaned platform entry points (3 files) ✅ DONE (PR #134)
+  - `Common/source/FrontierWinMain.c` (~2500 lines, Windows entry point)
+  - `Common/source/FrontierMacMain.c` (~90 lines, Mac entry point)
+  - `Common/headers/FrontierWinMain.h`
+  - Impact: ~2600 lines of dead legacy UI code removed
+  - Reference: `planning/phase3/code-cleanup/DEAD_CODE_FINDINGS_2025_12_22.md`
+
+- [ ] Remove obsolete platform code (~3 blocks remaining)
   - `oldMACVERSION` (3 blocks - v7 format doesn't use Mac aliases)
   - Commented `WIN95VERSION` blocks (2 blocks)
 
