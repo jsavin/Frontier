@@ -51,23 +51,38 @@ These block deployment and major system decisions. All require design/planning b
 
 ## P1s – High Priority (Recommended Work Order)
 
-### Phase 1: Mode Stack Refactor Prerequisites (Blocks continued architecture work)
-**Recommended order:** Do these before starting mode stack refactor Phase 1
+### Phase 1: Logging Infrastructure (FOUNDATIONAL - ~2-3 days)
+**Start here:** Foundational infrastructure enabling all future work. Runtime debugging without rebuild.
 
-- **Issue #135** (P1): Refactor outline (op) management from push/pop to deterministic context model
-  - Scope: Medium - Similar push/pop pattern to mode stack
-  - LOE: ~3-5 days (multiple file changes, similar refactor pattern to mode stack)
-  - Interdependency: Same push/pop anti-pattern as mode stack; fixing now prevents future bugs
-  - Files affected: `Common/source/op.c`, op management throughout codebase
-  - Related issue: #136 (audit external object processing)
+- **Create logging infrastructure** (logging.h/logging.c) - PRIORITY TASK
+  - Scope: Medium - Foundational for all future work
+  - LOE: ~2-3 days (design, implementation, basic integration)
+  - Runtime-controlled log levels via environment variables
+  - Component-based filtering (DB, Hash, Table, Pack, Eval, Lang, OP, Parse)
+  - Replaces 76 debug ifdef blocks incrementally
+  - Reference: Detailed design in `planning/phase3/code-cleanup/IFDEF_CLEANUP_STRATEGY.md` (Section 2A-2B)
+  - Deliverables:
+    * logging.h/logging.c with API: log_error/warn/info/debug/trace per component
+    * Environment variable configuration (FRONTIER_LOG_LEVEL, FRONTIER_LOG_COMPONENT)
+    * Example migrations documented in strategy doc
+    * Initial integration with key subsystems (database, hash tables)
 
-- **Issue #136** (P1): Audit external object processing for push/pop anti-patterns
-  - Scope: Medium - Code review + planning
-  - LOE: ~1-2 days
-  - Dependency: Complements #135; identifies all similar patterns
-  - Output: Planning doc listing all external object push/pop patterns and refactor plan
+- **Migrate database layer debug ifdefs** (db.c, db_format.c, tablepack.c)
+  - Scope: Medium - ~40-50 debug blocks
+  - Depends on: Logging infrastructure (above)
+  - Estimated 55+ `fldebug` blocks → `log_debug()` calls
+  - LOE: ~2-3 days
+  - Phase 2 of logging migration; highest-impact subsystem
 
-### Phase 2: PR #137 Follow-Ups (Code quality & documentation)
+### Phase 2: Code Cleanup Completion (LOW RISK - ~1-2 hours)
+**Complete remaining Phase 1 dead code removal:**
+
+- [ ] Remove obsolete platform code (~3 blocks remaining)
+  - `oldMACVERSION` (3 blocks in langhash.c - v7 format doesn't use Mac aliases)
+  - Commented `WIN95VERSION` blocks (already mostly cleaned)
+  - ~50 lines total; quick cleanup
+
+### Phase 3: PR #137 Follow-Ups (Code Quality - ~6-10 hours)
 
 - **Issue #138** (P1): Refactor dbendsaveas to make implicit disposal explicit
   - Scope: Small - Documentation + minor API improvement
@@ -82,7 +97,23 @@ These block deployment and major system decisions. All require design/planning b
   - Depends on: #138 (context for disposal patterns)
   - Output: Confirmation that context guards have been properly removed from disposal paths
 
-### Phase 3: Quick Wins & Verb Porting
+### Phase 4: Mode Stack Refactor Prerequisites (ARCHITECTURE - ~4-7 days)
+**Do these before starting mode stack refactor Phase 1:**
+
+- **Issue #135** (P1): Refactor outline (op) management from push/pop to deterministic context model
+  - Scope: Medium - Similar push/pop pattern to mode stack
+  - LOE: ~3-5 days (multiple file changes, similar refactor pattern to mode stack)
+  - Interdependency: Same push/pop anti-pattern as mode stack; fixing now prevents future bugs
+  - Files affected: `Common/source/op.c`, op management throughout codebase
+  - Related issue: #136 (audit external object processing)
+
+- **Issue #136** (P1): Audit external object processing for push/pop anti-patterns
+  - Scope: Medium - Code review + planning
+  - LOE: ~1-2 days
+  - Dependency: Complements #135; identifies all similar patterns
+  - Output: Planning doc listing all external object push/pop patterns and refactor plan
+
+### Phase 5: Quick Wins & Verb Porting (~3-4 hours)
 
 - **Issue #121** (P1): Implement 28 error stubs for remaining verbs
   - Scope: Quick win - 3-4 hours
@@ -95,7 +126,7 @@ These block deployment and major system decisions. All require design/planning b
   - Depends on: #88 (networking architecture decision - may block)
   - Status: Decision-dependent; defer until architecture P0 resolved
 
-### Phase 4: Testing & Infrastructure (Supporting mode stack refactor)
+### Phase 6: Testing & Infrastructure (~20-30 hours)
 
 - **Issue #77** (P1): Add helper macros for BE pack/unpack in langhash
   - Scope: Medium - Code quality improvement
@@ -129,7 +160,7 @@ These block deployment and major system decisions. All require design/planning b
   - Output: Adds comments/docs to `Common/headers/shell.h` and related files
   - Impact: Improves maintainability, prevents size mistakes in future refactors
 
-### Phase 5: Major Architectural Decisions (Decision-Dependent, Blocks other work)
+### Phase 7: Major Architectural Decisions (DEFERRED - Design-dependent)
 
 - **Issue #89** (P1): OSA / IPC strategy
   - Scope: Large - Architectural decision
@@ -209,14 +240,12 @@ These block deployment and major system decisions. All require design/planning b
 - [ ] Issue #142: Error path test coverage (add tests for migration failures at various points in the flow).
 - [ ] Issue #143: cleanup_migration_database error scenarios (add tests for scenarios 2 and 3 - error with Save As active, error with allocated destination).
 
-### Code Cleanup Follow-Ups (IFDEF Cleanup - Approved Strategy)
+### Code Cleanup Completed (IFDEF Cleanup - Approved Strategy)
 **Reference**: `planning/phase3/code-cleanup/IFDEF_CLEANUP_STRATEGY.md` (approved)
 
-**Phase 1: Quick Wins (LOW RISK)** - Mostly Complete
+**Summary of Completed Work:**
 - [x] Remove "xxx"-prefixed dead code blocks (~15 blocks, ~150 lines) ✅ DONE (Commit 3e73fffb)
   - `xxxWIN95VERSION`, `xxxPIKE`, `xxxfldebug`, `xxxver`, etc.
-  - Files: strings.c, shellwindow.c, langpack.c, shellwindowmenu.c, others
-  - Impact: Clean up disabled code by convention
 
 - [x] Remove explicit dead code markers (~3 blocks) ✅ DONE (Commit 46c5ff58)
   - `OBSOLETE` (whirlpool.c: ~1000 lines of obsolete crypto tables)
@@ -224,44 +253,15 @@ These block deployment and major system decisions. All require design/planning b
   - **Keep**: `NeverDefine_For_Reference` (defensive guard pattern)
 
 - [x] Remove orphaned platform entry points (3 files) ✅ DONE (PR #134)
-  - `Common/source/FrontierWinMain.c` (~2500 lines, Windows entry point)
-  - `Common/source/FrontierMacMain.c` (~90 lines, Mac entry point)
-  - `Common/headers/FrontierWinMain.h`
+  - `Common/source/FrontierWinMain.c`, `FrontierMacMain.c`, `FrontierWinMain.h`
   - Impact: ~2600 lines of dead legacy UI code removed
-  - Reference: `planning/phase3/code-cleanup/DEAD_CODE_FINDINGS_2025_12_22.md`
 
-- [ ] Remove obsolete platform code (~3 blocks remaining)
-  - `oldMACVERSION` (3 blocks - v7 format doesn't use Mac aliases)
-  - Commented `WIN95VERSION` blocks (2 blocks)
-
-**Phase 2-3: Debug Infrastructure Migration (MEDIUM RISK)** - PRIORITIZED
-- [ ] **Create logging infrastructure** (logging.h/logging.c) - PRIORITY TASK
-  - Scope: Medium - Foundational for all future work
-  - LOE: ~2-3 days (design, implementation, basic integration)
-  - Runtime-controlled log levels via environment variables
-  - Component-based filtering (DB, Hash, Table, Pack, Eval, Lang, OP, Parse)
-  - Replaces 76 debug ifdef blocks incrementally
-  - Reference: Detailed design in `planning/phase3/code-cleanup/IFDEF_CLEANUP_STRATEGY.md` (Section 2A-2B)
-  - Deliverables:
-    * logging.h/logging.c with API: log_error/warn/info/debug/trace per component
-    * Environment variable configuration (FRONTIER_LOG_LEVEL, FRONTIER_LOG_COMPONENT)
-    * Example migrations documented in strategy doc
-    * Initial integration with key subsystems (database, hash tables)
-
-- [ ] **Migrate database layer debug ifdefs** (db.c, db_format.c, tablepack.c)
-  - Scope: Medium - ~40-50 debug blocks
-  - Depends on: Logging infrastructure (above)
-  - Estimated 55+ `fldebug` blocks → `log_debug()` calls
-  - LOE: ~2-3 days
-  - Phase 2 of logging migration; highest-impact subsystem
-
-**Phase 4: Feature Flag Cleanup (APPROVED DECISIONS)**
-- ✅ **PIKE removal** (29 blocks): APPROVED - will implement Week 13 per roadmap
+**Feature Flag Cleanup (APPROVED DECISIONS):**
+- ✅ **PIKE removal** (29 blocks): APPROVED - scheduled Week 13 per roadmap
 - ✅ **Optional database backends**: Keep as compile-time flags (MySQL, SQLite, Python)
   - Document via Makefile/CMake instead of hardcoding
-  - If future Python integration needed, will require architectural rethinking
 
-**Deferred to later**:
+**Deferred to later (Phase 4+):**
 - Threading/networking ifdef cleanup (defer until architecture stabilized)
 - SMART_DB_OPENING, xmlfeature, and miscellaneous flags (audit separately)
 
