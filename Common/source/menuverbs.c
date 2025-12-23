@@ -52,6 +52,7 @@
 #include "cancoon.h"
 #include "kernelverbdefs.h"
 #include "file.h"
+#include "logging.h"
 
 
 
@@ -171,7 +172,7 @@ static boolean menuverbinmemory (hdlmenuvariable hvariable) {
 		return (true);
 
 #if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] menuverbinmemory: about to push hdatabase=%p (current=%p) variabledata=0x%llx\n",
+	log_debug(LOG_COMP_OP, "menuverbinmemory: about to push hdatabase=%p (current=%p) variabledata=0x%llx",
 	        (void*)(**hv).hdatabase,
 	        (void*)databasedata,
 	        (unsigned long long)(**hv).variabledata);

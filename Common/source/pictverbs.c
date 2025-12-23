@@ -46,6 +46,7 @@
 #include "pict.h"
 #include "pictverbs.h"
 #include "kernelverbdefs.h"
+#include "logging.h"
 
 
 
@@ -212,7 +213,7 @@ static boolean pictverbinmemory (hdlpictvariable hv) {
 		return (true);
 
 #if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] pictverbinmemory: about to push hdatabase=%p (current=%p) variabledata=0x%llx\n",
+	log_debug(LOG_COMP_OP, "pictverbinmemory: about to push hdatabase=%p (current=%p) variabledata=0x%llx",
 	        (void*)(**hv).hdatabase,
 	        (void*)databasedata,
 	        (unsigned long long)(**hv).variabledata);
