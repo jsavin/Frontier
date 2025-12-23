@@ -47,6 +47,7 @@
 #include "cursor.h"
 #include "dialogs.h"
 #include "error.h"
+#include "logging.h"  /* Phase 2D: fprintf migration */
 #include "file.h"
 #include "resources.h"
 #include "strings.h"
@@ -117,8 +118,8 @@ static boolean dbfindblockforaddress(dbaddress adr, dbaddress *blockstart, long 
 
 		if (trailer_pos >= (dbaddress) eof) {
 #if defined(FRONTIER_HEADLESS)
-			fprintf(stderr,
-				"[headless] dbfindblockforaddress candidate=0x%llx size=%ld variance=%ld eof=%ld trailer=0x%llx\n",
+			log_trace(LOG_COMP_DB,
+				"dbfindblockforaddress candidate=0x%llx size=%ld variance=%ld eof=%ld trailer=0x%llx",
 				(unsigned long long) candidate,
 				node_size,
 				(long) node_variance,
@@ -380,10 +381,12 @@ static void db_context_guard_enter(const db_context *context, db_context_guard *
         db_saveas_state_snapshot(&guard->prev_saveas);
         guard->prev_db = databasedata;
 #if defined(FRONTIER_HEADLESS)
-        static int call_count = 0;
-        if (call_count++ < 5) {
-            fprintf(stderr, "[headless] db_context_guard_enter: prev_mode captured use_64bit=%d adapter_repack=%d\n",
-                    (int) guard->prev_mode.use_64bit_format, (int) guard->prev_mode.adapter_repack);
+        if (log_enabled(LOG_COMP_DB, LOG_LEVEL_TRACE)) {
+            static int call_count = 0;
+            if (call_count++ < 5) {
+                log_trace(LOG_COMP_DB, "db_context_guard_enter: prev_mode captured use_64bit=%d adapter_repack=%d",
+                        (int) guard->prev_mode.use_64bit_format, (int) guard->prev_mode.adapter_repack);
+            }
         }
 #endif
     }
@@ -392,18 +395,23 @@ static void db_context_guard_enter(const db_context *context, db_context_guard *
             databasedata = context->database;
         db_saveas_state_apply(&context->saveas);
 #if defined(FRONTIER_HEADLESS)
-        static int call_count2 = 0;
-        if (call_count2++ < 5) {
-            fprintf(stderr, "[headless] db_context_guard_enter: applying mode use_64bit=%d adapter_repack=%d\n",
-                    (int) context->mode.use_64bit_format, (int) context->mode.adapter_repack);
+        if (log_enabled(LOG_COMP_DB, LOG_LEVEL_TRACE)) {
+            static int call_count2 = 0;
+            if (call_count2++ < 5) {
+                log_trace(LOG_COMP_DB, "db_context_guard_enter: applying mode use_64bit=%d adapter_repack=%d",
+                        (int) context->mode.use_64bit_format, (int) context->mode.adapter_repack);
+            }
         }
 #endif
         db_format_mode_apply(&context->mode);
 #if defined(FRONTIER_HEADLESS)
-        if (call_count2 <= 5) {
-            db_format_mode current_after = db_format_mode_current();
-            fprintf(stderr, "[headless] db_context_guard_enter: after apply, current mode use_64bit=%d adapter_repack=%d\n",
-                    (int) current_after.use_64bit_format, (int) current_after.adapter_repack);
+        if (log_enabled(LOG_COMP_DB, LOG_LEVEL_TRACE)) {
+            static int call_count2 = 0;
+            if (call_count2++ < 5) {
+                db_format_mode current_after = db_format_mode_current();
+                log_trace(LOG_COMP_DB, "db_context_guard_enter: after apply, current mode use_64bit=%d adapter_repack=%d",
+                        (int) current_after.use_64bit_format, (int) current_after.adapter_repack);
+            }
         }
 #endif
     }
@@ -413,10 +421,12 @@ static void db_context_guard_exit(const db_context_guard *guard) {
     if (guard == NULL)
         return;
 #if defined(FRONTIER_HEADLESS)
-    static int call_count = 0;
-    if (call_count++ < 5) {
-        fprintf(stderr, "[headless] db_context_guard_exit: restoring prev mode use_64bit=%d adapter_repack=%d\n",
-                (int) guard->prev_mode.use_64bit_format, (int) guard->prev_mode.adapter_repack);
+    if (log_enabled(LOG_COMP_DB, LOG_LEVEL_TRACE)) {
+        static int call_count = 0;
+        if (call_count++ < 5) {
+            log_trace(LOG_COMP_DB, "db_context_guard_exit: restoring prev mode use_64bit=%d adapter_repack=%d",
+                    (int) guard->prev_mode.use_64bit_format, (int) guard->prev_mode.adapter_repack);
+        }
     }
 #endif
     db_format_mode_apply(&guard->prev_mode);
@@ -470,7 +480,7 @@ boolean dbpushdatabase (hdldatabaserecord hdatabase) {
 	databasestack [topdatabasestack++] = databasedata;
 
 #if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] dbpushdatabase: old=%p new=%p stack_depth=%d\n",
+	log_trace(LOG_COMP_DB, "dbpushdatabase: old=%p new=%p stack_depth=%d",
 	        (void*)databasedata,
 	        (void*)hdatabase,
 	        topdatabasestack);
@@ -491,7 +501,7 @@ boolean dbpopdatabase (void) {
 		return (false);
 
 #if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] dbpopdatabase: old=%p restored=%p stack_depth=%d\n",
+	log_trace(LOG_COMP_DB, "dbpopdatabase: old=%p restored=%p stack_depth=%d",
 	        (void*)databasedata,
 	        (void*)databasestack[topdatabasestack - 1],
 	        topdatabasestack);
@@ -536,10 +546,12 @@ static db_context *db_context_for_saveas_destination(db_context *ctx, boolean *u
         boolean adapter_active = db_format_adapter_is_active();
         boolean is_legacy = db_format_is_legacy_db(ctx->database);
 #if defined(FRONTIER_HEADLESS)
-        static int call_count = 0;
-        if (call_count++ < 5) {
-            fprintf(stderr, "[headless] db_context_for_saveas_destination: adapter_active=%d is_legacy=%d\n",
-                    (int) adapter_active, (int) is_legacy);
+        if (log_enabled(LOG_COMP_DB, LOG_LEVEL_TRACE)) {
+            static int call_count = 0;
+            if (call_count++ < 5) {
+                log_trace(LOG_COMP_DB, "db_context_for_saveas_destination: adapter_active=%d is_legacy=%d",
+                        (int) adapter_active, (int) is_legacy);
+            }
         }
 #endif
         if (adapter_active) {
@@ -548,9 +560,12 @@ static db_context *db_context_for_saveas_destination(db_context *ctx, boolean *u
             ctx->mode.use_64bit_format = !is_legacy;
         }
 #if defined(FRONTIER_HEADLESS)
-        if (call_count <= 5) {
-            fprintf(stderr, "[headless] db_context_for_saveas_destination: set use_64bit_format=%d\n",
-                    (int) ctx->mode.use_64bit_format);
+        if (log_enabled(LOG_COMP_DB, LOG_LEVEL_TRACE)) {
+            static int call_count3 = 0;
+            if (call_count3++ < 5) {
+                log_trace(LOG_COMP_DB, "db_context_for_saveas_destination: set use_64bit_format=%d",
+                        (int) ctx->mode.use_64bit_format);
+            }
         }
 #endif
         if (using_destination != NULL)
@@ -619,7 +634,7 @@ boolean dbwrite (dbaddress adr, long ctbytes, ptrvoid pdata) {
 	
 	if (!dbseek (adr)) {
 #if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[headless] dbwrite seek failed fnum=%ld adr=0x%llx bytes=%ld\n",
+		log_error(LOG_COMP_DB, "dbwrite seek failed fnum=%ld adr=0x%llx bytes=%ld",
 		        databasedata ? (long) (**databasedata).fnumdatabase : -1L,
 		        (unsigned long long) adr,
 		        ctbytes);
@@ -629,7 +644,7 @@ boolean dbwrite (dbaddress adr, long ctbytes, ptrvoid pdata) {
 		
 	if (!filewrite ((hdlfilenum)((**databasedata).fnumdatabase), ctbytes, pdata)) {
 #if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[headless] dbwrite filewrite failed fnum=%ld adr=0x%llx bytes=%ld\n",
+		log_error(LOG_COMP_DB, "dbwrite filewrite failed fnum=%ld adr=0x%llx bytes=%ld",
 		        databasedata ? (long) (**databasedata).fnumdatabase : -1L,
 		        (unsigned long long) adr,
 		        ctbytes);
@@ -646,7 +661,7 @@ boolean dbread (dbaddress adr, long ctbytes, ptrvoid pdata) {
 
 	if (!dbseek (adr)) {
 #if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[headless] dbread seek failed fnum=%ld adr=0x%llx bytes=%ld saveas=%d source=%p current=%p dest=%p\n",
+		log_error(LOG_COMP_DB, "dbread seek failed fnum=%ld adr=0x%llx bytes=%ld saveas=%d source=%p current=%p dest=%p",
 			(long) ((**databasedata).fnumdatabase),
 			(unsigned long long) adr,
 			ctbytes,
@@ -661,7 +676,7 @@ boolean dbread (dbaddress adr, long ctbytes, ptrvoid pdata) {
 
 	if (!fileread ((hdlfilenum)((**databasedata).fnumdatabase), ctbytes, pdata)) {
 #if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[headless] dbread read failed fnum=%ld adr=0x%llx bytes=%ld saveas=%d source=%p current=%p dest=%p\n",
+		log_error(LOG_COMP_DB, "dbread read failed fnum=%ld adr=0x%llx bytes=%ld saveas=%d source=%p current=%p dest=%p",
 			(long) ((**databasedata).fnumdatabase),
 			(unsigned long long) adr,
 			ctbytes,
@@ -710,7 +725,7 @@ static boolean dbflushheader (void) {
 	assert (sizeof (diskrec.u.growthspace) >= sizeof (diskrec.u.extensions));
 
 #if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] dbflushheader enter databasedata=%p fnum=%ld dirty=%d use64=%d\n",
+	log_trace(LOG_COMP_DB, "dbflushheader enter databasedata=%p fnum=%ld dirty=%d use64=%d",
 	        (void *) hdb,
 	        hdb ? (long) (**hdb).fnumdatabase : -1L,
 	        hdb ? (int) isdirty(hdb) : 0,
@@ -740,7 +755,7 @@ static boolean dbflushheader (void) {
 
 			if (!db_write_v7_header(&diskrec, diskheader, sizeof (diskheader))) {
 #if defined(FRONTIER_HEADLESS)
-				fprintf(stderr, "[headless] dbflushheader db_write_v7_header failed\n");
+				log_error(LOG_COMP_DB, "dbflushheader db_write_v7_header failed");
 #endif
 				return (false);
 			}
@@ -749,7 +764,7 @@ static boolean dbflushheader (void) {
 
 #if defined(FRONTIER_HEADLESS)
 			if (!fl) {
-				fprintf(stderr, "[headless] dbflushheader dbwrite failed fnum=%ld len=%zu\n",
+				log_error(LOG_COMP_DB, "dbflushheader dbwrite failed fnum=%ld len=%zu",
 				        hdb ? (long) (**hdb).fnumdatabase : -1L,
 				        sizeof (diskheader));
 			}
@@ -818,9 +833,9 @@ boolean dbreadheader (dbaddress adr, boolean *flfree, long *ctbytes, tyvariance 
 	}
 	if (log_headers) {
 		unsigned long long raw_dbg = (unsigned long long) raw_size;
-		fprintf(stderr, "[headless] dbreadheader parsed raw=0x%016llx variance=0x%08x\n",
-		        raw_dbg,
-		        (unsigned int) disk_variance);
+		log_trace(LOG_COMP_DB, "dbreadheader parsed raw=0x%016llx variance=0x%08x",
+		          raw_dbg,
+		          (unsigned int) disk_variance);
 	}
 	}
 #endif
@@ -1597,8 +1612,8 @@ boolean dbrefhandle (dbaddress adr, Handle *h) {
 
 #if defined(FRONTIER_HEADLESS)
     if (a == 0x76e) {
-        fprintf(stderr, "[headless] dbrefhandle watch adr=0x%llx size=%ld variance=%ld flfree=%d\n",
-            (unsigned long long)a, ctbytes, (long)variance, flfree ? 1 : 0);
+        log_trace(LOG_COMP_DB, "dbrefhandle watch adr=0x%llx size=%ld variance=%ld flfree=%d",
+                  (unsigned long long)a, ctbytes, (long)variance, flfree ? 1 : 0);
     }
 #endif
 
@@ -1606,8 +1621,8 @@ boolean dbrefhandle (dbaddress adr, Handle *h) {
 
         dberror (dbfreeblockerror);
 #if defined(FRONTIER_HEADLESS)
-        fprintf(stderr, "[headless] dbrefhandle found free block adr=0x%llx size=%ld variance=%ld\n",
-                (unsigned long long)a, ctbytes, (long) variance);
+        log_error(LOG_COMP_DB, "dbrefhandle found free block adr=0x%llx size=%ld variance=%ld",
+                  (unsigned long long)a, ctbytes, (long) variance);
 #endif
         return (false);
         }
@@ -1617,7 +1632,7 @@ boolean dbrefhandle (dbaddress adr, Handle *h) {
 
 #if defined(FRONTIER_HEADLESS)
     if (a == 0x76e) {
-        fprintf(stderr, "[headless] dbrefhandle watch allocated handle size=%ld\n", ct);
+        log_trace(LOG_COMP_DB, "dbrefhandle watch allocated handle size=%ld", ct);
     }
 #endif
 	
@@ -1627,20 +1642,22 @@ boolean dbrefhandle (dbaddress adr, Handle *h) {
 
 #if defined(FRONTIER_HEADLESS)
 	/* Log first 20 reads to check for format mode mismatches */
-	static int header_log_count = 0;
-	if (header_log_count < 20) {
-		db_format_mode current_mode = db_format_mode_current();
-		long actual_header_size = current_mode.use_64bit_format ? sizeheader_v7 : sizeheader_v6;
-		fprintf(stderr, "[headless] dbrefhandle[%d]: adr=0x%llx use_64bit=%d header_size=%ld (v6=%ld v7=%ld) read_offset=0x%llx\n",
-				header_log_count++,
-				(unsigned long long)a,
-				current_mode.use_64bit_format ? 1 : 0,
-				actual_header_size,
-				sizeheader_v6,
-				sizeheader_v7,
-				(unsigned long long)(a + sizeheader));
-	} else {
-		header_log_count++;
+	if (log_enabled(LOG_COMP_DB, LOG_LEVEL_TRACE)) {
+		static int header_log_count = 0;
+		if (header_log_count < 20) {
+			db_format_mode current_mode = db_format_mode_current();
+			long actual_header_size = current_mode.use_64bit_format ? sizeheader_v7 : sizeheader_v6;
+			log_trace(LOG_COMP_DB, "dbrefhandle[%d]: adr=0x%llx use_64bit=%d header_size=%ld (v6=%ld v7=%ld) read_offset=0x%llx",
+			          header_log_count++,
+			          (unsigned long long)a,
+			          current_mode.use_64bit_format ? 1 : 0,
+			          actual_header_size,
+			          sizeheader_v6,
+			          sizeheader_v7,
+			          (unsigned long long)(a + sizeheader));
+		} else {
+			header_log_count++;
+		}
 	}
 #endif
 
@@ -1648,7 +1665,7 @@ boolean dbrefhandle (dbaddress adr, Handle *h) {
 
 #if defined(FRONTIER_HEADLESS)
     if (a == 0x76e) {
-        fprintf(stderr, "[headless] dbrefhandle watch dbread result=%d\n", fl ? 1 : 0);
+        log_trace(LOG_COMP_DB, "dbrefhandle watch dbread result=%d", fl ? 1 : 0);
     }
 #endif
 	
@@ -1697,22 +1714,27 @@ static boolean dballocate (long databytes, ptrvoid pdata, dbaddress *paddress) {
     boolean using_destination = false;
     db_context *apply_ctx = db_context_for_saveas_destination(&swap_ctx, &using_destination);
 #if defined(FRONTIER_HEADLESS)
-    static int call_count = 0;
-    if (call_count++ < 5) {
-        fprintf(stderr, "[headless] dballocate: using_destination=%d apply_ctx=%p\n",
-                (int) using_destination, (void *) apply_ctx);
-        if (apply_ctx != NULL) {
-            fprintf(stderr, "[headless] dballocate: context mode use_64bit=%d adapter_repack=%d\n",
-                    (int) apply_ctx->mode.use_64bit_format, (int) apply_ctx->mode.adapter_repack);
+    if (log_enabled(LOG_COMP_DB, LOG_LEVEL_TRACE)) {
+        static int call_count = 0;
+        if (call_count++ < 5) {
+            log_trace(LOG_COMP_DB, "dballocate: using_destination=%d apply_ctx=%p",
+                      (int) using_destination, (void *) apply_ctx);
+            if (apply_ctx != NULL) {
+                log_trace(LOG_COMP_DB, "dballocate: context mode use_64bit=%d adapter_repack=%d",
+                          (int) apply_ctx->mode.use_64bit_format, (int) apply_ctx->mode.adapter_repack);
+            }
         }
     }
 #endif
     db_context_guard_enter(apply_ctx, &guard);
 #if defined(FRONTIER_HEADLESS)
-    if (call_count <= 5) {
-        db_format_mode current_after = db_format_mode_current();
-        fprintf(stderr, "[headless] dballocate: after guard enter, current mode use_64bit=%d adapter_repack=%d\n",
-                (int) current_after.use_64bit_format, (int) current_after.adapter_repack);
+    if (log_enabled(LOG_COMP_DB, LOG_LEVEL_TRACE)) {
+        static int call_count_after = 0;
+        if (call_count_after++ < 5) {
+            db_format_mode current_after = db_format_mode_current();
+            log_trace(LOG_COMP_DB, "dballocate: after guard enter, current mode use_64bit=%d adapter_repack=%d",
+                      (int) current_after.use_64bit_format, (int) current_after.adapter_repack);
+        }
     }
 #endif
 
@@ -1905,14 +1927,14 @@ success:
 failure:
 
 #if defined(FRONTIER_HEADLESS)
-    fprintf(stderr,
-            "[headless] dballocate failure step=%s size=%ld saveas=%d current=%p dest=%p using_dest=%d\n",
-            fail_step,
-            databytes,
-            (int) fldatabasesaveas,
-            (void *) databasedata,
-            (void *) databasedestination,
-            using_destination ? 1 : 0);
+    log_error(LOG_COMP_DB,
+              "dballocate failure step=%s size=%ld saveas=%d current=%p dest=%p using_dest=%d",
+              fail_step,
+              databytes,
+              (int) fldatabasesaveas,
+              (void *) databasedata,
+              (void *) databasedestination,
+              using_destination ? 1 : 0);
 #endif
 
 	db_context_guard_exit(&guard);
@@ -2321,11 +2343,11 @@ boolean dbassign_internal (dbaddress *padr, long newsize, ptrvoid pdata) {
 		boolean ok = dballocate (newsize, pdata, padr);
 #if defined(FRONTIER_HEADLESS)
         if (!ok) {
-            fprintf(stderr,
-                    "[headless] dballocate failed size=%ld saveas=%d dest=%p\n",
-                    newsize,
-                    (int) fldatabasesaveas,
-                    (void *) databasedestination);
+            log_error(LOG_COMP_DB,
+                      "dballocate failed size=%ld saveas=%d dest=%p",
+                      newsize,
+                      (int) fldatabasesaveas,
+                      (void *) databasedestination);
         }
 #endif
         return ok;
@@ -2372,10 +2394,12 @@ boolean dbassign (dbaddress *padr, long newsize, ptrvoid pdata) {
     if (ctx == NULL)
         ctx = db_context_refresh_default();
 #if defined(FRONTIER_HEADLESS)
-    static int log_count = 0;
-    if (log_count++ < 10) {
-        fprintf(stderr, "[headless] dbassign: saveas_active=%d using_destination=%d dest_db=%p\n",
-                (int)fldatabasesaveas, (int)using_destination, (void*)databasedestination);
+    if (log_enabled(LOG_COMP_DB, LOG_LEVEL_TRACE)) {
+        static int log_count = 0;
+        if (log_count++ < 10) {
+            log_trace(LOG_COMP_DB, "dbassign: saveas_active=%d using_destination=%d dest_db=%p",
+                      (int)fldatabasesaveas, (int)using_destination, (void*)databasedestination);
+        }
     }
 #endif
     return dbassign_context(ctx, padr, newsize, pdata);
@@ -2429,7 +2453,7 @@ boolean dbcopy_internal (dbaddress adrorig, dbaddress *adrcopy) {
 	hdldatabaserecord source_db = db_begin_source_read();
 	if (!dbgetsize_internal (adrorig, &size)) {
 #if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[headless-db] dbgetsize failed for adr=0x%llx\n", (unsigned long long) adrorig);
+		log_error(LOG_COMP_DB, "dbgetsize failed for adr=0x%llx", (unsigned long long) adrorig);
 #endif
 		db_end_source_read(source_db);
 		return (false);
@@ -2448,12 +2472,12 @@ boolean dbcopy_internal (dbaddress adrorig, dbaddress *adrcopy) {
 	
 	source_db = db_begin_source_read();
 	if (dbreference (adrorig, size, *h))
-	
+
 		flreturned = true;
 	else {
 #if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[headless-db] dbreference failed for adr=0x%llx size=%ld\n",
-		        (unsigned long long) adrorig, size);
+		log_error(LOG_COMP_DB, "dbreference failed for adr=0x%llx size=%ld",
+		          (unsigned long long) adrorig, size);
 #endif
 	}
 	db_end_source_read(source_db);
@@ -2462,8 +2486,8 @@ boolean dbcopy_internal (dbaddress adrorig, dbaddress *adrcopy) {
 		flreturned = dballocate (size, *h, adrcopy);
 	else {
 #if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[headless-db] dbcopy aborted before allocation adr=0x%llx size=%ld\n",
-		        (unsigned long long) adrorig, size);
+		log_error(LOG_COMP_DB, "dbcopy aborted before allocation adr=0x%llx size=%ld",
+		          (unsigned long long) adrorig, size);
 #endif
 		flreturned = false;
 	}
@@ -2474,7 +2498,7 @@ boolean dbcopy_internal (dbaddress adrorig, dbaddress *adrcopy) {
 
 	if (!flreturned) {
 #if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[headless-db] dballocate failed during dbcopy size=%ld\n", size);
+		log_error(LOG_COMP_DB, "dballocate failed during dbcopy size=%ld", size);
 #endif
 	}
 	return (flreturned);
@@ -2608,12 +2632,12 @@ boolean dbassignhandle (Handle h, dbaddress *adr) {
 
 #if defined(FRONTIER_HEADLESS)
     if (!fl) {
-        fprintf(stderr,
-                "[headless] dbassignhandle failed adr_in=0x%llx size=%ld saveas=%d dest=%p\n",
-                (unsigned long long) original,
-                hsize,
-                (int) fldatabasesaveas,
-                (void *) databasedestination);
+        log_error(LOG_COMP_DB,
+                  "dbassignhandle failed adr_in=0x%llx size=%ld saveas=%d dest=%p",
+                  (unsigned long long) original,
+                  hsize,
+                  (int) fldatabasesaveas,
+                  (void *) databasedestination);
     }
     /* 2025-12-20: Verification code disabled - read-back during migration fails
      * because destination database is still being constructed. The verification
@@ -2622,21 +2646,19 @@ boolean dbassignhandle (Handle h, dbaddress *adr) {
      */
 #if 0
     else {
-        static int verify_count = 0;
-        if (verify_count++ < 10) {
-            fprintf(stderr, "[headless] dbassignhandle SUCCESS adr=0x%llx size=%ld\n",
-                    (unsigned long long)*adr, hsize);
-            /* Verify write by reading back first 16 bytes */
-            if (hsize >= 16) {
-                unsigned char verify_buf[16];
-                if (dbreference(*adr, 16, verify_buf)) {
-                    fprintf(stderr, "[headless] dbassignhandle verify: %02x %02x %02x %02x %02x %02x %02x %02x | %02x %02x %02x %02x %02x %02x %02x %02x\n",
-                            verify_buf[0], verify_buf[1], verify_buf[2], verify_buf[3],
-                            verify_buf[4], verify_buf[5], verify_buf[6], verify_buf[7],
-                            verify_buf[8], verify_buf[9], verify_buf[10], verify_buf[11],
-                            verify_buf[12], verify_buf[13], verify_buf[14], verify_buf[15]);
-                } else {
-                    fprintf(stderr, "[headless] dbassignhandle verify: read-back FAILED\n");
+        if (log_enabled(LOG_COMP_DB, LOG_LEVEL_TRACE)) {
+            static int verify_count = 0;
+            if (verify_count++ < 10) {
+                log_trace(LOG_COMP_DB, "dbassignhandle SUCCESS adr=0x%llx size=%ld",
+                          (unsigned long long)*adr, hsize);
+                /* Verify write by reading back first 16 bytes */
+                if (hsize >= 16) {
+                    unsigned char verify_buf[16];
+                    if (dbreference(*adr, 16, verify_buf)) {
+                        log_hex_dump(LOG_COMP_DB, LOG_LEVEL_TRACE, verify_buf, 16, "dbassignhandle verify");
+                    } else {
+                        log_error(LOG_COMP_DB, "dbassignhandle verify: read-back FAILED");
+                    }
                 }
             }
         }
@@ -2675,7 +2697,7 @@ boolean dbsavehandle (Handle hsave, dbaddress *adr) {
 
  	if (!fl) {
 #if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[headless] dbsavehandle failed: adr=%lld bytes=%ld\n", (long long)a, ctbytes);
+		log_error(LOG_COMP_DB, "dbsavehandle failed: adr=%lld bytes=%ld", (long long)a, ctbytes);
 #endif
 	}
 
@@ -3156,13 +3178,13 @@ boolean dbopenfile (hdlfilenum fnum, boolean flreadonly) {
 	**hdb = diskrec;
 
 #if defined(FRONTIER_HEADLESS)
-	fprintf(stderr,
-		"[headless] dbopenfile version=%d parsedModern=%s views(parsed)=[0x%016llx,0x%016llx,0x%016llx]\n",
-		(int)(**hdb).versionnumber,
-		header_is_modern ? "true" : "false",
-		(unsigned long long)(**hdb).views[0],
-		(unsigned long long)(**hdb).views[1],
-		(unsigned long long)(**hdb).views[2]);
+	log_trace(LOG_COMP_DB,
+	          "dbopenfile version=%d parsedModern=%s views(parsed)=[0x%016llx,0x%016llx,0x%016llx]",
+	          (int)(**hdb).versionnumber,
+	          header_is_modern ? "true" : "false",
+	          (unsigned long long)(**hdb).views[0],
+	          (unsigned long long)(**hdb).views[1],
+	          (unsigned long long)(**hdb).views[2]);
 #endif
 	
 	// Detect database format and validate structure size
@@ -3179,12 +3201,12 @@ boolean dbopenfile (hdlfilenum fnum, boolean flreadonly) {
 	}
 
 #if defined(FRONTIER_HEADLESS)
-	fprintf(stderr,
-		"[headless] dbopenfile post-detect use64=%s views(dec)=[0x%016llx,0x%016llx,0x%016llx]\n",
-		db_use64() ? "true" : "false",
-		(unsigned long long)(**hdb).views[0],
-		(unsigned long long)(**hdb).views[1],
-		(unsigned long long)(**hdb).views[2]);
+	log_trace(LOG_COMP_DB,
+	          "dbopenfile post-detect use64=%s views(dec)=[0x%016llx,0x%016llx,0x%016llx]",
+	          db_use64() ? "true" : "false",
+	          (unsigned long long)(**hdb).views[0],
+	          (unsigned long long)(**hdb).views[1],
+	          (unsigned long long)(**hdb).views[2]);
 #endif
 
 	if (db_use64()) {
@@ -3238,7 +3260,7 @@ boolean dbopenfile (hdlfilenum fnum, boolean flreadonly) {
 	error:
 
 #if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] dbopenfile fail at %s\n", fail_step);
+	log_error(LOG_COMP_DB, "dbopenfile fail at %s", fail_step);
 #endif
 
 	disposehandle ((Handle) hdb);
@@ -3256,10 +3278,10 @@ boolean dbclose (void) {
 	setdirty (databasedata);
 
 #if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] dbclose enter databasedata=%p fnum=%ld dirty=%d\n",
-	        (void *) databasedata,
-	        databasedata ? (long) (**databasedata).fnumdatabase : -1L,
-	        databasedata ? (int) isdirty(databasedata) : 0);
+	log_trace(LOG_COMP_DB, "dbclose enter databasedata=%p fnum=%ld dirty=%d",
+	          (void *) databasedata,
+	          databasedata ? (long) (**databasedata).fnumdatabase : -1L,
+	          databasedata ? (int) isdirty(databasedata) : 0);
 #endif
 	
 	return (dbflushheader ());
@@ -3271,9 +3293,9 @@ static boolean dbstartsaveas_internal(hdlfilenum fnum) {
 	register boolean fl;
 
 #if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] dbstartsaveas BEGIN: source_db=%p dest_db=%p\n",
-	        (void*)databasedata,
-	        (void*)databasedestination);
+	log_trace(LOG_COMP_DB, "dbstartsaveas BEGIN: source_db=%p dest_db=%p",
+	          (void*)databasedata,
+	          (void*)databasedestination);
 #endif
 
 	fldatabasesaveas = true; /*set global; enables databasehandle swapping*/
@@ -3286,34 +3308,34 @@ static boolean dbstartsaveas_internal(hdlfilenum fnum) {
     db_format_adapter_enable_wide_writes(NULL);
 
 #if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] dbstartsaveas: fldatabasesaveas=true dbsaveas_source=%p databasedata=%p\n",
-	        (void*)dbsaveas_source,
-	        (void*)databasedata);
+	log_trace(LOG_COMP_DB, "dbstartsaveas: fldatabasesaveas=true dbsaveas_source=%p databasedata=%p",
+	          (void*)dbsaveas_source,
+	          (void*)databasedata);
 #endif
 
 	dbswapglobals ();
 
 #if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] dbstartsaveas: after swap, databasedata=%p databasedestination=%p\n",
-	        (void*)databasedata,
-	        (void*)databasedestination);
+	log_trace(LOG_COMP_DB, "dbstartsaveas: after swap, databasedata=%p databasedestination=%p",
+	          (void*)databasedata,
+	          (void*)databasedestination);
 #endif
 
 	fl = dbnew (fnum);
 
 #if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] dbstartsaveas: after dbnew, fl=%d databasedata=%p\n",
-	        (int)fl,
-	        (void*)databasedata);
+	log_trace(LOG_COMP_DB, "dbstartsaveas: after dbnew, fl=%d databasedata=%p",
+	          (int)fl,
+	          (void*)databasedata);
 #endif
 
 	dbswapglobals ();
 
 #if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] dbstartsaveas END: after final swap, databasedata=%p databasedestination=%p fl=%d\n",
-	        (void*)databasedata,
-	        (void*)databasedestination,
-	        (int)fl);
+	log_trace(LOG_COMP_DB, "dbstartsaveas END: after final swap, databasedata=%p databasedestination=%p fl=%d",
+	          (void*)databasedata,
+	          (void*)databasedestination,
+	          (int)fl);
 #endif
 
 	fldatabasesaveas = fl;
@@ -3352,14 +3374,14 @@ static boolean dbendsaveas_internal (void) {
     {
         boolean valid_data = validhandle((Handle) databasedata);
         boolean valid_dest = validhandle((Handle) databasedestination);
-        fprintf(stderr,
-                "[headless] saveas end enter data=%p master=%p dest=%p dest_master=%p valid(data)=%d valid(dest)=%d\n",
-                (void *) databasedata,
-                valid_data ? (void *) (*databasedata) : NULL,
-                (void *) databasedestination,
-                valid_dest ? (void *) (*databasedestination) : NULL,
-                valid_data ? 1 : 0,
-                valid_dest ? 1 : 0);
+        log_trace(LOG_COMP_DB,
+                  "saveas end enter data=%p master=%p dest=%p dest_master=%p valid(data)=%d valid(dest)=%d",
+                  (void *) databasedata,
+                  valid_data ? (void *) (*databasedata) : NULL,
+                  (void *) databasedestination,
+                  valid_dest ? (void *) (*databasedestination) : NULL,
+                  valid_data ? 1 : 0,
+                  valid_dest ? 1 : 0);
     }
 #endif
 		
