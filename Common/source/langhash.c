@@ -2777,7 +2777,7 @@ static boolean hashunpackscalar (Handle hget, tyvaluerecord *val, int32_t ix, bo
 	} /*hashunpackscalar*/
 
 
-static boolean hashpackexternal (handlestream *s, hdlexternalvariable h, int32_t *ix, boolean *flnewdbaddress) {
+static boolean hashpackexternal (handlestream *s, hdlexternalvariable h, int32_t *ix, boolean *flnewdbaddress, const db_context *ctx) {
 	Handle hpacked;
 	long ctbytes;
 	boolean fl;
@@ -2787,12 +2787,15 @@ static boolean hashpackexternal (handlestream *s, hdlexternalvariable h, int32_t
 	if ((*s).pos > INT32_MAX)
 		return (false);
 
+	/* Phase 1: Context should always be initialized by hashpacktable_internal */
+	assert(ctx != NULL);  /* Defensive check: context is initialized in hashpacktable_internal or db_context_init */
+
 	*ix = (int32_t) (*s).pos; /*where the text item is stored*/
 
 	if (flexternalmemorypack)
 		fl = langexternalmemorypack (h, &hpacked, HNoNode);
 	else
-		fl = langexternalpack (h, &hpacked, flnewdbaddress);
+		fl = langexternalpack_internal (ctx, h, &hpacked, flnewdbaddress);  /* Phase 1: Pass explicit context */
 
 	if (!fl)
 		return (false);
@@ -2901,6 +2904,7 @@ typedef struct typackinforecord {
 	handlestream s2;
 	boolean flmustsave;
 	boolean use_64bit;
+	const db_context *context;  /* Phase 1: Explicit context passing to eliminate global mode dependency */
 	} typackinforecord;
 #pragma options align=reset
 
@@ -3240,7 +3244,7 @@ static boolean hashpackvisit_legacy (bigstring bsname, hdlhashnode hnode, tyvalu
         }
 
 			data_index = 0;
-				if (!hashpackexternal (&lpi->s2, (hdlexternalvariable) val.data.externalvalue, &data_index, &flnewdbaddress)) {
+				if (!hashpackexternal (&lpi->s2, (hdlexternalvariable) val.data.externalvalue, &data_index, &flnewdbaddress, lpi->context)) {
 #if defined(FRONTIER_HEADLESS)
 					hdlexternalvariable diag = (hdlexternalvariable) val.data.externalvalue;
 					int external_id = 0;
@@ -3344,6 +3348,9 @@ static boolean hashpackvisit_v7 (bigstring bsname, hdlhashnode hnode, tyvaluerec
 	/*
 	Matches legacy logic but writes modern scalar payloads (64-bit ints/doubles, Mac-epoch date).
 	Non-scalar storage (string/binary/etc.) still uses 32-bit indices into the string handle.
+
+	Phase 1: lpi->context is set in hashpacktable_internal() and threaded through recursive calls.
+	This eliminates dependency on global mode stack for child table packing (Issue #147).
 	*/
 
 	typackinforecord *lpi = (typackinforecord *) refcon;
@@ -3621,7 +3628,7 @@ static boolean hashpackvisit_v7 (bigstring bsname, hdlhashnode hnode, tyvaluerec
 			}
 
 			data_index = 0;
-			if (!hashpackexternal (&lpi->s2, (hdlexternalvariable) val.data.externalvalue, &data_index, &flnewdbaddress))
+			if (!hashpackexternal (&lpi->s2, (hdlexternalvariable) val.data.externalvalue, &data_index, &flnewdbaddress, lpi->context))
 				HASH_PACK_FAIL("hashpackexternal");
 
 			lpi->flmustsave = lpi->flmustsave || flnewdbaddress;
@@ -3711,11 +3718,14 @@ boolean hashpacktable_internal (const db_context *ctx, hdlhashtable htable, bool
 	typackinforecord packrec;
 	boolean use_64bit;
 	Handle h1, h2;
+	db_context working_context;
 
-	/* Check database format mode: use context if provided, else global state */
+	/* Phase 1: Initialize working context (never NULL for child operations) */
 	if (ctx != NULL) {
+		working_context = *ctx;
 		use_64bit = ctx->mode.use_64bit_format;
 	} else {
+		db_context_init(&working_context);
 		use_64bit = db_format_mode_current().use_64bit_format;
 	}
 
@@ -3752,6 +3762,7 @@ boolean hashpacktable_internal (const db_context *ctx, hdlhashtable htable, bool
 		clearbytes (&packrec, sizeof (packrec));
 		packrec.flmustsave = *flmustsave;
 		packrec.use_64bit = true;
+		packrec.context = &working_context;  /* Phase 1: Always initialized, never NULL */
 		openhandlestream (nil, &packrec.s1);
 		openhandlestream (nil, &packrec.s2);
 
@@ -3780,6 +3791,7 @@ boolean hashpacktable_internal (const db_context *ctx, hdlhashtable htable, bool
 		clearbytes (&packrec, sizeof (packrec));
 		packrec.flmustsave = *flmustsave;
 		packrec.use_64bit = false;
+		packrec.context = &working_context;  /* Phase 1: Always initialized, never NULL */
 		openhandlestream (nil, &packrec.s1);
 		openhandlestream (nil, &packrec.s2);
 

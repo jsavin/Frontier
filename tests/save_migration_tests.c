@@ -156,10 +156,69 @@ int main(void) {
     // Phase 3: Format and structure validation
     fprintf(stderr, "\n[migration] Phase 3: Database format validation\n");
 
-    /* Validate that table headers are v7 format (version=5) */
-    /* The fact that the migration succeeded and dbopenfile would fail if format is wrong */
-    /* provides reasonable confidence that the internal format is correct */
-    MIGRATION_TEST_PASS("Table format is v7 (validated by successful migration)");
+    /* Validate that table headers are v7 format (version=5) by actually loading the database */
+    /* and attempting to unpack the root table. Legacy table format in v7 database is an error. */
+    fprintf(stderr, "[migration] Validating root table format by attempting to load and unpack...\n");
+
+    boolean table_format_valid = false;
+    FILE *test_db = fopen(migrated_path, "rb");
+    if (test_db != NULL) {
+        /* Read the root table address from the database header (at offset 20 for v7) */
+        fseek(test_db, 20, SEEK_SET);
+        unsigned char addr_bytes[8];
+        if (fread(addr_bytes, 1, 8, test_db) == 8) {
+            /* v7 databases use big-endian 64-bit addresses */
+            unsigned long long root_adr =
+                ((unsigned long long)addr_bytes[0] << 56) |
+                ((unsigned long long)addr_bytes[1] << 48) |
+                ((unsigned long long)addr_bytes[2] << 40) |
+                ((unsigned long long)addr_bytes[3] << 32) |
+                ((unsigned long long)addr_bytes[4] << 24) |
+                ((unsigned long long)addr_bytes[5] << 16) |
+                ((unsigned long long)addr_bytes[6] << 8) |
+                ((unsigned long long)addr_bytes[7] << 0);
+
+            fprintf(stderr, "[migration] Root table address from header: 0x%llx\n", root_adr);
+
+            /* Check the table header at that address */
+            fseek(test_db, (off_t)root_adr, SEEK_SET);
+            unsigned char table_header[16];
+            if (fread(table_header, 1, 16, test_db) == 16) {
+                /* v7 table header version is at offset 8 (4 bytes, big-endian) */
+                unsigned int table_version =
+                    (table_header[8] << 24) | (table_header[9] << 16) |
+                    (table_header[10] << 8) | (table_header[11] << 0);
+
+                fprintf(stderr, "[migration] Root table version field: %u\n", table_version);
+
+                /* v7 format has version=5, v6 legacy format has version=4 */
+                /* Detect legacy format: first bytes are small (< 256), like 0x00 0x00 0x04 0x56 */
+                if ((table_header[0] | table_header[1] | table_header[2]) == 0 && table_header[3] < 64) {
+                    fprintf(stderr, "[migration] ERROR: Root table appears to be in legacy format!\n");
+                    fprintf(stderr, "[migration] First bytes: %02x %02x %02x %02x (should not be legacy in v7 db)\n",
+                            table_header[0], table_header[1], table_header[2], table_header[3]);
+                    table_format_valid = false;
+                } else if (table_version == 5) {
+                    fprintf(stderr, "[migration] ✓ Root table is in v7 format (version=5)\n");
+                    table_format_valid = true;
+                } else if (table_version == 4) {
+                    fprintf(stderr, "[migration] ERROR: Root table is in v6 legacy format (version=4)!\n");
+                    fprintf(stderr, "[migration] This indicates mode push/pop bug during migration.\n");
+                    table_format_valid = false;
+                } else {
+                    fprintf(stderr, "[migration] Root table version=%u (checking format...)\n", table_version);
+                    table_format_valid = (table_version >= 5);
+                }
+            }
+        }
+        fclose(test_db);
+    }
+
+    if (table_format_valid)
+        MIGRATION_TEST_PASS("Table format is v7 (validated by header inspection)");
+    else
+        MIGRATION_TEST_FAIL("Table format validation - root table not in v7 format!");
+
     MIGRATION_TEST_PASS("Root table address is in v7 format (internal validation)");
 
     // Phase 4: External table accessibility (Issue #123 validation) will be tested via CLI
@@ -168,6 +227,13 @@ int main(void) {
     fprintf(stderr, "[migration] Run: FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli \\\n");
     fprintf(stderr, "[migration]      --system-root %s -e \"sizeOf(system.verbs.globals)\"\n", migrated_path);
     MIGRATION_TEST_PASS("External table accessibility testing procedure documented");
+
+    // Future enhancement: Deep nesting test
+    fprintf(stderr, "\n[migration] Future enhancement: Deep nesting validation\n");
+    fprintf(stderr, "[migration] TODO: Test tables nested 3+ levels deep with external variables\n");
+    fprintf(stderr, "[migration] Current test validates root table format; deep nesting requires\n");
+    fprintf(stderr, "[migration] creating complex nested structures via Frontier runtime.\n");
+    fprintf(stderr, "[migration] See: planning/architectural_decision_records/explicit-context-passing/\n");
 
     // Print summary
     fprintf(stderr, "\n=== Migration Test Summary ===\n");
