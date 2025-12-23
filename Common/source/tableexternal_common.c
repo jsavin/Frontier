@@ -14,6 +14,7 @@
 #include "strings.h"
 #include "memory.h"
 #include "tableexternal_common.h"
+#include "logging.h"
 #if defined(FRONTIER_HEADLESS)
 /* Exported debug context from langhash_materialize_disk_values. */
 extern const char *langhash_materialize_current_path;
@@ -140,13 +141,11 @@ static boolean headless_convert_legacy_table_payload(const unsigned char *payloa
                         formats_src = outer_second;
                         formats_len = outer_second_len;
                         layout_ready = true;
-#if defined(FRONTIER_HEADLESS)
-                        fprintf(stderr, "[headless] legacy table lengths path header=%zu records=%zu strings=%zu formats=%zu\n",
+                        log_debug(LOG_COMP_TABLE, "legacy table lengths path header=%zu records=%zu strings=%zu formats=%zu",
                                 header_bytes,
                                 records_only_len / legacy_record_size,
                                 strings_len,
                                 formats_len);
-#endif
                     }
                 }
             }
@@ -223,12 +222,10 @@ static boolean headless_convert_legacy_table_payload(const unsigned char *payloa
                     records_start = candidate_records_start;
                     records_end = candidate_records_start + record_count * legacy_record_size;
                     formats_start = records_end;
-#if defined(FRONTIER_HEADLESS)
-                    fprintf(stderr, "[headless] fallback split strings=%zu records=%zu tail=%zu\n",
+                    log_debug(LOG_COMP_TABLE, "fallback split strings=%zu records=%zu tail=%zu",
                             derived_strings_len,
                             (records_end - records_start) / legacy_record_size,
                             payload_len > formats_start ? payload_len - formats_start : 0);
-#endif
                     break;
                 }
             }
@@ -310,13 +307,11 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
     bigstring bspath, bsunpackerror;
     boolean fl;
 
-#if defined(FRONTIER_HEADLESS)
-    fprintf(stderr, "[headless] tableverbinmemory enter hvariable=%p hnode=%p flinmemory=%d use_64bit=%d\n",
+    log_trace(LOG_COMP_TABLE, "tableverbinmemory enter hvariable=%p hnode=%p flinmemory=%d use_64bit=%d",
             (void *) hvariable,
             (void *) hnode,
             (hvariable && *hvariable) ? (**hvariable).flinmemory : -1,
             ctx ? ctx->mode.use_64bit_format : -1);
-#endif
 
     if ((**hv).flinmemory) /* nothing to do, it's already in memory */
         return true;
@@ -326,24 +321,19 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
 
     adr = (dbaddress) (**hv).variabledata;  /* DISK ADDRESS - format depends on source DB */
 
-#if defined(FRONTIER_HEADLESS)
-    fprintf(stderr, "[headless] tableverbinmemory_common: reading from hdatabase=%p adr=0x%llx use_64bit=%d (NO PUSH)\n",
+    log_trace(LOG_COMP_TABLE, "tableverbinmemory_common: reading from hdatabase=%p adr=0x%llx use_64bit=%d (NO PUSH)",
             (void*)(**hv).hdatabase,
             (unsigned long long)adr,
             ctx ? ctx->mode.use_64bit_format : -1);
-#endif
     long payload_offset = 0;
 
-#if defined(FRONTIER_HEADLESS)
     if ((**hv).hdatabase == nil) {
-        fprintf(stderr, "[headless] tableverbinmemory nil database for variable adr=0x%llx\n",
+        log_warn(LOG_COMP_TABLE, "tableverbinmemory nil database for variable adr=0x%llx",
                 (unsigned long long) adr);
     }
-    fprintf(stderr, "[headless] tableverbinmemory dbpush database=%p adr=0x%llx\n",
+    log_debug(LOG_COMP_TABLE, "tableverbinmemory dbpush database=%p adr=0x%llx",
             (void *)(**hv).hdatabase, (unsigned long long) adr);
-#endif
 
-#if defined(FRONTIER_HEADLESS)
     {
         dbaddress normalized = adr;
         if (dbnormalizeaddress(&normalized)) {
@@ -354,63 +344,55 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
                 adr = normalized;
             }
         } else {
-            fprintf(stderr, "[headless] dbnormalizeaddress failed for adr=0x%llx\n", (unsigned long long) adr);
+            log_error(LOG_COMP_TABLE, "dbnormalizeaddress failed for adr=0x%llx", (unsigned long long) adr);
         }
     }
-#endif
 
     if (adr == nildbaddress) { /* table has never been allocated */
-#if defined(FRONTIER_HEADLESS)
-        fprintf(stderr, "[headless] tableverbinmemory nil table address (never saved)\n");
-#endif
+        log_warn(LOG_COMP_TABLE, "tableverbinmemory nil table address (never saved)");
         shellinternalerror(idniltableaddress, BIGSTRING ("\x2b" "nil table address.  (Creating empty table.)"));
         fl = false;
     } else {
         /* Use passed context for reading - format determined by caller */
         fl = dbrefhandle_context(ctx, adr, &hpacked);
 
-#if defined(FRONTIER_HEADLESS)
         if (!fl) {
-            fprintf(stderr, "[headless] dbrefhandle failed adr=0x%llx\n", (unsigned long long)adr);
+            log_error(LOG_COMP_TABLE, "dbrefhandle failed adr=0x%llx", (unsigned long long)adr);
         } else {
             long hsize_long = gethandlesize(hpacked);
-            fprintf(stderr, "[headless] dbrefhandle ok adr=0x%llx size=%ld\n",
+            log_debug(LOG_COMP_TABLE, "dbrefhandle ok adr=0x%llx size=%ld",
                     (unsigned long long)adr, hsize_long);
             if (payload_offset > 0 && payload_offset < hsize_long) {
                 pullfromhandle(hpacked, 0, payload_offset, nil);
-                fprintf(stderr, "[headless] trimmed leading %ld bytes from packed table\n", payload_offset);
+                log_debug(LOG_COMP_TABLE, "trimmed leading %ld bytes from packed table", payload_offset);
             }
-            if (hsize_long > 0) {
+            if (hsize_long > 0 && log_enabled(LOG_LEVEL_TRACE, LOG_COMP_TABLE)) {
                 size_t dump = hsize_long < 32 ? (size_t) hsize_long : 32;
                 unsigned char *bytes = (unsigned char *) *hpacked;
-                fprintf(stderr, "[headless] hpacked first bytes:");
-                for (size_t i = 0; i < dump; ++i)
-                    fprintf(stderr, " %02x", bytes[i]);
-                fprintf(stderr, "\n");
+                log_hex_dump(LOG_COMP_TABLE, LOG_LEVEL_TRACE, bytes, dump, "hpacked first bytes");
             }
 
             if (fl) {
                 size_t hsize = (size_t) hsize_long;
                 unsigned char *bytes = (unsigned char *) *hpacked;
                 if (!headless_payload_looks_v7(bytes, hsize)) {
-                    fprintf(stderr, "[headless] legacy table payload detected len=%zu\n", hsize);
+                    log_debug(LOG_COMP_TABLE, "legacy table payload detected len=%zu", hsize);
                     Handle hlegacy = nil;
                     if (headless_convert_legacy_table_payload(bytes, hsize, &hlegacy)) {
                         disposehandle(hpacked);
                         hpacked = hlegacy;
-                        fprintf(stderr, "[headless] converted legacy table payload to merged handle\n");
+                        log_debug(LOG_COMP_TABLE, "converted legacy table payload to merged handle");
                     } else {
-                        fprintf(stderr, "[headless] legacy table conversion failed\n");
+                        log_error(LOG_COMP_TABLE, "legacy table conversion failed");
                     }
                 }
             }
         }
-#endif
 
         if (fl) {
             langtraperrors(bsunpackerror, &savecallback, &saverefcon);
 
-            fprintf(stderr, "[headless] tableunpacktable enter path=%s adr=0x%llx\n",
+            log_trace(LOG_COMP_TABLE, "tableunpacktable enter path=%s adr=0x%llx",
                     (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
                     (unsigned long long) adr);
             fl = tableunpacktable(hpacked, false, &htable); /* always disposes of hpackedtable */
@@ -420,10 +402,9 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
             if (!fl) {
                 fllangerror = false;
 
-#if defined(FRONTIER_HEADLESS)
-                fprintf(stderr, "[headless] tableunpacktable failed adr=0x%llx\n", (unsigned long long)adr);
+                log_error(LOG_COMP_TABLE, "tableunpacktable failed adr=0x%llx", (unsigned long long)adr);
                 if (langhash_materialize_current_path != NULL) {
-                    fprintf(stderr, "[headless] materialize context path=%s\n", langhash_materialize_current_path);
+                    log_debug(LOG_COMP_TABLE, "materialize context path=%s", langhash_materialize_current_path);
                 }
                 if (langhash_materialize_current_path == NULL) {
                     if (langexternalfindvariable((hdlexternalvariable) hv, &hparent, bspath) &&
@@ -433,7 +414,7 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
                         short pcopy = (plen < (short) sizeof(cpath) - 1) ? plen : (short) sizeof(cpath) - 1;
                         memmove(cpath, stringbaseaddress(bspath), pcopy);
                         cpath[pcopy] = '\0';
-                        fprintf(stderr, "[headless] materialize context path=%s (computed)\n", cpath);
+                        log_debug(LOG_COMP_TABLE, "materialize context path=%s (computed)", cpath);
                     }
                 }
                 {
@@ -442,9 +423,8 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
                     short copylen = (errlen < (short)sizeof(errbuf) - 1) ? errlen : (short)sizeof(errbuf) - 1;
                     memmove(errbuf, stringbaseaddress(bsunpackerror), copylen);
                     errbuf[copylen] = '\0';
-                    fprintf(stderr, "[headless] tableunpacktable error: %s\n", errbuf);
+                    log_error(LOG_COMP_TABLE, "tableunpacktable error: %s", errbuf);
                 }
-#endif
 
                 if (langexternalfindvariable((hdlexternalvariable) hv, &hparent, bspath) &&
                     langexternalgetfullpath(hparent, bspath, bspath, nil)) {
@@ -453,11 +433,9 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
                 } else
                     langerrormessage(bsunpackerror);
             }
-#if defined(FRONTIER_HEADLESS)
             else {
-                fprintf(stderr, "[headless] tableunpacktable ok adr=0x%llx\n", (unsigned long long)adr);
+                log_trace(LOG_COMP_TABLE, "tableunpacktable ok adr=0x%llx", (unsigned long long)adr);
             }
-#endif
         }
     }
 
@@ -476,11 +454,10 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
     else
         (**hv).oldaddress = adr; /* last place this table was stored */
 
-#if defined(FRONTIER_HEADLESS)
-    {
+    if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_TABLE)) {
         long ctitems = 0;
         hashcountitems(htable, &ctitems);
-        fprintf(stderr, "[headless] tableverbinmemory loaded table with %ld items (adr=0x%llx)%s\n",
+        log_trace(LOG_COMP_TABLE, "tableverbinmemory loaded table with %ld items (adr=0x%llx)%s",
                 ctitems,
                 (unsigned long long)adr,
                 (adr == (**hv).oldaddress) ? "" : " *oldaddr mismatch*");
@@ -495,13 +472,12 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
                 short copylen = (len < (short)sizeof(cname)-1) ? len : (short)sizeof(cname)-1;
                 memmove(cname, stringbaseaddress(bsdump), copylen);
                 cname[copylen] = '\0';
-                fprintf(stderr, "[headless]   entry %s valuetype=%d dontsave=%d\n",
+                log_trace(LOG_COMP_TABLE, "  entry %s valuetype=%d dontsave=%d",
                         cname, (**dump).val.valuetype, (int)(**dump).fldontsave);
                 dump = (**dump).sortedlink;
             }
         }
     }
-#endif
 
     if ((**hv).flmayaffectdisplay)
         (**htable).flmayaffectdisplay = true;

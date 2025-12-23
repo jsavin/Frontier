@@ -30,10 +30,6 @@
 #include "frontier.h"
 #include "standard.h"
 
-#if defined(FRONTIER_HEADLESS)
-#include <stdio.h>
-#endif
-
 #include "memory.h"
 #include "quickdraw.h"
 #include "strings.h"
@@ -43,6 +39,7 @@
 #include "tablestructure.h"
 #include "db_format.h"
 #include "byteorder.h"
+#include "logging.h"
 
 // 2025-10-27 Codex: Handle 64-bit dbaddress packing/unpacking for headless workloads.
 // 2025-11-20 Codex: Emit table addresses in canonical big-endian form for portable v7 roots.
@@ -76,10 +73,8 @@ boolean tablepacktable_internal (const db_context *ctx, hdlhashtable htable, boo
 	}
 	
 	if (!hashpacktable_context (&context, ht, flmemory, &hpackedtable, flmustsave)) {
-#if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[headless] tablepacktable hashpacktable failed flmemory=%d table=%p\n",
+		log_error(LOG_COMP_TABLE, "tablepacktable hashpacktable failed flmemory=%d table=%p",
 			(int)flmemory, (void *)ht);
-#endif
 		return (false);
 	}
 	
@@ -96,21 +91,17 @@ boolean tablepacktable_internal (const db_context *ctx, hdlhashtable htable, boo
 		tablepopformats ();
 		
 		if (!fl) {
-			
+
 			disposehandle (hpackedtable);
-#if defined(FRONTIER_HEADLESS)
-			fprintf(stderr, "[headless] tablepacktable tablepackformats failed table=%p\n", (void *)ht);
-#endif
+			log_error(LOG_COMP_TABLE, "tablepacktable tablepackformats failed table=%p", (void *)ht);
 			return (false);
 			}
 		}
 	
 	fl = mergehandles (hpackedtable, hpackedformats, hpacked);
 	if (!fl) {
-#if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[headless] tablepacktable mergehandles failed table=%p tableHandle=%p formats=%p\n",
+		log_error(LOG_COMP_TABLE, "tablepacktable mergehandles failed table=%p tableHandle=%p formats=%p",
 			(void *)ht, (void *)hpackedtable, (void *)hpackedformats);
-#endif
 	}
 	
 	/*
@@ -158,12 +149,10 @@ boolean tableunpacktable_internal (const db_context *ctx, Handle hpacked, boolea
 	if (!unmergehandles (hpacked, &hpackedtable, &hpackedformats)) /*comsumes hpacked*/
 		return (false);
 
-#if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] tableunpacktable split merged=%ld table=%ld formats=%ld\n",
+	log_debug(LOG_COMP_TABLE, "tableunpacktable split merged=%ld table=%ld formats=%ld",
 	        merged_size,
 	        hpackedtable ? gethandlesize (hpackedtable) : 0L,
 	        hpackedformats ? gethandlesize (hpackedformats) : 0L);
-#endif
 
 	if (!newhashtable (htable)) {
 
@@ -181,12 +170,10 @@ boolean tableunpacktable_internal (const db_context *ctx, Handle hpacked, boolea
 	} else {
 		db_context_init(&context);
 	}
-	
+
 	/* Trace which unpacker is reached. */
-#if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] tableunpacktable calling hashunpacktable_context ht=%p flmemory=%d\n",
+	log_trace(LOG_COMP_TABLE, "tableunpacktable calling hashunpacktable_context ht=%p flmemory=%d",
 	        (void *) ht, (int) flmemory);
-#endif
 if (!hashunpacktable_context (&context, hpackedtable, flmemory, ht)) /*always disposes of hpackedtable*/
 	goto error;
 	
@@ -352,10 +339,8 @@ boolean tableverbpack_internal (const db_context *ctx, hdlexternalvariable h, Ha
 
 	adapter_repack = db_format_adapter_force_repack() && (databasedata != nil);
 
-#if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] tableverbpack_internal start flinmemory=%d adapter_repack=%d databasedata=%p\n",
+	log_debug(LOG_COMP_TABLE, "tableverbpack_internal start flinmemory=%d adapter_repack=%d databasedata=%p",
 	        (int) (**hv).flinmemory, (int) adapter_repack, (void *) databasedata);
-#endif
 
 	/* Precondition: external must be in memory */
 	if (!(**hv).flinmemory) {
@@ -381,23 +366,16 @@ boolean tableverbpack_internal (const db_context *ctx, hdlexternalvariable h, Ha
 
 	current_mode = db_format_mode_current();
 
-#if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] tableverbpack_internal calling tablepacktable_internal fldirty=%d flsubsdirty=%d use_64bit=%d\n",
+	log_debug(LOG_COMP_TABLE, "tableverbpack_internal calling tablepacktable_internal fldirty=%d flsubsdirty=%d use_64bit=%d",
 	        (**ht).fldirty ? 1 : 0, (**ht).flsubsdirty ? 1 : 0,
 	        current_mode.use_64bit_format ? 1 : 0);
-#endif
 
 	/* Use current global mode (set by caller) for packing */
 	fl = tablepacktable_internal (ctx, ht, false, &hpackedtable, &flmustsave);
-#if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] tablepacktable_internal returned fl=%d\n", fl ? 1 : 0);
-	fflush(stderr);
-#endif
+	log_debug(LOG_COMP_TABLE, "tablepacktable_internal returned fl=%d", fl ? 1 : 0);
 
 	if (!fl) {
-#if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[headless] tablepacktable failed for system table\n");
-#endif
+		log_error(LOG_COMP_TABLE, "tablepacktable failed for system table");
 			goto pushaddress;
 		}
 
@@ -405,22 +383,16 @@ boolean tableverbpack_internal (const db_context *ctx, hdlexternalvariable h, Ha
 		or if one of its subs changed in  a way so that the table itself actually needs saving now*/
 
 	if (fldatabasesaveas || (**ht).fldirty || flmustsave) {
-#if defined(FRONTIER_HEADLESS)
 		dbaddress adr_before = adr;
-#endif
 		if (databasedata != nil)
 			fl = dbsavehandle (hpackedtable, &adr);
 		else {
-#if defined(FRONTIER_HEADLESS)
-			fprintf(stderr, "[headless] tableverbpack skipping dbsavehandle; databasedata is nil\n");
-#endif
+			log_debug(LOG_COMP_TABLE, "tableverbpack skipping dbsavehandle; databasedata is nil");
 			fl = true;
 			adr = 0;
 		}
-#if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[headless] tableverbpack dbsavehandle adr: 0x%llx → 0x%llx\n",
+		log_debug(LOG_COMP_TABLE, "tableverbpack dbsavehandle adr: 0x%llx → 0x%llx",
 		        (unsigned long long) adr_before, (unsigned long long) adr);
-#endif
 	}
 
 	disposehandle (hpackedtable);
@@ -443,10 +415,8 @@ boolean tableverbpack_internal (const db_context *ctx, hdlexternalvariable h, Ha
 		shellsetwindowchanges (hinfo, false);
 
 	pushaddress:
-#if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] tableverbpack_internal pushaddress adr=0x%llx oldaddress=0x%llx variabledata=0x%llx\n",
+	log_trace(LOG_COMP_TABLE, "tableverbpack_internal pushaddress adr=0x%llx oldaddress=0x%llx variabledata=0x%llx",
 	        (unsigned long long) adr, (unsigned long long) (**hv).oldaddress, (unsigned long long) (**hv).variabledata);
-#endif
     /* Decide whether to emit a 64-bit address trailer - use current mode */
     mode64_for_save = current_mode.use_64bit_format;
     if (!mode64_for_save && fldatabasesaveas) {
@@ -473,9 +443,7 @@ boolean tableverbpack_internal (const db_context *ctx, hdlexternalvariable h, Ha
 	}
 
 	if (!enlargehandle (*hpacked, adrsize, (ptrchar) adrbuffer)) {
-#if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[headless] enlargehandle failed while packing table\n");
-#endif
+		log_error(LOG_COMP_TABLE, "enlargehandle failed while packing table");
 		return (false);
 	}
 
@@ -506,16 +474,14 @@ boolean tableverbunpack_internal (const db_context *ctx, Handle hpacked, long *i
 	long remaining = hpacked ? (gethandlesize(hpacked) - *ixload) : 0;
 
 	if (use_64bit && ((int)sizeof (dbaddress) == 8)) {
-		fprintf(stderr, "[headless] tableverbunpack_internal use_64bit_format=true sizeof(dbaddress)=%zu remaining=%ld\n",
+		log_trace(LOG_COMP_TABLE, "tableverbunpack_internal use_64bit_format=true sizeof(dbaddress)=%zu remaining=%ld",
 		        sizeof(dbaddress), remaining);
 		if (remaining >= (long) sizeof (dbaddress)) {
 			unsigned char adrbytes[sizeof (dbaddress)];
 			if (!loadfromhandle (hpacked, ixload, (long) sizeof (dbaddress), adrbytes))
 				return (false);
 			rawadr = (dbaddress) db_format_read_be64(adrbytes);
-#if defined(FRONTIER_HEADLESS)
-			fprintf(stderr, "[headless] tableverbunpack 64-bit address=0x%016llx\n", (unsigned long long) rawadr);
-#endif
+			log_trace(LOG_COMP_TABLE, "tableverbunpack 64-bit address=0x%016llx", (unsigned long long) rawadr);
 		} else if (remaining == (long) sizeof (int32_t)) {
 			unsigned char raw32[sizeof (uint32_t)];
 			if (!loadfromhandle (hpacked, ixload, (long) sizeof (raw32), raw32))
@@ -523,14 +489,10 @@ boolean tableverbunpack_internal (const db_context *ctx, Handle hpacked, long *i
 			{
 				uint32_t raw32_val = db_format_read_be32(raw32);
 				rawadr = (dbaddress) raw32_val;
-#if defined(FRONTIER_HEADLESS)
-				fprintf(stderr, "[headless] tableverbunpack fallback 32-bit address=0x%08x\n", raw32_val);
-#endif
+				log_trace(LOG_COMP_TABLE, "tableverbunpack fallback 32-bit address=0x%08x", raw32_val);
 			}
 		} else {
-#if defined(FRONTIER_HEADLESS)
-			fprintf(stderr, "[headless] tableverbunpack unexpected remaining bytes=%ld\n", remaining);
-#endif
+			log_error(LOG_COMP_TABLE, "tableverbunpack unexpected remaining bytes=%ld", remaining);
 			return (false);
 		}
 	} else {
@@ -540,9 +502,7 @@ boolean tableverbunpack_internal (const db_context *ctx, Handle hpacked, long *i
 		{
 			uint32_t raw32_val = db_format_read_be32(raw32);
 			rawadr = (dbaddress) raw32_val;
-#if defined(FRONTIER_HEADLESS)
-			fprintf(stderr, "[headless] tableverbunpack legacy 32-bit address=0x%08lx\n", (unsigned long) raw32_val);
-#endif
+			log_trace(LOG_COMP_TABLE, "tableverbunpack legacy 32-bit address=0x%08lx", (unsigned long) raw32_val);
 		}
 	}
 
