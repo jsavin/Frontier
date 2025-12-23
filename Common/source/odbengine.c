@@ -50,6 +50,7 @@
 #include "timedate.h"
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
 #include "db_format.h" /* format mode */
+#include "logging.h"
 
 #pragma pack(2)
 typedef struct tycancoonrecord { /*one of these for every cancoon file that's open*/
@@ -434,7 +435,7 @@ pascal boolean odbOpenFile (hdlfilenum fnum, odbref *odb, boolean flreadonly) {
 				unsigned char hdr[2];
 				if (fread(hdr, 1, 2, fp) == 2) {
 #if defined(FRONTIER_HEADLESS)
-					fprintf(stderr, "[debug] odbOpenFile pre-open header: path=%s ver=%u\n", path, (unsigned)hdr[1]);
+					log_debug(LOG_COMP_DB, "odbOpenFile pre-open header: path=%s ver=%u", path, (unsigned)hdr[1]);
 #endif
 					if (hdr[1] <= 6) {
 						fclose(fp);

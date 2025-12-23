@@ -1,7 +1,226 @@
 # Carbon Migration / Runtime Modernization – Active TODO
 
-Status: In Progress (Updated 2025-12-13)  
+Status: In Progress (Updated 2025-12-22)
 Owner: Codex
+
+## Approved Architectural Decisions
+
+**Code Cleanup Strategy (IFDEF Cleanup - from IFDEF_CLEANUP_STRATEGY.md)**
+- ✅ **PIKE variant removal**: APPROVED - Remove all 29 PIKE ifdefs (Frontier-only codebase, Pike was separate product)
+  - Implementation: Phase 4, Week 13 of ifdef cleanup roadmap
+  - Files affected: progressbar.c and 28 others
+  - Impact: Simplifies codebase significantly
+  - Update docs: Remove Pike references from README.md, build documentation
+
+- ✅ **Optional database backends**: APPROVED - Keep as optional compile-time features (MySQL, SQLite, Python)
+  - Current: FRONTIER_MYSQL, FRONTIER_SQLITE, FRONTIER_PYTHON (3 patterns each, 8 total blocks)
+  - Approach: Compile-time flags via Makefile/CMake configuration
+  - Note: If we want to support Python integration or other optional backends going forward, will need architectural rethinking to avoid ifdef proliferation
+  - Action: Document in build system instead of hardcoding
+
+---
+
+## P0s – Critical Blockers (Architectural Decisions Required)
+These block deployment and major system decisions. All require design/planning before implementation.
+
+- **Issue #86**: P0: Global runtime context & lifecycle
+  - Scope: Large - impacts all concurrent CLI/runtime clients
+  - Status: Design/decision needed
+  - Blocks: #94 (concurrency model), #97 (remote runtime), #87 (EFP routing parity)
+
+- **Issue #87**: P0: Headless EFP routing parity
+  - Scope: Large - requires equivalence with UI-mode event flow
+  - Depends on: #86 (runtime context)
+  - Blocks: CLI stability, proper testing infrastructure
+
+- **Issue #85**: P0: UI boundary via Ports & Adapters
+  - Scope: Large - architectural refactor
+  - Depends on: #86 (runtime context)
+  - Status: Design/decision needed
+
+- **Issue #84**: P0: Memory management audit (rolling)
+  - Scope: Ongoing - continuous verification
+  - Status: Active (completed in PR #137 for migration cleanup paths)
+  - Note: Continue periodic audits as new code lands
+
+- **Issue #88**: P0: Networking architecture & security
+  - Scope: Medium - HTTP/WebSocket scaffolding with secure defaults
+  - Status: Design/decision needed, deferred until Phase 2
+  - Timeline: Before broad CLI distribution
+  - Reference: `planning/1.0_phase1_cli_implementation_plan.md`
+
+## P1s – High Priority (Recommended Work Order)
+
+### ✅ Phase 0: Logging Infrastructure (COMPLETE - 100%)
+**Status**: DONE - All 377 fprintf(stderr) statements migrated to structured logging
+
+- ✅ **Logging infrastructure** (logging.h/logging.c) - COMPLETE
+  - Created runtime-controlled log levels via environment variables
+  - Component-based filtering (DB, Hash, Table, Pack, Eval, Lang, OP, Parse)
+  - Replaced 76 debug ifdef blocks
+  - Reference: `planning/phase3/LOGGING_INFRASTRUCTURE_PLAN.md`
+  - Deliverables:
+    * logging.h/logging.c with API: log_error/warn/info/debug/trace per component ✅
+    * Environment variable configuration (FRONTIER_LOG_LEVEL, FRONTIER_LOG_COMPONENT) ✅
+    * All migrations documented in PRs #154-#160 ✅
+    * Integrated with all user-facing code ✅
+
+- ✅ **Migration phases completed** (all user-facing code)
+  - Phase 3.1: Language runtime (52 stmts, PR #154) ✅
+  - Phase 3.2: Quick wins (13 stmts, PR #155) ✅
+  - Phase 3.3: Simple files (18 stmts, PR #157) ✅
+  - Phase 3.4: Medium complexity (50 stmts, PR #158) ✅
+  - Phase 3.5: Special cases - macros + Bison (16 stmts, PR #160) ✅
+  - Phase 3.6: Meta-logging exemption (check_fprintf.sh) ✅
+  - **Total: 377 of 377 statements (100%)** ✅
+
+### Phase 1: Code Cleanup Completion (LOW RISK - ~1-2 hours)
+**Complete remaining dead code removal:**
+
+- [ ] Remove obsolete platform code (~3 blocks remaining)
+  - `oldMACVERSION` (3 blocks in langhash.c - v7 format doesn't use Mac aliases)
+  - Commented `WIN95VERSION` blocks (already mostly cleaned)
+  - ~50 lines total; quick cleanup
+
+### Phase 2: PR #137 Follow-Ups (Code Quality - ~6-10 hours)
+
+- **Issue #138** (P1): Refactor dbendsaveas to make implicit disposal explicit
+  - Scope: Small - Documentation + minor API improvement
+  - LOE: ~4-6 hours
+  - Files affected: `Common/source/db.c`, `Common/headers/db.h`
+  - Note: Add clear documentation about internal `dbdispose()` call; prevents future double-free bugs
+
+- **Issue #140** (P1): Audit db_context_guard usage in database disposal paths
+  - Scope: Small - Code review + verification
+  - LOE: ~2-4 hours
+  - Files affected: `Common/source/db.c`, `Common/source/db_format.c`
+  - Depends on: #138 (context for disposal patterns)
+  - Output: Confirmation that context guards have been properly removed from disposal paths
+
+### Phase 3: Mode Stack Refactor Prerequisites (ARCHITECTURE - ~4-7 days)
+**Do these before starting mode stack refactor Phase 1:**
+
+- **Issue #135** (P1): Refactor outline (op) management from push/pop to deterministic context model
+  - Scope: Medium - Similar push/pop pattern to mode stack
+  - LOE: ~3-5 days (multiple file changes, similar refactor pattern to mode stack)
+  - Interdependency: Same push/pop anti-pattern as mode stack; fixing now prevents future bugs
+  - Files affected: `Common/source/op.c`, op management throughout codebase
+  - Related issue: #136 (audit external object processing)
+
+- **Issue #136** (P1): Audit external object processing for push/pop anti-patterns
+  - Scope: Medium - Code review + planning
+  - LOE: ~1-2 days
+  - Dependency: Complements #135; identifies all similar patterns
+  - Output: Planning doc listing all external object push/pop patterns and refactor plan
+
+### Phase 4: Quick Wins & Verb Porting (~3-4 hours)
+
+- **Issue #121** (P1): Implement 28 error stubs for remaining verbs
+  - Scope: Quick win - 3-4 hours
+  - Files affected: Shell verb implementations in `Common/source/shell*.c`
+  - Impact: Unblocks CLI testing by stubbing error returns instead of crashes
+  - Note: Can be done in parallel with other work
+
+- **Issue #122** (P1): Implement TCP/Socket abstraction layer for networking verbs
+  - Scope: Medium - 6-8 hours
+  - Depends on: #88 (networking architecture decision - may block)
+  - Status: Decision-dependent; defer until architecture P0 resolved
+
+### Phase 5: Testing & Infrastructure (~20-30 hours)
+
+- **Issue #77** (P1): Add helper macros for BE pack/unpack in langhash
+  - Scope: Medium - Code quality improvement
+  - LOE: ~4-6 hours
+  - Files affected: `Common/source/langhash.c`, new helpers in `Common/headers/db_format.h`
+  - Impact: Reduces manual memcpy repetition, improves maintainability
+  - Related: Supports Issues #78, #79 (testing follow-ups)
+
+- **Issue #78** (P1): Cross-arch BE64 serialization verification
+  - Scope: Medium - Adding regression tests with golden blobs
+  - LOE: ~6-8 hours
+  - Depends on: #77 (BE helpers)
+  - Output: Procedural + file-based regression tests for x86_64/arm64 compatibility
+  - Impact: Ensures v7 database format portability across architectures
+
+- **Issue #79** (P1): Add extended type bounds tests for hash unpack (lists, tables, records)
+  - Scope: Medium - Comprehensive testing
+  - LOE: ~6-8 hours
+  - Files affected: `tests/db_format_tests.c`
+  - Impact: Catches edge cases in deserialization before they hit production
+  - Related: Issue #76 (corruption tests), #75 (hash hardening PR)
+
+- **Issue #132** (P1): Investigate hash table disposal in unit test environment
+  - Scope: Small - Debugging + verification
+  - LOE: ~2-4 hours
+  - Impact: Ensures test harness doesn't leak handles between tests
+
+- **Issue #73** (P1): Document magic sizes (path buffers, menu padding)
+  - Scope: Small - Documentation
+  - LOE: ~2-3 hours
+  - Output: Adds comments/docs to `Common/headers/shell.h` and related files
+  - Impact: Improves maintainability, prevents size mistakes in future refactors
+
+### Phase 6: Major Architectural Decisions (DEFERRED - Design-dependent)
+
+- **Issue #89** (P1): OSA / IPC strategy
+  - Scope: Large - Architectural decision
+  - Blocks: UI/headless bridge, cross-process communication
+  - Status: Decision needed
+  - Related docs: `planning/TODO_future_improvements.md`
+
+- **Issue #90** (P1): File I/O & path policy
+  - Scope: Large - Security/access control decisions
+  - Blocks: File verb implementations, sandboxing model (#106)
+  - Status: Decision needed
+  - Dependency: Related to #106 (permission/sandboxing)
+
+- **Issue #91** (P1): Unicode strategy
+  - Scope: Medium - Encoding/platform decisions
+  - Blocks: Comprehensive verb porting (date/file/string verbs)
+  - Status: Decision needed
+  - Note: Likely affects multiple verb families
+
+- **Issue #93** (P1): Hash table modernization
+  - Scope: Large - Data structure refactor
+  - Blocks: Long-term performance improvements
+  - Status: Design phase
+  - Note: Post-1.0 work
+
+- **Issue #94** (P1): Concurrency model & task contexts
+  - Scope: Large - Runtime architecture
+  - Depends on: #86 (global runtime context)
+  - Status: Design/decision needed
+  - Blocks: Multi-threaded operation, background tasks
+
+- **Issue #97** (P1): Remote runtime + local guest databases
+  - Scope: Large - Multi-tier architecture
+  - Depends on: #86 (runtime context), #88 (networking)
+  - Status: Design/decision needed
+  - Timeline: Phase 2+
+
+- **Issue #102** (P1): Developer experience improvements
+  - Scope: Medium - Tooling & documentation
+  - Status: Ongoing
+  - Examples: Better error messages, improved debugging support
+
+- **Issue #105** (P1): Modernize file.getSystemFolderPath for multi-platform support
+  - Scope: Medium - Cross-platform file system access
+  - LOE: ~4-6 hours
+  - Depends on: #90 (file I/O & path policy)
+  - Files affected: `Common/source/file*.c`
+  - Impact: Enables proper cross-platform file operations
+
+- **Issue #106** (P1): Design permission/sandboxing model for daemon vs userspace execution
+  - Scope: Large - Security model
+  - Depends on: #90 (file I/O & path policy)
+  - Status: Design/decision needed
+  - Blocks: Daemon/service deployment
+
+- **Issue #81** (P1): Unvendor temporary build dependencies (CMake + Paige)
+  - Scope: Medium - Build system refactor
+  - LOE: ~2-3 weeks
+  - Status: Deferred until Phase 2 (post v6→v7 migration)
+  - Note: Vendor Paige statically for now to unblock testing
 
 ## Runtime / CLI Stabilization
 - [x] Implement headless/kernel clock verbs (`clock.now`, `clock.ticks`, `clock.milliseconds`, `clock.sleepfor`, `clock.waitseconds`, `clock.waitsixtieths`).
@@ -13,10 +232,41 @@ Owner: Codex
 - [ ] Implement remaining date verbs (`date.*` functions) for full CLI coverage.
   - Related: `docs/verb_implementation_status.md` references date verb roadmap
 
-## Hash / Serialization Follow-Ups
-- [ ] Add corruption/bounds tests for hash unpack (OOB name index, truncated records, header edge cases). Ref: Issue #76.
-- [ ] Refactor BE pack/unpack into helpers/macros to reduce manual memcpy repetition. Ref: Issue #77.
-- [ ] Cross-arch BE64 verification for v7 hash/table records (x86_64 vs arm64 golden blobs). Ref: Issue #78.
+## P2 Follow-Ups (Medium Priority - Nice to Have)
+
+### Migration / Cleanup Follow-Ups (PR #137)
+- [ ] Issue #139: Cleanup path duplication (factor out repeated cleanup logic across cancoon.c and other files).
+- [ ] Issue #141: Final cleanup restructuring (consolidate all cleanup scenarios into consistent patterns).
+- [ ] Issue #142: Error path test coverage (add tests for migration failures at various points in the flow).
+- [ ] Issue #143: cleanup_migration_database error scenarios (add tests for scenarios 2 and 3 - error with Save As active, error with allocated destination).
+
+### Code Cleanup Completed (IFDEF Cleanup - Approved Strategy)
+**Reference**: `planning/phase3/code-cleanup/IFDEF_CLEANUP_STRATEGY.md` (approved)
+
+**Summary of Completed Work:**
+- [x] Remove "xxx"-prefixed dead code blocks (~15 blocks, ~150 lines) ✅ DONE (Commit 3e73fffb)
+  - `xxxWIN95VERSION`, `xxxPIKE`, `xxxfldebug`, `xxxver`, etc.
+
+- [x] Remove explicit dead code markers (~3 blocks) ✅ DONE (Commit 46c5ff58)
+  - `OBSOLETE` (whirlpool.c: ~1000 lines of obsolete crypto tables)
+  - `NEVER` (langevaluate.c: error reporting code)
+  - **Keep**: `NeverDefine_For_Reference` (defensive guard pattern)
+
+- [x] Remove orphaned platform entry points (3 files) ✅ DONE (PR #134)
+  - `Common/source/FrontierWinMain.c`, `FrontierMacMain.c`, `FrontierWinMain.h`
+  - Impact: ~2600 lines of dead legacy UI code removed
+
+**Feature Flag Cleanup (APPROVED DECISIONS):**
+- ✅ **PIKE removal** (29 blocks): APPROVED - scheduled Week 13 per roadmap
+- ✅ **Optional database backends**: Keep as compile-time flags (MySQL, SQLite, Python)
+  - Document via Makefile/CMake instead of hardcoding
+
+**Deferred to later (Phase 4+):**
+- Threading/networking ifdef cleanup (defer until architecture stabilized)
+- SMART_DB_OPENING, xmlfeature, and miscellaneous flags (audit separately)
+
+### Additional Hash / Serialization Follow-Ups (P2)
+- [ ] Issue #76: Add corruption/bounds tests for hash unpack (OOB name index, truncated records, header edge cases).
 - [ ] Consider small gating for verbose hash unpack logging to keep perf predictable when enabled.
 
 ## Numeric Type System (mostly done)
@@ -28,6 +278,13 @@ Owner: Codex
 ## Docs / Planning
 - [x] Document v7 hash record layout and logging env var in `docs/database_architecture.md`.
 - [ ] Keep `_STATUS_ARCHIVE.md` and `_CURRENT_STATUS.md` in sync with future milestones; note any new env vars or tooling expectations.
+- [ ] Update documentation to remove Pike product references (from approved PIKE removal decision)
+  - Files: README.md, build documentation, architecture docs
+  - Emphasize: Frontier-only codebase, Pike was a separate product
+- [ ] Document optional database backend flags in build system documentation
+  - Note: FRONTIER_MYSQL, FRONTIER_SQLITE, FRONTIER_PYTHON compile-time flags
+  - Update: Makefile/CMake build documentation
+  - Caveat: If Python integration wanted in future, will need architectural rethinking
 
 ## Nice-to-Haves / Future
 - [ ] Add small helper macros for BE packing in other packers if duplication grows.

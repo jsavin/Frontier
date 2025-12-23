@@ -50,13 +50,7 @@
 #include "opinternal.h"
 #include "db_format.h" /* 2025-11-23 Codex: explicit BE writes for outline headers */
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
-
-#if defined(FRONTIER_TESTS)
-#include <stdio.h>
-#define OP_HEADLESS_TRACE(...) fprintf(stderr, __VA_ARGS__)
-#else
-#define OP_HEADLESS_TRACE(...) ((void) 0)
-#endif
+#include "logging.h"
 #if defined(FRONTIER_HEADLESS)
 extern const char *langhash_materialize_current_path;
 #endif
@@ -425,7 +419,7 @@ boolean oppack (Handle *hpackedoutline) {
 	const long hcursor_size_early = (hcursor_early == NULL) ? 0 : gethandlesize((Handle) hcursor_early);
 	if (ho == nil || *ho == NULL || hosize <= 0 || !validhandle((Handle) ho)) {
 		const char *ctx = (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>";
-		fprintf(stderr, "[headless] oppack abort path=%s outlinedata=%p hdata=%p hsize=%ld valid=%d\n",
+		log_error(LOG_COMP_OP, "oppack abort path=%s outlinedata=%p hdata=%p hsize=%ld valid=%d",
 		        ctx,
 		        (void *) ho,
 		        ho == nil ? NULL : *ho,
@@ -434,7 +428,7 @@ boolean oppack (Handle *hpackedoutline) {
 		return (false);
 	}
 	if (hcursor_early == NULL || hcursor_size_early != (long) sizeof (tyheadrecord)) {
-		fprintf(stderr, "[headless] oppack abort early cursor mismatch path=%s ho=%p hodata=%p hcursor=%p hcursor_data=%p hcursor_size=%ld expected=%ld\n",
+		log_error(LOG_COMP_OP, "oppack abort early cursor mismatch path=%s ho=%p hodata=%p hcursor=%p hcursor_data=%p hcursor_size=%ld expected=%ld",
 		        (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
 		        (void *) ho,
 		        *ho,
@@ -444,7 +438,7 @@ boolean oppack (Handle *hpackedoutline) {
 		        (long) sizeof (tyheadrecord));
 		return (false);
 	}
-	fprintf(stderr, "[headless] oppack enter path=%s ho=%p hdata=%p hsize=%ld\n",
+	log_trace(LOG_COMP_OP, "oppack enter path=%s ho=%p hdata=%p hsize=%ld",
 	        (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
 	        (void *) ho,
 	        ho == nil ? NULL : *ho,
@@ -453,7 +447,7 @@ boolean oppack (Handle *hpackedoutline) {
 
 #if defined(FRONTIER_HEADLESS)
 	if (ho == nil || *ho == nil || !validhandle((Handle) ho)) {
-		fprintf(stderr, "[headless] oppack abort path=%s outlinedata=%p hdata=%p valid=%d\n",
+		log_error(LOG_COMP_OP, "oppack abort path=%s outlinedata=%p hdata=%p valid=%d",
 		        (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
 		        (void *) ho,
 		        ho == nil ? NULL : *ho,
@@ -488,7 +482,7 @@ boolean oppack (Handle *hpackedoutline) {
 			ixheader = packstream.pos - sizeof (header); //we're pointing past header now
 
 #if defined(FRONTIER_HEADLESS)
-			fprintf(stderr, "[headless] oppack debug stream-init path=%s hpacked=%p pos=%ld eof=%ld\n",
+			log_debug(LOG_COMP_OP, "oppack debug stream-init path=%s hpacked=%p pos=%ld eof=%ld",
 			        (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
 			        (void *) h,
 			        (long) packstream.pos,
@@ -497,7 +491,7 @@ boolean oppack (Handle *hpackedoutline) {
 			
 #if defined(FRONTIER_HEADLESS)
 			if (outlinedata != ho || outlinedata == NULL || *outlinedata == NULL || !validhandle((Handle) outlinedata)) {
-				fprintf(stderr, "[headless] oppack abort before hoist pop path=%s outlinedata=%p hdata=%p ho=%p hodata=%p valid=%d\n",
+				log_error(LOG_COMP_OP, "oppack abort before hoist pop path=%s outlinedata=%p hdata=%p ho=%p hodata=%p valid=%d",
 			        (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
 			        (void *) outlinedata,
 			        outlinedata == NULL ? NULL : *outlinedata,
@@ -506,7 +500,7 @@ boolean oppack (Handle *hpackedoutline) {
 			        outlinedata == NULL ? 0 : validhandle((Handle) outlinedata));
 			__builtin_trap();
 		}
-		fprintf(stderr, "[headless] oppack debug pre-hoists path=%s outlinedata=%p hdata=%p ho=%p hodata=%p\n",
+		log_debug(LOG_COMP_OP, "oppack debug pre-hoists path=%s outlinedata=%p hdata=%p ho=%p hodata=%p",
 		        (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
 		        (void *) outlinedata,
 		        outlinedata == NULL ? NULL : *outlinedata,
@@ -517,7 +511,7 @@ boolean oppack (Handle *hpackedoutline) {
 		flpoppedhoists = oppopallhoists ();
 
 #if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[headless] oppack debug post-hoists path=%s outlinedata=%p hdata=%p ho=%p hodata=%p flpopped=%d\n",
+		log_debug(LOG_COMP_OP, "oppack debug post-hoists path=%s outlinedata=%p hdata=%p ho=%p hodata=%p flpopped=%d",
 		        (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
 		        (void *) outlinedata,
 		        outlinedata == NULL ? NULL : *outlinedata,
@@ -525,7 +519,7 @@ boolean oppack (Handle *hpackedoutline) {
 		        ho == NULL ? NULL : *ho,
 		        flpoppedhoists);
 		if (ho == nil || *ho == nil || !validhandle((Handle) ho)) {
-			fprintf(stderr, "[headless] oppack abort after hoist pop path=%s outlinedata=%p hdata=%p valid=%d\n",
+			log_error(LOG_COMP_OP, "oppack abort after hoist pop path=%s outlinedata=%p hdata=%p valid=%d",
 			        (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
 			        (void *) ho,
 			        ho == nil ? NULL : *ho,
@@ -541,7 +535,7 @@ boolean oppack (Handle *hpackedoutline) {
 
 #if defined(FRONTIER_HEADLESS)
 	if (*ho == NULL) {
-		fprintf(stderr, "[headless] oppack abort before header fill path=%s outlinedata=%p hdata=%p\n",
+		log_error(LOG_COMP_OP, "oppack abort before header fill path=%s outlinedata=%p hdata=%p",
 		        (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
 		        (void *) ho,
 		        NULL);
@@ -550,7 +544,7 @@ boolean oppack (Handle *hpackedoutline) {
 	/* 2025-12-07 Codex: sanity-check handle size matches widened tyoutlinerecord */
 	const long hosize_checked = gethandlesize((Handle) ho);
 	if (hosize_checked != (long) sizeof (tyoutlinerecord)) {
-		fprintf(stderr, "[headless] oppack abort handle size mismatch path=%s ho=%p hdata=%p hsize=%ld expected=%ld\n",
+		log_error(LOG_COMP_OP, "oppack abort handle size mismatch path=%s ho=%p hdata=%p hsize=%ld expected=%ld",
 		        (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
 		        (void *) ho,
 		        *ho,
@@ -559,7 +553,7 @@ boolean oppack (Handle *hpackedoutline) {
 		__builtin_trap();
 	}
 	hdlheadrecord hcursor = (**ho).hbarcursor;
-	fprintf(stderr, "[headless] oppack pre-opgetnodeline ho=%p hodata=%p hcursor=%p hcursor_data=%p hcursor_size=%ld\n",
+	log_debug(LOG_COMP_OP, "oppack pre-opgetnodeline ho=%p hodata=%p hcursor=%p hcursor_data=%p hcursor_size=%ld",
 	        (void *) ho,
 	        *ho,
 	        (void *) hcursor,
@@ -568,7 +562,7 @@ boolean oppack (Handle *hpackedoutline) {
 	fflush(stderr);
 	const long hcursor_size = (hcursor == NULL) ? 0 : gethandlesize((Handle) hcursor);
 	if (hcursor == NULL || !validhandle((Handle) hcursor) || *hcursor == NULL) {
-		fprintf(stderr, "[headless] oppack abort cursor invalid path=%s hcursor=%p valid=%d data=%p ho=%p hodata=%p\n",
+		log_error(LOG_COMP_OP, "oppack abort cursor invalid path=%s hcursor=%p valid=%d data=%p ho=%p hodata=%p",
 		        (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
 		        (void *) hcursor,
 		        (hcursor == NULL) ? 0 : validhandle((Handle) hcursor),
@@ -578,7 +572,7 @@ boolean oppack (Handle *hpackedoutline) {
 		__builtin_trap();
 	}
 	if (hcursor_size != (long) sizeof (tyheadrecord)) {
-		fprintf(stderr, "[headless] oppack abort cursor size mismatch path=%s hcursor=%p hsize=%ld expected=%ld\n",
+		log_error(LOG_COMP_OP, "oppack abort cursor size mismatch path=%s hcursor=%p hsize=%ld expected=%ld",
 		        (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
 		        (void *) hcursor,
 		        hcursor_size,
@@ -590,14 +584,14 @@ boolean oppack (Handle *hpackedoutline) {
 	opgetnodeline ((**ho).hbarcursor, &lnumcursor);
 
 #if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] oppack cursor line=%ld ho=%p hdata=%p hsize=%ld\n",
+	log_debug(LOG_COMP_OP, "oppack cursor line=%ld ho=%p hdata=%p hsize=%ld",
 	        lnumcursor,
 	        (void *) ho,
 	        *ho,
 	        gethandlesize((Handle) ho));
 	fflush(stderr);
 	if (*ho == NULL || !validhandle((Handle) ho)) {
-		fprintf(stderr, "[headless] oppack abort after opgetnodeline path=%s outlinedata=%p hdata=%p valid=%d\n",
+		log_error(LOG_COMP_OP, "oppack abort after opgetnodeline path=%s outlinedata=%p hdata=%p valid=%d",
 		        (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
 		        (void *) ho,
 		        (ho == NULL) ? NULL : *ho,

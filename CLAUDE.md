@@ -14,6 +14,11 @@
 - When the user asks you a question, always answer it first before jumping into work.
 - Always ask the user first before pushing changes to origin/develop.
 - When deciding where to track future work, use documents in the planning directory by default for work directly related to getting the headless Frontier runtime working on modern systems, and use GitHub issues (via the `gh` command) for future improvements beyond functional parity with the legacy Frontier runtime.
+- **Planning directory structure**:
+  - `planning/phase3/` - Active Phase 3 implementation work and analysis
+  - `planning/architectural_decision_records/` - Architectural decisions and design standards that affect current and future work (e.g., MODE_SINGLE_DECISION_POINT.md)
+  - `planning/archive/` - Completed work and historical reference materials
+  - When making architectural decisions that will affect multiple work areas, document them in `planning/architectural_decision_records/`
 - Error messages exposed to end-users in the UserTalk realm always take the form of: "Can't do X because Y. [Try Z instead.]"
 - Never delete a local or remote branch without confirming with the user first.
 - When implementing new kernel verbs in C: (1) Add case statement in appropriate verb function (e.g., `sysverbfunc` in shellsysverbs.c), (2) Use `getstringvalue(hparam1, N, varname)` to extract parameters, (3) Convert Pascal strings to C strings with `nullterminate(varname)`, (4) Convert C strings back to Pascal with `copyctopstring(cstr, result)`, (5) Use `setstringvalue(result, v)` or `setlongvalue()` to return values, (6) Mark last parameter with `flnextparamislast = true`, (7) Run `./tools/run_headless_tests.sh` to verify no regressions.
@@ -114,3 +119,62 @@ External table variables store either:
 **Safe approach**: Force external tables into memory (`flinmemory=1`) during migration to avoid address format issues entirely.
 
 **See**: `docs/external_table_variable_management.md` - Migration patterns section
+
+## Logging Standards ⚠️
+
+All debug and diagnostic output must use structured logging macros - **never use `fprintf(stderr, ...)`**.
+
+### Rule: No fprintf(stderr) in New Code
+
+- ❌ NEVER: `fprintf(stderr, "message\n")`
+- ✓ ALWAYS: `log_trace(LOG_COMP_DB, "message")` or `log_error()`, `log_debug()`, etc.
+
+### Logging Macros (Priority Order)
+
+1. **`log_error(component, ...)`** - Critical failures (always shown)
+2. **`log_warn(component, ...)`** - Unexpected but recoverable conditions
+3. **`log_info(component, ...)`** - Startup/shutdown milestones
+4. **`log_debug(component, ...)`** - Diagnostic information
+5. **`log_trace(component, ...)`** - Maximum verbosity (function entry/exit)
+
+### Logging Components
+
+Use the appropriate LOG_COMP_* constant matching the subsystem:
+- `LOG_COMP_DB` - Database layer (db.c, db_format.c)
+- `LOG_COMP_HASH` - Hash tables (langhash.c)
+- `LOG_COMP_TABLE` - Table operations (tablepack.c, tableops.c)
+- `LOG_COMP_LANG` - Language runtime (lang.c, langvalue.c)
+- (See `Common/headers/logging.h` for full list)
+
+### Special Cases
+
+**Hex Dumps**: Use `log_hex_dump()` instead of streaming fprintf:
+```c
+// ✗ WRONG
+fprintf(stderr, "bytes:");
+for (int i = 0; i < len; i++) fprintf(stderr, " %02x", buf[i]);
+
+// ✓ CORRECT
+log_hex_dump(LOG_COMP_HASH, LOG_LEVEL_TRACE, buf, len, "bytes");
+```
+
+**Expensive Operations**: Guard with `log_enabled()`:
+```c
+if (log_enabled(LOG_LEVEL_DEBUG, LOG_COMP_DB)) {
+    char path[512];
+    expensive_path_construction(path, sizeof(path));
+    log_debug(LOG_COMP_DB, "Full path: %s", path);
+}
+```
+
+### Enforcement
+
+- Script: `./tools/check_fprintf.sh` detects fprintf(stderr) violations
+- Details: `./tools/check_fprintf.sh --fix` shows what to fix
+- Documentation: `docs/LOGGING_STANDARDS.md` - comprehensive guide
+
+### Reference
+
+- Logging API: `Common/headers/logging.h`
+- Standards: `docs/LOGGING_STANDARDS.md`
+- Plan: `planning/phase3/LOGGING_INFRASTRUCTURE_PLAN.md`

@@ -35,6 +35,7 @@
 #include "standard.h"
 
 #include "error.h"
+#include "logging.h"  /* Phase 2 logging infrastructure migration */
 #include "memory.h"
 #include "strings.h"
 #include "font.h"
@@ -122,18 +123,14 @@ static boolean langhash_convert_wordprocessor_external(hdlexternalvariable hv, c
 
 	const char *log_path = (path_hint != NULL && path_hint[0] != '\0') ? path_hint : "<unknown>";
 
-#if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] wp-convert begin hv=%p path=%s\n", (void *)hv, log_path);
-#endif
+	log_trace(LOG_COMP_HASH, "wp-convert begin hv=%p path=%s", (void *)hv, log_path);
 
 	Handle hplain_utf8 = nil;
 	if (!wp_portable_extract_plaintext(hv, &hplain_utf8)) {
 		bigstring bsplaceholder;
 		wp_portable_note_drop_logged(hv, log_path);
 		copyctopstring(WP_PLACEHOLDER_TEXT, bsplaceholder);
-#if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[headless] wp-convert fallback hv=%p path=%s\n", (void *)hv, log_path);
-#endif
+		log_trace(LOG_COMP_HASH, "wp-convert fallback hv=%p path=%s", (void *)hv, log_path);
 		return setstringvalue(bsplaceholder, replacement);
 	}
 
@@ -146,9 +143,7 @@ static boolean langhash_convert_wordprocessor_external(hdlexternalvariable hv, c
 	if (wp_portable_external_was_legacy_ws(hv))
 		wp_portable_note_conversion_logged(hv, log_path);
 
-#if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] wp-convert ok hv=%p path=%s bytes=%ld\n", (void *)hv, log_path, utf8_len);
-#endif
+	log_trace(LOG_COMP_HASH, "wp-convert ok hv=%p path=%s bytes=%ld", (void *)hv, log_path, utf8_len);
 	return true;
 }
 
@@ -245,10 +240,10 @@ static boolean langhash_materialize_table_internal(hdlhashtable htable, const ch
 				need += strlen(path) + 1; /* dot + existing path */
 			if (need >= sizeof(nodepath)) {
 #if defined(FRONTIER_HEADLESS)
-				if (langhash_materialize_trace_enabled()) {
-					fprintf(stderr, "[headless] materialize path overflow path=%s name=%.*s need=%zu limit=%zu\n",
-					        path ? path : "<nil>", (int) bsname[0], (char *) &bsname[1],
-					        need, sizeof(nodepath));
+				if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_HASH)) {
+					log_trace(LOG_COMP_HASH, "materialize path overflow path=%s name=%.*s need=%zu limit=%zu",
+		        path ? path : "<nil>", (int) bsname[0], (char *) &bsname[1],
+		        need, sizeof(nodepath));
 				}
 #endif
 				return false; /* avoid overflow on deep nesting */
@@ -263,15 +258,15 @@ static boolean langhash_materialize_table_internal(hdlhashtable htable, const ch
 		langhash_materialize_path_buf[sizeof(langhash_materialize_path_buf) - 1] = '\0';
 		langhash_materialize_current_path = langhash_materialize_path_buf;
 
-		if (langhash_materialize_trace_enabled()) {
-			fprintf(stderr, "[headless] materialize visit path=%s type=%d disk=%d\n",
-			        nodepath, (int) val->valuetype, val->fldiskval ? 1 : 0);
+		if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_HASH)) {
+			log_trace(LOG_COMP_HASH, "materialize visit path=%s type=%d disk=%d",
+		        nodepath, (int) val->valuetype, val->fldiskval ? 1 : 0);
 		}
 
 		if (!langhash_materialize_value(val, nodepath)) {
 #if defined(FRONTIER_HEADLESS)
-			if (langhash_materialize_trace_enabled()) {
-				fprintf(stderr, "[headless] materialize value failed path=%s type=%d\n",
+			if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_HASH)) {
+				log_trace(LOG_COMP_HASH, "materialize value failed path=%s type=%d",
 				        nodepath, (int) val->valuetype);
 			}
 #endif
@@ -280,8 +275,8 @@ static boolean langhash_materialize_table_internal(hdlhashtable htable, const ch
 		if (val->valuetype == externalvaluetype) {
 			if (!langhash_materialize_external(val, nodepath)) {
 #if defined(FRONTIER_HEADLESS)
-				if (langhash_materialize_trace_enabled()) {
-					fprintf(stderr, "[headless] materialize external failed path=%s type=%d\n",
+				if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_HASH)) {
+					log_trace(LOG_COMP_HASH, "materialize external failed path=%s type=%d",
 					        nodepath, (int) val->valuetype);
 				}
 #endif
@@ -301,8 +296,8 @@ static boolean langhash_materialize_value(tyvaluerecord *val, const char *path) 
 	if (!(*val).fldiskval)
 		return true;
 
-	if (langhash_materialize_trace_enabled()) {
-		fprintf(stderr, "[headless] materialize path=%s type=%d\n",
+	if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_HASH)) {
+		log_trace(LOG_COMP_HASH, "materialize path=%s type=%d",
 		        path ? path : "<nil>", (int) val->valuetype);
 	}
 
@@ -318,8 +313,8 @@ static boolean langhash_materialize_value(tyvaluerecord *val, const char *path) 
 
 	tyvaluerecord copy;
 	if (!copyvaluerecord(*val, &copy)) {
-		if (langhash_materialize_trace_enabled()) {
-			fprintf(stderr, "[headless] materialize copy failed path=%s type=%d\n",
+		if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_HASH)) {
+			log_trace(LOG_COMP_HASH, "materialize copy failed path=%s type=%d",
 			        path ? path : "<nil>", (int) val->valuetype);
 		}
 		if (set_local_path)
@@ -354,8 +349,8 @@ static boolean langhash_materialize_external(tyvaluerecord *val, const char *pat
 	switch ((**hv).id) {
 #if defined(FRONTIER_HEADLESS)
 		case idwordprocessor: {
-			if (langhash_materialize_trace_enabled()) {
-				fprintf(stderr, "[headless] materialize external path=%s id=wordprocessor\n",
+			if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_HASH)) {
+				log_trace(LOG_COMP_HASH, "materialize external path=%s id=wordprocessor",
 				        path ? path : "<nil>");
 			}
 			tyvaluerecord replacement;
@@ -370,12 +365,12 @@ static boolean langhash_materialize_external(tyvaluerecord *val, const char *pat
 		}
 #endif
 		case idtableprocessor: {
-			if (langhash_materialize_trace_enabled()) {
-				fprintf(stderr, "[headless] materialize external path=%s id=table\n",
+			if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_HASH)) {
+				log_trace(LOG_COMP_HASH, "materialize external path=%s id=table",
 				        path ? path : "<nil>");
 			}
 			if (!tableverbinmemory(NULL, hv, HNoNode)) {
-				fprintf(stderr, "[headless] materialize external table load failed path=%s\n",
+				log_error(LOG_COMP_HASH, "materialize external table load failed path=%s",
 				        path ? path : "<nil>");
 				langhash_materialize_current_path = prior_path;
 				return false;
@@ -2200,7 +2195,7 @@ boolean hashresolvevalue (hdlhashtable htable, hdlhashnode hnode) {
 #if defined(FRONTIER_HEADLESS)
 			bigstring bspathtemp;
 			copyheapstring ((hdlstring) (**hn).val.data.addressvalue, bspathtemp);
-			fprintf(stderr, "[headless] hashresolvevalue: failed to encode path entry %s\n", stringbaseaddress (bspathtemp));
+			log_debug(LOG_COMP_HASH, "hashresolvevalue: failed to encode path entry %s", stringbaseaddress (bspathtemp));
 #endif
 			return (false);
         }
@@ -2209,7 +2204,7 @@ boolean hashresolvevalue (hdlhashtable htable, hdlhashnode hnode) {
 			bigstring bspathtemp;
 			hdlhashtable hresolved = nil;
 			if (getaddressvalue ((**hn).val, &hresolved, bspathtemp)) {
-				fprintf(stderr, "[headless] hashresolvevalue: resolved %s -> table=%p\n", stringbaseaddress (bspathtemp), (void *) hresolved);
+				log_debug(LOG_COMP_HASH, "hashresolvevalue: resolved %s -> table=%p", stringbaseaddress (bspathtemp), (void *) hresolved);
 			}
 		}
 #endif
@@ -2608,9 +2603,9 @@ static boolean hashpackstring (handlestream *s, bigstring bs, int32_t *ix) {
 		return (false);
 	if ((*s).pos > INT32_MAX)
 		return (false);
-#ifdef DEBUG_SERIALIZER
-	printf("[packstring] pos=%ld str=%.*s\n", (*s).pos, (int)bs[0], bs+1);
-#endif
+	if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_HASH)) {
+		log_trace(LOG_COMP_HASH, "[packstring] pos=%ld str=%.*s", (*s).pos, (int)bs[0], bs+1);
+	}
 	*ix = (int32_t)(*s).pos;
 
 	return (writehandlestream (s, (ptrvoid) bs, (long) stringsize (bs)));
@@ -2628,9 +2623,7 @@ static void hashunpackstring (Handle hget, bigstring bs, long ix) {
 	/* Defensive: ensure ix is within handle before copying. */
 	long hsize = gethandlesize (hget);
 	if (ix < 0 || ix >= hsize) {
-#if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[headless] hashunpackstring OOB ix=%ld hsize=%ld\n", ix, hsize);
-#endif
+		log_error(LOG_COMP_HASH, "hashunpackstring OOB ix=%ld hsize=%ld", ix, hsize);
 		setemptystring (bs);
 		return;
 	}
@@ -2640,10 +2633,7 @@ static void hashunpackstring (Handle hget, bigstring bs, long ix) {
 	/* p[0] is length byte; ensure we don't read past handle. */
 	unsigned long needed = (unsigned long) p[0] + 1;
 	if (ix + (long) needed > hsize) {
-#if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[headless] hashunpackstring len OOB ix=%ld len=%lu hsize=%ld\n",
-		        ix, needed, hsize);
-#endif
+		log_error(LOG_COMP_HASH, "hashunpackstring len OOB ix=%ld len=%lu hsize=%ld", ix, needed, hsize);
 		setemptystring (bs);
 		return;
 	}
@@ -2770,9 +2760,9 @@ static boolean hashunpackscalar (Handle hget, tyvaluerecord *val, int32_t ix, bo
 	if (!read_disk_uint32 (hget, &lix, &disklen))
 		return (false);
 
-#ifdef DEBUG_SERIALIZER
-	printf("[unpackscalar] ix=%d disklen=0x%08x type=%d\n", ix, disklen, val->valuetype);
-#endif
+	if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_HASH)) {
+		log_trace(LOG_COMP_HASH, "[unpackscalar] ix=%d disklen=0x%08x type=%d", ix, disklen, val->valuetype);
+	}
 	if (disklen == (uint32_t) (int32_t) diskvalsizeflag) {
 		(*val).fldiskval = true;
 		dbaddress diskadr = 0;
@@ -2787,7 +2777,7 @@ static boolean hashunpackscalar (Handle hget, tyvaluerecord *val, int32_t ix, bo
 	} /*hashunpackscalar*/
 
 
-static boolean hashpackexternal (handlestream *s, hdlexternalvariable h, int32_t *ix, boolean *flnewdbaddress) {
+static boolean hashpackexternal (handlestream *s, hdlexternalvariable h, int32_t *ix, boolean *flnewdbaddress, const db_context *ctx) {
 	Handle hpacked;
 	long ctbytes;
 	boolean fl;
@@ -2797,12 +2787,15 @@ static boolean hashpackexternal (handlestream *s, hdlexternalvariable h, int32_t
 	if ((*s).pos > INT32_MAX)
 		return (false);
 
+	/* Phase 1: Context should always be initialized by hashpacktable_internal */
+	assert(ctx != NULL);  /* Defensive check: context is initialized in hashpacktable_internal or db_context_init */
+
 	*ix = (int32_t) (*s).pos; /*where the text item is stored*/
 
 	if (flexternalmemorypack)
 		fl = langexternalmemorypack (h, &hpacked, HNoNode);
 	else
-		fl = langexternalpack (h, &hpacked, flnewdbaddress);
+		fl = langexternalpack_internal (ctx, h, &hpacked, flnewdbaddress);  /* Phase 1: Pass explicit context */
 
 	if (!fl)
 		return (false);
@@ -2846,12 +2839,13 @@ static boolean hashunpackexternal (Handle hget, boolean flmemory, hdlexternalhan
 			long dump = 4 + (raw_len < 28 ? (long) raw_len : 28L);
 			if ((lix + dump) > total)
 				dump = total - lix;
-			fprintf(stderr, "[headless] hashunpackexternal raw[%ld] len=%u bytes:", lix, (unsigned int) raw_len);
-			for (long i = 0; i < dump; ++i)
-				fprintf(stderr, " %02x", base[lix + i]);
-			fprintf(stderr, "\n");
+			if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_HASH)) {
+				char label[128];
+				snprintf(label, sizeof(label), "hashunpackexternal raw[%ld] len=%u bytes", lix, (unsigned int) raw_len);
+				log_hex_dump(LOG_COMP_HASH, LOG_LEVEL_TRACE, base + lix, dump, label);
+			}
 		} else {
-			fprintf(stderr, "[headless] hashunpackexternal bad index %ld (total=%ld)\n", lix, total);
+			log_error(LOG_COMP_HASH, "hashunpackexternal bad index %ld (total=%ld)", lix, total);
 		}
 	}
 #endif
@@ -2911,6 +2905,7 @@ typedef struct typackinforecord {
 	handlestream s2;
 	boolean flmustsave;
 	boolean use_64bit;
+	const db_context *context;  /* Phase 1: Explicit context passing to eliminate global mode dependency */
 	} typackinforecord;
 #pragma options align=reset
 
@@ -3007,15 +3002,14 @@ static boolean hashpackvisit_legacy (bigstring bsname, hdlhashnode hnode, tyvalu
 	rec.valuetype = val.valuetype;
 #if defined(FRONTIER_HEADLESS)
 	if (val.valuetype == listvaluetype) {
-		fprintf(stderr, "[headless] hashpackvisit_v7 WRITE list name='%.*s' path=%s\n",
-		        bsname[0], bsname + 1,
-		        (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>");
-		unsigned char dumpbuf[sizeof (rec)];
-		memcpy(dumpbuf, &rec, sizeof(rec));
-		fprintf(stderr, "[headless]   rec bytes:");
-		for (size_t i = 0; i < sizeof(rec); ++i)
-			fprintf(stderr, " %02x", dumpbuf[i]);
-		fprintf(stderr, "\n");
+		if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_HASH)) {
+			log_trace(LOG_COMP_HASH, "hashpackvisit_v7 WRITE list name='%.*s' path=%s",
+			          bsname[0], bsname + 1,
+			          (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>");
+			unsigned char dumpbuf[sizeof (rec)];
+			memcpy(dumpbuf, &rec, sizeof(rec));
+			log_hex_dump(LOG_COMP_HASH, LOG_LEVEL_TRACE, dumpbuf, sizeof(rec), "rec bytes");
+		}
 	}
 #endif
 
@@ -3135,14 +3129,14 @@ static boolean hashpackvisit_legacy (bigstring bsname, hdlhashnode hnode, tyvalu
 				if (!hashpackscalar (&lpi->s2, hnode, &data_index, lpi->use_64bit)) {
 #if defined(FRONTIER_HEADLESS)
 					tyvaluerecord *node_val = &(**hnode).val;
-					fprintf(stderr, "[headless] hashpackscalar diagnostics name='%.*s' valuetype=%d fldiskval=%d fldatabasesaveas=%d flexternalmemorypack=%d disk=0x%llx handle=%p\n",
-						(int)bsname[0], (char *)&bsname[1],
-						(int)(*node_val).valuetype,
-						(int)(*node_val).fldiskval,
-						(int)fldatabasesaveas,
-						(int)flexternalmemorypack,
-						(unsigned long long)(*node_val).data.diskvalue,
-						(void *)(*node_val).data.binaryvalue);
+					log_trace(LOG_COMP_HASH,
+					         "hashpackscalar diagnostics name='%.*s' valuetype=%d fldiskval=%d "
+					         "fldatabasesaveas=%d flexternalmemorypack=%d disk=0x%llx handle=%p",
+					         (int)bsname[0], (char *)&bsname[1],
+					         (int)(*node_val).valuetype, (int)(*node_val).fldiskval,
+					         (int)fldatabasesaveas, (int)flexternalmemorypack,
+					         (unsigned long long)(*node_val).data.diskvalue,
+					         (void *)(*node_val).data.binaryvalue);
 #endif
 					HASH_PACK_FAIL("hashpackscalar");
 				}
@@ -3207,14 +3201,13 @@ static boolean hashpackvisit_legacy (bigstring bsname, hdlhashnode hnode, tyvalu
                 fldatabasesaveas && (db_format_adapter_force_repack() || db_format_adapter_is_active());
 #if defined(FRONTIER_HEADLESS)
             if (equalstrings(bsname, (ptrstring) "\x03" "now") || equalstrings(bsname, (ptrstring) "\x08" "idleTime")) {
-                fprintf(stderr,
-                        "[headless] hashpackexternal inspect name='%.*s' flinmemory=%d skip_free_check=%d adr=0x%llx old=0x%llx\n",
-                        (int) bsname[0],
-                        (char *) &bsname[1],
-                        (int) (**hv).flinmemory,
-                        (int) skip_free_check,
-                        (unsigned long long) (**hv).variabledata,
-                        (unsigned long long) (**hv).oldaddress);
+                log_trace(LOG_COMP_HASH,
+                         "hashpackexternal inspect name='%.*s' flinmemory=%d skip_free_check=%d "
+                         "adr=0x%llx old=0x%llx",
+                         (int) bsname[0], (char *) &bsname[1],
+                         (int) (**hv).flinmemory, (int) skip_free_check,
+                         (unsigned long long) (**hv).variabledata,
+                         (unsigned long long) (**hv).oldaddress);
             }
 #endif
 
@@ -3234,11 +3227,9 @@ static boolean hashpackvisit_legacy (bigstring bsname, hdlhashnode hnode, tyvalu
                 if (!okref) {
                     (**hnode).fldontsave = true; /* skip this node when packing */
 #if defined(FRONTIER_HEADLESS)
-                    fprintf(stderr,
-                            "[headless] hashpackexternal dropping name='%.*s' adr=0x%llx (free/unreadable)\n",
-                            (int) bsname[0],
-                            (char *) &bsname[1],
-                            (unsigned long long) adr);
+                    log_trace(LOG_COMP_HASH,
+                             "hashpackexternal dropping name='%.*s' adr=0x%llx (free/unreadable)",
+                             (int) bsname[0], (char *) &bsname[1], (unsigned long long) adr);
 #endif
                     val.fldiskval = false;
                     (**hv).flinmemory = true;
@@ -3250,16 +3241,13 @@ static boolean hashpackvisit_legacy (bigstring bsname, hdlhashnode hnode, tyvalu
         }
 
 			data_index = 0;
-				if (!hashpackexternal (&lpi->s2, (hdlexternalvariable) val.data.externalvalue, &data_index, &flnewdbaddress)) {
+				if (!hashpackexternal (&lpi->s2, (hdlexternalvariable) val.data.externalvalue, &data_index, &flnewdbaddress, lpi->context)) {
 #if defined(FRONTIER_HEADLESS)
 					hdlexternalvariable diag = (hdlexternalvariable) val.data.externalvalue;
 					int external_id = 0;
 					if (diag != nil)
 						external_id = (**diag).id;
-					fprintf(stderr, "[headless] hashpackexternal diagnostics name='%.*s' external=%p id=%d\n",
-						(int)bsname[0], (char *)&bsname[1],
-						(void *)diag,
-						external_id);
+log_trace(LOG_COMP_HASH, "hashpackexternal diagnostics name='%.*s' external=%p id=%d", (int)bsname[0], (char *)&bsname[1], (void *)diag, external_id);
 #endif
 					if (fldatabasesaveas && db_format_adapter_is_active()) {
 						(**hnode).fldontsave = true; /* skip unreadable legacy external during migration */
@@ -3312,12 +3300,7 @@ static boolean hashpackvisit_legacy (bigstring bsname, hdlhashnode hnode, tyvalu
 	
 #if defined(FRONTIER_HEADLESS)
 	if (hashpack_fail_file != NULL) {
-		fprintf(stderr, "[headless] hashpackvisit failed name='%.*s' valuetype=%d reason=%s at %s:%d\n",
-			(int)bsname[0], (char *)&bsname[1],
-			(int)val.valuetype,
-			hashpack_fail_reason ? hashpack_fail_reason : "unknown",
-			hashpack_fail_file,
-			hashpack_fail_line);
+log_error(LOG_COMP_HASH, "hashpackvisit failed name='%.*s' valuetype=%d reason=%s at %s:%d", (int)bsname[0], (char *)&bsname[1], (int)val.valuetype, hashpack_fail_reason ? hashpack_fail_reason : "unknown", hashpack_fail_file, hashpack_fail_line);
 	}
 #endif
 
@@ -3354,6 +3337,9 @@ static boolean hashpackvisit_v7 (bigstring bsname, hdlhashnode hnode, tyvaluerec
 	/*
 	Matches legacy logic but writes modern scalar payloads (64-bit ints/doubles, Mac-epoch date).
 	Non-scalar storage (string/binary/etc.) still uses 32-bit indices into the string handle.
+
+	Phase 1: lpi->context is set in hashpacktable_internal() and threaded through recursive calls.
+	This eliminates dependency on global mode stack for child table packing (Issue #147).
 	*/
 
 	typackinforecord *lpi = (typackinforecord *) refcon;
@@ -3407,33 +3393,28 @@ static boolean hashpackvisit_v7 (bigstring bsname, hdlhashnode hnode, tyvaluerec
 	if (val.valuetype == listvaluetype) {
 		const Handle hlist = (Handle) val.data.listvalue;
 		const long hsize = (hlist == nil) ? -1L : gethandlesize(hlist);
-		fprintf(stderr, "[headless] hashpackvisit_v7 list encounter path=%s name='%.*s' hlist=%p hdata=%p valid=%d size=%ld fldiskval=%d\n",
-		        (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
-		        bsname[0], bsname + 1,
-		        (void *) hlist,
-		        hlist == nil ? NULL : *hlist,
-		        (hlist == nil) ? 0 : validhandle(hlist),
-		        hsize,
-		        val.fldiskval);
+		log_trace(LOG_COMP_HASH,
+		         "hashpackvisit_v7 list encounter path=%s name='%.*s' hlist=%p hdata=%p "
+		         "valid=%d size=%ld fldiskval=%d",
+		         (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
+		         bsname[0], bsname + 1, (void *) hlist, hlist == nil ? NULL : *hlist,
+		         (hlist == nil) ? 0 : validhandle(hlist), hsize, val.fldiskval);
 	}
 #endif
 
 #if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] hashpackvisit_v7 path=%s name='%.*s' valuetype=%d\n",
-	        (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
-	        bsname[0], bsname + 1,
-	        val.valuetype);
+	log_trace(LOG_COMP_HASH,
+	         "hashpackvisit_v7 path=%s name='%.*s' valuetype=%d",
+	         (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
+	         bsname[0], bsname + 1, val.valuetype);
 	if (val.valuetype == listvaluetype) {
 		const Handle hlist = (Handle) val.data.listvalue;
 		const long hsize = (hlist == nil) ? -1L : gethandlesize(hlist);
-		fprintf(stderr, "[headless]   list debug hlist=%p hdata=%p valid=%d size=%ld fldiskval=%d\n",
-		        (void *) hlist,
-		        hlist == nil ? NULL : *hlist,
-		        (hlist == nil) ? 0 : validhandle(hlist),
-		        hsize,
-		        val.fldiskval);
+		log_trace(LOG_COMP_HASH,
+		         "list debug hlist=%p hdata=%p valid=%d size=%ld fldiskval=%d",
+		         (void *) hlist, hlist == nil ? NULL : *hlist,
+		         (hlist == nil) ? 0 : validhandle(hlist), hsize, val.fldiskval);
 	}
-	fflush(stderr);
 #endif
 
 	switch (val.valuetype) {
@@ -3631,7 +3612,7 @@ static boolean hashpackvisit_v7 (bigstring bsname, hdlhashnode hnode, tyvaluerec
 			}
 
 			data_index = 0;
-			if (!hashpackexternal (&lpi->s2, (hdlexternalvariable) val.data.externalvalue, &data_index, &flnewdbaddress))
+			if (!hashpackexternal (&lpi->s2, (hdlexternalvariable) val.data.externalvalue, &data_index, &flnewdbaddress, lpi->context))
 				HASH_PACK_FAIL("hashpackexternal");
 
 			lpi->flmustsave = lpi->flmustsave || flnewdbaddress;
@@ -3683,12 +3664,7 @@ error:
 
 #if defined(FRONTIER_HEADLESS)
 	if (hashpack_fail_file != NULL) {
-		fprintf(stderr, "[headless] hashpackvisit_v7 failed name='%.*s' valuetype=%d reason=%s at %s:%d\n",
-			(int)bsname[0], (char *)&bsname[1],
-			(int)val.valuetype,
-			hashpack_fail_reason ? hashpack_fail_reason : "unknown",
-			hashpack_fail_file,
-			hashpack_fail_line);
+log_error(LOG_COMP_HASH, "hashpackvisit_v7 failed name='%.*s' valuetype=%d reason=%s at %s:%d", (int)bsname[0], (char *)&bsname[1], (int)val.valuetype, hashpack_fail_reason ? hashpack_fail_reason : "unknown", hashpack_fail_file, hashpack_fail_line);
 	}
 #endif
 
@@ -3721,19 +3697,20 @@ boolean hashpacktable_internal (const db_context *ctx, hdlhashtable htable, bool
 	typackinforecord packrec;
 	boolean use_64bit;
 	Handle h1, h2;
+	db_context working_context;
 
-	/* Check database format mode: use context if provided, else global state */
+	/* Phase 1: Initialize working context (never NULL for child operations) */
 	if (ctx != NULL) {
+		working_context = *ctx;
 		use_64bit = ctx->mode.use_64bit_format;
 	} else {
+		db_context_init(&working_context);
 		use_64bit = db_format_mode_current().use_64bit_format;
 	}
 
 #if defined(FRONTIER_HEADLESS)
 	db_format_mode current_mode = db_format_mode_current();
-	fprintf(stderr, "[headless] hashpacktable_internal use_64bit=%d (ctx=%p ctx_mode=%d current_mode: use_64bit=%d adapter_repack=%d)\n",
-	        (int) use_64bit, (void *) ctx, ctx ? (int) ctx->mode.use_64bit_format : -1,
-	        (int) current_mode.use_64bit_format, (int) current_mode.adapter_repack);
+log_trace(LOG_COMP_HASH, "hashpacktable_internal use_64bit=%d (ctx=%p ctx_mode=%d current_mode: use_64bit=%d adapter_repack=%d)", (int) use_64bit, (void *) ctx, ctx ? (int) ctx->mode.use_64bit_format : -1, (int) current_mode.use_64bit_format, (int) current_mode.adapter_repack);
 #endif
 	if (use_64bit) {
 		/* v7 mode: Write v0x05 with 64-bit timestamps */
@@ -3749,7 +3726,7 @@ boolean hashpacktable_internal (const db_context *ctx, hdlhashtable htable, bool
 		db_format_write_be64(&header.timelastsave, (uint64_t) (**htable).timelastsave);
 
 #if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[headless] hashpacktable writing v7 header version=%d use64=1\n", tablediskversion);
+		log_trace(LOG_COMP_HASH, "hashpacktable writing v7 header version=%d use64=1", tablediskversion);
 #endif
 
 		#ifdef xmlfeatures
@@ -3762,6 +3739,7 @@ boolean hashpacktable_internal (const db_context *ctx, hdlhashtable htable, bool
 		clearbytes (&packrec, sizeof (packrec));
 		packrec.flmustsave = *flmustsave;
 		packrec.use_64bit = true;
+		packrec.context = &working_context;  /* Phase 1: Always initialized, never NULL */
 		openhandlestream (nil, &packrec.s1);
 		openhandlestream (nil, &packrec.s2);
 
@@ -3790,6 +3768,7 @@ boolean hashpacktable_internal (const db_context *ctx, hdlhashtable htable, bool
 		clearbytes (&packrec, sizeof (packrec));
 		packrec.flmustsave = *flmustsave;
 		packrec.use_64bit = false;
+		packrec.context = &working_context;  /* Phase 1: Always initialized, never NULL */
 		openhandlestream (nil, &packrec.s1);
 		openhandlestream (nil, &packrec.s2);
 
@@ -3901,8 +3880,7 @@ boolean hashunpacktable_internal (const db_context *ctx, Handle hpackedtable, bo
 	hdlhashtable prevhashtable = nil;
 #if defined(FRONTIER_HEADLESS)
 	long debug_record_index = 0;
-	fprintf(stderr, "[headless] hashunpacktable enter htable=%p flmemory=%d\n",
-	        (void *) htable, (int) flmemory);
+log_trace(LOG_COMP_HASH, "hashunpacktable enter htable=%p flmemory=%d", (void *) htable, (int) flmemory);
 #endif
 
 	/* v0x04 and earlier use 16-byte header, v0x05 uses 32-byte header */
@@ -3919,28 +3897,22 @@ boolean hashunpacktable_internal (const db_context *ctx, Handle hpackedtable, bo
 		if (is_safe_log_path(logpath)) {
 			hashunpack_log = fopen(logpath, "w");
 			if (hashunpack_log == NULL) {
-				fprintf(stderr, "[headless] hashunpacktable: failed to open log %s: %s\n",
-				        logpath, strerror(errno));
+				log_error(LOG_COMP_HASH, "hashunpacktable: failed to open log %s: %s", logpath, strerror(errno));
 			} else {
 				atexit(close_hashunpack_log);
 			}
 		} else if (logpath && *logpath) {
-			fprintf(stderr, "[headless] hashunpacktable: unsafe log path ignored: %s\n", logpath);
+			log_trace(LOG_COMP_HASH, "hashunpacktable: unsafe log path ignored: %s", logpath);
 		}
 	}
 
-	fprintf(stderr, "[headless] hashunpacktable split records=%ld strings=%ld\n",
-	        hrecords ? gethandlesize (hrecords) : 0L,
-	        hstrings ? gethandlesize (hstrings) : 0L);
+log_trace(LOG_COMP_HASH, "hashunpacktable split records=%ld strings=%ld", hrecords ? gethandlesize (hrecords) : 0L, hstrings ? gethandlesize (hstrings) : 0L);
 	if (hrecords && gethandlesize (hrecords) >= (long) sizeof (tydisktablerecord)) {
 		unsigned char *recbytes = (unsigned char *) *hrecords;
-		fprintf(stderr, "[headless] hashunpacktable records bytes:");
 		long dump = gethandlesize (hrecords);
 		if (dump > 32)
 			dump = 32;
-		for (long i = 0; i < dump; ++i)
-			fprintf(stderr, " %02x", recbytes[i]);
-		fprintf(stderr, "\n");
+		log_hex_dump(LOG_COMP_HASH, LOG_LEVEL_TRACE, recbytes, dump, "hashunpacktable records bytes");
 	}
 #endif
 	
@@ -4004,10 +3976,7 @@ boolean hashunpacktable_internal (const db_context *ctx, Handle hpackedtable, bo
 #endif
 
 #if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] hashunpacktable header version=%d sort=%d flags=0x%08x\n",
-	        header.version,
-	        disk_to_host_int16(header.sortorder),
-	        disk_to_host_int32(header.flags));
+log_trace(LOG_COMP_HASH, "hashunpacktable header version=%d sort=%d flags=0x%08x", header.version, disk_to_host_int16(header.sortorder), disk_to_host_int32(header.flags));
 #endif
 	
 	if (header.version > 0) { // a header has been written
@@ -4071,14 +4040,7 @@ boolean hashunpacktable_internal (const db_context *ctx, Handle hpackedtable, bo
 
 #if defined(FRONTIER_HEADLESS)
 	db_format_mode current_mode = db_format_mode_current();
-	fprintf(stderr, "[headless] hashunpacktable_internal name='%.*s' use64=%d (ctx=%p ctx_mode=%d use_64bit_mode=%d current=%d || header.version=%d>=%d)\n",
-	        (int) bsname[0], (char *) &bsname[1],
-	        v7_records ? 1 : 0,
-	        (void *) ctx, ctx ? (int) ctx->mode.use_64bit_format : -1,
-	        use_64bit_mode ? 1 : 0,
-	        current_mode.use_64bit_format ? 1 : 0,
-	        header.version,
-	        tablediskversion);
+log_trace(LOG_COMP_HASH, "hashunpacktable_internal name='%.*s' use64=%d (ctx=%p ctx_mode=%d use_64bit_mode=%d current=%d || header.version=%d>=%d)", (int) bsname[0], (char *) &bsname[1], v7_records ? 1 : 0, (void *) ctx, ctx ? (int) ctx->mode.use_64bit_format : -1, use_64bit_mode ? 1 : 0, current_mode.use_64bit_format ? 1 : 0, header.version, tablediskversion);
 #endif
 
 	long ixrecord = 0;
@@ -4139,19 +4101,19 @@ boolean hashunpacktable_internal (const db_context *ctx, Handle hpackedtable, bo
 			{
 				long hsize = gethandlesize(hstrings);
 				if (name_index < 0 || name_index >= hsize) {
-					fprintf(stderr, "[headless] hashunpacktable name ix OOB ix=%d hsize=%ld\n",
-					        (int) name_index, hsize);
+log_error(LOG_COMP_HASH, "hashunpacktable name ix OOB ix=%d hsize=%ld", (int) name_index, hsize);
 				} else {
 					const unsigned char *s = (const unsigned char *)(*hstrings + name_index);
 					unsigned int slen = s[0];
 					long avail = hsize - name_index - 1;
 					if ((long) slen > avail)
 						slen = (unsigned int) (avail < 0 ? 0 : avail);
-					fprintf(stderr, "[headless] hashunpacktable name bytes ix=%d len=%u: ",
-					        (int) name_index, slen);
-					for (unsigned int i = 0; i < slen && i < 32; ++i)
-						fprintf(stderr, "%02x ", s[1 + i]);
-					fprintf(stderr, "\n");
+					if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_HASH)) {
+						char label[128];
+						snprintf(label, sizeof(label), "hashunpacktable name bytes ix=%d len=%u", (int) name_index, slen);
+						size_t dump = (slen < 32) ? slen : 32;
+						log_hex_dump(LOG_COMP_HASH, LOG_LEVEL_TRACE, (unsigned char *)(s + 1), dump, label);
+					}
 				}
 			}
 #endif
@@ -4177,23 +4139,12 @@ boolean hashunpacktable_internal (const db_context *ctx, Handle hpackedtable, bo
 				fflush(hashunpack_log);
 			}
 
-			fprintf(stderr, "[headless] hashunpacktable record ix=%ld name='%.*s' valuetype=%d version=%u use64=%d\n",
-			        ixrecord,
-			        bsname[0], bsname + 1,
-			        (int) rec.valuetype,
-			        (unsigned int) rec.version,
-			        (int) v7_rec);
+log_trace(LOG_COMP_HASH, "hashunpacktable record ix=%ld name='%.*s' valuetype=%d version=%u use64=%d", ixrecord, bsname[0], bsname + 1, (int) rec.valuetype, (unsigned int) rec.version, (int) v7_rec);
 #endif
 
 #if defined(FRONTIER_HEADLESS)
 			if (debug_record_index++ < 10) {
-				fprintf(stderr, "[headless] hashunpacktable record ixkey=%d type=%d version=%u data=0x%08llx name='%.*s'\n",
-				        (int) name_index,
-				        (int) rec.valuetype,
-				        (unsigned int) rec.version,
-				        (unsigned long long) data_index64,
-				        (int) bsname[0],
-				        (char *) &bsname[1]);
+log_trace(LOG_COMP_HASH, "hashunpacktable record ixkey=%d type=%d version=%u data=0x%08llx name='%.*s'", (int) name_index, (int) rec.valuetype, (unsigned int) rec.version, (unsigned long long) data_index64, (int) bsname[0], (char *) &bsname[1]);
 			}
 #endif
 
@@ -4201,11 +4152,11 @@ boolean hashunpacktable_internal (const db_context *ctx, Handle hpackedtable, bo
 				continue;
 
 			initvalue (&val, (tyvaluetype) rec.valuetype);
-#ifdef DEBUG_SERIALIZER
-	printf("[unpack] name=%.*s type=%d version=%u raw_ix=0x%08llx ix=%ld\n",
-		(int)bsname[0], bsname+1, val.valuetype, rec.version,
-		(unsigned long long) data_index64, ixstrings);
-#endif
+		if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_HASH)) {
+			log_trace(LOG_COMP_HASH, "[unpack] name=%.*s type=%d version=%u raw_ix=0x%08llx ix=%ld",
+				(int)bsname[0], bsname+1, val.valuetype, rec.version,
+				(unsigned long long) data_index64, ixstrings);
+		}
 
 			switch (val.valuetype) {
 				case oldstringvaluetype:
@@ -4398,13 +4349,11 @@ boolean hashunpacktable_internal (const db_context *ctx, Handle hpackedtable, bo
 #else
                     {
                         const char *ctx = (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>";
-                        fprintf(stderr, "[headless] list unpack start path=%s ix=0x%08lx version=%u\n",
-                                ctx, (unsigned long) ixstrings, (unsigned int) rec.version);
+log_trace(LOG_COMP_HASH, "list unpack start path=%s ix=0x%08lx version=%u", ctx, (unsigned long) ixstrings, (unsigned int) rec.version);
                     }
 
                     if (!hashunpackbinary (hstrings, &hpacked, ixstrings)) {
-                        fprintf(stderr, "[headless] list hashunpackbinary failed ix=0x%08lx\n",
-                                (unsigned long) ixstrings);
+log_error(LOG_COMP_HASH, "list hashunpackbinary failed ix=0x%08lx", (unsigned long) ixstrings);
                         goto L1;
                     }
 
@@ -4413,16 +4362,12 @@ boolean hashunpacktable_internal (const db_context *ctx, Handle hpackedtable, bo
                         if (dump > 32) dump = 32;
                         if (dump > 0) {
                             unsigned char *bytes = (unsigned char *) *hpacked;
-                            fprintf(stderr, "[headless] list packed bytes:");
-                            for (size_t i = 0; i < dump; ++i)
-                                fprintf(stderr, " %02x", bytes[i]);
-                            fprintf(stderr, "\n");
+                            log_hex_dump(LOG_COMP_HASH, LOG_LEVEL_TRACE, bytes, dump, "list packed bytes");
                         }
                     }
 
                     if (!opunpacklist (hpacked, &val.data.listvalue)) {
-                        fprintf(stderr, "[headless] opunpacklist returned false path=%s\n",
-                                (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>");
+log_trace(LOG_COMP_HASH, "opunpacklist returned false path=%s", (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>");
                         goto L1;
                     }
 #endif
@@ -4508,10 +4453,9 @@ boolean hashunpacktable_internal (const db_context *ctx, Handle hpackedtable, bo
 #if defined(FRONTIER_HEADLESS)
 					if (h != nil) {
 						dbaddress tableadr = (dbaddress) (**(hdlexternalvariable) h).variabledata;
-						fprintf(stderr, "[headless] hashunpacktable external variabledata=0x%016llx\n",
-						        (unsigned long long) tableadr);
+log_trace(LOG_COMP_HASH, "hashunpacktable external variabledata=0x%016llx", (unsigned long long) tableadr);
 					} else {
-						fprintf(stderr, "[headless] hashunpacktable external variable nil\n");
+						log_trace(LOG_COMP_HASH, "hashunpacktable external variable nil");
 					}
 #endif
 
@@ -4561,10 +4505,11 @@ boolean hashunpacktable_internal (const db_context *ctx, Handle hpackedtable, bo
 
 		if (!isemptystring (bsname)) { /*needs to be inserted*/
 			boolean ok = hashinsert (bsname, val);
-#ifdef DEBUG_SERIALIZER
-			if (!ok)
-				printf("[unpack] hashinsert failed name=%.*s type=%d\n", (int)bsname[0], bsname+1, val.valuetype);
-#endif
+			if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_HASH)) {
+				if (!ok) {
+					log_trace(LOG_COMP_HASH, "[unpack] hashinsert failed name=%.*s type=%d", (int)bsname[0], bsname+1, val.valuetype);
+				}
+			}
 			if (!ok)
 				goto L1;
 			}
@@ -4582,10 +4527,10 @@ boolean hashunpacktable_internal (const db_context *ctx, Handle hpackedtable, bo
 	fl = true; /*loop terminated, we will return true*/
 
 	L1:
-	
-#ifdef DEBUG_SERIALIZER
-	printf("[unpack] L1 triggered name=%.*s\n", (int)bsname[0], bsname+1);
-#endif
+
+	if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_HASH)) {
+		log_trace(LOG_COMP_HASH, "[unpack] L1 triggered name=%.*s", (int)bsname[0], bsname+1);
+	}
 	languntraperrors (savecallback, saverefcon, !fl);
 	
 	sethashtable (prevhashtable);

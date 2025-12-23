@@ -1,7 +1,12 @@
 # Modern Reader/Writer Split Plan
-**Last Updated:** 2025-11-28 — Codex  
-**State:** Draft / In Progress  
-**Scope:** Complete the clean fork between legacy (v6) reads and modern (v7, BE64) reads/writes; retire legacy write code for headless use and ensure v7 outputs drop legacy Cancoon/view blocks.
+
+## Status
+- State: Completed (Issue #123 resolved)
+- Phase: 3 (Reader/Writer Architecture)
+- Last Updated: 2025-12-22
+- Notes: Core split architecture complete; mode stack refactor (PR #125) eliminated global state issues. Preserved in archive for reference.
+
+**Original Scope:** Complete the clean fork between legacy (v6) reads and modern (v7, BE64) reads/writes; retire legacy write code for headless use and ensure v7 outputs drop legacy Cancoon/view blocks.
 
 ## Objectives
 - Fully separate legacy vs modern read/write paths (no shared branching on 32-bit vs BE64).

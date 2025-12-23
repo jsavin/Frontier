@@ -154,6 +154,11 @@ extern hdldatabaserecord databasedata; /*can be set by external user*/
 
 extern boolean fldatabasesaveas;
 
+#ifdef FRONTIER_TESTS
+/* Test-only accessor for cleanup state validation (see db.c) */
+extern boolean db_test_is_saveas_active(void);
+#endif
+
 #if defined(FRONTIER_HEADLESS)
 extern boolean dbnormalizeaddress(dbaddress *adr);
 #endif
@@ -230,6 +235,8 @@ extern boolean dbstartsaveas_context(db_context *context, hdlfilenum fnum);
 
 extern boolean dbgetdestinationdatabase (hdldatabaserecord *);
 
+/* NOTE: dbendsaveas() and dbendsaveas_context() call dbdispose() internally on the destination database.
+ * Caller MUST set databasedata = nil after these calls to prevent double-free. */
 extern boolean dbendsaveas (void);
 extern boolean dbendsaveas_context(db_context *context);
 

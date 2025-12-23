@@ -3,8 +3,8 @@
 Status
 - State: In Progress
 - Phases: Foundations → Architecture → Headless Runtime → Text Modernization → Tooling
-- Last Updated: 2025-10-12
-- Notes: Headless runtime and CLI planning is underway; UTF-8 work is staged behind Phase 4.
+- Last Updated: 2025-12-22
+- Notes: Phase 3 (Headless Runtime) implementation phase active; logging infrastructure prioritized as foundational work. See planning/_CURRENT_TODO_LIST.md for current priorities.
 
 Related Docs
 - `planning/phase_overview.md`
@@ -13,6 +13,7 @@ Related Docs
 - `planning/phase_gates.md`
 
 Change Log
+- 2025-12-22: Consolidated as canonical plan in planning/ directory (removed duplicate root version).
 - 2025-10-12: Reframed plan around five phases and updated current focus areas.
 - 2025-09-29: Added headless documentation references and phase gate links.
 - 2025-09-20: Documented portable handle runtime milestone.

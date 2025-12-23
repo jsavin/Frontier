@@ -1,5 +1,12 @@
 # Big-Endian Portability Audit (v7)
-**Last Updated:** 2025-11-23 — Codex  
+
+## Status
+- State: In Progress - Core infrastructure done; documentation and cross-arch coverage pending
+- Phase: 3 (v7 Portability)
+- Last Updated: 2025-12-22
+- Notes: Avail list (P0), Reader parity (P0), and Record/block metadata (P0) in progress; Documentation (P0) pending; Cross-arch regression (P1) planned
+
+**Last Updated:** 2025-11-23 — Codex
 2025-11-23 23:59 CST (Codex): Added a detailed roadmap to reach full BE/64-bit parity.
 **Purpose:** Lock down v7 on-disk byte order (big-endian) across all writers/readers so arm64/x86 outputs match bit-for-bit.
 

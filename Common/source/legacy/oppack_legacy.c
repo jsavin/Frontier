@@ -50,17 +50,11 @@
 #include "opinternal.h"
 #include "db_format.h" /* 2025-11-23 Codex: explicit BE writes for outline headers */
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
+#include "logging.h"
 
 #if defined(FRONTIER_HEADLESS)
 /* Current materialize path for error context. */
 extern const char *langhash_materialize_current_path;
-#endif
-
-#if defined(FRONTIER_TESTS)
-#include <stdio.h>
-#define OP_HEADLESS_TRACE(...) fprintf(stderr, __VA_ARGS__)
-#else
-#define OP_HEADLESS_TRACE(...) ((void) 0)
 #endif
 
 #pragma pack(2)
@@ -962,8 +956,7 @@ static boolean opunpackversion2 (handlestream *packstream) {
 #if defined(FRONTIER_HEADLESS)
 	{
 		const char *ctx = (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>";
-        (void) ctx; /* trace-only when enabled */
-		OP_HEADLESS_TRACE("[headless] opunpackv2 header path=%s text=%ld linetable=%ld platform=%ld outlineSig=%08lx\n",
+		log_trace(LOG_COMP_PACK, "opunpackv2 header path=%s text=%ld linetable=%ld platform=%ld outlineSig=%08lx",
 		                  ctx,
 		                  (long) header.sizetext,
 		                  (long) header.sizelinetable,
@@ -996,7 +989,7 @@ static boolean opunpackversion2 (handlestream *packstream) {
 	
 	if (!fl) {
 #if defined(FRONTIER_TESTS)
-		OP_HEADLESS_TRACE ("[headless] opunpackv2 textfail text=%ld linetable=%ld pos=%ld eof=%ld\n",
+		log_trace(LOG_COMP_PACK, "opunpackv2 textfail text=%ld linetable=%ld pos=%ld eof=%ld",
 			(long) header.sizetext,
 			(long) header.sizelinetable,
 			(long) (*packstream).pos,
@@ -1007,7 +1000,7 @@ static boolean opunpackversion2 (handlestream *packstream) {
 
 	if (hsummit == nil) {
 #if defined(FRONTIER_HEADLESS)
-		OP_HEADLESS_TRACE("[headless] opunpackv2 hsummit nil path=%s\n",
+		log_trace(LOG_COMP_PACK, "opunpackv2 hsummit nil path=%s",
 		                  (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>");
 #endif
 		return (false);
@@ -1030,11 +1023,7 @@ static boolean opunpackversion2 (handlestream *packstream) {
 			if (dump > 32)
 				dump = 32;
 			unsigned char *bytes = (unsigned char *) *(*packstream).data + (*packstream).pos;
-            (void) bytes; /* trace-only when enabled */
-			OP_HEADLESS_TRACE("[headless] opunpackv2 linetable first bytes:");
-			for (size_t i = 0; i < dump; ++i)
-				OP_HEADLESS_TRACE(" %02x", bytes[i]);
-			OP_HEADLESS_TRACE("\n");
+		log_hex_dump(LOG_COMP_PACK, LOG_LEVEL_TRACE, bytes, dump, "opunpackv2 linetable first bytes");
 		}
 	}
 #endif
@@ -1045,7 +1034,7 @@ static boolean opunpackversion2 (handlestream *packstream) {
 	
 	if (!optabletooutline (&stream, hsummit)) {
 #if defined(FRONTIER_TESTS)
-		OP_HEADLESS_TRACE ("[headless] opunpackv2 tablefail bytes=%ld pos=%ld eof=%ld\n",
+		log_trace(LOG_COMP_PACK, "opunpackv2 tablefail bytes=%ld pos=%ld eof=%ld",
 			(long) header.sizelinetable,
 			(long) stream.pos,
 			(long) stream.eof);
@@ -1058,7 +1047,7 @@ static boolean opunpackversion2 (handlestream *packstream) {
 	hline1 = oprepeatedbump (flatdown, (**ho).vertscrollinfo.cur, hsummit, true);
 	if (hline1 == nil) {
 #if defined(FRONTIER_HEADLESS)
-		OP_HEADLESS_TRACE("[headless] opunpackv2 hline1 nil cur=%ld path=%s\n",
+		log_trace(LOG_COMP_PACK, "opunpackv2 hline1 nil cur=%ld path=%s",
 		                  (long) (**ho).vertscrollinfo.cur,
 		                  (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>");
 #endif
@@ -1071,7 +1060,7 @@ static boolean opunpackversion2 (handlestream *packstream) {
 	hcursor = oprepeatedbump (flatdown, lnumcursor, hsummit, true);
 	if (hcursor == nil) {
 #if defined(FRONTIER_HEADLESS)
-		OP_HEADLESS_TRACE("[headless] opunpackv2 hcursor nil lnum=%ld path=%s\n",
+		log_trace(LOG_COMP_PACK, "opunpackv2 hcursor nil lnum=%ld path=%s",
 		                  (long) lnumcursor,
 		                  (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>");
 #endif

@@ -1,11 +1,11 @@
 # Adapter Mode Isolation
 
-Status
-- State: In Progress
-- Phase: Carbon Migration / Runtime Modernization
-- Last Updated: 2025-12-01 (Evening)
+## Status
+- State: In Progress - Mode presets implemented; integration ongoing
+- Phase: 3 (Adapter Mode Isolation)
+- Last Updated: 2025-12-22
 - Owner: Codex
-- Notes: Plan to separate legacy read vs modern write/read adapter configs to stop repack state bleed.
+- Notes: Three explicit mode presets (legacy read, modern write+repack, modern read) implemented; wrapped migrator, Cancoon, ODB, and CLI entry points; mode stack approach working for test isolation
 
 Related Docs
 - planning/_CURRENT_STATUS.md

@@ -1336,33 +1336,7 @@ void ellipsize (bigstring bs, short width) {
 	bug, which we can't seem to workaround. I'm making our own code faster instead.
 	*/
 	
-	#ifdef xxxWIN95VERSION
-		
-		if (stringlength (bs) > 16) {
-
-			RECT r;
-			
-			r.top = 0;
-			r.bottom = 50;
-			r.left = 0;
-			r.right = width;
-			
-			pushemptyclip ();
-			
-			convertpstring (bs);
-			
-			setWindowsFont();
-			
-			DrawText (getcurrentDC(), bs, -1, &r, DT_END_ELLIPSIS | DT_MODIFYSTRING | DT_NOPREFIX);
-			
-			clearWindowsFont();
-			
-			convertcstring (bs);
-			
-			popclip ();
-			}
-	#endif
-		{
+	{
 		byte len;
 		
 		if (stringpixels (bs) <= width) //nothing to do, the string fits
@@ -1462,7 +1436,7 @@ void parsedialogstring (const bigstring bssource, ptrstring bs0, ptrstring bs1, 
 			}
 		} /*for*/
 	
-	/***subtractstrings (bsresult, "\p рс", bsresult); #*in case there was a missing param*/
+	/***subtractstrings (bsresult, "\p О©╫О©╫", bsresult); #*in case there was a missing param*/
 	} /*parsedialogstring*/
 
 boolean parsedialoghandle (Handle hsource, Handle h0, Handle h1, Handle h2, Handle h3) {

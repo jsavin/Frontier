@@ -41,6 +41,7 @@
 #include "tablestructure.h"
 #include "db_format.h"
 #include "byteorder.h"
+#include "logging.h"
 
 // 2025-10-27 Codex: Handle 64-bit dbaddress packing/unpacking for headless workloads.
 // 2025-11-20 Codex: Emit table addresses in canonical big-endian form for portable v7 roots.
@@ -62,7 +63,7 @@ boolean tablepacktable_legacy (hdlhashtable htable, boolean flmemory, Handle *hp
 // 2025-10-27 Codex: Added headless logging for table handle splits to debug root loading.
 
 #ifdef FRONTIER_HEADLESS
-	fprintf(stderr, "[headless] FATAL ERROR: tablepacktable_legacy called - should use modern packer only!\n");
+	log_error(LOG_COMP_TABLE, "tablepacktable_legacy called - should use modern packer only!");
 	assert(false && "Legacy v6 packer should never be used in headless mode");
 #endif
 
@@ -75,7 +76,7 @@ boolean tablepacktable_legacy (hdlhashtable htable, boolean flmemory, Handle *hp
 	
 	if (!hashpacktable_context (&context, ht, flmemory, &hpackedtable, flmustsave)) {
 #if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[headless] tablepacktable_legacy hashpacktable failed flmemory=%d table=%p\n",
+		log_error(LOG_COMP_TABLE, "tablepacktable_legacy hashpacktable failed flmemory=%d table=%p",
 			(int)flmemory, (void *)ht);
 #endif
 		return (false);
@@ -94,10 +95,10 @@ boolean tablepacktable_legacy (hdlhashtable htable, boolean flmemory, Handle *hp
 		tablepopformats ();
 		
 		if (!fl) {
-			
+
 			disposehandle (hpackedtable);
 #if defined(FRONTIER_HEADLESS)
-			fprintf(stderr, "[headless] tablepacktable_legacy tablepackformats failed table=%p\n", (void *)ht);
+			log_error(LOG_COMP_TABLE, "tablepacktable_legacy tablepackformats failed table=%p", (void *)ht);
 #endif
 			return (false);
 			}
@@ -106,7 +107,7 @@ boolean tablepacktable_legacy (hdlhashtable htable, boolean flmemory, Handle *hp
 	fl = mergehandles (hpackedtable, hpackedformats, hpacked);
 	if (!fl) {
 #if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[headless] tablepacktable_legacy mergehandles failed table=%p tableHandle=%p formats=%p\n",
+		log_error(LOG_COMP_TABLE, "tablepacktable_legacy mergehandles failed table=%p tableHandle=%p formats=%p",
 			(void *)ht, (void *)hpackedtable, (void *)hpackedformats);
 #endif
 	}
@@ -151,7 +152,7 @@ boolean tableunpacktable_legacy (Handle hpacked, boolean flmemory, hdlhashtable 
 		return (false);
 
 #if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] tableunpacktable_legacy split merged=%ld table=%ld formats=%ld\n",
+	log_debug(LOG_COMP_TABLE, "tableunpacktable_legacy split merged=%ld table=%ld formats=%ld",
 	        merged_size,
 	        hpackedtable ? gethandlesize (hpackedtable) : 0L,
 	        hpackedformats ? gethandlesize (hpackedformats) : 0L);
@@ -288,7 +289,7 @@ boolean tableverbpack_legacy (hdlexternalvariable h, Handle *hpacked, boolean *f
 	*/
 
 #ifdef FRONTIER_HEADLESS
-	fprintf(stderr, "[headless] FATAL ERROR: tableverbpack_legacy called - should use modern packer only!\n");
+	log_error(LOG_COMP_TABLE, "tableverbpack_legacy called - should use modern packer only!");
 	assert(false && "Legacy v6 packer should never be used in headless mode");
 #endif
 
@@ -305,7 +306,7 @@ boolean tableverbpack_legacy (hdlexternalvariable h, Handle *hpacked, boolean *f
     db_format_mode_push(&legacy_mode);
 
 #if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] tableverbpack_legacy start\n");
+	log_debug(LOG_COMP_TABLE, "tableverbpack_legacy start");
 #endif
 	
 	if (fldatabasesaveas) {
@@ -361,10 +362,10 @@ boolean tableverbpack_legacy (hdlexternalvariable h, Handle *hpacked, boolean *f
 	/*it's in memory and either the table itself or one of its subs are dirty, so pack the table*/
 	
 	fl = tablepacktable_legacy (ht, false, &hpackedtable, &flmustsave);
-	
+
 	if (!fl) {
 #if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[headless] tablepacktable_legacy failed for system table\n");
+		log_error(LOG_COMP_TABLE, "tablepacktable_legacy failed for system table");
 #endif
 		goto pushaddress;
 	}
@@ -417,7 +418,7 @@ boolean tableverbpack_legacy (hdlexternalvariable h, Handle *hpacked, boolean *f
 
 	if (!enlargehandle (*hpacked, adrsize, (ptrchar) adrbuffer)) {
 #if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[headless] enlargehandle failed while packing table\n");
+		log_error(LOG_COMP_TABLE, "enlargehandle failed while packing table");
 #endif
 		return (false);
 	}
@@ -433,7 +434,7 @@ boolean tableverbunpack_legacy (Handle hpacked, long *ixload, hdlexternalvariabl
 	long remaining = hpacked ? (gethandlesize(hpacked) - *ixload) : 0;
 
 	if (db_format_mode_current().use_64bit_format && ((int)sizeof (dbaddress) == 8)) {
-		fprintf(stderr, "[headless] tableverbunpack_legacy use_64bit_format=true sizeof(dbaddress)=%zu remaining=%ld\n",
+		log_debug(LOG_COMP_TABLE, "tableverbunpack_legacy use_64bit_format=true sizeof(dbaddress)=%zu remaining=%ld",
 		        sizeof(dbaddress), remaining);
 		if (remaining >= (long) sizeof (dbaddress)) {
 			unsigned char adrbytes[sizeof (dbaddress)];
@@ -441,7 +442,7 @@ boolean tableverbunpack_legacy (Handle hpacked, long *ixload, hdlexternalvariabl
 				return (false);
 			rawadr = (dbaddress) db_format_read_be64(adrbytes);
 #if defined(FRONTIER_HEADLESS)
-			fprintf(stderr, "[headless] tableverbunpack_legacy 64-bit address=0x%016llx\n", (unsigned long long) rawadr);
+			log_debug(LOG_COMP_TABLE, "tableverbunpack_legacy 64-bit address=0x%016llx", (unsigned long long) rawadr);
 #endif
 		} else if (remaining == (long) sizeof (int32_t)) {
 			unsigned char raw32[sizeof (uint32_t)];
@@ -451,12 +452,12 @@ boolean tableverbunpack_legacy (Handle hpacked, long *ixload, hdlexternalvariabl
 				uint32_t raw32_val = db_format_read_be32(raw32);
 				rawadr = (dbaddress) raw32_val;
 #if defined(FRONTIER_HEADLESS)
-				fprintf(stderr, "[headless] tableverbunpack_legacy fallback 32-bit address=0x%08x\n", raw32_val);
+				log_debug(LOG_COMP_TABLE, "tableverbunpack_legacy fallback 32-bit address=0x%08x", raw32_val);
 #endif
 			}
 		} else {
 #if defined(FRONTIER_HEADLESS)
-			fprintf(stderr, "[headless] tableverbunpack_legacy unexpected remaining bytes=%ld\n", remaining);
+			log_error(LOG_COMP_TABLE, "tableverbunpack_legacy unexpected remaining bytes=%ld", remaining);
 #endif
 			return (false);
 		}
@@ -468,7 +469,7 @@ boolean tableverbunpack_legacy (Handle hpacked, long *ixload, hdlexternalvariabl
 			uint32_t raw32_val = db_format_read_be32(raw32);
 			rawadr = (dbaddress) raw32_val;
 #if defined(FRONTIER_HEADLESS)
-			fprintf(stderr, "[headless] tableverbunpack_legacy legacy 32-bit address=0x%08lx\n", (unsigned long) raw32_val);
+			log_debug(LOG_COMP_TABLE, "tableverbunpack_legacy legacy 32-bit address=0x%08lx", (unsigned long) raw32_val);
 #endif
 		}
 	}

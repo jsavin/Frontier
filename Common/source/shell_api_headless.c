@@ -8,6 +8,7 @@
 #include "strings.h"
 #endif
 #include "shell_api.h"
+#include "logging.h"
 
 static boolean shell_headless_require(tyshellcapability capability, const char *verbname);
 
@@ -37,7 +38,7 @@ static boolean shell_headless_require(tyshellcapability capability, const char *
         langerrormessage(bserror);
     }
 #else
-    fprintf(stderr, "%s\n", message);
+    log_error(LOG_COMP_GENERAL, "%s", message);
 #endif
 
     return false;

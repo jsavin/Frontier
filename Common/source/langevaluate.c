@@ -894,45 +894,6 @@ Handle tryerrorstack = nil;  //This code is left in so process.c, etc do not hav
 #if fltryerrorstackcode
 
 	static boolean pusherrorstackitem (bigstring bstitle, bigstring bsname, unsigned long errorline, unsigned short errorchar) {
-	#ifdef NEVER
-		bigstring bsline, bschar;
-		long len, offset;
-		Handle h;
-		boolean fl;
-
-		numbertostring ((long) errorline, bsline);
-		numbertostring ((long) errorchar, bschar);
-		// "{\"" + bstitle + "\",\"" + bsname + "\"," + bsline + "," + bschar + "}"
-		//  2 + stringlength (bstitle) + 3 + stringlength (bsname) + 2 + stringlength (bsline) + 1 + stringlength (bschar) + 1
-		len = 2 + stringlength (bstitle) + 3 + stringlength (bsname) + 2 + stringlength (bsline) + 1 + stringlength (bschar) + 1;
-		
-		if (! newhandle (len, &h))
-			return (false);
-		
-		moveleft ("{\"", *h, 2);
-		offset = 2;
-		moveleft ((ptrstring) stringbaseaddress(bstitle), *h+offset, stringlength(bstitle));
-		offset += stringlength (bstitle);
-		moveleft ("\",\"", *h+offset, 3);
-		offset += 3;
-		moveleft ((ptrstring) stringbaseaddress(bsname), *h+offset, stringlength(bsname));
-		offset += stringlength (bsname);
-		moveleft ("\",", *h+offset, 2);
-		offset += 2;
-		moveleft ((ptrstring) stringbaseaddress(bsline), *h+offset, stringlength(bsline));
-		offset += stringlength (bsline);
-		moveleft (",", *h+offset, 1);
-		offset += 1;
-		moveleft ((ptrstring) stringbaseaddress(bschar), *h+offset, stringlength(bschar));
-		offset += stringlength (bschar);
-		moveleft ("}", *h+offset, 1);
-
-		fl = insertinhandle (tryerrorstack, gethandlesize(tryerrorstack), *h, len);
-		
-		disposehandle (h);
-		
-		return (fl);
-	#endif		
 
 	#ifdef tryerrorstackusinglists
 		hdllistrecord hnew;

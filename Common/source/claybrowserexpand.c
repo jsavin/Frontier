@@ -501,11 +501,6 @@ boolean browserpreexpand (hdlheadrecord hnode, short ctlevels, boolean flmaycrea
 			}
 		}
 	
-	#ifdef xxxfldebug
-		opsetctexpanded (ho);
-	
-		opvalidate (ho);
-	#endif
 		
 	return (fl);
 	} /*browserpreexpand*/

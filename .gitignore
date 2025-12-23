@@ -35,7 +35,9 @@ Common/MySQL/
 
 # Build artifacts
 *.o
+*.a
 *.dSYM/
+a.out
 frontier-cli/frontier-cli
 frontier-cli/frontier-cli.dSYM/
 tests/cli_runtime_tests
@@ -69,12 +71,16 @@ __pycache__/
 tests/db_format_tests
 tests/runtime_tests
 tests/runtime_tests.dSYM/
+tests/test_logging
 
-# Database backups
+# Database backups and test artifacts
 *.root.bak
 *.root.prev*
+test_save_migration*.root
+tests/test_*.root
+tests/databases/*.root
 
-# Editor backups and temporary files (filesystem artifacts)
+# Editor backup and temporary files (filesystem artifacts)
 *.bak
 *.bak[0-9]*
 .!*
@@ -84,6 +90,9 @@ tests/runtime_tests.dSYM/
 tests/*.log
 build_Xcode_modern/*.log
 
+# Build directory executables
+build_Xcode_modern/Frontier_*
+
 .claude/
 .anthropic/
 .codex/
@@ -92,3 +101,8 @@ build_Xcode_modern/*.log
 node_modules/
 dist/
 .obsidian/
+
+# Status tracking files are canonical in planning/ directory
+/_CURRENT_STATUS.md
+/_CURRENT_TODO_LIST.md
+/_STATUS_ARCHIVE.md

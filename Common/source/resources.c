@@ -35,6 +35,7 @@
 #include "file.h"
 #include "resources.h"
 #include "langinternal.h" /* 2006-01-30 creedon */
+#include "logging.h"
 
 
 
@@ -46,7 +47,7 @@ boolean getstringlist (short listnum, short id, bigstring bs) {
     CFStringRef stringValue = CFBundleCopyLocalizedString(mainBundle, stringKey, CFSTR("[string not found]"), CFSTR("Localizable"));
     
     if (CFStringCompare(stringValue, CFSTR("[string not found]"), (CFStringCompareFlags) 0) == kCFCompareEqualTo) {
-        fprintf(stderr, "string resource not found %d.%d\n", listnum, id);
+        log_warn(LOG_COMP_GENERAL, "string resource not found %d.%d", listnum, id);
         setemptystring(bs);
     } else {
         CFStringGetPascalString(stringValue, bs, sizeof(bigstring), kCFStringEncodingMacRoman);

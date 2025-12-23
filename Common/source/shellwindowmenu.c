@@ -79,11 +79,6 @@ static boolean pushwindowmenuvisit (WindowPtr w, ptrvoid ptr) {
 	if (!getwindowinfo (w, &hinfo))
 		return (false);
 	
-#ifdef xxxPIKE
-	/* Pike only displays visible .root windows */
-	if ((hinfo != nil) && ((**hinfo).configresnum == idcancoonconfig) && (**hinfo).flhidden)
-		return (true);
-#endif
 
 	shellgetwindowtitle (hinfo, bs); // 7.24.97 dmb: was windowgettitle
 	

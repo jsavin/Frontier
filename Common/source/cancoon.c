@@ -65,6 +65,7 @@
 #include "WinSockNetEvents.h" /*6.2a14 AR*/
 #include "db_format.h" /* 2025-11-23 Codex: BE helpers for cancoon addresses */
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
+#include "logging.h"
 
 
 
@@ -507,7 +508,7 @@ static boolean ccloadsystemtable (hdlcancoonrecord hcancoon, dbaddress adr, bool
 	hdlhashtable htable;
 	
 #if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] ccloadsystemtable adr=0x%llx flcreate=%d\n",
+	log_debug(LOG_COMP_TABLE, "ccloadsystemtable adr=0x%llx flcreate=%d",
 	        (unsigned long long) adr, (int) flcreate);
 #endif
 
@@ -1172,9 +1173,11 @@ boolean ccsavefile (ptrfilespec fs, hdlfilenum fnum, short rnum, boolean flsavea
 	
 	exit:
 
-	if (flsaveas)
-		dbendsaveas ();
-	
+	if (flsaveas) {
+		dbendsaveas (); /* Internally calls dbdispose() on databasedata */
+		databasedata = nil; /* Prevent double-free before reassignment */
+	}
+
 	databasedata = (**cancoonglobals).hdatabase; // may not be same as cancoondata
 	
 	return (fl);

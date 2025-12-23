@@ -476,15 +476,15 @@ static boolean htmlgetpref (typrocessmacrosinfo *pmi, bigstring pref, tyvaluerec
 	/*
 	5.0.2 dmb: pulled into kernel. we return val on the tmp stack
 	
-	on getPref (prefName, adrpagedata=@websites.["#data"]) { Çnew in 4.1
-		ÇLook for a preference directive, a global pref, or return a default
+	on getPref (prefName, adrpagedata=@websites.["#data"]) { ï¿½new in 4.1
+		ï¿½Look for a preference directive, a global pref, or return a default
 	*/
 	
 	//local (val);
 	bigstring bs;
 	hdlhashnode hnode;
 	
-	//	try { Çtry to get it from pagedata
+	//	try { ï¿½try to get it from pagedata
 	//		val = adrpagedata^.[prefName];
 	
 	if (hashtablelookup ((*pmi).hpagetable, pref, val, &hnode)) {
@@ -513,13 +513,13 @@ static boolean htmlgetpref (typrocessmacrosinfo *pmi, bigstring pref, tyvaluerec
 		return (copyvaluerecord (*val, val));
 		}
 	
-	//	try { Çtry to get it from user.html.prefs
+	//	try { ï¿½try to get it from user.html.prefs
 	//		return (user.html.prefs.[prefName])};
 	
 	if (hashtablelookup ((*pmi).huserprefs, pref, val, &hnode))
 		return (copyvaluerecord (*val, val));
 	
-	//	case string.lower (prefName) { Çreturn a default value
+	//	case string.lower (prefName) { ï¿½return a default value
 	//		"fileextension" {
 	//			return (".html")};
 	//		"maxfilenamelength" {
@@ -544,7 +544,7 @@ static boolean htmlgetpref (typrocessmacrosinfo *pmi, bigstring pref, tyvaluerec
 	if (equalstrings (bs, str_defaultfilename))
 		return (setstringvalue (BIGSTRING ("\x07" "default"), val));
 
-	//	else { Çunknown or default prefs are true
+	//	else { ï¿½unknown or default prefs are true
 	//		return (true)}};
 	
 	return (setbooleanvalue (true, val));
@@ -649,16 +649,16 @@ static boolean htmlrefglossary (typrocessmacrosinfo *pmi, Handle hreference, big
 	findinparenttable (adrobject.ht, &adrparent.ht, adrparent.bs);
 	
 	
-	if defined (adrpagetable^.glossary) { Çlook in the default glossary
+	if defined (adrpagetable^.glossary) { ï¿½look in the default glossary
 		local (adrelement = @adrpagetable^.glossary^ [name]);
 		if defined (adrelement^) {
 			return (foundit (adrelement))}};
-	try { Çcheck the hierarchy for glossary tables
+	try { ï¿½check the hierarchy for glossary tables
 		local (nomad = adrparent, newnomad, found = false);
 		on glossLookup (glossName) {
-			if (defined (nomad^.[glossName])) { Çthe table has a glossary
+			if (defined (nomad^.[glossName])) { ï¿½the table has a glossary
 				local (adrelement = @nomad^.[glossName].[name]);
-				if defined (adrelement^) { Çit defines the term
+				if defined (adrelement^) { ï¿½it defines the term
 					found = true;
 					return (foundit (adrelement))}}};
 		loop {
@@ -672,10 +672,10 @@ static boolean htmlrefglossary (typrocessmacrosinfo *pmi, Handle hreference, big
 			if newnomad == "" {
 				break};
 			nomad = newnomad}};
-	try { Çcheck the user table glossary
+	try { ï¿½check the user table glossary
 		return (string (user.html.glossary [name]))};
 	if not (name beginsWith "#") {
-		try { Çlook for objects at the same level with the name
+		try { ï¿½look for objects at the same level with the name
 			local (normalizedName = html.normalizeName (name, adrpagetable));
 			local (ext = html.getPref ("fileExtension", adrpagetable));
 			if defined (adrparent^.[normalizedName]) {
@@ -685,7 +685,7 @@ static boolean htmlrefglossary (typrocessmacrosinfo *pmi, Handle hreference, big
 	scriptError ("There is no glossary entry named \"" + name + "\"")}
 	
 	foundit:
-	//	on foundit (adr) { Çnew in 5.0
+	//	on foundit (adr) { ï¿½new in 5.0
 	//		case typeOf (adr^) {
 	//			scriptType { //new in 5.0, glossary items can be scripts
 	//				return (adr^ ())};
@@ -739,22 +739,22 @@ static boolean htmlrefglossary (typrocessmacrosinfo *pmi, Handle hreference, big
 static boolean htmlcleanforexport (Handle x) {
 
 	/*
-	on cleanForExport (text) { Çprepare text to leave Mac environment
+	on cleanForExport (text) { ï¿½prepare text to leave Mac environment
 		if sys.os () == "MacOS" {
 			on replace (searchfor, replacewith) {
-				if string.patternMatch (searchfor, text) != 0 { Çoptimization
+				if string.patternMatch (searchfor, text) != 0 { ï¿½optimization
 					text = string.replaceAll (text, searchfor, replacewith)}};
 			
-			replace ("Õ", "'");
-			replace ("Ô", "'");
-			replace ("Ò", Ò"Ó);
-			replace ("Ó", Ò"Ó);
-			replace ("¥", "o");
+			replace ("ï¿½", "'");
+			replace ("ï¿½", "'");
+			replace ("ï¿½", ï¿½"ï¿½);
+			replace ("ï¿½", ï¿½"ï¿½);
+			replace ("ï¿½", "o");
 			replace ("...", "...");
-			replace ("Ê", " "); Ça funny space that Word produces
-			replace ("Ð", "--");
-			replace ("Ç", "&lt;&lt;");
-			replace ("È", "&gt;&gt;")};
+			replace ("ï¿½", " "); ï¿½a funny space that Word produces
+			replace ("ï¿½", "--");
+			replace ("ï¿½", "&lt;&lt;");
+			replace ("ï¿½", "&gt;&gt;")};
 		return (text)}
 	*/
 	
@@ -766,8 +766,8 @@ static boolean htmlcleanforexport (Handle x) {
 			
 			switch ((*x) [s.pos]) { // set chreplace or bsreplace
 			
-				case (char)0xd4:	/* 'Ô' open single quote */
-				case (char)0xd5:	/* 'Õ' close single quote */
+				case (char)0xd4:	/* 'ï¿½' open single quote */
+				case (char)0xd5:	/* 'ï¿½' close single quote */
 					(*x) [s.pos] = '\'';
 					break;
 				
@@ -776,21 +776,21 @@ static boolean htmlcleanforexport (Handle x) {
 					(*x) [s.pos] = '\"';
 					break;
 				
-				case (char)0xa5:	/* '¥' disk */
+				case (char)0xa5:	/* 'ï¿½' disk */
 					(*x) [s.pos] = 'o';
 					break;
 					
-				case (char)0xca:	/* 'Ê' non-breaking space */
+				case (char)0xca:	/* 'ï¿½' non-breaking space */
 					(*x) [s.pos] = ' ';
 					break;
 				
-				case (char)0xc9:	/* 'É' ellipsis */
+				case (char)0xc9:	/* 'ï¿½' ellipsis */
 					mergehandlestreamstring (&s, 1, BIGSTRING ("\x03" "..."));
 					--s.pos;
 					break;
 				
-				case (char)0xd0:	/* 'Ð' n-dash */
-				case (char)0xd1:	/* 'Ñ' m-dash */
+				case (char)0xd0:	/* 'ï¿½' n-dash */
+				case (char)0xd1:	/* 'ï¿½' m-dash */
 					mergehandlestreamstring (&s, 1, BIGSTRING ("\x02" "--"));
 					--s.pos;
 					break;
@@ -904,7 +904,7 @@ static boolean htmlrunmacro (typrocessmacrosinfo *pmi, Handle macro, bigstring p
 		local (toolTableAdr, nilTable);
 		if defined (adrpagetable^.tools) {
 			toolTableAdr = adrpagetable^.tools}
-		else { Ç'with' wants a table
+		else { ï¿½'with' wants a table
 			new (tableType, @nilTable);
 			toolTableAdr = @nilTable};
 	
@@ -1177,7 +1177,7 @@ static boolean processhtmltext (handlestream *s, typrocessmacrosinfo *pmi) {
 	/*
 	4.1b4 dmb: handled nested startmacrochars in macro text.
 	
-	4.1b5 dmb: don't translate Ç, È, ©, ¨ or non-breaking space. They'll all get 
+	4.1b5 dmb: don't translate ï¿½, ï¿½, ï¿½, ï¿½ or non-breaking space. They'll all get 
 	iso8859 encoded when appropriate.
 	
 	4.1b5 dmb: for glassary references, we were adding the full length of the 
@@ -1841,22 +1841,22 @@ static boolean processhtmltext (handlestream *s, typrocessmacrosinfo *pmi) {
 				
 			/* 4.1b12 dmb: these don't have html charactors equivalents, but we can do the mapping in the open-architecture isofilter */
 			/*
-			case 'Õ': case 'Ô':
+			case 'ï¿½': case 'ï¿½':
 				(*h) [i] = '\'';
 				
 				break;
 				
-			case 'Ó': case 'Ò':
+			case 'ï¿½': case 'ï¿½':
 				(*h) [i] = '"';
 				
 				break;
 				
-			case '¥': 
+			case 'ï¿½': 
 				(*h) [i] = 'o';
 				
 				break;
 				
-			case 'É':
+			case 'ï¿½':
 				(*h) [i] = '.';
 				
 				if (!insertstringinhandle ("\p..", h, i + 1))
@@ -1868,7 +1868,7 @@ static boolean processhtmltext (handlestream *s, typrocessmacrosinfo *pmi) {
 				
 				break;
 				
-			case 'Ð': case 'Ñ':
+			case 'ï¿½': case 'ï¿½':
 				(*h) [i] = '-';
 				
 				if (!insertstringinhandle ("\p-", h, i + 1))
@@ -1882,12 +1882,12 @@ static boolean processhtmltext (handlestream *s, typrocessmacrosinfo *pmi) {
 			*/
 			/* 4.1b5 dmb: all of the following are html charactors and have iso8859 mappings */
 			/*
-			case 'Ê': // a funny space that Word produces
+			case 'ï¿½': // a funny space that Word produces
 				(*h) [i] = ' ';
 				
 				break;
 				
-			case 'Ç':
+			case 'ï¿½':
 				(*h) [i] = '&';
 				
 				if (!insertstringinhandle ("\plt;&lt;", h, i + 1))
@@ -1899,7 +1899,7 @@ static boolean processhtmltext (handlestream *s, typrocessmacrosinfo *pmi) {
 				
 				break;
 				
-			case 'È':
+			case 'ï¿½':
 				(*h) [i] = '&';
 				
 				if (!insertstringinhandle ("\pgt;&gt;", h, i + 1))
@@ -1911,7 +1911,7 @@ static boolean processhtmltext (handlestream *s, typrocessmacrosinfo *pmi) {
 				
 				break;
 				
-			case '©':
+			case 'ï¿½':
 				(*h) [i] = '&';
 				
 				if (!insertstringinhandle ("\pcopy;", h, i + 1))
@@ -1923,7 +1923,7 @@ static boolean processhtmltext (handlestream *s, typrocessmacrosinfo *pmi) {
 				
 				break;
 				
-			case '¨':
+			case 'ï¿½':
 				(*h) [i] = '&';
 				
 				if (!insertstringinhandle ("\preg;", h, i + 1))
@@ -2526,20 +2526,10 @@ boolean getgifheightwidthverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 		closefile(fnum);
 		
 		if (fl) {
-			#ifdef xxxoplanglists
-				if (opnewlist (&list, false)) {
-					if (langpushlistlong (list, (long) height)) {
-						if (langpushlistlong (list, (long) width)) {
-							return (setheapvalue ((Handle) list, listvaluetype, vreturned));
-							}
-						}
-					}
-			#else
-				Point pt;
-				pt.v = width;
-				pt.h = height;
-				return (setpointvalue (pt, vreturned) && coercetolist (vreturned, listvaluetype));
-			#endif
+			Point pt;
+			pt.v = width;
+			pt.h = height;
+			return (setpointvalue (pt, vreturned) && coercetolist (vreturned, listvaluetype));
 			}
 		}
 
@@ -2779,29 +2769,14 @@ boolean getjpegheightwidthverb ( hdltreenode hparam1, tyvaluerecord *vreturned )
 		closefile ( fnum );
 		
 		if ( fl ) {
-		
-			#ifdef xxxoplanglists
-			
-				if ( opnewlist ( &list, false ) ) {
-				
-					if ( langpushlistlong ( list, ( long ) height ) ) {
-					
-						if ( langpushlistlong ( list, ( long ) width ) )
-						
-							return ( setheapvalue ( ( Handle ) list, listvaluetype, vreturned ) );
-							
-						}
-					}
-			#else
-				Point pt;
-				
-				pt.v = width;
-				pt.h = height;
-				
-				return ( setpointvalue ( pt, vreturned ) && coercetolist ( vreturned, listvaluetype ) );
-				
-			#endif
-			
+
+			Point pt;
+
+			pt.v = width;
+			pt.h = height;
+
+			return ( setpointvalue ( pt, vreturned ) && coercetolist ( vreturned, listvaluetype ) );
+
 			}
 		}
 	
@@ -2836,7 +2811,7 @@ static tyvaluetype langgetextendedvaluetype (const tyvaluerecord *val) {
 static boolean additemtopagetable (hdlhashtable htable, hdlhashnode hnode, hdlhashtable hpagetable) {
 
 	/*
-	on addItemToPageTable (adr) { Çadr points to an attribute
+	on addItemToPageTable (adr) { ï¿½adr points to an attribute
 	*/
 	
 	tyaddress adr;
@@ -2929,11 +2904,11 @@ static boolean additemtopagetable (hdlhashtable htable, hdlhashnode hnode, hdlha
 		
 		//	if lowername == "ftpsite" { // dmb: move this into buildpagetableverb
 		//		adrpagetable^.subdirectoryPath = subdirpath;
-		//		adrpagetable^.adrSiteRootTable = nomad}; Ç4.2
+		//		adrpagetable^.adrSiteRootTable = nomad}; ï¿½4.2
 		
-		//	if lowername == "template" { Ç4.1, 4.2
+		//	if lowername == "template" { ï¿½4.1, 4.2
 		//		if (objecttype == wptexttype) or (objecttype == outlinetype) {
-		//			ÇWed, Nov 20, 1996 at 7:58:21 AM by DW -- allow outlines to be templates
+		//			ï¿½Wed, Nov 20, 1996 at 7:58:21 AM by DW -- allow outlines to be templates
 		//			adrpagetable^.indirectTemplate = false;
 		
 		if (equalstrings (lowername, str_template)) {
@@ -2988,7 +2963,7 @@ static boolean buildpagetableverb (hdltreenode hparam1, tyvaluerecord *vreturned
 	//	local (nomad = parentOf (adrobject^), subdirpath = "");
 	setemptystring (subdirpath);
 	
-	//	loop { Çpop out to the root looking for #directives
+	//	loop { ï¿½pop out to the root looking for #directives
 	while (true) {
 			
 		//	local (i);
@@ -3011,7 +2986,7 @@ static boolean buildpagetableverb (hdltreenode hparam1, tyvaluerecord *vreturned
 				
 				//	if lowername == "ftpsite" {	 // dmb: pulled this out of additemtopagetable
 					//	adrpagetable^.subdirectoryPath = subdirpath;
-					//	adrpagetable^.adrSiteRootTable = nomad}; Ç4.2
+					//	adrpagetable^.adrSiteRootTable = nomad}; ï¿½4.2
 				if (equalidentifiers (name, BIGSTRING ("\x08" "#ftpsite")) && !hashtablesymbolexists (hpagetable, str_ftpsite)) {
 					
 					if (!langassignstringvalue (hpagetable, BIGSTRING ("\x10" "subdirectoryPath"), subdirpath))
@@ -3059,8 +3034,8 @@ static boolean buildpagetableverb (hdltreenode hparam1, tyvaluerecord *vreturned
 static boolean getprefverb (hdltreenode hp1, tyvaluerecord *v) {
 	
 	/*
-	on getPref (prefName, adrpagedata=@websites.["#data"]) { Çnew in 4.1
-		ÇLook for a preference directive, a global pref, or return a default
+	on getPref (prefName, adrpagedata=@websites.["#data"]) { ï¿½new in 4.1
+		ï¿½Look for a preference directive, a global pref, or return a default
 	*/
 	
 	bigstring prefname;
@@ -3121,28 +3096,28 @@ static boolean htmlrundirective (typrocessmacrosinfo *pmi, Handle s, bigstring f
 static boolean rundirectiveverb (hdltreenode hp1, tyvaluerecord *v) {
 	
 	/*
-	on runDirective (linetext, adrpagetable=@websites.["#data"]) { Ç4.2 -- extracted from renderObject macro
-		Çlinetext contains a #directive line
-			Çprocess the directive and return the name of the directive
-		Ç11/12/97 at 8:44:54 AM by DW -- adrpagetable is an optional param
-			ÇHad to change the implementation.
-			ÇOld method: build a script that's an assignment statement.
-			ÇNew method: evaluate the expression and assign into the pagetable field.
-			ÇThe old method for constructing an address won't work for non-global tables.
-			ÇI don't believe this will break anything.
+	on runDirective (linetext, adrpagetable=@websites.["#data"]) { ï¿½4.2 -- extracted from renderObject macro
+		ï¿½linetext contains a #directive line
+			ï¿½process the directive and return the name of the directive
+		ï¿½11/12/97 at 8:44:54 AM by DW -- adrpagetable is an optional param
+			ï¿½Had to change the implementation.
+			ï¿½Old method: build a script that's an assignment statement.
+			ï¿½New method: evaluate the expression and assign into the pagetable field.
+			ï¿½The old method for constructing an address won't work for non-global tables.
+			ï¿½I don't believe this will break anything.
 		
 		local (s = string.commentDelete (linetext));
 		local (fieldname = string.nthField (s, ' ', 1));
-		s = string.delete (s, 1, sizeof (fieldname) + 1); Çdelete name and space
-		try {delete (@adrpagetable^.[fieldname])}; Çavoid Can't Assign Over error
+		s = string.delete (s, 1, sizeof (fieldname) + 1); ï¿½delete name and space
+		try {delete (@adrpagetable^.[fieldname])}; ï¿½avoid Can't Assign Over error
 		
 		try {
 			adrpagetable^.[fieldname] = evaluate (s)}
 		else {
 			scriptError ("Error evaluating #" + linetext + ": " + tryError)};
 		
-		local (lastdirective = string.lower (fieldname)); Ç4.2
-		if lastdirective == "template" { Ç4.0.2
+		local (lastdirective = string.lower (fieldname)); ï¿½4.2
+		if lastdirective == "template" { ï¿½4.0.2
 			adrpagetable^.indirectTemplate = true};
 		return (lastdirective)}
 	*/
@@ -3175,13 +3150,13 @@ static boolean rundirectiveverb (hdltreenode hp1, tyvaluerecord *v) {
 static boolean rundirectivesverb (hdltreenode hp1, tyvaluerecord *v) {
 	
 	/*
-	on runDirectives (wpstring, adrpagetable=@websites.["#data"]) { Ç4.2 -- extracted from renderObject macro
-		Çwpstring contains a page of text
-			Çrun all the #directives and return the cleaned up text
+	on runDirectives (wpstring, adrpagetable=@websites.["#data"]) { ï¿½4.2 -- extracted from renderObject macro
+		ï¿½wpstring contains a page of text
+			ï¿½run all the #directives and return the cleaned up text
 		
-		wpstring = string.replaceAll (wpstring, "\n", ""); Çwork around Windows problem -- 11/11/97 DW
+		wpstring = string.replaceAll (wpstring, "\n", ""); ï¿½work around Windows problem -- 11/11/97 DW
 		local (s = "");
-		loop { Çprocess #directives
+		loop { ï¿½process #directives
 			if sizeof (wpstring) == 0 {
 				break};
 			local (line = string.nthField (wpstring, "\r", 1));
@@ -3220,7 +3195,7 @@ static boolean rundirectivesverb (hdltreenode hp1, tyvaluerecord *v) {
 	
 	openhandlestream (wpstring, &s);
 	
-	bundle { // wpstring = string.replaceAll (wpstring, "\n", ""); Çwork around Windows problem -- 11/11/97 DW
+	bundle { // wpstring = string.replaceAll (wpstring, "\n", ""); ï¿½work around Windows problem -- 11/11/97 DW
 		for (s.pos = 0; s.pos < s.eof; ++s.pos) {
 			
 			if ((*wpstring) [s.pos] == '\n')
@@ -3273,10 +3248,10 @@ static boolean runoutlinedirectivesverb (hdltreenode hp1, tyvaluerecord *v) {
 #pragma unused(v)
 
 	/*
-	on runOutlineDirectives (adroutline, adrpagetable=@websites.["#data"]) { Ç4.2
-		Çthe outline can contain #directives
-			Çrun all the #directives and return the outline with the directives deleted
-			Çplease send us a *COPY* of your outline. thanks!
+	on runOutlineDirectives (adroutline, adrpagetable=@websites.["#data"]) { ï¿½4.2
+		ï¿½the outline can contain #directives
+			ï¿½run all the #directives and return the outline with the directives deleted
+			ï¿½please send us a *COPY* of your outline. thanks!
 	*/
 	
 	typrocessmacrosinfo pageinfo;
@@ -3320,7 +3295,7 @@ static boolean runoutlinedirectivesverb (hdltreenode hp1, tyvaluerecord *v) {
 
 		if ((hdirective != nil) && (gethandlesize (hdirective) > 0) && (**hdirective == '#')) {
 
-			//	s = string.delete (s, 1, 1); Çpop off the #
+			//	s = string.delete (s, 1, 1); ï¿½pop off the #
 			//	local (lastdirective = html.runDirective (s, adrpagetable));
 			
 			/*
@@ -3341,8 +3316,8 @@ static boolean runoutlinedirectivesverb (hdltreenode hp1, tyvaluerecord *v) {
 			
 			opsetoutline (ho);
 			
-			//	local (newtype = nil); Ç4.2
-			//	case lastdirective { Ç4.2
+			//	local (newtype = nil); ï¿½4.2
+			//	case lastdirective { ï¿½4.2
 			//		"define" {
 			//			newtype = outlinetype};
 			//		"definescript" {
@@ -3411,7 +3386,7 @@ static boolean runoutlinedirectivesverb (hdltreenode hp1, tyvaluerecord *v) {
 			opdeletenode (nomad);
 			}
 		else {
-			//	if script.isComment () { Çnew in 4.0b7 -- omit top-level comment lines
+			//	if script.isComment () { ï¿½new in 4.0b7 -- omit top-level comment lines
 			//		op.deleteline ()}
 			//	else {
 			//		if not op.go (down, 1) {
@@ -3441,23 +3416,23 @@ static boolean runoutlinedirectivesverb (hdltreenode hp1, tyvaluerecord *v) {
 static boolean cleanforexportverb (hdltreenode hp1, tyvaluerecord *v) {
 	
 	/*
-on cleanForExport (text) { Çprepare text to leave Mac environment
-	Ç10/31/97 at 6:45:58 AM by DW -- moved from toys.cleanForExport.
+on cleanForExport (text) { ï¿½prepare text to leave Mac environment
+	ï¿½10/31/97 at 6:45:58 AM by DW -- moved from toys.cleanForExport.
 	if sys.os () == "MacOS" {
 		on replace (searchfor, replacewith) {
-			if string.patternMatch (searchfor, text) != 0 { Çoptimization
+			if string.patternMatch (searchfor, text) != 0 { ï¿½optimization
 				text = string.replaceAll (text, searchfor, replacewith)}};
 		
-		replace ("Õ", "'");
-		replace ("Ô", "'");
-		replace ("Ò", Ò"Ó);
-		replace ("Ó", Ò"Ó);
-		replace ("¥", "o");
+		replace ("ï¿½", "'");
+		replace ("ï¿½", "'");
+		replace ("ï¿½", ï¿½"ï¿½);
+		replace ("ï¿½", ï¿½"ï¿½);
+		replace ("ï¿½", "o");
 		replace ("...", "...");
-		replace ("Ê", " "); Ça funny space that Word produces
-		replace ("Ð", "--");
-		replace ("Ç", "&lt;&lt;");
-		replace ("È", "&gt;&gt;")};
+		replace ("ï¿½", " "); ï¿½a funny space that Word produces
+		replace ("ï¿½", "--");
+		replace ("ï¿½", "&lt;&lt;");
+		replace ("ï¿½", "&gt;&gt;")};
 	return (text)}
 	*/
 	
@@ -3481,13 +3456,13 @@ static boolean glossarypatcherverb (hdltreenode hp1, tyvaluerecord *v) {
 
 	/*
 	on glossaryPatcher (adrpagedata=@websites.["#data"]) {
-		Çscan the fully rendered page for [[#glossPatch xxx|yyy]]
-			Çgenerate relative href's for these references
-			ÇSun, Nov 3, 1996: if xxx is empty, just generate the URL, not an href
-				ÇThis supports the JavaScript popup menu in the DaveNet website
-			ÇAuthor: Dave Winer, dwiner@well.com
-			ÇMon, Jan 20, 1997 at 3:30:04 PM by PH
-				ÇOnly do the work if the pref is set to true
+		ï¿½scan the fully rendered page for [[#glossPatch xxx|yyy]]
+			ï¿½generate relative href's for these references
+			ï¿½Sun, Nov 3, 1996: if xxx is empty, just generate the URL, not an href
+				ï¿½This supports the JavaScript popup menu in the DaveNet website
+			ï¿½Author: Dave Winer, dwiner@well.com
+			ï¿½Mon, Jan 20, 1997 at 3:30:04 PM by PH
+				ï¿½Only do the work if the pref is set to true
 	*/
 	
 	typrocessmacrosinfo pageinfo;
@@ -3601,7 +3576,7 @@ static boolean glossarypatcherverb (hdltreenode hp1, tyvaluerecord *v) {
 		if (!loadfromhandletohandle (s.data, &ixload, ixend - ixstart - stringlength (str_glosspatch), false, &h))
 			goto exit;
 
-		//	Çurl = url + string.nthField (s, '|', 2) + html.getPref ("fileExtension", adrpagedata)
+		//	ï¿½url = url + string.nthField (s, '|', 2) + html.getPref ("fileExtension", adrpagedata)
 		//	bundle { //add the path to url, it's more complicated because the extension may already be there
 		//		local (path = string.nthField (s, '|', 2));
 		//		local (extension = string.nthField (path, '.', 2));
@@ -3735,14 +3710,14 @@ static boolean expandurlsverb (hdltreenode hp1, tyvaluerecord *v) {
 	} /*expandurlsverb*/
 
 
-/*on traversalSkip (adr) { Ç4.2
-	Çreturn true if this object should be omitted from a traversal
+/*on traversalSkip (adr) { ï¿½4.2
+	ï¿½return true if this object should be omitted from a traversal
 	local (name = nameof (adr^));
-	if name beginsWith '#' { Ç4.0.1
+	if name beginsWith '#' { ï¿½4.0.1
 		return (true)};
 	case string.lower (name) {
 		"glossary";
-		"images"; Ç4.2
+		"images"; ï¿½4.2
 		"tools" {
 			return (true)}};
 	return (false)}
@@ -4285,15 +4260,15 @@ static boolean indexpageverb (hdltreenode hp1, tyvaluerecord *v) {
 	/*
 	5.1.4 dmb: kernelization of Brent's indexing code
 	
-	ÇadrPage is the address of the page.
-	Çurl is the url of the page on the web.
-	Çtitle is the title of the page.
-	ÇpageText is the unprocessed text of the page.
-	ÇadrIndex is the address of the inverted index.
-	ÇadrStopWordsTable is a table of stop words.
-		ÇThe name of each entry is a stop word -- a word *not* to index.
-		ÇThe values are ignored, they can be nil.
-	ÇflMessages -- true to report progress in the About Window.
+	ï¿½adrPage is the address of the page.
+	ï¿½url is the url of the page on the web.
+	ï¿½title is the title of the page.
+	ï¿½pageText is the unprocessed text of the page.
+	ï¿½adrIndex is the address of the inverted index.
+	ï¿½adrStopWordsTable is a table of stop words.
+		ï¿½The name of each entry is a stop word -- a word *not* to index.
+		ï¿½The values are ignored, they can be nil.
+	ï¿½flMessages -- true to report progress in the About Window.
 	*/
 	
 	hdlhashtable hindex, hstopwords;
@@ -6973,7 +6948,7 @@ static boolean mrcalendargetaddressdayverb (hdltreenode hp1, tyvaluerecord *v) {
 
 /*
 on getDayAddress (adrcalendar, d, flcreate=true, objtype=tabletype) { //turn a date into an address
-	Çthis is the bottleneck
+	ï¿½this is the bottleneck
 	
 	local (day, month, year, hour, minute, second);
 	date.get (d, @day, @month, @year, @hour, @minute, @second);
