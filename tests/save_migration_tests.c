@@ -228,6 +228,13 @@ int main(void) {
     fprintf(stderr, "[migration]      --system-root %s -e \"sizeOf(system.verbs.globals)\"\n", migrated_path);
     MIGRATION_TEST_PASS("External table accessibility testing procedure documented");
 
+    // Future enhancement: Deep nesting test
+    fprintf(stderr, "\n[migration] Future enhancement: Deep nesting validation\n");
+    fprintf(stderr, "[migration] TODO: Test tables nested 3+ levels deep with external variables\n");
+    fprintf(stderr, "[migration] Current test validates root table format; deep nesting requires\n");
+    fprintf(stderr, "[migration] creating complex nested structures via Frontier runtime.\n");
+    fprintf(stderr, "[migration] See: planning/architectural_decision_records/explicit-context-passing/\n");
+
     // Print summary
     fprintf(stderr, "\n=== Migration Test Summary ===\n");
     fprintf(stderr, "[migration] v%d -> v%d migration to: %s\n", ver_before, ver_after, migrated_path);

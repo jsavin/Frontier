@@ -2787,6 +2787,13 @@ static boolean hashpackexternal (handlestream *s, hdlexternalvariable h, int32_t
 	if ((*s).pos > INT32_MAX)
 		return (false);
 
+	/* Phase 1: Verify context is present (logs warning if missing but continues with global mode fallback) */
+	#if defined(FRONTIER_HEADLESS)
+	if (ctx == NULL) {
+		log_warn(LOG_COMP_HASH, "hashpackexternal: NULL context - will use global mode stack (legacy path acceptable)");
+	}
+	#endif
+
 	*ix = (int32_t) (*s).pos; /*where the text item is stored*/
 
 	if (flexternalmemorypack)
@@ -3345,6 +3352,9 @@ static boolean hashpackvisit_v7 (bigstring bsname, hdlhashnode hnode, tyvaluerec
 	/*
 	Matches legacy logic but writes modern scalar payloads (64-bit ints/doubles, Mac-epoch date).
 	Non-scalar storage (string/binary/etc.) still uses 32-bit indices into the string handle.
+
+	Phase 1: lpi->context is set in hashpacktable_internal() and threaded through recursive calls.
+	This eliminates dependency on global mode stack for child table packing (Issue #147).
 	*/
 
 	typackinforecord *lpi = (typackinforecord *) refcon;

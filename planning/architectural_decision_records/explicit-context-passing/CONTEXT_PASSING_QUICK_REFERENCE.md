@@ -166,6 +166,55 @@ FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli \
 
 ---
 
+## Why Phases 2-4 Are Optional (for Correctness)
+
+### Phase 1 is Sufficient Because:
+
+**Critical Bug Fixed**: Phase 1 explicitly threads context to child table packing operations, eliminating the root cause of Issue #147:
+- Parent context (`use_64bit=1` for v7) is now passed down explicitly
+- Child table packing receives parent's explicit context, not inherited from global mode stack
+- Result: All tables written with correct v7 format during migration
+
+**No Staleness Issue**: The `use_64bit` boolean cached in `typackinforecord` (kept in Phase 1) is set once per table in `hashpacktable_internal()` and never changes during that table's packing:
+- Set from context at line 3762 (v7 path) or 3791 (v6 path)
+- Read only by child visitors (`hashpackvisit_v7`)
+- Never modified during packing
+- No risk of staleness since it's immutable during a single table pack operation
+
+**Global Mode Fallback is Safe**: When `hashpacktable_internal()` is called with `ctx=NULL` (legacy API):
+- We use `db_format_mode_current()` to decide format for THAT table only
+- Context is passed (NULL) to children
+- Children also use global mode if context is NULL
+- Result: Legacy API continues to work, uses existing (correct) global mode behavior
+- No correctness issue - only if global mode is set incorrectly (prevented by Phase 3)
+
+### When to Implement Phases 2-4
+
+**Phase 2 becomes required if**:
+- We discover scenarios where `use_64bit` boolean staleness causes bugs
+- Performance profiling shows context passing is significantly faster than deriving from global mode
+
+**Phase 3 becomes required if**:
+- NULL context scenarios fail (context incorrectly set to NULL at top level)
+- We want to eliminate legacy API paths that depend on global mode
+
+**Phase 4 becomes required if**:
+- Menu/pict operations are used during migration and encounter same mode-stack bug
+- Architectural consistency demand (all table operations use explicit context)
+
+---
+
+### Phase 1 Scope Decision
+
+**Decision**: Ship Phase 1 as self-contained fix for Issue #147
+- Fixes confirmed bug: v7 migration with corrupted table headers
+- Minimal risk: Only adds context field and threads it through one call path
+- Preserves backward compatibility: Legacy API paths unchanged
+- Clear upgrade path: Phases 2-3 can be added later if needed
+- No performance regression: Negligible overhead from passing one pointer
+
+---
+
 ## Quick Grep Commands
 
 ```bash
