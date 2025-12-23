@@ -96,3 +96,8 @@ build_Xcode_modern/*.log
 node_modules/
 dist/
 .obsidian/
+
+# Status tracking files are canonical in planning/ directory
+/_CURRENT_STATUS.md
+/_CURRENT_TODO_LIST.md
+/_STATUS_ARCHIVE.md
