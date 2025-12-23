@@ -4,6 +4,19 @@
 #include <stdlib.h>
 #include <time.h>
 
+/*
+ * Thread Safety: Currently NOT thread-safe. Global state is accessed without locking.
+ * This is acceptable as Frontier headless runtime is single-threaded.
+ * If threading is added, protect g_log_level and g_component_enabled[] with mutex.
+ */
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+#define LOG_MESSAGE_MAX 4096
+#define LOG_ESCAPED_MAX (LOG_MESSAGE_MAX * 2)  // Worst case: every char escaped
+
 // ============================================================================
 // Internal State
 // ============================================================================
@@ -118,6 +131,14 @@ static void parse_components(const char *str) {
 
     // Parse comma-separated list
     char *str_copy = strdup(str);
+    if (!str_copy) {
+        fprintf(stderr, "[LOG] Warning: Memory allocation failed, enabling all components\n");
+        for (int i = 0; i < LOG_COMP_COUNT; i++) {
+            g_component_enabled[i] = true;
+        }
+        return;
+    }
+
     char *token = strtok(str_copy, ",");
     while (token) {
         // Trim whitespace
@@ -205,26 +226,34 @@ bool log_is_enabled(log_level_t level, log_component_t component) {
  */
 static void json_escape_string(const char *str, char *buf, size_t bufsize) {
     size_t j = 0;
-    for (size_t i = 0; str[i] && j < bufsize - 2; i++) {
+    for (size_t i = 0; str[i] && j < bufsize - 1; i++) {  // Leave room for null terminator
         if (str[i] == '"' || str[i] == '\\') {
-            if (j < bufsize - 3) {
+            if (j < bufsize - 2) {  // Need room for 2 chars + null
                 buf[j++] = '\\';
                 buf[j++] = str[i];
+            } else {
+                break;  // Buffer full
             }
         } else if (str[i] == '\n') {
-            if (j < bufsize - 3) {
+            if (j < bufsize - 2) {
                 buf[j++] = '\\';
                 buf[j++] = 'n';
+            } else {
+                break;
             }
         } else if (str[i] == '\r') {
-            if (j < bufsize - 3) {
+            if (j < bufsize - 2) {
                 buf[j++] = '\\';
                 buf[j++] = 'r';
+            } else {
+                break;
             }
         } else if (str[i] == '\t') {
-            if (j < bufsize - 3) {
+            if (j < bufsize - 2) {
                 buf[j++] = '\\';
                 buf[j++] = 't';
+            } else {
+                break;
             }
         } else {
             buf[j++] = str[i];
@@ -249,7 +278,7 @@ void log_write(log_level_t level, log_component_t component,
     filename = filename ? filename + 1 : file;
 
     // Format the message
-    char message[4096];
+    char message[LOG_MESSAGE_MAX];
     va_list args;
     va_start(args, fmt);
     vsnprintf(message, sizeof(message), fmt, args);
@@ -257,21 +286,20 @@ void log_write(log_level_t level, log_component_t component,
 
     if (g_log_format == LOG_FORMAT_JSON) {
         // JSON format → stderr (for machine parsing/automation)
-        char escaped_message[8192];
+        char escaped_message[LOG_ESCAPED_MAX];
         json_escape_string(message, escaped_message, sizeof(escaped_message));
 
         fprintf(stderr, "{\"timestamp\":%ld,\"level\":\"%s\",\"component\":\"%s\","
                         "\"file\":\"%s\",\"line\":%d,\"message\":\"%s\"}\n",
                 time(NULL), level_name, comp_name, filename, line, escaped_message);
     } else {
-        // Plain text format → stdout (for human consumption)
+        // Plain text format → stderr (logs should not mix with program output on stdout)
         // [COMPONENT-LEVEL] file:line: message
-        fprintf(stdout, "[%s-%s] %s:%d: %s", comp_name, level_name, filename, line, message);
+        fprintf(stderr, "[%s-%s] %s:%d: %s", comp_name, level_name, filename, line, message);
 
         // Ensure newline
         if (message[0] && message[strlen(message) - 1] != '\n') {
-            fprintf(stdout, "\n");
+            fprintf(stderr, "\n");
         }
-        fflush(stdout);
     }
 }
