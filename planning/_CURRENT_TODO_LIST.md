@@ -3,6 +3,23 @@
 Status: In Progress (Updated 2025-12-22)
 Owner: Codex
 
+## Approved Architectural Decisions
+
+**Code Cleanup Strategy (IFDEF Cleanup - from IFDEF_CLEANUP_STRATEGY.md)**
+- ✅ **PIKE variant removal**: APPROVED - Remove all 29 PIKE ifdefs (Frontier-only codebase, Pike was separate product)
+  - Implementation: Phase 4, Week 13 of ifdef cleanup roadmap
+  - Files affected: progressbar.c and 28 others
+  - Impact: Simplifies codebase significantly
+  - Update docs: Remove Pike references from README.md, build documentation
+
+- ✅ **Optional database backends**: APPROVED - Keep as optional compile-time features (MySQL, SQLite, Python)
+  - Current: FRONTIER_MYSQL, FRONTIER_SQLITE, FRONTIER_PYTHON (3 patterns each, 8 total blocks)
+  - Approach: Compile-time flags via Makefile/CMake configuration
+  - Note: If we want to support Python integration or other optional backends going forward, will need architectural rethinking to avoid ifdef proliferation
+  - Action: Document in build system instead of hardcoding
+
+---
+
 ## P0s – Critical Blockers (Architectural Decisions Required)
 These block deployment and major system decisions. All require design/planning before implementation.
 
@@ -192,6 +209,44 @@ These block deployment and major system decisions. All require design/planning b
 - [ ] Issue #142: Error path test coverage (add tests for migration failures at various points in the flow).
 - [ ] Issue #143: cleanup_migration_database error scenarios (add tests for scenarios 2 and 3 - error with Save As active, error with allocated destination).
 
+### Code Cleanup Follow-Ups (IFDEF Cleanup - Approved Strategy)
+**Reference**: `planning/phase3/code-cleanup/IFDEF_CLEANUP_STRATEGY.md` (approved)
+
+**Phase 1: Quick Wins (LOW RISK)** - Ready to start
+- [ ] Remove "xxx"-prefixed dead code blocks (~15 blocks, ~150 lines)
+  - `xxxWIN95VERSION`, `xxxPIKE`, `xxxfldebug`, `xxxver`, etc.
+  - Files: strings.c, shellwindow.c, langpack.c, shellwindowmenu.c, others
+  - Impact: Clean up disabled code by convention
+
+- [ ] Remove explicit dead code markers (~3 blocks)
+  - `OBSOLETE` (whirlpool.c: ~1000 lines of obsolete crypto tables)
+  - `NEVER` (langevaluate.c: error reporting code)
+  - **Keep**: `NeverDefine_For_Reference` (defensive guard pattern)
+
+- [ ] Remove obsolete platform code (~5 blocks)
+  - `oldMACVERSION` (3 blocks - v7 format doesn't use Mac aliases)
+  - Commented `WIN95VERSION` blocks (2 blocks)
+
+**Phase 2-3: Debug Infrastructure Migration (MEDIUM RISK)** - Design first
+- [ ] Create logging infrastructure (logging.h/logging.c)
+  - Runtime-controlled log levels via environment variables
+  - Component-based filtering (DB, Hash, Table, Pack, etc.)
+  - Replace 76 debug ifdef blocks incrementally
+
+- [ ] Migrate database layer debug ifdefs (db.c, db_format.c, tablepack.c)
+  - Estimated 55+ `fldebug` blocks → `log_debug()` calls
+  - Phase 2 of logging migration
+
+**Phase 4: Feature Flag Cleanup (APPROVED DECISIONS)**
+- ✅ **PIKE removal** (29 blocks): APPROVED - will implement Week 13 per roadmap
+- ✅ **Optional database backends**: Keep as compile-time flags (MySQL, SQLite, Python)
+  - Document via Makefile/CMake instead of hardcoding
+  - If future Python integration needed, will require architectural rethinking
+
+**Deferred to later**:
+- Threading/networking ifdef cleanup (defer until architecture stabilized)
+- SMART_DB_OPENING, xmlfeature, and miscellaneous flags (audit separately)
+
 ### Additional Hash / Serialization Follow-Ups (P2)
 - [ ] Issue #76: Add corruption/bounds tests for hash unpack (OOB name index, truncated records, header edge cases).
 - [ ] Consider small gating for verbose hash unpack logging to keep perf predictable when enabled.
@@ -205,6 +260,13 @@ These block deployment and major system decisions. All require design/planning b
 ## Docs / Planning
 - [x] Document v7 hash record layout and logging env var in `docs/database_architecture.md`.
 - [ ] Keep `_STATUS_ARCHIVE.md` and `_CURRENT_STATUS.md` in sync with future milestones; note any new env vars or tooling expectations.
+- [ ] Update documentation to remove Pike product references (from approved PIKE removal decision)
+  - Files: README.md, build documentation, architecture docs
+  - Emphasize: Frontier-only codebase, Pike was a separate product
+- [ ] Document optional database backend flags in build system documentation
+  - Note: FRONTIER_MYSQL, FRONTIER_SQLITE, FRONTIER_PYTHON compile-time flags
+  - Update: Makefile/CMake build documentation
+  - Caveat: If Python integration wanted in future, will need architectural rethinking
 
 ## Nice-to-Haves / Future
 - [ ] Add small helper macros for BE packing in other packers if duplication grows.
