@@ -24,8 +24,8 @@
 
 **Decisions still needed**:
 - [ ] Approve dead code removal phasing (explicit markers → GUI stubbing → legacy formats)
-- [ ] Confirm PIKE variant removal (29 blocks for different product)
-- [ ] Confirm optional database backend flags (FRONTIER_SQLITE, FRONTIER_MYSQL, FRONTIER_PYTHON)
+- [x] Confirm PIKE variant removal (29 blocks for different product)
+- [x] Confirm optional database backend flags (FRONTIER_SQLITE, FRONTIER_MYSQL, FRONTIER_PYTHON)
 
 ---
 
