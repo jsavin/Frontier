@@ -20,6 +20,7 @@
 #include <sys/types.h>
 #endif
 
+#include "logging.h"  /* Phase 2D: fprintf migration */
 #include "db_format.h"
 #include "dbinternal.h"
 #include "memory.h"
@@ -107,10 +108,10 @@ static void db_context_guard_exit(const db_context_guard *guard) {
 #if defined(FRONTIER_HEADLESS)
     static int debug_count = 0;
     if (debug_count++ < 5) {
-        fprintf(stderr, "[headless] db_context_guard_exit: adapter_active=%d prev.use64=%d current.use64=%d\n",
-                (int) g_legacy_adapter_active,
-                (int) guard->prev_mode.use_64bit_format,
-                (int) g_mode_state.use_64bit_format);
+        log_trace(LOG_COMP_DB, "db_context_guard_exit: adapter_active=%d prev.use64=%d current.use64=%d",
+                  (int) g_legacy_adapter_active,
+                  (int) guard->prev_mode.use_64bit_format,
+                  (int) g_mode_state.use_64bit_format);
     }
 #endif
     if (g_legacy_adapter_active &&
@@ -120,7 +121,7 @@ static void db_context_guard_exit(const db_context_guard *guard) {
 #if defined(FRONTIER_HEADLESS)
         static int warn_count = 0;
         if (warn_count++ < 3) {
-            fprintf(stderr, "[headless] db_context_guard_exit: NOT restoring prev mode (would downgrade v7->v6)\n");
+            log_warn(LOG_COMP_DB, "db_context_guard_exit: NOT restoring prev mode (would downgrade v7->v6)");
         }
 #endif
     } else {
@@ -237,17 +238,12 @@ static int db_trace_depth_limit(void) {
     return db_trace_depth_cache;
 }
 
-static void db_trace_log(int level, const char *fmt, ...) {
-    if (db_trace_level() < level)
-        return;
-
-    va_list args;
-    va_start(args, fmt);
-    fprintf(stderr, "[db-trace] ");
-    vfprintf(stderr, fmt, args);
-    fprintf(stderr, "\n");
-    va_end(args);
-}
+#define db_trace_log(level, fmt, ...) \
+    do { \
+        if (db_trace_level() >= (level)) { \
+            log_trace(LOG_COMP_DB, fmt, ##__VA_ARGS__); \
+        } \
+    } while (0)
 
 static size_t db_trace_entry_limit(int level) {
     return (level >= 2) ? (size_t) SIZE_MAX : (size_t) 32;
@@ -924,7 +920,7 @@ boolean db_format_decode_header(const unsigned char *rawheader, size_t raw_len, 
             }
             out->views[i] = view;
 #if defined(FRONTIER_HEADLESS)
-            fprintf(stderr, "[headless] decode v7 view[%d]=0x%016llx\n", i, (unsigned long long) view);
+            log_trace(LOG_COMP_DB, "decode v7 view[%d]=0x%016llx", i, (unsigned long long) view);
 #endif
         }
 
@@ -1065,7 +1061,7 @@ boolean db_format_load_v7_reader(const tydatabaserecord *decoded_header, boolean
 
 boolean db_format_adapter_enable_wide_writes(const tydatabaserecord_64 **widened_header_out) {
 #if defined(FRONTIER_HEADLESS)
-    fprintf(stderr, "[headless] db_format_adapter_enable_wide_writes: adapter_active=%d\n", (int) g_legacy_adapter_active);
+    log_trace(LOG_COMP_DB, "db_format_adapter_enable_wide_writes: adapter_active=%d", (int) g_legacy_adapter_active);
 #endif
     if (!g_legacy_adapter_active)
         return false;
@@ -1076,7 +1072,7 @@ boolean db_format_adapter_enable_wide_writes(const tydatabaserecord_64 **widened
     /* Lock the mode to prevent v7->v6 downgrades during migration */
     g_legacy_adapter_mode_locked = true;
 #if defined(FRONTIER_HEADLESS)
-    fprintf(stderr, "[headless] db_format_adapter_enable_wide_writes: mode LOCKED (v7 writes enforced)\n");
+    log_trace(LOG_COMP_DB, "db_format_adapter_enable_wide_writes: mode LOCKED (v7 writes enforced)");
 #endif
 
     if (databasedata != nil) {
@@ -1155,8 +1151,8 @@ boolean db_format_write_header64(const tydatabaserecord_64 *src, unsigned char *
 #if defined(FRONTIER_HEADLESS)
     /* Verify structure layout matches disk format */
     if (offsetof(tydatabaserecord_64, views) != 16) {
-        fprintf(stderr, "[headless] FATAL: tydatabaserecord_64.views offset=%zu expected=16\n",
-                offsetof(tydatabaserecord_64, views));
+        log_error(LOG_COMP_DB, "FATAL: tydatabaserecord_64.views offset=%zu expected=16",
+                  offsetof(tydatabaserecord_64, views));
         return false;
     }
 #endif
@@ -1316,10 +1312,10 @@ static void db_format_fixup_external_handles(hdlhashtable hroot, hdldatabasereco
         if (fixed_count <= 10) {  /* Log first 10 to avoid spam */
             bigstring bsname;
             gethashkey(hnode, bsname);
-            fprintf(stderr, "[headless] migrate fixed external handle name='%.*s' id=%d flinmemory=%d old_db=%p new_db=%p\n",
-                    (int) bsname[0], (char *) &bsname[1],
-                    (int) (**hv).id, (int) (**hv).flinmemory,
-                    (void*)old_db, (void*)dest_db);
+            log_trace(LOG_COMP_DB, "migrate fixed external handle name='%.*s' id=%d flinmemory=%d old_db=%p new_db=%p",
+                      (int) bsname[0], (char *) &bsname[1],
+                      (int) (**hv).id, (int) (**hv).flinmemory,
+                      (void*)old_db, (void*)dest_db);
         }
 #endif
 
@@ -1333,7 +1329,7 @@ static void db_format_fixup_external_handles(hdlhashtable hroot, hdldatabasereco
     }
 
 #if defined(FRONTIER_HEADLESS)
-    fprintf(stderr, "[headless] migrate fixed %ld external handles in total\n", fixed_count);
+    log_trace(LOG_COMP_DB, "migrate fixed %ld external handles in total", fixed_count);
 #endif
 }
 
@@ -1360,15 +1356,15 @@ static void db_format_sanitize_root_externals(hdlhashtable hroot, const db_conte
         if ((**hv).flinmemory) {
             bigstring bsname;
             gethashkey(hnode, bsname);
-            fprintf(stderr, "[headless] migrate clearing oldaddress name='%.*s' id=%d\n",
-                    (int) bsname[0], (char *) &bsname[1], (int) (**hv).id);
+            log_trace(LOG_COMP_DB, "migrate clearing oldaddress name='%.*s' id=%d",
+                      (int) bsname[0], (char *) &bsname[1], (int) (**hv).id);
             (**hv).oldaddress = nildbaddress;
 
             /* Recurse into table externals to clear oldaddress on nested values */
             if ((**hv).id == idtableprocessor) {
                 hdlhashtable childtable = (hdlhashtable) (**hv).variabledata;
-                fprintf(stderr, "[headless] migrate recursing into table '%.*s'\n",
-                        (int) bsname[0], (char *) &bsname[1]);
+                log_trace(LOG_COMP_DB, "migrate recursing into table '%.*s'",
+                          (int) bsname[0], (char *) &bsname[1]);
                 db_format_sanitize_root_externals(childtable, context);
             }
             continue;
@@ -1393,11 +1389,10 @@ static void db_format_sanitize_root_externals(hdlhashtable hroot, const db_conte
 
         bigstring bsname;
         gethashkey(hnode, bsname);
-        fprintf(stderr,
-                "[headless] migrate dropping external name='%.*s' adr=0x%llx (free/unreadable)\n",
-                (int) bsname[0],
-                (char *) &bsname[1],
-                (unsigned long long) adr);
+        log_warn(LOG_COMP_DB, "migrate dropping external name='%.*s' adr=0x%llx (free/unreadable)",
+                 (int) bsname[0],
+                 (char *) &bsname[1],
+                 (unsigned long long) adr);
 
         (**hnode).fldontsave = true;
         (**hv).flinmemory = true;
@@ -1413,13 +1408,13 @@ static boolean db_format_force_materialize_external_tables_recursive(
     int depth
 ) {
 #if defined(FRONTIER_HEADLESS)
-    fprintf(stderr, "[diag] materialize_recursive: depth=%d htable=%p\n", depth, (void *)htable);
+    log_debug(LOG_COMP_DB, "materialize_recursive: depth=%d htable=%p", depth, (void *)htable);
 #endif
 
     if (htable == nil || depth > 50) { /* prevent infinite recursion */
 #if defined(FRONTIER_HEADLESS)
         if (depth > 50)
-            fprintf(stderr, "[diag]   skipping: depth_limit_exceeded depth=%d\n", depth);
+            log_debug(LOG_COMP_DB, "  skipping: depth_limit_exceeded depth=%d", depth);
 #endif
         return true;
     }
@@ -1440,13 +1435,13 @@ static boolean db_format_force_materialize_external_tables_recursive(
 
         tyvaluerecord *val = &(**hnode).val;
 #if defined(FRONTIER_HEADLESS)
-        fprintf(stderr, "[diag]   node[%ld] name='%.*s' valuetype=%d\n",
-                node_count, (int) bsname[0], (char *) &bsname[1], (int) val->valuetype);
+        log_debug(LOG_COMP_DB, "  node[%ld] name='%.*s' valuetype=%d",
+                  node_count, (int) bsname[0], (char *) &bsname[1], (int) val->valuetype);
 #endif
 
         if (val->valuetype != externalvaluetype) {
 #if defined(FRONTIER_HEADLESS)
-            fprintf(stderr, "[diag]     skip: not external valuetype\n");
+            log_debug(LOG_COMP_DB, "    skip: not external valuetype");
 #endif
             continue;
         }
@@ -1454,19 +1449,16 @@ static boolean db_format_force_materialize_external_tables_recursive(
         hdlexternalvariable hv = (hdlexternalvariable) val->data.externalvalue;
         if (hv == nil) {
 #if defined(FRONTIER_HEADLESS)
-            fprintf(stderr, "[diag]     skip: hv is nil\n");
+            log_debug(LOG_COMP_DB, "    skip: hv is nil");
 #endif
             continue;
         }
 
         int var_id = (**hv).id;
-#if defined(FRONTIER_HEADLESS)
-        fprintf(stderr, "[diag]     external: id=%d", var_id);
-#endif
 
         if (var_id != idtableprocessor) {
 #if defined(FRONTIER_HEADLESS)
-            fprintf(stderr, " skip: not idtableprocessor\n");
+            log_debug(LOG_COMP_DB, "    external: id=%d skip: not idtableprocessor", var_id);
 #endif
             continue;
         }
@@ -1476,34 +1468,34 @@ static boolean db_format_force_materialize_external_tables_recursive(
         boolean was_in_memory = (**hv).flinmemory;
 
 #if defined(FRONTIER_HEADLESS)
-        fprintf(stderr, " v6_adr=0x%llx was_in_memory=%d\n",
-                (unsigned long long) v6_adr, (int) was_in_memory);
+        log_debug(LOG_COMP_DB, "    external: id=%d v6_adr=0x%llx was_in_memory=%d",
+                  var_id, (unsigned long long) v6_adr, (int) was_in_memory);
 #endif
 
         /* Load into memory if not already loaded */
         if (!was_in_memory) {
 #if defined(FRONTIER_HEADLESS)
-            fprintf(stderr, "[diag]     calling tableverbinmemory for '%.*s'\n",
-                    (int) bsname[0], (char *) &bsname[1]);
+            log_debug(LOG_COMP_DB, "    calling tableverbinmemory for '%.*s'",
+                      (int) bsname[0], (char *) &bsname[1]);
 #endif
 
             if (!tableverbinmemory(NULL, hv, hnode)) {
 #if defined(FRONTIER_HEADLESS)
-                fprintf(stderr, "[diag]     ERROR: tableverbinmemory failed for '%.*s'\n",
-                        (int) bsname[0], (char *) &bsname[1]);
+                log_error(LOG_COMP_DB, "    ERROR: tableverbinmemory failed for '%.*s'",
+                          (int) bsname[0], (char *) &bsname[1]);
 #endif
                 return false;
             }
 
 #if defined(FRONTIER_HEADLESS)
-            fprintf(stderr, "[diag]     tableverbinmemory succeeded, checking flinmemory\n");
+            log_debug(LOG_COMP_DB, "    tableverbinmemory succeeded, checking flinmemory");
 #endif
 
             /* Verify it's now in memory */
             if (!(**hv).flinmemory) {
 #if defined(FRONTIER_HEADLESS)
-                fprintf(stderr, "[diag]     ERROR: flinmemory not set after tableverbinmemory for '%.*s'\n",
-                        (int) bsname[0], (char *) &bsname[1]);
+                log_error(LOG_COMP_DB, "    ERROR: flinmemory not set after tableverbinmemory for '%.*s'",
+                          (int) bsname[0], (char *) &bsname[1]);
 #endif
                 return false;
             }
@@ -1511,7 +1503,7 @@ static boolean db_format_force_materialize_external_tables_recursive(
             materialized_count++;
         } else {
 #if defined(FRONTIER_HEADLESS)
-            fprintf(stderr, "[diag]     already in memory, not materializing\n");
+            log_debug(LOG_COMP_DB, "    already in memory, not materializing");
 #endif
         }
 
@@ -1522,15 +1514,15 @@ static boolean db_format_force_materialize_external_tables_recursive(
         (**hv).oldaddress = nildbaddress;
 
 #if defined(FRONTIER_HEADLESS)
-        fprintf(stderr, "[diag]     cleared oldaddress: was=0x%llx now=nil\n",
-                (unsigned long long) old_oldaddr);
+        log_debug(LOG_COMP_DB, "    cleared oldaddress: was=0x%llx now=nil",
+                  (unsigned long long) old_oldaddr);
 #endif
 
         /* Recurse into newly-loaded table */
         hdlhashtable child = (hdlhashtable) (**hv).variabledata;
 #if defined(FRONTIER_HEADLESS)
-        fprintf(stderr, "[diag]     recursing into child table '%.*s' depth_next=%d child=%p\n",
-                (int) bsname[0], (char *) &bsname[1], depth + 1, (void *)child);
+        log_debug(LOG_COMP_DB, "    recursing into child table '%.*s' depth_next=%d child=%p",
+                  (int) bsname[0], (char *) &bsname[1], depth + 1, (void *)child);
 #endif
 
         if (!db_format_force_materialize_external_tables_recursive(
@@ -1539,8 +1531,8 @@ static boolean db_format_force_materialize_external_tables_recursive(
     }
 
 #if defined(FRONTIER_HEADLESS)
-    fprintf(stderr, "[diag] materialize_recursive: depth=%d complete: nodes=%ld externals=%ld materialized=%ld\n",
-            depth, node_count, external_count, materialized_count);
+    log_debug(LOG_COMP_DB, "materialize_recursive: depth=%d complete: nodes=%ld externals=%ld materialized=%ld",
+              depth, node_count, external_count, materialized_count);
 #endif
 
     return true;
@@ -1623,7 +1615,7 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     const long header_len_final = (long) sizeof(tydatabaserecord_64);
 
 #if defined(FRONTIER_HEADLESS)
-    fprintf(stderr, "[headless] migrate start path=%s drop=%d\n", db_path, drop_cancoon ? 1 : 0);
+    log_trace(LOG_COMP_DB, "migrate start path=%s drop=%d", db_path, drop_cancoon ? 1 : 0);
 #endif
 
     db_saveas_state_snapshot(&entry_saveas);
@@ -1636,7 +1628,7 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     if (!db_format_prepare_runtime())
         goto cleanup;
 #if defined(FRONTIER_HEADLESS)
-    fprintf(stderr, "[headless] migrate after prepare runtime\n");
+    log_trace(LOG_COMP_DB, "migrate after prepare runtime");
 #endif
 
     if (db_trace_level() > 0)
@@ -1774,13 +1766,12 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
         save_ctx.saveas = dest_context.saveas;
         save_ctx.database = dest_context.database;
 #if defined(FRONTIER_HEADLESS)
-        fprintf(stderr,
-                "[headless] migrate save_ctx.mode use64=%d adapter=%d drop=%d dest_db=%p src_db=%p\n",
-                save_ctx.mode.use_64bit_format ? 1 : 0,
-                save_ctx.mode.adapter_repack ? 1 : 0,
-                save_ctx.mode.drop_cancoon ? 1 : 0,
-                (void *) save_ctx.saveas.destination,
-                (void *) save_ctx.saveas.source);
+        log_trace(LOG_COMP_DB, "migrate save_ctx.mode use64=%d adapter=%d drop=%d dest_db=%p src_db=%p",
+                  save_ctx.mode.use_64bit_format ? 1 : 0,
+                  save_ctx.mode.adapter_repack ? 1 : 0,
+                  save_ctx.mode.drop_cancoon ? 1 : 0,
+                  (void *) save_ctx.saveas.destination,
+                  (void *) save_ctx.saveas.source);
 #endif
     }
 
@@ -1793,13 +1784,12 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     }
 
 #if defined(FRONTIER_HEADLESS)
-    fprintf(stderr,
-            "[headless] migrate mode applied (NO GUARD) use64=%d adapter=%d drop=%d depth=%d current_db=%p\n",
-            db_format_mode_current().use_64bit_format ? 1 : 0,
-            db_format_mode_current().adapter_repack ? 1 : 0,
-            db_format_mode_current().drop_cancoon ? 1 : 0,
-            g_mode_depth,
-            (void *) databasedata);
+    log_trace(LOG_COMP_DB, "migrate mode applied (NO GUARD) use64=%d adapter=%d drop=%d depth=%d current_db=%p",
+              db_format_mode_current().use_64bit_format ? 1 : 0,
+              db_format_mode_current().adapter_repack ? 1 : 0,
+              db_format_mode_current().drop_cancoon ? 1 : 0,
+              g_mode_depth,
+              (void *) databasedata);
 #endif
 
     saved_root = tablesavesystemtable(hrootvariable, &new_root_address);
@@ -1816,8 +1806,8 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     if (have_dest_context && dest_context.database != nil) {
         long eof = 0;
         filegeteof((hdlfilenum) (**dest_context.database).fnumdatabase, &eof);
-        fprintf(stderr, "[headless] migrate write checkpoint fnum=%ld eof=%ld\n",
-                (long) (**dest_context.database).fnumdatabase, eof);
+        log_trace(LOG_COMP_DB, "migrate write checkpoint fnum=%ld eof=%ld",
+                  (long) (**dest_context.database).fnumdatabase, eof);
     }
     /* 2025-12-20: NO GUARD EXIT - mode remains as set for subsequent operations */
 
@@ -1867,11 +1857,10 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
 
 #if defined(FRONTIER_HEADLESS)
     if (have_dest_context && dest_context.saveas.destination != nil) {
-        fprintf(stderr,
-                "[headless] saveas pre-close dest=%p master=%p source=%p\n",
-                (void *) dest_context.saveas.destination,
-                validhandle((Handle) dest_context.saveas.destination) ? (void *) (*dest_context.saveas.destination) : NULL,
-                (void *) dest_context.saveas.source);
+        log_trace(LOG_COMP_DB, "saveas pre-close dest=%p master=%p source=%p",
+                  (void *) dest_context.saveas.destination,
+                  validhandle((Handle) dest_context.saveas.destination) ? (void *) (*dest_context.saveas.destination) : NULL,
+                  (void *) dest_context.saveas.source);
     }
 #endif
 
@@ -1899,14 +1888,13 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
 
     if (db_trace_level() > 0)
         db_format_trace_database_path(output_path);
-    fprintf(stderr,
-            "[headless] migrate drop=%d ok view0=0x%llx new_root=0x%llx new_script=0x%llx header_len=%ld outfile=%s\n",
-            drop_cancoon,
-            (unsigned long long) view_for_log,
-            (unsigned long long) new_root_address,
-            (unsigned long long) new_script_address,
-            header_len_final,
-            output_path);
+    log_trace(LOG_COMP_DB, "migrate drop=%d ok view0=0x%llx new_root=0x%llx new_script=0x%llx header_len=%ld outfile=%s",
+              drop_cancoon,
+              (unsigned long long) view_for_log,
+              (unsigned long long) new_root_address,
+              (unsigned long long) new_script_address,
+              header_len_final,
+              output_path);
 
     ok = true;
 
@@ -1936,27 +1924,25 @@ cleanup:
     }
 
     if (!ok) {
-        fprintf(stderr,
-                "[headless] migrate drop=%d fail at %s view=0x%llx root=0x%llx new_root=0x%llx script=0x%llx new_script=0x%llx cancoon=0x%llx new_cancoon=0x%llx tmp=%s\n",
-                drop_cancoon,
-                fail_step,
-                (unsigned long long) view_address,
-                (unsigned long long) root_address,
-                (unsigned long long) new_root_address,
-                (unsigned long long) script_address,
-                (unsigned long long) new_script_address,
-                (unsigned long long) view_address,
-                (unsigned long long) new_cancoon_address,
-                temp_path);
+        log_error(LOG_COMP_DB, "migrate drop=%d fail at %s view=0x%llx root=0x%llx new_root=0x%llx script=0x%llx new_script=0x%llx cancoon=0x%llx new_cancoon=0x%llx tmp=%s",
+                  drop_cancoon,
+                  fail_step,
+                  (unsigned long long) view_address,
+                  (unsigned long long) root_address,
+                  (unsigned long long) new_root_address,
+                  (unsigned long long) script_address,
+                  (unsigned long long) new_script_address,
+                  (unsigned long long) view_address,
+                  (unsigned long long) new_cancoon_address,
+                  temp_path);
     } else if (db_trace_level() > 0) {
-        fprintf(stderr,
-                "[headless] migrate drop=%d ok view=0x%llx root=0x%llx new_root=0x%llx new_script=0x%llx outfile=%s\n",
-                drop_cancoon,
-                (unsigned long long) view_address,
-                (unsigned long long) root_address,
-                (unsigned long long) new_root_address,
-                (unsigned long long) new_script_address,
-                output_path);
+        log_trace(LOG_COMP_DB, "migrate drop=%d ok view=0x%llx root=0x%llx new_root=0x%llx new_script=0x%llx outfile=%s",
+                  drop_cancoon,
+                  (unsigned long long) view_address,
+                  (unsigned long long) root_address,
+                  (unsigned long long) new_root_address,
+                  (unsigned long long) new_script_address,
+                  output_path);
     }
 
     db_format_mode_apply(&entry_mode);
@@ -2056,7 +2042,7 @@ void db_format_mode_apply(const db_format_mode *mode) {
 #if defined(FRONTIER_HEADLESS)
         static int lock_count = 0;
         if (lock_count++ < 3) {
-            fprintf(stderr, "[headless] db_format_mode_apply: BLOCKED v7->v6 downgrade (mode locked)\n");
+            log_warn(LOG_COMP_DB, "db_format_mode_apply: BLOCKED v7->v6 downgrade (mode locked)");
         }
 #endif
         /* Keep adapter_repack flag but preserve v7 write mode */
@@ -2070,14 +2056,14 @@ void db_format_mode_apply(const db_format_mode *mode) {
     if (mode->use_64bit_format == 0 && mode->adapter_repack == 1) {
         static int warn_count = 0;
         if (warn_count++ < 3) {
-            fprintf(stderr, "[headless] WARNING: db_format_mode_apply use_64bit=0 but adapter_repack=1!\n");
-            fprintf(stderr, "[headless]   This will cause v6 addresses to be written during migration!\n");
+            log_warn(LOG_COMP_DB, "WARNING: db_format_mode_apply use_64bit=0 but adapter_repack=1!");
+            log_warn(LOG_COMP_DB, "  This will cause v6 addresses to be written during migration!");
             /* Print call location hint */
-            fprintf(stderr, "[headless]   Check who called db_format_mode_apply with this invalid mode\n");
+            log_warn(LOG_COMP_DB, "  Check who called db_format_mode_apply with this invalid mode");
         }
     }
-    fprintf(stderr, "[headless] db_format_mode_apply use_64bit=%d adapter_repack=%d drop_cancoon=%d\n",
-            (int) mode->use_64bit_format, (int) mode->adapter_repack, (int) mode->drop_cancoon);
+    log_trace(LOG_COMP_DB, "db_format_mode_apply use_64bit=%d adapter_repack=%d drop_cancoon=%d",
+              (int) mode->use_64bit_format, (int) mode->adapter_repack, (int) mode->drop_cancoon);
 #endif
 }
 
@@ -2112,10 +2098,10 @@ db_format_mode db_format_mode_current(void) {
 #if defined(FRONTIER_HEADLESS)
     static int call_count = 0;
     if (call_count++ < 20) {
-        fprintf(stderr, "[headless] db_format_mode_current: depth=%d use_64bit=%d (stack=%d state=%d) adapter_repack=%d\n",
-                g_mode_depth, (int) current.use_64bit_format,
-                g_mode_depth > 0 ? (int) g_mode_stack[g_mode_depth - 1].use_64bit_format : -1,
-                (int) g_mode_state.use_64bit_format, (int) current.adapter_repack);
+        log_trace(LOG_COMP_DB, "db_format_mode_current: depth=%d use_64bit=%d (stack=%d state=%d) adapter_repack=%d",
+                  g_mode_depth, (int) current.use_64bit_format,
+                  g_mode_depth > 0 ? (int) g_mode_stack[g_mode_depth - 1].use_64bit_format : -1,
+                  (int) g_mode_state.use_64bit_format, (int) current.adapter_repack);
     }
 #endif
     return current;
@@ -2170,8 +2156,8 @@ boolean hashpacktable_context(const db_context *context, hdlhashtable ht, boolea
 
 boolean hashunpacktable_context(const db_context *context, Handle hpacked, boolean flmemory, hdlhashtable htable) {
 #if defined(FRONTIER_HEADLESS)
-    fprintf(stderr, "[headless] hashunpacktable_context enter htable=%p flmemory=%d ctx=%p\n",
-            (void *) htable, (int) flmemory, (void *) context);
+    log_trace(LOG_COMP_DB, "hashunpacktable_context enter htable=%p flmemory=%d ctx=%p",
+              (void *) htable, (int) flmemory, (void *) context);
 #endif
     /* Call internal version with explicit context - no more context guard needed */
     return hashunpacktable_internal(context, hpacked, flmemory, htable);
