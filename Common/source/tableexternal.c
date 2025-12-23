@@ -50,6 +50,7 @@
 #include "claybrowserstruc.h"
 #include "claycallbacks.h"
 #include "cancoon.h"
+#include "logging.h"
 
 /* 2025-12-01 Codex: Add headless diagnostics for tablevaltotable to trace migration lookups. */
 
@@ -65,38 +66,31 @@ boolean tablevaltotable (tyvaluerecord val, hdlhashtable *htable, hdlhashnode hn
 	hdltablevariable hvariable;
 	short errorcode;
 
-#if defined(FRONTIER_HEADLESS)
-    fprintf(stderr, "[headless] tablevaltotable enter valtype=%d external=0x%llx hnode=%p\n",
-            (int) val.valuetype,
-            (unsigned long long) val.data.externalvalue,
-            (void *) hnode);
-#endif
-	
+	log_debug(LOG_COMP_TABLE, "tablevaltotable enter valtype=%d external=0x%llx hnode=%p",
+	          (int) val.valuetype,
+	          (unsigned long long) val.data.externalvalue,
+	          (void *) hnode);
+
 	if (!gettablevariable (val, &hvariable, &errorcode)) {
-#if defined(FRONTIER_HEADLESS)
-        fprintf(stderr, "[headless] tablevaltotable gettablevariable failed err=%d valtype=%d\n", (int) errorcode, (int) val.valuetype);
-#endif
+		log_debug(LOG_COMP_TABLE, "tablevaltotable gettablevariable failed err=%d valtype=%d",
+		          (int) errorcode, (int) val.valuetype);
 		return (false);
     }
-	
+
 	if (!tableverbinmemory (NULL, (hdlexternalvariable) hvariable, hnode)) {
-#if defined(FRONTIER_HEADLESS)
-        fprintf(stderr, "[headless] tablevaltotable tableverbinmemory failed valtype=%d oldaddr=%llx hnode=%p\n",
-                (int) val.valuetype,
-                (unsigned long long) (**hvariable).oldaddress,
-                (void *) hnode);
-#endif
+		log_debug(LOG_COMP_TABLE, "tablevaltotable tableverbinmemory failed valtype=%d oldaddr=%llx hnode=%p",
+		          (int) val.valuetype,
+		          (unsigned long long) (**hvariable).oldaddress,
+		          (void *) hnode);
 		return (false);
     }
-	
+
 	*htable = (hdlhashtable) (**hvariable).variabledata;
 
-#if defined(FRONTIER_HEADLESS)
-    fprintf(stderr, "[headless] tablevaltotable ok htable=%p flinmemory=%d\n",
-            (void *) *htable,
-            (**hvariable).flinmemory);
-#endif
-	
+	log_debug(LOG_COMP_TABLE, "tablevaltotable ok htable=%p flinmemory=%d",
+	          (void *) *htable,
+	          (**hvariable).flinmemory);
+
 	return (true);
 	} /*tablevaltotable*/
 

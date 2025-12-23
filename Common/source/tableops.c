@@ -32,9 +32,7 @@
 #include "cursor.h"
 #include "resources.h"
 #include "strings.h"
-#if defined(FRONTIER_HEADLESS)
-#include <stdio.h>
-#endif
+#include "logging.h"
 
 #ifndef odbengine
 #include "search.h"
@@ -217,29 +215,27 @@ boolean findnamedtable (hdlhashtable htable, bigstring bs, hdlhashtable *hnamedt
 	pushhashtable (htable);
 	
 	fl = langfindsymbol (bs, &htable, &hnode);
-	
+
 	pophashtable ();
-#if defined(FRONTIER_HEADLESS)
-    fprintf(stderr, "[headless] findnamedtable lookup name=%.*s table=%p result=%d hnode=%p\n",
-            (int) stringlength(bs), stringbaseaddress(bs), (void *)htable, (int) fl, (void *)hnode);
-#endif
-	
-	if (!fl) 
+
+	log_debug(LOG_COMP_TABLE, "findnamedtable lookup name=%.*s table=%p result=%d hnode=%p",
+	          (int) stringlength(bs), stringbaseaddress(bs), (void *)htable, (int) fl, (void *)hnode);
+
+	if (!fl)
 	{
-#if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[headless] findnamedtable miss: name=%.*s table=%p current=%p\n", (int) stringlength(bs), stringbaseaddress(bs), (void *)htable, (void *)currenthashtable);
-#endif
+		log_debug(LOG_COMP_TABLE, "findnamedtable miss: name=%.*s table=%p current=%p",
+		          (int) stringlength(bs), stringbaseaddress(bs), (void *)htable, (void *)currenthashtable);
 		return (false);
 	}
 	
     {
         boolean table_ok = tablevaltotable ((**hnode).val, hnamedtable, hnode);
-#if defined(FRONTIER_HEADLESS)
-        fprintf(stderr, "[headless] findnamedtable tableval result=%d valtype=%d htable=%p\n",
-                (int) table_ok,
-                (int) (**hnode).val.valuetype,
-                (void *) (table_ok ? *hnamedtable : nil));
-#endif
+
+        log_debug(LOG_COMP_TABLE, "findnamedtable tableval result=%d valtype=%d htable=%p",
+                  (int) table_ok,
+                  (int) (**hnode).val.valuetype,
+                  (void *) (table_ok ? *hnamedtable : nil));
+
         if (!table_ok)
             return (false);
     }
