@@ -78,6 +78,7 @@ tests/test_logging
 *.root.prev*
 test_save_migration*.root
 tests/test_*.root
+tests/databases/*.root
 
 # Editor backup and temporary files (filesystem artifacts)
 *.bak
@@ -88,6 +89,9 @@ tests/test_*.root
 *.log
 tests/*.log
 build_Xcode_modern/*.log
+
+# Build directory executables
+build_Xcode_modern/Frontier_*
 
 .claude/
 .anthropic/
