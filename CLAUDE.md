@@ -119,3 +119,62 @@ External table variables store either:
 **Safe approach**: Force external tables into memory (`flinmemory=1`) during migration to avoid address format issues entirely.
 
 **See**: `docs/external_table_variable_management.md` - Migration patterns section
+
+## Logging Standards ⚠️
+
+All debug and diagnostic output must use structured logging macros - **never use `fprintf(stderr, ...)`**.
+
+### Rule: No fprintf(stderr) in New Code
+
+- ❌ NEVER: `fprintf(stderr, "message\n")`
+- ✓ ALWAYS: `log_trace(LOG_COMP_DB, "message")` or `log_error()`, `log_debug()`, etc.
+
+### Logging Macros (Priority Order)
+
+1. **`log_error(component, ...)`** - Critical failures (always shown)
+2. **`log_warn(component, ...)`** - Unexpected but recoverable conditions
+3. **`log_info(component, ...)`** - Startup/shutdown milestones
+4. **`log_debug(component, ...)`** - Diagnostic information
+5. **`log_trace(component, ...)`** - Maximum verbosity (function entry/exit)
+
+### Logging Components
+
+Use the appropriate LOG_COMP_* constant matching the subsystem:
+- `LOG_COMP_DB` - Database layer (db.c, db_format.c)
+- `LOG_COMP_HASH` - Hash tables (langhash.c)
+- `LOG_COMP_TABLE` - Table operations (tablepack.c, tableops.c)
+- `LOG_COMP_LANG` - Language runtime (lang.c, langvalue.c)
+- (See `Common/headers/logging.h` for full list)
+
+### Special Cases
+
+**Hex Dumps**: Use `log_hex_dump()` instead of streaming fprintf:
+```c
+// ✗ WRONG
+fprintf(stderr, "bytes:");
+for (int i = 0; i < len; i++) fprintf(stderr, " %02x", buf[i]);
+
+// ✓ CORRECT
+log_hex_dump(LOG_COMP_HASH, LOG_LEVEL_TRACE, buf, len, "bytes");
+```
+
+**Expensive Operations**: Guard with `log_enabled()`:
+```c
+if (log_enabled(LOG_LEVEL_DEBUG, LOG_COMP_DB)) {
+    char path[512];
+    expensive_path_construction(path, sizeof(path));
+    log_debug(LOG_COMP_DB, "Full path: %s", path);
+}
+```
+
+### Enforcement
+
+- Script: `./tools/check_fprintf.sh` detects fprintf(stderr) violations
+- Details: `./tools/check_fprintf.sh --fix` shows what to fix
+- Documentation: `docs/LOGGING_STANDARDS.md` - comprehensive guide
+
+### Reference
+
+- Logging API: `Common/headers/logging.h`
+- Standards: `docs/LOGGING_STANDARDS.md`
+- Plan: `planning/phase3/LOGGING_INFRASTRUCTURE_PLAN.md`
