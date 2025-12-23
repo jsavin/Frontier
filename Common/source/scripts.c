@@ -64,13 +64,7 @@
 #include "scripts.h"
 #include "osacomponent.h"
 #include "error.h"
-
-#if defined(FRONTIER_HEADLESS)
-#include <stdio.h>
-#define HEADLESS_LOG(fmt, ...) fprintf(stderr, "[headless] " fmt "\n", ##__VA_ARGS__)
-#else
-#define HEADLESS_LOG(...) ((void)0)
-#endif
+#include "logging.h"
 
 static boolean scriptdebuggereventloop (void);
 
@@ -597,9 +591,7 @@ static boolean newprocessvisit (hdlhashnode hnode, ptrvoid refcon) {
 	if (!fl)
 		return (true);
 	
-#if defined(FRONTIER_HEADLESS)
-	HEADLESS_LOG("loadsystemscripts: scheduling process for node=%p", (void *)hnode);
-#endif
+	log_debug(LOG_COMP_LANG, "loadsystemscripts: scheduling process for node=%p", (void *)hnode);
 
 		if (!newprocess (hcode, true, &systemscripterrorroutine, (long) hnode, &hprocess))
 			return (false);
@@ -694,28 +686,20 @@ boolean loadsystemscripts (void) {
 	*/
 	boolean ok = true;
 
-#if defined(FRONTIER_HEADLESS)
-	HEADLESS_LOG("loadsystemscripts: running system.startup");
-#endif
+	log_debug(LOG_COMP_LANG, "loadsystemscripts: running system.startup");
 	
 	ok = scriptrunstartupscripts (); /*run all scripts in startup table*/
 
-#if defined(FRONTIER_HEADLESS)
-	HEADLESS_LOG("loadsystemscripts: system.startup %s", ok ? "succeeded" : "FAILED");
-#endif
+	log_debug(LOG_COMP_LANG, "loadsystemscripts: system.startup %s", ok ? "succeeded" : "FAILED");
 
 	if (!ok)
 		return (false);
 	
-#if defined(FRONTIER_HEADLESS)
-	HEADLESS_LOG("loadsystemscripts: loading system.agents");
-#endif
+	log_debug(LOG_COMP_LANG, "loadsystemscripts: loading system.agents");
 	
 	ok = scriptloadagents (); /*load all scripts in agents table*/
 
-#if defined(FRONTIER_HEADLESS)
-	HEADLESS_LOG("loadsystemscripts: system.agents %s", ok ? "succeeded" : "FAILED");
-#endif
+	log_debug(LOG_COMP_LANG, "loadsystemscripts: system.agents %s", ok ? "succeeded" : "FAILED");
 	
 	return (ok);
 	} /*loadsystemscripts*/
