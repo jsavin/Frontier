@@ -58,6 +58,7 @@
 
 #include "process.h"
 #include "tablestructure.h"
+#include "logging.h"  /* Phase 3: fprintf migration */
 
 
 
@@ -1404,32 +1405,23 @@ boolean langrunscriptcode (hdlhashtable htable, bigstring bsverb, hdltreenode hc
 	hdltreenode hparamlist = nil;
 	boolean fltmpval;
 
-	#ifdef FRONTIER_HEADLESS
-	fprintf(stderr, "[hl] langrunscriptcode: entry (htable=%p, hcode=%p)\n", (void*)htable, (void*)hcode);
-	#endif
+	if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_LANG))
+		log_trace(LOG_COMP_LANG, "langrunscriptcode: entry (htable=%p, hcode=%p)", (void*)htable, (void*)hcode);
 
 	if (!setaddressvalue (htable, bsverb, &val)) {
-		#ifdef FRONTIER_HEADLESS
-		fprintf(stderr, "[hl] langrunscriptcode: setaddressvalue failed\n");
-		#endif
+		log_error(LOG_COMP_LANG, "langrunscriptcode: setaddressvalue failed");
 		goto exit;
 	}
 
-	#ifdef FRONTIER_HEADLESS
-	fprintf(stderr, "[hl] langrunscriptcode: setaddressvalue ok\n");
-	fprintf(stderr, "[hl] langrunscriptcode: calling pushfunctionreference\n");
-	#endif
+	log_trace(LOG_COMP_LANG, "langrunscriptcode: setaddressvalue ok");
+	log_trace(LOG_COMP_LANG, "langrunscriptcode: calling pushfunctionreference");
 
 	if (!pushfunctionreference (val, &hfunctioncall)) {
-		#ifdef FRONTIER_HEADLESS
-		fprintf(stderr, "[hl] langrunscriptcode: pushfunctionreference failed\n");
-		#endif
+		log_error(LOG_COMP_LANG, "langrunscriptcode: pushfunctionreference failed");
 		goto exit;
 	}
 
-	#ifdef FRONTIER_HEADLESS
-	fprintf(stderr, "[hl] langrunscriptcode: pushfunctionreference ok\n");
-	#endif
+	log_trace(LOG_COMP_LANG, "langrunscriptcode: pushfunctionreference ok");
 	
 /*	if (hcontext != nil)
 		pushhashtable (hcontext);
@@ -1464,20 +1456,14 @@ boolean langrunscriptcode (hdlhashtable htable, bigstring bsverb, hdltreenode hc
 			}
 		}
 	
-	#ifdef FRONTIER_HEADLESS
-	fprintf(stderr, "[hl] langrunscriptcode: calling pushfunctioncall\n");
-	#endif
+	log_trace(LOG_COMP_LANG, "langrunscriptcode: calling pushfunctioncall");
 
 	if (!pushfunctioncall (hfunctioncall, hparamlist, &hcode)) { /*consumes input parameters*/
-		#ifdef FRONTIER_HEADLESS
-		fprintf(stderr, "[hl] langrunscriptcode: pushfunctioncall failed\n");
-		#endif
+		log_error(LOG_COMP_LANG, "langrunscriptcode: pushfunctioncall failed");
 		goto exit;
 	}
 
-	#ifdef FRONTIER_HEADLESS
-	fprintf(stderr, "[hl] langrunscriptcode: pushfunctioncall ok\n");
-	#endif
+	log_trace(LOG_COMP_LANG, "langrunscriptcode: pushfunctioncall ok");
 
 	if (hcontext != nil) {
 
@@ -1487,15 +1473,11 @@ boolean langrunscriptcode (hdlhashtable htable, bigstring bsverb, hdltreenode hc
 			chainhashtable (hcontext); /*establishes outer local context*/
 		}
 
-	#ifdef FRONTIER_HEADLESS
-	fprintf(stderr, "[hl] langrunscriptcode: calling evaluatelist\n");
-	#endif
+	log_trace(LOG_COMP_LANG, "langrunscriptcode: calling evaluatelist");
 
 	fl = evaluatelist (hcode, vreturned);
 
-	#ifdef FRONTIER_HEADLESS
-	fprintf(stderr, "[hl] langrunscriptcode: evaluatelist returned %d\n", fl);
-	#endif
+	log_trace(LOG_COMP_LANG, "langrunscriptcode: evaluatelist returned %d", fl);
 	
 	fltmpval = exemptfromtmpstack (vreturned); /*must survive disposing of local scope chain*/
 	
@@ -1514,9 +1496,7 @@ boolean langrunscriptcode (hdlhashtable htable, bigstring bsverb, hdltreenode hc
 
 	exit:
 
-	#ifdef FRONTIER_HEADLESS
-	fprintf(stderr, "[hl] langrunscriptcode: exit (fl=%d)\n", fl);
-	#endif
+	log_trace(LOG_COMP_LANG, "langrunscriptcode: exit (fl=%d)", fl);
 
 	return (fl);
 	} /*langrunscriptcode*/
@@ -1538,9 +1518,7 @@ boolean langrunscript (bigstring bsscriptname, tyvaluerecord *vparams, hdlhashta
 	8.0.4 dmb: handle running code values
 	*/
 
-	#if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[lang] langrunscript enter: scriptname='%.*s'\n", (int)bsscriptname[0], &bsscriptname[1]);
-	#endif
+	log_trace(LOG_COMP_LANG, "langrunscript enter: scriptname='%.*s'", (int)bsscriptname[0], &bsscriptname[1]);
 
 	bigstring bsverb;
 	boolean fl = false;
@@ -1583,9 +1561,7 @@ boolean langrunscript (bigstring bsscriptname, tyvaluerecord *vparams, hdlhashta
 	}
 	else if ((**htable).valueroutine == nil) { /*not a kernel table*/
 
-		#if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[lang] langrunscript: non-kernel table, checking for code\n");
-		#endif
+		log_trace(LOG_COMP_LANG, "langrunscript: non-kernel table, checking for code");
 
 		if (!langexternalvaltocode (vhandler, &hcode)) {
 
@@ -1594,15 +1570,11 @@ boolean langrunscript (bigstring bsscriptname, tyvaluerecord *vparams, hdlhashta
 			return (false);
 			}
 
-		#if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[lang] langrunscript: hcode=%p, needs_compilation=%d\n", (void *)hcode, (hcode == nil) ? 1 : 0);
-		#endif
+		log_trace(LOG_COMP_LANG, "langrunscript: hcode=%p, needs_compilation=%d", (void *)hcode, (hcode == nil) ? 1 : 0);
 
 		if (hcode == nil) { /*needs compilation*/
 
-			#if defined(FRONTIER_HEADLESS)
-			fprintf(stderr, "[lang] langrunscript: calling langcompilescript\n");
-			#endif
+			log_trace(LOG_COMP_LANG, "langrunscript: calling langcompilescript");
 
 			if (!langcompilescript (handlernode, &hcode))
 				return (false);

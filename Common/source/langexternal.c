@@ -58,6 +58,7 @@
 #include "op.h" /*7.0b6 PBS*/
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
 #include "db_format.h"
+#include "logging.h"  /* Phase 3: fprintf migration */
 
 
 /*
@@ -158,14 +159,11 @@ static boolean langexternalgetinfo (bigstring bs, hdlhashtable *htable, langvalu
 boolean langexternalgettable (bigstring bs, hdlhashtable *htable) {
     
     langvaluecallback valueroutine;
-    
-#if defined(FRONTIER_HEADLESS)
-    fprintf(stderr, "[hl] langexternalgettable enter %s\n", stringbaseaddress(bs));
-#endif
+
+	log_trace(LOG_COMP_EXTERNAL, "langexternalgettable enter %s", stringbaseaddress(bs));
+
     if (langexternalgetinfo (bs, htable, &valueroutine)) {
-#if defined(FRONTIER_HEADLESS)
-        fprintf(stderr, "[hl] langexternalgettable: info hit %s -> %p\n", stringbaseaddress(bs), (void *)*htable);
-#endif
+		log_trace(LOG_COMP_EXTERNAL, "langexternalgettable: info hit %s -> %p", stringbaseaddress(bs), (void *)*htable);
         return true;
     }
 #if defined(FRONTIER_HEADLESS)
@@ -203,16 +201,12 @@ boolean langexternalgettable (bigstring bs, hdlhashtable *htable) {
 
         if (systemtable != nil && equalstrings(bs, namesystembranch)) {
             *htable = systemtable;
-#if defined(FRONTIER_HEADLESS)
-            fprintf(stderr, "[hl] langexternalgettable fallback system -> %p\n", (void *)systemtable);
-#endif
+			log_trace(LOG_COMP_EXTERNAL, "langexternalgettable fallback system -> %p", (void *)systemtable);
             return true;
         }
         if (verbstable != nil && equalstrings(bs, nameverbstable)) {
             *htable = verbstable;
-#if defined(FRONTIER_HEADLESS)
-            fprintf(stderr, "[hl] langexternalgettable fallback system.verbs -> %p\n", (void *)verbstable);
-#endif
+			log_trace(LOG_COMP_EXTERNAL, "langexternalgettable fallback system.verbs -> %p", (void *)verbstable);
             return true;
         }
         if (builtinstable != nil && equalstrings(bs, namebuiltinstable)) {
@@ -859,28 +853,22 @@ boolean langexternalpack_internal (const db_context *ctx, hdlexternalhandle h, H
 		legacy_context.mode.use_64bit_format = false;
 		legacy_context.mode.adapter_repack = false;  /* Pure read mode */
 
-#if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[headless] langexternalpack: loading external from v6 id=%d (explicit context)\n",
+		log_trace(LOG_COMP_EXTERNAL, "langexternalpack: loading external from v6 id=%d (explicit context)",
 		        (int)(**hv).id);
-#endif
 
 		/* Load external into memory using explicit v6 context */
 		if (!ensure_external_in_memory (&legacy_context, hv)) {
 			return (false);
 		}
 
-#if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[headless] langexternalpack: loaded, now flinmemory=%d\n",
+		log_trace(LOG_COMP_EXTERNAL, "langexternalpack: loaded, now flinmemory=%d",
 		        (int)(**hv).flinmemory);
-#endif
 
 		/* Prepare v7 write context for packing to destination */
 		working_context.mode.use_64bit_format = true;
 		working_context.mode.adapter_repack = true;
 
-#if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[headless] langexternalpack: using v7 write context (no global mode set)\n");
-#endif
+		log_trace(LOG_COMP_EXTERNAL, "langexternalpack: using v7 write context (no global mode set)");
 	}
 
 	/* ================================================================
@@ -957,9 +945,7 @@ boolean langexternalunpack (Handle hpacked, hdlexternalhandle *h) {
 
 	id = (tyexternalid) ((unsigned char) rec.id);
 
-#if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] langexternalunpack version=%d id=%d\n", (int) rec.versionnumber, (int) id);
-#endif
+	log_trace(LOG_COMP_EXTERNAL, "langexternalunpack version=%d id=%d", (int)rec.versionnumber, (int)id);
 
 
 	switch (id) {
@@ -2562,9 +2548,7 @@ boolean langexternalnewvalue (tyexternalid id, Handle hdata, tyvaluerecord *val)
 	*/
 	
     hdlexternalvariable hvariable;
-#ifdef FRONTIER_HEADLESS
-    fprintf(stderr, "[xml] langexternalnewvalue: id=%d\n", (int)id);
-#endif
+	log_trace(LOG_COMP_EXTERNAL, "langexternalnewvalue: id=%d", (int)id);
 	register boolean fl;
 	
 	switch (id) {
@@ -2641,11 +2625,8 @@ boolean langexternalvaltocode (tyvaluerecord val, hdltreenode *hcode) {
 	
 	opverbgetlinkedcode (hv, hcode);
 
-#if defined(FRONTIER_HEADLESS)
-    if (getenv("FRONTIER_HEADLESS_LOG")) {
-        fprintf(stderr, "[hl] langexternalvaltocode: hv=%p linked=%p\n", (void *)hv, (void *)*hcode);
-    }
-#endif
+	if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_EXTERNAL))
+		log_trace(LOG_COMP_EXTERNAL, "langexternalvaltocode: hv=%p linked=%p", (void *)hv, (void *)*hcode);
 	
 	return (true); /*return true even if *hcode is nil*/
 	} /*langexternalvaltocode*/
@@ -2696,13 +2677,11 @@ boolean langnewexternalvariable (boolean flinmemory, long variabledata, hdlexter
 
 	item.hdatabase = databasedata; // 5.0a18 dmb
 
-#if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] langnewexternalvariable: flinmemory=%d variabledata=0x%llx captured_db=%p (current=%p)\n",
+	log_trace(LOG_COMP_EXTERNAL, "langnewexternalvariable: flinmemory=%d variabledata=0x%llx captured_db=%p (current=%p)",
 	        (int)flinmemory,
 	        (unsigned long long)variabledata,
 	        (void*)item.hdatabase,
 	        (void*)databasedata);
-#endif
 
 	//item.hexternaltable = nil;
 	//copystring (emptystring, item.bsexternalname);
@@ -3034,12 +3013,10 @@ boolean langexternalrefdata (hdlexternalvariable hv, Handle *hdata) {
 
 	assert (!(**hv).flinmemory);
 
-#if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] langexternalrefdata: hdatabase=%p variabledata=0x%llx (current=%p)\n",
+	log_trace(LOG_COMP_EXTERNAL, "langexternalrefdata: hdatabase=%p variabledata=0x%llx (current=%p)",
 	        (void*)(**hv).hdatabase,
 	        (unsigned long long)(**hv).variabledata,
 	        (void*)databasedata);
-#endif
 
 	dbpushdatabase ((**hv).hdatabase);
 
@@ -3060,12 +3037,10 @@ boolean langexternalrefdata_context (const db_context *ctx, hdlexternalvariable 
 
 	assert (!(**hv).flinmemory);
 
-#if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] langexternalrefdata_context: reading from hdatabase=%p adr=0x%llx use_64bit=%d (NO PUSH)\n",
+	log_trace(LOG_COMP_EXTERNAL, "langexternalrefdata_context: reading from hdatabase=%p adr=0x%llx use_64bit=%d (NO PUSH)",
 	        (void*)(**hv).hdatabase,
 	        (unsigned long long)(**hv).variabledata,
 	        ctx ? ctx->mode.use_64bit_format : -1);
-#endif
 
 	/* Read with explicit context - NO database push, NO global state changes */
 	fl = dbrefhandle_context (ctx, (dbaddress) (**hv).variabledata, hdata);  /* DISK ADDRESS */
