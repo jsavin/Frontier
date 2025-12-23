@@ -37,6 +37,7 @@
 #include "langinternal.h"
 #include "op.h"
 #include "opinternal.h"
+#include "logging.h"
 
 #if defined(FRONTIER_HEADLESS)
 static void oplang_headless_sig_to_cstr(OSType sig, char out[5]) {
@@ -411,8 +412,8 @@ boolean opgetlangtext (hdloutlinerecord houtline, boolean flpretty, Handle *htex
 		oplang_headless_sig_to_cstr(signature, sigbuf);
 
 	if (log_script) {
-		fprintf(stderr,
-		        "[headless-script] opgetlangtext enter ho=0x%p sig=%s summit=0x%p hbuffer=0x%p\n",
+		log_debug(LOG_COMP_OP,
+		        "opgetlangtext enter ho=0x%p sig=%s summit=0x%p hbuffer=0x%p",
 		        (void *) ho,
 		        sigbuf,
 		        (void *) ((**ho).hsummit),
@@ -439,8 +440,8 @@ boolean opgetlangtext (hdloutlinerecord houtline, boolean flpretty, Handle *htex
 
 #if defined(FRONTIER_HEADLESS)
 	if (log_script) {
-		fprintf(stderr,
-		        "[headless-script] opgetlangtext stream-init data=0x%p size=%ld eof=%ld pos=%ld\n",
+		log_debug(LOG_COMP_OP,
+		        "opgetlangtext stream-init data=0x%p size=%ld eof=%ld pos=%ld",
 		        (void *) s.data,
 		        (long) s.size,
 		        (long) s.eof,
@@ -458,8 +459,8 @@ boolean opgetlangtext (hdloutlinerecord houtline, boolean flpretty, Handle *htex
 		*htext = closehandlestream (&s);
 #if defined(FRONTIER_HEADLESS)
 		if (log_script) {
-			fprintf(stderr,
-			        "[headless-script] opgetlangtext close (non-LAND) htext=0x%p size=%ld\n",
+			log_debug(LOG_COMP_OP,
+			        "opgetlangtext close (non-LAND) htext=0x%p size=%ld",
 			        (void *) *htext,
 			        (long) ((*htext == nil) ? 0 : gethandlesize (*htext)));
 		}
@@ -492,7 +493,7 @@ boolean opgetlangtext (hdloutlinerecord houtline, boolean flpretty, Handle *htex
 #if defined(FRONTIER_HEADLESS)
 		fail_reason = "nil-summit";
 		if (log_script)
-			fprintf(stderr, "[headless-script] opgetlangtext summit=nil signature=%s\n", sigbuf);
+			log_debug(LOG_COMP_OP, "opgetlangtext summit=nil signature=%s", sigbuf);
 #endif
 		goto error;
 	}
@@ -526,8 +527,8 @@ boolean opgetlangtext (hdloutlinerecord houtline, boolean flpretty, Handle *htex
 	*htext = closehandlestream (&s);
 #if defined(FRONTIER_HEADLESS)
 	if (log_script) {
-		fprintf(stderr,
-		        "[headless-script] opgetlangtext close (LAND) htext=0x%p size=%ld\n",
+		log_debug(LOG_COMP_OP,
+		        "opgetlangtext close (LAND) htext=0x%p size=%ld",
 		        (void *) *htext,
 		        (long) ((*htext == nil) ? 0 : gethandlesize (*htext)));
 	}
@@ -539,8 +540,8 @@ boolean opgetlangtext (hdloutlinerecord houtline, boolean flpretty, Handle *htex
 
 #if defined(FRONTIER_HEADLESS)
 		if (log_script) {
-			fprintf(stderr,
-			        "[headless-script] opgetlangtext failed signature=%s summit=0x%p reason=%s\n",
+			log_debug(LOG_COMP_OP,
+			        "opgetlangtext failed signature=%s summit=0x%p reason=%s",
 			        sigbuf,
 			        (void *) ((**houtline).hsummit),
 			        (fail_reason != nil) ? fail_reason : "unknown");

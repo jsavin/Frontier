@@ -65,6 +65,7 @@
 #include "opbuttons.h"
 #include "file.h" // 2006-09-17 creedon
 #include "db_format.h"
+#include "logging.h"
 
 
 
@@ -363,7 +364,7 @@ static boolean newoutlinevariable (boolean flinmemory, long variabledata, hdlout
 	item.hdatabase = databasedata; // 5.0a18 dmb
 
 #if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] newoutlinevariable: flinmemory=%d variabledata=0x%llx captured_db=%p (current=%p)\n",
+	log_debug(LOG_COMP_OP, "newoutlinevariable: flinmemory=%d variabledata=0x%llx captured_db=%p (current=%p)",
 	        (int)flinmemory,
 	        (unsigned long long)variabledata,
 	        (void*)item.hdatabase,
@@ -592,7 +593,7 @@ boolean opverbinmemory (const db_context *ctx, hdlexternalvariable hvariable) {
 	adr = (dbaddress) (**hv).variabledata;  /* DISK ADDRESS - format depends on source DB */
 
 #if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] opverbinmemory: reading from hdatabase=%p adr=0x%llx use_64bit=%d (NO PUSH)\n",
+	log_debug(LOG_COMP_OP, "opverbinmemory: reading from hdatabase=%p adr=0x%llx use_64bit=%d (NO PUSH)",
 	        (void*)(**hv).hdatabase,
 	        (unsigned long long)adr,
 	        ctx ? ctx->mode.use_64bit_format : -1);
@@ -603,13 +604,13 @@ boolean opverbinmemory (const db_context *ctx, hdlexternalvariable hvariable) {
 
 	if (!fl) {
 #if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[headless] opverbinmemory: dbrefhandle FAILED adr=0x%llx\n",
+		log_error(LOG_COMP_OP, "opverbinmemory: dbrefhandle FAILED adr=0x%llx",
 		        (unsigned long long) adr);
 #endif
 	} else {
 #if defined(FRONTIER_HEADLESS)
 		long packed_size = gethandlesize(hpackedoutline);
-		fprintf(stderr, "[headless] opverbinmemory: dbrefhandle OK adr=0x%llx size=%ld\n",
+		log_debug(LOG_COMP_OP, "opverbinmemory: dbrefhandle OK adr=0x%llx size=%ld",
 		        (unsigned long long)adr, packed_size);
 #endif
 		/* 2025-12-05: Dispatch based on outline format version */
@@ -624,7 +625,7 @@ boolean opverbinmemory (const db_context *ctx, hdlexternalvariable hvariable) {
 			islegacy = (versionnumber == 2 || versionnumber == 3);
 
 #if defined(FRONTIER_HEADLESS)
-			fprintf(stderr, "[headless] opverbinmemory outline version=%d %s adr=0x%llx\n",
+			log_debug(LOG_COMP_OP, "opverbinmemory outline version=%d %s adr=0x%llx",
 			        (int)versionnumber, islegacy ? "LEGACY" : "MODERN",
 			        (unsigned long long) adr);
 #endif
@@ -639,7 +640,7 @@ boolean opverbinmemory (const db_context *ctx, hdlexternalvariable hvariable) {
 
 #if defined(FRONTIER_HEADLESS)
 		if (!fl)
-			fprintf(stderr, "[headless] opverbinmemory opunpack failed adr=0x%llx\n",
+			log_error(LOG_COMP_OP, "opverbinmemory opunpack failed adr=0x%llx",
 			        (unsigned long long) adr);
 #endif
 		}
@@ -835,7 +836,7 @@ boolean opverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handl
 	ho = (hdloutlinerecord) (**hv).variabledata;
 
 #if defined(FRONTIER_HEADLESS)
-	fprintf(stderr, "[headless] opverbpack: flinmemory=%d ho=%p oldaddress=0x%llx\n",
+	log_debug(LOG_COMP_OP, "opverbpack: flinmemory=%d ho=%p oldaddress=0x%llx",
 	        (int) (**hv).flinmemory, (void *) ho, (unsigned long long) (**hv).oldaddress);
 #endif
 
@@ -854,7 +855,7 @@ boolean opverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handl
 
 	if (!opverbpackoutline (ho, &hpackedoutline)) {
 #if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[headless] opverbpackoutline failed for outline at adr=0x%llx\n",
+		log_error(LOG_COMP_OP, "opverbpackoutline failed for outline at adr=0x%llx",
 		        (unsigned long long) (**hv).oldaddress);
 #endif
 		return (false);
@@ -865,7 +866,7 @@ boolean opverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handl
 
 #if defined(FRONTIER_HEADLESS)
 	db_format_mode check_mode = db_format_mode_current();
-	fprintf(stderr, "[headless] opverbpack: dbassignhandle oldadr=0x%llx -> newadr=0x%llx (use_64bit=%d)\n",
+	log_debug(LOG_COMP_OP, "opverbpack: dbassignhandle oldadr=0x%llx -> newadr=0x%llx (use_64bit=%d)",
 	        (unsigned long long) (**hv).oldaddress, (unsigned long long) adr, (int) check_mode.use_64bit_format);
 #endif
 
@@ -873,7 +874,7 @@ boolean opverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handl
 
 	if (!fl) {
 #if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[headless] dbassignhandle failed for outline adr=0x%llx\n",
+		log_error(LOG_COMP_OP, "dbassignhandle failed for outline adr=0x%llx",
 		        (unsigned long long) (**hv).oldaddress);
 #endif
 		return (false);

@@ -38,6 +38,7 @@
 #include "langtokens.h"
 #include "tableinternal.h"
 #include "tableverbs.h"
+#include "logging.h"
 
 // 2025-10-27 Codex: Headless runtime should populate builtins table like classic app.
 #include "tablestructure.h"
@@ -138,13 +139,11 @@ boolean newfunctionprocessor (bigstring bsname, langvaluecallback valuecallback,
 	(**ht).valueroutine = valuecallback;
 
 #if defined(FRONTIER_HEADLESS)
-    if (headless_should_log()) {
-        fprintf(stderr, "[ls] newfunctionprocessor: name=%s table=%p valueroutine=%p flwindow=%d\n",
-                stringbaseaddress(bsname),
-                (void *) ht,
-                (void *) valuecallback,
-                (int) flwindow);
-    }
+	log_debug(LOG_COMP_STARTUP, "newfunctionprocessor: name=%s table=%p valueroutine=%p flwindow=%d",
+	        stringbaseaddress(bsname),
+	        (void *) ht,
+	        (void *) valuecallback,
+	        (int) flwindow);
 #endif
 	
 	return (true);
@@ -674,7 +673,7 @@ static boolean langinitconsttable (void) {
 #endif
 	
 #ifdef FRONTIER_HEADLESS
-    if (headless_should_log()) fprintf(stderr, "[ls] langinitconsttable: start\n");
+	log_debug(LOG_COMP_STARTUP, "langinitconsttable: start");
 #endif
     if (!tablenewsystemtable (langtable, (ptrstring) "\x09" "constants", &hconsttable))
         return (false);
@@ -682,7 +681,7 @@ static boolean langinitconsttable (void) {
     pushhashtable (hconsttable); /*converted to constants by the scanner*/
 
 #ifdef FRONTIER_HEADLESS
-    if (headless_should_log()) fprintf(stderr, "[ls] constants: adding nil/booleans/directions\n");
+	log_debug(LOG_COMP_STARTUP, "constants: adding nil/booleans/directions");
 #endif
     addnil ("nil");
 
@@ -715,7 +714,7 @@ static boolean langinitconsttable (void) {
     addboolean (bsfalse, (boolean) false);
 
 #ifdef FRONTIER_HEADLESS
-    if (headless_should_log()) fprintf(stderr, "[ls] constants: expanding full type constants\n");
+	log_debug(LOG_COMP_STARTUP, "constants: expanding full type constants");
 #endif
 	
 	for (type = novaluetype; type < ctvaluetypes; type++)
@@ -770,7 +769,7 @@ static boolean langinitbuiltintable (void) {
 		return (false);
 
 #ifdef FRONTIER_HEADLESS
-    if (headless_should_log()) fprintf(stderr, "[ls] langinitbuiltintable: installing builtins (headless)\n");
+	log_debug(LOG_COMP_STARTUP, "langinitbuiltintable: installing builtins (headless)");
 #endif
 
 	pushhashtable (hbuiltinfunctions); /*converted to function ops by the parser*/
@@ -828,7 +827,7 @@ static boolean langinitkeywordtable (void) {
 
 
 #ifdef FRONTIER_HEADLESS
-    if (headless_should_log()) fprintf(stderr, "[ls] langinitkeywordtable: installing keywords (headless)\n");
+	log_debug(LOG_COMP_STARTUP, "langinitkeywordtable: installing keywords (headless)");
     /* Avoid writing into string literals; build a C string in bigstring buffer. */
     #define ADD_KW(name, tok) do { bigstring _bs; memset(_bs, 0, sizeof(_bs)); strncpy((char*)_bs, (name), lenbigstring); if (!langaddcstringkeyword(_bs, (tok))) return (false); } while(0)
 #else
@@ -922,13 +921,13 @@ static boolean langinstallresources (void) {
 boolean langinitverbs (void) {
 
 #ifdef FRONTIER_HEADLESS
-    if (headless_should_log()) fprintf(stderr, "[ls] langinitverbs: install start\n");
+	log_debug(LOG_COMP_STARTUP, "langinitverbs: install start");
 #endif
     if (!langinstallresources ())
         return (false);
 
 #ifdef FRONTIER_HEADLESS
-    if (headless_should_log()) fprintf(stderr, "[ls] langinitverbs: install ok, builtins start\n");
+	log_debug(LOG_COMP_STARTUP, "langinitverbs: install ok, builtins start");
 #endif
     return (langinitbuiltins ());
     } /*langinitverbs*/

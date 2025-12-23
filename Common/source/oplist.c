@@ -41,6 +41,7 @@
 #include <stdint.h>
 
 #include "oppack_legacy.h"
+#include "logging.h"
 
 #if defined(FRONTIER_HEADLESS)
 /* Current materialize path for error context (exported from langhash). */
@@ -610,7 +611,7 @@ boolean oppacklist (hdllistrecord hlist, Handle *hpacked) {
 #if defined(FRONTIER_HEADLESS)
 	if ((**hlist).houtline == nil || *(((Handle) (**hlist).houtline)) == nil || !validhandle((Handle) (**hlist).houtline)) {
 		const char *ctx = (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>";
-		fprintf(stderr, "[headless] oppacklist missing/invalid outline path=%s houtline=%p hdata=%p valid=%d\n",
+		log_error(LOG_COMP_OP, "oppacklist missing/invalid outline path=%s houtline=%p hdata=%p valid=%d",
 		        ctx,
 		        (void *) ((**hlist).houtline),
 		        (**hlist).houtline == nil ? NULL : *((Handle) (**hlist).houtline),
@@ -620,7 +621,7 @@ boolean oppacklist (hdllistrecord hlist, Handle *hpacked) {
 	{
 		const char *ctx = (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>";
 		const long hsize = gethandlesize((Handle) (**hlist).houtline);
-		fprintf(stderr, "[headless] oppacklist enter path=%s houtline=%p hdata=%p hsize=%ld\n",
+		log_debug(LOG_COMP_OP, "oppacklist enter path=%s houtline=%p hdata=%p hsize=%ld",
 		        ctx,
 		        (void *) ((**hlist).houtline),
 		        (**hlist).houtline == nil ? NULL : *((Handle) (**hlist).houtline),
@@ -634,7 +635,7 @@ boolean oppacklist (hdllistrecord hlist, Handle *hpacked) {
 	{
 		const char *ctx = (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>";
 		const long hosize = gethandlesize((Handle) (**hlist).houtline);
-		fprintf(stderr, "[headless] oppacklist debug after push path=%s hlist=%p houtline=%p hdata=%p hsize=%ld valid=%d\n",
+		log_debug(LOG_COMP_OP, "oppacklist debug after push path=%s hlist=%p houtline=%p hdata=%p hsize=%ld valid=%d",
 		        ctx,
 		        (void *) hlist,
 		        (void *) (**hlist).houtline,
@@ -642,7 +643,7 @@ boolean oppacklist (hdllistrecord hlist, Handle *hpacked) {
 		        hosize,
 		        (**hlist).houtline == nil ? 0 : validhandle((Handle) (**hlist).houtline));
 		if ((**hlist).houtline == nil || *(((Handle) (**hlist).houtline)) == nil || !validhandle((Handle) (**hlist).houtline)) {
-			fprintf(stderr, "[headless] oppacklist abort after push path=%s hlist=%p houtline=%p\n",
+			log_error(LOG_COMP_OP, "oppacklist abort after push path=%s hlist=%p houtline=%p",
 			        ctx,
 			        (void *) hlist,
 			        (void *) (**hlist).houtline);
@@ -651,7 +652,7 @@ boolean oppacklist (hdllistrecord hlist, Handle *hpacked) {
 	}
 	if ((outlinedata == nil) || (*outlinedata == nil) || !validhandle((Handle) outlinedata)) {
 		const char *ctx = (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>";
-		fprintf(stderr, "[headless] oppacklist abort invalid outline path=%s outlinedata=%p hdata=%p valid=%d\n",
+		log_error(LOG_COMP_OP, "oppacklist abort invalid outline path=%s outlinedata=%p hdata=%p valid=%d",
 		        ctx,
 		        (void *) outlinedata,
 		        (outlinedata == nil) ? NULL : *outlinedata,
@@ -666,7 +667,7 @@ boolean oppacklist (hdllistrecord hlist, Handle *hpacked) {
 #if defined(FRONTIER_HEADLESS)
 	{
 		const char *ctx = (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>";
-		fprintf(stderr, "[headless] oppacklist post-oppack path=%s ok=%d hpackedoutline=%p hdata=%p size=%ld\n",
+		log_debug(LOG_COMP_OP, "oppacklist post-oppack path=%s ok=%d hpackedoutline=%p hdata=%p size=%ld",
 		        ctx,
 		        fl,
 		        (void *) hpackedoutline,
@@ -811,7 +812,7 @@ boolean opunpacklist (Handle hpacked, hdllistrecord *hnewlist) {
 #if defined(FRONTIER_HEADLESS)
 	{
 		const char *ctx = (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>";
-		fprintf(stderr, "[headless] opunpacklist header path=%s recordsize=%d version=%d ctitems=%d outlinebytes=%u isrecord=%d\n",
+		log_debug(LOG_COMP_OP, "opunpacklist header path=%s recordsize=%d version=%d ctitems=%d outlinebytes=%u isrecord=%d",
 		        ctx,
 		        (int) info.recordsize,
 		        (int) info.versionnumber,
@@ -821,12 +822,9 @@ boolean opunpacklist (Handle hpacked, hdllistrecord *hnewlist) {
 		if (hpackedoutline != nil) {
 			size_t dump = (size_t) gethandlesize(hpackedoutline);
 			if (dump > 32) dump = 32;
-			if (dump > 0) {
+			if (dump > 0 && log_enabled(LOG_LEVEL_DEBUG, LOG_COMP_OP)) {
 				unsigned char *bytes = (unsigned char *) *hpackedoutline;
-				fprintf(stderr, "[headless] opunpacklist first bytes:");
-				for (size_t i = 0; i < dump; ++i)
-					fprintf(stderr, " %02x", bytes[i]);
-				fprintf(stderr, "\n");
+				log_hex_dump(LOG_COMP_OP, LOG_LEVEL_DEBUG, bytes, dump, "opunpacklist first bytes");
 			}
 		}
 	}
@@ -856,7 +854,7 @@ boolean opunpacklist (Handle hpacked, hdllistrecord *hnewlist) {
 #if defined(FRONTIER_HEADLESS)
 		{
 			const char *ctx = (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>";
-			fprintf(stderr, "[headless] opunpacklist dispatch path=%s outline_version=%d\n",
+			log_debug(LOG_COMP_OP, "opunpacklist dispatch path=%s outline_version=%d",
 			        ctx, (int) outline_version);
 		}
 #endif
@@ -886,7 +884,7 @@ boolean opunpacklist (Handle hpacked, hdllistrecord *hnewlist) {
 #if defined(FRONTIER_HEADLESS)
 	{
 		const char *ctx = (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>";
-		fprintf(stderr, "[headless] opunpacklist failed path=%s\n", ctx);
+		log_error(LOG_COMP_OP, "opunpacklist failed path=%s", ctx);
 	}
 #endif
 	
