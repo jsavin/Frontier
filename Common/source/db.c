@@ -381,7 +381,7 @@ static void db_context_guard_enter(const db_context *context, db_context_guard *
         db_saveas_state_snapshot(&guard->prev_saveas);
         guard->prev_db = databasedata;
 #if defined(FRONTIER_HEADLESS)
-        if (log_enabled(LOG_COMP_DB, LOG_LEVEL_TRACE)) {
+        if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_DB)) {
             static int call_count = 0;
             if (call_count++ < 5) {
                 log_trace(LOG_COMP_DB, "db_context_guard_enter: prev_mode captured use_64bit=%d adapter_repack=%d",
@@ -395,7 +395,7 @@ static void db_context_guard_enter(const db_context *context, db_context_guard *
             databasedata = context->database;
         db_saveas_state_apply(&context->saveas);
 #if defined(FRONTIER_HEADLESS)
-        if (log_enabled(LOG_COMP_DB, LOG_LEVEL_TRACE)) {
+        if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_DB)) {
             static int call_count2 = 0;
             if (call_count2++ < 5) {
                 log_trace(LOG_COMP_DB, "db_context_guard_enter: applying mode use_64bit=%d adapter_repack=%d",
@@ -405,7 +405,7 @@ static void db_context_guard_enter(const db_context *context, db_context_guard *
 #endif
         db_format_mode_apply(&context->mode);
 #if defined(FRONTIER_HEADLESS)
-        if (log_enabled(LOG_COMP_DB, LOG_LEVEL_TRACE)) {
+        if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_DB)) {
             static int call_count2 = 0;
             if (call_count2++ < 5) {
                 db_format_mode current_after = db_format_mode_current();
@@ -421,7 +421,7 @@ static void db_context_guard_exit(const db_context_guard *guard) {
     if (guard == NULL)
         return;
 #if defined(FRONTIER_HEADLESS)
-    if (log_enabled(LOG_COMP_DB, LOG_LEVEL_TRACE)) {
+    if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_DB)) {
         static int call_count = 0;
         if (call_count++ < 5) {
             log_trace(LOG_COMP_DB, "db_context_guard_exit: restoring prev mode use_64bit=%d adapter_repack=%d",
@@ -546,7 +546,7 @@ static db_context *db_context_for_saveas_destination(db_context *ctx, boolean *u
         boolean adapter_active = db_format_adapter_is_active();
         boolean is_legacy = db_format_is_legacy_db(ctx->database);
 #if defined(FRONTIER_HEADLESS)
-        if (log_enabled(LOG_COMP_DB, LOG_LEVEL_TRACE)) {
+        if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_DB)) {
             static int call_count = 0;
             if (call_count++ < 5) {
                 log_trace(LOG_COMP_DB, "db_context_for_saveas_destination: adapter_active=%d is_legacy=%d",
@@ -560,7 +560,7 @@ static db_context *db_context_for_saveas_destination(db_context *ctx, boolean *u
             ctx->mode.use_64bit_format = !is_legacy;
         }
 #if defined(FRONTIER_HEADLESS)
-        if (log_enabled(LOG_COMP_DB, LOG_LEVEL_TRACE)) {
+        if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_DB)) {
             static int call_count3 = 0;
             if (call_count3++ < 5) {
                 log_trace(LOG_COMP_DB, "db_context_for_saveas_destination: set use_64bit_format=%d",
@@ -1642,7 +1642,7 @@ boolean dbrefhandle (dbaddress adr, Handle *h) {
 
 #if defined(FRONTIER_HEADLESS)
 	/* Log first 20 reads to check for format mode mismatches */
-	if (log_enabled(LOG_COMP_DB, LOG_LEVEL_TRACE)) {
+	if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_DB)) {
 		static int header_log_count = 0;
 		if (header_log_count < 20) {
 			db_format_mode current_mode = db_format_mode_current();
@@ -1714,7 +1714,7 @@ static boolean dballocate (long databytes, ptrvoid pdata, dbaddress *paddress) {
     boolean using_destination = false;
     db_context *apply_ctx = db_context_for_saveas_destination(&swap_ctx, &using_destination);
 #if defined(FRONTIER_HEADLESS)
-    if (log_enabled(LOG_COMP_DB, LOG_LEVEL_TRACE)) {
+    if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_DB)) {
         static int call_count = 0;
         if (call_count++ < 5) {
             log_trace(LOG_COMP_DB, "dballocate: using_destination=%d apply_ctx=%p",
@@ -1728,7 +1728,7 @@ static boolean dballocate (long databytes, ptrvoid pdata, dbaddress *paddress) {
 #endif
     db_context_guard_enter(apply_ctx, &guard);
 #if defined(FRONTIER_HEADLESS)
-    if (log_enabled(LOG_COMP_DB, LOG_LEVEL_TRACE)) {
+    if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_DB)) {
         static int call_count_after = 0;
         if (call_count_after++ < 5) {
             db_format_mode current_after = db_format_mode_current();
@@ -2394,7 +2394,7 @@ boolean dbassign (dbaddress *padr, long newsize, ptrvoid pdata) {
     if (ctx == NULL)
         ctx = db_context_refresh_default();
 #if defined(FRONTIER_HEADLESS)
-    if (log_enabled(LOG_COMP_DB, LOG_LEVEL_TRACE)) {
+    if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_DB)) {
         static int log_count = 0;
         if (log_count++ < 10) {
             log_trace(LOG_COMP_DB, "dbassign: saveas_active=%d using_destination=%d dest_db=%p",
@@ -2646,7 +2646,7 @@ boolean dbassignhandle (Handle h, dbaddress *adr) {
      */
 #if 0
     else {
-        if (log_enabled(LOG_COMP_DB, LOG_LEVEL_TRACE)) {
+        if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_DB)) {
             static int verify_count = 0;
             if (verify_count++ < 10) {
                 log_trace(LOG_COMP_DB, "dbassignhandle SUCCESS adr=0x%llx size=%ld",
