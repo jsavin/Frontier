@@ -158,16 +158,19 @@ boolean menuverbunload (hdlexternalvariable hvariable) {
 
 
 static boolean menuverbinmemory (hdlmenuvariable hvariable) {
-	
+
 	/*
 	5.0a18 dmb: support database linking
+
+	2025-12-23: TODO Phase 2 - Refactor to use explicit context instead of push/pop pattern
+	This requires creating meloadmenurecord_context and meloadoutline_context variants first.
 	*/
-	
+
 	register hdlmenuvariable hv = hvariable;
 	register dbaddress adr;
 	hdlmenurecord hmenurecord;
 	boolean fl;
-	
+
 	if ((**hv).flinmemory)
 		return (true);
 
@@ -181,22 +184,22 @@ static boolean menuverbinmemory (hdlmenuvariable hvariable) {
 	dbpushdatabase ((**hv).hdatabase);
 
 	adr = (dbaddress) (**hv).variabledata;
-	
+
 	fl = meloadmenurecord (adr, &hmenurecord);
 
 	dbpopdatabase ();
 
 	if (!fl)
 		return (false);
-	
+
 	(**hv).variabledata = (long) hmenurecord;
-	
+
 	(**hv).oldaddress = adr;
-	
+
 	(**hv).flinmemory = true;
-	
+
 	(**hmenurecord).menurefcon = (long) hv; /*we can get from menu rec to variable rec*/
-	
+
 	return (true);
 	} /*menuverbinmemory*/
 
