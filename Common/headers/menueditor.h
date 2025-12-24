@@ -221,6 +221,9 @@ extern hdlwindowinfo menuwindowinfo;
 
 /*prototypes*/
 
+extern boolean meloadoutline_internal(const db_context *ctx, dbaddress adr,
+                                       hdloutlinerecord *houtline);
+
 extern boolean meloadoutline (dbaddress, hdloutlinerecord *); /*menueditor.c*/
 
 extern boolean mepackoutline (hdloutlinerecord, Handle *);

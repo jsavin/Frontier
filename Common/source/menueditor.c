@@ -399,71 +399,79 @@ boolean mesomethingdirty (hdlmenurecord hmenurecord) {
 	} /*mesomethingdirty*/
 
 
-boolean meloadoutline (dbaddress adr, hdloutlinerecord *houtline) {
-	
+boolean meloadoutline_internal (const db_context *ctx, dbaddress adr,
+                                hdloutlinerecord *houtline) {
 	/*
-	load the outline stored at database address adr.  if adr is nil, create a 
-	new empty outline structure.  return false if something didn't work.
-	
-	5/21/92 dmb: fixed error handling when dbrefhandle fails.  (used to leave 
-	outline pushed.)
+	Load outline with explicit database context.
+
+	Preconditions:
+	  - ctx specifies database and format mode
+	  - adr is valid outline address or nildbaddress
+
+	Postconditions:
+	  - *houtline contains loaded outline structure
+	  - Returns true on success, false on failure
 	*/
-	
+
 	register boolean fl;
 	register hdloutlinerecord ho;
 	Handle hpackedoutline;
 	Rect r;
 	long ixload = 0;
-	
+
+	if (!ctx) {
+		db_context default_ctx;
+		db_context_init(&default_ctx);
+		return meloadoutline_internal(&default_ctx, adr, houtline);
+	}
+
 	*houtline = nil; /*default return*/
-	
+
 	oppushoutline (nil); /*preserve global*/
-	
+
 	if (adr == nildbaddress) { /*new structure is called for*/
-		
+
 		megetoutlinerect (&r);
-		
+
 		fl = opnewrecord (r, houtline);
-		}
+	}
 	else {
-		fl = dbrefhandle (adr, &hpackedoutline);
-		
+		fl = dbrefhandle_context (ctx, adr, &hpackedoutline);
+
 		if (fl) {
-			
+
 			fl = opunpack (hpackedoutline, &ixload, houtline);
-			
+
 			disposehandle (hpackedoutline);
-			}
 		}
-	
+	}
+
 	ho = *houtline;
-	
+
 	oppopoutline (); /*restore global*/
-	
+
 	if (!fl)
 		return (false);
-	
+
 	opvalidate (ho);
-	
+
 	(**ho).setscrollbarsroutine = &mesetscrollbarsroutine;
-	
+
 	(**ho).drawlinecallback = &medrawlineroutine;
-	
+
 	meclearhandles (ho);
-	
-	/*
-	6/21/90 DW: this can be a problem if there's no outline window open.
-	none of the callers seems to depend on these two calls.
-	
-	megetoutlinerect (&(**ho).outlinerect);
-	
-	opgetdisplayinfo ();
-	*/
-	
+
 	*houtline = ho;
-		
+
 	return (fl);
-	} /*meloadoutline*/
+} /*meloadoutline_internal*/
+
+
+boolean meloadoutline (dbaddress adr, hdloutlinerecord *houtline) {
+	db_context ctx;
+	db_context_init(&ctx);
+	return meloadoutline_internal(&ctx, adr, houtline);
+} /*meloadoutline*/
 
 
 boolean mesaveoutline (hdloutlinerecord ho, dbaddress *adr) {
