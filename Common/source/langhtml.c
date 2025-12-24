@@ -48,6 +48,7 @@
 #include "tablestructure.h"
 #include "tableverbs.h"
 #include "op.h"
+#include "db_format.h" /*Phase 2: db_context support*/
 #include "opinternal.h"
 #include "oplist.h"
 #include "opverbs.h"
@@ -2883,13 +2884,15 @@ static boolean additemtopagetable (hdlhashtable htable, hdlhashnode hnode, hdlha
 			default:
 				hdb = tablegetdatabase (htable);
 
-				if (hdb)
-					dbpushdatabase (hdb);
-
-				fl = copyvaluerecord (val, &val);
-
-				if (hdb)
-					dbpopdatabase ();
+				if (hdb) {
+					db_context ctx;
+					db_context_init(&ctx);
+					ctx.database = hdb;
+					fl = copyvaluerecord_internal(&ctx, val, &val);
+				}
+				else {
+					fl = copyvaluerecord(val, &val);
+				}
 
 				if (!fl || !strongcoercetostring (&val))
 					return (false);
