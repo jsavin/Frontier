@@ -645,7 +645,7 @@ boolean opverbinmemory (const db_context *ctx, hdlexternalvariable hvariable) {
 #endif
 		}
 
-	/* NO dbpopdatabase - we never pushed, no global state to restore */
+	/* No database context restore needed - using explicit context parameter */
 
 	if (!fl)
 		return (false);

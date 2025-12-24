@@ -143,8 +143,6 @@ boolean dballocate_context(const db_context *context, long databytes, ptrvoid pd
 boolean dbreference_handle_context(const db_context *context, dbaddress adr, Handle *h);
 boolean dbendsaveas_context(db_context *context);
 boolean dbstartsaveas_context(db_context *context, hdlfilenum fnum);
-boolean dbpushdatabase_context(const db_context *context, hdldatabaserecord hdatabase);
-boolean dbpopdatabase_context(const db_context *context);
 boolean dbflushreleasestack_context(const db_context *context);
 boolean dbzeroreleasestack_context(const db_context *context);
 boolean dbrelease_context(const db_context *context, dbaddress adr);
