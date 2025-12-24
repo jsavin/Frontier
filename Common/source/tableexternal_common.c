@@ -439,7 +439,7 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
         }
     }
 
-    /* NO dbpopdatabase - we never pushed, no global state to restore */
+    /* No database context restore needed - using explicit context parameter */
 
     if (!fl)
         return false;

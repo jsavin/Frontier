@@ -399,71 +399,79 @@ boolean mesomethingdirty (hdlmenurecord hmenurecord) {
 	} /*mesomethingdirty*/
 
 
-boolean meloadoutline (dbaddress adr, hdloutlinerecord *houtline) {
-	
+boolean meloadoutline_internal (const db_context *ctx, dbaddress adr,
+                                hdloutlinerecord *houtline) {
 	/*
-	load the outline stored at database address adr.  if adr is nil, create a 
-	new empty outline structure.  return false if something didn't work.
-	
-	5/21/92 dmb: fixed error handling when dbrefhandle fails.  (used to leave 
-	outline pushed.)
+	Load outline with explicit database context.
+
+	Preconditions:
+	  - ctx specifies database and format mode
+	  - adr is valid outline address or nildbaddress
+
+	Postconditions:
+	  - *houtline contains loaded outline structure
+	  - Returns true on success, false on failure
 	*/
-	
+
 	register boolean fl;
 	register hdloutlinerecord ho;
 	Handle hpackedoutline;
 	Rect r;
 	long ixload = 0;
-	
+
+	if (!ctx) {
+		db_context default_ctx;
+		db_context_init(&default_ctx);
+		return meloadoutline_internal(&default_ctx, adr, houtline);
+	}
+
 	*houtline = nil; /*default return*/
-	
+
 	oppushoutline (nil); /*preserve global*/
-	
+
 	if (adr == nildbaddress) { /*new structure is called for*/
-		
+
 		megetoutlinerect (&r);
-		
+
 		fl = opnewrecord (r, houtline);
-		}
+	}
 	else {
-		fl = dbrefhandle (adr, &hpackedoutline);
-		
+		fl = dbrefhandle_context (ctx, adr, &hpackedoutline);
+
 		if (fl) {
-			
+
 			fl = opunpack (hpackedoutline, &ixload, houtline);
-			
+
 			disposehandle (hpackedoutline);
-			}
 		}
-	
+	}
+
 	ho = *houtline;
-	
+
 	oppopoutline (); /*restore global*/
-	
+
 	if (!fl)
 		return (false);
-	
+
 	opvalidate (ho);
-	
+
 	(**ho).setscrollbarsroutine = &mesetscrollbarsroutine;
-	
+
 	(**ho).drawlinecallback = &medrawlineroutine;
-	
+
 	meclearhandles (ho);
-	
-	/*
-	6/21/90 DW: this can be a problem if there's no outline window open.
-	none of the callers seems to depend on these two calls.
-	
-	megetoutlinerect (&(**ho).outlinerect);
-	
-	opgetdisplayinfo ();
-	*/
-	
+
 	*houtline = ho;
-		
+
 	return (fl);
-	} /*meloadoutline*/
+} /*meloadoutline_internal*/
+
+
+boolean meloadoutline (dbaddress adr, hdloutlinerecord *houtline) {
+	db_context ctx;
+	db_context_init(&ctx);
+	return meloadoutline_internal(&ctx, adr, houtline);
+} /*meloadoutline*/
 
 
 boolean mesaveoutline (hdloutlinerecord ho, dbaddress *adr) {
@@ -525,71 +533,75 @@ static boolean mescriptfontchangeroutine (void) {
 	} /*mescriptfontchangeroutine*/
 
 
-boolean meloadscriptoutline (hdlmenurecord hm, hdlheadrecord hnode, hdloutlinerecord *houtline, boolean *fljustloaded) {
-	
+static boolean meloadscriptoutline_context (const db_context *ctx, hdlmenurecord hm, hdlheadrecord hnode, hdloutlinerecord *houtline, boolean *fljustloaded) {
+
+	/* 2025-12-23: Refactored to use explicit context instead of push/pop pattern */
+
 	/*
 	load in the outline linked to the indicated headrecord, return false if there was
 	an error loading the outline.
-	
+
 	if *houtline returns as nil, and the function returns true, there's no script linked
 	in -- if you're zooming a window you want to create a new linked script.
-	
+
 	12/13/90 dmb: added fljustloaded parameter for safe unloading.
 
 	7.0b26 PBS: menubar scripts get fat headlines. Horizontal scrolling is disabled.
 	*/
-	
+
 	register boolean fl;
 	dbaddress adr;
 	Handle hpackedoutline;
 	long ixload = 0;
-	
+
 	*fljustloaded = false;
-	
+
 	megetscriptoutline (hnode, houtline); /*is there a dirty copy already in memory?*/
-	
+
 	if (*houtline != nil) { /*a dirty script is already linked in*/
-	
+
 		opsetdisplaydefaults (*houtline);
-		
+
 		return (true);
 		}
-	
+
 	megetscriptaddress (hnode, &adr);
-	
+
 	if (adr == nildbaddress) {
-		
+
 		*houtline = nil; /*no linked script*/
-		
+
 		return (true);
 		}
-	
-	dbpushdatabase (megetdatabase (hm));
-	
+
 	fl = dbrefhandle (adr, &hpackedoutline);
-	
-	dbpopdatabase ();
 
 	if (!fl) /*error loading from database*/
 		return (false);
 
-	
+
 	fl = opunpack (hpackedoutline, &ixload, houtline);
 
 	(***houtline).flfatheadlines = true; /*7.0b26 PBS: fat headlines in menubar scripts.*/
 
 	(***houtline).flhorizscrolldisabled = true; /*7.0b26 PBS: horizontal scrolling is disabled.*/
-	
+
 	disposehandle (hpackedoutline);
-	
+
 	if (fl) {
-	
+
 		opsetdisplaydefaults (*houtline);
-		
+
 		*fljustloaded = true;
 		}
-	
+
 	return (fl);
+	} /*meloadscriptoutline_context*/
+
+
+boolean meloadscriptoutline (hdlmenurecord hm, hdlheadrecord hnode, hdloutlinerecord *houtline, boolean *fljustloaded) {
+
+	return meloadscriptoutline_context (NULL, hm, hnode, houtline, fljustloaded);
 	} /*meloadscriptoutline*/
 
 
@@ -1779,24 +1791,28 @@ boolean menewmenurecord (hdlmenurecord *hmenurecord) {
 	} /*menewmenurecord*/
 
 
-void medisposemenurecord (hdlmenurecord hmenurecord, boolean fldisk) {
-	
+static void medisposemenurecord_context (const db_context *ctx, hdlmenurecord hmenurecord, boolean fldisk) {
+
+	/* 2025-12-23: Refactored to use explicit context instead of push/pop pattern */
+
 	register hdlmenurecord hm = hmenurecord;
-	
+
 	medisposemenubar ((**hm).hmenustack);
-	
+
 	opdisposeoutline ((**hm).menuoutline, fldisk);
-	
+
 	if (fldisk) {
-	
-		dbpushdatabase (megetdatabase (hm));
 
 		dbpushreleasestack ((**hm).adroutline, outlinevaluetype);
-
-		dbpopdatabase ();
 		}
-	
+
 	disposehandle ((Handle) hm);
+	} /*medisposemenurecord_context*/
+
+
+void medisposemenurecord (hdlmenurecord hmenurecord, boolean fldisk) {
+
+	medisposemenurecord_context (NULL, hmenurecord, fldisk);
 	} /*medisposemenurecord*/
 
 

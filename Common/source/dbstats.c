@@ -682,16 +682,26 @@ boolean dbstatsmessage (hdldatabaserecord hdb, boolean flincludeusedblocks) {
 		windowbringtofront (statswindow);
 	
 	shellpushglobals (statswindow);
-	
+
 	smashrect ((**statswindowinfo).contentrect);
-	
-	if (hdb != nil)
-		dbpushdatabase (hdb);
+
+	/* Save current database context before switching */
+	db_context saved_ctx;
+	db_context_init(&saved_ctx);
+
+	if (hdb != nil) {
+		db_context ctx;
+		db_context_init(&ctx);
+		ctx.database = hdb;
+		db_context_apply(&ctx);
+	}
 
 	statscompute (flincludeusedblocks);
-	
-	if (hdb != nil)
-		dbpopdatabase ();
+
+	/* Restore original database context */
+	if (hdb != nil) {
+		db_context_apply(&saved_ctx);
+	}
 
 	shellpopglobals ();
 	

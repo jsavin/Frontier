@@ -178,29 +178,32 @@ boolean metextualizerefconroutine (hdlheadrecord hnode, Handle htext) {
 	} /*metextualizerefconroutine*/
 
 
-boolean mereleaserefconroutine (hdlheadrecord hnode, boolean fldisk) {
-	
+static boolean mereleaserefconroutine_context (const db_context *ctx, hdlheadrecord hnode, boolean fldisk) {
+
+	/* 2025-12-23: Refactored to use explicit context instead of push/pop pattern */
+
 	/*
 	5.1.4 dmb: set the right database when fldisk
 	*/
 
 	tymenuiteminfo item;
-	hdlmenurecord hm = (hdlmenurecord) (**outlinedata).outlinerefcon;
 
 	megetmenuiteminfo (hnode, &item);
-	
+
 	opdisposeoutline (item.linkedscript.houtline, fldisk);
-	
+
 	if (fldisk) {
-	
-		dbpushdatabase (megetdatabase (hm));
 
 		dbpushreleasestack (item.linkedscript.adrlink, outlinevaluetype);
-
-		dbpopdatabase ();
 		}
-	
+
 	return (true);
+	} /*mereleaserefconroutine_context*/
+
+
+boolean mereleaserefconroutine (hdlheadrecord hnode, boolean fldisk) {
+
+	return mereleaserefconroutine_context (NULL, hnode, fldisk);
 	} /*mereleaserefconroutine*/
 
 #pragma pack(2)
@@ -530,18 +533,16 @@ boolean mesavemenurecord (hdlmenurecord hmenurecord, boolean flpreservelinks, bo
 		}
 	
 	if (fl) {
-	
+
+		/* 2025-12-23: Refactored to use explicit context instead of push/pop pattern */
+
 		if (flmemory) {
-			
-			dbpushdatabase (megetdatabase (hm));
-			
+
 			fl = mepackmenustructure (&info, hpacked);
-			
-			dbpopdatabase ();
 			}
 		else {
 			fl = mesavemenustructure (&info, adr);
-			
+
 			if (fl && (!fldatabasesaveas))
 				(**hm).adroutline = conditionallongswap(info.adroutline);
 			}
@@ -864,26 +865,51 @@ boolean meunpackmenustructure (Handle hpacked, hdlmenurecord *hmenurecord) {
 }
 
 
-boolean meloadmenurecord (dbaddress adr, hdlmenurecord *hmenurecord) { 
-	
+boolean meloadmenurecord_internal (const db_context *ctx, dbaddress adr,
+                                    hdlmenurecord *hmenurecord) {
+	/*
+	Load menu record with explicit database context.
+
+	Preconditions:
+	  - ctx specifies database and format mode
+	  - adr is valid menu record address
+
+	Postconditions:
+	  - *hmenurecord contains loaded menu structure
+	  - Returns true on success, false on failure
+	*/
+
 	hdloutlinerecord houtline;
 	tysavedmenuinfo info;
-	
+
+	if (!ctx) {
+		db_context default_ctx;
+		db_context_init(&default_ctx);
+		return meloadmenurecord_internal(&default_ctx, adr, hmenurecord);
+	}
+
 	if (!dbreference (adr, sizeof (info), &info))
 		return (false);
-	
-	if (!meloadoutline (conditionallongswap (info.adroutline), &houtline))
+
+	if (!meloadoutline_internal (ctx, conditionallongswap (info.adroutline), &houtline))
 		return (false);
-	
+
 	if (!mesetupmenurecord (&info, houtline, hmenurecord)) {
-		
+
 		opdisposeoutline (houtline, false);
-		
+
 		return (false);
-		}
-	
+	}
+
 	return (true);
-	} /*meloadmenurecord*/
+} /*meloadmenurecord_internal*/
+
+
+boolean meloadmenurecord (dbaddress adr, hdlmenurecord *hmenurecord) {
+	db_context ctx;
+	db_context_init(&ctx);
+	return meloadmenurecord_internal(&ctx, adr, hmenurecord);
+} /*meloadmenurecord*/
 
 
 static void medisposescrap (hdloutlinerecord houtline) {

@@ -41,9 +41,13 @@ extern boolean pictverbisdirty (hdlexternalvariable);
 
 extern boolean pictverbsetdirty (hdlexternalvariable, boolean);
 
+extern boolean pictverbinmemory (const db_context *, hdlexternalvariable);
+
 extern boolean pictverbmemorypack (hdlexternalvariable, Handle *);
 
 extern boolean pictverbmemoryunpack (Handle, long *, hdlexternalvariable *);
+
+extern boolean pictverbpack_internal (const db_context *, hdlexternalvariable, Handle *, boolean *);
 
 extern boolean pictverbpack (hdlexternalvariable, Handle *, boolean *);
 

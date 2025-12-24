@@ -30,6 +30,9 @@
 #include "tableinternal.h"
 #include "threads.h"
 #include "tableverbs.h"
+#include "opverbs.h"
+#include "wpverbs.h"
+#include "pictverbs.h"
 #include "cancoon.h"
 #include "cancooninternal.h"
 #include "file.h"
@@ -70,6 +73,14 @@ typedef struct db_context_guard {
 } db_context_guard;
 
 static void db_context_guard_enter(const db_context *context, db_context_guard *guard) {
+    /* DEPRECATED: This function implements the guard pattern for backward compatibility.
+     *
+     * New code should use explicit context passing (langexternalpack_internal pattern).
+     * The guard pattern still exists for legacy callers in db.c, but the refactored code
+     * path (database layer, table packing, external variable handling) no longer uses it.
+     *
+     * See docs/mode_stack_refactor_learnings.md for architectural guidance.
+     */
     if (guard != NULL) {
         guard->prev_mode = db_format_mode_current();
         db_saveas_state_snapshot(&guard->prev_saveas);
@@ -85,6 +96,9 @@ static void db_context_guard_enter(const db_context *context, db_context_guard *
 }
 
 static void db_context_guard_exit(const db_context_guard *guard) {
+    /* DEPRECATED: This function implements the guard pattern for backward compatibility.
+     * See db_context_guard_enter() deprecation notice above.
+     */
     if (guard == NULL)
         return;
 
@@ -1455,14 +1469,6 @@ static boolean db_format_force_materialize_external_tables_recursive(
         }
 
         int var_id = (**hv).id;
-
-        if (var_id != idtableprocessor) {
-#if defined(FRONTIER_HEADLESS)
-            log_debug(LOG_COMP_DB, "    external: id=%d skip: not idtableprocessor", var_id);
-#endif
-            continue;
-        }
-
         external_count++;
         dbaddress v6_adr = (dbaddress) (**hv).variabledata;
         boolean was_in_memory = (**hv).flinmemory;
@@ -1474,21 +1480,58 @@ static boolean db_format_force_materialize_external_tables_recursive(
 
         /* Load into memory if not already loaded */
         if (!was_in_memory) {
-#if defined(FRONTIER_HEADLESS)
-            log_debug(LOG_COMP_DB, "    calling tableverbinmemory for '%.*s'",
-                      (int) bsname[0], (char *) &bsname[1]);
-#endif
+            boolean loaded = false;
 
-            if (!tableverbinmemory(NULL, hv, hnode)) {
+            /* Call appropriate verbinmemory function based on external type */
+            if (var_id == idtableprocessor) {
 #if defined(FRONTIER_HEADLESS)
-                log_error(LOG_COMP_DB, "    ERROR: tableverbinmemory failed for '%.*s'",
+                log_debug(LOG_COMP_DB, "    calling tableverbinmemory for '%.*s'",
                           (int) bsname[0], (char *) &bsname[1]);
+#endif
+                loaded = tableverbinmemory(NULL, hv, hnode);
+            } else if (var_id == idoutlineprocessor || var_id == idscriptprocessor) {
+                /* Scripts and outlines share the same infrastructure (both use hdloutlinerecord).
+                 * idscriptprocessor is just an outline with (**hv).flscript = true flag set. */
+#if defined(FRONTIER_HEADLESS)
+                log_debug(LOG_COMP_DB, "    calling opverbinmemory for '%.*s' (id=%d %s)",
+                          (int) bsname[0], (char *) &bsname[1], var_id,
+                          var_id == idscriptprocessor ? "script" : "outline");
+#endif
+                loaded = opverbinmemory(NULL, hv);
+            } else if (var_id == idwordprocessor) {
+#if defined(FRONTIER_HEADLESS)
+                log_debug(LOG_COMP_DB, "    calling wpverbinmemory for '%.*s'",
+                          (int) bsname[0], (char *) &bsname[1]);
+#endif
+                loaded = wpverbinmemory(NULL, hv);
+            } else if (var_id == idpictprocessor) {
+#if defined(FRONTIER_HEADLESS)
+                log_debug(LOG_COMP_DB, "    calling pictverbinmemory for '%.*s' hv=%p",
+                          (int) bsname[0], (char *) &bsname[1], (void*)hv);
+#endif
+                loaded = pictverbinmemory(NULL, hv);
+#if defined(FRONTIER_HEADLESS)
+                log_debug(LOG_COMP_DB, "    pictverbinmemory returned: %d", loaded);
+#endif
+            } else {
+#if defined(FRONTIER_HEADLESS)
+                log_debug(LOG_COMP_DB, "    skip: unsupported external type id=%d (menu, etc.)", var_id);
+#endif
+                /* For other types (menu, etc.), we don't have verbinmemory functions yet.
+                 * These will need to be handled when those external types are fully implemented. */
+                continue;
+            }
+
+            if (!loaded) {
+#if defined(FRONTIER_HEADLESS)
+                log_error(LOG_COMP_DB, "    ERROR: verbinmemory failed for '%.*s' id=%d",
+                          (int) bsname[0], (char *) &bsname[1], var_id);
 #endif
                 return false;
             }
 
 #if defined(FRONTIER_HEADLESS)
-            log_debug(LOG_COMP_DB, "    tableverbinmemory succeeded, checking flinmemory");
+            log_debug(LOG_COMP_DB, "    verbinmemory succeeded, checking flinmemory");
 #endif
 
             /* Verify it's now in memory */
@@ -1518,16 +1561,22 @@ static boolean db_format_force_materialize_external_tables_recursive(
                   (unsigned long long) old_oldaddr);
 #endif
 
-        /* Recurse into newly-loaded table */
-        hdlhashtable child = (hdlhashtable) (**hv).variabledata;
+        /* Recurse into newly-loaded table (only for table externals, not pictures/outlines/etc.) */
+        if (var_id == idtableprocessor) {
+            hdlhashtable child = (hdlhashtable) (**hv).variabledata;
 #if defined(FRONTIER_HEADLESS)
-        log_debug(LOG_COMP_DB, "    recursing into child table '%.*s' depth_next=%d child=%p",
-                  (int) bsname[0], (char *) &bsname[1], depth + 1, (void *)child);
+            log_debug(LOG_COMP_DB, "    recursing into child table '%.*s' depth_next=%d child=%p",
+                      (int) bsname[0], (char *) &bsname[1], depth + 1, (void *)child);
 #endif
 
-        if (!db_format_force_materialize_external_tables_recursive(
-                child, context, depth + 1))
-            return false;
+            if (!db_format_force_materialize_external_tables_recursive(
+                    child, context, depth + 1))
+                return false;
+        } else {
+#if defined(FRONTIER_HEADLESS)
+            log_debug(LOG_COMP_DB, "    not recursing - external type %d is a leaf node", var_id);
+#endif
+        }
     }
 
 #if defined(FRONTIER_HEADLESS)
@@ -1667,7 +1716,10 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     source_context.database = databasedata;
 
     db_context_init(&dest_context);
-    dest_context.mode = source_context.mode;
+    /* Use v7 modern format for destination, not source's legacy v6 format.
+     * Fixes Issue #123: prevents writing v4 table headers into v7 database. */
+    db_format_mode modern_mode = {true, false, false};  /* use_64bit_format=true */
+    dest_context.mode = modern_mode;
     dest_context.database = nil;
 
     dbgetview(cancoonview, &view_address);
@@ -1779,6 +1831,8 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     if (have_dest_context) {
         if (save_ctx.database != nil)
             databasedata = save_ctx.database;
+        /* Clear mode stack before applying v7 mode to prevent stacked v6 mode from overriding */
+        g_mode_depth = 0;
         db_format_mode_apply(&save_ctx.mode);
         db_saveas_state_apply(&save_ctx.saveas);
     }
@@ -2071,6 +2125,10 @@ void db_format_mode_push(const db_format_mode *mode) {
     db_format_mode effective = {false, false, false};
     if (mode != NULL)
         effective = *mode;
+#if defined(FRONTIER_HEADLESS)
+    log_trace(LOG_COMP_DB, "db_format_mode_push: depth %d->%d use_64bit=%d adapter_repack=%d",
+              g_mode_depth, g_mode_depth + 1, (int) effective.use_64bit_format, (int) effective.adapter_repack);
+#endif
     if (g_mode_depth < (int) (sizeof g_mode_stack / sizeof g_mode_stack[0]))
         g_mode_stack[g_mode_depth++] = effective;
     db_format_mode_apply(&effective);

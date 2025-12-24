@@ -65,6 +65,9 @@ extern boolean mesetupmenurecord (tysavedmenuinfo *, hdloutlinerecord, hdlmenure
 
 extern boolean meunpackmenustructure (Handle, hdlmenurecord *);
 
+extern boolean meloadmenurecord_internal(const db_context *ctx, dbaddress adr,
+                                          hdlmenurecord *hmenurecord);
+
 extern boolean meloadmenurecord (dbaddress, hdlmenurecord *);
 
 extern boolean mesetscraproutine (hdloutlinerecord);

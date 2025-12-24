@@ -186,10 +186,6 @@ extern boolean dbpushreleasestack (dbaddress, long);
 
 /*prototypes*/
 
-extern boolean dbpushdatabase (hdldatabaserecord);
-
-extern boolean dbpopdatabase (void);
-
 extern boolean dbreference (dbaddress, long, ptrvoid);
 
 extern boolean dbrefhandle (dbaddress, Handle *);

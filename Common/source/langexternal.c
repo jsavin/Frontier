@@ -792,10 +792,14 @@ static boolean ensure_external_in_memory (const db_context *ctx, hdlexternalvari
 		case idtableprocessor:
 			return (tableverbinmemory (ctx, hv, HNoNode));
 
-		case idmenuprocessor:
 		case idpictprocessor:
-			/* TODO: Update menuverbinmemory/pictverbinmemory to take context parameter */
-			/* For now, these types are not supported in migration */
+			if (!pictverbinmemory (ctx, hv))
+				return (false);
+			break;
+
+		case idmenuprocessor:
+			/* TODO: Update menuverbinmemory to take context parameter */
+			/* For now, menus are not supported in migration */
 			return (false);
 
 		default:
@@ -847,28 +851,33 @@ boolean langexternalpack_internal (const db_context *ctx, hdlexternalhandle h, H
 	 * NO GLOBAL MODE CHANGES - all context passed explicitly
 	 * ================================================================
 	 */
-	if (adapter_repack && !(**hv).flinmemory) {
-		/* Create v6 read context for loading from source database */
-		legacy_context = working_context;
-		legacy_context.mode.use_64bit_format = false;
-		legacy_context.mode.adapter_repack = false;  /* Pure read mode */
+	if (adapter_repack) {
+		/* If not already in memory, load from v6 source */
+		if (!(**hv).flinmemory) {
+			/* Create v6 read context for loading from source database */
+			legacy_context = working_context;
+			legacy_context.mode.use_64bit_format = false;
+			legacy_context.mode.adapter_repack = false;  /* Pure read mode */
 
-		log_trace(LOG_COMP_EXTERNAL, "langexternalpack: loading external from v6 id=%d (explicit context)",
-		        (int)(**hv).id);
+			log_trace(LOG_COMP_EXTERNAL, "langexternalpack: loading external from v6 id=%d (explicit context)",
+			        (int)(**hv).id);
 
-		/* Load external into memory using explicit v6 context */
-		if (!ensure_external_in_memory (&legacy_context, hv)) {
-			return (false);
+			/* Load external into memory using explicit v6 context */
+			if (!ensure_external_in_memory (&legacy_context, hv)) {
+				return (false);
+			}
+
+			log_trace(LOG_COMP_EXTERNAL, "langexternalpack: loaded, now flinmemory=%d",
+			        (int)(**hv).flinmemory);
 		}
 
-		log_trace(LOG_COMP_EXTERNAL, "langexternalpack: loaded, now flinmemory=%d",
-		        (int)(**hv).flinmemory);
-
-		/* Prepare v7 write context for packing to destination */
+		/* Always set v7 write context for packing during migration, regardless of whether
+		 * we just loaded the external or it was already in memory from materialization */
 		working_context.mode.use_64bit_format = true;
 		working_context.mode.adapter_repack = true;
 
-		log_trace(LOG_COMP_EXTERNAL, "langexternalpack: using v7 write context (no global mode set)");
+		log_trace(LOG_COMP_EXTERNAL, "langexternalpack: using v7 write context flinmemory=%d (no global mode set)",
+		        (int)(**hv).flinmemory);
 	}
 
 	/* ================================================================
@@ -895,7 +904,7 @@ boolean langexternalpack_internal (const db_context *ctx, hdlexternalhandle h, H
 			break;
 
 		case idpictprocessor:
-			ok = pictverbpack (hv, hpacked, flnewdbaddress);
+			ok = pictverbpack_internal (&working_context, hv, hpacked, flnewdbaddress);
 			break;
 
 		default:
@@ -3008,23 +3017,12 @@ tyvaluetype langexternalgetvaluetype (OSType typeid) {
 
 
 boolean langexternalrefdata (hdlexternalvariable hv, Handle *hdata) {
+	/*
+	2025-12-23: Refactored to use explicit context instead of push/pop pattern
+	Wrapper for backward compatibility - calls context-aware variant with NULL
+	*/
 
-	boolean fl;
-
-	assert (!(**hv).flinmemory);
-
-	log_trace(LOG_COMP_EXTERNAL, "langexternalrefdata: hdatabase=%p variabledata=0x%llx (current=%p)",
-	        (void*)(**hv).hdatabase,
-	        (unsigned long long)(**hv).variabledata,
-	        (void*)databasedata);
-
-	dbpushdatabase ((**hv).hdatabase);
-
-	fl = dbrefhandle ((dbaddress) (**hv).variabledata, hdata);
-
-	dbpopdatabase ();
-
-	return (fl);
+	return langexternalrefdata_context (NULL, hv, hdata);
 	} /*langexternalrefdata*/
 
 

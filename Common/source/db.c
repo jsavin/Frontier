@@ -456,79 +456,11 @@ boolean dbreference_handle_context(const db_context *context, dbaddress adr, Han
 boolean dballocate_context(const db_context *context, long databytes, ptrvoid pdata, dbaddress *paddress);
 boolean dbendsaveas_context(db_context *context);
 boolean dbstartsaveas_context(db_context *context, hdlfilenum fnum);
-boolean dbpushdatabase_context(const db_context *context, hdldatabaserecord hdatabase);
-boolean dbpopdatabase_context(const db_context *context);
 boolean dbrelease_context(const db_context *context, dbaddress adr);
 boolean dbassign_internal(dbaddress *padr, long newsize, ptrvoid pdata);
 boolean dbcopy_internal(dbaddress adrorig, dbaddress *adrcopy);
 boolean dbreference_internal(dbaddress adr, long maxbytes, ptrvoid pdata);
 boolean dbgetsize_internal(dbaddress adr, long *logicalsize);
-
-boolean dbpushdatabase (hdldatabaserecord hdatabase) {
-	/*
-	when you want to temporarily work with a different databaserecord, call this
-	routine, do your stuff and then call dbpopdatabase.
-	*/
-
-	if (topdatabasestack >= ctdatabasestack) {
-
-		DebugStr (STR_database_stack_overflow);
-
-		return (false);
-		}
-
-	databasestack [topdatabasestack++] = databasedata;
-
-#if defined(FRONTIER_HEADLESS)
-	log_trace(LOG_COMP_DB, "dbpushdatabase: old=%p new=%p stack_depth=%d",
-	        (void*)databasedata,
-	        (void*)hdatabase,
-	        topdatabasestack);
-#endif
-
-	if (hdatabase != nil)
-		databasedata = hdatabase;
-
-	db_sync_use64_to_current_db();
-
-	return (true);
-	} /*dbpushdatabase*/
-		
-
-boolean dbpopdatabase (void) {
-
-	if (topdatabasestack <= 0)
-		return (false);
-
-#if defined(FRONTIER_HEADLESS)
-	log_trace(LOG_COMP_DB, "dbpopdatabase: old=%p restored=%p stack_depth=%d",
-	        (void*)databasedata,
-	        (void*)databasestack[topdatabasestack - 1],
-	        topdatabasestack);
-#endif
-
-	databasedata = databasestack [--topdatabasestack];
-	db_sync_use64_to_current_db();
-
-	return (true);
-	} /*dbpopdatabase*/
-
-/* Context-aware push/pop to avoid leaking mode/handle changes. */
-boolean dbpushdatabase_context(const db_context *context, hdldatabaserecord hdatabase) {
-    db_context_guard guard;
-    db_context_guard_enter(context, &guard);
-    boolean ok = dbpushdatabase(hdatabase);
-    db_context_guard_exit(&guard);
-    return ok;
-}
-
-boolean dbpopdatabase_context(const db_context *context) {
-    db_context_guard guard;
-    db_context_guard_enter(context, &guard);
-    boolean ok = dbpopdatabase();
-    db_context_guard_exit(&guard);
-    return ok;
-}
 
 
 /* Scope Save As operations onto the destination handle without mutating caller globals. */

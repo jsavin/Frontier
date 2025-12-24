@@ -43,6 +43,21 @@ boolean pictverbsetdirty (hdlexternalvariable h, boolean fldirty) {
     return false;
 }
 
+boolean pictverbinmemory (const db_context *ctx, hdlexternalvariable h) {
+    /* Stub: mark picture as "in memory" without actually loading it.
+     * Pictures aren't used in headless mode, but we need to set the flag
+     * for migration validation. */
+    (void) ctx;
+
+    if (h == nil)
+        return false;
+
+    /* Mark as in-memory so migration validator doesn't complain */
+    (**h).flinmemory = true;
+
+    return true;
+}
+
 boolean pictverbmemorypack (hdlexternalvariable h, Handle *hpacked) {
     (void) h;
     (void) hpacked;

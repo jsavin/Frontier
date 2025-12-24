@@ -48,6 +48,7 @@
 #include "langxml.h" /*7.0b21 PBS*/
 #include "process.h"
 #include "logging.h"
+#include "db_format.h" /*Phase 2: db_context support*/
 
 #define stringerrorlist 264
 #define notimplementederror 1
@@ -2474,14 +2475,17 @@ static boolean decompilespecialtable (hdlhashtable ht, Handle *hnamevalpairs, bi
 	for (hn = (**ht).hfirstsort; hn != nil; hn = (**hn).sortedlink) {
 		
 		gethashkey (hn, attname);
-		
-		if (hdb)
-			dbpushdatabase (hdb);
-		
-		fl = copyvaluerecord ((**hn).val, &attvalue) && coercetostring (&attvalue);
-		
-		if (hdb)
-			dbpopdatabase ();
+
+		if (hdb) {
+			db_context ctx;
+			db_context_init(&ctx);
+			ctx.database = hdb;
+			fl = copyvaluerecord_internal(&ctx, (**hn).val, &attvalue) &&
+			     coercetostring(&attvalue);
+		}
+		else {
+			fl = copyvaluerecord((**hn).val, &attvalue) && coercetostring(&attvalue);
+		}
 
 		if (!fl) {
 			
