@@ -1244,48 +1244,36 @@ boolean hashflushcache (long *ctbytesneeded) {
 
 
 boolean disposehashnode (hdlhashtable ht, hdlhashnode hnode, boolean fldisposevalue, boolean fldisk) {
-	
+
+	/* 2025-12-23: No push/pop needed - disposevaluerecord uses release stack, not db read operations */
+
 	/*
 	5.1.4 dmb: take htable parameter for database setting for disk scalars
-	
+
 	2003-05-22 AR: Call hashunregisteraddressnode at the lowest level
 	possible to ensure that we don't encounter invalid hdlhashnodes
 	later when we dispose a hashtable.
 	*/
 
 	register hdlhashnode hn = hnode;
-	
+
 	/*
 	if ((**hn).ctlocks > 0) {
-		
+
 		(**hn).fldisposewhenunlocked = true;
-		
+
 		return (false);
 		}
 	*/
 
 
 	if (fldisposevalue) {
-		
-		boolean flneeddatabase = (fldisk && (**hn).val.fldiskval);
-		hdldatabaserecord hdb = nil;
-
-		if (flneeddatabase) {
-			
-			hdb = tablegetdatabase (ht);
-
-			if (hdb)
-				dbpushdatabase (hdb);
-			}
 
 		disposevaluerecord ((**hn).val, fldisk);
-		
-		if (flneeddatabase && hdb)
-			dbpopdatabase ();
 		}
 
 	disposehandle ((Handle) hn);
-	
+
 	return (true);
 	} /*disposehashnode*/
 
@@ -2047,95 +2035,81 @@ void hashsetlocality (tyvaluerecord *val, boolean fllocal) {
 
 
 boolean hashassign (const bigstring bs, tyvaluerecord val) {
-	
+
+	/* 2025-12-23: No push/pop needed - disposevaluerecord uses release stack, not db read operations */
+
 	/*
-	9/23/91 dmb: no longer clear fllangerror, or look at it when 
-	hashlocate returns false.  array references are implemented differently 
-	now, and hashlocate never generates errors.  clearing fllangerror can 
+	9/23/91 dmb: no longer clear fllangerror, or look at it when
+	hashlocate returns false.  array references are implemented differently
+	now, and hashlocate never generates errors.  clearing fllangerror can
 	have the side effect of hiding an error condition unexpectedly.
-	
-	5.0b17 dmb: if we're assigning a tmp external, claim the data like 
+
+	5.0b17 dmb: if we're assigning a tmp external, claim the data like
 	a normal tmp. don't copy the data, clean fltmpdata instead. really, our
 	caller should be exempting from the tmp stack, but this close to shipping
 	let's not assume more than we have to
 
-	5.0.1b1 dmb: the b17 change broke stuff, because the object may be in 
-	another table's temp stack. Our caller is responsible for exempting 
-	anything assinged into a table. we just need to make sure that the 
+	5.0.1b1 dmb: the b17 change broke stuff, because the object may be in
+	another table's temp stack. Our caller is responsible for exempting
+	anything assinged into a table. we just need to make sure that the
 	fltmpstack flag is clear for _any_ object we assign to a hashnode
 
 	5.0.1b2 dmb: when disposing a value, set fldisk false for local table items
-	
+
 	5.0.2b13 dmb: set fltmpdata false & call hashsetlocality before hashinsert case
 	*/
-	
+
 	hdlhashnode hnode, hprev;
 	tyvaluerecord existingval;
 	boolean fllocal = (**currenthashtable).fllocaltable;
-	
+
 	/*
 	fllangerror = false;
 	*/
-	
+
 	if (val.fltmpdata) { /*val doesn't own it's data*/
-		
+
 		if (val.fltmpstack)
 			val.fltmpdata = false;
 		else
 			if (!copyvaluedata (&val))
 				return (false);
 		}
-	
+
 	val.fltmpstack = false; // 5.0.1: caller is responsible for actually removing it
-	
+
 	//if (val.valuetype == externalvaluetype) // 5.0.2: localness of tables must match parent
 		hashsetlocality (&val, fllocal);
-	
+
 	if (!hashlocate (bs, &hnode, &hprev)) { /*the name doesn't exist or is invalid*/
-		
+
 		/*just an undefined variable*/
-		
+
 		return (hashinsert (bs, val));
 		}
-	
+
 	existingval = (**hnode).val;
-	
+
 	if (fllanghashassignprotect) { /*protect externals from being smashed by assignment*/
-		
+
 		if ((existingval.valuetype == externalvaluetype) && (val.valuetype != externalvaluetype)) {
 			bigstring bstype;
-			
+
 			langexternaltypestring ((hdlexternalhandle) existingval.data.externalvalue, bstype);
-			
+
 			lang2paramerror (badexternalassignmenterror, bstype, bs);
-			
+
 			return (false);
 			}
 		}
-	
-	/*carefully nuke existing value*/ {
-		
-		boolean flneeddatabase = (!fllocal && existingval.fldiskval);
-		hdldatabaserecord hdb = nil;
 
-		if (flneeddatabase) {
-			
-			hdb = tablegetdatabase (currenthashtable);
+	/*carefully nuke existing value*/
+	disposevaluerecord (existingval, !fllocal);
 
-			if (hdb)
-				dbpushdatabase (hdb);
-			}
-
-		disposevaluerecord (existingval, !fllocal);
-		
-		if (flneeddatabase && hdb)
-			dbpopdatabase ();
-		}
-	
 	(**hnode).val = val;
-	
+
 	langsymbolchanged (currenthashtable, bs, hnode, true); /*value changed*/
-	
+
 	return (true);
 	} /*hashassign*/
 
@@ -2154,18 +2128,20 @@ boolean hashtableassign (hdlhashtable htable, const bigstring bs, tyvaluerecord 
 	} /*hashtableassign*/
 
 
-boolean hashresolvevalue (hdlhashtable htable, hdlhashnode hnode) {
-	
+static boolean hashresolvevalue_context (const db_context *ctx, hdlhashtable htable, hdlhashnode hnode) {
+
+	/* 2025-12-23: Refactored to use explicit context instead of push/pop pattern */
+
 	/*
-	3/19/92 dmb: try to resolve an address -- it hasn't been referenced since 
+	3/19/92 dmb: try to resolve an address -- it hasn't been referenced since
 	it was unpacked.
-	
+
 	4.0.2b1 dmb: handle disk-based scalar values. load the value and release
-	the dbaddress. added htable parameter so we can potentially dirty it 
-	
+	the dbaddress. added htable parameter so we can potentially dirty it
+
 	5.0a23 dmb: on address resolution failure, reset flunresolvedaddress to true
-	
-	5.0b7 dmb: don't set flunresolvedaddress to true on failure. It breaks 
+
+	5.0b7 dmb: don't set flunresolvedaddress to true on failure. It breaks
 	the table display. don't know why exactly.
 
 	5.1.4 dmb: no longer resolve addresses automatically. It's now a valid state.
@@ -2173,24 +2149,24 @@ boolean hashresolvevalue (hdlhashtable htable, hdlhashnode hnode) {
 
 	5.1.4 dmb: dbpushreleasestack must be while database is pushed
 	*/
-	
+
 	register hdlhashnode hn = hnode;
 	boolean fl;
-	
+
 	if (htable == pathstable && (**hn).flunresolvedaddress) {
 
 		(**hn).flunresolvedaddress = false; /*clear now to avoid potential recursion*/
-		
+
 		lockhandle ((Handle) hn); /*08/02/2000 AR: so it's safe to pass &(**hn).val to setaddressencoding*/
-		
+
 		disablelangerror ();
-		
+
 		fl = setaddressencoding (&(**hn).val, false);
-		
+
 		enablelangerror ();
-	
+
 		unlockhandle ((Handle) hn);
-		
+
 		if (!fl) {
 #if defined(FRONTIER_HEADLESS)
 			bigstring bspathtemp;
@@ -2213,29 +2189,35 @@ boolean hashresolvevalue (hdlhashtable htable, hdlhashnode hnode) {
 	if ((**hn).val.fldiskval) {
 		Handle hbinary;
 		hdldatabaserecord hdb = tablegetdatabase (htable);
-		
-		if (hdb)
-			dbpushdatabase (hdb);
-		
-		fl = dbrefhandle ((**hn).val.data.diskvalue, &hbinary);
-		
+
+		db_context context_local;
+		if (ctx == NULL && hdb != NULL) {
+			context_local.database = hdb;
+			ctx = &context_local;
+		}
+
+		fl = dbrefhandle_context (ctx, (**hn).val.data.diskvalue, &hbinary);
+
 		if (fl)
 			dbpushreleasestack ((**hn).val.data.diskvalue, (long) langgettype ((**hn).val));
-		
-		if (hdb)
-			dbpopdatabase ();
-		
+
 		if (!fl)
 			return (false);
-		
+
 		(**htable).fldirty = true;  /*dmb 6/18/96: we released disk value, must force table to be resaved*/
-		
+
 		(**hn).val.data.binaryvalue = hbinary;
-		
+
 		(**hn).val.fldiskval = false;
 		}
-	
+
 	return (true);
+	} /*hashresolvevalue_context*/
+
+
+boolean hashresolvevalue (hdlhashtable htable, hdlhashnode hnode) {
+
+	return hashresolvevalue_context (NULL, htable, hnode);
 	} /*hashresolvevalue*/
 
 
@@ -2706,13 +2688,16 @@ static boolean hashpackscalar (handlestream *s, hdlhashnode hnode, int32_t *ix, 
 
 	if ((**hnode).val.fldiskval) {	/*already a disk-based scalar. can be tricky*/
 		if (flexternalmemorypack) {
+			/* 2025-12-23: Refactored to use explicit context instead of push/pop pattern */
 			hdldatabaserecord hdb = hexternalpackdatabase;
-			if (hdb)
-				dbpushdatabase (hdb);
+			db_context context_local;
+			const db_context *ctx_to_use = NULL;
+			if (hdb != NULL) {
+				context_local.database = hdb;
+				ctx_to_use = &context_local;
+			}
 			dbaddress diskadr = (**hnode).val.data.diskvalue;
-			fl = dbrefhandle (diskadr, &hbinary);
-			if (hdb)
-				dbpopdatabase ();
+			fl = dbrefhandle_context (ctx_to_use, diskadr, &hbinary);
 			if (!fl)
 				return (false);
 			fl = hashpackbinary (s, hbinary, ix);

@@ -3017,23 +3017,12 @@ tyvaluetype langexternalgetvaluetype (OSType typeid) {
 
 
 boolean langexternalrefdata (hdlexternalvariable hv, Handle *hdata) {
+	/*
+	2025-12-23: Refactored to use explicit context instead of push/pop pattern
+	Wrapper for backward compatibility - calls context-aware variant with NULL
+	*/
 
-	boolean fl;
-
-	assert (!(**hv).flinmemory);
-
-	log_trace(LOG_COMP_EXTERNAL, "langexternalrefdata: hdatabase=%p variabledata=0x%llx (current=%p)",
-	        (void*)(**hv).hdatabase,
-	        (unsigned long long)(**hv).variabledata,
-	        (void*)databasedata);
-
-	dbpushdatabase ((**hv).hdatabase);
-
-	fl = dbrefhandle ((dbaddress) (**hv).variabledata, hdata);
-
-	dbpopdatabase ();
-
-	return (fl);
+	return langexternalrefdata_context (NULL, hv, hdata);
 	} /*langexternalrefdata*/
 
 

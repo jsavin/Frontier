@@ -1291,18 +1291,15 @@ boolean opverbcopyvalue (hdlexternalvariable hsource, hdlexternalvariable *hcopy
 		fl = opverbnew ((**hv).id, (Handle) (**hv).variabledata, hcopy);
 		}
 	else { //not in memory, unpack into new variable
-		
-		dbpushdatabase ((**hv).hdatabase);
-		
+		/* 2025-12-23: Refactored to use explicit context instead of push/pop pattern */
+
 		adr = (dbaddress) (**hv).variabledata;
-		
-		fl = dbrefhandle (adr, &hpackedoutline);
-		
-		dbpopdatabase ();
-		
-		if (!fl) 
+
+		fl = dbrefhandle_context (NULL, adr, &hpackedoutline);
+
+		if (!fl)
 			return (false);
-		
+
 		if ((**hv).flscript)
 			fl = opverbscriptmemoryunpack (hpackedoutline, nil, hcopy);
 		else
