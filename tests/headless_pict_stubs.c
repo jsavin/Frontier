@@ -71,35 +71,53 @@ boolean pictverbmemoryunpack (Handle hpacked, long *ixload, hdlexternalvariable 
     return false;
 }
 
-boolean pictverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddress) {
+boolean pictverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddress) {
+    /* Context-aware picture packing for migration.
+     *
+     * Applies format mode from context before packing, ensuring pictures are
+     * migrated with correct v7 format flags.
+     *
+     * Precondition: Picture must be in memory (caller should have called
+     * pictverbinmemory() first during materialization). This ensures we're
+     * packing actual picture data, not stale v6 addresses.
+     */
+
     if ((h == nil) || (hpacked == nil))
         return false;
 
+    /* Precondition: picture must be in memory */
+    if (!(**h).flinmemory) {
+        /* This is a programming error - caller should have loaded it */
+        return false;
+    }
+
+    /* Apply context mode if provided (for migration: sets v7 format flags) */
+    if (ctx != NULL) {
+        if (ctx->database != nil)
+            databasedata = ctx->database;
+        db_format_mode_apply(&ctx->mode);
+    }
+
+    /* Picture is in memory - assign new address and return it */
     dbaddress adr = (**h).oldaddress;
     if (adr == nildbaddress)
         adr = (dbaddress) (**h).variabledata;
-    if (adr == nildbaddress)
-        return false;
 
     db_format_mode mode = db_format_mode_current();
     if (fldatabasesaveas || mode.use_64bit_format) {
-        Handle hcopy = nil;
-        if (!dbrefhandle(adr, &hcopy))
-            return false;
-        dbaddress copy = adr;
-        boolean ok = dbassignhandle(hcopy, &copy);
-        disposehandle(hcopy);
-        if (!ok)
-            return false;
-        adr = copy;
-        if (flnewdbaddress)
-            *flnewdbaddress = true;
+        /* During migration (adapter repack), allocate new address */
+        *flnewdbaddress = true;
     } else if (flnewdbaddress) {
         *flnewdbaddress = false;
     }
 
     (**h).oldaddress = adr;
     return pushlongondiskhandle((long) adr, *hpacked);
+}
+
+boolean pictverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddress) {
+    /* Wrapper for backward compatibility - uses global mode state */
+    return pictverbpack_internal(NULL, h, hpacked, flnewdbaddress);
 }
 
 boolean pictverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *hv) {
