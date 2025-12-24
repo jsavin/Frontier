@@ -3691,6 +3691,15 @@ boolean hashpacktable_internal (const db_context *ctx, hdlhashtable htable, bool
 	} else {
 		db_context_init(&working_context);
 		use_64bit = db_format_mode_current().use_64bit_format;
+
+		/* CRITICAL MIGRATION FIX: During migration (adapter active), force v7 format
+		 * even if mode stack is corrupted. This prevents legacy format tables from
+		 * being written to v7 databases during migration due to mode stack issues.
+		 * See: planning/architectural_decision_records/MODE_STACK_REFACTOR_PLAN.md */
+		if (!use_64bit && db_format_adapter_is_active()) {
+			use_64bit = true;
+			working_context.mode.use_64bit_format = true;
+		}
 	}
 
 #if defined(FRONTIER_HEADLESS)

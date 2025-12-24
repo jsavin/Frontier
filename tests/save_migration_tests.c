@@ -163,8 +163,8 @@ int main(void) {
     boolean table_format_valid = false;
     FILE *test_db = fopen(migrated_path, "rb");
     if (test_db != NULL) {
-        /* Read the root table address from the database header (at offset 20 for v7) */
-        fseek(test_db, 20, SEEK_SET);
+        /* Read the root table address from the database header (views[0] at offset 16 for v7) */
+        fseek(test_db, 16, SEEK_SET);
         unsigned char addr_bytes[8];
         if (fread(addr_bytes, 1, 8, test_db) == 8) {
             /* v7 databases use big-endian 64-bit addresses */

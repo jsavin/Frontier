@@ -2116,21 +2116,26 @@ void db_format_mode_apply(const db_format_mode *mode) {
         return;
     }
 
-    g_mode_state = *mode;
-    g_legacy_adapter_force_repack = mode->adapter_repack;
+    /* CRITICAL MIGRATION FIX: Block invalid v6+adapter mode combination.
+     * During migration, adapter_repack=1 means we're converting v6->v7. If someone
+     * tries to apply use_64bit=0 during this time, it will write v6 format to v7
+     * database. Force use_64bit=1 when adapter is active.
+     * See: planning/architectural_decision_records/MODE_STACK_REFACTOR_PLAN.md */
+    db_format_mode fixed_mode = *mode;
 #if defined(FRONTIER_HEADLESS)
-    if (mode->use_64bit_format == 0 && mode->adapter_repack == 1) {
+    if (fixed_mode.use_64bit_format == 0 && fixed_mode.adapter_repack == 1) {
         static int warn_count = 0;
         if (warn_count++ < 3) {
-            log_warn(LOG_COMP_DB, "WARNING: db_format_mode_apply use_64bit=0 but adapter_repack=1!");
-            log_warn(LOG_COMP_DB, "  This will cause v6 addresses to be written during migration!");
-            /* Print call location hint */
-            log_warn(LOG_COMP_DB, "  Check who called db_format_mode_apply with this invalid mode");
+            log_warn(LOG_COMP_DB, "WARNING: db_format_mode_apply blocked invalid v6+adapter mode!");
+            log_warn(LOG_COMP_DB, "  Forcing use_64bit=1 to prevent v6 format in v7 database");
         }
+        fixed_mode.use_64bit_format = true;
     }
     log_trace(LOG_COMP_DB, "db_format_mode_apply use_64bit=%d adapter_repack=%d drop_cancoon=%d",
-              (int) mode->use_64bit_format, (int) mode->adapter_repack, (int) mode->drop_cancoon);
+              (int) fixed_mode.use_64bit_format, (int) fixed_mode.adapter_repack, (int) fixed_mode.drop_cancoon);
 #endif
+    g_mode_state = fixed_mode;
+    g_legacy_adapter_force_repack = fixed_mode.adapter_repack;
 }
 
 void db_format_mode_push(const db_format_mode *mode) {
