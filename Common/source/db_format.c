@@ -1756,6 +1756,15 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     if (!langhash_materialize_disk_values(hroot))
         goto cleanup;
 
+    /* Apply adapter_repack mode globally before materialization so tableverbinmemory clears oldaddress.
+     * This ensures external table variables will have oldaddress=nil after being loaded into memory,
+     * forcing fresh allocation in v7 format instead of reusing v6 addresses.
+     * Keep use_64bit_format=true even though we're reading v6 data - the mode guard will force it anyway. */
+    db_format_mode materialize_mode = source_context.mode;
+    materialize_mode.use_64bit_format = true;  /* Force v7 mode for consistency */
+    materialize_mode.adapter_repack = true;     /* Clear oldaddress during materialization */
+    db_format_mode_apply(&materialize_mode);
+
     fail_step = "force_materialize_external_tables(root)";
     if (!db_format_force_materialize_external_tables(hroot, &source_context))
         goto cleanup;
