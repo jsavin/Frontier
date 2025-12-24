@@ -3704,7 +3704,7 @@ boolean hashpacktable_internal (const db_context *ctx, hdlhashtable htable, bool
 
 #if defined(FRONTIER_HEADLESS)
 	db_format_mode current_mode = db_format_mode_current();
-log_trace(LOG_COMP_HASH, "hashpacktable_internal use_64bit=%d (ctx=%p ctx_mode=%d current_mode: use_64bit=%d adapter_repack=%d)", (int) use_64bit, (void *) ctx, ctx ? (int) ctx->mode.use_64bit_format : -1, (int) current_mode.use_64bit_format, (int) current_mode.adapter_repack);
+log_debug(LOG_COMP_HASH, "hashpacktable_internal use_64bit=%d (ctx=%p ctx_mode=%d current_mode: use_64bit=%d adapter_repack=%d)", (int) use_64bit, (void *) ctx, ctx ? (int) ctx->mode.use_64bit_format : -1, (int) current_mode.use_64bit_format, (int) current_mode.adapter_repack);
 #endif
 	if (use_64bit) {
 		/* v7 mode: Write v0x05 with 64-bit timestamps */
@@ -3720,7 +3720,7 @@ log_trace(LOG_COMP_HASH, "hashpacktable_internal use_64bit=%d (ctx=%p ctx_mode=%
 		db_format_write_be64(&header.timelastsave, (uint64_t) (**htable).timelastsave);
 
 #if defined(FRONTIER_HEADLESS)
-		log_trace(LOG_COMP_HASH, "hashpacktable writing v7 header version=%d use64=1", tablediskversion);
+		log_debug(LOG_COMP_HASH, "hashpacktable writing v7 header version=%d use64=1", tablediskversion);
 #endif
 
 		#ifdef xmlfeatures
@@ -3751,6 +3751,10 @@ log_trace(LOG_COMP_HASH, "hashpacktable_internal use_64bit=%d (ctx=%p ctx_mode=%
 		/* Truncate 64-bit timestamps to 32-bit for v6 compatibility */
 		header_v4.timecreated = (uint32_t) host_to_disk_int32((int32_t) (**htable).timecreated);
 		header_v4.timelastsave = (uint32_t) host_to_disk_int32((int32_t) (**htable).timelastsave);
+
+#if defined(FRONTIER_HEADLESS)
+		log_debug(LOG_COMP_HASH, "hashpacktable writing v4 header version=0x04 use64=0 (ctx=%p ctx_mode=%d)", (void *) ctx, ctx ? (int) ctx->mode.use_64bit_format : -1);
+#endif
 
 		#ifdef xmlfeatures
 			if ((**htable).flxml)

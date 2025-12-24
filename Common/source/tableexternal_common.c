@@ -344,7 +344,9 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
                 adr = normalized;
             }
         } else {
-            log_error(LOG_COMP_TABLE, "dbnormalizeaddress failed for adr=0x%llx", (unsigned long long) adr);
+            log_error(LOG_COMP_TABLE, "dbnormalizeaddress failed for adr=0x%llx hv=%p (**hv).oldaddress=0x%llx flinmemory=%d",
+                    (unsigned long long) adr, (void *)hv,
+                    (unsigned long long) (**hv).oldaddress, (int)(**hv).flinmemory);
         }
     }
 
