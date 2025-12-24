@@ -30,6 +30,8 @@
 #include "tableinternal.h"
 #include "threads.h"
 #include "tableverbs.h"
+#include "opverbs.h"
+#include "wpverbs.h"
 #include "cancoon.h"
 #include "cancooninternal.h"
 #include "file.h"
@@ -1466,14 +1468,6 @@ static boolean db_format_force_materialize_external_tables_recursive(
         }
 
         int var_id = (**hv).id;
-
-        if (var_id != idtableprocessor) {
-#if defined(FRONTIER_HEADLESS)
-            log_debug(LOG_COMP_DB, "    external: id=%d skip: not idtableprocessor", var_id);
-#endif
-            continue;
-        }
-
         external_count++;
         dbaddress v6_adr = (dbaddress) (**hv).variabledata;
         boolean was_in_memory = (**hv).flinmemory;
@@ -1485,21 +1479,46 @@ static boolean db_format_force_materialize_external_tables_recursive(
 
         /* Load into memory if not already loaded */
         if (!was_in_memory) {
-#if defined(FRONTIER_HEADLESS)
-            log_debug(LOG_COMP_DB, "    calling tableverbinmemory for '%.*s'",
-                      (int) bsname[0], (char *) &bsname[1]);
-#endif
+            boolean loaded = false;
 
-            if (!tableverbinmemory(NULL, hv, hnode)) {
+            /* Call appropriate verbinmemory function based on external type */
+            if (var_id == idtableprocessor) {
 #if defined(FRONTIER_HEADLESS)
-                log_error(LOG_COMP_DB, "    ERROR: tableverbinmemory failed for '%.*s'",
+                log_debug(LOG_COMP_DB, "    calling tableverbinmemory for '%.*s'",
                           (int) bsname[0], (char *) &bsname[1]);
+#endif
+                loaded = tableverbinmemory(NULL, hv, hnode);
+            } else if (var_id == idoutlineprocessor) {
+#if defined(FRONTIER_HEADLESS)
+                log_debug(LOG_COMP_DB, "    calling opverbinmemory for '%.*s'",
+                          (int) bsname[0], (char *) &bsname[1]);
+#endif
+                loaded = opverbinmemory(NULL, hv);
+            } else if (var_id == idwordprocessor) {
+#if defined(FRONTIER_HEADLESS)
+                log_debug(LOG_COMP_DB, "    calling wpverbinmemory for '%.*s'",
+                          (int) bsname[0], (char *) &bsname[1]);
+#endif
+                loaded = wpverbinmemory(NULL, hv);
+            } else {
+#if defined(FRONTIER_HEADLESS)
+                log_debug(LOG_COMP_DB, "    skip: unsupported external type id=%d", var_id);
+#endif
+                /* For other types (script, pict, menu, etc.), we don't have verbinmemory functions yet.
+                 * These will need to be handled when those external types are fully implemented. */
+                continue;
+            }
+
+            if (!loaded) {
+#if defined(FRONTIER_HEADLESS)
+                log_error(LOG_COMP_DB, "    ERROR: verbinmemory failed for '%.*s' id=%d",
+                          (int) bsname[0], (char *) &bsname[1], var_id);
 #endif
                 return false;
             }
 
 #if defined(FRONTIER_HEADLESS)
-            log_debug(LOG_COMP_DB, "    tableverbinmemory succeeded, checking flinmemory");
+            log_debug(LOG_COMP_DB, "    verbinmemory succeeded, checking flinmemory");
 #endif
 
             /* Verify it's now in memory */
@@ -1678,7 +1697,10 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     source_context.database = databasedata;
 
     db_context_init(&dest_context);
-    dest_context.mode = source_context.mode;
+    /* Use v7 modern format for destination, not source's legacy v6 format.
+     * Fixes Issue #123: prevents writing v4 table headers into v7 database. */
+    db_format_mode modern_mode = {true, false, false};  /* use_64bit_format=true */
+    dest_context.mode = modern_mode;
     dest_context.database = nil;
 
     dbgetview(cancoonview, &view_address);
@@ -1790,6 +1812,8 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     if (have_dest_context) {
         if (save_ctx.database != nil)
             databasedata = save_ctx.database;
+        /* Clear mode stack before applying v7 mode to prevent stacked v6 mode from overriding */
+        g_mode_depth = 0;
         db_format_mode_apply(&save_ctx.mode);
         db_saveas_state_apply(&save_ctx.saveas);
     }
