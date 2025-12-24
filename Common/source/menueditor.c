@@ -525,71 +525,75 @@ static boolean mescriptfontchangeroutine (void) {
 	} /*mescriptfontchangeroutine*/
 
 
-boolean meloadscriptoutline (hdlmenurecord hm, hdlheadrecord hnode, hdloutlinerecord *houtline, boolean *fljustloaded) {
-	
+static boolean meloadscriptoutline_context (const db_context *ctx, hdlmenurecord hm, hdlheadrecord hnode, hdloutlinerecord *houtline, boolean *fljustloaded) {
+
+	/* 2025-12-23: Refactored to use explicit context instead of push/pop pattern */
+
 	/*
 	load in the outline linked to the indicated headrecord, return false if there was
 	an error loading the outline.
-	
+
 	if *houtline returns as nil, and the function returns true, there's no script linked
 	in -- if you're zooming a window you want to create a new linked script.
-	
+
 	12/13/90 dmb: added fljustloaded parameter for safe unloading.
 
 	7.0b26 PBS: menubar scripts get fat headlines. Horizontal scrolling is disabled.
 	*/
-	
+
 	register boolean fl;
 	dbaddress adr;
 	Handle hpackedoutline;
 	long ixload = 0;
-	
+
 	*fljustloaded = false;
-	
+
 	megetscriptoutline (hnode, houtline); /*is there a dirty copy already in memory?*/
-	
+
 	if (*houtline != nil) { /*a dirty script is already linked in*/
-	
+
 		opsetdisplaydefaults (*houtline);
-		
+
 		return (true);
 		}
-	
+
 	megetscriptaddress (hnode, &adr);
-	
+
 	if (adr == nildbaddress) {
-		
+
 		*houtline = nil; /*no linked script*/
-		
+
 		return (true);
 		}
-	
-	dbpushdatabase (megetdatabase (hm));
-	
+
 	fl = dbrefhandle (adr, &hpackedoutline);
-	
-	dbpopdatabase ();
 
 	if (!fl) /*error loading from database*/
 		return (false);
 
-	
+
 	fl = opunpack (hpackedoutline, &ixload, houtline);
 
 	(***houtline).flfatheadlines = true; /*7.0b26 PBS: fat headlines in menubar scripts.*/
 
 	(***houtline).flhorizscrolldisabled = true; /*7.0b26 PBS: horizontal scrolling is disabled.*/
-	
+
 	disposehandle (hpackedoutline);
-	
+
 	if (fl) {
-	
+
 		opsetdisplaydefaults (*houtline);
-		
+
 		*fljustloaded = true;
 		}
-	
+
 	return (fl);
+	} /*meloadscriptoutline_context*/
+
+
+boolean meloadscriptoutline (hdlmenurecord hm, hdlheadrecord hnode, hdloutlinerecord *houtline, boolean *fljustloaded) {
+
+	return meloadscriptoutline_context (NULL, hm, hnode, houtline, fljustloaded);
 	} /*meloadscriptoutline*/
 
 
@@ -1779,24 +1783,28 @@ boolean menewmenurecord (hdlmenurecord *hmenurecord) {
 	} /*menewmenurecord*/
 
 
-void medisposemenurecord (hdlmenurecord hmenurecord, boolean fldisk) {
-	
+static void medisposemenurecord_context (const db_context *ctx, hdlmenurecord hmenurecord, boolean fldisk) {
+
+	/* 2025-12-23: Refactored to use explicit context instead of push/pop pattern */
+
 	register hdlmenurecord hm = hmenurecord;
-	
+
 	medisposemenubar ((**hm).hmenustack);
-	
+
 	opdisposeoutline ((**hm).menuoutline, fldisk);
-	
+
 	if (fldisk) {
-	
-		dbpushdatabase (megetdatabase (hm));
 
 		dbpushreleasestack ((**hm).adroutline, outlinevaluetype);
-
-		dbpopdatabase ();
 		}
-	
+
 	disposehandle ((Handle) hm);
+	} /*medisposemenurecord_context*/
+
+
+void medisposemenurecord (hdlmenurecord hmenurecord, boolean fldisk) {
+
+	medisposemenurecord_context (NULL, hmenurecord, fldisk);
 	} /*medisposemenurecord*/
 
 

@@ -85,81 +85,72 @@ boolean claylookupvalue (const tybrowserspec *fs, tyvaluerecord *val, hdlhashnod
 	} /*claylookupvalue*/
 
 	
-boolean claycopyfile (const tybrowserspec *fsource, const tybrowserspec *fdest) {
-	
+static boolean claycopyfile_context (const db_context *ctx_source, const db_context *ctx_dest, const tybrowserspec *fsource, const tybrowserspec *fdest) {
+
 	/*
+	2025-12-23: Refactored to use explicit context instead of push/pop pattern
+
 	5.1b21 dmb: push/pop databases
-	
+
 	5.1.4 dmb: hook, trap errors
 	*/
 
 	tyvaluerecord val;
 	boolean fl;
 	Handle hpacked;
-	hdldatabaserecord hdatabase;
 	langerrormessagecallback savecallback;
 	ptrvoid saverefcon;
 	bigstring bspackerror;
 	hdlhashnode hnode;
-	
+
 	fl = claylookupvalue (fsource, &val, &hnode);
-	
+
 	if (!fl)
 		return (true); /*not fatal error; false is returned to caller*/
-	
+
 	if (!flscriptrunning)
 		langhookerrors ();
-	
-	langtraperrors (bspackerror, &savecallback, &saverefcon);
-	
-	hdatabase = (*fsource).vRefNum;
 
-	if (hdatabase)
-		dbpushdatabase (hdatabase);
-	
+	langtraperrors (bspackerror, &savecallback, &saverefcon);
+
 	fl = langpackvalue (val, &hpacked, hnode);
-	
-	if (hdatabase)
-		dbpopdatabase ();
 
 	if (!fl) /*error packing -- probably out of memory*/
 		goto exit;
-	
-	hdatabase = (*fdest).vRefNum;
-	
-	if (hdatabase)
-		dbpushdatabase (hdatabase);
-	
+
 	fl = langunpackvalue (hpacked, &val);
-	
-	if (hdatabase)
-		dbpopdatabase ();
 
 	disposehandle (hpacked);
-	
+
 	opstartinternalchange ();
-	
+
 	if (fl) {
-		
+
 		fl = hashtableassign ((*fdest).parID, (*fdest).name, val);
-		
+
 		if (!fl)
 			disposevaluerecord (val, true);
 		}
-	
+
 	opendinternalchange ();
-	
+
 exit:
-	
+
 	languntraperrors (savecallback, saverefcon, !fl);
-	
+
 	if (!flscriptrunning)
 		langunhookerrors ();
-	
+
 	if (!fl)
 		shellerrormessage (bspackerror);
-	
+
 	return (fl);
+	} /*claycopyfile_context*/
+
+
+boolean claycopyfile (const tybrowserspec *fsource, const tybrowserspec *fdest) {
+
+	return claycopyfile_context (NULL, NULL, fsource, fdest);
 	} /*claycopyfile*/
 
 

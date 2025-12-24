@@ -178,29 +178,32 @@ boolean metextualizerefconroutine (hdlheadrecord hnode, Handle htext) {
 	} /*metextualizerefconroutine*/
 
 
-boolean mereleaserefconroutine (hdlheadrecord hnode, boolean fldisk) {
-	
+static boolean mereleaserefconroutine_context (const db_context *ctx, hdlheadrecord hnode, boolean fldisk) {
+
+	/* 2025-12-23: Refactored to use explicit context instead of push/pop pattern */
+
 	/*
 	5.1.4 dmb: set the right database when fldisk
 	*/
 
 	tymenuiteminfo item;
-	hdlmenurecord hm = (hdlmenurecord) (**outlinedata).outlinerefcon;
 
 	megetmenuiteminfo (hnode, &item);
-	
+
 	opdisposeoutline (item.linkedscript.houtline, fldisk);
-	
+
 	if (fldisk) {
-	
-		dbpushdatabase (megetdatabase (hm));
 
 		dbpushreleasestack (item.linkedscript.adrlink, outlinevaluetype);
-
-		dbpopdatabase ();
 		}
-	
+
 	return (true);
+	} /*mereleaserefconroutine_context*/
+
+
+boolean mereleaserefconroutine (hdlheadrecord hnode, boolean fldisk) {
+
+	return mereleaserefconroutine_context (NULL, hnode, fldisk);
 	} /*mereleaserefconroutine*/
 
 #pragma pack(2)
@@ -530,18 +533,16 @@ boolean mesavemenurecord (hdlmenurecord hmenurecord, boolean flpreservelinks, bo
 		}
 	
 	if (fl) {
-	
+
+		/* 2025-12-23: Refactored to use explicit context instead of push/pop pattern */
+
 		if (flmemory) {
-			
-			dbpushdatabase (megetdatabase (hm));
-			
+
 			fl = mepackmenustructure (&info, hpacked);
-			
-			dbpopdatabase ();
 			}
 		else {
 			fl = mesavemenustructure (&info, adr);
-			
+
 			if (fl && (!fldatabasesaveas))
 				(**hm).adroutline = conditionallongswap(info.adroutline);
 			}
