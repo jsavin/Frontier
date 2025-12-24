@@ -162,8 +162,7 @@ static boolean menuverbinmemory (hdlmenuvariable hvariable) {
 	/*
 	5.0a18 dmb: support database linking
 
-	2025-12-23: TODO Phase 2 - Refactor to use explicit context instead of push/pop pattern
-	This requires creating meloadmenurecord_context and meloadoutline_context variants first.
+	Phase 2 refactored: Use explicit context instead of push/pop pattern.
 	*/
 
 	register hdlmenuvariable hv = hvariable;
@@ -175,19 +174,19 @@ static boolean menuverbinmemory (hdlmenuvariable hvariable) {
 		return (true);
 
 #if defined(FRONTIER_HEADLESS)
-	log_debug(LOG_COMP_OP, "menuverbinmemory: about to push hdatabase=%p (current=%p) variabledata=0x%llx",
+	log_debug(LOG_COMP_OP, "menuverbinmemory: loading menu from hdatabase=%p (current=%p) variabledata=0x%llx",
 	        (void*)(**hv).hdatabase,
 	        (void*)databasedata,
 	        (unsigned long long)(**hv).variabledata);
 #endif
 
-	dbpushdatabase ((**hv).hdatabase);
+	db_context ctx;
+	db_context_init(&ctx);
+	ctx.database = (**hv).hdatabase;
 
 	adr = (dbaddress) (**hv).variabledata;
 
-	fl = meloadmenurecord (adr, &hmenurecord);
-
-	dbpopdatabase ();
+	fl = meloadmenurecord_internal(&ctx, adr, &hmenurecord);
 
 	if (!fl)
 		return (false);
