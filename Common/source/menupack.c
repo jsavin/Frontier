@@ -865,26 +865,51 @@ boolean meunpackmenustructure (Handle hpacked, hdlmenurecord *hmenurecord) {
 }
 
 
-boolean meloadmenurecord (dbaddress adr, hdlmenurecord *hmenurecord) { 
-	
+boolean meloadmenurecord_internal (const db_context *ctx, dbaddress adr,
+                                    hdlmenurecord *hmenurecord) {
+	/*
+	Load menu record with explicit database context.
+
+	Preconditions:
+	  - ctx specifies database and format mode
+	  - adr is valid menu record address
+
+	Postconditions:
+	  - *hmenurecord contains loaded menu structure
+	  - Returns true on success, false on failure
+	*/
+
 	hdloutlinerecord houtline;
 	tysavedmenuinfo info;
-	
+
+	if (!ctx) {
+		db_context default_ctx;
+		db_context_init(&default_ctx);
+		return meloadmenurecord_internal(&default_ctx, adr, hmenurecord);
+	}
+
 	if (!dbreference (adr, sizeof (info), &info))
 		return (false);
-	
-	if (!meloadoutline (conditionallongswap (info.adroutline), &houtline))
+
+	if (!meloadoutline_internal (ctx, conditionallongswap (info.adroutline), &houtline))
 		return (false);
-	
+
 	if (!mesetupmenurecord (&info, houtline, hmenurecord)) {
-		
+
 		opdisposeoutline (houtline, false);
-		
+
 		return (false);
-		}
-	
+	}
+
 	return (true);
-	} /*meloadmenurecord*/
+} /*meloadmenurecord_internal*/
+
+
+boolean meloadmenurecord (dbaddress adr, hdlmenurecord *hmenurecord) {
+	db_context ctx;
+	db_context_init(&ctx);
+	return meloadmenurecord_internal(&ctx, adr, hmenurecord);
+} /*meloadmenurecord*/
 
 
 static void medisposescrap (hdloutlinerecord houtline) {
