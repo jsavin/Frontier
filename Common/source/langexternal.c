@@ -898,7 +898,7 @@ boolean langexternalpack_internal (const db_context *ctx, hdlexternalhandle h, H
 			break;
 
 		case idmenuprocessor:
-			ok = menuverbpack (hv, hpacked, flnewdbaddress);
+			ok = menuverbpack_internal (&working_context, hv, hpacked, flnewdbaddress);
 			break;
 
 		case idpictprocessor:

@@ -78,34 +78,36 @@ static boolean headless_menu_dup_block(dbaddress source, dbaddress *dest) {
     return true;
 }
 
-boolean menuverbpack (hdlexternalvariable h, Handle *hp, boolean *flnew) {
-    if ((h == nil) || (hp == nil) || (*hp == nil))
+boolean menuverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handle *hp, boolean *flnew) {
+    /* Context-aware menu packing for migration.
+     * During headless migration, menu externals are preserved as database references
+     * without materializing their data. We just pack the v6 address as-is. */
+
+    (void)ctx;  /* Context not needed for address passthrough */
+
+    if ((h == nil) || (hp == nil))
         return false;
 
     dbaddress adr = (**h).oldaddress;
     if (adr == nildbaddress)
         adr = (dbaddress) (**h).variabledata;
     if (adr == nildbaddress) {
-        fprintf(stderr, "[headless] menuverbpack nil address\n");
         if (flnew)
             *flnew = false;
         return false;
     }
 
-    db_format_mode mode = db_format_mode_current();
-    if (fldatabasesaveas || mode.use_64bit_format) {
-        dbaddress copy = adr;
-        if (!headless_menu_dup_block(adr, &copy))
-            return false;
-        adr = copy;
-        if (flnew)
-            *flnew = true;
-    } else if (flnew) {
-        *flnew = ((**h).oldaddress != adr);
-    }
+    /* During migration, mark as new address (will be allocated in destination) */
+    if (flnew)
+        *flnew = true;
 
     (**h).oldaddress = adr;
     return pushlongondiskhandle((long) adr, *hp);
+}
+
+boolean menuverbpack (hdlexternalvariable h, Handle *hp, boolean *flnew) {
+    /* Wrapper for backward compatibility - uses global mode state */
+    return menuverbpack_internal(NULL, h, hp, flnew);
 }
 
 boolean menuverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *h) {
@@ -122,5 +124,12 @@ boolean menuverbfindusedblocks (hdlexternalvariable h, bigstring bspath) { (void
 boolean menuverbfind (hdlexternalvariable h, boolean *flzoom) { (void)h; if (flzoom) *flzoom=false; return false; }
 boolean menuverbdispose (hdlexternalvariable h, boolean fldisk) { (void)h;(void)fldisk; return true; }
 boolean menuverbnew (Handle hdata, hdlexternalvariable *hv) { (void)hdata;(void)hv; return false; }
+boolean menuverbinmemory_context (const db_context *ctx, hdlexternalvariable hvariable) {
+    /* Menu externals are not materialized during headless migration.
+       Mark as "in memory" to skip actual loading, but keep the address for packing. */
+    (void)ctx;
+    (**hvariable).flinmemory = true;
+    return true;
+}
 
 #endif /* FRONTIER_HEADLESS */
