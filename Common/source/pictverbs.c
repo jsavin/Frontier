@@ -197,54 +197,71 @@ static void pictverbcheckwindowrect (hdlpictrecord hpict) {
 	
 
 
-static boolean pictverbinmemory (hdlpictvariable hv) {
+boolean pictverbinmemory (const db_context *ctx, hdlexternalvariable hv) {
 
 	/*
 	5.0a18 dmb: support database linking
+	2025-12-23: Added explicit context parameter - uses ctx for reading, not global mode
+	              Changed parameter to hdlexternalvariable (not hdlpictvariable) to match
+	              opverbinmemory and wpverbinmemory patterns, since typictvariable has
+	              incompatible struct layout (missing flpacked/flscript/flsystemtable bits)
 	*/
-	
+
 	register boolean fl;
-	dbaddress adr;
+	dbaddress adr;  /* DISK ADDRESS from v6 or v7 database */
 	Handle hpackedpict;
 	long ix = 0;
 	hdlpictrecord hpict;
-	
+
+#if defined(FRONTIER_HEADLESS)
+	log_debug(LOG_COMP_OP, "pictverbinmemory: ENTER hv=%p", (void*)hv);
+#endif
+
+	if (hv == nil) {
+#if defined(FRONTIER_HEADLESS)
+		log_error(LOG_COMP_OP, "pictverbinmemory: NULL pointer");
+#endif
+		return (false);
+	}
+
 	if ((**hv).flinmemory) /*nothing to do, it's already in memory*/
 		return (true);
 
+	adr = (dbaddress) (**hv).variabledata;  /* DISK ADDRESS - format depends on source DB */
+
 #if defined(FRONTIER_HEADLESS)
-	log_debug(LOG_COMP_OP, "pictverbinmemory: about to push hdatabase=%p (current=%p) variabledata=0x%llx",
+	log_debug(LOG_COMP_OP, "pictverbinmemory: reading from hdatabase=%p adr=0x%llx use_64bit=%d (NO PUSH)",
 	        (void*)(**hv).hdatabase,
-	        (void*)databasedata,
-	        (unsigned long long)(**hv).variabledata);
+	        (unsigned long long)adr,
+	        ctx ? ctx->mode.use_64bit_format : -1);
 #endif
 
-	dbpushdatabase ((**hv).hdatabase);
+	/* Read with explicit context - NO global state changes */
+	fl = dbrefhandle_context (ctx, adr, &hpackedpict);
 
-	adr = (dbaddress) (**hv).variabledata;
-	
-	fl = dbrefhandle (adr, &hpackedpict);
-	
-	if (fl) {
-		
-		fl = pictunpack (hpackedpict, &ix, &hpict);
-		
-		disposehandle (hpackedpict);
-		}
-
-	dbpopdatabase ();
-	
-	if (!fl) 
+	if (!fl) {
+#if defined(FRONTIER_HEADLESS)
+		log_error(LOG_COMP_OP, "pictverbinmemory: dbrefhandle FAILED adr=0x%llx",
+		        (unsigned long long) adr);
+#endif
 		return (false);
-	
+	}
+
+	fl = pictunpack (hpackedpict, &ix, &hpict);
+
+	disposehandle (hpackedpict);
+
+	if (!fl)
+		return (false);
+
 	(**hv).flinmemory = true;
-	
+
 	(**hv).variabledata = (long) hpict; /*link into variable structure*/
-	
+
 	(**hv).oldaddress = adr; /*last place this pict was stored*/
-	
+
 	(**hpict).pictrefcon = (long) hv; /*we can get from pict rec to variable rec*/
-	
+
 	return (true);
 	} /*pictverbinmemory*/
 
@@ -330,10 +347,19 @@ boolean pictverbmemoryunpack (Handle hpacked, long *ixload, hdlexternalvariable 
 	} /*pictverbmemoryunpack*/
 	
 
-boolean pictverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddress) {
+boolean pictverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddress) {
 
 	/*
 	6.2a15 AR: added flnewdbaddress parameter
+	2025-12-23: Pure packing function with explicit context
+
+	Preconditions:
+	  - flinmemory=1 (caller has loaded external into memory)
+	  - ctx specifies the output format mode
+
+	Postconditions:
+	  - Picture packed and address written to *hpacked
+	  - Returns true on success, false on failure
 	*/
 
 	register hdlpictvariable hv = (hdlpictvariable) h;
@@ -343,107 +369,90 @@ boolean pictverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbad
 	dbaddress adr;
 	hdlwindowinfo hinfo;
 	boolean fltempload = false;
-	const boolean adapter_repack = db_format_adapter_force_repack();
-    db_format_mode prev_mode = db_format_mode_current();
-    db_format_mode working_mode = prev_mode;
-	
-	if (!(**hv).flinmemory) { /*simple case, pict is resident in the db*/
-		
-		if (flconvertingolddatabase || adapter_repack) {
-			
-			if (adapter_repack) {
-                working_mode.use_64bit_format = false; /* legacy read while loading source */
-                db_format_mode_push(&working_mode);
-            }
+	boolean adapter_repack;
 
-			if (!pictverbinmemory (hv))
-            {
-                if (adapter_repack)
-                    db_format_mode_pop();
-				return (false);
-            }
-			
-			fltempload = true;
+	/*
+	2025-12-23: Set mode from context before any database I/O
+	This ensures writes use the correct format (v7 during migration)
+	*/
+	if (ctx != NULL) {
+		if (ctx->database != nil)
+			databasedata = ctx->database;
+		db_format_mode_apply(&ctx->mode);
+	}
 
-			if (adapter_repack)
-                db_format_mode_pop();
-			}
-		else {
-		
-			adr = (dbaddress) (**hv).variabledata;
-			
-			if (fldatabasesaveas)
-				if (!dbcopy (adr, &adr))
-					return (false);
-			
-			goto pushaddress;
-			}
-		}
-	
+	adapter_repack = db_format_adapter_force_repack();
+
+	/* Precondition: external must be in memory */
+	if (!(**hv).flinmemory) {
+		/* This is a programming error - caller should have loaded it */
+		return (false);
+	}
+
 	hp = (hdlpictrecord) (**hv).variabledata;
-	
+
 	pictverbcheckwindowrect (hp);
-	
+
 	adr = (**hv).oldaddress; /*place where this pict used to be stored*/
 
 	if (adapter_repack) {
-        (**hp).fldirty = true;
-        /* Enable wide writes for migration - do NOT use context guard version */
-        db_format_adapter_enable_wide_writes(NULL);
-        working_mode.use_64bit_format = true; /* write modern */
-        db_format_mode_push(&working_mode);
-        *flnewdbaddress = true;
-    }
-	
+		(**hp).fldirty = true;
+		*flnewdbaddress = true;
+	}
+
 	if (!fldatabasesaveas && !(**hp).fldirty) /*don't need to update the db version of the pict*/
 		goto pushaddress;
-		
+
 	hpackedpict = nil; /*force a new handle to be allocated*/
-	
+
 	if (!pictpack (hp, &hpackedpict))
 		return (false);
-	
+
+	/* During migration, dbassignhandle will use the global v7 write mode set by caller */
 	fl = dbassignhandle (hpackedpict, &adr);
-	
+
 	disposehandle (hpackedpict);
-	
+
 	if (!fl)
 		return (false);
-	
+
 	if (fldatabasesaveas && !fltempload)
 		goto pushaddress;
-	
+
 	if (!pictwindowopen ((hdlexternalvariable) hv, &hinfo)) { /*it's been saved, we can reclaim some memory*/
-		
+
 		(**hv).flinmemory = false;
-		
+
 		(**hv).variabledata = adr;
-		
+
 		pictdisposerecord (hp); /*reclaim memory used by pict*/
 		}
 	else {
-		
+
 		(**hp).fldirty = false; /*we just saved off a new db version*/
-		
+
 		shellsetwindowchanges (hinfo, false);
 		}
-	
+
 pushaddress:
-	
+	/* NO mode management - uses whatever mode is currently set */
+
 	if (!fldatabasesaveas) {
-	
+
 		*flnewdbaddress = ((**hv).oldaddress != adr);
-			
+
 		(**hv).oldaddress = adr;
 		}
 	else
-		*flnewdbaddress = true;	
-	
-	if (adapter_repack)
-        db_format_mode_pop();
-    db_format_mode_apply(&prev_mode);
+		*flnewdbaddress = true;
 
 	return (pushlongondiskhandle (adr, *hpacked));
+	} /*pictverbpack_internal*/
+
+
+boolean pictverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddress) {
+	/* Wrapper for backward compatibility - uses global mode state */
+	return pictverbpack_internal (NULL, h, hpacked, flnewdbaddress);
 	} /*pictverbpack*/
 
 
@@ -476,10 +485,10 @@ boolean pictverbgetsize (hdlexternalvariable hvariable, long *size) {
 	
 	register hdlpictvariable hv = (hdlpictvariable) hvariable;
 	register PicHandle macpicture;
-	
-	if (!pictverbinmemory (hv))
+
+	if (!pictverbinmemory (NULL, hvariable))
 		return (false);
-	
+
 	macpicture = (**(hdlpictrecord) (**hv).variabledata).macpicture;
 	
 	*size = gethandlesize ((Handle) macpicture);
@@ -539,10 +548,10 @@ boolean pictverbsetdirty (hdlexternalvariable hvariable, boolean fldirty) {
 	*/
 	
 	register hdlpictvariable hv = (hdlpictvariable) hvariable;
-	
-	if (!pictverbinmemory (hv))
+
+	if (!pictverbinmemory (NULL, hvariable))
 		return (false);
-	
+
 	(**(hdlpictrecord) (**hv).variabledata).fldirty = fldirty;
 	
 	return (true);
@@ -550,11 +559,11 @@ boolean pictverbsetdirty (hdlexternalvariable hvariable, boolean fldirty) {
 
 
 boolean pictverbgettimes (hdlexternalvariable h, int64_t *timecreated, int64_t *timemodified) {
-	
+
 	register hdlpictvariable hv = (hdlpictvariable) h;
 	register hdlpictrecord hp;
-	
-	if (!pictverbinmemory (hv)) /*couldn't swap it into memory*/
+
+	if (!pictverbinmemory (NULL, h)) /*couldn't swap it into memory*/
 		return (false);
 	
 	hp = (hdlpictrecord) (**hv).variabledata; /*assume it's in memory*/
@@ -568,11 +577,11 @@ boolean pictverbgettimes (hdlexternalvariable h, int64_t *timecreated, int64_t *
 
 
 boolean pictverbsettimes (hdlexternalvariable h, int64_t timecreated, int64_t timemodified) {
-	
+
 	register hdlpictvariable hv = (hdlpictvariable) h;
 	register hdlpictrecord hp;
-	
-	if (!pictverbinmemory (hv)) /*couldn't swap it into memory*/
+
+	if (!pictverbinmemory (NULL, h)) /*couldn't swap it into memory*/
 		return (false);
 	
 	hp = (hdlpictrecord) (**hv).variabledata; /*assume it's in memory*/
@@ -613,7 +622,7 @@ boolean pictedit (hdlexternalvariable hvariable, hdlwindowinfo hparent, ptrfiles
 	WindowPtr w;
 	hdlwindowinfo hi;
 
-	if (!pictverbinmemory (hv)) /*couldn't swap it into memory*/
+	if (!pictverbinmemory (NULL, hvariable)) /*couldn't swap it into memory*/
 		return (false);
 	
 	hp = (hdlpictrecord) (**hv).variabledata; /*assume it's in memory*/

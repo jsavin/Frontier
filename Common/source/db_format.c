@@ -32,6 +32,7 @@
 #include "tableverbs.h"
 #include "opverbs.h"
 #include "wpverbs.h"
+#include "pictverbs.h"
 #include "cancoon.h"
 #include "cancooninternal.h"
 #include "file.h"
@@ -1503,11 +1504,20 @@ static boolean db_format_force_materialize_external_tables_recursive(
                           (int) bsname[0], (char *) &bsname[1]);
 #endif
                 loaded = wpverbinmemory(NULL, hv);
+            } else if (var_id == idpictprocessor) {
+#if defined(FRONTIER_HEADLESS)
+                log_debug(LOG_COMP_DB, "    calling pictverbinmemory for '%.*s' hv=%p",
+                          (int) bsname[0], (char *) &bsname[1], (void*)hv);
+#endif
+                loaded = pictverbinmemory(NULL, hv);
+#if defined(FRONTIER_HEADLESS)
+                log_debug(LOG_COMP_DB, "    pictverbinmemory returned: %d", loaded);
+#endif
             } else {
 #if defined(FRONTIER_HEADLESS)
-                log_debug(LOG_COMP_DB, "    skip: unsupported external type id=%d (pict, menu, etc.)", var_id);
+                log_debug(LOG_COMP_DB, "    skip: unsupported external type id=%d (menu, etc.)", var_id);
 #endif
-                /* For other types (pict, menu, etc.), we don't have verbinmemory functions yet.
+                /* For other types (menu, etc.), we don't have verbinmemory functions yet.
                  * These will need to be handled when those external types are fully implemented. */
                 continue;
             }
@@ -1551,16 +1561,22 @@ static boolean db_format_force_materialize_external_tables_recursive(
                   (unsigned long long) old_oldaddr);
 #endif
 
-        /* Recurse into newly-loaded table */
-        hdlhashtable child = (hdlhashtable) (**hv).variabledata;
+        /* Recurse into newly-loaded table (only for table externals, not pictures/outlines/etc.) */
+        if (var_id == idtableprocessor) {
+            hdlhashtable child = (hdlhashtable) (**hv).variabledata;
 #if defined(FRONTIER_HEADLESS)
-        log_debug(LOG_COMP_DB, "    recursing into child table '%.*s' depth_next=%d child=%p",
-                  (int) bsname[0], (char *) &bsname[1], depth + 1, (void *)child);
+            log_debug(LOG_COMP_DB, "    recursing into child table '%.*s' depth_next=%d child=%p",
+                      (int) bsname[0], (char *) &bsname[1], depth + 1, (void *)child);
 #endif
 
-        if (!db_format_force_materialize_external_tables_recursive(
-                child, context, depth + 1))
-            return false;
+            if (!db_format_force_materialize_external_tables_recursive(
+                    child, context, depth + 1))
+                return false;
+        } else {
+#if defined(FRONTIER_HEADLESS)
+            log_debug(LOG_COMP_DB, "    not recursing - external type %d is a leaf node", var_id);
+#endif
+        }
     }
 
 #if defined(FRONTIER_HEADLESS)
