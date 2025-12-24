@@ -798,9 +798,7 @@ static boolean ensure_external_in_memory (const db_context *ctx, hdlexternalvari
 			break;
 
 		case idmenuprocessor:
-			/* TODO: Update menuverbinmemory to take context parameter */
-			/* For now, menus are not supported in migration */
-			return (false);
+			return (menuverbinmemory_context(ctx, hv));
 
 		default:
 			return (false);

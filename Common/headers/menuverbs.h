@@ -59,6 +59,8 @@ extern boolean menuverbpack (hdlexternalvariable, Handle *, boolean *);
 
 extern boolean menuverbunpack (Handle, long *, hdlexternalvariable *);
 
+extern boolean menuverbinmemory_context (const db_context *, hdlexternalvariable);
+
 extern boolean menuverbpacktotext (hdlexternalvariable, Handle);
 
 extern boolean menuverbgetsize (hdlexternalvariable, long *);
