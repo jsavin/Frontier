@@ -1488,10 +1488,13 @@ static boolean db_format_force_materialize_external_tables_recursive(
                           (int) bsname[0], (char *) &bsname[1]);
 #endif
                 loaded = tableverbinmemory(NULL, hv, hnode);
-            } else if (var_id == idoutlineprocessor) {
+            } else if (var_id == idoutlineprocessor || var_id == idscriptprocessor) {
+                /* Scripts and outlines share the same infrastructure (both use hdloutlinerecord).
+                 * idscriptprocessor is just an outline with (**hv).flscript = true flag set. */
 #if defined(FRONTIER_HEADLESS)
-                log_debug(LOG_COMP_DB, "    calling opverbinmemory for '%.*s'",
-                          (int) bsname[0], (char *) &bsname[1]);
+                log_debug(LOG_COMP_DB, "    calling opverbinmemory for '%.*s' (id=%d %s)",
+                          (int) bsname[0], (char *) &bsname[1], var_id,
+                          var_id == idscriptprocessor ? "script" : "outline");
 #endif
                 loaded = opverbinmemory(NULL, hv);
             } else if (var_id == idwordprocessor) {
@@ -1502,9 +1505,9 @@ static boolean db_format_force_materialize_external_tables_recursive(
                 loaded = wpverbinmemory(NULL, hv);
             } else {
 #if defined(FRONTIER_HEADLESS)
-                log_debug(LOG_COMP_DB, "    skip: unsupported external type id=%d", var_id);
+                log_debug(LOG_COMP_DB, "    skip: unsupported external type id=%d (pict, menu, etc.)", var_id);
 #endif
-                /* For other types (script, pict, menu, etc.), we don't have verbinmemory functions yet.
+                /* For other types (pict, menu, etc.), we don't have verbinmemory functions yet.
                  * These will need to be handled when those external types are fully implemented. */
                 continue;
             }
