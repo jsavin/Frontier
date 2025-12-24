@@ -1500,10 +1500,12 @@ static boolean db_format_force_materialize_external_tables_recursive(
                 loaded = opverbinmemory(NULL, hv);
             } else if (var_id == idwordprocessor) {
 #if defined(FRONTIER_HEADLESS)
-                log_debug(LOG_COMP_DB, "    calling wpverbinmemory for '%.*s'",
-                          (int) bsname[0], (char *) &bsname[1]);
+                log_debug(LOG_COMP_DB, "    leaf external (wptext) - will clear oldaddress without loading (memory optimization)");
 #endif
-                loaded = wpverbinmemory(NULL, hv);
+                /* WPText externals: Don't load into memory during migration (would load hundreds sequentially).
+                 * Instead, we'll clear oldaddress below to force fresh v7 allocation during packing.
+                 * The packing code will handle loading on-demand via ensure_external_in_memory(). */
+                loaded = true;  /* Treated as success - we'll handle via oldaddress clearing */
             } else if (var_id == idpictprocessor) {
 #if defined(FRONTIER_HEADLESS)
                 log_debug(LOG_COMP_DB, "    calling pictverbinmemory for '%.*s' hv=%p",
@@ -1537,8 +1539,8 @@ static boolean db_format_force_materialize_external_tables_recursive(
                 return false;
             }
 
-            /* Verify it's now in memory (except for menus which we intentionally don't load) */
-            if (var_id != idmenuprocessor) {
+            /* Verify it's now in memory (except for menus and wptext which we intentionally don't load) */
+            if (var_id != idmenuprocessor && var_id != idwordprocessor) {
 #if defined(FRONTIER_HEADLESS)
                 log_debug(LOG_COMP_DB, "    verbinmemory succeeded, checking flinmemory");
 #endif

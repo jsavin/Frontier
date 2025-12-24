@@ -248,7 +248,11 @@ static boolean wp_portable_state_refresh_metadata(hdlexternalvariable hv, wp_por
 }
 
 static wp_portable_state *wp_portable_state_require(hdlexternalvariable hv) {
-    wp_portable_state *state = wp_portable_state_from_external(hv);
+    wp_portable_state *state = NULL;
+    /* Only treat variabledata as pointer if external is in memory (Phase 3 migration optimization) */
+    if ((**hv).flinmemory) {
+        state = wp_portable_state_from_external(hv);
+    }
     if (state == NULL) {
         state = wp_portable_state_alloc();
         if (state != NULL)
@@ -395,18 +399,25 @@ boolean wpverbgettypestring(hdlexternalvariable h, bigstring bs) {
 
 boolean wpverbdispose(hdlexternalvariable h, boolean fldisk) {
     (void)fldisk;
-    wp_portable_state *state = wp_portable_state_from_external(h);
-    wp_portable_state_free(state);
+    /* Only free state if external is in memory (Phase 3 migration optimization) */
+    if ((**h).flinmemory) {
+        wp_portable_state *state = wp_portable_state_from_external(h);
+        wp_portable_state_free(state);
+    }
     (**h).variabledata = 0;
     return true;
 }
 
 boolean wpverbisdirty(hdlexternalvariable h) {
+    if (!(**h).flinmemory)
+        return false;
     wp_portable_state *state = wp_portable_state_from_external(h);
     return state != NULL && state->dirty;
 }
 
 boolean wpverbsetdirty(hdlexternalvariable h, boolean fldirty) {
+    if (!(**h).flinmemory)
+        return false;
     wp_portable_state *state = wp_portable_state_from_external(h);
     if (state == NULL)
         return false;
@@ -695,6 +706,8 @@ Boolean wp_portable_extract_plaintext(hdlexternalvariable hv, Handle *hout_utf8)
 }
 
 Boolean wp_portable_external_should_drop(hdlexternalvariable hv) {
+    if (!(**hv).flinmemory)
+        return false;
     wp_portable_state *state = wp_portable_state_from_external(hv);
     if (state == NULL)
         return false;
