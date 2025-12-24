@@ -851,28 +851,33 @@ boolean langexternalpack_internal (const db_context *ctx, hdlexternalhandle h, H
 	 * NO GLOBAL MODE CHANGES - all context passed explicitly
 	 * ================================================================
 	 */
-	if (adapter_repack && !(**hv).flinmemory) {
-		/* Create v6 read context for loading from source database */
-		legacy_context = working_context;
-		legacy_context.mode.use_64bit_format = false;
-		legacy_context.mode.adapter_repack = false;  /* Pure read mode */
+	if (adapter_repack) {
+		/* If not already in memory, load from v6 source */
+		if (!(**hv).flinmemory) {
+			/* Create v6 read context for loading from source database */
+			legacy_context = working_context;
+			legacy_context.mode.use_64bit_format = false;
+			legacy_context.mode.adapter_repack = false;  /* Pure read mode */
 
-		log_trace(LOG_COMP_EXTERNAL, "langexternalpack: loading external from v6 id=%d (explicit context)",
-		        (int)(**hv).id);
+			log_trace(LOG_COMP_EXTERNAL, "langexternalpack: loading external from v6 id=%d (explicit context)",
+			        (int)(**hv).id);
 
-		/* Load external into memory using explicit v6 context */
-		if (!ensure_external_in_memory (&legacy_context, hv)) {
-			return (false);
+			/* Load external into memory using explicit v6 context */
+			if (!ensure_external_in_memory (&legacy_context, hv)) {
+				return (false);
+			}
+
+			log_trace(LOG_COMP_EXTERNAL, "langexternalpack: loaded, now flinmemory=%d",
+			        (int)(**hv).flinmemory);
 		}
 
-		log_trace(LOG_COMP_EXTERNAL, "langexternalpack: loaded, now flinmemory=%d",
-		        (int)(**hv).flinmemory);
-
-		/* Prepare v7 write context for packing to destination */
+		/* Always set v7 write context for packing during migration, regardless of whether
+		 * we just loaded the external or it was already in memory from materialization */
 		working_context.mode.use_64bit_format = true;
 		working_context.mode.adapter_repack = true;
 
-		log_trace(LOG_COMP_EXTERNAL, "langexternalpack: using v7 write context (no global mode set)");
+		log_trace(LOG_COMP_EXTERNAL, "langexternalpack: using v7 write context flinmemory=%d (no global mode set)",
+		        (int)(**hv).flinmemory);
 	}
 
 	/* ================================================================

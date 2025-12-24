@@ -378,7 +378,15 @@ boolean pictverbpack_internal (const db_context *ctx, hdlexternalvariable h, Han
 	if (ctx != NULL) {
 		if (ctx->database != nil)
 			databasedata = ctx->database;
+#if defined(FRONTIER_HEADLESS)
+		log_debug(LOG_COMP_OP, "pictverbpack_internal: applying mode use_64bit=%d adapter_repack=%d",
+		        (int) ctx->mode.use_64bit_format, (int) ctx->mode.adapter_repack);
+#endif
 		db_format_mode_apply(&ctx->mode);
+	} else {
+#if defined(FRONTIER_HEADLESS)
+		log_warn(LOG_COMP_OP, "pictverbpack_internal: NULL context - using global mode!");
+#endif
 	}
 
 	adapter_repack = db_format_adapter_force_repack();
