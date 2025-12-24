@@ -386,26 +386,20 @@ boolean menuverbpack (hdlexternalvariable hvariable, Handle *hpacked, boolean *f
 		*flnewdbaddress = true;
 		}
 	
-	if (adapter_repack && !(**hv).flinmemory) {
-        working_mode.use_64bit_format = false; /* legacy read while loading source */
-        db_format_mode_push(&working_mode);
-		fltempload = true;
-		if (!menuverbinmemory(hv)) {
-            db_format_mode_pop();
+	/* During migration (adapter_repack=true), menu should be in memory
+	 * from ensure_external_in_memory(). For normal saves, handle both cases. */
+	if (!(**hv).flinmemory) {
+		if (adapter_repack) {
+			/* Programming error - caller should have loaded during migration */
 			return (false);
-        }
-        db_format_mode_pop();
-	}
-	
-	if (!(**hv).flinmemory) { /*simple case, menu is resident in the db*/
-		
-		adr = (dbaddress) (**hv).variabledata;
-		
-		*flnewdbaddress = false;
-		
-		goto pushaddress;
 		}
-	
+
+		/* Normal save: menu is resident in the db, just return its address */
+		adr = (dbaddress) (**hv).variabledata;
+		*flnewdbaddress = false;
+		goto pushaddress;
+	}
+
 	adr = (**hv).oldaddress; /*place where this menubar used to be stored*/
 	
 	hm = (hdlmenurecord) (**hv).variabledata;
