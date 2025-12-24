@@ -838,62 +838,35 @@ static boolean findheaptmp (tyvaluerecord *v) {
 	} /*findheaptmp*/
 #endif
 
-
-boolean copyvaluerecord (tyvaluerecord v, tyvaluerecord *vreturned) {
-	
+boolean copyvaluerecord_internal (const db_context *ctx, tyvaluerecord v,
+									tyvaluerecord *vreturned) {
 	/*
-	create a copy of v in vreturned.  for strings and passwords and other
-	relatively small heap-allocated objects, we create a copy of the data.
-	
-	for other types, externals and binaries, we create another reference
-	to the heap-allocated object.  it's important that values copied for
-	externals and binaries not be stored in the symbol table structure.
-	
-	2/15/91 dmb: no longer treat binary values like externals.  since we 
-	now support passing values by reference (i.e. address values), the 
-	script writer can avoid the overhead of large objects when desired. 
-	binary values can now be used like any other automatic type.
-	
-	8/16/91 dmb: going even further, we'll now use the new fl.tmpdata 
-	mechanism to avoid copying binary values when we don't need to.
-	
-	12/26/91 dmb: make sure that if an allocation failure occurs, we return 
-	an empty value.
-	
-	4.0.2b1 dmb: handle fldiskvals
-	
-	5.0.2b12 dmb: use new opcopylist for lists
+	Create a copy of value record with explicit database context.
 
-	5.1.4 dmb: don't do anything special for addresses; just copy the current
-	binary state.
+	For disk-based scalars (fldiskval=1), reads from database using ctx.
+	For in-memory values, behaves identically to copyvaluerecord().
+
+	Preconditions:
+	  - ctx specifies database and format mode for disk reads
+	  - v is a valid value record
+
+	Postconditions:
+	  - *vreturned contains deep copy of v
+	  - Disk values are loaded into memory in vreturned
+	  - Returns true on success, false on failure
 	*/
-	
+
 	Handle x;
 	hdllistrecord hlist;
-	
-#ifdef tmpcopydebug
-	static long ctdups = 0;
-	static long cttmps = 0;
-	static long cthits = 0;
-	
-	++ctdups;
-	
-	if (v.fltmpstack) {
-		
-		++cttmps;
-		
-		if (findheaptmp (&v)) {
-			++cthits;
-			
-			*vreturned = v;
-			(*vreturned).fltmpdata = true;		
-			return (true);
-			}
-		}
-#endif
+
+	if (!ctx) {
+		db_context default_ctx;
+		db_context_init(&default_ctx);
+		return copyvaluerecord_internal(&default_ctx, v, vreturned);
+	}
 
 	switch (v.valuetype) {
-		
+
 		case addressvaluetype:
 		case stringvaluetype:
 		case passwordvaluetype:
@@ -905,50 +878,109 @@ boolean copyvaluerecord (tyvaluerecord v, tyvaluerecord *vreturned) {
 		case aliasvaluetype:
 		case doublevaluetype:
 		case binaryvaluetype:
-			initvalue (vreturned, novaluetype);
-			
-				
-				if (v.fldiskval) {
-					/*
-					4.0.2b1 dmb: for disk-based scalars, the copy will be the actual 
-					data, while the original value (and the hashtable node) will still
-					be on disk
-					*/
-					
-					if (!dbrefhandle (v.data.diskvalue, &x))
-						return (false);
-					}
-				else {
-					if (!copyhandle (v.data.binaryvalue, &x))
-						return (false);
-					}
+			initvalue(vreturned, novaluetype);
 
-			return (setheapvalue (x, v.valuetype, vreturned));
-		
+			if (v.fldiskval) {
+				/*
+				4.0.2b1 dmb: for disk-based scalars, the copy will be the actual
+				data, while the original value (and the hashtable node) will still
+				be on disk
+
+				PHASE 2 CHANGE: Use context-aware dbrefhandle
+				*/
+
+				if (!dbrefhandle_context(ctx, v.data.diskvalue, &x))
+					return (false);
+			}
+			else {
+				if (!copyhandle(v.data.binaryvalue, &x))
+					return (false);
+			}
+
+			return setheapvalue(x, v.valuetype, vreturned);
+
 		case listvaluetype:
 		case recordvaluetype:
-			initvalue (vreturned, v.valuetype);
-			
-			if (!opcopylist (v.data.listvalue, &hlist))
+			initvalue(vreturned, v.valuetype);
+
+			if (!opcopylist(v.data.listvalue, &hlist))
 				return (false);
-			
-			return (setheapvalue ((Handle) hlist, v.valuetype, vreturned));
+
+			return setheapvalue((Handle) hlist, v.valuetype, vreturned);
 
 		case codevaluetype:
 		case externalvaluetype:
 			*vreturned = v;
-			
+
 			(*vreturned).fltmpdata = true; /*see hashassign, disposevaluerecord*/
-			
+
 			break;
-		
+
 		default:
 			*vreturned = v;
-			
+
 			break;
-		} /*switch*/
-	
-	return (true); 
+	} /*switch*/
+
+	return (true);
+} /*copyvaluerecord_internal*/
+
+
+boolean copyvaluerecord (tyvaluerecord v, tyvaluerecord *vreturned) {
+
+	/*
+	create a copy of v in vreturned.  for strings and passwords and other
+	relatively small heap-allocated objects, we create a copy of the data.
+
+	for other types, externals and binaries, we create another reference
+	to the heap-allocated object.  it's important that values copied for
+	externals and binaries not be stored in the symbol table structure.
+
+	2/15/91 dmb: no longer treat binary values like externals.  since we
+	now support passing values by reference (i.e. address values), the
+	script writer can avoid the overhead of large objects when desired.
+	binary values can now be used like any other automatic type.
+
+	8/16/91 dmb: going even further, we'll now use the new fl.tmpdata
+	mechanism to avoid copying binary values when we don't need to.
+
+	12/26/91 dmb: make sure that if an allocation failure occurs, we return
+	an empty value.
+
+	4.0.2b1 dmb: handle fldiskvals
+
+	5.0.2b12 dmb: use new opcopylist for lists
+
+	5.1.4 dmb: don't do anything special for addresses; just copy the current
+	binary state.
+
+	Phase 2: Delegates to copyvaluerecord_internal with default context
+	*/
+
+#ifdef tmpcopydebug
+	static long ctdups = 0;
+	static long cttmps = 0;
+	static long cthits = 0;
+
+	++ctdups;
+
+	if (v.fltmpstack) {
+
+		++cttmps;
+
+		if (findheaptmp (&v)) {
+			++cthits;
+
+			*vreturned = v;
+			(*vreturned).fltmpdata = true;
+			return (true);
+			}
+		}
+#endif
+
+	db_context ctx;
+	db_context_init(&ctx);
+	return copyvaluerecord_internal(&ctx, v, vreturned);
 	} /*copyvaluerecord*/
 
 #ifdef DATABASE_DEBUG

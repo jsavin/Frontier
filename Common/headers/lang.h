@@ -1104,6 +1104,10 @@ extern boolean setwinvalue (WindowPtr pwindow, tyvaluerecord *val);	/*shellwindo
 
 extern boolean copyvaluedata (tyvaluerecord *);
 
+/* Context-aware value copying */
+extern boolean copyvaluerecord_internal(const db_context *ctx, tyvaluerecord v,
+                                         tyvaluerecord *vreturned);
+
 extern boolean copyvaluerecord (tyvaluerecord, tyvaluerecord *);
 
 #ifdef DATABASE_DEBUG
