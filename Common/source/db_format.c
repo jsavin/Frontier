@@ -2125,6 +2125,10 @@ void db_format_mode_push(const db_format_mode *mode) {
     db_format_mode effective = {false, false, false};
     if (mode != NULL)
         effective = *mode;
+#if defined(FRONTIER_HEADLESS)
+    log_trace(LOG_COMP_DB, "db_format_mode_push: depth %d->%d use_64bit=%d adapter_repack=%d",
+              g_mode_depth, g_mode_depth + 1, (int) effective.use_64bit_format, (int) effective.adapter_repack);
+#endif
     if (g_mode_depth < (int) (sizeof g_mode_stack / sizeof g_mode_stack[0]))
         g_mode_stack[g_mode_depth++] = effective;
     db_format_mode_apply(&effective);

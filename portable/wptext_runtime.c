@@ -142,16 +142,18 @@ static void wp_portable_state_attach(hdlexternalvariable hv, wp_portable_state *
     memset(&state->portable_header, 0, sizeof(state->portable_header));
 }
 
-static boolean wp_portable_state_dbref(hdlexternalvariable hv, wp_portable_state *state, Handle *hpacked) {
+static boolean wp_portable_state_dbref(const db_context *ctx, hdlexternalvariable hv, wp_portable_state *state, Handle *hpacked) {
+    /*
+    2025-12-23: Refactored to use explicit context instead of push/pop pattern
+    */
     if (hv == nil || state == NULL || hpacked == NULL)
         return false;
 
     if (state->address == nildbaddress)
         return false;
 
-    dbpushdatabase((**hv).hdatabase);
-    boolean ok = dbrefhandle(state->address, hpacked);
-    dbpopdatabase();
+    /* Use explicit context for reading - NO global state changes */
+    boolean ok = dbrefhandle_context(ctx, state->address, hpacked);
     return ok;
 }
 
@@ -214,7 +216,7 @@ static boolean wp_portable_state_refresh_metadata(hdlexternalvariable hv, wp_por
         return true;
 
     Handle hpacked = nil;
-    if (!wp_portable_state_dbref(hv, state, &hpacked))
+    if (!wp_portable_state_dbref(NULL, hv, state, &hpacked))
         return false;
 
     long size = gethandlesize(hpacked);
@@ -319,7 +321,7 @@ static boolean wp_portable_state_cache_rtf(hdlexternalvariable hv, wp_portable_s
 #endif
 
     Handle hpacked = nil;
-    if (!wp_portable_state_dbref(hv, state, &hpacked))
+    if (!wp_portable_state_dbref(NULL, hv, state, &hpacked))
         return false;
 
     long size = gethandlesize(hpacked);
@@ -628,7 +630,7 @@ Boolean wp_portable_extract_plaintext(hdlexternalvariable hv, Handle *hout_utf8)
 #endif
 
     Handle hpacked = nil;
-    if (!wp_portable_state_dbref(hv, state, &hpacked))
+    if (!wp_portable_state_dbref(NULL, hv, state, &hpacked))
         return false;
 
     const uint8_t *bytes = (const uint8_t *)*hpacked;
