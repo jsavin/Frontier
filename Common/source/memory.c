@@ -37,6 +37,7 @@
 #include "shellhooks.h"
 #include "strings.h"
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
+#include "db.h" /* 2025-12-24 Codex: for dbgetdestinationdatabase */
 #include "db_format.h" /* 2025-11-23 Codex: BE helpers for memory serialization */
 #include <assert.h>
 #if defined(FRONTIER_HEADLESS)
@@ -1597,25 +1598,75 @@ boolean loadhandleremains (long ix, Handle hsource, Handle *hdest) {
 
 	
 boolean pushlongondiskhandle (long x, Handle hpush) {
-	
-	int32_t disk32 = (int32_t) x;
-	db_format_write_be32(&disk32, (uint32_t) disk32);
-	
-	return (enlargehandle (hpush, (long) sizeof (disk32), &disk32));
-	} /*pushlongtodiskhandle*/
+	/*
+	2025-12-24: Write database addresses in the correct format (32-bit for v6, 64-bit for v7).
+	This function is used by opverbpack, wpverbpack, pictverbpack, and menuverbpack to write
+	external database addresses. It must respect the current database format mode.
+	*/
+
+	db_format_mode current_mode = db_format_mode_current();
+	boolean use_64bit = current_mode.use_64bit_format;
+
+	/* During Save As to v7 destination, always use 64-bit addresses */
+	if (!use_64bit && fldatabasesaveas) {
+		hdldatabaserecord hdest = nil;
+		if (dbgetdestinationdatabase(&hdest) && (hdest != nil) && !db_format_is_legacy_db(hdest))
+			use_64bit = true;
+	}
+
+	if (use_64bit && ((int)sizeof(dbaddress) == 8)) {
+		/* Write 64-bit BE address for v7 databases */
+		unsigned char adrbuffer[8];
+		db_format_write_be64(adrbuffer, (uint64_t) x);
+		return (enlargehandle (hpush, (long) sizeof(adrbuffer), adrbuffer));
+	} else {
+		/* Write 32-bit BE address for v6 databases */
+		int32_t disk32 = (int32_t) x;
+		db_format_write_be32(&disk32, (uint32_t) disk32);
+		return (enlargehandle (hpush, (long) sizeof (disk32), &disk32));
+	}
+	} /*pushlongondiskhandle*/
 
 
 boolean loadlongfromdiskhandle (Handle hload, long *ixload, long *x) {
-	
-	int32_t disk32 = 0;
-	
-	if (!loadfromhandle (hload, ixload, (long) sizeof (disk32), &disk32))
-		return (false);
-	
-	disktomemlong (disk32);
-	*x = (long) disk32;
-	
-	return (true);
+	/*
+	2025-12-24: Read database addresses in the correct format (32-bit for v6, 64-bit for v7).
+	This function is used by opverbunpack, wpverbunpack, pictverbunpack, and menuverbunpack to read
+	external database addresses. It must respect the current database format mode and handle both
+	formats for compatibility during migration.
+	*/
+
+	db_format_mode current_mode = db_format_mode_current();
+	boolean use_64bit = current_mode.use_64bit_format;
+	long remaining = hload ? (gethandlesize(hload) - *ixload) : 0;
+
+	if (use_64bit && ((int)sizeof(dbaddress) == 8)) {
+		/* Try to read 64-bit address first, fall back to 32-bit if not enough bytes */
+		if (remaining >= (long)sizeof(dbaddress)) {
+			unsigned char adrbytes[sizeof(dbaddress)];
+			if (!loadfromhandle(hload, ixload, (long)sizeof(dbaddress), adrbytes))
+				return (false);
+			*x = (long) db_format_read_be64(adrbytes);
+			return (true);
+		} else if (remaining == (long)sizeof(int32_t)) {
+			/* Fall back to 32-bit for legacy compatibility */
+			unsigned char raw32[sizeof(int32_t)];
+			if (!loadfromhandle(hload, ixload, (long)sizeof(raw32), raw32))
+				return (false);
+			*x = (long) db_format_read_be32(raw32);
+			return (true);
+		} else {
+			return (false);
+		}
+	} else {
+		/* v6 mode: read 32-bit address */
+		int32_t disk32 = 0;
+		if (!loadfromhandle (hload, ixload, (long) sizeof (disk32), &disk32))
+			return (false);
+		disktomemlong (disk32);
+		*x = (long) disk32;
+		return (true);
+	}
 	} /*loadlongfromdiskhandle*/
 
 

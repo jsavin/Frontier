@@ -352,6 +352,9 @@ boolean tableverbpack_internal (const db_context *ctx, hdlexternalvariable h, Ha
 
 	ht = (hdlhashtable) (**hv).variabledata;
 
+	log_debug(LOG_COMP_TABLE, "tableverbpack_internal READ oldaddress=0x%llx variabledata=0x%llx adapter_repack=%d flinmemory=%d",
+	        (unsigned long long)adr, (unsigned long long)(**hv).variabledata, adapter_repack ? 1 : 0, (int)(**hv).flinmemory);
+
 	if (adapter_repack) {
 		*flnewdbaddress = true;
 		(**ht).flsubsdirty = true;
@@ -415,8 +418,8 @@ boolean tableverbpack_internal (const db_context *ctx, hdlexternalvariable h, Ha
 		shellsetwindowchanges (hinfo, false);
 
 	pushaddress:
-	log_trace(LOG_COMP_TABLE, "tableverbpack_internal pushaddress adr=0x%llx oldaddress=0x%llx variabledata=0x%llx",
-	        (unsigned long long) adr, (unsigned long long) (**hv).oldaddress, (unsigned long long) (**hv).variabledata);
+	log_debug(LOG_COMP_TABLE, "tableverbpack_internal pushaddress adr=0x%llx oldaddress=0x%llx variabledata=0x%llx flinmemory=%d",
+	        (unsigned long long) adr, (unsigned long long) (**hv).oldaddress, (unsigned long long) (**hv).variabledata, (int)(**hv).flinmemory);
     /* Decide whether to emit a 64-bit address trailer - use current mode */
     mode64_for_save = current_mode.use_64bit_format;
     if (!mode64_for_save && fldatabasesaveas) {
@@ -437,9 +440,13 @@ boolean tableverbpack_internal (const db_context *ctx, hdlexternalvariable h, Ha
 	if (mode64_for_save && ((int)sizeof (dbaddress) == 8)) {
 		db_format_write_be64(adrbuffer, (uint64_t) adr);
 		adrsize = (long) sizeof (dbaddress);
+		log_debug(LOG_COMP_TABLE, "tableverbpack writing 64-bit address: 0x%llx (mode64=%d)",
+		        (unsigned long long) adr, (int)mode64_for_save);
 	} else {
 		db_format_write_be32(adrbuffer, (uint32_t) adr);
 		adrsize = (long) sizeof (uint32_t);
+		log_debug(LOG_COMP_TABLE, "tableverbpack writing 32-bit address: 0x%x (mode64=%d)",
+		        (uint32_t) adr, (int)mode64_for_save);
 	}
 
 	if (!enlargehandle (*hpacked, adrsize, (ptrchar) adrbuffer)) {
