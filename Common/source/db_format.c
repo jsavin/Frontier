@@ -1513,12 +1513,19 @@ static boolean db_format_force_materialize_external_tables_recursive(
 #if defined(FRONTIER_HEADLESS)
                 log_debug(LOG_COMP_DB, "    pictverbinmemory returned: %d", loaded);
 #endif
+            } else if (var_id == idmenuprocessor) {
+#if defined(FRONTIER_HEADLESS)
+                log_debug(LOG_COMP_DB, "    leaf external (menu) - will clear oldaddress without loading (memory optimization)");
+#endif
+                /* Menu externals: Don't load into memory (menuverbinmemory not implemented yet).
+                 * Instead, we'll clear oldaddress below to force fresh v7 allocation during packing.
+                 * The packing code will handle loading on-demand via ensure_external_in_memory(). */
+                loaded = true;  /* Treated as success - we'll handle via oldaddress clearing */
             } else {
 #if defined(FRONTIER_HEADLESS)
-                log_debug(LOG_COMP_DB, "    skip: unsupported external type id=%d (menu, etc.)", var_id);
+                log_debug(LOG_COMP_DB, "    skip: unsupported external type id=%d", var_id);
 #endif
-                /* For other types (menu, etc.), we don't have verbinmemory functions yet.
-                 * These will need to be handled when those external types are fully implemented. */
+                /* For other unsupported types, skip entirely */
                 continue;
             }
 
@@ -1530,34 +1537,37 @@ static boolean db_format_force_materialize_external_tables_recursive(
                 return false;
             }
 
+            /* Verify it's now in memory (except for menus which we intentionally don't load) */
+            if (var_id != idmenuprocessor) {
 #if defined(FRONTIER_HEADLESS)
-            log_debug(LOG_COMP_DB, "    verbinmemory succeeded, checking flinmemory");
+                log_debug(LOG_COMP_DB, "    verbinmemory succeeded, checking flinmemory");
 #endif
 
-            /* Verify it's now in memory */
-            if (!(**hv).flinmemory) {
+                if (!(**hv).flinmemory) {
 #if defined(FRONTIER_HEADLESS)
-                log_error(LOG_COMP_DB, "    ERROR: flinmemory not set after tableverbinmemory for '%.*s'",
-                          (int) bsname[0], (char *) &bsname[1]);
+                    log_error(LOG_COMP_DB, "    ERROR: flinmemory not set after verbinmemory for '%.*s'",
+                              (int) bsname[0], (char *) &bsname[1]);
 #endif
-                return false;
+                    return false;
+                }
+
+                materialized_count++;
             }
-
-            materialized_count++;
         } else {
 #if defined(FRONTIER_HEADLESS)
             log_debug(LOG_COMP_DB, "    already in memory, not materializing");
 #endif
         }
 
-        /* Clear oldaddress to force new allocation in v7 (even if was already in memory) */
+        /* Clear oldaddress to force new allocation in v7 (for all externals, loaded or not) */
 #if defined(FRONTIER_HEADLESS)
         dbaddress old_oldaddr = (**hv).oldaddress;
 #endif
         (**hv).oldaddress = nildbaddress;
 
 #if defined(FRONTIER_HEADLESS)
-        log_debug(LOG_COMP_DB, "    cleared oldaddress: was=0x%llx now=nil",
+        log_debug(LOG_COMP_DB, "    cleared oldaddress for external type=%d name='%.*s': was=0x%llx now=nil",
+                  var_id, (int) bsname[0], (char *) &bsname[1],
                   (unsigned long long) old_oldaddr);
 #endif
 
