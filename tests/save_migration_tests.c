@@ -181,15 +181,20 @@ int main(void) {
             fprintf(stderr, "[migration] Root table address from header: 0x%llx\n", root_adr);
 
             /* Check the table header at that address */
-            fseek(test_db, (off_t)root_adr, SEEK_SET);
-            unsigned char table_header[16];
-            if (fread(table_header, 1, 16, test_db) == 16) {
-                /* v7 table header version is at offset 8 (4 bytes, big-endian) */
+            /* NOTE: The root table is stored with database block header (12 bytes) +
+             * TWO layers of mergehandles prefixes (4 bytes each):
+             * - Database block header (12 bytes): zeros + size + zeros
+             * - Outer layer: tablepacktable merges hashtable + formats (4 bytes)
+             * - Inner layer: hashpacktable merges header+records + strings (4 bytes)
+             * So the actual table header starts at offset 20 (12 + 4 + 4) */
+            fseek(test_db, (off_t)(root_adr + 20), SEEK_SET);
+            unsigned char table_header[32];
+            if (fread(table_header, 1, 32, test_db) == 32) {
+                /* v7 table header: version is at offset 0 (2 bytes, big-endian) */
                 unsigned int table_version =
-                    (table_header[8] << 24) | (table_header[9] << 16) |
-                    (table_header[10] << 8) | (table_header[11] << 0);
+                    (table_header[0] << 8) | table_header[1];
 
-                fprintf(stderr, "[migration] Root table version field: %u\n", table_version);
+                fprintf(stderr, "[migration] Root table version field: %u (from offset +20)\n", table_version);
 
                 /* v7 format has version=5, v6 legacy format has version=4 */
                 /* Detect legacy format: first bytes are small (< 256), like 0x00 0x00 0x04 0x56 */
