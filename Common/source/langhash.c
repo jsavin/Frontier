@@ -4264,14 +4264,22 @@ log_trace(LOG_COMP_HASH, "hashunpacktable record ixkey=%d type=%d version=%u dat
 
 	#if noextended
 				case doublevaluetype: {
+					/* v7 records store doubles inline (64-bit IEEE754).
+					 * v6 records use extended80 format (legacy). */
+					if (v7_rec) {
+						/* v7: handled as inline scalar below */
+						goto handle_inline_scalar;
+					}
+
+					/* v6 legacy: unpack extended80 */
 					double x;
 					extended80 **x80;
-				 
+
 					if (!hashunpackbinary (hstrings, (Handle *) &x80, ixstrings))
 						goto L1;
 
 					x = x80tod (*x80);
-				 
+
 					disposehandle ((Handle) x80);	// 1/22/97 dmb: this was a leak!
 
 					if (!setdoublevalue (x, &val))
@@ -4282,7 +4290,7 @@ log_trace(LOG_COMP_HASH, "hashunpacktable record ixkey=%d type=%d version=%u dat
 					break;
 				}
 	#else
-				case doublevaluetype:
+				/* doublevaluetype now handled as inline scalar in v7, see case list above */
 	#endif
 
 	#if oldWIN95VERSION
@@ -4473,6 +4481,7 @@ log_trace(LOG_COMP_HASH, "hashunpacktable external variabledata=0x%016llx", (uns
 
 					break;
 
+				handle_inline_scalar:
 				case novaluetype:
 				case charvaluetype:
 				case intvaluetype:
