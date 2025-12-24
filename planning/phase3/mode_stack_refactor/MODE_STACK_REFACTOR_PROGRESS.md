@@ -111,7 +111,105 @@ if (adapter_repack) {
 
 ---
 
-### 3. External Materialization Implementation (commit `77ea2c33`)
+### 3. Hash Table and Database Operations (commits `a54c5c56`, `e044b489`)
+
+#### langexternal.c Refactoring (commit `a54c5c56`)
+**Function**: `langexternalrefdata()`
+
+**Before**:
+```c
+dbpushdatabase((**hv).hdatabase);
+fl = dbrefhandle((dbaddress)(**hv).variabledata, hdata);
+dbpopdatabase();
+```
+
+**After**:
+```c
+boolean langexternalrefdata(hdlexternalvariable hv, Handle *hdata) {
+    return langexternalrefdata_context(NULL, hv, hdata);
+}
+```
+
+**Files Modified**: `Common/source/langexternal.c`
+
+---
+
+#### opverbs.c Refactoring (commit `a54c5c56`)
+**Function**: `opverbcopyvalue()` - Direct refactor (single usage path)
+
+**Before**:
+```c
+dbpushdatabase((**hv).hdatabase);
+fl = dbrefhandle(adr, &hpackedoutline);
+dbpopdatabase();
+```
+
+**After**:
+```c
+fl = dbrefhandle_context(NULL, adr, &hpackedoutline);
+```
+
+**Impact**: Removed unnecessary push/pop wrapper around single database read
+
+**Files Modified**: `Common/source/opverbs.c`
+
+---
+
+#### langhash.c Refactoring (commit `a54c5c56`)
+**Functions refactored**: 4 patterns eliminated
+
+1. **disposehashnode()** - Simplified (no refactor needed)
+   - Analysis: `disposevaluerecord` uses release stack, not db read operations
+   - Action: Removed unnecessary push/pop wrapper entirely
+
+2. **hashassign()** - Simplified (no refactor needed)
+   - Same as disposehashnode - only calls `disposevaluerecord` which uses release stack
+
+3. **hashresolvevalue()** - Created `_context` variant + wrapper
+   - Before: `dbpushdatabase/dbrefhandle/dbpopdatabase`
+   - After: `dbrefhandle_context(ctx, ...)`
+   - Wrapper: `hashresolvevalue()` calls `hashresolvevalue_context(NULL, ...)`
+   - Call sites: 11 total (kept wrapper for backward compatibility)
+
+4. **hashpackscalar()** - Direct refactor (static function)
+   - Refactored `flexternalmemorypack` branch to use explicit context
+   - Created local `db_context` when needed
+   - No wrapper needed (static function, only 3 internal call sites)
+
+**Files Modified**: `Common/source/langhash.c`
+
+---
+
+#### Menu Functions Refactoring (commit `e044b489`)
+
+1. **claycallbacks.c**: Created `claycopyfile_context(ctx_source, ctx_dest, ...)` variant
+2. **menueditor.c**: Created `_context` variants for `meloadscriptoutline`, `medisposemenurecord`
+3. **menupack.c**: Created `mereleaserefconroutine_context` variant
+
+All follow the established `_internal(const db_context *ctx, ...)` pattern with backward-compatible wrappers.
+
+**Files Modified**:
+- `Common/source/claycallbacks.c`
+- `Common/source/menueditor.c`
+- `Common/source/menupack.c`
+
+---
+
+#### Phase 2 Deferrals (commit `08391fe7`)
+
+**Files marked for Phase 2** (require creating underlying context-aware helpers first):
+- **menuverbs.c** (`menuverbinmemory`) - Requires `meloadmenurecord_context`, `meloadoutline_context`
+- **dbstats.c** - Requires context-aware variants for multiple db.c functions
+- **langxml.c** - Requires `copyvaluerecord_context`
+- **langhtml.c** - Requires `copyvaluerecord_context`
+
+Added TODO comments documenting deferral reasons.
+
+**Files Modified**: `Common/source/menuverbs.c`
+
+---
+
+### 4. External Materialization Implementation (commit `77ea2c33`)
 
 **Feature**: Added comprehensive external materialization during migration:
 - Tables (`idtableprocessor`) → `tableverbinmemory()`
@@ -132,9 +230,12 @@ if (adapter_repack) {
 |--------|------|-------------|
 | `77ea2c33` | 2025-12-23 | Mode stack corruption fix + external materialization |
 | `3cfaf238` | 2025-12-23 | Script external materialization fix |
-| `89621aaf` | 2025-12-23 | Picture external refactoring (inme mory + pack_internal) |
+| `89621aaf` | 2025-12-23 | Picture external refactoring (inmemory + pack_internal) |
 | `b815ec0c` | 2025-12-23 | LangExternal pack v7 write mode fix |
 | `08e147e1` | 2025-12-23 | WPText dbref push/pop removal |
+| `a54c5c56` | 2025-12-23 | Eliminate dbpushdatabase from langexternal, opverbs, langhash + ADR-002 |
+| `e044b489` | 2025-12-23 | Eliminate dbpushdatabase from menu/clay functions |
+| `08391fe7` | 2025-12-23 | Add TODO for menuverbs.c Phase 2 refactoring |
 
 ---
 
@@ -227,10 +328,13 @@ boolean ok = dbrefhandle_context(ctx, adr, &h);
 
 ## 📖 Related Documentation
 
+### Architectural Decision Records
+- **`planning/architectural_decision_records/ADR-002-context-based-format-versioning.md`** - Complete rationale for context-based approach vs. alternatives (property-based, improved stack). Includes implementation patterns, common pitfalls, code examples, and success criteria.
+- `planning/architectural_decision_records/MODE_SINGLE_DECISION_POINT.md` - Mode management architecture
+- `planning/architectural_decision_records/ADR-001-multi-database-context.md` - Original db_context pattern
+
 ### Planning Documents
 - `planning/phase3/MODE_STACK_REFACTOR_PHASE1_DETAILED_v2.md` - Detailed Phase 1 plan
-- `planning/architectural_decision_records/MODE_SINGLE_DECISION_POINT.md` - Mode management architecture
-- `planning/architectural_decision_records/explicit-context-passing/` - Context threading patterns
 
 ### Historical Context
 - `planning/archive/phase3/mode_stack_refactor/` - Original planning materials
