@@ -588,6 +588,7 @@ if (adapter_repack && !(**hv).flinmemory) {
 ## 9. Related Documentation
 
 ### Architectural Context
+- `planning/architectural_decision_records/external-object-loading-architecture.md` - **Comprehensive reference for external object loading patterns** (Consolidated knowledge from migration work, active reference for issue #136)
 - `planning/architectural_decision_records/mode_management_single_decision_point.md` - Mode management architecture
 - `docs/external_table_variable_management.md` - External variable lifecycle
 - `planning/phase3/mode_stack_refactor/MODE_STACK_REFACTOR_PROGRESS.md` - Phase 1-2 refactoring history
