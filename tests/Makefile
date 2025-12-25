@@ -237,8 +237,8 @@ all: $(PAIGE_LIB) strings_generated $(RUN_BUILDABLE)
 $(RUN_BUILDABLE): $(PAIGE_LIB)
 
 # Headless smoke test
-core_tests: core_tests.c ../Common/source/shell_api.c ../Common/source/shell_api_headless.c headless_shell.c
-	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable core_tests.c ../Common/source/shell_api.c ../Common/source/shell_api_headless.c headless_shell.c -o $@ $(LINK_LIBS)
+core_tests: core_tests.c ../Common/source/shell_api.c ../Common/source/shell_api_headless.c ../Common/source/logging.c headless_shell.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable core_tests.c ../Common/source/shell_api.c ../Common/source/shell_api_headless.c ../Common/source/logging.c headless_shell.c -o $@ $(LINK_LIBS)
 
 db_format_tests: db_format_tests.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
