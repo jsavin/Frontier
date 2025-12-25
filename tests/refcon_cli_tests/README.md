@@ -4,6 +4,8 @@
 
 Phase 2 of the refcon test suite validates refcon persistence through outline pack/unpack operations using UserTalk CLI tests. This builds on Phase 1 (low-level C tests in `refcon_tests.c`) and uses the frontier-cli to test production code paths.
 
+**Current Status**: These tests are **SKIPPED** in the test suite because the required UserTalk verb bindings (outlineType, op.insert, op.setRefcon, op.getRefcon) are not yet implemented in the headless CLI runtime. The test infrastructure is complete and ready to execute once verb binding work is completed (tracked as future work separate from the v6→v7 migration PR).
+
 ## Test Pattern
 
 - **Pattern**: Execute UserTalk scripts via frontier-cli, parse output to verify results
