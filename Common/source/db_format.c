@@ -1519,9 +1519,10 @@ static boolean db_format_force_materialize_external_tables_recursive(
 #if defined(FRONTIER_HEADLESS)
                 log_debug(LOG_COMP_DB, "    leaf external (menu) - will clear oldaddress without loading (memory optimization)");
 #endif
-                /* Menu externals: Don't load into memory (menuverbinmemory not implemented yet).
+                /* Menu externals: Don't load into memory during materialization (memory optimization).
                  * Instead, we'll clear oldaddress below to force fresh v7 allocation during packing.
-                 * The packing code will handle loading on-demand via ensure_external_in_memory(). */
+                 * The packing code will handle loading on-demand via ensure_external_in_memory()
+                 * which calls menuverbinmemory_context() for context-aware menu loading. */
                 loaded = true;  /* Treated as success - we'll handle via oldaddress clearing */
             } else {
 #if defined(FRONTIER_HEADLESS)
