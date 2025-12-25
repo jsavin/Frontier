@@ -1012,7 +1012,10 @@ void test_refcon_picture_reference_migration(void) {
 - ✅ Outline refcon still valid (no crashes)
 - ✅ Refcon reference to picture remains accessible
 
-**CRITICAL NOTE**: This test may FAIL if refcon contains raw dbaddress that isn't updated. Requires design decision on refcon migration strategy.
+**CRITICAL NOTE**: ✅ ADDRESSED by Option 1 design decision. During streaming migration:
+- When picture external is encountered, it is forced to memory (flinmemory=1) immediately
+- No dbaddress in migrated refcon - picture handle remains valid in-memory
+- No post-processing passes needed to fix embedded references
 
 ---
 
@@ -1058,13 +1061,15 @@ void test_refcon_outline_reference_migration(void) {
     assert(item.linkedscript.houtline != NULL);
 
     // Verify linked script address
-    // NOTE: If address was in refcon and not updated, this may be invalid
-    // Migration should either:
-    //   1. Force script to memory (houtline valid, adrlink = nildbaddress)
-    //   2. Update adrlink to v7 format
+    // NOTE: With Option 1 (force to memory), script is forced to memory during migration
+    // houtline is valid in-memory, adrlink should be nildbaddress (not a disk address)
+    // Streaming migration ensures this happens at the right time
 
-    // For now, verify houtline is accessible
+    // Verify houtline is accessible
     assert((*item.linkedscript.houtline)->hsummit != NULL);
+
+    // Verify address is nil (forced to memory, not disk-based)
+    assert(item.linkedscript.adrlink == nildbaddress);
 
     dbclose(hdb);
 }
@@ -1073,10 +1078,11 @@ void test_refcon_outline_reference_migration(void) {
 **Success Criteria**:
 - ✅ Menu outline migrates
 - ✅ Menu item refcon valid
-- ✅ Linked script outline accessible
+- ✅ Linked script outline is in-memory (not disk address)
+- ✅ Linked script outline handle remains accessible
 - ✅ No crashes accessing refcon data
 
-**CRITICAL NOTE**: This test exposes the dbaddress-in-refcon problem. Requires design decision.
+**CRITICAL NOTE**: ✅ ADDRESSED by Option 1 design decision. Streaming migration forces referenced outlines to memory, eliminating embedded addresses in refcons.
 
 ---
 
@@ -1704,26 +1710,87 @@ void create_refcon_fixtures(void) {
 
 ### Refcon dbaddress Problem - Solution Options
 
-**Option 1: Force Externals to Memory**
+**✅ APPROVED: Option 1: Force Externals to Memory**
 - During migration, force all externals with refcons to memory (flinmemory=1)
 - No dbaddress in refcons after migration
-- Pros: Simple, safe
-- Cons: Increased memory usage
+- Pros: Simple, safe, long-term viable
+- Impact: Refcons typically contain only a few scalars, minimal memory overhead
+- Status: **APPROVED** for long-term use (not temporary workaround)
 
-**Option 2: Refcon Migration Hooks**
+**Option 2: Refcon Migration Hooks** (future enhancement)
 - Add `refconmigratecallback` to outline callbacks
 - Callback receives old refcon, returns updated refcon
 - Allows application-specific address updating
 - Pros: Flexible, correct
 - Cons: Complex, requires per-application code
+- Status: Hold for future enhancement if needed
 
-**Option 3: Known Refcon Formats Registry**
+**Option 3: Known Refcon Formats Registry** (not recommended)
 - Maintain registry of known refcon structures (e.g., tymenuiteminfo)
 - Migrator knows how to update addresses in known formats
 - Pros: Automatic, correct for known types
 - Cons: Fragile, doesn't handle custom refcon formats
+- Status: Declined - Option 1 is simpler and sufficient
 
-**Recommended**: Start with Option 1 (force to memory), add Option 2 (hooks) later if needed.
+**Decision**: Option 1 approved for long-term use.
+
+**Architectural Rationale**: Implement streaming/on-the-fly migration (walk v6 tree → convert → write to v7 immediately) instead of batch load-convert-write. Made safe by Mode Stack Refactor.
+- **Benefits**: Constant memory footprint (not 2-3x database size), supports multi-gigabyte databases on 4GB machines
+- **Refcon Implication**: Force externals to memory (flinmemory=1) eliminates embedded addresses in refcons, making streaming safe (no post-processing passes needed to fix up references)
+- **Tested approach**: Each headline processed independently with v6 read mode pushed and popped correctly
+
+---
+
+## Streaming Migration Architecture
+
+### Current Approach (Batch Migration)
+```
+Load v6 database into memory (2-3x size)
+  ↓
+Widen all structures in RAM (32-bit → 64-bit)
+  ↓
+Byte-swap all data (LE → BE)
+  ↓
+Write entire v7 root file to disk
+```
+
+**Problem**: Multi-gigabyte databases hit RAM limits on lower-tier machines (4GB systems)
+
+### New Approach (Streaming Migration)
+```
+Open v6 database file
+While walking v6 tree:
+  ├─ Push v6 read mode
+  ├─ Read v6 item (headline, external, table)
+  ├─ Pop v6 read mode → push v7 write mode
+  ├─ Convert item (widen structures, byte-swap)
+  ├─ Force externals to memory (flinmemory=1)
+  ├─ Write converted item to v7 root immediately
+  └─ Pop v7 write mode
+Close v6 database, v7 root written
+```
+
+**Benefits**:
+- Constant memory footprint (process one item at a time)
+- Works on 4GB machines
+- No intermediate RAM buffers
+- Refcons never contain addresses (forced to memory) → no post-processing needed
+
+**Enabled by Mode Stack Refactor**: Push/pop modes are now safe with proper context isolation. Previously this approach would have been fragile due to mode leakage.
+
+### Implications for Refcon Testing
+
+**Phase 3 (Migration) Tests**:
+- Verify each headline is converted once (no repeated processing)
+- Verify refcons survive single conversion pass
+- Verify externals are forced to memory during conversion
+- Verify v7 root is written correctly with no buffering
+
+**Phase 4 (Reference Integrity) Tests**:
+- Verify in-memory externals remain accessible after migration
+- Verify no dbaddresses are left in refcons
+- Verify menu items with linkedscript work correctly
+- Verify pictures referenced from refcons are accessible
 
 ---
 

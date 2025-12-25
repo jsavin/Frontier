@@ -157,15 +157,15 @@ boolean menuverbunload (hdlexternalvariable hvariable) {
 	} /*menuverbunload*/
 
 
-static boolean menuverbinmemory (hdlmenuvariable hvariable) {
+boolean menuverbinmemory_context (const db_context *ctx, hdlexternalvariable hvariable) {
 
 	/*
 	5.0a18 dmb: support database linking
 
-	Phase 2 refactored: Use explicit context instead of push/pop pattern.
+	Phase 1 refactored: Accept context parameter for migration support.
 	*/
 
-	register hdlmenuvariable hv = hvariable;
+	register hdlmenuvariable hv = (hdlmenuvariable) hvariable;
 	register dbaddress adr;
 	hdlmenurecord hmenurecord;
 	boolean fl;
@@ -174,19 +174,15 @@ static boolean menuverbinmemory (hdlmenuvariable hvariable) {
 		return (true);
 
 #if defined(FRONTIER_HEADLESS)
-	log_debug(LOG_COMP_OP, "menuverbinmemory: loading menu from hdatabase=%p (current=%p) variabledata=0x%llx",
+	log_debug(LOG_COMP_OP, "menuverbinmemory_context: loading menu from hdatabase=%p (current=%p) variabledata=0x%llx",
 	        (void*)(**hv).hdatabase,
 	        (void*)databasedata,
 	        (unsigned long long)(**hv).variabledata);
 #endif
 
-	db_context ctx;
-	db_context_init(&ctx);
-	ctx.database = (**hv).hdatabase;
-
 	adr = (dbaddress) (**hv).variabledata;
 
-	fl = meloadmenurecord_internal(&ctx, adr, &hmenurecord);
+	fl = meloadmenurecord_internal(ctx, adr, &hmenurecord);
 
 	if (!fl)
 		return (false);
@@ -200,6 +196,20 @@ static boolean menuverbinmemory (hdlmenuvariable hvariable) {
 	(**hmenurecord).menurefcon = (long) hv; /*we can get from menu rec to variable rec*/
 
 	return (true);
+	} /*menuverbinmemory_context*/
+
+
+static boolean menuverbinmemory (hdlmenuvariable hvariable) {
+
+	/*
+	Backward compatibility wrapper for menuverbinmemory_context.
+	*/
+
+	db_context ctx;
+	db_context_init(&ctx);
+	ctx.database = (**hvariable).hdatabase;
+
+	return menuverbinmemory_context(&ctx, hvariable);
 	} /*menuverbinmemory*/
 
 
@@ -376,26 +386,20 @@ boolean menuverbpack (hdlexternalvariable hvariable, Handle *hpacked, boolean *f
 		*flnewdbaddress = true;
 		}
 	
-	if (adapter_repack && !(**hv).flinmemory) {
-        working_mode.use_64bit_format = false; /* legacy read while loading source */
-        db_format_mode_push(&working_mode);
-		fltempload = true;
-		if (!menuverbinmemory(hv)) {
-            db_format_mode_pop();
+	/* During migration (adapter_repack=true), menu should be in memory
+	 * from ensure_external_in_memory(). For normal saves, handle both cases. */
+	if (!(**hv).flinmemory) {
+		if (adapter_repack) {
+			/* Programming error - caller should have loaded during migration */
 			return (false);
-        }
-        db_format_mode_pop();
-	}
-	
-	if (!(**hv).flinmemory) { /*simple case, menu is resident in the db*/
-		
-		adr = (dbaddress) (**hv).variabledata;
-		
-		*flnewdbaddress = false;
-		
-		goto pushaddress;
 		}
-	
+
+		/* Normal save: menu is resident in the db, just return its address */
+		adr = (dbaddress) (**hv).variabledata;
+		*flnewdbaddress = false;
+		goto pushaddress;
+	}
+
 	adr = (**hv).oldaddress; /*place where this menubar used to be stored*/
 	
 	hm = (hdlmenurecord) (**hv).variabledata;

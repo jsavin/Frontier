@@ -154,6 +154,18 @@ boolean tableunpacktable_internal (const db_context *ctx, Handle hpacked, boolea
 	        hpackedtable ? gethandlesize (hpackedtable) : 0L,
 	        hpackedformats ? gethandlesize (hpackedformats) : 0L);
 
+#if defined(FRONTIER_HEADLESS)
+	/* Log first few bytes of the unpacked table to verify structure */
+	if (hpackedtable != nil) {
+		long tablesize = gethandlesize(hpackedtable);
+		if (tablesize > 0) {
+			unsigned char *bytes = (unsigned char *) *hpackedtable;
+			size_t dump = tablesize < 64 ? (size_t) tablesize : 64;
+			log_hex_dump(LOG_COMP_TABLE, LOG_LEVEL_DEBUG, bytes, dump, "tableunpacktable hpackedtable bytes");
+		}
+	}
+#endif
+
 	if (!newhashtable (htable)) {
 
 		disposehandle (hpackedtable);
@@ -339,8 +351,10 @@ boolean tableverbpack_internal (const db_context *ctx, hdlexternalvariable h, Ha
 
 	adapter_repack = db_format_adapter_force_repack() && (databasedata != nil);
 
-	log_debug(LOG_COMP_TABLE, "tableverbpack_internal start flinmemory=%d adapter_repack=%d databasedata=%p",
-	        (int) (**hv).flinmemory, (int) adapter_repack, (void *) databasedata);
+	/* Trace table packing with context info for debugging nested tables */
+	log_debug(LOG_COMP_TABLE, "tableverbpack_internal start flinmemory=%d adapter_repack=%d databasedata=%p ctx=%p ctx.use_64bit=%d",
+	        (int) (**hv).flinmemory, (int) adapter_repack, (void *) databasedata,
+	        (void *) ctx, (ctx != NULL) ? (int)ctx->mode.use_64bit_format : -1);
 
 	/* Precondition: external must be in memory */
 	if (!(**hv).flinmemory) {
@@ -351,6 +365,9 @@ boolean tableverbpack_internal (const db_context *ctx, hdlexternalvariable h, Ha
 	adr = (**hv).oldaddress;
 
 	ht = (hdlhashtable) (**hv).variabledata;
+
+	log_debug(LOG_COMP_TABLE, "tableverbpack_internal READ hv=%p oldaddress=0x%llx variabledata=0x%llx adapter_repack=%d flinmemory=%d",
+	        (void *)hv, (unsigned long long)adr, (unsigned long long)(**hv).variabledata, adapter_repack ? 1 : 0, (int)(**hv).flinmemory);
 
 	if (adapter_repack) {
 		*flnewdbaddress = true;
@@ -415,8 +432,8 @@ boolean tableverbpack_internal (const db_context *ctx, hdlexternalvariable h, Ha
 		shellsetwindowchanges (hinfo, false);
 
 	pushaddress:
-	log_trace(LOG_COMP_TABLE, "tableverbpack_internal pushaddress adr=0x%llx oldaddress=0x%llx variabledata=0x%llx",
-	        (unsigned long long) adr, (unsigned long long) (**hv).oldaddress, (unsigned long long) (**hv).variabledata);
+	log_debug(LOG_COMP_TABLE, "tableverbpack_internal pushaddress adr=0x%llx oldaddress=0x%llx variabledata=0x%llx flinmemory=%d",
+	        (unsigned long long) adr, (unsigned long long) (**hv).oldaddress, (unsigned long long) (**hv).variabledata, (int)(**hv).flinmemory);
     /* Decide whether to emit a 64-bit address trailer - use current mode */
     mode64_for_save = current_mode.use_64bit_format;
     if (!mode64_for_save && fldatabasesaveas) {
@@ -437,9 +454,17 @@ boolean tableverbpack_internal (const db_context *ctx, hdlexternalvariable h, Ha
 	if (mode64_for_save && ((int)sizeof (dbaddress) == 8)) {
 		db_format_write_be64(adrbuffer, (uint64_t) adr);
 		adrsize = (long) sizeof (dbaddress);
+		log_debug(LOG_COMP_TABLE, "tableverbpack writing 64-bit address: 0x%llx (mode64=%d ctx.use_64bit=%d current_mode.use_64bit=%d)",
+		        (unsigned long long) adr, (int)mode64_for_save,
+		        (ctx != NULL) ? (int)ctx->mode.use_64bit_format : -1,
+		        (int)current_mode.use_64bit_format);
 	} else {
 		db_format_write_be32(adrbuffer, (uint32_t) adr);
 		adrsize = (long) sizeof (uint32_t);
+		log_debug(LOG_COMP_TABLE, "tableverbpack writing 32-bit address: 0x%x (mode64=%d ctx.use_64bit=%d current_mode.use_64bit=%d)",
+		        (uint32_t) adr, (int)mode64_for_save,
+		        (ctx != NULL) ? (int)ctx->mode.use_64bit_format : -1,
+		        (int)current_mode.use_64bit_format);
 	}
 
 	if (!enlargehandle (*hpacked, adrsize, (ptrchar) adrbuffer)) {
@@ -481,7 +506,10 @@ boolean tableverbunpack_internal (const db_context *ctx, Handle hpacked, long *i
 			if (!loadfromhandle (hpacked, ixload, (long) sizeof (dbaddress), adrbytes))
 				return (false);
 			rawadr = (dbaddress) db_format_read_be64(adrbytes);
-			log_trace(LOG_COMP_TABLE, "tableverbunpack 64-bit address=0x%016llx", (unsigned long long) rawadr);
+			log_debug(LOG_COMP_TABLE, "tableverbunpack 64-bit address=0x%016llx raw=[%02x %02x %02x %02x %02x %02x %02x %02x]",
+			        (unsigned long long) rawadr,
+			        adrbytes[0], adrbytes[1], adrbytes[2], adrbytes[3],
+			        adrbytes[4], adrbytes[5], adrbytes[6], adrbytes[7]);
 		} else if (remaining == (long) sizeof (int32_t)) {
 			unsigned char raw32[sizeof (uint32_t)];
 			if (!loadfromhandle (hpacked, ixload, (long) sizeof (raw32), raw32))
@@ -489,7 +517,8 @@ boolean tableverbunpack_internal (const db_context *ctx, Handle hpacked, long *i
 			{
 				uint32_t raw32_val = db_format_read_be32(raw32);
 				rawadr = (dbaddress) raw32_val;
-				log_trace(LOG_COMP_TABLE, "tableverbunpack fallback 32-bit address=0x%08x", raw32_val);
+				log_debug(LOG_COMP_TABLE, "tableverbunpack fallback 32-bit address=0x%08x raw=[%02x %02x %02x %02x]",
+				        raw32_val, raw32[0], raw32[1], raw32[2], raw32[3]);
 			}
 		} else {
 			log_error(LOG_COMP_TABLE, "tableverbunpack unexpected remaining bytes=%ld", remaining);

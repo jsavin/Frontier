@@ -344,7 +344,9 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
                 adr = normalized;
             }
         } else {
-            log_error(LOG_COMP_TABLE, "dbnormalizeaddress failed for adr=0x%llx", (unsigned long long) adr);
+            log_error(LOG_COMP_TABLE, "dbnormalizeaddress failed for adr=0x%llx hv=%p (**hv).oldaddress=0x%llx flinmemory=%d",
+                    (unsigned long long) adr, (void *)hv,
+                    (unsigned long long) (**hv).oldaddress, (int)(**hv).flinmemory);
         }
     }
 
@@ -390,6 +392,16 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
         }
 
         if (fl) {
+            /* Debug: log the handle before attempting to unpack */
+            long hpacked_size = gethandlesize(hpacked);
+            log_debug(LOG_COMP_TABLE, "tableverbinmemory before tableunpacktable adr=0x%llx hpacked_size=%ld",
+                    (unsigned long long)adr, hpacked_size);
+            if (hpacked_size > 0 && log_enabled(LOG_LEVEL_DEBUG, LOG_COMP_TABLE)) {
+                unsigned char *bytes = (unsigned char *) *hpacked;
+                size_t dump = hpacked_size < 64 ? (size_t) hpacked_size : 64;
+                log_hex_dump(LOG_COMP_TABLE, LOG_LEVEL_DEBUG, bytes, dump, "hpacked before tableunpacktable");
+            }
+
             langtraperrors(bsunpackerror, &savecallback, &saverefcon);
 
             log_trace(LOG_COMP_TABLE, "tableunpacktable enter path=%s adr=0x%llx",
@@ -449,10 +461,20 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
     (**hv).variabledata = (long) htable; /* link into variable structure */
 
     /* During migration/repack, clear oldaddress to force new allocation */
-    if (db_format_mode_current().adapter_repack && databasedata != nil)
+    db_format_mode current_mode = db_format_mode_current();
+    log_debug(LOG_COMP_TABLE, "tableverbinmemory before address assignment: adapter_repack=%d use_64bit=%d databasedata=%p adr=0x%llx",
+            (int)current_mode.adapter_repack, (int)current_mode.use_64bit_format,
+            (void*)databasedata, (unsigned long long)adr);
+
+    if (current_mode.adapter_repack && databasedata != nil) {
         (**hv).oldaddress = nildbaddress;
-    else
+        log_debug(LOG_COMP_TABLE, "tableverbinmemory CLEARED oldaddress (adapter_repack) adr=0x%llx variabledata=0x%llx flinmemory=%d",
+                (unsigned long long)adr, (unsigned long long)(**hv).variabledata, (int)(**hv).flinmemory);
+    } else {
         (**hv).oldaddress = adr; /* last place this table was stored */
+        log_debug(LOG_COMP_TABLE, "tableverbinmemory SET oldaddress=0x%llx variabledata=0x%llx flinmemory=%d",
+                (unsigned long long)adr, (unsigned long long)(**hv).variabledata, (int)(**hv).flinmemory);
+    }
 
     if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_TABLE)) {
         long ctitems = 0;

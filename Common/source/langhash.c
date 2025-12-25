@@ -3507,6 +3507,10 @@ static boolean hashpackvisit_v7 (bigstring bsname, hdlhashnode hnode, tyvaluerec
 			{
 				uint64_t bits = host_to_disk_double_bits (x);
 				memcpy(recbuf + 8, &bits, sizeof(uint64_t));
+#if defined(FRONTIER_HEADLESS)
+				log_debug(LOG_COMP_HASH, "hashpackvisit_v7 doublevaluetype name='%.*s' value=%f bits=0x%016llx",
+				         bsname[0], bsname + 1, x, (unsigned long long)bits);
+#endif
 			}
 			break;
 		}
@@ -3691,11 +3695,20 @@ boolean hashpacktable_internal (const db_context *ctx, hdlhashtable htable, bool
 	} else {
 		db_context_init(&working_context);
 		use_64bit = db_format_mode_current().use_64bit_format;
+
+		/* CRITICAL MIGRATION FIX: During migration (adapter active), force v7 format
+		 * even if mode stack is corrupted. This prevents legacy format tables from
+		 * being written to v7 databases during migration due to mode stack issues.
+		 * See: planning/architectural_decision_records/MODE_STACK_REFACTOR_PLAN.md */
+		if (!use_64bit && db_format_adapter_is_active()) {
+			use_64bit = true;
+			working_context.mode.use_64bit_format = true;
+		}
 	}
 
 #if defined(FRONTIER_HEADLESS)
 	db_format_mode current_mode = db_format_mode_current();
-log_trace(LOG_COMP_HASH, "hashpacktable_internal use_64bit=%d (ctx=%p ctx_mode=%d current_mode: use_64bit=%d adapter_repack=%d)", (int) use_64bit, (void *) ctx, ctx ? (int) ctx->mode.use_64bit_format : -1, (int) current_mode.use_64bit_format, (int) current_mode.adapter_repack);
+log_debug(LOG_COMP_HASH, "hashpacktable_internal use_64bit=%d (ctx=%p ctx_mode=%d current_mode: use_64bit=%d adapter_repack=%d)", (int) use_64bit, (void *) ctx, ctx ? (int) ctx->mode.use_64bit_format : -1, (int) current_mode.use_64bit_format, (int) current_mode.adapter_repack);
 #endif
 	if (use_64bit) {
 		/* v7 mode: Write v0x05 with 64-bit timestamps */
@@ -3711,7 +3724,7 @@ log_trace(LOG_COMP_HASH, "hashpacktable_internal use_64bit=%d (ctx=%p ctx_mode=%
 		db_format_write_be64(&header.timelastsave, (uint64_t) (**htable).timelastsave);
 
 #if defined(FRONTIER_HEADLESS)
-		log_trace(LOG_COMP_HASH, "hashpacktable writing v7 header version=%d use64=1", tablediskversion);
+		log_debug(LOG_COMP_HASH, "hashpacktable writing v7 header version=%d use64=1", tablediskversion);
 #endif
 
 		#ifdef xmlfeatures
@@ -3742,6 +3755,10 @@ log_trace(LOG_COMP_HASH, "hashpacktable_internal use_64bit=%d (ctx=%p ctx_mode=%
 		/* Truncate 64-bit timestamps to 32-bit for v6 compatibility */
 		header_v4.timecreated = (uint32_t) host_to_disk_int32((int32_t) (**htable).timecreated);
 		header_v4.timelastsave = (uint32_t) host_to_disk_int32((int32_t) (**htable).timelastsave);
+
+#if defined(FRONTIER_HEADLESS)
+		log_debug(LOG_COMP_HASH, "hashpacktable writing v4 header version=0x04 use64=0 (ctx=%p ctx_mode=%d)", (void *) ctx, ctx ? (int) ctx->mode.use_64bit_format : -1);
+#endif
 
 		#ifdef xmlfeatures
 			if ((**htable).flxml)
@@ -3872,8 +3889,10 @@ log_trace(LOG_COMP_HASH, "hashunpacktable enter htable=%p flmemory=%d", (void *)
 	assert (sizeof(tydisktablerecord_v4) == 16L);
 	assert (sizeof(tydisktablerecord) == 32L);
 	
-	if (!unmergehandles (hpackedtable, &hrecords, &hstrings)) /*consumes hpackedtable*/
+	if (!unmergehandles (hpackedtable, &hrecords, &hstrings)) { /*consumes hpackedtable*/
+		log_error(LOG_COMP_HASH, "hashunpacktable_internal: unmergehandles failed");
 		return (false);
+	}
 
 #if defined(FRONTIER_HEADLESS)
 	if (!hashunpack_log_init) {
@@ -3891,13 +3910,13 @@ log_trace(LOG_COMP_HASH, "hashunpacktable enter htable=%p flmemory=%d", (void *)
 		}
 	}
 
-log_trace(LOG_COMP_HASH, "hashunpacktable split records=%ld strings=%ld", hrecords ? gethandlesize (hrecords) : 0L, hstrings ? gethandlesize (hstrings) : 0L);
+log_debug(LOG_COMP_HASH, "hashunpacktable_internal unmerge records=%ld strings=%ld", hrecords ? gethandlesize (hrecords) : 0L, hstrings ? gethandlesize (hstrings) : 0L);
 	if (hrecords && gethandlesize (hrecords) >= (long) sizeof (tydisktablerecord)) {
 		unsigned char *recbytes = (unsigned char *) *hrecords;
 		long dump = gethandlesize (hrecords);
-		if (dump > 32)
-			dump = 32;
-		log_hex_dump(LOG_COMP_HASH, LOG_LEVEL_TRACE, recbytes, dump, "hashunpacktable records bytes");
+		if (dump > 64)
+			dump = 64;
+		log_hex_dump(LOG_COMP_HASH, LOG_LEVEL_DEBUG, recbytes, dump, "hashunpacktable records bytes");
 	}
 #endif
 	
@@ -4251,25 +4270,33 @@ log_trace(LOG_COMP_HASH, "hashunpacktable record ixkey=%d type=%d version=%u dat
 
 	#if noextended
 				case doublevaluetype: {
-					double x;
-					extended80 **x80;
-				 
-					if (!hashunpackbinary (hstrings, (Handle *) &x80, ixstrings))
-						goto L1;
+					/* v7 records store doubles inline (64-bit IEEE754).
+					 * v6 records use extended80 format (legacy). */
+					if (v7_rec) {
+						/* v7: inline 64-bit IEEE754 format - use modern conversion */
+						diskvalue_to_value_v7 (&rec_data_v7, &val);
+					} else {
+						/* v6 legacy: unpack extended80 from string heap */
+						double x;
+						extended80 **x80;
 
-					x = x80tod (*x80);
-				 
-					disposehandle ((Handle) x80);	// 1/22/97 dmb: this was a leak!
+						if (!hashunpackbinary (hstrings, (Handle *) &x80, ixstrings))
+							goto L1;
 
-					if (!setdoublevalue (x, &val))
-						goto L1;
+						x = x80tod (*x80);
 
-					exemptfromtmpstack (&val);
+						disposehandle ((Handle) x80);	// 1/22/97 dmb: this was a leak!
+
+						if (!setdoublevalue (x, &val))
+							goto L1;
+
+						exemptfromtmpstack (&val);
+					}
 
 					break;
 				}
 	#else
-				case doublevaluetype:
+				/* doublevaluetype now handled as inline scalar in v7, see case list above */
 	#endif
 
 	#if oldWIN95VERSION

@@ -798,9 +798,7 @@ static boolean ensure_external_in_memory (const db_context *ctx, hdlexternalvari
 			break;
 
 		case idmenuprocessor:
-			/* TODO: Update menuverbinmemory to take context parameter */
-			/* For now, menus are not supported in migration */
-			return (false);
+			return (menuverbinmemory_context(ctx, hv));
 
 		default:
 			return (false);
@@ -900,7 +898,7 @@ boolean langexternalpack_internal (const db_context *ctx, hdlexternalhandle h, H
 			break;
 
 		case idmenuprocessor:
-			ok = menuverbpack (hv, hpacked, flnewdbaddress);
+			ok = menuverbpack_internal (&working_context, hv, hpacked, flnewdbaddress);
 			break;
 
 		case idpictprocessor:
