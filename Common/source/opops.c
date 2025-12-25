@@ -44,6 +44,7 @@
 #include "process.h"
 #include "logging.h"
 #include "op_context.h"
+#include <assert.h>
 #if defined(FRONTIER_HEADLESS)
 extern const char *langhash_materialize_current_path;
 #endif

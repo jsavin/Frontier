@@ -39,6 +39,7 @@
 #include "opinternal.h"
 #include "lang.h" /*7.0b4 PBS*/
 #include "op_context.h"
+#include <assert.h>
 
 
 extern boolean tablevaltotable (tyvaluerecord val, hdlhashtable *htable, hdlhashnode hnode);
