@@ -29,6 +29,7 @@
 #define opinclude /*so other includes can tell if we've been loaded*/
 
 #include "lang.h" /*7.0b16 PBS*/
+#include "op_context.h" /* Phase 2E: context-aware operations */
 
 
 /*
@@ -541,10 +542,12 @@ extern void oppostedit (void); /*opedit.c*/ /*7.0b16 PBS: no longer static*/
 
 extern void opfastcollapse (hdlheadrecord); /*opexpand.c*/
 
+extern boolean opcollapse_ctx (op_context_t *, hdlheadrecord); /* Phase 2B: context-aware variant */
 extern boolean opcollapse (hdlheadrecord);
 
 extern void opcollapseall (void);
 
+extern boolean opexpand_ctx (op_context_t *, hdlheadrecord, short, boolean); /* Phase 2B: context-aware variant */
 extern boolean opexpand (hdlheadrecord, short, boolean);
 
 extern void opexpandto (hdlheadrecord);
@@ -616,6 +619,7 @@ extern boolean opoutlinetotextscrap (hdloutlinerecord, boolean, Handle);
 extern boolean opoutlinetonewtextscrap (hdloutlinerecord, Handle *);
 
 
+extern boolean opsetrefcon_ctx (op_context_t *, hdlheadrecord, ptrvoid, long); /* Phase 2D: context-aware variant */
 extern boolean opsetrefcon (hdlheadrecord, ptrvoid, long); /*oprefcon.c*/
 
 extern boolean opgetrefcon (hdlheadrecord, ptrvoid, long);
@@ -645,8 +649,10 @@ extern boolean opmovecursor (hdlheadrecord, tydirection, long, hdlheadrecord *);
 
 extern boolean opflatfind (boolean, boolean);
 
+extern boolean oppromote_ctx (op_context_t *); /* Phase 2A: context-aware variant */
 extern boolean oppromote (void);
 
+extern boolean opdemote_ctx (op_context_t *); /* Phase 2A: context-aware variant */
 extern boolean opdemote (void);
 
 extern boolean isoutlinetext (Handle);
@@ -655,8 +661,10 @@ extern boolean isoutlinescrap (void);
 
 extern boolean opcopy (void);
 
+extern boolean opdeletenode_ctx (op_context_t *, hdlheadrecord); /* Phase 2A: context-aware variant */
 extern boolean opdeletenode (hdlheadrecord);
 
+extern boolean opdelete_ctx (op_context_t *); /* Phase 2A: context-aware variant */
 extern boolean opdelete (void);
 
 extern boolean opclear (void);
@@ -665,8 +673,10 @@ extern boolean opcut (void);
 
 extern boolean oppaste (void);
 
+extern boolean opinsertheadline_ctx (op_context_t *, Handle, tydirection, boolean); /* Phase 2C: context-aware variant */
 extern boolean opinsertheadline (Handle, tydirection, boolean);
 
+extern boolean opinsertstructure_ctx (op_context_t *, hdlheadrecord, tydirection); /* Phase 2A: context-aware variant */
 extern boolean opinsertstructure (hdlheadrecord, tydirection);
 
 
@@ -675,6 +685,7 @@ extern boolean opvalidate (hdloutlinerecord); /*opvalidate.c*/
 
 extern hdlheadrecord opcopyoutline (hdlheadrecord);
 
+extern boolean opinserthandle_ctx (op_context_t *, Handle, tydirection); /* Phase 2C: context-aware variant */
 extern boolean opinserthandle (Handle, tydirection); /*opverbs.c*/
 
 extern boolean opsetexpansionstateverb (tyvaluerecord *vlist, tyvaluerecord *v);
