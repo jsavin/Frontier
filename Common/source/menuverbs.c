@@ -359,89 +359,107 @@ boolean menuverbmemoryunpack (Handle hpacked, long *ixload, hdlexternalvariable 
 	} /*menuverbmemoryunpack*/
 
 
-boolean menuverbpack (hdlexternalvariable hvariable, Handle *hpacked, boolean *flnewdbaddress) {
+boolean menuverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddress) {
 
 	/*
-	6.2a15 AR: added flnewdbaddress parameter
+	2025-12-24: Pure packing function with explicit context
+
+	Preconditions:
+	  - flinmemory=1 (caller has loaded external into memory)
+	  - ctx specifies the output format mode
+
+	Postconditions:
+	  - Menu packed and address written to *hpacked
+	  - Returns true on success, false on failure
 	*/
 
-	register hdlmenuvariable hv = (hdlmenuvariable) hvariable;
+	register hdlmenuvariable hv = (hdlmenuvariable) h;
 	register hdlmenurecord hm;
 	dbaddress adr;
 	boolean fl;
 	boolean fltempload = false;
 	boolean flpreservelinks;
 	hdlwindowinfo hinfo;
-	const boolean adapter_repack = db_format_adapter_force_repack();
-    db_format_mode prev_mode = db_format_mode_current();
-    db_format_mode working_mode = prev_mode;
-	
-	if (fldatabasesaveas) {
-		
-		fltempload = !(**hv).flinmemory;
-		
-		if (!menuverbinmemory (hv))
-			return (false);
-			
-		*flnewdbaddress = true;
-		}
-	
-	/* During migration (adapter_repack=true), menu should be in memory
-	 * from ensure_external_in_memory(). For normal saves, handle both cases. */
-	if (!(**hv).flinmemory) {
-		if (adapter_repack) {
-			/* Programming error - caller should have loaded during migration */
-			return (false);
-		}
 
-		/* Normal save: menu is resident in the db, just return its address */
-		adr = (dbaddress) (**hv).variabledata;
-		*flnewdbaddress = false;
-		goto pushaddress;
+	/*
+	2025-12-24: Set mode from context before any database I/O
+	This ensures writes use the correct format (v7 during migration)
+	*/
+	if (ctx != NULL) {
+		if (ctx->database != nil)
+			databasedata = ctx->database;
+		db_format_mode_apply(&ctx->mode);
 	}
 
-	adr = (**hv).oldaddress; /*place where this menubar used to be stored*/
-	
+	const boolean adapter_repack = db_format_adapter_force_repack();
+
+	/* Precondition: external must be in memory */
+	if (!(**hv).flinmemory) {
+		/* This is a programming error - caller should have loaded it */
+		return (false);
+	}
+
+	adr = (**hv).oldaddress; /*place where this menu used to be stored*/
+
 	hm = (hdlmenurecord) (**hv).variabledata;
 
 	if (adapter_repack) {
 		(*flnewdbaddress) = true;
 		(**hm).fldirty = true;
-        /* Enable wide writes for migration - do NOT use context guard version */
-        db_format_adapter_enable_wide_writes(NULL);
-        working_mode.use_64bit_format = true; /* write modern */
-        db_format_mode_push(&working_mode);
+		/* Mode already set by caller via db_format_mode_apply above - no push/pop! */
 	}
-	
+
 	flpreservelinks = fldatabasesaveas && !fltempload;
-	
+
 	fl = mesavemenurecord (hm, flpreservelinks, false, &adr, nil);
-	
+
 	if (fltempload)
 		menuverbunload ((hdlexternalvariable) hv);
-	
+
 	if (!fl)
 		return (false);
-	
+
 	if (fldatabasesaveas)
 		goto pushaddress;
 
 	*flnewdbaddress = ((**hv).oldaddress != adr);
-	
+
 	(**hv).oldaddress = adr;
-	
+
 	(**hm).fldirty = false; /*we just saved off a new db version*/
-	
+
 	if (menuwindowopen ((hdlexternalvariable) hv, &hinfo) && (hinfo != nil))
 		shellsetwindowchanges (hinfo, false);
-	
+
 pushaddress:
-	
-    if (adapter_repack)
-        db_format_mode_pop();
-    db_format_mode_apply(&prev_mode);
+	/* NO mode management - uses whatever mode is currently set by caller */
 
 	return (pushlongondiskhandle (adr, *hpacked));
+	} /*menuverbpack_internal*/
+
+
+boolean menuverbpack (hdlexternalvariable hvariable, Handle *hpacked, boolean *flnewdbaddress) {
+
+	/*
+	6.2a15 AR: added flnewdbaddress parameter
+	2025-12-24: Wrapper for backward compatibility - uses global mode state
+	*/
+
+	register hdlmenuvariable hv = (hdlmenuvariable) hvariable;
+	boolean fltempload = false;
+
+	if (fldatabasesaveas) {
+
+		fltempload = !(**hv).flinmemory;
+
+		if (!menuverbinmemory (hv))
+			return (false);
+
+		*flnewdbaddress = true;
+		}
+
+	/* Wrapper calls internal function with NULL context (uses global mode) */
+	return menuverbpack_internal (NULL, hvariable, hpacked, flnewdbaddress);
 	} /*menuverbpack*/
 
 
