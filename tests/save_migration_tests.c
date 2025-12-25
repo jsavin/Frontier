@@ -15,6 +15,7 @@
 #include "file.h"
 #include "odbinternal.h"
 #include "db_format.h"
+#include "logging.h"
 
 /* Database format constants for migration validation */
 #define DB_HEADER_VIEWS_OFFSET 16      /* Offset to views[0] (root table address) in v7 database header */
@@ -25,8 +26,8 @@
 static int test_count = 0;
 static int test_passed = 0;
 
-#define MIGRATION_TEST_PASS(desc) do { test_count++; test_passed++; fprintf(stderr, "[migration] PASS: %s\n", desc); } while(0)
-#define MIGRATION_TEST_FAIL(desc) do { test_count++; fprintf(stderr, "[migration] FAIL: %s\n", desc); } while(0)
+#define MIGRATION_TEST_PASS(desc) do { test_count++; test_passed++; log_info(LOG_COMP_DB, "PASS: %s", desc); } while(0)
+#define MIGRATION_TEST_FAIL(desc) do { test_count++; log_error(LOG_COMP_DB, "FAIL: %s", desc); } while(0)
 
 static void analyze_header(const char *path, int *out_version) {
     FILE *f = fopen(path, "rb");
@@ -88,7 +89,7 @@ static boolean validate_v7_addresses(FILE *f) {
 
 
 int main(void) {
-    fprintf(stderr, "\n=== Migration Format and Data Integrity Validation ===\n\n");
+    log_info(LOG_COMP_DB, "=== Migration Format and Data Integrity Validation ===");
 
     assert(initmemory());
     initstrings();
@@ -122,16 +123,16 @@ int main(void) {
     analyze_header(dst, &ver_before);
     assert(ver_before <= 6);
 
-    fprintf(stderr, "[migration] Phase 1: Version check\n");
+    log_info(LOG_COMP_DB, "Phase 1: Version check");
     if (ver_before <= 6)
         MIGRATION_TEST_PASS("Source database is v6 or earlier");
     else
         MIGRATION_TEST_FAIL("Source database version check");
 
     // Perform migration to modern format
-    fprintf(stderr, "[migration] Phase 2: Migration execution\n");
+    log_info(LOG_COMP_DB, "Phase 2: Migration execution");
     if (!migrate_32bit_to_64bit(dst)) {
-        fprintf(stderr, "[migration] FATAL: Migration failed\n");
+        log_error(LOG_COMP_DB, "FATAL: Migration failed");
         return 1;
     }
     MIGRATION_TEST_PASS("Migration completed without errors");
@@ -160,11 +161,11 @@ int main(void) {
     assert(ver_after >= 7);
 
     // Phase 3: Format and structure validation
-    fprintf(stderr, "\n[migration] Phase 3: Database format validation\n");
+    log_info(LOG_COMP_DB, "Phase 3: Database format validation");
 
     /* Validate that table headers are v7 format (version=5) by actually loading the database */
     /* and attempting to unpack the root table. Legacy table format in v7 database is an error. */
-    fprintf(stderr, "[migration] Validating root table format by attempting to load and unpack...\n");
+    log_info(LOG_COMP_DB, "Validating root table format by attempting to load and unpack...");
 
     boolean table_format_valid = false;
     FILE *test_db = fopen(migrated_path, "rb");
@@ -184,7 +185,7 @@ int main(void) {
                 ((unsigned long long)addr_bytes[6] << 8) |
                 ((unsigned long long)addr_bytes[7] << 0);
 
-            fprintf(stderr, "[migration] Root table address from header: 0x%llx\n", root_adr);
+            log_info(LOG_COMP_DB, "Root table address from header: 0x%llx", root_adr);
 
             /* Check the table header at that address */
             /* NOTE: The root table is stored with database block header +
@@ -200,24 +201,24 @@ int main(void) {
                 unsigned int table_version =
                     (table_header[0] << 8) | table_header[1];
 
-                fprintf(stderr, "[migration] Root table version field: %u (from offset +%d)\n", table_version, TABLE_HEADER_OFFSET);
+                log_info(LOG_COMP_DB, "Root table version field: %u (from offset +%d)", table_version, TABLE_HEADER_OFFSET);
 
                 /* v7 format has version=5, v6 legacy format has version=4 */
                 /* Detect legacy format: first bytes are small (< 256), like 0x00 0x00 0x04 0x56 */
                 if ((table_header[0] | table_header[1] | table_header[2]) == 0 && table_header[3] < 64) {
-                    fprintf(stderr, "[migration] ERROR: Root table appears to be in legacy format!\n");
-                    fprintf(stderr, "[migration] First bytes: %02x %02x %02x %02x (should not be legacy in v7 db)\n",
+                    log_error(LOG_COMP_DB, "ERROR: Root table appears to be in legacy format!");
+                    log_error(LOG_COMP_DB, "First bytes: %02x %02x %02x %02x (should not be legacy in v7 db)",
                             table_header[0], table_header[1], table_header[2], table_header[3]);
                     table_format_valid = false;
                 } else if (table_version == 5) {
-                    fprintf(stderr, "[migration] ✓ Root table is in v7 format (version=5)\n");
+                    log_info(LOG_COMP_DB, "✓ Root table is in v7 format (version=5)");
                     table_format_valid = true;
                 } else if (table_version == 4) {
-                    fprintf(stderr, "[migration] ERROR: Root table is in v6 legacy format (version=4)!\n");
-                    fprintf(stderr, "[migration] This indicates mode push/pop bug during migration.\n");
+                    log_error(LOG_COMP_DB, "ERROR: Root table is in v6 legacy format (version=4)!");
+                    log_error(LOG_COMP_DB, "This indicates mode push/pop bug during migration.");
                     table_format_valid = false;
                 } else {
-                    fprintf(stderr, "[migration] Root table version=%u (checking format...)\n", table_version);
+                    log_info(LOG_COMP_DB, "Root table version=%u (checking format...)", table_version);
                     table_format_valid = (table_version >= 5);
                 }
             }
@@ -233,31 +234,30 @@ int main(void) {
     MIGRATION_TEST_PASS("Root table address is in v7 format (internal validation)");
 
     // Phase 4: External table accessibility (Issue #123 validation) will be tested via CLI
-    fprintf(stderr, "\n[migration] Phase 4: External table accessibility testing\n");
-    fprintf(stderr, "[migration] NOTE: External table tests validated via CLI in run_headless_tests.sh\n");
-    fprintf(stderr, "[migration] Run: FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli \\\n");
-    fprintf(stderr, "[migration]      --system-root %s -e \"sizeOf(system.verbs.globals)\"\n", migrated_path);
+    log_info(LOG_COMP_DB, "Phase 4: External table accessibility testing");
+    log_info(LOG_COMP_DB, "NOTE: External table tests validated via CLI in run_headless_tests.sh");
+    log_info(LOG_COMP_DB, "Run: FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root %s -e \"sizeOf(system.verbs.globals)\"", migrated_path);
     MIGRATION_TEST_PASS("External table accessibility testing procedure documented");
 
     // Future enhancement: Deep nesting test
-    fprintf(stderr, "\n[migration] Future enhancement: Deep nesting validation\n");
-    fprintf(stderr, "[migration] TODO: Test tables nested 3+ levels deep with external variables\n");
-    fprintf(stderr, "[migration] Current test validates root table format; deep nesting requires\n");
-    fprintf(stderr, "[migration] creating complex nested structures via Frontier runtime.\n");
-    fprintf(stderr, "[migration] See: planning/architectural_decision_records/explicit-context-passing/\n");
+    log_info(LOG_COMP_DB, "Future enhancement: Deep nesting validation");
+    log_info(LOG_COMP_DB, "TODO: Test tables nested 3+ levels deep with external variables");
+    log_info(LOG_COMP_DB, "Current test validates root table format; deep nesting requires");
+    log_info(LOG_COMP_DB, "creating complex nested structures via Frontier runtime.");
+    log_info(LOG_COMP_DB, "See: planning/architectural_decision_records/explicit-context-passing/");
 
     // Print summary
-    fprintf(stderr, "\n=== Migration Test Summary ===\n");
-    fprintf(stderr, "[migration] v%d -> v%d migration to: %s\n", ver_before, ver_after, migrated_path);
-    fprintf(stderr, "[migration] Tests passed: %d/%d\n", test_passed, test_count);
+    log_info(LOG_COMP_DB, "=== Migration Test Summary ===");
+    log_info(LOG_COMP_DB, "v%d -> v%d migration to: %s", ver_before, ver_after, migrated_path);
+    log_info(LOG_COMP_DB, "Tests passed: %d/%d", test_passed, test_count);
 
     if (test_passed == test_count) {
-        fprintf(stderr, "[migration] ✓ ALL VALIDATIONS PASSED\n\n");
+        log_info(LOG_COMP_DB, "✓ ALL VALIDATIONS PASSED");
         printf("save_migration_tests: migration applied (v%d -> v%d) output=%s [ALL VALIDATIONS PASSED]\n",
                ver_before, ver_after, migrated_path);
         return 0;
     } else {
-        fprintf(stderr, "[migration] ✗ SOME VALIDATIONS FAILED\n\n");
+        log_error(LOG_COMP_DB, "✗ SOME VALIDATIONS FAILED");
         printf("save_migration_tests: migration applied (v%d -> v%d) output=%s [%d/%d VALIDATIONS PASSED]\n",
                ver_before, ver_after, migrated_path, test_passed, test_count);
         return 1;
