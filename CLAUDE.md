@@ -13,6 +13,7 @@
 - If you ever need to check how the legacy Frontier app implemented something in 32-bit-land, look at the code under `../tedchoward/Frontier/`.
 - When the user asks you a question, always answer it first before jumping into work.
 - Always ask the user first before pushing changes to origin/develop.
+- After pushing a PR to origin, immediately run `./tools/monitor_pr_review.sh <pr_number>` to wait for bot code review feedback. Address minor issues (documentation, magic numbers, style, logging standards) automatically without user involvement. For critical issues or complex fixes, discuss with the user first before implementing.
 - When deciding where to track future work, use documents in the planning directory by default for work directly related to getting the headless Frontier runtime working on modern systems, and use GitHub issues (via the `gh` command) for future improvements beyond functional parity with the legacy Frontier runtime.
 - **Planning directory structure**:
   - `planning/phase3/` - Active Phase 3 implementation work and analysis
@@ -21,6 +22,7 @@
   - When making architectural decisions that will affect multiple work areas, document them in `planning/architectural_decision_records/`
 - Error messages exposed to end-users in the UserTalk realm always take the form of: "Can't do X because Y. [Try Z instead.]"
 - Never delete a local or remote branch without confirming with the user first.
+- Avoid using "magic numbers" in code. Instead create static constants (or variables if the language doesn't support static constants) with names that explain what the constant means to developers.
 - When implementing new kernel verbs in C: (1) Add case statement in appropriate verb function (e.g., `sysverbfunc` in shellsysverbs.c), (2) Use `getstringvalue(hparam1, N, varname)` to extract parameters, (3) Convert Pascal strings to C strings with `nullterminate(varname)`, (4) Convert C strings back to Pascal with `copyctopstring(cstr, result)`, (5) Use `setstringvalue(result, v)` or `setlongvalue()` to return values, (6) Mark last parameter with `flnextparamislast = true`, (7) Run `./tools/run_headless_tests.sh` to verify no regressions.
 - Creating new C test files that call UserTalk requires complex initialization (langinitverbs, environment setup, etc.). Defer detailed test infrastructure work to someone familiar with the test harness. Verify implementations work via `./tools/run_headless_tests.sh` instead.
 - Currently, the UserTalk system.startup.startupScript is known to fail because not all of the verbs that it uses have bindings yet. Always test the bootstrapping of the CLI runtime using the `FRONTIER_HEADLESS_SKIP_STARTUP` environment variable that disables the startup scripts.
