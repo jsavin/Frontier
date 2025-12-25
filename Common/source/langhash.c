@@ -3507,6 +3507,10 @@ static boolean hashpackvisit_v7 (bigstring bsname, hdlhashnode hnode, tyvaluerec
 			{
 				uint64_t bits = host_to_disk_double_bits (x);
 				memcpy(recbuf + 8, &bits, sizeof(uint64_t));
+#if defined(FRONTIER_HEADLESS)
+				log_debug(LOG_COMP_HASH, "hashpackvisit_v7 doublevaluetype name='%.*s' value=%f bits=0x%016llx",
+				         bsname[0], bsname + 1, x, (unsigned long long)bits);
+#endif
 			}
 			break;
 		}
