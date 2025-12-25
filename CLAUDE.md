@@ -122,6 +122,37 @@ External table variables store either:
 
 **See**: `docs/external_table_variable_management.md` - Migration patterns section
 
+### Global Mutable State - CRITICAL FOR LAUNCH ⚠️⚠️⚠️
+
+**BURN THE GLOBALS WITH FIRE. EVERYWHERE.**
+
+Frontier has multiple global mutable state variables that must be eliminated before launch:
+
+**Known Problem Areas:**
+- `outlinedata` and `outlinestack` (oppushoutline/oppopoutline) - outline context
+- `databasedata` and legacy database globals - database context (partially fixed with db_context)
+- Any static buffers or caches that aren't guarded by locks
+
+**Why This Matters:**
+This code MUST be thread-safe before launch. Global mutable state makes thread safety impossible.
+
+**Current Status:**
+- ✓ Database mode context partially addressed via `db_context` (see PR #125)
+- ✓ Outline packing refactored to `opverbpack_internal` (follows single-decision-point pattern)
+- ❌ Outline push/pop stack (`oppushoutline`/`oppopoutline`) still used throughout codebase (24+ files)
+- ❌ Other global state pockets likely exist
+
+**Refactoring Pattern (proven to work):**
+1. Create explicit context structure (e.g., `op_context`, `db_context`)
+2. Thread context through function parameters instead of relying on globals
+3. Maintain backward-compatible wrappers using default context
+4. Gradually eliminate global variable access
+5. Document in architectural_decision_records/
+
+**See:** Issue #135 (outline context refactoring)
+
+**Test with:** Multi-threaded tests before launch to verify thread-safety
+
 ## Logging Standards ⚠️
 
 All debug and diagnostic output must use structured logging macros - **never use `fprintf(stderr, ...)`**.
