@@ -109,8 +109,23 @@ typedef struct tyheadrecord {
 	short vpixels; //height of headline text; -1 is dirty value
 	
 	Handle hrefcon; /*for use by application, see opgetrefcon*/
-	
+
 	Handle headstring; /*text of headline lives in its own block*/
+
+	/*
+	 * Reserved space for node identity (Phase 6+ / v7.5 format)
+	 *
+	 * Planned use (v7.5 database format):
+	 * - 16-byte UUID for persistent node identity
+	 * - Enables OPML permalinks
+	 * - Supports CRDT tombstone tracking
+	 *
+	 * Current Phase 3: Always zero, not persisted
+	 *
+	 * See: planning/phase3/OUTLINE_OPERATION_CONTEXT.md
+	 *      planning/architectural_decision_records/NODE_IDENTITY_RESERVATION.md
+	 */
+	uint8_t reserved_identity[16];
 	} tyheadrecord;
 #pragma pack(pop)
 
