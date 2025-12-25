@@ -20,6 +20,7 @@ ERROR_MESSAGES = {
     'gui_dialog': "Can't use modal dialog verbs because GUI is not available in headless mode",
     'gui_statusbar': "Can't use status bar verbs because GUI is not available in headless mode",
     'gui_window': "Can't use window verbs because GUI is not available in headless mode",
+    'gui_mainwindow': "Can't use mainwindow verbs because GUI is not available in headless mode",
     'admin': "Can't {action} because it requires administrator privileges",
     'platform_windows': "Can't run Windows shell commands because they are not available on this platform",
 }
@@ -55,6 +56,15 @@ STUB_CONFIGS = {
     ('window', 'dbstats'): (STUB_ERROR, 'gui_window'),
     ('window', 'getposition'): (STUB_ERROR, 'gui_window'),
     ('window', 'setposition'): (STUB_ERROR, 'gui_window'),
+
+    # Category 1d2: Mainwindow Verbs (7 verbs) - mainwindow processor
+    ('mainwindow', 'showflag'): (STUB_ERROR, 'gui_mainwindow'),
+    ('mainwindow', 'hideflag'): (STUB_ERROR, 'gui_mainwindow'),
+    ('mainwindow', 'showpopup'): (STUB_ERROR, 'gui_mainwindow'),
+    ('mainwindow', 'hidepopup'): (STUB_ERROR, 'gui_mainwindow'),
+    ('mainwindow', 'showbuttons'): (STUB_ERROR, 'gui_mainwindow'),
+    ('mainwindow', 'hidebuttons'): (STUB_ERROR, 'gui_mainwindow'),
+    ('mainwindow', 'showserverstats'): (STUB_ERROR, 'gui_mainwindow'),
 
     # Category 1e: Admin-Required Operations (2 verbs)
     ('clock', 'set'): (STUB_ERROR, {'template': 'admin', 'action': 'set system time'}),
