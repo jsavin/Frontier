@@ -43,6 +43,7 @@
 #include "timedate.h"
 #include "process.h"
 #include "logging.h"
+#include "op_context.h"
 #if defined(FRONTIER_HEADLESS)
 extern const char *langhash_materialize_current_path;
 #endif
@@ -1827,68 +1828,94 @@ boolean opsetactualheadstring (hdlheadrecord hnode, bigstring newstring) {
 	} /*opsetactualheadstring*/
 
 
-boolean opsetheadtext (hdlheadrecord hnode, Handle hstring) {
-	
+/**
+ * opsetheadtext_ctx - Set headline text (context-aware)
+ *
+ * @param ctx - Operation context (required)
+ * @param hnode - Node to modify
+ * @param hstring - New headline text handle
+ * @return true if successful
+ */
+boolean opsetheadtext_ctx (op_context_t *ctx, hdlheadrecord hnode, Handle hstring) {
+
+	assert(ctx != NULL);
+	op_context_version_bump(ctx);
+
 	/*
-	4/3/92 dmb: moved call to textchangedcallback into this bottleneck so 
+	4/3/92 dmb: moved call to textchangedcallback into this bottleneck so
 	that find/replace and op.setlinetext will update menubar items properly.
 	call used to be in opwriteeditbuffer
-	
+
 	8/14/93 DW: if the node's tmpbit is set, we display the line before
-	calling the callback. in clay basket the callback can reorder the 
+	calling the callback. in clay basket the callback can reorder the
 	outline. too much for a human mind to parse while doing a find/replace.
-	
+
 	8/15/93 DW: leave the tmp bit set over call to callback, so that
 	the browser can avoid re-inserting the node, again for find & replace.
 	we don't keep the lists sorted, to make things fast, avoid jumpiness,
 	and also to keep the search order intact (!).
-	
+
 	5.0d14 dmb: do as little as possible when the head string isn't changing.
 	*/
-	
+
 	register hdlheadrecord h = hnode;
 	Handle horig;
 	bigstring bsorig;
-	
+
 	opgetheadstring (hnode, bsorig);
-	
+
 	horig = (**hnode).headstring;
-	
+
 	(**hnode).headstring = hstring;
-	
+
 	if (equalhandles (horig, hstring))
 		disposehandle (horig);
-	
+
 	else {
-		
+
 		opnodechanged (h);
-		
+
 		(**h).fldirty = true;
-		
+
 		opdirtyoutline ();
-		
+
 		if ((**h).tmpbit) { /*special for clay basket, find & replace: update line now*/
-		
+
 			opinvalnode (h);
-		
+
 			opupdatenow ();
 			}
-		
+
 		if (!(*(**outlinedata).textchangedcallback) (h, bsorig)) {
-			
+
 			/*DW 8/31/93 -- file rename in cb failed*/
-			
+
 			(**hnode).headstring = horig;
-			
+
 			disposehandle (hstring);
 			}
 		else
 			disposehandle (horig);
 		}
-			
+
 	(**h).tmpbit = false; /*consume the bit*/
 
 	return (true);
+	} /*opsetheadtext_ctx*/
+
+
+/**
+ * opsetheadtext - Set headline text (backward-compatible wrapper)
+ *
+ * Wrapper for code that doesn't use operation context yet.
+ * Allocates temporary context internally.
+ */
+boolean opsetheadtext (hdlheadrecord hnode, Handle hstring) {
+
+	op_context_t *ctx = op_context_acquire(OP_CONTEXT_NORMAL);
+	boolean result = opsetheadtext_ctx(ctx, hnode, hstring);
+	op_context_release(ctx);
+	return result;
 	} /*opsetheadtext*/
 
 
