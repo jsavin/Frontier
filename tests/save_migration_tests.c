@@ -16,6 +16,12 @@
 #include "odbinternal.h"
 #include "db_format.h"
 
+/* Database format constants for migration validation */
+#define DB_HEADER_VIEWS_OFFSET 16      /* Offset to views[0] (root table address) in v7 database header */
+#define DB_BLOCK_HEADER_SIZE 12        /* Size of database block header (zeros + size + zeros) */
+#define MERGEHANDLES_PREFIX_SIZE 4     /* Size of each mergehandles layer prefix */
+#define TABLE_HEADER_OFFSET (DB_BLOCK_HEADER_SIZE + (2 * MERGEHANDLES_PREFIX_SIZE))  /* 20 bytes total */
+
 static int test_count = 0;
 static int test_passed = 0;
 
@@ -163,8 +169,8 @@ int main(void) {
     boolean table_format_valid = false;
     FILE *test_db = fopen(migrated_path, "rb");
     if (test_db != NULL) {
-        /* Read the root table address from the database header (views[0] at offset 16 for v7) */
-        fseek(test_db, 16, SEEK_SET);
+        /* Read the root table address from the database header (views[0]) */
+        fseek(test_db, DB_HEADER_VIEWS_OFFSET, SEEK_SET);
         unsigned char addr_bytes[8];
         if (fread(addr_bytes, 1, 8, test_db) == 8) {
             /* v7 databases use big-endian 64-bit addresses */
@@ -181,20 +187,20 @@ int main(void) {
             fprintf(stderr, "[migration] Root table address from header: 0x%llx\n", root_adr);
 
             /* Check the table header at that address */
-            /* NOTE: The root table is stored with database block header (12 bytes) +
-             * TWO layers of mergehandles prefixes (4 bytes each):
-             * - Database block header (12 bytes): zeros + size + zeros
-             * - Outer layer: tablepacktable merges hashtable + formats (4 bytes)
-             * - Inner layer: hashpacktable merges header+records + strings (4 bytes)
-             * So the actual table header starts at offset 20 (12 + 4 + 4) */
-            fseek(test_db, (off_t)(root_adr + 20), SEEK_SET);
+            /* NOTE: The root table is stored with database block header +
+             * TWO layers of mergehandles prefixes:
+             * - Database block header (DB_BLOCK_HEADER_SIZE): zeros + size + zeros
+             * - Outer layer: tablepacktable merges hashtable + formats (MERGEHANDLES_PREFIX_SIZE)
+             * - Inner layer: hashpacktable merges header+records + strings (MERGEHANDLES_PREFIX_SIZE)
+             * So the actual table header starts at TABLE_HEADER_OFFSET */
+            fseek(test_db, (off_t)(root_adr + TABLE_HEADER_OFFSET), SEEK_SET);
             unsigned char table_header[32];
             if (fread(table_header, 1, 32, test_db) == 32) {
                 /* v7 table header: version is at offset 0 (2 bytes, big-endian) */
                 unsigned int table_version =
                     (table_header[0] << 8) | table_header[1];
 
-                fprintf(stderr, "[migration] Root table version field: %u (from offset +20)\n", table_version);
+                fprintf(stderr, "[migration] Root table version field: %u (from offset +%d)\n", table_version, TABLE_HEADER_OFFSET);
 
                 /* v7 format has version=5, v6 legacy format has version=4 */
                 /* Detect legacy format: first bytes are small (< 256), like 0x00 0x00 0x04 0x56 */
