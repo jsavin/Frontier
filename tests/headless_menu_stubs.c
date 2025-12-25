@@ -11,6 +11,7 @@
 #include "db_format.h"
 #include "dbinternal.h"
 #include "memory.h"
+#include "logging.h"
 
 #ifdef FRONTIER_HEADLESS
 
@@ -28,7 +29,7 @@ static boolean headless_menu_dup_block(dbaddress source, dbaddress *dest) {
     long payload_offset = 0;
     Handle hpayload = nil;
     if (dest == NULL) {
-        fprintf(stderr, "[headless] menu dup missing dest pointer\n");
+        log_error(LOG_COMP_DB, "[headless] menu dup missing dest pointer");
         return false;
     }
     *dest = nildbaddress;
@@ -40,12 +41,12 @@ static boolean headless_menu_dup_block(dbaddress source, dbaddress *dest) {
             source = normalized;
         }
     } else {
-        fprintf(stderr, "[headless] menu dbnormalizeaddress failed adr=0x%llx\n",
+        log_error(LOG_COMP_DB, "[headless] menu dbnormalizeaddress failed adr=0x%llx",
                 (unsigned long long) source);
     }
 
     if (!dbrefhandle(source, &hpayload)) {
-        fprintf(stderr, "[headless] dbrefhandle failed for menu adr=0x%llx\n",
+        log_error(LOG_COMP_DB, "[headless] dbrefhandle failed for menu adr=0x%llx",
                 (unsigned long long) source);
         return false;
     }
@@ -53,8 +54,8 @@ static boolean headless_menu_dup_block(dbaddress source, dbaddress *dest) {
     long hsize = gethandlesize(hpayload);
     hdldatabaserecord hdest = nil;
     (void) dbgetdestinationdatabase(&hdest);
-    fprintf(stderr,
-            "[headless] menu dup source=0x%llx hsize=%ld saveas=%d current=%p dest=%p\n",
+    log_debug(LOG_COMP_DB,
+            "[headless] menu dup source=0x%llx hsize=%ld saveas=%d current=%p dest=%p",
             (unsigned long long) source,
             hsize,
             (int) fldatabasesaveas,
@@ -68,7 +69,7 @@ static boolean headless_menu_dup_block(dbaddress source, dbaddress *dest) {
     }
 
     if (!dbassignhandle(hpayload, dest)) {
-        fprintf(stderr, "[headless] dbassignhandle failed for menu adr=0x%llx\n",
+        log_error(LOG_COMP_DB, "[headless] dbassignhandle failed for menu adr=0x%llx",
                 (unsigned long long) *dest);
         disposehandle(hpayload);
         return false;
