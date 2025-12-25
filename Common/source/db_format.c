@@ -1519,10 +1519,24 @@ static boolean db_format_force_materialize_external_tables_recursive(
 #if defined(FRONTIER_HEADLESS)
                 log_debug(LOG_COMP_DB, "    leaf external (menu) - will clear oldaddress without loading (memory optimization)");
 #endif
-                /* Menu externals: Don't load into memory during materialization (memory optimization).
-                 * Instead, we'll clear oldaddress below to force fresh v7 allocation during packing.
-                 * The packing code will handle loading on-demand via ensure_external_in_memory()
-                 * which calls menuverbinmemory_context() for context-aware menu loading. */
+                /* Menu externals: Use deferred loading strategy (memory optimization).
+                 *
+                 * Strategy: Clear oldaddress without loading, then load on-demand during packing.
+                 *
+                 * Rationale: Menus can be numerous in large databases (similar to WPText).
+                 * Loading all menus upfront during materialization would:
+                 * - Increase memory pressure unnecessarily
+                 * - Load menus that may never be accessed
+                 * - Slow down migration for large databases
+                 *
+                 * The deferred approach:
+                 * - Clears oldaddress to force fresh v7 allocation during packing
+                 * - Packing code calls ensure_external_in_memory() which triggers
+                 *   menuverbinmemory_context() for context-aware on-demand loading
+                 * - Only loads menus that are actually being packed
+                 *
+                 * Alternative: Could call menuverbinmemory_context() here (like pictures do)
+                 * but current approach has proven reliable in testing and reduces memory usage. */
                 loaded = true;  /* Treated as success - we'll handle via oldaddress clearing */
             } else {
 #if defined(FRONTIER_HEADLESS)
