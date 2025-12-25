@@ -1,7 +1,7 @@
 #include "op_context.h"
-#include "memory.h"
 #include "logging.h"
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <assert.h>
 
