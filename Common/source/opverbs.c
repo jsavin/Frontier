@@ -66,6 +66,7 @@
 #include "file.h" // 2006-09-17 creedon
 #include "db_format.h"
 #include "logging.h"
+#include "op_context.h"
 
 
 
@@ -1611,66 +1612,92 @@ static boolean oprunverb (hdltreenode hparam1, tyvaluerecord *v) {
 */
 
 
-boolean opinserthandle (Handle htext, tydirection dir) {
-	
+/**
+ * opinserthandle_ctx - Insert handle into outline (context-aware)
+ *
+ * @param ctx - Operation context (required)
+ * @param htext - Handle to text or outline structure
+ * @param dir - Direction (left, right, down, up)
+ * @return true if insertion successful, false otherwise
+ */
+boolean opinserthandle_ctx (op_context_t *ctx, Handle htext, tydirection dir) {
+
+	assert(ctx != NULL);
+	op_context_version_bump(ctx);
+
 	/*
-	12/13/91 dmb: take text handle instead of string, and potentially 
+	12/13/91 dmb: take text handle instead of string, and potentially
 	deposit an entire structure.
-	
+
 	2.1b9 dmb: use new isoutlinetext routine to save code
 	*/
-	
+
 	register hdloutlinerecord ho = outlinedata;
 	register hdlheadrecord hbarcursor;
 	register boolean fl;
 	hdlheadrecord hnode;
 	boolean floutline;
-	
+
 	hbarcursor = (**ho).hbarcursor; /*copy into register*/
-	
+
 	if (dir == left) { /*special case: convert left to down from parent*/
-		
+
 		hbarcursor = (**hbarcursor).headlinkleft;
-		
+
 		if (hbarcursor == (**ho).hbarcursor) /*couln't move left*/
 			return (false);
-		
+
 		opmoveto (hbarcursor);
-		
+
 		dir = down;
 		}
-	
+
 	floutline = isoutlinetext (htext);
-	
+
 	if (floutline)
 		if (!optexttooutline (ho, htext, &hnode))
 			return (false);
-	
+
 	if (dir == right) { /*maybe we need to expand?*/
-	
+
 		if (!opsubheadsexpanded (hbarcursor))
 			opexpand (hbarcursor, 1, false);
 		}
-	
+
 	if (floutline) {
-		
+
 		fl = opinsertstructure (hnode, dir);
-		
+
 		if (!fl)
 			opdisposestructure (hnode, false);
 		}
 	else {
-		
+
 		fl = copyhandle (htext, &htext);
-		
+
 		if (fl)
 			fl = opinsertheadline (htext, dir, false);
 		}
-	
+
 	if (fl)
 		shellcheckdirtyscrollbars ();
-	
-	return (fl); 
+
+	return (fl);
+	} /*opinserthandle_ctx*/
+
+
+/**
+ * opinserthandle - Insert handle into outline (backward-compatible wrapper)
+ *
+ * Wrapper for code that doesn't use operation context yet.
+ * Allocates temporary context internally.
+ */
+boolean opinserthandle (Handle htext, tydirection dir) {
+
+	op_context_t *ctx = op_context_acquire(OP_CONTEXT_NORMAL);
+	boolean result = opinserthandle_ctx(ctx, htext, dir);
+	op_context_release(ctx);
+	return result;
 	} /*opinserthandle*/
 
 

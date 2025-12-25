@@ -2811,53 +2811,80 @@ boolean oppaste (void) {
 	} /*oppaste*/
 
 
-boolean opinsertheadline (Handle hstring, tydirection dir, boolean flcomment) {
-	
+/**
+ * opinsertheadline_ctx - Insert headline with text (context-aware)
+ *
+ * @param ctx - Operation context (required)
+ * @param hstring - Handle to headline text
+ * @param dir - Direction to insert
+ * @param flcomment - Comment flag
+ * @return true if successful
+ */
+boolean opinsertheadline_ctx (op_context_t *ctx, Handle hstring, tydirection dir, boolean flcomment) {
+
 	/*
 	8/11/92 dmb: make sure display is enabled before drawing
 	*/
-	
+
+	assert(ctx != NULL);
+	op_context_version_bump(ctx);
+
 	register hdloutlinerecord ho = outlinedata;
 	register hdlheadrecord hcursor = (**ho).hbarcursor;
 	hdlheadrecord hnewcursor;
-	
+
 	opunloadeditbuffer ();
-	
+
 	pushundoaction (undotypingstring);
-	
+
 	oppushundo (&opafterundo, hcursor);
-	
+
 	opdocursor (false); /*un-highlight the old bar cursor line*/
-	
+
 	if (!opdepositnewheadline (hcursor, dir, hstring, &hnewcursor)) {
-		
+
 		opdocursor (true); /*un-highlight the old bar cursor line*/
-	
+
 		popundoaction ();
-		
+
 		return (false);
 		}
-	
+
 	oppushundo (&opbeforeundo, hnewcursor);
-	
+
 	opdirtyoutline ();
-	
+
 	hcursor = hnewcursor; /*copy into register*/
-	
+
 	(**hcursor).flcomment = bitboolean (flcomment);
-	
+
 	(**ho).hbarcursor = hcursor;
-	
+
 	opexpandupdate (hcursor);
-	
+
 	if (opdisplayenabled ())
 		opvisibarcursor ();
-	
+
 	oploadeditbuffer ();
-	
+
 	opeditselectall (); // 5.0d18 dmb: in case text was added by callback
-	
+
 	return (true);
+	} /*opinsertheadline_ctx*/
+
+
+/**
+ * opinsertheadline - Insert headline with text (backward-compatible wrapper)
+ *
+ * Wrapper for code that doesn't use operation context yet.
+ * Allocates temporary context internally.
+ */
+boolean opinsertheadline (Handle hstring, tydirection dir, boolean flcomment) {
+
+	op_context_t *ctx = op_context_acquire(OP_CONTEXT_NORMAL);
+	boolean result = opinsertheadline_ctx(ctx, hstring, dir, flcomment);
+	op_context_release(ctx);
+	return result;
 	} /*opinsertheadline*/
 	
 
