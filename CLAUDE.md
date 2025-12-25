@@ -1,3 +1,13 @@
+## Project Leadership
+
+**The user is both TPM (Technical Product Manager) and CTO of this project.** This means:
+- Strategic vision (2.0 collaborative ODB, partnerships with Dave Winer and Automattic) comes from TPM perspective
+- Architectural decisions and technical risk management come from CTO perspective
+- When the user asks for trade-off analysis, they're looking for both product and technical viewpoints
+- Technical debt decisions are made with full product context in mind
+
+---
+
 - Frontier has a concept of "guest databases" which are any databases that are opened that aren't the system root. All top-level items in guest databases are in global scope in the UserTalk domain. This is managed by the kernel leveraging the in-memory "table" at system.compiler.files.
 - Frontier has the concept of the current "target" which is generally a window. That might be a database or it might be an editor window for a non-scalar like a script, outline, or WPText object (which we're now persisting as RTF in UTF-8).
 - Legacy Frontier source code is available at /Users/jake/dev/tedchoward/Frontier
@@ -121,6 +131,121 @@ External table variables store either:
 **Safe approach**: Force external tables into memory (`flinmemory=1`) during migration to avoid address format issues entirely.
 
 **See**: `docs/external_table_variable_management.md` - Migration patterns section
+
+### Global Mutable State - CRITICAL FOR LAUNCH ⚠️⚠️⚠️
+
+**BURN THE GLOBALS WITH FIRE. EVERYWHERE.**
+
+Frontier has multiple global mutable state variables that must be eliminated before launch:
+
+**Known Problem Areas:**
+- `outlinedata` and `outlinestack` (oppushoutline/oppopoutline) - outline context
+- `databasedata` and legacy database globals - database context (partially fixed with db_context)
+- Any static buffers or caches that aren't guarded by locks
+
+**Why This Matters:**
+This code MUST be thread-safe before launch. Global mutable state makes thread safety impossible.
+
+**Current Status:**
+- ✓ Database mode context partially addressed via `db_context` (see PR #125)
+- ✓ Outline packing refactored to `opverbpack_internal` (follows single-decision-point pattern)
+- ❌ Outline push/pop stack (`oppushoutline`/`oppopoutline`) still used throughout codebase (24+ files)
+- ❌ Other global state pockets likely exist
+
+**Refactoring Pattern (proven to work):**
+1. Create explicit context structure (e.g., `op_context`, `db_context`)
+2. Thread context through function parameters instead of relying on globals
+3. Maintain backward-compatible wrappers using default context
+4. Gradually eliminate global variable access
+5. Document in architectural_decision_records/
+
+**See:** Issue #135 (outline context refactoring)
+
+**Test with:** Multi-threaded tests before launch to verify thread-safety
+
+## Collaborative ODB Editing - North Star Vision 🎯
+
+**Strategic Context:**
+
+Frontier's Object Database (ODB) is being positioned as the backend for next-generation collaborative editing, specifically supporting:
+- Dave Winer's unique outline-centric workflow (currently non-collaborative)
+- Multi-user server config management (Automattic partnership)
+- Concurrent source code workflows (GitHub integration patterns)
+- Any ODB object type (outlines, scripts, WPText, tables, menus, etc.)
+
+**The Vision (Frontier 2.0):**
+
+Frontier should support **Google Docs/Sheets-style collaborative editing of ODB objects** where:
+- Multiple users can edit different ODB objects simultaneously (and potentially the same object concurrently)
+- Developers write functionally single-threaded code (no concurrency awareness required)
+- The runtime handles all concurrency, locking, and conflict resolution transparently
+- Stability is guaranteed even with dozens of concurrent operations
+- Frontier maintains its developer-facing flexibility (unique features, scripting capabilities)
+- Developers should be able to assume their code will work correctly when multiple people are working with ODB data at the same time
+
+**What This Means NOW (Frontier 1.0):**
+
+This is a **foundational architectural decision**, not a future feature. Every design choice must accommodate this trajectory:
+
+1. **Reference Counting for All External Object Contexts (Issue #135 + Beyond):**
+   - Outline context (`op_context_t`), script context, WPText context, etc. must all support multiple concurrent references
+   - ODB objects stay valid while ANY thread holds a reference to them
+   - This is why full reference counting (not simplified stack-based) is required
+   - Foundation applies to all external object types, not just outlines
+   - See: `planning/architectural_decision_records/collaborative_odb_architecture.md` (when created)
+
+2. **Single-Threaded Developer Model:**
+   - A UserTalk script operating on ODB objects should NOT see concurrent modifications (from other users)
+   - The runtime isolates each developer's operations (transactional semantics or versioning)
+   - Conflict resolution happens automatically (operational transformation, CRDT, or version merging)
+   - Developers should never need to write `lock(object)` or `await(lock)`
+   - All concurrency complexity is hidden by the runtime
+
+3. **Stable Data Under Concurrent Load:**
+   - Multiple users editing same ODB objects = stable, correct results
+   - No data corruption, race conditions, or mysterious failures
+   - No "eventual consistency" - writes are immediately visible (last-write-wins OR conflict resolution)
+   - This is a launch-blocking requirement for any Automattic partnership work
+   - Users expect the same stability they get from Google Docs/Sheets
+
+**How This Affects Architecture:**
+
+| Component | 1.0 (Current) | 2.0 Vision | How We Get There |
+|-----------|---------------|-----------|------------------|
+| **Object Contexts** | Stack-based, single writer | Reference-counted, multi-writer | Full refcount in #135 + similar patterns for other types |
+| **Conflict Resolution** | N/A (single writer) | Automatic (OT, CRDT, or merge) | Implement post-1.0 |
+| **Developer Code** | Already single-threaded | Stays single-threaded | Transparent at runtime |
+| **Database Layer** | Locking at DB level | Locking at object level | #135 foundation enables this |
+| **UserTalk Verbs** | No concurrency awareness | No concurrency awareness | Runtime handles it |
+| **External Objects** | Assume single access | Support concurrent access | Foundation work (reference counting) enables this |
+
+**What 1.0 Must Get Right:**
+
+1. ✓ Object context structures (reference counting, not stack allocation) - starting with #135 outlines
+2. ✓ Thread-safe context lifecycle (acquire/release semantics)
+3. ✓ Reference counting for object validity (prevents premature deallocation)
+4. ✓ Locking at object granularity (not just DB-level locking)
+5. ✓ Foundation extensible to all ODB object types (not just outlines)
+6. ❌ Conflict resolution (OK to defer, but foundation must allow it)
+7. ❌ Operational transformation (OK to defer, but foundation must allow it)
+
+**Testing Implications:**
+
+Even in 1.0, we must test:
+- Multiple threads accessing different nodes in same ODB object (should work)
+- One thread saving while another edits (should not corrupt)
+- Outline operations with concurrent external object loading (should be safe)
+- Reference counting correctness (object stays alive while referenced)
+- Extension pattern tested with at least one other external type (script or WPText)
+
+**Known Strategic Partnerships:**
+
+- **Dave Winer** - Outline-centric system, currently single-user, wants multi-user 2.0 with full ODB collaboration
+- **Automattic ecosystem** - WordPress, WordPress.com, and partners (managing ~40% of public web)
+- These are not hypothetical - they are active, immediate opportunities post-1.0
+- Success here unlocks entirely new product categories (collaborative data management)
+
+**See:** Issue #135 (outline context refactoring) - this is where the collaborative ODB foundation gets built
 
 ## Logging Standards ⚠️
 

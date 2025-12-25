@@ -41,6 +41,7 @@
 #include "shellundo.h"
 #include "shell.rsrc.h"
 #include "op.h"
+#include "op_context.h"
 #include "opinternal.h"
 #include "oplineheight.h"
 #include "lang.h" // for flscriptrunning
@@ -1588,81 +1589,111 @@ static boolean opvalidatemovevisit (hdlheadrecord hnode, tymoveinfo *moveinfo) {
 	} /*opvalidatemovevisit*/
 
 
-boolean oppromote (void) {
-	
+/**
+ * oppromote_ctx - Promote children up one level (context-aware)
+ *
+ * @param ctx - Operation context (required)
+ * @return true if successful
+ */
+boolean oppromote_ctx (op_context_t *ctx) {
+
 	/*
 	move all the subheads of the bar cursor node out one level.
-	
+
 	5.0a25 dmb: use ophassubheads, not opnosubheads, to count dynamics
 
 	5.0b13 dmb: added validation
 	*/
-	
+
+	assert(ctx != NULL);
+	op_context_version_bump(ctx);
+
 	register hdloutlinerecord ho = outlinedata;
 	register hdlheadrecord hcursor = (**ho).hbarcursor;
 	register hdlheadrecord nomad, nextnomad;
 	hdlscreenmap hmap;
 	boolean fl = false;
-	
+
 	if (!ophassubheads (hcursor)) /*nothing to promote*/
 		return (false);
-	
+
 	if (opanymarked ())
 		return (false);
-	
+
 	pushundoaction (undopromotestring);
 
 	opbeforestrucchange (&hmap, true);
-	
-	opnodechanged (hcursor); 
-	
+
+	opnodechanged (hcursor);
+
 	(**hcursor).fldirty = true; /*leader icon will change*/
-	
+
 	opexpand (hcursor, 1, false); /*make sure subheads are visible*/
-	
+
 	/*validate the move first*/ {
 		tymoveinfo moveinfo;
-		
+
 		moveinfo.hpre = hcursor;
 		moveinfo.dir = down;
-		
+
 		if (!opvalidatemovevisit ((**hcursor).headlinkright, &moveinfo)) //this visits list
 			goto exit;
 		}
 
 	nomad = opgetlastsubhead (hcursor); /*start at the end of the list*/
-	
+
 	while (true) {
-		
+
 		nextnomad = (**nomad).headlinkup;
-		
+
 		(**ho).hbarcursor = nomad; /*play a li'l trick*/
-		
+
 		opmoveoutlineleft ();
-		
+
 		(**ho).hbarcursor = hcursor; /*restore*/
-		
+
 		if (nextnomad == nomad) { /*we're outa here*/
-			
+
 			fl = true;
 
 			break;
 			}
-			
+
 		nomad = nextnomad;
 		} /*while*/
-	
+
 	exit: {
 
 		opafterstrucchange (hmap, true); /*update the display, set dirty bits*/
 
 		return (fl);
 		}
+	} /*oppromote_ctx*/
+
+
+/**
+ * oppromote - Promote children up one level (backward-compatible wrapper)
+ *
+ * Wrapper for code that doesn't use operation context yet.
+ * Allocates temporary context internally.
+ */
+boolean oppromote (void) {
+
+	op_context_t *ctx = op_context_acquire(OP_CONTEXT_NORMAL);
+	boolean result = oppromote_ctx(ctx);
+	op_context_release(ctx);
+	return result;
 	} /*oppromote*/
 	
 	
-boolean opdemote (void) {
-	
+/**
+ * opdemote_ctx - Demote siblings down one level (context-aware)
+ *
+ * @param ctx - Operation context (required)
+ * @return true if successful
+ */
+boolean opdemote_ctx (op_context_t *ctx) {
+
 	/*
 	borrow Doug Baron's idea of demoting -- thanks Doug!  we move all the heads
 	at the bar cursor's level, that are down from the bc, at the end of the
@@ -1670,25 +1701,28 @@ boolean opdemote (void) {
 
 	5.0b13 dmb: added validation
 	*/
-	
+
+	assert(ctx != NULL);
+	op_context_version_bump(ctx);
+
 	register hdloutlinerecord ho = outlinedata;
 	register hdlheadrecord hcursor = (**ho).hbarcursor;
 	register hdlheadrecord nomad;
 	register boolean flmovedsomething = false;
 	hdlscreenmap hmap;
-	
+
 	if (opanymarked ())
 		return (false);
-	
+
 	if (oplastinlist (hcursor)) //nothing to do
 		return (false);
 
 	pushundoaction (undodemotestring);
-	
+
 	opbeforestrucchange (&hmap, true);
-	
+
 	opexpand (hcursor, 1, false); /*make sure subheads are visible*/
-	
+
 	/*validate the move first*/ {
 		tymoveinfo moveinfo;
 
@@ -1700,31 +1734,46 @@ boolean opdemote (void) {
 		}
 
 	while (true) {
-		
+
 		nomad = (**hcursor).headlinkdown;
-		
+
 		if (nomad == hcursor) /*no more items down from the cursor*/
 			break;
-		
+
 		(**ho).hbarcursor = nomad; /*play a li'l trick*/
-		
+
 		opmoveoutlineright ();
-		
+
 		(**ho).hbarcursor = hcursor; /*restore*/
-		
+
 		opnodechanged (hcursor); /*leader icon may change*/
-		
+
 		(**hcursor).fldirty = true;
-		
+
 		flmovedsomething = true;
 		} /*while*/
 
 	exit: {
-		
+
 		opafterstrucchange (hmap, true);
-			
+
 		return (flmovedsomething);
 		}
+	} /*opdemote_ctx*/
+
+
+/**
+ * opdemote - Demote siblings down one level (backward-compatible wrapper)
+ *
+ * Wrapper for code that doesn't use operation context yet.
+ * Allocates temporary context internally.
+ */
+boolean opdemote (void) {
+
+	op_context_t *ctx = op_context_acquire(OP_CONTEXT_NORMAL);
+	boolean result = opdemote_ctx(ctx);
+	op_context_release(ctx);
+	return result;
 	} /*opdemote*/
 
 
@@ -1754,44 +1803,69 @@ static boolean opdeletesubvisit (hdlheadrecord hnode, ptrvoid refcon) {
 	} /*opdeletesubvisit*/
 
 
-boolean opdeletesubs (hdlheadrecord hnode) {
-	
+/**
+ * opdeletesubs_ctx - Delete children of outline node (context-aware)
+ *
+ * @param ctx - Operation context (required)
+ * @param hnode - Node whose children should be deleted
+ * @return true if successful
+ */
+boolean opdeletesubs_ctx (op_context_t *ctx, hdlheadrecord hnode) {
+
 	/*
 	5.0a25 dmb: use ophassubheads, not opnosubheads, to count dynamics
-	
+
 	7.0b23: Tables are dynamic. If a node is collapsed,
 	headlinkright doesn't point to the first child, it points to itself.
 	So call the preexpand callback to make sure headlinkright is correct.
 	If it's not a table, it's a harmless call.
 	*/
-	
+
+	assert(ctx != NULL);
+	op_context_version_bump(ctx);
+
 	register hdlheadrecord h = hnode;
 	hdlscreenmap hmap;
-	
+
 	if (opanymarked ())
 		return (false);
-	
+
 	if (!ophassubheads (h)) /*nothing to delete*/
 		return (true);
-	
+
 	pushundoaction (undodeletionstring);
 
 	opbeforestrucchange (&hmap, true);
-	
+
 	opnodechanged (h); /*leader icon will change*/
-	
+
 	if (!(*(**outlinedata).preexpandcallback) (hnode, 1, true)) /*PBS 7.0b23: fixes crashing bug in tables, harmless elsewhere.*/
 		return (false);
-	
+
 	(**h).fldirty = true;
-	
+
 	opsiblingvisiter ((**h).headlinkright, true, &opdeletesubvisit, (ptrvoid) h);
-	
+
 	(**h).headlinkright = h; /*children list is now empty*/
-	
+
 	opafterstrucchange (hmap, false);
-	
-	return (true); 
+
+	return (true);
+	} /*opdeletesubs_ctx*/
+
+
+/**
+ * opdeletesubs - Delete children of outline node (backward-compatible wrapper)
+ *
+ * Wrapper for code that doesn't use operation context yet.
+ * Allocates temporary context internally.
+ */
+boolean opdeletesubs (hdlheadrecord hnode) {
+
+	op_context_t *ctx = op_context_acquire(OP_CONTEXT_NORMAL);
+	boolean result = opdeletesubs_ctx(ctx, hnode);
+	op_context_release(ctx);
+	return result;
 	} /*opdeletesubs*/
 	
 
@@ -2303,85 +2377,111 @@ static boolean opundonewsummit (hdlheadrecord hnode, boolean flundo) {
 	} /*opundonewsummit*/
 
 
-boolean opdeletenode (hdlheadrecord hnode) {
-	
+/**
+ * opdeletenode_ctx - Delete specific outline node (context-aware)
+ *
+ * @param ctx - Operation context (required)
+ * @param hnode - Node to delete
+ * @return true if delete succeeded
+ */
+boolean opdeletenode_ctx (op_context_t *ctx, hdlheadrecord hnode) {
+
 	/*
 	5.0a25 dmb: don't assume that hnode itself is expanded
 
 	5.0b7 dmb: create new summit before calling deletelinecallback
 	*/
 
+	assert(ctx != NULL);
+	op_context_version_bump(ctx);
+
 	register hdloutlinerecord ho = outlinedata;
 	register hdlheadrecord hdelete = hnode;
 	register hdlheadrecord hsummit;
-	
+
 	hsummit = (**ho).hsummit;
-	
+
 	if (hdelete == hsummit) { /*deleting the first summit*/
-		
+
 		register hdlheadrecord hdown = (**hsummit).headlinkdown;
-		
+
 		if (hdown == hsummit) /*deleting the only summit*/
 			hdown = nil;
-		
+
 		(**ho).hsummit = hdown;
-		
+
 		opsetline1 (hdown);
-		
+
 		(**ho).hbarcursor = hdown;
 		}
-		
+
 	else { /*deleting something other than the first summit*/
-		
+
 		if (!opsafebarcursor (hdelete)) { /*couldn't move up, down, or left*/
-			
+
 			popundoaction ();
-			
+
 			return (false);
 			}
 		}
-	
+
 	/*the cursor has been moved out of harm's way, perform the delete*/
-	
+
 	if ((**ho).hsummit == nil) { /*we deleted the only summit, make a new blank one*/
-		
+
 		opnewsummit (); /*make a new, blank summit, xxx -- add pre-flighting*/
-		
+
 		opdeletelinecallback (hdelete);
-		
+
 		opinsertlinecallback ((**ho).hsummit);
-		
+
 		oppushundo (&opredodelete, (**ho).hsummit);
-		
+
 		oppushundo (&opundonewsummit, hdelete);
-		
+
 		(**ho).ctexpanded = 1;
-		
+
 		(**ho).ctmarked = 0;
 		}
 	else {
 		opcheckline1 (hdelete);
-		
+
 		opunlink (hdelete);
-		
+
 		if (opsubheadsexpanded (hdelete)) /*got rid of the deleted line(s)*/
 			opsetctexpanded (ho);
 		else if ((**hdelete).flexpanded)
 			(**ho).ctexpanded -= opgetnodelinecount (hdelete);
-		
+
 		opsetscrollpositiontoline1 ();
-		
+
 		if ((**hdelete).flmarked)
 			(**ho).ctmarked --;
-		
-		opnodechanged ((**ho).hbarcursor); 
-		
+
+		opnodechanged ((**ho).hbarcursor);
+
 		(**(**ho).hbarcursor).fldirty = true; /*be sure cursor gets displayed*/
 		}
-	
+
 	oppushundo (&opundodelete, hdelete);
-	
+
 	return (true);
+	} /*opdeletenode_ctx*/
+
+
+/**
+ * opdeletenode - Delete specific outline node (backward-compatible wrapper)
+ *
+ * Wrapper for code that doesn't use operation context yet.
+ * Allocates temporary context internally.
+ */
+boolean opdeletenode (hdlheadrecord hnode) {
+
+
+	op_context_t *ctx = op_context_acquire(OP_CONTEXT_NORMAL);
+	boolean result = opdeletenode_ctx(ctx, hnode);
+	op_context_release(ctx);
+	return result;
 	} /*opdeletenode*/
 
 
@@ -2392,33 +2492,57 @@ static boolean opdeletenodevisit (hdlheadrecord hnode, ptrvoid refcon) {
 	} /*opdeletenodevisit*/
 
 
-boolean opdelete (void) {
-	
+/**
+ * opdelete_ctx - Delete current outline node (context-aware)
+ *
+ * @param ctx - Operation context (required)
+ * @return true if delete succeeded
+ */
+boolean opdelete_ctx (op_context_t *ctx) {
+
 	/*
 	delete the barcursor outline
-	
+
 	9/11/91 dmb: handle scrollbars when barcursor has expanded subheads
-	
-	2/12/92 dmb: must call delete/insert callbacks when replacing the 
+
+	2/12/92 dmb: must call delete/insert callbacks when replacing the
 	summit.  (failure to do so used to cause menubar crash.)
 	*/
-	
+
+	assert(ctx != NULL);
+	op_context_version_bump(ctx);
+
 	hdlscreenmap hmap;
-	
+
 	opbeforestrucchange (&hmap, false);
-	
+
 	if (!opvisitmarked (down, &opdeletenodevisit, nil)) { /*an error occurred; try to unwind*/
-		
+
 		disposehandle ((Handle) hmap); /*checks for nil*/
-		
+
 		popundoaction ();
 
 		return (false);
 		}
-	
+
 	opafterstrucchange (hmap, false);
-	
+
 	return (true);
+	} /*opdelete_ctx*/
+
+
+/**
+ * opdelete - Delete current outline node (backward-compatible wrapper)
+ *
+ * Wrapper for code that doesn't use operation context yet.
+ * Allocates temporary context internally.
+ */
+boolean opdelete (void) {
+
+	op_context_t *ctx = op_context_acquire(OP_CONTEXT_NORMAL);
+	boolean result = opdelete_ctx(ctx);
+	op_context_release(ctx);
+	return result;
 	} /*opdelete*/
 
 
@@ -2687,115 +2811,168 @@ boolean oppaste (void) {
 	} /*oppaste*/
 
 
-boolean opinsertheadline (Handle hstring, tydirection dir, boolean flcomment) {
-	
+/**
+ * opinsertheadline_ctx - Insert headline with text (context-aware)
+ *
+ * @param ctx - Operation context (required)
+ * @param hstring - Handle to headline text
+ * @param dir - Direction to insert
+ * @param flcomment - Comment flag
+ * @return true if successful
+ */
+boolean opinsertheadline_ctx (op_context_t *ctx, Handle hstring, tydirection dir, boolean flcomment) {
+
 	/*
 	8/11/92 dmb: make sure display is enabled before drawing
 	*/
-	
+
+	assert(ctx != NULL);
+	op_context_version_bump(ctx);
+
 	register hdloutlinerecord ho = outlinedata;
 	register hdlheadrecord hcursor = (**ho).hbarcursor;
 	hdlheadrecord hnewcursor;
-	
+
 	opunloadeditbuffer ();
-	
+
 	pushundoaction (undotypingstring);
-	
+
 	oppushundo (&opafterundo, hcursor);
-	
+
 	opdocursor (false); /*un-highlight the old bar cursor line*/
-	
+
 	if (!opdepositnewheadline (hcursor, dir, hstring, &hnewcursor)) {
-		
+
 		opdocursor (true); /*un-highlight the old bar cursor line*/
-	
+
 		popundoaction ();
-		
+
 		return (false);
 		}
-	
+
 	oppushundo (&opbeforeundo, hnewcursor);
-	
+
 	opdirtyoutline ();
-	
+
 	hcursor = hnewcursor; /*copy into register*/
-	
+
 	(**hcursor).flcomment = bitboolean (flcomment);
-	
+
 	(**ho).hbarcursor = hcursor;
-	
+
 	opexpandupdate (hcursor);
-	
+
 	if (opdisplayenabled ())
 		opvisibarcursor ();
-	
+
 	oploadeditbuffer ();
-	
+
 	opeditselectall (); // 5.0d18 dmb: in case text was added by callback
-	
+
 	return (true);
+	} /*opinsertheadline_ctx*/
+
+
+/**
+ * opinsertheadline - Insert headline with text (backward-compatible wrapper)
+ *
+ * Wrapper for code that doesn't use operation context yet.
+ * Allocates temporary context internally.
+ */
+boolean opinsertheadline (Handle hstring, tydirection dir, boolean flcomment) {
+
+	op_context_t *ctx = op_context_acquire(OP_CONTEXT_NORMAL);
+	boolean result = opinsertheadline_ctx(ctx, hstring, dir, flcomment);
+	op_context_release(ctx);
+	return result;
 	} /*opinsertheadline*/
 	
 
-boolean opinsertstructure (hdlheadrecord hnode, tydirection dir) {
-	
+/**
+ * opinsertstructure_ctx - Insert structure after cursor (context-aware)
+ *
+ * @param ctx - Operation context (required)
+ * @param hnode - Node structure to insert
+ * @param dir - Direction to insert (up, down, right)
+ * @return true if successful
+ */
+boolean opinsertstructure_ctx (op_context_t *ctx, hdlheadrecord hnode, tydirection dir) {
+
 	/*
 	12/13/91 dmb: created from oppaste to service insert verb.
 	*/
-	
+
+	assert(ctx != NULL);
+	op_context_version_bump(ctx);
+
 	register hdloutlinerecord ho = outlinedata;
 	register hdlheadrecord hcursor = (**ho).hbarcursor;
 	hdlheadrecord nomad, nextnomad;
 	hdlscreenmap hmap;
-	
+
 	opsettextmode (false);
-	
+
 	pushundoaction (undotypingstring);
-	
+
 	opbeforestrucchange (&hmap, false);
-	
+
 	opnodechanged (hcursor);
-	
+
 	(**hcursor).fldirty = true;
-	
+
 	nomad = hnode;
-	
+
 	while (true) { /*copy each of the summits on the scrap*/
-		
+
 		nextnomad = (**nomad).headlinkdown;
-		
+
 		oppushundo (&opredodelete, nomad);
-		
+
 		opdeposit (hcursor, dir, nomad);
-		
+
 		dir = down;
-		
+
 		hcursor = nomad;
-		
+
 		opresetlevels (hcursor);
-		
+
 		(**hcursor).flexpanded = true;
-		
+
 		if ((nomad == nextnomad) || (nextnomad == nil)) /*deposited the last guy*/
 			break;
-		
+
 		nomad = nextnomad; /*advance to next guy on scrap*/
 		} /*while*/
-	
+
 	// 6.0a14 dmb: done by afterstructchangenow -- opsetctexpanded (ho);
-	
+
 	(**ho).hbarcursor = hnode;
-	
+
 	opafterstrucchange (hmap, false);
-	
+
 	if (!opnodevisible (hcursor)) {
-		
+
 		opvisinode (hcursor, false);
-		
+
 		opvisinode (hnode, true);
 		}
-	
+
 	return (true);
+	} /*opinsertstructure_ctx*/
+
+
+/**
+ * opinsertstructure - Insert structure after cursor (backward-compatible wrapper)
+ *
+ * Wrapper for code that doesn't use operation context yet.
+ * Allocates temporary context internally.
+ */
+boolean opinsertstructure (hdlheadrecord hnode, tydirection dir) {
+
+	op_context_t *ctx = op_context_acquire(OP_CONTEXT_NORMAL);
+	boolean result = opinsertstructure_ctx(ctx, hnode, dir);
+	op_context_release(ctx);
+	return result;
 	} /*opinsertstructure*/
 
 

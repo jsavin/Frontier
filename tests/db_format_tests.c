@@ -14,6 +14,7 @@
 #include "dbinternal.h"
 #include "langexternal.h"
 #include "tableverbs.h"
+#include "logging.h"
 
 // 2025-11-20 Codex: Verify modern header serialization uses fixed big-endian encoding for portability.
 static const size_t legacy_view_base = 10;
@@ -368,8 +369,7 @@ static void test_tableverbpack_writes_be64_when_modern(void) {
         db_format_mode_apply(&mode);
     }
 
-    fprintf(stderr, "[TEST] test_tableverbpack_writes_be64_when_modern COMPLETED\n");
-    fflush(stderr);
+    log_info(LOG_COMP_DB, "[TEST] test_tableverbpack_writes_be64_when_modern COMPLETED");
 }
 
 static void test_legacy_table_repack_forces_be64_address(void) {
@@ -464,8 +464,7 @@ static void test_legacy_table_repack_forces_be64_address(void) {
     }
     (void) prev_adapter_repack;
 
-    fprintf(stderr, "[TEST] test_legacy_table_repack_forces_be64_address COMPLETED\n");
-    fflush(stderr);
+    log_info(LOG_COMP_DB, "[TEST] test_legacy_table_repack_forces_be64_address COMPLETED");
 }
 
 static void test_legacy_record_reference_repacked_to_be64(void) {
@@ -733,7 +732,7 @@ static void test_modern_header_canonical_size_and_version(void) {
     uint32_t header_len = db_format_read_be32(out + offsetof(tydatabaserecord_64, headerLength));
     assert(header_len == sizeof(tydatabaserecord_64));
 
-    printf("test_modern_header_canonical_size_and_version passed\n");
+    log_info(LOG_COMP_DB, "test_modern_header_canonical_size_and_version passed");
 }
 
 static void test_db_context_two_modes_isolated_mode_only(void) {
@@ -866,6 +865,6 @@ int main(void) {
     test_legacy_table_repack_forces_be64_address();
     test_legacy_record_reference_repacked_to_be64();
 
-    printf("db_format_tests: all checks passed\n");
+    log_info(LOG_COMP_DB, "db_format_tests: all checks passed");
     return 0;
 }

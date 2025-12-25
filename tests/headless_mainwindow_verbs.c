@@ -32,34 +32,37 @@ enum {
 static boolean mainwindow_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
+    (void) hparam1;  /* Suppress unused parameter warning */
+    (void) vreturned;
+
     switch(token) {
         case maiv_showflag:
-            /* Verb #0: mainwindow.showflag - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            /* Verb #0: mainwindow.showflag - GUI not available */
+            if (bserror) copystring(BIGSTRING("\pCan't use mainwindow verbs because GUI is not available in headless mode"), bserror);
             return false;
         case maiv_hideflag:
-            /* Verb #1: mainwindow.hideflag - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            /* Verb #1: mainwindow.hideflag - GUI not available */
+            if (bserror) copystring(BIGSTRING("\pCan't use mainwindow verbs because GUI is not available in headless mode"), bserror);
             return false;
         case maiv_showpopup:
-            /* Verb #2: mainwindow.showpopup - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            /* Verb #2: mainwindow.showpopup - GUI not available */
+            if (bserror) copystring(BIGSTRING("\pCan't use mainwindow verbs because GUI is not available in headless mode"), bserror);
             return false;
         case maiv_hidepopup:
-            /* Verb #3: mainwindow.hidepopup - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            /* Verb #3: mainwindow.hidepopup - GUI not available */
+            if (bserror) copystring(BIGSTRING("\pCan't use mainwindow verbs because GUI is not available in headless mode"), bserror);
             return false;
         case maiv_showbuttons:
-            /* Verb #4: mainwindow.showbuttons - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            /* Verb #4: mainwindow.showbuttons - GUI not available */
+            if (bserror) copystring(BIGSTRING("\pCan't use mainwindow verbs because GUI is not available in headless mode"), bserror);
             return false;
         case maiv_hidebuttons:
-            /* Verb #5: mainwindow.hidebuttons - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            /* Verb #5: mainwindow.hidebuttons - GUI not available */
+            if (bserror) copystring(BIGSTRING("\pCan't use mainwindow verbs because GUI is not available in headless mode"), bserror);
             return false;
         case maiv_showserverstats:
-            /* Verb #6: mainwindow.showserverstats - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            /* Verb #6: mainwindow.showserverstats - GUI not available */
+            if (bserror) copystring(BIGSTRING("\pCan't use mainwindow verbs because GUI is not available in headless mode"), bserror);
             return false;
         default:
             return false;

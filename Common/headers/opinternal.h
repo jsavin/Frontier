@@ -33,8 +33,10 @@
 #ifndef opinclude
 
 	#include "op.h"
-	
+
 #endif
+
+#include "op_context.h" /* Phase 2E: context-aware operations */
 
 #ifndef opscreenmapinclude
 
@@ -274,6 +276,7 @@ extern boolean opbitmaps (boolean, boolean *, boolean *);
 
 extern boolean opsetactualheadstring (hdlheadrecord, bigstring);
 
+extern boolean opsetheadtext_ctx (op_context_t *, hdlheadrecord, Handle); /* Phase 2D: context-aware variant */
 extern boolean opsetheadtext (hdlheadrecord, Handle);
 
 extern boolean opsetheadstring (hdlheadrecord, bigstring);
@@ -333,6 +336,7 @@ extern boolean opreorgcursor (tydirection, long);
 
 extern void opsetline1 (hdlheadrecord);
 
+extern boolean opdeletesubs_ctx (op_context_t *, hdlheadrecord); /* Phase 2A: context-aware variant */
 extern boolean opdeletesubs (hdlheadrecord);
 
 extern hdlheadrecord opcopyoutline (hdlheadrecord);

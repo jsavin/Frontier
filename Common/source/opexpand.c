@@ -31,6 +31,7 @@
 #include "quickdraw.h"
 #include "mouse.h"
 #include "op.h"
+#include "op_context.h"
 #include "opinternal.h"
 #include "oplineheight.h"
 #include "opdisplay.h"
@@ -82,77 +83,102 @@ void opfastcollapse (hdlheadrecord h) {
 	} /*opfastcollapse*/
 	
 
-boolean opcollapse (hdlheadrecord hnode) {
-	
+/**
+ * opcollapse_ctx - Collapse outline node (context-aware)
+ *
+ * @param ctx - Operation context (required)
+ * @param hnode - Node to collapse
+ * @return true if something collapsed
+ */
+boolean opcollapse_ctx (op_context_t *ctx, hdlheadrecord hnode) {
+
+	assert(ctx != NULL);
+	op_context_version_bump(ctx);
+
 	register hdloutlinerecord ho = outlinedata;
 	long origct = (**ho).ctexpanded;
 	long ctscroll;
 	long lnum;
 	Rect linerect;
-	
+
 	pixelscollapsed = 0;
-	
+
 	flnothingcollapsed = true;
-	
+
 	oprecursivelyvisit (hnode, infinity, &opcollapsevisit, nil); /*clear expanded bits*/
-	
+
 	if (flnothingcollapsed)
 		return (false);
-	
+
 	opdirtyview ();
-	
+
 	if (!opdisplayenabled ())
 		goto exit;
-	
+
 	opgetscreenline (hnode, &lnum);
-	
+
 	opgetlinerect (lnum, &linerect);
-	
+
 //	opgeticonrect (hnode, &linerect, &iconrect);
-	
+
 //	invalrect (iconrect); /*the icon changes, avoid flash, don't inval the whole line*/
-	
+
 	opdrawicon (hnode, linerect);
 
 	if (opgetnextexpanded (hnode) == hnode) { /*last expanded node, nothing to scroll up*/
-		
+
 		Rect r = linerect;
-		
-		r.top = linerect.bottom; 
-		
+
+		r.top = linerect.bottom;
+
 		r.bottom = (**ho).outlinerect.bottom;
-		
-		smashrect (r); 
-		
+
+		smashrect (r);
+
 		goto exit;
 		}
-	
+
 	if (linerect.bottom >= (**ho).outlinerect.bottom)
 		goto exit;
-	
+
 	ctscroll = origct - (**ho).ctexpanded;
-	
+
 	if (ctscroll > 0) {
-		
+
 		Rect r = (**ho).outlinerect;
-		
+
 		if (linerect.bottom > r.top) { /*headline isn't above display*/
-			
+
 			r.top = linerect.bottom;
-			
+
 			opscrollrect (r, 0, -pixelscollapsed);
 			}
 		}
 
 	exit:
-	
+
 	opresetscrollbars (); /*number of expanded lines changed*/
-	
+
 	(*(**ho).postcollapsecallback) (hnode);
-	
+
 	opupdatenow (); /*fill in newly revealed stuff immediately*/
-	
+
 	return (true); /*something was collapsed*/
+	} /*opcollapse_ctx*/
+
+
+/**
+ * opcollapse - Collapse outline node (backward-compatible wrapper)
+ *
+ * Wrapper for code that doesn't use operation context yet.
+ * Allocates temporary context internally.
+ */
+boolean opcollapse (hdlheadrecord hnode) {
+
+	op_context_t *ctx = op_context_acquire(OP_CONTEXT_NORMAL);
+	boolean result = opcollapse_ctx(ctx, hnode);
+	op_context_release(ctx);
+	return result;
 	} /*opcollapse*/
 
 
@@ -181,127 +207,141 @@ static boolean opexpandvisit (hdlheadrecord hnode, ptrvoid refcon) {
 	} /*opexpandvisit*/
 	
 
-boolean opexpand (hdlheadrecord hnode, short level, boolean flmaycreatesubs) {
-	
-	/*
-	expand the given node to the indicated level.
-	
-	scroll the screen vertically to make the last sub-node visible, if
-	possible.
-	
-	return true if something was expanded, false otherwise.
-	
-	10/18/91 dmb: account for already-expanded subheads when no scrolling is required
-	
-	6.0b2 dmb: fixed scrollbar handling for large expansions
-	*/
-	
+/**
+ * opexpand_ctx - Expand/collapse outline node (context-aware)
+ *
+ * @param ctx - Operation context (required)
+ * @param hnode - Node to expand
+ * @param level - Expansion level
+ * @param flmaycreatesubs - Whether to create subnodes
+ * @return true if something expanded
+ */
+boolean opexpand_ctx (op_context_t *ctx, hdlheadrecord hnode, short level, boolean flmaycreatesubs) {
+
+	assert(ctx != NULL);
+	op_context_version_bump(ctx);
+
 	register hdloutlinerecord ho = outlinedata;
 	Rect outlinerect = (**ho).outlinerect;
 	long origct = (**ho).ctexpanded;
 	long lnum;
 	Rect linerect, r;
 	long hscroll, vscroll;
-	
+
 	if (!(*(**ho).preexpandcallback) (hnode, level, flmaycreatesubs))
 		return (false);
-	
+
 	ctalreadyexpanded = 0;
-	
+
 	pixelsexpanded = 0;
-	
+
 	pixelsalreadyexpanded = 0;
-	
+
 	oprecursivelyvisit (hnode, level, &opexpandvisit, nil);
-	
-	origct = (**ho).ctexpanded - origct; 
-	
+
+	origct = (**ho).ctexpanded - origct;
+
 	if (origct == 0) /*nothing expanded*/
-		return (false); 
-	
+		return (false);
+
 	opdirtyview ();
-	
+
 	if (!opdisplayenabled ())
 		return (true);
-	
+
 	opgetscreenline (hnode, &lnum);
-	
-	opgetlinerect (lnum, &linerect); 
-	
+
+	opgetlinerect (lnum, &linerect);
+
 	/*handle case where height of the head + subs is > height of win*/ {
-		
+
 		long heightheads = pixelsexpanded + pixelsalreadyexpanded + opgetlineheight (hnode);
 		long heightwin = outlinerect.bottom - outlinerect.top;
-		
+
 		if (heightheads > heightwin) { /*smash the display, no optimization possible*/
-		
+
 			if (hnode != (**ho).hline1) {
-				
+
 				opsetline1 (hnode);
-				
+
 				opsetscrollpositiontoline1 ();
 				}
-			
+
 			/*
-			opgetscrollbarinfo (false); 
-			
+			opgetscrollbarinfo (false);
+
 			(**ho).vertscrollinfo.cur += lnum; //text scrolls up
 			*/
-			
-			opresetscrollbars (); 
-			
+
+			opresetscrollbars ();
+
 			opseteditbufferrect (); //in case we're in text mode
-			
+
 			opinvaldisplay ();
-			
+
 			//operaserect ((**ho).outlinerect);
-			
+
 			opupdatenow ();
-			
+
 			return (true);
 			}
 		}
-	
+
 	//else
 	//	opinvalnode (hnode);
-	
-	opresetscrollbars (); 
-	
+
+	opresetscrollbars ();
+
 	if (opneedvisiscroll (oplastexpanded (hnode), &hscroll, &vscroll, false)) {
-	
+
 		(**ho).blockvisiupdate = true;
-		
+
 		opdovisiscroll (hscroll, vscroll);
-		
+
 		(**ho).blockvisiupdate = false;
-		
+
 		//opinvalafter ((**hnode).headlinkright);
 	 	opinvalafter (hnode);
 	 	}
 	else {
 		r = linerect; /*get ready to scroll to make room for newly visible text*/
-		
+
 		r.top = r.bottom;
-		
+
 		if (ctalreadyexpanded > 0) { /*account for already-expanded lines*/
-			
+
 			r.bottom = r.top + pixelsalreadyexpanded;
-			
+
 			invalrect (r);
-			
+
 			r.top = r.bottom;
 			}
-		
+
 		r.bottom = outlinerect.bottom;
-		
+
 		opscrollrect (r, 0, pixelsexpanded); /*scroll text down to make room for new heads*/
-		
+
 		opinvalnode (hnode);
 		}
-	
-	opupdatenow (); 
-	
+
+	opupdatenow ();
+
 	return (true);
+	} /*opexpand_ctx*/
+
+
+/**
+ * opexpand - Expand/collapse outline node (backward-compatible wrapper)
+ *
+ * Wrapper for code that doesn't use operation context yet.
+ * Allocates temporary context internally.
+ */
+boolean opexpand (hdlheadrecord hnode, short level, boolean flmaycreatesubs) {
+
+	op_context_t *ctx = op_context_acquire(OP_CONTEXT_NORMAL);
+	boolean result = opexpand_ctx(ctx, hnode, level, flmaycreatesubs);
+	op_context_release(ctx);
+	return result;
 	} /*opexpand*/
 	
 
