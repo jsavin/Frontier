@@ -4273,25 +4273,25 @@ log_trace(LOG_COMP_HASH, "hashunpacktable record ixkey=%d type=%d version=%u dat
 					/* v7 records store doubles inline (64-bit IEEE754).
 					 * v6 records use extended80 format (legacy). */
 					if (v7_rec) {
-						/* v7: handled as inline scalar below */
-						goto handle_inline_scalar;
+						/* v7: inline 64-bit IEEE754 format - use modern conversion */
+						diskvalue_to_value_v7 (&rec_data_v7, &val);
+					} else {
+						/* v6 legacy: unpack extended80 from string heap */
+						double x;
+						extended80 **x80;
+
+						if (!hashunpackbinary (hstrings, (Handle *) &x80, ixstrings))
+							goto L1;
+
+						x = x80tod (*x80);
+
+						disposehandle ((Handle) x80);	// 1/22/97 dmb: this was a leak!
+
+						if (!setdoublevalue (x, &val))
+							goto L1;
+
+						exemptfromtmpstack (&val);
 					}
-
-					/* v6 legacy: unpack extended80 */
-					double x;
-					extended80 **x80;
-
-					if (!hashunpackbinary (hstrings, (Handle *) &x80, ixstrings))
-						goto L1;
-
-					x = x80tod (*x80);
-
-					disposehandle ((Handle) x80);	// 1/22/97 dmb: this was a leak!
-
-					if (!setdoublevalue (x, &val))
-						goto L1;
-
-					exemptfromtmpstack (&val);
 
 					break;
 				}
@@ -4487,7 +4487,6 @@ log_trace(LOG_COMP_HASH, "hashunpacktable external variabledata=0x%016llx", (uns
 
 					break;
 
-				handle_inline_scalar:
 				case novaluetype:
 				case charvaluetype:
 				case intvaluetype:
