@@ -392,6 +392,16 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
         }
 
         if (fl) {
+            /* Debug: log the handle before attempting to unpack */
+            long hpacked_size = gethandlesize(hpacked);
+            log_debug(LOG_COMP_TABLE, "tableverbinmemory before tableunpacktable adr=0x%llx hpacked_size=%ld",
+                    (unsigned long long)adr, hpacked_size);
+            if (hpacked_size > 0 && log_enabled(LOG_LEVEL_DEBUG, LOG_COMP_TABLE)) {
+                unsigned char *bytes = (unsigned char *) *hpacked;
+                size_t dump = hpacked_size < 64 ? (size_t) hpacked_size : 64;
+                log_hex_dump(LOG_COMP_TABLE, LOG_LEVEL_DEBUG, bytes, dump, "hpacked before tableunpacktable");
+            }
+
             langtraperrors(bsunpackerror, &savecallback, &saverefcon);
 
             log_trace(LOG_COMP_TABLE, "tableunpacktable enter path=%s adr=0x%llx",

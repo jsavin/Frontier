@@ -154,6 +154,18 @@ boolean tableunpacktable_internal (const db_context *ctx, Handle hpacked, boolea
 	        hpackedtable ? gethandlesize (hpackedtable) : 0L,
 	        hpackedformats ? gethandlesize (hpackedformats) : 0L);
 
+#if defined(FRONTIER_HEADLESS)
+	/* Log first few bytes of the unpacked table to verify structure */
+	if (hpackedtable != nil) {
+		long tablesize = gethandlesize(hpackedtable);
+		if (tablesize > 0) {
+			unsigned char *bytes = (unsigned char *) *hpackedtable;
+			size_t dump = tablesize < 64 ? (size_t) tablesize : 64;
+			log_hex_dump(LOG_COMP_TABLE, LOG_LEVEL_DEBUG, bytes, dump, "tableunpacktable hpackedtable bytes");
+		}
+	}
+#endif
+
 	if (!newhashtable (htable)) {
 
 		disposehandle (hpackedtable);

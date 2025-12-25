@@ -3889,8 +3889,10 @@ log_trace(LOG_COMP_HASH, "hashunpacktable enter htable=%p flmemory=%d", (void *)
 	assert (sizeof(tydisktablerecord_v4) == 16L);
 	assert (sizeof(tydisktablerecord) == 32L);
 	
-	if (!unmergehandles (hpackedtable, &hrecords, &hstrings)) /*consumes hpackedtable*/
+	if (!unmergehandles (hpackedtable, &hrecords, &hstrings)) { /*consumes hpackedtable*/
+		log_error(LOG_COMP_HASH, "hashunpacktable_internal: unmergehandles failed");
 		return (false);
+	}
 
 #if defined(FRONTIER_HEADLESS)
 	if (!hashunpack_log_init) {
@@ -3908,13 +3910,13 @@ log_trace(LOG_COMP_HASH, "hashunpacktable enter htable=%p flmemory=%d", (void *)
 		}
 	}
 
-log_trace(LOG_COMP_HASH, "hashunpacktable split records=%ld strings=%ld", hrecords ? gethandlesize (hrecords) : 0L, hstrings ? gethandlesize (hstrings) : 0L);
+log_debug(LOG_COMP_HASH, "hashunpacktable_internal unmerge records=%ld strings=%ld", hrecords ? gethandlesize (hrecords) : 0L, hstrings ? gethandlesize (hstrings) : 0L);
 	if (hrecords && gethandlesize (hrecords) >= (long) sizeof (tydisktablerecord)) {
 		unsigned char *recbytes = (unsigned char *) *hrecords;
 		long dump = gethandlesize (hrecords);
-		if (dump > 32)
-			dump = 32;
-		log_hex_dump(LOG_COMP_HASH, LOG_LEVEL_TRACE, recbytes, dump, "hashunpacktable records bytes");
+		if (dump > 64)
+			dump = 64;
+		log_hex_dump(LOG_COMP_HASH, LOG_LEVEL_DEBUG, recbytes, dump, "hashunpacktable records bytes");
 	}
 #endif
 	
