@@ -815,7 +815,7 @@ static boolean langunsettarget (hdlhashtable htable, bigstring bsname) {
 
 
 
-static boolean newvaluefunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+boolean newvaluefunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	
 	/*
 	10/4/91 dmb: create heap-based values properly

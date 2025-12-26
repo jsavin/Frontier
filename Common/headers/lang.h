@@ -1320,6 +1320,7 @@ extern boolean langfunctioncall (hdltreenode, hdlhashtable, hdlhashnode, bigstri
 
 extern boolean functionvalue (hdltreenode, hdltreenode, tyvaluerecord *);
 
+extern boolean newvaluefunc (hdltreenode, tyvaluerecord *); /*langverbs.c - new() verb implementation*/
 
 extern boolean langzoomvalwindow (hdlhashtable, bigstring, tyvaluerecord, boolean); /*langverbs.c*/
 

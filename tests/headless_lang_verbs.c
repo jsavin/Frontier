@@ -89,9 +89,8 @@ static boolean lang_valueproc(short token, hdltreenode hparam1,
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_new:
-            /* Verb: lang.new - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: lang.new - create new value of specified type */
+            return newvaluefunc(hparam1, vreturned);
         case lanv_delete:
             /* Verb: lang.delete - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
