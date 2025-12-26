@@ -134,6 +134,7 @@ HEADLESS_STUBS = \
     ../portable/classic_handle.c \
     ../portable/script_portable.c \
     ../portable/wptext_portable.c \
+    $(TESTSDIR)/headless_lang_verbs.c \
     $(TESTSDIR)/headless_frontier_verbs.c \
     $(TESTSDIR)/headless_file_verbs.c \
     $(TESTSDIR)/headless_odb_stubs.c \

@@ -918,19 +918,16 @@ static boolean langinstallresources (void) {
 	} /*langinstallresources*/
 
 
+#ifndef FRONTIER_HEADLESS
+/* In headless mode, langinitverbs() is provided by headless_lang_verbs.c */
 boolean langinitverbs (void) {
 
-#ifdef FRONTIER_HEADLESS
-	log_debug(LOG_COMP_STARTUP, "langinitverbs: install start");
-#endif
     if (!langinstallresources ())
         return (false);
 
-#ifdef FRONTIER_HEADLESS
-	log_debug(LOG_COMP_STARTUP, "langinitverbs: install ok, builtins start");
-#endif
     return (langinitbuiltins ());
     } /*langinitverbs*/
+#endif
 
 boolean initlang (void) {
 
@@ -986,3 +983,26 @@ boolean initlang (void) {
 	
 	return (true);
 	} /*initlang*/
+
+
+#ifdef FRONTIER_HEADLESS
+/**
+ * langinitresources_headless - Public wrapper to initialize language resources in headless mode
+ *
+ * Headless CLI needs to initialize keywords, built-in functions, and constants before
+ * registering language verbs. This public function exposes the initialization that's
+ * normally done inside langinitverbs() in GUI mode.
+ */
+boolean langinitresources_headless(void) {
+	if (!langinitconsttable())
+		return false;
+
+	if (!langinitbuiltintable())
+		return false;
+
+	if (!langinitkeywordtable())
+		return false;
+
+	return true;
+}
+#endif

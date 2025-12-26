@@ -157,7 +157,7 @@ static boolean langexternalgetinfo (bigstring bs, hdlhashtable *htable, langvalu
 	
 
 boolean langexternalgettable (bigstring bs, hdlhashtable *htable) {
-    
+
     langvaluecallback valueroutine;
 
 	log_trace(LOG_COMP_EXTERNAL, "langexternalgettable enter %s", stringbaseaddress(bs));
@@ -166,18 +166,24 @@ boolean langexternalgettable (bigstring bs, hdlhashtable *htable) {
 		log_trace(LOG_COMP_EXTERNAL, "langexternalgettable: info hit %s -> %p", stringbaseaddress(bs), (void *)*htable);
         return true;
     }
+	log_trace(LOG_COMP_EXTERNAL, "langexternalgettable: getinfo miss %s, trying efptable fallback", stringbaseaddress(bs));
 #if defined(FRONTIER_HEADLESS)
     /* Headless fallback: look up external function processor under efptable */
     {
         hdlhashnode hnode = nil;
         tyvaluerecord val;
         pushhashtable(efptable);
+		log_trace(LOG_COMP_EXTERNAL, "langexternalgettable: searching efptable=%p for %s (len=%d)", (void*)efptable, stringbaseaddress(bs), (int)bs[0]);
         if (hashtablelookupnode(efptable, bs, &hnode)) {
+			log_trace(LOG_COMP_EXTERNAL, "langexternalgettable: found %s in efptable hnode=%p", stringbaseaddress(bs), (void*)hnode);
             val = (**hnode).val;
+			log_trace(LOG_COMP_EXTERNAL, "langexternalgettable: val.valuetype=%d", (int)val.valuetype);
             if (tablevaltotable (val, htable, hnode)) {
+				log_trace(LOG_COMP_EXTERNAL, "langexternalgettable: tablevaltotable SUCCESS htable=%p", (void*)*htable);
                 pophashtable();
                 return true;
             }
+			log_trace(LOG_COMP_EXTERNAL, "langexternalgettable: tablevaltotable FAILED");
             /* Direct headless coercion: extract table pointer from external */
             {
                 hdlexternalvariable hv3 = (hdlexternalvariable) val.data.externalvalue;
@@ -192,6 +198,8 @@ boolean langexternalgettable (bigstring bs, hdlhashtable *htable) {
         }
         pophashtable();
     }
+#endif
+
 #if defined(FRONTIER_HEADLESS)
     /* Direct lookup in root/system tables when sanitized database omits EFP wrappers.
        Disabled while we validate real system.verbs glue. */
@@ -232,7 +240,7 @@ boolean langexternalgettable (bigstring bs, hdlhashtable *htable) {
         }
     }
 #endif
-#endif
+
     return false;
     } /*langexternalgettable*/
 

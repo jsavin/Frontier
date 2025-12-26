@@ -793,6 +793,9 @@ extern boolean langinitverbs (void);
 
 extern boolean initlang (void);
 
+#ifdef FRONTIER_HEADLESS
+extern boolean langinitresources_headless (void); /*langstartup.c - headless keyword/builtin/const initialization */
+#endif
 
 extern boolean langcompilescript (hdlhashnode, hdltreenode *); /*langcallbacks.c*/
 

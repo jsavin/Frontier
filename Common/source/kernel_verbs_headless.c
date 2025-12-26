@@ -2007,8 +2007,9 @@ boolean headless_init_kernel_verbs(void) {
     if (!init_efp_1004(&langfunctionvalue))
         return false;
 
-    if (!init_efp_1005(&langfunctionvalue))
-        return false;
+    /* SKIP init_efp_1005 (lang processor) - already registered by langinitverbs() with lang_valueproc callback */
+    /* if (!init_efp_1005(&langfunctionvalue))
+        return false; */
 
     if (!init_efp_1006(&langfunctionvalue))
         return false;
