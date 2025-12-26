@@ -31,21 +31,13 @@ static boolean kb_valueproc(short token, hdltreenode hparam1,
                                      bigstring bserror) {
     switch(token) {
         case kbv_optionkey:
-            /* Verb #0: kb.optionkey - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
         case kbv_cmdkey:
-            /* Verb #1: kb.cmdkey - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
         case kbv_shiftkey:
-            /* Verb #2: kb.shiftkey - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
         case kbv_controlkey:
-            /* Verb #3: kb.controlkey - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* In headless mode, keyboard modifiers are always false */
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+            return setbooleanvalue(false, vreturned);
         default:
             return false;
     }

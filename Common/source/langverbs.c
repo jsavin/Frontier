@@ -565,33 +565,39 @@ static boolean settimesverb (tylangtoken token, hdltreenode hparam1, tyvaluereco
 
 
 static boolean keyboardmodifierverb (tylangtoken token) {
-	
+
 	/*
 	return true iff the indicated modifier key is down.
 	*/
-	
+
+#ifdef FRONTIER_HEADLESS
+	/* No keyboard input in headless mode */
+	(void)token; /* Suppress unused parameter warning */
+	return (false);
+#else
 	tykeystrokerecord kb;
-	
+
 	keyboardpeek (&kb);
-	
+
 	switch (token) {
-		
-		case optionkeyfunc: 
+
+		case optionkeyfunc:
 			return (kb.floptionkey);
-		
-		case cmdkeyfunc: 
+
+		case cmdkeyfunc:
 			return (kb.flcmdkey);
-		
-		case shiftkeyfunc: 
+
+		case shiftkeyfunc:
 			return (kb.flshiftkey);
-		
+
 		case controlkeyfunc:
 			return (kb.flcontrolkey);
-		
+
 		default:
 			return (false);
 		} /*switch*/
-	
+#endif
+
 	} /*keyboardmodifierverb*/
 	
 /*
@@ -2702,12 +2708,18 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 		
 		
 		case optionkeyfunc: case cmdkeyfunc: case shiftkeyfunc: case controlkeyfunc:
+			/*
+			Keyboard modifier verbs: optionkey, cmdkey, shiftkey, controlkey
+			In headless mode, these always return false (no keyboard input).
+			The keyboardmodifierverb() function handles these with proper
+			FRONTIER_HEADLESS guards (see line 567).
+			*/
 			if (!langcheckparamcount (hparam1, 0))
 				break;
-			
-			return (setbooleanvalue (keyboardmodifierverb ((tylangtoken) token), v));
-		
-		/*	
+
+			return (setbooleanvalue (keyboardmodifierverb (token), v));
+
+		/*
 		case presskeyfunc: {
 			char ch;
 			

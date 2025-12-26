@@ -1,0 +1,77 @@
+// test_stateless_verbs.ut - Phase 1 stateless verb tests
+// Tests for stateless verbs: STRING, MATH, KB
+// CRYPT and FRONTIER verbs are implemented but test coverage deferred to Phase 2+
+
+/* Test string.length */
+local (len_result) = string.length("hello");
+if len_result != 5 {
+    return "FAIL: string.length('hello') returned " + len_result + ", expected 5";
+}
+
+/* Test string.upper */
+local (upper_result) = string.upper("hello");
+if upper_result != "HELLO" {
+    return "FAIL: string.upper('hello') returned " + upper_result + ", expected HELLO";
+}
+
+/* Test string.lower */
+local (lower_result) = string.lower("HELLO");
+if lower_result != "hello" {
+    return "FAIL: string.lower('HELLO') returned " + lower_result + ", expected hello";
+}
+
+/* Test string.mid */
+local (mid_result) = string.mid("hello", 2, 3);
+if mid_result != "ell" {
+    return "FAIL: string.mid('hello', 2, 3) returned " + mid_result + ", expected ell";
+}
+
+/* Test math.sqrt */
+local (sqrt_result) = math.sqrt(16);
+if sqrt_result != 4 {
+    return "FAIL: math.sqrt(16) returned " + sqrt_result + ", expected 4";
+}
+
+/* Test math.min */
+local (min_result) = math.min(5, 10);
+if min_result != 5 {
+    return "FAIL: math.min(5, 10) returned " + min_result + ", expected 5";
+}
+
+/* Test math.max */
+local (max_result) = math.max(5, 10);
+if max_result != 10 {
+    return "FAIL: math.max(5, 10) returned " + max_result + ", expected 10";
+}
+
+/* Test kb.optionkey (should be false in headless) */
+local (optionkey_result) = kb.optionkey();
+if optionkey_result != false {
+    return "FAIL: kb.optionkey() returned " + optionkey_result + ", expected false";
+}
+
+/* Test kb.cmdkey (should be false in headless) */
+local (cmdkey_result) = kb.cmdkey();
+if cmdkey_result != false {
+    return "FAIL: kb.cmdkey() returned " + cmdkey_result + ", expected false";
+}
+
+/* Test kb.shiftkey (should be false in headless) */
+local (shiftkey_result) = kb.shiftkey();
+if shiftkey_result != false {
+    return "FAIL: kb.shiftkey() returned " + shiftkey_result + ", expected false";
+}
+
+/* Test kb.controlkey (should be false in headless) */
+local (controlkey_result) = kb.controlkey();
+if controlkey_result != false {
+    return "FAIL: kb.controlkey() returned " + controlkey_result + ", expected false";
+}
+
+// Note: CRYPT and FRONTIER verbs are implemented in Phase 1, but test
+// coverage will be expanded in Phase 2+ as additional inline test
+// cases are written and integrated into the test harness.
+// See planning/phase3/VERB_PORTING_STRATEGY.md for details.
+
+// All tests passed
+return "PASS: All stateless verb tests passed (11 tests: 5 string, 3 math, 4 kb)";
