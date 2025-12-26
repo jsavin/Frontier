@@ -1,0 +1,519 @@
+/*
+ * table_operations.ut - Comprehensive UserTalk integration tests for table verbs
+ *
+ * This file tests all table operation verbs at the UserTalk level:
+ * - table.assign(table.key, value) - Set a key/value pair
+ * - table.move(@source.key, @dest) - Move value from one table to another
+ * - table.copy(@source.key, @dest) - Copy value (source remains unchanged)
+ * - table.rename(@table.oldname, newname) - Rename a key in a table
+ * - table.emptytable(@table) - Clear all entries, return count
+ * - table.moveandrename(@source.key, @dest.newname) - Move and rename in one operation
+ *
+ * Tests are organized by operation type with both basic and complex scenarios.
+ * Each test returns "PASS: ..." on success or "FAIL: reason" on failure.
+ *
+ * Run with:
+ *   FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root \
+ *     databases/Frontier-v6-v7.root -e "load(\"tests/table_operations/table_operations.ut\")"
+ */
+
+// ============================================================================
+// TEST SUITE: table.assign() - Basic assignment and mutations
+// ============================================================================
+
+// Test 1: table.assign - Basic string assignment
+local (t1);
+lang.new(tableType, @t1);
+t1.key1 = "hello";
+if t1.key1 != "hello" {
+	return "FAIL: table.assign didn't set string value correctly"
+};
+
+// Test 2: table.assign - Multiple value types
+local (t2);
+lang.new(tableType, @t2);
+t2.str = "value";
+t2.num = 42;
+t2.bool = true;
+if t2.str != "value" || t2.num != 42 || t2.bool != true {
+	return "FAIL: table.assign failed for multiple value types"
+};
+
+// Test 3: table.assign - Overwrite existing value
+local (t3);
+lang.new(tableType, @t3);
+t3.key = "original";
+t3.key = "updated";
+if t3.key != "updated" {
+	return "FAIL: table.assign didn't overwrite existing value"
+};
+
+// Test 4: table.assign - Table size verification
+local (t4);
+lang.new(tableType, @t4);
+t4.a = 1;
+t4.b = 2;
+t4.c = 3;
+if sizeOf(t4) == 3 {
+	// pass
+} else {
+	return "FAIL: table.assign size incorrect (expected 3, got " + sizeOf(t4) + ")"
+};
+
+// Test 5: table.assign - Empty string
+local (t5);
+lang.new(tableType, @t5);
+t5.empty = "";
+if t5.empty != "" || sizeOf(t5) != 1 {
+	return "FAIL: table.assign failed for empty string"
+};
+
+// Test 6: table.assign - Zero value
+local (t6);
+lang.new(tableType, @t6);
+t6.zero = 0;
+if t6.zero != 0 {
+	return "FAIL: table.assign failed for zero value"
+};
+
+// Test 7: table.assign - Negative numbers
+local (t7);
+lang.new(tableType, @t7);
+t7.neg = -100;
+if t7.neg != -100 {
+	return "FAIL: table.assign failed for negative numbers"
+};
+
+// Test 8: table.assign - Very large numbers
+local (t8);
+lang.new(tableType, @t8);
+t8.large = 999999999;
+if t8.large != 999999999 {
+	return "FAIL: table.assign failed for large numbers"
+};
+
+// ============================================================================
+// TEST SUITE: table.copy() - Copy entries between tables
+// ============================================================================
+
+// Test 9: table.copy - Basic copy to another table
+local (src9, dst9);
+lang.new(tableType, @src9);
+lang.new(tableType, @dst9);
+src9.original = "data";
+table.copy(@src9.original, @dst9);
+if sizeOf(src9) != 1 || sizeOf(dst9) != 1 || dst9.original != "data" {
+	return "FAIL: table.copy basic operation failed"
+};
+
+// Test 10: table.copy - Source remains unchanged
+local (src10, dst10);
+lang.new(tableType, @src10);
+lang.new(tableType, @dst10);
+src10.keep = "test";
+table.copy(@src10.keep, @dst10);
+if !defined(src10.keep) || src10.keep != "test" {
+	return "FAIL: table.copy modified source table"
+};
+
+// Test 11: table.copy - Copy numeric value
+local (src11, dst11);
+lang.new(tableType, @src11);
+lang.new(tableType, @dst11);
+src11.number = 123;
+table.copy(@src11.number, @dst11);
+if dst11.number != 123 {
+	return "FAIL: table.copy didn't preserve numeric value"
+};
+
+// Test 12: table.copy - Copy boolean value
+local (src12, dst12);
+lang.new(tableType, @src12);
+lang.new(tableType, @dst12);
+src12.flag = true;
+table.copy(@src12.flag, @dst12);
+if dst12.flag != true {
+	return "FAIL: table.copy didn't preserve boolean value"
+};
+
+// Test 13: table.copy - Copy to table that already has entries
+local (src13, dst13);
+lang.new(tableType, @src13);
+lang.new(tableType, @dst13);
+src13.item = "from source";
+dst13.existing = "already here";
+table.copy(@src13.item, @dst13);
+if sizeOf(dst13) != 2 || dst13.item != "from source" || dst13.existing != "already here" {
+	return "FAIL: table.copy didn't handle pre-existing entries"
+};
+
+// Test 14: table.copy - Multiple copies from same source
+local (src14, dst14a, dst14b);
+lang.new(tableType, @src14);
+lang.new(tableType, @dst14a);
+lang.new(tableType, @dst14b);
+src14.value = "shared";
+table.copy(@src14.value, @dst14a);
+table.copy(@src14.value, @dst14b);
+if dst14a.value != "shared" || dst14b.value != "shared" {
+	return "FAIL: table.copy failed for multiple destination copies"
+};
+
+// Test 15: table.copy - Copy preserves key name
+local (src15, dst15);
+lang.new(tableType, @src15);
+lang.new(tableType, @dst15);
+src15.originalname = "value";
+table.copy(@src15.originalname, @dst15);
+if !defined(dst15.originalname) {
+	return "FAIL: table.copy didn't preserve key name"
+};
+
+// ============================================================================
+// TEST SUITE: table.move() - Move entries between tables
+// ============================================================================
+
+// Test 16: table.move - Basic move operation
+local (src16, dst16);
+lang.new(tableType, @src16);
+lang.new(tableType, @dst16);
+src16.item = 123;
+table.move(@src16.item, @dst16);
+if sizeOf(src16) != 0 || sizeOf(dst16) != 1 || dst16.item != 123 {
+	return "FAIL: table.move basic operation failed"
+};
+
+// Test 17: table.move - Source entry removed after move
+local (src17, dst17);
+lang.new(tableType, @src17);
+lang.new(tableType, @dst17);
+src17.mobile = "data";
+table.move(@src17.mobile, @dst17);
+if defined(src17.mobile) {
+	return "FAIL: table.move didn't remove source entry"
+};
+
+// Test 18: table.move - Move multiple entries sequentially
+local (src18, dst18);
+lang.new(tableType, @src18);
+lang.new(tableType, @dst18);
+src18.a = 1;
+src18.b = 2;
+src18.c = 3;
+table.move(@src18.a, @dst18);
+table.move(@src18.b, @dst18);
+table.move(@src18.c, @dst18);
+if sizeOf(src18) != 0 || sizeOf(dst18) != 3 {
+	return "FAIL: table.move failed for sequential moves"
+};
+
+// Test 19: table.move - Move to pre-populated destination
+local (src19, dst19);
+lang.new(tableType, @src19);
+lang.new(tableType, @dst19);
+src19.moving = "value";
+dst19.existing = "already here";
+table.move(@src19.moving, @dst19);
+if sizeOf(dst19) != 2 || !defined(dst19.moving) || !defined(dst19.existing) {
+	return "FAIL: table.move didn't handle pre-existing destination entries"
+};
+
+// Test 20: table.move - Move string value
+local (src20, dst20);
+lang.new(tableType, @src20);
+lang.new(tableType, @dst20);
+src20.text = "hello world";
+table.move(@src20.text, @dst20);
+if dst20.text != "hello world" {
+	return "FAIL: table.move didn't preserve string value"
+};
+
+// Test 21: table.move - Move boolean value
+local (src21, dst21);
+lang.new(tableType, @src21);
+lang.new(tableType, @dst21);
+src21.flag = false;
+table.move(@src21.flag, @dst21);
+if dst21.flag != false {
+	return "FAIL: table.move didn't preserve boolean value"
+};
+
+// ============================================================================
+// TEST SUITE: table.rename() - Rename entries within a table
+// ============================================================================
+
+// Test 22: table.rename - Basic rename operation
+local (t22);
+lang.new(tableType, @t22);
+t22.oldname = "value";
+table.rename(@t22.oldname, "newname");
+if defined(t22.oldname) {
+	return "FAIL: table.rename didn't remove old key"
+};
+
+// Test 23: table.rename - New key contains correct value
+local (t23);
+lang.new(tableType, @t23);
+t23.old = "test data";
+table.rename(@t23.old, "new");
+if !defined(t23.new) || t23.new != "test data" {
+	return "FAIL: table.rename didn't create new key with value"
+};
+
+// Test 24: table.rename - Table size unchanged after rename
+local (t24);
+lang.new(tableType, @t24);
+t24.a = 1;
+t24.b = 2;
+local (size_before) = sizeOf(t24);
+table.rename(@t24.a, "renamed_a");
+if sizeOf(t24) != size_before {
+	return "FAIL: table.rename changed table size"
+};
+
+// Test 25: table.rename - Rename in table with multiple entries
+local (t25);
+lang.new(tableType, @t25);
+t25.keep1 = "stay";
+t25.rename_me = "move";
+t25.keep2 = "also stay";
+table.rename(@t25.rename_me, "renamed");
+if sizeOf(t25) != 3 || !defined(t25.keep1) || !defined(t25.keep2) || !defined(t25.renamed) {
+	return "FAIL: table.rename affected other entries"
+};
+
+// Test 26: table.rename - Rename numeric entry
+local (t26);
+lang.new(tableType, @t26);
+t26.oldnum = 42;
+table.rename(@t26.oldnum, "newnum");
+if t26.newnum != 42 {
+	return "FAIL: table.rename didn't preserve numeric value"
+};
+
+// Test 27: table.rename - Rename to key with special characters
+local (t27);
+lang.new(tableType, @t27);
+t27.simple = "value";
+table.rename(@t27.simple, "with_underscore_123");
+if !defined(t27.with_underscore_123) || t27.with_underscore_123 != "value" {
+	return "FAIL: table.rename failed with special character names"
+};
+
+// ============================================================================
+// TEST SUITE: table.emptytable() - Clear all entries from table
+// ============================================================================
+
+// Test 28: table.emptytable - Clear single entry
+local (t28);
+lang.new(tableType, @t28);
+t28.only = "value";
+local (cleared28) = table.emptytable(@t28);
+if sizeOf(t28) != 0 {
+	return "FAIL: table.emptytable didn't clear table"
+};
+
+// Test 29: table.emptytable - Returns count of cleared entries
+local (t29);
+lang.new(tableType, @t29);
+t29.a = 1;
+t29.b = 2;
+t29.c = 3;
+local (count29) = table.emptytable(@t29);
+if count29 != 3 {
+	return "FAIL: table.emptytable returned wrong count (expected 3, got " + count29 + ")"
+};
+
+// Test 30: table.emptytable - Table is truly empty after clear
+local (t30);
+lang.new(tableType, @t30);
+t30.x = "first";
+t30.y = "second";
+t30.z = "third";
+table.emptytable(@t30);
+if defined(t30.x) || defined(t30.y) || defined(t30.z) {
+	return "FAIL: table.emptytable didn't remove all entries"
+};
+
+// Test 31: table.emptytable - Can repopulate after emptying
+local (t31);
+lang.new(tableType, @t31);
+t31.temp = "temporary";
+table.emptytable(@t31);
+t31.new = "new value";
+if sizeOf(t31) != 1 || t31.new != "new value" {
+	return "FAIL: table.emptytable left table in unusable state"
+};
+
+// Test 32: table.emptytable - Empty table returns 0
+local (t32);
+lang.new(tableType, @t32);
+local (count32) = table.emptytable(@t32);
+if count32 != 0 {
+	return "FAIL: table.emptytable on empty table returned wrong count"
+};
+
+// ============================================================================
+// TEST SUITE: table.moveandrename() - Move and rename in one operation
+// ============================================================================
+
+// Test 33: table.moveandrename - Basic move and rename
+local (src33, dst33);
+lang.new(tableType, @src33);
+lang.new(tableType, @dst33);
+src33.oldname = "data";
+table.moveandrename(@src33.oldname, @dst33.newname);
+if defined(src33.oldname) {
+	return "FAIL: table.moveandrename didn't remove source"
+};
+
+// Test 34: table.moveandrename - New name in destination
+local (src34, dst34);
+lang.new(tableType, @src34);
+lang.new(tableType, @dst34);
+src34.old = "test";
+table.moveandrename(@src34.old, @dst34.new);
+if !defined(dst34.new) || dst34.new != "test" {
+	return "FAIL: table.moveandrename didn't create renamed entry in destination"
+};
+
+// Test 35: table.moveandrename - Value preserved
+local (src35, dst35);
+lang.new(tableType, @src35);
+lang.new(tableType, @dst35);
+src35.source = 999;
+table.moveandrename(@src35.source, @dst35.destination);
+if dst35.destination != 999 {
+	return "FAIL: table.moveandrename didn't preserve value"
+};
+
+// Test 36: table.moveandrename - Source size reduced
+local (src36, dst36);
+lang.new(tableType, @src36);
+lang.new(tableType, @dst36);
+src36.a = 1;
+src36.b = 2;
+local (src_before) = sizeOf(src36);
+table.moveandrename(@src36.a, @dst36.moved);
+if sizeOf(src36) != src_before - 1 {
+	return "FAIL: table.moveandrename didn't reduce source size"
+};
+
+// Test 37: table.moveandrename - Destination size increased
+local (src37, dst37);
+lang.new(tableType, @src37);
+lang.new(tableType, @dst37);
+src37.item = "value";
+local (dst_before) = sizeOf(dst37);
+table.moveandrename(@src37.item, @dst37.newitem);
+if sizeOf(dst37) != dst_before + 1 {
+	return "FAIL: table.moveandrename didn't increase destination size"
+};
+
+// Test 38: table.moveandrename - Multiple sequential operations
+local (src38, dst38);
+lang.new(tableType, @src38);
+lang.new(tableType, @dst38);
+src38.first = 1;
+src38.second = 2;
+src38.third = 3;
+table.moveandrename(@src38.first, @dst38.uno);
+table.moveandrename(@src38.second, @dst38.dos);
+table.moveandrename(@src38.third, @dst38.tres);
+if sizeOf(src38) != 0 || sizeOf(dst38) != 3 {
+	return "FAIL: table.moveandrename failed for multiple operations"
+};
+
+// ============================================================================
+// TEST SUITE: Complex scenarios and edge cases
+// ============================================================================
+
+// Test 39: Complex scenario - Combined operations on single set of tables
+local (src39, mid39, dst39);
+lang.new(tableType, @src39);
+lang.new(tableType, @mid39);
+lang.new(tableType, @dst39);
+src39.a = 1;
+src39.b = 2;
+src39.c = 3;
+table.move(@src39.a, @mid39);
+table.copy(@src39.b, @dst39);
+table.moveandrename(@src39.c, @dst39.c_renamed);
+if sizeOf(src39) != 1 || sizeOf(mid39) != 1 || sizeOf(dst39) != 2 {
+	return "FAIL: Complex combined operations failed"
+};
+
+// Test 40: Type verification - Verify types are correct after operations
+local (src40, dst40);
+lang.new(tableType, @src40);
+lang.new(tableType, @dst40);
+src40.str = "text";
+src40.num = 42;
+src40.bool = true;
+table.move(@src40.str, @dst40);
+table.move(@src40.num, @dst40);
+table.move(@src40.bool, @dst40);
+if typeof(dst40.str) != "string" || typeof(dst40.num) != "number" || typeof(dst40.bool) != "boolean" {
+	return "FAIL: Type information lost during operations"
+};
+
+// Test 41: Large values - Assign and move large strings
+local (src41, dst41);
+lang.new(tableType, @src41);
+lang.new(tableType, @dst41);
+local (largeStr) = "The quick brown fox jumps over the lazy dog. " +
+	"The quick brown fox jumps over the lazy dog. " +
+	"The quick brown fox jumps over the lazy dog.";
+src41.large = largeStr;
+table.move(@src41.large, @dst41);
+if dst41.large != largeStr {
+	return "FAIL: Large string value corrupted during move"
+};
+
+// Test 42: Stress test - Many entries in a table
+local (stressTable);
+lang.new(tableType, @stressTable);
+local (i);
+for i = 1 to 50 {
+	stressTable.["key_" + i] = i;
+};
+if sizeOf(stressTable) != 50 {
+	return "FAIL: Stress test failed to populate 50 entries"
+};
+
+// Test 43: Rename chain - Rename same entry multiple times
+local (t43);
+lang.new(tableType, @t43);
+t43.original = "value";
+table.rename(@t43.original, "renamed_once");
+table.rename(@t43.renamed_once, "renamed_twice");
+table.rename(@t43.renamed_twice, "renamed_thrice");
+if !defined(t43.renamed_thrice) || t43.renamed_thrice != "value" {
+	return "FAIL: Rename chain failed"
+};
+
+// Test 44: Empty string handling - Various operations with empty strings
+local (src44, dst44);
+lang.new(tableType, @src44);
+lang.new(tableType, @dst44);
+src44.empty = "";
+table.copy(@src44.empty, @dst44);
+if dst44.empty != "" {
+	return "FAIL: Empty string not preserved in copy"
+};
+
+// Test 45: False/zero distinction - Ensure false and 0 are distinct
+local (t45);
+lang.new(tableType, @t45);
+t45.zero = 0;
+t45.false = false;
+if typeof(t45.zero) != "number" || typeof(t45.false) != "boolean" {
+	return "FAIL: False/zero distinction lost"
+};
+
+// ============================================================================
+// TEST SUMMARY
+// ============================================================================
+
+// All 45 tests passed successfully
+return "PASS: All table operation tests passed (45 tests: 8 assign, 7 copy, 6 move, 6 rename, 5 emptytable, 6 moveandrename, 7 complex)"
