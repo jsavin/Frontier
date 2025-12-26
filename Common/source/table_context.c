@@ -15,6 +15,22 @@
 #include <assert.h>
 
 /* ============================================================================
+   INLINE HELPERS FOR TYPE-SAFE CONTEXT ACCESS
+   ============================================================================ */
+
+/* Safe helper to access table context from opaque hdlhashtable handle
+ * Replaces unsafe casts with explicit type conversions */
+static inline table_context_t* get_table_context(struct hdlhashtable *htable) {
+	if (htable == NULL)
+		return NULL;
+
+	/* hdlhashtable is a typedef for tyhashtable**
+	   Cast to ptrhashtable (tyhashtable*) to access fields */
+	ptrhashtable ht = *(ptrhashtable *)htable;
+	return ht->context;
+}
+
+/* ============================================================================
    LIFECYCLE FUNCTIONS
    ============================================================================ */
 
@@ -69,8 +85,8 @@ void table_context_record_mutation(struct hdlhashtable *htable,
 	if (htable == NULL)
 		return;
 
-	/* Access context stored in table via unsafe cast (caller ensures validity) */
-	ctx = (*(struct tyhashtable **) htable)->context;
+	/* Access context using type-safe helper */
+	ctx = get_table_context(htable);
 
 	if (ctx == NULL) {
 		log_warn(LOG_COMP_TABLE, "table_context_record_mutation: table has no context");
@@ -99,8 +115,8 @@ boolean table_context_has_changes(struct hdlhashtable *htable) {
 	if (htable == NULL)
 		return false;
 
-	/* Access context stored in table via unsafe cast */
-	ctx = (*(struct tyhashtable **) htable)->context;
+	/* Access context using type-safe helper */
+	ctx = get_table_context(htable);
 
 	if (ctx == NULL)
 		return false;
@@ -114,8 +130,8 @@ void table_context_clear_changes(struct hdlhashtable *htable) {
 	if (htable == NULL)
 		return;
 
-	/* Access context stored in table via unsafe cast */
-	ctx = (*(struct tyhashtable **) htable)->context;
+	/* Access context using type-safe helper */
+	ctx = get_table_context(htable);
 
 	if (ctx == NULL)
 		return;
@@ -135,8 +151,8 @@ void table_context_enter_callbacks(struct hdlhashtable *htable) {
 	if (htable == NULL)
 		return;
 
-	/* Access context stored in table via unsafe cast */
-	ctx = (*(struct tyhashtable **) htable)->context;
+	/* Access context using type-safe helper */
+	ctx = get_table_context(htable);
 
 	if (ctx == NULL) {
 		log_warn(LOG_COMP_TABLE, "table_context_enter_callbacks: table has no context");
@@ -155,8 +171,8 @@ void table_context_exit_callbacks(struct hdlhashtable *htable) {
 	if (htable == NULL)
 		return;
 
-	/* Access context stored in table via unsafe cast */
-	ctx = (*(struct tyhashtable **) htable)->context;
+	/* Access context using type-safe helper */
+	ctx = get_table_context(htable);
 
 	if (ctx == NULL) {
 		log_warn(LOG_COMP_TABLE, "table_context_exit_callbacks: table has no context");

@@ -517,7 +517,7 @@ static void test_rapid_mutations(void) {
 	/* Rapidly mutate */
 	for (int i = 0; i < 1000; i++) {
 		ctx->version_number++;
-		ctx->last_mutation_type = (enum table_mutation_type)(i % 9);
+		ctx->last_mutation_type = (enum table_mutation_type)(i % TABLE_MUTATION_TYPE_COUNT);
 		ctx->flpendingchanges = (i % 2 == 0);
 	}
 
@@ -526,6 +526,40 @@ static void test_rapid_mutations(void) {
 	test_table_context_dispose(ctx);
 	PASS();
 }
+
+/* ============================================================================
+   INTEGRATION TEST REQUIREMENTS (Future Work)
+   ============================================================================
+
+   UserTalk integration tests would verify mutation tracking from the language:
+
+   Example test pattern (requires new() verb binding):
+
+     local (t1, t2);
+     new (tableType, @t1);
+     new (tableType, @t2);
+
+     // Test table.assign increments version (returns value assigned)
+     table.assign (@t1.key1, "value1");
+     if (t1.key1 != "value1") {
+         return ("FAIL: table.assign didn't set value")
+     };
+
+     // Test table.move updates both tables (returns boolean success)
+     if not (table.move (@t1.key1, @t2.key1)) {
+         return ("FAIL: table.move returned false")
+     };
+     if (t2.key1 != "value1" or sizeOf (t1) != 0) {
+         return ("FAIL: table.move didn't move correctly")
+     };
+
+     return ("passed")
+
+   Note: Cannot directly verify version numbers without table.getversion() verb.
+   Current C unit tests provide comprehensive version tracking coverage.
+
+   TODO: Add UserTalk integration tests once new() verb is bound.
+   ============================================================================ */
 
 /* ============================================================================
    RESERVED FIELD TESTS

@@ -46,6 +46,9 @@ enum table_mutation_type {
 	table_mutation_emptytable = 8,   /* Table cleared */
 };
 
+/* Total count of mutation types (0-8 inclusive = 9 types) */
+#define TABLE_MUTATION_TYPE_COUNT 9
+
 /* ============================================================================
    TABLE_CONTEXT_T STRUCTURE
 
@@ -67,6 +70,10 @@ typedef struct table_context {
 	 * version_number: Monotonically increasing counter incremented on each
 	 * user-visible table mutation (table.assign, table.move, table.delete).
 	 * Used by callers to detect if a table has changed since last read.
+	 *
+	 * TODO(Phase 6+): Convert to _Atomic uint64_t for thread safety when
+	 * implementing multi-user collaborative editing. Also add atomic
+	 * reference counting similar to op_context_t.refcount.
 	 */
 	uint64_t version_number;
 
@@ -104,6 +111,14 @@ typedef struct table_context {
 	 *   1. tablesymboldeleted() on source
 	 *   2. tablesymbolinserted() on destination
 	 * We only want to bump version once, not twice.
+	 *
+	 * IMPLEMENTATION STATUS (Phase 4A):
+	 * Currently callbacks (tablesymbolinserted/tablesymboldeleted) exist
+	 * in tableexternal.c but are used only for window updates and external
+	 * table tracking. They do NOT call table_context_record_mutation().
+	 * The callback guard infrastructure is implemented for future-proofing
+	 * when Phase 5+ adds mutation tracking to collaborative features.
+	 * No integration needed until callbacks trigger mutations.
 	 */
 	boolean flingcallback;
 
