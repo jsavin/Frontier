@@ -1324,7 +1324,7 @@ extern boolean functionvalue (hdltreenode, hdltreenode, tyvaluerecord *);
   Creates a new value of specified type and assigns it to a variable.
   Parameters: hparam1 - parameter tree containing type and address
               vreturned - output value record (returns flvalue=true on success)*/
-extern boolean newvaluefunc (hdltreenode, tyvaluerecord *);
+extern boolean newvaluefunc (hdltreenode hparam1, tyvaluerecord *vreturned);
 
 extern boolean langzoomvalwindow (hdlhashtable, bigstring, tyvaluerecord, boolean); /*langverbs.c*/
 

@@ -18,6 +18,7 @@
 #include "test_error_handling.c"
 #include "test_addressing_and_handlers.c"
 #include "test_portable_handles.c"
+#include "test_lang_new_verb.c"
 
 // Test function declarations
 bool test_string_objects(void);
@@ -41,6 +42,12 @@ bool test_try_else_error_capture(void);
 bool test_status_return_handling(void);
 bool test_address_and_dereference(void);
 bool test_on_handler_named_params(void);
+
+// lang.new() verb tests
+bool test_lang_new_creates_table(void);
+bool test_lang_new_table_mutation(void);
+bool test_lang_new_multiple_members(void);
+bool test_lang_new_string_members(void);
 
 // Main test runner function
 bool run_all_usertalk_object_tests(void) {
@@ -87,10 +94,17 @@ bool run_all_usertalk_object_tests(void) {
     all_passed &= test_record_objects();
     all_passed &= test_heterogeneous_collections();
     all_passed &= test_nested_collections();
-    
+
+    // lang.new() verb tests (Issue #166 foundation)
+    printf("\n--- lang.new() Verb Tests ---\n");
+    all_passed &= test_lang_new_creates_table();
+    all_passed &= test_lang_new_table_mutation();
+    all_passed &= test_lang_new_multiple_members();
+    all_passed &= test_lang_new_string_members();
+
     // Complex objects tests (disabled for now)
     // printf("\n--- Complex Objects Tests ---\n");
-    
+
     // Database persistence tests (disabled for now)
     // printf("\n--- Database Persistence Tests ---\n");
     

@@ -1,0 +1,52 @@
+/*
+ * lang_new_verb_tests.ut - UserTalk tests for lang.new() verb
+ *
+ * These tests verify that lang.new() creates mutable tables in headless mode.
+ * This is foundational work for Issue #166 (UserTalk integration tests).
+ *
+ * Run with: FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root databases/Frontier-v6-v7.root -e "load(\"tests/lang_new_verb_tests.ut\")"
+ */
+
+// Test 1: Basic table creation
+local (t);
+lang.new(tableType, @t);
+if not defined(t) {
+    return "FAIL: lang.new() did not create table";
+}
+
+// Test 2: Table mutation
+local (t2);
+lang.new(tableType, @t2);
+t2.val = 1;
+if t2.val != 1 {
+    return "FAIL: Table mutation failed";
+}
+
+// Test 3: Table size after member assignment
+local (t3);
+lang.new(tableType, @t3);
+t3.val = 1;
+local (result) = t3.val + sizeOf(t3);
+if result != 2 {
+    return "FAIL: Table size calculation failed (expected 2, got " + result + ")";
+}
+
+// Test 4: Multiple members
+local (t4);
+lang.new(tableType, @t4);
+t4.a = 1;
+t4.b = 2;
+t4.c = 3;
+if sizeOf(t4) != 3 {
+    return "FAIL: Multiple members failed (expected size 3, got " + sizeOf(t4) + ")";
+}
+
+// Test 5: String members
+local (t5);
+lang.new(tableType, @t5);
+t5.x = "hello";
+if sizeOf(t5.x) != 5 {
+    return "FAIL: String member size failed (expected 5, got " + sizeOf(t5.x) + ")";
+}
+
+return "PASS: All lang.new() tests passed";
