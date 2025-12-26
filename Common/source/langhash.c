@@ -1414,6 +1414,12 @@ boolean disposehashtable (hdlhashtable htable, boolean fldisk) {
 	*/
 	
 	
+
+	/* Phase 4A: Dispose table context */
+	if ((**ht).context != nil) {
+		table_context_dispose((**ht).context);
+		(**ht).context = nil;
+	}
 	(**ht).prevhashtable = hfirstfreetable;
 	
 	hfirstfreetable = ht;
@@ -5010,3 +5016,6 @@ boolean hashvaltostrings (tyvaluerecord val, bigstring bstype, bigstring bsvalue
 	
 	return (true);
 	} /*hashvaltostrings*/
+
+/* Phase 4A: Include table_context.c here so it's compiled with full lang.h definitions available */
+#include "table_context.c"

@@ -45,6 +45,12 @@
 
 #endif
 
+#ifndef TABLE_CONTEXT_INCLUDE
+
+	#include "table_context.h"
+
+#endif
+
 
 
 #define idconsthashresource 128
@@ -498,6 +504,9 @@ typedef struct tyhashtable {
 	langvaluecallback valueroutine; /*for EFP's -- C routine that evaluates verbs*/
 
 	short cttmpstack;
+
+	/* Phase 4A: Context for version tracking and mutation metadata */
+	table_context_t *context;
 
 	tyvaluerecord tmpstack []; /*temps generated during expression evaluation*/
 	} tyhashtable, *ptrhashtable, **hdlhashtable;

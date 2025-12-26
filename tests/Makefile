@@ -89,6 +89,7 @@ FRONTIER_SOURCES = \
     ../Common/source/strings.c \
     ../Common/source/ops.c \
     ../Common/source/tableops.c \
+    ../Common/source/table_context.c \
     ../Common/source/tableexternal_common.c \
     ../Common/source/tablepack.c \
     ../Common/source/legacy/tablepack_legacy.c \
@@ -161,6 +162,7 @@ LANG_RUNTIME_SOURCES = \
     headless_file_verbs.c \
     headless_frontier_verbs.c \
     ../Common/source/tableops.c \
+    ../Common/source/table_context.c \
     ../Common/source/tableexternal.c \
     ../Common/source/tableexternal_common.c \
     ../Common/source/legacy/tablepack_legacy.c \
@@ -223,7 +225,7 @@ USERTALK_OBJECT_TESTS = \
 	test_usertalk_runner
 
 # Buildable test executables on this branch
-RUN_BUILDABLE = core_tests db_format_tests runtime_tests parser_tests save_migration_tests file_portable_tests file_readline_tests file_verb_tests handle_tests cli_runtime_tests paige_text_tests oppack_tests hashpack_modern_tests hash_corruption_tests langvalue_64_tests table_verb_tests refcon_tests refcon_phase2_tests
+RUN_BUILDABLE = core_tests db_format_tests runtime_tests parser_tests save_migration_tests file_portable_tests file_readline_tests file_verb_tests handle_tests cli_runtime_tests paige_text_tests oppack_tests hashpack_modern_tests hash_corruption_tests langvalue_64_tests table_verb_tests refcon_tests refcon_phase2_tests op_context_tests table_context_tests
 
 # Prebuilt or auxiliary test binaries that may be present
 RUN_PREBUILT = test_64bit_direct test_migration_verification test_real_databases test_runner verify_migration_success
@@ -239,6 +241,12 @@ $(RUN_BUILDABLE): $(PAIGE_LIB)
 # Headless smoke test
 core_tests: core_tests.c ../Common/source/shell_api.c ../Common/source/shell_api_headless.c ../Common/source/logging.c headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable core_tests.c ../Common/source/shell_api.c ../Common/source/shell_api_headless.c ../Common/source/logging.c headless_shell.c -o $@ $(LINK_LIBS)
+
+op_context_tests: op_context_tests.c ../Common/source/op_context.c ../Common/source/logging.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable op_context_tests.c ../Common/source/op_context.c ../Common/source/logging.c -o $@ $(LINK_LIBS)
+
+table_context_tests: table_context_tests.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../portable table_context_tests.c -o $@ $(LINK_LIBS)
 
 db_format_tests: db_format_tests.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \

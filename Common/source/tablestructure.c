@@ -325,7 +325,18 @@ boolean tablenewtable (hdltablevariable *hvariable, hdlhashtable *htable) {
 	(**ht).hashtablerefcon = (long) hv; /*the pointing is mutual*/
 	
 	(**ht).fldirty = true; /*it's never been saved*/
-	
+
+
+	/* Phase 4A: Initialize table context for version tracking */
+	(**ht).context = NULL; /* Defensive: zero before init */
+
+	if (!table_context_init(&(**ht).context)) {
+		/* Safe to dispose: disposehandle handles partially-initialized tables correctly
+		   (hashtable structure was fully allocated via newhashtable above) */
+		disposehandle ((Handle) hv);
+		disposehandle ((Handle) ht);
+		return (false);
+	}
 	return (true);
 	} /*tablenewtable*/
 
