@@ -30,6 +30,7 @@
   - `planning/architectural_decision_records/` - Architectural decisions and design standards that affect current and future work (e.g., MODE_SINGLE_DECISION_POINT.md)
   - `planning/archive/` - Completed work and historical reference materials
   - When making architectural decisions that will affect multiple work areas, document them in `planning/architectural_decision_records/`
+- **GitHub issue tagging:** When creating or updating issues, follow the labeling strategy documented in `planning/labeling-strategy-proposal.md`. Use priority labels (priority/p0-p3), workstream labels, and type labels to ensure issues are discoverable and properly categorized.
 - Error messages exposed to end-users in the UserTalk realm always take the form of: "Can't do X because Y. [Try Z instead.]"
 - Never delete a local or remote branch without confirming with the user first.
 - Avoid using "magic numbers" in code. Instead create static constants (or variables if the language doesn't support static constants) with names that explain what the constant means to developers.
