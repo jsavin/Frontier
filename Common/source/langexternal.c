@@ -199,7 +199,10 @@ boolean langexternalgettable (bigstring bs, hdlhashtable *htable) {
         pophashtable();
     }
 
-    /* Direct lookup in root/system tables when sanitized database omits EFP wrappers.
+    /* Direct lookup in root/system tables as headless-specific fallback.
+       In headless mode, system tables (system, system.verbs, builtins, agents, root) are
+       populated directly and available for direct lookup when EFP resolution fails.
+       In GUI mode, these tables are accessed through the database EFP system instead.
        Disabled while we validate real system.verbs glue. */
     {
         hdlhashtable fallback = nil;

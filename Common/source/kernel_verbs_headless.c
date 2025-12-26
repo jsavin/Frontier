@@ -2007,7 +2007,9 @@ boolean headless_init_kernel_verbs(void) {
     if (!init_efp_1004(&langfunctionvalue))
         return false;
 
-    /* SKIP init_efp_1005 (lang processor) - already registered by langinitverbs() with lang_valueproc callback */
+    /* SKIP init_efp_1005 (ID 1005: lang processor) - already registered by langinitverbs()
+       with the correct lang_valueproc callback. Registering again here would overwrite
+       that callback with langfunctionvalue, breaking the verb dispatch mechanism. */
     /* if (!init_efp_1005(&langfunctionvalue))
         return false; */
 

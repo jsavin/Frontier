@@ -296,6 +296,52 @@ This ensures the right agent with domain expertise handles the work.
 - For infrastructure fixes: Test with real examples that depend on that infrastructure
 - Don't stop at "I fixed the routing mechanism" - verify the mechanism actually routes to working code
 
+## Anti-Pattern: Auto-Generated Files Requiring Hand-Edits
+
+**CRITICAL ANTI-PATTERN**: Never create automated tools that generate stub files if those stubs will need to be manually edited in production.
+
+### Why This is a Problem
+
+**Example**: `tests/headless_lang_verbs.c` is marked as "AUTO-GENERATED - DO NOT EDIT BY HAND" but during Issue #166 work, we had to hand-edit the `lang.new()` case to wire up the real implementation.
+
+**The Bad Outcomes**:
+1. ❌ Manual edits get overwritten if the generator is re-run
+2. ❌ Maintenance burden: developers forget this is generated and waste time trying to fix it
+3. ❌ Git history becomes confusing (is this auto-generated or hand-written?)
+4. ❌ Future developers don't know which version is authoritative (disk or generator)
+5. ❌ Creates a false sense of "this is done" when the stub isn't actually complete
+
+### How to Fix This Pattern
+
+**Option 1: Make The Generator Complete** ✅ **PREFERRED**
+- Update the generator to emit correct, production-ready code
+- No hand-edits needed - regenerate when requirements change
+- Example: Updated `stub_config.py` to handle `STUB_FORWARD` mode that calls real implementations
+
+**Option 2: Don't Auto-Generate What Will Be Edited**
+- If code will need hand-edits, don't mark it auto-generated
+- Either hand-write it, or document that it's a hybrid
+- Accept the maintenance burden explicitly
+
+**Option 3: Separate Generated Template From Editable Code**
+- Generate boilerplate/templates in one file
+- Hand-editable implementations in separate file
+- But this adds complexity and is often not worth it
+
+### Lesson for This Project
+
+For `headless_lang_verbs.c`:
+1. **Before**: Auto-generated stub that always returned "not implemented"
+2. **The Problem**: We had to hand-edit it for `lang.new()` to work
+3. **The Fix**: Updated generator (`stub_config.py`) with new `STUB_FORWARD` category
+4. **Regenerate**: Re-run generator to produce correct code (no hand-edits needed)
+5. **Result**: Clean, maintainable, regenerable code
+
+**For Future Work**: When adding new verbs that need real implementations:
+- Add entry to `stub_config.py` with correct implementation strategy
+- Update generator if needed
+- **Don't hand-edit the output** - fix the generator instead
+
 ## Logging Standards ⚠️
 
 All debug and diagnostic output must use structured logging macros - **never use `fprintf(stderr, ...)`**.

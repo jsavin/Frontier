@@ -994,15 +994,22 @@ boolean initlang (void) {
  * normally done inside langinitverbs() in GUI mode.
  */
 boolean langinitresources_headless(void) {
-	if (!langinitconsttable())
+	if (!langinitconsttable()) {
+		log_error(LOG_COMP_STARTUP, "langinitresources_headless: langinitconsttable failed");
 		return false;
+	}
 
-	if (!langinitbuiltintable())
+	if (!langinitbuiltintable()) {
+		log_error(LOG_COMP_STARTUP, "langinitresources_headless: langinitbuiltintable failed");
 		return false;
+	}
 
-	if (!langinitkeywordtable())
+	if (!langinitkeywordtable()) {
+		log_error(LOG_COMP_STARTUP, "langinitresources_headless: langinitkeywordtable failed");
 		return false;
+	}
 
+	log_debug(LOG_COMP_STARTUP, "langinitresources_headless: initialization complete");
 	return true;
 }
 #endif

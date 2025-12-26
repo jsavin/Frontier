@@ -12,6 +12,7 @@ Based on Phase 3 categorization from MISSING_VERBS_REVIEW_WITH_AUDITS.md
 # Stub implementation categories
 STUB_ERROR = 'error'      # Return false with specific error message
 STUB_NOOP = 'noop'        # Return true silently (safe no-op)
+STUB_FORWARD = 'forward'  # Forward to real C implementation function
 STUB_DEFAULT = 'default'  # Generic "not implemented" error
 
 # Error message templates by category
@@ -77,6 +78,10 @@ STUB_CONFIGS = {
     ('table', 'getdisplaysettings'): (STUB_NOOP, None),
     ('table', 'setdisplaysettings'): (STUB_NOOP, None),
     ('lang', 'flushmemory'): (STUB_NOOP, None),
+
+    # Category 3: Forward to Real C Implementation
+    # These verbs have real implementations that can be called directly
+    ('lang', 'new'): (STUB_FORWARD, 'newvaluefunc'),
 }
 
 
@@ -141,6 +146,13 @@ def get_stub_implementation(processor: str, verb: str, token_name: str) -> list:
             f"            /* {processor}.{verb} - {stub_type} stub (safe no-op) */",
             f"            (void)hparam1;  /* Suppress unused parameter warning */",
             f"            return true;",
+        ])
+    elif stub_type == STUB_FORWARD:
+        # Forward to real C implementation function
+        func_name = config
+        lines.extend([
+            f"            /* Verb: {processor}.{verb} - forward to real implementation */",
+            f"            return {func_name}(hparam1, vreturned);",
         ])
     else:  # STUB_DEFAULT
         lines.extend([
