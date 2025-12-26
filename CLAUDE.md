@@ -29,6 +29,7 @@
   - Every completed feature/fix should be a separate PR
   - This ensures code quality gates and prevents regressions
 - Whenever you're about to start new development work, always create a branch for that work if the local tree is currently on "develop".
+- **NEVER change branches without explicit user request.** Do not run `git checkout` or `git switch` unless the user explicitly asks you to. The user may be working in parallel in other terminals, and changing branches will interfere with that work. Always commit and push to whatever branch is currently checked out.
 - You have permission to use the `gh` command.
 - Don't ever create PRs that would merge with the tedchoward upstream fork.
 - If you ever need to check how the legacy Frontier app implemented something in 32-bit-land, look at the code under `../tedchoward/Frontier/`.
