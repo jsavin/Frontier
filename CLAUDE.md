@@ -248,6 +248,22 @@ Even in 1.0, we must test:
 
 **See:** Issue #135 (outline context refactoring) - this is where the collaborative ODB foundation gets built
 
+## Knowledge Capture and Documentation
+
+Whenever you discover or learn something significant or important about this project or its implementation that isn't already documented, **create or update the appropriate documentation** to capture that learning:
+- For architectural insights and design patterns → `planning/architectural_decision_records/`
+- For Phase 3 implementation details and technical analysis → `planning/phase3/`
+- For completed work and historical context → `planning/archive/`
+- For general development guides and patterns → `docs/`
+
+This ensures:
+- Future work can benefit from the learning without rediscovering it
+- You can search the documentation hierarchy to find relevant context and past learnings
+- Tacit knowledge becomes explicit and shareable
+- The documentation tree stays synchronized with actual implementation
+
+**Rationale:** The most valuable resource in this codebase is the knowledge accumulated through solving hard problems. Documenting that learning prevents it from being lost and makes it discoverable for future work.
+
 ## Logging Standards ⚠️
 
 All debug and diagnostic output must use structured logging macros - **never use `fprintf(stderr, ...)`**.
