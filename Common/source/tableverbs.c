@@ -165,224 +165,256 @@ static boolean tablevalidateverb (hdltreenode hparam1, tyvaluerecord *v) {
 
 
 static boolean tablemoveverb (hdltreenode hparam1, tyvaluerecord *v) {
-	
+
 	/*
-	table.move (address, tableaddress): boolean; move the indicated table 
+	table.move (address, tableaddress): boolean; move the indicated table
 	entry to the given table
-	
+
 	9/30/91 dmb: use hashassign, not hashinsert, so existing item is overwritten
-	
+
 	10/3/91 dmb: use new fllanghashassignprotect flag to override protection
 
 	5.0a15 dmb: on success, return address of moved value
-	
+
 	5.1.4 dmb: generate errors if item doesn't exist
+
+	Phase 4A: Records mutation for version tracking
 	*/
-	
+
 	hdlhashtable ht1, ht2;
 	bigstring bs;
 	tyvaluerecord val;
 	boolean fl;
 	hdlhashnode hnode;
-	
+
 	if (!getvarparam (hparam1, 1, &ht1, bs))
 		return (false);
-	
+
 	flnextparamislast = true;
-	
+
 	if (!gettablevalue (hparam1, 2, &ht2))
 		return (false);
-	
+
 	pushhashtable (ht1);
-	
+
 	fl = hashlookup (bs, &val, &hnode);
-	
+
 	if (fl)
 		hashdelete (bs, false, false); /*don't toss the value*/
-	
+
 	pophashtable ();
-	
+
 	if (!fl) {
-	
+
 		langparamerror (unknownidentifiererror, bs);
-		
+
 		return (false);
 		}
-		
+
 	if (!hashtableassign (ht2, bs, val))
 		return (false);
-	
-	return (setaddressvalue (ht2, bs, v));
+
+	if (!setaddressvalue (ht2, bs, v))
+		return (false);
+
+	/* Phase 4A: Record mutation - item moved from ht1 to ht2 */
+	table_context_record_mutation((struct hdlhashtable *) ht1, table_mutation_delete);
+	table_context_record_mutation((struct hdlhashtable *) ht2, table_mutation_insert);
+
+	return (true);
 	} /*tablemoveverb*/
 
 
 static boolean tablecopyverb (hdltreenode hparam1, tyvaluerecord *v) {
-	
+
 	/*
-	table.copy (address, tableaddress): boolean; copy the indicated table 
+	table.copy (address, tableaddress): boolean; copy the indicated table
 	entry to the given table
-	
+
 	9/30/91 dmb: use hashassign, not hashinsert, so existing item is overwritten
-	
+
 	10/3/91 dmb: use new fllanghashassignprotect flag to override protection
 
 	5.0a15 dmb: on success, return address of moved value
-	
+
 	5.1.4 dmb: generate errors if item doesn't exist
+
+	Phase 4A: Records mutation for version tracking
 	*/
-	
+
 	hdlhashtable ht1, ht2;
 	bigstring bs;
 	tyvaluerecord val;
 	boolean fl;
 	Handle hpacked;
 	hdlhashnode hnode;
-	
+
 	if (!getvarparam (hparam1, 1, &ht1, bs))
 		return (false);
-	
+
 	flnextparamislast = true;
-	
+
 	if (!gettablevalue (hparam1, 2, &ht2))
 		return (false);
-	
+
 	fl = hashtablelookup (ht1, bs, &val, &hnode);
-	
+
 	if (!fl) {
-		
+
 		langparamerror (unknownidentifiererror, bs);
-		
+
 		return (false);
 		}
 		//return (true); /*not fatal error; false is returned to caller*/
-	
+
 	if (!langpackvalue (val, &hpacked, hnode)) /*error packing -- probably out of memory*/
 		return (false);
-	
+
 	fl = langunpackvalue (hpacked, &val);
-	
+
 	disposehandle (hpacked);
-	
+
 	if (fl) {
-		
+
 		/*
 		fllanghashassignprotect = false;
 		*/
-		
+
 		fl = hashtableassign (ht2, bs, val);
-		
+
 		/*
 		fllanghashassignprotect = true;
 		*/
-		
+
 		if (!fl)
 			disposevaluerecord (val, true);
 		}
-	
+
 	if (fl)
 		fl = setaddressvalue (ht2, bs, v);
-	
+
+	/* Phase 4A: Record mutation - entry copied to target table */
+	if (fl)
+		table_context_record_mutation((struct hdlhashtable *) ht2, table_mutation_copy);
+
 	return (fl);
 	} /*tablecopyverb*/
 
 
 static boolean tablerenameverb (hdltreenode hparam1, tyvaluerecord *v) {
-	
+
 	/*
-	table.rename (address, string): boolean; rename the indicated table 
+	table.rename (address, string): boolean; rename the indicated table
 	entry to the given name
-	
+
 	12/28/91 dmb: resort the table after changing its name
-	
-	8/26/92 dmb: if the table is displayed in a window, use tableresort 
+
+	8/26/92 dmb: if the table is displayed in a window, use tableresort
 	to ensure clean update
 
 	5.0a15 dmb: on success, return address of renamed value
-	
-	5.1.4 dmb: disallow rename if new name is already in use; generate 
+
+	5.1.4 dmb: disallow rename if new name is already in use; generate
 	errors if item doesn't exist
+
+	Phase 4A: Records mutation for version tracking
 	*/
-	
+
 	hdlhashtable htable;
 	bigstring bs, bsname;
 	hdlhashnode hnode;
-	
+
 	if (!getvarparam (hparam1, 1, &htable, bs))
 		return (false);
-	
+
 	flnextparamislast = true;
-	
+
 	if (!getstringvalue (hparam1, 2, bsname))
 		return (false);
-	
+
 	if (!hashtablelookupnode (htable, bs, &hnode)) {
-		
+
 		langparamerror (unknownidentifiererror, bs);
-		
+
 		return (false);
 		}
-	
+
 	if (!equalidentifiers (bs, bsname)) {
-		
+
 		if (hashtablesymbolexists (htable, bsname)) {
-		
+
 			lang2paramerror (badrenameerror, bs, bsname);
-			
+
 			return (false);
 			}
-		
+
 		if (!hashsetnodekey (htable, hnode, bsname))
 			return (false);
 		}
-	
+
 	hashresort (htable, hnode);
-	
-	return (setaddressvalue (htable, bsname, v));
+
+	if (!setaddressvalue (htable, bsname, v))
+		return (false);
+
+	/* Phase 4A: Record mutation - key renamed */
+	table_context_record_mutation((struct hdlhashtable *) htable, table_mutation_rename);
+
+	return (true);
 	} /*tablerenameverb*/
 
 
 static boolean tablemoveandrenameverb (hdltreenode hparam1, tyvaluerecord *v) {
-	
+
 	/*
 	5.0a15 dmb: on success, return address of moved value
-	
+
 	5.1.4 dmb: generate errors if item doesn't exist
+
+	Phase 4A: Records mutation for version tracking
 	*/
-	
+
 	hdlhashtable ht1, ht2;
 	bigstring bs1, bs2;
 	tyvaluerecord val;
 	boolean fl;
 	hdlhashnode hnode;
-	
+
 	if (!getvarparam (hparam1, 1, &ht1, bs1))
 		return (false);
-	
+
 	flnextparamislast = true;
-	
+
 	if (!getvarparam (hparam1, 2, &ht2, bs2))
 		return (false);
-	
+
 	pushhashtable (ht1);
-	
+
 	fl = hashlookup (bs1, &val, &hnode);
-	
+
 	if (fl)
 		hashdelete (bs1, false, false); /*don't toss the value*/
-	
+
 	pophashtable ();
-	
+
 	if (!fl) {
-		
+
 		langparamerror (unknownidentifiererror, bs1);
-		
+
 		return (false);
 		}
-	
+
 	if (!hashtableassign (ht2, bs2, val))
 		return (false);
-	
-	return (setaddressvalue (ht2, bs2, v));
+
+	if (!setaddressvalue (ht2, bs2, v))
+		return (false);
+
+	/* Phase 4A: Record mutation - item moved and renamed between tables */
+	table_context_record_mutation((struct hdlhashtable *) ht1, table_mutation_delete);
+	table_context_record_mutation((struct hdlhashtable *) ht2, table_mutation_moveandrename);
+
+	return (true);
 	} /*tablemoveandrenameverb*/
 
 
@@ -432,44 +464,49 @@ static boolean tablefindverb (hdltreenode hparam1, tyvaluerecord *v) {
 
 
 static boolean tableassignverb (hdltreenode hparam1, tyvaluerecord *v) {
-	
+
 	/*
 	10/3/91 dmb: use new fllanghashassignprotect flag to override protection
+
+	Phase 4A: Records mutation for version tracking
 	*/
-	
+
 	hdlhashtable htable;
 	bigstring bsname;
 	tyvaluerecord val;
 	boolean fl;
-	
+
 	if (!getvarparam (hparam1, 1, &htable, bsname))
 		return (false);
-	
+
 	flnextparamislast = true;
-	
+
 	if (!getparamvalue (hparam1, 2, &val))
 		return (false);
-	
+
 	if (!copyvaluerecord (val, &val))
 		return (false);
-	
+
 	/*
 	fllanghashassignprotect = false;
 	*/
-	
+
 	fl = hashtableassign (htable, bsname, val);
-	
+
 	/*
 	fllanghashassignprotect = true;
 	*/
-	
+
 	if (!fl)
 		return (false);
-	
+
 	exemptfromtmpstack (&val);
-	
+
 	(*v).data.flvalue = true;
-	
+
+	/* Phase 4A: Record mutation for context tracking */
+	table_context_record_mutation((struct hdlhashtable *) htable, table_mutation_modify);
+
 	return (true);
 	} /*tableassignverb*/
 
@@ -516,19 +553,31 @@ static boolean tablepacktableverb (hdltreenode hparam1, tyvaluerecord *v) {
 
 
 static boolean tableemptytableverb (hdltreenode hparam1, tyvaluerecord *v) {
-	
+
 	/*
 	4/25/96 4.0b7 dmb: kernel implementation for speed
+
+	Phase 4A: Records mutation for version tracking
 	*/
-	
+
 	hdlhashtable htable;
-	
+	short ct;
+
 	flnextparamislast = true;
-	
+
 	if (!gettablevalue (hparam1, 1, &htable))
 		return (false);
-	
-	return (setintvalue (emptyhashtable (htable, true), v));
+
+	ct = emptyhashtable (htable, true);
+
+	if (!setintvalue (ct, v))
+		return (false);
+
+	/* Phase 4A: Record mutation - table cleared */
+	if (ct > 0)  /* Only record if something was actually deleted */
+		table_context_record_mutation((struct hdlhashtable *) htable, table_mutation_emptytable);
+
+	return (true);
 	} /*tableemptytableverb*/
 
 
