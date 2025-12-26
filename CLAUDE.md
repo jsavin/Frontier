@@ -264,6 +264,14 @@ This ensures:
 
 **Rationale:** The most valuable resource in this codebase is the knowledge accumulated through solving hard problems. Documenting that learning prevents it from being lost and makes it discoverable for future work.
 
+## Agent Selection Guidelines
+
+When choosing between specialized agents (usertalk-engineer vs system-architect):
+- **Use system-architect** if the issue is primarily in the C domain or requires non-UserTalk scripting (C code changes, database format, runtime architecture, memory management, etc.)
+- **Use usertalk-engineer** if the issue is primarily in the UserTalk domain (verb implementations that are mostly UserTalk, scripting logic, UserTalk runtime behavior, etc.)
+
+This ensures the right agent with domain expertise handles the work.
+
 ## Logging Standards ⚠️
 
 All debug and diagnostic output must use structured logging macros - **never use `fprintf(stderr, ...)`**.
