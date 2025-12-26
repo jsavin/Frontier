@@ -60,8 +60,9 @@ typedef enum tycryptverbtoken { /* verbs that are processed by crypt.c */
 	} tycryptverbtoken;
 
 
-static boolean cryptfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vreturned, bigstring bserror) {
-	
+/* Exposed for headless implementation to call directly if needed */
+boolean cryptfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vreturned, bigstring bserror) {
+
 	/*
 	2006-03-07 creedon: created, cribbed from htmlfunctionvalue
 	*/

@@ -1873,6 +1873,13 @@ static boolean init_efp_1024(langvaluecallback valuecallback) {
     return true;
 }
 
+/* SKIP init_efp_1025 (crypt processor) - Already registered by cryptinitverbs() in langcrypt.c
+   with the correct cryptfunctionvalue callback. Registering here would overwrite that with
+   langfunctionvalue, breaking the verb dispatch mechanism. */
+/* static boolean init_efp_1025(langvaluecallback valuecallback) {
+    ...
+} */
+
 static boolean init_efp_1026(langvaluecallback valuecallback) {
     hdlhashtable htable;
     short ixverb = 0;
@@ -2066,6 +2073,8 @@ boolean headless_init_kernel_verbs(void) {
 
     if (!init_efp_1024(&langfunctionvalue))
         return false;
+
+    /* SKIP init_efp_1025 (crypt) - handled by cryptinitverbs() */
 
     if (!init_efp_1026(&langfunctionvalue))
         return false;
