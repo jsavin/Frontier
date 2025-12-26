@@ -1,7 +1,21 @@
 # Carbon Migration / Runtime Modernization – Active TODO
 
-Status: In Progress (Updated 2025-12-22)
+Status: In Progress (Updated 2025-12-25)
 Owner: Codex
+
+## Recently Completed – Phase 4A (2025-12-25)
+
+✅ **Phase 4A: Table Context & Mutation Tracking – COMPLETE (PR #165 merged)**
+- Implemented `table_context_t` structure with per-table version tracking (uint64_t version_number, monotonically increasing from 1)
+- Integrated context pointer into `tyhashtable` structure via lazy initialization in `tablenewtable()`
+- Added mutation recording to 6 core table verbs: tableassignverb, tablemoveverb, tablecopyverb, tablerenameverb, tablemoveandrenameverb, tableemptytableverb
+- Created comprehensive C unit test suite: 20 unit tests covering lifecycle, version tracking, mutation types, change tracking, callback guards, integration scenarios, and edge cases – **all passing**
+- Documented callback guard infrastructure as deferred to Phase 5+ (callbacks exist but don't trigger mutations yet)
+- Created 5 planning documents: CRDT_FOUNDATION_ROADMAP.md, CONTEXT_PATTERN_FOR_ODB_COLLABORATION.md, CRDT_IMPLEMENTATION_ROADMAP.md, OUTLINE_OPERATION_CONTEXT.md, RESERVED_FIELD_PERSISTENCE_STRATEGY.md
+- Addressed all code review feedback: type-safe context access helper, thread safety TODOs, defensive initialization, mutation type count constant, documented integration test requirements
+- **Status**: All 20 unit tests passing, no regressions, bot approved, PR merged with 4 commits
+- **Pending**: UserTalk integration tests blocked on new() verb binding and table.getversion() verb (filed as Issue #166, P0)
+- **Reference**: `planning/architectural_decision_records/CONTEXT_PATTERN_FOR_ODB_COLLABORATION.md`
 
 ## Approved Architectural Decisions
 
@@ -48,6 +62,14 @@ These block deployment and major system decisions. All require design/planning b
   - Status: Design/decision needed, deferred until Phase 2
   - Timeline: Before broad CLI distribution
   - Reference: `planning/1.0_phase1_cli_implementation_plan.md`
+
+- **Issue #166** (P0): UserTalk integration tests for table context mutation tracking
+  - Scope: Small - C + UserTalk integration testing
+  - Status: Blocked on new() verb binding and table.getversion() verb implementation
+  - Dependencies: Requires table.new() (to create test tables) and table.getversion() (to verify version tracking)
+  - Impact: Validates Phase 4A table_context_t works correctly from UserTalk perspective
+  - Note: Created as follow-up to PR #165 (Phase 4A). C unit tests pass; UserTalk integration needed for runtime validation.
+  - Timeline: Can proceed after new() and table.getversion() verbs are bound
 
 ## P1s – High Priority (Recommended Work Order)
 
@@ -98,7 +120,7 @@ These block deployment and major system decisions. All require design/planning b
   - Output: Confirmation that context guards have been properly removed from disposal paths
 
 ### Phase 3: Mode Stack Refactor Prerequisites (ARCHITECTURE - ~4-7 days)
-**Do these before starting mode stack refactor Phase 1:**
+**Foundational work for operation context pattern (extended by Phase 4A):**
 
 - **Issue #135** (P1): Refactor outline (op) management from push/pop to deterministic context model
   - Scope: Medium - Similar push/pop pattern to mode stack
@@ -106,12 +128,14 @@ These block deployment and major system decisions. All require design/planning b
   - Interdependency: Same push/pop anti-pattern as mode stack; fixing now prevents future bugs
   - Files affected: `Common/source/op.c`, op management throughout codebase
   - Related issue: #136 (audit external object processing)
+  - **Note**: Phase 4A (table context) extended the operation context pattern to tables; same context-passing architecture being applied to outlines here
 
 - **Issue #136** (P1): Audit external object processing for push/pop anti-patterns
   - Scope: Medium - Code review + planning
   - LOE: ~1-2 days
   - Dependency: Complements #135; identifies all similar patterns
   - Output: Planning doc listing all external object push/pop patterns and refactor plan
+  - **Note**: Phase 4A validates the context pattern is sound; this audit refines what other subsystems need similar treatment
 
 ### Phase 4: Quick Wins & Verb Porting (~3-4 hours)
 
