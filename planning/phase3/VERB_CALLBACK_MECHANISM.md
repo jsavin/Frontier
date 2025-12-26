@@ -76,18 +76,34 @@ In `Common/source/kernel_verbs_headless.c`, commented out the call to `init_efp_
 
 ## Current Status
 
-✅ **FIXED**: `lang.new(tableType, @t)` now works correctly
-- Keywords are properly initialized
-- Verb callbacks are preserved through initialization
-- The dispatch chain works end-to-end
+⚠️ **PARTIALLY FIXED**: Verb dispatch mechanism is correct, but implementation is incomplete
+- ✅ Keywords ARE properly initialized
+- ✅ Verb callbacks ARE preserved through initialization
+- ✅ Dispatch chain architecture is correct
+- ❌ BUT: `headless_lang_verbs.c` contains only a stub that returns "not implemented"
+- ❌ The stub needs to call the real `newvaluefunc()` implementation or equivalent
 
-❌ **TODO**: Bare `new()` without `lang.` prefix
+### What's Actually Blocking `lang.new()`
+
+The `lang.new()` verb dispatch reaches the correct callback (`lang_valueproc`), but the implementation is stubbed:
+
+```c
+// In tests/headless_lang_verbs.c:91-94
+case lanv_new:
+    /* Verb: lang.new - not yet implemented */
+    if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+    return false;  // ← This is the blocker
+```
+
+**What needs to happen**: Either:
+1. The stub needs to call the real `newvaluefunc()` from langverbs.c (currently static, would need refactoring)
+2. Or implement `new()` directly in the headless stubs with proper table creation logic
+3. Or use a better binding mechanism (being investigated separately)
+
+### Bare `new()` without `lang.` prefix
 - Currently `new()` is registered in the lang verb family, not globally
 - Calling `new(tableType, @t)` without `lang.` prefix doesn't resolve
-- Needs either:
-  - Registration in global builtin table, OR
-  - Global keyword registration, OR
-  - Name resolution enhancement to search verb families
+- Blocked by the same issue: implementation needs to be non-stubbed first
 
 ## Testing
 

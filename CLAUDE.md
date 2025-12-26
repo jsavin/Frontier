@@ -272,6 +272,30 @@ When choosing between specialized agents (usertalk-engineer vs system-architect)
 
 This ensures the right agent with domain expertise handles the work.
 
+## Agent Work Verification Requirements
+
+**CRITICAL**: Agents must verify that fixes actually work end-to-end, not just fix one piece of the architecture:
+
+### Verb Dispatch Example (Issue #166 preparation)
+
+**Problem**: The system-architect agent correctly identified and fixed the verb callback mechanism (preventing `init_efp_1005()` from overwriting callbacks), but didn't verify that the actual verb implementation was wired up.
+
+**Lesson**: When an agent fixes a dispatch/routing issue:
+1. ✅ Fix the architectural problem (callbacks, registration, etc.)
+2. ✅ Verify the wiring is correct (check that the right callback is set)
+3. ✅ **TEST THE ACTUAL VERB END-TO-END** - Call the verb and verify it works
+4. ✅ Don't assume the implementation is complete just because the dispatch mechanism is fixed
+
+**What went wrong**: The agent fixed the callback mechanism but didn't catch that `headless_lang_verbs.c` contains a stub implementation that still returns "not implemented" for `lang.new()`.
+
+**How to prevent**: Always test the actual user-facing functionality (in this case, `lang.new(tableType, @t)`) to verify the complete chain works:
+- Name resolution → keyword lookup → callback dispatch → actual implementation
+
+**Guidance for agents**:
+- For routing/dispatch fixes: Test with actual calls to verify end-to-end functionality
+- For infrastructure fixes: Test with real examples that depend on that infrastructure
+- Don't stop at "I fixed the routing mechanism" - verify the mechanism actually routes to working code
+
 ## Logging Standards ⚠️
 
 All debug and diagnostic output must use structured logging macros - **never use `fprintf(stderr, ...)`**.
