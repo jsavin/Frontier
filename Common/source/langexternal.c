@@ -202,8 +202,7 @@ boolean langexternalgettable (bigstring bs, hdlhashtable *htable) {
     /* Direct lookup in root/system tables as headless-specific fallback.
        In headless mode, system tables (system, system.verbs, builtins, agents, root) are
        populated directly and available for direct lookup when EFP resolution fails.
-       In GUI mode, these tables are accessed through the database EFP system instead.
-       Disabled while we validate real system.verbs glue. */
+       In GUI mode, these tables are accessed through the database EFP system instead. */
     {
         hdlhashtable fallback = nil;
         hdlhashnode fallbacknode = nil;
