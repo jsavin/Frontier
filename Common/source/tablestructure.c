@@ -326,6 +326,13 @@ boolean tablenewtable (hdltablevariable *hvariable, hdlhashtable *htable) {
 	
 	(**ht).fldirty = true; /*it's never been saved*/
 	
+
+	/* Phase 4A: Initialize table context for version tracking */
+	if (!table_context_init(&(**ht).context)) {
+		disposehandle ((Handle) hv);
+		disposehandle ((Handle) ht);
+		return (false);
+	}
 	return (true);
 	} /*tablenewtable*/
 

@@ -1414,6 +1414,12 @@ boolean disposehashtable (hdlhashtable htable, boolean fldisk) {
 	*/
 	
 	
+
+	/* Phase 4A: Dispose table context */
+	if ((**ht).context != nil) {
+		table_context_dispose((**ht).context);
+		(**ht).context = nil;
+	}
 	(**ht).prevhashtable = hfirstfreetable;
 	
 	hfirstfreetable = ht;

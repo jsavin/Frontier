@@ -89,6 +89,7 @@ FRONTIER_SOURCES = \
     ../Common/source/strings.c \
     ../Common/source/ops.c \
     ../Common/source/tableops.c \
+    ../Common/source/table_context.c \
     ../Common/source/tableexternal_common.c \
     ../Common/source/tablepack.c \
     ../Common/source/legacy/tablepack_legacy.c \
@@ -161,6 +162,7 @@ LANG_RUNTIME_SOURCES = \
     headless_file_verbs.c \
     headless_frontier_verbs.c \
     ../Common/source/tableops.c \
+    ../Common/source/table_context.c \
     ../Common/source/tableexternal.c \
     ../Common/source/tableexternal_common.c \
     ../Common/source/legacy/tablepack_legacy.c \
