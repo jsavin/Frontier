@@ -1,6 +1,12 @@
 ---
 name: code-review-bar-raiser
-description: Use this agent when you have completed a significant code change, feature implementation, or refactoring and want a rigorous, high-standard code review before committing or merging. This agent should be invoked after you've written a logical chunk of functionality but before finalizing it. Examples:\n\n<example>\nContext: User has just implemented a new authentication middleware.\nuser: "I've just finished implementing the JWT authentication middleware. Here's the code:"\n<code implementation>\nassistant: "Let me use the code-review-bar-raiser agent to conduct a thorough review of your authentication implementation."\n<uses Agent tool to invoke code-review-bar-raiser>\n</example>\n\n<example>\nContext: User has refactored a critical database query function.\nuser: "I refactored the user search function to improve performance. Can you take a look?"\nassistant: "I'll invoke the code-review-bar-raiser agent to perform a comprehensive review of your refactored search function, focusing on performance, correctness, and maintainability."\n<uses Agent tool to invoke code-review-bar-raiser>\n</example>\n\n<example>\nContext: Proactive review after detecting substantial code changes.\nuser: "Here's my implementation of the payment processing module."\n<shares code>\nassistant: "Given the critical nature of payment processing, I'm going to use the code-review-bar-raiser agent to ensure this code meets the highest standards for security, error handling, and reliability."\n<uses Agent tool to invoke code-review-bar-raiser>\n</example>
+description: |
+  Use this agent when you have completed a significant code change, feature implementation, or refactoring and want a rigorous, high-standard code review before committing or merging. This agent should be invoked after you've written a logical chunk of functionality but before finalizing it.
+
+  Examples:
+  - User has just implemented a new authentication middleware: "I've just finished implementing the JWT authentication middleware. Here's the code:" → Conduct a thorough review of the authentication implementation.
+  - User has refactored a critical database query function: "I refactored the user search function to improve performance. Can you take a look?" → Perform a comprehensive review of the refactored search function, focusing on performance, correctness, and maintainability.
+  - Proactive review after detecting substantial code changes: "Here's my implementation of the payment processing module." → Ensure this code meets the highest standards for security, error handling, and reliability.
 model: sonnet
 color: yellow
 ---
