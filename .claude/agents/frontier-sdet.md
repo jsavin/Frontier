@@ -1,6 +1,21 @@
 ---
 name: frontier-sdet
-description: Use this agent when working on automated testing for the Frontier runtime, including:\n\n- Writing or modifying unit tests, functional tests, or integration tests\n- Designing test frameworks or test infrastructure\n- Creating test plans or test documentation\n- Investigating test failures or debugging test code\n- Reviewing test coverage and identifying gaps\n- Creating test reports for stakeholders\n- Validating boundary conditions and edge cases\n- Hardening the application against unexpected behaviors\n\nExamples:\n\n<example>\nContext: User is implementing a new kernel verb and needs to validate it works correctly.\nuser: "I just implemented system.verbs.string.replaceAll() - can you help me create comprehensive tests for it?"\nassistant: "I'm going to use the Task tool to launch the frontier-sdet agent to design and implement comprehensive tests for the new replaceAll() verb, including boundary cases and edge conditions."\n<uses Agent tool to invoke frontier-sdet>\n</example>\n\n<example>\nContext: User has a failing test and needs help diagnosing the issue.\nuser: "The save_migration_tests test is failing with 'dbnormalizeaddress failed for adr=0x62bb33' - what's going on?"\nassistant: "I'm going to use the Task tool to launch the frontier-sdet agent to analyze this test failure and provide diagnostic insights."\n<uses Agent tool to invoke frontier-sdet>\n</example>\n\n<example>\nContext: User needs to understand test coverage after making changes.\nuser: "I just refactored the table packing code - can you verify we have adequate test coverage?"\nassistant: "I'm going to use the Task tool to launch the frontier-sdet agent to analyze test coverage for the table packing subsystem and identify any gaps."\n<uses Agent tool to invoke frontier-sdet>\n</example>\n\n<example>\nContext: User is about to make a critical change and wants proactive test validation.\nuser: "I'm about to modify the database serialization format"\nassistant: "Before proceeding with database serialization changes, I'm going to use the Task tool to launch the frontier-sdet agent to ensure we have comprehensive tests in place and identify any testing gaps that should be addressed first."\n<uses Agent tool to invoke frontier-sdet>\n</example>
+description: |
+  Use this agent when working on automated testing for the Frontier runtime, including:
+  - Writing or modifying unit tests, functional tests, or integration tests
+  - Designing test frameworks or test infrastructure
+  - Creating test plans or test documentation
+  - Investigating test failures or debugging test code
+  - Reviewing test coverage and identifying gaps
+  - Creating test reports for stakeholders
+  - Validating boundary conditions and edge cases
+  - Hardening the application against unexpected behaviors
+
+  Examples:
+  - User is implementing a new kernel verb and needs to validate it works correctly: "I just implemented system.verbs.string.replaceAll() - can you help me create comprehensive tests for it?" → Design and implement comprehensive tests for the new verb, including boundary cases and edge conditions.
+  - User has a failing test and needs help diagnosing the issue: "The save_migration_tests test is failing with 'dbnormalizeaddress failed for adr=0x62bb33' - what's going on?" → Analyze this test failure and provide diagnostic insights.
+  - User needs to understand test coverage after making changes: "I just refactored the table packing code - can you verify we have adequate test coverage?" → Analyze test coverage for the subsystem and identify any gaps.
+  - User is about to make a critical change and wants proactive test validation: "I'm about to modify the database serialization format" → Ensure we have comprehensive tests in place and identify any testing gaps that should be addressed first.
 model: inherit
 color: cyan
 ---

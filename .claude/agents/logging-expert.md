@@ -1,6 +1,12 @@
 ---
 name: logging-expert
-description: Use this agent when working on logging functionality in the Frontier runtime or frontier-cli tool. This includes: adding new log statements, modifying existing logging behavior, debugging logging issues, implementing structured logging, configuring log levels, or understanding the frontier-cli logging infrastructure. Examples:\n\n<example>\nContext: User is implementing a new kernel verb and needs to add debug logging.\nuser: "I'm implementing system.verbs.string.uppercase and need to add some debug logging to trace parameter values"\nassistant: "Let me use the logging-expert agent to help you implement appropriate logging for this kernel verb."\n<Task tool call to logging-expert with the implementation context>\n</example>\n\n<example>\nContext: User encounters unexpected logging behavior during database migration.\nuser: "The migration is producing too much output and I can't see the important warnings. How do I adjust the log levels?"\nassistant: "I'll consult the logging-expert agent to help you configure the logging levels appropriately."\n<Task tool call to logging-expert with the logging configuration question>\n</example>\n\n<example>\nContext: User is reviewing code that involves logging.\nuser: "Can you review the logging I added to the table packing code in hashpack.c?"\nassistant: "I'll use the logging-expert agent to review the logging implementation for best practices and consistency with the Frontier codebase."\n<Task tool call to logging-expert with code review request>\n</example>
+description: |
+  Use this agent when working on logging functionality in the Frontier runtime or frontier-cli tool. This includes: adding new log statements, modifying existing logging behavior, debugging logging issues, implementing structured logging, configuring log levels, or understanding the frontier-cli logging infrastructure.
+
+  Examples:
+  - User is implementing a new kernel verb and needs to add debug logging: "I'm implementing system.verbs.string.uppercase and need to add some debug logging to trace parameter values" → Help implement appropriate logging for this kernel verb.
+  - User encounters unexpected logging behavior during database migration: "The migration is producing too much output and I can't see the important warnings. How do I adjust the log levels?" → Help configure the logging levels appropriately.
+  - User is reviewing code that involves logging: "Can you review the logging I added to the table packing code in hashpack.c?" → Review the logging implementation for best practices and consistency with the Frontier codebase.
 model: inherit
 color: green
 ---
