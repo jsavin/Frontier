@@ -93,7 +93,6 @@ build_Xcode_modern/*.log
 # Build directory executables
 build_Xcode_modern/Frontier_*
 
-.claude/
 .anthropic/
 .codex/
 .cache/
