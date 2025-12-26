@@ -17,6 +17,17 @@
 - The v7 database format should not contain any font, font size, or font style information *except* within stored RTF objects.
 - Run the headless test flow with `./tools/run_headless_tests.sh` (rebuilds CLI, migrates `databases/Frontier-v6.root` to `databases/Frontier-v6-v7.root`, then runs `make -C tests test`); use this as the standard before/after change check.
 - Run the verb binding analyzer with `cd tools/kernelverbs_parser && python3 cli.py analyze` (shows current verb detection: implemented vs stubbed). Use `python3 cli.py report` to generate detailed coverage reports. Use `python3 cli.py report -o -` for stdout output.
+- **Milestone Commits MUST Use PR Workflow** ⚠️ CRITICAL PROCESS:
+  1. Create a feature branch: `git checkout -b feature/description-of-work`
+  2. Commit work to the feature branch (multiple commits OK)
+  3. Push the branch to origin
+  4. **Use the pull-request agent** to create and manage the PR (do NOT commit directly)
+  5. Let the PR bot review the code
+  6. Address any bot feedback (minor issues automatically, critical issues with user approval)
+  7. Merge to develop only after bot approval
+  - **Never commit directly to develop** - all milestones must go through PR review
+  - Every completed feature/fix should be a separate PR
+  - This ensures code quality gates and prevents regressions
 - Whenever you're about to start new development work, always create a branch for that work if the local tree is currently on "develop".
 - You have permission to use the `gh` command.
 - Don't ever create PRs that would merge with the tedchoward upstream fork.
