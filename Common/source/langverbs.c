@@ -2708,11 +2708,18 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 		
 		
 		case optionkeyfunc: case cmdkeyfunc: case shiftkeyfunc: case controlkeyfunc:
+			/*
+			Keyboard modifier verbs: optionkey, cmdkey, shiftkey, controlkey
+			In headless mode, these always return false (no keyboard input).
+			The keyboardmodifierverb() function handles these with proper
+			FRONTIER_HEADLESS guards (see line 567).
+			*/
 			if (!langcheckparamcount (hparam1, 0))
 				break;
-			
-		
-		/*	
+
+			return (keyboardmodifierverb (token)); /* Delegates to keyboardmodifierverb() */
+
+		/*
 		case presskeyfunc: {
 			char ch;
 			

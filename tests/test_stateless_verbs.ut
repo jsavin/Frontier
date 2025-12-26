@@ -1,15 +1,6 @@
-/*
- * test_stateless_verbs.ut - Phase 1 stateless verb tests (MVP)
- *
- * Tests for Phase 1 stateless verbs including:
- * - STRING verbs (sample)
- * - MATH verbs (sample)
- * - FRONTIER verbs (sample)
- * - KB verbs (all)
- *
- * Note: Tests are simple inline checks, not a full test framework
- * Run with: FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli -e 'string.length("hello")'
- */
+// test_stateless_verbs.ut - Phase 1 stateless verb tests
+// Tests for stateless verbs: STRING, MATH, KB
+// CRYPT and FRONTIER verbs are implemented but test coverage deferred to Phase 2+
 
 /* Test string.length */
 local (len_result) = string.length("hello");
@@ -77,5 +68,10 @@ if controlkey_result != false {
     return "FAIL: kb.controlkey() returned " + controlkey_result + ", expected false";
 }
 
-/* All tests passed */
+// Note: CRYPT and FRONTIER verbs are implemented in Phase 1, but test
+// coverage will be expanded in Phase 2+ as additional inline test
+// cases are written and integrated into the test harness.
+// See planning/phase3/VERB_PORTING_STRATEGY.md for details.
+
+// All tests passed
 return "PASS: All stateless verb tests passed (11 tests: 5 string, 3 math, 4 kb)";

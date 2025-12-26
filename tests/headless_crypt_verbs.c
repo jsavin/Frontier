@@ -12,11 +12,9 @@
 #include "strings.h"
 #include "lang.h"
 #include "langinternal.h"
+#include "langcrypt.h"
 #include "tablestructure.h"
 #include "kernelverbdefs.h"
-
-/* Forward declaration of the real cryptfunctionvalue from langcrypt.c */
-extern boolean cryptfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vreturned, bigstring bserror);
 
 /* Token enum for all verbs in the crypt processor - from langcrypt.c */
 enum {

@@ -31,3 +31,5 @@ boolean hmacmd5 (unsigned char *, int, unsigned char *, int, unsigned char *); /
 
 boolean hmacsha1 (unsigned char *, int, unsigned char *, int, unsigned char *); /* 2006-03-12 creedon */
 
+boolean cryptfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vreturned, bigstring bserror);
+
