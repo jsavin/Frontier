@@ -68,6 +68,42 @@ The frontier-cli executable must be run from the project root directory (NOT fro
 FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli -e "1+1"
 ```
 
+### Testing Multi-line UserTalk Scripts
+
+Multi-line scripts work in the CLI using bash `$'...'` syntax for proper newline handling:
+
+```bash
+# Multi-line script with $'...\n...' syntax:
+FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli -e $'lang.new(tableType, @t);\nt.key1 = "hello";\nt.key2 = 42;\nreturn "size:" + sizeOf(t) + " key1:" + t.key1'
+
+# Output: size:2 key1:hello
+
+# Single-line works too (statements separated by semicolons):
+FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli -e "lang.new(tableType, @t); t.key1 = \"hello\"; return t.key1"
+```
+
+### Testing lang.new() Verb
+
+The `lang.new()` verb creates new UserTalk objects (tables, outlines, scripts, etc.) in memory:
+
+```bash
+# Create a table and verify it exists:
+FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli -e "lang.new(tableType, @t); return defined(t)"
+# Output: true
+
+# Create a table, add data, and read it back:
+FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli -e "lang.new(tableType, @t); t.key1 = \"hello\"; t.key2 = 42; t.key3 = true; return \"size:\" + sizeOf(t) + \" key1:\" + t.key1 + \" key2:\" + t.key2"
+# Output: size:3 key1:hello key2:42
+
+# Test with different object types:
+FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli -e "lang.new(tableType, @myTable); return typeof(myTable)"
+# Output: tableType
+```
+
+**Known issues:**
+- Empty error message `[lang-ERROR] langcallbacks.c:208:` may appear after successful execution (harmless, can be ignored)
+- Multi-line scripts passed as plain strings (without `$'...'`) will fail due to shell parsing
+
 ## Database Migration (v6→v7)
 
 **Running migration:**
