@@ -283,6 +283,24 @@ When choosing between specialized agents (usertalk-engineer vs system-architect)
 
 This ensures the right agent with domain expertise handles the work.
 
+## Using Sub-Agents for Complex Tasks
+
+Whenever a task would benefit from specialized analysis or work that a sub-agent can handle autonomously, **use the appropriate Task tool with a sub-agent**:
+- **Explore agent** - Understanding codebase structure, searching across multiple files, architectural context
+- **system-architect** - Designing implementations, architectural alternatives, complex technical decisions
+- **usertalk-engineer** - UserTalk scripting work, verb implementations in UserTalk domain
+- **code-review-bar-raiser** - Thorough code review of significant implementations before merge
+- **refactoring-consultant** - Planning and executing refactoring work
+- **pull-request agent** - Creating comprehensive PR summaries and pushing to origin
+
+Don't do complex analysis or design work manually when an agent can do it better and faster. This is especially true for:
+- Multi-file exploration and understanding codebase patterns
+- Architectural analysis and trade-off studies
+- Design and planning before implementation
+- Code review and quality assurance
+
+Using agents frees you to focus on high-level decision-making and context.
+
 ## Agent Work Verification Requirements
 
 **CRITICAL**: Agents must verify that fixes actually work end-to-end, not just fix one piece of the architecture:
