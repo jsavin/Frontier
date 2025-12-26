@@ -2717,7 +2717,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			if (!langcheckparamcount (hparam1, 0))
 				break;
 
-			return (keyboardmodifierverb (token)); /* Delegates to keyboardmodifierverb() */
+			return (setbooleanvalue (keyboardmodifierverb (token), v));
 
 		/*
 		case presskeyfunc: {
