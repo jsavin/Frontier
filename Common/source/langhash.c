@@ -5016,3 +5016,6 @@ boolean hashvaltostrings (tyvaluerecord val, bigstring bstype, bigstring bsvalue
 	
 	return (true);
 	} /*hashvaltostrings*/
+
+/* Phase 4A: Include table_context.c here so it's compiled with full lang.h definitions available */
+#include "table_context.c"

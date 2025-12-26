@@ -27,6 +27,9 @@
 extern "C" {
 #endif
 
+/* Forward declaration: hdlhashtable is opaque to this module */
+struct hdlhashtable;
+
 /* ============================================================================
    MUTATION TYPE ENUMERATION
    ============================================================================ */

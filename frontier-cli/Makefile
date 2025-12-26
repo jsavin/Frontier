@@ -106,7 +106,6 @@ RUNTIME_SOURCES = \
     ../Common/source/opxml.c \
     ../Common/source/langxml.c \
     ../Common/source/tableops.c \
-    ../Common/source/table_context.c \
     ../Common/source/tablestructure.c \
     ../Common/source/tableexternal_common.c \
     ../Common/source/tableexternal.c \
