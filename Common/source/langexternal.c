@@ -198,9 +198,7 @@ boolean langexternalgettable (bigstring bs, hdlhashtable *htable) {
         }
         pophashtable();
     }
-#endif
 
-#if defined(FRONTIER_HEADLESS)
     /* Direct lookup in root/system tables when sanitized database omits EFP wrappers.
        Disabled while we validate real system.verbs glue. */
     {

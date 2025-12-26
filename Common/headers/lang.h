@@ -1320,7 +1320,11 @@ extern boolean langfunctioncall (hdltreenode, hdlhashtable, hdlhashnode, bigstri
 
 extern boolean functionvalue (hdltreenode, hdltreenode, tyvaluerecord *);
 
-extern boolean newvaluefunc (hdltreenode, tyvaluerecord *); /*langverbs.c - new() verb implementation*/
+/*langverbs.c - new() verb implementation
+  Creates a new value of specified type and assigns it to a variable.
+  Parameters: hparam1 - parameter tree containing type and address
+              vreturned - output value record (returns flvalue=true on success)*/
+extern boolean newvaluefunc (hdltreenode, tyvaluerecord *);
 
 extern boolean langzoomvalwindow (hdlhashtable, bigstring, tyvaluerecord, boolean); /*langverbs.c*/
 

@@ -201,12 +201,12 @@ boolean db_format_prepare_runtime(void) {
 
 #ifdef FRONTIER_HEADLESS
     /* Initialize all headless verb processors (auto-generated) */
-	log_debug(LOG_COMP_STARTUP, "db_format_prepare_runtime: calling headless_init_kernel_verbs");
+    log_trace(LOG_COMP_STARTUP, "db_format_prepare_runtime: calling headless_init_kernel_verbs");
     if (!headless_init_kernel_verbs()) {
-		log_error(LOG_COMP_STARTUP, "db_format_prepare_runtime: headless_init_kernel_verbs FAILED");
+        log_error(LOG_COMP_STARTUP, "db_format_prepare_runtime: headless_init_kernel_verbs FAILED");
         return false;
-	}
-	log_debug(LOG_COMP_STARTUP, "db_format_prepare_runtime: headless_init_kernel_verbs completed successfully");
+    }
+    log_trace(LOG_COMP_STARTUP, "db_format_prepare_runtime: headless_init_kernel_verbs completed successfully");
 #endif
 
     grabthreadglobals();
