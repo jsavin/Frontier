@@ -277,6 +277,69 @@ boolean linksystemtablestructure (hdlhashtable hroot) {
 	} /*linksystemtablestructure*/
 
 
+boolean resolve_system_paths (hdlhashtable hroot) {
+
+	/*
+	2025-12-26 Codex: Eagerly resolve all address values in system.paths
+	after linksystemtablestructure().
+
+	This must be called AFTER linksystemtablestructure() links internaltable
+	into system.compiler, so that stringtoaddress() can resolve paths like
+	"system.compiler.lang" correctly.
+
+	Background: Address values are saved to disk as strings only (never pointers).
+	During unpacking, they're created as "unresolved" with htable=-1 marker.
+	This function eagerly resolves system.paths entries so verb lookup works correctly.
+	*/
+
+	hdlhashtable hsystem, hpaths;
+	hdlhashnode h;
+
+	// Find system table
+	if (!findnamedtable (hroot, namesystembranch, &hsystem))
+		return (true); // No system table, nothing to do
+
+	// Find system.paths table
+	if (!findnamedtable (hsystem, namepathstable, &hpaths))
+		return (true); // No paths table, nothing to do
+
+	log_info(LOG_COMP_LANG, "Resolving system.paths addresses after linksystemtablestructure()");
+
+	// Iterate through all entries in system.paths
+	for (h = (**hpaths).hfirstsort; h != nil; h = (**h).sortedlink) {
+
+		tyvaluerecord *val = &(**h).val;
+
+		// Check if it's an unresolved address
+		if (val->valuetype == addressvaluetype && (**h).flunresolvedaddress) {
+
+			bigstring bspath;
+
+			// Get the path from the address value
+			if (!getaddresspath (*val, bspath))
+				continue;
+
+			// Resolve the address in-memory (calls stringtoaddress)
+			if (stringtoaddress (val)) {
+
+				(**h).flunresolvedaddress = false;
+
+				if (log_enabled(LOG_LEVEL_DEBUG, LOG_COMP_LANG)) {
+
+					char cpath[512];
+
+					copyptocstring(bspath, cpath);
+
+					log_debug(LOG_COMP_LANG, "Resolved system.paths entry: %s", cpath);
+					}
+				}
+			}
+		}
+
+	return (true);
+	} /*resolve_system_paths*/
+
+
 boolean unlinksystemtablestructure (void) {
 
 	/*
