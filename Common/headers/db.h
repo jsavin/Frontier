@@ -214,6 +214,10 @@ extern void dbcurrentdatabase (hdldatabaserecord);
 
 extern void dbgetcurrentdatabase (hdldatabaserecord *);
 
+extern boolean dbpushdatabase (hdldatabaserecord);
+
+extern boolean dbpopdatabase (void);
+
 extern boolean dbflushreleasestack (void);
 
 extern boolean dbfnumchanged (hdlfilenum);

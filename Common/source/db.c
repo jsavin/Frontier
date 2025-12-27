@@ -445,6 +445,53 @@ static void db_context_guard_exit_with_saveas(const db_context_guard *guard, con
         db_saveas_state_apply(&guard->prev_saveas);
 }
 
+boolean dbpushdatabase (hdldatabaserecord hdatabase) {
+	/*
+	when you want to temporarily work with a different databaserecord, call this
+	routine, do your stuff and then call dbpopdatabase.
+	*/
+
+	if (topdatabasestack >= ctdatabasestack) {
+
+		DebugStr (STR_database_stack_overflow);
+
+		return (false);
+		}
+
+	databasestack [topdatabasestack++] = databasedata;
+
+#if defined(FRONTIER_HEADLESS)
+	log_trace(LOG_COMP_DB, "dbpushdatabase: old=%p new=%p stack_depth=%d",
+	        (void*)databasedata,
+	        (void*)hdatabase,
+	        topdatabasestack);
+#endif
+
+	databasedata = hdatabase; /*install the new database*/
+	db_sync_use64_to_current_db();
+
+	return (true);
+	} /*dbpushdatabase*/
+
+
+boolean dbpopdatabase (void) {
+
+	if (topdatabasestack <= 0)
+		return (false);
+
+#if defined(FRONTIER_HEADLESS)
+	log_trace(LOG_COMP_DB, "dbpopdatabase: old=%p restored=%p stack_depth=%d",
+	        (void*)databasedata,
+	        (void*)databasestack[topdatabasestack - 1],
+	        topdatabasestack);
+#endif
+
+	databasedata = databasestack [--topdatabasestack];
+	db_sync_use64_to_current_db();
+
+	return (true);
+	} /*dbpopdatabase*/
+
 
 static boolean dbrelease_internal (dbaddress); /*6.2b2: Dropped from db.h and declared static*/
 static boolean dballocate (long databytes, ptrvoid pdata, dbaddress *paddress); /*6.2b14 AR: forward declaration for dbwriteshadowavaillist*/
