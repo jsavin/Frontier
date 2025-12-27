@@ -335,7 +335,7 @@ boolean resolve_system_paths (hdlhashtable hroot) {
 
 			char cpath[512];
 			copyptocstring(bspath, cpath);
-			log_trace(LOG_COMP_LANG, "Resolving system.paths entry: %s", cpath);
+			log_error(LOG_COMP_LANG, "BEFORE RESOLUTION - system.paths entry: %s", cpath);
 
 			// Resolve the unresolved address
 			// Use langexpandtodotparams to resolve the path to an htable
@@ -383,6 +383,179 @@ boolean resolve_system_paths (hdlhashtable hroot) {
 
 	return (true);
 	} /*resolve_system_paths*/
+
+
+boolean augment_database_tables_with_efp (hdlhashtable hroot) {
+
+	/*
+	2025-12-27 Codex: Augment database tables with EFP implementations to enable bare verb resolution.
+
+	Problem: system.paths points to database tables (e.g., system.compiler.lang) which have no valueroutines.
+	         EFP tables are created at system.compiler.["kernel"].* with valueroutines but aren't in system.paths.
+	         Bare verb calls like new() fail because path lookup finds tables without callbacks.
+
+	Solution: Merge EFP table entries into database tables:
+	         - Copy valueroutine callback from EFP table to database table
+	         - Copy all verb entries from EFP table to database table
+	         - Mark copied entries as fldontsave (C pointers shouldn't persist)
+
+	Result: Database tables get both persistence AND runtime callbacks, bare verbs work.
+	*/
+
+	hdlhashtable hsystem, hpaths, hinternal, hefptable;
+	hdlhashnode h;
+	int augmented_count = 0;
+
+	log_error(LOG_COMP_LANG, "augment_database_tables_with_efp ENTER with hroot=%p", (void*)hroot);
+
+	// Find system table
+	if (!findnamedtable (hroot, namesystembranch, &hsystem)) {
+		log_warn(LOG_COMP_LANG, "No system table found, skipping augmentation");
+		return (true); // No system table, nothing to augment
+	}
+
+	// Find system.paths table
+	if (!findnamedtable (hsystem, namepathstable, &hpaths)) {
+		log_warn(LOG_COMP_LANG, "No system.paths table found, skipping augmentation");
+		return (true); // No paths table, nothing to augment
+	}
+
+	// Find system.compiler table
+	if (!findnamedtable (hsystem, nameinternaltable, &hinternal)) {
+		log_error(LOG_COMP_LANG, "No system.compiler table found, cannot augment");
+		return (false);
+	}
+
+	// Find system.compiler.["kernel"] (efptable)
+	if (!findnamedtable (hinternal, nameefptable, &hefptable)) {
+		log_error(LOG_COMP_LANG, "No system.compiler.[\"kernel\"] table found, cannot augment");
+		return (false);
+	}
+
+	log_error(LOG_COMP_LANG, "Found efptable at %p, iterating system.paths for augmentation", (void*)hefptable);
+
+	// Iterate all entries in system.paths
+	for (h = (**hpaths).hfirstsort; h != nil; h = (**h).sortedlink) {
+		tyvaluerecord *val;
+		hdlhashtable htable_target;
+		bigstring bs_path;
+		bigstring bs_lastcomponent;
+
+		val = &(**h).val;
+		log_error(LOG_COMP_LANG, "Processing entry, valuetype=%d (addressvaluetype=%d)", val->valuetype, addressvaluetype);
+		if (val->valuetype != addressvaluetype)
+			continue; // Only process address values
+
+		// Get the path string from the address value
+		if (!getaddresspath (*val, bs_path)) {
+			log_error(LOG_COMP_LANG, "Failed to extract path from address value, skipping");
+			continue;
+		}
+		log_error(LOG_COMP_LANG, "Got path: '%.*s'", (int)bs_path[0], bs_path+1);
+
+		// Resolve the address to get the database table
+		if (!getaddressvalue (*val, &htable_target, bs_lastcomponent)) {
+			log_error(LOG_COMP_LANG, "Failed to resolve address '%.*s', skipping",
+			         (int)bs_path[0], bs_path+1);
+			continue;
+		}
+		log_error(LOG_COMP_LANG, "Resolved to table=%p, lastcomp='%.*s'", (void*)htable_target,
+		          (int)bs_lastcomponent[0], bs_lastcomponent+1);
+
+		// Extract just the last component from the path (e.g., "lang" from "system.compiler.lang")
+		// bs_lastcomponent currently contains the full path, we need just the final segment
+		bigstring bs_finalcomponent;
+		short i, lastdot = 0;
+		for (i = 1; i <= bs_lastcomponent[0]; i++) {
+			if (bs_lastcomponent[i] == '.')
+				lastdot = i;
+		}
+		if (lastdot > 0) {
+			// Copy from after the last dot to the end
+			short len = bs_lastcomponent[0] - lastdot;
+			bs_finalcomponent[0] = len;
+			for (i = 1; i <= len; i++) {
+				bs_finalcomponent[i] = bs_lastcomponent[lastdot + i];
+			}
+		} else {
+			// No dot found, use the whole string
+			copystring(bs_lastcomponent, bs_finalcomponent);
+		}
+
+		if (bs_finalcomponent[0] == 0) {
+			log_warn(LOG_COMP_LANG, "Empty last component from path '%.*s', skipping",
+			         (int)bs_path[0], bs_path+1);
+			continue;
+		}
+		log_error(LOG_COMP_LANG, "Final component: '%.*s'", (int)bs_finalcomponent[0], bs_finalcomponent+1);
+
+		// Look for matching EFP table in efptable (e.g., efptable["lang"])
+		hdlhashtable hefp_processor;
+		if (!findnamedtable (hefptable, bs_finalcomponent, &hefp_processor)) {
+			log_error(LOG_COMP_LANG, "No EFP processor found for '%.*s', skipping",
+			          (int)bs_finalcomponent[0], bs_finalcomponent+1);
+			continue; // No EFP for this processor, that's OK
+		}
+
+		log_error(LOG_COMP_LANG, "Augmenting '%.*s' with EFP from system.compiler.[\"kernel\"].%.*s",
+		          (int)bs_path[0], bs_path+1,
+		          (int)bs_finalcomponent[0], bs_finalcomponent+1);
+
+		// Copy valueroutine from EFP table to database table
+		if ((**hefp_processor).valueroutine != nil) {
+			(**htable_target).valueroutine = (**hefp_processor).valueroutine;
+			log_debug(LOG_COMP_LANG, "Copied valueroutine %p to database table",
+			          (void*)(**hefp_processor).valueroutine);
+		}
+
+		// Copy all entries from EFP table to database table
+		hdlhashnode hefp_node;
+		int entries_copied = 0;
+		for (hefp_node = (**hefp_processor).hfirstsort; hefp_node != nil; hefp_node = (**hefp_node).sortedlink) {
+			bigstring bs_entryname;
+			tyvaluerecord entry_val;
+
+			// Get entry name
+			gethashkey (hefp_node, bs_entryname);
+
+			// Check if entry already exists in database table
+			hdlhashnode existing_node;
+			if (hashtablelookup (htable_target, bs_entryname, nil, &existing_node)) {
+				log_trace(LOG_COMP_LANG, "Entry '%.*s' already exists in database table, skipping",
+				          (int)bs_entryname[0], bs_entryname+1);
+				continue; // Don't overwrite existing entries
+			}
+
+			// Copy the value
+			entry_val = (**hefp_node).val;
+
+			// Insert into database table
+			pushhashtable (htable_target);
+			if (hashinsert (bs_entryname, entry_val)) {
+				// Mark as fldontsave (C pointers shouldn't persist)
+				hdlhashnode new_node;
+				if (hashtablelookup (htable_target, bs_entryname, nil, &new_node)) {
+					(**new_node).fldontsave = true;
+					entries_copied++;
+					log_trace(LOG_COMP_LANG, "Copied entry '%.*s' (marked fldontsave)",
+					          (int)bs_entryname[0], bs_entryname+1);
+				}
+			} else {
+				log_warn(LOG_COMP_LANG, "Failed to insert entry '%.*s'",
+				         (int)bs_entryname[0], bs_entryname+1);
+			}
+			pophashtable ();
+		}
+
+		log_error(LOG_COMP_LANG, "Augmented '%.*s' with %d entries from EFP table",
+		         (int)bs_finalcomponent[0], bs_finalcomponent+1, entries_copied);
+		augmented_count++;
+	}
+
+	log_error(LOG_COMP_LANG, "Database table augmentation complete: %d tables augmented", augmented_count);
+
+	return (true);
+	} /*augment_database_tables_with_efp*/
 
 
 boolean unlinksystemtablestructure (void) {

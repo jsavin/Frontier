@@ -511,6 +511,12 @@ static boolean hydrate_system_root_database(const char* path) {
         goto cleanup;
     }
 
+    /* Augment database tables with EFP implementations for bare verb resolution */
+    if (!augment_database_tables_with_efp(hroot)) {
+        cli_log_error("Unable to augment database tables with EFP while hydrating %s", path);
+        goto cleanup;
+    }
+
     boolean created_optional = false;
     if (systemtable != nil) {
         if (resourcestable == nil && ensure_named_subtable(systemtable, nameresourcestable, &resourcestable, false))
