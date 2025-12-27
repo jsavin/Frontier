@@ -295,46 +295,102 @@ boolean resolve_system_paths (hdlhashtable hroot) {
 	hdlhashtable hsystem, hpaths;
 	hdlhashnode h;
 
+	fprintf(stderr, "DEBUG: resolve_system_paths called with hroot=%p\n", (void*)hroot);
+
 	// Find system table
-	if (!findnamedtable (hroot, namesystembranch, &hsystem))
+	if (!findnamedtable (hroot, namesystembranch, &hsystem)) {
+		fprintf(stderr, "DEBUG: No system table found\n");
 		return (true); // No system table, nothing to do
+	}
+
+	fprintf(stderr, "DEBUG: Found system table at %p\n", (void*)hsystem);
 
 	// Find system.paths table
-	if (!findnamedtable (hsystem, namepathstable, &hpaths))
+	if (!findnamedtable (hsystem, namepathstable, &hpaths)) {
+		fprintf(stderr, "DEBUG: No paths table found\n");
 		return (true); // No paths table, nothing to do
+	}
+
+	fprintf(stderr, "DEBUG: Found system.paths table at %p\n", (void*)hpaths);
 
 	log_info(LOG_COMP_LANG, "Resolving system.paths addresses after linksystemtablestructure()");
 
 	// Iterate through all entries in system.paths
+	int entry_count = 0;
+	int unresolved_count = 0;
+	int resolved_count = 0;
+
 	for (h = (**hpaths).hfirstsort; h != nil; h = (**h).sortedlink) {
 
 		tyvaluerecord *val = &(**h).val;
+		entry_count++;
+
+		fprintf(stderr, "DEBUG: Entry %d - valuetype=%d, flunresolvedaddress=%d\n",
+			entry_count, val->valuetype, (**h).flunresolvedaddress);
 
 		// Check if it's an unresolved address
 		if (val->valuetype == addressvaluetype && (**h).flunresolvedaddress) {
 
 			bigstring bspath;
+			unresolved_count++;
 
 			// Get the path from the address value
-			if (!getaddresspath (*val, bspath))
+			if (!getaddresspath (*val, bspath)) {
+				fprintf(stderr, "DEBUG: Failed to get address path for entry %d\n", entry_count);
 				continue;
+			}
 
-			// Resolve the address in-memory (calls stringtoaddress)
-			if (stringtoaddress (val)) {
+			char cpath[512];
+			copyptocstring(bspath, cpath);
+			fprintf(stderr, "DEBUG: Attempting to resolve: %s\n", cpath);
+
+			// Resolve the unresolved address
+			// Use langexpandtodotparams to resolve the path to an htable
+			hdlhashtable htable_resolved = nil;
+			bigstring bs_resolved;
+
+			copystring(bspath, bs_resolved);
+
+			pushhashtable(roottable);
+			boolean fl = langexpandtodotparams(bs_resolved, &htable_resolved, bs_resolved);
+			pophashtable();
+
+			fprintf(stderr, "DEBUG:   langexpandtodotparams returned %d, htable=%p\n", fl, (void*)htable_resolved);
+
+			if (fl && htable_resolved != nil) {
+
+				// Update the htable in the address handle
+				hdlstring hstring = val->data.addressvalue;
+				long ixtable = stringlength(bspath) + 1;
+
+				// Write the resolved htable directly into the handle
+				hdlhashtable *phtable = (hdlhashtable *)((*hstring) + ixtable);
+				*phtable = htable_resolved;
 
 				(**h).flunresolvedaddress = false;
+				resolved_count++;
+
+				fprintf(stderr, "DEBUG: Successfully resolved: %s -> htable=%p\n", cpath, (void*)htable_resolved);
 
 				if (log_enabled(LOG_LEVEL_DEBUG, LOG_COMP_LANG)) {
-
-					char cpath[512];
-
-					copyptocstring(bspath, cpath);
-
 					log_debug(LOG_COMP_LANG, "Resolved system.paths entry: %s", cpath);
 					}
+				} else {
+				fprintf(stderr, "DEBUG: Failed to resolve: %s (langexpandtodotparams failed or returned nil)\n", cpath);
 				}
 			}
 		}
+
+	fprintf(stderr, "DEBUG: resolve_system_paths complete: %d entries, %d unresolved, %d resolved\n",
+		entry_count, unresolved_count, resolved_count);
+
+	// Verify resolution by checking the flags again
+	int still_unresolved = 0;
+	for (h = (**hpaths).hfirstsort; h != nil; h = (**h).sortedlink) {
+		if ((**h).flunresolvedaddress)
+			still_unresolved++;
+	}
+	fprintf(stderr, "DEBUG: After resolution, %d entries still marked as unresolved\n", still_unresolved);
 
 	return (true);
 	} /*resolve_system_paths*/
