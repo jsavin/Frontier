@@ -335,7 +335,7 @@ boolean resolve_system_paths (hdlhashtable hroot) {
 
 			char cpath[512];
 			copyptocstring(bspath, cpath);
-			log_error(LOG_COMP_LANG, "BEFORE RESOLUTION - system.paths entry: %s", cpath);
+			log_trace(LOG_COMP_LANG, "BEFORE RESOLUTION - system.paths entry: %s", cpath);
 
 			// Resolve the unresolved address
 			// Use langexpandtodotparams to resolve the path to an htable
@@ -406,7 +406,7 @@ boolean augment_database_tables_with_efp (hdlhashtable hroot) {
 	hdlhashnode h;
 	int augmented_count = 0;
 
-	log_error(LOG_COMP_LANG, "augment_database_tables_with_efp ENTER with hroot=%p", (void*)hroot);
+	log_trace(LOG_COMP_LANG, "augment_database_tables_with_efp ENTER with hroot=%p", (void*)hroot);
 
 	// Find system table
 	if (!findnamedtable (hroot, namesystembranch, &hsystem)) {
@@ -432,7 +432,7 @@ boolean augment_database_tables_with_efp (hdlhashtable hroot) {
 		return (false);
 	}
 
-	log_error(LOG_COMP_LANG, "Found efptable at %p, iterating system.paths for augmentation", (void*)hefptable);
+	log_debug(LOG_COMP_LANG, "Found efptable at %p, iterating system.paths for augmentation", (void*)hefptable);
 
 	// Iterate all entries in system.paths
 	for (h = (**hpaths).hfirstsort; h != nil; h = (**h).sortedlink) {
@@ -442,25 +442,21 @@ boolean augment_database_tables_with_efp (hdlhashtable hroot) {
 		bigstring bs_lastcomponent;
 
 		val = &(**h).val;
-		log_error(LOG_COMP_LANG, "Processing entry, valuetype=%d (addressvaluetype=%d)", val->valuetype, addressvaluetype);
 		if (val->valuetype != addressvaluetype)
 			continue; // Only process address values
 
 		// Get the path string from the address value
 		if (!getaddresspath (*val, bs_path)) {
-			log_error(LOG_COMP_LANG, "Failed to extract path from address value, skipping");
+			log_warn(LOG_COMP_LANG, "Failed to extract path from address value, skipping");
 			continue;
 		}
-		log_error(LOG_COMP_LANG, "Got path: '%.*s'", (int)bs_path[0], bs_path+1);
 
 		// Resolve the address to get the database table
 		if (!getaddressvalue (*val, &htable_target, bs_lastcomponent)) {
-			log_error(LOG_COMP_LANG, "Failed to resolve address '%.*s', skipping",
+			log_warn(LOG_COMP_LANG, "Failed to resolve address '%.*s', skipping",
 			         (int)bs_path[0], bs_path+1);
 			continue;
 		}
-		log_error(LOG_COMP_LANG, "Resolved to table=%p, lastcomp='%.*s'", (void*)htable_target,
-		          (int)bs_lastcomponent[0], bs_lastcomponent+1);
 
 		// Extract just the last component from the path (e.g., "lang" from "system.compiler.lang")
 		// bs_lastcomponent currently contains the full path, we need just the final segment
@@ -487,17 +483,15 @@ boolean augment_database_tables_with_efp (hdlhashtable hroot) {
 			         (int)bs_path[0], bs_path+1);
 			continue;
 		}
-		log_error(LOG_COMP_LANG, "Final component: '%.*s'", (int)bs_finalcomponent[0], bs_finalcomponent+1);
-
 		// Look for matching EFP table in efptable (e.g., efptable["lang"])
 		hdlhashtable hefp_processor;
 		if (!findnamedtable (hefptable, bs_finalcomponent, &hefp_processor)) {
-			log_error(LOG_COMP_LANG, "No EFP processor found for '%.*s', skipping",
+			log_trace(LOG_COMP_LANG, "No EFP processor found for '%.*s', skipping",
 			          (int)bs_finalcomponent[0], bs_finalcomponent+1);
 			continue; // No EFP for this processor, that's OK
 		}
 
-		log_error(LOG_COMP_LANG, "Augmenting '%.*s' with EFP from system.compiler.[\"kernel\"].%.*s",
+		log_debug(LOG_COMP_LANG, "Augmenting '%.*s' with EFP from system.compiler.[\"kernel\"].%.*s",
 		          (int)bs_path[0], bs_path+1,
 		          (int)bs_finalcomponent[0], bs_finalcomponent+1);
 
@@ -547,12 +541,12 @@ boolean augment_database_tables_with_efp (hdlhashtable hroot) {
 			pophashtable ();
 		}
 
-		log_error(LOG_COMP_LANG, "Augmented '%.*s' with %d entries from EFP table",
+		log_info(LOG_COMP_LANG, "Augmented '%.*s' with %d entries from EFP table",
 		         (int)bs_finalcomponent[0], bs_finalcomponent+1, entries_copied);
 		augmented_count++;
 	}
 
-	log_error(LOG_COMP_LANG, "Database table augmentation complete: %d tables augmented", augmented_count);
+	log_info(LOG_COMP_LANG, "Database table augmentation complete: %d tables augmented", augmented_count);
 
 	return (true);
 	} /*augment_database_tables_with_efp*/

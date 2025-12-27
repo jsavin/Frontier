@@ -1660,6 +1660,57 @@ boolean getaddresspath (tyvaluerecord val, bigstring bs) {
 	if (htable == (hdlhashtable) -1)
 		return (true);
 
+	/*
+	2025-12-27 Codex: Fix double-nested path bug for resolved addresses.
+
+	For RESOLVED addresses (htable != -1), bs contains the full original path,
+	but we only want the final component because langexternalgetquotedpath()
+	will reconstruct the parent path from the htable pointer.
+
+	Example: If bs = "system.compiler.["kernel"].lang", we only want "lang"
+	         because langexternalgetquotedpath() will give us "system.compiler.["kernel"]"
+
+	Without this fix, we'd get: system.compiler.["kernel"].["system.compiler.[\"kernel\"].lang"]
+	*/
+	if (!isemptystring(bs)) {
+		short i;
+		short lastdot = 0;
+
+		/* Find the last dot or closing bracket in the path */
+		for (i = stringlength(bs); i > 0; i--) {
+			if (bs[i] == '.') {
+				lastdot = i;
+				break;
+			}
+			/* Handle bracketed names like ["kernel"] - find the ] */
+			if (bs[i] == ']' && i > 1) {
+				/* Skip back over the bracketed name to find the dot before it */
+				short j;
+				for (j = i - 1; j > 0; j--) {
+					if (bs[j] == '[') {
+						/* Now find the dot before the [ */
+						if (j > 1 && bs[j-1] == '.') {
+							lastdot = j - 1;
+						}
+						break;
+					}
+				}
+				if (lastdot > 0)
+					break;
+			}
+		}
+
+		if (lastdot > 0 && lastdot < stringlength(bs)) {
+			/* Extract just the final component after the last dot */
+			bigstring bsfinal;
+			short finalstart = lastdot + 1;
+			short finallen = stringlength(bs) - lastdot;
+
+			midstring(bs, finalstart, finallen, bsfinal);
+			copystring(bsfinal, bs);
+		}
+	}
+
 	if (!validhandle ((Handle) htable))
 		htable = nil;
 	
