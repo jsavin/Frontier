@@ -106,25 +106,38 @@ FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli -e "lang.new(tableT
 
 ## Database Migration (v6→v7)
 
+**IMPORTANT: Always use clean migration before testing!**
+
+Old migrated databases may be corrupted artifacts from earlier broken migrations. Always delete existing v7 databases and run a fresh migration before running tests:
+
+```bash
+# Clean migration workflow (ALWAYS do this before testing):
+rm -f databases/Frontier-v6-v7.root test_save_migration*.root
+make -C tests clean && make -C tests save_migration_tests
+./tests/save_migration_tests
+
+# Output: test_save_migration-v7.root (v7 migrated database in project root)
+```
+
 **Running migration:**
 ```bash
 # Clean rebuild and run migration test:
 make -C tests clean && make -C tests save_migration_tests
 ./tests/save_migration_tests
 
-# Output: tests/test_save_migration-v7.root (v7 migrated database)
+# Output: test_save_migration-v7.root (v7 migrated database)
 ```
 
 **Testing migrated database:**
 ```bash
 # Test database loads and system table is accessible:
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root tests/test_save_migration-v7.root -e "defined(system)"
+FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root test_save_migration-v7.root -e "defined(system)"
 
 # Test external table variables (critical - tests Issue #123 fix):
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root tests/test_save_migration-v7.root -e "sizeOf(system.verbs.globals)"
+FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root test_save_migration-v7.root -e "sizeOf(system.verbs.globals)"
 
 # Test workspace access:
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root tests/test_save_migration-v7.root -e "defined(workspace)"
+FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root test_save_migration-v7.root -e "defined(workspace)"
 ```
 
 **Full integration test suite:**
