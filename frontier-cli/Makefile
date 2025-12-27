@@ -91,6 +91,7 @@ RUNTIME_SOURCES = \
     ../Common/source/whirlpool.c \
     ../Common/source/ops.c \
     ../Common/source/op.c \
+    ../Common/source/op_context.c \
     ../Common/source/opinit.c \
     ../Common/source/opexpand.c \
     ../Common/source/opvisit.c \
