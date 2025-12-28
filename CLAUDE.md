@@ -8,6 +8,23 @@
 
 ---
 
+## Strategic Roadmap
+
+**Master todo list**: https://drummer.land/me@jakesav.in/JakeShare.opml
+- This OPML outline contains the user's longer-term vision in roughly chronological order
+- Items evolve and are adjusted as we learn and complete work
+- When prioritizing work, consult this list to understand how a task fits into the broader roadmap
+- This is the source of truth for strategic direction and milestones
+
+**Planning Documentation**:
+- `planning/INDEX.md` - Navigation for active and archived workstreams
+- `planning/phase_overview.md` - Overview of all phases (active and archived)
+- `planning/Frontier_Refactoring_Plan.md` - Narrative goals and risks
+- `planning/CRDT_FOUNDATION_ROADMAP.md` - Collaborative ODB foundation (Phase 2.0 vision)
+- `planning/_PHASE4_MULTI_USER_PLAN.md` - Multi-user editing strategy (beyond Phase 1.0)
+
+---
+
 - Frontier has a concept of "guest databases" which are any databases that are opened that aren't the system root. All top-level items in guest databases are in global scope in the UserTalk domain. This is managed by the kernel leveraging the in-memory "table" at system.compiler.files.
 - Frontier has the concept of the current "target" which is generally a window. That might be a database or it might be an editor window for a non-scalar like a script, outline, or WPText object (which we're now persisting as RTF in UTF-8).
 - Legacy Frontier source code is available at /Users/jake/dev/tedchoward/Frontier
