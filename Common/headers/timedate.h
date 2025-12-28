@@ -28,6 +28,8 @@
 #ifndef timedateinclude
 #define timedateinclude
 
+#include <stdint.h>  /* for int64_t in frontier_time_t typedef */
+
 /*
  * 2025-12-28 Codex: Forward-declare bigstring if not yet defined.
  * Avoid including standard.h to prevent circular dependencies.
