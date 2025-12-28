@@ -85,7 +85,10 @@ typedef struct tyinternationalinfo {
  * Frontier time type: 64-bit signed integer representing seconds since 1904-01-01 00:00:00 UTC
  * This ensures portability across platforms (time_t can be 32-bit or 64-bit).
  * Range: Effectively unlimited (±292 billion years from 1904).
- * See: planning/phase3/date_time_format_standard.md
+ *
+ * Documentation:
+ * - docs/frontier_time_t_standard.md (developer guide for using frontier_time_t)
+ * - planning/phase3/date_time_format_standard.md (architectural decision context)
  */
 typedef int64_t frontier_time_t;
 

@@ -169,3 +169,12 @@ assert(actual == expected);
 - Enabling clean migration from v6 (32-bit) to v7 (64-bit) databases
 
 Developers should use `frontier_time_t` for all persistent timestamp storage and convert to/from system `time_t` only at the boundaries where system APIs are called.
+
+## See Also
+
+- **`Common/headers/timedate.h`** - Type definition and API for time handling
+- **`Common/source/table_context.c`** - Implementation of timestamp mutation tracking using frontier_time_t
+- **`tests/time_portability_test.c`** - Test suite validating frontier_time_t behavior across platforms
+- **`planning/phase3/date_time_format_standard.md`** - Architectural decision for date/time format choices
+- **PR #193** - Implementation PR introducing this standard
+- **Issue #167** - Original P0 bug report on time_t portability
