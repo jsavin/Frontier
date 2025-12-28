@@ -692,7 +692,7 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 				newemptyhandle (&hstdout);
 				newemptyhandle (&hstderr);
 
-				fl = unixshellcall_separatestderr (hcommand, hstdout, hstderr);
+				fl = unixshellcall_separatestderr (hcommand, hstdout, hstderr, NULL);
 				disposehandle (hcommand);
 
 				if (!fl) {
@@ -708,6 +708,54 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 
 				if (!langsetvalue (htable2, varname2, hstderr, stringvaluetype)) {
 					/* Note: hstdout was already adopted by htable */
+					return (false);
+				}
+
+				return (setbooleanvalue (true, v));
+			}
+			else if (paramcount == 4) {
+				/* Four params: capture stdout, stderr, and exit status to addresses, return boolean */
+
+				hdlhashtable htable, htable2, htable3;
+				bigstring varname, varname2, varname3;
+				boolean fl;
+				int exit_status;
+
+				if (!getvarparam (hparam1, 2, &htable, varname))
+					return (false);
+
+				if (!getvarparam (hparam1, 3, &htable2, varname2))
+					return (false);
+
+				if (!getvarparam (hparam1, 4, &htable3, varname3))
+					return (false);
+
+				flnextparamislast = true;
+
+				newemptyhandle (&hstdout);
+				newemptyhandle (&hstderr);
+
+				fl = unixshellcall_separatestderr (hcommand, hstdout, hstderr, &exit_status);
+				disposehandle (hcommand);
+
+				if (!fl) {
+					disposehandle (hstdout);
+					disposehandle (hstderr);
+					return (false);
+				}
+
+				if (!langsetvalue (htable, varname, hstdout, stringvaluetype)) {
+					disposehandle (hstderr);
+					return (false);
+				}
+
+				if (!langsetvalue (htable2, varname2, hstderr, stringvaluetype)) {
+					/* Note: hstdout was already adopted by htable */
+					return (false);
+				}
+
+				if (!langsetvalue (htable3, varname3, exit_status, longvaluetype)) {
+					/* Note: hstdout and hstderr were already adopted by hash tables */
 					return (false);
 				}
 
@@ -730,7 +778,9 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 			disposehandle (hcommand);
 
 #ifdef WIN32
-			/* Windows implementation stub - return "not implemented yet" error */
+			/* TODO (Issue #190): Implement Windows version using CreateProcess with pipes.
+			   Follow the same 1/2/3/4-parameter pattern as Unix version (see unixshellcommandfunc).
+			   For now, return "not implemented yet" error. */
 			getstringlist (langerrorlist, unimplementedverberror, bserror);
 #else
 			/* Not available on non-Windows platforms */

@@ -169,7 +169,7 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
                 newemptyhandle (&hstdout);
                 newemptyhandle (&hstderr);
 
-                fl = unixshellcall_separatestderr (hcommand, hstdout, hstderr);
+                fl = unixshellcall_separatestderr (hcommand, hstdout, hstderr, NULL);
                 disposehandle (hcommand);
 
                 if (!fl) {

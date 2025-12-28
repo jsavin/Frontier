@@ -51,10 +51,6 @@
 	#define	O_NONBLOCK	0x0004	/* no delay */
 #endif //__MWERKS__
 
-/* Buffer size for reading command output. 512KB provides a reasonable balance between
-   responsiveness and efficiency on modern systems with large memory heaps. */
-#define SHELL_COMMAND_BUFFER_SIZE (512 * 1024)
-
 /* Maximum length for shell command with redirection. 64KB is a practical limit
    for command strings on modern systems. */
 #define MAX_SHELL_COMMAND_LENGTH 65536
@@ -233,7 +229,7 @@ boolean unixshellcall (Handle hcommand, Handle hreturn) {
 	} /*unixshellcall*/
 
 
-boolean unixshellcall_separatestderr (Handle hcommand, Handle hstdout, Handle hstderr) {
+boolean unixshellcall_separatestderr (Handle hcommand, Handle hstdout, Handle hstderr, int *exit_status) {
 
 	/*
 	2025-12-27: Enhanced version that captures both stdout and stderr to separate handles.
@@ -242,6 +238,8 @@ boolean unixshellcall_separatestderr (Handle hcommand, Handle hstdout, Handle hs
 	Strategy: Run "cmd 2>tmpfile" to separate streams, then read stdout from pipe
 	and stderr from the temp file. Uses dynamic allocation for large commands and
 	fdopen() to avoid TOCTOU race condition.
+
+	If exit_status is not NULL, stores the exit status of the command there.
 	*/
 
 	FILE *f;
@@ -278,6 +276,10 @@ boolean unixshellcall_separatestderr (Handle hcommand, Handle hstdout, Handle hs
 		return (false);
 	}
 
+	/* Delete temp file from filesystem immediately. File remains accessible via fd.
+	   This is a Unix idiom that prevents temp file accumulation if process crashes. */
+	unlink (tmpfile_template);
+
 	/* Allocate memory for command with redirection */
 	cmd_with_redirect = (char *) malloc (cmd_len);
 	if (cmd_with_redirect == nil) {
@@ -311,12 +313,15 @@ boolean unixshellcall_separatestderr (Handle hcommand, Handle hstdout, Handle hs
 		log_error(LOG_COMP_LANG, "Failed to read stdout");
 		pclosefunc (f);
 		close (tmpfd);
-		unlink (tmpfile_template);
 		free (cmd_with_redirect);
 		return (false);
 	}
 
-	pclosefunc (f);
+	/* Capture pclose() return value (contains command's exit status) */
+	int cmd_exit_status = pclosefunc (f);
+
+	if (exit_status != NULL)
+		*exit_status = cmd_exit_status;
 
 	/* Read stderr from temp file - use fdopen to avoid TOCTOU race */
 	stderr_file = fdopen (tmpfd, "r");
@@ -337,8 +342,7 @@ boolean unixshellcall_separatestderr (Handle hcommand, Handle hstdout, Handle hs
 		fl = false;
 	}
 
-	/* Clean up temp file */
-	unlink (tmpfile_template);
+	/* Clean up memory */
 	free (cmd_with_redirect);
 
 	return (fl);

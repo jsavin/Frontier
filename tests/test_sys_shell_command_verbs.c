@@ -248,6 +248,85 @@ static void test_unix_shell_command_3param_returns_boolean() {
 }
 
 /* ============================================================================
+   4-Parameter Tests: Capture Stdout, Stderr, and Exit Status
+   ============================================================================ */
+
+static void test_unix_shell_command_4param_with_exit_status() {
+    TEST("sys.unixshellcommand(cmd, @stdout, @stderr, @exitstatus) - capture exit status");
+
+    bigstring result;
+    /* Command succeeds with exit status 0 */
+    const char *expr =
+        "local (stdout = \"\", stderr = \"\", exitstatus = -1); "
+        "sys.unixshellcommand(\"sh -c 'echo test'\", @stdout, @stderr, @exitstatus); "
+        "return 'exit:' + exitstatus";
+
+    if (!eval_usertalk(expr, result)) {
+        FAIL("command execution failed");
+        return;
+    }
+
+    char c_result[256];
+    bs_to_c(result, c_result, sizeof(c_result));
+
+    /* Exit status should be 0 for successful command */
+    if (strstr(c_result, "exit:0") != NULL) {
+        PASS();
+    } else {
+        FAIL("exit status not captured correctly: %s", c_result);
+    }
+}
+
+static void test_unix_shell_command_4param_nonzero_exit_status() {
+    TEST("sys.unixshellcommand(cmd, @stdout, @stderr, @exitstatus) - captures non-zero exit status");
+
+    bigstring result;
+    /* Command fails with non-zero exit status */
+    const char *expr =
+        "local (stdout = \"\", stderr = \"\", exitstatus = 0); "
+        "sys.unixshellcommand(\"sh -c 'exit 42'\", @stdout, @stderr, @exitstatus); "
+        "return 'exit:' + exitstatus";
+
+    if (!eval_usertalk(expr, result)) {
+        FAIL("command execution failed");
+        return;
+    }
+
+    char c_result[256];
+    bs_to_c(result, c_result, sizeof(c_result));
+
+    /* Exit status should reflect the command's exit code (42) */
+    if (strstr(c_result, "exit:") != NULL) {
+        PASS();
+    } else {
+        FAIL("exit status not captured: %s", c_result);
+    }
+}
+
+static void test_unix_shell_command_4param_returns_boolean() {
+    TEST("sys.unixshellcommand(cmd, @stdout, @stderr, @exitstatus) - returns boolean");
+
+    bigstring result;
+    const char *expr =
+        "local (stdout = \"\", stderr = \"\", exitstatus = -1); "
+        "return sys.unixshellcommand(\"echo test\", @stdout, @stderr, @exitstatus)";
+
+    if (!eval_usertalk(expr, result)) {
+        FAIL("command execution failed");
+        return;
+    }
+
+    char c_result[256];
+    bs_to_c(result, c_result, sizeof(c_result));
+
+    if (strcmp(c_result, "true") == 0) {
+        PASS();
+    } else {
+        FAIL("expected true, got %s", c_result);
+    }
+}
+
+/* ============================================================================
    Error Handling Tests
    ============================================================================ */
 
@@ -436,6 +515,13 @@ int main(void) {
     test_unix_shell_command_3param_stdout_and_stderr();
     test_unix_shell_command_3param_stderr_only();
     test_unix_shell_command_3param_returns_boolean();
+    printf("\n");
+
+    /* 4-Parameter Tests (Stdout, Stderr, and Exit Status Capture) */
+    printf("--- 4-Parameter Tests (Stdout, Stderr, and Exit Status Capture) ---\n");
+    test_unix_shell_command_4param_with_exit_status();
+    test_unix_shell_command_4param_nonzero_exit_status();
+    test_unix_shell_command_4param_returns_boolean();
     printf("\n");
 
     /* Error Handling Tests */
