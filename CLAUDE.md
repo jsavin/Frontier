@@ -228,6 +228,100 @@ This code MUST be thread-safe before launch. Global mutable state makes thread s
 
 **Test with:** Multi-threaded tests before launch to verify thread-safety
 
+### Database Format Debugging & Corruption Detection ⚠️
+
+**CRITICAL LESSONS FROM PR #185 (Database Context Segfault Fix)**
+
+#### Database File Corruption in Git
+
+Database files can become corrupted in git if migration code has bugs. **Always validate database files before using them for testing:**
+
+```bash
+# Check database version (first 2 bytes should be 0006 for v6, 0007 for v7)
+xxd databases/Frontier-v6.root | head -1
+# Expected for v6: 0006 0000 0000 0000 0000 005d 1063 0000
+# CORRUPT if v6 file shows: 0007 0000... (v7 header with v6 addresses)
+```
+
+**If database is corrupted:**
+1. Find last known-good commit: `git log --oneline -- databases/Frontier-v6.root`
+2. Restore from good commit: `git show <commit>:databases/Frontier-v6.root > databases/Frontier-v6.root`
+3. Verify version bytes with `xxd`
+
+**Symptom of corruption**: `dbnormalizeaddress failed` errors during migration/loading with addresses that don't match the database version.
+
+#### Git Bisect for Database Format Issues
+
+When debugging database format bugs, **you MUST re-migrate the database at each bisect step**. Database format is version-dependent; testing with a pre-migrated v7 database will give false results if the bug is in migration code.
+
+**Correct bisect workflow:**
+```bash
+# Create automated test script that:
+# 1. Removes old v7 database
+# 2. Restores pristine v6 database from git
+# 3. Copies v6 to v7 location
+# 4. Loads database (triggers automatic migration)
+# 5. Tests if migration succeeded
+
+# Run bisect with automated script
+git bisect start
+git bisect bad HEAD
+git bisect good <known-good-commit>
+git bisect run ./tools/bisect_test_db_load.sh
+```
+
+**See:** `tools/bisect_test_db_load.sh` for reference implementation
+
+#### Context Guard Pattern is CORRECT ✅
+
+**IMPORTANT CLARIFICATION**: The `db_context_guard` pattern is **NOT** the same as the problematic push/pop anti-pattern documented above. Context guards are the **CORRECT** solution for temporary context switches.
+
+**Context Guard Pattern (CORRECT)**:
+```c
+boolean dbrefhandle_context(const db_context *context, dbaddress adr, Handle *h) {
+    db_context_guard guard;
+    db_context_guard_enter(context, &guard);  // Saves current state
+    boolean ok = dbrefhandle(adr, h);
+    db_context_guard_exit(&guard);            // Restores previous state
+    return ok;
+}
+```
+
+**Why guards are correct:**
+- Explicitly save state on entry
+- Explicitly restore state on exit
+- Scoped to single operation (no inheritance to recursive calls)
+- Deterministic cleanup even on error paths
+
+**Push/Pop Anti-Pattern (INCORRECT)**:
+```c
+// BAD: State persists after function returns
+db_format_mode_push(&mode);
+some_operation();
+// If pop is forgotten or error occurs, wrong mode persists!
+db_format_mode_pop();
+```
+
+**See:** PR #185 - Removing context guards was the bug; restoring them was the fix
+
+#### Global State Must Be Restored
+
+When temporarily changing global state for an operation, **failure to restore the previous value causes cascading failures:**
+
+**Example from PR #185:**
+```c
+// BROKEN CODE (removed db_context_guard):
+boolean dbrefhandle_context(const db_context *context, dbaddress adr, Handle *h) {
+    databasedata = context->database;  // Sets global
+    return dbrefhandle(adr, h);        // Returns WITHOUT restoring!
+}
+// Next operation sees WRONG database → segfault
+```
+
+**Root cause**: Function set `databasedata` to a specific database for one operation but never restored the previous value. Subsequent operations saw the wrong database context, causing `dbnormalizeaddress()` failures.
+
+**Rule**: Any function that temporarily modifies global state (`databasedata`, mode flags, etc.) MUST restore the previous value before returning, even on error paths.
+
 ## Collaborative ODB Editing - North Star Vision 🎯
 
 **Strategic Context:**
