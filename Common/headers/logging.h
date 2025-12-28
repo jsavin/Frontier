@@ -196,7 +196,7 @@ void log_hex_dump(log_component_t component, log_level_t level,
  * Example (after):
  *   log_debug(LOG_COMP_HASH, "Table name: %s", PSTR(bs));
  *
- * Note: The macro requires strings.h to be included (for stringbaseaddress()).
+ * Note: The macro requires standard.h to be included (for stringbaseaddress() macro definition).
  */
 #define PSTR(bs) stringbaseaddress(bs)
 
