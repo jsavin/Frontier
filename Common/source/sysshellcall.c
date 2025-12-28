@@ -44,6 +44,7 @@
 #include <fcntl.h> /* 2006-01-10 creedon */
 #include <unistd.h> /* 2025-12-27: for mkstemp, unlink */
 #include <sys/wait.h> /* 2025-12-27: for WEXITSTATUS macro */
+#include <stdio.h> /* 2025-12-28: for P_tmpdir */
 
 /* 2006-01-29 creedon - define the following for CodeWarrior compilation because it doesn't have these defined in its headers, as Xcode does */
 #ifdef __MWERKS__
@@ -214,12 +215,15 @@ boolean unixshellcall (Handle hcommand, Handle hreturn) {
 
 	unlockhandle (hcommand);
 
-	if (f == nil)
+	if (f == nil) {
+		log_error(LOG_COMP_LANG, "Failed to execute command via popen");
 		return (false);
+	}
 
 	fcntlfunc (filenofunc (f), F_SETFL, fcntlfunc (filenofunc (f), F_GETFL, 0) | O_NONBLOCK);
 
 	if (!unixshellcall_read_stream (f, hreturn)) {
+		log_error(LOG_COMP_LANG, "Failed to read stdout from command");
 		pclosefunc (f);
 		return (false);
 	}
@@ -246,10 +250,16 @@ boolean unixshellcall_separatestderr (Handle hcommand, Handle hstdout, Handle hs
 	FILE *f;
 	char *cmd_with_redirect;
 	long cmd_len;
-	char tmpfile_template [] = "/tmp/frontier_stderr_XXXXXX";
+	char tmpfile_template[256]; /* 256 bytes sufficient for tmpdir + filename */
 	int tmpfd;
 	FILE *stderr_file;
 	boolean fl = true;
+
+	/* Use P_tmpdir for portable temporary directory. Falls back to /tmp if not defined. */
+	#ifndef P_tmpdir
+	#define P_tmpdir "/tmp"
+	#endif
+	snprintf(tmpfile_template, sizeof(tmpfile_template), "%s/frontier_stderr_XXXXXX", P_tmpdir);
 
 	if (!unixshellcallinit ())
 		return (false);
@@ -332,6 +342,20 @@ boolean unixshellcall_separatestderr (Handle hcommand, Handle hstdout, Handle hs
 
 	if (exit_status != NULL)
 		*exit_status = cmd_exit_status;
+
+	/* CRITICAL FIX: Seek to beginning of stderr temp file before fdopen.
+	   The pclose() above may have flushed remaining data to the temp file,
+	   but we need to ensure the file descriptor is positioned at the start
+	   before we read. Without this lseek(), we may read partial/truncated stderr.
+	   This prevents a subtle race condition where the file exists but fd position
+	   is not at the beginning. */
+	if (lseek(tmpfd, 0, SEEK_SET) < 0) {
+		log_error(LOG_COMP_LANG, "Failed to seek to beginning of stderr temp file");
+		close(tmpfd);
+		unlink(tmpfile_template);
+		free(cmd_with_redirect);
+		return (false);
+	}
 
 	/* Read stderr from temp file - use fdopen to avoid TOCTOU race condition.
 	   Instead of close(tmpfd) then fopen(tmpfile_template), we use fdopen() to directly

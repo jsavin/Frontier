@@ -747,6 +747,10 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 					return (false);
 				}
 
+			/* HANDLE OWNERSHIP SEMANTICS:
+			   langsetvalue() adopts the handle on SUCCESS, after which the table owns it.
+			   If langsetvalue() FAILS, the handle is NOT adopted and must be disposed manually.
+			   This error handling pattern correctly disposes handles only when adoption failed. */
 				if (!langsetvalue (htable, varname, hstdout, stringvaluetype)) {
 					disposehandle (hstderr);
 					return (false);
