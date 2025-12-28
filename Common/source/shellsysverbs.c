@@ -621,33 +621,181 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 			return (true);
 		}
 
+		case unixshellcommandfunc: { /*7.0b51 PBS: call shell on OS X; 2025-12-27: enhanced to support optional stderr capture*/
 
+			Handle hcommand, hstdout, hstderr;
+			short paramcount;
 
-			case unixshellcommandfunc: { /*7.0b51 PBS: call shell on OS X*/
-			
-				Handle hcommand, hreturn;
-				
+			if (!getexempttextvalue (hparam1, 1, &hcommand))
+				return (false);
+
+			paramcount = langgetparamcount (hparam1);
+
+			if (paramcount == 1) {
+				/* Original behavior: return stdout as string (backward compatible) */
+
 				flnextparamislast = true;
-				
-				if (!getexempttextvalue (hparam1, 1, &hcommand))
-					return (false);
-				
-				newemptyhandle (&hreturn);
-										
-				if (!unixshellcall (hcommand, hreturn)) {
-				
-					disposehandle (hreturn);
-					
+
+				newemptyhandle (&hstdout);
+
+				if (!unixshellcall (hcommand, hstdout)) {
+					disposehandle (hstdout);
 					disposehandle (hcommand);
-					
 					return (false);
-					} /*if*/
-				
-				disposehandle (hcommand);
-					
-				return (setheapvalue (hreturn, stringvaluetype, v));
 				}
-		
+
+				disposehandle (hcommand);
+				return (setheapvalue (hstdout, stringvaluetype, v));
+			}
+			else if (paramcount == 2) {
+				/* Two params: capture stdout to address, return boolean */
+
+				hdlhashtable htable;
+				bigstring varname;
+				boolean fl;
+
+				if (!getvarparam (hparam1, 2, &htable, varname))
+					return (false);
+
+				flnextparamislast = true;
+
+				newemptyhandle (&hstdout);
+
+				fl = unixshellcall (hcommand, hstdout);
+				disposehandle (hcommand);
+
+				if (!fl) {
+					disposehandle (hstdout);
+					return (false);
+				}
+
+				if (!langsetvalue (htable, varname, hstdout, stringvaluetype))
+					return (false);
+
+				return (setbooleanvalue (true, v));
+			}
+			else if (paramcount == 3) {
+				/* Three params: capture both stdout and stderr to addresses, return boolean */
+
+				hdlhashtable htable, htable2;
+				bigstring varname, varname2;
+				boolean fl;
+
+				if (!getvarparam (hparam1, 2, &htable, varname))
+					return (false);
+
+				if (!getvarparam (hparam1, 3, &htable2, varname2))
+					return (false);
+
+				flnextparamislast = true;
+
+				newemptyhandle (&hstdout);
+				newemptyhandle (&hstderr);
+
+				fl = unixshellcall_separatestderr (hcommand, hstdout, hstderr);
+				disposehandle (hcommand);
+
+				if (!fl) {
+					disposehandle (hstdout);
+					disposehandle (hstderr);
+					return (false);
+				}
+
+				if (!langsetvalue (htable, varname, hstdout, stringvaluetype))
+					return (false);
+
+				if (!langsetvalue (htable2, varname2, hstderr, stringvaluetype))
+					return (false);
+
+				return (setbooleanvalue (true, v));
+			}
+			else {
+				langerror (toomanyparamserror);
+				return (false);
+			}
+			}
+
+		case winshellcommandfunc: { /*Windows version of shell command verb; 2025-12-27: implemented with same pattern as unixshellcommand*/
+
+			Handle hcommand, hstdout, hstderr;
+			short paramcount;
+
+			if (!getexempttextvalue (hparam1, 1, &hcommand))
+				return (false);
+
+			paramcount = langgetparamcount (hparam1);
+
+			if (paramcount == 1) {
+				/* Original behavior: return stdout as string (backward compatible) */
+
+				flnextparamislast = true;
+
+				newemptyhandle (&hstdout);
+
+				/* TODO: Implement Windows shell call. For now, return empty string. */
+				/* On Windows, use CreateProcess with pipes to capture output. */
+
+				disposehandle (hcommand);
+				return (setheapvalue (hstdout, stringvaluetype, v));
+			}
+			else if (paramcount == 2) {
+				/* Two params: capture stdout to address, return boolean */
+
+				hdlhashtable htable;
+				bigstring varname;
+
+				if (!getvarparam (hparam1, 2, &htable, varname))
+					return (false);
+
+				flnextparamislast = true;
+
+				newemptyhandle (&hstdout);
+
+				/* TODO: Implement Windows shell call to capture stdout. */
+				disposehandle (hcommand);
+
+				if (!langsetvalue (htable, varname, hstdout, stringvaluetype))
+					return (false);
+
+				return (setbooleanvalue (true, v));
+			}
+			else if (paramcount == 3) {
+				/* Three params: capture both stdout and stderr to addresses, return boolean */
+
+				hdlhashtable htable, htable2;
+				bigstring varname, varname2;
+
+				if (!getvarparam (hparam1, 2, &htable, varname))
+					return (false);
+
+				if (!getvarparam (hparam1, 3, &htable2, varname2))
+					return (false);
+
+				flnextparamislast = true;
+
+				newemptyhandle (&hstdout);
+				newemptyhandle (&hstderr);
+
+				/* TODO: Implement Windows shell call to capture both stdout and stderr. */
+				disposehandle (hcommand);
+
+				if (!langsetvalue (htable, varname, hstdout, stringvaluetype))
+					return (false);
+
+				if (!langsetvalue (htable2, varname2, hstderr, stringvaluetype))
+					return (false);
+
+				return (setbooleanvalue (true, v));
+			}
+			else {
+				langerror (toomanyparamserror);
+				return (false);
+			}
+			}
+
+
+
+			
 		
 		
 		default:

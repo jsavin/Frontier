@@ -28,5 +28,7 @@
 
 boolean unixshellcall (Handle, Handle);
 
+boolean unixshellcall_separatestderr (Handle hcommand, Handle hstdout, Handle hstderr);
+
 
 
