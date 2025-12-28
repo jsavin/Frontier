@@ -621,33 +621,201 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 			return (true);
 		}
 
+		case unixshellcommandfunc: { /*7.0b51 PBS: call shell on OS X; 2025-12-27: enhanced to support optional stderr capture*/
 
+			Handle hcommand, hstdout, hstderr;
+			short paramcount;
 
-			case unixshellcommandfunc: { /*7.0b51 PBS: call shell on OS X*/
-			
-				Handle hcommand, hreturn;
-				
+			if (!getexempttextvalue (hparam1, 1, &hcommand))
+				return (false);
+
+			paramcount = langgetparamcount (hparam1);
+
+			if (paramcount == 1) {
+				/* Original behavior: return stdout as string (backward compatible) */
+
 				flnextparamislast = true;
-				
-				if (!getexempttextvalue (hparam1, 1, &hcommand))
-					return (false);
-				
-				newemptyhandle (&hreturn);
-										
-				if (!unixshellcall (hcommand, hreturn)) {
-				
-					disposehandle (hreturn);
-					
+
+				newemptyhandle (&hstdout);
+
+				if (!unixshellcall (hcommand, hstdout)) {
+					disposehandle (hstdout);
 					disposehandle (hcommand);
-					
 					return (false);
-					} /*if*/
-				
-				disposehandle (hcommand);
-					
-				return (setheapvalue (hreturn, stringvaluetype, v));
 				}
-		
+
+				disposehandle (hcommand);
+				return (setheapvalue (hstdout, stringvaluetype, v));
+			}
+			else if (paramcount == 2) {
+				/* Two params: capture stdout to address, return boolean */
+
+				hdlhashtable htable;
+				bigstring varname;
+				boolean fl;
+
+				if (!getvarparam (hparam1, 2, &htable, varname))
+					return (false);
+
+				flnextparamislast = true;
+
+				newemptyhandle (&hstdout);
+
+				fl = unixshellcall (hcommand, hstdout);
+				disposehandle (hcommand);
+
+				if (!fl) {
+					disposehandle (hstdout);
+					return (false);
+				}
+
+				if (!langsetvalue (htable, varname, hstdout, stringvaluetype))
+					return (false);
+
+				return (setbooleanvalue (true, v));
+			}
+			else if (paramcount == 3) {
+				/* Three params: capture both stdout and stderr to addresses, return boolean */
+
+				hdlhashtable htable, htable2;
+				bigstring varname, varname2;
+				boolean fl;
+
+				if (!getvarparam (hparam1, 2, &htable, varname))
+					return (false);
+
+				if (!getvarparam (hparam1, 3, &htable2, varname2))
+					return (false);
+
+				flnextparamislast = true;
+
+				newemptyhandle (&hstdout);
+				newemptyhandle (&hstderr);
+
+				fl = unixshellcall_separatestderr (hcommand, hstdout, hstderr, NULL);
+				disposehandle (hcommand);
+
+				if (!fl) {
+					disposehandle (hstdout);
+					disposehandle (hstderr);
+					return (false);
+				}
+
+				if (!langsetvalue (htable, varname, hstdout, stringvaluetype)) {
+					disposehandle (hstderr);
+					return (false);
+				}
+
+				if (!langsetvalue (htable2, varname2, hstderr, stringvaluetype)) {
+					/* hstdout was already adopted by htable (first langsetvalue succeeded).
+					   hstderr was never adopted because this langsetvalue failed, so must dispose. */
+					disposehandle (hstderr);
+					return (false);
+				}
+
+				return (setbooleanvalue (true, v));
+			}
+			else if (paramcount == 4) {
+				/* Four params: capture stdout, stderr, and exit status to addresses, return boolean */
+
+				hdlhashtable htable, htable2, htable3;
+				bigstring varname, varname2, varname3;
+				boolean fl;
+				int exit_status;
+				tyvaluerecord vval;
+
+				if (!getvarparam (hparam1, 2, &htable, varname))
+					return (false);
+
+				if (!getvarparam (hparam1, 3, &htable2, varname2))
+					return (false);
+
+				if (!getvarparam (hparam1, 4, &htable3, varname3))
+					return (false);
+
+				flnextparamislast = true;
+
+				newemptyhandle (&hstdout);
+				newemptyhandle (&hstderr);
+
+				fl = unixshellcall_separatestderr (hcommand, hstdout, hstderr, &exit_status);
+				disposehandle (hcommand);
+
+				if (!fl) {
+					disposehandle (hstdout);
+					disposehandle (hstderr);
+					return (false);
+				}
+
+			/* HANDLE OWNERSHIP SEMANTICS:
+			   langsetvalue() adopts the handle on SUCCESS, after which the table owns it.
+			   If langsetvalue() FAILS, the handle is NOT adopted and must be disposed manually.
+			   This error handling pattern correctly disposes handles only when adoption failed. */
+				if (!langsetvalue (htable, varname, hstdout, stringvaluetype)) {
+					disposehandle (hstderr);
+					return (false);
+				}
+
+				if (!langsetvalue (htable2, varname2, hstderr, stringvaluetype)) {
+					/* hstdout was already adopted by htable (first langsetvalue succeeded).
+					   hstderr was never adopted because this langsetvalue failed, so must dispose. */
+					disposehandle (hstderr);
+					return (false);
+				}
+
+				vval.valuetype = longvaluetype;
+				vval.data.longvalue = exit_status;
+				if (!langsetsymboltableval (htable3, varname3, vval)) {
+					/* hstdout and hstderr were already adopted by hash tables on previous calls,
+					   so no cleanup needed - they are owned by the hash tables now. */
+					return (false);
+				}
+
+				return (setbooleanvalue (true, v));
+			}
+			else {
+				langerror (toomanyparamserror);
+				return (false);
+			}
+			}
+
+		case winshellcommandfunc: { /*Windows version of shell command verb; 2025-12-27: platform-specific stubs*/
+
+			Handle hcommand;
+			short paramcount;
+
+			if (!getexempttextvalue (hparam1, 1, &hcommand))
+				return (false);
+
+			paramcount = langgetparamcount (hparam1);
+
+			if (paramcount > 4) {
+				langerror (toomanyparamserror);
+				disposehandle (hcommand);
+				return (false);
+			}
+
+			flnextparamislast = true;
+			disposehandle (hcommand);
+
+#ifdef WIN32
+			/* TODO (Issue #194): Implement Windows version using CreateProcess with pipes.
+			   Follow the same 1/2/3/4-parameter pattern as Unix version (see unixshellcommandfunc).
+			   1 param: return stdout string (backward compatible)
+			   2 params: capture stdout to address, return boolean
+			   3 params: capture stdout and stderr to addresses, return boolean
+			   4 params: capture stdout, stderr, and exit status to addresses, return boolean */
+			getstringlist (langerrorlist, unimplementedverberror, bserror);
+#else
+			/* Not available on non-Windows platforms */
+			copystring (BIGSTRING("\psys.winshellcommand is only available on Windows"), bserror);
+#endif
+			return (false);
+			}
+
+
+
+			
 		
 		
 		default:

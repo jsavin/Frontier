@@ -25,8 +25,14 @@
 
 ******************************************************************************/
 
+/* SECURITY WARNING: These functions execute arbitrary shell commands.
+   The command string is passed directly to popen() via the shell.
+   Callers MUST validate/sanitize command input to prevent shell injection attacks.
+   These functions are designed for controlled, trusted command execution only. */
 
 boolean unixshellcall (Handle, Handle);
+
+boolean unixshellcall_separatestderr (Handle hcommand, Handle hstdout, Handle hstderr, int *exit_status);
 
 
 

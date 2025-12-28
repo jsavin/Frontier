@@ -17,6 +17,7 @@
 #include "lang.h"
 #include "langinternal.h"
 #include "tablestructure.h"
+#include "sysshellcall.h"
 
 /* Token enum for all verbs in the sys processor */
 enum {
@@ -93,19 +94,110 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
         case sysv_getenvironmentvariable:
             /* Verb: sys.getenvironmentvariable - implemented in shellsysverbs.c */
             /* This stub should never be reached */
-            break;
+            return false;
         case sysv_setenvironmentvariable:
             /* Verb: sys.setenvironmentvariable - implemented in shellsysverbs.c */
             /* This stub should never be reached */
-            break;
-        case sysv_unixshellcommand:
-            /* Verb: sys.unixshellcommand - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
+        case sysv_unixshellcommand: {
+            /* Verb: sys.unixshellcommand - 2025-12-27: implemented with optional stderr capture */
+            Handle hcommand, hstdout, hstderr;
+            short paramcount;
+
+            if (!getexempttextvalue (hparam1, 1, &hcommand))
+                return (false);
+
+            paramcount = langgetparamcount (hparam1);
+
+            if (paramcount == 1) {
+                /* Original behavior: return stdout as string (backward compatible) */
+                flnextparamislast = true;
+                newemptyhandle (&hstdout);
+
+                if (!unixshellcall (hcommand, hstdout)) {
+                    disposehandle (hstdout);
+                    disposehandle (hcommand);
+                    return (false);
+                }
+
+                disposehandle (hcommand);
+                return (setheapvalue (hstdout, stringvaluetype, vreturned));
+            }
+            else if (paramcount == 2) {
+                /* Two params: capture stdout to address, return boolean */
+                hdlhashtable htable;
+                bigstring varname;
+                boolean fl;
+                tyvaluerecord vval;
+
+                if (!getvarparam (hparam1, 2, &htable, varname))
+                    return (false);
+
+                flnextparamislast = true;
+                newemptyhandle (&hstdout);
+
+                fl = unixshellcall (hcommand, hstdout);
+                disposehandle (hcommand);
+
+                if (!fl) {
+                    disposehandle (hstdout);
+                    return (false);
+                }
+
+                vval.valuetype = stringvaluetype;
+                vval.data.stringvalue = hstdout;
+                if (!langsetsymboltableval (htable, varname, vval))
+                    return (false);
+
+                return (setbooleanvalue (true, vreturned));
+            }
+            else if (paramcount == 3) {
+                /* Three params: capture both stdout and stderr to addresses, return boolean */
+                hdlhashtable htable, htable2;
+                bigstring varname, varname2;
+                boolean fl;
+                tyvaluerecord vval;
+
+                if (!getvarparam (hparam1, 2, &htable, varname))
+                    return (false);
+
+                if (!getvarparam (hparam1, 3, &htable2, varname2))
+                    return (false);
+
+                flnextparamislast = true;
+
+                newemptyhandle (&hstdout);
+                newemptyhandle (&hstderr);
+
+                fl = unixshellcall_separatestderr (hcommand, hstdout, hstderr, NULL);
+                disposehandle (hcommand);
+
+                if (!fl) {
+                    disposehandle (hstdout);
+                    disposehandle (hstderr);
+                    return (false);
+                }
+
+                vval.valuetype = stringvaluetype;
+                vval.data.stringvalue = hstdout;
+                if (!langsetsymboltableval (htable, varname, vval))
+                    return (false);
+
+                vval.valuetype = stringvaluetype;
+                vval.data.stringvalue = hstderr;
+                if (!langsetsymboltableval (htable2, varname2, vval))
+                    return (false);
+
+                return (setbooleanvalue (true, vreturned));
+            }
+            else {
+                langparamerror (unimplementedverberror, BIGSTRING("\ptoo many parameters"));
+                return (false);
+            }
+            }
         case sysv_winshellcommand:
-            /* sys.winshellcommand - error stub */
-            if (bserror)
-                copystring(BIGSTRING("\pCan't run Windows shell commands because they are not available on this platform"), bserror);
+            /* sys.winshellcommand - implemented in shellsysverbs.c */
+            /* This stub should never be reached */
             return false;
         default:
             return false;
