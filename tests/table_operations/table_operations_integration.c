@@ -75,9 +75,9 @@ static void eval_cli(const char *script, char *output, size_t output_size) {
 	if (!get_repo_root(root, sizeof(root))) {
 		char cwd[PATH_MAX];
 		if (getcwd(cwd, sizeof(cwd))) {
-			log_error(LOG_COMP_TEST, "FATAL: Could not find repository root (looking for databases/). Current dir: %s", cwd);
+			log_error(LOG_COMP_GENERAL, "FATAL: Could not find repository root (looking for databases/). Current dir: %s", cwd);
 		} else {
-			log_error(LOG_COMP_TEST, "FATAL: Could not find repository root (looking for databases/)");
+			log_error(LOG_COMP_GENERAL, "FATAL: Could not find repository root (looking for databases/)");
 		}
 		assert(0);
 	}
@@ -86,8 +86,8 @@ static void eval_cli(const char *script, char *output, size_t output_size) {
 	snprintf(db_path, sizeof(db_path), "%s/databases/Frontier-v6-v7.root", root);
 
 	if (access(db_path, R_OK) != 0) {
-		log_error(LOG_COMP_TEST, "ERROR: Database not found: %s", db_path);
-		log_error(LOG_COMP_TEST, "Ensure Frontier-v6-v7.root exists by running CLI once with Frontier-v6.root");
+		log_error(LOG_COMP_GENERAL, "ERROR: Database not found: %s", db_path);
+		log_error(LOG_COMP_GENERAL, "Ensure Frontier-v6-v7.root exists by running CLI once with Frontier-v6.root");
 		assert(0);
 	}
 
@@ -116,7 +116,7 @@ static void eval_cli(const char *script, char *output, size_t output_size) {
 
 	FILE *fp = popen(cmd, "r");
 	if (!fp) {
-		log_error(LOG_COMP_TEST, "ERROR: Could not execute command: %s", cmd);
+		log_error(LOG_COMP_GENERAL, "ERROR: Could not execute command: %s", cmd);
 		assert(0);
 	}
 
@@ -129,9 +129,9 @@ static void eval_cli(const char *script, char *output, size_t output_size) {
 	int status = pclose(fp);
 
 	if (status != 0) {
-		log_error(LOG_COMP_TEST, "CLI exited with status %d", status);
-		log_error(LOG_COMP_TEST, "Script: %s", script);
-		log_error(LOG_COMP_TEST, "Output: %s", output);
+		log_error(LOG_COMP_GENERAL, "CLI exited with status %d", status);
+		log_error(LOG_COMP_GENERAL, "Script: %s", script);
+		log_error(LOG_COMP_GENERAL, "Output: %s", output);
 		assert(0);
 	}
 
@@ -205,9 +205,9 @@ static void eval_expect_string(const char *expr, const char *expected) {
 	eval_cli(expr, result, sizeof(result));
 
 	if (strcmp(result, expected) != 0) {
-		log_error(LOG_COMP_TEST, "MISMATCH for: %s", expr);
-		log_error(LOG_COMP_TEST, "Expected: %s", expected);
-		log_error(LOG_COMP_TEST, "Got: %s", result);
+		log_error(LOG_COMP_GENERAL, "MISMATCH for: %s", expr);
+		log_error(LOG_COMP_GENERAL, "Expected: %s", expected);
+		log_error(LOG_COMP_GENERAL, "Got: %s", result);
 		assert(0);
 	}
 }
@@ -219,9 +219,9 @@ static void eval_expect_number(const char *expr, int expected) {
 
 	int val = atoi(result);
 	if (val != expected) {
-		log_error(LOG_COMP_TEST, "NUMERIC MISMATCH for: %s", expr);
-		log_error(LOG_COMP_TEST, "Expected: %d", expected);
-		log_error(LOG_COMP_TEST, "Got: %d", val);
+		log_error(LOG_COMP_GENERAL, "NUMERIC MISMATCH for: %s", expr);
+		log_error(LOG_COMP_GENERAL, "Expected: %d", expected);
+		log_error(LOG_COMP_GENERAL, "Got: %d", val);
 		assert(0);
 	}
 }

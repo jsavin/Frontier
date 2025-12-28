@@ -1011,11 +1011,14 @@ boolean timetotimestring (int64_t ptime, bigstring bs, boolean fl) {
     return true;
 }
 
+/* unixshellcall stub removed - use real implementation from ../Common/source/sysshellcall.c when needed */
+#if 0
 boolean unixshellcall (Handle hcommand, Handle hreturn) {
     (void) hcommand;
     (void) hreturn;
     return false;
 }
+#endif
 
 boolean statsblockinuse (dbaddress adr, bigstring bsitem) {
     (void) adr;

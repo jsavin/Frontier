@@ -166,7 +166,7 @@ static void test_unix_shell_command_2param_returns_boolean() {
     if (strcmp(c_result, "true") == 0) {
         PASS();
     } else {
-        FAIL("expected true, got %s");
+        FAIL("expected true, got %s", c_result);
     }
 }
 

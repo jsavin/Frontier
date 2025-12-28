@@ -251,7 +251,7 @@ time_portability_test: time_portability_test.c
 
 test_sys_shell_command_verbs: test_sys_shell_command_verbs.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
-		test_sys_shell_command_verbs.c $(LANG_RUNTIME_SOURCES) headless_shell.c ../Common/source/logging.c \
+		test_sys_shell_command_verbs.c $(LANG_RUNTIME_SOURCES) headless_shell.c \
 		../Common/source/sysshellcall.c headless_sys_verbs.c -o $@ $(LINK_LIBS)
 
 db_format_tests: db_format_tests.c
@@ -278,7 +278,8 @@ table_verb_tests: table_operations/table_verb_tests.c
 	$(CC) -std=c99 -Wall -Wextra -g -O0 table_operations/table_verb_tests.c -o $@
 
 table_operations_integration: table_operations/table_operations_integration.c
-	$(CC) -std=c99 -Wall -Wextra -g -O0 table_operations/table_operations_integration.c -o $@
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
+		table_operations/table_operations_integration.c ../Common/source/logging.c -o $@ $(LINK_LIBS)
 
 refcon_tests: refcon_tests.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \

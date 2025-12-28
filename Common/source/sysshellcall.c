@@ -40,6 +40,7 @@
 
 
 #include "lang.h"
+#include "logging.h"
 #include "CallMachOFramework.h"
 #include <fcntl.h> /* 2006-01-10 creedon */
 #include <unistd.h> /* 2025-12-27: for mkstemp, unlink */
@@ -92,6 +93,15 @@ static boolean unixshellcallinit (void) {
 	if (unixshellcallinited) /*already inited*/
 		return (true);
 
+#ifdef FRONTIER_HEADLESS
+	/* In headless mode, use standard library functions directly */
+	popenfunc = popen;
+	freadfunc = fread;
+	pclosefunc = pclose;
+	fcntlfunc = (fcntlptr) fcntl;
+	feoffunc = feof;
+	filenofunc = fileno;
+#else
 	if (sysBundle == nil)
 		 if (LoadFrameworkBundle (CFSTR ("System.framework"), &sysBundle) != noErr)
 		 	return (false);
@@ -125,6 +135,7 @@ static boolean unixshellcallinit (void) {
 
 	if (filenofunc == nil)
 		return (false);
+#endif
 
 	unixshellcallinited = true;
 
@@ -140,6 +151,7 @@ static boolean unixshellcallbackgroundtask (void) {
 
 	boolean fl = true;
 
+#ifndef FRONTIER_HEADLESS
 	if (inmainthread ()) {
 		EventRecord ev;
 		EventMask mask = osMask|activMask|mDownMask|keyDownMask; // |highLevelEventMask|updateMask
@@ -149,6 +161,7 @@ static boolean unixshellcallbackgroundtask (void) {
 			fl = shellprocessevent (&ev);
 		}
 	else
+#endif
 		fl = langbackgroundtask (true);
 
 	return (fl);
@@ -220,14 +233,14 @@ boolean unixshellcall (Handle hcommand, Handle hreturn) {
 	unlockhandle (hcommand);
 
 	if (f == nil) {
-		log_error(LOG_COMP_LANG, "Failed to execute command via popen");
+		log_error(LOG_COMP_GENERAL, "Failed to execute command via popen");
 		return (false);
 	}
 
 	fcntlfunc (filenofunc (f), F_SETFL, fcntlfunc (filenofunc (f), F_GETFL, 0) | O_NONBLOCK);
 
 	if (!unixshellcall_read_stream (f, hreturn)) {
-		log_error(LOG_COMP_LANG, "Failed to read stdout from command");
+		log_error(LOG_COMP_GENERAL, "Failed to read stdout from command");
 		pclosefunc (f);
 		return (false);
 	}
@@ -277,7 +290,7 @@ boolean unixshellcall_separatestderr (Handle hcommand, Handle hstdout, Handle hs
 	cmd_len = gethandlesize (hcommand) + strlen (" 2>") + strlen (tmpfile_template) + 1;
 
 	if (cmd_len > MAX_SHELL_COMMAND_LENGTH) {
-		log_error(LOG_COMP_LANG, "Command too long for shell execution (%ld bytes)", cmd_len);
+		log_error(LOG_COMP_GENERAL, "Command too long for shell execution (%ld bytes)", cmd_len);
 		unlockhandle (hcommand);
 		return (false);
 	}
@@ -286,7 +299,7 @@ boolean unixshellcall_separatestderr (Handle hcommand, Handle hstdout, Handle hs
 	tmpfd = mkstemp (tmpfile_template);
 
 	if (tmpfd < 0) {
-		log_error(LOG_COMP_LANG, "Failed to create temporary file for stderr capture");
+		log_error(LOG_COMP_GENERAL, "Failed to create temporary file for stderr capture");
 		unlockhandle (hcommand);
 		return (false);
 	}
@@ -294,7 +307,7 @@ boolean unixshellcall_separatestderr (Handle hcommand, Handle hstdout, Handle hs
 	/* Allocate memory for command with redirection */
 	cmd_with_redirect = (char *) malloc (cmd_len);
 	if (cmd_with_redirect == nil) {
-		log_error(LOG_COMP_LANG, "Failed to allocate memory for command string");
+		log_error(LOG_COMP_GENERAL, "Failed to allocate memory for command string");
 		unlockhandle (hcommand);
 		close (tmpfd);
 		unlink (tmpfile_template);
@@ -310,7 +323,7 @@ boolean unixshellcall_separatestderr (Handle hcommand, Handle hstdout, Handle hs
 	f = popenfunc (cmd_with_redirect, "r");
 
 	if (f == nil) {
-		log_error(LOG_COMP_LANG, "Failed to execute command: %s", cmd_with_redirect);
+		log_error(LOG_COMP_GENERAL, "Failed to execute command: %s", cmd_with_redirect);
 		close (tmpfd);
 		unlink (tmpfile_template);
 		free (cmd_with_redirect);
@@ -321,7 +334,7 @@ boolean unixshellcall_separatestderr (Handle hcommand, Handle hstdout, Handle hs
 
 	/* Read stdout */
 	if (!unixshellcall_read_stream (f, hstdout)) {
-		log_error(LOG_COMP_LANG, "Failed to read stdout");
+		log_error(LOG_COMP_GENERAL, "Failed to read stdout");
 		pclosefunc (f);
 		close (tmpfd);
 		unlink (tmpfile_template);
@@ -354,7 +367,7 @@ boolean unixshellcall_separatestderr (Handle hcommand, Handle hstdout, Handle hs
 	   This prevents a subtle race condition where the file exists but fd position
 	   is not at the beginning. */
 	if (lseek(tmpfd, 0, SEEK_SET) < 0) {
-		log_error(LOG_COMP_LANG, "Failed to seek to beginning of stderr temp file");
+		log_error(LOG_COMP_GENERAL, "Failed to seek to beginning of stderr temp file");
 		close(tmpfd);
 		unlink(tmpfile_template);
 		free(cmd_with_redirect);
@@ -371,7 +384,7 @@ boolean unixshellcall_separatestderr (Handle hcommand, Handle hstdout, Handle hs
 		fcntlfunc (filenofunc (stderr_file), F_SETFL, fcntlfunc (filenofunc (stderr_file), F_GETFL, 0) | O_NONBLOCK);
 
 		if (!unixshellcall_read_stream (stderr_file, hstderr)) {
-			log_error(LOG_COMP_LANG, "Failed to read stderr");
+			log_error(LOG_COMP_GENERAL, "Failed to read stderr");
 			fl = false;
 		}
 
@@ -379,7 +392,7 @@ boolean unixshellcall_separatestderr (Handle hcommand, Handle hstdout, Handle hs
 	}
 	else {
 		/* fdopen failed - fd still owned by us, must close it explicitly */
-		log_error(LOG_COMP_LANG, "Failed to open stderr temp file with fdopen");
+		log_error(LOG_COMP_GENERAL, "Failed to open stderr temp file with fdopen");
 		close (tmpfd); /* Close fd since fdopen didn't take ownership */
 		fl = false;
 	}
