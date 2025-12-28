@@ -456,14 +456,6 @@ short GetMBarHeight(void) {
     return 0;
 }
 
-GrafPtr GetQDGlobalsThePort(void) {
-    return NULL;
-}
-
-void SetPort(GrafPtr port) {
-    (void)port;
-}
-
 void SysBeep(short duration) {
     (void)duration;
 }
