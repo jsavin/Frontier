@@ -7606,7 +7606,7 @@ boolean kernelfunctionvalue (hdlhashtable htable, bigstring bsverb, hdltreenode 
     valueroutine = (**ht).valueroutine;
 
 	if (valueroutine == nil) {
-		log_error(LOG_COMP_LANG, "kernelfunctionvalue: missing valueroutine table=%p verb=%s", (void *)ht, stringbaseaddress(bsverb));
+		log_error(LOG_COMP_LANG, "kernelfunctionvalue: missing valueroutine table=%p verb=%s", (void *)ht, PSTR(bsverb));
 	} else {
 		log_trace(LOG_COMP_LANG, "kernelfunctionvalue: table verb dispatch");
 	}
@@ -7618,7 +7618,7 @@ boolean kernelfunctionvalue (hdlhashtable htable, bigstring bsverb, hdltreenode 
 
     fl = hashtablelookupnode (ht, bsverb, &hnode); /*get the token value*/
     if (fl)
-		log_trace(LOG_COMP_LANG, "kernelfunctionvalue: kernel verb=%s", stringbaseaddress(bsverb));
+		log_trace(LOG_COMP_LANG, "kernelfunctionvalue: kernel verb=%s", PSTR(bsverb));
     
     if (fl)
         val = (**hnode).val;
@@ -7671,7 +7671,7 @@ boolean kernelfunctionvalue (hdlhashtable htable, bigstring bsverb, hdltreenode 
 		}
 	setemptystring (bserror);
 
-	log_trace(LOG_COMP_LANG, "calling verb '%s' token=%d", stringbaseaddress(bsverb), (int)val.data.tokenvalue);
+	log_trace(LOG_COMP_LANG, "calling verb '%s' token=%d", PSTR(bsverb), (int)val.data.tokenvalue);
 
 	if (flprofiling) {
 
@@ -7680,7 +7680,7 @@ boolean kernelfunctionvalue (hdlhashtable htable, bigstring bsverb, hdltreenode 
 		}
 
     fl = (*valueroutine) (val.data.tokenvalue, hparam1, vreturned, bserror);
-    log_trace(LOG_COMP_LANG, "verb '%s' token=%d returned %d", stringbaseaddress(bsverb), (int)val.data.tokenvalue, (int)fl);
+    log_trace(LOG_COMP_LANG, "verb '%s' token=%d returned %d", PSTR(bsverb), (int)val.data.tokenvalue, (int)fl);
 	
 	if (!fl && !isemptystring (bserror)) {
 		

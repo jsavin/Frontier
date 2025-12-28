@@ -140,7 +140,7 @@ boolean newfunctionprocessor (bigstring bsname, langvaluecallback valuecallback,
 
 #if defined(FRONTIER_HEADLESS)
 	log_debug(LOG_COMP_STARTUP, "newfunctionprocessor: name=%s table=%p valueroutine=%p flwindow=%d",
-	        stringbaseaddress(bsname),
+	        PSTR(bsname),
 	        (void *) ht,
 	        (void *) valuecallback,
 	        (int) flwindow);

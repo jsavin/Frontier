@@ -160,22 +160,22 @@ boolean langexternalgettable (bigstring bs, hdlhashtable *htable) {
 
     langvaluecallback valueroutine;
 
-	log_trace(LOG_COMP_EXTERNAL, "langexternalgettable enter %s", stringbaseaddress(bs));
+	log_trace(LOG_COMP_EXTERNAL, "langexternalgettable enter %s", PSTR(bs));
 
     if (langexternalgetinfo (bs, htable, &valueroutine)) {
-		log_trace(LOG_COMP_EXTERNAL, "langexternalgettable: info hit %s -> %p", stringbaseaddress(bs), (void *)*htable);
+		log_trace(LOG_COMP_EXTERNAL, "langexternalgettable: info hit %s -> %p", PSTR(bs), (void *)*htable);
         return true;
     }
-	log_trace(LOG_COMP_EXTERNAL, "langexternalgettable: getinfo miss %s, trying efptable fallback", stringbaseaddress(bs));
+	log_trace(LOG_COMP_EXTERNAL, "langexternalgettable: getinfo miss %s, trying efptable fallback", PSTR(bs));
 #if defined(FRONTIER_HEADLESS)
     /* Headless fallback: look up external function processor under efptable */
     {
         hdlhashnode hnode = nil;
         tyvaluerecord val;
         pushhashtable(efptable);
-		log_trace(LOG_COMP_EXTERNAL, "langexternalgettable: searching efptable=%p for %s (len=%d)", (void *)efptable, stringbaseaddress(bs), (int)bs[0]);
+		log_trace(LOG_COMP_EXTERNAL, "langexternalgettable: searching efptable=%p for %s (len=%d)", (void *)efptable, PSTR(bs), (int)bs[0]);
         if (hashtablelookupnode(efptable, bs, &hnode)) {
-			log_trace(LOG_COMP_EXTERNAL, "langexternalgettable: found %s in efptable hnode=%p", stringbaseaddress(bs), (void *)hnode);
+			log_trace(LOG_COMP_EXTERNAL, "langexternalgettable: found %s in efptable hnode=%p", PSTR(bs), (void *)hnode);
             val = (**hnode).val;
 			log_trace(LOG_COMP_EXTERNAL, "langexternalgettable: val.valuetype=%d", (int)val.valuetype);
             if (tablevaltotable (val, htable, hnode)) {

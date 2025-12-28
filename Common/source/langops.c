@@ -387,7 +387,7 @@ boolean langfindsymbol (const bigstring bs, hdlhashtable *htable, hdlhashnode *h
 	if (h == nil)
 		return (false);
 
-	log_trace(LOG_COMP_EVAL, "langfindsymbol enter %s current=%p", stringbaseaddress(bs), (void *)h);
+	log_trace(LOG_COMP_EVAL, "langfindsymbol enter %s current=%p", PSTR(bs), (void *)h);
 	
 	/*maybe treat as context-free*/
 	flspecialsymbol = flfindanyspecialsymbol || ((bs [1] == '_') && (lastchar (bs) == '_'));
@@ -397,11 +397,11 @@ boolean langfindsymbol (const bigstring bs, hdlhashtable *htable, hdlhashnode *h
 	while (true) { /*chain through each linked hash table*/
 
 		if (h == nil) { /*symbol not defined*/
-			log_trace(LOG_COMP_EVAL, "langfindsymbol miss %s", stringbaseaddress(bs));
+			log_trace(LOG_COMP_EVAL, "langfindsymbol miss %s", PSTR(bs));
 			return (false);
 		}
 
-		log_trace(LOG_COMP_EVAL, "langfindsymbol inspect table=%p name=%s", (void *)h, stringbaseaddress(bs));
+		log_trace(LOG_COMP_EVAL, "langfindsymbol inspect table=%p name=%s", (void *)h, PSTR(bs));
 
 		//assert (validhandle ((Handle) h));
 		
