@@ -4,7 +4,6 @@
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>  /* for size_t */
-#include "strings.h"  /* for stringbaseaddress() used by PSTR() macro */
 
 /*
  * Logging Infrastructure
@@ -196,7 +195,7 @@ void log_hex_dump(log_component_t component, log_level_t level,
  * Example (after):
  *   log_debug(LOG_COMP_HASH, "Table name: %s", PSTR(bs));
  *
- * Note: The macro requires standard.h to be included (for stringbaseaddress() macro definition).
+ * Note: Files using PSTR() must #include "strings.h" (which provides stringbaseaddress()).
  */
 #define PSTR(bs) stringbaseaddress(bs)
 
