@@ -468,30 +468,30 @@ int main(void) {
 
     /* Initialize Frontier runtime */
     if (!initmemory()) {
-        fprintf(stderr, "Failed to initialize memory\n");
+        printf("FATAL: Failed to initialize memory\n");
         return 1;
     }
 
     initstrings();
 
     if (!initlang()) {
-        fprintf(stderr, "Failed to initialize language\n");
+        printf("FATAL: Failed to initialize language\n");
         return 1;
     }
 
     if (!inittablestructure()) {
-        fprintf(stderr, "Failed to initialize table structure\n");
+        printf("FATAL: Failed to initialize table structure\n");
         return 1;
     }
 
     if (!langinitverbs()) {
-        fprintf(stderr, "Failed to initialize language verbs\n");
+        printf("FATAL: Failed to initialize language verbs\n");
         return 1;
     }
 
     /* Initialize sys verbs */
     if (!sysinitverbs()) {
-        fprintf(stderr, "Failed to initialize sys verbs\n");
+        printf("FATAL: Failed to initialize sys verbs\n");
         return 1;
     }
 
