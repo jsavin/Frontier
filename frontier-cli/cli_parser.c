@@ -1,7 +1,7 @@
 /*
  * Frontier CLI - Command Line Interface for UserTalk Script Execution
  * CLI Parser Implementation
- * 
+ *
  * Copyright (C) 1992-2004 UserLand Software, Inc.
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 
 #include "cli_parser.h"
 #include "cli_utils.h"
+#include "../Common/headers/logging.h"
 
 // Initialize CLI options with default values
 static void cli_init_options(cli_options_t* options) {
@@ -35,11 +36,11 @@ boolean cli_validate_options(const cli_options_t* options) {
 
     if (upgrade_mode) {
         if (options->system_root == NULL) {
-            fprintf(stderr, "Error: --upgrade-system-root requires --system-root PATH\n");
+            log_error(LOG_COMP_GENERAL, "Error: --upgrade-system-root requires --system-root PATH");
             return false;
         }
         if (hydration_mode) {
-            fprintf(stderr, "Error: --upgrade-system-root cannot be combined with --hydrate-system-root\n");
+            log_error(LOG_COMP_GENERAL, "Error: --upgrade-system-root cannot be combined with --hydrate-system-root");
             return false;
         }
         return true;
@@ -47,56 +48,56 @@ boolean cli_validate_options(const cli_options_t* options) {
 
     // Check for conflicting modes
     if (options->server_mode && options->websocket_mode) {
-        fprintf(stderr, "Error: Cannot use --server and --websocket simultaneously\n");
+        log_error(LOG_COMP_GENERAL, "Error: Cannot use --server and --websocket simultaneously");
         return false;
     }
-    
+
     // Check for required parameters
     if (options->database_file != NULL) {
         if (!options->migrate_database && options->query == NULL) {
-            fprintf(stderr, "Error: Database mode requires either --query or --migrate\n");
+            log_error(LOG_COMP_GENERAL, "Error: Database mode requires either --query or --migrate");
             return false;
         }
     }
-    
+
     if (hydration_mode) {
         if (options->system_root == NULL) {
-            fprintf(stderr, "Error: --hydrate-system-root requires --system-root PATH\n");
+            log_error(LOG_COMP_GENERAL, "Error: --hydrate-system-root requires --system-root PATH");
             return false;
         }
     } else {
         // Check for script execution parameters
-        if (options->script_file == NULL && options->inline_script == NULL && 
+        if (options->script_file == NULL && options->inline_script == NULL &&
             options->database_file == NULL && !options->server_mode && !options->websocket_mode) {
-            fprintf(stderr, "Error: No execution mode specified\n");
+            log_error(LOG_COMP_GENERAL, "Error: No execution mode specified");
             return false;
         }
     }
 
     if (options->system_root != NULL) {
         if (!cli_file_exists(options->system_root)) {
-            fprintf(stderr, "Error: System root does not exist: %s\n", options->system_root);
+            log_error(LOG_COMP_GENERAL, "Error: System root does not exist: %s", options->system_root);
             return false;
         }
         if (!cli_file_readable(options->system_root)) {
-            fprintf(stderr, "Error: System root is not readable: %s\n", options->system_root);
+            log_error(LOG_COMP_GENERAL, "Error: System root is not readable: %s", options->system_root);
             return false;
         }
     }
-    
+
     // Validate port number
     if (options->port < 1 || options->port > 65535) {
-        fprintf(stderr, "Error: Invalid port number %d (must be 1-65535)\n", options->port);
+        log_error(LOG_COMP_GENERAL, "Error: Invalid port number %d (must be 1-65535)", options->port);
         return false;
     }
 
     if (options->database_file != NULL || options->query != NULL || options->migrate_database) {
-        fprintf(stderr, "Error: Database operations are not yet supported in the headless CLI build\n");
+        log_error(LOG_COMP_GENERAL, "Error: Database operations are not yet supported in the headless CLI build");
         return false;
     }
 
     if (options->server_mode || options->websocket_mode) {
-        fprintf(stderr, "Error: Network server modes are not yet supported in the headless CLI build\n");
+        log_error(LOG_COMP_GENERAL, "Error: Network server modes are not yet supported in the headless CLI build");
         return false;
     }
     
@@ -135,37 +136,37 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
             case 'e':
                 // Inline script execution
                 if (options->inline_script != NULL) {
-                    fprintf(stderr, "Error: Multiple --execute options not allowed\n");
+                    log_error(LOG_COMP_GENERAL, "Error: Multiple --execute options not allowed");
                     return false;
                 }
                 if (strlen(optarg) > CLI_MAX_SCRIPT_LENGTH) {
-                    fprintf(stderr, "Error: Inline script too long (max %d characters)\n", CLI_MAX_SCRIPT_LENGTH);
+                    log_error(LOG_COMP_GENERAL, "Error: Inline script too long (max %d characters)", CLI_MAX_SCRIPT_LENGTH);
                     return false;
                 }
                 options->inline_script = strdup(optarg);
                 break;
-                
+
             case 'd':
                 // Database file
                 if (options->database_file != NULL) {
-                    fprintf(stderr, "Error: Multiple --database options not allowed\n");
+                    log_error(LOG_COMP_GENERAL, "Error: Multiple --database options not allowed");
                     return false;
                 }
                 if (strlen(optarg) > CLI_MAX_PATH_LENGTH) {
-                    fprintf(stderr, "Error: Database path too long (max %d characters)\n", CLI_MAX_PATH_LENGTH);
+                    log_error(LOG_COMP_GENERAL, "Error: Database path too long (max %d characters)", CLI_MAX_PATH_LENGTH);
                     return false;
                 }
                 options->database_file = strdup(optarg);
                 break;
-                
+
             case 'q':
                 // Database query
                 if (options->query != NULL) {
-                    fprintf(stderr, "Error: Multiple --query options not allowed\n");
+                    log_error(LOG_COMP_GENERAL, "Error: Multiple --query options not allowed");
                     return false;
                 }
                 if (strlen(optarg) > CLI_MAX_SCRIPT_LENGTH) {
-                    fprintf(stderr, "Error: Query too long (max %d characters)\n", CLI_MAX_SCRIPT_LENGTH);
+                    log_error(LOG_COMP_GENERAL, "Error: Query too long (max %d characters)", CLI_MAX_SCRIPT_LENGTH);
                     return false;
                 }
                 options->query = strdup(optarg);
@@ -173,11 +174,11 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
 
             case 'R':
                 if (options->system_root != NULL) {
-                    fprintf(stderr, "Error: Multiple --system-root options not allowed\n");
+                    log_error(LOG_COMP_GENERAL, "Error: Multiple --system-root options not allowed");
                     return false;
                 }
                 if (strlen(optarg) > CLI_MAX_PATH_LENGTH) {
-                    fprintf(stderr, "Error: System root path too long (max %d characters)\n", CLI_MAX_PATH_LENGTH);
+                    log_error(LOG_COMP_GENERAL, "Error: System root path too long (max %d characters)", CLI_MAX_PATH_LENGTH);
                     return false;
                 }
                 options->system_root = strdup(optarg);
@@ -212,58 +213,58 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
                     char* endptr;
                     long port = strtol(optarg, &endptr, 10);
                     if (*endptr != '\0' || port < 1 || port > 65535) {
-                        fprintf(stderr, "Error: Invalid port number '%s'\n", optarg);
+                        log_error(LOG_COMP_GENERAL, "Error: Invalid port number '%s'", optarg);
                         return false;
                     }
                     options->port = (int)port;
                 }
                 break;
-                
+
             case 'v':
                 // Verbose mode
                 options->verbose = true;
                 break;
-                
+
             case 'D':
                 // Debug mode
                 options->debug = true;
                 break;
-                
+
             case 'h':
                 // Help
                 options->show_help = true;
                 break;
-                
+
             case 'V':
                 // Version
                 options->show_version = true;
                 break;
-                
+
             case '?':
                 // Unknown option
                 return false;
-                
+
             default:
-                fprintf(stderr, "Error: Unknown option\n");
+                log_error(LOG_COMP_GENERAL, "Error: Unknown option");
                 return false;
         }
     }
-    
+
     // Handle non-option arguments (script files)
     if (optind < argc) {
         if (options->script_file != NULL) {
-            fprintf(stderr, "Error: Multiple script files not allowed\n");
+            log_error(LOG_COMP_GENERAL, "Error: Multiple script files not allowed");
             return false;
         }
         if (strlen(argv[optind]) > CLI_MAX_PATH_LENGTH) {
-            fprintf(stderr, "Error: Script file path too long (max %d characters)\n", CLI_MAX_PATH_LENGTH);
+            log_error(LOG_COMP_GENERAL, "Error: Script file path too long (max %d characters)", CLI_MAX_PATH_LENGTH);
             return false;
         }
         options->script_file = strdup(argv[optind]);
-        
+
         // Check for additional arguments
         if (optind + 1 < argc) {
-            fprintf(stderr, "Error: Unexpected argument '%s'\n", argv[optind + 1]);
+            log_error(LOG_COMP_GENERAL, "Error: Unexpected argument '%s'", argv[optind + 1]);
             return false;
         }
     }

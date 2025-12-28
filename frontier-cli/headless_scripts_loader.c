@@ -11,6 +11,7 @@
 #include "../Common/headers/tableverbs.h"
 #include "../Common/headers/tablestructure.h"
 #include "../Common/headers/stringdefs.h"
+#include "../Common/headers/logging.h"
 
 #include <stdio.h>
 
@@ -31,32 +32,32 @@ static boolean headless_compile_script (hdlhashnode hnode, hdltreenode *hcode) {
     *hcode = nil;
 
     gethashkey(hnode, bsname);
-    fprintf(stderr, "[headless] compile_script: compiling '%s'\n", stringbaseaddress(bsname));
+    log_debug(LOG_COMP_STARTUP, "compile_script: compiling '%s'", stringbaseaddress(bsname));
 
     if (val.valuetype != externalvaluetype) {
-        fprintf(stderr, "[headless] compile_script: '%s' not external (type=%d)\n",
+        log_debug(LOG_COMP_STARTUP, "compile_script: '%s' not external (type=%d)",
                 stringbaseaddress(bsname), val.valuetype);
         return false;
     }
 
     hv = (hdlexternalvariable) val.data.externalvalue;
     if ((**hv).id != idscriptprocessor) {
-        fprintf(stderr, "[headless] compile_script: '%s' not script (id=%d)\n",
+        log_debug(LOG_COMP_STARTUP, "compile_script: '%s' not script (id=%d)",
                 stringbaseaddress(bsname), (**hv).id);
         return false;
     }
 
-    fprintf(stderr, "[headless] compile_script: '%s' getting langtext\n", stringbaseaddress(bsname));
+    log_debug(LOG_COMP_STARTUP, "compile_script: '%s' getting langtext", stringbaseaddress(bsname));
     if (!opverbgetlangtext (hv, false, &htext, &signature)) {
-        fprintf(stderr, "[headless] compile_script: '%s' opverbgetlangtext failed\n",
+        log_debug(LOG_COMP_STARTUP, "compile_script: '%s' opverbgetlangtext failed",
                 stringbaseaddress(bsname));
         return false;
     }
 
-    fprintf(stderr, "[headless] compile_script: '%s' building tree (textsize=%ld)\n",
+    log_debug(LOG_COMP_STARTUP, "compile_script: '%s' building tree (textsize=%ld)",
             stringbaseaddress(bsname), htext ? gethandlesize(htext) : 0);
     if (!scriptbuildtree (htext, signature, hcode)) {
-        fprintf(stderr, "[headless] compile_script: '%s' scriptbuildtree failed\n",
+        log_debug(LOG_COMP_STARTUP, "compile_script: '%s' scriptbuildtree failed",
                 stringbaseaddress(bsname));
         return false;
     }
@@ -64,7 +65,7 @@ static boolean headless_compile_script (hdlhashnode hnode, hdltreenode *hcode) {
     if (*hcode != nil)
         (***hcode).nodeval.data.longvalue = (long) hnode;
 
-    fprintf(stderr, "[headless] compile_script: '%s' compiled successfully\n", stringbaseaddress(bsname));
+    log_debug(LOG_COMP_STARTUP, "compile_script: '%s' compiled successfully", stringbaseaddress(bsname));
     return true;
 }
 
@@ -78,25 +79,25 @@ static boolean headless_execute_script (hdlhashnode hnode) {
 
     setnilvalue (&result);
 
-    fprintf(stderr, "[headless] execute_script: processing '%s'\n", stringbaseaddress(bsname));
+    log_debug(LOG_COMP_STARTUP, "execute_script: processing '%s'", stringbaseaddress(bsname));
 
     if (!headless_compile_script (hnode, &hcode)) {
-        fprintf(stderr, "[headless] execute_script: '%s' skipped (not a script)\n", stringbaseaddress(bsname));
+        log_debug(LOG_COMP_STARTUP, "execute_script: '%s' skipped (not a script)", stringbaseaddress(bsname));
         return true; /* skip non-script nodes */
     }
 
-    fprintf(stderr, "[headless] execute_script: '%s' executing script with langruncode\n", stringbaseaddress(bsname));
+    log_debug(LOG_COMP_STARTUP, "execute_script: '%s' executing script with langruncode", stringbaseaddress(bsname));
 
     ok = langruncode (hcode, NULL, &result);
 
-    fprintf(stderr, "[headless] execute_script: '%s' langruncode returned %d\n",
+    log_debug(LOG_COMP_STARTUP, "execute_script: '%s' langruncode returned %d",
             stringbaseaddress(bsname), ok);
 
     if (ok) {
-        fprintf(stderr, "[headless] execute_script: '%s' completed successfully\n", stringbaseaddress(bsname));
+        log_debug(LOG_COMP_STARTUP, "execute_script: '%s' completed successfully", stringbaseaddress(bsname));
         disposetmpvalue (&result);
     } else {
-        fprintf(stderr, "[headless] execute_script: '%s' FAILED\n", stringbaseaddress(bsname));
+        log_debug(LOG_COMP_STARTUP, "execute_script: '%s' FAILED", stringbaseaddress(bsname));
     }
 
     return ok;
@@ -114,21 +115,21 @@ static boolean headless_run_special_scripts (const unsigned char *bsspecialtable
 
     copystring (bsspecialtable, bstemp);
 
-    fprintf(stderr, "[headless] run_special_scripts: looking for table '%s'\n", stringbaseaddress(bstemp));
+    log_debug(LOG_COMP_STARTUP, "run_special_scripts: looking for table '%s'", stringbaseaddress(bstemp));
 
     if (!findnamedtable (systemtable, bstemp, &htable)) {
-        fprintf(stderr, "[headless] run_special_scripts: table '%s' not found (nothing to do)\n",
+        log_debug(LOG_COMP_STARTUP, "run_special_scripts: table '%s' not found (nothing to do)",
                 stringbaseaddress(bstemp));
         return true; /* nothing to do */
     }
 
     hashcountitems(htable, &ctitems);
-    fprintf(stderr, "[headless] run_special_scripts: table '%s' has %ld items, visiting\n",
+    log_debug(LOG_COMP_STARTUP, "run_special_scripts: table '%s' has %ld items, visiting",
             stringbaseaddress(bstemp), ctitems);
 
     boolean result = hashtablevisit (htable, &headless_run_script_visit, nil);
 
-    fprintf(stderr, "[headless] run_special_scripts: table '%s' visit completed, result=%d\n",
+    log_debug(LOG_COMP_STARTUP, "run_special_scripts: table '%s' visit completed, result=%d",
             stringbaseaddress(bstemp), result);
 
     return result;
@@ -138,21 +139,21 @@ boolean loadsystemscripts (void) {
     const char *skip_startup = getenv("FRONTIER_HEADLESS_SKIP_STARTUP");
 
     if (systemtable == nil) {
-        fprintf(stderr, "[headless] loadsystemscripts: system table is nil\n");
+        log_error(LOG_COMP_STARTUP, "loadsystemscripts: system table is nil");
         return false;
     }
 
     if (skip_startup && *skip_startup) {
-        fprintf(stderr, "[headless] loadsystemscripts: skipping startup/agents per FRONTIER_HEADLESS_SKIP_STARTUP\n");
+        log_debug(LOG_COMP_STARTUP, "loadsystemscripts: skipping startup/agents per FRONTIER_HEADLESS_SKIP_STARTUP");
         return true;
     }
 
-    fprintf(stderr, "[headless] loadsystemscripts: running system.startup\n");
+    log_debug(LOG_COMP_STARTUP, "loadsystemscripts: running system.startup");
     if (!headless_run_special_scripts (namestartuptable)) {
-        fprintf(stderr, "[headless] loadsystemscripts: failed to run system.startup\n");
+        log_error(LOG_COMP_STARTUP, "loadsystemscripts: failed to run system.startup");
         return false;
     }
 
-    fprintf(stderr, "[headless] loadsystemscripts: skipping system.agents (not yet supported)\n");
+    log_debug(LOG_COMP_STARTUP, "loadsystemscripts: skipping system.agents (not yet supported)");
     return true;
 }

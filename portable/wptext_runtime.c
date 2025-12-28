@@ -7,6 +7,7 @@
 #include "wpverbs.h"
 #include "wptext_portable.h"
 #include "db_format.h"
+#include "logging.h"
 
 extern boolean flconvertingolddatabase;
 
@@ -317,7 +318,7 @@ static boolean wp_portable_state_cache_rtf(hdlexternalvariable hv, wp_portable_s
         return false;
 
 #if defined(FRONTIER_HEADLESS)
-    fprintf(stderr, "[wp-plain] cache state=%p portable=%d address=0x%llx cache=%s\n",
+    log_debug(LOG_COMP_GENERAL, "wp-plain: cache state=%p portable=%d address=0x%llx cache=%s",
         (void *)state,
         state->portable_format ? 1 : 0,
         (unsigned long long)state->address,
@@ -341,7 +342,7 @@ static boolean wp_portable_state_cache_rtf(hdlexternalvariable hv, wp_portable_s
                 state->portable_rtf_cache = hcopy;
                 ok = true;
 #if defined(FRONTIER_HEADLESS)
-                fprintf(stderr, "[wp-plain] cache copied portable payload bytes=%ld\n", (long)payload_len);
+                log_debug(LOG_COMP_GENERAL, "wp-plain: cache copied portable payload bytes=%ld", (long)payload_len);
 #endif
             }
         }
@@ -360,7 +361,7 @@ static boolean wp_portable_state_cache_rtf(hdlexternalvariable hv, wp_portable_s
                     state->maxpos = char_count;
                 ok = true;
 #if defined(FRONTIER_HEADLESS)
-                fprintf(stderr, "[wp-plain] cache built RTF bytes=%ld chars=%ld\n",
+                log_debug(LOG_COMP_GENERAL, "wp-plain: cache built RTF bytes=%ld chars=%ld",
                     gethandlesize(hrtf), char_count);
 #endif
             } else {
@@ -372,7 +373,7 @@ static boolean wp_portable_state_cache_rtf(hdlexternalvariable hv, wp_portable_s
 
     disposehandle(hpacked);
 #if defined(FRONTIER_HEADLESS)
-    fprintf(stderr, "[wp-plain] cache state=%p result=%d\n", (void *)state, ok ? 1 : 0);
+    log_debug(LOG_COMP_GENERAL, "wp-plain: cache state=%p result=%d", (void *)state, ok ? 1 : 0);
 #endif
     return ok;
 }
@@ -632,7 +633,7 @@ Boolean wp_portable_extract_plaintext(hdlexternalvariable hv, Handle *hout_utf8)
         return false;
 
 #if defined(FRONTIER_HEADLESS)
-    fprintf(stderr, "[wp-plain] extract hv=%p state=%p portable=%d address=0x%llx cache=%s\n",
+    log_debug(LOG_COMP_GENERAL, "wp-plain: extract hv=%p state=%p portable=%d address=0x%llx cache=%s",
         (void *)hv,
         (void *)state,
         state->portable_format ? 1 : 0,
@@ -694,7 +695,7 @@ Boolean wp_portable_extract_plaintext(hdlexternalvariable hv, Handle *hout_utf8)
 
 #if defined(FRONTIER_HEADLESS)
     if (hout_utf8 != NULL && *hout_utf8 != nil) {
-        fprintf(stderr, "[wp-plain] extract ok hv=%p state=%p bytes=%ld portable=%d\n",
+        log_debug(LOG_COMP_GENERAL, "wp-plain: extract ok hv=%p state=%p bytes=%ld portable=%d",
             (void *)hv,
             (void *)state,
             gethandlesize(*hout_utf8),

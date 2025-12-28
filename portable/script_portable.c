@@ -16,6 +16,7 @@
 #include "scripts.h"
 #include "osacomponent.h"
 #include "strings.h"
+#include "logging.h"
 
 /* Portable script compiler for headless builds.
  *
@@ -31,7 +32,7 @@ boolean scriptbuildtree (Handle htext, long signature, hdltreenode *hcode) {
     tyvaluerecord codeval;
     boolean fl;
 
-    fprintf(stderr, "[scriptbuildtree] enter, signature=0x%08lx (%c%c%c%c)\n",
+    log_debug(LOG_COMP_STARTUP, "scriptbuildtree: enter, signature=0x%08lx (%c%c%c%c)",
             signature,
             (char)((signature >> 24) & 0xFF),
             (char)((signature >> 16) & 0xFF),
@@ -39,23 +40,23 @@ boolean scriptbuildtree (Handle htext, long signature, hdltreenode *hcode) {
             (char)(signature & 0xFF));
 
     if (signature == typeLAND) {
-        fprintf(stderr, "[scriptbuildtree] LAND signature, calling langbuildtree\n");
+        log_debug(LOG_COMP_STARTUP, "scriptbuildtree: LAND signature, calling langbuildtree");
         return langbuildtree (htext, true, hcode);
     }
 
-    fprintf(stderr, "[scriptbuildtree] calling osagetcode\n");
+    log_debug(LOG_COMP_STARTUP, "scriptbuildtree: calling osagetcode");
     fl = osagetcode (htext, signature, false, &codeval);
     disposehandle (htext);
 
     if (!fl) {
-        fprintf(stderr, "[scriptbuildtree] osagetcode failed\n");
+        log_debug(LOG_COMP_STARTUP, "scriptbuildtree: osagetcode failed");
         return false;
     }
 
     exemptfromtmpstack (&codeval);
 
     if (!newconstnode (codeval, &hstub)) {
-        fprintf(stderr, "[scriptbuildtree] newconstnode failed\n");
+        log_debug(LOG_COMP_STARTUP, "scriptbuildtree: newconstnode failed");
         return false;
     }
 
@@ -72,37 +73,37 @@ static boolean headless_scriptgetcode (hdlhashnode hnode, hdltreenode *hcode) {
 
     *hcode = nil;
 
-    fprintf(stderr, "[headless_scriptgetcode] enter\n");
+    log_debug(LOG_COMP_STARTUP, "headless_scriptgetcode: enter");
 
     if (val.valuetype != externalvaluetype) {
-        fprintf(stderr, "[headless_scriptgetcode] not external value type: %d\n", val.valuetype);
+        log_debug(LOG_COMP_STARTUP, "headless_scriptgetcode: not external value type: %d", val.valuetype);
         return false;
     }
 
     hv = (hdlexternalvariable) val.data.externalvalue;
-    fprintf(stderr, "[headless_scriptgetcode] hv=%p\n", (void *)hv);
+    log_debug(LOG_COMP_STARTUP, "headless_scriptgetcode: hv=%p", (void *)hv);
 
     if ((**hv).id != idscriptprocessor) {
-        fprintf(stderr, "[headless_scriptgetcode] not script processor: id=%d\n", (**hv).id);
+        log_debug(LOG_COMP_STARTUP, "headless_scriptgetcode: not script processor: id=%d", (**hv).id);
         return false;
     }
 
-    fprintf(stderr, "[headless_scriptgetcode] calling opverbgetlangtext\n");
+    log_debug(LOG_COMP_STARTUP, "headless_scriptgetcode: calling opverbgetlangtext");
     if (!opverbgetlangtext (hv, false, &htext, &signature)) {
-        fprintf(stderr, "[headless_scriptgetcode] opverbgetlangtext failed\n");
+        log_debug(LOG_COMP_STARTUP, "headless_scriptgetcode: opverbgetlangtext failed");
         return false;
     }
 
-    fprintf(stderr, "[headless_scriptgetcode] got text, size=%ld, calling scriptbuildtree\n", (htext ? GetHandleSize(htext) : 0));
+    log_debug(LOG_COMP_STARTUP, "headless_scriptgetcode: got text, size=%ld, calling scriptbuildtree", (htext ? GetHandleSize(htext) : 0));
     if (!scriptbuildtree (htext, signature, hcode)) {
-        fprintf(stderr, "[headless_scriptgetcode] scriptbuildtree failed\n");
+        log_debug(LOG_COMP_STARTUP, "headless_scriptgetcode: scriptbuildtree failed");
         return false;
     }
 
     if (*hcode != nil)
         (***hcode).nodeval.data.longvalue = (long) hnode;
 
-    fprintf(stderr, "[headless_scriptgetcode] success, hcode=%p\n", (void *)*hcode);
+    log_debug(LOG_COMP_STARTUP, "headless_scriptgetcode: success, hcode=%p", (void *)*hcode);
     return true;
 }
 
@@ -111,20 +112,20 @@ static boolean headless_scriptcompiler (hdlhashnode hnode, hdltreenode *hcode) {
     hdltreenode hnewcode = nil;
     hdlexternalvariable hv;
 
-    fprintf(stderr, "[headless_scriptcompiler] enter\n");
+    log_debug(LOG_COMP_STARTUP, "headless_scriptcompiler: enter");
 
     if (!langexternalvaltocode ((**hnode).val, &holdcode)) {
-        fprintf(stderr, "[headless_scriptcompiler] langexternalvaltocode failed\n");
+        log_debug(LOG_COMP_STARTUP, "headless_scriptcompiler: langexternalvaltocode failed");
         return false;
     }
 
-    fprintf(stderr, "[headless_scriptcompiler] calling headless_scriptgetcode\n");
+    log_debug(LOG_COMP_STARTUP, "headless_scriptcompiler: calling headless_scriptgetcode");
     if (!headless_scriptgetcode (hnode, &hnewcode)) {
-        fprintf(stderr, "[headless_scriptcompiler] headless_scriptgetcode failed\n");
+        log_debug(LOG_COMP_STARTUP, "headless_scriptcompiler: headless_scriptgetcode failed");
         return false;
     }
 
-    fprintf(stderr, "[headless_scriptcompiler] linking code\n");
+    log_debug(LOG_COMP_STARTUP, "headless_scriptcompiler: linking code");
     hv = (hdlexternalvariable) (**hnode).val.data.externalvalue;
     opverblinkcode (hv, (Handle) hnewcode);
 
@@ -132,7 +133,7 @@ static boolean headless_scriptcompiler (hdlhashnode hnode, hdltreenode *hcode) {
         langdisposetree (holdcode);
 
     *hcode = hnewcode;
-    fprintf(stderr, "[headless_scriptcompiler] success\n");
+    log_debug(LOG_COMP_STARTUP, "headless_scriptcompiler: success");
     return true;
 }
 
@@ -149,7 +150,7 @@ static void headless_log_error(const bigstring bs) {
         len = (short)sizeof(buffer) - 1;
     memcpy(buffer, stringbaseaddress(bs), (size_t)len);
     buffer[len] = '\0';
-    fprintf(stderr, "[headless] lang error: %s\n", buffer);
+    log_error(LOG_COMP_STARTUP, "headless lang error: %s", buffer);
 }
 
 static boolean headless_error_callback (bigstring bs, ptrvoid refcon) {
