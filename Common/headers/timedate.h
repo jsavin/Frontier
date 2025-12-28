@@ -28,6 +28,21 @@
 #ifndef timedateinclude
 #define timedateinclude
 
+#include <stdint.h>  /* for int64_t in frontier_time_t typedef */
+
+/*
+ * 2025-12-28 Codex: Forward-declare bigstring if not yet defined.
+ * Avoid including standard.h to prevent circular dependencies.
+ * bigstring is defined as Str255 in standard.h or standard_portable.h.
+ */
+#ifndef bigstring
+typedef unsigned char bigstring[256];
+#endif
+
+#ifndef boolean
+typedef unsigned char boolean;
+#endif
+
 #pragma pack(2)
 typedef struct tyinternationalinfo {
 	char * longDaysOfWeek[10];
@@ -65,6 +80,17 @@ typedef struct tyinternationalinfo {
  * = 2,082,844,800 seconds
  */
 #define FRONTIER_EPOCH_TO_UNIX_OFFSET 2082844800LL
+
+/*
+ * Frontier time type: 64-bit signed integer representing seconds since 1904-01-01 00:00:00 UTC
+ * This ensures portability across platforms (time_t can be 32-bit or 64-bit).
+ * Range: Effectively unlimited (±292 billion years from 1904).
+ *
+ * Documentation:
+ * - docs/frontier_time_t_standard.md (developer guide for using frontier_time_t)
+ * - planning/phase3/date_time_format_standard.md (architectural decision context)
+ */
+typedef int64_t frontier_time_t;
 
 /*prototypes*/
 

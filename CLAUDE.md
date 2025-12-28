@@ -52,6 +52,120 @@
   - Work might be lost (uncommitted changes on current branch)
   - Multiple operations are happening in parallel on the same branch (the user might be working in another terminal on the same branch)
   - Ask when unsure if parallel work is in progress on a branch
+
+## Multi-Session Stability Patterns
+
+**Working across multiple terminal sessions simultaneously requires explicit coordination to prevent conflicts.**
+
+### Key Stability Principles
+
+1. **Worktrees Are Your Foundation**
+   - Use git worktrees for parallel work: `git worktree add feature-branch-name`
+   - Each worktree has its own working directory, branch state, and build artifacts
+   - This allows multiple git branches to be active simultaneously without conflicts
+   - Example: Main Frontier directory on develop, separate worktree on feature/new-work
+
+2. **One Feature Branch = One Worktree**
+   - Create a worktree when starting new feature development
+   - Keep worktrees on feature branches, never on develop
+   - When feature is complete, merge PR, then remove worktree: `git worktree remove feature-branch-name`
+
+3. **Develop is the Integration Point**
+   - develop branch should only change through merged PRs (never direct commits)
+   - All feature work happens on feature branches in worktrees
+   - This prevents collisions when multiple sessions touch develop
+
+4. **Database State is Per-Session**
+   - Database files (Frontier-v6.root, test_*.root) may be modified by test runs
+   - Don't assume database state is consistent across sessions
+   - If testing depends on specific database state, commit clean reference databases to git
+   - Use `git checkout databases/Frontier-v6.root` to restore reference state between tests
+
+5. **Build Artifacts Are Not Shared**
+   - Keep `frontier-cli/frontier-cli` and test executables in their worktree/directory
+   - Each session has its own build
+   - Don't rely on build artifacts from one terminal in another terminal's build
+
+6. **Communication Protocol for Blocked Work**
+   - If Session A blocks Session B (e.g., Session A pushes to develop while B is working on develop):
+     - Session B should immediately rebase: `git rebase origin/develop`
+     - Session B's worktree automatically reflects the new develop
+   - This is why commits to develop MUST go through PR workflow (ensures visibility and proper ordering)
+
+### Recommended Setup for This Project
+
+**Session 1 (Feature Development):**
+```bash
+cd /Users/jake/dev/jsavin/Frontier-build-fix  # worktree on feature branch
+git branch -a  # verify you're on feature/*, not develop
+# Do work, test locally with ./tools/run_headless_tests.sh
+# Create PR when ready, let bot review
+```
+
+**Session 2 (Other Work):**
+```bash
+cd /Users/jake/dev/jsavin/Frontier  # main directory on develop
+git checkout develop  # verify you're on develop
+# Work on separate feature branch, or research tasks that don't modify code
+# Coordinate if you need to push to develop (ask Session 1 first)
+```
+
+**Parallel Development Rules:**
+- Session 1 (worktree): Feature work on feature/issues-171-159-167
+- Session 2 (main dir): Only research, analysis, or separate feature work
+- **Never both sessions push to develop simultaneously** - use PR workflow for visibility
+- If Session 2 wants to commit to develop, check if Session 1 has open PRs first
+- Session 1 should merge and clean up worktree before Session 2 does major develop work
+
+### Pre-Work Checklist
+
+Before starting major work in any session:
+1. ✅ Verify which worktree/directory you're in: `pwd && git branch`
+2. ✅ Check for uncommitted changes: `git status` (should show "working tree clean")
+3. ✅ Sync with origin: `git fetch origin` (see if develop has changed)
+4. ✅ If you're on develop, check recent commits: `git log -3`
+5. ✅ Ask yourself: "Am I about to work on the right branch for this task?"
+
+### Common Multi-Session Gotchas
+
+**Gotcha 1: Building wrong binary**
+- You're in Session 1's worktree, run tests, then switch to Session 2's directory
+- Session 2 has stale CLI binary from old build
+- **Fix**: Each session rebuilds its own binary, or remove old one: `rm frontier-cli/frontier-cli`
+
+**Gotcha 2: Database corruption from parallel test runs**
+- Session 1 runs migration test, updates Frontier-v6-v7.root
+- Session 2 runs test at same time, expects old database state
+- **Fix**: Don't run tests in parallel; use `git checkout` to reset databases between test runs
+
+**Gotcha 3: Develop branch changes while working on feature**
+- Session 1 is on feature branch, hasn't fetched in a while
+- Session 2 merges PR to develop
+- Session 1's PR conflicts because develop moved
+- **Fix**: Session 1 runs `git fetch origin && git rebase origin/develop` before push
+
+**Gotcha 4: Worktree gets "stuck" on merged branch**
+- Feature branch was merged, worktree is still pointing to that branch
+- Attempting to push fails with "branch no longer exists"
+- **Fix**: Delete worktree when feature is merged: `git worktree remove feature-branch-name`
+
+### When Something Goes Wrong
+
+If parallel sessions cause conflicts:
+
+1. **Both sessions on same branch?** Only one should push
+   - Coordinate via chat/discussion
+   - One session rebases onto latest origin before pushing
+   - Other session pulls/rebases after first push succeeds
+
+2. **Database state inconsistent?**
+   - Restore: `git checkout databases/*.root`
+   - Rebuild: `make -C tests clean && make -C tests save_migration_tests`
+   - This resets to known-good state
+
+3. **Worktree "detached" or in bad state?**
+   - Delete and recreate: `git worktree remove <name> && git worktree add <name> origin/<branch>`
+
 - You have permission to use the `gh` command.
 - Don't ever create PRs that would merge with the tedchoward upstream fork.
 - If you ever need to check how the legacy Frontier app implemented something in 32-bit-land, look at the code under `../tedchoward/Frontier/`.

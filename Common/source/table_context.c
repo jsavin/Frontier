@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <time.h>  /* for time() function */
 
 /* ============================================================================
    INLINE HELPERS FOR TYPE-SAFE CONTEXT ACCESS
@@ -102,7 +103,8 @@ void table_context_record_mutation(struct hdlhashtable *htable,
 	/* Record mutation metadata */
 	ctx->version_number++;
 	ctx->last_mutation_type = (uint8_t)type;
-	ctx->last_mutation_time = time(NULL);
+	/* Convert Unix time (time_t) to Frontier time (int64_t, 1904 epoch) for portability */
+	ctx->last_mutation_time = (frontier_time_t)time(NULL) + FRONTIER_EPOCH_TO_UNIX_OFFSET;
 	ctx->flpendingchanges = true;
 
 	log_debug(LOG_COMP_TABLE, "table_context_record_mutation: type=%d version=%llu",
