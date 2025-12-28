@@ -57,6 +57,10 @@
    for command strings on modern systems. */
 #define MAX_SHELL_COMMAND_LENGTH 65536
 
+/* Maximum length for temporary file path. 256 bytes is sufficient for temp directory
+   path plus filename template on all modern systems. */
+#define TMPFILE_PATH_MAX 256
+
 /*System.framework functions: popen, pclose, fread, fcntl, feof, and fileno.*/
 
 typedef FILE* (*popenptr) (const char* command, const char *type);
@@ -250,7 +254,7 @@ boolean unixshellcall_separatestderr (Handle hcommand, Handle hstdout, Handle hs
 	FILE *f;
 	char *cmd_with_redirect;
 	long cmd_len;
-	char tmpfile_template[256]; /* 256 bytes sufficient for tmpdir + filename */
+	char tmpfile_template[TMPFILE_PATH_MAX];
 	int tmpfd;
 	FILE *stderr_file;
 	boolean fl = true;
