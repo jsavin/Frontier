@@ -87,7 +87,7 @@ int main(int argc, char* argv[]) {
 
     // Parse command line arguments
     if (!cli_parse_arguments(argc, argv, &g_cli_options)) {
-        fprintf(stderr, "Error: Invalid command line arguments\n");
+        log_error(LOG_COMP_GENERAL, "Error: Invalid command line arguments");
         print_usage(argv[0]);
         return 1;
     }
@@ -108,7 +108,7 @@ int main(int argc, char* argv[]) {
         boolean migrated = false;
         char output_path[1024];
         if (!ensure_database_v7(g_cli_options.system_root, &migrated, output_path, sizeof output_path)) {
-            fprintf(stderr, "Error: Failed to upgrade system root: %s\n", g_cli_options.system_root);
+            log_error(LOG_COMP_GENERAL, "Error: Failed to upgrade system root: %s", g_cli_options.system_root);
             return 1;
         }
         if (migrated) {
@@ -121,12 +121,12 @@ int main(int argc, char* argv[]) {
 
     /* Always initialize runtime and hydrate system root (default path). */
     if (!initialize_frontier_runtime()) {
-        fprintf(stderr, "Error: Failed to initialize Frontier runtime\n");
+        log_error(LOG_COMP_GENERAL, "Error: Failed to initialize Frontier runtime");
         return 1;
     }
     if (g_cli_options.system_root != NULL) {
         if (!hydrate_system_root_database(g_cli_options.system_root)) {
-            fprintf(stderr, "Error: Failed to load system root: %s\n", g_cli_options.system_root);
+            log_error(LOG_COMP_GENERAL, "Error: Failed to load system root: %s", g_cli_options.system_root);
             cleanup_frontier_runtime();
             return 1;
         }
@@ -134,7 +134,7 @@ int main(int argc, char* argv[]) {
 
     // Execute based on mode
     boolean success = false;
-    
+
     if (g_cli_options.server_mode || g_cli_options.websocket_mode) {
         success = execute_network_mode();
     } else if (g_cli_options.database_file != NULL) {
@@ -142,7 +142,7 @@ int main(int argc, char* argv[]) {
     } else if (g_cli_options.script_file != NULL || g_cli_options.inline_script != NULL) {
         success = execute_script_mode();
     } else {
-        fprintf(stderr, "Error: No execution mode specified\n");
+        log_error(LOG_COMP_GENERAL, "Error: No execution mode specified");
         print_usage(argv[0]);
     }
     
@@ -284,12 +284,12 @@ static boolean initialize_frontier_runtime(void) {
     
     // Initialize CLI logging
     if (!cli_init_logging(g_cli_options.verbose, g_cli_options.debug)) {
-        fprintf(stderr, "Error: Failed to initialize logging\n");
+        log_error(LOG_COMP_GENERAL, "Error: Failed to initialize logging");
         return false;
     }
-    
+
     if (!db_format_prepare_runtime()) {
-        fprintf(stderr, "Error: Failed to initialize Frontier runtime core\n");
+        log_error(LOG_COMP_GENERAL, "Error: Failed to initialize Frontier runtime core");
         cli_cleanup_logging();
         return false;
     }
@@ -393,7 +393,7 @@ static void log_system_subtable_status(const char *phase,
 static boolean hydrate_system_root_database(const char* path) {
     /* Always start from a clean slate; useful to confirm entry. */
 #if defined(FRONTIER_HEADLESS)
-    fprintf(stderr, "[headless] hydrate_system_root_database enter path=%s\n", path ? path : "(nil)");
+    log_trace(LOG_COMP_STARTUP, "hydrate_system_root_database enter path=%s", path ? path : "(nil)");
 #endif
     cleartablestructureglobals();
 
@@ -855,12 +855,12 @@ static boolean execute_script_mode(void) {
 
 static boolean execute_database_mode(void) {
     (void)g_cli_options;
-    fprintf(stderr, "Error: Database operations are not yet available in the headless CLI build.\n");
+    log_error(LOG_COMP_GENERAL, "Error: Database operations are not yet available in the headless CLI build.");
     return false;
 }
 
 static boolean execute_network_mode(void) {
     (void)g_cli_options;
-    fprintf(stderr, "Error: Network server modes are not yet available in the headless CLI build.\n");
+    log_error(LOG_COMP_GENERAL, "Error: Network server modes are not yet available in the headless CLI build.");
     return false;
 }

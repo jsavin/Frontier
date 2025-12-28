@@ -1,6 +1,7 @@
 /* platform_null.c - Null adapter for tests */
 
 #include "platform_adapter.h"
+#include "logging.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -42,6 +43,6 @@ frontier_timeval fp_now(void) {
     return tv;
 }
 
-void fp_log(const char* message) { if (message) fprintf(stderr, "%s\n", message); }
+void fp_log(const char* message) { if (message) log_debug(LOG_COMP_GENERAL, "%s", message); }
 
 

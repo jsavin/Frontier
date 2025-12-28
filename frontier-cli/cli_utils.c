@@ -9,25 +9,35 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "../Common/headers/logging.h"
+
 static boolean g_cli_verbose = false;
 static boolean g_cli_debug = false;
 
 char g_cli_error_buffer[1024] = {0};
 
 static void cli_vlog(int level, const char* label, const char* format, va_list args) {
-    if (level == CLI_LOG_ERROR || level == CLI_LOG_WARN ||
-        (level == CLI_LOG_INFO && g_cli_verbose) ||
-        (level == CLI_LOG_DEBUG && g_cli_debug)) {
-        time_t now = time(NULL);
-        struct tm tm_info;
-        localtime_r(&now, &tm_info);
+    /* Use structured logging instead of fprintf(stderr) */
+    char buffer[2048];
+    vsnprintf(buffer, sizeof(buffer), format, args);
 
-        char timestamp[32];
-        strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &tm_info);
-
-        fprintf(stderr, "[%s] [%s] ", timestamp, label);
-        vfprintf(stderr, format, args);
-        fprintf(stderr, "\n");
+    switch (level) {
+        case CLI_LOG_ERROR:
+            log_error(LOG_COMP_GENERAL, "%s", buffer);
+            break;
+        case CLI_LOG_WARN:
+            log_warn(LOG_COMP_GENERAL, "%s", buffer);
+            break;
+        case CLI_LOG_INFO:
+            if (g_cli_verbose) {
+                log_info(LOG_COMP_GENERAL, "%s", buffer);
+            }
+            break;
+        case CLI_LOG_DEBUG:
+            if (g_cli_debug) {
+                log_debug(LOG_COMP_GENERAL, "%s", buffer);
+            }
+            break;
     }
 }
 

@@ -4,6 +4,7 @@
 
 #include "memory.h"
 #include "strings.h"
+#include "logging.h"
 
 #include <limits.h>
 #include <stdarg.h>
@@ -1393,7 +1394,7 @@ static boolean paige_append_chunk(Handle h, const uint8_t *chunk, long len) {
     long new_size = old_size + len;
     if (!sethandlesize(h, new_size)) {
 #if defined(FRONTIER_HEADLESS)
-        fprintf(stderr, "[paige] append fail old=%ld chunk=%ld\n", old_size, len);
+        log_debug(LOG_COMP_GENERAL, "paige: append fail old=%ld chunk=%ld", old_size, len);
 #endif
         return false;
     }
@@ -1508,7 +1509,7 @@ boolean paige_extract_text_and_styles(const uint8_t *bytes, long len, Handle *ho
     if (bytes == NULL || len <= 0 || hout_utf8 == NULL)
         return false;
 
-    fprintf(stderr, "[paige] extract len=%ld\n", len);
+    log_debug(LOG_COMP_GENERAL, "paige: extract len=%ld", len);
 
     char local_errbuf[256] = {0};
     if (errbuf == NULL) {
@@ -1525,7 +1526,7 @@ boolean paige_extract_text_and_styles(const uint8_t *bytes, long len, Handle *ho
     Handle hutf8 = nil;
     boolean ok = paige_document_get_plaintext(&doc, &hutf8, stats, errbuf, errbuflen);
     if (ok) {
-        fprintf(stderr, "[paige] extract ok bytes=%ld\n", gethandlesize(hutf8));
+        log_debug(LOG_COMP_GENERAL, "paige: extract ok bytes=%ld", gethandlesize(hutf8));
         *hout_utf8 = hutf8;
     }
 
