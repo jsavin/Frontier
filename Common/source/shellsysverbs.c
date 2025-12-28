@@ -720,6 +720,7 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 				bigstring varname, varname2, varname3;
 				boolean fl;
 				int exit_status;
+				tyvaluerecord vval;
 
 				if (!getvarparam (hparam1, 2, &htable, varname))
 					return (false);
@@ -754,7 +755,9 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 					return (false);
 				}
 
-				if (!langsetvalue (htable3, varname3, exit_status, longvaluetype)) {
+				vval.valuetype = longvaluetype;
+				vval.data.longvalue = exit_status;
+				if (!langsetsymboltableval (htable3, varname3, vval)) {
 					/* Note: hstdout and hstderr were already adopted by hash tables */
 					return (false);
 				}
@@ -770,9 +773,18 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 		case winshellcommandfunc: { /*Windows version of shell command verb; 2025-12-27: platform-specific stubs*/
 
 			Handle hcommand;
+			short paramcount;
 
 			if (!getexempttextvalue (hparam1, 1, &hcommand))
 				return (false);
+
+			paramcount = langgetparamcount (hparam1);
+
+			if (paramcount > 4) {
+				langerror (toomanyparamserror);
+				disposehandle (hcommand);
+				return (false);
+			}
 
 			flnextparamislast = true;
 			disposehandle (hcommand);
@@ -780,7 +792,10 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 #ifdef WIN32
 			/* TODO (Issue #190): Implement Windows version using CreateProcess with pipes.
 			   Follow the same 1/2/3/4-parameter pattern as Unix version (see unixshellcommandfunc).
-			   For now, return "not implemented yet" error. */
+			   1 param: return stdout string (backward compatible)
+			   2 params: capture stdout to address, return boolean
+			   3 params: capture stdout and stderr to addresses, return boolean
+			   4 params: capture stdout, stderr, and exit status to addresses, return boolean */
 			getstringlist (langerrorlist, unimplementedverberror, bserror);
 #else
 			/* Not available on non-Windows platforms */

@@ -276,10 +276,6 @@ boolean unixshellcall_separatestderr (Handle hcommand, Handle hstdout, Handle hs
 		return (false);
 	}
 
-	/* Delete temp file from filesystem immediately. File remains accessible via fd.
-	   This is a Unix idiom that prevents temp file accumulation if process crashes. */
-	unlink (tmpfile_template);
-
 	/* Allocate memory for command with redirection */
 	cmd_with_redirect = (char *) malloc (cmd_len);
 	if (cmd_with_redirect == nil) {
@@ -342,7 +338,8 @@ boolean unixshellcall_separatestderr (Handle hcommand, Handle hstdout, Handle hs
 		fl = false;
 	}
 
-	/* Clean up memory */
+	/* Clean up temp file and memory */
+	unlink (tmpfile_template);
 	free (cmd_with_redirect);
 
 	return (fl);
