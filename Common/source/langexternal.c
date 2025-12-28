@@ -173,13 +173,13 @@ boolean langexternalgettable (bigstring bs, hdlhashtable *htable) {
         hdlhashnode hnode = nil;
         tyvaluerecord val;
         pushhashtable(efptable);
-		log_trace(LOG_COMP_EXTERNAL, "langexternalgettable: searching efptable=%p for %s (len=%d)", (void*)efptable, stringbaseaddress(bs), (int)bs[0]);
+		log_trace(LOG_COMP_EXTERNAL, "langexternalgettable: searching efptable=%p for %s (len=%d)", (void *)efptable, stringbaseaddress(bs), (int)bs[0]);
         if (hashtablelookupnode(efptable, bs, &hnode)) {
-			log_trace(LOG_COMP_EXTERNAL, "langexternalgettable: found %s in efptable hnode=%p", stringbaseaddress(bs), (void*)hnode);
+			log_trace(LOG_COMP_EXTERNAL, "langexternalgettable: found %s in efptable hnode=%p", stringbaseaddress(bs), (void *)hnode);
             val = (**hnode).val;
 			log_trace(LOG_COMP_EXTERNAL, "langexternalgettable: val.valuetype=%d", (int)val.valuetype);
             if (tablevaltotable (val, htable, hnode)) {
-				log_trace(LOG_COMP_EXTERNAL, "langexternalgettable: tablevaltotable SUCCESS htable=%p", (void*)*htable);
+				log_trace(LOG_COMP_EXTERNAL, "langexternalgettable: tablevaltotable SUCCESS htable=%p", (void *)*htable);
                 pophashtable();
                 return true;
             }
@@ -2695,8 +2695,8 @@ boolean langnewexternalvariable (boolean flinmemory, long variabledata, hdlexter
 	log_trace(LOG_COMP_EXTERNAL, "langnewexternalvariable: flinmemory=%d variabledata=0x%llx captured_db=%p (current=%p)",
 	        (int)flinmemory,
 	        (unsigned long long)variabledata,
-	        (void*)item.hdatabase,
-	        (void*)databasedata);
+	        (void *)item.hdatabase,
+	        (void *)databasedata);
 
 	//item.hexternaltable = nil;
 	//copystring (emptystring, item.bsexternalname);
@@ -3042,7 +3042,7 @@ boolean langexternalrefdata_context (const db_context *ctx, hdlexternalvariable 
 	assert (!(**hv).flinmemory);
 
 	log_trace(LOG_COMP_EXTERNAL, "langexternalrefdata_context: reading from hdatabase=%p adr=0x%llx use_64bit=%d (NO PUSH)",
-	        (void*)(**hv).hdatabase,
+	        (void *)(**hv).hdatabase,
 	        (unsigned long long)(**hv).variabledata,
 	        ctx ? ctx->mode.use_64bit_format : -1);
 
