@@ -12,6 +12,8 @@
 
 **Master todo list**: https://drummer.land/me@jakesav.in/JakeShare.opml
 - This OPML outline contains the user's longer-term vision in roughly chronological order
+- Structure: Strategic roadmap content through the current month heading → running notes on Phase 2.0 partnership work with Dave Winer
+- Dave Winer (original Frontier designer, CEO at UserLand 2000-2004) is a key strategic partner for collaborative ODB editing
 - Items evolve and are adjusted as we learn and complete work
 - When prioritizing work, consult this list to understand how a task fits into the broader roadmap
 - This is the source of truth for strategic direction and milestones
