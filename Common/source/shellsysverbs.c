@@ -669,8 +669,10 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 					return (false);
 				}
 
-				if (!langsetvalue (htable, varname, hstdout, stringvaluetype))
+				if (!langsetvalue (htable, varname, hstdout, stringvaluetype)) {
+					disposehandle (hstdout);
 					return (false);
+				}
 
 				return (setbooleanvalue (true, v));
 			}
