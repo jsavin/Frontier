@@ -21,7 +21,7 @@ endif
 FRONTIER_TESTS ?= 1
 CWARNING_SUPPRESS ?= -Wno-nonportable-include-path -Wno-error=implicit-function-declaration  # Suppress Paige header case warnings (third-party code)
 CFLAGS = -Wall -Wextra -std=c99 -g -O0 -fpascal-strings -Wno-deprecated-non-prototype -fcommon \
-         -DFRONTIER_USE_PORTABLE_HANDLES -DFRONTIER_HEADLESS -DFRONTIER_PORTABLE \
+         -DFRONTIER_USE_PORTABLE_HANDLES -DFRONTIER_HEADLESS \
          -DFRONTIER_PORTABLE_STRINGS \
          -DFRONTIER_PORTABLE_FILE_AVAILABLE -DFRONTIER_PORTABLE_DB_AVAILABLE \
          -DFRONTIER_PORTABLE_APPLEEVENTS \
@@ -89,7 +89,6 @@ FRONTIER_SOURCES = \
     ../Common/source/strings.c \
     ../Common/source/ops.c \
     ../Common/source/tableops.c \
-    ../Common/source/table_context.c \
     ../Common/source/tableexternal_common.c \
     ../Common/source/tablepack.c \
     ../Common/source/legacy/tablepack_legacy.c \
@@ -162,7 +161,6 @@ LANG_RUNTIME_SOURCES = \
     headless_file_verbs.c \
     headless_frontier_verbs.c \
     ../Common/source/tableops.c \
-    ../Common/source/table_context.c \
     ../Common/source/tableexternal.c \
     ../Common/source/tableexternal_common.c \
     ../Common/source/legacy/tablepack_legacy.c \

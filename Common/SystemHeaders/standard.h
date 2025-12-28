@@ -35,8 +35,12 @@ standard.h -- standard types and constants
 #define standardinclude /*so other modules can tell that we've been included*/
 
 
-	#ifdef FRONTIER_PORTABLE
+	#if defined(FRONTIER_PORTABLE) || defined(FRONTIER_HEADLESS)
 	#include "../../portable/time_portable.h"
+	/* Ensure portable Mac types (Rect, RgnHandle, etc.) are defined before use below */
+	#ifndef OSINCLUDES_PORTABLE_H
+	#include "../headers/osincludes_portable.h"
+	#endif
 	#else
 	#include "FastTimes.h"
 	#endif
