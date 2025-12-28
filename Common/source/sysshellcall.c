@@ -43,6 +43,7 @@
 #include "CallMachOFramework.h"
 #include <fcntl.h> /* 2006-01-10 creedon */
 #include <unistd.h> /* 2025-12-27: for mkstemp, unlink */
+#include <sys/wait.h> /* 2025-12-27: for WEXITSTATUS macro */
 
 /* 2006-01-29 creedon - define the following for CodeWarrior compilation because it doesn't have these defined in its headers, as Xcode does */
 #ifdef __MWERKS__
@@ -309,12 +310,14 @@ boolean unixshellcall_separatestderr (Handle hcommand, Handle hstdout, Handle hs
 		log_error(LOG_COMP_LANG, "Failed to read stdout");
 		pclosefunc (f);
 		close (tmpfd);
+		unlink (tmpfile_template);
 		free (cmd_with_redirect);
 		return (false);
 	}
 
-	/* Capture pclose() return value (contains command's exit status) */
-	int cmd_exit_status = pclosefunc (f);
+	/* Capture pclose() return value and extract exit status using WEXITSTATUS macro */
+	int pclose_status = pclosefunc (f);
+	int cmd_exit_status = WEXITSTATUS(pclose_status);
 
 	if (exit_status != NULL)
 		*exit_status = cmd_exit_status;
