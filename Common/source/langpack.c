@@ -591,26 +591,45 @@ unpack:
 			
 			break;
 		
-		case addressvaluetype:
-			fl = langunpackhandle (false, &v.data.stringvalue, h, &ixunpack);
-			
-			if (!fl)
-				break;
-			
-			flpush = (currenthashtable == nil);
-			
-			if (flpush)
-				flpush = pushhashtable (roottable);
-			
-			if (stringtoaddress (&v))
-				exemptfromtmpstack (&v);
-			else
-				v.valuetype = stringvaluetype;
-			
-			if (flpush)
-				pophashtable ();
-			
+	case addressvaluetype: {
+		/* LAZY ADDRESS RESOLUTION:
+		 * Don't call stringtoaddress() during unpacking. Instead, create an
+		 * "unresolved address" with htable = (hdlhashtable)-1 marker.
+		 * Resolution happens transparently on first access via getaddressvalue()
+		 * (see langvalue.c:425-441).
+		 *
+		 * Why: During v6->v7 migration, stringtoaddress() needs EFP tables to be
+		 * linked (via linksystemtablestructure) to resolve paths correctly.
+		 * If we resolve too early, paths resolve to database tables (no valueroutines)
+		 * instead of EFP tables (with valueroutines).
+		 */
+
+		Handle hstring_temp;
+		bigstring bs_path;
+
+		/* Unpack the string path */
+		fl = langunpackhandle (false, &hstring_temp, h, &ixunpack);
+
+		if (!fl)
 			break;
+
+		/* Extract path to bigstring */
+		texthandletostring (hstring_temp, bs_path);
+
+		/* Dispose temporary unpacked handle */
+		disposehandle (hstring_temp);
+
+		/* Create unresolved address using -1 marker */
+		fl = setexemptaddressvalue ((hdlhashtable)-1, bs_path, &v);
+
+		if (!fl)
+			break;
+
+		/* Already marked as addressvaluetype by setexemptaddressvalue */
+		/* Already exempted from tmpstack by setexemptaddressvalue */
+
+		break;
+		}
 		
 		case rectvaluetype: {
 			Rect r;

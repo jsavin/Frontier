@@ -294,8 +294,16 @@ static boolean headless_convert_legacy_table_payload(const unsigned char *payloa
 
 boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvariable, hdlhashnode hnode) {
     /*
-    2025-12-20: Added explicit context parameter - uses ctx for reading, not global mode
+    2025-12-27: Uses dbpushdatabase/dbpopdatabase to temporarily switch to table's database.
+
+    ctx parameter is currently unused but kept for API compatibility. This function was
+    refactored to use the database stack (dbpushdatabase/dbpopdatabase) instead of context
+    guards because the table's database handle ((**hv).hdatabase) is the canonical source
+    of truth for which database to read from. The ctx parameter may be used in a future
+    refactoring as part of the broader mode stack elimination work (see CLAUDE.md -
+    "Architectural Patterns to Avoid" section and MODE_STACK_REFACTOR_PLAN.md).
     */
+    (void)ctx;  /* unused - see comment above */
 
     register hdltablevariable hv = (hdltablevariable) hvariable;
     Handle hpacked;
@@ -307,11 +315,10 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
     bigstring bspath, bsunpackerror;
     boolean fl;
 
-    log_trace(LOG_COMP_TABLE, "tableverbinmemory enter hvariable=%p hnode=%p flinmemory=%d use_64bit=%d",
+    log_trace(LOG_COMP_TABLE, "tableverbinmemory enter hvariable=%p hnode=%p flinmemory=%d",
             (void *) hvariable,
             (void *) hnode,
-            (hvariable && *hvariable) ? (**hvariable).flinmemory : -1,
-            ctx ? ctx->mode.use_64bit_format : -1);
+            (hvariable && *hvariable) ? (**hvariable).flinmemory : -1);
 
     if ((**hv).flinmemory) /* nothing to do, it's already in memory */
         return true;
@@ -319,18 +326,24 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
     if ((hnode == nil) || (hnode == HNoNode))
         hnode = nil;
 
+    /* Push the table's database onto the stack (only if non-nil) */
+    boolean pushed_database = false;
+    if ((**hv).hdatabase != nil) {
+        if (!dbpushdatabase((**hv).hdatabase)) {
+            log_error(LOG_COMP_TABLE, "tableverbinmemory_common: dbpushdatabase failed");
+            return false;
+        }
+        pushed_database = true;
+    } else {
+        log_warn(LOG_COMP_TABLE, "tableverbinmemory nil database for variable");
+    }
+
     adr = (dbaddress) (**hv).variabledata;  /* DISK ADDRESS - format depends on source DB */
 
-    log_trace(LOG_COMP_TABLE, "tableverbinmemory_common: reading from hdatabase=%p adr=0x%llx use_64bit=%d (NO PUSH)",
+    log_trace(LOG_COMP_TABLE, "tableverbinmemory_common: reading from hdatabase=%p adr=0x%llx",
             (void*)(**hv).hdatabase,
-            (unsigned long long)adr,
-            ctx ? ctx->mode.use_64bit_format : -1);
+            (unsigned long long)adr);
     long payload_offset = 0;
-
-    if ((**hv).hdatabase == nil) {
-        log_warn(LOG_COMP_TABLE, "tableverbinmemory nil database for variable adr=0x%llx",
-                (unsigned long long) adr);
-    }
     log_debug(LOG_COMP_TABLE, "tableverbinmemory dbpush database=%p adr=0x%llx",
             (void *)(**hv).hdatabase, (unsigned long long) adr);
 
@@ -355,8 +368,8 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
         shellinternalerror(idniltableaddress, BIGSTRING ("\x2b" "nil table address.  (Creating empty table.)"));
         fl = false;
     } else {
-        /* Use passed context for reading - format determined by caller */
-        fl = dbrefhandle_context(ctx, adr, &hpacked);
+        /* Read from the pushed database */
+        fl = dbrefhandle(adr, &hpacked);
 
         if (!fl) {
             log_error(LOG_COMP_TABLE, "dbrefhandle failed adr=0x%llx", (unsigned long long)adr);
@@ -451,10 +464,11 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
         }
     }
 
-    /* No database context restore needed - using explicit context parameter */
-
-    if (!fl)
+    if (!fl) {
+        if (pushed_database)
+            dbpopdatabase();
         return false;
+    }
 
     (**hv).flinmemory = true;
 
@@ -511,6 +525,9 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
     (**htable).hashtablerefcon = (long) hv; /* we can get from hashtable to variable rec */
 
     (**htable).thistableshashnode = hnode; /* The var rec is contained in the hashnode... RAB 1/3/00 */
+
+    if (pushed_database)
+        dbpopdatabase();
 
     return true;
 }

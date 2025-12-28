@@ -238,6 +238,10 @@ extern byte namecharsetstable [];
 
 extern boolean linksystemtablestructure (hdlhashtable); /*tablestructure.c*/
 
+extern boolean resolve_system_paths (hdlhashtable); /*tablestructure.c*/
+
+extern boolean augment_database_tables_with_efp (hdlhashtable); /*tablestructure.c*/
+
 extern boolean getsystemtablescript (short, bigstring);
 
 extern boolean unlinksystemtablestructure (void);

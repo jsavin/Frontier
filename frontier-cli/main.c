@@ -499,6 +499,24 @@ static boolean hydrate_system_root_database(const char* path) {
         log_system_subtable_status("hydrate: post-checktablestructure", systemtable, verbstable, builtinstable, agentstable, pathstable, resourcestable, menubartable, objectmodeltable);
     }
 
+    /* Link in-memory compiler tables (efptable with verb callbacks) into loaded system table */
+    if (!linksystemtablestructure(hroot)) {
+        cli_log_error("Unable to link system tables while hydrating %s", path);
+        goto cleanup;
+    }
+
+    /* Eagerly resolve system.paths addresses now that EFP tables are linked */
+    if (!resolve_system_paths(hroot)) {
+        cli_log_error("Unable to resolve system.paths addresses while hydrating %s", path);
+        goto cleanup;
+    }
+
+    /* Augment database tables with EFP implementations for bare verb resolution */
+    if (!augment_database_tables_with_efp(hroot)) {
+        cli_log_error("Unable to augment database tables with EFP while hydrating %s", path);
+        goto cleanup;
+    }
+
     boolean created_optional = false;
     if (systemtable != nil) {
         if (resourcestable == nil && ensure_named_subtable(systemtable, nameresourcestable, &resourcestable, false))

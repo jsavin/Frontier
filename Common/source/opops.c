@@ -1842,6 +1842,10 @@ boolean opsetheadtext_ctx (op_context_t *ctx, hdlheadrecord hnode, Handle hstrin
 	assert(ctx != NULL);
 	op_context_version_bump(ctx);
 
+	/* Headless migration: outline globals may not be initialized */
+	if (outlinedata == nil)
+		return (false);
+
 	/*
 	4/3/92 dmb: moved call to textchangedcallback into this bottleneck so
 	that find/replace and op.setlinetext will update menubar items properly.
@@ -1914,6 +1918,10 @@ boolean opsetheadtext_ctx (op_context_t *ctx, hdlheadrecord hnode, Handle hstrin
 boolean opsetheadtext (hdlheadrecord hnode, Handle hstring) {
 
 	op_context_t *ctx = op_context_acquire(OP_CONTEXT_NORMAL);
+
+	if (ctx == NULL)
+		return (false);
+
 	boolean result = opsetheadtext_ctx(ctx, hnode, hstring);
 	op_context_release(ctx);
 	return result;

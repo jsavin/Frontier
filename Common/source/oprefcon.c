@@ -106,6 +106,10 @@ boolean opsetrefcon_ctx (op_context_t *ctx, hdlheadrecord hnode, ptrvoid pdata, 
 boolean opsetrefcon (hdlheadrecord hnode, ptrvoid pdata, long lendata) {
 
 	op_context_t *ctx = op_context_acquire(OP_CONTEXT_NORMAL);
+
+	if (ctx == NULL)
+		return (false);
+
 	boolean result = opsetrefcon_ctx(ctx, hnode, pdata, lendata);
 	op_context_release(ctx);
 	return result;

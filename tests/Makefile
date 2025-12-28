@@ -225,7 +225,7 @@ USERTALK_OBJECT_TESTS = \
 	test_usertalk_runner
 
 # Buildable test executables on this branch
-RUN_BUILDABLE = core_tests db_format_tests runtime_tests parser_tests save_migration_tests file_portable_tests file_readline_tests file_verb_tests handle_tests cli_runtime_tests paige_text_tests oppack_tests hashpack_modern_tests hash_corruption_tests langvalue_64_tests table_verb_tests refcon_tests refcon_phase2_tests op_context_tests table_context_tests
+RUN_BUILDABLE = core_tests db_format_tests runtime_tests parser_tests save_migration_tests file_portable_tests file_readline_tests file_verb_tests handle_tests cli_runtime_tests paige_text_tests oppack_tests hashpack_modern_tests hash_corruption_tests langvalue_64_tests table_verb_tests table_operations_integration refcon_tests refcon_phase2_tests op_context_tests table_context_tests
 
 # Prebuilt or auxiliary test binaries that may be present
 RUN_PREBUILT = test_64bit_direct test_migration_verification test_real_databases test_runner verify_migration_success
@@ -245,8 +245,8 @@ core_tests: core_tests.c ../Common/source/shell_api.c ../Common/source/shell_api
 op_context_tests: op_context_tests.c ../Common/source/op_context.c ../Common/source/logging.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable op_context_tests.c ../Common/source/op_context.c ../Common/source/logging.c -o $@ $(LINK_LIBS)
 
-table_context_tests: table_context_tests.c
-	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../portable table_context_tests.c -o $@ $(LINK_LIBS)
+table_context_tests: table_context/table_context_tests.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../portable table_context/table_context_tests.c -o $@ $(LINK_LIBS)
 
 db_format_tests: db_format_tests.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
@@ -268,8 +268,11 @@ langvalue_64_tests: langvalue_64_tests.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
 		langvalue_64_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@ $(LINK_LIBS)
 
-table_verb_tests: table_verb_tests.c
-	$(CC) -std=c99 -Wall -Wextra -g -O0 table_verb_tests.c -o $@
+table_verb_tests: table_operations/table_verb_tests.c
+	$(CC) -std=c99 -Wall -Wextra -g -O0 table_operations/table_verb_tests.c -o $@
+
+table_operations_integration: table_operations/table_operations_integration.c
+	$(CC) -std=c99 -Wall -Wextra -g -O0 table_operations/table_operations_integration.c -o $@
 
 refcon_tests: refcon_tests.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
@@ -286,6 +289,10 @@ parser_tests: parser_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c
 
 save_migration_tests: save_migration_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_odb_stubs.c headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -DHEADLESS_LINKS_REAL_DB -I../Common/headers -I../Common/SystemHeaders -I../portable save_migration_tests.c \
+		$(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_odb_stubs.c headless_shell.c -o $@ $(LINK_LIBS)
+
+test_dump_system_paths: test_dump_system_paths.c $(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_odb_stubs.c headless_shell.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -DHEADLESS_LINKS_REAL_DB -I../Common/headers -I../Common/SystemHeaders -I../portable test_dump_system_paths.c \
 		$(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_odb_stubs.c headless_shell.c -o $@ $(LINK_LIBS)
 
 file_portable_tests: file_portable_tests.c ../portable/file_portable.c headless_shell.c ../Common/source/portable_handles.c

@@ -1,0 +1,16 @@
+This document lists the contents of the system.paths table in the Frontier system database. The addresses pointed to in this table are always in global scope. This is what makes verbs like `new()` work without having to invoke it with `lang.new()`.
+
+path01 = @system.verbs.globals
+path02 = @system.macintosh.globals
+path03 = @system.verbs.builtins
+path04 = @system.compiler.["kernel"].lang
+path05 = @system.macintosh
+path06 = @system.compiler.["kernel"]
+path07 = @system.verbs.constants
+path08 = @system.macintosh.constants
+path09 = @root.suites
+path10 = @system.verbs.apps
+path11 = @root.system
+path12 = @system.extensions
+path13 = @system.verbs.colors
+path14 = @system.compiler.files

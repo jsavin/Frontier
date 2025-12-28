@@ -1,0 +1,168 @@
+/*
+UserTalk integration tests for table operations
+Tests for: table.assign, table.move, table.copy, table.rename,
+table.emptytable, table.moveandrename
+*/
+
+local (results = "", testCount = 0, passCount = 0);
+
+// Test 1: table.assign - set a key/value pair
+testCount++;
+local (t);
+new(tableType, @t);
+table.assign(@t.key1, "value1");
+if t.key1 == "value1" and sizeOf(t) == 1 {
+    passCount++;
+} else {
+    results = results + "FAIL: table.assign didn't set value correctly\n";
+};
+
+// Test 2: table.assign with multiple values
+testCount++;
+table.assign(@t.key2, 42);
+table.assign(@t.key3, true);
+if sizeOf(t) == 3 and t.key2 == 42 and t.key3 == true {
+    passCount++;
+} else {
+    results = results + "FAIL: table.assign multiple values failed\n";
+};
+
+// Test 3: table.copy - copy value (source unchanged)
+testCount++;
+local (src, dst);
+new(tableType, @src);
+new(tableType, @dst);
+src.original = "keep this";
+local (srcSizeBefore) = sizeOf(src);
+table.copy(@src.original, @dst);
+if sizeOf(src) == srcSizeBefore and dst.original == "keep this" and sizeOf(dst) == 1 {
+    passCount++;
+} else {
+    results = results + "FAIL: table.copy didn't work correctly\n";
+};
+
+// Test 4: table.move - move value (source loses it)
+testCount++;
+local (src2, dst2);
+new(tableType, @src2);
+new(tableType, @dst2);
+src2.item = "data";
+table.move(@src2.item, @dst2);
+if sizeOf(src2) == 0 and dst2.item == "data" and sizeOf(dst2) == 1 {
+    passCount++;
+} else {
+    results = results + "FAIL: table.move didn't work correctly\n";
+};
+
+// Test 5: table.rename - rename a key in place
+testCount++;
+local (t2);
+new(tableType, @t2);
+t2.oldname = "value";
+table.rename(@t2.oldname, "newname");
+if not defined(t2.oldname) and t2.newname == "value" and sizeOf(t2) == 1 {
+    passCount++;
+} else {
+    results = results + "FAIL: table.rename didn't work correctly\n";
+};
+
+// Test 6: table.emptytable - clear all entries
+testCount++;
+local (t3);
+new(tableType, @t3);
+t3.a = 1;
+t3.b = 2;
+t3.c = 3;
+local (count) = table.emptytable(@t3);
+if sizeOf(t3) == 0 and count == 3 {
+    passCount++;
+} else {
+    results = results + "FAIL: table.emptytable didn't work correctly (count=" + count + ", size=" + sizeOf(t3) + ")\n";
+};
+
+// Test 7: table.moveandrename - move and rename in one operation
+testCount++;
+local (src3, dst3);
+new(tableType, @src3);
+new(tableType, @dst3);
+src3.old = "value";
+table.moveandrename(@src3.old, @dst3.new);
+if not defined(src3.old) and dst3.new == "value" and sizeOf(src3) == 0 and sizeOf(dst3) == 1 {
+    passCount++;
+} else {
+    results = results + "FAIL: table.moveandrename didn't work correctly\n";
+};
+
+// Test 8: Complex scenario - nested operations
+testCount++;
+local (t1, t2, t3);
+new(tableType, @t1);
+new(tableType, @t2);
+new(tableType, @t3);
+t1.data = "original";
+table.copy(@t1.data, @t2);
+table.move(@t2.data, @t3);
+if sizeOf(t1) == 1 and sizeOf(t2) == 0 and t3.data == "original" {
+    passCount++;
+} else {
+    results = results + "FAIL: Complex nested operations failed\n";
+};
+
+// Test 9: table.copy with multiple values
+testCount++;
+local (src4, dst4);
+new(tableType, @src4);
+new(tableType, @dst4);
+src4.key1 = "val1";
+src4.key2 = "val2";
+table.copy(@src4.key1, @dst4);
+table.copy(@src4.key2, @dst4);
+if sizeOf(src4) == 2 and sizeOf(dst4) == 2 and dst4.key1 == "val1" and dst4.key2 == "val2" {
+    passCount++;
+} else {
+    results = results + "FAIL: table.copy multiple values failed\n";
+};
+
+// Test 10: table.rename on non-existent key (should be safe)
+testCount++;
+local (t4);
+new(tableType, @t4);
+t4.exists = "value";
+table.rename(@t4.nonexistent, "newname");
+if sizeOf(t4) == 1 and t4.exists == "value" {
+    passCount++;
+} else {
+    results = results + "FAIL: table.rename on non-existent key failed\n";
+};
+
+// Test 11: table.assign overwrite existing value
+testCount++;
+local (t5);
+new(tableType, @t5);
+table.assign(@t5.key, "first");
+table.assign(@t5.key, "second");
+if sizeOf(t5) == 1 and t5.key == "second" {
+    passCount++;
+} else {
+    results = results + "FAIL: table.assign overwrite failed\n";
+};
+
+// Test 12: table.move with multiple values in destination
+testCount++;
+local (src5, dst5);
+new(tableType, @src5);
+new(tableType, @dst5);
+dst5.existing = "value";
+src5.incoming = "data";
+table.move(@src5.incoming, @dst5);
+if sizeOf(dst5) == 2 and dst5.existing == "value" and dst5.incoming == "data" {
+    passCount++;
+} else {
+    results = results + "FAIL: table.move with existing destination failed\n";
+};
+
+if results == "" {
+    return "PASS: All table operation tests passed (" + passCount + "/" + testCount + " tests)"
+} else {
+    return "FAIL: " + passCount + "/" + testCount + " tests passed. Failures:\n" + results
+};
