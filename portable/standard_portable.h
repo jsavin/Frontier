@@ -119,6 +119,7 @@ typedef const struct Rect* rectparam; /* minimal for portable prototypes */
 #endif
 
 /* Direction enums and related used widely in headers */
+#ifndef ctdirections
 typedef enum tydirection {
     nodirection = 0,
     up = 1,
@@ -133,14 +134,20 @@ typedef enum tydirection {
     pageleft = 11,
     pageright = 12
 } tydirection;
+#define ctdirections 12 /*for arrays indexed on directions*/
+#endif
 
+#ifndef FRONTIER_PORTABLE_DEFINED_TYBITDIRECTION
 typedef enum tybitdirection {
     upbit = 0x01,
     downbit = 0x02,
     leftbit = 0x04,
     rightbit = 0x08
 } tybitdirection;
+#define FRONTIER_PORTABLE_DEFINED_TYBITDIRECTION 1
+#endif
 
+#ifndef FRONTIER_PORTABLE_DEFINED_TYLINESPACING
 typedef enum tylinespacing {
     singlespaced = 1,
     oneandalittlespaced = 2,
@@ -149,7 +156,10 @@ typedef enum tylinespacing {
     doublespaced = 5,
     triplespaced = 6
 } tylinespacing;
+#define FRONTIER_PORTABLE_DEFINED_TYLINESPACING 1
+#endif
 
+#ifndef FRONTIER_PORTABLE_DEFINED_TYJUSTIFICATION
 typedef enum tyjustification {
     leftjustified,
     centerjustified,
@@ -157,6 +167,8 @@ typedef enum tyjustification {
     fulljustified,
     unknownjustification
 } tyjustification;
+#define FRONTIER_PORTABLE_DEFINED_TYJUSTIFICATION 1
+#endif
 
 /* These types are now defined in portable_types.h */
 
