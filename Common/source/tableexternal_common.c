@@ -295,9 +295,15 @@ static boolean headless_convert_legacy_table_payload(const unsigned char *payloa
 boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvariable, hdlhashnode hnode) {
     /*
     2025-12-27: Uses dbpushdatabase/dbpopdatabase to temporarily switch to table's database.
-    ctx parameter currently unused but kept for API compatibility.
+
+    ctx parameter is currently unused but kept for API compatibility. This function was
+    refactored to use the database stack (dbpushdatabase/dbpopdatabase) instead of context
+    guards because the table's database handle ((**hv).hdatabase) is the canonical source
+    of truth for which database to read from. The ctx parameter may be used in a future
+    refactoring as part of the broader mode stack elimination work (see CLAUDE.md -
+    "Architectural Patterns to Avoid" section and MODE_STACK_REFACTOR_PLAN.md).
     */
-    (void)ctx;  /* unused */
+    (void)ctx;  /* unused - see comment above */
 
     register hdltablevariable hv = (hdltablevariable) hvariable;
     Handle hpacked;

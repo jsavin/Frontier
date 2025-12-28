@@ -25,6 +25,8 @@
 #include <stdbool.h>
 #include <time.h>
 
+#include "../Common/headers/logging.h"
+
 /* Get repository root by walking up from current working directory */
 static int get_repo_root(char *buf, size_t bufsize) {
 	char cwd[PATH_MAX];
@@ -46,7 +48,8 @@ static int get_repo_root(char *buf, size_t bufsize) {
 			if (strlen(dir_copy) >= bufsize) {
 				return 0;
 			}
-			strcpy(buf, dir_copy);
+			strncpy(buf, dir_copy, bufsize - 1);
+			buf[bufsize - 1] = '\0';
 			return 1;
 		}
 
@@ -70,11 +73,11 @@ static int get_repo_root(char *buf, size_t bufsize) {
 static void eval_cli(const char *script, char *output, size_t output_size) {
 	char root[PATH_MAX];
 	if (!get_repo_root(root, sizeof(root))) {
-		fprintf(stderr, "[table_operations_integration] FATAL: Could not find repository root (looking for databases/)\n");
-		fprintf(stderr, "[table_operations_integration] Current dir: ");
 		char cwd[PATH_MAX];
 		if (getcwd(cwd, sizeof(cwd))) {
-			fprintf(stderr, "%s\n", cwd);
+			log_error(LOG_COMP_TEST, "FATAL: Could not find repository root (looking for databases/). Current dir: %s", cwd);
+		} else {
+			log_error(LOG_COMP_TEST, "FATAL: Could not find repository root (looking for databases/)");
 		}
 		assert(0);
 	}
@@ -83,8 +86,8 @@ static void eval_cli(const char *script, char *output, size_t output_size) {
 	snprintf(db_path, sizeof(db_path), "%s/databases/Frontier-v6-v7.root", root);
 
 	if (access(db_path, R_OK) != 0) {
-		fprintf(stderr, "[table_operations_integration] ERROR: Database not found: %s\n", db_path);
-		fprintf(stderr, "[table_operations_integration] Ensure Frontier-v6-v7.root exists by running CLI once with Frontier-v6.root\n");
+		log_error(LOG_COMP_TEST, "ERROR: Database not found: %s", db_path);
+		log_error(LOG_COMP_TEST, "Ensure Frontier-v6-v7.root exists by running CLI once with Frontier-v6.root");
 		assert(0);
 	}
 
@@ -113,8 +116,7 @@ static void eval_cli(const char *script, char *output, size_t output_size) {
 
 	FILE *fp = popen(cmd, "r");
 	if (!fp) {
-		fprintf(stderr, "[table_operations_integration] ERROR: Could not execute command\n");
-		fprintf(stderr, "[table_operations_integration] Command: %s\n", cmd);
+		log_error(LOG_COMP_TEST, "ERROR: Could not execute command: %s", cmd);
 		assert(0);
 	}
 
@@ -127,9 +129,9 @@ static void eval_cli(const char *script, char *output, size_t output_size) {
 	int status = pclose(fp);
 
 	if (status != 0) {
-		fprintf(stderr, "[table_operations_integration] CLI exited with status %d\n", status);
-		fprintf(stderr, "[table_operations_integration] Script: %s\n", script);
-		fprintf(stderr, "[table_operations_integration] Output: %s\n", output);
+		log_error(LOG_COMP_TEST, "CLI exited with status %d", status);
+		log_error(LOG_COMP_TEST, "Script: %s", script);
+		log_error(LOG_COMP_TEST, "Output: %s", output);
 		assert(0);
 	}
 
@@ -203,9 +205,9 @@ static void eval_expect_string(const char *expr, const char *expected) {
 	eval_cli(expr, result, sizeof(result));
 
 	if (strcmp(result, expected) != 0) {
-		fprintf(stderr, "[table_operations_integration] MISMATCH for: %s\n", expr);
-		fprintf(stderr, "[table_operations_integration] Expected: %s\n", expected);
-		fprintf(stderr, "[table_operations_integration] Got: %s\n", result);
+		log_error(LOG_COMP_TEST, "MISMATCH for: %s", expr);
+		log_error(LOG_COMP_TEST, "Expected: %s", expected);
+		log_error(LOG_COMP_TEST, "Got: %s", result);
 		assert(0);
 	}
 }
@@ -217,9 +219,9 @@ static void eval_expect_number(const char *expr, int expected) {
 
 	int val = atoi(result);
 	if (val != expected) {
-		fprintf(stderr, "[table_operations_integration] NUMERIC MISMATCH for: %s\n", expr);
-		fprintf(stderr, "[table_operations_integration] Expected: %d\n", expected);
-		fprintf(stderr, "[table_operations_integration] Got: %d\n", val);
+		log_error(LOG_COMP_TEST, "NUMERIC MISMATCH for: %s", expr);
+		log_error(LOG_COMP_TEST, "Expected: %d", expected);
+		log_error(LOG_COMP_TEST, "Got: %d", val);
 		assert(0);
 	}
 }
