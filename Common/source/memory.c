@@ -277,12 +277,6 @@ boolean testheapspace (long size) {
 	return (false);
 	} /*testheapspace*/
 
-#ifndef FRONTIER_USE_PORTABLE_HANDLES
-/*
- * 2025-12-28 Codex: Guard handle manipulation functions when using portable handles.
- * When FRONTIER_USE_PORTABLE_HANDLES is defined, memory_portable.h provides inline
- * stubs for these functions. This avoids redefinition errors in test builds.
- */
 
 void lockhandle (Handle h) {
 
@@ -297,14 +291,14 @@ void unlockhandle (Handle h) {
 
 
 boolean validhandle (Handle h) {
-	
+
 	if (h == nil)
 		return (true);
-	
+
 
 	if (GetHandleSize (h) < 0) /*negative length never valid*/
 		return (false);
-	
+
 	return (MemError () == noErr);
 
 	} /*validhandle*/
@@ -1068,8 +1062,6 @@ void texthandletostring (Handle htext, bigstring bs) {
 	else
 		texttostring (*htext, gethandlesize (htext), bs);
 	} /*texthandletostring*/
-
-#endif /* !FRONTIER_USE_PORTABLE_HANDLES */
 
 
 #if (MEMTRACKER == 1)
@@ -1961,7 +1953,6 @@ boolean debugunmergehandles (char * filename, unsigned long linenumber, unsigned
 	} /*debugunmergehandles*/
 
 
-#ifndef FRONTIER_USE_PORTABLE_HANDLES
 boolean debugnewintarray (char * filename, unsigned long linenumber, unsigned long threadid, short ct, hdlintarray *harray) {
 
 	Handle h;
@@ -1973,7 +1964,6 @@ boolean debugnewintarray (char * filename, unsigned long linenumber, unsigned lo
 
 	return (true);
 	} /*newintarray*/
-#endif /* !FRONTIER_USE_PORTABLE_HANDLES */
 #else	
 boolean concathandles (Handle h1, Handle h2, Handle *hmerged) {
 	
@@ -2216,7 +2206,6 @@ boolean unmergehandles (Handle hmerged, Handle *hfirst, Handle *hsecond) {
 	} /*unmergehandles*/
 
 
-#ifndef FRONTIER_USE_PORTABLE_HANDLES
 boolean newintarray (short ct, hdlintarray *harray) {
 
 	Handle h;
@@ -2228,11 +2217,9 @@ boolean newintarray (short ct, hdlintarray *harray) {
 
 	return (true);
 	} /*newintarray*/
-#endif /* !FRONTIER_USE_PORTABLE_HANDLES */
 #endif
 
 
-#ifndef FRONTIER_USE_PORTABLE_HANDLES
 boolean setintarray (hdlintarray harray, short ix, short val) {
 
 	/*
@@ -2284,7 +2271,6 @@ void fillintarray (hdlintarray harray, short val) {
 	*/
 
 	} /*fillintarray*/
-#endif
 
 
 void openhandlestream (Handle h, handlestream *s) {
