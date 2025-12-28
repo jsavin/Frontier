@@ -55,6 +55,10 @@
    responsiveness and efficiency on modern systems with large memory heaps. */
 #define SHELL_COMMAND_BUFFER_SIZE (512 * 1024)
 
+/* Maximum length for shell command with redirection. 64KB is a practical limit
+   for command strings on modern systems. */
+#define MAX_SHELL_COMMAND_LENGTH 65536
+
 /*System.framework functions: popen, pclose, fread, fcntl, feof, and fileno.*/
 
 typedef FILE* (*popenptr) (const char* command, const char *type);
@@ -259,7 +263,7 @@ boolean unixshellcall_separatestderr (Handle hcommand, Handle hstdout, Handle hs
 	/* Calculate space needed for command + redirection + null terminator */
 	cmd_len = gethandlesize (hcommand) + strlen (" 2>") + strlen (tmpfile_template) + 1;
 
-	if (cmd_len > 65536) {
+	if (cmd_len > MAX_SHELL_COMMAND_LENGTH) {
 		log_error(LOG_COMP_LANG, "Command too long for shell execution (%ld bytes)", cmd_len);
 		unlockhandle (hcommand);
 		return (false);
@@ -327,8 +331,10 @@ boolean unixshellcall_separatestderr (Handle hcommand, Handle hstdout, Handle hs
 		fclose (stderr_file); /* Closes the underlying fd */
 	}
 	else {
-		/* fdopen failed, clean up */
+		/* fdopen failed - cannot read stderr from temp file */
+		log_error(LOG_COMP_LANG, "Failed to open stderr temp file with fdopen");
 		close (tmpfd);
+		fl = false;
 	}
 
 	/* Clean up temp file */

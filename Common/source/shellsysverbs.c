@@ -701,11 +701,15 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 					return (false);
 				}
 
-				if (!langsetvalue (htable, varname, hstdout, stringvaluetype))
+				if (!langsetvalue (htable, varname, hstdout, stringvaluetype)) {
+					disposehandle (hstderr);
 					return (false);
+				}
 
-				if (!langsetvalue (htable2, varname2, hstderr, stringvaluetype))
+				if (!langsetvalue (htable2, varname2, hstderr, stringvaluetype)) {
+					/* Note: hstdout was already adopted by htable */
 					return (false);
+				}
 
 				return (setbooleanvalue (true, v));
 			}
