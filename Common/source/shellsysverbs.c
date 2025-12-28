@@ -799,7 +799,7 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 			disposehandle (hcommand);
 
 #ifdef WIN32
-			/* TODO (Issue #190): Implement Windows version using CreateProcess with pipes.
+			/* TODO (Issue #194): Implement Windows version using CreateProcess with pipes.
 			   Follow the same 1/2/3/4-parameter pattern as Unix version (see unixshellcommandfunc).
 			   1 param: return stdout string (backward compatible)
 			   2 params: capture stdout to address, return boolean
