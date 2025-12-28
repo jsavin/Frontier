@@ -110,46 +110,53 @@ standard.h -- standard types and constants
 
 #endif
 
+#ifndef FRONTIER_PORTABLE_DEFINED_TYBITDIRECTION
 typedef enum tybitdirection {
-	
-	upbit = 0x01, 
-	
-	downbit = 0x02, 
-	
-	leftbit = 0x04, 
-	
+
+	upbit = 0x01,
+
+	downbit = 0x02,
+
+	leftbit = 0x04,
+
 	rightbit = 0x08
 	} tybitdirection;
+#define FRONTIER_PORTABLE_DEFINED_TYBITDIRECTION 1
+#endif
 
-
+#ifndef FRONTIER_PORTABLE_DEFINED_TYLINESPACING
 typedef enum tylinespacing {
-	
+
 	singlespaced = 1,
-	
+
 	oneandalittlespaced = 2,
-	
+
 	oneandaquarterspaced = 3,
-	
+
 	oneandahalfspaced = 4,
-	
+
 	doublespaced = 5,
-	
+
 	triplespaced = 6
 	} tylinespacing;
-	
+#define FRONTIER_PORTABLE_DEFINED_TYLINESPACING 1
+#endif
 
+#ifndef FRONTIER_PORTABLE_DEFINED_TYJUSTIFICATION
 typedef enum tyjustification {
-	
-	leftjustified, 
-	
-	centerjustified, 
-	
+
+	leftjustified,
+
+	centerjustified,
+
 	rightjustified,
-	
+
 	fulljustified,
-	
+
 	unknownjustification
 	} tyjustification;
+#define FRONTIER_PORTABLE_DEFINED_TYJUSTIFICATION 1
+#endif
 	
 
 #define true 1
