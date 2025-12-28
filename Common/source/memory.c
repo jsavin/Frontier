@@ -277,8 +277,6 @@ boolean testheapspace (long size) {
 	return (false);
 	} /*testheapspace*/
 
-#if !defined(FRONTIER_USE_PORTABLE_HANDLES)
-/* Classic handle implementations - excluded when using portable handles layer */
 
 void lockhandle (Handle h) {
 
@@ -1065,7 +1063,6 @@ void texthandletostring (Handle htext, bigstring bs) {
 		texttostring (*htext, gethandlesize (htext), bs);
 	} /*texthandletostring*/
 
-#endif /* !FRONTIER_USE_PORTABLE_HANDLES */
 
 #if (MEMTRACKER == 1)
 boolean debugnewtexthandle (char * filename, unsigned long linenumber, unsigned long threadid, const bigstring bs, Handle *htext) {
