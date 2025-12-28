@@ -704,6 +704,7 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 				}
 
 				if (!langsetvalue (htable, varname, hstdout, stringvaluetype)) {
+					disposehandle (hstdout);
 					disposehandle (hstderr);
 					return (false);
 				}
