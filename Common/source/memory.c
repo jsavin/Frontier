@@ -277,6 +277,12 @@ boolean testheapspace (long size) {
 	return (false);
 	} /*testheapspace*/
 
+#ifndef FRONTIER_USE_PORTABLE_HANDLES
+/*
+ * 2025-12-28 Codex: Guard handle manipulation functions when using portable handles.
+ * When FRONTIER_USE_PORTABLE_HANDLES is defined, memory_portable.h provides inline
+ * stubs for these functions. This avoids redefinition errors in test builds.
+ */
 
 void lockhandle (Handle h) {
 
@@ -1062,6 +1068,8 @@ void texthandletostring (Handle htext, bigstring bs) {
 	else
 		texttostring (*htext, gethandlesize (htext), bs);
 	} /*texthandletostring*/
+
+#endif /* !FRONTIER_USE_PORTABLE_HANDLES */
 
 
 #if (MEMTRACKER == 1)

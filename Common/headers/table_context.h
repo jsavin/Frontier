@@ -16,12 +16,16 @@
 #define TABLE_CONTEXT_INCLUDE
 
 #include <stdint.h>
-#include "timedate.h"  /* for frontier_time_t */
 
-/* Define boolean type (unsigned char for bitfield compatibility) */
+/*
+ * 2025-12-28 Codex: Forward-declare boolean if not yet defined.
+ * Avoid including standard.h to prevent circular dependencies.
+ */
 #ifndef boolean
 	typedef unsigned char boolean;
 #endif
+
+#include "timedate.h"  /* for frontier_time_t */
 
 #ifdef __cplusplus
 extern "C" {
