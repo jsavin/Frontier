@@ -37,8 +37,9 @@
 #endif
 
 #if defined(FRONTIER_PORTABLE) || defined(FRONTIER_HEADLESS)
-/* Ensure portable types are available for function prototypes below */
-#include "../../portable/standard_portable.h"
+/* Ensure portable types are available for function prototypes below.
+   Makefile includes ../portable in -I flags, so this resolves to portable/standard_portable.h */
+#include "standard_portable.h"
 /* Portable core build: provide minimal typedefs and skip platform UI APIs */
 /* Forward use the full tyfilespec from shelltypes.h which we include before */
 #ifndef FSRefParamPtr
