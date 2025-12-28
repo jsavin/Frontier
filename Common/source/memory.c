@@ -279,13 +279,13 @@ boolean testheapspace (long size) {
 
 
 void lockhandle (Handle h) {
-	
+
 	HLock (h);
 	} /*lockhandle*/
 
 
 void unlockhandle (Handle h) {
-	
+
 	HUnlock (h);
 	} /*unlockhandle*/
 
@@ -1052,7 +1052,7 @@ void texttostring (ptrvoid ptext, long ctchars, bigstring bs) {
 
 
 void texthandletostring (Handle htext, bigstring bs) {
-	
+
 	/*
 	5.1.2 dmb: handle nil htext
 	*/
