@@ -28,6 +28,19 @@
 #ifndef timedateinclude
 #define timedateinclude
 
+/*
+ * 2025-12-28 Codex: Forward-declare bigstring if not yet defined.
+ * Avoid including standard.h to prevent circular dependencies.
+ * bigstring is defined as Str255 in standard.h or standard_portable.h.
+ */
+#ifndef bigstring
+typedef unsigned char bigstring[256];
+#endif
+
+#ifndef boolean
+typedef unsigned char boolean;
+#endif
+
 #pragma pack(2)
 typedef struct tyinternationalinfo {
 	char * longDaysOfWeek[10];

@@ -1959,19 +1959,21 @@ boolean debugunmergehandles (char * filename, unsigned long linenumber, unsigned
 	
 	return (false);
 	} /*debugunmergehandles*/
-	
-	
+
+
+#ifndef FRONTIER_USE_PORTABLE_HANDLES
 boolean debugnewintarray (char * filename, unsigned long linenumber, unsigned long threadid, short ct, hdlintarray *harray) {
-	
+
 	Handle h;
-	
+
 	if (!debugnewclearhandle (filename, linenumber, threadid, sizeof (short) * ct, &h))
 		return (false);
-		
+
 	*harray = (hdlintarray) h;
-	
+
 	return (true);
 	} /*newintarray*/
+#endif /* !FRONTIER_USE_PORTABLE_HANDLES */
 #else	
 boolean concathandles (Handle h1, Handle h2, Handle *hmerged) {
 	
@@ -2212,59 +2214,61 @@ boolean unmergehandles (Handle hmerged, Handle *hfirst, Handle *hsecond) {
 	
 	return (false);
 	} /*unmergehandles*/
-	
-	
+
+
+#ifndef FRONTIER_USE_PORTABLE_HANDLES
 boolean newintarray (short ct, hdlintarray *harray) {
-	
+
 	Handle h;
-	
+
 	if (!newclearhandle (sizeof (short) * ct, &h))
 		return (false);
-		
+
 	*harray = (hdlintarray) h;
-	
+
 	return (true);
 	} /*newintarray*/
+#endif /* !FRONTIER_USE_PORTABLE_HANDLES */
 #endif
 
-	
 
+#ifndef FRONTIER_USE_PORTABLE_HANDLES
 boolean setintarray (hdlintarray harray, short ix, short val) {
-	
+
 	/*
 	assign into a cell in a variable-size array of integers, 0-based index.
-	
+
 	return false if the array needed to be extended but there isn't enough
 	memory to do it.
 	*/
-	
+
 	register hdlintarray h = harray;
 
 	if (!minhandlesize ((Handle) h, (ix + 1) * sizeof (short)))
 		return (false);
-	
+
 	(*harray) [ix] = val;
-	
+
 	return (true);
 	} /*setintarray*/
-	
-	
+
+
 boolean getintarray (hdlintarray harray, short ix, short *val) {
-	
+
 	*val = (*harray) [ix];
-	
+
 	return (true);
 	} /*getintarray*/
-	
-	
+
+
 void fillintarray (hdlintarray harray, short val) {
-	
+
 	register hdlintarray h = harray;
 	register short ct;
 	/*
 	register short i;
 	*/
-	
+
 	ct = (short) gethandlesize ((Handle) h) / sizeof (short);
 
 	while (--ct	>= 0)
@@ -2272,7 +2276,7 @@ void fillintarray (hdlintarray harray, short val) {
 
 	/*
 	lockhandle ((Handle) h);
-	
+
 	for (i = 0; i < ct; i++)
 		(*h) [i] = x;
 
@@ -2280,6 +2284,7 @@ void fillintarray (hdlintarray harray, short val) {
 	*/
 
 	} /*fillintarray*/
+#endif
 
 
 void openhandlestream (Handle h, handlestream *s) {
