@@ -176,4 +176,27 @@ void log_write(log_level_t level, log_component_t component,
 void log_hex_dump(log_component_t component, log_level_t level,
                   const unsigned char *data, size_t length, const char *label);
 
+// ============================================================================
+// Pascal String Helpers
+// ============================================================================
+
+/**
+ * Helper macro for logging Pascal strings (bigstring).
+ *
+ * Pascal strings (bigstring type) in Frontier store the length in the first byte
+ * followed by the string data. The stringbaseaddress() function converts a Pascal
+ * string to a C string pointer suitable for %s format specifiers.
+ *
+ * This macro improves readability when logging Pascal strings.
+ *
+ * Example (before):
+ *   log_debug(LOG_COMP_HASH, "Table name: %s", stringbaseaddress(bs));
+ *
+ * Example (after):
+ *   log_debug(LOG_COMP_HASH, "Table name: %s", PSTR(bs));
+ *
+ * Note: The macro requires strings.h to be included (for stringbaseaddress()).
+ */
+#define PSTR(bs) stringbaseaddress(bs)
+
 #endif /* logging_h */
