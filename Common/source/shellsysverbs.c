@@ -755,6 +755,7 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 			   If langsetvalue() FAILS, the handle is NOT adopted and must be disposed manually.
 			   This error handling pattern correctly disposes handles only when adoption failed. */
 				if (!langsetvalue (htable, varname, hstdout, stringvaluetype)) {
+					disposehandle (hstdout);
 					disposehandle (hstderr);
 					return (false);
 				}
