@@ -35,15 +35,11 @@
 #endif
 
 #ifndef __APPLEEVENTS__
-#if defined(FRONTIER_PORTABLE)
-    typedef void* AppleEvent;
-    typedef void* AEEventID;
-    typedef void* AEDesc;
-#elif defined(FRONTIER_HEADLESS)
-    /* Types declared in headless_stubs.h */
-#else
+#if !defined(FRONTIER_PORTABLE) && !defined(FRONTIER_HEADLESS)
+    /* Only include classic AppleEvents for non-portable builds */
     #include <AppleEvents.h>
 #endif
+/* For portable/headless: Types are defined in osincludes_portable.h */
 #endif
 
 /*types*/

@@ -274,8 +274,8 @@ static inline void SetPort(GrafPtr p){ (void)p; }
 #endif
 
 /* Portable stubs for file/path helpers used by langvalue */
-#if defined(FRONTIER_PORTABLE) && FRONTIER_ALLOW_PORTABLE_STUBS
-/* Portable file helper stubs */
+#if defined(FRONTIER_PORTABLE) && FRONTIER_ALLOW_PORTABLE_STUBS && !defined(FRONTIER_HEADLESS)
+/* Portable file helper stubs - excluded from headless mode which uses file_portable.c implementations */
 static inline boolean pathtofilespec(bigstring bs, struct tyfilespec* fs){ (void)bs; (void)fs; return false; }
 static inline boolean filenotfounderror(void){ return false; }
 static inline boolean filespectopath(const struct tyfilespec* fs, bigstring bs){ (void)fs; setemptystring(bs); return false; }
