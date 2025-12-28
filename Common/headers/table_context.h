@@ -15,8 +15,8 @@
 #ifndef TABLE_CONTEXT_INCLUDE
 #define TABLE_CONTEXT_INCLUDE
 
-#include <time.h>
 #include <stdint.h>
+#include "timedate.h"  /* for frontier_time_t */
 
 /* Define boolean type (unsigned char for bitfield compatibility) */
 #ifndef boolean
@@ -80,10 +80,11 @@ typedef struct table_context {
 	/*
 	 * MUTATION METADATA
 	 * =================
-	 * last_mutation_time: Unix timestamp of last user operation that changed
-	 * the table. Used for change detection and debugging.
+	 * last_mutation_time: Frontier timestamp (seconds since 1904-01-01) of last
+	 * user operation that changed the table. Used for change detection and debugging.
+	 * Uses frontier_time_t (int64_t) for portability instead of platform-dependent time_t.
 	 */
-	time_t last_mutation_time;
+	frontier_time_t last_mutation_time;
 
 	/*
 	 * last_mutation_type: Enum indicating the type of last mutation.
