@@ -4,6 +4,7 @@
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>  /* for size_t */
+#include "strings.h"  /* for stringbaseaddress() used by PSTR() macro */
 
 /*
  * Logging Infrastructure
