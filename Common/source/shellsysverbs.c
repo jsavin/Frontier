@@ -715,82 +715,24 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 			}
 			}
 
-		case winshellcommandfunc: { /*Windows version of shell command verb; 2025-12-27: implemented with same pattern as unixshellcommand*/
+		case winshellcommandfunc: { /*Windows version of shell command verb; 2025-12-27: platform-specific stubs*/
 
-			Handle hcommand, hstdout, hstderr;
-			short paramcount;
+			Handle hcommand;
 
 			if (!getexempttextvalue (hparam1, 1, &hcommand))
 				return (false);
 
-			paramcount = langgetparamcount (hparam1);
+			flnextparamislast = true;
+			disposehandle (hcommand);
 
-			if (paramcount == 1) {
-				/* Original behavior: return stdout as string (backward compatible) */
-
-				flnextparamislast = true;
-
-				newemptyhandle (&hstdout);
-
-				/* TODO: Implement Windows shell call. For now, return empty string. */
-				/* On Windows, use CreateProcess with pipes to capture output. */
-
-				disposehandle (hcommand);
-				return (setheapvalue (hstdout, stringvaluetype, v));
-			}
-			else if (paramcount == 2) {
-				/* Two params: capture stdout to address, return boolean */
-
-				hdlhashtable htable;
-				bigstring varname;
-
-				if (!getvarparam (hparam1, 2, &htable, varname))
-					return (false);
-
-				flnextparamislast = true;
-
-				newemptyhandle (&hstdout);
-
-				/* TODO: Implement Windows shell call to capture stdout. */
-				disposehandle (hcommand);
-
-				if (!langsetvalue (htable, varname, hstdout, stringvaluetype))
-					return (false);
-
-				return (setbooleanvalue (true, v));
-			}
-			else if (paramcount == 3) {
-				/* Three params: capture both stdout and stderr to addresses, return boolean */
-
-				hdlhashtable htable, htable2;
-				bigstring varname, varname2;
-
-				if (!getvarparam (hparam1, 2, &htable, varname))
-					return (false);
-
-				if (!getvarparam (hparam1, 3, &htable2, varname2))
-					return (false);
-
-				flnextparamislast = true;
-
-				newemptyhandle (&hstdout);
-				newemptyhandle (&hstderr);
-
-				/* TODO: Implement Windows shell call to capture both stdout and stderr. */
-				disposehandle (hcommand);
-
-				if (!langsetvalue (htable, varname, hstdout, stringvaluetype))
-					return (false);
-
-				if (!langsetvalue (htable2, varname2, hstderr, stringvaluetype))
-					return (false);
-
-				return (setbooleanvalue (true, v));
-			}
-			else {
-				langerror (toomanyparamserror);
-				return (false);
-			}
+#ifdef WIN32
+			/* Windows implementation stub - return "not implemented yet" error */
+			getstringlist (langerrorlist, unimplementedverberror, bserror);
+#else
+			/* Not available on non-Windows platforms */
+			copystring (BIGSTRING("\psys.winshellcommand is only available on Windows"), bserror);
+#endif
+			return (false);
 			}
 
 

@@ -51,6 +51,10 @@
 	#define	O_NONBLOCK	0x0004	/* no delay */
 #endif //__MWERKS__
 
+/* Buffer size for reading command output. 512KB provides a reasonable balance between
+   responsiveness and efficiency on modern systems with large memory heaps. */
+#define SHELL_COMMAND_BUFFER_SIZE (512 * 1024)
+
 /*System.framework functions: popen, pclose, fread, fcntl, feof, and fileno.*/
 
 typedef FILE* (*popenptr) (const char* command, const char *type);
@@ -232,11 +236,13 @@ boolean unixshellcall_separatestderr (Handle hcommand, Handle hstdout, Handle hs
 	Uses shell redirection to send stderr to a temporary file, then reads both streams.
 
 	Strategy: Run "cmd 2>tmpfile" to separate streams, then read stdout from pipe
-	and stderr from the temp file.
+	and stderr from the temp file. Uses dynamic allocation for large commands and
+	fdopen() to avoid TOCTOU race condition.
 	*/
 
 	FILE *f;
-	char cmd_with_redirect [4096];
+	char *cmd_with_redirect;
+	long cmd_len;
 	char tmpfile_template [] = "/tmp/frontier_stderr_XXXXXX";
 	int tmpfd;
 	FILE *stderr_file;
@@ -250,27 +256,47 @@ boolean unixshellcall_separatestderr (Handle hcommand, Handle hstdout, Handle hs
 
 	lockhandle (hcommand);
 
-	/* Create a temporary file for stderr */
-	tmpfd = mkstemp (tmpfile_template);
+	/* Calculate space needed for command + redirection + null terminator */
+	cmd_len = gethandlesize (hcommand) + strlen (" 2>") + strlen (tmpfile_template) + 1;
 
-	unlockhandle (hcommand);
-
-	if (tmpfd < 0) {
-		log_error(LOG_COMP_LANG, "Failed to create temporary file for stderr capture");
+	if (cmd_len > 65536) {
+		log_error(LOG_COMP_LANG, "Command too long for shell execution (%ld bytes)", cmd_len);
+		unlockhandle (hcommand);
 		return (false);
 	}
 
-	close (tmpfd); /* Close the fd; we'll open it as FILE* */
+	/* Create a temporary file for stderr */
+	tmpfd = mkstemp (tmpfile_template);
+
+	if (tmpfd < 0) {
+		log_error(LOG_COMP_LANG, "Failed to create temporary file for stderr capture");
+		unlockhandle (hcommand);
+		return (false);
+	}
+
+	/* Allocate memory for command with redirection */
+	cmd_with_redirect = (char *) malloc (cmd_len);
+	if (cmd_with_redirect == nil) {
+		log_error(LOG_COMP_LANG, "Failed to allocate memory for command string");
+		unlockhandle (hcommand);
+		close (tmpfd);
+		unlink (tmpfile_template);
+		return (false);
+	}
 
 	/* Build command with stderr redirection */
-	snprintf (cmd_with_redirect, sizeof (cmd_with_redirect), "%s 2>%s", *hcommand, tmpfile_template);
+	snprintf (cmd_with_redirect, cmd_len, "%s 2>%s", *hcommand, tmpfile_template);
+
+	unlockhandle (hcommand);
 
 	/* Open stdout pipe */
 	f = popenfunc (cmd_with_redirect, "r");
 
 	if (f == nil) {
-		log_error(LOG_COMP_LANG, "Failed to execute command: %s", *hcommand);
+		log_error(LOG_COMP_LANG, "Failed to execute command: %s", cmd_with_redirect);
+		close (tmpfd);
 		unlink (tmpfile_template);
+		free (cmd_with_redirect);
 		return (false);
 	}
 
@@ -280,14 +306,16 @@ boolean unixshellcall_separatestderr (Handle hcommand, Handle hstdout, Handle hs
 	if (!unixshellcall_read_stream (f, hstdout)) {
 		log_error(LOG_COMP_LANG, "Failed to read stdout");
 		pclosefunc (f);
+		close (tmpfd);
 		unlink (tmpfile_template);
+		free (cmd_with_redirect);
 		return (false);
 	}
 
 	pclosefunc (f);
 
-	/* Read stderr from temp file */
-	stderr_file = fopen (tmpfile_template, "r");
+	/* Read stderr from temp file - use fdopen to avoid TOCTOU race */
+	stderr_file = fdopen (tmpfd, "r");
 	if (stderr_file != nil) {
 		fcntlfunc (filenofunc (stderr_file), F_SETFL, fcntlfunc (filenofunc (stderr_file), F_GETFL, 0) | O_NONBLOCK);
 
@@ -296,11 +324,16 @@ boolean unixshellcall_separatestderr (Handle hcommand, Handle hstdout, Handle hs
 			fl = false;
 		}
 
-		fclose (stderr_file);
+		fclose (stderr_file); /* Closes the underlying fd */
+	}
+	else {
+		/* fdopen failed, clean up */
+		close (tmpfd);
 	}
 
 	/* Clean up temp file */
 	unlink (tmpfile_template);
+	free (cmd_with_redirect);
 
 	return (fl);
 	} /*unixshellcall_separatestderr*/
