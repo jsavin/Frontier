@@ -315,9 +315,20 @@ boolean unixshellcall_separatestderr (Handle hcommand, Handle hstdout, Handle hs
 		return (false);
 	}
 
-	/* Capture pclose() return value and extract exit status using WEXITSTATUS macro */
+	/* Capture pclose() return value and extract exit status using WEXITSTATUS macro.
+	   Per POSIX spec, must check WIFEXITED() before WEXITSTATUS(). */
 	int pclose_status = pclosefunc (f);
-	int cmd_exit_status = WEXITSTATUS(pclose_status);
+	int cmd_exit_status = 0;
+
+	if (WIFEXITED(pclose_status)) {
+		cmd_exit_status = WEXITSTATUS(pclose_status);
+	} else if (WIFSIGNALED(pclose_status)) {
+		/* Process was killed by signal - return 128 + signal number per convention */
+		cmd_exit_status = 128 + WTERMSIG(pclose_status);
+	} else {
+		/* Unexpected status - return -1 to indicate error */
+		cmd_exit_status = -1;
+	}
 
 	if (exit_status != NULL)
 		*exit_status = cmd_exit_status;
