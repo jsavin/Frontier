@@ -336,6 +336,7 @@ boolean unixshellcall_separatestderr (Handle hcommand, Handle hstdout, Handle hs
 	/* Read stderr from temp file - use fdopen to avoid TOCTOU race */
 	stderr_file = fdopen (tmpfd, "r");
 	if (stderr_file != nil) {
+		/* fdopen succeeded - fd is now owned by FILE* stream, do not close separately */
 		fcntlfunc (filenofunc (stderr_file), F_SETFL, fcntlfunc (filenofunc (stderr_file), F_GETFL, 0) | O_NONBLOCK);
 
 		if (!unixshellcall_read_stream (stderr_file, hstderr)) {
@@ -343,12 +344,12 @@ boolean unixshellcall_separatestderr (Handle hcommand, Handle hstdout, Handle hs
 			fl = false;
 		}
 
-		fclose (stderr_file); /* Closes the underlying fd */
+		fclose (stderr_file); /* Closes the underlying fd that was transferred from tmpfd */
 	}
 	else {
-		/* fdopen failed - cannot read stderr from temp file */
+		/* fdopen failed - fd still owned by us, must close it explicitly */
 		log_error(LOG_COMP_LANG, "Failed to open stderr temp file with fdopen");
-		close (tmpfd);
+		close (tmpfd); /* Close fd since fdopen didn't take ownership */
 		fl = false;
 	}
 
