@@ -94,11 +94,11 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
         case sysv_getenvironmentvariable:
             /* Verb: sys.getenvironmentvariable - implemented in shellsysverbs.c */
             /* This stub should never be reached */
-            break;
+            return false;
         case sysv_setenvironmentvariable:
             /* Verb: sys.setenvironmentvariable - implemented in shellsysverbs.c */
             /* This stub should never be reached */
-            break;
+            return false;
         case sysv_unixshellcommand: {
             /* Verb: sys.unixshellcommand - 2025-12-27: implemented with optional stderr capture */
             Handle hcommand, hstdout, hstderr;
@@ -198,7 +198,7 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
         case sysv_winshellcommand:
             /* sys.winshellcommand - implemented in shellsysverbs.c */
             /* This stub should never be reached */
-            break;
+            return false;
         default:
             return false;
     }

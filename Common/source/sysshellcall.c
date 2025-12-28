@@ -333,7 +333,10 @@ boolean unixshellcall_separatestderr (Handle hcommand, Handle hstdout, Handle hs
 	if (exit_status != NULL)
 		*exit_status = cmd_exit_status;
 
-	/* Read stderr from temp file - use fdopen to avoid TOCTOU race */
+	/* Read stderr from temp file - use fdopen to avoid TOCTOU race condition.
+	   Instead of close(tmpfd) then fopen(tmpfile_template), we use fdopen() to directly
+	   consume the file descriptor. This prevents a window where another process could
+	   create a file with the same name before we open it. */
 	stderr_file = fdopen (tmpfd, "r");
 	if (stderr_file != nil) {
 		/* fdopen succeeded - fd is now owned by FILE* stream, do not close separately */

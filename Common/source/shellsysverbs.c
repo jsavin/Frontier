@@ -707,7 +707,9 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 				}
 
 				if (!langsetvalue (htable2, varname2, hstderr, stringvaluetype)) {
-					/* Note: hstdout was already adopted by htable */
+					/* hstdout was already adopted by htable (first langsetvalue succeeded).
+					   hstderr was never adopted because this langsetvalue failed, so must dispose. */
+					disposehandle (hstderr);
 					return (false);
 				}
 
@@ -751,14 +753,17 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 				}
 
 				if (!langsetvalue (htable2, varname2, hstderr, stringvaluetype)) {
-					/* Note: hstdout was already adopted by htable */
+					/* hstdout was already adopted by htable (first langsetvalue succeeded).
+					   hstderr was never adopted because this langsetvalue failed, so must dispose. */
+					disposehandle (hstderr);
 					return (false);
 				}
 
 				vval.valuetype = longvaluetype;
 				vval.data.longvalue = exit_status;
 				if (!langsetsymboltableval (htable3, varname3, vval)) {
-					/* Note: hstdout and hstderr were already adopted by hash tables */
+					/* hstdout and hstderr were already adopted by hash tables on previous calls,
+					   so no cleanup needed - they are owned by the hash tables now. */
 					return (false);
 				}
 

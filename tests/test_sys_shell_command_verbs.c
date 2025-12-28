@@ -35,8 +35,10 @@ static int tests_failed = 0;
     tests_passed++; \
 } while(0)
 
-#define FAIL(msg) do { \
-    printf("FAIL: %s\n", msg); \
+#define FAIL(...) do { \
+    printf("FAIL: "); \
+    printf(__VA_ARGS__); \
+    printf("\n"); \
     tests_failed++; \
 } while(0)
 
@@ -126,9 +128,9 @@ static void test_unix_shell_command_2param_stdout_capture() {
 
     bigstring result;
     const char *expr =
-        "local (stdout = \"\"); "
-        "sys.unixshellcommand(\"echo captured\", @stdout); "
-        "return stdout";
+        "local (stdout_2p = \"\"); "
+        "sys.unixshellcommand(\"echo captured\", @stdout_2p); "
+        "return stdout_2p";
 
     if (!eval_usertalk(expr, result)) {
         FAIL("command execution failed");
@@ -150,8 +152,8 @@ static void test_unix_shell_command_2param_returns_boolean() {
 
     bigstring result;
     const char *expr =
-        "local (stdout = \"\"); "
-        "return sys.unixshellcommand(\"echo test\", @stdout)";
+        "local (stdout_2p_bool = \"\"); "
+        "return sys.unixshellcommand(\"echo test\", @stdout_2p_bool)";
 
     if (!eval_usertalk(expr, result)) {
         FAIL("command execution failed");
@@ -178,9 +180,9 @@ static void test_unix_shell_command_3param_stdout_and_stderr() {
     bigstring result;
     /* This command writes to stdout and stderr */
     const char *expr =
-        "local (stdout = \"\", stderr = \"\"); "
-        "sys.unixshellcommand(\"sh -c 'echo out; echo err >&2'\", @stdout, @stderr); "
-        "return stdout + '|' + stderr";
+        "local (stdout_3p = \"\", stderr_3p = \"\"); "
+        "sys.unixshellcommand(\"sh -c 'echo out; echo err >&2'\", @stdout_3p, @stderr_3p); "
+        "return stdout_3p + '|' + stderr_3p";
 
     if (!eval_usertalk(expr, result)) {
         FAIL("command execution failed");
@@ -204,9 +206,9 @@ static void test_unix_shell_command_3param_stderr_only() {
     bigstring result;
     /* This command writes only to stderr */
     const char *expr =
-        "local (stdout = \"\", stderr = \"\"); "
-        "sys.unixshellcommand(\"sh -c 'echo err >&2'\", @stdout, @stderr); "
-        "return 'stdout:' + string.length(stdout) + ' stderr:' + string.length(stderr)";
+        "local (stdout_3p_err = \"\", stderr_3p_err = \"\"); "
+        "sys.unixshellcommand(\"sh -c 'echo err >&2'\", @stdout_3p_err, @stderr_3p_err); "
+        "return 'stdout:' + string.length(stdout_3p_err) + ' stderr:' + string.length(stderr_3p_err)";
 
     if (!eval_usertalk(expr, result)) {
         FAIL("command execution failed");
@@ -229,8 +231,8 @@ static void test_unix_shell_command_3param_returns_boolean() {
 
     bigstring result;
     const char *expr =
-        "local (stdout = \"\", stderr = \"\"); "
-        "return sys.unixshellcommand(\"echo test\", @stdout, @stderr)";
+        "local (stdout_3p_bool = \"\", stderr_3p_bool = \"\"); "
+        "return sys.unixshellcommand(\"echo test\", @stdout_3p_bool, @stderr_3p_bool)";
 
     if (!eval_usertalk(expr, result)) {
         FAIL("command execution failed");
@@ -257,9 +259,9 @@ static void test_unix_shell_command_4param_with_exit_status() {
     bigstring result;
     /* Command succeeds with exit status 0 */
     const char *expr =
-        "local (stdout = \"\", stderr = \"\", exitstatus = -1); "
-        "sys.unixshellcommand(\"sh -c 'echo test'\", @stdout, @stderr, @exitstatus); "
-        "return 'exit:' + exitstatus";
+        "local (stdout_4p = \"\", stderr_4p = \"\", exitstatus_4p = -1); "
+        "sys.unixshellcommand(\"sh -c 'echo test'\", @stdout_4p, @stderr_4p, @exitstatus_4p); "
+        "return 'exit:' + exitstatus_4p";
 
     if (!eval_usertalk(expr, result)) {
         FAIL("command execution failed");
@@ -283,9 +285,9 @@ static void test_unix_shell_command_4param_nonzero_exit_status() {
     bigstring result;
     /* Command fails with non-zero exit status */
     const char *expr =
-        "local (stdout = \"\", stderr = \"\", exitstatus = 0); "
-        "sys.unixshellcommand(\"sh -c 'exit 42'\", @stdout, @stderr, @exitstatus); "
-        "return 'exit:' + exitstatus";
+        "local (stdout_4p_nz = \"\", stderr_4p_nz = \"\", exitstatus_4p_nz = 0); "
+        "sys.unixshellcommand(\"sh -c 'exit 42'\", @stdout_4p_nz, @stderr_4p_nz, @exitstatus_4p_nz); "
+        "return 'exit:' + exitstatus_4p_nz";
 
     if (!eval_usertalk(expr, result)) {
         FAIL("command execution failed");
@@ -308,8 +310,8 @@ static void test_unix_shell_command_4param_returns_boolean() {
 
     bigstring result;
     const char *expr =
-        "local (stdout = \"\", stderr = \"\", exitstatus = -1); "
-        "return sys.unixshellcommand(\"echo test\", @stdout, @stderr, @exitstatus)";
+        "local (stdout_4p_bool = \"\", stderr_4p_bool = \"\", exitstatus_4p_bool = -1); "
+        "return sys.unixshellcommand(\"echo test\", @stdout_4p_bool, @stderr_4p_bool, @exitstatus_4p_bool)";
 
     if (!eval_usertalk(expr, result)) {
         FAIL("command execution failed");
@@ -351,8 +353,8 @@ static void test_unix_shell_command_command_with_error_code() {
 
     bigstring result;
     const char *expr =
-        "local (stdout = \"\", stderr = \"\"); "
-        "sys.unixshellcommand(\"sh -c 'exit 1'\", @stdout, @stderr); "
+        "local (stdout_err = \"\", stderr_err = \"\"); "
+        "sys.unixshellcommand(\"sh -c 'exit 1'\", @stdout_err, @stderr_err); "
         "return \"completed\"";
 
     if (!eval_usertalk(expr, result)) {
@@ -405,9 +407,9 @@ static void test_win_shell_command_2param_stdout_capture() {
 #ifdef WIN32
     bigstring result;
     const char *expr =
-        "local (stdout = \"\"); "
-        "sys.winshellcommand(\"echo test\", @stdout); "
-        "return stdout";
+        "local (stdout_win2p = \"\"); "
+        "sys.winshellcommand(\"echo test\", @stdout_win2p); "
+        "return stdout_win2p";
 
     if (!eval_usertalk(expr, result)) {
         FAIL("command execution failed");
@@ -434,9 +436,9 @@ static void test_win_shell_command_3param_stdout_and_stderr() {
 #ifdef WIN32
     bigstring result;
     const char *expr =
-        "local (stdout = \"\", stderr = \"\"); "
-        "sys.winshellcommand(\"cmd /c 'echo out & echo err 1>&2'\", @stdout, @stderr); "
-        "return stdout + '|' + stderr";
+        "local (stdout_win3p = \"\", stderr_win3p = \"\"); "
+        "sys.winshellcommand(\"cmd /c 'echo out & echo err 1>&2'\", @stdout_win3p, @stderr_win3p); "
+        "return stdout_win3p + '|' + stderr_win3p";
 
     if (!eval_usertalk(expr, result)) {
         FAIL("command execution failed");
