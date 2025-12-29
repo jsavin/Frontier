@@ -128,12 +128,12 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
                 hdlhashtable htable;
                 bigstring varname;
                 boolean fl;
-                tyvaluerecord vval;
+
+                flnextparamislast = true;
 
                 if (!getvarparam (hparam1, 2, &htable, varname))
                     return (false);
 
-                flnextparamislast = true;
                 newemptyhandle (&hstdout);
 
                 fl = unixshellcall (hcommand, hstdout);
@@ -144,10 +144,11 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
                     return (false);
                 }
 
-                vval.valuetype = stringvaluetype;
-                vval.data.stringvalue = hstdout;
-                if (!langsetsymboltableval (htable, varname, vval))
+                /* Use langassigntextvalue - efficient, no tmpstack overhead */
+                if (!langassigntextvalue (htable, varname, hstdout)) {
+                    disposehandle (hstdout);
                     return (false);
+                }
 
                 return (setbooleanvalue (true, vreturned));
             }
@@ -156,15 +157,14 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
                 hdlhashtable htable, htable2;
                 bigstring varname, varname2;
                 boolean fl;
-                tyvaluerecord vval;
 
                 if (!getvarparam (hparam1, 2, &htable, varname))
                     return (false);
 
+                flnextparamislast = true;
+
                 if (!getvarparam (hparam1, 3, &htable2, varname2))
                     return (false);
-
-                flnextparamislast = true;
 
                 newemptyhandle (&hstdout);
                 newemptyhandle (&hstderr);
@@ -178,15 +178,17 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
                     return (false);
                 }
 
-                vval.valuetype = stringvaluetype;
-                vval.data.stringvalue = hstdout;
-                if (!langsetsymboltableval (htable, varname, vval))
+                /* Use langassigntextvalue - efficient, no tmpstack overhead */
+                if (!langassigntextvalue (htable, varname, hstdout)) {
+                    disposehandle (hstdout);
+                    disposehandle (hstderr);
                     return (false);
+                }
 
-                vval.valuetype = stringvaluetype;
-                vval.data.stringvalue = hstderr;
-                if (!langsetsymboltableval (htable2, varname2, vval))
+                if (!langassigntextvalue (htable2, varname2, hstderr)) {
+                    disposehandle (hstderr);
                     return (false);
+                }
 
                 return (setbooleanvalue (true, vreturned));
             }
