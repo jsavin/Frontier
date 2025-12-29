@@ -400,7 +400,7 @@ void opverbunload (hdlexternalvariable hvariable, dbaddress adr) {
 		if (!external_set_ondisk(hvariable, adr)) {
 			log_error(LOG_COMP_OP, "opverbunload: failed to transition to on-disk state (adr=0x%llx)",
 					(unsigned long long)adr);
-			return false;
+			/* NOTE: Cannot propagate error (void function), logged for debugging */
 			}
 		}
 	} /*opverbunload*/
