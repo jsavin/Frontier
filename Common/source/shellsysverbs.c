@@ -733,10 +733,12 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 				if (!getvarparam (hparam1, 3, &htable2, varname2))
 					return (false);
 
+
+				flnextparamislast = true;
+
 				if (!getvarparam (hparam1, 4, &htable3, varname3))
 					return (false);
 
-				flnextparamislast = true;
 
 				newemptyhandle (&hstdout);
 				newemptyhandle (&hstderr);
