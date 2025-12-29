@@ -1849,7 +1849,7 @@ static boolean stringfunctionvalue (short token, hdltreenode hparam1, tyvaluerec
 			}
 		
 		case timestringfunc: {
-			unsigned long dt = timenow ();
+			unsigned long dt = timenow64 ();
 			
 			/*
 			if (!langcheckparamcount (hp1, 0))
@@ -1870,7 +1870,7 @@ static boolean stringfunctionvalue (short token, hdltreenode hparam1, tyvaluerec
 			}
 		
 		case datestringfunc: {
-			unsigned long dt = timenow ();
+			unsigned long dt = timenow64 ();
 			
 			/*
 			if (!langcheckparamcount (hp1, 0))

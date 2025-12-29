@@ -98,7 +98,8 @@ FRONTIER_SOURCES = \
     ../Common/source/db_format.c \
     ../Common/source/db_reader_legacy.c \
     ../Common/source/db_reader_v7.c \
-    ../Common/source/db_writer_v7.c
+    ../Common/source/db_writer_v7.c \
+    ../Common/source/timedate.c
 
 # Migration tests use the same headless runtime slice as runtime_tests to avoid test-only forks.
 MIGRATION_SOURCES = \
@@ -131,6 +132,7 @@ LANG_RUNTIME_SOURCES = \
     ../Common/source/langtrace.c \
     ../Common/source/langtree.c \
     ../Common/source/langdate.c \
+    ../Common/source/timedate.c \
     ../Common/source/langsystypes.c \
     ../Common/source/kernel_verbs_headless.c \
     ../Common/source/memory.c \
@@ -248,8 +250,8 @@ op_context_tests: op_context_tests.c ../Common/source/op_context.c ../Common/sou
 table_context_tests: table_context/table_context_tests.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../portable table_context/table_context_tests.c -o $@ $(LINK_LIBS)
 
-time_portability_test: time_portability_test.c
-	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable time_portability_test.c -o $@
+time_portability_test: time_portability_test.c $(LANG_RUNTIME_SOURCES) headless_shell.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable time_portability_test.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@ $(LINK_LIBS)
 
 test_sys_shell_command_verbs: test_sys_shell_command_verbs.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \

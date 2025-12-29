@@ -419,7 +419,7 @@ static void wpdirty (boolean flchangedtext) {
 		
 		(**hwp).fldirty = true; /*the structure is dirty*/
 		
-		(**hwp).timelastsave = timenow (); /*modification time until saved*/
+		(**hwp).timelastsave = timenow64 (); /*modification time until saved*/
 		
 		if (wpownwindowinfo ()) /*the window is dirty*/
 			windowsetchanges (wpwindow, true);
@@ -2759,7 +2759,7 @@ hdlwprecord wpnewbuffer (Handle hpacked, const Rect *rclip, const Rect *rbounds,
 	
 	(**hwp).wpbuffer = (Handle) hbuf;
 	
-	(**hwp).timecreated = (**hwp).timelastsave = timenow ();
+	(**hwp).timecreated = (**hwp).timelastsave = timenow64 ();
 	
 	(**hwp).dirtyroutine = &wpnoop;
 	

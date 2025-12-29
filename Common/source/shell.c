@@ -760,7 +760,7 @@ static boolean shellmainbreakproc (void) {
 	/*
 	if (fltrialversion) {
 	
-		if (timenow () - timeshellstarted > (2 * 60 * 60)) {
+		if (timenow64 () - timeshellstarted > (2 * 60 * 60)) {
 		
 			shellerrormessage ("\pThe trial version of Frontier can not run for more than two hours at a time.");
 			

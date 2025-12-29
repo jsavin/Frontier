@@ -178,6 +178,37 @@ static void test_time_arithmetic(void) {
 }
 
 /*
+ * Test 7: Verify timenow64() returns reasonable current time
+ */
+static void test_timenow64(void) {
+    printf("\nTest 7: timenow64() function\n");
+
+    /* Get current time using timenow64() */
+    frontier_time_t now = timenow64();
+
+    /* Verify it's reasonable: after 2024-01-01 and before 2100-01-01 */
+    /* 2024-01-01 in Frontier epoch ≈ (2024-1904) * 365.25 * 86400
+       = 120 * 365.25 * 86400 = 3,786,912,000 seconds from 1904 */
+    const frontier_time_t time_2024 = 3786912000LL;
+    /* 2100-01-01 in Frontier epoch ≈ 196 * 365.25 * 86400 = 6,184,752,000 seconds from 1904 */
+    const frontier_time_t time_2100 = 6184752000LL;
+
+    TEST_ASSERT(now > time_2024, "timenow64() returns time after 2024");
+    TEST_ASSERT(now < time_2100, "timenow64() returns time before 2100");
+
+    /* Verify it matches manual conversion (within 1 second tolerance) */
+    time_t unix_now = time(NULL);
+    frontier_time_t manual_conversion = (frontier_time_t)unix_now + FRONTIER_EPOCH_TO_UNIX_OFFSET;
+
+    int64_t diff = (int64_t)(now - manual_conversion);
+    if (diff < 0) diff = -diff;
+    TEST_ASSERT(diff <= 1, "timenow64() matches manual conversion (within 1 second)");
+
+    /* Verify it's actually 64-bit (stores values > 32-bit max) */
+    TEST_ASSERT(now > 0x7FFFFFFFLL, "timenow64() returns 64-bit value (> 32-bit max)");
+}
+
+/*
  * Main test runner
  */
 int main(int argc, char *argv[]) {
@@ -192,6 +223,7 @@ int main(int argc, char *argv[]) {
     test_byte_order_independence();
     test_time_range();
     test_time_arithmetic();
+    test_timenow64();
 
     /* Print summary */
     printf("\n=== Test Summary ===\n");

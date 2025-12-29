@@ -591,7 +591,7 @@ boolean tablenewtable (hdltablevariable *hvariable, hdlhashtable *htable) {
 	
 	ht = *htable; /*copy into register*/
 	
-	(**ht).timecreated = (**ht).timelastsave = timenow (); // 5.0a23 dmb
+	(**ht).timecreated = (**ht).timelastsave = timenow64 (); // 5.0a23 dmb
 	
 	/*leave the hashtableformats record unallocated, handle == nil*/
 	

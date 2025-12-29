@@ -565,7 +565,7 @@ static boolean langdialogsleepexpired (void) {
 	if (x == 0)
 		return (false);
 	
-	return (timenow () >= x);
+	return (timenow64 () >= x);
 	} /*langdialogsleepexpired*/
 
 

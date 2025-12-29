@@ -913,9 +913,9 @@ boolean newhashtable (hdlhashtable *htable) {
 	
 	if (!newclearhandle (sizeof (tyhashtable), (Handle *) htable))
 		return (false);
-	
-	(***htable).timecreated = timenow ();
-	
+
+	(***htable).timecreated = timenow64 ();
+
 	return (true);
 	} /*newhashtable*/
 	
@@ -1279,10 +1279,10 @@ boolean disposehashnode (hdlhashtable ht, hdlhashnode hnode, boolean fldisposeva
 
 
 void dirtyhashtable (hdlhashtable ht) {
-	
+
 	(**ht).fldirty = true;
-	
-	(**ht).timelastsave = timenow ();
+
+	(**ht).timelastsave = timenow64 ();
 	} /*dirtyhashtable*/
 
 	
@@ -4018,7 +4018,7 @@ log_trace(LOG_COMP_HASH, "hashunpacktable header version=%d sort=%d flags=0x%08x
 
 		header.flags = 0;
 
-		(**htable).timecreated = (**htable).timelastsave = timenow (); //5.0.1
+		(**htable).timecreated = (**htable).timelastsave = timenow64 (); //5.0.1
 
 		ix = 0;
 		}

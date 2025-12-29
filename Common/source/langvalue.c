@@ -2345,7 +2345,7 @@ static boolean coercetodate (tyvaluerecord *v) {
 			if (flinhibitnilcoercion)
 				return (false);
 			
-			x = timenow ();
+			x = timenow64 ();
 			
 			break;
 			}

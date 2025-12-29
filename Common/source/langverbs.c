@@ -1656,7 +1656,7 @@ static boolean locksemaphoreverb (hdltreenode hparam1, tyvaluerecord *vreturned)
 		if (!opnewlist (&hlist, true))
 			return (false);
 		
-		setdatevalue (timenow(), &val);
+		setdatevalue (timenow64(), &val);
 		
 		if (!langpushlistval (hlist, semaphorewhen, &val))
 			goto error;
@@ -2007,7 +2007,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 				return (false);
 			
 			if (!vsecs.data.datevalue) {
-				if (!setdatevalue (timenow(), &vsecs))
+				if (!setdatevalue (timenow64(), &vsecs))
 					return (false);
 				}
 			

@@ -46,7 +46,7 @@ time_t frontier_to_unix(frontier_time_t frontier_time) {
 }
 ```
 
-**Note**: These conversions are already implemented in `Common/headers/timedate.h` as `timenow()` and related functions.
+**Note**: These conversions are implemented in `Common/headers/timedate.h`. Use `timenow64()` for new code (returns `frontier_time_t`). The legacy `timenow()` function returns `unsigned long` (32-bit on most systems) and should not be used for new timestamp storage.
 
 ## How Frontier Uses frontier_time_t
 
