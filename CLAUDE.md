@@ -605,6 +605,60 @@ Using agents frees you to focus on high-level decision-making and context.
 - For infrastructure fixes: Test with real examples that depend on that infrastructure
 - Don't stop at "I fixed the routing mechanism" - verify the mechanism actually routes to working code
 
+### Database Context Review Example (Successful Pattern)
+
+**Context**: External variable database context fix (Phase 1)
+
+**What the odb-database-expert agent did RIGHT**:
+1. ✅ **Read full planning context BEFORE code review**
+   - ADR-002 (external variable database context design)
+   - MODE_SINGLE_DECISION_POINT pattern
+   - external_table_variable_management.md
+   - All related architectural decision records
+
+2. ✅ **Used git bisect testing to verify crash pre-existence**
+   - System-architect claimed crash was "pre-existing"
+   - ODB expert verified by checking out commits before Phase 1
+   - Confirmed crash exists BEFORE the changes (not introduced)
+
+3. ✅ **Traced full call chain to verify global state reliability**
+   - Simple fix appeared to rely on unreliable global `databasedata`
+   - Agent traced: `dbopenfile() → hashunpacktable_context() → db_format.c sets databasedata from context`
+   - Verified global IS reliable at the point it's used
+
+4. ✅ **Found no issues - implementation was already correct**
+   - Provided ready-to-use commit message
+   - Identified Phase 2 work scope
+   - Separated EFP crash as distinct issue
+
+**Key Lesson**: Thorough context review + git bisect verification + call chain tracing = high confidence approval of critical path code.
+
+## Database Context Debugging Pattern
+
+When investigating database-related bugs:
+
+1. **Always verify if crashes are pre-existing** using git bisect-style testing
+   - Don't trust agent claims about "pre-existing" issues
+   - Checkout commits before/after suspected changes
+   - Rebuild and test at each point
+   - Example: Phase 1 EFP crash was verified pre-existing by testing commit before 577fa238
+
+2. **Trace global state reliability through full call chains**
+   - Don't assume globals are wrong without verification
+   - Globals may be set correctly at higher levels even if not explicitly passed
+   - Example: `databasedata` appears unreliable, but `db_format.c:2281-2282` sets it from context at unpack entry
+
+3. **Check context propagation patterns**
+   - Look for `db_context *ctx` parameters in unpacking functions
+   - Verify context→global assignments (e.g., `databasedata = context->database`)
+   - Context may be correctly propagated via globals at function boundaries
+
+4. **Key files for database context debugging**:
+   - `Common/source/db_format.c` - Context→global assignments during unpacking
+   - `Common/source/langhash.c` - Hash table unpacking flow
+   - `Common/source/tablepack.c` - Table unpacking implementation
+   - `Common/source/langexternal.c` - External variable creation and lifecycle
+
 ## Anti-Pattern: Auto-Generated Files Requiring Hand-Edits
 
 **CRITICAL ANTI-PATTERN**: Never create automated tools that generate stub files if those stubs will need to be manually edited in production.
