@@ -187,8 +187,8 @@ static void test_timenow64(void) {
     frontier_time_t now = timenow64();
 
     /* Verify it's reasonable: after 2024-01-01 and before 2100-01-01 */
-    /* 2024-01-01 in Frontier epoch = (2024-1904)*365.25*86400 + FRONTIER_EPOCH_TO_UNIX_OFFSET
-       ≈ 120 * 365.25 * 86400 = 3,786,912,000 seconds from 1904 */
+    /* 2024-01-01 in Frontier epoch ≈ (2024-1904) * 365.25 * 86400
+       = 120 * 365.25 * 86400 = 3,786,912,000 seconds from 1904 */
     const frontier_time_t time_2024 = 3786912000LL;
     /* 2100-01-01 in Frontier epoch ≈ 196 * 365.25 * 86400 = 6,184,752,000 seconds from 1904 */
     const frontier_time_t time_2100 = 6184752000LL;
