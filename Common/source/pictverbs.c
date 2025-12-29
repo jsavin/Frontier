@@ -429,11 +429,13 @@ boolean pictverbpack_internal (const db_context *ctx, hdlexternalvariable h, Han
 
 	if (!pictwindowopen ((hdlexternalvariable) hv, &hinfo)) { /*it's been saved, we can reclaim some memory*/
 
-		(**hv).flinmemory = false;
-
-		(**hv).variabledata = adr;
-
 		pictdisposerecord (hp); /*reclaim memory used by pict*/
+
+		/* Update oldaddress to match where we saved to, then transition */
+		(**hv).oldaddress = adr;
+
+		/* Single-point state transition: in-memory -> on-disk */
+		external_set_ondisk((hdlexternalvariable) hv, adr);
 		}
 	else {
 
@@ -1093,14 +1095,15 @@ static boolean pictclose (void) {
 		}
 	
 	else { /*the db version is identical to memory version, save memory*/
-		
-		assert ((**hv).oldaddress != nildbaddress);
-		
-		(**hv).flinmemory = false;
-		
-		(**hv).variabledata = (long) (**hv).oldaddress;
-		
+
+		dbaddress savedaddress = (**hv).oldaddress;
+
+		assert (savedaddress != nildbaddress);
+
 		pictdisposerecord (hp); /*reclaim memory*/
+
+		/* Single-point state transition: in-memory -> on-disk */
+		external_set_ondisk((hdlexternalvariable) hv, savedaddress);
 		}
 		
 	return (true);

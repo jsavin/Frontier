@@ -572,11 +572,13 @@ boolean wpverbmemoryunpack (Handle hpacked, long *ixload, hdlexternalvariable *h
 
 static void wpverbondisk (hdlwpvariable hv, dbaddress adr) {
 
-	(**hv).flinmemory = false;
-	
 	(**hv).flpacked = false;
-	
-	(**hv).variabledata = (long) adr;
+
+	/* Update oldaddress to match where we're saving to, then transition */
+	(**hv).oldaddress = adr;
+
+	/* Single-point state transition: in-memory -> on-disk */
+	external_set_ondisk((hdlexternalvariable) hv, adr);
 	} /*wpverbondisk*/
 
 

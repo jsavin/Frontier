@@ -143,14 +143,13 @@ boolean menuverbunload (hdlexternalvariable hvariable) {
 	register hdlmenuvariable hv = (hdlmenuvariable) hvariable;
 	
 	if ((**hv).flinmemory) { /*if it's on disk, don't need to do anything*/
-		
+
+		dbaddress savedaddress = (**hv).oldaddress;
+
 		medisposemenurecord ((hdlmenurecord) (**hv).variabledata, false);
-		
-		(**hv).variabledata = (**hv).oldaddress;
-		
-		(**hv).oldaddress = 0;
-		
-		(**hv).flinmemory = false;
+
+		/* Single-point state transition: in-memory -> on-disk */
+		external_set_ondisk(hvariable, savedaddress);
 		}
 	
 	return (true);
