@@ -514,7 +514,7 @@ boolean augment_database_tables_with_efp (hdlhashtable hroot) {
 
 			// Check if entry already exists in database table
 			hdlhashnode existing_node;
-			if (hashtablelookup (htable_target, bs_entryname, nil, &existing_node)) {
+			if (hashtablelookupnode (htable_target, bs_entryname, &existing_node)) {
 				log_trace(LOG_COMP_LANG, "Entry '%.*s' already exists in database table, skipping",
 				          (int)bs_entryname[0], bs_entryname+1);
 				continue; // Don't overwrite existing entries
@@ -528,7 +528,7 @@ boolean augment_database_tables_with_efp (hdlhashtable hroot) {
 			if (hashinsert (bs_entryname, entry_val)) {
 				// Mark as fldontsave (C pointers shouldn't persist)
 				hdlhashnode new_node;
-				if (hashtablelookup (htable_target, bs_entryname, nil, &new_node)) {
+				if (hashtablelookupnode (htable_target, bs_entryname, &new_node)) {
 					(**new_node).fldontsave = true;
 					entries_copied++;
 					log_trace(LOG_COMP_LANG, "Copied entry '%.*s' (marked fldontsave)",

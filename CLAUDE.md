@@ -283,6 +283,61 @@ See `planning/phase3/MIGRATION_VALIDATION_REPORT.md` for detailed test procedure
 
 ## Architectural Patterns to Avoid
 
+### Hash Table Lookup API - Null Pointer Gotcha ⚠️
+
+**Issue #199 Root Cause**: Frontier has two hash lookup functions with subtle differences that can cause segfaults:
+
+**Correct API Usage**:
+```c
+// When you need BOTH the value and the node:
+tyvaluerecord val;
+hdlhashnode node;
+if (hashtablelookup(htable, name, &val, &node)) {
+    // Safe: val and node are both populated
+}
+
+// When you ONLY need the node (NOT the value):
+hdlhashnode node;
+if (hashtablelookupnode(htable, name, &node)) {
+    // Safe: only node is populated
+}
+```
+
+**WRONG - Causes Segfault**:
+```c
+// ❌ NEVER pass nil for vreturned:
+hdlhashnode node;
+if (hashtablelookup(htable, name, nil, &node)) {  // CRASHES!
+    // hashtablelookup unconditionally dereferences vreturned
+    // *vreturned = value;  ← segfault when vreturned is nil
+}
+```
+
+**Why This Happens**:
+- `hashtablelookup()` at `langhash.c:2244` unconditionally writes: `*vreturned = (***hnode).val`
+- If `vreturned` is `nil`, this is an immediate segfault
+- The function doesn't check if `vreturned` is non-null before dereferencing
+
+**The Fix**:
+Use `hashtablelookupnode()` when you only need the node pointer, not the value.
+
+**Real Bug Example** (Fixed in Issue #199):
+```c
+// BEFORE (crashed):
+if (hashtablelookup(htable_target, bs_entryname, nil, &existing_node)) {
+    // ...
+}
+
+// AFTER (correct):
+if (hashtablelookupnode(htable_target, bs_entryname, &existing_node)) {
+    // ...
+}
+```
+
+**Test Coverage**: `tests/test_efp_augmentation.c` exercises this code path to prevent regression.
+
+**See**: Issue #199, `Common/source/tablestructure.c:517,531`
+
 ### Mode Stack Push/Pop Issues ⚠️
 
 The `db_format_mode_current()` push/pop pattern has proven problematic and has caused multiple bugs:
