@@ -72,6 +72,9 @@ tests/db_format_tests
 tests/runtime_tests
 tests/runtime_tests.dSYM/
 tests/test_logging
+tests/test_*
+tests/save_migration_tests
+tests/*.dSYM/
 
 # Database backups and test artifacts
 *.root.bak
@@ -83,6 +86,8 @@ tests/databases/*.root
 # Editor backup and temporary files (filesystem artifacts)
 *.bak
 *.bak[0-9]*
+*.tmp
+*.bkp
 .!*
 
 # Log files (test artifacts, build logs, etc.)
