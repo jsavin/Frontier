@@ -89,6 +89,8 @@ static boolean validate_v7_addresses(FILE *f) {
 
 
 int main(void) {
+    log_init();  /* Initialize logging system before any log calls */
+
     log_info(LOG_COMP_DB, "=== Migration Format and Data Integrity Validation ===");
 
     assert(initmemory());
