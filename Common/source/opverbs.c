@@ -397,7 +397,11 @@ void opverbunload (hdlexternalvariable hvariable, dbaddress adr) {
 		(**hv).oldaddress = adr;
 
 		/* Single-point state transition: in-memory -> on-disk */
-		external_set_ondisk(hvariable, adr);
+		if (!external_set_ondisk(hvariable, adr)) {
+			log_error(LOG_COMP_OP, "opverbunload: failed to transition to on-disk state (adr=0x%llx)",
+					(unsigned long long)adr);
+			return false;
+			}
 		}
 	} /*opverbunload*/
 

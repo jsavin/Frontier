@@ -149,9 +149,13 @@ boolean menuverbunload (hdlexternalvariable hvariable) {
 		medisposemenurecord ((hdlmenurecord) (**hv).variabledata, false);
 
 		/* Single-point state transition: in-memory -> on-disk */
-		external_set_ondisk(hvariable, savedaddress);
+		if (!external_set_ondisk(hvariable, savedaddress)) {
+			log_error(LOG_COMP_MENU, "menuverbunload: failed to transition to on-disk state (savedaddress=0x%llx)",
+					(unsigned long long)savedaddress);
+			return false;
+			}
 		}
-	
+
 	return (true);
 	} /*menuverbunload*/
 

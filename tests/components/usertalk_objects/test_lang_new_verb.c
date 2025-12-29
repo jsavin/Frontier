@@ -3,6 +3,14 @@
  *
  * Tests for the lang.new() verb which creates tables in headless mode.
  * This is foundational work for Issue #166 (UserTalk integration tests).
+ *
+ * TODO(issue #199): Add test for lang.new() with system root database loaded
+ * Currently blocked by pre-existing v7 database load crash (verified pre-existing
+ * via git bisect testing). Once database loading is fixed, add test:
+ *   - Load system root database (test_save_migration-v7.root)
+ *   - Create new table with lang.new(tableType, @t)
+ *   - Verify hdatabase field is nil (not contaminated by system root context)
+ *   - Verify table operations work correctly
  */
 
 #include "../../framework/test_framework.h"

@@ -421,7 +421,11 @@ boolean tableverbunload (hdlexternalvariable hvariable) {
 			tabledisposetable ((hdlhashtable) (**hv).variabledata, false);
 
 			/* Single-point state transition: in-memory -> on-disk */
-			external_set_ondisk(hvariable, savedaddress);
+			if (!external_set_ondisk(hvariable, savedaddress)) {
+				log_error(LOG_COMP_TABLE, "tableverbunload: failed to transition to on-disk state (savedaddress=0x%llx)",
+						(unsigned long long)savedaddress);
+				return false;
+				}
 			}
 		else {
 			log_debug(LOG_COMP_TABLE, "tableverbunload: skipping unload (newly created table, oldaddress=0)");

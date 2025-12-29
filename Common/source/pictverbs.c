@@ -435,7 +435,11 @@ boolean pictverbpack_internal (const db_context *ctx, hdlexternalvariable h, Han
 		(**hv).oldaddress = adr;
 
 		/* Single-point state transition: in-memory -> on-disk */
-		external_set_ondisk((hdlexternalvariable) hv, adr);
+		if (!external_set_ondisk((hdlexternalvariable) hv, adr)) {
+			log_error(LOG_COMP_PICT, "pictverbpack_internal: failed to transition to on-disk state (adr=0x%llx)",
+					(unsigned long long)adr);
+			return false;
+			}
 		}
 	else {
 
@@ -1103,9 +1107,13 @@ static boolean pictclose (void) {
 		pictdisposerecord (hp); /*reclaim memory*/
 
 		/* Single-point state transition: in-memory -> on-disk */
-		external_set_ondisk((hdlexternalvariable) hv, savedaddress);
+		if (!external_set_ondisk((hdlexternalvariable) hv, savedaddress)) {
+			log_error(LOG_COMP_PICT, "pictclose: failed to transition to on-disk state (savedaddress=0x%llx)",
+					(unsigned long long)savedaddress);
+			return false;
+			}
 		}
-		
+
 	return (true);
 	} /*pictclose*/
 	

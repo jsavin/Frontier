@@ -578,7 +578,11 @@ static void wpverbondisk (hdlwpvariable hv, dbaddress adr) {
 	(**hv).oldaddress = adr;
 
 	/* Single-point state transition: in-memory -> on-disk */
-	external_set_ondisk((hdlexternalvariable) hv, adr);
+	if (!external_set_ondisk((hdlexternalvariable) hv, adr)) {
+		log_error(LOG_COMP_WP, "wpverbondisk: failed to transition to on-disk state (adr=0x%llx)",
+				(unsigned long long)adr);
+		/* NOTE: Cannot propagate error (void function), logged for debugging */
+		}
 	} /*wpverbondisk*/
 
 
