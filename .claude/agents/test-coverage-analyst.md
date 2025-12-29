@@ -1,6 +1,11 @@
-# Test Coverage Analyst Agent
+---
+name: test-coverage-analyst
+description: Analyze test coverage gaps, identify untested code paths, and design test cases for refactored code
+model: haiku
+color: blue
+---
 
-**Model:** Haiku (claude-haiku-4-5-20251001)
+# Test Coverage Analyst Agent
 
 **Purpose:** Analyze test coverage gaps, identify untested code paths, design test cases for new/refactored code, and track coverage metrics across refactoring phases.
 

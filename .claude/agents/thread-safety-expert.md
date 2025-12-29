@@ -1,6 +1,11 @@
-# Thread-Safety Expert Agent
+---
+name: thread-safety-expert
+description: Evaluate code for thread-safety issues and review refactoring patterns for concurrent correctness
+model: sonnet
+color: red
+---
 
-**Model:** Sonnet (claude-3-5-sonnet-20241022)
+# Thread-Safety Expert Agent
 
 **Purpose:** Evaluate code for thread-safety issues, review refactoring patterns for concurrent correctness, and design lock-free/synchronized access patterns.
 

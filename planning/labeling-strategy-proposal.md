@@ -25,8 +25,8 @@ This proposal analyzes the current state of GitHub issue labels in the Frontier 
 - `workstream/carbon-migration` - Carbon dependency removal (1 issue)
 
 **Type Labels** (3 labels)
-- `enhancement` - New feature or request (10 issues)
-- `documentation` - Improvements or additions to documentation (1 issue)
+- `type/enhancement` - New feature or request (10 issues)
+- `type/documentation` - Improvements or additions to documentation (1 issue)
 - `type/refactor` - Code quality and structure improvement (8 issues)
 
 **Scope Labels** (2 labels)
