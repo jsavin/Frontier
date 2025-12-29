@@ -2,6 +2,7 @@
 #include "../framework/test_framework.h"
 #include "../../portable/paige_text_extractor.h"
 #include "../../Common/headers/memory.h"
+#include "../../Common/headers/logging.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -188,6 +189,7 @@ static test_case_t test_cases[] = {
 
 int main(void) {
     printf("=== Paige Text Extractor Tests ===\n");
+    log_init();
     test_init();
     bool all_passed = run_test_suite(test_cases, sizeof(test_cases) / sizeof(test_cases[0]));
     test_summary();
