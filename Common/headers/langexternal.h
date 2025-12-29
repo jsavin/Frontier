@@ -280,6 +280,13 @@ extern boolean langexternalgetvalsize (tyvaluerecord, long *);
 
 extern boolean langnewexternalvariable (boolean, long, hdlexternalvariable *);
 
+/* Single-point state transition functions (MODE_SINGLE_DECISION_POINT pattern) */
+extern boolean external_set_ondisk (hdlexternalvariable, dbaddress);
+
+/* Returns boolean for API consistency and future invariant checks (e.g., reference counting).
+ * Currently always succeeds - no invariants to validate for in-memory transitions. */
+extern boolean external_set_inmemory (hdlexternalvariable, Handle, dbaddress);
+
 extern short langexternalcomparetypes (tyexternalid, tyexternalid);
 
 extern boolean langexternalsurfacekey (hdlexternalvariable);

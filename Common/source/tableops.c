@@ -396,25 +396,42 @@ boolean tablecheckwindowrect (hdlhashtable htable) {
 
 
 boolean tableverbunload (hdlexternalvariable hvariable) {
-	
+
 	/*
 	the table was loaded into memory temporarily, the caller is asking us to
 	get rid of the in-memory version of the table.
+
+	2025-12-28: Added check for oldaddress != 0 to prevent unloading newly
+	created tables that have never been saved to disk. Newly created tables
+	have oldaddress=0 and should remain in memory until saved.
 	*/
-	
+
 	register hdltablevariable hv = (hdltablevariable) hvariable;
-	
-	if ((**hv).flinmemory) { /*if it's on disk, don't need to do anything*/
-		
-		tabledisposetable ((hdlhashtable) (**hv).variabledata, false);
-		
-		(**hv).variabledata = (**hv).oldaddress;
-		
-		(**hv).oldaddress = 0;
-		
-		(**hv).flinmemory = false;
+
+	log_debug(LOG_COMP_TABLE, "tableverbunload: hv=%p flinmemory=%d oldaddress=0x%llx variabledata=0x%llx",
+		(void*)hv, (int)(**hv).flinmemory, (unsigned long long)(**hv).oldaddress, (unsigned long long)(**hv).variabledata);
+
+	if ((**hv).flinmemory) { /*if it's in memory*/
+
+		/* Only unload if this table was previously loaded from disk */
+		if ((**hv).oldaddress != 0) {
+
+			dbaddress savedaddress = (**hv).oldaddress;
+
+			tabledisposetable ((hdlhashtable) (**hv).variabledata, false);
+
+			/* Single-point state transition: in-memory -> on-disk */
+			if (!external_set_ondisk(hvariable, savedaddress)) {
+				log_error(LOG_COMP_TABLE, "tableverbunload: failed to transition to on-disk state (savedaddress=0x%llx)",
+						(unsigned long long)savedaddress);
+				return false;
+				}
+			}
+		else {
+			log_debug(LOG_COMP_TABLE, "tableverbunload: skipping unload (newly created table, oldaddress=0)");
+			}
 		}
-	
+
 	return (true);
 	} /*tableverbunload*/
 

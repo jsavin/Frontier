@@ -388,14 +388,20 @@ void opverbunload (hdlexternalvariable hvariable, dbaddress adr) {
 	opdisposeoutline (ho, false); /*reclaim memory used by outline*/
 	
 	if (adr == nildbaddress) { // 5.0d3 dmb: a file object, we're done with the variable
-	
+
 		disposehandle ((Handle) hv);
 		}
 	else {
-		
-		(**hv).flinmemory = false;
-		
-		(**hv).variabledata = adr;
+
+		/* Update oldaddress to match where we're saving to, then transition */
+		(**hv).oldaddress = adr;
+
+		/* Single-point state transition: in-memory -> on-disk */
+		if (!external_set_ondisk(hvariable, adr)) {
+			log_error(LOG_COMP_OP, "opverbunload: failed to transition to on-disk state (adr=0x%llx)",
+					(unsigned long long)adr);
+			/* NOTE: Cannot propagate error (void function), logged for debugging */
+			}
 		}
 	} /*opverbunload*/
 

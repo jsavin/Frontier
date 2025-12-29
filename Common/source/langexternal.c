@@ -2690,19 +2690,113 @@ boolean langnewexternalvariable (boolean flinmemory, long variabledata, hdlexter
 
 	item.variabledata = variabledata;
 
-	item.hdatabase = databasedata; // 5.0a18 dmb
+	/*
+	 * FIX 2025-12-28: Only capture hdatabase for objects loaded from disk (flinmemory=0).
+	 * New in-memory objects (flinmemory=1) get hdatabase set later via langexternalsetdatabase()
+	 * when they're assigned to a hash table or explicitly moved to a database.
+	 *
+	 * Background: The 1987-era design captured databasedata globally for all new objects,
+	 * which caused corruption when creating new in-memory tables with a system root loaded.
+	 * This aligns with the intent documented in langexternalsetdatabase() (see line 280).
+	 */
+	item.hdatabase = flinmemory ? nil : databasedata;
 
-	log_trace(LOG_COMP_EXTERNAL, "langnewexternalvariable: flinmemory=%d variabledata=0x%llx captured_db=%p (current=%p)",
+	item.oldaddress = nildbaddress; // 2025-12-28: Explicit init to prevent garbage values
+
+	log_trace(LOG_COMP_EXTERNAL, "langnewexternalvariable: flinmemory=%d variabledata=0x%llx hdatabase=%p (current_db=%p)",
 	        (int)flinmemory,
 	        (unsigned long long)variabledata,
 	        (void *)item.hdatabase,
 	        (void *)databasedata);
+
+	/* ASSERT: New in-memory objects must have hdatabase=nil */
+	if (flinmemory && item.hdatabase != nil) {
+		log_error(LOG_COMP_EXTERNAL,
+			"INVARIANT VIOLATION: New in-memory object has non-nil hdatabase=%p (should be nil)",
+			(void *)item.hdatabase);
+		return false;
+	}
 
 	//item.hexternaltable = nil;
 	//copystring (emptystring, item.bsexternalname);
 
 	return (newfilledhandle (&item, sizeof (item), (Handle *) h));
 	} /*langnewexternalvariable*/
+
+
+/**
+ * SINGLE ENTRY POINT for transitioning external variable to on-disk state
+ *
+ * Enforces invariants:
+ * 1. Can only transition to on-disk if oldaddress != nildbaddress (was previously loaded/saved)
+ * 2. Atomically updates flinmemory + variabledata + oldaddress
+ * 3. Logs every transition for runtime visibility
+ *
+ * @param hv External variable handle
+ * @param disk_addr Database address to transition to (must match oldaddress)
+ * @return true if transition succeeded, false if blocked (invariant violation)
+ */
+boolean external_set_ondisk(hdlexternalvariable hv, dbaddress disk_addr) {
+
+	/* CRITICAL: Don't unload newly created objects (oldaddress=nildbaddress) */
+	if ((**hv).oldaddress == nildbaddress) {
+		log_error(LOG_COMP_EXTERNAL,
+			"BLOCKED: Cannot set flinmemory=0 for new object (oldaddress=nildbaddress) hv=%p variabledata=0x%llx",
+			(void*)hv, (unsigned long long)(**hv).variabledata);
+		return false;
+	}
+
+	/* CRITICAL: disk_addr must match oldaddress (sanity check) */
+	if (disk_addr != (**hv).oldaddress) {
+		log_error(LOG_COMP_EXTERNAL,
+			"BLOCKED: disk_addr=0x%llx != oldaddress=0x%llx hv=%p",
+			(unsigned long long)disk_addr,
+			(unsigned long long)(**hv).oldaddress,
+			(void*)hv);
+		return false;
+	}
+
+	log_debug(LOG_COMP_EXTERNAL,
+		"external_set_ondisk: hv=%p variabledata=0x%llx->0x%llx flinmemory=1->0",
+		(void*)hv,
+		(unsigned long long)(**hv).variabledata,
+		(unsigned long long)disk_addr);
+
+	/* Atomic transition: in-memory -> on-disk */
+	(**hv).variabledata = disk_addr;
+	(**hv).oldaddress = nildbaddress;
+	(**hv).flinmemory = false;
+
+	return true;
+}
+
+
+/**
+ * SINGLE ENTRY POINT for transitioning external variable to in-memory state
+ *
+ * Atomically updates flinmemory + variabledata + oldaddress and logs transition.
+ *
+ * @param hv External variable handle
+ * @param h Memory handle (pointer cast to long)
+ * @param loaded_from Database address this was loaded from (or nildbaddress if newly created)
+ * @return true (always succeeds - no invariants to check for this direction)
+ */
+boolean external_set_inmemory(hdlexternalvariable hv, Handle h, dbaddress loaded_from) {
+
+	log_debug(LOG_COMP_EXTERNAL,
+		"external_set_inmemory: hv=%p variabledata=0x%llx->%p oldaddress=0x%llx flinmemory=0->1",
+		(void*)hv,
+		(unsigned long long)(**hv).variabledata,
+		(void*)h,
+		(unsigned long long)loaded_from);
+
+	/* Atomic transition: on-disk (or new) -> in-memory */
+	(**hv).variabledata = (long)h;
+	(**hv).oldaddress = loaded_from;
+	(**hv).flinmemory = true;
+
+	return true;
+}
 
 
 static short getsortweight (tyexternalid type) {
