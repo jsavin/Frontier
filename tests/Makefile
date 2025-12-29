@@ -227,7 +227,7 @@ USERTALK_OBJECT_TESTS = \
 	test_usertalk_runner
 
 # Buildable test executables on this branch
-RUN_BUILDABLE = core_tests db_format_tests runtime_tests parser_tests save_migration_tests test_efp_augmentation file_portable_tests file_readline_tests file_verb_tests handle_tests cli_runtime_tests paige_text_tests oppack_tests hashpack_modern_tests hash_corruption_tests langvalue_64_tests table_verb_tests table_operations_integration refcon_tests refcon_phase2_tests op_context_tests table_context_tests time_portability_test test_sys_shell_command_verbs
+RUN_BUILDABLE = core_tests db_format_tests runtime_tests parser_tests save_migration_tests test_efp_augmentation file_portable_tests file_readline_tests file_verb_tests handle_tests cli_runtime_tests paige_text_tests oppack_tests hashpack_modern_tests hash_corruption_tests langvalue_64_tests table_verb_tests table_operations_integration refcon_tests refcon_phase2_tests op_context_tests table_context_tests time_portability_test test_sys_shell_command_verbs headless_selection_tests
 
 # Prebuilt or auxiliary test binaries that may be present
 RUN_PREBUILT = test_64bit_direct test_migration_verification test_real_databases test_runner verify_migration_success
@@ -257,6 +257,10 @@ test_sys_shell_command_verbs: test_sys_shell_command_verbs.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
 		test_sys_shell_command_verbs.c $(LANG_RUNTIME_SOURCES) headless_shell.c \
 		../Common/source/sysshellcall.c headless_sys_verbs.c -o $@ $(LINK_LIBS)
+
+headless_selection_tests: headless_selection_tests.c ../Common/source/headless_selection.c $(LANG_RUNTIME_SOURCES) headless_shell.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
+		headless_selection_tests.c ../Common/source/headless_selection.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@ $(LINK_LIBS)
 
 db_format_tests: db_format_tests.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \

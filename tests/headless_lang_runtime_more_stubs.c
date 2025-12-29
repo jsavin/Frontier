@@ -92,22 +92,8 @@ tykeystrokerecord keyboardstatus = {0};
 boolean myMoof (short a, long b) { (void)a; (void)b; return false; }
 
 // Time/date helpers
-// 2025-12-15 Codex: Use portable time layer for cross-platform compatibility
-// Frontier uses Mac time (seconds since 12:00 PM Jan 1, 1904)
-// Unix time is seconds since midnight Jan 1, 1970
-// Difference is 2,082,844,800 seconds (66 years + leap days)
-#define MAC_UNIX_EPOCH_OFFSET 2082844800UL
-
-unsigned long timenow (void) {
-    // Get Unix timestamp in milliseconds, convert to seconds, add Mac epoch offset
-    uint64_t unix_ms = frontier_time_wallclock_millis();
-    unsigned long unix_secs = (unsigned long)(unix_ms / 1000ULL);
-    return unix_secs + MAC_UNIX_EPOCH_OFFSET;
-}
-
-boolean timegreaterthan (unsigned long a, unsigned long b) { return a > b; }
-boolean timelessthan (unsigned long a, unsigned long b) { return a < b; }
-boolean stringtotime (bigstring bs, unsigned long *out) { (void)bs; if (out) *out = 0; return false; }
+// 2025-12-15 Codex: Time functions moved to Common/source/timedate.c with headless guards
+// These functions are no longer needed here as stubs
 
 // Threading helpers referenced by langxml
 boolean inmainthread (void) { return true; }
