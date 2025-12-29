@@ -486,6 +486,11 @@ int main(void) {
         return 1;
     }
 
+    if (!langinitresources_headless()) {
+        printf("FATAL: Failed to initialize language resources\n");
+        return 1;
+    }
+
     if (!langinitverbs()) {
         printf("FATAL: Failed to initialize language verbs\n");
         return 1;
