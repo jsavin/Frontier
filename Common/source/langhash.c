@@ -913,9 +913,9 @@ boolean newhashtable (hdlhashtable *htable) {
 	
 	if (!newclearhandle (sizeof (tyhashtable), (Handle *) htable))
 		return (false);
-	
-	(***htable).timecreated = timenow ();
-	
+
+	(***htable).timecreated = timenow64 ();
+
 	return (true);
 	} /*newhashtable*/
 	
@@ -1279,10 +1279,10 @@ boolean disposehashnode (hdlhashtable ht, hdlhashnode hnode, boolean fldisposeva
 
 
 void dirtyhashtable (hdlhashtable ht) {
-	
+
 	(**ht).fldirty = true;
-	
-	(**ht).timelastsave = timenow ();
+
+	(**ht).timelastsave = timenow64 ();
 	} /*dirtyhashtable*/
 
 	
