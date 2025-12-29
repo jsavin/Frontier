@@ -669,7 +669,8 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 					return (false);
 				}
 
-				if (!langsetvalue (htable, varname, hstdout, stringvaluetype)) {
+				/* Use langassigntextvalue - efficient, no tmpstack overhead */
+				if (!langassigntextvalue (htable, varname, hstdout)) {
 					disposehandle (hstdout);
 					return (false);
 				}
@@ -703,15 +704,14 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 					return (false);
 				}
 
-				if (!langsetvalue (htable, varname, hstdout, stringvaluetype)) {
+				/* Use langassigntextvalue - efficient, no tmpstack overhead */
+				if (!langassigntextvalue (htable, varname, hstdout)) {
 					disposehandle (hstdout);
 					disposehandle (hstderr);
 					return (false);
 				}
 
-				if (!langsetvalue (htable2, varname2, hstderr, stringvaluetype)) {
-					/* hstdout was already adopted by htable (first langsetvalue succeeded).
-					   hstderr was never adopted because this langsetvalue failed, so must dispose. */
+				if (!langassigntextvalue (htable2, varname2, hstderr)) {
 					disposehandle (hstderr);
 					return (false);
 				}
@@ -725,7 +725,7 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 				bigstring varname, varname2, varname3;
 				boolean fl;
 				int exit_status;
-				tyvaluerecord vval;
+				tyvaluerecord val_exitstatus;
 
 				if (!getvarparam (hparam1, 2, &htable, varname))
 					return (false);
@@ -750,28 +750,22 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 					return (false);
 				}
 
-			/* HANDLE OWNERSHIP SEMANTICS:
-			   langsetvalue() adopts the handle on SUCCESS, after which the table owns it.
-			   If langsetvalue() FAILS, the handle is NOT adopted and must be disposed manually.
-			   This error handling pattern correctly disposes handles only when adoption failed. */
-				if (!langsetvalue (htable, varname, hstdout, stringvaluetype)) {
+				/* Use langassigntextvalue - efficient, no tmpstack overhead */
+				if (!langassigntextvalue (htable, varname, hstdout)) {
 					disposehandle (hstdout);
 					disposehandle (hstderr);
 					return (false);
 				}
 
-				if (!langsetvalue (htable2, varname2, hstderr, stringvaluetype)) {
-					/* hstdout was already adopted by htable (first langsetvalue succeeded).
-					   hstderr was never adopted because this langsetvalue failed, so must dispose. */
+				if (!langassigntextvalue (htable2, varname2, hstderr)) {
 					disposehandle (hstderr);
 					return (false);
 				}
 
-				vval.valuetype = longvaluetype;
-				vval.data.longvalue = exit_status;
-				if (!langsetsymboltableval (htable3, varname3, vval)) {
-					/* hstdout and hstderr were already adopted by hash tables on previous calls,
-					   so no cleanup needed - they are owned by the hash tables now. */
+				/* For exit status (integer), use setlongvalue + hashtableassign pattern */
+				setlongvalue (exit_status, &val_exitstatus);
+
+				if (!hashtableassign (htable3, varname3, val_exitstatus)) {
 					return (false);
 				}
 
