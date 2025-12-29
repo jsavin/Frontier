@@ -98,6 +98,18 @@ extern void timestamp (long *);
 
 extern unsigned long timenow (void);
 
+/*
+ * Get current time as 64-bit Frontier timestamp (seconds since 1904-01-01 00:00:00 UTC)
+ * This is the recommended function for all new code that stores timestamps.
+ * Returns frontier_time_t (int64_t) for cross-platform portability.
+ *
+ * Use this instead of time(NULL) + manual epoch conversion to ensure boundary
+ * conversions happen in one place (the timedate module).
+ *
+ * See: docs/frontier_time_t_standard.md
+ */
+extern frontier_time_t timenow64 (void);
+
 extern boolean setsystemclock (unsigned long);
 
 extern boolean timegreaterthan (unsigned long, unsigned long);
