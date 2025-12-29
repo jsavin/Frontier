@@ -199,17 +199,42 @@ void timestamp (long *ptime) {
 	
 	
 unsigned long timenow (void) {
-	
+
 	/*
 	2.1b4 dmb; more convenient than timestamp for most callers
 	*/
-    
+
     unsigned long now = (CFAbsoluteTimeGetCurrent() + kCFAbsoluteTimeIntervalSince1904);
-	
+
 	return (now);
 	} /*timenow*/
-	
-	
+
+
+frontier_time_t timenow64 (void) {
+
+	/*
+	Get current time as frontier_time_t (64-bit timestamp since 1904).
+	This is the recommended function for all new code that stores timestamps.
+
+	For FRONTIER_HEADLESS builds: Use portable time() + epoch conversion
+	For macOS builds: Use CFAbsoluteTimeGetCurrent() which already uses 1904 epoch
+
+	Returns: Seconds since 1904-01-01 00:00:00 UTC as int64_t
+
+	See: docs/frontier_time_t_standard.md
+	*/
+
+	#if defined(FRONTIER_HEADLESS)
+		/* Portable implementation: Unix time() + epoch conversion */
+		time_t unix_time = time(NULL);
+		return (frontier_time_t)unix_time + FRONTIER_EPOCH_TO_UNIX_OFFSET;
+	#else
+		/* macOS implementation: Use CoreFoundation */
+		return (frontier_time_t)(CFAbsoluteTimeGetCurrent() + kCFAbsoluteTimeIntervalSince1904);
+	#endif
+	} /*timenow64*/
+
+
 boolean setsystemclock (unsigned long secs) {
 
 	/*
