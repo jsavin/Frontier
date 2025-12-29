@@ -21,13 +21,6 @@
 #include "standard.h"
 #include "timedate.h"
 
-/* Stub implementation of timenow64() for testing */
-frontier_time_t timenow64(void) {
-    const frontier_time_t SECONDS_1904_TO_1970 = 2082844800UL;
-    time_t unix_time = time(NULL);
-    return (frontier_time_t)unix_time + SECONDS_1904_TO_1970;
-}
-
 /* Test counter */
 static int tests_passed = 0;
 static int tests_failed = 0;
