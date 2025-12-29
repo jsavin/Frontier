@@ -94,12 +94,20 @@ Use system `time_t` only for:
 ```c
 #include "timedate.h"
 
-/* Get current time as frontier_time_t */
-frontier_time_t now = timenow();
+/* Get current time as frontier_time_t (RECOMMENDED) */
+frontier_time_t now = timenow64();
 
 /* Store in database table context */
 tytableformats *formats = &(**htable).tformats;
 formats->timelastmodify = now;
+```
+
+**Note**: Use `timenow64()` instead of the legacy `timenow()` function. While `timenow()` returns `unsigned long` (32-bit on most systems), `timenow64()` returns `frontier_time_t` (64-bit) and centralizes epoch conversion in the timedate module, following the architectural principle that boundary conversions should happen in one place.
+
+**Legacy alternative (not recommended for new code)**:
+```c
+/* Legacy: timenow() returns unsigned long (32-bit) */
+unsigned long legacy_now = timenow();
 ```
 
 ### Example: Comparing Timestamps
