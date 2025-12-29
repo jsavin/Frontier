@@ -98,7 +98,8 @@ FRONTIER_SOURCES = \
     ../Common/source/db_format.c \
     ../Common/source/db_reader_legacy.c \
     ../Common/source/db_reader_v7.c \
-    ../Common/source/db_writer_v7.c
+    ../Common/source/db_writer_v7.c \
+    ../Common/source/timedate.c
 
 # Migration tests use the same headless runtime slice as runtime_tests to avoid test-only forks.
 MIGRATION_SOURCES = \
