@@ -250,8 +250,8 @@ op_context_tests: op_context_tests.c ../Common/source/op_context.c ../Common/sou
 table_context_tests: table_context/table_context_tests.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../portable table_context/table_context_tests.c -o $@ $(LINK_LIBS)
 
-time_portability_test: time_portability_test.c $(LANG_RUNTIME_SOURCES) headless_shell.c
-	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable time_portability_test.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@ $(LINK_LIBS)
+time_portability_test: time_portability_test.c ../Common/source/timedate.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable time_portability_test.c ../Common/source/timedate.c -o $@
 
 test_sys_shell_command_verbs: test_sys_shell_command_verbs.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
