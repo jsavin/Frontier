@@ -183,13 +183,11 @@ static void test_time_arithmetic(void) {
 static void test_timenow64(void) {
     printf("\nTest 7: timenow64() function\n");
 
-    const frontier_time_t SECONDS_1904_TO_1970 = 2082844800UL;
-
     /* Get current time using timenow64() */
     frontier_time_t now = timenow64();
 
     /* Verify it's reasonable: after 2024-01-01 and before 2100-01-01 */
-    /* 2024-01-01 in Frontier epoch = (2024-1904)*365.25*86400 + SECONDS_1904_TO_1970
+    /* 2024-01-01 in Frontier epoch = (2024-1904)*365.25*86400 + FRONTIER_EPOCH_TO_UNIX_OFFSET
        ≈ 120 * 365.25 * 86400 = 3,786,912,000 seconds from 1904 */
     const frontier_time_t time_2024 = 3786912000LL;
     /* 2100-01-01 in Frontier epoch ≈ 196 * 365.25 * 86400 = 6,184,752,000 seconds from 1904 */
@@ -200,7 +198,7 @@ static void test_timenow64(void) {
 
     /* Verify it matches manual conversion (within 1 second tolerance) */
     time_t unix_now = time(NULL);
-    frontier_time_t manual_conversion = (frontier_time_t)unix_now + SECONDS_1904_TO_1970;
+    frontier_time_t manual_conversion = (frontier_time_t)unix_now + FRONTIER_EPOCH_TO_UNIX_OFFSET;
 
     int64_t diff = (int64_t)(now - manual_conversion);
     if (diff < 0) diff = -diff;
