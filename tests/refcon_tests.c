@@ -28,6 +28,7 @@
 #include "memory.h"
 #include "lang.h"
 #include "tablestructure.h"
+#include "logging.h"
 #include "../portable/wptext_portable.h"
 
 /*
@@ -238,6 +239,9 @@ int main(void) {
     printf("\n=== Phase 1: Refcon Fundamentals Tests ===\n");
     printf("[refcon] Initializing runtime...\n");
     fflush(stdout);
+
+    /* Initialize logging system */
+    log_init();
 
     /* Initialize runtime subsystems */
     assert(initlang());
