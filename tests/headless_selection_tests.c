@@ -292,7 +292,7 @@ int main(void) {
 	assert(initmemory());
 	initstrings();
 	assert(initlang());
-	assert(opinit());
+	/* opinit() doesn't exist - outline init happens via langinitverbs */
 	assert(inittablestructure());
 	assert(langinitverbs());
 
