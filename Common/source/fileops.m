@@ -320,7 +320,7 @@ boolean getmachinename (bigstring bsname) {
 		if (macgetfilespecparent(fs, &fsfolder) != noErr)
 			return (false);
 		
-		setfilemodified(&fsfolder, timenow());
+		setfilemodified(&fsfolder, timenow64());
 		
 		return (true);
 		
@@ -2147,7 +2147,7 @@ boolean fileparsevolname ( bigstring bspath, ptrfilespec fs ) {
 	// convert a full path, which might contain a volume name at the beginning
 	// to a path with no volume name, and it's associated volume number in vnum.
 	//
-	// example: "Roverª:MORE Work" will return with bspath = "MORE Work" and
+	// example: "Roverï¿½:MORE Work" will return with bspath = "MORE Work" and
 	// vnum = -2 (the Macintosh vrefnum for the second mounted drive).  
 	//
 	// this combination of information plugs nicely into a lot of the file

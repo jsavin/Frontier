@@ -5180,7 +5180,7 @@ static boolean webserverbuildresponse (bigstring bscode, hdlhashtable hheadersta
 	
 	/* add Date: Sat, 29 Nov 1997 00:51:47 GMT to header table */
 	
-	if (!datenetstandardstring (timenow (), &val))
+	if (!datenetstandardstring (timenow64 (), &val))
 		goto exit;
 	
 	if (!hashtableassign (hheaderstable, STR_P_DATE, val))
@@ -7452,7 +7452,7 @@ static boolean mrcalendargetmostrecentaddressverb (hdltreenode hp1, tyvaluerecor
 	
 	flnextparamislast = true;
 		
-	setdatevalue (timenow (), &val);
+	setdatevalue (timenow64 (), &val);
 
 	if (!getoptionalparamvalue (hp1, &ctconsumed, &ctpositional, BIGSTRING ("\x01""d"), &val))
 		return (false);
@@ -7494,7 +7494,7 @@ static boolean mrcalendargetmostrecentdayverb (hdltreenode hp1, tyvaluerecord *v
 	
 	flnextparamislast = true;
 		
-	setdatevalue (timenow (), &val);
+	setdatevalue (timenow64 (), &val);
 
 	if (!getoptionalparamvalue (hp1, &ctconsumed, &ctpositional, BIGSTRING ("\x01""d"), &val))
 		return (false);
@@ -7610,7 +7610,7 @@ static boolean mrcalendargetnextaddressverb (hdltreenode hp1, tyvaluerecord *v) 
 	
 	flnextparamislast = true;
 		
-	setdatevalue (timenow (), &val);
+	setdatevalue (timenow64 (), &val);
 
 	if (!getoptionalparamvalue (hp1, &ctconsumed, &ctpositional, BIGSTRING ("\x01""d"), &val))
 		return (false);
@@ -7653,7 +7653,7 @@ static boolean mrcalendargetnextdayverb (hdltreenode hp1, tyvaluerecord *v) {
 	
 	flnextparamislast = true;
 		
-	setdatevalue (timenow (), &val);
+	setdatevalue (timenow64 (), &val);
 
 	if (!getoptionalparamvalue (hp1, &ctconsumed, &ctpositional, BIGSTRING ("\x01""d"), &val))
 		return (false);

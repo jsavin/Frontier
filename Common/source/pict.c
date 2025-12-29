@@ -271,7 +271,7 @@ boolean pictnewrecord (void) {
 		
 	hp = pictdata; /*copy into register*/
 	
-	(**hp).timecreated = (**hp).timelastsave = timenow ();
+	(**hp).timecreated = (**hp).timelastsave = timenow64 ();
 	
 	(**hp).windowrect.top = -1; /*accept default, unless someone resets this*/
 	
@@ -673,7 +673,7 @@ void pictdirty (void) {
 	
 	(**hp).fldirty = true;
 	
-	(**hp).timelastsave = timenow (); /*modification time until saved*/
+	(**hp).timelastsave = timenow64 (); /*modification time until saved*/
 	} /*pictdirty*/
 
 

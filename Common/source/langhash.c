@@ -4018,7 +4018,7 @@ log_trace(LOG_COMP_HASH, "hashunpacktable header version=%d sort=%d flags=0x%08x
 
 		header.flags = 0;
 
-		(**htable).timecreated = (**htable).timelastsave = timenow (); //5.0.1
+		(**htable).timecreated = (**htable).timelastsave = timenow64 (); //5.0.1
 
 		ix = 0;
 		}

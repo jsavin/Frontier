@@ -122,7 +122,7 @@ void tabledirty (void) {
 	
 	// (**ht).fldirty = true; // 2/14/97 dmb: langhash takes care of dirtyness itself
 	
-	(**ho).timelastsave = timenow (); /*modification time until saved*/
+	(**ho).timelastsave = timenow64 (); /*modification time until saved*/
 	
 	windowsetchanges (tableformatswindow, true);
 	} /*tabledirty*/

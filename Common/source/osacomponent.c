@@ -3147,7 +3147,7 @@ handlerecordableevent (
 			/*PBS 03/14/02: AE OS X fix.*/
       datahandletostring (&desc, bs);
 			
-			insertstring ("\p\tÇ", bs);
+			insertstring ("\p\tï¿½", bs);
 			
 			AEDisposeDesc (&desc);
 			}
@@ -5203,7 +5203,7 @@ void osacomponentshutdown (void) {
 	
 	closeosaservers ();
 	
-	startloop = timenow ();
+	startloop = timenow64 ();
 	
 	while (servingsharedmenus (&hclient)) {
 		
@@ -5211,7 +5211,7 @@ void osacomponentshutdown (void) {
 		
 		shellpartialeventloop (osMask);
 		
-		if (timenow () - startloop > shutdowntimeout)
+		if (timenow64 () - startloop > shutdowntimeout)
 			break;
 		}
 	

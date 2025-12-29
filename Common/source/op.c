@@ -119,7 +119,7 @@ void opdirtyoutline (void) {
 	
 	(**ho).flrecentlychanged = true; /*in case someone is maintaining a parallel structure*/
 	
-	(**ho).timelastsave = timenow (); /*modification time until saved*/
+	(**ho).timelastsave = timenow64 (); /*modification time until saved*/
 	} /*opdirtyoutline*/
 
 

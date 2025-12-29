@@ -769,7 +769,7 @@ boolean processagentsleep (long ctseconds) {
 		ctseconds = -ctseconds;
 	*/
 	
-	now = timenow ();
+	now = timenow64 ();
 	
 	if (ctseconds < 0)
 		x = now;
@@ -2948,7 +2948,7 @@ static void agentscheduler (void) {
 	
 	flprocesscodedisposed = false; /*must reset every time*/
 	
-	x = timenow ();
+	x = timenow64 ();
 	
 	for (hp = (**hlist).hfirstprocess; hp != nil; hp = hnext) { /*find a process that's not sleeping*/
 		

@@ -1552,7 +1552,7 @@ boolean newoutlinerecord (hdloutlinerecord *houtline) {
 	
 	opinitcallbacks (ho);
 	
-	(**ho).timecreated = (**ho).timelastsave = timenow ();
+	(**ho).timecreated = (**ho).timelastsave = timenow64 ();
 	
 	(**ho).iconheight = 16; /*by default, use small icons*/
 
