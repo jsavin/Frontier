@@ -41,9 +41,14 @@
   2. Commit work to the feature branch (multiple commits OK)
   3. Push the branch to origin
   4. **Use the pull-request agent** to create and manage the PR (do NOT commit directly)
-  5. Let the PR bot review the code
-  6. Address any bot feedback (minor issues automatically, critical issues with user approval)
-  7. Merge to develop only after bot approval
+  5. **CRITICAL: Run `./tools/monitor_pr_review.sh <PR_NUMBER>` after creating PR and after EVERY subsequent push**
+     - Wait for bot review to complete before proceeding
+     - Do NOT merge or take further action until monitoring confirms no additional feedback
+     - Wait 2-3 minutes after final approval to ensure no follow-up comments
+  6. Let the PR bot review the code
+  7. Address any bot feedback (minor issues automatically, critical issues with user approval)
+  8. After addressing feedback, push changes and **return to step 5** (monitor again)
+  9. Merge to develop only after bot approval AND monitoring period complete
   - **Never commit directly to develop** - all milestones must go through PR review
   - Every completed feature/fix should be a separate PR
   - This ensures code quality gates and prevents regressions
@@ -171,7 +176,7 @@ If parallel sessions cause conflicts:
 - If you ever need to check how the legacy Frontier app implemented something in 32-bit-land, look at the code under `../tedchoward/Frontier/`.
 - When the user asks you a question, always answer it first before jumping into work.
 - Always ask the user first before pushing changes to origin/develop.
-- After pushing a PR to origin, immediately run `./tools/monitor_pr_review.sh <pr_number>` to wait for bot code review feedback. Address minor issues (documentation, magic numbers, style, logging standards) automatically without user involvement. For critical issues or complex fixes, discuss with the user first before implementing.
+- After pushing a PR to origin AND after every commit pushed to an active PR, immediately run `./tools/monitor_pr_review.sh <pr_number>` to wait for bot code review feedback. Wait 2-3 minutes after approval to ensure no follow-up comments before proceeding. Address minor issues (documentation, magic numbers, style, logging standards) automatically without user involvement. For critical issues or complex fixes, discuss with the user first before implementing.
 - When deciding where to track future work, use documents in the planning directory by default for work directly related to getting the headless Frontier runtime working on modern systems, and use GitHub issues (via the `gh` command) for future improvements beyond functional parity with the legacy Frontier runtime.
 - **Planning directory structure**:
   - `planning/phase3/` - Active Phase 3 implementation work and analysis
