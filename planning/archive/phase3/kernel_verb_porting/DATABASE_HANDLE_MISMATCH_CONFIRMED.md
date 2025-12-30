@@ -74,11 +74,11 @@ From `full_migration_log.txt` run on 2025-12-17:
 **Specific failures from MIGRATION_FIX_STATUS.md:**
 ```bash
 # Fails silently:
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli --system-root Frontier-v6-v7.root \
+FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli --system-root Frontier-v7.root \
   -e "sizeOf(system.verbs.globals)"
 # Output: (nothing)
 
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli --system-root Frontier-v6-v7.root \
+FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli --system-root Frontier-v7.root \
   -e 'workspace.test="hello"; workspace.test'
 # Output: (nothing)
 ```
@@ -284,11 +284,11 @@ Should show all captures pointing to destination database.
 ```bash
 # Should work after fix:
 FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli \
-  --system-root databases/Frontier-v6-v7.root \
+  --system-root databases/Frontier-v7.root \
   -e "sizeOf(system.verbs.globals)"
 
 FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli \
-  --system-root databases/Frontier-v6-v7.root \
+  --system-root databases/Frontier-v7.root \
   -e 'workspace.test="hello"; workspace.test'
 ```
 

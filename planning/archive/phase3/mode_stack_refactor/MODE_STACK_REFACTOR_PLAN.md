@@ -308,7 +308,7 @@ make -C tests save_migration_tests && ./tests/save_migration_tests
 ```bash
 ./tools/run_headless_tests.sh
 FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli \
-  --system-root databases/Frontier-v6-v7.root -e "defined(system)"
+  --system-root databases/Frontier-v7.root -e "defined(system)"
 ```
 
 **Success Criteria**:

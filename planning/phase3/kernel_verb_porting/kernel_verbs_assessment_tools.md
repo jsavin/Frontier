@@ -806,7 +806,7 @@ Generates `planning/phase3/kernel_verbs_progress.md` showing implementation stat
 ### Step 4: Analyze Startup Dependencies (Manual)
 ```bash
 # Extract startup scripts from database
-./frontier-cli/frontier-cli --system-root databases/Frontier-v6-v7.root \
+./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root \
     -e "db.getvalue('system.startup')"
 
 # Manually review for verb calls

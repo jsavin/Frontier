@@ -691,8 +691,8 @@ case winv_getfile: {
 **Testing**:
 ```bash
 # Test: Get file for system table
-./frontier-cli/frontier-cli --system-root databases/Frontier-v6-v7.root -e "window.getFile(@system)"
-# Expected: "databases/Frontier-v6-v7.root" or absolute path
+./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root -e "window.getFile(@system)"
+# Expected: "databases/Frontier-v7.root" or absolute path
 
 # Test: Get file for object in guest database
 # (Create a guest database first, then test)
@@ -932,7 +932,7 @@ testIsReadOnly() and testIsModified() and testGetFile() and testNoops()
 
 **Run with**:
 ```bash
-./frontier-cli/frontier-cli --system-root databases/Frontier-v6-v7.root \
+./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root \
   -e "load('tests/manual_window_verb_tests.ut')"
 ```
 

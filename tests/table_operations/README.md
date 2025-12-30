@@ -85,7 +85,7 @@ Contains 45 test cases written in pure UserTalk covering all table operation ver
 Run with:
 ```bash
 FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli \
-  --system-root databases/Frontier-v6-v7.root \
+  --system-root databases/Frontier-v7.root \
   -e "load(\"tests/table_operations/table_operations.ut\")"
 ```
 

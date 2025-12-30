@@ -185,7 +185,7 @@ Starting from the failing script execution:
 - Build a dependency tree of verb calls
 
 **Method**:
-- Parse UserTalk scripts from `databases/Frontier-v6-v7.root`
+- Parse UserTalk scripts from `databases/Frontier-v7.root`
 - Extract verb calls using regex: `([a-z]+)\.([a-zA-Z]+)\s*\(`
 - Build call graph
 - Mark all verbs called from `system.startup` as PRIORITY-HIGH
@@ -457,7 +457,7 @@ static boolean frontier_valueproc(short token, hdltreenode hparam1,
 - Fix any remaining missing verb errors
 - Verify no UI dependencies leak in
 
-**Success criteria**: `./frontier-cli --system-root databases/Frontier-v6-v7.root -e "clock.now()"` succeeds
+**Success criteria**: `./frontier-cli --system-root databases/Frontier-v7.root -e "clock.now()"` succeeds
 
 ### Phase 2: Core File I/O (3-4 days)
 

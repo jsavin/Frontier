@@ -167,11 +167,11 @@ Test that external objects can be accessed post-migration:
 ```bash
 # Should work now:
 FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli \
-  --system-root databases/Frontier-v6-v7.root \
+  --system-root databases/Frontier-v7.root \
   -e "sizeOf(system.verbs.globals)"
 
 FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli \
-  --system-root databases/Frontier-v6-v7.root \
+  --system-root databases/Frontier-v7.root \
   -e 'workspace.test="hello"; workspace.test'
 ```
 

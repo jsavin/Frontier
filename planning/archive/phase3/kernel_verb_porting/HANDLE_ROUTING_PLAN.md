@@ -206,17 +206,17 @@ boolean dbcopy (dbaddress adrorig, dbaddress *adrcopy) {
    ```bash
    # Test outline external access
    FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli \
-     --system-root databases/Frontier-v6-v7.root \
+     --system-root databases/Frontier-v7.root \
      -e "typeOf(system.verbs.builtins.file.isFolder)"
 
    # Test table assignment
    FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli \
-     --system-root databases/Frontier-v6-v7.root \
+     --system-root databases/Frontier-v7.root \
      -e 'workspace.test="hello"; workspace.test'
 
    # Test nested table access
    FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli \
-     --system-root databases/Frontier-v6-v7.root \
+     --system-root databases/Frontier-v7.root \
      -e "sizeOf(system.verbs.globals)"
    ```
 3. Verify source database is never modified:

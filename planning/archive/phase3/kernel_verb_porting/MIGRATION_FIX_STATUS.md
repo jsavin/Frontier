@@ -34,23 +34,23 @@ boolean dbassign (dbaddress *padr, long newsize, ptrvoid pdata) {
 **Symptoms**:
 ```bash
 # Works:
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root databases/Frontier-v6-v7.root -e "1+1"
+FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root -e "1+1"
 # Output: 2
 
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root databases/Frontier-v6-v7.root -e "typeOf(system)"
+FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root -e "typeOf(system)"
 # Output: tabl
 
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root databases/Frontier-v6-v7.root -e "sizeOf(system)"
+FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root -e "sizeOf(system)"
 # Output: 12
 
 # Fails (no output or error):
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root databases/Frontier-v6-v7.root -e "sizeOf(system.verbs.globals)"
+FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root -e "sizeOf(system.verbs.globals)"
 # Output: (nothing)
 
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root databases/Frontier-v6-v7.root -e 'workspace.test="hello"; workspace.test'
+FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root -e 'workspace.test="hello"; workspace.test'
 # Output: (nothing)
 
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root databases/Frontier-v6-v7.root -e 'defined(workspace.test)'
+FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root -e 'defined(workspace.test)'
 # Output: (nothing)
 ```
 

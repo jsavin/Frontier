@@ -14,7 +14,7 @@ Tracer bullets (lightweight, verifiable milestones) for each branch in the execu
 ## 1. Memory Layer Cleanup
 1. **Shim parity test:** Extend `portable/classic_handle.c` so `MemError`/`MaxBlock` queries return deterministic values; add a lightweight unit test under `tests/portable_handles_tests.c` that exercises growth/shrink paths.
 2. **Headless build smoke:** Recompile `make -C tests test_migration` with classic Mac Memory Manager headers removed from the include path; success equals zero Carbon warnings/errors from `memory.c`.
-3. **CLI regression:** Run `frontier-cli/frontier-cli --system-root databases/Frontier-v6-v7.root -e "defined(clock.now)"` to confirm the loader still works after handle refactor.
+3. **CLI regression:** Run `frontier-cli/frontier-cli --system-root databases/Frontier-v7.root -e "defined(clock.now)"` to confirm the loader still works after handle refactor.
 
    **Exit criteria:** Portable handle layer exposes `classic_mem_error()/classic_max_block()` equivalents, unit test passes, headless build completes without Carbon includes, and CLI regression command succeeds.
 

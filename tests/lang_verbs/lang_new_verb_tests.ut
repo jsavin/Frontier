@@ -4,7 +4,7 @@
  * These tests verify that lang.new() creates mutable tables in headless mode.
  * This is foundational work for Issue #166 (UserTalk integration tests).
  *
- * Run with: FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root databases/Frontier-v6-v7.root -e "load(\"tests/lang_new_verb_tests.ut\")"
+ * Run with: FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root -e "load(\"tests/lang_new_verb_tests.ut\")"
  */
 
 // Test 1: Basic table creation

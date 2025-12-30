@@ -72,11 +72,11 @@ static void eval_cli(const char *script, char *output, size_t output_size) {
     assert(get_repo_root(root, sizeof(root)));
 
     char db_path[PATH_MAX];
-    snprintf(db_path, sizeof(db_path), "%s/databases/Frontier-v6-v7.root", root);
+    snprintf(db_path, sizeof(db_path), "%s/databases/Frontier-v7.root", root);
 
     if (access(db_path, R_OK) != 0) {
         fprintf(stderr, "[table_verb_tests] ERROR: Database not found: %s\n", db_path);
-        fprintf(stderr, "[table_verb_tests] Ensure Frontier-v6-v7.root exists by running CLI once with Frontier-v6.root\n");
+        fprintf(stderr, "[table_verb_tests] Ensure Frontier-v7.root exists by running CLI once with Frontier-v6.root\n");
         assert(0);
     }
 
@@ -132,7 +132,7 @@ static bool check_new_verb_available(void) {
     }
 
     char db_path[PATH_MAX];
-    snprintf(db_path, sizeof(db_path), "%s/databases/Frontier-v6-v7.root", root);
+    snprintf(db_path, sizeof(db_path), "%s/databases/Frontier-v7.root", root);
 
     if (access(db_path, R_OK) != 0) {
         return false;
@@ -271,7 +271,7 @@ int main(int argc, char **argv) {
     (void)argv;
 
     printf("[table_verb_tests] Starting table verb tests...\n");
-    printf("[table_verb_tests] Tests run via frontier-cli with Frontier-v6-v7.root\n");
+    printf("[table_verb_tests] Tests run via frontier-cli with Frontier-v7.root\n");
     fflush(stdout);
 
     /* Check if 'new' verb is available - it's required for all table tests */

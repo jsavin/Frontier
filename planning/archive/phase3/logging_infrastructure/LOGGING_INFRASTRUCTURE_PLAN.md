@@ -894,7 +894,7 @@ int main(void) {
 FRONTIER_LOG_LEVEL=debug ./frontier-cli -e "1+1" 2>&1 | grep -E "\[.*-DEBUG\]"
 
 # Test 3: Component filtering works
-FRONTIER_LOG_COMPONENT=db FRONTIER_LOG_LEVEL=debug ./frontier-cli --system-root databases/Frontier-v6-v7.root -e "1+1" 2>&1 | grep -E "\[DB-"
+FRONTIER_LOG_COMPONENT=db FRONTIER_LOG_LEVEL=debug ./frontier-cli --system-root databases/Frontier-v7.root -e "1+1" 2>&1 | grep -E "\[DB-"
 
 # Test 4: Trace level is most verbose
 FRONTIER_LOG_LEVEL=trace ./frontier-cli -e "1+1" 2>&1 | wc -l
