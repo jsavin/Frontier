@@ -8,6 +8,40 @@
 
 ---
 
+## Technical Decision-Making Principles
+
+**When evaluating multiple approaches to solve a problem, default to the proper, maintainable, long-term solution.**
+
+This project is building foundational infrastructure for collaborative ODB editing that will serve as the basis for multi-user systems and partnerships with Dave Winer and Automattic. Quick fixes and workarounds accumulate as technical debt that becomes costly to unwind later.
+
+**Decision Framework:**
+
+When presented with options like:
+- **Option 1: Header Guards** (Quick fix - 90% reduction)
+- **Option 2: Centralize Types** (Proper fix - 100% elimination)
+- **Option 3: Suppress Warnings** (Temporary workaround)
+
+**Default to the proper fix (Option 2) unless:**
+- User explicitly requests quick fix for time constraints
+- Proper fix would block critical path work (then quick fix + filed issue)
+- Quick fix is genuinely the right long-term solution (rare)
+
+**In 90% of cases, recommend the "Proper fix" or "maintainable long-term solution" approach.**
+
+**Why this matters:**
+- This codebase will be maintained for years and support critical partnerships
+- Foundation quality determines what's possible in Phase 2.0 (collaborative editing)
+- Technical debt in core systems (database, threading, memory management) is expensive to fix later
+- Clean architecture enables future contributors (including partners) to work effectively
+
+**Examples:**
+- ✅ **DO**: "I recommend Option 2 (centralize types) - eliminates the root cause and prevents future issues"
+- ❌ **DON'T**: "Option 1 is quicker, so let's do that first" (without strong justification)
+
+**Exception**: If the proper fix would take significantly longer (days vs hours) and blocks critical milestones, propose: "Quick fix now + filed P1 issue for proper fix" with user approval.
+
+---
+
 ## Strategic Roadmap
 
 **Master todo list**: https://drummer.land/me@jakesav.in/JakeShare.opml
@@ -395,22 +429,69 @@ This error indicates you tried to use single quotes for a multi-character string
 
 **See also:** `docs/USERTALK_SYNTAX_REFERENCE.md` for comprehensive syntax guide.
 
+## System Dependencies
+
+### xxd (hex dump utility)
+
+**Required for:** Database version verification and corruption detection
+
+The `xxd` command is used by `tools/run_headless_tests.sh` to verify database file formats and detect corruption. The test runner automatically checks for `xxd` and will fail with a clear error message if it's not installed.
+
+**Installation:**
+- **macOS:** `brew install vim` (xxd is included with vim)
+- **Linux (Debian/Ubuntu):** `apt-get install vim-common`
+- **Linux (Red Hat/CentOS):** `yum install vim-common`
+
+**Usage in Frontier:**
+```bash
+# Check database version (first 2 bytes)
+xxd -l 2 -p databases/Frontier-v6.root
+# Expected for v6: 0006
+# Expected for v7: 0007
+```
+
+**See also:** `planning/DATABASE_CORRUPTION_PREVENTION.md` for database protection details
+
 ## Database Migration (v6→v7)
 
 **IMPORTANT: Always use clean migration before testing!**
 
-Old migrated databases may be corrupted artifacts from earlier broken migrations. Always delete existing v7 databases and run a fresh migration before running tests:
+Old migrated databases may be corrupted artifacts from earlier broken migrations. Always delete existing v7 databases and run a fresh migration before running tests.
+
+### Creating databases/Frontier-v6-v7.root (Required for Integration Tests)
+
+**The CLI automatically migrates v6 databases to v7 format, creating a new output file.**
+
+To create a clean v7 migrated database from `databases/Frontier-v6.root`:
 
 ```bash
 # Clean migration workflow (ALWAYS do this before testing):
-rm -f databases/Frontier-v6-v7.root test_save_migration*.root
-make -C tests clean && make -C tests save_migration_tests
-./tests/save_migration_tests
+rm -f databases/Frontier-v6-v7.root
 
-# Output: test_save_migration-v7.root (v7 migrated database in project root)
+# Run CLI with v6 database - creates v7 output file automatically
+FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli \
+  --system-root databases/Frontier-v6.root -e "1"
+
+# Output: databases/Frontier-v6-v7.root (new file created by migration)
 ```
 
-**Running migration:**
+**What happens during migration:**
+1. CLI opens `databases/Frontier-v6.root` and detects v6 format
+2. Migration creates NEW output file: `databases/Frontier-v6-v7.root`
+3. Original `databases/Frontier-v6.root` is **never modified** (preserved)
+4. Pattern: `INPUT.root` → `INPUT-v7.root`
+
+**Verification:**
+```bash
+# Check database version (first 2 bytes should be 0007 for v7)
+xxd -l 2 databases/Frontier-v6-v7.root
+# Expected output: 00000000: 0007  ..
+```
+
+### Alternative: Using save_migration_tests (Test Harness)
+
+For testing the migration process itself:
+
 ```bash
 # Clean rebuild and run migration test:
 make -C tests clean && make -C tests save_migration_tests

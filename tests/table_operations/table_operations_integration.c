@@ -157,7 +157,20 @@ static void eval_cli(const char *script, char *output, size_t output_size) {
 		while (len > 0 && (result_token[len-1] == '\n' || result_token[len-1] == '\r' || result_token[len-1] == ' ')) {
 			result_token[--len] = '\0';
 		}
-	} else {
+
+		/* If result contains warning/error patterns, fall through to line-by-line parsing */
+		if (strstr(result_token, "system=") != NULL ||
+		    strstr(result_token, "[WARN]") != NULL ||
+		    strstr(result_token, "[ERROR]") != NULL ||
+		    strstr(result_token, "ix=") != NULL ||  /* Memory error messages */
+		    strstr(result_token, "caller=") != NULL ||
+		    strstr(result_token, "Cant ") != NULL ||  /* UserTalk error messages */
+		    strstr(result_token, "hasnt ") != NULL) {
+			result_token[0] = '\0';  /* Clear and fall through */
+		}
+	}
+
+	if (result_token[0] == '\0') {
 		/* No colon found, look for lines without log prefixes */
 		char *pos = output;
 		while (*pos) {
@@ -175,10 +188,16 @@ static void eval_cli(const char *script, char *output, size_t output_size) {
 			strncpy(current_line, pos, line_len);
 			current_line[line_len] = '\0';
 
-			/* Skip log lines */
+			/* Skip log lines, warnings, errors, and memory messages */
 			if (strstr(current_line, "[headless]") == NULL &&
 			    strstr(current_line, "[WARN]") == NULL &&
+			    strstr(current_line, "[ERROR]") == NULL &&
 			    strstr(current_line, "[2025") == NULL &&
+			    strstr(current_line, "system=") == NULL &&
+			    strstr(current_line, "ix=") == NULL &&  /* Memory error messages */
+			    strstr(current_line, "caller=") == NULL &&
+			    strstr(current_line, "Cant ") == NULL &&  /* UserTalk error messages */
+			    strstr(current_line, "hasnt ") == NULL &&
 			    strlen(current_line) > 0) {
 				strncpy(result_token, current_line, sizeof(result_token) - 1);
 				result_token[sizeof(result_token) - 1] = '\0';
@@ -199,9 +218,12 @@ static void eval_cli(const char *script, char *output, size_t output_size) {
 	}
 }
 
+/* Size for CLI output buffers (accommodates command output + warnings/diagnostics) */
+#define TEST_OUTPUT_BUFFER_SIZE 2048
+
 /* Helper to evaluate expression and verify string result */
 static void eval_expect_string(const char *expr, const char *expected) {
-	char result[1024];
+	char result[TEST_OUTPUT_BUFFER_SIZE];
 	eval_cli(expr, result, sizeof(result));
 
 	if (strcmp(result, expected) != 0) {
@@ -214,7 +236,7 @@ static void eval_expect_string(const char *expr, const char *expected) {
 
 /* Helper to evaluate expression and verify numeric result */
 static void eval_expect_number(const char *expr, int expected) {
-	char result[256];
+	char result[TEST_OUTPUT_BUFFER_SIZE];
 	eval_cli(expr, result, sizeof(result));
 
 	int val = atoi(result);
@@ -235,7 +257,7 @@ static void test_table_assign_basic(void) {
 	printf("[table_operations_integration] test_table_assign_basic: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (t); lang.new(tableType, @t); t.key1 = \"hello\"; if t.key1 == \"hello\" { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (t); new(tableType, @t); t.key1 = \"hello\"; if t.key1 == \"hello\" { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_table_assign_basic: PASS\n");
 	fflush(stdout);
@@ -247,7 +269,7 @@ static void test_table_assign_multiple_types(void) {
 	fflush(stdout);
 
 	/* Test assigning multiple types and verifying they all persist */
-	eval_expect_string("local (t); lang.new(tableType, @t); t.str = \"value\"; t.num = 42; t.bool = true; if t.str == \"value\" { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (t); new(tableType, @t); t.str = \"value\"; t.num = 42; t.bool = true; if t.str == \"value\" { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_table_assign_multiple_types: PASS\n");
 	fflush(stdout);
@@ -258,7 +280,7 @@ static void test_table_assign_overwrite(void) {
 	printf("[table_operations_integration] test_table_assign_overwrite: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (t); lang.new(tableType, @t); t.key = \"original\"; t.key = \"updated\"; if t.key == \"updated\" { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (t); new(tableType, @t); t.key = \"original\"; t.key = \"updated\"; if t.key == \"updated\" { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_table_assign_overwrite: PASS\n");
 	fflush(stdout);
@@ -269,7 +291,7 @@ static void test_table_assign_size(void) {
 	printf("[table_operations_integration] test_table_assign_size: start\n");
 	fflush(stdout);
 
-	eval_expect_number("local (t); lang.new(tableType, @t); t.a = 1; t.b = 2; t.c = 3; return sizeOf(t)", 3);
+	eval_expect_number("local (t); new(tableType, @t); t.a = 1; t.b = 2; t.c = 3; return sizeOf(t)", 3);
 
 	printf("[table_operations_integration] test_table_assign_size: PASS\n");
 	fflush(stdout);
@@ -280,7 +302,7 @@ static void test_table_assign_empty_string(void) {
 	printf("[table_operations_integration] test_table_assign_empty_string: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (t); lang.new(tableType, @t); t.empty = \"\"; if t.empty == \"\" and sizeOf(t) == 1 { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (t); new(tableType, @t); t.empty = \"\"; if t.empty == \"\" and sizeOf(t) == 1 { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_table_assign_empty_string: PASS\n");
 	fflush(stdout);
@@ -291,7 +313,7 @@ static void test_table_assign_zero(void) {
 	printf("[table_operations_integration] test_table_assign_zero: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (t); lang.new(tableType, @t); t.zero = 0; if t.zero == 0 { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (t); new(tableType, @t); t.zero = 0; if t.zero == 0 { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_table_assign_zero: PASS\n");
 	fflush(stdout);
@@ -302,7 +324,7 @@ static void test_table_assign_negative(void) {
 	printf("[table_operations_integration] test_table_assign_negative: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (t); lang.new(tableType, @t); t.neg = -100; if t.neg == -100 { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (t); new(tableType, @t); t.neg = -100; if t.neg == -100 { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_table_assign_negative: PASS\n");
 	fflush(stdout);
@@ -313,7 +335,7 @@ static void test_table_assign_large(void) {
 	printf("[table_operations_integration] test_table_assign_large: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (t); lang.new(tableType, @t); t.large = 999999999; if t.large == 999999999 { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (t); new(tableType, @t); t.large = 999999999; if t.large == 999999999 { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_table_assign_large: PASS\n");
 	fflush(stdout);
@@ -328,7 +350,7 @@ static void test_table_copy_basic(void) {
 	printf("[table_operations_integration] test_table_copy_basic: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (src, dst); lang.new(tableType, @src); lang.new(tableType, @dst); src.original = \"data\"; table.copy(@src.original, @dst); if sizeOf(src) == 1 and sizeOf(dst) == 1 and dst.original == \"data\" { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (src, dst); new(tableType, @src); new(tableType, @dst); src.original = \"data\"; table.copy(@src.original, @dst); if sizeOf(src) == 1 and sizeOf(dst) == 1 and dst.original == \"data\" { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_table_copy_basic: PASS\n");
 	fflush(stdout);
@@ -339,7 +361,7 @@ static void test_table_copy_source_unchanged(void) {
 	printf("[table_operations_integration] test_table_copy_source_unchanged: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (src, dst); lang.new(tableType, @src); lang.new(tableType, @dst); src.keep = \"test\"; table.copy(@src.keep, @dst); if defined(src.keep) and src.keep == \"test\" { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (src, dst); new(tableType, @src); new(tableType, @dst); src.keep = \"test\"; table.copy(@src.keep, @dst); if defined(src.keep) and src.keep == \"test\" { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_table_copy_source_unchanged: PASS\n");
 	fflush(stdout);
@@ -350,7 +372,7 @@ static void test_table_copy_numeric(void) {
 	printf("[table_operations_integration] test_table_copy_numeric: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (src, dst); lang.new(tableType, @src); lang.new(tableType, @dst); src.number = 123; table.copy(@src.number, @dst); if dst.number == 123 { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (src, dst); new(tableType, @src); new(tableType, @dst); src.number = 123; table.copy(@src.number, @dst); if dst.number == 123 { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_table_copy_numeric: PASS\n");
 	fflush(stdout);
@@ -361,7 +383,7 @@ static void test_table_copy_boolean(void) {
 	printf("[table_operations_integration] test_table_copy_boolean: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (src, dst); lang.new(tableType, @src); lang.new(tableType, @dst); src.flag = true; table.copy(@src.flag, @dst); if dst.flag == true { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (src, dst); new(tableType, @src); new(tableType, @dst); src.flag = true; table.copy(@src.flag, @dst); if dst.flag == true { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_table_copy_boolean: PASS\n");
 	fflush(stdout);
@@ -372,7 +394,7 @@ static void test_table_copy_with_existing(void) {
 	printf("[table_operations_integration] test_table_copy_with_existing: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (src, dst); lang.new(tableType, @src); lang.new(tableType, @dst); src.item = \"from source\"; dst.existing = \"already here\"; table.copy(@src.item, @dst); if sizeOf(dst) == 2 and dst.item == \"from source\" and dst.existing == \"already here\" { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (src, dst); new(tableType, @src); new(tableType, @dst); src.item = \"from source\"; dst.existing = \"already here\"; table.copy(@src.item, @dst); if sizeOf(dst) == 2 and dst.item == \"from source\" and dst.existing == \"already here\" { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_table_copy_with_existing: PASS\n");
 	fflush(stdout);
@@ -383,7 +405,7 @@ static void test_table_copy_multiple(void) {
 	printf("[table_operations_integration] test_table_copy_multiple: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (src, dst_a, dst_b); lang.new(tableType, @src); lang.new(tableType, @dst_a); lang.new(tableType, @dst_b); src.value = \"shared\"; table.copy(@src.value, @dst_a); table.copy(@src.value, @dst_b); if dst_a.value == \"shared\" and dst_b.value == \"shared\" { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (src, dst_a, dst_b); new(tableType, @src); new(tableType, @dst_a); new(tableType, @dst_b); src.value = \"shared\"; table.copy(@src.value, @dst_a); table.copy(@src.value, @dst_b); if dst_a.value == \"shared\" and dst_b.value == \"shared\" { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_table_copy_multiple: PASS\n");
 	fflush(stdout);
@@ -394,7 +416,7 @@ static void test_table_copy_key_name(void) {
 	printf("[table_operations_integration] test_table_copy_key_name: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (src, dst); lang.new(tableType, @src); lang.new(tableType, @dst); src.originalname = \"value\"; table.copy(@src.originalname, @dst); if defined(dst.originalname) { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (src, dst); new(tableType, @src); new(tableType, @dst); src.originalname = \"value\"; table.copy(@src.originalname, @dst); if defined(dst.originalname) { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_table_copy_key_name: PASS\n");
 	fflush(stdout);
@@ -409,7 +431,7 @@ static void test_table_move_basic(void) {
 	printf("[table_operations_integration] test_table_move_basic: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (src, dst); lang.new(tableType, @src); lang.new(tableType, @dst); src.item = 123; table.move(@src.item, @dst); if sizeOf(src) == 0 and sizeOf(dst) == 1 and dst.item == 123 { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (src, dst); new(tableType, @src); new(tableType, @dst); src.item = 123; table.move(@src.item, @dst); if sizeOf(src) == 0 and sizeOf(dst) == 1 and dst.item == 123 { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_table_move_basic: PASS\n");
 	fflush(stdout);
@@ -420,7 +442,7 @@ static void test_table_move_source_removed(void) {
 	printf("[table_operations_integration] test_table_move_source_removed: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (src, dst); lang.new(tableType, @src); lang.new(tableType, @dst); src.mobile = \"data\"; table.move(@src.mobile, @dst); if not defined(src.mobile) { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (src, dst); new(tableType, @src); new(tableType, @dst); src.mobile = \"data\"; table.move(@src.mobile, @dst); if not defined(src.mobile) { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_table_move_source_removed: PASS\n");
 	fflush(stdout);
@@ -431,7 +453,7 @@ static void test_table_move_multiple_sequential(void) {
 	printf("[table_operations_integration] test_table_move_multiple_sequential: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (src, dst); lang.new(tableType, @src); lang.new(tableType, @dst); src.a = 1; src.b = 2; src.c = 3; table.move(@src.a, @dst); table.move(@src.b, @dst); table.move(@src.c, @dst); if sizeOf(src) == 0 and sizeOf(dst) == 3 { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (src, dst); new(tableType, @src); new(tableType, @dst); src.a = 1; src.b = 2; src.c = 3; table.move(@src.a, @dst); table.move(@src.b, @dst); table.move(@src.c, @dst); if sizeOf(src) == 0 and sizeOf(dst) == 3 { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_table_move_multiple_sequential: PASS\n");
 	fflush(stdout);
@@ -442,7 +464,7 @@ static void test_table_move_prepopulated_dest(void) {
 	printf("[table_operations_integration] test_table_move_prepopulated_dest: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (src, dst); lang.new(tableType, @src); lang.new(tableType, @dst); src.moving = \"value\"; dst.existing = \"already here\"; table.move(@src.moving, @dst); if sizeOf(dst) == 2 and defined(dst.moving) and defined(dst.existing) { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (src, dst); new(tableType, @src); new(tableType, @dst); src.moving = \"value\"; dst.existing = \"already here\"; table.move(@src.moving, @dst); if sizeOf(dst) == 2 and defined(dst.moving) and defined(dst.existing) { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_table_move_prepopulated_dest: PASS\n");
 	fflush(stdout);
@@ -453,7 +475,7 @@ static void test_table_move_string(void) {
 	printf("[table_operations_integration] test_table_move_string: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (src, dst); lang.new(tableType, @src); lang.new(tableType, @dst); src.text = \"hello world\"; table.move(@src.text, @dst); if dst.text == \"hello world\" { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (src, dst); new(tableType, @src); new(tableType, @dst); src.text = \"hello world\"; table.move(@src.text, @dst); if dst.text == \"hello world\" { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_table_move_string: PASS\n");
 	fflush(stdout);
@@ -464,7 +486,7 @@ static void test_table_move_boolean(void) {
 	printf("[table_operations_integration] test_table_move_boolean: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (src, dst); lang.new(tableType, @src); lang.new(tableType, @dst); src.flag = false; table.move(@src.flag, @dst); if dst.flag == false { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (src, dst); new(tableType, @src); new(tableType, @dst); src.flag = false; table.move(@src.flag, @dst); if dst.flag == false { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_table_move_boolean: PASS\n");
 	fflush(stdout);
@@ -479,7 +501,7 @@ static void test_table_rename_basic(void) {
 	printf("[table_operations_integration] test_table_rename_basic: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (t); lang.new(tableType, @t); t.oldname = \"value\"; table.rename(@t.oldname, \"newname\"); if not defined(t.oldname) { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (t); new(tableType, @t); t.oldname = \"value\"; table.rename(@t.oldname, \"newname\"); if not defined(t.oldname) { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_table_rename_basic: PASS\n");
 	fflush(stdout);
@@ -490,7 +512,7 @@ static void test_table_rename_new_key_value(void) {
 	printf("[table_operations_integration] test_table_rename_new_key_value: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (t); lang.new(tableType, @t); t.old = \"test data\"; table.rename(@t.old, \"new\"); if defined(t.new) and t.new == \"test data\" { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (t); new(tableType, @t); t.old = \"test data\"; table.rename(@t.old, \"new\"); if defined(t.new) and t.new == \"test data\" { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_table_rename_new_key_value: PASS\n");
 	fflush(stdout);
@@ -501,7 +523,7 @@ static void test_table_rename_size_unchanged(void) {
 	printf("[table_operations_integration] test_table_rename_size_unchanged: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (t); lang.new(tableType, @t); t.a = 1; t.b = 2; local (size_before) = sizeOf(t); table.rename(@t.a, \"renamed_a\"); if sizeOf(t) == size_before { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (t); new(tableType, @t); t.a = 1; t.b = 2; local (size_before); size_before = sizeOf(t); table.rename(@t.a, \"renamed_a\"); if sizeOf(t) == size_before { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_table_rename_size_unchanged: PASS\n");
 	fflush(stdout);
@@ -512,7 +534,7 @@ static void test_table_rename_with_multiple(void) {
 	printf("[table_operations_integration] test_table_rename_with_multiple: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (t); lang.new(tableType, @t); t.keep1 = \"stay\"; t.rename_me = \"move\"; t.keep2 = \"also stay\"; table.rename(@t.rename_me, \"renamed\"); if sizeOf(t) == 3 and defined(t.keep1) and defined(t.keep2) and defined(t.renamed) { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (t); new(tableType, @t); t.keep1 = \"stay\"; t.rename_me = \"move\"; t.keep2 = \"also stay\"; table.rename(@t.rename_me, \"renamed\"); if sizeOf(t) == 3 and defined(t.keep1) and defined(t.keep2) and defined(t.renamed) { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_table_rename_with_multiple: PASS\n");
 	fflush(stdout);
@@ -523,7 +545,7 @@ static void test_table_rename_numeric(void) {
 	printf("[table_operations_integration] test_table_rename_numeric: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (t); lang.new(tableType, @t); t.oldnum = 42; table.rename(@t.oldnum, \"newnum\"); if t.newnum == 42 { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (t); new(tableType, @t); t.oldnum = 42; table.rename(@t.oldnum, \"newnum\"); if t.newnum == 42 { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_table_rename_numeric: PASS\n");
 	fflush(stdout);
@@ -534,7 +556,7 @@ static void test_table_rename_special_chars(void) {
 	printf("[table_operations_integration] test_table_rename_special_chars: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (t); lang.new(tableType, @t); t.simple = \"value\"; table.rename(@t.simple, \"with_underscore_123\"); if defined(t.with_underscore_123) and t.with_underscore_123 == \"value\" { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (t); new(tableType, @t); t.simple = \"value\"; table.rename(@t.simple, \"with_underscore_123\"); if defined(t.with_underscore_123) and t.with_underscore_123 == \"value\" { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_table_rename_special_chars: PASS\n");
 	fflush(stdout);
@@ -549,7 +571,7 @@ static void test_table_emptytable_single(void) {
 	printf("[table_operations_integration] test_table_emptytable_single: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (t); lang.new(tableType, @t); t.only = \"value\"; table.emptytable(@t); if sizeOf(t) == 0 { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (t); new(tableType, @t); t.only = \"value\"; table.emptytable(@t); if sizeOf(t) == 0 { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_table_emptytable_single: PASS\n");
 	fflush(stdout);
@@ -560,7 +582,7 @@ static void test_table_emptytable_count(void) {
 	printf("[table_operations_integration] test_table_emptytable_count: start\n");
 	fflush(stdout);
 
-	eval_expect_number("local (t); lang.new(tableType, @t); t.a = 1; t.b = 2; t.c = 3; return table.emptytable(@t)", 3);
+	eval_expect_number("local (t); new(tableType, @t); t.a = 1; t.b = 2; t.c = 3; return table.emptytable(@t)", 3);
 
 	printf("[table_operations_integration] test_table_emptytable_count: PASS\n");
 	fflush(stdout);
@@ -571,7 +593,7 @@ static void test_table_emptytable_all_removed(void) {
 	printf("[table_operations_integration] test_table_emptytable_all_removed: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (t); lang.new(tableType, @t); t.x = \"first\"; t.y = \"second\"; t.z = \"third\"; table.emptytable(@t); if not defined(t.x) and not defined(t.y) and not defined(t.z) { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (t); new(tableType, @t); t.x = \"first\"; t.y = \"second\"; t.z = \"third\"; table.emptytable(@t); if not defined(t.x) and not defined(t.y) and not defined(t.z) { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_table_emptytable_all_removed: PASS\n");
 	fflush(stdout);
@@ -582,7 +604,7 @@ static void test_table_emptytable_repopulate(void) {
 	printf("[table_operations_integration] test_table_emptytable_repopulate: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (t); lang.new(tableType, @t); t.temp = \"temporary\"; table.emptytable(@t); t.new = \"new value\"; if sizeOf(t) == 1 and t.new == \"new value\" { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (t); new(tableType, @t); t.temp = \"temporary\"; table.emptytable(@t); t.new = \"new value\"; if sizeOf(t) == 1 and t.new == \"new value\" { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_table_emptytable_repopulate: PASS\n");
 	fflush(stdout);
@@ -593,7 +615,7 @@ static void test_table_emptytable_empty_table(void) {
 	printf("[table_operations_integration] test_table_emptytable_empty_table: start\n");
 	fflush(stdout);
 
-	eval_expect_number("local (t); lang.new(tableType, @t); return table.emptytable(@t)", 0);
+	eval_expect_number("local (t); new(tableType, @t); return table.emptytable(@t)", 0);
 
 	printf("[table_operations_integration] test_table_emptytable_empty_table: PASS\n");
 	fflush(stdout);
@@ -608,7 +630,7 @@ static void test_table_moveandrename_basic(void) {
 	printf("[table_operations_integration] test_table_moveandrename_basic: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (src, dst); lang.new(tableType, @src); lang.new(tableType, @dst); src.oldname = \"data\"; table.moveandrename(@src.oldname, @dst.newname); if not defined(src.oldname) { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (src, dst); new(tableType, @src); new(tableType, @dst); src.oldname = \"data\"; table.moveandrename(@src.oldname, @dst.newname); if not defined(src.oldname) { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_table_moveandrename_basic: PASS\n");
 	fflush(stdout);
@@ -619,7 +641,7 @@ static void test_table_moveandrename_new_name(void) {
 	printf("[table_operations_integration] test_table_moveandrename_new_name: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (src, dst); lang.new(tableType, @src); lang.new(tableType, @dst); src.old = \"test\"; table.moveandrename(@src.old, @dst.new); if defined(dst.new) and dst.new == \"test\" { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (src, dst); new(tableType, @src); new(tableType, @dst); src.old = \"test\"; table.moveandrename(@src.old, @dst.new); if defined(dst.new) and dst.new == \"test\" { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_table_moveandrename_new_name: PASS\n");
 	fflush(stdout);
@@ -630,7 +652,7 @@ static void test_table_moveandrename_value_preserved(void) {
 	printf("[table_operations_integration] test_table_moveandrename_value_preserved: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (src, dst); lang.new(tableType, @src); lang.new(tableType, @dst); src.source = 999; table.moveandrename(@src.source, @dst.destination); if dst.destination == 999 { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (src, dst); new(tableType, @src); new(tableType, @dst); src.source = 999; table.moveandrename(@src.source, @dst.destination); if dst.destination == 999 { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_table_moveandrename_value_preserved: PASS\n");
 	fflush(stdout);
@@ -641,7 +663,7 @@ static void test_table_moveandrename_source_reduced(void) {
 	printf("[table_operations_integration] test_table_moveandrename_source_reduced: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (src, dst); lang.new(tableType, @src); lang.new(tableType, @dst); src.a = 1; src.b = 2; local (src_before) = sizeOf(src); table.moveandrename(@src.a, @dst.moved); if sizeOf(src) == src_before - 1 { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (src, dst); new(tableType, @src); new(tableType, @dst); src.a = 1; src.b = 2; local (src_before); src_before = sizeOf(src); table.moveandrename(@src.a, @dst.moved); if sizeOf(src) == src_before - 1 { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_table_moveandrename_source_reduced: PASS\n");
 	fflush(stdout);
@@ -652,7 +674,7 @@ static void test_table_moveandrename_dest_increased(void) {
 	printf("[table_operations_integration] test_table_moveandrename_dest_increased: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (src, dst); lang.new(tableType, @src); lang.new(tableType, @dst); src.item = \"value\"; local (dst_before) = sizeOf(dst); table.moveandrename(@src.item, @dst.newitem); if sizeOf(dst) == dst_before + 1 { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (src, dst); new(tableType, @src); new(tableType, @dst); src.item = \"value\"; local (dst_before); dst_before = sizeOf(dst); table.moveandrename(@src.item, @dst.newitem); if sizeOf(dst) == dst_before + 1 { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_table_moveandrename_dest_increased: PASS\n");
 	fflush(stdout);
@@ -663,7 +685,7 @@ static void test_table_moveandrename_multiple_sequential(void) {
 	printf("[table_operations_integration] test_table_moveandrename_multiple_sequential: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (src, dst); lang.new(tableType, @src); lang.new(tableType, @dst); src.first = 1; src.second = 2; src.third = 3; table.moveandrename(@src.first, @dst.uno); table.moveandrename(@src.second, @dst.dos); table.moveandrename(@src.third, @dst.tres); if sizeOf(src) == 0 and sizeOf(dst) == 3 { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (src, dst); new(tableType, @src); new(tableType, @dst); src.first = 1; src.second = 2; src.third = 3; table.moveandrename(@src.first, @dst.uno); table.moveandrename(@src.second, @dst.dos); table.moveandrename(@src.third, @dst.tres); if sizeOf(src) == 0 and sizeOf(dst) == 3 { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_table_moveandrename_multiple_sequential: PASS\n");
 	fflush(stdout);
@@ -678,7 +700,7 @@ static void test_complex_combined_operations(void) {
 	printf("[table_operations_integration] test_complex_combined_operations: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (src, mid, dst); lang.new(tableType, @src); lang.new(tableType, @mid); lang.new(tableType, @dst); src.a = 1; src.b = 2; src.c = 3; table.move(@src.a, @mid); table.copy(@src.b, @dst); table.moveandrename(@src.c, @dst.c_renamed); if sizeOf(src) == 1 and sizeOf(mid) == 1 and sizeOf(dst) == 2 { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (src, mid, dst); new(tableType, @src); new(tableType, @mid); new(tableType, @dst); src.a = 1; src.b = 2; src.c = 3; table.move(@src.a, @mid); table.copy(@src.b, @dst); table.moveandrename(@src.c, @dst.c_renamed); if sizeOf(src) == 1 and sizeOf(mid) == 1 and sizeOf(dst) == 2 { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_complex_combined_operations: PASS\n");
 	fflush(stdout);
@@ -689,7 +711,7 @@ static void test_type_preservation(void) {
 	printf("[table_operations_integration] test_type_preservation: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (src, dst); lang.new(tableType, @src); lang.new(tableType, @dst); src.str = \"text\"; src.num = 42; src.bool = true; table.move(@src.str, @dst); table.move(@src.num, @dst); table.move(@src.bool, @dst); if typeof(dst.str) == \"string\" and typeof(dst.num) == \"number\" and typeof(dst.bool) == \"boolean\" { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (src, dst); new(tableType, @src); new(tableType, @dst); src.str = \"text\"; src.num = 42; src.bool = true; table.move(@src.str, @dst); table.move(@src.num, @dst); table.move(@src.bool, @dst); if typeof(dst.str) == \"TEXT\" and typeof(dst.num) == \"long\" and typeof(dst.bool) == \"bool\" { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_type_preservation: PASS\n");
 	fflush(stdout);
@@ -700,7 +722,7 @@ static void test_large_string_values(void) {
 	printf("[table_operations_integration] test_large_string_values: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (src, dst); lang.new(tableType, @src); lang.new(tableType, @dst); src.large = \"The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog.\"; table.move(@src.large, @dst); if dst.large == \"The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog.\" { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (src, dst); new(tableType, @src); new(tableType, @dst); src.large = \"The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog.\"; table.move(@src.large, @dst); if dst.large == \"The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog.\" { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_large_string_values: PASS\n");
 	fflush(stdout);
@@ -711,7 +733,7 @@ static void test_stress_many_entries(void) {
 	printf("[table_operations_integration] test_stress_many_entries: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (t); lang.new(tableType, @t); local (i); for i = 1 to 50 { t.[\"key_\" + i] = i }; if sizeOf(t) == 50 { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (t); new(tableType, @t); local (i); for i = 1 to 50 { t.[\"key_\" + i] = i }; if sizeOf(t) == 50 { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_stress_many_entries: PASS\n");
 	fflush(stdout);
@@ -722,7 +744,7 @@ static void test_rename_chain(void) {
 	printf("[table_operations_integration] test_rename_chain: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (t); lang.new(tableType, @t); t.original = \"value\"; table.rename(@t.original, \"renamed_once\"); table.rename(@t.renamed_once, \"renamed_twice\"); table.rename(@t.renamed_twice, \"renamed_thrice\"); if defined(t.renamed_thrice) and t.renamed_thrice == \"value\" { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (t); new(tableType, @t); t.original = \"value\"; table.rename(@t.original, \"renamed_once\"); table.rename(@t.renamed_once, \"renamed_twice\"); table.rename(@t.renamed_twice, \"renamed_thrice\"); if defined(t.renamed_thrice) and t.renamed_thrice == \"value\" { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_rename_chain: PASS\n");
 	fflush(stdout);
@@ -733,7 +755,7 @@ static void test_empty_string_handling(void) {
 	printf("[table_operations_integration] test_empty_string_handling: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (src, dst); lang.new(tableType, @src); lang.new(tableType, @dst); src.empty = \"\"; table.copy(@src.empty, @dst); if dst.empty == \"\" { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (src, dst); new(tableType, @src); new(tableType, @dst); src.empty = \"\"; table.copy(@src.empty, @dst); if dst.empty == \"\" { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_empty_string_handling: PASS\n");
 	fflush(stdout);
@@ -744,7 +766,7 @@ static void test_false_zero_distinction(void) {
 	printf("[table_operations_integration] test_false_zero_distinction: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (t); lang.new(tableType, @t); t.zero = 0; t.false = false; if typeof(t.zero) == \"number\" and typeof(t.false) == \"boolean\" { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (t); new(tableType, @t); t.zero = 0; t.boolval = false; if typeof(t.zero) == \"long\" and typeof(t.boolval) == \"bool\" { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_false_zero_distinction: PASS\n");
 	fflush(stdout);

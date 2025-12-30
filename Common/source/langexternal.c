@@ -2479,14 +2479,33 @@ boolean langexternaldisposevalue (tyvaluerecord val, boolean fldisk) {
 
 
 static boolean updateconfigsettings (tyvaluetype type, short configid) {
-	
+
 	/*
-	5.0d14 dmb: update the speicified config record according the the 
+	5.0d14 dmb: update the speicified config record according the the
 	user's preference settings in the database
-	
+
 	5.0d17 dmb: push/pop root table for expanding dotparams
 	*/
-	
+
+	#ifdef FRONTIER_HEADLESS
+		/*
+		Font preferences are GUI-only. In headless mode, external objects
+		(tables, outlines, scripts, etc.) don't need display font settings.
+
+		Architectural Decision: v7 database format should not contain font/style
+		information (except within RTF objects). Font preferences should be owned
+		by future GUI applications, not stored in ODB roots.
+
+		See: CLAUDE.md - "v7 database format should not contain any font, font size,
+		     or font style information *except* within stored RTF objects"
+
+		TODO: Remove this function entirely once GUI code is extracted from kernel.
+		      This guard is a temporary measure until complete GUI/kernel separation.
+		      Tracking: GitHub Issue #211 (GUI code audit and extraction)
+		*/
+		return (true);  /* No-op in headless mode, pretend success */
+	#endif
+
 	bigstring bspref;
 	byte bstype [16];
 	bigstring bsfont;
