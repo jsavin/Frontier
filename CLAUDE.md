@@ -429,6 +429,29 @@ This error indicates you tried to use single quotes for a multi-character string
 
 **See also:** `docs/USERTALK_SYNTAX_REFERENCE.md` for comprehensive syntax guide.
 
+## System Dependencies
+
+### xxd (hex dump utility)
+
+**Required for:** Database version verification and corruption detection
+
+The `xxd` command is used by `tools/run_headless_tests.sh` to verify database file formats and detect corruption. The test runner automatically checks for `xxd` and will fail with a clear error message if it's not installed.
+
+**Installation:**
+- **macOS:** `brew install vim` (xxd is included with vim)
+- **Linux (Debian/Ubuntu):** `apt-get install vim-common`
+- **Linux (Red Hat/CentOS):** `yum install vim-common`
+
+**Usage in Frontier:**
+```bash
+# Check database version (first 2 bytes)
+xxd -l 2 -p databases/Frontier-v6.root
+# Expected for v6: 0006
+# Expected for v7: 0007
+```
+
+**See also:** `planning/DATABASE_CORRUPTION_PREVENTION.md` for database protection details
+
 ## Database Migration (v6→v7)
 
 **IMPORTANT: Always use clean migration before testing!**

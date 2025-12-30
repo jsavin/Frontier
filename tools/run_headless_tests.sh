@@ -4,6 +4,14 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
+# Check for xxd dependency
+if ! command -v xxd &> /dev/null; then
+    echo "[headless-tests] ERROR: xxd command not found"
+    echo "[headless-tests] xxd is required for database version verification"
+    echo "[headless-tests] Install via: brew install vim (macOS) or apt-get install vim-common (Linux)"
+    exit 1
+fi
+
 echo "[headless-tests] rebuilding CLI..."
 make -C frontier-cli
 
@@ -15,7 +23,10 @@ if [ -f databases/Frontier-v6.root ]; then
     if [ "$version_bytes" = "0007" ]; then
         echo "[headless-tests] WARNING: Frontier-v6.root has been corrupted (v7 format), restoring from git..."
         chmod 644 databases/Frontier-v6.root  # Make writable for git checkout
-        git checkout databases/Frontier-v6.root
+        if ! git checkout databases/Frontier-v6.root; then
+            echo "[headless-tests] ERROR: Failed to restore Frontier-v6.root from git"
+            exit 1
+        fi
         chmod 444 databases/Frontier-v6.root  # Protect from future writes
         echo "[headless-tests] Restored and protected Frontier-v6.root"
     fi
@@ -26,7 +37,12 @@ chmod 444 databases/Frontier-v6.root 2>/dev/null || true
 # Create v7 migrated database
 if [ ! -f databases/Frontier-v6-v7.root ] || [ databases/Frontier-v6.root -nt databases/Frontier-v6-v7.root ]; then
     # Run CLI with v6 database - creates v7 output file automatically (INPUT.root → INPUT-v7.root)
-    FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root -e "1" > /dev/null 2>&1 || true
+    if ! FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root -e "1" > /dev/null 2>&1; then
+        echo "[headless-tests] ERROR: Database migration failed"
+        echo "[headless-tests] Try running manually: ./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root -e \"1\""
+        exit 1
+    fi
+    echo "[headless-tests] Database migration completed successfully"
 fi
 
 # Verify v6 database wasn't modified during migration

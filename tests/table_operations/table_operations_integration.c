@@ -520,7 +520,7 @@ static void test_table_rename_size_unchanged(void) {
 	printf("[table_operations_integration] test_table_rename_size_unchanged: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (t); new(tableType, @t); t.a = 1; t.b = 2; local (size_before) = sizeOf(t); table.rename(@t.a, \"renamed_a\"); if sizeOf(t) == size_before { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (t); new(tableType, @t); t.a = 1; t.b = 2; local (size_before); size_before = sizeOf(t); table.rename(@t.a, \"renamed_a\"); if sizeOf(t) == size_before { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_table_rename_size_unchanged: PASS\n");
 	fflush(stdout);
@@ -660,7 +660,7 @@ static void test_table_moveandrename_source_reduced(void) {
 	printf("[table_operations_integration] test_table_moveandrename_source_reduced: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (src, dst); new(tableType, @src); new(tableType, @dst); src.a = 1; src.b = 2; local (src_before) = sizeOf(src); table.moveandrename(@src.a, @dst.moved); if sizeOf(src) == src_before - 1 { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (src, dst); new(tableType, @src); new(tableType, @dst); src.a = 1; src.b = 2; local (src_before); src_before = sizeOf(src); table.moveandrename(@src.a, @dst.moved); if sizeOf(src) == src_before - 1 { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_table_moveandrename_source_reduced: PASS\n");
 	fflush(stdout);
@@ -671,7 +671,7 @@ static void test_table_moveandrename_dest_increased(void) {
 	printf("[table_operations_integration] test_table_moveandrename_dest_increased: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (src, dst); new(tableType, @src); new(tableType, @dst); src.item = \"value\"; local (dst_before) = sizeOf(dst); table.moveandrename(@src.item, @dst.newitem); if sizeOf(dst) == dst_before + 1 { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (src, dst); new(tableType, @src); new(tableType, @dst); src.item = \"value\"; local (dst_before); dst_before = sizeOf(dst); table.moveandrename(@src.item, @dst.newitem); if sizeOf(dst) == dst_before + 1 { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_table_moveandrename_dest_increased: PASS\n");
 	fflush(stdout);
@@ -708,7 +708,7 @@ static void test_type_preservation(void) {
 	printf("[table_operations_integration] test_type_preservation: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (src, dst); new(tableType, @src); new(tableType, @dst); src.str = \"text\"; src.num = 42; src.bool = true; table.move(@src.str, @dst); table.move(@src.num, @dst); table.move(@src.bool, @dst); if typeof(dst.str) == \"string\" and typeof(dst.num) == \"number\" and typeof(dst.bool) == \"boolean\" { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (src, dst); new(tableType, @src); new(tableType, @dst); src.str = \"text\"; src.num = 42; src.bool = true; table.move(@src.str, @dst); table.move(@src.num, @dst); table.move(@src.bool, @dst); if typeof(dst.str) == \"TEXT\" and typeof(dst.num) == \"long\" and typeof(dst.bool) == \"bool\" { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_type_preservation: PASS\n");
 	fflush(stdout);
@@ -763,7 +763,7 @@ static void test_false_zero_distinction(void) {
 	printf("[table_operations_integration] test_false_zero_distinction: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (t); new(tableType, @t); t.zero = 0; t.false = false; if typeof(t.zero) == \"number\" and typeof(t.false) == \"boolean\" { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (t); new(tableType, @t); t.zero = 0; t.boolval = false; if typeof(t.zero) == \"long\" and typeof(t.boolval) == \"bool\" { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_false_zero_distinction: PASS\n");
 	fflush(stdout);
