@@ -3840,27 +3840,37 @@ boolean langgetdotparams (hdltreenode htree, hdlhashtable *htable, bigstring bsn
 	langseterrorline (h); /*set globals for error reporting*/
 	
 	switch (nodetype) {
-		
+
+		case noop:
+			/*
+			Empty expression - this can happen when langexpandtodotparams is called
+			with an empty or undefined preference path (e.g., during updateconfigsettings
+			in headless mode where system.prefs might not be fully initialized).
+			Return false (not found) without raising an error.
+			*/
+			log_debug(LOG_COMP_LANG, "langgetdotparams: noop encountered, returning false");
+			return (false);
+
 		case identifierop:
 		case bracketop:
 			return (langgetidentifier (h, bsname));
-		
+
 		case dereferenceop:
 			if (!evaluatetree ((**h).param1, &val))
 				return (false);
-			
+
 			if (!coercetoaddress (&val)) /*might recurse via langexpandtodotparams*/
 				return (false);
-			
+
 			return (getaddressvalue (val, htable, bsname));
-		
+
 		case dotop:
 		case arrayop: /*only arrays & dots allowed past here*/
 			break;
-		
+
 		default:
 			langlongparamerror (unexpectedopcodeerror, (long) nodetype);
-			
+
 			return (false);
 		}
 	
