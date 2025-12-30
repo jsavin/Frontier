@@ -218,9 +218,12 @@ static void eval_cli(const char *script, char *output, size_t output_size) {
 	}
 }
 
+/* Size for CLI output buffers (accommodates command output + warnings/diagnostics) */
+#define TEST_OUTPUT_BUFFER_SIZE 2048
+
 /* Helper to evaluate expression and verify string result */
 static void eval_expect_string(const char *expr, const char *expected) {
-	char result[2048];  /* Larger buffer to accommodate warnings */
+	char result[TEST_OUTPUT_BUFFER_SIZE];
 	eval_cli(expr, result, sizeof(result));
 
 	if (strcmp(result, expected) != 0) {
@@ -233,7 +236,7 @@ static void eval_expect_string(const char *expr, const char *expected) {
 
 /* Helper to evaluate expression and verify numeric result */
 static void eval_expect_number(const char *expr, int expected) {
-	char result[2048];  /* Larger buffer to accommodate warnings */
+	char result[TEST_OUTPUT_BUFFER_SIZE];
 	eval_cli(expr, result, sizeof(result));
 
 	int val = atoi(result);
