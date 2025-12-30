@@ -31,7 +31,12 @@ tests/cli_runtime_tests
 tests/*_tests
 tests/*_tests.dSYM/
 tests/verbs_test.tmp
+tests/table_operations_integration
+tests/time_portability_test
 Common/MySQL/
+
+# Auto-generated parser files (bison/yacc output)
+tmp/
 
 # Build artifacts
 *.o
