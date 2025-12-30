@@ -168,6 +168,12 @@ void table_selection_release(table_selection_context_t *ctx) {
 
 		/* Dispose of selection list */
 		if (ctx->selected_keys != NULL) {
+			/*
+			 * Note: opdisposelist() returns void, so we cannot check for errors.
+			 * In the unlikely event that cleanup fails, we still free the context
+			 * to prevent permanent memory leak. The list memory would be leaked,
+			 * but the context itself won't accumulate.
+			 */
 			opdisposelist(ctx->selected_keys);
 			ctx->selected_keys = NULL;
 		}
@@ -510,8 +516,9 @@ hdlhashnode table_selection_get_cursor_node(table_selection_context_t *ctx) {
  * HELPER FUNCTIONS - Row Counting and Node Lookup
  */
 
-long table_selection_count_visible_rows(table_selection_context_t *ctx,
-                                        hdlhashtable htable) {
+boolean table_selection_count_visible_rows(table_selection_context_t *ctx,
+                                           hdlhashtable htable,
+                                           long *count_out) {
 	/*
 	 * Count total visible rows, accounting for expansion state.
 	 *
@@ -523,15 +530,16 @@ long table_selection_count_visible_rows(table_selection_context_t *ctx,
 	long count;
 	hdlhashnode nomad;
 	hdlhashtable nested_table;
+	long nested_count;
 
-	if (ctx == NULL || htable == NULL) {
-		return 0;
+	if (ctx == NULL || htable == NULL || count_out == NULL) {
+		return false;
 	}
 
 	/* Check recursion depth */
 	if (ctx->iteration_depth > TABLE_SELECTION_MAX_NESTING_DEPTH) {
 		log_error(LOG_COMP_TABLE, "Table nesting too deep (max=%d)", TABLE_SELECTION_MAX_NESTING_DEPTH);
-		return 0;
+		return false;
 	}
 
 	count = 0;
@@ -547,7 +555,11 @@ long table_selection_count_visible_rows(table_selection_context_t *ctx,
 			/* Is it expanded? */
 			if (table_selection_is_expanded(ctx, nested_table)) {
 				/* Add nested table's visible rows */
-				count += table_selection_count_visible_rows(ctx, nested_table);
+				if (!table_selection_count_visible_rows(ctx, nested_table, &nested_count)) {
+					ctx->iteration_depth--;
+					return false;  /* Error in recursive call */
+				}
+				count += nested_count;
 			}
 		}
 
@@ -556,7 +568,8 @@ long table_selection_count_visible_rows(table_selection_context_t *ctx,
 
 	ctx->iteration_depth--;
 
-	return count;
+	*count_out = count;
+	return true;
 }
 
 
@@ -588,8 +601,8 @@ boolean table_selection_get_node_at_row(table_selection_context_t *ctx,
 	}
 
 	/* Check recursion depth */
-	if (ctx->iteration_depth > 100) {
-		log_error(LOG_COMP_TABLE, "Table nesting too deep");
+	if (ctx->iteration_depth > TABLE_SELECTION_MAX_NESTING_DEPTH) {
+		log_error(LOG_COMP_TABLE, "Table nesting too deep (max=%d)", TABLE_SELECTION_MAX_NESTING_DEPTH);
 		return false;
 	}
 
@@ -613,7 +626,10 @@ boolean table_selection_get_node_at_row(table_selection_context_t *ctx,
 		if (table_selection_is_table_value(&(**nomad).val, &nested_table)) {
 			if (table_selection_is_expanded(ctx, nested_table)) {
 				/* Count nested rows */
-				nested_count = table_selection_count_visible_rows(ctx, nested_table);
+				if (!table_selection_count_visible_rows(ctx, nested_table, &nested_count)) {
+					ctx->iteration_depth--;
+					return false;  /* Error counting nested rows */
+				}
 
 				if (current_row + nested_count >= row) {
 					/* Row is inside nested table, recurse */
@@ -685,7 +701,12 @@ long table_selection_get_row_for_node(table_selection_context_t *ctx,
 				}
 
 				/* Not in nested table, skip past its rows */
-				current_row += table_selection_count_visible_rows(ctx, nested_table);
+				long skip_count;
+				if (!table_selection_count_visible_rows(ctx, nested_table, &skip_count)) {
+					ctx->iteration_depth--;
+					return 0;  /* Error counting nested rows */
+				}
+				current_row += skip_count;
 			}
 		}
 
@@ -797,8 +818,14 @@ static boolean table_selection_is_table_value(tyvaluerecord *val, hdlhashtable *
 	}
 
 	/* Get table handle from variabledata */
+	hdlhashtable htable = (hdlhashtable)(**hv).variabledata;
+	if (htable == NULL) {
+		log_error(LOG_COMP_TABLE, "External table variable has NULL variabledata");
+		return false;
+	}
+
 	if (htable_out != NULL) {
-		*htable_out = (hdlhashtable)(**hv).variabledata;
+		*htable_out = htable;
 	}
 
 	return true;
