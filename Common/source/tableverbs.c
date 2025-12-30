@@ -754,14 +754,22 @@ static boolean table_getcursor_headless(hdlhashtable htable, tyvaluerecord *v) {
 
 	/* Validate cursor still exists */
 	hdlhashnode hnode;
-	if (!hashlookup(key, &hnode, htable)) {
+	if (!hashtablelookupnode(htable, key, &hnode)) {
 		/* Cursor invalid (entry deleted) */
 		table_selection_release(ctx);
 		return setstringvalue(zerostring, v);
 	}
 
-	/* Return address */
-	boolean fl = setaddressvalue(htable, key, v);
+	/* Return key name for in-memory tables, or address for database-backed tables */
+	boolean fl;
+
+	if ((**htable).fllocaltable) {
+		/* In-memory table - return key name as string */
+		fl = setstringvalue(key, v);
+	} else {
+		/* Database-backed table - return address */
+		fl = setaddressvalue(htable, key, v);
+	}
 
 	table_selection_release(ctx);
 	return fl;
@@ -854,7 +862,7 @@ static boolean table_gotoname_headless(hdlhashtable htable, const bigstring key,
 	}
 
 	/* Look up key in table */
-	if (!hashlookup(key, &hnode, htable)) {
+	if (!hashtablelookupnode(htable, key, &hnode)) {
 		langerrormessage(BIGSTRING("\x0E" "Key not found"));
 		return false;
 	}
@@ -1044,7 +1052,7 @@ static boolean table_getselection_headless(hdlhashtable htable, tyvaluerecord *v
 			}
 
 			/* Validate key still exists */
-			if (hashlookup(key, &hnode, htable)) {
+			if (hashtablelookupnode(htable, key, &hnode)) {
 				/* Add address to result list */
 				if (!setaddressvalue(htable, key, &addrval)) {
 					opdisposelist(hlist);
@@ -1070,7 +1078,7 @@ static boolean table_getselection_headless(hdlhashtable htable, tyvaluerecord *v
 		tyvaluerecord addrval;
 
 		/* Validate cursor still exists */
-		if (hashlookup(ctx->cursor_key, &hnode, htable)) {
+		if (hashtablelookupnode(htable, ctx->cursor_key, &hnode)) {
 			if (!setaddressvalue(htable, ctx->cursor_key, &addrval)) {
 				opdisposelist(hlist);
 				table_selection_release(ctx);

@@ -1,5 +1,496 @@
 langerrorlist:
-  - id: unknownFunction
-    text: "Unknown function."
-  - id: undefinedTable
-    text: "Table is undefined."
+  - id: undefinederror
+    index: 1
+    text: "Unknown error."
+  - id: ostypecoerceerror
+    index: 2
+    text: "Cant coerce the string ^0 into a string4 because it isnt four characters long."
+  - id: badentrypointnameerror
+    index: 3
+    text: "Cant call ^0 because the only script it contains is named ^1"
+  - id: stringcharerror
+    index: 4
+    text: "Cant coerce the string ^0 into a character because it isnt exactly one character long."
+  - id: stringlongerror
+    index: 5
+    text: "Cant coerce the string ^0 into a number because it contains non-numeric characters."
+  - id: unknownidentifiererror
+    index: 6
+    text: "Cant evaluate the expression because the name ^0 hasnt been defined."
+  - id: notenoughparameterserror
+    index: 7
+    text: "Cant call ^0 because there arent enough parameters."
+  - id: unexpectedopcodeerror
+    index: 8
+    text: "Internal error -- unexpected opcode encountered (^0)."
+  - id: unknownfunctionerror
+    index: 9
+    text: "Cant call the script because the name ^0 hasnt been defined."
+  - id: cantdeleteerror
+    index: 10
+    text: "Cant delete ^0 because it hasnt been defined."
+  - id: charoutofrangeerror
+    index: 11
+    text: "^0 is too big a number to convert to a character.  Maximum is 255."
+  - id: inttoolargeerror
+    index: 12
+    text: "^0 is too big a number to convert to an integer.  Maximum is 32767."
+  - id: inttoosmallerror
+    index: 13
+    text: "^0 is too small a number to convert to an integer.  Minimum is -32768."
+  - id: stringnotterminatederror
+    index: 14
+    text: "String constant isnt correctly specified.  Must be of the form \\\"abcd\\\"."
+  - id: badcharconsterror
+    index: 15
+    text: "Character constant isnt correctly specified.  Must be of the form 'c'."
+  - id: illegaltokenerror
+    index: 16
+    text: "Cant compile this script because ^0 is an illegal character."
+  - id: stringnotbooleanerror
+    index: 17
+    text: "String must be either \\\"true\\\" or \\\"false\\\"."
+  - id: dividebyzeroerror
+    index: 18
+    text: "Cant divide by zero."
+  - id: parsererror
+    index: 19
+    text: "Cant compile this script because of a ^0."
+  - id: tmpstackoverflowerror
+    index: 20
+    text: "The expression is too big. Try breaking it up into several statements."
+  - id: notvarparamerror
+    index: 21
+    text: "An expression is not allowed here; a variable name is required."
+  - id: multiplesymbolerror
+    index: 22
+    text: "Cant create a new local named ^0 because there is already a local with that name."
+  - id: intcoerceerror
+    index: 23
+    text: "Cant coerce the value to a 16-bit number."
+  - id: charcoerceerror
+    index: 24
+    text: "Cant coerce the value to an 8-bit character."
+  - id: longcoerceerror
+    index: 25
+    text: "Cant coerce the value to a 32-bit number."
+  - id: datecoerceerror
+    index: 26
+    text: "Cant coerce the value to a date."
+  - id: stringcoerceerror
+    index: 27
+    text: "Cant coerce the value to a string."
+  - id: booleancoerceerror
+    index: 28
+    text: "Cant coerce the value to a true or false Boolean value."
+  - id: notfunctionerror
+    index: 29
+    text: "Cant call ^0 because it isnt a script."
+  - id: toomanyparameterserror
+    index: 30
+    text: "Cant call ^0 because there are too many parameters."
+  - id: badreplacecontexterror
+    index: 31
+    text: "Cant do replacement because the target window is not in edit mode."
+  - id: badaddresserror
+    index: 32
+    text: "Address value doesnt refer to a valid table."
+  - id: ipcerror
+    index: 33
+    text: "^0 reported the following error:  ^2."
+  - id: appnotloadederror
+    index: 34
+    text: "Cant send the message because ^1^0 isnt running or isnt IAC-aware."
+  - id: badexternalassignmenterror
+    index: 35
+    text: "Assignment over existing ^0 object ^1 is not allowed.  Delete the object first, or use table.assign to override protection."
+  - id: cantcoercetobinaryerror
+    index: 36
+    text: "Cant coerce the value to a binary value."
+  - id: coercionnotpossibleerror
+    index: 37
+    text: "Cant coerce a ^0 value to a ^1."
+  - id: unaryminusnotpossibleerror
+    index: 38
+    text: "Can't take the negative of this type of value."
+  - id: unarynotnotpossibleerror
+    index: 39
+    text: "The logical not operation is not supported with this type of value."
+  - id: foragentsonlyerror
+    index: 40
+    text: "The ^0 verb only operates on agents.  This script is not running as an agent."
+  - id: invaliddirectionerror
+    index: 41
+    text: "A direction is required here.  Examples include up, down, left, right and nodirection."
+  - id: badipclistvalerror
+    index: 42
+    text: "The indicated list was not a binary value of the appropriate type."
+  - id: badipclistposerror
+    index: 43
+    text: "A string4 keyword or a numeric index was expected here."
+  - id: numbertoolargeerror
+    index: 44
+    text: "^0 is too big a number to work with.  Maximum is 2147483647."
+  - id: ipcappleerror
+    index: 45
+    text: "Couldnt complete the message to ^1^0 because of the following error:  ^2."
+  - id: nosuchtableerror
+    index: 46
+    text: "Cant find a sub-table named ^0."
+  - id: notefperror
+    index: 47
+    text: "Error in kernel call.  The verb  ^0 does not exist, or isnt set up to handle messages."
+  - id: arraynottableerror
+    index: 48
+    text: "Array references can only be applied to tables, strings, lists and records.  ^0 is a ^1."
+  - id: arrayindexerror
+    index: 49
+    text: "Array index is out of range.  The ^1 ^0 doesnt have an item #^2."
+  - id: arraystringindexerror
+    index: 50
+    text: "Cant evaluate the array reference because the ^1 ^0 has no item named ^2."
+  - id: cantsizeerror
+    index: 51
+    text: "Cant determine the size of this value."
+  - id: tabletoosmallerror
+    index: 52
+    text: "The table index is out of range.  There is no item #^0."
+  - id: numbernotpositiveerror
+    index: 53
+    text: "A positive number was expected, but a negative number was given."
+  - id: cantpackerror
+    index: 54
+    text: "Cant pack this type of value."
+  - id: cantunpackerror
+    index: 55
+    text: "Cant unpack this type of binary value."
+  - id: unpackformaterror
+    index: 56
+    text: "Cant unpack.  You can only unpack binary values."
+  - id: cantpackthisexternalerror
+    index: 57
+    text: "Internal error -- cant pack unknown type of external value."
+  - id: cantunpackthisexternalerror
+    index: 58
+    text: "Error encountered unpacking the object."
+  - id: iacaddresserror
+    index: 59
+    text: "Cant send the message because the application ^0 isnt running^1."
+  - id: addresscoerceerror
+    index: 60
+    text: "Cant coerce ^0 to an address because it doesn't specify a valid object in the database structure."
+  - id: iactoolkitnotintializederror
+    index: 61
+    text: "Cant send any messages because IAC initialization failed."
+  - id: badwithstatementerror
+    index: 62
+    text: "Cant use ^0 in a with statement because it isnt a table."
+  - id: nopatherror
+    index: 63
+    text: "Cant get the address of ^0 because it isnt in the object database structure."
+  - id: externalreturnerror
+    index: 64
+    text: "Cant return a ^0 as the result of a script.^1"
+  - id: externalgetvalueerror
+    index: 65
+    text: "Cant pass a ^0 as a parameter to a script.^1"
+  - id: externalassignerror
+    index: 66
+    text: "Assignment of a ^0 to another value is not allowed.  Use table.assign instead.^1"
+  - id: trapnotrunningerror
+    index: 67
+    text: "The ^0 verb can only be called by a trap script handling an incoming event.  This script is not handling an event."
+  - id: dialognotrunningerror
+    index: 68
+    text: "The ^0 verb can only be called by a dialog item hit callback script.  This script is not handling a dialog item hit."
+  - id: cantloaddialogerror
+    index: 69
+    text: "Couldnt open a dialog with that id (^0).  The DLOG or DITL resource is probably missing."
+  - id: dialogitemnumerror
+    index: 70
+    text: "Item number is out of range.  The dialog doesnt have an item #^0."
+  - id: cantnestdialogserror
+    index: 71
+    text: "Cant nest more than three modal dialogs."
+  - id: badexternaloperationerror
+    index: 72
+    text: "This operation is not supported for ^0 values.^1"
+  - id: additionnotpossibleerror
+    index: 73
+    text: "Addition is not supported between values of this type."
+  - id: subtractionnotpossibleerror
+    index: 74
+    text: "Subtraction is not supported between values of this type."
+  - id: multiplicationnotpossibleerror
+    index: 75
+    text: "Multiplication is not supported between values of this type."
+  - id: divisionnotpossibleerror
+    index: 76
+    text: "Division is not supported between values of this type."
+  - id: modulusnotpossibleerror
+    index: 77
+    text: "The modulus operation is not supported between values of this type."
+  - id: comparisonnotpossibleerror
+    index: 78
+    text: "Comparison is not supported between these two values."
+  - id: toomanywithtableserror
+    index: 79
+    text: "Cant specify more than ^0 tables in a single with statement. Try nesting two or more with statements instead."
+  - id: stackoverflowerror
+    index: 80
+    text: "Stack overflow:  ^0 stack.  If your script is recursive, make sure that its terminating."
+  - id: badoutgoingipctypeerror
+    index: 81
+    text: "Cant send this type of value in an IAC message."
+  - id: cantruncarderror
+    index: 82
+    text: "Cant run the card ^0."
+  - id: binarycoerceerror
+    index: 83
+    text: "Cant coerce the binary value to this type because it isnt exactly ^0 bytes long."
+  - id: pointcoerceerror
+    index: 84
+    text: "Cant coerce the string ^0 into a point because it isnt in the form h, v."
+  - id: rectcoerceerror
+    index: 85
+    text: "Cant coerce the string ^0 into a rectangle because it isnt in the form top, left, bottom, right."
+  - id: rgbcoerceerror
+    index: 86
+    text: "Cant coerce the string ^0 into an RGB because it isnt in the form red, green, blue."
+  - id: patterncoerceerror
+    index: 87
+    text: "Cant coerce the string ^0 into a pattern because it isnt in the form of an 8-byte hexidecimal number."
+  - id: filespeccoerceerror
+    index: 88
+    text: "The string ^0 isnt a valid file specification."
+  - id: aliascoerceerror
+    index: 89
+    text: "Cant coerce the string ^0 into an alias because it isnt a valid file system path."
+  - id: badrandomboundserror
+    index: 90
+    text: "Random number lower bound is greater than the upper bound."
+  - id: cantusealiaseserror
+    index: 91
+    text: "Cant operate on alias value because the system software in use does not support aliases."
+  - id: cantuseobjspecserror
+    index: 92
+    text: "Cant operate on object specifier value because the system software in use does not support Apple events."
+  - id: badkeyformerror
+    index: 93
+    text: "^0 is not a supported key format specification.  Valid formats are 'name', 'indx' and 'prop'."
+  - id: binaryrequirederror
+    index: 94
+    text: "Cant perform the operation because the address of a binary value is required here."
+  - id: floatcoerceerror
+    index: 95
+    text: "Cant coerce the string ^0 into a floating point number because it isnt in the form 1.234."
+  - id: notxcmderror
+    index: 96
+    text: "Cant call ^0 as an XCMD because it isnt a binary value with binary type 'XCMD' or 'XFCN'."
+  - id: notucmderror
+    index: 97
+    text: "Cant call ^0 as a UCMD because it isnt a binary value with binary type 'UCMD'."
+  - id: notcarderror
+    index: 98
+    text: "Cant run ^0 as a card because it isnt a binary value with binary type 'CARD'."
+  - id: badrangeoperationerror
+    index: 99
+    text: "A range of items cant be specified here."
+  - id: badobjectspecificationerror
+    index: 100
+    text: "Cant interpret this object specification."
+  - id: cantopencomponenterror
+    index: 101
+    text: "Cant open the scripting component whose ID is '^0'."
+  - id: cantbackgroundclipboard
+    index: 102
+    text: "Cant call ^0 from the background; the clipboard contents are only valid for the frontmost application."
+  - id: listcoerceerror
+    index: 103
+    text: "Cant coerce the list value to this type because it doesnt contain at least ^0 items."
+  - id: badfieldoperationerror
+    index: 104
+    text: "A named item cant be specified here."
+  - id: unknownparametererror
+    index: 105
+    text: "Cant call the script ^0 because it doesnt define a parameter named ^1"
+  - id: duplicateparametererror
+    index: 106
+    text: "Cant call the script ^0 because the parameter ^1 has already been given a value."
+  - id: binarytypecoerceerror
+    index: 107
+    text: "Cant coerce the binary value to this type because its binaryType isnt '^0'."
+  - id: nocomponentmanagererror
+    index: 108
+    text: "Cant perform this operation because the Component Manager is not installed."
+  - id: bitindexerror
+    index: 109
+    text: "Bit number must be between 0 and 31."
+  - id: badnetworkvolumespecificationerror
+    index: 110
+    text: "Cant interpret ^0 as a network volume specification because it isnt in the form zone:machine:volume."
+  - id: nofileopenerror
+    index: 111
+    text: "Cant perform the operation because no file is open."
+  - id: floattolongerror
+    index: 112
+    text: "Cant coerce ^0 to a long because it isnt in the range -2147483648 to 2147483647"
+  - id: semaphoretimeouterror
+    index: 113
+    text: "Semaphore timer expired after ^0 sixtieths of a second."
+  - id: badthreadiderror
+    index: 114
+    text: "The thread whose ID is ^0 does not exist."
+  - id: dbnotopenederror
+    index: 115
+    text: "Cant call ^0 because the database ^1 has not been opened."
+  - id: dbopenedreadonlyerror
+    index: 116
+    text: "Cant call ^0 because the database ^1 was opened for reading only."
+  - id: unimplementedverberror
+    index: 117
+    text: "Cant call the verb ^0  because it isn't implemented on this platform."
+  - id: needopendberror
+    index: 118
+    text: "Cant open this file because a database has not been opened."
+  - id: externalvaluerequirederror
+    index: 119
+    text: "Cant target ^0 because it doesnt specify a window."
+  - id: niladdresserror
+    index: 120
+    text: "Cant reference the value because a nil address was given."
+  - id: tableloadingerror
+    index: 121
+    text: "Cant load the table ^0 into memory because an error was encountered: ^1."
+  - id: filenotopenederror
+    index: 122
+    text: "Cant call ^0 because the file ^1 has not been opened."
+  - id: cantconnecttodllerror
+    index: 123
+    text: "Cant call ^0 because the library ^1 couldnt be loaded."
+  - id: cantfindprocinfoerror
+    index: 124
+    text: "Cant call ^0 because the ProcInfo resource could not be found in library ^1."
+  - id: cantfinddllfunctionerror
+    index: 125
+    text: "Cant call ^0 because that name wasnt found in the library ^1."
+  - id: cantfindprocinfofunctionerror
+    index: 126
+    text: "Cant call ^0 because that name wasnt found in the ProcInfo resource of library ^1."
+  - id: noattributestableerror
+    index: 127
+    text: "Cant get the ^0 attribute because the table doesnt have a sub-table named /atts."
+  - id: cantfindattributeerror
+    index: 128
+    text: "Cant get the ^0 attribute because the table doesnt an attribute with that name."
+  - id: cantgetxmladdresserror
+    index: 129
+    text: "Cant get the address of ^0 because the table doesnt have an object with that name."
+  - id: badxmltexterror
+    index: 130
+    text: "Poorly formed XML text, ^0."
+  - id: missingxmlattributeserror
+    index: 131
+    text: "Cant compile the XML text; xml:namespace must have ns and prefix attributes."
+  - id: cantdecompilerror
+    index: 132
+    text: "Cant decompile XML because ^0 is not a table."
+  - id: frontierxmldatatypeerror
+    index: 133
+    text: "Cant process the request because a value of type ^0 cant be represented in XML-Data at this time."
+  - id: hashpackerror
+    index: 134
+    text: "Error packing ^0: ^1"
+  - id: hashunpackerror
+    index: 135
+    text: "Error unpacking ^0: ^1"
+  - id: evaldirectiveerror
+    index: 136
+    text: "Error evaluating #^0: ^1."
+  - id: emptydefinedirective
+    index: 137
+    text: "Empty sub-outline in ^0 #define directive."
+  - id: illegalnameerror
+    index: 138
+    text: "Cant create item ^0.^1 because ^1 is an illegal name."
+  - id: tablesavingerror
+    index: 139
+    text: "Cant save the database because there was an ^0."
+  - id: badrenameerror
+    index: 140
+    text: "Cant rename ^0 as ^1 because an item with that name already exists."
+  - id: cantencodeaddress
+    index: 141
+    text: "Cant encode ^0 as an IP address because it isnt in the form 0.0.0.0."
+  - id: cantdecodeaddress
+    index: 142
+    text: "Cant decode ^0 as an IP address."
+  - id: badwindowerror
+    index: 143
+    text: "Cant ^0 the specified window because it doesn't exist."
+  - id: parseaddresserror
+    index: 144
+    text: "Can't parse the address because of a syntax error."
+  - id: urlspliterror
+    index: 145
+    text: "Can't split the URL because it is not of the form 'http:"
+  - id: cloudspecerror
+    index: 146
+    text: "Can't generate the OPML text because the cloud table is incomplete. ^0 is missing or not recognized."
+  - id: cloudelementerror
+    index: 147
+    text: "Can't process the outline because the XML cloud element is incomplete."
+  - id: bitshiftdisterror
+    index: 148
+    text: "[Bitshift error message missing.]"
+  - id: cantfindprocinfoloaderror
+    index: 149
+    text: "Cant load library because the ProcInfo resource could not be found in library ^0."
+  - id: regexpcompileerror
+    index: 150
+    text: "Can't compile regular expression because ^0 at character #^1."
+  - id: regexpinvaliderror
+    index: 151
+    text: "Can't call re.^0 because the compiled regular expression is invalid."
+  - id: regexpinternalerror
+    index: 152
+    text: "Can't do re.^0 because an internal regexp error occurred (code ^1)."
+  - id: regexpbadgroupnameerror
+    index: 153
+    text: "Can't do re.^0 because the replacement string contains a bad group name at character #^1."
+  - id: regexpnonexistantgroupnumbererror
+    index: 154
+    text: "Can't do re.^0 because the replacement string contains a non-existant group number at character #^1."
+  - id: regexpnonexistantgroupnameerror
+    index: 155
+    text: "Can't do re.^0 because the replacement string contains a non-existant group name at character #^1."
+  - id: regexpnonexistantgrouperror
+    index: 156
+    text: "Can't do re.^0 because the groups list contains a non-existant group name at position #^1."
+  - id: frinternalerror
+    index: 157
+    text: "Can't execute command because an internal regexp error occurred (code ^0)."
+  - id: frbadgroupnameerror
+    index: 158
+    text: "Can't execute command because the replacement string contains a bad group name at character #^0."
+  - id: frnonexistantgroupnumbererror
+    index: 159
+    text: "Can't execute command because the replacement string contains a non-existant group number at character #^0."
+  - id: frnonexistantgroupnameerror
+    index: 160
+    text: "Can't execute command because the replacement string contains a non-existant group name at character #^0."
+  - id: replaceitemerror
+    index: 161
+    text: "An item named ^0 already exists."
+  - id: cmdshellnotfounderror
+    index: 162
+    text: "Can't run shell command because the shell \"^0\" was not found."
+  - id: sqliteopenerror
+    index: 163
+    text: "Can't open database: ^0."
+  - id: sqlitedberror
+    index: 164
+    text: "Database error: ^0."
+  - id: sqlitecompileerror
+    index: 165
+    text: "Can't compile query ^0."

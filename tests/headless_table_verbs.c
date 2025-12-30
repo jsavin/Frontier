@@ -132,7 +132,7 @@ boolean tableinitverbs(void) {
     ADD_VERB(BIGSTRING("\022getdisplaysettings"), tabv_getdisplaysettings);
     ADD_VERB(BIGSTRING("\022setdisplaysettings"), tabv_setdisplaysettings);
     ADD_VERB(BIGSTRING("\014getsortorder"), tabv_sortorder);
-    ADD_VERB(BIGSTRING("\021countvisiblerows"), tabv_countvisiblerows);
+    ADD_VERB(BIGSTRING("\020countvisiblerows"), tabv_countvisiblerows);
 
     pophashtable();
 
