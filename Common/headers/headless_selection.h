@@ -276,6 +276,18 @@ extern void table_selection_clear(table_selection_context_t *ctx);
  */
 extern long table_selection_get_count(table_selection_context_t *ctx);
 
+/**
+ * table_selection_get_nth_selected - Get nth selected key
+ *
+ * @param ctx - Selection context
+ * @param index - 0-based index into selection list
+ * @param key_out - Output: key at that index
+ * @return true if successful, false if index out of bounds
+ */
+extern boolean table_selection_get_nth_selected(table_selection_context_t *ctx,
+                                                 long index,
+                                                 bigstring key_out);
+
 
 /*
  * CURSOR MANAGEMENT

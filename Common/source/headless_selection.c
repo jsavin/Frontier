@@ -444,6 +444,46 @@ long table_selection_get_count(table_selection_context_t *ctx) {
 }
 
 
+boolean table_selection_get_nth_selected(table_selection_context_t *ctx,
+                                         long index,
+                                         bigstring key_out) {
+	/*
+	 * Get nth selected key from selection list.
+	 *
+	 * @param ctx - Selection context
+	 * @param index - 0-based index into selection list
+	 * @param key_out - Output: key at that index
+	 * @return true if successful, false if index out of bounds
+	 */
+	tyvaluerecord val;
+	hdllistrecord hlist;
+
+	if (ctx == NULL || ctx->selected_keys == NULL || key_out == NULL) {
+		return false;
+	}
+
+	if (index < 0 || index >= ctx->ct_selected) {
+		return false;
+	}
+
+	hlist = ctx->selected_keys;
+
+	/* Get nth item from list (1-based in oplist) */
+	if (!listgetnthitem(hlist, index + 1, &val)) {
+		return false;
+	}
+
+	/* Extract string value */
+	if (val.valuetype != stringvaluetype) {
+		return false;
+	}
+
+	/* Copy string to output */
+	copystring(val.data.stringvalue, key_out);
+	return true;
+}
+
+
 /*
  * CURSOR MANAGEMENT
  */
