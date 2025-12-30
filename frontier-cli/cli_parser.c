@@ -22,7 +22,6 @@
 // Initialize CLI options with default values
 static void cli_init_options(cli_options_t* options) {
     memset(options, 0, sizeof(cli_options_t));
-    options->port = CLI_DEFAULT_PORT;
 }
 
 // Validate CLI options for consistency
@@ -46,20 +45,6 @@ boolean cli_validate_options(const cli_options_t* options) {
         return true;
     }
 
-    // Check for conflicting modes
-    if (options->server_mode && options->websocket_mode) {
-        log_error(LOG_COMP_GENERAL, "Error: Cannot use --server and --websocket simultaneously");
-        return false;
-    }
-
-    // Check for required parameters
-    if (options->database_file != NULL) {
-        if (!options->migrate_database && options->query == NULL) {
-            log_error(LOG_COMP_GENERAL, "Error: Database mode requires either --query or --migrate");
-            return false;
-        }
-    }
-
     if (hydration_mode) {
         if (options->system_root == NULL) {
             log_error(LOG_COMP_GENERAL, "Error: --hydrate-system-root requires --system-root PATH");
@@ -67,8 +52,7 @@ boolean cli_validate_options(const cli_options_t* options) {
         }
     } else {
         // Check for script execution parameters
-        if (options->script_file == NULL && options->inline_script == NULL &&
-            options->database_file == NULL && !options->server_mode && !options->websocket_mode) {
+        if (options->script_file == NULL && options->inline_script == NULL) {
             log_error(LOG_COMP_GENERAL, "Error: No execution mode specified");
             return false;
         }
@@ -85,22 +69,6 @@ boolean cli_validate_options(const cli_options_t* options) {
         }
     }
 
-    // Validate port number
-    if (options->port < 1 || options->port > 65535) {
-        log_error(LOG_COMP_GENERAL, "Error: Invalid port number %d (must be 1-65535)", options->port);
-        return false;
-    }
-
-    if (options->database_file != NULL || options->query != NULL || options->migrate_database) {
-        log_error(LOG_COMP_GENERAL, "Error: Database operations are not yet supported in the headless CLI build");
-        return false;
-    }
-
-    if (options->server_mode || options->websocket_mode) {
-        log_error(LOG_COMP_GENERAL, "Error: Network server modes are not yet supported in the headless CLI build");
-        return false;
-    }
-    
     return true;
 }
 
@@ -114,12 +82,6 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
     // Define long options
     static struct option long_options[] = {
         {"execute", required_argument, 0, 'e'},
-        {"database", required_argument, 0, 'd'},
-        {"query", required_argument, 0, 'q'},
-        {"migrate", no_argument, 0, 'm'},
-        {"server", no_argument, 0, 's'},
-        {"websocket", no_argument, 0, 'w'},
-        {"port", required_argument, 0, 'p'},
         {"system-root", required_argument, 0, 'R'},
         {"hydrate-system-root", no_argument, 0, 'H'},
         {"upgrade-system-root", no_argument, 0, 'U'},
@@ -131,7 +93,7 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
     };
 
     // Parse command line arguments
-    while ((opt = getopt_long(argc, argv, "e:d:q:mswp:R:HUvDhV", long_options, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "e:R:HUvDhV", long_options, &option_index)) != -1) {
         switch (opt) {
             case 'e':
                 // Inline script execution
@@ -146,32 +108,6 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
                 options->inline_script = strdup(optarg);
                 break;
 
-            case 'd':
-                // Database file
-                if (options->database_file != NULL) {
-                    log_error(LOG_COMP_GENERAL, "Error: Multiple --database options not allowed");
-                    return false;
-                }
-                if (strlen(optarg) > CLI_MAX_PATH_LENGTH) {
-                    log_error(LOG_COMP_GENERAL, "Error: Database path too long (max %d characters)", CLI_MAX_PATH_LENGTH);
-                    return false;
-                }
-                options->database_file = strdup(optarg);
-                break;
-
-            case 'q':
-                // Database query
-                if (options->query != NULL) {
-                    log_error(LOG_COMP_GENERAL, "Error: Multiple --query options not allowed");
-                    return false;
-                }
-                if (strlen(optarg) > CLI_MAX_SCRIPT_LENGTH) {
-                    log_error(LOG_COMP_GENERAL, "Error: Query too long (max %d characters)", CLI_MAX_SCRIPT_LENGTH);
-                    return false;
-                }
-                options->query = strdup(optarg);
-                break;
-
             case 'R':
                 if (options->system_root != NULL) {
                     log_error(LOG_COMP_GENERAL, "Error: Multiple --system-root options not allowed");
@@ -183,11 +119,6 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
                 }
                 options->system_root = strdup(optarg);
                 break;
-                
-            case 'm':
-                // Migrate database
-                options->migrate_database = true;
-                break;
 
             case 'H':
                 options->hydrate_system_root = true;
@@ -195,29 +126,6 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
 
             case 'U':
                 options->upgrade_system_root = true;
-                break;
-
-            case 's':
-                // Server mode
-                options->server_mode = true;
-                break;
-                
-            case 'w':
-                // WebSocket mode
-                options->websocket_mode = true;
-                break;
-                
-            case 'p':
-                // Port number
-                {
-                    char* endptr;
-                    long port = strtol(optarg, &endptr, 10);
-                    if (*endptr != '\0' || port < 1 || port > 65535) {
-                        log_error(LOG_COMP_GENERAL, "Error: Invalid port number '%s'", optarg);
-                        return false;
-                    }
-                    options->port = (int)port;
-                }
                 break;
 
             case 'v':
@@ -277,26 +185,16 @@ void cli_free_options(cli_options_t* options) {
     if (options == NULL) {
         return;
     }
-    
+
     // Free allocated strings
     if (options->script_file != NULL) {
         free(options->script_file);
         options->script_file = NULL;
     }
-    
+
     if (options->inline_script != NULL) {
         free(options->inline_script);
         options->inline_script = NULL;
-    }
-    
-    if (options->database_file != NULL) {
-        free(options->database_file);
-        options->database_file = NULL;
-    }
-    
-    if (options->query != NULL) {
-        free(options->query);
-        options->query = NULL;
     }
 
     if (options->system_root != NULL) {
@@ -310,20 +208,15 @@ void cli_print_options(const cli_options_t* options) {
         printf("CLI Options: NULL\n");
         return;
     }
-    
+
     printf("CLI Options:\n");
     printf("  Script File: %s\n", options->script_file ? options->script_file : "(none)");
     printf("  Inline Script: %s\n", options->inline_script ? options->inline_script : "(none)");
-    printf("  Database File: %s\n", options->database_file ? options->database_file : "(none)");
-    printf("  Query: %s\n", options->query ? options->query : "(none)");
     printf("  System Root: %s\n", options->system_root ? options->system_root : "(none)");
-    printf("  Port: %d\n", options->port);
     printf("  Verbose: %s\n", options->verbose ? "yes" : "no");
     printf("  Debug: %s\n", options->debug ? "yes" : "no");
-    printf("  Server Mode: %s\n", options->server_mode ? "yes" : "no");
-    printf("  WebSocket Mode: %s\n", options->websocket_mode ? "yes" : "no");
-    printf("  Migrate Database: %s\n", options->migrate_database ? "yes" : "no");
     printf("  Hydrate System Root: %s\n", options->hydrate_system_root ? "yes" : "no");
+    printf("  Upgrade System Root: %s\n", options->upgrade_system_root ? "yes" : "no");
     printf("  Show Help: %s\n", options->show_help ? "yes" : "no");
     printf("  Show Version: %s\n", options->show_version ? "yes" : "no");
 }

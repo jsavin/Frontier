@@ -64,8 +64,6 @@ static void print_version(void);
 static boolean initialize_frontier_runtime(void);
 static void cleanup_frontier_runtime(void);
 static boolean execute_script_mode(void);
-static boolean execute_database_mode(void);
-static boolean execute_network_mode(void);
 static boolean load_system_root_database(const char* path);
 static void unload_system_root_database(void);
 static boolean ensure_named_subtable(hdlhashtable parent, const unsigned char *name, hdlhashtable *out, boolean mark_dont_save);
@@ -132,23 +130,19 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    // Execute based on mode
+    // Execute script mode
     boolean success = false;
 
-    if (g_cli_options.server_mode || g_cli_options.websocket_mode) {
-        success = execute_network_mode();
-    } else if (g_cli_options.database_file != NULL) {
-        success = execute_database_mode();
-    } else if (g_cli_options.script_file != NULL || g_cli_options.inline_script != NULL) {
+    if (g_cli_options.script_file != NULL || g_cli_options.inline_script != NULL) {
         success = execute_script_mode();
     } else {
         log_error(LOG_COMP_GENERAL, "Error: No execution mode specified");
         print_usage(argv[0]);
     }
-    
+
     // Cleanup
     cleanup_frontier_runtime();
-    
+
     return success ? 0 : 1;
 }
 
@@ -241,33 +235,38 @@ static void print_usage(const char* program_name) {
     printf("    %s script.usertalk                    # Execute UserTalk script file\n", program_name);
     printf("    %s -e \"3 + 4\"                         # Execute inline script\n", program_name);
     printf("\n");
-    printf("  (Database and server modes will return an error until Phase 3 work completes.)\n");
-    printf("\n");
-    
+
     printf("Options:\n");
     printf("  -e, --execute SCRIPT     Execute inline UserTalk script\n");
-    printf("  -d, --database FILE      (disabled)\n");
-    printf("  -q, --query QUERY        (disabled)\n");
-    printf("  -m, --migrate            (disabled)\n");
-    printf("  --server                 (disabled)\n");
-    printf("  --websocket              (disabled)\n");
-    printf("  -p, --port PORT          (disabled)\n");
     printf("  --system-root PATH       Load system root database before executing scripts\n");
+    printf("  --upgrade-system-root    Upgrade system root to v7 format (use with --system-root)\n");
     printf("  -v, --verbose            Verbose output\n");
     printf("  --debug                  Debug mode\n");
     printf("  -h, --help               Show this help message\n");
     printf("  --version                Show version information\n");
     printf("\n");
-    
-    printf("Examples:\n");
-    printf("  # Execute a UserTalk script\n");
-    printf("  %s myscript.usertalk\n", program_name);
+
+    printf("Environment Variables:\n");
+    printf("  FRONTIER_LOG_LEVEL       Set log level (TRACE, DEBUG, INFO, WARN, ERROR)\n");
+    printf("  FRONTIER_LOG_COMPONENT   Filter logs by component (DB, HASH, LANG, etc.)\n");
+    printf("  FRONTIER_HEADLESS_SKIP_STARTUP  Skip system.startup scripts during load\n");
     printf("\n");
+
+    printf("Examples:\n");
     printf("  # Execute inline script\n");
     printf("  %s -e \"local(x = 5); x * 2\"\n", program_name);
     printf("\n");
-    printf("  # Execute a script file\n");
+    printf("  # Execute a UserTalk script file\n");
     printf("  %s myscript.usertalk\n", program_name);
+    printf("\n");
+    printf("  # Execute with system root database\n");
+    printf("  %s --system-root databases/Frontier-v7.root -e \"sizeOf(system)\"\n", program_name);
+    printf("\n");
+    printf("  # Upgrade v6 database to v7 format\n");
+    printf("  %s --system-root databases/Frontier-v6.root --upgrade-system-root\n", program_name);
+    printf("\n");
+
+    printf("For detailed documentation, see: docs/CLI_USAGE_GUIDE.md\n");
     printf("\n");
 }
 
@@ -859,7 +858,7 @@ static void unload_system_root_database(void) {
 
 static boolean execute_script_mode(void) {
     cli_log_info("Executing script mode");
-    
+
     if (g_cli_options.script_file != NULL) {
         // Execute script file
         return cli_execute_script_file(g_cli_options.script_file);
@@ -867,18 +866,6 @@ static boolean execute_script_mode(void) {
         // Execute inline script
         return cli_execute_inline_script(g_cli_options.inline_script);
     }
-    
-    return false;
-}
 
-static boolean execute_database_mode(void) {
-    (void)g_cli_options;
-    log_error(LOG_COMP_GENERAL, "Error: Database operations are not yet available in the headless CLI build.");
-    return false;
-}
-
-static boolean execute_network_mode(void) {
-    (void)g_cli_options;
-    log_error(LOG_COMP_GENERAL, "Error: Network server modes are not yet available in the headless CLI build.");
     return false;
 }
