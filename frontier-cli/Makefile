@@ -86,6 +86,7 @@ RUNTIME_SOURCES = \
     ../Common/source/strings_extras.c \
     ../portable/text_encoding_portable.c \
     ../portable/time_portable.c \
+    ../Common/source/timedate.c \
     ../Common/source/md5.c \
     ../Common/source/sha1dgst.c \
     ../Common/source/whirlpool.c \
