@@ -41,8 +41,13 @@
 
 #include "timedate.h"
 
-    #include "MacDateHelpers.h"
+#ifndef FRONTIER_HEADLESS
+	#include "MacDateHelpers.h"
 	#define tydate DateTimeRec
+#else
+	/* Define tydate for headless builds */
+	#define tydate tydaterec
+#endif
 
 #if defined(FRONTIER_HEADLESS)
 #include <time.h>
@@ -192,9 +197,15 @@ short daysInMonth (short month, short year) {
 
 
 void timestamp (long *ptime) {
-    
-    *ptime = (CFAbsoluteTimeGetCurrent() + kCFAbsoluteTimeIntervalSince1904);
-    
+
+    #if defined(FRONTIER_HEADLESS)
+        /* Portable implementation: Use time() + epoch conversion */
+        time_t unix_time = time(NULL);
+        *ptime = (long)(unix_time + FRONTIER_EPOCH_TO_UNIX_OFFSET);
+    #else
+        *ptime = (CFAbsoluteTimeGetCurrent() + kCFAbsoluteTimeIntervalSince1904);
+    #endif
+
 	} /*timestamp*/
 	
 	
@@ -204,9 +215,14 @@ unsigned long timenow (void) {
 	2.1b4 dmb; more convenient than timestamp for most callers
 	*/
 
-    unsigned long now = (CFAbsoluteTimeGetCurrent() + kCFAbsoluteTimeIntervalSince1904);
-
-	return (now);
+    #if defined(FRONTIER_HEADLESS)
+        /* Portable implementation: Use time() + epoch conversion */
+        time_t unix_time = time(NULL);
+        return (unsigned long)(unix_time + FRONTIER_EPOCH_TO_UNIX_OFFSET);
+    #else
+        unsigned long now = (CFAbsoluteTimeGetCurrent() + kCFAbsoluteTimeIntervalSince1904);
+        return (now);
+    #endif
 	} /*timenow*/
 
 
@@ -238,12 +254,17 @@ frontier_time_t timenow64 (void) {
 boolean setsystemclock (unsigned long secs) {
 
 	/*
-	3/10/97 dmb: set the system clock, using Macintosh time 
+	3/10/97 dmb: set the system clock, using Macintosh time
 	conventions (seconds since 12:00 PM Jan 1, 1904)
 	*/
 
-    
-		return (!oserror(unsupportedOSErr));
+    #if defined(FRONTIER_HEADLESS)
+        /* Headless mode doesn't support setting system clock */
+        (void)secs;  /* Suppress unused parameter warning */
+        return false;
+    #else
+        return (!oserror(unsupportedOSErr));
+    #endif
 
 	} /*setsystemclock*/
 
@@ -362,36 +383,41 @@ boolean timetodatestring (int64_t ptime, bigstring bsdate, boolean flabbreviate)
 
 
 boolean stringtotime (bigstring bsdate, unsigned long *ptime) {
-	
+
 	/*
-	9/13/91 dmb: use the script manager to translate a string to a 
+	9/13/91 dmb: use the script manager to translate a string to a
 	time in seconds since 12:00 AM 1904.
-	
+
 	if a date is provided, but no time, the time is 12:00 AM
-	
+
 	if a time is provided, but no date, the date is 1/1/1904.
-	
+
 	we return true if any time/date information was extracted.
 	*/
-	
-    
+
+    #if defined(FRONTIER_HEADLESS)
+        /* Headless implementation: minimal stub */
+        (void)bsdate;  /* Suppress unused parameter warning */
+        *ptime = 0;
+        return false;  /* TODO: Implement proper date parsing for headless mode */
+    #else
         boolean flUseGMT = false;
         long idx;
-        
+
         idx = stringlength (bsdate);
-        
+
         while (getstringcharacter(bsdate, idx-1) == ' ')
             --idx;
-        
+
         if (idx > 3) {
             if ((getstringcharacter(bsdate, idx - 3) == 'G') && (getstringcharacter(bsdate, idx - 2) == 'M') && (getstringcharacter(bsdate, idx -1) == 'T')) {
                 flUseGMT = true;
             }
         }
-        
+
         *ptime = 0; /*default return value*/
 
-        
+
         CFStringRef dateString = CFStringCreateWithPascalString(kCFAllocatorDefault, bsdate, kCFStringEncodingMacRoman);
         CFAbsoluteTime absoluteTime = stringToDate(dateString);
         CFRelease(dateString);
@@ -404,9 +430,7 @@ boolean stringtotime (bigstring bsdate, unsigned long *ptime) {
         } else {
             return false;
         }
-
-
-	return (true);
+    #endif
 	} /*stringtotime*/
 
 
@@ -552,21 +576,30 @@ unsigned long nextmonth(unsigned long date) {
 	/*
 	6.0a10 dmb: limit day to max days for new month
 	*/
-	
-    
+
+    #if defined(FRONTIER_HEADLESS)
+        /* Headless implementation: Add approximately 30 days (simplified) */
+        /* TODO: Implement proper month arithmetic for headless mode */
+        return date + (30 * 24 * 60 * 60);
+    #else
         CFAbsoluteTime timeInterval = date - kCFAbsoluteTimeIntervalSince1904;
         CFAbsoluteTime incrementedTime = incrementDateByMonth(timeInterval, 1);
-
-		return (incrementedTime + kCFAbsoluteTimeIntervalSince1904);
+        return (incrementedTime + kCFAbsoluteTimeIntervalSince1904);
+    #endif
 
 	} /*nextmonth*/
 
 unsigned long nextyear(unsigned long date) {
-    
+
+    #if defined(FRONTIER_HEADLESS)
+        /* Headless implementation: Add 365 days (simplified, ignores leap years) */
+        /* TODO: Implement proper year arithmetic for headless mode */
+        return date + (365 * 24 * 60 * 60);
+    #else
         CFAbsoluteTime timeInterval = date - kCFAbsoluteTimeIntervalSince1904;
         CFAbsoluteTime incrementedTime = incrementDateByYear(timeInterval, 1);
-
-		return (incrementedTime + kCFAbsoluteTimeIntervalSince1904);
+        return (incrementedTime + kCFAbsoluteTimeIntervalSince1904);
+    #endif
 
 	} /*nextyear*/
 
@@ -575,45 +608,63 @@ unsigned long prevmonth(unsigned long date) {
 	/*
 	6.0a10 dmb: limit day to max days for new month
 	*/
-	
-    
+
+    #if defined(FRONTIER_HEADLESS)
+        /* Headless implementation: Subtract approximately 30 days (simplified) */
+        /* TODO: Implement proper month arithmetic for headless mode */
+        return date - (30 * 24 * 60 * 60);
+    #else
         CFAbsoluteTime timeInterval = date - kCFAbsoluteTimeIntervalSince1904;
         CFAbsoluteTime incrementedTime = incrementDateByMonth(timeInterval, -1);
-
-		return (incrementedTime + kCFAbsoluteTimeIntervalSince1904);
+        return (incrementedTime + kCFAbsoluteTimeIntervalSince1904);
+    #endif
 
 	} /*prevmonth*/
 
 unsigned long prevyear(unsigned long date) {
-    
+
+    #if defined(FRONTIER_HEADLESS)
+        /* Headless implementation: Subtract 365 days (simplified, ignores leap years) */
+        /* TODO: Implement proper year arithmetic for headless mode */
+        return date - (365 * 24 * 60 * 60);
+    #else
         CFAbsoluteTime timeInterval = date - kCFAbsoluteTimeIntervalSince1904;
         CFAbsoluteTime incrementedTime = incrementDateByYear(timeInterval, 1);
-
-		return (incrementedTime + kCFAbsoluteTimeIntervalSince1904);
+        return (incrementedTime + kCFAbsoluteTimeIntervalSince1904);
+    #endif
 
 	} /*prevyear*/
 
 unsigned long firstofmonth(unsigned long date) {
-    
+
+    #if defined(FRONTIER_HEADLESS)
+        /* Headless implementation: Stub - return the same date */
+        /* TODO: Implement proper first-of-month calculation for headless mode */
+        return date;
+    #else
         CFAbsoluteTime timeInterval = date - kCFAbsoluteTimeIntervalSince1904;
         CFAbsoluteTime newTime = getFirstDayOfMonth(timeInterval);
-        
         return newTime + kCFAbsoluteTimeIntervalSince1904;
-
+    #endif
 
 	} /*firstofmonth*/
 
 unsigned long lastofmonth(unsigned long date) {
-    
+
+    #if defined(FRONTIER_HEADLESS)
+        /* Headless implementation: Stub - return the same date */
+        /* TODO: Implement proper last-of-month calculation for headless mode */
+        return date;
+    #else
         CFAbsoluteTime timeInterval = date - kCFAbsoluteTimeIntervalSince1904;
         CFAbsoluteTime newTime = getLastDayOfMonth(timeInterval);
-        
         return newTime + kCFAbsoluteTimeIntervalSince1904;
-
+    #endif
 
 	} /*lastofmonth*/
 
 
+#ifndef FRONTIER_HEADLESS
 #define DATE_STRING(date, bs, format) \
     CFLocaleRef locale = CFLocaleCopyCurrent();\
     CFDateFormatterRef formatter = CFDateFormatterCreate(kCFAllocatorDefault, locale, format, kCFDateFormatterNoStyle);\
@@ -622,22 +673,35 @@ unsigned long lastofmonth(unsigned long date) {
     CFStringGetPascalString(dateString, bs, sizeof(bigstring), kCFStringEncodingMacRoman);\
     CFRelease(dateString);\
     CFRelease(formatter);\
-    CFRelease(locale);\
+    CFRelease(locale);
+#endif
 
 
 void shortdatestring (unsigned long date, bigstring bs) {
+    #if defined(FRONTIER_HEADLESS)
+        /* Headless implementation: Use timetodatestring */
+        timetodatestring((int64_t)date, bs, false);
+    #else
         DATE_STRING(date, bs, kCFDateFormatterShortStyle)
-
+    #endif
 	} /*shortdatestring*/
 
 void longdatestring (unsigned long date, bigstring bs) {
+    #if defined(FRONTIER_HEADLESS)
+        /* Headless implementation: Use timetodatestring */
+        timetodatestring((int64_t)date, bs, true);
+    #else
         DATE_STRING(date, bs, kCFDateFormatterLongStyle)
-
+    #endif
 	} /*longdatestring*/
 
 void abbrevdatestring (unsigned long date, bigstring bs) {
+    #if defined(FRONTIER_HEADLESS)
+        /* Headless implementation: Use timetodatestring */
+        timetodatestring((int64_t)date, bs, true);
+    #else
         DATE_STRING(date, bs, kCFDateFormatterMediumStyle)
-
+    #endif
 	} /*abbrevdatestring*/
 
 void getdaystring (short dayofweek, bigstring bs, boolean flFullname) {
@@ -681,16 +745,23 @@ void getdaystring (short dayofweek, bigstring bs, boolean flFullname) {
 	} /*getdaystring*/
 
 long getcurrenttimezonebias(void) {
-		MachineLocation ml;
-		long res;
 
-		ReadLocation (&ml);
-		
-		res = ml.u.gmtDelta & 0x00FFFFFF;
+    #if defined(FRONTIER_HEADLESS)
+        /* Headless implementation: Return 0 (UTC) */
+        /* TODO: Implement proper timezone detection for headless mode */
+        return 0;
+    #else
+        MachineLocation ml;
+        long res;
 
-		if ((res & 0x00800000) == 0x00800000)  //if this is a negative number extend the sign bits
-			res = res | 0xFF000000;
+        ReadLocation (&ml);
 
-		return (res);
+        res = ml.u.gmtDelta & 0x00FFFFFF;
+
+        if ((res & 0x00800000) == 0x00800000)  //if this is a negative number extend the sign bits
+            res = res | 0xFF000000;
+
+        return (res);
+    #endif
 
 	} /*getcurrenttimezonebias*/

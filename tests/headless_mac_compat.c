@@ -325,7 +325,7 @@ void bigstringtofsname (const bigstring bs, tyfsnameptr fsname) {
 #endif /* !FRONTIER_PORTABLE_FILE_AVAILABLE */
 
 // Timing/keyboard
-long getcurrenttimezonebias (void) { return 0; }
+/* getcurrenttimezonebias now in Common/source/timedate.c with portable implementation */
 short getkeyboardstartrepeattime (void) { return 0; }
 long getmousedoubleclicktime (void) { return 0; }
 boolean keyboardescape (void) { return false; }
@@ -394,8 +394,7 @@ boolean isfilewindow (WindowPtr w) { (void)w; return false; }
 boolean ismouserightclick (void) { return false; }
 void killundo (void) { }
 void rollbeachball (void) { }
-void secondstodatetime (int64_t secs, short *yr, short *mon, short *day, short *doy, short *hr, short *min) { (void)secs; if(yr) *yr=0; if(mon) *mon=0; if(day) *day=0; if(doy) *doy=0; if(hr) *hr=0; if(min) *min=0; }
-void secondstodayofweek (int64_t secs, short *dow) { (void)secs; if (dow) *dow=0; }
+/* secondstodatetime and secondstodayofweek now in Common/source/timedate.c with portable implementations */
 void setfserrorparam ( const ptrfilespec fs ) { (void)fs; }
 boolean setoserrorparam (bigstring bs) { (void)bs; return false; }
 void scriptsetcallbacks (hdloutlinerecord ho) { (void)ho; }
@@ -972,44 +971,7 @@ short stringpixels (bigstring bs) {
     return (short) (stringlength (bs));
 }
 
-boolean timetodatestring (int64_t ptime, bigstring bs, boolean flabbreviate) {
-    (void) flabbreviate; /* ignored; classic output uses numeric form */
-    const int64_t frontier_epoch_offset = 2082844800LL; /* seconds between 1904 and 1970 */
-    time_t unix_secs = (ptime > frontier_epoch_offset) ? (time_t) (ptime - frontier_epoch_offset) : (time_t) 0;
-    struct tm tmbuf;
-    if (localtime_r(&unix_secs, &tmbuf) == NULL) {
-        setemptystring(bs);
-        return false;
-    }
-    int month = tmbuf.tm_mon + 1;
-    int day = tmbuf.tm_mday;
-    int year = tmbuf.tm_year + 1900;
-    char buf[32];
-    snprintf(buf, sizeof(buf), "%d/%d/%04d", month, day, year);
-    copyctopstring(buf, bs);
-    return true;
-}
-
-boolean timetotimestring (int64_t ptime, bigstring bs, boolean fl) {
-    const int64_t frontier_epoch_offset = 2082844800LL; /* seconds between 1904 and 1970 */
-    time_t unix_secs = (ptime > frontier_epoch_offset) ? (time_t) (ptime - frontier_epoch_offset) : (time_t) 0;
-    struct tm tmbuf;
-    if (localtime_r(&unix_secs, &tmbuf) == NULL) {
-        setemptystring(bs);
-        return false;
-    }
-    int hour12 = tmbuf.tm_hour % 12;
-    if (hour12 == 0)
-        hour12 = 12;
-    const char *ampm = (tmbuf.tm_hour >= 12) ? "PM" : "AM";
-    char buf[32];
-    if (fl)
-        snprintf(buf, sizeof(buf), "%d:%02d:%02d %s", hour12, tmbuf.tm_min, tmbuf.tm_sec, ampm);
-    else
-        snprintf(buf, sizeof(buf), "%d:%02d %s", hour12, tmbuf.tm_min, ampm);
-    copyctopstring(buf, bs);
-    return true;
-}
+/* timetodatestring and timetotimestring now in Common/source/timedate.c with portable implementations */
 
 /* unixshellcall stub removed - use real implementation from ../Common/source/sysshellcall.c when needed */
 #if 0

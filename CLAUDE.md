@@ -182,9 +182,107 @@ If parallel sessions cause conflicts:
 - Error messages exposed to end-users in the UserTalk realm always take the form of: "Can't do X because Y. [Try Z instead.]"
 - Never delete a local or remote branch without confirming with the user first.
 - Avoid using "magic numbers" in code. Instead create static constants (or variables if the language doesn't support static constants) with names that explain what the constant means to developers.
-- When implementing new kernel verbs in C: (1) Add case statement in appropriate verb function (e.g., `sysverbfunc` in shellsysverbs.c), (2) Use `getstringvalue(hparam1, N, varname)` to extract parameters, (3) Convert Pascal strings to C strings with `nullterminate(varname)`, (4) Convert C strings back to Pascal with `copyctopstring(cstr, result)`, (5) Use `setstringvalue(result, v)` or `setlongvalue()` to return values, (6) Mark last parameter with `flnextparamislast = true`, (7) Run `./tools/run_headless_tests.sh` to verify no regressions.
 - Creating new C test files that call UserTalk requires complex initialization (langinitverbs, environment setup, etc.). Defer detailed test infrastructure work to someone familiar with the test harness. Verify implementations work via `./tools/run_headless_tests.sh` instead.
 - Currently, the UserTalk system.startup.startupScript is known to fail because not all of the verbs that it uses have bindings yet. Always test the bootstrapping of the CLI runtime using the `FRONTIER_HEADLESS_SKIP_STARTUP` environment variable that disables the startup scripts.
+
+## Implementing Kernel Verbs in C
+
+**Comprehensive Guide:** See `docs/usertalk_variable_assignment.md` for detailed information about implementing kernel verbs that set UserTalk variables.
+
+### Basic Verb Implementation Pattern
+
+When implementing new kernel verbs in C:
+
+1. **Add case statement** in appropriate verb function (e.g., `sysverbfunc` in shellsysverbs.c)
+2. **Extract parameters**: Use `getstringvalue(hparam1, N, varname)` to get parameter values
+3. **String conversions**:
+   - Pascal → C: `nullterminate(varname)`
+   - C → Pascal: `copyctopstring(cstr, result)`
+4. **Return values**: Use `setstringvalue(result, v)` or `setlongvalue()` to return values
+5. **Mark last parameter**: Set `flnextparamislast = true` before the last parameter
+6. **Test**: Run `./tools/run_headless_tests.sh` to verify no regressions
+
+### Setting UserTalk Variables from Kernel Verbs ⚠️
+
+**CRITICAL**: When a kernel verb needs to set a UserTalk variable (like `sys.unixshellcommand(cmd, @stdout)` where `@stdout` is an ODB address parameter), you MUST use the complete value record pattern.
+
+#### The Correct Pattern
+
+```c
+// Example: Setting a string variable in the ODB
+boolean set_string_variable(hdlhashtable htable, bigstring varname, Handle hstring) {
+    tyvaluerecord val;
+
+    // Step 1: Create a complete value record from the handle
+    if (!setheapvalue(hstring, stringvaluetype, &val))
+        return (false);
+
+    // Step 2: Assign it to the ODB location
+    if (!hashtableassign(htable, varname, val))
+        return (false);
+
+    return (true);
+}
+```
+
+#### Common Mistakes ❌
+
+**DON'T pass handles directly:**
+```c
+// ❌ WRONG - langsetvalue doesn't exist
+langsetvalue(htable, varname, hstdout, stringvaluetype);
+
+// ❌ WRONG - missing value record wrapper
+hashtableassign(htable, varname, hstring);  // hstring is Handle, not tyvaluerecord
+```
+
+**DO create value records first:**
+```c
+// ✅ CORRECT
+tyvaluerecord val;
+setheapvalue(hstring, stringvaluetype, &val);
+hashtableassign(htable, varname, val);
+```
+
+#### Value Record Creation Functions
+
+| Type | Creation Function | Data Field |
+|------|------------------|------------|
+| String | `setheapvalue(handle, stringvaluetype, &val)` | `val.data.stringvalue` |
+| Long | `setlongvalue(long, &val)` | `val.data.longvalue` |
+| Boolean | `setbooleanvalue(bool, &val)` | `val.data.flvalue` |
+| Double | `setdoublevalue(double, &val)` | `val.data.doublevalue` |
+| Binary | `setbinaryvalue(handle, type, &val)` | `val.data.binaryvalue` |
+| Address | `setaddressvalue(htable, name, &val)` | `val.data.addressvalue` |
+
+#### Examples to Study
+
+Look at these working verb implementations that use ODB address parameters:
+
+- **`Common/source/rgbverbs.c`** - `rgb.get` verb (returns RGB components via address parameters)
+- **`Common/source/dateverbs.c`** - `date.get` verb (returns date components via address parameters)
+- **`Common/source/langregexp.c`** - `re.getPatternInfo` verb (returns pattern info via address parameter)
+
+#### Key Insight: Complete Value Records
+
+The core `hashassign()` function (in `Common/source/langhash.c:2070`) takes a **complete `tyvaluerecord`**, not just a handle or raw value.
+
+For a string value, the value record contains:
+- `val.valuetype = stringvaluetype`
+- `val.data.stringvalue = handle` (the actual string data)
+- `val.fltmpdata` - flag indicating data ownership
+- `val.fltmpstack` - flag for temp stack management
+
+The `setXXXvalue()` functions handle all this correctly - always use them.
+
+#### Extracting ODB Address Parameters
+
+When a verb receives an ODB address parameter (e.g., `@stdout`), you need to:
+1. Extract the hash table reference (`hdlhashtable`)
+2. Extract the variable name (`bigstring`)
+3. Use `hashtableassign(htable, varname, val)` to set the value
+
+See `docs/usertalk_variable_assignment.md` for the complete assignment chain and detailed examples.
 
 ## Running frontier-cli
 
