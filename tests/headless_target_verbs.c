@@ -30,17 +30,14 @@ static boolean target_valueproc(short token, hdltreenode hparam1,
                                      bigstring bserror) {
     switch(token) {
         case tarv_get:
-            /* Verb #0: target.get - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: target.get - forward to real implementation */
+            return langgettargetfunc(hparam1, vreturned);
         case tarv_set:
-            /* Verb #1: target.set - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: target.set - forward to real implementation */
+            return langsettargetfunc(hparam1, vreturned);
         case tarv_clear:
-            /* Verb #2: target.clear - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: target.clear - forward to real implementation */
+            return langcleartargetfunc(hparam1, vreturned);
         default:
             return false;
     }

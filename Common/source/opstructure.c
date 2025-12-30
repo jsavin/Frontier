@@ -603,56 +603,65 @@ boolean opdeposit (hdlheadrecord hpre, tydirection dir, hdlheadrecord hdeposit) 
 
 
 boolean opmoveto (hdlheadrecord hnode) {
-	
+
 	/*
 	move the structure cursor to the indicated node.
-	
+
 	the flcursorneedsdisplay flag lets an external user insist that no matter
 	what the cursor line must be displayed.
-	
+
 	returns true if it had to scroll vertically to make the cursor visible.
-	
+
 	automatically adjust the horizontal scrollbar to make the new cursor line
 	fully visible horizontally (if possible).
-	
+
 	5/4/93 dmb: don't need to docursor if we just visiscrolled
+
+	Phase 2: Headless support - Skip display operations when no window present
 	*/
-	
+
 	register hdloutlinerecord ho = outlinedata;
 	register hdlheadrecord h = hnode;
 	long hscroll, vscroll;
-	register boolean flvisiscroll;
-	
+	register boolean flvisiscroll = false;
+	boolean fldisplay = opdisplayenabled();
+
+	if (ho == NULL) /*Phase 2: outline not initialized in headless mode*/
+		return (false);
+
 	if (((**ho).hbarcursor == hnode) && (!(**ho).flcursorneedsdisplay))
 		return (false);
-	
-	opdirtyview ();
-	
+
+	if (fldisplay)
+		opdirtyview ();
+
 	(**ho).flcursorneedsdisplay = false; /*must be reset every time*/
-	
-	opunloadeditbuffer ();
-	
-	if ((**ho).flbarcursoron) /*un-highlight the old bar cursor line*/
-		opdocursor (false); 
-	
+
+	if (fldisplay)
+		opunloadeditbuffer ();
+
+	if (fldisplay && (**ho).flbarcursoron) /*un-highlight the old bar cursor line*/
+		opdocursor (false);
+
 	(**ho).hbarcursor = h;
-	
-	flvisiscroll = opneedvisiscroll (h, &hscroll, &vscroll, false);
-	
-	if (flvisiscroll)
-		opdovisiscroll (hscroll, vscroll);
-	
-	oploadeditbuffer ();
-	
-	if (!(/*dmb 11/11/96 - flvisiscroll ||*/ (**ho).fltextmode)) /*if in text mode, drawing already happened*/
-		opdocursor (true);
-	
-	opschedulevisi (); /*may need horizontal scroll, once idle*/
-	
-	if (!debuggingcurrentprocess () && opdisplayenabled ()) /*7.0b8: don't run callbacks if debugging*/
-	
-		langopruncallbackscripts (idopcursormovedscript); /*7.0b6 PBS: call callback when cursor moves*/
-	
+
+	if (fldisplay) {
+		flvisiscroll = opneedvisiscroll (h, &hscroll, &vscroll, false);
+
+		if (flvisiscroll)
+			opdovisiscroll (hscroll, vscroll);
+
+		oploadeditbuffer ();
+
+		if (!(/*dmb 11/11/96 - flvisiscroll ||*/ (**ho).fltextmode)) /*if in text mode, drawing already happened*/
+			opdocursor (true);
+
+		opschedulevisi (); /*may need horizontal scroll, once idle*/
+
+		if (!debuggingcurrentprocess ()) /*7.0b8: don't run callbacks if debugging*/
+			langopruncallbackscripts (idopcursormovedscript); /*7.0b6 PBS: call callback when cursor moves*/
+		}
+
 	return (flvisiscroll);
 	} /*opmoveto*/
 	
@@ -2070,28 +2079,38 @@ static boolean opclearmarkvisit (hdlheadrecord hnode, ptrvoid refcon) {
 
 
 void opclearallmarks (void) {
-	
+
+	/*
+	Phase 2: Headless support - Skip screen map operations when no window present
+	*/
+
 	hdloutlinerecord ho = outlinedata;
 	hdlscreenmap hmap;
-	
+	boolean fldisplay = opdisplayenabled();
+
+	if (ho == NULL) /*Phase 2: outline not initialized in headless mode*/
+		return;
+
 	if (!opanymarked ()) { /*must check barcursor*/
-		
+
 		opsetmark ((**ho).hbarcursor, false);
-		
+
 		return;
 		}
-	
-	if (!opgetmark ((**ho).hbarcursor)) /*odd case -- cursor wasn't in selection*/
+
+	if (fldisplay && !opgetmark ((**ho).hbarcursor)) /*odd case -- cursor wasn't in selection*/
 		(**ho).flcursorneedsdisplay = true;
-	
-	opnewscreenmap (&hmap); /*9/11/91 dmb*/
-	
+
+	if (fldisplay)
+		opnewscreenmap (&hmap); /*9/11/91 dmb*/
+
 	opsiblingvisiter ((**ho).hsummit, false, &opclearmarkvisit, nil);
-	
-	opinvalscreenmap (hmap); /*inval all the dirty lines*/
-	
+
+	if (fldisplay)
+		opinvalscreenmap (hmap); /*inval all the dirty lines*/
+
 	//assert ((**ho).ctmarked == 0); /*really should already be zero*/
-	
+
 	(**ho).ctmarked = 0; /*make sure*/
 	} /*opclearallmarks*/
 

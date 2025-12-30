@@ -82,6 +82,11 @@ STUB_CONFIGS = {
     # Category 3: Forward to Real C Implementation
     # These verbs have real implementations that can be called directly
     ('lang', 'new'): (STUB_FORWARD, 'newvaluefunc'),
+
+    # target verbs
+    ('target', 'get'): (STUB_FORWARD, 'langgettargetfunc'),
+    ('target', 'set'): (STUB_FORWARD, 'langsettargetfunc'),
+    ('target', 'clear'): (STUB_FORWARD, 'langcleartargetfunc'),
 }
 
 

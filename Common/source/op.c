@@ -306,35 +306,43 @@ boolean opsetselectioninfo (void) {
 
 
 boolean opsettextmode (boolean fltextmode) {
-	
+
 	/*
 	switches between textmode and structure mode and vice versa.
-	
+
 	just hacks its way into opmoveto, which is equipped to deal with
 	a mode change.
+
+	Phase 2: Headless support - Skip display scheduling when no window present
 	*/
-	
+
 	register hdloutlinerecord ho = outlinedata;
-	
+	boolean fldisplay = opdisplayenabled();
+
+	if (ho == NULL) /*Phase 2: outline not initialized in headless mode*/
+		return (true);
+
 	if (opcanteditcursor ())
 		return (true);
-	
+
 	if (fltextmode == (**ho).fltextmode) /*we're already in requested mode*/
 		return (true);
-	
-	(**ho).flcursorneedsdisplay = true; /*make sure opmoveto does something*/
-	
+
+	if (fldisplay)
+		(**ho).flcursorneedsdisplay = true; /*make sure opmoveto does something*/
+
 	(**ho).fltextmode = fltextmode;
-	
+
 	if (fltextmode)
 		opclearallmarks ();
-	
+
 	opmoveto ((**ho).hbarcursor);
-	
+
 	opeditresetselpoint (); /*cursoring up & down should stick to new horiz position*/
-	
-	opschedulevisi ();
-	
+
+	if (fldisplay)
+		opschedulevisi ();
+
 	return (true);
 	} /*opsettextmode*/
 
@@ -976,82 +984,95 @@ static boolean opcmdmove (tydirection dir) {
 	
 	
 boolean opmotionkey (tydirection dir, long units, boolean flextendselection) {
-	
+
+	/*
+	Phase 2: Headless support - Skip display operations when no window present
+	*/
+
 	register hdloutlinerecord ho = outlinedata;
-	register hdlheadrecord hbarcursor = (**ho).hbarcursor;
-	register boolean fltextmode = (**ho).fltextmode;
+	register hdlheadrecord hbarcursor;
+	register boolean fltextmode;
 	hdlheadrecord hnewcursor;
 	Point selpt;
 	register boolean flmoved = false;
-	
-	opdirtyview ();
-	
+	boolean fldisplay = opdisplayenabled();
+
+	if (ho == NULL) /*Phase 2: outline not initialized in headless mode*/
+		return (false);
+
+	hbarcursor = (**ho).hbarcursor;
+	fltextmode = (**ho).fltextmode;
+
+	if (fldisplay)
+		opdirtyview ();
+
 	while (--units >= 0) {
-			
-		if (!opmovecursor (hbarcursor, dir, 1, &hnewcursor)) 
+
+		if (!opmovecursor (hbarcursor, dir, 1, &hnewcursor))
 			break;
-		
+
 		flmoved = true;
-		
+
 		if (flextendselection) {
-			
+
 			if (opgetmark (hnewcursor))
-				opsetmark (hbarcursor, false);			
-			else {			
+				opsetmark (hbarcursor, false);
+			else {
 				opsetmark (hbarcursor, true);
-				
+
 				opsetmark (hnewcursor, true);
 				}
-			
-			opinvalnode (hbarcursor); /*leave trail of invals*/
+
+			if (fldisplay)
+				opinvalnode (hbarcursor); /*leave trail of invals*/
 			}
 		else
 			opclearallmarks ();
-		
+
 		hbarcursor = hnewcursor;
 		}
-	
+
 	if (!flmoved)
 		return (false);
-	
-	if (fltextmode)
+
+	if (fldisplay && fltextmode)
 		opeditgetselpoint (&selpt);
-	
+
 	opmoveto (hnewcursor);
-	
-	if (fltextmode)
-		
+
+	if (fldisplay && fltextmode)
+
 		switch (keyboardstatus.keydirection) {
-			
+
 			case left:
 				opeditsetselection (infinity, infinity);
-				
+
 				break;
-			
+
 			case right:
 				opeditsetselection (0, 0);
-				
+
 				break;
-			
+
 			case down: case flatdown:
 				opeditsetselection (0, 0); //start at first line...
-				
+
 				opeditsetselpoint (selpt); //... maintaining horizontal cursor position*/
-				
+
 				break;
-			
+
 			case up: case flatup:
 				opeditsetselection (infinity, infinity); //start at last line
-				
+
 				opeditsetselpoint (selpt); //... maintaining horizontal cursor position
-				
+
 				break;
 
 			default:
 				/* do nothing */
 				break;
-			} 
-		
+			}
+
 	return (true);
 	} /*opmotionkey*/
 

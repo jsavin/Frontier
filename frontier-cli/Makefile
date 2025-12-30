@@ -86,6 +86,7 @@ RUNTIME_SOURCES = \
     ../Common/source/strings_extras.c \
     ../portable/text_encoding_portable.c \
     ../portable/time_portable.c \
+    ../Common/source/timedate.c \
     ../Common/source/md5.c \
     ../Common/source/sha1dgst.c \
     ../Common/source/whirlpool.c \
@@ -112,6 +113,7 @@ RUNTIME_SOURCES = \
     ../Common/source/tableexternal.c \
     ../Common/source/tablepack.c \
     ../Common/source/tableverbs.c \
+    ../Common/source/headless_selection.c \
     ../Common/source/shell_api.c \
     ../Common/source/shell_api_headless.c
 
@@ -138,6 +140,7 @@ HEADLESS_STUBS = \
     $(TESTSDIR)/headless_lang_verbs.c \
     $(TESTSDIR)/headless_frontier_verbs.c \
     $(TESTSDIR)/headless_file_verbs.c \
+    $(TESTSDIR)/headless_table_verbs.c \
     $(TESTSDIR)/headless_odb_stubs.c \
     $(TESTSDIR)/headless_op_verbs.c \
     $(TESTSDIR)/headless_opattributes_verbs.c \

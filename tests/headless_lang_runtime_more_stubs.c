@@ -73,7 +73,50 @@ boolean filenextloop (Handle hstate, ptrfilespec outfs, boolean *flfolder) {
 // Error/system messaging shims
 OSErr getoserror (void) { return noErr; }
 boolean getsystemerrorstring (OSErr err, bigstring bs) { (void)err; setemptystring (bs); return false; }
-boolean getstringlist (short listid, short index, bigstring bs) { (void)listid; (void)index; setemptystring (bs); return false; }
+
+// String table lookup using generated YAML-based tables
+#include "../generated/strings_tables.h"
+#include "langinternal.h"
+
+boolean getstringlist (short listid, short index, bigstring bs) {
+    const strings_table_record *table = NULL;
+    const char *table_name = NULL;
+
+    // Map legacy list IDs to table names
+    switch (listid) {
+        case langerrorlist:  // 257 from langinternal.h
+            table_name = "langerrorlist";
+            break;
+        default:
+            // Unknown list ID
+            setemptystring(bs);
+            return false;
+    }
+
+    // Find the table
+    table = strings_find_table(table_name);
+    if (!table) {
+        setemptystring(bs);
+        return false;
+    }
+
+    // Search for matching index
+    for (size_t i = 0; i < table->count; i++) {
+        if (table->entries[i].index == index) {
+            // Found it - copy to Pascal string
+            const char *text = table->entries[i].text;
+            size_t len = strlen(text);
+            if (len > 255) len = 255;  // Pascal string max length
+            bs[0] = (unsigned char)len;
+            memcpy(bs + 1, text, len);
+            return true;
+        }
+    }
+
+    // Index not found
+    setemptystring(bs);
+    return false;
+}
 
 // Shell event gating
 boolean shellblockevents (void) { return true; }
@@ -92,22 +135,8 @@ tykeystrokerecord keyboardstatus = {0};
 boolean myMoof (short a, long b) { (void)a; (void)b; return false; }
 
 // Time/date helpers
-// 2025-12-15 Codex: Use portable time layer for cross-platform compatibility
-// Frontier uses Mac time (seconds since 12:00 PM Jan 1, 1904)
-// Unix time is seconds since midnight Jan 1, 1970
-// Difference is 2,082,844,800 seconds (66 years + leap days)
-#define MAC_UNIX_EPOCH_OFFSET 2082844800UL
-
-unsigned long timenow (void) {
-    // Get Unix timestamp in milliseconds, convert to seconds, add Mac epoch offset
-    uint64_t unix_ms = frontier_time_wallclock_millis();
-    unsigned long unix_secs = (unsigned long)(unix_ms / 1000ULL);
-    return unix_secs + MAC_UNIX_EPOCH_OFFSET;
-}
-
-boolean timegreaterthan (unsigned long a, unsigned long b) { return a > b; }
-boolean timelessthan (unsigned long a, unsigned long b) { return a < b; }
-boolean stringtotime (bigstring bs, unsigned long *out) { (void)bs; if (out) *out = 0; return false; }
+// 2025-12-15 Codex: Time functions moved to Common/source/timedate.c with headless guards
+// These functions are no longer needed here as stubs
 
 // Threading helpers referenced by langxml
 boolean inmainthread (void) { return true; }
