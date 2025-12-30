@@ -19,9 +19,8 @@ if [ -f databases/Frontier-v6.root ]; then
 fi
 # Create v7 migrated database
 if [ ! -f databases/Frontier-v6-v7.root ] || [ databases/Frontier-v6.root -nt databases/Frontier-v6-v7.root ]; then
-    # Copy v6 to v7 and migrate the copy
-    cp databases/Frontier-v6.root databases/Frontier-v6-v7.root
-    FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root databases/Frontier-v6-v7.root -e "1" > /dev/null 2>&1 || true
+    # Run CLI with v6 database - creates v7 output file automatically (INPUT.root → INPUT-v7.root)
+    FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root -e "1" > /dev/null 2>&1 || true
 fi
 
 echo "[headless-tests] running test suite..."
