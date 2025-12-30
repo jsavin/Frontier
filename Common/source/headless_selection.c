@@ -174,6 +174,7 @@ void table_selection_release(table_selection_context_t *ctx) {
 			 * to prevent permanent memory leak. The list memory would be leaked,
 			 * but the context itself won't accumulate.
 			 */
+			log_debug(LOG_COMP_TABLE, "Disposing selection list during context cleanup");
 			opdisposelist(ctx->selected_keys);
 			ctx->selected_keys = NULL;
 		}
@@ -536,8 +537,8 @@ boolean table_selection_count_visible_rows(table_selection_context_t *ctx,
 		return false;
 	}
 
-	/* Check recursion depth */
-	if (ctx->iteration_depth > TABLE_SELECTION_MAX_NESTING_DEPTH) {
+	/* Check recursion depth before incrementing */
+	if (ctx->iteration_depth >= TABLE_SELECTION_MAX_NESTING_DEPTH) {
 		log_error(LOG_COMP_TABLE, "Table nesting too deep (max=%d)", TABLE_SELECTION_MAX_NESTING_DEPTH);
 		return false;
 	}
@@ -600,8 +601,8 @@ boolean table_selection_get_node_at_row(table_selection_context_t *ctx,
 		return false;
 	}
 
-	/* Check recursion depth */
-	if (ctx->iteration_depth > TABLE_SELECTION_MAX_NESTING_DEPTH) {
+	/* Check recursion depth before incrementing */
+	if (ctx->iteration_depth >= TABLE_SELECTION_MAX_NESTING_DEPTH) {
 		log_error(LOG_COMP_TABLE, "Table nesting too deep (max=%d)", TABLE_SELECTION_MAX_NESTING_DEPTH);
 		return false;
 	}
@@ -669,8 +670,8 @@ long table_selection_get_row_for_node(table_selection_context_t *ctx,
 		return 0;
 	}
 
-	/* Check recursion depth */
-	if (ctx->iteration_depth > TABLE_SELECTION_MAX_NESTING_DEPTH) {
+	/* Check recursion depth before incrementing */
+	if (ctx->iteration_depth >= TABLE_SELECTION_MAX_NESTING_DEPTH) {
 		log_error(LOG_COMP_TABLE, "Table nesting too deep (max=%d)", TABLE_SELECTION_MAX_NESTING_DEPTH);
 		return 0;
 	}
@@ -749,12 +750,31 @@ static void table_selection_thread_cleanup(void *ctx) {
 	/*
 	 * Cleanup callback when thread exits.
 	 * Called automatically by pthread TLS system.
+	 *
+	 * This is the last chance to free resources. If refcount > 1, it indicates
+	 * a bug (missing release somewhere). We warn and force cleanup anyway.
 	 */
 	table_selection_context_t *context = (table_selection_context_t *)ctx;
 
 	if (context != NULL) {
-		log_trace(LOG_COMP_TABLE, "Thread cleanup: releasing selection context");
-		table_selection_release(context);
+		if (context->refcount != 1) {
+			log_warn(LOG_COMP_TABLE,
+			         "Thread cleanup: context refcount is %u (expected 1) - possible leak",
+			         (unsigned int)context->refcount);
+		}
+
+		log_trace(LOG_COMP_TABLE, "Thread cleanup: force-freeing selection context");
+
+		/* Force cleanup regardless of refcount */
+		if (context->selected_keys != NULL) {
+			opdisposelist(context->selected_keys);
+			context->selected_keys = NULL;
+		}
+		if (context->expanded_tables != NULL) {
+			free(context->expanded_tables);
+			context->expanded_tables = NULL;
+		}
+		free(context);
 	}
 }
 
