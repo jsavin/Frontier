@@ -1418,6 +1418,36 @@ boolean tablefunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vre
 
 			return (true);
 			}
+
+		case getdisplaysettings: {
+			/* Dispatch based on mode */
+			if (opdisplayenabled()) {
+				/* Windowed mode - get actual display settings */
+				return tablegetdisplaysettingsverb(hparam1, v);
+			} else {
+				/* Headless mode - no display settings available */
+				return setbooleanvalue(false, v);
+			}
+			}
+
+		case setdisplaysettings: {
+			/* Dispatch based on mode */
+			if (opdisplayenabled()) {
+				/* Windowed mode - set actual display settings */
+				return tablesetdisplaysettingsverb(hparam1, v);
+			} else {
+				/* Headless mode - accept but ignore settings */
+				hdlhashtable hsettings;
+
+				flnextparamislast = true;
+
+				if (!gettablevalue(hparam1, 1, &hsettings))
+					return (false);
+
+				/* Silently accept the settings (no-op in headless) */
+				return setbooleanvalue(true, v);
+			}
+			}
 		} /*switch*/
 	
 	/*all other verbs require a table window in front*/
@@ -1495,29 +1525,19 @@ boolean tablefunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vre
 		/*
 		case centertablefunc: {
 			boolean flcenter;
-			
+
 			flnextparamislast = true;
-			
+
 			if (!getbooleanvalue (hparam1, 1, &flcenter))
 				break;
-				
+
 			(*v).data.flvalue = tablesetcenter (flcenter);
-			
+
 			fl = true;
-			
+
 			break;
 			}
 		*/
-
-		case getdisplaysettings:
-			fl = tablegetdisplaysettingsverb (hparam1, v);
-			
-			break;
-		
-		case setdisplaysettings:
-			fl = tablesetdisplaysettingsverb (hparam1, v);
-			
-			break;
 
 		case sortorderfunc: {
 			hdlhashtable ht;
