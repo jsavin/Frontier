@@ -8,6 +8,40 @@
 
 ---
 
+## Technical Decision-Making Principles
+
+**When evaluating multiple approaches to solve a problem, default to the proper, maintainable, long-term solution.**
+
+This project is building foundational infrastructure for collaborative ODB editing that will serve as the basis for multi-user systems and partnerships with Dave Winer and Automattic. Quick fixes and workarounds accumulate as technical debt that becomes costly to unwind later.
+
+**Decision Framework:**
+
+When presented with options like:
+- **Option 1: Header Guards** (Quick fix - 90% reduction)
+- **Option 2: Centralize Types** (Proper fix - 100% elimination)
+- **Option 3: Suppress Warnings** (Temporary workaround)
+
+**Default to the proper fix (Option 2) unless:**
+- User explicitly requests quick fix for time constraints
+- Proper fix would block critical path work (then quick fix + filed issue)
+- Quick fix is genuinely the right long-term solution (rare)
+
+**In 90% of cases, recommend the "Proper fix" or "maintainable long-term solution" approach.**
+
+**Why this matters:**
+- This codebase will be maintained for years and support critical partnerships
+- Foundation quality determines what's possible in Phase 2.0 (collaborative editing)
+- Technical debt in core systems (database, threading, memory management) is expensive to fix later
+- Clean architecture enables future contributors (including partners) to work effectively
+
+**Examples:**
+- ✅ **DO**: "I recommend Option 2 (centralize types) - eliminates the root cause and prevents future issues"
+- ❌ **DON'T**: "Option 1 is quicker, so let's do that first" (without strong justification)
+
+**Exception**: If the proper fix would take significantly longer (days vs hours) and blocks critical milestones, propose: "Quick fix now + filed P1 issue for proper fix" with user approval.
+
+---
+
 ## Strategic Roadmap
 
 **Master todo list**: https://drummer.land/me@jakesav.in/JakeShare.opml
