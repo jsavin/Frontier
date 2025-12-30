@@ -285,9 +285,23 @@ void langexternalsetdatabase (hdlexternalvariable hv, hdldatabaserecord hdb) {
 	
 	if ((**hv).hdatabase == hdb)
 		return;
-	
-	if ((**hv).flinmemory && (**hv).oldaddress == nildbaddress) // a new object, not from disk
-		(**hv).hdatabase = hdb;
+
+	/*
+	CRITICAL FIX: Do NOT set hdatabase for new in-memory objects.
+
+	hdatabase should ONLY be set when an object is loaded from disk or saved to disk.
+	Setting it for new objects (flinmemory=1, oldaddress=nildbaddress) creates invalid
+	state where the object appears to be associated with a database but has no disk address.
+
+	This caused segfaults in dbnormalizeaddress() when trying to resolve addresses for
+	objects that were never saved to disk.
+
+	See: docs/external_table_variable_management.md Section 14 for complete semantics.
+	*/
+
+	log_debug(LOG_COMP_EXTERNAL,
+		"langexternalsetdatabase: BLOCKED for hv=%p (flinmemory=%d oldaddress=0x%llx) - hdatabase only set when saved to disk",
+		(void*)hv, (int)(**hv).flinmemory, (unsigned long long)(**hv).oldaddress);
 	} /*langexternalsetdatabase*/
 
 

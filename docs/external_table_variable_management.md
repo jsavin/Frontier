@@ -492,6 +492,222 @@ newvar.oldaddress = nildbaddress;  // Force new allocation
 
 ---
 
+## 14. Transient vs Persistable Tables (2025-12-29)
+
+### Overview
+
+Not all in-memory tables should be saved to disk. Frontier distinguishes between:
+- **Transient tables**: Local variables, thread stacks, temporary scopes (never persist)
+- **Persistable tables**: User-created tables that can be saved to database
+
+This distinction is tracked at the **hash table level**, not the external variable level.
+
+### Hash Table Flags
+
+From `Common/headers/lang.h:444-476`:
+
+```c
+typedef struct tyhashtable {
+    hdlhashnode hashbucket [ctbuckets];
+    hdlhashnode hfirstsort;
+    ...
+
+    boolean fldirty: 1;                  /* has anything changed? */
+    boolean fllocked: 1;                 /* are changes allowed? */
+    boolean fllocaltable: 1;             /* ← LOCAL VARIABLE TABLE (transient) */
+    boolean flchained: 1;                /* in the chain of local hashtables? */
+    boolean fldisposewhenunchained: 1;   /* dispose when removed from stack? */
+    boolean ctwithvalues: 3;             /* how many with statement values? */
+    ...
+}
+```
+
+### Semantics of `fllocaltable`
+
+**`fllocaltable=1` → Transient table (NEVER persist)**
+- Function parameter tables
+- Local variable scopes
+- Thread stack frames
+- With-statement context tables
+- Automatically disposed when scope exits
+
+**`fllocaltable=0` → Persistable table (MAY persist)**
+- User-created tables (`lang.new(tableType, @t)`)
+- Database tables (`system.verbs`, user workspace)
+- Can be saved to disk
+- Lives beyond function/thread lifetime
+
+### Where `fllocaltable` is Set
+
+```c
+// Script execution locals (scripts.c:2711)
+(**ht).fllocaltable = true;
+
+// Function parameter/local tables (lang.c:554)
+(**ht).fllocaltable = true;
+
+// With-statement context tables (langevaluate.c:799)
+(**ht).fllocaltable = true;
+```
+
+### State Matrix: External Variables for Tables
+
+| Table Type | flinmemory | oldaddress | hdatabase | fllocaltable | Meaning |
+|------------|------------|------------|-----------|--------------|---------|
+| **New local var** | 1 | nildbaddress | nil | 1 | Function local (transient) |
+| **New user table** | 1 | nildbaddress | nil | 0 | Created by `lang.new()` (not yet saved) |
+| **Loaded from disk** | 1 | non-nil | non-nil | 0 | Loaded into memory, can be saved back |
+| **Lazy reference** | 0 | nildbaddress | non-nil | 0 | On-disk, not yet loaded |
+
+### Critical Invariant for `hdatabase`
+
+**RULE**: `hdatabase` should ONLY be set when an object comes from disk.
+
+```c
+// VALID STATES:
+hdatabase=nil, oldaddress=nildbaddress        // New object (never saved)
+hdatabase!=nil, oldaddress!=nildbaddress      // Loaded from disk
+
+// INVALID STATE (causes crashes):
+hdatabase!=nil, oldaddress=nildbaddress       // Ambiguous! Was it loaded or new?
+```
+
+**Why this matters**:
+- `hdatabase!=nil` signals "this object belongs to a database"
+- Runtime uses this to determine if object should be loaded from disk
+- Setting `hdatabase` on new objects creates ambiguity: "Should I load this from disk?"
+- Result: Runtime tries to dereference garbage `variabledata` as database address → segfault
+
+### Provenance vs Current State
+
+**`flinmemory` tracks CURRENT STATE** (where data is right now):
+- `flinmemory=1` → "Data is currently in memory"
+- `flinmemory=0` → "Data is currently on disk"
+
+**`oldaddress` tracks HISTORY** (has it ever been saved?):
+- `oldaddress=nildbaddress` → Never been saved to disk
+- `oldaddress!=nildbaddress` → Has been saved (and this is where)
+
+**`hdatabase` tracks PROVENANCE** (where did it come from?):
+- `hdatabase=nil` → Created new (in-memory only, or not yet associated with database)
+- `hdatabase!=nil` → Came from this database (loaded from disk)
+
+**`fllocaltable` tracks LIFETIME** (should it ever persist?):
+- `fllocaltable=1` → Transient (disposed when scope exits, never saved)
+- `fllocaltable=0` → Persistable (may be saved to database)
+
+### Example Lifecycles
+
+**Local Variable Table (Transient)**:
+```c
+// Function call creates local scope
+local (x, y, z);
+lang.new(tableType, @localVars);  // Internal, for locals
+
+// State:
+flinmemory=1                  // In memory
+oldaddress=nildbaddress       // Never saved
+hdatabase=nil                 // Not from database
+fllocaltable=1                // ← TRANSIENT
+
+// Function returns → table is DISPOSED (never saved)
+```
+
+**User Table (Persistable)**:
+```c
+// User creates table with system root loaded
+lang.new(tableType, @myTable);
+
+// State immediately after creation:
+flinmemory=1                  // In memory
+oldaddress=nildbaddress       // Not yet saved
+hdatabase=nil                 // ← NOT SET (the fix!)
+fllocaltable=0                // Persistable
+
+// Later, user saves database:
+tableverbpack(hv, ...)
+  → Sets oldaddress=0x1234
+  → Sets hdatabase=systemRootDB
+  → Table now has provenance
+
+// State after save:
+flinmemory=1                  // Still in memory
+oldaddress=0x1234             // Last saved location
+hdatabase=systemRootDB        // Now affiliated with database
+fllocaltable=0                // Persistable
+```
+
+**Loaded Table**:
+```c
+// Database loads system.verbs (lazy)
+tableverbunpack(...)
+
+// Initial state (lazy reference):
+flinmemory=0                  // Not loaded yet
+oldaddress=nildbaddress       // Not materialized
+hdatabase=systemRootDB        // Came from this database
+fllocaltable=0                // Persistable
+
+// First access triggers load:
+tableverbinmemory(hv, hnode)
+
+// State after load:
+flinmemory=1                  // Now in memory
+oldaddress=0x1234             // Loaded from here
+hdatabase=systemRootDB        // Still affiliated
+fllocaltable=0                // Persistable
+```
+
+### The Bug Fixed in This Commit
+
+**Problem**: `langexternalsetdatabase()` was setting `hdatabase` for newly created objects:
+
+```c
+// BUGGY CODE (causes crashes):
+void langexternalsetdatabase(hdlexternalvariable hv, hdldatabaserecord hdb) {
+    if ((**hv).flinmemory && (**hv).oldaddress == nildbaddress)
+        (**hv).hdatabase = hdb;  // ← WRONG! Creates invalid state
+}
+
+// Result when system root is loaded:
+lang.new(tableType, @t)
+  → flinmemory=1, oldaddress=nildbaddress, hdatabase=systemRootDB
+  → Invalid state! Runtime thinks it should load from disk
+  → Tries to dereference variabledata as dbaddress
+  → Segfault
+```
+
+**Fix**: Never set `hdatabase` for new objects. Only set when loading from disk:
+
+```c
+void langexternalsetdatabase(hdlexternalvariable hv, hdldatabaserecord hdb) {
+    // REMOVED: Do not set hdatabase for new objects
+    // hdatabase is ONLY set when object is loaded from disk
+    // (happens in tableverbinmemory after successful load)
+
+    log_debug(LOG_COMP_EXTERNAL,
+        "langexternalsetdatabase: BLOCKED - hdatabase only set when loaded from disk");
+}
+```
+
+### Related Files
+
+**Hash table structure**:
+- `Common/headers/lang.h:444-476` - `tyhashtable` definition with `fllocaltable`
+
+**Local table creation**:
+- `Common/source/scripts.c:2711` - Script locals
+- `Common/source/lang.c:554` - Function parameters
+- `Common/source/langevaluate.c:799` - With-statement contexts
+
+**External variable management**:
+- `Common/source/langexternal.c:2739` - `external_set_ondisk()`
+- `Common/source/langexternal.c:2784` - `external_set_inmemory()`
+- `Common/source/langexternal.c:289` - `langexternalsetdatabase()` (the fix)
+
+---
+
 **Document Status**: Comprehensive reference based on code analysis (2025-12-18)
+**Updated**: 2025-12-29 - Added transient vs persistable semantics and `hdatabase` invariants
 **Reviewed**: Pending
 **Updates**: Will be maintained as implementation evolves
