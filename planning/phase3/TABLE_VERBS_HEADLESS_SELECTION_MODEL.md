@@ -896,3 +896,52 @@ This architecture provides:
 2. Code implementation (headless_selection.c)
 3. Verb binding (tableverbs.c updates)
 4. Testing (unit + integration)
+
+---
+
+## Deferred Testing & Future Work
+
+The following testing and optimization work has been deferred to later phases:
+
+### Phase 2: Hash Table Integration Tests
+- **Status:** Deferred from Phase 1
+- **Rationale:** Phase 1 tests use dummy pointers for infrastructure validation only
+- **Required Work:**
+  - Setting cursor on actual hash nodes
+  - Row counting with real nested tables
+  - Multi-selection with real table entries
+  - Expansion state affecting row indexing
+  - Verify iteration_depth handling with deeply nested tables
+- **Phase:** Phase 2 (table verb implementation)
+
+### Phase 5: Performance Testing
+- **Status:** Deferred from Phase 1
+- **Rationale:** Current algorithms are O(n) with recursion - acceptable for typical use cases
+- **Required Work:**
+  - Benchmark `table_selection_count_visible_rows()` with large tables (>1000 entries)
+  - Benchmark `table_selection_get_node_at_row()` for repeated lookups (rendering scenarios)
+  - Benchmark `table_selection_find_in_list()` with large selection sets (>100 items)
+  - Profile deep nesting scenarios (10+ levels)
+- **Performance Assumptions:**
+  - Typical table sizes: <1000 entries
+  - Typical selection sizes: <100 items
+  - Typical nesting depth: <10 levels
+- **Potential Optimizations (if profiling shows issues):**
+  - Cache visible row counts for expanded tables
+  - Use hash table for selection list (instead of linear search)
+  - Index caching for repeated row lookups
+- **Phase:** Phase 5 (integration testing)
+
+### Phase 6: Multi-Threaded Stress Testing
+- **Status:** Deferred from Phase 1
+- **Rationale:** Thread-local storage ensures isolation, but concurrent editing needs validation
+- **Required Work:**
+  - Concurrent operations on different tables
+  - Concurrent operations on same table from different threads
+  - Reference counting correctness under load
+  - Memory leak detection with thread churn
+- **Phase:** Phase 6 (collaborative ODB support)
+
+---
+
+**Document Updated:** 2025-12-30 (added deferred testing section)

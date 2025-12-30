@@ -321,15 +321,20 @@ extern hdlhashnode table_selection_get_cursor_node(table_selection_context_t *ct
  *
  * @param ctx - Selection context
  * @param htable - Table to count
- * @return Total number of visible rows (1-based indexing)
+ * @param count_out - Output parameter for row count (1-based indexing)
+ * @return true if successful, false if error (NULL params or nesting too deep)
  *
  * Algorithm:
  * 1. Start with immediate children count
  * 2. For each child that is an expanded table, recurse
  * 3. Sum up visible descendants
+ *
+ * Note: This API uses boolean + out-parameter pattern to distinguish between
+ * "0 rows" (valid, returns true with *count_out=0) and "error occurred" (returns false).
  */
-extern long table_selection_count_visible_rows(table_selection_context_t *ctx,
-                                               hdlhashtable htable);
+extern boolean table_selection_count_visible_rows(table_selection_context_t *ctx,
+                                                   hdlhashtable htable,
+                                                   long *count_out);
 
 /**
  * table_selection_get_node_at_row - Find hash node at 1-based row index
