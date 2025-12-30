@@ -35,8 +35,9 @@ fi
 chmod 444 databases/Frontier-v6.root 2>/dev/null || true
 
 # Create v7 migrated database
-if [ ! -f databases/Frontier-v6-v7.root ] || [ databases/Frontier-v6.root -nt databases/Frontier-v6-v7.root ]; then
-    # Run CLI with v6 database - creates v7 output file automatically (INPUT.root → INPUT-v7.root)
+if [ ! -f databases/Frontier-v7.root ] || [ databases/Frontier-v6.root -nt databases/Frontier-v7.root ]; then
+    # Run CLI with v6 database - creates v7 output file automatically
+    # Pattern: Frontier-v6.root → Frontier-v7.root (version suffix stripped and replaced)
     if ! FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root -e "1" > /dev/null 2>&1; then
         echo "[headless-tests] ERROR: Database migration failed"
         echo "[headless-tests] Try running manually: ./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root -e \"1\""
