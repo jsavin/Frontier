@@ -43,6 +43,7 @@
 #include "db_format.h"
 #include "kernelverbdefs.h"
 #include "headless_selection.h"
+#include "logging.h"
 // 2025-11-28 Codex: Use db_context wrappers when packing tables to avoid TLS globals.
 // 2025-12-29 Phase 3: Add headless selection context for table navigation verbs
 
@@ -685,11 +686,13 @@ static boolean tablesetdisplaysettingsverb (hdltreenode hp1, tyvaluerecord *v) {
  *
  * Tries multiple strategies:
  * 1. Check thread-local selection context for current_table
- * 2. If windowed mode available, use window lookup
- * 3. Error if no target can be determined
+ * 2. Check lang.getTarget() for explicitly set target (headless primary method)
+ * 3. If windowed mode available, use window lookup
+ * 4. Error if no target can be determined
  */
 static boolean table_get_target_hashtable(hdlhashtable *htable_out) {
 	table_selection_context_t *ctx = NULL;
+	bigstring bsname;
 
 	/* Try thread-local context first */
 	ctx = table_selection_acquire();
@@ -701,6 +704,13 @@ static boolean table_get_target_hashtable(hdlhashtable *htable_out) {
 
 	if (ctx != NULL) {
 		table_selection_release(ctx);
+	}
+
+	/* Try lang.getTarget() - primary method for headless mode */
+	if (langgettarget(htable_out, bsname)) {
+		if (*htable_out != NULL) {
+			return true;
+		}
 	}
 
 	/* Fall back to window lookup if display enabled */
@@ -1093,52 +1103,56 @@ done:
 } /*table_getselection_headless*/
 
 
-static boolean tablefunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vreturned, bigstring bserror) {
-	
+boolean tablefunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vreturned, bigstring bserror) {
+
 	/*
 	bridges table.c with the language.  the name of the verb is bs, its first parameter
 	is hparam1, and we return a value in vreturned.
-	
+
 	we use a limited number of support routines from lang.c to get parameters and
-	to return values. 
-	
+	to return values.
+
 	return false only if the error is serious enough to halt the running of the script
 	that called us, otherwise error values are returned through the valuerecord, which
 	is available to the script.
-	
-	if we return false, we try to provide a descriptive error message in the 
+
+	if we return false, we try to provide a descriptive error message in the
 	returned string bserror.
-	
+
 	11/14/91 dmb: getcursorfunc returns address, not full path
-	
+
 	10/3/92 dmb: commented out setcolwidthfunc. (this verb still isn't "offical")
-	
+
 	4/2/93 dmb: added jettisonfunc
-	
-	6/1/93 dmb: when vreturned is nil, return whether or not verb token must 
+
+	6/1/93 dmb: when vreturned is nil, return whether or not verb token must
 	be run in the Frontier process
-	
+
 	5.1.5b11 dmb: fixed gotofunc silent failure
 	*/
-	
+
 	register tyvaluerecord *v = vreturned;
 	register boolean fl = false;
 	WindowPtr targetwindow;
+
+	log_debug(LOG_COMP_TABLE, "tablefunctionvalue: ENTRY token=%d hparam1=%p vreturned=%p bserror=%p",
+	          token, (void*)hparam1, (void*)vreturned, (void*)bserror);
 	
 	if (v == nil) { /*need Frontier process?*/
 		
 		switch (token) {
-			
+
 			case sortbyfunc:
 			case getcursorfunc:
 			case getselectionfunc:
 			case gotofunc:
 			case gotonamefunc:
 			case gofunc:
+			case countvisiblerowsfunc:
 			case getdisplaysettings:
 			case setdisplaysettings:
 				return (true);
-			
+
 			default:
 				return (false);
 			}
@@ -1188,16 +1202,212 @@ static boolean tablefunctionvalue (short token, hdltreenode hparam1, tyvaluereco
 		case jettisonfunc: { /*toss an object w/out forcing it into memory. for database recovery.*/
 			hdlhashtable htable;
 			bigstring bs;
-			
+
 			if (!getvarparam (hparam1, 1, &htable, bs)) /*name of table*/
 				return (false);
-			
+
 			pushhashtable (htable);
-			
+
 			(*v).data.flvalue = hashdelete (bs, true, false);
-			
+
 			pophashtable ();
-			
+
+			return (true);
+			}
+
+		/* Phase 3 headless table navigation verbs */
+		case getcursorfunc: {
+			hdlhashtable htable;
+
+			if (!langcheckparamcount (hparam1, 0)) /*too many parameters were passed*/
+				return (false);
+
+			/* Get target table */
+			if (!table_get_target_hashtable(&htable)) {
+				setstringvalue(zerostring, v);
+				return (true);
+			}
+
+			/* Dispatch based on mode */
+			if (opdisplayenabled()) {
+				/* Windowed mode */
+				bigstring bs;
+				tyvaluerecord val;
+				hdlhashnode hhashnode;
+
+				if (!tablegetcursorinfo(&htable, bs, &val, &hhashnode))
+					setstringvalue(zerostring, v);
+				else
+					setaddressvalue(htable, bs, v);
+			} else {
+				/* Headless mode */
+				table_getcursor_headless(htable, v);
+			}
+
+			return (true);
+			}
+
+		case getselectionfunc: {
+			hdlhashtable htable;
+
+			/* Get target table */
+			if (!table_get_target_hashtable(&htable)) {
+				langerrormessage(BIGSTRING("\x18" "No table is current"));
+				return (false);
+			}
+
+			/* Dispatch based on mode */
+			if (opdisplayenabled()) {
+				/* Windowed mode */
+				return tablegetselectionverb(hparam1, v);
+			} else {
+				/* Headless mode */
+				return table_getselection_headless(htable, v);
+			}
+			}
+
+		case gotofunc: {
+			long row;
+			hdlhashtable htable;
+
+			log_debug(LOG_COMP_TABLE, "tablefunctionvalue: gotofunc case reached");
+
+			flnextparamislast = true;
+
+			if (!getlongvalue(hparam1, 1, &row)) {
+				log_error(LOG_COMP_TABLE, "tablefunctionvalue: gotofunc - getlongvalue failed");
+				return (false);
+			}
+
+			log_debug(LOG_COMP_TABLE, "tablefunctionvalue: gotofunc - row=%ld", row);
+
+			/* Get target table */
+			if (!table_get_target_hashtable(&htable)) {
+				log_error(LOG_COMP_TABLE, "tablefunctionvalue: gotofunc - no target table, returning error");
+				langerrormessage(BIGSTRING("\x18" "No table is current"));
+				return (false);
+			}
+
+			log_debug(LOG_COMP_TABLE, "tablefunctionvalue: gotofunc - got target table %p", (void*)htable);
+
+			/* Dispatch based on mode */
+			if (opdisplayenabled()) {
+				/* Windowed mode - use existing implementation */
+				hdlheadrecord hsummit;
+				if (opnthsummit(row, &hsummit)) {
+					opclearallmarks();
+					opmoveto(hsummit);
+					(*v).data.flvalue = true;
+				}
+			} else {
+				/* Headless mode - use selection context */
+				log_debug(LOG_COMP_TABLE, "tablefunctionvalue: gotofunc - calling table_goto_headless");
+				table_goto_headless(htable, row, v);
+			}
+
+			log_debug(LOG_COMP_TABLE, "tablefunctionvalue: gotofunc - returning true");
+			return (true);
+			}
+
+		case gotonamefunc: {
+			hdlhashtable htable;
+			bigstring bs;
+
+			flnextparamislast = true;
+
+			if (!getstringvalue(hparam1, 1, bs))
+				return (false);
+
+			/* Get target table */
+			if (!table_get_target_hashtable(&htable)) {
+				langerrormessage(BIGSTRING("\x18" "No table is current"));
+				return (false);
+			}
+
+			/* Dispatch based on mode */
+			if (opdisplayenabled()) {
+				/* Windowed mode - use existing implementation */
+				(*v).data.flvalue = tablemovetoname(htable, bs);
+			} else {
+				/* Headless mode */
+				table_gotoname_headless(htable, bs, v);
+			}
+
+			return (true);
+			}
+
+		case gofunc: {
+			tydirection dir;
+			long count;
+			hdlhashtable htable;
+
+			if (!getdirectionvalue(hparam1, 1, &dir))
+				return (false);
+
+			flnextparamislast = true;
+
+			if (!getlongvalue(hparam1, 2, &count))
+				return (false);
+
+			/* Get target table */
+			if (!table_get_target_hashtable(&htable)) {
+				langerrormessage(BIGSTRING("\x18" "No table is current"));
+				return (false);
+			}
+
+			/* Dispatch based on mode */
+			if (opdisplayenabled()) {
+				/* Windowed mode */
+				opsettextmode(false);
+
+				if (dir == down)
+					dir = flatdown;
+				if (dir == up)
+					dir = flatup;
+
+				(*v).data.flvalue = opmotionkey(dir, count, false);
+			} else {
+				/* Headless mode */
+				table_go_headless(htable, dir, count, v);
+			}
+
+			return (true);
+			}
+
+		case countvisiblerowsfunc: {
+			hdlhashtable htable;
+			long count;
+			table_selection_context_t *ctx = NULL;
+
+			if (!langcheckparamcount(hparam1, 0))
+				return (false);
+
+			/* Get target table */
+			if (!table_get_target_hashtable(&htable)) {
+				langerrormessage(BIGSTRING("\x18" "No table is current"));
+				return (false);
+			}
+
+			/* Acquire selection context for expansion state */
+			ctx = table_selection_acquire();
+			if (ctx == NULL) {
+				langerrormessage(BIGSTRING("\x20" "Can't get selection context"));
+				return (false);
+			}
+
+			ctx->current_table = htable;
+
+			/* Count visible rows (respects expansion state) */
+			if (!table_selection_count_visible_rows(ctx, htable, &count)) {
+				table_selection_release(ctx);
+				langerrormessage(BIGSTRING("\x1C" "Can't count table rows"));
+				return (false);
+			}
+
+			table_selection_release(ctx);
+
+			setlongvalue(count, v);
+
 			return (true);
 			}
 		} /*switch*/
@@ -1290,162 +1500,7 @@ static boolean tablefunctionvalue (short token, hdltreenode hparam1, tyvaluereco
 			break;
 			}
 		*/
-			
-		case getcursorfunc: {
-			hdlhashtable htable;
 
-			if (!langcheckparamcount (hparam1, 0)) /*too many parameters were passed*/
-				break;
-
-			/* Get target table */
-			if (!table_get_target_hashtable(&htable)) {
-				fl = setstringvalue(zerostring, v);
-				break;
-			}
-
-			/* Dispatch based on mode */
-			if (opdisplayenabled()) {
-				/* Windowed mode */
-				bigstring bs;
-				tyvaluerecord val;
-				hdlhashnode hhashnode;
-
-				if (!tablegetcursorinfo(&htable, bs, &val, &hhashnode))
-					fl = setstringvalue(zerostring, v);
-				else
-					fl = setaddressvalue(htable, bs, v);
-			} else {
-				/* Headless mode */
-				fl = table_getcursor_headless(htable, v);
-			}
-
-			break;
-			}
-		
-		case getselectionfunc: {
-			hdlhashtable htable;
-
-			/* Get target table */
-			if (!table_get_target_hashtable(&htable)) {
-				langerrormessage(BIGSTRING("\x18" "No table is current"));
-				break;
-			}
-
-			/* Dispatch based on mode */
-			if (opdisplayenabled()) {
-				/* Windowed mode */
-				fl = tablegetselectionverb(hparam1, v);
-			} else {
-				/* Headless mode */
-				fl = table_getselection_headless(htable, v);
-			}
-
-			break;
-			}
-		
-		case gotofunc: {
-			long row;
-			hdlhashtable htable;
-
-			flnextparamislast = true;
-
-			if (!getlongvalue(hparam1, 1, &row))
-				break;
-
-			/* Get target table */
-			if (!table_get_target_hashtable(&htable)) {
-				langerrormessage(BIGSTRING("\x18" "No table is current"));
-				break;
-			}
-
-			/* Dispatch based on mode */
-			if (opdisplayenabled()) {
-				/* Windowed mode - use existing implementation */
-				hdlheadrecord hsummit;
-				if (opnthsummit(row, &hsummit)) {
-					opclearallmarks();
-					opmoveto(hsummit);
-					(*v).data.flvalue = true;
-				}
-			} else {
-				/* Headless mode - use selection context */
-				(*v).data.flvalue = table_goto_headless(htable, row, v);
-			}
-
-			fl = true;
-
-			break;
-			}
-		
-		case gotonamefunc: {
-			hdlhashtable htable;
-			bigstring bs;
-
-			flnextparamislast = true;
-
-			if (!getstringvalue(hparam1, 1, bs))
-				break;
-
-			/* Get target table */
-			if (!table_get_target_hashtable(&htable)) {
-				langerrormessage(BIGSTRING("\x18" "No table is current"));
-				break;
-			}
-
-			/* Dispatch based on mode */
-			if (opdisplayenabled()) {
-				/* Windowed mode - use existing implementation */
-				(*v).data.flvalue = tablemovetoname(htable, bs);
-			} else {
-				/* Headless mode */
-				(*v).data.flvalue = table_gotoname_headless(htable, bs, v);
-			}
-
-			fl = true;
-
-			break;
-			}
-		
-		case gofunc: {
-			tydirection dir;
-			long count;
-			hdlhashtable htable;
-
-			if (!getdirectionvalue(hparam1, 1, &dir))
-				break;
-
-			flnextparamislast = true;
-
-			if (!getlongvalue(hparam1, 2, &count))
-				break;
-
-			/* Get target table */
-			if (!table_get_target_hashtable(&htable)) {
-				langerrormessage(BIGSTRING("\x18" "No table is current"));
-				break;
-			}
-
-			/* Dispatch based on mode */
-			if (opdisplayenabled()) {
-				/* Windowed mode */
-				opsettextmode(false);
-
-				if (dir == down)
-					dir = flatdown;
-				if (dir == up)
-					dir = flatup;
-
-				(*v).data.flvalue = opmotionkey(dir, count, false);
-			} else {
-				/* Headless mode */
-				(*v).data.flvalue = table_go_headless(htable, dir, count, v);
-			}
-
-			fl = true;
-
-			break;
-			}
-		
 		case getdisplaysettings:
 			fl = tablegetdisplaysettingsverb (hparam1, v);
 			
@@ -1471,43 +1526,6 @@ static boolean tablefunctionvalue (short token, hdltreenode hparam1, tyvaluereco
 
 			break;
 			}
-
-		case countvisiblerowsfunc: {
-			hdlhashtable htable;
-			long count;
-			table_selection_context_t *ctx = NULL;
-
-			if (!langcheckparamcount(hparam1, 0))
-				break;
-
-			/* Get target table */
-			if (!table_get_target_hashtable(&htable)) {
-				langerrormessage(BIGSTRING("\x18" "No table is current"));
-				break;
-			}
-
-			/* Acquire selection context for expansion state */
-			ctx = table_selection_acquire();
-			if (ctx == NULL) {
-				langerrormessage(BIGSTRING("\x20" "Can't get selection context"));
-				break;
-			}
-
-			ctx->current_table = htable;
-
-			/* Count visible rows (respects expansion state) */
-			if (!table_selection_count_visible_rows(ctx, htable, &count)) {
-				table_selection_release(ctx);
-				langerrormessage(BIGSTRING("\x1C" "Can't count table rows"));
-				break;
-			}
-
-			table_selection_release(ctx);
-
-			fl = setlongvalue(count, v);
-
-			break;
-			}
 		} /*switch*/
 	
 	shellupdatescrollbars (shellwindowinfo);
@@ -1518,10 +1536,15 @@ static boolean tablefunctionvalue (short token, hdltreenode hparam1, tyvaluereco
 	} /*tablefunctionvalue*/
 
 
+#ifndef FRONTIER_HEADLESS
+/* Windowed mode: register with tablefunctionvalue callback */
 boolean tableinitverbs (void) {
-	
+
 	return (loadfunctionprocessor (idtableverbs, &tablefunctionvalue));
 	} /*tableinitverbs*/
+#endif /* !FRONTIER_HEADLESS */
+/* Note: Headless mode provides its own tableinitverbs() in tests/headless_table_verbs.c
+ * which registers with headless_table_verbs_callback instead. */
 
 
 

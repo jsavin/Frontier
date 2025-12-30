@@ -14,6 +14,7 @@
  * - This enables modular verb implementation files in tests/ directory
  *
  * MODIFIED PROCESSORS:
+ * - init_efp_1001 (table): Uses headless_table_verbs_callback
  * - init_efp_1007 (file): Uses headless_file_verbs_callback
  * - init_efp_1016 (frontier): Uses headless_frontier_verbs_callback
  *
@@ -38,6 +39,7 @@ extern boolean pophashtable(void);
 /* Headless-specific verb implementations */
 extern boolean headless_file_verbs_callback(short, hdltreenode, tyvaluerecord*, bigstring);
 extern boolean headless_frontier_verbs_callback(short, hdltreenode, tyvaluerecord*, bigstring);
+extern boolean headless_table_verbs_callback(short, hdltreenode, tyvaluerecord*, bigstring);
 
 static boolean init_efp_1000(langvaluecallback valuecallback) {
     hdlhashtable htable;
@@ -197,8 +199,10 @@ static boolean init_efp_1001(langvaluecallback valuecallback) {
     hdlhashtable htable;
     short ixverb = 0;
 
-    /* Processor: table (18 verbs) */
-    if (!newfunctionprocessor(BIGSTRING("\005table"), valuecallback, true, &htable))
+    (void) valuecallback; /* Unused - we use headless_table_verbs_callback instead */
+
+    /* Processor: table (19 verbs) - uses modular headless callback */
+    if (!newfunctionprocessor(BIGSTRING("\005table"), &headless_table_verbs_callback, true, &htable))
         return false;
 
     pushhashtable(htable);
@@ -237,6 +241,8 @@ static boolean init_efp_1001(langvaluecallback valuecallback) {
     if (!langaddkeyword(BIGSTRING("\022setdisplaysettings"), ixverb++))
         return false;
     if (!langaddkeyword(BIGSTRING("\014getsortorder"), ixverb++))
+        return false;
+    if (!langaddkeyword(BIGSTRING("\021countvisiblerows"), ixverb++))
         return false;
     pophashtable();
 

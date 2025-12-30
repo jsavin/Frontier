@@ -97,6 +97,8 @@ extern boolean tabledroppasteroutine (void); /*tablescrap*/
 
 extern boolean tableinitverbs (void); /*tableverbs.c*/
 
+extern boolean tablefunctionvalue (short, hdltreenode, tyvaluerecord *, bigstring); /*tableverbs.c*/
+
 extern boolean gettablevalue (hdltreenode, short, hdlhashtable *);
 
 

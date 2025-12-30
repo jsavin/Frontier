@@ -1342,4 +1342,12 @@ extern boolean langcleartarget (tyvaluerecord *prevtarget);
 
 extern boolean langsettarget (hdlhashtable htable, bigstring bsname, tyvaluerecord *prevtarget);
 
+extern boolean langgettarget (hdlhashtable *htable, bigstring bsname);
+
+extern boolean langgettargetfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
+
+extern boolean langsettargetfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
+
+extern boolean langcleartargetfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
+
 #endif

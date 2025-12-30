@@ -316,6 +316,19 @@ extern boolean table_selection_get_cursor(table_selection_context_t *ctx,
                                           bigstring key_out);
 
 /**
+ * table_selection_set_current - Set current table in selection context
+ *
+ * @param ctx - Selection context (NULL-safe)
+ * @param htable - Table to set as current
+ *
+ * Use case: Called by lang.new(tableType, @t) to auto-set newly created
+ * table as the target for subsequent table verbs. This matches windowed
+ * behavior where opening a table window makes it current.
+ */
+extern void table_selection_set_current(table_selection_context_t *ctx,
+                                        hdlhashtable htable);
+
+/**
  * table_selection_get_cursor_node - Get current cursor hash node
  *
  * @param ctx - Selection context

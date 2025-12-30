@@ -163,6 +163,7 @@ LANG_RUNTIME_SOURCES = \
     ../Common/source/langxml.c \
     headless_file_verbs.c \
     headless_frontier_verbs.c \
+    headless_table_verbs.c \
     headless_lang_verbs.c \
     ../Common/source/tableops.c \
     ../Common/source/tableexternal.c \

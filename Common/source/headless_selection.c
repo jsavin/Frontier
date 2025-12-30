@@ -455,7 +455,6 @@ boolean table_selection_get_nth_selected(table_selection_context_t *ctx,
 	 * @param key_out - Output: key at that index
 	 * @return true if successful, false if index out of bounds
 	 */
-	tyvaluerecord val;
 	hdllistrecord hlist;
 
 	if (ctx == NULL || ctx->selected_keys == NULL || key_out == NULL) {
@@ -469,17 +468,10 @@ boolean table_selection_get_nth_selected(table_selection_context_t *ctx,
 	hlist = ctx->selected_keys;
 
 	/* Get nth item from list (1-based in oplist) */
-	if (!listgetnthitem(hlist, index + 1, &val)) {
+	if (!opgetliststring(hlist, index + 1, NULL, key_out)) {
 		return false;
 	}
 
-	/* Extract string value */
-	if (val.valuetype != stringvaluetype) {
-		return false;
-	}
-
-	/* Copy string to output */
-	copystring(val.data.stringvalue, key_out);
 	return true;
 }
 
@@ -537,6 +529,19 @@ boolean table_selection_get_cursor(table_selection_context_t *ctx,
 
 	copystring(ctx->cursor_key, key_out);
 	return true;
+}
+
+
+void table_selection_set_current(table_selection_context_t *ctx, hdlhashtable htable) {
+	/*
+	 * Set current table in selection context.
+	 * Used by lang.new() to auto-set newly created table as target.
+	 * NULL-safe.
+	 */
+	if (ctx != NULL) {
+		ctx->current_table = htable;
+		log_trace(LOG_COMP_TABLE, "Set current_table to %p", (void*)htable);
+	}
 }
 
 

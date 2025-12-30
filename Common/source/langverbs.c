@@ -69,6 +69,11 @@
 #include "notify.h"
 #include "timedate.h"
 #include "langpython.h"
+#include "logging.h"
+
+#ifdef FRONTIER_HEADLESS
+#include "headless_selection.h"
+#endif
 
 
 static byte nametargetval [] = "\x08" "_target_";
@@ -777,7 +782,7 @@ boolean langsettarget (hdlhashtable htable, bigstring bsname, tyvaluerecord *pre
 	} /*langsettarget*/
 
 
-static boolean langgettarget (hdlhashtable *htable, bigstring bsname) {
+boolean langgettarget (hdlhashtable *htable, bigstring bsname) {
 	
 	tyvaluerecord val;
 	boolean fl;
@@ -839,8 +844,8 @@ boolean newvaluefunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	tyvaluetype type;
 	tyvaluerecord val;
 	boolean fl;
-	hdlhashtable newtable;
-	
+	hdlhashtable newtable = NULL;  /* Initialize for headless auto-target check */
+
 	if (!getostypevalue (hparam1, 1, &typeid))
 		return (false);
 	
@@ -865,12 +870,17 @@ boolean newvaluefunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	type = langgetvaluetype (typeid);
 	
 	if ((type >= outlinevaluetype) && (type <= pictvaluetype)) {
-		
+
 		if (!langexternalnewvalue ((tyexternalid) (type - outlinevaluetype), nil, &val))
 			return (false);
 
-		if ((type == tablevaluetype) && langexternalvaltotable (val, &newtable, HNoNode))
+		if ((type == tablevaluetype) && langexternalvaltotable (val, &newtable, HNoNode)) {
 			(**newtable).fllocaltable = (**htable).fllocaltable;
+			log_debug(LOG_COMP_LANG, "newvaluefunc: Extracted newtable=%p from val", (void*)newtable);
+		}
+		else if (type == tablevaluetype) {
+			log_error(LOG_COMP_LANG, "newvaluefunc: Failed to extract table from val!");
+		}
 		}
 	else {
 		initvalue (&val, novaluetype); /*nil all data*/
@@ -880,19 +890,48 @@ boolean newvaluefunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 		}
 	
 	fl = langsetsymboltableval (htable, bs, val);
-	
+
 	if (fl)
 		exemptfromtmpstack (&val);
-	
+
 	else {
-		
+
 		disposevaluerecord (val, true);
-		
+
 		return (false);
 		}
-	
+
+	#ifdef FRONTIER_HEADLESS
+	/*
+	In headless mode, automatically set newly created table as current in selection context.
+	This matches windowed mode behavior where opening a table window makes it current.
+	Allows table verbs to work without explicit target.set() call:
+	  lang.new(tableType, @t); table.goto(2)  <- works automatically
+
+	ARCHITECTURAL NOTE: Uses table_selection_context instead of lang.setTarget()
+	because selection context is checked first by table_get_target_hashtable().
+	This provides clean separation between UI state (selection context) and
+	language target system.
+
+	IMPLEMENTATION NOTE: We check if newtable was successfully extracted above (line 876).
+	If langexternalvaltotable succeeded there, newtable contains a valid table handle.
+	*/
+	if ((type == tablevaluetype) && (newtable != NULL)) {
+		/* Get or create thread-local selection context */
+		table_selection_context_t *ctx = table_selection_acquire();
+		if (ctx != NULL) {
+			/*
+			 * Set newly created table as current.
+			 * DON'T release the context here - it's thread-local and will
+			 * persist for future table verbs in this thread.
+			 */
+			table_selection_set_current(ctx, newtable);
+		}
+	}
+	#endif
+
 	(*vreturned).data.flvalue = true;
-	
+
 	return (true);
 	} /*newvaluefunc*/
 
@@ -1084,7 +1123,7 @@ static boolean closevalue (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	} /*closevalue*/
 
 
-static boolean langgettargetfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+boolean langgettargetfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	
 	/*
 	5.0a22 dmb: if there's no explicit or implicit target, return nil
@@ -1128,8 +1167,20 @@ static boolean langgettargetfunc (hdltreenode hparam1, tyvaluerecord *vreturned)
 	} /*langgettargetfunc*/
 
 
-static boolean langsettargetfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
-	
+boolean langcleartargetfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Clear the current target and return boolean success
+	*/
+	if (!langcheckparamcount (hparam1, 0))
+		return (false);
+
+	setbooleanvalue (langcleartarget (nil), vreturned);
+	return (true);
+} /*langcleartargetfunc*/
+
+
+boolean langsettargetfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+
 	/*
 	8/21/91 dmb: don't generate error if type isn't external; just return false
 	
