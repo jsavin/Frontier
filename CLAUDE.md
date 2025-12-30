@@ -242,6 +242,61 @@ FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli -e "lang.new(tableT
 - Empty error message `[lang-ERROR] langcallbacks.c:208:` may appear after successful execution (harmless, can be ignored)
 - Multi-line scripts passed as plain strings (without `$'...'`) will fail due to shell parsing
 
+## UserTalk Syntax - Critical Differences from Modern Languages
+
+**IMPORTANT: UserTalk has unique syntax rules that differ from JavaScript, Python, and most modern languages.**
+
+### String Literals (DIFFERENT FROM JS/Python/etc)
+
+**Double quotes ("...") are for strings**:
+- `"hello"` → string
+- `sizeOf("hello")` → 5 ✓
+
+**Single quotes ('...') are for character constants** (NOT strings!):
+- `'A'` (1 char) → Character constant ✓
+- `'TEXT'` (4 chars) → OSType (Mac file type) ✓
+- `'hello'` (5 chars) → SYNTAX ERROR
+
+**This is opposite of many modern languages where 'x' and "x" are equivalent!**
+
+### Common Mistakes for AI Assistants
+
+WRONG (JavaScript/Python style):
+```javascript
+sizeOf('hello')  // FAILS - single quotes not valid for strings in UserTalk
+```
+
+CORRECT (UserTalk style):
+```usertalk
+sizeOf("hello")  // Works - double quotes for strings
+```
+
+### Testing UserTalk Code
+
+When testing built-in functions or verbs, ALWAYS use double quotes for string literals:
+- ✓ `string.upper("test")`
+- ✗ `string.upper('test')`  // Will fail!
+
+### Error Messages
+
+When single quotes are used incorrectly for strings, UserTalk produces:
+```
+"Character constant isnt correctly specified. Must be of the form 'c'."
+```
+
+This error indicates you tried to use single quotes for a multi-character string, which is invalid syntax.
+
+### Quick Reference
+
+| Syntax | UserTalk | JavaScript/Python |
+|--------|----------|-------------------|
+| String | `"hello"` | `"hello"` or `'hello'` |
+| Character constant | `'A'` | N/A (just use `"A"`) |
+| OSType (4-char) | `'TEXT'` | N/A (Mac-specific) |
+| Multi-char with single quotes | ERROR | Works (string) |
+
+**See also:** `docs/USERTALK_SYNTAX_REFERENCE.md` for comprehensive syntax guide.
+
 ## Database Migration (v6→v7)
 
 **IMPORTANT: Always use clean migration before testing!**
