@@ -1746,20 +1746,26 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
         db_format_trace_database_path(db_path);
 
     /* Derive output path: strip existing version suffix (if any) and add -v7.root */
+    /* Pattern: /-v\d+\.root$/ → /-v7.root/ (version replacement) */
     /* Examples: Frontier-v6.root → Frontier-v7.root, mydb.root → mydb-v7.root */
     const char *ext = strrchr(db_path, '.');
     if (ext && strcmp(ext, ".root") == 0) {
         size_t base_len = (size_t)(ext - db_path);
 
-        /* Check if base ends with version pattern like -v6, -v5, etc. */
+        /* Check if base ends with version pattern: /-v\d+$/
+         * Scan backward from extension through digits, check for 'v' preceded by '-' */
         const char *base_end = ext - 1;
         while (base_end > db_path && isdigit(*base_end)) {
             base_end--;
         }
 
-        /* If we found -vN pattern, strip it (base_end points to 'v') */
-        if (base_end > db_path && *base_end == 'v' && base_end > db_path && *(base_end - 1) == '-') {
-            base_len = (size_t)(base_end - 1 - db_path);
+        /* If we found -vN pattern, strip it (base_end points to 'v')
+         * Only strip if it would leave a non-empty basename */
+        if (base_end > db_path && *base_end == 'v' && *(base_end - 1) == '-') {
+            size_t new_base_len = (size_t)(base_end - 1 - db_path);
+            if (new_base_len > 0) {  /* Preserve at least one character */
+                base_len = new_base_len;
+            }
         }
 
         snprintf(output_path, sizeof output_path, "%.*s-v7.root", (int) base_len, db_path);
