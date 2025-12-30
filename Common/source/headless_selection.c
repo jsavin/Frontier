@@ -104,7 +104,7 @@ table_selection_context_t* table_selection_acquire(void) {
 		ctx->iteration_in_progress = false;
 
 		/* Initialize expansion state array */
-		ctx->max_expanded = 16;  /* Initial capacity */
+		ctx->max_expanded = TABLE_SELECTION_INITIAL_EXPANSION_CAPACITY;
 		ctx->ct_expanded = 0;
 		ctx->expanded_tables = (hdlhashtable *)malloc(sizeof(hdlhashtable) * ctx->max_expanded);
 		if (ctx->expanded_tables == NULL) {
@@ -118,7 +118,16 @@ table_selection_context_t* table_selection_acquire(void) {
 
 		log_trace(LOG_COMP_TABLE, "Created new selection context for thread");
 	} else {
-		/* Increment refcount for existing context */
+		/*
+		 * Increment refcount for existing context.
+		 *
+		 * IMPORTANT: acquire() uses reference-counted semantics (not idempotent).
+		 * Every acquire() call MUST have a matching release() call.
+		 * This allows nested operations to safely hold references without
+		 * deallocating the context prematurely.
+		 *
+		 * For shared ownership without incrementing refcount, use retain() explicitly.
+		 */
 		atomic_fetch_add(&ctx->refcount, 1);
 	}
 
@@ -445,8 +454,8 @@ boolean table_selection_set_cursor(table_selection_context_t *ctx,
 		return false;
 	}
 
-	/* Find the hash node */
-	if (!hashlookupnode(key, &hnode)) {
+	/* Find the hash node (use explicit table, not current context) */
+	if (!hashtablelookupnode(htable, key, &hnode)) {
 		return false;
 	}
 
@@ -520,8 +529,8 @@ long table_selection_count_visible_rows(table_selection_context_t *ctx,
 	}
 
 	/* Check recursion depth */
-	if (ctx->iteration_depth > 100) {
-		log_error(LOG_COMP_TABLE, "Table nesting too deep");
+	if (ctx->iteration_depth > TABLE_SELECTION_MAX_NESTING_DEPTH) {
+		log_error(LOG_COMP_TABLE, "Table nesting too deep (max=%d)", TABLE_SELECTION_MAX_NESTING_DEPTH);
 		return 0;
 	}
 
@@ -645,8 +654,8 @@ long table_selection_get_row_for_node(table_selection_context_t *ctx,
 	}
 
 	/* Check recursion depth */
-	if (ctx->iteration_depth > 100) {
-		log_error(LOG_COMP_TABLE, "Table nesting too deep");
+	if (ctx->iteration_depth > TABLE_SELECTION_MAX_NESTING_DEPTH) {
+		log_error(LOG_COMP_TABLE, "Table nesting too deep (max=%d)", TABLE_SELECTION_MAX_NESTING_DEPTH);
 		return 0;
 	}
 
@@ -701,8 +710,8 @@ long table_selection_get_row_for_key(table_selection_context_t *ctx,
 		return 0;
 	}
 
-	/* Find the node */
-	if (!hashlookupnode(key, &hnode)) {
+	/* Find the node (use explicit table, not current context) */
+	if (!hashtablelookupnode(htable, key, &hnode)) {
 		return 0;
 	}
 

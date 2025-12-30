@@ -39,6 +39,24 @@
 
 
 /**
+ * TABLE_SELECTION_MAX_NESTING_DEPTH - Maximum recursion depth for table iteration
+ *
+ * Protects against stack overflow when traversing deeply nested tables.
+ * Typical table nesting is <10 levels. Limit of 100 is conservative for extreme cases.
+ */
+#define TABLE_SELECTION_MAX_NESTING_DEPTH 100
+
+
+/**
+ * TABLE_SELECTION_INITIAL_EXPANSION_CAPACITY - Initial size for expansion array
+ *
+ * Most tables have <10 expanded children. Starting with 16 (power of 2) allows
+ * efficient doubling on realloc while avoiding excessive initial allocation.
+ */
+#define TABLE_SELECTION_INITIAL_EXPANSION_CAPACITY 16
+
+
+/**
  * table_selection_context_t - Thread-local selection and navigation state
  *
  * Design:
