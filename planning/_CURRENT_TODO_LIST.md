@@ -1,7 +1,41 @@
 # Carbon Migration / Runtime Modernization – Active TODO
 
-Status: In Progress (Updated 2025-12-25)
+Status: In Progress (Updated 2025-12-30)
 Owner: Codex
+
+## Recently Completed – 2025-12-30
+
+✅ **Documentation Modernization – COMPLETE (commit 90c2a439)**
+- Condensed CLAUDE.md from 1059 to 628 lines (40% reduction)
+- Extracted detailed guides: `docs/VERB_IMPLEMENTATION_GUIDE.md`, `docs/TESTING_GUIDE.md`
+- Added worktree workflow decision tree and location/naming conventions
+- Consolidated agent guidance (11 agents in single table)
+- Added Quick Reference section with essential commands
+- **Impact**: Improved maintainability; enforces worktree workflow for non-trivial work
+
+✅ **Table Verbs Phase 2-3 – COMPLETE (PR #210 merged)**
+- Phase 2: Made outline operations headless-capable (op.expand, op.collapse, op.setlinetext, etc.)
+- Phase 3: Implemented table navigation verbs (table.goto, table.go, table.getselection)
+- Added thread-local table selection context with cursor and expansion state tracking
+- Created critical error infrastructure (error(), scriptError())
+- **Impact**: Core table verb functionality for headless runtime operational
+
+✅ **Test Infrastructure Stabilization – COMPLETE (PR #212 merged)**
+- Fixed runtime initialization issues (log_init(), langinitresources_headless())
+- Fixed memory.c redefinitions causing build failures
+- All headless tests building and passing
+- **Impact**: Clean test infrastructure foundation
+
+✅ **Migration Naming Convention – COMPLETE (multiple commits)**
+- Improved migration filename patterns
+- Updated documentation and test infrastructure
+- **Impact**: Cleaner, more consistent migration workflow
+
+✅ **Time Portability – COMPLETE (Issue #167 follow-up, PR #204 merged)**
+- Migrated all timenow() callsites to timenow64()
+- Created timenow64() helper for centralized epoch conversion
+- Y2038-ready time operations
+- **Impact**: Future-proof time handling across platform
 
 ## Recently Completed – Phase 4A (2025-12-25)
 
@@ -70,6 +104,44 @@ These block deployment and major system decisions. All require design/planning b
   - Impact: Validates Phase 4A table_context_t works correctly from UserTalk perspective
   - Note: Created as follow-up to PR #165 (Phase 4A). C unit tests pass; UserTalk integration needed for runtime validation.
   - Timeline: Can proceed after new() and table.getversion() verbs are bound
+
+---
+
+## Active Worktrees – In Progress
+
+- **WORKTREE: feature/table-sorting-and-settarget** (P1 - IN REVIEW)
+  - Location: `/Users/jake/dev/jsavin/Frontier-table-sorting-and-settarget`
+  - Branch: `feature/table-sorting-and-settarget` (1 commit ahead of develop: 8d773bcd)
+  - Scope: Table sorting + target verb implementation
+  - Status: Implementation complete, awaiting PR creation and test infrastructure fixes
+  - Content:
+    * Table sorting verbs: table.sortby(), table.getsortorder()
+    * Per-table sort order stored in database (sortbyname/sortbyvalue/sortbykind)
+    * Target verbs: lang.gettarget(), lang.settarget(), lang.cleartarget()
+    * Comprehensive test suite (8 test cases in test_table_sorting.c)
+  - Blockers: Tests cannot run due to pre-existing UserTalk object test infrastructure build errors
+  - Next steps:
+    1. Fix test infrastructure issues (see next worktree)
+    2. Verify tests pass
+    3. Create PR via pull-request agent
+    4. Run `./tools/monitor_pr_review.sh <PR>` after every push
+    5. Address bot feedback and merge
+
+- **WORKTREE: fix/usertalk-object-test-infrastructure** (P1 - NOT STARTED)
+  - Location: `/Users/jake/dev/jsavin/Frontier-usertalk-object-test-infrastructure`
+  - Branch: `fix/usertalk-object-test-infrastructure` (no commits yet)
+  - Scope: Fix pre-existing build errors in UserTalk object test infrastructure
+  - Issues to fix:
+    * memory.c redefinitions (lockhandle, unlockhandle, etc.)
+    * Undefined identifiers: chnul, chspace
+  - Impact: Blocks test_table_sorting.c and other UserTalk object tests
+  - Next steps:
+    1. Investigate build errors
+    2. Fix memory.c redefinitions
+    3. Fix undefined identifier issues
+    4. Verify all UserTalk object tests build
+    5. Create PR and merge
+  - Urgency: Blocks table sorting PR from being tested
 
 ## P1s – High Priority (Recommended Work Order)
 
