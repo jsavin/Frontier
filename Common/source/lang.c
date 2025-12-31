@@ -28,13 +28,10 @@
 #ifdef FRONTIER_PORTABLE
 #include "../portable/os_portable.h"
 #include "../portable/time_portable.h"
-#include "../portable/frontier.h"
-#include "../portable/standard.h"
-#include "../portable/shelltypes_portable.h"
-#else
+#endif
+
 #include "frontier.h"
 #include "standard.h"
-#endif
 
 #include "memory.h"
 #include "db.h"
