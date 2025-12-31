@@ -192,6 +192,61 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
 
                 return (setbooleanvalue (true, vreturned));
             }
+            else if (paramcount == 4) {
+                /* Four params: capture stdout, stderr, and exit status to addresses, return boolean */
+
+                hdlhashtable htable, htable2, htable3;
+                bigstring varname, varname2, varname3;
+                boolean fl;
+                int exit_status;
+                tyvaluerecord val_exitstatus;
+
+                if (!getvarparam (hparam1, 2, &htable, varname))
+                    return (false);
+
+                if (!getvarparam (hparam1, 3, &htable2, varname2))
+                    return (false);
+
+
+                flnextparamislast = true;
+
+                if (!getvarparam (hparam1, 4, &htable3, varname3))
+                    return (false);
+
+
+                newemptyhandle (&hstdout);
+                newemptyhandle (&hstderr);
+
+                fl = unixshellcall_separatestderr (hcommand, hstdout, hstderr, &exit_status);
+                disposehandle (hcommand);
+
+                if (!fl) {
+                    disposehandle (hstdout);
+                    disposehandle (hstderr);
+                    return (false);
+                }
+
+                /* Use langassigntextvalue - efficient, no tmpstack overhead */
+                if (!langassigntextvalue (htable, varname, hstdout)) {
+                    disposehandle (hstdout);
+                    disposehandle (hstderr);
+                    return (false);
+                }
+
+                if (!langassigntextvalue (htable2, varname2, hstderr)) {
+                    disposehandle (hstderr);
+                    return (false);
+                }
+
+                /* For exit status (integer), use setlongvalue + hashtableassign pattern */
+                setlongvalue (exit_status, &val_exitstatus);
+
+                if (!hashtableassign (htable3, varname3, val_exitstatus)) {
+                    return (false);
+                }
+
+                return (setbooleanvalue (true, vreturned));
+            }
             else {
                 langparamerror (unimplementedverberror, BIGSTRING("\ptoo many parameters"));
                 return (false);
