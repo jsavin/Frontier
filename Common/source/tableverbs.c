@@ -1452,21 +1452,15 @@ boolean tablefunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vre
 						tablegetcursorinfo(&htable, bs, nil, nil);
 						(*v).data.flvalue = tablesetsortorder(htable, ixcol);
 					} else {
-						/* Headless mode - set sort and resort */
-						table_selection_context_t *ctx = NULL;
+					/* Headless mode - set sort and resort (hold context across operation) */
+					table_selection_context_t *ctx = table_selection_acquire();
+
+					if (ctx != NULL) {
 						bigstring cursor_key;
-						boolean had_cursor = false;
+						boolean had_cursor = (ctx->cursor_key[0] > 0);
 
-						setemptystring(cursor_key);  /* Initialize to empty string */
-
-						/* Save cursor key before resort */
-						ctx = table_selection_acquire();
-						if (ctx != NULL && ctx->cursor_key[0] > 0) {
+						if (had_cursor) {
 							copystring(ctx->cursor_key, cursor_key);
-							had_cursor = true;
-						}
-						if (ctx != NULL) {
-							table_selection_release(ctx);
 						}
 
 						/* Set sort order and resort table */
@@ -1475,16 +1469,15 @@ boolean tablefunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vre
 
 						/* Restore cursor and recalculate flat index */
 						if (had_cursor) {
-							ctx = table_selection_acquire();
-							if (ctx != NULL) {
-								ctx->current_table = htable;
-								copystring(cursor_key, ctx->cursor_key);
-								ctx->cursor_flat_index = table_selection_get_row_for_key(ctx, htable, cursor_key);
-								table_selection_release(ctx);
-							}
+							ctx->current_table = htable;
+							copystring(cursor_key, ctx->cursor_key);
+							ctx->cursor_flat_index = table_selection_get_row_for_key(ctx, htable, cursor_key);
 						}
 
-						(*v).data.flvalue = true;
+						table_selection_release(ctx);
+					}
+
+					(*v).data.flvalue = true;
 					}
 
 					return (true);
@@ -1513,6 +1506,12 @@ boolean tablefunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vre
 
 			/* Get sort order from hashtable (works in both modes) */
 			tablegetsortorder(htable, &ixcol);
+
+		/* Validate column index */
+		if (ixcol < namecolumn || ixcol > kindcolumn) {
+			langerrormessage(BIGSTRING("\x1A" "Invalid sort order state"));
+			return (false);
+		}
 
 			/* Map column index to name */
 			tablegettitlestring(ixcol, bs);
