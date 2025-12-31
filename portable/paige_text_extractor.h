@@ -2,6 +2,7 @@
 #define PAIGE_TEXT_EXTRACTOR_H
 
 #include "frontier.h"
+#include "standard.h"
 
 #ifdef __cplusplus
 extern "C" {
