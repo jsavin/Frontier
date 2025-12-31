@@ -225,6 +225,7 @@ USERTALK_OBJECT_TESTS = \
 	test_collections \
 	test_complex_objects \
 	test_database_persistence \
+	test_table_sorting \
 	test_usertalk_runner
 
 # Buildable test executables on this branch
@@ -387,6 +388,9 @@ test_complex_objects: components/usertalk_objects/test_complex_objects.c $(TEST_
 	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable -I$(FRONTIER_CLI_DIR) $^ -o $@ $(LINK_LIBS)
 
 test_database_persistence: components/usertalk_objects/test_database_persistence.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES) $(CLI_SOURCES)
+	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable -I$(FRONTIER_CLI_DIR) $^ -o $@ $(LINK_LIBS)
+
+test_table_sorting: components/usertalk_objects/test_table_sorting.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES) $(CLI_SOURCES)
 	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable -I$(FRONTIER_CLI_DIR) $^ -o $@ $(LINK_LIBS)
 
 

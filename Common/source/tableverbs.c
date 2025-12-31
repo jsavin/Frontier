@@ -1419,6 +1419,110 @@ boolean tablefunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vre
 			return (true);
 			}
 
+		case sortbyfunc: {
+			hdlhashtable htable;
+			bigstring bssort, bstitle;
+			short ixcol;
+
+			flnextparamislast = true;
+
+			if (!getstringvalue(hparam1, 1, bssort))
+				return (false);
+
+			/* Get target table */
+			if (!table_get_target_hashtable(&htable)) {
+				langerrormessage(BIGSTRING("\x18" "No table is current"));
+				return (false);
+			}
+
+			/* Parse column name (case-insensitive) */
+			alllower(bssort);
+
+			for (ixcol = namecolumn; ixcol <= kindcolumn; ++ixcol) {
+				tablegettitlestring(ixcol, bstitle);
+				alllower(bstitle);
+
+				if (equalstrings(bssort, bstitle)) {
+					/* Found matching column - set sort order */
+
+					/* Dispatch based on mode */
+					if (opdisplayenabled()) {
+						/* Windowed mode - use existing implementation */
+						bigstring bs;
+						tablegetcursorinfo(&htable, bs, nil, nil);
+						(*v).data.flvalue = tablesetsortorder(htable, ixcol);
+					} else {
+						/* Headless mode - set sort and resort */
+						table_selection_context_t *ctx = NULL;
+						bigstring cursor_key;
+						boolean had_cursor = false;
+
+						/* Save cursor key before resort */
+						ctx = table_selection_acquire();
+						if (ctx != NULL && ctx->cursor_key[0] > 0) {
+							copystring(ctx->cursor_key, cursor_key);
+							had_cursor = true;
+						}
+						if (ctx != NULL) {
+							table_selection_release(ctx);
+						}
+
+						/* Set sort order and resort table */
+						(**htable).sortorder = ixcol;
+						hashresort(htable, nil);
+
+						/* Restore cursor and recalculate flat index */
+						if (had_cursor) {
+							ctx = table_selection_acquire();
+							if (ctx != NULL) {
+								ctx->current_table = htable;
+								copystring(cursor_key, ctx->cursor_key);
+								ctx->cursor_flat_index = table_selection_get_row_for_key(ctx, htable, cursor_key);
+								table_selection_release(ctx);
+							}
+						}
+
+						(*v).data.flvalue = true;
+					}
+
+					return (true);
+				}
+			}
+
+			/* Invalid column name - return error */
+			langerrormessage(BIGSTRING("\x1E" "Invalid sort column name"));
+			return (false);
+			}
+
+		case sortorderfunc: {
+			hdlhashtable htable;
+			bigstring bs;
+			short ixcol;
+
+			if (!langcheckparamcount(hparam1, 0))
+				return (false);
+
+			/* Get target table */
+			if (!table_get_target_hashtable(&htable)) {
+				langerrormessage(BIGSTRING("\x18" "No table is current"));
+				return (false);
+			}
+
+			/* Dispatch based on mode */
+			if (opdisplayenabled()) {
+				/* Windowed mode - use existing implementation */
+				tablegetcursorinfo(&htable, bs, nil, nil);
+			}
+
+			/* Get sort order from hashtable (works in both modes) */
+			tablegetsortorder(htable, &ixcol);
+
+			/* Map column index to name */
+			tablegettitlestring(ixcol, bs);
+
+			return setstringvalue(bs, v);
+			}
+
 		case getdisplaysettings: {
 			/* Dispatch based on mode */
 			if (opdisplayenabled()) {
@@ -1464,65 +1568,28 @@ boolean tablefunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vre
 	(*shellglobals.gettargetdataroutine) (idtableprocessor); /*set table globals*/
 	
 	switch (token) {
-		
+
 		/*
 		case setcolwidthfunc: {
 			short colnum, colwidth;
-			
+
 			if (!getintvalue (hparam1, 1, &colnum))
 				break;
-			
+
 			flnextparamislast = true;
-			
+
 			if (!getintvalue (hparam1, 2, &colwidth))
 				break;
-			
+
 			(*v).data.flvalue = (*(**tableformatsdata).adjustcolwidthroutine) (colnum - 1, colwidth);
-			
+
 			tablesmashdisplay ();
-			
+
 			fl = true;
-			
+
 			break;
 			}
-		*/
-		
-		case sortbyfunc: {
-			bigstring bssort, bstitle;
-			short ixcol;
-			
-			flnextparamislast = true;
-			
-			if (!getstringvalue (hparam1, 1, bssort))
-				break;
-			
-			alllower (bssort);
-			
-			for (ixcol = namecolumn; ixcol <= kindcolumn; ++ixcol) {
-				
-				tablegettitlestring (ixcol, bstitle);
-				
-				alllower (bstitle);
-				
-				if (equalstrings (bssort, bstitle)) {
-					
-					hdlhashtable ht;
-					bigstring bs;
-					
-					tablegetcursorinfo (&ht, bs, nil, nil);
-	
-					(*v).data.flvalue = tablesetsortorder (ht, ixcol);
-					
-					break;
-					}
-				}
-			
-			fl = true;
-			
-			break;
-			}
-		
-		/*
+
 		case centertablefunc: {
 			boolean flcenter;
 
@@ -1539,21 +1606,10 @@ boolean tablefunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vre
 			}
 		*/
 
-		case sortorderfunc: {
-			hdlhashtable ht;
-			bigstring bs;
-			short ixcol;
+		/* sortbyfunc and sortorderfunc moved to headless-compatible section above */
 
-			tablegetcursorinfo (&ht, bs, nil, nil);
-
-			tablegetsortorder (ht, &ixcol);
-
-			tablegettitlestring (ixcol, bs);
-
-			fl = setstringvalue (bs, v);
-
+		default:
 			break;
-			}
 		} /*switch*/
 	
 	shellupdatescrollbars (shellwindowinfo);
