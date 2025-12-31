@@ -119,6 +119,11 @@ typedef RgnHandle hdlregion;
 #define FRONTIER_PORTABLE_DEFINED_HDLREGION 1
 #endif
 
+#ifndef FRONTIER_PORTABLE_DEFINED_XPPATTERN
+typedef Pattern xppattern;
+#define FRONTIER_PORTABLE_DEFINED_XPPATTERN 1
+#endif
+
 /* These types are now defined in portable_types.h */
 /* Forward declare filespec for portable stubs */
 struct tyfilespec;
@@ -214,6 +219,7 @@ typedef boolean (*callback)(void);
 #define chlinefeed ((char)10)
 #define chreturn ((char)13)
 #define chspace ((char)32)
+#define chdelete ((char)127)
 #define chclosecurlyquote ((char)0xD3)
 #define chtrademark ((char)0xAA)
 #define chtab ((char)9)
