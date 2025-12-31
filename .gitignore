@@ -93,6 +93,7 @@ tests/databases/*.root
 *.bak[0-9]*
 *.tmp
 *.bkp
+*.backup
 .!*
 
 # Log files (test artifacts, build logs, etc.)
