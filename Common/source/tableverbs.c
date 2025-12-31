@@ -1457,6 +1457,8 @@ boolean tablefunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vre
 						bigstring cursor_key;
 						boolean had_cursor = false;
 
+						setemptystring(cursor_key);  /* Initialize to empty string */
+
 						/* Save cursor key before resort */
 						ctx = table_selection_acquire();
 						if (ctx != NULL && ctx->cursor_key[0] > 0) {
@@ -1508,11 +1510,6 @@ boolean tablefunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vre
 				return (false);
 			}
 
-			/* Dispatch based on mode */
-			if (opdisplayenabled()) {
-				/* Windowed mode - use existing implementation */
-				tablegetcursorinfo(&htable, bs, nil, nil);
-			}
 
 			/* Get sort order from hashtable (works in both modes) */
 			tablegetsortorder(htable, &ixcol);
