@@ -556,5 +556,10 @@ CGrafPtr GetWindowPort(WindowPtr window);
 #define STACK_ROUTINE_PARAMETER(index, size) 0U
 #endif
 
+/* Cancoon (About Window) stub - not used in headless mode */
+struct tycancoonrecord;
+typedef struct tycancoonrecord **hdlcancoonrecord;
+static hdlcancoonrecord cancoonglobals = NULL;
+
 #endif /* FRONTIER_HEADLESS */
 #endif /* FRONTIER_HEADLESS_STUBS_H */
