@@ -1,3 +1,5 @@
+# Frontier Development Guide
+
 ## Project Leadership
 
 **The user is both TPM (Technical Product Manager) and CTO of this project.** This means:
@@ -28,73 +30,102 @@ When presented with options like:
 
 **In 90% of cases, recommend the "Proper fix" or "maintainable long-term solution" approach.**
 
-**Why this matters:**
-- This codebase will be maintained for years and support critical partnerships
-- Foundation quality determines what's possible in Phase 2.0 (collaborative editing)
-- Technical debt in core systems (database, threading, memory management) is expensive to fix later
-- Clean architecture enables future contributors (including partners) to work effectively
+---
 
-**Examples:**
-- ✅ **DO**: "I recommend Option 2 (centralize types) - eliminates the root cause and prevents future issues"
-- ❌ **DON'T**: "Option 1 is quicker, so let's do that first" (without strong justification)
+## Quick Reference
 
-**Exception**: If the proper fix would take significantly longer (days vs hours) and blocks critical milestones, propose: "Quick fix now + filed P1 issue for proper fix" with user approval.
+### Essential Commands
+
+```bash
+# Run full test suite
+./tools/run_headless_tests.sh
+
+# Database migration (v6 → v7)
+rm -f databases/Frontier-v7.root
+FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli \
+  --system-root databases/Frontier-v6.root -e "1"
+
+# Verb coverage analysis
+cd tools/kernelverbs_parser && python3 cli.py report
+
+# Create PR (after pushing branch)
+# Use pull-request agent, then:
+./tools/monitor_pr_review.sh <PR_NUMBER>
+```
+
+### Documentation Quick Links
+
+- **[Verb Implementation Guide](docs/VERB_IMPLEMENTATION_GUIDE.md)** - Implementing kernel verbs in C
+- **[Testing Guide](docs/TESTING_GUIDE.md)** - CLI usage, testing patterns, database migration
+- **[CLI Usage Guide](docs/CLI_USAGE_GUIDE.md)** - Complete frontier-cli reference (600+ lines)
+- **[Logging Standards](docs/LOGGING_STANDARDS.md)** - Structured logging requirements
 
 ---
 
 ## Strategic Roadmap
 
 **Master todo list**: https://drummer.land/me@jakesav.in/JakeShare.opml
-- This OPML outline contains the user's longer-term vision in roughly chronological order
-- Structure: Strategic roadmap content through the current month heading → running notes on Phase 2.0 partnership work with Dave Winer
-- Dave Winer (original Frontier designer, CEO at UserLand 2000-2004) is a key strategic partner for collaborative ODB editing
-- Items evolve and are adjusted as we learn and complete work
-- When prioritizing work, consult this list to understand how a task fits into the broader roadmap
-- This is the source of truth for strategic direction and milestones
+- User's longer-term vision in chronological order
+- Dave Winer (original Frontier designer) is key strategic partner for collaborative ODB
+- Consult this list to understand how tasks fit into broader roadmap
+- Source of truth for strategic direction and milestones
 
 **Planning Documentation**:
 - `planning/INDEX.md` - Navigation for active and archived workstreams
-- `planning/phase_overview.md` - Overview of all phases (active and archived)
-- `planning/Frontier_Refactoring_Plan.md` - Narrative goals and risks
-- `planning/CRDT_FOUNDATION_ROADMAP.md` - Collaborative ODB foundation (Phase 2.0 vision)
-- `planning/_PHASE4_MULTI_USER_PLAN.md` - Multi-user editing strategy (beyond Phase 1.0)
+- `planning/phase_overview.md` - Overview of all phases
+- `planning/CRDT_FOUNDATION_ROADMAP.md` - Collaborative ODB foundation (Phase 2.0)
+
+**Key Project Context**:
+- Frontier has "guest databases" - any databases opened that aren't system root. Top-level items in guest databases are in global scope (managed via `system.compiler.files`)
+- Current "target" is generally a window (database or editor window for non-scalars like scripts, outlines, WPText/RTF)
+- Legacy Frontier source: `/Users/jake/dev/tedchoward/Frontier`
+- When fixing critical areas (serialization, database format, byte alignment): 1) search `planning/`, 2) confirm alignment with user, 3) proceed
+- v7 database format should NOT contain font/style info (except within stored RTF objects)
+- **Milestone Commits MUST Use PR Workflow** ⚠️:
+  1. Create feature branch: `git checkout -b feature/description`
+  2. Commit work (multiple commits OK)
+  3. Push to origin
+  4. Use pull-request agent to create PR
+  5. **Run `./tools/monitor_pr_review.sh <PR>` after EVERY push**
+  6. Address bot feedback (minor: auto, critical: user approval)
+  7. Merge only after bot approval AND monitoring confirms no follow-up
+- Always create branch for new development work when on develop
+- Never delete branches without user confirmation
+- Never work on develop directly for larger changes
 
 ---
-
-- Frontier has a concept of "guest databases" which are any databases that are opened that aren't the system root. All top-level items in guest databases are in global scope in the UserTalk domain. This is managed by the kernel leveraging the in-memory "table" at system.compiler.files.
-- Frontier has the concept of the current "target" which is generally a window. That might be a database or it might be an editor window for a non-scalar like a script, outline, or WPText object (which we're now persisting as RTF in UTF-8).
-- Legacy Frontier source code is available at /Users/jake/dev/tedchoward/Frontier
-- When you're asked to fix something in a critical area (serialization, database format, byte alignment, byte ordering, etc.) you should always 1) first search the `planning/` directory for relevant documentation, 2) ask the user: "I found X in the planning docs - does this change align with that plan?" and 3) only proceed after user confirmation.
-- When touching files in certain directories, the commit message should reference the relevant planning doc(s), to force conscious acknowledgment.
-- Any change to a typedev struct with "disk" in the name should trigger a question to the user before implementation.
-- The v7 database format should not contain any font, font size, or font style information *except* within stored RTF objects.
-- Run the headless test flow with `./tools/run_headless_tests.sh` (rebuilds CLI, migrates `databases/Frontier-v6.root` to `databases/Frontier-v7.root`, then runs `make -C tests test`); use this as the standard before/after change check.
-- Run the verb binding analyzer with `cd tools/kernelverbs_parser && python3 cli.py analyze` (shows current verb detection: implemented vs stubbed). Use `python3 cli.py report` to generate detailed coverage reports. Use `python3 cli.py report -o -` for stdout output.
-- **Milestone Commits MUST Use PR Workflow** ⚠️ CRITICAL PROCESS:
-  1. Create a feature branch: `git checkout -b feature/description-of-work`
-  2. Commit work to the feature branch (multiple commits OK)
-  3. Push the branch to origin
-  4. **Use the pull-request agent** to create and manage the PR (do NOT commit directly)
-  5. **CRITICAL: Run `./tools/monitor_pr_review.sh <PR_NUMBER>` after creating PR and after EVERY subsequent push**
-     - Wait for bot review to complete before proceeding
-     - Do NOT merge or take further action until monitoring confirms no additional feedback
-     - Wait 2-3 minutes after final approval to ensure no follow-up comments
-  6. Let the PR bot review the code
-  7. Address any bot feedback (minor issues automatically, critical issues with user approval)
-  8. After addressing feedback, push changes and **return to step 5** (monitor again)
-  9. Merge to develop only after bot approval AND monitoring period complete
-  - **Never commit directly to develop** - all milestones must go through PR review
-  - Every completed feature/fix should be a separate PR
-  - This ensures code quality gates and prevents regressions
-- Whenever you're about to start new development work, always create a branch for that work if the local tree is currently on "develop".
-- **Be cautious with branch switching:** You can switch branches normally, but avoid switching if:
-  - Work might be lost (uncommitted changes on current branch)
-  - Multiple operations are happening in parallel on the same branch (the user might be working in another terminal on the same branch)
-  - Ask when unsure if parallel work is in progress on a branch
-
 ## Multi-Session Stability Patterns
 
 **Working across multiple terminal sessions simultaneously requires explicit coordination to prevent conflicts.**
+
+### Before Starting Any Work - Decision Tree
+
+**Step 1: Check current branch**
+```bash
+git branch --show-current
+```
+
+**Step 2: Assess task complexity**
+- ✅ **Trivial** (typo fix, single-line change, quick doc update) → OK to work on develop
+- ❌ **Non-trivial** (feature, bug fix, refactoring, multi-file change) → Create worktree
+
+**Step 3: If non-trivial and on develop:**
+```bash
+# Create worktree for new feature (see Worktree Location below for naming)
+cd /Users/jake/dev/jsavin/Frontier
+git worktree add ../Frontier-<feature-name> -b feature/<feature-name>
+cd ../Frontier-<feature-name>
+# Now start work here
+```
+
+**Step 4: If already on feature branch in worktree:**
+```bash
+# Verify you're in right worktree
+pwd && git branch
+# Continue work
+```
+
+---
 
 ### Key Stability Principles
 
@@ -130,6 +161,68 @@ When presented with options like:
      - Session B should immediately rebase: `git rebase origin/develop`
      - Session B's worktree automatically reflects the new develop
    - This is why commits to develop MUST go through PR workflow (ensures visibility and proper ordering)
+
+---
+
+### Worktree Location and Naming Convention
+
+**Recommended: Sibling directories to main Frontier directory**
+
+```
+/Users/jake/dev/jsavin/
+  ├── Frontier/                      (main repo, on develop)
+  ├── Frontier-table-verbs-headless/ (worktree for feature/table-verbs-headless)
+  └── Frontier-build-fix/            (worktree for fix/build-fix)
+```
+
+**Why sibling directories:**
+- ✅ Complete isolation (build artifacts, git state, databases)
+- ✅ No git interference (worktrees don't appear in main repo's `git status`)
+- ✅ IDE-friendly (each appears as separate project)
+- ✅ Clear naming pattern makes purpose obvious
+- ✅ Easy cleanup when done
+
+**Naming Convention:**
+```bash
+# For feature branches:
+feature/table-verbs-headless  →  Frontier-table-verbs-headless
+
+# For fix branches:
+fix/database-corruption       →  Frontier-database-corruption
+
+# Pattern: Strip prefix (feature/, fix/), prepend 'Frontier-'
+```
+
+**Creating a New Worktree:**
+
+```bash
+# From main Frontier directory on develop
+cd /Users/jake/dev/jsavin/Frontier
+git worktree add ../Frontier-<feature-name> -b feature/<feature-name>
+cd ../Frontier-<feature-name>
+
+# Verify setup
+pwd && git branch
+# Should show: /Users/jake/dev/jsavin/Frontier-<feature-name>
+#              * feature/<feature-name>
+
+# Build and work here
+make clean && make
+./tools/run_headless_tests.sh
+```
+
+**Cleaning Up After PR Merged:**
+
+```bash
+# After PR is merged to develop
+cd /Users/jake/dev/jsavin
+rm -rf Frontier-<feature-name>
+cd Frontier
+git worktree prune  # Clean up worktree metadata
+git branch -d feature/<feature-name>  # Delete local branch (optional)
+```
+
+---
 
 ### Recommended Setup for This Project
 
@@ -205,424 +298,194 @@ If parallel sessions cause conflicts:
 3. **Worktree "detached" or in bad state?**
    - Delete and recreate: `git worktree remove <name> && git worktree add <name> origin/<branch>`
 
-- You have permission to use the `gh` command.
-- Don't ever create PRs that would merge with the tedchoward upstream fork.
-- If you ever need to check how the legacy Frontier app implemented something in 32-bit-land, look at the code under `../tedchoward/Frontier/`.
-- When the user asks you a question, always answer it first before jumping into work.
-- Always ask the user first before pushing changes to origin/develop.
-- After pushing a PR to origin AND after every commit pushed to an active PR, immediately run `./tools/monitor_pr_review.sh <pr_number>` to wait for bot code review feedback. Wait 2-3 minutes after approval to ensure no follow-up comments before proceeding. Address minor issues (documentation, magic numbers, style, logging standards) automatically without user involvement. For critical issues or complex fixes, discuss with the user first before implementing.
-- When deciding where to track future work, use documents in the planning directory by default for work directly related to getting the headless Frontier runtime working on modern systems, and use GitHub issues (via the `gh` command) for future improvements beyond functional parity with the legacy Frontier runtime.
-- **Planning directory structure**:
-  - `planning/phase3/` - Active Phase 3 implementation work and analysis
-  - `planning/architectural_decision_records/` - Architectural decisions and design standards that affect current and future work (e.g., MODE_SINGLE_DECISION_POINT.md)
-  - `planning/archive/` - Completed work and historical reference materials
-  - When making architectural decisions that will affect multiple work areas, document them in `planning/architectural_decision_records/`
-- **GitHub issue tagging:** When creating or updating issues, follow the labeling strategy documented in `planning/labeling-strategy-proposal.md`. Use priority labels (priority/p0-p3), workstream labels, and type labels to ensure issues are discoverable and properly categorized.
-- Error messages exposed to end-users in the UserTalk realm always take the form of: "Can't do X because Y. [Try Z instead.]"
-- Never delete a local or remote branch without confirming with the user first.
-- Avoid using "magic numbers" in code. Instead create static constants (or variables if the language doesn't support static constants) with names that explain what the constant means to developers.
-- Creating new C test files that call UserTalk requires complex initialization (langinitverbs, environment setup, etc.). Defer detailed test infrastructure work to someone familiar with the test harness. Verify implementations work via `./tools/run_headless_tests.sh` instead.
-- Currently, the UserTalk system.startup.startupScript is known to fail because not all of the verbs that it uses have bindings yet. Always test the bootstrapping of the CLI runtime using the `FRONTIER_HEADLESS_SKIP_STARTUP` environment variable that disables the startup scripts.
+---
 
-## Implementing Kernel Verbs in C
+## Working with Agents
 
-**Comprehensive Guide:** See `docs/usertalk_variable_assignment.md` for detailed information about implementing kernel verbs that set UserTalk variables.
+### Available Agents
 
-### Basic Verb Implementation Pattern
+| Agent | Use When | Capabilities |
+|-------|----------|--------------|
+| **Explore** | Multi-file codebase exploration, understanding architecture | Fast search, pattern matching, architectural context |
+| **Plan** | Designing implementation plans, architectural decisions | Step-by-step planning, file identification, trade-off analysis |
+| **system-architect** | C domain work, runtime architecture, memory management | Technical design, implementation alternatives, complex decisions |
+| **usertalk-engineer** | UserTalk scripting, verb implementations in UserTalk domain | UserTalk expertise, scripting logic, runtime behavior |
+| **odb-database-expert** | Database format, corruption issues, migration | Database internals, format expertise, debugging |
+| **logging-expert** | Logging infrastructure, standards compliance | Logging patterns, structured logging |
+| **code-review-bar-raiser** | Pre-merge quality review of significant implementations | Rigorous review, security, performance, maintainability |
+| **refactoring-consultant** | Planning and executing refactoring work | Code structure, modernization, cleanup |
+| **pull-request** | Creating PR summaries, pushing to origin | PR description generation, commit analysis |
+| **frontier-sdet** | Test infrastructure, test strategy | Testing expertise, test framework design |
+| **claude-code-guide** | Questions about Claude Code, SDK, or API | Documentation lookup, feature explanations |
 
-When implementing new kernel verbs in C:
+### When to Use Agents
 
-1. **Add case statement** in appropriate verb function (e.g., `sysverbfunc` in shellsysverbs.c)
-2. **Extract parameters**: Use `getstringvalue(hparam1, N, varname)` to get parameter values
-3. **String conversions**:
-   - Pascal → C: `nullterminate(varname)`
-   - C → Pascal: `copyctopstring(cstr, result)`
-4. **Return values**: Use `setstringvalue(result, v)` or `setlongvalue()` to return values
-5. **Mark last parameter**: Set `flnextparamislast = true` before the last parameter
-6. **Test**: Run `./tools/run_headless_tests.sh` to verify no regressions
+- **Exploration**: Multi-file searches, architectural understanding → `Explore` agent
+- **Planning**: Implementation design before coding → `Plan` or `system-architect`
+- **Code Review**: Pre-merge quality gates → `code-review-bar-raiser`
+- **Complex Analysis**: Trade-off studies, architectural decisions → `system-architect`
 
-### Setting UserTalk Variables from Kernel Verbs ⚠️
+Don't do complex analysis or design work manually when an agent can do it better and faster.
 
-**CRITICAL**: When a kernel verb needs to set a UserTalk variable (like `sys.unixshellcommand(cmd, @stdout)` where `@stdout` is an ODB address parameter), you MUST use the complete value record pattern.
+### Agent Verification Requirements ⚠️
 
-#### The Correct Pattern
+**CRITICAL**: Agents must verify fixes work end-to-end, not just fix one piece:
+
+**Example - Verb Dispatch (Issue #166)**:
+- ❌ **Wrong**: Fix callback mechanism, assume verb works
+- ✅ **Right**: Fix callback, verify `lang.new(tableType, @t)` actually works
+- **Lesson**: Test the complete chain: name resolution → dispatch → implementation
+
+**Example - Database Context Review**:
+- ✅ Read full planning context BEFORE reviewing
+- ✅ Use git bisect to verify crash pre-existence
+- ✅ Trace full call chains to verify global state reliability
+- ✅ Don't stop at surface-level fixes
+
+---
+
+## Implementing Kernel Verbs
+
+**Full Guide:** See [`docs/VERB_IMPLEMENTATION_GUIDE.md`](docs/VERB_IMPLEMENTATION_GUIDE.md)
+
+### Quick Pattern
 
 ```c
-// Example: Setting a string variable in the ODB
-boolean set_string_variable(hdlhashtable htable, bigstring varname, Handle hstring) {
+// Add case in appropriate verb function
+case yourverb:
+    getstringvalue(hparam1, 1, varname);  // Extract params
+    flnextparamislast = true;              // Mark last param
+
+    // Create value record (NEVER pass handles directly!)
     tyvaluerecord val;
+    setheapvalue(hstring, stringvaluetype, &val);
+    hashtableassign(htable, varname, val);  // Assign to ODB
 
-    // Step 1: Create a complete value record from the handle
-    if (!setheapvalue(hstring, stringvaluetype, &val))
-        return (false);
-
-    // Step 2: Assign it to the ODB location
-    if (!hashtableassign(htable, varname, val))
-        return (false);
-
-    return (true);
-}
+    return setbooleanvalue(true, vreturned);
 ```
 
-#### Common Mistakes ❌
+### Critical Gotchas ⚠️
 
-**DON'T pass handles directly:**
-```c
-// ❌ WRONG - langsetvalue doesn't exist
-langsetvalue(htable, varname, hstdout, stringvaluetype);
+- **DON'T** pass handles directly to `hashtableassign()` - wrap in `tyvaluerecord` first
+- **DO** use `setXXXvalue()` functions (setheapvalue, setlongvalue, etc.)
+- **Mark last param**: Set `flnextparamislast = true` before final parameter
+- **Test**: Run `./tools/run_headless_tests.sh` after implementation
 
-// ❌ WRONG - missing value record wrapper
-hashtableassign(htable, varname, hstring);  // hstring is Handle, not tyvaluerecord
-```
+---
 
-**DO create value records first:**
-```c
-// ✅ CORRECT
-tyvaluerecord val;
-setheapvalue(hstring, stringvaluetype, &val);
-hashtableassign(htable, varname, val);
-```
+## Testing & CLI Usage
 
-#### Value Record Creation Functions
+**Full Guide:** See [`docs/TESTING_GUIDE.md`](docs/TESTING_GUIDE.md)
 
-| Type | Creation Function | Data Field |
-|------|------------------|------------|
-| String | `setheapvalue(handle, stringvaluetype, &val)` | `val.data.stringvalue` |
-| Long | `setlongvalue(long, &val)` | `val.data.longvalue` |
-| Boolean | `setbooleanvalue(bool, &val)` | `val.data.flvalue` |
-| Double | `setdoublevalue(double, &val)` | `val.data.doublevalue` |
-| Binary | `setbinaryvalue(handle, type, &val)` | `val.data.binaryvalue` |
-| Address | `setaddressvalue(htable, name, &val)` | `val.data.addressvalue` |
-
-#### Examples to Study
-
-Look at these working verb implementations that use ODB address parameters:
-
-- **`Common/source/rgbverbs.c`** - `rgb.get` verb (returns RGB components via address parameters)
-- **`Common/source/dateverbs.c`** - `date.get` verb (returns date components via address parameters)
-- **`Common/source/langregexp.c`** - `re.getPatternInfo` verb (returns pattern info via address parameter)
-
-#### Key Insight: Complete Value Records
-
-The core `hashassign()` function (in `Common/source/langhash.c:2070`) takes a **complete `tyvaluerecord`**, not just a handle or raw value.
-
-For a string value, the value record contains:
-- `val.valuetype = stringvaluetype`
-- `val.data.stringvalue = handle` (the actual string data)
-- `val.fltmpdata` - flag indicating data ownership
-- `val.fltmpstack` - flag for temp stack management
-
-The `setXXXvalue()` functions handle all this correctly - always use them.
-
-#### Extracting ODB Address Parameters
-
-When a verb receives an ODB address parameter (e.g., `@stdout`), you need to:
-1. Extract the hash table reference (`hdlhashtable`)
-2. Extract the variable name (`bigstring`)
-3. Use `hashtableassign(htable, varname, val)` to set the value
-
-See `docs/usertalk_variable_assignment.md` for the complete assignment chain and detailed examples.
-
-## Running frontier-cli
-
-The frontier-cli executable must be run from the project root directory (NOT from within frontier-cli/ or tests/). Syntax:
+### Essential Commands
 
 ```bash
-# Execute inline UserTalk code (no database):
-./frontier-cli/frontier-cli -e "1+1"
-
-# Execute with system root database loaded:
-./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root -e "sizeOf(system)"
-
-# Skip startup scripts (use when testing bootstrapping):
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli -e "1+1"
-```
-
-### Testing Multi-line UserTalk Scripts
-
-Multi-line scripts work in the CLI using bash `$'...'` syntax for proper newline handling:
-
-```bash
-# Multi-line script with $'...\n...' syntax:
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli -e $'lang.new(tableType, @t);\nt.key1 = "hello";\nt.key2 = 42;\nreturn "size:" + sizeOf(t) + " key1:" + t.key1'
-
-# Output: size:2 key1:hello
-
-# Single-line works too (statements separated by semicolons):
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli -e "lang.new(tableType, @t); t.key1 = \"hello\"; return t.key1"
-```
-
-### Testing lang.new() Verb
-
-The `lang.new()` verb creates new UserTalk objects (tables, outlines, scripts, etc.) in memory:
-
-```bash
-# Create a table and verify it exists:
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli -e "lang.new(tableType, @t); return defined(t)"
-# Output: true
-
-# Create a table, add data, and read it back:
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli -e "lang.new(tableType, @t); t.key1 = \"hello\"; t.key2 = 42; t.key3 = true; return \"size:\" + sizeOf(t) + \" key1:\" + t.key1 + \" key2:\" + t.key2"
-# Output: size:3 key1:hello key2:42
-
-# Test with different object types:
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli -e "lang.new(tableType, @myTable); return typeof(myTable)"
-# Output: tableType
-```
-
-**Known issues:**
-- Empty error message `[lang-ERROR] langcallbacks.c:208:` may appear after successful execution (harmless, can be ignored)
-- Multi-line scripts passed as plain strings (without `$'...'`) will fail due to shell parsing
-
-## UserTalk Syntax - Critical Differences from Modern Languages
-
-**IMPORTANT: UserTalk has unique syntax rules that differ from JavaScript, Python, and most modern languages.**
-
-### String Literals (DIFFERENT FROM JS/Python/etc)
-
-**Double quotes ("...") are for strings**:
-- `"hello"` → string
-- `sizeOf("hello")` → 5 ✓
-
-**Single quotes ('...') are for character constants** (NOT strings!):
-- `'A'` (1 char) → Character constant ✓
-- `'TEXT'` (4 chars) → OSType (Mac file type) ✓
-- `'hello'` (5 chars) → SYNTAX ERROR
-
-**This is opposite of many modern languages where 'x' and "x" are equivalent!**
-
-### Common Mistakes for AI Assistants
-
-WRONG (JavaScript/Python style):
-```javascript
-sizeOf('hello')  // FAILS - single quotes not valid for strings in UserTalk
-```
-
-CORRECT (UserTalk style):
-```usertalk
-sizeOf("hello")  // Works - double quotes for strings
-```
-
-### Testing UserTalk Code
-
-When testing built-in functions or verbs, ALWAYS use double quotes for string literals:
-- ✓ `string.upper("test")`
-- ✗ `string.upper('test')`  // Will fail!
-
-### Error Messages
-
-When single quotes are used incorrectly for strings, UserTalk produces:
-```
-"Character constant isnt correctly specified. Must be of the form 'c'."
-```
-
-This error indicates you tried to use single quotes for a multi-character string, which is invalid syntax.
-
-### Quick Reference
-
-| Syntax | UserTalk | JavaScript/Python |
-|--------|----------|-------------------|
-| String | `"hello"` | `"hello"` or `'hello'` |
-| Character constant | `'A'` | N/A (just use `"A"`) |
-| OSType (4-char) | `'TEXT'` | N/A (Mac-specific) |
-| Multi-char with single quotes | ERROR | Works (string) |
-
-**See also:** `docs/USERTALK_SYNTAX_REFERENCE.md` for comprehensive syntax guide.
-
-## System Dependencies
-
-### xxd (hex dump utility)
-
-**Required for:** Database version verification and corruption detection
-
-The `xxd` command is used by `tools/run_headless_tests.sh` to verify database file formats and detect corruption. The test runner automatically checks for `xxd` and will fail with a clear error message if it's not installed.
-
-**Installation:**
-- **macOS:** `brew install vim` (xxd is included with vim)
-- **Linux (Debian/Ubuntu):** `apt-get install vim-common`
-- **Linux (Red Hat/CentOS):** `yum install vim-common`
-
-**Usage in Frontier:**
-```bash
-# Check database version (first 2 bytes)
-xxd -l 2 -p databases/Frontier-v6.root
-# Expected for v6: 0006
-# Expected for v7: 0007
-```
-
-**See also:** `planning/DATABASE_CORRUPTION_PREVENTION.md` for database protection details
-
-## Database Migration (v6→v7)
-
-**IMPORTANT: Always use clean migration before testing!**
-
-Old migrated databases may be corrupted artifacts from earlier broken migrations. Always delete existing v7 databases and run a fresh migration before running tests.
-
-### Creating databases/Frontier-v7.root (Required for Integration Tests)
-
-**The CLI automatically migrates v6 databases to v7 format, creating a new output file.**
-
-To create a clean v7 migrated database from `databases/Frontier-v6.root`:
-
-```bash
-# Clean migration workflow (ALWAYS do this before testing):
-rm -f databases/Frontier-v7.root
-
-# Run CLI with v6 database - creates v7 output file automatically
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli \
-  --system-root databases/Frontier-v6.root -e "1"
-
-# Output: databases/Frontier-v7.root (new file created by migration)
-```
-
-**What happens during migration:**
-1. CLI opens `databases/Frontier-v6.root` and detects v6 format
-2. Migration creates NEW output file: `databases/Frontier-v7.root`
-3. Original `databases/Frontier-v6.root` is **never modified** (preserved)
-4. Pattern: Version suffix is stripped, then `-v7` added: `Frontier-v6.root` → `Frontier-v7.root`
-
-**Verification:**
-```bash
-# Check database version (first 2 bytes should be 0007 for v7)
-xxd -l 2 databases/Frontier-v7.root
-# Expected output: 00000000: 0007  ..
-```
-
-### Alternative: Using save_migration_tests (Test Harness)
-
-For testing the migration process itself:
-
-```bash
-# Clean rebuild and run migration test:
-make -C tests clean && make -C tests save_migration_tests
-./tests/save_migration_tests
-
-# Output: test_save_migration-v7.root (v7 migrated database)
-```
-
-**Testing migrated database:**
-```bash
-# Test database loads and system table is accessible:
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root test_save_migration-v7.root -e "defined(system)"
-
-# Test external table variables (critical - tests Issue #123 fix):
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root test_save_migration-v7.root -e "sizeOf(system.verbs.globals)"
-
-# Test workspace access:
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root test_save_migration-v7.root -e "defined(workspace)"
-```
-
-**Full integration test suite:**
-```bash
-# Runs migration + all headless tests:
+# Run full test suite
 ./tools/run_headless_tests.sh
+
+# Test CLI inline
+FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli -e "1+1"
+
+# Multi-line UserTalk
+./frontier-cli/frontier-cli -e $'lang.new(tableType, @t);\nt.a=1;\nreturn t.a'
+
+# With database loaded
+./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root -e "sizeOf(system)"
 ```
 
-See `planning/phase3/MIGRATION_VALIDATION_REPORT.md` for detailed test procedures and known issues.
+### UserTalk Syntax Gotcha ⚠️
+
+**CRITICAL**: Double quotes for strings, single quotes for character constants!
+
+```usertalk
+sizeOf("hello")  // ✅ CORRECT - double quotes for strings
+sizeOf('hello')  // ❌ WRONG - syntax error (single quotes = char constant)
+```
+
+This is **opposite** of JavaScript/Python where `'x'` and `"x"` are equivalent!
+
+---
 
 ## Architectural Patterns to Avoid
 
 ### Hash Table Lookup API - Null Pointer Gotcha ⚠️
 
-**Issue #199 Root Cause**: Frontier has two hash lookup functions with subtle differences that can cause segfaults:
+**Issue #199 Root Cause**: Frontier has two hash lookup functions with subtle differences:
 
-**Correct API Usage**:
+**Correct API**:
 ```c
-// When you need BOTH the value and the node:
+// When you need BOTH value and node:
 tyvaluerecord val;
 hdlhashnode node;
-if (hashtablelookup(htable, name, &val, &node)) {
-    // Safe: val and node are both populated
-}
+if (hashtablelookup(htable, name, &val, &node)) { /* Safe */ }
 
-// When you ONLY need the node (NOT the value):
+// When you ONLY need the node:
 hdlhashnode node;
-if (hashtablelookupnode(htable, name, &node)) {
-    // Safe: only node is populated
-}
+if (hashtablelookupnode(htable, name, &node)) { /* Safe */ }
 ```
 
 **WRONG - Causes Segfault**:
 ```c
 // ❌ NEVER pass nil for vreturned:
-hdlhashnode node;
 if (hashtablelookup(htable, name, nil, &node)) {  // CRASHES!
     // hashtablelookup unconditionally dereferences vreturned
-    // *vreturned = value;  ← segfault when vreturned is nil
 }
 ```
 
-**Why This Happens**:
-- `hashtablelookup()` at `langhash.c:2244` unconditionally writes: `*vreturned = (***hnode).val`
-- If `vreturned` is `nil`, this is an immediate segfault
-- The function doesn't check if `vreturned` is non-null before dereferencing
+**Why**: `hashtablelookup()` unconditionally writes `*vreturned = value` without checking if `vreturned` is non-null.
 
-**The Fix**:
-Use `hashtablelookupnode()` when you only need the node pointer, not the value.
+**The Fix**: Use `hashtablelookupnode()` when you only need the node, not the value.
 
-**Real Bug Example** (Fixed in Issue #199):
-```c
-// BEFORE (crashed):
-if (hashtablelookup(htable_target, bs_entryname, nil, &existing_node)) {
-    // ...
-}
-
-// AFTER (correct):
-if (hashtablelookupnode(htable_target, bs_entryname, &existing_node)) {
-    // ...
-}
-```
-
-**Test Coverage**: `tests/test_efp_augmentation.c` exercises this code path to prevent regression.
-
-**See**: Issue #199, `Common/source/tablestructure.c:517,531`
+---
 
 ### Mode Stack Push/Pop Issues ⚠️
 
-The `db_format_mode_current()` push/pop pattern has proven problematic and has caused multiple bugs:
+The `db_format_mode_current()` push/pop pattern has caused multiple bugs:
 
-**Problem**: When you push a different mode (e.g., legacy reader mode for loading v6 tables), any recursive operations inherit that mode. If you forget to pop, or if recursive calls don't pop properly, child operations see wrong format state.
+**Problem**: When you push a different mode (e.g., legacy reader for v6 tables), recursive operations inherit that mode. If you forget to pop, or if recursive calls don't pop properly, child operations see wrong format state.
 
-**Example from Issue #123**: During migration, we pushed `legacy_load.use_64bit_format = false` to read v6 tables, but recursive child table packing inherited this mode and wrote v4 headers instead of v5. This caused all tables to have wrong format.
+**Example (Issue #123)**: During migration, we pushed `legacy_load.use_64bit_format = false` to read v6 tables, but recursive child table packing inherited this mode and wrote v4 headers instead of v5.
 
-**Best practices**:
+**Best Practices**:
 1. Use explicit context guards (`db_context_guard`) when switching modes for recursive operations
 2. Never rely on mode stack state being restored automatically
 3. Consider using explicit context parameters instead of global mode state
-4. When in doubt, check `db_format_mode_current()` at the point where it's used, don't assume it's what you set earlier
+4. When in doubt, check `db_format_mode_current()` at the point where it's used
 
-**See**: `planning/phase3/modern_reader_writer_split.md` - Known Issues section, Issue #123
+---
 
 ### Reader/Writer Fork Architecture
 
-Frontier has separate legacy (v6, 32-bit) and modern (v7, 64-bit BE) reader/writer code paths. This is intentional but creates gotchas:
+Frontier has separate legacy (v6, 32-bit) and modern (v7, 64-bit BE) reader/writer code paths.
 
-**Gotcha 1**: The DATABASE format mode and TABLE header version are NOT the same thing:
+**Gotcha 1**: DATABASE format mode and TABLE header version are NOT the same:
 - `dbopenfile()` sets `db_format_mode.use_64bit_format` based on DATABASE version
 - `hashunpacktable()` used to check only TABLE header version, not database mode
 - Result: Root table could unpack with wrong reader even if database is v7
 
-**Gotcha 2**: Table packing must always respect the OUTPUT database format:
+**Gotcha 2**: Table packing must respect OUTPUT database format:
 - Don't rely on mode stack state inherited from earlier operations
 - Explicitly push modern mode before packing if writing to v7 database
-- Always validate you're writing correct header versions (version=5 for v7, version=4 for v6)
+- Always validate header versions (version=5 for v7, version=4 for v6)
 
-**See**: `docs/external_table_variable_management.md` - Address format differences between v6 and v7
+---
 
 ### External Table Variable Migration
 
 External table variables store either:
 - Memory pointers (`flinmemory=1`) - no migration issues
-- Database addresses (`flinmemory=0`) - **addresses are format-dependent and fail if written wrong**
+- Database addresses (`flinmemory=0`) - **addresses are format-dependent**
 
-**Critical**: If `flinmemory=0` tables are migrated with wrong address format:
+**Critical**: If `flinmemory=0` tables migrated with wrong address format:
 - v6 addresses (32-bit) stored in v7 database don't point to valid blocks
 - `dbnormalizeaddress()` fails when trying to access them
 - Error: `dbnormalizeaddress failed for adr=0x62bb33`
 
-**Safe approach**: Force external tables into memory (`flinmemory=1`) during migration to avoid address format issues entirely.
+**Safe approach**: Force external tables into memory (`flinmemory=1`) during migration.
 
-**See**: `docs/external_table_variable_management.md` - Migration patterns section
+See `docs/external_table_variable_management.md` for migration patterns.
+
+---
 
 ### Global Mutable State - CRITICAL FOR LAUNCH ⚠️⚠️⚠️
 
@@ -632,110 +495,69 @@ Frontier has multiple global mutable state variables that must be eliminated bef
 
 **Known Problem Areas:**
 - `outlinedata` and `outlinestack` (oppushoutline/oppopoutline) - outline context
-- `databasedata` and legacy database globals - database context (partially fixed with db_context)
+- `databasedata` and legacy database globals - database context (partially fixed)
 - Any static buffers or caches that aren't guarded by locks
 
-**Why This Matters:**
-This code MUST be thread-safe before launch. Global mutable state makes thread safety impossible.
+**Why This Matters**: This code MUST be thread-safe before launch. Global mutable state makes thread safety impossible.
 
-**Current Status:**
-- ✓ Database mode context partially addressed via `db_context` (see PR #125)
-- ✓ Outline packing refactored to `opverbpack_internal` (follows single-decision-point pattern)
-- ❌ Outline push/pop stack (`oppushoutline`/`oppopoutline`) still used throughout codebase (24+ files)
-- ❌ Other global state pockets likely exist
-
-**Refactoring Pattern (proven to work):**
+**Refactoring Pattern (proven to work)**:
 1. Create explicit context structure (e.g., `op_context`, `db_context`)
 2. Thread context through function parameters instead of relying on globals
 3. Maintain backward-compatible wrappers using default context
 4. Gradually eliminate global variable access
-5. Document in architectural_decision_records/
+5. Document in `planning/architectural_decision_records/`
 
-**See:** Issue #135 (outline context refactoring)
+**See**: Issue #135 (outline context refactoring)
 
-**Test with:** Multi-threaded tests before launch to verify thread-safety
+---
 
 ### Database Format Debugging & Corruption Detection ⚠️
 
-**CRITICAL LESSONS FROM PR #185 (Database Context Segfault Fix)**
+**CRITICAL LESSONS FROM PR #185**
 
 #### Database File Corruption in Git
 
-Database files can become corrupted in git if migration code has bugs. **Always validate database files before using them for testing:**
+Database files can become corrupted in git if migration code has bugs. **Always validate database files before using them**:
 
 ```bash
-# Check database version (first 2 bytes should be 0006 for v6, 0007 for v7)
+# Check database version (first 2 bytes: 0006 for v6, 0007 for v7)
 xxd databases/Frontier-v6.root | head -1
-# Expected for v6: 0006 0000 0000 0000 0000 005d 1063 0000
 # CORRUPT if v6 file shows: 0007 0000... (v7 header with v6 addresses)
 ```
 
-**If database is corrupted:**
+**If corrupted**:
 1. Find last known-good commit: `git log --oneline -- databases/Frontier-v6.root`
-2. Restore from good commit: `git show <commit>:databases/Frontier-v6.root > databases/Frontier-v6.root`
-3. Verify version bytes with `xxd`
-
-**Symptom of corruption**: `dbnormalizeaddress failed` errors during migration/loading with addresses that don't match the database version.
+2. Restore: `git show <commit>:databases/Frontier-v6.root > databases/Frontier-v6.root`
+3. Verify with `xxd`
 
 #### Git Bisect for Database Format Issues
 
-When debugging database format bugs, **you MUST re-migrate the database at each bisect step**. Database format is version-dependent; testing with a pre-migrated v7 database will give false results if the bug is in migration code.
-
-**Correct bisect workflow:**
-```bash
-# Create automated test script that:
-# 1. Removes old v7 database
-# 2. Restores pristine v6 database from git
-# 3. Copies v6 to v7 location
-# 4. Loads database (triggers automatic migration)
-# 5. Tests if migration succeeded
-
-# Run bisect with automated script
-git bisect start
-git bisect bad HEAD
-git bisect good <known-good-commit>
-git bisect run ./tools/bisect_test_db_load.sh
-```
-
-**See:** `tools/bisect_test_db_load.sh` for reference implementation
+When debugging database format bugs, **you MUST re-migrate at each bisect step**. Testing with pre-migrated v7 database gives false results if bug is in migration code.
 
 #### Context Guard Pattern is CORRECT ✅
 
-**IMPORTANT CLARIFICATION**: The `db_context_guard` pattern is **NOT** the same as the problematic push/pop anti-pattern documented above. Context guards are the **CORRECT** solution for temporary context switches.
+**IMPORTANT**: The `db_context_guard` pattern is **NOT** the same as the problematic push/pop anti-pattern. Context guards are the **CORRECT** solution:
 
-**Context Guard Pattern (CORRECT)**:
 ```c
 boolean dbrefhandle_context(const db_context *context, dbaddress adr, Handle *h) {
     db_context_guard guard;
-    db_context_guard_enter(context, &guard);  // Saves current state
+    db_context_guard_enter(context, &guard);  // Saves state
     boolean ok = dbrefhandle(adr, h);
-    db_context_guard_exit(&guard);            // Restores previous state
+    db_context_guard_exit(&guard);            // Restores state
     return ok;
 }
 ```
 
-**Why guards are correct:**
+**Why guards are correct**:
 - Explicitly save state on entry
 - Explicitly restore state on exit
 - Scoped to single operation (no inheritance to recursive calls)
 - Deterministic cleanup even on error paths
 
-**Push/Pop Anti-Pattern (INCORRECT)**:
-```c
-// BAD: State persists after function returns
-db_format_mode_push(&mode);
-some_operation();
-// If pop is forgotten or error occurs, wrong mode persists!
-db_format_mode_pop();
-```
-
-**See:** PR #185 - Removing context guards was the bug; restoring them was the fix
-
 #### Global State Must Be Restored
 
-When temporarily changing global state for an operation, **failure to restore the previous value causes cascading failures:**
+When temporarily changing global state, **failure to restore previous value causes cascading failures**:
 
-**Example from PR #185:**
 ```c
 // BROKEN CODE (removed db_context_guard):
 boolean dbrefhandle_context(const db_context *context, dbaddress adr, Handle *h) {
@@ -745,207 +567,84 @@ boolean dbrefhandle_context(const db_context *context, dbaddress adr, Handle *h)
 // Next operation sees WRONG database → segfault
 ```
 
-**Root cause**: Function set `databasedata` to a specific database for one operation but never restored the previous value. Subsequent operations saw the wrong database context, causing `dbnormalizeaddress()` failures.
+**Rule**: Any function that temporarily modifies global state MUST restore previous value before returning.
 
-**Rule**: Any function that temporarily modifies global state (`databasedata`, mode flags, etc.) MUST restore the previous value before returning, even on error paths.
+---
 
 ## Collaborative ODB Editing - North Star Vision 🎯
 
 **Strategic Context:**
 
-Frontier's Object Database (ODB) is being positioned as the backend for next-generation collaborative editing, specifically supporting:
-- Dave Winer's unique outline-centric workflow (currently non-collaborative)
+Frontier's Object Database (ODB) is being positioned as the backend for next-generation collaborative editing:
+- Dave Winer's outline-centric workflow (currently non-collaborative)
 - Multi-user server config management (Automattic partnership)
 - Concurrent source code workflows (GitHub integration patterns)
 - Any ODB object type (outlines, scripts, WPText, tables, menus, etc.)
 
 **The Vision (Frontier 2.0):**
 
-Frontier should support **Google Docs/Sheets-style collaborative editing of ODB objects** where:
-- Multiple users can edit different ODB objects simultaneously (and potentially the same object concurrently)
+Frontier should support **Google Docs/Sheets-style collaborative editing of ODB objects**:
+- Multiple users edit different ODB objects simultaneously (potentially same object concurrently)
 - Developers write functionally single-threaded code (no concurrency awareness required)
-- The runtime handles all concurrency, locking, and conflict resolution transparently
-- Stability is guaranteed even with dozens of concurrent operations
-- Frontier maintains its developer-facing flexibility (unique features, scripting capabilities)
-- Developers should be able to assume their code will work correctly when multiple people are working with ODB data at the same time
+- Runtime handles all concurrency, locking, and conflict resolution transparently
+- Stability guaranteed even with dozens of concurrent operations
 
-**What This Means NOW (Frontier 1.0):**
+**What This Means NOW (Frontier 1.0)**:
 
 This is a **foundational architectural decision**, not a future feature. Every design choice must accommodate this trajectory:
 
-1. **Reference Counting for All External Object Contexts (Issue #135 + Beyond):**
-   - Outline context (`op_context_t`), script context, WPText context, etc. must all support multiple concurrent references
-   - ODB objects stay valid while ANY thread holds a reference to them
-   - This is why full reference counting (not simplified stack-based) is required
-   - Foundation applies to all external object types, not just outlines
-   - See: `planning/architectural_decision_records/collaborative_odb_architecture.md` (when created)
+1. **Reference Counting for All External Object Contexts**
+   - Outline context, script context, WPText context must support multiple concurrent references
+   - ODB objects stay valid while ANY thread holds a reference
+   - Foundation applies to all external object types
 
-2. **Single-Threaded Developer Model:**
-   - A UserTalk script operating on ODB objects should NOT see concurrent modifications (from other users)
-   - The runtime isolates each developer's operations (transactional semantics or versioning)
-   - Conflict resolution happens automatically (operational transformation, CRDT, or version merging)
-   - Developers should never need to write `lock(object)` or `await(lock)`
-   - All concurrency complexity is hidden by the runtime
+2. **Single-Threaded Developer Model**
+   - UserTalk scripts should NOT see concurrent modifications from other users
+   - Runtime isolates each developer's operations (transactional semantics or versioning)
+   - Conflict resolution happens automatically
+   - Developers never write `lock(object)` or `await(lock)`
 
-3. **Stable Data Under Concurrent Load:**
+3. **Stable Data Under Concurrent Load**
    - Multiple users editing same ODB objects = stable, correct results
    - No data corruption, race conditions, or mysterious failures
-   - No "eventual consistency" - writes are immediately visible (last-write-wins OR conflict resolution)
-   - This is a launch-blocking requirement for any Automattic partnership work
-   - Users expect the same stability they get from Google Docs/Sheets
+   - Launch-blocking requirement for Automattic partnership
 
-**How This Affects Architecture:**
+**Known Strategic Partnerships**:
+- **Dave Winer** - Multi-user 2.0 with full ODB collaboration
+- **Automattic ecosystem** - WordPress, WordPress.com (~40% of public web)
 
-| Component | 1.0 (Current) | 2.0 Vision | How We Get There |
-|-----------|---------------|-----------|------------------|
-| **Object Contexts** | Stack-based, single writer | Reference-counted, multi-writer | Full refcount in #135 + similar patterns for other types |
-| **Conflict Resolution** | N/A (single writer) | Automatic (OT, CRDT, or merge) | Implement post-1.0 |
-| **Developer Code** | Already single-threaded | Stays single-threaded | Transparent at runtime |
-| **Database Layer** | Locking at DB level | Locking at object level | #135 foundation enables this |
-| **UserTalk Verbs** | No concurrency awareness | No concurrency awareness | Runtime handles it |
-| **External Objects** | Assume single access | Support concurrent access | Foundation work (reference counting) enables this |
+See Issue #135 (outline context refactoring) - where collaborative ODB foundation gets built.
 
-**What 1.0 Must Get Right:**
-
-1. ✓ Object context structures (reference counting, not stack allocation) - starting with #135 outlines
-2. ✓ Thread-safe context lifecycle (acquire/release semantics)
-3. ✓ Reference counting for object validity (prevents premature deallocation)
-4. ✓ Locking at object granularity (not just DB-level locking)
-5. ✓ Foundation extensible to all ODB object types (not just outlines)
-6. ❌ Conflict resolution (OK to defer, but foundation must allow it)
-7. ❌ Operational transformation (OK to defer, but foundation must allow it)
-
-**Testing Implications:**
-
-Even in 1.0, we must test:
-- Multiple threads accessing different nodes in same ODB object (should work)
-- One thread saving while another edits (should not corrupt)
-- Outline operations with concurrent external object loading (should be safe)
-- Reference counting correctness (object stays alive while referenced)
-- Extension pattern tested with at least one other external type (script or WPText)
-
-**Known Strategic Partnerships:**
-
-- **Dave Winer** - Outline-centric system, currently single-user, wants multi-user 2.0 with full ODB collaboration
-- **Automattic ecosystem** - WordPress, WordPress.com, and partners (managing ~40% of public web)
-- These are not hypothetical - they are active, immediate opportunities post-1.0
-- Success here unlocks entirely new product categories (collaborative data management)
-
-**See:** Issue #135 (outline context refactoring) - this is where the collaborative ODB foundation gets built
+---
 
 ## Knowledge Capture and Documentation
 
-Whenever you discover or learn something significant or important about this project or its implementation that isn't already documented, **create or update the appropriate documentation** to capture that learning:
-- For architectural insights and design patterns → `planning/architectural_decision_records/`
-- For Phase 3 implementation details and technical analysis → `planning/phase3/`
-- For completed work and historical context → `planning/archive/`
-- For general development guides and patterns → `docs/`
+Whenever you discover something significant about this project or its implementation that isn't already documented, **create or update the appropriate documentation**:
 
-This ensures:
-- Future work can benefit from the learning without rediscovering it
-- You can search the documentation hierarchy to find relevant context and past learnings
-- Tacit knowledge becomes explicit and shareable
-- The documentation tree stays synchronized with actual implementation
+- Architectural insights and design patterns → `planning/architectural_decision_records/`
+- Phase 3 implementation details → `planning/phase3/`
+- Completed work and historical context → `planning/archive/`
+- General development guides → `docs/`
 
-**Rationale:** The most valuable resource in this codebase is the knowledge accumulated through solving hard problems. Documenting that learning prevents it from being lost and makes it discoverable for future work.
+**Rationale**: The most valuable resource is knowledge accumulated through solving hard problems. Documenting learning prevents it from being lost and makes it discoverable.
 
-## Agent Selection Guidelines
-
-When choosing between specialized agents (usertalk-engineer vs system-architect):
-- **Use system-architect** if the issue is primarily in the C domain or requires non-UserTalk scripting (C code changes, database format, runtime architecture, memory management, etc.)
-- **Use usertalk-engineer** if the issue is primarily in the UserTalk domain (verb implementations that are mostly UserTalk, scripting logic, UserTalk runtime behavior, etc.)
-
-This ensures the right agent with domain expertise handles the work.
-
-## Using Sub-Agents for Complex Tasks
-
-Whenever a task would benefit from specialized analysis or work that a sub-agent can handle autonomously, **use the appropriate Task tool with a sub-agent**:
-- **Explore agent** - Understanding codebase structure, searching across multiple files, architectural context
-- **system-architect** - Designing implementations, architectural alternatives, complex technical decisions
-- **usertalk-engineer** - UserTalk scripting work, verb implementations in UserTalk domain
-- **code-review-bar-raiser** - Thorough code review of significant implementations before merge
-- **refactoring-consultant** - Planning and executing refactoring work
-- **pull-request agent** - Creating comprehensive PR summaries and pushing to origin
-
-Don't do complex analysis or design work manually when an agent can do it better and faster. This is especially true for:
-- Multi-file exploration and understanding codebase patterns
-- Architectural analysis and trade-off studies
-- Design and planning before implementation
-- Code review and quality assurance
-
-Using agents frees you to focus on high-level decision-making and context.
-
-## Agent Work Verification Requirements
-
-**CRITICAL**: Agents must verify that fixes actually work end-to-end, not just fix one piece of the architecture:
-
-### Verb Dispatch Example (Issue #166 preparation)
-
-**Problem**: The system-architect agent correctly identified and fixed the verb callback mechanism (preventing `init_efp_1005()` from overwriting callbacks), but didn't verify that the actual verb implementation was wired up.
-
-**Lesson**: When an agent fixes a dispatch/routing issue:
-1. ✅ Fix the architectural problem (callbacks, registration, etc.)
-2. ✅ Verify the wiring is correct (check that the right callback is set)
-3. ✅ **TEST THE ACTUAL VERB END-TO-END** - Call the verb and verify it works
-4. ✅ Don't assume the implementation is complete just because the dispatch mechanism is fixed
-
-**What went wrong**: The agent fixed the callback mechanism but didn't catch that `headless_lang_verbs.c` contains a stub implementation that still returns "not implemented" for `lang.new()`.
-
-**How to prevent**: Always test the actual user-facing functionality (in this case, `lang.new(tableType, @t)`) to verify the complete chain works:
-- Name resolution → keyword lookup → callback dispatch → actual implementation
-
-**Guidance for agents**:
-- For routing/dispatch fixes: Test with actual calls to verify end-to-end functionality
-- For infrastructure fixes: Test with real examples that depend on that infrastructure
-- Don't stop at "I fixed the routing mechanism" - verify the mechanism actually routes to working code
-
-### Database Context Review Example (Successful Pattern)
-
-**Context**: External variable database context fix (Phase 1)
-
-**What the odb-database-expert agent did RIGHT**:
-1. ✅ **Read full planning context BEFORE code review**
-   - ADR-002 (external variable database context design)
-   - MODE_SINGLE_DECISION_POINT pattern
-   - external_table_variable_management.md
-   - All related architectural decision records
-
-2. ✅ **Used git bisect testing to verify crash pre-existence**
-   - System-architect claimed crash was "pre-existing"
-   - ODB expert verified by checking out commits before Phase 1
-   - Confirmed crash exists BEFORE the changes (not introduced)
-
-3. ✅ **Traced full call chain to verify global state reliability**
-   - Simple fix appeared to rely on unreliable global `databasedata`
-   - Agent traced: `dbopenfile() → hashunpacktable_context() → db_format.c sets databasedata from context`
-   - Verified global IS reliable at the point it's used
-
-4. ✅ **Found no issues - implementation was already correct**
-   - Provided ready-to-use commit message
-   - Identified Phase 2 work scope
-   - Separated EFP crash as distinct issue
-
-**Key Lesson**: Thorough context review + git bisect verification + call chain tracing = high confidence approval of critical path code.
+---
 
 ## Database Context Debugging Pattern
 
 When investigating database-related bugs:
 
 1. **Always verify if crashes are pre-existing** using git bisect-style testing
-   - Don't trust agent claims about "pre-existing" issues
    - Checkout commits before/after suspected changes
    - Rebuild and test at each point
-   - Example: Phase 1 EFP crash was verified pre-existing by testing commit before 577fa238
 
 2. **Trace global state reliability through full call chains**
    - Don't assume globals are wrong without verification
    - Globals may be set correctly at higher levels even if not explicitly passed
-   - Example: `databasedata` appears unreliable, but `db_format.c:2281-2282` sets it from context at unpack entry
 
 3. **Check context propagation patterns**
    - Look for `db_context *ctx` parameters in unpacking functions
-   - Verify context→global assignments (e.g., `databasedata = context->database`)
-   - Context may be correctly propagated via globals at function boundaries
+   - Verify context→global assignments
 
 4. **Key files for database context debugging**:
    - `Common/source/db_format.c` - Context→global assignments during unpacking
@@ -953,51 +652,34 @@ When investigating database-related bugs:
    - `Common/source/tablepack.c` - Table unpacking implementation
    - `Common/source/langexternal.c` - External variable creation and lifecycle
 
+---
+
 ## Anti-Pattern: Auto-Generated Files Requiring Hand-Edits
 
 **CRITICAL ANTI-PATTERN**: Never create automated tools that generate stub files if those stubs will need to be manually edited in production.
 
 ### Why This is a Problem
 
-**Example**: `tests/headless_lang_verbs.c` is marked as "AUTO-GENERATED - DO NOT EDIT BY HAND" but during Issue #166 work, we had to hand-edit the `lang.new()` case to wire up the real implementation.
-
-**The Bad Outcomes**:
-1. ❌ Manual edits get overwritten if the generator is re-run
-2. ❌ Maintenance burden: developers forget this is generated and waste time trying to fix it
-3. ❌ Git history becomes confusing (is this auto-generated or hand-written?)
-4. ❌ Future developers don't know which version is authoritative (disk or generator)
-5. ❌ Creates a false sense of "this is done" when the stub isn't actually complete
+**Bad Outcomes**:
+1. ❌ Manual edits get overwritten if generator is re-run
+2. ❌ Developers forget this is generated and waste time trying to fix it
+3. ❌ Git history becomes confusing
+4. ❌ Future developers don't know which version is authoritative
+5. ❌ Creates false sense of "this is done" when stub isn't complete
 
 ### How to Fix This Pattern
 
 **Option 1: Make The Generator Complete** ✅ **PREFERRED**
-- Update the generator to emit correct, production-ready code
+- Update generator to emit correct, production-ready code
 - No hand-edits needed - regenerate when requirements change
-- Example: Updated `stub_config.py` to handle `STUB_FORWARD` mode that calls real implementations
+- Example: Updated `stub_config.py` with `STUB_FORWARD` mode
 
-**Option 2: Don't Auto-Generate What Will Be Edited**
-- If code will need hand-edits, don't mark it auto-generated
-- Either hand-write it, or document that it's a hybrid
-- Accept the maintenance burden explicitly
-
-**Option 3: Separate Generated Template From Editable Code**
-- Generate boilerplate/templates in one file
-- Hand-editable implementations in separate file
-- But this adds complexity and is often not worth it
-
-### Lesson for This Project
-
-For `headless_lang_verbs.c`:
-1. **Before**: Auto-generated stub that always returned "not implemented"
-2. **The Problem**: We had to hand-edit it for `lang.new()` to work
-3. **The Fix**: Updated generator (`stub_config.py`) with new `STUB_FORWARD` category
-4. **Regenerate**: Re-run generator to produce correct code (no hand-edits needed)
-5. **Result**: Clean, maintainable, regenerable code
-
-**For Future Work**: When adding new verbs that need real implementations:
+**For Future Work**: When adding verbs that need real implementations:
 - Add entry to `stub_config.py` with correct implementation strategy
 - Update generator if needed
 - **Don't hand-edit the output** - fix the generator instead
+
+---
 
 ## Logging Standards ⚠️
 
@@ -1010,50 +692,28 @@ All debug and diagnostic output must use structured logging macros - **never use
 
 ### Logging Macros (Priority Order)
 
-1. **`log_error(component, ...)`** - Critical failures (always shown)
-2. **`log_warn(component, ...)`** - Unexpected but recoverable conditions
-3. **`log_info(component, ...)`** - Startup/shutdown milestones
-4. **`log_debug(component, ...)`** - Diagnostic information
-5. **`log_trace(component, ...)`** - Maximum verbosity (function entry/exit)
+1. `log_error(component, ...)` - Critical failures (always shown)
+2. `log_warn(component, ...)` - Unexpected but recoverable conditions
+3. `log_info(component, ...)` - Startup/shutdown milestones
+4. `log_debug(component, ...)` - Diagnostic information
+5. `log_trace(component, ...)` - Maximum verbosity
 
 ### Logging Components
 
-Use the appropriate LOG_COMP_* constant matching the subsystem:
-- `LOG_COMP_DB` - Database layer (db.c, db_format.c)
-- `LOG_COMP_HASH` - Hash tables (langhash.c)
-- `LOG_COMP_TABLE` - Table operations (tablepack.c, tableops.c)
-- `LOG_COMP_LANG` - Language runtime (lang.c, langvalue.c)
+Use appropriate LOG_COMP_* constant:
+- `LOG_COMP_DB` - Database layer
+- `LOG_COMP_HASH` - Hash tables
+- `LOG_COMP_TABLE` - Table operations
+- `LOG_COMP_LANG` - Language runtime
 - (See `Common/headers/logging.h` for full list)
-
-### Special Cases
-
-**Hex Dumps**: Use `log_hex_dump()` instead of streaming fprintf:
-```c
-// ✗ WRONG
-fprintf(stderr, "bytes:");
-for (int i = 0; i < len; i++) fprintf(stderr, " %02x", buf[i]);
-
-// ✓ CORRECT
-log_hex_dump(LOG_COMP_HASH, LOG_LEVEL_TRACE, buf, len, "bytes");
-```
-
-**Expensive Operations**: Guard with `log_enabled()`:
-```c
-if (log_enabled(LOG_LEVEL_DEBUG, LOG_COMP_DB)) {
-    char path[512];
-    expensive_path_construction(path, sizeof(path));
-    log_debug(LOG_COMP_DB, "Full path: %s", path);
-}
-```
 
 ### Enforcement
 
-- Script: `./tools/check_fprintf.sh` detects fprintf(stderr) violations
-- Details: `./tools/check_fprintf.sh --fix` shows what to fix
-- Documentation: `docs/LOGGING_STANDARDS.md` - comprehensive guide
+- Script: `./tools/check_fprintf.sh` detects violations
+- Details: `./tools/check_fprintf.sh --fix` shows fixes
+- Documentation: `docs/LOGGING_STANDARDS.md`
 
-### Reference
-
-- Logging API: `Common/headers/logging.h`
+**Reference**:
+- API: `Common/headers/logging.h`
 - Standards: `docs/LOGGING_STANDARDS.md`
 - Plan: `planning/phase3/LOGGING_INFRASTRUCTURE_PLAN.md`
