@@ -126,6 +126,15 @@ static void cleanup_runtime(void) {
         hashtablestack = NULL;
     }
 
+    // TODO: Incomplete cleanup - the following subsystems are initialized but not cleaned up:
+    // - WPText subsystem (wp_portable_init) - no shutdown function exists
+    // - Language runtime (initlang) - no shutdown function exists
+    // - Table structure (inittablestructure) - no shutdown function exists
+    // - String subsystem (initstrings) - no shutdown function exists
+    // - Memory subsystem (initmemory) - no shutdown function exists
+    // Since tests are short-lived processes, OS reclaims these resources on exit.
+    // This should be addressed if shutdown functions are added to the runtime.
+
     runtime_initialized = false;
 }
 
@@ -434,6 +443,6 @@ int main(void) {
     RUN_TEST(test_sortby_mixed_types);
 
     test_framework_summary();
+    // cleanup_runtime() will be called automatically via atexit() on return
     return test_framework_get_exit_code();
-    // cleanup_runtime() will be called automatically via atexit()
 }
