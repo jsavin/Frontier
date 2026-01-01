@@ -127,10 +127,16 @@ _Static_assert(<processor>v_count == EXPECTED_<PROCESSOR>_VERB_COUNT,
 - Pattern introduced in PR #224 (table verbs) and is now **mandatory** for all dispatchers
 
 **Manual Verification** (Belt-and-Suspenders):
+The `_Static_assert` is the primary safety mechanism. Manual verification is only needed if:
+1. You modify the original `<processor>verbs.c` file
+2. You're debugging a token mismatch issue
+
 ```bash
-# Compare token counts
-grep -c "case.*func:" Common/source/<processor>verbs.c
-# Should match EXPECTED_<PROCESSOR>_VERB_COUNT
+# Count tokens in original implementation
+# Pattern varies by processor - look for enum definition in <processor>verbs.c
+# Example for table verbs: grep -c "func = " Common/source/tableverbs.c
+# Example for string verbs: grep -c "func = " Common/source/stringverbs.c
+# Should match EXPECTED_<PROCESSOR>_VERB_COUNT in your enum
 ```
 
 ### Step 3: Forward Declaration
