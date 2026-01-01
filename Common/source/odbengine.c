@@ -27,7 +27,7 @@
 
 /* 2025-11-24 Codex: Normalize BE writes/coverage for v7 portability. */
 
-
+#define ODBENGINE_PROVIDES_CANCOONGLOBALS
 #include "frontier.h"
 #include "standard.h"
 

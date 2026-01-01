@@ -24,60 +24,63 @@ enum {
     lanv_new = 1,
     lanv_delete = 2,
     lanv_edit = 3,
-    lanv_close = 4,
-    lanv_timecreated = 5,
-    lanv_timemodified = 6,
-    lanv_settimecreated = 7,
-    lanv_settimemodified = 8,
-    lanv_boolean = 9,
-    lanv_char = 10,
-    lanv_short = 11,
-    lanv_long = 12,
-    lanv_date = 13,
-    lanv_direction = 14,
-    lanv_string4 = 15,
-    lanv_string = 16,
-    lanv_displaystring = 17,
-    lanv_address = 18,
-    lanv_binary = 19,
-    lanv_getbinarytype = 20,
-    lanv_setbinarytype = 21,
-    lanv_point = 22,
-    lanv_rect = 23,
-    lanv_rgb = 24,
-    lanv_pattern = 25,
-    lanv_fixed = 26,
-    lanv_single = 27,
-    lanv_double = 28,
-    lanv_filespec = 29,
-    lanv_alias = 30,
-    lanv_list = 31,
-    lanv_record = 32,
-    lanv_enum = 33,
-    lanv_memavail = 34,
-    lanv_flushmemory = 35,
-    lanv_random = 36,
-    lanv_evaluate = 37,
-    lanv_evaluatethread = 38,
-    lanv_rollbeachball = 39,
-    lanv_abs = 40,
-    lanv_seteventtimeout = 41,
-    lanv_seteventtransactionid = 42,
-    lanv_seteventinteraction = 43,
-    lanv_geteventattribute = 44,
-    lanv_coerceappleitem = 45,
-    lanv_getapplelistitem = 46,
-    lanv_putapplelistitem = 47,
-    lanv_countapplelistitems = 48,
-    lanv_systemevent = 49,
-    lanv_DDEevent = 50,
-    lanv_transactionEvent = 51,
-    lanv_msg = 52,
-    lanv_callxcmd = 53,
-    lanv_calldll = 54,
-    lanv_packwindow = 55,
-    lanv_unpackwindow = 56,
-    lanv_callscript = 57
+    lanv_gettarget = 4,
+    lanv_settarget = 5,
+    lanv_cleartarget = 6,
+    lanv_close = 7,
+    lanv_timecreated = 8,
+    lanv_timemodified = 9,
+    lanv_settimecreated = 10,
+    lanv_settimemodified = 11,
+    lanv_boolean = 12,
+    lanv_char = 13,
+    lanv_short = 14,
+    lanv_long = 15,
+    lanv_date = 16,
+    lanv_direction = 17,
+    lanv_string4 = 18,
+    lanv_string = 19,
+    lanv_displaystring = 20,
+    lanv_address = 21,
+    lanv_binary = 22,
+    lanv_getbinarytype = 23,
+    lanv_setbinarytype = 24,
+    lanv_point = 25,
+    lanv_rect = 26,
+    lanv_rgb = 27,
+    lanv_pattern = 28,
+    lanv_fixed = 29,
+    lanv_single = 30,
+    lanv_double = 31,
+    lanv_filespec = 32,
+    lanv_alias = 33,
+    lanv_list = 34,
+    lanv_record = 35,
+    lanv_enum = 36,
+    lanv_memavail = 37,
+    lanv_flushmemory = 38,
+    lanv_random = 39,
+    lanv_evaluate = 40,
+    lanv_evaluatethread = 41,
+    lanv_rollbeachball = 42,
+    lanv_abs = 43,
+    lanv_seteventtimeout = 44,
+    lanv_seteventtransactionid = 45,
+    lanv_seteventinteraction = 46,
+    lanv_geteventattribute = 47,
+    lanv_coerceappleitem = 48,
+    lanv_getapplelistitem = 49,
+    lanv_putapplelistitem = 50,
+    lanv_countapplelistitems = 51,
+    lanv_systemevent = 52,
+    lanv_DDEevent = 53,
+    lanv_transactionEvent = 54,
+    lanv_msg = 55,
+    lanv_callxcmd = 56,
+    lanv_calldll = 57,
+    lanv_packwindow = 58,
+    lanv_unpackwindow = 59,
+    lanv_callscript = 60
 };
 
 static boolean lang_valueproc(short token, hdltreenode hparam1,
@@ -89,7 +92,7 @@ static boolean lang_valueproc(short token, hdltreenode hparam1,
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_new:
-            /* Verb: lang.new - create new value of specified type */
+            /* Verb: lang.new - forward to real implementation */
             return newvaluefunc(hparam1, vreturned);
         case lanv_delete:
             /* Verb: lang.delete - not yet implemented */
@@ -99,6 +102,15 @@ static boolean lang_valueproc(short token, hdltreenode hparam1,
             /* Verb: lang.edit - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
+        case lanv_gettarget:
+            /* Verb: lang.gettarget - forward to real implementation */
+            return langgettargetfunc(hparam1, vreturned);
+        case lanv_settarget:
+            /* Verb: lang.settarget - forward to real implementation */
+            return langsettargetfunc(hparam1, vreturned);
+        case lanv_cleartarget:
+            /* Verb: lang.cleartarget - forward to real implementation */
+            return langcleartargetfunc(hparam1, vreturned);
         case lanv_close:
             /* Verb: lang.close - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
@@ -352,6 +364,9 @@ boolean langinitverbs(void) {
     ADD_VERB(BIGSTRING("\pnew"), lanv_new);
     ADD_VERB(BIGSTRING("\pdelete"), lanv_delete);
     ADD_VERB(BIGSTRING("\pedit"), lanv_edit);
+    ADD_VERB(BIGSTRING("\pgettarget"), lanv_gettarget);
+    ADD_VERB(BIGSTRING("\psettarget"), lanv_settarget);
+    ADD_VERB(BIGSTRING("\pcleartarget"), lanv_cleartarget);
     ADD_VERB(BIGSTRING("\pclose"), lanv_close);
     ADD_VERB(BIGSTRING("\ptimecreated"), lanv_timecreated);
     ADD_VERB(BIGSTRING("\ptimemodified"), lanv_timemodified);

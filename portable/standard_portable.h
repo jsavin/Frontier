@@ -20,6 +20,9 @@
 /* Include portable shelltypes for portable context to get hdlintarray and other types */
 #include "shelltypes_portable.h"
 
+/* Include text encoding portability layer */
+#include "text_encoding_portable.h"
+
 /* Boolean constants are now defined in portable_types.h */
 
 #define infinity 32767
@@ -101,9 +104,24 @@ typedef unsigned char* ptrstring;
 #define FRONTIER_PORTABLE_DEFINED_PTRSTRING 1
 #endif
 
+#ifndef FRONTIER_PORTABLE_DEFINED_PTRCHAR
+typedef char* ptrchar;
+#define FRONTIER_PORTABLE_DEFINED_PTRCHAR 1
+#endif
+
 #ifndef FRONTIER_PORTABLE_DEFINED_HDLSTRING
 typedef unsigned char** hdlstring;
 #define FRONTIER_PORTABLE_DEFINED_HDLSTRING 1
+#endif
+
+#ifndef FRONTIER_PORTABLE_DEFINED_HDLREGION
+typedef RgnHandle hdlregion;
+#define FRONTIER_PORTABLE_DEFINED_HDLREGION 1
+#endif
+
+#ifndef FRONTIER_PORTABLE_DEFINED_XPPATTERN
+typedef Pattern xppattern;
+#define FRONTIER_PORTABLE_DEFINED_XPPATTERN 1
 #endif
 
 /* These types are now defined in portable_types.h */
@@ -197,8 +215,11 @@ typedef boolean (*callback)(void);
 #define setstringlength(bs,len) ((bs)[0] = (unsigned char)(len))
 #define stringlength(bs) ((unsigned char)(bs)[0])
 #define setstringwithchar(ch,bs) do { (bs)[0]=1; (bs)[1]=(ch); } while(0)
+#define chnul ((char)0)
 #define chlinefeed ((char)10)
 #define chreturn ((char)13)
+#define chspace ((char)32)
+#define chdelete ((char)127)
 #define chclosecurlyquote ((char)0xD3)
 #define chtrademark ((char)0xAA)
 #define chtab ((char)9)
@@ -231,6 +252,10 @@ typedef boolean (*callback)(void);
 
 #ifndef emptystring
 #define emptystring ((ptrstring)"\0")
+#endif
+
+#ifndef sgn
+#define sgn(x) ((x) < 0? -1 : ((x) > 0? 1 : 0))
 #endif
 
 #ifndef fldebug

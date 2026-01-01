@@ -28,15 +28,8 @@
 /* 2025-11-24 Codex: Normalize BE writes/coverage for v7 portability. */
 
 
-#ifdef FRONTIER_PORTABLE
-#include "../portable/os_portable.h"
-#include "../portable/frontier.h"
-#include "../portable/standard.h"
-#include "../portable/shelltypes_portable.h"
-#else
 #include "frontier.h"
 #include "standard.h"
-#endif
 
 #include <stdio.h>
 #include <stdlib.h>

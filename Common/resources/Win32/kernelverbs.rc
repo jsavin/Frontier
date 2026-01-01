@@ -240,11 +240,14 @@
 	20,					//Number of "blocks" in this resource
 		"lang\0",		//Function Processor Name
 		true,			//Window required
-			58,			//Count of verbs
-			"scripterror\0",		
-			"new\0",		
+			61,			//Count of verbs
+			"scripterror\0",
+			"new\0",
 			"delete\0",
-			"edit\0",		
+			"edit\0",
+			"gettarget\0",
+			"settarget\0",
+			"cleartarget\0",		
 			"close\0",
 			"timecreated\0",		
 			"timemodified\0",		
@@ -664,7 +667,7 @@
 			"getpathchar\0",
 			"freespaceonvolumedouble\0",
 			"volumesizedouble\0",
-			"getmp3info\0",			// 7.0b12 PBS: André's file.getMp3Info verb
+			"getmp3info\0",			// 7.0b12 PBS: Andrï¿½'s file.getMp3Info verb
 			"readwholefile\0",			// 2006-04-11 aradke
 			"getLabelIndex\0",			// 2006-04-23 creedon
 			"setLabelIndex\0",			// 2006-04-23 creedon

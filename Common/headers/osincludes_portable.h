@@ -201,6 +201,18 @@ typedef void (*UniversalProcPtr)(void);
 typedef StringPtr *StringHandle;
 #endif
 
+#ifndef ByteCount
+typedef size_t ByteCount;
+#endif
+
+#ifndef TextPtr
+typedef unsigned char *TextPtr;
+#endif
+
+#ifndef ConstTextPtr
+typedef const unsigned char *ConstTextPtr;
+#endif
+
 #ifndef nil
 #define nil NULL
 #endif

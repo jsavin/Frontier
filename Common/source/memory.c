@@ -27,6 +27,8 @@
 
 /* 2025-11-24 Codex: Normalize BE writes/coverage for v7 portability. */
 
+/* 2025-12-31 Codex: Disable portable stubs when compiling the actual implementations */
+#define FRONTIER_ALLOW_PORTABLE_STUBS 0
 
 #include "frontier.h"
 #include "standard.h"

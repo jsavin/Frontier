@@ -27,7 +27,11 @@ typedef struct tyfilespec {
 
 typedef tyfilespec *ptrfilespec, **hdlfilespec;
 
-typedef struct { void *data; } hdlintarray;
+/* Array handle types - aligned with production definitions
+ * Changed from opaque struct to match actual memory.c usage */
+typedef short **hdlintarray;
+
+/* TODO: These types appear unused and may be candidates for removal (see issue for audit) */
 typedef struct { void *data; } hdlstringarray;
 typedef struct { void *data; } hdlbooleanarray;
 typedef struct { void *data; } hdlrealarray;

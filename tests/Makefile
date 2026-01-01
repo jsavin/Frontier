@@ -179,6 +179,7 @@ LANG_RUNTIME_SOURCES = \
     ../Common/source/db_writer_v7.c \
     ../Common/source/shell_api_headless.c \
     ../Common/source/shell_api.c \
+    ../Common/source/headless_stubs.c \
     ../portable/file_portable.c \
     headless_lang_runtime_more_stubs.c \
     headless_shellhooks.c \
@@ -225,6 +226,7 @@ USERTALK_OBJECT_TESTS = \
 	test_collections \
 	test_complex_objects \
 	test_database_persistence \
+	test_table_sorting \
 	test_usertalk_runner
 
 # Buildable test executables on this branch
@@ -388,6 +390,9 @@ test_complex_objects: components/usertalk_objects/test_complex_objects.c $(TEST_
 
 test_database_persistence: components/usertalk_objects/test_database_persistence.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES) $(CLI_SOURCES)
 	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable -I$(FRONTIER_CLI_DIR) $^ -o $@ $(LINK_LIBS)
+
+test_table_sorting: components/usertalk_objects/test_table_sorting.c $(TEST_FRAMEWORK) $(LANG_RUNTIME_SOURCES) headless_shell.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable components/usertalk_objects/test_table_sorting.c $(TEST_FRAMEWORK) $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@ $(LINK_LIBS)
 
 
 # Test targets
