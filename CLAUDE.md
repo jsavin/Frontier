@@ -333,6 +333,18 @@ If parallel sessions cause conflicts:
 
 Don't do complex analysis or design work manually when an agent can do it better and faster.
 
+### Delegating to Pull-Request Agent - Test Efficiency ⚠️
+
+**IMPORTANT**: Avoid redundant test runs to conserve tokens.
+
+When delegating to the pull-request agent:
+- ✅ **If tests were already run**: Mention test results in the delegation prompt
+  - Example: "Unit tests passed (./tools/run_headless_tests.sh), integration tests passed (cd tests && make test-integration)"
+- ✅ **If tests haven't been run**: Let the agent know so it can verify test status
+  - Example: "Tests haven't been run yet - agent should verify before creating PR"
+- ✅ The pull-request agent will check conversation history for test results before running tests
+- ❌ **Don't** re-run tests just before delegating if they were already run earlier in the session
+
 ### Agent Verification Requirements ⚠️
 
 **CRITICAL**: Agents must verify fixes work end-to-end, not just fix one piece:
