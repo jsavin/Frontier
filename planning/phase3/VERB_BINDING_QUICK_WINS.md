@@ -29,7 +29,46 @@ Major processors at 0% implementation:
 
 ## Phase 1: Quick Wins (3-6 hours)
 
-### File Verbs (Highest ROI)
+**PRIORITY ORDER**: String → Table → File
+
+### 1. String Verbs (Highest Priority - Universal Utility)
+
+**Impact**: Basic string operations needed everywhere, unblocks integration tests
+
+**Target verbs (10)**:
+1. `string.length()` - Basic operation (integration test ready)
+2. `string.mid()` - Substring extraction (integration test ready)
+3. `string.nthCharacter()` - Character access (integration test ready)
+4. `string.patternMatch()` - String search (integration test ready)
+5. `string.trimWhitespace()` - String cleaning (integration test ready)
+6. `string.delete()` - String manipulation
+7. `string.insert()` - String manipulation
+8. `string.replace()` - String manipulation
+9. `string.countfields()` - Parsing
+10. `string.nthfield()` - Parsing
+
+**Implementation location**: `tests/headless_string_verbs.c`
+
+**Pattern**: Many string operations are in `Common/source/langverbs.c` already, need to add bindings
+
+**Integration test coverage**: 10/21 string tests currently failing due to missing bindings - immediate ROI
+
+### 2. Table Verbs (Second Priority - Core Functionality)
+
+**Impact**: Enable basic table manipulation from UserTalk
+
+**Target verbs (5)**:
+1. `table.assign()` - Tests: `test_table_operations.c` (PASSING)
+2. `table.getcursor()` - Tests: `test_table_operations.c`
+3. `table.goto()` - Tests: `test_table_operations.c`
+4. `table.emptytable()` - Used in many tests
+5. `table.packtable()` - Core serialization
+
+**Implementation location**: `tests/headless_table_verbs.c`
+
+**Pattern**: Forward to existing implementations in `Common/source/tableverbs.c` or table operations in `Common/source/tableops.c`
+
+### 3. File Verbs (Third Priority - I/O Operations)
 
 **Impact**: Unlock `file_verb_tests` which are currently skipped
 
@@ -52,41 +91,6 @@ case filefunc:
 ```
 
 **Blocker check**: Need to verify which file operations are actually implemented in `portable/file_portable.c`
-
-### Table Verbs (Core Functionality)
-
-**Impact**: Enable basic table manipulation from UserTalk
-
-**Target verbs (5)**:
-1. `table.assign()` - Tests: `test_table_operations.c` (PASSING)
-2. `table.getcursor()` - Tests: `test_table_operations.c`
-3. `table.goto()` - Tests: `test_table_operations.c`
-4. `table.emptytable()` - Used in many tests
-5. `table.packtable()` - Core serialization
-
-**Implementation location**: `tests/headless_table_verbs.c`
-
-**Pattern**: Forward to existing implementations in `Common/source/tableverbs.c` or table operations in `Common/source/tableops.c`
-
-### String Verbs (Universal Utility)
-
-**Impact**: Basic string operations needed everywhere
-
-**Target verbs (10)**:
-1. `string.length()` - Basic operation
-2. `string.mid()` - Substring extraction
-3. `string.delete()` - String manipulation
-4. `string.insert()` - String manipulation
-5. `string.replace()` - String manipulation
-6. `string.replaceall()` - String manipulation
-7. `string.lower()` - Case conversion
-8. `string.upper()` - Case conversion
-9. `string.countfields()` - Parsing
-10. `string.nthfield()` - Parsing
-
-**Implementation location**: `tests/headless_lang_verbs.c` (Pattern D processor)
-
-**Pattern**: Many string operations are in `Common/source/langverbs.c` already
 
 ## Phase 2: Medium Effort (6-12 hours)
 
@@ -170,16 +174,18 @@ For each binding added:
 
 ## Effort Estimates
 
-| Phase | Verbs | Time | Coverage Impact |
-|-------|-------|------|-----------------|
-| File verbs | 7 | 1-2 hrs | +1% |
-| Table verbs | 5 | 1-2 hrs | +0.7% |
-| String verbs | 10 | 1-2 hrs | +1.4% |
-| **Phase 1 Total** | **22** | **3-6 hrs** | **+3.1%** (13% → 16%) |
-| Op verbs | 10 | 3-4 hrs | +1.4% |
-| DB verbs | 7 | 3-4 hrs | +1% |
-| Sys verbs | 5 | 2-3 hrs | +0.7% |
-| **Phase 2 Total** | **22** | **8-11 hrs** | **+3.1%** (16% → 19%) |
+**Priority Order**: String → Table → File
+
+| Phase | Verbs | Time | Coverage Impact | Notes |
+|-------|-------|------|-----------------|-------|
+| String verbs | 10 | 1-2 hrs | +1.4% | **FIRST** - Unblocks 10 integration tests |
+| Table verbs | 5 | 1-2 hrs | +0.7% | **SECOND** - Core ODB functionality |
+| File verbs | 7 | 1-2 hrs | +1% | **THIRD** - I/O operations |
+| **Phase 1 Total** | **22** | **3-6 hrs** | **+3.1%** (13% → 16%) | |
+| Op verbs | 10 | 3-4 hrs | +1.4% | Phase 2 |
+| DB verbs | 7 | 3-4 hrs | +1% | Phase 2 |
+| Sys verbs | 5 | 2-3 hrs | +0.7% | Phase 2 |
+| **Phase 2 Total** | **22** | **8-11 hrs** | **+3.1%** (16% → 19%) | |
 
 **Note**: These are conservative estimates. With established pattern, throughput may be 10-20 verbs/hour for simple forwards.
 
