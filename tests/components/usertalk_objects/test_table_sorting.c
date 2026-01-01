@@ -20,6 +20,7 @@
 #include "../../../Common/headers/strings.h"
 #include "../../../Common/headers/tablestructure.h"
 #include "../../../Common/headers/langexternal.h"
+#include "../../../Common/headers/logging.h"
 #include <assert.h>
 #include <stdbool.h>
 
@@ -44,11 +45,11 @@ static void initialize_runtime(void) {
     // Allocate hash table stack BEFORE calling inittablestructure
     // This is required for pushhashtable to work
     extern hdltablestack hashtablestack;
-    printf("[init] hashtablestack before allocation: %p\n", (void*)hashtablestack);
+    log_debug(LOG_COMP_LANG, "hashtablestack before allocation: %p", (void*)hashtablestack);
     if (hashtablestack == NULL) {
         extern boolean newclearhandle(long, Handle*);
         boolean ok = newclearhandle(sizeof(tytablestack), (Handle*)&hashtablestack);
-        printf("[init] newclearhandle returned: %d, hashtablestack=%p\n", ok, (void*)hashtablestack);
+        log_debug(LOG_COMP_LANG, "newclearhandle returned: %d, hashtablestack=%p", ok, (void*)hashtablestack);
         if (!ok) {
             fprintf(stderr, "FATAL: Failed to allocate hash table stack\n");
             exit(1);
@@ -57,7 +58,7 @@ static void initialize_runtime(void) {
     }
 
     boolean initok = inittablestructure();  // This creates roottable and pushes it
-    printf("[init] inittablestructure returned: %d\n", initok);
+    log_debug(LOG_COMP_LANG, "inittablestructure returned: %d", initok);
     if (!initok) {
         fprintf(stderr, "FATAL: Failed to initialize table structure\n");
         exit(1);
@@ -66,15 +67,15 @@ static void initialize_runtime(void) {
     // Verify roottable and currenthashtable are set
     extern hdlhashtable roottable;
     extern hdlhashtable currenthashtable;
-    printf("[init] After inittablestructure: roottable=%p, currenthashtable=%p\n",
+    log_debug(LOG_COMP_LANG, "After inittablestructure: roottable=%p, currenthashtable=%p",
            (void*)roottable, (void*)currenthashtable);
 
     // If currenthashtable is still nil, manually set it
     if (currenthashtable == NULL && roottable != NULL) {
-        printf("[init] WARNING: currenthashtable is nil, manually pushing roottable\n");
+        log_warn(LOG_COMP_LANG, "currenthashtable is nil, manually pushing roottable");
         extern boolean pushhashtable(hdlhashtable);
         boolean pushed = pushhashtable(roottable);
-        printf("[init] pushhashtable returned: %d, currenthashtable=%p\n",
+        log_debug(LOG_COMP_LANG, "pushhashtable returned: %d, currenthashtable=%p",
                pushed, (void*)currenthashtable);
     }
 
