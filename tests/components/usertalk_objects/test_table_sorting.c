@@ -23,6 +23,7 @@
 #include "../../../Common/headers/logging.h"
 #include <assert.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 // Global flag to track if runtime has been initialized
 // NOTE: Not thread-safe. If tests ever run in parallel, protect with mutex/once flag.
@@ -34,12 +35,12 @@ static void initialize_runtime(void) {
 
     // Initialize subsystems in proper order
     if (!initmemory()) {
-        fprintf(stderr, "FATAL: Failed to initialize memory subsystem\n");
+        log_error(LOG_COMP_LANG, "Failed to initialize memory subsystem");
         exit(1);
     }
     initstrings();
     if (!initlang()) {
-        fprintf(stderr, "FATAL: Failed to initialize language runtime\n");
+        log_error(LOG_COMP_LANG, "Failed to initialize language runtime");
         exit(1);
     }
 
@@ -52,7 +53,7 @@ static void initialize_runtime(void) {
         boolean ok = newclearhandle(sizeof(tytablestack), (Handle*)&hashtablestack);
         log_debug(LOG_COMP_LANG, "newclearhandle returned: %d, hashtablestack=%p", ok, (void*)hashtablestack);
         if (!ok) {
-            fprintf(stderr, "FATAL: Failed to allocate hash table stack\n");
+            log_error(LOG_COMP_LANG, "Failed to allocate hash table stack");
             exit(1);
         }
         (**hashtablestack).toptables = 0;
@@ -61,7 +62,7 @@ static void initialize_runtime(void) {
     boolean initok = inittablestructure();  // This creates roottable and pushes it
     log_debug(LOG_COMP_LANG, "inittablestructure returned: %d", initok);
     if (!initok) {
-        fprintf(stderr, "FATAL: Failed to initialize table structure\n");
+        log_error(LOG_COMP_LANG, "Failed to initialize table structure");
         exit(1);
     }
 
@@ -83,11 +84,11 @@ static void initialize_runtime(void) {
     }
 
     if (roottable == NULL) {
-        fprintf(stderr, "FATAL: roottable is NULL after initialization\n");
+        log_error(LOG_COMP_LANG, "roottable is NULL after initialization");
         exit(1);
     }
     if (currenthashtable == NULL) {
-        fprintf(stderr, "FATAL: currenthashtable is NULL after initialization\n");
+        log_error(LOG_COMP_LANG, "currenthashtable is NULL after initialization");
         exit(1);
     }
 
@@ -95,18 +96,18 @@ static void initialize_runtime(void) {
     extern boolean langinitresources_headless(void);
     extern boolean langinitverbs(void);
     if (!langinitresources_headless()) {
-        fprintf(stderr, "FATAL: Failed to initialize language resources\n");
+        log_error(LOG_COMP_LANG, "Failed to initialize language resources");
         exit(1);
     }
     if (!langinitverbs()) {
-        fprintf(stderr, "FATAL: Failed to initialize language verbs\n");
+        log_error(LOG_COMP_LANG, "Failed to initialize language verbs");
         exit(1);
     }
 
     // Initialize WPText support
     extern boolean wp_portable_init(void);
     if (!wp_portable_init()) {
-        fprintf(stderr, "FATAL: Failed to initialize WPText support\n");
+        log_error(LOG_COMP_LANG, "Failed to initialize WPText support");
         exit(1);
     }
 
@@ -411,6 +412,9 @@ bool test_sortby_mixed_types(void) {
 
 // Main test runner for table sorting tests
 int main(void) {
+    // Register cleanup to run on ANY exit (including early exit during init)
+    atexit(cleanup_runtime);
+
     // Initialize UserTalk runtime
     initialize_runtime();
 
@@ -429,7 +433,6 @@ int main(void) {
     RUN_TEST(test_sortby_mixed_types);
 
     test_framework_summary();
-    int exit_code = test_framework_get_exit_code();
-    cleanup_runtime();
-    return exit_code;
+    return test_framework_get_exit_code();
+    // cleanup_runtime() will be called automatically via atexit()
 }
