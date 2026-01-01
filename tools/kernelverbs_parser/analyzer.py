@@ -498,6 +498,35 @@ class VerbImplementationAnalyzer:
                 else:
                     verb_names = verb_names[:verb_count]
 
+        # Detect dispatcher pattern (headless verbs that forward to real implementation)
+        # Pattern: headless_<processor>_verbs_callback function that forwards all verbs
+        dispatcher_pattern = re.search(rf'headless_{processor_name}_verbs_callback', source)
+        is_dispatcher = dispatcher_pattern is not None
+
+        # If dispatcher pattern detected, check if file is overall implemented (not a stub)
+        if is_dispatcher:
+            from matchers import detect_stub_verb
+            file_is_stub = detect_stub_verb(source)
+            if not file_is_stub:
+                # Dispatcher with real implementation - all verbs are implemented
+                # Return all verbs as implemented without checking individual cases
+                print(f"  Detected dispatcher pattern for {processor_name} (all verbs forwarded to implementation)")
+                return [
+                    VerbImplementation(
+                        processor=processor_name,
+                        verb_name=verb_names[i],
+                        token=i,
+                        is_implemented=True,
+                        impl_file=impl_file,
+                        impl_line=0,
+                        has_carbon_deps=False,
+                        uses_ui_adapter=False,
+                        platform_specific=False,
+                        complexity=1
+                    )
+                    for i in range(len(verb_names))
+                ]
+
         implementations = []
 
         # Analyze each verb

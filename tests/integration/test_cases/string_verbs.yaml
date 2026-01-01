@@ -138,12 +138,12 @@ tests:
   # Numeric conversions
   - name: "string.numberToString - positive integer"
     description: "Convert positive number to string"
-    script: 'string(42)'
+    script: 'lang.string(42)'
     expected_success: true
     expected_result: "42"
 
   - name: "string.numberToString - negative integer"
     description: "Convert negative number to string"
-    script: 'string(-42)'
+    script: 'lang.string(-42)'
     expected_success: true
     expected_result: "-42"

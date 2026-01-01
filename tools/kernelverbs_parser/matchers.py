@@ -160,6 +160,7 @@ def parse_annotations(source: str) -> dict:
         @UI_ADAPTER - Force UI adapter detection
         @CARBON_DEPS - Force Carbon dependency detection
         @PLATFORM_SPECIFIC - Mark as platform-specific
+        @IMPLEMENTED - Override stub detection, mark as implemented
 
     Args:
         source: Source code to analyze
@@ -171,6 +172,7 @@ def parse_annotations(source: str) -> dict:
         'ui_adapter': False,
         'carbon_deps': False,
         'platform_specific': False,
+        'implemented': False,
     }
 
     if re.search(r'@UI_ADAPTER', source, re.IGNORECASE):
@@ -181,6 +183,9 @@ def parse_annotations(source: str) -> dict:
 
     if re.search(r'@PLATFORM_SPECIFIC', source, re.IGNORECASE):
         annotations['platform_specific'] = True
+
+    if re.search(r'@IMPLEMENTED', source, re.IGNORECASE):
+        annotations['implemented'] = True
 
     return annotations
 
