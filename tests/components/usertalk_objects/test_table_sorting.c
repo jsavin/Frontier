@@ -41,10 +41,6 @@ static void initialize_runtime(void) {
     printf("[init] hashtablestack before allocation: %p\n", (void*)hashtablestack);
     if (hashtablestack == NULL) {
         extern boolean newclearhandle(long, Handle*);
-        typedef struct tytablestack {
-            short toptables;
-            hdlhashtable stack[100];  // ct hash tables, from langhash.h
-        } tytablestack;
         boolean ok = newclearhandle(sizeof(tytablestack), (Handle*)&hashtablestack);
         printf("[init] newclearhandle returned: %d, hashtablestack=%p\n", ok, (void*)hashtablestack);
         assert(ok);
