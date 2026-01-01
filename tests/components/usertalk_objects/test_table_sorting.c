@@ -25,6 +25,7 @@
 #include <stdbool.h>
 
 // Global flag to track if runtime has been initialized
+// NOTE: Not thread-safe. If tests ever run in parallel, protect with mutex/once flag.
 static bool runtime_initialized = false;
 
 // Initialize the UserTalk runtime once
