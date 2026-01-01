@@ -1,7 +1,46 @@
 # Carbon Migration / Runtime Modernization – Active TODO
 
-Status: In Progress (Updated 2025-12-30)
+Status: In Progress (Updated 2025-12-31)
 Owner: Codex
+
+## 🔥 CURRENT PRIORITY – Verb Binding Quick Wins (2025-12-31)
+
+**Goal**: Rapidly expand verb binding coverage from 13% → 16% by adding bindings for verbs with existing implementations.
+
+**Discovery**: The bottleneck is NOT missing implementations - it's missing bindings. Many verbs are fully implemented but not accessible because auto-generated stub files in `tests/headless_*_verbs.c` don't forward to them.
+
+### Phase 1 Quick Wins (3-6 hours total)
+
+**Immediate - File Verbs Proof of Concept** (1-2 hours):
+- [ ] Implement 7 file verb bindings (file.exists, file.readwholefile, file.writewholefile, file.delete, file.rename, file.newfolder, file.size)
+- [ ] Pattern: Thin forwarding layers from `tests/headless_file_verbs.c` → `portable/file_portable.c`
+- [ ] Unlock skipped `file_verb_tests`
+- [ ] Validate approach and refine estimates
+
+**Table Verbs** (1-2 hours):
+- [ ] Bind 5 table verbs (table.assign, table.getcursor, table.goto, table.emptytable, table.packtable)
+- [ ] Forward to implementations in `Common/source/tableverbs.c` and `tableops.c`
+
+**String Verbs** (1-2 hours):
+- [ ] Bind 10 basic string verbs (length, mid, delete, insert, replace, replaceall, lower, upper, countfields, nthfield)
+- [ ] Forward to implementations in `Common/source/langverbs.c`
+
+**Success Criteria**:
+- Coverage increases from 13% → 16% (22 new verbs)
+- `file_verb_tests` passing (no longer skipped)
+- No regressions in existing tests
+- Clear binding pattern documented
+
+**Reference**: `planning/phase3/VERB_BINDING_QUICK_WINS.md`
+
+## Recently Completed – 2025-12-31
+
+✅ **Verb Binding Analyzer Fix – CRITICAL BUG (commits 54b2bd08, 95a233a5, d660916f)**
+- Fixed analyzer over-reporting: 68% (FALSE) → 13% (CORRECT)
+- Added Makefile parsing to know what's actually compiled
+- Default headless mode, --legacy flag for full codebase
+- Deleted 17 invalid reports generated with broken analyzer
+- **Impact**: Accurate source-of-truth for verb coverage; identified quick wins
 
 ## Recently Completed – 2025-12-30
 
