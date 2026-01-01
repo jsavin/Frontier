@@ -110,6 +110,20 @@ static void initialize_runtime(void) {
     runtime_initialized = true;
 }
 
+// Clean up UserTalk runtime resources
+static void cleanup_runtime(void) {
+    if (!runtime_initialized) return;
+
+    // Dispose allocated resources in reverse order of initialization
+    extern hdltablestack hashtablestack;
+    if (hashtablestack != NULL) {
+        DisposeHandle((Handle)hashtablestack);
+        hashtablestack = NULL;
+    }
+
+    runtime_initialized = false;
+}
+
 // Test table.sortby() with valid column names
 bool test_sortby_valid_columns(void) {
     test_setup();
@@ -412,5 +426,7 @@ int main(void) {
     RUN_TEST(test_sortby_mixed_types);
 
     test_framework_summary();
-    return test_framework_get_exit_code();
+    int exit_code = test_framework_get_exit_code();
+    cleanup_runtime();
+    return exit_code;
 }
