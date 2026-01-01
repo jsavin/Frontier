@@ -37,8 +37,14 @@ When presented with options like:
 ### Essential Commands
 
 ```bash
-# Run full test suite
+# Run full test suite (unit tests)
 ./tools/run_headless_tests.sh
+
+# Run integration tests (Python/YAML-based verb tests)
+cd tests && make test-integration
+
+# Run all tests (unit + integration)
+cd tests && make test-all
 
 # Database migration (v6 → v7)
 rm -f databases/Frontier-v7.root
