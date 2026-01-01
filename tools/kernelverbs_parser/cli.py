@@ -40,9 +40,12 @@ def cmd_analyze(args):
 
     print(f"Found {len(processors)} processors")
 
+    # Determine build target
+    build_target = 'legacy' if args.legacy else 'headless'
+
     # Run analyzer
     print("\nAnalyzing verb implementations...")
-    analyzer = VerbImplementationAnalyzer(processors)
+    analyzer = VerbImplementationAnalyzer(processors, build_target=build_target)
     implementations = analyzer.analyze_all_processors()
 
     # Create metadata writer
@@ -94,8 +97,11 @@ def cmd_report(args):
     if had_errors:
         print("WARNING: Some processors had errors during parsing", file=sys.stderr)
 
+    # Determine build target
+    build_target = 'legacy' if args.legacy else 'headless'
+
     # Run analyzer
-    analyzer = VerbImplementationAnalyzer(processors)
+    analyzer = VerbImplementationAnalyzer(processors, build_target=build_target)
     implementations = analyzer.analyze_all_processors()
 
     # Generate report
@@ -274,11 +280,13 @@ Examples:
     # analyze subcommand
     analyze_parser = subparsers.add_parser('analyze', help='Analyze verb implementations')
     analyze_parser.add_argument('--json', metavar='FILE', help='Export metadata to JSON file')
+    analyze_parser.add_argument('--legacy', action='store_true', help='Analyze full legacy codebase (default: headless only)')
     analyze_parser.set_defaults(func=cmd_analyze)
 
     # report subcommand
     report_parser = subparsers.add_parser('report', help='Generate coverage report')
     report_parser.add_argument('-o', '--output', metavar='FILE', help='Output file (default: auto-generate COVERAGE_REPORT-YYYY-MM-DD-NN.md, or use "-" for stdout)')
+    report_parser.add_argument('--legacy', action='store_true', help='Analyze full legacy codebase (default: headless only)')
     report_parser.set_defaults(func=cmd_report)
 
     # dry-run subcommand
