@@ -4,7 +4,10 @@
  * This file provides the callback dispatcher for table verbs in headless mode,
  * routing verb calls to the actual implementations in tableverbs.c.
  *
+ * @IMPLEMENTED - All 19 table verbs forward to tablefunctionvalue() in tableverbs.c
+ *
  * Created: 2025-12-29 - Phase 3 table navigation verb support
+ * Updated: 2026-01-01 - Added @IMPLEMENTED annotation, verified dispatcher pattern
  */
 
 #include "frontier.h"
