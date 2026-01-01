@@ -4,6 +4,7 @@
 #include "platform_adapter.h"
 #include "../Common/headers/lang.h"
 #include "../Common/headers/strings.h"
+#include "../Common/headers/logging.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -31,31 +32,54 @@ bool cli_compile_script(const char* script, usertalk_execution_t* exec) {
 bool cli_execute_compiled_script(usertalk_execution_t* exec) {
     if (!exec || !exec->script_source) return false;
     if (exec->result) { free(exec->result); exec->result = NULL; }
-    
+
     // Use real language engine when linked
-    Handle htext = NewHandle(strlen(exec->script_source));
-    if (!htext) return false;
+    size_t script_len = strlen(exec->script_source);
+    Handle htext = NewHandle(script_len);
+    if (!htext) {
+        log_error(LOG_COMP_LANG, "Failed to allocate Handle for script (size=%zu)", script_len);
+        return false;
+    }
     HLock(htext);
-    memcpy(*htext, exec->script_source, strlen(exec->script_source));
+    memcpy(*htext, exec->script_source, script_len);
     HUnlock(htext);
     hdltreenode hcode = NULL;
     if (!langcompiletext(htext, false, &hcode)) {
         DisposeHandle(htext);
         return false;
     }
-    tyvaluerecord vparams; setnilvalue(&vparams);
     tyvaluerecord vreturned; setnilvalue(&vreturned);
     bigstring empty; setstringlength(empty, 0);
     extern boolean langrunscriptcode(hdlhashtable, bigstring, hdltreenode, tyvaluerecord*, hdlhashtable, tyvaluerecord*);
-    boolean ok = langrunscriptcode(NULL, empty, hcode, &vparams, NULL, &vreturned);
-    if (!ok) return false;
-    if (!coercetostring(&vreturned)) return false;
+    extern void langdisposecodetree(hdltreenode);
+    extern void disposevaluerecord(tyvaluerecord, boolean);
+    // Pass NULL for vparams (no parameters), not a pointer to a nil value
+    boolean ok = langrunscriptcode(NULL, empty, hcode, NULL, NULL, &vreturned);
+    if (!ok) {
+        langdisposecodetree(hcode);
+        DisposeHandle(htext);
+        return false;
+    }
+    if (!coercetostring(&vreturned)) {
+        disposevaluerecord(vreturned, false);  // Dispose whatever type it was
+        langdisposecodetree(hcode);
+        DisposeHandle(htext);
+        return false;
+    }
     bigstring bs; copyheapstring(vreturned.data.stringvalue, bs);
     size_t len = (size_t)stringlength(bs);
     exec->result = (char*)malloc(len+1);
-    if (!exec->result) return false;
+    if (!exec->result) {
+        disposevaluerecord(vreturned, false);
+        langdisposecodetree(hcode);
+        DisposeHandle(htext);
+        return false;
+    }
     memcpy(exec->result, stringbaseaddress(bs), len);
     exec->result[len] = '\0';
+    disposevaluerecord(vreturned, false);  // Dispose heap-allocated string after copy
+    langdisposecodetree(hcode);  // Clean up code tree
+    DisposeHandle(htext);  // Clean up after successful execution
     return true;
 }
 

@@ -15,6 +15,123 @@
 
 #include "../../framework/test_framework.h"
 #include "../../../portable/cli_executor.h"
+#include "../../../Common/headers/lang.h"
+#include "../../../Common/headers/memory.h"
+#include "../../../Common/headers/strings.h"
+#include "../../../Common/headers/tablestructure.h"
+#include "../../../Common/headers/langexternal.h"
+#include "../../../Common/headers/logging.h"
+#include <assert.h>
+#include <stdbool.h>
+#include <stdlib.h>
+
+// Test runtime context - encapsulates test-specific global state
+// This pattern is preferred over bare static variables per CLAUDE.md architectural principles
+typedef struct {
+    bool runtime_initialized;
+    // Future: add other test-specific state here (e.g., test database paths, cleanup handlers)
+} test_runtime_context;
+
+static test_runtime_context g_test_context = {0};
+
+// Initialize the UserTalk runtime once
+static void initialize_runtime(void) {
+    if (g_test_context.runtime_initialized) return;
+
+    // Initialize subsystems in proper order
+    if (!initmemory()) {
+        log_error(LOG_COMP_LANG, "Failed to initialize memory subsystem");
+        exit(1);
+    }
+    initstrings();
+    if (!initlang()) {
+        log_error(LOG_COMP_LANG, "Failed to initialize language runtime");
+        exit(1);
+    }
+
+    // Allocate hash table stack BEFORE calling inittablestructure
+    // This is required for pushhashtable to work
+    log_debug(LOG_COMP_LANG, "hashtablestack before allocation: %p", (void*)hashtablestack);
+    if (hashtablestack == NULL) {
+        boolean ok = newclearhandle(sizeof(tytablestack), (Handle*)&hashtablestack);
+        log_debug(LOG_COMP_LANG, "newclearhandle returned: %d, hashtablestack=%p", ok, (void*)hashtablestack);
+        if (!ok) {
+            log_error(LOG_COMP_LANG, "Failed to allocate hash table stack");
+            exit(1);
+        }
+        (**hashtablestack).toptables = 0;
+    }
+
+    boolean initok = inittablestructure();  // This creates roottable and pushes it
+    log_debug(LOG_COMP_LANG, "inittablestructure returned: %d", initok);
+    if (!initok) {
+        log_error(LOG_COMP_LANG, "Failed to initialize table structure");
+        exit(1);
+    }
+
+    // Verify roottable and currenthashtable are set
+    log_debug(LOG_COMP_LANG, "After inittablestructure: roottable=%p, currenthashtable=%p",
+           (void*)roottable, (void*)currenthashtable);
+
+    // Test environment workaround: Tests initialize subsystems individually (not via
+    // normal startup path), which may result in currenthashtable not being set even
+    // though inittablestructure() correctly pushed roottable. Manually push if needed.
+    if (currenthashtable == NULL && roottable != NULL) {
+        log_warn(LOG_COMP_LANG, "Test environment: currenthashtable is nil, manually pushing roottable");
+        boolean pushed = pushhashtable(roottable);
+        log_debug(LOG_COMP_LANG, "Manual pushhashtable returned: %d, currenthashtable=%p",
+               pushed, (void*)currenthashtable);
+    }
+
+    if (roottable == NULL) {
+        log_error(LOG_COMP_LANG, "roottable is NULL after initialization");
+        exit(1);
+    }
+    if (currenthashtable == NULL) {
+        log_error(LOG_COMP_LANG, "currenthashtable is NULL after initialization");
+        exit(1);
+    }
+
+    // Initialize verb tables
+    if (!langinitresources_headless()) {
+        log_error(LOG_COMP_LANG, "Failed to initialize language resources");
+        exit(1);
+    }
+    if (!langinitverbs()) {
+        log_error(LOG_COMP_LANG, "Failed to initialize language verbs");
+        exit(1);
+    }
+
+    // Initialize WPText support
+    if (!wp_portable_init()) {
+        log_error(LOG_COMP_LANG, "Failed to initialize WPText support");
+        exit(1);
+    }
+
+    g_test_context.runtime_initialized = true;
+}
+
+// Clean up UserTalk runtime resources
+static void cleanup_runtime(void) {
+    if (!g_test_context.runtime_initialized) return;
+
+    // Dispose allocated resources in reverse order of initialization
+    if (hashtablestack != NULL) {
+        DisposeHandle((Handle)hashtablestack);
+        hashtablestack = NULL;
+    }
+
+    // TODO: Incomplete cleanup - the following subsystems are initialized but not cleaned up:
+    // - WPText subsystem (wp_portable_init) - no shutdown function exists
+    // - Language runtime (initlang) - no shutdown function exists
+    // - Table structure (inittablestructure) - no shutdown function exists
+    // - String subsystem (initstrings) - no shutdown function exists
+    // - Memory subsystem (initmemory) - no shutdown function exists
+    // Since tests are short-lived processes, OS reclaims these resources on exit.
+    // This should be addressed if shutdown functions are added to the runtime.
+
+    g_test_context.runtime_initialized = false;
+}
 
 // Test table.sortby() with valid column names
 bool test_sortby_valid_columns(void) {
@@ -255,7 +372,7 @@ bool test_row_numbers_after_sort(void) {
     // First item sorted by name should be "alpha" (t.alpha)
     // First item sorted by value should be "zebra" (t.zebra = 100)
     // Result format: "t.alpha,t.zebra" or similar
-    TEST_ASSERT(result != NULL && strlen(result) > 0, "Row numbers changed after sorting");
+    TEST_ASSERT(strlen(result) > 0, "Row numbers changed after sorting");
 
     cli_free(result);
     cli_free_execution_context(execution);
@@ -300,6 +417,13 @@ bool test_sortby_mixed_types(void) {
 
 // Main test runner for table sorting tests
 int main(void) {
+    // Register cleanup to run on ANY exit (including early exit during init)
+    atexit(cleanup_runtime);
+
+    // Initialize UserTalk runtime
+    initialize_runtime();
+
+    // Initialize test framework
     test_framework_init();
 
     printf("\n=== Table Sorting Tests ===\n\n");
@@ -314,5 +438,6 @@ int main(void) {
     RUN_TEST(test_sortby_mixed_types);
 
     test_framework_summary();
+    // cleanup_runtime() will be called automatically via atexit() on return
     return test_framework_get_exit_code();
 }
