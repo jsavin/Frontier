@@ -68,12 +68,16 @@ bool cli_execute_compiled_script(usertalk_execution_t* exec) {
     size_t len = (size_t)stringlength(bs);
     exec->result = (char*)malloc(len+1);
     if (!exec->result) {
+        extern void disposevaluerecord(tyvaluerecord, boolean);
+        disposevaluerecord(vreturned, false);
         langdisposecodetree(hcode);
         DisposeHandle(htext);
         return false;
     }
     memcpy(exec->result, stringbaseaddress(bs), len);
     exec->result[len] = '\0';
+    extern void disposevaluerecord(tyvaluerecord, boolean);
+    disposevaluerecord(vreturned, false);  // Dispose heap-allocated string after copy
     langdisposecodetree(hcode);  // Clean up code tree
     DisposeHandle(htext);  // Clean up after successful execution
     return true;
