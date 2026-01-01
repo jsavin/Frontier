@@ -1569,32 +1569,38 @@ boolean stringfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vr
 			}
 		
 		case midfunc: {
-			
+
 			/* 12/4/2004 smd: optimized */
-			
+
 			Handle hstring;
 			Handle x;
 			long ix;
 			long newlen;
-			
-			
+
+
 			if (!getpositivelongvalue (hp1, 2, &ix))
 				return (false);
-			
+
 			flnextparamislast = true;
-			
-			if (!getlongvalue (hp1, 3, &newlen)) 
+
+			if (!getlongvalue (hp1, 3, &newlen))
 				return (false);
-			
+
 			if (!getreadonlytextvalue (hp1, 1, &hstring)) /*get last to simplify error handling*/
 				return (false);
-			
+
+			/* Check bounds: start must be in range [1..length] */
+			if (ix < 1 || ix > gethandlesize (hstring)) {
+				copystring (BIGSTRING("\x2fstring.mid: start position out of bounds"), bserror);
+				return (false);
+			}
+
 			if (ix > 0)
 				--ix; /*convert to zero-base*/
-			
+
 			newlen = min (newlen, gethandlesize (hstring) - ix);
-			
-			
+
+
 			if (newlen > 0) {
 				if (!newhandle (newlen, &x))
 					return (false);
@@ -1603,7 +1609,7 @@ boolean stringfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vr
 				}
 			else if (!newemptyhandle (&x))
 				return (false);
-			
+
 			return (setheapvalue (x, stringvaluetype, v));
 			}
 		
@@ -1611,20 +1617,22 @@ boolean stringfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vr
 			Handle htext;
 			byte ch;
 			long charnum;
-			
-			if (!getreadonlytextvalue (hp1, 1, &htext)) 
+
+			if (!getreadonlytextvalue (hp1, 1, &htext))
 				return (false);
-			
+
 			flnextparamislast = true;
-			
+
 			if (!getpositivelongvalue (hp1, 2, &charnum))
 				return (false);
-			
-			if (charnum == 0 || charnum > gethandlesize (htext))
-				return (setstringvalue (zerostring, v));
-			
+
+			if (charnum < 1 || charnum > gethandlesize (htext)) {
+				copystring (BIGSTRING("\x2dstring.nthCharacter: index out of bounds"), bserror);
+				return (false);
+			}
+
 			ch = *((byte *) *htext + charnum - 1);
-			
+
 			return (setcharvalue (ch, v));
 			}
 		
