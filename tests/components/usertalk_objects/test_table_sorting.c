@@ -48,10 +48,8 @@ static void initialize_runtime(void) {
 
     // Allocate hash table stack BEFORE calling inittablestructure
     // This is required for pushhashtable to work
-    extern hdltablestack hashtablestack;
     log_debug(LOG_COMP_LANG, "hashtablestack before allocation: %p", (void*)hashtablestack);
     if (hashtablestack == NULL) {
-        extern boolean newclearhandle(long, Handle*);
         boolean ok = newclearhandle(sizeof(tytablestack), (Handle*)&hashtablestack);
         log_debug(LOG_COMP_LANG, "newclearhandle returned: %d, hashtablestack=%p", ok, (void*)hashtablestack);
         if (!ok) {
@@ -69,8 +67,6 @@ static void initialize_runtime(void) {
     }
 
     // Verify roottable and currenthashtable are set
-    extern hdlhashtable roottable;
-    extern hdlhashtable currenthashtable;
     log_debug(LOG_COMP_LANG, "After inittablestructure: roottable=%p, currenthashtable=%p",
            (void*)roottable, (void*)currenthashtable);
 
@@ -79,7 +75,6 @@ static void initialize_runtime(void) {
     // though inittablestructure() correctly pushed roottable. Manually push if needed.
     if (currenthashtable == NULL && roottable != NULL) {
         log_warn(LOG_COMP_LANG, "Test environment: currenthashtable is nil, manually pushing roottable");
-        extern boolean pushhashtable(hdlhashtable);
         boolean pushed = pushhashtable(roottable);
         log_debug(LOG_COMP_LANG, "Manual pushhashtable returned: %d, currenthashtable=%p",
                pushed, (void*)currenthashtable);
@@ -95,8 +90,6 @@ static void initialize_runtime(void) {
     }
 
     // Initialize verb tables
-    extern boolean langinitresources_headless(void);
-    extern boolean langinitverbs(void);
     if (!langinitresources_headless()) {
         log_error(LOG_COMP_LANG, "Failed to initialize language resources");
         exit(1);
@@ -107,7 +100,6 @@ static void initialize_runtime(void) {
     }
 
     // Initialize WPText support
-    extern boolean wp_portable_init(void);
     if (!wp_portable_init()) {
         log_error(LOG_COMP_LANG, "Failed to initialize WPText support");
         exit(1);
@@ -121,7 +113,6 @@ static void cleanup_runtime(void) {
     if (!runtime_initialized) return;
 
     // Dispose allocated resources in reverse order of initialization
-    extern hdltablestack hashtablestack;
     if (hashtablestack != NULL) {
         DisposeHandle((Handle)hashtablestack);
         hashtablestack = NULL;

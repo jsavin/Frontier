@@ -61,6 +61,7 @@ bool cli_execute_compiled_script(usertalk_execution_t* exec) {
         return false;
     }
     if (!coercetostring(&vreturned)) {
+        disposevaluerecord(vreturned, false);  // Dispose whatever type it was
         langdisposecodetree(hcode);
         DisposeHandle(htext);
         return false;
