@@ -49,6 +49,7 @@
 
 #if defined(FRONTIER_HEADLESS)
 #include "osincludes_portable.h"   /* portable system headers for headless builds */
+#include "../portable/standard_portable.h"  /* portable core types and macros */
 #else
 #include "osincludes.h"		/* operating system headers */
 #endif
