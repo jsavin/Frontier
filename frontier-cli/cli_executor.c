@@ -201,8 +201,18 @@ boolean cli_execute_inline_script(const char* script_code, boolean output_json) 
     boolean ok = cli_compile_script(script_code, exec) && cli_execute_compiled_script(exec);
 
     if (output_json) {
-        // Print JSON output regardless of success/failure
+        // Print JSON output to stdout
         cli_print_execution_result_json(exec, ok);
+
+        // Also log errors to stderr for debugging (doesn't interfere with JSON on stdout)
+        if (!ok) {
+            const char* error = cli_get_execution_error(exec);
+            if (error != NULL) {
+                cli_log_error("Execution error: %s", error);
+            } else {
+                cli_log_error("Execution failed");
+            }
+        }
     } else {
         // Traditional text output
         if (!ok) {

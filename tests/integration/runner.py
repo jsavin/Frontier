@@ -101,8 +101,10 @@ class TestCase:
         self.script = data.get('script', '')
         self.expected_success = data.get('expected_success', True)
         self.expected_result = data.get('expected_result')
+        self.expected_result_type = data.get('expected_result_type')
         self.expected_error_type = data.get('expected_error_type')
         self.description = data.get('description', '')
+        self.timeout = data.get('timeout', 10)  # Default 10 seconds, configurable per test
 
     def validate(self, output: Dict) -> Tuple[bool, Optional[str]]:
         """Validate test output against expectations."""
@@ -116,6 +118,12 @@ class TestCase:
             actual_result = output.get('result')
             if str(actual_result) != str(self.expected_result):
                 return False, f"Expected result={self.expected_result!r}, got {actual_result!r}"
+
+        # Check result type if specified
+        if self.expected_success and self.expected_result_type is not None:
+            actual_result_type = output.get('result_type')
+            if actual_result_type != self.expected_result_type:
+                return False, f"Expected result_type={self.expected_result_type}, got {actual_result_type}"
 
         # If expecting failure, check error type
         if not self.expected_success and self.expected_error_type:
@@ -152,8 +160,8 @@ class TestRunner:
             if test.description:
                 print(f"    {test.description}")
 
-        # Execute script
-        output = self.cli.execute(test.script)
+        # Execute script with test-specific timeout
+        output = self.cli.execute(test.script, timeout=test.timeout)
 
         # Validate result
         passed, error = test.validate(output)

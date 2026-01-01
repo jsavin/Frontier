@@ -1,5 +1,15 @@
 # Integration tests for string verb operations
 # Tests basic string manipulation verbs available in headless mode
+#
+# Test case fields:
+#   name: Test name (required)
+#   description: Test description (optional)
+#   script: UserTalk script to execute (required)
+#   expected_success: true/false (default: true)
+#   expected_result: Expected return value as string (optional)
+#   expected_result_type: Expected result type from JSON (optional)
+#   expected_error_type: Expected error type if expected_success=false (optional)
+#   timeout: Timeout in seconds (optional, default: 10)
 
 tests:
   # Basic string operations
@@ -8,6 +18,7 @@ tests:
     script: 'string.length("hello")'
     expected_success: true
     expected_result: "5"
+    expected_result_type: "string"
 
   - name: "string.length - empty string"
     description: "Get length of empty string"

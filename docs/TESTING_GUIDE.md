@@ -110,7 +110,7 @@ The `--output-json` flag provides structured output for automation and testing:
 
 # JSON output:
 ./frontier-cli/frontier-cli --output-json -e "1+1"
-# Output:
+# Output (stdout):
 # {
 #   "success": true,
 #   "result": "2",
@@ -121,6 +121,7 @@ The `--output-json` flag provides structured output for automation and testing:
 
 # Error case:
 ./frontier-cli/frontier-cli --output-json -e "undefined_var"
+# JSON output (stdout):
 # {
 #   "success": false,
 #   "result": null,
@@ -128,7 +129,15 @@ The `--output-json` flag provides structured output for automation and testing:
 #   "error": "Script execution failed",
 #   "error_type": "script_error"
 # }
+# Error logs (stderr):
+# [lang-ERROR] langcallbacks.c:208: Cant evaluate...
+# [general-ERROR] cli_utils.c:26: Execution error: Script execution failed
 ```
+
+**Note**: JSON output goes to stdout, error logs go to stderr. This allows:
+- Parsing JSON from stdout without interference from debug logs
+- Capturing error context from stderr for debugging
+- Standard Unix pipe semantics (json output | parser)
 
 ### Writing Test Cases
 
@@ -141,6 +150,7 @@ tests:
     script: 'string.length("hello")'
     expected_success: true
     expected_result: "5"
+    expected_result_type: "string"  # Optional: validate result type
 
   - name: "string.upper - basic case"
     description: "Convert string to uppercase"
@@ -153,7 +163,18 @@ tests:
     script: 'undefined_var'
     expected_success: false
     expected_error_type: "script_error"
+
+  - name: "long running operation"
+    description: "Custom timeout for potentially slow operations"
+    script: 'complex.operation()'
+    expected_success: true
+    timeout: 30  # Optional: override default 10 second timeout
 ```
+
+**Optional fields:**
+- `expected_result_type`: Validates the `result_type` field from JSON output
+- `timeout`: Per-test timeout in seconds (default: 10)
+- `description`: Human-readable test description
 
 ### Test Output
 
