@@ -1684,7 +1684,7 @@ static boolean seticonposverb (hdltreenode hparam1, tyvaluerecord *v) {
 	static boolean getlongversionverb (hdltreenode hparam1, tyvaluerecord *v) {
 
 		/*
-		file.getfullversion (path): string; return the long version string "1.0b2 © Copyright 1991 UserLand Software.".  need definitions above, 
+		file.getfullversion (path): string; return the long version string "1.0b2 ï¿½ Copyright 1991 UserLand Software.".  need definitions above, 
 		which don't appear in the Think C headers anywhere
 		
 		2005-09-02 creedon: added support for fork parameter, see resources.c: openresourcefile and pushresourcefile
@@ -2217,7 +2217,7 @@ static boolean readwholefileverb (hdltreenode hparam1, tyvaluerecord *v) {
 	// 2006-04-11 aradke:	Kernelized file.readWholeFile. Obsolete script code follows:
 	//
 	//				on readWholeFile (f) {
-	//					«10/31/97 at 1:02:04 PM by DW -- moved from toys.readWholeFile
+	//					ï¿½10/31/97 at 1:02:04 PM by DW -- moved from toys.readWholeFile
 	//					local (s);
 	//					file.open (f);
 	//					s = file.read (f, infinity);
@@ -3139,16 +3139,29 @@ static boolean filefunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 		*/
 		
 		case sfgetfilefunc:
-			return (filedialogverb (sfgetfileverb, hp1, v));
-		
 		case sfputfilefunc:
-			return (filedialogverb (sfputfileverb, hp1, v));
-		
 		case sfgetfolderfunc:
-			return (filedialogverb (sfgetfolderverb, hp1, v));
-		
 		case sfgetdiskfunc:
-			return (filedialogverb (sfgetdiskverb, hp1, v));
+			#ifndef FRONTIER_HEADLESS
+				/* GUI mode - use native file dialog */
+				switch (token) {
+					case sfgetfilefunc:
+						return (filedialogverb (sfgetfileverb, hp1, v));
+					case sfputfilefunc:
+						return (filedialogverb (sfputfileverb, hp1, v));
+					case sfgetfolderfunc:
+						return (filedialogverb (sfgetfolderverb, hp1, v));
+					case sfgetdiskfunc:
+						return (filedialogverb (sfgetdiskverb, hp1, v));
+				}
+			#else
+				/* Headless mode - not implemented (Phase 1)
+				 * TODO Phase 2: Implement stdio prompts when isInteractiveMode() returns true
+				 * See: planning/phase3/HEADLESS_INTERACTIVE_MODE.md
+				 */
+				getstringlist (langerrorlist, unimplementedverberror, bserror);
+				return (false);
+			#endif
 		
 		/*
 		case fileeditlinefeedsfunc:

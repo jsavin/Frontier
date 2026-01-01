@@ -172,6 +172,8 @@ These are likely implemented as UserTalk scripts:
 
 **Rationale:** Instead of GUI dialogs, implement as stdio prompts with readline-style input. Enables interactive applications over terminal/SSH while maintaining portability.
 
+**See:** [Headless Interactive Mode Planning](../HEADLESS_INTERACTIVE_MODE.md) for `--batch` flag, TTY detection, and Phase 1/2 implementation details.
+
 **Visibility (Mac Classic - NOT Implemented):**
 - `isvisible` - Check if file is visible in Finder (skip - Finder-specific)
 - `setvisible` - Set file visibility flag (skip - Finder-specific)

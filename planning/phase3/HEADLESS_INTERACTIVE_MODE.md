@@ -1,0 +1,413 @@
+# Headless Interactive Mode: Batch Flag and TTY Detection
+
+**Status:** Planning → Implementation
+**Phase:** Phase 3 (Headless Bring-Up)
+**Created:** 2026-01-01
+**Owner:** Verb binding workstream
+
+---
+
+## Overview
+
+Frontier's headless mode supports two execution contexts:
+
+1. **Interactive Mode** - Running from a terminal (TTY), allows stdio prompts for user input
+2. **Batch Mode** - Running in CI/CD, scripts, daemons, or with `--batch` flag, disallows prompts
+
+This document defines the behavior, detection logic, and implementation strategy for handling user interaction verbs in headless mode.
+
+---
+
+## Table of Contents
+
+1. [Problem Statement](#problem-statement)
+2. [Design Decisions](#design-decisions)
+3. [Prior Art](#prior-art)
+4. [Detection Logic](#detection-logic)
+5. [Affected Verbs](#affected-verbs)
+6. [Implementation Plan](#implementation-plan)
+7. [Testing Strategy](#testing-strategy)
+8. [References](#references)
+
+---
+
+## Problem Statement
+
+### Background
+
+Many Frontier verbs require user interaction:
+- **Dialog verbs** (`dialog.alert`, `dialog.ask`, `dialog.getInt`, etc.)
+- **File dialog verbs** (`file.getFileDialog`, `file.putFileDialog`, etc.)
+- **Password prompts** (`dialog.getPassword`)
+
+In GUI mode, these display modal dialogs. In headless mode, we need to decide:
+
+**Question 1:** Should these verbs work in headless mode?
+- **Dave Winer's Recommendation:** No - these should cause runtime errors
+- **Rationale:** Daemon/server processes shouldn't prompt for input (would hang)
+
+**Question 2:** What about terminal-based interactive use cases?
+- **Use Case:** CLI tools, SSH sessions, interactive scripts
+- **User Requirement:** Support stdio prompts when running from terminal
+
+**Question 3:** How do we reconcile both needs?
+- **Solution:** Auto-detect TTY + explicit `--batch` override
+
+---
+
+## Design Decisions
+
+### Decision 1: Default Behavior Based on TTY Detection
+
+**Default:** Auto-detect interactive vs batch mode using `isatty()`
+
+```c
+bool isInteractiveMode() {
+    // Force batch mode if --batch flag OR CI environment
+    if (fl_batch_mode || getenv("CI")) {
+        return false;
+    }
+
+    // Auto-detect: interactive if stdin AND stdout are TTYs
+    return isatty(STDIN_FILENO) && isatty(STDOUT_FILENO);
+}
+```
+
+**Behavior:**
+- **Terminal (TTY detected):** Interactive prompts allowed (stdio-based)
+- **Pipe/Redirect/Daemon (no TTY):** Error immediately, don't hang
+- **CI Environment (`CI=true`):** Force batch mode
+- **`--batch` flag:** Force batch mode
+
+### Decision 2: Explicit `--batch` Flag Override
+
+**Flag:** `-b, --batch`
+
+**Purpose:** Force non-interactive mode even when running from a terminal
+
+**Use Cases:**
+- Automated testing from terminal
+- Scripts that should never prompt
+- Reproducible builds
+- CI/CD local testing
+
+**Example:**
+```bash
+# Interactive (TTY detected, prompts allowed)
+./frontier-cli -e "dialog.ask('Continue?')"
+
+# Batch mode (TTY detected, but flag forces error)
+./frontier-cli --batch -e "dialog.ask('Continue?')"
+```
+
+### Decision 3: Phased Implementation
+
+**Phase 1 (Current):** Error-only behavior
+- All interactive verbs return `unimplementedverberror` in headless mode
+- Add `--batch` flag infrastructure
+- Implement `isInteractiveMode()` detection
+- Document planned stdio behavior
+
+**Phase 2 (Future):** Stdio prompt implementation
+- Implement stdio prompts for `dialog.*` verbs
+- Implement stdio prompts for `file.get*Dialog()` verbs
+- Add readline-style path completion (optional enhancement)
+
+---
+
+## Prior Art
+
+### Unix Tools with Similar Patterns
+
+| Tool | Auto-Detect TTY? | Non-Interactive Flag | Notes |
+|------|------------------|---------------------|-------|
+| **GPG** | Yes | `--batch` | "Never ask, do not allow interactive commands" |
+| **git** | Yes | `GIT_TERMINAL_PROMPT=0` | Env var to disable prompts |
+| **apt** | Yes | `-y, --assumeyes` | Assume "yes" to all prompts |
+| **npm** | Yes | `--non-interactive` | Explicit non-interactive mode |
+| **pacman** | Yes | `--noconfirm` | Bypass confirmations |
+| **ansible** | Yes | `--non-interactive` | Force non-interactive mode |
+
+**Standard Pattern:**
+- ✅ Auto-detect TTY (most tools)
+- ✅ Flag to force batch mode (common: `--batch`, `--non-interactive`, `-y`)
+- ✅ Environment variable for CI (`CI=true`)
+
+**Frontier's Choice:** `--batch` (follows GPG precedent, shorter than `--non-interactive`)
+
+**References:**
+- [GPG Batch Mode](https://www.gnupg.org/documentation/manuals/gnupg/Unattended-GPG-key-generation.html)
+- [Command Line Interface Guidelines](https://clig.dev/)
+- [GitHub: Disable interactive mode discussion](https://github.com/cli/cli/issues/1739)
+
+---
+
+## Detection Logic
+
+### Implementation
+
+**Location:** `frontier-cli/cli_utils.c` (or similar CLI infrastructure file)
+
+```c
+#include <unistd.h>
+#include <stdlib.h>
+
+/* Global flag set by CLI argument parser */
+boolean fl_batch_mode = false;
+
+/**
+ * isInteractiveMode - Determine if interactive prompts are allowed
+ *
+ * Returns true if:
+ *   - NOT in batch mode (--batch flag not set)
+ *   - CI environment variable not set
+ *   - stdin and stdout are both TTYs
+ *
+ * This function is called by dialog verbs and file dialog verbs to decide
+ * whether to prompt via stdio or return unimplementedverberror.
+ */
+boolean isInteractiveMode(void) {
+    /* Force batch mode if --batch flag set */
+    if (fl_batch_mode) {
+        return false;
+    }
+
+    /* Force batch mode if running in CI environment */
+    if (getenv("CI")) {
+        return false;
+    }
+
+    /* Auto-detect: interactive if stdin AND stdout are TTYs */
+    return isatty(STDIN_FILENO) && isatty(STDOUT_FILENO);
+}
+```
+
+**CLI Argument Parser:**
+```c
+/* In main.c or cli_parser.c */
+static struct option long_options[] = {
+    {"batch",         no_argument, 0, 'b'},
+    {"non-interactive", no_argument, 0, 'b'},  /* Alias for --batch */
+    // ... other options ...
+};
+
+/* In argument parsing loop */
+case 'b':
+    fl_batch_mode = true;
+    break;
+```
+
+---
+
+## Affected Verbs
+
+### File Processor Dialog Verbs
+
+**Affected:** 4 verbs in `file.*` processor
+
+| Verb | Token | GUI Behavior | Headless Phase 1 | Headless Phase 2 |
+|------|-------|--------------|------------------|------------------|
+| `getFileDialog` | `sfgetfilefunc` | Native file picker | ❌ Error | ✅ stdio prompt |
+| `putFileDialog` | `sfputfilefunc` | Save file picker | ❌ Error | ✅ stdio prompt |
+| `getFolderDialog` | `sfgetfolderfunc` | Folder picker | ❌ Error | ✅ stdio prompt |
+| `getDiskDialog` | `sfgetdiskfunc` | Volume picker | ❌ Error | ✅ stdio prompt |
+
+**Implementation Location:** `Common/source/fileverbs.c`
+
+**Error Code:** `unimplementedverberror` (#117)
+
+### Dialog Processor Verbs
+
+**Affected:** 19 verbs in `dialog.*` processor
+
+| Category | Verbs | Phase 1 | Phase 2 |
+|----------|-------|---------|---------|
+| **Prompts** | `ask`, `getInt`, `getUserInfo`, `getPassword` | ❌ Error | ✅ stdio |
+| **Alerts** | `alert`, `notify` | ❌ Error | ✅ stdio |
+| **Complex Dialogs** | `run`, `runModeless`, `runCard`, etc. | ❌ Error | ❌ Error |
+| **Dialog Control** | `getValue`, `setValue`, `setItemEnable`, etc. | ❌ Error | ❌ No-op |
+
+**See:** `planning/phase3/processor_audits/dialog.md` for full analysis
+
+---
+
+## Implementation Plan
+
+### Phase 1: Error-Only Behavior (Current PR)
+
+**Goal:** Make file verbs build successfully, dialog verbs error correctly
+
+**Tasks:**
+
+1. **Add CLI flag infrastructure**
+   - [ ] Add `--batch` / `-b` flag to CLI parser
+   - [ ] Add `--non-interactive` as alias
+   - [ ] Set global `fl_batch_mode` boolean
+   - [ ] Test flag parsing
+
+2. **Implement detection logic**
+   - [ ] Add `isInteractiveMode()` function to CLI utils
+   - [ ] Check `isatty(STDIN_FILENO)` and `isatty(STDOUT_FILENO)`
+   - [ ] Check `fl_batch_mode` global
+   - [ ] Check `CI` environment variable
+   - [ ] Export to verb processors (extern declaration)
+
+3. **Wrap file dialog verbs**
+   - [ ] Add conditional compilation to `fileverbs.c`
+   - [ ] Wrap `sfgetfilefunc`, `sfputfilefunc`, `sfgetfolderfunc`, `sfgetdiskfunc`
+   - [ ] Return `unimplementedverberror` in headless mode
+   - [ ] Add TODO comments for Phase 2 stdio implementation
+
+4. **Documentation**
+   - [x] Create this planning document
+   - [ ] Update `docs/HEADLESS_ADAPTATIONS.md` with link
+   - [ ] Update `planning/phase3/processor_audits/file.md` with link
+   - [ ] Update `docs/CLI_USAGE_GUIDE.md` with `--batch` flag
+
+5. **Testing**
+   - [ ] Test `--batch` flag sets `fl_batch_mode`
+   - [ ] Test `isInteractiveMode()` returns false when `--batch` set
+   - [ ] Test `isInteractiveMode()` returns false when not TTY
+   - [ ] Test file dialog verbs return error in headless mode
+   - [ ] Test error message is clear and helpful
+
+**Success Criteria:**
+- ✅ `make` builds successfully (file verbs compile)
+- ✅ File dialog verbs return `unimplementedverberror` in headless mode
+- ✅ Error message indicates `--batch` mode or non-TTY context
+- ✅ `./frontier-cli --batch -e "1"` works
+- ✅ Tests pass
+
+### Phase 2: Stdio Prompt Implementation (Future PR)
+
+**Goal:** Enable interactive prompts when running from terminal
+
+**Tasks:**
+
+1. **Implement stdio prompts for dialog verbs**
+   - [ ] `dialog.alert()` - print message, wait for Enter (if interactive)
+   - [ ] `dialog.ask()` - prompt yes/no, read stdin
+   - [ ] `dialog.getInt()` - prompt for number with default
+   - [ ] `dialog.getPassword()` - prompt with echo disabled (termios)
+   - [ ] Complex dialogs remain as errors (no stdio equivalent)
+
+2. **Implement stdio prompts for file dialog verbs**
+   - [ ] `file.getFileDialog()` - prompt for file path with validation
+   - [ ] `file.putFileDialog()` - prompt for save path
+   - [ ] `file.getFolderDialog()` - prompt for folder path
+   - [ ] `file.getDiskDialog()` - prompt for volume/disk path
+   - [ ] Optional: Add readline-style path completion
+
+3. **Update conditional compilation**
+   - [ ] Replace error stubs with `isInteractiveMode()` checks
+   - [ ] Call stdio prompt functions when interactive
+   - [ ] Return error when batch mode
+
+4. **Testing**
+   - [ ] Integration tests with stdin provided
+   - [ ] Test defaults when Enter pressed
+   - [ ] Test batch mode forces error
+   - [ ] Test CI environment forces error
+   - [ ] Test password echo disabled
+
+**Success Criteria:**
+- ✅ `dialog.ask()` works from terminal
+- ✅ `file.getFileDialog()` works from terminal
+- ✅ Same verbs error in batch mode
+- ✅ CI environment auto-detects batch mode
+
+---
+
+## Testing Strategy
+
+### Phase 1 Tests
+
+**CLI Flag Parsing:**
+```bash
+# Test --batch flag sets mode
+./frontier-cli --batch -e "sys.version()" 2>&1 | grep -v "Error"
+
+# Test --non-interactive alias
+./frontier-cli --non-interactive -e "sys.version()"
+
+# Test short form
+./frontier-cli -b -e "sys.version()"
+```
+
+**TTY Detection:**
+```bash
+# Interactive (TTY): should detect as interactive
+./frontier-cli -e "1"
+
+# Pipe (no TTY): should detect as batch
+echo "1" | ./frontier-cli -e -
+
+# Batch flag overrides TTY
+./frontier-cli --batch -e "1"
+```
+
+**File Dialog Verbs (Phase 1 - Should Error):**
+```yaml
+# tests/integration/test_cases/file_verbs.yaml
+
+- name: "file.getFileDialog - not implemented in headless"
+  script: |
+    file.getFileDialog("Select a file", @result)
+  expected_success: false
+  expected_error: "not implemented"
+```
+
+### Phase 2 Tests
+
+**Interactive stdio prompts:**
+```bash
+# Provide stdin for dialog.ask
+echo "yes" | ./frontier-cli -e "dialog.ask('Continue?')"
+
+# Should return true
+
+# Provide stdin for file.getFileDialog
+echo "/tmp/test.txt" | ./frontier-cli -e "file.getFileDialog('Select', @f); return f"
+
+# Should return filespec for /tmp/test.txt
+```
+
+**Batch mode errors:**
+```bash
+# Force batch mode, expect error
+./frontier-cli --batch -e "dialog.ask('Continue?')" 2>&1 | grep "not implemented"
+```
+
+---
+
+## References
+
+### Planning Documents
+- [Dialog Processor Audit](processor_audits/dialog.md) - Full stdio implementation plan
+- [File Processor Audit](processor_audits/file.md) - File verb categorization
+
+### Implementation Guides
+- [Headless Adaptations](../../docs/HEADLESS_ADAPTATIONS.md) - General headless patterns
+- [CLI Usage Guide](../../docs/CLI_USAGE_GUIDE.md) - CLI flags and options
+
+### External References
+- [GPG Batch Mode](https://www.gnupg.org/documentation/manuals/gnupg/Unattended-GPG-key-generation.html)
+- [Command Line Interface Guidelines](https://clig.dev/)
+- [GitHub: cli/cli #1739 - Disable interactive mode](https://github.com/cli/cli/issues/1739)
+- [Baeldung: Scripting Yes During Install](https://www.baeldung.com/linux/scripting-yes-during-install)
+
+---
+
+## Decision Log
+
+| Date | Decision | Rationale |
+|------|----------|-----------|
+| 2026-01-01 | Use `--batch` flag (not `-i`) | Auto-detect TTY by default, override with batch flag (follows GPG) |
+| 2026-01-01 | Check `CI` environment variable | Standard practice for CI/CD detection |
+| 2026-01-01 | Phase 1: error-only | Get file verbs working immediately, defer stdio complexity |
+| 2026-01-01 | `isatty()` on stdin AND stdout | Both must be TTY for interactive mode (safety) |
+
+---
+
+**Last Updated:** 2026-01-01
+**Status:** ✅ Approved - Ready for Implementation (Phase 1)

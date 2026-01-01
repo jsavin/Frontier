@@ -15,7 +15,8 @@ Frontier's headless mode requires adaptations for verbs and operations that depe
 1. [Serialization: pack() vs Processor-Specific Pack Verbs](#serialization-pack-vs-processor-specific-pack-verbs)
 2. [Resource File Dependencies](#resource-file-dependencies)
 3. [UI-Dependent Operations](#ui-dependent-operations)
-4. [Quick Reference](#quick-reference)
+4. [Interactive vs Batch Mode](#interactive-vs-batch-mode)
+5. [Quick Reference](#quick-reference)
 
 ---
 
@@ -237,6 +238,61 @@ Some UI verbs have headless-compatible alternatives:
 | `dialog.alert(msg)` | `log_info()` or `stderr()` | Non-interactive logging |
 | `mouse.click()` | Script direct actions | No mouse simulation |
 | `quickdraw.line()` | Store geometry in tables | No rendering, but can store |
+
+---
+
+## Interactive vs Batch Mode
+
+### Overview
+
+Headless mode supports two execution contexts:
+
+1. **Interactive Mode** - Running from a terminal (TTY), allows stdio prompts for user input
+2. **Batch Mode** - Running in CI/CD, scripts, daemons, or with `--batch` flag, disallows prompts
+
+**See:** [Headless Interactive Mode Planning](../planning/phase3/HEADLESS_INTERACTIVE_MODE.md) for complete details.
+
+### Detection Logic
+
+```c
+boolean isInteractiveMode(void) {
+    if (fl_batch_mode || getenv("CI")) {
+        return false;  // Batch mode
+    }
+    return isatty(STDIN_FILENO) && isatty(STDOUT_FILENO);  // Interactive mode
+}
+```
+
+### Usage
+
+```bash
+# Interactive mode (auto-detected when running from terminal)
+./frontier-cli -e "dialog.ask('Continue?')"
+
+# Batch mode (force non-interactive)
+./frontier-cli --batch -e "dialog.ask('Continue?')"
+
+# CI environment (auto-detected)
+CI=true ./frontier-cli -e "script.user"
+```
+
+### Affected Verbs
+
+**Dialog Verbs:**
+- `dialog.alert`, `dialog.ask`, `dialog.getInt`, `dialog.getPassword`
+- **Interactive:** Use stdio prompts
+- **Batch:** Return `unimplementedverberror`
+
+**File Dialog Verbs:**
+- `file.getFileDialog`, `file.putFileDialog`, `file.getFolderDialog`, `file.getDiskDialog`
+- **Interactive:** Use stdio prompts (Phase 2)
+- **Batch:** Return `unimplementedverberror`
+
+### Implementation Status
+
+**Phase 1 (Current):** All interactive verbs return errors in headless mode
+
+**Phase 2 (Planned):** Stdio prompts enabled when `isInteractiveMode()` returns true
 
 ---
 
