@@ -1453,11 +1453,12 @@ boolean tablefunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vre
 						(*v).data.flvalue = tablesetsortorder(htable, ixcol);
 					} else {
 						/* Headless mode - set sort and resort (hold context across operation) */
+						boolean result = false;
 						table_selection_context_t *ctx = table_selection_acquire();
 
 						if (ctx == NULL) {
 							langerrormessage(BIGSTRING("\x20" "Failed to acquire table context"));
-							return (false);
+							goto cleanup;
 						}
 
 						bigstring cursor_key;
@@ -1480,8 +1481,13 @@ boolean tablefunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vre
 							ctx->cursor_flat_index = table_selection_get_row_for_key(ctx, htable, cursor_key);
 						}
 
-						table_selection_release(ctx);
-						(*v).data.flvalue = true;
+						result = true;
+
+					cleanup:
+						if (ctx != NULL)
+							table_selection_release(ctx);
+
+						(*v).data.flvalue = result;
 					}
 
 					return (true);
@@ -1512,6 +1518,8 @@ boolean tablefunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vre
 
 			/* Validate column index */
 			if (ixcol < namecolumn || ixcol > kindcolumn) {
+				log_error(LOG_COMP_TABLE, "Invalid sort order: %d (valid range: %d-%d)",
+				          ixcol, namecolumn, kindcolumn);
 				langerrormessage(BIGSTRING("\x1A" "Invalid sort order state"));
 				return (false);
 			}
