@@ -1025,6 +1025,30 @@ if "xml_contains" in self.expect:
 
 ---
 
+## Known Limitations & Future Work
+
+### String Encoding (UTF-8 Migration)
+
+**Current State**: JSON output escaping assumes UTF-8 encoded strings. Frontier's runtime currently uses Pascal strings (bigstring/pstring) which are length-prefixed byte arrays, typically ASCII or MacRoman encoding.
+
+**Limitation**: Multi-byte UTF-8 sequences are passed through directly (valid per JSON RFC 8259), but invalid UTF-8 sequences may produce malformed JSON output.
+
+**Future Roadmap**: Runtime string migration to UTF-8 is planned (estimated: several months out). When implemented, this will:
+- Unify all runtime strings to UTF-8 encoding
+- Eliminate encoding ambiguity
+- Ensure robust JSON escaping for all character sets
+- Improve international character support
+
+**Current Mitigation**:
+- JSON escaping handles ASCII and valid UTF-8 correctly
+- Control characters are properly escaped
+- Test suite includes UTF-8 test cases to validate current behavior
+- Edge cases documented in code comments
+
+See `frontier-cli/cli_executor.c` (cli_print_json_escaped_string) for detailed documentation.
+
+---
+
 ## Summary
 
 This design provides:

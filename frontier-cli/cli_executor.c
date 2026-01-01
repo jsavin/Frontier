@@ -258,6 +258,17 @@ void cli_print_execution_result(const usertalk_execution_t* execution) {
 }
 
 // Helper function to escape JSON strings
+//
+// NOTE: This function expects UTF-8 encoded strings and passes multi-byte
+// UTF-8 sequences through directly (valid per JSON RFC 8259). Control characters
+// (< 32) are escaped as \uXXXX. Invalid UTF-8 sequences may produce malformed JSON.
+//
+// Current Frontier string encoding: Pascal strings (bigstring/pstring) are
+// length-prefixed byte arrays, typically ASCII or MacRoman. Future roadmap
+// includes UTF-8 migration for runtime strings.
+//
+// For now, this handles ASCII and valid UTF-8 correctly. Edge cases with invalid
+// multi-byte sequences will be addressed when runtime string encoding is unified.
 static void cli_print_json_escaped_string(const char* str) {
     if (str == NULL) {
         printf("null");
@@ -276,8 +287,11 @@ static void cli_print_json_escaped_string(const char* str) {
             case '\t': printf("\\t"); break;
             default:
                 if ((unsigned char)*p < 32) {
+                    // Escape control characters
                     printf("\\u%04x", (unsigned char)*p);
                 } else {
+                    // Pass through printable ASCII and UTF-8 multi-byte sequences
+                    // JSON spec (RFC 8259) allows unescaped UTF-8
                     putchar(*p);
                 }
                 break;

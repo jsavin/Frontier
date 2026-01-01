@@ -111,10 +111,10 @@ tests:
 
   # Edge cases
   - name: "string.length - unicode characters"
-    description: "Length with unicode chars"
+    description: "Length with unicode chars (UTF-8 encoding test)"
     script: 'string.length("hello🎉")'
     expected_success: true
-    expected_result: "7"  # Note: may vary depending on encoding
+    expected_result: "9"  # UTF-8: "hello" (5) + "🎉" (4 bytes) = 9
 
   - name: "empty string operations"
     description: "Operations on empty string"
