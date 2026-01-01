@@ -71,7 +71,9 @@ static void initialize_runtime(void) {
     log_debug(LOG_COMP_LANG, "After inittablestructure: roottable=%p, currenthashtable=%p",
            (void*)roottable, (void*)currenthashtable);
 
-    // If currenthashtable is still nil, manually set it
+    // Workaround: inittablestructure() creates roottable but doesn't always push it
+    // to the hashtable stack in test environments. Manually push if needed.
+    // This ensures currenthashtable is properly set for table operations.
     if (currenthashtable == NULL && roottable != NULL) {
         log_warn(LOG_COMP_LANG, "currenthashtable is nil, manually pushing roottable");
         extern boolean pushhashtable(hdlhashtable);
