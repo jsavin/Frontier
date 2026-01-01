@@ -52,6 +52,7 @@ bool cli_execute_compiled_script(usertalk_execution_t* exec) {
     bigstring empty; setstringlength(empty, 0);
     extern boolean langrunscriptcode(hdlhashtable, bigstring, hdltreenode, tyvaluerecord*, hdlhashtable, tyvaluerecord*);
     extern void langdisposecodetree(hdltreenode);
+    extern void disposevaluerecord(tyvaluerecord, boolean);
     // Pass NULL for vparams (no parameters), not a pointer to a nil value
     boolean ok = langrunscriptcode(NULL, empty, hcode, NULL, NULL, &vreturned);
     if (!ok) {
@@ -68,7 +69,6 @@ bool cli_execute_compiled_script(usertalk_execution_t* exec) {
     size_t len = (size_t)stringlength(bs);
     exec->result = (char*)malloc(len+1);
     if (!exec->result) {
-        extern void disposevaluerecord(tyvaluerecord, boolean);
         disposevaluerecord(vreturned, false);
         langdisposecodetree(hcode);
         DisposeHandle(htext);
@@ -76,7 +76,6 @@ bool cli_execute_compiled_script(usertalk_execution_t* exec) {
     }
     memcpy(exec->result, stringbaseaddress(bs), len);
     exec->result[len] = '\0';
-    extern void disposevaluerecord(tyvaluerecord, boolean);
     disposevaluerecord(vreturned, false);  // Dispose heap-allocated string after copy
     langdisposecodetree(hcode);  // Clean up code tree
     DisposeHandle(htext);  // Clean up after successful execution
