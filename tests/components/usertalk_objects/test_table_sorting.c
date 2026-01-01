@@ -31,9 +31,15 @@ static void initialize_runtime(void) {
     if (runtime_initialized) return;
 
     // Initialize subsystems in proper order
-    assert(initmemory());
+    if (!initmemory()) {
+        fprintf(stderr, "FATAL: Failed to initialize memory subsystem\n");
+        exit(1);
+    }
     initstrings();
-    assert(initlang());
+    if (!initlang()) {
+        fprintf(stderr, "FATAL: Failed to initialize language runtime\n");
+        exit(1);
+    }
 
     // Allocate hash table stack BEFORE calling inittablestructure
     // This is required for pushhashtable to work
@@ -43,13 +49,19 @@ static void initialize_runtime(void) {
         extern boolean newclearhandle(long, Handle*);
         boolean ok = newclearhandle(sizeof(tytablestack), (Handle*)&hashtablestack);
         printf("[init] newclearhandle returned: %d, hashtablestack=%p\n", ok, (void*)hashtablestack);
-        assert(ok);
+        if (!ok) {
+            fprintf(stderr, "FATAL: Failed to allocate hash table stack\n");
+            exit(1);
+        }
         (**hashtablestack).toptables = 0;
     }
 
     boolean initok = inittablestructure();  // This creates roottable and pushes it
     printf("[init] inittablestructure returned: %d\n", initok);
-    assert(initok);
+    if (!initok) {
+        fprintf(stderr, "FATAL: Failed to initialize table structure\n");
+        exit(1);
+    }
 
     // Verify roottable and currenthashtable are set
     extern hdlhashtable roottable;
@@ -66,18 +78,33 @@ static void initialize_runtime(void) {
                pushed, (void*)currenthashtable);
     }
 
-    assert(roottable != NULL);
-    assert(currenthashtable != NULL);
+    if (roottable == NULL) {
+        fprintf(stderr, "FATAL: roottable is NULL after initialization\n");
+        exit(1);
+    }
+    if (currenthashtable == NULL) {
+        fprintf(stderr, "FATAL: currenthashtable is NULL after initialization\n");
+        exit(1);
+    }
 
     // Initialize verb tables
     extern boolean langinitresources_headless(void);
     extern boolean langinitverbs(void);
-    assert(langinitresources_headless());
-    assert(langinitverbs());
+    if (!langinitresources_headless()) {
+        fprintf(stderr, "FATAL: Failed to initialize language resources\n");
+        exit(1);
+    }
+    if (!langinitverbs()) {
+        fprintf(stderr, "FATAL: Failed to initialize language verbs\n");
+        exit(1);
+    }
 
     // Initialize WPText support
     extern boolean wp_portable_init(void);
-    assert(wp_portable_init());
+    if (!wp_portable_init()) {
+        fprintf(stderr, "FATAL: Failed to initialize WPText support\n");
+        exit(1);
+    }
 
     runtime_initialized = true;
 }
