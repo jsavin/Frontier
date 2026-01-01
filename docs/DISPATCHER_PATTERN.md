@@ -24,9 +24,9 @@ The **dispatcher pattern** is a lightweight binding technique that forwards all 
 ### Key Benefits
 
 - **Zero code duplication**: Reuses existing implementations
-- **Minimal maintenance**: Token enum changes automatically detected
+- **Compile-time safety**: `_Static_assert` fails build if token enum drifts out of sync (mandatory as of PR #224)
 - **Auto-detected**: Analyzer recognizes pattern and marks all verbs as implemented
-- **Type-safe**: Compiler enforces token synchronization
+- **Type-safe**: Compiler enforces token synchronization and parameter types
 - **Fast to implement**: ~1-2 hours per processor vs days of per-verb implementations
 
 ### Architecture
@@ -87,30 +87,50 @@ grep -r "boolean.*functionvalue" Common/source/*verbs.c
 - Parameter signature
 - Platform-specific APIs that need wrapping
 
-### Step 2: Create Token Enum
+### Step 2: Create Token Enum with Compile-Time Verification
 
 **File**: `tests/headless_<processor>_verbs.c`
 
 ```c
 /* Token enum for all verbs in the <processor> processor
- * MUST match ty<processor>token in <processor>verbs.c
+ *
+ * CRITICAL: This enum MUST be kept in sync with ty<processor>token in <processor>verbs.c
+ *
+ * Verification:
+ *   1. Token order must match exactly (0=verb1, 1=verb2, etc.)
+ *   2. Token count must match ct<processor>verbs value
+ *   3. Compile-time assertion below will fail if count mismatches
  */
 enum {
     verb1func = 0,
     verb2func = 1,
     verb3func = 2,
     /* ... all tokens ... */
-    lastverbfunc = N
+    lastverbfunc = N,
+
+    /* Sentinel - must equal ct<processor>verbs from <processor>verbs.c */
+    <processor>v_count
 };
+
+/* Compile-time verification that token count matches <processor>verbs.c
+ * If this fails, the enum above is out of sync with ty<processor>token */
+#define EXPECTED_<PROCESSOR>_VERB_COUNT (N+1)
+_Static_assert(<processor>v_count == EXPECTED_<PROCESSOR>_VERB_COUNT,
+               "Token enum out of sync with <processor>verbs.c - update headless_<processor>_verbs.c");
 ```
 
 **Critical**: Token values MUST match the original implementation exactly. Mismatched enums cause undefined behavior.
 
-**Verification**:
+**Compile-Time Safety** (REQUIRED):
+- The `_Static_assert` ensures build fails if token count drifts out of sync
+- This prevents silent dispatch errors where verbs route to wrong implementations
+- Pattern introduced in PR #224 (table verbs) and is now **mandatory** for all dispatchers
+
+**Manual Verification** (Belt-and-Suspenders):
 ```bash
 # Compare token counts
 grep -c "case.*func:" Common/source/<processor>verbs.c
-wc -l tests/headless_<processor>_verbs.c  # Count enum entries
+# Should match EXPECTED_<PROCESSOR>_VERB_COUNT
 ```
 
 ### Step 3: Forward Declaration
@@ -549,6 +569,7 @@ Use this checklist when implementing a new dispatcher:
 
 - [ ] Analyzed original implementation location and signature
 - [ ] Created token enum matching original (verified counts match)
+- [ ] **Added compile-time assertion (`_Static_assert`) for token count** ⚠️ **REQUIRED**
 - [ ] Added forward declaration (removed `static` if needed)
 - [ ] Implemented dispatcher callback with logging
 - [ ] Created exported `headless_<processor>_verbs_callback`
@@ -559,7 +580,7 @@ Use this checklist when implementing a new dispatcher:
 - [ ] Disabled conflicting stubs if needed
 - [ ] Wrapped windowed init with `#ifndef FRONTIER_HEADLESS`
 - [ ] Created integration test file (TDD)
-- [ ] Verified `make clean && make` succeeds
+- [ ] Verified `make clean && make` succeeds (confirms `_Static_assert` passes)
 - [ ] Verified integration tests pass
 - [ ] Verified full test suite passes (`./tools/run_headless_tests.sh`)
 - [ ] Verified analyzer detects pattern (`python3 cli.py report`)
@@ -569,14 +590,16 @@ Use this checklist when implementing a new dispatcher:
 
 ## References
 
-- **PR #221**: String verb dispatcher implementation
+- **PR #221**: String verb dispatcher implementation (original pattern)
+- **PR #224**: Table verb dispatcher (introduced `_Static_assert` pattern)
 - **Issue #222**: This documentation
 - **Issue #223**: Analyzer unit tests for dispatcher detection
-- `tests/headless_string_verbs.c`: Reference implementation
+- `tests/headless_string_verbs.c`: Reference implementation (original)
+- `tests/headless_table_verbs.c`: Reference implementation (with compile-time assertions)
 - `tools/kernelverbs_parser/analyzer.py`: Dispatcher detection logic
 - `planning/phase3/VERB_BINDING_QUICK_WINS.md`: Phase 1 quick wins plan
 
 ---
 
-**Last Updated**: 2026-01-01
+**Last Updated**: 2026-01-01 (compile-time assertion pattern made mandatory)
 **Maintainer**: Verb binding workstream
