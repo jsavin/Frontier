@@ -4,6 +4,7 @@
 #include "platform_adapter.h"
 #include "../Common/headers/lang.h"
 #include "../Common/headers/strings.h"
+#include "../Common/headers/logging.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -33,10 +34,14 @@ bool cli_execute_compiled_script(usertalk_execution_t* exec) {
     if (exec->result) { free(exec->result); exec->result = NULL; }
 
     // Use real language engine when linked
-    Handle htext = NewHandle(strlen(exec->script_source));
-    if (!htext) return false;
+    size_t script_len = strlen(exec->script_source);
+    Handle htext = NewHandle(script_len);
+    if (!htext) {
+        log_error(LOG_COMP_LANG, "Failed to allocate Handle for script (size=%zu)", script_len);
+        return false;
+    }
     HLock(htext);
-    memcpy(*htext, exec->script_source, strlen(exec->script_source));
+    memcpy(*htext, exec->script_source, script_len);
     HUnlock(htext);
     hdltreenode hcode = NULL;
     if (!langcompiletext(htext, false, &hcode)) {
