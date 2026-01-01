@@ -1217,6 +1217,45 @@ pg_boolean pgDummyWriteHandler(paige_rec_ptr pg, pg_file_key key, memory_ref key
 
 #endif /* !HEADLESS_LINKS_REAL_PAIGE */
 
+/* Portable implementation of Mac-specific file operations */
+
+boolean endswithpathsep(bigstring bs) {
+	/*
+	 * Portable implementation - checks if string ends with path separator.
+	 * Mac version checks for ':', POSIX uses '/' (chpathseparator).
+	 */
+	char ch;
+
+	if (stringlength(bs) == 0)
+		return false;
+
+	ch = getstringcharacter(bs, stringlength(bs) - 1);
+	return (ch == chpathseparator);
+}
+
+boolean filefrompath(bigstring path, bigstring fname) {
+	/*
+	 * Portable implementation - extracts filename from full path.
+	 * Returns everything after the last path separator.
+	 *
+	 * Example: "/tmp/test.txt" returns "test.txt"
+	 * Example: "/usr/local/bin/" returns ""
+	 */
+	return lastword(path, chpathseparator, fname);
+}
+
+void macgetfilespecnameasbigstring(const ptrfilespec fs, bigstring bs) {
+	/*
+	 * Portable implementation - extracts just the filename from filespec.
+	 * Uses filespectopath() which accesses fs->name.unicode directly.
+	 *
+	 * Note: Despite the name, filespectopath() actually extracts just the
+	 * filename, not the full path. See portable/file_portable.c:98-108.
+	 */
+	if (!filespectopath(fs, bs)) {
+		setemptystring(bs);
+	}
+}
 
 
 #endif /* FRONTIER_HEADLESS */
