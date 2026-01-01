@@ -1,0 +1,149 @@
+# Integration tests for string verb operations
+# Tests basic string manipulation verbs available in headless mode
+#
+# Test case fields:
+#   name: Test name (required)
+#   description: Test description (optional)
+#   script: UserTalk script to execute (required)
+#   expected_success: true/false (default: true)
+#   expected_result: Expected return value as string (optional)
+#   expected_result_type: Expected result type from JSON (optional)
+#   expected_error_type: Expected error type if expected_success=false (optional)
+#   timeout: Timeout in seconds (optional, default: 10)
+
+tests:
+  # Basic string operations
+  - name: "string.length - simple string"
+    description: "Get length of a simple string"
+    script: 'string.length("hello")'
+    expected_success: true
+    expected_result: "5"
+    expected_result_type: "string"
+
+  - name: "string.length - empty string"
+    description: "Get length of empty string"
+    script: 'string.length("")'
+    expected_success: true
+    expected_result: "0"
+
+  - name: "string.upper - basic case"
+    description: "Convert string to uppercase"
+    script: 'string.upper("hello")'
+    expected_success: true
+    expected_result: "HELLO"
+
+  - name: "string.lower - basic case"
+    description: "Convert string to lowercase"
+    script: 'string.lower("WORLD")'
+    expected_success: true
+    expected_result: "world"
+
+  - name: "string.nthCharacter - first char"
+    description: "Get first character of string"
+    script: 'string.nthCharacter("hello", 1)'
+    expected_success: true
+    expected_result: "h"
+
+  - name: "string.nthCharacter - last char"
+    description: "Get last character of string"
+    script: 'string.nthCharacter("hello", 5)'
+    expected_success: true
+    expected_result: "o"
+
+  # String concatenation
+  - name: "string concatenation with +"
+    description: "Concatenate two strings using +"
+    script: '"hello" + " " + "world"'
+    expected_success: true
+    expected_result: "hello world"
+
+  # String comparison
+  - name: "string equality - true case"
+    description: "Compare equal strings"
+    script: '"test" == "test"'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "string equality - false case"
+    description: "Compare different strings"
+    script: '"test" == "other"'
+    expected_success: true
+    expected_result: "false"
+
+  # Substring operations
+  - name: "string.mid - extract substring"
+    description: "Extract middle substring"
+    script: 'string.mid("hello world", 7, 5)'
+    expected_success: true
+    expected_result: "world"
+
+  - name: "string.mid - from beginning"
+    description: "Extract from beginning"
+    script: 'string.mid("hello world", 1, 5)'
+    expected_success: true
+    expected_result: "hello"
+
+  # Find and replace
+  - name: "string.patternMatch - found"
+    description: "Find pattern in string"
+    script: 'string.patternMatch("world", "hello world")'
+    expected_success: true
+    expected_result: "7"
+
+  - name: "string.patternMatch - not found"
+    description: "Pattern not found returns 0"
+    script: 'string.patternMatch("xyz", "hello world")'
+    expected_success: true
+    expected_result: "0"
+
+  # Trimming
+  - name: "string.trimWhitespace - both sides"
+    description: "Trim whitespace from both sides"
+    script: 'string.trimWhitespace("  hello  ")'
+    expected_success: true
+    expected_result: "hello"
+
+  - name: "string.trimWhitespace - no whitespace"
+    description: "String with no whitespace unchanged"
+    script: 'string.trimWhitespace("hello")'
+    expected_success: true
+    expected_result: "hello"
+
+  # Edge cases
+  - name: "string.length - unicode characters"
+    description: "Length with unicode chars (UTF-8 encoding test)"
+    script: 'string.length("hello🎉")'
+    expected_success: true
+    expected_result: "9"  # UTF-8: "hello" (5) + "🎉" (4 bytes) = 9
+
+  - name: "empty string operations"
+    description: "Operations on empty string"
+    script: 'string.upper("")'
+    expected_success: true
+    expected_result: ""
+
+  # Error cases
+  - name: "string.nthCharacter - index out of bounds"
+    description: "Access character beyond string length"
+    script: 'string.nthCharacter("hello", 10)'
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "string.mid - invalid range"
+    description: "Extract substring with invalid range"
+    script: 'string.mid("hello", 10, 5)'
+    expected_success: false
+    expected_error_type: "script_error"
+
+  # Numeric conversions
+  - name: "string.numberToString - positive integer"
+    description: "Convert positive number to string"
+    script: 'string(42)'
+    expected_success: true
+    expected_result: "42"
+
+  - name: "string.numberToString - negative integer"
+    description: "Convert negative number to string"
+    script: 'string(-42)'
+    expected_success: true
+    expected_result: "-42"

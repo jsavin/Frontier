@@ -500,6 +500,55 @@ void print_json_result(boolean success, tyvaluerecord *val, char *error) {
 # Should output valid JSON
 ```
 
+#### Step 1.5: Verify No Regressions (15-30 mins)
+
+**CRITICAL**: Before proceeding to Python test runner, verify CLI still works correctly.
+
+**Tests to run**:
+```bash
+# Build with changes
+make clean && make
+
+# Run full headless test suite
+./tools/run_headless_tests.sh
+
+# Manual smoke tests - existing behavior (no --output-json)
+./frontier-cli/frontier-cli -e "1+1"  # Should output "2"
+./frontier-cli/frontier-cli -e 'string.length("hello")'  # Should work (if bound)
+
+# New flag - verify JSON output works
+./frontier-cli/frontier-cli --output-json -e "1+1"  # Should output valid JSON
+./frontier-cli/frontier-cli --output-json -e "true"  # Should output boolean
+./frontier-cli/frontier-cli --output-json -e "5+3"  # Should output long
+```
+
+**Success criteria**:
+- ✅ All existing tests pass
+- ✅ CLI without --output-json works exactly as before
+- ✅ CLI with --output-json produces valid JSON
+- ✅ No segfaults or crashes
+- ✅ Error cases handled correctly
+
+**If tests fail**:
+- Debug Step 1 changes
+- Do NOT proceed to Step 2 until regression is fixed
+- Commit fixes before moving forward
+
+**What to verify**:
+```bash
+# Test 1: Normal output unchanged
+./frontier-cli/frontier-cli -e "1+1"
+# Expected: "2" (or whatever current format is)
+
+# Test 2: JSON output valid
+./frontier-cli/frontier-cli --output-json -e "1+1" | python3 -m json.tool
+# Expected: Valid JSON parses without error
+
+# Test 3: Error handling
+./frontier-cli/frontier-cli --output-json -e "undefined_var"
+# Expected: JSON with success=false, error message present
+```
+
 #### Step 2: Create Python Test Runner (3-4 hours)
 
 1. Create `tests/integration/runner.py` (code above)
@@ -597,11 +646,12 @@ make test-all          # Unit + integration
 | Task | Time | Deliverable |
 |------|------|-------------|
 | Step 1: JSON output in CLI | 2-3h | frontier-cli --output-json works |
+| Step 1.5: Regression testing | 15-30m | All existing tests pass |
 | Step 2: Python test runner | 3-4h | runner.py executes test cases |
 | Step 3: Initial test cases | 2-3h | string_verbs.yaml with 10 tests |
 | Step 4: Shell script wrapper | 1-2h | ./tools/run_integration_tests.sh |
 | Step 5: Makefile integration | 30m | make test-integration works |
-| **Total** | **9-12.5h** | **Full framework operational** |
+| **Total** | **9.25-13h** | **Full framework operational** |
 
 ---
 
@@ -972,6 +1022,30 @@ if "xml_contains" in self.expect:
 - ✅ **Maintainable**: Clear syntax, self-documenting
 - ✅ **Evolves gracefully**: Handles both one-shot and persistent modes
 - ✅ **Team familiarity**: Most developers know Python
+
+---
+
+## Known Limitations & Future Work
+
+### String Encoding (UTF-8 Migration)
+
+**Current State**: JSON output escaping assumes UTF-8 encoded strings. Frontier's runtime currently uses Pascal strings (bigstring/pstring) which are length-prefixed byte arrays, typically ASCII or MacRoman encoding.
+
+**Limitation**: Multi-byte UTF-8 sequences are passed through directly (valid per JSON RFC 8259), but invalid UTF-8 sequences may produce malformed JSON output.
+
+**Future Roadmap**: Runtime string migration to UTF-8 is planned (estimated: several months out). When implemented, this will:
+- Unify all runtime strings to UTF-8 encoding
+- Eliminate encoding ambiguity
+- Ensure robust JSON escaping for all character sets
+- Improve international character support
+
+**Current Mitigation**:
+- JSON escaping handles ASCII and valid UTF-8 correctly
+- Control characters are properly escaped
+- Test suite includes UTF-8 test cases to validate current behavior
+- Edge cases documented in code comments
+
+See `frontier-cli/cli_executor.c` (cli_print_json_escaped_string) for detailed documentation.
 
 ---
 
