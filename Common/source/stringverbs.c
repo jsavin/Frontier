@@ -1056,6 +1056,7 @@ static void grabnthfield (Handle htext, long fieldnum, byte chdelim, Handle *hfi
 
 
 
+#ifndef FRONTIER_HEADLESS
 static void macuppertext (byte *p, long ct) {
 	
 	/*
@@ -1115,6 +1116,7 @@ static void maclowertext (byte *p, long ct) {
 		LowercaseText ((Ptr) p, ct, smSystemScript);
 
 	} /*maclowertext*/
+#endif /* !FRONTIER_HEADLESS */
 
 
 
@@ -1125,8 +1127,12 @@ static void innercasehandle (Handle h) {
 
 	lockhandle (h);
 
+	#ifdef FRONTIER_HEADLESS
+	lowertext ((byte *) (*h), gethandlesize (h));
+	#else
 	maclowertext ((byte *) (*h), gethandlesize (h));
-	
+	#endif
+
 	unlockhandle (h);
 
 	handlepopleadingchars (h, ' ');
@@ -1306,7 +1312,7 @@ static boolean isCharsetAvailableVerb( hdltreenode hp1, tyvaluerecord *v )
 }
 
 
-static boolean stringfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vreturned, bigstring bserror) {
+boolean stringfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vreturned, bigstring bserror) {
 	
 	/*
 	bridges string.c with the language.  the name of the verb is bs, its first parameter
@@ -1754,9 +1760,13 @@ static boolean stringfunctionvalue (short token, hdltreenode hparam1, tyvaluerec
 				return (false);
 			
 			lockhandle (x);
-			
+
+			#ifdef FRONTIER_HEADLESS
+			uppertext ((byte *) (*x), gethandlesize (x));
+			#else
 			macuppertext ((byte *) (*x), gethandlesize (x));
-			
+			#endif
+
 			unlockhandle (x);
 			
 			return (setheapvalue (x, stringvaluetype, v));
@@ -1774,9 +1784,13 @@ static boolean stringfunctionvalue (short token, hdltreenode hparam1, tyvaluerec
 			*/
 			
 			lockhandle (x);
-		
+
+			#ifdef FRONTIER_HEADLESS
+			lowertext ((byte *) (*x), gethandlesize (x));
+			#else
 			maclowertext ((byte *) (*x), gethandlesize (x));
-			
+			#endif
+
 			unlockhandle (x);
 			
 			return (setheapvalue (x, stringvaluetype, v));
@@ -2329,19 +2343,24 @@ static boolean stringfunctionvalue (short token, hdltreenode hparam1, tyvaluerec
 	} /*stringfunctionvalue*/
 
 
+#ifndef FRONTIER_HEADLESS
+/* Windowed mode: register with stringfunctionvalue callback */
 boolean stringinitverbs (void) {
-	
+
 	/*
 	if you just changed or added some definitions in stringinitbuiltins, call
 	stringinstallbuiltins here.  rebuild, run the program, come back and change
 	it to stringloadbuiltins, rebuild and go on...
-	
-	12/18/90 dmb: no longer save hash tables in program file, so we just 
+
+	12/18/90 dmb: no longer save hash tables in program file, so we just
 	initialize the builtins directly.
-	
+
 	2.1b5 dmb: verb initialization is now resource-based
 	*/
-	
+
 	return (loadfunctionprocessor (idstringverbs, &stringfunctionvalue));
 	} /*stringinitverbs*/
+#endif /* !FRONTIER_HEADLESS */
+/* Note: Headless mode provides its own stringinitverbs() in tests/headless_string_verbs.c
+ * which registers with headless_string_verbs_callback instead. */
 

@@ -113,6 +113,7 @@ RUNTIME_SOURCES = \
     ../Common/source/tableexternal.c \
     ../Common/source/tablepack.c \
     ../Common/source/tableverbs.c \
+    ../Common/source/stringverbs.c \
     ../Common/source/headless_selection.c \
     ../Common/source/shell_api.c \
     ../Common/source/shell_api_headless.c
