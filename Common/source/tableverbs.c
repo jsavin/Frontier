@@ -1460,8 +1460,10 @@ boolean tablefunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vre
 							return (false);
 						}
 
-						bigstring cursor_key = "\0";
+						bigstring cursor_key;
 						boolean had_cursor = (ctx->cursor_key[0] > 0);
+
+						setemptystring(cursor_key);  /* Initialize to empty string */
 
 						if (had_cursor) {
 							copystring(ctx->cursor_key, cursor_key);
