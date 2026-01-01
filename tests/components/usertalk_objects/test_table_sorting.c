@@ -15,6 +15,76 @@
 
 #include "../../framework/test_framework.h"
 #include "../../../portable/cli_executor.h"
+#include "../../../Common/headers/lang.h"
+#include "../../../Common/headers/memory.h"
+#include "../../../Common/headers/strings.h"
+#include "../../../Common/headers/tablestructure.h"
+#include "../../../Common/headers/langexternal.h"
+#include <assert.h>
+#include <stdbool.h>
+
+// Global flag to track if runtime has been initialized
+static bool runtime_initialized = false;
+
+// Initialize the UserTalk runtime once
+static void initialize_runtime(void) {
+    if (runtime_initialized) return;
+
+    // Initialize subsystems in proper order
+    assert(initmemory());
+    initstrings();
+    assert(initlang());
+
+    // Allocate hash table stack BEFORE calling inittablestructure
+    // This is required for pushhashtable to work
+    extern hdltablestack hashtablestack;
+    printf("[init] hashtablestack before allocation: %p\n", (void*)hashtablestack);
+    if (hashtablestack == NULL) {
+        extern boolean newclearhandle(long, Handle*);
+        typedef struct tytablestack {
+            short toptables;
+            hdlhashtable stack[100];  // ct hash tables, from langhash.h
+        } tytablestack;
+        boolean ok = newclearhandle(sizeof(tytablestack), (Handle*)&hashtablestack);
+        printf("[init] newclearhandle returned: %d, hashtablestack=%p\n", ok, (void*)hashtablestack);
+        assert(ok);
+        (**hashtablestack).toptables = 0;
+    }
+
+    boolean initok = inittablestructure();  // This creates roottable and pushes it
+    printf("[init] inittablestructure returned: %d\n", initok);
+    assert(initok);
+
+    // Verify roottable and currenthashtable are set
+    extern hdlhashtable roottable;
+    extern hdlhashtable currenthashtable;
+    printf("[init] After inittablestructure: roottable=%p, currenthashtable=%p\n",
+           (void*)roottable, (void*)currenthashtable);
+
+    // If currenthashtable is still nil, manually set it
+    if (currenthashtable == NULL && roottable != NULL) {
+        printf("[init] WARNING: currenthashtable is nil, manually pushing roottable\n");
+        extern boolean pushhashtable(hdlhashtable);
+        boolean pushed = pushhashtable(roottable);
+        printf("[init] pushhashtable returned: %d, currenthashtable=%p\n",
+               pushed, (void*)currenthashtable);
+    }
+
+    assert(roottable != NULL);
+    assert(currenthashtable != NULL);
+
+    // Initialize verb tables
+    extern boolean langinitresources_headless(void);
+    extern boolean langinitverbs(void);
+    assert(langinitresources_headless());
+    assert(langinitverbs());
+
+    // Initialize WPText support
+    extern boolean wp_portable_init(void);
+    assert(wp_portable_init());
+
+    runtime_initialized = true;
+}
 
 // Test table.sortby() with valid column names
 bool test_sortby_valid_columns(void) {
@@ -300,6 +370,10 @@ bool test_sortby_mixed_types(void) {
 
 // Main test runner for table sorting tests
 int main(void) {
+    // Initialize UserTalk runtime
+    initialize_runtime();
+
+    // Initialize test framework
     test_framework_init();
 
     printf("\n=== Table Sorting Tests ===\n\n");

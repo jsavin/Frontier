@@ -81,3 +81,16 @@ void test_teardown(void) {
     // Global test teardown - can be overridden for specific test suites
     printf("Cleaning up test environment...\n");
 }
+
+// Wrapper functions for simpler test main() implementations
+void test_framework_init(void) {
+    test_init();
+}
+
+void test_framework_summary(void) {
+    test_summary();
+}
+
+int test_framework_get_exit_code(void) {
+    return (g_test_stats.failed_tests == 0) ? 0 : 1;
+}

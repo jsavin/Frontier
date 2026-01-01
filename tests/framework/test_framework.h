@@ -82,4 +82,16 @@ void test_summary(void);
 void test_setup(void);
 void test_teardown(void);
 
+// Wrapper functions for simpler test main() implementations
+void test_framework_init(void);
+void test_framework_summary(void);
+int test_framework_get_exit_code(void);
+
+// Macro for running individual tests
+#define RUN_TEST(test_func) \
+    do { \
+        test_case_t test = { #test_func, test_func }; \
+        run_test_case(&test); \
+    } while(0)
+
 #endif // TEST_FRAMEWORK_H

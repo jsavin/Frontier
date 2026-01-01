@@ -31,7 +31,7 @@ bool cli_compile_script(const char* script, usertalk_execution_t* exec) {
 bool cli_execute_compiled_script(usertalk_execution_t* exec) {
     if (!exec || !exec->script_source) return false;
     if (exec->result) { free(exec->result); exec->result = NULL; }
-    
+
     // Use real language engine when linked
     Handle htext = NewHandle(strlen(exec->script_source));
     if (!htext) return false;
@@ -43,11 +43,11 @@ bool cli_execute_compiled_script(usertalk_execution_t* exec) {
         DisposeHandle(htext);
         return false;
     }
-    tyvaluerecord vparams; setnilvalue(&vparams);
     tyvaluerecord vreturned; setnilvalue(&vreturned);
     bigstring empty; setstringlength(empty, 0);
     extern boolean langrunscriptcode(hdlhashtable, bigstring, hdltreenode, tyvaluerecord*, hdlhashtable, tyvaluerecord*);
-    boolean ok = langrunscriptcode(NULL, empty, hcode, &vparams, NULL, &vreturned);
+    // Pass NULL for vparams (no parameters), not a pointer to a nil value
+    boolean ok = langrunscriptcode(NULL, empty, hcode, NULL, NULL, &vreturned);
     if (!ok) return false;
     if (!coercetostring(&vreturned)) return false;
     bigstring bs; copyheapstring(vreturned.data.stringvalue, bs);
