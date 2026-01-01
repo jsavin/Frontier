@@ -1460,7 +1460,7 @@ boolean tablefunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vre
 							return (false);
 						}
 
-						bigstring cursor_key;
+						bigstring cursor_key = "\0";
 						boolean had_cursor = (ctx->cursor_key[0] > 0);
 
 						if (had_cursor) {
@@ -1504,7 +1504,6 @@ boolean tablefunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vre
 				langerrormessage(BIGSTRING("\x18" "No table is current"));
 				return (false);
 			}
-
 
 			/* Get sort order from hashtable (works in both modes) */
 			tablegetsortorder(htable, &ixcol);
