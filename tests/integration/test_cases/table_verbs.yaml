@@ -1,12 +1,12 @@
 # Integration tests for table verb operations
 # Tests basic table manipulation verbs available in headless mode
 #
-# Phase 1 priority table verbs (4 of 5 working in headless):
+# Phase 1 priority table verbs (5 operations covered):
 #   - table.assign() - Assign value to table element
 #   - table.getcursor() - Get current cursor position
 #   - table.goto() - Navigate to specific row
 #   - table.emptytable() - Clear all table contents
-#   - table.packtable() - DISABLED: Segfaults in headless (resource file dependency)
+#   - pack(table) - Serialize table to binary (replaces table.packtable in headless)
 
 tests:
   # Basic table operations
@@ -127,28 +127,27 @@ tests:
     expected_result: "0"
 
   # Table serialization
-  # NOTE: table.packtable is currently disabled - causes segfault in headless mode
-  # This verb writes to application resource file which doesn't exist in headless
-  # TODO: Either implement headless-safe version or document as unavailable
-  # - name: "table.packtable - simple table"
-  #   description: "Pack table executes without error"
-  #   script: |
-  #     lang.new(tableType, @t);
-  #     t.a = 1;
-  #     t.b = "test";
-  #     local(result = table.packtable(@t, "testpack"));
-  #     return typeof(result)
-  #   expected_success: true
-  #   expected_result: "booleanType"
+  # NOTE: table.packtable() writes to resource files and is not available in headless.
+  # Instead, use pack() builtin which works with any external type including tables.
+  - name: "pack table - simple table"
+    description: "Pack table to binary using pack() builtin"
+    script: |
+      lang.new(tableType, @t);
+      t.a = 1;
+      t.b = "test";
+      pack(t, @packedData);
+      return typeof(packedData)
+    expected_success: true
+    expected_result: "data"
 
-  # - name: "table.packtable - empty table"
-  #   description: "Packing empty table executes without error"
-  #   script: |
-  #     lang.new(tableType, @t);
-  #     local(result = table.packtable(@t, "emptypack"));
-  #     return typeof(result)
-  #   expected_success: true
-  #   expected_result: "booleanType"
+  - name: "pack table - empty table"
+    description: "Packing empty table returns binary data"
+    script: |
+      lang.new(tableType, @t);
+      pack(t, @packedData);
+      return typeof(packedData)
+    expected_success: true
+    expected_result: "data"
 
   # Error cases
   - name: "table.goto - invalid row (zero)"
