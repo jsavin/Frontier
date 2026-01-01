@@ -25,6 +25,7 @@ ERROR_MESSAGES = {
     'admin': "Can't {action} because it requires administrator privileges",
     'platform_windows': "Can't run Windows shell commands because they are not available on this platform",
     'platform_unsupported': "Can't {action} because it is not implemented on this platform",
+    'usertalk_layer': "Can't {verb_name} because it is not implemented in the kernel - it will be available via UserTalk glue scripts",
 }
 
 # Verb-specific stub configurations
@@ -71,9 +72,14 @@ STUB_CONFIGS = {
     # Category 1e: Admin-Required Operations (1 verb)
     ('clock', 'set'): (STUB_ERROR, {'template': 'admin', 'action': 'set system time'}),
 
-    # Category 1f: Platform-Specific Operations (2 verbs)
+    # Category 1f: Platform-Specific Operations (1 verb)
     ('sys', 'winshellcommand'): (STUB_ERROR, 'platform_windows'),
     ('file', 'mountservervolume'): (STUB_ERROR, {'template': 'platform_unsupported', 'action': 'mount server volumes'}),
+
+    # Category 1g: UserTalk Layer Implementation (2 verbs)
+    # These verbs should be implemented in UserTalk glue scripts, not in kernel
+    ('file', 'getspecialfolderpath'): (STUB_ERROR, {'template': 'usertalk_layer', 'verb_name': 'file.getSpecialFolderPath'}),
+    ('file', 'getsystemfolderpath'): (STUB_ERROR, {'template': 'usertalk_layer', 'verb_name': 'file.getSystemFolderPath'}),
 
     # Category 2: Silent Success (Noop) Implementation (3 verbs)
     ('table', 'getdisplaysettings'): (STUB_NOOP, None),
