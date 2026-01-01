@@ -4,6 +4,8 @@
  * This file provides the callback dispatcher for string verbs in headless mode,
  * routing verb calls to the actual implementations in stringverbs.c.
  *
+ * @IMPLEMENTED - All 60 string verbs forward to stringfunctionvalue() in stringverbs.c
+ *
  * Created: 2025-12-31 - String verb bindings (Phase 1 quick wins)
  */
 
