@@ -25,8 +25,10 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-// Global flag to track if runtime has been initialized
-// NOTE: Not thread-safe. If tests ever run in parallel, protect with mutex/once flag.
+// TEMPORARY: Test-only global state (NOT thread-safe)
+// TODO: Migrate to explicit test_context structure when test infrastructure is refactored
+// WARNING: DO NOT copy this pattern to production code - see CLAUDE.md "Global Mutable State"
+// This global is acceptable only because: (1) tests are single-threaded, (2) short-lived processes
 static bool runtime_initialized = false;
 
 // Initialize the UserTalk runtime once

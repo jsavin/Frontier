@@ -53,14 +53,24 @@ bool cli_execute_compiled_script(usertalk_execution_t* exec) {
     extern boolean langrunscriptcode(hdlhashtable, bigstring, hdltreenode, tyvaluerecord*, hdlhashtable, tyvaluerecord*);
     // Pass NULL for vparams (no parameters), not a pointer to a nil value
     boolean ok = langrunscriptcode(NULL, empty, hcode, NULL, NULL, &vreturned);
-    if (!ok) return false;
-    if (!coercetostring(&vreturned)) return false;
+    if (!ok) {
+        DisposeHandle(htext);
+        return false;
+    }
+    if (!coercetostring(&vreturned)) {
+        DisposeHandle(htext);
+        return false;
+    }
     bigstring bs; copyheapstring(vreturned.data.stringvalue, bs);
     size_t len = (size_t)stringlength(bs);
     exec->result = (char*)malloc(len+1);
-    if (!exec->result) return false;
+    if (!exec->result) {
+        DisposeHandle(htext);
+        return false;
+    }
     memcpy(exec->result, stringbaseaddress(bs), len);
     exec->result[len] = '\0';
+    DisposeHandle(htext);  // Clean up after successful execution
     return true;
 }
 
