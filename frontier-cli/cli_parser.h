@@ -25,6 +25,7 @@ typedef struct {
     char* system_root;          // Path to system/root database (e.g., Frontier.root)
     boolean verbose;            // Verbose output
     boolean debug;              // Debug output
+    boolean output_json;        // Output results as JSON
     boolean hydrate_system_root;// Hydrate system root tables flag
     boolean upgrade_system_root;// Upgrade system root to v7 without loading
     boolean show_help;          // Show help flag

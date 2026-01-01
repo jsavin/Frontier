@@ -240,6 +240,7 @@ static void print_usage(const char* program_name) {
     printf("  -e, --execute SCRIPT     Execute inline UserTalk script\n");
     printf("  --system-root PATH       Load system root database before executing scripts\n");
     printf("  --upgrade-system-root    Upgrade system root to v7 format (use with --system-root)\n");
+    printf("  --output-json            Output results in JSON format\n");
     printf("  -v, --verbose            Verbose output\n");
     printf("  --debug                  Debug mode\n");
     printf("  -h, --help               Show this help message\n");
@@ -264,6 +265,9 @@ static void print_usage(const char* program_name) {
     printf("\n");
     printf("  # Upgrade v6 database to v7 format\n");
     printf("  %s --system-root databases/Frontier-v6.root --upgrade-system-root\n", program_name);
+    printf("\n");
+    printf("  # Execute with JSON output (for automation/testing)\n");
+    printf("  %s --output-json -e \"1+1\"\n", program_name);
     printf("\n");
 
     printf("For detailed documentation, see: docs/CLI_USAGE_GUIDE.md\n");
@@ -861,10 +865,10 @@ static boolean execute_script_mode(void) {
 
     if (g_cli_options.script_file != NULL) {
         // Execute script file
-        return cli_execute_script_file(g_cli_options.script_file);
+        return cli_execute_script_file(g_cli_options.script_file, g_cli_options.output_json);
     } else if (g_cli_options.inline_script != NULL) {
         // Execute inline script
-        return cli_execute_inline_script(g_cli_options.inline_script);
+        return cli_execute_inline_script(g_cli_options.inline_script, g_cli_options.output_json);
     }
 
     return false;

@@ -18,8 +18,8 @@ void cli_free_execution_context(usertalk_execution_t* execution);
 boolean cli_compile_script(const char* script_code, usertalk_execution_t* execution);
 boolean cli_execute_compiled_script(usertalk_execution_t* execution);
 
-boolean cli_execute_script_file(const char* script_path);
-boolean cli_execute_inline_script(const char* script_code);
+boolean cli_execute_script_file(const char* script_path, boolean output_json);
+boolean cli_execute_inline_script(const char* script_code, boolean output_json);
 
 char* cli_get_execution_result_string(const usertalk_execution_t* execution);
 const char* cli_get_execution_error(const usertalk_execution_t* execution);
