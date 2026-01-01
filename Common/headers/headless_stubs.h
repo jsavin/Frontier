@@ -557,11 +557,12 @@ CGrafPtr GetWindowPort(WindowPtr window);
 #endif
 
 /* Cancoon (About Window) stub - not used in headless mode
- * odbengine.c has its own static cancoonglobals, so don't redefine it there */
+ * odbengine.c has its own static cancoonglobals, so don't redefine it there
+ * Definition is in headless_stubs.c */
 #ifndef ODBENGINE_PROVIDES_CANCOONGLOBALS
 struct tycancoonrecord;
 typedef struct tycancoonrecord **hdlcancoonrecord;
-static hdlcancoonrecord cancoonglobals = NULL;
+extern hdlcancoonrecord cancoonglobals;
 #endif
 
 #endif /* FRONTIER_HEADLESS */

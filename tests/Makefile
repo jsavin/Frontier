@@ -179,6 +179,7 @@ LANG_RUNTIME_SOURCES = \
     ../Common/source/db_writer_v7.c \
     ../Common/source/shell_api_headless.c \
     ../Common/source/shell_api.c \
+    ../Common/source/headless_stubs.c \
     ../portable/file_portable.c \
     headless_lang_runtime_more_stubs.c \
     headless_shellhooks.c \

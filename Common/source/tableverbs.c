@@ -1452,10 +1452,14 @@ boolean tablefunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vre
 						tablegetcursorinfo(&htable, bs, nil, nil);
 						(*v).data.flvalue = tablesetsortorder(htable, ixcol);
 					} else {
-					/* Headless mode - set sort and resort (hold context across operation) */
-					table_selection_context_t *ctx = table_selection_acquire();
+						/* Headless mode - set sort and resort (hold context across operation) */
+						table_selection_context_t *ctx = table_selection_acquire();
 
-					if (ctx != NULL) {
+						if (ctx == NULL) {
+							langerrormessage(BIGSTRING("\x20" "Failed to acquire table context"));
+							return (false);
+						}
+
 						bigstring cursor_key;
 						boolean had_cursor = (ctx->cursor_key[0] > 0);
 
@@ -1475,9 +1479,7 @@ boolean tablefunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vre
 						}
 
 						table_selection_release(ctx);
-					}
-
-					(*v).data.flvalue = true;
+						(*v).data.flvalue = true;
 					}
 
 					return (true);
@@ -1507,11 +1509,11 @@ boolean tablefunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vre
 			/* Get sort order from hashtable (works in both modes) */
 			tablegetsortorder(htable, &ixcol);
 
-		/* Validate column index */
-		if (ixcol < namecolumn || ixcol > kindcolumn) {
-			langerrormessage(BIGSTRING("\x1A" "Invalid sort order state"));
-			return (false);
-		}
+			/* Validate column index */
+			if (ixcol < namecolumn || ixcol > kindcolumn) {
+				langerrormessage(BIGSTRING("\x1A" "Invalid sort order state"));
+				return (false);
+			}
 
 			/* Map column index to name */
 			tablegettitlestring(ixcol, bs);

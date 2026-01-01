@@ -133,6 +133,7 @@ HEADLESS_STUBS = \
     $(TESTSDIR)/headless_lang_runtime_more_stubs.c \
     ../portable/file_portable.c \
     ../Common/source/file_portable_posix.c \
+    ../Common/source/headless_stubs.c \
     ../portable/appleevent_portable.c \
     ../portable/classic_handle.c \
     ../portable/script_portable.c \
