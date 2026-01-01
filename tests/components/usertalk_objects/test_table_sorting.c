@@ -25,15 +25,18 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-// TEMPORARY: Test-only global state (NOT thread-safe)
-// TODO: Migrate to explicit test_context structure when test infrastructure is refactored
-// WARNING: DO NOT copy this pattern to production code - see CLAUDE.md "Global Mutable State"
-// This global is acceptable only because: (1) tests are single-threaded, (2) short-lived processes
-static bool runtime_initialized = false;
+// Test runtime context - encapsulates test-specific global state
+// This pattern is preferred over bare static variables per CLAUDE.md architectural principles
+typedef struct {
+    bool runtime_initialized;
+    // Future: add other test-specific state here (e.g., test database paths, cleanup handlers)
+} test_runtime_context;
+
+static test_runtime_context g_test_context = {0};
 
 // Initialize the UserTalk runtime once
 static void initialize_runtime(void) {
-    if (runtime_initialized) return;
+    if (g_test_context.runtime_initialized) return;
 
     // Initialize subsystems in proper order
     if (!initmemory()) {
@@ -105,12 +108,12 @@ static void initialize_runtime(void) {
         exit(1);
     }
 
-    runtime_initialized = true;
+    g_test_context.runtime_initialized = true;
 }
 
 // Clean up UserTalk runtime resources
 static void cleanup_runtime(void) {
-    if (!runtime_initialized) return;
+    if (!g_test_context.runtime_initialized) return;
 
     // Dispose allocated resources in reverse order of initialization
     if (hashtablestack != NULL) {
@@ -127,7 +130,7 @@ static void cleanup_runtime(void) {
     // Since tests are short-lived processes, OS reclaims these resources on exit.
     // This should be addressed if shutdown functions are added to the runtime.
 
-    runtime_initialized = false;
+    g_test_context.runtime_initialized = false;
 }
 
 // Test table.sortby() with valid column names
@@ -369,7 +372,7 @@ bool test_row_numbers_after_sort(void) {
     // First item sorted by name should be "alpha" (t.alpha)
     // First item sorted by value should be "zebra" (t.zebra = 100)
     // Result format: "t.alpha,t.zebra" or similar
-    TEST_ASSERT(result != NULL && strlen(result) > 0, "Row numbers changed after sorting");
+    TEST_ASSERT(strlen(result) > 0, "Row numbers changed after sorting");
 
     cli_free(result);
     cli_free_execution_context(execution);
