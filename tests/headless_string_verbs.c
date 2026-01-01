@@ -19,7 +19,18 @@
 #include "tablestructure.h"
 #include "logging.h"
 
-/* Token enum for all verbs in the string processor - MUST match tystringtoken in stringverbs.c */
+/* Token enum for all verbs in the string processor
+ *
+ * CRITICAL: This enum MUST be kept in sync with tystringtoken in Common/source/stringverbs.c
+ *
+ * Verification:
+ *   1. Token order must match exactly (0=delete, 1=insert, etc.)
+ *   2. Token count must match ctstringverbs value (60 verbs)
+ *   3. Compile-time assertion below will fail if count mismatches
+ *
+ * To verify manually:
+ *   grep -c "func," Common/source/stringverbs.c | should equal 60
+ */
 enum {
 	deletefunc = 0,
 	insertfunc = 1,
@@ -80,8 +91,17 @@ enum {
 	macromantoutf8func = 56,
 	utf8tomacromanfunc = 57,
 	convertcharsetfunc = 58,
-	ischarsetavailablefunc = 59
+	ischarsetavailablefunc = 59,
+
+	/* Sentinel - must equal ctstringverbs from stringverbs.c */
+	stringv_count
 };
+
+/* Compile-time verification that token count matches stringverbs.c
+ * If this fails, the enum above is out of sync with tystringtoken */
+#define EXPECTED_STRING_VERB_COUNT 60
+_Static_assert(stringv_count == EXPECTED_STRING_VERB_COUNT,
+               "Token enum out of sync with stringverbs.c - update headless_string_verbs.c");
 
 /* Forward declaration of the actual implementation in stringverbs.c */
 extern boolean stringfunctionvalue(short token, hdltreenode hparam1, tyvaluerecord *vreturned, bigstring bserror);
