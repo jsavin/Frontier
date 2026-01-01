@@ -51,13 +51,16 @@ bool cli_execute_compiled_script(usertalk_execution_t* exec) {
     tyvaluerecord vreturned; setnilvalue(&vreturned);
     bigstring empty; setstringlength(empty, 0);
     extern boolean langrunscriptcode(hdlhashtable, bigstring, hdltreenode, tyvaluerecord*, hdlhashtable, tyvaluerecord*);
+    extern void langdisposecodetree(hdltreenode);
     // Pass NULL for vparams (no parameters), not a pointer to a nil value
     boolean ok = langrunscriptcode(NULL, empty, hcode, NULL, NULL, &vreturned);
     if (!ok) {
+        langdisposecodetree(hcode);
         DisposeHandle(htext);
         return false;
     }
     if (!coercetostring(&vreturned)) {
+        langdisposecodetree(hcode);
         DisposeHandle(htext);
         return false;
     }
@@ -65,11 +68,13 @@ bool cli_execute_compiled_script(usertalk_execution_t* exec) {
     size_t len = (size_t)stringlength(bs);
     exec->result = (char*)malloc(len+1);
     if (!exec->result) {
+        langdisposecodetree(hcode);
         DisposeHandle(htext);
         return false;
     }
     memcpy(exec->result, stringbaseaddress(bs), len);
     exec->result[len] = '\0';
+    langdisposecodetree(hcode);  // Clean up code tree
     DisposeHandle(htext);  // Clean up after successful execution
     return true;
 }
