@@ -30,9 +30,16 @@
 #include "logging.h"
 
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+/* Forward declarations from file_portable_posix.c */
+extern boolean portable_filefrompath(const bigstring bspath, bigstring bsfile);
+extern boolean portable_folderfrompath(const bigstring bspath, bigstring bsfolder);
 
 /* Frontier epoch offset: seconds between 1904 and 1970 */
 #define FRONTIER_EPOCH_OFFSET 2082844800LL
@@ -209,9 +216,11 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 
 		case fileisvolumefunc: {
 			/* In headless mode, we don't have Mac-style volumes - always return false */
+			tyfilespec fs;
+
 			flnextparamislast = true;
 
-			if (!getfilespecvalue(hparam1, 1, NULL))
+			if (!getfilespecvalue(hparam1, 1, &fs))
 				return false;
 
 			return setbooleanvalue(false, vreturned);
@@ -360,16 +369,430 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			return setbooleanvalue(true, vreturned);
 		}
 
-		case filedeletefunc:
-		case filerenamefunc:
-		case filecopyfunc:
-		case filemovefunc:
-		case filefrompathfunc:
-		case folderfrompathfunc:
-		case newfunc:
-		case newfolderfunc:
+		case filefrompathfunc: {
+			/* Extract filename from path */
+			bigstring bspath, bsfile;
+
+			flnextparamislast = true;
+
+			if (!getstringvalue(hparam1, 1, bspath))
+				return false;
+
+			if (!portable_filefrompath(bspath, bsfile))
+				return false;
+
+			return setstringvalue(bsfile, vreturned);
+		}
+
+		case folderfrompathfunc: {
+			/* Extract folder path from full path */
+			bigstring bspath, bsfolder;
+
+			flnextparamislast = true;
+
+			if (!getstringvalue(hparam1, 1, bspath))
+				return false;
+
+			if (!portable_folderfrompath(bspath, bsfolder))
+				return false;
+
+			return setstringvalue(bsfolder, vreturned);
+		}
+
+		case newfunc: {
+			/* Create new empty file */
+			tyfilespec fs;
+			char path[4096];
+			FILE *fp;
+
+			flnextparamislast = true;
+
+			if (!getfilespecvalue(hparam1, 1, &fs))
+				return false;
+
+			if (!filespec_to_cstring(&fs, path, sizeof(path)))
+				return false;
+
+			/* Create empty file */
+			fp = fopen(path, "wb");
+			if (!fp) {
+				copyctopstring("Can't create file", bserror);
+				return false;
+			}
+
+			fclose(fp);
+			return setbooleanvalue(true, vreturned);
+		}
+
+		case newfolderfunc: {
+			/* Create new directory */
+			tyfilespec fs;
+			char path[4096];
+
+			flnextparamislast = true;
+
+			if (!getfilespecvalue(hparam1, 1, &fs))
+				return false;
+
+			if (!filespec_to_cstring(&fs, path, sizeof(path)))
+				return false;
+
+			/* Create directory with standard permissions (0755) */
+			if (mkdir(path, 0755) != 0) {
+				if (errno == EEXIST) {
+					copyctopstring("Folder already exists", bserror);
+				} else {
+					copyctopstring("Can't create folder", bserror);
+				}
+				return false;
+			}
+
+			return setbooleanvalue(true, vreturned);
+		}
+
+		case filedeletefunc: {
+			/* Delete file or folder */
+			tyfilespec fs;
+			char path[4096];
+			struct stat st;
+
+			flnextparamislast = true;
+
+			if (!getfilespecvalue(hparam1, 1, &fs))
+				return false;
+
+			if (!filespec_to_cstring(&fs, path, sizeof(path)))
+				return false;
+
+			/* Check if path exists and whether it's a directory */
+			if (stat(path, &st) != 0) {
+				copyctopstring("File not found", bserror);
+				return false;
+			}
+
+			/* Use rmdir for directories, unlink for files */
+			if (S_ISDIR(st.st_mode)) {
+				if (rmdir(path) != 0) {
+					if (errno == ENOTEMPTY) {
+						copyctopstring("Folder not empty", bserror);
+					} else {
+						copyctopstring("Can't delete folder", bserror);
+					}
+					return false;
+				}
+			} else {
+				if (unlink(path) != 0) {
+					copyctopstring("Can't delete file", bserror);
+					return false;
+				}
+			}
+
+			return setbooleanvalue(true, vreturned);
+		}
+
+		case filerenamefunc: {
+			/* Rename file or folder */
+			tyfilespec fsold, fsnew;
+			char oldpath[4096], newpath[4096];
+
+			if (!getfilespecvalue(hparam1, 1, &fsold))
+				return false;
+
+			flnextparamislast = true;
+
+			if (!getfilespecvalue(hparam1, 2, &fsnew))
+				return false;
+
+			if (!filespec_to_cstring(&fsold, oldpath, sizeof(oldpath)))
+				return false;
+
+			if (!filespec_to_cstring(&fsnew, newpath, sizeof(newpath)))
+				return false;
+
+			/* Use rename() system call */
+			if (rename(oldpath, newpath) != 0) {
+				if (errno == ENOENT) {
+					copyctopstring("File not found", bserror);
+				} else if (errno == EEXIST || errno == ENOTEMPTY) {
+					copyctopstring("Destination already exists", bserror);
+				} else if (errno == EXDEV) {
+					copyctopstring("Can't rename across volumes", bserror);
+				} else {
+					copyctopstring("Can't rename file", bserror);
+				}
+				return false;
+			}
+
+			return setbooleanvalue(true, vreturned);
+		}
+
+		case filecopyfunc: {
+			/* Copy file from source to destination */
+			tyfilespec fssrc, fsdest;
+			char srcpath[4096], destpath[4096];
+			FILE *fpsrc = NULL, *fpdest = NULL;
+			char buffer[8192];
+			size_t bytes_read;
+			struct stat st;
+			boolean success = false;
+
+			if (!getfilespecvalue(hparam1, 1, &fssrc))
+				return false;
+
+			flnextparamislast = true;
+
+			if (!getfilespecvalue(hparam1, 2, &fsdest))
+				return false;
+
+			if (!filespec_to_cstring(&fssrc, srcpath, sizeof(srcpath)))
+				return false;
+
+			if (!filespec_to_cstring(&fsdest, destpath, sizeof(destpath)))
+				return false;
+
+			/* Check source exists and get permissions */
+			if (stat(srcpath, &st) != 0) {
+				copyctopstring("Source file not found", bserror);
+				return false;
+			}
+
+			/* Open source for reading */
+			fpsrc = fopen(srcpath, "rb");
+			if (!fpsrc) {
+				copyctopstring("Can't open source file", bserror);
+				return false;
+			}
+
+			/* Open destination for writing */
+			fpdest = fopen(destpath, "wb");
+			if (!fpdest) {
+				fclose(fpsrc);
+				copyctopstring("Can't create destination file", bserror);
+				return false;
+			}
+
+			/* Copy data in chunks */
+			while ((bytes_read = fread(buffer, 1, sizeof(buffer), fpsrc)) > 0) {
+				if (fwrite(buffer, 1, bytes_read, fpdest) != bytes_read) {
+					copyctopstring("Write error during copy", bserror);
+					goto cleanup;
+				}
+			}
+
+			/* Check for read error */
+			if (ferror(fpsrc)) {
+				copyctopstring("Write error during copy", bserror);
+				goto cleanup;
+			}
+
+			success = true;
+
+		cleanup:
+			if (fpsrc)
+				fclose(fpsrc);
+			if (fpdest)
+				fclose(fpdest);
+
+			/* Preserve permissions on success */
+			if (success) {
+				chmod(destpath, st.st_mode & 0777);
+			}
+
+			if (!success)
+				return false;
+
+			return setbooleanvalue(true, vreturned);
+		}
+
+		case filemovefunc: {
+			/* Move file from source to destination */
+			tyfilespec fssrc, fsdest;
+			char srcpath[4096], destpath[4096];
+			struct stat st;
+
+			if (!getfilespecvalue(hparam1, 1, &fssrc))
+				return false;
+
+			flnextparamislast = true;
+
+			if (!getfilespecvalue(hparam1, 2, &fsdest))
+				return false;
+
+			if (!filespec_to_cstring(&fssrc, srcpath, sizeof(srcpath)))
+				return false;
+
+			if (!filespec_to_cstring(&fsdest, destpath, sizeof(destpath)))
+				return false;
+
+			/* Check source exists */
+			if (stat(srcpath, &st) != 0) {
+				copyctopstring("Source file not found", bserror);
+				return false;
+			}
+
+			/* Try rename() first (efficient for same volume) */
+			if (rename(srcpath, destpath) == 0) {
+				return setbooleanvalue(true, vreturned);
+			}
+
+			/* If cross-volume (EXDEV), fall back to copy+delete */
+			if (errno == EXDEV) {
+				FILE *fpsrc = NULL, *fpdest = NULL;
+				char buffer[8192];
+				size_t bytes_read;
+
+				/* Open source for reading */
+				fpsrc = fopen(srcpath, "rb");
+				if (!fpsrc) {
+					copyctopstring("Can't open source file", bserror);
+					return false;
+				}
+
+				/* Open destination for writing */
+				fpdest = fopen(destpath, "wb");
+				if (!fpdest) {
+					fclose(fpsrc);
+					copyctopstring("Can't create destination file", bserror);
+					return false;
+				}
+
+				/* Copy data */
+				while ((bytes_read = fread(buffer, 1, sizeof(buffer), fpsrc)) > 0) {
+					if (fwrite(buffer, 1, bytes_read, fpdest) != bytes_read) {
+						copyctopstring("Write error during move", bserror);
+						fclose(fpsrc);
+						fclose(fpdest);
+						return false;
+					}
+				}
+
+				fclose(fpsrc);
+				fclose(fpdest);
+
+				/* Check for read error */
+				if (ferror(fpsrc)) {
+					copyctopstring("Read error during move", bserror);
+					return false;
+				}
+
+				/* Preserve permissions */
+				chmod(destpath, st.st_mode & 0777);
+
+				/* Delete source on success */
+				if (unlink(srcpath) != 0) {
+					copyctopstring("Can't delete source after copy", bserror);
+					return false;
+				}
+
+				return setbooleanvalue(true, vreturned);
+			}
+
+			/* Other rename errors */
+			if (errno == ENOENT) {
+				copyctopstring("File not found", bserror);
+			} else if (errno == EEXIST || errno == ENOTEMPTY) {
+				copyctopstring("Destination already exists", bserror);
+			} else {
+				copyctopstring("Can't move file", bserror);
+			}
+
+			return false;
+		}
+
 		case getsystempathfunc:
-		case getspecialpathfunc:
+		case getspecialpathfunc: {
+			/* Get system or special folder path - map OSType codes to Unix paths */
+			OSType foldertype;
+			const char *folderpath = NULL;
+			char resolved[4096];
+			const char *home;
+			bigstring bspath;
+			tyfilespec fs;
+
+			flnextparamislast = true;
+
+			if (!getostypevalue(hparam1, 1, &foldertype))
+				return false;
+
+			/* Get home directory for user-specific paths */
+			home = getenv("HOME");
+			if (!home)
+				home = "/tmp";
+
+			/* Map OSType codes to Unix paths */
+			switch (foldertype) {
+				case 'desk':  /* Desktop */
+					snprintf(resolved, sizeof(resolved), "%s/Desktop", home);
+					folderpath = resolved;
+					break;
+
+				case 'docs':  /* Documents */
+					snprintf(resolved, sizeof(resolved), "%s/Documents", home);
+					folderpath = resolved;
+					break;
+
+				case 'temp':  /* Temporary Items */
+					folderpath = "/tmp";
+					break;
+
+				case 'pref':  /* Preferences */
+					#ifdef __APPLE__
+						snprintf(resolved, sizeof(resolved), "%s/Library/Preferences", home);
+					#else
+						snprintf(resolved, sizeof(resolved), "%s/.config", home);
+					#endif
+					folderpath = resolved;
+					break;
+
+				case 'home':  /* Home directory */
+					folderpath = home;
+					break;
+
+				case 'strt':  /* Startup (system boot directory) */
+					#ifdef __APPLE__
+						folderpath = "/Library/StartupItems";
+					#else
+						folderpath = "/etc/init.d";
+					#endif
+					break;
+
+				case 'apps':  /* Applications */
+					#ifdef __APPLE__
+						folderpath = "/Applications";
+					#else
+						folderpath = "/usr/bin";
+					#endif
+					break;
+
+				case 'font':  /* Fonts */
+					#ifdef __APPLE__
+						snprintf(resolved, sizeof(resolved), "%s/Library/Fonts", home);
+					#else
+						snprintf(resolved, sizeof(resolved), "%s/.fonts", home);
+					#endif
+					folderpath = resolved;
+					break;
+
+				default:
+					/* Unknown folder type - return home directory as fallback */
+					folderpath = home;
+					break;
+			}
+
+			/* Convert C string to bigstring */
+			size_t len = strlen(folderpath);
+			if (len > 255)
+				len = 255;
+			bspath[0] = (unsigned char)len;
+			memcpy(&bspath[1], folderpath, len);
+
+			/* Convert to filespec and return */
+			if (!pathtofilespec(bspath, &fs))
+				return false;
+
+			return setfilespecvalue(&fs, vreturned);
+		}
+
 		case getpathcharfunc: {
 			/* Return '/' as the path separator character */
 			if (!langcheckparamcount(hparam1, 0))

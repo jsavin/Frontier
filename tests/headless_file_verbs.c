@@ -232,8 +232,8 @@ boolean fileinitverbs(void) {
 	ADD_VERB(BIGSTRING("\007setpath"), filesetpathfunc);
 	ADD_VERB(BIGSTRING("\014filefrompath"), filefrompathfunc);
 	ADD_VERB(BIGSTRING("\016folderfrompath"), folderfrompathfunc);
-	ADD_VERB(BIGSTRING("\024getsystemfolderpath"), getsystempathfunc);
-	ADD_VERB(BIGSTRING("\025getspecialfolderpath"), getspecialpathfunc);
+	ADD_VERB(BIGSTRING("\023getsystemfolderpath"), getsystempathfunc);
+	ADD_VERB(BIGSTRING("\024getspecialfolderpath"), getspecialpathfunc);
 	ADD_VERB(BIGSTRING("\003new"), newfunc);
 	ADD_VERB(BIGSTRING("\011newfolder"), newfolderfunc);
 	ADD_VERB(BIGSTRING("\010newalias"), newaliasfunc);
