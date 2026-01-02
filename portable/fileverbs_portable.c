@@ -134,6 +134,9 @@ static short allocate_filehandle(FILE *fp) {
 			filetable[i].refnum = candidate;
 			filetable[i].inuse = true;
 			next_refnum = candidate + 1;
+			if (next_refnum <= 0) {
+				next_refnum = 1;  /* Wrap immediately to avoid negative values */
+			}
 
 			result = filetable[i].refnum;
 			break;
@@ -195,28 +198,32 @@ static boolean release_filehandle(short refnum) {
  * 3. Resources are properly released
  */
 static void cleanup_file_handles(void) {
+	FILE *fps_to_close[MAX_OPEN_FILES];
+	int count = 0;
 	int i;
-	int closed_count = 0;
 
+	/* Phase 1: Collect FILE* pointers under mutex */
 	pthread_mutex_lock(&filetable_mutex);
-
 	for (i = 0; i < MAX_OPEN_FILES; i++) {
 		if (filetable[i].inuse) {
 			log_debug(LOG_COMP_LANG, "cleanup_file_handles: closing refnum=%d (fp=%p)",
 			         filetable[i].refnum, (void*)filetable[i].fp);
 
-			fclose(filetable[i].fp);  /* Flushes buffers, releases locks */
+			fps_to_close[count++] = filetable[i].fp;
 			filetable[i].inuse = false;
 			filetable[i].fp = NULL;
-			closed_count++;
 		}
 	}
-
 	pthread_mutex_unlock(&filetable_mutex);
 
-	if (closed_count > 0) {
+	/* Phase 2: Close handles without holding mutex (avoid blocking I/O under lock) */
+	for (i = 0; i < count; i++) {
+		fclose(fps_to_close[i]);  /* Flushes buffers, releases locks */
+	}
+
+	if (count > 0) {
 		log_warn(LOG_COMP_LANG, "cleanup_file_handles: closed %d leaked file handle(s)",
-		        closed_count);
+		        count);
 	}
 }
 
@@ -762,7 +769,11 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 
 			/* Preserve permissions on success */
 			if (success) {
-				chmod(destpath, st.st_mode & 0777);
+				if (chmod(destpath, st.st_mode & 0777) != 0) {
+					log_warn(LOG_COMP_LANG, "file.copy: chmod failed for %s (errno=%d)",
+					        destpath, errno);
+					/* Continue - copy succeeded even if permission preservation failed */
+				}
 			}
 
 			if (!success)
@@ -845,7 +856,11 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 				fclose(fpdest);
 
 				/* Preserve permissions */
-				chmod(destpath, st.st_mode & 0777);
+				if (chmod(destpath, st.st_mode & 0777) != 0) {
+					log_warn(LOG_COMP_LANG, "file.move: chmod failed for %s (errno=%d)",
+					        destpath, errno);
+					/* Continue - copy succeeded even if permission preservation failed */
+				}
 
 				/* Delete source on success */
 				if (unlink(srcpath) != 0) {
@@ -1193,10 +1208,9 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 				return false;
 			}
 
-			/* Read until newline or EOF (check length first to avoid overflow) */
+			/* Read until newline or EOF (pre-increment ensures max 255 bytes) */
 			while (len < 255 && (ch = fgetc(fp)) != EOF && ch != '\n' && ch != '\r') {
-				bsline[len + 1] = (unsigned char)ch;
-				len++;
+				bsline[++len] = (unsigned char)ch;  /* Pre-increment: writes to indices 1-255 */
 			}
 
 			/* Handle CR/LF combinations */
