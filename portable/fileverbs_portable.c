@@ -74,6 +74,69 @@ static boolean filespec_to_cstring(const ptrfilespec fs, char *path, size_t path
 	return true;
 }
 
+/* File handle table for open files */
+#define MAX_OPEN_FILES 64
+
+typedef struct {
+	FILE *fp;
+	short refnum;
+	boolean inuse;
+} filehandle;
+
+static filehandle filetable[MAX_OPEN_FILES];
+static short next_refnum = 1;
+
+/*
+ * Allocate a file handle and return refnum
+ */
+static short allocate_filehandle(FILE *fp) {
+	int i;
+
+	for (i = 0; i < MAX_OPEN_FILES; i++) {
+		if (!filetable[i].inuse) {
+			filetable[i].fp = fp;
+			filetable[i].refnum = next_refnum++;
+			filetable[i].inuse = true;
+			return filetable[i].refnum;
+		}
+	}
+
+	return 0; /* No free handles */
+}
+
+/*
+ * Get FILE* from refnum
+ */
+static FILE* get_filepointer(short refnum) {
+	int i;
+
+	for (i = 0; i < MAX_OPEN_FILES; i++) {
+		if (filetable[i].inuse && filetable[i].refnum == refnum) {
+			return filetable[i].fp;
+		}
+	}
+
+	return NULL;
+}
+
+/*
+ * Release file handle
+ */
+static boolean release_filehandle(short refnum) {
+	int i;
+
+	for (i = 0; i < MAX_OPEN_FILES; i++) {
+		if (filetable[i].inuse && filetable[i].refnum == refnum) {
+			filetable[i].inuse = false;
+			filetable[i].fp = NULL;
+			filetable[i].refnum = 0;
+			return true;
+		}
+	}
+
+	return false;
+}
+
 /* Token enum - MUST match tyfiletoken in fileverbs.c and headless_file_verbs.c */
 enum {
 	filecreatedfunc = 0,
@@ -801,22 +864,578 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			return setstringvalue(BIGSTRING("\x01/"), vreturned);
 		}
 
-		/* Tier 2: File I/O operations (14 verbs) - TODO Phase 3 */
+		/* Tier 2: File I/O operations (14 verbs) */
 
-		case openfilefunc:
-		case closefilefunc:
-		case endoffilefunc:
-		case setendoffilefunc:
-		case getendoffilefunc:
-		case setpositionfunc:
-		case getpositionfunc:
-		case readlinefunc:
-		case writelinefunc:
-		case readfunc:
-		case writefunc:
-		case readwholefilefunc:
-		case writewholefilefunc:
-		case comparefunc:
+		case openfilefunc: {
+			/* Open file and return refnum */
+			tyfilespec fs;
+			char path[4096];
+			char mode[4] = "r+b"; /* Default: read/write binary */
+			boolean flreadonly = false;
+			FILE *fp;
+			short refnum;
+
+			if (!getfilespecvalue(hparam1, 1, &fs))
+				return false;
+
+			/* Optional second parameter: readonly flag */
+			if (langgetparamcount(hparam1) >= 2) {
+				flnextparamislast = true;
+				if (!getbooleanvalue(hparam1, 2, &flreadonly))
+					return false;
+			} else {
+				flnextparamislast = true;
+			}
+
+			if (!filespec_to_cstring(&fs, path, sizeof(path)))
+				return false;
+
+			/* Set mode based on readonly flag */
+			if (flreadonly) {
+				fp = fopen(path, "rb");
+			} else {
+				/* Try r+b first, fall back to w+b if file doesn't exist */
+				fp = fopen(path, "r+b");
+				if (!fp) {
+					fp = fopen(path, "w+b");
+				}
+			}
+
+			if (!fp) {
+				copyctopstring("Can't open file", bserror);
+				return false;
+			}
+
+			refnum = allocate_filehandle(fp);
+			if (refnum == 0) {
+				fclose(fp);
+				copyctopstring("Too many open files", bserror);
+				return false;
+			}
+
+			return setlongvalue(refnum, vreturned);
+		}
+
+		case closefilefunc: {
+			/* Close file by refnum */
+			long refnum;
+			FILE *fp;
+
+			flnextparamislast = true;
+
+			if (!getlongvalue(hparam1, 1, &refnum))
+				return false;
+
+			fp = get_filepointer((short)refnum);
+			if (!fp) {
+				copyctopstring("Invalid file refnum", bserror);
+				return false;
+			}
+
+			fclose(fp);
+			release_filehandle((short)refnum);
+
+			return setbooleanvalue(true, vreturned);
+		}
+
+		case endoffilefunc: {
+			/* Check if at end of file */
+			long refnum;
+			FILE *fp;
+
+			flnextparamislast = true;
+
+			if (!getlongvalue(hparam1, 1, &refnum))
+				return false;
+
+			fp = get_filepointer((short)refnum);
+			if (!fp) {
+				copyctopstring("Invalid file refnum", bserror);
+				return false;
+			}
+
+			return setbooleanvalue(feof(fp) != 0, vreturned);
+		}
+
+		case setendoffilefunc: {
+			/* Truncate file at current position */
+			long refnum;
+			FILE *fp;
+			long pos;
+			int fd;
+
+			flnextparamislast = true;
+
+			if (!getlongvalue(hparam1, 1, &refnum))
+				return false;
+
+			fp = get_filepointer((short)refnum);
+			if (!fp) {
+				copyctopstring("Invalid file refnum", bserror);
+				return false;
+			}
+
+			pos = ftell(fp);
+			if (pos < 0) {
+				copyctopstring("Can't get file position", bserror);
+				return false;
+			}
+
+			fd = fileno(fp);
+			if (ftruncate(fd, pos) != 0) {
+				copyctopstring("Can't truncate file", bserror);
+				return false;
+			}
+
+			return setbooleanvalue(true, vreturned);
+		}
+
+		case getendoffilefunc: {
+			/* Get file size */
+			long refnum;
+			FILE *fp;
+			long current, size;
+
+			flnextparamislast = true;
+
+			if (!getlongvalue(hparam1, 1, &refnum))
+				return false;
+
+			fp = get_filepointer((short)refnum);
+			if (!fp) {
+				copyctopstring("Invalid file refnum", bserror);
+				return false;
+			}
+
+			current = ftell(fp);
+			fseek(fp, 0, SEEK_END);
+			size = ftell(fp);
+			fseek(fp, current, SEEK_SET);
+
+			return setlongvalue(size, vreturned);
+		}
+
+		case setpositionfunc: {
+			/* Set file position */
+			long refnum, position;
+			FILE *fp;
+
+			if (!getlongvalue(hparam1, 1, &refnum))
+				return false;
+
+			flnextparamislast = true;
+
+			if (!getlongvalue(hparam1, 2, &position))
+				return false;
+
+			fp = get_filepointer((short)refnum);
+			if (!fp) {
+				copyctopstring("Invalid file refnum", bserror);
+				return false;
+			}
+
+			if (fseek(fp, position, SEEK_SET) != 0) {
+				copyctopstring("Can't set file position", bserror);
+				return false;
+			}
+
+			return setbooleanvalue(true, vreturned);
+		}
+
+		case getpositionfunc: {
+			/* Get current file position */
+			long refnum;
+			FILE *fp;
+			long position;
+
+			flnextparamislast = true;
+
+			if (!getlongvalue(hparam1, 1, &refnum))
+				return false;
+
+			fp = get_filepointer((short)refnum);
+			if (!fp) {
+				copyctopstring("Invalid file refnum", bserror);
+				return false;
+			}
+
+			position = ftell(fp);
+			if (position < 0) {
+				copyctopstring("Can't get file position", bserror);
+				return false;
+			}
+
+			return setlongvalue(position, vreturned);
+		}
+
+		case readlinefunc: {
+			/* Read a line from file */
+			long refnum;
+			FILE *fp;
+			bigstring bsline;
+			int ch;
+			int len = 0;
+
+			flnextparamislast = true;
+
+			if (!getlongvalue(hparam1, 1, &refnum))
+				return false;
+
+			fp = get_filepointer((short)refnum);
+			if (!fp) {
+				copyctopstring("Invalid file refnum", bserror);
+				return false;
+			}
+
+			/* Read until newline or EOF */
+			while ((ch = fgetc(fp)) != EOF && ch != '\n' && ch != '\r' && len < 255) {
+				bsline[len + 1] = (unsigned char)ch;
+				len++;
+			}
+
+			/* Handle CR/LF combinations */
+			if (ch == '\r') {
+				int next = fgetc(fp);
+				if (next != '\n' && next != EOF) {
+					ungetc(next, fp);
+				}
+			}
+
+			bsline[0] = (unsigned char)len;
+
+			return setstringvalue(bsline, vreturned);
+		}
+
+		case writelinefunc: {
+			/* Write a line to file */
+			long refnum;
+			FILE *fp;
+			bigstring bsline;
+
+			if (!getlongvalue(hparam1, 1, &refnum))
+				return false;
+
+			flnextparamislast = true;
+
+			if (!getstringvalue(hparam1, 2, bsline))
+				return false;
+
+			fp = get_filepointer((short)refnum);
+			if (!fp) {
+				copyctopstring("Invalid file refnum", bserror);
+				return false;
+			}
+
+			/* Write string */
+			if (bsline[0] > 0) {
+				if (fwrite(&bsline[1], 1, bsline[0], fp) != bsline[0]) {
+					copyctopstring("Write error", bserror);
+					return false;
+				}
+			}
+
+			/* Write newline */
+			if (fputc('\n', fp) == EOF) {
+				copyctopstring("Write error", bserror);
+				return false;
+			}
+
+			return setbooleanvalue(true, vreturned);
+		}
+
+		case readfunc: {
+			/* Read bytes from file */
+			long refnum, count;
+			FILE *fp;
+			Handle hdata;
+			unsigned char *buffer;
+			size_t bytesread;
+
+			if (!getlongvalue(hparam1, 1, &refnum))
+				return false;
+
+			flnextparamislast = true;
+
+			if (!getlongvalue(hparam1, 2, &count))
+				return false;
+
+			fp = get_filepointer((short)refnum);
+			if (!fp) {
+				copyctopstring("Invalid file refnum", bserror);
+				return false;
+			}
+
+			if (count <= 0) {
+				return setstringvalue(BIGSTRING("\x00"), vreturned);
+			}
+
+			/* For small reads (<=255 bytes), return as string */
+			if (count <= 255) {
+				bigstring bs;
+				bytesread = fread(&bs[1], 1, count, fp);
+				bs[0] = (unsigned char)bytesread;
+				return setstringvalue(bs, vreturned);
+			}
+
+			/* For larger reads, return as binary */
+			if (!newhandle(count, &hdata)) {
+				copyctopstring("Out of memory", bserror);
+				return false;
+			}
+
+			lockhandle(hdata);
+			buffer = (unsigned char *)*hdata;
+			bytesread = fread(buffer, 1, count, fp);
+			unlockhandle(hdata);
+
+			if (bytesread == 0) {
+				disposehandle(hdata);
+				return setstringvalue(BIGSTRING("\x00"), vreturned);
+			}
+
+			return setbinaryvalue(hdata, bytesread, vreturned);
+		}
+
+		case writefunc: {
+			/* Write bytes to file */
+			long refnum;
+			FILE *fp;
+			Handle hdata;
+			long datasize;
+			bigstring bs;
+
+			if (!getlongvalue(hparam1, 1, &refnum))
+				return false;
+
+			flnextparamislast = true;
+
+			/* Get data parameter value */
+			if (!getexempttextvalue(hparam1, 2, vreturned))
+				return false;
+
+			fp = get_filepointer((short)refnum);
+			if (!fp) {
+				copyctopstring("Invalid file refnum", bserror);
+				return false;
+			}
+
+			/* Handle string data */
+			if (vreturned->valuetype == stringvaluetype) {
+				pullstringvalue(vreturned, bs);
+				if (bs[0] > 0) {
+					if (fwrite(&bs[1], 1, bs[0], fp) != bs[0]) {
+						copyctopstring("Write error", bserror);
+						return false;
+					}
+				}
+				return setlongvalue(bs[0], vreturned);
+			}
+
+			/* Handle binary data */
+			if (vreturned->valuetype == binaryvaluetype) {
+				hdata = vreturned->data.binaryvalue;
+				datasize = gethandlesize(hdata);
+
+				lockhandle(hdata);
+				if (fwrite(*hdata, 1, datasize, fp) != datasize) {
+					unlockhandle(hdata);
+					copyctopstring("Write error", bserror);
+					return false;
+				}
+				unlockhandle(hdata);
+
+				return setlongvalue(datasize, vreturned);
+			}
+
+			copyctopstring("Data must be string or binary", bserror);
+			return false;
+		}
+
+		case readwholefilefunc: {
+			/* Read entire file into string/binary */
+			tyfilespec fs;
+			char path[4096];
+			FILE *fp = NULL;
+			long filesize;
+			Handle hdata;
+			unsigned char *buffer;
+			bigstring bsdata;
+			size_t bytesread;
+
+			flnextparamislast = true;
+
+			if (!getfilespecvalue(hparam1, 1, &fs))
+				return false;
+
+			if (!filespec_to_cstring(&fs, path, sizeof(path)))
+				return false;
+
+			fp = fopen(path, "rb");
+			if (!fp) {
+				copyctopstring("Can't open file", bserror);
+				return false;
+			}
+
+			/* Get file size */
+			fseek(fp, 0, SEEK_END);
+			filesize = ftell(fp);
+			fseek(fp, 0, SEEK_SET);
+
+			/* Empty file */
+			if (filesize == 0) {
+				fclose(fp);
+				return setstringvalue(BIGSTRING("\x00"), vreturned);
+			}
+
+			/* Small file - return as string */
+			if (filesize <= 255) {
+				bytesread = fread(&bsdata[1], 1, filesize, fp);
+				fclose(fp);
+				bsdata[0] = (unsigned char)bytesread;
+				return setstringvalue(bsdata, vreturned);
+			}
+
+			/* Large file - return as binary */
+			if (!newhandle(filesize, &hdata)) {
+				fclose(fp);
+				copyctopstring("Out of memory", bserror);
+				return false;
+			}
+
+			lockhandle(hdata);
+			buffer = (unsigned char *)*hdata;
+			bytesread = fread(buffer, 1, filesize, fp);
+			unlockhandle(hdata);
+			fclose(fp);
+
+			if (bytesread != filesize) {
+				disposehandle(hdata);
+				copyctopstring("Read error", bserror);
+				return false;
+			}
+
+			return setbinaryvalue(hdata, filesize, vreturned);
+		}
+
+		case writewholefilefunc: {
+			/* Write entire string/binary to file */
+			tyfilespec fs;
+			char path[4096];
+			FILE *fp = NULL;
+			Handle hdata;
+			long datasize;
+			bigstring bs;
+
+			if (!getfilespecvalue(hparam1, 1, &fs))
+				return false;
+
+			flnextparamislast = true;
+
+			/* Get data parameter */
+			if (!getexempttextvalue(hparam1, 2, vreturned))
+				return false;
+
+			if (!filespec_to_cstring(&fs, path, sizeof(path)))
+				return false;
+
+			fp = fopen(path, "wb");
+			if (!fp) {
+				copyctopstring("Can't create file", bserror);
+				return false;
+			}
+
+			/* Handle string data */
+			if (vreturned->valuetype == stringvaluetype) {
+				pullstringvalue(vreturned, bs);
+				if (bs[0] > 0) {
+					if (fwrite(&bs[1], 1, bs[0], fp) != bs[0]) {
+						fclose(fp);
+						copyctopstring("Write error", bserror);
+						return false;
+					}
+				}
+				fclose(fp);
+				return setbooleanvalue(true, vreturned);
+			}
+
+			/* Handle binary data */
+			if (vreturned->valuetype == binaryvaluetype) {
+				hdata = vreturned->data.binaryvalue;
+				datasize = gethandlesize(hdata);
+
+				lockhandle(hdata);
+				if (fwrite(*hdata, 1, datasize, fp) != datasize) {
+					unlockhandle(hdata);
+					fclose(fp);
+					copyctopstring("Write error", bserror);
+					return false;
+				}
+				unlockhandle(hdata);
+				fclose(fp);
+
+				return setbooleanvalue(true, vreturned);
+			}
+
+			fclose(fp);
+			copyctopstring("Data must be string or binary", bserror);
+			return false;
+		}
+
+		case comparefunc: {
+			/* Compare two files byte-by-byte - returns true if identical */
+			tyfilespec fs1, fs2;
+			char path1[4096], path2[4096];
+			FILE *fp1 = NULL, *fp2 = NULL;
+			int ch1, ch2;
+			boolean equal = true;
+
+			if (!getfilespecvalue(hparam1, 1, &fs1))
+				return false;
+
+			flnextparamislast = true;
+
+			if (!getfilespecvalue(hparam1, 2, &fs2))
+				return false;
+
+			if (!filespec_to_cstring(&fs1, path1, sizeof(path1)))
+				return false;
+
+			if (!filespec_to_cstring(&fs2, path2, sizeof(path2)))
+				return false;
+
+			fp1 = fopen(path1, "rb");
+			if (!fp1) {
+				copyctopstring("Can't open first file", bserror);
+				return false;
+			}
+
+			fp2 = fopen(path2, "rb");
+			if (!fp2) {
+				fclose(fp1);
+				copyctopstring("Can't open second file", bserror);
+				return false;
+			}
+
+			/* Compare byte by byte */
+			while ((ch1 = fgetc(fp1)) != EOF) {
+				ch2 = fgetc(fp2);
+				if (ch1 != ch2) {
+					equal = false;
+					break;
+				}
+			}
+
+			/* Check if second file has more data */
+			if (equal && fgetc(fp2) != EOF) {
+				equal = false;
+			}
+
+			fclose(fp1);
+			fclose(fp2);
+
+			return setbooleanvalue(equal, vreturned);
+		}
+
 		case countlinesfunc:
 		case findinfilefunc:
 			getstringlist(langerrorlist, unimplementedverberror, bserror);
