@@ -4,12 +4,12 @@
  * Implements 86 file verbs using POSIX APIs instead of Mac-specific CoreFoundation.
  * This file is linked in headless builds instead of Common/source/fileverbs.c.
  *
- * Implementation status:
- * - Phase 1: Infrastructure and stubs (this file)
- * - Phase 2: Tier 1 critical operations (20 verbs) - TODO
- * - Phase 3: Tier 2 file I/O (14 verbs) - TODO
- * - Phase 4: Tier 3 optional features (16 verbs) - TODO
- * - Phase 5: Tier 4 Mac-specific stubs (36 verbs) - STUBBED
+ * Implementation status (34/86 verbs = 40% coverage):
+ * - Phase 1: Infrastructure and stubs - COMPLETE ✅
+ * - Phase 2: Tier 1 critical operations (20 verbs) - COMPLETE ✅
+ * - Phase 2: Tier 2 file I/O (14 verbs) - COMPLETE ✅
+ * - Phase 3: Tier 3 optional features (16 verbs) - TODO
+ * - Phase 4: Tier 4 Mac-specific stubs (36 verbs) - STUBBED
  *
  * Created: 2026-01-01 - Portable file verb dispatcher
  */
@@ -48,15 +48,10 @@ extern boolean portable_folderfrompath(const bigstring bspath, bigstring bsfolde
 
 /*
  * Helper function: Convert Unix time_t to Frontier seconds (since 1904)
- * Protects against Y2038+ overflow when converting 64-bit time_t to uint32_t.
+ * Returns frontier_time_t (64-bit) per docs/frontier_time_t_standard.md
  */
-static inline uint32_t timet_to_frontierseconds(time_t unixtime) {
-	/* Check for overflow before addition (Y2038 safety) */
-	if (unixtime > (INT64_MAX - FRONTIER_EPOCH_OFFSET)) {
-		log_warn(LOG_COMP_LANG, "Date overflow in timet_to_frontierseconds: time_t=%lld", (long long)unixtime);
-		return UINT32_MAX;  /* Return max valid Frontier date */
-	}
-	return (uint32_t)(unixtime + FRONTIER_EPOCH_OFFSET);
+static inline frontier_time_t timet_to_frontierseconds(time_t unixtime) {
+	return (frontier_time_t)(unixtime + FRONTIER_EPOCH_OFFSET);
 }
 
 /*
@@ -417,7 +412,7 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			tyfilespec fs;
 			char path[4096];
 			struct stat st;
-			uint32_t frontierseconds;
+			frontier_time_t frontierseconds;
 
 			flnextparamislast = true;
 
@@ -449,7 +444,7 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			tyfilespec fs;
 			char path[4096];
 			struct stat st;
-			uint32_t frontierseconds;
+			frontier_time_t frontierseconds;
 
 			flnextparamislast = true;
 
