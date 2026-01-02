@@ -1,127 +1,128 @@
 # File Verb Integration Tests
 # Tests for cross-platform file verb implementations
 
-# Type/Creator Tests
-- name: "file.type - short extension returns OSType"
-  script: |
-    local(fs = file.fileFromPath("/tmp/test_frontier.txt"));
-    file.new(fs);
-    local(t = file.type(fs));
-    file.delete(fs);
-    return typeof(t) + ":" + string(t)
-  expected_success: true
-  expected_result: "ostypevalue:txt "
-
-- name: "file.type - long extension returns string"
-  script: |
-    local(fs = file.fileFromPath("/tmp/test_frontier.markdown"));
-    file.new(fs);
-    local(t = file.type(fs));
-    file.delete(fs);
-    return typeof(t) + ":" + t
-  expected_success: true
-  expected_result: "string:markdown"
-
-- name: "file.type - no extension returns ????"
-  script: |
-    local(fs = file.fileFromPath("/tmp/README_TEST"));
-    file.new(fs);
-    local(t = file.type(fs));
-    file.delete(fs);
-    return string(t)
-  expected_success: true
-  expected_result: "????"
-
-- name: "file.creator - returns 4 spaces on non-Mac"
-  script: |
-    local(fs = file.fileFromPath("/tmp/test_frontier.txt"));
-    file.new(fs);
-    local(c = file.creator(fs));
-    file.delete(fs);
-    return string(c)
-  expected_success: true
-  expected_result: "    "
-
-# Bundle Tests
-- name: "file.hasbundle - .app suffix returns true"
-  script: |
-    return file.hasbundle(file.fileFromPath("/Applications/TextEdit.app"))
-  expected_success: true
-  expected_result: "true"
-
-- name: "file.hasbundle - regular file returns false"
-  script: |
-    return file.hasbundle(file.fileFromPath("/tmp/test.txt"))
-  expected_success: true
-  expected_result: "false"
-
-- name: "file.setbundle - returns error (not supported)"
-  script: |
-    local(fs = file.fileFromPath("/tmp/test_frontier.txt"));
-    file.new(fs);
-    file.setbundle(fs, true);
-    file.delete(fs)
-  expected_success: false
-  expected_error: "not implemented"
-
-# Visibility Tests
-- name: "file.isvisible - always returns true"
-  script: |
-    local(fs = file.fileFromPath("/tmp/test_frontier_vis.txt"));
-    file.new(fs);
-    local(vis = file.isvisible(fs));
-    file.delete(fs);
-    return vis
-  expected_success: true
-  expected_result: "true"
-
-- name: "file.setvisible - returns false (not supported)"
-  script: |
-    local(fs = file.fileFromPath("/tmp/test_frontier_vis2.txt"));
-    file.new(fs);
-    local(result = file.setvisible(fs, false));
-    file.delete(fs);
-    return result
-  expected_success: true
-  expected_result: "false"
-
-# Type/Creator Setters (should error)
-- name: "file.settype - returns error (not supported)"
-  script: |
-    local(fs = file.fileFromPath("/tmp/test_frontier.txt"));
-    file.new(fs);
-    file.settype(fs, 'TEXT');
-    file.delete(fs)
-  expected_success: false
-  expected_error: "not implemented"
-
-- name: "file.setcreator - returns error (not supported)"
-  script: |
-    local(fs = file.fileFromPath("/tmp/test_frontier.txt"));
-    file.new(fs);
-    file.setcreator(fs, 'MSWD');
-    file.delete(fs)
-  expected_success: false
-  expected_error: "not implemented"
-
-# Mac-Only Verbs (should error on non-Mac)
-- name: "file.newAlias - not supported on non-Mac"
-  script: |
-    local(fs = file.fileFromPath("/tmp/test.txt"));
-    local(alias = file.fileFromPath("/tmp/test_alias"));
-    file.newAlias(fs, alias)
-  expected_success: false
-  expected_error: "not implemented"
-
-- name: "file.getVersion - not supported on non-Mac"
-  script: |
-    file.getVersion(file.fileFromPath("/bin/ls"))
-  expected_success: false
-  expected_error: "not implemented"
-
-# Dialog Verbs (Phase 1 - should error)
-- name: "file.getFileDialog - not implemented (Phase 1)"
-  script: |
-    file.getFileDialog("Select a file", @result)
-  expected_success: false
-  expected_error: "not implemented"
+tests:
+  - name: "file.type - short extension returns OSType"
+    script: |
+      local(fs = file.fileFromPath("/tmp/test_frontier.txt"));
+      file.new(fs);
+      local(t = file.type(fs));
+      file.delete(fs);
+      return typeof(t) + ":" + lang.string(t)
+    expected_success: true
+    expected_result: "type:txt "
+  
+  - name: "file.type - long extension returns string"
+    script: |
+      local(fs = file.fileFromPath("/tmp/test_frontier.markdown"));
+      file.new(fs);
+      local(t = file.type(fs));
+      file.delete(fs);
+      return typeof(t) + ":" + t
+    expected_success: true
+    expected_result: "TEXT:markdown"
+  
+  - name: "file.type - no extension returns ????"
+    script: |
+      local(fs = file.fileFromPath("/tmp/README_TEST"));
+      file.new(fs);
+      local(t = file.type(fs));
+      file.delete(fs);
+      return lang.string(t)
+    expected_success: true
+    expected_result: "????"
+  
+  - name: "file.creator - returns 4 spaces on non-Mac"
+    script: |
+      local(fs = file.fileFromPath("/tmp/test_frontier.txt"));
+      file.new(fs);
+      local(c = file.creator(fs));
+      file.delete(fs);
+      return lang.string(c)
+    expected_success: true
+    expected_result: "    "
+  
+  # Bundle Tests
+  - name: "file.hasbundle - .app suffix returns true"
+    script: |
+      return file.hasbundle(file.fileFromPath("/Applications/TextEdit.app"))
+    expected_success: true
+    expected_result: "true"
+  
+  - name: "file.hasbundle - regular file returns false"
+    script: |
+      return file.hasbundle(file.fileFromPath("/tmp/test.txt"))
+    expected_success: true
+    expected_result: "false"
+  
+  - name: "file.setbundle - returns error (not supported)"
+    script: |
+      local(fs = file.fileFromPath("/tmp/test_frontier.txt"));
+      file.new(fs);
+      file.setbundle(fs, true);
+      file.delete(fs)
+    expected_success: false
+    expected_error: "not implemented"
+  
+  # Visibility Tests
+  - name: "file.isvisible - always returns true"
+    script: |
+      local(fs = file.fileFromPath("/tmp/test_frontier_vis.txt"));
+      file.new(fs);
+      local(vis = file.isvisible(fs));
+      file.delete(fs);
+      return vis
+    expected_success: true
+    expected_result: "true"
+  
+  - name: "file.setvisible - returns false (not supported)"
+    script: |
+      local(fs = file.fileFromPath("/tmp/test_frontier_vis2.txt"));
+      file.new(fs);
+      local(result = file.setvisible(fs, false));
+      file.delete(fs);
+      return result
+    expected_success: true
+    expected_result: "false"
+  
+  # Type/Creator Setters (should error)
+  - name: "file.settype - returns error (not supported)"
+    script: |
+      local(fs = file.fileFromPath("/tmp/test_frontier.txt"));
+      file.new(fs);
+      file.settype(fs, 'TEXT');
+      file.delete(fs)
+    expected_success: false
+    expected_error: "not implemented"
+  
+  - name: "file.setcreator - returns error (not supported)"
+    script: |
+      local(fs = file.fileFromPath("/tmp/test_frontier.txt"));
+      file.new(fs);
+      file.setcreator(fs, 'MSWD');
+      file.delete(fs)
+    expected_success: false
+    expected_error: "not implemented"
+  
+  # Mac-Only Verbs (should error on non-Mac)
+  - name: "file.newAlias - not supported on non-Mac"
+    script: |
+      local(fs = file.fileFromPath("/tmp/test.txt"));
+      local(alias = file.fileFromPath("/tmp/test_alias"));
+      file.newAlias(fs, alias)
+    expected_success: false
+    expected_error: "not implemented"
+  
+  - name: "file.getVersion - not supported on non-Mac"
+    script: |
+      file.getVersion(file.fileFromPath("/bin/ls"))
+    expected_success: false
+    expected_error: "not implemented"
+  
+  # Dialog Verbs (Phase 1 - should error)
+  - name: "file.getFileDialog - not implemented (Phase 1)"
+    script: |
+      file.getFileDialog("Select a file", @result)
+    expected_success: false
+    expected_error: "not implemented"
+  
