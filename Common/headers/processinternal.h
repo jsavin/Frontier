@@ -183,7 +183,8 @@ typedef struct tythreadglobals {
 	ThreadTerminationUPP threadTerminateUPP;
 	
 	ThreadEntryUPP threadEntryCallbackUPP;
-	
+
+	bigstring current_working_directory; /*thread-local working directory for file operations*/
 
 	boolean flcominitialized;
 

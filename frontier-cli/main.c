@@ -38,6 +38,9 @@
 #include "../Common/headers/dbinternal.h"
 #include "../Common/headers/byteorder.h"
 
+// Portable headers
+#include "../portable/file_working_dir.h"
+
 // CLI-specific headers
 #include "cli_parser.h"
 #include "cli_executor.h"
@@ -82,6 +85,28 @@ static void log_system_subtable_status(const char *phase,
 int main(int argc, char* argv[]) {
     // Initialize logging system (reads FRONTIER_LOG_LEVEL, FRONTIER_LOG_COMPONENT, FRONTIER_LOG_FORMAT env vars)
     log_init();
+
+    // Initialize process-level default working directory
+    char cwd_buf[4096];
+    const char *cwd = getcwd(cwd_buf, sizeof(cwd_buf));
+    if (!cwd) {
+        // Fall back to executable directory if getcwd() fails
+        char resolved_path[4096];
+        if (realpath(argv[0], resolved_path) != NULL) {
+            char *last_slash = strrchr(resolved_path, '/');
+            if (last_slash) {
+                *last_slash = '\0';
+                cwd = resolved_path;
+            }
+        }
+    }
+
+    if (cwd) {
+        init_default_working_dir(cwd);
+    } else {
+        // Last resort: use current directory
+        init_default_working_dir(".");
+    }
 
     // Parse command line arguments
     if (!cli_parse_arguments(argc, argv, &g_cli_options)) {
