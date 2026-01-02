@@ -34,6 +34,39 @@
 #include <errno.h>
 #include <string.h>
 
+/* Frontier epoch offset: seconds between 1904 and 1970 */
+#define FRONTIER_EPOCH_OFFSET 2082844800LL
+
+/*
+ * Helper function: Convert Unix time_t to Frontier seconds (since 1904)
+ */
+static inline uint32_t timet_to_frontierseconds(time_t unixtime) {
+	return (uint32_t)(unixtime + FRONTIER_EPOCH_OFFSET);
+}
+
+/*
+ * Helper function: Convert filespec to C string path
+ */
+static boolean filespec_to_cstring(const ptrfilespec fs, char *path, size_t pathsize) {
+	bigstring bspath;
+
+	if (!filespectopath(fs, bspath))
+		return false;
+
+	if (bspath[0] == 0) {
+		path[0] = '\0';
+		return false;
+	}
+
+	size_t len = bspath[0];
+	if (len >= pathsize)
+		len = pathsize - 1;
+
+	memcpy(path, &bspath[1], len);
+	path[len] = '\0';
+	return true;
+}
+
 /* Token enum - MUST match tyfiletoken in fileverbs.c and headless_file_verbs.c */
 enum {
 	filecreatedfunc = 0,
@@ -134,30 +167,216 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 
 	switch (token) {
 
-		/* Tier 1: Critical file operations (20 verbs) - TODO Phase 2 */
+		/* Tier 1: Critical file operations (20 verbs) - Phase 2 */
 
-		case fileexistsfunc:
-		case fileisfolderfunc:
-		case fileisvolumefunc:
+		case fileexistsfunc: {
+			/* Check if file or folder exists */
+			tyfilespec fs;
+			char path[4096];
+			struct stat st;
+
+			flnextparamislast = true;
+
+			if (!getfilespecvalue(hparam1, 1, &fs))
+				return false;
+
+			if (!filespec_to_cstring(&fs, path, sizeof(path)))
+				return false;
+
+			boolean exists = (stat(path, &st) == 0);
+			return setbooleanvalue(exists, vreturned);
+		}
+
+		case fileisfolderfunc: {
+			/* Check if path is a folder/directory */
+			tyfilespec fs;
+			char path[4096];
+			struct stat st;
+
+			flnextparamislast = true;
+
+			if (!getfilespecvalue(hparam1, 1, &fs))
+				return false;
+
+			if (!filespec_to_cstring(&fs, path, sizeof(path)))
+				return false;
+
+			if (stat(path, &st) != 0)
+				return setbooleanvalue(false, vreturned);
+
+			return setbooleanvalue(S_ISDIR(st.st_mode), vreturned);
+		}
+
+		case fileisvolumefunc: {
+			/* In headless mode, we don't have Mac-style volumes - always return false */
+			flnextparamislast = true;
+
+			if (!getfilespecvalue(hparam1, 1, NULL))
+				return false;
+
+			return setbooleanvalue(false, vreturned);
+		}
+		case filesizefunc: {
+			/* Return file size in bytes */
+			tyfilespec fs;
+			char path[4096];
+			struct stat st;
+
+			flnextparamislast = true;
+
+			if (!getfilespecvalue(hparam1, 1, &fs))
+				return false;
+
+			if (!filespec_to_cstring(&fs, path, sizeof(path)))
+				return false;
+
+			if (stat(path, &st) != 0) {
+				copyctopstring("File not found", bserror);
+				return false;
+			}
+
+			return setlongvalue(st.st_size, vreturned);
+		}
+
+		case filecreatedfunc: {
+			/* Return file creation date as Frontier date (seconds since 1904) */
+			tyfilespec fs;
+			char path[4096];
+			struct stat st;
+			uint32_t frontierseconds;
+
+			flnextparamislast = true;
+
+			if (!getfilespecvalue(hparam1, 1, &fs))
+				return false;
+
+			if (!filespec_to_cstring(&fs, path, sizeof(path)))
+				return false;
+
+			if (stat(path, &st) != 0) {
+				copyctopstring("File not found", bserror);
+				return false;
+			}
+
+			/* Convert Unix timestamp to Frontier date (seconds since Jan 1, 1904) */
+			#ifdef __APPLE__
+				/* macOS has st_birthtime for true creation time */
+				frontierseconds = timet_to_frontierseconds(st.st_birthtime);
+			#else
+				/* Other platforms: use ctime (inode change time) as fallback */
+				frontierseconds = timet_to_frontierseconds(st.st_ctime);
+			#endif
+
+			return setdatevalue(frontierseconds, vreturned);
+		}
+
+		case filemodifiedfunc: {
+			/* Return file modification date as Frontier date */
+			tyfilespec fs;
+			char path[4096];
+			struct stat st;
+			uint32_t frontierseconds;
+
+			flnextparamislast = true;
+
+			if (!getfilespecvalue(hparam1, 1, &fs))
+				return false;
+
+			if (!filespec_to_cstring(&fs, path, sizeof(path)))
+				return false;
+
+			if (stat(path, &st) != 0) {
+				copyctopstring("File not found", bserror);
+				return false;
+			}
+
+			/* Convert Unix timestamp to Frontier date */
+			frontierseconds = timet_to_frontierseconds(st.st_mtime);
+			return setdatevalue(frontierseconds, vreturned);
+		}
+
+		case filefullpathfunc: {
+			/* Convert relative path to absolute path using realpath() */
+			tyfilespec fs;
+			char path[4096];
+			char resolved[4096];
+			bigstring bsresolved;
+
+			flnextparamislast = true;
+
+			if (!getfilespecvalue(hparam1, 1, &fs))
+				return false;
+
+			if (!filespec_to_cstring(&fs, path, sizeof(path)))
+				return false;
+
+			/* Use realpath() to resolve to absolute path */
+			if (realpath(path, resolved) == NULL) {
+				/* If realpath fails (file doesn't exist), just return the original path */
+				if (!filespectopath(&fs, bsresolved))
+					return false;
+			} else {
+				/* Convert C string to bigstring */
+				size_t len = strlen(resolved);
+				if (len > 255)
+					len = 255;
+				bsresolved[0] = (unsigned char)len;
+				memcpy(&bsresolved[1], resolved, len);
+			}
+
+			/* Convert bigstring path back to filespec */
+			tyfilespec fsresolved;
+			if (!pathtofilespec(bsresolved, &fsresolved))
+				return false;
+
+			return setfilespecvalue(&fsresolved, vreturned);
+		}
+
+		case filegetpathfunc: {
+			/* Return current working directory */
+			tyfilespec fs;
+
+			if (!langcheckparamcount(hparam1, 0))
+				return false;
+
+			if (!filegetdefaultpath(&fs))
+				return false;
+
+			return setfilespecvalue(&fs, vreturned);
+		}
+
+		case filesetpathfunc: {
+			/* Set current working directory */
+			tyfilespec fs;
+
+			flnextparamislast = true;
+
+			if (!getfilespecvalue(hparam1, 1, &fs))
+				return false;
+
+			if (!filesetdefaultpath(&fs))
+				return false;
+
+			return setbooleanvalue(true, vreturned);
+		}
+
 		case filedeletefunc:
 		case filerenamefunc:
 		case filecopyfunc:
 		case filemovefunc:
-		case filesizefunc:
-		case filecreatedfunc:
-		case filemodifiedfunc:
-		case filefullpathfunc:
-		case filegetpathfunc:
-		case filesetpathfunc:
 		case filefrompathfunc:
 		case folderfrompathfunc:
 		case newfunc:
 		case newfolderfunc:
 		case getsystempathfunc:
 		case getspecialpathfunc:
-		case getpathcharfunc:
-			getstringlist(langerrorlist, unimplementedverberror, bserror);
-			return false;
+		case getpathcharfunc: {
+			/* Return '/' as the path separator character */
+			if (!langcheckparamcount(hparam1, 0))
+				return false;
+
+			return setstringvalue(BIGSTRING("\x01/"), vreturned);
+		}
 
 		/* Tier 2: File I/O operations (14 verbs) - TODO Phase 3 */
 

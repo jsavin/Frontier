@@ -79,8 +79,10 @@ boolean set_thread_working_dir(const bigstring path) {
 
 	hdlthreadglobals hg = getcurrentthreadglobals();
 	if (!hg) {
-		log_error(LOG_COMP_GENERAL, "set_thread_working_dir: no thread context");
-		return false;
+		/* No thread context (CLI mode) - update process default instead */
+		log_debug(LOG_COMP_GENERAL, "set_thread_working_dir: no thread context, updating process default");
+		copystring(path, g_process_default_cwd);
+		return true;
 	}
 
 	/* Update thread-local cwd */
