@@ -48,8 +48,14 @@ extern boolean portable_folderfrompath(const bigstring bspath, bigstring bsfolde
 
 /*
  * Helper function: Convert Unix time_t to Frontier seconds (since 1904)
+ * Protects against Y2038+ overflow when converting 64-bit time_t to uint32_t.
  */
 static inline uint32_t timet_to_frontierseconds(time_t unixtime) {
+	/* Check for overflow before addition (Y2038 safety) */
+	if (unixtime > (INT64_MAX - FRONTIER_EPOCH_OFFSET)) {
+		log_warn(LOG_COMP_LANG, "Date overflow in timet_to_frontierseconds: time_t=%lld", (long long)unixtime);
+		return UINT32_MAX;  /* Return max valid Frontier date */
+	}
 	return (uint32_t)(unixtime + FRONTIER_EPOCH_OFFSET);
 }
 
@@ -141,25 +147,37 @@ static FILE* get_filepointer(short refnum) {
 }
 
 /*
- * Release file handle
+ * Release file handle (O(1) direct lookup)
+ * Defensively closes FILE* to prevent leaks even if caller forgets to close.
  */
 static boolean release_filehandle(short refnum) {
-	int i;
 	boolean result = false;
+	FILE *fp_to_close = NULL;
+
+	/* Validate refnum range */
+	if (refnum < 1 || refnum > MAX_OPEN_FILES) {
+		return false;
+	}
 
 	pthread_mutex_lock(&filetable_mutex);
 
-	for (i = 0; i < MAX_OPEN_FILES; i++) {
-		if (filetable[i].inuse && filetable[i].refnum == refnum) {
-			filetable[i].inuse = false;
-			filetable[i].fp = NULL;
-			filetable[i].refnum = 0;
-			result = true;
-			break;
-		}
+	/* Direct O(1) lookup using refnum - 1 as index */
+	int i = refnum - 1;
+	if (filetable[i].inuse && filetable[i].refnum == refnum) {
+		fp_to_close = filetable[i].fp;  /* Save FILE* before clearing */
+		filetable[i].inuse = false;
+		filetable[i].fp = NULL;
+		filetable[i].refnum = 0;
+		result = true;
 	}
 
 	pthread_mutex_unlock(&filetable_mutex);
+
+	/* Close outside mutex to avoid blocking I/O under lock */
+	if (fp_to_close) {
+		fclose(fp_to_close);
+	}
+
 	return result;
 }
 
@@ -1011,23 +1029,18 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 		}
 
 		case closefilefunc: {
-			/* Close file by refnum */
+			/* Close file by refnum (release_filehandle handles fclose) */
 			long refnum;
-			FILE *fp;
 
 			flnextparamislast = true;
 
 			if (!getlongvalue(hparam1, 1, &refnum))
 				return false;
 
-			fp = get_filepointer((short)refnum);
-			if (!fp) {
+			if (!release_filehandle((short)refnum)) {
 				copyctopstring("Invalid file refnum", bserror);
 				return false;
 			}
-
-			fclose(fp);
-			release_filehandle((short)refnum);
 
 			return setbooleanvalue(true, vreturned);
 		}
