@@ -40,6 +40,7 @@
 
 // Portable headers
 #include "../portable/file_working_dir.h"
+#include "../portable/fileverbs_portable.h"
 
 // CLI-specific headers
 #include "cli_parser.h"
@@ -107,6 +108,9 @@ int main(int argc, char* argv[]) {
         // Last resort: use current directory
         init_default_working_dir(".");
     }
+
+    // Initialize file handle cleanup (must be called before any file operations)
+    init_file_handle_cleanup();
 
     // Parse command line arguments
     if (!cli_parse_arguments(argc, argv, &g_cli_options)) {

@@ -40,4 +40,14 @@
 extern boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
                                          tyvaluerecord *vreturned, bigstring bserror);
 
+/*
+ * init_file_handle_cleanup - Initialize file handle cleanup on startup
+ *
+ * Registers atexit() hook to close leaked file handles on process exit.
+ * MUST be called once from main() before any threads are spawned.
+ *
+ * Thread-safety: NOT thread-safe (must be called before multi-threading)
+ */
+extern void init_file_handle_cleanup(void);
+
 #endif /* fileverbs_portable_h */

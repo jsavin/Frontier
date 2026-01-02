@@ -88,16 +88,47 @@ static short next_refnum = 1;
 static boolean g_cleanup_registered = false;
 
 /*
- * Allocate a file handle and return refnum
+ * Allocate a file handle and return refnum.
+ * Implements refnum reuse to prevent overflow after 32,767 opens.
  */
 static short allocate_filehandle(FILE *fp) {
-	int i;
+	int i, j;
+	short candidate;
+	boolean in_use;
 
+	/* Find free slot */
 	for (i = 0; i < MAX_OPEN_FILES; i++) {
 		if (!filetable[i].inuse) {
+			/* Find unused refnum (wrap around if needed) */
+			candidate = next_refnum;
+
+			do {
+				/* Wrap to 1 if overflow or negative */
+				if (candidate <= 0) {
+					candidate = 1;
+				}
+
+				/* Check if refnum already in use */
+				in_use = false;
+				for (j = 0; j < MAX_OPEN_FILES; j++) {
+					if (filetable[j].inuse && filetable[j].refnum == candidate) {
+						in_use = true;
+						break;
+					}
+				}
+
+				if (!in_use) {
+					break; /* Found unused refnum */
+				}
+
+				candidate++;
+			} while (candidate != next_refnum); /* Avoid infinite loop */
+
 			filetable[i].fp = fp;
-			filetable[i].refnum = next_refnum++;
+			filetable[i].refnum = candidate;
 			filetable[i].inuse = true;
+			next_refnum = candidate + 1;
+
 			return filetable[i].refnum;
 		}
 	}
@@ -168,11 +199,11 @@ static void cleanup_file_handles(void) {
 }
 
 /*
- * Register cleanup hook with atexit() on first use.
- * This is called from openfilefunc to ensure cleanup is registered
- * before any files are opened.
+ * Initialize file handle cleanup - must be called once at startup.
+ * This registers the cleanup hook with atexit() in a thread-safe manner.
+ * Called from main() before any threads are spawned.
  */
-static void ensure_cleanup_registered(void) {
+void init_file_handle_cleanup(void) {
 	if (!g_cleanup_registered) {
 		atexit(cleanup_file_handles);
 		g_cleanup_registered = true;
@@ -779,14 +810,16 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 					}
 				}
 
-				fclose(fpsrc);
-				fclose(fpdest);
-
-				/* Check for read error */
+				/* Check for read error BEFORE closing */
 				if (ferror(fpsrc)) {
+					fclose(fpsrc);
+					fclose(fpdest);
 					copyctopstring("Read error during move", bserror);
 					return false;
 				}
+
+				fclose(fpsrc);
+				fclose(fpdest);
 
 				/* Preserve permissions */
 				chmod(destpath, st.st_mode & 0777);
@@ -924,9 +957,6 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			boolean flreadonly = false;
 			FILE *fp;
 			short refnum;
-
-			/* Register cleanup hook on first file open */
-			ensure_cleanup_registered();
 
 			if (!getfilespecvalue(hparam1, 1, &fs))
 				return false;
