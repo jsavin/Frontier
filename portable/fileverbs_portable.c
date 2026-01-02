@@ -35,7 +35,9 @@
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
+#include <assert.h>
 #include <stdlib.h>
+#include <pthread.h>
 
 /* Forward declarations from file_portable_posix.c */
 extern boolean portable_filefrompath(const bigstring bspath, bigstring bsfile);
@@ -86,6 +88,7 @@ typedef struct {
 static filehandle filetable[MAX_OPEN_FILES];
 static short next_refnum = 1;
 static boolean g_cleanup_registered = false;
+static pthread_mutex_t filetable_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /*
  * Allocate a file handle and return refnum.
@@ -95,6 +98,9 @@ static short allocate_filehandle(FILE *fp) {
 	int i, j;
 	short candidate;
 	boolean in_use;
+	short result = 0;
+
+	pthread_mutex_lock(&filetable_mutex);
 
 	/* Find free slot */
 	for (i = 0; i < MAX_OPEN_FILES; i++) {
@@ -129,11 +135,13 @@ static short allocate_filehandle(FILE *fp) {
 			filetable[i].inuse = true;
 			next_refnum = candidate + 1;
 
-			return filetable[i].refnum;
+			result = filetable[i].refnum;
+			break;
 		}
 	}
 
-	return 0; /* No free handles */
+	pthread_mutex_unlock(&filetable_mutex);
+	return result; /* Returns refnum or 0 if no free handles */
 }
 
 /*
@@ -141,14 +149,19 @@ static short allocate_filehandle(FILE *fp) {
  */
 static FILE* get_filepointer(short refnum) {
 	int i;
+	FILE *result = NULL;
+
+	pthread_mutex_lock(&filetable_mutex);
 
 	for (i = 0; i < MAX_OPEN_FILES; i++) {
 		if (filetable[i].inuse && filetable[i].refnum == refnum) {
-			return filetable[i].fp;
+			result = filetable[i].fp;
+			break;
 		}
 	}
 
-	return NULL;
+	pthread_mutex_unlock(&filetable_mutex);
+	return result;
 }
 
 /*
@@ -156,17 +169,22 @@ static FILE* get_filepointer(short refnum) {
  */
 static boolean release_filehandle(short refnum) {
 	int i;
+	boolean result = false;
+
+	pthread_mutex_lock(&filetable_mutex);
 
 	for (i = 0; i < MAX_OPEN_FILES; i++) {
 		if (filetable[i].inuse && filetable[i].refnum == refnum) {
 			filetable[i].inuse = false;
 			filetable[i].fp = NULL;
 			filetable[i].refnum = 0;
-			return true;
+			result = true;
+			break;
 		}
 	}
 
-	return false;
+	pthread_mutex_unlock(&filetable_mutex);
+	return result;
 }
 
 /*
@@ -180,6 +198,8 @@ static void cleanup_file_handles(void) {
 	int i;
 	int closed_count = 0;
 
+	pthread_mutex_lock(&filetable_mutex);
+
 	for (i = 0; i < MAX_OPEN_FILES; i++) {
 		if (filetable[i].inuse) {
 			log_debug(LOG_COMP_LANG, "cleanup_file_handles: closing refnum=%d (fp=%p)",
@@ -191,6 +211,8 @@ static void cleanup_file_handles(void) {
 			closed_count++;
 		}
 	}
+
+	pthread_mutex_unlock(&filetable_mutex);
 
 	if (closed_count > 0) {
 		log_warn(LOG_COMP_LANG, "cleanup_file_handles: closed %d leaked file handle(s)",
@@ -204,11 +226,12 @@ static void cleanup_file_handles(void) {
  * Called from main() before any threads are spawned.
  */
 void init_file_handle_cleanup(void) {
-	if (!g_cleanup_registered) {
-		atexit(cleanup_file_handles);
-		g_cleanup_registered = true;
-		log_debug(LOG_COMP_LANG, "File handle cleanup registered with atexit()");
-	}
+	/* Ensure this is only called once, before any threads are spawned */
+	assert(!g_cleanup_registered && "init_file_handle_cleanup called multiple times");
+
+	atexit(cleanup_file_handles);
+	g_cleanup_registered = true;
+	log_debug(LOG_COMP_LANG, "File handle cleanup registered with atexit()");
 }
 
 /* Token enum - MUST match tyfiletoken in fileverbs.c and headless_file_verbs.c */
@@ -725,7 +748,7 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 
 			/* Check for read error */
 			if (ferror(fpsrc)) {
-				copyctopstring("Write error during copy", bserror);
+				copyctopstring("Read error during copy", bserror);
 				goto cleanup;
 			}
 
@@ -1170,8 +1193,8 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 				return false;
 			}
 
-			/* Read until newline or EOF */
-			while ((ch = fgetc(fp)) != EOF && ch != '\n' && ch != '\r' && len < 255) {
+			/* Read until newline or EOF (check length first to avoid overflow) */
+			while (len < 255 && (ch = fgetc(fp)) != EOF && ch != '\n' && ch != '\r') {
 				bsline[len + 1] = (unsigned char)ch;
 				len++;
 			}
@@ -1377,38 +1400,50 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 		}
 
 		case writewholefilefunc: {
-			/* Write entire string to file */
+			/* Write entire string or binary data to file */
 			tyfilespec fs;
 			char path[4096];
 			FILE *fp = NULL;
-			bigstring bs;
+			Handle hdata = NULL;
+			long datasize;
+			unsigned char *buffer;
 
 			if (!getfilespecvalue(hparam1, 1, &fs))
 				return false;
 
 			flnextparamislast = true;
 
-			if (!getstringvalue(hparam1, 2, bs))
+			if (!getexempttextvalue(hparam1, 2, &hdata))
 				return false;
 
-			if (!filespec_to_cstring(&fs, path, sizeof(path)))
+			if (!filespec_to_cstring(&fs, path, sizeof(path))) {
+				disposehandle(hdata);
 				return false;
+			}
 
 			fp = fopen(path, "wb");
 			if (!fp) {
+				disposehandle(hdata);
 				copyctopstring("Can't create file", bserror);
 				return false;
 			}
 
-			/* Write string data */
-			if (bs[0] > 0) {
-				if (fwrite(&bs[1], 1, bs[0], fp) != bs[0]) {
+			/* Write handle data */
+			datasize = gethandlesize(hdata);
+			if (datasize > 0) {
+				lockhandle(hdata);
+				buffer = (unsigned char *)*hdata;
+				if (fwrite(buffer, 1, datasize, fp) != datasize) {
+					unlockhandle(hdata);
+					disposehandle(hdata);
 					fclose(fp);
 					copyctopstring("Write error", bserror);
 					return false;
 				}
+				unlockhandle(hdata);
 			}
 
+			disposehandle(hdata);
 			fclose(fp);
 			return setbooleanvalue(true, vreturned);
 		}
