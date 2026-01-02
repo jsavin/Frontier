@@ -24,8 +24,13 @@
 #include "tablestructure.h"
 #include "file.h"
 #include "logging.h"
+#include "error.h"
 
-#include <unistd.h>  /* for unlink() */
+#include <unistd.h>     /* for unlink() */
+#include <errno.h>      /* for errno */
+#include <string.h>     /* for strerror() */
+#include <limits.h>     /* for PATH_MAX */
+#include <sys/stat.h>   /* for lstat(), S_ISLNK() */
 
 /* Token enum matching fileverbs.c */
 typedef enum tyfiletoken {
@@ -148,29 +153,98 @@ extern boolean opennewfile(ptrfilespec, OSType, OSType, hdlfilenum *);
 extern boolean closefile(hdlfilenum);
 extern boolean fileexists(const ptrfilespec, boolean *);
 
+/* Helper: validate file path (basic path traversal check) */
+static boolean validatefilepath(const ptrfilespec fs, bigstring bserror) {
+	bigstring bspath;
+	char cpath[PATH_MAX];
+
+	if (!filespectopath(fs, bspath))
+		return false;
+
+	/* Check path length before conversion */
+	if (stringlength(bspath) >= PATH_MAX) {
+		log_error(LOG_COMP_GENERAL, "Path too long: %d bytes", stringlength(bspath));
+		if (bserror)
+			copystring(BIGSTRING("\pPath too long"), bserror);
+		return false;
+	}
+
+	copyptocstring(bspath, cpath);
+
+	/* Check for path traversal attempts */
+	if (strstr(cpath, "..")) {
+		log_warn(LOG_COMP_GENERAL, "Path traversal attempt blocked: %s", cpath);
+		if (bserror)
+			copystring(BIGSTRING("\pInvalid file path"), bserror);
+		return false;
+	}
+
+	return true;
+}
+
 /* Helper: create new file (wrapper around opennewfile + closefile) */
 boolean newfile(const ptrfilespec fs, OSType creator, OSType filetype) {
 	hdlfilenum fnum;
+	bigstring bspath;
 
-	if (!opennewfile((ptrfilespec)fs, creator, filetype, &fnum))
+	if (filespectopath(fs, bspath))
+		log_debug(LOG_COMP_GENERAL, "Creating file: %s", bspath + 1);
+
+	if (!opennewfile((ptrfilespec)fs, creator, filetype, &fnum)) {
+		if (filespectopath(fs, bspath))
+			log_error(LOG_COMP_GENERAL, "opennewfile failed for: %s", bspath + 1);
 		return false;
+	}
 
-	return closefile(fnum);
+	if (!closefile(fnum)) {
+		if (filespectopath(fs, bspath))
+			log_error(LOG_COMP_GENERAL, "closefile failed for: %s", bspath + 1);
+		return false;
+	}
+
+	if (filespectopath(fs, bspath))
+		log_debug(LOG_COMP_GENERAL, "File created successfully: %s", bspath + 1);
+
+	return true;
 }
 
 /* Helper: delete file (POSIX implementation for headless mode) */
 boolean deletefile(const ptrfilespec fs) {
 	bigstring bspath;
-	char cpath[256];
+	char cpath[PATH_MAX];
+	struct stat st;
 
 	if (!filespectopath(fs, bspath))
 		return false;
 
+	/* Check path length before conversion */
+	if (stringlength(bspath) >= PATH_MAX) {
+		log_error(LOG_COMP_GENERAL, "Path too long for deletefile: %d bytes",
+		          stringlength(bspath));
+		setoserrorparam(bspath);
+		return false;
+	}
+
 	copyptocstring(bspath, cpath);
 
-	if (unlink(cpath) != 0)
-		return false;
+	log_debug(LOG_COMP_GENERAL, "Deleting file: %s", cpath);
 
+	/* Check if it's a symlink - use lstat to avoid following links */
+	if (lstat(cpath, &st) == 0 && S_ISLNK(st.st_mode)) {
+		log_warn(LOG_COMP_GENERAL, "Refusing to delete symlink: %s", cpath);
+		setoserrorparam(bspath);
+		return oserror(EPERM);
+	}
+
+	/* Delete the file */
+	if (unlink(cpath) != 0) {
+		int saved_errno = errno;
+		log_error(LOG_COMP_GENERAL, "unlink(%s) failed: %s", cpath, strerror(saved_errno));
+		setoserrorparam(bspath);
+		return oserror(saved_errno);
+	}
+
+	log_debug(LOG_COMP_GENERAL, "File deleted successfully: %s", cpath);
 	return true;
 }
 
@@ -210,8 +284,20 @@ static boolean file_valueproc(short token, hdltreenode hparam1,
 			if (!getpathvalue(hparam1, 1, &fs))
 				return false;
 
-			if (!newfile(&fs, 0, 0))  /* No creator/type codes */
+			/* Validate file path */
+			if (!validatefilepath(&fs, bserror))
 				return false;
+
+			if (!newfile(&fs, 0, 0)) {  /* No creator/type codes */
+				if (bserror) {
+					bigstring bspath;
+					if (filespectopath(&fs, bspath)) {
+						copystring(bspath, bserror);
+						insertstring(BIGSTRING("\pCan't create file "), bserror);
+					}
+				}
+				return false;
+			}
 
 			(*vreturned).data.flvalue = true;
 			return true;
@@ -224,8 +310,20 @@ static boolean file_valueproc(short token, hdltreenode hparam1,
 			if (!getpathvalue(hparam1, 1, &fs))
 				return false;
 
-			if (!deletefile(&fs))
+			/* Validate file path */
+			if (!validatefilepath(&fs, bserror))
 				return false;
+
+			if (!deletefile(&fs)) {
+				if (bserror) {
+					bigstring bspath;
+					if (filespectopath(&fs, bspath)) {
+						copystring(bspath, bserror);
+						insertstring(BIGSTRING("\pCan't delete file "), bserror);
+					}
+				}
+				return false;
+			}
 
 			(*vreturned).data.flvalue = true;
 			return true;
@@ -234,16 +332,18 @@ static boolean file_valueproc(short token, hdltreenode hparam1,
 		case fileexistsfunc: {
 			/* Check if file exists */
 			boolean flfolder;
+			boolean exists;
 
 			flnextparamislast = true;
 
 			if (!getpathvalue(hparam1, 1, &fs))
 				return false;
 
-			if (!fileexists(&fs, &flfolder))
-				return false;
+			/* fileexists() returns false if file doesn't exist OR on error
+			 * For file.exists() verb, we want to return false (not error) if file doesn't exist */
+			exists = fileexists(&fs, &flfolder);
 
-			(*vreturned).data.flvalue = true;
+			(*vreturned).data.flvalue = exists;
 			return true;
 		}
 
@@ -297,9 +397,8 @@ static boolean file_valueproc(short token, hdltreenode hparam1,
 			if (!getpathvalue(hparam1, 1, &fs))
 				return false;
 
-			/* Get full path */
-			if (!filespectopath(&fs, bs))
-				return false;
+			/* Get filename only (more efficient than full path) */
+			getfsfile(&fs, bs);
 
 			/* Extract extension */
 			if (!lastword(bs, '.', bsext)) {
