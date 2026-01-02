@@ -87,6 +87,7 @@ typedef struct {
 	FILE *fp;
 	short refnum;
 	boolean inuse;
+	int refcount;  /* Reference count for thread-safe FILE* access */
 } filehandle;
 
 static filehandle filetable[MAX_OPEN_FILES];
@@ -109,6 +110,7 @@ static short allocate_filehandle(FILE *fp) {
 			filetable[i].fp = fp;
 			filetable[i].refnum = i + 1;  /* Slot 0 → refnum 1, slot 1 → refnum 2, etc. */
 			filetable[i].inuse = true;
+			filetable[i].refcount = 0;  /* No active users yet */
 			result = filetable[i].refnum;
 			break;
 		}
@@ -119,7 +121,9 @@ static short allocate_filehandle(FILE *fp) {
 }
 
 /*
- * Get FILE* from refnum (O(1) direct lookup)
+ * Get FILE* from refnum with reference counting (O(1) direct lookup)
+ * MUST call release_filepointer() when done to avoid leaking references.
+ * This prevents race condition where FILE* is closed by another thread.
  */
 static FILE* get_filepointer(short refnum) {
 	FILE *result = NULL;
@@ -135,6 +139,7 @@ static FILE* get_filepointer(short refnum) {
 	int i = refnum - 1;
 	if (filetable[i].inuse && filetable[i].refnum == refnum) {
 		result = filetable[i].fp;
+		filetable[i].refcount++;  /* Increment under lock to prevent close */
 	}
 
 	pthread_mutex_unlock(&filetable_mutex);
@@ -142,8 +147,44 @@ static FILE* get_filepointer(short refnum) {
 }
 
 /*
+ * Release reference to FILE* obtained from get_filepointer()
+ * MUST be called after using FILE* to allow cleanup.
+ * If this is the last reference and handle was marked for close, performs cleanup.
+ */
+static void release_filepointer(short refnum) {
+	FILE *fp_to_close = NULL;
+
+	/* Validate refnum range */
+	if (refnum < 1 || refnum > MAX_OPEN_FILES) {
+		return;
+	}
+
+	pthread_mutex_lock(&filetable_mutex);
+
+	int i = refnum - 1;
+	if (filetable[i].refnum == refnum && filetable[i].refcount > 0) {
+		filetable[i].refcount--;
+
+		/* If this was the last reference and handle is marked for close, clean up */
+		if (filetable[i].refcount == 0 && !filetable[i].inuse) {
+			fp_to_close = filetable[i].fp;
+			filetable[i].fp = NULL;
+			filetable[i].refnum = 0;
+		}
+	}
+
+	pthread_mutex_unlock(&filetable_mutex);
+
+	/* Close outside mutex to avoid blocking I/O under lock */
+	if (fp_to_close) {
+		fclose(fp_to_close);
+	}
+}
+
+/*
  * Release file handle (O(1) direct lookup)
- * Defensively closes FILE* to prevent leaks even if caller forgets to close.
+ * Only closes FILE* when refcount == 0 (no active users).
+ * Prevents race condition where FILE* is in use by another thread.
  */
 static boolean release_filehandle(short refnum) {
 	boolean result = false;
@@ -159,10 +200,17 @@ static boolean release_filehandle(short refnum) {
 	/* Direct O(1) lookup using refnum - 1 as index */
 	int i = refnum - 1;
 	if (filetable[i].inuse && filetable[i].refnum == refnum) {
-		fp_to_close = filetable[i].fp;  /* Save FILE* before clearing */
-		filetable[i].inuse = false;
-		filetable[i].fp = NULL;
-		filetable[i].refnum = 0;
+		if (filetable[i].refcount == 0) {
+			/* No active users - safe to close immediately */
+			fp_to_close = filetable[i].fp;
+			filetable[i].inuse = false;
+			filetable[i].fp = NULL;
+			filetable[i].refnum = 0;
+		} else {
+			/* Active users - mark for close but don't close yet */
+			filetable[i].inuse = false;  /* Prevent new references */
+			/* FILE* will be closed when last reference is released */
+		}
 		result = true;
 	}
 
@@ -1044,6 +1092,7 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			/* Check if at end of file */
 			long refnum;
 			FILE *fp;
+			boolean iseof;
 
 			flnextparamislast = true;
 
@@ -1056,7 +1105,9 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 				return false;
 			}
 
-			return setbooleanvalue(feof(fp) != 0, vreturned);
+			iseof = (feof(fp) != 0);
+			release_filepointer((short)refnum);
+			return setbooleanvalue(iseof, vreturned);
 		}
 
 		case setendoffilefunc: {
@@ -1065,6 +1116,7 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			FILE *fp;
 			long pos;
 			int fd;
+			boolean success;
 
 			flnextparamislast = true;
 
@@ -1079,16 +1131,19 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 
 			pos = ftell(fp);
 			if (pos < 0) {
+				release_filepointer((short)refnum);
 				copyctopstring("Can't get file position", bserror);
 				return false;
 			}
 
 			fd = fileno(fp);
 			if (ftruncate(fd, pos) != 0) {
+				release_filepointer((short)refnum);
 				copyctopstring("Can't truncate file", bserror);
 				return false;
 			}
 
+			release_filepointer((short)refnum);
 			return setbooleanvalue(true, vreturned);
 		}
 
@@ -1111,26 +1166,31 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 
 			current = ftell(fp);
 			if (current < 0) {
+				release_filepointer((short)refnum);
 				copyctopstring("Can't get current file position", bserror);
 				return false;
 			}
 
 			if (fseek(fp, 0, SEEK_END) != 0) {
+				release_filepointer((short)refnum);
 				copyctopstring("Can't seek to end of file", bserror);
 				return false;
 			}
 
 			size = ftell(fp);
 			if (size < 0) {
+				release_filepointer((short)refnum);
 				copyctopstring("Can't get file size", bserror);
 				return false;
 			}
 
 			if (fseek(fp, current, SEEK_SET) != 0) {
+				release_filepointer((short)refnum);
 				copyctopstring("Can't restore file position", bserror);
 				return false;
 			}
 
+			release_filepointer((short)refnum);
 			return setlongvalue(size, vreturned);
 		}
 
@@ -1154,10 +1214,12 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			}
 
 			if (fseek(fp, position, SEEK_SET) != 0) {
+				release_filepointer((short)refnum);
 				copyctopstring("Can't set file position", bserror);
 				return false;
 			}
 
+			release_filepointer((short)refnum);
 			return setbooleanvalue(true, vreturned);
 		}
 
@@ -1180,10 +1242,12 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 
 			position = ftell(fp);
 			if (position < 0) {
+				release_filepointer((short)refnum);
 				copyctopstring("Can't get file position", bserror);
 				return false;
 			}
 
+			release_filepointer((short)refnum);
 			return setlongvalue(position, vreturned);
 		}
 
@@ -1221,6 +1285,7 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 
 			bsline[0] = (unsigned char)len;
 
+			release_filepointer((short)refnum);
 			return setstringvalue(bsline, vreturned);
 		}
 
@@ -1247,6 +1312,7 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			/* Write string */
 			if (bsline[0] > 0) {
 				if (fwrite(&bsline[1], 1, bsline[0], fp) != bsline[0]) {
+					release_filepointer((short)refnum);
 					copyctopstring("Write error", bserror);
 					return false;
 				}
@@ -1254,10 +1320,12 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 
 			/* Write newline */
 			if (fputc('\n', fp) == EOF) {
+				release_filepointer((short)refnum);
 				copyctopstring("Write error", bserror);
 				return false;
 			}
 
+			release_filepointer((short)refnum);
 			return setbooleanvalue(true, vreturned);
 		}
 
@@ -1284,6 +1352,7 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			}
 
 			if (count <= 0) {
+				release_filepointer((short)refnum);
 				return setstringvalue(BIGSTRING("\x00"), vreturned);
 			}
 
@@ -1292,11 +1361,13 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 				bigstring bs;
 				bytesread = fread(&bs[1], 1, count, fp);
 				bs[0] = (unsigned char)bytesread;
+				release_filepointer((short)refnum);
 				return setstringvalue(bs, vreturned);
 			}
 
 			/* For larger reads, return as binary */
 			if (!newhandle(count, &hdata)) {
+				release_filepointer((short)refnum);
 				copyctopstring("Out of memory", bserror);
 				return false;
 			}
@@ -1308,9 +1379,11 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 
 			if (bytesread == 0) {
 				disposehandle(hdata);
+				release_filepointer((short)refnum);
 				return setstringvalue(BIGSTRING("\x00"), vreturned);
 			}
 
+			release_filepointer((short)refnum);
 			return setbinaryvalue(hdata, bytesread, vreturned);
 		}
 
@@ -1337,11 +1410,13 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			/* Write string data */
 			if (bs[0] > 0) {
 				if (fwrite(&bs[1], 1, bs[0], fp) != bs[0]) {
+					release_filepointer((short)refnum);
 					copyctopstring("Write error", bserror);
 					return false;
 				}
 			}
 
+			release_filepointer((short)refnum);
 			return setlongvalue(bs[0], vreturned);
 		}
 
