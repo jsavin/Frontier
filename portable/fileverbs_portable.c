@@ -235,6 +235,13 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
                                   tyvaluerecord *vreturned, bigstring bserror) {
 	log_debug(LOG_COMP_LANG, "portable_filefunctionvalue: token=%d", token);
 
+	/* Reset flnextparamislast to ensure clean state for each verb call.
+	 * This is critical because flnextparamislast is a global variable that persists
+	 * across function calls. Without this reset, verbs that set flnextparamislast=true
+	 * but don't consume all parameters (like file.open with 1 param) will leave it
+	 * set to true, causing the next 2-parameter verb to fail with "too many parameters". */
+	flnextparamislast = false;
+
 	switch (token) {
 
 		/* Tier 1: Critical file operations (20 verbs) - Phase 2 */
@@ -1200,8 +1207,6 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			/* Write bytes to file */
 			long refnum;
 			FILE *fp;
-			Handle hdata;
-			long datasize;
 			bigstring bs;
 
 			if (!getlongvalue(hparam1, 1, &refnum))
@@ -1209,8 +1214,7 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 
 			flnextparamislast = true;
 
-			/* Get data parameter value */
-			if (!getexempttextvalue(hparam1, 2, vreturned))
+			if (!getstringvalue(hparam1, 2, bs))
 				return false;
 
 			fp = get_filepointer((short)refnum);
@@ -1219,36 +1223,15 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 				return false;
 			}
 
-			/* Handle string data */
-			if (vreturned->valuetype == stringvaluetype) {
-				pullstringvalue(vreturned, bs);
-				if (bs[0] > 0) {
-					if (fwrite(&bs[1], 1, bs[0], fp) != bs[0]) {
-						copyctopstring("Write error", bserror);
-						return false;
-					}
-				}
-				return setlongvalue(bs[0], vreturned);
-			}
-
-			/* Handle binary data */
-			if (vreturned->valuetype == binaryvaluetype) {
-				hdata = vreturned->data.binaryvalue;
-				datasize = gethandlesize(hdata);
-
-				lockhandle(hdata);
-				if (fwrite(*hdata, 1, datasize, fp) != datasize) {
-					unlockhandle(hdata);
+			/* Write string data */
+			if (bs[0] > 0) {
+				if (fwrite(&bs[1], 1, bs[0], fp) != bs[0]) {
 					copyctopstring("Write error", bserror);
 					return false;
 				}
-				unlockhandle(hdata);
-
-				return setlongvalue(datasize, vreturned);
 			}
 
-			copyctopstring("Data must be string or binary", bserror);
-			return false;
+			return setlongvalue(bs[0], vreturned);
 		}
 
 		case readwholefilefunc: {
@@ -1318,12 +1301,10 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 		}
 
 		case writewholefilefunc: {
-			/* Write entire string/binary to file */
+			/* Write entire string to file */
 			tyfilespec fs;
 			char path[4096];
 			FILE *fp = NULL;
-			Handle hdata;
-			long datasize;
 			bigstring bs;
 
 			if (!getfilespecvalue(hparam1, 1, &fs))
@@ -1331,8 +1312,7 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 
 			flnextparamislast = true;
 
-			/* Get data parameter */
-			if (!getexempttextvalue(hparam1, 2, vreturned))
+			if (!getstringvalue(hparam1, 2, bs))
 				return false;
 
 			if (!filespec_to_cstring(&fs, path, sizeof(path)))
@@ -1344,41 +1324,17 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 				return false;
 			}
 
-			/* Handle string data */
-			if (vreturned->valuetype == stringvaluetype) {
-				pullstringvalue(vreturned, bs);
-				if (bs[0] > 0) {
-					if (fwrite(&bs[1], 1, bs[0], fp) != bs[0]) {
-						fclose(fp);
-						copyctopstring("Write error", bserror);
-						return false;
-					}
-				}
-				fclose(fp);
-				return setbooleanvalue(true, vreturned);
-			}
-
-			/* Handle binary data */
-			if (vreturned->valuetype == binaryvaluetype) {
-				hdata = vreturned->data.binaryvalue;
-				datasize = gethandlesize(hdata);
-
-				lockhandle(hdata);
-				if (fwrite(*hdata, 1, datasize, fp) != datasize) {
-					unlockhandle(hdata);
+			/* Write string data */
+			if (bs[0] > 0) {
+				if (fwrite(&bs[1], 1, bs[0], fp) != bs[0]) {
 					fclose(fp);
 					copyctopstring("Write error", bserror);
 					return false;
 				}
-				unlockhandle(hdata);
-				fclose(fp);
-
-				return setbooleanvalue(true, vreturned);
 			}
 
 			fclose(fp);
-			copyctopstring("Data must be string or binary", bserror);
-			return false;
+			return setbooleanvalue(true, vreturned);
 		}
 
 		case comparefunc: {
