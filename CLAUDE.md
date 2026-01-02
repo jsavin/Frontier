@@ -514,18 +514,33 @@ Frontier has multiple global mutable state variables that must be eliminated bef
 **Known Problem Areas:**
 - `outlinedata` and `outlinestack` (oppushoutline/oppopoutline) - outline context
 - `databasedata` and legacy database globals - database context (partially fixed)
+- `flnextparamislast` and parameter-related globals - **PATTERN ESTABLISHED** (see ADR-005)
 - Any static buffers or caches that aren't guarded by locks
 
 **Why This Matters**: This code MUST be thread-safe before launch. Global mutable state makes thread safety impossible.
 
-**Refactoring Pattern (proven to work)**:
+**Refactoring Patterns (proven to work)**:
+
+**Pattern 1: Thread-Local Storage (for per-thread state)**
+1. Add field to `tythreadglobals` structure
+2. Update thread swap functions (copythreadglobals, swapinthreadglobals)
+3. Replace global with macro accessor for backward compatibility
+4. Zero API changes - transparent to existing code
+
+**Pattern 2: Explicit Context (for per-operation state)**
 1. Create explicit context structure (e.g., `op_context`, `db_context`)
 2. Thread context through function parameters instead of relying on globals
 3. Maintain backward-compatible wrappers using default context
 4. Gradually eliminate global variable access
-5. Document in `planning/architectural_decision_records/`
 
-**See**: Issue #135 (outline context refactoring)
+**When to Use Which**:
+- **Thread-Local**: Per-thread execution state (flnextparamislast, flscriptrunning, current outline)
+- **Explicit Context**: Per-operation state (database operations, outline operations)
+
+**Documentation**:
+- **ADR-005**: Parameter state thread-safety (thread-local pattern reference)
+- **docs/THREAD_LOCAL_GLOBALS_PATTERN.md**: Step-by-step migration template
+- **Issue #135**: Outline context refactoring (explicit context pattern reference)
 
 ---
 
