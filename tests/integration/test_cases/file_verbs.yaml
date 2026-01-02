@@ -1,128 +1,125 @@
-# File Verb Integration Tests
-# Tests for cross-platform file verb implementations
+# Integration tests for file verb operations
+# Tests basic file operations available in headless mode
+#
+# Phase 1 priority file verbs (portable operations):
+#   - file.fileFromPath() - Create filespec from path string
+#   - file.exists() - Check if file exists
+#   - file.new() - Create new file
+#   - file.writeWholeFile() - Write data to file
+#   - file.readWholeFile() - Read entire file
+#   - file.delete() - Delete file
+#
+# NOTE: Many file verbs (metadata, resource fork, FSRef-specific) are Mac-only
+# and not available in headless mode. Tests focus on portable POSIX operations.
 
 tests:
-  - name: "file.type - short extension returns OSType"
-    script: |
-      local(fs = file.fileFromPath("/tmp/test_frontier.txt"));
-      file.new(fs);
-      local(t = file.type(fs));
-      file.delete(fs);
-      return typeof(t) + ":" + lang.string(t)
-    expected_success: true
-    expected_result: "type:txt "
-  
-  - name: "file.type - long extension returns string"
-    script: |
-      local(fs = file.fileFromPath("/tmp/test_frontier.markdown"));
-      file.new(fs);
-      local(t = file.type(fs));
-      file.delete(fs);
-      return typeof(t) + ":" + t
-    expected_success: true
-    expected_result: "TEXT:markdown"
-  
-  - name: "file.type - no extension returns ????"
-    script: |
-      local(fs = file.fileFromPath("/tmp/README_TEST"));
-      file.new(fs);
-      local(t = file.type(fs));
-      file.delete(fs);
-      return lang.string(t)
-    expected_success: true
-    expected_result: "????"
-  
-  - name: "file.creator - returns 4 spaces on non-Mac"
-    script: |
-      local(fs = file.fileFromPath("/tmp/test_frontier.txt"));
-      file.new(fs);
-      local(c = file.creator(fs));
-      file.delete(fs);
-      return lang.string(c)
-    expected_success: true
-    expected_result: "    "
-  
-  # Bundle Tests
-  - name: "file.hasbundle - .app suffix returns true"
-    script: |
-      return file.hasbundle(file.fileFromPath("/Applications/TextEdit.app"))
-    expected_success: true
-    expected_result: "true"
-  
-  - name: "file.hasbundle - regular file returns false"
-    script: |
-      return file.hasbundle(file.fileFromPath("/tmp/test.txt"))
-    expected_success: true
-    expected_result: "false"
-  
-  - name: "file.setbundle - returns error (not supported)"
-    script: |
-      local(fs = file.fileFromPath("/tmp/test_frontier.txt"));
-      file.new(fs);
-      file.setbundle(fs, true);
-      file.delete(fs)
-    expected_success: false
-    expected_error: "not implemented"
-  
-  # Visibility Tests
-  - name: "file.isvisible - always returns true"
-    script: |
-      local(fs = file.fileFromPath("/tmp/test_frontier_vis.txt"));
-      file.new(fs);
-      local(vis = file.isvisible(fs));
-      file.delete(fs);
-      return vis
-    expected_success: true
-    expected_result: "true"
-  
-  - name: "file.setvisible - returns false (not supported)"
-    script: |
-      local(fs = file.fileFromPath("/tmp/test_frontier_vis2.txt"));
-      file.new(fs);
-      local(result = file.setvisible(fs, false));
-      file.delete(fs);
-      return result
-    expected_success: true
-    expected_result: "false"
-  
-  # Type/Creator Setters (should error)
-  - name: "file.settype - returns error (not supported)"
-    script: |
-      local(fs = file.fileFromPath("/tmp/test_frontier.txt"));
-      file.new(fs);
-      file.settype(fs, 'TEXT');
-      file.delete(fs)
-    expected_success: false
-    expected_error: "not implemented"
-  
-  - name: "file.setcreator - returns error (not supported)"
-    script: |
-      local(fs = file.fileFromPath("/tmp/test_frontier.txt"));
-      file.new(fs);
-      file.setcreator(fs, 'MSWD');
-      file.delete(fs)
-    expected_success: false
-    expected_error: "not implemented"
-  
-  # Mac-Only Verbs (should error on non-Mac)
-  - name: "file.newAlias - not supported on non-Mac"
+  # Basic file existence checks
+  - name: "file.fileFromPath - create filespec from path"
+    description: "Convert path string to filespec"
     script: |
       local(fs = file.fileFromPath("/tmp/test.txt"));
-      local(alias = file.fileFromPath("/tmp/test_alias"));
-      file.newAlias(fs, alias)
-    expected_success: false
-    expected_error: "not implemented"
-  
-  - name: "file.getVersion - not supported on non-Mac"
+      return typeof(fs)
+    expected_success: true
+    expected_result: "fileSpec"
+
+  - name: "file.exists - nonexistent file"
+    description: "Check that nonexistent file returns false"
     script: |
-      file.getVersion(file.fileFromPath("/bin/ls"))
-    expected_success: false
-    expected_error: "not implemented"
-  
-  # Dialog Verbs (Phase 1 - should error)
-  - name: "file.getFileDialog - not implemented (Phase 1)"
+      local(fs = file.fileFromPath("/tmp/nonexistent_file_12345.txt"));
+      return file.exists(fs)
+    expected_success: true
+    expected_result: "false"
+
+  # File creation and writing
+  - name: "file.new - create new empty file"
+    description: "Create new file in /tmp"
     script: |
-      file.getFileDialog("Select a file", @result)
+      local(fs = file.fileFromPath("/tmp/frontier_test_new.txt"));
+      file.delete(fs);
+      local(ok = file.new(fs, 'TEXT', 'ttxt'));
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  - name: "file.exists - file created with file.new"
+    description: "Verify file.new created the file"
+    script: |
+      local(fs = file.fileFromPath("/tmp/frontier_test_new.txt"));
+      return file.exists(fs)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "file.writeWholeFile - write string to file"
+    description: "Write text content to file"
+    script: |
+      local(fs = file.fileFromPath("/tmp/frontier_test_write.txt"));
+      local(content = "Hello, Frontier!");
+      local(ok = file.writeWholeFile(fs, @content));
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  - name: "file.readWholeFile - read back written content"
+    description: "Read file and verify content matches"
+    script: |
+      local(fs = file.fileFromPath("/tmp/frontier_test_write.txt"));
+      file.readWholeFile(fs, @readData);
+      return readData
+    expected_success: true
+    expected_result: "Hello, Frontier!"
+
+  - name: "file.readWholeFile - round trip binary data"
+    description: "Write and read back binary data"
+    script: |
+      local(fs = file.fileFromPath("/tmp/frontier_test_binary.dat"));
+      local(binaryData = "\\x00\\x01\\x02\\xFF");
+      file.writeWholeFile(fs, @binaryData);
+      file.readWholeFile(fs, @readData);
+      return (readData == binaryData)
+    expected_success: true
+    expected_result: "true"
+
+  # File deletion
+  - name: "file.delete - delete existing file"
+    description: "Delete file created in previous test"
+    script: |
+      local(fs = file.fileFromPath("/tmp/frontier_test_write.txt"));
+      local(ok = file.delete(fs));
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  - name: "file.exists - file deleted successfully"
+    description: "Verify file.delete removed the file"
+    script: |
+      local(fs = file.fileFromPath("/tmp/frontier_test_write.txt"));
+      return file.exists(fs)
+    expected_success: true
+    expected_result: "false"
+
+  # Error cases
+  - name: "file.readWholeFile - nonexistent file error"
+    description: "Reading nonexistent file should fail"
+    script: |
+      local(fs = file.fileFromPath("/tmp/does_not_exist_12345.txt"));
+      return file.readWholeFile(fs, @data)
     expected_success: false
-    expected_error: "not implemented"
-  
+    expected_result: null
+
+  - name: "file.delete - nonexistent file error"
+    description: "Deleting nonexistent file should fail"
+    script: |
+      local(fs = file.fileFromPath("/tmp/does_not_exist_12345.txt"));
+      return file.delete(fs)
+    expected_success: false
+    expected_result: null
+
+  # Cleanup
+  - name: "cleanup - remove test files"
+    description: "Clean up any remaining test files"
+    script: |
+      file.delete(file.fileFromPath("/tmp/frontier_test_new.txt"));
+      file.delete(file.fileFromPath("/tmp/frontier_test_binary.dat"));
+      return true
+    expected_success: true
+    expected_result: "true"

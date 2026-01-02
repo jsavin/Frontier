@@ -2570,8 +2570,8 @@ static boolean getposixpathverb ( hdltreenode hp1, tyvaluerecord *vreturned ) {
 		
 
 
-static boolean filefunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vreturned, bigstring bserror) {
-	
+boolean filefunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vreturned, bigstring bserror) {
+
 	//
 	// bridges file.c with the language.  the name of the verb is bs, its first
 	// parameter is hparam1, and we return a value in vreturned.

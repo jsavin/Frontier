@@ -1,17 +1,12 @@
 /*
  * headless_file_verbs.c - File processor verbs for headless mode
  *
- * This file implements cross-platform file verbs for headless mode.
- * Most verbs return "not implemented" - only cross-platform essentials are implemented.
+ * This file provides the callback dispatcher for file verbs in headless mode,
+ * routing verb calls to the actual implementations in fileverbs.c.
  *
- * @IMPLEMENTED:
- *   - file.type() - extension-based type detection
- *   - file.creator() - returns spaces (no creator codes on non-Mac)
- *   - file.hasbundle() - suffix-based bundle detection
- *   - file.isvisible() - always returns true
- *   - file.setvisible() - returns false (not supported)
+ * @IMPLEMENTED - All 86 file verbs forward to filefunctionvalue() in fileverbs.c
  *
- * Created: 2026-01-01 - File verb bindings (Phase 3)
+ * Created: 2026-01-01 - Phase 1 file verb dispatcher
  */
 
 #include "frontier.h"
@@ -21,19 +16,21 @@
 #include "strings.h"
 #include "lang.h"
 #include "langinternal.h"
-#include "tablestructure.h"
-#include "file.h"
 #include "logging.h"
-#include "error.h"
 
-#include <unistd.h>     /* for unlink() */
-#include <errno.h>      /* for errno */
-#include <string.h>     /* for strerror() */
-#include <limits.h>     /* for PATH_MAX */
-#include <sys/stat.h>   /* for lstat(), S_ISLNK() */
-
-/* Token enum matching fileverbs.c */
-typedef enum tyfiletoken {
+/* Token enum for all verbs in the file processor
+ *
+ * CRITICAL: This enum MUST be kept in sync with tyfiletoken in Common/source/fileverbs.c
+ *
+ * Verification:
+ *   1. Token order must match exactly (0=filecreated, 1=filemodified, etc.)
+ *   2. Token count must match ctfileverbs value (86 verbs)
+ *   3. Compile-time assertion below will fail if count mismatches
+ *
+ * To verify manually:
+ *   grep -c "func = " Common/source/fileverbs.c | should equal 86
+ */
+enum {
 	filecreatedfunc = 0,
 	filemodifiedfunc = 1,
 	filetypefunc = 2,
@@ -79,6 +76,7 @@ typedef enum tyfiletoken {
 	filegetlabelfunc = 42,
 	filesetlabelfunc = 43,
 	filefindappfunc = 44,
+	/* fileeditlinefeedsfunc - commented out in original */
 	fileisbusyfunc = 45,
 	filehasbundlefunc = 46,
 	filesetbundlefunc = 47,
@@ -87,6 +85,7 @@ typedef enum tyfiletoken {
 	filesetvisiblefunc = 50,
 	filefollowaliasfunc = 51,
 	filemovefunc = 52,
+	/* filesinfolderfunc - commented out in original */
 	volumeejectfunc = 53,
 	volumeisejectablefunc = 54,
 	volumefreespacefunc = 55,
@@ -96,397 +95,90 @@ typedef enum tyfiletoken {
 	foldersonvolumefunc = 59,
 	unmountvolumefunc = 60,
 	mountservervolumefunc = 61,
-	filefindinfilefunc = 62,
-	filecountlinesfunc = 63,
-	fileopenfunc = 64,
-	fileclosefunc = 65,
-	fileendoffunc = 66,
-	filesetendoffunc = 67,
-	filegetendoffunc = 68,
-	filesetpositionfunc = 69,
-	filegetpositionfunc = 70,
-	filereadlinefunc = 71,
-	filewritelinefunc = 72,
-	filereadfunc = 73,
-	filewritefunc = 74,
-	filecomparefunc = 75,
+	/* filelaunchfunc - commented out in original */
+	/* start of new verbs added by DW, 7/27/91 */
+	findinfilefunc = 62,
+	countlinesfunc = 63,
+	openfilefunc = 64,
+	closefilefunc = 65,
+	endoffilefunc = 66,
+	setendoffilefunc = 67,
+	getendoffilefunc = 68,
+	setpositionfunc = 69,
+	getpositionfunc = 70,
+	readlinefunc = 71,
+	writelinefunc = 72,
+	readfunc = 73,
+	writefunc = 74,
+	comparefunc = 75,
+	/* end of new verbs added by DW, 7/27/91 */
 	writewholefilefunc = 76,
 	getpathcharfunc = 77,
 	volumefreespacedoublefunc = 78,
 	volumesizedoublefunc = 79,
-	filegetmp3infofunc = 80,
-	readwholefilefunc = 81,
-	getlabelindexfunc = 82,
-	setlabelindexfunc = 83,
-	getlabelnamesfunc = 84,
-	getposixpathfunc = 85,
+	getmp3infofunc = 80,
+	readwholefilefunc = 81,			/* 2006-04-11 aradke */
+	getlabelindexfunc = 82,			/* 2006-04-23 creedon */
+	setlabelindexfunc = 83,			/* 2006-04-23 creedon */
+	getlabelnamesfunc = 84,			/* 2006-04-23 creedon */
+	getposixpathfunc = 85,			/* 2006-10-07 creedon */
 
-	filv_count
-} tyfiletoken;
+	/* Sentinel - must equal ctfileverbs from fileverbs.c */
+	filev_count
+};
 
-/* Compile-time verification */
+/* Compile-time verification that token count matches fileverbs.c
+ * If this fails, the enum above is out of sync with tyfiletoken */
 #define EXPECTED_FILE_VERB_COUNT 86
-_Static_assert(filv_count == EXPECTED_FILE_VERB_COUNT,
-               "Token enum out of sync with fileverbs.c");
+_Static_assert(filev_count == EXPECTED_FILE_VERB_COUNT,
+               "Token enum out of sync with fileverbs.c - update headless_file_verbs.c");
 
-/* Helper: get filespec parameter */
-static boolean getpathvalue(hdltreenode hparam1, short pnum, ptrfilespec fspath) {
-	tyvaluerecord v;
-
-	if (!getparamvalue(hparam1, pnum, &v))
-		return false;
-
-	if (!coercetofilespec(&v))
-		return false;
-
-	*fspath = **v.data.filespecvalue;
-
-	return true;
-}
-
-/* Helper: get filename from filespec */
-extern boolean getfsfile(const ptrfilespec fs, bigstring bs);
-
-/* External file operations from file_portable.c and fileops.c */
-extern boolean pathtofilespec(bigstring bspath, ptrfilespec fs);
-extern boolean opennewfile(ptrfilespec, OSType, OSType, hdlfilenum *);
-extern boolean closefile(hdlfilenum);
-extern boolean fileexists(const ptrfilespec, boolean *);
-
-/* Helper: validate file path (basic path traversal check) */
-static boolean validatefilepath(const ptrfilespec fs, bigstring bserror) {
-	bigstring bspath;
-	char cpath[PATH_MAX];
-
-	if (!filespectopath(fs, bspath))
-		return false;
-
-	/* Check path length before conversion */
-	if (stringlength(bspath) >= PATH_MAX) {
-		log_error(LOG_COMP_GENERAL, "Path too long: %d bytes", stringlength(bspath));
-		if (bserror)
-			copystring(BIGSTRING("\pPath too long"), bserror);
-		return false;
-	}
-
-	copyptocstring(bspath, cpath);
-
-	/* Check for path traversal attempts */
-	if (strstr(cpath, "..")) {
-		log_warn(LOG_COMP_GENERAL, "Path traversal attempt blocked: %s", cpath);
-		if (bserror)
-			copystring(BIGSTRING("\pInvalid file path"), bserror);
-		return false;
-	}
-
-	return true;
-}
-
-/* Helper: create new file (wrapper around opennewfile + closefile) */
-boolean newfile(const ptrfilespec fs, OSType creator, OSType filetype) {
-	hdlfilenum fnum;
-	bigstring bspath;
-
-	if (filespectopath(fs, bspath))
-		log_debug(LOG_COMP_GENERAL, "Creating file: %s", bspath + 1);
-
-	if (!opennewfile((ptrfilespec)fs, creator, filetype, &fnum)) {
-		if (filespectopath(fs, bspath))
-			log_error(LOG_COMP_GENERAL, "opennewfile failed for: %s", bspath + 1);
-		return false;
-	}
-
-	if (!closefile(fnum)) {
-		if (filespectopath(fs, bspath))
-			log_error(LOG_COMP_GENERAL, "closefile failed for: %s", bspath + 1);
-		return false;
-	}
-
-	if (filespectopath(fs, bspath))
-		log_debug(LOG_COMP_GENERAL, "File created successfully: %s", bspath + 1);
-
-	return true;
-}
-
-/* Helper: delete file (POSIX implementation for headless mode) */
-boolean deletefile(const ptrfilespec fs) {
-	bigstring bspath;
-	char cpath[PATH_MAX];
-	struct stat st;
-
-	if (!filespectopath(fs, bspath))
-		return false;
-
-	/* Check path length before conversion */
-	if (stringlength(bspath) >= PATH_MAX) {
-		log_error(LOG_COMP_GENERAL, "Path too long for deletefile: %d bytes",
-		          stringlength(bspath));
-		setoserrorparam(bspath);
-		return false;
-	}
-
-	copyptocstring(bspath, cpath);
-
-	log_debug(LOG_COMP_GENERAL, "Deleting file: %s", cpath);
-
-	/* Check if it's a symlink - use lstat to avoid following links */
-	if (lstat(cpath, &st) == 0 && S_ISLNK(st.st_mode)) {
-		log_warn(LOG_COMP_GENERAL, "Refusing to delete symlink: %s", cpath);
-		setoserrorparam(bspath);
-		return oserror(EPERM);
-	}
-
-	/* Delete the file */
-	if (unlink(cpath) != 0) {
-		int saved_errno = errno;
-		log_error(LOG_COMP_GENERAL, "unlink(%s) failed: %s", cpath, strerror(saved_errno));
-		setoserrorparam(bspath);
-		return oserror(saved_errno);
-	}
-
-	log_debug(LOG_COMP_GENERAL, "File deleted successfully: %s", cpath);
-	return true;
-}
+/* Forward declaration of portable implementation */
+extern boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
+                                         tyvaluerecord *vreturned, bigstring bserror);
 
 static boolean file_valueproc(short token, hdltreenode hparam1,
-                                tyvaluerecord *vreturned,
-                                bigstring bserror) {
-	tyfilespec fs;
-	bigstring bs, bsext;
-	OSType type;
-	short extlen;
+                               tyvaluerecord *vreturned,
+                               bigstring bserror) {
+	/*
+	 * Dispatcher for file verbs in headless mode.
+	 * Forwards all calls to portable implementation in portable/fileverbs_portable.c
+	 */
+	boolean result;
 
-	switch(token) {
-		case filefrompathfunc: {
-			/* Create filespec from path string */
-			bigstring bspath;
-			tyvaluerecord val;
+	log_debug(LOG_COMP_LANG, "file_valueproc: ENTRY token=%d hparam1=%p vreturned=%p bserror=%p",
+	          token, (void*)hparam1, (void*)vreturned, (void*)bserror);
 
-			flnextparamislast = true;
+	result = portable_filefunctionvalue(token, hparam1, vreturned, bserror);
 
-			if (!getstringvalue(hparam1, 1, bspath))
-				return false;
-
-			if (!pathtofilespec(bspath, &fs))
-				return false;
-
-			if (!setfilespecvalue(&fs, &val))
-				return false;
-
-			*vreturned = val;
-			return true;
-		}
-
-		case newfunc: {
-			/* Create new file */
-			flnextparamislast = true;
-
-			if (!getpathvalue(hparam1, 1, &fs))
-				return false;
-
-			/* Validate file path */
-			if (!validatefilepath(&fs, bserror))
-				return false;
-
-			if (!newfile(&fs, 0, 0)) {  /* No creator/type codes */
-				if (bserror) {
-					bigstring bspath;
-					if (filespectopath(&fs, bspath)) {
-						copystring(bspath, bserror);
-						insertstring(BIGSTRING("\pCan't create file "), bserror);
-					}
-				}
-				return false;
-			}
-
-			(*vreturned).data.flvalue = true;
-			return true;
-		}
-
-		case filedeletefunc: {
-			/* Delete file */
-			flnextparamislast = true;
-
-			if (!getpathvalue(hparam1, 1, &fs))
-				return false;
-
-			/* Validate file path */
-			if (!validatefilepath(&fs, bserror))
-				return false;
-
-			if (!deletefile(&fs)) {
-				if (bserror) {
-					bigstring bspath;
-					if (filespectopath(&fs, bspath)) {
-						copystring(bspath, bserror);
-						insertstring(BIGSTRING("\pCan't delete file "), bserror);
-					}
-				}
-				return false;
-			}
-
-			(*vreturned).data.flvalue = true;
-			return true;
-		}
-
-		case fileexistsfunc: {
-			/* Check if file exists */
-			boolean flfolder;
-			boolean exists;
-
-			flnextparamislast = true;
-
-			if (!getpathvalue(hparam1, 1, &fs))
-				return false;
-
-			/* fileexists() returns false if file doesn't exist OR on error
-			 * For file.exists() verb, we want to return false (not error) if file doesn't exist */
-			exists = fileexists(&fs, &flfolder);
-
-			(*vreturned).data.flvalue = exists;
-			return true;
-		}
-
-		case filetypefunc: {
-			/* Cross-platform: extension-based type detection */
-			flnextparamislast = true;
-
-			if (!getpathvalue(hparam1, 1, &fs))
-				return false;
-
-			/* Get filename */
-			getfsfile(&fs, bs);
-
-			/* Extract extension (after last '.') */
-			lastword(bs, '.', bsext);
-
-			/* Check if extension was found (if bsext == bs, no '.' was found) */
-			if (stringlength(bsext) == 0 || equalstrings(bs, bsext)) {
-				/* No extension */
-				type = 0x3F3F3F3F;  /* '????' */
-				return setostypevalue(type, vreturned);
-			}
-
-			extlen = stringlength(bsext);
-
-			if (extlen <= 4) {
-				/* Short extension: return as OSType */
-				stringtoostype(bsext, &type);
-				return setostypevalue(type, vreturned);
-			} else {
-				/* Long extension: return as string */
-				return setstringvalue(bsext, vreturned);
-			}
-		}
-
-		case filecreatorfunc: {
-			/* Cross-platform: always return 4 spaces */
-			flnextparamislast = true;
-
-			if (!getpathvalue(hparam1, 1, &fs))
-				return false;
-
-			type = 0x20202020;  /* '    ' - 4 spaces */
-			return setostypevalue(type, vreturned);
-		}
-
-		case filehasbundlefunc: {
-			/* Cross-platform: check for bundle suffix */
-			flnextparamislast = true;
-
-			if (!getpathvalue(hparam1, 1, &fs))
-				return false;
-
-			/* Get filename only (more efficient than full path) */
-			getfsfile(&fs, bs);
-
-			/* Extract extension */
-			if (!lastword(bs, '.', bsext)) {
-				(*vreturned).data.flvalue = false;
-				return true;
-			}
-
-			/* Check if it's a bundle suffix */
-			(*vreturned).data.flvalue = (
-				equalstrings(bsext, BIGSTRING("\003app")) ||
-				equalstrings(bsext, BIGSTRING("\006bundle")) ||
-				equalstrings(bsext, BIGSTRING("\011framework")) ||
-				equalstrings(bsext, BIGSTRING("\006plugin")) ||
-				equalstrings(bsext, BIGSTRING("\004kext"))
-			);
-
-			return true;
-		}
-
-		case fileisvisiblefunc: {
-			/* Cross-platform: always return true */
-			flnextparamislast = true;
-
-			if (!getpathvalue(hparam1, 1, &fs))
-				return false;
-
-			(*vreturned).data.flvalue = true;
-			return true;
-		}
-
-		case filesetvisiblefunc: {
-			/* Cross-platform: return false (not supported) */
-			boolean flvisible;
-
-			if (!getpathvalue(hparam1, 1, &fs))
-				return false;
-
-			flnextparamislast = true;
-
-			if (!getbooleanvalue(hparam1, 2, &flvisible))
-				return false;
-
-			(*vreturned).data.flvalue = false;
-			return true;
-		}
-
-		case setfiletypefunc:
-		case setfilecreatorfunc:
-		case filesetbundlefunc:
-		case filecopyresourceforkfunc:
-		case newaliasfunc:
-		case filefollowaliasfunc:
-		case fileisaliasfunc:
-		case filegeticonposfunc:
-		case fileseticonposfunc:
-		case getshortversionfunc:
-		case setshortversionfunc:
-		case getlongversionfunc:
-		case setlongversionfunc:
-		case filegetcommentfunc:
-		case filesetcommentfunc:
-		case filegetlabelfunc:
-		case filesetlabelfunc:
-		case sfgetfilefunc:
-		case sfputfilefunc:
-		case sfgetfolderfunc:
-		case sfgetdiskfunc:
-		case filefindappfunc:
-			/* Mac-only or not implemented */
-			if (bserror)
-				copystring(BIGSTRING("\pnot implemented"), bserror);
-			return false;
-
-		default:
-			/* All other verbs not implemented */
-			if (bserror)
-				copystring(BIGSTRING("\pnot implemented"), bserror);
-			return false;
+	if (bserror && bserror[0] > 0) {
+		char errmsg[256];
+		copyptocstring(bserror, errmsg);
+		log_debug(LOG_COMP_LANG, "file_valueproc: EXIT token=%d result=%d bserror='%s'",
+		          token, result, errmsg);
+	} else {
+		log_debug(LOG_COMP_LANG, "file_valueproc: EXIT token=%d result=%d bserror=<empty>",
+		          token, result);
 	}
+
+	return result;
 }
 
-/* Exported callback */
+/* Exported callback used by headless kernel verb bootstrap */
 boolean headless_file_verbs_callback(short token, hdltreenode hparam1,
-                                      tyvaluerecord *vreturned, bigstring bserror) {
+                                     tyvaluerecord *vreturned, bigstring bserror) {
 	return file_valueproc(token, hparam1, vreturned, bserror);
 }
 
-/* Initialization function */
+/* Headless-specific file verb initialization function
+ *
+ * This replaces fileinitverbs() for headless mode, registering the file processor
+ * with headless_file_verbs_callback instead of the windowed filefunctionvalue callback.
+ *
+ * Follows the same pattern as tableinitverbs() in headless_table_verbs.c.
+ *
+ * Returns: true if file processor was successfully registered, false otherwise
+ */
 boolean fileinitverbs(void) {
 	hdlhashtable htable = nil;
 	bigstring bsname;
@@ -505,6 +197,7 @@ boolean fileinitverbs(void) {
 
 	pushhashtable(htable);
 
+	/* Register all file verbs */
 	#define ADD_VERB(name, tok) do { \
 		bigstring bs; \
 		copystring(name, bs); \
@@ -539,17 +232,17 @@ boolean fileinitverbs(void) {
 	ADD_VERB(BIGSTRING("\007setpath"), filesetpathfunc);
 	ADD_VERB(BIGSTRING("\014filefrompath"), filefrompathfunc);
 	ADD_VERB(BIGSTRING("\016folderfrompath"), folderfrompathfunc);
-	ADD_VERB(BIGSTRING("\022getsystemfolderpath"), getsystempathfunc);
-	ADD_VERB(BIGSTRING("\023getspecialfolderpath"), getspecialpathfunc);
+	ADD_VERB(BIGSTRING("\023getsystemfolderpath"), getsystempathfunc);
+	ADD_VERB(BIGSTRING("\024getspecialfolderpath"), getspecialpathfunc);
 	ADD_VERB(BIGSTRING("\003new"), newfunc);
 	ADD_VERB(BIGSTRING("\011newfolder"), newfolderfunc);
 	ADD_VERB(BIGSTRING("\010newalias"), newaliasfunc);
-	ADD_VERB(BIGSTRING("\016getfiledialog"), sfgetfilefunc);
-	ADD_VERB(BIGSTRING("\016putfiledialog"), sfputfilefunc);
-	ADD_VERB(BIGSTRING("\020getfolderdialog"), sfgetfolderfunc);
-	ADD_VERB(BIGSTRING("\016getdiskdialog"), sfgetdiskfunc);
-	ADD_VERB(BIGSTRING("\013geticonpos"), filegeticonposfunc);
-	ADD_VERB(BIGSTRING("\013seticonpos"), fileseticonposfunc);
+	ADD_VERB(BIGSTRING("\015getfiledialog"), sfgetfilefunc);
+	ADD_VERB(BIGSTRING("\015putfiledialog"), sfputfilefunc);
+	ADD_VERB(BIGSTRING("\017getfolderdialog"), sfgetfolderfunc);
+	ADD_VERB(BIGSTRING("\015getdiskdialog"), sfgetdiskfunc);
+	ADD_VERB(BIGSTRING("\012geticonpos"), filegeticonposfunc);
+	ADD_VERB(BIGSTRING("\012seticonpos"), fileseticonposfunc);
 	ADD_VERB(BIGSTRING("\012getversion"), getshortversionfunc);
 	ADD_VERB(BIGSTRING("\012setversion"), setshortversionfunc);
 	ADD_VERB(BIGSTRING("\016getfullversion"), getlongversionfunc);
@@ -568,38 +261,38 @@ boolean fileinitverbs(void) {
 	ADD_VERB(BIGSTRING("\013followalias"), filefollowaliasfunc);
 	ADD_VERB(BIGSTRING("\004move"), filemovefunc);
 	ADD_VERB(BIGSTRING("\005eject"), volumeejectfunc);
-	ADD_VERB(BIGSTRING("\014isejectable"), volumeisejectablefunc);
-	ADD_VERB(BIGSTRING("\020freespaceonvolume"), volumefreespacefunc);
+	ADD_VERB(BIGSTRING("\013isejectable"), volumeisejectablefunc);
+	ADD_VERB(BIGSTRING("\022freespaceonvolume"), volumefreespacefunc);
 	ADD_VERB(BIGSTRING("\012volumesize"), volumesizefunc);
 	ADD_VERB(BIGSTRING("\017volumeblocksize"), volumeblocksizefunc);
-	ADD_VERB(BIGSTRING("\016filesonvolume"), filesonvolumefunc);
-	ADD_VERB(BIGSTRING("\020foldersonvolume"), foldersonvolumefunc);
+	ADD_VERB(BIGSTRING("\015filesonvolume"), filesonvolumefunc);
+	ADD_VERB(BIGSTRING("\017foldersonvolume"), foldersonvolumefunc);
 	ADD_VERB(BIGSTRING("\015unmountvolume"), unmountvolumefunc);
 	ADD_VERB(BIGSTRING("\021mountservervolume"), mountservervolumefunc);
-	ADD_VERB(BIGSTRING("\012findinfile"), filefindinfilefunc);
-	ADD_VERB(BIGSTRING("\012countlines"), filecountlinesfunc);
-	ADD_VERB(BIGSTRING("\004open"), fileopenfunc);
-	ADD_VERB(BIGSTRING("\005close"), fileclosefunc);
-	ADD_VERB(BIGSTRING("\011endoffile"), fileendoffunc);
-	ADD_VERB(BIGSTRING("\014setendoffile"), filesetendoffunc);
-	ADD_VERB(BIGSTRING("\014getendoffile"), filegetendoffunc);
-	ADD_VERB(BIGSTRING("\013setposition"), filesetpositionfunc);
-	ADD_VERB(BIGSTRING("\013getposition"), filegetpositionfunc);
-	ADD_VERB(BIGSTRING("\010readline"), filereadlinefunc);
-	ADD_VERB(BIGSTRING("\011writeline"), filewritelinefunc);
-	ADD_VERB(BIGSTRING("\004read"), filereadfunc);
-	ADD_VERB(BIGSTRING("\005write"), filewritefunc);
-	ADD_VERB(BIGSTRING("\007compare"), filecomparefunc);
+	ADD_VERB(BIGSTRING("\012findinfile"), findinfilefunc);
+	ADD_VERB(BIGSTRING("\012countlines"), countlinesfunc);
+	ADD_VERB(BIGSTRING("\004open"), openfilefunc);
+	ADD_VERB(BIGSTRING("\005close"), closefilefunc);
+	ADD_VERB(BIGSTRING("\011endoffile"), endoffilefunc);
+	ADD_VERB(BIGSTRING("\014setendoffile"), setendoffilefunc);
+	ADD_VERB(BIGSTRING("\014getendoffile"), getendoffilefunc);
+	ADD_VERB(BIGSTRING("\013setposition"), setpositionfunc);
+	ADD_VERB(BIGSTRING("\013getposition"), getpositionfunc);
+	ADD_VERB(BIGSTRING("\010readline"), readlinefunc);
+	ADD_VERB(BIGSTRING("\011writeline"), writelinefunc);
+	ADD_VERB(BIGSTRING("\004read"), readfunc);
+	ADD_VERB(BIGSTRING("\005write"), writefunc);
+	ADD_VERB(BIGSTRING("\007compare"), comparefunc);
 	ADD_VERB(BIGSTRING("\016writewholefile"), writewholefilefunc);
 	ADD_VERB(BIGSTRING("\013getpathchar"), getpathcharfunc);
-	ADD_VERB(BIGSTRING("\026freespaceonvolumedouble"), volumefreespacedoublefunc);
+	ADD_VERB(BIGSTRING("\030freespaceonvolumedouble"), volumefreespacedoublefunc);
 	ADD_VERB(BIGSTRING("\020volumesizedouble"), volumesizedoublefunc);
-	ADD_VERB(BIGSTRING("\012getmp3info"), filegetmp3infofunc);
-	ADD_VERB(BIGSTRING("\016readwholefile"), readwholefilefunc);
-	ADD_VERB(BIGSTRING("\015getLabelIndex"), getlabelindexfunc);
-	ADD_VERB(BIGSTRING("\015setLabelIndex"), setlabelindexfunc);
-	ADD_VERB(BIGSTRING("\015getLabelNames"), getlabelnamesfunc);
-	ADD_VERB(BIGSTRING("\014getPosixPath"), getposixpathfunc);
+	ADD_VERB(BIGSTRING("\012getmp3info"), getmp3infofunc);
+	ADD_VERB(BIGSTRING("\015readwholefile"), readwholefilefunc);
+	ADD_VERB(BIGSTRING("\015getlabelindex"), getlabelindexfunc);
+	ADD_VERB(BIGSTRING("\015setlabelindex"), setlabelindexfunc);
+	ADD_VERB(BIGSTRING("\015getlabelnames"), getlabelnamesfunc);
+	ADD_VERB(BIGSTRING("\014getposixpath"), getposixpathfunc);
 
 	pophashtable();
 

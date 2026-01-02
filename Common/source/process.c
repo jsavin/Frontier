@@ -58,6 +58,9 @@
 #include "process.h"
 #include "processinternal.h"
 #include "tableinternal.h"
+#ifdef FRONTIER_HEADLESS
+#include "../portable/file_working_dir.h"
+#endif
 
 #include "frontierdebug.h" //6.2b7 AR
 #include "oplist.h" //6.2b11 AR
@@ -1382,8 +1385,13 @@ boolean newthreadglobals (hdlthreadglobals *hglobals) {
 	(**hg).eventsettings.timeoutticks = kNoTimeOut;
 #endif
 
+#ifdef FRONTIER_HEADLESS
+	/* Initialize thread-local working directory from process default */
+	get_process_default_cwd((**hg).current_working_directory);
+#endif
+
 	listlink ((hdllinkedlist) processthreadlist, (hdllinkedlist) hg);
-	
+
 	return (true);
 	} /*newthreadglobals*/
 

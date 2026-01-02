@@ -544,6 +544,60 @@ Frontier has multiple global mutable state variables that must be eliminated bef
 
 ---
 
+### Timestamp Type Migration - uint32_t Audit Required ⚠️
+
+**Context**: Frontier migrated to 64-bit timestamps (`frontier_time_t` = `int64_t`) to avoid the Year 2038 problem. However, legacy code may still use `uint32_t` for timestamps, defeating this migration.
+
+**When pulling new source files into headless builds, ALWAYS audit for uint32_t timestamp usage.**
+
+#### Pre-Merge Checklist for New Files
+
+Before adding any file to headless builds (frontier-cli/Makefile), run this audit:
+
+```bash
+# Search for potential timestamp fields
+grep -n "uint32_t.*time\|uint32_t.*date\|uint32_t.*second" <new_file>.c
+```
+
+For each match, determine if it's:
+1. **Disk format structure** (OK - for backward compatibility with legacy databases)
+2. **In-memory state** (MUST migrate to `frontier_time_t`)
+3. **API parameters** (MUST use `int64_t`/`frontier_time_t`)
+
+#### Example: Correct Pattern
+
+```c
+/* Disk format (legacy v4) - OK to keep uint32_t */
+typedef struct legacy_diskheader {
+    uint32_t timecreated;    // ✅ OK - reading old database format
+    uint32_t timelastsave;   // ✅ OK - with conversion to frontier_time_t
+} legacy_diskheader;
+
+/* In-memory state - MUST use frontier_time_t */
+typedef struct runtime_state {
+    frontier_time_t timecreated;    // ✅ Correct - 64-bit in memory
+    frontier_time_t timelastsave;   // ✅ Correct - 64-bit in memory
+} runtime_state;
+
+/* Conversion when reading disk format */
+state.timecreated = (frontier_time_t)disk_header.timecreated;  // ✅ Widen to 64-bit
+```
+
+#### Known Issue: wptext_runtime.c
+
+**Status**: Needs fix in Phase 3
+
+`portable/wptext_runtime.c` currently uses `long` (platform-dependent size) instead of `frontier_time_t` for in-memory timestamp fields. This truncates timestamps on platforms where `long` is 32-bit (Windows, 32-bit systems).
+
+**See**: `planning/phase3/uint32_timestamp_audit.md` for complete audit report
+
+**References**:
+- `docs/frontier_time_t_standard.md` - 64-bit time standard
+- PR #231 - Discovered during file verb implementation
+- Issue #167 - Original time_t portability bug
+
+---
+
 ### Database Format Debugging & Corruption Detection ⚠️
 
 **CRITICAL LESSONS FROM PR #185**
