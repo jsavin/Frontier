@@ -85,6 +85,7 @@ typedef struct {
 
 static filehandle filetable[MAX_OPEN_FILES];
 static short next_refnum = 1;
+static boolean g_cleanup_registered = false;
 
 /*
  * Allocate a file handle and return refnum
@@ -135,6 +136,48 @@ static boolean release_filehandle(short refnum) {
 	}
 
 	return false;
+}
+
+/*
+ * Cleanup function registered with atexit() to close any leaked file handles.
+ * This ensures:
+ * 1. Buffers are flushed on normal exit (prevents data loss)
+ * 2. Leaked handles are logged for debugging
+ * 3. Resources are properly released
+ */
+static void cleanup_file_handles(void) {
+	int i;
+	int closed_count = 0;
+
+	for (i = 0; i < MAX_OPEN_FILES; i++) {
+		if (filetable[i].inuse) {
+			log_debug(LOG_COMP_LANG, "cleanup_file_handles: closing refnum=%d (fp=%p)",
+			         filetable[i].refnum, (void*)filetable[i].fp);
+
+			fclose(filetable[i].fp);  /* Flushes buffers, releases locks */
+			filetable[i].inuse = false;
+			filetable[i].fp = NULL;
+			closed_count++;
+		}
+	}
+
+	if (closed_count > 0) {
+		log_warn(LOG_COMP_LANG, "cleanup_file_handles: closed %d leaked file handle(s)",
+		        closed_count);
+	}
+}
+
+/*
+ * Register cleanup hook with atexit() on first use.
+ * This is called from openfilefunc to ensure cleanup is registered
+ * before any files are opened.
+ */
+static void ensure_cleanup_registered(void) {
+	if (!g_cleanup_registered) {
+		atexit(cleanup_file_handles);
+		g_cleanup_registered = true;
+		log_debug(LOG_COMP_LANG, "File handle cleanup registered with atexit()");
+	}
 }
 
 /* Token enum - MUST match tyfiletoken in fileverbs.c and headless_file_verbs.c */
@@ -881,6 +924,9 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			boolean flreadonly = false;
 			FILE *fp;
 			short refnum;
+
+			/* Register cleanup hook on first file open */
+			ensure_cleanup_registered();
 
 			if (!getfilespecvalue(hparam1, 1, &fs))
 				return false;
