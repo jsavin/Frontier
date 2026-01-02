@@ -79,6 +79,9 @@ static boolean filespec_to_cstring(const ptrfilespec fs, char *path, size_t path
 /* File handle table for open files */
 #define MAX_OPEN_FILES 64
 
+/* Maximum file size for readwholefile() - 500MB limit prevents OOM on huge files */
+#define MAX_READWHOLEFILE_SIZE (500 * 1024 * 1024)
+
 typedef struct {
 	FILE *fp;
 	short refnum;
@@ -86,58 +89,25 @@ typedef struct {
 } filehandle;
 
 static filehandle filetable[MAX_OPEN_FILES];
-static short next_refnum = 1;
 static boolean g_cleanup_registered = false;
 static pthread_mutex_t filetable_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /*
  * Allocate a file handle and return refnum.
- * Implements refnum reuse to prevent overflow after 32,767 opens.
+ * Uses slot index + 1 as refnum for O(1) allocation and lookup.
  */
 static short allocate_filehandle(FILE *fp) {
-	int i, j;
-	short candidate;
-	boolean in_use;
+	int i;
 	short result = 0;
 
 	pthread_mutex_lock(&filetable_mutex);
 
-	/* Find free slot */
+	/* Find free slot and use slot index + 1 as refnum */
 	for (i = 0; i < MAX_OPEN_FILES; i++) {
 		if (!filetable[i].inuse) {
-			/* Find unused refnum (wrap around if needed) */
-			candidate = next_refnum;
-
-			do {
-				/* Wrap to 1 if overflow or negative */
-				if (candidate <= 0) {
-					candidate = 1;
-				}
-
-				/* Check if refnum already in use */
-				in_use = false;
-				for (j = 0; j < MAX_OPEN_FILES; j++) {
-					if (filetable[j].inuse && filetable[j].refnum == candidate) {
-						in_use = true;
-						break;
-					}
-				}
-
-				if (!in_use) {
-					break; /* Found unused refnum */
-				}
-
-				candidate++;
-			} while (candidate != next_refnum); /* Avoid infinite loop */
-
 			filetable[i].fp = fp;
-			filetable[i].refnum = candidate;
+			filetable[i].refnum = i + 1;  /* Slot 0 → refnum 1, slot 1 → refnum 2, etc. */
 			filetable[i].inuse = true;
-			next_refnum = candidate + 1;
-			if (next_refnum <= 0) {
-				next_refnum = 1;  /* Wrap immediately to avoid negative values */
-			}
-
 			result = filetable[i].refnum;
 			break;
 		}
@@ -148,19 +118,22 @@ static short allocate_filehandle(FILE *fp) {
 }
 
 /*
- * Get FILE* from refnum
+ * Get FILE* from refnum (O(1) direct lookup)
  */
 static FILE* get_filepointer(short refnum) {
-	int i;
 	FILE *result = NULL;
+
+	/* Validate refnum range */
+	if (refnum < 1 || refnum > MAX_OPEN_FILES) {
+		return NULL;
+	}
 
 	pthread_mutex_lock(&filetable_mutex);
 
-	for (i = 0; i < MAX_OPEN_FILES; i++) {
-		if (filetable[i].inuse && filetable[i].refnum == refnum) {
-			result = filetable[i].fp;
-			break;
-		}
+	/* Direct O(1) lookup using refnum - 1 as index */
+	int i = refnum - 1;
+	if (filetable[i].inuse && filetable[i].refnum == refnum) {
+		result = filetable[i].fp;
 	}
 
 	pthread_mutex_unlock(&filetable_mutex);
@@ -1129,9 +1102,26 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			}
 
 			current = ftell(fp);
-			fseek(fp, 0, SEEK_END);
+			if (current < 0) {
+				copyctopstring("Can't get current file position", bserror);
+				return false;
+			}
+
+			if (fseek(fp, 0, SEEK_END) != 0) {
+				copyctopstring("Can't seek to end of file", bserror);
+				return false;
+			}
+
 			size = ftell(fp);
-			fseek(fp, current, SEEK_SET);
+			if (size < 0) {
+				copyctopstring("Can't get file size", bserror);
+				return false;
+			}
+
+			if (fseek(fp, current, SEEK_SET) != 0) {
+				copyctopstring("Can't restore file position", bserror);
+				return false;
+			}
 
 			return setlongvalue(size, vreturned);
 		}
@@ -1373,14 +1363,36 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			}
 
 			/* Get file size */
-			fseek(fp, 0, SEEK_END);
+			if (fseek(fp, 0, SEEK_END) != 0) {
+				fclose(fp);
+				copyctopstring("Can't seek to end of file", bserror);
+				return false;
+			}
+
 			filesize = ftell(fp);
-			fseek(fp, 0, SEEK_SET);
+			if (filesize < 0) {
+				fclose(fp);
+				copyctopstring("Can't get file size", bserror);
+				return false;
+			}
+
+			if (fseek(fp, 0, SEEK_SET) != 0) {
+				fclose(fp);
+				copyctopstring("Can't seek to beginning of file", bserror);
+				return false;
+			}
 
 			/* Empty file */
 			if (filesize == 0) {
 				fclose(fp);
 				return setstringvalue(BIGSTRING("\x00"), vreturned);
+			}
+
+			/* Check file size limit (500MB) */
+			if (filesize > MAX_READWHOLEFILE_SIZE) {
+				fclose(fp);
+				copyctopstring("File too large (exceeds 500MB limit)", bserror);
+				return false;
 			}
 
 			/* Small file - return as string */
