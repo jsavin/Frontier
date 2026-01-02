@@ -133,23 +133,23 @@ enum {
 _Static_assert(filev_count == EXPECTED_FILE_VERB_COUNT,
                "Token enum out of sync with fileverbs.c - update headless_file_verbs.c");
 
-/* Forward declaration of the actual implementation in fileverbs.c */
-extern boolean filefunctionvalue(short token, hdltreenode hparam1,
-                                 tyvaluerecord *vreturned, bigstring bserror);
+/* Forward declaration of portable implementation */
+extern boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
+                                         tyvaluerecord *vreturned, bigstring bserror);
 
 static boolean file_valueproc(short token, hdltreenode hparam1,
                                tyvaluerecord *vreturned,
                                bigstring bserror) {
 	/*
 	 * Dispatcher for file verbs in headless mode.
-	 * Simply forwards all calls to the actual implementation in fileverbs.c
+	 * Forwards all calls to portable implementation in portable/fileverbs_portable.c
 	 */
 	boolean result;
 
 	log_debug(LOG_COMP_LANG, "file_valueproc: ENTRY token=%d hparam1=%p vreturned=%p bserror=%p",
 	          token, (void*)hparam1, (void*)vreturned, (void*)bserror);
 
-	result = filefunctionvalue(token, hparam1, vreturned, bserror);
+	result = portable_filefunctionvalue(token, hparam1, vreturned, bserror);
 
 	if (bserror && bserror[0] > 0) {
 		char errmsg[256];
