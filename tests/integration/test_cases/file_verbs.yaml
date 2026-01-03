@@ -126,13 +126,20 @@ tests:
 
   # Cleanup
   - name: "cleanup - remove test files"
-    description: "Clean up any remaining test files"
+    description: "Clean up any remaining test files created during tests"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(fs1 = file.fileFromPath(tmpDir + "/" + "frontier_test_new.txt"));
-      local(fs2 = file.fileFromPath(tmpDir + "/" + "frontier_test_binary.dat"));
-      if (file.exists(fs1)) { file.delete(fs1); }
-      if (file.exists(fs2)) { file.delete(fs2); }
+      local(filesToDelete = array());
+      local(filesToDelete[1] = "frontier_test_new.txt");
+      local(filesToDelete[2] = "frontier_test_write.txt");
+      local(filesToDelete[3] = "frontier_test_binary.dat");
+
+      loop(i = 1; i <= sizeOf(filesToDelete); i++) {
+        local(fs = file.fileFromPath(tmpDir + "/" + filesToDelete[i]));
+        if (file.exists(fs)) {
+          file.delete(fs);
+        }
+      }
       return true
     expected_success: true
     expected_result: "true"

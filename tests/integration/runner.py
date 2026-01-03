@@ -213,6 +213,18 @@ class TestRunner:
 
         return file_results
 
+    def cleanup_test_artifacts(self):
+        """Clean up temporary test files and directories created during test execution."""
+        import shutil
+        test_tmp_dir = os.path.join(self.test_root_dir, 'tmp')
+        if os.path.exists(test_tmp_dir):
+            try:
+                shutil.rmtree(test_tmp_dir)
+                if self.verbose:
+                    print(f"\nCleaned up test artifacts: {test_tmp_dir}")
+            except Exception as e:
+                print(f"Warning: Failed to clean up test artifacts: {e}", file=sys.stderr)
+
     def print_summary(self):
         """Print test summary."""
         total = len(self.results)
@@ -285,6 +297,9 @@ def main():
             continue
 
         runner.run_test_file(test_file)
+
+    # Clean up test artifacts
+    runner.cleanup_test_artifacts()
 
     # Print summary and exit with appropriate code
     all_passed = runner.print_summary()
