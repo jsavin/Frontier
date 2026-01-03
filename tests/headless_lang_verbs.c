@@ -161,7 +161,7 @@ static boolean lang_valueproc(short token, hdltreenode hparam1,
             return false;
         case lanv_string: {
             /* Verb: lang.string - coerce value to string */
-            extern boolean flcoerceexternaltostring;
+            /* ADR-005: flcoerceexternaltostring now thread-local macro */
             boolean fl;
 
             flnextparamislast = true;

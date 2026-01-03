@@ -25,35 +25,67 @@
 
 ******************************************************************************/
 
+#ifndef processinternalinclude
 #define processinternalinclude
 
 	#ifndef __THREADS__
 		//#include <Threads.h>
 	#endif
 
-	#ifndef landinclude
-		#include <land.h>
-	#endif
-
 #ifndef threadsinclude
 	#include "threads.h"
 #endif
 
-#ifndef cancooninclude
-	#include "cancoon.h"
+#ifndef shellcoreinclude
+	#include "shellcore.h"
 #endif
 
-#ifndef opinternalinclude
-	#include "opinternal.h"
+#ifndef langinclude
+	#include "lang.h"
 #endif
+
+#ifndef processinclude
+	#include "process.h"
+#endif
+
+/* Forward declarations and constants for types used in tythreadglobals */
+typedef struct tycancoonrecord **hdlcancoonrecord;
+typedef struct tyoutlinerecord **hdloutlinerecord;
+
+#define ctoutlinestack 10 /*we can remember outline contexts up to 10 levels deep*/
+#define maxerrorhooks 5
+
+#ifndef FRONTIER_HEADLESS
+typedef struct tymaceventsettings tymaceventsettings;
+#else
+/* Headless stubs for Mac types */
+typedef struct tymaceventsettings {
+	int unused;
+} tymaceventsettings;
+#endif
+
+/* Mac-specific includes - not needed for headless builds */
+#ifndef FRONTIER_HEADLESS
+	#ifndef landinclude
+		#include <land.h>
+	#endif
+
+	#ifndef cancooninclude
+		#include "cancoon.h"
+	#endif
+
+	#ifndef opinternalinclude
+		#include "opinternal.h"
+	#endif
 
 	#ifndef shellprivateinclude
 		#include "shellprivate.h"
 	#endif
-	
+
 	#ifndef shellhooksinclude
 		#include "shellhooks.h"
 	#endif
+#endif /* FRONTIER_HEADLESS */
 
 
 #define ctprocesses 5 /*we can remember nested processes up to 5 levels deep*/
@@ -174,24 +206,52 @@ typedef struct tythreadglobals {
 	unsigned short fldisableyield;
 	
 	long debugthreadingcookie; /*6.2b11 AR: for debugging hung threads*/
-	
-	
+
+#ifndef FRONTIER_HEADLESS
 	ThreadSwitchUPP threadInCallbackUPP;
-	
+
 	ThreadSwitchUPP threadOutCallbackUPP;
-	
+
 	ThreadTerminationUPP threadTerminateUPP;
-	
+
 	ThreadEntryUPP threadEntryCallbackUPP;
+#endif
 
 	bigstring current_working_directory; /*thread-local working directory for file operations*/
 
 	boolean flcominitialized;
 
+	/* ADR-005: Parameter handling state (Phase 3 migration) */
+	boolean flnextparamislast;
+	boolean flparamerrorenabled;
+	boolean flcoerceexternaltostring;
+	boolean flinhibitnilcoercion;
+	boolean fllocaldotparamsonly;
+	bigstring bsfunctionname;
+
+	/* ADR-005: Value protection flags (Phase 3 migration) */
+	boolean fllanghashassignprotect;
+	boolean fllangexternalvalueprotect;
+
+	/* Reserved for future parameter state (Phase 6+) */
+	void *param_reserved[4];
+
 	} tythreadglobals, *ptrthreadglobals, **hdlthreadglobals;
 #pragma options align=reset
 
+/* ADR-005: Thread-local parameter and value protection state (backward-compatible macros) */
+#define flnextparamislast ((**hthreadglobals).flnextparamislast)
+#define flparamerrorenabled ((**hthreadglobals).flparamerrorenabled)
+#define flcoerceexternaltostring ((**hthreadglobals).flcoerceexternaltostring)
+#define flinhibitnilcoercion ((**hthreadglobals).flinhibitnilcoercion)
+#define fllocaldotparamsonly ((**hthreadglobals).fllocaldotparamsonly)
+#define bsfunctionname ((**hthreadglobals).bsfunctionname)
+#define fllanghashassignprotect ((**hthreadglobals).fllanghashassignprotect)
+#define fllangexternalvalueprotect ((**hthreadglobals).fllangexternalvalueprotect)
+
 /*globals*/
+
+extern hdlthreadglobals hthreadglobals; /* ADR-005: Current thread's globals for macro access */
 
 extern boolean flthreadkilled;
 
@@ -208,3 +268,4 @@ extern void copythreadglobals (hdlthreadglobals);
 
 extern void swapinthreadglobals (hdlthreadglobals);
 
+#endif /* processinternalinclude */

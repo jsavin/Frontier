@@ -183,6 +183,12 @@ boolean db_format_prepare_runtime(void) {
     if (!initmemory())
         return false;
 
+#ifdef FRONTIER_HEADLESS
+    /* ADR-005: Initialize thread-local parameter state after memory subsystem */
+    extern void headless_init_threadglobals(void);
+    headless_init_threadglobals();
+#endif
+
     initstrings();
 
     if (!initlang())

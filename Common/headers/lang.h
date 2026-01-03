@@ -703,9 +703,8 @@ extern hdlhashtable currenthashtable; /*langhash.c*/
 
 extern hdltablestack hashtablestack;
 
-extern boolean fllanghashassignprotect;
-
-extern boolean fllangexternalvalueprotect;
+/* ADR-005: Thread-local parameter and value protection state */
+/* Macros defined in processinternal.h after tythreadglobals structure */
 
 
 extern hdlhashtable hkeywordtable; /*holds the language's keywords*/
@@ -719,8 +718,6 @@ extern unsigned long ctscanlines; /*number of lines that have been scanned, for 
 extern unsigned short ctscanchars; /*number of chars passed over on current line, for error reporting*/
 
 extern tylangcallbacks langcallbacks; /*routines that wire the language into environment*/
-
-extern boolean flnextparamislast;
 
 
 /*prototypes*/

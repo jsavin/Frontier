@@ -132,7 +132,7 @@ static int flagentsdisabled = 0; /*temporary, internal disable*/
 
 static boolean flpostedmemorymessage = false;
 
-static hdlthreadglobals hthreadglobals = nil;
+hdlthreadglobals hthreadglobals = nil; /* ADR-005: Exported for thread-local macros */
 
 static typrocessstack processstack = {0};
 
@@ -1373,6 +1373,16 @@ boolean newthreadglobals (hdlthreadglobals *hglobals) {
 	*/
 	(**hg).flcominitialized = false;
 
+	/* ADR-005: Parameter handling state initialization */
+	(**hg).flnextparamislast = false;
+	(**hg).flparamerrorenabled = true;
+	(**hg).flcoerceexternaltostring = false;
+	(**hg).flinhibitnilcoercion = false;
+	(**hg).fllocaldotparamsonly = false;
+	setemptystring((**hg).bsfunctionname);
+	(**hg).fllanghashassignprotect = false;
+	(**hg).fllangexternalvalueprotect = false;
+
 #ifdef landinclude	
 	id = getprocesscreator ();
 	
@@ -1509,8 +1519,18 @@ void copythreadglobals (hdlthreadglobals hglobals) {
 			has COM been initialized in this thread?
 		*/
 		(**hg).flcominitialized = flcominitialized;
+
+		/* ADR-005: Parameter handling state migration */
+		(**hg).flnextparamislast = flnextparamislast;
+		(**hg).flparamerrorenabled = flparamerrorenabled;
+		(**hg).flcoerceexternaltostring = flcoerceexternaltostring;
+		(**hg).flinhibitnilcoercion = flinhibitnilcoercion;
+		(**hg).fllocaldotparamsonly = fllocaldotparamsonly;
+		moveleft(bsfunctionname, (**hg).bsfunctionname, sizeof(bigstring));
+		(**hg).fllanghashassignprotect = fllanghashassignprotect;
+		(**hg).fllangexternalvalueprotect = fllangexternalvalueprotect;
 		}
-	
+
 	(**hg).langcallbacks = langcallbacks;
 	
 	
@@ -1632,9 +1652,19 @@ void swapinthreadglobals (hdlthreadglobals hglobals) {
 	flscriptrunning = (**hg).flscriptrunning;
 	
 	flscriptresting = (**hg).flscriptresting;
-	
+
 	herrornode = (**hg).herrornode;
-	
+
+	/* ADR-005: Parameter handling state migration */
+	flnextparamislast = (**hg).flnextparamislast;
+	flparamerrorenabled = (**hg).flparamerrorenabled;
+	flcoerceexternaltostring = (**hg).flcoerceexternaltostring;
+	flinhibitnilcoercion = (**hg).flinhibitnilcoercion;
+	fllocaldotparamsonly = (**hg).fllocaldotparamsonly;
+	moveleft((**hg).bsfunctionname, bsfunctionname, sizeof(bigstring));
+	fllanghashassignprotect = (**hg).fllanghashassignprotect;
+	fllangexternalvalueprotect = (**hg).fllangexternalvalueprotect;
+
 #ifdef landinclude
 	
 	hlg = landgetglobals ();

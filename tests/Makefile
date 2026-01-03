@@ -191,6 +191,7 @@ LANG_RUNTIME_SOURCES = \
     headless_search_stubs.c \
     headless_mac_compat.c \
     headless_langregexp_stub.c \
+    headless_threadglobals.c \
     \
     headless_langipc_stub.c
 LANG_RUNTIME_SOURCES += \
