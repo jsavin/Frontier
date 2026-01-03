@@ -106,6 +106,17 @@ class TestCase:
         self.description = data.get('description', '')
         self.timeout = data.get('timeout', 10)  # Default 10 seconds, configurable per test
 
+    def get_script_with_substitutions(self, test_root_dir: Optional[str] = None) -> str:
+        """Get the script with path substitutions applied."""
+        script = self.script
+
+        # Substitute test directory paths
+        if test_root_dir:
+            test_tmp_dir = os.path.join(test_root_dir, 'tmp')
+            script = script.replace('{FRONTIER_TEST_TMP_DIR}', test_tmp_dir)
+
+        return script
+
     def validate(self, output: Dict) -> Tuple[bool, Optional[str]]:
         """Validate test output against expectations."""
 
@@ -137,9 +148,10 @@ class TestCase:
 class TestRunner:
     """Main test runner that executes test cases."""
 
-    def __init__(self, cli: FrontierCLI, verbose: bool = False):
+    def __init__(self, cli: FrontierCLI, verbose: bool = False, test_root_dir: Optional[str] = None):
         self.cli = cli
         self.verbose = verbose
+        self.test_root_dir = test_root_dir or str(Path.cwd())
         self.results: List[TestResult] = []
 
     def load_test_file(self, yaml_path: str) -> List[TestCase]:
@@ -160,8 +172,11 @@ class TestRunner:
             if test.description:
                 print(f"    {test.description}")
 
+        # Get script with path substitutions applied
+        script = test.get_script_with_substitutions(self.test_root_dir)
+
         # Execute script with test-specific timeout
-        output = self.cli.execute(test.script, timeout=test.timeout)
+        output = self.cli.execute(script, timeout=test.timeout)
 
         # Validate result
         passed, error = test.validate(output)
@@ -238,8 +253,19 @@ def main():
         print(f"Error: {e}", file=sys.stderr)
         return 1
 
+    # Determine test root directory (project root)
+    # This is used for path substitutions like {FRONTIER_TEST_TMP_DIR}
+    test_root_dir = None
+    if args.test_files:
+        first_test_file = args.test_files[0]
+        # Navigate up from test file to find the project root
+        # Path structure: {project}/tests/integration/test_cases/file.yaml
+        test_file_path = Path(first_test_file).resolve()
+        # Go up 4 levels: test_cases -> integration -> tests -> project
+        test_root_dir = str(test_file_path.parents[3])
+
     # Initialize test runner
-    runner = TestRunner(cli, verbose=args.verbose)
+    runner = TestRunner(cli, verbose=args.verbose, test_root_dir=test_root_dir)
 
     # Run all test files
     for test_file in args.test_files:
