@@ -255,6 +255,25 @@ git checkout develop  # verify you're on develop
 - If Session 2 wants to commit to develop, check if Session 1 has open PRs first
 - Session 1 should merge and clean up worktree before Session 2 does major develop work
 
+### Critical Worktree Discipline ⚠️
+
+**Rule 1: All Work Happens in Worktrees, NOT in Main Directory**
+- The main `Frontier/` directory should only be used for research, viewing code, and running quick diagnostics
+- Any feature/bug fix work MUST be done in a dedicated worktree (e.g., `Frontier-<feature-name>`)
+- This prevents accidentally committing to develop or mixing multiple pieces of work
+- Exception: Trivial single-line fixes on develop are OK (see Decision Tree above)
+
+**Rule 2: Always Rebase Against develop HEAD When Switching to a Worktree**
+- Before starting new work in a worktree, sync with latest develop:
+```bash
+# In the new worktree, after creation:
+git fetch origin
+git rebase origin/develop
+```
+- This ensures your feature branch starts from the latest code
+- Prevents conflicts and keeps your PR clean
+- Do this EVERY TIME you switch to a worktree to start fresh work
+
 ### Pre-Work Checklist
 
 Before starting major work in any session:
