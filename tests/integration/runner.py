@@ -113,6 +113,8 @@ class TestCase:
         # Substitute test directory paths
         if test_root_dir:
             test_tmp_dir = os.path.join(test_root_dir, 'tmp')
+            # Ensure tmp directory exists for tests
+            os.makedirs(test_tmp_dir, exist_ok=True)
             script = script.replace('{FRONTIER_TEST_TMP_DIR}', test_tmp_dir)
 
         return script
