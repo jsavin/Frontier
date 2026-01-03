@@ -14,6 +14,10 @@
 
 tests:
   # Basic file existence checks
+  # NOTE: file.fileFromPath() extracts the filename component from a path string
+  # and returns it as a STRING, not a filespec. This is by design - it's a path
+  # manipulation verb, not a type conversion verb. Therefore typeof() correctly
+  # returns 'TEXT' (stringType), not 'fss ' (filespecType).
   - name: "file.fileFromPath - create filespec from path"
     description: "Convert path string to filespec"
     script: |
@@ -124,22 +128,18 @@ tests:
     expected_success: false
     expected_result: null
 
-  # Cleanup
+  # Cleanup - Note: The test runner automatically removes {FRONTIER_TEST_TMP_DIR} after all tests
+  # This test is a sanity check that cleanup during tests works correctly
   - name: "cleanup - remove test files"
-    description: "Clean up any remaining test files created during tests"
+    description: "Clean up test files created during tests (runner will remove temp dir)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(filesToDelete = array());
-      local(filesToDelete[1] = "frontier_test_new.txt");
-      local(filesToDelete[2] = "frontier_test_write.txt");
-      local(filesToDelete[3] = "frontier_test_binary.dat");
-
-      loop(i = 1; i <= sizeOf(filesToDelete); i++) {
-        local(fs = file.fileFromPath(tmpDir + "/" + filesToDelete[i]));
-        if (file.exists(fs)) {
-          file.delete(fs);
-        }
-      }
+      local(fs1 = file.fileFromPath(tmpDir + "/" + "frontier_test_new.txt"));
+      local(fs2 = file.fileFromPath(tmpDir + "/" + "frontier_test_write.txt"));
+      local(fs3 = file.fileFromPath(tmpDir + "/" + "frontier_test_binary.dat"));
+      if (file.exists(fs1)) { file.delete(fs1); }
+      if (file.exists(fs2)) { file.delete(fs2); }
+      if (file.exists(fs3)) { file.delete(fs3); }
       return true
     expected_success: true
     expected_result: "true"
