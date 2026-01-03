@@ -260,11 +260,20 @@ def main():
     test_root_dir = None
     if args.test_files:
         first_test_file = args.test_files[0]
-        # Navigate up from test file to find the project root
-        # Path structure: {project}/tests/integration/test_cases/file.yaml
         test_file_path = Path(first_test_file).resolve()
-        # Go up 4 levels: test_cases -> integration -> tests -> project
-        test_root_dir = str(test_file_path.parents[3])
+
+        # Find project root by walking up the directory tree
+        # looking for marker files (.git, Makefile, etc.)
+        current = test_file_path.parent
+        while current != current.parent:
+            if (current / '.git').exists() or (current / 'Makefile').exists():
+                test_root_dir = str(current)
+                break
+            current = current.parent
+
+        # Fallback to current working directory if no markers found
+        if test_root_dir is None:
+            test_root_dir = str(Path.cwd())
 
     # Initialize test runner
     runner = TestRunner(cli, verbose=args.verbose, test_root_dir=test_root_dir)
