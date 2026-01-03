@@ -1099,7 +1099,7 @@ static boolean opxmlbuildhead (Handle htext, hdloutlinerecord ho, Handle hname, 
 	Handle hexpansionstate;
 	Rect r;
 	boolean fl = false;
-	unsigned long timecreated, timemodified;
+	int64_t timecreated, timemodified;  /* Use 64-bit for timestamps per frontier_time_t standard */
 	tyvaluerecord vtimecreated, vtimemodified;
 	bigstring bstitle;
 	Handle htitle;
