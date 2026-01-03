@@ -72,7 +72,7 @@ static char * monthnames[12] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul",
 
 /* Return a string that looks like: Sat, 29 Nov 1997 00:51:47 GMT */
  
-boolean datenetstandardstring (long localdate, tyvaluerecord *vreturn) {
+boolean datenetstandardstring (int64_t localdate, tyvaluerecord *vreturn) {
 
 	handlestream s;
 	short day, month, year, hour, minute, second;

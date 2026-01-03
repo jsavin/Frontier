@@ -15,6 +15,12 @@ fi
 echo "[headless-tests] rebuilding CLI..."
 make -C frontier-cli
 
+echo "[headless-tests] checking datetime type usage..."
+if ! ./tools/check_datetime_types.sh; then
+    echo "[headless-tests] datetime type check FAILED"
+    exit 1
+fi
+
 echo "[headless-tests] migrating v6 database to v7..."
 # Restore v6 database from git if it's been migrated
 if [ -f databases/Frontier-v6.root ]; then

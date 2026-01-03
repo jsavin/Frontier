@@ -583,13 +583,42 @@ typedef struct runtime_state {
 state.timecreated = (frontier_time_t)disk_header.timecreated;  // ✅ Widen to 64-bit
 ```
 
-#### Known Issue: wptext_runtime.c
+### Automated DateTime Type Checking ✅
 
-**Status**: Needs fix in Phase 3
+**Pre-Merge Enforcement**: The test suite automatically checks for datetime type issues.
 
-`portable/wptext_runtime.c` currently uses `long` (platform-dependent size) instead of `frontier_time_t` for in-memory timestamp fields. This truncates timestamps on platforms where `long` is 32-bit (Windows, 32-bit systems).
+```bash
+# Runs automatically as part of:
+./tools/run_headless_tests.sh
 
-**See**: `planning/phase3/uint32_timestamp_audit.md` for complete audit report
+# Or run manually:
+./tools/check_datetime_types.sh
+```
+
+**What It Checks**:
+1. `long` or `unsigned long` used with timestamp field names (timecreated, timemodified, timelastsave)
+2. `int32_t`/`uint32_t` with timestamp fields (warnings for manual review)
+3. Function parameters using `long` for date/time values
+
+**Whitelisted Files** (Mac GUI only, not in headless):
+- `Common/headers/claybrowser.h`
+- `Common/source/claybrowserexpand.c`
+- `portable/shelltypes_portable.h`
+- `portable/wptext_runtime.c` (legacy wp_diskheader disk format)
+
+**When You See Warnings About uint32_t**:
+- ✅ **Legacy v4/v6 disk format structures** → OK (backward compatibility for reading old databases)
+- ❌ **Modern v7 (BE64) disk format structures** → BAD (use uint64_t)
+- ❌ **In-memory structures** → BAD (use frontier_time_t / int64_t)
+- ❌ **API parameters** → BAD (use int64_t / frontier_time_t)
+
+**Rule of Thumb**:
+- Legacy readers (`Common/source/legacy/`, v4/v6 disk formats): uint32_t OK
+- Everything else: Use int64_t or frontier_time_t
+
+**See**: `planning/phase3/datetime_handling_audit.md` for complete findings.
+
+---
 
 **References**:
 - `docs/frontier_time_t_standard.md` - 64-bit time standard

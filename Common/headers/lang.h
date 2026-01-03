@@ -822,7 +822,7 @@ extern void langpostsystemdialog (void);
 
 
 
-extern boolean datenetstandardstring (long localdate, tyvaluerecord *vreturn); /*langdate.c*/
+extern boolean datenetstandardstring (int64_t localdate, tyvaluerecord *vreturn); /*langdate.c*/
 
 extern boolean datemonthtostring (long ix, tyvaluerecord *vreturn);
 
