@@ -37,6 +37,10 @@
 	#include "process.h"
 #endif
 
+#ifndef processinternalinclude
+	#include "processinternal.h"
+#endif
+
 
 #define langerrorlist 257
 
@@ -323,7 +327,8 @@ extern Handle tryerror; /*non-nil after try error, until else is evaluated*/
 
 extern Handle tryerrorstack; /*non-nil after try error, until else is evaluated*/
 
-extern boolean flparamerrorenabled; /*if true, no error dialog from getparam*/
+/* ADR-005: Thread-local parameter state - now macros in lang.h */
+/* extern boolean flparamerrorenabled; */
 
 extern boolean flbreak; /*for break op*/
 
@@ -335,7 +340,8 @@ extern hdlhashtable hmagictable; /*for communication with evaluatelist*/
 
 extern DialogPtr langmodaldialog;
 
-extern bigstring bsfunctionname;
+/* ADR-005: Thread-local parameter state - now macro in lang.h */
+/* extern bigstring bsfunctionname; */
 
 extern boolean flstackoverflow; /*langops.c*/
 
@@ -343,9 +349,9 @@ extern boolean flfindanyspecialsymbol;
 
 extern bigstring bscontainername; /*langtree.c*/
 
-extern boolean flcoerceexternaltostring; /*langvalue.c*/
-
-extern boolean flinhibitnilcoercion; /*langvalue.c*/
+/* ADR-005: Thread-local parameter state - now macros in lang.h */
+/* extern boolean flcoerceexternaltostring; */
+/* extern boolean flinhibitnilcoercion; */
 
 //extern short flextendedsymbolsearch;
 

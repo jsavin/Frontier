@@ -16,7 +16,8 @@ WindowPtr shellfindfilewindow (const ptrfilespec fs) { (void)fs; return (WindowP
 
 boolean shellsave (WindowPtr w) { (void)w; return true; }
 
-typedef struct tythreadglobalsdummy {} *hdlthreadglobals;
+/* ADR-005: Forward declare for thread globals - real definition elsewhere */
+typedef struct tythreadglobals tythreadglobals, *ptrthreadglobals, **hdlthreadglobals;
 
 hdlthreadglobals getcurrentthreadglobals (void) { return (hdlthreadglobals)0; }
 

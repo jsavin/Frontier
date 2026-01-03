@@ -180,6 +180,12 @@ boolean db_format_prepare_runtime(void) {
     }
 #endif
 
+#ifdef FRONTIER_HEADLESS
+    /* ADR-005: Initialize thread-local parameter state before any code runs */
+    extern void headless_init_threadglobals(void);
+    headless_init_threadglobals();
+#endif
+
     if (!initmemory())
         return false;
 

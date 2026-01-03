@@ -146,6 +146,7 @@ HEADLESS_STUBS = \
     $(TESTSDIR)/headless_file_verbs.c \
     $(TESTSDIR)/headless_table_verbs.c \
     $(TESTSDIR)/headless_odb_stubs.c \
+    $(TESTSDIR)/headless_threadglobals.c \
     $(TESTSDIR)/headless_op_verbs.c \
     $(TESTSDIR)/headless_opattributes_verbs.c \
     $(TESTSDIR)/headless_script_verbs.c \
