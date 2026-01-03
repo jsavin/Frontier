@@ -1,5 +1,9 @@
 /* ADR-005: Headless thread globals for parameter state macros */
 
+#ifndef HEADLESS_THREADGLOBALS_IMPLEMENTATION
+#define HEADLESS_THREADGLOBALS_IMPLEMENTATION
+#endif
+
 #include "standard.h"
 #include "processinternal.h"
 #include "strings.h"
