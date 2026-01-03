@@ -1383,6 +1383,9 @@ boolean newthreadglobals (hdlthreadglobals *hglobals) {
 	(**hg).fllanghashassignprotect = false;
 	(**hg).fllangexternalvalueprotect = false;
 
+	/* Explicitly zero reserved pointers for defensive coding */
+	memset((**hg).param_reserved, 0, sizeof((**hg).param_reserved));
+
 #ifdef landinclude	
 	id = getprocesscreator ();
 	
