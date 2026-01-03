@@ -176,6 +176,50 @@ tests:
 - `timeout`: Per-test timeout in seconds (default: 10)
 - `description`: Human-readable test description
 
+### Test Path Placeholders
+
+For portable file path handling in test scripts, use the `{FRONTIER_TEST_TMP_DIR}` placeholder instead of hardcoded paths:
+
+```yaml
+tests:
+  - name: "file.new - create test file"
+    description: "Create a file in the test tmp directory"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(fs = file.fileFromPath(tmpDir + "/" + "test.txt"));
+      local(ok = file.new(fs));
+      return ok
+    expected_success: true
+    expected_result: "true"
+```
+
+**Available placeholders:**
+
+- `{FRONTIER_TEST_TMP_DIR}` - Expands to `<project_root>/tmp` directory at test execution time
+
+**How it works:**
+1. Test runner loads YAML files from `tests/integration/test_cases/`
+2. Before executing each script, runner substitutes `{FRONTIER_TEST_TMP_DIR}` with the absolute path to `<project_root>/tmp`
+3. The `tmp/` directory is automatically created if it doesn't exist
+4. Tests can safely create/read/delete files without hardcoding system-specific paths
+
+**Why use placeholders:**
+- ✅ Tests work on any system without modification
+- ✅ No hardcoded usernames or system paths in git
+- ✅ Supports CI/CD on different machines
+- ✅ Makes tests portable across development environments
+
+**Example expansion:**
+```
+Before substitution:
+  local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+
+After substitution (on user's machine):
+  local(tmpDir = "/Users/jake/dev/jsavin/Frontier/tmp");
+```
+
+**See also:** `tests/integration/runner.py` - `get_script_with_substitutions()` method for implementation details
+
 ### Test Output
 
 ```

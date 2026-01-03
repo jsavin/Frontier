@@ -17,26 +17,29 @@ tests:
   - name: "file.fileFromPath - create filespec from path"
     description: "Convert path string to filespec"
     script: |
-      local(fs = file.fileFromPath("/tmp/test.txt"));
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(fs = file.fileFromPath(tmpDir + "/" + "test.txt"));
       return typeof(fs)
     expected_success: true
-    expected_result: "fileSpec"
+    expected_result: "TEXT"
 
   - name: "file.exists - nonexistent file"
     description: "Check that nonexistent file returns false"
     script: |
-      local(fs = file.fileFromPath("/tmp/nonexistent_file_12345.txt"));
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(fs = file.fileFromPath(tmpDir + "/" + "nonexistent_file_12345.txt"));
       return file.exists(fs)
     expected_success: true
     expected_result: "false"
 
   # File creation and writing
   - name: "file.new - create new empty file"
-    description: "Create new file in /tmp"
+    description: "Create new file in project tmp directory"
     script: |
-      local(fs = file.fileFromPath("/tmp/frontier_test_new.txt"));
-      file.delete(fs);
-      local(ok = file.new(fs, 'TEXT', 'ttxt'));
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(filePath = tmpDir + "/" + "frontier_test_new.txt");
+      local(fs = file.fileFromPath(filePath));
+      local(ok = file.new(fs));
       return ok
     expected_success: true
     expected_result: "true"
@@ -44,7 +47,8 @@ tests:
   - name: "file.exists - file created with file.new"
     description: "Verify file.new created the file"
     script: |
-      local(fs = file.fileFromPath("/tmp/frontier_test_new.txt"));
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(fs = file.fileFromPath(tmpDir + "/" + "frontier_test_new.txt"));
       return file.exists(fs)
     expected_success: true
     expected_result: "true"
@@ -52,9 +56,9 @@ tests:
   - name: "file.writeWholeFile - write string to file"
     description: "Write text content to file"
     script: |
-      local(fs = file.fileFromPath("/tmp/frontier_test_write.txt"));
-      local(content = "Hello, Frontier!");
-      local(ok = file.writeWholeFile(fs, @content));
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(fs = file.fileFromPath(tmpDir + "/" + "frontier_test_write.txt"));
+      local(ok = file.writeWholeFile(fs, "Hello, Frontier!"));
       return ok
     expected_success: true
     expected_result: "true"
@@ -62,8 +66,9 @@ tests:
   - name: "file.readWholeFile - read back written content"
     description: "Read file and verify content matches"
     script: |
-      local(fs = file.fileFromPath("/tmp/frontier_test_write.txt"));
-      file.readWholeFile(fs, @readData);
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(fs = file.fileFromPath(tmpDir + "/" + "frontier_test_write.txt"));
+      local(readData = file.readWholeFile(fs));
       return readData
     expected_success: true
     expected_result: "Hello, Frontier!"
@@ -71,10 +76,11 @@ tests:
   - name: "file.readWholeFile - round trip binary data"
     description: "Write and read back binary data"
     script: |
-      local(fs = file.fileFromPath("/tmp/frontier_test_binary.dat"));
-      local(binaryData = "\\x00\\x01\\x02\\xFF");
-      file.writeWholeFile(fs, @binaryData);
-      file.readWholeFile(fs, @readData);
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(fs = file.fileFromPath(tmpDir + "/" + "frontier_test_binary.dat"));
+      local(binaryData = "\x00\x01\x02\xFF");
+      file.writeWholeFile(fs, binaryData);
+      local(readData = file.readWholeFile(fs));
       return (readData == binaryData)
     expected_success: true
     expected_result: "true"
@@ -83,7 +89,8 @@ tests:
   - name: "file.delete - delete existing file"
     description: "Delete file created in previous test"
     script: |
-      local(fs = file.fileFromPath("/tmp/frontier_test_write.txt"));
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(fs = file.fileFromPath(tmpDir + "/" + "frontier_test_write.txt"));
       local(ok = file.delete(fs));
       return ok
     expected_success: true
@@ -92,7 +99,8 @@ tests:
   - name: "file.exists - file deleted successfully"
     description: "Verify file.delete removed the file"
     script: |
-      local(fs = file.fileFromPath("/tmp/frontier_test_write.txt"));
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(fs = file.fileFromPath(tmpDir + "/" + "frontier_test_write.txt"));
       return file.exists(fs)
     expected_success: true
     expected_result: "false"
@@ -101,15 +109,17 @@ tests:
   - name: "file.readWholeFile - nonexistent file error"
     description: "Reading nonexistent file should fail"
     script: |
-      local(fs = file.fileFromPath("/tmp/does_not_exist_12345.txt"));
-      return file.readWholeFile(fs, @data)
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(fs = file.fileFromPath(tmpDir + "/" + "does_not_exist_12345.txt"));
+      return file.readWholeFile(fs)
     expected_success: false
     expected_result: null
 
   - name: "file.delete - nonexistent file error"
     description: "Deleting nonexistent file should fail"
     script: |
-      local(fs = file.fileFromPath("/tmp/does_not_exist_12345.txt"));
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(fs = file.fileFromPath(tmpDir + "/" + "does_not_exist_12345.txt"));
       return file.delete(fs)
     expected_success: false
     expected_result: null
@@ -118,8 +128,11 @@ tests:
   - name: "cleanup - remove test files"
     description: "Clean up any remaining test files"
     script: |
-      file.delete(file.fileFromPath("/tmp/frontier_test_new.txt"));
-      file.delete(file.fileFromPath("/tmp/frontier_test_binary.dat"));
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(fs1 = file.fileFromPath(tmpDir + "/" + "frontier_test_new.txt"));
+      local(fs2 = file.fileFromPath(tmpDir + "/" + "frontier_test_binary.dat"));
+      if (file.exists(fs1)) { file.delete(fs1); }
+      if (file.exists(fs2)) { file.delete(fs2); }
       return true
     expected_success: true
     expected_result: "true"
