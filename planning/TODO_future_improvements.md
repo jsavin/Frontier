@@ -277,6 +277,49 @@ Scope
 Reference Docs
 - `planning/Frontier_Refactoring_Plan.md`
 - `planning/0.5.13_usertalk_language_summary.md`
+
+## Phase 3 — Integration Test Framework: JSON Output UTF-8 Handling
+
+**GitHub Issue:** [#91](https://github.com/jsavin/Frontier/issues/91) (Unicode Strategy - parent issue)
+**Priority:** P1 — Required as part of broader Unicode migration strategy
+**Timeline:** Several months out; part of runtime string UTF-8 migration roadmap
+**Related:** [#145](https://github.com/jsavin/Frontier/issues/145) (JSON escaping in logging infrastructure)
+
+Background
+- Integration test framework (`frontier-cli --output-json`) outputs JSON to stdout for test automation
+- Current JSON escaping function (`cli_print_json_escaped_string()` in `frontier-cli/cli_executor.c`) assumes UTF-8 encoded strings
+- Frontier runtime currently uses Pascal strings (bigstring/pstring) - length-prefixed byte arrays, typically ASCII or MacRoman encoding
+- Multi-byte UTF-8 sequences are passed through directly (valid per JSON RFC 8259)
+- Invalid UTF-8 sequences may produce malformed JSON output
+
+Current Limitations
+- Edge cases with invalid multi-byte UTF-8 sequences not fully handled
+- JSON escaping implementation differs from logging infrastructure (`json_escape_string()` in `Common/source/logging.c`)
+- Two separate JSON escaping implementations need to be unified
+
+Future Work (Post UTF-8 Migration)
+- Once runtime strings migrate to UTF-8 (estimated: several months), this limitation resolves naturally
+- UTF-8 migration will unify all runtime strings to UTF-8 encoding
+- Will eliminate encoding ambiguity across CLI, logging, and test output
+- Will improve international character support
+
+Current Mitigation
+- JSON escaping handles ASCII and valid UTF-8 correctly
+- Control characters are properly escaped as `\uXXXX`
+- Test suite includes UTF-8 test cases to validate current behavior (e.g., `string.length("hello🎉")`)
+- Edge cases documented in code comments (`frontier-cli/cli_executor.c:261-272`)
+
+Proposed Changes (When UTF-8 Migration Completes)
+- Unify `cli_print_json_escaped_string()` (CLI) and `json_escape_string()` (logging) into single implementation
+- Move unified function to shared utility module
+- Add comprehensive UTF-8 handling and validation
+- Add unit tests for all edge cases (control characters, high Unicode codepoints, invalid sequences)
+
+Reference Docs
+- `planning/phase3/INTEGRATION_TEST_FRAMEWORK_DESIGN.md` - Section: "Known Limitations & Future Work"
+- `frontier-cli/cli_executor.c` - Lines 261-272 (JSON escaping implementation and UTF-8 roadmap comments)
+- `docs/TESTING_GUIDE.md` - Section: "JSON Output Mode"
+
 ## Phase 3 — File Verb Enhancements: settype/setcreator Cross-Platform
 
 **GitHub Issue:** [#92](https://github.com/jsavin/Frontier/issues/92)

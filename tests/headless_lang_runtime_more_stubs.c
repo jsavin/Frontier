@@ -144,6 +144,8 @@ hdlprocessthread getcurrentthread (void) { return nil; }
 boolean processsleep (hdlprocessthread t, unsigned long timeout) { (void)t; (void)timeout; return true; }
 
 // Minimal string/handle helpers used by langxml
+// NOTE: These are now provided by stringverbs.c (compiled in headless mode)
+#if 0
 void handlepopleadingchars (Handle htext, byte ch) {
     if (!htext) return;
     long sz = gethandlesize(htext);
@@ -163,6 +165,7 @@ void handlepoptrailingchars (Handle htext, byte ch) {
         sethandlesize(htext, sz - 1);
     }
 }
+#endif
 
 // Minimal base64 helpers: pass-through for headless tests
 boolean base64encodehandle (Handle htext, Handle h64, short linelength) {

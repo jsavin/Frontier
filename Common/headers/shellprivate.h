@@ -27,6 +27,9 @@
 
 #define shellprivateinclude /*so other includes can tell if we've been loaded*/
 
+#ifndef shellcoreinclude
+	#include "shellcore.h"
+#endif
 
 /*
 names that communicate between the various files that make up the shell level.
@@ -40,18 +43,7 @@ handlers are not supposed to include this file.
 
 #define tickstoidle 6 /*only call idle callback routine every tenth second*/
 
-
-#define ctglobals 32 /*we can remember globals up to ctglobals levels deep*/
-
-#pragma pack(2)
-typedef struct tyglobalsstack {
-	
-	short top;
-	
-	WindowPtr stack [ctglobals];
-	} tyglobalsstack;
-#pragma options align=reset
-
+/* ctglobals and tyglobalsstack now defined in shellcore.h */
 
 typedef enum tymenustate {
 	dirtymenus,

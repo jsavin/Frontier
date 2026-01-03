@@ -1,0 +1,145 @@
+# Integration tests for file verb operations
+# Tests basic file operations available in headless mode
+#
+# Phase 1 priority file verbs (portable operations):
+#   - file.fileFromPath() - Create filespec from path string
+#   - file.exists() - Check if file exists
+#   - file.new() - Create new file
+#   - file.writeWholeFile() - Write data to file
+#   - file.readWholeFile() - Read entire file
+#   - file.delete() - Delete file
+#
+# NOTE: Many file verbs (metadata, resource fork, FSRef-specific) are Mac-only
+# and not available in headless mode. Tests focus on portable POSIX operations.
+
+tests:
+  # Basic file existence checks
+  # NOTE: file.fileFromPath() extracts the filename component from a path string
+  # and returns it as a STRING, not a filespec. This is by design - it's a path
+  # manipulation verb, not a type conversion verb. Therefore typeof() correctly
+  # returns 'TEXT' (stringType), not 'fss ' (filespecType).
+  - name: "file.fileFromPath - create filespec from path"
+    description: "Convert path string to filespec"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(fs = file.fileFromPath(tmpDir + "/" + "test.txt"));
+      return typeof(fs)
+    expected_success: true
+    expected_result: "TEXT"
+
+  - name: "file.exists - nonexistent file"
+    description: "Check that nonexistent file returns false"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(fs = file.fileFromPath(tmpDir + "/" + "nonexistent_file_12345.txt"));
+      return file.exists(fs)
+    expected_success: true
+    expected_result: "false"
+
+  # File creation and writing
+  - name: "file.new - create new empty file"
+    description: "Create new file in project tmp directory"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(filePath = tmpDir + "/" + "frontier_test_new.txt");
+      local(fs = file.fileFromPath(filePath));
+      local(ok = file.new(fs));
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  - name: "file.exists - file created with file.new"
+    description: "Verify file.new created the file"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(fs = file.fileFromPath(tmpDir + "/" + "frontier_test_new.txt"));
+      return file.exists(fs)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "file.writeWholeFile - write string to file"
+    description: "Write text content to file"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(fs = file.fileFromPath(tmpDir + "/" + "frontier_test_write.txt"));
+      local(ok = file.writeWholeFile(fs, "Hello, Frontier!"));
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  - name: "file.readWholeFile - read back written content"
+    description: "Read file and verify content matches"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(fs = file.fileFromPath(tmpDir + "/" + "frontier_test_write.txt"));
+      local(readData = file.readWholeFile(fs));
+      return readData
+    expected_success: true
+    expected_result: "Hello, Frontier!"
+
+  - name: "file.readWholeFile - round trip binary data"
+    description: "Write and read back binary data"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(fs = file.fileFromPath(tmpDir + "/" + "frontier_test_binary.dat"));
+      local(binaryData = "\x00\x01\x02\xFF");
+      file.writeWholeFile(fs, binaryData);
+      local(readData = file.readWholeFile(fs));
+      return (readData == binaryData)
+    expected_success: true
+    expected_result: "true"
+
+  # File deletion
+  - name: "file.delete - delete existing file"
+    description: "Delete file created in previous test"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(fs = file.fileFromPath(tmpDir + "/" + "frontier_test_write.txt"));
+      local(ok = file.delete(fs));
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  - name: "file.exists - file deleted successfully"
+    description: "Verify file.delete removed the file"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(fs = file.fileFromPath(tmpDir + "/" + "frontier_test_write.txt"));
+      return file.exists(fs)
+    expected_success: true
+    expected_result: "false"
+
+  # Error cases
+  - name: "file.readWholeFile - nonexistent file error"
+    description: "Reading nonexistent file should fail"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(fs = file.fileFromPath(tmpDir + "/" + "does_not_exist_12345.txt"));
+      return file.readWholeFile(fs)
+    expected_success: false
+    expected_result: null
+
+  - name: "file.delete - nonexistent file error"
+    description: "Deleting nonexistent file should fail"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(fs = file.fileFromPath(tmpDir + "/" + "does_not_exist_12345.txt"));
+      return file.delete(fs)
+    expected_success: false
+    expected_result: null
+
+  # Cleanup - Note: The test runner automatically removes {FRONTIER_TEST_TMP_DIR} after all tests
+  # This test is a sanity check that cleanup during tests works correctly
+  - name: "cleanup - remove test files"
+    description: "Clean up test files created during tests (runner will remove temp dir)"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(fs1 = file.fileFromPath(tmpDir + "/" + "frontier_test_new.txt"));
+      local(fs2 = file.fileFromPath(tmpDir + "/" + "frontier_test_write.txt"));
+      local(fs3 = file.fileFromPath(tmpDir + "/" + "frontier_test_binary.dat"));
+      if (file.exists(fs1)) { file.delete(fs1); }
+      if (file.exists(fs2)) { file.delete(fs2); }
+      if (file.exists(fs3)) { file.delete(fs3); }
+      return true
+    expected_success: true
+    expected_result: "true"

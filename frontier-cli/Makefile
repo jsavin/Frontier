@@ -113,6 +113,7 @@ RUNTIME_SOURCES = \
     ../Common/source/tableexternal.c \
     ../Common/source/tablepack.c \
     ../Common/source/tableverbs.c \
+    ../Common/source/stringverbs.c \
     ../Common/source/headless_selection.c \
     ../Common/source/shell_api.c \
     ../Common/source/shell_api_headless.c
@@ -132,6 +133,8 @@ HEADLESS_STUBS = \
     $(TESTSDIR)/headless_langipc_stub.c \
     $(TESTSDIR)/headless_lang_runtime_more_stubs.c \
     ../portable/file_portable.c \
+    ../portable/file_working_dir.c \
+    ../portable/fileverbs_portable.c \
     ../Common/source/file_portable_posix.c \
     ../Common/source/headless_stubs.c \
     ../portable/appleevent_portable.c \
@@ -143,6 +146,7 @@ HEADLESS_STUBS = \
     $(TESTSDIR)/headless_file_verbs.c \
     $(TESTSDIR)/headless_table_verbs.c \
     $(TESTSDIR)/headless_odb_stubs.c \
+    $(TESTSDIR)/headless_threadglobals.c \
     $(TESTSDIR)/headless_op_verbs.c \
     $(TESTSDIR)/headless_opattributes_verbs.c \
     $(TESTSDIR)/headless_script_verbs.c \

@@ -7,6 +7,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Forward declarations for static helper functions
+static void cli_print_json_escaped_string(const char* str);
+static void cli_print_execution_result_json(const usertalk_execution_t* execution, boolean success);
+
 static char* cli_dup_string(const char* source) {
     if (source == NULL) {
         return NULL;
@@ -170,7 +174,7 @@ boolean cli_execute_compiled_script(usertalk_execution_t* execution) {
     return true;
 }
 
-boolean cli_execute_script_file(const char* script_path) {
+boolean cli_execute_script_file(const char* script_path, boolean output_json) {
     if (!cli_file_exists(script_path)) {
         cli_log_error("Script file does not exist: %s", script_path);
         return false;
@@ -182,12 +186,12 @@ boolean cli_execute_script_file(const char* script_path) {
         return false;
     }
 
-    boolean success = cli_execute_inline_script(contents);
+    boolean success = cli_execute_inline_script(contents, output_json);
     cli_free(contents);
     return success;
 }
 
-boolean cli_execute_inline_script(const char* script_code) {
+boolean cli_execute_inline_script(const char* script_code, boolean output_json) {
     usertalk_execution_t* exec = cli_create_execution_context();
     if (exec == NULL) {
         cli_log_error("Failed to create execution context");
@@ -195,15 +199,32 @@ boolean cli_execute_inline_script(const char* script_code) {
     }
 
     boolean ok = cli_compile_script(script_code, exec) && cli_execute_compiled_script(exec);
-    if (!ok) {
-        const char* error = cli_get_execution_error(exec);
-        if (error != NULL) {
-            cli_log_error("Execution error: %s", error);
-        } else {
-            cli_log_error("Execution failed");
+
+    if (output_json) {
+        // Print JSON output to stdout
+        cli_print_execution_result_json(exec, ok);
+
+        // Also log errors to stderr for debugging (doesn't interfere with JSON on stdout)
+        if (!ok) {
+            const char* error = cli_get_execution_error(exec);
+            if (error != NULL) {
+                cli_log_error("Execution error: %s", error);
+            } else {
+                cli_log_error("Execution failed");
+            }
         }
     } else {
-        cli_print_execution_result(exec);
+        // Traditional text output
+        if (!ok) {
+            const char* error = cli_get_execution_error(exec);
+            if (error != NULL) {
+                cli_log_error("Execution error: %s", error);
+            } else {
+                cli_log_error("Execution failed");
+            }
+        } else {
+            cli_print_execution_result(exec);
+        }
     }
 
     cli_free_execution_context(exec);
@@ -234,4 +255,75 @@ void cli_print_execution_result(const usertalk_execution_t* execution) {
         return;
     }
     printf("%s\n", execution->result);
+}
+
+// Helper function to escape JSON strings
+//
+// NOTE: This function expects UTF-8 encoded strings and passes multi-byte
+// UTF-8 sequences through directly (valid per JSON RFC 8259). Control characters
+// (< 32) are escaped as \uXXXX. Invalid UTF-8 sequences may produce malformed JSON.
+//
+// Current Frontier string encoding: Pascal strings (bigstring/pstring) are
+// length-prefixed byte arrays, typically ASCII or MacRoman. Future roadmap
+// includes UTF-8 migration for runtime strings.
+//
+// For now, this handles ASCII and valid UTF-8 correctly. Edge cases with invalid
+// multi-byte sequences will be addressed when runtime string encoding is unified.
+static void cli_print_json_escaped_string(const char* str) {
+    if (str == NULL) {
+        printf("null");
+        return;
+    }
+
+    printf("\"");
+    for (const char* p = str; *p != '\0'; p++) {
+        switch (*p) {
+            case '"':  printf("\\\""); break;
+            case '\\': printf("\\\\"); break;
+            case '\b': printf("\\b"); break;
+            case '\f': printf("\\f"); break;
+            case '\n': printf("\\n"); break;
+            case '\r': printf("\\r"); break;
+            case '\t': printf("\\t"); break;
+            default:
+                if ((unsigned char)*p < 32) {
+                    // Escape control characters
+                    printf("\\u%04x", (unsigned char)*p);
+                } else {
+                    // Pass through printable ASCII and UTF-8 multi-byte sequences
+                    // JSON spec (RFC 8259) allows unescaped UTF-8
+                    putchar(*p);
+                }
+                break;
+        }
+    }
+    printf("\"");
+}
+
+// Print execution result as JSON
+static void cli_print_execution_result_json(const usertalk_execution_t* execution, boolean success) {
+    printf("{\n");
+    printf("  \"success\": %s,\n", success ? "true" : "false");
+
+    if (success && execution != NULL && execution->result != NULL) {
+        printf("  \"result\": ");
+        cli_print_json_escaped_string(execution->result);
+        printf(",\n");
+        printf("  \"result_type\": \"string\",\n");
+    } else {
+        printf("  \"result\": null,\n");
+        printf("  \"result_type\": null,\n");
+    }
+
+    if (!success && execution != NULL && execution->error_message != NULL) {
+        printf("  \"error\": ");
+        cli_print_json_escaped_string(execution->error_message);
+        printf(",\n");
+        printf("  \"error_type\": \"script_error\"\n");
+    } else {
+        printf("  \"error\": null,\n");
+        printf("  \"error_type\": null\n");
+    }
+
+    printf("}\n");
 }

@@ -222,6 +222,38 @@ class VerbMetadataWriter:
             lines.append(f"| {processor} | {proc_total} | {proc_detected} | {proc_stubbed} | {proc_ui} | {proc_carbon} | {status} |")
 
         lines.append("")
+
+        # Add section listing specific stubbed verbs per processor
+        lines.append("## Stubbed Verbs by Processor")
+        lines.append("")
+        lines.append("This section lists the specific verbs that are currently stubbed (not implemented) in each processor.")
+        lines.append("")
+
+        has_stubbed_verbs = False
+        for processor in sorted(by_processor.keys()):
+            verbs = by_processor[processor]
+            stubbed_verbs = [v for v in verbs if not v.is_implemented]
+
+            if stubbed_verbs:
+                has_stubbed_verbs = True
+                lines.append(f"### {processor} ({len(stubbed_verbs)} stubbed)")
+                lines.append("")
+                for verb in sorted(stubbed_verbs, key=lambda v: v.verb_name):
+                    # Include additional context if available
+                    details = []
+                    if verb.uses_ui_adapter:
+                        details.append("UI-dependent")
+                    if verb.has_carbon_deps:
+                        details.append("Carbon API")
+
+                    detail_str = f" [{', '.join(details)}]" if details else ""
+                    lines.append(f"- `{processor}.{verb.verb_name}`{detail_str}")
+                lines.append("")
+
+        if not has_stubbed_verbs:
+            lines.append("*No stubbed verbs found - all processors are fully implemented!*")
+            lines.append("")
+
         return "\n".join(lines)
 
     def get_statistics(self) -> Dict:

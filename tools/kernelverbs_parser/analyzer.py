@@ -38,27 +38,101 @@ class VerbImplementationAnalyzer:
     Analyzes verb implementations across all processors.
     """
 
-    def __init__(self, processors: List):
+    def __init__(self, processors: List, build_target: str = 'headless'):
         """
         Initialize analyzer with processor definitions.
 
         Args:
             processors: List of EFPProcessor objects from parse_kernelverbs.py
+            build_target: Target build ('headless' or 'legacy'). Default: 'headless'
+                         'headless' = analyze only files linked in frontier-cli (headless build)
+                         'legacy' = analyze full codebase including GUI implementations
         """
         self.processors = processors
         self.implementations = []
         self._file_cache: Dict[str, str] = {}  # Cache file contents to avoid redundant I/O
+        self.build_target = build_target
+        self._build_sources: Optional[set] = None  # Cached set of source files in build
+
+    def parse_makefile_sources(self) -> set:
+        """
+        Parse frontier-cli/Makefile to extract actual source files in the build.
+
+        Returns:
+            Set of absolute paths to .c files actually compiled in the build
+        """
+        if self._build_sources is not None:
+            return self._build_sources
+
+        script_dir = Path(__file__).parent
+        project_root = script_dir.parent.parent
+        makefile_path = project_root / "frontier-cli/Makefile"
+
+        if not makefile_path.exists():
+            print(f"Warning: Makefile not found at {makefile_path}")
+            self._build_sources = set()
+            return self._build_sources
+
+        sources = set()
+
+        try:
+            with open(makefile_path, 'r') as f:
+                in_sources = False
+                for line in f:
+                    stripped = line.strip()
+
+                    # Check if we're starting a variable assignment block with .c files
+                    # Matches: CLI_SOURCES, RUNTIME_SOURCES, HEADLESS_STUBS, DATABASE_SOURCES, etc.
+                    if '=' in line and '\\' in line and not stripped.startswith('#'):
+                        # This looks like the start of a multi-line variable assignment
+                        in_sources = True
+
+                    if in_sources:
+                        # Extract .c file path
+                        # Lines look like: "    ../Common/source/lang.c \"
+                        # or: "    $(TESTSDIR)/headless_file_verbs.c \"
+
+                        # Process .c files
+                        if '.c' in stripped:
+                            # Extract path (remove trailing \ and whitespace)
+                            path = stripped.rstrip('\\').strip()
+
+                            # Resolve $(TESTSDIR) to tests/
+                            path = path.replace('$(TESTSDIR)', 'tests')
+                            path = path.replace('$(COMMON)', 'Common/source')
+
+                            # Resolve ../ prefix (all paths relative to frontier-cli/)
+                            if path.startswith('../'):
+                                path = path[3:]  # Remove ../
+
+                            # Convert to absolute path
+                            abs_path = (project_root / path).resolve()
+
+                            if abs_path.exists():
+                                sources.add(str(abs_path))
+
+                        # End of SOURCES block if no trailing backslash
+                        if not stripped.endswith('\\'):
+                            in_sources = False
+
+        except IOError as e:
+            print(f"Error reading Makefile: {e}")
+
+        self._build_sources = sources
+        return sources
 
     def find_implementation_file(self, processor_name: str) -> Optional[str]:
         """
         Find the C source file containing verb implementations for a processor.
 
-        Search order:
-        1. Check if Pattern D processor (consolidated in langverbs.c)
-        2. Common/source/{processor}verbs.c
-        3. Common/source/lang{processor}.c
-        4. tests/headless_{processor}_verbs.c
-        5. Special cases (frontier → frontierverbs.c, etc.)
+        For headless build (default):
+            - Only returns files actually linked in frontier-cli/Makefile
+            - Prefers tests/headless_*_verbs.c over Common/source/* files
+            - Returns None if processor not in build
+
+        For legacy build:
+            - Returns any implementation file found (old behavior)
+            - Searches Common/source/ first
 
         Args:
             processor_name: Name of the processor (e.g., "file", "frontier")
@@ -70,37 +144,69 @@ class VerbImplementationAnalyzer:
         script_dir = Path(__file__).parent
         project_root = script_dir.parent.parent
 
+        # Get actual build sources for headless mode
+        build_sources = self.parse_makefile_sources() if self.build_target == 'headless' else None
+
         # Pattern D: Multi-processor consolidation
         # These processors are all implemented in langverbs.c
         if is_pattern_d_processor(processor_name):
             langverbs_path = project_root / "Common/source/langverbs.c"
             if langverbs_path.exists():
-                return str(langverbs_path.absolute())
+                abs_path = str(langverbs_path.absolute())
+                # For headless, verify it's actually in the build
+                if build_sources is None or abs_path in build_sources:
+                    return abs_path
 
-        # Special cases (check these first - they override standard patterns)
-        special_cases = {
-            'frontier': [project_root / 'Common/source/shellsysverbs.c'],  # frontier and sys share this file
-            'sys': [project_root / 'Common/source/shellsysverbs.c'],
-            'window': [project_root / 'Common/source/shellwindowverbs.c'],
-            'opattributes': [project_root / 'Common/source/opverbs.c'],  # Often in same file as op
+        # Build search patterns based on build target
+        search_patterns = []
+
+        # Special cases for both headless and legacy
+        special_cases_headless = {
+            'frontier': project_root / 'tests/headless_frontier_verbs.c',
+            'sys': project_root / 'tests/headless_sys_verbs.c',
         }
 
-        # Start with special cases if they exist
-        search_patterns = []
-        if processor_name in special_cases:
-            search_patterns.extend(special_cases[processor_name])
+        special_cases_legacy = {
+            'frontier': project_root / 'Common/source/shellsysverbs.c',
+            'sys': project_root / 'Common/source/shellsysverbs.c',
+            'window': project_root / 'Common/source/shellwindowverbs.c',
+            'opattributes': project_root / 'Common/source/opverbs.c',
+        }
 
-        # Then add standard patterns (prefer Common/source over headless stubs)
-        search_patterns.extend([
-            project_root / f"Common/source/{processor_name}verbs.c",
-            project_root / f"Common/source/lang{processor_name}.c",
-            project_root / f"tests/headless_{processor_name}_verbs.c",
-        ])
+        if self.build_target == 'headless':
+            # Headless: prefer headless stubs, then Common/source if actually linked
+            if processor_name in special_cases_headless:
+                search_patterns.append(special_cases_headless[processor_name])
+
+            search_patterns.extend([
+                project_root / f"tests/headless_{processor_name}_verbs.c",
+                project_root / f"Common/source/{processor_name}verbs.c",
+                project_root / f"Common/source/lang{processor_name}.c",
+            ])
+        else:
+            # Legacy: prefer Common/source (GUI implementations)
+            if processor_name in special_cases_legacy:
+                search_patterns.append(special_cases_legacy[processor_name])
+
+            search_patterns.extend([
+                project_root / f"Common/source/{processor_name}verbs.c",
+                project_root / f"Common/source/lang{processor_name}.c",
+                project_root / f"tests/headless_{processor_name}_verbs.c",
+            ])
 
         # Try each pattern
         for pattern in search_patterns:
             if pattern.exists():
-                return str(pattern.absolute())
+                abs_path = str(pattern.absolute())
+
+                # For headless build, verify file is actually linked
+                if build_sources is not None:
+                    if abs_path in build_sources:
+                        return abs_path
+                    # else: file exists but not in build, try next pattern
+                else:
+                    # Legacy mode: return first file found
+                    return abs_path
 
         return None
 
@@ -391,6 +497,35 @@ class VerbImplementationAnalyzer:
                     verb_names.extend([f"verb{i}" for i in range(len(verb_names), verb_count)])
                 else:
                     verb_names = verb_names[:verb_count]
+
+        # Detect dispatcher pattern (headless verbs that forward to real implementation)
+        # Pattern: headless_<processor>_verbs_callback function that forwards all verbs
+        dispatcher_pattern = re.search(rf'headless_{processor_name}_verbs_callback', source)
+        is_dispatcher = dispatcher_pattern is not None
+
+        # If dispatcher pattern detected, check if file is overall implemented (not a stub)
+        if is_dispatcher:
+            from matchers import detect_stub_verb
+            file_is_stub = detect_stub_verb(source)
+            if not file_is_stub:
+                # Dispatcher with real implementation - all verbs are implemented
+                # Return all verbs as implemented without checking individual cases
+                print(f"  Detected dispatcher pattern for {processor_name} (all verbs forwarded to implementation)")
+                return [
+                    VerbImplementation(
+                        processor=processor_name,
+                        verb_name=verb_names[i],
+                        token=i,
+                        is_implemented=True,
+                        impl_file=impl_file,
+                        impl_line=0,
+                        has_carbon_deps=False,
+                        uses_ui_adapter=False,
+                        platform_specific=False,
+                        complexity=1
+                    )
+                    for i in range(len(verb_names))
+                ]
 
         implementations = []
 

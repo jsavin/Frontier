@@ -11,6 +11,8 @@
 #include "file.h"
 #include "memory.h"
 #include "file_portable.h"
+#include "file_working_dir.h"
+#include "logging.h"
 
 /*
  * Portable/headless file layer that backs the classic Frontier file API with
@@ -395,5 +397,65 @@ boolean headless_reopen_fnum(hdlfilenum fnum, const char *path, boolean flreadon
     slot->fp = fp;
     strncpy(slot->path, path, sizeof slot->path - 1);
     slot->path[sizeof slot->path - 1] = '\0';
+    return true;
+}
+
+/*
+ * filegetdefaultpath - Portable implementation for headless mode
+ *
+ * Returns the thread-local working directory as a filespec.
+ * This replaces the Mac-specific implementation in filepath.c.
+ */
+boolean filegetdefaultpath(ptrfilespec fs) {
+    bigstring bspath;
+
+    if (!fs) {
+        log_error(LOG_COMP_GENERAL, "filegetdefaultpath: NULL fs parameter");
+        return false;
+    }
+
+    /* Get thread-local working directory */
+    if (!get_thread_working_dir(bspath)) {
+        log_error(LOG_COMP_GENERAL, "filegetdefaultpath: get_thread_working_dir failed");
+        return false;
+    }
+
+    /* Convert bigstring path to filespec */
+    if (!pathtofilespec(bspath, fs)) {
+        log_error(LOG_COMP_GENERAL, "filegetdefaultpath: pathtofilespec failed for path len=%d", (int)bspath[0]);
+        return false;
+    }
+
+    log_debug(LOG_COMP_GENERAL, "filegetdefaultpath: SUCCESS path len=%d", (int)bspath[0]);
+    return true;
+}
+
+/*
+ * filesetdefaultpath - Portable implementation for headless mode
+ *
+ * Sets the thread-local working directory from a filespec.
+ * This replaces the Mac-specific implementation in filepath.c.
+ */
+boolean filesetdefaultpath(const ptrfilespec fs) {
+    bigstring bspath;
+
+    if (!fs) {
+        log_error(LOG_COMP_GENERAL, "filesetdefaultpath: NULL fs parameter");
+        return false;
+    }
+
+    /* Convert filespec to bigstring path */
+    if (!filespectopath(fs, bspath)) {
+        log_error(LOG_COMP_GENERAL, "filesetdefaultpath: filespectopath failed");
+        return false;
+    }
+
+    /* Set thread-local working directory */
+    if (!set_thread_working_dir(bspath)) {
+        log_error(LOG_COMP_GENERAL, "filesetdefaultpath: set_thread_working_dir failed for path len=%d", (int)bspath[0]);
+        return false;
+    }
+
+    log_debug(LOG_COMP_GENERAL, "filesetdefaultpath: SUCCESS path len=%d", (int)bspath[0]);
     return true;
 }

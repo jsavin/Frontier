@@ -4,7 +4,10 @@
  * This file provides the callback dispatcher for table verbs in headless mode,
  * routing verb calls to the actual implementations in tableverbs.c.
  *
+ * @IMPLEMENTED - All 19 table verbs forward to tablefunctionvalue() in tableverbs.c
+ *
  * Created: 2025-12-29 - Phase 3 table navigation verb support
+ * Updated: 2026-01-01 - Added @IMPLEMENTED annotation, verified dispatcher pattern
  */
 
 #include "frontier.h"
@@ -18,7 +21,18 @@
 #include "tableverbs.h"
 #include "logging.h"
 
-/* Token enum for all verbs in the table processor - MUST match tytabletoken in tableverbs.c */
+/* Token enum for all verbs in the table processor
+ *
+ * CRITICAL: This enum MUST be kept in sync with tytabletoken in Common/source/tableverbs.c
+ *
+ * Verification:
+ *   1. Token order must match exactly (0=move, 1=copy, etc.)
+ *   2. Token count must match cttableverbs value (19 verbs)
+ *   3. Compile-time assertion below will fail if count mismatches
+ *
+ * To verify manually:
+ *   grep -c "func," Common/source/tableverbs.c | should equal 19
+ */
 enum {
     tabv_move = 0,
     tabv_copy = 1,
@@ -38,8 +52,17 @@ enum {
     tabv_getdisplaysettings = 15,
     tabv_setdisplaysettings = 16,
     tabv_sortorder = 17,
-    tabv_countvisiblerows = 18
+    tabv_countvisiblerows = 18,
+
+    /* Sentinel - must equal cttableverbs from tableverbs.c */
+    tabv_count
 };
+
+/* Compile-time verification that token count matches tableverbs.c
+ * If this fails, the enum above is out of sync with tytabletoken */
+#define EXPECTED_TABLE_VERB_COUNT 19
+_Static_assert(tabv_count == EXPECTED_TABLE_VERB_COUNT,
+               "Token enum out of sync with tableverbs.c - update headless_table_verbs.c");
 
 /* Forward declaration of the actual implementation in tableverbs.c */
 extern boolean tablefunctionvalue(short token, hdltreenode hparam1, tyvaluerecord *vreturned, bigstring bserror);

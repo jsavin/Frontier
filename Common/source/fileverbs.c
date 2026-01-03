@@ -1684,7 +1684,7 @@ static boolean seticonposverb (hdltreenode hparam1, tyvaluerecord *v) {
 	static boolean getlongversionverb (hdltreenode hparam1, tyvaluerecord *v) {
 
 		/*
-		file.getfullversion (path): string; return the long version string "1.0b2 © Copyright 1991 UserLand Software.".  need definitions above, 
+		file.getfullversion (path): string; return the long version string "1.0b2 ï¿½ Copyright 1991 UserLand Software.".  need definitions above, 
 		which don't appear in the Think C headers anywhere
 		
 		2005-09-02 creedon: added support for fork parameter, see resources.c: openresourcefile and pushresourcefile
@@ -2217,7 +2217,7 @@ static boolean readwholefileverb (hdltreenode hparam1, tyvaluerecord *v) {
 	// 2006-04-11 aradke:	Kernelized file.readWholeFile. Obsolete script code follows:
 	//
 	//				on readWholeFile (f) {
-	//					«10/31/97 at 1:02:04 PM by DW -- moved from toys.readWholeFile
+	//					ï¿½10/31/97 at 1:02:04 PM by DW -- moved from toys.readWholeFile
 	//					local (s);
 	//					file.open (f);
 	//					s = file.read (f, infinity);
@@ -2570,8 +2570,8 @@ static boolean getposixpathverb ( hdltreenode hp1, tyvaluerecord *vreturned ) {
 		
 
 
-static boolean filefunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vreturned, bigstring bserror) {
-	
+boolean filefunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vreturned, bigstring bserror) {
+
 	//
 	// bridges file.c with the language.  the name of the verb is bs, its first
 	// parameter is hparam1, and we return a value in vreturned.
@@ -2666,37 +2666,64 @@ static boolean filefunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			return (setdatevalue (datemodified, v));
 			}
 			
-		case filetypefunc: {
-			
-			OSType type;
-			tyfilespec fs;
-			
-			flnextparamislast = true;
-			
-			if (!getpathvalue (hp1, 1, &fs))
-				break;
-				
-			if (!getfiletype (&fs, &type))
-				break;
-			
-			return (setostypevalue (type, v));
-			}
-			
-		case filecreatorfunc: {
-			
-			OSType creator;
-			tyfilespec fs;
-			
-			flnextparamislast = true;
-			
-			if (!getpathvalue (hp1, 1, &fs))
-				break;
+	case filetypefunc: {
+		/* Cross-platform implementation: extract extension from filename
+		 * - Extension <= 4 chars: return as OSType padded with spaces
+		 * - Extension > 4 chars: return as string
+		 * - No extension: return "????" as OSType
+		 */
+		tyfilespec fs;
+		bigstring bsfilename, bsext;
+		short extlen;
+		OSType type;
 
-			if (!getfilecreator (&fs, &creator))
-				break;
+		flnextparamislast = true;
+
+		if (!getpathvalue (hp1, 1, &fs))
+			break;
+
+		/* Get filename from filespec */
+		getfsfile (&fs, bsfilename);
+
+		/* Extract extension (text after last '.') */
+		if (!lastword (bsfilename, '.', bsext) || stringlength(bsext) == 0) {
+			/* No extension - return "????" */
+			type = '????';
+			return (setostypevalue (type, v));
+		}
+
+		extlen = stringlength(bsext);
+
+		if (extlen <= 4) {
+			/* Extension <= 4 chars: convert to OSType padded with spaces */
+			stringtoostype (bsext, &type);
+			return (setostypevalue (type, v));
+		} else {
+			/* Extension > 4 chars: return as string */
+			return (setstringvalue (bsext, v));
+		}
+		}
 			
-			return (setostypevalue (creator, v));
-			}
+	case filecreatorfunc: {
+		tyfilespec fs;
+		OSType creator;
+
+		flnextparamislast = true;
+
+		if (!getpathvalue (hp1, 1, &fs))
+			break;
+
+		#ifdef __APPLE__
+			/* Mac: Return actual creator code from file metadata */
+			if (!getfilecreator (&fs, &creator))
+				creator = '    ';  /* No creator, return spaces */
+		#else
+			/* Non-Mac: Always return 4 spaces (no creator code concept) */
+			creator = '    ';
+		#endif
+
+		return (setostypevalue (creator, v));
+		}
 			
 		case setfilecreatedfunc: {
 			tyfilespec fs;
@@ -2801,45 +2828,44 @@ static boolean filefunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			return (true);
 			}
 		
-		case filehasbundlefunc: {
-		
-			tyfilespec fs;
-			
-			flnextparamislast = true;
-			
-			if ( ! getpathvalue ( hp1, 1, &fs ) )
-				break;
-			
-			if ( ! filehasbundle ( &fs, &( *v ).data.flvalue ) )
-				break;
-			
-			return ( true );
-			
-			}
+	case filehasbundlefunc: {
+		/* Cross-platform: Check if path ends with bundle suffix */
+		tyfilespec fs;
+		bigstring bspath, bsext;
+
+		flnextparamislast = true;
+
+		if (!getpathvalue (hp1, 1, &fs))
+			break;
+
+		/* Get full path as string */
+		if (!filespectopath (&fs, bspath))
+			break;
+
+		/* Extract extension */
+		if (!lastword (bspath, '.', bsext)) {
+			(*v).data.flvalue = false;
+			return (true);
+		}
+
+		/* Check if extension is a bundle suffix */
+		(*v).data.flvalue = (
+			equalstrings (bsext, BIGSTRING("\003app")) ||
+			equalstrings (bsext, BIGSTRING("\006bundle")) ||
+			equalstrings (bsext, BIGSTRING("\011framework")) ||
+			equalstrings (bsext, BIGSTRING("\006plugin")) ||
+			equalstrings (bsext, BIGSTRING("\004kext"))
+		);
+
+		return (true);
+		}
+		}
 		
 		case filesetbundlefunc: {
-			tyfilespec fs;
-			boolean flbundle;
-			boolean flfolder;
-			
-			if (!getpathvalue (hp1, 1, &fs))
-				break;
-			
-			flnextparamislast = true;
-			
-			if (!getbooleanvalue (hp1, 2, &flbundle))
-				break;
-			
-			if (!fileisfolder (&fs, &flfolder))
-				break;
-			
-			if (!flfolder) {
-			
-				if (!filesetbundle (&fs, flbundle))
-					break;
-				
-				(*v).data.flvalue = true;
-				}
+		/* Cannot set bundle bit on non-Mac filesystems */
+		getstringlist (langerrorlist, unimplementedverberror, bserror);
+		return (false);
+		}
 			
 			return (true);
 			}
@@ -2860,38 +2886,34 @@ static boolean filefunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 		
 		case fileisvisiblefunc: {
-			tyfilespec fs;
-			
-			flnextparamislast = true;
-			
-			if (!getpathvalue (hp1, 1, &fs))
-				break;
-			
-			if (!fileisvisible (&fs, &(*v).data.flvalue))
-				break;
-			
-			return (true);
-			}
+		/* All files are "visible" on non-Mac platforms (no Finder invisible attribute) */
+		tyfilespec fs;
+
+		flnextparamislast = true;
+
+		if (!getpathvalue (hp1, 1, &fs))
+			break;
+
+		(*v).data.flvalue = true;
+		return (true);
+		}
 		
 		case filesetvisiblefunc: {
-			tyfilespec fs;
-			boolean flvisible;
-			
-			if (!getpathvalue (hp1, 1, &fs))
-				break;
-			
-			flnextparamislast = true;
-			
-			if (!getbooleanvalue (hp1, 2, &flvisible))
-				break;
-			
-			if (!filesetvisible (&fs, flvisible))
-				break;
-			
-			(*v).data.flvalue = true;
-			
-			return (true);
-			}
+		/* Cannot set visibility on non-Mac platforms - return false (non-fatal) */
+		tyfilespec fs;
+		boolean flvisible;
+
+		if (!getpathvalue (hp1, 1, &fs))
+			break;
+
+		flnextparamislast = true;
+
+		if (!getbooleanvalue (hp1, 2, &flvisible))
+			break;
+
+		(*v).data.flvalue = false;  /* Operation not supported */
+		return (true);
+		}
 		
 		case filesizefunc: {
 			tyfilespec fs;
@@ -2976,29 +2998,10 @@ static boolean filefunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			return (copyfileverb (true, false, hp1, v));
 		
 		case filecopyresourceforkfunc:
-			return (copyfileverb (false, true, hp1, v));
-			
-		case filedeletefunc:
-			return ( filedeleteverb ( hp1, v ) );
-		
-		case fileexistsfunc: {
-		
-			boolean fl, flfolder;
-			tyfilespec fs;
-
-			if (!langcheckparamcount (hp1, 1))
-				break;
-			
-			disablelangerror ();
-			
-			fl = getpathvalue (hp1, 1, &fs);
-			
-			enablelangerror ();
-			
-			(*v).data.flvalue = fl && fileexists (&fs, &flfolder);
-			
-			return (true);
-			}
+		/* Resource forks are obsolete (Mac OS 9) - not implemented */
+		getstringlist (langerrorlist, unimplementedverberror, bserror);
+		return (false);
+}
 		
 		case filefrompathfunc:
 			return (filefrompathverb (hp1, v));
@@ -3139,16 +3142,29 @@ static boolean filefunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 		*/
 		
 		case sfgetfilefunc:
-			return (filedialogverb (sfgetfileverb, hp1, v));
-		
 		case sfputfilefunc:
-			return (filedialogverb (sfputfileverb, hp1, v));
-		
 		case sfgetfolderfunc:
-			return (filedialogverb (sfgetfolderverb, hp1, v));
-		
 		case sfgetdiskfunc:
-			return (filedialogverb (sfgetdiskverb, hp1, v));
+			#ifndef FRONTIER_HEADLESS
+				/* GUI mode - use native file dialog */
+				switch (token) {
+					case sfgetfilefunc:
+						return (filedialogverb (sfgetfileverb, hp1, v));
+					case sfputfilefunc:
+						return (filedialogverb (sfputfileverb, hp1, v));
+					case sfgetfolderfunc:
+						return (filedialogverb (sfgetfolderverb, hp1, v));
+					case sfgetdiskfunc:
+						return (filedialogverb (sfgetdiskverb, hp1, v));
+				}
+			#else
+				/* Headless mode - not implemented (Phase 1)
+				 * TODO Phase 2: Implement stdio prompts when isInteractiveMode() returns true
+				 * See: planning/phase3/HEADLESS_INTERACTIVE_MODE.md
+				 */
+				getstringlist (langerrorlist, unimplementedverberror, bserror);
+				return (false);
+			#endif
 		
 		/*
 		case fileeditlinefeedsfunc:
@@ -3360,35 +3376,52 @@ static boolean filefunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 		case filefindappfunc:
 			return (findapplicationverb (hp1, v));
 
-		/* 3/20/97 - The following are MAC speciifc verbs and are therefore grouped
-			together here for ease of ifdefing */
+	/* 3/20/97 - The following are MAC speciifc verbs and are therefore grouped
+		together here for ease of ifdefing */
 
-		case newaliasfunc:
-			return (newaliasverb (hp1, v));
-		
-		case filefollowaliasfunc:
-			return (followaliasverb (hp1, v));
-		
-		case filegeticonposfunc:
-			return (geticonposverb (hp1, v));
-		
-		case fileseticonposfunc: 
-			return (seticonposverb (hp1, v));
-				
-		case setshortversionfunc: 
-			return (setshortversionverb (hp1, v));
-		
-		case setlongversionfunc: 
-			return (setlongversionverb (hp1, v));
-		
-		case filesetcommentfunc:
-			return (setcommentverb (hp1, v));
-		
-		case filegetlabelfunc:
-			return (getlabelverb (hp1, v));
-		
-		case filesetlabelfunc:
-			return (setlabelverb (hp1, v));
+	case newaliasfunc:
+	case filefollowaliasfunc:
+	case filegeticonposfunc:
+	case fileseticonposfunc:
+	case setshortversionfunc:
+	case setlongversionfunc:
+	case filesetcommentfunc:
+	case filegetlabelfunc:
+	case filesetlabelfunc:
+		#ifdef __APPLE__
+			/* Mac-only verbs - use native Mac APIs */
+			switch (token) {
+				case newaliasfunc:
+					return (newaliasverb (hp1, v));
+				case filefollowaliasfunc:
+					return (followaliasverb (hp1, v));
+				case filegeticonposfunc:
+					return (geticonposverb (hp1, v));
+				case fileseticonposfunc:
+					return (seticonposverb (hp1, v));
+				case setshortversionfunc:
+					return (setshortversionverb (hp1, v));
+				case setlongversionfunc:
+					return (setlongversionverb (hp1, v));
+				case filesetcommentfunc:
+					return (setcommentverb (hp1, v));
+				case filegetlabelfunc:
+					return (getlabelverb (hp1, v));
+				case filesetlabelfunc:
+					return (setlabelverb (hp1, v));
+			}
+		#else
+			/* Non-Mac platform - not supported
+			 * TODO P1: Implement version verbs for Windows (PE resources)
+			 * TODO P2: Implement comment verbs cross-platform (extended attributes)
+			 * TODO P2: Implement label verbs cross-platform (extended attributes)
+			 * TODO P2: Implement icon position verbs cross-platform
+			 * NOTE: Alias verbs are Mac-specific (symlink verbs are separate enhancement)
+			 */
+			getstringlist (langerrorlist, unimplementedverberror, bserror);
+			return (false);
+		#endif
+
 		
 		case unmountvolumefunc: {
 			tyfilespec fs;
@@ -3419,44 +3452,18 @@ static boolean filefunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 			
 		case setfiletypefunc: {
-			tyfilespec fs;
-			OSType type;
-			
-			if (!getpathvalue (hp1, 1, &fs))
-				break;
-				
-			flnextparamislast = true;
-			
-			if (!getostypevalue (hp1, 2, &type))
-				break;
-			
-			if (!setfiletype (&fs, type))
-				break;
-			
-			(*v).data.flvalue = true;
-			
-			return (true);
-			}
+		/* TODO P2: Implement by renaming file extension
+		 * For now, not implemented (follow legacy Windows pattern)
+		 */
+		getstringlist (langerrorlist, unimplementedverberror, bserror);
+		return (false);
+		}
 		
 		case setfilecreatorfunc: {
-			tyfilespec fs;
-			OSType creator;
-			
-			if (!getpathvalue (hp1, 1, &fs))
-				break;
-			
-			flnextparamislast = true;
-			
-			if (!getostypevalue (hp1, 2, &creator))
-				break;
-		
-			if (!setfilecreator (&fs, creator))
-				break;
-			
-			(*v).data.flvalue = true;
-			
-			return (true);
-			}
+		/* Creator codes are Mac-specific - no cross-platform equivalent */
+		getstringlist (langerrorlist, unimplementedverberror, bserror);
+		return (false);
+		}
 			
 		case getlabelindexfunc: // 2006-04-24 creedon
 			return (getlabelindexverb (hp1, v));

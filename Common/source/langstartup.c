@@ -795,7 +795,7 @@ static boolean langinitbuiltintable (void) {
 	add ("typeof", typeoffunc);
 	
 	add ("sizeof", sizeoffunc);
-	
+
 	add ("nameof", nameoffunc);
 	
 	add ("parentof", parentoffunc);

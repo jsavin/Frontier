@@ -7,10 +7,11 @@ Complete guide for testing the headless Frontier runtime, including CLI usage, d
 ## Table of Contents
 
 1. [Running frontier-cli](#running-frontier-cli)
-2. [Database Migration (v6→v7)](#database-migration-v6v7)
-3. [Testing Patterns](#testing-patterns)
-4. [UserTalk Syntax Guide](#usertalk-syntax-guide)
-5. [System Dependencies](#system-dependencies)
+2. [Integration Tests](#integration-tests)
+3. [Database Migration (v6→v7)](#database-migration-v6v7)
+4. [Testing Patterns](#testing-patterns)
+5. [UserTalk Syntax Guide](#usertalk-syntax-guide)
+6. [System Dependencies](#system-dependencies)
 
 ---
 
@@ -66,6 +67,183 @@ FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli -e "lang.new(tableT
 **Known issues:**
 - Empty error message `[lang-ERROR] langcallbacks.c:208:` may appear after successful execution (harmless, can be ignored)
 - Multi-line scripts passed as plain strings (without `$'...'`) will fail due to shell parsing
+
+---
+
+## Integration Tests
+
+The integration test framework provides automated testing of UserTalk verbs using YAML test definitions and JSON output from frontier-cli.
+
+### Prerequisites
+
+- **Python 3** (pre-installed on macOS and most Linux distributions)
+- **PyYAML** library: `pip3 install pyyaml` or `pip3 install -r tests/integration/requirements.txt`
+
+### Running Integration Tests
+
+```bash
+# Quick method - via Makefile (recommended):
+cd tests && make test-integration
+
+# Verbose output:
+cd tests && make test-integration-verbose
+
+# Run all tests (unit + integration):
+cd tests && make test-all
+
+# Direct method - via shell wrapper:
+./tools/run_integration_tests.sh
+./tools/run_integration_tests.sh --verbose
+
+# Run specific test file:
+./tools/run_integration_tests.sh tests/integration/test_cases/string_verbs.yaml
+```
+
+### JSON Output Mode
+
+The `--output-json` flag provides structured output for automation and testing:
+
+```bash
+# Regular output:
+./frontier-cli/frontier-cli -e "1+1"
+# Output: 2
+
+# JSON output:
+./frontier-cli/frontier-cli --output-json -e "1+1"
+# Output (stdout):
+# {
+#   "success": true,
+#   "result": "2",
+#   "result_type": "string",
+#   "error": null,
+#   "error_type": null
+# }
+
+# Error case:
+./frontier-cli/frontier-cli --output-json -e "undefined_var"
+# JSON output (stdout):
+# {
+#   "success": false,
+#   "result": null,
+#   "result_type": null,
+#   "error": "Script execution failed",
+#   "error_type": "script_error"
+# }
+# Error logs (stderr):
+# [lang-ERROR] langcallbacks.c:208: Cant evaluate...
+# [general-ERROR] cli_utils.c:26: Execution error: Script execution failed
+```
+
+**Note**: JSON output goes to stdout, error logs go to stderr. This allows:
+- Parsing JSON from stdout without interference from debug logs
+- Capturing error context from stderr for debugging
+- Standard Unix pipe semantics (json output | parser)
+
+### Writing Test Cases
+
+Test cases are defined in YAML files under `tests/integration/test_cases/`:
+
+```yaml
+tests:
+  - name: "string.length - simple string"
+    description: "Get length of a simple string"
+    script: 'string.length("hello")'
+    expected_success: true
+    expected_result: "5"
+    expected_result_type: "string"  # Optional: validate result type
+
+  - name: "string.upper - basic case"
+    description: "Convert string to uppercase"
+    script: 'string.upper("hello")'
+    expected_success: true
+    expected_result: "HELLO"
+
+  - name: "error case - undefined variable"
+    description: "Access undefined variable"
+    script: 'undefined_var'
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "long running operation"
+    description: "Custom timeout for potentially slow operations"
+    script: 'complex.operation()'
+    expected_success: true
+    timeout: 30  # Optional: override default 10 second timeout
+```
+
+**Optional fields:**
+- `expected_result_type`: Validates the `result_type` field from JSON output
+- `timeout`: Per-test timeout in seconds (default: 10)
+- `description`: Human-readable test description
+
+### Test Path Placeholders
+
+For portable file path handling in test scripts, use the `{FRONTIER_TEST_TMP_DIR}` placeholder instead of hardcoded paths:
+
+```yaml
+tests:
+  - name: "file.new - create test file"
+    description: "Create a file in the test tmp directory"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(fs = file.fileFromPath(tmpDir + "/" + "test.txt"));
+      local(ok = file.new(fs));
+      return ok
+    expected_success: true
+    expected_result: "true"
+```
+
+**Available placeholders:**
+
+- `{FRONTIER_TEST_TMP_DIR}` - Expands to `<project_root>/tmp` directory at test execution time
+
+**How it works:**
+1. Test runner loads YAML files from `tests/integration/test_cases/`
+2. Before executing each script, runner substitutes `{FRONTIER_TEST_TMP_DIR}` with the absolute path to `<project_root>/tmp`
+3. The `tmp/` directory is automatically created if it doesn't exist
+4. Tests can safely create/read/delete files without hardcoding system-specific paths
+
+**Why use placeholders:**
+- ✅ Tests work on any system without modification
+- ✅ No hardcoded usernames or system paths in git
+- ✅ Supports CI/CD on different machines
+- ✅ Makes tests portable across development environments
+
+**Example expansion:**
+```
+Before substitution:
+  local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+
+After substitution (on user's machine):
+  local(tmpDir = "/Users/jake/dev/jsavin/Frontier/tmp");
+```
+
+**See also:** `tests/integration/runner.py` - `get_script_with_substitutions()` method for implementation details
+
+### Test Output
+
+```
+Running tests from: string_verbs.yaml
+  Found 21 test(s)
+    ✓ PASS: string.length - simple string
+    ✓ PASS: string.upper - basic case
+    ✗ FAIL: string.nthCharacter - first char
+      Error: Expected success=True, got success=False
+
+======================================================================
+TEST SUMMARY
+======================================================================
+Total:  21
+Passed: 10
+Failed: 11
+======================================================================
+```
+
+### Current Test Coverage
+
+- **String verbs**: 21 tests (basic operations, substring, pattern matching)
+- **Pass rate**: ~47% (10/21 tests passing)
+- Tests identify which verbs are implemented vs stubbed
 
 ---
 

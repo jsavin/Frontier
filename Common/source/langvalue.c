@@ -74,22 +74,23 @@
 
 
 
-boolean flparamerrorenabled = true;
+/* ADR-005: Thread-local parameter state (macros expand to thread globals) */
+/* Legacy declarations removed, now accessed via tythreadglobals */
+/* See Common/headers/lang.h for macro definitions */
 
-boolean flnextparamislast = false;
-
-bigstring bsfunctionname; /*available for use in error messages*/
-
-boolean flcoerceexternaltostring = false;
-
-boolean flinhibitnilcoercion = false;
+/* boolean flparamerrorenabled = true; */
+/* boolean flnextparamislast = false; */
+/* bigstring bsfunctionname; */
+/* boolean flcoerceexternaltostring = false; */
+/* boolean flinhibitnilcoercion = false; */
 
 
 static byte bshexprefix [] = STR_hexprefix;
 
 static tyfunctype functiontoken; /*use this if string is empty*/
 
-static boolean fllocaldotparamsonly = false; /*set to inhibit searchpathvisit in langgetdotparams*/
+/* ADR-005: Thread-local parameter state (macro expands to thread globals) */
+/* static boolean fllocaldotparamsonly = false; */
 
 #pragma pack(2)
 typedef struct tyfastflagsvaluerecord {

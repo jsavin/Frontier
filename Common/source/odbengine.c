@@ -46,7 +46,7 @@
 #include "tableinternal.h"
 #include "shell.rsrc.h"
 #include "odbinternal.h"
-	#include "shellprivate.h"
+#include "shellprivate.h"
 #include "timedate.h"
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
 #include "db_format.h" /* format mode */

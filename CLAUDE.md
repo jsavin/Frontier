@@ -37,8 +37,14 @@ When presented with options like:
 ### Essential Commands
 
 ```bash
-# Run full test suite
+# Run full test suite (unit tests)
 ./tools/run_headless_tests.sh
+
+# Run integration tests (Python/YAML-based verb tests)
+cd tests && make test-integration
+
+# Run all tests (unit + integration)
+cd tests && make test-all
 
 # Database migration (v6 → v7)
 rm -f databases/Frontier-v7.root
@@ -249,6 +255,25 @@ git checkout develop  # verify you're on develop
 - If Session 2 wants to commit to develop, check if Session 1 has open PRs first
 - Session 1 should merge and clean up worktree before Session 2 does major develop work
 
+### Critical Worktree Discipline ⚠️
+
+**Rule 1: All Work Happens in Worktrees, NOT in Main Directory**
+- The main `Frontier/` directory should only be used for research, viewing code, and running quick diagnostics
+- Any feature/bug fix work MUST be done in a dedicated worktree (e.g., `Frontier-<feature-name>`)
+- This prevents accidentally committing to develop or mixing multiple pieces of work
+- Exception: Trivial single-line fixes on develop are OK (see Decision Tree above)
+
+**Rule 2: Always Rebase Against develop HEAD When Switching to a Worktree**
+- Before starting new work in a worktree, sync with latest develop:
+```bash
+# In the new worktree, after creation:
+git fetch origin
+git rebase origin/develop
+```
+- This ensures your feature branch starts from the latest code
+- Prevents conflicts and keeps your PR clean
+- Do this EVERY TIME you switch to a worktree to start fresh work
+
 ### Pre-Work Checklist
 
 Before starting major work in any session:
@@ -326,6 +351,18 @@ If parallel sessions cause conflicts:
 - **Complex Analysis**: Trade-off studies, architectural decisions → `system-architect`
 
 Don't do complex analysis or design work manually when an agent can do it better and faster.
+
+### Delegating to Pull-Request Agent - Test Efficiency ⚠️
+
+**IMPORTANT**: Avoid redundant test runs to conserve tokens.
+
+When delegating to the pull-request agent:
+- ✅ **If tests were already run**: Mention test results in the delegation prompt
+  - Example: "Unit tests passed (./tools/run_headless_tests.sh), integration tests passed (cd tests && make test-integration)"
+- ✅ **If tests haven't been run**: Let the agent know so it can verify test status
+  - Example: "Tests haven't been run yet - agent should verify before creating PR"
+- ✅ The pull-request agent will check conversation history for test results before running tests
+- ❌ **Don't** re-run tests just before delegating if they were already run earlier in the session
 
 ### Agent Verification Requirements ⚠️
 
@@ -496,18 +533,116 @@ Frontier has multiple global mutable state variables that must be eliminated bef
 **Known Problem Areas:**
 - `outlinedata` and `outlinestack` (oppushoutline/oppopoutline) - outline context
 - `databasedata` and legacy database globals - database context (partially fixed)
+- `flnextparamislast` and parameter-related globals - **PATTERN ESTABLISHED** (see ADR-005)
 - Any static buffers or caches that aren't guarded by locks
 
 **Why This Matters**: This code MUST be thread-safe before launch. Global mutable state makes thread safety impossible.
 
-**Refactoring Pattern (proven to work)**:
+**Refactoring Patterns (proven to work)**:
+
+**Pattern 1: Thread-Local Storage (for per-thread state)**
+1. Add field to `tythreadglobals` structure
+2. Update thread swap functions (copythreadglobals, swapinthreadglobals)
+3. Replace global with macro accessor for backward compatibility
+4. Zero API changes - transparent to existing code
+
+**Pattern 2: Explicit Context (for per-operation state)**
 1. Create explicit context structure (e.g., `op_context`, `db_context`)
 2. Thread context through function parameters instead of relying on globals
 3. Maintain backward-compatible wrappers using default context
 4. Gradually eliminate global variable access
-5. Document in `planning/architectural_decision_records/`
 
-**See**: Issue #135 (outline context refactoring)
+**When to Use Which**:
+- **Thread-Local**: Per-thread execution state (flnextparamislast, flscriptrunning, current outline)
+- **Explicit Context**: Per-operation state (database operations, outline operations)
+
+**Documentation**:
+- **ADR-005**: Parameter state thread-safety (thread-local pattern reference)
+- **docs/THREAD_LOCAL_GLOBALS_PATTERN.md**: Step-by-step migration template
+- **Issue #135**: Outline context refactoring (explicit context pattern reference)
+
+---
+
+### Timestamp Type Migration - uint32_t Audit Required ⚠️
+
+**Context**: Frontier migrated to 64-bit timestamps (`frontier_time_t` = `int64_t`) to avoid the Year 2038 problem. However, legacy code may still use `uint32_t` for timestamps, defeating this migration.
+
+**When pulling new source files into headless builds, ALWAYS audit for uint32_t timestamp usage.**
+
+#### Pre-Merge Checklist for New Files
+
+Before adding any file to headless builds (frontier-cli/Makefile), run this audit:
+
+```bash
+# Search for potential timestamp fields
+grep -n "uint32_t.*time\|uint32_t.*date\|uint32_t.*second" <new_file>.c
+```
+
+For each match, determine if it's:
+1. **Disk format structure** (OK - for backward compatibility with legacy databases)
+2. **In-memory state** (MUST migrate to `frontier_time_t`)
+3. **API parameters** (MUST use `int64_t`/`frontier_time_t`)
+
+#### Example: Correct Pattern
+
+```c
+/* Disk format (legacy v4) - OK to keep uint32_t */
+typedef struct legacy_diskheader {
+    uint32_t timecreated;    // ✅ OK - reading old database format
+    uint32_t timelastsave;   // ✅ OK - with conversion to frontier_time_t
+} legacy_diskheader;
+
+/* In-memory state - MUST use frontier_time_t */
+typedef struct runtime_state {
+    frontier_time_t timecreated;    // ✅ Correct - 64-bit in memory
+    frontier_time_t timelastsave;   // ✅ Correct - 64-bit in memory
+} runtime_state;
+
+/* Conversion when reading disk format */
+state.timecreated = (frontier_time_t)disk_header.timecreated;  // ✅ Widen to 64-bit
+```
+
+### Automated DateTime Type Checking ✅
+
+**Pre-Merge Enforcement**: The test suite automatically checks for datetime type issues.
+
+```bash
+# Runs automatically as part of:
+./tools/run_headless_tests.sh
+
+# Or run manually:
+./tools/check_datetime_types.sh
+```
+
+**What It Checks**:
+1. `long` or `unsigned long` used with timestamp field names (timecreated, timemodified, timelastsave)
+2. `int32_t`/`uint32_t` with timestamp fields (warnings for manual review)
+3. Function parameters using `long` for date/time values
+
+**Whitelisted Files** (Mac GUI only, not in headless):
+- `Common/headers/claybrowser.h`
+- `Common/source/claybrowserexpand.c`
+- `portable/shelltypes_portable.h`
+- `portable/wptext_runtime.c` (legacy wp_diskheader disk format)
+
+**When You See Warnings About uint32_t**:
+- ✅ **Legacy v4/v6 disk format structures** → OK (backward compatibility for reading old databases)
+- ❌ **Modern v7 (BE64) disk format structures** → BAD (use uint64_t)
+- ❌ **In-memory structures** → BAD (use frontier_time_t / int64_t)
+- ❌ **API parameters** → BAD (use int64_t / frontier_time_t)
+
+**Rule of Thumb**:
+- Legacy readers (`Common/source/legacy/`, v4/v6 disk formats): uint32_t OK
+- Everything else: Use int64_t or frontier_time_t
+
+**See**: `planning/phase3/datetime_handling_audit.md` for complete findings.
+
+---
+
+**References**:
+- `docs/frontier_time_t_standard.md` - 64-bit time standard
+- PR #231 - Discovered during file verb implementation
+- Issue #167 - Original time_t portability bug
 
 ---
 

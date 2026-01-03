@@ -1,0 +1,215 @@
+# Integration tests for table verb operations
+# Tests basic table manipulation verbs available in headless mode
+#
+# Phase 1 priority table verbs (5 operations covered, 19 tests total):
+#   - table.assign() - Assign value to table element
+#   - table.getcursor() - Get current cursor position
+#   - table.goto() - Navigate to specific row
+#   - table.emptytable() - Clear all table contents
+#   - pack(table) - Serialize table to binary (replaces table.packtable in headless)
+#
+# NOTE: unpack() builtin not yet implemented in headless - round-trip tests deferred
+
+tests:
+  # Basic table operations
+  - name: "table.assign - simple assignment"
+    description: "Assign a value to a table element"
+    script: |
+      lang.new(tableType, @t);
+      table.assign(@t.key1, "value1");
+      return t.key1
+    expected_success: true
+    expected_result: "value1"
+
+  - name: "table.assign - numeric value"
+    description: "Assign numeric value to table element"
+    script: |
+      lang.new(tableType, @t);
+      table.assign(@t.count, 42);
+      return t.count
+    expected_success: true
+    expected_result: "42"
+
+  - name: "table.assign - boolean value"
+    description: "Assign boolean to table element"
+    script: |
+      lang.new(tableType, @t);
+      table.assign(@t.flag, true);
+      return t.flag
+    expected_success: true
+    expected_result: "true"
+
+  - name: "table.assign - overwrite existing"
+    description: "Overwriting existing value should work"
+    script: |
+      lang.new(tableType, @t);
+      t.key1 = "old";
+      table.assign(@t.key1, "new");
+      return t.key1
+    expected_success: true
+    expected_result: "new"
+
+  # Table navigation
+  - name: "table.goto - navigate to row by number"
+    description: "Move cursor to specific row number"
+    script: |
+      lang.new(tableType, @t);
+      t.a = 1;
+      t.b = 2;
+      t.c = 3;
+      table.goto(2);
+      return table.getcursor()
+    expected_success: true
+    expected_result: "b"
+
+  - name: "table.goto - first row"
+    description: "Navigate to first row (row 1)"
+    script: |
+      lang.new(tableType, @t);
+      t.a = 1;
+      t.b = 2;
+      t.c = 3;
+      table.goto(1);
+      return table.getcursor()
+    expected_success: true
+    expected_result: "a"
+
+  - name: "table.goto - last row"
+    description: "Navigate to last row"
+    script: |
+      lang.new(tableType, @t);
+      t.a = 1;
+      t.b = 2;
+      t.c = 3;
+      table.goto(3);
+      return table.getcursor()
+    expected_success: true
+    expected_result: "c"
+
+  - name: "table.getcursor - no prior goto"
+    description: "Get cursor without prior navigation returns empty"
+    script: |
+      lang.new(tableType, @t);
+      t.first = 1;
+      return table.getcursor()
+    expected_success: true
+    expected_result: ""
+
+  - name: "table.getcursor - after adding items"
+    description: "Cursor without navigation returns empty"
+    script: |
+      lang.new(tableType, @t);
+      t.a = 1;
+      t.b = 2;
+      t.c = 3;
+      return table.getcursor()
+    expected_success: true
+    expected_result: ""
+
+  # Table content management
+  - name: "table.emptytable - clear contents"
+    description: "Empty table removes all items"
+    script: |
+      lang.new(tableType, @t);
+      t.a = 1;
+      t.b = 2;
+      t.c = 3;
+      table.emptytable(@t);
+      return sizeof(t)
+    expected_success: true
+    expected_result: "0"
+
+  - name: "table.emptytable - already empty"
+    description: "Emptying an already empty table"
+    script: |
+      lang.new(tableType, @t);
+      table.emptytable(@t);
+      return sizeof(t)
+    expected_success: true
+    expected_result: "0"
+
+  # Table serialization
+  # NOTE: table.packtable() writes to resource files and is not available in headless.
+  # Instead, use pack() builtin which works with any external type including tables.
+  - name: "pack table - simple table"
+    description: "Pack table to binary using pack() builtin"
+    script: |
+      lang.new(tableType, @t);
+      t.a = 1;
+      t.b = "test";
+      pack(t, @packedData);
+      return typeof(packedData)
+    expected_success: true
+    expected_result: "data"
+
+  - name: "pack table - empty table"
+    description: "Packing empty table returns binary data"
+    script: |
+      lang.new(tableType, @t);
+      pack(t, @packedData);
+      return typeof(packedData)
+    expected_success: true
+    expected_result: "data"
+
+  - name: "pack table - complex table with multiple types"
+    description: "Verify pack() works with tables containing multiple value types"
+    script: |
+      lang.new(tableType, @t);
+      t.number = 42;
+      t.string = "hello";
+      t.bool = true;
+      t.float = 3.14;
+      pack(t, @packed);
+      local(ok = (typeof(packed) == "data") and (sizeof(packed) > 0));
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  # Error cases
+  - name: "table.goto - invalid row (zero)"
+    description: "Row 0 is invalid"
+    script: |
+      lang.new(tableType, @t);
+      t.a = 1;
+      return table.goto(0)
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "table.goto - out of bounds"
+    description: "Row beyond table size"
+    script: |
+      lang.new(tableType, @t);
+      t.a = 1;
+      return table.goto(10)
+    expected_success: false
+    expected_error_type: "script_error"
+
+  # Edge cases
+  - name: "table.assign - nil table"
+    description: "Assigning to nil table should error"
+    script: |
+      local(t);
+      return table.assign(@t.key, "value")
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "sizeof after table.assign"
+    description: "Table size increases after assignment"
+    script: |
+      lang.new(tableType, @t);
+      table.assign(@t.key1, 1);
+      table.assign(@t.key2, 2);
+      return sizeof(t)
+    expected_success: true
+    expected_result: "2"
+
+  - name: "table.assign with nested table"
+    description: "Assign a table as value"
+    script: |
+      lang.new(tableType, @t);
+      lang.new(tableType, @nested);
+      nested.x = 10;
+      table.assign(@t.sub, nested);
+      return t.sub.x
+    expected_success: true
+    expected_result: "10"

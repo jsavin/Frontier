@@ -85,6 +85,7 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
         {"system-root", required_argument, 0, 'R'},
         {"hydrate-system-root", no_argument, 0, 'H'},
         {"upgrade-system-root", no_argument, 0, 'U'},
+        {"output-json", no_argument, 0, 'J'},
         {"verbose", no_argument, 0, 'v'},
         {"debug", no_argument, 0, 'D'},
         {"help", no_argument, 0, 'h'},
@@ -93,7 +94,7 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
     };
 
     // Parse command line arguments
-    while ((opt = getopt_long(argc, argv, "e:R:HUvDhV", long_options, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "e:R:HUJvDhV", long_options, &option_index)) != -1) {
         switch (opt) {
             case 'e':
                 // Inline script execution
@@ -126,6 +127,11 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
 
             case 'U':
                 options->upgrade_system_root = true;
+                break;
+
+            case 'J':
+                // JSON output mode
+                options->output_json = true;
                 break;
 
             case 'v':
@@ -215,6 +221,7 @@ void cli_print_options(const cli_options_t* options) {
     printf("  System Root: %s\n", options->system_root ? options->system_root : "(none)");
     printf("  Verbose: %s\n", options->verbose ? "yes" : "no");
     printf("  Debug: %s\n", options->debug ? "yes" : "no");
+    printf("  Output JSON: %s\n", options->output_json ? "yes" : "no");
     printf("  Hydrate System Root: %s\n", options->hydrate_system_root ? "yes" : "no");
     printf("  Upgrade System Root: %s\n", options->upgrade_system_root ? "yes" : "no");
     printf("  Show Help: %s\n", options->show_help ? "yes" : "no");

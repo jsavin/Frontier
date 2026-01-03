@@ -159,10 +159,21 @@ static boolean lang_valueproc(short token, hdltreenode hparam1,
             /* Verb: lang.string4 - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case lanv_string:
-            /* Verb: lang.string - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+        case lanv_string: {
+            /* Verb: lang.string - coerce value to string */
+            /* ADR-005: flcoerceexternaltostring now thread-local macro */
+            boolean fl;
+
+            flnextparamislast = true;
+
+            flcoerceexternaltostring = true; /*special case -- enable for this verb*/
+
+            fl = getstringparam (hparam1, 1, vreturned);
+
+            flcoerceexternaltostring = false;
+
+            return (fl);
+        }
         case lanv_displaystring:
             /* Verb: lang.displaystring - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);

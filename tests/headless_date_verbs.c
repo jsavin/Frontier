@@ -23,7 +23,7 @@
 #include "timedate.h"
 
 /* External functions from langdate.c */
-extern boolean datenetstandardstring (long localdate, tyvaluerecord *vreturn);
+extern boolean datenetstandardstring (int64_t localdate, tyvaluerecord *vreturn);
 extern boolean datemonthtostring (long ix, tyvaluerecord *vreturn);
 extern boolean datedayofweektostring (long ix, tyvaluerecord *vreturn);
 extern boolean dateversionlessthan (bigstring bsv1, bigstring bsv2, tyvaluerecord *v);

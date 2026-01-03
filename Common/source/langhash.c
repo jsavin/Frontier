@@ -832,9 +832,12 @@ hdlhashtable currenthashtable = nil;
 
 hdltablestack hashtablestack = nil;
 
-boolean fllanghashassignprotect = false;
+/* ADR-005: Thread-local value protection flags (macros expand to thread globals) */
+/* Legacy declarations removed, now accessed via tythreadglobals */
+/* See Common/headers/lang.h for macro definitions */
 
-boolean fllangexternalvalueprotect = false;	/*4.1b4 dmb: new global, disable protection*/
+/* boolean fllanghashassignprotect = false; */
+/* boolean fllangexternalvalueprotect = false; */
 
 
 static boolean flunpackingtable = 0;

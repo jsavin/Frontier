@@ -4,6 +4,7 @@
 #include "db.h"
 #include "strings.h"
 #include "byteorder.h"
+#include "timedate.h"
 #include "wpverbs.h"
 #include "wptext_portable.h"
 #include "db_format.h"
@@ -92,9 +93,9 @@ typedef struct {
 
 typedef struct wp_portable_state {
     dbaddress address;
-    long timecreated;
-    long timelastsave;
-    long ctsaves;
+    frontier_time_t timecreated;      /* 64-bit timestamp per frontier_time_t standard */
+    frontier_time_t timelastsave;     /* 64-bit timestamp per frontier_time_t standard */
+    frontier_time_t ctsaves;          /* Save count - using frontier_time_t for consistency */
     long maxpos;
     long buffersize;
     short flags;
@@ -265,9 +266,10 @@ static wp_portable_state *wp_portable_state_require(hdlexternalvariable hv) {
 static void wp_portable_fill_portable_header(wp_portable_state *state, long utf8_len) {
     state->portable_header.version = WP_PORTABLE_VERSION;
     state->portable_header.flags = WP_PORTABLE_FLAG_UTF8;
-    state->portable_header.timecreated = state->timecreated;
-    state->portable_header.timelastsave = state->timelastsave;
-    state->portable_header.ctsaves = state->ctsaves;
+    /* Explicit cast from frontier_time_t (64-bit) to uint32_t (32-bit disk format) */
+    state->portable_header.timecreated = (uint32_t)state->timecreated;
+    state->portable_header.timelastsave = (uint32_t)state->timelastsave;
+    state->portable_header.ctsaves = (uint32_t)state->ctsaves;
     state->portable_header.textlength = state->maxpos;
     state->portable_header.utf8bytelen = utf8_len;
     state->portable_header.reservedlength = 0;

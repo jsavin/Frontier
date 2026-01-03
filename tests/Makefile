@@ -191,6 +191,7 @@ LANG_RUNTIME_SOURCES = \
     headless_search_stubs.c \
     headless_mac_compat.c \
     headless_langregexp_stub.c \
+    headless_threadglobals.c \
     \
     headless_langipc_stub.c
 LANG_RUNTIME_SOURCES += \
@@ -445,6 +446,19 @@ test-compat: test_compatibility
 	@echo "Running compatibility tests..."
 	./test_compatibility
 
+# Integration test targets (Python-based YAML tests)
+test-integration:
+	@echo "Running integration tests..."
+	@../tools/run_integration_tests.sh
+
+test-integration-verbose:
+	@echo "Running integration tests (verbose)..."
+	@../tools/run_integration_tests.sh --verbose
+
+# Run all tests (unit + integration)
+test-all: test test-integration
+	@echo "All test suites completed"
+
 $(STRINGS_COMPILER):
 	$(MAKE) -C $(STRINGS_COMPILER_DIR)
 
@@ -526,4 +540,4 @@ verify-errors:
 	@echo "Verifying error message coverage..."
 	@../tools/verify_error_coverage.sh
 
-.PHONY: all test clean install uninstall help results strings_generated verify-errors
+.PHONY: all test test-integration test-integration-verbose test-all clean install uninstall help results strings_generated verify-errors

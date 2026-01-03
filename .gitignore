@@ -37,6 +37,7 @@ Common/MySQL/
 
 # Auto-generated parser files (bison/yacc output)
 tmp/
+tests/tmp/
 
 # Build artifacts
 *.o
