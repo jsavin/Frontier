@@ -1,0 +1,256 @@
+# Integration tests for runtime parameter state isolation
+#
+# CRITICAL TESTS: These verify core runtime behavior, specifically the parameter state
+# isolation mechanism that ensures verbs and expressions maintain correct execution
+# context across different code blocks (if statements, nested contexts, etc.)
+#
+# These tests do NOT validate verb implementations. They validate that the runtime
+# itself correctly isolates parameter state to prevent leakage between execution contexts.
+#
+# Why this matters:
+# - ADR-005 migrated parameter state to thread-local storage for concurrent safety
+# - These tests verify that migration works correctly across all execution contexts
+# - Failure here indicates a fundamental runtime issue, not a verb problem
+# - These are LAUNCH-BLOCKING tests for multi-threaded collaborative ODB support
+#
+# See: CLAUDE.md "Global Mutable State" section and ADR-005 implementation
+
+tests:
+  # FUNDAMENTAL: Parameter state isolation in if statement evaluation
+  - name: "Runtime: Parameter state - basic if condition evaluation"
+    description: "Verify parameter state is correctly maintained during if condition evaluation"
+    script: |
+      local(x = 1);
+      if (x == 1) {
+        return true;
+      }
+      return false
+    expected_success: true
+    expected_result: "true"
+
+  # CRITICAL: Sequential local assignments in if body
+  - name: "Runtime: Parameter state - sequential local assignments"
+    description: "Verify parameter state resets correctly between sequential local() declarations in if body"
+    script: |
+      if (true) {
+        local(x = 1);
+        local(y = 2);
+        local(z = x + y);
+        return z;
+      }
+      return false
+    expected_success: true
+    expected_result: "3"
+
+  # CRITICAL: Multiple if bodies in sequence
+  - name: "Runtime: Parameter state - multiple sequential if statements"
+    description: "Verify parameter state is isolated between separate if statement blocks"
+    script: |
+      if (true) {
+        local(x = 10);
+        return x;
+      }
+      if (true) {
+        local(x = 20);
+        return x;
+      }
+      return false
+    expected_success: true
+    expected_result: "10"
+
+  # CRITICAL: Nested if statements (the most complex case)
+  - name: "Runtime: Parameter state - nested if statements (2 levels)"
+    description: "CRITICAL: Verify parameter state isolation across nested if contexts"
+    script: |
+      if (true) {
+        local(x = 1);
+        if (true) {
+          local(y = 2);
+          return x + y;
+        }
+      }
+      return false
+    expected_success: true
+    expected_result: "3"
+
+  # CRITICAL: Deep nesting (3 levels)
+  - name: "Runtime: Parameter state - nested if statements (3 levels)"
+    description: "CRITICAL: Verify parameter state isolation with deep nesting"
+    script: |
+      if (true) {
+        local(a = 1);
+        if (true) {
+          local(b = 2);
+          if (true) {
+            local(c = 3);
+            return a + b + c;
+          }
+        }
+      }
+      return false
+    expected_success: true
+    expected_result: "6"
+
+  # CRITICAL: Parameter state after simple verb call
+  - name: "Runtime: Parameter state - if after verb call (string.length)"
+    description: "Verify parameter state resets when entering if after verb call"
+    script: |
+      local(result = string.length("test"));
+      if (result == 4) {
+        local(newval = result + 1);
+        return newval;
+      }
+      return false
+    expected_success: true
+    expected_result: "5"
+
+  # CRITICAL: Sequential verb calls before if
+  - name: "Runtime: Parameter state - sequential verbs then if"
+    description: "Verify parameter state resets after multiple sequential verb calls before entering if"
+    script: |
+      local(len1 = string.length("hello"));
+      local(len2 = string.length("hi"));
+      if ((len1 + len2) == 7) {
+        return true;
+      }
+      return false
+    expected_success: true
+    expected_result: "true"
+
+  # CRITICAL: The original bug pattern - verb in condition, verb in body
+  - name: "Runtime: Parameter state - verb in if condition, verb in body"
+    description: "CRITICAL: Validates fix for ADR-005 issue where verb in condition corrupted verb in body. Pattern: if (verb1()) { verb2(); }"
+    script: |
+      local(str = "test");
+      if (string.length(str) == 4) {
+        local(upper = string.upper(str));
+        return upper;
+      }
+      return false
+    expected_success: true
+    expected_result: "TEST"
+
+  # CRITICAL: Sequential verbs in if body
+  - name: "Runtime: Parameter state - sequential verbs in if body"
+    description: "CRITICAL: Verify parameter state resets between sequential verb calls within same if body"
+    script: |
+      if (true) {
+        local(len = string.length("hello"));
+        local(upper = string.upper("hello"));
+        return len + upper;
+      }
+      return false
+    expected_success: true
+    expected_result: "5HELLO"
+
+  # CRITICAL: Complex expression in if condition
+  - name: "Runtime: Parameter state - complex expression in if condition"
+    description: "CRITICAL: Verify parameter state maintained through complex multi-verb condition expressions"
+    script: |
+      if ((string.length("a") == 1) && (string.length("bb") == 2)) {
+        local(result = string.upper("test"));
+        return result;
+      }
+      return false
+    expected_success: true
+    expected_result: "TEST"
+
+  # CRITICAL: Nested if with verbs at each level
+  - name: "Runtime: Parameter state - nested if with verbs at each level"
+    description: "CRITICAL: Verify parameter state isolation when verbs are called at different nesting levels"
+    script: |
+      if (string.length("a") == 1) {
+        local(x = string.upper("x"));
+        if (string.length("bb") == 2) {
+          local(y = string.upper("y"));
+          return x + y;
+        }
+      }
+      return false
+    expected_success: true
+    expected_result: "XY"
+
+  # EDGE CASE: If with else branch
+  - name: "Runtime: Parameter state - if/else parameter isolation"
+    description: "Verify parameter state isolation in if/else branches"
+    script: |
+      if (false) {
+        local(x = 1);
+        return x;
+      }
+      else {
+        local(x = 2);
+        return x;
+      }
+    expected_success: true
+    expected_result: "2"
+
+  # EDGE CASE: Verb in if condition vs verb in else body
+  - name: "Runtime: Parameter state - verb in if condition, different verb in else"
+    description: "Verify parameter state isolation between if condition verb and else body verb"
+    script: |
+      if (string.length("test") == 5) {
+        return "no";
+      }
+      else {
+        local(result = string.upper("test"));
+        return result;
+      }
+    expected_success: true
+    expected_result: "TEST"
+
+  # INTEGRATION: Local variables from outer scope accessible in nested if
+  - name: "Runtime: Parameter state - outer scope variable access in nested if"
+    description: "Verify that variables from outer scope are accessible in nested if contexts (correct scoping)"
+    script: |
+      local(outer = 10);
+      if (true) {
+        local(inner = 5);
+        if (true) {
+          return outer + inner;
+        }
+      }
+      return false
+    expected_success: true
+    expected_result: "15"
+
+  # INTEGRATION: Verb result stored, then used in if condition
+  - name: "Runtime: Parameter state - verb result stored then used in condition"
+    description: "Verify parameter state correct when verb result is stored and later used in if condition"
+    script: |
+      local(len = string.length("hello"));
+      if (len > 4) {
+        local(upper = string.upper("hello"));
+        return upper;
+      }
+      return false
+    expected_success: true
+    expected_result: "HELLO"
+
+  # REGRESSION: Ensure if statement doesn't affect subsequent code
+  - name: "Runtime: Parameter state - code after if statement executes correctly"
+    description: "Verify parameter state isolation prevents if statement from affecting code that follows"
+    script: |
+      if (true) {
+        local(x = 1);
+        return x;
+      }
+      local(y = 2);
+      return y
+    expected_success: true
+    expected_result: "1"
+
+  # REGRESSION: Multiple sequential if conditions with verbs
+  - name: "Runtime: Parameter state - multiple sequential if conditions with verbs"
+    description: "Verify parameter state isolation when multiple if statements with verb conditions execute sequentially"
+    script: |
+      if (string.length("a") == 1) {
+        if (string.length("bb") == 2) {
+          if (string.length("ccc") == 3) {
+            return true;
+          }
+        }
+      }
+      return false
+    expected_success: true
+    expected_result: "true"
