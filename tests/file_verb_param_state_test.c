@@ -23,7 +23,7 @@
 static int test_writeline_after_open(void) {
 	const char *script =
 		"local(f); "
-		"f = file.open(\"/tmp/test_state_writeline.txt\"); "
+		"f = file.open(\"test_tmp/test_state_writeline.txt\"); "
 		"file.writeline(f, \"test line\"); "
 		"file.close(f); "
 		"return true";
@@ -46,7 +46,7 @@ static int test_writeline_after_open(void) {
 static int test_write_after_open(void) {
 	const char *script =
 		"local(f); "
-		"f = file.open(\"/tmp/test_state_write.bin\"); "
+		"f = file.open(\"test_tmp/test_state_write.bin\"); "
 		"file.write(f, \"binary\"); "
 		"file.close(f); "
 		"return true";
@@ -69,7 +69,7 @@ static int test_write_after_open(void) {
 static int test_setposition_after_open(void) {
 	const char *script =
 		"local(f); "
-		"f = file.open(\"/tmp/test_state_setpos.txt\"); "
+		"f = file.open(\"test_tmp/test_state_setpos.txt\"); "
 		"file.setposition(f, 0); "
 		"file.close(f); "
 		"return true";
@@ -91,8 +91,8 @@ static int test_setposition_after_open(void) {
 
 static int test_compare_after_open(void) {
 	const char *script =
-		"file.open(\"/tmp/a.txt\"); "
-		"return file.compare(\"/tmp/test_state_writeline.txt\", \"/tmp/test_state_write.bin\")";
+		"file.open(\"test_tmp/a.txt\"); "
+		"return file.compare(\"test_tmp/test_state_writeline.txt\", \"test_tmp/test_state_write.bin\")";
 
 	tyvaluerecord result;
 	if (!execute_script(script, &result)) {

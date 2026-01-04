@@ -935,7 +935,7 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			/* Get home directory for user-specific paths */
 			home = getenv("HOME");
 			if (!home)
-				home = "/tmp";
+				home = ".";  /* Fallback to current directory (sandbox-safe) */
 
 			/* Map OSType codes to Unix paths */
 			switch (foldertype) {
@@ -950,7 +950,7 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 					break;
 
 				case 'temp':  /* Temporary Items */
-					folderpath = "/tmp";
+					folderpath = "./tmp";  /* Relative to cwd (sandbox-safe) */
 					break;
 
 				case 'pref':  /* Preferences */

@@ -1238,7 +1238,7 @@ boolean filefrompath(bigstring path, bigstring fname) {
 	 * Portable implementation - extracts filename from full path.
 	 * Returns everything after the last path separator.
 	 *
-	 * Example: "/tmp/test.txt" returns "test.txt"
+	 * Example: "/home/user/test.txt" returns "test.txt"
 	 * Example: "/usr/local/bin/" returns ""
 	 */
 	return lastword(path, chpathseparator, fname);
