@@ -671,7 +671,7 @@ tests:
     description: "Check that writable file is not locked"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(filePath = file.fileFromPath(tmpDir + "/" + "test_lock.txt"));
+      local(filePath = tmpDir + "/" + "test_lock.txt");
       file.writeWholeFile(filePath, "test");
       return file.islocked(filePath)
     expected_success: true
@@ -681,7 +681,7 @@ tests:
     description: "Lock file and verify islocked returns true"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(filePath = file.fileFromPath(tmpDir + "/" + "test_lock2.txt"));
+      local(filePath = tmpDir + "/" + "test_lock2.txt");
       file.writeWholeFile(filePath, "test");
       local(result = file.lock(filePath));
       local(isLocked = file.islocked(filePath));
@@ -693,7 +693,7 @@ tests:
     description: "Lock then unlock a file"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(filePath = file.fileFromPath(tmpDir + "/" + "test_lock3.txt"));
+      local(filePath = tmpDir + "/" + "test_lock3.txt");
       file.writeWholeFile(filePath, "test");
       file.lock(filePath);
       local(result = file.unlock(filePath));
