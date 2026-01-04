@@ -483,24 +483,5 @@ tests:
     expected_success: true
     expected_result: "false"
 
-  # Cleanup - Note: The test runner automatically removes {FRONTIER_TEST_TMP_DIR} after all tests
-  # This test is a sanity check that cleanup during tests works correctly
-  - name: "cleanup - remove test files"
-    description: "Clean up test files created during tests (runner will remove temp dir)"
-    script: |
-      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(fs1 = file.fileFromPath(tmpDir + "/" + "frontier_test_new.txt"));
-      local(fs2 = file.fileFromPath(tmpDir + "/" + "frontier_test_write.txt"));
-      local(fs3 = file.fileFromPath(tmpDir + "/" + "frontier_test_binary.dat"));
-      local(fs4 = file.fileFromPath(tmpDir + "/" + "frontier_test_size.txt"));
-      local(fs5 = file.fileFromPath(tmpDir + "/" + "frontier_test_created.txt"));
-      local(fs6 = file.fileFromPath(tmpDir + "/" + "frontier_test_modified.txt"));
-      if (file.exists(fs1)) { file.delete(fs1); }
-      if (file.exists(fs2)) { file.delete(fs2); }
-      if (file.exists(fs3)) { file.delete(fs3); }
-      if (file.exists(fs4)) { file.delete(fs4); }
-      if (file.exists(fs5)) { file.delete(fs5); }
-      if (file.exists(fs6)) { file.delete(fs6); }
-      return true
-    expected_success: true
-    expected_result: "true"
+  # Note: Test runner automatically removes {FRONTIER_TEST_TMP_DIR} after all tests
+  # No explicit cleanup needed - all test files are automatically removed
