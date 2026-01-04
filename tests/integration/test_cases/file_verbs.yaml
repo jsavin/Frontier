@@ -597,5 +597,150 @@ tests:
     expected_success: true
     expected_result: "/parent"
 
+  # File Type and Creator Tests
+  - name: "file.type - extract extension from .txt file"
+    description: "Get file extension with dot prefix"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(filePath = file.fileFromPath(tmpDir + "/" + "test_type.txt"));
+      file.writeWholeFile(filePath, "test");
+      return file.type(filePath)
+    expected_success: true
+    expected_result: ".txt"
+
+  - name: "file.type - file with no extension"
+    description: "Get type of file without extension returns empty string"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(filePath = file.fileFromPath(tmpDir + "/" + "testfile_noext"));
+      file.writeWholeFile(filePath, "test");
+      return file.type(filePath)
+    expected_success: true
+    expected_result: ""
+
+  - name: "file.type - file with multiple extensions"
+    description: "Get type of file.tar.gz returns last extension (space-padded OSType)"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(filePath = file.fileFromPath(tmpDir + "/" + "archive.tar.gz"));
+      file.writeWholeFile(filePath, "test");
+      return file.type(filePath)
+    expected_success: true
+    expected_result: ".gz "
+
+  - name: "file.creator - returns empty string in headless mode"
+    description: "Creator codes are Mac-specific, headless returns empty string"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(filePath = file.fileFromPath(tmpDir + "/" + "test_creator.txt"));
+      file.writeWholeFile(filePath, "test");
+      return file.creator(filePath)
+    expected_success: true
+    expected_result: ""
+
+  # Timestamp Setter Tests
+  - name: "file.setmodified - set modification time"
+    description: "Set file modification time and verify it changed"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(filePath = file.fileFromPath(tmpDir + "/" + "test_setmodified.txt"));
+      file.writeWholeFile(filePath, "test");
+      local(oldTime = file.modified(filePath));
+      local(newTime = clock.now() - (60 * 60 * 24));  // 1 day ago
+      local(result = file.setmodified(filePath, newTime));
+      local(verifyTime = file.modified(filePath));
+      return result and (verifyTime < oldTime)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "file.setcreated - behavior on different platforms"
+    description: "Set creation time (works on macOS, returns false on Linux)"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(filePath = file.fileFromPath(tmpDir + "/" + "test_setcreated.txt"));
+      file.writeWholeFile(filePath, "test");
+      local(newTime = clock.now() - (60 * 60 * 24));  // 1 day ago
+      local(result = file.setcreated(filePath, newTime));
+      // Returns true on macOS, false on Linux - both are valid
+      return typeof(result) == booleanType
+    expected_success: true
+    expected_result: "true"
+
+  # File Locking Tests
+  - name: "file.islocked - unlocked file returns false"
+    description: "Check that writable file is not locked"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(filePath = file.fileFromPath(tmpDir + "/" + "test_lock.txt"));
+      file.writeWholeFile(filePath, "test");
+      return file.islocked(filePath)
+    expected_success: true
+    expected_result: "false"
+
+  - name: "file.lock - lock a file"
+    description: "Lock file and verify islocked returns true"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(filePath = file.fileFromPath(tmpDir + "/" + "test_lock2.txt"));
+      file.writeWholeFile(filePath, "test");
+      local(result = file.lock(filePath));
+      local(isLocked = file.islocked(filePath));
+      return result and isLocked
+    expected_success: true
+    expected_result: "true"
+
+  - name: "file.unlock - unlock a locked file"
+    description: "Lock then unlock a file"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(filePath = file.fileFromPath(tmpDir + "/" + "test_lock3.txt"));
+      file.writeWholeFile(filePath, "test");
+      file.lock(filePath);
+      local(result = file.unlock(filePath));
+      local(isUnlocked = !file.islocked(filePath));
+      return result and isUnlocked
+    expected_success: true
+    expected_result: "true"
+
+  # Volume Operation Tests
+  - name: "file.freespaceonvolume - get free space on root volume"
+    description: "Get free space on root filesystem"
+    script: |
+      local(freeBytes = file.freespaceonvolume("/"));
+      return freeBytes > 0
+    expected_success: true
+    expected_result: "true"
+
+  - name: "file.volumesize - get total size of root volume"
+    description: "Get total size of root filesystem"
+    script: |
+      local(totalBytes = file.volumesize("/"));
+      return totalBytes > 0
+    expected_success: true
+    expected_result: "true"
+
+  - name: "file.volumeblocksize - get block size"
+    description: "Get filesystem block size"
+    script: |
+      local(blockSize = file.volumeblocksize("/"));
+      return blockSize > 0
+    expected_success: true
+    expected_result: "true"
+
+  - name: "file.isvolume - root is always a volume"
+    description: "Root path should be detected as a mount point"
+    script: |
+      return file.isvolume("/")
+    expected_success: true
+    expected_result: "true"
+
+  - name: "file.isvolume - regular directory is not a volume"
+    description: "Subdirectory should not be detected as mount point"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      return !file.isvolume(tmpDir)
+    expected_success: true
+    expected_result: "true"
+
   # Note: Test runner automatically removes {FRONTIER_TEST_TMP_DIR} after all tests
   # No explicit cleanup needed - all test files are automatically removed
