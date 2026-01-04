@@ -2667,46 +2667,13 @@ boolean filefunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vret
 			}
 			
 	case filetypefunc: {
-		/* Cross-platform implementation: extract extension from filename
-		 * - Extension <= 4 chars: return as OSType padded with spaces
-		 * - Extension > 4 chars: return as string
-		 * - No extension: return "????" as OSType
+		/* Platform-specific implementation:
+		 * - macOS: Try to get actual type code from file metadata first
+		 * - Fallback (non-Mac or no type code): Return file extension with dot (e.g., ".txt")
+		 * - No extension: Return empty string
 		 */
 		tyfilespec fs;
 		bigstring bsfilename, bsext;
-		short extlen;
-		OSType type;
-
-		flnextparamislast = true;
-
-		if (!getpathvalue (hp1, 1, &fs))
-			break;
-
-		/* Get filename from filespec */
-		getfsfile (&fs, bsfilename);
-
-		/* Extract extension (text after last '.') */
-		if (!lastword (bsfilename, '.', bsext) || stringlength(bsext) == 0) {
-			/* No extension - return "????" */
-			type = '????';
-			return (setostypevalue (type, v));
-		}
-
-		extlen = stringlength(bsext);
-
-		if (extlen <= 4) {
-			/* Extension <= 4 chars: convert to OSType padded with spaces */
-			stringtoostype (bsext, &type);
-			return (setostypevalue (type, v));
-		} else {
-			/* Extension > 4 chars: return as string */
-			return (setstringvalue (bsext, v));
-		}
-		}
-			
-	case filecreatorfunc: {
-		tyfilespec fs;
-		OSType creator;
 
 		flnextparamislast = true;
 
@@ -2714,15 +2681,57 @@ boolean filefunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vret
 			break;
 
 		#ifdef __APPLE__
-			/* Mac: Return actual creator code from file metadata */
-			if (!getfilecreator (&fs, &creator))
-				creator = '    ';  /* No creator, return spaces */
-		#else
-			/* Non-Mac: Always return 4 spaces (no creator code concept) */
-			creator = '    ';
+			/* macOS: Try to get actual type code from file metadata */
+			OSType type;
+			if (getfiletype (&fs, &type)) {
+				/* Return actual type code */
+				return (setostypevalue (type, v));
+			}
+			/* Fall through to extension-based fallback */
 		#endif
 
-		return (setostypevalue (creator, v));
+		/* Fallback: Extract extension from filename and return with dot prefix */
+		getfsfile (&fs, bsfilename);
+
+		/* Extract extension (text after last '.') */
+		if (!lastword (bsfilename, '.', bsext) || stringlength(bsext) == 0) {
+			/* No extension - return empty string */
+			setemptystring (bsext);
+			return (setstringvalue (bsext, v));
+		}
+
+		/* Prepend dot to extension */
+		insertchar ('.', bsext);
+
+		return (setstringvalue (bsext, v));
+		}
+			
+	case filecreatorfunc: {
+		/* Platform-specific implementation:
+		 * - macOS: Try to get actual creator code from file metadata
+		 * - Fallback (non-Mac or no creator code): Return empty string
+		 */
+		tyfilespec fs;
+		bigstring bsempty;
+
+		flnextparamislast = true;
+
+		if (!getpathvalue (hp1, 1, &fs))
+			break;
+
+		#ifdef __APPLE__
+			/* macOS: Try to get actual creator code from file metadata */
+			OSType creator;
+			if (getfilecreator (&fs, &creator)) {
+				/* Return actual creator code */
+				return (setostypevalue (creator, v));
+			}
+			/* Fall through to empty string fallback */
+		#endif
+
+		/* Fallback: Return empty string (no creator code concept on non-Mac) */
+		setemptystring (bsempty);
+		return (setstringvalue (bsempty, v));
 		}
 			
 		case setfilecreatedfunc: {

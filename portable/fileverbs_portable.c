@@ -31,6 +31,7 @@
 
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/statvfs.h>
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
@@ -423,15 +424,45 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 		}
 
 		case fileisvolumefunc: {
-			/* In headless mode, we don't have Mac-style volumes - always return false */
+			/* Check if path is a mount point (volume root) */
 			tyfilespec fs;
+			char path[4096];
+			struct stat st, parent_st;
+			char parent_path[4096];
 
 			flnextparamislast = true;
 
 			if (!getfilespecvalue(hparam1, 1, &fs))
 				return false;
 
-			return setbooleanvalue(false, vreturned);
+			if (!filespec_to_cstring(&fs, path, sizeof(path))) {
+				copyctopstring("Invalid file path", bserror);
+				return false;
+			}
+
+			/* Root directory is always a volume */
+			if (strcmp(path, "/") == 0)
+				return setbooleanvalue(true, vreturned);
+
+			/* Get stat info for the path */
+			if (stat(path, &st) != 0)
+				return setbooleanvalue(false, vreturned);
+
+			/* Not a directory = not a volume */
+			if (!S_ISDIR(st.st_mode))
+				return setbooleanvalue(false, vreturned);
+
+			/* Get parent directory path */
+			snprintf(parent_path, sizeof(parent_path), "%s/..", path);
+
+			/* Get stat info for parent directory */
+			if (stat(parent_path, &parent_st) != 0)
+				return setbooleanvalue(false, vreturned);
+
+			/* If device ID differs from parent, this is a mount point */
+			boolean is_mountpoint = (st.st_dev != parent_st.st_dev);
+
+			return setbooleanvalue(is_mountpoint, vreturned);
 		}
 		case filesizefunc: {
 			/* Return file size in bytes */
@@ -1619,15 +1650,217 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 
 		/* Tier 3: Optional features (16 verbs) - TODO Phase 4 */
 
-		case filetypefunc:
-		case filecreatorfunc:
+	case filetypefunc: {
+		/* Portable implementation for headless mode:
+		 * Return file extension with dot prefix (e.g., ".txt")
+		 * No extension: Return empty string
+		 */
+		tyfilespec fs;
+		char path[4096];
+		bigstring bspath, bsfilename, bsext, bsresult;
+		short i, lastslash, lastdot;
+
+		flnextparamislast = true;
+
+		if (!getfilespecvalue(hparam1, 1, &fs))
+			return false;
+
+		/* Convert filespec to full path string */
+		if (!filespec_to_cstring(&fs, path, sizeof(path))) {
+			setemptystring(bsresult);
+			return setstringvalue(bsresult, vreturned);
+		}
+
+		/* Convert C string to bigstring */
+		size_t pathlen = strlen(path);
+		if (pathlen > 255) pathlen = 255;
+		bspath[0] = (unsigned char)pathlen;
+		memcpy(&bspath[1], path, pathlen);
+
+		/* Find last path separator ('/' or ':') */
+		lastslash = -1;
+		for (i = 1; i <= bspath[0]; i++) {
+			if (bspath[i] == '/' || bspath[i] == ':')
+				lastslash = i;
+		}
+
+		/* Extract filename (everything after last separator) */
+		if (lastslash >= 0) {
+			short filenamelen = bspath[0] - lastslash;
+			bsfilename[0] = filenamelen;
+			memcpy(&bsfilename[1], &bspath[lastslash + 1], filenamelen);
+		} else {
+			copystring(bspath, bsfilename);
+		}
+
+		/* Find last dot in filename */
+		lastdot = -1;
+		for (i = 1; i <= bsfilename[0]; i++) {
+			if (bsfilename[i] == '.')
+				lastdot = i;
+		}
+
+		/* If no dot found, return empty string */
+		if (lastdot < 0 || lastdot == bsfilename[0]) {
+			setemptystring(bsresult);
+			return setstringvalue(bsresult, vreturned);
+		}
+
+		/* Extract extension and prepend dot */
+		short extlen = bsfilename[0] - lastdot;
+		bsresult[0] = extlen + 1;  /* +1 for the dot */
+		bsresult[1] = '.';
+		memcpy(&bsresult[2], &bsfilename[lastdot + 1], extlen);
+
+		return setstringvalue(bsresult, vreturned);
+	}
+
+	case filecreatorfunc: {
+		/* Portable implementation for headless mode:
+		 * Creator codes are Mac-specific - return empty string on all platforms
+		 */
+		tyfilespec fs;
+		bigstring bsempty;
+
+		flnextparamislast = true;
+
+		if (!getfilespecvalue(hparam1, 1, &fs))
+			return false;
+
+		/* Return empty string (no creator code concept in portable mode) */
+		setemptystring(bsempty);
+		return setstringvalue(bsempty, vreturned);
+	}
+
+		case fileislockedfunc: {
+			/* Check if file is write-protected (locked) */
+			tyfilespec fs;
+			char path[4096];
+			struct stat st;
+
+			flnextparamislast = true;
+
+			if (!getfilespecvalue(hparam1, 1, &fs))
+				return false;
+
+			if (!filespec_to_cstring(&fs, path, sizeof(path))) {
+				copyctopstring("Invalid file path", bserror);
+				return false;
+			}
+
+			if (stat(path, &st) != 0) {
+				copyctopstring("File not found", bserror);
+				return false;
+			}
+
+			/* File is "locked" if current user cannot write to it */
+			boolean locked = (access(path, W_OK) != 0);
+
+			return setbooleanvalue(locked, vreturned);
+		}
+
+		case filelockfunc: {
+			/* Lock file by removing write permissions */
+			tyfilespec fs;
+			char path[4096];
+			struct stat st;
+
+			flnextparamislast = true;
+
+			if (!getfilespecvalue(hparam1, 1, &fs))
+				return false;
+
+			if (!filespec_to_cstring(&fs, path, sizeof(path))) {
+				copyctopstring("Invalid file path", bserror);
+				return false;
+			}
+
+			/* Get current permissions */
+			if (stat(path, &st) != 0) {
+				copyctopstring("File not found", bserror);
+				return false;
+			}
+
+			/* Remove all write permissions */
+			mode_t newmode = st.st_mode & ~(S_IWUSR | S_IWGRP | S_IWOTH);
+
+			if (chmod(path, newmode) != 0) {
+				copyctopstring("Failed to lock file (permission denied)", bserror);
+				return false;
+			}
+
+			return setbooleanvalue(true, vreturned);
+		}
+
+		case fileunlockfunc: {
+			/* Unlock file by adding owner write permission */
+			tyfilespec fs;
+			char path[4096];
+			struct stat st;
+
+			flnextparamislast = true;
+
+			if (!getfilespecvalue(hparam1, 1, &fs))
+				return false;
+
+			if (!filespec_to_cstring(&fs, path, sizeof(path))) {
+				copyctopstring("Invalid file path", bserror);
+				return false;
+			}
+
+			/* Get current permissions */
+			if (stat(path, &st) != 0) {
+				copyctopstring("File not found", bserror);
+				return false;
+			}
+
+			/* Add owner write permission */
+			mode_t newmode = st.st_mode | S_IWUSR;
+
+			if (chmod(path, newmode) != 0) {
+				copyctopstring("Failed to unlock file (permission denied)", bserror);
+				return false;
+			}
+
+			return setbooleanvalue(true, vreturned);
+		}
+
+		case setfilecreatedfunc: {
+			/* Set file creation time (macOS only, returns false on Linux) */
+			tyfilespec fs;
+			frontier_time_t created;
+
+			if (!getfilespecvalue(hparam1, 1, &fs))
+				return false;
+
+			flnextparamislast = true;
+
+			if (!getdatevalue(hparam1, 2, &created))
+				return false;
+
+			boolean result = setfilecreated(&fs, created);
+			return setbooleanvalue(result, vreturned);
+		}
+
+		case setfilemodifiedfunc: {
+			/* Set file modification time */
+			tyfilespec fs;
+			frontier_time_t modified;
+
+			if (!getfilespecvalue(hparam1, 1, &fs))
+				return false;
+
+			flnextparamislast = true;
+
+			if (!getdatevalue(hparam1, 2, &modified))
+				return false;
+
+			boolean result = setfilemodified(&fs, modified);
+			return setbooleanvalue(result, vreturned);
+		}
+
 		case setfiletypefunc:
 		case setfilecreatorfunc:
-		case setfilecreatedfunc:
-		case setfilemodifiedfunc:
-		case fileislockedfunc:
-		case filelockfunc:
-		case fileunlockfunc:
 		case filecopydataforkfunc:
 		case fileisvisiblefunc:
 		case filesetvisiblefunc:
@@ -1693,13 +1926,140 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			copyctopstring("Volume mount/eject operations not supported in headless mode", bserror);
 			return false;
 
-		case volumefreespacefunc:
-		case volumesizefunc:
-		case volumeblocksizefunc:
-		case volumefreespacedoublefunc:
-		case volumesizedoublefunc:
-			copyctopstring("Volume operations not implemented in headless mode", bserror);
-			return false;
+		case volumefreespacefunc: {
+			/* Return free space available to non-root users (as long, may overflow) */
+			tyfilespec fs;
+			char path[4096];
+			struct statvfs vfs;
+
+			flnextparamislast = true;
+
+			if (!getfilespecvalue(hparam1, 1, &fs))
+				return false;
+
+			if (!filespec_to_cstring(&fs, path, sizeof(path))) {
+				copyctopstring("Invalid file path", bserror);
+				return false;
+			}
+
+			if (statvfs(path, &vfs) != 0) {
+				copyctopstring("Unable to get volume information", bserror);
+				return false;
+			}
+
+			/* Free space = available blocks * fragment size */
+			unsigned long long free_size = (unsigned long long)vfs.f_bavail * vfs.f_frsize;
+
+			/* Return as long (may overflow for large free space) */
+			return setlongvalue((long)free_size, vreturned);
+		}
+
+		case volumesizefunc: {
+			/* Return total volume size in bytes (as long, may overflow for large volumes) */
+			tyfilespec fs;
+			char path[4096];
+			struct statvfs vfs;
+
+			flnextparamislast = true;
+
+			if (!getfilespecvalue(hparam1, 1, &fs))
+				return false;
+
+			if (!filespec_to_cstring(&fs, path, sizeof(path))) {
+				copyctopstring("Invalid file path", bserror);
+				return false;
+			}
+
+			if (statvfs(path, &vfs) != 0) {
+				copyctopstring("Unable to get volume information", bserror);
+				return false;
+			}
+
+			/* Total size = total blocks * fragment size */
+			unsigned long long total_size = (unsigned long long)vfs.f_blocks * vfs.f_frsize;
+
+			/* Return as long (may overflow for volumes > 2GB) */
+			return setlongvalue((long)total_size, vreturned);
+		}
+
+		case volumesizedoublefunc: {
+			/* Return total volume size in bytes (as double, handles large volumes) */
+			tyfilespec fs;
+			char path[4096];
+			struct statvfs vfs;
+
+			flnextparamislast = true;
+
+			if (!getfilespecvalue(hparam1, 1, &fs))
+				return false;
+
+			if (!filespec_to_cstring(&fs, path, sizeof(path))) {
+				copyctopstring("Invalid file path", bserror);
+				return false;
+			}
+
+			if (statvfs(path, &vfs) != 0) {
+				copyctopstring("Unable to get volume information", bserror);
+				return false;
+			}
+
+			/* Total size = total blocks * fragment size */
+			double total_size = (double)vfs.f_blocks * vfs.f_frsize;
+
+			return setdoublevalue(total_size, vreturned);
+		}
+
+		case volumefreespacedoublefunc: {
+			/* Return free space available to non-root users (as double) */
+			tyfilespec fs;
+			char path[4096];
+			struct statvfs vfs;
+
+			flnextparamislast = true;
+
+			if (!getfilespecvalue(hparam1, 1, &fs))
+				return false;
+
+			if (!filespec_to_cstring(&fs, path, sizeof(path))) {
+				copyctopstring("Invalid file path", bserror);
+				return false;
+			}
+
+			if (statvfs(path, &vfs) != 0) {
+				copyctopstring("Unable to get volume information", bserror);
+				return false;
+			}
+
+			/* Free space available to non-root = available blocks * fragment size */
+			double free_space = (double)vfs.f_bavail * vfs.f_frsize;
+
+			return setdoublevalue(free_space, vreturned);
+		}
+
+		case volumeblocksizefunc: {
+			/* Return volume block size in bytes */
+			tyfilespec fs;
+			char path[4096];
+			struct statvfs vfs;
+
+			flnextparamislast = true;
+
+			if (!getfilespecvalue(hparam1, 1, &fs))
+				return false;
+
+			if (!filespec_to_cstring(&fs, path, sizeof(path))) {
+				copyctopstring("Invalid file path", bserror);
+				return false;
+			}
+
+			if (statvfs(path, &vfs) != 0) {
+				copyctopstring("Unable to get volume information", bserror);
+				return false;
+			}
+
+			/* Return preferred block size for I/O operations */
+			return setlongvalue((long)vfs.f_bsize, vreturned);
+		}
 
 		case filesonvolumefunc:
 		case foldersonvolumefunc:

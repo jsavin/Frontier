@@ -5,6 +5,10 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <errno.h>
+#ifdef __APPLE__
+#include <sys/attr.h>
+#endif
 
 #include "frontier.h"
 #include "standard.h"
@@ -13,6 +17,7 @@
 #include "file_portable.h"
 #include "file_working_dir.h"
 #include "logging.h"
+#include "timedate.h"
 
 /*
  * Portable/headless file layer that backs the classic Frontier file API with
@@ -458,4 +463,120 @@ boolean filesetdefaultpath(const ptrfilespec fs) {
 
     log_debug(LOG_COMP_GENERAL, "filesetdefaultpath: SUCCESS path len=%d", (int)bspath[0]);
     return true;
+}
+
+/*
+ * setfilemodified - Portable implementation for headless mode
+ *
+ * Sets the modification time of a file. This is fully portable across
+ * POSIX systems (macOS, Linux, BSD, etc.).
+ *
+ * Uses utimensat() which is part of POSIX.1-2008.
+ */
+boolean setfilemodified(const ptrfilespec fs, const long when) {
+    char path[4096];
+    struct timespec times[2];
+    struct stat st;
+
+    if (!fs) {
+        log_error(LOG_COMP_GENERAL, "setfilemodified: NULL fs parameter");
+        return false;
+    }
+
+    /* Convert filespec to path */
+    if (!path_from_filespec(fs, path, sizeof(path))) {
+        log_error(LOG_COMP_GENERAL, "setfilemodified: path_from_filespec failed");
+        return false;
+    }
+
+    /* Get current file times first (to preserve access time) */
+    if (stat(path, &st) != 0) {
+        log_error(LOG_COMP_GENERAL, "setfilemodified: stat failed for %s: %s", path, strerror(errno));
+        return false;
+    }
+
+    /* Set access time to UTIME_OMIT to preserve it */
+    times[0].tv_sec = 0;
+    times[0].tv_nsec = UTIME_OMIT;
+
+    /* Set modification time to the specified value
+     * Note: 'when' is in Frontier time (seconds since 1904-01-01)
+     * Convert to Unix time (seconds since 1970-01-01)
+     */
+    int64_t unix_time = (int64_t)when - FRONTIER_EPOCH_TO_UNIX_OFFSET;
+    times[1].tv_sec = (time_t)unix_time;
+    times[1].tv_nsec = 0;
+
+    /* Use utimensat with AT_FDCWD to operate on path */
+    if (utimensat(AT_FDCWD, path, times, 0) != 0) {
+        log_error(LOG_COMP_GENERAL, "setfilemodified: utimensat failed for %s: %s", path, strerror(errno));
+        return false;
+    }
+
+    log_debug(LOG_COMP_GENERAL, "setfilemodified: SUCCESS for %s, time=%ld", path, when);
+    return true;
+}
+
+/*
+ * setfilecreated - Portable implementation for headless mode
+ *
+ * Sets the creation time of a file. Platform support varies:
+ * - macOS: Supports creation time via setattrlist()
+ * - Linux: Most filesystems don't support setting creation time (birth time is read-only)
+ * - Windows: Supports creation time via SetFileTime()
+ *
+ * For maximum portability, this implementation:
+ * - On macOS: Uses setattrlist() to set creation time
+ * - On other platforms: Returns error (creation time is typically read-only)
+ */
+boolean setfilecreated(const ptrfilespec fs, const long when) {
+    char path[4096];
+
+    if (!fs) {
+        log_error(LOG_COMP_GENERAL, "setfilecreated: NULL fs parameter");
+        return false;
+    }
+
+    /* Convert filespec to path */
+    if (!path_from_filespec(fs, path, sizeof(path))) {
+        log_error(LOG_COMP_GENERAL, "setfilecreated: path_from_filespec failed");
+        return false;
+    }
+
+#ifdef __APPLE__
+    /* macOS: Use setattrlist() to set creation time */
+    struct attrlist attrList;
+    struct {
+        struct timespec creationTime;
+    } attrBuf;
+
+    /* Convert Frontier time to Unix time */
+    int64_t unix_time = (int64_t)when - FRONTIER_EPOCH_TO_UNIX_OFFSET;
+
+    /* Set up attribute list */
+    memset(&attrList, 0, sizeof(attrList));
+    attrList.bitmapcount = ATTR_BIT_MAP_COUNT;
+    attrList.commonattr = ATTR_CMN_CRTIME;
+
+    /* Set creation time */
+    attrBuf.creationTime.tv_sec = (time_t)unix_time;
+    attrBuf.creationTime.tv_nsec = 0;
+
+    if (setattrlist(path, &attrList, &attrBuf, sizeof(attrBuf), 0) != 0) {
+        log_error(LOG_COMP_GENERAL, "setfilecreated: setattrlist failed for %s: %s", path, strerror(errno));
+        return false;
+    }
+
+    log_debug(LOG_COMP_GENERAL, "setfilecreated: SUCCESS for %s, time=%ld", path, when);
+    return true;
+
+#else
+    /* Linux/other platforms: Setting creation time is not supported on most filesystems */
+    log_warn(LOG_COMP_GENERAL, "setfilecreated: Not supported on this platform (%s)", path);
+
+    /* Return false to indicate operation not supported
+     * This matches the behavior of Mac Frontier when operations aren't available
+     */
+    return false;
+#endif
 }

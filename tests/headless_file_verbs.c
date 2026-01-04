@@ -262,7 +262,7 @@ boolean fileinitverbs(void) {
 	ADD_VERB(BIGSTRING("\004move"), filemovefunc);
 	ADD_VERB(BIGSTRING("\005eject"), volumeejectfunc);
 	ADD_VERB(BIGSTRING("\013isejectable"), volumeisejectablefunc);
-	ADD_VERB(BIGSTRING("\022freespaceonvolume"), volumefreespacefunc);
+	ADD_VERB(BIGSTRING("\021freespaceonvolume"), volumefreespacefunc);
 	ADD_VERB(BIGSTRING("\012volumesize"), volumesizefunc);
 	ADD_VERB(BIGSTRING("\017volumeblocksize"), volumeblocksizefunc);
 	ADD_VERB(BIGSTRING("\015filesonvolume"), filesonvolumefunc);
@@ -285,7 +285,7 @@ boolean fileinitverbs(void) {
 	ADD_VERB(BIGSTRING("\007compare"), comparefunc);
 	ADD_VERB(BIGSTRING("\016writewholefile"), writewholefilefunc);
 	ADD_VERB(BIGSTRING("\013getpathchar"), getpathcharfunc);
-	ADD_VERB(BIGSTRING("\030freespaceonvolumedouble"), volumefreespacedoublefunc);
+	ADD_VERB(BIGSTRING("\027freespaceonvolumedouble"), volumefreespacedoublefunc);
 	ADD_VERB(BIGSTRING("\020volumesizedouble"), volumesizedoublefunc);
 	ADD_VERB(BIGSTRING("\012getmp3info"), getmp3infofunc);
 	ADD_VERB(BIGSTRING("\015readwholefile"), readwholefilefunc);
