@@ -2,7 +2,7 @@
 # Tests basic file operations available in headless mode
 #
 # Phase 1 priority file verbs (portable operations):
-#   - file.fileFromPath() - Create filespec from path string
+#   - file.fileFromPath() - Extract filename from path (returns string)
 #   - file.exists() - Check if file exists
 #   - file.new() - Create new file
 #   - file.writeWholeFile() - Write data to file
@@ -18,8 +18,8 @@ tests:
   # and returns it as a STRING, not a filespec. This is by design - it's a path
   # manipulation verb, not a type conversion verb. Therefore typeof() correctly
   # returns 'TEXT' (stringType), not 'fss ' (filespecType).
-  - name: "file.fileFromPath - create filespec from path"
-    description: "Convert path string to filespec"
+  - name: "file.fileFromPath - extract filename from path"
+    description: "Extract filename component from path string (like basename)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(fs = file.fileFromPath(tmpDir + "/" + "test.txt"));
