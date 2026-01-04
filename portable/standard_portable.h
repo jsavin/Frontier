@@ -215,16 +215,24 @@ typedef boolean (*callback)(void);
 #define setstringlength(bs,len) ((bs)[0] = (unsigned char)(len))
 #define stringlength(bs) ((unsigned char)(bs)[0])
 #define setstringwithchar(ch,bs) do { (bs)[0]=1; (bs)[1]=(ch); } while(0)
+#define getstringcharacter(bs,pos) ((bs)[(pos)+1])
+#define setstringcharacter(bs,pos,ch) do { (bs)[(pos)+1] = (ch); } while(0)
+#define lastchar(bs) ((bs)[stringlength(bs)])
 #define chnul ((char)0)
+#define chbacktab ((char)0)
+#define chenter ((char)3)
+#define chbackspace ((char)8)
+#define chtab ((char)9)
 #define chlinefeed ((char)10)
 #define chreturn ((char)13)
 #define chspace ((char)32)
+#define chuparrow ((char)30)
+#define chdownarrow ((char)31)
 #define chdelete ((char)127)
-#define chclosecurlyquote ((char)0xD3)
-#define chtrademark ((char)0xAA)
-#define chtab ((char)9)
 #define chsinglequote ((char)39)
 #define chdoublequote ((char)34)
+#define chclosecurlyquote ((char)0xD3)
+#define chtrademark ((char)0xAA)
 #define chopencurlyquote ((byte)0xD2)
 #define chnotequals ((byte)0xAD)
 #define chdivide ((byte)0xD6)
@@ -291,6 +299,9 @@ typedef boolean (*callback)(void);
 #define sysbeep() do{}while(0)
 #endif
 
+/* Mark that standard macros have been defined to prevent redefinition in Common/SystemHeaders/standard.h */
+#define FRONTIER_STANDARD_MACROS_DEFINED
+
 static inline GrafPtr GetQDGlobalsThePort(void){ return (GrafPtr)0; }
 static inline void SetPort(GrafPtr p){ (void)p; }
 
@@ -321,6 +332,42 @@ static inline boolean langportable_err_noop(unsigned char* bs, void* refcon){ (v
 #endif
 #ifndef min
 #define min(a,b) ((a) < (b) ? (a) : (b))
+#endif
+
+#ifndef odd
+#define odd(x) ((x) & 0x0001)
+#endif
+
+#ifndef even
+#define even(x) (!odd(x))
+#endif
+
+#ifndef loword
+#define loword(x) ((x) & 0x0000ffff)
+#endif
+
+#ifndef hiword
+#define hiword(x) ((x) >> 16)
+#endif
+
+#ifndef makelong
+#define makelong(lo, hi) ((hi) << 16 | (lo))
+#endif
+
+#ifndef conditionalshortswap
+/* Portable builds are always little-endian native, big-endian on disk */
+#define conditionalshortswap(x) OSSwapInt16(x)
+#endif
+
+#ifndef diskwordstomemlong
+#define diskwordstomemlong(lo, hi) makelong(conditionalshortswap(lo), conditionalshortswap(hi))
+#endif
+
+#ifndef memlongtodiskwords
+#define memlongtodiskwords(x, lo, hi) do { \
+	lo = conditionalshortswap(loword(x)); \
+	hi = conditionalshortswap(hiword(x)); \
+} while (0)
 #endif
 
 #endif /* FRONTIER_STANDARD_PORTABLE_H */

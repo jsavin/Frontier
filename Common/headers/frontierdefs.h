@@ -41,7 +41,9 @@
 #undef MEMTRACKER		/* define as 1 to enable tracking of memory allocations */
 #undef DATABASE_DEBUG	/* define as 1 to enable database debugging and logging code */
 
+#ifndef fldebug
 #define fldebug 1
+#endif
 
 #ifndef OPMLEDITOR				/*2008-09-08 aradke: keep opml editor lean and mean*/
 	#define FRONTIER_MYSQL	1	/*include mysql database client library*/

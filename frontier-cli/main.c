@@ -279,7 +279,7 @@ static void print_usage(const char* program_name) {
     printf("Environment Variables:\n");
     printf("  FRONTIER_LOG_LEVEL       Set log level (TRACE, DEBUG, INFO, WARN, ERROR)\n");
     printf("  FRONTIER_LOG_COMPONENT   Filter logs by component (DB, HASH, LANG, etc.)\n");
-    printf("  FRONTIER_HEADLESS_SKIP_STARTUP  Skip system.startup scripts during load\n");
+    printf("  FRONTIER_HEADLESS_RUN_STARTUP  Set to 1 to run system.startup scripts (default: skip)\n");
     printf("\n");
 
     printf("Examples:\n");

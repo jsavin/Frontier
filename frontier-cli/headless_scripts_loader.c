@@ -136,19 +136,21 @@ static boolean headless_run_special_scripts (const unsigned char *bsspecialtable
 }
 
 boolean loadsystemscripts (void) {
-    const char *skip_startup = getenv("FRONTIER_HEADLESS_SKIP_STARTUP");
+    const char *run_startup = getenv("FRONTIER_HEADLESS_RUN_STARTUP");
 
     if (systemtable == nil) {
         log_error(LOG_COMP_STARTUP, "loadsystemscripts: system table is nil");
         return false;
     }
 
-    if (skip_startup && *skip_startup) {
-        log_debug(LOG_COMP_STARTUP, "loadsystemscripts: skipping startup/agents per FRONTIER_HEADLESS_SKIP_STARTUP");
+    /* Default: skip startup scripts (development/testing mode)
+     * Set FRONTIER_HEADLESS_RUN_STARTUP=1 to run system.startup scripts */
+    if (!run_startup || !*run_startup) {
+        log_debug(LOG_COMP_STARTUP, "loadsystemscripts: skipping startup/agents (default behavior)");
         return true;
     }
 
-    log_debug(LOG_COMP_STARTUP, "loadsystemscripts: running system.startup");
+    log_debug(LOG_COMP_STARTUP, "loadsystemscripts: running system.startup per FRONTIER_HEADLESS_RUN_STARTUP");
     if (!headless_run_special_scripts (namestartuptable)) {
         log_error(LOG_COMP_STARTUP, "loadsystemscripts: failed to run system.startup");
         return false;

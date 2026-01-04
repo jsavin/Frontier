@@ -41,6 +41,10 @@ standard.h -- standard types and constants
 	#ifndef OSINCLUDES_PORTABLE_H
 	#include "../headers/osincludes_portable.h"
 	#endif
+	/* Include portable standard macros to prevent redefinition below */
+	#ifndef FRONTIER_STANDARD_PORTABLE_H
+	#include "../../portable/standard_portable.h"
+	#endif
 	#else
 	#include "FastTimes.h"
 	#endif
@@ -161,7 +165,10 @@ typedef enum tyjustification {
 	} tyjustification;
 #define FRONTIER_PORTABLE_DEFINED_TYJUSTIFICATION 1
 #endif
-	
+
+
+#ifndef FRONTIER_STANDARD_MACROS_DEFINED
+#define FRONTIER_STANDARD_MACROS_DEFINED
 
 #define true 1
 #define false 0
@@ -303,6 +310,8 @@ typedef	unsigned char byte, *ptrbyte;
 
 
 #define BIGSTRING(s) ((unsigned char *)(s))
+
+#endif /* FRONTIER_STANDARD_MACROS_DEFINED */
 
 #define setemptystring(bs) (setstringlength(bs,0))
 
