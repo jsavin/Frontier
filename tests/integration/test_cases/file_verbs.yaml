@@ -22,16 +22,17 @@ tests:
     description: "Extract filename component from path string (like basename)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(fs = file.fileFromPath(tmpDir + "/" + "test.txt"));
-      return typeof(fs)
+      local(fullPath = tmpDir + "/" + "test.txt");
+      local(filename = file.fileFromPath(fullPath));
+      return filename
     expected_success: true
-    expected_result: "TEXT"
+    expected_result: "test.txt"
 
   - name: "file.exists - nonexistent file"
     description: "Check that nonexistent file returns false"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(fs = file.fileFromPath(tmpDir + "/" + "nonexistent_file_12345.txt"));
+      local(fs = tmpDir + "/" + "nonexistent_file_12345.txt");
       return file.exists(fs)
     expected_success: true
     expected_result: "false"
@@ -42,8 +43,7 @@ tests:
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(filePath = tmpDir + "/" + "frontier_test_new.txt");
-      local(fs = file.fileFromPath(filePath));
-      local(ok = file.new(fs));
+      local(ok = file.new(filePath));
       return ok
     expected_success: true
     expected_result: "true"
@@ -52,7 +52,7 @@ tests:
     description: "Verify file.new created the file"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(fs = file.fileFromPath(tmpDir + "/" + "frontier_test_new.txt"));
+      local(fs = tmpDir + "/" + "frontier_test_new.txt");
       return file.exists(fs)
     expected_success: true
     expected_result: "true"
@@ -61,7 +61,7 @@ tests:
     description: "Write text content to file"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(fs = file.fileFromPath(tmpDir + "/" + "frontier_test_write.txt"));
+      local(fs = tmpDir + "/" + "frontier_test_write.txt");
       local(ok = file.writeWholeFile(fs, "Hello, Frontier!"));
       return ok
     expected_success: true
@@ -71,7 +71,7 @@ tests:
     description: "Read file and verify content matches"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(fs = file.fileFromPath(tmpDir + "/" + "frontier_test_write.txt"));
+      local(fs = tmpDir + "/" + "frontier_test_write.txt");
       local(readData = file.readWholeFile(fs));
       return readData
     expected_success: true
@@ -81,7 +81,7 @@ tests:
     description: "Write and read back binary data"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(fs = file.fileFromPath(tmpDir + "/" + "frontier_test_binary.dat"));
+      local(fs = tmpDir + "/" + "frontier_test_binary.dat");
       local(binaryData = "\x00\x01\x02\xFF");
       file.writeWholeFile(fs, binaryData);
       local(readData = file.readWholeFile(fs));
@@ -94,7 +94,7 @@ tests:
     description: "Delete file created in previous test"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(fs = file.fileFromPath(tmpDir + "/" + "frontier_test_write.txt"));
+      local(fs = tmpDir + "/" + "frontier_test_write.txt");
       local(ok = file.delete(fs));
       return ok
     expected_success: true
@@ -104,7 +104,7 @@ tests:
     description: "Verify file.delete removed the file"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(fs = file.fileFromPath(tmpDir + "/" + "frontier_test_write.txt"));
+      local(fs = tmpDir + "/" + "frontier_test_write.txt");
       return file.exists(fs)
     expected_success: true
     expected_result: "false"
@@ -114,7 +114,7 @@ tests:
     description: "Reading nonexistent file should fail"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(fs = file.fileFromPath(tmpDir + "/" + "does_not_exist_12345.txt"));
+      local(fs = tmpDir + "/" + "does_not_exist_12345.txt");
       return file.readWholeFile(fs)
     expected_success: false
     expected_result: null
@@ -123,7 +123,7 @@ tests:
     description: "Deleting nonexistent file should fail"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(fs = file.fileFromPath(tmpDir + "/" + "does_not_exist_12345.txt"));
+      local(fs = tmpDir + "/" + "does_not_exist_12345.txt");
       return file.delete(fs)
     expected_success: false
     expected_result: null
@@ -133,7 +133,7 @@ tests:
     description: "Get size of file in bytes"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(fs = file.fileFromPath(tmpDir + "/" + "frontier_test_size.txt"));
+      local(fs = tmpDir + "/" + "frontier_test_size.txt");
       local(testData = "12345");
       file.writeWholeFile(fs, testData);
       return file.size(fs)
@@ -144,7 +144,7 @@ tests:
     description: "Get creation date of file (Frontier epoch)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(fs = file.fileFromPath(tmpDir + "/" + "frontier_test_created.txt"));
+      local(fs = tmpDir + "/" + "frontier_test_created.txt");
       file.new(fs);
       local(createdDate = file.created(fs));
       return typeof(createdDate)
@@ -155,7 +155,7 @@ tests:
     description: "Get modification date of file (Frontier epoch)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(fs = file.fileFromPath(tmpDir + "/" + "frontier_test_modified.txt"));
+      local(fs = tmpDir + "/" + "frontier_test_modified.txt");
       file.writeWholeFile(fs, "initial content");
       local(modifiedDate = file.modified(fs));
       return typeof(modifiedDate)
@@ -167,8 +167,8 @@ tests:
     description: "Copy file and verify both exist"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(source = file.fileFromPath(tmpDir + "/" + "frontier_test_copy_source.txt"));
-      local(dest = file.fileFromPath(tmpDir + "/" + "frontier_test_copy_dest.txt"));
+      local(source = tmpDir + "/" + "frontier_test_copy_source.txt");
+      local(dest = tmpDir + "/" + "frontier_test_copy_dest.txt");
       file.writeWholeFile(source, "test content for copy");
       local(ok = file.copy(source, dest));
       return ok
@@ -179,8 +179,8 @@ tests:
     description: "Check copied file has same content as source"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(source = file.fileFromPath(tmpDir + "/" + "frontier_test_copy_source.txt"));
-      local(dest = file.fileFromPath(tmpDir + "/" + "frontier_test_copy_dest.txt"));
+      local(source = tmpDir + "/" + "frontier_test_copy_source.txt");
+      local(dest = tmpDir + "/" + "frontier_test_copy_dest.txt");
       local(sourceContent = file.readWholeFile(source));
       local(destContent = file.readWholeFile(dest));
       return (sourceContent == destContent)
@@ -191,8 +191,8 @@ tests:
     description: "Rename file and verify new name exists"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(oldName = file.fileFromPath(tmpDir + "/" + "frontier_test_rename_old.txt"));
-      local(newName = file.fileFromPath(tmpDir + "/" + "frontier_test_rename_new.txt"));
+      local(oldName = tmpDir + "/" + "frontier_test_rename_old.txt");
+      local(newName = tmpDir + "/" + "frontier_test_rename_new.txt");
       file.writeWholeFile(oldName, "rename test content");
       local(ok = file.rename(oldName, newName));
       return ok
@@ -203,7 +203,7 @@ tests:
     description: "Check that old filename is gone after rename"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(oldName = file.fileFromPath(tmpDir + "/" + "frontier_test_rename_old.txt"));
+      local(oldName = tmpDir + "/" + "frontier_test_rename_old.txt");
       return file.exists(oldName)
     expected_success: true
     expected_result: "false"
@@ -212,7 +212,7 @@ tests:
     description: "Check renamed file has original content"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(newName = file.fileFromPath(tmpDir + "/" + "frontier_test_rename_new.txt"));
+      local(newName = tmpDir + "/" + "frontier_test_rename_new.txt");
       local(content = file.readWholeFile(newName));
       return (content == "rename test content")
     expected_success: true
@@ -222,8 +222,8 @@ tests:
     description: "Move file and verify it appears at destination"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(source = file.fileFromPath(tmpDir + "/" + "frontier_test_move_source.txt"));
-      local(dest = file.fileFromPath(tmpDir + "/" + "frontier_test_move_dest.txt"));
+      local(source = tmpDir + "/" + "frontier_test_move_source.txt");
+      local(dest = tmpDir + "/" + "frontier_test_move_dest.txt");
       file.writeWholeFile(source, "move test content");
       local(ok = file.move(source, dest));
       return ok
@@ -234,7 +234,7 @@ tests:
     description: "Check that source file is gone after move"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(source = file.fileFromPath(tmpDir + "/" + "frontier_test_move_source.txt"));
+      local(source = tmpDir + "/" + "frontier_test_move_source.txt");
       return file.exists(source)
     expected_success: true
     expected_result: "false"
@@ -243,7 +243,7 @@ tests:
     description: "Check moved file has original content"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dest = file.fileFromPath(tmpDir + "/" + "frontier_test_move_dest.txt"));
+      local(dest = tmpDir + "/" + "frontier_test_move_dest.txt");
       local(content = file.readWholeFile(dest));
       return (content == "move test content")
     expected_success: true
@@ -253,7 +253,7 @@ tests:
     description: "Create new folder in temp directory"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(folderPath = file.fileFromPath(tmpDir + "/" + "frontier_test_newfolder_unique"));
+      local(folderPath = tmpDir + "/" + "frontier_test_newfolder_unique");
       if file.exists(folderPath) { file.delete(folderPath); };
       local(ok = file.newfolder(folderPath));
       return ok
@@ -264,7 +264,7 @@ tests:
     description: "Check that created folder exists"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(folderPath = file.fileFromPath(tmpDir + "/" + "frontier_test_newfolder_unique"));
+      local(folderPath = tmpDir + "/" + "frontier_test_newfolder_unique");
       return file.exists(folderPath)
     expected_success: true
     expected_result: "true"
@@ -282,7 +282,7 @@ tests:
     description: "Convert relative or partial path to absolute path"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(fs = file.fileFromPath(tmpDir + "/" + "frontier_test_fullpath.txt"));
+      local(fs = tmpDir + "/" + "frontier_test_fullpath.txt");
       file.new(fs);
       local(fullPath = file.fullpath(fs));
       return (string.length(fullPath) > 0)
@@ -293,7 +293,7 @@ tests:
     description: "Absolute paths on Unix should start with /"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(fs = file.fileFromPath(tmpDir + "/" + "frontier_test_fullpath.txt"));
+      local(fs = tmpDir + "/" + "frontier_test_fullpath.txt");
       local(fullPath = file.fullpath(fs));
       return (string.mid(fullPath, 1, 1) == "/")
     expected_success: true
@@ -346,7 +346,7 @@ tests:
     description: "Open file, verify handle, then close it"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(fs = file.fileFromPath(tmpDir + "/" + "frontier_test_io.txt"));
+      local(fs = tmpDir + "/" + "frontier_test_io.txt");
       file.writeWholeFile(fs, "test content");
       local(f = file.open(fs, "r"));
       local(ok = (f != nil));
@@ -359,7 +359,7 @@ tests:
     description: "Open file and read specific number of bytes"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(fs = file.fileFromPath(tmpDir + "/" + "frontier_test_read.txt"));
+      local(fs = tmpDir + "/" + "frontier_test_read.txt");
       file.writeWholeFile(fs, "Hello World!");
       local(f = file.open(fs, "r"));
       local(data = file.read(f, 5));
@@ -372,7 +372,7 @@ tests:
     description: "Read text file line by line"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(fs = file.fileFromPath(tmpDir + "/" + "frontier_test_readline.txt"));
+      local(fs = tmpDir + "/" + "frontier_test_readline.txt");
       file.writeWholeFile(fs, "Line 1\nLine 2\nLine 3");
       local(f = file.open(fs, "r"));
       local(line1 = file.readline(f));
@@ -385,7 +385,7 @@ tests:
     description: "Detect EOF condition after reading past end"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(fs = file.fileFromPath(tmpDir + "/" + "frontier_test_eof.txt"));
+      local(fs = tmpDir + "/" + "frontier_test_eof.txt");
       file.writeWholeFile(fs, "AB");
       local(f = file.open(fs, "r"));
       file.read(f, 2);
@@ -400,7 +400,7 @@ tests:
     description: "Check file position after reading"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(fs = file.fileFromPath(tmpDir + "/" + "frontier_test_getpos.txt"));
+      local(fs = tmpDir + "/" + "frontier_test_getpos.txt");
       file.writeWholeFile(fs, "0123456789");
       local(f = file.open(fs, "r"));
       file.read(f, 5);
@@ -414,7 +414,7 @@ tests:
     description: "Move file pointer and read from new position"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(fs = file.fileFromPath(tmpDir + "/" + "frontier_test_setpos.txt"));
+      local(fs = tmpDir + "/" + "frontier_test_setpos.txt");
       file.writeWholeFile(fs, "ABCDEFGH");
       local(f = file.open(fs, "r"));
       file.setposition(f, 3);
@@ -428,7 +428,7 @@ tests:
     description: "Get file size using open file handle"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(fs = file.fileFromPath(tmpDir + "/" + "frontier_test_geteof.txt"));
+      local(fs = tmpDir + "/" + "frontier_test_geteof.txt");
       file.writeWholeFile(fs, "12345");
       local(f = file.open(fs, "r"));
       local(size = file.getendoffile(f));
@@ -442,7 +442,7 @@ tests:
     description: "Verify folder detection"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(folderPath = file.fileFromPath(tmpDir + "/" + "test_folder_unique2"));
+      local(folderPath = tmpDir + "/" + "test_folder_unique2");
       if file.exists(folderPath) { file.delete(folderPath); };
       file.newfolder(folderPath);
       return file.isfolder(folderPath)
@@ -453,7 +453,7 @@ tests:
     description: "Check that regular file returns false"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(filePath = file.fileFromPath(tmpDir + "/" + "test_file.txt"));
+      local(filePath = tmpDir + "/" + "test_file.txt");
       file.new(filePath);
       return file.isfolder(filePath)
     expected_success: true
@@ -463,8 +463,8 @@ tests:
     description: "Compare two files with same content"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(file1 = file.fileFromPath(tmpDir + "/" + "compare1.txt"));
-      local(file2 = file.fileFromPath(tmpDir + "/" + "compare2.txt"));
+      local(file1 = tmpDir + "/" + "compare1.txt");
+      local(file2 = tmpDir + "/" + "compare2.txt");
       file.writeWholeFile(file1, "same content");
       file.writeWholeFile(file2, "same content");
       return file.compare(file1, file2)
@@ -475,8 +475,8 @@ tests:
     description: "Compare two files with different content"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(file1 = file.fileFromPath(tmpDir + "/" + "diff1.txt"));
-      local(file2 = file.fileFromPath(tmpDir + "/" + "diff2.txt"));
+      local(file1 = tmpDir + "/" + "diff1.txt");
+      local(file2 = tmpDir + "/" + "diff2.txt");
       file.writeWholeFile(file1, "content A");
       file.writeWholeFile(file2, "content B");
       return file.compare(file1, file2)
@@ -488,8 +488,8 @@ tests:
     description: "Copy 0-byte file and verify both exist with same size"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(source = file.fileFromPath(tmpDir + "/" + "empty_source.txt"));
-      local(dest = file.fileFromPath(tmpDir + "/" + "empty_dest.txt"));
+      local(source = tmpDir + "/" + "empty_source.txt");
+      local(dest = tmpDir + "/" + "empty_dest.txt");
       file.new(source);
       local(ok = file.copy(source, dest));
       local(sourceSize = file.size(source));
@@ -502,8 +502,8 @@ tests:
     description: "Move 0-byte file and verify old gone, new exists"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(source = file.fileFromPath(tmpDir + "/" + "empty_move_source.txt"));
-      local(dest = file.fileFromPath(tmpDir + "/" + "empty_move_dest.txt"));
+      local(source = tmpDir + "/" + "empty_move_source.txt");
+      local(dest = tmpDir + "/" + "empty_move_dest.txt");
       file.new(source);
       local(ok = file.move(source, dest));
       return ok and (not file.exists(source)) and file.exists(dest)
@@ -514,8 +514,8 @@ tests:
     description: "Two 0-byte files should be equal"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(file1 = file.fileFromPath(tmpDir + "/" + "empty1.txt"));
-      local(file2 = file.fileFromPath(tmpDir + "/" + "empty2.txt"));
+      local(file1 = tmpDir + "/" + "empty1.txt");
+      local(file2 = tmpDir + "/" + "empty2.txt");
       file.new(file1);
       file.new(file2);
       return file.compare(file1, file2)
@@ -527,7 +527,7 @@ tests:
     description: "Test seeking beyond end of file"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(filePath = file.fileFromPath(tmpDir + "/" + "setpos_beyond_eof.txt"));
+      local(filePath = tmpDir + "/" + "setpos_beyond_eof.txt");
       file.writeWholeFile(filePath, "test");
       local(f = file.open(filePath, "r"));
       local(eofPos = file.getendoffile(f));
@@ -543,7 +543,7 @@ tests:
     description: "Read line with \\n delimiter"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(filePath = file.fileFromPath(tmpDir + "/" + "readline_lf.txt"));
+      local(filePath = tmpDir + "/" + "readline_lf.txt");
       file.writeWholeFile(filePath, "line1\nline2");
       local(f = file.open(filePath, "r"));
       local(line = file.readline(f));
@@ -556,7 +556,7 @@ tests:
     description: "Read line with \\r\\n delimiter"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(filePath = file.fileFromPath(tmpDir + "/" + "readline_crlf.txt"));
+      local(filePath = tmpDir + "/" + "readline_crlf.txt");
       file.writeWholeFile(filePath, "line1\r\nline2");
       local(f = file.open(filePath, "r"));
       local(line = file.readline(f));
@@ -569,7 +569,7 @@ tests:
     description: "Read line with \\r delimiter"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(filePath = file.fileFromPath(tmpDir + "/" + "readline_cr.txt"));
+      local(filePath = tmpDir + "/" + "readline_cr.txt");
       file.writeWholeFile(filePath, "line1\rline2");
       local(f = file.open(filePath, "r"));
       local(line = file.readline(f));
@@ -602,7 +602,7 @@ tests:
     description: "Get file extension with dot prefix"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(filePath = file.fileFromPath(tmpDir + "/" + "test_type.txt"));
+      local(filePath = tmpDir + "/" + "test_type.txt");
       file.writeWholeFile(filePath, "test");
       return file.type(filePath)
     expected_success: true
@@ -612,7 +612,7 @@ tests:
     description: "Get type of file without extension returns empty string"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(filePath = file.fileFromPath(tmpDir + "/" + "testfile_noext"));
+      local(filePath = tmpDir + "/" + "testfile_noext");
       file.writeWholeFile(filePath, "test");
       return file.type(filePath)
     expected_success: true
@@ -622,7 +622,7 @@ tests:
     description: "Get type of file.tar.gz returns last extension (space-padded OSType)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(filePath = file.fileFromPath(tmpDir + "/" + "archive.tar.gz"));
+      local(filePath = tmpDir + "/" + "archive.tar.gz");
       file.writeWholeFile(filePath, "test");
       return file.type(filePath)
     expected_success: true
@@ -632,7 +632,7 @@ tests:
     description: "Creator codes are Mac-specific, headless returns empty string"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(filePath = file.fileFromPath(tmpDir + "/" + "test_creator.txt"));
+      local(filePath = tmpDir + "/" + "test_creator.txt");
       file.writeWholeFile(filePath, "test");
       return file.creator(filePath)
     expected_success: true
@@ -643,7 +643,7 @@ tests:
     description: "Set file modification time and verify it changed"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(filePath = file.fileFromPath(tmpDir + "/" + "test_setmodified.txt"));
+      local(filePath = tmpDir + "/" + "test_setmodified.txt");
       file.writeWholeFile(filePath, "test");
       local(oldTime = file.modified(filePath));
       local(newTime = clock.now() - (60 * 60 * 24));  // 1 day ago
@@ -657,7 +657,7 @@ tests:
     description: "Set creation time (works on macOS, returns false on Linux)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(filePath = file.fileFromPath(tmpDir + "/" + "test_setcreated.txt"));
+      local(filePath = tmpDir + "/" + "test_setcreated.txt");
       file.writeWholeFile(filePath, "test");
       local(newTime = clock.now() - (60 * 60 * 24));  // 1 day ago
       local(result = file.setcreated(filePath, newTime));
