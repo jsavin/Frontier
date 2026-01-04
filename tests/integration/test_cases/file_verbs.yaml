@@ -128,6 +128,361 @@ tests:
     expected_success: false
     expected_result: null
 
+  # Metadata operations
+  - name: "file.size - get file size"
+    description: "Get size of file in bytes"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(fs = file.fileFromPath(tmpDir + "/" + "frontier_test_size.txt"));
+      local(testData = "12345");
+      file.writeWholeFile(fs, testData);
+      return file.size(fs)
+    expected_success: true
+    expected_result: "5"
+
+  - name: "file.created - get file creation date"
+    description: "Get creation date of file (Frontier epoch)"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(fs = file.fileFromPath(tmpDir + "/" + "frontier_test_created.txt"));
+      file.new(fs);
+      local(createdDate = file.created(fs));
+      return typeof(createdDate)
+    expected_success: true
+    expected_result: "date"
+
+  - name: "file.modified - get file modification date"
+    description: "Get modification date of file (Frontier epoch)"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(fs = file.fileFromPath(tmpDir + "/" + "frontier_test_modified.txt"));
+      file.writeWholeFile(fs, "initial content");
+      local(modifiedDate = file.modified(fs));
+      return typeof(modifiedDate)
+    expected_success: true
+    expected_result: "date"
+
+  # File operations
+  - name: "file.copy - copy file to new location"
+    description: "Copy file and verify both exist"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(source = file.fileFromPath(tmpDir + "/" + "frontier_test_copy_source.txt"));
+      local(dest = file.fileFromPath(tmpDir + "/" + "frontier_test_copy_dest.txt"));
+      file.writeWholeFile(source, "test content for copy");
+      local(ok = file.copy(source, dest));
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  - name: "file.copy - verify destination exists with same content"
+    description: "Check copied file has same content as source"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(source = file.fileFromPath(tmpDir + "/" + "frontier_test_copy_source.txt"));
+      local(dest = file.fileFromPath(tmpDir + "/" + "frontier_test_copy_dest.txt"));
+      local(sourceContent = file.readWholeFile(source));
+      local(destContent = file.readWholeFile(dest));
+      return (sourceContent == destContent)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "file.rename - rename file"
+    description: "Rename file and verify new name exists"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(oldName = file.fileFromPath(tmpDir + "/" + "frontier_test_rename_old.txt"));
+      local(newName = file.fileFromPath(tmpDir + "/" + "frontier_test_rename_new.txt"));
+      file.writeWholeFile(oldName, "rename test content");
+      local(ok = file.rename(oldName, newName));
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  - name: "file.rename - verify old name no longer exists"
+    description: "Check that old filename is gone after rename"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(oldName = file.fileFromPath(tmpDir + "/" + "frontier_test_rename_old.txt"));
+      return file.exists(oldName)
+    expected_success: true
+    expected_result: "false"
+
+  - name: "file.rename - verify new name exists with same content"
+    description: "Check renamed file has original content"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(newName = file.fileFromPath(tmpDir + "/" + "frontier_test_rename_new.txt"));
+      local(content = file.readWholeFile(newName));
+      return (content == "rename test content")
+    expected_success: true
+    expected_result: "true"
+
+  - name: "file.move - move file to different location"
+    description: "Move file and verify it appears at destination"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(source = file.fileFromPath(tmpDir + "/" + "frontier_test_move_source.txt"));
+      local(dest = file.fileFromPath(tmpDir + "/" + "frontier_test_move_dest.txt"));
+      file.writeWholeFile(source, "move test content");
+      local(ok = file.move(source, dest));
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  - name: "file.move - verify source no longer exists"
+    description: "Check that source file is gone after move"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(source = file.fileFromPath(tmpDir + "/" + "frontier_test_move_source.txt"));
+      return file.exists(source)
+    expected_success: true
+    expected_result: "false"
+
+  - name: "file.move - verify destination exists with same content"
+    description: "Check moved file has original content"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dest = file.fileFromPath(tmpDir + "/" + "frontier_test_move_dest.txt"));
+      local(content = file.readWholeFile(dest));
+      return (content == "move test content")
+    expected_success: true
+    expected_result: "true"
+
+  - name: "file.newfolder - create new folder"
+    description: "Create new folder in temp directory"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(folderPath = file.fileFromPath(tmpDir + "/" + "frontier_test_newfolder_unique"));
+      if file.exists(folderPath) { file.delete(folderPath); };
+      local(ok = file.newfolder(folderPath));
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  - name: "file.newfolder - verify folder exists"
+    description: "Check that created folder exists"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(folderPath = file.fileFromPath(tmpDir + "/" + "frontier_test_newfolder_unique"));
+      return file.exists(folderPath)
+    expected_success: true
+    expected_result: "true"
+
+  # Path operations
+  - name: "file.getpathchar - get path separator character"
+    description: "Get platform-specific path separator (/ on Unix)"
+    script: |
+      local(pathChar = file.getpathchar());
+      return pathChar
+    expected_success: true
+    expected_result: "/"
+
+  - name: "file.fullpath - get absolute path"
+    description: "Convert relative or partial path to absolute path"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(fs = file.fileFromPath(tmpDir + "/" + "frontier_test_fullpath.txt"));
+      file.new(fs);
+      local(fullPath = file.fullpath(fs));
+      return (string.length(fullPath) > 0)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "file.fullpath - verify absolute path starts with /"
+    description: "Absolute paths on Unix should start with /"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(fs = file.fileFromPath(tmpDir + "/" + "frontier_test_fullpath.txt"));
+      local(fullPath = file.fullpath(fs));
+      return (string.mid(fullPath, 1, 1) == "/")
+    expected_success: true
+    expected_result: "true"
+
+  - name: "file.folderfrompath - extract folder from path"
+    description: "Get folder portion of a file path"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(testPath = tmpDir + "/" + "testfile.txt");
+      local(folder = file.folderfrompath(testPath));
+      return (folder == tmpDir)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "file.getpath - get current working directory"
+    description: "Get the current working directory path"
+    script: |
+      local(currentPath = file.getpath());
+      return (string.length(currentPath) > 0)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "file.setpath - set working directory"
+    description: "Change working directory and verify"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(originalPath = file.getpath());
+      local(ok = file.setpath(tmpDir));
+      local(newPath = file.getpath());
+      file.setpath(originalPath);
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  - name: "file.setpath/getpath - round trip working directory"
+    description: "Verify setpath actually changes working directory"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(originalPath = file.getpath());
+      file.setpath(tmpDir);
+      local(newPath = file.getpath());
+      file.setpath(originalPath);
+      return (newPath == tmpDir)
+    expected_success: true
+    expected_result: "true"
+
+  # File I/O operations
+  - name: "file.open/close - open and close file for reading"
+    description: "Open file, verify handle, then close it"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(fs = file.fileFromPath(tmpDir + "/" + "frontier_test_io.txt"));
+      file.writeWholeFile(fs, "test content");
+      local(f = file.open(fs, "r"));
+      local(ok = (f != nil));
+      file.close(f);
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  - name: "file.read - read bytes from file"
+    description: "Open file and read specific number of bytes"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(fs = file.fileFromPath(tmpDir + "/" + "frontier_test_read.txt"));
+      file.writeWholeFile(fs, "Hello World!");
+      local(f = file.open(fs, "r"));
+      local(data = file.read(f, 5));
+      file.close(f);
+      return data
+    expected_success: true
+    expected_result: "Hello"
+
+  - name: "file.readline - read line from file"
+    description: "Read text file line by line"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(fs = file.fileFromPath(tmpDir + "/" + "frontier_test_readline.txt"));
+      file.writeWholeFile(fs, "Line 1\nLine 2\nLine 3");
+      local(f = file.open(fs, "r"));
+      local(line1 = file.readline(f));
+      file.close(f);
+      return line1
+    expected_success: true
+    expected_result: "Line 1"
+
+  - name: "file.endoffile - check if at end of file"
+    description: "Detect EOF condition after reading past end"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(fs = file.fileFromPath(tmpDir + "/" + "frontier_test_eof.txt"));
+      file.writeWholeFile(fs, "AB");
+      local(f = file.open(fs, "r"));
+      file.read(f, 2);
+      file.read(f, 1);
+      local(isEof = file.endoffile(f));
+      file.close(f);
+      return isEof
+    expected_success: true
+    expected_result: "true"
+
+  - name: "file.getposition - get current file position"
+    description: "Check file position after reading"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(fs = file.fileFromPath(tmpDir + "/" + "frontier_test_getpos.txt"));
+      file.writeWholeFile(fs, "0123456789");
+      local(f = file.open(fs, "r"));
+      file.read(f, 5);
+      local(pos = file.getposition(f));
+      file.close(f);
+      return pos
+    expected_success: true
+    expected_result: "5"
+
+  - name: "file.setposition - seek to file position"
+    description: "Move file pointer and read from new position"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(fs = file.fileFromPath(tmpDir + "/" + "frontier_test_setpos.txt"));
+      file.writeWholeFile(fs, "ABCDEFGH");
+      local(f = file.open(fs, "r"));
+      file.setposition(f, 3);
+      local(data = file.read(f, 2));
+      file.close(f);
+      return data
+    expected_success: true
+    expected_result: "DE"
+
+  - name: "file.getendoffile - get file size via handle"
+    description: "Get file size using open file handle"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(fs = file.fileFromPath(tmpDir + "/" + "frontier_test_geteof.txt"));
+      file.writeWholeFile(fs, "12345");
+      local(f = file.open(fs, "r"));
+      local(size = file.getendoffile(f));
+      file.close(f);
+      return size
+    expected_success: true
+    expected_result: "5"
+
+  # Folder and file attribute tests
+  - name: "file.isfolder - check if path is folder"
+    description: "Verify folder detection"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(folderPath = file.fileFromPath(tmpDir + "/" + "test_folder_unique2"));
+      if file.exists(folderPath) { file.delete(folderPath); };
+      file.newfolder(folderPath);
+      return file.isfolder(folderPath)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "file.isfolder - verify file is not folder"
+    description: "Check that regular file returns false"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(filePath = file.fileFromPath(tmpDir + "/" + "test_file.txt"));
+      file.new(filePath);
+      return file.isfolder(filePath)
+    expected_success: true
+    expected_result: "false"
+
+  - name: "file.compare - compare identical files"
+    description: "Compare two files with same content"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(file1 = file.fileFromPath(tmpDir + "/" + "compare1.txt"));
+      local(file2 = file.fileFromPath(tmpDir + "/" + "compare2.txt"));
+      file.writeWholeFile(file1, "same content");
+      file.writeWholeFile(file2, "same content");
+      return file.compare(file1, file2)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "file.compare - compare different files"
+    description: "Compare two files with different content"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(file1 = file.fileFromPath(tmpDir + "/" + "diff1.txt"));
+      local(file2 = file.fileFromPath(tmpDir + "/" + "diff2.txt"));
+      file.writeWholeFile(file1, "content A");
+      file.writeWholeFile(file2, "content B");
+      return file.compare(file1, file2)
+    expected_success: true
+    expected_result: "false"
+
   # Cleanup - Note: The test runner automatically removes {FRONTIER_TEST_TMP_DIR} after all tests
   # This test is a sanity check that cleanup during tests works correctly
   - name: "cleanup - remove test files"
@@ -137,9 +492,15 @@ tests:
       local(fs1 = file.fileFromPath(tmpDir + "/" + "frontier_test_new.txt"));
       local(fs2 = file.fileFromPath(tmpDir + "/" + "frontier_test_write.txt"));
       local(fs3 = file.fileFromPath(tmpDir + "/" + "frontier_test_binary.dat"));
+      local(fs4 = file.fileFromPath(tmpDir + "/" + "frontier_test_size.txt"));
+      local(fs5 = file.fileFromPath(tmpDir + "/" + "frontier_test_created.txt"));
+      local(fs6 = file.fileFromPath(tmpDir + "/" + "frontier_test_modified.txt"));
       if (file.exists(fs1)) { file.delete(fs1); }
       if (file.exists(fs2)) { file.delete(fs2); }
       if (file.exists(fs3)) { file.delete(fs3); }
+      if (file.exists(fs4)) { file.delete(fs4); }
+      if (file.exists(fs5)) { file.delete(fs5); }
+      if (file.exists(fs6)) { file.delete(fs6); }
       return true
     expected_success: true
     expected_result: "true"
