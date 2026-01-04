@@ -483,5 +483,119 @@ tests:
     expected_success: true
     expected_result: "false"
 
+  # Edge Cases - Empty file operations
+  - name: "file.copy - copy empty file"
+    description: "Copy 0-byte file and verify both exist with same size"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(source = file.fileFromPath(tmpDir + "/" + "empty_source.txt"));
+      local(dest = file.fileFromPath(tmpDir + "/" + "empty_dest.txt"));
+      file.new(source);
+      local(ok = file.copy(source, dest));
+      local(sourceSize = file.size(source));
+      local(destSize = file.size(dest));
+      return ok and (sourceSize == 0) and (destSize == 0)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "file.move - move empty file"
+    description: "Move 0-byte file and verify old gone, new exists"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(source = file.fileFromPath(tmpDir + "/" + "empty_move_source.txt"));
+      local(dest = file.fileFromPath(tmpDir + "/" + "empty_move_dest.txt"));
+      file.new(source);
+      local(ok = file.move(source, dest));
+      return ok and (not file.exists(source)) and file.exists(dest)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "file.compare - compare two empty files"
+    description: "Two 0-byte files should be equal"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(file1 = file.fileFromPath(tmpDir + "/" + "empty1.txt"));
+      local(file2 = file.fileFromPath(tmpDir + "/" + "empty2.txt"));
+      file.new(file1);
+      file.new(file2);
+      return file.compare(file1, file2)
+    expected_success: true
+    expected_result: "true"
+
+  # Edge Cases - file.setposition beyond EOF
+  - name: "file.setposition - position beyond EOF"
+    description: "Test seeking beyond end of file"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(filePath = file.fileFromPath(tmpDir + "/" + "setpos_beyond_eof.txt"));
+      file.writeWholeFile(filePath, "test");
+      local(f = file.open(filePath, "r"));
+      local(eofPos = file.getendoffile(f));
+      local(ok = file.setposition(f, eofPos + 100));
+      local(newPos = file.getposition(f));
+      file.close(f);
+      return ok and (newPos == (eofPos + 100))
+    expected_success: true
+    expected_result: "true"
+
+  # Edge Cases - file.readline with different line endings
+  - name: "file.readline - Unix line ending (LF)"
+    description: "Read line with \\n delimiter"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(filePath = file.fileFromPath(tmpDir + "/" + "readline_lf.txt"));
+      file.writeWholeFile(filePath, "line1\nline2");
+      local(f = file.open(filePath, "r"));
+      local(line = file.readline(f));
+      file.close(f);
+      return line
+    expected_success: true
+    expected_result: "line1"
+
+  - name: "file.readline - Windows line ending (CRLF)"
+    description: "Read line with \\r\\n delimiter"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(filePath = file.fileFromPath(tmpDir + "/" + "readline_crlf.txt"));
+      file.writeWholeFile(filePath, "line1\r\nline2");
+      local(f = file.open(filePath, "r"));
+      local(line = file.readline(f));
+      file.close(f);
+      return line
+    expected_success: true
+    expected_result: "line1"
+
+  - name: "file.readline - Classic Mac line ending (CR)"
+    description: "Read line with \\r delimiter"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(filePath = file.fileFromPath(tmpDir + "/" + "readline_cr.txt"));
+      file.writeWholeFile(filePath, "line1\rline2");
+      local(f = file.open(filePath, "r"));
+      local(line = file.readline(f));
+      file.close(f);
+      return line
+    expected_success: true
+    expected_result: "line1"
+
+  # Edge Cases - file.folderfrompath edge cases
+  - name: "file.folderfrompath - filename with no folder"
+    description: "Extract folder from bare filename"
+    script: |
+      local(path = "justfilename.txt");
+      local(folder = file.folderfrompath(path));
+      return folder
+    expected_success: true
+    expected_result: ""
+
+  - name: "file.folderfrompath - path with trailing slash"
+    description: "Extract folder from path with trailing slash - should return parent"
+    script: |
+      local(path = "/parent/child/");
+      local(folder = file.folderfrompath(path));
+      return folder
+    expected_success: true
+    expected_result: "/parent"
+
   # Note: Test runner automatically removes {FRONTIER_TEST_TMP_DIR} after all tests
   # No explicit cleanup needed - all test files are automatically removed
