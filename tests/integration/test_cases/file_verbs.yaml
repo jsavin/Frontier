@@ -619,14 +619,14 @@ tests:
     expected_result: ""
 
   - name: "file.type - file with multiple extensions"
-    description: "Get type of file.tar.gz returns last extension"
+    description: "Get type of file.tar.gz returns last extension (space-padded OSType)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(filePath = file.fileFromPath(tmpDir + "/" + "archive.tar.gz"));
       file.writeWholeFile(filePath, "test");
       return file.type(filePath)
     expected_success: true
-    expected_result: ".gz"
+    expected_result: ".gz "
 
   - name: "file.creator - returns empty string in headless mode"
     description: "Creator codes are Mac-specific, headless returns empty string"

@@ -2,25 +2,25 @@
 
 ## Summary
 
-Fixed `file.write()` and `file.writeline()` to work correctly in headless mode by implementing string mode parameter parsing in `file.open()`.
+Implemented `file.write()` and `file.writeline()` verbs for headless mode. These verbs work with file handles returned by `file.open()` using boolean parameters.
 
-## Root Cause
+**Note**: String mode parameters for `file.open()` (e.g., "r", "w", "a") are tracked in a separate GitHub issue and not included in this implementation.
 
-The portable layer's `openfilefunc` implementation (in `portable/fileverbs_portable.c`) was only accepting a **boolean** parameter for read-only mode, but the standard Frontier API uses **string modes** like "r", "w", "r+", "a", etc.
+## What Was Implemented
 
-When `file.open(f, "w")` was called, the string "w" was being coerced to boolean `true`, which caused the file to be opened in read-only mode ("rb"). Subsequently, `file.write()` would fail with errno=EBADF (Bad file descriptor) because writing to a read-only file is not permitted.
+Added dispatcher cases for:
+1. **file.write(refnum, data)** - Write bytes/strings to open file handle
+2. **file.writeline(refnum, data)** - Write data with automatic newline
 
-## Solution
+Both verbs use the existing portable layer implementations in `portable/fileverbs_portable.c` that were already present but not wired up to the dispatcher.
 
-Enhanced `openfilefunc` in `portable/fileverbs_portable.c` to support both:
-1. **String modes** (e.g., "r", "w", "r+", "w+", "a", "a+") - standard Frontier API
-2. **Boolean modes** (true = readonly, false = read/write) - backward compatibility
+## Current file.open() Usage
 
-The implementation:
-- Attempts to parse parameter 2 as a string mode first
-- Falls back to boolean mode if string parsing fails
-- Automatically appends 'b' (binary mode) if not present
-- Maps string modes to appropriate fopen() modes
+The headless mode `file.open()` currently accepts a **boolean** second parameter:
+- `file.open(filespec, true)` - Open read-only (mode "rb")
+- `file.open(filespec, false)` - Open read/write (mode "r+b", fallback to "w+b" if file doesn't exist)
+
+**Future Enhancement**: String mode support ("r", "w", "r+", "a", etc.) is planned but deferred to a follow-up PR.
 
 ## Changes Made
 

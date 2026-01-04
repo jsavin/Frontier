@@ -1712,7 +1712,33 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 		bsresult[1] = '.';
 		memcpy(&bsresult[2], &bsfilename[lastdot + 1], extlen);
 
-		return setstringvalue(bsresult, vreturned);
+		/* Windows port compatibility: return string4Type for ≤4 chars, stringType for >4 */
+		if (bsresult[0] <= 4) {
+			/* Extension fits in 4 bytes - use string4Type with space padding */
+			bigstring bs4;
+			short i;
+
+			/* Copy extension */
+			for (i = 0; i < bsresult[0]; i++) {
+				bs4[i] = bsresult[i + 1];
+			}
+
+			/* Pad with spaces to 4 bytes */
+			for (; i < 4; i++) {
+				bs4[i] = ' ';
+			}
+
+			/* Pack as OSType (4 bytes) */
+			OSType typecode = (((unsigned long)bs4[0]) << 24) |
+			                  (((unsigned long)bs4[1]) << 16) |
+			                  (((unsigned long)bs4[2]) << 8) |
+			                  ((unsigned long)bs4[3]);
+
+			return setostypevalue(typecode, vreturned);
+		} else {
+			/* Extension >4 chars - return as string */
+			return setstringvalue(bsresult, vreturned);
+		}
 	}
 
 	case filecreatorfunc: {
