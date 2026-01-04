@@ -39,26 +39,32 @@
 
 
 
+#ifndef FRONTIER_HEADLESS
+/* Headless mode provides its own getstringlist() in tests/headless_lang_runtime_more_stubs.c
+ * which loads strings from generated YAML tables instead of macOS bundles. */
 
 boolean getstringlist (short listnum, short id, bigstring bs) {
-    
+
     CFStringRef stringKey = CFStringCreateWithFormat(kCFAllocatorDefault, NULL, CFSTR("%d.%d"), listnum, id);
     CFBundleRef mainBundle = CFBundleGetMainBundle();
     CFStringRef stringValue = CFBundleCopyLocalizedString(mainBundle, stringKey, CFSTR("[string not found]"), CFSTR("Localizable"));
-    
+
     if (CFStringCompare(stringValue, CFSTR("[string not found]"), (CFStringCompareFlags) 0) == kCFCompareEqualTo) {
         log_warn(LOG_COMP_GENERAL, "string resource not found %d.%d", listnum, id);
         setemptystring(bs);
     } else {
         CFStringGetPascalString(stringValue, bs, sizeof(bigstring), kCFStringEncodingMacRoman);
     }
-    
+
     CFRelease(stringValue);
     CFRelease(stringKey);
-    
+
     return stringlength(bs) > 0;
 
 	} /*getstringlist*/
+
+
+#endif /* !FRONTIER_HEADLESS */
 	
 
 boolean findstringlist (bigstring bs, short listnum, short *id) {

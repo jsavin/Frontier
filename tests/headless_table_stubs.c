@@ -9,6 +9,21 @@
 
 #ifdef FRONTIER_HEADLESS
 hdltableformats tableformatsdata = nil;
+
+/* tablegettitlestring() stub - needed for both HEADLESS_LINKS_REAL_DB modes */
+void tablegettitlestring (short col, bigstring bstitle) {
+	/* Headless stub for tablegettitlestring - maps column index to title string.
+	 * Column indices: namecolumn=0, valuecolumn=1, kindcolumn=2 (from tableinternal.h)
+	 * String indices: questionmarksstring=9, nametitlestring=10 (from tableinternal.h)
+	 */
+	if ((col >= namecolumn) && (col <= kindcolumn)) {
+		tablegetstringlist (nametitlestring + col, bstitle);
+	}
+	else {
+		tablegetstringlist (questionmarksstring, bstitle);
+	}
+}
+
 #if defined(HEADLESS_LINKS_REAL_DB)
 
 /* Using the real table layer; skip stub implementations to avoid duplicate symbols. */

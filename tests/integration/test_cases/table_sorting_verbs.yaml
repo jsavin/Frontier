@@ -1,0 +1,220 @@
+# Integration tests for table sorting and target verb operations
+# Tests table.sortby(), table.getsortorder() and lang target verbs in headless mode
+#
+# Verbs covered:
+#   - table.sortby() - Set sort order for a table ("name", "value", "kind")
+#   - table.getsortorder() - Get current sort order column name
+#   - lang.settarget() - Set current target table
+#   - lang.gettarget() - Get current target table
+#   - lang.cleartarget() - Clear current target
+#
+# Table Sorting Notes:
+#   - Sort order is per-table, persisted to database
+#   - Three sort columns: "name" (default), "value", "kind"
+#   - Column names are case-insensitive
+#   - Cursor preserved during resort (key stays same, row number recalculates)
+
+tests:
+  # Basic sorting operations
+  - name: "table.sortby - sort by name (default)"
+    description: "Sort table by name column"
+    script: |
+      lang.new(tableType, @t);
+      t.zebra = "last";
+      t.alpha = "first";
+      t.middle = "mid";
+      lang.settarget(@t);
+      table.sortby("name");
+      return table.getsortorder()
+    expected_success: true
+    expected_result: "name"
+
+  - name: "table.sortby - sort by value"
+    description: "Sort table by value column"
+    script: |
+      lang.new(tableType, @t);
+      t.a = "zzz";
+      t.b = "aaa";
+      t.c = "mmm";
+      lang.settarget(@t);
+      table.sortby("value");
+      return table.getsortorder()
+    expected_success: true
+    expected_result: "value"
+
+  - name: "table.sortby - sort by kind"
+    description: "Sort table by kind (type) column"
+    script: |
+      lang.new(tableType, @t);
+      t.x = 123;
+      t.y = "string";
+      t.z = true;
+      lang.settarget(@t);
+      table.sortby("kind");
+      return table.getsortorder()
+    expected_success: true
+    expected_result: "kind"
+
+  # Case-insensitive column matching
+  - name: "table.sortby - case insensitive NAME"
+    description: "Column names should be case-insensitive"
+    script: |
+      lang.new(tableType, @t);
+      lang.settarget(@t);
+      table.sortby("NAME");
+      return table.getsortorder()
+    expected_success: true
+    expected_result: "name"
+
+  - name: "table.sortby - case insensitive VaLuE"
+    description: "Mixed case should work"
+    script: |
+      lang.new(tableType, @t);
+      lang.settarget(@t);
+      table.sortby("VaLuE");
+      return table.getsortorder()
+    expected_success: true
+    expected_result: "value"
+
+  - name: "table.sortby - case insensitive kind"
+    description: "Lowercase should work"
+    script: |
+      lang.new(tableType, @t);
+      lang.settarget(@t);
+      table.sortby("kind");
+      return table.getsortorder()
+    expected_success: true
+    expected_result: "kind"
+
+  # Default sort order
+  - name: "table.getsortorder - default is name"
+    description: "New tables default to sorting by name"
+    script: |
+      lang.new(tableType, @t);
+      lang.settarget(@t);
+      return table.getsortorder()
+    expected_success: true
+    expected_result: "name"
+
+  # Sequential sort changes
+  - name: "table.sortby - multiple sequential sorts"
+    description: "Changing sort order multiple times should work"
+    script: |
+      lang.new(tableType, @t);
+      lang.settarget(@t);
+      table.sortby("name");
+      local(order1 = table.getsortorder());
+      table.sortby("value");
+      local(order2 = table.getsortorder());
+      table.sortby("kind");
+      local(order3 = table.getsortorder());
+      return order1 + "," + order2 + "," + order3
+    expected_success: true
+    expected_result: "name,value,kind"
+
+  # Error cases
+  - name: "table.sortby - invalid column name"
+    description: "Invalid column name should fail"
+    script: |
+      lang.new(tableType, @t);
+      lang.settarget(@t);
+      try {
+        table.sortby("invalid");
+        return "SHOULD_HAVE_FAILED"
+      }
+      else {
+        return "ERROR_CAUGHT"
+      }
+    expected_success: true
+    expected_result: "ERROR_CAUGHT"
+
+  - name: "table.sortby - no target set"
+    description: "Sorting without a target should fail"
+    script: |
+      lang.cleartarget();
+      try {
+        table.sortby("name");
+        return "SHOULD_HAVE_FAILED"
+      }
+      else {
+        return "ERROR_CAUGHT"
+      }
+    expected_success: true
+    expected_result: "ERROR_CAUGHT"
+
+  # Target verb operations
+  - name: "lang.settarget - set table as target"
+    description: "Set a table as the current target"
+    script: |
+      lang.new(tableType, @t1);
+      lang.new(tableType, @t2);
+      lang.settarget(@t1);
+      t1.marker = "table1";
+      return t1.marker
+    expected_success: true
+    expected_result: "table1"
+
+  - name: "lang.gettarget - retrieve current target"
+    description: "Get the current target table address (must dereference with ^)"
+    script: |
+      lang.new(tableType, @t);
+      t.identifier = "test_table";
+      lang.settarget(@t);
+      local(target = lang.gettarget());
+      return target^.identifier
+    expected_success: true
+    expected_result: "test_table"
+
+  - name: "lang.cleartarget - verify target cleared but table still current"
+    description: "lang.cleartarget() clears target but table remains in selection context"
+    script: |
+      lang.new(tableType, @t);
+      lang.settarget(@t);
+      lang.cleartarget();
+      return (lang.gettarget() == nil) and table.sortby("name")
+    expected_success: true
+    expected_result: "true"
+
+  - name: "lang.settarget - switch between tables"
+    description: "Switch target between multiple tables"
+    script: |
+      lang.new(tableType, @t1);
+      lang.new(tableType, @t2);
+      t1.name = "first";
+      t2.name = "second";
+      lang.settarget(@t1);
+      local(val1 = lang.gettarget()^.name);
+      lang.settarget(@t2);
+      local(val2 = lang.gettarget()^.name);
+      return val1 + "," + val2
+    expected_success: true
+    expected_result: "first,second"
+
+  # Sorting with target verbs
+  - name: "table.sortby - with explicit target"
+    description: "Combine target setting and sorting"
+    script: |
+      lang.new(tableType, @t);
+      t.z = 3;
+      t.a = 1;
+      t.m = 2;
+      lang.settarget(@t);
+      table.sortby("name");
+      local(order = table.getsortorder());
+      return order
+    expected_success: true
+    expected_result: "name"
+
+  # Persistence check
+  - name: "table.getsortorder - persists after setting"
+    description: "Sort order should persist"
+    script: |
+      lang.new(tableType, @t);
+      lang.settarget(@t);
+      table.sortby("value");
+      local(order1 = table.getsortorder());
+      table.sortby("kind");
+      local(order2 = table.getsortorder());
+      return order1 + "," + order2
+    expected_success: true
+    expected_result: "value,kind"
