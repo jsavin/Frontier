@@ -494,3 +494,55 @@ langerrorlist:
   - id: sqlitecompileerror
     index: 165
     text: "Can't compile query ^0."
+
+tablestringlist:
+  - id: question_marks
+    index: 9
+    text: "???"
+  - id: name_title
+    index: 10
+    text: "name"
+  - id: value_title
+    index: 11
+    text: "value"
+  - id: kind_title
+    index: 12
+    text: "kind"
+
+directionlist:
+  - id: up
+    index: 1
+    text: "up"
+  - id: down
+    index: 2
+    text: "down"
+  - id: left
+    index: 3
+    text: "left"
+  - id: right
+    index: 4
+    text: "right"
+  - id: flatup
+    index: 5
+    text: "flatup"
+  - id: flatdown
+    index: 6
+    text: "flatdown"
+  - id: reserved
+    index: 7
+    text: ""
+  - id: sorted
+    index: 8
+    text: "sorted"
+  - id: pageup
+    index: 9
+    text: "pageup"
+  - id: pagedown
+    index: 10
+    text: "pagedown"
+  - id: pageleft
+    index: 11
+    text: "pageleft"
+  - id: pageright
+    index: 12
+    text: "pageright"

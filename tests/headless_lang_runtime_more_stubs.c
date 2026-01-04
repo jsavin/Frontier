@@ -77,6 +77,9 @@ boolean getsystemerrorstring (OSErr err, bigstring bs) { (void)err; setemptystri
 // String table lookup using generated YAML-based tables
 #include "../generated/strings_tables.h"
 #include "langinternal.h"
+#include "shell.rsrc.h"
+
+#define tablestringlist 165  // from tableinternal.h
 
 boolean getstringlist (short listid, short index, bigstring bs) {
     const strings_table_record *table = NULL;
@@ -86,6 +89,12 @@ boolean getstringlist (short listid, short index, bigstring bs) {
     switch (listid) {
         case langerrorlist:  // 257 from langinternal.h
             table_name = "langerrorlist";
+            break;
+        case tablestringlist:  // 165
+            table_name = "tablestringlist";
+            break;
+        case directionlistnumber:  // 135 from shell.rsrc.h
+            table_name = "directionlist";
             break;
         default:
             // Unknown list ID
