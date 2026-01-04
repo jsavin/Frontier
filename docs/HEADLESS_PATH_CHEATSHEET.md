@@ -26,13 +26,13 @@ local (cwd = file.fullPath(file.getPath())); return cwd + "/" + "tmp"
 
 ```bash
 # Get cwd
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli -e 'return file.fullPath(file.getPath())'
+FRONTIER_HEADLESS_RUN_STARTUP=1 ./frontier-cli/frontier-cli -e 'return file.fullPath(file.getPath())'
 
 # Build path
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli -e 'return file.fullPath(file.getPath()) + "/" + "tmp"'
+FRONTIER_HEADLESS_RUN_STARTUP=1 ./frontier-cli/frontier-cli -e 'return file.fullPath(file.getPath()) + "/" + "tmp"'
 
 # Multi-level
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli -e 'return file.fullPath(file.getPath()) + "/" + "databases" + "/" + "Frontier-v7.root"'
+FRONTIER_HEADLESS_RUN_STARTUP=1 ./frontier-cli/frontier-cli -e 'return file.fullPath(file.getPath()) + "/" + "databases" + "/" + "Frontier-v7.root"'
 ```
 
 ## Real Examples

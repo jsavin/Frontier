@@ -248,13 +248,19 @@ export FRONTIER_LOG_FORMAT=json
 ./frontier-cli/frontier-cli -e "1 + 1"
 ```
 
-### `FRONTIER_HEADLESS_SKIP_STARTUP`
+### `FRONTIER_HEADLESS_RUN_STARTUP`
 
-Skip execution of `system.startup` scripts when loading a database. Useful for testing or when startup scripts are incomplete.
+Enable execution of `system.startup` scripts when loading a database (default: skipped). Set to 1 to run startup scripts. The default behavior skips startup scripts for faster CLI execution and testing.
 
-**Example:**
+**Example (run startup scripts):**
 ```bash
-export FRONTIER_HEADLESS_SKIP_STARTUP=1
+export FRONTIER_HEADLESS_RUN_STARTUP=1
+./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root -e "1"
+```
+
+**Default behavior (startup scripts skipped):**
+```bash
+# No env var needed - startup scripts are skipped by default
 ./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root -e "1"
 ```
 

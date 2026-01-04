@@ -442,10 +442,10 @@ python3 tests/integration/runner.py tests/integration/test_cases/<processor>_ver
 
 ```bash
 # Test individual verbs
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli -e '<processor>.verb("test")'
+FRONTIER_HEADLESS_RUN_STARTUP=1 ./frontier-cli/frontier-cli -e '<processor>.verb("test")'
 
 # Test error handling
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli -e '<processor>.verb(invalid)'
+FRONTIER_HEADLESS_RUN_STARTUP=1 ./frontier-cli/frontier-cli -e '<processor>.verb(invalid)'
 ```
 
 ### Build Verification

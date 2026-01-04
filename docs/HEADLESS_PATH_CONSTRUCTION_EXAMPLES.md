@@ -10,7 +10,7 @@ file.fullPath(file.getPath()) + "/" + "tmp"
 
 **CLI Usage**:
 ```bash
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli \
+FRONTIER_HEADLESS_RUN_STARTUP=1 ./frontier-cli/frontier-cli \
     -e 'return file.fullPath(file.getPath()) + "/" + "tmp"'
 ```
 
@@ -33,7 +33,7 @@ Returns the current working directory as a path string.
 
 **Test it**:
 ```bash
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli \
+FRONTIER_HEADLESS_RUN_STARTUP=1 ./frontier-cli/frontier-cli \
     -e 'return file.fullPath(file.getPath())'
 ```
 
@@ -55,7 +55,7 @@ file.fullPath(file.getPath()) + "/" + "subdir1" + "/" + "subdir2" + "/" + "file.
 
 **CLI Usage**:
 ```bash
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli \
+FRONTIER_HEADLESS_RUN_STARTUP=1 ./frontier-cli/frontier-cli \
     -e 'return file.fullPath(file.getPath()) + "/" + "subdir1" + "/" + "subdir2" + "/" + "file.txt"'
 ```
 
@@ -147,7 +147,7 @@ return [
 
 **Single-line for CLI**:
 ```bash
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli -e \
+FRONTIER_HEADLESS_RUN_STARTUP=1 ./frontier-cli/frontier-cli -e \
     'local (d=file.fullPath(file.getPath())+"/databases"); return d+"/Frontier-v7.root"'
 ```
 
@@ -178,7 +178,7 @@ return [
 
 **CLI test**:
 ```bash
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli -e \
+FRONTIER_HEADLESS_RUN_STARTUP=1 ./frontier-cli/frontier-cli -e \
     'return file.fullPath(file.getPath()) + "/" + "tests" + "/" + "fixtures" + "/" + "sample_data.json"'
 ```
 
@@ -284,7 +284,7 @@ local (tmpDir = file.new(tmpPath));  // Creates the directory
 **Wrong assumption**:
 ```bash
 cd /some/other/directory
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli -e 'return file.fullPath(file.getPath())'
+FRONTIER_HEADLESS_RUN_STARTUP=1 ./frontier-cli/frontier-cli -e 'return file.fullPath(file.getPath())'
 # Returns: /Users/jake/dev/jsavin/Frontier (NOT /some/other/directory!)
 ```
 
@@ -325,7 +325,7 @@ local (relative = "relative" + "/" + "path");  // Result: "relative/path" (also 
 ### Test 1: Verify Working Directory
 
 ```bash
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli \
+FRONTIER_HEADLESS_RUN_STARTUP=1 ./frontier-cli/frontier-cli \
     -e 'return file.fullPath(file.getPath())'
 ```
 
@@ -336,7 +336,7 @@ Expected: Directory containing frontier-cli binary (usually Frontier project roo
 ### Test 2: Verify Path Construction
 
 ```bash
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli \
+FRONTIER_HEADLESS_RUN_STARTUP=1 ./frontier-cli/frontier-cli \
     -e 'return file.fullPath(file.getPath()) + "/" + "tmp"'
 ```
 
@@ -347,7 +347,7 @@ Expected: A valid path ending in "/tmp"
 ### Test 3: Verify Path with Variables
 
 ```bash
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli \
+FRONTIER_HEADLESS_RUN_STARTUP=1 ./frontier-cli/frontier-cli \
     -e 'local (p = file.fullPath(file.getPath()) + "/" + "databases" + "/" + "Frontier-v7.root"); return p'
 ```
 
@@ -422,7 +422,7 @@ return testPathConstruction()
 
 **CLI Usage**:
 ```bash
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli -e \
+FRONTIER_HEADLESS_RUN_STARTUP=1 ./frontier-cli/frontier-cli -e \
     'on testPathConstruction() { local (cwd = file.fullPath(file.getPath())); return cwd + "/" + "tmp" + "/" + "test.txt"; } return testPathConstruction()'
 ```
 

@@ -2,7 +2,7 @@
 
 ## Overview
 
-When running Frontier in headless mode (`FRONTIER_HEADLESS_SKIP_STARTUP=1`), you can construct dynamic paths to files without hardcoding absolute paths. This guide explains how to use `file.getPath()` and `file.setPath()` along with string concatenation to build paths relative to the working directory.
+When running Frontier in headless mode (`FRONTIER_HEADLESS_RUN_STARTUP=1`), you can construct dynamic paths to files without hardcoding absolute paths. This guide explains how to use `file.getPath()` and `file.setPath()` along with string concatenation to build paths relative to the working directory.
 
 ## Key Concepts
 
@@ -153,7 +153,7 @@ return getTmpPath()
 return file.fullPath(file.getPath()) + "/" + "tmp"
 
 // This works in:
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli -e 'return file.fullPath(file.getPath()) + "/" + "tmp"'
+FRONTIER_HEADLESS_RUN_STARTUP=1 ./frontier-cli/frontier-cli -e 'return file.fullPath(file.getPath()) + "/" + "tmp"'
 
 // Result (if running from /Users/jake/dev/jsavin/Frontier):
 // "/Users/jake/dev/jsavin/Frontier/tmp"
@@ -220,7 +220,7 @@ This is why the implementation stores working directory in `tythreadglobals` rat
 ### Verify Working Directory
 
 ```bash
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli -e 'return file.fromPath(file.getPath())'
+FRONTIER_HEADLESS_RUN_STARTUP=1 ./frontier-cli/frontier-cli -e 'return file.fromPath(file.getPath())'
 ```
 
 Expected output: Directory containing frontier-cli binary
@@ -237,7 +237,7 @@ ls -la frontier-cli/frontier-cli
 
 ```bash
 # This should output the tmp directory path
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli \
+FRONTIER_HEADLESS_RUN_STARTUP=1 ./frontier-cli/frontier-cli \
     -e 'return file.fromPath(file.getPath()) + "/" + "tmp"'
 ```
 

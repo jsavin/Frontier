@@ -158,7 +158,7 @@ This rebuilds the CLI, migrates the test database, and runs the complete test su
 
 ```bash
 # Test a verb with no database
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli -e "yourverb(args)"
+FRONTIER_HEADLESS_RUN_STARTUP=1 ./frontier-cli/frontier-cli -e "yourverb(args)"
 
 # Test a verb with system root loaded
 ./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root -e "yourverb(args)"

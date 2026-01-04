@@ -41,7 +41,7 @@ file.fullPath(file.getPath()) + "/" + "tmp"
 
 When you run:
 ```bash
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli \
+FRONTIER_HEADLESS_RUN_STARTUP=1 ./frontier-cli/frontier-cli \
     -e 'return file.fullPath(file.getPath()) + "/" + "tmp"'
 ```
 
@@ -123,7 +123,7 @@ The working directory is always where frontier-cli is located, NOT where you run
 ```bash
 # Even if you're in a different directory:
 cd /some/other/place
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli \
+FRONTIER_HEADLESS_RUN_STARTUP=1 ./frontier-cli/frontier-cli \
     -e 'return file.fullPath(file.getPath())'
 # Still returns: /Users/jake/dev/jsavin/Frontier
 # NOT: /some/other/place
@@ -184,15 +184,15 @@ Simple test to verify it works:
 
 ```bash
 # Test 1: Get cwd
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli \
+FRONTIER_HEADLESS_RUN_STARTUP=1 ./frontier-cli/frontier-cli \
     -e 'return file.fullPath(file.getPath())'
 
 # Test 2: Construct single-level path
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli \
+FRONTIER_HEADLESS_RUN_STARTUP=1 ./frontier-cli/frontier-cli \
     -e 'return file.fullPath(file.getPath()) + "/" + "tmp"'
 
 # Test 3: Construct multi-level path
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli \
+FRONTIER_HEADLESS_RUN_STARTUP=1 ./frontier-cli/frontier-cli \
     -e 'return file.fullPath(file.getPath()) + "/" + "databases" + "/" + "Frontier-v7.root"'
 ```
 

@@ -28,8 +28,11 @@ The frontier-cli executable must be run from the project root directory (NOT fro
 # Execute with system root database loaded:
 ./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root -e "sizeOf(system)"
 
-# Skip startup scripts (use when testing bootstrapping):
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli -e "1+1"
+# Run startup scripts (rarely needed - slows down CLI, default skips them):
+FRONTIER_HEADLESS_RUN_STARTUP=1 ./frontier-cli/frontier-cli -e "1+1"
+
+# Default behavior (startup scripts skipped - faster for testing):
+./frontier-cli/frontier-cli -e "1+1"
 ```
 
 ### Multi-line UserTalk Scripts
@@ -38,12 +41,12 @@ Multi-line scripts work using bash `$'...'` syntax for proper newline handling:
 
 ```bash
 # Multi-line script with $'...\n...' syntax:
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli -e $'lang.new(tableType, @t);\nt.key1 = "hello";\nt.key2 = 42;\nreturn "size:" + sizeOf(t) + " key1:" + t.key1'
+./frontier-cli/frontier-cli -e $'lang.new(tableType, @t);\nt.key1 = "hello";\nt.key2 = 42;\nreturn "size:" + sizeOf(t) + " key1:" + t.key1'
 
 # Output: size:2 key1:hello
 
 # Single-line works too (statements separated by semicolons):
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli -e "lang.new(tableType, @t); t.key1 = \"hello\"; return t.key1"
+./frontier-cli/frontier-cli -e "lang.new(tableType, @t); t.key1 = \"hello\"; return t.key1"
 ```
 
 ### Testing lang.new() Verb
@@ -52,15 +55,15 @@ The `lang.new()` verb creates new UserTalk objects (tables, outlines, scripts, e
 
 ```bash
 # Create a table and verify it exists:
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli -e "lang.new(tableType, @t); return defined(t)"
+./frontier-cli/frontier-cli -e "lang.new(tableType, @t); return defined(t)"
 # Output: true
 
 # Create a table, add data, and read it back:
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli -e "lang.new(tableType, @t); t.key1 = \"hello\"; t.key2 = 42; t.key3 = true; return \"size:\" + sizeOf(t) + \" key1:\" + t.key1 + \" key2:\" + t.key2"
+./frontier-cli/frontier-cli -e "lang.new(tableType, @t); t.key1 = \"hello\"; t.key2 = 42; t.key3 = true; return \"size:\" + sizeOf(t) + \" key1:\" + t.key1 + \" key2:\" + t.key2"
 # Output: size:3 key1:hello key2:42
 
 # Test with different object types:
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli -e "lang.new(tableType, @myTable); return typeof(myTable)"
+./frontier-cli/frontier-cli -e "lang.new(tableType, @myTable); return typeof(myTable)"
 # Output: tableType
 ```
 
@@ -318,7 +321,7 @@ Old migrated databases may be corrupted artifacts from earlier broken migrations
 rm -f databases/Frontier-v7.root
 
 # Run CLI with v6 database - creates v7 output file automatically
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli \
+./frontier-cli/frontier-cli \
   --system-root databases/Frontier-v6.root -e "1"
 
 # Output: databases/Frontier-v7.root (new file created by migration)
@@ -355,15 +358,15 @@ make -C tests clean && make -C tests save_migration_tests
 
 ```bash
 # Test database loads and system table is accessible:
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli \
+./frontier-cli/frontier-cli \
   --system-root test_save_migration-v7.root -e "defined(system)"
 
 # Test external table variables (critical - tests Issue #123 fix):
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli \
+./frontier-cli/frontier-cli \
   --system-root test_save_migration-v7.root -e "sizeOf(system.verbs.globals)"
 
 # Test workspace access:
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli \
+./frontier-cli/frontier-cli \
   --system-root test_save_migration-v7.root -e "defined(workspace)"
 ```
 

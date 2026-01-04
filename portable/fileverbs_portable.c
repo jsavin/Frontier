@@ -1759,7 +1759,7 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 	}
 
 		case fileislockedfunc: {
-			/* Check if file is write-protected (locked) */
+			/* Check if file has immutable flag set (locked) */
 			tyfilespec fs;
 			char path[4096];
 			struct stat st;
@@ -1779,14 +1779,24 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 				return false;
 			}
 
-			/* File is "locked" if current user cannot write to it */
+			/* Folders are never locked (per legacy documentation) */
+			if (S_ISDIR(st.st_mode)) {
+				return setbooleanvalue(false, vreturned);
+			}
+
+			#ifdef __APPLE__
+			/* macOS: Check UF_IMMUTABLE flag (matches legacy kFSNodeLockedMask behavior) */
+			boolean locked = (st.st_flags & UF_IMMUTABLE) != 0;
+			#else
+			/* Fallback: Check if current user cannot write to it */
 			boolean locked = (access(path, W_OK) != 0);
+			#endif
 
 			return setbooleanvalue(locked, vreturned);
 		}
 
 		case filelockfunc: {
-			/* Lock file by removing write permissions */
+			/* Lock file by setting immutable flag (macOS: UF_IMMUTABLE) */
 			tyfilespec fs;
 			char path[4096];
 			struct stat st;
@@ -1801,25 +1811,37 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 				return false;
 			}
 
-			/* Get current permissions */
+			/* Get current file info */
 			if (stat(path, &st) != 0) {
 				copyctopstring("File not found", bserror);
 				return false;
 			}
 
-			/* Remove all write permissions */
-			mode_t newmode = st.st_mode & ~(S_IWUSR | S_IWGRP | S_IWOTH);
+			/* Folders can't be locked (per legacy documentation - return success as no-op) */
+			if (S_ISDIR(st.st_mode)) {
+				return setbooleanvalue(true, vreturned);
+			}
 
+			#ifdef __APPLE__
+			/* macOS: Set UF_IMMUTABLE flag (matches legacy kFSNodeLockedMask behavior) */
+			if (chflags(path, st.st_flags | UF_IMMUTABLE) != 0) {
+				copyctopstring("Failed to lock file (permission denied)", bserror);
+				return false;
+			}
+			#else
+			/* Fallback: Remove write permissions */
+			mode_t newmode = st.st_mode & ~(S_IWUSR | S_IWGRP | S_IWOTH);
 			if (chmod(path, newmode) != 0) {
 				copyctopstring("Failed to lock file (permission denied)", bserror);
 				return false;
 			}
+			#endif
 
 			return setbooleanvalue(true, vreturned);
 		}
 
 		case fileunlockfunc: {
-			/* Unlock file by adding owner write permission */
+			/* Unlock file by clearing immutable flag (macOS: UF_IMMUTABLE) */
 			tyfilespec fs;
 			char path[4096];
 			struct stat st;
@@ -1834,19 +1856,31 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 				return false;
 			}
 
-			/* Get current permissions */
+			/* Get current file info */
 			if (stat(path, &st) != 0) {
 				copyctopstring("File not found", bserror);
 				return false;
 			}
 
-			/* Add owner write permission */
-			mode_t newmode = st.st_mode | S_IWUSR;
+			/* Folders can't be locked/unlocked (return success as no-op) */
+			if (S_ISDIR(st.st_mode)) {
+				return setbooleanvalue(true, vreturned);
+			}
 
+			#ifdef __APPLE__
+			/* macOS: Clear UF_IMMUTABLE flag */
+			if (chflags(path, st.st_flags & ~UF_IMMUTABLE) != 0) {
+				copyctopstring("Failed to unlock file (permission denied)", bserror);
+				return false;
+			}
+			#else
+			/* Fallback: Add owner write permission */
+			mode_t newmode = st.st_mode | S_IWUSR;
 			if (chmod(path, newmode) != 0) {
 				copyctopstring("Failed to unlock file (permission denied)", bserror);
 				return false;
 			}
+			#endif
 
 			return setbooleanvalue(true, vreturned);
 		}
