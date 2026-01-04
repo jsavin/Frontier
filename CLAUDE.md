@@ -443,6 +443,53 @@ This is **opposite** of JavaScript/Python where `'x'` and `"x"` are equivalent!
 
 ---
 
+## Critical Testing Constraints ⚠️
+
+### macOS Sandbox /tmp Restriction
+
+**CRITICAL**: frontier-cli runs in the macOS sandbox and **CANNOT access `/tmp`**.
+
+**When Testing File Operations**:
+- ❌ NEVER use `/tmp`, `/var/tmp`, or system temp directories
+- ✅ ALWAYS use project-relative paths in .gitignore'd subdirectories
+- ✅ Use `{FRONTIER_TEST_TMP_DIR}` template in integration tests (auto-replaced)
+- ✅ Use `$(./tools/get_test_temp_path.sh)` for manual CLI testing
+- ✅ Use `./test_tmp/` or similar project subdirectories for testing
+
+**Examples**:
+```bash
+# ❌ WRONG - Will fail in sandbox
+./frontier-cli/frontier-cli -e 'file.write("/tmp/test.txt", "data")'
+
+# ✅ CORRECT - Project-relative path
+mkdir -p test_tmp  # .gitignore'd directory
+./frontier-cli/frontier-cli -e 'file.write("test_tmp/test.txt", "data")'
+
+# ✅ CORRECT - Using helper script
+TESTDIR=$(./tools/get_test_temp_path.sh)
+./frontier-cli/frontier-cli -e "file.write(\"$TESTDIR/test.txt\", \"data\")"
+```
+
+**Integration Test Pattern**:
+```yaml
+# Use template - framework replaces with safe path
+tests:
+  - name: "file.write - create file"
+    script: 'file.write("{FRONTIER_TEST_TMP_DIR}/test.txt", "data")'
+    expected_success: true
+```
+
+**Agent Delegation Template**:
+
+When delegating file operations work to agents, ALWAYS include:
+```
+CRITICAL CONSTRAINT: frontier-cli runs in macOS sandbox and CANNOT access /tmp.
+Use project-relative paths in .gitignore'd subdirectories for testing.
+Use $(./tools/get_test_temp_path.sh) to get a safe temp directory.
+```
+
+---
+
 ## Architectural Patterns to Avoid
 
 ### Hash Table Lookup API - Null Pointer Gotcha ⚠️

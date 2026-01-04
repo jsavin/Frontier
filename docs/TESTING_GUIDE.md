@@ -220,6 +220,64 @@ After substitution (on user's machine):
 
 **See also:** `tests/integration/runner.py` - `get_script_with_substitutions()` method for implementation details
 
+---
+
+## Temporary Files in Tests
+
+### macOS Sandbox Restriction ⚠️
+
+**CRITICAL**: frontier-cli runs in the macOS sandbox and **CANNOT access `/tmp`** or other system temp directories.
+
+### Safe Patterns for Temporary Files
+
+**Integration tests**: Use `{FRONTIER_TEST_TMP_DIR}` template
+```yaml
+tests:
+  - name: "file.write - create test file"
+    script: 'file.write("{FRONTIER_TEST_TMP_DIR}/test.txt", "data")'
+    expected_success: true
+```
+
+**Manual CLI tests**: Use `get_test_temp_path.sh` helper
+```bash
+# Get safe temp directory
+TESTDIR=$(./tools/get_test_temp_path.sh)
+
+# Use in frontier-cli command
+./frontier-cli/frontier-cli -e "file.write(\"$TESTDIR/test.txt\", \"data\")"
+```
+
+**Direct approach**: Use project-relative paths
+```bash
+# Create test directory (gitignore'd)
+mkdir -p test_tmp
+
+# Use directly in tests
+./frontier-cli/frontier-cli -e 'file.write("test_tmp/test.txt", "data")'
+```
+
+### Unsafe Patterns (Will Fail)
+
+❌ **NEVER use `/tmp`**:
+```bash
+# This will FAIL in sandbox
+./frontier-cli/frontier-cli -e 'file.write("/tmp/test.txt", "data")'
+```
+
+❌ **NEVER use `/var/tmp`** or other system directories
+❌ **NEVER use hardcoded absolute paths** outside the project
+
+### Linting Check
+
+Run the linting check to detect unsafe /tmp usage:
+```bash
+./tools/check_tmp_usage.sh
+```
+
+This script will scan tests/, portable/, and integration test YAML files for hardcoded /tmp paths.
+
+---
+
 ### Test Output
 
 ```

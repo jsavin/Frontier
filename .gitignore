@@ -39,6 +39,11 @@ Common/MySQL/
 tmp/
 tests/tmp/
 
+# Test temporary directories (sandbox-safe for frontier-cli)
+test_tmp/
+test_output/
+test_files/
+
 # Build artifacts
 *.o
 *.a
