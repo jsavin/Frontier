@@ -1348,6 +1348,23 @@ extern boolean langtimemodifiedfunc (hdltreenode hparam1, tyvaluerecord *vreturn
 extern boolean langsettimecreatedfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
 extern boolean langsettimemodifiedfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
 
+/* Phase 5: Type conversion wrapper functions */
+extern boolean langbooleanfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
+extern boolean langcharfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
+extern boolean langlongfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
+extern boolean langdatefunc (hdltreenode hparam1, tyvaluerecord *vreturned);
+extern boolean langstringfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
+extern boolean langaddressfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
+extern boolean langbinaryfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
+extern boolean langpointfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
+extern boolean langrectfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
+extern boolean langrgbfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
+extern boolean langpatternfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
+extern boolean langfilespecfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
+extern boolean langlistfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
+extern boolean langrecordfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
+extern boolean langenumfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
+
 extern boolean langzoomvalwindow (hdlhashtable, bigstring, tyvaluerecord, boolean); /*langverbs.c*/
 
 extern boolean langfindtargetwindow (short, WindowPtr *);

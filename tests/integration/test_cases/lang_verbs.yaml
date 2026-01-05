@@ -701,3 +701,335 @@ tests:
       lang.settimemodified(@t)
     expected_success: false
     expected_error_type: "script_error"
+
+  # ====================================================================
+  # Phase 5: Type Conversion Verbs (15 verbs)
+  # ====================================================================
+
+  # lang.boolean - Convert to boolean type
+  - name: "lang.boolean - integer 1 to true"
+    description: "Convert non-zero integer to boolean true"
+    script: 'lang.boolean(1)'
+    expected_success: true
+    expected_result: "true"
+    expected_result_type: "boolean"
+
+  - name: "lang.boolean - integer 0 to false"
+    description: "Convert zero to boolean false"
+    script: 'lang.boolean(0)'
+    expected_success: true
+    expected_result: "false"
+    expected_result_type: "boolean"
+
+  - name: "lang.boolean - string 'true'"
+    description: "Convert string 'true' to boolean"
+    script: 'lang.boolean("true")'
+    expected_success: true
+    expected_result: "true"
+    expected_result_type: "boolean"
+
+  - name: "lang.boolean - string 'false'"
+    description: "Convert string 'false' to boolean"
+    script: 'lang.boolean("false")'
+    expected_success: true
+    expected_result: "false"
+    expected_result_type: "boolean"
+
+  - name: "lang.boolean - no parameters"
+    description: "Parameter validation: missing parameter should fail"
+    script: 'lang.boolean()'
+    expected_success: false
+    expected_error_type: "script_error"
+
+  # lang.char - Convert to character type
+  - name: "lang.char - integer to char"
+    description: "Convert ASCII value to character"
+    script: 'lang.char(65)'
+    expected_success: true
+    expected_result: "A"
+    expected_result_type: "char"
+
+  - name: "lang.char - string to char"
+    description: "Convert first character of string"
+    script: 'lang.char("Hello")'
+    expected_success: true
+    expected_result: "H"
+    expected_result_type: "char"
+
+  - name: "lang.char - no parameters"
+    description: "Parameter validation: missing parameter should fail"
+    script: 'lang.char()'
+    expected_success: false
+    expected_error_type: "script_error"
+
+  # lang.long - Convert to long integer type
+  - name: "lang.long - double to long"
+    description: "Convert double to long (truncates decimals)"
+    script: 'lang.long(42.9)'
+    expected_success: true
+    expected_result: "42"
+    expected_result_type: "long"
+
+  - name: "lang.long - string to long"
+    description: "Convert numeric string to long"
+    script: 'lang.long("12345")'
+    expected_success: true
+    expected_result: "12345"
+    expected_result_type: "long"
+
+  - name: "lang.long - boolean true"
+    description: "Convert boolean true to 1"
+    script: 'lang.long(true)'
+    expected_success: true
+    expected_result: "1"
+    expected_result_type: "long"
+
+  - name: "lang.long - boolean false"
+    description: "Convert boolean false to 0"
+    script: 'lang.long(false)'
+    expected_success: true
+    expected_result: "0"
+    expected_result_type: "long"
+
+  - name: "lang.long - negative value"
+    description: "Convert negative double to long"
+    script: 'lang.long(-999.7)'
+    expected_success: true
+    expected_result: "-999"
+    expected_result_type: "long"
+
+  - name: "lang.long - no parameters"
+    description: "Parameter validation: missing parameter should fail"
+    script: 'lang.long()'
+    expected_success: false
+    expected_error_type: "script_error"
+
+  # lang.date - Convert to date type (64-bit timestamp)
+  - name: "lang.date - current time"
+    description: "Convert current timestamp to date type"
+    script: 'typeof(lang.date(clock.now()))'
+    expected_success: true
+    expected_result: "date"
+
+  - name: "lang.date - long to date"
+    description: "Convert long integer to date"
+    script: |
+      local (timestamp = clock.now());
+      local (converted = lang.date(timestamp));
+      return typeof(converted) == "date"
+    expected_success: true
+    expected_result: "true"
+
+  - name: "lang.date - post-2038 timestamp"
+    description: "Verify 64-bit date handling (Year 2038+ compatibility)"
+    script: |
+      local (future = date.set(1, 1, 2050, 0, 0, 0));
+      local (converted = lang.date(future));
+      return converted > 0
+    expected_success: true
+    expected_result: "true"
+
+  - name: "lang.date - year 2100 timestamp"
+    description: "Verify far-future date handling"
+    script: |
+      local (farFuture = date.set(1, 1, 2100, 0, 0, 0));
+      local (converted = lang.date(farFuture));
+      return typeof(converted) == "date"
+    expected_success: true
+    expected_result: "true"
+
+  - name: "lang.date - no parameters"
+    description: "Parameter validation: missing parameter should fail"
+    script: 'lang.date()'
+    expected_success: false
+    expected_error_type: "script_error"
+
+  # lang.string - Convert to string type
+  - name: "lang.string - number to string"
+    description: "Convert integer to string"
+    script: 'lang.string(42)'
+    expected_success: true
+    expected_result: "42"
+    expected_result_type: "string"
+
+  - name: "lang.string - boolean to string"
+    description: "Convert boolean true to string"
+    script: 'lang.string(true)'
+    expected_success: true
+    expected_result: "true"
+    expected_result_type: "string"
+
+  - name: "lang.string - double to string"
+    description: "Convert double to string"
+    script: 'lang.string(3.14159)'
+    expected_success: true
+    expected_result_type: "string"
+
+  - name: "lang.string - no parameters"
+    description: "Parameter validation: missing parameter should fail"
+    script: 'lang.string()'
+    expected_success: false
+    expected_error_type: "script_error"
+
+  # lang.address - Convert to address type
+  - name: "lang.address - table address"
+    description: "Convert table to address type"
+    script: |
+      lang.new(tableType, @t);
+      return typeof(lang.address(@t))
+    expected_success: true
+    expected_result: "address"
+
+  - name: "lang.address - no parameters"
+    description: "Parameter validation: missing parameter should fail"
+    script: 'lang.address()'
+    expected_success: false
+    expected_error_type: "script_error"
+
+  # lang.binary - Convert to binary type
+  - name: "lang.binary - string to binary"
+    description: "Convert string to binary data"
+    script: |
+      local (bin = lang.binary("test data"));
+      return typeof(bin)
+    expected_success: true
+    expected_result: "binary"
+
+  - name: "lang.binary - no parameters"
+    description: "Parameter validation: missing parameter should fail"
+    script: 'lang.binary()'
+    expected_success: false
+    expected_error_type: "script_error"
+
+  # lang.point - Convert to point type
+  - name: "lang.point - record to point"
+    description: "Convert point record to point type"
+    script: |
+      local (pt);
+      point.make(100, 200, @pt);
+      return typeof(lang.point(pt))
+    expected_success: true
+    expected_result: "point"
+
+  - name: "lang.point - no parameters"
+    description: "Parameter validation: missing parameter should fail"
+    script: 'lang.point()'
+    expected_success: false
+    expected_error_type: "script_error"
+
+  # lang.rect - Convert to rect type
+  - name: "lang.rect - record to rect"
+    description: "Convert rect record to rect type"
+    script: |
+      local (r);
+      rectangle.make(10, 20, 110, 220, @r);
+      return typeof(lang.rect(r))
+    expected_success: true
+    expected_result: "rect"
+
+  - name: "lang.rect - no parameters"
+    description: "Parameter validation: missing parameter should fail"
+    script: 'lang.rect()'
+    expected_success: false
+    expected_error_type: "script_error"
+
+  # lang.rgb - Convert to RGB type
+  - name: "lang.rgb - record to rgb"
+    description: "Convert RGB record to rgb type"
+    script: |
+      local (color);
+      rgb.make(255, 128, 64, @color);
+      return typeof(lang.rgb(color))
+    expected_success: true
+    expected_result: "rgb"
+
+  - name: "lang.rgb - no parameters"
+    description: "Parameter validation: missing parameter should fail"
+    script: 'lang.rgb()'
+    expected_success: false
+    expected_error_type: "script_error"
+
+  # lang.pattern - Convert to pattern type
+  - name: "lang.pattern - binary to pattern"
+    description: "Convert binary data to pattern type"
+    script: |
+      local (pat = lang.pattern(string.filledstring(chr(0xFF), 8)));
+      return typeof(pat)
+    expected_success: true
+    expected_result: "pattern"
+
+  - name: "lang.pattern - no parameters"
+    description: "Parameter validation: missing parameter should fail"
+    script: 'lang.pattern()'
+    expected_success: false
+    expected_error_type: "script_error"
+
+  # lang.filespec - Convert to filespec type
+  - name: "lang.filespec - string to filespec"
+    description: "Convert path string to filespec type"
+    script: |
+      local (fspec = lang.filespec("{FRONTIER_TEST_TMP_DIR}/test.txt"));
+      return typeof(fspec)
+    expected_success: true
+    expected_result: "filespec"
+
+  - name: "lang.filespec - no parameters"
+    description: "Parameter validation: missing parameter should fail"
+    script: 'lang.filespec()'
+    expected_success: false
+    expected_error_type: "script_error"
+
+  # lang.list - Convert to list type
+  - name: "lang.list - string to list"
+    description: "Coerce string to list type"
+    script: |
+      local (lst = lang.list("test"));
+      return typeof(lst)
+    expected_success: true
+    expected_result: "list"
+
+  - name: "lang.list - binary to list"
+    description: "Coerce binary to list type"
+    script: |
+      local (bin = pack("test"));
+      local (lst = lang.list(bin));
+      return typeof(lst)
+    expected_success: true
+    expected_result: "list"
+
+  - name: "lang.list - no parameters"
+    description: "Parameter validation: missing parameter should fail"
+    script: 'lang.list()'
+    expected_success: false
+    expected_error_type: "script_error"
+
+  # lang.record - Convert to record type
+  - name: "lang.record - list to record"
+    description: "Coerce list to record type"
+    script: |
+      local (lst = {1, 2, 3});
+      local (rec = lang.record(lst));
+      return typeof(rec)
+    expected_success: true
+    expected_result: "record"
+
+  - name: "lang.record - no parameters"
+    description: "Parameter validation: missing parameter should fail"
+    script: 'lang.record()'
+    expected_success: false
+    expected_error_type: "script_error"
+
+  # lang.enum - Convert to enum type
+  - name: "lang.enum - string to enum"
+    description: "Coerce string to enum type"
+    script: |
+      local (en = lang.enum("testvalue"));
+      return typeof(en)
+    expected_success: true
+    expected_result: "enum"
+
+  - name: "lang.enum - no parameters"
+    description: "Parameter validation: missing parameter should fail"
+    script: 'lang.enum()'
+    expected_success: false
+    expected_error_type: "script_error"
