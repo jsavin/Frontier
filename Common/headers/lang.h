@@ -1323,6 +1323,13 @@ extern boolean functionvalue (hdltreenode, hdltreenode, tyvaluerecord *);
               vreturned - output value record (returns flvalue=true on success)*/
 extern boolean newvaluefunc (hdltreenode hparam1, tyvaluerecord *vreturned);
 
+/* Phase 1 type conversion functions */
+extern boolean langdoublefunc (hdltreenode hparam1, tyvaluerecord *vreturned);
+extern boolean langsinglefunc (hdltreenode hparam1, tyvaluerecord *vreturned);
+extern boolean langfixedfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
+extern boolean langdirectionfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
+extern boolean langstring4func (hdltreenode hparam1, tyvaluerecord *vreturned);
+
 extern boolean langzoomvalwindow (hdlhashtable, bigstring, tyvaluerecord, boolean); /*langverbs.c*/
 
 extern boolean langfindtargetwindow (short, WindowPtr *);
