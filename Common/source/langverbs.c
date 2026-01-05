@@ -936,6 +936,58 @@ boolean newvaluefunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	} /*newvaluefunc*/
 
 
+/* Phase 1 type conversion wrapper functions */
+
+boolean langdoublefunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Convert parameter to double-precision float
+	*/
+	flnextparamislast = true;
+
+	return (getdoubleparam (hparam1, 1, vreturned));
+	} /*langdoublefunc*/
+
+
+boolean langsinglefunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Convert parameter to single-precision float
+	*/
+	flnextparamislast = true;
+
+	return (getsingleparam (hparam1, 1, vreturned));
+	} /*langsinglefunc*/
+
+
+boolean langfixedfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Convert parameter to fixed-point number
+	*/
+	flnextparamislast = true;
+
+	return (getfixedparam (hparam1, 1, vreturned));
+	} /*langfixedfunc*/
+
+
+boolean langdirectionfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Convert parameter to direction enum
+	*/
+	flnextparamislast = true;
+
+	return (getdirectionparam (hparam1, 1, vreturned));
+	} /*langdirectionfunc*/
+
+
+boolean langstring4func (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Convert parameter to 4-character string (OSType)
+	*/
+	flnextparamislast = true;
+
+	return (getostypeparam (hparam1, 1, vreturned));
+	} /*langstring4func*/
+
+
 static boolean disposevaluefunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	
 	/*

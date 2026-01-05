@@ -1,0 +1,243 @@
+# Integration tests for lang verb operations (type conversions)
+# Tests type conversion verbs available in headless mode
+#
+# Test case fields:
+#   name: Test name (required)
+#   description: Test description (optional)
+#   script: UserTalk script to execute (required)
+#   expected_success: true/false (default: true)
+#   expected_result: Expected return value as string (optional)
+#   expected_result_type: Expected result type from JSON (optional)
+#   expected_error_type: Expected error type if expected_success=false (optional)
+#   timeout: Timeout in seconds (optional, default: 10)
+
+tests:
+  # lang.double - Convert to double-precision float
+  - name: "lang.double - integer to double"
+    description: "Convert integer to double-precision float"
+    script: 'lang.double(42)'
+    expected_success: true
+    expected_result: "42"
+    expected_result_type: "double"
+
+  - name: "lang.double - string to double"
+    description: "Convert string representation to double"
+    script: 'lang.double("3.14159")'
+    expected_success: true
+    expected_result: "3.14159"
+    expected_result_type: "double"
+
+  - name: "lang.double - negative value"
+    description: "Convert negative number to double"
+    script: 'lang.double(-273.15)'
+    expected_success: true
+    expected_result: "-273.15"
+    expected_result_type: "double"
+
+  - name: "lang.double - boolean true"
+    description: "Convert boolean true to double (1.0)"
+    script: 'lang.double(true)'
+    expected_success: true
+    expected_result: "1"
+    expected_result_type: "double"
+
+  - name: "lang.double - boolean false"
+    description: "Convert boolean false to double (0.0)"
+    script: 'lang.double(false)'
+    expected_success: true
+    expected_result: "0"
+    expected_result_type: "double"
+
+  # lang.single - Convert to single-precision float
+  - name: "lang.single - integer to single"
+    description: "Convert integer to single-precision float"
+    script: 'lang.single(42)'
+    expected_success: true
+    expected_result: "42"
+    expected_result_type: "float"
+
+  - name: "lang.single - string to single"
+    description: "Convert string representation to single-precision"
+    script: 'lang.single("3.14159")'
+    expected_success: true
+    expected_result: "3.14159"
+    expected_result_type: "float"
+
+  - name: "lang.single - negative value"
+    description: "Convert negative number to single"
+    script: 'lang.single(-100.5)'
+    expected_success: true
+    expected_result: "-100.5"
+    expected_result_type: "float"
+
+  - name: "lang.single - double to single precision"
+    description: "Convert double to single (may lose precision)"
+    script: 'lang.single(1.23456789)'
+    expected_success: true
+    expected_result_type: "float"
+
+  # lang.fixed - Convert to fixed-point (scaled integer)
+  - name: "lang.fixed - integer to fixed"
+    description: "Convert integer to fixed-point"
+    script: 'lang.fixed(42)'
+    expected_success: true
+    expected_result: "42"
+    expected_result_type: "fixed"
+
+  - name: "lang.fixed - double to fixed"
+    description: "Convert double to fixed-point"
+    script: 'lang.fixed(3.14159)'
+    expected_success: true
+    expected_result_type: "fixed"
+
+  - name: "lang.fixed - string to fixed"
+    description: "Convert string to fixed-point"
+    script: 'lang.fixed("100.25")'
+    expected_success: true
+    expected_result_type: "fixed"
+
+  - name: "lang.fixed - negative value"
+    description: "Convert negative number to fixed"
+    script: 'lang.fixed(-50.75)'
+    expected_success: true
+    expected_result_type: "fixed"
+
+  # lang.direction - Convert to direction enum (up/down/left/right/flatup/flatdown/nodirection)
+  - name: "lang.direction - string 'up'"
+    description: "Convert string 'up' to direction"
+    script: 'lang.direction("up")'
+    expected_success: true
+    expected_result: "up"
+    expected_result_type: "direction"
+
+  - name: "lang.direction - string 'down'"
+    description: "Convert string 'down' to direction"
+    script: 'lang.direction("down")'
+    expected_success: true
+    expected_result: "down"
+    expected_result_type: "direction"
+
+  - name: "lang.direction - string 'left'"
+    description: "Convert string 'left' to direction"
+    script: 'lang.direction("left")'
+    expected_success: true
+    expected_result: "left"
+    expected_result_type: "direction"
+
+  - name: "lang.direction - string 'right'"
+    description: "Convert string 'right' to direction"
+    script: 'lang.direction("right")'
+    expected_success: true
+    expected_result: "right"
+    expected_result_type: "direction"
+
+  - name: "lang.direction - string 'flatup'"
+    description: "Convert string 'flatup' to direction"
+    script: 'lang.direction("flatup")'
+    expected_success: true
+    expected_result: "flatup"
+    expected_result_type: "direction"
+
+  - name: "lang.direction - string 'flatdown'"
+    description: "Convert string 'flatdown' to direction"
+    script: 'lang.direction("flatdown")'
+    expected_success: true
+    expected_result: "flatdown"
+    expected_result_type: "direction"
+
+  - name: "lang.direction - invalid direction"
+    description: "Attempt to convert invalid direction string"
+    script: 'lang.direction("invalid")'
+    expected_success: false
+
+  # lang.string4 - Convert to OSType (4-character string code)
+  - name: "lang.string4 - 4-char string"
+    description: "Convert 4-character string to OSType"
+    script: 'lang.string4("TEXT")'
+    expected_success: true
+    expected_result: "TEXT"
+    expected_result_type: "ostype"
+
+  - name: "lang.string4 - integer code"
+    description: "Convert integer code to OSType"
+    script: 'lang.string4(1414745172)'
+    expected_success: true
+    expected_result_type: "ostype"
+
+  - name: "lang.string4 - padded string"
+    description: "Convert short string to OSType (should pad)"
+    script: 'lang.string4("ZIP")'
+    expected_success: true
+    expected_result_type: "ostype"
+
+  # Type conversion round-trips
+  - name: "lang.double roundtrip"
+    description: "Convert to double and back via string"
+    script: 'lang.double(string(lang.double(42)))'
+    expected_success: true
+    expected_result: "42"
+
+  - name: "lang.single roundtrip"
+    description: "Convert to single and back via string"
+    script: 'lang.single(string(lang.single(3.14)))'
+    expected_success: true
+    expected_result_type: "float"
+
+  # Edge cases
+  - name: "lang.double - zero"
+    description: "Convert zero to double"
+    script: 'lang.double(0)'
+    expected_success: true
+    expected_result: "0"
+    expected_result_type: "double"
+
+  - name: "lang.double - very large number"
+    description: "Convert large number to double"
+    script: 'lang.double(1234567890)'
+    expected_success: true
+    expected_result: "1234567890"
+    expected_result_type: "double"
+
+  - name: "lang.single - very small number"
+    description: "Convert very small number to single"
+    script: 'lang.single(0.0001)'
+    expected_success: true
+    expected_result_type: "float"
+
+  - name: "lang.fixed - zero"
+    description: "Convert zero to fixed"
+    script: 'lang.fixed(0)'
+    expected_success: true
+    expected_result: "0"
+    expected_result_type: "fixed"
+
+  # Parameter validation tests (verifying automatic validation via getXXXparam)
+  - name: "lang.double - no parameters"
+    description: "Parameter validation: missing parameter should fail"
+    script: 'lang.double()'
+    expected_success: false
+
+  - name: "lang.double - too many parameters"
+    description: "Parameter validation: extra parameters should fail"
+    script: 'lang.double(1, 2)'
+    expected_success: false
+
+  - name: "lang.single - no parameters"
+    description: "Parameter validation: missing parameter should fail"
+    script: 'lang.single()'
+    expected_success: false
+
+  - name: "lang.fixed - too many parameters"
+    description: "Parameter validation: extra parameters should fail"
+    script: 'lang.fixed(1, 2)'
+    expected_success: false
+
+  - name: "lang.direction - no parameters"
+    description: "Parameter validation: missing parameter should fail"
+    script: 'lang.direction()'
+    expected_success: false
+
+  - name: "lang.string4 - too many parameters"
+    description: "Parameter validation: extra parameters should fail"
+    script: 'lang.string4("TEXT", "EXTRA")'
+    expected_success: false

@@ -93,6 +93,13 @@ STUB_CONFIGS = {
     ('lang', 'settarget'): (STUB_FORWARD, 'langsettargetfunc'),
     ('lang', 'cleartarget'): (STUB_FORWARD, 'langcleartargetfunc'),
 
+    # Phase 1 type conversion verbs
+    ('lang', 'double'): (STUB_FORWARD, 'langdoublefunc'),
+    ('lang', 'single'): (STUB_FORWARD, 'langsinglefunc'),
+    ('lang', 'fixed'): (STUB_FORWARD, 'langfixedfunc'),
+    ('lang', 'direction'): (STUB_FORWARD, 'langdirectionfunc'),
+    ('lang', 'string4'): (STUB_FORWARD, 'langstring4func'),
+
     # target verbs
     ('target', 'get'): (STUB_FORWARD, 'langgettargetfunc'),
     ('target', 'set'): (STUB_FORWARD, 'langsettargetfunc'),

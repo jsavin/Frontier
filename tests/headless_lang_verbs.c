@@ -152,16 +152,15 @@ static boolean lang_valueproc(short token, hdltreenode hparam1,
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_direction:
-            /* Verb: lang.direction - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: lang.direction - forward to real implementation */
+            return langdirectionfunc(hparam1, vreturned);
         case lanv_string4:
-            /* Verb: lang.string4 - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: lang.string4 - forward to real implementation */
+            return langstring4func(hparam1, vreturned);
         case lanv_string: {
             /* Verb: lang.string - coerce value to string */
             /* ADR-005: flcoerceexternaltostring now thread-local macro */
+            /* NOTE: DO NOT REGENERATE - special implementation with flcoerceexternaltostring */
             boolean fl;
 
             flnextparamislast = true;
@@ -211,17 +210,14 @@ static boolean lang_valueproc(short token, hdltreenode hparam1,
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_fixed:
-            /* Verb: lang.fixed - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: lang.fixed - forward to real implementation */
+            return langfixedfunc(hparam1, vreturned);
         case lanv_single:
-            /* Verb: lang.single - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: lang.single - forward to real implementation */
+            return langsinglefunc(hparam1, vreturned);
         case lanv_double:
-            /* Verb: lang.double - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: lang.double - forward to real implementation */
+            return langdoublefunc(hparam1, vreturned);
         case lanv_filespec:
             /* Verb: lang.filespec - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
