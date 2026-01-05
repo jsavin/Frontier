@@ -541,7 +541,7 @@ static boolean settimesverb (tylangtoken token, hdltreenode hparam1, tyvaluereco
 	hdlexternalvariable hv;
 	int64_t timecreated = 0;
 	int64_t timemodified = 0;
-	unsigned long newtime;
+	int64_t newtime;
 	hdlhashnode hnode;
 
 	if (!getvarvalue (hparam1, 1, &htable, bs, &v, &hnode))
@@ -2322,7 +2322,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 		
 		case setdatefunc: {
 			short day, month, year, hour, minute, second;
-			unsigned long date;
+			int64_t date;
 			
 			if (!getintvalue (hparam1, 1, &day))
 				return (false);
@@ -2350,17 +2350,14 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 		
 		case getdatefunc: {
-			unsigned long temp_secs;
 			int64_t secs;
 			short day, month, year, hour, minute, second;
 
 			if (!langcheckparamcount (hparam1, 7)) /*preflight before changing values*/
 				return (false);
 
-			if (!getdatevalue (hparam1, 1, &temp_secs))
+			if (!getdatevalue (hparam1, 1, &secs))
 				return (false);
-
-			secs = (int64_t)temp_secs;
 			secondstodatetime (secs, &day, &month, &year, &hour, &minute, &second);
 			
 			if (!setintvarparam (hparam1, 2, day))
@@ -2428,7 +2425,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 
 		case abbrevstringfunc: {
-			unsigned long date;
+			int64_t date;
 
 			flnextparamislast = true;
 			
@@ -2441,7 +2438,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 
 		case dayofweekfunc: {
-			unsigned long date;
+			int64_t date;
 			short day;
 
 			flnextparamislast = true;
@@ -2455,7 +2452,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 
 		case daysinmonthfunc: {
-			unsigned long date;
+			int64_t date;
 			short day, month, year, hour, minute, second;
 
 			flnextparamislast = true;
@@ -2471,7 +2468,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 
 		case daystringfunc: {
-			unsigned long date;
+			int64_t date;
 			short dayofweek;
 
 			flnextparamislast = true;
@@ -2487,7 +2484,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 
 		case firstofmonthfunc: {
-			unsigned long date;
+			int64_t date;
 
 			flnextparamislast = true;
 			
@@ -2500,7 +2497,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 
 		case lastofmonthfunc: {
-			unsigned long date;
+			int64_t date;
 
 			flnextparamislast = true;
 			
@@ -2513,7 +2510,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 
 		case longstringfunc: {
-			unsigned long date;
+			int64_t date;
 
 			flnextparamislast = true;
 			
@@ -2526,7 +2523,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 
 		case nextmonthfunc: {
-			unsigned long date;
+			int64_t date;
 
 			flnextparamislast = true;
 			
@@ -2539,7 +2536,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 
 		case nextweekfunc: {
-			unsigned long date;
+			int64_t date;
 
 			flnextparamislast = true;
 			
@@ -2552,7 +2549,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 
 		case nextyearfunc: {
-			unsigned long date;
+			int64_t date;
 
 			flnextparamislast = true;
 			
@@ -2565,7 +2562,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 
 		case prevmonthfunc: {
-			unsigned long date;
+			int64_t date;
 
 			flnextparamislast = true;
 			
@@ -2578,7 +2575,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 
 		case prevweekfunc: {
-			unsigned long date;
+			int64_t date;
 
 			flnextparamislast = true;
 			
@@ -2591,7 +2588,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 
 		case prevyearfunc: {
-			unsigned long date;
+			int64_t date;
 
 			flnextparamislast = true;
 			
@@ -2604,7 +2601,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 
 		case shortstringfunc: {
-			unsigned long date;
+			int64_t date;
 
 			flnextparamislast = true;
 			
@@ -2617,7 +2614,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 
 		case tomorrowfunc: {
-			unsigned long date;
+			int64_t date;
 
 			flnextparamislast = true;
 			
@@ -2630,7 +2627,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 
 		case weeksinmonthfunc: {
-			unsigned long date;
+			int64_t date;
 			short day, month, year, hour, minute, second, dayoffset;
 
 			flnextparamislast = true;
@@ -2651,7 +2648,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 
 		case yesterdayfunc: {
-			unsigned long date;
+			int64_t date;
 
 			flnextparamislast = true;
 			
@@ -2671,7 +2668,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 
 		case netstandardstringfunc: { //AR 07/07/1999
-			unsigned long date;
+			int64_t date;
 
 			flnextparamislast = true;
 			

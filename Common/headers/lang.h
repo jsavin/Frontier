@@ -1251,7 +1251,7 @@ extern boolean getlongvalue (hdltreenode, short, long *);
 
 extern boolean getdirectionvalue (hdltreenode, short, tydirection *);
 
-extern boolean getdatevalue (hdltreenode, short, unsigned long *);
+extern boolean getdatevalue (hdltreenode, short, int64_t *);
 
 extern boolean getostypevalue (hdltreenode, short, OSType *);
 
