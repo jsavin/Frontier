@@ -439,8 +439,8 @@ typedef struct tyOLD42disksymbolrecord {
 typedef struct tydisktablerecord_v4 {
 	int16_t version;
 	int16_t sortorder;
-	uint32_t timecreated;
-	uint32_t timelastsave;
+	uint32_t timecreated;    /* legacy-disk-format - 32-bit OK for v4 compatibility */
+	uint32_t timelastsave;   /* legacy-disk-format - 32-bit OK for v4 compatibility */
 	int32_t flags;
 } tydisktablerecord_v4;
 

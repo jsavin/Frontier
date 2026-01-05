@@ -127,25 +127,21 @@ static boolean lang_valueproc(short token, hdltreenode hparam1,
             /* Verb: lang.settimemodified - forward to real implementation */
             return langsettimemodifiedfunc(hparam1, vreturned);
         case lanv_boolean:
-            /* Verb: lang.boolean - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: lang.boolean - forward to real implementation */
+            return langbooleanfunc(hparam1, vreturned);
         case lanv_char:
-            /* Verb: lang.char - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: lang.char - forward to real implementation */
+            return langcharfunc(hparam1, vreturned);
         case lanv_short:
             /* Verb: lang.short - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_long:
-            /* Verb: lang.long - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: lang.long - forward to real implementation */
+            return langlongfunc(hparam1, vreturned);
         case lanv_date:
-            /* Verb: lang.date - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: lang.date - forward to real implementation */
+            return langdatefunc(hparam1, vreturned);
         case lanv_direction:
             /* Verb: lang.direction - forward to real implementation */
             return langdirectionfunc(hparam1, vreturned);
@@ -153,21 +149,18 @@ static boolean lang_valueproc(short token, hdltreenode hparam1,
             /* Verb: lang.string4 - forward to real implementation */
             return langstring4func(hparam1, vreturned);
         case lanv_string:
-            /* Verb: lang.string - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: lang.string - forward to real implementation */
+            return langstringfunc(hparam1, vreturned);
         case lanv_displaystring:
             /* Verb: lang.displaystring - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_address:
-            /* Verb: lang.address - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: lang.address - forward to real implementation */
+            return langaddressfunc(hparam1, vreturned);
         case lanv_binary:
-            /* Verb: lang.binary - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: lang.binary - forward to real implementation */
+            return langbinaryfunc(hparam1, vreturned);
         case lanv_getbinarytype:
             /* Verb: lang.getbinarytype - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
@@ -177,21 +170,17 @@ static boolean lang_valueproc(short token, hdltreenode hparam1,
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_point:
-            /* Verb: lang.point - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: lang.point - forward to real implementation */
+            return langpointfunc(hparam1, vreturned);
         case lanv_rect:
-            /* Verb: lang.rect - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: lang.rect - forward to real implementation */
+            return langrectfunc(hparam1, vreturned);
         case lanv_rgb:
-            /* Verb: lang.rgb - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: lang.rgb - forward to real implementation */
+            return langrgbfunc(hparam1, vreturned);
         case lanv_pattern:
-            /* Verb: lang.pattern - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: lang.pattern - forward to real implementation */
+            return langpatternfunc(hparam1, vreturned);
         case lanv_fixed:
             /* Verb: lang.fixed - forward to real implementation */
             return langfixedfunc(hparam1, vreturned);
@@ -202,25 +191,21 @@ static boolean lang_valueproc(short token, hdltreenode hparam1,
             /* Verb: lang.double - forward to real implementation */
             return langdoublefunc(hparam1, vreturned);
         case lanv_filespec:
-            /* Verb: lang.filespec - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: lang.filespec - forward to real implementation */
+            return langfilespecfunc(hparam1, vreturned);
         case lanv_alias:
             /* Verb: lang.alias - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_list:
-            /* Verb: lang.list - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: lang.list - forward to real implementation */
+            return langlistfunc(hparam1, vreturned);
         case lanv_record:
-            /* Verb: lang.record - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: lang.record - forward to real implementation */
+            return langrecordfunc(hparam1, vreturned);
         case lanv_enum:
-            /* Verb: lang.enum - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: lang.enum - forward to real implementation */
+            return langenumfunc(hparam1, vreturned);
         case lanv_memavail:
             /* Verb: lang.memavail - forward to real implementation */
             return langmemavailfunc(hparam1, vreturned);

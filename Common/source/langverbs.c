@@ -1600,6 +1600,176 @@ boolean langsettimemodifiedfunc (hdltreenode hparam1, tyvaluerecord *vreturned) 
 	} /*langsettimemodifiedfunc*/
 
 
+/* Phase 5: Type conversion wrapper functions */
+
+boolean langbooleanfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Convert parameter to boolean type
+	*/
+	flnextparamislast = true;
+
+	return (getbooleanparam (hparam1, 1, vreturned));
+	} /*langbooleanfunc*/
+
+
+boolean langcharfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Convert parameter to char type
+	*/
+	flnextparamislast = true;
+
+	return (getcharparam (hparam1, 1, vreturned));
+	} /*langcharfunc*/
+
+
+boolean langlongfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Convert parameter to long integer type
+	*/
+	flnextparamislast = true;
+
+	return (getlongparam (hparam1, 1, vreturned));
+	} /*langlongfunc*/
+
+
+boolean langdatefunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Convert parameter to date type (64-bit timestamp)
+	*/
+	flnextparamislast = true;
+
+	return (getdateparam (hparam1, 1, vreturned));
+	} /*langdatefunc*/
+
+
+boolean langstringfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Convert parameter to string type
+	Special handling: enables external-to-string coercion
+	*/
+	boolean fl;
+
+	flnextparamislast = true;
+
+	flcoerceexternaltostring = true; /*special case -- enable for this verb*/
+
+	fl = getstringparam (hparam1, 1, vreturned);
+
+	flcoerceexternaltostring = false;
+
+	return (fl);
+	} /*langstringfunc*/
+
+
+boolean langaddressfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Convert parameter to address type
+	*/
+	flnextparamislast = true;
+
+	return (getaddressparam (hparam1, 1, vreturned));
+	} /*langaddressfunc*/
+
+
+boolean langbinaryfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Convert parameter to binary type
+	*/
+	flnextparamislast = true;
+
+	return (getbinaryparam (hparam1, 1, vreturned));
+	} /*langbinaryfunc*/
+
+
+boolean langpointfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Convert parameter to point type
+	*/
+	flnextparamislast = true;
+
+	return (getpointparam (hparam1, 1, vreturned));
+	} /*langpointfunc*/
+
+
+boolean langrectfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Convert parameter to rect type
+	*/
+	flnextparamislast = true;
+
+	return (getrectparam (hparam1, 1, vreturned));
+	} /*langrectfunc*/
+
+
+boolean langrgbfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Convert parameter to RGB type
+	*/
+	flnextparamislast = true;
+
+	return (getrgbparam (hparam1, 1, vreturned));
+	} /*langrgbfunc*/
+
+
+boolean langpatternfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Convert parameter to pattern type
+	*/
+	flnextparamislast = true;
+
+	return (getpatternparam (hparam1, 1, vreturned));
+	} /*langpatternfunc*/
+
+
+boolean langfilespecfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Convert parameter to filespec type
+	*/
+	flnextparamislast = true;
+
+	return (getfilespecparam (hparam1, 1, vreturned));
+	} /*langfilespecfunc*/
+
+
+boolean langlistfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Convert parameter to list type using coercion
+	*/
+	flnextparamislast = true;
+
+	if (!getparamvalue (hparam1, 1, vreturned))
+		return (false);
+
+	return (coercevalue (vreturned, listvaluetype));
+	} /*langlistfunc*/
+
+
+boolean langrecordfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Convert parameter to record type using coercion
+	*/
+	flnextparamislast = true;
+
+	if (!getparamvalue (hparam1, 1, vreturned))
+		return (false);
+
+	return (coercevalue (vreturned, recordvaluetype));
+	} /*langrecordfunc*/
+
+
+boolean langenumfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Convert parameter to enum type using coercion
+	*/
+	flnextparamislast = true;
+
+	if (!getparamvalue (hparam1, 1, vreturned))
+		return (false);
+
+	return (coercevalue (vreturned, enumvaluetype));
+	} /*langenumfunc*/
+
+
 static boolean getuserinfofunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	
 	bigstring bsvarname, bsvarinitials, bsvarorg, bsvaremail;

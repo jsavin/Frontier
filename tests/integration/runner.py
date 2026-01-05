@@ -20,6 +20,32 @@ except ImportError:
     sys.exit(1)
 
 
+# Type name aliases: Maps Frontier's internal type names to canonical test names
+# Frontier uses shortened or internal names in JSON output that differ from
+# the type names used in UserTalk and test expectations.
+TYPE_ALIASES = {
+    'addr': 'address',      # Address type
+    'data': 'binary',       # Binary data type
+    'fss ': 'filespec',     # Filespec type (note trailing space in Frontier output)
+    'fss': 'filespec',      # Filespec type (without trailing space)
+}
+
+
+def normalize_type_name(type_name: Optional[str]) -> Optional[str]:
+    """
+    Normalize a Frontier type name to its canonical form.
+
+    Args:
+        type_name: Type name from Frontier JSON output
+
+    Returns:
+        Canonical type name, or original if no alias exists
+    """
+    if type_name is None:
+        return None
+    return TYPE_ALIASES.get(type_name, type_name)
+
+
 class TestResult:
     """Result of a single test execution."""
 
@@ -135,7 +161,10 @@ class TestCase:
         # Check result type if specified
         if self.expected_success and self.expected_result_type is not None:
             actual_result_type = output.get('result_type')
-            if actual_result_type != self.expected_result_type:
+            # Normalize both types for comparison (handles Frontier's internal type names)
+            normalized_actual = normalize_type_name(actual_result_type)
+            normalized_expected = normalize_type_name(self.expected_result_type)
+            if normalized_actual != normalized_expected:
                 return False, f"Expected result_type={self.expected_result_type}, got {actual_result_type}"
 
         # If expecting failure, check error type

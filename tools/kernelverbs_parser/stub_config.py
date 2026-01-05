@@ -117,6 +117,23 @@ STUB_CONFIGS = {
     ('lang', 'settimecreated'): (STUB_FORWARD, 'langsettimecreatedfunc'),
     ('lang', 'settimemodified'): (STUB_FORWARD, 'langsettimemodifiedfunc'),
 
+    # Phase 5: Type conversion verbs (15 verbs)
+    ('lang', 'boolean'): (STUB_FORWARD, 'langbooleanfunc'),
+    ('lang', 'char'): (STUB_FORWARD, 'langcharfunc'),
+    ('lang', 'long'): (STUB_FORWARD, 'langlongfunc'),
+    ('lang', 'date'): (STUB_FORWARD, 'langdatefunc'),
+    ('lang', 'string'): (STUB_FORWARD, 'langstringfunc'),
+    ('lang', 'address'): (STUB_FORWARD, 'langaddressfunc'),
+    ('lang', 'binary'): (STUB_FORWARD, 'langbinaryfunc'),
+    ('lang', 'point'): (STUB_FORWARD, 'langpointfunc'),
+    ('lang', 'rect'): (STUB_FORWARD, 'langrectfunc'),
+    ('lang', 'rgb'): (STUB_FORWARD, 'langrgbfunc'),
+    ('lang', 'pattern'): (STUB_FORWARD, 'langpatternfunc'),
+    ('lang', 'filespec'): (STUB_FORWARD, 'langfilespecfunc'),
+    ('lang', 'list'): (STUB_FORWARD, 'langlistfunc'),
+    ('lang', 'record'): (STUB_FORWARD, 'langrecordfunc'),
+    ('lang', 'enum'): (STUB_FORWARD, 'langenumfunc'),
+
     # target verbs
     ('target', 'get'): (STUB_FORWARD, 'langgettargetfunc'),
     ('target', 'set'): (STUB_FORWARD, 'langsettargetfunc'),
