@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./frontier-cli/frontier-cli:*)",
+      "Bash(frontier-cli/frontier-cli:*)",
+      "Bash(./frontier-cli:*)",
+      "Bash(make:*)",
+      "Bash(make clean:*)",
+      "Bash(SANITIZE=1 make:*)",
+      "Bash(env SANITIZE=1 make:*)",
+      "Bash(FRONTIER_CLI_LOG_LEVEL=debug ./frontier-cli:*)",
+      "Bash(FRONTIER_CLI_LOG_LEVEL=debug ./frontier-cli/frontier-cli:*)",
+      "Bash(python3:*)",
+      "Bash(git add:*)",
+      "Bash(git checkout:*)",
+      "Bash(git commit:*)",
+      "Bash(git fetch:*)",
+      "Bash(git grep:*)",
+      "Bash(git log:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(git merge:*)",
+      "Bash(git pull:*)",
+      "Bash(git push:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr view:*)",
+      "Bash(find:*)",
+      "Bash(cat:*)",
+      "Bash(chmod:*)",
+      "Bash(awk:*)",
+      "Bash(xargs:*)",
+      "Bash(xxd:*)",
+      "Bash(dd:*)",
+      "Bash(tee:*)",
+      "WebFetch(domain:github.com)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

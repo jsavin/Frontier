@@ -123,3 +123,7 @@ dist/
 /_CURRENT_TODO_LIST.md
 /_STATUS_ARCHIVE.md
 test_type.txt
+
+# Claude Code local settings (user-specific paths and permissions)
+.claude/settings.local.json
+.claude/.DS_Store
