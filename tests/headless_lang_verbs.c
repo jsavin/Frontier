@@ -95,9 +95,8 @@ static boolean lang_valueproc(short token, hdltreenode hparam1,
             /* Verb: lang.new - forward to real implementation */
             return newvaluefunc(hparam1, vreturned);
         case lanv_delete:
-            /* Verb: lang.delete - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: lang.delete - forward to real implementation */
+            return langdeletefunc(hparam1, vreturned);
         case lanv_edit:
             /* Verb: lang.edit - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
@@ -237,9 +236,8 @@ static boolean lang_valueproc(short token, hdltreenode hparam1,
             /* Verb: lang.random - forward to real implementation */
             return langrandomfunc(hparam1, vreturned);
         case lanv_evaluate:
-            /* Verb: lang.evaluate - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: lang.evaluate - forward to real implementation */
+            return langevaluatefunc(hparam1, vreturned);
         case lanv_evaluatethread:
             /* Verb: lang.evaluatethread - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
@@ -303,9 +301,8 @@ static boolean lang_valueproc(short token, hdltreenode hparam1,
                 copystring(BIGSTRING("\pCan't call OSA verbs because AppleScript is not available in headless mode"), bserror);
             return false;
         case lanv_msg:
-            /* Verb: lang.msg - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: lang.msg - forward to real implementation */
+            return langmsgfunc(hparam1, vreturned);
         case lanv_callxcmd:
             /* lang.callxcmd - error stub */
             if (bserror)
@@ -324,9 +321,8 @@ static boolean lang_valueproc(short token, hdltreenode hparam1,
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_callscript:
-            /* Verb: lang.callscript - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: lang.callscript - forward to real implementation */
+            return langcallscriptfunc(hparam1, vreturned);
         default:
             return false;
     }

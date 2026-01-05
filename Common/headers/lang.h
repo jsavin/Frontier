@@ -1336,6 +1336,12 @@ extern boolean langrandomfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
 extern boolean langmemavailfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
 extern boolean langflushmemfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
 
+/* Phase 3: Core Lang Operations functions */
+extern boolean langdeletefunc (hdltreenode hparam1, tyvaluerecord *vreturned);
+extern boolean langevaluatefunc (hdltreenode hparam1, tyvaluerecord *vreturned);
+extern boolean langcallscriptfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
+extern boolean langmsgfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
+
 extern boolean langzoomvalwindow (hdlhashtable, bigstring, tyvaluerecord, boolean); /*langverbs.c*/
 
 extern boolean langfindtargetwindow (short, WindowPtr *);
