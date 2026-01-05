@@ -449,10 +449,9 @@ tests:
     expected_result: "20"
 
   - name: "lang.evaluate - syntax error"
-    description: "Evaluation with syntax error should fail"
+    description: "Evaluation with syntax error should fail with scriptError"
     script: 'lang.evaluate("1 + + 1")'
-    expected_success: true
-    expected_result: "false"
+    expected_success: false
 
   - name: "lang.evaluate - empty string"
     description: "Evaluate empty string"
@@ -521,4 +520,178 @@ tests:
   - name: "lang.msg - no parameters"
     description: "Parameter validation: missing parameter should fail"
     script: 'lang.msg()'
+    expected_success: false
+
+  # Phase 4: Date/Time Verbs
+
+  # lang.timecreated - Get creation time of object
+  - name: "lang.timecreated - table creation time"
+    description: "Get creation time of a newly created table"
+    script: |
+      lang.new(tableType, @t);
+      local (tc = lang.timecreated(@t));
+      return typeof(tc) == 'date'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "lang.timecreated - timestamp is recent"
+    description: "Creation time should be close to current time"
+    script: |
+      lang.new(tableType, @t);
+      local (tc = lang.timecreated(@t));
+      local (now = clock.now());
+      return (now - tc) < 10
+    expected_success: true
+    expected_result: "true"
+
+  - name: "lang.timecreated - timestamp not zero"
+    description: "Creation time should not be zero"
+    script: |
+      lang.new(tableType, @t);
+      return lang.timecreated(@t) > 0
+    expected_success: true
+    expected_result: "true"
+
+  - name: "lang.timecreated - timestamp not in future"
+    description: "Creation time should not be in the future"
+    script: |
+      lang.new(tableType, @t);
+      local (tc = lang.timecreated(@t));
+      local (now = clock.now());
+      return tc <= now
+    expected_success: true
+    expected_result: "true"
+
+  - name: "lang.timecreated - no parameters"
+    description: "Parameter validation: missing parameter should fail"
+    script: 'lang.timecreated()'
+    expected_success: false
+
+  # lang.timemodified - Get modification time of object
+  - name: "lang.timemodified - table modification time"
+    description: "Get modification time of a newly created table"
+    script: |
+      lang.new(tableType, @t);
+      local (tm = lang.timemodified(@t));
+      return typeof(tm) == 'date'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "lang.timemodified - timestamp is recent"
+    description: "Modification time should be close to current time"
+    script: |
+      lang.new(tableType, @t);
+      local (tm = lang.timemodified(@t));
+      local (now = clock.now());
+      return (now - tm) < 10
+    expected_success: true
+    expected_result: "true"
+
+  - name: "lang.timemodified - equals timecreated initially"
+    description: "For new table, timemodified should equal timecreated"
+    script: |
+      lang.new(tableType, @t);
+      local (tc = lang.timecreated(@t));
+      local (tm = lang.timemodified(@t));
+      return tc == tm
+    expected_success: true
+    expected_result: "true"
+
+  - name: "lang.timemodified - no parameters"
+    description: "Parameter validation: missing parameter should fail"
+    script: 'lang.timemodified()'
+    expected_success: false
+
+  # lang.settimecreated - Set creation time
+  - name: "lang.settimecreated - set to 1 year ago"
+    description: "Set creation time to 1 year ago and verify"
+    script: |
+      lang.new(tableType, @t);
+      local (oneyearago = clock.now() - (60*60*24*365));
+      lang.settimecreated(@t, oneyearago);
+      local (tc = lang.timecreated(@t));
+      return (tc - oneyearago) < 2
+    expected_success: true
+    expected_result: "true"
+
+  - name: "lang.settimecreated - returns boolean true"
+    description: "settimecreated should return true on success"
+    script: |
+      lang.new(tableType, @t);
+      return lang.settimecreated(@t, clock.now() - 1000)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "lang.settimecreated - custom timestamp persists"
+    description: "Set custom timestamp and verify it persists"
+    script: |
+      lang.new(tableType, @t);
+      local (customtime = 1000000000);
+      lang.settimecreated(@t, customtime);
+      return lang.timecreated(@t) == customtime
+    expected_success: true
+    expected_result: "true"
+
+  - name: "lang.settimecreated - no parameters"
+    description: "Parameter validation: missing parameters should fail"
+    script: 'lang.settimecreated()'
+    expected_success: false
+
+  - name: "lang.settimecreated - one parameter only"
+    description: "Parameter validation: need both address and date"
+    script: |
+      lang.new(tableType, @t);
+      lang.settimecreated(@t)
+    expected_success: false
+
+  # lang.settimemodified - Set modification time
+  - name: "lang.settimemodified - set to 100 days ago"
+    description: "Set modification time to 100 days ago and verify"
+    script: |
+      lang.new(tableType, @t);
+      local (hundreddays = clock.now() - (60*60*24*100));
+      lang.settimemodified(@t, hundreddays);
+      local (tm = lang.timemodified(@t));
+      return (tm - hundreddays) < 2
+    expected_success: true
+    expected_result: "true"
+
+  - name: "lang.settimemodified - returns boolean true"
+    description: "settimemodified should return true on success"
+    script: |
+      lang.new(tableType, @t);
+      return lang.settimemodified(@t, clock.now() - 5000)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "lang.settimemodified - custom timestamp persists"
+    description: "Set custom timestamp and verify it persists"
+    script: |
+      lang.new(tableType, @t);
+      local (customtime = 2000000000);
+      lang.settimemodified(@t, customtime);
+      return lang.timemodified(@t) == customtime
+    expected_success: true
+    expected_result: "true"
+
+  - name: "lang.settimemodified - independent of timecreated"
+    description: "Setting timemodified should not affect timecreated"
+    script: |
+      lang.new(tableType, @t);
+      local (tc = lang.timecreated(@t));
+      lang.settimemodified(@t, clock.now() - 100000);
+      return lang.timecreated(@t) == tc
+    expected_success: true
+    expected_result: "true"
+
+  - name: "lang.settimemodified - no parameters"
+    description: "Parameter validation: missing parameters should fail"
+    script: 'lang.settimemodified()'
+    expected_success: false
+
+  - name: "lang.settimemodified - one parameter only"
+    description: "Parameter validation: need both address and date"
+    script: |
+      lang.new(tableType, @t);
+      lang.settimemodified(@t)
     expected_success: false

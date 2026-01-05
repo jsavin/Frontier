@@ -115,21 +115,17 @@ static boolean lang_valueproc(short token, hdltreenode hparam1,
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_timecreated:
-            /* Verb: lang.timecreated - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: lang.timecreated - forward to real implementation */
+            return langtimecreatedfunc(hparam1, vreturned);
         case lanv_timemodified:
-            /* Verb: lang.timemodified - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: lang.timemodified - forward to real implementation */
+            return langtimemodifiedfunc(hparam1, vreturned);
         case lanv_settimecreated:
-            /* Verb: lang.settimecreated - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: lang.settimecreated - forward to real implementation */
+            return langsettimecreatedfunc(hparam1, vreturned);
         case lanv_settimemodified:
-            /* Verb: lang.settimemodified - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: lang.settimemodified - forward to real implementation */
+            return langsettimemodifiedfunc(hparam1, vreturned);
         case lanv_boolean:
             /* Verb: lang.boolean - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);

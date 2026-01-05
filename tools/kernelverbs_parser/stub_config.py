@@ -111,6 +111,12 @@ STUB_CONFIGS = {
     ('lang', 'callscript'): (STUB_FORWARD, 'langcallscriptfunc'),
     ('lang', 'msg'): (STUB_FORWARD, 'langmsgfunc'),
 
+    # Phase 4: Date/Time verbs
+    ('lang', 'timecreated'): (STUB_FORWARD, 'langtimecreatedfunc'),
+    ('lang', 'timemodified'): (STUB_FORWARD, 'langtimemodifiedfunc'),
+    ('lang', 'settimecreated'): (STUB_FORWARD, 'langsettimecreatedfunc'),
+    ('lang', 'settimemodified'): (STUB_FORWARD, 'langsettimemodifiedfunc'),
+
     # target verbs
     ('target', 'get'): (STUB_FORWARD, 'langgettargetfunc'),
     ('target', 'set'): (STUB_FORWARD, 'langsettargetfunc'),

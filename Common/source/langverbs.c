@@ -1148,7 +1148,7 @@ boolean langevaluatefunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 
 	/* Run the code. langrun returns false on error and sets error state */
 	if (!langrun (htext, vreturned))
-		return (setbooleanvalue (false, vreturned));
+		return (false);  /* Modern pattern: propagate error (syntax/runtime errors) */
 
 	return (true);
 	} /*langevaluatefunc*/
@@ -1540,6 +1540,56 @@ boolean langsettargetfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	
 	return (true);
 	} /*langsettargetfunc*/
+
+
+/* Phase 4: Date/Time wrapper functions */
+
+boolean langtimecreatedfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Get creation time of an object (table, outline, script, etc.)
+	Returns date value (frontier_time_t)
+	*/
+	int64_t timecreated, timemodified;
+
+	if (!gettimesverb (hparam1, &timecreated, &timemodified))
+		return (setbooleanvalue (false, vreturned));
+
+	return (setdatevalue (timecreated, vreturned));
+	} /*langtimecreatedfunc*/
+
+
+boolean langtimemodifiedfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Get modification time of an object (table, outline, script, etc.)
+	Returns date value (frontier_time_t)
+	*/
+	int64_t timecreated, timemodified;
+
+	if (!gettimesverb (hparam1, &timecreated, &timemodified))
+		return (setbooleanvalue (false, vreturned));
+
+	return (setdatevalue (timemodified, vreturned));
+	} /*langtimemodifiedfunc*/
+
+
+boolean langsettimecreatedfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Set creation time of an object
+	Parameters: object address, new date value
+	Returns: boolean success
+	*/
+	return (settimesverb ((tylangtoken) settimecreatedfunc, hparam1, vreturned));
+	} /*langsettimecreatedfunc*/
+
+
+boolean langsettimemodifiedfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Set modification time of an object
+	Parameters: object address, new date value
+	Returns: boolean success
+	*/
+	return (settimesverb ((tylangtoken) settimemodifiedfunc, hparam1, vreturned));
+	} /*langsettimemodifiedfunc*/
 
 
 static boolean getuserinfofunc (hdltreenode hparam1, tyvaluerecord *vreturned) {

@@ -1342,6 +1342,12 @@ extern boolean langevaluatefunc (hdltreenode hparam1, tyvaluerecord *vreturned);
 extern boolean langcallscriptfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
 extern boolean langmsgfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
 
+/* Phase 4: Date/Time functions */
+extern boolean langtimecreatedfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
+extern boolean langtimemodifiedfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
+extern boolean langsettimecreatedfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
+extern boolean langsettimemodifiedfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
+
 extern boolean langzoomvalwindow (hdlhashtable, bigstring, tyvaluerecord, boolean); /*langverbs.c*/
 
 extern boolean langfindtargetwindow (short, WindowPtr *);
