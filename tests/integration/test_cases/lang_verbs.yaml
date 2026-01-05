@@ -150,23 +150,23 @@ tests:
     script: 'lang.direction("invalid")'
     expected_success: false
 
-  # lang.ostype - Convert to OSType (4-character string code)
-  - name: "lang.ostype - 4-char string"
+  # lang.string4 - Convert to OSType (4-character string code)
+  - name: "lang.string4 - 4-char string"
     description: "Convert 4-character string to OSType"
-    script: 'lang.ostype("TEXT")'
+    script: 'lang.string4("TEXT")'
     expected_success: true
     expected_result: "TEXT"
     expected_result_type: "ostype"
 
-  - name: "lang.ostype - integer code"
+  - name: "lang.string4 - integer code"
     description: "Convert integer code to OSType"
-    script: 'lang.ostype(1414745172)'
+    script: 'lang.string4(1414745172)'
     expected_success: true
     expected_result_type: "ostype"
 
-  - name: "lang.ostype - padded string"
+  - name: "lang.string4 - padded string"
     description: "Convert short string to OSType (should pad)"
-    script: 'lang.ostype("ZIP")'
+    script: 'lang.string4("ZIP")'
     expected_success: true
     expected_result_type: "ostype"
 
