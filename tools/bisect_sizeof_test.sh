@@ -13,7 +13,7 @@ env SANITIZE=1 make -C frontier-cli >/dev/null 2>&1 || exit 125
 
 # Test sizeOf('hello')
 echo "=== Testing sizeOf('hello') ==="
-output=$(FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli -e "sizeOf('hello')" 2>&1)
+output=$(./frontier-cli/frontier-cli -e "sizeOf('hello')" 2>&1)
 exit_code=$?
 
 echo "Output: $output"

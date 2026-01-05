@@ -56,7 +56,7 @@ fi
 
 # Trigger automatic migration by loading the v6 database
 # Migration happens in-place when a v6 database is loaded
-if ! FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli \
+if ! ./frontier-cli/frontier-cli \
     --system-root databases/Frontier-v6-v7.root \
     -e "1" > /tmp/bisect_migrate.log 2>&1 ; then
     echo ""
@@ -75,7 +75,7 @@ echo "✓ Migration completed successfully"
 echo ""
 echo "Step 5: Testing if database loads..."
 
-if FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli \
+if ./frontier-cli/frontier-cli \
     --system-root databases/Frontier-v6-v7.root \
     -e "1+1" > /dev/null 2>&1 ; then
     echo ""
@@ -93,7 +93,7 @@ else
     # Try to get more info about the failure
     echo ""
     echo "Attempting to get error details..."
-    FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli \
+    ./frontier-cli/frontier-cli \
         --system-root databases/Frontier-v6-v7.root \
         -e "1+1" 2>&1 | tail -20 || true
 

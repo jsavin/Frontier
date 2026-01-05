@@ -34,7 +34,7 @@ fi
 echo "3. Testing verb dispatch..."
 
 # Test 1: Basic verb (sizeOf)
-if FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli -e "sizeOf('hello')" >/dev/null 2>&1; then
+if ./frontier-cli/frontier-cli -e "sizeOf('hello')" >/dev/null 2>&1; then
     echo "   ✅ sizeOf() works"
     TEST1=0
 else
@@ -43,7 +43,7 @@ else
 fi
 
 # Test 2: String verb
-if FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli -e "string.upper('test')" >/dev/null 2>&1; then
+if ./frontier-cli/frontier-cli -e "string.upper('test')" >/dev/null 2>&1; then
     echo "   ✅ string.upper() works"
     TEST2=0
 else
@@ -52,7 +52,7 @@ else
 fi
 
 # Test 3: Arithmetic (control - should always work)
-if FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli -e "1+1" >/dev/null 2>&1; then
+if ./frontier-cli/frontier-cli -e "1+1" >/dev/null 2>&1; then
     echo "   ✅ Arithmetic works (control)"
     TEST3=0
 else

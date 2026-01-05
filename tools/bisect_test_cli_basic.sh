@@ -32,7 +32,7 @@ echo ""
 echo "Step 2: Testing basic CLI execution (no database)..."
 
 # Run CLI test (no timeout available on macOS)
-if env FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli -e "1+1" > /tmp/bisect_cli.log 2>&1 ; then
+if ./frontier-cli/frontier-cli -e "1+1" > /tmp/bisect_cli.log 2>&1 ; then
     RESULT=$(cat /tmp/bisect_cli.log)
     if [ "$RESULT" = "2" ]; then
         echo ""

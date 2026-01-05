@@ -48,8 +48,7 @@ cd tests && make test-all
 
 # Database migration (v6 → v7)
 rm -f databases/Frontier-v7.root
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli \
-  --system-root databases/Frontier-v6.root -e "1"
+./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root -e "1"
 
 # Verb coverage analysis
 cd tools/kernelverbs_parser && python3 cli.py report
@@ -424,15 +423,20 @@ case yourverb:
 # Run full test suite
 ./tools/run_headless_tests.sh
 
-# Test CLI inline
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli -e "1+1"
+# Test CLI inline (startup scripts skipped by default)
+./frontier-cli/frontier-cli -e "1+1"
 
 # Multi-line UserTalk
 ./frontier-cli/frontier-cli -e $'lang.new(tableType, @t);\nt.a=1;\nreturn t.a'
 
 # With database loaded
 ./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root -e "sizeOf(system)"
+
+# Run system.startup scripts (opt-in, rarely needed)
+FRONTIER_HEADLESS_RUN_STARTUP=1 ./frontier-cli/frontier-cli -e "1+1"
 ```
+
+**Note on Startup Scripts**: By default, frontier-cli skips `system.startup` scripts for faster execution and cleaner testing. This is the correct behavior for development and testing. Only set `FRONTIER_HEADLESS_RUN_STARTUP=1` if you specifically need startup scripts to run.
 
 ### UserTalk Syntax Gotcha ⚠️
 
