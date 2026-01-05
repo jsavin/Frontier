@@ -30,6 +30,47 @@ When implementing new kernel verbs in C:
 
 ---
 
+## Understanding typeof() in Verbs - CRITICAL ⚠️⚠️⚠️
+
+**ABSOLUTE RULE**: `typeof()` returns OSType codes (4-byte constants like `'TEXT'`, `'tabl'`, `'long'`), NEVER string names.
+
+When implementing verbs that need to check value types or return type information:
+
+### CORRECT - Use OSType Codes
+
+```c
+// ✅ Correct: Compare against OSType code
+if (v.valuetype == stringvaluetype) {
+    // v is a string
+}
+
+// ✅ Correct: typeof() returns OSType codes to UserTalk
+// When UserTalk code does:  if typeof(x) == stringType then
+// It's comparing the OSType code 'TEXT' against system.compiler.language.constants.stringType
+```
+
+### WRONG - Don't Try to Return String Names
+
+```c
+// ❌ WRONG: Never change typeof() to return string names
+setconstvalue("string", vreturned);      // NEVER do this
+setstringvalue("filespec", vreturned);   // NEVER do this
+
+// ❌ This would break all UserTalk code:
+// if typeof(x) == "string" then...      // Would always be false!
+```
+
+### Why This Matters
+
+- All existing UserTalk code uses OSType code comparisons
+- Changing `typeof()` behavior would break production code
+- Type constants in `system.compiler.language.constants` are OSType codes
+- The entire UserTalk type system depends on this contract
+
+**See `docs/USERTALK_SYNTAX_REFERENCE.md` for complete typeof() documentation.**
+
+---
+
 ## Setting UserTalk Variables from Kernel Verbs ⚠️
 
 **CRITICAL**: When a kernel verb needs to set a UserTalk variable (like `sys.unixshellcommand(cmd, @stdout)` where `@stdout` is an ODB address parameter), you MUST use the complete value record pattern.

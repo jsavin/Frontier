@@ -365,12 +365,109 @@ TRUE                   // ✗ ERROR (C-style)
 | OR | `or` | `\|\|` | `or` |
 | NOT | `not` | `!` | `not` |
 
-### Type Checking
+### Type Checking ⚠️ IMPORTANT
 
 | Feature | UserTalk | JavaScript | Python |
 |---------|----------|------------|--------|
 | Get type | `typeof(x)` | `typeof x` | `type(x)` |
 | Check existence | `defined(x)` | `typeof x !== 'undefined'` | `'x' in dir()` |
+
+**CRITICAL**: `typeof()` returns OSType codes (4-byte constants), NOT string names:
+
+```usertalk
+typeof("hello")          // → 'TEXT'         (OSType code)
+typeof(tableValue)       // → 'tabl'         (OSType code)
+typeof(filespecValue)    // → 'fss '         (OSType code)
+
+// Correct usage: Compare against constants from system.compiler.language.constants
+if typeof(x) == stringType then
+    // stringType is looked up in system.compiler.language.constants
+    // and has the value 'TEXT'
+    return "x is a string"
+```
+
+**WRONG - This breaks production code:**
+```usertalk
+typeof("hello")          // ❌ NEVER returns "string"
+if typeof(x) == "string" // ❌ ALWAYS false - this breaks code
+```
+
+See **[typeof() and OSType Codes - CRITICAL LESSON](#typeof-and-ostype-codes---critical-lesson-)** section below for full details.
+
+---
+
+## typeof() and OSType Codes - CRITICAL LESSON ⚠️⚠️⚠️
+
+### Understanding typeof()
+
+**ABSOLUTE RULE**: `typeof()` MUST return OSType codes (4-byte constants). **It will NEVER return string names like "string" or "filespec".**
+
+This is fundamental to how UserTalk's type system works. The entire runtime depends on this behavior. Changing it would catastrophically break all UserTalk code.
+
+### How typeof() Actually Works
+
+```usertalk
+// typeof() returns an OSType code (4-byte constant)
+typeof("hello")           // → 'TEXT'    (OSType code, not "string")
+typeof(123)               // → 'long'    (OSType code, not "number")
+typeof(true)              // → 'bool'    (OSType code, not "boolean")
+typeof(myTable)           // → 'tabl'    (OSType code, not "table")
+typeof(myFileSpec)        // → 'fss '    (OSType code, not "filespec")
+```
+
+### Type Comparisons in UserTalk
+
+To check a value's type, you compare `typeof()` results against **type constants** defined in `system.compiler.language.constants`:
+
+```usertalk
+// Look up the constant first
+local stringType = system.compiler.language.constants.stringType
+// stringType now contains 'TEXT'
+
+// Then compare using that constant
+if typeof(myValue) == stringType then
+    return "myValue is a string"
+
+// OR use the constant directly
+if typeof(myValue) == 'TEXT' then
+    return "myValue is a string"
+```
+
+### Common Type Constants (OSType Codes)
+
+| Type | OSType Code | Example |
+|------|-------------|---------|
+| String | `'TEXT'` | `typeof("hello")` → `'TEXT'` |
+| Number | `'long'` | `typeof(42)` → `'long'` |
+| Boolean | `'bool'` | `typeof(true)` → `'bool'` |
+| Table | `'tabl'` | `typeof(myTable)` → `'tabl'` |
+| FileSpec | `'fss '` | `typeof(filespec)` → `'fss '` |
+| Record | `'reco'` | `typeof(myRecord)` → `'reco'` |
+
+### What DOESN'T Work (And Why)
+
+**WRONG - Comparing typeof() against strings:**
+```usertalk
+if typeof(x) == "string" then     // ❌ ALWAYS false
+    return "impossible"
+
+if typeof(x) == "filespec" then   // ❌ ALWAYS false
+    return "never happens"
+```
+
+**Why it doesn't work**: `typeof()` returns the OSType code `'TEXT'` (4 bytes), not the string `"string"`. Comparing `'TEXT'` (OSType) to `"string"` (string) always returns false.
+
+### Historical Context
+
+On 2026-01-02, a well-intentioned attempt was made to "improve" `typeof()` by making it return string names like `"string"`, `"filespec"`, etc. instead of OSType codes. This would have catastrophically broken all UserTalk code in production.
+
+**Why this would have failed:**
+- All existing code expects `typeof()` to return OSType codes
+- Type comparisons use constants from `system.compiler.language.constants`
+- No UserTalk code compares `typeof()` results to string names
+- The entire type system architecture depends on OSType code semantics
+
+**Lesson learned**: Always verify expected behavior against the original Frontier documentation and existing UserTalk code before "fixing" something that seems wrong.
 
 ---
 

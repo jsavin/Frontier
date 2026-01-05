@@ -489,6 +489,47 @@ This is **opposite** of JavaScript/Python where `'x'` and `"x"` are equivalent!
 
 ---
 
+### UserTalk typeof() - ABSOLUTELY NOT TO BE CHANGED ⚠️⚠️⚠️
+
+**CRITICAL**: `typeof()` MUST always return OSType codes (4-byte constants), NEVER string names.
+
+**CORRECT BEHAVIOR**:
+```usertalk
+typeof("hello")           => 'TEXT'    (OSType code)
+typeof(filespecValue)     => 'fss '    (OSType code)
+typeof(tableValue)        => 'tabl'    (OSType code)
+
+/* Comparisons use system.compiler.language.constants */
+if typeof(x) == stringType { ... }    /* where stringType = 'TEXT' */
+if typeof(obj) == filespecType { ... } /* where filespecType = 'fss ' */
+```
+
+**WRONG - BREAKS PRODUCTION**:
+```usertalk
+typeof("hello")      => "string"       ❌ WRONG - breaks all comparisons
+typeof(filespecValue) => "filespec"     ❌ WRONG - code expects 'fss '
+```
+
+**WHY THIS MATTERS**:
+- Entire UserTalk codebase relies on typeof() returning OSType codes
+- Constants are looked up in `system.compiler.language.constants` to get the 4-byte values
+- Changing to string names breaks ALL typeof() comparisons in production code
+- Even "improving" the type system by returning strings would catastrophically break code
+
+**HISTORICAL INCIDENT** (2026-01-02):
+- Attempt made to "fix" typeof() to return string names like "filespec"
+- Would have caused production failure in all UserTalk code using typeof()
+- Caught and reverted immediately - this must NEVER happen again
+
+**IMPLEMENTATION**:
+- `typeof()` implementation: Common/source/langvalue.c, function `typefunc()`
+- Type mappings: Common/source/langops.c, `typeinfo[]` array and `langgettypeid()`
+- String to type conversion: `langgetvaluetype()` converts OSType codes back to tyvaluetype enum
+
+**LESSON**: When fixing typeof() test failures, check the test expectations first - don't change typeof() behavior. The correct approach is to fix the test to match the correct typeof() behavior.
+
+---
+
 ## Critical Testing Constraints ⚠️
 
 ### macOS Sandbox /tmp Restriction
