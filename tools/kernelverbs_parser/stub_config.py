@@ -100,6 +100,11 @@ STUB_CONFIGS = {
     ('lang', 'direction'): (STUB_FORWARD, 'langdirectionfunc'),
     ('lang', 'string4'): (STUB_FORWARD, 'langstring4func'),
 
+    # Phase 2: Memory & Utility verbs
+    ('lang', 'abs'): (STUB_FORWARD, 'langabsfunc'),
+    ('lang', 'random'): (STUB_FORWARD, 'langrandomfunc'),
+    ('lang', 'memavail'): (STUB_FORWARD, 'langmemavailfunc'),
+
     # target verbs
     ('target', 'get'): (STUB_FORWARD, 'langgettargetfunc'),
     ('target', 'set'): (STUB_FORWARD, 'langsettargetfunc'),

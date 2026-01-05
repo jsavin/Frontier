@@ -241,3 +241,149 @@ tests:
     description: "Parameter validation: extra parameters should fail"
     script: 'lang.string4("TEXT", "EXTRA")'
     expected_success: false
+
+  # Phase 2: Memory & Utility Verbs
+
+  # lang.abs - Absolute value
+  - name: "lang.abs - positive long"
+    description: "Absolute value of positive number (no change)"
+    script: 'lang.abs(42)'
+    expected_success: true
+    expected_result: "42"
+
+  - name: "lang.abs - negative long"
+    description: "Absolute value of negative number"
+    script: 'lang.abs(-42)'
+    expected_success: true
+    expected_result: "42"
+
+  - name: "lang.abs - zero"
+    description: "Absolute value of zero"
+    script: 'lang.abs(0)'
+    expected_success: true
+    expected_result: "0"
+
+  - name: "lang.abs - negative double"
+    description: "Absolute value of negative double"
+    script: 'lang.abs(-3.14159)'
+    expected_success: true
+    expected_result: "3.14159"
+
+  - name: "lang.abs - positive double"
+    description: "Absolute value of positive double (no change)"
+    script: 'lang.abs(2.71828)'
+    expected_success: true
+    expected_result: "2.71828"
+
+  - name: "lang.abs - negative single"
+    description: "Absolute value of negative single-precision"
+    script: 'lang.abs(-100.5)'
+    expected_success: true
+    expected_result: "100.5"
+
+  - name: "lang.abs - very large negative"
+    description: "Absolute value of large negative number"
+    script: 'lang.abs(-999999999)'
+    expected_success: true
+    expected_result: "999999999"
+
+  - name: "lang.abs - no parameters"
+    description: "Parameter validation: missing parameter should fail"
+    script: 'lang.abs()'
+    expected_success: false
+
+  - name: "lang.abs - too many parameters"
+    description: "Parameter validation: extra parameters should fail"
+    script: 'lang.abs(1, 2)'
+    expected_success: false
+
+  # lang.random - Random number generator
+  - name: "lang.random - in range"
+    description: "Random number should be in valid range [0, max-1]"
+    script: |
+      local (x = lang.random(100));
+      return (x >= 0) and (x < 100)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "lang.random - max=1"
+    description: "Random(1) should always return 0"
+    script: 'lang.random(1)'
+    expected_success: true
+    expected_result: "0"
+
+  - name: "lang.random - max=10"
+    description: "Random(10) should be in [0,9]"
+    script: |
+      local (x = lang.random(10));
+      return (x >= 0) and (x <= 9)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "lang.random - multiple calls differ"
+    description: "Multiple random calls should (usually) produce different values"
+    script: |
+      local (x = lang.random(1000));
+      local (y = lang.random(1000));
+      local (z = lang.random(1000));
+      return (x != y) or (y != z)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "lang.random - max=0 error"
+    description: "Random(0) should fail (invalid range)"
+    script: 'lang.random(0)'
+    expected_success: false
+
+  - name: "lang.random - negative max error"
+    description: "Random with negative max should fail"
+    script: 'lang.random(-10)'
+    expected_success: false
+
+  - name: "lang.random - no parameters"
+    description: "Parameter validation: missing parameter should fail"
+    script: 'lang.random()'
+    expected_success: false
+
+  # lang.memavail - Available memory
+  - name: "lang.memavail - returns positive"
+    description: "Available memory should be a positive number"
+    script: 'lang.memavail() > 0'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "lang.memavail - returns long"
+    description: "Memory available should return a numeric value"
+    script: |
+      local (m = lang.memavail());
+      return typeof(m) == 'long'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "lang.memavail - reasonable value"
+    description: "Memory available should be at least 1MB (sanity check)"
+    script: 'lang.memavail() >= (1024 * 1024)'
+    expected_success: true
+    expected_result: "true"
+
+  # lang.flushmemory - Memory flush (no-op)
+  - name: "lang.flushmemory - succeeds"
+    description: "Flush memory should always succeed (no-op)"
+    script: 'lang.flushmemory()'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "lang.flushmemory - returns boolean"
+    description: "Flush memory should return boolean true"
+    script: |
+      local (result = lang.flushmemory());
+      return typeof(result) == 'bool'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "lang.flushmemory - idempotent"
+    description: "Multiple flush calls should all succeed"
+    script: |
+      return lang.flushmemory() and lang.flushmemory() and lang.flushmemory()
+    expected_success: true
+    expected_result: "true"

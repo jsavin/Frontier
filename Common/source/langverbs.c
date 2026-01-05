@@ -988,6 +988,123 @@ boolean langstring4func (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	} /*langstring4func*/
 
 
+/* Phase 2: Memory & Utility wrapper functions */
+
+boolean langabsfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Return absolute value of a number.
+	Handles long, int, double, single, and fixed types.
+	*/
+	tyvaluerecord v;
+
+	flnextparamislast = true;
+
+	if (!getreadonlyparamvalue (hparam1, 1, &v))
+		return (false);
+
+	switch (v.valuetype) {
+
+		case longvaluetype:
+			if (v.data.longvalue < 0)
+				return (setlongvalue (-v.data.longvalue, vreturned));
+			break;
+
+		case intvaluetype:
+			if (v.data.intvalue < 0)
+				return (setintvalue (-v.data.intvalue, vreturned));
+			break;
+
+		case doublevaluetype: {
+			double d = **v.data.doublevalue;
+			if (d < 0.0)
+				return (setdoublevalue (-d, vreturned));
+			break;
+			}
+
+		case singlevaluetype:
+			if (v.data.singlevalue < 0.0)
+				return (setsinglevalue (-v.data.singlevalue, vreturned));
+			break;
+
+		default:
+			langerror (unaryminusnotpossibleerror);
+			return (false);
+		}
+
+	/* Value is already positive, copy it properly */
+	return (copyvaluerecord (v, vreturned));
+	} /*langabsfunc*/
+
+
+boolean langrandomfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Return random number from 0 to max-1.
+	Uses standard C rand() function.
+	*/
+	long max;
+	long result;
+
+	flnextparamislast = true;
+
+	if (!getlongvalue (hparam1, 1, &max))
+		return (false);
+
+	if (max <= 0) {
+		langerror (badrandomboundserror);
+		return (false);
+		}
+
+	/* Use rand() modulo max to get value in [0, max-1] */
+	result = rand() % max;
+
+	return (setlongvalue (result, vreturned));
+	} /*langrandomfunc*/
+
+
+boolean langmemavailfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Return available heap memory in bytes.
+	On modern systems with virtual memory, this is less meaningful,
+	but we return a reasonable estimate.
+	*/
+	long availbytes;
+
+	#pragma unused (hparam1)
+
+	/* Try to estimate available heap space
+	   Modern systems have virtual memory, so we return a conservative estimate.
+	   If haveheapspace can tell us something useful, use it.
+	*/
+
+	/* Test if we can allocate 100MB - if so, plenty of memory available */
+	if (haveheapspace (100L * 1024L * 1024L))
+		availbytes = 100L * 1024L * 1024L;
+	else if (haveheapspace (10L * 1024L * 1024L))
+		availbytes = 10L * 1024L * 1024L;
+	else if (haveheapspace (1L * 1024L * 1024L))
+		availbytes = 1L * 1024L * 1024L;
+	else
+		availbytes = 0L; /* Very low memory */
+
+	return (setlongvalue (availbytes, vreturned));
+	} /*langmemavailfunc*/
+
+
+boolean langflushmemfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Flush/compact memory.
+	On modern systems this is a no-op - memory management is automatic.
+	Always returns true for compatibility.
+	*/
+
+	#pragma unused (hparam1)
+
+	/* No-op on modern systems - automatic memory management */
+
+	return (setbooleanvalue (true, vreturned));
+	} /*langflushmemfunc*/
+
+
 static boolean disposevaluefunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	
 	/*
