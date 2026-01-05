@@ -5085,20 +5085,15 @@ boolean getdirectionvalue (hdltreenode hfirst, short pnum, tydirection *dirval) 
 	} /*getdirectionvalue*/
 
 
-boolean getdatevalue (hdltreenode hfirst, short pnum, unsigned long *dateval) {
-	
+boolean getdatevalue (hdltreenode hfirst, short pnum, int64_t *dateval) {
+
 	tyvaluerecord val;
-	
-	if (!getdateparam (hfirst, pnum, &val)) 
+
+	if (!getdateparam (hfirst, pnum, &val))
 		return (false);
-	
-	{
-		int64_t v = val.data.datevalue;
-		if (v < 0 || (uint64_t) v > ULONG_MAX)
-			return (false);
-		*dateval = (unsigned long) v;
-	}
-	
+
+	*dateval = val.data.datevalue;
+
 	return (true);
 	} /*getdatevalue*/
 

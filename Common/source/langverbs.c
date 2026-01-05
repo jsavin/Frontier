@@ -541,7 +541,7 @@ static boolean settimesverb (tylangtoken token, hdltreenode hparam1, tyvaluereco
 	hdlexternalvariable hv;
 	int64_t timecreated = 0;
 	int64_t timemodified = 0;
-	unsigned long newtime;
+	int64_t newtime;
 	hdlhashnode hnode;
 
 	if (!getvarvalue (hparam1, 1, &htable, bs, &v, &hnode))
@@ -1148,7 +1148,7 @@ boolean langevaluatefunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 
 	/* Run the code. langrun returns false on error and sets error state */
 	if (!langrun (htext, vreturned))
-		return (setbooleanvalue (false, vreturned));
+		return (false);  /* Modern pattern: propagate error (syntax/runtime errors) */
 
 	return (true);
 	} /*langevaluatefunc*/
@@ -1156,24 +1156,49 @@ boolean langevaluatefunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 
 boolean langcallscriptfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	/*
-	Call a script by name.
-	Takes script name and parameters.
-	Looks up script in current context and executes it.
+	Call a script by name with optional parameters.
 
-	Simplified wrapper around langrunscript - uses nil params (no parameters)
-	and nil context (searches current context).
-	For full functionality with params, users should call lang.callScript directly.
-	This provides basic script calling capability.
+	Parameters:
+	  1. scriptname (string) - name of script to call
+	  2. params (optional) - list or record of parameters to pass
+	  3. context (optional) - hash table context for script lookup
+
+	Follows the same pattern as thread.callscript.
+	If params is not a record, it's coerced to a list (positional parameters).
+	If params is a record, it's treated as named parameters.
 	*/
 	bigstring bsscriptname;
+	tyvaluerecord vparams;
+	hdlhashtable hcontext = nil;
+	tyvaluerecord *pvparams = nil;
 
-	flnextparamislast = true;
-
+	/* Extract script name (required) */
 	if (!getstringvalue (hparam1, 1, bsscriptname))
 		return (false);
 
-	/* Call script with nil params (no parameters) and nil context (searches current context) */
-	return (langrunscript (bsscriptname, nil, nil, vreturned));
+	/* Extract parameters (optional) */
+	if (langgetparamcount (hparam1) >= 2) {
+		if (!getparamvalue (hparam1, 2, &vparams))
+			return (false);
+
+		/* If params is not a record, coerce to list for positional parameters */
+		if (vparams.valuetype != recordvaluetype)
+			if (!coercetolist (&vparams, listvaluetype))
+				return (false);
+
+		pvparams = &vparams;
+		}
+
+	/* Extract context table (optional) */
+	if (langgetparamcount (hparam1) > 2) {
+		flnextparamislast = true;
+
+		if (!gettablevalue (hparam1, 3, &hcontext))
+			return (false);
+		}
+
+	/* Call script with parameters and context */
+	return (langrunscript (bsscriptname, pvparams, hcontext, vreturned));
 	} /*langcallscriptfunc*/
 
 
@@ -1195,6 +1220,7 @@ boolean langmsgfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 
 	#ifdef FRONTIER_HEADLESS
 	/* In headless mode, output message to stdout as single line */
+	/* User-facing output to terminal (not diagnostic logging) */
 	/* Use fputs to avoid format string vulnerability */
 	fputs(stringbaseaddress (bs), stdout);
 	fputc('\n', stdout);
@@ -1514,6 +1540,64 @@ boolean langsettargetfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	
 	return (true);
 	} /*langsettargetfunc*/
+
+
+/* Phase 4: Date/Time wrapper functions */
+
+boolean langtimecreatedfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Get creation time of an object (table, outline, script, etc.)
+	Parameters:
+	  1. address - object address (table, outline, etc.)
+	Returns: date value (frontier_time_t)
+	*/
+	int64_t timecreated, timemodified;
+
+	if (!gettimesverb (hparam1, &timecreated, &timemodified))
+		return (false);  /* Propagate error */
+
+	return (setdatevalue (timecreated, vreturned));
+	} /*langtimecreatedfunc*/
+
+
+boolean langtimemodifiedfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Get modification time of an object (table, outline, script, etc.)
+	Parameters:
+	  1. address - object address (table, outline, etc.)
+	Returns: date value (frontier_time_t)
+	*/
+	int64_t timecreated, timemodified;
+
+	if (!gettimesverb (hparam1, &timecreated, &timemodified))
+		return (false);  /* Propagate error */
+
+	return (setdatevalue (timemodified, vreturned));
+	} /*langtimemodifiedfunc*/
+
+
+boolean langsettimecreatedfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Set creation time of an object
+	Parameters:
+	  1. address - object address (table, outline, etc.)
+	  2. timestamp - new date value (int64_t/frontier_time_t)
+	Returns: boolean success
+	*/
+	return (settimesverb ((tylangtoken) settimecreatedfunc, hparam1, vreturned));
+	} /*langsettimecreatedfunc*/
+
+
+boolean langsettimemodifiedfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Set modification time of an object
+	Parameters:
+	  1. address - object address (table, outline, etc.)
+	  2. timestamp - new date value (int64_t/frontier_time_t)
+	Returns: boolean success
+	*/
+	return (settimesverb ((tylangtoken) settimemodifiedfunc, hparam1, vreturned));
+	} /*langsettimemodifiedfunc*/
 
 
 static boolean getuserinfofunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
@@ -2246,7 +2330,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 		
 		case setdatefunc: {
 			short day, month, year, hour, minute, second;
-			unsigned long date;
+			int64_t date;
 			
 			if (!getintvalue (hparam1, 1, &day))
 				return (false);
@@ -2274,17 +2358,14 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 		
 		case getdatefunc: {
-			unsigned long temp_secs;
 			int64_t secs;
 			short day, month, year, hour, minute, second;
 
 			if (!langcheckparamcount (hparam1, 7)) /*preflight before changing values*/
 				return (false);
 
-			if (!getdatevalue (hparam1, 1, &temp_secs))
+			if (!getdatevalue (hparam1, 1, &secs))
 				return (false);
-
-			secs = (int64_t)temp_secs;
 			secondstodatetime (secs, &day, &month, &year, &hour, &minute, &second);
 			
 			if (!setintvarparam (hparam1, 2, day))
@@ -2352,7 +2433,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 
 		case abbrevstringfunc: {
-			unsigned long date;
+			int64_t date;
 
 			flnextparamislast = true;
 			
@@ -2365,7 +2446,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 
 		case dayofweekfunc: {
-			unsigned long date;
+			int64_t date;
 			short day;
 
 			flnextparamislast = true;
@@ -2379,7 +2460,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 
 		case daysinmonthfunc: {
-			unsigned long date;
+			int64_t date;
 			short day, month, year, hour, minute, second;
 
 			flnextparamislast = true;
@@ -2395,7 +2476,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 
 		case daystringfunc: {
-			unsigned long date;
+			int64_t date;
 			short dayofweek;
 
 			flnextparamislast = true;
@@ -2411,7 +2492,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 
 		case firstofmonthfunc: {
-			unsigned long date;
+			int64_t date;
 
 			flnextparamislast = true;
 			
@@ -2424,7 +2505,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 
 		case lastofmonthfunc: {
-			unsigned long date;
+			int64_t date;
 
 			flnextparamislast = true;
 			
@@ -2437,7 +2518,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 
 		case longstringfunc: {
-			unsigned long date;
+			int64_t date;
 
 			flnextparamislast = true;
 			
@@ -2450,7 +2531,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 
 		case nextmonthfunc: {
-			unsigned long date;
+			int64_t date;
 
 			flnextparamislast = true;
 			
@@ -2463,7 +2544,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 
 		case nextweekfunc: {
-			unsigned long date;
+			int64_t date;
 
 			flnextparamislast = true;
 			
@@ -2476,7 +2557,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 
 		case nextyearfunc: {
-			unsigned long date;
+			int64_t date;
 
 			flnextparamislast = true;
 			
@@ -2489,7 +2570,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 
 		case prevmonthfunc: {
-			unsigned long date;
+			int64_t date;
 
 			flnextparamislast = true;
 			
@@ -2502,7 +2583,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 
 		case prevweekfunc: {
-			unsigned long date;
+			int64_t date;
 
 			flnextparamislast = true;
 			
@@ -2515,7 +2596,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 
 		case prevyearfunc: {
-			unsigned long date;
+			int64_t date;
 
 			flnextparamislast = true;
 			
@@ -2528,7 +2609,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 
 		case shortstringfunc: {
-			unsigned long date;
+			int64_t date;
 
 			flnextparamislast = true;
 			
@@ -2541,7 +2622,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 
 		case tomorrowfunc: {
-			unsigned long date;
+			int64_t date;
 
 			flnextparamislast = true;
 			
@@ -2554,7 +2635,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 
 		case weeksinmonthfunc: {
-			unsigned long date;
+			int64_t date;
 			short day, month, year, hour, minute, second, dayoffset;
 
 			flnextparamislast = true;
@@ -2575,7 +2656,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 
 		case yesterdayfunc: {
-			unsigned long date;
+			int64_t date;
 
 			flnextparamislast = true;
 			
@@ -2595,7 +2676,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 
 		case netstandardstringfunc: { //AR 07/07/1999
-			unsigned long date;
+			int64_t date;
 
 			flnextparamislast = true;
 			

@@ -1251,7 +1251,7 @@ extern boolean getlongvalue (hdltreenode, short, long *);
 
 extern boolean getdirectionvalue (hdltreenode, short, tydirection *);
 
-extern boolean getdatevalue (hdltreenode, short, unsigned long *);
+extern boolean getdatevalue (hdltreenode, short, int64_t *);
 
 extern boolean getostypevalue (hdltreenode, short, OSType *);
 
@@ -1341,6 +1341,12 @@ extern boolean langdeletefunc (hdltreenode hparam1, tyvaluerecord *vreturned);
 extern boolean langevaluatefunc (hdltreenode hparam1, tyvaluerecord *vreturned);
 extern boolean langcallscriptfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
 extern boolean langmsgfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
+
+/* Phase 4: Date/Time functions */
+extern boolean langtimecreatedfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
+extern boolean langtimemodifiedfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
+extern boolean langsettimecreatedfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
+extern boolean langsettimemodifiedfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
 
 extern boolean langzoomvalwindow (hdlhashtable, bigstring, tyvaluerecord, boolean); /*langverbs.c*/
 
