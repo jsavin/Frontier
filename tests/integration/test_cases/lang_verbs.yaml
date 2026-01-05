@@ -530,7 +530,7 @@ tests:
     script: |
       lang.new(tableType, @t);
       local (tc = lang.timecreated(@t));
-      return typeof(tc) == 'date'
+      return typeof(tc) == "date"
     expected_success: true
     expected_result: "true"
 
@@ -573,7 +573,7 @@ tests:
     script: |
       lang.new(tableType, @t);
       local (tm = lang.timemodified(@t));
-      return typeof(tm) == 'date'
+      return typeof(tm) == "date"
     expected_success: true
     expected_result: "true"
 

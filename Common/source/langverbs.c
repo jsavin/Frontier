@@ -1547,7 +1547,9 @@ boolean langsettargetfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 boolean langtimecreatedfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	/*
 	Get creation time of an object (table, outline, script, etc.)
-	Returns date value (frontier_time_t)
+	Parameters:
+	  1. address - object address (table, outline, etc.)
+	Returns: date value (frontier_time_t)
 	*/
 	int64_t timecreated, timemodified;
 
@@ -1561,7 +1563,9 @@ boolean langtimecreatedfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 boolean langtimemodifiedfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	/*
 	Get modification time of an object (table, outline, script, etc.)
-	Returns date value (frontier_time_t)
+	Parameters:
+	  1. address - object address (table, outline, etc.)
+	Returns: date value (frontier_time_t)
 	*/
 	int64_t timecreated, timemodified;
 
@@ -1575,7 +1579,9 @@ boolean langtimemodifiedfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 boolean langsettimecreatedfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	/*
 	Set creation time of an object
-	Parameters: object address, new date value
+	Parameters:
+	  1. address - object address (table, outline, etc.)
+	  2. timestamp - new date value (int64_t/frontier_time_t)
 	Returns: boolean success
 	*/
 	return (settimesverb ((tylangtoken) settimecreatedfunc, hparam1, vreturned));
@@ -1585,7 +1591,9 @@ boolean langsettimecreatedfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 boolean langsettimemodifiedfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	/*
 	Set modification time of an object
-	Parameters: object address, new date value
+	Parameters:
+	  1. address - object address (table, outline, etc.)
+	  2. timestamp - new date value (int64_t/frontier_time_t)
 	Returns: boolean success
 	*/
 	return (settimesverb ((tylangtoken) settimemodifiedfunc, hparam1, vreturned));
