@@ -566,6 +566,7 @@ tests:
     description: "Parameter validation: missing parameter should fail"
     script: 'lang.timecreated()'
     expected_success: false
+    expected_error_type: "script_error"
 
   # lang.timemodified - Get modification time of object
   - name: "lang.timemodified - table modification time"
@@ -601,6 +602,7 @@ tests:
     description: "Parameter validation: missing parameter should fail"
     script: 'lang.timemodified()'
     expected_success: false
+    expected_error_type: "script_error"
 
   # lang.settimecreated - Set creation time
   - name: "lang.settimecreated - set to 1 year ago"
@@ -636,6 +638,7 @@ tests:
     description: "Parameter validation: missing parameters should fail"
     script: 'lang.settimecreated()'
     expected_success: false
+    expected_error_type: "script_error"
 
   - name: "lang.settimecreated - one parameter only"
     description: "Parameter validation: need both address and date"
@@ -643,6 +646,7 @@ tests:
       lang.new(tableType, @t);
       lang.settimecreated(@t)
     expected_success: false
+    expected_error_type: "script_error"
 
   # lang.settimemodified - Set modification time
   - name: "lang.settimemodified - set to 100 days ago"
@@ -688,6 +692,7 @@ tests:
     description: "Parameter validation: missing parameters should fail"
     script: 'lang.settimemodified()'
     expected_success: false
+    expected_error_type: "script_error"
 
   - name: "lang.settimemodified - one parameter only"
     description: "Parameter validation: need both address and date"
@@ -695,3 +700,4 @@ tests:
       lang.new(tableType, @t);
       lang.settimemodified(@t)
     expected_success: false
+    expected_error_type: "script_error"
