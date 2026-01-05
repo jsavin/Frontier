@@ -66,9 +66,10 @@ for FILE in $FILES; do
 
     # Pattern 2: int32_t/uint32_t with timestamp field names
     # These need manual review: disk format (OK) vs in-memory (BAD)
-    # Excludes: byte swap function calls
+    # Excludes: byte swap function calls, lines with legacy-disk-format comment
     MATCHES=$(grep -n "\(u\)\?int32_t.*\(timecreated\|timemodified\|timelastsave\)" "$FILE" 2>/dev/null | \
-       grep -v "conditionallongswap\|host_to_disk\|disk_to_host")
+       grep -v "conditionallongswap\|host_to_disk\|disk_to_host" | \
+       grep -v "legacy-disk-format")
 
     if [ -n "$MATCHES" ]; then
         echo "⚠️  $FILE: Found int32_t/uint32_t with timestamp field (review: disk format OK, in-memory BAD)"
