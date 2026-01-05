@@ -1,20 +1,20 @@
 # Frontier Refactoring Project (develop branch status)
 
-**Last updated:** 2025-12-22
-**State:** Modernization wave 2 in progress; headless + 64-bit aligned; v7 on-disk format (90-byte header with alignment padding) using portable big-endian; hash corruption resistance hardening complete
+**Last updated:** 2026-01-05
+**State:** Phase 1 kernel verb implementation underway; file verbs 100% complete (86/86); lang verbs in progress (10/61); overall 37% coverage (264/710 verbs); headless + 64-bit aligned; v7 on-disk format stable
 **Primary contacts:** planning/INDEX.md (owners per phase)
 
 This repository is actively modernizing the Frontier runtime and toolchain. The `develop` branch now builds and tests with 64-bit alignment on both `arm64` and `x86_64`, includes a portable/headless runtime layer, and routes headless UserTalk `file.*` verbs through the external function processor (EFP) table so tests can exercise real UserTalk without `system.verbs.*` being loaded.
 
 ## Highlights
 
-- **64-bit/ARM + big-endian v7** – Core builds/tests compile on `arm64`/`x86_64`; v7 headers/trailers and table addresses now write big-endian for cross-arch parity (see `docs/database_architecture.md`). Hash pack/unpack now uses explicit 16-byte BE buffers with bounds-checked string unpacking, header detection guards, and optional logging (`FRONTIER_HASHUNPACK_LOG`). Migration coverage lives in `tests/save_migration_tests` and `tests/runtime_tests`.
-- **Portable/headless + Paige-free** – The `portable/` layer + headless stubs power CLI/testing without UI deps; wptext now uses the Paige-free extractor/RTF path while still allowing tests to link the real Paige for parity checks.
-- **Automated kernel verb generation** – Python-based parser (`tools/kernelverbs_parser/`) automatically generates `kernel_verbs_init.c` from `kernelverbs.rc`, extracting all 51 EFP processor definitions (707 total verbs). Whitelist-based approach ensures only implemented processors are initialized. Next phase: automatic implementation detection via static analysis eliminates manual whitelist maintenance (see `planning/phase3/kernel_verb_porting/automatic_verb_binding_architecture.md` for 1–2 week roadmap). See `tools/kernelverbs_parser/README.md` for current details.
-- **Headless verb implementations** – Initial kernel verbs implemented for headless runtime: `string.upper`, `string.lower`, `string.length`, and `math.random` (with bounds checks). CLI inline evaluation (`-e`) now uses `langrunhandle` for proper script execution.
-- **Modernized test harness** – Cross-platform C test suite with sanitizer presets (`SANITIZE=1 make -C tests`). Key binaries: `file_portable_tests`, `file_readline_tests`, `file_verb_tests`, `runtime_tests`, `db_format_tests`, `cli_runtime_tests`.
-- **Paige → portable milestone** – v6→v7 migrator now converts wptexts via the C extractor/RTF helpers; canonical `Frontier-v6.root` migration succeeds (`FRONTIER_REGEN_ROOT=databases/Frontier-v6.root ./tests/runtime_tests`), logs under `/tmp/…`. See `planning/progress_reports/2025-11-20-paige_portable_milestone.md`.
-- **Planning/status ledger** – Current work lives in `planning/_CURRENT_STATUS.md`; decisions and BE audit in `planning/DECISIONS.md` and `planning/big_endian_portability_audit.md`. Historical milestone summaries live in `planning/progress_reports/README.md`.
+- **Comprehensive kernel verb implementation** – Phase 1 complete: **file verbs 100% (86/86)** with full support for volume ops, locking, timestamps, creator/type handling. **Lang verbs in progress (10/61 implemented)** with focus on type conversion, utility, and core operations. **Overall 37% coverage (264/710 verbs)** across 51 processors. All implementations tested via integration test framework (52+ file tests, 220+ lang tests).
+- **64-bit/ARM + big-endian v7** – Core builds/tests compile on `arm64`/`x86_64`; v7 headers/trailers and table addresses write big-endian for cross-arch parity. Hash pack/unpack hardened with explicit 16-byte BE buffers, bounds checks, header detection, and optional logging. Migration coverage in `tests/save_migration_tests` and `tests/runtime_tests`.
+- **Portable/headless + Paige-free** – The `portable/` layer + headless stubs power CLI/testing without UI deps; wptext uses Paige-free extractor/RTF path. v6→v7 migration complete with proper timestamp handling (64-bit frontier_time_t, Year 2038 safe).
+- **Automated kernel verb generation** – Python-based parser (`tools/kernelverbs_parser/`) automatically generates `kernel_verbs_init.c` from `kernelverbs.rc`, extracting all 51 EFP processor definitions (707 verbs). Next phase: automatic implementation detection via static analysis (roadmap in `planning/phase3/kernel_verb_porting/automatic_verb_binding_architecture.md`).
+- **Modernized test harness** – Cross-platform C test suite with sanitizer presets (`SANITIZE=1 make -C tests`). Integration test framework supports YAML-based verb testing with path templating for sandbox safety. All 52 file verb tests passing; 220+ lang verb tests passing.
+- **Critical architectural documentation** – typeof() OSType code behavior documented to prevent future regressions (commit 5456c5eb). ADR-005 thread-local parameter state fully integrated. Database context debugging patterns captured in CLAUDE.md.
+- **Repository hygiene** – 78 branches cleaned up (88→3 active local branches). All zombie branches (merged PRs) and stale/superseded work removed. Permanent archive branches preserved (archive/codex-sessions for session transcripts).
 
 ## Quick start
 
@@ -68,16 +68,17 @@ For in-flight work/status, see `planning/_CURRENT_STATUS.md`. Historical session
 
 | Area               | Status | Notes                                                                                   |
 | ------------------ | :----: | --------------------------------------------------------------------------------------- |
-| 64-bit alignment   |   ✅    | DB header alignment fix complete (90-byte v7 header); structure tests passing          |
-| Hash serialization |   ✅    | Hash pack/unpack hardened with explicit BE buffers, bounds checks, header detection    |
-| arm64 build        |   ✅    | `make -C frontier-cli` builds universal binary                                          |
-| Headless runtime   |   ✅    | Portable stubs cover runtime/IO; EFP shim in place; table globals reset cleanly         |
-| Tests (targeted)   |   ✅    | `file_portable`, `file_readline`, `file_verb`                                           |
-| Tests (runtime/db) |   ✅    | `runtime_tests`, `db_format_tests`; full `SANITIZE=1` passes                            |
-| CLI runtime        |   ⚠️   | `cli_runtime_tests` passes but still reports exit=1 for stubbed verbs (`clock.*`)       |
-| Kernel verbs       |   🚧    | Initial verbs implemented; ~600 verbs remaining (see kernel_verb_porting/)              |
-| Docs/Planning      |   ✅    | Planning/ADR files updated alongside code                                               |
-| Codex transcripts  |   ✅    | Stored on `codex-sessions` branch/worktree                                              |
+| 64-bit alignment   |   ✅    | DB header alignment stable (90-byte v7 header); all structure tests passing            |
+| Hash serialization |   ✅    | Hash pack/unpack hardened with explicit BE buffers, bounds checks, corruption tests    |
+| arm64 build        |   ✅    | `make -C frontier-cli` builds universal binary; all tests pass on arm64/x86_64          |
+| Headless runtime   |   ✅    | Portable stubs cover runtime/IO; EFP shim stable; parameter state thread-local          |
+| File verbs         |   ✅    | 100% complete (86/86); all integration tests passing (52/52); locking/volumes working  |
+| Lang verbs         |   🚧    | 16% complete (10/61); type conversion, utility, core operations prioritized            |
+| Tests (integrated) |   ✅    | YAML-based integration framework; 272+ tests passing (file+lang); sandbox-safe paths   |
+| Tests (runtime/db) |   ✅    | `runtime_tests`, `db_format_tests`; full `SANITIZE=1` passes; Year 2038 safe          |
+| CLI runtime        |   ⚠️   | `cli_runtime_tests` passes; clock/date stubs still pending (lower priority)            |
+| Docs/Planning      |   ✅    | Architecture docs updated; typeof() critical lesson documented; branch cleanup logged  |
+| Repository state   |   ✅    | 78 branches cleaned up; only active work + permanent archives remain                   |
 
 ## Historical progress
 
@@ -112,11 +113,25 @@ Frontier/
 
 ## Next milestone snapshot
 
-- Implement automatic verb binding architecture (static analysis + metadata generation, ~1–2 weeks; eliminates manual whitelist maintenance for 707 verbs across 51 processors).
-- Continue kernel verb porting (implement remaining headless/kernel verbs needed for CLI runtime, prioritize `clock.*` and `date.*` verbs).
-- Refactor BE pack/unpack helpers to reduce manual memcpy repetition (issue #77).
-- Add cross-arch BE64 serialization verification with golden blobs on x86_64/arm64 (issue #78).
-- Bring CI online (provider TBD) and enable coverage/static analysis once tool chain is finalized.
+**Immediate priorities (next 2 weeks):**
+1. **Complete Phase 1 lang verb implementations** (~15 more verbs) – Focus on table, outline, and script operations needed for CLI runtime integration
+2. **Automatic verb binding architecture** (static analysis + metadata generation, 1–2 weeks) – Eliminates manual whitelist maintenance across 707 verbs in 51 processors; design complete, implementation phase 1 (analyzer core) ready to start
+3. **Clock and date verb stubs** – Complete remaining date/time operations for CLI runtime
+4. **Integration test expansion** – Add verb tests for remaining Phase 1 verbs as they're implemented
 
-For day-by-day progress see the `codex-sessions` branch and
-planning/INDEX.md.
+**Short-term (2–4 weeks):**
+- Implement automatic verb binding phases 2–3 (verification, test infrastructure, full codebase integration)
+- Begin Phase 2 verb implementations (table/outline/window operations with selective headless support)
+- Refactor BE pack/unpack helpers to reduce manual memcpy repetition (issue #77)
+
+**Medium-term (1–2 months):**
+- Add cross-arch BE64 serialization verification with golden blobs (issue #78)
+- Expand headless verb coverage to include dialogue, file selection, and other interactive operations
+- Design and implement collaborative ODB foundation (Phase 2.0) for multi-user support
+
+**CI/Infrastructure:**
+- Bring CI online (provider TBD) with verb coverage tracking
+- Automated regression testing for verb implementations
+- Performance benchmarking for database operations
+
+For detailed planning see `planning/INDEX.md` and current work in `planning/_CURRENT_STATUS.md`.
