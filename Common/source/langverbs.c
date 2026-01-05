@@ -1195,14 +1195,15 @@ boolean langmsgfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 
 	#ifdef FRONTIER_HEADLESS
 	/* In headless mode, output message to stdout as single line */
-	printf("%s\n", stringbaseaddress (bs));
+	/* Use fputs to avoid format string vulnerability */
+	fputs(stringbaseaddress (bs), stdout);
+	fputc('\n', stdout);
 	fflush(stdout);
+	return (setbooleanvalue (true, vreturned));
 	#else
 	/* In GUI mode, delegate to the callback (usually ccmsg) */
 	return ((*langcallbacks.msgverbcallback) (hparam1, vreturned));
 	#endif
-
-	return (setbooleanvalue (true, vreturned));
 	} /*langmsgfunc*/
 
 
