@@ -97,8 +97,8 @@ cd tools/kernelverbs_parser && python3 cli.py report
   4. Push to origin
   5. Use pull-request agent to create PR
   6. **Run `./tools/monitor_pr_review.sh <PR>` after EVERY push**
-  7. Address bot feedback (minor: auto, critical: user approval)
-  8. Merge only after bot approval AND monitoring confirms no follow-up
+  7. **ALWAYS discuss bot feedback with user before addressing** - Never make changes autonomously
+  8. **NEVER merge PRs without explicit user approval** - User must review and approve merge
 - Always create branch for new development work when on develop
 - Never delete branches without user confirmation
 - Never work on develop directly for larger changes
