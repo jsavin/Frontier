@@ -1105,6 +1105,108 @@ boolean langflushmemfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	} /*langflushmemfunc*/
 
 
+/* Phase 3: Core Lang Operations wrapper functions */
+
+boolean langdeletefunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Delete a variable from a hash table.
+	Takes an address parameter (table + name).
+	Returns boolean success.
+
+	This is a simple wrapper around the existing hashtabledelete function.
+	Pattern based on disposevaluefunc below.
+	*/
+	hdlhashtable htable;
+	bigstring bs;
+
+	flnextparamislast = true;
+
+	if (!getvarparam (hparam1, 1, &htable, bs))
+		return (false);
+
+	/* Make sure it's not the target before deleting */
+	langunsettarget (htable, bs);
+
+	return (setbooleanvalue (hashtabledelete (htable, bs), vreturned));
+	} /*langdeletefunc*/
+
+
+boolean langevaluatefunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Evaluate a UserTalk code string.
+	Takes a string parameter containing UserTalk code.
+	Parses and executes the code, returns the result.
+
+	Uses existing langrun infrastructure (see evaluatefunc case in switch below).
+	*/
+	Handle htext;
+
+	flnextparamislast = true;
+
+	if (!getexempttextvalue (hparam1, 1, &htext))
+		return (false);
+
+	/* Run the code. langrun returns false on error and sets error state */
+	if (!langrun (htext, vreturned))
+		return (setbooleanvalue (false, vreturned));
+
+	return (true);
+	} /*langevaluatefunc*/
+
+
+boolean langcallscriptfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Call a script by name.
+	Takes script name and parameters.
+	Looks up script in current context and executes it.
+
+	Simplified wrapper around langrunscript - uses nil params (no parameters)
+	and nil context (searches current context).
+	For full functionality with params, users should call lang.callScript directly.
+	This provides basic script calling capability.
+	*/
+	bigstring bsscriptname;
+
+	flnextparamislast = true;
+
+	if (!getstringvalue (hparam1, 1, bsscriptname))
+		return (false);
+
+	/* Call script with nil params (no parameters) and nil context (searches current context) */
+	return (langrunscript (bsscriptname, nil, nil, vreturned));
+	} /*langcallscriptfunc*/
+
+
+boolean langmsgfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Display a message.
+	In headless mode, output to stdout (single line, terminal-based interactive UI).
+	In GUI mode, this would display in a dialog or status bar.
+
+	Design decision: Interactive terminal-based implementations for UI verbs
+	(except window operations). msg() outputs a single line to stdout.
+	*/
+	bigstring bs;
+
+	flnextparamislast = true;
+
+	if (!getstringvalue (hparam1, 1, bs))
+		return (false);
+
+	#ifdef FRONTIER_HEADLESS
+	/* In headless mode, output message to stdout as single line */
+	/* Use fputs to avoid format string vulnerability */
+	fputs(stringbaseaddress (bs), stdout);
+	fputc('\n', stdout);
+	fflush(stdout);
+	return (setbooleanvalue (true, vreturned));
+	#else
+	/* In GUI mode, delegate to the callback (usually ccmsg) */
+	return ((*langcallbacks.msgverbcallback) (hparam1, vreturned));
+	#endif
+	} /*langmsgfunc*/
+
+
 static boolean disposevaluefunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	
 	/*

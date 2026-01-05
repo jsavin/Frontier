@@ -387,3 +387,138 @@ tests:
       return lang.flushmemory() and lang.flushmemory() and lang.flushmemory()
     expected_success: true
     expected_result: "true"
+
+  # Phase 3: Core Lang Operations Verbs
+
+  # lang.delete - Delete variable/object
+  - name: "lang.delete - simple variable"
+    description: "Delete a simple variable from current scope"
+    script: |
+      local (x = 42);
+      lang.delete(@x);
+      return defined(x) == false
+    expected_success: true
+    expected_result: "true"
+
+  - name: "lang.delete - table entry"
+    description: "Delete an entry from a table"
+    script: |
+      lang.new(tableType, @t);
+      t.a = "hello";
+      t.b = "world";
+      lang.delete(@t.a);
+      return defined(t.a) == false and t.b == "world"
+    expected_success: true
+    expected_result: "true"
+
+  - name: "lang.delete - non-existent variable"
+    description: "Deleting non-existent variable should return false"
+    script: 'lang.delete(@nonexistent)'
+    expected_success: true
+    expected_result: "false"
+
+  - name: "lang.delete - no parameters"
+    description: "Parameter validation: missing parameter should fail"
+    script: 'lang.delete()'
+    expected_success: false
+
+  # lang.evaluate - Evaluate UserTalk code string
+  - name: "lang.evaluate - simple expression"
+    description: "Evaluate simple arithmetic expression"
+    script: 'lang.evaluate("1 + 1")'
+    expected_success: true
+    expected_result: "2"
+
+  - name: "lang.evaluate - string expression"
+    description: "Evaluate string concatenation"
+    script: 'lang.evaluate("\"Hello\" + \" \" + \"World\"")'
+    expected_success: true
+    expected_result: "Hello World"
+
+  - name: "lang.evaluate - boolean expression"
+    description: "Evaluate boolean logic"
+    script: 'lang.evaluate("(5 > 3) and (2 < 4)")'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "lang.evaluate - multi-line code"
+    description: "Evaluate multi-line UserTalk code"
+    script: |
+      lang.evaluate("local (x = 10); x * 2")
+    expected_success: true
+    expected_result: "20"
+
+  - name: "lang.evaluate - syntax error"
+    description: "Evaluation with syntax error should fail"
+    script: 'lang.evaluate("1 + + 1")'
+    expected_success: true
+    expected_result: "false"
+
+  - name: "lang.evaluate - empty string"
+    description: "Evaluate empty string"
+    script: 'lang.evaluate("")'
+    expected_success: true
+
+  - name: "lang.evaluate - no parameters"
+    description: "Parameter validation: missing parameter should fail"
+    script: 'lang.evaluate()'
+    expected_success: false
+
+  # lang.callscript - Call a script by name
+  - name: "lang.callscript - simple script"
+    description: "Call a simple script that returns a value"
+    script: |
+      on testscript() { return 42 };
+      return lang.callscript("testscript")
+    expected_success: true
+    expected_result: "42"
+
+  - name: "lang.callscript - script with side effects"
+    description: "Call a script that modifies state"
+    script: |
+      local (result = 0);
+      on setresult() { result = 100 };
+      lang.callscript("setresult");
+      return result
+    expected_success: true
+    expected_result: "100"
+
+  - name: "lang.callscript - non-existent script"
+    description: "Calling non-existent script should fail"
+    script: 'lang.callscript("nonexistentscript")'
+    expected_success: false
+
+  - name: "lang.callscript - no parameters"
+    description: "Parameter validation: missing parameter should fail"
+    script: 'lang.callscript()'
+    expected_success: false
+
+  # lang.msg - Display message (logs in headless mode)
+  - name: "lang.msg - simple message"
+    description: "Display simple message (should log and return true)"
+    script: 'lang.msg("Hello from headless mode")'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "lang.msg - empty message"
+    description: "Display empty message"
+    script: 'lang.msg("")'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "lang.msg - message with special characters"
+    description: "Display message with special characters"
+    script: 'lang.msg("Test: 1+1=2, \"quoted\", tab\ttab")'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "lang.msg - long message"
+    description: "Display a longer message"
+    script: 'lang.msg("This is a longer message to test that the logging infrastructure can handle strings of various lengths without issue.")'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "lang.msg - no parameters"
+    description: "Parameter validation: missing parameter should fail"
+    script: 'lang.msg()'
+    expected_success: false

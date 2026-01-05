@@ -105,6 +105,12 @@ STUB_CONFIGS = {
     ('lang', 'random'): (STUB_FORWARD, 'langrandomfunc'),
     ('lang', 'memavail'): (STUB_FORWARD, 'langmemavailfunc'),
 
+    # Phase 3: Core Lang Operations verbs
+    ('lang', 'delete'): (STUB_FORWARD, 'langdeletefunc'),
+    ('lang', 'evaluate'): (STUB_FORWARD, 'langevaluatefunc'),
+    ('lang', 'callscript'): (STUB_FORWARD, 'langcallscriptfunc'),
+    ('lang', 'msg'): (STUB_FORWARD, 'langmsgfunc'),
+
     # target verbs
     ('target', 'get'): (STUB_FORWARD, 'langgettargetfunc'),
     ('target', 'set'): (STUB_FORWARD, 'langsettargetfunc'),
