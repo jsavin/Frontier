@@ -1156,24 +1156,49 @@ boolean langevaluatefunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 
 boolean langcallscriptfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	/*
-	Call a script by name.
-	Takes script name and parameters.
-	Looks up script in current context and executes it.
+	Call a script by name with optional parameters.
 
-	Simplified wrapper around langrunscript - uses nil params (no parameters)
-	and nil context (searches current context).
-	For full functionality with params, users should call lang.callScript directly.
-	This provides basic script calling capability.
+	Parameters:
+	  1. scriptname (string) - name of script to call
+	  2. params (optional) - list or record of parameters to pass
+	  3. context (optional) - hash table context for script lookup
+
+	Follows the same pattern as thread.callscript.
+	If params is not a record, it's coerced to a list (positional parameters).
+	If params is a record, it's treated as named parameters.
 	*/
 	bigstring bsscriptname;
+	tyvaluerecord vparams;
+	hdlhashtable hcontext = nil;
+	tyvaluerecord *pvparams = nil;
 
-	flnextparamislast = true;
-
+	/* Extract script name (required) */
 	if (!getstringvalue (hparam1, 1, bsscriptname))
 		return (false);
 
-	/* Call script with nil params (no parameters) and nil context (searches current context) */
-	return (langrunscript (bsscriptname, nil, nil, vreturned));
+	/* Extract parameters (optional) */
+	if (langgetparamcount (hparam1) >= 2) {
+		if (!getparamvalue (hparam1, 2, &vparams))
+			return (false);
+
+		/* If params is not a record, coerce to list for positional parameters */
+		if (vparams.valuetype != recordvaluetype)
+			if (!coercetolist (&vparams, listvaluetype))
+				return (false);
+
+		pvparams = &vparams;
+		}
+
+	/* Extract context table (optional) */
+	if (langgetparamcount (hparam1) > 2) {
+		flnextparamislast = true;
+
+		if (!gettablevalue (hparam1, 3, &hcontext))
+			return (false);
+		}
+
+	/* Call script with parameters and context */
+	return (langrunscript (bsscriptname, pvparams, hcontext, vreturned));
 	} /*langcallscriptfunc*/
 
 
@@ -1195,6 +1220,7 @@ boolean langmsgfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 
 	#ifdef FRONTIER_HEADLESS
 	/* In headless mode, output message to stdout as single line */
+	/* User-facing output to terminal (not diagnostic logging) */
 	/* Use fputs to avoid format string vulnerability */
 	fputs(stringbaseaddress (bs), stdout);
 	fputc('\n', stdout);
