@@ -83,6 +83,26 @@ The following branches exist independently of the main development flow and shou
 git notes show refs/heads/archive/codex-sessions
 ```
 
+### archive/portable-refactoring
+**Purpose:** Stash snapshot from portable refactoring cleanup work
+**Status:** Archive/experimental branch
+**Size:** 348 files changed, 98k lines modified
+**Created:** November 2025
+**Note:** Historical snapshot of portable handle refactoring experiments. Preserved for reference but superseded by subsequent refactoring work.
+
+### archive/carbon-migration
+**Purpose:** Legacy planning phase documentation archival
+**Status:** Archive/documentation branch
+**Size:** 85 files changed, 228 lines modified
+**Created:** October 2025
+**Note:** Historical snapshot of planning documentation reorganization. Preserved for reference.
+
+**View git notes for archived branches:**
+```bash
+git notes show refs/heads/archive/portable-refactoring
+git notes show refs/heads/archive/carbon-migration
+```
+
 ---
 
 ## Strategic Roadmap
