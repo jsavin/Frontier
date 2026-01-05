@@ -67,6 +67,24 @@ cd tools/kernelverbs_parser && python3 cli.py report
 
 ---
 
+## Permanent Branches (Never Merge to Develop)
+
+The following branches exist independently of the main development flow and should **never be merged** to develop:
+
+### archive/codex-sessions
+**Purpose:** Session recordings and transcripts from Claude Code interactions
+**Status:** Archive/documentation branch
+**Size:** ~950k lines (session data)
+**Created:** October 2025
+**Note:** Contains historical record of AI-assisted development sessions. This data is for reference and documentation purposes only.
+
+**Important:** This branch has a git note attached. View with:
+```bash
+git notes show refs/heads/archive/codex-sessions
+```
+
+---
+
 ## Strategic Roadmap
 
 **Master todo list**: https://drummer.land/me@jakesav.in/JakeShare.opml
