@@ -1,9 +1,9 @@
 # Carbon Migration / Runtime Modernization – Active TODO
 
-Status: In Progress (Updated 2025-12-31)
+Status: In Progress (Updated 2026-01-05)
 Owner: Codex
 
-## 🔥 CURRENT PRIORITY – Verb Binding Quick Wins (2025-12-31)
+## 🔥 CURRENT PRIORITY – Continue Verb Implementation & Lang Type Conversion (2026-01-05)
 
 **Goal**: Rapidly expand verb binding coverage from 13% → 16% by adding bindings for verbs with existing implementations.
 
@@ -32,6 +32,30 @@ Owner: Codex
 - Clear binding pattern documented
 
 **Reference**: `planning/phase3/VERB_BINDING_QUICK_WINS.md`
+
+## Recently Completed – 2026-01-05
+
+✅ **Repository Branch Cleanup & Codebase Organization (commit 5456c5eb)**
+- Cleaned up 78 branches from ~87 to 3 local branches
+  - 13 low-risk branches deleted
+  - 44 merged branches deleted
+  - 6 zombie branches deleted
+  - 3 stale November branches deleted
+  - 1 stash branch deleted
+  - 2 archive stash snapshots deleted
+  - 7 branches reviewed and deleted (superseded work)
+  - 2 remote zombie branches deleted
+- Extracted typeof() OSType code documentation (180 lines)
+- Only 3 local branches remain: develop, archive/codex-sessions (permanent), feature/issue-135-phase5-callsite-migration (active worktree)
+- **Impact**: Improved repository hygiene; cleaner branch history for future work
+
+✅ **Recent PR Completions (Latest First)**
+- PR #246: Phase 5 lang type conversion verbs (15 new verbs)
+- PR #245: Lang verbs fixes
+- PR #241: File verb coverage completion (86/86 verbs = 100%)
+- PR #232: wptext_runtime.c frontier_time_t migration
+- Multiple lang and table verb implementation PRs
+- **CURRENT METRICS**: File: 100% (86/86), Lang: 16%, Overall: 37% (264/710 verbs)
 
 ## Recently Completed – 2025-12-31
 

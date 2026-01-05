@@ -3,11 +3,35 @@
 Status
 - State: Archived
 - Phase: Carbon Migration
-- Last Updated: 2025-11-20
+- Last Updated: 2026-01-05
 - Owner: Codex
 - Notes: Historical snapshots of `_CURRENT_STATUS.md`; not an active plan.
 
 > Purpose: historical snapshots of `_CURRENT_STATUS.md` milestones and major accomplishments. Use this to seed progress reports; do not treat entries here as active work.
+
+**Snapshot:** Archived on January 5, 2026 (repository cleanup session).
+
+## 2026-01-05 Archive (Repository Branch Cleanup & Recent Progress)
+
+Archived the December 31, 2025 - January 5, 2026 `_CURRENT_STATUS.md` activity (comprehensive branch cleanup, PR completions). See git history for full detail; highlights:
+
+**Jan 5 Session - Repository Cleanup:**
+- Deleted 78 branches from ~87 to 3 local branches (classified: 13 low-risk, 44 merged, 6 zombie, 3 stale, 1 stash, 2 archive snapshots, 7 superseded, 2 remote zombies)
+- Extracted typeof() OSType code documentation (180 lines, commit 5456c5eb)
+- Significantly improved repository hygiene and branch organization
+- 3 local branches remain: develop, archive/codex-sessions (permanent), feature/issue-135-phase5-callsite-migration (active)
+
+**Recent Verb Implementation Progress:**
+- PR #246: Phase 5 lang type conversion verbs (15 new verbs implemented)
+- PR #245: Lang verbs fixes and refinements
+- PR #241: File verb coverage completion (86/86 verbs = 100% complete)
+- PR #232: wptext_runtime.c frontier_time_t migration for Y2038 readiness
+- Overall verb coverage: 37% (264/710 verbs implemented)
+- By category: File 100%, Lang 16%, others in various states of completion
+
+**Architectural Lesson:**
+- typeof() OSType extraction highlighted value of extracting domain-specific documentation from code into dedicated reference documents
+- Improves future maintainability and makes knowledge discoverable for new developers
 
 **Snapshot:** Archived on November 17, 2025 (post cleanup of `_CURRENT_STATUS.md`).  
 
