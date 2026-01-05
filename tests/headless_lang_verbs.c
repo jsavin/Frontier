@@ -157,22 +157,10 @@ static boolean lang_valueproc(short token, hdltreenode hparam1,
         case lanv_string4:
             /* Verb: lang.string4 - forward to real implementation */
             return langstring4func(hparam1, vreturned);
-        case lanv_string: {
-            /* Verb: lang.string - coerce value to string */
-            /* ADR-005: flcoerceexternaltostring now thread-local macro */
-            /* NOTE: DO NOT REGENERATE - special implementation with flcoerceexternaltostring */
-            boolean fl;
-
-            flnextparamislast = true;
-
-            flcoerceexternaltostring = true; /*special case -- enable for this verb*/
-
-            fl = getstringparam (hparam1, 1, vreturned);
-
-            flcoerceexternaltostring = false;
-
-            return (fl);
-        }
+        case lanv_string:
+            /* Verb: lang.string - not yet implemented */
+            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            return false;
         case lanv_displaystring:
             /* Verb: lang.displaystring - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
@@ -239,17 +227,15 @@ static boolean lang_valueproc(short token, hdltreenode hparam1,
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_memavail:
-            /* Verb: lang.memavail - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: lang.memavail - forward to real implementation */
+            return langmemavailfunc(hparam1, vreturned);
         case lanv_flushmemory:
             /* lang.flushmemory - noop stub (safe no-op) */
             (void)hparam1;  /* Suppress unused parameter warning */
             return true;
         case lanv_random:
-            /* Verb: lang.random - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: lang.random - forward to real implementation */
+            return langrandomfunc(hparam1, vreturned);
         case lanv_evaluate:
             /* Verb: lang.evaluate - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
@@ -263,9 +249,8 @@ static boolean lang_valueproc(short token, hdltreenode hparam1,
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_abs:
-            /* Verb: lang.abs - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: lang.abs - forward to real implementation */
+            return langabsfunc(hparam1, vreturned);
         case lanv_seteventtimeout:
             /* Verb: lang.seteventtimeout - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
