@@ -1554,7 +1554,7 @@ boolean langtimecreatedfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	int64_t timecreated, timemodified;
 
 	if (!gettimesverb (hparam1, &timecreated, &timemodified))
-		return (setbooleanvalue (false, vreturned));
+		return (false);  /* Propagate error */
 
 	return (setdatevalue (timecreated, vreturned));
 	} /*langtimecreatedfunc*/
@@ -1570,7 +1570,7 @@ boolean langtimemodifiedfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	int64_t timecreated, timemodified;
 
 	if (!gettimesverb (hparam1, &timecreated, &timemodified))
-		return (setbooleanvalue (false, vreturned));
+		return (false);  /* Propagate error */
 
 	return (setdatevalue (timemodified, vreturned));
 	} /*langtimemodifiedfunc*/
