@@ -210,3 +210,34 @@ tests:
     expected_success: true
     expected_result: "0"
     expected_result_type: "fixed"
+
+  # Parameter validation tests (verifying automatic validation via getXXXparam)
+  - name: "lang.double - no parameters"
+    description: "Parameter validation: missing parameter should fail"
+    script: 'lang.double()'
+    expected_success: false
+
+  - name: "lang.double - too many parameters"
+    description: "Parameter validation: extra parameters should fail"
+    script: 'lang.double(1, 2)'
+    expected_success: false
+
+  - name: "lang.single - no parameters"
+    description: "Parameter validation: missing parameter should fail"
+    script: 'lang.single()'
+    expected_success: false
+
+  - name: "lang.fixed - too many parameters"
+    description: "Parameter validation: extra parameters should fail"
+    script: 'lang.fixed(1, 2)'
+    expected_success: false
+
+  - name: "lang.direction - no parameters"
+    description: "Parameter validation: missing parameter should fail"
+    script: 'lang.direction()'
+    expected_success: false
+
+  - name: "lang.string4 - too many parameters"
+    description: "Parameter validation: extra parameters should fail"
+    script: 'lang.string4("TEXT", "EXTRA")'
+    expected_success: false
