@@ -90,11 +90,15 @@ cd tools/kernelverbs_parser && python3 cli.py report
 - **Milestone Commits MUST Use PR Workflow** ⚠️:
   1. Create feature branch: `git checkout -b feature/description`
   2. Commit work (multiple commits OK)
-  3. Push to origin
-  4. Use pull-request agent to create PR
-  5. **Run `./tools/monitor_pr_review.sh <PR>` after EVERY push**
-  6. Address bot feedback (minor: auto, critical: user approval)
-  7. Merge only after bot approval AND monitoring confirms no follow-up
+  3. **BEFORE FIRST PUSH: Run full test suite** ⚠️:
+     - `./tools/run_headless_tests.sh` (unit tests)
+     - `cd tests && make test-integration` (integration tests)
+     - Fix any failures before pushing
+  4. Push to origin
+  5. Use pull-request agent to create PR
+  6. **Run `./tools/monitor_pr_review.sh <PR>` after EVERY push**
+  7. Address bot feedback (minor: auto, critical: user approval)
+  8. Merge only after bot approval AND monitoring confirms no follow-up
 - Always create branch for new development work when on develop
 - Never delete branches without user confirmation
 - Never work on develop directly for larger changes
@@ -867,10 +871,13 @@ When investigating database-related bugs:
 
 All debug and diagnostic output must use structured logging macros - **never use `fprintf(stderr, ...)`**.
 
+**Exception:** User-facing terminal output (lang.msg, dialog prompts) may use `fputs()` to stdout for interactive terminal UI. Diagnostic/debug output must use `log_*()` macros.
+
 ### Rule: No fprintf(stderr) in New Code
 
 - ❌ NEVER: `fprintf(stderr, "message\n")`
 - ✓ ALWAYS: `log_trace(LOG_COMP_DB, "message")` or `log_error()`, `log_debug()`, etc.
+- ✅ EXCEPTION: `fputs("user message", stdout)` for terminal UI (not diagnostic logging)
 
 ### Logging Macros (Priority Order)
 
