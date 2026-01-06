@@ -3311,9 +3311,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			return (getfilespecparam (hparam1, 1, v));
 		
 		case aliasfunc:
-
-		
-			return (langaliasfunc (hparam1, v));
+		return (langaliasfunc (hparam1, v));
 		
 		case listfunc:
 			flnextparamislast = true;
@@ -3499,9 +3497,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 		
 		case evaluatethreadfunc:
-
-		
-			return (langevaluatethreadfunc (hparam1, v));
+		return (langevaluatethreadfunc (hparam1, v));
 		
 		case alertdialogfunc:
 			flnextparamislast = true;
