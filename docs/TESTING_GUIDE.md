@@ -198,12 +198,12 @@ tests:
 
 **Available placeholders:**
 
-- `{FRONTIER_TEST_TMP_DIR}` - Expands to `<project_root>/tmp` directory at test execution time
+- `{FRONTIER_TEST_TMP_DIR}` - Expands to `<project_root>/tests/tmp/integration` directory at test execution time
 
 **How it works:**
 1. Test runner loads YAML files from `tests/integration/test_cases/`
-2. Before executing each script, runner substitutes `{FRONTIER_TEST_TMP_DIR}` with the absolute path to `<project_root>/tmp`
-3. The `tmp/` directory is automatically created if it doesn't exist
+2. Before executing each script, runner substitutes `{FRONTIER_TEST_TMP_DIR}` with the absolute path to `<project_root>/tests/tmp/integration`
+3. The `tests/tmp/integration/` directory is automatically created if it doesn't exist
 4. Tests can safely create/read/delete files without hardcoding system-specific paths
 
 **Why use placeholders:**
@@ -218,7 +218,7 @@ Before substitution:
   local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
 
 After substitution (on user's machine):
-  local(tmpDir = "/Users/jake/dev/jsavin/Frontier/tmp");
+  local(tmpDir = "/Users/jake/dev/jsavin/Frontier/tests/tmp/integration");
 ```
 
 **See also:** `tests/integration/runner.py` - `get_script_with_substitutions()` method for implementation details
@@ -253,10 +253,10 @@ TESTDIR=$(./tools/get_test_temp_path.sh)
 **Direct approach**: Use project-relative paths
 ```bash
 # Create test directory (gitignore'd)
-mkdir -p test_tmp
+mkdir -p tests/tmp/unit
 
 # Use directly in tests
-./frontier-cli/frontier-cli -e 'file.write("test_tmp/test.txt", "data")'
+./frontier-cli/frontier-cli -e 'file.write("tests/tmp/unit/test.txt", "data")'
 ```
 
 ### Unsafe Patterns (Will Fail)

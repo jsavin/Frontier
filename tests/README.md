@@ -4,7 +4,7 @@ Status
 - State: In Progress
 - Phase: 1–2
 - Last Updated: 2025-10-01
-- Notes: Headless-first; tests build/run via Makefile and runner. See `_results/` for latest logs and planning/INDEX.md for coverage.
+- Notes: Headless-first; tests build/run via Makefile and runner. See `tmp/results/` for latest logs and planning/INDEX.md for coverage.
 
 Related Docs
 - planning/DEVELOPER_QUICKSTART_HEADLESS.md
@@ -114,7 +114,7 @@ make clean
 make docs
 
 # Consolidated run with logging (example)
-./run_all_tests.sh | tee "_results/all_tests.$(date +%Y%m%d_%H%M%S).log" && cp "_results/$(ls -t _results/all_tests.*.log | head -n1 | xargs -n1 basename)" _results/all_tests.latest.log
+./run_all_tests.sh | tee "tmp/results/all_tests.$(date +%Y%m%d_%H%M%S).log" && cp "tmp/results/$(ls -t tmp/results/all_tests.*.log | head -n1 | xargs -n1 basename)" tmp/results/all_tests.latest.log
 ```
 
 ### Test Runner Usage
@@ -134,10 +134,20 @@ make docs
 ./test_runner --all
 
 ### Results & Reports
-- Latest consolidated log: `tests/_results/all_tests.latest.log`
-- Historical logs: `tests/_results/all_tests.YYYYMMDD_HHMMSS.log`
+- Latest consolidated log: `tests/tmp/results/all_tests.latest.log`
+- Historical logs: `tests/tmp/results/all_tests.YYYYMMDD_HHMMSS.log`
 - Per-binary summaries include `=== Test Summary ===` and either `ALL TESTS PASSED!` or `N TESTS FAILED`.
 - Runner markers: `RESULT:<target>:OK|RUN_FAILED|BUILD_FAILED` and `Summary: FAILURES=N` at the end.
+
+## Test Output Structure
+
+All test outputs are organized under `tests/tmp/`:
+- `unit/` - C unit test artifacts
+- `integration/` - YAML integration test artifacts
+- `migration/` - Database migration test outputs
+- `results/` - Test logs and CLI runtime artifacts
+
+These directories are auto-created by test frameworks and git-ignored.
 ```
 
 ## Test Framework Features

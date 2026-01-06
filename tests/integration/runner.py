@@ -139,7 +139,7 @@ class TestCase:
 
         # Substitute test directory paths
         if test_root_dir:
-            test_tmp_dir = os.path.join(test_root_dir, 'tmp')
+            test_tmp_dir = os.path.join(test_root_dir, 'tmp', 'integration')
             # Ensure tmp directory exists for tests
             os.makedirs(test_tmp_dir, exist_ok=True)
             script = script.replace('{FRONTIER_TEST_TMP_DIR}', test_tmp_dir)
@@ -246,7 +246,7 @@ class TestRunner:
     def cleanup_test_artifacts(self):
         """Clean up temporary test files and directories created during test execution."""
         import shutil
-        test_tmp_dir = os.path.join(self.test_root_dir, 'tmp')
+        test_tmp_dir = os.path.join(self.test_root_dir, 'tmp', 'integration')
         if os.path.exists(test_tmp_dir):
             try:
                 shutil.rmtree(test_tmp_dir)
