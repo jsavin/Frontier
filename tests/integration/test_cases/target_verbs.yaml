@@ -368,17 +368,15 @@ tests:
   # Edge Cases - Target Lifecycle
   # ====================================================================
 
-  # TODO: Implement legacy behavior - deleting target variable should clear target as side-effect
-  # Currently this causes a script error instead of clearing the target
-  # - name: "target lifecycle - delete target clears it"
-  #   description: "Deleting the target variable clears the target as a side-effect (legacy behavior)"
-  #   script: |
-  #     lang.new(tableType, @workspace.temporary);
-  #     target.set(@workspace.temporary);
-  #     lang.delete(@workspace.temporary);
-  #     return typeof(target.get())
-  #   expected_success: true
-  #   expected_result: "????"
+  - name: "target lifecycle - delete target clears it"
+    description: "Deleting the target variable clears the target as a side-effect (legacy behavior)"
+    script: |
+      lang.new(tableType, @workspace.temporary);
+      target.set(@workspace.temporary);
+      lang.delete(@workspace.temporary);
+      return typeof(target.get())
+    expected_success: true
+    expected_result: "????"
 
   - name: "target persistence - across multiple scripts"
     description: "Target set in one operation persists for next operation"
