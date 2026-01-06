@@ -737,6 +737,43 @@ tests:
     expected_success: false
     expected_error_type: "script_error"
 
+  # lang.short - Convert to short integer (64-bit, equivalent to long)
+  - name: "lang.short - integer conversion"
+    description: "Convert integer to short (returns 64-bit long type)"
+    script: 'lang.short(42)'
+    expected_success: true
+    expected_result: "42"
+
+  - name: "lang.short - typeof returns long"
+    description: "Verify lang.short returns long type (64-bit internally)"
+    script: 'typeof(lang.short(100))'
+    expected_success: true
+    expected_result: "long"
+
+  - name: "lang.short - double to short"
+    description: "Convert double to short (truncates decimals)"
+    script: 'lang.short(42.9)'
+    expected_success: true
+    expected_result: "42"
+
+  - name: "lang.short - string to short"
+    description: "Convert numeric string to short"
+    script: 'lang.short("9999")'
+    expected_success: true
+    expected_result: "9999"
+
+  - name: "lang.short - negative value"
+    description: "Convert negative number to short"
+    script: 'lang.short(-123)'
+    expected_success: true
+    expected_result: "-123"
+
+  - name: "lang.short - no parameters"
+    description: "Parameter validation: missing parameter should fail"
+    script: 'lang.short()'
+    expected_success: false
+    expected_error_type: "script_error"
+
   # lang.long - Convert to long integer type
   - name: "lang.long - double to long"
     description: "Convert double to long (truncates decimals)"
