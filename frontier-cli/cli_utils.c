@@ -13,10 +13,16 @@
 
 static boolean g_cli_verbose = false;
 static boolean g_cli_debug = false;
+static boolean g_cli_json_mode = false;  /* Suppress logs in JSON mode to keep stderr clean */
 
 char g_cli_error_buffer[1024] = {0};
 
 static void cli_vlog(int level, const char* label, const char* format, va_list args) {
+    /* Suppress logs in JSON mode to keep stderr clean for JSON output */
+    if (g_cli_json_mode) {
+        return;
+    }
+
     /* Use structured logging instead of fprintf(stderr) */
     char buffer[2048];
     vsnprintf(buffer, sizeof(buffer), format, args);
@@ -45,6 +51,10 @@ boolean cli_init_logging(boolean verbose, boolean debug) {
     g_cli_verbose = verbose;
     g_cli_debug = debug;
     return true;
+}
+
+void cli_set_json_mode(boolean json_mode) {
+    g_cli_json_mode = json_mode;
 }
 
 void cli_cleanup_logging(void) {

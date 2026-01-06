@@ -1110,31 +1110,22 @@ boolean langflushmemfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 boolean langdeletefunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	/*
 	Delete a variable from a hash table.
-	Takes an address parameter (table + name).
-	Returns boolean false if variable doesn't exist (without throwing error).
-
-	Design: getvarparam can fail if parent table doesn't exist or path is invalid.
-	In those cases, we treat it as "variable doesn't exist" and return false.
+	Errors if the variable hasn't been defined.
 	*/
 	hdlhashtable htable;
 	bigstring bs;
 
 	flnextparamislast = true;
 
-	/* Try to get the variable parameter */
-	if (!getvarparam (hparam1, 1, &htable, bs)) {
-		/* If we have parameters but lookup failed, clear error and return false */
-		/* If no parameters, let the error propagate */
-		if (langgetparamcount (hparam1) > 0) {
-			fllangerror = false;
-			return (setbooleanvalue (false, vreturned));
-			}
-		return (false);  /* No parameters - propagate error */
-		}
+	/* Get the variable parameter - errors if no parameters provided */
+	if (!getvarparam (hparam1, 1, &htable, bs))
+		return (false);
 
-	/* Check if variable exists in the table - return false quietly if it doesn't */
-	if (!hashtablesymbolexists (htable, bs))
-		return (setbooleanvalue (false, vreturned));
+	/* Check if variable exists - error if it doesn't */
+	if (!hashtablesymbolexists (htable, bs)) {
+		langparamerror (undefinederror, bs);
+		return (false);
+		}
 
 	/* Make sure it's not the target before deleting */
 	langunsettarget (htable, bs);
@@ -1216,12 +1207,10 @@ boolean langcallscriptfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 
 boolean langmsgfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	/*
-	Display a message.
-	In headless mode, output to stderr (preserves stdout for JSON output).
-	In GUI mode, this would display in a dialog or status bar.
+	Display a message for user interaction.
+	In headless mode, output plain text to stdout.
+	In GUI mode, display in a dialog or status bar.
 
-	Design decision: Use stderr for user-facing messages in headless mode
-	to avoid interfering with JSON output on stdout (--output-json mode).
 	Empty strings are a no-op (don't output anything).
 	*/
 	bigstring bs;
@@ -1232,14 +1221,13 @@ boolean langmsgfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 		return (false);
 
 	#ifdef FRONTIER_HEADLESS
-	/* In headless mode, output message to stderr as single line */
+	/* In headless mode, output message to stdout as plain text */
 	/* Skip output for empty strings (no-op) */
 	if (stringlength (bs) > 0) {
-		/* Use stderr to preserve stdout for JSON output in test framework */
-		/* Use fputs to avoid format string vulnerability */
-		fputs(stringbaseaddress (bs), stderr);
-		fputc('\n', stderr);
-		fflush(stderr);
+		/* Use fwrite with exact length for Pascal strings (not null-terminated) */
+		fwrite(stringbaseaddress (bs), 1, stringlength (bs), stdout);
+		fputc('\n', stdout);
+		fflush(stdout);
 		}
 	return (setbooleanvalue (true, vreturned));
 	#else

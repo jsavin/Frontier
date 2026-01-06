@@ -892,6 +892,10 @@ static void unload_system_root_database(void) {
 static boolean execute_script_mode(void) {
     cli_log_info("Executing script mode");
 
+    /* Set JSON mode to suppress logs on stderr when JSON output is enabled */
+    cli_set_json_mode(g_cli_options.output_json);
+    log_set_suppressed(g_cli_options.output_json);  // Suppress all logging in JSON mode
+
     if (g_cli_options.script_file != NULL) {
         // Execute script file
         return cli_execute_script_file(g_cli_options.script_file, g_cli_options.output_json);
