@@ -89,31 +89,8 @@ static boolean lang_valueproc(short token, hdltreenode hparam1,
                                      bigstring bserror) {
     switch(token) {
         case lanv_scripterror:
-        {
-            /* Verb: lang.scripterror - trigger runtime error */
-            tyvaluerecord val;
-            bigstring bs;
-
-            if (!getparamvalue(hparam1, 1, &val))
-                return false;
-
-            if (val.valuetype == longvaluetype) {
-                // Numeric error code - format OS error
-                langgetmiscstring(unknownstring, bs);
-                setoserrorparam(bs);
-                oserror(val.data.longvalue);
-            }
-            else {
-                // String error message
-                if (!coercetostring(&val))
-                    return false;
-                pullstringvalue(&val, bs);
-                langerrormessage(bs);
-            }
-
-            // MUST return false to terminate script execution
-            return false;
-        }
+            /* Verb: lang.scripterror - forward to real implementation */
+            return langscripterrorfunc(hparam1, vreturned);
         case lanv_new:
             /* Verb: lang.new - forward to real implementation */
             return newvaluefunc(hparam1, vreturned);

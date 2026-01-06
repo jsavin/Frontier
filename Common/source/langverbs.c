@@ -2350,6 +2350,43 @@ langreleasesemaphores (hdlprocessrecord xxxhp)
 	} /*langreleasesemaphores*/
 
 
+boolean langscripterrorfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Trigger a runtime error with either a numeric error code or string message.
+
+	If the parameter is a number (long), it's treated as an OS error code.
+	If the parameter is anything else, it's coerced to a string and used as the error message.
+
+	This function MUST return false to terminate script execution.
+	*/
+
+	tyvaluerecord val;
+	bigstring bs;
+
+	flnextparamislast = true;
+
+	if (!getparamvalue (hparam1, 1, &val))
+		return (false);
+
+	if (val.valuetype == longvaluetype) {
+		// Numeric error code - format OS error
+		langgetmiscstring (unknownstring, bs);
+		setoserrorparam (bs);
+		oserror (val.data.longvalue);
+	}
+	else {
+		// String error message
+		if (!coercetostring (&val))
+			return (false);
+		pullstringvalue (&val, bs);
+		langerrormessage (bs);
+	}
+
+	// MUST return false to terminate script execution
+	return (false);
+	} /*langscripterrorfunc*/
+
+
 #ifdef FRONTIER_HEADLESS
 boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vreturned, bigstring bserror) {
 #else
@@ -2459,38 +2496,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 		}
 
 	case scripterrorfunc:
-	{
-		tyvaluerecord val;
-		bigstring bs;
-
-		flnextparamislast = true;
-
-		if (!getparamvalue (hparam1, 1, &val))
-			return (false);
-
-		if (val.valuetype == longvaluetype)
-		{
-			// Numeric error code - format OS error
-			langgetmiscstring (unknownstring, bs);
-
-			setoserrorparam (bs);
-
-			oserror (val.data.longvalue);
-		}
-		else
-		{
-			// String error message
-			if (!coercetostring (&val))
-				return (false);
-
-			pullstringvalue (&val, bs);
-
-			langerrormessage (bs);
-		}
-
-		// MUST return false to terminate script execution
-		return (false);
-	}
+		return (langscripterrorfunc (hparam1, v));
 
 		case newfunc:
 			return (newvaluefunc (hparam1, v));
