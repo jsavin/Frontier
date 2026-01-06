@@ -65,6 +65,7 @@
 #include "frontierdebug.h" //6.2b7 AR
 #include "oplist.h" //6.2b11 AR
 #include "langsystem7.h"
+#include "logging.h"
 
 
 /*
@@ -493,24 +494,31 @@ boolean processfindcode (hdltreenode hcode, hdlprocessrecord *hprocess) {
 
 static boolean flvisitingthreads = false; // *** debug
 
-static boolean visitprocessthreads (pascal boolean (*visit) (hdlthreadglobals, long), long refcon) {
-	
+boolean visitprocessthreads (pascal boolean (*visit) (hdlthreadglobals, int32_t), int32_t refcon) {
+
 	/*
 	visit all process threads until the visit routine returns true
 
 	6.26.97 dmb: keep globals in sync for current thread. visit routine must
 	no longer operate directly on globals
 	*/
-	
+
 	register hdlthreadglobals hg;
 	hdlthreadglobals hnext, hprev = NULL;
 	boolean fl = false;
-	
+
+	log_trace(LOG_COMP_LANG, "visitprocessthreads: entered, processthreadlist=%p", processthreadlist);
+
 #ifdef landinclude
 	if (landvisitsleepingthreads ((landqueuepopcallback) visit, refcon))
 		return (true);
 #endif
-	
+
+	if (processthreadlist == nil) { /* No threads to visit */
+		log_trace(LOG_COMP_LANG, "visitprocessthreads: processthreadlist is nil");
+		return (false);
+		}
+
 	flvisitingthreads = true;
 
 	for (hg = (**processthreadlist).hfirst; hg != nil; hg = hnext) {

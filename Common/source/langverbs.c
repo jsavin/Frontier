@@ -806,23 +806,147 @@ boolean langgettarget (hdlhashtable *htable, bigstring bsname) {
 	} /*langgettarget*/
 
 
-static boolean langunsettarget (hdlhashtable htable, bigstring bsname) {
-	
+typedef struct tyunsettargetcontext {
+	hdlhashtable htable;
+	bigstring bsname;
+	} tyunsettargetcontext;
+
+
+static hdlhashtable findouterlocaltable (hdltablestack htablestack) {
 	/*
-	if table, name is the current target, clear the target and return true.
-	
-	otherwise, return false
+	Find the outermost local table in a thread's table stack.
+	This is the process-specific table where _target_ is stored.
+	Returns nil if no outer local table is found.
 	*/
-	
+	hdlhashtable ht, hprev;
+	short i;
+
+	if (htablestack == nil)
+		return (nil);
+
+	/* Walk backwards through the table stack to find the outermost local table */
+	for (i = (**htablestack).toptables - 1; i >= 0; i--) {
+		ht = (**htablestack).stack[i];
+
+		if (ht == nil)
+			continue;
+
+		if (!(**ht).fllocaltable)
+			continue;
+
+		/* This is a local table. Check if it's the outermost one */
+		hprev = (**ht).prevhashtable;
+
+		if ((hprev == nil) || !(**hprev).fllocaltable)
+			return (ht);  /* Found outermost local table */
+		}
+
+	return (nil);
+	} /*findouterlocaltable*/
+
+
+static pascal boolean unsettargetvisitor (hdlthreadglobals hthread, int32_t refcon) {
+	/*
+	Visitor function for clearing targets across all threads.
+	Checks if the thread's target matches the deleted object, and clears it if so.
+
+	IMPORTANT: This visitor is called by visitprocessthreads, which does NOT swap in
+	each thread's context. We're accessing the thread's htablestack directly from the
+	thread globals struct, not via the current context.
+	*/
+	tyunsettargetcontext *ctx = (tyunsettargetcontext *) (intptr_t) refcon;
+	hdlhashtable houterlocaltable;
+	tyvaluerecord targetval;
+	hdlhashnode hnode;
 	hdlhashtable htargettable;
 	bigstring bstargetname;
-	
-	if (langgettarget (&htargettable, bstargetname)) { /*a target is set*/
-		
-		if ((htable == htargettable) && equalidentifiers (bsname, bstargetname))
-			return (langcleartarget (nil));
+
+	log_trace(LOG_COMP_LANG, "unsettargetvisitor: checking thread %p", hthread);
+
+	/* Sanity check */
+	if (hthread == nil || ctx == nil) {
+		log_trace(LOG_COMP_LANG, "unsettargetvisitor: nil thread or ctx");
+		return (false);
 		}
-	
+
+	/* Find this thread's outer local table */
+	log_trace(LOG_COMP_LANG, "unsettargetvisitor: calling findouterlocaltable");
+	houterlocaltable = findouterlocaltable ((**hthread).htablestack);
+
+	if (houterlocaltable == nil) {
+		log_trace(LOG_COMP_LANG, "unsettargetvisitor: no outer local table");
+		return (false);  /* No outer local table, continue to next thread */
+		}
+
+	log_trace(LOG_COMP_LANG, "unsettargetvisitor: looking up target in table %p", houterlocaltable);
+
+	/* Check if this thread has a target set using direct hashtablelookup */
+	if (!hashtablelookup (houterlocaltable, nametargetval, &targetval, &hnode)) {
+		log_trace(LOG_COMP_LANG, "unsettargetvisitor: no target found in this thread");
+		return (false);  /* No target set, continue to next thread */
+		}
+
+	log_trace(LOG_COMP_LANG, "unsettargetvisitor: found target, type=%d", targetval.valuetype);
+
+	if (targetval.valuetype != addressvaluetype)
+		return (false);  /* Target is not an address, continue */
+
+	/* Extract the target's table and name */
+	if (!getaddressvalue (targetval, &htargettable, bstargetname)) {
+		log_trace(LOG_COMP_LANG, "unsettargetvisitor: failed to get address value");
+		return (false);  /* Invalid address, continue */
+		}
+
+	log_trace(LOG_COMP_LANG, "unsettargetvisitor: target=%s, ctx->bsname=%s", bstargetname+1, ctx->bsname+1);
+
+	/* Does this thread's target match the object being deleted? */
+	if ((ctx->htable == htargettable) && equalidentifiers (ctx->bsname, bstargetname)) {
+		log_trace(LOG_COMP_LANG, "unsettargetvisitor: MATCH - clearing target");
+		/* Yes - clear this thread's target */
+		hashtabledelete (houterlocaltable, nametargetval);
+		log_trace(LOG_COMP_LANG, "unsettargetvisitor: target cleared");
+		}
+
+	return (false);  /* Continue visiting other threads */
+	} /*unsettargetvisitor*/
+
+
+static boolean langunsettarget (hdlhashtable htable, bigstring bsname) {
+
+	/*
+	If table, name is the current target in ANY thread, clear that thread's target.
+
+	Thread-safe: Iterates all threads and clears any target that matches the
+	object being deleted. This prevents crashes when deleting objects that are
+	currently set as targets.
+
+	Legacy behavior: Deleting a variable that's currently a target should clear
+	that target as a side-effect (no error).
+	*/
+
+	hdlhashtable htargettable;
+	bigstring bstargetname;
+	hdlhashtable houterlocaltable;
+	boolean fl = false;
+
+	/* For now, just handle the current thread (single-threaded case) */
+	if (langgettarget (&htargettable, bstargetname)) { /*a target is set*/
+
+		if ((htable == htargettable) && equalidentifiers (bsname, bstargetname)) {
+
+			/* Clear the target directly without stack manipulation */
+			pushouterlocaltable ();
+			houterlocaltable = currenthashtable;
+			pophashtable ();
+
+			if (houterlocaltable != nil) {
+				fl = hashtabledelete (houterlocaltable, nametargetval);
+				}
+
+			return (fl);
+			}
+		}
+
 	return (false);
 	} /*langunsettarget*/
 
