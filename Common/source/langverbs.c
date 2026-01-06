@@ -1111,20 +1111,24 @@ boolean langdeletefunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	/*
 	Delete a variable from a hash table.
 	Takes an address parameter (table + name).
-	Returns boolean success (false if variable doesn't exist, without error).
+	Returns boolean false if variable doesn't exist (without throwing error).
 
-	This is a simple wrapper around the existing hashtabledelete function.
-	Pattern based on disposevaluefunc below.
+	Design: getvarparam can fail if parent table doesn't exist or path is invalid.
+	In those cases, we treat it as "variable doesn't exist" and return false.
 	*/
 	hdlhashtable htable;
 	bigstring bs;
 
 	flnextparamislast = true;
 
-	if (!getvarparam (hparam1, 1, &htable, bs))
-		return (false);
+	/* If getvarparam fails (parent doesn't exist, etc.), return false without error */
+	if (!getvarparam (hparam1, 1, &htable, bs)) {
+		/* Clear any error that was set - variable simply doesn't exist */
+		fllangerror = false;
+		return (setbooleanvalue (false, vreturned));
+		}
 
-	/* Check if variable exists first - return false quietly if it doesn't */
+	/* Check if variable exists in the table - return false quietly if it doesn't */
 	if (!hashtablesymbolexists (htable, bs))
 		return (setbooleanvalue (false, vreturned));
 
@@ -1628,11 +1632,12 @@ boolean langcharfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 
 boolean langshortfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	/*
-	Convert parameter to short (16-bit) integer type
+	Convert parameter to short integer type.
+	Note: All integers are 64-bit internally now, so short is equivalent to long.
 	*/
 	flnextparamislast = true;
 
-	return (getintparam (hparam1, 1, vreturned));
+	return (getlongparam (hparam1, 1, vreturned));
 	} /*langshortfunc*/
 
 
