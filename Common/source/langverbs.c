@@ -1629,7 +1629,12 @@ boolean langcharfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 boolean langshortfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	/*
 	Convert parameter to short integer type.
-	Note: All integers are 64-bit internally now, so short is equivalent to long.
+
+	Design: All integers are 64-bit internally now, so short is equivalent to long.
+	Returns longvaluetype (not intvaluetype) because typeof() and sizeof() should
+	reflect the actual storage (64-bit), not lie about what's there. The shortType
+	constant exists for backward compatibility, but lang.short() correctly returns
+	a value with typeof(x) == longType.
 	*/
 	flnextparamislast = true;
 

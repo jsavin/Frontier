@@ -372,6 +372,8 @@ tests:
   # Phase 3: Core Lang Operations Verbs
 
   # lang.delete - Delete variable/object
+  # Design: Errors if variable doesn't exist (not idempotent). This is the correct
+  # UserTalk semantics - attempting to delete a nonexistent variable is a script error.
   - name: "lang.delete - simple variable"
     description: "Delete a simple variable from current scope"
     script: |
@@ -393,7 +395,7 @@ tests:
     expected_result: "true"
 
   - name: "lang.delete - non-existent variable"
-    description: "Deleting non-existent variable should error"
+    description: "Deleting non-existent variable should error (correct UserTalk semantics)"
     script: 'lang.delete(@nonexistent)'
     expected_success: false
     expected_error_type: "script_error"
