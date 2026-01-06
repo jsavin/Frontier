@@ -452,6 +452,10 @@ boolean headless_init_system_paths (hdlhashtable hroot) {
 		bigstring bs_processor_name;
 		gethashkey(h, bs_processor_name);
 
+		// Convert to C string once for all logging in this iteration
+		char cname[256];
+		copyptocstring(bs_processor_name, cname);
+
 		// Create address value pointing to this processor
 		// Address values store the PARENT table handle and the CHILD name
 		// So we pass hefptable (system.compiler.kernel) and the processor name ("op")
@@ -459,24 +463,18 @@ boolean headless_init_system_paths (hdlhashtable hroot) {
 		// Use setexemptaddressvalue to avoid tmpstack operations (runtime not initialized yet)
 		tyvaluerecord addr_val;
 		if (!setexemptaddressvalue(hefptable, bs_processor_name, &addr_val)) {
-			char cname[256];
-			copyptocstring(bs_processor_name, cname);
 			log_warn(LOG_COMP_LANG, "Failed to create address value for processor: %s", cname);
 			continue;
 		}
 
 		// Add to system.paths with processor short name (e.g., "op")
 		if (!hashtableassign(hpaths, bs_processor_name, addr_val)) {
-			char cname[256];
-			copyptocstring(bs_processor_name, cname);
 			log_warn(LOG_COMP_LANG, "Failed to assign processor to system.paths: %s", cname);
 			continue;
 		}
 
 		processor_count++;
 
-		char cname[256];
-		copyptocstring(bs_processor_name, cname);
 		log_debug(LOG_COMP_LANG, "Added system.paths.%s -> %s", cname, cname);
 	}
 
