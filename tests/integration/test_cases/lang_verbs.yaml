@@ -1106,6 +1106,12 @@ tests:
     expected_success: false
     expected_error_contains: "Custom error message"
 
+  - name: "lang.scripterror - numeric error code"
+    description: "Script error with numeric code should trigger OS error"
+    script: 'lang.scripterror(-1)'
+    expected_success: false
+    # Expected to fail with some error (numeric error code path)
+
   - name: "lang.scripterror - terminates execution"
     description: "Script error should stop execution immediately"
     script: |

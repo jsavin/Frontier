@@ -17,6 +17,7 @@
 #include "lang.h"
 #include "langinternal.h"
 #include "tablestructure.h"
+#include "error.h"
 
 /* Token enum for all verbs in the lang processor */
 enum {
@@ -88,9 +89,31 @@ static boolean lang_valueproc(short token, hdltreenode hparam1,
                                      bigstring bserror) {
     switch(token) {
         case lanv_scripterror:
-            /* Verb: lang.scripterror - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+        {
+            /* Verb: lang.scripterror - trigger runtime error */
+            tyvaluerecord val;
+            bigstring bs;
+
+            if (!getparamvalue(hparam1, 1, &val))
+                return false;
+
+            if (val.valuetype == longvaluetype) {
+                // Numeric error code - format OS error
+                langgetmiscstring(unknownstring, bs);
+                setoserrorparam(bs);
+                oserror(val.data.longvalue);
+            }
+            else {
+                // String error message
+                if (!coercetostring(&val))
+                    return false;
+                pullstringvalue(&val, bs);
+                langerrormessage(bs);
+            }
+
+            // MUST return false to terminate script execution
             return false;
+        }
         case lanv_new:
             /* Verb: lang.new - forward to real implementation */
             return newvaluefunc(hparam1, vreturned);

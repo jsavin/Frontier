@@ -2501,15 +2501,13 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 		
 		case editfunc:
 	{
-		tyvaluerecord val;
 		hdlhashtable htable;
-		hdlhashnode hnode;
 		bigstring bs;
 
 		flnextparamislast = true;
 
-		// In headless mode, edit is a noop - just verify parameter and return true
-		if (!getvarvalue (hparam1, 1, &htable, bs, &val, &hnode))
+		// In headless mode, edit is a noop - just verify parameter exists and return true
+		if (!getvarparam (hparam1, 1, &htable, bs))
 			return (false);
 
 		return (setbooleanvalue (true, v));
