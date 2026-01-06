@@ -2350,6 +2350,137 @@ langreleasesemaphores (hdlprocessrecord xxxhp)
 	} /*langreleasesemaphores*/
 
 
+boolean langdisplaystringfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Returns the "display string" representation of a value.
+	For strings: adds quotes (e.g., "foo" → "\"foo\"")
+	For other types: returns appropriately formatted representation.
+	*/
+
+	bigstring bs;
+	boolean fl;
+
+	flnextparamislast = true;
+
+	if (!getparamvalue (hparam1, 1, vreturned))
+		return (false);
+
+	flcoerceexternaltostring = true; /* Enable special coercion for this verb */
+
+	fl = getobjectmodeldisplaystring (vreturned, bs);
+
+	flcoerceexternaltostring = false;
+
+	if (!fl)
+		return (false);
+
+	return (setstringvalue (bs, vreturned));
+	} /*langdisplaystringfunc*/
+
+
+boolean langgetbinarytypefunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Get the 4-byte OSType from a binary value's header.
+	Binary values store their type as the first 4 bytes.
+	*/
+
+	Handle x;
+	tyvaluerecord val;
+
+	flnextparamislast = true;
+
+	if (!getparamvalue (hparam1, 1, &val))
+		return (false);
+
+	if (!coercetobinary (&val))
+		return (false);
+
+	x = val.data.binaryvalue;
+
+	setostypevalue (getbinarytypeid (x), vreturned);
+
+	return (true);
+	} /*langgetbinarytypefunc*/
+
+
+boolean langsetbinarytypefunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Set the 4-byte OSType in a binary value's header.
+	Requires a variable reference (not just a value) so we can mark it dirty.
+	*/
+
+	hdlhashtable htable;
+	tyvaluerecord val;
+	OSType type;
+	hdlhashnode hnode;
+	bigstring bs;
+
+	if (!getvarvalue (hparam1, 1, &htable, bs, &val, &hnode))
+		return (false);
+
+	if (val.valuetype != binaryvaluetype) {
+		langerror (binaryrequirederror);
+		return (false);
+	}
+
+	flnextparamislast = true;
+
+	if (!getostypevalue (hparam1, 2, &type))
+		return (false);
+
+	setbinarytypeid (val.data.binaryvalue, type);
+
+	langsymbolchanged (htable, bs, hnode, true); /* Mark variable as modified */
+
+	return (setbooleanvalue (true, vreturned));
+	} /*langsetbinarytypefunc*/
+
+
+boolean langaliasfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Convert a value to an alias (file reference) type.
+	*/
+
+	flnextparamislast = true;
+
+	return (getaliasparam (hparam1, 1, vreturned));
+	} /*langaliasfunc*/
+
+
+boolean langevaluatethreadfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Evaluate a script in a separate thread.
+	Returns true if the thread was successfully started.
+	*/
+
+	Handle htext;
+
+	flnextparamislast = true;
+
+	if (!getexempttextvalue (hparam1, 1, &htext))
+		return (false);
+
+	if (!processruntext (htext))
+		return (false);
+
+	return (setbooleanvalue (true, vreturned));
+	} /*langevaluatethreadfunc*/
+
+
+boolean langclosefunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Close a value's window if it has one open.
+	Also clear the target if this value is the current target.
+	Returns true if either change occurred.
+
+	In headless mode, there are no windows to close, but we still
+	clear targets to maintain consistent state.
+	*/
+
+	return (closevalue (hparam1, vreturned));
+	} /*langclosefunc*/
+
+
 boolean langscripterrorfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	/*
 	Trigger a runtime error with either a numeric error code or string message.
@@ -2520,7 +2651,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 	}
 		
 		case closefunc:
-			return (closevalue (hparam1, v));
+			return (langclosefunc (hparam1, v));
 		
 		case gettargetfunc:
 			return (langgettargetfunc (hparam1, v));
@@ -2992,21 +3123,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			return (fl);
 		
 		case displaystringfunc:
-			flnextparamislast = true;
-			
-			if (!getparamvalue (hparam1, 1, v))
-				break;
-			
-			flcoerceexternaltostring = true; /*special case -- enable for this verb*/
-			
-			fl = getobjectmodeldisplaystring (v, bs);
-			
-			flcoerceexternaltostring = false;
-			
-			if (!fl)
-				break;
-			
-			return (setstringvalue (bs, v));
+			return (langdisplaystringfunc (hparam1, v));
 			
 		case addressfunc:
 			flnextparamislast = true;
@@ -3018,54 +3135,11 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			
 			return (getbinaryparam (hparam1, 1, v));
 		
-		case getbinarytypefunc: {
-			Handle x;
-			tyvaluerecord val;
-			
-			flnextparamislast = true;
-			
-				if (!getparamvalue (hparam1, 1, &val))
-					break;
-				
-				if (!coercetobinary (&val))
-					break;
-				
-				x = val.data.binaryvalue;
-			
-			setostypevalue (getbinarytypeid (x), v);
-			
-			return (true);
-			}
+		case getbinarytypefunc:
+			return (langgetbinarytypefunc (hparam1, v));
 		
-		case setbinarytypefunc: {
-			hdlhashtable htable;
-			tyvaluerecord val;
-			OSType type;
-			hdlhashnode hnode;
-			
-			if (!getvarvalue (hparam1, 1, &htable, bs, &val, &hnode))
-				break;
-			
-			if (val.valuetype != binaryvaluetype) {
-				
-				langerror (binaryrequirederror);
-				
-				break;
-				}
-			
-			flnextparamislast = true;
-			
-			if (!getostypevalue (hparam1, 2, &type))
-				break;
-			
-			setbinarytypeid (val.data.binaryvalue, type);
-			
-			langsymbolchanged (htable, bs, hnode, true);
-			
-			(*v).data.flvalue = true;
-			
-			return (true);
-			}
+		case setbinarytypefunc:
+		return (langsetbinarytypefunc (hparam1, v));
 		
 		case pointfunc:
 			flnextparamislast = true;
@@ -3237,9 +3311,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			return (getfilespecparam (hparam1, 1, v));
 		
 		case aliasfunc:
-			flnextparamislast = true;
-			
-			return (getaliasparam (hparam1, 1, v));
+		return (langaliasfunc (hparam1, v));
 		
 		case listfunc:
 			flnextparamislast = true;
@@ -3424,21 +3496,8 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			return (true);
 			}
 		
-		case evaluatethreadfunc: {
-			Handle htext;
-			
-			flnextparamislast = true;
-			
-			if (!getexempttextvalue (hparam1, 1, &htext))
-				break;
-			
-			if (!processruntext (htext))
-				break;
-			
-			(*v).data.flvalue = true;
-			
-			return (true);
-			}
+		case evaluatethreadfunc:
+		return (langevaluatethreadfunc (hparam1, v));
 		
 		case alertdialogfunc:
 			flnextparamislast = true;

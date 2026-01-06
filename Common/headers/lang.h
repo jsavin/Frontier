@@ -1342,6 +1342,12 @@ extern boolean langevaluatefunc (hdltreenode hparam1, tyvaluerecord *vreturned);
 extern boolean langcallscriptfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
 extern boolean langmsgfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
 extern boolean langscripterrorfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
+extern boolean langdisplaystringfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
+extern boolean langgetbinarytypefunc (hdltreenode hparam1, tyvaluerecord *vreturned);
+extern boolean langsetbinarytypefunc (hdltreenode hparam1, tyvaluerecord *vreturned);
+extern boolean langaliasfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
+extern boolean langevaluatethreadfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
+extern boolean langclosefunc (hdltreenode hparam1, tyvaluerecord *vreturned);
 
 /* Phase 4: Date/Time functions */
 extern boolean langtimecreatedfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
