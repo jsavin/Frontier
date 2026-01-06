@@ -3138,35 +3138,8 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 		case getbinarytypefunc:
 			return (langgetbinarytypefunc (hparam1, v));
 		
-		case setbinarytypefunc: {
-			hdlhashtable htable;
-			tyvaluerecord val;
-			OSType type;
-			hdlhashnode hnode;
-			
-			if (!getvarvalue (hparam1, 1, &htable, bs, &val, &hnode))
-				break;
-			
-			if (val.valuetype != binaryvaluetype) {
-				
-				langerror (binaryrequirederror);
-				
-				break;
-				}
-			
-			flnextparamislast = true;
-			
-			if (!getostypevalue (hparam1, 2, &type))
-				break;
-			
-			setbinarytypeid (val.data.binaryvalue, type);
-			
-			langsymbolchanged (htable, bs, hnode, true);
-			
-			(*v).data.flvalue = true;
-			
-			return (true);
-			}
+		case setbinarytypefunc:
+		return (langsetbinarytypefunc (hparam1, v));
 		
 		case pointfunc:
 			flnextparamislast = true;
