@@ -3,6 +3,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/stat.h>
+#include <errno.h>
 
 /* 2025-12-08 Codex: Validate the v7 artifact emitted by migrate_32bit_to_64bit; do not overwrite source.
  * 2025-12-18 Codex: Enhanced with comprehensive format, accessibility, and data integrity validation.
@@ -107,10 +109,17 @@ static bool get_test_migration_dir(char *out, size_t out_size) {
     // Construct migration output directory
     snprintf(out, out_size, "%s/tests/tmp/migration", repo_root);
 
-    // Create directory if needed
-    char mkdir_cmd[1280];
-    snprintf(mkdir_cmd, sizeof mkdir_cmd, "mkdir -p %s", out);
-    system(mkdir_cmd);
+    // Create directory hierarchy using safe syscalls (not system() - avoids command injection)
+    char tmp_path[1280];
+    snprintf(tmp_path, sizeof tmp_path, "%s/tests", repo_root);
+    mkdir(tmp_path, 0755);  // Ignore errors if exists
+
+    snprintf(tmp_path, sizeof tmp_path, "%s/tests/tmp", repo_root);
+    mkdir(tmp_path, 0755);  // Ignore errors if exists
+
+    if (mkdir(out, 0755) != 0 && errno != EEXIST) {
+        return false;
+    }
 
     return true;
 }

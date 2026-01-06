@@ -19,6 +19,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <errno.h>
 
 #define TEST_OUTPUT_DIR "tests/tmp/unit/"
 
@@ -116,8 +118,10 @@ int main(void) {
 	int passed = 0;
 	int total = 4;
 
-	/* Create output directory */
-	system("mkdir -p " TEST_OUTPUT_DIR);
+	/* Create output directory using safe syscalls (not system() - avoids command injection) */
+	mkdir("tests", 0755);           // Ignore errors if exists
+	mkdir("tests/tmp", 0755);       // Ignore errors if exists
+	mkdir("tests/tmp/unit", 0755);  // Ignore errors if exists
 
 	/* Initialize Frontier runtime */
 	if (!initialize_frontier_cli(NULL)) {
