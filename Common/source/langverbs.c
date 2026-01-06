@@ -1209,11 +1209,11 @@ boolean langcallscriptfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 boolean langmsgfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	/*
 	Display a message.
-	In headless mode, output to stdout (single line, terminal-based interactive UI).
+	In headless mode, output to stderr (preserves stdout for JSON output).
 	In GUI mode, this would display in a dialog or status bar.
 
-	Design decision: Interactive terminal-based implementations for UI verbs
-	(except window operations). msg() outputs a single line to stdout.
+	Design decision: Use stderr for user-facing messages in headless mode
+	to avoid interfering with JSON output on stdout (--output-json mode).
 	*/
 	bigstring bs;
 
@@ -1223,12 +1223,12 @@ boolean langmsgfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 		return (false);
 
 	#ifdef FRONTIER_HEADLESS
-	/* In headless mode, output message to stdout as single line */
-	/* User-facing output to terminal (not diagnostic logging) */
+	/* In headless mode, output message to stderr as single line */
+	/* Use stderr to preserve stdout for JSON output in test framework */
 	/* Use fputs to avoid format string vulnerability */
-	fputs(stringbaseaddress (bs), stdout);
-	fputc('\n', stdout);
-	fflush(stdout);
+	fputs(stringbaseaddress (bs), stderr);
+	fputc('\n', stderr);
+	fflush(stderr);
 	return (setbooleanvalue (true, vreturned));
 	#else
 	/* In GUI mode, delegate to the callback (usually ccmsg) */
