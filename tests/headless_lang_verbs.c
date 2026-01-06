@@ -17,6 +17,7 @@
 #include "lang.h"
 #include "langinternal.h"
 #include "tablestructure.h"
+#include "error.h"
 
 /* Token enum for all verbs in the lang processor */
 enum {
@@ -88,9 +89,8 @@ static boolean lang_valueproc(short token, hdltreenode hparam1,
                                      bigstring bserror) {
     switch(token) {
         case lanv_scripterror:
-            /* Verb: lang.scripterror - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: lang.scripterror - forward to real implementation */
+            return langscripterrorfunc(hparam1, vreturned);
         case lanv_new:
             /* Verb: lang.new - forward to real implementation */
             return newvaluefunc(hparam1, vreturned);
@@ -98,9 +98,9 @@ static boolean lang_valueproc(short token, hdltreenode hparam1,
             /* Verb: lang.delete - forward to real implementation */
             return langdeletefunc(hparam1, vreturned);
         case lanv_edit:
-            /* Verb: lang.edit - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: lang.edit - noop in headless mode */
+            setbooleanvalue(true, vreturned);
+            return true;
         case lanv_gettarget:
             /* Verb: lang.gettarget - forward to real implementation */
             return langgettargetfunc(hparam1, vreturned);
@@ -223,9 +223,9 @@ static boolean lang_valueproc(short token, hdltreenode hparam1,
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case lanv_rollbeachball:
-            /* Verb: lang.rollbeachball - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: lang.rollbeachball - noop in headless mode */
+            setbooleanvalue(true, vreturned);
+            return true;
         case lanv_abs:
             /* Verb: lang.abs - forward to real implementation */
             return langabsfunc(hparam1, vreturned);

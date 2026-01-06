@@ -1341,6 +1341,7 @@ extern boolean langdeletefunc (hdltreenode hparam1, tyvaluerecord *vreturned);
 extern boolean langevaluatefunc (hdltreenode hparam1, tyvaluerecord *vreturned);
 extern boolean langcallscriptfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
 extern boolean langmsgfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
+extern boolean langscripterrorfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
 
 /* Phase 4: Date/Time functions */
 extern boolean langtimecreatedfunc (hdltreenode hparam1, tyvaluerecord *vreturned);

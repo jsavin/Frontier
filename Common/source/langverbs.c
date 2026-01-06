@@ -89,7 +89,9 @@ typedef enum tylangtoken { /*verbs that are processed by langverbs.c*/
 	/*lang*/
 	
 		killscriptfunc,
-		
+
+		scripterrorfunc,
+
 		newfunc,
 		
 		disposefunc,
@@ -2348,6 +2350,43 @@ langreleasesemaphores (hdlprocessrecord xxxhp)
 	} /*langreleasesemaphores*/
 
 
+boolean langscripterrorfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Trigger a runtime error with either a numeric error code or string message.
+
+	If the parameter is a number (long), it's treated as an OS error code.
+	If the parameter is anything else, it's coerced to a string and used as the error message.
+
+	This function MUST return false to terminate script execution.
+	*/
+
+	tyvaluerecord val;
+	bigstring bs;
+
+	flnextparamislast = true;
+
+	if (!getparamvalue (hparam1, 1, &val))
+		return (false);
+
+	if (val.valuetype == longvaluetype) {
+		// Numeric error code - format OS error
+		langgetmiscstring (unknownstring, bs);
+		setoserrorparam (bs);
+		oserror (val.data.longvalue);
+	}
+	else {
+		// String error message
+		if (!coercetostring (&val))
+			return (false);
+		pullstringvalue (&val, bs);
+		langerrormessage (bs);
+	}
+
+	// MUST return false to terminate script execution
+	return (false);
+	} /*langscripterrorfunc*/
+
+
 #ifdef FRONTIER_HEADLESS
 boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vreturned, bigstring bserror) {
 #else
@@ -2456,6 +2495,9 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			return (false);
 		}
 
+	case scripterrorfunc:
+		return (langscripterrorfunc (hparam1, v));
+
 		case newfunc:
 			return (newvaluefunc (hparam1, v));
 		
@@ -2464,7 +2506,18 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 		
 		
 		case editfunc:
-			return (editvalue (hparam1, v));
+	{
+		hdlhashtable htable;
+		bigstring bs;
+
+		flnextparamislast = true;
+
+		// In headless mode, edit is a noop - just verify parameter exists and return true
+		if (!getvarparam (hparam1, 1, &htable, bs))
+			return (false);
+
+		return (setbooleanvalue (true, v));
+	}
 		
 		case closefunc:
 			return (closevalue (hparam1, v));
@@ -3567,43 +3620,24 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			}
 		
 		case beachballfunc: {
-			if (!langcheckparamcount (hparam1, 0))
-				break;
-			
-			if (!beachballcursor ())
-				initbeachball (right);
-			
-			rollbeachball ();
-			
-			(*v).data.flvalue = true;
-			
-			return (true);
-			}
+		if (!langcheckparamcount (hparam1, 0))
+			break;
+
+		// Noop in headless mode - just return true
+		return (setbooleanvalue (true, v));
+		}
 		
 	
 		case seteventtimeoutfunc:
-			return (langipcsettimeout (hparam1, v));
-		
 		case seteventtransactionidfunc:
-			return (langipcsettransactionid (hparam1, v));
-		
 		case seteventinteractionlevelfunc:
-			return (langipcsetinteractionlevel (hparam1, v));
-		
 		case geteventattrfunc:
-			return (langipcgeteventattr (hparam1, v));
-		
 		case coerceappleitemfunc:
-			return (langipccoerceappleitem (hparam1, v));
-		
 		case putlistitemfunc:
-			return (langipcputlistitem (hparam1, v));
-		
 		case getlistitemfunc:
-			return (langipcgetlistitem (hparam1, v));
-		
 		case countlistitemsfunc:
-			return (langipccountlistitems (hparam1, v));
+			langerrormessage(BIGSTRING("\x35" "AppleEvent operations not supported in headless mode"));
+			return (false);
 	
 		/*
 		case ddeinitfunc:
@@ -3611,13 +3645,10 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 		*/
 		
 		case systemeventfunc:
-			return (langipcmessage (hparam1, systemmsg, v));
-		
 		case microsofteventfunc:
-			return (langipcmessage (hparam1, noreplymsg + transactionmsg + microsoftmsg, v));
-		
 		case transactioneventfunc:
-			return (langipcmessage (hparam1, transactionmsg, v));
+			langerrormessage(BIGSTRING("\x35" "AppleEvent operations not supported in headless mode"));
+			return (false);
 	
 		
 		case timecreatedfunc: {
@@ -3651,24 +3682,22 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 		case callscriptfunc:
 			return (callscriptverb (hparam1, v));
 
+		case callxcmdfunc:
+			langerrormessage(BIGSTRING("\x2E" "XCMD operations not supported in headless mode"));
+			return (false);
+
 		case dllcallfunc:
 		case calldllfunc:		/* this is remaining for historical usage per Dave. rab: 5.0b4 1/6/98 */
-			return (dllcallverb (hparam1, v));
-
 		case dllloadfunc:
-			return (dllloadverb (hparam1, v));
-		
 		case dllunloadfunc:
-			return (dllunloadverb (hparam1, v));
-		
 		case dllisloadedfunc:
-			return (dllisloadedverb (hparam1, v));
+			langerrormessage(BIGSTRING("\x2D" "DLL operations not supported on this platform"));
+			return (false);
 
 		case packwindowfunc:
-			return (langpackwindowverb (hparam1, v));
-		
 		case unpackwindowfunc:
-			return (langunpackwindowverb (hparam1, v));
+			langerrormessage(BIGSTRING("\x30" "Window operations not supported in headless mode"));
+			return (false);
 		
 		case getbitfunc:
 			return (bitgetverb (hparam1, v));
