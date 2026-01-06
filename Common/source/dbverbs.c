@@ -1004,6 +1004,7 @@ boolean dbinitverbs (void) {
 /* Note: Headless mode provides its own dbinitverbs() in tests/headless_db_verbs.c
  * which registers with headless_db_verbs_callback instead. */
 
+
 /* Exposed helpers for Save-path migration */
 boolean db_get_path_for_odb(odbref odb, bigstring out) {
     hdlodbrecord hodb;

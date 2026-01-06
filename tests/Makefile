@@ -172,6 +172,7 @@ LANG_RUNTIME_SOURCES = \
     ../Common/source/tablepack.c \
     ../Common/source/tablestructure.c \
     ../Common/source/tableverbs.c \
+    ../Common/source/dbverbs.c \
     ../Common/source/db.c \
     ../Common/source/db_format.c \
     ../Common/source/db_reader_legacy.c \

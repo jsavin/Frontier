@@ -107,6 +107,10 @@ boolean shellpopglobals (void) {
     return false;
 }
 
+boolean shellpushdefaultglobals (void) {
+    return false;
+}
+
 void shellupdatescrollbars (hdlwindowinfo hinfo) {
     (void) hinfo;
 }
