@@ -509,7 +509,7 @@ help:
 	@echo "Available targets:"
 	@echo "  all              - Build all test executables"
 	@echo "  test             - Run all tests"
-	@echo "  results          - Build+run tests and write _results logs"
+	@echo "  results          - Build+run tests and write tmp/results logs"
 	@echo "  test-usertalk    - Run UserTalk object tests"
 	@echo "  test-basic       - Run basic type tests"
 	@echo "  test-collections - Run collection tests"
@@ -530,10 +530,10 @@ help:
 	@echo "  framework/                    - Test framework"
 
 results:
-	@mkdir -p _results
+	@mkdir -p tmp/unit tmp/integration tmp/migration tmp/results
 	@ts=$$(date +%Y%m%d_%H%M%S); \
-	  bash ./run_all_tests.sh | tee "_results/all_tests.$$ts.log"; \
-	  cp "_results/all_tests.$$ts.log" "_results/all_tests.latest.log"
+	  bash ./run_all_tests.sh | tee "tmp/results/all_tests.$$ts.log"; \
+	  cp "tmp/results/all_tests.$$ts.log" "tmp/results/all_tests.latest.log"
 
 # Verify error message coverage
 verify-errors:

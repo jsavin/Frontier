@@ -20,10 +20,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define TEST_OUTPUT_DIR "tests/tmp/unit/"
+
 static int test_writeline_after_open(void) {
 	const char *script =
 		"local(f); "
-		"f = file.open(\"test_tmp/test_state_writeline.txt\"); "
+		"f = file.open(\"" TEST_OUTPUT_DIR "test_state_writeline.txt\"); "
 		"file.writeline(f, \"test line\"); "
 		"file.close(f); "
 		"return true";
@@ -46,7 +48,7 @@ static int test_writeline_after_open(void) {
 static int test_write_after_open(void) {
 	const char *script =
 		"local(f); "
-		"f = file.open(\"test_tmp/test_state_write.bin\"); "
+		"f = file.open(\"" TEST_OUTPUT_DIR "test_state_write.bin\"); "
 		"file.write(f, \"binary\"); "
 		"file.close(f); "
 		"return true";
@@ -69,7 +71,7 @@ static int test_write_after_open(void) {
 static int test_setposition_after_open(void) {
 	const char *script =
 		"local(f); "
-		"f = file.open(\"test_tmp/test_state_setpos.txt\"); "
+		"f = file.open(\"" TEST_OUTPUT_DIR "test_state_setpos.txt\"); "
 		"file.setposition(f, 0); "
 		"file.close(f); "
 		"return true";
@@ -91,8 +93,8 @@ static int test_setposition_after_open(void) {
 
 static int test_compare_after_open(void) {
 	const char *script =
-		"file.open(\"test_tmp/a.txt\"); "
-		"return file.compare(\"test_tmp/test_state_writeline.txt\", \"test_tmp/test_state_write.bin\")";
+		"file.open(\"" TEST_OUTPUT_DIR "a.txt\"); "
+		"return file.compare(\"" TEST_OUTPUT_DIR "test_state_writeline.txt\", \"" TEST_OUTPUT_DIR "test_state_write.bin\")";
 
 	tyvaluerecord result;
 	if (!execute_script(script, &result)) {
@@ -113,6 +115,9 @@ static int test_compare_after_open(void) {
 int main(void) {
 	int passed = 0;
 	int total = 4;
+
+	/* Create output directory */
+	system("mkdir -p " TEST_OUTPUT_DIR);
 
 	/* Initialize Frontier runtime */
 	if (!initialize_frontier_cli(NULL)) {
