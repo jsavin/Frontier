@@ -537,6 +537,12 @@ static boolean hydrate_system_root_database(const char* path) {
         goto cleanup;
     }
 
+    /* Populate system.paths with processor shortcuts (must be AFTER linksystemtablestructure, BEFORE resolve_system_paths) */
+    if (!headless_init_system_paths(hroot)) {
+        cli_log_error("Unable to populate system.paths while hydrating %s", path);
+        goto cleanup;
+    }
+
     /* Eagerly resolve system.paths addresses now that EFP tables are linked */
     if (!resolve_system_paths(hroot)) {
         cli_log_error("Unable to resolve system.paths addresses while hydrating %s", path);

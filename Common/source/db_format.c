@@ -214,6 +214,22 @@ boolean db_format_prepare_runtime(void) {
         return false;
     }
     log_trace(LOG_COMP_STARTUP, "db_format_prepare_runtime: headless_init_kernel_verbs completed successfully");
+
+    /* Link system table structure to make processors accessible via system.compiler.kernel.* */
+    log_trace(LOG_COMP_STARTUP, "db_format_prepare_runtime: linking system table structure");
+    if (!linksystemtablestructure(roottable)) {
+        log_error(LOG_COMP_STARTUP, "db_format_prepare_runtime: linksystemtablestructure FAILED");
+        return false;
+    }
+    log_debug(LOG_COMP_STARTUP, "db_format_prepare_runtime: system table structure linked successfully");
+
+    /* Populate system.paths with processor shortcuts for bare verb resolution */
+    log_trace(LOG_COMP_STARTUP, "db_format_prepare_runtime: populating system.paths");
+    if (!headless_init_system_paths(roottable)) {
+        log_error(LOG_COMP_STARTUP, "db_format_prepare_runtime: headless_init_system_paths FAILED");
+        return false;
+    }
+    log_debug(LOG_COMP_STARTUP, "db_format_prepare_runtime: system.paths populated successfully");
 #endif
 
     grabthreadglobals();
