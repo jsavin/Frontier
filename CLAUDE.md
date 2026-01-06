@@ -58,6 +58,14 @@ cd tools/kernelverbs_parser && python3 cli.py report
 ./tools/monitor_pr_review.sh <PR_NUMBER>
 ```
 
+**Test Output Directory Structure**:
+- `tests/tmp/unit/` - C unit test outputs
+- `tests/tmp/integration/` - Integration test outputs
+- `tests/tmp/migration/` - Migration test artifacts
+- `tests/tmp/results/` - Test logs and CLI runtime artifacts
+
+Use `$(./tools/get_test_temp_path.sh)` for manual testing paths.
+
 ### Documentation Quick Links
 
 - **[Verb Implementation Guide](docs/VERB_IMPLEMENTATION_GUIDE.md)** - Implementing kernel verbs in C
@@ -541,7 +549,7 @@ typeof(filespecValue) => "filespec"     ❌ WRONG - code expects 'fss '
 - ✅ ALWAYS use project-relative paths in .gitignore'd subdirectories
 - ✅ Use `{FRONTIER_TEST_TMP_DIR}` template in integration tests (auto-replaced)
 - ✅ Use `$(./tools/get_test_temp_path.sh)` for manual CLI testing
-- ✅ Use `./test_tmp/` or similar project subdirectories for testing
+- ✅ Use `tests/tmp/unit/` or similar project subdirectories for testing
 
 **Examples**:
 ```bash
@@ -549,8 +557,8 @@ typeof(filespecValue) => "filespec"     ❌ WRONG - code expects 'fss '
 ./frontier-cli/frontier-cli -e 'file.write("/tmp/test.txt", "data")'
 
 # ✅ CORRECT - Project-relative path
-mkdir -p test_tmp  # .gitignore'd directory
-./frontier-cli/frontier-cli -e 'file.write("test_tmp/test.txt", "data")'
+mkdir -p tests/tmp/unit  # .gitignore'd directory
+./frontier-cli/frontier-cli -e 'file.write("tests/tmp/unit/test.txt", "data")'
 
 # ✅ CORRECT - Using helper script
 TESTDIR=$(./tools/get_test_temp_path.sh)

@@ -7,7 +7,7 @@
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-TEST_TMP_DIR="$PROJECT_ROOT/test_tmp"
+TEST_TMP_DIR="$PROJECT_ROOT/tests/tmp/unit"
 
 # Create directory if it doesn't exist
 mkdir -p "$TEST_TMP_DIR"

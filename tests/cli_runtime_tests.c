@@ -117,7 +117,7 @@ static bool copy_file(const char *src, const char *dst) {
 
 static void ensure_results_dir(const char *root) {
     char path[PATH_MAX];
-    if (snprintf(path, sizeof path, "%s/tests/_results", root) >= (int)sizeof path) {
+    if (snprintf(path, sizeof path, "%s/tests/tmp/results", root) >= (int)sizeof path) {
         fprintf(stderr, "results dir path too small\n");
         exit(1);
     }
@@ -235,7 +235,7 @@ static void test_script_file_execution(void) {
     ensure_results_dir(root);
 
     char script_path[PATH_MAX];
-    if (snprintf(script_path, sizeof script_path, "%s/tests/_results/cli_runtime_script.usertalk", root) >= (int)sizeof script_path) {
+    if (snprintf(script_path, sizeof script_path, "%s/tests/tmp/results/cli_runtime_script.usertalk", root) >= (int)sizeof script_path) {
         fprintf(stderr, "script_path buffer too small\n");
         exit(1);
     }
@@ -246,7 +246,7 @@ static void test_script_file_execution(void) {
     fclose(file);
 
     char output[4096];
-    int exit_code = run_cli_command("tests/_results/cli_runtime_script.usertalk", output, sizeof output);
+    int exit_code = run_cli_command("tests/tmp/results/cli_runtime_script.usertalk", output, sizeof output);
     assert(exit_code == 0);
     assert(string_contains(output, "3"));
 
@@ -278,7 +278,7 @@ static void test_system_root_hydration_allows_scripts(void) {
     }
 
     char temp_copy_path[PATH_MAX];
-    if (snprintf(temp_copy_path, sizeof temp_copy_path, "%s/tests/_results/Frontier.root.backup", root) >= (int)sizeof temp_copy_path) {
+    if (snprintf(temp_copy_path, sizeof temp_copy_path, "%s/tests/tmp/results/Frontier.root.backup", root) >= (int)sizeof temp_copy_path) {
         fprintf(stderr, "temp_copy_path buffer too small\n");
         exit(1);
     }

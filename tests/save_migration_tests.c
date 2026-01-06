@@ -1,6 +1,10 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <errno.h>
 
 /* 2025-12-08 Codex: Validate the v7 artifact emitted by migrate_32bit_to_64bit; do not overwrite source.
  * 2025-12-18 Codex: Enhanced with comprehensive format, accessibility, and data integrity validation.
@@ -87,11 +91,52 @@ static boolean validate_v7_addresses(FILE *f) {
     return (root_adr > 0 && root_adr < 0x10000000);  /* Reasonable limit */
 }
 
+/* Get migration output directory - creates tests/tmp/migration/ */
+static bool get_test_migration_dir(char *out, size_t out_size) {
+    char repo_root[1024];
+    if (getcwd(repo_root, sizeof repo_root) == NULL)
+        return false;
+
+    // Strip /tests suffix if present (when run from tests/ directory)
+    size_t len = strlen(repo_root);
+    const char suffix[] = "/tests";
+    size_t suffix_len = strlen(suffix);
+
+    if (len >= suffix_len && strcmp(repo_root + len - suffix_len, suffix) == 0) {
+        repo_root[len - suffix_len] = '\0';
+    }
+
+    // Construct migration output directory
+    snprintf(out, out_size, "%s/tests/tmp/migration", repo_root);
+
+    // Create directory hierarchy using safe syscalls (not system() - avoids command injection)
+    char tmp_path[1280];
+    snprintf(tmp_path, sizeof tmp_path, "%s/tests", repo_root);
+    mkdir(tmp_path, 0755);  // Ignore errors if exists
+
+    snprintf(tmp_path, sizeof tmp_path, "%s/tests/tmp", repo_root);
+    mkdir(tmp_path, 0755);  // Ignore errors if exists
+
+    if (mkdir(out, 0755) != 0 && errno != EEXIST) {
+        return false;
+    }
+
+    return true;
+}
+
 
 int main(void) {
     log_init();  /* Initialize logging system before any log calls */
 
+    // Get migration output directory
+    char migration_dir[1024];
+    if (!get_test_migration_dir(migration_dir, sizeof migration_dir)) {
+        log_error(LOG_COMP_DB, "Failed to get migration output directory");
+        return 1;
+    }
+
     log_info(LOG_COMP_DB, "=== Migration Format and Data Integrity Validation ===");
+    log_info(LOG_COMP_DB, "Migration output directory: %s", migration_dir);
 
     assert(initmemory());
     initstrings();
@@ -108,10 +153,14 @@ int main(void) {
     }
     assert(in != NULL);
 
-    // Make a working copy in CWD
-    const char *dst = "test_save_migration.root";
-    FILE *out = fopen(dst, "wb");
+    // Construct working database path in migration directory
+    char working_db[1280];
+    snprintf(working_db, sizeof working_db, "%s/test_save_migration.root", migration_dir);
+
+    // Copy source to working database
+    FILE *out = fopen(working_db, "wb");
     assert(out != NULL);
+
     char buf[64 * 1024];
     size_t n;
     while ((n = fread(buf, 1, sizeof buf, in)) > 0) {
@@ -122,7 +171,7 @@ int main(void) {
 
     // Verify it's legacy (<=6)
     int ver_before = 0;
-    analyze_header(dst, &ver_before);
+    analyze_header(working_db, &ver_before);
     assert(ver_before <= 6);
 
     log_info(LOG_COMP_DB, "Phase 1: Version check");
@@ -133,7 +182,7 @@ int main(void) {
 
     // Perform migration to modern format
     log_info(LOG_COMP_DB, "Phase 2: Migration execution");
-    if (!migrate_32bit_to_64bit(dst)) {
+    if (!migrate_32bit_to_64bit(working_db)) {
         log_error(LOG_COMP_DB, "FATAL: Migration failed");
         return 1;
     }
@@ -149,8 +198,7 @@ int main(void) {
     // Verify header is now v7 (migrator writes a new file, preserves source)
     char migrated_path[1024];
     if (!db_format_last_backup_path(migrated_path, sizeof migrated_path)) {
-        strncpy(migrated_path, "test_save_migration-v7.root", sizeof migrated_path);
-        migrated_path[sizeof migrated_path - 1] = '\0';
+        snprintf(migrated_path, sizeof migrated_path, "%s/test_save_migration-v7.root", migration_dir);
     }
 
     int ver_after = 0;
