@@ -385,6 +385,126 @@ boolean resolve_system_paths (hdlhashtable hroot) {
 	} /*resolve_system_paths*/
 
 
+boolean headless_init_system_paths (hdlhashtable hroot) {
+
+	/*
+	2026-01-06 Codex: Populate system.paths with processor shortcuts.
+
+	Problem: Bare verb names like "op", "target", "table" don't resolve because
+	         system.paths table is empty.
+
+	Solution: Iterate all processor tables in efptable (system.compiler.kernel.*)
+	         and create address values pointing to each processor, adding them
+	         to system.paths.
+
+	Result: defined(op) returns true, and bare calls like "op.firstSummit()" work.
+
+	This must be called AFTER linksystemtablestructure() links efptable into
+	system.compiler, but BEFORE resolve_system_paths() resolves the addresses.
+	*/
+
+	hdlhashtable hsystem, hpaths, hinternal, hefptable;
+	hdlhashnode h;
+	int processor_count = 0;
+
+	log_trace(LOG_COMP_LANG, "headless_init_system_paths called with hroot=%p", (void*)hroot);
+
+	// Find system table
+	if (!findnamedtable (hroot, namesystembranch, &hsystem)) {
+		log_warn(LOG_COMP_LANG, "No system table found, cannot init system.paths");
+		return (false);
+	}
+
+	// Find system.compiler (internaltable)
+	if (!findnamedtable (hsystem, nameinternaltable, &hinternal)) {
+		log_warn(LOG_COMP_LANG, "No system.compiler table found, cannot init system.paths");
+		return (false);
+	}
+
+	// Find system.compiler.kernel (efptable)
+	if (!findnamedtable (hinternal, nameefptable, &hefptable)) {
+		log_warn(LOG_COMP_LANG, "No system.compiler.kernel table found, cannot init system.paths");
+		return (false);
+	}
+
+	// Find or create system.paths
+	if (!findnamedtable (hsystem, namepathstable, &hpaths)) {
+		// Create system.paths if it doesn't exist
+		if (!tablenewsubtable (hsystem, namepathstable, &hpaths)) {
+			log_error(LOG_COMP_LANG, "Failed to create system.paths table");
+			return (false);
+		}
+		log_debug(LOG_COMP_LANG, "Created system.paths table at %p", (void*)hpaths);
+	}
+
+	log_info(LOG_COMP_LANG, "Populating system.paths with processor shortcuts from efptable");
+
+	// Iterate all processor tables in efptable (system.compiler.kernel.*)
+	for (h = (**hefptable).hfirstsort; h != nil; h = (**h).sortedlink) {
+
+		tyvaluerecord *val = &(**h).val;
+
+		// Only process table entries
+		if (val->valuetype != externalvaluetype)
+			continue;
+
+		// Get the processor name (e.g., "op", "target", "table")
+		bigstring bs_processor_name;
+		gethashkey(h, bs_processor_name);
+
+		// Create address value pointing to this processor
+		// Path: system.compiler.kernel.<processor_name>
+		bigstring bs_full_path;
+		copystring(BIGSTRING("\x14" "system.compiler.kernel."), bs_full_path); // "system.compiler.kernel."
+		pushstring(bs_processor_name, bs_full_path);
+
+		// Create address value
+		tyvaluerecord addr_val;
+		hdlhashtable htable_resolved = nil;
+		bigstring bs_resolved;
+		copystring(bs_full_path, bs_resolved);
+
+		// Resolve the path to get the actual table handle
+		pushhashtable(roottable);
+		boolean fl = langexpandtodotparams(bs_resolved, &htable_resolved, bs_resolved);
+		pophashtable();
+
+		if (!fl || htable_resolved == nil) {
+			char cpath[512];
+			copyptocstring(bs_full_path, cpath);
+			log_warn(LOG_COMP_LANG, "Failed to resolve processor path: %s", cpath);
+			continue;
+		}
+
+		// Create the address value using setaddressvalue
+		if (!setaddressvalue(htable_resolved, bs_resolved, &addr_val)) {
+			char cname[256];
+			copyptocstring(bs_processor_name, cname);
+			log_warn(LOG_COMP_LANG, "Failed to create address value for processor: %s", cname);
+			continue;
+		}
+
+		// Add to system.paths with processor short name (e.g., "op")
+		if (!hashtableassign(hpaths, bs_processor_name, addr_val)) {
+			char cname[256];
+			copyptocstring(bs_processor_name, cname);
+			log_warn(LOG_COMP_LANG, "Failed to assign processor to system.paths: %s", cname);
+			continue;
+		}
+
+		processor_count++;
+
+		char cname[256];
+		copyptocstring(bs_processor_name, cname);
+		log_debug(LOG_COMP_LANG, "Added system.paths.%s -> %s", cname, cname);
+	}
+
+	log_info(LOG_COMP_LANG, "Populated system.paths with %d processor shortcuts", processor_count);
+
+	return (true);
+	} /*headless_init_system_paths*/
+
+
 boolean augment_database_tables_with_efp (hdlhashtable hroot) {
 
 	/*
