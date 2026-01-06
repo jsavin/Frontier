@@ -1351,6 +1351,7 @@ extern boolean langsettimemodifiedfunc (hdltreenode hparam1, tyvaluerecord *vret
 /* Phase 5: Type conversion wrapper functions */
 extern boolean langbooleanfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
 extern boolean langcharfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
+extern boolean langshortfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
 extern boolean langlongfunc (hdltreenode hparam1, tyvaluerecord *vreturned);
 extern boolean langdatefunc (hdltreenode hparam1, tyvaluerecord *vreturned);
 extern boolean langstringfunc (hdltreenode hparam1, tyvaluerecord *vreturned);

@@ -133,9 +133,8 @@ static boolean lang_valueproc(short token, hdltreenode hparam1,
             /* Verb: lang.char - forward to real implementation */
             return langcharfunc(hparam1, vreturned);
         case lanv_short:
-            /* Verb: lang.short - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb: lang.short - forward to real implementation */
+            return langshortfunc(hparam1, vreturned);
         case lanv_long:
             /* Verb: lang.long - forward to real implementation */
             return langlongfunc(hparam1, vreturned);

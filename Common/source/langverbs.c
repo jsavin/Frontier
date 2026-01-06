@@ -1111,7 +1111,7 @@ boolean langdeletefunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	/*
 	Delete a variable from a hash table.
 	Takes an address parameter (table + name).
-	Returns boolean success.
+	Returns boolean success (false if variable doesn't exist, without error).
 
 	This is a simple wrapper around the existing hashtabledelete function.
 	Pattern based on disposevaluefunc below.
@@ -1123,6 +1123,10 @@ boolean langdeletefunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 
 	if (!getvarparam (hparam1, 1, &htable, bs))
 		return (false);
+
+	/* Check if variable exists first - return false quietly if it doesn't */
+	if (!hashtablesymbolexists (htable, bs))
+		return (setbooleanvalue (false, vreturned));
 
 	/* Make sure it's not the target before deleting */
 	langunsettarget (htable, bs);
@@ -1620,6 +1624,16 @@ boolean langcharfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 
 	return (getcharparam (hparam1, 1, vreturned));
 	} /*langcharfunc*/
+
+
+boolean langshortfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Convert parameter to short (16-bit) integer type
+	*/
+	flnextparamislast = true;
+
+	return (getintparam (hparam1, 1, vreturned));
+	} /*langshortfunc*/
 
 
 boolean langlongfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
