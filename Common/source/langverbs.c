@@ -1121,11 +1121,15 @@ boolean langdeletefunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 
 	flnextparamislast = true;
 
-	/* If getvarparam fails (parent doesn't exist, etc.), return false without error */
+	/* Try to get the variable parameter */
 	if (!getvarparam (hparam1, 1, &htable, bs)) {
-		/* Clear any error that was set - variable simply doesn't exist */
-		fllangerror = false;
-		return (setbooleanvalue (false, vreturned));
+		/* If we have parameters but lookup failed, clear error and return false */
+		/* If no parameters, let the error propagate */
+		if (langgetparamcount (hparam1) > 0) {
+			fllangerror = false;
+			return (setbooleanvalue (false, vreturned));
+			}
+		return (false);  /* No parameters - propagate error */
 		}
 
 	/* Check if variable exists in the table - return false quietly if it doesn't */
@@ -1218,6 +1222,7 @@ boolean langmsgfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 
 	Design decision: Use stderr for user-facing messages in headless mode
 	to avoid interfering with JSON output on stdout (--output-json mode).
+	Empty strings are a no-op (don't output anything).
 	*/
 	bigstring bs;
 
@@ -1228,11 +1233,14 @@ boolean langmsgfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 
 	#ifdef FRONTIER_HEADLESS
 	/* In headless mode, output message to stderr as single line */
-	/* Use stderr to preserve stdout for JSON output in test framework */
-	/* Use fputs to avoid format string vulnerability */
-	fputs(stringbaseaddress (bs), stderr);
-	fputc('\n', stderr);
-	fflush(stderr);
+	/* Skip output for empty strings (no-op) */
+	if (stringlength (bs) > 0) {
+		/* Use stderr to preserve stdout for JSON output in test framework */
+		/* Use fputs to avoid format string vulnerability */
+		fputs(stringbaseaddress (bs), stderr);
+		fputc('\n', stderr);
+		fflush(stderr);
+		}
 	return (setbooleanvalue (true, vreturned));
 	#else
 	/* In GUI mode, delegate to the callback (usually ccmsg) */
