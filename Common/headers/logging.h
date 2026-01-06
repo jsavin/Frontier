@@ -68,6 +68,12 @@ void log_init(void);
 void log_set_level(log_level_t level);
 
 /**
+ * Suppress all logging output (used in JSON mode to keep stderr clean).
+ * suppressed: true to suppress all logs, false to resume normal logging
+ */
+void log_set_suppressed(bool suppressed);
+
+/**
  * Enable/disable a specific component.
  * component: LOG_COMP_DB, LOG_COMP_HASH, etc.
  * enabled: true to enable, false to disable

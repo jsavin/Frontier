@@ -16,6 +16,7 @@ typedef unsigned char boolean;
 
 // Logging
 boolean cli_init_logging(boolean verbose, boolean debug);
+void cli_set_json_mode(boolean json_mode);
 void cli_cleanup_logging(void);
 void cli_log_error(const char* format, ...);
 void cli_log_warn(const char* format, ...);

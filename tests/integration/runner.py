@@ -81,10 +81,11 @@ class FrontierCLI:
                 timeout=timeout
             )
 
-            # Parse JSON from stdout
+            # Parse JSON from stderr (keeping stdout clean for user messages like lang.msg)
             try:
-                output = json.loads(result.stdout)
+                output = json.loads(result.stderr)
                 output['exit_code'] = result.returncode
+                output['stdout'] = result.stdout  # Preserve stdout for user messages
                 return output
             except json.JSONDecodeError as e:
                 return {

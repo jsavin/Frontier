@@ -372,12 +372,14 @@ tests:
   # Phase 3: Core Lang Operations Verbs
 
   # lang.delete - Delete variable/object
+  # Design: Errors if variable doesn't exist (not idempotent). This is the correct
+  # UserTalk semantics - attempting to delete a nonexistent variable is a script error.
   - name: "lang.delete - simple variable"
     description: "Delete a simple variable from current scope"
     script: |
       local (x = 42);
       lang.delete(@x);
-      return defined(x) == false
+      return true
     expected_success: true
     expected_result: "true"
 
@@ -388,20 +390,21 @@ tests:
       t.a = "hello";
       t.b = "world";
       lang.delete(@t.a);
-      return defined(t.a) == false and t.b == "world"
+      return t.b == "world"
     expected_success: true
     expected_result: "true"
 
   - name: "lang.delete - non-existent variable"
-    description: "Deleting non-existent variable should return false"
+    description: "Deleting non-existent variable should error (correct UserTalk semantics)"
     script: 'lang.delete(@nonexistent)'
-    expected_success: true
-    expected_result: "false"
+    expected_success: false
+    expected_error_type: "script_error"
 
   - name: "lang.delete - no parameters"
     description: "Parameter validation: missing parameter should fail"
     script: 'lang.delete()'
     expected_success: false
+    expected_error_type: "script_error"
 
   # lang.evaluate - Evaluate UserTalk code string
   - name: "lang.evaluate - simple expression"
@@ -473,15 +476,15 @@ tests:
     script: 'lang.callscript()'
     expected_success: false
 
-  # lang.msg - Display message (logs in headless mode)
+  # lang.msg - Display message for user interaction
   - name: "lang.msg - simple message"
-    description: "Display simple message (should log and return true)"
+    description: "Display simple message (should output to stdout and return true)"
     script: 'lang.msg("Hello from headless mode")'
     expected_success: true
     expected_result: "true"
 
   - name: "lang.msg - empty message"
-    description: "Display empty message"
+    description: "Display empty message (no-op, returns true)"
     script: 'lang.msg("")'
     expected_success: true
     expected_result: "true"
@@ -494,7 +497,7 @@ tests:
 
   - name: "lang.msg - long message"
     description: "Display a longer message"
-    script: 'lang.msg("This is a longer message to test that the logging infrastructure can handle strings of various lengths without issue.")'
+    script: 'lang.msg("This is a longer message to test that lang.msg() can handle strings of various lengths without issue.")'
     expected_success: true
     expected_result: "true"
 
@@ -502,6 +505,7 @@ tests:
     description: "Parameter validation: missing parameter should fail"
     script: 'lang.msg()'
     expected_success: false
+    expected_error_type: "script_error"
 
   # Phase 4: Date/Time Verbs
 
@@ -734,6 +738,43 @@ tests:
   - name: "lang.char - no parameters"
     description: "Parameter validation: missing parameter should fail"
     script: 'lang.char()'
+    expected_success: false
+    expected_error_type: "script_error"
+
+  # lang.short - Convert to short integer (64-bit, equivalent to long)
+  - name: "lang.short - integer conversion"
+    description: "Convert integer to short (returns 64-bit long type)"
+    script: 'lang.short(42)'
+    expected_success: true
+    expected_result: "42"
+
+  - name: "lang.short - typeof returns long"
+    description: "Verify lang.short returns long type (64-bit internally)"
+    script: 'typeof(lang.short(100))'
+    expected_success: true
+    expected_result: "long"
+
+  - name: "lang.short - double to short"
+    description: "Convert double to short (truncates decimals)"
+    script: 'lang.short(42.9)'
+    expected_success: true
+    expected_result: "42"
+
+  - name: "lang.short - string to short"
+    description: "Convert numeric string to short"
+    script: 'lang.short("9999")'
+    expected_success: true
+    expected_result: "9999"
+
+  - name: "lang.short - negative value"
+    description: "Convert negative number to short"
+    script: 'lang.short(-123)'
+    expected_success: true
+    expected_result: "-123"
+
+  - name: "lang.short - no parameters"
+    description: "Parameter validation: missing parameter should fail"
+    script: 'lang.short()'
     expected_success: false
     expected_error_type: "script_error"
 

@@ -1110,19 +1110,22 @@ boolean langflushmemfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 boolean langdeletefunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	/*
 	Delete a variable from a hash table.
-	Takes an address parameter (table + name).
-	Returns boolean success.
-
-	This is a simple wrapper around the existing hashtabledelete function.
-	Pattern based on disposevaluefunc below.
+	Errors if the variable hasn't been defined.
 	*/
 	hdlhashtable htable;
 	bigstring bs;
 
 	flnextparamislast = true;
 
+	/* Get the variable parameter - errors if no parameters provided */
 	if (!getvarparam (hparam1, 1, &htable, bs))
 		return (false);
+
+	/* Check if variable exists - error if it doesn't */
+	if (!hashtablesymbolexists (htable, bs)) {
+		langparamerror (undefinederror, bs);
+		return (false);
+		}
 
 	/* Make sure it's not the target before deleting */
 	langunsettarget (htable, bs);
@@ -1204,12 +1207,11 @@ boolean langcallscriptfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 
 boolean langmsgfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	/*
-	Display a message.
-	In headless mode, output to stdout (single line, terminal-based interactive UI).
-	In GUI mode, this would display in a dialog or status bar.
+	Display a message for user interaction.
+	In headless mode, output plain text to stdout.
+	In GUI mode, display in a dialog or status bar.
 
-	Design decision: Interactive terminal-based implementations for UI verbs
-	(except window operations). msg() outputs a single line to stdout.
+	Empty strings are a no-op (don't output anything).
 	*/
 	bigstring bs;
 
@@ -1219,12 +1221,14 @@ boolean langmsgfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 		return (false);
 
 	#ifdef FRONTIER_HEADLESS
-	/* In headless mode, output message to stdout as single line */
-	/* User-facing output to terminal (not diagnostic logging) */
-	/* Use fputs to avoid format string vulnerability */
-	fputs(stringbaseaddress (bs), stdout);
-	fputc('\n', stdout);
-	fflush(stdout);
+	/* In headless mode, output message to stdout as plain text */
+	/* Skip output for empty strings (no-op) */
+	if (stringlength (bs) > 0) {
+		/* Use fwrite with exact length for Pascal strings (not null-terminated) */
+		fwrite(stringbaseaddress (bs), 1, stringlength (bs), stdout);
+		fputc('\n', stdout);
+		fflush(stdout);
+		}
 	return (setbooleanvalue (true, vreturned));
 	#else
 	/* In GUI mode, delegate to the callback (usually ccmsg) */
@@ -1620,6 +1624,22 @@ boolean langcharfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 
 	return (getcharparam (hparam1, 1, vreturned));
 	} /*langcharfunc*/
+
+
+boolean langshortfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	/*
+	Convert parameter to short integer type.
+
+	Design: All integers are 64-bit internally now, so short is equivalent to long.
+	Returns longvaluetype (not intvaluetype) because typeof() and sizeof() should
+	reflect the actual storage (64-bit), not lie about what's there. The shortType
+	constant exists for backward compatibility, but lang.short() correctly returns
+	a value with typeof(x) == longType.
+	*/
+	flnextparamislast = true;
+
+	return (getlongparam (hparam1, 1, vreturned));
+	} /*langshortfunc*/
 
 
 boolean langlongfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {

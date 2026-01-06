@@ -30,6 +30,7 @@ static log_level_t g_log_level = LOG_LEVEL_WARN;  // Default: warnings and error
 static bool g_component_enabled[LOG_COMP_COUNT];  // Per-component enable flags
 static bool g_initialized = false;
 static log_format_t g_log_format = LOG_FORMAT_TEXT;  // Default: plain text
+static bool g_log_suppressed = false;  // Suppress all output (for JSON mode)
 
 // Component names (for display and parsing)
 static const char *component_names[] = {
@@ -196,6 +197,11 @@ void log_set_level(log_level_t level) {
     g_log_level = level;
 }
 
+void log_set_suppressed(bool suppressed) {
+    if (!g_initialized) log_init();
+    g_log_suppressed = suppressed;
+}
+
 void log_set_component_enabled(log_component_t component, bool enabled) {
     if (!g_initialized) log_init();
     if (component >= 0 && component < LOG_COMP_COUNT) {
@@ -264,6 +270,9 @@ static void json_escape_string(const char *str, char *buf, size_t bufsize) {
 
 void log_write(log_level_t level, log_component_t component,
                const char *file, int line, const char *fmt, ...) {
+    // Suppress all output if in JSON mode
+    if (g_log_suppressed) return;
+
     if (!log_is_enabled(level, component)) return;
 
     const char *comp_name = (component >= 0 && component < LOG_COMP_COUNT)
