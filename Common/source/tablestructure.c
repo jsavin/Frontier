@@ -453,31 +453,12 @@ boolean headless_init_system_paths (hdlhashtable hroot) {
 		gethashkey(h, bs_processor_name);
 
 		// Create address value pointing to this processor
-		// Path: system.compiler.kernel.<processor_name>
-		bigstring bs_full_path;
-		copystring(BIGSTRING("\x14" "system.compiler.kernel."), bs_full_path); // "system.compiler.kernel."
-		pushstring(bs_processor_name, bs_full_path);
-
-		// Create address value
+		// Address values store the PARENT table handle and the CHILD name
+		// So we pass hefptable (system.compiler.kernel) and the processor name ("op")
+		// Later, when resolving, langgettableval will look up "op" in hefptable
+		// Use setexemptaddressvalue to avoid tmpstack operations (runtime not initialized yet)
 		tyvaluerecord addr_val;
-		hdlhashtable htable_resolved = nil;
-		bigstring bs_resolved;
-		copystring(bs_full_path, bs_resolved);
-
-		// Resolve the path to get the actual table handle
-		pushhashtable(roottable);
-		boolean fl = langexpandtodotparams(bs_resolved, &htable_resolved, bs_resolved);
-		pophashtable();
-
-		if (!fl || htable_resolved == nil) {
-			char cpath[512];
-			copyptocstring(bs_full_path, cpath);
-			log_warn(LOG_COMP_LANG, "Failed to resolve processor path: %s", cpath);
-			continue;
-		}
-
-		// Create the address value using setaddressvalue
-		if (!setaddressvalue(htable_resolved, bs_resolved, &addr_val)) {
+		if (!setexemptaddressvalue(hefptable, bs_processor_name, &addr_val)) {
 			char cname[256];
 			copyptocstring(bs_processor_name, cname);
 			log_warn(LOG_COMP_LANG, "Failed to create address value for processor: %s", cname);
