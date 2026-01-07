@@ -494,7 +494,7 @@ boolean processfindcode (hdltreenode hcode, hdlprocessrecord *hprocess) {
 
 static boolean flvisitingthreads = false; // *** debug
 
-boolean visitprocessthreads (pascal boolean (*visit) (hdlthreadglobals, int32_t), int32_t refcon) {
+boolean visitprocessthreads (pascal boolean (*visit) (hdlthreadglobals, long), long refcon) {
 
 	/*
 	visit all process threads until the visit routine returns true
