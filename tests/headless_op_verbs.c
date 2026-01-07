@@ -56,13 +56,16 @@ static boolean getoutlinefromtarget(hdloutlinerecord *ho, bigstring bserror) {
         return false;
     }
 
-    /* Verify it's an external variable */
-    if (!langexternalvaltotable(val, &htable, hnode)) {
-        /* Not a table - check if it's an external variable type */
-        if (val.valuetype != externalvaluetype) {
-            copystring(BIGSTRING("\030target is not an outline"), bserror);
-            return false;
-        }
+    /* Check if it's a table (not an outline) */
+    if (langexternalvaltotable(val, &htable, hnode)) {
+        copystring(BIGSTRING("\030target is not an outline"), bserror);
+        return false;
+    }
+
+    /* Verify it's an external variable type */
+    if (val.valuetype != externalvaluetype) {
+        copystring(BIGSTRING("\030target is not an outline"), bserror);
+        return false;
     }
 
     /* Get the external variable handle */
@@ -81,6 +84,11 @@ static boolean getoutlinefromtarget(hdloutlinerecord *ho, bigstring bserror) {
     }
 
     /* Get the outline record */
+    if ((**hv).variabledata == NULL) {
+        copystring(BIGSTRING("\030target is not an outline"), bserror);
+        return false;
+    }
+
     *ho = (hdloutlinerecord)(**hv).variabledata;
     return true;
 }
