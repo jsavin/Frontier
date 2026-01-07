@@ -17,6 +17,66 @@
 #include "lang.h"
 #include "langinternal.h"
 #include "tablestructure.h"
+#include "langexternal.h"
+#include "opverbs.h"
+#include "opinternal.h"
+
+/*
+ * Helper function: Get outline from target system (headless mode)
+ *
+ * In GUI mode, op verbs get the outline from the frontmost window.
+ * In headless mode, we get it from the target.get() system.
+ *
+ * Returns: true if outline was successfully retrieved, false otherwise
+ * On error, bserror contains a Pascal string with the error message
+ */
+static boolean getoutlinefromtarget(hdloutlinerecord *ho, bigstring bserror) {
+    hdlhashtable htable;
+    bigstring bsname;
+    tyvaluerecord val;
+    hdlhashnode hnode;
+    hdlexternalvariable hv;
+
+    /* Get target from lang.target.get() */
+    if (!langgettarget(&htable, bsname)) {
+        copystring(BIGSTRING("\030no outline target set"), bserror);
+        return false;
+    }
+
+    /* Look up the variable */
+    if (!hashtablelookup(htable, bsname, &val, &hnode)) {
+        copystring(BIGSTRING("\033target variable not found"), bserror);
+        return false;
+    }
+
+    /* Verify it's an external variable */
+    if (!langexternalvaltotable(val, &htable, hnode)) {
+        /* Not an external - check if it's the right type */
+        if (val.valuetype != externalvaluetype) {
+            copystring(BIGSTRING("\031target is not an outline"), bserror);
+            return false;
+        }
+    }
+
+    /* Get the external variable handle */
+    hv = (hdlexternalvariable)val.data.externalvalue;
+
+    /* Verify it's an outline processor type */
+    if ((**hv).id != idoutlineprocessor) {
+        copystring(BIGSTRING("\031target is not an outline"), bserror);
+        return false;
+    }
+
+    /* Ensure outline is in memory */
+    if (!opverbinmemory(NULL, hv)) {
+        copystring(BIGSTRING("\027could not load outline"), bserror);
+        return false;
+    }
+
+    /* Get the outline record */
+    *ho = (hdloutlinerecord)(**hv).variabledata;
+    return true;
+}
 
 /* Token enum for all verbs in the op processor */
 enum {
@@ -71,46 +131,229 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
     switch(token) {
-        case opv_getlinetext:
-            /* Verb #0: op.getlinetext - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case opv_level:
-            /* Verb #1: op.level - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case opv_countsubs:
-            /* Verb #2: op.countsubs - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case opv_countsummits:
-            /* Verb #3: op.countsummits - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case opv_go:
-            /* Verb #4: op.go - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case opv_firstsummit:
-            /* Verb #5: op.firstsummit - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case opv_expand:
-            /* Verb #6: op.expand - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case opv_collapse:
-            /* Verb #7: op.collapse - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+        case opv_getlinetext: {
+            /* op.getLineText() - Get text of current headline */
+            Handle htext;
+            hdloutlinerecord ho;
+            hdlheadrecord hbarcursor;
+
+            /* No parameters */
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+
+            /* Get outline from target */
+            if (!getoutlinefromtarget(&ho, bserror)) {
+                return false;
+            }
+
+            oppushoutline(ho);
+
+            /* If headline is being edited, update text handle */
+            opwriteeditbuffer();
+
+            hbarcursor = (**ho).hbarcursor;
+
+            if (!copyhandle((**hbarcursor).headstring, &htext)) {
+                oppopoutline();
+                return false;
+            }
+
+            oppopoutline();
+
+            return setheapvalue(htext, stringvaluetype, vreturned);
+        }
+        case opv_level: {
+            /* op.level() - Get nesting level of current headline */
+            hdloutlinerecord ho;
+            hdlheadrecord hbarcursor;
+            short level;
+
+            /* No parameters */
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+
+            /* Get outline from target */
+            if (!getoutlinefromtarget(&ho, bserror)) {
+                return false;
+            }
+
+            oppushoutline(ho);
+            hbarcursor = (**ho).hbarcursor;
+            level = (**hbarcursor).headlevel + 1;  /* Convert 0-based to 1-based */
+            oppopoutline();
+
+            return setlongvalue(level, vreturned);
+        }
+        case opv_countsubs: {
+            /* op.countSubs(levels) -> long - Count sub-headlines */
+            short level;
+            hdloutlinerecord ho;
+            hdlheadrecord hbarcursor;
+            long ct;
+
+            flnextparamislast = true;
+
+            if (!getintvalue(hparam1, 1, &level))
+                return false;
+
+            if (!getoutlinefromtarget(&ho, bserror)) {
+                langerrormessage(bserror);
+                return false;
+            }
+
+            oppushoutline(ho);
+            hbarcursor = (**ho).hbarcursor;
+            ct = opcountsubheads(hbarcursor, level);
+            oppopoutline();
+
+            return setlongvalue(ct, vreturned);
+        }
+        case opv_countsummits: {
+            /* op.countSummits() - Count top-level headlines */
+            hdloutlinerecord ho;
+            long ct;
+
+            /* No parameters */
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+
+            /* Get outline from target */
+            if (!getoutlinefromtarget(&ho, bserror)) {
+                return false;
+            }
+
+            oppushoutline(ho);
+            ct = opcountatlevel((**ho).hsummit);
+            oppopoutline();
+
+            return setlongvalue(ct, vreturned);
+        }
+        case opv_go: {
+            /* Verb #4: op.go(direction, count) -> boolean */
+            tydirection dir;
+            long units;
+            hdloutlinerecord ho;
+            boolean fl;
+
+            if (!getdirectionvalue(hparam1, 1, &dir))
+                return false;
+
+            flnextparamislast = true;
+
+            if (!getlongvalue(hparam1, 2, &units))
+                return false;
+
+            if (!getoutlinefromtarget(&ho, bserror)) {
+                langerrormessage(bserror);
+                return false;
+            }
+
+            oppushoutline(ho);
+            opsettextmode(false);
+            fl = opmotionkey(dir, units, false);
+            oppopoutline();
+
+            return setbooleanvalue(fl, vreturned);
+        }
+        case opv_firstsummit: {
+            /* Verb #5: op.firstsummit - go to first summit */
+            hdloutlinerecord ho;
+            boolean fl;
+
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+
+            if (!getoutlinefromtarget(&ho, bserror)) {
+                langerrormessage(bserror);
+                return false;
+            }
+
+            oppushoutline(ho);
+            opsettextmode(false);
+            fl = opmotionkey(flatup, longinfinity, false);
+            oppopoutline();
+
+            return setbooleanvalue(fl, vreturned);
+        }
+        case opv_expand: {
+            /* op.expand(levels) -> boolean - expands subheads */
+            short level;
+            hdloutlinerecord ho;
+            hdlheadrecord hbarcursor;
+            boolean fl;
+
+            flnextparamislast = true;
+
+            if (!getintvalue(hparam1, 1, &level))
+                return false;
+
+            if (!getoutlinefromtarget(&ho, bserror)) {
+                langerrormessage(bserror);
+                return false;
+            }
+
+            oppushoutline(ho);
+            hbarcursor = (**ho).hbarcursor;
+            fl = opexpand(hbarcursor, level, true);
+            oppopoutline();
+
+            return setbooleanvalue(fl, vreturned);
+        }
+        case opv_collapse: {
+            /* op.collapse() - Collapse subheads */
+            hdloutlinerecord ho;
+            hdlheadrecord hbarcursor;
+            boolean fl;
+
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+
+            if (!getoutlinefromtarget(&ho, bserror)) {
+                return false;
+            }
+
+            oppushoutline(ho);
+            hbarcursor = (**ho).hbarcursor;
+            fl = opcollapse(hbarcursor);
+            oppopoutline();
+
+            return setbooleanvalue(fl, vreturned);
+        }
         case opv_subsexpanded:
             /* Verb #8: op.subsexpanded - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case opv_insert:
-            /* Verb #9: op.insert - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+        case opv_insert: {
+            /* Verb #9: op.insert(text, direction) -> boolean */
+            Handle htext;
+            tydirection dir;
+            hdloutlinerecord ho;
+            boolean fl;
+
+            /* Parse parameters */
+            if (!getexempttextvalue(hparam1, 1, &htext))
+                return false;
+
+            flnextparamislast = true;
+
+            if (!getdirectionvalue(hparam1, 2, &dir))
+                return false;
+
+            /* Get outline from target */
+            if (!getoutlinefromtarget(&ho, bserror)) {
+                langerrormessage(bserror);
+                return false;
+            }
+
+            /* Push outline, insert, pop */
+            oppushoutline(ho);
+            fl = opinserthandle(htext, dir);
+            oppopoutline();
+
+            disposehandle(htext);
+
+            return setbooleanvalue(fl, vreturned);
+        }
         case opv_find:
             /* Verb #10: op.find - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
