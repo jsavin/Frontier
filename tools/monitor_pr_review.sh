@@ -1,14 +1,29 @@
 #!/bin/bash
 
 # Monitor PR for new bot review comments and reviews
-# Usage: ./monitor_pr_review.sh <pr_number> [timeout_seconds]
+# Usage: ./monitor_pr_review.sh <pr_number> [timeout_seconds] [--show-all]
 # Default timeout: 900 seconds (15 minutes)
 # Detects both comment-based reviews and GitHub review system reviews
 # Continues monitoring until all review workflows complete or timeout
+# Use --show-all to display all existing reviews before monitoring for new ones
 
+# Parse arguments
 PR_NUMBER="${1:-162}"
 TIMEOUT="${2:-900}"
+SHOW_ALL=false
 POLL_INTERVAL=5
+
+# Check for --show-all flag in any argument position
+for arg in "$@"; do
+    if [ "$arg" = "--show-all" ]; then
+        SHOW_ALL=true
+    fi
+done
+
+# If second arg is --show-all, use default timeout
+if [ "$2" = "--show-all" ]; then
+    TIMEOUT=900
+fi
 
 echo "[$(date)] Starting PR #$PR_NUMBER review monitor (timeout: ${TIMEOUT}s)"
 echo "[$(date)] Getting initial counts..."
@@ -27,6 +42,72 @@ fi
 
 echo "[$(date)] Initial comment count: $INITIAL_COMMENTS"
 echo "[$(date)] Initial review count: $INITIAL_REVIEWS"
+
+# If --show-all is set, display all existing reviews first
+if [ "$SHOW_ALL" = true ]; then
+    echo "[$(date)] Displaying all existing reviews..."
+    echo ""
+
+    # Display all existing comments
+    if [ "$INITIAL_COMMENTS" -gt 0 ]; then
+        for ((i=0; i<$INITIAL_COMMENTS; i++)); do
+            LATEST=$(gh pr view "$PR_NUMBER" --json comments --jq ".comments[$i]" 2>/dev/null)
+
+            if [ -n "$LATEST" ]; then
+                COMMENT_ID=$(echo "$LATEST" | jq -r '.id')
+                AUTHOR=$(echo "$LATEST" | jq -r '.author.login')
+                CREATED_AT=$(echo "$LATEST" | jq -r '.createdAt')
+                BODY=$(echo "$LATEST" | jq -r '.body')
+
+                echo "=========================================="
+                echo "EXISTING COMMENT #$((i+1))/$INITIAL_COMMENTS"
+                echo "=========================================="
+                echo "Comment ID: $COMMENT_ID"
+                echo "Author: $AUTHOR"
+                echo "Created: $CREATED_AT"
+                echo "=========================================="
+                echo ""
+                echo "$BODY"
+                echo ""
+                echo "=========================================="
+                echo ""
+            fi
+        done
+    fi
+
+    # Display all existing reviews
+    if [ "$INITIAL_REVIEWS" -gt 0 ]; then
+        for ((i=0; i<$INITIAL_REVIEWS; i++)); do
+            LATEST=$(gh pr view "$PR_NUMBER" --json reviews --jq ".reviews[$i]" 2>/dev/null)
+
+            if [ -n "$LATEST" ]; then
+                REVIEW_ID=$(echo "$LATEST" | jq -r '.id')
+                AUTHOR=$(echo "$LATEST" | jq -r '.author.login')
+                STATE=$(echo "$LATEST" | jq -r '.state')
+                SUBMITTED_AT=$(echo "$LATEST" | jq -r '.submittedAt')
+                BODY=$(echo "$LATEST" | jq -r '.body')
+
+                echo "=========================================="
+                echo "EXISTING REVIEW #$((i+1))/$INITIAL_REVIEWS (Review System)"
+                echo "=========================================="
+                echo "Review ID: $REVIEW_ID"
+                echo "Author: $AUTHOR"
+                echo "State: $STATE"
+                echo "Submitted: $SUBMITTED_AT"
+                echo "=========================================="
+                echo ""
+                echo "$BODY"
+                echo ""
+                echo "=========================================="
+                echo ""
+            fi
+        done
+    fi
+
+    echo "[$(date)] Finished displaying existing reviews. Now monitoring for new ones..."
+    echo ""
+fi
+
 echo "[$(date)] Monitoring for new comments and reviews (will display all new reviews)..."
 echo ""
 
