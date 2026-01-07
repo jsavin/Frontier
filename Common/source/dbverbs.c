@@ -74,7 +74,7 @@ swapping, and doesn't require thread infrastructure initialization.
 typedef struct odb_context_guard {
 	hdlhashtable saved_currenthashtable;
 	hdldatabaserecord saved_databasedata;
-	hdlhashtable saved_hashtablestack;
+	hdltablestack saved_hashtablestack;
 } odb_context_guard;
 
 static void odb_guard_enter(odb_context_guard *guard) {

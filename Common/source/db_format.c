@@ -46,6 +46,7 @@ extern boolean dbgetsize_internal(dbaddress adr, long *logicalsize);
 /* Headless verb initialization functions */
 #ifdef FRONTIER_HEADLESS
 extern boolean headless_init_kernel_verbs(void);  /* Auto-generated from kernelverbs.rc */
+extern boolean dbinitverbs(void);  /* dbverbs.c - initialize Guest Database infrastructure */
 #endif
 
 // 2025-10-27 Codex: Added optional migration tracing to inspect v6/v7 table layouts during conversion.
@@ -230,6 +231,14 @@ boolean db_format_prepare_runtime(void) {
         return false;
     }
     log_debug(LOG_COMP_STARTUP, "db_format_prepare_runtime: system.paths populated successfully");
+
+    /* Initialize db verb infrastructure (Guest Database linked list) */
+    log_trace(LOG_COMP_STARTUP, "db_format_prepare_runtime: calling dbinitverbs");
+    if (!dbinitverbs()) {
+        log_error(LOG_COMP_STARTUP, "db_format_prepare_runtime: dbinitverbs FAILED");
+        return false;
+    }
+    log_trace(LOG_COMP_STARTUP, "db_format_prepare_runtime: dbinitverbs completed successfully");
 #endif
 
     grabthreadglobals();
