@@ -29,6 +29,17 @@
 #include "opinternal.h"
 
 /*
+ * Helper function: Set error message from C string
+ *
+ * Converts a C string to Pascal string format and copies to bserror.
+ * This ensures consistency - the length prefix is automatically calculated
+ * from the string length, preventing manual octal prefix errors.
+ */
+static void seterrorstring(const char *msg, bigstring bserror) {
+    copyctopstring(msg, bserror);
+}
+
+/*
  * Helper function: Get outline from target system (headless mode)
  *
  * In GUI mode, op verbs get the outline from the frontmost window.
@@ -46,25 +57,25 @@ static boolean getoutlinefromtarget(hdloutlinerecord *ho, bigstring bserror) {
 
     /* Get target from lang.target.get() */
     if (!langgettarget(&htable, bsname)) {
-        copystring(BIGSTRING("\025no outline target set"), bserror);
+        seterrorstring("no outline target set", bserror);
         return false;
     }
 
     /* Look up the variable */
     if (!hashtablelookup(htable, bsname, &val, &hnode)) {
-        copystring(BIGSTRING("\031target variable not found"), bserror);
+        seterrorstring("target variable not found", bserror);
         return false;
     }
 
     /* Check if it's a table (not an outline) */
     if (langexternalvaltotable(val, &htable, hnode)) {
-        copystring(BIGSTRING("\030target is not an outline"), bserror);
+        seterrorstring("target is not an outline", bserror);
         return false;
     }
 
     /* Verify it's an external variable type */
     if (val.valuetype != externalvaluetype) {
-        copystring(BIGSTRING("\030target is not an outline"), bserror);
+        seterrorstring("target is not an outline", bserror);
         return false;
     }
 
@@ -73,25 +84,25 @@ static boolean getoutlinefromtarget(hdloutlinerecord *ho, bigstring bserror) {
 
     /* Verify handle is valid */
     if (hv == NULL) {
-        copystring(BIGSTRING("\030target is not an outline"), bserror);
+        seterrorstring("target is not an outline", bserror);
         return false;
     }
 
     /* Verify it's an outline processor type */
     if ((**hv).id != idoutlineprocessor) {
-        copystring(BIGSTRING("\030target is not an outline"), bserror);
+        seterrorstring("target is not an outline", bserror);
         return false;
     }
 
     /* Ensure outline is in memory */
     if (!opverbinmemory(NULL, hv)) {
-        copystring(BIGSTRING("\026could not load outline"), bserror);
+        seterrorstring("could not load outline", bserror);
         return false;
     }
 
     /* Get the outline record */
     if ((**hv).variabledata == NULL) {
-        copystring(BIGSTRING("\030target is not an outline"), bserror);
+        seterrorstring("target is not an outline", bserror);
         return false;
     }
 
@@ -334,7 +345,7 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
         }
         case opv_subsexpanded:
             /* Verb #8: op.subsexpanded - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) seterrorstring("not implemented", bserror);
             return false;
         case opv_insert: {
             /* Verb #9: op.insert(text, direction) -> boolean */
@@ -371,143 +382,143 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
         }
         case opv_find:
             /* Verb #10: op.find - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) seterrorstring("not implemented", bserror);
             return false;
         case opv_sort:
             /* Verb #11: op.sort - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) seterrorstring("not implemented", bserror);
             return false;
         case opv_setlinetext:
             /* Verb #12: op.setlinetext - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) seterrorstring("not implemented", bserror);
             return false;
         case opv_reorg:
             /* Verb #13: op.reorg - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) seterrorstring("not implemented", bserror);
             return false;
         case opv_promote:
             /* Verb #14: op.promote - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) seterrorstring("not implemented", bserror);
             return false;
         case opv_demote:
             /* Verb #15: op.demote - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) seterrorstring("not implemented", bserror);
             return false;
         case opv_hoist:
             /* Verb #16: op.hoist - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) seterrorstring("not implemented", bserror);
             return false;
         case opv_dehoist:
             /* Verb #17: op.dehoist - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) seterrorstring("not implemented", bserror);
             return false;
         case opv_deletesubs:
             /* Verb #18: op.deletesubs - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) seterrorstring("not implemented", bserror);
             return false;
         case opv_deleteline:
             /* Verb #19: op.deleteline - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) seterrorstring("not implemented", bserror);
             return false;
         case opv_tabkeyreorg:
             /* Verb #20: op.tabkeyreorg - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) seterrorstring("not implemented", bserror);
             return false;
         case opv_flatcursorkeys:
             /* Verb #21: op.flatcursorkeys - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) seterrorstring("not implemented", bserror);
             return false;
         case opv_getdisplay:
             /* Verb #22: op.getdisplay - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) seterrorstring("not implemented", bserror);
             return false;
         case opv_setdisplay:
             /* Verb #23: op.setdisplay - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) seterrorstring("not implemented", bserror);
             return false;
         case opv_getcursor:
             /* Verb #24: op.getcursor - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) seterrorstring("not implemented", bserror);
             return false;
         case opv_setcursor:
             /* Verb #25: op.setcursor - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) seterrorstring("not implemented", bserror);
             return false;
         case opv_getrefcon:
             /* Verb #26: op.getrefcon - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) seterrorstring("not implemented", bserror);
             return false;
         case opv_setrefcon:
             /* Verb #27: op.setrefcon - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) seterrorstring("not implemented", bserror);
             return false;
         case opv_getexpansionstate:
             /* Verb #28: op.getexpansionstate - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) seterrorstring("not implemented", bserror);
             return false;
         case opv_setexpansionstate:
             /* Verb #29: op.setexpansionstate - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) seterrorstring("not implemented", bserror);
             return false;
         case opv_getscrollstate:
             /* Verb #30: op.getscrollstate - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) seterrorstring("not implemented", bserror);
             return false;
         case opv_setscrollstate:
             /* Verb #31: op.setscrollstate - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) seterrorstring("not implemented", bserror);
             return false;
         case opv_getsuboutline:
             /* Verb #32: op.getsuboutline - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) seterrorstring("not implemented", bserror);
             return false;
         case opv_insertoutline:
             /* Verb #33: op.insertoutline - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) seterrorstring("not implemented", bserror);
             return false;
         case opv_setmodified:
             /* Verb #34: op.setmodified - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) seterrorstring("not implemented", bserror);
             return false;
         case opv_getselection:
             /* Verb #35: op.getselection - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) seterrorstring("not implemented", bserror);
             return false;
         case opv_getheadnumber:
             /* Verb #36: op.getheadnumber - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) seterrorstring("not implemented", bserror);
             return false;
         case opv_visitall:
             /* Verb #37: op.visitall - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) seterrorstring("not implemented", bserror);
             return false;
         case opv_getselectedsuboutlines:
             /* Verb #38: op.getselectedsuboutlines - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) seterrorstring("not implemented", bserror);
             return false;
         case opv_xmltooutline:
             /* Verb #39: op.xmltooutline - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) seterrorstring("not implemented", bserror);
             return false;
         case opv_outlinetoxml:
             /* Verb #40: op.outlinetoxml - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) seterrorstring("not implemented", bserror);
             return false;
         case opv_sethtmlformatting:
             /* Verb #41: op.sethtmlformatting - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) seterrorstring("not implemented", bserror);
             return false;
         case opv_gethtmlformatting:
             /* Verb #42: op.gethtmlformatting - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) seterrorstring("not implemented", bserror);
             return false;
         case opv_setdynamic:
             /* Verb #43: op.setdynamic - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) seterrorstring("not implemented", bserror);
             return false;
         case opv_getdynamic:
             /* Verb #44: op.getdynamic - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) seterrorstring("not implemented", bserror);
             return false;
         default:
             return false;

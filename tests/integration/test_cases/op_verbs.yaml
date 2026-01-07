@@ -399,7 +399,7 @@ tests:
   # ====================================================================
 
   - name: "op.countSummits - count top-level nodes"
-    description: "Count all summit (top-level) nodes in outline"
+    description: "Count all summit (top-level) nodes in outline (includes empty root)"
     script: |
       lang.new(outlineType, @workspace.outline);
       target.set(@workspace.outline);
@@ -408,19 +408,19 @@ tests:
       op.insert("Summit 3", down);
       return op.countSummits()
     expected_success: true
-    expected_result: "3"
+    expected_result: "4"
 
-  - name: "op.countSummits - empty outline returns 0"
-    description: "Empty outline has 0 summits"
+  - name: "op.countSummits - empty outline returns 1"
+    description: "Empty outline has 1 summit (the empty root node)"
     script: |
       lang.new(outlineType, @workspace.outline);
       target.set(@workspace.outline);
       return op.countSummits()
     expected_success: true
-    expected_result: "0"
+    expected_result: "1"
 
   - name: "op.countSummits - children don't count"
-    description: "Child nodes are not counted as summits"
+    description: "Child nodes are not counted as summits (empty root + 1 summit)"
     script: |
       lang.new(outlineType, @workspace.outline);
       target.set(@workspace.outline);
@@ -429,7 +429,7 @@ tests:
       op.insert("Grandchild", right);
       return op.countSummits()
     expected_success: true
-    expected_result: "1"
+    expected_result: "2"
 
   # ====================================================================
   # op.expand() - Expand Nodes
@@ -813,7 +813,7 @@ tests:
   # ====================================================================
 
   - name: "stress test - build large outline"
-    description: "Build outline with many nodes"
+    description: "Build outline with many nodes (includes empty root)"
     script: |
       lang.new(outlineType, @workspace.outline);
       target.set(@workspace.outline);
@@ -823,7 +823,7 @@ tests:
       };
       return op.countSummits()
     expected_success: true
-    expected_result: "20"
+    expected_result: "21"
 
   - name: "stress test - deep nesting"
     description: "Create deeply nested outline structure"
