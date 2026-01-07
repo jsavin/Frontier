@@ -34,8 +34,12 @@
  * Converts a C string to Pascal string format and copies to bserror.
  * This ensures consistency - the length prefix is automatically calculated
  * from the string length, preventing manual octal prefix errors.
+ *
+ * Handles NULL bserror gracefully (some callers may not want error messages).
  */
 static void seterrorstring(const char *msg, bigstring bserror) {
+    if (bserror == NULL)
+        return;
     copyctopstring(msg, bserror);
 }
 
