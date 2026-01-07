@@ -10,6 +10,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 RUNNER="$PROJECT_ROOT/tests/integration/runner.py"
 CLI_PATH="$PROJECT_ROOT/frontier-cli/frontier-cli"
+SYSTEM_ROOT="$PROJECT_ROOT/databases/Frontier-v7.root"
 TEST_CASES_DIR="$PROJECT_ROOT/tests/integration/test_cases"
 
 # Colors for output
@@ -101,7 +102,7 @@ echo "Running ${#TEST_FILES[@]} test file(s)..."
 echo
 
 # Run the tests
-"$RUNNER" $VERBOSE --cli "$CLI_PATH" "${TEST_FILES[@]}"
+"$RUNNER" $VERBOSE --cli "$CLI_PATH" --system-root "$SYSTEM_ROOT" "${TEST_FILES[@]}"
 EXIT_CODE=$?
 
 echo

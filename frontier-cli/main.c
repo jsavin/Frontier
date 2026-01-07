@@ -118,17 +118,22 @@ int main(int argc, char* argv[]) {
         print_usage(argv[0]);
         return 1;
     }
-    
+
     // Handle help and version requests
     if (g_cli_options.show_help) {
         print_usage(argv[0]);
         return 0;
     }
-    
+
     if (g_cli_options.show_version) {
         print_version();
         return 0;
     }
+
+    /* Set JSON mode early to suppress logs on stderr when JSON output is enabled.
+     * Must be set BEFORE database loading to prevent log messages from appearing in JSON output. */
+    cli_set_json_mode(g_cli_options.output_json);
+    log_set_suppressed(g_cli_options.output_json);
 
     /* Always hydrate the system root in headless/CLI; defaults to g_cli_options.system_root if provided. */
     if (g_cli_options.upgrade_system_root) {
@@ -897,10 +902,6 @@ static void unload_system_root_database(void) {
 
 static boolean execute_script_mode(void) {
     cli_log_info("Executing script mode");
-
-    /* Set JSON mode to suppress logs on stderr when JSON output is enabled */
-    cli_set_json_mode(g_cli_options.output_json);
-    log_set_suppressed(g_cli_options.output_json);  // Suppress all logging in JSON mode
 
     if (g_cli_options.script_file != NULL) {
         // Execute script file

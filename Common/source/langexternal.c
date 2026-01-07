@@ -2413,15 +2413,17 @@ boolean langexternaldisposevariable (hdlexternalvariable hvariable, boolean fldi
 	databasedata = (**hv).hdatabase;
 
 	if ((**hv).flinmemory) {
-		
+
 		(*disposeroutine) (hv, fldisk);
 
 		adr = (**hv).oldaddress;
 		}
 	else
 		adr = (dbaddress) (**hv).variabledata;
-	
-	if (fldisk)
+
+	/* Only push to release stack if there's a valid database context.
+	   In-memory tables created with lang.new() have hdatabase=NULL. */
+	if (fldisk && databasedata != NULL)
 		dbpushreleasestack (adr, (long) (outlinevaluetype + (**hv).id));
 	
 	databasedata = savedatabasedata;

@@ -807,22 +807,47 @@ boolean langgettarget (hdlhashtable *htable, bigstring bsname) {
 
 
 static boolean langunsettarget (hdlhashtable htable, bigstring bsname) {
-	
+
 	/*
-	if table, name is the current target, clear the target and return true.
-	
-	otherwise, return false
+	If the variable being deleted is currently set as the target, clear it.
+
+	Single-threaded: Currently only handles the current thread. Multi-thread support
+	(clearing targets across all threads) is planned for Phase 2.0 when collaborative
+	ODB editing is implemented. See Issue #TBD for multi-thread implementation plan.
+
+	Legacy behavior: Deleting a variable that's currently a target should clear
+	that target as a side-effect (no error).
 	*/
-	
+
 	hdlhashtable htargettable;
 	bigstring bstargetname;
-	
+	boolean fl = false;
+
+	/* Check if current thread has this variable as its target */
 	if (langgettarget (&htargettable, bstargetname)) { /*a target is set*/
-		
-		if ((htable == htargettable) && equalidentifiers (bsname, bstargetname))
-			return (langcleartarget (nil));
+
+		if ((htable == htargettable) && equalidentifiers (bsname, bstargetname)) {
+
+			/* Clear the target - includes hidden window cleanup for GUI builds */
+			tyvaluerecord val;
+			hdlhashnode hnode;
+
+			pushouterlocaltable ();
+
+			/* Lookup target value and close any hidden windows before deletion */
+			if (hashlookup (nametargetval, &val, &hnode)) {
+				langclosehiddenwindow (val);  /* Close hidden windows (GUI only) */
+				fl = hashdelete (nametargetval, true, true);
+				}
+			else
+				fl = false;
+
+			pophashtable ();
+
+			return (fl);
+			}
 		}
-	
+
 	return (false);
 	} /*langunsettarget*/
 

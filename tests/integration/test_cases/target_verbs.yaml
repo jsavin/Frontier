@@ -1,0 +1,510 @@
+# Integration tests for target verb operations
+# Tests target manipulation verbs available in headless mode
+#
+# Target verbs (3 operations):
+#   - target.get() - Returns current target address (or nil if no target set)
+#   - target.set(address) - Sets current target to given address
+#   - target.clear() - Clears current target (sets to nil)
+#
+# Headless Behavior Notes:
+# - No implicit target fallback (GUI falls back to frontmost window)
+# - No window operations (setting/clearing doesn't open/close editor windows)
+# - Target is purely logical - stored in nametargetval as addressvaluetype
+# - Setting target always succeeds (no window to fail opening)
+#
+# Reference: planning/phase3/verb_implementations/target_verbs_headless_port.md
+
+tests:
+  # ====================================================================
+  # Basic target.get() Operations
+  # ====================================================================
+
+  - name: "target.get - no target set returns nil"
+    description: "When no explicit target is set, target.get() returns nil (no implicit target in headless)"
+    script: |
+      target.clear();
+      return typeof(target.get())
+    expected_success: true
+    expected_result: "????"
+
+  - name: "target.get - no target set (initial state)"
+    description: "On fresh execution with no prior target.set(), target.get() returns nil"
+    script: 'typeof(target.get())'
+    expected_success: true
+    expected_result: "????"
+
+  # ====================================================================
+  # Basic target.set() Operations
+  # ====================================================================
+
+  - name: "target.set - simple table"
+    description: "Set a table as target and verify it was set"
+    script: |
+      lang.new(tableType, @workspace.testTarget);
+      target.set(@workspace.testTarget);
+      return defined(workspace.testTarget)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "target.set - returns previous target (nil initially)"
+    description: "target.set() returns previous target value (nil if none was set)"
+    script: |
+      target.clear();
+      lang.new(tableType, @workspace.t1);
+      return typeof(target.set(@workspace.t1))
+    expected_success: true
+    expected_result: "????"
+
+  - name: "target.set - returns previous target (non-nil)"
+    description: "target.set() returns previous target when one was set"
+    script: |
+      lang.new(tableType, @workspace.t1);
+      lang.new(tableType, @workspace.t2);
+      target.set(@workspace.t1);
+      local(prev = target.set(@workspace.t2));
+      return string(prev)
+    expected_success: true
+    expected_result: "workspace.t1"
+
+  # ====================================================================
+  # target.get() After target.set()
+  # ====================================================================
+
+  - name: "target.get - returns set target"
+    description: "After target.set(), target.get() returns the address that was set"
+    script: |
+      lang.new(tableType, @workspace.myTarget);
+      target.set(@workspace.myTarget);
+      return string(target.get())
+    expected_success: true
+    expected_result: "workspace.myTarget"
+
+  - name: "target.get - returns addresstype"
+    description: "target.get() returns an address type when target is set"
+    script: |
+      lang.new(tableType, @workspace.targetTable);
+      target.set(@workspace.targetTable);
+      return typeof(target.get())
+    expected_success: true
+    expected_result: "addr"
+
+  - name: "target.get - persists across operations"
+    description: "Target persists across multiple operations until explicitly changed"
+    script: |
+      lang.new(tableType, @workspace.persistent);
+      target.set(@workspace.persistent);
+      local(first = string(target.get()));
+      local(second = string(target.get()));
+      return first == second
+    expected_success: true
+    expected_result: "true"
+
+  # ====================================================================
+  # target.clear() Operations
+  # ====================================================================
+
+  - name: "target.clear - clears set target"
+    description: "After target.clear(), target.get() returns nil"
+    script: |
+      lang.new(tableType, @workspace.t);
+      target.set(@workspace.t);
+      target.clear();
+      return typeof(target.get())
+    expected_success: true
+    expected_result: "????"
+
+  - name: "target.clear - returns boolean true on success"
+    description: "target.clear() returns true when successful"
+    script: |
+      lang.new(tableType, @workspace.t);
+      target.set(@workspace.t);
+      return target.clear()
+    expected_success: true
+    expected_result: "true"
+
+  - name: "target.clear - idempotent (multiple clears)"
+    description: "Clearing an already-clear target returns false (no target to clear)"
+    script: |
+      target.clear();
+      return target.clear()
+    expected_success: true
+    expected_result: "false"
+
+  - name: "target.clear - when no target set"
+    description: "Clearing when no target is set should succeed (idempotent)"
+    script: |
+      target.clear();
+      target.clear();
+      return typeof(target.get())
+    expected_success: true
+    expected_result: "????"
+
+  # ====================================================================
+  # Target Workflow Tests (Set → Get → Clear)
+  # ====================================================================
+
+  - name: "target workflow - full cycle"
+    description: "Complete workflow: clear → set → get → verify → clear → verify"
+    script: |
+      target.clear();
+      lang.new(tableType, @workspace.cycleTest);
+      workspace.cycleTest.value = 42;
+      target.set(@workspace.cycleTest);
+      local(retrieved = string(target.get()));
+      local(ok1 = retrieved == "workspace.cycleTest");
+      target.clear();
+      local(ok2 = typeof(target.get()) == "????");
+      return ok1 and ok2
+    expected_success: true
+    expected_result: "true"
+
+  - name: "target workflow - multiple set operations"
+    description: "Setting different targets in sequence works correctly"
+    script: |
+      lang.new(tableType, @workspace.target1);
+      lang.new(tableType, @workspace.target2);
+      lang.new(tableType, @workspace.target3);
+      target.set(@workspace.target1);
+      local(ok1 = string(target.get()) == "workspace.target1");
+      target.set(@workspace.target2);
+      local(ok2 = string(target.get()) == "workspace.target2");
+      target.set(@workspace.target3);
+      local(ok3 = string(target.get()) == "workspace.target3");
+      return ok1 and ok2 and ok3
+    expected_success: true
+    expected_result: "true"
+
+  # ====================================================================
+  # Target with Nested Tables
+  # ====================================================================
+
+  - name: "target.set - nested table"
+    description: "Set a nested table as target"
+    script: |
+      lang.new(tableType, @workspace.parent);
+      lang.new(tableType, @workspace.parent.child);
+      target.set(@workspace.parent.child);
+      return string(target.get())
+    expected_success: true
+    expected_result: "workspace.parent.child"
+
+  - name: "target.set - deeply nested table"
+    description: "Set a deeply nested table as target"
+    script: |
+      lang.new(tableType, @workspace.level1);
+      lang.new(tableType, @workspace.level1.level2);
+      lang.new(tableType, @workspace.level1.level2.level3);
+      target.set(@workspace.level1.level2.level3);
+      return string(target.get())
+    expected_success: true
+    expected_result: "workspace.level1.level2.level3"
+
+  # ====================================================================
+  # Target Operations on Target Context
+  # ====================================================================
+
+  - name: "target operations - read from target"
+    description: "After setting target, can read values from the target table"
+    script: |
+      lang.new(tableType, @workspace.data);
+      workspace.data.key = "testValue";
+      target.set(@workspace.data);
+      local(targetAddr = target.get());
+      return defined(workspace.data.key)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "target operations - modify target contents"
+    description: "Can modify contents of table that is set as target"
+    script: |
+      lang.new(tableType, @workspace.mutable);
+      target.set(@workspace.mutable);
+      workspace.mutable.field = 100;
+      return workspace.mutable.field
+    expected_success: true
+    expected_result: "100"
+
+  - name: "target operations - target persists after modification"
+    description: "Modifying target contents doesn't affect target itself"
+    script: |
+      lang.new(tableType, @workspace.stable);
+      target.set(@workspace.stable);
+      workspace.stable.x = 1;
+      workspace.stable.y = 2;
+      return string(target.get())
+    expected_success: true
+    expected_result: "workspace.stable"
+
+  # ====================================================================
+  # Edge Cases - Parameter Validation
+  # ====================================================================
+
+  - name: "target.get - no parameters"
+    description: "target.get() takes no parameters (zero parameters valid)"
+    script: 'typeof(target.get())'
+    expected_success: true
+    # Returns noval or addr depending on state
+
+  - name: "target.get - extra parameters should fail"
+    description: "target.get() with extra parameters should error"
+    script: 'target.get(123)'
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "target.clear - no parameters"
+    description: "target.clear() takes no parameters, returns false when no target set"
+    script: 'target.clear()'
+    expected_success: true
+    expected_result: "false"
+
+  - name: "target.clear - extra parameters should fail"
+    description: "target.clear() with extra parameters should error"
+    script: 'target.clear(123)'
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "target.set - no parameters"
+    description: "target.set() requires exactly one parameter (address)"
+    script: 'target.set()'
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "target.set - extra parameters should fail"
+    description: "target.set() with extra parameters should error"
+    script: |
+      lang.new(tableType, @workspace.t);
+      target.set(@workspace.t, "extra")
+    expected_success: false
+    expected_error_type: "script_error"
+
+  # ====================================================================
+  # Edge Cases - Invalid Addresses
+  # ====================================================================
+
+  - name: "target.set - undefined variable address"
+    description: "Setting target to undefined variable should error"
+    script: 'target.set(@workspace.doesNotExist)'
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "target.set - non-address type (string)"
+    description: "Setting target with non-address type should error"
+    script: 'target.set("not an address")'
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "target.set - non-address type (number)"
+    description: "Setting target with numeric value should error"
+    script: 'target.set(42)'
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "target.set - nil value clears target"
+    description: "Setting target to nil/noval should clear the target"
+    script: |
+      lang.new(tableType, @workspace.t);
+      target.set(@workspace.t);
+      local(x);
+      target.set(@x);
+      return typeof(target.get())
+    expected_success: true
+    expected_result: "????"
+
+  # ====================================================================
+  # Edge Cases - Target with Different Value Types
+  # ====================================================================
+
+  - name: "target.set - table with string value"
+    description: "Set target to table containing string value"
+    script: |
+      lang.new(tableType, @workspace.stringTable);
+      workspace.stringTable.text = "Hello World";
+      target.set(@workspace.stringTable);
+      return workspace.stringTable.text
+    expected_success: true
+    expected_result: "Hello World"
+
+  - name: "target.set - table with numeric value"
+    description: "Set target to table containing numeric value"
+    script: |
+      lang.new(tableType, @workspace.numTable);
+      workspace.numTable.count = 999;
+      target.set(@workspace.numTable);
+      return workspace.numTable.count
+    expected_success: true
+    expected_result: "999"
+
+  - name: "target.set - table with boolean value"
+    description: "Set target to table containing boolean value"
+    script: |
+      lang.new(tableType, @workspace.boolTable);
+      workspace.boolTable.flag = true;
+      target.set(@workspace.boolTable);
+      return workspace.boolTable.flag
+    expected_success: true
+    expected_result: "true"
+
+  - name: "target.set - empty table"
+    description: "Set target to empty table (no entries)"
+    script: |
+      lang.new(tableType, @workspace.emptyTable);
+      target.set(@workspace.emptyTable);
+      return sizeof(workspace.emptyTable)
+    expected_success: true
+    expected_result: "0"
+
+  - name: "target.set - table with nested tables"
+    description: "Set target to table containing nested tables"
+    script: |
+      lang.new(tableType, @workspace.outer);
+      lang.new(tableType, @workspace.outer.inner);
+      workspace.outer.inner.value = 42;
+      target.set(@workspace.outer);
+      return workspace.outer.inner.value
+    expected_success: true
+    expected_result: "42"
+
+  # ====================================================================
+  # Edge Cases - Target Lifecycle
+  # ====================================================================
+
+  - name: "target lifecycle - delete target clears it"
+    description: "Deleting the target variable clears the target as a side-effect (legacy behavior)"
+    script: |
+      lang.new(tableType, @workspace.temporary);
+      target.set(@workspace.temporary);
+      lang.delete(@workspace.temporary);
+      return typeof(target.get())
+    expected_success: true
+    expected_result: "????"
+
+  - name: "target persistence - across multiple scripts"
+    description: "Target set in one operation persists for next operation"
+    script: |
+      lang.new(tableType, @workspace.persist);
+      workspace.persist.value = "persistent";
+      target.set(@workspace.persist);
+      return string(target.get())
+    expected_success: true
+    expected_result: "workspace.persist"
+
+  # ====================================================================
+  # Regression Tests - Headless-Specific Behavior
+  # ====================================================================
+
+  - name: "headless behavior - no implicit target from windows"
+    description: "In headless mode, no implicit target fallback (GUI-specific feature)"
+    script: |
+      target.clear();
+      local(result = target.get());
+      return typeof(result)
+    expected_success: true
+    expected_result: "????"
+
+  - name: "headless behavior - target.set always succeeds (no window open failure)"
+    description: "In headless, target.set() never fails due to window opening (no windows exist)"
+    script: |
+      lang.new(tableType, @workspace.headlessTarget);
+      target.set(@workspace.headlessTarget);
+      return typeof(target.get()) == "addr"
+    expected_success: true
+    expected_result: "true"
+
+  - name: "headless behavior - target.clear no window cleanup"
+    description: "In headless, target.clear() doesn't close hidden windows (no windows exist)"
+    script: |
+      lang.new(tableType, @workspace.t);
+      target.set(@workspace.t);
+      local(cleared = target.clear());
+      return cleared and (typeof(target.get()) == "????")
+    expected_success: true
+    expected_result: "true"
+
+  # ====================================================================
+  # Stress Tests
+  # ====================================================================
+
+  - name: "stress test - rapid set/clear cycle"
+    description: "Rapidly setting and clearing target multiple times"
+    script: |
+      lang.new(tableType, @workspace.stress);
+      local(i);
+      for i = 1 to 10 {
+        target.set(@workspace.stress);
+        target.clear()
+      };
+      return typeof(target.get())
+    expected_success: true
+    expected_result: "????"
+
+  - name: "stress test - many sequential target changes"
+    description: "Setting many different targets in sequence"
+    script: |
+      lang.new(tableType, @workspace.t1);
+      lang.new(tableType, @workspace.t2);
+      lang.new(tableType, @workspace.t3);
+      lang.new(tableType, @workspace.t4);
+      lang.new(tableType, @workspace.t5);
+      target.set(@workspace.t1);
+      target.set(@workspace.t2);
+      target.set(@workspace.t3);
+      target.set(@workspace.t4);
+      target.set(@workspace.t5);
+      return string(target.get())
+    expected_success: true
+    expected_result: "workspace.t5"
+
+  # ====================================================================
+  # Integration with Other Verbs
+  # ====================================================================
+
+  - name: "integration - target with sizeof"
+    description: "Get sizeof() on target table"
+    script: |
+      lang.new(tableType, @workspace.sized);
+      workspace.sized.a = 1;
+      workspace.sized.b = 2;
+      workspace.sized.c = 3;
+      target.set(@workspace.sized);
+      return sizeof(workspace.sized)
+    expected_success: true
+    expected_result: "3"
+
+  - name: "integration - target with typeof"
+    description: "Get typeof() on target table"
+    script: |
+      lang.new(tableType, @workspace.typed);
+      target.set(@workspace.typed);
+      return typeof(workspace.typed)
+    expected_success: true
+    expected_result: "tabl"
+
+  - name: "integration - target with defined"
+    description: "Check defined() on target"
+    script: |
+      lang.new(tableType, @workspace.exists);
+      target.set(@workspace.exists);
+      return defined(workspace.exists)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "integration - target with table.assign"
+    description: "Use table.assign() on target table"
+    script: |
+      lang.new(tableType, @workspace.assign);
+      target.set(@workspace.assign);
+      table.assign(@workspace.assign.key, "assigned");
+      return workspace.assign.key
+    expected_success: true
+    expected_result: "assigned"
+
+  - name: "integration - target with pack/unpack"
+    description: "Pack target table to binary"
+    script: |
+      lang.new(tableType, @workspace.packable);
+      workspace.packable.data = "test";
+      target.set(@workspace.packable);
+      pack(workspace.packable, @packed);
+      return typeof(packed)
+    expected_success: true
+    expected_result: "data"
