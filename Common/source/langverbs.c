@@ -821,7 +821,6 @@ static boolean langunsettarget (hdlhashtable htable, bigstring bsname) {
 
 	hdlhashtable htargettable;
 	bigstring bstargetname;
-	hdlhashtable houterlocaltable;
 	boolean fl = false;
 
 	/* Check if current thread has this variable as its target */
@@ -829,14 +828,21 @@ static boolean langunsettarget (hdlhashtable htable, bigstring bsname) {
 
 		if ((htable == htargettable) && equalidentifiers (bsname, bstargetname)) {
 
-			/* Clear the target directly without stack manipulation */
-			pushouterlocaltable ();
-			houterlocaltable = currenthashtable;
-			pophashtable ();
+			/* Clear the target - includes hidden window cleanup for GUI builds */
+			tyvaluerecord val;
+			hdlhashnode hnode;
 
-			if (houterlocaltable != nil) {
-				fl = hashtabledelete (houterlocaltable, nametargetval);
+			pushouterlocaltable ();
+
+			/* Lookup target value and close any hidden windows before deletion */
+			if (hashlookup (nametargetval, &val, &hnode)) {
+				langclosehiddenwindow (val);  /* Close hidden windows (GUI only) */
+				fl = hashdelete (nametargetval, true, true);
 				}
+			else
+				fl = false;
+
+			pophashtable ();
 
 			return (fl);
 			}

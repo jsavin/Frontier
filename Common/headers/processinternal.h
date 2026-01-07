@@ -269,8 +269,8 @@ extern void copythreadglobals (hdlthreadglobals);
 extern void swapinthreadglobals (hdlthreadglobals);
 
 /* Thread visitor callback type for visitprocessthreads */
-typedef pascal boolean (*threadvisitcallback) (hdlthreadglobals hthread, int32_t refcon);
+typedef pascal boolean (*threadvisitcallback) (hdlthreadglobals hthread, long refcon);
 
-extern boolean visitprocessthreads (threadvisitcallback visit, int32_t refcon);
+extern boolean visitprocessthreads (threadvisitcallback visit, long refcon);
 
 #endif /* processinternalinclude */
