@@ -1,0 +1,1 @@
+#title "date.nextYear"Syntax	date.nextYear (date)Params	date is a valid Frontier date or a string that can be coerced to a date.Action	Returns a date exactly one year after the specified dateReturns	A date exactly one year after the specified dateExamples	date.nextYear (clock.now())		"12/5/98; 10:10:52 PM"See Also	"date.prevYear"

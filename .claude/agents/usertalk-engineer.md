@@ -146,6 +146,29 @@ persistent (dbValue)         // Persistent globals (stored in ODB)
 - By address: `dialog.ask ("Who?", @scratchpad.name)` - verb modifies the variable, returns status
 - Use `@` operator to get address of variable, `^` to dereference
 
+**Glue Scripts - Bridging UserTalk and C Kernel:**
+
+Frontier's verb architecture uses "glue scripts" to connect UserTalk code to kernel-level C implementations. These are UserTalk scripts stored in `system.verbs.builtins.*` that:
+- Provide the UserTalk-facing API for kernel verbs
+- Use the `kernel()` verb to invoke C implementations directly
+- Can add parameter marshaling, validation, or convenience wrappers around kernel primitives
+- Are located in `usertalk_scripts/Frontier.root/system/verbs/builtins/`
+
+**Example Pattern:**
+```usertalk
+// UserTalk calls: string.upper("hello")
+// Resolves to: system.verbs.builtins.string.upper()
+// Glue script: on upper (s) { kernel (string.upper) }
+// kernel() invokes C implementation in Common/source/langstring.c
+```
+
+**Why Glue Scripts Matter:**
+- Understanding them reveals how UserTalk runtime connects to C kernel
+- They show parameter validation patterns and error handling conventions
+- They document the actual API surface developers use (verb names, parameters, behavior)
+- When implementing new kernel verbs, study existing glue scripts for patterns
+- Some glue scripts add convenience logic; others are simple kernel() pass-throughs
+
 **Common Verb Categories:**
 - `basic` - Numbers, datatypes, object operations
 - `clock`, `date` - Time operations
@@ -156,7 +179,7 @@ persistent (dbValue)         // Persistent globals (stored in ODB)
 - `op` - Outline operations (navigate, edit, insert, delete, expand, collapse)
 - `wp` - Word processing (rich text formatting)
 - `window`, `menu` - UI element management
-- DocServer reference: 75+ categories at `docs/usertalk/docserver.userland.com/`
+- DocServer reference: 75+ verb categories at `docs/usertalk/docserver/` (source markup from docserver.userland.com CMS)
 
 **Data Types (28 total, focus on these):**
 - `stringType` - Text (full 255-char set), literal: `"Hello"`
@@ -260,7 +283,13 @@ global (userConfig)  // Available as global variable
 
 ---
 
-**Reference Resources:** Documentation is under `docs/usertalk/` (language guide, PDF), `docs/frontier.userland.com/` (comprehensive reference), `userland_scripts/` (production examples), and `docs/Frontier - The Definitive Guide/` (complete reference).
+**Reference Resources:**
+- `docs/usertalk/docserver/` - Source markup exported from docserver.userland.com CMS (verb reference for 75+ categories)
+- `usertalk_scripts/Frontier.root/` - Complete export of Frontier system root scripts (glue scripts connecting UserTalk runtime to kernel C implementations)
+- `docs/usertalk/` - Language guide and PDF documentation
+- `docs/frontier.userland.com/` - Comprehensive Frontier reference
+- `userland_scripts/` - Production UserTalk script examples
+- `docs/Frontier - The Definitive Guide/` - Complete reference book
 
 ---
 

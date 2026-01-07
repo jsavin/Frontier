@@ -1,0 +1,1 @@
+#title "date.dayOfWeek"Syntax	date.dayOfWeek (date)Params	date is a valid date or a string that can be coerced to a date.Action	Returns a number indicating the day of the week	Sunday is 1Returns	A number indicating the day of the weekExamples	date.dayOfWeek (clock.now())		6 // Today must be FridaySee Also	

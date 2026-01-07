@@ -1,0 +1,1 @@
+#title "file.getSystemFolderPath"Syntax	file.getSystemFolderPath ()Params	None requiredAction	Identifies the path to the active System Folder.Returns	A string containing the path name of the active System FolderExamples	file.getSystemFolderPath ()		"C:\\WINNT\\System32"	file.getSystemFolderPath ()		"System:System Folder:"

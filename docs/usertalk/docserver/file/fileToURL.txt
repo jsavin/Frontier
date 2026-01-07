@@ -1,0 +1,1 @@
+#title "file.fileToURL"Syntax	file.fileToURL (f)Params	f is the path to a fileAction	Returns a file: URL for the specified file.Returns	A file: URL for the specified fileExamples	file.fileToURL (Frontier.getFilePath ())		"file:///C:/Program Files/Frontier/Frontier.root"Notes	This verb is implemented as a script.See Also	"file.urlToFile"

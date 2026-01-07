@@ -1,0 +1,1 @@
+#title "html.cleanForExport"#platform "MacOS"Syntax	html.cleanForExport (text)Params	text is a string that you want to remove any Mac-specific characters fromAction	Replaces common Mac-specific characters with their ASCII equivalentsReturns	The cleaned stringExamples	Notes	This verb is implemented as a script.

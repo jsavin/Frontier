@@ -1,0 +1,1 @@
+#title "speaker.ouch"Syntax	speaker.ouch ()Params	None requiredAction	Makes a short, high-pitched sound on the speaker.Returns	TrueExamples	speaker.ouch ()		trueNotes	This verb is used in Frontier to indicate that a limit has been reached, as well as for other such purposes.	This verb is implemented as a script.See Also	"speaker.sound"

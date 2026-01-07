@@ -1,0 +1,1 @@
+#title "script.startProfile"Syntax	script.startProfile (flSliced)Params	flSliced, a boolean, if true, each object's time does not include time spent in other scripts that it calls, otherwise, times include the total duration of all calls.Action	Starts the profiler.Returns	True.Examples	script.startProfile (true)See Also	"script.stopProfile"

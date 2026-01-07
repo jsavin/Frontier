@@ -72,6 +72,7 @@ Use `$(./tools/get_test_temp_path.sh)` for manual testing paths.
 - **[Testing Guide](docs/TESTING_GUIDE.md)** - CLI usage, testing patterns, database migration
 - **[CLI Usage Guide](docs/CLI_USAGE_GUIDE.md)** - Complete frontier-cli reference (600+ lines)
 - **[Logging Standards](docs/LOGGING_STANDARDS.md)** - Structured logging requirements
+- **[UserTalk Documentation](docs/usertalk/docserver/)** - DocServer verb reference (75+ categories, source markup from docserver.userland.com)
 
 ---
 

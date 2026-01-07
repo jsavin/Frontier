@@ -1,0 +1,1 @@
+#title "html.addPageToGlossary"Syntax	html.addPageToGlossary (adrPageTable)Params	adrPageTable is the address of the current page tableAction	Adds the current page to the glossaryReturns	TrueExamples	Notes	Maybe this one shouldn't be documented, because most users shouldn't call it.	This verb is implemented as a script.

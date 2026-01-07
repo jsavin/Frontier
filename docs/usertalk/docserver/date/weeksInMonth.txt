@@ -1,0 +1,1 @@
+#title "date.weeksInMonth"Syntax	date.weeksInMonth (date)Params	date is a valid Frontier date or a string that can be coerced to a date.Action	Returns the number of weeks in the specified monthReturns	The number of weeks in the specified monthExamples	date.weeksInMonth (clock.now())		5See Also	"date.daysInMonth"

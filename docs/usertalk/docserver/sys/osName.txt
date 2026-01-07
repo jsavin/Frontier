@@ -1,0 +1,1 @@
+#title "sys.osName"Syntax	sys.osName ()Params	None requiredAction	Identifies the currently running Operating System.Returns	Either \"Macintosh OS\", \"Windows 95\", or \"Windows NT\"Examples	sys.osName ()		\"Windows NT\"	sys.os ()		\"WinNT\"See Also	"sys.os"	"sys.osVersion"

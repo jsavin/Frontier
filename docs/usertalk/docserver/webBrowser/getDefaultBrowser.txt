@@ -1,0 +1,1 @@
+#title "webBrowser.getDefaultBrowser"Syntax	webBrowser.getDefaultBrowser ()Params	None required.Action	Determines the user's default browser.Returns	Either a Macintosh creator code or a Windows file path.Examples	webBrowser.getDefaultBrowser () //Macintosh		'MOSS'	webBrowser.getDefaultBrowser () //Windows		"C:\\Program Files\\Plus!\\Microsoft Internet\\Iexplore.exe"

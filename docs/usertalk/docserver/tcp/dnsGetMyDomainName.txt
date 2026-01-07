@@ -1,0 +1,1 @@
+#title "tcp.dns.getMyDomainName"Syntax	tcp.dns.getMyDomainName ()Params	None.Action	Determine the domain name for the machine Frontier is running on.Returns	A domain name.Examples	tcp.dns.getMyDomainName ()		"betty.userland.com"Notes	This verb is implemented as a script.See Also	"tcp.dns.getDomainName"	"tcp.dns.getDottedId"

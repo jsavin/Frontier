@@ -1,0 +1,1 @@
+#title "tcp.closeListen"Syntax	tcp.closeListen (listenId)Params	listenId is a listen reference returned by "tcp.listenStream".Action	Stops listening on the port specified when the listen was created.Returns	??Examples	Notes	A listen reference is not a stream reference

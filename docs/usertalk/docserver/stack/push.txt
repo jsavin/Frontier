@@ -1,0 +1,1 @@
+#title "stack.push"Syntax	stack.push (adrStack, val)Params	adrStack is the address of a stack object allocated by stack.create.	val is any valid UserTalk expression.Action	Adds the value at the "top" of the stack.Returns	True.Examples	stack.push (scratchpad.nameStack, "Bull Mancuso")		trueSee Also	"stack.create"	"stack.pop"	"stack.dispose"	"stack.visit"

@@ -1,0 +1,1 @@
+#title "html.getFileURL"Syntax	html.getFileURL (f)Params	f is the path to a fileAction	Returns a file: URL for the specified file.Returns	A file: URL for the specified fileExamples	html.getFileURL (Frontier.getFilePath ())		"file:///C%3A/Program%20Files/Frontier/Frontier.root"Notes	This verb is implemented as a script.

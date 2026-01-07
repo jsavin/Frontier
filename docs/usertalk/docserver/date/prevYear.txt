@@ -1,0 +1,1 @@
+#title "date.prevYear"Syntax	date.prevYear (date)Params	date is a valid Frontier date or a string that can be coerced to a date.Action	Returns a date exactly one year before the specified dateReturns	A date exactly one year before the specified dateExamples	date.prevYear (clock.now())		"12/5/96; 10:27:57 PM"See Also	"date.nextYear"

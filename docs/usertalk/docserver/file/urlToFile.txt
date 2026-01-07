@@ -1,0 +1,1 @@
+#title "file.urlToFile"Syntax	file.urlToFile (f)Params	f is a file: URLAction	Returns a filespec for the specified file.Returns	A filespec for the specified fileExamples	file.urlToFile ("file:///C:/Program Files/Frontier/Frontier.root")		"C:\\Program Files\\Frontier\\Frontier.root"Notes	This verb is implemented as a script.See Also	"file.fileToURL"

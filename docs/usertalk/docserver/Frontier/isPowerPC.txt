@@ -1,0 +1,1 @@
+#title "Frontier.isPowerPC"Syntax	Frontier.isPowerPC ()Params	None required.Action	Determines whether Frontier is running on a PowerPC CPU.Returns	True if Frontier is running on a PowerPC CPU.Examples	Frontier.isPowerPC ()		falseNotes	Frontier's functionality is identical on 68K and PowerPC processors.See Also	"sys.machine"

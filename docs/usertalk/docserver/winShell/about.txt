@@ -1,0 +1,1 @@
+#title "winShell.about"#platform "Win"Syntax	winShell.about ()Params	None required.Action	Displays the Windows About Window.Returns	True.Examples	winShell.about ()		trueNotes	This verb is Windows-specific.	This verb is implemented in the ScriptControlDLL DLL.	This verb is new in Frontier 6.0.

@@ -1,0 +1,1 @@
+#title "file.getEndOfFile"Syntax	file.getEndOfFile (path)Params	path is the path on disk to a file.Action	Determines the position that marks the end of the file.Returns	A number, the position at the end of the file.Examples	file.getEndOfFile (Frontier.pathString + "Read Me.html")		4019Notes	This verb was new in Frontier 5.See Also	"file.size"

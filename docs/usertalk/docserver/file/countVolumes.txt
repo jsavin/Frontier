@@ -1,0 +1,1 @@
+#title "file.countVolumes"Syntax	file.countVolumes ()Params	None required.Action	Counts the number of volumes mounted on a system.Returns	The number of mounted volumes.Examples	file.countVolumes ()		6Notes	You can loop over all the mounted volumes with fileloop (fname in"").

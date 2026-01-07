@@ -1,0 +1,1 @@
+#title "Frontier.version"Syntax	Frontier.version ()Params	None.Action	Determines which version of Frontier is running.Returns	A string containing the version number.Examples	Frontier.version () \// This example was created a long time ago...		1.0	Frontier.version () \//More recent		"6.1"See Also	"Frontier.versionRequired"	"date.versionLessThan"

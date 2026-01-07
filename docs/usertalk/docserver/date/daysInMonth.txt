@@ -1,0 +1,1 @@
+#title "date.daysInMonth"Syntax	date.daysInMonth (date)Params	date is a valid Frontier date or a string that can be coerced to a date.Action	Returns the number of days in the specified monthReturns	The number of days in the specified monthExamples	date.daysInMonth (clock.now())		31See Also	"date.weeksInMonth"

@@ -1,0 +1,1 @@
+#title "people.deleteUser"Syntax	people.deleteUser (userName)Params	userName is the name of the user to delete.Action	Deletes a user account.Returns	True if successful. Returns false if the user doesn't exist.Examples	people.deleteUser ("Bull Mancuso")		trueSee Also	"people.newUser"

@@ -1,0 +1,1 @@
+#title "speaker.beep"Syntax	speaker.beep ()Params	None requiredAction	Makes the sound on the Macintosh speaker that has been defined in the Sound Control Panel.	On Windows, causes the speaker to emit a high-pitched beep.Returns	TrueExamples	speaker.beep ()		true

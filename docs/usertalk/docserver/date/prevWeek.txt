@@ -1,0 +1,1 @@
+#title "date.prevWeek"Syntax	date.prevWeek (date)Params	date is a valid Frontier date or a string that can be coerced to a date.Action	Returns a date value exactly one week before the specified dateReturns	A date value exactly one week before the specified dateExamples	date.prevWeek (clock.now())		"11/28/97; 10:26:15 PM"See Also	"date.nextWeek"

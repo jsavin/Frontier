@@ -1,0 +1,1 @@
+#title "secsToChristmas"Syntax	secsToChristmas ()Params	None required.Action	Calculates how many seconds remain until Christmas.Returns	A string containing the number of seconds until Christmas.Examples	secsToChristmas ()		"21,636,200"Notes	This macro is stored at html.data.standardMacros.secsToChristmas.

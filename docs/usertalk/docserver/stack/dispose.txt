@@ -1,0 +1,1 @@
+#title "stack.dispose"Syntax	stack.dispose (adrStack)Params	adrStack is the address of a stack object allocated by stack.create.Action	Deletes the table storing the stack object.Returns	True.Examples	stack.dispose (scratchpad.nameStack)		trueSee Also	"stack.create"	"stack.push"	"stack.pop"	"stack.visit"

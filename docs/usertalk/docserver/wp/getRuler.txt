@@ -1,0 +1,1 @@
+#title "wp.getRuler"Syntax	wp.getRuler ()Params	None required.Action	Determines whether the ruler is visible or not.Returns	True if the ruler is visible, false if it is not.Examples	wp.getRuler ()		trueSee Also	"wp.setRuler"	"wp.rulerLength"

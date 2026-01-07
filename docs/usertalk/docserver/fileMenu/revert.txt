@@ -1,0 +1,1 @@
+#title "fileMenu.revert"Syntax	fileMenu.revert ()Params	None requiredAction	Discards all current Object Database changes and loads the last saved version of the Frontier.root file without confirmation.Returns	Nothing (script execution halts when this command is encountered).Examples	fileMenu.revert ()

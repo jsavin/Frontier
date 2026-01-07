@@ -1,0 +1,1 @@
+#title "html.getFileName"Syntax	html.getFileName (name, adrPageTable)Params	name is a string containing ??	adrPageTable is the optional address of the current page tableAction	Returns	Examples	Notes	This verb is implemented as a script.

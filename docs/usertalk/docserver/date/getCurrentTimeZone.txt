@@ -1,0 +1,1 @@
+#title "date.getCurrentTimeZone"Syntax	date.getCurrentTimeZone ()Params	None requiredAction	Returns the number of seconds between GMT and the local time zoneReturns	The number of seconds between GMT and the local time zoneExamples	date.getCurrentTimeZone ()		-21600	date.getCurrentTimeZone () / 60 / 60		-6 // Central Standard Time

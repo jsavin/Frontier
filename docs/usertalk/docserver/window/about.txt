@@ -1,0 +1,1 @@
+#title "window.about"Syntax	window.about ()Params	None.Action	Brings the About Window to the front. If it's not already displayed, it gets displayed.Returns	True.Examples	window.about ()		trueSee Also	"window.bringToFront"	"window.show"

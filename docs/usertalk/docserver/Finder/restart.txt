@@ -1,0 +1,1 @@
+#title "Finder.restart"Syntax	Finder.restart ()Params	None required.Action	Restarts the Macintosh after quitting all open programs and, if appropriate, asking the user to confirm the saving or loss of changes.Returns	NothingExamples	Finder.restart ()Platform Notes	This verb is only implemented in the Mac OS version of Frontier.See Also	"Finder.shutDown"

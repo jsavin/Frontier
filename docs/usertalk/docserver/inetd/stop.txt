@@ -1,0 +1,1 @@
+#title "inetd.stop"Syntax	inetd.stop ()Params	None required.Action	Stops all running inetd services.Returns	The number of services stoppped.Examples	inetd.stop ()		1NotesSee Also	"inetd.start"	"inetd.stopOne"

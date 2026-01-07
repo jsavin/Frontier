@@ -1,0 +1,1 @@
+#title "stack.pop"Syntax	stack.pop (adrStack)Params	adrStack is the address of a stack object allocated by stack.create.Action	Deletes the top value on the stack and returns it.Returns	The value of the top element on the stack.Examples	stack.pop (scratchpad.nameStack)		Bull MancusoSee Also	"stack.create"	"stack.push"	"stack.dispose"	"stack.visit"

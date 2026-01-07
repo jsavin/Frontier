@@ -1,0 +1,1 @@
+#title "file.getPosition"Syntax	file.getPosition (path)Params	path is the path on disk to a currently open file whose current read/write position you want to determine.Action	Determines the current position.Returns	A number, the current position.Examples	file.getPosition (Frontier.pathString + "Read Me.html")		300See Also	"file.setPosition"

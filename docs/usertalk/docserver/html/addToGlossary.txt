@@ -1,0 +1,1 @@
+#title "html.addToGlossary"Syntax	html.addToGlossary (name, value)Params	name is a string containing the name of the glossary item	value is a string containing the replacement for the glossary itemAction	Creates a new glossary itemReturns	TrueExamples	Notes	This verb is implemented as a script.

@@ -1,0 +1,1 @@
+#title "sys.machine"Syntax	sys.machine ()Params	None requiredAction	Identifies the current CPU type.Returns	Either "x86", "??", or "??"Examples	sys.machine ()		"x86"Notes	If you want to test for platform-specific features, use "sys.os" to prevent your script from breaking if Frontier is ported to future CPUs.See Also	"sys.os"

@@ -1,0 +1,1 @@
+#title "Frontier.bringToFront"Syntax	Frontier.bringToFront ()Params	None.Action	Ensures that Frontier is the frontmost application.Returns	TrueExamples	Finder.about ();	clock.waitSeconds (2);	Frontier.bringToFront ()		trueNotes	There is no harm in using this verb when Frontier is already the frontmost application.See Also	"Frontier.requestToFront"

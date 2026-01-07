@@ -1,0 +1,1 @@
+#title "Finder.shutDown"Syntax	Finder.shutDown ()Params	None required.Action	Shuts down the Macintosh after quitting all open programs and, if appropriate, asking the user to confirm the saving or loss of changes.Returns	NothingExamples	Finder.shutDown ()Platform Notes	This verb is only implemented in the Mac OS version of Frontier.See Also	"Finder.restart"

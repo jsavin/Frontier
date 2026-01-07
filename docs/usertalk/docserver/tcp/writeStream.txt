@@ -1,0 +1,1 @@
+#title "tcp.writeStream"Syntax	tcp.writeStream (stream, data)Params	stream is a stream reference returned by "tcp.openStream".	data is the data to be written to the connectionAction	Sends the specified data through the specified TCP/IP connection.Returns	TrueExamplesNotes	This verb obsoletes NetEvents.writeStream.

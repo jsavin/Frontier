@@ -1,0 +1,1 @@
+#title "memAvail"Syntax	memAvail ()Params	None required.Action	Determines the number of bytes of memory available in Frontier's memory space.Returns	A number indicating the number of bytes available in Frontier's memory space.Examples	memAvail ()		154028	string.kBytes (memAvail ())		151KSee Also	" string.kBytes"	"string.megabyteString"

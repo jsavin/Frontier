@@ -1,0 +1,1 @@
+#title "pageFooter"Syntax	pageFooter ()Params	None required.Action	Generates the HTML footer for a page, the closing body and html tags.Returns	The HTML string.Examples	pageFooter ()		"&lt;/body>\r&lt;/html>"Notes	This macro is stored at html.data.standardMacros.pageFooter.See Also	"pageHeader"

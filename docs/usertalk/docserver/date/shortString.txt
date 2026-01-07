@@ -1,0 +1,1 @@
+#title "date.shortString"Syntax	date.shortString (date)Params	date is a valid Frontier date or a string that can be coerced to a date.Action	Returns a concise form of the specified dateReturns	A concise form of the specified dateExamples	date.shortString (clock.now())		"12/5/97"See Also	"date.longString"	"date.abbrevString"

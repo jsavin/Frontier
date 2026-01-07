@@ -1,0 +1,1 @@
+#title "search.replace"Syntax	search.replace ()Params	None requiredAction	Replaces the current text selection with the current replacement string, search.params.replaceWith.Returns	TrueExamples	search.replace ()		» trueErrors	If the current target window is not in edit mode, an error results.See Also	"search.globalReplace"	"search.findNext"	"search.replaceAll"

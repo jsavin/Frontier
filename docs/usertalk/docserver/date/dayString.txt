@@ -1,0 +1,1 @@
+#title "date.dayString"Syntax	date.dayString (date)Params	date is a valid Frontier date or a string that can be coerced to a date.Action	Returns the name of the specified day of the weekReturns	The name of the specified day of the weekExamples	date.dayString (clock.now())		"Friday"See Also	"date.dayOfWeek"

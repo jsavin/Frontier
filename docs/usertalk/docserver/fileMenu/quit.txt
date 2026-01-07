@@ -1,0 +1,1 @@
+#title "fileMenu.quit"Syntax	fileMenu.quit ()Params	None required.Action	Quits Frontier without confirming whether you wish to save any changes.Returns	NothingExamples	fileMenu.quit ()Notes	If you have changes pending when you use this verb, you will lose them. Use "fileMenu.save" to preserve changes before quitting.

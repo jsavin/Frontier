@@ -1,0 +1,1 @@
+#title "thread.getCurrentID"Syntax	thread.getCurrentID ()Params	NoneAction	Determines the ID of the current thread.Returns	The numeric ID of the current thread.Examples	thread.getCurrentID ()		114See Also	"thread.getNthID"	"system.compiler.threads"

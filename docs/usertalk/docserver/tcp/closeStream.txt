@@ -1,0 +1,1 @@
+#title "tcp.closeStream"#platform "incomplete"Syntax	tcp.closeStream (stream)Params	stream is a stream reference returned by "tcp.openStream".Action	Closes the specified TCP/IP connection.Returns	??Examples	Notes	When Frontier quits, it automatically closes any open streams.	This verb obsoletes NetEvents.closeStream.

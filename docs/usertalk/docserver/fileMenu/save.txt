@@ -1,0 +1,1 @@
+#title "fileMenu.save"Syntax	fileMenu.save (adrWindow)Params	adrWindow is the optional address of the window to saveAction	Saves the guest database or file-based object contained in the specified window, or if no window is specified, saves the Frontier.root file. Returns	TrueExamples	fileMenu.save ()		trueSee Also	"fileMenu.open"	"fileMenu.saveCopy"

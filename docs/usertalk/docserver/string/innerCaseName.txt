@@ -1,0 +1,1 @@
+#title "string.innerCaseName"Syntax	string.innerCaseName (string)Params	string is a string which you want to innerCase.Action	Removes all spaces from the string and capitalizes the first letter of all but the first word.Returns	The resulting string.Examples	string.innerCaseName ("Hello World")		// "helloWorld"

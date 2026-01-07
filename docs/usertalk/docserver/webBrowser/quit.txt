@@ -1,0 +1,1 @@
+#title "webBrowser.quit"Syntax	webBrowser.quit ()Params	None required.Action	Quits the web browser that's currently running.Returns	True.Examples	webBrowser.quit ()		trueNotes	This web browser quits Internet Explorer or Netscape Navigator. If both are running, it quits just one. Call the verb again to quit the other.See Also	"webBrowser.launch"

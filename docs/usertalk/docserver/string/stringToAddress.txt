@@ -1,0 +1,1 @@
+#title "string.stringToAddress"Syntax	string.stringToAddress (string)Params	string contains a dotted representation of an address, as a stringAction	Converts the string into a legal Frontier object database address, if possible.Returns	An address.Examples	string.stringToAddress ("dweb.home.98.02")		@dweb.home.["98"].["02"]Notes	This verb is implemented as a script.

@@ -1,0 +1,1 @@
+#title "script.unCompile"Syntax	script.unCompile (addr)Params	addr is the Object Database address of a script object.Action	Releases the memory occupied by the compiled form of the script at addr.Returns	True if the compiled code is released, false if the code is busy running.Examples	script.unCompile (@examples.counter)		trueSee Also	"script.compile"

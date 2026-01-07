@@ -1,0 +1,1 @@
+#title "wp.insert"Syntax	wp.insert (string)Params	String contains the text you want to insert.Action	Replaces selection in the target window with contents of string. If the selection is empty, places those contents at the current cursor location.Returns	TrueExamples	wp.insert ("newtext")		true

@@ -1,0 +1,1 @@
+#title "mouse.button"Syntax	mouse.button ()Params	None requiredAction	Determines whether the mouse button is now being pressed.Returns	True if the mouse button is now being pressed, false if it is not.Examples	mouse.button ()		falseNotes	This verb is most useful in loops you wish to terminate when the user clicks the mouse.

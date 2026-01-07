@@ -1,0 +1,1 @@
+#title "winShell.print"#platform "Win"Syntax	winShell.print (f)Params	f is the path to the file you want to print.Action	Prints the file specified by f.Returns	True.Examples	winShell.print ("C:\\Documents\\MyWord.doc")		trueNotes	This verb is Windows-specific.	This verb is implemented in the ScriptControlDLL DLL.	This verb is new in Frontier 6.0.

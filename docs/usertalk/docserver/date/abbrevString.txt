@@ -1,0 +1,1 @@
+#title "date.abbrevString"#platform "needs work"Syntax	date.abbrevString (date)Params	date is a valid date or a string that can be coerced to a date.Action	Returns	Examples	date.abbrevString (clock.now())		"Friday, December 05, 1997"See Also	"date.shortString:"	"date.longString"

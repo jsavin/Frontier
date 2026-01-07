@@ -1,0 +1,1 @@
+#title "bit.get"Syntax	bit.get (bits, bitnum)Params	bits is a 32-bit number.	bitnum is a number between 0 and 31.Action	Determines if the indicated bit is on or off.Returns	True if the bit is on, false if it's off.Examples	bit.get (255, 8) // bit 8 is not on		false	bit.get (255, 6) // bit 8 is on		trueSee Also	"bit.set"	"bit.clear"

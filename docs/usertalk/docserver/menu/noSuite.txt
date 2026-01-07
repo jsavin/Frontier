@@ -1,0 +1,1 @@
+#title "menu.noSuite"Syntax	menu.noSuite ()Params	None requiredAction	Reduces the menu bar in Frontier to the minimum acceptable set.Returns	TrueExamples	menu.noSuite ()		trueNotes	This removes whatever suite has its menu installed.See Also	"menu.addSuite"	"menu.clearMenubar"

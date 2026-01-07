@@ -1,0 +1,1 @@
+#title "Finder.emptyTrash"Syntax	Finder.emptyTrash ()Params	None required.Action	Empties the trash without confirmation.Returns	TrueExamples	Finder.emptyTrash ()		» truePlatform Notes	This verb is only implemented in the Mac OS version of Frontier.Notes	For use with the Scriptable Finder, new scripts should use the Finder.empty () verb, instead.

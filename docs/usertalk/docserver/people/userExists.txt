@@ -1,0 +1,1 @@
+#title "people.userExists"Syntax	people.userExists (userName)Params	userName is the name of the a user that may or may not exist.Action	Checks if there is a user account with the specified name.Returns	True if the user account exists, false if not.Examples	people.userExists ("Bull Mancuso")		trueSee Also	"people.newUser"	"people.deleteUser"

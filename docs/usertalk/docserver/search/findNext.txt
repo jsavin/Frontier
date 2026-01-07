@@ -1,0 +1,1 @@
+#title "search.findNext"Syntax	search.findNext ()Params	None requiredAction	Finds the next occurrence of the present search string and selects it.Returns	True if an instance of the present search string is found, false if the search scope is exhausted and no occurrence of the string is found.Examples	search.findNext ()		» trueSee Also	"search.find"

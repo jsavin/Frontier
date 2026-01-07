@@ -1,0 +1,1 @@
+#title "tcp.addressEncode"Syntax	tcp.addressEncode (ipAddress)Params	ipAddress is a dotted decimal string specifying an IP addressAction	Turns a dotted IP address into a 4-byte numberReturns	The number that corresponds to the specified IP addressExamples	tcp.addressEncode ("206.204.24.4")		-825485308Notes	This verb is useful for "tcp.addressToName".

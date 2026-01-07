@@ -1,0 +1,1 @@
+#title "webBrowser.bringToFront"Syntax	webBrowser.bringToFront ()Params	None required.Action	Brings the web browser to the front.Returns	True.Examples	webBrowser.bringToFront ()		trueSee Also	"webBrowser.launch"

@@ -1,0 +1,1 @@
+#title "html.getWebsitesFolder"Syntax	html.getWebsitesFolder ()Params	None required.Action	Gets the default Websites folder that's in the Frontier folder.Returns	A path to the folder on diskExamples	html.getWebsitesFolder ()		"Power HD:Applications:Frontier:Websites:"See Also	"html.getSiteFolder"

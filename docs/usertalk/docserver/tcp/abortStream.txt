@@ -1,0 +1,1 @@
+#title "tcp.abortStream"Syntax	tcp.abortStream (stream)Params	stream is the stream reference of the stream to close.Action	Closes the specified stream immediately.Returns	Examples	Notes	If there is data still waiting to be sent through this stream, it will be discarded.

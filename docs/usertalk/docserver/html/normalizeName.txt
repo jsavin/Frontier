@@ -1,0 +1,1 @@
+#title "html.normalizeName"Syntax	html.normalizeName (fname, adrPageTable)Params	fname is a file name	adrPageTable is the optional address of the current page tableAction	Returns	The normalized version of the nameExamples	html.normalizeName ("some file name")		"some file name"Notes	This verb is implemented as a script.

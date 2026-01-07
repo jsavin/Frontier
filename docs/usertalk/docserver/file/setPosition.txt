@@ -1,0 +1,1 @@
+#title "file.setPosition"Syntax	file.setPosition (path, pos)Params	path is the path on disk to a currently open file.	pos is a number, where you'd like to set the current read/write position.Action	Sets the current position.Returns	True if successful.Examples	file.setPosition (Frontier.pathString + "Read Me.html", 300)		trueSee Also	"file.getPosition"

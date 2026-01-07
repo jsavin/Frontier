@@ -1,0 +1,1 @@
+#title "tcp.myDottedID"Syntax	tcp.myDottedID ()Params	None.Action	Determines the dotted ID of the machine that Frontier is running on.Returns	A string.Examples	tcp.myDottedID ()		"206.204.24.20"Notes	This verb is implemented as a script.See Also	"tcp.dns.getMyDomainName"

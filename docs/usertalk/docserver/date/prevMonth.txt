@@ -1,0 +1,1 @@
+#title "date.prevMonth"Syntax	date.prevMonth (date)Params	date is a valid Frontier date or a string that can be coerced to a date.Action	Returns a date value exactly a month before the specified dateReturns	A date value exactly a month before the specified dateExamples	date.prevMonth (clock.now())		"11/5/97; 10:25:07 PM"See Also	"date.nextMonth"

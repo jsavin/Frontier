@@ -1,0 +1,1 @@
+#title "webBrowser.openDocument"Syntax	webBrowser.openDocument (f)Params	f is the path on disk to a document to display in the web browser.Action	Causes the web browser to open and display a document.Returns	True.Examples	webBrowser.openDocument (Frontier.pathString + "Read Me.html")		trueSee Also	"webBrowser.openUrl"

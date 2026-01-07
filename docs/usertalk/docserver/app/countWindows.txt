@@ -1,0 +1,1 @@
+#title "app.countWindows"Syntax	app.countWindows ()Params	None.Action	Determines how many application windows are open.Returns	The number of open windows.Examples	app.start ("MinApp"); app.countWindows ()		2Platform Notes	This verb is only implemented in the Mac OS version of Frontier.See Also	"app.nthWindow"

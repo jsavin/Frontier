@@ -1,0 +1,1 @@
+#title "script.stopProfile"Syntax	script.stopProfile (adrtable)Params	If adrtable is not nil, profile data is assigned to a table at that address, and is then reset. Otherwise, profiling is just stopped, but can be resumed.Action	Stops the profiler.Returns	True.Examples	script.stopProfile (@temp.profileData)See Also	"script.startProfile"

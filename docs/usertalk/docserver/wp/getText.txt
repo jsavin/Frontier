@@ -1,0 +1,1 @@
+#title "wp.getText"Syntax	wp.getText ()Params	None required.Action	Retrieves all of the text in the target word processing window.Returns	The text, as a string.Examples	edit (@examples.testText);	sizeOf (wp.getText ())		180	The return indicates there are 180 characters in the string stored in examples.testText.See Also	"wp.getSelText"	"wp.setText"

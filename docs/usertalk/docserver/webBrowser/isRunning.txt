@@ -1,0 +1,1 @@
+#title "webBrowser.isRunning"Syntax	webBrowser.isRunning ()Params	None required.Action	Determines if a web browser is currently running.Returns	True if a web browser is running, false if not.Examples	webBrowser.isRunning ()		trueNotes	This verb checks if Internet Explorer or Netscape Navigator is running.See Also	"sys.appIsRunning"
