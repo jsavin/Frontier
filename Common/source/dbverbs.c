@@ -49,6 +49,7 @@
 #include "shell.h"
 #include "lang.h"
 #include "langexternal.h"
+#include "logging.h"
 #include "langinternal.h"
 #include "langipc.h"
 #include "kernelverbs.h"
@@ -60,10 +61,33 @@
 #include "db_format.h" /* migration helpers */
 
 /*
-if we're generating cfm (powerpc), we're linking to an odb engine shared 
+if we're generating cfm (powerpc), we're linking to an odb engine shared
 library, which has it's own globals. on 68k machines, we're staically linked,
 so the odb calls mess with out global data. so we need to protect it.
+
+In headless mode, we use an explicit context guard pattern to protect globals
+from ODB engine modifications. This is simpler and more reliable than thread
+swapping, and doesn't require thread infrastructure initialization.
 */
+
+/* ODB context guard - protects caller globals from ODB engine modifications */
+typedef struct odb_context_guard {
+	hdlhashtable saved_currenthashtable;
+	hdldatabaserecord saved_databasedata;
+	hdlhashtable saved_hashtablestack;
+} odb_context_guard;
+
+static void odb_guard_enter(odb_context_guard *guard) {
+	guard->saved_currenthashtable = currenthashtable;
+	guard->saved_databasedata = databasedata;
+	guard->saved_hashtablestack = hashtablestack;
+}
+
+static void odb_guard_exit(odb_context_guard *guard) {
+	currenthashtable = guard->saved_currenthashtable;
+	databasedata = guard->saved_databasedata;
+	hashtablestack = guard->saved_hashtablestack;
+}
 
 #ifdef usingsharedlibrary
 
@@ -121,271 +145,226 @@ so the odb calls mess with out global data. so we need to protect it.
 	/*Functions*/
 	
 	boolean odbnewfile (hdlfilenum fnum) {
-
+		odb_context_guard guard;
 		boolean fl;
-		hdlthreadglobals htg = getcurrentthreadglobals ();
-		
-		copythreadglobals (htg);
-		
-		swapinthreadglobals (nil);
-		
+
+		odb_guard_enter(&guard);
+
 		fl = odbNewFile (fnum);
-		
+
 		cancoonglobals = nil;
-		
-		swapinthreadglobals (htg);
-		
+
+		odb_guard_exit(&guard);
+
 		return (fl);
 		}
 
 	boolean odbaccesswindow (WindowPtr w, odbref *odb) {
-
+		odb_context_guard guard;
 		boolean fl;
-		hdlthreadglobals htg = getcurrentthreadglobals ();
-		
-		copythreadglobals (htg);
-		
-		swapinthreadglobals (nil);
-		
+
+		odb_guard_enter(&guard);
+
 		fl = odbAccessWindow (w, odb);
-		
+
 		cancoonglobals = nil;
-		
-		swapinthreadglobals (htg);
-		
+
+		odb_guard_exit(&guard);
+
 		return (fl);
 		}
 
 	boolean odbopenfile (hdlfilenum fnum, odbref *odb, boolean flreadonly) {
-
+		odb_context_guard guard;
 		boolean fl;
-		hdlthreadglobals htg = getcurrentthreadglobals ();
-		
-		copythreadglobals (htg);
-		
-		swapinthreadglobals (nil);
-		
+
+		odb_guard_enter(&guard);
+
 		fl = odbOpenFile (fnum, odb, flreadonly);
-		
+
 		cancoonglobals = nil;
-		
-		swapinthreadglobals (htg);
-		
+
+		odb_guard_exit(&guard);
+
 		return (fl);
 		}
 
 	boolean odbsavefile (odbref odb) {
-
+		odb_context_guard guard;
 		boolean fl;
-		hdlthreadglobals htg = getcurrentthreadglobals ();
-		
-		copythreadglobals (htg);
-		
-		swapinthreadglobals (nil);
-		
+
+		odb_guard_enter(&guard);
+
 		fl = odbSaveFile (odb);
-		
+
 		cancoonglobals = nil;
-		
-		swapinthreadglobals (htg);
-		
+
+		odb_guard_exit(&guard);
+
 		return (fl);
 		}
 
 	boolean odbclosefile (odbref odb) {
-
+		odb_context_guard guard;
 		boolean fl;
-		hdlthreadglobals htg = getcurrentthreadglobals ();
-		
-		copythreadglobals (htg);
-		
-		swapinthreadglobals (nil);
-		
+
+		odb_guard_enter(&guard);
+
 		fl = odbCloseFile (odb);
-		
+
 		cancoonglobals = nil;
-		
-		swapinthreadglobals (htg);
-		
+
+		odb_guard_exit(&guard);
+
 		return (fl);
 		}
 
 	boolean odbdefined (odbref odb, bigstring bspath) {
-
+		odb_context_guard guard;
 		boolean fl;
-		hdlthreadglobals htg = getcurrentthreadglobals ();
-		
-		copythreadglobals (htg);
-		
-		swapinthreadglobals (nil);
-		
+
+		odb_guard_enter(&guard);
+
 		fl = odbDefined (odb, bspath);
-				
+
 		cancoonglobals = nil;
-		
-		swapinthreadglobals (htg);
-		
+
+		odb_guard_exit(&guard);
+
 		return (fl);
 		}
 
 	boolean odbdelete (odbref odb, bigstring bspath) {
-
+		odb_context_guard guard;
 		boolean fl;
-		hdlthreadglobals htg = getcurrentthreadglobals ();
-		
-		copythreadglobals (htg);
-		
-		swapinthreadglobals (nil);
-		
+
+		odb_guard_enter(&guard);
+
 		fl = odbDelete (odb, bspath);
-				
+
 		cancoonglobals = nil;
-		
-		swapinthreadglobals (htg);
-		
+
+		odb_guard_exit(&guard);
+
 		return (fl);
 		}
 
 	boolean odbgettype (odbref odb, bigstring bspath, OSType *odbType) {
-
+		odb_context_guard guard;
 		boolean fl;
-		hdlthreadglobals htg = getcurrentthreadglobals ();
-		
-		copythreadglobals (htg);
-		
-		swapinthreadglobals (nil);
-		
+
+		odb_guard_enter(&guard);
+
 		fl = odbGetType (odb, bspath, odbType);
-				
+
 		cancoonglobals = nil;
-		
-		swapinthreadglobals (htg);
-		
+
+		odb_guard_exit(&guard);
+
 		return (fl);
 		}
 
 	boolean odbgetvalue (odbref odb, bigstring bspath, odbValueRecord *value) {
-
+		odb_context_guard guard;
 		boolean fl;
-		hdlthreadglobals htg = getcurrentthreadglobals ();
-		
-		copythreadglobals (htg);
-		
-		swapinthreadglobals (nil);
-		
+
+		odb_guard_enter(&guard);
+
 		fl = odbGetValue (odb, bspath, value);
-				
+
 		cancoonglobals = nil;
-		
-		swapinthreadglobals (htg);
-		
+
+		odb_guard_exit(&guard);
+
 		return (fl);
 		}
 
 	boolean odbsetvalue (odbref odb, bigstring bspath, odbValueRecord *value) {
-
+		odb_context_guard guard;
 		boolean fl;
-		hdlthreadglobals htg = getcurrentthreadglobals ();
-		
-		copythreadglobals (htg);
-		
-		swapinthreadglobals (nil);
-		
+
+		odb_guard_enter(&guard);
+
 		fl = odbSetValue (odb, bspath, value);
-				
+
 		cancoonglobals = nil;
-		
-		swapinthreadglobals (htg);
-		
+
+		odb_guard_exit(&guard);
+
 		return (fl);
 		}
 
 	boolean odbnewtable (odbref odb, bigstring bspath) {
-
+		odb_context_guard guard;
 		boolean fl;
-		hdlthreadglobals htg = getcurrentthreadglobals ();
-		
-		copythreadglobals (htg);
-		
-		swapinthreadglobals (nil);
-		
+
+		odb_guard_enter(&guard);
+
 		fl = odbNewTable (odb, bspath);
-				
+
 		cancoonglobals = nil;
-		
-		swapinthreadglobals (htg);
-		
+
+		odb_guard_exit(&guard);
+
 		return (fl);
 		}
 
 	boolean odbcountitems (odbref odb, bigstring bspath, long *count) {
-
+		odb_context_guard guard;
 		boolean fl;
-		hdlthreadglobals htg = getcurrentthreadglobals ();
-		
-		copythreadglobals (htg);
-		
-		swapinthreadglobals (nil);
-		
+
+		odb_guard_enter(&guard);
+
 		fl = odbCountItems (odb, bspath, count);
-				
+
 		cancoonglobals = nil;
-		
-		swapinthreadglobals (htg);
-		
+
+		odb_guard_exit(&guard);
+
 		return (fl);
 		}
 
 	boolean odbgetnthitem (odbref odb, bigstring bspath, long n, bigstring bsname) {
-
+		odb_context_guard guard;
 		boolean fl;
-		hdlthreadglobals htg = getcurrentthreadglobals ();
-		
-		copythreadglobals (htg);
-		
-		swapinthreadglobals (nil);
-		
+
+		odb_guard_enter(&guard);
+
 		fl = odbGetNthItem (odb, bspath, n, bsname);
-				
+
 		cancoonglobals = nil;
-		
-		swapinthreadglobals (htg);
-		
+
+		odb_guard_exit(&guard);
+
 		return (fl);
 		}
 
 	boolean odbgetmoddate (odbref odb, bigstring bspath, unsigned long *date) {
-
+		odb_context_guard guard;
 		boolean fl;
-		hdlthreadglobals htg = getcurrentthreadglobals ();
-		
-		copythreadglobals (htg);
-		
-		swapinthreadglobals (nil);
-		
+
+		odb_guard_enter(&guard);
+
 		fl = odbGetModDate (odb, bspath, date);
-				
+
 		cancoonglobals = nil;
-		
-		swapinthreadglobals (htg);
-		
+
+		odb_guard_exit(&guard);
+
 		return (fl);
 		}
 
 	boolean odbdisposevalue (odbref odb, odbValueRecord *value) {
+		odb_context_guard guard;
 
-		hdlthreadglobals htg = getcurrentthreadglobals ();
-		
-		copythreadglobals (htg);
-		
-		swapinthreadglobals (nil);
-		
+		odb_guard_enter(&guard);
+
 		odbDisposeValue (odb, value);
-				
+
 		cancoonglobals = nil;
-		
-		swapinthreadglobals (htg);
-		
+
+		odb_guard_exit(&guard);
+
 		return (true);
 		}
 
