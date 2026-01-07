@@ -71,6 +71,12 @@ static boolean getoutlinefromtarget(hdloutlinerecord *ho, bigstring bserror) {
     /* Get the external variable handle */
     hv = (hdlexternalvariable)val.data.externalvalue;
 
+    /* Verify handle is valid */
+    if (hv == NULL) {
+        copystring(BIGSTRING("\030target is not an outline"), bserror);
+        return false;
+    }
+
     /* Verify it's an outline processor type */
     if ((**hv).id != idoutlineprocessor) {
         copystring(BIGSTRING("\030target is not an outline"), bserror);
