@@ -223,8 +223,7 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
             hdlheadrecord hbarcursor;
             long ct;
 
-            flnextparamislast = true;
-
+            flnextparamislast = true;  /* Single parameter - mark as last */
             if (!getintvalue(hparam1, 1, &level))
                 return false;
 
@@ -268,8 +267,7 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
             if (!getdirectionvalue(hparam1, 1, &dir))
                 return false;
 
-            flnextparamislast = true;
-
+            flnextparamislast = true;  /* Mark next parameter as last */
             if (!getlongvalue(hparam1, 2, &units))
                 return false;
 
@@ -308,8 +306,7 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
             hdlheadrecord hbarcursor;
             boolean fl;
 
-            flnextparamislast = true;
-
+            flnextparamislast = true;  /* Single parameter - mark as last */
             if (!getintvalue(hparam1, 1, &level))
                 return false;
 
@@ -358,8 +355,7 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
             if (!getexempttextvalue(hparam1, 1, &htext))
                 return false;
 
-            flnextparamislast = true;
-
+            flnextparamislast = true;  /* Mark next parameter as last */
             if (!getdirectionvalue(hparam1, 2, &dir)) {
                 disposehandle(htext);
                 return false;
