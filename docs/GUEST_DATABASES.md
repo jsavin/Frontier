@@ -194,8 +194,66 @@ Guest Database operations involve global state:
 - **Context Issue**: `Common/source/langevaluate.c:1945-1952`
 - **System Paths**: Defined in `system.paths` table (path1-path14)
 
+## Testing Strategy
+
+### Integration Tests Required
+
+**Critical Constraint:** Effective unit testing of db verbs is extremely difficult because Guest Databases require:
+- `system.compiler.files` table properly initialized
+- `system.paths.path14` configured to point to `@system.compiler.files`
+- Full global scope resolution system working
+- Hash table system functional
+- Runtime context properly established
+
+**Testing Approach:**
+
+1. **Primary: Integration Tests** (`tests/integration/db_tests.yaml`)
+   - Use full CLI runtime with system root loaded
+   - Test with actual system.compiler and system.paths initialized
+   - Verify Guest Database registration in system.compiler.files
+   - Test global scope access to Guest Database items
+   - Verify precedence (path14 is lowest)
+
+2. **Limited: Unit Tests** (if any)
+   - Can only test isolated ODB engine functions
+   - Cannot test full db verb workflow without runtime
+   - Most functionality requires integration test coverage
+
+3. **Manual Testing** (during development)
+   - Use `./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root`
+   - Verify system.compiler.files entries after db.open()
+   - Check global scope access to Guest Database items
+   - Confirm cleanup after db.close()
+
+**Example Integration Test Pattern:**
+
+```yaml
+- name: "db.open - registers in system.compiler.files"
+  setup:
+    - 'db.new("{FRONTIER_TEST_TMP_DIR}/guest.root")'
+    - 'db.close()'
+  script: |
+    db.open("{FRONTIER_TEST_TMP_DIR}/guest.root");
+    defined(system.compiler.files.["{FRONTIER_TEST_TMP_DIR}/guest.root"])
+  expected_result: "true"
+  cleanup:
+    - 'db.close()'
+```
+
+### Why Unit Tests Are Insufficient
+
+Unit tests for db verbs would need to:
+1. Initialize entire system.compiler table structure
+2. Configure all 14 system.paths entries
+3. Set up global scope resolution
+4. Mock or stub ODB engine context switches
+5. Simulate currenthashtable management
+
+This essentially requires reimplementing the entire runtime bootstrap, making unit tests impractical. **Integration tests with full CLI runtime are the only reliable way to test Guest Database functionality.**
+
 ## Related Documentation
 
 - [Database Format](DATABASE_FORMAT.md) - On-disk structure of `.root` files
 - [ODB Architecture](../planning/phase3/ODB_ARCHITECTURE.md) - Overall database system design
 - [Thread Safety](THREAD_LOCAL_GLOBALS_PATTERN.md) - Thread-safe global state management
+- [Testing Guide](TESTING_GUIDE.md) - CLI usage and integration test patterns
