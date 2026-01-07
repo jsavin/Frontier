@@ -1,0 +1,930 @@
+# Integration tests for op (outline) verb operations
+# Tests outline manipulation verbs available in headless mode
+#
+# Outline verbs (priority operations for initial implementation):
+#   Navigation: op.go(dir, count), op.firstSummit(), op.level()
+#   Content: op.getLineText(), op.setLineText(s)
+#   Structure: op.insert(s, dir), op.deleteLine()
+#   Hierarchy: op.expand(levels), op.collapse(), op.promote(), op.demote()
+#   Counting: op.countSubs(levels), op.countSummits()
+#   Cursor: op.getCursor(), op.setCursor(adr)
+#
+# Headless Behavior Notes:
+# - All outline operations require an outline set as target: target.set(@myOutline)
+# - Outlines are in-memory tree data structures (no GUI window required)
+# - Create outlines with: lang.new(outlineType, @workspace.outline)
+# - Cursor position is data structure state (current node), not GUI state
+# - Direction values: up, down, left, right, flatup, flatdown
+# - Expansion state is tree metadata, not visual display state
+#
+# Reference: planning/phase3/processor_audits/op.md
+
+tests:
+  # ====================================================================
+  # Basic Outline Creation and Target Setup
+  # ====================================================================
+
+  - name: "outline creation - lang.new with outlineType"
+    description: "Create new outline object using lang.new(outlineType, @addr)"
+    script: |
+      lang.new(outlineType, @workspace.testOutline);
+      return typeof(workspace.testOutline)
+    expected_success: true
+    expected_result: "outl"
+
+  - name: "outline target setup - set outline as target"
+    description: "Set outline as target for op verb operations"
+    script: |
+      lang.new(outlineType, @workspace.myOutline);
+      target.set(@workspace.myOutline);
+      return string(target.get())
+    expected_success: true
+    expected_result: "workspace.myOutline"
+
+  - name: "outline target workflow - full setup cycle"
+    description: "Complete workflow: create outline → set as target → verify"
+    script: |
+      lang.new(outlineType, @workspace.opTest);
+      target.set(@workspace.opTest);
+      local(ok1 = typeof(workspace.opTest) == "outl");
+      local(ok2 = string(target.get()) == "workspace.opTest");
+      return ok1 and ok2
+    expected_success: true
+    expected_result: "true"
+
+  # ====================================================================
+  # Basic op.insert() Operations - Building Outline Structure
+  # ====================================================================
+
+  - name: "op.insert - insert first line (down)"
+    description: "Insert first line into empty outline using down direction"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      return op.insert("First line", down)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.insert - insert sibling line (down)"
+    description: "Insert sibling line below current line"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line 1", down);
+      return op.insert("Line 2", down)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.insert - insert child line (right)"
+    description: "Insert child line under current line (indent)"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Parent", down);
+      return op.insert("Child", right)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.insert - insert above (up)"
+    description: "Insert line above current position"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line 2", down);
+      return op.insert("Line 1", up)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.insert - insert parent (left)"
+    description: "Insert parent line to the left (outdent and insert)"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Parent", down);
+      op.insert("Child", right);
+      return op.insert("Grandchild", right)
+    expected_success: true
+    expected_result: "true"
+
+  # ====================================================================
+  # op.getLineText() - Reading Content
+  # ====================================================================
+
+  - name: "op.getLineText - read inserted line"
+    description: "Get text of line after insertion"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Test content", down);
+      return op.getLineText()
+    expected_success: true
+    expected_result: "Test content"
+
+  - name: "op.getLineText - returns string type"
+    description: "getLineText returns stringType"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Hello", down);
+      return typeof(op.getLineText())
+    expected_success: true
+    expected_result: "str"
+
+  - name: "op.getLineText - empty line text"
+    description: "Get text of empty line (empty string)"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("", down);
+      return sizeOf(op.getLineText())
+    expected_success: true
+    expected_result: "0"
+
+  # ====================================================================
+  # op.setLineText() - Modifying Content
+  # ====================================================================
+
+  - name: "op.setLineText - modify existing line"
+    description: "Change text of current line"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Original", down);
+      op.setLineText("Modified");
+      return op.getLineText()
+    expected_success: true
+    expected_result: "Modified"
+
+  - name: "op.setLineText - returns boolean true"
+    description: "setLineText returns true on success"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Text", down);
+      return op.setLineText("New text")
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.setLineText - set to empty string"
+    description: "Set line text to empty string"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Something", down);
+      op.setLineText("");
+      return sizeOf(op.getLineText())
+    expected_success: true
+    expected_result: "0"
+
+  # ====================================================================
+  # op.go() - Navigation
+  # ====================================================================
+
+  - name: "op.go - navigate down one line"
+    description: "Move cursor down one line in outline"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line 1", down);
+      op.insert("Line 2", down);
+      op.go(up, 1);
+      op.go(down, 1);
+      return op.getLineText()
+    expected_success: true
+    expected_result: "Line 2"
+
+  - name: "op.go - navigate up one line"
+    description: "Move cursor up one line in outline"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line 1", down);
+      op.insert("Line 2", down);
+      op.go(up, 1);
+      return op.getLineText()
+    expected_success: true
+    expected_result: "Line 1"
+
+  - name: "op.go - navigate right (into child)"
+    description: "Move cursor right into first child"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Parent", down);
+      op.insert("Child", right);
+      op.go(left, 1);
+      op.go(right, 1);
+      return op.getLineText()
+    expected_success: true
+    expected_result: "Child"
+
+  - name: "op.go - navigate left (to parent)"
+    description: "Move cursor left to parent node"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Parent", down);
+      op.insert("Child", right);
+      op.go(left, 1);
+      return op.getLineText()
+    expected_success: true
+    expected_result: "Parent"
+
+  - name: "op.go - navigate multiple units"
+    description: "Navigate down multiple lines at once"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line 1", down);
+      op.insert("Line 2", down);
+      op.insert("Line 3", down);
+      op.go(up, 2);
+      return op.getLineText()
+    expected_success: true
+    expected_result: "Line 1"
+
+  - name: "op.go - returns boolean on success"
+    description: "go() returns true when navigation succeeds"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line 1", down);
+      op.insert("Line 2", down);
+      return op.go(up, 1)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.go - returns false at boundary"
+    description: "go() returns false when can't move further (at boundary)"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Only line", down);
+      return op.go(up, 1)
+    expected_success: true
+    expected_result: "false"
+
+  - name: "op.go - flatup direction (skip children)"
+    description: "Navigate flatup (previous sibling/parent, skipping children)"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line 1", down);
+      op.insert("Line 2", down);
+      return op.go(flatup, 1)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.go - flatdown direction (skip children)"
+    description: "Navigate flatdown (next sibling, skipping children)"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line 1", down);
+      op.insert("Line 2", down);
+      op.go(up, 1);
+      return op.go(flatdown, 1)
+    expected_success: true
+    expected_result: "true"
+
+  # ====================================================================
+  # op.firstSummit() - Navigate to Top
+  # ====================================================================
+
+  - name: "op.firstSummit - go to first top-level node"
+    description: "Navigate to first summit (top-level node)"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("First", down);
+      op.insert("Second", down);
+      op.insert("Third", down);
+      op.firstSummit();
+      return op.getLineText()
+    expected_success: true
+    expected_result: "First"
+
+  - name: "op.firstSummit - returns boolean true"
+    description: "firstSummit returns true on success"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      return op.firstSummit()
+    expected_success: true
+    expected_result: "true"
+
+  # ====================================================================
+  # op.level() - Nesting Level
+  # ====================================================================
+
+  - name: "op.level - top-level is 1"
+    description: "Top-level nodes have level 1"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Top level", down);
+      return op.level()
+    expected_success: true
+    expected_result: "1"
+
+  - name: "op.level - child is level 2"
+    description: "Child nodes have level 2"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Parent", down);
+      op.insert("Child", right);
+      return op.level()
+    expected_success: true
+    expected_result: "2"
+
+  - name: "op.level - grandchild is level 3"
+    description: "Grandchild nodes have level 3"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Parent", down);
+      op.insert("Child", right);
+      op.insert("Grandchild", right);
+      return op.level()
+    expected_success: true
+    expected_result: "3"
+
+  # ====================================================================
+  # op.countSubs() - Count Children
+  # ====================================================================
+
+  - name: "op.countSubs - count immediate children (level 1)"
+    description: "Count direct children of current node"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Parent", down);
+      op.insert("Child 1", right);
+      op.insert("Child 2", down);
+      op.insert("Child 3", down);
+      op.go(left, 1);
+      return op.countSubs(1)
+    expected_success: true
+    expected_result: "3"
+
+  - name: "op.countSubs - no children returns 0"
+    description: "Leaf nodes have 0 children"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Leaf node", down);
+      return op.countSubs(1)
+    expected_success: true
+    expected_result: "0"
+
+  - name: "op.countSubs - infinity counts all descendants"
+    description: "Use infinity to count all descendants recursively"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Root", down);
+      op.insert("Child 1", right);
+      op.insert("Grandchild", right);
+      op.go(left, 1);
+      op.insert("Child 2", down);
+      op.go(left, 1);
+      return op.countSubs(infinity)
+    expected_success: true
+    expected_result: "3"
+
+  # ====================================================================
+  # op.countSummits() - Count Top-Level Nodes
+  # ====================================================================
+
+  - name: "op.countSummits - count top-level nodes"
+    description: "Count all summit (top-level) nodes in outline"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Summit 1", down);
+      op.insert("Summit 2", down);
+      op.insert("Summit 3", down);
+      return op.countSummits()
+    expected_success: true
+    expected_result: "3"
+
+  - name: "op.countSummits - empty outline returns 0"
+    description: "Empty outline has 0 summits"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      return op.countSummits()
+    expected_success: true
+    expected_result: "0"
+
+  - name: "op.countSummits - children don't count"
+    description: "Child nodes are not counted as summits"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Summit", down);
+      op.insert("Child", right);
+      op.insert("Grandchild", right);
+      return op.countSummits()
+    expected_success: true
+    expected_result: "1"
+
+  # ====================================================================
+  # op.expand() - Expand Nodes
+  # ====================================================================
+
+  - name: "op.expand - expand one level"
+    description: "Expand current node one level (show immediate children)"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Parent", down);
+      op.insert("Child", right);
+      op.go(left, 1);
+      return op.expand(1)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.expand - expand all descendants (infinity)"
+    description: "Expand all descendants using infinity"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Root", down);
+      op.insert("Child", right);
+      op.insert("Grandchild", right);
+      op.go(left, 2);
+      return op.expand(infinity)
+    expected_success: true
+    expected_result: "true"
+
+  # ====================================================================
+  # op.collapse() - Collapse Nodes
+  # ====================================================================
+
+  - name: "op.collapse - collapse current node"
+    description: "Collapse current node (hide all children)"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Parent", down);
+      op.insert("Child", right);
+      op.go(left, 1);
+      op.expand(infinity);
+      return op.collapse()
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.collapse - returns boolean"
+    description: "collapse returns true on success"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Node", down);
+      return op.collapse()
+    expected_success: true
+    expected_result: "true"
+
+  # ====================================================================
+  # op.promote() - Move Node Left (Outdent)
+  # ====================================================================
+
+  - name: "op.promote - move child to sibling of parent"
+    description: "Promote child node to same level as parent (outdent)"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Parent", down);
+      op.insert("Child", right);
+      local(before = op.level());
+      op.promote();
+      local(after = op.level());
+      return before == 2 and after == 1
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.promote - returns boolean"
+    description: "promote returns true when node is promoted"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Parent", down);
+      op.insert("Child", right);
+      return op.promote()
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.promote - top-level cannot promote"
+    description: "Top-level nodes cannot be promoted (already at level 1)"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Top", down);
+      return op.promote()
+    expected_success: true
+    expected_result: "false"
+
+  # ====================================================================
+  # op.demote() - Move Node Right (Indent)
+  # ====================================================================
+
+  - name: "op.demote - make sibling a child"
+    description: "Demote node to child of previous sibling (indent)"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Sibling 1", down);
+      op.insert("Sibling 2", down);
+      local(before = op.level());
+      op.demote();
+      local(after = op.level());
+      return before == 1 and after == 2
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.demote - returns boolean"
+    description: "demote returns true when node is demoted"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line 1", down);
+      op.insert("Line 2", down);
+      return op.demote()
+    expected_success: true
+    expected_result: "true"
+
+  # ====================================================================
+  # op.deleteLine() - Delete Current Node
+  # ====================================================================
+
+  - name: "op.deleteLine - delete single line"
+    description: "Delete current line, cursor moves to next line"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Delete me", down);
+      op.insert("Keep me", down);
+      op.go(up, 1);
+      op.deleteLine();
+      return op.getLineText()
+    expected_success: true
+    expected_result: "Keep me"
+
+  - name: "op.deleteLine - returns boolean true"
+    description: "deleteLine returns true on success"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      return op.deleteLine()
+    expected_success: true
+    expected_result: "true"
+
+  # ====================================================================
+  # Edge Cases - Parameter Validation
+  # ====================================================================
+
+  - name: "op.go - missing direction parameter"
+    description: "op.go requires direction parameter"
+    script: 'op.go()'
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "op.go - missing count parameter"
+    description: "op.go requires count parameter"
+    script: 'op.go(down)'
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "op.go - extra parameters should fail"
+    description: "op.go with extra parameters should error"
+    script: 'op.go(down, 1, "extra")'
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "op.insert - missing text parameter"
+    description: "op.insert requires text parameter"
+    script: 'op.insert()'
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "op.insert - missing direction parameter"
+    description: "op.insert requires direction parameter"
+    script: 'op.insert("text")'
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "op.setLineText - missing text parameter"
+    description: "op.setLineText requires text parameter"
+    script: 'op.setLineText()'
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "op.getLineText - no parameters"
+    description: "op.getLineText takes no parameters"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Text", down);
+      return typeof(op.getLineText())
+    expected_success: true
+    expected_result: "str"
+
+  - name: "op.getLineText - extra parameters should fail"
+    description: "op.getLineText with extra parameters should error"
+    script: 'op.getLineText("extra")'
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "op.level - no parameters"
+    description: "op.level takes no parameters"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      return typeof(op.level())
+    expected_success: true
+    expected_result: "long"
+
+  - name: "op.countSubs - missing level parameter"
+    description: "op.countSubs requires level parameter"
+    script: 'op.countSubs()'
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "op.expand - missing levels parameter"
+    description: "op.expand requires levels parameter"
+    script: 'op.expand()'
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "op.collapse - no parameters"
+    description: "op.collapse takes no parameters"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      return typeof(op.collapse())
+    expected_success: true
+    expected_result: "bool"
+
+  - name: "op.promote - no parameters"
+    description: "op.promote takes no parameters"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Parent", down);
+      op.insert("Child", right);
+      return typeof(op.promote())
+    expected_success: true
+    expected_result: "bool"
+
+  - name: "op.demote - no parameters"
+    description: "op.demote takes no parameters"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line 1", down);
+      op.insert("Line 2", down);
+      return typeof(op.demote())
+    expected_success: true
+    expected_result: "bool"
+
+  # ====================================================================
+  # Edge Cases - No Target Set
+  # ====================================================================
+
+  - name: "op.insert - no target set should fail"
+    description: "op.insert requires outline set as target"
+    script: |
+      target.clear();
+      op.insert("Test", down)
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "op.getLineText - no target set should fail"
+    description: "op.getLineText requires outline set as target"
+    script: |
+      target.clear();
+      op.getLineText()
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "op.go - no target set should fail"
+    description: "op.go requires outline set as target"
+    script: |
+      target.clear();
+      op.go(down, 1)
+    expected_success: false
+    expected_error_type: "script_error"
+
+  # ====================================================================
+  # Edge Cases - Wrong Target Type
+  # ====================================================================
+
+  - name: "op.insert - table target should fail"
+    description: "op verbs require outlineType target, not tableType"
+    script: |
+      lang.new(tableType, @workspace.notOutline);
+      target.set(@workspace.notOutline);
+      op.insert("Test", down)
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "op.getLineText - wrong target type should fail"
+    description: "op verbs require outlineType target"
+    script: |
+      lang.new(tableType, @workspace.table);
+      target.set(@workspace.table);
+      op.getLineText()
+    expected_success: false
+    expected_error_type: "script_error"
+
+  # ====================================================================
+  # Workflow Tests - Complex Outline Operations
+  # ====================================================================
+
+  - name: "workflow - build and navigate outline structure"
+    description: "Build multi-level outline and navigate through it"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Chapter 1", down);
+      op.insert("Section 1.1", right);
+      op.insert("Section 1.2", down);
+      op.go(left, 1);
+      op.insert("Chapter 2", down);
+      op.firstSummit();
+      local(ok1 = op.getLineText() == "Chapter 1");
+      local(ok2 = op.countSummits() == 2);
+      return ok1 and ok2
+    expected_success: true
+    expected_result: "true"
+
+  - name: "workflow - insert and modify multiple lines"
+    description: "Insert multiple lines and modify their content"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line 1", down);
+      op.insert("Line 2", down);
+      op.insert("Line 3", down);
+      op.go(up, 2);
+      op.setLineText("Modified Line 1");
+      return op.getLineText()
+    expected_success: true
+    expected_result: "Modified Line 1"
+
+  - name: "workflow - promote and demote hierarchy changes"
+    description: "Build hierarchy and reorganize with promote/demote"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Parent", down);
+      op.insert("Child", right);
+      local(level1 = op.level());
+      op.promote();
+      local(level2 = op.level());
+      op.demote();
+      local(level3 = op.level());
+      return (level1 == 2) and (level2 == 1) and (level3 == 2)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "workflow - expand and collapse state"
+    description: "Expand and collapse outline nodes"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Root", down);
+      op.insert("Child 1", right);
+      op.insert("Child 2", down);
+      op.go(left, 1);
+      op.expand(infinity);
+      op.collapse();
+      return op.countSubs(1)
+    expected_success: true
+    expected_result: "2"
+
+  # ====================================================================
+  # Stress Tests
+  # ====================================================================
+
+  - name: "stress test - build large outline"
+    description: "Build outline with many nodes"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      local(i);
+      for i = 1 to 20 {
+        op.insert("Line " + i, down)
+      };
+      return op.countSummits()
+    expected_success: true
+    expected_result: "20"
+
+  - name: "stress test - deep nesting"
+    description: "Create deeply nested outline structure"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      local(i);
+      op.insert("Level 1", down);
+      for i = 2 to 10 {
+        op.insert("Level " + i, right)
+      };
+      return op.level()
+    expected_success: true
+    expected_result: "10"
+
+  - name: "stress test - rapid insert and delete"
+    description: "Rapidly insert and delete lines"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      local(i);
+      for i = 1 to 10 {
+        op.insert("Temp " + i, down)
+      };
+      for i = 1 to 5 {
+        op.deleteLine()
+      };
+      return op.countSummits()
+    expected_success: true
+    expected_result: "5"
+
+  # ====================================================================
+  # Integration with Other Verbs
+  # ====================================================================
+
+  - name: "integration - outline with target.get/set"
+    description: "Switch between multiple outline targets"
+    script: |
+      lang.new(outlineType, @workspace.outline1);
+      lang.new(outlineType, @workspace.outline2);
+      target.set(@workspace.outline1);
+      op.insert("Outline 1", down);
+      target.set(@workspace.outline2);
+      op.insert("Outline 2", down);
+      target.set(@workspace.outline1);
+      return op.getLineText()
+    expected_success: true
+    expected_result: "Outline 1"
+
+  - name: "integration - outline with typeof"
+    description: "Verify outline type with typeof"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      return typeof(workspace.outline)
+    expected_success: true
+    expected_result: "outl"
+
+  - name: "integration - outline with defined"
+    description: "Check outline existence with defined"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      return defined(workspace.outline)
+    expected_success: true
+    expected_result: "true"
+
+  # ====================================================================
+  # Regression Tests - Headless-Specific Behavior
+  # ====================================================================
+
+  - name: "headless behavior - no window required for outline ops"
+    description: "Outline operations work without GUI windows (headless mode)"
+    script: |
+      lang.new(outlineType, @workspace.headlessOutline);
+      target.set(@workspace.headlessOutline);
+      op.insert("Headless line", down);
+      return op.getLineText()
+    expected_success: true
+    expected_result: "Headless line"
+
+  - name: "headless behavior - cursor is data structure state"
+    description: "Cursor position is data, not GUI state (headless compatible)"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line 1", down);
+      op.insert("Line 2", down);
+      op.go(up, 1);
+      return op.level() == 1
+    expected_success: true
+    expected_result: "true"
+
+  - name: "headless behavior - expansion state is metadata"
+    description: "Expansion state is tree metadata, not visual state"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Parent", down);
+      op.insert("Child", right);
+      op.go(left, 1);
+      op.expand(1);
+      op.collapse();
+      return op.countSubs(1) == 1
+    expected_success: true
+    expected_result: "true"
