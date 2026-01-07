@@ -46,21 +46,21 @@ static boolean getoutlinefromtarget(hdloutlinerecord *ho, bigstring bserror) {
 
     /* Get target from lang.target.get() */
     if (!langgettarget(&htable, bsname)) {
-        copystring(BIGSTRING("\030no outline target set"), bserror);
+        copystring(BIGSTRING("\025no outline target set"), bserror);
         return false;
     }
 
     /* Look up the variable */
     if (!hashtablelookup(htable, bsname, &val, &hnode)) {
-        copystring(BIGSTRING("\033target variable not found"), bserror);
+        copystring(BIGSTRING("\031target variable not found"), bserror);
         return false;
     }
 
     /* Verify it's an external variable */
     if (!langexternalvaltotable(val, &htable, hnode)) {
-        /* Not an external - check if it's the right type */
+        /* Not a table - check if it's an external variable type */
         if (val.valuetype != externalvaluetype) {
-            copystring(BIGSTRING("\031target is not an outline"), bserror);
+            copystring(BIGSTRING("\030target is not an outline"), bserror);
             return false;
         }
     }
@@ -70,13 +70,13 @@ static boolean getoutlinefromtarget(hdloutlinerecord *ho, bigstring bserror) {
 
     /* Verify it's an outline processor type */
     if ((**hv).id != idoutlineprocessor) {
-        copystring(BIGSTRING("\031target is not an outline"), bserror);
+        copystring(BIGSTRING("\030target is not an outline"), bserror);
         return false;
     }
 
     /* Ensure outline is in memory */
     if (!opverbinmemory(NULL, hv)) {
-        copystring(BIGSTRING("\027could not load outline"), bserror);
+        copystring(BIGSTRING("\026could not load outline"), bserror);
         return false;
     }
 
@@ -335,12 +335,16 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
 
             flnextparamislast = true;
 
-            if (!getdirectionvalue(hparam1, 2, &dir))
+            if (!getdirectionvalue(hparam1, 2, &dir)) {
+                disposehandle(htext);
                 return false;
+            }
 
             /* Get outline from target */
-            if (!getoutlinefromtarget(&ho, bserror))
+            if (!getoutlinefromtarget(&ho, bserror)) {
+                disposehandle(htext);
                 return false;
+            }
 
             /* Push outline, insert, pop */
             oppushoutline(ho);
