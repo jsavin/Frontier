@@ -1984,7 +1984,7 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
 
     saved_root = tablesavesystemtable(hrootvariable, &new_root_address);
 #if defined(FRONTIER_HEADLESS)
-    log_debug(LOG_COMP_DB, "migrate: after tablesavesystemtable, new_root_address=0x%llx saved_root=%d",
+    log_trace(LOG_COMP_DB, "migrate: after tablesavesystemtable, new_root_address=0x%llx saved_root=%d",
               (unsigned long long)new_root_address, saved_root ? 1 : 0);
 #endif
     if (!saved_root) {
@@ -2021,6 +2021,10 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
 
     if (drop_cancoon) {
         /* Modern v7 root: drop legacy Cancoon and point view0 at the root table only. */
+#if defined(FRONTIER_HEADLESS)
+        log_trace(LOG_COMP_DB, "migrate: drop_cancoon path, setting view[%d] to new_root_address=0x%llx",
+                  cancoonview, (unsigned long long)new_root_address);
+#endif
         for (int i = 0; i < ctviews; ++i)
             dbsetview(i, nildbaddress);
         dbsetview(cancoonview, new_root_address);
