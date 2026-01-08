@@ -27,6 +27,7 @@
 #include "langexternal.h"
 #include "opverbs.h"
 #include "opinternal.h"
+#include "logging.h"
 
 /*
  * Helper function: Set error message from C string
@@ -344,10 +345,29 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
 
             return setbooleanvalue(fl, vreturned);
         }
-        case opv_subsexpanded:
-            /* Verb #8: op.subsexpanded - not yet implemented */
-            if (bserror) seterrorstring("not implemented", bserror);
-            return false;
+        case opv_subsexpanded: {
+            /* Verb #8: op.subsexpanded - Returns true if subheads are expanded */
+            hdloutlinerecord ho;
+            hdlheadrecord hbarcursor;
+            boolean fl;
+
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+
+            if (!getoutlinefromtarget(&ho, bserror))
+                return false;
+
+            oppushoutline(ho);
+
+            /* opsubheadsexpanded() requires explicit cursor parameter (query function)
+             * Unlike modification functions like opreorgcursor(), it doesn't use global outlinedata */
+            hbarcursor = (**ho).hbarcursor;
+            fl = opsubheadsexpanded(hbarcursor);
+
+            oppopoutline();
+
+            return setbooleanvalue(fl, vreturned);
+        }
         case opv_insert: {
             /* Verb #9: op.insert(text, direction) -> boolean */
             Handle htext;
@@ -396,14 +416,40 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
             /* Verb #13: op.reorg - not yet implemented */
             if (bserror) seterrorstring("not implemented", bserror);
             return false;
-        case opv_promote:
-            /* Verb #14: op.promote - not yet implemented */
-            if (bserror) seterrorstring("not implemented", bserror);
-            return false;
-        case opv_demote:
-            /* Verb #15: op.demote - not yet implemented */
-            if (bserror) seterrorstring("not implemented", bserror);
-            return false;
+        case opv_promote: {
+            /* Verb #14: op.promote - Promote the bar cursor line (move left/outdent) */
+            hdloutlinerecord ho;
+            boolean fl;
+
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+
+            if (!getoutlinefromtarget(&ho, bserror))
+                return false;
+
+            oppushoutline(ho);
+            fl = opreorgcursor(left, 1);
+            oppopoutline();
+
+            return setbooleanvalue(fl, vreturned);
+        }
+        case opv_demote: {
+            /* Verb #15: op.demote - Demote the bar cursor line (move right/indent) */
+            hdloutlinerecord ho;
+            boolean fl;
+
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+
+            if (!getoutlinefromtarget(&ho, bserror))
+                return false;
+
+            oppushoutline(ho);
+            fl = opreorgcursor(right, 1);
+            oppopoutline();
+
+            return setbooleanvalue(fl, vreturned);
+        }
         case opv_hoist:
             /* Verb #16: op.hoist - not yet implemented */
             if (bserror) seterrorstring("not implemented", bserror);
@@ -416,10 +462,67 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
             /* Verb #18: op.deletesubs - not yet implemented */
             if (bserror) seterrorstring("not implemented", bserror);
             return false;
-        case opv_deleteline:
-            /* Verb #19: op.deleteline - not yet implemented */
-            if (bserror) seterrorstring("not implemented", bserror);
-            return false;
+        case opv_deleteline: {
+            /* Verb #19: op.deleteline - delete the bar cursor line and all children
+             *
+             * Outline Minimal State Behavior:
+             * Every outline maintains at least one blank node (minimal state).
+             * When deleting the only node, a new empty node is created in its place.
+             *
+             * Cursor Movement Rules:
+             * - When deleting last node under sub-heading with sibling above → cursor moves to sibling
+             * - When deleting last node under sub-heading without sibling → cursor moves to parent
+             * - When deleting last top-level node → cursor moves to node above (even if it has children)
+             * - When deleting only node at top level → single new blank node created
+             */
+            hdloutlinerecord ho;
+            hdlheadrecord hcursor;
+
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+
+            if (!getoutlinefromtarget(&ho, bserror))
+                return false;
+
+            oppushoutline(ho);
+            opdeleteline();
+
+            /* Post-delete cursor handling for headless mode:
+             * opdeleteline() may leave cursor on empty root summit node (minimal state).
+             * In GUI mode, display refresh handles this. In headless mode,
+             * we must explicitly move to next valid node. */
+
+            /* Verify cursor is still valid after deletion */
+            hcursor = (**ho).hbarcursor;
+            if (hcursor == NULL) {
+                oppopoutline();
+                return setbooleanvalue(true, vreturned);
+            }
+
+            /* Check if headline text is valid and non-empty */
+            Handle htext = (**hcursor).headstring;
+            if (htext == NULL) {
+                oppopoutline();
+                return setbooleanvalue(true, vreturned);
+            }
+
+            long textsize = gethandlesize(htext);
+            log_debug(LOG_COMP_OP, "deleteLine: after delete, cursor text size=%ld", textsize);
+
+            if (textsize == 0) {
+                /* Empty node - try to move down to next node */
+                hdlheadrecord hnext = (**hcursor).headlinkdown;
+                log_debug(LOG_COMP_OP, "deleteLine: headlinkdown=%p, hcursor=%p, same=%d", hnext, hcursor, hnext==hcursor);
+                if (hnext != hcursor) {
+                    (**ho).hbarcursor = hnext;
+                    log_debug(LOG_COMP_OP, "deleteLine: moved to next node");
+                }
+            }
+
+            oppopoutline();
+
+            return setbooleanvalue(true, vreturned);
+        }
         case opv_tabkeyreorg:
             /* Verb #20: op.tabkeyreorg - not yet implemented */
             if (bserror) seterrorstring("not implemented", bserror);
