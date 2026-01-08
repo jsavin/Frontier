@@ -432,6 +432,55 @@ tests:
     expected_result: "2"
 
   # ====================================================================
+  # op.subsExpanded() - Check if Sub-Headlines Are Expanded
+  # ====================================================================
+
+  - name: "op.subsExpanded - collapsed headline returns false"
+    description: "Returns false when current headline's children are collapsed"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Parent", down);
+      op.insert("Child", right);
+      op.go(left, 1);
+      op.collapse();
+      return op.subsExpanded()
+    expected_success: true
+    expected_result: "false"
+
+  - name: "op.subsExpanded - expanded headline returns true"
+    description: "Returns true when current headline's children are expanded"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Parent", down);
+      op.insert("Child", right);
+      op.go(left, 1);
+      op.expand(1);
+      return op.subsExpanded()
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.subsExpanded - no children returns false"
+    description: "Returns false when headline has no children"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Leaf Node", down);
+      return op.subsExpanded()
+    expected_success: true
+    expected_result: "false"
+
+  - name: "op.subsExpanded - no parameters"
+    description: "Verify op.subsExpanded works with zero parameters on empty outline"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      return op.subsExpanded()
+    expected_success: true
+    expected_result: "false"
+
+  # ====================================================================
   # op.expand() - Expand Nodes
   # ====================================================================
 

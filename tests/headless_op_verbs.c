@@ -27,6 +27,7 @@
 #include "langexternal.h"
 #include "opverbs.h"
 #include "opinternal.h"
+#include "logging.h"
 
 /*
  * Helper function: Set error message from C string
@@ -344,10 +345,28 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
 
             return setbooleanvalue(fl, vreturned);
         }
-        case opv_subsexpanded:
-            /* Verb #8: op.subsexpanded - not yet implemented */
-            if (bserror) seterrorstring("not implemented", bserror);
-            return false;
+        case opv_subsexpanded: {
+            /* Verb #8: op.subsexpanded - Returns true if subheads are expanded */
+            hdloutlinerecord ho;
+            hdlheadrecord hbarcursor;
+            boolean fl;
+
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+
+            if (!getoutlinefromtarget(&ho, bserror))
+                return false;
+
+            oppushoutline(ho);
+            hbarcursor = (**ho).hbarcursor;
+
+            /* Use the built-in opsubheadsexpanded function */
+            fl = opsubheadsexpanded(hbarcursor);
+
+            oppopoutline();
+
+            return setbooleanvalue(fl, vreturned);
+        }
         case opv_insert: {
             /* Verb #9: op.insert(text, direction) -> boolean */
             Handle htext;
@@ -396,14 +415,40 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
             /* Verb #13: op.reorg - not yet implemented */
             if (bserror) seterrorstring("not implemented", bserror);
             return false;
-        case opv_promote:
-            /* Verb #14: op.promote - not yet implemented */
-            if (bserror) seterrorstring("not implemented", bserror);
-            return false;
-        case opv_demote:
-            /* Verb #15: op.demote - not yet implemented */
-            if (bserror) seterrorstring("not implemented", bserror);
-            return false;
+        case opv_promote: {
+            /* Verb #14: op.promote - Promote the bar cursor line (move left/outdent) */
+            hdloutlinerecord ho;
+            boolean fl;
+
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+
+            if (!getoutlinefromtarget(&ho, bserror))
+                return false;
+
+            oppushoutline(ho);
+            fl = opreorgcursor(left, 1);
+            oppopoutline();
+
+            return setbooleanvalue(fl, vreturned);
+        }
+        case opv_demote: {
+            /* Verb #15: op.demote - Demote the bar cursor line (move right/indent) */
+            hdloutlinerecord ho;
+            boolean fl;
+
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+
+            if (!getoutlinefromtarget(&ho, bserror))
+                return false;
+
+            oppushoutline(ho);
+            fl = opreorgcursor(right, 1);
+            oppopoutline();
+
+            return setbooleanvalue(fl, vreturned);
+        }
         case opv_hoist:
             /* Verb #16: op.hoist - not yet implemented */
             if (bserror) seterrorstring("not implemented", bserror);
@@ -416,10 +461,43 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
             /* Verb #18: op.deletesubs - not yet implemented */
             if (bserror) seterrorstring("not implemented", bserror);
             return false;
-        case opv_deleteline:
-            /* Verb #19: op.deleteline - not yet implemented */
-            if (bserror) seterrorstring("not implemented", bserror);
-            return false;
+        case opv_deleteline: {
+            /* Verb #19: op.deleteline - delete the bar cursor line */
+            hdloutlinerecord ho;
+            hdlheadrecord hcursor;
+
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+
+            if (!getoutlinefromtarget(&ho, bserror))
+                return false;
+
+            oppushoutline(ho);
+            opdeleteline();
+
+            /* After delete, check if cursor is on empty node (empty root summit) */
+            /* If so, try to move down to next non-empty node */
+            hcursor = (**ho).hbarcursor;
+
+            /* Check if headline text is empty */
+            Handle htext = (**hcursor).headstring;
+            long textsize = gethandlesize(htext);
+            log_debug(LOG_COMP_OP, "deleteLine: after delete, cursor text size=%ld", textsize);
+
+            if (textsize == 0) {
+                /* Empty node - try to move down to next node */
+                hdlheadrecord hnext = (**hcursor).headlinkdown;
+                log_debug(LOG_COMP_OP, "deleteLine: headlinkdown=%p, hcursor=%p, same=%d", hnext, hcursor, hnext==hcursor);
+                if (hnext != hcursor) {
+                    (**ho).hbarcursor = hnext;
+                    log_debug(LOG_COMP_OP, "deleteLine: moved to next node");
+                }
+            }
+
+            oppopoutline();
+
+            return setbooleanvalue(true, vreturned);
+        }
         case opv_tabkeyreorg:
             /* Verb #20: op.tabkeyreorg - not yet implemented */
             if (bserror) seterrorstring("not implemented", bserror);
