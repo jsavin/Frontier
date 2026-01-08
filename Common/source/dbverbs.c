@@ -429,16 +429,18 @@ typedef enum tydbtoken { /*verbs that are processed by db*/
 
 
 static boolean odberror (boolean flresult) {
-	
+
 	bigstring bserror;
-	
+
 	if (flresult)
 		return (false);
-	
+
 	odbgeterror (bserror);
-	
+
+	log_error(LOG_COMP_DB, "odberror: ODB engine error: %s", stringbaseaddress(bserror));
+
 	langerrormessage (bserror);
-	
+
 	return (true);
 	} /*odberror*/
 
@@ -572,62 +574,88 @@ static boolean dbnewverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 
 
 static boolean dbopenverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
-	
+
 	//
 	// 2006-06-20 creedon: for Mac, extend filespec
 	//
 	// 4.1b5 dmb: added ability to access already-open root in Frontier
 	//
-	
+
 	tyodbrecord odbrec;
 	hdlodbrecord hodb;
 	WindowPtr w;
+	bigstring bspath;
+
+	log_trace(LOG_COMP_DB, "dbopenverb: enter");
 
 	odbrec.fref = 0;
-	
-	if ( ! getfilespecvalue ( hparam1, 1, &odbrec.fs ) )
+
+	if ( ! getfilespecvalue ( hparam1, 1, &odbrec.fs ) ) {
+		log_error(LOG_COMP_DB, "dbopenverb: getfilespecvalue failed for parameter 1");
 		return (false);
-	
+	}
+
+	filespectopath(&odbrec.fs, bspath);
+	log_debug(LOG_COMP_DB, "dbopenverb: path=%s", stringbaseaddress(bspath));
+
 	flnextparamislast = true;
-	
-	if (!getbooleanvalue (hparam1, 2, &odbrec.flreadonly))
+
+	if (!getbooleanvalue (hparam1, 2, &odbrec.flreadonly)) {
+		log_error(LOG_COMP_DB, "dbopenverb: getbooleanvalue failed for parameter 2 (readonly flag)");
 		return (false);
+	}
+
+	log_debug(LOG_COMP_DB, "dbopenverb: readonly=%d", odbrec.flreadonly);
 
 	w = shellfindfilewindow ( &odbrec.fs );
-	
+
 	if (w != nil) {
-		
-		if (odberror (odbaccesswindow (w, &odbrec.odb)))
+		log_debug(LOG_COMP_DB, "dbopenverb: file already open in window, accessing existing window");
+
+		if (odberror (odbaccesswindow (w, &odbrec.odb))) {
+			log_error(LOG_COMP_DB, "dbopenverb: odbaccesswindow failed");
 			return (false);
-		
+		}
+
 		// fref remains zero, so unwanted closefiles aren't a problem
 		}
 	else {
-		
-		if ( ! openfile ( &odbrec.fs, &odbrec.fref, odbrec.flreadonly))
+		log_debug(LOG_COMP_DB, "dbopenverb: opening new file");
+
+		if ( ! openfile ( &odbrec.fs, &odbrec.fref, odbrec.flreadonly)) {
+			log_error(LOG_COMP_DB, "dbopenverb: openfile failed, path=%s readonly=%d",
+				stringbaseaddress(bspath), odbrec.flreadonly);
 			return (false);
-		
+		}
+
+		log_debug(LOG_COMP_DB, "dbopenverb: openfile succeeded, fref=%d", odbrec.fref);
+
 		if (odberror (odbopenfile (odbrec.fref, &odbrec.odb, odbrec.flreadonly))) {
-			
+			log_error(LOG_COMP_DB, "dbopenverb: odbopenfile failed, fref=%d readonly=%d",
+				odbrec.fref, odbrec.flreadonly);
 			closefile (odbrec.fref);
-			
 			return (false);
 			}
+
+		log_debug(LOG_COMP_DB, "dbopenverb: odbopenfile succeeded, odb=%p", odbrec.odb);
 		}
-	
+
 	if (!newfilledhandle (&odbrec, sizeof (odbrec), (Handle *) &hodb)) {
-		
+		log_error(LOG_COMP_DB, "dbopenverb: newfilledhandle failed (out of memory?)");
 		odbclosefile (odbrec.odb);
-		
 		closefile (odbrec.fref);
-		
 		return (false);
 		}
-	
+
+	log_debug(LOG_COMP_DB, "dbopenverb: newfilledhandle succeeded, hodb=%p", hodb);
+
 	listlink ((hdllinkedlist) hodblist, (hdllinkedlist) hodb);
-	
+
+	log_debug(LOG_COMP_DB, "dbopenverb: listlink succeeded, registered in hodblist");
+	log_trace(LOG_COMP_DB, "dbopenverb: success, returning true");
+
 	return (setbooleanvalue (true, vreturned));
-	
+
 	} // dbopenverb
 
 

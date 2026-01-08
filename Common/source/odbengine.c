@@ -378,37 +378,59 @@ pascal boolean odbAccessWindow (WindowPtr w, odbref *odb) {
 
 
 pascal boolean odbNewFile (hdlfilenum fnum) {
-	
+
 	/*
 	4.1b5 dmb: new routine. minimal db creation. does not leave it open
 	*/
-	
+
 	tyversion2cancoonrecord info;
 	dbaddress adr = nildbaddress;
 	boolean fl;
-	
+
+	log_trace(LOG_COMP_DB, "odbNewFile: enter, fnum=%d", fnum);
+
 	setemptystring (bserror);
-	
-	if (!dbnew (fnum))
+
+	if (!dbnew (fnum)) {
+		log_error(LOG_COMP_DB, "odbNewFile: dbnew failed");
 		return (false);
-	
+	}
+
+	log_debug(LOG_COMP_DB, "odbNewFile: dbnew succeeded");
+
 	clearbytes (&info, sizeof (info));
-	
+
 	info.versionnumber = conditionalshortswap (cancoonversionnumber);
-	
+
+	log_debug(LOG_COMP_DB, "odbNewFile: set cancoon versionnumber=%d (raw=%d, after swap=%d)",
+		cancoonversionnumber, cancoonversionnumber, info.versionnumber);
+
 	fl = dbassign (&adr, sizeof (info), &info);
-	
+
 	if (fl) {
-		
+		log_debug(LOG_COMP_DB, "odbNewFile: dbassign succeeded, adr=0x%08llx", (unsigned long long)adr);
+
 		dbsetview (cancoonview, adr);
-		
-		dbclose ();
+
+		log_debug(LOG_COMP_DB, "odbNewFile: dbsetview succeeded, cancoonview=%d", cancoonview);
+
+		if (!dbclose ()) {
+			log_error(LOG_COMP_DB, "odbNewFile: dbclose failed!");
+			fl = false;
+		} else {
+			log_debug(LOG_COMP_DB, "odbNewFile: dbclose succeeded");
 		}
-	
+		}
+	else {
+		log_error(LOG_COMP_DB, "odbNewFile: dbassign failed");
+	}
+
 	cancoonglobals = nil;	/*if they've been set, they're out of date*/
-	
+
 	dbdispose ();
-	
+
+	log_trace(LOG_COMP_DB, "odbNewFile: exit, success=%d", fl);
+
 	return (fl);
 	} /*odbNewFile*/
 
@@ -460,19 +482,41 @@ pascal boolean odbOpenFile (hdlfilenum fnum, odbref *odb, boolean flreadonly) {
 		return (false);
 	
 	dbgetview (cancoonview, &adr);
-	
+
+	log_debug(LOG_COMP_DB, "odbOpenFile: cancoonview=%d, adr=0x%08llx", cancoonview, (unsigned long long)adr);
+
+	if (adr == nildbaddress) {
+		log_error(LOG_COMP_DB, "odbOpenFile: cancoonview is nil - database not properly initialized");
+		goto error;
+	}
+
+	/* Read the entire cancoon record to debug */
+	{
+		tyversion2cancoonrecord debug_info;
+		if (!dbreference (adr, sizeof(debug_info), &debug_info)) {
+			log_error(LOG_COMP_DB, "odbOpenFile: dbreference failed to read cancoon record at 0x%08llx", (unsigned long long)adr);
+			goto error;
+		}
+		log_debug(LOG_COMP_DB, "odbOpenFile: raw bytes at 0x%08llx: first_short=0x%04x (dec=%d)",
+			(unsigned long long)adr, (unsigned)debug_info.versionnumber, (short)debug_info.versionnumber);
+	}
+
 	if (!dbreference (adr, sizeof (versionnumber), &versionnumber))
 		goto error;
-	
+
+	log_debug(LOG_COMP_DB, "odbOpenFile: raw versionnumber from disk=%d (0x%04x)", versionnumber, (unsigned)versionnumber);
+
 	disktomemshort (versionnumber);
-	
+
+	log_debug(LOG_COMP_DB, "odbOpenFile: cancoon versionnumber=%d after disktomemshort (expecting 2 or 3)", versionnumber);
+
 	if (!newcancoonrecord (&cancoonglobals))
 		goto error;
-	
+
 	hc = cancoonglobals;
-	
+
 	(**hc).hdatabase = databasedata; /*result from dbopenfile*/
-	
+
 	switch (versionnumber) {
 		
 		case 2:
