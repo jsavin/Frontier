@@ -468,10 +468,11 @@ pascal boolean odbNewFile (hdlfilenum fnum) {
 
 
 pascal boolean odbOpenFile (hdlfilenum fnum, odbref *odb, boolean flreadonly) {
-	
+
 	hdlcancoonrecord hc = nil;
 	dbaddress adr;
 	short versionnumber;
+	unsigned char sourceFileVersion = 7;  /* Default to v7, will be updated if v6 detected */
 
 	setemptystring (bserror);
 
@@ -488,10 +489,11 @@ pascal boolean odbOpenFile (hdlfilenum fnum, odbref *odb, boolean flreadonly) {
 			if (fp) {
 				unsigned char hdr[2];
 				if (fread(hdr, 1, 2, fp) == 2) {
+					sourceFileVersion = hdr[1];  /* Capture source version before migration */
 #if defined(FRONTIER_HEADLESS)
-					log_debug(LOG_COMP_DB, "odbOpenFile pre-open header: path=%s ver=%u", path, (unsigned)hdr[1]);
+					log_debug(LOG_COMP_DB, "odbOpenFile pre-open header: path=%s ver=%u", path, (unsigned)sourceFileVersion);
 #endif
-					if (hdr[1] <= 6) {
+					if (sourceFileVersion <= 6) {
 						fclose(fp);
 						if (!migrate_32bit_to_64bit(path))
 							return (false);
@@ -512,59 +514,95 @@ pascal boolean odbOpenFile (hdlfilenum fnum, odbref *odb, boolean flreadonly) {
 	
 	if (!dbopenfile (fnum, flreadonly))
 		return (false);
-	
+
+	/*
+	 * Determine if this is a v6 database by checking the on-disk header.
+	 * We can't rely on db_format_is_legacy_db() because the global legacy marker
+	 * can be cleared by other database operations (e.g., system root re-opening).
+	 *
+	 * The sourceFileVersion captured from the file header tells us the source format.
+	 */
+	hdldatabaserecord hdb = databasedata;
+	boolean isLegacy = (sourceFileVersion <= 6);
+
+	log_debug(LOG_COMP_DB, "odbOpenFile: after dbopenfile, hdb=%p sourceVer=%u isLegacy=%d inMemVer=%d views[0]=0x%08llx",
+	          (void*)hdb,
+	          (unsigned)sourceFileVersion,
+	          isLegacy,
+	          (**hdb).versionnumber,
+	          (unsigned long long)(**hdb).views[0]);
+
 	dbgetview (cancoonview, &adr);
 
 	log_debug(LOG_COMP_DB, "odbOpenFile: cancoonview=%d, adr=0x%08llx", cancoonview, (unsigned long long)adr);
 
-	if (adr == nildbaddress) {
-		log_error(LOG_COMP_DB, "odbOpenFile: cancoonview is nil - database not properly initialized");
-		goto error;
-	}
+	/*
+	 * Determine format based on source database version (before legacy adaptation):
+	 * - v6 source databases: views[0] points to Cancoon record (load legacy path)
+	 * - v7 databases: views[0] is either nildbaddress (empty) or points to root table
+	 *
+	 * We use sourceFileVersion (captured from file header) to determine the source format,
+	 * not the in-memory version which has been adapted to v7.
+	 */
+	if (isLegacy) {
+		/* v6 database - load Cancoon record using legacy path */
+		log_debug(LOG_COMP_DB, "odbOpenFile: v6 database detected, loading Cancoon record");
 
-	/* Read the entire cancoon record to debug */
-	{
-		tyversion2cancoonrecord debug_info;
-		if (!dbreference (adr, sizeof(debug_info), &debug_info)) {
-			log_error(LOG_COMP_DB, "odbOpenFile: dbreference failed to read cancoon record at 0x%08llx", (unsigned long long)adr);
+		/* The address has been adapted to v7 format, but the data on disk is still v6 Cancoon */
+		if (!dbreference (adr, sizeof (versionnumber), &versionnumber))
 			goto error;
-		}
-		log_debug(LOG_COMP_DB, "odbOpenFile: raw bytes at 0x%08llx: first_short=0x%04x (dec=%d)",
-			(unsigned long long)adr, (unsigned)debug_info.versionnumber, (short)debug_info.versionnumber);
-	}
 
-	if (!dbreference (adr, sizeof (versionnumber), &versionnumber))
-		goto error;
+		disktomemshort (versionnumber);
 
-	log_debug(LOG_COMP_DB, "odbOpenFile: raw versionnumber from disk=%d (0x%04x)", versionnumber, (unsigned)versionnumber);
+		log_debug(LOG_COMP_DB, "odbOpenFile: Cancoon versionnumber=%d (expecting 2 or 3)", versionnumber);
 
-	disktomemshort (versionnumber);
+		if (!newcancoonrecord (&cancoonglobals))
+			goto error;
 
-	log_debug(LOG_COMP_DB, "odbOpenFile: cancoon versionnumber=%d after disktomemshort (expecting 2 or 3)", versionnumber);
+		hc = cancoonglobals;
+		(**hc).hdatabase = databasedata;
 
-	if (!newcancoonrecord (&cancoonglobals))
-		goto error;
+		switch (versionnumber) {
+			case 2:
+			case cancoonversionnumber:
+				if (!loadversion2cancoonfile (adr, hc))
+					goto error;
 
-	hc = cancoonglobals;
+				*odb = (odbref) hc;
 
-	(**hc).hdatabase = databasedata; /*result from dbopenfile*/
+				log_debug(LOG_COMP_DB, "odbOpenFile: v6 Cancoon database opened successfully");
+				return (true);
 
-	switch (versionnumber) {
-		
-		case 2:
-		case cancoonversionnumber:
-			if (!loadversion2cancoonfile (adr, hc))
+			default:
+				log_error(LOG_COMP_DB, "odbOpenFile: unrecognized Cancoon version: %d", versionnumber);
+				alertdialog ((ptrstring) "\x59" "The version number of this database file is not recognized by this version of Frontier.");
 				goto error;
-			
-			*odb = (odbref) hc;
-			
-			return (true);
-			
-		default:
-			alertdialog ((ptrstring) "\x59" "The version number of this database file is not recognized by this version of Frontier.");
-			
+		}
+	}
+	else if (adr == nildbaddress) {
+		/* v7 database with no root table yet (Phase 1 minimal database) */
+		log_debug(LOG_COMP_DB, "odbOpenFile: v7 minimal database detected (nildbaddress)");
+
+		if (!newcancoonrecord(&cancoonglobals))
 			goto error;
-		} /*switch*/
+
+		hc = cancoonglobals;
+		(**hc).hdatabase = databasedata;
+		(**hc).hroottable = nil;
+		(**hc).hrootvariable = nil;
+		(**hc).htablestack = nil;
+
+		*odb = (odbref) hc;
+
+		log_debug(LOG_COMP_DB, "odbOpenFile: v7 database opened successfully (empty)");
+		return (true);
+	}
+	else {
+		/* v7 database with root table (future milestone) */
+		log_error(LOG_COMP_DB, "odbOpenFile: v7 root table detected but not yet implemented");
+		alertdialog ((ptrstring) "\x3D" "v7 databases with root tables not yet supported in this build.");
+		goto error;
+	}
 	
 	error:
 	

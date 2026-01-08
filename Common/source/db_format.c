@@ -1185,11 +1185,15 @@ void db_format_adapter_reset(void) {
 }
 
 void db_format_set_legacy_source_db(hdldatabaserecord hdb) {
+    log_debug(LOG_COMP_DB, "db_format_set_legacy_source_db: setting g_legacy_source_db=%p", (void*)hdb);
     g_legacy_source_db = hdb;
 }
 
 boolean db_format_is_legacy_db(hdldatabaserecord hdb) {
-    return (hdb != nil) && (hdb == g_legacy_source_db);
+    boolean result = (hdb != nil) && (hdb == g_legacy_source_db);
+    log_debug(LOG_COMP_DB, "db_format_is_legacy_db: hdb=%p g_legacy=%p result=%d",
+              (void*)hdb, (void*)g_legacy_source_db, result);
+    return result;
 }
 
 boolean db_format_write_header64(const tydatabaserecord_64 *src, unsigned char *dest, size_t dest_size) {

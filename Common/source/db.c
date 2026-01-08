@@ -3119,9 +3119,25 @@ boolean dbopenfile (hdlfilenum fnum, boolean flreadonly) {
 	hdb = databasedata; /*copy into register*/
 	
 	(**hdb).fnumdatabase = (long) fnum; /*set up so dbread will work*/
-	
+
+    fail_step = "dbgeteof";
+	long filesize;
+	if (!dbgeteof(&filesize))
+		goto error;
+
+	/*
+	 * Determine how many bytes to read:
+	 * - v6 databases: 118 bytes (sizeof(tydatabaserecord))
+	 * - v7 databases: 90 bytes (sizeof(tydatabaserecord_64))
+	 * Read the smaller of (file size, buffer size) to handle both formats.
+	 */
+	long bytes_to_read = (filesize < (long)sizeof(rawheader)) ? filesize : (long)sizeof(rawheader);
+
+	log_debug(LOG_COMP_DB, "dbopenfile: filesize=%ld, buffer=%lu, reading=%ld bytes",
+	          filesize, (unsigned long)sizeof(rawheader), bytes_to_read);
+
     fail_step = "dbread";
-	if (!dbread ((dbaddress) 0, sizeof (rawheader), &rawheader))
+	if (!dbread ((dbaddress) 0, bytes_to_read, &rawheader))
 		goto error;
 	
     fail_step = "header-version";
