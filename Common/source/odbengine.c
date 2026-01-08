@@ -429,7 +429,7 @@ pascal boolean odbNewFile (hdlfilenum fnum) {
 
 	setemptystring (bserror);
 
-	if (!dbnew (fnum)) {
+	if (!dbnew (fnum, true)) {  /* Create v7 format for new databases */
 		log_error(LOG_COMP_DB, "odbNewFile: dbnew failed");
 		return (false);
 	}
@@ -495,6 +495,7 @@ pascal boolean odbOpenFile (hdlfilenum fnum, odbref *odb, boolean flreadonly) {
 #endif
 					if (sourceFileVersion <= 6) {
 						fclose(fp);
+					fp = NULL;  /* Prevent double-close later */
 						if (!migrate_32bit_to_64bit(path))
 							return (false);
 						char migrated_path[1024];
@@ -503,9 +504,20 @@ pascal boolean odbOpenFile (hdlfilenum fnum, odbref *odb, boolean flreadonly) {
 						if (!headless_reopen_fnum(fnum, migrated_path, flreadonly))
 							return (false);
 						path = migrated_path;
+					
+					/* Re-read header to get migrated v7 version */
+					fp = fopen(path, "rb");
+					if (fp) {
+						unsigned char migrated_hdr[2];
+						if (fread(migrated_hdr, 1, 2, fp) == 2) {
+							sourceFileVersion = migrated_hdr[1];
+							log_debug(LOG_COMP_DB, "odbOpenFile post-migration: updated sourceFileVersion=%u", (unsigned)sourceFileVersion);
+						}
+						fclose(fp);
+					}
 					}
 				}
-				fclose(fp);
+				if (fp) fclose(fp);
 			}
 		}
 	}
@@ -548,8 +560,21 @@ pascal boolean odbOpenFile (hdlfilenum fnum, odbref *odb, boolean flreadonly) {
 		/* v6 database - load Cancoon record using legacy path */
 		log_debug(LOG_COMP_DB, "odbOpenFile: v6 database detected, loading Cancoon record");
 
-		/* The address has been adapted to v7 format, but the data on disk is still v6 Cancoon */
-		if (!dbreference (adr, sizeof (versionnumber), &versionnumber))
+		/*
+		 * Read v6 Cancoon data using legacy adapter's read path.
+		 * The address has been adapted to v7 (0x4112), but the data on disk is still v6 format.
+		 *
+		 * The legacy adapter is active, which adapts v6 addresses to v7 space.
+		 * We need to read through the adapter to get the v6 data correctly.
+		 *
+		 * CRITICAL: Don't try to force v6 mode here - the adapter handles the format translation.
+		 * The adapted address (adr) already points to the right location through the adapter layer.
+		 */
+		log_debug(LOG_COMP_DB, "odbOpenFile: reading Cancoon record through legacy adapter at adr=0x%08llx",
+		          (unsigned long long)adr);
+
+		/* Read Cancoon version number - the adapter will handle the v6 format translation */
+		if (!dbreference (adr, sizeof(versionnumber), &versionnumber))
 			goto error;
 
 		disktomemshort (versionnumber);
@@ -598,10 +623,35 @@ pascal boolean odbOpenFile (hdlfilenum fnum, odbref *odb, boolean flreadonly) {
 		return (true);
 	}
 	else {
-		/* v7 database with root table (future milestone) */
-		log_error(LOG_COMP_DB, "odbOpenFile: v7 root table detected but not yet implemented");
-		alertdialog ((ptrstring) "\x3D" "v7 databases with root tables not yet supported in this build.");
-		goto error;
+		/* v7 database with root table - Milestone 2 implementation */
+		log_debug(LOG_COMP_DB, "odbOpenFile: v7 database with root table at adr=0x%llx", (unsigned long long)adr);
+
+		Handle hvariable = nil;
+		hdlhashtable htable = nil;
+
+		/* Load the root table directly from views[0] */
+		if (!tableloadsystemtable(adr, &hvariable, &htable, false)) {
+			log_error(LOG_COMP_DB, "odbOpenFile: failed to load v7 root table");
+			goto error;
+		}
+
+		/* Set up Cancoon record to hold the root table */
+		if (!newcancoonrecord(&cancoonglobals))
+			goto error;
+
+		hc = cancoonglobals;
+		(**hc).hdatabase = databasedata;
+		(**hc).hrootvariable = rootvariable = hvariable;
+		(**hc).hroottable = roottable = htable;
+		(**hc).htablestack = nil;
+
+		cleartablestructureglobals();
+		currenthashtable = roottable;
+
+		*odb = (odbref) hc;
+
+		log_debug(LOG_COMP_DB, "odbOpenFile: v7 database opened successfully");
+		return (true);
 	}
 	
 	error:

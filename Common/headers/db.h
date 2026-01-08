@@ -224,7 +224,7 @@ extern boolean dbfnumchanged (hdlfilenum);
 
 extern boolean dbdispose (void);
 
-extern boolean dbnew (hdlfilenum);
+extern boolean dbnew (hdlfilenum, boolean); /* second param: use_v7_format */
 
 extern boolean dbopenfile (hdlfilenum, boolean);
 
