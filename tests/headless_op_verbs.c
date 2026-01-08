@@ -463,7 +463,18 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
             if (bserror) seterrorstring("not implemented", bserror);
             return false;
         case opv_deleteline: {
-            /* Verb #19: op.deleteline - delete the bar cursor line */
+            /* Verb #19: op.deleteline - delete the bar cursor line and all children
+             *
+             * Outline Minimal State Behavior:
+             * Every outline maintains at least one blank node (minimal state).
+             * When deleting the only node, a new empty node is created in its place.
+             *
+             * Cursor Movement Rules:
+             * - When deleting last node under sub-heading with sibling above → cursor moves to sibling
+             * - When deleting last node under sub-heading without sibling → cursor moves to parent
+             * - When deleting last top-level node → cursor moves to node above (even if it has children)
+             * - When deleting only node at top level → single new blank node created
+             */
             hdloutlinerecord ho;
             hdlheadrecord hcursor;
 
@@ -477,7 +488,7 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
             opdeleteline();
 
             /* Post-delete cursor handling for headless mode:
-             * opdeleteline() may leave cursor on empty root summit node.
+             * opdeleteline() may leave cursor on empty root summit node (minimal state).
              * In GUI mode, display refresh handles this. In headless mode,
              * we must explicitly move to next valid node. */
 

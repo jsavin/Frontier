@@ -631,6 +631,17 @@ tests:
     expected_success: true
     expected_result: "true"
 
+  - name: "op.deleteLine - delete only node creates empty node"
+    description: "Deleting the only node creates a new blank node (outline minimal state)"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Only node", down);
+      op.deleteLine();
+      return op.countSummits()
+    expected_success: true
+    expected_result: "1"
+
   # ====================================================================
   # Edge Cases - Parameter Validation
   # ====================================================================
