@@ -358,9 +358,10 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
                 return false;
 
             oppushoutline(ho);
-            hbarcursor = (**ho).hbarcursor;
 
-            /* Use the built-in opsubheadsexpanded function */
+            /* opsubheadsexpanded() requires explicit cursor parameter (query function)
+             * Unlike modification functions like opreorgcursor(), it doesn't use global outlinedata */
+            hbarcursor = (**ho).hbarcursor;
             fl = opsubheadsexpanded(hbarcursor);
 
             oppopoutline();
@@ -475,12 +476,25 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
             oppushoutline(ho);
             opdeleteline();
 
-            /* After delete, check if cursor is on empty node (empty root summit) */
-            /* If so, try to move down to next non-empty node */
-            hcursor = (**ho).hbarcursor;
+            /* Post-delete cursor handling for headless mode:
+             * opdeleteline() may leave cursor on empty root summit node.
+             * In GUI mode, display refresh handles this. In headless mode,
+             * we must explicitly move to next valid node. */
 
-            /* Check if headline text is empty */
+            /* Verify cursor is still valid after deletion */
+            hcursor = (**ho).hbarcursor;
+            if (hcursor == NULL) {
+                oppopoutline();
+                return setbooleanvalue(true, vreturned);
+            }
+
+            /* Check if headline text is valid and non-empty */
             Handle htext = (**hcursor).headstring;
+            if (htext == NULL) {
+                oppopoutline();
+                return setbooleanvalue(true, vreturned);
+            }
+
             long textsize = gethandlesize(htext);
             log_debug(LOG_COMP_OP, "deleteLine: after delete, cursor text size=%ld", textsize);
 
