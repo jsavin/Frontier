@@ -376,15 +376,53 @@ pascal boolean odbAccessWindow (WindowPtr w, odbref *odb) {
 	} /*odbAccess*/
 
 
+/*
+ * odb_detect_cancoon_record
+ *
+ * Determines if the data at the given address is a v6 Cancoon record or a v7 root table.
+ *
+ * v6 Cancoon records have versionnumber = 2 or 3 in the first 2 bytes.
+ * v7 databases point views[0] directly at the root table (no Cancoon record).
+ *
+ * Returns: true if Cancoon record detected, false if v7 root table
+ */
+static boolean odb_detect_cancoon_record(dbaddress adr) {
+	short versionnumber;
+
+	/* Read first 2 bytes to check version */
+	if (!dbreference(adr, sizeof(versionnumber), &versionnumber)) {
+		log_error(LOG_COMP_DB, "odb_detect_cancoon_record: dbreference failed at adr=0x%08llx",
+		          (unsigned long long)adr);
+		return false;
+	}
+
+	disktomemshort(versionnumber);
+
+	log_debug(LOG_COMP_DB, "odb_detect_cancoon_record: adr=0x%08llx versionnumber=%d",
+	          (unsigned long long)adr, versionnumber);
+
+	/* Cancoon records have version 2 or 3 */
+	if (versionnumber == 2 || versionnumber == cancoonversionnumber) {
+		log_debug(LOG_COMP_DB, "odb_detect_cancoon_record: detected v6 Cancoon record (version=%d)",
+		          versionnumber);
+		return true;
+	}
+
+	/* Anything else is assumed to be a v7 root table header */
+	log_debug(LOG_COMP_DB, "odb_detect_cancoon_record: detected v7 root table (non-Cancoon data)");
+	return false;
+}
+
 
 pascal boolean odbNewFile (hdlfilenum fnum) {
 
 	/*
 	4.1b5 dmb: new routine. minimal db creation. does not leave it open
+
+	2026-01-07 Codex: Updated for v7 format - creates minimal database instead of Cancoon record.
+	Phase 1: Creates .root7 files with no Cancoon record, empty database.
 	*/
 
-	tyversion2cancoonrecord info;
-	dbaddress adr = nildbaddress;
 	boolean fl;
 
 	log_trace(LOG_COMP_DB, "odbNewFile: enter, fnum=%d", fnum);
@@ -396,38 +434,32 @@ pascal boolean odbNewFile (hdlfilenum fnum) {
 		return (false);
 	}
 
-	log_debug(LOG_COMP_DB, "odbNewFile: dbnew succeeded");
+	log_debug(LOG_COMP_DB, "odbNewFile: dbnew succeeded - v7 database created");
 
-	clearbytes (&info, sizeof (info));
+	/*
+	 * v7 format: Minimal database with no Cancoon record.
+	 * views[0] will be set to nildbaddress for now (empty database).
+	 * TODO: Create actual root table in future milestone.
+	 */
 
-	info.versionnumber = conditionalshortswap (cancoonversionnumber);
+	/* Set views[0] to nildbaddress (v7 pattern, no Cancoon, no root table yet) */
+	dbsetview(cancoonview, nildbaddress);
 
-	log_debug(LOG_COMP_DB, "odbNewFile: set cancoon versionnumber=%d (raw=%d, after swap=%d)",
-		cancoonversionnumber, cancoonversionnumber, info.versionnumber);
+	log_debug(LOG_COMP_DB, "odbNewFile: dbsetview(cancoonview=%d, adr=nildbaddress) for v7 minimal database",
+	          cancoonview);
 
-	fl = dbassign (&adr, sizeof (info), &info);
+	/* Close the database */
+	fl = dbclose();
 
-	if (fl) {
-		log_debug(LOG_COMP_DB, "odbNewFile: dbassign succeeded, adr=0x%08llx", (unsigned long long)adr);
-
-		dbsetview (cancoonview, adr);
-
-		log_debug(LOG_COMP_DB, "odbNewFile: dbsetview succeeded, cancoonview=%d", cancoonview);
-
-		if (!dbclose ()) {
-			log_error(LOG_COMP_DB, "odbNewFile: dbclose failed!");
-			fl = false;
-		} else {
-			log_debug(LOG_COMP_DB, "odbNewFile: dbclose succeeded");
-		}
-		}
-	else {
-		log_error(LOG_COMP_DB, "odbNewFile: dbassign failed");
+	if (!fl) {
+		log_error(LOG_COMP_DB, "odbNewFile: dbclose failed!");
+	} else {
+		log_debug(LOG_COMP_DB, "odbNewFile: dbclose succeeded");
 	}
 
-	cancoonglobals = nil;	/*if they've been set, they're out of date*/
+	cancoonglobals = nil;
 
-	dbdispose ();
+	dbdispose();
 
 	log_trace(LOG_COMP_DB, "odbNewFile: exit, success=%d", fl);
 

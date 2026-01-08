@@ -533,42 +533,98 @@ boolean dbcloseallfiles (long refcon) {
 
 
 
+/*
+ * odb_ensure_root7_extension
+ *
+ * Phase 1: Ensures the filespec has a .root7 extension (replaces .root if present).
+ * This creates v7 databases with the temporary .root7 extension to coexist with v6.
+ */
+static void odb_ensure_root7_extension(tyfilespec *fs) {
+	bigstring bspath;
+
+	filespectopath(fs, bspath);
+
+	long len = stringlength(bspath);
+
+	/* Check if it ends with .root7 (6 characters) */
+	if (len >= 6) {
+		bigstring bsext7;
+		midstring(bspath, len - 5, 6, bsext7);  /* Extract last 6 chars */
+
+		if (equalstrings(bsext7, BIGSTRING("\x06.root7"))) {
+			/* Already has .root7 extension, nothing to do */
+			log_debug(LOG_COMP_DB, "odb_ensure_root7_extension: already has .root7 extension");
+			pathtofilespec(bspath, fs);
+			return;
+		}
+	}
+
+	/* Check if it ends with .root (5 characters) */
+	if (len >= 5) {
+		bigstring bsext;
+		midstring(bspath, len - 4, 5, bsext);  /* Extract last 5 chars */
+
+		if (equalstrings(bsext, BIGSTRING("\x05.root"))) {
+			/* Replace .root with .root7 */
+			setstringlength(bspath, len - 5);  /* Remove .root */
+			pushstring(BIGSTRING("\x06.root7"), bspath);  /* Append .root7 */
+
+			log_debug(LOG_COMP_DB, "odb_ensure_root7_extension: converted .root to .root7");
+			pathtofilespec(bspath, fs);
+			return;
+		}
+	}
+
+	/* Doesn't end with .root or .root7, append .root7 */
+	pushstring(BIGSTRING("\x06.root7"), bspath);
+	log_debug(LOG_COMP_DB, "odb_ensure_root7_extension: appended .root7 extension");
+
+	/* Update filespec with modified path */
+	pathtofilespec(bspath, fs);
+}
+
+
 static boolean dbnewverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
-	
+
 	//
 	// 2006-06-20 creedon: for Mac, extend filespec
 	//
 	// 4.1b5 dmb: new verb
 	//
-	
+	// 2026-01-07 Codex: Phase 1 - Ensure .root7 extension for v7 databases
+	//
+
 	tyodbrecord odbrec;
 	boolean fl;
-	
+
 	flnextparamislast = true;
-	
+
 	if ( ! getfilespecvalue ( hparam1, 1, &odbrec.fs ) )
 		return (false);
-		
+
+	/* Phase 1: Ensure .root7 extension (replaces .root if user provided it) */
+	odb_ensure_root7_extension(&odbrec.fs);
+
 	shellpushdefaultglobals (); // so that config is correct
-	
+
 	fl = opennewfile ( &odbrec.fs, config.filecreator, config.filetype, &odbrec.fref );
-	
+
 	shellpopglobals ();
-	
+
 	if (!fl)
 		return (false);
-	
+
 	fl = odbnewfile (odbrec.fref);
-	
+
 	closefile (odbrec.fref);
-	
+
 	if (odberror (fl)) {
-		
+
 		deletefile ( &odbrec.fs );
-		
+
 		return (false);
 		}
-	
+
 	return (setbooleanvalue (true, vreturned));
 	} // dbnewverb
 
