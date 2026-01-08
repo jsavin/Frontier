@@ -53,6 +53,13 @@ rm -f databases/Frontier-v7.root
 # Verb coverage analysis
 cd tools/kernelverbs_parser && python3 cli.py report
 
+# Export integration tests to OPML (for Dave Winer's subscription)
+python3 tools/export_tests_to_opml.py
+# Output: reports/integration_tests.opml
+
+# Install git hooks (auto-regenerates OPML when tests change)
+./tools/install_git_hooks.sh
+
 # Create PR (after pushing branch)
 # Use pull-request agent, then:
 ./tools/monitor_pr_review.sh <PR_NUMBER>

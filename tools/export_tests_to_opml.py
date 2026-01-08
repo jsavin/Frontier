@@ -229,7 +229,7 @@ def main():
     project_root = script_dir.parent
 
     test_dir = project_root / 'tests' / 'integration' / 'test_cases'
-    output_file = project_root / 'tests' / 'tmp' / 'integration_tests.opml'
+    output_file = project_root / 'reports' / 'integration_tests.opml'
 
     # Create output directory if needed
     output_file.parent.mkdir(parents=True, exist_ok=True)

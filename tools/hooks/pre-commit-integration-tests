@@ -1,0 +1,46 @@
+#!/bin/bash
+# Pre-commit hook: Auto-regenerate OPML export when integration tests change
+#
+# This hook runs before git commit and regenerates reports/integration_tests.opml
+# whenever any test YAML files in tests/integration/test_cases/ are modified.
+#
+# Install: Run tools/install_git_hooks.sh
+
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Get the root of the git repo
+GIT_ROOT=$(git rev-parse --show-toplevel)
+
+# Check if any integration test YAML files are being committed
+TEST_FILES_CHANGED=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^tests/integration/test_cases/.*\.yaml$' || true)
+
+if [ -z "$TEST_FILES_CHANGED" ]; then
+    # No test files changed, skip OPML regeneration
+    exit 0
+fi
+
+echo -e "${YELLOW}Integration test files changed, regenerating OPML export...${NC}"
+
+# Regenerate OPML
+cd "$GIT_ROOT"
+if ! python3 tools/export_tests_to_opml.py; then
+    echo -e "${RED}Error: Failed to regenerate OPML export${NC}" >&2
+    exit 1
+fi
+
+# Check if OPML file changed
+OPML_FILE="reports/integration_tests.opml"
+if git diff --exit-code "$OPML_FILE" > /dev/null 2>&1; then
+    echo -e "${GREEN}OPML export is up to date${NC}"
+else
+    echo -e "${GREEN}OPML export updated, adding to commit${NC}"
+    git add "$OPML_FILE"
+fi
+
+exit 0
