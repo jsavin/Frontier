@@ -403,7 +403,7 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
             return setbooleanvalue(fl, vreturned);
         }
         case opv_find: {
-            /* Verb #10: op.find(searchText, flWrap, flCase) - DEFERRED
+            /* Verb #10: op.find(searchText [, flWrap] [, flCase]) - DEFERRED
              *
              * DEFERRED: Requires GUI text selection/editing infrastructure.
              *
@@ -416,21 +416,34 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
              * This verb is rarely used in production UserTalk without a GUI, so deferred
              * to future PR that implements headless-specific search infrastructure.
              *
+             * Parameters:
+             *   searchText (required) - text to search for
+             *   flWrap (optional) - wrap around search, defaults from search params
+             *   flCase (optional) - case sensitive, defaults from search params
+             *
+             * Note: Matches kernel signature where flWrap and flCase are optional.
              * For now, validate parameters and return false (not found).
              */
             bigstring bs;
-            boolean flwrap, flcase;
+            boolean flwrap = false;  /* Default: no wrap */
+            boolean flcase = false;  /* Default: case insensitive */
 
-            /* Validate parameters (so parameter validation tests pass) */
+            /* Get required searchText parameter */
             if (!getstringvalue(hparam1, 1, bs))
                 return false;
 
-            if (!getbooleanvalue(hparam1, 2, &flwrap))
-                return false;
+            /* Get optional flWrap parameter (param 2) if provided */
+            if (langgetparamcount(hparam1) >= 2) {
+                if (!getbooleanvalue(hparam1, 2, &flwrap))
+                    return false;
+            }
 
-            flnextparamislast = true;
-            if (!getbooleanvalue(hparam1, 3, &flcase))
-                return false;
+            /* Get optional flCase parameter (param 3) if provided */
+            if (langgetparamcount(hparam1) >= 3) {
+                flnextparamislast = true;
+                if (!getbooleanvalue(hparam1, 3, &flcase))
+                    return false;
+            }
 
             /* Return false (not found) - deferred implementation */
             return setbooleanvalue(false, vreturned);
@@ -457,6 +470,7 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
             }
 
             oppushoutline(ho);
+            opsettextmode(false);  /* Ensure outline mode (consistent with promote/demote) */
             hcursor = (**ho).hbarcursor;
             fl = opsetheadtext(hcursor, htext);  /* Consumes htext */
             oppopoutline();

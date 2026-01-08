@@ -756,7 +756,7 @@ tests:
   # op.reorg() - Reorganize Outline Hierarchy (Phase 2 PR #2)
   # ====================================================================
 
-  - name: "op.reorg - move node left (direction=3, count=1)"
+  - name: "op.reorg - move node left (direction=left, count=1)"
     description: "Move node left one level (promote/outdent)"
     script: |
       lang.new(outlineType, @workspace.outline);
@@ -764,13 +764,13 @@ tests:
       op.insert("Parent", down);
       op.insert("Child", right);
       local(before = op.level());
-      op.reorg(3, 1);
+      op.reorg(left, 1);
       local(after = op.level());
       return (before == 2) and (after == 1)
     expected_success: true
     expected_result: "true"
 
-  - name: "op.reorg - move node right (direction=4, count=1)"
+  - name: "op.reorg - move node right (direction=right, count=1)"
     description: "Move node right one level (demote/indent)"
     script: |
       lang.new(outlineType, @workspace.outline);
@@ -778,7 +778,7 @@ tests:
       op.insert("Line 1", down);
       op.insert("Line 2", down);
       local(before = op.level());
-      op.reorg(4, 1);
+      op.reorg(right, 1);
       local(after = op.level());
       return (before == 1) and (after == 2)
     expected_success: true
@@ -793,7 +793,7 @@ tests:
       op.insert("Level 2", right);
       op.insert("Level 3", right);
       local(before = op.level());
-      op.reorg(3, 2);
+      op.reorg(left, 2);
       local(after = op.level());
       return (before == 3) and (after == 1)
     expected_success: true
@@ -809,7 +809,7 @@ tests:
       op.insert("Line 3", down);
       op.go(up, 1);
       local(before = op.level());
-      op.reorg(4, 2);
+      op.reorg(right, 2);
       local(after = op.level());
       return (before == 1) and (after == 3)
     expected_success: true
@@ -822,7 +822,7 @@ tests:
       target.set(@workspace.outline);
       op.insert("Parent", down);
       op.insert("Child", right);
-      return op.reorg(3, 1)
+      return op.reorg(left, 1)
     expected_success: true
     expected_result: "true"
 
@@ -864,18 +864,18 @@ tests:
   # Working tests (parameter validation):
 
   # - name: "op.find - find existing text (basic search)"
-    description: "Find text in outline, cursor moves to matching line"
-    script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
-      op.insert("Line 1", down);
-      op.insert("Target line", down);
-      op.insert("Line 3", down);
-      op.firstSummit();
-      local(found = op.find("Target", false, false));
-      return found and (op.getLineText() == "Target line")
-    expected_success: true
-    expected_result: "true"
+  #   description: "Find text in outline, cursor moves to matching line"
+  #   script: |
+  #     lang.new(outlineType, @workspace.outline);
+  #     target.set(@workspace.outline);
+  #     op.insert("Line 1", down);
+  #     op.insert("Target line", down);
+  #     op.insert("Line 3", down);
+  #     op.firstSummit();
+  #     local(found = op.find("Target", false, false));
+  #     return found and (op.getLineText() == "Target line")
+  #   expected_success: true
+  #   expected_result: "true"
 
   - name: "op.find - case-sensitive search (flCase=true)"
     description: "Find with case sensitivity enabled"
@@ -951,25 +951,25 @@ tests:
     expected_success: false
     expected_error_type: "script_error"
 
-  - name: "op.find - missing flWrap parameter"
-    description: "find requires flWrap parameter (should fail)"
+  - name: "op.find - one parameter (searchText only)"
+    description: "flWrap and flCase are optional, defaults used"
     script: |
       lang.new(outlineType, @workspace.outline);
       target.set(@workspace.outline);
       op.insert("Test", down);
-      op.find("test")
-    expected_success: false
-    expected_error_type: "script_error"
+      return op.find("test")
+    expected_success: true
+    expected_result: "false"
 
-  - name: "op.find - missing flCase parameter"
-    description: "find requires flCase parameter (should fail)"
+  - name: "op.find - two parameters (searchText, flWrap)"
+    description: "flCase is optional, defaults used"
     script: |
       lang.new(outlineType, @workspace.outline);
       target.set(@workspace.outline);
       op.insert("Test", down);
-      op.find("test", false)
-    expected_success: false
-    expected_error_type: "script_error"
+      return op.find("test", false)
+    expected_success: true
+    expected_result: "false"
 
   # DEFERRED - requires text selection infrastructure
   # - name: "op.find - searches in children"
