@@ -18,13 +18,42 @@ This document specifies the v6 database artifact needed to test refcon migration
 **Format**: Frontier v6 database (32-bit format)
 **Size**: Small (minimal test data only)
 
+**Creation Method**: Create a NEW standalone v6 database (not modifying Frontier-v6.root)
+
+---
+
+## Database Creation Steps
+
+### Step 1: Create New v6 Database in Windows Frontier
+
+```usertalk
+// Create new empty database
+file.new("refcon_migration_test_v6.root", fileType:'LAND', creatorType:'LAND')
+db.open("refcon_migration_test_v6.root", @system)
+```
+
+**Note**: All objects below will be created in the ROOT of this new database (not in workspace)
+
+### Step 2: Create Test Objects
+
+Follow the implementation scripts in sections 1-4 below to create all test objects.
+
+### Step 3: Save and Close Database
+
+```usertalk
+// After creating all test objects, save and close
+db.close()
+```
+
+**Important**: Copy the resulting `refcon_migration_test_v6.root` file to `tests/fixtures/` in the Frontier repository
+
 ---
 
 ## Database Structure
 
-### 1. Outline: `workspace.refconTests`
+### 1. Outline: `refconTests`
 
-Create an outline at `workspace.refconTests` with the following structure:
+Create an outline at the ROOT level named `refconTests` with the following structure:
 
 ```
 refconTests (outline)
@@ -63,9 +92,9 @@ refconTests (outline)
 
 **Implementation in Windows Frontier**:
 ```usertalk
-// Create the outline
-lang.new(outlineType, @workspace.refconTests)
-target.set(@workspace.refconTests)
+// Create the outline at root level
+lang.new(outlineType, @refconTests)
+target.set(@refconTests)
 
 // Test Case 1: Zero
 op.insert("Test Case 1: Zero refcon", down)
@@ -119,9 +148,9 @@ op.attributes.setOne("refcon", 300)
 
 ---
 
-### 2. Table: `workspace.longValueTests`
+### 2. Table: `longValueTests`
 
-Create a table at `workspace.longValueTests` with the following scalar long values:
+Create a table at the ROOT level named `longValueTests` with the following scalar long values:
 
 ```
 longValueTests (table)
@@ -139,29 +168,29 @@ longValueTests (table)
 
 **Implementation in Windows Frontier**:
 ```usertalk
-// Create the table
-lang.new(tableType, @workspace.longValueTests)
+// Create the table at root level
+lang.new(tableType, @longValueTests)
 
 // Scalar long values
-workspace.longValueTests.zeroLong = 0
-workspace.longValueTests.positiveSmall = 42
-workspace.longValueTests.positiveLarge = 2147483647
-workspace.longValueTests.negativeSmall = -123
-workspace.longValueTests.negativeLarge = -2147483648
-workspace.longValueTests.positiveMedium = 1000000
-workspace.longValueTests.negativeMedium = -1000000
+longValueTests.zeroLong = 0
+longValueTests.positiveSmall = 42
+longValueTests.positiveLarge = 2147483647
+longValueTests.negativeSmall = -123
+longValueTests.negativeLarge = -2147483648
+longValueTests.positiveMedium = 1000000
+longValueTests.negativeMedium = -1000000
 
 // Nested table
-lang.new(tableType, @workspace.longValueTests.nestedTable)
-workspace.longValueTests.nestedTable.innerPositive = 999999
-workspace.longValueTests.nestedTable.innerNegative = -999999
+lang.new(tableType, @longValueTests.nestedTable)
+longValueTests.nestedTable.innerPositive = 999999
+longValueTests.nestedTable.innerNegative = -999999
 ```
 
 ---
 
-### 3. Table: `workspace.dateValueTests`
+### 3. Table: `dateValueTests`
 
-Create a table at `workspace.dateValueTests` with date values that will test Year 2038 compliance:
+Create a table at the ROOT level named `dateValueTests` with date values that will test Year 2038 compliance:
 
 ```
 dateValueTests (table)
@@ -174,22 +203,22 @@ dateValueTests (table)
 
 **Implementation in Windows Frontier**:
 ```usertalk
-// Create the table
-lang.new(tableType, @workspace.dateValueTests)
+// Create the table at root level
+lang.new(tableType, @dateValueTests)
 
 // Date values
-workspace.dateValueTests.date1970 = date.set(1970, 1, 1, 0, 0, 0)
-workspace.dateValueTests.date2000 = date.set(2000, 1, 1, 0, 0, 0)
-workspace.dateValueTests.date2030 = date.set(2030, 1, 1, 0, 0, 0)
-workspace.dateValueTests.date2037 = date.set(2037, 12, 31, 23, 59, 59)
-workspace.dateValueTests.date2038 = date.set(2038, 1, 1, 0, 0, 0)
+dateValueTests.date1970 = date.set(1970, 1, 1, 0, 0, 0)
+dateValueTests.date2000 = date.set(2000, 1, 1, 0, 0, 0)
+dateValueTests.date2030 = date.set(2030, 1, 1, 0, 0, 0)
+dateValueTests.date2037 = date.set(2037, 12, 31, 23, 59, 59)
+dateValueTests.date2038 = date.set(2038, 1, 1, 0, 0, 0)
 ```
 
 ---
 
-### 4. Outline: `workspace.refconDateTests`
+### 4. Outline: `refconDateTests`
 
-Create an outline where refcons store packed date values (edge case for Year 2038):
+Create an outline at the ROOT level named `refconDateTests` where refcons store packed date values (edge case for Year 2038):
 
 ```
 refconDateTests (outline)
@@ -201,9 +230,9 @@ refconDateTests (outline)
 
 **Implementation in Windows Frontier**:
 ```usertalk
-// Create the outline
-lang.new(outlineType, @workspace.refconDateTests)
-target.set(@workspace.refconDateTests)
+// Create the outline at root level
+lang.new(outlineType, @refconDateTests)
+target.set(@refconDateTests)
 
 // Date as refcon (store as packed long value)
 local(d1 = date.set(2030, 1, 1, 0, 0, 0))
@@ -224,25 +253,25 @@ op.attributes.setOne("refcon", long(d2))
 Before providing the artifact, verify in Windows Frontier:
 
 ### Outline Refcons
-- [ ] `workspace.refconTests` exists and is an outline
+- [ ] `refconTests` exists at root level and is an outline
 - [ ] Can navigate to each test case headline
 - [ ] `op.attributes.getOne("refcon")` returns correct value for each case
 - [ ] Test Case 8 has no refcon attribute (nil)
 - [ ] Nested outlines maintain their refcons
 
 ### Table Long Values
-- [ ] `workspace.longValueTests` exists and is a table
+- [ ] `longValueTests` exists at root level and is a table
 - [ ] Each scalar value matches specification
 - [ ] Nested table values are correct
-- [ ] `typeOf(workspace.longValueTests.positiveLarge) == longType`
+- [ ] `typeOf(longValueTests.positiveLarge) == longType`
 
 ### Date Values
-- [ ] `workspace.dateValueTests` exists and is a table
+- [ ] `dateValueTests` exists at root level and is a table
 - [ ] Each date value is correct
-- [ ] `typeOf(workspace.dateValueTests.date2030) == dateType`
+- [ ] `typeOf(dateValueTests.date2030) == dateType`
 
 ### Refcon Date Tests
-- [ ] `workspace.refconDateTests` exists and is an outline
+- [ ] `refconDateTests` exists at root level and is an outline
 - [ ] Refcons store date values as longs
 - [ ] Values can be read back and converted to dates
 
