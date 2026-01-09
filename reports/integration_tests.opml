@@ -2,9 +2,391 @@
 <opml version="2.0">
   <head>
     <title>Frontier Integration Tests</title>
-    <dateCreated>Wed, 07 Jan 2026 23:34:33 GMT</dateCreated>
+    <dateCreated>Thu, 08 Jan 2026 19:49:21 GMT</dateCreated>
   </head>
   <body>
+    <outline text="Db Verbs (db_verbs)">
+      <outline text="db.new - create new database file - Create a new ODB database file">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_new.root&quot;)"/>
+          <outline text="local(ok = db.new(dbPath))"/>
+          <outline text="return ok"/>
+        </outline>
+      </outline>
+      <outline text="db.open - open newly created database - Open the database we just created">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_new.root&quot;)"/>
+          <outline text="local(ok = db.open(dbPath, false))"/>
+          <outline text="return ok"/>
+        </outline>
+      </outline>
+      <outline text="db.setvalue - write string to root - Set a string value at root level">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_new.root&quot;)"/>
+          <outline text="local(ok = db.setvalue(dbPath, &quot;testString&quot;, &quot;Hello, DB!&quot;))"/>
+          <outline text="return ok"/>
+        </outline>
+      </outline>
+      <outline text="db.getvalue - read string from root - Get the string value we just set">
+        <outline text="Metadata">
+          <outline text="expected_result: Hello, DB!"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_new.root&quot;)"/>
+          <outline text="local(val = db.getvalue(dbPath, &quot;testString&quot;))"/>
+          <outline text="return val"/>
+        </outline>
+      </outline>
+      <outline text="db.defined - check existing value - Verify that testString exists">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_new.root&quot;)"/>
+          <outline text="local(exists = db.defined(dbPath, &quot;testString&quot;))"/>
+          <outline text="return exists"/>
+        </outline>
+      </outline>
+      <outline text="db.defined - check nonexistent value - Verify that nonexistent item returns false">
+        <outline text="Metadata">
+          <outline text="expected_result: false"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_new.root&quot;)"/>
+          <outline text="local(exists = db.defined(dbPath, &quot;doesNotExist&quot;))"/>
+          <outline text="return exists"/>
+        </outline>
+      </outline>
+      <outline text="db.setvalue - write number to root - Set a numeric value">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_new.root&quot;)"/>
+          <outline text="local(ok = db.setvalue(dbPath, &quot;testNumber&quot;, 42))"/>
+          <outline text="return ok"/>
+        </outline>
+      </outline>
+      <outline text="db.getvalue - read number from root - Get the numeric value we just set">
+        <outline text="Metadata">
+          <outline text="expected_result: 42"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_new.root&quot;)"/>
+          <outline text="local(val = db.getvalue(dbPath, &quot;testNumber&quot;))"/>
+          <outline text="return val"/>
+        </outline>
+      </outline>
+      <outline text="db.newtable - create table at root - Create a new table in the database">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_new.root&quot;)"/>
+          <outline text="local(ok = db.newtable(dbPath, &quot;testTable&quot;))"/>
+          <outline text="return ok"/>
+        </outline>
+      </outline>
+      <outline text="db.istable - verify table type - Check that testTable is a table">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_new.root&quot;)"/>
+          <outline text="local(isTable = db.istable(dbPath, &quot;testTable&quot;))"/>
+          <outline text="return isTable"/>
+        </outline>
+      </outline>
+      <outline text="db.istable - verify string is not a table - Check that testString is not a table">
+        <outline text="Metadata">
+          <outline text="expected_result: false"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_new.root&quot;)"/>
+          <outline text="local(isTable = db.istable(dbPath, &quot;testString&quot;))"/>
+          <outline text="return isTable"/>
+        </outline>
+      </outline>
+      <outline text="db.setvalue - write to nested table - Set values inside the table">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_new.root&quot;)"/>
+          <outline text="db.setvalue(dbPath, &quot;testTable.item1&quot;, &quot;first&quot;)"/>
+          <outline text="db.setvalue(dbPath, &quot;testTable.item2&quot;, &quot;second&quot;)"/>
+          <outline text="db.setvalue(dbPath, &quot;testTable.item3&quot;, &quot;third&quot;)"/>
+          <outline text="return true"/>
+        </outline>
+      </outline>
+      <outline text="db.countitems - count table items - Count items in testTable">
+        <outline text="Metadata">
+          <outline text="expected_result: 3"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_new.root&quot;)"/>
+          <outline text="local(count = db.countitems(dbPath, &quot;testTable&quot;))"/>
+          <outline text="return count"/>
+        </outline>
+      </outline>
+      <outline text="db.getnthitem - get first item name - Get name of first item in testTable">
+        <outline text="Metadata">
+          <outline text="expected_result: item1"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_new.root&quot;)"/>
+          <outline text="local(name = db.getnthitem(dbPath, &quot;testTable&quot;, 1))"/>
+          <outline text="return name"/>
+        </outline>
+      </outline>
+      <outline text="db.getnthitem - get second item name - Get name of second item in testTable">
+        <outline text="Metadata">
+          <outline text="expected_result: item2"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_new.root&quot;)"/>
+          <outline text="local(name = db.getnthitem(dbPath, &quot;testTable&quot;, 2))"/>
+          <outline text="return name"/>
+        </outline>
+      </outline>
+      <outline text="db.getnthitem - get third item name - Get name of third item in testTable">
+        <outline text="Metadata">
+          <outline text="expected_result: item3"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_new.root&quot;)"/>
+          <outline text="local(name = db.getnthitem(dbPath, &quot;testTable&quot;, 3))"/>
+          <outline text="return name"/>
+        </outline>
+      </outline>
+      <outline text="db.getmoddate - get item modification date - Get modification date for testString (returns date value)">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_new.root&quot;)"/>
+          <outline text="local(modDate = db.getmoddate(dbPath, &quot;testString&quot;))"/>
+          <outline text="// Just verify it returns a date (non-zero)"/>
+          <outline text="return (modDate &gt; 0)"/>
+        </outline>
+      </outline>
+      <outline text="db.delete - delete string value - Delete testString from database">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_new.root&quot;)"/>
+          <outline text="local(ok = db.delete(dbPath, &quot;testString&quot;))"/>
+          <outline text="return ok"/>
+        </outline>
+      </outline>
+      <outline text="db.defined - verify deletion - Verify testString no longer exists">
+        <outline text="Metadata">
+          <outline text="expected_result: false"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_new.root&quot;)"/>
+          <outline text="local(exists = db.defined(dbPath, &quot;testString&quot;))"/>
+          <outline text="return exists"/>
+        </outline>
+      </outline>
+      <outline text="db.save - save database changes - Save all changes to disk">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_new.root&quot;)"/>
+          <outline text="local(ok = db.save(dbPath))"/>
+          <outline text="return ok"/>
+        </outline>
+      </outline>
+      <outline text="db.close - close database - Close the database file">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_new.root&quot;)"/>
+          <outline text="local(ok = db.close(dbPath))"/>
+          <outline text="return ok"/>
+        </outline>
+      </outline>
+      <outline text="db.open - reopen saved database - Reopen the database to verify persistence">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_new.root&quot;)"/>
+          <outline text="local(ok = db.open(dbPath, false))"/>
+          <outline text="return ok"/>
+        </outline>
+      </outline>
+      <outline text="db.getvalue - verify persisted value - Verify testNumber persisted across save/close/reopen">
+        <outline text="Metadata">
+          <outline text="expected_result: 42"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_new.root&quot;)"/>
+          <outline text="local(val = db.getvalue(dbPath, &quot;testNumber&quot;))"/>
+          <outline text="return val"/>
+        </outline>
+      </outline>
+      <outline text="db.countitems - verify persisted table - Verify testTable persisted with all items">
+        <outline text="Metadata">
+          <outline text="expected_result: 3"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_new.root&quot;)"/>
+          <outline text="local(count = db.countitems(dbPath, &quot;testTable&quot;))"/>
+          <outline text="return count"/>
+        </outline>
+      </outline>
+      <outline text="db.defined - verify deletion persisted - Verify testString deletion persisted">
+        <outline text="Metadata">
+          <outline text="expected_result: false"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_new.root&quot;)"/>
+          <outline text="local(exists = db.defined(dbPath, &quot;testString&quot;))"/>
+          <outline text="return exists"/>
+        </outline>
+      </outline>
+      <outline text="db.close - final cleanup - Close database after persistence tests">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_new.root&quot;)"/>
+          <outline text="local(ok = db.close(dbPath))"/>
+          <outline text="return ok"/>
+        </outline>
+      </outline>
+      <outline text="db.new - create v7 database - Create new database with v7 format (if .root7 extension triggers v7)">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_v7.root7&quot;)"/>
+          <outline text="local(ok = db.new(dbPath))"/>
+          <outline text="return ok"/>
+        </outline>
+      </outline>
+      <outline text="db.open - open v7 database - Open v7 database">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_v7.root7&quot;)"/>
+          <outline text="local(ok = db.open(dbPath, false))"/>
+          <outline text="return ok"/>
+        </outline>
+      </outline>
+      <outline text="db.setvalue - write to v7 database - Set value in v7 database">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_v7.root7&quot;)"/>
+          <outline text="local(ok = db.setvalue(dbPath, &quot;v7test&quot;, &quot;V7 works!&quot;))"/>
+          <outline text="return ok"/>
+        </outline>
+      </outline>
+      <outline text="db.getvalue - read from v7 database - Get value from v7 database">
+        <outline text="Metadata">
+          <outline text="expected_result: V7 works!"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_v7.root7&quot;)"/>
+          <outline text="local(val = db.getvalue(dbPath, &quot;v7test&quot;))"/>
+          <outline text="return val"/>
+        </outline>
+      </outline>
+      <outline text="db.close - close v7 database - Close v7 database">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_v7.root7&quot;)"/>
+          <outline text="local(ok = db.close(dbPath))"/>
+          <outline text="return ok"/>
+        </outline>
+      </outline>
+      <outline text="db.open - open existing v6 database readonly - Open the test v6 database in read-only mode">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(ok = db.open(&quot;tests/fixtures/v6/test.root&quot;, true))"/>
+          <outline text="return ok"/>
+        </outline>
+      </outline>
+      <outline text="db.defined - check root in v6 database - Verify root exists in v6 database">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(exists = db.defined(&quot;tests/fixtures/v6/test.root&quot;, &quot;root&quot;))"/>
+          <outline text="return exists"/>
+        </outline>
+      </outline>
+      <outline text="db.istable - verify root is table in v6 database - Verify root is a table">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(isTable = db.istable(&quot;tests/fixtures/v6/test.root&quot;, &quot;root&quot;))"/>
+          <outline text="return isTable"/>
+        </outline>
+      </outline>
+      <outline text="db.close - close v6 database - Close v6 database">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(ok = db.close(&quot;tests/fixtures/v6/test.root&quot;))"/>
+          <outline text="return ok"/>
+        </outline>
+      </outline>
+    </outline>
     <outline text="File Verbs (file_verbs)">
       <outline text="file.fileFromPath - extract filename from path - Extract filename component from path string (like basename)">
         <outline text="Metadata">
@@ -2141,6 +2523,1273 @@
           <outline text="lang.scripterror(&quot;Should stop here&quot;)"/>
           <outline text="x = 1"/>
           <outline text="return x"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="Op Verbs (op_verbs)">
+      <outline text="outline creation - lang.new with outlineType - Create new outline object using lang.new(outlineType, @addr)">
+        <outline text="Metadata">
+          <outline text="expected_result: outl"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.testOutline)"/>
+          <outline text="return typeof(workspace.testOutline)"/>
+        </outline>
+      </outline>
+      <outline text="outline target setup - set outline as target - Set outline as target for op verb operations">
+        <outline text="Metadata">
+          <outline text="expected_result: workspace.myOutline"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.myOutline)"/>
+          <outline text="target.set(@workspace.myOutline)"/>
+          <outline text="return string(target.get())"/>
+        </outline>
+      </outline>
+      <outline text="outline target workflow - full setup cycle - Complete workflow: create outline → set as target → verify">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.opTest)"/>
+          <outline text="target.set(@workspace.opTest)"/>
+          <outline text="local(ok1 = typeof(workspace.opTest) == &quot;outl&quot;)"/>
+          <outline text="local(ok2 = string(target.get()) == &quot;workspace.opTest&quot;)"/>
+          <outline text="return ok1 and ok2"/>
+        </outline>
+      </outline>
+      <outline text="op.insert - insert first line (down) - Insert first line into empty outline using down direction">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="return op.insert(&quot;First line&quot;, down)"/>
+        </outline>
+      </outline>
+      <outline text="op.insert - insert sibling line (down) - Insert sibling line below current line">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line 1&quot;, down)"/>
+          <outline text="return op.insert(&quot;Line 2&quot;, down)"/>
+        </outline>
+      </outline>
+      <outline text="op.insert - insert child line (right) - Insert child line under current line (indent)">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="return op.insert(&quot;Child&quot;, right)"/>
+        </outline>
+      </outline>
+      <outline text="op.insert - insert above (up) - Insert line above current position">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line 2&quot;, down)"/>
+          <outline text="return op.insert(&quot;Line 1&quot;, up)"/>
+        </outline>
+      </outline>
+      <outline text="op.insert - insert parent (left) - Insert parent line to the left (outdent and insert)">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="op.insert(&quot;Child&quot;, right)"/>
+          <outline text="return op.insert(&quot;Grandchild&quot;, right)"/>
+        </outline>
+      </outline>
+      <outline text="op.getLineText - read inserted line - Get text of line after insertion">
+        <outline text="Metadata">
+          <outline text="expected_result: Test content"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Test content&quot;, down)"/>
+          <outline text="return op.getLineText()"/>
+        </outline>
+      </outline>
+      <outline text="op.getLineText - returns string type - getLineText returns stringType">
+        <outline text="Metadata">
+          <outline text="expected_result: str"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Hello&quot;, down)"/>
+          <outline text="return typeof(op.getLineText())"/>
+        </outline>
+      </outline>
+      <outline text="op.getLineText - empty line text - Get text of empty line (empty string)">
+        <outline text="Metadata">
+          <outline text="expected_result: 0"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;&quot;, down)"/>
+          <outline text="return sizeOf(op.getLineText())"/>
+        </outline>
+      </outline>
+      <outline text="op.go - navigate down one line - Move cursor down one line in outline">
+        <outline text="Metadata">
+          <outline text="expected_result: Line 2"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line 1&quot;, down)"/>
+          <outline text="op.insert(&quot;Line 2&quot;, down)"/>
+          <outline text="op.go(up, 1)"/>
+          <outline text="op.go(down, 1)"/>
+          <outline text="return op.getLineText()"/>
+        </outline>
+      </outline>
+      <outline text="op.go - navigate up one line - Move cursor up one line in outline">
+        <outline text="Metadata">
+          <outline text="expected_result: Line 1"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line 1&quot;, down)"/>
+          <outline text="op.insert(&quot;Line 2&quot;, down)"/>
+          <outline text="op.go(up, 1)"/>
+          <outline text="return op.getLineText()"/>
+        </outline>
+      </outline>
+      <outline text="op.go - navigate right (into child) - Move cursor right into first child">
+        <outline text="Metadata">
+          <outline text="expected_result: Child"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="op.insert(&quot;Child&quot;, right)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="op.go(right, 1)"/>
+          <outline text="return op.getLineText()"/>
+        </outline>
+      </outline>
+      <outline text="op.go - navigate left (to parent) - Move cursor left to parent node">
+        <outline text="Metadata">
+          <outline text="expected_result: Parent"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="op.insert(&quot;Child&quot;, right)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="return op.getLineText()"/>
+        </outline>
+      </outline>
+      <outline text="op.go - navigate multiple units - Navigate down multiple lines at once">
+        <outline text="Metadata">
+          <outline text="expected_result: Line 1"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line 1&quot;, down)"/>
+          <outline text="op.insert(&quot;Line 2&quot;, down)"/>
+          <outline text="op.insert(&quot;Line 3&quot;, down)"/>
+          <outline text="op.go(up, 2)"/>
+          <outline text="return op.getLineText()"/>
+        </outline>
+      </outline>
+      <outline text="op.go - returns boolean on success - go() returns true when navigation succeeds">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line 1&quot;, down)"/>
+          <outline text="op.insert(&quot;Line 2&quot;, down)"/>
+          <outline text="return op.go(up, 1)"/>
+        </outline>
+      </outline>
+      <outline text="op.go - returns false at boundary - go() returns false when can't move further (at boundary)">
+        <outline text="Metadata">
+          <outline text="expected_result: false"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Only line&quot;, down)"/>
+          <outline text="return op.go(up, 1)"/>
+        </outline>
+      </outline>
+      <outline text="op.go - flatup direction (skip children) - Navigate flatup (previous sibling/parent, skipping children)">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line 1&quot;, down)"/>
+          <outline text="op.insert(&quot;Line 2&quot;, down)"/>
+          <outline text="return op.go(flatup, 1)"/>
+        </outline>
+      </outline>
+      <outline text="op.go - flatdown direction (skip children) - Navigate flatdown (next sibling, skipping children)">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line 1&quot;, down)"/>
+          <outline text="op.insert(&quot;Line 2&quot;, down)"/>
+          <outline text="op.go(up, 1)"/>
+          <outline text="return op.go(flatdown, 1)"/>
+        </outline>
+      </outline>
+      <outline text="op.firstSummit - go to first top-level node - Navigate to first summit (top-level node)">
+        <outline text="Metadata">
+          <outline text="expected_result: First"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;First&quot;, down)"/>
+          <outline text="op.insert(&quot;Second&quot;, down)"/>
+          <outline text="op.insert(&quot;Third&quot;, down)"/>
+          <outline text="op.firstSummit()"/>
+          <outline text="return op.getLineText()"/>
+        </outline>
+      </outline>
+      <outline text="op.firstSummit - returns boolean true - firstSummit returns true on success">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="return op.firstSummit()"/>
+        </outline>
+      </outline>
+      <outline text="op.level - top-level is 1 - Top-level nodes have level 1">
+        <outline text="Metadata">
+          <outline text="expected_result: 1"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Top level&quot;, down)"/>
+          <outline text="return op.level()"/>
+        </outline>
+      </outline>
+      <outline text="op.level - child is level 2 - Child nodes have level 2">
+        <outline text="Metadata">
+          <outline text="expected_result: 2"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="op.insert(&quot;Child&quot;, right)"/>
+          <outline text="return op.level()"/>
+        </outline>
+      </outline>
+      <outline text="op.level - grandchild is level 3 - Grandchild nodes have level 3">
+        <outline text="Metadata">
+          <outline text="expected_result: 3"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="op.insert(&quot;Child&quot;, right)"/>
+          <outline text="op.insert(&quot;Grandchild&quot;, right)"/>
+          <outline text="return op.level()"/>
+        </outline>
+      </outline>
+      <outline text="op.countSubs - count immediate children (level 1) - Count direct children of current node">
+        <outline text="Metadata">
+          <outline text="expected_result: 3"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="op.insert(&quot;Child 1&quot;, right)"/>
+          <outline text="op.insert(&quot;Child 2&quot;, down)"/>
+          <outline text="op.insert(&quot;Child 3&quot;, down)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="return op.countSubs(1)"/>
+        </outline>
+      </outline>
+      <outline text="op.countSubs - no children returns 0 - Leaf nodes have 0 children">
+        <outline text="Metadata">
+          <outline text="expected_result: 0"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Leaf node&quot;, down)"/>
+          <outline text="return op.countSubs(1)"/>
+        </outline>
+      </outline>
+      <outline text="op.countSubs - infinity counts all descendants - Use infinity to count all descendants recursively">
+        <outline text="Metadata">
+          <outline text="expected_result: 3"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Root&quot;, down)"/>
+          <outline text="op.insert(&quot;Child 1&quot;, right)"/>
+          <outline text="op.insert(&quot;Grandchild&quot;, right)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="op.insert(&quot;Child 2&quot;, down)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="return op.countSubs(infinity)"/>
+        </outline>
+      </outline>
+      <outline text="op.countSummits - count top-level nodes - Count all summit (top-level) nodes in outline (includes empty root)">
+        <outline text="Metadata">
+          <outline text="expected_result: 4"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Summit 1&quot;, down)"/>
+          <outline text="op.insert(&quot;Summit 2&quot;, down)"/>
+          <outline text="op.insert(&quot;Summit 3&quot;, down)"/>
+          <outline text="return op.countSummits()"/>
+        </outline>
+      </outline>
+      <outline text="op.countSummits - empty outline returns 1 - Empty outline has 1 summit (the empty root node)">
+        <outline text="Metadata">
+          <outline text="expected_result: 1"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="return op.countSummits()"/>
+        </outline>
+      </outline>
+      <outline text="op.countSummits - children don't count - Child nodes are not counted as summits (empty root + 1 summit)">
+        <outline text="Metadata">
+          <outline text="expected_result: 2"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Summit&quot;, down)"/>
+          <outline text="op.insert(&quot;Child&quot;, right)"/>
+          <outline text="op.insert(&quot;Grandchild&quot;, right)"/>
+          <outline text="return op.countSummits()"/>
+        </outline>
+      </outline>
+      <outline text="op.subsExpanded - collapsed headline returns false - Returns false when current headline's children are collapsed">
+        <outline text="Metadata">
+          <outline text="expected_result: false"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="op.insert(&quot;Child&quot;, right)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="op.collapse()"/>
+          <outline text="return op.subsExpanded()"/>
+        </outline>
+      </outline>
+      <outline text="op.subsExpanded - expanded headline returns true - Returns true when current headline's children are expanded">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="op.insert(&quot;Child&quot;, right)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="op.expand(1)"/>
+          <outline text="return op.subsExpanded()"/>
+        </outline>
+      </outline>
+      <outline text="op.subsExpanded - no children returns false - Returns false when headline has no children">
+        <outline text="Metadata">
+          <outline text="expected_result: false"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Leaf Node&quot;, down)"/>
+          <outline text="return op.subsExpanded()"/>
+        </outline>
+      </outline>
+      <outline text="op.subsExpanded - no parameters - Verify op.subsExpanded works with zero parameters on empty outline">
+        <outline text="Metadata">
+          <outline text="expected_result: false"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="return op.subsExpanded()"/>
+        </outline>
+      </outline>
+      <outline text="op.expand - expand one level - Expand current node one level (show immediate children)">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="op.insert(&quot;Child&quot;, right)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="return op.expand(1)"/>
+        </outline>
+      </outline>
+      <outline text="op.expand - expand all descendants (infinity) - Expand all descendants using infinity">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Root&quot;, down)"/>
+          <outline text="op.insert(&quot;Child&quot;, right)"/>
+          <outline text="op.insert(&quot;Grandchild&quot;, right)"/>
+          <outline text="op.go(left, 2)"/>
+          <outline text="return op.expand(infinity)"/>
+        </outline>
+      </outline>
+      <outline text="op.collapse - collapse current node - Collapse current node (hide all children)">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="op.insert(&quot;Child&quot;, right)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="op.expand(infinity)"/>
+          <outline text="return op.collapse()"/>
+        </outline>
+      </outline>
+      <outline text="op.collapse - returns boolean - collapse returns true on success">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Node&quot;, down)"/>
+          <outline text="return op.collapse()"/>
+        </outline>
+      </outline>
+      <outline text="op.promote - move child to sibling of parent - Promote child node to same level as parent (outdent)">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="op.insert(&quot;Child&quot;, right)"/>
+          <outline text="local(before = op.level())"/>
+          <outline text="op.promote()"/>
+          <outline text="local(after = op.level())"/>
+          <outline text="return before == 2 and after == 1"/>
+        </outline>
+      </outline>
+      <outline text="op.promote - returns boolean - promote returns true when node is promoted">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="op.insert(&quot;Child&quot;, right)"/>
+          <outline text="return op.promote()"/>
+        </outline>
+      </outline>
+      <outline text="op.promote - top-level cannot promote - Top-level nodes cannot be promoted (already at level 1)">
+        <outline text="Metadata">
+          <outline text="expected_result: false"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Top&quot;, down)"/>
+          <outline text="return op.promote()"/>
+        </outline>
+      </outline>
+      <outline text="op.demote - make sibling a child - Demote node to child of previous sibling (indent)">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Sibling 1&quot;, down)"/>
+          <outline text="op.insert(&quot;Sibling 2&quot;, down)"/>
+          <outline text="local(before = op.level())"/>
+          <outline text="op.demote()"/>
+          <outline text="local(after = op.level())"/>
+          <outline text="return before == 1 and after == 2"/>
+        </outline>
+      </outline>
+      <outline text="op.demote - returns boolean - demote returns true when node is demoted">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line 1&quot;, down)"/>
+          <outline text="op.insert(&quot;Line 2&quot;, down)"/>
+          <outline text="return op.demote()"/>
+        </outline>
+      </outline>
+      <outline text="op.deleteLine - delete single line - Delete current line, cursor moves to next line">
+        <outline text="Metadata">
+          <outline text="expected_result: Keep me"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Delete me&quot;, down)"/>
+          <outline text="op.insert(&quot;Keep me&quot;, down)"/>
+          <outline text="op.go(up, 1)"/>
+          <outline text="op.deleteLine()"/>
+          <outline text="return op.getLineText()"/>
+        </outline>
+      </outline>
+      <outline text="op.deleteLine - returns boolean true - deleteLine returns true on success">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="return op.deleteLine()"/>
+        </outline>
+      </outline>
+      <outline text="op.deleteLine - delete only node creates empty node - Deleting the only node creates a new blank node (outline minimal state)">
+        <outline text="Metadata">
+          <outline text="expected_result: 1"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Only node&quot;, down)"/>
+          <outline text="op.deleteLine()"/>
+          <outline text="return op.countSummits()"/>
+        </outline>
+      </outline>
+      <outline text="op.setLineText - modify existing headline - Change text of current headline">
+        <outline text="Metadata">
+          <outline text="expected_result: Modified text"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Original text&quot;, down)"/>
+          <outline text="op.setLineText(&quot;Modified text&quot;)"/>
+          <outline text="return op.getLineText()"/>
+        </outline>
+      </outline>
+      <outline text="op.setLineText - returns boolean true on success - setLineText returns true when successful">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Text&quot;, down)"/>
+          <outline text="return op.setLineText(&quot;New text&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="op.setLineText - set to empty string - Set headline text to empty string (valid operation)">
+        <outline text="Metadata">
+          <outline text="expected_result: 0"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Something&quot;, down)"/>
+          <outline text="op.setLineText(&quot;&quot;)"/>
+          <outline text="return sizeOf(op.getLineText())"/>
+        </outline>
+      </outline>
+      <outline text="op.setLineText - special characters - Set text with special characters (quotes, newlines, etc.)">
+        <outline text="Metadata">
+          <outline text="expected_result: Special: &quot;quotes&quot; &amp; &lt;tags&gt;"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Test&quot;, down)"/>
+          <outline text="op.setLineText(&quot;Special: \&quot;quotes\&quot; &amp; &lt;tags&gt;&quot;)"/>
+          <outline text="return op.getLineText()"/>
+        </outline>
+      </outline>
+      <outline text="op.setLineText - missing text parameter - setLineText requires text parameter (should fail)">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Test&quot;, down)"/>
+          <outline text="op.setLineText()"/>
+        </outline>
+      </outline>
+      <outline text="op.setLineText - preserves children - Setting line text preserves child nodes">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="op.insert(&quot;Child 1&quot;, right)"/>
+          <outline text="op.insert(&quot;Child 2&quot;, down)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="op.setLineText(&quot;Modified Parent&quot;)"/>
+          <outline text="local(ok1 = op.getLineText() == &quot;Modified Parent&quot;)"/>
+          <outline text="local(ok2 = op.countSubs(1) == 2)"/>
+          <outline text="return ok1 and ok2"/>
+        </outline>
+      </outline>
+      <outline text="op.deleteSubs - delete all children under parent - Delete all children of current node, parent remains">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="op.insert(&quot;Child 1&quot;, right)"/>
+          <outline text="op.insert(&quot;Child 2&quot;, down)"/>
+          <outline text="op.insert(&quot;Child 3&quot;, down)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="op.deleteSubs()"/>
+          <outline text="local(ok1 = op.getLineText() == &quot;Parent&quot;)"/>
+          <outline text="local(ok2 = op.countSubs(1) == 0)"/>
+          <outline text="return ok1 and ok2"/>
+        </outline>
+      </outline>
+      <outline text="op.deleteSubs - returns boolean true - deleteSubs returns true on success">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="op.insert(&quot;Child&quot;, right)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="return op.deleteSubs()"/>
+        </outline>
+      </outline>
+      <outline text="op.deleteSubs - no children is no-op - deleteSubs on node with no children returns true (no-op)">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Leaf node&quot;, down)"/>
+          <outline text="local(ok = op.deleteSubs())"/>
+          <outline text="return ok and (op.countSubs(1) == 0)"/>
+        </outline>
+      </outline>
+      <outline text="op.deleteSubs - multi-level children - Delete all descendants (children, grandchildren, etc.)">
+        <outline text="Metadata">
+          <outline text="expected_result: 0"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Root&quot;, down)"/>
+          <outline text="op.insert(&quot;Child 1&quot;, right)"/>
+          <outline text="op.insert(&quot;Grandchild 1&quot;, right)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="op.insert(&quot;Child 2&quot;, down)"/>
+          <outline text="op.insert(&quot;Grandchild 2&quot;, right)"/>
+          <outline text="op.go(left, 2)"/>
+          <outline text="op.deleteSubs()"/>
+          <outline text="return op.countSubs(infinity)"/>
+        </outline>
+      </outline>
+      <outline text="op.deleteSubs - zero parameters required - deleteSubs takes no parameters">
+        <outline text="Metadata">
+          <outline text="expected_result: bool"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="op.insert(&quot;Child&quot;, right)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="return typeof(op.deleteSubs())"/>
+        </outline>
+      </outline>
+      <outline text="op.reorg - move node left (direction=left, count=1) - Move node left one level (promote/outdent)">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="op.insert(&quot;Child&quot;, right)"/>
+          <outline text="local(before = op.level())"/>
+          <outline text="op.reorg(left, 1)"/>
+          <outline text="local(after = op.level())"/>
+          <outline text="return (before == 2) and (after == 1)"/>
+        </outline>
+      </outline>
+      <outline text="op.reorg - move node right (direction=right, count=1) - Move node right one level (demote/indent)">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line 1&quot;, down)"/>
+          <outline text="op.insert(&quot;Line 2&quot;, down)"/>
+          <outline text="local(before = op.level())"/>
+          <outline text="op.reorg(right, 1)"/>
+          <outline text="local(after = op.level())"/>
+          <outline text="return (before == 1) and (after == 2)"/>
+        </outline>
+      </outline>
+      <outline text="op.reorg - move multiple levels left - Move node left multiple levels (count &gt; 1)">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Level 1&quot;, down)"/>
+          <outline text="op.insert(&quot;Level 2&quot;, right)"/>
+          <outline text="op.insert(&quot;Level 3&quot;, right)"/>
+          <outline text="local(before = op.level())"/>
+          <outline text="op.reorg(left, 2)"/>
+          <outline text="local(after = op.level())"/>
+          <outline text="return (before == 3) and (after == 1)"/>
+        </outline>
+      </outline>
+      <outline text="op.reorg - move multiple levels right - Move node right multiple levels (count &gt; 1)">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line 1&quot;, down)"/>
+          <outline text="op.insert(&quot;Line 2&quot;, down)"/>
+          <outline text="op.insert(&quot;Line 3&quot;, down)"/>
+          <outline text="op.go(up, 1)"/>
+          <outline text="local(before = op.level())"/>
+          <outline text="op.reorg(right, 2)"/>
+          <outline text="local(after = op.level())"/>
+          <outline text="return (before == 1) and (after == 3)"/>
+        </outline>
+      </outline>
+      <outline text="op.reorg - returns boolean based on success - reorg returns true on successful reorganization">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="op.insert(&quot;Child&quot;, right)"/>
+          <outline text="return op.reorg(left, 1)"/>
+        </outline>
+      </outline>
+      <outline text="op.reorg - missing direction parameter - reorg requires direction parameter (should fail)">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Test&quot;, down)"/>
+          <outline text="op.reorg()"/>
+        </outline>
+      </outline>
+      <outline text="op.reorg - missing count parameter - reorg requires count parameter (should fail)">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Test&quot;, down)"/>
+          <outline text="op.reorg(3)"/>
+        </outline>
+      </outline>
+      <outline text="op.find - case-sensitive search (flCase=true) - Find with case sensitivity enabled">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;lowercase text&quot;, down)"/>
+          <outline text="op.insert(&quot;UPPERCASE TEXT&quot;, down)"/>
+          <outline text="op.firstSummit()"/>
+          <outline text="local(notFound = op.find(&quot;LOWERCASE&quot;, false, true))"/>
+          <outline text="return not notFound"/>
+        </outline>
+      </outline>
+      <outline text="op.find - no wrap search (flWrap=false) - Search without wrap stops at end">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line 1&quot;, down)"/>
+          <outline text="op.insert(&quot;Line 2&quot;, down)"/>
+          <outline text="op.insert(&quot;Line 3&quot;, down)"/>
+          <outline text="local(found = op.find(&quot;Line 1&quot;, false, false))"/>
+          <outline text="return not found"/>
+        </outline>
+      </outline>
+      <outline text="op.find - not found returns false - Returns false when text not found in outline">
+        <outline text="Metadata">
+          <outline text="expected_result: false"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line 1&quot;, down)"/>
+          <outline text="op.insert(&quot;Line 2&quot;, down)"/>
+          <outline text="return op.find(&quot;Nonexistent&quot;, false, false)"/>
+        </outline>
+      </outline>
+      <outline text="op.find - missing searchText parameter - find requires searchText parameter (should fail)">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Test&quot;, down)"/>
+          <outline text="op.find()"/>
+        </outline>
+      </outline>
+      <outline text="op.find - one parameter (searchText only) - flWrap and flCase are optional, defaults used">
+        <outline text="Metadata">
+          <outline text="expected_result: false"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Test&quot;, down)"/>
+          <outline text="return op.find(&quot;test&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="op.find - two parameters (searchText, flWrap) - flCase is optional, defaults used">
+        <outline text="Metadata">
+          <outline text="expected_result: false"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Test&quot;, down)"/>
+          <outline text="return op.find(&quot;test&quot;, false)"/>
+        </outline>
+      </outline>
+      <outline text="op.go - missing direction parameter - op.go requires direction parameter">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="op.go()"/>
+        </outline>
+      </outline>
+      <outline text="op.go - missing count parameter - op.go requires count parameter">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="op.go(down)"/>
+        </outline>
+      </outline>
+      <outline text="op.go - extra parameters should fail - op.go with extra parameters should error">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="op.go(down, 1, &quot;extra&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="op.insert - missing text parameter - op.insert requires text parameter">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="op.insert()"/>
+        </outline>
+      </outline>
+      <outline text="op.insert - missing direction parameter - op.insert requires direction parameter">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="op.insert(&quot;text&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="op.getLineText - no parameters - op.getLineText takes no parameters">
+        <outline text="Metadata">
+          <outline text="expected_result: str"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Text&quot;, down)"/>
+          <outline text="return typeof(op.getLineText())"/>
+        </outline>
+      </outline>
+      <outline text="op.getLineText - extra parameters should fail - op.getLineText with extra parameters should error">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="op.getLineText(&quot;extra&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="op.level - no parameters - op.level takes no parameters">
+        <outline text="Metadata">
+          <outline text="expected_result: long"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="return typeof(op.level())"/>
+        </outline>
+      </outline>
+      <outline text="op.countSubs - missing level parameter - op.countSubs requires level parameter">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="op.countSubs()"/>
+        </outline>
+      </outline>
+      <outline text="op.expand - missing levels parameter - op.expand requires levels parameter">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="op.expand()"/>
+        </outline>
+      </outline>
+      <outline text="op.collapse - no parameters - op.collapse takes no parameters">
+        <outline text="Metadata">
+          <outline text="expected_result: bool"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="return typeof(op.collapse())"/>
+        </outline>
+      </outline>
+      <outline text="op.promote - no parameters - op.promote takes no parameters">
+        <outline text="Metadata">
+          <outline text="expected_result: bool"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="op.insert(&quot;Child&quot;, right)"/>
+          <outline text="return typeof(op.promote())"/>
+        </outline>
+      </outline>
+      <outline text="op.demote - no parameters - op.demote takes no parameters">
+        <outline text="Metadata">
+          <outline text="expected_result: bool"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line 1&quot;, down)"/>
+          <outline text="op.insert(&quot;Line 2&quot;, down)"/>
+          <outline text="return typeof(op.demote())"/>
+        </outline>
+      </outline>
+      <outline text="op.insert - no target set should fail - op.insert requires outline set as target">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="target.clear()"/>
+          <outline text="op.insert(&quot;Test&quot;, down)"/>
+        </outline>
+      </outline>
+      <outline text="op.getLineText - no target set should fail - op.getLineText requires outline set as target">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="target.clear()"/>
+          <outline text="op.getLineText()"/>
+        </outline>
+      </outline>
+      <outline text="op.go - no target set should fail - op.go requires outline set as target">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="target.clear()"/>
+          <outline text="op.go(down, 1)"/>
+        </outline>
+      </outline>
+      <outline text="op.insert - table target should fail - op verbs require outlineType target, not tableType">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(tableType, @workspace.notOutline)"/>
+          <outline text="target.set(@workspace.notOutline)"/>
+          <outline text="op.insert(&quot;Test&quot;, down)"/>
+        </outline>
+      </outline>
+      <outline text="op.getLineText - wrong target type should fail - op verbs require outlineType target">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(tableType, @workspace.table)"/>
+          <outline text="target.set(@workspace.table)"/>
+          <outline text="op.getLineText()"/>
+        </outline>
+      </outline>
+      <outline text="workflow - build and navigate outline structure - Build multi-level outline and navigate through it">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Chapter 1&quot;, down)"/>
+          <outline text="op.insert(&quot;Section 1.1&quot;, right)"/>
+          <outline text="op.insert(&quot;Section 1.2&quot;, down)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="op.insert(&quot;Chapter 2&quot;, down)"/>
+          <outline text="op.firstSummit()"/>
+          <outline text="local(ok1 = op.getLineText() == &quot;Chapter 1&quot;)"/>
+          <outline text="local(ok2 = op.countSummits() == 2)"/>
+          <outline text="return ok1 and ok2"/>
+        </outline>
+      </outline>
+      <outline text="workflow - insert and modify multiple lines - Insert multiple lines and modify their content">
+        <outline text="Metadata">
+          <outline text="expected_result: Modified Line 1"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line 1&quot;, down)"/>
+          <outline text="op.insert(&quot;Line 2&quot;, down)"/>
+          <outline text="op.insert(&quot;Line 3&quot;, down)"/>
+          <outline text="op.go(up, 2)"/>
+          <outline text="op.setLineText(&quot;Modified Line 1&quot;)"/>
+          <outline text="return op.getLineText()"/>
+        </outline>
+      </outline>
+      <outline text="workflow - promote and demote hierarchy changes - Build hierarchy and reorganize with promote/demote">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="op.insert(&quot;Child&quot;, right)"/>
+          <outline text="local(level1 = op.level())"/>
+          <outline text="op.promote()"/>
+          <outline text="local(level2 = op.level())"/>
+          <outline text="op.demote()"/>
+          <outline text="local(level3 = op.level())"/>
+          <outline text="return (level1 == 2) and (level2 == 1) and (level3 == 2)"/>
+        </outline>
+      </outline>
+      <outline text="workflow - expand and collapse state - Expand and collapse outline nodes">
+        <outline text="Metadata">
+          <outline text="expected_result: 2"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Root&quot;, down)"/>
+          <outline text="op.insert(&quot;Child 1&quot;, right)"/>
+          <outline text="op.insert(&quot;Child 2&quot;, down)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="op.expand(infinity)"/>
+          <outline text="op.collapse()"/>
+          <outline text="return op.countSubs(1)"/>
+        </outline>
+      </outline>
+      <outline text="stress test - build large outline - Build outline with many nodes (includes empty root)">
+        <outline text="Metadata">
+          <outline text="expected_result: 21"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="local(i)"/>
+          <outline text="for i = 1 to 20">
+            <outline text="op.insert(&quot;Line &quot; + i, down)"/>
+          </outline>
+          <outline text="return op.countSummits()"/>
+        </outline>
+      </outline>
+      <outline text="stress test - deep nesting - Create deeply nested outline structure">
+        <outline text="Metadata">
+          <outline text="expected_result: 10"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="local(i)"/>
+          <outline text="op.insert(&quot;Level 1&quot;, down)"/>
+          <outline text="for i = 2 to 10">
+            <outline text="op.insert(&quot;Level &quot; + i, right)"/>
+          </outline>
+          <outline text="return op.level()"/>
+        </outline>
+      </outline>
+      <outline text="stress test - rapid insert and delete - Rapidly insert and delete lines">
+        <outline text="Metadata">
+          <outline text="expected_result: 5"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="local(i)"/>
+          <outline text="for i = 1 to 10">
+            <outline text="op.insert(&quot;Temp &quot; + i, down)"/>
+          </outline>
+          <outline text="for i = 1 to 5">
+            <outline text="op.deleteLine()"/>
+          </outline>
+          <outline text="return op.countSummits()"/>
+        </outline>
+      </outline>
+      <outline text="integration - outline with target.get/set - Switch between multiple outline targets">
+        <outline text="Metadata">
+          <outline text="expected_result: Outline 1"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline1)"/>
+          <outline text="lang.new(outlineType, @workspace.outline2)"/>
+          <outline text="target.set(@workspace.outline1)"/>
+          <outline text="op.insert(&quot;Outline 1&quot;, down)"/>
+          <outline text="target.set(@workspace.outline2)"/>
+          <outline text="op.insert(&quot;Outline 2&quot;, down)"/>
+          <outline text="target.set(@workspace.outline1)"/>
+          <outline text="return op.getLineText()"/>
+        </outline>
+      </outline>
+      <outline text="integration - outline with typeof - Verify outline type with typeof">
+        <outline text="Metadata">
+          <outline text="expected_result: outl"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="return typeof(workspace.outline)"/>
+        </outline>
+      </outline>
+      <outline text="integration - outline with defined - Check outline existence with defined">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="return defined(workspace.outline)"/>
+        </outline>
+      </outline>
+      <outline text="headless behavior - no window required for outline ops - Outline operations work without GUI windows (headless mode)">
+        <outline text="Metadata">
+          <outline text="expected_result: Headless line"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.headlessOutline)"/>
+          <outline text="target.set(@workspace.headlessOutline)"/>
+          <outline text="op.insert(&quot;Headless line&quot;, down)"/>
+          <outline text="return op.getLineText()"/>
+        </outline>
+      </outline>
+      <outline text="headless behavior - cursor is data structure state - Cursor position is data, not GUI state (headless compatible)">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line 1&quot;, down)"/>
+          <outline text="op.insert(&quot;Line 2&quot;, down)"/>
+          <outline text="op.go(up, 1)"/>
+          <outline text="return op.level() == 1"/>
+        </outline>
+      </outline>
+      <outline text="headless behavior - expansion state is metadata - Expansion state is tree metadata, not visual state">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="op.insert(&quot;Child&quot;, right)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="op.expand(1)"/>
+          <outline text="op.collapse()"/>
+          <outline text="return op.countSubs(1) == 1"/>
         </outline>
       </outline>
     </outline>

@@ -1,0 +1,429 @@
+# Integration tests for db verb operations
+# Tests ODB Engine API verbs for database operations
+#
+# All 13 db.* verbs (implemented via ODB Engine in odbengine.c):
+#   - db.new() - Create new ODB file
+#   - db.open() - Open existing ODB file
+#   - db.save() - Save ODB changes
+#   - db.close() - Close ODB file
+#   - db.defined() - Check if address exists
+#   - db.getvalue() - Get value at address
+#   - db.setvalue() - Set value at address
+#   - db.delete() - Delete value at address
+#   - db.newtable() - Create new table
+#   - db.istable() - Check if address is a table
+#   - db.countitems() - Count items in table
+#   - db.getnthitem() - Get Nth item name
+#   - db.getmoddate() - Get modification date
+#
+# Test Strategy:
+# 1. Create new database
+# 2. Test write operations (setvalue, newtable)
+# 3. Test read operations (getvalue, defined, istable)
+# 4. Test enumeration (countitems, getnthitem)
+# 5. Test delete operations
+# 6. Test save/close/reopen cycle
+# 7. Test with existing v6 database (if available)
+
+tests:
+  # ========================================================================
+  # Test 1: db.new - Create new database
+  # ========================================================================
+  - name: "db.new - create new database file"
+    description: "Create a new ODB database file"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "test_db_new.root");
+      local(ok = db.new(dbPath));
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # Test 2: db.open - Open newly created database
+  # ========================================================================
+  - name: "db.open - open newly created database"
+    description: "Open the database we just created"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "test_db_new.root");
+      local(ok = db.open(dbPath, false));
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # Test 3: db.setvalue - Write simple string value
+  # ========================================================================
+  - name: "db.setvalue - write string to root"
+    description: "Set a string value at root level"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "test_db_new.root");
+      local(ok = db.setvalue(dbPath, "testString", "Hello, DB!"));
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # Test 4: db.getvalue - Read back string value
+  # ========================================================================
+  - name: "db.getvalue - read string from root"
+    description: "Get the string value we just set"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "test_db_new.root");
+      local(val = db.getvalue(dbPath, "testString"));
+      return val
+    expected_success: true
+    expected_result: "Hello, DB!"
+
+  # ========================================================================
+  # Test 5: db.defined - Check existence of value
+  # ========================================================================
+  - name: "db.defined - check existing value"
+    description: "Verify that testString exists"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "test_db_new.root");
+      local(exists = db.defined(dbPath, "testString"));
+      return exists
+    expected_success: true
+    expected_result: "true"
+
+  - name: "db.defined - check nonexistent value"
+    description: "Verify that nonexistent item returns false"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "test_db_new.root");
+      local(exists = db.defined(dbPath, "doesNotExist"));
+      return exists
+    expected_success: true
+    expected_result: "false"
+
+  # ========================================================================
+  # Test 6: db.setvalue - Write numeric value
+  # ========================================================================
+  - name: "db.setvalue - write number to root"
+    description: "Set a numeric value"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "test_db_new.root");
+      local(ok = db.setvalue(dbPath, "testNumber", 42));
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  - name: "db.getvalue - read number from root"
+    description: "Get the numeric value we just set"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "test_db_new.root");
+      local(val = db.getvalue(dbPath, "testNumber"));
+      return val
+    expected_success: true
+    expected_result: "42"
+
+  # ========================================================================
+  # Test 7: db.newtable - Create table
+  # ========================================================================
+  - name: "db.newtable - create table at root"
+    description: "Create a new table in the database"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "test_db_new.root");
+      local(ok = db.newtable(dbPath, "testTable"));
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # Test 8: db.istable - Check if address is a table
+  # ========================================================================
+  - name: "db.istable - verify table type"
+    description: "Check that testTable is a table"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "test_db_new.root");
+      local(isTable = db.istable(dbPath, "testTable"));
+      return isTable
+    expected_success: true
+    expected_result: "true"
+
+  - name: "db.istable - verify string is not a table"
+    description: "Check that testString is not a table"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "test_db_new.root");
+      local(isTable = db.istable(dbPath, "testString"));
+      return isTable
+    expected_success: true
+    expected_result: "false"
+
+  # ========================================================================
+  # Test 9: db.setvalue - Write values into table
+  # ========================================================================
+  - name: "db.setvalue - write to nested table"
+    description: "Set values inside the table"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "test_db_new.root");
+      db.setvalue(dbPath, "testTable.item1", "first");
+      db.setvalue(dbPath, "testTable.item2", "second");
+      db.setvalue(dbPath, "testTable.item3", "third");
+      return true
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # Test 10: db.countitems - Count items in table
+  # ========================================================================
+  - name: "db.countitems - count table items"
+    description: "Count items in testTable"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "test_db_new.root");
+      local(count = db.countitems(dbPath, "testTable"));
+      return count
+    expected_success: true
+    expected_result: "3"
+
+  # ========================================================================
+  # Test 11: db.getnthitem - Enumerate table items
+  # ========================================================================
+  - name: "db.getnthitem - get first item name"
+    description: "Get name of first item in testTable"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "test_db_new.root");
+      local(name = db.getnthitem(dbPath, "testTable", 1));
+      return name
+    expected_success: true
+    expected_result: "item1"
+
+  - name: "db.getnthitem - get second item name"
+    description: "Get name of second item in testTable"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "test_db_new.root");
+      local(name = db.getnthitem(dbPath, "testTable", 2));
+      return name
+    expected_success: true
+    expected_result: "item2"
+
+  - name: "db.getnthitem - get third item name"
+    description: "Get name of third item in testTable"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "test_db_new.root");
+      local(name = db.getnthitem(dbPath, "testTable", 3));
+      return name
+    expected_success: true
+    expected_result: "item3"
+
+  # ========================================================================
+  # Test 12: db.getmoddate - Get modification date
+  # ========================================================================
+  - name: "db.getmoddate - get item modification date"
+    description: "Get modification date for testString (returns date value)"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "test_db_new.root");
+      local(modDate = db.getmoddate(dbPath, "testString"));
+      // Just verify it returns a date (non-zero)
+      return (modDate > 0)
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # Test 13: db.delete - Delete value
+  # ========================================================================
+  - name: "db.delete - delete string value"
+    description: "Delete testString from database"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "test_db_new.root");
+      local(ok = db.delete(dbPath, "testString"));
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  - name: "db.defined - verify deletion"
+    description: "Verify testString no longer exists"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "test_db_new.root");
+      local(exists = db.defined(dbPath, "testString"));
+      return exists
+    expected_success: true
+    expected_result: "false"
+
+  # ========================================================================
+  # Test 14: db.save - Save changes to disk
+  # ========================================================================
+  - name: "db.save - save database changes"
+    description: "Save all changes to disk"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "test_db_new.root");
+      local(ok = db.save(dbPath));
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # Test 15: db.close - Close database
+  # ========================================================================
+  - name: "db.close - close database"
+    description: "Close the database file"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "test_db_new.root");
+      local(ok = db.close(dbPath));
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # Test 16: Reopen and verify persistence
+  # ========================================================================
+  - name: "db.open - reopen saved database"
+    description: "Reopen the database to verify persistence"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "test_db_new.root");
+      local(ok = db.open(dbPath, false));
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  - name: "db.getvalue - verify persisted value"
+    description: "Verify testNumber persisted across save/close/reopen"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "test_db_new.root");
+      local(val = db.getvalue(dbPath, "testNumber"));
+      return val
+    expected_success: true
+    expected_result: "42"
+
+  - name: "db.countitems - verify persisted table"
+    description: "Verify testTable persisted with all items"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "test_db_new.root");
+      local(count = db.countitems(dbPath, "testTable"));
+      return count
+    expected_success: true
+    expected_result: "3"
+
+  - name: "db.defined - verify deletion persisted"
+    description: "Verify testString deletion persisted"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "test_db_new.root");
+      local(exists = db.defined(dbPath, "testString"));
+      return exists
+    expected_success: true
+    expected_result: "false"
+
+  # ========================================================================
+  # Test 17: Cleanup - Close database
+  # ========================================================================
+  - name: "db.close - final cleanup"
+    description: "Close database after persistence tests"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "test_db_new.root");
+      local(ok = db.close(dbPath));
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # Test 18: Test with v7 database format
+  # ========================================================================
+  - name: "db.new - create v7 database"
+    description: "Create new database with v7 format (if .root7 extension triggers v7)"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "test_db_v7.root7");
+      local(ok = db.new(dbPath));
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  - name: "db.open - open v7 database"
+    description: "Open v7 database"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "test_db_v7.root7");
+      local(ok = db.open(dbPath, false));
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  - name: "db.setvalue - write to v7 database"
+    description: "Set value in v7 database"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "test_db_v7.root7");
+      local(ok = db.setvalue(dbPath, "v7test", "V7 works!"));
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  - name: "db.getvalue - read from v7 database"
+    description: "Get value from v7 database"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "test_db_v7.root7");
+      local(val = db.getvalue(dbPath, "v7test"));
+      return val
+    expected_success: true
+    expected_result: "V7 works!"
+
+  - name: "db.close - close v7 database"
+    description: "Close v7 database"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "test_db_v7.root7");
+      local(ok = db.close(dbPath));
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # Test 19: Open existing v6 database (read-only)
+  # ========================================================================
+  - name: "db.open - open existing v6 database readonly"
+    description: "Open the test v6 database in read-only mode"
+    script: |
+      local(ok = db.open("tests/fixtures/v6/test.root", true));
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  - name: "db.defined - check root in v6 database"
+    description: "Verify root exists in v6 database"
+    script: |
+      local(exists = db.defined("tests/fixtures/v6/test.root", "root"));
+      return exists
+    expected_success: true
+    expected_result: "true"
+
+  - name: "db.istable - verify root is table in v6 database"
+    description: "Verify root is a table"
+    script: |
+      local(isTable = db.istable("tests/fixtures/v6/test.root", "root"));
+      return isTable
+    expected_success: true
+    expected_result: "true"
+
+  - name: "db.close - close v6 database"
+    description: "Close v6 database"
+    script: |
+      local(ok = db.close("tests/fixtures/v6/test.root"));
+      return ok
+    expected_success: true
+    expected_result: "true"
