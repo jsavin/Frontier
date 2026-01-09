@@ -46,7 +46,7 @@ tests:
     script: |
       lang.new(outlineType, @workspace.opTest);
       target.set(@workspace.opTest);
-      local(ok1 = typeof(workspace.opTest) == "outl");
+      local(ok1 = typeof(workspace.opTest) == "optx");
       local(ok2 = string(target.get()) == "workspace.opTest");
       return ok1 and ok2
     expected_success: true
@@ -128,7 +128,7 @@ tests:
       op.insert("Hello", down);
       return typeof(op.getLineText())
     expected_success: true
-    expected_result: "str"
+    expected_result: "TEXT"
 
   - name: "op.getLineText - empty line text"
     description: "Get text of empty line (empty string)"
@@ -456,6 +456,7 @@ tests:
       op.insert("Parent", down);
       op.insert("Child", right);
       op.go(left, 1);
+      op.collapse();
       return op.expand(1)
     expected_success: true
     expected_result: "true"
@@ -469,6 +470,7 @@ tests:
       op.insert("Child", right);
       op.insert("Grandchild", right);
       op.go(left, 2);
+      op.collapse();
       return op.expand(infinity)
     expected_success: true
     expected_result: "true"
@@ -491,14 +493,14 @@ tests:
     expected_result: "true"
 
   - name: "op.collapse - returns boolean"
-    description: "collapse returns true on success"
+    description: "collapse returns true only if something was collapsed"
     script: |
       lang.new(outlineType, @workspace.outline);
       target.set(@workspace.outline);
       op.insert("Node", down);
       return op.collapse()
     expected_success: true
-    expected_result: "true"
+    expected_result: "false"
 
   # ====================================================================
   # op.promote() - Move Node Left (Outdent)
@@ -1028,7 +1030,7 @@ tests:
       op.insert("Text", down);
       return typeof(op.getLineText())
     expected_success: true
-    expected_result: "str"
+    expected_result: "TEXT"
 
   - name: "op.getLineText - extra parameters should fail"
     description: "op.getLineText with extra parameters should error"
@@ -1254,6 +1256,922 @@ tests:
     expected_result: "5"
 
   # ====================================================================
+  # Phase 3: Cursor Management (op.getCursor, op.setCursor)
+  # ====================================================================
+
+  - name: "op.getCursor - returns address type"
+    description: "getCursor returns long type (1-based line number) for current cursor position"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line 1", down);
+      return typeof(op.getCursor())
+    expected_success: true
+    expected_result: "long"
+
+  - name: "op.getCursor - simple outline cursor position"
+    description: "Get cursor position from simple outline"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("First line", down);
+      local(cursor = op.getCursor());
+      return defined(cursor)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.getCursor - cursor changes with navigation"
+    description: "Cursor address changes when navigating outline"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line 1", down);
+      op.insert("Line 2", down);
+      local(cursor1 = op.getCursor());
+      op.go(up, 1);
+      local(cursor2 = op.getCursor());
+      return cursor1 != cursor2
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.getCursor - cursor in nested structure"
+    description: "Get cursor from nested outline hierarchy"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Parent", down);
+      op.insert("Child", right);
+      op.insert("Grandchild", right);
+      local(cursor = op.getCursor());
+      return typeof(cursor)
+    expected_success: true
+    expected_result: "long"
+
+  - name: "op.getCursor - no parameters required"
+    description: "getCursor takes no parameters"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      return typeof(op.getCursor())
+    expected_success: true
+    expected_result: "long"
+
+  - name: "op.getCursor - extra parameters should fail"
+    description: "getCursor with extra parameters should error"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      op.getCursor("extra")
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "op.setCursor - set cursor to saved address"
+    description: "Set cursor to previously saved address position"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line 1", down);
+      op.insert("Line 2", down);
+      op.insert("Line 3", down);
+      op.go(up, 2);
+      local(savedCursor = op.getCursor());
+      op.go(down, 2);
+      op.setCursor(savedCursor);
+      return op.getLineText()
+    expected_success: true
+    expected_result: "Line 1"
+
+  - name: "op.setCursor - returns boolean true on success"
+    description: "setCursor returns true when cursor is set successfully"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line 1", down);
+      op.insert("Line 2", down);
+      local(cursor = op.getCursor());
+      op.go(up, 1);
+      return op.setCursor(cursor)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.setCursor - round-trip cursor position"
+    description: "Get cursor, navigate away, set cursor back - verify position"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Target line", down);
+      op.insert("Other line", down);
+      local(targetCursor = op.getCursor());
+      op.go(up, 1);
+      op.setCursor(targetCursor);
+      return op.getLineText()
+    expected_success: true
+    expected_result: "Other line"
+
+  - name: "op.setCursor - cursor in nested hierarchy"
+    description: "Set cursor to child node address"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Parent", down);
+      op.insert("Child 1", right);
+      local(child1Cursor = op.getCursor());
+      op.insert("Child 2", down);
+      op.go(left, 1);
+      op.setCursor(child1Cursor);
+      return op.getLineText()
+    expected_success: true
+    expected_result: "Child 1"
+
+  - name: "op.setCursor - requires address parameter"
+    description: "setCursor requires address parameter (should fail without it)"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      op.setCursor()
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "op.setCursor - invalid address type should fail"
+    description: "setCursor with non-address type should error"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      op.setCursor("not an address")
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "op.setCursor - cursor from different outline should fail"
+    description: "setCursor with address from different outline should error"
+    script: |
+      lang.new(outlineType, @workspace.outline1);
+      lang.new(outlineType, @workspace.outline2);
+      target.set(@workspace.outline1);
+      op.insert("Line 1", down);
+      local(cursor1 = op.getCursor());
+      target.set(@workspace.outline2);
+      op.insert("Line 2", down);
+      op.setCursor(cursor1)
+    expected_success: false
+    expected_error_type: "script_error"
+
+  # ====================================================================
+  # Phase 3: Display State (op.getDisplay, op.setDisplay)
+  # ====================================================================
+
+  - name: "op.getDisplay - returns boolean type"
+    description: "getDisplay returns boolean for display inhibit state"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      return typeof(op.getDisplay())
+    expected_success: true
+    expected_result: "bool"
+
+  - name: "op.getDisplay - default state is true (display enabled)"
+    description: "New outlines have display enabled by default"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      return op.getDisplay()
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.getDisplay - no parameters required"
+    description: "getDisplay takes no parameters"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      return typeof(op.getDisplay())
+    expected_success: true
+    expected_result: "bool"
+
+  - name: "op.getDisplay - extra parameters should fail"
+    description: "getDisplay with extra parameters should error"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.getDisplay("extra")
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "op.setDisplay - set display to false (inhibit display)"
+    description: "Disable display for performance during bulk operations"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.setDisplay(false);
+      return op.getDisplay()
+    expected_success: true
+    expected_result: "false"
+
+  - name: "op.setDisplay - set display to true (enable display)"
+    description: "Enable display after bulk operations"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.setDisplay(false);
+      op.setDisplay(true);
+      return op.getDisplay()
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.setDisplay - returns boolean true on success"
+    description: "setDisplay returns true when state is set"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      return op.setDisplay(false)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.setDisplay - round-trip display state"
+    description: "Set display false, verify, set true, verify"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.setDisplay(false);
+      local(state1 = op.getDisplay());
+      op.setDisplay(true);
+      local(state2 = op.getDisplay());
+      return (not state1) and state2
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.setDisplay - bulk operations with display off"
+    description: "Disable display during bulk insert operations (performance optimization)"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.setDisplay(false);
+      local(i);
+      for i = 1 to 10 {
+        op.insert("Line " + i, down)
+      };
+      op.setDisplay(true);
+      return op.countSummits()
+    expected_success: true
+    expected_result: "11"
+
+  - name: "op.setDisplay - requires boolean parameter"
+    description: "setDisplay requires boolean parameter (should fail without it)"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.setDisplay()
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "op.setDisplay - non-boolean parameter should fail"
+    description: "setDisplay with non-boolean type should error"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.setDisplay("true")
+    expected_success: false
+    expected_error_type: "script_error"
+
+  # ====================================================================
+  # Phase 3: Expansion State (op.getExpansionState, op.setExpansionState)
+  # ====================================================================
+
+  - name: "op.getExpansionState - returns address type"
+    description: "getExpansionState returns list containing expansion state data"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Parent", down);
+      op.insert("Child", right);
+      op.go(left, 1);
+      return typeof(op.getExpansionState())
+    expected_success: true
+    expected_result: "list"
+
+  - name: "op.getExpansionState - simple outline expansion state"
+    description: "Get expansion state from simple outline"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Parent", down);
+      op.insert("Child", right);
+      op.go(left, 1);
+      local(state = op.getExpansionState());
+      return defined(state)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.getExpansionState - no parameters required"
+    description: "getExpansionState takes no parameters"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      return typeof(op.getExpansionState())
+    expected_success: true
+    expected_result: "list"
+
+  - name: "op.getExpansionState - extra parameters should fail"
+    description: "getExpansionState with extra parameters should error"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      op.getExpansionState("extra")
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "op.setExpansionState - restore saved expansion state"
+    description: "Set expansion state to previously saved state"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Parent 1", down);
+      op.insert("Child 1", right);
+      op.go(left, 1);
+      op.expand(1);
+      op.insert("Parent 2", down);
+      op.insert("Child 2", right);
+      op.go(left, 1);
+      op.firstSummit();
+      local(savedState = op.getExpansionState());
+      op.collapse();
+      local(isCollapsed = not op.subsExpanded());
+      op.setExpansionState(savedState);
+      local(isExpanded = op.subsExpanded());
+      return isCollapsed and isExpanded
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.setExpansionState - returns boolean true on success"
+    description: "setExpansionState returns true when state is set successfully"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Parent", down);
+      op.insert("Child", right);
+      op.go(left, 1);
+      local(state = op.getExpansionState());
+      return op.setExpansionState(state)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.setExpansionState - round-trip expansion state"
+    description: "Get state, modify expansion, restore state"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Parent", down);
+      op.insert("Child 1", right);
+      op.insert("Child 2", down);
+      op.go(left, 1);
+      op.expand(infinity);
+      local(expandedState = op.getExpansionState());
+      op.collapse();
+      op.setExpansionState(expandedState);
+      return op.subsExpanded()
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.setExpansionState - complex outline with multiple levels"
+    description: "Save and restore expansion state in multi-level outline"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Level 1", down);
+      op.insert("Level 2", right);
+      op.insert("Level 3", right);
+      op.go(left, 2);
+      op.expand(infinity);
+      local(state = op.getExpansionState());
+      op.collapse();
+      op.setExpansionState(state);
+      return op.subsExpanded()
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.setExpansionState - requires address parameter"
+    description: "setExpansionState requires address parameter (should fail without it)"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Parent", down);
+      op.insert("Child", right);
+      op.go(left, 1);
+      op.setExpansionState()
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "op.setExpansionState - invalid address type should fail"
+    description: "setExpansionState with non-address type should error"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Parent", down);
+      op.insert("Child", right);
+      op.go(left, 1);
+      op.setExpansionState("not an address")
+    expected_success: false
+    expected_error_type: "script_error"
+
+  # ====================================================================
+  # Phase 3: Scroll State (op.getScrollState, op.setScrollState)
+  # ====================================================================
+
+  - name: "op.getScrollState - returns address type"
+    description: "getScrollState returns long (1-based line number) for scroll position"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line 1", down);
+      return typeof(op.getScrollState())
+    expected_success: true
+    expected_result: "long"
+
+  - name: "op.getScrollState - simple outline scroll state"
+    description: "Get scroll state from simple outline"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line 1", down);
+      op.insert("Line 2", down);
+      local(state = op.getScrollState());
+      return defined(state)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.getScrollState - no parameters required"
+    description: "getScrollState takes no parameters"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      return typeof(op.getScrollState())
+    expected_success: true
+    expected_result: "long"
+
+  - name: "op.getScrollState - extra parameters should fail"
+    description: "getScrollState with extra parameters should error"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      op.getScrollState("extra")
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "op.setScrollState - restore saved scroll state"
+    description: "Set scroll state to previously saved state"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line 1", down);
+      op.insert("Line 2", down);
+      op.insert("Line 3", down);
+      local(savedState = op.getScrollState());
+      return op.setScrollState(savedState)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.setScrollState - returns boolean true on success"
+    description: "setScrollState returns true when state is set successfully"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      local(state = op.getScrollState());
+      return op.setScrollState(state)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.setScrollState - round-trip scroll state"
+    description: "Get scroll state, navigate, restore scroll state"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      local(i);
+      for i = 1 to 20 {
+        op.insert("Line " + i, down)
+      };
+      op.firstSummit();
+      local(topState = op.getScrollState());
+      op.go(down, 10);
+      op.setScrollState(topState);
+      return op.getLineText()
+    expected_success: true
+    expected_result: "Line 20"
+
+  - name: "op.setScrollState - requires address parameter"
+    description: "setScrollState requires address parameter (should fail without it)"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      op.setScrollState()
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "op.setScrollState - invalid address type should fail"
+    description: "setScrollState with non-address type should error"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      op.setScrollState("not an address")
+    expected_success: false
+    expected_error_type: "script_error"
+
+  # ====================================================================
+  # Phase 3: Refcon (op.getRefcon, op.setRefcon)
+  # ====================================================================
+
+  - name: "op.getRefcon - returns long type"
+    description: "getRefcon returns long (32-bit integer) reference constant"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      return typeof(op.getRefcon())
+    expected_success: true
+    expected_result: "long"
+
+  - name: "op.getRefcon - default refcon is zero"
+    description: "New outline nodes have refcon initialized to 0"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      return op.getRefcon()
+    expected_success: true
+    expected_result: "0"
+
+  - name: "op.getRefcon - no parameters required"
+    description: "getRefcon takes no parameters"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      return typeof(op.getRefcon())
+    expected_success: true
+    expected_result: "long"
+
+  - name: "op.getRefcon - extra parameters should fail"
+    description: "getRefcon with extra parameters should error"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      op.getRefcon("extra")
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "op.setRefcon - set positive refcon value"
+    description: "Set refcon to positive integer value"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      op.setRefcon(12345);
+      return op.getRefcon()
+    expected_success: true
+    expected_result: "12345"
+
+  - name: "op.setRefcon - set negative refcon value"
+    description: "Set refcon to negative integer value"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      op.setRefcon(-9999);
+      return op.getRefcon()
+    expected_success: true
+    expected_result: "-9999"
+
+  - name: "op.setRefcon - set zero refcon value"
+    description: "Set refcon to zero (reset to default)"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      op.setRefcon(100);
+      op.setRefcon(0);
+      return op.getRefcon()
+    expected_success: true
+    expected_result: "0"
+
+  - name: "op.setRefcon - returns boolean true on success"
+    description: "setRefcon returns true when refcon is set successfully"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      return op.setRefcon(42)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.setRefcon - round-trip refcon value"
+    description: "Set refcon, verify with getRefcon"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      op.setRefcon(99999);
+      return op.getRefcon()
+    expected_success: true
+    expected_result: "99999"
+
+  - name: "op.setRefcon - different refcon per node"
+    description: "Each node can have independent refcon value"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line 1", down);
+      op.setRefcon(111);
+      op.insert("Line 2", down);
+      op.setRefcon(222);
+      op.insert("Line 3", down);
+      op.setRefcon(333);
+      op.go(up, 2);
+      return op.getRefcon()
+    expected_success: true
+    expected_result: "111"
+
+  - name: "op.setRefcon - refcon persists across navigation"
+    description: "Refcon value persists when navigating away and back"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line 1", down);
+      op.setRefcon(777);
+      op.insert("Line 2", down);
+      op.go(up, 1);
+      return op.getRefcon()
+    expected_success: true
+    expected_result: "777"
+
+  - name: "op.setRefcon - requires long parameter"
+    description: "setRefcon requires long parameter (should fail without it)"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      op.setRefcon()
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "op.setRefcon - non-long parameter should fail"
+    description: "setRefcon with non-long type should error"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      op.setRefcon("not a number")
+    expected_success: false
+    expected_error_type: "script_error"
+
+  # ====================================================================
+  # Phase 3: Edge Cases - No Target Set
+  # ====================================================================
+
+  - name: "op.getCursor - no target set should fail"
+    description: "getCursor requires outline set as target"
+    script: |
+      target.clear();
+      op.getCursor()
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "op.setCursor - no target set should fail"
+    description: "setCursor requires outline set as target"
+    script: |
+      target.clear();
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      local(cursor = op.getCursor());
+      target.clear();
+      op.setCursor(cursor)
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "op.getDisplay - no target set should fail"
+    description: "getDisplay requires outline set as target"
+    script: |
+      target.clear();
+      op.getDisplay()
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "op.setDisplay - no target set should fail"
+    description: "setDisplay requires outline set as target"
+    script: |
+      target.clear();
+      op.setDisplay(false)
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "op.getExpansionState - no target set should fail"
+    description: "getExpansionState requires outline set as target"
+    script: |
+      target.clear();
+      op.getExpansionState()
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "op.setExpansionState - no target set should fail"
+    description: "setExpansionState requires outline set as target"
+    script: |
+      target.clear();
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Parent", down);
+      op.insert("Child", right);
+      op.go(left, 1);
+      local(state = op.getExpansionState());
+      target.clear();
+      op.setExpansionState(state)
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "op.getScrollState - no target set should fail"
+    description: "getScrollState requires outline set as target"
+    script: |
+      target.clear();
+      op.getScrollState()
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "op.setScrollState - no target set should fail"
+    description: "setScrollState requires outline set as target"
+    script: |
+      target.clear();
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      local(state = op.getScrollState());
+      target.clear();
+      op.setScrollState(state)
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "op.getRefcon - no target set should fail"
+    description: "getRefcon requires outline set as target"
+    script: |
+      target.clear();
+      op.getRefcon()
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "op.setRefcon - no target set should fail"
+    description: "setRefcon requires outline set as target"
+    script: |
+      target.clear();
+      op.setRefcon(100)
+    expected_success: false
+    expected_error_type: "script_error"
+
+  # ====================================================================
+  # Phase 3: Edge Cases - Wrong Target Type
+  # ====================================================================
+
+  - name: "op.getCursor - table target should fail"
+    description: "getCursor requires outlineType target, not tableType"
+    script: |
+      lang.new(tableType, @workspace.notOutline);
+      target.set(@workspace.notOutline);
+      op.getCursor()
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "op.setDisplay - wrong target type should fail"
+    description: "setDisplay requires outlineType target"
+    script: |
+      lang.new(tableType, @workspace.table);
+      target.set(@workspace.table);
+      op.setDisplay(false)
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "op.getExpansionState - wrong target type should fail"
+    description: "getExpansionState requires outlineType target"
+    script: |
+      lang.new(tableType, @workspace.table);
+      target.set(@workspace.table);
+      op.getExpansionState()
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "op.getRefcon - wrong target type should fail"
+    description: "getRefcon requires outlineType target"
+    script: |
+      lang.new(tableType, @workspace.table);
+      target.set(@workspace.table);
+      op.getRefcon()
+    expected_success: false
+    expected_error_type: "script_error"
+
+  # ====================================================================
+  # Phase 3: Workflow Tests - Complex State Management
+  # ====================================================================
+
+  - name: "workflow - save and restore cursor during bulk operations"
+    description: "Save cursor, do bulk operations, restore cursor position"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line 1", down);
+      op.insert("Line 2", down);
+      op.insert("Line 3", down);
+      op.go(up, 1);
+      local(savedCursor = op.getCursor());
+      local(i);
+      for i = 1 to 5 {
+        op.insert("New " + i, down)
+      };
+      op.setCursor(savedCursor);
+      return op.getLineText()
+    expected_success: true
+    expected_result: "Line 2"
+
+  - name: "workflow - disable display during bulk insert and restore"
+    description: "Disable display, insert many lines, re-enable display"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.setDisplay(false);
+      local(i);
+      for i = 1 to 50 {
+        op.insert("Line " + i, down)
+      };
+      op.setDisplay(true);
+      return op.countSummits()
+    expected_success: true
+    expected_result: "51"
+
+  - name: "workflow - save expansion state before collapse and restore"
+    description: "Save expansion state, collapse all, restore state"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Parent 1", down);
+      op.insert("Child 1a", right);
+      op.insert("Child 1b", down);
+      op.go(left, 1);
+      op.expand(infinity);
+      op.insert("Parent 2", down);
+      op.insert("Child 2a", right);
+      op.go(left, 1);
+      op.expand(infinity);
+      op.firstSummit();
+      local(savedState = op.getExpansionState());
+      op.collapse();
+      local(collapsed = not op.subsExpanded());
+      op.setExpansionState(savedState);
+      local(expanded = op.subsExpanded());
+      return collapsed and expanded
+    expected_success: true
+    expected_result: "true"
+
+  - name: "workflow - refcon as node identifier"
+    description: "Use refcon to mark and find specific nodes"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Item A", down);
+      op.setRefcon(1001);
+      op.insert("Item B", down);
+      op.setRefcon(1002);
+      op.insert("Item C", down);
+      op.setRefcon(1003);
+      op.go(up, 1);
+      return op.getRefcon()
+    expected_success: true
+    expected_result: "1002"
+
+  - name: "workflow - multiple state operations combined"
+    description: "Combine cursor, display, expansion, and refcon operations"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.setDisplay(false);
+      op.insert("Root", down);
+      op.setRefcon(100);
+      op.insert("Child", right);
+      op.setRefcon(200);
+      op.go(left, 1);
+      local(cursor = op.getCursor());
+      local(expState = op.getExpansionState());
+      op.expand(1);
+      op.setDisplay(true);
+      local(refcon = op.getRefcon());
+      return refcon
+    expected_success: true
+    expected_result: "100"
+
+  # ====================================================================
   # Integration with Other Verbs
   # ====================================================================
 
@@ -1326,3 +2244,723 @@ tests:
       return op.countSubs(1) == 1
     expected_success: true
     expected_result: "true"
+
+  # ====================================================================
+  # Phase 3: Additional State Management Tests (TDD Preparation)
+  # ====================================================================
+  # These tests are written BEFORE implementation to follow TDD methodology
+  # All tests should FAIL initially with "not implemented" or similar error
+  # Implementation: tests/headless_op_verbs.c
+
+  # ====================================================================
+  # Phase 3: Advanced Cursor Tests (Building on Basic getCursor/setCursor)
+  # ====================================================================
+
+  - name: "op.getCursor - cursor persists during outline modification"
+    description: "Saved cursor remains valid after inserting new nodes elsewhere"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line 1", down);
+      op.insert("Line 2", down);
+      local(savedCursor = op.getCursor());
+      op.go(up, 1);
+      op.insert("Line 1.5", down);
+      op.setCursor(savedCursor);
+      return op.getLineText()
+    expected_success: true
+    expected_result: "Line 2"
+
+  - name: "op.setCursor - cursor to deleted node should fail gracefully"
+    description: "Setting cursor to deleted node should error or return false"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Delete me", down);
+      local(deadCursor = op.getCursor());
+      op.insert("Keep me", down);
+      op.go(up, 1);
+      op.deleteLine();
+      return op.setCursor(deadCursor)
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "op.setCursor - cursor after deleteSubs"
+    description: "Parent cursor remains valid after deleting children"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Parent", down);
+      local(parentCursor = op.getCursor());
+      op.insert("Child 1", right);
+      op.insert("Child 2", down);
+      op.go(left, 1);
+      op.deleteSubs();
+      op.setCursor(parentCursor);
+      return op.getLineText()
+    expected_success: true
+    expected_result: "Parent"
+
+  - name: "op.getCursor - cursor in deeply nested structure"
+    description: "Cursor correctly identifies position in deep nesting"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("L1", down);
+      op.insert("L2", right);
+      op.insert("L3", right);
+      op.insert("L4", right);
+      op.insert("L5", right);
+      local(deepCursor = op.getCursor());
+      op.firstSummit();
+      op.setCursor(deepCursor);
+      return op.level()
+    expected_success: true
+    expected_result: "5"
+
+  # ====================================================================
+  # Phase 3: Display State Edge Cases
+  # ====================================================================
+
+  - name: "op.setDisplay - double disable is idempotent"
+    description: "Setting display false twice should work (idempotent)"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.setDisplay(false);
+      op.setDisplay(false);
+      return op.getDisplay()
+    expected_success: true
+    expected_result: "false"
+
+  - name: "op.setDisplay - double enable is idempotent"
+    description: "Setting display true twice should work (idempotent)"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.setDisplay(false);
+      op.setDisplay(true);
+      op.setDisplay(true);
+      return op.getDisplay()
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.setDisplay - state persists across operations"
+    description: "Display state remains after outline operations"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.setDisplay(false);
+      op.insert("Line 1", down);
+      op.insert("Line 2", down);
+      op.insert("Line 3", down);
+      return op.getDisplay()
+    expected_success: true
+    expected_result: "false"
+
+  - name: "op.getDisplay - independent across multiple outlines"
+    description: "Each outline has independent display state"
+    script: |
+      lang.new(outlineType, @workspace.outline1);
+      lang.new(outlineType, @workspace.outline2);
+      target.set(@workspace.outline1);
+      op.setDisplay(false);
+      target.set(@workspace.outline2);
+      op.setDisplay(true);
+      target.set(@workspace.outline1);
+      return op.getDisplay()
+    expected_success: true
+    expected_result: "false"
+
+  # ====================================================================
+  # Phase 3: Expansion State Edge Cases
+  # ====================================================================
+
+  - name: "op.setExpansionState - state from different outline should fail"
+    description: "Expansion state is outline-specific"
+    script: |
+      lang.new(outlineType, @workspace.outline1);
+      lang.new(outlineType, @workspace.outline2);
+      target.set(@workspace.outline1);
+      op.insert("Parent 1", down);
+      op.insert("Child 1", right);
+      op.go(left, 1);
+      local(state1 = op.getExpansionState());
+      target.set(@workspace.outline2);
+      op.insert("Parent 2", down);
+      op.insert("Child 2", right);
+      op.go(left, 1);
+      op.setExpansionState(state1)
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "op.getExpansionState - empty outline state"
+    description: "Get expansion state from empty outline (edge case)"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      local(state = op.getExpansionState());
+      return defined(state)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.setExpansionState - restore after structural changes"
+    description: "Expansion state restoration after adding/removing nodes"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Parent", down);
+      op.insert("Child 1", right);
+      op.insert("Child 2", down);
+      op.go(left, 1);
+      op.expand(infinity);
+      local(savedState = op.getExpansionState());
+      op.collapse();
+      op.go(right, 1);
+      op.insert("Child 3", down);
+      op.go(left, 1);
+      op.setExpansionState(savedState);
+      return op.subsExpanded()
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.getExpansionState - state is independent of cursor"
+    description: "Expansion state captures entire outline, not just cursor position"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Parent 1", down);
+      op.insert("Child 1", right);
+      op.go(left, 1);
+      op.expand(1);
+      local(expanded1 = op.subsExpanded());
+      op.insert("Parent 2", down);
+      op.insert("Child 2", right);
+      op.go(left, 1);
+      local(state = op.getExpansionState());
+      op.collapse();
+      op.setExpansionState(state);
+      local(expanded2 = op.subsExpanded());
+      return expanded1 and (not expanded2)
+    expected_success: true
+    expected_result: "true"
+
+  # ====================================================================
+  # Phase 3: Scroll State Edge Cases
+  # ====================================================================
+
+  - name: "op.getScrollState - empty outline scroll state"
+    description: "Get scroll state from empty outline"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      local(state = op.getScrollState());
+      return defined(state)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.setScrollState - scroll state from different outline should fail"
+    description: "Scroll state is outline-specific"
+    script: |
+      lang.new(outlineType, @workspace.outline1);
+      lang.new(outlineType, @workspace.outline2);
+      target.set(@workspace.outline1);
+      op.insert("Line 1", down);
+      local(state1 = op.getScrollState());
+      target.set(@workspace.outline2);
+      op.insert("Line 2", down);
+      op.setScrollState(state1)
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "op.setScrollState - state persists after outline modification"
+    description: "Scroll state remains valid after inserting nodes"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line 1", down);
+      op.insert("Line 2", down);
+      local(savedState = op.getScrollState());
+      op.insert("Line 3", down);
+      op.insert("Line 4", down);
+      return op.setScrollState(savedState)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.getScrollState - independent across multiple outlines"
+    description: "Each outline has independent scroll state"
+    script: |
+      lang.new(outlineType, @workspace.outline1);
+      lang.new(outlineType, @workspace.outline2);
+      target.set(@workspace.outline1);
+      op.insert("Line 1", down);
+      local(state1 = op.getScrollState());
+      target.set(@workspace.outline2);
+      op.insert("Line 2", down);
+      local(state2 = op.getScrollState());
+      return state1 != state2
+    expected_success: true
+    expected_result: "true"
+
+  # ====================================================================
+  # Phase 3: Refcon Edge Cases
+  # ====================================================================
+
+  - name: "op.setRefcon - large positive value (32-bit boundary)"
+    description: "Test refcon with large positive value near INT32_MAX"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      op.setRefcon(2147483647);
+      return op.getRefcon()
+    expected_success: true
+    expected_result: "2147483647"
+
+  - name: "op.setRefcon - large negative value (32-bit boundary)"
+    description: "Test refcon with large negative value near INT32_MIN"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      op.setRefcon(-2147483648);
+      return op.getRefcon()
+    expected_success: true
+    expected_result: "-2147483648"
+
+  - name: "op.getRefcon - refcon persists after navigation"
+    description: "Refcon values persist when navigating away and back"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line 1", down);
+      op.setRefcon(111);
+      op.insert("Line 2", down);
+      op.setRefcon(222);
+      op.insert("Line 3", down);
+      op.setRefcon(333);
+      op.go(up, 2);
+      local(refcon1 = op.getRefcon());
+      op.go(down, 1);
+      local(refcon2 = op.getRefcon());
+      return (refcon1 == 111) and (refcon2 == 222)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.setRefcon - refcon survives promote/demote"
+    description: "Refcon value persists when changing node hierarchy"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Parent", down);
+      op.insert("Child", right);
+      op.setRefcon(999);
+      op.promote();
+      local(afterPromote = op.getRefcon());
+      op.demote();
+      local(afterDemote = op.getRefcon());
+      return (afterPromote == 999) and (afterDemote == 999)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.setRefcon - refcon independent across nodes"
+    description: "Each node has independent refcon value (no interference)"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      local(i);
+      for i = 1 to 10 {
+        op.insert("Line " + i, down);
+        op.setRefcon(i * 100)
+      };
+      op.firstSummit();
+      local(ok = true);
+      for i = 2 to 11 {
+        op.go(down, 1);
+        if op.getRefcon() != ((i - 1) * 100) {
+          ok = false
+        }
+      };
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.getRefcon - refcon after insert preserves parent refcon"
+    description: "Inserting child doesn't affect parent refcon"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Parent", down);
+      op.setRefcon(555);
+      op.insert("Child", right);
+      op.setRefcon(666);
+      op.go(left, 1);
+      return op.getRefcon()
+    expected_success: true
+    expected_result: "555"
+
+  # ====================================================================
+  # Phase 3: Complex Workflow Tests (Multiple State Operations)
+  # ====================================================================
+
+  - name: "workflow - save all state before bulk operation and restore"
+    description: "Save cursor, expansion, scroll state, perform operations, restore all state"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Parent 1", down);
+      op.insert("Child 1a", right);
+      op.insert("Child 1b", down);
+      op.go(left, 1);
+      op.expand(1);
+      op.insert("Parent 2", down);
+      op.insert("Child 2a", right);
+      op.go(left, 1);
+      local(savedCursor = op.getCursor());
+      local(savedExpansion = op.getExpansionState());
+      local(savedScroll = op.getScrollState());
+      op.firstSummit();
+      op.collapse();
+      op.setCursor(savedCursor);
+      op.setExpansionState(savedExpansion);
+      op.setScrollState(savedScroll);
+      return op.getLineText()
+    expected_success: true
+    expected_result: "Parent 2"
+
+  - name: "workflow - refcon as node metadata during tree reorganization"
+    description: "Use refcon to track nodes during complex reorganization"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Item A", down);
+      op.setRefcon(1001);
+      op.insert("Item B", down);
+      op.setRefcon(1002);
+      op.insert("Item C", down);
+      op.setRefcon(1003);
+      op.go(up, 1);
+      op.demote();
+      op.go(up, 1);
+      local(refconB = op.getRefcon());
+      op.go(right, 1);
+      local(refconBChild = op.getRefcon());
+      return (refconB == 1002) and (refconBChild == 1003)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "workflow - display off during state save/restore cycle"
+    description: "Disable display, save state, modify outline, restore state, enable display"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.setDisplay(false);
+      local(i);
+      for i = 1 to 20 {
+        op.insert("Line " + i, down)
+      };
+      op.firstSummit();
+      local(savedCursor = op.getCursor());
+      op.go(down, 10);
+      op.setCursor(savedCursor);
+      op.setDisplay(true);
+      return op.getLineText()
+    expected_success: true
+    expected_result: "Line 20"
+
+  - name: "workflow - multiple outline state management"
+    description: "Manage state for multiple outlines simultaneously"
+    script: |
+      lang.new(outlineType, @workspace.o1);
+      lang.new(outlineType, @workspace.o2);
+      target.set(@workspace.o1);
+      op.insert("O1 Line 1", down);
+      op.setRefcon(111);
+      local(cursor1 = op.getCursor());
+      target.set(@workspace.o2);
+      op.insert("O2 Line 1", down);
+      op.setRefcon(222);
+      local(cursor2 = op.getCursor());
+      target.set(@workspace.o1);
+      op.setCursor(cursor1);
+      local(refcon1 = op.getRefcon());
+      target.set(@workspace.o2);
+      op.setCursor(cursor2);
+      local(refcon2 = op.getRefcon());
+      return (refcon1 == 111) and (refcon2 == 222)
+    expected_success: true
+    expected_result: "true"
+
+  # ====================================================================
+  # Phase 3: Stress Tests for State Management
+  # ====================================================================
+
+  - name: "stress test - rapid cursor save/restore cycles"
+    description: "Repeatedly save and restore cursor during navigation"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      local(i);
+      for i = 1 to 20 {
+        op.insert("Line " + i, down)
+      };
+      op.firstSummit();
+      local(ok = true);
+      for i = 1 to 10 {
+        local(saved = op.getCursor());
+        op.go(down, 5);
+        op.setCursor(saved);
+        if op.getLineText() != "Line 20" {
+          ok = false
+        }
+      };
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  - name: "stress test - many refcon assignments"
+    description: "Assign refcon to many nodes in large outline"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.setDisplay(false);
+      local(i);
+      for i = 1 to 100 {
+        op.insert("Node " + i, down);
+        op.setRefcon(i * 10)
+      };
+      op.setDisplay(true);
+      op.firstSummit();
+      local(ok = true);
+      for i = 2 to 101 {
+        op.go(down, 1);
+        if op.getRefcon() != ((i - 1) * 10) {
+          ok = false
+        }
+      };
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  - name: "stress test - expansion state with deep nesting"
+    description: "Save and restore expansion state in deeply nested outline"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("L1", down);
+      local(i);
+      for i = 2 to 10 {
+        op.insert("L" + i, right);
+        op.expand(1)
+      };
+      op.firstSummit();
+      local(savedState = op.getExpansionState());
+      op.collapse();
+      op.setExpansionState(savedState);
+      op.go(right, 1);
+      return op.level()
+    expected_success: true
+    expected_result: "2"
+
+  # ====================================================================
+  # Phase 3: Error Recovery Tests
+  # ====================================================================
+
+  - name: "error recovery - setCursor after outline deleted"
+    description: "Setting cursor fails gracefully if outline no longer exists"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      local(cursor = op.getCursor());
+      target.clear();
+      op.setCursor(cursor)
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "error recovery - getDisplay with no target"
+    description: "State queries fail gracefully without target"
+    script: |
+      target.clear();
+      op.getDisplay()
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "error recovery - setRefcon with no current node"
+    description: "Setting refcon on empty outline should fail"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.setRefcon(100)
+    expected_success: false
+    expected_error_type: "script_error"
+
+  # ====================================================================
+  # Phase 3: Type Safety Tests
+  # ====================================================================
+
+  - name: "type safety - setCursor requires address type"
+    description: "setCursor rejects non-address types"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      op.setCursor(12345)
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "type safety - setDisplay requires boolean type"
+    description: "setDisplay rejects non-boolean types"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.setDisplay(1)
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "type safety - setExpansionState requires address type"
+    description: "setExpansionState rejects non-address types"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Parent", down);
+      op.insert("Child", right);
+      op.go(left, 1);
+      op.setExpansionState("not an address")
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "type safety - setScrollState requires address type"
+    description: "setScrollState rejects non-address types"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      op.setScrollState(42)
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "type safety - setRefcon requires long type"
+    description: "setRefcon rejects non-long types"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      op.setRefcon(true)
+    expected_success: false
+    expected_error_type: "script_error"
+
+  # ====================================================================
+  # Phase 3: Return Type Validation Tests
+  # ====================================================================
+
+  - name: "return type - getCursor returns address"
+    description: "Verify getCursor return type is longType (1-based line number)"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      local(cursor = op.getCursor());
+      return typeof(cursor)
+    expected_success: true
+    expected_result: "long"
+
+  - name: "return type - getDisplay returns boolean"
+    description: "Verify getDisplay return type is booleanType"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      local(display = op.getDisplay());
+      return typeof(display)
+    expected_success: true
+    expected_result: "bool"
+
+  - name: "return type - getExpansionState returns address"
+    description: "Verify getExpansionState return type is listType"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      local(state = op.getExpansionState());
+      return typeof(state)
+    expected_success: true
+    expected_result: "list"
+
+  - name: "return type - getScrollState returns address"
+    description: "Verify getScrollState return type is longType (1-based line number)"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      local(state = op.getScrollState());
+      return typeof(state)
+    expected_success: true
+    expected_result: "long"
+
+  - name: "return type - getRefcon returns long"
+    description: "Verify getRefcon return type is longType"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      local(refcon = op.getRefcon());
+      return typeof(refcon)
+    expected_success: true
+    expected_result: "long"
+
+  - name: "return type - setCursor returns boolean"
+    description: "Verify setCursor return type is booleanType"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      local(cursor = op.getCursor());
+      local(result = op.setCursor(cursor));
+      return typeof(result)
+    expected_success: true
+    expected_result: "bool"
+
+  - name: "return type - setDisplay returns boolean"
+    description: "Verify setDisplay return type is booleanType"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      local(result = op.setDisplay(false));
+      return typeof(result)
+    expected_success: true
+    expected_result: "bool"
+
+  - name: "return type - setExpansionState returns boolean"
+    description: "Verify setExpansionState return type is booleanType"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      local(state = op.getExpansionState());
+      local(result = op.setExpansionState(state));
+      return typeof(result)
+    expected_success: true
+    expected_result: "bool"
+
+  - name: "return type - setScrollState returns boolean"
+    description: "Verify setScrollState return type is booleanType"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      local(state = op.getScrollState());
+      local(result = op.setScrollState(state));
+      return typeof(result)
+    expected_success: true
+    expected_result: "bool"
+
+  - name: "return type - setRefcon returns boolean"
+    description: "Verify setRefcon return type is booleanType"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      local(result = op.setRefcon(100));
+      return typeof(result)
+    expected_success: true
+    expected_result: "bool"

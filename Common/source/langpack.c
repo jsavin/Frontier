@@ -164,13 +164,21 @@ boolean langpackvalue (tyvaluerecord val, Handle *h, hdlhashnode hnode) {
 			break;
 		
 		case longvaluetype:
-		case ostypevaluetype:
 		case enumvaluetype:
 		case fixedvaluetype:
-			db_format_write_be32(&val.data.longvalue, (uint32_t) val.data.longvalue);
+			/* v7 format: Store full 64-bit values in big-endian format */
+			db_format_write_be64(&val.data.longvalue, (uint64_t) val.data.longvalue);
 
 			fl = langpackdata (sizeof (val.data.longvalue), &val.data.longvalue, hpackedvalue);
-			
+
+			break;
+
+		case ostypevaluetype:
+			/* OSType is always 32-bit (4-character code) */
+			db_format_write_be32(&val.data.longvalue, (uint32_t) val.data.longvalue);
+
+			fl = langpackdata (sizeof (uint32_t), &val.data.longvalue, hpackedvalue);
+
 			break;
 		
 		case pointvaluetype:
