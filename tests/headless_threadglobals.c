@@ -51,6 +51,11 @@ hdlthreadglobals hthreadglobals = &headless_threadglobals_ptr;
 #undef fllanghashassignprotect
 #undef fllangexternalvalueprotect
 
+/* ADR-006: Undefine outline context macros for initialization */
+#undef outlinedata
+#undef topoutlinestack
+#undef outlinestack
+
 void headless_init_threadglobals(void) {
 	/* ADR-005: Parameter handling state initialization */
 	headless_threadglobals_data.flnextparamislast = false;
@@ -61,6 +66,13 @@ void headless_init_threadglobals(void) {
 	setemptystring(headless_threadglobals_data.bsfunctionname);
 	headless_threadglobals_data.fllanghashassignprotect = false;
 	headless_threadglobals_data.fllangexternalvalueprotect = false;
+
+	/* ADR-006: Outline context initialization */
+	headless_threadglobals_data.outlinedata = nil;
+	headless_threadglobals_data.topoutlinestack = 0;
+	for (int i = 0; i < ctoutlinestack; i++) {
+		headless_threadglobals_data.outlinestack[i] = nil;
+	}
 
 	/* Other fields initialized by runtime (langstartup.c, db_format.c):
 	 *   - htablestack: Set during lang initialization
@@ -80,3 +92,8 @@ void headless_init_threadglobals(void) {
 #define bsfunctionname ((**hthreadglobals).bsfunctionname)
 #define fllanghashassignprotect ((**hthreadglobals).fllanghashassignprotect)
 #define fllangexternalvalueprotect ((**hthreadglobals).fllangexternalvalueprotect)
+
+/* ADR-006: Restore outline context macros */
+#define outlinedata ((**hthreadglobals).outlinedata)
+#define topoutlinestack ((**hthreadglobals).topoutlinestack)
+#define outlinestack ((**hthreadglobals).outlinestack)

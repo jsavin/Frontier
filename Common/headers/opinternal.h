@@ -38,10 +38,15 @@
 
 #include "op_context.h" /* Phase 2E: context-aware operations */
 
+/* ADR-006: Include processinternal.h for outline context macros */
+#ifndef processinternalinclude
+	#include "processinternal.h"
+#endif
+
 #ifndef opscreenmapinclude
 
 	#include "opscreenmap.h"
-	
+
 #endif
 
 #ifndef opdisplayinclude
@@ -104,9 +109,11 @@ typedef boolean (*opundocallback) (hdlheadrecord, boolean);
 
 #define ctoutlinestack 10 /*we can remember outline contexts up to 10 levels deep*/
 
-extern short topoutlinestack;
-
-extern hdloutlinerecord outlinestack [ctoutlinestack];
+/* ADR-006: Outline stack migrated to thread-local storage - see processinternal.h
+ * Access via macros:
+ *   #define topoutlinestack ((**hthreadglobals).topoutlinestack)
+ *   #define outlinestack ((**hthreadglobals).outlinestack)
+ */
 
 
 /*globals*/

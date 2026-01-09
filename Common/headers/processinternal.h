@@ -249,6 +249,15 @@ typedef struct tythreadglobals {
 #define fllanghashassignprotect ((**hthreadglobals).fllanghashassignprotect)
 #define fllangexternalvalueprotect ((**hthreadglobals).fllangexternalvalueprotect)
 
+/* ADR-006: Thread-local outline context (backward-compatible macros)
+ * These macros provide transparent access to per-thread outline state,
+ * replacing the former global variables. All 154 call sites that reference
+ * outlinedata, topoutlinestack, or outlinestack now access thread-local storage.
+ */
+#define outlinedata ((**hthreadglobals).outlinedata)
+#define topoutlinestack ((**hthreadglobals).topoutlinestack)
+#define outlinestack ((**hthreadglobals).outlinestack)
+
 /*globals*/
 
 extern hdlthreadglobals hthreadglobals; /* ADR-005: Current thread's globals for macro access */

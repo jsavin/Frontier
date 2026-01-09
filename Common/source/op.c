@@ -66,9 +66,9 @@
 #endif
 
 
-WindowPtr outlinewindow; 
+WindowPtr outlinewindow;
 
-hdloutlinerecord outlinedata; 
+/* ADR-006: outlinedata migrated to thread-local storage - see processinternal.h */
 
 hdlwindowinfo outlinewindowinfo; 
 

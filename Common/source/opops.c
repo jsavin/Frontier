@@ -66,10 +66,12 @@ typedef struct tyscanrecord { /*information for contains/find/search recursive s
 #pragma options align=reset
 
 
-
-short topoutlinestack = 0;
-
-hdloutlinerecord outlinestack [ctoutlinestack];
+/* ADR-006: Outline context migrated to thread-local storage (tythreadglobals)
+ * These globals have been removed - access via macros defined in processinternal.h:
+ *   #define outlinedata ((**hthreadglobals).outlinedata)
+ *   #define topoutlinestack ((**hthreadglobals).topoutlinestack)
+ *   #define outlinestack ((**hthreadglobals).outlinestack)
+ */
 
 
 hdloutlinerecord opsetoutline (hdloutlinerecord houtline) {

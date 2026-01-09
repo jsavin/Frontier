@@ -927,7 +927,7 @@ static boolean dbgetmoddateverb (hdltreenode hparam1, tyvaluerecord *vreturned) 
 	} /*dbgetmoddateverb*/
 
 
-static boolean dbfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vreturned, bigstring bserror) {
+boolean dbfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vreturned, bigstring bserror) {
 #pragma unused (bserror)
 
 	/*
