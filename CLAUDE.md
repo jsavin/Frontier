@@ -147,7 +147,10 @@ git notes show refs/heads/archive/carbon-migration
      - `./tools/run_headless_tests.sh` (unit tests)
      - `cd tests && make test-integration` (integration tests)
      - Fix any failures before pushing
-  4. Push to origin
+  4. Push to origin: `git push origin feature/<branch-name>`
+     - **CRITICAL**: Push the FEATURE BRANCH, NEVER push to origin/develop directly
+     - **NEVER run `git push origin develop`** without explicit user instruction
+     - All changes to develop MUST go through PR review process
   5. Use pull-request agent to create PR
   6. **Run `./tools/monitor_pr_review.sh <PR>` after EVERY push**
   7. **ALWAYS discuss bot feedback with user before addressing** - Never make changes autonomously
