@@ -593,80 +593,96 @@ static stacktracer (short stacktop) {
 */
 	
 boolean shellpushglobals (WindowPtr wpush) {
-	
+
 	/*
 	8/31/90 DW: if the caller is pushing a nil window, just save off the state
 	and don't set the context.  this allows you to save the global data, mess
 	with some of the globals, and then pop yourself back to the way things were.
+
+	2026-01-09: Extended to save/restore currenthashtable as well as shell window.
+	This fixes hash table context corruption during nested verb execution.
+	See: planning/phase3/DB_VERB_HASH_CONTEXT_BUG_ANALYSIS.md
 	*/
-	
+
 	hdlwindowinfo hinfo;
-	
+
 	if (globalsstack.top >= ctglobals) {
-		
+
 		shellinternalerror (idglobalsstackfull, STR_globals_stack_overflow);
-		
+
 		return (false);
 		}
-	
-	globalsstack.stack [globalsstack.top++] = shellwindow;
-	
+
+	/* Save both window and hash table context */
+	globalsstack.stack [globalsstack.top].window = shellwindow;
+	globalsstack.stack [globalsstack.top].hashtable = currenthashtable;
+	globalsstack.top++;
+
 	/*stacktracer (globalsstack.top);*/
-	
+
 	/*
 	if (wpush == nil) /%caller just wants state saved%/ {
-		
+
 		shellwindow = nil;
-		
+
 		return (true);
 		}
-	
+
 	return (shellsetglobals (wpush));
 	*/
-	
+
 	if (getwindowinfo (wpush, &hinfo))
 		(**hinfo).ctpushes++;
-	
+
 	if (shellsetglobals (wpush))
 		(*shellglobals.pushroutine) ();
-	
+
 	return (true);
 	} /*shellpushglobals*/
 
 
 boolean shellpopglobals (void) {
-	
+
+	/*
+	2026-01-09: Restore both window and hash table context.
+	This fixes hash table context corruption during nested verb execution.
+	See: planning/phase3/DB_VERB_HASH_CONTEXT_BUG_ANALYSIS.md
+	*/
+
 	WindowPtr w = shellwindow;
 	hdlwindowinfo hinfo;
-	
+
 	if (globalsstack.top <= 0) {
-	
+
 		shellsetglobals (nil);
-		
+
 		return (false);
 		}
-	
+
 	if (shellwindow != nil) { /*there are some globals currently set - set data to nil*/
-		
+
 		(*shellglobals.poproutine) ();
-		
+
 		*shellglobals.dataholder = nil;
-		
+
 		*shellglobals.infoholder = nil;
-	
+
 		(*shellglobals.setglobalsroutine) ();
 		}
-	
-	shellsetglobals (globalsstack.stack [--globalsstack.top]);
-	
+
+	/* Restore both window and hash table context */
+	globalsstack.top--;
+	shellsetglobals (globalsstack.stack [globalsstack.top].window);
+	currenthashtable = globalsstack.stack [globalsstack.top].hashtable;
+
 	if (getwindowinfo (w, &hinfo)) {
-		
+
 		(**hinfo).ctpushes--;
-		
+
 		if ((**hinfo).fldisposewhenpopped)
 			disposeshellwindow ((**hinfo).macwindow);
 		}
-	
+
 	return (true);
 	} /*shellpopglobals*/
 

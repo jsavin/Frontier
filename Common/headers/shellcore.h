@@ -44,12 +44,25 @@ supporting the collaborative ODB foundation.
 
 #define ctglobals 32 /*we can remember globals up to ctglobals levels deep*/
 
+/* Forward declare hdlhashtable to avoid circular dependency */
+#ifndef hdlhashtable
+	typedef struct tyhashtable **hdlhashtable;
+#endif
+
+/* Entry in the globals stack - saves both window and hash table context */
+#pragma pack(2)
+typedef struct tyglobalsstackentry {
+	WindowPtr window;           /* Window context (void* in headless builds) */
+	hdlhashtable hashtable;     /* Hash table context (fixes ADR-006 issue) */
+} tyglobalsstackentry;
+#pragma options align=reset
+
 #pragma pack(2)
 typedef struct tyglobalsstack {
 
 	short top;
 
-	WindowPtr stack [ctglobals]; /* WindowPtr = void* in headless builds */
+	tyglobalsstackentry stack [ctglobals]; /* Stack entries with window + hashtable */
 	} tyglobalsstack;
 #pragma options align=reset
 
