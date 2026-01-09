@@ -77,16 +77,16 @@ typedef struct tyscanrecord { /*information for contains/find/search recursive s
 hdloutlinerecord opsetoutline (hdloutlinerecord houtline) {
 	
 	/*
-	5.1.5b7 dmb: carefully manage the setting of outlinedata
+	5.1.5b7 dmb: carefully manage the setting of op_get_outlinedata()
 	
 	return the value being set for convenience
 	*/
 	
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 	
 	if (houtline != ho) {
 	
-		outlinedata = houtline;
+		op_set_outlinedata(houtline);
 		
 		if (houtline)
 			(**houtline).ctpushes++;
@@ -109,14 +109,14 @@ boolean oppushoutline (hdloutlinerecord houtline) {
 	routine, do your stuff and then call oppopoutline.
 	*/
 	
-	if (topoutlinestack >= ctoutlinestack) {
+	if (op_get_topoutlinestack() >= ctoutlinestack) {
 		
 		shellinternalerror (idoutlinestackfull, STR_outline_stack_overflow);
 		
 		return (false);
 		}
 	
-	outlinestack [topoutlinestack++] = outlinedata;
+	op_set_outlinestack(topoutlinestack++, op_get_outlinedata());
 #if defined(FRONTIER_HEADLESS)
 	{
 		const char *ctx = (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>";
@@ -124,11 +124,11 @@ boolean oppushoutline (hdloutlinerecord houtline) {
 		        ctx,
 		        (void *) houtline,
 		        houtline == nil ? NULL : *houtline,
-		        (void *) outlinedata);
+		        (void *) op_get_outlinedata());
 	}
 #endif
 	
-	outlinedata = houtline;
+	op_set_outlinedata(houtline);
 	
 	if (houtline)
 		(**houtline).ctpushes++;
@@ -139,9 +139,9 @@ boolean oppushoutline (hdloutlinerecord houtline) {
 
 boolean oppopoutline (void) {
 	
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 	
-	if (topoutlinestack <= 0)
+	if (op_get_topoutlinestack() <= 0)
 		return (false);
 	
 #if defined(FRONTIER_HEADLESS)
@@ -151,11 +151,11 @@ boolean oppopoutline (void) {
 		        ctx,
 		        (void *) ho,
 		        ho == nil ? NULL : *ho,
-		        (void *) outlinestack[topoutlinestack - 1]);
+		        (void *) op_get_outlinestack(op_get_topoutlinestack() - 1));
 	}
 #endif
 
-	outlinedata = outlinestack [--topoutlinestack];
+	op_set_outlinedata(op_get_outlinestack(--topoutlinestack));
 	
 	if (ho) {
 		
@@ -173,8 +173,8 @@ boolean oppushglobals (void) {
 	5.1.5b11 dmb: we need this layer for globals nesting
 	*/
 
-	if (outlinedata)
-		++(**outlinedata).ctpushes;
+	if (op_get_outlinedata())
+		++(**op_get_outlinedata()).ctpushes;
 	
 	return (true);
 	} /*oppushglobals*/
@@ -182,7 +182,7 @@ boolean oppushglobals (void) {
 
 boolean oppopglobals (void) {
 	
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 	
 	if (ho && (**ho).ctpushes > 1) // has been set and pushed
 		--(**ho).ctpushes;
@@ -224,7 +224,7 @@ boolean ophassubheads (hdlheadrecord hnode) {
 	if ((**hnode).headlinkright != hnode)
 		return (true);
 	
-	return ((*(**outlinedata).hasdynamicsubscallback) (hnode));
+	return ((*(**op_get_outlinedata()).hasdynamicsubscallback) (hnode));
 	} /*ophassubheads*/
 	
 
@@ -385,7 +385,7 @@ boolean opnthsummit (long n, hdlheadrecord *hsummit) {
 	return true if there are that many summits, false otherwise.
 	*/
 	
-	register hdlheadrecord nomad = (**outlinedata).hsummit;
+	register hdlheadrecord nomad = (**op_get_outlinedata()).hsummit;
 	register hdlheadrecord nextnomad;
 	register long ctloops = n - 1;
 	register long i;
@@ -442,7 +442,7 @@ boolean opgetnthnode (long lnum, hdlheadrecord *hnode) {
 	
 	scanrecord.lnumlookfor = lnum; /*this is the line we're looking for*/
 	
-	if (opsiblingvisiter ((**outlinedata).hsummit, false, &opgetnthnodevisit, &scanrecord)) /*not enough lines*/
+	if (opsiblingvisiter ((**op_get_outlinedata()).hsummit, false, &opgetnthnodevisit, &scanrecord)) /*not enough lines*/
 		return (false);
 	
 	*hnode = scanrecord.hnodecurrent;
@@ -1202,9 +1202,9 @@ void opgetnodeline (hdlheadrecord hnode, long *lnum) {
 	        (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
 	        (void *) hnode,
 	        (hnode == NULL) ? NULL : *hnode,
-	        (void *) outlinedata,
-	        (outlinedata == NULL) ? NULL : *outlinedata);
-	const hdloutlinerecord initial_outlinedata = outlinedata;
+	        (void *) op_get_outlinedata(),
+	        (op_get_outlinedata() == NULL) ? NULL : *op_get_outlinedata());
+	const hdloutlinerecord initial_outlinedata = op_get_outlinedata();
 	const ptroutlinerecord initial_outline_record = (initial_outlinedata != NULL) ? *initial_outlinedata : NULL;
 	const char *path_for_log = (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>";
 	const hdlheadrecord initial_node = hnode;
@@ -1217,9 +1217,9 @@ void opgetnodeline (hdlheadrecord hnode, long *lnum) {
 	 * to enable post-mortem analysis in headless runtime.
 	 */
 #define OPGETNODELINE_ASSERT(stage) do { \
-	if (initial_outlinedata != outlinedata) { \
+	if (initial_outlinedata != op_get_outlinedata()) { \
 		log_error(LOG_COMP_OP, "opgetnodeline outline pointer changed (%s) path=%s initial=%p current=%p", \
-		        stage, path_for_log, (void *) initial_outlinedata, (void *) outlinedata); \
+		        stage, path_for_log, (void *) initial_outlinedata, (void *) op_get_outlinedata()); \
 		__builtin_trap(); \
 	} \
 	if ((nomad == NULL) || !validhandle((Handle) nomad)) { \
@@ -1244,24 +1244,24 @@ void opgetnodeline (hdlheadrecord hnode, long *lnum) {
 			__builtin_trap(); \
 		} \
 	} \
-	if (outlinedata == NULL) { \
+	if (op_get_outlinedata() == NULL) { \
 		log_error(LOG_COMP_OP, "opgetnodeline outlinedata nil (%s) path=%s initial=%p", \
 		        stage, path_for_log, (void *) initial_outlinedata); \
 		__builtin_trap(); \
 	} \
-	if (!validhandle((Handle) outlinedata)) { \
+	if (!validhandle((Handle) op_get_outlinedata())) { \
 		log_error(LOG_COMP_OP, "opgetnodeline outline handle invalid (%s) path=%s outlinedata=%p", \
-		        stage, path_for_log, (void *) outlinedata); \
+		        stage, path_for_log, (void *) op_get_outlinedata()); \
 		__builtin_trap(); \
 	} \
-	if (*outlinedata == NULL) { \
+	if (*op_get_outlinedata() == NULL) { \
 		log_error(LOG_COMP_OP, "opgetnodeline outline data nil (%s) path=%s outlinedata=%p", \
-		        stage, path_for_log, (void *) outlinedata); \
+		        stage, path_for_log, (void *) op_get_outlinedata()); \
 		__builtin_trap(); \
 	} \
-	if ((initial_outline_record != NULL) && (*outlinedata != initial_outline_record)) { \
+	if ((initial_outline_record != NULL) && (*op_get_outlinedata() != initial_outline_record)) { \
 		log_error(LOG_COMP_OP, "opgetnodeline outline data moved (%s) path=%s initial_data=%p current_data=%p", \
-		        stage, path_for_log, (void *) initial_outline_record, (void *) *outlinedata); \
+		        stage, path_for_log, (void *) initial_outline_record, (void *) *op_get_outlinedata()); \
 		__builtin_trap(); \
 	} \
 } while (0)
@@ -1292,8 +1292,8 @@ void opgetnodeline (hdlheadrecord hnode, long *lnum) {
 			        *lnum,
 			        (void *) hnode,
 			        (hnode == NULL) ? NULL : *hnode,
-			        (void *) outlinedata,
-			        (outlinedata == NULL) ? NULL : *outlinedata);
+			        (void *) op_get_outlinedata(),
+			        (op_get_outlinedata() == NULL) ? NULL : *op_get_outlinedata());
 #endif
 			
 			return;
@@ -1365,11 +1365,11 @@ boolean opreleasevisit (hdlheadrecord hnode, ptrvoid refcon) {
 	
 	if (hrefcon != nil) { /*node has a refcon handle attached*/
 	
-		hdloutlinerecord x = outlinedata; /*preserve x over callback*/
+		hdloutlinerecord x = op_get_outlinedata(); /*preserve x over callback*/
 		
 		#if !fljustpacking
 		
-			(*(**outlinedata).releaserefconcallback) (hnode, (boolean) ((long) refcon));
+			(*(**op_get_outlinedata()).releaserefconcallback) (hnode, (boolean) ((long) refcon));
 			
 			#endif
 		
@@ -1399,11 +1399,11 @@ static boolean opreleaserefconvisit (hdlheadrecord hnode, ptrvoid refcon) {
 	
 	if (hrefcon != nil) { /*node has a refcon handle attached*/
 	
-		hdloutlinerecord x = outlinedata; /*preserve x over callback*/
+		hdloutlinerecord x = op_get_outlinedata(); /*preserve x over callback*/
 		
 		#if !fljustpacking
 		
-			(*(**outlinedata).releaserefconcallback) (hnode, true);
+			(*(**op_get_outlinedata()).releaserefconcallback) (hnode, true);
 			
 			#endif
 		
@@ -1475,7 +1475,7 @@ boolean opnewsummit (void) {
 	if (!opnewstructure (hstring, &hnewsummit))
 		return (false);
 	
-	return (opsetsummit (outlinedata, hnewsummit));
+	return (opsetsummit (op_get_outlinedata(), hnewsummit));
 	} /*opnewsummit*/
 
 
@@ -1491,7 +1491,7 @@ boolean newoutlinerecord (hdloutlinerecord *houtline) {
 	
 	/*
 	create a new outline record, returned in houtline.  we assume nothing
-	about outlinewindowinfo or outlinewindow, and we preserve outlinedata.
+	about outlinewindowinfo or outlinewindow, and we preserve op_get_outlinedata().
 	
 	the rectangles and displayinfo are all zero after we're called.
 	
@@ -1595,7 +1595,7 @@ boolean opnewrecord (Rect r, hdloutlinerecord *hnew) {
 	outlinerecord, but don't have a window around to display it in, call 
 	newoutlinerecord instead.
 	
-	we also set the global outlinedata to point at the newly allocated record.
+	we also set the global op_get_outlinedata() to point at the newly allocated record.
 	*/
 
 	register hdloutlinerecord ho;
@@ -1661,7 +1661,7 @@ static void opdisposerefcons (hdloutlinerecord ho) {
 void opdisposeoutline (hdloutlinerecord houtline, boolean fldisk) {
 	
 	/*
-	5.0a10 dmb: if we're disposing outlinedata, nil the global
+	5.0a10 dmb: if we're disposing op_get_outlinedata(), nil the global
 	
 	5.1.5b7 dmb: ctpushes, fldisposewhenpopped replaces processinvalidoutline
 	*/
@@ -1703,8 +1703,8 @@ void opdisposeoutline (hdloutlinerecord houtline, boolean fldisk) {
 		
 	disposehandle ((Handle) ho);
 
-	if (ho == outlinedata)
-		outlinedata = nil;
+	if (ho == op_get_outlinedata())
+		op_set_outlinedata(nil);
 	
 	} /*opdisposeoutline*/
 	
@@ -1759,7 +1759,7 @@ long opcountheads (void) {
 	return the number of headlines linked into the current outline record.
 	*/
 	
-	hdlheadrecord nomad = (**outlinedata).hsummit;
+	hdlheadrecord nomad = (**op_get_outlinedata()).hsummit;
 	long ct = 0;
 	
 	while (true) {
@@ -1784,7 +1784,7 @@ boolean opnodeinoutline (hdlheadrecord hnode) {
 	return true if the given node is in the outline somewhere
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	tyscanrecord scanrecord;
 	
 	scanrecord.hnodelookfor = hnode;
@@ -1845,7 +1845,7 @@ boolean opsetheadtext_ctx (op_context_t *ctx, hdlheadrecord hnode, Handle hstrin
 	op_context_version_bump(ctx);
 
 	/* Headless migration: outline globals may not be initialized */
-	if (outlinedata == nil)
+	if (op_get_outlinedata() == nil)
 		return (false);
 
 	/*
@@ -1893,7 +1893,7 @@ boolean opsetheadtext_ctx (op_context_t *ctx, hdlheadrecord hnode, Handle hstrin
 			opupdatenow ();
 			}
 
-		if (!(*(**outlinedata).textchangedcallback) (h, bsorig)) {
+		if (!(*(**op_get_outlinedata()).textchangedcallback) (h, bsorig)) {
 
 			/*DW 8/31/93 -- file rename in cb failed*/
 
@@ -1952,7 +1952,7 @@ boolean opsetcursorlinetext (bigstring bs) {
 	
 	opsettextmode (false);
 	
-	hcursor = (**outlinedata).hbarcursor;
+	hcursor = (**op_get_outlinedata()).hbarcursor;
 	
 	fl = opsetheadstring (hcursor, bs);
 	

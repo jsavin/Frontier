@@ -253,7 +253,7 @@ static boolean oppopupruncallbackscript (tyvaluerecord *val) {
 
 		grabthreadglobals ();
 
-		oppushoutline (outlinedata); /*7.0b10 PBS: make sure the current outline gets saved.*/
+		oppushoutline (op_get_outlinedata()); /*7.0b10 PBS: make sure the current outline gets saved.*/
 		
 		fl = langrun (htext, val);
 
@@ -391,7 +391,7 @@ boolean oprmousedown (Point pt, tyclickflags flags) {
 	
 	#pragma unused(flags)
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	Rect linerect;
 	hdlheadrecord hcursor;
 	long i;

@@ -44,7 +44,7 @@ short opgetline1top (void) {
 	return the number of pixels from top of outlinerect of hline1 as a negative number
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	short line1linesabove = (**ho).line1linesabove;
 	
 	if (line1linesabove == 0)
@@ -56,7 +56,7 @@ short opgetline1top (void) {
 
 hdlheadrecord opgetlastvisiblenode (void) {
 	
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 	hdlheadrecord nomad = (**ho).hline1;
 	Rect r = (**ho).outlinerect;
 	short vertpixels = r.bottom - r.top;
@@ -91,7 +91,7 @@ long opgetcurrentscreenlines (boolean flscrollwise) {
 	the original meaning if this function
 	*/
 	
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 	hdlheadrecord nomad = (**ho).hline1, nextnomad;
 	Rect r = (**ho).outlinerect;
 	long vertpixels = r.bottom - r.top;
@@ -149,7 +149,7 @@ long opsumprevlineheights (long lnum, short *heightthisline) {
 	a negative number)
 	*/
 	
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 	hdlheadrecord nomad = (**ho).hline1;
 	long sum = 0;
 	long i;
@@ -185,7 +185,7 @@ long opsumprevlineheights (long lnum, short *heightthisline) {
 	
 long opsumalllineheights (void) {
 	
-	hdlheadrecord nomad = (**outlinedata).hsummit, nextnomad;
+	hdlheadrecord nomad = (**op_get_outlinedata()).hsummit, nextnomad;
 	long sum = 0;
 	
 	while (true) {
@@ -214,7 +214,7 @@ long opgetlinestoscrollupforvisi (hdlheadrecord hnode) {
 	that number.
 	*/
 	
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 	hdlheadrecord nomad = (**ho).hline1;
 	Rect r = (**ho).outlinerect;
 	short vertpixels = r.bottom - r.top;
@@ -287,7 +287,7 @@ long opgetlinestoscrolldownforvisi (hdlheadrecord hnode) {
 	6.0b2 dmb: account for text selection in headlines taller than the screen
 	*/
 	
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 	hdlheadrecord nomad = (**ho).hline1;
 	hdlheadrecord hsummit = (**ho).hsummit;
 	long defaultlineheight = (**ho).defaultlineheight;

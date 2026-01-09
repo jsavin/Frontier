@@ -1,7 +1,7 @@
 
 /*	$Id$    */
 
-/*© copyright 1991-96 UserLand Software, Inc. All Rights Reserved.*/
+/* copyright 1991-96 UserLand Software, Inc. All Rights Reserved.*/
 
 
 #define optoolkitinclude /*so other modules can tell that we've been included*/
@@ -100,7 +100,7 @@ typedef struct tyoutlinerecord {
 typedef Boolean (*opvisitcallback) (hdlheadrecord); /*callback for the visit routines*/
 
 
-extern hdloutlinerecord outlinedata; /*all OS Toolkit routines operate off this global*/
+extern hdloutlinerecord op_get_outlinedata(); /*all OS Toolkit routines operate off this global*/
 
 
 /*function prototypes -- creating and disposing outline records*/

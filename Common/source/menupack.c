@@ -104,7 +104,7 @@ boolean mecopyrefconroutine (hdlheadrecord hsource, hdlheadrecord hdest) {
 			hcopy = nil;
 			
 		else {
-			hdlmenurecord hm = (hdlmenurecord) (**outlinedata).outlinerefcon;
+			hdlmenurecord hm = (hdlmenurecord) (**op_get_outlinedata()).outlinerefcon;
 			
 			if (!meloadscriptoutline (hm, hsource, &hcopy, &flignore)) // 5.0a3 dmb - was: meloadoutline (adr, &hcopy)
 				return (false);
@@ -137,7 +137,7 @@ static boolean headleveloffsetvisit (hdlheadrecord hnode, ptrvoid refcon) {
 boolean metextualizerefconroutine (hdlheadrecord hnode, Handle htext) {
 	
 	/*
-	5.1.5b16 dmb: get menu record from outlinedata, not global
+	5.1.5b16 dmb: get menu record from op_get_outlinedata(), not global
 	*/
 	
 	register hdloutlinerecord ho;
@@ -146,7 +146,7 @@ boolean metextualizerefconroutine (hdlheadrecord hnode, Handle htext) {
 	hdloutlinerecord houtline;
 	boolean fljustloaded;
 	long headleveloffset;
-	hdlmenurecord hm = (hdlmenurecord) (**outlinedata).outlinerefcon;
+	hdlmenurecord hm = (hdlmenurecord) (**op_get_outlinedata()).outlinerefcon;
 	
 	if (!meloadscriptoutline (hm, hnode, &houtline, &fljustloaded)) 
 		return (false);
@@ -366,14 +366,14 @@ static boolean mesavemenustructure (tysavedmenuinfo *info, dbaddress *adr) {
 	else
 		fl = opsiblingvisiter (hsummit, false, &mesavescriptvisit, nil);
 	
-	assert (opvalidate (outlinedata));
+	assert (opvalidate (op_get_outlinedata()));
 	
 	if (!fl)
 		return (false);
 
 	disktomemlong ((*info).adroutline);
 	
-	if (!mesaveoutline (outlinedata, &(*info).adroutline))
+	if (!mesaveoutline (op_get_outlinedata(), &(*info).adroutline))
 		return (false);
 	
 	db_format_write_be32(&(*info).adroutline, (uint32_t) (*info).adroutline);
@@ -407,7 +407,7 @@ static boolean mepackmenustructure_legacy (tysavedmenuinfo *info, Handle *hpacke
 	
 	fl = opsiblingvisiter (hsummit, false, &mepackscriptvisit, &packinfo);
 	
-	assert (opvalidate (outlinedata));
+	assert (opvalidate (op_get_outlinedata()));
 	
 	if (fl)
 		fl = newfilledhandle (info, sizeof (tysavedmenuinfo), &hpackedmenu);

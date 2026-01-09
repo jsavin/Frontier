@@ -602,7 +602,7 @@ static boolean initializetableoutline (hdloutlinerecord ho, hdlhashtable ht) {
 		}
 	
 	#ifdef fldebug
-		opvalidate (outlinedata);
+		opvalidate (op_get_outlinedata());
 	#endif
 	
 	fl = true;
@@ -838,7 +838,7 @@ static boolean notexpandedvisit (hdlheadrecord hnode, ptrvoid refcon)  {
 
 boolean tableoutlineneedssaving (void) {
 	
-	if (outlinedata == nil)
+	if (op_get_outlinedata() == nil)
 		return (false);
 	
 	return (!opsummitvisit (notexpandedvisit, nil)); // something expanded
@@ -856,7 +856,7 @@ boolean tablepackformats (Handle *hpacked) {
 	*/
 	
 	register hdltableformats hf = tableformatsdata;
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 	tyversion2tablediskrecord info;
 	int i;
 	long vertcurrent, lnumcursor;

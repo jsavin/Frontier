@@ -396,7 +396,7 @@ boolean oppack (Handle *hpackedoutline) {
 	5.0b11 dmb: added platform logic. don't map characters when packing
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	register hdlheadrecord hsummit;
 	register Handle h;
 	register long ixheader;
@@ -490,20 +490,20 @@ boolean oppack (Handle *hpackedoutline) {
 #endif
 			
 #if defined(FRONTIER_HEADLESS)
-			if (outlinedata != ho || outlinedata == NULL || *outlinedata == NULL || !validhandle((Handle) outlinedata)) {
+			if (op_get_outlinedata() != ho || op_get_outlinedata() == NULL || *op_get_outlinedata() == NULL || !validhandle((Handle) op_get_outlinedata())) {
 				log_error(LOG_COMP_OP, "oppack abort before hoist pop path=%s outlinedata=%p hdata=%p ho=%p hodata=%p valid=%d",
 			        (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
-			        (void *) outlinedata,
-			        outlinedata == NULL ? NULL : *outlinedata,
+			        (void *) op_get_outlinedata(),
+			        op_get_outlinedata() == NULL ? NULL : *op_get_outlinedata(),
 			        (void *) ho,
 			        ho == NULL ? NULL : *ho,
-			        outlinedata == NULL ? 0 : validhandle((Handle) outlinedata));
+			        op_get_outlinedata() == NULL ? 0 : validhandle((Handle) op_get_outlinedata()));
 			__builtin_trap();
 		}
 		log_debug(LOG_COMP_OP, "oppack debug pre-hoists path=%s outlinedata=%p hdata=%p ho=%p hodata=%p",
 		        (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
-		        (void *) outlinedata,
-		        outlinedata == NULL ? NULL : *outlinedata,
+		        (void *) op_get_outlinedata(),
+		        op_get_outlinedata() == NULL ? NULL : *op_get_outlinedata(),
 		        (void *) ho,
 		        ho == NULL ? NULL : *ho);
 #endif
@@ -513,8 +513,8 @@ boolean oppack (Handle *hpackedoutline) {
 #if defined(FRONTIER_HEADLESS)
 		log_debug(LOG_COMP_OP, "oppack debug post-hoists path=%s outlinedata=%p hdata=%p ho=%p hodata=%p flpopped=%d",
 		        (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
-		        (void *) outlinedata,
-		        outlinedata == NULL ? NULL : *outlinedata,
+		        (void *) op_get_outlinedata(),
+		        op_get_outlinedata() == NULL ? NULL : *op_get_outlinedata(),
 		        (void *) ho,
 		        ho == NULL ? NULL : *ho,
 		        flpoppedhoists);
@@ -1011,7 +1011,7 @@ static boolean opunpackversion4 (handlestream *packstream) {
 	long lnumcursor;
 	boolean fl;
 
-	ho = outlinedata; /*copy into register*/
+	ho = op_get_outlinedata(); /*copy into register*/
 
 	if (!readhandlestream (packstream, &header, sizeof (header)))
 		return (false);
@@ -1292,7 +1292,7 @@ static short outscraplevel = 0; /*for communications while sending to scrap*/
 static boolean outscrapvisit (hdlheadrecord hnode, ptrvoid refcon) {
 	
 	/*
-	6/12/91 dmb: validate outlinedata.  currently, menubar scraps will only 
+	6/12/91 dmb: validate op_get_outlinedata().  currently, menubar scraps will only 
 	export properly while a menubar outline is active.  the problem is that 
 	the scrap is a standalone headline; it needs to have an outline record too.
 	*/
@@ -1306,16 +1306,16 @@ static boolean outscrapvisit (hdlheadrecord hnode, ptrvoid refcon) {
 	
 	if ((**h).hrefcon != nil) {
 		
-		assert (outlinedata != nil);
+		assert (op_get_outlinedata() != nil);
 		
-		if (outlinedata == nil)
+		if (op_get_outlinedata() == nil)
 			return (false);
 		
 		s = (*packinfo).packstream;
 		
 		closehandlestream (s);
 		
-		if (!(*(**outlinedata).textualizerefconcallback) (h, (*s).data))
+		if (!(*(**op_get_outlinedata()).textualizerefconcallback) (h, (*s).data))
 			return (false);
 		
 		openhandlestream ((*s).data, s);

@@ -44,7 +44,7 @@ boolean opnewscreenmap (hdlscreenmap *hmap) {
 	
 	tymapelement *pe;
 	short ctelements;
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 	hdlheadrecord nomad = (**ho).hline1;
 	hdlheadrecord hcursor = (**ho).hbarcursor;
 	hdlscreenmap h;
@@ -125,7 +125,7 @@ void opinvalscreenmap (hdlscreenmap hmap) {
 	short i;
 	boolean fldirty;
 	hdlscreenmap h = hmap;
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 	hdlheadrecord hnode;
 	hdlheadrecord hcursor = (**ho).hbarcursor;
 	short ctelements;

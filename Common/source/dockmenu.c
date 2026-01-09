@@ -208,7 +208,7 @@ static boolean dockmenugetaddresscallback (tyvaluerecord *val) {
 
 		grabthreadglobals ();
 		
-		oppushoutline (outlinedata);
+		oppushoutline (op_get_outlinedata());
 		
 		fl = langrun (htext, val);
 

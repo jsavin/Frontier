@@ -196,11 +196,11 @@ static boolean scriptinruntimestack (void) {
 		if (outlinewindow == (**hd).scriptsourcestack [ix].pwindow) {
 		*/
 		
-		if (outlinedata == (**hd).scriptsourcestack [ix].houtline) {
+		if (op_get_outlinedata() == (**hd).scriptsourcestack [ix].houtline) {
 			
 			if (ix == 0) /*main source window.  make sure same script is displayed*/
 			
-				return ((**hd).scriptrefcon == (**outlinedata).outlinerefcon);
+				return ((**hd).scriptrefcon == (**op_get_outlinedata()).outlinerefcon);
 			
 			return (true);
 			}
@@ -231,7 +231,7 @@ static boolean scriptnewprocess (short buttonnum) {
 	Handle hlangtext = nil;
 	bigstring bsresult;
 
-	if (!opgetlangtext (outlinedata, false, &hlangtext))
+	if (!opgetlangtext (op_get_outlinedata(), false, &hlangtext))
 		return (false);
 	
 	langrunhandle (hlangtext, bsresult);
@@ -275,7 +275,7 @@ static boolean scriptbuttonenabled (short buttonnum) {
 	register boolean flscriptsuspended = (**hd).flscriptsuspended;
 	register boolean flrunningthisscript;
 	
-	if (outlinedata == NULL)
+	if (op_get_outlinedata() == NULL)
 		return (false);
 
 	flrunningthisscript = flscriptrunning && scriptinruntimestack ();
@@ -307,7 +307,7 @@ static boolean scriptbuttonenabled (short buttonnum) {
 			return (!flscriptrunning);
 		
 		case debugbutton:
-			return (!flscriptrunning && ((**outlinedata).outlinesignature == typeLAND));
+			return (!flscriptrunning && ((**op_get_outlinedata()).outlinesignature == typeLAND));
 		
 		case stopbutton:
 			return (!flscriptsuspended);
@@ -391,7 +391,7 @@ static boolean scriptbuttonstatus (short buttonnum, tybuttonstatus *status) {
 static boolean opverbsetscrollbarsroutine (void) {
 
 	register ptrwindowinfo pw = *outlinewindowinfo;
-	register ptroutlinerecord po = *outlinedata;
+	register ptroutlinerecord po = *op_get_outlinedata();
 	
 	(*pw).vertscrollinfo = (*po).vertscrollinfo;
 	
@@ -466,7 +466,7 @@ static void opverbresize (void) {
 
 boolean opverbclose (void) {
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	
 	opverbcheckwindowrect (ho);
 	
@@ -502,7 +502,7 @@ static boolean opwinnewrecord (void) {
 	if (!opnewrecord ((**outlinewindowinfo).contentrect))
 		return (false);
 	
-	ho = outlinedata; /*copy into register*/
+	ho = op_get_outlinedata(); /*copy into register*/
 	
 	(**outlinewindowinfo).hdata = (Handle) ho;
 	
@@ -518,9 +518,9 @@ static boolean opwinnewrecord (void) {
 
 static boolean opwindisposerecord (void) {
 
-	opdisposeoutline (outlinedata, true);
+	opdisposeoutline (op_get_outlinedata(), true);
 	
-	outlinedata = nil;
+	op_set_outlinedata(nil);
 	
 	(**outlinewindowinfo).hdata = nil;
 
@@ -545,7 +545,7 @@ static boolean opwinloadfile (hdlfilenum fnum, short rnum) {
 	if (!fl)
 		return (false);
 	
-	ho = outlinedata; /*remember for linking into variable structure*/
+	ho = op_get_outlinedata(); /*remember for linking into variable structure*/
 	
 	(**outlinewindowinfo).hdata = (Handle) ho;
 	
@@ -604,7 +604,7 @@ boolean opstart (void) {
 		
 	(*cb).windowholder = &outlinewindow;
 	
-	(*cb).dataholder = (Handle *) &outlinedata;
+	(*cb).dataholder = (Handle *) op_get_outlinedata_ptr_unsafe();
 	
 	(*cb).infoholder = &outlinewindowinfo;
 		

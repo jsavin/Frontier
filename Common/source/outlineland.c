@@ -95,7 +95,7 @@ static boolean setglobals (void) {
 	
 	if (hd != nil) { /*a window is open*/
 	
-		outlinedata = (**hd).heditrecord;
+		op_set_outlinedata((**hd).heditrecord);
 		
 		outlinewindow = (**app.appwindow).macwindow;
 		
@@ -111,7 +111,7 @@ static boolean setglobals (void) {
 
 static boolean preexpand (hdlheadrecord hnode, short ctlevels) {
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	
 	if ((**hnode).headlinkright != hnode)
 		return (true);
@@ -162,7 +162,7 @@ static short geticonnum (hdlheadrecord hnode) {
 			return (stationeryicon);
 		}
 	
-	if (hnode == (**outlinedata).hsummit)
+	if (hnode == (**op_get_outlinedata()).hsummit)
 		return (macintoshicon);
 	
 	return (documenticon);
@@ -209,7 +209,7 @@ static boolean drawline (hdlheadrecord hnode) {
 	movepento (pt.h + widthsmallicon, pt.v);
 	
 	if (info.flalias)		
- 		pushstyle ((**outlinedata).fontnum, (**outlinedata).fontsize, italic);
+ 		pushstyle ((**op_get_outlinedata()).fontnum, (**op_get_outlinedata()).fontsize, italic);
 	
 	if (fltextmode)
 		opeditupdate ();
@@ -231,7 +231,7 @@ static boolean drawline (hdlheadrecord hnode) {
 
 static boolean mouseinline (hdlheadrecord hnode) {
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	Point pt = mousestatus.localpt;
 	FSSpec fs;
 	boolean flredraw = false;
@@ -323,7 +323,7 @@ static boolean linedeleted (hdlheadrecord hnode) {
 
 static boolean setscrollbars (void) {
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	register hdlappwindow ha = app.appwindow;
 	
 	setscrollbarinfo ((**ha).vertbar, (**ho).vertmin, (**ho).vertmax, (**ho).vertcurrent);
@@ -334,7 +334,7 @@ static boolean setscrollbars (void) {
 
 static void setupoutline (void) {
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	
 	(**ho).flwindowopen = true;
 	
@@ -406,10 +406,10 @@ static boolean newrecord (void) {
 		goto error;
 	
 	/*
-	(**outlinedata).dirtyroutine = (callback) &madechanges;
+	(**op_get_outlinedata()).dirtyroutine = (callback) &madechanges;
 	*/
 	
-	(**hdata).heditrecord = outlinedata;
+	(**hdata).heditrecord = op_get_outlinedata();
 	
 	app.appdata = (Handle) hdata;
 	
@@ -570,7 +570,7 @@ static boolean opnavigationkey (byte chkey) {
 	
 	pushchar (chkey, bsselection);
 	
-	opfindhead ((**outlinedata).hbarcursor, bsselection, &hnode);
+	opfindhead ((**op_get_outlinedata()).hbarcursor, bsselection, &hnode);
 	
 	opmoveto (hnode);
 	
@@ -584,7 +584,7 @@ static boolean keystroke (void) {
 	
 	if (isprint (ch) && (keyboardstatus.ctmodifiers == 0)) {
 		
-		if (!(**outlinedata).fltextmode) {
+		if (!(**op_get_outlinedata()).fltextmode) {
 			
 			opnavigationkey (ch);
 			
@@ -611,7 +611,7 @@ static boolean scrollto (void) {
 	
 	hdlappwindow ha = app.appwindow;
 	short dh, dv;
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	
 	dh = getscrollbarcurrent ((**ha).horizbar) - (**ho).horizcurrent;
 	
@@ -674,7 +674,7 @@ static boolean unpackrecord (Handle hpacked) {
 	if (!opunpack (hpacked, &ixload))
 		return (false);
 	
-	ho = outlinedata;
+	ho = op_get_outlinedata();
 	
 	(**hd).heditrecord = ho;
 	

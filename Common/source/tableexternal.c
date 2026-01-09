@@ -514,7 +514,7 @@ boolean tabledive (void) {
 	bigstring bs;
 	tyvaluerecord val;
 	*/
-	hdlheadrecord hcursor = (**outlinedata).hbarcursor;
+	hdlheadrecord hcursor = (**op_get_outlinedata()).hbarcursor;
 	
 	if (opeditingtext (hcursor)) { //((**tableformatsdata).fleditingcell)
 		
@@ -808,7 +808,7 @@ static boolean tableupdateoutlinesort (hdlheadrecord hfirst, hdlhashtable htable
 	
 	opnewscreenmap (&hmap);
 	
-	hcursor = (**outlinedata).hbarcursor;
+	hcursor = (**op_get_outlinedata()).hbarcursor;
 	
 	nomad = hfirst;
 	
@@ -836,7 +836,7 @@ static boolean tableupdateoutlinesort (hdlheadrecord hfirst, hdlhashtable htable
 		#endif
 		}
 	
-	(**outlinedata).hbarcursor = hcursor;
+	(**op_get_outlinedata()).hbarcursor = hcursor;
 	
 	opinvalscreenmap (hmap);
 	
@@ -999,7 +999,7 @@ static boolean tablesymbolinsertedvisit (hdlheadrecord hnode, ptrvoid refcon) {
 	tybrowserspec fs;
 	hdlhashtable htable;
 	hdlheadrecord hnew;
-	hdlheadrecord hsummit = (**outlinedata).hsummit;
+	hdlheadrecord hsummit = (**op_get_outlinedata()).hsummit;
 	boolean flsummitisbogus = false;
 	
 	if ((**hnode).flnodeisfolder || hnode == hsummit) { // could be the table
@@ -1126,7 +1126,7 @@ static boolean tablesymbolsresortedvisit (hdlheadrecord hnode, ptrvoid refcon) {
 	tybrowserspec fs;
 	hdlhashtable htable;
 	
-	if (hnode == (**outlinedata).hsummit) { // one time check to see of parent table is it
+	if (hnode == (**op_get_outlinedata()).hsummit) { // one time check to see of parent table is it
 		
 		claygetfilespec (hnode, &fs);
 		
@@ -1180,7 +1180,7 @@ static boolean tablesymbolchangedwindowvisit (WindowPtr w, ptrsymbolchangedinfo 
 		
 		shellpushglobals (w);
 		
-		if (tableformatsdata && outlinedata) { // && !opinternalchange ())
+		if (tableformatsdata == op_get_outlinedata()) { // && !opinternalchange ())
 	
 			opvisiteverything ((*symbolinfo).opvisitroutine, symbolinfo);
 			
@@ -1244,7 +1244,7 @@ static boolean tabledrivesymbolchange (hdlhashtable htable, const bigstring bsna
 	
 	symbolchangedinfo.flfound = false;
 	
-	saveoutlinedata = outlinedata; // may not be associated with current shellglobals
+	saveoutlinedata = op_get_outlinedata(); // may not be associated with current shellglobals
 	
 	fl = shellvisittypedwindows (idtableconfig, (shellwindowvisitcallback) &tablesymbolchangedwindowvisit, &symbolchangedinfo)
 		&& shellvisittypedwindows (idcancoonconfig, (shellwindowvisitcallback) &tablesymbolchangedwindowvisit, &symbolchangedinfo)
@@ -1362,7 +1362,7 @@ boolean tablezoomtoname (hdlhashtable htable, bigstring bsname) {
 	if (!shellpushfrontglobals ())
 		return (false);
 	
-	opmoveto ((**outlinedata).hsummit);
+	opmoveto ((**op_get_outlinedata()).hsummit);
 
 	tablemovetoname (htable, bsname);
 	

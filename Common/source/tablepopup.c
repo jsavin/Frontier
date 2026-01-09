@@ -727,7 +727,7 @@ boolean tablepopupkinddialog (void) {
 	if (! showpopupkinddialog (&pki))
 		return (false);
 
-	if (!opsetheadstring ((**outlinedata).hbarcursor, pki.bstitle))
+	if (!opsetheadstring ((**op_get_outlinedata()).hbarcursor, pki.bstitle))
 		return (false);
 	
 	opvisibarcursor ();

@@ -239,7 +239,7 @@ static void setcomputedfields (hdltableformats hf) {
 		if ((**hf).linelayout.filenamebold)
 			style = bold;
 			
-		pushstyle ((**outlinedata).fontnum, (**outlinedata).fontsize, style);
+		pushstyle ((**op_get_outlinedata()).fontnum, (**op_get_outlinedata()).fontsize, style);
 	
 		(**hf).computedlineinfo.filenamelineheight = globalfontinfo.ascent + globalfontinfo.descent;
 		
@@ -282,7 +282,7 @@ static short getframeheight (void) {
 	hdltableformats hf = tableformatsdata;
 	short height, minheight;
 
-	height = (**outlinedata).iconheight;
+	height = (**op_get_outlinedata()).iconheight;
 	
 	if (hasframe ())
 		height += (2 * drawinset);
@@ -310,7 +310,7 @@ static short getframewidth (void) {
 	hdltableformats hf = tableformatsdata;
 	short width;
 	
-	width = drawinset + (**outlinedata).iconwidth + (2 * drawinset) + 
+	width = drawinset + (**op_get_outlinedata()).iconwidth + (2 * drawinset) + 
 	
 		(**hf).computedlineinfo.filenamewidth;
 	
@@ -338,7 +338,7 @@ boolean claygettextrect (hdlheadrecord hnode, const Rect *linerect, Rect *textre
 	hdltableformats hf = tableformatsdata;
 	Rect r;
 	
-	r.left = (*linerect).left + opnodeindent (hnode) + drawinset + (**outlinedata).iconwidth + drawinset;
+	r.left = (*linerect).left + opnodeindent (hnode) + drawinset + (**op_get_outlinedata()).iconwidth + drawinset;
 	
 	if (simpleoutlinerdisplay ()) 
 		r.right = (*linerect).right - texthorizinset;
@@ -399,11 +399,11 @@ boolean claygeticonrect (hdlheadrecord hnode, const Rect *linerect, Rect *iconre
 	
 	r.left = (*linerect).left + opnodeindent (hnode);
 	
-	r.right = r.left + (**outlinedata).iconwidth;
+	r.right = r.left + (**op_get_outlinedata()).iconwidth;
 	
 	r.top = (*linerect).top;
 	
-	r.bottom = r.top + (**outlinedata).iconheight;
+	r.bottom = r.top + (**op_get_outlinedata()).iconheight;
 	
 	if (hasframe ()) 
 		offsetrect (&r, drawinset, drawinset);
@@ -445,7 +445,7 @@ boolean claypushnodestyle (hdlheadrecord hnode) {
 	if ((**hnode).flnodeunderlined) 
  		style += underline;
  	
-	pushstyle ((**outlinedata).fontnum, (**outlinedata).fontsize, style);
+	pushstyle ((**op_get_outlinedata()).fontnum, (**op_get_outlinedata()).fontsize, style);
 	
 	return (true);
 	} /*claypushnodestyle*/
@@ -485,7 +485,7 @@ boolean claygetnodeframe (hdlheadrecord hnode, Rect *r) {
 		
 		claygetlinewidth (hnode, &lw);
 		
-		(*r).right = (*r).left + drawinset + (**outlinedata).iconwidth + drawinset + lw;
+		(*r).right = (*r).left + drawinset + (**op_get_outlinedata()).iconwidth + drawinset + lw;
 		}
 	else
 		(*r).right = (*r).left + getframewidth ();

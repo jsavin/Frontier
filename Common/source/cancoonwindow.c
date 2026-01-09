@@ -308,7 +308,7 @@ static boolean ccwindowsetuptableview (void) {
 	tableresetformatsrects ();
 	*/
 	
-	(**outlinedata).flwindowopen = true;
+	(**op_get_outlinedata()).flwindowopen = true;
 	
 	(**ht).flwindowopen = true;
 	

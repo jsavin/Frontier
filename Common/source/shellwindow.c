@@ -2877,7 +2877,7 @@ boolean shellgetexternaldata (hdlwindowinfo hinfo, void *hdata) {
 boolean shellgetdatabase (WindowPtr w, hdldatabaserecord *hdatabase) {
 	
 	boolean fl;
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 	
 	*hdatabase = nil;
 	

@@ -615,14 +615,14 @@ void mereducemenucodes (bigstring bs, boolean *flenabled, boolean *flchecked) {
 boolean mereduceformula (bigstring bs) {
 	
 	/*
-	5.0a2 dmb: must preserve outlinedata in case a formual messes with it. 
+	5.0a2 dmb: must preserve op_get_outlinedata() in case a formual messes with it. 
 	this can happen if the globals of an outline window are push/popped
 	
 	7.0b12 PBS: no longer static: used by oppopup.c for right-click menus.
 	*/
 	
 	boolean fl;
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 	
 	fl = langreduceformula (bs);
 	
@@ -949,7 +949,7 @@ boolean mebuildmenubar (hdlmenubarstack hstack) {
 	boolean fl = false;
 	
 
-	pushmenubarglobals (hstack); /*make sure menubardata, outlinedata are set up*/
+	pushmenubarglobals (hstack); /*make sure menubardata, op_get_outlinedata() are set up*/
 	
 	medisposemenus (hstack); /*get rid of any menus in the stack*/
 	

@@ -44,7 +44,7 @@
 /*
 static void opgetprintdisplayinfo (tytextdisplayinfo *info) {
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	
 	gettextdisplayinfo (
 		shellprintinfo.paperrect, (**ho).fontnum, (**ho).fontsize, (**ho).fontstyle, 
@@ -62,7 +62,7 @@ static short opgetpagecount (void) {
 	6.0b4 dmb: now, beginprint doesn't resize, so we must not use scaling
 	*/
 
-	hdlheadrecord nomad = (**outlinedata).hsummit, nextnomad;
+	hdlheadrecord nomad = (**op_get_outlinedata()).hsummit, nextnomad;
 	short vertpixels;
 	short ctpages = 1;
 	short sum = 0;
@@ -117,7 +117,7 @@ boolean opsetprintinfo (void) {
 
 boolean opbeginprint (void) {
 	
-	if (opisfatheadlines (outlinedata))
+	if (opisfatheadlines (op_get_outlinedata()))
 		wpbeginprint ();
 	
 	/*
@@ -144,7 +144,7 @@ boolean opendprint (void) {
 	opresize ((**outlinewindowinfo).contentrect); 
 	*/
 	
-	if (opisfatheadlines (outlinedata))
+	if (opisfatheadlines (op_get_outlinedata()))
 		wpendprint ();
 	
 	oppostfontchange (); //cleanup measurements that couldn't be made while printing
@@ -160,7 +160,7 @@ boolean opprint (short pagenumber) {
 			   various display maintenance fixes
 	*/
 
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	short vertpixels;
 	short lnum = 0;
 	short sum = 0;

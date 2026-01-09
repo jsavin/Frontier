@@ -89,7 +89,7 @@ static errornum = 0; /*error number exclusively for browser routines*/
 
 static boolean browsersetglobals (void) {
 	
-	outlinedata = (**browserdata).houtline; 
+	op_set_outlinedata((**browserdata).houtline); 
 	
 	tableformatsdata = (**browserdata).hformats;
 	
@@ -313,7 +313,7 @@ static boolean browsergettargetdata (short id) {
 
 static boolean browserclose (void) {
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	
 //	opverbcheckwindowrect (ho);
 	

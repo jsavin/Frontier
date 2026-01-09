@@ -131,10 +131,10 @@ boolean tablegetcursorinfo (hdlhashtable *htable, bigstring bs, tyvaluerecord *v
 	factors code that was appearing all over the place.
 	*/
 	
-	if (outlinedata == nil)
+	if (op_get_outlinedata() == nil)
 		return (false);
 
-	return (tablegetiteminfo ((**outlinedata).hbarcursor, htable, bs, val, hhashnode));
+	return (tablegetiteminfo ((**op_get_outlinedata()).hbarcursor, htable, bs, val, hhashnode));
 	} /*tablegetcursorinfo*/
 
 
@@ -877,7 +877,7 @@ boolean tablemovetoname (hdlhashtable htable, bigstring bsname) {
 	if (!tableexiteditmode ())
 		return (false);
 	
-	fl = opfindhead (opfirstatlevel ((**outlinedata).hbarcursor), bsname, &hfound);
+	fl = opfindhead (opfirstatlevel ((**op_get_outlinedata()).hbarcursor), bsname, &hfound);
 	
 	if (fl) {
 	
@@ -972,7 +972,7 @@ boolean tableresort (hdlhashtable ht, hdlhashnode hresort) {
 	*/
 	
 	register boolean fl;
-	hdlheadrecord hcursor = (**outlinedata).hbarcursor;
+	hdlheadrecord hcursor = (**op_get_outlinedata()).hbarcursor;
 	
 //	flmustexiteditmode = true;
 	

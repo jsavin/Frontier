@@ -67,7 +67,7 @@ boolean opinitdisplayvariables (void) {
 
 short opnodeindent (hdlheadrecord hnode) {
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	
 	return (((**ho).lineindent * (**hnode).headlevel) - (**ho).horizscrollinfo.cur);
 	} /*opnodeindent*/
@@ -83,7 +83,7 @@ boolean opdefaultgettextrect (hdlheadrecord hnode, const Rect *linerect, Rect *t
 	6.0a13 dmb: account for horiz scrolling for fat healines
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	Rect r;
 	
 	r = *linerect; 
@@ -114,7 +114,7 @@ boolean opdefaultgettextrect (hdlheadrecord hnode, const Rect *linerect, Rect *t
 
 void opgettextrect (hdlheadrecord hnode, const Rect *linerect, Rect *textrect) {
 	
-	(*(**outlinedata).gettextrectcallback) (hnode, linerect, textrect);
+	(*(**op_get_outlinedata()).gettextrectcallback) (hnode, linerect, textrect);
 	} /*opgettextrect*/
 
 
@@ -135,7 +135,7 @@ static boolean opmeasuretext (hdlheadrecord hnode) {
 	(**hnode).hpixels = pix;
 	
 	// height is even easier
-	(**hnode).vpixels = (**outlinedata).defaultlineheight;
+	(**hnode).vpixels = (**op_get_outlinedata()).defaultlineheight;
 	
 	return (true);
 	} /*opmeauretext*/
@@ -143,7 +143,7 @@ static boolean opmeasuretext (hdlheadrecord hnode) {
 
 boolean opdefaultgetlineheight (hdlheadrecord hnode, short *lh) {
 	
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 	
 	if ((**hnode).vpixels == opdirtymeasurevalue) {
 		
@@ -161,7 +161,7 @@ boolean opdefaultgetlineheight (hdlheadrecord hnode, short *lh) {
 
 boolean opdefaultgetlinewidth (hdlheadrecord hnode, short *lw) {
 	
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 	
 	if ((**hnode).hpixels == opdirtymeasurevalue) {
 		
@@ -181,7 +181,7 @@ short opgetlineheight (hdlheadrecord hnode) {
 	
 	short lh;
 	
-	(*(**outlinedata).getlineheightcallback) (hnode, &lh);
+	(*(**op_get_outlinedata()).getlineheightcallback) (hnode, &lh);
 		
 	return (lh);
 	} /*opgetlineheight*/
@@ -191,7 +191,7 @@ short opgetlinewidth (hdlheadrecord hnode) {
 	
 	short lw;
 	
-	(*(**outlinedata).getlinewidthcallback) (hnode, &lw);
+	(*(**op_get_outlinedata()).getlinewidthcallback) (hnode, &lw);
 		
 	return (lw);
 	} /*opgetlinewidth*/
@@ -199,7 +199,7 @@ short opgetlinewidth (hdlheadrecord hnode) {
 
 long opgetnodelinecount (hdlheadrecord hnode) {
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	
 	if (opisfatheadlines (ho))
 		return (opgetlineheight (hnode) / (**ho).defaultlineheight);
@@ -226,7 +226,7 @@ boolean opdefaultgetfullrect (hdlheadrecord hnode, Rect *fullrect) {
 	
 	textrect.right = textrect.left + opgetlinewidth (hnode);
 	
-	if ((**outlinedata).flneedfulliconheight)
+	if ((**op_get_outlinedata()).flneedfulliconheight)
 		unionrect (iconrect, textrect, fullrect);
 	
 	else {
@@ -243,13 +243,13 @@ static void opgetfullrect (hdlheadrecord hnode, Rect *fullrect) {
 
 	opgetnoderect (hnode, fullrect);
 
-	(*(**outlinedata).getfullrectcallback) (hnode, fullrect);
+	(*(**op_get_outlinedata()).getfullrectcallback) (hnode, fullrect);
 	} /*opgetfullrect*/
 	
 
 void oppushheadstyle (hdlheadrecord hnode) {
 	
-	(*(**outlinedata).pushstylecallback) (hnode);
+	(*(**op_get_outlinedata()).pushstylecallback) (hnode);
 	} /*oppushheadstyle*/
 	
 	
@@ -273,7 +273,7 @@ boolean opdisabledisplay (void) {
 	6.0b2 dmb: return the previous display state
 	*/
 	
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 	boolean flwasenabled = !(**ho).flinhibitdisplay;
 	
 	(**ho).flinhibitdisplay = true;
@@ -291,7 +291,7 @@ boolean openabledisplay (void) {
 	6.0b2 dmb: return true if the state changes
 	*/
 	
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 	boolean fldisabled = (**ho).flinhibitdisplay;
 	
 	(**ho).flinhibitdisplay = false;
@@ -305,7 +305,7 @@ boolean openabledisplay (void) {
 
 boolean opdisplayenabled (void) {
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	
 	if (ho == NULL)
 		return (false);
@@ -324,7 +324,7 @@ boolean opsetdisplayenabled (boolean fldisplay) {
 	6.0b2 dmb: don't do any redisplay
 	*/
 	
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 	
 	if ((**ho).flinhibitdisplay != fldisplay) /*nothing to do*/
 		return (false);
@@ -349,7 +349,7 @@ void opupdatenow (void) {
 		
 	#else
 	
-		shellupdatecontent ((**outlinedata).outlinerect);
+		shellupdatecontent ((**op_get_outlinedata()).outlinerect);
 		
 	#endif
 	} /*opupdatenow*/
@@ -365,7 +365,7 @@ boolean opgetlinerect (long lnum, Rect *r) {
 	we return false
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	short heightthisline;
 	
 	*r = (**ho).outlinerect; /*set left and right*/
@@ -384,7 +384,7 @@ hdlheadrecord oppointnode (Point pt) {
 	the point is assumed to be pointing at a node.  return that node.	
 	*/
 	
-	hdlheadrecord nomad = (**outlinedata).hline1;
+	hdlheadrecord nomad = (**op_get_outlinedata()).hline1;
 	long i, ct;
 	
 	ct = opgetcurrentscreenlines (false);
@@ -412,14 +412,14 @@ boolean opgetscreenline (hdlheadrecord hnode, long *lnum) {
 	on.  it's a virtual line number, ie it can be less than 0 or greater
 	than the number of lines on the screen.
 	
-	the line indicated by (**outlinedata).hline1 is on line 0.
+	the line indicated by (**op_get_outlinedata()).hline1 is on line 0.
 	
 	return false if the node isn't expanded or visible in this window.
 	*/
 	
 	long uplnum, downlnum;
 	hdlheadrecord upnomad, downnomad, lastnomad;
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 	hdlheadrecord hline1 = (**ho).hline1;
 	
 	upnomad = downnomad = hnode;
@@ -537,7 +537,7 @@ static boolean oppushclip (Rect *rclip) {
 	push anything.
 	*/
 	
-	if (!intersectrect (*rclip, (**outlinedata).outlinerect, rclip))
+	if (!intersectrect (*rclip, (**op_get_outlinedata()).outlinerect, rclip))
 		return (false);
 		
 	return (pushclip (*rclip));
@@ -627,7 +627,7 @@ void opinvalafter (hdlheadrecord hnode) {
 	
 void opinvalbarcursor (void) {
 	
-	opinvalnode ((**outlinedata).hbarcursor);
+	opinvalnode ((**op_get_outlinedata()).hbarcursor);
 	} /*opinvalbarcursor*/
 	
 
@@ -636,7 +636,7 @@ void opinvaldisplay (void) {
 	if (!opdisplayenabled ())
 		return;
 	
-	invalrect ((**outlinedata).outlinerect);
+	invalrect ((**op_get_outlinedata()).outlinerect);
 	} /*opinvaldisplay*/
 	
 	
@@ -650,7 +650,7 @@ void opsmashdisplay (void) {
 	
 void operaserect (Rect r) {
 	
-	pushbackcolor (&(**outlinedata).backcolor);
+	pushbackcolor (&(**op_get_outlinedata()).backcolor);
 	
 	eraserect (r);
 	
@@ -660,9 +660,9 @@ void operaserect (Rect r) {
 
 void operasedisplay (void) {
 	
-	pushbackcolor (&(**outlinedata).backcolor);
+	pushbackcolor (&(**op_get_outlinedata()).backcolor);
 	
-	smashrect ((**outlinedata).outlinerect); /*erase and inval*/
+	smashrect ((**op_get_outlinedata()).outlinerect); /*erase and inval*/
 	
 	popbackcolor ();
 	} /*operasedisplay*/
@@ -693,13 +693,13 @@ static void opupdateafterresize (void) {
 	it's in text mode, there's an edit cursor, and there are wp globals.
 	*/
 
-	if (outlinedata == nil) /*Must have an outline global*/
+	if (op_get_outlinedata() == nil) /*Must have an outline global*/
 		return;
 
-	if (!(**outlinedata).fltextmode) /*Must be in edit mode*/
+	if (!(**op_get_outlinedata()).fltextmode) /*Must be in edit mode*/
 		return;
 
-	if ((**outlinedata).heditcursor == nil) /*Must be an edit cursor*/
+	if ((**op_get_outlinedata()).heditcursor == nil) /*Must be an edit cursor*/
 		return;
 
 	if (wpdata == nil) /*Must have wp globals*/
@@ -721,7 +721,7 @@ boolean oppostfontchange (void) {
 
 	opdirtymeasurements ();
 	
-	opsetctexpanded (outlinedata); //6.0a12 dmb
+	opsetctexpanded (op_get_outlinedata()); //6.0a12 dmb
 	
 	opsetscrollpositiontoline1 ();
 	
@@ -774,7 +774,7 @@ short opmaxlevelwidth (hdlheadrecord hnode) {
 boolean opdefaultpredrawline (hdlheadrecord hnode, const Rect *rline, boolean flselected, boolean flinverted) {
 #pragma unused(hnode, flselected, flinverted)
 
-	pushbackcolor (&(**outlinedata).backcolor);
+	pushbackcolor (&(**op_get_outlinedata()).backcolor);
 	
 	eraserect (*rline); 
 	
@@ -791,7 +791,7 @@ boolean opdefaultdrawtext (hdlheadrecord hnode, const Rect *rtext, boolean flsel
 	menu editor in Frontier. 
 	*/
 	
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 	bigstring headstring;
 	Rect r = *rtext;
 	
@@ -875,7 +875,7 @@ void opgetlineselected (hdlheadrecord hnode, boolean *flinverted, boolean *flsel
 	inverted.
 	*/
 
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 
 	*flinverted = (**ho).flactive; /*text is inverted when we're the active app & window*/
 
@@ -920,7 +920,7 @@ void opdrawicon (hdlheadrecord hnode, Rect linerect) {
 	invertedness
 	*/
 
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	Rect rclip = linerect;
 	Rect iconrect;
 	boolean flinverted, flselected;
@@ -980,7 +980,7 @@ void opdrawline (hdlheadrecord hnode, Rect linerect) {
 	calls for paige when text is active
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	Rect iconrect, textrect;
 	Rect rclip = linerect;
 	//boolean flbitmap = false;
@@ -1030,7 +1030,7 @@ void opdrawline (hdlheadrecord hnode, Rect linerect) {
 	
 void opupdate (void) {
 
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	hdlheadrecord nomad;
 	Rect outlinerect;
 	Rect r; 
@@ -1110,7 +1110,7 @@ void opupdate (void) {
 
 void opdocursor (boolean flon) {
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	long lnumcursor;
 	Rect r;
 	
@@ -1140,7 +1140,7 @@ void opdocursor (boolean flon) {
 	
 void opscrollrect (Rect r, long dh, long dv) {
 	
-	pushbackcolor (&(**outlinedata).backcolor); /*so that erasures use the right color*/
+	pushbackcolor (&(**op_get_outlinedata()).backcolor); /*so that erasures use the right color*/
 	
 	scrollrect (r, dh, dv);
 	
@@ -1157,7 +1157,7 @@ void opmakegap (long lnum, short lineheight) {
 	new node is first in list
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	Rect r;
 	
 	if (lnum < 0)
@@ -1189,7 +1189,7 @@ static boolean opvertscrollrecord (long *ctscroll, long *ctpixels) {
 	6.0a12 dmb: scrolling is line-wise, not headline-wise; also count pixels here
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	long ct = *ctscroll;
 	long vc;
 	hdlheadrecord nomad;
@@ -1272,7 +1272,7 @@ static boolean ophorizscrollrecord (long *ctscroll) {
 	7/24/91 dmb: protect against integer overflow
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	register long ct = *ctscroll;
 	register long horizcurrent = (**ho).horizscrollinfo.cur;
 	register long hc;
@@ -1305,7 +1305,7 @@ static boolean ophorizscroll (long ctpixels) {
 	
 	opseteditbufferrect ();
 	
-	opscrollrect ((**outlinedata).outlinerect, ctpixels, 0);
+	opscrollrect ((**op_get_outlinedata()).outlinerect, ctpixels, 0);
 	
 	opresetscrollbars ();
 	
@@ -1338,7 +1338,7 @@ static boolean opvertscroll (long ctlines) {
 			ctpixels = -opvisidowncountpixels (oldline1, -ctlines);
 		*/
 		
-		opscrollrect ((**outlinedata).outlinerect, 0, ctpixels);
+		opscrollrect ((**op_get_outlinedata()).outlinerect, 0, ctpixels);
 		}
 	
 	opresetscrollbars ();
@@ -1384,7 +1384,7 @@ void opjumpdisplayto (hdlheadrecord holdcursor, hdlheadrecord hnewcursor) {
 		
 		opinvaldisplay (); /*everything will get redrawn*/
 		
-		operaserect ((**outlinedata).outlinerect);
+		operaserect ((**op_get_outlinedata()).outlinerect);
 		}
 	else
 		opinvalnode (hnewcursor);
@@ -1403,11 +1403,11 @@ boolean opscrollto (long h, long v) {
 	long horizpixels, vertlines;
 	boolean flhoriz, flvert;
 	
-	horizpixels = (**outlinedata).horizscrollinfo.cur - h;
+	horizpixels = (**op_get_outlinedata()).horizscrollinfo.cur - h;
 	
 	flhoriz = ophorizscrollrecord (&horizpixels);
 	
-	vertlines = (**outlinedata).vertscrollinfo.cur - v;
+	vertlines = (**op_get_outlinedata()).vertscrollinfo.cur - v;
 	
 	flvert = opvertscrollrecord (&vertlines, nil);
 	
@@ -1426,7 +1426,7 @@ boolean opscrollto (long h, long v) {
 
 static long scrollquantum (register long hscroll) {
 	
-	register long hquantum = (**outlinedata).lineindent;
+	register long hquantum = (**op_get_outlinedata()).lineindent;
 	
 	return  (quantumize (hscroll, hquantum));
 	} /*scrollquantum*/
@@ -1440,7 +1440,7 @@ static long getuppagescrolllines (void) {
 	below it. the number has already been calculated in the vertscrollinfo.
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	
 	return ((**ho).vertscrollinfo.pag);
 	
@@ -1479,7 +1479,7 @@ static long getdownpagescrolllines (void) {
 	overlap between pages. also, handle partial lines and don't count hline1
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	Rect r = (**ho).outlinerect;
 	long vertpixels = r.bottom - r.top;
 	long ctpixels = 0, ctlines = 0;
@@ -1520,7 +1520,7 @@ boolean opscroll (tydirection dir, boolean flpage, long ctscroll) {
 	5.1.5b12 dmb: check for nil outline
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 //	hdlheadrecord hline1;
 	boolean fl = false;
 	Rect r;
@@ -1601,7 +1601,7 @@ boolean opneedvisiscroll (hdlheadrecord hnode, long *hscroll, long *vscroll, boo
 	screwing the display.
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	register long leftdiff, rightdiff;
 	Rect r;
 	long lnum;
@@ -1656,7 +1656,7 @@ void opdovisiscroll (long hscroll, long vscroll) {
 //	hdlheadrecord oldline1 = (**outlinedata).hline1;
 	long vpixels;
 	
-	if (!(**outlinedata).blockvisiupdate)
+	if (!(**op_get_outlinedata()).blockvisiupdate)
 		opupdatenow ();
 	
 	opvertscrollrecord (&vscroll, &vpixels); 
@@ -1674,12 +1674,12 @@ void opdovisiscroll (long hscroll, long vscroll) {
 			vscroll = -opvisidowncountpixels (oldline1, -vscroll);
 		*/
 		
-		opscrollrect ((**outlinedata).outlinerect, hscroll, vpixels);
+		opscrollrect ((**op_get_outlinedata()).outlinerect, hscroll, vpixels);
 		}
 	
 	opresetscrollbars ();
 	
-	if (!(**outlinedata).blockvisiupdate)
+	if (!(**op_get_outlinedata()).blockvisiupdate)
 		opupdatenow ();
 	} /*opdovisiscroll*/
 
@@ -1725,7 +1725,7 @@ void opvisisubheads (hdlheadrecord hnode) {
 static boolean opgetmaxwidthvisit (hdlheadrecord hnode, ptrvoid refcon) {
 	
 	short width;
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 		
 	if ((**hnode).flexpanded) {
 		
@@ -1753,7 +1753,7 @@ boolean opgetoutinesize (long *width, long *height) {
 	7.0b17 PBS: On Macs, add a little to the width to prevent wrapping of a headline.
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	Rect rwindow, rscreen;
 	Rect routline;
 	long hextra, maxheadwidth;
@@ -1780,7 +1780,7 @@ boolean opgetoutinesize (long *width, long *height) {
 	
 	maxheadwidth = 0; /*set for visit routine*/
 	
-	opsiblingvisiter ((**outlinedata).hsummit, false, &opgetmaxwidthvisit, &maxheadwidth);
+	opsiblingvisiter ((**op_get_outlinedata()).hsummit, false, &opgetmaxwidthvisit, &maxheadwidth);
 	
 	*width = maxheadwidth;
 	

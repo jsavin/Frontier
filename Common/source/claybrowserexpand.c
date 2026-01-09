@@ -120,7 +120,7 @@ void browserfindinsertionpoint (hdlheadrecord hparent, bigstring bsnewhead, tybr
 		
 		folderview = viewbyname;
 		
-		nomad = (**outlinedata).hsummit; /*special case*/
+		nomad = (**op_get_outlinedata()).hsummit; /*special case*/
 		
 		*hpre = nomad;
 		
@@ -460,7 +460,7 @@ boolean browserpreexpand (hdlheadrecord hnode, short ctlevels, boolean flmaycrea
 	parameter is true
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	boolean fl;
 	
 	if (((**hnode).headlinkright != hnode) && (ctlevels <= 1)) /*the nodes are already there*/
@@ -522,7 +522,7 @@ boolean browserselectfile (ptrfilespec pfs, boolean flexpand, hdlheadrecord *hno
 	
 	fldisplaywasenabled = opdisabledisplay ();
 	
-	nomad = (**outlinedata).hsummit;
+	nomad = (**op_get_outlinedata()).hsummit;
 	
 //	addtohistorydisabled = true; /*don't want intermediate expansions added to the history menu*/
 	
@@ -600,7 +600,7 @@ boolean browserexpandtofile (ptrfilespec pfs) {
 	if (!browserselectfile (pfs, true, &hnode))
 		return (false);
 		
-	(**outlinedata).flcursorneedsdisplay = true; /*might need to vertical-scroll*/
+	(**op_get_outlinedata()).flcursorneedsdisplay = true; /*might need to vertical-scroll*/
 	
 	opjumpto (hnode);
 	
@@ -628,7 +628,7 @@ boolean browserpostcollapse (hdlheadrecord hnode) {
 	5.1.4 dmb: after deleting an auto-created node, we still need to delete subs
 	*/
 
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 	boolean fldisplaywasenabled;
 	
 	killundo ();

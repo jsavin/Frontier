@@ -86,7 +86,7 @@ void mecheckglobals (void) {
 	
 	assert (menudata != nil);
 	
-	assert (outlinedata == (**menudata).menuoutline); 
+	assert (op_get_outlinedata() == (**menudata).menuoutline); 
 	
 	/*
 	assert (outlinewindow == menuwindow);
@@ -112,7 +112,7 @@ boolean mesetglobals (void) {
 	
 	outlinewindowinfo = menuwindowinfo;
 	
-	if (outlinedata != nil)
+	if (op_get_outlinedata() != nil)
 		opeditsetglobals ();
 	
 	return (true);
@@ -153,7 +153,7 @@ void megetscrollbarinfo (void) {
 static boolean mesetscrollbarsroutine (void) {
 
 	register ptrwindowinfo pw = *menuwindowinfo;
-	register ptroutlinerecord po = *outlinedata;
+	register ptroutlinerecord po = *op_get_outlinedata();
 	
 	(*pw).vertscrollinfo = (*po).vertscrollinfo; /*copy from outline record to window record*/
 	
@@ -168,7 +168,7 @@ static boolean medeactivateoutline (void) {
 	
 	mecheckglobals ();
 	
-	if ((**outlinedata).flactive)
+	if ((**op_get_outlinedata()).flactive)
 		opactivate (false);
 	
 	return (true);
@@ -182,7 +182,7 @@ static void meactivateoutline (void) {
 
 	mecheckglobals ();
 	
-	if (!(**outlinedata).flactive) {
+	if (!(**op_get_outlinedata()).flactive) {
 		//WriteToConsole("Delta");
 		opactivate (true);
 
@@ -238,7 +238,7 @@ static void medrawseparatorline (hdlheadrecord hnode, const Rect *rtext, boolean
 	register hdlheadrecord hn = hnode;
 	register short h, v;
 	register short pixels;
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 
 	v = ((*rtext).top + (*rtext).bottom) / 2;
 	
@@ -510,12 +510,12 @@ static boolean mescriptfontchangeroutine (void) {
 	side-effect -- we save the current outline font and size as the default
 	font and size for all new script windows.
 	
-	12/3/91 dmb: move outlinedata into local before pushing parent globals
+	12/3/91 dmb: move op_get_outlinedata() into local before pushing parent globals
 	
 	5.0.2b16 dmb: call opseteditbufferrect
 	*/
 	
-	register hdloutlinerecord ho = outlinedata; /*save off before pushing new globals*/
+	register hdloutlinerecord ho = op_get_outlinedata(); /*save off before pushing new globals*/
 	
 	shellpushparentglobals (); /*script window is in front, parent is a menu window*/
 	
@@ -1113,7 +1113,7 @@ static void menubarchanged () {
 	in menubar.c, but this is the only place that it's activated.
 	*/
 	
-	(*menubarcallbacks.menubarchangedroutine) (outlinedata);
+	(*menubarcallbacks.menubarchangedroutine) (op_get_outlinedata());
 	} /*menubarchanged*/
 
 
@@ -1844,7 +1844,7 @@ boolean medispose (void) {
 	
 	opsiblingvisiter (hsummit, false, &medisposevisit);
 	
-	opdisposeoutline (outlinedata, false);
+	opdisposeoutline (op_get_outlinedata(), false);
 	
 	disposehandle ((Handle) hm);
 	
@@ -2016,7 +2016,7 @@ void meupdate (void) {
 
 	megetoutlinerect (&r);
 	
-	pushbackcolor (&(**outlinedata).backcolor);
+	pushbackcolor (&(**op_get_outlinedata()).backcolor);
 	
 	frame3sides (r);
 	
@@ -2054,7 +2054,7 @@ boolean megetcontentsize (long *width, long *height) {
 	
 	rcontent = (**menuwindowinfo).contentrect;
 	
-	routline = (**outlinedata).outlinerect;
+	routline = (**op_get_outlinedata()).outlinerect;
 	
 	pixels = (rcontent.right - rcontent.left) - (routline.right - routline.left);
 	

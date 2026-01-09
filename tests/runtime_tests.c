@@ -104,7 +104,7 @@ static void run_opml_roundtrip(void) {
         copyctopstring("root", bsroot);
         printf("[rt] set root text...\n");
         fflush(stdout);
-        assert(opsetheadstring((**outlinedata).hbarcursor, bsroot));
+        assert(opsetheadstring((**op_get_outlinedata()).hbarcursor, bsroot));
     }
     {
         printf("[rt] insert child headline...\n");

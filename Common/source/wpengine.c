@@ -2569,8 +2569,8 @@ static boolean wpinserttexthandle (pg_ref pg, Handle htext, short draw_mode, boo
 				break;
 			
 			//#ifdef PIKE
-				if (outlinedata != NULL)
-					if ((**outlinedata).flhtml)
+				if (op_get_outlinedata() != NULL)
+					if ((**op_get_outlinedata()).flhtml)
 							flhashtmlstyles = wpapplyhtmlstyles (htext, (unsigned long)NULL, false);
 			//#endif
 
@@ -3630,9 +3630,9 @@ boolean wpinserthandle (Handle htext) {
 		
 		wpresettyping ();
 
-		if (outlinedata != NULL)
+		if (op_get_outlinedata() != NULL)
 
-			if ((**outlinedata).flhtml)
+			if ((**op_get_outlinedata()).flhtml)
 
 				flhtmloutline = true;
 

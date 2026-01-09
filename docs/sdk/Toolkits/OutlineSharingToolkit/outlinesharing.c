@@ -1,7 +1,7 @@
 
 /*	$Id$    */
 
-/*© copyright 1991-96 UserLand Software, Inc. All Rights Reserved.*/
+/* copyright 1991-96 UserLand Software, Inc. All Rights Reserved.*/
 
 
 #include <iac.h>
@@ -95,7 +95,7 @@ static long ixpackhandle; /*index into packhandle*/
 
 #define ctoutlinestack 5 /*we can remember outline contexts up to 5 levels deep*/
 
-short topoutlinestack = 0;
+short op_set_topoutlinestack(0);
 
 hdloutlinerecord outlinestack [ctoutlinestack];
 
@@ -206,7 +206,7 @@ static void opMoveLeft (void *psource, void *pdest, long length) {
 	
 	/*
 	do a mass memory move with the left edge leading.  good for closing
-	up a gap in a buffer, among other things…
+	up a gap in a buffer, among other things
 	*/
 	
 	char *ps, *pd;
@@ -633,11 +633,11 @@ pascal hdlheadrecord opGetNthSummit (short n) {
 	if there aren't enough summits, return nil.
 	*/
 	
-	hdlheadrecord x = (**outlinedata).hsummit;
+	hdlheadrecord x = (**op_get_outlinedata()).hsummit;
 	short ctloops = n - 1;
 	short i;
 	
-	if (outlinedata == nil) /*defensive driving*/
+	if (op_get_outlinedata() == nil) /*defensive driving*/
 		return (nil);
 	
 	for (i = 1; i <= ctloops; i++) {
@@ -737,10 +737,10 @@ pascal short opCountSummits (void) {
 	return the number of summits in the outline.
 	*/
 	
-	if (outlinedata == nil)
+	if (op_get_outlinedata() == nil)
 		return (0);
 		
-	return (opCountAtLevel ((**outlinedata).hsummit));
+	return (opCountAtLevel ((**op_get_outlinedata()).hsummit));
 	} /*opCountSummits*/
 	
 	
@@ -876,7 +876,7 @@ pascal Boolean opSiblingVisiter (hdlheadrecord hnode, Boolean flkidsfirst, opvis
 	
 pascal Boolean opVisitOutline (opvisitcallback visit) {
 
-	return (opSiblingVisiter ((**outlinedata).hsummit, false, visit));
+	return (opSiblingVisiter ((**op_get_outlinedata()).hsummit, false, visit));
 	} /*opVisitOutline*/
 
 
@@ -934,7 +934,7 @@ pascal short opCountAllHeads (void) {
 	return the number of headlines linked into the current outlinerecord.
 	*/
 	
-	hdlheadrecord nomad = (**outlinedata).hsummit;
+	hdlheadrecord nomad = (**op_get_outlinedata()).hsummit;
 	short ct = 0;
 	
 	while (true) {
@@ -954,7 +954,7 @@ pascal Boolean opSetTarget (hdloutlinerecord houtline) {
 	current outlinerecord. patterned after the target.set verb in Frontier.
 	*/
 	
-	outlinedata = houtline;
+	op_set_outlinedata(houtline);
 	
 	return (true);
 	} /*opSetTarget*/
@@ -967,16 +967,16 @@ pascal Boolean opPushOutline (hdloutlinerecord houtline) {
 	routine, do your stuff and then call opPopOutline.
 	*/
 	
-	if (topoutlinestack >= ctoutlinestack) {
+	if (op_get_topoutlinestack() >= ctoutlinestack) {
 		
 		DebugStr ("\poutline stack overflow!");
 		
 		return (false);
 		}
 	
-	outlinestack [topoutlinestack++] = outlinedata;
+	op_set_outlinestack(topoutlinestack++, op_get_outlinedata());
 	
-	outlinedata = houtline;
+	op_set_outlinedata(houtline);
 	
 	return (true);
 	} /*opPushOutline*/
@@ -984,10 +984,10 @@ pascal Boolean opPushOutline (hdloutlinerecord houtline) {
 
 pascal Boolean opPopOutline (void) {
 	
-	if (topoutlinestack <= 0)
+	if (op_get_topoutlinestack() <= 0)
 		return (false);
 	
-	outlinedata = outlinestack [--topoutlinestack];
+	op_set_outlinedata(op_get_outlinestack(--topoutlinestack));
 	
 	return (true);
 	} /*opPopOutline*/
@@ -1368,7 +1368,7 @@ pascal short opSetCountExpanded (void) {
 	of expanded headlines.
 	*/
 	
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 	hdlheadrecord nomad = (**ho).hsummit;
 	short ct = 1; /*always at least one line expanded*/
 	hdlheadrecord x;
@@ -1571,7 +1571,7 @@ static Boolean opNewSummit (void) {
 	structure accordingly.
 	*/
 	
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 	hdlheadrecord hnewsummit;
 	
 	if (!opNewStructure ("\p", &hnewsummit))
@@ -1585,7 +1585,7 @@ pascal Boolean opNewOutlineRecord (hdloutlinerecord *houtline) {
 	
 	/*
 	create a new outline record, returned in houtline.  we assume nothing
-	about outlinewindowinfo or outlinewindow, and we preserve outlinedata.
+	about outlinewindowinfo or outlinewindow, and we preserve op_get_outlinedata().
 	
 	the rectangles and displayinfo are all zero after we're called.
 	*/
@@ -1807,7 +1807,7 @@ pascal Boolean opPack (Handle *hpackedoutline) {
 	dmb 10/16/90: don't dispose of handle if we didn't allocate it
 	*/
 	
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 	hdlheadrecord hsummit;
 	Handle h;
 	short ixheader;
@@ -2167,7 +2167,7 @@ static void opDepositDown (hdlheadrecord hpre, hdlheadrecord hdeposit) {
 	modified 11/9/88 to support multiple level-0 nodes DW.
 	
 	11/10/88 handles moving the first summit down, updates 
-	(**outlinedata).hsummit.
+	(**op_get_outlinedata()).hsummit.
 	
 	12/23/88 more efficient code, use registers better.
 	*/
@@ -2207,7 +2207,7 @@ static void opDepositDown (hdlheadrecord hpre, hdlheadrecord hdeposit) {
 	/*
 	if (((**hp).headlinkup == hp) && (headlevel == 0)) /*make sure hsummit is correct%/
 	
-		(**outlinedata).hsummit = hp;
+		(**op_get_outlinedata()).hsummit = hp;
 	*/
 	} /*opDepositDown*/
 
@@ -2255,7 +2255,7 @@ static void opDepositUp (hdlheadrecord hpre, hdlheadrecord hdeposit) {
 	hdlheadrecord hp = hpre;
 	hdlheadrecord hd = hdeposit;
 	hdlheadrecord hleft;
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 			
 	if (!opIsFirstInList (hp)) { /*simple in every case*/
 	
@@ -2419,7 +2419,7 @@ static Boolean unpackVersion2 (Handle hpackedoutline, long *ixload) {
 	tydiskoutlineheader header;
 	short fontnum;
 	
-	ho = outlinedata; /*copy into register*/
+	ho = op_get_outlinedata(); /*copy into register*/
 	
 	if (!opLoadFromHandle (h, ixload, longsizeof (header), (char *) &header))
 		return (false);
@@ -2497,7 +2497,7 @@ pascal Boolean opUnpack (Handle hpackedoutline, long *ixload) {
 	if (!opNewOutlineRecord (&houtline))
 		return (false);
 	
-	outlinedata = houtline;
+	op_set_outlinedata(houtline);
 	
 	if (!opLoadFromHandle (h, ixload, longsizeof (versionnumber), (char *) &versionnumber))
 		return (false);
@@ -2547,7 +2547,7 @@ pascal Boolean IACgetoutlineparam (OSType keyword, hdloutlinerecord *houtline) {
 		return (false);
 		}
 	
-	opPushOutline (nil); /*preserve outlinedata*/
+	opPushOutline (nil); /*preserve op_get_outlinedata()*/
 	
 	ix = 4; /*start loading at offset 4*/
 	
@@ -2589,7 +2589,7 @@ pascal Boolean IACpushoutlineparam (hdloutlinerecord val, OSType keyword) {
 	
 	BlockMove (&headerbytes, *hpackedoutline, 4);
 	
-	opPushOutline (val); /*preserve outlinedata*/
+	opPushOutline (val); /*preserve op_get_outlinedata()*/
 	
 	fl = opPack (&hpackedoutline);
 	

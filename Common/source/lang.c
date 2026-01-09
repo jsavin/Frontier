@@ -1173,7 +1173,7 @@ boolean langopruncallbackscripts (short idscript) {
 	/*
 	7.0d5 AR: Generalized from langopstruct2click and langopreturnkey.
 
-	7.0b10 PBS: set and restore outlinedata, in case callback destroys it.
+	7.0b10 PBS: set and restore op_get_outlinedata(), in case callback destroys it.
 	*/
 
 	boolean fl, flresult = false;
@@ -1183,7 +1183,7 @@ boolean langopruncallbackscripts (short idscript) {
 
 		grabthreadglobals ();
 
-		oppushoutline (outlinedata); /*7.0b10 PBS: make sure the current outline gets saved.*/
+		oppushoutline (op_get_outlinedata()); /*7.0b10 PBS: make sure the current outline gets saved.*/
 
 		fl = langrunstringnoerror (bsscript, bsresult);
 

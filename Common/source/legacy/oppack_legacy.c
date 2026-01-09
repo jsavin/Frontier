@@ -400,7 +400,7 @@ boolean oppack_legacy (Handle *hpackedoutline) {
 	5.0b11 dmb: added platform logic. don't map characters when packing
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	register hdlheadrecord hsummit;
 	register Handle h;
 	register long ixheader;
@@ -893,7 +893,7 @@ static boolean opunpackversion2 (handlestream *packstream) {
 	long lnumcursor;
 	boolean fl;
 	
-	ho = outlinedata; /*copy into register*/
+	ho = op_get_outlinedata(); /*copy into register*/
 	
 	if (!readhandlestream (packstream, &header, sizeof (header)))
 		return (false);
@@ -1263,7 +1263,7 @@ static short outscraplevel = 0; /*for communications while sending to scrap*/
 static boolean outscrapvisit (hdlheadrecord hnode, ptrvoid refcon) {
 	
 	/*
-	6/12/91 dmb: validate outlinedata.  currently, menubar scraps will only 
+	6/12/91 dmb: validate op_get_outlinedata().  currently, menubar scraps will only 
 	export properly while a menubar outline is active.  the problem is that 
 	the scrap is a standalone headline; it needs to have an outline record too.
 	*/
@@ -1277,16 +1277,16 @@ static boolean outscrapvisit (hdlheadrecord hnode, ptrvoid refcon) {
 	
 	if ((**h).hrefcon != nil) {
 		
-		assert (outlinedata != nil);
+		assert (op_get_outlinedata() != nil);
 		
-		if (outlinedata == nil)
+		if (op_get_outlinedata() == nil)
 			return (false);
 		
 		s = (*packinfo).packstream;
 		
 		closehandlestream (s);
 		
-		if (!(*(**outlinedata).textualizerefconcallback) (h, (*s).data))
+		if (!(*(**op_get_outlinedata()).textualizerefconcallback) (h, (*s).data))
 			return (false);
 		
 		openhandlestream ((*s).data, s);

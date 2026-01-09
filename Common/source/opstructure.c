@@ -77,15 +77,15 @@ void opstartinternalchange (void) {
 	5.1.3 dmb: flag is now a byte, make nestable
 	*/
 	
-	if (outlinedata)
-		(**outlinedata).flinternalchange++;
+	if (op_get_outlinedata())
+		(**op_get_outlinedata()).flinternalchange++;
 	} /*opstartinternalchange*/
 
 
 void opendinternalchange (void) {
 	
-	if (outlinedata)
-		(**outlinedata).flinternalchange--;
+	if (op_get_outlinedata())
+		(**op_get_outlinedata()).flinternalchange--;
 	} /*opendinternalchange*/
 
 
@@ -95,7 +95,7 @@ boolean opinternalchange (void) {
 	5.0d11 dmb: flinternalchange is now outline-specific
 	*/
 	
-	return (outlinedata && (**outlinedata).flinternalchange);
+	return (op_get_outlinedata() && (**op_get_outlinedata()).flinternalchange);
 	} /*opendinternalchange*/
 
 
@@ -113,7 +113,7 @@ boolean opnodechanged (hdlheadrecord hnode) {
 	*/
 
 	/*
-	opnodecallback cb = (**outlinedata).nodechangedcallback;
+	opnodecallback cb = (**op_get_outlinedata()).nodechangedcallback;
 	
 	if (cb != nil) { // we can get called before the top level has been able to init this, workaround problem
 		
@@ -131,7 +131,7 @@ boolean opnodechanged (hdlheadrecord hnode) {
 
 void opsetline1 (hdlheadrecord hline1) {
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	
 	(**ho).hline1 = hline1;
 	
@@ -153,7 +153,7 @@ static boolean opundounmark (hdlheadrecord hnode, boolean flundo) {
 			
 			(**hnode).flmarked = true;
 			
-			(**outlinedata).ctmarked++;
+			(**op_get_outlinedata()).ctmarked++;
 			}
 		
 		oppushundo (&opundounmark, hnode);
@@ -186,7 +186,7 @@ static boolean opundodeposit (hdlheadrecord hnode, boolean flundo) {
 		opunlink (hnode);
 		
 		if ((**hnode).flmarked)
-			(**outlinedata).ctmarked--;
+			(**op_get_outlinedata()).ctmarked--;
 		}
 	
 	return (true);
@@ -201,25 +201,25 @@ static boolean oppushdepositundo (hdlheadrecord hnode) {
 
 static boolean opdeletelinecallback (hdlheadrecord hnode) {
 
-	if (!outlinedata || opinternalchange ())
+	if (!op_get_outlinedata() || opinternalchange ())
 		return (false);
 	
-	return ((*(**outlinedata).deletelinecallback) (hnode));
+	return ((*(**op_get_outlinedata()).deletelinecallback) (hnode));
 	} /*opdeletelinecallback*/
 
 
 static boolean opinsertlinecallback (hdlheadrecord hnode) {
 	
-	if (!outlinedata || opinternalchange ())
+	if (!op_get_outlinedata() || opinternalchange ())
 		return (false);
 	
-	return ((*(**outlinedata).insertlinecallback) (hnode));
+	return ((*(**op_get_outlinedata()).insertlinecallback) (hnode));
 	} /*opinsertlinecallback*/
 
 
 static void opchoosesafenodes (hdlheadrecord hdangerous, hdlheadrecord hsafe) {
 
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	
 	if (hdangerous == (**ho).hline1) /*unlinking first line in display*/
 		opsetline1 (hsafe);
@@ -242,10 +242,10 @@ boolean oppushundo (opundocallback pundo, hdlheadrecord hnode) {
 	
 	#if !fljustpacking
 	
-		if (outlinedata == nil) /*PBS 7.0b49: this can happen when getting OSA code, which doesn't require set global*/
+		if (op_get_outlinedata() == nil) /*PBS 7.0b49: this can happen when getting OSA code, which doesn't require set global*/
 			return (false);
 
-		if (opinternalchange () || !(**outlinedata).flbuildundo) {
+		if (opinternalchange () || !(**op_get_outlinedata()).flbuildundo) {
 			
 			(*pundo) (hnode, false);
 			
@@ -280,7 +280,7 @@ static boolean opundounlink (hdldepositinfo hdepositinfo, boolean flundo) {
 			
 			opexpandto (hdeposit);
 			
-			(**outlinedata).ctmarked++;
+			(**op_get_outlinedata()).ctmarked++;
 			}
 		}
 	
@@ -393,7 +393,7 @@ static void opdepositdown (hdlheadrecord hpre, hdlheadrecord hdeposit) {
 	modified 11/9/88 to support multiple level-0 nodes DW.
 	
 	11/10/88 handles moving the first summit down, updates 
-	(**outlinedata).hsummit.
+	(**op_get_outlinedata()).hsummit.
 	
 	12/23/88 more efficient code, use registers better.
 
@@ -519,7 +519,7 @@ static void opdepositup (hdlheadrecord hpre, hdlheadrecord hdeposit) {
 	register hdlheadrecord hp = hpre;
 	register hdlheadrecord hd = hdeposit;
 	register hdlheadrecord hleft;
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	
 	opnodechanged (hp);
 			
@@ -620,7 +620,7 @@ boolean opmoveto (hdlheadrecord hnode) {
 	Phase 2: Headless support - Skip display operations when no window present
 	*/
 
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	register hdlheadrecord h = hnode;
 	long hscroll, vscroll;
 	register boolean flvisiscroll = false;
@@ -681,7 +681,7 @@ static boolean oldopjumpto (hdlheadrecord hnode) {
 	
 	opinvaldisplay (); /*everything will get redrawn*/
 	
-	(**outlinedata).hbarcursor = hnode;
+	(**op_get_outlinedata()).hbarcursor = hnode;
 	
 	if (opneedvisiscroll (hnode, &hscroll, &vscroll, false)) {
 	
@@ -700,9 +700,9 @@ boolean opjumpto (hdlheadrecord hnode) {
 	dmb 11/8/96: keep it simple here, let opdisplay take care of all the updating
 	*/
 	
-	hdlheadrecord oldbarcursor = (**outlinedata).hbarcursor;
+	hdlheadrecord oldbarcursor = (**op_get_outlinedata()).hbarcursor;
 	
-	(**outlinedata).hbarcursor = hnode;
+	(**op_get_outlinedata()).hbarcursor = hnode;
 	
 	opjumpdisplayto (oldbarcursor, hnode);
 	
@@ -731,7 +731,7 @@ boolean opflatfind (boolean flfromtop, boolean flwrap) {
 	beginning of current headline
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	register hdlheadrecord nomad;
 	register hdlheadrecord orignomad;
 	register hdlheadrecord nextnomad;
@@ -920,7 +920,7 @@ static boolean opcheckline1 (hdlheadrecord hdelete) {
 	display.  if so, change the first line to something nearby.
 	*/
 	
-	hdlheadrecord hline1 = (**outlinedata).hline1;
+	hdlheadrecord hline1 = (**op_get_outlinedata()).hline1;
 	
 	if (opchecksafenode (hdelete, &hline1))
 		opsetline1 (hline1);
@@ -937,10 +937,10 @@ static boolean opsafebarcursor (hdlheadrecord hdelete) {
 	the bar cursor is on is about to be unlinked from the structure.
 	*/
 	
-	hdlheadrecord hcursor = (**outlinedata).hbarcursor;
+	hdlheadrecord hcursor = (**op_get_outlinedata()).hbarcursor;
 	
 	if (opchecksafenode (hdelete, &hcursor))
-		(**outlinedata).hbarcursor = hcursor;
+		(**op_get_outlinedata()).hbarcursor = hcursor;
 	
 	return (true);
 	} /*opsafebarcursor*/
@@ -1088,9 +1088,9 @@ static hdlheadrecord opcopyheadrecord (hdlheadrecord horig) {
 	if ((**horig).hrefcon != nil) { /*the original has a refcon handle attached*/
 		
 		boolean fl;
-		hdloutlinerecord x = outlinedata; /*we preserve x, y and z*/
+		hdloutlinerecord x = op_get_outlinedata(); /*we preserve x, y and z*/
 		
-		fl = (*(**outlinedata).copyrefconcallback) (horig, hcopy);
+		fl = (*(**op_get_outlinedata()).copyrefconcallback) (horig, hcopy);
 		
 		opsetoutline (x); /*restore to original*/
 		
@@ -1108,7 +1108,7 @@ static hdlheadrecord opcopyheadrecord (hdlheadrecord horig) {
 
 static boolean opmoveoutlineup (void) {
 	
-	register hdlheadrecord hcursor = (**outlinedata).hbarcursor;
+	register hdlheadrecord hcursor = (**op_get_outlinedata()).hbarcursor;
 	register hdlheadrecord hpre = (**hcursor).headlinkup;
 	
 	if (hpre == hcursor) /*he's the first in the list*/
@@ -1130,7 +1130,7 @@ static boolean opmoveoutlinedown (void) {
 	pointing at a valid headline.
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	register hdlheadrecord hcursor = (**ho).hbarcursor;
 	register hdlheadrecord hpre = (**hcursor).headlinkdown;
 	
@@ -1149,7 +1149,7 @@ static boolean opmoveoutlinedown (void) {
 
 static boolean opmoveoutlineleft (void) {
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	register hdlheadrecord hcursor = (**ho).hbarcursor;
 	register hdlheadrecord hpre = (**hcursor).headlinkleft;
 	
@@ -1172,7 +1172,7 @@ static boolean opmoveoutlineleft (void) {
 	
 static boolean opmoveoutlineright (void) {
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	register hdlheadrecord hcursor = (**ho).hbarcursor;
 	register hdlheadrecord hpre = (**hcursor).headlinkup;
 	
@@ -1246,7 +1246,7 @@ boolean opbeforestrucchange (hdlscreenmap *hmap, boolean flsaveeditbuffer) {
 	else
 		opunloadeditbuffer ();
 	
-	oppushundo (&opafterundo, (**outlinedata).hbarcursor);
+	oppushundo (&opafterundo, (**op_get_outlinedata()).hbarcursor);
 	
 	return (true);
 	} /*opbeforestrucchange*/
@@ -1265,7 +1265,7 @@ boolean opafterstrucchange (hdlscreenmap hmap, boolean flvisisubs) {
 	has already been disposed.
 	*/
 
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	
 	opsetctexpanded (ho); /*don't bother maintaining this, we re-compute*/
 	
@@ -1432,7 +1432,7 @@ static boolean opvalidatecanmove (hdlheadrecord hnode, ptrvoid refcon) {
 	correct parent when there's a multiple selection
 	*/
 	
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 	tymoveinfo *moveinfo = (tymoveinfo *) refcon;
 	hdlheadrecord hpre = (*moveinfo).hpre;
 	tydirection dir = (*moveinfo).dir;
@@ -1476,7 +1476,7 @@ static boolean opmoveoutlinevisit (hdlheadrecord hnode, ptrvoid dir) {
 	
 	boolean fl;
 	
-	(**outlinedata).hbarcursor = hnode; /*will be restored by caller later*/
+	(**op_get_outlinedata()).hbarcursor = hnode; /*will be restored by caller later*/
 	
 	oppushunmarkundo (hnode);
 	
@@ -1527,7 +1527,7 @@ boolean opreorgcursor (tydirection dir, long units) {
 	1/24/91 dmb: must restore hcursor every time through loop
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	register long i;
 	register boolean fl;
 	register boolean flmovedsomething = false;
@@ -1591,10 +1591,10 @@ static boolean opvalidatemovevisit (hdlheadrecord hnode, tymoveinfo *moveinfo) {
 	and the dest. all source nodes must be tested, which it does automatcially
 	*/
 
-	if (!(*(**outlinedata).validatedragcallback) (hnode, (*moveinfo).hpre, (*moveinfo).dir))
+	if (!(*(**op_get_outlinedata()).validatedragcallback) (hnode, (*moveinfo).hpre, (*moveinfo).dir))
 		return (false);
 
-	return ((*(**outlinedata).validatepastecallback) (hnode, (*moveinfo).hpre, (*moveinfo).dir));
+	return ((*(**op_get_outlinedata()).validatepastecallback) (hnode, (*moveinfo).hpre, (*moveinfo).dir));
 	} /*opvalidatemovevisit*/
 
 
@@ -1617,7 +1617,7 @@ boolean oppromote_ctx (op_context_t *ctx) {
 	assert(ctx != NULL);
 	op_context_version_bump(ctx);
 
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	register hdlheadrecord hcursor = (**ho).hbarcursor;
 	register hdlheadrecord nomad, nextnomad;
 	hdlscreenmap hmap;
@@ -1714,7 +1714,7 @@ boolean opdemote_ctx (op_context_t *ctx) {
 	assert(ctx != NULL);
 	op_context_version_bump(ctx);
 
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	register hdlheadrecord hcursor = (**ho).hbarcursor;
 	register hdlheadrecord nomad;
 	register boolean flmovedsomething = false;
@@ -1797,7 +1797,7 @@ static boolean opdeletesubvisit (hdlheadrecord hnode, ptrvoid refcon) {
 	*/
 
 	hdlheadrecord hsafe = (hdlheadrecord) refcon;
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 
 	if ((**ho).hbarcursor == hnode)
 		(**ho).hbarcursor = hsafe;
@@ -1848,7 +1848,7 @@ boolean opdeletesubs_ctx (op_context_t *ctx, hdlheadrecord hnode) {
 
 	opnodechanged (h); /*leader icon will change*/
 
-	if (!(*(**outlinedata).preexpandcallback) (hnode, 1, true)) /*PBS 7.0b23: fixes crashing bug in tables, harmless elsewhere.*/
+	if (!(*(**op_get_outlinedata()).preexpandcallback) (hnode, 1, true)) /*PBS 7.0b23: fixes crashing bug in tables, harmless elsewhere.*/
 		return (false);
 
 	(**h).fldirty = true;
@@ -2009,7 +2009,7 @@ boolean opcopyoutlinerecord (hdloutlinerecord horig, hdloutlinerecord *hcopy) {
 	/*
 	12/1/92 dmb: clear tophoist & hbuffer in copy. (avoids menueditor crash)
 	
-	5.0.2b12 dmb: set outlinedata to horig during copy, to get its callbacks.
+	5.0.2b12 dmb: set op_get_outlinedata() to horig during copy, to get its callbacks.
 	
 	5.1.5b9 dmb: preserve barcursor, hline1
 	*/
@@ -2071,7 +2071,7 @@ static boolean opclearmarkvisit (hdlheadrecord hnode, ptrvoid refcon) {
 		
 		(**h).flmarked = false;
 		
-		--(**outlinedata).ctmarked;
+		--(**op_get_outlinedata()).ctmarked;
 		}
 	
 	return (true);
@@ -2084,7 +2084,7 @@ void opclearallmarks (void) {
 	Phase 2: Headless support - Skip screen map operations when no window present
 	*/
 
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 	hdlscreenmap hmap;
 	boolean fldisplay = opdisplayenabled();
 
@@ -2143,12 +2143,12 @@ void opsetmark (hdlheadrecord hnode, boolean fl) {
 	
 	if (!fl)  { /*turning off the marked bit is much easier*/
 		
-		(**outlinedata).ctmarked--;
+		(**op_get_outlinedata()).ctmarked--;
 		
 		return;
 		}
 	
-	(**outlinedata).ctmarked++;
+	(**op_get_outlinedata()).ctmarked++;
 	
 	opclearmarks (h); /*make sure nothing subordinated is marked*/
 	
@@ -2169,7 +2169,7 @@ void opsetmark (hdlheadrecord hnode, boolean fl) {
 static boolean opsetbarcursorvisit (hdlheadrecord hnode, ptrvoid refcon) {
 #pragma unused (refcon)
 
-	(**outlinedata).hbarcursor = hnode; /*move barcursor here*/
+	(**op_get_outlinedata()).hbarcursor = hnode; /*move barcursor here*/
 	
 	return (false); /*this is the only marked node*/
 	} /*opsetbarcursorvisit*/
@@ -2182,7 +2182,7 @@ boolean opanymarked (void) {
 	normalize the selection, and return true if anything is marked, false otherwise.
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	
 	switch ((**ho).ctmarked) {
 		
@@ -2251,7 +2251,7 @@ optrytextcommand (
 {
 #pragma unused (flchanging)
 
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	long startsel, endsel;
 
 	if (!(**ho).fltextmode)
@@ -2277,7 +2277,7 @@ boolean opcopy (void) {
 	5.1.3 dmb: better error handling
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	
 	if (optrytextcommand (opeditcopy, true, false))
 		return (true);
@@ -2371,7 +2371,7 @@ static boolean opundonewsummit (hdlheadrecord hnode, boolean flundo) {
 	
 	if (flundo) {
 		
-		register hdloutlinerecord ho = outlinedata;
+		register hdloutlinerecord ho = op_get_outlinedata();
 		hdlheadrecord hdelete = (**ho).hsummit;
 		
 		/* restore original summit */
@@ -2414,7 +2414,7 @@ boolean opdeletenode_ctx (op_context_t *ctx, hdlheadrecord hnode) {
 	assert(ctx != NULL);
 	op_context_version_bump(ctx);
 
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	register hdlheadrecord hdelete = hnode;
 	register hdlheadrecord hsummit;
 
@@ -2697,7 +2697,7 @@ boolean oppaste (void) {
 	5.0a5 dmb: when pasting a temp scrap, must unlink each node that we don't copy
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	register hdlheadrecord hcursor = (**ho).hbarcursor;
 	register hdlheadrecord hcopy, hfirstcopy, hlastcopy;
 	hdlheadrecord nomad, nextnomad;
@@ -2722,7 +2722,7 @@ boolean oppaste (void) {
 	if (!((**ho).validatepastecallback) (houtlinescrap, hcursor, down))
 		return (false);
 	
-	hcursor = (**outlinedata).hbarcursor; /*the validate routine could delete the bar cursor*/
+	hcursor = (**op_get_outlinedata()).hbarcursor; /*the validate routine could delete the bar cursor*/
 	
 	opbeforestrucchange (&hmap, false);
 	
@@ -2848,7 +2848,7 @@ boolean opinsertheadline_ctx (op_context_t *ctx, Handle hstring, tydirection dir
 	assert(ctx != NULL);
 	op_context_version_bump(ctx);
 
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	register hdlheadrecord hcursor = (**ho).hbarcursor;
 	hdlheadrecord hnewcursor;
 
@@ -2924,7 +2924,7 @@ boolean opinsertstructure_ctx (op_context_t *ctx, hdlheadrecord hnode, tydirecti
 	assert(ctx != NULL);
 	op_context_version_bump(ctx);
 
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	register hdlheadrecord hcursor = (**ho).hbarcursor;
 	hdlheadrecord nomad, nextnomad;
 	hdlscreenmap hmap;
@@ -3005,7 +3005,7 @@ boolean opsettmpbitvisit (hdlheadrecord hnode, ptrvoid flset) {
 
 boolean opcleartmpbits (void) {
 	
-	return (opsiblingvisiter ((**outlinedata).hsummit, true, &opsettmpbitvisit, (ptrvoid) false));
+	return (opsiblingvisiter ((**op_get_outlinedata()).hsummit, true, &opsettmpbitvisit, (ptrvoid) false));
 	} /*opcleartmpbits*/
 
 

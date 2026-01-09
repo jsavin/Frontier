@@ -53,7 +53,7 @@
 
 short opgetheadicon (hdlheadrecord hnode) {
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	boolean flcanexpand;
 	
 	if ((**ho).flprinting) /*show all leaders as gray when printing*/
@@ -182,7 +182,7 @@ boolean opdefaultdrawicon (hdlheadrecord hnode, const Rect *iconrect, boolean fl
 	editor, not for clay basket.
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	short iconnum;
 	bigstring bsheadlinetype; /*7.0b9 PBS*/
 	boolean flcustomicondrawn = false;
@@ -255,7 +255,7 @@ boolean opdefaultdrawicon (hdlheadrecord hnode, const Rect *iconrect, boolean fl
 
 boolean opdefaultgeticonrect (hdlheadrecord hnode, const Rect *linerect, Rect *iconrect) {
 	
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 	Rect r;
 	Rect rcontains = *linerect;
 	
@@ -282,7 +282,7 @@ boolean opdefaultgeticonrect (hdlheadrecord hnode, const Rect *linerect, Rect *i
 	
 void opgeticonrect (hdlheadrecord hnode, const Rect *linerect, Rect *iconrect) {
 
-	(*(**outlinedata).geticonrectcallback) (hnode, linerect, iconrect);
+	(*(**op_get_outlinedata()).geticonrectcallback) (hnode, linerect, iconrect);
 	} /*opgeticonrect*/
 	
 	
@@ -301,7 +301,7 @@ void opdrawarrowicon (hdlheadrecord hnode, long lnum, tydirection arrowdirection
 	if (lnum < 0) /*defensive driving*/
 		return;
 	
-	pushbackcolor (&(**outlinedata).backcolor);
+	pushbackcolor (&(**op_get_outlinedata()).backcolor);
 	
 	opgetlinerect (lnum, &linerect); 
 	
@@ -313,7 +313,7 @@ void opdrawarrowicon (hdlheadrecord hnode, long lnum, tydirection arrowdirection
 		
 		operaserect (iconrect);
 		
-		(*(**outlinedata).drawiconcallback) (hnode, &iconrect, flselected, flinverted);
+		(*(**op_get_outlinedata()).drawiconcallback) (hnode, &iconrect, flselected, flinverted);
 			
 		goto exit;
 		}
