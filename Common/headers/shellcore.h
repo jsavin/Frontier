@@ -53,7 +53,7 @@ supporting the collaborative ODB foundation.
 #pragma pack(2)
 typedef struct tyglobalsstackentry {
 	WindowPtr window;           /* Window context (void* in headless builds) */
-	hdlhashtable hashtable;     /* Hash table context (fixes ADR-006 issue) */
+	hdlhashtable hashtable;     /* Hash table context (fixes Issue #262 / 27-year-old bug) */
 } tyglobalsstackentry;
 #pragma options align=reset
 
