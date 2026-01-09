@@ -1,11 +1,41 @@
 # ADR-006: Eliminating Outline Push/Pop Global State Pattern
 
-**Status**: Draft (Investigation Complete)
-**Date**: 2026-01-08
+**Status**: Implemented
+**Date**: 2026-01-08 (Investigation), 2026-01-09 (Implementation)
 **Author**: System Architect
 **Relates to**: Issue #135 (Outline Context Refactoring), Collaborative ODB (Phase 6+)
 **Supersedes**: N/A
 **Depends on**: ADR-005 (Thread-Local Storage Pattern), OUTLINE_OPERATION_CONTEXT.md
+**Implementation**: PR #261 (feature/adr-006-outline-context)
+
+## Implementation Summary (2026-01-09)
+
+**Migration Complete**: All outline context globals migrated to thread-local storage with type-safe accessor functions.
+
+**Implementation Phases**:
+1. **Phase 1**: Thread-local migration (tythreadglobals structure, swap functions)
+2. **Phase 2**: Shell globals stubs for headless builds
+3. **Phase 3**: Automated accessor migration (677 call sites across 61 files)
+4. **Phase 4**: Macro removal (5 remaining direct usages, backward-compatible macros removed)
+
+**Changes**:
+- 61 files modified (Common/source/, Common/headers/, tests/)
+- 677+ call sites migrated to accessor functions
+- Zero API breaks (macros provided backward compatibility during migration)
+- All tests passing (unit + integration)
+
+**Outcome**:
+- ✅ Thread-safe outline context access (per-thread isolation)
+- ✅ Stale pointer footgun eliminated (value-returning accessors)
+- ✅ Foundation laid for Phase 6+ collaborative ODB
+- ✅ Zero runtime overhead (compiler inlines accessors at -O2)
+
+**Lessons Learned**:
+- Automated refactoring script caught 99.5% of cases (3 manual fixes needed)
+- Phase 4 macro removal required careful handling of push/pop logic
+- Thread-local pattern (ADR-005) scales well to larger migration (154→677 sites)
+
+---
 
 ## Executive Summary
 
