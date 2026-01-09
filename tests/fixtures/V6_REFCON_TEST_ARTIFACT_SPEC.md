@@ -27,9 +27,12 @@ This document specifies the v6 database artifact needed to test refcon migration
 ### Step 1: Create New v6 Database in Windows Frontier
 
 ```usertalk
-// Create new empty database
-db.new("refcon_migration_test_v6.root")
+// Create new empty database (use absolute path)
+// Example path - adjust to your Windows system location
+db.new("C:\\Frontier\\refcon_migration_test_v6.root")
 ```
+
+**Note**: Frontier requires absolute paths. Adjust the path to match your Windows system location.
 
 **Note**: All objects below will be created in the ROOT of this new database (not in workspace)
 
