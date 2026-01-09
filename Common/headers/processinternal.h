@@ -253,10 +253,22 @@ typedef struct tythreadglobals {
  * These macros provide transparent access to per-thread outline state,
  * replacing the former global variables. All 154 call sites that reference
  * outlinedata, topoutlinestack, or outlinestack now access thread-local storage.
+ *
+ * INITIALIZATION CONTRACT: These macros assume hthreadglobals is initialized.
+ * In headless mode, headless_init_threadglobals() must be called during startup.
+ * In GUI mode, newthreadglobals() initializes these fields when creating threads.
+ * Accessing these macros before initialization results in undefined behavior.
  */
-#define outlinedata ((**hthreadglobals).outlinedata)
-#define topoutlinestack ((**hthreadglobals).topoutlinestack)
-#define outlinestack ((**hthreadglobals).outlinestack)
+#ifdef DEBUG
+	#include <assert.h>
+	#define outlinedata (assert(hthreadglobals != nil), (**hthreadglobals).outlinedata)
+	#define topoutlinestack (assert(hthreadglobals != nil), (**hthreadglobals).topoutlinestack)
+	#define outlinestack (assert(hthreadglobals != nil), (**hthreadglobals).outlinestack)
+#else
+	#define outlinedata ((**hthreadglobals).outlinedata)
+	#define topoutlinestack ((**hthreadglobals).topoutlinestack)
+	#define outlinestack ((**hthreadglobals).outlinestack)
+#endif
 
 /*globals*/
 
