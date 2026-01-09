@@ -28,8 +28,7 @@ This document specifies the v6 database artifact needed to test refcon migration
 
 ```usertalk
 // Create new empty database
-file.new("refcon_migration_test_v6.root", fileType:'LAND', creatorType:'LAND')
-db.open("refcon_migration_test_v6.root", @system)
+db.new("refcon_migration_test_v6.root")
 ```
 
 **Note**: All objects below will be created in the ROOT of this new database (not in workspace)
@@ -38,14 +37,14 @@ db.open("refcon_migration_test_v6.root", @system)
 
 Follow the implementation scripts in sections 1-4 below to create all test objects.
 
-### Step 3: Save and Close Database
+### Step 3: Close Database
 
 ```usertalk
-// After creating all test objects, save and close
+// After creating all test objects, close the database (auto-saves)
 db.close()
 ```
 
-**Important**: Copy the resulting `refcon_migration_test_v6.root` file to `tests/fixtures/` in the Frontier repository
+**Important**: The database file `refcon_migration_test_v6.root` should now exist. Copy it to `tests/fixtures/` in the Frontier repository.
 
 ---
 
