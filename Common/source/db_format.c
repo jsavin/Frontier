@@ -1860,17 +1860,28 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     if (!db_format_force_materialize_external_tables(hroot, &source_context))
         goto cleanup;
 
-    /* Force full repack of the root table so legacy blocks are rewritten in BE64. */
+    /* CRITICAL FIX for guest database migration address reuse bug:
+     * The root table is already loaded into memory by tableloadsystemtable() above,
+     * so tableverbinmemory() returns early without clearing oldaddress.
+     * We must explicitly clear oldaddress here AFTER loading to force fresh allocation
+     * in the destination database. The adapter_repack mode above ensures nested tables
+     * also get fresh addresses when they are loaded. */
     {
         hdltablevariable hv = (hdltablevariable) hrootvariable;
         hdlhashtable ht = (hdlhashtable) (**hv).variabledata;
         if (ht != nil) {
             (**ht).fldirty = true;
             (**ht).flsubsdirty = true;
-            (**hv).oldaddress = nildbaddress; /* force new allocation during migration */
+        }
+        /* Force fresh allocation: root is already in memory, so clear oldaddress now */
+        if (hv != nil && *hv != nil) {
+            (**hv).oldaddress = nildbaddress;
+#if defined(FRONTIER_HEADLESS)
+            log_debug(LOG_COMP_DB, "migrate: cleared root oldaddress to force fresh allocation in destination");
+#endif
         }
     }
-    /* Load root into memory before switching to 64-bit writes. */
+    /* Load root into memory - should be a no-op since tableloadsystemtable() already loaded it */
     fail_step = "tableverbinmemory(root)";
     if (!tableverbinmemory(NULL, (hdlexternalvariable) hrootvariable, HNoNode))
         goto cleanup;
@@ -1959,10 +1970,14 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
 #endif
 
     saved_root = tablesavesystemtable(hrootvariable, &new_root_address);
+#if defined(FRONTIER_HEADLESS)
+    log_debug(LOG_COMP_DB, "migrate: after tablesavesystemtable, new_root_address=0x%llx saved_root=%d",
+              (unsigned long long)new_root_address, saved_root ? 1 : 0);
+#endif
     if (!saved_root) {
         goto cleanup;
     }
-    /* Ensure subsequent opens don’t reuse the in-memory system table. */
+    /* Ensure subsequent opens don't reuse the in-memory system table. */
     cleartablestructureglobals();
     if (hrootvariable != nil) {
         /* false => dispose contents; handle freed below via cleartablestructureglobals */
