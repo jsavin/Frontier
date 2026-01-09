@@ -186,8 +186,9 @@ void opeditgetselrect (Rect *r) {
 
 void opeditgetselpoint (Point *pt) {
 	if (pt != NULL) {
-		if (op_get_outlinedata() != nil)
-			*pt = (**outlinedata).selpoint;
+		hdloutlinerecord ho = op_get_outlinedata();
+		if (ho != nil)
+			*pt = (**ho).selpoint;
 		else {
 			pt->h = 0;
 			pt->v = 0;

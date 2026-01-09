@@ -350,30 +350,21 @@ static inline hdloutlinerecord* op_get_outlinedata_ptr_unsafe(void) {
 }
 
 
-/* ADR-006: Thread-local outline context (backward-compatible macros)
- * These macros provide transparent access to per-thread outline state,
- * replacing the former global variables. All 154 call sites that reference
- * outlinedata, topoutlinestack, or outlinestack now access thread-local storage.
+/* ADR-006: Thread-local outline context migration complete (Phase 4)
  *
- * INITIALIZATION CONTRACT: These macros assume hthreadglobals is initialized.
+ * All outline context access now goes through type-safe accessor functions:
+ * - op_get_outlinedata() / op_set_outlinedata()
+ * - op_get_topoutlinestack() / op_set_topoutlinestack()
+ * - op_get_outlinestack() / op_set_outlinestack()
+ *
+ * The backward-compatible macros have been removed. All 677+ call sites have been
+ * migrated to use accessor functions, eliminating the stale pointer footgun and
+ * providing thread-safe access to outline context.
+ *
+ * INITIALIZATION CONTRACT: Accessor functions assume hthreadglobals is initialized.
  * In headless mode, headless_init_threadglobals() must be called during startup.
  * In GUI mode, newthreadglobals() initializes these fields when creating threads.
- * Accessing these macros before initialization results in undefined behavior.
- *
- * MIGRATION NOTE: During Phase 2, these macros will coexist with accessor functions.
- * Call sites will be gradually migrated to use accessors. In Phase 4, these macros
- * will be removed entirely.
  */
-#ifdef DEBUG
-	#include <assert.h>
-	#define outlinedata (assert(hthreadglobals != nil), (**hthreadglobals).outlinedata)
-	#define topoutlinestack (assert(hthreadglobals != nil), (**hthreadglobals).topoutlinestack)
-	#define outlinestack (assert(hthreadglobals != nil), (**hthreadglobals).outlinestack)
-#else
-	#define outlinedata ((**hthreadglobals).outlinedata)
-	#define topoutlinestack ((**hthreadglobals).topoutlinestack)
-	#define outlinestack ((**hthreadglobals).outlinestack)
-#endif
 
 
 /*prototypes*/

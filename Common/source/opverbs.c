@@ -4381,12 +4381,14 @@ boolean opverbruncursor (void) {
 
 
 boolean opverbgetvariable (hdlexternalvariable *hvariable) {
-	
-	if (op_get_outlinedata() == nil)
+
+	hdloutlinerecord ho = op_get_outlinedata();
+
+	if (ho == nil)
 		return (false);
-	
-	*hvariable = (hdlexternalvariable) (**outlinedata).outlinerefcon;
-	
+
+	*hvariable = (hdlexternalvariable) (**ho).outlinerefcon;
+
 	return (true);
 	} /*opverbgetvariable*/
 

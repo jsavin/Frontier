@@ -1611,11 +1611,11 @@ boolean melocatemenubarnode (hdlheadrecord hnode, hdloutlinerecord *houtline) {
 		pushmenubarglobals (hstack);
 		
 		if (mefindinmenubar (hnode, false, &ixstack, &itemnumber)) { /*found as item*/
-			
-			*houtline = outlinedata;
-			
+
+			*houtline = op_get_outlinedata();
+
 			popmenubarglobals ();
-			
+
 			return (true);
 			}
 		

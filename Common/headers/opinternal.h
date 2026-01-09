@@ -110,9 +110,9 @@ typedef boolean (*opundocallback) (hdlheadrecord, boolean);
 #define ctoutlinestack 10 /*we can remember outline contexts up to 10 levels deep*/
 
 /* ADR-006: Outline stack migrated to thread-local storage - see processinternal.h
- * Access via macros:
- *   #define topoutlinestack ((**hthreadglobals).topoutlinestack)
- *   #define outlinestack ((**hthreadglobals).outlinestack)
+ * Access via type-safe accessor functions (macros removed in Phase 4):
+ *   op_get_topoutlinestack() / op_set_topoutlinestack()
+ *   op_get_outlinestack(index) / op_set_outlinestack(index, value)
  */
 
 

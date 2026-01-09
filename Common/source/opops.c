@@ -67,10 +67,12 @@ typedef struct tyscanrecord { /*information for contains/find/search recursive s
 
 
 /* ADR-006: Outline context migrated to thread-local storage (tythreadglobals)
- * These globals have been removed - access via macros defined in processinternal.h:
- *   #define outlinedata ((**hthreadglobals).outlinedata)
- *   #define topoutlinestack ((**hthreadglobals).topoutlinestack)
- *   #define outlinestack ((**hthreadglobals).outlinestack)
+ * Former global variables removed. Access via type-safe accessor functions:
+ *   op_get_outlinedata() / op_set_outlinedata()
+ *   op_get_topoutlinestack() / op_set_topoutlinestack()
+ *   op_get_outlinestack(index) / op_set_outlinestack(index, value)
+ *
+ * Backward-compatible macros removed in Phase 4 (all 677+ call sites migrated).
  */
 
 
@@ -110,13 +112,15 @@ boolean oppushoutline (hdloutlinerecord houtline) {
 	*/
 	
 	if (op_get_topoutlinestack() >= ctoutlinestack) {
-		
+
 		shellinternalerror (idoutlinestackfull, STR_outline_stack_overflow);
-		
+
 		return (false);
 		}
-	
-	op_set_outlinestack(topoutlinestack++, op_get_outlinedata());
+
+	short stackdepth = op_get_topoutlinestack();
+	op_set_outlinestack(stackdepth, op_get_outlinedata());
+	op_set_topoutlinestack(stackdepth + 1);
 #if defined(FRONTIER_HEADLESS)
 	{
 		const char *ctx = (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>";
@@ -143,7 +147,7 @@ boolean oppopoutline (void) {
 	
 	if (op_get_topoutlinestack() <= 0)
 		return (false);
-	
+
 #if defined(FRONTIER_HEADLESS)
 	{
 		const char *ctx = (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>";
@@ -155,7 +159,9 @@ boolean oppopoutline (void) {
 	}
 #endif
 
-	op_set_outlinedata(op_get_outlinestack(--topoutlinestack));
+	short stackdepth = op_get_topoutlinestack() - 1;
+	op_set_outlinedata(op_get_outlinestack(stackdepth));
+	op_set_topoutlinestack(stackdepth);
 	
 	if (ho) {
 		

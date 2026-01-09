@@ -51,10 +51,7 @@ hdlthreadglobals hthreadglobals = &headless_threadglobals_ptr;
 #undef fllanghashassignprotect
 #undef fllangexternalvalueprotect
 
-/* ADR-006: Undefine outline context macros for initialization */
-#undef outlinedata
-#undef topoutlinestack
-#undef outlinestack
+/* ADR-006: Direct struct access for initialization (macros removed in Phase 4) */
 
 void headless_init_threadglobals(void) {
 	/* ADR-005: Parameter handling state initialization */
@@ -93,7 +90,6 @@ void headless_init_threadglobals(void) {
 #define fllanghashassignprotect ((**hthreadglobals).fllanghashassignprotect)
 #define fllangexternalvalueprotect ((**hthreadglobals).fllangexternalvalueprotect)
 
-/* ADR-006: Restore outline context macros */
-#define outlinedata ((**hthreadglobals).outlinedata)
-#define topoutlinestack ((**hthreadglobals).topoutlinestack)
-#define outlinestack ((**hthreadglobals).outlinestack)
+/* ADR-006: Outline context macros removed - use accessor functions instead
+ * (op_get_outlinedata, op_set_outlinedata, etc.)
+ */
