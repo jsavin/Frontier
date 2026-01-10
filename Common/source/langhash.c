@@ -717,8 +717,10 @@ static void diskvalue_from_value_v7(const tyvaluerecord *val, tydiskvaluedata_v7
 		case datevaluetype:
 			out->datevalue = (uint64_t) host_to_disk_int64((int64_t) val->data.datevalue);
 			break;
-		case longvaluetype:
 		case ostypevaluetype:
+			out->ostypevalue = host_to_disk_int32((int32_t) val->data.ostypevalue);
+			break;
+		case longvaluetype:
 		case enumvaluetype:
 		case fixedvaluetype:
 			out->longvalue = host_to_disk_int64((int64_t) val->data.longvalue);
