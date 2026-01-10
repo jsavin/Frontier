@@ -1894,9 +1894,21 @@ static boolean dballocate (long databytes, ptrvoid pdata, dbaddress *paddress) {
 		goto failure;
 	
  	*paddress = origeof; /*this is the address of the block we allocated*/
-	
-	
+
+
 success:
+#if defined(FRONTIER_HEADLESS)
+	if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_DB) && *paddress != nildbaddress) {
+		log_trace(LOG_COMP_DB, "dballocate: allocated %ld bytes at 0x%llx using_dest=%d",
+		          databytes, (unsigned long long)*paddress, using_destination ? 1 : 0);
+		log_trace(LOG_COMP_DB, "dballocate:   databasedata=%p headerLength=%ld",
+		          (void*)databasedata,
+		          databasedata ? (long)(**databasedata).headerLength : 0L);
+		log_trace(LOG_COMP_DB, "dballocate:   databasedestination=%p headerLength=%ld eof=%ld",
+		          (void*)databasedestination,
+		          databasedestination ? (long)(**databasedestination).headerLength : 0L, origeof);
+	}
+#endif
 
 	db_context_guard_exit(&guard);
 	
@@ -2650,29 +2662,37 @@ boolean dbassignhandle (Handle h, dbaddress *adr) {
 	
 	
 boolean dbsavehandle (Handle hsave, dbaddress *adr) {
-	
+
 	/*
-	xxx -- not sure why this is needed, looks like dbassignhandle, above,  
+	xxx -- not sure why this is needed, looks like dbassignhandle, above,
 	does the job fairly well.
 	*/
-	
+
 	register Handle h = hsave;
 	register long ctbytes;
 	register boolean fl;
 	dbaddress a = *adr;
-	
+
+	log_trace(LOG_COMP_DB, "dbsavehandle: ENTRY input_adr=0x%llx", (unsigned long long) *adr);
+
 	ctbytes = gethandlesize (h);
-	
+
 	lockhandle (h);
-	
-	if (a == nildbaddress) 
+
+	log_trace(LOG_COMP_DB, "dbsavehandle: BEFORE alloc/assign a=0x%llx", (unsigned long long) a);
+
+	if (a == nildbaddress)
 		fl = dballocate (ctbytes, *h, &a);
 	else
 		fl = dbassign (&a, ctbytes, *h);
-		
+
+	log_trace(LOG_COMP_DB, "dbsavehandle: AFTER alloc/assign a=0x%llx", (unsigned long long) a);
+
 	unlockhandle (h);
 
 	*adr = a; /*copy into returned value*/
+
+	log_trace(LOG_COMP_DB, "dbsavehandle: EXIT output_adr=0x%llx", (unsigned long long) *adr);
 
  	if (!fl) {
 #if defined(FRONTIER_HEADLESS)
@@ -2697,16 +2717,22 @@ boolean dbnewarray (ctelements, sizeelement, pdata, adr) short ctelements, sizee
 	
 
 void dbsetview (short viewnumber, dbaddress adrtext) {
-	
+
 	register hdldatabaserecord hdb;
     db_context_guard guard;
     db_context swap_ctx;
     db_context *apply_ctx = db_context_for_saveas_destination(&swap_ctx, NULL);
 
     db_context_guard_enter(apply_ctx, &guard);
-	
+
 	hdb = databasedata; /*move into register*/
-	
+
+#if defined(FRONTIER_HEADLESS)
+	log_trace(LOG_COMP_DB, "dbsetview: view[%d] = 0x%llx (was 0x%llx) headerLength=%ld",
+	          viewnumber, (unsigned long long)adrtext, (unsigned long long)(**hdb).views[viewnumber],
+	          (long)(**hdb).headerLength);
+#endif
+
 	(**hdb).views [viewnumber] = adrtext;
 	
 	setdirty (hdb);
@@ -3031,16 +3057,24 @@ boolean dbdispose (void) {
 	} /*dbdispose*/
 
 
-boolean dbnew (hdlfilenum fnum) {
-	
+boolean dbnew (hdlfilenum fnum, boolean use_v7_format) {
+
 	/*
 	2002-11-11 AR: Added assert to make sure the C compiler chose the
 	proper byte alignment for the tydatabaserecord struct. If it did not,
 	we would end up corrupting any database files we saved.
+
+	2026-01-08: Added use_v7_format parameter to explicitly specify v6 (false) or v7 (true)
+	format instead of relying on global format mode state. This fixes Guest Database migration
+	where dbnew() was called before v7 mode was set, causing headerLength=118 instead of 90.
 	*/
-	
+
+#if defined(FRONTIER_HEADLESS)
+	log_trace(LOG_COMP_DB, "dbnew: ENTER fnum=%ld use_v7_format=%d", (long)fnum, use_v7_format ? 1 : 0);
+#endif
+
 	register hdldatabaserecord hdb;
-	
+
 	{
 		const size_t expected_header_size = (sizeof (void *) == 8) ? 118u : 90u;  /* Updated for 2-byte padding before views */
 		assert (sizeof (tydatabaserecord) == expected_header_size);
@@ -3056,12 +3090,32 @@ boolean dbnew (hdlfilenum fnum) {
 	(**hdb).systemid = dbsystemidMac;
 
 
-	(**hdb).versionnumber = dbversionnumber;
+	/* Set version and header size based on format parameter */
+	if (use_v7_format) {
+		/* v7 BE64 format: 90-byte header, version 7 */
+		(**hdb).versionnumber = 7;
+		(**hdb).headerLength = (long) sizeof(tydatabaserecord_64);  /* 90 bytes */
+		(**hdb).longversionMajor = 7;
+		(**hdb).longversionMinor = 0;
+#if defined(FRONTIER_HEADLESS)
+		log_trace(LOG_COMP_DB, "dbnew: v7 format - headerLength=%ld", (long)sizeof(tydatabaserecord_64));
+#endif
+	} else {
+		/* v6 32-bit format: 118-byte header (in-memory size with padding) */
+		(**hdb).versionnumber = dbversionnumber;
+		(**hdb).headerLength = firstphysicaladdress;  /* sizeof(tydatabaserecord) = 118 bytes */
+		(**hdb).longversionMajor = dbversionnumber;
+		(**hdb).longversionMinor = dbversionnumberminor;
+#if defined(FRONTIER_HEADLESS)
+		log_trace(LOG_COMP_DB, "dbnew: v6 format - headerLength=%ld", firstphysicaladdress);
+#endif
+	}
 
-	(**hdb).headerLength = firstphysicaladdress;
-	(**hdb).longversionMajor = dbversionnumber;
-	(**hdb).longversionMinor = dbversionnumberminor;
-	
+#if defined(FRONTIER_HEADLESS)
+	log_trace(LOG_COMP_DB, "dbnew: EXIT hdb=%p headerLength=%ld version=%d use_v7=%d",
+	          (void*)hdb, (**hdb).headerLength, (**hdb).versionnumber, use_v7_format ? 1 : 0);
+#endif
+
 	dbshadowavaillist ();
 
 	setdirty (hdb);
@@ -3119,9 +3173,25 @@ boolean dbopenfile (hdlfilenum fnum, boolean flreadonly) {
 	hdb = databasedata; /*copy into register*/
 	
 	(**hdb).fnumdatabase = (long) fnum; /*set up so dbread will work*/
-	
+
+    fail_step = "dbgeteof";
+	long filesize;
+	if (!dbgeteof(&filesize))
+		goto error;
+
+	/*
+	 * Determine how many bytes to read:
+	 * - v6 databases: 118 bytes (sizeof(tydatabaserecord))
+	 * - v7 databases: 90 bytes (sizeof(tydatabaserecord_64))
+	 * Read the smaller of (file size, buffer size) to handle both formats.
+	 */
+	long bytes_to_read = (filesize < (long)sizeof(rawheader)) ? filesize : (long)sizeof(rawheader);
+
+	log_debug(LOG_COMP_DB, "dbopenfile: filesize=%ld, buffer=%lu, reading=%ld bytes",
+	          filesize, (unsigned long)sizeof(rawheader), bytes_to_read);
+
     fail_step = "dbread";
-	if (!dbread ((dbaddress) 0, sizeof (rawheader), &rawheader))
+	if (!dbread ((dbaddress) 0, bytes_to_read, &rawheader))
 		goto error;
 	
     fail_step = "header-version";
@@ -3300,20 +3370,27 @@ static boolean dbstartsaveas_internal(hdlfilenum fnum) {
 	          (void*)databasedestination);
 #endif
 
-	fl = dbnew (fnum);
+	fl = dbnew (fnum, true);  /* Create v7 format during migration */
 
 #if defined(FRONTIER_HEADLESS)
-	log_trace(LOG_COMP_DB, "dbstartsaveas: after dbnew, fl=%d databasedata=%p",
+	log_trace(LOG_COMP_DB, "dbstartsaveas: after dbnew, fl=%d databasedata=%p headerLength=%ld",
 	          (int)fl,
-	          (void*)databasedata);
+	          (void*)databasedata,
+	          databasedata ? (**databasedata).headerLength : -1L);
+	log_trace(LOG_COMP_DB, "dbstartsaveas: before swap back, databasedestination=%p headerLength=%ld",
+	          (void*)databasedestination,
+	          databasedestination ? (**databasedestination).headerLength : -1L);
 #endif
 
 	dbswapglobals ();
 
 #if defined(FRONTIER_HEADLESS)
-	log_trace(LOG_COMP_DB, "dbstartsaveas END: after final swap, databasedata=%p databasedestination=%p fl=%d",
+	log_trace(LOG_COMP_DB, "dbstartsaveas END: after final swap, databasedata=%p headerLength=%ld",
 	          (void*)databasedata,
+	          databasedata ? (**databasedata).headerLength : -1L);
+	log_trace(LOG_COMP_DB, "dbstartsaveas END: databasedestination=%p headerLength=%ld fl=%d",
 	          (void*)databasedestination,
+	          databasedestination ? (**databasedestination).headerLength : -1L,
 	          (int)fl);
 #endif
 

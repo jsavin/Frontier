@@ -127,3 +127,4 @@ test_type.txt
 # Claude Code local settings (user-specific paths and permissions)
 .claude/settings.local.json
 .claude/.DS_Store
+test_tmp/

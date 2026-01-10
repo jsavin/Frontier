@@ -114,6 +114,7 @@ RUNTIME_SOURCES = \
     ../Common/source/tablepack.c \
     ../Common/source/tableverbs.c \
     ../Common/source/stringverbs.c \
+    ../Common/source/dbverbs.c \
     ../Common/source/headless_selection.c \
     ../Common/source/shell_api.c \
     ../Common/source/shell_api_headless.c
@@ -174,7 +175,6 @@ HEADLESS_STUBS = \
     $(TESTSDIR)/headless_sys_verbs.c \
     $(TESTSDIR)/headless_string_verbs.c \
     $(TESTSDIR)/headless_db_verbs.c \
-    ../Common/source/dbverbs.c \
     $(TESTSDIR)/headless_html_verbs.c \
     $(TESTSDIR)/headless_re_verbs.c \
     $(TESTSDIR)/headless_sqlite_verbs.c \

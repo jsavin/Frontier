@@ -49,6 +49,7 @@
 #include "shell.h"
 #include "lang.h"
 #include "langexternal.h"
+#include "logging.h"
 #include "langinternal.h"
 #include "langipc.h"
 #include "kernelverbs.h"
@@ -60,10 +61,33 @@
 #include "db_format.h" /* migration helpers */
 
 /*
-if we're generating cfm (powerpc), we're linking to an odb engine shared 
+if we're generating cfm (powerpc), we're linking to an odb engine shared
 library, which has it's own globals. on 68k machines, we're staically linked,
 so the odb calls mess with out global data. so we need to protect it.
+
+In headless mode, we use an explicit context guard pattern to protect globals
+from ODB engine modifications. This is simpler and more reliable than thread
+swapping, and doesn't require thread infrastructure initialization.
 */
+
+/* ODB context guard - protects caller globals from ODB engine modifications */
+typedef struct odb_context_guard {
+	hdlhashtable saved_currenthashtable;
+	hdldatabaserecord saved_databasedata;
+	hdltablestack saved_hashtablestack;
+} odb_context_guard;
+
+static void odb_guard_enter(odb_context_guard *guard) {
+	guard->saved_currenthashtable = currenthashtable;
+	guard->saved_databasedata = databasedata;
+	guard->saved_hashtablestack = hashtablestack;
+}
+
+static void odb_guard_exit(odb_context_guard *guard) {
+	currenthashtable = guard->saved_currenthashtable;
+	databasedata = guard->saved_databasedata;
+	hashtablestack = guard->saved_hashtablestack;
+}
 
 #ifdef usingsharedlibrary
 
@@ -121,271 +145,226 @@ so the odb calls mess with out global data. so we need to protect it.
 	/*Functions*/
 	
 	boolean odbnewfile (hdlfilenum fnum) {
-
+		odb_context_guard guard;
 		boolean fl;
-		hdlthreadglobals htg = getcurrentthreadglobals ();
-		
-		copythreadglobals (htg);
-		
-		swapinthreadglobals (nil);
-		
+
+		odb_guard_enter(&guard);
+
 		fl = odbNewFile (fnum);
-		
+
 		cancoonglobals = nil;
-		
-		swapinthreadglobals (htg);
-		
+
+		odb_guard_exit(&guard);
+
 		return (fl);
 		}
 
 	boolean odbaccesswindow (WindowPtr w, odbref *odb) {
-
+		odb_context_guard guard;
 		boolean fl;
-		hdlthreadglobals htg = getcurrentthreadglobals ();
-		
-		copythreadglobals (htg);
-		
-		swapinthreadglobals (nil);
-		
+
+		odb_guard_enter(&guard);
+
 		fl = odbAccessWindow (w, odb);
-		
+
 		cancoonglobals = nil;
-		
-		swapinthreadglobals (htg);
-		
+
+		odb_guard_exit(&guard);
+
 		return (fl);
 		}
 
 	boolean odbopenfile (hdlfilenum fnum, odbref *odb, boolean flreadonly) {
-
+		odb_context_guard guard;
 		boolean fl;
-		hdlthreadglobals htg = getcurrentthreadglobals ();
-		
-		copythreadglobals (htg);
-		
-		swapinthreadglobals (nil);
-		
+
+		odb_guard_enter(&guard);
+
 		fl = odbOpenFile (fnum, odb, flreadonly);
-		
+
 		cancoonglobals = nil;
-		
-		swapinthreadglobals (htg);
-		
+
+		odb_guard_exit(&guard);
+
 		return (fl);
 		}
 
 	boolean odbsavefile (odbref odb) {
-
+		odb_context_guard guard;
 		boolean fl;
-		hdlthreadglobals htg = getcurrentthreadglobals ();
-		
-		copythreadglobals (htg);
-		
-		swapinthreadglobals (nil);
-		
+
+		odb_guard_enter(&guard);
+
 		fl = odbSaveFile (odb);
-		
+
 		cancoonglobals = nil;
-		
-		swapinthreadglobals (htg);
-		
+
+		odb_guard_exit(&guard);
+
 		return (fl);
 		}
 
 	boolean odbclosefile (odbref odb) {
-
+		odb_context_guard guard;
 		boolean fl;
-		hdlthreadglobals htg = getcurrentthreadglobals ();
-		
-		copythreadglobals (htg);
-		
-		swapinthreadglobals (nil);
-		
+
+		odb_guard_enter(&guard);
+
 		fl = odbCloseFile (odb);
-		
+
 		cancoonglobals = nil;
-		
-		swapinthreadglobals (htg);
-		
+
+		odb_guard_exit(&guard);
+
 		return (fl);
 		}
 
 	boolean odbdefined (odbref odb, bigstring bspath) {
-
+		odb_context_guard guard;
 		boolean fl;
-		hdlthreadglobals htg = getcurrentthreadglobals ();
-		
-		copythreadglobals (htg);
-		
-		swapinthreadglobals (nil);
-		
+
+		odb_guard_enter(&guard);
+
 		fl = odbDefined (odb, bspath);
-				
+
 		cancoonglobals = nil;
-		
-		swapinthreadglobals (htg);
-		
+
+		odb_guard_exit(&guard);
+
 		return (fl);
 		}
 
 	boolean odbdelete (odbref odb, bigstring bspath) {
-
+		odb_context_guard guard;
 		boolean fl;
-		hdlthreadglobals htg = getcurrentthreadglobals ();
-		
-		copythreadglobals (htg);
-		
-		swapinthreadglobals (nil);
-		
+
+		odb_guard_enter(&guard);
+
 		fl = odbDelete (odb, bspath);
-				
+
 		cancoonglobals = nil;
-		
-		swapinthreadglobals (htg);
-		
+
+		odb_guard_exit(&guard);
+
 		return (fl);
 		}
 
 	boolean odbgettype (odbref odb, bigstring bspath, OSType *odbType) {
-
+		odb_context_guard guard;
 		boolean fl;
-		hdlthreadglobals htg = getcurrentthreadglobals ();
-		
-		copythreadglobals (htg);
-		
-		swapinthreadglobals (nil);
-		
+
+		odb_guard_enter(&guard);
+
 		fl = odbGetType (odb, bspath, odbType);
-				
+
 		cancoonglobals = nil;
-		
-		swapinthreadglobals (htg);
-		
+
+		odb_guard_exit(&guard);
+
 		return (fl);
 		}
 
 	boolean odbgetvalue (odbref odb, bigstring bspath, odbValueRecord *value) {
-
+		odb_context_guard guard;
 		boolean fl;
-		hdlthreadglobals htg = getcurrentthreadglobals ();
-		
-		copythreadglobals (htg);
-		
-		swapinthreadglobals (nil);
-		
+
+		odb_guard_enter(&guard);
+
 		fl = odbGetValue (odb, bspath, value);
-				
+
 		cancoonglobals = nil;
-		
-		swapinthreadglobals (htg);
-		
+
+		odb_guard_exit(&guard);
+
 		return (fl);
 		}
 
 	boolean odbsetvalue (odbref odb, bigstring bspath, odbValueRecord *value) {
-
+		odb_context_guard guard;
 		boolean fl;
-		hdlthreadglobals htg = getcurrentthreadglobals ();
-		
-		copythreadglobals (htg);
-		
-		swapinthreadglobals (nil);
-		
+
+		odb_guard_enter(&guard);
+
 		fl = odbSetValue (odb, bspath, value);
-				
+
 		cancoonglobals = nil;
-		
-		swapinthreadglobals (htg);
-		
+
+		odb_guard_exit(&guard);
+
 		return (fl);
 		}
 
 	boolean odbnewtable (odbref odb, bigstring bspath) {
-
+		odb_context_guard guard;
 		boolean fl;
-		hdlthreadglobals htg = getcurrentthreadglobals ();
-		
-		copythreadglobals (htg);
-		
-		swapinthreadglobals (nil);
-		
+
+		odb_guard_enter(&guard);
+
 		fl = odbNewTable (odb, bspath);
-				
+
 		cancoonglobals = nil;
-		
-		swapinthreadglobals (htg);
-		
+
+		odb_guard_exit(&guard);
+
 		return (fl);
 		}
 
 	boolean odbcountitems (odbref odb, bigstring bspath, long *count) {
-
+		odb_context_guard guard;
 		boolean fl;
-		hdlthreadglobals htg = getcurrentthreadglobals ();
-		
-		copythreadglobals (htg);
-		
-		swapinthreadglobals (nil);
-		
+
+		odb_guard_enter(&guard);
+
 		fl = odbCountItems (odb, bspath, count);
-				
+
 		cancoonglobals = nil;
-		
-		swapinthreadglobals (htg);
-		
+
+		odb_guard_exit(&guard);
+
 		return (fl);
 		}
 
 	boolean odbgetnthitem (odbref odb, bigstring bspath, long n, bigstring bsname) {
-
+		odb_context_guard guard;
 		boolean fl;
-		hdlthreadglobals htg = getcurrentthreadglobals ();
-		
-		copythreadglobals (htg);
-		
-		swapinthreadglobals (nil);
-		
+
+		odb_guard_enter(&guard);
+
 		fl = odbGetNthItem (odb, bspath, n, bsname);
-				
+
 		cancoonglobals = nil;
-		
-		swapinthreadglobals (htg);
-		
+
+		odb_guard_exit(&guard);
+
 		return (fl);
 		}
 
 	boolean odbgetmoddate (odbref odb, bigstring bspath, unsigned long *date) {
-
+		odb_context_guard guard;
 		boolean fl;
-		hdlthreadglobals htg = getcurrentthreadglobals ();
-		
-		copythreadglobals (htg);
-		
-		swapinthreadglobals (nil);
-		
+
+		odb_guard_enter(&guard);
+
 		fl = odbGetModDate (odb, bspath, date);
-				
+
 		cancoonglobals = nil;
-		
-		swapinthreadglobals (htg);
-		
+
+		odb_guard_exit(&guard);
+
 		return (fl);
 		}
 
 	boolean odbdisposevalue (odbref odb, odbValueRecord *value) {
+		odb_context_guard guard;
 
-		hdlthreadglobals htg = getcurrentthreadglobals ();
-		
-		copythreadglobals (htg);
-		
-		swapinthreadglobals (nil);
-		
+		odb_guard_enter(&guard);
+
 		odbDisposeValue (odb, value);
-				
+
 		cancoonglobals = nil;
-		
-		swapinthreadglobals (htg);
-		
+
+		odb_guard_exit(&guard);
+
 		return (true);
 		}
 
@@ -450,52 +429,60 @@ typedef enum tydbtoken { /*verbs that are processed by db*/
 
 
 static boolean odberror (boolean flresult) {
-	
+
 	bigstring bserror;
-	
+
 	if (flresult)
 		return (false);
-	
+
 	odbgeterror (bserror);
-	
+
+	log_error(LOG_COMP_DB, "odberror: ODB engine error: %s", stringbaseaddress(bserror));
+
 	langerrormessage (bserror);
-	
+
 	return (true);
 	} /*odberror*/
 
-	
+
+/* Forward declaration */
+static void odb_ensure_root7_extension(tyfilespec *fs);
+
+
 static boolean getodbparam (hdltreenode hparam1, short pnum, hdlodbrecord *hodbrecord) {
 
 	//
 	// 2006-06-23 creedon: for Mac, FSRef-zed
+	//
+	// 2026-01-10 Codex: Phase 1 - Transform .root to .root7 for lookup
 	//
 
 	bigstring bs;
 	hdlodbrecord hodb;
 	tyfilespec fs;
 	ptrfilespec ptrfs;
-	
-	ptrfs = &fs; 
+
+	ptrfs = &fs;
 
 	if (!getfilespecvalue (hparam1, pnum, ptrfs))
 		return (false);
-	
+
+	/* Phase 1: Transform .root to .root7 for lookup (matches db.open behavior) */
+	odb_ensure_root7_extension(ptrfs);
+
 	for (hodb = hodblist; hodb != nil; hodb = (**hodb).hnext) {
-	
 		if ( equalfilespecs ( &( **hodb ).fs, ptrfs ) ) {
-			
 			*hodbrecord = hodb;
-			
 			return (true);
 			}
 		}
-		
+
 	getfsfile ( ptrfs, bs );
-	
+
 	lang2paramerror (dbnotopenederror, bsfunctionname, bs );
-	
+
 	return (false);
-	
+
 	} // getodbparam
 
 
@@ -504,12 +491,12 @@ static boolean getodbvalue (hdltreenode hparam1, short pnum, tyodbrecord *odb, b
 	//
 	// 2006-06-23 creedon: for Mac, FSRef-ized
 	//
-	
+
 	hdlodbrecord hodb;
-	
+
 	if (!getodbparam (hparam1, pnum, &hodb))
 		return (false);
-	
+
 	*odb = **hodb;
 	
 	if ((*odb).flreadonly && !flreadonly) {
@@ -552,103 +539,194 @@ boolean dbcloseallfiles (long refcon) {
 
 
 
+/*
+ * odb_ensure_root7_extension
+ *
+ * Phase 1: Ensures the filespec has a .root7 extension (replaces .root if present).
+ * This creates v7 databases with the temporary .root7 extension to coexist with v6.
+ */
+static void odb_ensure_root7_extension(tyfilespec *fs) {
+	bigstring bspath;
+
+	filespectopath(fs, bspath);
+
+	long len = stringlength(bspath);
+
+	/* Check if it ends with .root7 (6 characters) */
+	if (len >= 6) {
+		bigstring bsext7;
+		midstring(bspath, len - 5, 6, bsext7);  /* Extract last 6 chars */
+
+		if (equalstrings(bsext7, BIGSTRING("\x06.root7"))) {
+			/* Already has .root7 extension, nothing to do */
+			log_debug(LOG_COMP_DB, "odb_ensure_root7_extension: already has .root7 extension");
+			pathtofilespec(bspath, fs);
+			return;
+		}
+	}
+
+	/* Check if it ends with .root (5 characters) */
+	if (len >= 5) {
+		bigstring bsext;
+		midstring(bspath, len - 4, 5, bsext);  /* Extract last 5 chars */
+
+		if (equalstrings(bsext, BIGSTRING("\x05.root"))) {
+			/* Replace .root with .root7 */
+			setstringlength(bspath, len - 5);  /* Remove .root */
+			pushstring(BIGSTRING("\x06.root7"), bspath);  /* Append .root7 */
+
+			log_debug(LOG_COMP_DB, "odb_ensure_root7_extension: converted .root to .root7");
+			pathtofilespec(bspath, fs);
+			return;
+		}
+	}
+
+	/* Doesn't end with .root or .root7, append .root7 */
+	pushstring(BIGSTRING("\x06.root7"), bspath);
+	log_debug(LOG_COMP_DB, "odb_ensure_root7_extension: appended .root7 extension");
+
+	/* Update filespec with modified path */
+	pathtofilespec(bspath, fs);
+}
+
+
 static boolean dbnewverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
-	
+
 	//
 	// 2006-06-20 creedon: for Mac, extend filespec
 	//
 	// 4.1b5 dmb: new verb
 	//
-	
+	// 2026-01-07 Codex: Phase 1 - Ensure .root7 extension for v7 databases
+	//
+
 	tyodbrecord odbrec;
 	boolean fl;
-	
+
 	flnextparamislast = true;
-	
+
 	if ( ! getfilespecvalue ( hparam1, 1, &odbrec.fs ) )
 		return (false);
-		
+
+	/* Phase 1: Ensure .root7 extension (replaces .root if user provided it) */
+	odb_ensure_root7_extension(&odbrec.fs);
+
 	shellpushdefaultglobals (); // so that config is correct
-	
+
 	fl = opennewfile ( &odbrec.fs, config.filecreator, config.filetype, &odbrec.fref );
-	
+
 	shellpopglobals ();
-	
+
 	if (!fl)
 		return (false);
-	
+
 	fl = odbnewfile (odbrec.fref);
-	
+
 	closefile (odbrec.fref);
-	
+
 	if (odberror (fl)) {
-		
+
 		deletefile ( &odbrec.fs );
-		
+
 		return (false);
 		}
-	
+
 	return (setbooleanvalue (true, vreturned));
 	} // dbnewverb
 
 
 static boolean dbopenverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
-	
+
 	//
 	// 2006-06-20 creedon: for Mac, extend filespec
 	//
 	// 4.1b5 dmb: added ability to access already-open root in Frontier
 	//
-	
+	// 2026-01-10 Codex: Phase 1 - Ensure .root7 extension for v7 databases
+	//
+
 	tyodbrecord odbrec;
 	hdlodbrecord hodb;
 	WindowPtr w;
+	bigstring bspath;
+
+	log_trace(LOG_COMP_DB, "dbopenverb: enter");
 
 	odbrec.fref = 0;
-	
-	if ( ! getfilespecvalue ( hparam1, 1, &odbrec.fs ) )
+
+	if ( ! getfilespecvalue ( hparam1, 1, &odbrec.fs ) ) {
+		log_error(LOG_COMP_DB, "dbopenverb: getfilespecvalue failed for parameter 1");
 		return (false);
-	
+	}
+
+	/* Phase 1: Ensure .root7 extension (same as db.new) */
+	odb_ensure_root7_extension(&odbrec.fs);
+
+	filespectopath(&odbrec.fs, bspath);
+	log_debug(LOG_COMP_DB, "dbopenverb: path=%s", stringbaseaddress(bspath));
+
 	flnextparamislast = true;
-	
-	if (!getbooleanvalue (hparam1, 2, &odbrec.flreadonly))
+
+	if (!getbooleanvalue (hparam1, 2, &odbrec.flreadonly)) {
+		log_error(LOG_COMP_DB, "dbopenverb: getbooleanvalue failed for parameter 2 (readonly flag)");
 		return (false);
+	}
+
+	log_debug(LOG_COMP_DB, "dbopenverb: readonly=%d", odbrec.flreadonly);
 
 	w = shellfindfilewindow ( &odbrec.fs );
-	
+
 	if (w != nil) {
-		
-		if (odberror (odbaccesswindow (w, &odbrec.odb)))
+		log_debug(LOG_COMP_DB, "dbopenverb: file already open in window, accessing existing window");
+
+		if (odberror (odbaccesswindow (w, &odbrec.odb))) {
+			log_error(LOG_COMP_DB, "dbopenverb: odbaccesswindow failed");
 			return (false);
-		
+		}
+
 		// fref remains zero, so unwanted closefiles aren't a problem
 		}
 	else {
-		
-		if ( ! openfile ( &odbrec.fs, &odbrec.fref, odbrec.flreadonly))
+		log_debug(LOG_COMP_DB, "dbopenverb: opening new file");
+
+		if ( ! openfile ( &odbrec.fs, &odbrec.fref, odbrec.flreadonly)) {
+			log_error(LOG_COMP_DB, "dbopenverb: openfile failed, path=%s readonly=%d",
+				stringbaseaddress(bspath), odbrec.flreadonly);
 			return (false);
-		
+		}
+
+		log_debug(LOG_COMP_DB, "dbopenverb: openfile succeeded, fref=%d", odbrec.fref);
+
 		if (odberror (odbopenfile (odbrec.fref, &odbrec.odb, odbrec.flreadonly))) {
-			
+			log_error(LOG_COMP_DB, "dbopenverb: odbopenfile failed, fref=%d readonly=%d",
+				odbrec.fref, odbrec.flreadonly);
 			closefile (odbrec.fref);
-			
 			return (false);
 			}
+
+		log_debug(LOG_COMP_DB, "dbopenverb: odbopenfile succeeded, odb=%p", odbrec.odb);
 		}
-	
+
 	if (!newfilledhandle (&odbrec, sizeof (odbrec), (Handle *) &hodb)) {
-		
+		log_error(LOG_COMP_DB, "dbopenverb: newfilledhandle failed (out of memory?)");
 		odbclosefile (odbrec.odb);
-		
 		closefile (odbrec.fref);
-		
 		return (false);
 		}
-	
-	listlink ((hdllinkedlist) hodblist, (hdllinkedlist) hodb);
-	
+
+	/* Add to open database list */
+	if (hodblist == nil) {
+		/* First database - start the list */
+		hodblist = hodb;
+		(**hodb).hnext = nil;
+	}
+	else {
+		/* Add to existing list */
+		listlink ((hdllinkedlist) hodblist, (hdllinkedlist) hodb);
+	}
+
 	return (setbooleanvalue (true, vreturned));
-	
+
 	} // dbopenverb
 
 
@@ -683,16 +761,16 @@ static boolean dbdefinedverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	/*
 	4.1b5 dmb: new verb
 	*/
-	
+
 	tyodbrecord odbrec;
 	bigstring bsaddress;
 	boolean fl;
-	
+
 	if (!getodbvalue (hparam1, 1, &odbrec, true))
 		return (false);
-	
+
 	flnextparamislast = true;
-	
+
 	if (!getstringvalue (hparam1, 2, bsaddress))
 		return (false);
 	
@@ -932,15 +1010,15 @@ boolean dbfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vretur
 
 	/*
 	4.1b4 dmb: new verb set based on odbEngine
-	
+
 	5.0b17 dmb: use swapinthreadglobals (nil) for all our odb calls to protect ours
 	*/
-	
+
 	register hdltreenode hp1 = hparam1;
 	register tyvaluerecord *v = vreturned;
-	
+
 	setbooleanvalue (false, v); /*assume the worst*/
-	
+
 	switch (token) {
 		
 		case newfunc:
@@ -1003,6 +1081,7 @@ boolean dbinitverbs (void) {
 #endif /* !FRONTIER_HEADLESS */
 /* Note: Headless mode provides its own dbinitverbs() in tests/headless_db_verbs.c
  * which registers with headless_db_verbs_callback instead. */
+
 
 /* Exposed helpers for Save-path migration */
 boolean db_get_path_for_odb(odbref odb, bigstring out) {

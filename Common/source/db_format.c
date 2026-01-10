@@ -46,6 +46,7 @@ extern boolean dbgetsize_internal(dbaddress adr, long *logicalsize);
 /* Headless verb initialization functions */
 #ifdef FRONTIER_HEADLESS
 extern boolean headless_init_kernel_verbs(void);  /* Auto-generated from kernelverbs.rc */
+extern boolean dbinitverbs(void);  /* dbverbs.c - initialize Guest Database infrastructure */
 #endif
 
 // 2025-10-27 Codex: Added optional migration tracing to inspect v6/v7 table layouts during conversion.
@@ -230,6 +231,14 @@ boolean db_format_prepare_runtime(void) {
         return false;
     }
     log_debug(LOG_COMP_STARTUP, "db_format_prepare_runtime: system.paths populated successfully");
+
+    /* Initialize db verb infrastructure (Guest Database linked list) */
+    log_trace(LOG_COMP_STARTUP, "db_format_prepare_runtime: calling dbinitverbs");
+    if (!dbinitverbs()) {
+        log_error(LOG_COMP_STARTUP, "db_format_prepare_runtime: dbinitverbs FAILED");
+        return false;
+    }
+    log_trace(LOG_COMP_STARTUP, "db_format_prepare_runtime: dbinitverbs completed successfully");
 #endif
 
     grabthreadglobals();
@@ -1176,11 +1185,15 @@ void db_format_adapter_reset(void) {
 }
 
 void db_format_set_legacy_source_db(hdldatabaserecord hdb) {
+    log_debug(LOG_COMP_DB, "db_format_set_legacy_source_db: setting g_legacy_source_db=%p", (void*)hdb);
     g_legacy_source_db = hdb;
 }
 
 boolean db_format_is_legacy_db(hdldatabaserecord hdb) {
-    return (hdb != nil) && (hdb == g_legacy_source_db);
+    boolean result = (hdb != nil) && (hdb == g_legacy_source_db);
+    log_debug(LOG_COMP_DB, "db_format_is_legacy_db: hdb=%p g_legacy=%p result=%d",
+              (void*)hdb, (void*)g_legacy_source_db, result);
+    return result;
 }
 
 boolean db_format_write_header64(const tydatabaserecord_64 *src, unsigned char *dest, size_t dest_size) {
@@ -1877,7 +1890,9 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
         if (hv != nil && *hv != nil) {
             (**hv).oldaddress = nildbaddress;
 #if defined(FRONTIER_HEADLESS)
-            log_debug(LOG_COMP_DB, "migrate: cleared root oldaddress to force fresh allocation in destination");
+            log_debug(LOG_COMP_DB, "migrate: cleared root oldaddress=0x%llx to nildbaddress, flinmemory=%d",
+                      (unsigned long long)(**hv).oldaddress,
+                      (int)(**hv).flinmemory);
 #endif
         }
     }
@@ -1885,6 +1900,14 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     fail_step = "tableverbinmemory(root)";
     if (!tableverbinmemory(NULL, (hdlexternalvariable) hrootvariable, HNoNode))
         goto cleanup;
+#if defined(FRONTIER_HEADLESS)
+    {
+        hdltablevariable hv = (hdltablevariable) hrootvariable;
+        log_debug(LOG_COMP_DB, "migrate: after tableverbinmemory, oldaddress=0x%llx flinmemory=%d",
+                  (unsigned long long)(**hv).oldaddress,
+                  (int)(**hv).flinmemory);
+    }
+#endif
 
     db_format_sanitize_root_externals(hroot, &source_context);
 
@@ -2008,6 +2031,10 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
 
     if (drop_cancoon) {
         /* Modern v7 root: drop legacy Cancoon and point view0 at the root table only. */
+#if defined(FRONTIER_HEADLESS)
+        log_trace(LOG_COMP_DB, "migrate: drop_cancoon path, setting view[%d] to new_root_address=0x%llx",
+                  cancoonview, (unsigned long long)new_root_address);
+#endif
         for (int i = 0; i < ctviews; ++i)
             dbsetview(i, nildbaddress);
         dbsetview(cancoonview, new_root_address);

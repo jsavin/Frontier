@@ -172,6 +172,7 @@ LANG_RUNTIME_SOURCES = \
     ../Common/source/tablepack.c \
     ../Common/source/tablestructure.c \
     ../Common/source/tableverbs.c \
+    ../Common/source/dbverbs.c \
     ../Common/source/db.c \
     ../Common/source/db_format.c \
     ../Common/source/db_reader_legacy.c \
@@ -184,6 +185,7 @@ LANG_RUNTIME_SOURCES = \
     headless_lang_runtime_more_stubs.c \
     headless_shellhooks.c \
     headless_table_stubs.c \
+    headless_db_verbs.c \
     ../portable/wptext_runtime.c \
     ../portable/paige_text_extractor.c \
     headless_pict_stubs.c \

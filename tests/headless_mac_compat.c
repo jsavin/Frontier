@@ -107,6 +107,8 @@ boolean shellpopglobals (void) {
     return false;
 }
 
+/* shellpushdefaultglobals() is now in Common/source/shell_api_headless.c (ADR-006) */
+
 void shellupdatescrollbars (hdlwindowinfo hinfo) {
     (void) hinfo;
 }
