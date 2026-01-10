@@ -667,11 +667,11 @@ pascal boolean odbOpenFile (hdlfilenum fnum, odbref *odb, boolean flreadonly) {
 
 
 pascal boolean odbSaveFile (odbref odb) {
-	
+
 	hdlcancoonrecord hc = (hdlcancoonrecord) odb;
 	tyversion2cancoonrecord info;
 	dbaddress adr;
-	
+
     setemptystring (bserror);
 
     /* Save implies migration to modern (v7) format. */
@@ -681,26 +681,101 @@ pascal boolean odbSaveFile (odbref odb) {
             return (false);
         /* After migration/reopen, mode will be set during open. */
     }
-	
+
 	setcancoonglobals (hc);
-	
-	
+
+
 	if ((**hc).accesssing) {
-		
+
 		return (shellsave ((**hc).shellwindow));
 		}
-	
-	
+
+
+	/*
+	 * v7 Database Save Path: No Cancoon Record
+	 * =========================================
+	 * v7 databases store the root table directly in views[0], with NO Cancoon record.
+	 * v6 databases wrap the root table in a Cancoon record stored in views[0].
+	 *
+	 * For v7: Just save the root table and update views[0] directly.
+	 * For v6: Read old Cancoon record, update root table pointer, write Cancoon back.
+	 *
+	 * CRITICAL: Use global rootvariable, NOT (**hc).hrootvariable!
+	 * When db.setvalue() is called on an empty database, langexpandtodotparams creates
+	 * the root table and sets the global rootvariable, but (**hc).hrootvariable remains nil.
+	 */
+	if (db_format_mode_current().use_64bit_format) {
+		/* v7 database: Save root table directly to views[0] */
+		dbaddress root_adr;
+
+		log_debug(LOG_COMP_DB, "odbSaveFile: v7 database - saving root table directly");
+
+		/*
+		 * Handle empty database case: If rootvariable is nil, the database is empty
+		 * (no data has been added yet). Set views[0] to nildbaddress and return success.
+		 */
+		if (rootvariable == nil) {
+			log_debug(LOG_COMP_DB, "odbSaveFile: v7 database is empty, setting views[0] = nildbaddress");
+			dbsetview(cancoonview, nildbaddress);
+			return (true);
+		}
+
+		/* Update cancoon record to reflect current global state */
+		(**hc).hrootvariable = rootvariable;
+		(**hc).hroottable = roottable;
+
+		/* Save the root table (use global rootvariable, which is always current) */
+		{
+			boolean repack_scope = false;
+			db_format_mode mode = {true, true, false};  /* 64-bit, adapter_repack, no drop_cancoon */
+			db_format_mode_push(&mode);
+			repack_scope = true;
+			if (!tablesavesystemtable(rootvariable, &root_adr)) {
+				if (repack_scope) {
+					db_format_mode_pop();
+					repack_scope = false;
+				}
+				log_error(LOG_COMP_DB, "odbSaveFile: failed to save v7 root table");
+				return (false);
+			}
+			if (repack_scope) {
+				db_format_mode_pop();
+				repack_scope = false;
+			}
+		}
+
+		/* Flush release stack */
+		{
+			db_context ctx;
+			db_context_init(&ctx);
+			dbflushreleasestack_context(&ctx);
+		}
+
+		/* Update views[0] to point directly at root table (v7 pattern) */
+		dbsetview(cancoonview, root_adr);
+
+		log_debug(LOG_COMP_DB, "odbSaveFile: v7 database saved, views[0] = 0x%llx", (unsigned long long)root_adr);
+		return (true);
+	}
+
+	/*
+	 * v6 Database Save Path: Cancoon Record
+	 * ======================================
+	 * v6 databases require reading the Cancoon record, updating the root table pointer,
+	 * and writing the Cancoon record back.
+	 */
+	log_debug(LOG_COMP_DB, "odbSaveFile: v6 database - using Cancoon record save path");
+
 	dbgetview (cancoonview, &adr);
-	
+
 	if (adr == nildbaddress)
 		return (false);
-	
+
 	if (!dbreference (adr, sizeof (info), &info))
-		return (false); 
-	
+		return (false);
+
 	info.versionnumber = conditionalshortswap (cancoonversionnumber);
-	
+
     {
         boolean repack_scope = false;
         db_format_mode mode = {true, true, false};  /* 64-bit, adapter_repack, no drop_cancoon */
@@ -718,11 +793,11 @@ pascal boolean odbSaveFile (odbref odb) {
             repack_scope = false;
         }
     }
-	
+
 	db_format_write_be32(&info.adrroottable, (uint32_t) info.adrroottable);
 
 	clearbytes (&info.waste, sizeof (info.waste));
-	
+
     {
         boolean repack_scope = false;
         db_format_mode mode = {true, true, false};  /* 64-bit, adapter_repack, no drop_cancoon */
@@ -740,15 +815,15 @@ pascal boolean odbSaveFile (odbref odb) {
             repack_scope = false;
         }
     }
-	
+
 	{
 		db_context ctx;
 		db_context_init(&ctx);
 		dbflushreleasestack_context(&ctx); /*release all the db objects that were saved up*/
 	}
-	
+
 	dbsetview (cancoonview, adr);
-	
+
 	return (true);
 	} /*odbSaveFile*/
 
