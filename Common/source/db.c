@@ -3043,16 +3043,22 @@ boolean dbdispose (void) {
 
 	dbzeroreleasestack ();
 
-#ifdef SMART_DB_OPENING	
+#ifdef SMART_DB_OPENING
 	dbdisposeshadowavaillist ();
 #else
 	disposehandle ((**databasedata).u.extensions.availlistshadow.data);
 #endif
-	
+
 	disposehandle ((Handle) databasedata);
-	
+
 	databasedata = nil;
-	
+
+	/* Pop the format mode that was pushed during dbopenfile */
+#if defined(FRONTIER_HEADLESS)
+	log_trace(LOG_COMP_DB, "dbdispose: calling db_format_mode_pop before exit");
+#endif
+	db_format_mode_pop();
+
 	return (true);
 	} /*dbdispose*/
 
@@ -3321,9 +3327,9 @@ boolean dbopenfile (hdlfilenum fnum, boolean flreadonly) {
 
 
 boolean dbclose (void) {
-	
+
 	dbzeroreleasestack (); /*don't release chunks accumulated in release stack*/
-	
+
 	setdirty (databasedata);
 
 #if defined(FRONTIER_HEADLESS)
@@ -3332,7 +3338,7 @@ boolean dbclose (void) {
 	          databasedata ? (long) (**databasedata).fnumdatabase : -1L,
 	          databasedata ? (int) isdirty(databasedata) : 0);
 #endif
-	
+
 	return (dbflushheader ());
 	} /*dbclose*/
 

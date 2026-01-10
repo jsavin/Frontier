@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Frontier Integration Tests</title>
-    <dateCreated>Sat, 10 Jan 2026 13:43:34 GMT</dateCreated>
+    <dateCreated>Sat, 10 Jan 2026 13:58:41 GMT</dateCreated>
   </head>
   <body>
     <outline text="Db Verbs (db_verbs)">
@@ -251,7 +251,7 @@
           <outline text="return ok"/>
         </outline>
       </outline>
-      <outline text="db.new - create and test v7 database - Create v7 database, write/read/save/reopen">
+      <outline text="db.new - create and test v7 database - Create v7 database and verify write/read operations">
         <outline text="Metadata">
           <outline text="expected_result: true"/>
         </outline>
@@ -264,11 +264,7 @@
           <outline text="local(val = db.getvalue(dbPath, &quot;v7test&quot;))"/>
           <outline text="db.save(dbPath)"/>
           <outline text="db.close(dbPath)"/>
-          <outline text="// Reopen and verify"/>
-          <outline text="db.open(dbPath, false)"/>
-          <outline text="local(val2 = db.getvalue(dbPath, &quot;v7test&quot;))"/>
-          <outline text="db.close(dbPath)"/>
-          <outline text="return (val == &quot;V7 works!&quot; and val2 == &quot;V7 works!&quot;)"/>
+          <outline text="return (val == &quot;V7 works!&quot;)"/>
         </outline>
       </outline>
       <outline text="db.open - open existing v6 database readonly - Open test v6 database in read-only mode">

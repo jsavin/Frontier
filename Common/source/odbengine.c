@@ -829,29 +829,29 @@ pascal boolean odbSaveFile (odbref odb) {
 
 
 pascal boolean odbCloseFile (odbref odb) {
-	
+
 	/*
 	1/22/91 dmb: added scan of new ccglobalsstack
-	
+
 	2/26/93 dmb: support shutdown scripts
 	*/
-	
+
 	hdlcancoonrecord hc = (hdlcancoonrecord) odb;
-	
+
 	setemptystring (bserror);
-	
+
 	if (hc == nil) /*nothing to do*/
 		return (true);
-	
+
 	setcancoonglobals (hc);
-	
+
 	if (!(**hc).accesssing)
 		dbdispose (); /*do before clearing globals -- depends on databasedata*/
-	
+
 	disposecancoonrecord (hc);
-	
+
 	clearcancoonglobals ();
-	
+
 	return (true);
 	} /*odbCloseFile*/
 
