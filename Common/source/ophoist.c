@@ -58,11 +58,11 @@ void ophoistdisplay (void) {
 	if (!opdisplayenabled ())
 		return;
 	
-	opsetdisplaydefaults (outlinedata);
+	opsetdisplaydefaults (op_get_outlinedata());
 	
 	opdirtymeasurements (); //6.0a14 dmb
 	
-	opsetctexpanded (outlinedata);
+	opsetctexpanded (op_get_outlinedata());
 	
 	opgetscrollbarinfo (true);
 	
@@ -100,7 +100,7 @@ static boolean oppushhoistvisit (hdlheadrecord hnode, ptrvoid refcon) {
 
 boolean oppushhoist (hdlheadrecord hnode) {
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	hdlheadrecord hsummit = (**hnode).headlinkright;
 	tyhoistelement item;
 	
@@ -143,7 +143,7 @@ boolean oppushhoist (hdlheadrecord hnode) {
 	
 boolean oppophoist (void) {
 
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	hdlheadrecord nomad, nextnomad;
 	hdlheadrecord hhoisted; 
 	hdlheadrecord hfirstsummit;
@@ -205,7 +205,7 @@ boolean oppopallhoists (void) {
 	negative of its original value
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	tyhoistelement item;
 	short i;
 	short cthoisted;
@@ -239,7 +239,7 @@ void oprestorehoists (void) {
 	state of the structure.
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	short i;
 	short cthoisted;
 	tyhoistelement item;
@@ -275,7 +275,7 @@ void opoutermostsummit (hdlheadrecord *hsummit) {
 	traversals.
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	
 	if ((**ho).tophoist <= 0) /*nothing hoisted*/
 		*hsummit = (**ho).hsummit;

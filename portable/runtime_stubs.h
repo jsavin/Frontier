@@ -202,7 +202,7 @@ void opdisposelist(void *list);
 void oppopoutline(void);
 void oppushoutline(void);
 void *ostypetostring(void *ostype);
-void *outlinedata(void);
+void *op_get_outlinedata()(void);
 void *parsedialogstring(const char *str);
 void parseerror(const char *msg);
 void *parseparamstring(const char *str);

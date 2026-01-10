@@ -1043,7 +1043,7 @@ boolean ccsavefile (ptrfilespec fs, hdlfilenum fnum, short rnum, boolean flsavea
 	and try to be the only thread using globals
 	
 	5.1.5b7 dmb: disabled above "fix". we now rely on shellwindowinfo and 
-	outlinedata push/pop protection, fldispoosewhenpopped flags
+	op_get_outlinedata() push/pop protection, fldispoosewhenpopped flags
 	*/
 
 	register hdlcancoonrecord hc = cancoondata;

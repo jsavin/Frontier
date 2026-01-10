@@ -650,13 +650,13 @@ boolean oppacklist (hdllistrecord hlist, Handle *hpacked) {
 			__builtin_trap();
 		}
 	}
-	if ((outlinedata == nil) || (*outlinedata == nil) || !validhandle((Handle) outlinedata)) {
+	if ((op_get_outlinedata() == nil) || (*op_get_outlinedata() == nil) || !validhandle((Handle) op_get_outlinedata())) {
 		const char *ctx = (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>";
 		log_error(LOG_COMP_OP, "oppacklist abort invalid outline path=%s outlinedata=%p hdata=%p valid=%d",
 		        ctx,
-		        (void *) outlinedata,
-		        (outlinedata == nil) ? NULL : *outlinedata,
-		        (outlinedata == nil) ? 0 : validhandle((Handle) outlinedata));
+		        (void *) op_get_outlinedata(),
+		        (op_get_outlinedata() == nil) ? NULL : *op_get_outlinedata(),
+		        (op_get_outlinedata() == nil) ? 0 : validhandle((Handle) op_get_outlinedata()));
 		__builtin_trap();
 	}
 #endif
@@ -727,7 +727,7 @@ boolean oppacklist (hdllistrecord hlist, Handle *hpacked) {
 boolean opunpacklist (Handle hpacked, hdllistrecord *hnewlist) {
 	
 	/*
-	5.0a17 dmb: preserve outlinedata.
+	5.0a17 dmb: preserve op_get_outlinedata().
 	
 	5.0b9 dmb: consume hpacked
 	

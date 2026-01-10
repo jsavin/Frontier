@@ -1163,7 +1163,7 @@ static boolean menugetscriptverb (hdltreenode hparam1, tyvaluerecord *v) {
 	if (!getvarparam (hparam1, 1, &htable, bsname))
 		return (false);
 	
-	if (!meloadscriptoutline (menudata, (**outlinedata).hbarcursor, &houtline, &fljustloaded)) /*fatal error*/
+	if (!meloadscriptoutline (menudata, (**op_get_outlinedata()).hbarcursor, &houtline, &fljustloaded)) /*fatal error*/
 		return (false);
 	
 	ho = houtline; /*copy into register*/
@@ -1206,7 +1206,7 @@ static boolean menugetcommandkeyverb (hdltreenode hparam1, tyvaluerecord *v) {
 	
 	setemptystring (bscommandkey);
 	
-	if (megetmenuiteminfo ((**outlinedata).hbarcursor, &item))
+	if (megetmenuiteminfo ((**op_get_outlinedata()).hbarcursor, &item))
 		if (item.cmdkey != chnul)
 			getcommandkeystring (item.cmdkey, keycommand, bscommandkey);
 
@@ -1324,7 +1324,7 @@ static boolean menusetscriptverb (hdltreenode hparam1, tyvaluerecord *v) {
 	if (!opcopyoutlinerecord (hcopy, &hcopy))
 		return (false);
 	
-	hcursor = (**outlinedata).hbarcursor;
+	hcursor = (**op_get_outlinedata()).hbarcursor;
 	
 	detachscript (hm, hcursor);
 	
@@ -1387,7 +1387,7 @@ static void oprefreshdisplay () {
 		
 		opdirtymeasurements (); //6.0a14 dmb
 		
-		opsetctexpanded (outlinedata); //6.0a14 dmb
+		opsetctexpanded (op_get_outlinedata()); //6.0a14 dmb
 		
 		opgetscrollbarinfo (true); /*bring scroll position in range*/
 		
@@ -1468,7 +1468,7 @@ static void deletemenunode (hdlheadrecord hnode) {
 	if (fldisplayenabled)
 		opdisabledisplay ();
 	
-	hbarcursor = (**outlinedata).hbarcursor;
+	hbarcursor = (**op_get_outlinedata()).hbarcursor;
 	
 	opclearallmarks ();
 	
@@ -1491,7 +1491,7 @@ static void deletemenunode (hdlheadrecord hnode) {
 		
 		opdisabledisplay ();
 		
-		hbarcursor = (**outlinedata).hbarcursor;
+		hbarcursor = (**op_get_outlinedata()).hbarcursor;
 		
 		opmoveto (hnode);
 		
@@ -2133,7 +2133,7 @@ static boolean menuverbrunscript (void) {
 	
 	mecheckglobals ();
 	
-	return (meuserselected ((**outlinedata).hbarcursor));
+	return (meuserselected ((**op_get_outlinedata()).hbarcursor));
 	} /*menuverbrunscript*/
 
 
@@ -2263,7 +2263,7 @@ static boolean menuverbclose (void) {
 	
 	mecheckglobals ();
 	
-	(**outlinedata).flwindowopen = false;
+	(**op_get_outlinedata()).flwindowopen = false;
 	
 	(**hm).flwindowopen = false; /*5.0d19*/
 	
@@ -2283,7 +2283,7 @@ static boolean mebeginprint (void) {
 
 static boolean meendprint (void) {
 	
-	opsetdisplaydefaults (outlinedata); //need to reset lineheights before next call
+	opsetdisplaydefaults (op_get_outlinedata()); //need to reset lineheights before next call
 	
 	meresize ();
 	

@@ -130,7 +130,7 @@ boolean opdefaultreleaserefconroutine (hdlheadrecord hnode, boolean fldisk) {
 static boolean opdefaultpushstyle (hdlheadrecord hnode) {
 #pragma unused (hnode)
 
-	oppushstyle (outlinedata);
+	oppushstyle (op_get_outlinedata());
 	
 	return (true);
 	} /*opdefaultpushstyle*/
@@ -153,7 +153,7 @@ static boolean opdefaultmouseinline (hdlheadrecord hnode, Point pt, const Rect *
 	
 	r.left -= textleftslop;
 	
-	if (!(**outlinedata).fltextmode)
+	if (!(**op_get_outlinedata()).fltextmode)
 		r.right = r.left + opgetlinewidth (hnode) + textrightslop;
 	
 	// return (pointinrect (pt, r));
@@ -175,7 +175,7 @@ static boolean opdefaulticon2click (hdlheadrecord hnode) {
 static boolean opdefaultsetscrollbars (void) {
 
 	register ptrwindowinfo pw = *outlinewindowinfo;
-	register ptroutlinerecord po = *outlinedata;
+	register ptroutlinerecord po = *op_get_outlinedata();
 	
 	(*pw).vertscrollinfo = (*po).vertscrollinfo;
 	

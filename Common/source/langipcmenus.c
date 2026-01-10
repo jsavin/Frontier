@@ -392,7 +392,7 @@ boolean langipcgetitemlangtext (long id, short idmenu, short iditem, Handle *hte
 	pushmenubarglobals (hstack);
 	
 		
-		menudata = (hdlmenurecord) (**outlinedata).outlinerefcon;
+		menudata = (hdlmenurecord) (**op_get_outlinedata()).outlinerefcon;
 		
 		if (memenuhit (idmenu, iditem, &hnode)) {
 			

@@ -100,7 +100,7 @@ boolean tableverbsetglobals (void) {
 	
 	outlinewindowinfo = tableformatswindowinfo;
 	
-	if (outlinedata != nil)
+	if (op_get_outlinedata() != nil)
 		opeditsetglobals ();
 
 	return (true);
@@ -122,11 +122,11 @@ static boolean tableverbresetrects (hdlwindowinfo hw) {
 	short titleheight = 12;
 	#define seprectheight 4 /*height of rectangle separating titles from table content*/
 	
-	if (hc != nil) { // don't check outlinedata if tableformats aren't even attached yet
+	if (hc != nil) { // don't check op_get_outlinedata() if tableformats aren't even attached yet
 		
 		ho = (**hc).houtline;
 		
-		if (ho == nil) // this emulates original return when outlinedata was nil
+		if (ho == nil) // this emulates original return when op_get_outlinedata() was nil
 			return (false);
 		
 		if (isclaydisplay (hc))
@@ -320,7 +320,7 @@ static boolean tableverbsetsize (void) {
 
 static boolean tablesetselectioninfo (void) {
 	
-	if (outlinedata == nil)
+	if (op_get_outlinedata() == nil)
 		return (false);
 		
 	return (opsetselectioninfo ());
@@ -360,7 +360,7 @@ static boolean tableverbgettargetdata (short id) {
 
 static void tableverbidle (void) {
 	
-	if (outlinedata == nil)
+	if (op_get_outlinedata() == nil)
 		return;
 
 	if (tablechecksortorder ())
@@ -395,7 +395,7 @@ boolean tableverbclose (void) {
 	
 	hdltableformats hf = tableformatsdata;
 	hdlhashtable ht;
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 	
 	if (hf == nil) //already closed & disposed?
 		return (true);
@@ -467,7 +467,7 @@ static void tableverbupdate (void) {
 
 static void tableverbactivate (boolean flactivate) {
 	
-	if (outlinedata == NULL) // we're not completely set up yet
+	if (op_get_outlinedata() == NULL) // we're not completely set up yet
 		return;
 
 	opactivate (flactivate);
@@ -572,7 +572,7 @@ static void tableedittabkey () {
 	else
 		++col;
 	
-	if (tablecelliseditable ((**outlinedata).hbarcursor, col)) {
+	if (tablecelliseditable ((**op_get_outlinedata()).hbarcursor, col)) {
 		
 		(**tableformatsdata).focuscol = col;
 		
@@ -607,7 +607,7 @@ static boolean tableverbkeystroke (void) {
 
 	if (keyboardstatus.chkb == chtab) { // cycle through columns
 		
-		if ((**outlinedata).fltextmode) {
+		if ((**op_get_outlinedata()).fltextmode) {
 			
 			tableedittabkey ();
 			
@@ -653,7 +653,7 @@ static boolean tableverbruncursor (void) {
 
 static boolean tableverbcmdkeyfilter (char chkb) {
 
-	if (outlinedata == nil)
+	if (op_get_outlinedata() == nil)
 		return (true);
 	
 	return (opcmdkeyfilter (chkb));
@@ -672,7 +672,7 @@ static boolean tablebeginprint (void) {
 	opbeginprint ();
 	
 	/*
-	(**hf).tablerect = (**outlinedata).outlinerect;
+	(**hf).tablerect = (**op_get_outlinedata()).outlinerect;
 	
 	clearbytes ((**hf).colwidths,  sizeof (short) * maxtablecols);
 	
@@ -687,7 +687,7 @@ static boolean tableendprint (void) {
 	
 	opendprint ();
 	
-	opsetdisplaydefaults (outlinedata); //need to reset lineheights before next call
+	opsetdisplaydefaults (op_get_outlinedata()); //need to reset lineheights before next call
 	
 	tableverbresetrects (tableformatswindowinfo);
 
@@ -703,7 +703,7 @@ boolean tablebeforeprintpage (void) {
 	
 	hdltableformats hf = tableformatsdata;
 	
-	(**hf).tablerect = (**outlinedata).outlinerect;
+	(**hf).tablerect = (**op_get_outlinedata()).outlinerect;
 	
 	clearbytes ((**hf).colwidths,  sizeof (short) * maxtablecols);
 	

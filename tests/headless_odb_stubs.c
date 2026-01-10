@@ -27,33 +27,4 @@ void swapinthreadglobals (hdlthreadglobals ht) { (void)ht; }
 
 boolean tablevalidate (hdlhashtable ht, boolean fl) { (void)ht; (void)fl; return true; }
 
-/* provided by headless_file_portable.c */
-extern const char* headless_fnum_path(hdlfilenum fnum);
-
-boolean db_migrate_reopen_if_legacy(odbref *podb) {
-    (void)podb;
-    db_format_mode mode = db_format_mode_current();
-    if (mode.use_64bit_format)
-        return true;
-
-    if (databasedata == nil)
-        return false;
-
-    hdlfilenum fnum = (hdlfilenum) ((**databasedata).fnumdatabase);
-    const char *path = headless_fnum_path(fnum);
-    if (!path)
-        return false;
-
-    if (!migrate_32bit_to_64bit(path))
-        return false;
-    char migrated_path[1024];
-    if (!db_format_last_backup_path(migrated_path, sizeof migrated_path))
-        return false;
-    remove(path);
-    if (rename(migrated_path, path) != 0)
-        return false;
-
-    mode.use_64bit_format = true;
-    db_format_mode_apply(&mode);
-    return true;
-}
+/* db_migrate_reopen_if_legacy is now provided by dbverbs.c */

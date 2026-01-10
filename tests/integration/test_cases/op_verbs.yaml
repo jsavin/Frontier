@@ -30,7 +30,7 @@ tests:
       lang.new(outlineType, @workspace.testOutline);
       return typeof(workspace.testOutline)
     expected_success: true
-    expected_result: "outl"
+    expected_result: "optx"
 
   - name: "outline target setup - set outline as target"
     description: "Set outline as target for op verb operations"
@@ -1277,7 +1277,7 @@ tests:
       lang.new(outlineType, @workspace.outline);
       return typeof(workspace.outline)
     expected_success: true
-    expected_result: "outl"
+    expected_result: "optx"
 
   - name: "integration - outline with defined"
     description: "Check outline existence with defined"

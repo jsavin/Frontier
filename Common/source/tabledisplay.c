@@ -72,13 +72,13 @@
 
 static short opnodeindentpix (hdlheadrecord hnode) {
 
-	return ((**outlinedata).lineindent * (**hnode).headlevel);
+	return ((**op_get_outlinedata()).lineindent * (**hnode).headlevel);
 	} /*opnodeindentpix*/
 
 
 static short opiconindentpix (void) {
 
-	return ((**outlinedata).iconwidth + (**outlinedata).pixelsaftericon);
+	return ((**op_get_outlinedata()).iconwidth + (**op_get_outlinedata()).pixelsaftericon);
 	} /*opiconindentpix*/
 
 
@@ -171,7 +171,7 @@ static void tabledisplaytitle (short col, boolean flbitmap) {
 	if (col == (**tableformatsdata).sorttitlecol)
 		fontstyle |= underline;
 	
-	pushstyle ((**outlinedata).fontnum, (**outlinedata).fontsize, fontstyle);
+	pushstyle ((**op_get_outlinedata()).fontnum, (**op_get_outlinedata()).fontsize, fontstyle);
 	
 	tablegetcursorinfo (&ht, bs, nil, nil);
 	
@@ -274,7 +274,7 @@ static void tableupdategridlines (void) {
 	*/
 	
 	register hdltableformats hf = tableformatsdata;
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	short col;
 	short h;
 	Rect rtable;	
@@ -290,7 +290,7 @@ static void tableupdategridlines (void) {
 	
 	setgraypen ();
 		
-	pushbackcolor (&(**outlinedata).backcolor);
+	pushbackcolor (&(**op_get_outlinedata()).backcolor);
 
 	frame3sides (rtable);
 	
@@ -326,7 +326,7 @@ void tableupdate (void) {
 	if (hf == NULL)
 		return;
 
-	if (outlinedata == NULL)
+	if (op_get_outlinedata() == NULL)
 		return;
 	
 	if (!isclaydisplay (hf)) {
@@ -415,7 +415,7 @@ boolean tabletitleclick (Point pt) {
 	*/
 	
 	hdltableformats hf = tableformatsdata;
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 	short dh;
 	short col;
 	bigstring bs;
@@ -460,13 +460,13 @@ boolean tablefindcolumnguide (Point pt, short *col) {
 	short h;
 	short c;
 
-	if (outlinedata == NULL)
+	if (op_get_outlinedata() == NULL)
 		return (false);
 
 	if (isclaydisplay (hf))
 		return (false);
 	
-	h = (**outlinedata).outlinerect.left + 1;
+	h = (**op_get_outlinedata()).outlinerect.left + 1;
 
 	for (c = 0; c < lastcol; c++) {
 		
@@ -504,7 +504,7 @@ boolean tableadjustcolwidth (Point ptstart, short col) {
 	
 	tablegetoutlinesize (&width, &height); // recalcs max col widths
 	
-	rtable = (**outlinedata).outlinerect;
+	rtable = (**op_get_outlinedata()).outlinerect;
 	
 	linetop = rtable.top + 1;
 	
@@ -655,11 +655,11 @@ boolean tablegeticonrect (hdlheadrecord hnode, const Rect *linerect, Rect *iconr
 	
 	r.left = (*linerect).left + opnodeindent (hnode);
 	
-	r.right = r.left + (**outlinedata).iconwidth;
+	r.right = r.left + (**op_get_outlinedata()).iconwidth;
 	
 	r.top = (*linerect).top;
 	
-	r.bottom = r.top + (**outlinedata).iconheight;
+	r.bottom = r.top + (**op_get_outlinedata()).iconheight;
 	
 	rcontains.left = r.left;
 	
@@ -694,7 +694,7 @@ boolean tablepushnodestyle (hdlheadrecord hnode) {
 	if ((**hnode).flnodeunderlined) 
  		style += underline;
  	
-	pushstyle ((**outlinedata).fontnum, (**outlinedata).fontsize, style);
+	pushstyle ((**op_get_outlinedata()).fontnum, (**op_get_outlinedata()).fontsize, style);
 	
 	return (true);
 	} /*tablepushnodestyle*/
@@ -847,7 +847,7 @@ boolean tablegetoutlinesize (long *width, long *height) {
 	6.0a11 dmb: watch for nil outline
 	*/
 
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 	hdltableformats hf = tableformatsdata;
 	short col;
 	long totalwidth = 0;
@@ -870,7 +870,7 @@ boolean tablegetoutlinesize (long *width, long *height) {
 	
 	oppushstyle (ho);
 	
-	opsiblingvisiter ((**outlinedata).hsummit, false, &tablegetmaxwidthvisit, nil);
+	opsiblingvisiter ((**op_get_outlinedata()).hsummit, false, &tablegetmaxwidthvisit, nil);
 	
 	(**hf).maxwidths [namecolumn] += opiconindentpix ();
 	
@@ -1012,7 +1012,7 @@ boolean tablepredrawline (hdlheadrecord hnode, const Rect *linerect, boolean fls
 		
 		insetrect (&colrect, 1, 0);
 		
-		if (!(**outlinedata).flprinting)
+		if (!(**op_get_outlinedata()).flprinting)
 			eraserect (colrect);
 		}
 	
@@ -1211,7 +1211,7 @@ boolean tablemouseinline (hdlheadrecord hnode, Point pt, const Rect *textrect, b
 	(**hf).focuscol = col;
 	
 	if (col != (**hf).editcol)
-		(**outlinedata).flcursorneedsdisplay = true; /*make sure opmoveto does something*/
+		(**op_get_outlinedata()).flcursorneedsdisplay = true; /*make sure opmoveto does something*/
 	
 	*flintext = true;
 
@@ -1222,7 +1222,7 @@ boolean tablemouseinline (hdlheadrecord hnode, Point pt, const Rect *textrect, b
 /*
 boolean tablereturnkey (tydirection dir) {
 	
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 	hdlheadrecord hpre = (**ho).hbarcursor;
 	tybrowserspec fspre;
 	hdlhashtable htable;

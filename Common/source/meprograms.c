@@ -221,13 +221,13 @@ boolean meshownode (hdlheadrecord hnode) {
 	/*
 	1/7/90 dmb: the option key case, must push/popglobals around mexpandto
 	
-	can assume that outlinedata is current for hnode
+	can assume that op_get_outlinedata() is current for hnode
 	*/
 	
 	boolean flshowscript = keyboardstatus.flshiftkey || shiftkeydown ();
 	hdlwindowinfo hinfo;
 	
-	if (!mezoommenubarwindow (outlinedata, !flshowscript, &hinfo)) /*make sure menubar window is open, in front*/
+	if (!mezoommenubarwindow (op_get_outlinedata(), !flshowscript, &hinfo)) /*make sure menubar window is open, in front*/
 		return (false);
 	
 	shellpushglobals ((**hinfo).macwindow);
@@ -275,7 +275,7 @@ boolean meuserselected (hdlheadrecord hnode) {
 	boolean fl;
 	
 		
-		menudata = (hdlmenurecord) (**outlinedata).outlinerefcon;
+		menudata = (hdlmenurecord) (**op_get_outlinedata()).outlinerefcon;
 	
 	
 	if (!megetnodelangtext (hnode, &htext, &signature)) 

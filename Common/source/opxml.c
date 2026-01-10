@@ -932,7 +932,7 @@ static boolean opxmlvisitnondynamicnodes (opvisitcallback visit, ptrvoid refcon)
 	visit every node in the outline -- unless it's the child of a dynamic node.
 	*/
 
-	hdlheadrecord nomad = (**outlinedata).hsummit, nextnomad;
+	hdlheadrecord nomad = (**op_get_outlinedata()).hsummit, nextnomad;
 
 	while (true) {
 
@@ -1594,7 +1594,7 @@ static boolean opxmlsetwindowverticalscrollstate (hdlhashtable ht, hdlwindowinfo
 
 	opsetscrollstateverb (line1, &val); /*return value is uninteresting*/
 
-	(**outlinedata).hline1 = (**outlinedata).hbarcursor; /*7.0b23: these were switched, now they're correct.*/
+	(**op_get_outlinedata()).hline1 = (**op_get_outlinedata()).hbarcursor; /*7.0b23: these were switched, now they're correct.*/
 
 	/*7.0b22 PBS: update the window, fix display glitch.*/
 
@@ -1602,7 +1602,7 @@ static boolean opxmlsetwindowverticalscrollstate (hdlhashtable ht, hdlwindowinfo
 
 	outlinewindowinfo = hinfo;
 
-	oppushoutline (outlinedata);
+	oppushoutline (op_get_outlinedata());
 
 	oppostfontchange (); /*adjust display area*/
 		
@@ -1888,7 +1888,7 @@ static boolean opxmlsetrefcon (hdlhashtable ht) {
 	
 	/*Set the refcon.*/
 	
-	hbarcursor = (**outlinedata).hbarcursor;
+	hbarcursor = (**op_get_outlinedata()).hbarcursor;
 	
 	disposehandle ((**hbarcursor).hrefcon); /*dispose old refcon*/
 
@@ -1927,7 +1927,7 @@ static boolean opxmlsetcommentandbreakpoint (hdlhashtable ht) {
 	if (!langexternalvaltotable (val, &htatts, hnode)) /*Try to get the atts table*/
 		goto exit;
 	
-	hcursor = (**outlinedata).hbarcursor;
+	hcursor = (**op_get_outlinedata()).hbarcursor;
 	
 	/*Is this is a comment?*/
 		
@@ -2005,13 +2005,13 @@ static boolean opxmltooutlinevisit (hdlhashtable ht, short ixlevel, bigstring bs
 				
 				newemptyhandle (&htext);
 				
-				oppushoutline (outlinedata);
+				oppushoutline (op_get_outlinedata());
 				
 				opxmlgetheadlinetextfromatts (h, htext); /*text att is optional, so htext may be empty, which is okay.*/
 										
 				if (flfirstline) { /*is it the very first headline in the XML file?*/
 
-					opsetheadtext ((**outlinedata).hbarcursor, htext); /*consumes htext*/
+					opsetheadtext ((**op_get_outlinedata()).hbarcursor, htext); /*consumes htext*/
 					
 					flfirstline = false;
 					} /*if*/

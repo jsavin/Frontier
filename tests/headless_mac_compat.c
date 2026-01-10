@@ -216,7 +216,7 @@ void opsmashdisplay (void) { }
 void opdocursor (boolean flon) { (void)flon; }
 void opdovisiscroll (long hs, long vs) { (void)hs; (void)vs; }
 boolean opgetlinerect (long lnum, Rect *r) { (void)lnum; if (r) memset(r,0,sizeof(*r)); return false; }
-short opgetlineheight (hdlheadrecord hnode) { (void)hnode; if (outlinedata) return (short)((**outlinedata).defaultlineheight + 2*textvertinset); return (short)(12 + 2*textvertinset); }
+short opgetlineheight (hdlheadrecord hnode) { (void)hnode; if (op_get_outlinedata()) return (short)((**op_get_outlinedata()).defaultlineheight + 2*textvertinset); return (short)(12 + 2*textvertinset); }
 short opgetlinewidth (hdlheadrecord hnode) { (void)hnode; return 0; }
 void opdrawicon (hdlheadrecord hnode, Rect linerect) { (void)hnode; (void)linerect; }
 boolean opgeticonrect (hdlheadrecord hnode, const Rect *linerect, Rect *iconrect) { (void)hnode; if (iconrect) memset(iconrect,0,sizeof(*iconrect)); (void)linerect; return false; }

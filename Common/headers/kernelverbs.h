@@ -40,6 +40,8 @@ extern boolean sysinitverbs (void); /*shellsysverbs.c*/
 
 extern boolean dbinitverbs (void); /*dbverbs.c*/
 
+extern boolean dbfunctionvalue (short, hdltreenode, tyvaluerecord *, bigstring); /*dbverbs.c*/
+
 extern boolean dbcloseallfiles (long refcon);
 
 extern boolean xmlinitverbs (void); /*langxml.c*/

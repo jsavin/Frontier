@@ -40,7 +40,7 @@
 
 boolean oprestorescrollposition (void) {
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	hdlheadrecord hline1 = (**ho).hsummit;
 	long ctscrolllines = (**ho).vertscrollinfo.cur;
 	
@@ -72,7 +72,7 @@ boolean opsetscrollpositiontoline1 (void) {
 	6.0b3 dmb: make the vertical scroll position agree with hline1/line1linesabove
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	hdlheadrecord nomad = (**ho).hsummit;
 	hdlheadrecord hline1 = (**ho).hline1;
 	long ctscrolllines = (**ho).line1linesabove;
@@ -111,7 +111,7 @@ boolean opgetscrollbarinfo (boolean flpin) {
 	fixes an off-by-one bug.
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	//register hdlheadrecord hline1;
 	long ctexpanded;
 	short vscrollquantum;
@@ -185,7 +185,7 @@ boolean opgetscrollbarinfo (boolean flpin) {
 
 void opredrawscrollbars (void) {
 	
-	(*(**outlinedata).setscrollbarsroutine) ();
+	(*(**op_get_outlinedata()).setscrollbarsroutine) ();
 	} /*opredrawscrollbars*/
 
 

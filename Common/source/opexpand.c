@@ -61,7 +61,7 @@ static boolean opcollapsevisit (hdlheadrecord hnode, ptrvoid refcon) {
 		
 		flnothingcollapsed = false;	
 		
-		(**outlinedata).ctexpanded -= opgetnodelinecount (h);
+		(**op_get_outlinedata()).ctexpanded -= opgetnodelinecount (h);
 		
 		(**h).flexpanded = false;
 		
@@ -95,7 +95,7 @@ boolean opcollapse_ctx (op_context_t *ctx, hdlheadrecord hnode) {
 	assert(ctx != NULL);
 	op_context_version_bump(ctx);
 
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	long origct = (**ho).ctexpanded;
 	long ctscroll;
 	long lnum;
@@ -194,7 +194,7 @@ static boolean opexpandvisit (hdlheadrecord hnode, ptrvoid refcon) {
 		pixelsalreadyexpanded += lh;
 		}
 	else {
-		(**outlinedata).ctexpanded += opgetnodelinecount (hnode);
+		(**op_get_outlinedata()).ctexpanded += opgetnodelinecount (hnode);
 		
 		(**hnode).flexpanded = true;
 		
@@ -221,7 +221,7 @@ boolean opexpand_ctx (op_context_t *ctx, hdlheadrecord hnode, short level, boole
 	assert(ctx != NULL);
 	op_context_version_bump(ctx);
 
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	Rect outlinerect = (**ho).outlinerect;
 	long origct = (**ho).ctexpanded;
 	long lnum;
@@ -376,7 +376,7 @@ void opexpandto (hdlheadrecord hnode) {
 	8/10/92 dmb: pophoists as necessary to make the node accessable
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	
 	if ((**ho).hbarcursor == hnode) /*cursor is already on the node*/
 		return;
@@ -419,7 +419,7 @@ void opexpandtoggle (void) {
 	7.0d5 AR: Run op callback scripts 
 	*/
 	
-	register hdlheadrecord hcursor = (**outlinedata).hbarcursor;
+	register hdlheadrecord hcursor = (**op_get_outlinedata()).hbarcursor;
 	register hdlheadrecord hright = (**hcursor).headlinkright;
 	
 	if ((hright != hcursor) && (**hright).flexpanded) { /*first subhead is showing, collapse is called for*/
@@ -445,7 +445,7 @@ void opexpandupdate (hdlheadrecord hnewnode) {
 	5.0b6 dmb: allow for partially-visible lines
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	long ctlines;
 	long lnum;
 	
@@ -476,7 +476,7 @@ void opexpandupdate (hdlheadrecord hnewnode) {
 
 void opcollapseall (void) {
 	
-	hdlheadrecord nomad = (**outlinedata).hsummit;
+	hdlheadrecord nomad = (**op_get_outlinedata()).hsummit;
 	boolean fldisplaywasenabled;
 	
 	fldisplaywasenabled = opdisabledisplay ();
@@ -490,7 +490,7 @@ void opcollapseall (void) {
 			
 		if (!opchasedown (&nomad)) {
 			
-			opjumpto ((**outlinedata).hsummit);
+			opjumpto ((**op_get_outlinedata()).hsummit);
 			
 			if (fldisplaywasenabled) {
 				

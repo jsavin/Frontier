@@ -188,23 +188,23 @@ boolean browserchecklinelength (short newlen, bigstring bs) {
 
 	bigstring bsalert;
 		
-	if (newlen <= (short) (**outlinedata).maxlinelen) 
+	if (newlen <= (short) (**op_get_outlinedata()).maxlinelen) 
 		return (true);
 	
 	copystring (BIGSTRING ("\x0e" "The file name "), bsalert);
 	
 	if (stringlength (bs) > 0) {
 		
-		pushstring (BIGSTRING ("\x01" "“"), bsalert);
+		pushstring (BIGSTRING ("\x01" ""), bsalert);
 		
 		pushstring (bs, bsalert);
 		
-		pushstring (BIGSTRING ("\x01" "”"), bsalert);
+		pushstring (BIGSTRING ("\x01" ""), bsalert);
 		}
 	
 	pushstring (BIGSTRING ("\x2e" " is too long. The maximum file name length is "), bsalert);
 	
-	pushlong ((**outlinedata).maxlinelen, bsalert);
+	pushlong ((**op_get_outlinedata()).maxlinelen, bsalert);
 	
 	pushstring (BIGSTRING ("\x0c" " characters."), bsalert);
 	
@@ -396,7 +396,7 @@ boolean browserdeletenodeswithtmpbitset (void) {
 	delete files with their tmp bits turned on
 	*/
 
-	return (opsiblingvisiter ((**outlinedata).hsummit, true, &deletetmpbitvisit, nil)); 
+	return (opsiblingvisiter ((**op_get_outlinedata()).hsummit, true, &deletetmpbitvisit, nil)); 
 	} /*browserdeletenodeswithtmpbitset*/
 
 
@@ -558,7 +558,7 @@ boolean browsergetparentspec (hdlheadrecord hnode, tybrowserspec *fsparent) {
 	
 	if (hparent == hnode) { // it's a summit
 		
-		hformats = (hdltableformats) (**outlinedata).outlinerefcon;
+		hformats = (hdltableformats) (**op_get_outlinedata()).outlinerefcon;
 		
 		shellgetdatabase (shellwindow, &(*fsparent).vRefNum); // was: databasedata; what about GDBs?
 
@@ -625,7 +625,7 @@ boolean browserpredrag (hdlheadrecord *htarget, tydirection *dragdir) {
 		
 		opcleartmpbits ();
 		
-			parsedialogstring (BIGSTRING ("\x3b" "Can’t move “^0” here because it would replace its ancestor."), bsunsafe, nil, nil, nil, bsmsg);
+			parsedialogstring (BIGSTRING ("\x3b" "Cant move ^0 here because it would replace its ancestor."), bsunsafe, nil, nil, nil, bsmsg);
 		
 		alertdialog (bsmsg);
 		
@@ -677,7 +677,7 @@ boolean browserpredrag (hdlheadrecord *htarget, tydirection *dragdir) {
 		
 		claygetfilespec (htarget, &fapp);
 		
-		claygetfilespec ((**outlinedata).hbarcursor, &fdoc);
+		claygetfilespec ((**op_get_outlinedata()).hbarcursor, &fdoc);
 		
 		claylaunchappwithdoc (&fapp, &fdoc, true);
 		}
@@ -770,12 +770,12 @@ void browsersortfolder (hdlheadrecord hnode) {
 		
 	opendinternalchange ();
 	
-	opsetctexpanded (outlinedata);
+	opsetctexpanded (op_get_outlinedata());
 	
 	opsetscrollpositiontoline1 ();
 	
 	#ifdef fldebug
-		opvalidate (outlinedata);
+		opvalidate (op_get_outlinedata());
 	#endif
 	} /*browsersortfolder*/
 
@@ -823,7 +823,7 @@ void browserinsertagain (hdlheadrecord hnode) {
 	
 	opdeposit (hpre, dir, hnode);
 	
-	(**outlinedata).hbarcursor = hnode;
+	(**op_get_outlinedata()).hbarcursor = hnode;
 	
 // 2/20/97 dmb: shouldn't need this:	opsetctexpanded ();
 	

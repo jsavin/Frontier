@@ -73,7 +73,7 @@ typedef struct tydraginfo {
 
 void opgetwindowhandle (Point pt, Handle *windowhandle) {
 	
-	opgetwindowhandlecallback cb = (**outlinedata).getwindowhandlecallback;
+	opgetwindowhandlecallback cb = (**op_get_outlinedata()).getwindowhandlecallback;
 	
 	if (cb == nil) {
 		
@@ -88,7 +88,7 @@ void opgetwindowhandle (Point pt, Handle *windowhandle) {
 
 void opsetwindowhandlecontext (Handle windowhandle) {
 	
-	opsetwindowhandlecontextcallback cb = (**outlinedata).setwindowhandlecontextcallback;
+	opsetwindowhandlecontextcallback cb = (**op_get_outlinedata()).setwindowhandlecontextcallback;
 	
 	if (cb == nil)
 		setappwindow ((hdlappwindow) windowhandle);
@@ -105,11 +105,11 @@ static short oppointlevel (Point pt) {
 	level it refers to.
 	
 	to visualize the process, draw vertical lines on the screen at 
-	(**outlinedata).lineindent increments.  each line corresponds to a
+	(**op_get_outlinedata()).lineindent increments.  each line corresponds to a
 	level in the outline.  we match the pt up with the levels.
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	hdlheadrecord hsummit = (**ho).hsummit;
 	Rect r = (**ho).outlinerect;
 	short indent;
@@ -127,7 +127,7 @@ static short oppointlevel (Point pt) {
 
 static boolean oppointaboveline1 (Point pt) {
 	
-	Rect r = (**outlinedata).outlinerect;
+	Rect r = (**op_get_outlinedata()).outlinerect;
 	
 	r.top += 3; /*the top 3 pixels of the outline display cause scrolling*/
 	
@@ -188,7 +188,7 @@ static void opupdatehotspot (Point ptstart, Point pt, tyhotspot *hotspot) {
 	*/
 	
 	register tyhotspot *hs = hotspot;
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	register hdlheadrecord htarget;
 	register hdlheadrecord hline1 = (**ho).hline1;
 	register hdlheadrecord hsummit = (**ho).hsummit;
@@ -387,7 +387,7 @@ static boolean movetohotspotvisit (hdlheadrecord hnode, ptrvoid refcon) {
 		
 		oppushunmarkundo (hnode);
 		
-		if ((*(**outlinedata).dragcopycallback) (h, hpre)) {
+		if ((*(**op_get_outlinedata()).dragcopycallback) (h, hpre)) {
 			
 			h = opcopyoutline (h); /*caution: wipes out recursion globals*/
 			
@@ -440,7 +440,7 @@ boolean opmovetohotspot (tyhotspot *hotspot) {
 	//hdlheadrecord hsource = (*hs).hsource;
 	hdlheadrecord htarget = (*hs).htarget;
 	tydirection dir = (*hs).dir;
-	hdlheadrecord horigcursor = (**outlinedata).hbarcursor;
+	hdlheadrecord horigcursor = (**op_get_outlinedata()).hbarcursor;
 	hdlscreenmap hmap;
 	tydraginfo draginfo;
 	
@@ -498,7 +498,7 @@ boolean opmovetohotspot (tyhotspot *hotspot) {
 	
 		//hdlheadrecord htargetparent = (**htarget).headlinkleft;
 		
-		switch ((*(**outlinedata).predragcallback) (&htarget, &dir)) {
+		switch ((*(**op_get_outlinedata()).predragcallback) (&htarget, &dir)) {
 			
 			case false: /*user declined to do the move after hearing the consequences*/
 				goto exit;
@@ -522,7 +522,7 @@ boolean opmovetohotspot (tyhotspot *hotspot) {
 	
 	opcleartmpbits (); /*set by movetohotspotvisit*/
 	
-	(*(**outlinedata).postpastecallback) (hfirstmoved);
+	(*(**op_get_outlinedata()).postpastecallback) (hfirstmoved);
 	
 	if (fldropboxdrag) {
 		
@@ -540,7 +540,7 @@ boolean opmovetohotspot (tyhotspot *hotspot) {
 		
 		opvisinode (draginfo.hnode, false); /*visi the last node deposited*/
 		
-		(**outlinedata).hbarcursor = horigcursor;
+		(**op_get_outlinedata()).hbarcursor = horigcursor;
 		
 		opmoveto (hfirstmoved); /*move to first node deposited*/
 		}
@@ -549,7 +549,7 @@ boolean opmovetohotspot (tyhotspot *hotspot) {
 	
 	opafterstrucchange (hmap, false);
 	
-	opsetctexpanded (outlinedata); /*DW 4/10/95*/
+	opsetctexpanded (op_get_outlinedata()); /*DW 4/10/95*/
 	
 	return (true);
 	} /*opmovetohotspot*/
@@ -557,7 +557,7 @@ boolean opmovetohotspot (tyhotspot *hotspot) {
 
 void opscrollfordrag (tyhotspot *hotspot, tydirection scrolldir) {
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	register long vertcurrent = (**ho).vertscrollinfo.cur;
 	register tydirection dir = scrolldir;
 	
@@ -595,7 +595,7 @@ void opdraggingmove (Point ptstart, hdlheadrecord hsource) {
 	Point pt;
 	tydirection dir;
 	
-	if (!((**outlinedata).validatecopycallback) (STR_move))
+	if (!((**op_get_outlinedata()).validatecopycallback) (STR_move))
 		return;
 	
 	clearbytes ((ptrchar) &hotspot, longsizeof (hotspot));
@@ -641,7 +641,7 @@ void opdraggingmove (Point ptstart, hdlheadrecord hsource) {
 			
 			if ((gettickcount () - tc) > draggingscrollrate) {
 				
-				if (mousecheckautoscroll (pt, (**outlinedata).outlinerect, false, &dir)) {
+				if (mousecheckautoscroll (pt, (**op_get_outlinedata()).outlinerect, false, &dir)) {
 				
 					opscrollfordrag (&hotspot, dir);
 					

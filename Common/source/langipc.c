@@ -3537,7 +3537,7 @@ boolean langipcshowmenunode (long hnode) {
 	if (!newselfaddressedevent ('show', &event))
 		return (false);
 	
-	err = AEPutParamPtr (&event, 'outl', typeLongInteger, (Ptr) &outlinedata, sizeof (long));
+	err = AEPutParamPtr (&event, 'outl', typeLongInteger, (Ptr) op_get_outlinedata_ptr_unsafe(), sizeof (long));
 	
 	err = AEPutParamPtr (&event, 'node', typeLongInteger, (Ptr) &hnode, sizeof (long));
 	

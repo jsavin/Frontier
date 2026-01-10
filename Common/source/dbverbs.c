@@ -32,8 +32,10 @@
 #include "frontier.h"
 #include "standard.h"
 
+#ifndef FRONTIER_HEADLESS
 #include <land.h>
 #include "mac.h"
+#endif
 
 #include "ops.h"
 #include "memory.h"
@@ -407,7 +409,8 @@ typedef struct tyodblistrecord {
 	} tyodbrecord, *ptrodbrecord, **hdlodbrecord;
 #pragma options align=reset
 
-static hdlodbrecord hodblist = nil;
+/* Global ODB list - used by both GUI and headless dbinitverbs() */
+hdlodbrecord hodblist = nil;
 
 
 typedef enum tydbtoken { /*verbs that are processed by db*/
@@ -924,7 +927,7 @@ static boolean dbgetmoddateverb (hdltreenode hparam1, tyvaluerecord *vreturned) 
 	} /*dbgetmoddateverb*/
 
 
-static boolean dbfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vreturned, bigstring bserror) {
+boolean dbfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vreturned, bigstring bserror) {
 #pragma unused (bserror)
 
 	/*
@@ -985,16 +988,22 @@ static boolean dbfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord 
 	} /*dbfunctionvalue*/
 
 
+#ifndef FRONTIER_HEADLESS
+/* Windowed mode: register with dbfunctionvalue callback */
 boolean dbinitverbs (void) {
-	
+
 	if (!loadfunctionprocessor (iddbverbs, &dbfunctionvalue))
 		return (false);
-	
+
 	if (!newclearhandle (sizeof (tyodbrecord), (Handle *) &hodblist))
 		return (false);
-	
+
 	return (true);
 	} /*dbinitverbs*/
+#endif /* !FRONTIER_HEADLESS */
+/* Note: Headless mode provides its own dbinitverbs() in tests/headless_db_verbs.c
+ * which registers with headless_db_verbs_callback instead. */
+
 /* Exposed helpers for Save-path migration */
 boolean db_get_path_for_odb(odbref odb, bigstring out) {
     hdlodbrecord hodb;

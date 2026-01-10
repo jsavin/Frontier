@@ -186,8 +186,9 @@ void opeditgetselrect (Rect *r) {
 
 void opeditgetselpoint (Point *pt) {
 	if (pt != NULL) {
-		if (outlinedata != nil)
-			*pt = (**outlinedata).selpoint;
+		hdloutlinerecord ho = op_get_outlinedata();
+		if (ho != nil)
+			*pt = (**ho).selpoint;
 		else {
 			pt->h = 0;
 			pt->v = 0;
@@ -196,15 +197,15 @@ void opeditgetselpoint (Point *pt) {
 }
 
 void opeditresetselpoint (void) {
-	if (outlinedata != nil) {
-		(**outlinedata).selpoint.h = -1;
-		(**outlinedata).selpoint.v = 0;
+	if (op_get_outlinedata() != nil) {
+		(**op_get_outlinedata()).selpoint.h = -1;
+		(**op_get_outlinedata()).selpoint.v = 0;
 	}
 }
 
 void opeditsetselpoint (Point pt) {
-	if (outlinedata != nil)
-		(**outlinedata).selpoint = pt;
+	if (op_get_outlinedata() != nil)
+		(**op_get_outlinedata()).selpoint = pt;
 }
 
 void opeditselectall (void) {
@@ -254,13 +255,13 @@ boolean opeditsetglobals (void) {
 	/*
 	set up the word processing engine's globals
 
-	5.0b15 dmb: handle nil outlinedata
+	5.0b15 dmb: handle nil op_get_outlinedata()
 	*/
 	
-	if (outlinedata == nil)
+	if (op_get_outlinedata() == nil)
 		return (false);
 
-	wpdata = (hdlwprecord) (**outlinedata).hbuffer;
+	wpdata = (hdlwprecord) (**op_get_outlinedata()).hbuffer;
 	
 	wpwindow = outlinewindow;
 	
@@ -276,7 +277,7 @@ boolean opeditingtext (hdlheadrecord hnode) {
 	return true if the indicated node is being edited by the text editor
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	
 	if ((**ho).hbuffer && (hnode == (**ho).heditcursor)) {
 		
@@ -299,7 +300,7 @@ boolean opdefaultgetedittextrect (hdlheadrecord hnode, const Rect *linerect, Rec
 	
 	opdefaultgettextrect (hnode, linerect, textrect);
 	
-	if (!opisfatheadlines (outlinedata))
+	if (!opisfatheadlines (op_get_outlinedata()))
 		(*textrect).right += 1600; /*leave room for long lines; not too large, but enough*/
 	
 	(*textrect).top += textvertinset;
@@ -363,7 +364,7 @@ static boolean opgettextbufferrect (hdlheadrecord hnode, Rect *rclip, Rect *rtex
 	6.0b2 dmb: if line is off screen, return a rect above the screen, not false.
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	Rect rline;
 	
 	if (!opgetnoderect (hnode, &rline)) {
@@ -393,7 +394,7 @@ boolean opseteditbufferrect (void) {
 	just unpacked
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	register hdlheadrecord hcursor = (**ho).heditcursor;
 	Rect r, rclip;
 	
@@ -433,7 +434,7 @@ void oppostedit (void) {
 	a scroll will occur.
 	*/
 	
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 	hdlwprecord hwp = wpdata;
 	hdlheadrecord hcursor = (**ho).heditcursor;
 	
@@ -512,7 +513,7 @@ static pascal void opedittrackclick (hdlwprecord wp, Point pt) {
 	
 	tydirection dir;
 	
-	if (mousecheckautoscroll (pt, (**outlinedata).outlinerect, true, &dir)) {
+	if (mousecheckautoscroll (pt, (**op_get_outlinedata()).outlinerect, true, &dir)) {
 		
 	//	ClipRect (&(**outlinedata).outlinerect);
 
@@ -548,7 +549,7 @@ boolean oploadeditbuffer (void) {
 	5.0.2b4 dmb: don't reference hbuffer after setting it to nil
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	register hdlwprecord hbuffer;
 	register hdlheadrecord hcursor = (**ho).hbarcursor;
 	Rect rbounds, rclip;
@@ -600,7 +601,7 @@ boolean oploadeditbuffer (void) {
 		if ((!(**ho).flactive) && (!(**ho).flalwaysshowtextselection))
 			wpactivate (false);
 		
-		if (!(*(**outlinedata).setwpedittextcallback) (hcursor)) { /*out of memory?*/
+		if (!(*(**op_get_outlinedata()).setwpedittextcallback) (hcursor)) { /*out of memory?*/
 			
 			wpdisposerecord (hbuffer);
 			
@@ -644,7 +645,7 @@ boolean opwriteeditbuffer (void) {
 	existing wp globals
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	register hdlheadrecord hcursor = (**ho).heditcursor;
 	
 	if ((**ho).hbuffer == nil)
@@ -652,13 +653,13 @@ boolean opwriteeditbuffer (void) {
 	
 	opeditsetglobals ();
 	
-	return ((*(**outlinedata).getwpedittextcallback) (hcursor, false));
+	return ((*(**op_get_outlinedata()).getwpedittextcallback) (hcursor, false));
 	} /*opwriteeditbuffer*/
 
 
 boolean opunloadeditbuffer (void) {
 
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 	hdlwprecord hbuffer = (hdlwprecord) (**ho).hbuffer;
 	hdlheadrecord hcursor = (**ho).heditcursor;
 	
@@ -667,7 +668,7 @@ boolean opunloadeditbuffer (void) {
 	
 	opeditsetglobals ();
 	
-	if (!(*(**outlinedata).getwpedittextcallback) (hcursor, true))
+	if (!(*(**op_get_outlinedata()).getwpedittextcallback) (hcursor, true))
 		return (false);
 	
 	wpactivate (-1);
@@ -682,7 +683,7 @@ boolean opunloadeditbuffer (void) {
 
 boolean opsaveeditbuffer (void) {
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	tytextinfo textinfo;
 	
 	if ((**ho).hbuffer == nil) /*no buffer open*/
@@ -702,7 +703,7 @@ boolean opsaveeditbuffer (void) {
 
 boolean oprestoreeditbuffer (void) {
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	tytextinfo textinfo;
 	
 	if ((**ho).hbuffer != nil) /*already loaded -- don't smash selection*/
@@ -736,7 +737,7 @@ boolean opeditmeasuretext (hdlheadrecord hnode) {
 	font, size, outlinerect, etc.
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	Rect rbounds, rclip;
 	tywpflags flags = 0;
 	long width, height;
@@ -793,7 +794,7 @@ boolean opeditdrawtext (hdlheadrecord hnode, const Rect *rtext) {
 	font, size, outlinerect, etc.
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	Rect r, rclip;
 	tywpflags flags = 0;
 	
@@ -862,7 +863,7 @@ void opeditsetselection (long startsel, long endsel) {
 		
 		textinfo.flvalid = true;
 		
-		(**outlinedata).textinfo = textinfo;
+		(**op_get_outlinedata()).textinfo = textinfo;
 		}
 	} /*opeditsetselection*/
 
@@ -898,13 +899,13 @@ void opeditresetselpoint (void) {
 	offset should be maintained from that point.  we just clear our field.
 	*/
 	
-	(**outlinedata).selpoint.h = -1;
+	(**op_get_outlinedata()).selpoint.h = -1;
 	} /*opeditresetselpoint*/
 
 
 void opeditsetselpoint (Point pt) {
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	
 	opeditsetglobals ();
 	
@@ -936,7 +937,7 @@ boolean opeditcango (tydirection dir) {
 	wpgetselrect (&rsel);
 	
 	//rwhole = (**wpdata).wprect;
-	opgettextbufferrect ((**outlinedata).heditcursor, &rclip, &rwhole);
+	opgettextbufferrect ((**op_get_outlinedata()).heditcursor, &rclip, &rwhole);
 	
 	insetrect (&rwhole, texthorizinset, textvertinset);
 	
@@ -985,9 +986,9 @@ static boolean opeditrecalcheadline (void) {
 	also be redrawn.
 	*/
 
-	if (outlinedata != NULL) {
+	if (op_get_outlinedata() != NULL) {
 
-		if ((**outlinedata).flhtml) {
+		if ((**op_get_outlinedata()).flhtml) {
 
 			long startsel, endsel;
 
@@ -999,7 +1000,7 @@ static boolean opeditrecalcheadline (void) {
 
 			wpsetselection (startsel, endsel);
 
-			opinvalafter ((**outlinedata).heditcursor); /*7.0b33 PBS: redraw below current headline.*/
+			opinvalafter ((**op_get_outlinedata()).heditcursor); /*7.0b33 PBS: redraw below current headline.*/
 
 			return (true);
 			} /*if*/
@@ -1020,7 +1021,7 @@ boolean opeditkey (void) {
 	if (chkb == '>')
 		opeditrecalcheadline ();
 	
-	(**outlinedata).blocksupersmartvisi = true;
+	(**op_get_outlinedata()).blocksupersmartvisi = true;
 	
 	opschedulevisi ();
 	
@@ -1161,7 +1162,7 @@ void opeditdispose (void) {
 
 boolean opeditgetundoglobals (long *globals) {
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	
 	if (fleditingnow && (**ho).hbuffer)
 		*globals = (long) (**ho).heditcursor;
@@ -1182,7 +1183,7 @@ boolean opeditsetundoglobals (long globals, boolean flundo) {
 	tossing an undo.
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	register hdlheadrecord hnode = (hdlheadrecord) globals;
 	
 	if (!globals || !flundo)

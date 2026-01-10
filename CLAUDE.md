@@ -549,6 +549,60 @@ typeof(filespecValue) => "filespec"     ❌ WRONG - code expects 'fss '
 
 ---
 
+### UserTalk File Path Requirements ⚠️
+
+**CRITICAL**: All UserTalk verbs dealing with files require FULL/ABSOLUTE paths, not relative paths.
+
+**The Runtime Has No CWD Awareness at UserTalk Level:**
+- UserTalk scripts cannot use relative paths like `"test.root"` or `"../data/file.txt"`
+- The runtime has NO awareness of current working directory (cwd) at the UserTalk level
+- Exception: Explicit cwd verb calls (`file.getcwd()`) return the process cwd, but this is NOT used for path resolution
+
+**Affected Verbs:**
+- `db.new(path)` - Requires full path: `/full/path/to/database.root`
+- `db.open(path, readOnly)` - Requires full path
+- `file.create(path)` - Requires full path
+- `file.write(path, data)` - Requires full path
+- `file.read(path)` - Requires full path
+- All file.* verbs that take a path parameter
+
+**Correct Usage:**
+```usertalk
+// ✅ CORRECT - Full paths
+db.new("/Users/jake/test.root")
+file.write("/tmp/output.txt", "data")
+
+// ✅ CORRECT - Build full path from cwd
+local(fullPath = file.getcwd() + "/test.root")
+db.new(fullPath)
+
+// ❌ WRONG - Relative paths don't work
+db.new("test.root")              // Will fail or create in undefined location
+file.write("output.txt", "data") // Will fail
+```
+
+**Testing Implications:**
+- Integration tests MUST use `{FRONTIER_TEST_TMP_DIR}` template (auto-replaced with full path)
+- Manual CLI testing MUST use `$(./tools/get_test_temp_path.sh)` for full paths
+- Never use relative paths in test scripts
+
+**Why system.paths Matters:**
+- `system.paths` contains full paths to important system locations
+- `target.*` verbs and other system verbs require `system.paths` to be initialized
+- Load system root with `--system-root databases/Frontier-v6.root` to initialize `system.paths`
+- Without system root, many verbs will fail with "Can't find sub-table named X"
+
+**Example - Integration Test Setup:**
+```yaml
+script: |
+  local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");  # Full path template
+  local(dbPath = tmpDir + "/" + "test.root");
+  db.new(dbPath);
+  return db.open(dbPath, false)
+```
+
+---
+
 ## Critical Testing Constraints ⚠️
 
 ### macOS Sandbox /tmp Restriction

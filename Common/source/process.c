@@ -1323,7 +1323,7 @@ void disposethreadglobals (hdlthreadglobals hglobals) {
 		
 		assert (!shellwindow);
 		
-		assert (!outlinedata && !topoutlinestack);
+		assert (!op_get_outlinedata() && !op_get_topoutlinestack());
 		*/
 		
 		/*
@@ -1340,7 +1340,7 @@ void disposethreadglobals (hdlthreadglobals hglobals) {
 		
 		assert (!(**hg).shellwindow);
 
-		assert (!(**hg).outlinedata && !(**hg).topoutlinestack);
+		assert (!(**hg).op_get_outlinedata() && !(**hg).op_get_topoutlinestack());
 
 		disposehandle ((Handle) (**hg).htablestack);
 		}
@@ -1495,15 +1495,15 @@ void copythreadglobals (hdlthreadglobals hglobals) {
 	//	if (shellwindow == nil && topoutlinestack == 0) // if we're not working in a window, outlinedata is stray
 	//		assert (outlinedata == nil); //(**hg).outlinedata = nil;
 		
-		(**hg).outlinedata = outlinedata;
+		(**hg).op_set_outlinedata(outlinedata);
 		
-		(**hg).topoutlinestack = topoutlinestack;
+		(**hg).op_set_topoutlinestack(topoutlinestack);
 		
 		moveleft  (outlinestack, (**hg).outlinestack, sizeof (hdloutlinerecord) * ctoutlinestack);
 		
-		outlinedata = nil; //don't let anyone else mess with us
+		op_set_outlinedata(nil); //don't let anyone else mess with us
 
-		topoutlinestack = 0;
+		op_set_topoutlinestack(0);
 		
 		(**hg).ctscanlines = ctscanlines;
 		
@@ -1627,17 +1627,17 @@ void swapinthreadglobals (hdlthreadglobals hglobals) {
 		
 		if (shellwindow != (**hg).shellwindow) {
 			
-			outlinedata = nil; //set current outlinedata won't lose ctpushes
+			op_set_outlinedata(nil); //set current outlinedata won't lose ctpushes
 
 			shellsetglobals ((**hg).shellwindow);
 
-			if (outlinedata)
-				--(**outlinedata).ctpushes; //it just got a free one
+			if (op_get_outlinedata())
+				--(**op_get_outlinedata()).ctpushes; //it just got a free one
 			}
 		
-		outlinedata = (**hg).outlinedata;
+		op_set_outlinedata((**hg).outlinedata);
 		
-		topoutlinestack = (**hg).topoutlinestack;
+		op_set_topoutlinestack((**hg).topoutlinestack);
 		
 		moveleft  ((**hg).outlinestack, outlinestack, sizeof (hdloutlinerecord) * ctoutlinestack);
 

@@ -193,7 +193,7 @@ static hdloutlinerecord scriptdataholder = nil;
 static boolean scriptsetglobals (void) {
 	
 	/*
-	5.1.5b7 dmb: added this layer so we can trap the setting of outlinedata
+	5.1.5b7 dmb: added this layer so we can trap the setting of op_get_outlinedata()
 	*/
 	
 	opsetoutline (scriptdataholder);
@@ -845,7 +845,7 @@ boolean scriptinmenubar (void) {
 	*/
 	
 //	return (isheadrecordhandle ((**outlinedata).outlinerefcon));
-	return ((**outlinedata).outlinetype == outlineismenubarscript);
+	return ((**op_get_outlinedata()).outlinetype == outlineismenubarscript);
 	} /*scriptinmenubar*/
 
 
@@ -859,7 +859,7 @@ static boolean scriptindatabase (void) {
 	7/16/91 dmb: removed staticness for "temporary" call from shellwindowverbs.c
 	*/
 	
-	return ((**outlinedata).outlinetype == outlineisdatabasescript);
+	return ((**op_get_outlinedata()).outlinetype == outlineisdatabasescript);
 	} /*scriptindatabase*/
 
 
@@ -881,11 +881,11 @@ static boolean scriptinruntimestack (void) {
 		if (outlinewindow == (**hd).scriptsourcestack [ix].pwindow) {
 		*/
 		
-		if (outlinedata == (**hd).scriptsourcestack [ix].houtline) {
+		if (op_get_outlinedata() == (**hd).scriptsourcestack [ix].houtline) {
 			
 			if (ix == 0) /*main source window.  make sure same script is displayed*/
 			
-				return ((**hd).scriptrefcon == (**outlinedata).outlinerefcon);
+				return ((**hd).scriptrefcon == (**op_get_outlinedata()).outlinerefcon);
 			
 			return (true);
 			}
@@ -930,7 +930,7 @@ static boolean scriptrecordable (void) {
 	if (!havecomponentmanager ())
 		return (false);
 	
-	comp = getosaserver ((**outlinedata).outlinesignature);
+	comp = getosaserver ((**op_get_outlinedata()).outlinesignature);
 	
 	if (comp == nil)
 		return (false);
@@ -1136,7 +1136,7 @@ static boolean scriptdebugtraperror (hdltreenode hnode) {
 	
 	(**hd).lastlnum = lnum;
 	
-	(**hd).hbarcursor = (**outlinedata).hbarcursor;
+	(**hd).hbarcursor = (**op_get_outlinedata()).hbarcursor;
 	
 	shellpopglobals ();
 	
@@ -1270,7 +1270,7 @@ static boolean scriptnewprocess (short buttonnum) {
 	*/
 	
 	register hdldebuggerrecord hd = debuggerdata;
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 	Handle htext;
 	hdltreenode hcode;
 	hdlprocessrecord hprocess;
@@ -1350,7 +1350,7 @@ static boolean scriptnewprocess (short buttonnum) {
 		
 		(*pd).flscriptrunning = true;
 		
-		(*pd).scriptrefcon = (**outlinedata).outlinerefcon; /*for later identification*/
+		(*pd).scriptrefcon = (**op_get_outlinedata()).outlinerefcon; /*for later identification*/
 		
 		/* clearhandle gets all these
 		
@@ -1386,7 +1386,7 @@ static boolean scriptnewprocess (short buttonnum) {
 	
 	source.hnode = (hdlhashnode) refcon;
 	
-	source.houtline = outlinedata;
+	source.houtline = op_get_outlinedata();
 	
 	scriptinvalbuttons ();
 	
@@ -1595,7 +1595,7 @@ static boolean openservercomp (void) {
 	ComponentInstance comp = (**hd).servercomp;
 	OSType servertype;
 	
-	servertype = (**outlinedata).outlinesignature;
+	servertype = (**op_get_outlinedata()).outlinesignature;
 	
 	comp = getosaserver (servertype);
 	
@@ -1634,7 +1634,7 @@ static void scriptrecordbutton (void) {
 	
 	source.hnode = nil;
 	
-	source.houtline = outlinedata;
+	source.houtline = op_get_outlinedata();
 	
 	scriptpushsourcerecord (source);
 	} /*scriptrecordbutton*/
@@ -1810,7 +1810,7 @@ static boolean scriptlocalsbutton (void) {
 	hdlhashtable ht;
 	bigstring bs;
 	
-	if ((**outlinedata).fltextmode) {
+	if ((**op_get_outlinedata()).fltextmode) {
 		
 		opeditgetseltext (bs);
 		
@@ -1829,8 +1829,8 @@ static boolean scriptlocalsbutton (void) {
 		
 		shellpushfrontglobals ();
 		
-		if (outlinedata) // should be there
-			opexpand ((**outlinedata).hbarcursor, 1, false);
+		if (op_get_outlinedata()) // should be there
+			opexpand ((**op_get_outlinedata()).hbarcursor, 1, false);
 		
 		shellpopglobals ();
 		}
@@ -1849,7 +1849,7 @@ static boolean scriptinstallbutton (void) {
 	hdlhashnode hnode;
 	hdltreenode hcode;
 	
-	hvariable = (hdlexternalvariable) (**outlinedata).outlinerefcon;
+	hvariable = (hdlexternalvariable) (**op_get_outlinedata()).outlinerefcon;
 	
 	if (!scriptfindhashnode (hvariable, &hnode))
 		return (false);
@@ -2005,7 +2005,7 @@ static boolean scriptbutton (short buttonnum) {
 
 static boolean scripthascleancode () {
 
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	hdlexternalvariable hvariable;
 	hdlhashnode hnode;
 	hdltreenode hcode;
@@ -2097,7 +2097,7 @@ static boolean scriptbuttonenabled (short buttonnum) {
 			return (!lflscriptrunning);
 		
 		case debugbutton:
-			return (!lflscriptrunning && ((**outlinedata).outlinesignature == typeLAND));
+			return (!lflscriptrunning && ((**op_get_outlinedata()).outlinesignature == typeLAND));
 		
 		case stopbutton:
 			return (!flscriptsuspended);
@@ -2209,7 +2209,7 @@ static boolean scriptbuttonstatus (short buttonnum, tybuttonstatus *status) {
 	
 	(*status).flenabled = fldisplay && scriptbuttonenabled (buttonnum);
 	*/
-	if (outlinedata == NULL)
+	if (op_get_outlinedata() == NULL)
 		return (false);
 
 	(*status).flenabled = scriptbuttonenabled (buttonnum);
@@ -2498,7 +2498,7 @@ boolean scriptdebugger (hdltreenode hnode) {
 		
 		(**hd).lastlnum = lnum;
 		
-		(**hd).hbarcursor = (**outlinedata).hbarcursor;
+		(**hd).hbarcursor = (**op_get_outlinedata()).hbarcursor;
 		
 		shellpopglobals ();
 		}
@@ -2863,7 +2863,7 @@ static boolean optogglebreakpoint (hdlheadrecord hnode) {
 	*/
 	
 	boolean lflbreak = !(**hnode).flbreakpoint;
-	boolean flrecentlychanged = (**outlinedata).flrecentlychanged;
+	boolean flrecentlychanged = (**op_get_outlinedata()).flrecentlychanged;
 	
 	(**hnode).flbreakpoint = lflbreak;
 	
@@ -2871,7 +2871,7 @@ static boolean optogglebreakpoint (hdlheadrecord hnode) {
 	
 	opdirtyoutline ();
 	
-	(**outlinedata).flrecentlychanged = flrecentlychanged;
+	(**op_get_outlinedata()).flrecentlychanged = flrecentlychanged;
 	
 	opupdatenow ();
 	
@@ -2888,7 +2888,7 @@ static boolean scriptcmdclick (hdlheadrecord hnode) {
 	5.0.2b19 dmb: preserve outline's text mode
 	*/
 	
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 	
 	if (keyboardstatus.floptionkey) {
 	
@@ -3194,7 +3194,7 @@ static boolean scriptverifycompilation () {
 	10/1/91 dmb: don't need to do anything if script hasn't yet been compiled.
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	hdlexternalvariable hvariable;
 	hdlhashnode hnode;
 	hdltreenode hcode;
@@ -3284,11 +3284,11 @@ static boolean scriptclose (void) {
 	
 	for (ix = 0; ix < (**hd).topscriptsource; ix++) { /*see if it's any window in stack*/
 		
-		if ((**hd).scriptsourcestack [ix].houtline == outlinedata) { /*yup*/
+		if ((**hd).scriptsourcestack [ix].houtline == op_get_outlinedata()) { /*yup*/
 			
 			(**hd).scriptsourcestack [ix].pwindow = nil; /*clear it*/
 			
-			if (!(**outlinedata).fldirty) /*outline is about to be disposed*/
+			if (!(**op_get_outlinedata()).fldirty) /*outline is about to be disposed*/
 				(**hd).scriptsourcestack [ix].houtline = nil;
 			
 			if (ix == 0) { /*user is closing main source window*/
@@ -3357,7 +3357,7 @@ static boolean scriptsetselectioninfo (void) {
 
 static boolean scriptsearch (void) {
 	
-	long refcon = (**outlinedata).outlinerefcon;
+	long refcon = (**op_get_outlinedata()).outlinerefcon;
 	
 	startingtosearch (refcon);
 	
@@ -3403,7 +3403,7 @@ static boolean scriptkeystroke (void) {
 	4/7/97 dmb: handle standalone scripts
 	*/
 
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	
 	if (scriptindatabase ()) { /*lives in symbol table -- see scriptinstallable*/
 		
@@ -3457,12 +3457,12 @@ static boolean scripttitleclick (Point pt) {
 			}
 		}
 		
-	return (langexternaltitleclick (pt, (hdlexternalvariable) (**outlinedata).outlinerefcon));
+	return (langexternaltitleclick (pt, (hdlexternalvariable) (**op_get_outlinedata()).outlinerefcon));
 	
 	/* old code, discard after awhile
 
 	if (scriptindatabase ()) // lives in symbol table -- see scriptinstallable
-		return (langexternaltitleclick (pt, (hdlexternalvariable) (**outlinedata).outlinerefcon));
+		return (langexternaltitleclick (pt, (hdlexternalvariable) (**op_get_outlinedata()).outlinerefcon));
 	
 	if ((**outlinewindowinfo).parentwindow == nil)
 		return (false);
@@ -3569,7 +3569,7 @@ static boolean scriptserverpopupselect (hdlmenu hmenu, short itemselected) {
 	2.1b11 dmb: dirty the outline
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	register OSType signature = serverarray [itemselected - 1];
 	
 	if ((**ho).outlinesignature != signature) {
@@ -3593,7 +3593,7 @@ static boolean scriptfillserverpopup (hdlmenu hmenu, short *checkeditem) {
 	
 	cbd.ctmenus = 0;
 	
-	cbd.signature = (**outlinedata).outlinesignature;
+	cbd.signature = (**op_get_outlinedata()).outlinesignature;
 	
 	if (!scriptvisitservers (&scriptfillservervisit, (long) &cbd))
 		return (false);
@@ -3685,7 +3685,7 @@ static void scriptupdateserverpopup (void) {
 	else {
 	#endif
 	
-	signature = (**outlinedata).outlinesignature;
+	signature = (**op_get_outlinedata()).outlinesignature;
 	
 	if (!scriptgettypename (signature, bs)) { /*didn't find it*/
 		
@@ -4010,7 +4010,7 @@ static boolean scriptdirtyhook (void) {
 	constantly update the script icon in the langerror window.
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 
 	if ((ho != nil) && (outlinewindow == shellwindow))
 		if (scriptinstallable ())

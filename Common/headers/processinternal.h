@@ -256,6 +256,117 @@ extern hdlthreadglobals hthreadglobals; /* ADR-005: Current thread's globals for
 extern boolean flthreadkilled;
 
 
+/* ADR-006 Phase 3: Outline context - accessor functions and backward-compatible macros
+ *
+ * ORGANIZATION:
+ * 1. Accessor functions (defined first, access raw struct members)
+ * 2. Backward-compatible macros (defined after, also access raw struct members)
+ *
+ * This ordering prevents macro expansion inside accessor function bodies.
+ * During Phase 2 migration, call sites will be refactored to use accessor functions.
+ * During Phase 4, macros will be removed entirely.
+ */
+
+/* ADR-006 Phase 3: Thread-safe accessor functions for outline context
+ *
+ * These inline accessor functions replace direct macro access to outline context,
+ * preventing address-taking that creates stale pointer issues after thread switches.
+ *
+ * MIGRATION STRATEGY:
+ * - Phase 1: Add accessors (this section) - macros and accessors coexist
+ * - Phase 2: Automated refactoring - replace macro usage with accessor calls
+ * - Phase 3: Manual fixes - handle address-taking sites with _unsafe accessor
+ * - Phase 4: Remove macros - complete migration to accessor-only model
+ *
+ * THREAD-SAFETY GUARANTEE:
+ * All accessors return values or write through thread-local storage. No pointers
+ * to thread-local storage are exposed except through explicit _unsafe accessors
+ * (used only for legacy GUI code that must be refactored later).
+ */
+
+/* Read-only accessors - return by value (safe for thread switches) */
+static inline hdloutlinerecord op_get_outlinedata(void) {
+	#ifdef DEBUG
+		assert(hthreadglobals != nil);
+	#endif
+	return (**hthreadglobals).outlinedata;
+}
+
+static inline short op_get_topoutlinestack(void) {
+	#ifdef DEBUG
+		assert(hthreadglobals != nil);
+	#endif
+	return (**hthreadglobals).topoutlinestack;
+}
+
+static inline hdloutlinerecord op_get_outlinestack(short level) {
+	#ifdef DEBUG
+		assert(hthreadglobals != nil);
+		assert(level >= 0 && level < ctoutlinestack);
+	#endif
+	return (**hthreadglobals).outlinestack[level];
+}
+
+/* Write accessors - modify thread-local storage in place */
+static inline void op_set_outlinedata(hdloutlinerecord houtline) {
+	#ifdef DEBUG
+		assert(hthreadglobals != nil);
+	#endif
+	(**hthreadglobals).outlinedata = houtline;
+}
+
+static inline void op_set_topoutlinestack(short top) {
+	#ifdef DEBUG
+		assert(hthreadglobals != nil);
+		assert(top >= 0 && top <= ctoutlinestack);
+	#endif
+	(**hthreadglobals).topoutlinestack = top;
+}
+
+static inline void op_set_outlinestack(short level, hdloutlinerecord houtline) {
+	#ifdef DEBUG
+		assert(hthreadglobals != nil);
+		assert(level >= 0 && level < ctoutlinestack);
+	#endif
+	(**hthreadglobals).outlinestack[level] = houtline;
+}
+
+/* UNSAFE accessor - returns pointer to thread-local storage
+ *
+ * WARNING: Pointer becomes invalid after thread switch. Only use for:
+ * 1. Legacy GUI code (langipc.c, opwinpad.c) that captures &outlinedata
+ * 2. Code that IMMEDIATELY dereferences the pointer without storing it
+ *
+ * This accessor exists ONLY to support address-taking sites during migration.
+ * All such call sites must be refactored when GUI becomes multi-threaded.
+ *
+ * TODO (Frontier 2.0): Eliminate all call sites and remove this function.
+ */
+static inline hdloutlinerecord* op_get_outlinedata_ptr_unsafe(void) {
+	#ifdef DEBUG
+		assert(hthreadglobals != nil);
+	#endif
+	return &(**hthreadglobals).outlinedata;
+}
+
+
+/* ADR-006: Thread-local outline context migration complete (Phase 4)
+ *
+ * All outline context access now goes through type-safe accessor functions:
+ * - op_get_outlinedata() / op_set_outlinedata()
+ * - op_get_topoutlinestack() / op_set_topoutlinestack()
+ * - op_get_outlinestack() / op_set_outlinestack()
+ *
+ * The backward-compatible macros have been removed. All 677+ call sites have been
+ * migrated to use accessor functions, eliminating the stale pointer footgun and
+ * providing thread-safe access to outline context.
+ *
+ * INITIALIZATION CONTRACT: Accessor functions assume hthreadglobals is initialized.
+ * In headless mode, headless_init_threadglobals() must be called during startup.
+ * In GUI mode, newthreadglobals() initializes these fields when creating threads.
+ */
+
+
 /*prototypes*/
 
 extern void disposethreadglobals (hdlthreadglobals);

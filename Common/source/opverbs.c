@@ -274,7 +274,7 @@ static void opverbresize (void); /*forward*/
 static boolean opverbsetglobals (void) {
 	
 	/*
-	5.1.5b7 dmb: added this layer so we can trap the setting of outlinedata
+	5.1.5b7 dmb: added this layer so we can trap the setting of op_get_outlinedata()
 	*/
 	
 	opsetoutline (outlinedataholder);
@@ -1638,7 +1638,7 @@ boolean opinserthandle_ctx (op_context_t *ctx, Handle htext, tydirection dir) {
 	2.1b9 dmb: use new isoutlinetext routine to save code
 	*/
 
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	register hdlheadrecord hbarcursor;
 	register boolean fl;
 	hdlheadrecord hnode;
@@ -1719,7 +1719,7 @@ static boolean opsetlinetextverb (Handle htext) {
 	
 	opsettextmode (false);
 	
-	hcursor = (**outlinedata).hbarcursor;
+	hcursor = (**op_get_outlinedata()).hbarcursor;
 	
 	opbeforestrucchange (&hmap, false);
 	
@@ -1844,7 +1844,7 @@ static boolean opmarkedverb (boolean fl) {
 	
 	fl = bitboolean (fl); /%make sure it's a 1 or a 0%/
 	
-	hcursor = (**outlinedata).hbarcursor;
+	hcursor = (**op_get_outlinedata()).hbarcursor;
 	
 	if ((**hcursor).flmarked == fl) /%not changing%/
 		return (false);
@@ -1872,7 +1872,7 @@ static boolean opsetdisplayverb (boolean fldisplay) {
 	6.0a14 dmb: need to do more stuff now when enabling
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	
 	if ((**ho).flinhibitdisplay != fldisplay) /*nothing to do*/
 		return (false);
@@ -2572,7 +2572,7 @@ boolean opgetexpansionstateverb (tyvaluerecord *v) {
 	7.0b21 PBS: no longer static -- needed by opxml.c to get the
 	expansion state of an outline.
 	*/
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	hdlheadrecord hnode;
 	hdllistrecord hlist;
 	long ct = 0;
@@ -2608,7 +2608,7 @@ boolean opsetexpansionstateverb (tyvaluerecord *vlist, tyvaluerecord *v) {
 	outlineDocument.
 	*/
 	
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 	hdlheadrecord nomad;
 	hdlheadrecord hnode;
 	tyvaluerecord vitem;
@@ -2703,7 +2703,7 @@ boolean opgetscrollstateverb (tyvaluerecord *v) {
 	7.0b21 PBS: no longer static -- needed in opxml.c to get the scroll state of an outline.
 	*/
 
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	register hdlheadrecord nomad, hsummit;
 	register long ctheadlines = 1;
 
@@ -2738,7 +2738,7 @@ boolean opsetscrollstateverb (long line1, tyvaluerecord *v) {
 	outlineDocument.
 	*/
 
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	register hdlheadrecord nomad;
 
 	assert ((ho != nil) && (*ho != nil));
@@ -2878,7 +2878,7 @@ static boolean opinsertoutlineverb (hdloutlinerecord hosource, tydirection dir, 
 	7.0b13 PBS: Set cursor back to original cursor.
 	*/
 
-	hdlheadrecord hbarcursor = (**outlinedata).hbarcursor;
+	hdlheadrecord hbarcursor = (**op_get_outlinedata()).hbarcursor;
 	hdlheadrecord horigcursor = hbarcursor; /*7.0b13 PBS*/
 	hdlheadrecord hcopy;
 
@@ -2886,7 +2886,7 @@ static boolean opinsertoutlineverb (hdloutlinerecord hosource, tydirection dir, 
 		
 		hbarcursor = (**hbarcursor).headlinkleft;
 		
-		if (hbarcursor == (**outlinedata).hbarcursor) /*couln't move left*/
+		if (hbarcursor == (**op_get_outlinedata()).hbarcursor) /*couln't move left*/
 			return (setbooleanvalue (false, v));
 		
 		opmoveto (hbarcursor);
@@ -2962,11 +2962,11 @@ static boolean opvisitallvisit (hdlheadrecord hnode, ptrvoid bsscriptname) {
 		return (false);
 	*/
 
-	oppushoutline (outlinedata);
+	oppushoutline (op_get_outlinedata());
 		
-	(**outlinedata).hbarcursor = hnode;
+	(**op_get_outlinedata()).hbarcursor = hnode;
 		
-	(**outlinedata).flwindowopen = true;
+	(**op_get_outlinedata()).flwindowopen = true;
 	
 	langrunscript (bsscriptname, nil, nil, &vreturned);
 	
@@ -3476,7 +3476,7 @@ static boolean opfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord 
 	
 	(*shellglobals.gettargetdataroutine) (idoutlineprocessor); /*set op globals*/
 	
-	ho = outlinedata; /*copy into register*/
+	ho = op_get_outlinedata(); /*copy into register*/
 	
 	hbarcursor = (**ho).hbarcursor;
 	
@@ -4019,7 +4019,7 @@ static boolean opfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord 
 						
 			else {
 			
-				register hdloutlinerecord lho = outlinedata;
+				register hdloutlinerecord lho = op_get_outlinedata();
 					
 				(**lho).fldirty = false; /*the outline structure is not dirty*/
 	
@@ -4077,13 +4077,13 @@ static boolean opfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord 
 			if (!getbooleanvalue (hparam1, 1, &lfl))
 				break;
 			
-			if ((**outlinedata).outlinetype == outlineisoutline) { /*outlines only*/
+			if ((**op_get_outlinedata()).outlinetype == outlineisoutline) { /*outlines only*/
 				
-				if ((**outlinedata).flhtml != lfl) { /*Don't bother if it's already set as requested.*/
+				if ((**op_get_outlinedata()).flhtml != lfl) { /*Don't bother if it's already set as requested.*/
 					
 					long startsel, endsel;
 
-					boolean fltextmode = (**outlinedata).fltextmode;
+					boolean fltextmode = (**op_get_outlinedata()).fltextmode;
 
 					if (fltextmode) {
 
@@ -4092,7 +4092,7 @@ static boolean opfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord 
 						opunloadeditbuffer ();
 						}
 
-					(**outlinedata).flhtml = lfl;
+					(**op_get_outlinedata()).flhtml = lfl;
 
 					opdirtyview ();
 
@@ -4120,9 +4120,9 @@ static boolean opfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord 
 
 			boolean flhtml;
 
-			flhtml = (**outlinedata).flhtml;
+			flhtml = (**op_get_outlinedata()).flhtml;
 
-			if ((**outlinedata).outlinetype != outlineisoutline) /*outlines only*/
+			if ((**op_get_outlinedata()).outlinetype != outlineisoutline) /*outlines only*/
 				flhtml = false;
 
 			fl = setbooleanvalue (flhtml, vreturned);
@@ -4269,7 +4269,7 @@ static void opverbresize (void) {
 
 boolean opverbclose (void) {
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	register hdloutlinevariable hv;
 	
 	if (ho == nil) //already closed & disposed?
@@ -4356,7 +4356,7 @@ boolean opverbfind (hdlexternalvariable hvariable, boolean *flzoom) {
 
 static boolean opverbsearch (void) {
 	
-	register long oprefcon = (**outlinedata).outlinerefcon;
+	register long oprefcon = (**op_get_outlinedata()).outlinerefcon;
 	
 	startingtosearch (oprefcon); /*will be accepted if not part of larger search*/
 	
@@ -4374,26 +4374,28 @@ boolean opverbruncursor (void) {
 	
 	bigstring bs, bsresult;
 	
-	opgetheadstring ((**outlinedata).hbarcursor, bs);
+	opgetheadstring ((**op_get_outlinedata()).hbarcursor, bs);
 	
 	return (langrunstring (bs, bsresult));
 	} /*opverbruncursor*/
 
 
 boolean opverbgetvariable (hdlexternalvariable *hvariable) {
-	
-	if (outlinedata == nil)
+
+	hdloutlinerecord ho = op_get_outlinedata();
+
+	if (ho == nil)
 		return (false);
-	
-	*hvariable = (hdlexternalvariable) (**outlinedata).outlinerefcon;
-	
+
+	*hvariable = (hdlexternalvariable) (**ho).outlinerefcon;
+
 	return (true);
 	} /*opverbgetvariable*/
 
 
 static boolean opverbtitleclick (Point pt) {
 	
-	return (langexternaltitleclick (pt, (hdlexternalvariable) (**outlinedata).outlinerefcon));
+	return (langexternaltitleclick (pt, (hdlexternalvariable) (**op_get_outlinedata()).outlinerefcon));
 	} /*opverbtitleclick*/
 
 
@@ -4444,7 +4446,7 @@ boolean opverbgettargetdata (short id) {
 
 static boolean opverbkeystroke (void) {
 
-	if (langexternalsurfacekey ((hdlexternalvariable) (**outlinedata).outlinerefcon))
+	if (langexternalsurfacekey ((hdlexternalvariable) (**op_get_outlinedata()).outlinerefcon))
 		return (true);
 	
 	return (opkeystroke ());
@@ -4466,7 +4468,7 @@ static boolean opmenuroutine (short idmenu, short ixmenu) {
 	
 	if ((idmenu == virtualmenu) &&
 		(outlinewindow == shellwindow) && 
-		(outlinedata != NULL)) {
+		(op_get_outlinedata() != NULL)) {
 
 		switch (ixmenu) {
 			case moveupitem:

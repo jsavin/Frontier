@@ -87,7 +87,7 @@ boolean opbuttonstatus (short buttonnum, tybuttonstatus *status) {
 	7.1b18 PBS: buttons are always displayed and enabled.
 	*/
 	
-	if (outlinedata == NULL)
+	if (op_get_outlinedata() == NULL)
 		return (false);
 
 	(*status).flenabled = true;

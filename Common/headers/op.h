@@ -480,7 +480,7 @@ _Static_assert(offsetof(tyoutlinerecord, timelastsave) % 8 == 0, "tyoutlinerecor
 
 /*globals*/
 
-extern hdloutlinerecord outlinedata; /*global, points to "current" structure*/
+/* ADR-006: outlinedata migrated to thread-local storage - see processinternal.h */
 
 #if !fljustpacking /*allow structure to be edited, not needed for packing*/
 

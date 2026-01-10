@@ -1,7 +1,7 @@
 
 /*	$Id$    */
 
-/*© copyright 1991-96 UserLand Software, Inc. All Rights Reserved.*/
+/* copyright 1991-96 UserLand Software, Inc. All Rights Reserved.*/
 
 
 /*
@@ -85,7 +85,7 @@ static void ellipsize (Str255 s, short width) {
 	
 	len = s [0]; /* current length in characters*/
 	
-	width -= CharWidth ('É'); /* subtract width of ellipses*/
+	width -= CharWidth (''); /* subtract width of ellipses*/
 		
 	do { /*until it fits (or we run out of characters)*/
 	
@@ -96,7 +96,7 @@ static void ellipsize (Str255 s, short width) {
 	
 	++len; /*make room for the ellipses*/
 	
-	s [len] = 'É'; 
+	s [len] = ''; 
 	
 	s [0] = (char) len;
 	} /*ellipsize*/
@@ -533,9 +533,9 @@ static pascal OSErr setoutlineverb (AppleEvent *event, AppleEvent *reply, long r
 	if (!IACgetoutlineparam ((OSType) keyDirectObject, &houtline))
 		return (noErr);
 		
-	opDisposeOutlineRecord (outlinedata); /*only one outline managed at a time*/
+	opDisposeOutlineRecord (op_get_outlinedata()); /*only one outline managed at a time*/
 	
-	outlinedata = houtline; /*set the current outline*/
+	op_set_outlinedata(houtline); /*set the current outline*/
 	
 	IACreturnboolean (true);
 	
@@ -545,7 +545,7 @@ static pascal OSErr setoutlineverb (AppleEvent *event, AppleEvent *reply, long r
 	
 static Boolean nooutlineerror (void) {
 
-	if (outlinedata == nil) {
+	if (op_get_outlinedata() == nil) {
 		
 		IACreturnerror (1, "\pNo outline has been sent to OutlineSharer");
 		
@@ -572,7 +572,7 @@ static pascal OSErr getoutlineverb (AppleEvent *event, AppleEvent *reply, long r
 	if (nooutlineerror ()) 
 		return (noErr);
 	
-	IACreturnoutline (outlinedata);
+	IACreturnoutline (op_get_outlinedata());
 	
 	return (noErr);
 	} /*getoutlineverb*/

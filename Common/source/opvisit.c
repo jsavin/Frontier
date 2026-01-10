@@ -58,7 +58,7 @@ boolean oplistvisit (hdlheadrecord hnode, opvisitcallback visit, ptrvoid refcon)
 	
 boolean opsummitvisit (opvisitcallback visit, ptrvoid refcon) {
 	
-	hdlheadrecord nomad = (**outlinedata).hsummit, nextnomad;
+	hdlheadrecord nomad = (**op_get_outlinedata()).hsummit, nextnomad;
 	
 	while (true) {
 		
@@ -143,7 +143,7 @@ boolean opvisiteverything (opvisitcallback visit, ptrvoid refcon) {
 	visit every node in the outline
 	*/
 	
-	hdlheadrecord nomad = (**outlinedata).hsummit, nextnomad;
+	hdlheadrecord nomad = (**op_get_outlinedata()).hsummit, nextnomad;
 	
 	while (true) {
 		
@@ -304,7 +304,7 @@ boolean opvisitmarked (tydirection dir, opvisitcallback visit, ptrvoid refcon) {
 	must visit bottom-up
 	*/
 	
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 	
 	if ((**ho).ctmarked == 0)
 		return ((*visit) ((**ho).hbarcursor, refcon));

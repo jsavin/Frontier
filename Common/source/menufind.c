@@ -93,7 +93,7 @@ boolean mesearchrefconroutine (hdlheadrecord hnode) {
 		
 		mesetscriptoutline (hnode, ho); /*make loaded state stick*/
 		
-		hmenuoutline = outlinedata;
+		hmenuoutline = op_get_outlinedata();
 		
 		oppushoutline (nil); /*save on stack*/
 		
@@ -128,7 +128,7 @@ boolean mesearchrefconroutine (hdlheadrecord hnode) {
 			
 			mesetscriptoutline (hnode, ho); /*make loaded state stick*/
 			
-			(**outlinedata).fldirty = true; /*percolate up to parent outline*/
+			(**op_get_outlinedata()).fldirty = true; /*percolate up to parent outline*/
 			}
 		else
 			opdisposeoutline (ho, false);

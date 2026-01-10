@@ -66,9 +66,9 @@
 #endif
 
 
-WindowPtr outlinewindow; 
+WindowPtr outlinewindow;
 
-hdloutlinerecord outlinedata; 
+/* ADR-006: outlinedata migrated to thread-local storage - see processinternal.h */
 
 hdlwindowinfo outlinewindowinfo; 
 
@@ -83,7 +83,7 @@ static boolean flvisiforiconclick = false; /*makes it possible for 2clicking on 
 
 static boolean opcantedittext (hdlheadrecord hnode) {
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	
 	if ((**ho).flreadonly)
 		return (true);
@@ -94,7 +94,7 @@ static boolean opcantedittext (hdlheadrecord hnode) {
 
 static boolean opcanteditcursor (void) {	
 	
-	return (opcantedittext ((**outlinedata).hbarcursor));
+	return (opcantedittext ((**op_get_outlinedata()).hbarcursor));
 	} /*opcanteditcursor*/
 	
 
@@ -106,8 +106,8 @@ void opdirtyoutline (void) {
 	7.0b6 PBS: scripts can dirty a read-only outline.
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
-	if (outlinedata==0) return;
+	register hdloutlinerecord ho = op_get_outlinedata();
+	if (op_get_outlinedata()==0) return;
 	
 	/*assert (!(**ho).flreadonly);*/ /*can't dirty a read-only outline*/
 	/*7.0b6 PBS: scripts can dirty a read-only outline.*/
@@ -131,19 +131,19 @@ void opdirtyview (void) {
 	decide whether or not it's important.
 	*/
 	
-	(**outlinedata).fldirtyview = true; /*the outline structure is dirty*/
+	(**op_get_outlinedata()).fldirtyview = true; /*the outline structure is dirty*/
 	} /*opdirtyview*/
 
 
 boolean opistextmode (void) {
 	
-	return ((**outlinedata).fltextmode);
+	return ((**op_get_outlinedata()).fltextmode);
 	} /*opistextmode*/
 
 
 boolean ophaslinkedtext (hdlheadrecord hnode) {
 	
-	return ((*(**outlinedata).haslinkedtextcallback) (hnode));
+	return ((*(**op_get_outlinedata()).haslinkedtextcallback) (hnode));
 	} /*ophaslinkedtext*/
 	
 
@@ -151,31 +151,31 @@ void opvisibarcursor (void) {
 
 	boolean flhoriz = true;
 
-	if ((**outlinedata).flhorizscrolldisabled)
+	if ((**op_get_outlinedata()).flhorizscrolldisabled)
 		flhoriz = false;
 	
-	opvisinode ((**outlinedata).hbarcursor, flhoriz); 
+	opvisinode ((**op_get_outlinedata()).hbarcursor, flhoriz); 
 	} /*opvisibarcursor*/
 
 
 void opschedulevisi (void) {
 	
-	(**outlinedata).flcheckvisi = true;
+	(**op_get_outlinedata()).flcheckvisi = true;
 	
-	(**outlinedata).timevisi = gettickcount ();
+	(**op_get_outlinedata()).timevisi = gettickcount ();
 	
 	if (flvisiforiconclick) {
 		
 		flvisiforiconclick = false; /*consume it*/
 		
-		(**outlinedata).timevisi += getmousedoubleclicktime ();
+		(**op_get_outlinedata()).timevisi += getmousedoubleclicktime ();
 		}		
 	} /*opschedulevisi*/
 
 
 static void opcheckvisi (void) {
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	
 	if ((**ho).flcheckvisi && (**ho).flactive) {
 		
@@ -195,7 +195,7 @@ void oppoststylechange (void) {
 	5.0a13 dmb: preserve recentlychanged so style change won't force recompile
 	*/
 	
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 	boolean flrecentlychanged = (**ho).flrecentlychanged;
 
 	opsaveeditbuffer ();
@@ -244,7 +244,7 @@ boolean opsetfont (short fontnum) {
 	DW 8/21/93: allow font change for read-only outlines.
 	*/
 	
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 	
 	if ((**ho).fontnum == fontnum)
 		return (false);
@@ -270,7 +270,7 @@ static boolean undosetsize (Handle hdata, boolean flundo) {
 
 boolean opsetsize (short fontsize) {
 	
-	hdloutlinerecord ho = outlinedata;
+	hdloutlinerecord ho = op_get_outlinedata();
 	
 	if ((**ho).fontsize == fontsize)
 		return (false);
@@ -295,9 +295,9 @@ boolean opsetselectioninfo (void) {
 	
 	x.flcansetsize = true;
 	
-	x.fontnum = (**outlinedata).fontnum; 
+	x.fontnum = (**op_get_outlinedata()).fontnum; 
 	
-	x.fontsize = (**outlinedata).fontsize; 
+	x.fontsize = (**op_get_outlinedata()).fontsize; 
 	
 	(**outlinewindowinfo).selectioninfo = x;
 	
@@ -316,7 +316,7 @@ boolean opsettextmode (boolean fltextmode) {
 	Phase 2: Headless support - Skip display scheduling when no window present
 	*/
 
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	boolean fldisplay = opdisplayenabled();
 
 	if (ho == NULL) /*Phase 2: outline not initialized in headless mode*/
@@ -406,11 +406,11 @@ boolean opshowerror (long lnum, short charnum) {
 	
 	hdlheadrecord hnodeerror;
 	
-	if ((**outlinedata).outlinesignature != typeLAND) {
+	if ((**op_get_outlinedata()).outlinesignature != typeLAND) {
 		
 		scanstate.offset = langgetsourceoffset (lnum, charnum);
 		
-		opsiblingvisiter ((**outlinedata).hsummit, false, &opfindoffsetvisit, nil);
+		opsiblingvisiter ((**op_get_outlinedata()).hsummit, false, &opfindoffsetvisit, nil);
 		
 		hnodeerror = scanstate.hnode;
 		
@@ -469,23 +469,23 @@ boolean opsetscrap (hdlheadrecord hnode) {
 	
 	ho = houtline; /*copy into register*/
 	
-	(**ho).copyrefconcallback = (**outlinedata).copyrefconcallback;
+	(**ho).copyrefconcallback = (**op_get_outlinedata()).copyrefconcallback;
 	
-	(**ho).textualizerefconcallback = (**outlinedata).textualizerefconcallback;
+	(**ho).textualizerefconcallback = (**op_get_outlinedata()).textualizerefconcallback;
 	
-	(**ho).releaserefconcallback = (**outlinedata).releaserefconcallback;
+	(**ho).releaserefconcallback = (**op_get_outlinedata()).releaserefconcallback;
 	
-	(**ho).outlinesignature = (**outlinedata).outlinesignature;
+	(**ho).outlinesignature = (**op_get_outlinedata()).outlinesignature;
 	
 	opsetsummit (ho, hnode);
 	
-	opcopyformatting (outlinedata, ho); /*9/9/91*/
+	opcopyformatting (op_get_outlinedata(), ho); /*9/9/91*/
 	
 	opsetctexpanded (ho);
 	
 	(**ho).flbuildundo = false;
 	
-	return ((*(**outlinedata).setscrapcallback) (ho));
+	return ((*(**op_get_outlinedata()).setscrapcallback) (ho));
 	} /*opsetscrap*/
 
 
@@ -502,7 +502,7 @@ boolean opgetscrap (hdlheadrecord *hnode, boolean *fltempscrap) {
 	
 	/*first see if scrap is, or can be converted to, an outline*/
 	
-	if ((*(**outlinedata).getscrapcallback) (&houtline, fltempscrap)) {
+	if ((*(**op_get_outlinedata()).getscrapcallback) (&houtline, fltempscrap)) {
 		
 		*hnode = (**houtline).hsummit;
 		
@@ -523,7 +523,7 @@ boolean opgetscrap (hdlheadrecord *hnode, boolean *fltempscrap) {
 	
 	*fltempscrap = true;
 	
-	fl = optexttooutline (outlinedata, hscrap, hnode); /*memory leak?*/
+	fl = optexttooutline (op_get_outlinedata(), hscrap, hnode); /*memory leak?*/
 
 	if (fltemptext)
 		disposehandle (hscrap);
@@ -589,8 +589,8 @@ static boolean opshiftclickvisit (hdlheadrecord hnode, ptrvoid hclicked) {
 		
 		(**hnode).flmarked = true;
 		
-		if (++(**outlinedata).ctmarked == 1) // only thing marked now; barcursor was subordinate
-			(**outlinedata).hbarcursor = hnode;
+		if (++(**op_get_outlinedata()).ctmarked == 1) // only thing marked now; barcursor was subordinate
+			(**op_get_outlinedata()).hbarcursor = hnode;
 		}
 	
 	return (hnode != (hdlheadrecord) hclicked);
@@ -600,7 +600,7 @@ static boolean opshiftclickvisit (hdlheadrecord hnode, ptrvoid hclicked) {
 static void opshiftclick (hdlheadrecord hnode, boolean flmarklevel) {
 	
 	hdlscreenmap hmap;
-	hdlheadrecord hcursor = (**outlinedata).hbarcursor;
+	hdlheadrecord hcursor = (**op_get_outlinedata()).hbarcursor;
 	tydirection dir;
 	
 	opnewscreenmap (&hmap);
@@ -639,11 +639,11 @@ static boolean opcmdclick (hdlheadrecord hnode) {
 	*/
 	
 	hdlscreenmap hmap;
-	hdlheadrecord hcursor = (**outlinedata).hbarcursor;
+	hdlheadrecord hcursor = (**op_get_outlinedata()).hbarcursor;
 	
 	opnewscreenmap (&hmap);
 
-	if (((**outlinedata).hbuffer) && (hcursor != hnode)) /*7.0b15 PBS: was edit mode on? Then ignore the cmd key.*/
+	if (((**op_get_outlinedata()).hbuffer) && (hcursor != hnode)) /*7.0b15 PBS: was edit mode on? Then ignore the cmd key.*/
 		goto noclick;
 	
 	if (!opanymarked ()) {
@@ -656,7 +656,7 @@ static boolean opcmdclick (hdlheadrecord hnode) {
 	
 	if (mousedoubleclick ()) { //be sure to leave it selected
 		
-		(**outlinedata).hbarcursor = hnode;
+		(**op_get_outlinedata()).hbarcursor = hnode;
 		
 		opsetmark (hnode, true);
 
@@ -668,12 +668,12 @@ static boolean opcmdclick (hdlheadrecord hnode) {
 	opsetmark (hnode, !opgetmark (hnode)); /*toggle the marked bit*/
 	
 	if (opgetmark (hnode))
-		(**outlinedata).hbarcursor = hnode;
+		(**op_get_outlinedata()).hbarcursor = hnode;
 	
 
 /*
 	if (opgetmark (hnode))
-		(**outlinedata).hbarcursor = hnode;
+		(**op_get_outlinedata()).hbarcursor = hnode;
 	else {
 		if (mousedoubleclick ()) { //leave it selected
 			
@@ -698,15 +698,15 @@ static boolean opcmdclick (hdlheadrecord hnode) {
 
 void opresize (Rect r) {
 	
-	if (outlinedata != NULL) {
+	if (op_get_outlinedata() != NULL) {
 
 		#ifdef gray3Dlook
 			insetrect (&r, 3, 3);
 		#endif
 		
-		(**outlinedata).outlinerect = r;
+		(**op_get_outlinedata()).outlinerect = r;
 		
-		opsetdisplaydefaults (outlinedata);
+		opsetdisplaydefaults (op_get_outlinedata());
 		
 		oppostfontchange (); //if in edit mode, adjust display area
 		
@@ -717,7 +717,7 @@ void opresize (Rect r) {
 		#endif
 		
 		#ifdef fldebug
-			opvalidate (outlinedata);
+			opvalidate (op_get_outlinedata());
 		#endif
 		}
 	} /*opresize*/
@@ -782,7 +782,7 @@ boolean opsetcursor (Point pt) {
 	
 	opgettextrect (hnode, &linerect, &textrect);
 	
-	if ((*(**outlinedata).adjustcursorcallback) (hnode, pt, &textrect))
+	if ((*(**op_get_outlinedata()).adjustcursorcallback) (hnode, pt, &textrect))
 		return (true);
 	
 	arrow:
@@ -807,7 +807,7 @@ boolean opmousedown (Point pt, tyclickflags flags) {
 	destroyed our context. anyway, we're done.
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	hdlheadrecord origbarcursor = (**ho).hbarcursor;
 	boolean fltextmode = (**ho).fltextmode;
 	long initialticks = gettickcount (); 
@@ -914,7 +914,7 @@ boolean opmousedown (Point pt, tyclickflags flags) {
 	
 	if (keyboardstatus.flcmdkey) {
 		
-		if ((*(**outlinedata).cmdclickcallback) (hcursor))
+		if ((*(**op_get_outlinedata()).cmdclickcallback) (hcursor))
 			return (true);
 		
 		if (opcmdclick (hcursor))
@@ -943,7 +943,7 @@ boolean opmousedown (Point pt, tyclickflags flags) {
 		if ((*(**ho).icon2clickcallback) (hcursor)) /*callback consumed double-click*/
 			return (true);
 		
-		if ((**outlinedata).hbarcursor == origbarcursor) /*cursor didn't move on this mouse click*/
+		if ((**op_get_outlinedata()).hbarcursor == origbarcursor) /*cursor didn't move on this mouse click*/
 			opexpandtoggle ();
 		}
 	
@@ -989,7 +989,7 @@ boolean opmotionkey (tydirection dir, long units, boolean flextendselection) {
 	Phase 2: Headless support - Skip display operations when no window present
 	*/
 
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	register hdlheadrecord hbarcursor;
 	register boolean fltextmode;
 	hdlheadrecord hnewcursor;
@@ -1094,7 +1094,7 @@ static void opreturnkey (void) {
 	*/
 	
 	register tydirection dir;
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	Handle hstring;
 	boolean flcomment = keyboardstatus.flshiftkey;
 /*
@@ -1150,7 +1150,7 @@ static boolean openterkey (void) {
 static boolean opmovetovisit (hdlheadrecord hnode, ptrvoid refcon) {
 #pragma unused (refcon)
 
-	(**outlinedata).hbarcursor = hnode; /*move cursor to first headline encountered*/
+	(**op_get_outlinedata()).hbarcursor = hnode; /*move cursor to first headline encountered*/
 	
 	return (false); /*stop visiting*/
 	} /*opmovetovisit*/
@@ -1265,7 +1265,7 @@ static boolean opstructuretextkey (byte chkey) {
 	
 	pushchar (chkey, bsopselection);
 	
-	oppartialsortedsearch ((**outlinedata).hbarcursor, bsopselection, 0, &hnode);
+	oppartialsortedsearch ((**op_get_outlinedata()).hbarcursor, bsopselection, 0, &hnode);
 	
 	opmoveto (hnode);
 	
@@ -1281,7 +1281,7 @@ static boolean opstructuretabkey (tydirection dir) {
 	4/27/93 dmb: new feature -- tab/shift-tab to go next, prev alphabetically
 	*/
 	
-	hdlheadrecord hcursor = (**outlinedata).hbarcursor;
+	hdlheadrecord hcursor = (**op_get_outlinedata()).hbarcursor;
 	bigstring bsname;
 	short seek;
 	hdlheadrecord hnode;
@@ -1320,7 +1320,7 @@ boolean opkeystroke (void) {
 	7/26/93 DW: support for read-only outlines.
 	*/
 	
-	register hdloutlinerecord ho = outlinedata;
+	register hdloutlinerecord ho = op_get_outlinedata();
 	char chkb = keyboardstatus.chkb;
 	boolean fltextmode = (**ho).fltextmode;
 	register tydirection dir = keyboardstatus.keydirection;
@@ -1636,7 +1636,7 @@ boolean opcmdkeyfilter (char chkb) {
 	on to the menubar.
 	*/
 	
-	if ((**outlinedata).flreadonly)
+	if ((**op_get_outlinedata()).flreadonly)
 		return (true);
 		
 	switch (uppercasechar (chkb)) {
@@ -1685,7 +1685,7 @@ boolean opselectall (void) {
 		
 		opnewscreenmap (&hmap);
 		
-		opmarklevel ((**outlinedata).hbarcursor);
+		opmarklevel ((**op_get_outlinedata()).hbarcursor);
 		
 		opinvalscreenmap (hmap);
 		}
@@ -1700,7 +1700,7 @@ void opgetcursorinfo (long *row, short *col) {
 	translate the cursor position into a set of numbers.
 	*/
 	
-	opgetscreenline ((**outlinedata).hbarcursor, row);
+	opgetscreenline ((**op_get_outlinedata()).hbarcursor, row);
 	
 	*col = 0; /*no info for this yet*/
 	} /*opgetcursorinfo*/
@@ -1714,16 +1714,16 @@ void opsetcursorinfo (long row, short col) {
 	structure.
 	*/
 	
-	(**outlinedata).hbarcursor = 
+	(**op_get_outlinedata()).hbarcursor = 
 		
-		oprepeatedbump (flatdown, row, (**outlinedata).hsummit, true);
+		oprepeatedbump (flatdown, row, (**op_get_outlinedata()).hsummit, true);
 	} /*opsetcursorinfo*/
  	
  
 boolean opcloseoutline (void) {
 	
 	/*
-	the outline in outlinedata is going into dormancy -- its window is closing,
+	the outline in op_get_outlinedata() is going into dormancy -- its window is closing,
 	but we have to hold on to it, probably because it's dirty.
 
 	save off all window-dependent structures.
@@ -1738,7 +1738,7 @@ boolean opcloseoutline (void) {
 boolean opopenoutline (void) {
 	
 	/*
-	the outline in outlinedata is coming out of dormancy.  undoes what 
+	the outline in op_get_outlinedata() is coming out of dormancy.  undoes what 
 	opcloseoutline does.
 	*/
 	
@@ -1756,9 +1756,9 @@ static void opcheckreopen (void) {
 	stuff.
 	*/
 	
-	if ((**outlinedata).flreopenpending) {
+	if ((**op_get_outlinedata()).flreopenpending) {
 		
-		(**outlinedata).flreopenpending = false; /*must be reset every time*/
+		(**op_get_outlinedata()).flreopenpending = false; /*must be reset every time*/
 		
 		opopenoutline ();
 		}
@@ -1771,7 +1771,7 @@ void opidle (void) {
 	
 	opcheckvisi ();
 	
-	if ((**outlinedata).fltextmode) 
+	if ((**op_get_outlinedata()).fltextmode) 
 		opeditidle ();
 	} /*opidle*/
 
@@ -1780,11 +1780,11 @@ void opactivate (boolean flactivate) {
 	
 	opcheckreopen ();
 	
-	(**outlinedata).flactive = flactivate;
+	(**op_get_outlinedata()).flactive = flactivate;
 	
 	opresetscrollbars ();
 	
-	if ((**outlinedata).fltextmode)
+	if ((**op_get_outlinedata()).fltextmode)
 		opeditactivate (flactivate);
 	else {
 		if (opanymarked ())

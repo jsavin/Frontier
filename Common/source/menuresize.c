@@ -74,7 +74,7 @@ boolean meresetwindowrects (hdlwindowinfo hw) {
 	Rect menurect;
 	Rect r;
 	
-	if (outlinedata == nil)
+	if (op_get_outlinedata() == nil)
 		return (false);
 	
 	/*set up some values for all rect computations*/ {

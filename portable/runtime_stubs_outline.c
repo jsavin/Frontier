@@ -28,7 +28,7 @@ void oppushoutline(void) {
     // For now, this is a minimal implementation
 }
 
-void *outlinedata(void) {
+void *op_get_outlinedata()(void) {
     /*
      * Get outline data
      * This retrieves data from the current outline structure
