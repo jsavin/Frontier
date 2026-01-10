@@ -1890,7 +1890,9 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
         if (hv != nil && *hv != nil) {
             (**hv).oldaddress = nildbaddress;
 #if defined(FRONTIER_HEADLESS)
-            log_debug(LOG_COMP_DB, "migrate: cleared root oldaddress to force fresh allocation in destination");
+            log_debug(LOG_COMP_DB, "migrate: cleared root oldaddress=0x%llx to nildbaddress, flinmemory=%d",
+                      (unsigned long long)(**hv).oldaddress,
+                      (int)(**hv).flinmemory);
 #endif
         }
     }
@@ -1898,6 +1900,14 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     fail_step = "tableverbinmemory(root)";
     if (!tableverbinmemory(NULL, (hdlexternalvariable) hrootvariable, HNoNode))
         goto cleanup;
+#if defined(FRONTIER_HEADLESS)
+    {
+        hdltablevariable hv = (hdltablevariable) hrootvariable;
+        log_debug(LOG_COMP_DB, "migrate: after tableverbinmemory, oldaddress=0x%llx flinmemory=%d",
+                  (unsigned long long)(**hv).oldaddress,
+                  (int)(**hv).flinmemory);
+    }
+#endif
 
     db_format_sanitize_root_externals(hroot, &source_context);
 
@@ -1984,7 +1994,7 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
 
     saved_root = tablesavesystemtable(hrootvariable, &new_root_address);
 #if defined(FRONTIER_HEADLESS)
-    log_trace(LOG_COMP_DB, "migrate: after tablesavesystemtable, new_root_address=0x%llx saved_root=%d",
+    log_debug(LOG_COMP_DB, "migrate: after tablesavesystemtable, new_root_address=0x%llx saved_root=%d",
               (unsigned long long)new_root_address, saved_root ? 1 : 0);
 #endif
     if (!saved_root) {

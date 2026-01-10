@@ -2662,29 +2662,37 @@ boolean dbassignhandle (Handle h, dbaddress *adr) {
 	
 	
 boolean dbsavehandle (Handle hsave, dbaddress *adr) {
-	
+
 	/*
-	xxx -- not sure why this is needed, looks like dbassignhandle, above,  
+	xxx -- not sure why this is needed, looks like dbassignhandle, above,
 	does the job fairly well.
 	*/
-	
+
 	register Handle h = hsave;
 	register long ctbytes;
 	register boolean fl;
 	dbaddress a = *adr;
-	
+
+	log_trace(LOG_COMP_DB, "dbsavehandle: ENTRY input_adr=0x%llx", (unsigned long long) *adr);
+
 	ctbytes = gethandlesize (h);
-	
+
 	lockhandle (h);
-	
-	if (a == nildbaddress) 
+
+	log_trace(LOG_COMP_DB, "dbsavehandle: BEFORE alloc/assign a=0x%llx", (unsigned long long) a);
+
+	if (a == nildbaddress)
 		fl = dballocate (ctbytes, *h, &a);
 	else
 		fl = dbassign (&a, ctbytes, *h);
-		
+
+	log_trace(LOG_COMP_DB, "dbsavehandle: AFTER alloc/assign a=0x%llx", (unsigned long long) a);
+
 	unlockhandle (h);
 
 	*adr = a; /*copy into returned value*/
+
+	log_trace(LOG_COMP_DB, "dbsavehandle: EXIT output_adr=0x%llx", (unsigned long long) *adr);
 
  	if (!fl) {
 #if defined(FRONTIER_HEADLESS)
