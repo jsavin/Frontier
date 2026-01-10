@@ -70,6 +70,7 @@ tests:
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "test_db_new.root");
+      db.open(dbPath, false);
       local(ok = db.setvalue(dbPath, "testString", "Hello, DB!"));
       return ok
     expected_success: true
@@ -83,6 +84,7 @@ tests:
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "test_db_new.root");
+      db.open(dbPath, false);
       local(val = db.getvalue(dbPath, "testString"));
       return val
     expected_success: true
@@ -96,6 +98,7 @@ tests:
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "test_db_new.root");
+      db.open(dbPath, false);
       local(exists = db.defined(dbPath, "testString"));
       return exists
     expected_success: true
@@ -106,6 +109,7 @@ tests:
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "test_db_new.root");
+      db.open(dbPath, false);
       local(exists = db.defined(dbPath, "doesNotExist"));
       return exists
     expected_success: true
@@ -119,6 +123,7 @@ tests:
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "test_db_new.root");
+      db.open(dbPath, false);
       local(ok = db.setvalue(dbPath, "testNumber", 42));
       return ok
     expected_success: true
@@ -129,6 +134,7 @@ tests:
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "test_db_new.root");
+      db.open(dbPath, false);
       local(val = db.getvalue(dbPath, "testNumber"));
       return val
     expected_success: true
@@ -142,6 +148,7 @@ tests:
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "test_db_new.root");
+      db.open(dbPath, false);
       local(ok = db.newtable(dbPath, "testTable"));
       return ok
     expected_success: true
@@ -155,6 +162,7 @@ tests:
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "test_db_new.root");
+      db.open(dbPath, false);
       local(isTable = db.istable(dbPath, "testTable"));
       return isTable
     expected_success: true
@@ -165,6 +173,7 @@ tests:
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "test_db_new.root");
+      db.open(dbPath, false);
       local(isTable = db.istable(dbPath, "testString"));
       return isTable
     expected_success: true
@@ -178,6 +187,7 @@ tests:
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "test_db_new.root");
+      db.open(dbPath, false);
       db.setvalue(dbPath, "testTable.item1", "first");
       db.setvalue(dbPath, "testTable.item2", "second");
       db.setvalue(dbPath, "testTable.item3", "third");
@@ -193,6 +203,7 @@ tests:
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "test_db_new.root");
+      db.open(dbPath, false);
       local(count = db.countitems(dbPath, "testTable"));
       return count
     expected_success: true
@@ -206,6 +217,7 @@ tests:
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "test_db_new.root");
+      db.open(dbPath, false);
       local(name = db.getnthitem(dbPath, "testTable", 1));
       return name
     expected_success: true
@@ -216,6 +228,7 @@ tests:
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "test_db_new.root");
+      db.open(dbPath, false);
       local(name = db.getnthitem(dbPath, "testTable", 2));
       return name
     expected_success: true
@@ -226,6 +239,7 @@ tests:
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "test_db_new.root");
+      db.open(dbPath, false);
       local(name = db.getnthitem(dbPath, "testTable", 3));
       return name
     expected_success: true
@@ -239,6 +253,7 @@ tests:
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "test_db_new.root");
+      db.open(dbPath, false);
       local(modDate = db.getmoddate(dbPath, "testString"));
       // Just verify it returns a date (non-zero)
       return (modDate > 0)
@@ -253,6 +268,7 @@ tests:
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "test_db_new.root");
+      db.open(dbPath, false);
       local(ok = db.delete(dbPath, "testString"));
       return ok
     expected_success: true
@@ -263,6 +279,7 @@ tests:
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "test_db_new.root");
+      db.open(dbPath, false);
       local(exists = db.defined(dbPath, "testString"));
       return exists
     expected_success: true
@@ -276,6 +293,7 @@ tests:
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "test_db_new.root");
+      db.open(dbPath, false);
       local(ok = db.save(dbPath));
       return ok
     expected_success: true
@@ -289,6 +307,7 @@ tests:
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "test_db_new.root");
+      db.open(dbPath, false);
       local(ok = db.close(dbPath));
       return ok
     expected_success: true
@@ -312,6 +331,7 @@ tests:
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "test_db_new.root");
+      db.open(dbPath, false);
       local(val = db.getvalue(dbPath, "testNumber"));
       return val
     expected_success: true
@@ -322,6 +342,7 @@ tests:
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "test_db_new.root");
+      db.open(dbPath, false);
       local(count = db.countitems(dbPath, "testTable"));
       return count
     expected_success: true
@@ -332,6 +353,7 @@ tests:
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "test_db_new.root");
+      db.open(dbPath, false);
       local(exists = db.defined(dbPath, "testString"));
       return exists
     expected_success: true
@@ -378,6 +400,7 @@ tests:
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "test_db_v7.root7");
+      db.open(dbPath, false);
       local(ok = db.setvalue(dbPath, "v7test", "V7 works!"));
       return ok
     expected_success: true
@@ -388,6 +411,7 @@ tests:
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "test_db_v7.root7");
+      db.open(dbPath, false);
       local(val = db.getvalue(dbPath, "v7test"));
       return val
     expected_success: true
@@ -398,6 +422,7 @@ tests:
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "test_db_v7.root7");
+      db.open(dbPath, false);
       local(ok = db.close(dbPath));
       return ok
     expected_success: true
@@ -417,6 +442,7 @@ tests:
   - name: "db.defined - check root in v6 database"
     description: "Verify root exists in v6 database"
     script: |
+      db.open("tests/fixtures/v6/test.root", true);
       local(exists = db.defined("tests/fixtures/v6/test.root", "root"));
       return exists
     expected_success: true
@@ -425,6 +451,7 @@ tests:
   - name: "db.istable - verify root is table in v6 database"
     description: "Verify root is a table"
     script: |
+      db.open("tests/fixtures/v6/test.root", true);
       local(isTable = db.istable("tests/fixtures/v6/test.root", "root"));
       return isTable
     expected_success: true
@@ -433,6 +460,7 @@ tests:
   - name: "db.close - close v6 database"
     description: "Close v6 database"
     script: |
+      db.open("tests/fixtures/v6/test.root", true);
       local(ok = db.close("tests/fixtures/v6/test.root"));
       return ok
     expected_success: true

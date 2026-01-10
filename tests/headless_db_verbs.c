@@ -101,9 +101,8 @@ boolean dbinitverbs(void) {
 
     copystring(BIGSTRING("\002db"), bsname);
 
-    /* Initialize ODB list (required by db verb implementation) */
-    if (!newclearhandle(sizeof(tyodbrecord), (Handle*)&hodblist))
-        return false;
+    /* Initialize ODB list to nil (databases will be added via listlink) */
+    hodblist = nil;
 
     if (!newfunctionprocessor(bsname, &headless_db_verbs_callback, false, &htable))
         return false;

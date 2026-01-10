@@ -444,39 +444,45 @@ static boolean odberror (boolean flresult) {
 	return (true);
 	} /*odberror*/
 
-	
+
+/* Forward declaration */
+static void odb_ensure_root7_extension(tyfilespec *fs);
+
+
 static boolean getodbparam (hdltreenode hparam1, short pnum, hdlodbrecord *hodbrecord) {
 
 	//
 	// 2006-06-23 creedon: for Mac, FSRef-zed
+	//
+	// 2026-01-10 Codex: Phase 1 - Transform .root to .root7 for lookup
 	//
 
 	bigstring bs;
 	hdlodbrecord hodb;
 	tyfilespec fs;
 	ptrfilespec ptrfs;
-	
-	ptrfs = &fs; 
+
+	ptrfs = &fs;
 
 	if (!getfilespecvalue (hparam1, pnum, ptrfs))
 		return (false);
-	
+
+	/* Phase 1: Transform .root to .root7 for lookup (matches db.open behavior) */
+	odb_ensure_root7_extension(ptrfs);
+
 	for (hodb = hodblist; hodb != nil; hodb = (**hodb).hnext) {
-	
 		if ( equalfilespecs ( &( **hodb ).fs, ptrfs ) ) {
-			
 			*hodbrecord = hodb;
-			
 			return (true);
 			}
 		}
-		
+
 	getfsfile ( ptrfs, bs );
-	
+
 	lang2paramerror (dbnotopenederror, bsfunctionname, bs );
-	
+
 	return (false);
-	
+
 	} // getodbparam
 
 
@@ -485,12 +491,12 @@ static boolean getodbvalue (hdltreenode hparam1, short pnum, tyodbrecord *odb, b
 	//
 	// 2006-06-23 creedon: for Mac, FSRef-ized
 	//
-	
+
 	hdlodbrecord hodb;
-	
+
 	if (!getodbparam (hparam1, pnum, &hodb))
 		return (false);
-	
+
 	*odb = **hodb;
 	
 	if ((*odb).flreadonly && !flreadonly) {
@@ -636,6 +642,8 @@ static boolean dbopenverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	//
 	// 4.1b5 dmb: added ability to access already-open root in Frontier
 	//
+	// 2026-01-10 Codex: Phase 1 - Ensure .root7 extension for v7 databases
+	//
 
 	tyodbrecord odbrec;
 	hdlodbrecord hodb;
@@ -650,6 +658,9 @@ static boolean dbopenverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 		log_error(LOG_COMP_DB, "dbopenverb: getfilespecvalue failed for parameter 1");
 		return (false);
 	}
+
+	/* Phase 1: Ensure .root7 extension (same as db.new) */
+	odb_ensure_root7_extension(&odbrec.fs);
 
 	filespectopath(&odbrec.fs, bspath);
 	log_debug(LOG_COMP_DB, "dbopenverb: path=%s", stringbaseaddress(bspath));
@@ -703,12 +714,16 @@ static boolean dbopenverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 		return (false);
 		}
 
-	log_debug(LOG_COMP_DB, "dbopenverb: newfilledhandle succeeded, hodb=%p", hodb);
-
-	listlink ((hdllinkedlist) hodblist, (hdllinkedlist) hodb);
-
-	log_debug(LOG_COMP_DB, "dbopenverb: listlink succeeded, registered in hodblist");
-	log_trace(LOG_COMP_DB, "dbopenverb: success, returning true");
+	/* Add to open database list */
+	if (hodblist == nil) {
+		/* First database - start the list */
+		hodblist = hodb;
+		(**hodb).hnext = nil;
+	}
+	else {
+		/* Add to existing list */
+		listlink ((hdllinkedlist) hodblist, (hdllinkedlist) hodb);
+	}
 
 	return (setbooleanvalue (true, vreturned));
 
@@ -746,16 +761,16 @@ static boolean dbdefinedverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	/*
 	4.1b5 dmb: new verb
 	*/
-	
+
 	tyodbrecord odbrec;
 	bigstring bsaddress;
 	boolean fl;
-	
+
 	if (!getodbvalue (hparam1, 1, &odbrec, true))
 		return (false);
-	
+
 	flnextparamislast = true;
-	
+
 	if (!getstringvalue (hparam1, 2, bsaddress))
 		return (false);
 	
@@ -995,15 +1010,15 @@ boolean dbfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vretur
 
 	/*
 	4.1b4 dmb: new verb set based on odbEngine
-	
+
 	5.0b17 dmb: use swapinthreadglobals (nil) for all our odb calls to protect ours
 	*/
-	
+
 	register hdltreenode hp1 = hparam1;
 	register tyvaluerecord *v = vreturned;
-	
+
 	setbooleanvalue (false, v); /*assume the worst*/
-	
+
 	switch (token) {
 		
 		case newfunc:
