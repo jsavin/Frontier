@@ -615,7 +615,7 @@ pascal boolean odbOpenFile (hdlfilenum fnum, odbref *odb, boolean flreadonly) {
 		(**hc).hdatabase = databasedata;
 		(**hc).hroottable = nil;
 		(**hc).hrootvariable = nil;
-		(**hc).htablestack = nil;
+		/* htablestack is already allocated by newcancoonrecord() */
 
 		*odb = (odbref) hc;
 
@@ -643,7 +643,7 @@ pascal boolean odbOpenFile (hdlfilenum fnum, odbref *odb, boolean flreadonly) {
 		(**hc).hdatabase = databasedata;
 		(**hc).hrootvariable = rootvariable = hvariable;
 		(**hc).hroottable = roottable = htable;
-		(**hc).htablestack = nil;
+		/* htablestack is already allocated by newcancoonrecord() */
 
 		cleartablestructureglobals();
 		currenthashtable = roottable;
