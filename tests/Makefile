@@ -185,6 +185,7 @@ LANG_RUNTIME_SOURCES = \
     headless_lang_runtime_more_stubs.c \
     headless_shellhooks.c \
     headless_table_stubs.c \
+    headless_db_verbs.c \
     ../portable/wptext_runtime.c \
     ../portable/paige_text_extractor.c \
     headless_pict_stubs.c \
