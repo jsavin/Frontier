@@ -83,6 +83,20 @@ Use `$(./tools/get_test_temp_path.sh)` for manual testing paths.
 
 ---
 
+## Communication Standards
+
+### Privacy & Entity References
+
+**Entity and Person Mention Policy**:
+- **NEVER mention specific people or entities** (partnerships, companies, individuals, etc.) unless the user explicitly asks
+- This includes in commit messages, PR descriptions, code comments, and documentation
+- Keep communications focused on technical details, not partnerships or strategic relationships
+- Exception: When user directly asks about strategic context or partnerships
+
+**Rationale**: Strategic relationships and partnerships are user-managed information. Technical work should focus on implementation details, not business context.
+
+---
+
 ## Permanent Branches (Never Merge to Develop)
 
 The following branches exist independently of the main development flow and should **never be merged** to develop:
@@ -438,6 +452,71 @@ When delegating to the pull-request agent:
 - ✅ Use git bisect to verify crash pre-existence
 - ✅ Trace full call chains to verify global state reliability
 - ✅ Don't stop at surface-level fixes
+
+### Agent Parallelization & Background Execution
+
+**Default Strategy**: Parallelize agents when tasks are truly independent.
+
+#### When to Run Agents in Parallel
+
+Run multiple agents in parallel when:
+- Tasks are **completely independent** (no shared state, no dependencies)
+- Each agent is researching/analyzing different aspects of the codebase
+- Multiple exploration tasks can run simultaneously
+- Code review + security review can happen independently
+- Gathering information from different sources/subsystems
+
+**Pattern**: Launch all independent agents in a **single message** with multiple Task tool calls, using `run_in_background: true`.
+
+**Limit**: Don't spawn more than **10 agents at once** in a single session.
+
+#### When Sequential Execution is Required
+
+Run agents sequentially when:
+- **Dependency chain exists**: Agent B needs Agent A's results
+  - Example: Explore codebase → Plan implementation (plan needs exploration findings)
+  - Example: Research options → Present to user → Implement (user decision gates next step)
+- **Logical flow matters**: Design before implementation, research before decision
+- **User review needed**: Intermediate results require user approval/direction before proceeding
+- **Potential conflicts**: Multiple agents might modify same files or make conflicting recommendations
+- **Scope refinement**: Agent A's output determines what Agent B should focus on
+
+#### Background vs Foreground Execution
+
+**Default rules**:
+- **Parallel agents**: Always use `run_in_background: true`
+- **Single agent**: Default to foreground (blocking) unless you have reason to continue work while it runs
+
+**When to use background (single agent)**:
+- Long-running exploration while you continue implementing
+- Large codebase analysis that takes >30 seconds
+- You have other work to do while agent runs
+- User explicitly requests it
+
+#### Example Patterns
+
+**Parallel exploration** (multiple independent searches):
+```markdown
+I'm going to launch 3 explore agents in parallel to search different subsystems:
+<single message with 3 Task tool calls, all with run_in_background: true>
+```
+
+**Sequential with user gate** (research → user decision → implement):
+```markdown
+First, I'll use the explore agent to find all implementations...
+<wait for results>
+I found 3 approaches. Which would you prefer?
+<wait for user response>
+Now I'll use the plan agent to design the implementation...
+```
+
+**Mixed approach** (parallel research, sequential implementation):
+```markdown
+I'll launch 2 agents in parallel to gather context:
+<explore agent + system-architect agent in parallel>
+Once they complete, I'll review findings and create implementation plan.
+<sequential plan agent after parallel tasks complete>
+```
 
 ---
 
