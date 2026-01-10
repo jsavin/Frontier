@@ -165,21 +165,21 @@ boolean langpackvalue (tyvaluerecord val, Handle *h, hdlhashnode hnode) {
 		
 		case longvaluetype:
 		case enumvaluetype:
-		case fixedvaluetype:
+		case fixedvaluetype: {
 			/* v7 format: Store full 64-bit values in big-endian format */
-			db_format_write_be64(&val.data.longvalue, (uint64_t) val.data.longvalue);
-
-			fl = langpackdata (sizeof (val.data.longvalue), &val.data.longvalue, hpackedvalue);
-
+			uint64_t val64 = (uint64_t) val.data.longvalue;
+			db_format_write_be64(&val64, val64);
+			fl = langpackdata(sizeof(uint64_t), &val64, hpackedvalue);
 			break;
+			}
 
-		case ostypevaluetype:
+		case ostypevaluetype: {
 			/* OSType is always 32-bit (4-character code) */
-			db_format_write_be32(&val.data.longvalue, (uint32_t) val.data.longvalue);
-
-			fl = langpackdata (sizeof (uint32_t), &val.data.longvalue, hpackedvalue);
-
+			uint32_t val32 = (uint32_t) val.data.ostypevalue;
+			db_format_write_be32(&val32, val32);
+			fl = langpackdata(sizeof(uint32_t), &val32, hpackedvalue);
 			break;
+			}
 		
 		case pointvaluetype:
 			memtodiskshort (val.data.pointvalue.h);
@@ -189,12 +189,13 @@ boolean langpackvalue (tyvaluerecord val, Handle *h, hdlhashnode hnode) {
 			
 			break;
 		
-		case datevaluetype:
-			db_format_write_be32(&val.data.longvalue, (uint32_t) val.data.longvalue);
-
-			fl = langpackdata (sizeof (val.data.datevalue), &val.data.datevalue, hpackedvalue);
-			
+		case datevaluetype: {
+			/* v7 format: Store full 64-bit timestamp in big-endian format (Year 2038 fix) */
+			int64_t date64 = val.data.datevalue;
+			db_format_write_be64(&date64, (uint64_t) date64);
+			fl = langpackdata(sizeof(int64_t), &date64, hpackedvalue);
 			break;
+			}
 		
 		case addressvaluetype: {
 			bigstring bs;
@@ -564,13 +565,26 @@ unpack:
 			break;
 		
 		case longvaluetype:
-		case ostypevaluetype:
 		case enumvaluetype:
-		case fixedvaluetype:
-			fl = langunpackdata (sizeof (v.data.longvalue), &v.data.longvalue, h, &ixunpack);
-			
-			disktomemlong (v.data.longvalue);
+		case fixedvaluetype: {
+			/* v7 format: Unpack 64-bit value from big-endian format */
+			uint64_t val64;
+			fl = langunpackdata(sizeof(uint64_t), &val64, h, &ixunpack);
+			if (fl) {
+				v.data.longvalue = (int64_t) db_format_read_be64((unsigned char*)&val64);
+			}
 			break;
+			}
+
+		case ostypevaluetype: {
+			/* OSType is always 32-bit */
+			uint32_t val32;
+			fl = langunpackdata(sizeof(uint32_t), &val32, h, &ixunpack);
+			if (fl) {
+				v.data.ostypevalue = (OSType) db_format_read_be32((unsigned char*)&val32);
+			}
+			break;
+			}
 		
 		case pointvaluetype:
 			fl = langunpackdata (sizeof (v.data.pointvalue), &v.data.pointvalue, h, &ixunpack);
@@ -579,11 +593,15 @@ unpack:
 			disktomemshort (v.data.pointvalue.v);
 			break;
 		
-		case datevaluetype:
-			fl = langunpackdata (sizeof (v.data.datevalue), &v.data.datevalue, h, &ixunpack);
-			
-			disktomemlong (v.data.datevalue);
+		case datevaluetype: {
+			/* v7 format: Unpack 64-bit timestamp from big-endian format */
+			int64_t date64;
+			fl = langunpackdata(sizeof(int64_t), &date64, h, &ixunpack);
+			if (fl) {
+				v.data.datevalue = (int64_t) db_format_read_be64((unsigned char*)&date64);
+			}
 			break;
+			}
 		
 		case singlevaluetype:
 			fl = langunpackdata (sizeof (v.data.singlevalue), &v.data.singlevalue, h, &ixunpack);

@@ -762,7 +762,7 @@ static void diskvalue_to_value_legacy(const tydiskvaluedata *disk, tyvaluerecord
 			val->data.dirvalue = disk_to_host_int32(disk->dirvalue);
 			break;
 		case datevaluetype:
-			val->data.datevalue = (unsigned long) disk_to_host_int32(disk->datevalue);
+			val->data.datevalue = (int64_t) disk_to_host_int32(disk->datevalue);
 			break;
 		case longvaluetype:
 		case ostypevaluetype:
@@ -807,11 +807,13 @@ static void diskvalue_to_value_v7(const tydiskvaluedata_v7 *disk, tyvaluerecord 
 	case datevaluetype:
 			val->data.datevalue = disk_to_host_int64((int64_t) disk->datevalue);
 			break;
-		case longvaluetype:
-		case ostypevaluetype:
-		case enumvaluetype:
-		case fixedvaluetype:
-			val->data.longvalue = disk_to_host_int64((int64_t) disk->longvalue);
+	case ostypevaluetype:
+		val->data.ostypevalue = (OSType) disk_to_host_int32(disk->ostypevalue);
+		break;
+	case longvaluetype:
+	case enumvaluetype:
+	case fixedvaluetype:
+		val->data.longvalue = disk_to_host_int64((int64_t) disk->longvalue);
 			break;
 		case singlevaluetype: {
 			double d = disk_to_host_double_bits(disk->doublebits);
