@@ -75,18 +75,24 @@ typedef struct odb_context_guard {
 	hdlhashtable saved_currenthashtable;
 	hdldatabaserecord saved_databasedata;
 	hdltablestack saved_hashtablestack;
+	void *saved_rootvariable;  /* Handle */
+	hdlhashtable saved_roottable;
 } odb_context_guard;
 
 static void odb_guard_enter(odb_context_guard *guard) {
 	guard->saved_currenthashtable = currenthashtable;
 	guard->saved_databasedata = databasedata;
 	guard->saved_hashtablestack = hashtablestack;
+	guard->saved_rootvariable = rootvariable;
+	guard->saved_roottable = roottable;
 }
 
 static void odb_guard_exit(odb_context_guard *guard) {
 	currenthashtable = guard->saved_currenthashtable;
 	databasedata = guard->saved_databasedata;
 	hashtablestack = guard->saved_hashtablestack;
+	rootvariable = guard->saved_rootvariable;
+	roottable = guard->saved_roottable;
 }
 
 #ifdef usingsharedlibrary

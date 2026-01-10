@@ -221,16 +221,26 @@ static boolean odberrorroutine (bigstring bs, ptrvoid refcon) {
 
 
 static void setcancoonglobals (hdlcancoonrecord hcancoon) {
-	
+
 	hdlcancoonrecord hc = hcancoon;
-	
+
 		{
 		databasedata = (**hc).hdatabase;
-		
+
 		hashtablestack = (**hc).htablestack;
-		
-		settablestructureglobals ((**hc).hrootvariable, false);
-		
+
+		/*
+		 * CRITICAL P0 FIX (Issue #266): Don't call settablestructureglobals for guest databases.
+		 *
+		 * settablestructureglobals tries to create system.builtins and other system tables,
+		 * which is inappropriate for guest databases. Just set the globals directly like
+		 * ccloadsystemtable does.
+		 */
+		cleartablestructureglobals();
+
+		rootvariable = (Handle) (**hc).hrootvariable;
+		roottable = (**hc).hroottable;
+
 		currenthashtable = roottable;
 		
 		cancoonglobals = hc; /*this global is independent of shellpush/popglobals*/
@@ -605,7 +615,7 @@ pascal boolean odbOpenFile (hdlfilenum fnum, odbref *odb, boolean flreadonly) {
 		}
 	}
 	else if (adr == nildbaddress) {
-		/* v7 database with no root table yet (Phase 1 minimal database) */
+		/* v7 database with no root table yet - create empty root table */
 		log_debug(LOG_COMP_DB, "odbOpenFile: v7 minimal database detected (nildbaddress)");
 
 		if (!newcancoonrecord(&cancoonglobals))
@@ -613,13 +623,28 @@ pascal boolean odbOpenFile (hdlfilenum fnum, odbref *odb, boolean flreadonly) {
 
 		hc = cancoonglobals;
 		(**hc).hdatabase = databasedata;
-		(**hc).hroottable = nil;
-		(**hc).hrootvariable = nil;
+
+		/*
+		 * CRITICAL P0 FIX (Issue #266): Create empty root table for new database.
+		 *
+		 * When system root is loaded and we open an empty guest database, we must
+		 * create a root table for the guest database. Otherwise currenthashtable
+		 * becomes nil and hash operations crash.
+		 */
+		tyvaluerecord val;
+		hdlhashtable htable;
+		if (!langexternalnewvalue(idtableprocessor, nil, &val))
+			goto error;
+		if (!langexternalvaltotable(val, &htable, nil))
+			goto error;
+
+		(**hc).hrootvariable = rootvariable = (hdltablevariable)val.data.externalvalue;
+		(**hc).hroottable = roottable = htable;
 		/* htablestack is already allocated by newcancoonrecord() */
 
 		*odb = (odbref) hc;
 
-		log_debug(LOG_COMP_DB, "odbOpenFile: v7 database opened successfully (empty)");
+		log_debug(LOG_COMP_DB, "odbOpenFile: v7 database opened with new root table");
 		return (true);
 	}
 	else {
@@ -683,7 +708,6 @@ pascal boolean odbSaveFile (odbref odb) {
     }
 
 	setcancoonglobals (hc);
-
 
 	if ((**hc).accesssing) {
 
@@ -976,12 +1000,13 @@ pascal boolean odbSetValue (odbref odb, bigstring bspath, odbValueRecord *value)
 	bigstring bsname;
 	tyvaluerecord val;
 	tyvaluetype type = langexternalgetvaluetype (value->valuetype);
-	
+	hdlcancoonrecord hc = (hdlcancoonrecord) odb;
+
 	setemptystring (bserror);
-	
-	
-	setcancoonglobals ((hdlcancoonrecord) odb);
-	
+
+
+	setcancoonglobals (hc);
+
 	if (!odbexpandtodotparams (bspath, &htable, bsname))
 		return (false);
 	
