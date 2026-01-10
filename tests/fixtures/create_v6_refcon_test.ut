@@ -1,127 +1,120 @@
-// create_v6_refcon_test.ut
-//
-// Creates v6 test artifact for refcon migration and 64-bit value widening
-//
-// Purpose: Generate refcon_migration_test_v6.root database with:
-//   1. refconTests outline - various refcon values (including edge cases)
-//   2. longValueTests table - scalar long values (positive, negative, zero)
-//   3. refconDateTests outline - dates stored as refcon values
-//
-// Usage:
-//   1. Import this script into Windows Frontier (v6.x)
-//   2. Run the script
-//   3. Copy resulting refcon_migration_test_v6.root to tests/fixtures/
-//
-// Expected database structure:
-//   - refconTests (outline with 10 test cases, including nested children)
-//   - longValueTests (table with 8 scalar values + nested table)
-//   - refconDateTests (outline with dates as refcons for post-2038 testing)
+«create_v6_refcon_test.ut
+	«Creates v6 test artifact for refcon migration and 64-bit value widening
+		«Purpose: Generate refcon_migration_test_v6.root database with:
+			«  1. refconTests outline - various refcon values (including edge cases)
+			«  2. longValueTests table - scalar long values (positive, negative, zero)
+			«  3. refconDateTests outline - dates stored as refcon values
+		«Usage:
+			«  1. Import this script into Windows Frontier (v6.x)
+			«  2. Run the script
+			«  3. Copy resulting refcon_migration_test_v6.root to tests/fixtures/
+		«Expected database structure:
+			«refconTests (outline with 10 test cases, including nested children)
+			«longValueTests (table with 8 scalar values + nested table)
+			«refconDateTests (outline with dates as refcons for post-2038 testing)
 
-on createRefconTestDatabase () {
-	local (dbPath = "C:\\Frontier\\refcon_migration_test_v6.root");
+local (dbPath = "C:\\Frontier\\refcon_migration_test_v6.root");
 
-	// Create new database
-	db.new(dbPath);
+«Create new database
+if not defined (@[dbPath]) {
+	db.new(dbPath)};
 
-	// 1. Create refconTests outline with all test cases
-	local (adrOutline = @[dbPath].refconTests);
-	new (outlineType, adrOutline);
-	target.set(adrOutline);
+«1. Create refconTests outline with all test cases
+local (adrOutline = @[dbPath].refconTests);
+new (outlineType, adrOutline);
+target.set(adrOutline);
 
-	// Test Case 1: Zero refcon
-	op.insert("Test Case 1: Zero refcon", down);
-	op.setRefcon(0);
+«Test Case 1: Zero refcon
+op.insert("Test Case 1: Zero refcon", down);
+op.setRefcon(0);
 
-	// Test Case 2: Positive small
-	op.insert("Test Case 2: Positive small", down);
-	op.setRefcon(42);
+«Test Case 2: Positive small
+op.insert("Test Case 2: Positive small", down);
+op.setRefcon(42);
 
-	// Test Case 3: Positive large (near 2^31)
-	op.insert("Test Case 3: Positive large (near 2^31)", down);
-	op.setRefcon(2147483647);
+«Test Case 3: Positive large (near 2^31)
+op.insert("Test Case 3: Positive large (near 2^31)", down);
+op.setRefcon(2147483647);
 
-	// Test Case 4: Negative small
-	op.insert("Test Case 4: Negative small", down);
-	op.setRefcon(-123);
+«Test Case 4: Negative small
+op.insert("Test Case 4: Negative small", down);
+op.setRefcon(-123);
 
-	// Test Case 5: Negative large (min 32-bit)
-	op.insert("Test Case 5: Negative large (min 32-bit)", down);
-	op.setRefcon(-2147483648);
+«Test Case 5: Negative large (min 32-bit)
+op.insert("Test Case 5: Negative large (min 32-bit)", down);
+op.setRefcon(infinity + 1);
 
-	// Test Case 6: Positive medium
-	op.insert("Test Case 6: Positive medium", down);
-	op.setRefcon(1000000);
+«Test Case 6: Positive medium
+op.insert("Test Case 6: Positive medium", down);
+op.setRefcon(1000000);
 
-	// Test Case 7: Negative medium
-	op.insert("Test Case 7: Negative medium", down);
-	op.setRefcon(-1000000);
+«Test Case 7: Negative medium
+op.insert("Test Case 7: Negative medium", down);
+op.setRefcon(-1000000);
 
-	// Test Case 8: Nil refcon (not set)
-	op.insert("Test Case 8: Nil refcon (not set)", down);
-	// Intentionally DO NOT set refcon - leave uninitialized
+«Test Case 8: Nil refcon (not set)
+op.insert("Test Case 8: Nil refcon (not set)", down);
+«Intentionally DO NOT set refcon - leave uninitialized
 
-	// Test Case 9: Nested outline with children
-	op.insert("Test Case 9: Nested outline", down);
-	op.setRefcon(999);
+«Test Case 9: Nested outline with children
+op.insert("Test Case 9: Nested outline", down);
+op.setRefcon(999);
 
-	// Add children to Test Case 9
-	op.insert("Child 1", right);  // Move right (indent)
-	op.setRefcon(111);
+«Add children to Test Case 9
+op.insert("Child 1", right);
+op.setRefcon(111);
 
-	op.insert("Child 2", down);
-	op.setRefcon(222);
+op.insert("Child 2", down);
+op.setRefcon(222);
 
-	// Return to parent level
-	op.go(left, 1);
+«Return to parent level
+op.go(left, 1);
 
-	// Test Case 10: Multiple levels (3-level hierarchy)
-	op.insert("Test Case 10: Multiple levels", down);
-	op.setRefcon(100);
+«Test Case 10: Multiple levels (3-level hierarchy)
+op.insert("Test Case 10: Multiple levels", down);
+op.setRefcon(100);
 
-	// Level 2 child
-	op.insert("Level 2", right);
-	op.setRefcon(200);
+«Level 2 child
+op.insert("Level 2", right);
+op.setRefcon(200);
 
-	// Level 3 grandchild
-	op.insert("Level 3", right);
-	op.setRefcon(300);
+«Level 3 grandchild
+op.insert("Level 3", right);
+op.setRefcon(300);
 
-	// Return to root level (go left twice)
-	op.go(left, 2);
+«Return to root level (go left twice)
+op.go(left, 2);
 
-	// 2. Create longValueTests table with scalar long values
-	local (adrTable = @[dbPath].longValueTests);
-	new (tableType, adrTable);
+«2. Create longValueTests table with scalar long values
+local (adrTable = @[dbPath].longValueTests);
+new (tableType, adrTable);
 
-	// Set scalar values
-	adrTable^.zeroLong = 0;
-	adrTable^.positiveSmall = 42;
-	adrTable^.positiveLarge = 2147483647;
-	adrTable^.negativeSmall = -123;
-	adrTable^.negativeLarge = -2147483648;
-	adrTable^.positiveMedium = 1000000;
-	adrTable^.negativeMedium = -1000000;
+«Set scalar values
+adrTable^.zeroLong = 0;
+adrTable^.positiveSmall = 42;
+adrTable^.positiveLarge = 2147483647;
+adrTable^.negativeSmall = -123;
+adrTable^.negativeLarge = infinity + 1;
+adrTable^.positiveMedium = 1000000;
+adrTable^.negativeMedium = -1000000;
 
-	// Create nested table with long values
-	local (adrNested = @[dbPath].longValueTests.nestedTable);
-	new (tableType, adrNested);
-	adrNested^.innerPositive = 999999;
-	adrNested^.innerNegative = -999999;
+«Create nested table with long values
+local (adrNested = @[dbPath].longValueTests.nestedTable);
+new (tableType, adrNested);
+adrNested^.innerPositive = 999999;
+adrNested^.innerNegative = -999999;
 
-	// 3. Create refconDateTests outline with dates stored AS refcon values
-	local (adrDateOutline = @[dbPath].refconDateTests);
-	new (outlineType, adrDateOutline);
-	target.set(adrDateOutline);
+«3. Create refconDateTests outline with dates stored AS refcon values
+local (adrDateOutline = @[dbPath].refconDateTests);
+new (outlineType, adrDateOutline);
+target.set(adrDateOutline);
 
-	// Date 2030 (post-2038 Y2038K test)
-	op.insert("Date 2030", down);
-	op.setRefcon(date.set(2030, 1, 1, 0, 0, 0));
+«Date 2030 (post-2038 Y2038K test)
+op.insert("Date 2030", down);
+op.setRefcon(date.set(2030, 1, 1, 0, 0, 0));
 
-	// Date 2037 (near Y2038K boundary - Dec 31, 2037 23:59:59)
-	op.insert("Date 2037", down);
-	op.setRefcon(date.set(2037, 12, 31, 23, 59, 59));
+«Date 2037 (near Y2038K boundary - Dec 31, 2037 23:59:59)
+op.insert("Date 2037", down);
+op.setRefcon(date.set(2037, 12, 31, 23, 59, 59));
 
-	// Close database to flush changes
-	db.close(dbPath);
-
-	return true}
+return (true)
