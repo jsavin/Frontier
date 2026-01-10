@@ -151,13 +151,84 @@ Your specialized knowledge spans:
 
 ## Key Reference Materials
 
-You have deep familiarity with:
-- `planning/phase3/modern_reader_writer_split.md` - Reader/writer architecture and Issue #123
-- `docs/external_table_variable_management.md` - Address format and migration patterns
-- `planning/architectural_decision_records/ADR-003-address-value-resolution.md` - Two-phase address resolution strategy
-- `planning/architectural_decision_records/MODE_SINGLE_DECISION_POINT.md` - Context-passing architecture
-- `docs/LOGGING_STANDARDS.md` - Structured logging requirements
+### Database Format Documentation
+
+**Primary Format Reference**:
+- `docs/database_architecture.md` - **START HERE**: Comprehensive overview of ODB architecture
+  - Physical file layout and root table structure
+  - Legacy warning tables (v6 compatibility shims, 442-byte Cancoon records)
+  - Block headers/trailers (v6 vs v7 differences)
+  - Table payload layouts (modern v4 vs legacy formats)
+  - v7 hash record layout (big-endian, 16-byte explicit layout)
+  - UserTalk addressing patterns
+  - Critical section on table payload layout (lines 214-241): explains merged handles structure
+  - Migration pitfalls section: why 32-bit payloads cause failures
+
+**Format Specifications**:
+- `planning/phase3/V7_64BIT_VALUE_PACKING_PLAN.md` - v7 64-bit value packing details
+- `planning/phase3/LONG_VALUE_PACKING_DATA_LOSS_ANALYSIS.md` - Analysis of v6→v7 data loss issues
+- `planning/phase3/big_endian_portability_audit.md` - Big-endian format requirements and compliance
+
+### Migration Documentation
+
+**Migration Strategy & Plans**:
+- `planning/phase3/ODB_ENGINE_V7_MIGRATION_PLAN.md` - Complete v6→v7 migration execution plan
+  - Two-phase migration strategy (Phase 1: .root7 extension, Phase 2: .root standard)
+  - Cancoon record handling and removal
+  - Auto-migration workflows
+  - Testing checkpoints and validation criteria
+- `planning/phase3/v6_to_v7_migration_gaps.md` - Known gaps and edge cases in migration
+- `planning/phase3/v7_reader_widening_plan.md` - Plan for expanding v7 reader capabilities
+
+**Migration Validation**:
 - `planning/phase3/MIGRATION_VALIDATION_REPORT.md` - Test procedures and known issues
+- `planning/phase3/MIGRATION_FAILURE_ANALYSIS.md` - Root cause analysis of migration failures
+
+### Architectural Patterns
+
+**Context-Based Architecture** (CRITICAL for understanding mode management):
+- `planning/architectural_decision_records/ADR-002-context-based-format-versioning.md` - **ESSENTIAL READING**
+  - Why mode stack is an anti-pattern
+  - Context-based format versioning pattern (_internal functions)
+  - Single Decision Point principle
+  - Common pitfalls and correct patterns
+- `planning/phase3/mode_stack_refactor/MODE_STACK_REFACTOR_PHASE1_DETAILED_v2.md` - Refactoring implementation details
+- `planning/phase3/mode_stack_refactor/adapter_mode_isolation.md` - Adapter pattern for mode isolation
+- `planning/phase3/v7_reader_refactor_and_legacy_adapter_plan.md` - Reader/writer architecture patterns
+
+**External Table Variables**:
+- `docs/external_table_variable_management.md` - Address format and migration patterns
+  - flinmemory flag behavior (critical for migration)
+  - Why forcing flinmemory=1 during migration avoids format mismatches
+
+**Address Resolution**:
+- `planning/architectural_decision_records/ADR-003-address-value-resolution.md` - Two-phase address resolution strategy
+  - Lazy+eager resolution for address values
+  - Why addresses stored as strings only on disk
+  - system.paths resolution timing requirements
+
+### Implementation Standards
+
+**Code Quality**:
+- `docs/LOGGING_STANDARDS.md` - Structured logging requirements (NO fprintf stderr!)
+- `planning/phase3/datetime_handling_audit.md` - Timestamp type requirements (frontier_time_t, not uint32_t)
+
+### Quick Reference Guide
+
+**When debugging migration failures**:
+1. Read `docs/database_architecture.md` lines 196-212 (migration pitfalls - 32-bit payload carry-over)
+2. Check `planning/phase3/MIGRATION_FAILURE_ANALYSIS.md` for similar symptoms
+3. Verify mode stack usage against ADR-002 patterns
+
+**When implementing new pack/unpack operations**:
+1. Follow `_internal(const db_context *ctx, ...)` pattern from ADR-002
+2. Reference v7 hash record layout in `docs/database_architecture.md` lines 76-88
+3. Use structured logging per `docs/LOGGING_STANDARDS.md`
+
+**When reviewing format-related code**:
+1. Check against ADR-002 context-passing patterns (no mode stack push/pop in _internal functions)
+2. Verify header versions match database format (v5 for v7, v4 for v6)
+3. Validate address format consistency (32-bit v6 vs 64-bit v7)
 
 ## Decision-Making Framework
 
