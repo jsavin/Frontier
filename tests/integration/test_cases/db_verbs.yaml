@@ -465,3 +465,37 @@ tests:
       return ok
     expected_success: true
     expected_result: "true"
+
+  # ========================================================================
+  # Test 20: Auto-migration of v6 database
+  # ========================================================================
+  - name: "db.open - auto-migration of v6 database"
+    description: "Open v6 database in read-write mode, verify auto-migration to v7"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(srcPath = tmpDir + "/" + "v6_automigrate_src.root");
+      local(v7Path = tmpDir + "/" + "v6_automigrate_src.root7");
+
+      // Copy v6 fixture to temp location
+      file.copy("tests/fixtures/v6/test.root", srcPath);
+
+      // Open in read-write mode (should trigger auto-migration)
+      local(ok = db.open(srcPath, false));
+
+      // Verify .root7 was created
+      local(v7Exists = file.exists(v7Path));
+
+      // Verify can read data from migrated database (root table exists in v6 fixture)
+      local(rootExists = db.defined(srcPath, "root"));
+
+      db.close(srcPath);
+
+      // Clean up
+      file.delete(srcPath);
+      if v7Exists {
+        file.delete(v7Path)
+      };
+
+      return ok and v7Exists and rootExists
+    expected_success: true
+    expected_result: "true"

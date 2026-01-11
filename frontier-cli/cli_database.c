@@ -282,8 +282,8 @@ boolean cli_create_database(const char* db_path) {
         return false;
     }
     
-    // Create the database
-    if (!dbnew(fnum)) {
+    // Create the database (v7 format)
+    if (!dbnew(fnum, true)) {
         cli_set_database_error("Failed to create new database: %s", db_path);
         fileclose(fnum);
         return false;

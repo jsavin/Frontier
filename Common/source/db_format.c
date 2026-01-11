@@ -147,6 +147,36 @@ static void db_context_guard_exit(const db_context_guard *guard) {
     db_saveas_state_apply(&guard->prev_saveas);
 }
 
+/* ODB context guard for nested database operations (migration, etc.) */
+void odb_guard_enter(odb_context_guard *guard) {
+	if (guard == NULL)
+		return;
+	guard->saved_currenthashtable = (void *) currenthashtable;
+	guard->saved_databasedata = databasedata;
+	guard->saved_hashtablestack = (void *) hashtablestack;
+	guard->saved_rootvariable = (void *) rootvariable;
+	guard->saved_roottable = (void *) roottable;
+#if defined(FRONTIER_HEADLESS)
+	log_trace(LOG_COMP_DB, "odb_guard_enter: saved db=%p root=%p currenttable=%p",
+	          (void *) databasedata, (void *) rootvariable, (void *) currenthashtable);
+#endif
+}
+
+void odb_guard_exit(odb_context_guard *guard) {
+	if (guard == NULL)
+		return;
+#if defined(FRONTIER_HEADLESS)
+	log_trace(LOG_COMP_DB, "odb_guard_exit: restoring db=%p root=%p currenttable=%p",
+	          (void *) guard->saved_databasedata, guard->saved_rootvariable,
+	          guard->saved_currenthashtable);
+#endif
+	currenthashtable = (hdlhashtable) guard->saved_currenthashtable;
+	databasedata = guard->saved_databasedata;
+	hashtablestack = (hdltablestack) guard->saved_hashtablestack;
+	rootvariable = (Handle) guard->saved_rootvariable;
+	roottable = (hdlhashtable) guard->saved_roottable;
+}
+
 #if defined(_WIN32)
 #define db_trace_seek _fseeki64
 typedef __int64 db_trace_off_t;
@@ -1728,6 +1758,14 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     if (db_path == NULL || db_path[0] == '\0')
         return false;
 
+    /* Save ALL database globals before nested dbopenfile() corrupts them.
+     * migrate_internal() calls dbopenfile() at line 1812, which creates a new
+     * databasedata handle and modifies global state. Without this guard, the
+     * caller's database context gets corrupted, causing crashes or hangs.
+     * See Issue: Auto-migration crash due to nested database opens. */
+    odb_context_guard caller_guard;
+    odb_guard_enter(&caller_guard);
+
     boolean ok = false;
     db_saveas_state entry_saveas;
     hdlfilenum src_fnum = 0;
@@ -1780,32 +1818,17 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     if (db_trace_level() > 0)
         db_format_trace_database_path(db_path);
 
-    /* Derive output path: strip existing version suffix (if any) and add -v7.root */
-    /* Pattern: /-v\d+\.root$/ → /-v7.root/ (version replacement) */
-    /* Examples: Frontier-v6.root → Frontier-v7.root, mydb.root → mydb-v7.root */
+    /* Derive output path: replace .root with .root7 (Phase 1 naming convention) */
+    /* Pattern: /*.root$/ → /*.root7/ */
+    /* Examples: Frontier-v6.root → Frontier-v6.root7, test.root → test.root7 */
     const char *ext = strrchr(db_path, '.');
     if (ext && strcmp(ext, ".root") == 0) {
+        /* Replace .root with .root7 */
         size_t base_len = (size_t)(ext - db_path);
-
-        /* Check if base ends with version pattern: /-v\d+$/
-         * Scan backward from extension through digits, check for 'v' preceded by '-' */
-        const char *base_end = ext - 1;
-        while (base_end > db_path && isdigit(*base_end)) {
-            base_end--;
-        }
-
-        /* If we found -vN pattern, strip it (base_end points to 'v')
-         * Only strip if it would leave a non-empty basename */
-        if (base_end > db_path && *base_end == 'v' && *(base_end - 1) == '-') {
-            size_t new_base_len = (size_t)(base_end - 1 - db_path);
-            if (new_base_len > 0) {  /* Preserve at least one character */
-                base_len = new_base_len;
-            }
-        }
-
-        snprintf(output_path, sizeof output_path, "%.*s-v7.root", (int) base_len, db_path);
+        snprintf(output_path, sizeof output_path, "%.*s.root7", (int) base_len, db_path);
     } else {
-        snprintf(output_path, sizeof output_path, "%s-v7", db_path);
+        /* No .root extension, append .root7 */
+        snprintf(output_path, sizeof output_path, "%s.root7", db_path);
     }
 
     strncpy(last_backup_path, output_path, sizeof last_backup_path);
@@ -2158,6 +2181,12 @@ cleanup:
 
     /* Postcondition: databasedata should be nil after cleanup */
     assert(databasedata == nil);
+
+    /* Restore caller's database globals.
+     * This ensures that when db.open() calls migrate_internal(), the caller's
+     * database context is restored exactly as it was before migration started.
+     * Without this, the caller sees corrupted globals and crashes/hangs. */
+    odb_guard_exit(&caller_guard);
 
     return ok;
 }

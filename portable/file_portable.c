@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <limits.h>
 #ifdef __APPLE__
 #include <sys/attr.h>
 #endif
@@ -14,6 +15,7 @@
 #include "standard.h"
 #include "file.h"
 #include "memory.h"
+#include "strings.h"
 #include "file_portable.h"
 #include "file_working_dir.h"
 #include "logging.h"
@@ -307,6 +309,35 @@ boolean largefilebuffer(Handle *hbuffer) {
         return false;
     long sz = 32 * 1024;
     return newhandle(sz, hbuffer);
+}
+
+boolean fileexists(const ptrfilespec fs, boolean *flfolder) {
+    bigstring bspath;
+    char cpath[PATH_MAX];  /* Use PATH_MAX instead of hardcoded 512 */
+    struct stat st;
+
+    if (!fs)
+        return false;
+
+    if (flfolder)
+        *flfolder = false;
+
+    /* Convert filespec to path */
+    if (!filespectopath(fs, bspath))
+        return false;
+
+    /* Convert bigstring to C string */
+    copyptocstring(bspath, cpath);
+
+    /* Check if file exists using stat */
+    if (stat(cpath, &st) != 0)
+        return false;
+
+    /* Set folder flag if it's a directory */
+    if (flfolder)
+        *flfolder = S_ISDIR(st.st_mode);
+
+    return true;
 }
 
 boolean fileisfolder(const ptrfilespec fs, boolean *out) {

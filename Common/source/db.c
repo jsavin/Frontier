@@ -445,6 +445,8 @@ static void db_context_guard_exit_with_saveas(const db_context_guard *guard, con
         db_saveas_state_apply(&guard->prev_saveas);
 }
 
+/* odb_guard functions moved to db_format.c where lang.h globals are available */
+
 boolean dbpushdatabase (hdldatabaserecord hdatabase) {
 	/*
 	when you want to temporarily work with a different databaserecord, call this
@@ -3043,16 +3045,22 @@ boolean dbdispose (void) {
 
 	dbzeroreleasestack ();
 
-#ifdef SMART_DB_OPENING	
+#ifdef SMART_DB_OPENING
 	dbdisposeshadowavaillist ();
 #else
 	disposehandle ((**databasedata).u.extensions.availlistshadow.data);
 #endif
-	
+
 	disposehandle ((Handle) databasedata);
-	
+
 	databasedata = nil;
-	
+
+	/* Pop the format mode that was pushed during dbopenfile */
+#if defined(FRONTIER_HEADLESS)
+	log_trace(LOG_COMP_DB, "dbdispose: calling db_format_mode_pop before exit");
+#endif
+	db_format_mode_pop();
+
 	return (true);
 	} /*dbdispose*/
 
@@ -3321,9 +3329,9 @@ boolean dbopenfile (hdlfilenum fnum, boolean flreadonly) {
 
 
 boolean dbclose (void) {
-	
+
 	dbzeroreleasestack (); /*don't release chunks accumulated in release stack*/
-	
+
 	setdirty (databasedata);
 
 #if defined(FRONTIER_HEADLESS)
@@ -3332,7 +3340,7 @@ boolean dbclose (void) {
 	          databasedata ? (long) (**databasedata).fnumdatabase : -1L,
 	          databasedata ? (int) isdirty(databasedata) : 0);
 #endif
-	
+
 	return (dbflushheader ());
 	} /*dbclose*/
 

@@ -101,8 +101,12 @@ boolean dbinitverbs(void) {
 
     copystring(BIGSTRING("\002db"), bsname);
 
-    /* Initialize ODB list to nil (databases will be added via listlink) */
-    hodblist = nil;
+    /* Initialize sentinel handle to prevent UAF when closing last database
+     * This handle is never freed, so hodblist never becomes a dangling pointer */
+    if (!newclearhandle(sizeof(tyodbrecord), (Handle*)&hodblist)) {
+        log_error(LOG_COMP_LANG, "dbinitverbs: failed to allocate sentinel handle");
+        return false;
+    }
 
     if (!newfunctionprocessor(bsname, &headless_db_verbs_callback, false, &htable))
         return false;
