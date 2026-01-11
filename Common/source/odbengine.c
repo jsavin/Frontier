@@ -1126,28 +1126,32 @@ pascal boolean odbGetNthItem (odbref odb, bigstring bspath, long n, bigstring bs
 
 
 
-pascal boolean odbGetModDate (odbref odb, bigstring bspath, unsigned long *date) {
+pascal boolean odbGetModDate (odbref odb, bigstring bspath, int64_t *date) {
 
-	hdlhashtable htable;
+	hdlhashtable htable, htableitem;
 	bigstring bsname;
 	tyvaluerecord val;
 	hdlhashnode hnode;
-	
+
 	setemptystring (bserror);
-	
+
 	setcancoonglobals ((hdlcancoonrecord) odb);
-	
+
 	if (!odbexpandtodotparams (bspath, &htable, bsname))
 		return (false);
-	
+
 	if (!langsymbolreference (htable, bsname, &val, &hnode))
 		return (false);
-	
-	if (!odbvaltotable (val, &htable, hnode))
-		return (false);
-	
-	*date = (**htable).timelastsave;
-	
+
+	/* If the item is a table, return its timelastsave.
+	   Otherwise, return the parent table's timelastsave. */
+	if (langexternalvaltotable (val, &htableitem, hnode)) {
+		*date = (**htableitem).timelastsave;
+	}
+	else {
+		*date = (**htable).timelastsave;
+	}
+
 	return (true);
 	} /*odbGetModDate*/
 
