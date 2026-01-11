@@ -1143,6 +1143,9 @@ pascal boolean odbGetModDate (odbref odb, bigstring bspath, int64_t *date) {
 	if (!langsymbolreference (htable, bsname, &val, &hnode))
 		return (false);
 
+	if (hnode == NULL)  /* defensive check */
+		return (false);
+
 	/* If the item is a table, return its timelastsave.
 	   Otherwise, return the parent table's timelastsave. */
 	if (langexternalvaltotable (val, &htableitem, hnode)) {
