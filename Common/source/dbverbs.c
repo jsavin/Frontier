@@ -785,6 +785,18 @@ static boolean dbopenverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 		if (odb_check_root7_exists(&odbrec.fs, &fs_root7)) {
 			/* .root7 exists, use it instead */
 			log_debug(LOG_COMP_DB, "dbopenverb: .root7 exists, using it");
+
+			/* Notify user that we're using the migrated v7 database */
+			bigstring bspath_orig, bspath_v7;
+			char cpath_orig[DB_PATH_MAX], cpath_v7[DB_PATH_MAX];
+			filespectopath(&odbrec.fs, bspath_orig);
+			copyptocstring(bspath_orig, cpath_orig);
+			filespectopath(&fs_root7, bspath_v7);
+			copyptocstring(bspath_v7, cpath_v7);
+
+			fprintf(stdout, "Using migrated v7 database: %s\n", cpath_v7);
+			fprintf(stdout, "  (requested v6 database: %s)\n", cpath_orig);
+
 			odbrec.fs = fs_root7;
 		}
 		/* If no .root7, check if this is a v6 database */
@@ -805,14 +817,28 @@ static boolean dbopenverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 
 				log_trace(LOG_COMP_DB, "dbopenverb: calling ensure_database_v7 for %s", cpath);
 
+				/* Notify user that migration is starting */
+				fprintf(stdout, "Migrating v6 database to v7 format...\n");
+				fprintf(stdout, "  Source: %s\n", cpath);
+
 				/* Call migration function */
 				if (!ensure_database_v7(cpath, &migrated, output_path, sizeof(output_path))) {
 					log_error(LOG_COMP_DB, "dbopenverb: migration failed for %s", cpath);
-					langerrormessage(BIGSTRING("\x19" "Database migration failed"));
+
+					/* Provide detailed error message to user */
+					char errmsg[512];
+					snprintf(errmsg, sizeof(errmsg), "Database migration failed for: %s", cpath);
+					bigstring bserr;
+					copyctopstring(errmsg, bserr);
+					langerrormessage(bserr);
 					return (false);
 				}
 
 				log_trace(LOG_COMP_DB, "dbopenverb: migration succeeded, output=%s", output_path);
+
+				/* Notify user that migration succeeded */
+				fprintf(stdout, "  Output: %s\n", output_path);
+				fprintf(stdout, "Migration complete.\n");
 
 				/* Update odbrec.fs to point to .root7 file */
 				bigstring bsoutput;
