@@ -7,6 +7,50 @@ This plan implements 45 op verbs in headless mode using Test-Driven Development 
 - **Full implementations** available in `Common/source/opverbs.c` (4,619 lines)
 - **Stub framework** in `tests/headless_op_verbs.c` with proper dispatch infrastructure
 
+## Completed Work (PR #269)
+
+**Status as of 2026-01-10:** Phase 1 implementation bugs fixed
+
+### Fixes Applied
+
+Three critical op verb implementations were corrected in PR #269 based on actual Frontier behavior:
+
+1. **op.firstSummit** - Simplified implementation
+   - **Issue**: Incorrectly attempted to skip empty summit nodes
+   - **Fix**: Reverted to use `opmotionkey(flatup, longinfinity, false)` like original Frontier
+   - **Behavior**: Goes to first summit even if empty (no magic skip logic)
+   - **Test Fix**: Updated test to navigate down after firstSummit to get first non-empty line
+
+2. **op.insert** - Removed incorrect empty summit handling
+   - **Issue**: Attempted to replace empty summit instead of creating new node
+   - **Fix**: Removed special-case logic; always creates new node in specified direction
+   - **Behavior**: Empty initial summit is preserved as expected (normal outline structure)
+
+3. **op.reorg** - Implemented "go as far as possible" behavior
+   - **Issue**: Returned false when couldn't complete all requested moves
+   - **Fix**: Implemented loop that moves as far as structure allows
+   - **Behavior**: Returns true if moved at least once, false only if zero movement
+   - **Matches**: Windows Frontier behavior verified by testing
+
+### Test Results
+
+- **Before**: 539/599 passing (90.0%)
+- **After**: 545/599 passing (90.8%)
+- **Fixed**: 6 integration tests
+- **Files Modified**:
+  - `tests/headless_op_verbs.c` - Implementation fixes
+  - `tests/integration/test_cases/op_verbs.yaml` - Test expectation corrections
+
+### Key Insights Documented
+
+1. **Empty Summit Behavior**: New outlines start with one empty summit node - this is normal and expected
+2. **Infinity Handling Pattern**: UserTalk's `LONG_MAX` (64-bit) must be clamped to C type limits (e.g., 32767 for short)
+3. **Multi-Level Reorganization**: "Go as far as possible" pattern for left/right moves with count > 1
+
+**Reference**: See `docs/VERB_IMPLEMENTATION_GUIDE.md` section "Handling Infinity in Numeric Parameters" for the clamping pattern.
+
+---
+
 ## Critical Discovery: Target-Based Implementation
 
 The key insight from the codebase analysis:

@@ -7,11 +7,13 @@ Complete guide for implementing kernel verbs in C for the Frontier headless runt
 ## Table of Contents
 
 1. [Basic Verb Implementation Pattern](#basic-verb-implementation-pattern)
-2. [Setting UserTalk Variables](#setting-usertalk-variables-from-kernel-verbs)
-3. [Value Record Creation](#value-record-creation-functions)
-4. [ODB Address Parameters](#extracting-odb-address-parameters)
-5. [Examples to Study](#examples-to-study)
-6. [Testing](#testing)
+2. [Understanding typeof() in Verbs](#understanding-typeof-in-verbs---critical-)
+3. [Handling Infinity in Numeric Parameters](#handling-infinity-in-numeric-parameters)
+4. [Setting UserTalk Variables](#setting-usertalk-variables-from-kernel-verbs)
+5. [Value Record Creation](#value-record-creation-functions)
+6. [ODB Address Parameters](#extracting-odb-address-parameters)
+7. [Examples to Study](#examples-to-study)
+8. [Testing](#testing)
 
 ---
 
@@ -68,6 +70,88 @@ setstringvalue("filespec", vreturned);   // NEVER do this
 - The entire UserTalk type system depends on this contract
 
 **See `docs/USERTALK_SYNTAX_REFERENCE.md` for complete typeof() documentation.**
+
+---
+
+## Handling Infinity in Numeric Parameters
+
+UserTalk has a special `infinity` constant that represents unlimited/maximum values. When implementing verbs that accept numeric parameters where infinity has special meaning (e.g., level counts, iteration limits), you must handle the conversion between UserTalk's 64-bit infinity and C's type-specific limits.
+
+### The Pattern
+
+UserTalk's `infinity` constant is defined as `LONG_MAX` (typically `0x7FFFFFFFFFFFFFFF` on 64-bit systems). However, many C functions expect smaller integer types (e.g., `short` for 16-bit values). Here's the correct pattern:
+
+```c
+// ✅ Correct: Accept long, clamp to short range
+long levellong;
+short level;
+
+flnextparamislast = true;
+if (!getlongvalue(hparam1, 1, &levellong))
+    return false;
+
+// Clamp to short range (opcountsubheads expects short)
+if (levellong > 32767)
+    level = 32767;  // Max short value - effectively infinity for C
+else if (levellong < -32768)
+    level = -32768;
+else
+    level = (short)levellong;
+
+// Now use 'level' with C function expecting short
+long ct = opcountsubheads(hbarcursor, level);
+```
+
+### Why This Matters
+
+- **UserTalk infinity** = `LONG_MAX` (64-bit: `9223372036854775807`)
+- **C short max** = `32767` (16-bit maximum)
+- **Pattern**: When UserTalk passes `infinity`, clamp to the C type's maximum value
+
+### Real-World Example: op.countSubs
+
+```c
+// From tests/headless_op_verbs.c - op.countSubs implementation
+case opv_countsubs: {
+    long levellong;
+    short level;
+
+    flnextparamislast = true;
+    if (!getlongvalue(hparam1, 1, &levellong))
+        return false;
+
+    // Clamp UserTalk infinity to C short infinity
+    if (levellong > 32767)
+        level = 32767;  // Effectively infinity for 16-bit operations
+    else if (levellong < -32768)
+        level = -32768;
+    else
+        level = (short)levellong;
+
+    // ... use level with opcountsubheads() which expects short
+}
+```
+
+### Common Mistake
+
+```c
+// ❌ WRONG: Using getintvalue() directly truncates infinity
+short level;
+if (!getintvalue(hparam1, 1, &level))  // Only reads 16 bits!
+    return false;
+
+// Result: UserTalk's infinity (0x7FFFFFFFFFFFFFFF)
+//         truncates to -1 or garbage, not 32767
+```
+
+### When to Use This Pattern
+
+Use this clamping pattern when:
+1. UserTalk code can pass `infinity` as a parameter
+2. Your C function expects a smaller integer type (`short`, `int`)
+3. The semantic meaning is "as many as possible" or "unlimited"
+
+**Reference**: See PR #269 for the op.countSubs fix that implements this pattern.
 
 ---
 
