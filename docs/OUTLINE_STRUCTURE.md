@@ -97,6 +97,37 @@ op.getExpansionState()  // Returns: {2}
 
 This means "line 2 is expanded" (showing its children).
 
+### Cursor and Collapsed Nodes - Critical Invariant ⚠️
+
+**The cursor can NEVER be on a child of a collapsed node.**
+
+This is a fundamental constraint in Frontier's outline model:
+- Collapsed nodes hide their children from the navigable structure
+- The cursor must always be on a **visible (accessible)** node
+- When a parent is collapsed while the cursor is on a child, **the cursor automatically moves to the parent**
+
+**Implications for State Restoration:**
+
+When `op.setExpansionState()` restores expansion state:
+1. The expansion state is restored (nodes expand/collapse as saved)
+2. The cursor position is NOT changed by the operation itself
+3. **BUT** if the cursor ends up on a child of a now-collapsed node, it auto-moves to the first visible ancestor
+
+Example:
+```usertalk
+op.insert("Parent", down);
+op.insert("Child", right);
+op.expand(1);           // Parent expanded, Child visible
+local(cursor = op.getCursor());  // Cursor on Child
+local(state = op.getExpansionState());  // Save state with Parent expanded
+
+op.collapse();          // Parent collapsed, cursor auto-moves to Parent (Child no longer accessible)
+op.setExpansionState(state);  // Restore: Parent expands again
+op.setCursor(cursor);   // Cursor moves back to Child (now accessible)
+```
+
+**Key insight:** Expansion state is independent of cursor position, but cursor position must always satisfy the visibility constraint.
+
 ### Navigation
 `op.firstSummit()` moves to the first summit headline (the empty one if it exists).
 

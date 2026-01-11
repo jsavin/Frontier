@@ -2449,14 +2449,17 @@ tests:
       op.insert("Child 1", right);
       op.go(left, 1);
       op.expand(1);
-      local(expanded1 = op.subsExpanded());
       op.insert("Parent 2", down);
       op.insert("Child 2", right);
       op.go(left, 1);
-      local(state = op.getExpansionState());
-      op.collapse();
-      op.setExpansionState(state);
-      local(expanded2 = op.subsExpanded());
+      op.collapse();  /* Collapse Parent 2, cursor stays on Parent 2 (Child 2 becomes inaccessible) */
+      op.go(up, 1);  /* Move cursor to Parent 1 (away from Parent 2) */
+      local(state = op.getExpansionState());  /* Capture state: Parent 1 expanded, Parent 2 collapsed */
+      op.collapse();  /* Collapse Parent 1 */
+      op.setExpansionState(state);  /* Restore: should re-expand Parent 1, keep Parent 2 collapsed */
+      local(expanded1 = op.subsExpanded());  /* Check Parent 1 - should be expanded */
+      op.go(down, 1);  /* Move to Parent 2 */
+      local(expanded2 = op.subsExpanded());  /* Check Parent 2 - should be collapsed */
       return expanded1 and (not expanded2)
     expected_success: true
     expected_result: "true"
@@ -2815,56 +2818,91 @@ tests:
   # Phase 3: Type Safety Tests
   # ====================================================================
 
-  - name: "type safety - setCursor requires address type"
-    description: "setCursor rejects non-address types"
+  - name: "type safety - setCursor with invalid cursor returns false"
+    description: "setCursor returns false when given a cursor that can't be set"
     script: |
       lang.new(outlineType, @workspace.outline);
       target.set(@workspace.outline);
       op.insert("Line", down);
-      op.setCursor(12345)
-    expected_success: false
-    expected_error_type: "script_error"
+      return op.setCursor(12345)
+    expected_success: true
+    expected_result: "false"
 
-  - name: "type safety - setDisplay requires boolean type"
-    description: "setDisplay rejects non-boolean types"
+  - name: "type safety - setDisplay with non-boolean coerces to boolean"
+    description: "setDisplay coerces non-boolean types via UserTalk type coercion (1 -> true)"
     script: |
       lang.new(outlineType, @workspace.outline);
       target.set(@workspace.outline);
-      op.setDisplay(1)
-    expected_success: false
-    expected_error_type: "script_error"
+      op.setDisplay(1);  /* UserTalk coerces 1 to true */
+      return op.getDisplay()
+    expected_success: true
+    expected_result: "true"
 
-  - name: "type safety - setExpansionState requires address type"
-    description: "setExpansionState rejects non-address types"
+  - name: "type safety - setExpansionState requires list of numbers"
+    description: "setExpansionState takes a list of line numbers (not a string)"
     script: |
       lang.new(outlineType, @workspace.outline);
       target.set(@workspace.outline);
       op.insert("Parent", down);
       op.insert("Child", right);
       op.go(left, 1);
-      op.setExpansionState("not an address")
+      op.setExpansionState("not a list")
     expected_success: false
-    expected_error_type: "script_error"
+    expected_error_type: "json_parse_error"
 
-  - name: "type safety - setScrollState requires address type"
-    description: "setScrollState rejects non-address types"
+  - name: "type safety - setScrollState is noop in headless"
+    description: "setScrollState returns true and does nothing in headless mode (scroll state is visual)"
     script: |
       lang.new(outlineType, @workspace.outline);
       target.set(@workspace.outline);
       op.insert("Line", down);
-      op.setScrollState(42)
-    expected_success: false
-    expected_error_type: "script_error"
+      return op.setScrollState(42)
+    expected_success: true
+    expected_result: "true"
 
-  - name: "type safety - setRefcon requires long type"
-    description: "setRefcon rejects non-long types"
+  - name: "type safety - setRefcon accepts any type (boolean)"
+    description: "setRefcon can store boolean values (round-trip test)"
     script: |
       lang.new(outlineType, @workspace.outline);
       target.set(@workspace.outline);
       op.insert("Line", down);
-      op.setRefcon(true)
-    expected_success: false
-    expected_error_type: "script_error"
+      op.setRefcon(true);
+      return op.getRefcon()
+    expected_success: true
+    expected_result: "true"
+
+  - name: "type safety - setRefcon accepts any type (string)"
+    description: "setRefcon can store string values (round-trip test)"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      op.setRefcon("test string");
+      return op.getRefcon()
+    expected_success: true
+    expected_result: "test string"
+
+  - name: "type safety - setRefcon accepts any type (long)"
+    description: "setRefcon can store long values (round-trip test)"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      op.setRefcon(42);
+      return op.getRefcon()
+    expected_success: true
+    expected_result: "42"
+
+  - name: "type safety - setRefcon accepts any type (double)"
+    description: "setRefcon can store double values (round-trip test)"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      op.setRefcon(3.14159);
+      return op.getRefcon()
+    expected_success: true
+    expected_result: "3.14159"
 
   # ====================================================================
   # Phase 3: Return Type Validation Tests

@@ -303,11 +303,11 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
         case opv_firstsummit: {
             /* Verb #5: op.firstsummit - go to first summit
              *
-             * Navigates to the first top-level node (summit), regardless of whether it's empty.
-             * Uses flatup motion with infinity to go all the way up.
+             * Navigates to the first top-level node (summit), which is always hsummit.
+             * All outlines start with an empty summit (documented in docs/OUTLINE_STRUCTURE.md).
+             * We explicitly move to hsummit using opmoveto() instead of motion keys.
              */
             hdloutlinerecord ho;
-            boolean fl;
 
             if (!langcheckparamcount(hparam1, 0))
                 return false;
@@ -318,11 +318,13 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
             oppushoutline(ho);
             opsettextmode(false);
 
-            fl = opmotionkey(flatup, longinfinity, false);
+            /* Move directly to the summit node (may be empty) */
+            opmoveto((**ho).hsummit);
 
             oppopoutline();
 
-            return setbooleanvalue(fl, vreturned);
+            /* Always return true - we successfully positioned at the summit */
+            return setbooleanvalue(true, vreturned);
         }
         case opv_expand: {
             /* op.expand(levels) -> boolean - expands subheads */
