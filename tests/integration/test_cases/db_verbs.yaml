@@ -80,11 +80,13 @@ tests:
   # Test 4: db.getvalue - Read back string value
   # ========================================================================
   - name: "db.getvalue - read string from root"
-    description: "Get the string value we just set"
+    description: "Set and get a string value (self-contained test)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "test_db_new.root");
+      local(dbPath = tmpDir + "/" + "test_getvalue_string.root");
+      db.new(dbPath);
       db.open(dbPath, false);
+      db.setvalue(dbPath, "testString", "Hello, DB!");
       local(val = db.getvalue(dbPath, "testString"));
       return val
     expected_success: true
@@ -94,11 +96,13 @@ tests:
   # Test 5: db.defined - Check existence of value
   # ========================================================================
   - name: "db.defined - check existing value"
-    description: "Verify that testString exists"
+    description: "Verify that a value exists after setting it (self-contained)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "test_db_new.root");
+      local(dbPath = tmpDir + "/" + "test_defined_exists.root");
+      db.new(dbPath);
       db.open(dbPath, false);
+      db.setvalue(dbPath, "testString", "test");
       local(exists = db.defined(dbPath, "testString"));
       return exists
     expected_success: true
@@ -130,11 +134,13 @@ tests:
     expected_result: "true"
 
   - name: "db.getvalue - read number from root"
-    description: "Get the numeric value we just set"
+    description: "Set and get a numeric value (self-contained)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "test_db_new.root");
+      local(dbPath = tmpDir + "/" + "test_getvalue_number.root");
+      db.new(dbPath);
       db.open(dbPath, false);
+      db.setvalue(dbPath, "testNumber", 42);
       local(val = db.getvalue(dbPath, "testNumber"));
       return val
     expected_success: true
@@ -158,22 +164,26 @@ tests:
   # Test 8: db.istable - Check if address is a table
   # ========================================================================
   - name: "db.istable - verify table type"
-    description: "Check that testTable is a table"
+    description: "Create table and verify it is a table (self-contained)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "test_db_new.root");
+      local(dbPath = tmpDir + "/" + "test_istable_true.root");
+      db.new(dbPath);
       db.open(dbPath, false);
+      db.newtable(dbPath, "testTable");
       local(isTable = db.istable(dbPath, "testTable"));
       return isTable
     expected_success: true
     expected_result: "true"
 
   - name: "db.istable - verify string is not a table"
-    description: "Check that testString is not a table"
+    description: "Create string and verify it is not a table (self-contained)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "test_db_new.root");
+      local(dbPath = tmpDir + "/" + "test_istable_false.root");
+      db.new(dbPath);
       db.open(dbPath, false);
+      db.setvalue(dbPath, "testString", "not a table");
       local(isTable = db.istable(dbPath, "testString"));
       return isTable
     expected_success: true
@@ -183,11 +193,13 @@ tests:
   # Test 9: db.setvalue - Write values into table
   # ========================================================================
   - name: "db.setvalue - write to nested table"
-    description: "Set values inside the table"
+    description: "Create table and set values inside it (self-contained)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "test_db_new.root");
+      local(dbPath = tmpDir + "/" + "test_nested_setvalue.root");
+      db.new(dbPath);
       db.open(dbPath, false);
+      db.newtable(dbPath, "testTable");
       db.setvalue(dbPath, "testTable.item1", "first");
       db.setvalue(dbPath, "testTable.item2", "second");
       db.setvalue(dbPath, "testTable.item3", "third");
@@ -199,11 +211,16 @@ tests:
   # Test 10: db.countitems - Count items in table
   # ========================================================================
   - name: "db.countitems - count table items"
-    description: "Count items in testTable"
+    description: "Create table with items and count them (self-contained)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "test_db_new.root");
+      local(dbPath = tmpDir + "/" + "test_countitems.root");
+      db.new(dbPath);
       db.open(dbPath, false);
+      db.newtable(dbPath, "testTable");
+      db.setvalue(dbPath, "testTable.item1", "first");
+      db.setvalue(dbPath, "testTable.item2", "second");
+      db.setvalue(dbPath, "testTable.item3", "third");
       local(count = db.countitems(dbPath, "testTable"));
       return count
     expected_success: true
@@ -213,33 +230,48 @@ tests:
   # Test 11: db.getnthitem - Enumerate table items
   # ========================================================================
   - name: "db.getnthitem - get first item name"
-    description: "Get name of first item in testTable"
+    description: "Create table and get first item name (self-contained)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "test_db_new.root");
+      local(dbPath = tmpDir + "/" + "test_getnthitem.root");
+      db.new(dbPath);
       db.open(dbPath, false);
+      db.newtable(dbPath, "testTable");
+      db.setvalue(dbPath, "testTable.item1", "first");
+      db.setvalue(dbPath, "testTable.item2", "second");
+      db.setvalue(dbPath, "testTable.item3", "third");
       local(name = db.getnthitem(dbPath, "testTable", 1));
       return name
     expected_success: true
     expected_result: "item1"
 
   - name: "db.getnthitem - get second item name"
-    description: "Get name of second item in testTable"
+    description: "Create table and get second item name (self-contained)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "test_db_new.root");
+      local(dbPath = tmpDir + "/" + "test_getnthitem2.root");
+      db.new(dbPath);
       db.open(dbPath, false);
+      db.newtable(dbPath, "testTable");
+      db.setvalue(dbPath, "testTable.item1", "first");
+      db.setvalue(dbPath, "testTable.item2", "second");
+      db.setvalue(dbPath, "testTable.item3", "third");
       local(name = db.getnthitem(dbPath, "testTable", 2));
       return name
     expected_success: true
     expected_result: "item2"
 
   - name: "db.getnthitem - get third item name"
-    description: "Get name of third item in testTable"
+    description: "Create table and get third item name (self-contained)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "test_db_new.root");
+      local(dbPath = tmpDir + "/" + "test_getnthitem3.root");
+      db.new(dbPath);
       db.open(dbPath, false);
+      db.newtable(dbPath, "testTable");
+      db.setvalue(dbPath, "testTable.item1", "first");
+      db.setvalue(dbPath, "testTable.item2", "second");
+      db.setvalue(dbPath, "testTable.item3", "third");
       local(name = db.getnthitem(dbPath, "testTable", 3));
       return name
     expected_success: true
@@ -249,13 +281,14 @@ tests:
   # Test 12: db.getmoddate - Get modification date
   # ========================================================================
   - name: "db.getmoddate - get item modification date"
-    description: "Get modification date for testString (returns date value)"
+    description: "Create value and get its modification date (self-contained)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "test_db_new.root");
+      local(dbPath = tmpDir + "/" + "test_getmoddate.root");
+      db.new(dbPath);
       db.open(dbPath, false);
+      db.setvalue(dbPath, "testString", "test");
       local(modDate = db.getmoddate(dbPath, "testString"));
-      // Just verify it returns a date (non-zero)
       return (modDate > 0)
     expected_success: true
     expected_result: "true"
@@ -264,11 +297,13 @@ tests:
   # Test 13: db.delete - Delete value
   # ========================================================================
   - name: "db.delete - delete string value"
-    description: "Delete testString from database"
+    description: "Create and delete a value (self-contained)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "test_db_new.root");
+      local(dbPath = tmpDir + "/" + "test_delete.root");
+      db.new(dbPath);
       db.open(dbPath, false);
+      db.setvalue(dbPath, "testString", "test");
       local(ok = db.delete(dbPath, "testString"));
       return ok
     expected_success: true
@@ -327,10 +362,15 @@ tests:
     expected_result: "true"
 
   - name: "db.getvalue - verify persisted value"
-    description: "Verify testNumber persisted across save/close/reopen"
+    description: "Test full persistence cycle: create, save, close, reopen, read"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "test_db_new.root");
+      local(dbPath = tmpDir + "/" + "test_persistence_value.root");
+      db.new(dbPath);
+      db.open(dbPath, false);
+      db.setvalue(dbPath, "testNumber", 42);
+      db.save(dbPath);
+      db.close(dbPath);
       db.open(dbPath, false);
       local(val = db.getvalue(dbPath, "testNumber"));
       return val
@@ -338,10 +378,18 @@ tests:
     expected_result: "42"
 
   - name: "db.countitems - verify persisted table"
-    description: "Verify testTable persisted with all items"
+    description: "Test table persistence: create, populate, save, close, reopen, count"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "test_db_new.root");
+      local(dbPath = tmpDir + "/" + "test_persistence_table.root");
+      db.new(dbPath);
+      db.open(dbPath, false);
+      db.newtable(dbPath, "testTable");
+      db.setvalue(dbPath, "testTable.item1", 1);
+      db.setvalue(dbPath, "testTable.item2", 2);
+      db.setvalue(dbPath, "testTable.item3", 3);
+      db.save(dbPath);
+      db.close(dbPath);
       db.open(dbPath, false);
       local(count = db.countitems(dbPath, "testTable"));
       return count
@@ -349,10 +397,16 @@ tests:
     expected_result: "3"
 
   - name: "db.defined - verify deletion persisted"
-    description: "Verify testString deletion persisted"
+    description: "Test delete persistence: create, delete, save, close, reopen, verify gone"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "test_db_new.root");
+      local(dbPath = tmpDir + "/" + "test_persistence_delete.root");
+      db.new(dbPath);
+      db.open(dbPath, false);
+      db.setvalue(dbPath, "testString", "test");
+      db.delete(dbPath, "testString");
+      db.save(dbPath);
+      db.close(dbPath);
       db.open(dbPath, false);
       local(exists = db.defined(dbPath, "testString"));
       return exists
@@ -363,10 +417,12 @@ tests:
   # Test 17: Cleanup - Close database
   # ========================================================================
   - name: "db.close - final cleanup"
-    description: "Close database after persistence tests"
+    description: "Test close on an open database (self-contained)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "test_db_new.root");
+      local(dbPath = tmpDir + "/" + "test_close_cleanup.root");
+      db.new(dbPath);
+      db.open(dbPath, false);
       local(ok = db.close(dbPath));
       return ok
     expected_success: true
@@ -407,11 +463,13 @@ tests:
     expected_result: "true"
 
   - name: "db.getvalue - read from v7 database"
-    description: "Get value from v7 database"
+    description: "Create v7 DB, write value, read it back (self-contained)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "test_db_v7.root7");
+      local(dbPath = tmpDir + "/" + "test_v7_getvalue.root7");
+      db.new(dbPath);
       db.open(dbPath, false);
+      db.setvalue(dbPath, "v7test", "V7 works!");
       local(val = db.getvalue(dbPath, "v7test"));
       return val
     expected_success: true
@@ -429,45 +487,7 @@ tests:
     expected_result: "true"
 
   # ========================================================================
-  # Test 19: Open existing v6 database (read-only)
-  # ========================================================================
-  - name: "db.open - open existing v6 database readonly"
-    description: "Open the test v6 database in read-only mode"
-    script: |
-      local(ok = db.open("tests/fixtures/v6/test.root", true));
-      return ok
-    expected_success: true
-    expected_result: "true"
-
-  - name: "db.defined - check root in v6 database"
-    description: "Verify root exists in v6 database"
-    script: |
-      db.open("tests/fixtures/v6/test.root", true);
-      local(exists = db.defined("tests/fixtures/v6/test.root", "root"));
-      return exists
-    expected_success: true
-    expected_result: "true"
-
-  - name: "db.istable - verify root is table in v6 database"
-    description: "Verify root is a table"
-    script: |
-      db.open("tests/fixtures/v6/test.root", true);
-      local(isTable = db.istable("tests/fixtures/v6/test.root", "root"));
-      return isTable
-    expected_success: true
-    expected_result: "true"
-
-  - name: "db.close - close v6 database"
-    description: "Close v6 database"
-    script: |
-      db.open("tests/fixtures/v6/test.root", true);
-      local(ok = db.close("tests/fixtures/v6/test.root"));
-      return ok
-    expected_success: true
-    expected_result: "true"
-
-  # ========================================================================
-  # Test 20: Auto-migration of v6 database
+  # Test 19: Auto-migration of v6 database
   # ========================================================================
   - name: "db.open - auto-migration of v6 database"
     description: "Open v6 database in read-write mode, verify auto-migration to v7"

@@ -130,7 +130,7 @@ swapping, and doesn't require thread infrastructure initialization.
 	
 	boolean odbgetnthitem (odbref odb, bigstring bspath, long n, bigstring bsname);
 	
-	boolean odbgetmoddate (odbref odb, bigstring bspath, unsigned long *date);
+	boolean odbgetmoddate (odbref odb, bigstring bspath, int64_t *date);
 	
 	boolean odbdisposevalue (odbref odb, odbValueRecord *value);
 	
@@ -332,7 +332,7 @@ swapping, and doesn't require thread infrastructure initialization.
 		return (fl);
 		}
 
-	boolean odbgetmoddate (odbref odb, bigstring bspath, unsigned long *date) {
+	boolean odbgetmoddate (odbref odb, bigstring bspath, int64_t *date) {
 		odb_context_guard guard;
 		boolean fl;
 
@@ -1197,19 +1197,19 @@ static boolean dbgetmoddateverb (hdltreenode hparam1, tyvaluerecord *vreturned) 
 
 	tyodbrecord odbrec;
 	bigstring bsaddress;
-	unsigned long moddate;
-	
+	int64_t moddate;
+
 	if (!getodbvalue (hparam1, 1, &odbrec, true))
 		return (false);
-	
+
 	flnextparamislast = true;
-	
+
 	if (!getstringvalue (hparam1, 2, bsaddress))
 		return (false);
-	
+
 	if (odberror (odbgetmoddate (odbrec.odb, bsaddress, &moddate)))
 		return (false);
-	
+
 	return (setdatevalue (moddate, vreturned));
 	} /*dbgetmoddateverb*/
 

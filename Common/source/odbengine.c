@@ -706,7 +706,8 @@ pascal boolean odbSaveFile (odbref odb) {
         extern boolean db_migrate_reopen_if_legacy(odbref *podb);
         if (!db_migrate_reopen_if_legacy(&odb))
             return (false);
-        /* After migration/reopen, mode will be set during open. */
+        /* After migration/reopen, refresh hc to point to new database */
+        hc = (hdlcancoonrecord) odb;
     }
 
 	setcancoonglobals (hc);
@@ -1126,28 +1127,35 @@ pascal boolean odbGetNthItem (odbref odb, bigstring bspath, long n, bigstring bs
 
 
 
-pascal boolean odbGetModDate (odbref odb, bigstring bspath, unsigned long *date) {
+pascal boolean odbGetModDate (odbref odb, bigstring bspath, int64_t *date) {
 
-	hdlhashtable htable;
+	hdlhashtable htable, htableitem;
 	bigstring bsname;
 	tyvaluerecord val;
 	hdlhashnode hnode;
-	
+
 	setemptystring (bserror);
-	
+
 	setcancoonglobals ((hdlcancoonrecord) odb);
-	
+
 	if (!odbexpandtodotparams (bspath, &htable, bsname))
 		return (false);
-	
+
 	if (!langsymbolreference (htable, bsname, &val, &hnode))
 		return (false);
-	
-	if (!odbvaltotable (val, &htable, hnode))
+
+	if (hnode == NULL)  /* defensive check */
 		return (false);
-	
-	*date = (**htable).timelastsave;
-	
+
+	/* If the item is a table, return its timelastsave.
+	   Otherwise, return the parent table's timelastsave. */
+	if (langexternalvaltotable (val, &htableitem, hnode)) {
+		*date = (**htableitem).timelastsave;
+	}
+	else {
+		*date = (**htable).timelastsave;
+	}
+
 	return (true);
 	} /*odbGetModDate*/
 

@@ -189,7 +189,7 @@ extern pascal boolean odbCountItems (odbref odb, bigstring bspath, long *count);
 
 extern pascal boolean odbGetNthItem (odbref odb, bigstring bspath, long n, bigstring bsname);
 
-extern pascal boolean odbGetModDate (odbref odb, bigstring bspath, unsigned long *date);
+extern pascal boolean odbGetModDate (odbref odb, bigstring bspath, int64_t *date);
 
 extern pascal void odbInitValue (odbValueRecord *value);
 
