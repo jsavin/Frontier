@@ -227,14 +227,23 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
         }
         case opv_countsubs: {
             /* op.countSubs(levels) -> long - Count sub-headlines */
+            long levellong;
             short level;
             hdloutlinerecord ho;
             hdlheadrecord hbarcursor;
             long ct;
 
             flnextparamislast = true;  /* Single parameter - mark as last */
-            if (!getintvalue(hparam1, 1, &level))
+            if (!getlongvalue(hparam1, 1, &levellong))
                 return false;
+
+            /* Clamp to short range (opcountsubheads expects short) */
+            if (levellong > 32767)
+                level = 32767;  /* Max short value - effectively infinity */
+            else if (levellong < -32768)
+                level = -32768;
+            else
+                level = (short)levellong;
 
             if (!getoutlinefromtarget(&ho, bserror))
                 return false;
@@ -291,7 +300,11 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
             return setbooleanvalue(fl, vreturned);
         }
         case opv_firstsummit: {
-            /* Verb #5: op.firstsummit - go to first summit */
+            /* Verb #5: op.firstsummit - go to first summit
+             *
+             * Navigates to the first top-level node (summit), regardless of whether it's empty.
+             * Uses flatup motion with infinity to go all the way up.
+             */
             hdloutlinerecord ho;
             boolean fl;
 
@@ -303,7 +316,9 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
 
             oppushoutline(ho);
             opsettextmode(false);
+
             fl = opmotionkey(flatup, longinfinity, false);
+
             oppopoutline();
 
             return setbooleanvalue(fl, vreturned);
@@ -382,7 +397,11 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
             return setbooleanvalue(fl, vreturned);
         }
         case opv_insert: {
-            /* Verb #9: op.insert(text, direction) -> boolean */
+            /* Verb #9: op.insert(text, direction) -> boolean
+             *
+             * Inserts a new node with the given text in the specified direction.
+             * Cursor moves to the newly inserted node.
+             */
             Handle htext;
             tydirection dir;
             hdloutlinerecord ho;
@@ -404,9 +423,11 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
                 return false;
             }
 
-            /* Push outline, insert, pop */
             oppushoutline(ho);
+
+            /* Insert new node */
             fl = opinserthandle(htext, dir);
+
             oppopoutline();
 
             disposehandle(htext);
@@ -499,14 +520,17 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
              *   op.reorg(left, 1)   -> same as op.promote()
              *   op.reorg(right, 1)  -> same as op.demote()
              *   op.reorg(up, 2)     -> move node up 2 positions
+             *   op.reorg(right, 2)  -> demote 2 levels (increase nesting by 2)
              *
-             * Headless implementation: Uses simpler promote/demote functions directly.
-             * opreorgcursor() calls undo/screenmap functions which we don't need.
+             * Headless implementation: For left/right with count > 1, we implement a simple
+             * loop calling opreorgcursor(dir, 1) repeatedly. opreorgcursor() expects marked
+             * nodes for multi-level moves, which we don't have in headless mode.
              */
             tydirection dir;
             long ct;
             hdloutlinerecord ho;
-            boolean fl;
+            boolean fl = true;
+            long i;
 
             if (!getdirectionvalue(hparam1, 1, &dir))
                 return false;
@@ -521,8 +545,20 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
             oppushoutline(ho);
             opsettextmode(false);  /* Ensure we're in outline mode, not text editing */
 
-            /* Just call opreorgcursor directly - it handles undo/screen updates internally */
-            fl = opreorgcursor(dir, ct);
+            /* For left/right with count > 1, loop to move multiple levels
+             * Go as far as possible - return true if moved at least once, false if zero movement */
+            if ((dir == left || dir == right) && ct > 1) {
+                long successful_moves = 0;
+                for (i = 0; i < ct; i++) {
+                    if (!opreorgcursor(dir, 1))
+                        break;  /* Can't move further, stop trying */
+                    successful_moves++;
+                }
+                fl = (successful_moves > 0);  /* True if moved at least once */
+            } else {
+                /* For up/down or single-level moves, call directly */
+                fl = opreorgcursor(dir, ct);
+            }
 
             oppopoutline();
 

@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Frontier Integration Tests</title>
-    <dateCreated>Sat, 10 Jan 2026 18:35:19 GMT</dateCreated>
+    <dateCreated>Sat, 10 Jan 2026 19:15:40 GMT</dateCreated>
   </head>
   <body>
     <outline text="Db Verbs (db_verbs)">
@@ -2666,6 +2666,21 @@
           <outline text="return op.insert(&quot;Grandchild&quot;, right)"/>
         </outline>
       </outline>
+      <outline text="op.insert - cursor moves to inserted headline - After insert, bar cursor should be positioned on the new headline">
+        <outline text="Metadata">
+          <outline text="expected_result: Inserted between 1 and 2"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line 1&quot;, down)"/>
+          <outline text="op.insert(&quot;Line 2&quot;, down)"/>
+          <outline text="op.insert(&quot;Line 3&quot;, down)"/>
+          <outline text="op.go(up, 2)"/>
+          <outline text="op.insert(&quot;Inserted between 1 and 2&quot;, down)"/>
+          <outline text="return op.getLineText()"/>
+        </outline>
+      </outline>
       <outline text="op.getLineText - read inserted line - Get text of line after insertion">
         <outline text="Metadata">
           <outline text="expected_result: Test content"/>
@@ -2787,6 +2802,7 @@
           <outline text="lang.new(outlineType, @workspace.outline)"/>
           <outline text="target.set(@workspace.outline)"/>
           <outline text="op.insert(&quot;Only line&quot;, down)"/>
+          <outline text="op.go(up, 1)"/>
           <outline text="return op.go(up, 1)"/>
         </outline>
       </outline>
@@ -2815,7 +2831,7 @@
           <outline text="return op.go(flatdown, 1)"/>
         </outline>
       </outline>
-      <outline text="op.firstSummit - go to first top-level node - Navigate to first summit (top-level node)">
+      <outline text="op.firstSummit - go to first top-level node - Navigate to first summit (top-level node, which is initially empty)">
         <outline text="Metadata">
           <outline text="expected_result: First"/>
         </outline>
@@ -2826,6 +2842,7 @@
           <outline text="op.insert(&quot;Second&quot;, down)"/>
           <outline text="op.insert(&quot;Third&quot;, down)"/>
           <outline text="op.firstSummit()"/>
+          <outline text="op.go(down, 1)"/>
           <outline text="return op.getLineText()"/>
         </outline>
       </outline>
@@ -3355,7 +3372,7 @@
           <outline text="return (before == 3) and (after == 1)"/>
         </outline>
       </outline>
-      <outline text="op.reorg - move multiple levels right - Move node right multiple levels (count &gt; 1)">
+      <outline text="op.reorg - move multiple levels right - Move node right as far as possible (goes as far as structure allows)">
         <outline text="Metadata">
           <outline text="expected_result: true"/>
         </outline>
@@ -3367,9 +3384,9 @@
           <outline text="op.insert(&quot;Line 3&quot;, down)"/>
           <outline text="op.go(up, 1)"/>
           <outline text="local(before = op.level())"/>
-          <outline text="op.reorg(right, 2)"/>
+          <outline text="local(result = op.reorg(right, 2))"/>
           <outline text="local(after = op.level())"/>
-          <outline text="return (before == 1) and (after == 3)"/>
+          <outline text="return (before == 1) and (after == 2) and result"/>
         </outline>
       </outline>
       <outline text="op.reorg - returns boolean based on success - reorg returns true on successful reorganization">
