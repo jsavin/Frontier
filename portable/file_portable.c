@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <limits.h>
 #ifdef __APPLE__
 #include <sys/attr.h>
 #endif
@@ -312,7 +313,7 @@ boolean largefilebuffer(Handle *hbuffer) {
 
 boolean fileexists(const ptrfilespec fs, boolean *flfolder) {
     bigstring bspath;
-    char cpath[512];
+    char cpath[PATH_MAX];  /* Use PATH_MAX instead of hardcoded 512 */
     struct stat st;
 
     if (!fs)

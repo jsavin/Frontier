@@ -573,8 +573,21 @@ static boolean odb_detect_database_version(const tyfilespec *fs, unsigned char *
 	/* Read first 2 bytes (version is at byte offset 1) */
 	if (filereaddata(fnum, ctread, &ctread, header)) {
 		if (ctread >= 2) {  /* Validate we read enough bytes before parsing */
+			/* Validate magic byte (should be 0x00 for valid database) */
+			if (header[0] != 0x00) {
+				log_warn(LOG_COMP_DB, "odb_detect_database_version: invalid magic byte 0x%02x (expected 0x00)", header[0]);
+				/* Continue anyway - might be legacy format or not a database */
+			}
+
 			if (version != NULL) {
 				*version = header[1];  /* Version is second byte */
+
+				/* Validate version is in reasonable range */
+				if (*version == 0 || *version > 10) {
+					log_warn(LOG_COMP_DB, "odb_detect_database_version: suspicious version=%d (expected 1-10)", *version);
+					/* Continue anyway - future versions may exceed 10 */
+				}
+
 				log_trace(LOG_COMP_DB, "odb_detect_database_version: detected version=%d", *version);
 			}
 			ok = true;
