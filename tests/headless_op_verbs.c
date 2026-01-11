@@ -25,6 +25,7 @@
 #include "strings.h"
 #include "lang.h"
 #include "langinternal.h"
+#include "langsystem7.h"
 #include "tablestructure.h"
 #include "langexternal.h"
 #include "op.h"
@@ -302,11 +303,11 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
         case opv_firstsummit: {
             /* Verb #5: op.firstsummit - go to first summit
              *
-             * Navigates to the first top-level node (summit), regardless of whether it's empty.
-             * Uses flatup motion with infinity to go all the way up.
+             * Navigates to the first top-level node (summit), which is always hsummit.
+             * All outlines start with an empty summit (documented in docs/OUTLINE_STRUCTURE.md).
+             * We explicitly move to hsummit using opmoveto() instead of motion keys.
              */
             hdloutlinerecord ho;
-            boolean fl;
 
             if (!langcheckparamcount(hparam1, 0))
                 return false;
@@ -317,11 +318,13 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
             oppushoutline(ho);
             opsettextmode(false);
 
-            fl = opmotionkey(flatup, longinfinity, false);
+            /* Move directly to the summit node (may be empty) */
+            opmoveto((**ho).hsummit);
 
             oppopoutline();
 
-            return setbooleanvalue(fl, vreturned);
+            /* Always return true - we successfully positioned at the summit */
+            return setbooleanvalue(true, vreturned);
         }
         case opv_expand: {
             /* op.expand(levels) -> boolean - expands subheads */
@@ -565,7 +568,10 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
             return setbooleanvalue(fl, vreturned);
         }
         case opv_promote: {
-            /* Verb #14: op.promote - Promote the bar cursor line (move left/outdent) */
+            /* Verb #14: op.promote - Promote children up one level
+             * Moves all children of cursor node out one level.
+             * Delegates to oppromote() which handles multiple nodes correctly.
+             */
             hdloutlinerecord ho;
             boolean fl;
 
@@ -577,13 +583,16 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
 
             oppushoutline(ho);
             opsettextmode(false);
-            fl = opreorgcursor(left, 1);
+            fl = oppromote();
             oppopoutline();
 
             return setbooleanvalue(fl, vreturned);
         }
         case opv_demote: {
-            /* Verb #15: op.demote - Demote the bar cursor line (move right/indent) */
+            /* Verb #15: op.demote - Demote following siblings
+             * Moves all nodes down from cursor to become children of cursor.
+             * Delegates to opdemote() which handles multiple nodes correctly.
+             */
             hdloutlinerecord ho;
             boolean fl;
 
@@ -595,7 +604,7 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
 
             oppushoutline(ho);
             opsettextmode(false);
-            fl = opreorgcursor(right, 1);
+            fl = opdemote();
             oppopoutline();
 
             return setbooleanvalue(fl, vreturned);
@@ -773,6 +782,7 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
             hdloutlinerecord ho;
             hdlheadrecord hnode;
             long nodeid;
+            boolean fl;
 
             flnextparamislast = true;
             if (!getlongvalue(hparam1, 1, &nodeid))
@@ -784,14 +794,28 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
 
             oppushoutline(ho);
 
-            /* Cast identifier back to handle */
+            /* Cast identifier back to handle - validate it's non-zero first */
+            if (nodeid == 0) {
+                oppopoutline();
+                return setbooleanvalue(false, vreturned);
+            }
             hnode = (hdlheadrecord)nodeid;
 
-            /* Set cursor to this node */
-            (**ho).hbarcursor = hnode;
+            /* Verify node is in outline (not deleted) */
+            if (!opnodeinoutline(hnode)) {
+                oppopoutline();
+                return setbooleanvalue(false, vreturned);
+            }
+
+            /* Expand parents to make cursor visible */
+            opexpandto(hnode);
+
+            /* Set cursor to this node using proper movement function */
+            fl = opmoveto(hnode);
+
             oppopoutline();
 
-            return setbooleanvalue(true, vreturned);
+            return setbooleanvalue(fl, vreturned);
         }
         case opv_getrefcon: {
             /* Verb #26: op.getRefcon() -> value
@@ -894,78 +918,153 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
         }
         case opv_setexpansionstate: {
             /* Verb #29: op.setExpansionState(list) -> boolean
-             * Expand nodes specified by list of 1-based line numbers.
-             * Delegates to existing opsetexpansionstateverb().
+             * Restore expansion state from a list of 1-based line numbers.
+             *
+             * Algorithm (from original Frontier implementation):
+             * 1. Iterate through CURRENTLY expanded nodes using opbumpflatdown(..., true)
+             * 2. For nodes in the expansion list: expand if flexpanded flag set and not currently showing subheads
+             * 3. For nodes NOT in the expansion list: collapse if currently expanded
+             * 4. The flexpanded flag indicates persistent expansion state (stored in ODB)
+             *    while opsubheadsexpanded() tells current visible state
              */
             hdloutlinerecord ho;
             tyvaluerecord vlist;
-            boolean fl;
+            hdlheadrecord hnode, nomad;
+            tyvaluerecord vitem;
+            long ct;
+            long ix = 1;
+            long ixlist = 0;
+            long ixoutline = 0;
+            boolean fl = true;
 
             flnextparamislast = true;
             if (!getparamvalue(hparam1, 1, &vlist))
                 return false;
 
+            /* Get list size */
+            if (!langgetlistsize(&vlist, &ct))
+                return false;
+
+            /* Get first expansion line number if list not empty */
+            if (ct > 0) {
+                if (!langgetlistitem(&vlist, ix++, nil, &vitem))
+                    return false;
+                if (!coercevalue(&vitem, longvaluetype))
+                    return false;
+                ixlist = vitem.data.longvalue;
+            }
+
             /* Get outline from target */
             if (!getoutlinefromtarget(&ho, bserror))
                 return false;
 
             oppushoutline(ho);
-            fl = opsetexpansionstateverb(&vlist, vreturned);
-            oppopoutline();
 
-            return fl;
+            /* Disable display during expansion state changes */
+            (**ho).flinhibitdisplay = true;
+            opsettextmode(false);
+
+            /* Iterate through currently expanded nodes */
+            hnode = (**ho).hsummit;
+
+            while (true) {
+                ++ixoutline;
+                nomad = hnode;
+
+                if (ixoutline == ixlist) {
+                    /* This line IS in the expansion list - expand if not currently showing subheads */
+                    if (!opsubheadsexpanded(nomad)) {
+                        /* Set flexpanded flag first, then expand */
+                        (**nomad).flexpanded = true;
+                        opexpand(nomad, 1, true);
+                    }
+
+                    /* Get next item from expansion list */
+                    if (ix <= ct) {
+                        if (!langgetlistitem(&vlist, ix++, nil, &vitem)) {
+                            fl = false;
+                            goto cleanup;
+                        }
+                        if (!coercevalue(&vitem, longvaluetype)) {
+                            fl = false;
+                            goto cleanup;
+                        }
+                        ixlist = vitem.data.longvalue;
+                    }
+                } else {
+                    /* This line is NOT in the expansion list - collapse if expanded */
+                    if (opsubheadsexpanded(nomad)) {
+                        opcollapse(nomad);
+                    }
+                }
+
+                /* Move to next node - iterate only currently expanded/visible nodes */
+                hnode = opbumpflatdown(nomad, true);
+
+                if (hnode == nomad)
+                    break;
+            }
+
+            /* Move cursor to an expanded node */
+            hnode = (**ho).hbarcursor;
+            while (!(**hnode).flexpanded) {
+                /* Check if we've reached the summit (node points to itself) */
+                hdlheadrecord hparent = (**hnode).headlinkleft;
+                if (hnode == hparent || hparent == (**ho).hsummit)
+                    break;
+                hnode = hparent;
+            }
+            opmoveto(hnode);
+
+        cleanup:
+            /* Re-enable display */
+            (**ho).flinhibitdisplay = false;
+            oppopoutline();
+            return setbooleanvalue(fl, vreturned);
         }
         case opv_getscrollstate: {
             /* Verb #30: op.getScrollState() -> long
-             * Returns opaque identifier for top visible line position.
-             * Returns handle cast to long (legacy behavior).
-             * Identifier remains stable even when outline reorganizes.
+             * Returns the line number (1-based) of the first headline displayed in the outline.
+             *
+             * HEADLESS MODE BEHAVIOR: Scroll state is meaningless without a visual display.
+             * Always returns 1 (first line) since there's no concept of "scrolled position"
+             * in a non-visual, headless environment.
              */
             hdloutlinerecord ho;
-            hdlheadrecord hline1;
 
             /* No parameters */
             if (!langcheckparamcount(hparam1, 0))
                 return false;
 
-            /* Get outline from target */
+            /* Get outline from target (validate it exists) */
             if (!getoutlinefromtarget(&ho, bserror))
                 return false;
 
-            oppushoutline(ho);
-            hline1 = (**ho).hline1;
-            oppopoutline();
-
-            /* Return handle as opaque identifier */
-            return setlongvalue((long)hline1, vreturned);
+            /* In headless mode, scroll state doesn't apply - always return 1 (first line) */
+            return setlongvalue(1, vreturned);
         }
         case opv_setscrollstate: {
-            /* Verb #31: op.setScrollState(id) -> boolean
-             * Set top visible line to node identified by opaque identifier.
-             * Takes identifier from getScrollState() and casts back to handle.
-             * Returns false if identifier is invalid (node deleted, etc).
+            /* Verb #31: op.setScrollState(linenum) -> boolean
+             * Scrolls the outline so that linenum is the first line displayed.
+             *
+             * HEADLESS MODE BEHAVIOR: Scroll state is meaningless without a visual display.
+             * This is a noop operation - accepts the parameter for API compatibility but
+             * does nothing, since there's no visual window to scroll in headless mode.
+             * Always returns true (success).
              */
             hdloutlinerecord ho;
-            hdlheadrecord hnode;
-            long nodeid;
+            long line1;
 
+            /* Accept parameter for API compatibility */
             flnextparamislast = true;
-            if (!getlongvalue(hparam1, 1, &nodeid))
+            if (!getlongvalue(hparam1, 1, &line1))
                 return false;
 
-            /* Get outline from target */
+            /* Get outline from target (validate it exists) */
             if (!getoutlinefromtarget(&ho, bserror))
                 return false;
 
-            oppushoutline(ho);
-
-            /* Cast identifier back to handle */
-            hnode = (hdlheadrecord)nodeid;
-
-            /* Set top visible line to this node */
-            (**ho).hline1 = hnode;
-            oppopoutline();
-
+            /* In headless mode, scroll state doesn't apply - noop operation */
             return setbooleanvalue(true, vreturned);
         }
         case opv_getsuboutline:
