@@ -106,6 +106,20 @@ tests:
     expected_success: true
     expected_result: "true"
 
+  - name: "op.insert - cursor moves to inserted headline"
+    description: "After insert, bar cursor should be positioned on the new headline"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line 1", down);
+      op.insert("Line 2", down);
+      op.insert("Line 3", down);
+      op.go(up, 2);
+      op.insert("Inserted between 1 and 2", down);
+      return op.getLineText()
+    expected_success: true
+    expected_result: "Inserted between 1 and 2"
+
   # ====================================================================
   # op.getLineText() - Reading Content
   # ====================================================================
@@ -224,6 +238,7 @@ tests:
       lang.new(outlineType, @workspace.outline);
       target.set(@workspace.outline);
       op.insert("Only line", down);
+      op.go(up, 1);
       return op.go(up, 1)
     expected_success: true
     expected_result: "false"
@@ -256,7 +271,7 @@ tests:
   # ====================================================================
 
   - name: "op.firstSummit - go to first top-level node"
-    description: "Navigate to first summit (top-level node)"
+    description: "Navigate to first summit (top-level node, which is initially empty)"
     script: |
       lang.new(outlineType, @workspace.outline);
       target.set(@workspace.outline);
@@ -264,6 +279,7 @@ tests:
       op.insert("Second", down);
       op.insert("Third", down);
       op.firstSummit();
+      op.go(down, 1);
       return op.getLineText()
     expected_success: true
     expected_result: "First"
@@ -802,7 +818,7 @@ tests:
     expected_result: "true"
 
   - name: "op.reorg - move multiple levels right"
-    description: "Move node right multiple levels (count > 1)"
+    description: "Move node right as far as possible (goes as far as structure allows)"
     script: |
       lang.new(outlineType, @workspace.outline);
       target.set(@workspace.outline);
@@ -811,9 +827,9 @@ tests:
       op.insert("Line 3", down);
       op.go(up, 1);
       local(before = op.level());
-      op.reorg(right, 2);
+      local(result = op.reorg(right, 2));
       local(after = op.level());
-      return (before == 1) and (after == 3)
+      return (before == 1) and (after == 2) and result
     expected_success: true
     expected_result: "true"
 
