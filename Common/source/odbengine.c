@@ -635,8 +635,10 @@ pascal boolean odbOpenFile (hdlfilenum fnum, odbref *odb, boolean flreadonly) {
 		hdlhashtable htable;
 		if (!langexternalnewvalue(idtableprocessor, nil, &val))
 			goto error;
-		if (!langexternalvaltotable(val, &htable, nil))
+		if (!langexternalvaltotable(val, &htable, nil)) {
+			disposevaluerecord(val, false);
 			goto error;
+		}
 
 		(**hc).hrootvariable = rootvariable = (hdltablevariable)val.data.externalvalue;
 		(**hc).hroottable = roottable = htable;

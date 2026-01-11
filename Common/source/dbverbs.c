@@ -573,10 +573,10 @@ static boolean odb_detect_database_version(const tyfilespec *fs, unsigned char *
 	/* Read first 2 bytes (version is at byte offset 1) */
 	if (filereaddata(fnum, ctread, &ctread, header)) {
 		if (ctread >= 2) {  /* Validate we read enough bytes before parsing */
-			/* Validate magic byte (should be 0x00 for valid database) */
-			if (header[0] != 0x00) {
-				log_warn(LOG_COMP_DB, "odb_detect_database_version: invalid magic byte 0x%02x (expected 0x00)", header[0]);
-				/* Continue anyway - might be legacy format or not a database */
+			/* Validate magic byte (0x00 for v7, 0x01 for v6)
+			 * If invalid, continue anyway - version byte may still be valid */
+			if (header[0] != 0x00 && header[0] != 0x01) {
+				log_warn(LOG_COMP_DB, "odb_detect_database_version: unexpected magic byte 0x%02x (expected 0x00 or 0x01)", header[0]);
 			}
 
 			if (version != NULL) {
@@ -807,48 +807,62 @@ static boolean dbopenverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 				/* v6 database, need to migrate */
 				log_debug(LOG_COMP_DB, "dbopenverb: detected v6 database (version=%d), migrating to v7", version);
 
-				bigstring bspath_cstr;
-				char cpath[DB_PATH_MAX];
-				char output_path[DB_PATH_MAX];
-				boolean migrated = false;
-
-				filespectopath(&odbrec.fs, bspath_cstr);
-				copyptocstring(bspath_cstr, cpath);
-
-				log_trace(LOG_COMP_DB, "dbopenverb: calling ensure_database_v7 for %s", cpath);
-
-				/* Notify user that migration is starting */
-				fprintf(stdout, "Migrating v6 database to v7 format...\n");
-				fprintf(stdout, "  Source: %s\n", cpath);
-
-				/* Call migration function */
-				if (!ensure_database_v7(cpath, &migrated, output_path, sizeof(output_path))) {
-					log_error(LOG_COMP_DB, "dbopenverb: migration failed for %s", cpath);
-
-					/* Provide detailed error message to user */
-					char errmsg[512];
-					snprintf(errmsg, sizeof(errmsg), "Database migration failed for: %s", cpath);
-					bigstring bserr;
-					copyctopstring(errmsg, bserr);
-					langerrormessage(bserr);
-					return (false);
+				/*
+				 * TOCTOU race condition mitigation: Double-check that .root7 doesn't exist
+				 * before calling migration. Another process may have created it between
+				 * the initial check (line 785) and now.
+				 */
+				tyfilespec fs_root7_recheck;
+				if (odb_check_root7_exists(&odbrec.fs, &fs_root7_recheck)) {
+					/* Race detected: .root7 was created by another process */
+					log_info(LOG_COMP_DB, "dbopenverb: TOCTOU race detected - .root7 created by another process, using it");
+					odbrec.fs = fs_root7_recheck;
 				}
+				else {
+					/* Safe to migrate - .root7 still doesn't exist */
+					bigstring bspath_cstr;
+					char cpath[DB_PATH_MAX];
+					char output_path[DB_PATH_MAX];
+					boolean migrated = false;
 
-				log_trace(LOG_COMP_DB, "dbopenverb: migration succeeded, output=%s", output_path);
+					filespectopath(&odbrec.fs, bspath_cstr);
+					copyptocstring(bspath_cstr, cpath);
 
-				/* Notify user that migration succeeded */
-				fprintf(stdout, "  Output: %s\n", output_path);
-				fprintf(stdout, "Migration complete.\n");
+					log_trace(LOG_COMP_DB, "dbopenverb: calling ensure_database_v7 for %s", cpath);
 
-				/* Update odbrec.fs to point to .root7 file */
-				bigstring bsoutput;
-				copyctopstring(output_path, bsoutput);
-				if (!pathtofilespec(bsoutput, &odbrec.fs)) {
-					log_error(LOG_COMP_DB, "dbopenverb: pathtofilespec failed for migrated path %s", output_path);
-					return (false);
+					/* Notify user that migration is starting */
+					fprintf(stdout, "Migrating v6 database to v7 format...\n");
+					fprintf(stdout, "  Source: %s\n", cpath);
+
+					/* Call migration function */
+					if (!ensure_database_v7(cpath, &migrated, output_path, sizeof(output_path))) {
+						log_error(LOG_COMP_DB, "dbopenverb: migration failed for %s", cpath);
+
+						/* Provide detailed error message to user */
+						char errmsg[512];
+						snprintf(errmsg, sizeof(errmsg), "Database migration failed for: %s", cpath);
+						bigstring bserr;
+						copyctopstring(errmsg, bserr);
+						langerrormessage(bserr);
+						return (false);
+					}
+
+					log_trace(LOG_COMP_DB, "dbopenverb: migration succeeded, output=%s", output_path);
+
+					/* Notify user that migration succeeded */
+					fprintf(stdout, "  Output: %s\n", output_path);
+					fprintf(stdout, "Migration complete.\n");
+
+					/* Update odbrec.fs to point to .root7 file */
+					bigstring bsoutput;
+					copyctopstring(output_path, bsoutput);
+					if (!pathtofilespec(bsoutput, &odbrec.fs)) {
+						log_error(LOG_COMP_DB, "dbopenverb: pathtofilespec failed for migrated path %s", output_path);
+						return (false);
+					}
+
+					log_debug(LOG_COMP_DB, "dbopenverb: migration complete, will open %s", output_path);
 				}
-
-				log_debug(LOG_COMP_DB, "dbopenverb: migration complete, will open %s", output_path);
 			}
 		} else {
 			log_debug(LOG_COMP_DB, "dbopenverb: failed to detect database version");
@@ -1285,7 +1299,8 @@ boolean db_migrate_reopen_if_legacy(odbref *podb) {
         return true; /* already v7 */
 
     hdlodbrecord hodb;
-    for (hodb = hodblist; hodb != nil; hodb = (**hodb).hnext) {
+    /* Skip sentinel (hodblist itself) when searching */
+    for (hodb = (**hodblist).hnext; hodb != nil; hodb = (**hodb).hnext) {
         if ((**hodb).odb == *podb) {
             bigstring bspath;
             char cpath[1024];
