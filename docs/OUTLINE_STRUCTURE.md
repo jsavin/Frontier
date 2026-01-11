@@ -78,6 +78,9 @@ op.expand(1);                      // Expand to show Child
 **Structure:**
 - Line 1: Empty headline (summit, always expanded)
 - Line 2: "Parent" (summit, expanded to show child)
+  - **Note**: "Parent" is a SIBLING of the empty summit, not a child
+  - `op.insert("Parent", down)` inserts DOWN from empty summit, creating a sibling
+  - Both empty summit and "Parent" are at the summit level
 - Line 3: "Child" (child of line 2)
 
 **Total lines:** 3 (not 2)

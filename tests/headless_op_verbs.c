@@ -794,7 +794,11 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
 
             oppushoutline(ho);
 
-            /* Cast identifier back to handle */
+            /* Cast identifier back to handle - validate it's non-zero first */
+            if (nodeid == 0) {
+                oppopoutline();
+                return setbooleanvalue(false, vreturned);
+            }
             hnode = (hdlheadrecord)nodeid;
 
             /* Verify node is in outline (not deleted) */
@@ -1004,9 +1008,11 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
             /* Move cursor to an expanded node */
             hnode = (**ho).hbarcursor;
             while (!(**hnode).flexpanded) {
-                if (hnode == (**hnode).headlinkleft)
+                /* Check if we've reached the summit (node points to itself) */
+                hdlheadrecord hparent = (**hnode).headlinkleft;
+                if (hnode == hparent || hparent == (**ho).hsummit)
                     break;
-                hnode = (**hnode).headlinkleft;
+                hnode = hparent;
             }
             opmoveto(hnode);
 
