@@ -706,7 +706,8 @@ pascal boolean odbSaveFile (odbref odb) {
         extern boolean db_migrate_reopen_if_legacy(odbref *podb);
         if (!db_migrate_reopen_if_legacy(&odb))
             return (false);
-        /* After migration/reopen, mode will be set during open. */
+        /* After migration/reopen, refresh hc to point to new database */
+        hc = (hdlcancoonrecord) odb;
     }
 
 	setcancoonglobals (hc);
