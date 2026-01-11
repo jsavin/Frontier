@@ -573,10 +573,11 @@ static boolean odb_detect_database_version(const tyfilespec *fs, unsigned char *
 	/* Read first 2 bytes (version is at byte offset 1) */
 	if (filereaddata(fnum, ctread, &ctread, header)) {
 		if (ctread >= 2) {  /* Validate we read enough bytes before parsing */
-			/* Validate magic byte (0x00 for v7, 0x01 for v6)
-			 * If invalid, continue anyway - version byte may still be valid */
+			/* Validate magic byte (0x00 for v7, 0x01 for v6) */
 			if (header[0] != 0x00 && header[0] != 0x01) {
-				log_warn(LOG_COMP_DB, "odb_detect_database_version: unexpected magic byte 0x%02x (expected 0x00 or 0x01)", header[0]);
+				log_error(LOG_COMP_DB, "odb_detect_database_version: invalid magic byte 0x%02x (file corrupted)", header[0]);
+				closefile(fnum);
+				return false;
 			}
 
 			if (version != NULL) {
@@ -794,8 +795,12 @@ static boolean dbopenverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 			filespectopath(&fs_root7, bspath_v7);
 			copyptocstring(bspath_v7, cpath_v7);
 
-			fprintf(stdout, "Using migrated v7 database: %s\n", cpath_v7);
-			fprintf(stdout, "  (requested v6 database: %s)\n", cpath_orig);
+			fputs("Using migrated v7 database: ", stdout);
+			fputs(cpath_v7, stdout);
+			fputs("\n", stdout);
+			fputs("  (requested v6 database: ", stdout);
+			fputs(cpath_orig, stdout);
+			fputs(")\n", stdout);
 
 			odbrec.fs = fs_root7;
 		}
@@ -831,8 +836,10 @@ static boolean dbopenverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 					log_trace(LOG_COMP_DB, "dbopenverb: calling ensure_database_v7 for %s", cpath);
 
 					/* Notify user that migration is starting */
-					fprintf(stdout, "Migrating v6 database to v7 format...\n");
-					fprintf(stdout, "  Source: %s\n", cpath);
+					fputs("Migrating v6 database to v7 format...\n", stdout);
+					fputs("  Source: ", stdout);
+					fputs(cpath, stdout);
+					fputs("\n", stdout);
 
 					/* Call migration function */
 					if (!ensure_database_v7(cpath, &migrated, output_path, sizeof(output_path))) {
@@ -850,10 +857,17 @@ static boolean dbopenverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 					log_trace(LOG_COMP_DB, "dbopenverb: migration succeeded, output=%s", output_path);
 
 					/* Notify user that migration succeeded */
-					fprintf(stdout, "  Output: %s\n", output_path);
-					fprintf(stdout, "Migration complete.\n");
+					fputs("  Output: ", stdout);
+					fputs(output_path, stdout);
+					fputs("\n", stdout);
+					fputs("Migration complete.\n", stdout);
 
 					/* Update odbrec.fs to point to .root7 file */
+					if (output_path[0] == '\0') {
+						log_error(LOG_COMP_DB, "dbopenverb: migration returned empty output path");
+						return (false);
+					}
+
 					bigstring bsoutput;
 					copyctopstring(output_path, bsoutput);
 					if (!pathtofilespec(bsoutput, &odbrec.fs)) {
