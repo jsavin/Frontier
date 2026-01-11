@@ -445,6 +445,8 @@ static void db_context_guard_exit_with_saveas(const db_context_guard *guard, con
         db_saveas_state_apply(&guard->prev_saveas);
 }
 
+/* odb_guard functions moved to db_format.c where lang.h globals are available */
+
 boolean dbpushdatabase (hdldatabaserecord hdatabase) {
 	/*
 	when you want to temporarily work with a different databaserecord, call this

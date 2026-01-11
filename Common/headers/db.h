@@ -246,4 +246,17 @@ extern boolean dbstatsmessage (hdldatabaserecord, boolean); /*6.2a8 AR*/
 
 extern boolean statsstart (void);
 
+/* Database global state guard for nested database operations (migration, etc.)
+ * Uses opaque pointers to avoid circular header dependencies with lang.h */
+typedef struct odb_context_guard {
+	void *saved_currenthashtable;  /* hdlhashtable */
+	hdldatabaserecord saved_databasedata;
+	void *saved_hashtablestack;    /* hdltablestack */
+	void *saved_rootvariable;      /* Handle */
+	void *saved_roottable;         /* hdlhashtable */
+} odb_context_guard;
+
+extern void odb_guard_enter(odb_context_guard *guard);
+extern void odb_guard_exit(odb_context_guard *guard);
+
 #endif

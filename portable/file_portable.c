@@ -14,6 +14,7 @@
 #include "standard.h"
 #include "file.h"
 #include "memory.h"
+#include "strings.h"
 #include "file_portable.h"
 #include "file_working_dir.h"
 #include "logging.h"
@@ -307,6 +308,33 @@ boolean largefilebuffer(Handle *hbuffer) {
         return false;
     long sz = 32 * 1024;
     return newhandle(sz, hbuffer);
+}
+
+boolean fileexists(const ptrfilespec fs, boolean *flfolder) {
+    bigstring bspath;
+    char cpath[512];
+    struct stat st;
+
+    if (!fs || !flfolder)
+        return false;
+
+    *flfolder = false;
+
+    /* Convert filespec to path */
+    if (!filespectopath(fs, bspath))
+        return false;
+
+    /* Convert bigstring to C string */
+    copyptocstring(bspath, cpath);
+
+    /* Check if file exists using stat */
+    if (stat(cpath, &st) != 0)
+        return false;
+
+    /* Set folder flag if it's a directory */
+    *flfolder = S_ISDIR(st.st_mode);
+
+    return true;
 }
 
 boolean fileisfolder(const ptrfilespec fs, boolean *out) {

@@ -965,8 +965,8 @@ boolean ccnewrecord (void) {
 	(**cancoonwindowinfo).hdata = (Handle) hc; /*link data to window*/
 	
 	fnum = windowgetfnum (cancoonwindow);
-	
-	if (!dbnew (fnum))
+
+	if (!dbnew (fnum, true))  /* Create v7 format */
 		goto error;
 	
 	dbsetview (cancoonview, nildbaddress);

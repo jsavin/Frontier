@@ -71,29 +71,7 @@ swapping, and doesn't require thread infrastructure initialization.
 */
 
 /* ODB context guard - protects caller globals from ODB engine modifications */
-typedef struct odb_context_guard {
-	hdlhashtable saved_currenthashtable;
-	hdldatabaserecord saved_databasedata;
-	hdltablestack saved_hashtablestack;
-	void *saved_rootvariable;  /* Handle */
-	hdlhashtable saved_roottable;
-} odb_context_guard;
-
-static void odb_guard_enter(odb_context_guard *guard) {
-	guard->saved_currenthashtable = currenthashtable;
-	guard->saved_databasedata = databasedata;
-	guard->saved_hashtablestack = hashtablestack;
-	guard->saved_rootvariable = rootvariable;
-	guard->saved_roottable = roottable;
-}
-
-static void odb_guard_exit(odb_context_guard *guard) {
-	currenthashtable = guard->saved_currenthashtable;
-	databasedata = guard->saved_databasedata;
-	hashtablestack = guard->saved_hashtablestack;
-	rootvariable = guard->saved_rootvariable;
-	roottable = guard->saved_roottable;
-}
+/* odb_context_guard moved to db.h and implemented in db.c for shared use */
 
 #ifdef usingsharedlibrary
 
@@ -451,8 +429,10 @@ static boolean odberror (boolean flresult) {
 	} /*odberror*/
 
 
-/* Forward declaration */
+/* Forward declarations */
 static void odb_ensure_root7_extension(tyfilespec *fs);
+static boolean odb_detect_database_version(const tyfilespec *fs, unsigned char *version);
+static boolean odb_check_root7_exists(const tyfilespec *fs, tyfilespec *fs_root7);
 
 
 static boolean getodbparam (hdltreenode hparam1, short pnum, hdlodbrecord *hodbrecord) {
@@ -473,15 +453,24 @@ static boolean getodbparam (hdltreenode hparam1, short pnum, hdlodbrecord *hodbr
 	if (!getfilespecvalue (hparam1, pnum, ptrfs))
 		return (false);
 
-	/* Phase 1: Transform .root to .root7 for lookup (matches db.open behavior) */
-	odb_ensure_root7_extension(ptrfs);
-
+	/* Try exact match first */
 	for (hodb = hodblist; hodb != nil; hodb = (**hodb).hnext) {
 		if ( equalfilespecs ( &( **hodb ).fs, ptrfs ) ) {
 			*hodbrecord = hodb;
 			return (true);
 			}
 		}
+
+	/* If .root path provided and not found, try .root7 fallback */
+	tyfilespec fs_root7;
+	if (odb_check_root7_exists(ptrfs, &fs_root7)) {
+		for (hodb = hodblist; hodb != nil; hodb = (**hodb).hnext) {
+			if ( equalfilespecs ( &( **hodb ).fs, &fs_root7 ) ) {
+				*hodbrecord = hodb;
+				return (true);
+				}
+			}
+	}
 
 	getfsfile ( ptrfs, bs );
 
@@ -544,12 +533,87 @@ boolean dbcloseallfiles (long refcon) {
 
 
 
+/*
+ * odb_detect_database_version
+ *
+ * Detect database version by reading the header's version byte.
+ * Returns true if successful, false if file doesn't exist or can't be read.
+ * Sets *version to the database version number (6 or 7).
+ */
+static boolean odb_detect_database_version(const tyfilespec *fs, unsigned char *version) {
+	hdlfilenum fnum = 0;
+	unsigned char header[2];
+	long ctread = 2;
+	boolean ok = false;
+
+	if (version != NULL)
+		*version = 0;
+
+	/* Open file for reading */
+	if (!openfile((tyfilespec *)fs, &fnum, true)) {
+		log_trace(LOG_COMP_DB, "odb_detect_database_version: openfile failed");
+		return false;
+	}
+
+	/* Read first 2 bytes (version is at byte offset 1) */
+	if (filereaddata(fnum, ctread, &ctread, header) && ctread == 2) {
+		if (version != NULL)
+			*version = header[1];  /* Version is second byte */
+		log_trace(LOG_COMP_DB, "odb_detect_database_version: detected version=%d", *version);
+		ok = true;
+	} else {
+		log_trace(LOG_COMP_DB, "odb_detect_database_version: filereaddata failed or read %ld bytes (expected 2)", ctread);
+	}
+
+	closefile(fnum);
+	return ok;
+}
+
+/*
+ * odb_check_root7_exists
+ *
+ * Check if .root7 version of a .root file exists.
+ * If input is "test.root" and "test.root7" exists, returns true and sets fs_root7.
+ * If input doesn't end with .root, or .root7 doesn't exist, returns false.
+ */
+static boolean odb_check_root7_exists(const tyfilespec *fs, tyfilespec *fs_root7) {
+	bigstring bspath, bspath7;
+
+	/* Get path as string */
+	filespectopath((tyfilespec *)fs, bspath);
+	long len = stringlength(bspath);
+
+	/* Only proceed if path ends with .root */
+	if (len < 5)
+		return false;
+
+	bigstring bsext;
+	midstring(bspath, len - 4, 5, bsext);  /* Extract last 5 chars */
+
+	if (!equalstrings(bsext, BIGSTRING("\x05.root")))
+		return false;  /* Doesn't end with .root */
+
+	/* Build .root7 version of the path */
+	copystring(bspath, bspath7);
+	setstringlength(bspath7, len - 5);  /* Remove .root */
+	pushstring(BIGSTRING("\x06.root7"), bspath7);  /* Append .root7 */
+
+	/* Check if .root7 file exists */
+	if (!pathtofilespec(bspath7, fs_root7))
+		return false;
+
+	boolean flfolder = false;
+	return fileexists(fs_root7, &flfolder);
+}
 
 /*
  * odb_ensure_root7_extension
  *
  * Phase 1: Ensures the filespec has a .root7 extension (replaces .root if present).
  * This creates v7 databases with the temporary .root7 extension to coexist with v6.
+ *
+ * ONLY use this for db.new (creating new databases). For db.open/db.defined, use
+ * odb_resolve_path_for_open which does smart fallback to support both v6 and v7.
  */
 static void odb_ensure_root7_extension(tyfilespec *fs) {
 	bigstring bspath;
@@ -665,9 +729,6 @@ static boolean dbopenverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 		return (false);
 	}
 
-	/* Phase 1: Ensure .root7 extension (same as db.new) */
-	odb_ensure_root7_extension(&odbrec.fs);
-
 	filespectopath(&odbrec.fs, bspath);
 	log_debug(LOG_COMP_DB, "dbopenverb: path=%s", stringbaseaddress(bspath));
 
@@ -679,6 +740,61 @@ static boolean dbopenverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	}
 
 	log_debug(LOG_COMP_DB, "dbopenverb: readonly=%d", odbrec.flreadonly);
+
+	/* Auto-migration: If opening a v6 database in read-write mode, migrate to v7 */
+	if (!odbrec.flreadonly) {
+		unsigned char version = 0;
+		tyfilespec fs_root7;
+
+		log_debug(LOG_COMP_DB, "dbopenverb: AUTO-MIGRATION CHECK START (read-write mode)");
+
+		/* Check if .root7 already exists */
+		if (odb_check_root7_exists(&odbrec.fs, &fs_root7)) {
+			/* .root7 exists, use it instead */
+			log_debug(LOG_COMP_DB, "dbopenverb: .root7 exists, using it");
+			odbrec.fs = fs_root7;
+		}
+		/* If no .root7, check if this is a v6 database */
+		else if (odb_detect_database_version(&odbrec.fs, &version)) {
+			log_debug(LOG_COMP_DB, "dbopenverb: detected database version=%d", version);
+
+			if (version <= 6) {
+				/* v6 database, need to migrate */
+				log_debug(LOG_COMP_DB, "dbopenverb: detected v6 database (version=%d), migrating to v7", version);
+
+				bigstring bspath_cstr;
+				char cpath[1024];
+				char output_path[1024];
+				boolean migrated = false;
+
+				filespectopath(&odbrec.fs, bspath_cstr);
+				copyptocstring(bspath_cstr, cpath);
+
+				log_trace(LOG_COMP_DB, "dbopenverb: calling ensure_database_v7 for %s", cpath);
+
+				/* Call migration function */
+				if (!ensure_database_v7(cpath, &migrated, output_path, sizeof(output_path))) {
+					log_error(LOG_COMP_DB, "dbopenverb: migration failed for %s", cpath);
+					langerrormessage(BIGSTRING("\x19" "Database migration failed"));
+					return (false);
+				}
+
+				log_trace(LOG_COMP_DB, "dbopenverb: migration succeeded, output=%s", output_path);
+
+				/* Update odbrec.fs to point to .root7 file */
+				bigstring bsoutput;
+				copyctopstring(output_path, bsoutput);
+				if (!pathtofilespec(bsoutput, &odbrec.fs)) {
+					log_error(LOG_COMP_DB, "dbopenverb: pathtofilespec failed for migrated path %s", output_path);
+					return (false);
+				}
+
+				log_debug(LOG_COMP_DB, "dbopenverb: migration complete, will open %s", output_path);
+			}
+		} else {
+			log_warn(LOG_COMP_DB, "dbopenverb: failed to detect database version");
+		}
+	}
 
 	w = shellfindfilewindow ( &odbrec.fs );
 
