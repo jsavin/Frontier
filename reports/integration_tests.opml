@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Frontier Integration Tests</title>
-    <dateCreated>Sun, 11 Jan 2026 00:55:15 GMT</dateCreated>
+    <dateCreated>Sun, 11 Jan 2026 01:16:34 GMT</dateCreated>
   </head>
   <body>
     <outline text="Db Verbs (db_verbs)">
@@ -3093,7 +3093,7 @@
           <outline text="return op.collapse()"/>
         </outline>
       </outline>
-      <outline text="op.promote - move child to sibling of parent - Promote child node to same level as parent (outdent)">
+      <outline text="op.promote - move child to sibling of parent - op.promote() promotes children of current node (moves subheads left one level)">
         <outline text="Metadata">
           <outline text="expected_result: true"/>
         </outline>
@@ -3101,14 +3101,33 @@
           <outline text="lang.new(outlineType, @workspace.outline)"/>
           <outline text="target.set(@workspace.outline)"/>
           <outline text="op.insert(&quot;Parent&quot;, down)"/>
-          <outline text="op.insert(&quot;Child&quot;, right)"/>
-          <outline text="local(before = op.level())"/>
+          <outline text="op.insert(&quot;Child 1&quot;, right)"/>
+          <outline text="op.insert(&quot;Child 2&quot;, down)"/>
+          <outline text="/* Outline structure:">
+            <outline text="Parent (level 1)">
+              <outline text="Child 1 (level 2)"/>
+              <outline text="Child 2 (level 2)"/>
+            </outline>
+            <outline text="Cursor is on Child 2 */"/>
+          </outline>
+          <outline text="op.go(up, 1)"/>
+          <outline text="/* Cursor on Child 1 - check its level before promoting Parent's children */"/>
+          <outline text="local(child1LevelBefore = op.level())"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="/* Cursor on Parent - promote its children (Child 1 and Child 2) */"/>
           <outline text="op.promote()"/>
-          <outline text="local(after = op.level())"/>
-          <outline text="return before == 2 and after == 1"/>
+          <outline text="/* After promote, children move left one level:">
+            <outline text="Parent (level 1)"/>
+            <outline text="Child 1 (level 1) - was level 2"/>
+            <outline text="Child 2 (level 1) - was level 2 */"/>
+          </outline>
+          <outline text="op.go(down, 1)"/>
+          <outline text="/* Cursor on Child 1 - verify it's now level 1 */"/>
+          <outline text="local(child1LevelAfter = op.level())"/>
+          <outline text="return child1LevelBefore == 2 and child1LevelAfter == 1"/>
         </outline>
       </outline>
-      <outline text="op.promote - returns boolean - promote returns true when node is promoted">
+      <outline text="op.promote - returns boolean - promote returns true when children exist to promote">
         <outline text="Metadata">
           <outline text="expected_result: true"/>
         </outline>
@@ -3117,6 +3136,9 @@
           <outline text="target.set(@workspace.outline)"/>
           <outline text="op.insert(&quot;Parent&quot;, down)"/>
           <outline text="op.insert(&quot;Child&quot;, right)"/>
+          <outline text="/* Cursor is on Child after inserting it */"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="/* Cursor is on Parent - promote its children */"/>
           <outline text="return op.promote()"/>
         </outline>
       </outline>
@@ -3131,22 +3153,39 @@
           <outline text="return op.promote()"/>
         </outline>
       </outline>
-      <outline text="op.demote - make sibling a child - Demote node to child of previous sibling (indent)">
+      <outline text="op.demote - make sibling a child - op.demote() demotes siblings after current node (moves following siblings right to become children)">
         <outline text="Metadata">
           <outline text="expected_result: true"/>
         </outline>
         <outline text="Script">
           <outline text="lang.new(outlineType, @workspace.outline)"/>
           <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
           <outline text="op.insert(&quot;Sibling 1&quot;, down)"/>
           <outline text="op.insert(&quot;Sibling 2&quot;, down)"/>
-          <outline text="local(before = op.level())"/>
+          <outline text="/* Outline structure:">
+            <outline text="Parent (level 1)"/>
+            <outline text="Sibling 1 (level 1)"/>
+            <outline text="Sibling 2 (level 1)"/>
+            <outline text="Cursor is on Sibling 2 */"/>
+          </outline>
+          <outline text="local(sibling2LevelBefore = op.level())"/>
+          <outline text="op.go(up, 1)"/>
+          <outline text="/* Cursor on Sibling 1 - demote following siblings (Sibling 2) */"/>
           <outline text="op.demote()"/>
-          <outline text="local(after = op.level())"/>
-          <outline text="return before == 1 and after == 2"/>
+          <outline text="/* After demote:">
+            <outline text="Parent (level 1)"/>
+            <outline text="Sibling 1 (level 1)">
+              <outline text="Sibling 2 (level 2) - was level 1 */"/>
+            </outline>
+          </outline>
+          <outline text="op.go(right, 1)"/>
+          <outline text="/* Cursor on Sibling 2 (now a child of Sibling 1) */"/>
+          <outline text="local(sibling2LevelAfter = op.level())"/>
+          <outline text="return sibling2LevelBefore == 1 and sibling2LevelAfter == 2"/>
         </outline>
       </outline>
-      <outline text="op.demote - returns boolean - demote returns true when node is demoted">
+      <outline text="op.demote - returns boolean - demote returns true when siblings exist to demote">
         <outline text="Metadata">
           <outline text="expected_result: true"/>
         </outline>
@@ -3155,6 +3194,9 @@
           <outline text="target.set(@workspace.outline)"/>
           <outline text="op.insert(&quot;Line 1&quot;, down)"/>
           <outline text="op.insert(&quot;Line 2&quot;, down)"/>
+          <outline text="/* Cursor is on Line 2 */"/>
+          <outline text="op.go(up, 1)"/>
+          <outline text="/* Cursor is on Line 1 - demote following siblings (Line 2 exists) */"/>
           <outline text="return op.demote()"/>
         </outline>
       </outline>
