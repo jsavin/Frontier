@@ -127,10 +127,47 @@ Provide:
 [Where else is this pattern used?]
 ```
 
+## ADR Template Examples
+
+When creating Architectural Decision Records, reference these excellent examples:
+
+### Comprehensive ADR Example
+- **ADR-002**: `planning/architectural_decision_records/ADR-002-context-based-format-versioning.md`
+  - Shows complete structure: Context, Decision, Implementation Pattern, Common Pitfalls, Success Criteria
+  - Includes before/after code examples
+  - Documents consequences (positive, negative, trade-offs)
+  - Tracks implementation status and future work
+  - ~700 lines - comprehensive reference for major architectural decisions
+
+### Concise ADR Example
+- **ADR-003**: `planning/architectural_decision_records/ADR-003-address-value-resolution.md`
+  - Focused problem statement and solution
+  - Clear implementation strategy
+  - Lighter weight for smaller decisions
+
+### ADR Organization Principles
+
+1. **Store in**: `planning/architectural_decision_records/`
+2. **Naming**: `ADR-NNN-kebab-case-title.md`
+3. **Include**:
+   - Date and status (Proposed, Accepted, Superseded)
+   - Problem/Context section (why does this decision matter?)
+   - Decision section (what did we choose?)
+   - Consequences section (trade-offs, positive and negative)
+   - Implementation examples
+   - Related work/references
+
+4. **Cross-reference**:
+   - Link from CLAUDE.md when pattern affects project-wide development
+   - Reference from planning docs when decisions impact phases
+   - Update when implementation reveals new insights
+
 ## Related Documentation
 
 - CLAUDE.md: All project conventions and critical notes
+  - "Communication Standards" section: Privacy and entity mention policy
 - planning/architectural_decision_records/: Design decision documentation
+  - ADR-002-context-based-format-versioning.md: Comprehensive ADR template
 - planning/phase3/: Active workstreams and planning
 - Issue #135: Outline context refactoring (primary documentation target)
 

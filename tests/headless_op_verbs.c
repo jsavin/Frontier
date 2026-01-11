@@ -9,8 +9,10 @@
  * Implementation status:
  * - Phase 1 (10 verbs): COMPLETE - insert, getLineText, level, go, firstSummit,
  *                                   countSubs, countSummits, expand, collapse
- * - Phase 2 (8 verbs):  PENDING   - setLineText, promote, demote, deleteLine, etc.
- * - Phase 3 (10 verbs): PENDING   - State management verbs
+ * - Phase 2 (8 verbs):  COMPLETE - setLineText, promote, demote, deleteLine, etc.
+ * - Phase 3 (10 verbs): COMPLETE - getDisplay, setDisplay, getCursor, setCursor,
+ *                                   getRefcon, setRefcon, getExpansionState,
+ *                                   setExpansionState, getScrollState, setScrollState
  * - Phase 4 (17 verbs): PENDING   - Advanced operations
  *
  * See planning/phase3/op_verb_implementation_plan.md for complete roadmap.
@@ -308,14 +310,23 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
         }
         case opv_expand: {
             /* op.expand(levels) -> boolean - expands subheads */
+            long levellong;
             short level;
             hdloutlinerecord ho;
             hdlheadrecord hbarcursor;
             boolean fl;
 
             flnextparamislast = true;  /* Single parameter - mark as last */
-            if (!getintvalue(hparam1, 1, &level))
+            if (!getlongvalue(hparam1, 1, &levellong))
                 return false;
+
+            /* Clamp to short range (opexpand expects short) */
+            if (levellong > 32767)
+                level = 32767;  /* Max short value - effectively infinity */
+            else if (levellong < -32768)
+                level = -32768;
+            else
+                level = (short)levellong;
 
             if (!getoutlinefromtarget(&ho, bserror))
                 return false;
@@ -649,46 +660,278 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
             /* Verb #21: op.flatcursorkeys - not yet implemented */
             if (bserror) seterrorstring("not implemented", bserror);
             return false;
-        case opv_getdisplay:
-            /* Verb #22: op.getdisplay - not yet implemented */
-            if (bserror) seterrorstring("not implemented", bserror);
-            return false;
-        case opv_setdisplay:
-            /* Verb #23: op.setdisplay - not yet implemented */
-            if (bserror) seterrorstring("not implemented", bserror);
-            return false;
-        case opv_getcursor:
-            /* Verb #24: op.getcursor - not yet implemented */
-            if (bserror) seterrorstring("not implemented", bserror);
-            return false;
-        case opv_setcursor:
-            /* Verb #25: op.setcursor - not yet implemented */
-            if (bserror) seterrorstring("not implemented", bserror);
-            return false;
-        case opv_getrefcon:
-            /* Verb #26: op.getrefcon - not yet implemented */
-            if (bserror) seterrorstring("not implemented", bserror);
-            return false;
-        case opv_setrefcon:
-            /* Verb #27: op.setrefcon - not yet implemented */
-            if (bserror) seterrorstring("not implemented", bserror);
-            return false;
-        case opv_getexpansionstate:
-            /* Verb #28: op.getexpansionstate - not yet implemented */
-            if (bserror) seterrorstring("not implemented", bserror);
-            return false;
-        case opv_setexpansionstate:
-            /* Verb #29: op.setexpansionstate - not yet implemented */
-            if (bserror) seterrorstring("not implemented", bserror);
-            return false;
-        case opv_getscrollstate:
-            /* Verb #30: op.getscrollstate - not yet implemented */
-            if (bserror) seterrorstring("not implemented", bserror);
-            return false;
-        case opv_setscrollstate:
-            /* Verb #31: op.setscrollstate - not yet implemented */
-            if (bserror) seterrorstring("not implemented", bserror);
-            return false;
+        case opv_getdisplay: {
+            /* Verb #22: op.getDisplay() -> boolean
+             * Returns true if display updates are enabled (outline redraws on changes).
+             * Note: flinhibitdisplay is inverted - true means display is OFF.
+             */
+            hdloutlinerecord ho;
+            boolean fldisplay;
+
+            /* No parameters */
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+
+            /* Get outline from target */
+            if (!getoutlinefromtarget(&ho, bserror))
+                return false;
+
+            oppushoutline(ho);
+            fldisplay = !(**ho).flinhibitdisplay;  /* Invert flag */
+            oppopoutline();
+
+            return setbooleanvalue(fldisplay, vreturned);
+        }
+        case opv_setdisplay: {
+            /* Verb #23: op.setDisplay(boolean) -> boolean
+             * Enable/disable display updates (outline redraws on changes).
+             * Note: flinhibitdisplay is inverted - true means display is OFF.
+             */
+            hdloutlinerecord ho;
+            boolean fldisplay;
+
+            flnextparamislast = true;
+            if (!getbooleanvalue(hparam1, 1, &fldisplay))
+                return false;
+
+            /* Get outline from target */
+            if (!getoutlinefromtarget(&ho, bserror))
+                return false;
+
+            oppushoutline(ho);
+            (**ho).flinhibitdisplay = !fldisplay;  /* Invert flag when setting */
+            oppopoutline();
+
+            return setbooleanvalue(true, vreturned);
+        }
+        case opv_getcursor: {
+            /* Verb #24: op.getCursor() -> long
+             * Returns opaque identifier for cursor position.
+             * Returns handle cast to long (legacy behavior).
+             * Identifier remains stable even when outline reorganizes.
+             */
+            hdloutlinerecord ho;
+            hdlheadrecord hcursor;
+
+            /* No parameters */
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+
+            /* Get outline from target */
+            if (!getoutlinefromtarget(&ho, bserror))
+                return false;
+
+            oppushoutline(ho);
+            hcursor = (**ho).hbarcursor;
+            oppopoutline();
+
+            /* Return handle as opaque identifier */
+            return setlongvalue((long)hcursor, vreturned);
+        }
+        case opv_setcursor: {
+            /* Verb #25: op.setCursor(id) -> boolean
+             * Set cursor to node identified by opaque identifier.
+             * Takes identifier from getCursor() and casts back to handle.
+             * Returns false if identifier is invalid (node deleted, etc).
+             */
+            hdloutlinerecord ho;
+            hdlheadrecord hnode;
+            long nodeid;
+
+            flnextparamislast = true;
+            if (!getlongvalue(hparam1, 1, &nodeid))
+                return false;
+
+            /* Get outline from target */
+            if (!getoutlinefromtarget(&ho, bserror))
+                return false;
+
+            oppushoutline(ho);
+
+            /* Cast identifier back to handle */
+            hnode = (hdlheadrecord)nodeid;
+
+            /* Set cursor to this node */
+            (**ho).hbarcursor = hnode;
+            oppopoutline();
+
+            return setbooleanvalue(true, vreturned);
+        }
+        case opv_getrefcon: {
+            /* Verb #26: op.getRefcon() -> value
+             * Get application-specific data stored with current node.
+             * Returns 0 if no refcon, otherwise unpacks stored value.
+             */
+            hdloutlinerecord ho;
+            hdlheadrecord hcursor;
+            Handle hrefcon;
+            tyvaluerecord linkedval;
+
+            /* No parameters */
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+
+            /* Get outline from target */
+            if (!getoutlinefromtarget(&ho, bserror))
+                return false;
+
+            oppushoutline(ho);
+            hcursor = (**ho).hbarcursor;
+            hrefcon = (**hcursor).hrefcon;
+
+            if (hrefcon == nil) {
+                setlongvalue(0, &linkedval);
+            } else {
+                if (!langunpackvalue(hrefcon, &linkedval)) {
+                    oppopoutline();
+                    return false;
+                }
+                pushvalueontmpstack(&linkedval);
+            }
+            oppopoutline();
+
+            *vreturned = linkedval;
+            return true;
+        }
+        case opv_setrefcon: {
+            /* Verb #27: op.setRefcon(value) -> boolean
+             * Store application-specific data with current node.
+             * Pass 0 to clear refcon. Otherwise packs value into handle.
+             */
+            hdloutlinerecord ho;
+            hdlheadrecord hcursor;
+            tyvaluerecord val;
+            Handle hbinary;
+            boolean fl;
+
+            flnextparamislast = true;
+            if (!getparamvalue(hparam1, 1, &val))
+                return false;
+
+            /* Get outline from target */
+            if (!getoutlinefromtarget(&ho, bserror))
+                return false;
+
+            oppushoutline(ho);
+            hcursor = (**ho).hbarcursor;
+
+            /* Clear refcon if value is 0 */
+            if ((val.valuetype == longvaluetype) && (val.data.longvalue == 0)) {
+                disposehandle((**hcursor).hrefcon);
+                (**hcursor).hrefcon = nil;
+                fl = true;
+            } else {
+                /* Pack value into binary handle */
+                if (!langpackvalue(val, &hbinary, HNoNode)) {
+                    oppopoutline();
+                    return false;
+                }
+                disposehandle((**hcursor).hrefcon);
+                (**hcursor).hrefcon = hbinary;
+                fl = true;
+            }
+            oppopoutline();
+
+            return setbooleanvalue(fl, vreturned);
+        }
+        case opv_getexpansionstate: {
+            /* Verb #28: op.getExpansionState() -> list
+             * Returns list of 1-based line numbers that are expanded.
+             * Delegates to existing opgetexpansionstateverb().
+             */
+            hdloutlinerecord ho;
+            boolean fl;
+
+            /* No parameters */
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+
+            /* Get outline from target */
+            if (!getoutlinefromtarget(&ho, bserror))
+                return false;
+
+            oppushoutline(ho);
+            fl = opgetexpansionstateverb(vreturned);
+            oppopoutline();
+
+            return fl;
+        }
+        case opv_setexpansionstate: {
+            /* Verb #29: op.setExpansionState(list) -> boolean
+             * Expand nodes specified by list of 1-based line numbers.
+             * Delegates to existing opsetexpansionstateverb().
+             */
+            hdloutlinerecord ho;
+            tyvaluerecord vlist;
+            boolean fl;
+
+            flnextparamislast = true;
+            if (!getparamvalue(hparam1, 1, &vlist))
+                return false;
+
+            /* Get outline from target */
+            if (!getoutlinefromtarget(&ho, bserror))
+                return false;
+
+            oppushoutline(ho);
+            fl = opsetexpansionstateverb(&vlist, vreturned);
+            oppopoutline();
+
+            return fl;
+        }
+        case opv_getscrollstate: {
+            /* Verb #30: op.getScrollState() -> long
+             * Returns opaque identifier for top visible line position.
+             * Returns handle cast to long (legacy behavior).
+             * Identifier remains stable even when outline reorganizes.
+             */
+            hdloutlinerecord ho;
+            hdlheadrecord hline1;
+
+            /* No parameters */
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+
+            /* Get outline from target */
+            if (!getoutlinefromtarget(&ho, bserror))
+                return false;
+
+            oppushoutline(ho);
+            hline1 = (**ho).hline1;
+            oppopoutline();
+
+            /* Return handle as opaque identifier */
+            return setlongvalue((long)hline1, vreturned);
+        }
+        case opv_setscrollstate: {
+            /* Verb #31: op.setScrollState(id) -> boolean
+             * Set top visible line to node identified by opaque identifier.
+             * Takes identifier from getScrollState() and casts back to handle.
+             * Returns false if identifier is invalid (node deleted, etc).
+             */
+            hdloutlinerecord ho;
+            hdlheadrecord hnode;
+            long nodeid;
+
+            flnextparamislast = true;
+            if (!getlongvalue(hparam1, 1, &nodeid))
+                return false;
+
+            /* Get outline from target */
+            if (!getoutlinefromtarget(&ho, bserror))
+                return false;
+
+            oppushoutline(ho);
+
+            /* Cast identifier back to handle */
+            hnode = (hdlheadrecord)nodeid;
+
+            /* Set top visible line to this node */
+            (**ho).hline1 = hnode;
+            oppopoutline();
+
+            return setbooleanvalue(true, vreturned);
+        }
         case opv_getsuboutline:
             /* Verb #32: op.getsuboutline - not yet implemented */
             if (bserror) seterrorstring("not implemented", bserror);

@@ -51,6 +51,79 @@ Your primary responsibility is to provide expert guidance on all aspects of logg
    - Use consistent message formats for similar operations
    - Add logging that helps understand the "why" of failures, not just the "what"
 
+## Key Reference Materials
+
+### 1. Logging Infrastructure
+
+**Core API Definition**:
+- `Common/headers/logging.h` - Complete logging API (log_error, log_warn, log_info, log_debug, log_trace)
+
+**Documentation**:
+- `docs/LOGGING_STANDARDS.md` - Complete logging standards document
+- `planning/phase3/LOGGING_INFRASTRUCTURE_PLAN.md` - Infrastructure design and roadmap
+
+**Available Components**:
+- `LOG_COMP_DB` - Database layer operations
+- `LOG_COMP_HASH` - Hash table operations
+- `LOG_COMP_TABLE` - Table packing/unpacking
+- `LOG_COMP_LANG` - Language runtime
+- `LOG_COMP_OP` - Outline processor
+- `LOG_COMP_FILE` - File operations
+- (See `Common/headers/logging.h` for complete list)
+
+### 2. Logging Functions Reference
+
+**Priority Levels** (from highest to lowest severity):
+- `log_error(component, format, ...)` - Critical failures that prevent operation (always shown)
+- `log_warn(component, format, ...)` - Unexpected but recoverable conditions
+- `log_info(component, format, ...)` - Startup/shutdown milestones, major state changes
+- `log_debug(component, format, ...)` - Diagnostic information for troubleshooting
+- `log_trace(component, format, ...)` - Maximum verbosity (function entry/exit, detailed state)
+
+**Specialized Functions**:
+- `log_hex_dump(component, data, len, msg)` - Binary data dumps with hex/ASCII view
+- `log_enabled(component, level)` - Guard for expensive logging operations
+
+**Example Usage**:
+```c
+// Critical error
+log_error(LOG_COMP_DB, "Failed to open database at path: %s", path);
+
+// Recoverable warning
+log_warn(LOG_COMP_HASH, "Hash collision detected for key '%s'", keyname);
+
+// Diagnostic debug
+log_debug(LOG_COMP_TABLE, "Unpacking table with %ld entries", entrycount);
+
+// Detailed trace
+log_trace(LOG_COMP_LANG, "Entering langrun() with scriptname='%s'", scriptname);
+
+// Binary data dump
+log_hex_dump(LOG_COMP_DB, buffer, bufsize, "Database header bytes");
+
+// Guard expensive operations
+if (log_enabled(LOG_COMP_HASH, LOG_LEVEL_TRACE)) {
+    // Only compute this if trace logging is enabled
+    char *debug_str = generate_expensive_debug_string();
+    log_trace(LOG_COMP_HASH, "State: %s", debug_str);
+    free(debug_str);
+}
+```
+
+### 3. Standards & Enforcement
+
+**Critical Rules**:
+- **NEVER use `fprintf(stderr, ...)` in new code** - Use `log_*()` macros instead
+- **Exception**: User-facing terminal output (lang.msg, dialog prompts) may use `fputs()` to stdout
+
+**Enforcement Tools**:
+- `./tools/check_fprintf.sh` - Detects fprintf(stderr) violations
+- `./tools/check_fprintf.sh --fix` - Shows suggested fixes for violations
+
+**Standards Documentation**:
+- `docs/LOGGING_STANDARDS.md` - Complete standards reference
+- `planning/phase3/LOGGING_INFRASTRUCTURE_PLAN.md` - Design rationale and future work
+
 ## Operational Guidelines
 
 - **Be Specific**: Don't give generic logging advice. Reference actual Frontier code patterns and existing logging infrastructure when possible.

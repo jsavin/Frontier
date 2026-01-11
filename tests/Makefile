@@ -315,6 +315,10 @@ save_migration_tests: save_migration_tests.c $(LANG_RUNTIME_SOURCES) ../Common/s
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -DHEADLESS_LINKS_REAL_DB -I../Common/headers -I../Common/SystemHeaders -I../portable save_migration_tests.c \
 		$(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_odb_stubs.c headless_shell.c -o $@ $(LINK_LIBS)
 
+refcon_migration_64bit_test: refcon_migration_64bit_test.c $(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_odb_stubs.c headless_shell.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -DHEADLESS_LINKS_REAL_DB -I../Common/headers -I../Common/SystemHeaders -I../portable refcon_migration_64bit_test.c \
+		$(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_odb_stubs.c headless_shell.c -o $@ $(LINK_LIBS)
+
 test_efp_augmentation: test_efp_augmentation.c $(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_odb_stubs.c headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -DHEADLESS_LINKS_REAL_DB -I../Common/headers -I../Common/SystemHeaders -I../portable test_efp_augmentation.c \
 		$(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_odb_stubs.c headless_shell.c -o $@ $(LINK_LIBS)

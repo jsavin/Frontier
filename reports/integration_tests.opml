@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Frontier Integration Tests</title>
-    <dateCreated>Sat, 10 Jan 2026 13:58:41 GMT</dateCreated>
+    <dateCreated>Sat, 10 Jan 2026 16:58:44 GMT</dateCreated>
   </head>
   <body>
     <outline text="Db Verbs (db_verbs)">
@@ -2465,7 +2465,7 @@
         <outline text="Script">
           <outline text="lang.new(outlineType, @workspace.opTest)"/>
           <outline text="target.set(@workspace.opTest)"/>
-          <outline text="local(ok1 = typeof(workspace.opTest) == &quot;outl&quot;)"/>
+          <outline text="local(ok1 = typeof(workspace.opTest) == &quot;optx&quot;)"/>
           <outline text="local(ok2 = string(target.get()) == &quot;workspace.opTest&quot;)"/>
           <outline text="return ok1 and ok2"/>
         </outline>
@@ -2538,7 +2538,7 @@
       </outline>
       <outline text="op.getLineText - returns string type - getLineText returns stringType">
         <outline text="Metadata">
-          <outline text="expected_result: str"/>
+          <outline text="expected_result: TEXT"/>
         </outline>
         <outline text="Script">
           <outline text="lang.new(outlineType, @workspace.outline)"/>
@@ -2872,6 +2872,7 @@
           <outline text="op.insert(&quot;Parent&quot;, down)"/>
           <outline text="op.insert(&quot;Child&quot;, right)"/>
           <outline text="op.go(left, 1)"/>
+          <outline text="op.collapse()"/>
           <outline text="return op.expand(1)"/>
         </outline>
       </outline>
@@ -2886,6 +2887,7 @@
           <outline text="op.insert(&quot;Child&quot;, right)"/>
           <outline text="op.insert(&quot;Grandchild&quot;, right)"/>
           <outline text="op.go(left, 2)"/>
+          <outline text="op.collapse()"/>
           <outline text="return op.expand(infinity)"/>
         </outline>
       </outline>
@@ -2903,9 +2905,9 @@
           <outline text="return op.collapse()"/>
         </outline>
       </outline>
-      <outline text="op.collapse - returns boolean - collapse returns true on success">
+      <outline text="op.collapse - returns boolean - collapse returns true only if something was collapsed">
         <outline text="Metadata">
-          <outline text="expected_result: true"/>
+          <outline text="expected_result: false"/>
         </outline>
         <outline text="Script">
           <outline text="lang.new(outlineType, @workspace.outline)"/>
@@ -3386,7 +3388,7 @@
       </outline>
       <outline text="op.getLineText - no parameters - op.getLineText takes no parameters">
         <outline text="Metadata">
-          <outline text="expected_result: str"/>
+          <outline text="expected_result: TEXT"/>
         </outline>
         <outline text="Script">
           <outline text="lang.new(outlineType, @workspace.outline)"/>
@@ -3632,6 +3634,995 @@
           <outline text="return op.countSummits()"/>
         </outline>
       </outline>
+      <outline text="op.getCursor - returns address type - getCursor returns long type (1-based line number) for current cursor position">
+        <outline text="Metadata">
+          <outline text="expected_result: long"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line 1&quot;, down)"/>
+          <outline text="return typeof(op.getCursor())"/>
+        </outline>
+      </outline>
+      <outline text="op.getCursor - simple outline cursor position - Get cursor position from simple outline">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;First line&quot;, down)"/>
+          <outline text="local(cursor = op.getCursor())"/>
+          <outline text="return defined(cursor)"/>
+        </outline>
+      </outline>
+      <outline text="op.getCursor - cursor changes with navigation - Cursor address changes when navigating outline">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line 1&quot;, down)"/>
+          <outline text="op.insert(&quot;Line 2&quot;, down)"/>
+          <outline text="local(cursor1 = op.getCursor())"/>
+          <outline text="op.go(up, 1)"/>
+          <outline text="local(cursor2 = op.getCursor())"/>
+          <outline text="return cursor1 != cursor2"/>
+        </outline>
+      </outline>
+      <outline text="op.getCursor - cursor in nested structure - Get cursor from nested outline hierarchy">
+        <outline text="Metadata">
+          <outline text="expected_result: long"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="op.insert(&quot;Child&quot;, right)"/>
+          <outline text="op.insert(&quot;Grandchild&quot;, right)"/>
+          <outline text="local(cursor = op.getCursor())"/>
+          <outline text="return typeof(cursor)"/>
+        </outline>
+      </outline>
+      <outline text="op.getCursor - no parameters required - getCursor takes no parameters">
+        <outline text="Metadata">
+          <outline text="expected_result: long"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="return typeof(op.getCursor())"/>
+        </outline>
+      </outline>
+      <outline text="op.getCursor - extra parameters should fail - getCursor with extra parameters should error">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="op.getCursor(&quot;extra&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="op.setCursor - set cursor to saved address - Set cursor to previously saved address position">
+        <outline text="Metadata">
+          <outline text="expected_result: Line 1"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line 1&quot;, down)"/>
+          <outline text="op.insert(&quot;Line 2&quot;, down)"/>
+          <outline text="op.insert(&quot;Line 3&quot;, down)"/>
+          <outline text="op.go(up, 2)"/>
+          <outline text="local(savedCursor = op.getCursor())"/>
+          <outline text="op.go(down, 2)"/>
+          <outline text="op.setCursor(savedCursor)"/>
+          <outline text="return op.getLineText()"/>
+        </outline>
+      </outline>
+      <outline text="op.setCursor - returns boolean true on success - setCursor returns true when cursor is set successfully">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line 1&quot;, down)"/>
+          <outline text="op.insert(&quot;Line 2&quot;, down)"/>
+          <outline text="local(cursor = op.getCursor())"/>
+          <outline text="op.go(up, 1)"/>
+          <outline text="return op.setCursor(cursor)"/>
+        </outline>
+      </outline>
+      <outline text="op.setCursor - round-trip cursor position - Get cursor, navigate away, set cursor back - verify position">
+        <outline text="Metadata">
+          <outline text="expected_result: Other line"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Target line&quot;, down)"/>
+          <outline text="op.insert(&quot;Other line&quot;, down)"/>
+          <outline text="local(targetCursor = op.getCursor())"/>
+          <outline text="op.go(up, 1)"/>
+          <outline text="op.setCursor(targetCursor)"/>
+          <outline text="return op.getLineText()"/>
+        </outline>
+      </outline>
+      <outline text="op.setCursor - cursor in nested hierarchy - Set cursor to child node address">
+        <outline text="Metadata">
+          <outline text="expected_result: Child 1"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="op.insert(&quot;Child 1&quot;, right)"/>
+          <outline text="local(child1Cursor = op.getCursor())"/>
+          <outline text="op.insert(&quot;Child 2&quot;, down)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="op.setCursor(child1Cursor)"/>
+          <outline text="return op.getLineText()"/>
+        </outline>
+      </outline>
+      <outline text="op.setCursor - requires address parameter - setCursor requires address parameter (should fail without it)">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="op.setCursor()"/>
+        </outline>
+      </outline>
+      <outline text="op.setCursor - invalid address type should fail - setCursor with non-address type should error">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="op.setCursor(&quot;not an address&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="op.setCursor - cursor from different outline should fail - setCursor with address from different outline should error">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline1)"/>
+          <outline text="lang.new(outlineType, @workspace.outline2)"/>
+          <outline text="target.set(@workspace.outline1)"/>
+          <outline text="op.insert(&quot;Line 1&quot;, down)"/>
+          <outline text="local(cursor1 = op.getCursor())"/>
+          <outline text="target.set(@workspace.outline2)"/>
+          <outline text="op.insert(&quot;Line 2&quot;, down)"/>
+          <outline text="op.setCursor(cursor1)"/>
+        </outline>
+      </outline>
+      <outline text="op.getDisplay - returns boolean type - getDisplay returns boolean for display inhibit state">
+        <outline text="Metadata">
+          <outline text="expected_result: bool"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="return typeof(op.getDisplay())"/>
+        </outline>
+      </outline>
+      <outline text="op.getDisplay - default state is true (display enabled) - New outlines have display enabled by default">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="return op.getDisplay()"/>
+        </outline>
+      </outline>
+      <outline text="op.getDisplay - no parameters required - getDisplay takes no parameters">
+        <outline text="Metadata">
+          <outline text="expected_result: bool"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="return typeof(op.getDisplay())"/>
+        </outline>
+      </outline>
+      <outline text="op.getDisplay - extra parameters should fail - getDisplay with extra parameters should error">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.getDisplay(&quot;extra&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="op.setDisplay - set display to false (inhibit display) - Disable display for performance during bulk operations">
+        <outline text="Metadata">
+          <outline text="expected_result: false"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.setDisplay(false)"/>
+          <outline text="return op.getDisplay()"/>
+        </outline>
+      </outline>
+      <outline text="op.setDisplay - set display to true (enable display) - Enable display after bulk operations">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.setDisplay(false)"/>
+          <outline text="op.setDisplay(true)"/>
+          <outline text="return op.getDisplay()"/>
+        </outline>
+      </outline>
+      <outline text="op.setDisplay - returns boolean true on success - setDisplay returns true when state is set">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="return op.setDisplay(false)"/>
+        </outline>
+      </outline>
+      <outline text="op.setDisplay - round-trip display state - Set display false, verify, set true, verify">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.setDisplay(false)"/>
+          <outline text="local(state1 = op.getDisplay())"/>
+          <outline text="op.setDisplay(true)"/>
+          <outline text="local(state2 = op.getDisplay())"/>
+          <outline text="return (not state1) and state2"/>
+        </outline>
+      </outline>
+      <outline text="op.setDisplay - bulk operations with display off - Disable display during bulk insert operations (performance optimization)">
+        <outline text="Metadata">
+          <outline text="expected_result: 11"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.setDisplay(false)"/>
+          <outline text="local(i)"/>
+          <outline text="for i = 1 to 10">
+            <outline text="op.insert(&quot;Line &quot; + i, down)"/>
+          </outline>
+          <outline text="op.setDisplay(true)"/>
+          <outline text="return op.countSummits()"/>
+        </outline>
+      </outline>
+      <outline text="op.setDisplay - requires boolean parameter - setDisplay requires boolean parameter (should fail without it)">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.setDisplay()"/>
+        </outline>
+      </outline>
+      <outline text="op.setDisplay - non-boolean parameter should fail - setDisplay with non-boolean type should error">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.setDisplay(&quot;true&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="op.getExpansionState - returns address type - getExpansionState returns list containing expansion state data">
+        <outline text="Metadata">
+          <outline text="expected_result: list"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="op.insert(&quot;Child&quot;, right)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="return typeof(op.getExpansionState())"/>
+        </outline>
+      </outline>
+      <outline text="op.getExpansionState - simple outline expansion state - Get expansion state from simple outline">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="op.insert(&quot;Child&quot;, right)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="local(state = op.getExpansionState())"/>
+          <outline text="return defined(state)"/>
+        </outline>
+      </outline>
+      <outline text="op.getExpansionState - no parameters required - getExpansionState takes no parameters">
+        <outline text="Metadata">
+          <outline text="expected_result: list"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="return typeof(op.getExpansionState())"/>
+        </outline>
+      </outline>
+      <outline text="op.getExpansionState - extra parameters should fail - getExpansionState with extra parameters should error">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="op.getExpansionState(&quot;extra&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="op.setExpansionState - restore saved expansion state - Set expansion state to previously saved state">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent 1&quot;, down)"/>
+          <outline text="op.insert(&quot;Child 1&quot;, right)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="op.expand(1)"/>
+          <outline text="op.insert(&quot;Parent 2&quot;, down)"/>
+          <outline text="op.insert(&quot;Child 2&quot;, right)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="op.firstSummit()"/>
+          <outline text="local(savedState = op.getExpansionState())"/>
+          <outline text="op.collapse()"/>
+          <outline text="local(isCollapsed = not op.subsExpanded())"/>
+          <outline text="op.setExpansionState(savedState)"/>
+          <outline text="local(isExpanded = op.subsExpanded())"/>
+          <outline text="return isCollapsed and isExpanded"/>
+        </outline>
+      </outline>
+      <outline text="op.setExpansionState - returns boolean true on success - setExpansionState returns true when state is set successfully">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="op.insert(&quot;Child&quot;, right)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="local(state = op.getExpansionState())"/>
+          <outline text="return op.setExpansionState(state)"/>
+        </outline>
+      </outline>
+      <outline text="op.setExpansionState - round-trip expansion state - Get state, modify expansion, restore state">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="op.insert(&quot;Child 1&quot;, right)"/>
+          <outline text="op.insert(&quot;Child 2&quot;, down)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="op.expand(infinity)"/>
+          <outline text="local(expandedState = op.getExpansionState())"/>
+          <outline text="op.collapse()"/>
+          <outline text="op.setExpansionState(expandedState)"/>
+          <outline text="return op.subsExpanded()"/>
+        </outline>
+      </outline>
+      <outline text="op.setExpansionState - complex outline with multiple levels - Save and restore expansion state in multi-level outline">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Level 1&quot;, down)"/>
+          <outline text="op.insert(&quot;Level 2&quot;, right)"/>
+          <outline text="op.insert(&quot;Level 3&quot;, right)"/>
+          <outline text="op.go(left, 2)"/>
+          <outline text="op.expand(infinity)"/>
+          <outline text="local(state = op.getExpansionState())"/>
+          <outline text="op.collapse()"/>
+          <outline text="op.setExpansionState(state)"/>
+          <outline text="return op.subsExpanded()"/>
+        </outline>
+      </outline>
+      <outline text="op.setExpansionState - requires address parameter - setExpansionState requires address parameter (should fail without it)">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="op.insert(&quot;Child&quot;, right)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="op.setExpansionState()"/>
+        </outline>
+      </outline>
+      <outline text="op.setExpansionState - invalid address type should fail - setExpansionState with non-address type should error">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="op.insert(&quot;Child&quot;, right)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="op.setExpansionState(&quot;not an address&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="op.getScrollState - returns address type - getScrollState returns long (1-based line number) for scroll position">
+        <outline text="Metadata">
+          <outline text="expected_result: long"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line 1&quot;, down)"/>
+          <outline text="return typeof(op.getScrollState())"/>
+        </outline>
+      </outline>
+      <outline text="op.getScrollState - simple outline scroll state - Get scroll state from simple outline">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line 1&quot;, down)"/>
+          <outline text="op.insert(&quot;Line 2&quot;, down)"/>
+          <outline text="local(state = op.getScrollState())"/>
+          <outline text="return defined(state)"/>
+        </outline>
+      </outline>
+      <outline text="op.getScrollState - no parameters required - getScrollState takes no parameters">
+        <outline text="Metadata">
+          <outline text="expected_result: long"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="return typeof(op.getScrollState())"/>
+        </outline>
+      </outline>
+      <outline text="op.getScrollState - extra parameters should fail - getScrollState with extra parameters should error">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="op.getScrollState(&quot;extra&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="op.setScrollState - restore saved scroll state - Set scroll state to previously saved state">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line 1&quot;, down)"/>
+          <outline text="op.insert(&quot;Line 2&quot;, down)"/>
+          <outline text="op.insert(&quot;Line 3&quot;, down)"/>
+          <outline text="local(savedState = op.getScrollState())"/>
+          <outline text="return op.setScrollState(savedState)"/>
+        </outline>
+      </outline>
+      <outline text="op.setScrollState - returns boolean true on success - setScrollState returns true when state is set successfully">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="local(state = op.getScrollState())"/>
+          <outline text="return op.setScrollState(state)"/>
+        </outline>
+      </outline>
+      <outline text="op.setScrollState - round-trip scroll state - Get scroll state, navigate, restore scroll state">
+        <outline text="Metadata">
+          <outline text="expected_result: Line 20"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="local(i)"/>
+          <outline text="for i = 1 to 20">
+            <outline text="op.insert(&quot;Line &quot; + i, down)"/>
+          </outline>
+          <outline text="op.firstSummit()"/>
+          <outline text="local(topState = op.getScrollState())"/>
+          <outline text="op.go(down, 10)"/>
+          <outline text="op.setScrollState(topState)"/>
+          <outline text="return op.getLineText()"/>
+        </outline>
+      </outline>
+      <outline text="op.setScrollState - requires address parameter - setScrollState requires address parameter (should fail without it)">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="op.setScrollState()"/>
+        </outline>
+      </outline>
+      <outline text="op.setScrollState - invalid address type should fail - setScrollState with non-address type should error">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="op.setScrollState(&quot;not an address&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="op.getRefcon - returns long type - getRefcon returns long (32-bit integer) reference constant">
+        <outline text="Metadata">
+          <outline text="expected_result: long"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="return typeof(op.getRefcon())"/>
+        </outline>
+      </outline>
+      <outline text="op.getRefcon - default refcon is zero - New outline nodes have refcon initialized to 0">
+        <outline text="Metadata">
+          <outline text="expected_result: 0"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="return op.getRefcon()"/>
+        </outline>
+      </outline>
+      <outline text="op.getRefcon - no parameters required - getRefcon takes no parameters">
+        <outline text="Metadata">
+          <outline text="expected_result: long"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="return typeof(op.getRefcon())"/>
+        </outline>
+      </outline>
+      <outline text="op.getRefcon - extra parameters should fail - getRefcon with extra parameters should error">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="op.getRefcon(&quot;extra&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="op.setRefcon - set positive refcon value - Set refcon to positive integer value">
+        <outline text="Metadata">
+          <outline text="expected_result: 12345"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="op.setRefcon(12345)"/>
+          <outline text="return op.getRefcon()"/>
+        </outline>
+      </outline>
+      <outline text="op.setRefcon - set negative refcon value - Set refcon to negative integer value">
+        <outline text="Metadata">
+          <outline text="expected_result: -9999"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="op.setRefcon(-9999)"/>
+          <outline text="return op.getRefcon()"/>
+        </outline>
+      </outline>
+      <outline text="op.setRefcon - set zero refcon value - Set refcon to zero (reset to default)">
+        <outline text="Metadata">
+          <outline text="expected_result: 0"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="op.setRefcon(100)"/>
+          <outline text="op.setRefcon(0)"/>
+          <outline text="return op.getRefcon()"/>
+        </outline>
+      </outline>
+      <outline text="op.setRefcon - returns boolean true on success - setRefcon returns true when refcon is set successfully">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="return op.setRefcon(42)"/>
+        </outline>
+      </outline>
+      <outline text="op.setRefcon - round-trip refcon value - Set refcon, verify with getRefcon">
+        <outline text="Metadata">
+          <outline text="expected_result: 99999"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="op.setRefcon(99999)"/>
+          <outline text="return op.getRefcon()"/>
+        </outline>
+      </outline>
+      <outline text="op.setRefcon - different refcon per node - Each node can have independent refcon value">
+        <outline text="Metadata">
+          <outline text="expected_result: 111"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line 1&quot;, down)"/>
+          <outline text="op.setRefcon(111)"/>
+          <outline text="op.insert(&quot;Line 2&quot;, down)"/>
+          <outline text="op.setRefcon(222)"/>
+          <outline text="op.insert(&quot;Line 3&quot;, down)"/>
+          <outline text="op.setRefcon(333)"/>
+          <outline text="op.go(up, 2)"/>
+          <outline text="return op.getRefcon()"/>
+        </outline>
+      </outline>
+      <outline text="op.setRefcon - refcon persists across navigation - Refcon value persists when navigating away and back">
+        <outline text="Metadata">
+          <outline text="expected_result: 777"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line 1&quot;, down)"/>
+          <outline text="op.setRefcon(777)"/>
+          <outline text="op.insert(&quot;Line 2&quot;, down)"/>
+          <outline text="op.go(up, 1)"/>
+          <outline text="return op.getRefcon()"/>
+        </outline>
+      </outline>
+      <outline text="op.setRefcon - requires long parameter - setRefcon requires long parameter (should fail without it)">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="op.setRefcon()"/>
+        </outline>
+      </outline>
+      <outline text="op.setRefcon - non-long parameter should fail - setRefcon with non-long type should error">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="op.setRefcon(&quot;not a number&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="op.getCursor - no target set should fail - getCursor requires outline set as target">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="target.clear()"/>
+          <outline text="op.getCursor()"/>
+        </outline>
+      </outline>
+      <outline text="op.setCursor - no target set should fail - setCursor requires outline set as target">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="target.clear()"/>
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="local(cursor = op.getCursor())"/>
+          <outline text="target.clear()"/>
+          <outline text="op.setCursor(cursor)"/>
+        </outline>
+      </outline>
+      <outline text="op.getDisplay - no target set should fail - getDisplay requires outline set as target">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="target.clear()"/>
+          <outline text="op.getDisplay()"/>
+        </outline>
+      </outline>
+      <outline text="op.setDisplay - no target set should fail - setDisplay requires outline set as target">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="target.clear()"/>
+          <outline text="op.setDisplay(false)"/>
+        </outline>
+      </outline>
+      <outline text="op.getExpansionState - no target set should fail - getExpansionState requires outline set as target">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="target.clear()"/>
+          <outline text="op.getExpansionState()"/>
+        </outline>
+      </outline>
+      <outline text="op.setExpansionState - no target set should fail - setExpansionState requires outline set as target">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="target.clear()"/>
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="op.insert(&quot;Child&quot;, right)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="local(state = op.getExpansionState())"/>
+          <outline text="target.clear()"/>
+          <outline text="op.setExpansionState(state)"/>
+        </outline>
+      </outline>
+      <outline text="op.getScrollState - no target set should fail - getScrollState requires outline set as target">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="target.clear()"/>
+          <outline text="op.getScrollState()"/>
+        </outline>
+      </outline>
+      <outline text="op.setScrollState - no target set should fail - setScrollState requires outline set as target">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="target.clear()"/>
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="local(state = op.getScrollState())"/>
+          <outline text="target.clear()"/>
+          <outline text="op.setScrollState(state)"/>
+        </outline>
+      </outline>
+      <outline text="op.getRefcon - no target set should fail - getRefcon requires outline set as target">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="target.clear()"/>
+          <outline text="op.getRefcon()"/>
+        </outline>
+      </outline>
+      <outline text="op.setRefcon - no target set should fail - setRefcon requires outline set as target">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="target.clear()"/>
+          <outline text="op.setRefcon(100)"/>
+        </outline>
+      </outline>
+      <outline text="op.getCursor - table target should fail - getCursor requires outlineType target, not tableType">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(tableType, @workspace.notOutline)"/>
+          <outline text="target.set(@workspace.notOutline)"/>
+          <outline text="op.getCursor()"/>
+        </outline>
+      </outline>
+      <outline text="op.setDisplay - wrong target type should fail - setDisplay requires outlineType target">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(tableType, @workspace.table)"/>
+          <outline text="target.set(@workspace.table)"/>
+          <outline text="op.setDisplay(false)"/>
+        </outline>
+      </outline>
+      <outline text="op.getExpansionState - wrong target type should fail - getExpansionState requires outlineType target">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(tableType, @workspace.table)"/>
+          <outline text="target.set(@workspace.table)"/>
+          <outline text="op.getExpansionState()"/>
+        </outline>
+      </outline>
+      <outline text="op.getRefcon - wrong target type should fail - getRefcon requires outlineType target">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(tableType, @workspace.table)"/>
+          <outline text="target.set(@workspace.table)"/>
+          <outline text="op.getRefcon()"/>
+        </outline>
+      </outline>
+      <outline text="workflow - save and restore cursor during bulk operations - Save cursor, do bulk operations, restore cursor position">
+        <outline text="Metadata">
+          <outline text="expected_result: Line 2"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line 1&quot;, down)"/>
+          <outline text="op.insert(&quot;Line 2&quot;, down)"/>
+          <outline text="op.insert(&quot;Line 3&quot;, down)"/>
+          <outline text="op.go(up, 1)"/>
+          <outline text="local(savedCursor = op.getCursor())"/>
+          <outline text="local(i)"/>
+          <outline text="for i = 1 to 5">
+            <outline text="op.insert(&quot;New &quot; + i, down)"/>
+          </outline>
+          <outline text="op.setCursor(savedCursor)"/>
+          <outline text="return op.getLineText()"/>
+        </outline>
+      </outline>
+      <outline text="workflow - disable display during bulk insert and restore - Disable display, insert many lines, re-enable display">
+        <outline text="Metadata">
+          <outline text="expected_result: 51"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.setDisplay(false)"/>
+          <outline text="local(i)"/>
+          <outline text="for i = 1 to 50">
+            <outline text="op.insert(&quot;Line &quot; + i, down)"/>
+          </outline>
+          <outline text="op.setDisplay(true)"/>
+          <outline text="return op.countSummits()"/>
+        </outline>
+      </outline>
+      <outline text="workflow - save expansion state before collapse and restore - Save expansion state, collapse all, restore state">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent 1&quot;, down)"/>
+          <outline text="op.insert(&quot;Child 1a&quot;, right)"/>
+          <outline text="op.insert(&quot;Child 1b&quot;, down)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="op.expand(infinity)"/>
+          <outline text="op.insert(&quot;Parent 2&quot;, down)"/>
+          <outline text="op.insert(&quot;Child 2a&quot;, right)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="op.expand(infinity)"/>
+          <outline text="op.firstSummit()"/>
+          <outline text="local(savedState = op.getExpansionState())"/>
+          <outline text="op.collapse()"/>
+          <outline text="local(collapsed = not op.subsExpanded())"/>
+          <outline text="op.setExpansionState(savedState)"/>
+          <outline text="local(expanded = op.subsExpanded())"/>
+          <outline text="return collapsed and expanded"/>
+        </outline>
+      </outline>
+      <outline text="workflow - refcon as node identifier - Use refcon to mark and find specific nodes">
+        <outline text="Metadata">
+          <outline text="expected_result: 1002"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Item A&quot;, down)"/>
+          <outline text="op.setRefcon(1001)"/>
+          <outline text="op.insert(&quot;Item B&quot;, down)"/>
+          <outline text="op.setRefcon(1002)"/>
+          <outline text="op.insert(&quot;Item C&quot;, down)"/>
+          <outline text="op.setRefcon(1003)"/>
+          <outline text="op.go(up, 1)"/>
+          <outline text="return op.getRefcon()"/>
+        </outline>
+      </outline>
+      <outline text="workflow - multiple state operations combined - Combine cursor, display, expansion, and refcon operations">
+        <outline text="Metadata">
+          <outline text="expected_result: 100"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.setDisplay(false)"/>
+          <outline text="op.insert(&quot;Root&quot;, down)"/>
+          <outline text="op.setRefcon(100)"/>
+          <outline text="op.insert(&quot;Child&quot;, right)"/>
+          <outline text="op.setRefcon(200)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="local(cursor = op.getCursor())"/>
+          <outline text="local(expState = op.getExpansionState())"/>
+          <outline text="op.expand(1)"/>
+          <outline text="op.setDisplay(true)"/>
+          <outline text="local(refcon = op.getRefcon())"/>
+          <outline text="return refcon"/>
+        </outline>
+      </outline>
       <outline text="integration - outline with target.get/set - Switch between multiple outline targets">
         <outline text="Metadata">
           <outline text="expected_result: Outline 1"/>
@@ -3702,6 +4693,737 @@
           <outline text="op.expand(1)"/>
           <outline text="op.collapse()"/>
           <outline text="return op.countSubs(1) == 1"/>
+        </outline>
+      </outline>
+      <outline text="op.getCursor - cursor persists during outline modification - Saved cursor remains valid after inserting new nodes elsewhere">
+        <outline text="Metadata">
+          <outline text="expected_result: Line 2"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line 1&quot;, down)"/>
+          <outline text="op.insert(&quot;Line 2&quot;, down)"/>
+          <outline text="local(savedCursor = op.getCursor())"/>
+          <outline text="op.go(up, 1)"/>
+          <outline text="op.insert(&quot;Line 1.5&quot;, down)"/>
+          <outline text="op.setCursor(savedCursor)"/>
+          <outline text="return op.getLineText()"/>
+        </outline>
+      </outline>
+      <outline text="op.setCursor - cursor to deleted node should fail gracefully - Setting cursor to deleted node should error or return false">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Delete me&quot;, down)"/>
+          <outline text="local(deadCursor = op.getCursor())"/>
+          <outline text="op.insert(&quot;Keep me&quot;, down)"/>
+          <outline text="op.go(up, 1)"/>
+          <outline text="op.deleteLine()"/>
+          <outline text="return op.setCursor(deadCursor)"/>
+        </outline>
+      </outline>
+      <outline text="op.setCursor - cursor after deleteSubs - Parent cursor remains valid after deleting children">
+        <outline text="Metadata">
+          <outline text="expected_result: Parent"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="local(parentCursor = op.getCursor())"/>
+          <outline text="op.insert(&quot;Child 1&quot;, right)"/>
+          <outline text="op.insert(&quot;Child 2&quot;, down)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="op.deleteSubs()"/>
+          <outline text="op.setCursor(parentCursor)"/>
+          <outline text="return op.getLineText()"/>
+        </outline>
+      </outline>
+      <outline text="op.getCursor - cursor in deeply nested structure - Cursor correctly identifies position in deep nesting">
+        <outline text="Metadata">
+          <outline text="expected_result: 5"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;L1&quot;, down)"/>
+          <outline text="op.insert(&quot;L2&quot;, right)"/>
+          <outline text="op.insert(&quot;L3&quot;, right)"/>
+          <outline text="op.insert(&quot;L4&quot;, right)"/>
+          <outline text="op.insert(&quot;L5&quot;, right)"/>
+          <outline text="local(deepCursor = op.getCursor())"/>
+          <outline text="op.firstSummit()"/>
+          <outline text="op.setCursor(deepCursor)"/>
+          <outline text="return op.level()"/>
+        </outline>
+      </outline>
+      <outline text="op.setDisplay - double disable is idempotent - Setting display false twice should work (idempotent)">
+        <outline text="Metadata">
+          <outline text="expected_result: false"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.setDisplay(false)"/>
+          <outline text="op.setDisplay(false)"/>
+          <outline text="return op.getDisplay()"/>
+        </outline>
+      </outline>
+      <outline text="op.setDisplay - double enable is idempotent - Setting display true twice should work (idempotent)">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.setDisplay(false)"/>
+          <outline text="op.setDisplay(true)"/>
+          <outline text="op.setDisplay(true)"/>
+          <outline text="return op.getDisplay()"/>
+        </outline>
+      </outline>
+      <outline text="op.setDisplay - state persists across operations - Display state remains after outline operations">
+        <outline text="Metadata">
+          <outline text="expected_result: false"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.setDisplay(false)"/>
+          <outline text="op.insert(&quot;Line 1&quot;, down)"/>
+          <outline text="op.insert(&quot;Line 2&quot;, down)"/>
+          <outline text="op.insert(&quot;Line 3&quot;, down)"/>
+          <outline text="return op.getDisplay()"/>
+        </outline>
+      </outline>
+      <outline text="op.getDisplay - independent across multiple outlines - Each outline has independent display state">
+        <outline text="Metadata">
+          <outline text="expected_result: false"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline1)"/>
+          <outline text="lang.new(outlineType, @workspace.outline2)"/>
+          <outline text="target.set(@workspace.outline1)"/>
+          <outline text="op.setDisplay(false)"/>
+          <outline text="target.set(@workspace.outline2)"/>
+          <outline text="op.setDisplay(true)"/>
+          <outline text="target.set(@workspace.outline1)"/>
+          <outline text="return op.getDisplay()"/>
+        </outline>
+      </outline>
+      <outline text="op.setExpansionState - state from different outline should fail - Expansion state is outline-specific">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline1)"/>
+          <outline text="lang.new(outlineType, @workspace.outline2)"/>
+          <outline text="target.set(@workspace.outline1)"/>
+          <outline text="op.insert(&quot;Parent 1&quot;, down)"/>
+          <outline text="op.insert(&quot;Child 1&quot;, right)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="local(state1 = op.getExpansionState())"/>
+          <outline text="target.set(@workspace.outline2)"/>
+          <outline text="op.insert(&quot;Parent 2&quot;, down)"/>
+          <outline text="op.insert(&quot;Child 2&quot;, right)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="op.setExpansionState(state1)"/>
+        </outline>
+      </outline>
+      <outline text="op.getExpansionState - empty outline state - Get expansion state from empty outline (edge case)">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="local(state = op.getExpansionState())"/>
+          <outline text="return defined(state)"/>
+        </outline>
+      </outline>
+      <outline text="op.setExpansionState - restore after structural changes - Expansion state restoration after adding/removing nodes">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="op.insert(&quot;Child 1&quot;, right)"/>
+          <outline text="op.insert(&quot;Child 2&quot;, down)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="op.expand(infinity)"/>
+          <outline text="local(savedState = op.getExpansionState())"/>
+          <outline text="op.collapse()"/>
+          <outline text="op.go(right, 1)"/>
+          <outline text="op.insert(&quot;Child 3&quot;, down)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="op.setExpansionState(savedState)"/>
+          <outline text="return op.subsExpanded()"/>
+        </outline>
+      </outline>
+      <outline text="op.getExpansionState - state is independent of cursor - Expansion state captures entire outline, not just cursor position">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent 1&quot;, down)"/>
+          <outline text="op.insert(&quot;Child 1&quot;, right)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="op.expand(1)"/>
+          <outline text="local(expanded1 = op.subsExpanded())"/>
+          <outline text="op.insert(&quot;Parent 2&quot;, down)"/>
+          <outline text="op.insert(&quot;Child 2&quot;, right)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="local(state = op.getExpansionState())"/>
+          <outline text="op.collapse()"/>
+          <outline text="op.setExpansionState(state)"/>
+          <outline text="local(expanded2 = op.subsExpanded())"/>
+          <outline text="return expanded1 and (not expanded2)"/>
+        </outline>
+      </outline>
+      <outline text="op.getScrollState - empty outline scroll state - Get scroll state from empty outline">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="local(state = op.getScrollState())"/>
+          <outline text="return defined(state)"/>
+        </outline>
+      </outline>
+      <outline text="op.setScrollState - scroll state from different outline should fail - Scroll state is outline-specific">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline1)"/>
+          <outline text="lang.new(outlineType, @workspace.outline2)"/>
+          <outline text="target.set(@workspace.outline1)"/>
+          <outline text="op.insert(&quot;Line 1&quot;, down)"/>
+          <outline text="local(state1 = op.getScrollState())"/>
+          <outline text="target.set(@workspace.outline2)"/>
+          <outline text="op.insert(&quot;Line 2&quot;, down)"/>
+          <outline text="op.setScrollState(state1)"/>
+        </outline>
+      </outline>
+      <outline text="op.setScrollState - state persists after outline modification - Scroll state remains valid after inserting nodes">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line 1&quot;, down)"/>
+          <outline text="op.insert(&quot;Line 2&quot;, down)"/>
+          <outline text="local(savedState = op.getScrollState())"/>
+          <outline text="op.insert(&quot;Line 3&quot;, down)"/>
+          <outline text="op.insert(&quot;Line 4&quot;, down)"/>
+          <outline text="return op.setScrollState(savedState)"/>
+        </outline>
+      </outline>
+      <outline text="op.getScrollState - independent across multiple outlines - Each outline has independent scroll state">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline1)"/>
+          <outline text="lang.new(outlineType, @workspace.outline2)"/>
+          <outline text="target.set(@workspace.outline1)"/>
+          <outline text="op.insert(&quot;Line 1&quot;, down)"/>
+          <outline text="local(state1 = op.getScrollState())"/>
+          <outline text="target.set(@workspace.outline2)"/>
+          <outline text="op.insert(&quot;Line 2&quot;, down)"/>
+          <outline text="local(state2 = op.getScrollState())"/>
+          <outline text="return state1 != state2"/>
+        </outline>
+      </outline>
+      <outline text="op.setRefcon - large positive value (32-bit boundary) - Test refcon with large positive value near INT32_MAX">
+        <outline text="Metadata">
+          <outline text="expected_result: 2147483647"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="op.setRefcon(2147483647)"/>
+          <outline text="return op.getRefcon()"/>
+        </outline>
+      </outline>
+      <outline text="op.setRefcon - large negative value (32-bit boundary) - Test refcon with large negative value near INT32_MIN">
+        <outline text="Metadata">
+          <outline text="expected_result: -2147483648"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="op.setRefcon(-2147483648)"/>
+          <outline text="return op.getRefcon()"/>
+        </outline>
+      </outline>
+      <outline text="op.getRefcon - refcon persists after navigation - Refcon values persist when navigating away and back">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line 1&quot;, down)"/>
+          <outline text="op.setRefcon(111)"/>
+          <outline text="op.insert(&quot;Line 2&quot;, down)"/>
+          <outline text="op.setRefcon(222)"/>
+          <outline text="op.insert(&quot;Line 3&quot;, down)"/>
+          <outline text="op.setRefcon(333)"/>
+          <outline text="op.go(up, 2)"/>
+          <outline text="local(refcon1 = op.getRefcon())"/>
+          <outline text="op.go(down, 1)"/>
+          <outline text="local(refcon2 = op.getRefcon())"/>
+          <outline text="return (refcon1 == 111) and (refcon2 == 222)"/>
+        </outline>
+      </outline>
+      <outline text="op.setRefcon - refcon survives promote/demote - Refcon value persists when changing node hierarchy">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="op.insert(&quot;Child&quot;, right)"/>
+          <outline text="op.setRefcon(999)"/>
+          <outline text="op.promote()"/>
+          <outline text="local(afterPromote = op.getRefcon())"/>
+          <outline text="op.demote()"/>
+          <outline text="local(afterDemote = op.getRefcon())"/>
+          <outline text="return (afterPromote == 999) and (afterDemote == 999)"/>
+        </outline>
+      </outline>
+      <outline text="op.setRefcon - refcon independent across nodes - Each node has independent refcon value (no interference)">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="local(i)"/>
+          <outline text="for i = 1 to 10">
+            <outline text="op.insert(&quot;Line &quot; + i, down)"/>
+            <outline text="op.setRefcon(i * 100)"/>
+          </outline>
+          <outline text="op.firstSummit()"/>
+          <outline text="local(ok = true)"/>
+          <outline text="for i = 2 to 11">
+            <outline text="op.go(down, 1)"/>
+            <outline text="if op.getRefcon() != ((i - 1) * 100)">
+              <outline text="ok = false"/>
+            </outline>
+          </outline>
+          <outline text="return ok"/>
+        </outline>
+      </outline>
+      <outline text="op.getRefcon - refcon after insert preserves parent refcon - Inserting child doesn't affect parent refcon">
+        <outline text="Metadata">
+          <outline text="expected_result: 555"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="op.setRefcon(555)"/>
+          <outline text="op.insert(&quot;Child&quot;, right)"/>
+          <outline text="op.setRefcon(666)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="return op.getRefcon()"/>
+        </outline>
+      </outline>
+      <outline text="workflow - save all state before bulk operation and restore - Save cursor, expansion, scroll state, perform operations, restore all state">
+        <outline text="Metadata">
+          <outline text="expected_result: Parent 2"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent 1&quot;, down)"/>
+          <outline text="op.insert(&quot;Child 1a&quot;, right)"/>
+          <outline text="op.insert(&quot;Child 1b&quot;, down)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="op.expand(1)"/>
+          <outline text="op.insert(&quot;Parent 2&quot;, down)"/>
+          <outline text="op.insert(&quot;Child 2a&quot;, right)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="local(savedCursor = op.getCursor())"/>
+          <outline text="local(savedExpansion = op.getExpansionState())"/>
+          <outline text="local(savedScroll = op.getScrollState())"/>
+          <outline text="op.firstSummit()"/>
+          <outline text="op.collapse()"/>
+          <outline text="op.setCursor(savedCursor)"/>
+          <outline text="op.setExpansionState(savedExpansion)"/>
+          <outline text="op.setScrollState(savedScroll)"/>
+          <outline text="return op.getLineText()"/>
+        </outline>
+      </outline>
+      <outline text="workflow - refcon as node metadata during tree reorganization - Use refcon to track nodes during complex reorganization">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Item A&quot;, down)"/>
+          <outline text="op.setRefcon(1001)"/>
+          <outline text="op.insert(&quot;Item B&quot;, down)"/>
+          <outline text="op.setRefcon(1002)"/>
+          <outline text="op.insert(&quot;Item C&quot;, down)"/>
+          <outline text="op.setRefcon(1003)"/>
+          <outline text="op.go(up, 1)"/>
+          <outline text="op.demote()"/>
+          <outline text="op.go(up, 1)"/>
+          <outline text="local(refconB = op.getRefcon())"/>
+          <outline text="op.go(right, 1)"/>
+          <outline text="local(refconBChild = op.getRefcon())"/>
+          <outline text="return (refconB == 1002) and (refconBChild == 1003)"/>
+        </outline>
+      </outline>
+      <outline text="workflow - display off during state save/restore cycle - Disable display, save state, modify outline, restore state, enable display">
+        <outline text="Metadata">
+          <outline text="expected_result: Line 20"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.setDisplay(false)"/>
+          <outline text="local(i)"/>
+          <outline text="for i = 1 to 20">
+            <outline text="op.insert(&quot;Line &quot; + i, down)"/>
+          </outline>
+          <outline text="op.firstSummit()"/>
+          <outline text="local(savedCursor = op.getCursor())"/>
+          <outline text="op.go(down, 10)"/>
+          <outline text="op.setCursor(savedCursor)"/>
+          <outline text="op.setDisplay(true)"/>
+          <outline text="return op.getLineText()"/>
+        </outline>
+      </outline>
+      <outline text="workflow - multiple outline state management - Manage state for multiple outlines simultaneously">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.o1)"/>
+          <outline text="lang.new(outlineType, @workspace.o2)"/>
+          <outline text="target.set(@workspace.o1)"/>
+          <outline text="op.insert(&quot;O1 Line 1&quot;, down)"/>
+          <outline text="op.setRefcon(111)"/>
+          <outline text="local(cursor1 = op.getCursor())"/>
+          <outline text="target.set(@workspace.o2)"/>
+          <outline text="op.insert(&quot;O2 Line 1&quot;, down)"/>
+          <outline text="op.setRefcon(222)"/>
+          <outline text="local(cursor2 = op.getCursor())"/>
+          <outline text="target.set(@workspace.o1)"/>
+          <outline text="op.setCursor(cursor1)"/>
+          <outline text="local(refcon1 = op.getRefcon())"/>
+          <outline text="target.set(@workspace.o2)"/>
+          <outline text="op.setCursor(cursor2)"/>
+          <outline text="local(refcon2 = op.getRefcon())"/>
+          <outline text="return (refcon1 == 111) and (refcon2 == 222)"/>
+        </outline>
+      </outline>
+      <outline text="stress test - rapid cursor save/restore cycles - Repeatedly save and restore cursor during navigation">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="local(i)"/>
+          <outline text="for i = 1 to 20">
+            <outline text="op.insert(&quot;Line &quot; + i, down)"/>
+          </outline>
+          <outline text="op.firstSummit()"/>
+          <outline text="local(ok = true)"/>
+          <outline text="for i = 1 to 10">
+            <outline text="local(saved = op.getCursor())"/>
+            <outline text="op.go(down, 5)"/>
+            <outline text="op.setCursor(saved)"/>
+            <outline text="if op.getLineText() != &quot;Line 20&quot;">
+              <outline text="ok = false"/>
+            </outline>
+          </outline>
+          <outline text="return ok"/>
+        </outline>
+      </outline>
+      <outline text="stress test - many refcon assignments - Assign refcon to many nodes in large outline">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.setDisplay(false)"/>
+          <outline text="local(i)"/>
+          <outline text="for i = 1 to 100">
+            <outline text="op.insert(&quot;Node &quot; + i, down)"/>
+            <outline text="op.setRefcon(i * 10)"/>
+          </outline>
+          <outline text="op.setDisplay(true)"/>
+          <outline text="op.firstSummit()"/>
+          <outline text="local(ok = true)"/>
+          <outline text="for i = 2 to 101">
+            <outline text="op.go(down, 1)"/>
+            <outline text="if op.getRefcon() != ((i - 1) * 10)">
+              <outline text="ok = false"/>
+            </outline>
+          </outline>
+          <outline text="return ok"/>
+        </outline>
+      </outline>
+      <outline text="stress test - expansion state with deep nesting - Save and restore expansion state in deeply nested outline">
+        <outline text="Metadata">
+          <outline text="expected_result: 2"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;L1&quot;, down)"/>
+          <outline text="local(i)"/>
+          <outline text="for i = 2 to 10">
+            <outline text="op.insert(&quot;L&quot; + i, right)"/>
+            <outline text="op.expand(1)"/>
+          </outline>
+          <outline text="op.firstSummit()"/>
+          <outline text="local(savedState = op.getExpansionState())"/>
+          <outline text="op.collapse()"/>
+          <outline text="op.setExpansionState(savedState)"/>
+          <outline text="op.go(right, 1)"/>
+          <outline text="return op.level()"/>
+        </outline>
+      </outline>
+      <outline text="error recovery - setCursor after outline deleted - Setting cursor fails gracefully if outline no longer exists">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="local(cursor = op.getCursor())"/>
+          <outline text="target.clear()"/>
+          <outline text="op.setCursor(cursor)"/>
+        </outline>
+      </outline>
+      <outline text="error recovery - getDisplay with no target - State queries fail gracefully without target">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="target.clear()"/>
+          <outline text="op.getDisplay()"/>
+        </outline>
+      </outline>
+      <outline text="error recovery - setRefcon with no current node - Setting refcon on empty outline should fail">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.setRefcon(100)"/>
+        </outline>
+      </outline>
+      <outline text="type safety - setCursor requires address type - setCursor rejects non-address types">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="op.setCursor(12345)"/>
+        </outline>
+      </outline>
+      <outline text="type safety - setDisplay requires boolean type - setDisplay rejects non-boolean types">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.setDisplay(1)"/>
+        </outline>
+      </outline>
+      <outline text="type safety - setExpansionState requires address type - setExpansionState rejects non-address types">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="op.insert(&quot;Child&quot;, right)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="op.setExpansionState(&quot;not an address&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="type safety - setScrollState requires address type - setScrollState rejects non-address types">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="op.setScrollState(42)"/>
+        </outline>
+      </outline>
+      <outline text="type safety - setRefcon requires long type - setRefcon rejects non-long types">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="op.setRefcon(true)"/>
+        </outline>
+      </outline>
+      <outline text="return type - getCursor returns address - Verify getCursor return type is longType (1-based line number)">
+        <outline text="Metadata">
+          <outline text="expected_result: long"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="local(cursor = op.getCursor())"/>
+          <outline text="return typeof(cursor)"/>
+        </outline>
+      </outline>
+      <outline text="return type - getDisplay returns boolean - Verify getDisplay return type is booleanType">
+        <outline text="Metadata">
+          <outline text="expected_result: bool"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="local(display = op.getDisplay())"/>
+          <outline text="return typeof(display)"/>
+        </outline>
+      </outline>
+      <outline text="return type - getExpansionState returns address - Verify getExpansionState return type is listType">
+        <outline text="Metadata">
+          <outline text="expected_result: list"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="local(state = op.getExpansionState())"/>
+          <outline text="return typeof(state)"/>
+        </outline>
+      </outline>
+      <outline text="return type - getScrollState returns address - Verify getScrollState return type is longType (1-based line number)">
+        <outline text="Metadata">
+          <outline text="expected_result: long"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="local(state = op.getScrollState())"/>
+          <outline text="return typeof(state)"/>
+        </outline>
+      </outline>
+      <outline text="return type - getRefcon returns long - Verify getRefcon return type is longType">
+        <outline text="Metadata">
+          <outline text="expected_result: long"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="local(refcon = op.getRefcon())"/>
+          <outline text="return typeof(refcon)"/>
+        </outline>
+      </outline>
+      <outline text="return type - setCursor returns boolean - Verify setCursor return type is booleanType">
+        <outline text="Metadata">
+          <outline text="expected_result: bool"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="local(cursor = op.getCursor())"/>
+          <outline text="local(result = op.setCursor(cursor))"/>
+          <outline text="return typeof(result)"/>
+        </outline>
+      </outline>
+      <outline text="return type - setDisplay returns boolean - Verify setDisplay return type is booleanType">
+        <outline text="Metadata">
+          <outline text="expected_result: bool"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="local(result = op.setDisplay(false))"/>
+          <outline text="return typeof(result)"/>
+        </outline>
+      </outline>
+      <outline text="return type - setExpansionState returns boolean - Verify setExpansionState return type is booleanType">
+        <outline text="Metadata">
+          <outline text="expected_result: bool"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="local(state = op.getExpansionState())"/>
+          <outline text="local(result = op.setExpansionState(state))"/>
+          <outline text="return typeof(result)"/>
+        </outline>
+      </outline>
+      <outline text="return type - setScrollState returns boolean - Verify setScrollState return type is booleanType">
+        <outline text="Metadata">
+          <outline text="expected_result: bool"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="local(state = op.getScrollState())"/>
+          <outline text="local(result = op.setScrollState(state))"/>
+          <outline text="return typeof(result)"/>
+        </outline>
+      </outline>
+      <outline text="return type - setRefcon returns boolean - Verify setRefcon return type is booleanType">
+        <outline text="Metadata">
+          <outline text="expected_result: bool"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="local(result = op.setRefcon(100))"/>
+          <outline text="return typeof(result)"/>
         </outline>
       </outline>
     </outline>

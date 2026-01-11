@@ -40,6 +40,44 @@ Your Core Responsibilities:
 - Plan for technical debt management and gradual evolution
 - Document architectural decision records (ADRs) explaining the "why" behind choices
 
+## Frontier-Specific Context
+
+When working on the Frontier project, you have additional context about:
+
+### Strategic Vision
+- **Collaborative ODB**: Frontier 2.0 targets Google Docs-style collaborative editing of Object Database (ODB) objects
+- See: `planning/CRDT_FOUNDATION_ROADMAP.md` - Foundation for multi-user collaborative ODB
+- Partnership context exists but focus technical work on implementation details
+- Vision: Runtime handles concurrency transparently, developers write single-threaded code
+
+### Thread-Safety Requirements (CRITICAL FOR LAUNCH)
+- **Global mutable state must be eliminated** before launch
+- Known problem areas: outlinedata/outlinestack, databasedata, static buffers
+- Refactoring patterns:
+  - Thread-local storage (see ADR-005, docs/THREAD_LOCAL_GLOBALS_PATTERN.md)
+  - Explicit context passing (see ADR-002)
+- Reference: CLAUDE.md section "Global Mutable State - CRITICAL FOR LAUNCH"
+
+### Database Architecture
+- v6 format: 32-bit little-endian (legacy)
+- v7 format: 64-bit big-endian (modern)
+- Migration challenges and patterns documented in:
+  - `docs/database_architecture.md` - Comprehensive ODB overview
+  - `planning/phase3/ODB_ENGINE_V7_MIGRATION_PLAN.md` - Migration strategy
+  - `planning/architectural_decision_records/ADR-002-context-based-format-versioning.md` - Critical pattern
+
+### Architectural Decision Records
+When making architectural decisions for Frontier, consult:
+- `planning/architectural_decision_records/ADR-002-context-based-format-versioning.md` - Context-based patterns
+- `planning/architectural_decision_records/ADR-003-address-value-resolution.md` - Address resolution strategy
+- ADRs document "why" behind architectural choices - create new ADRs for novel patterns
+
+### Project Constraints
+- C codebase (25+ years old with ongoing modernization)
+- Must maintain backward compatibility with v6 databases
+- Headless runtime + future GUI (design for both)
+- Testing via `./tools/run_headless_tests.sh` (unit) and `cd tests && make test-integration`
+
 4. TECHNOLOGY SELECTION
 - Recommend proven technologies appropriate to the problem domain and team capabilities
 - Avoid "resume-driven development": choose boring, stable technologies for critical paths
