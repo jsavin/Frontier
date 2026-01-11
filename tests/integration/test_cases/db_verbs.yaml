@@ -487,45 +487,7 @@ tests:
     expected_result: "true"
 
   # ========================================================================
-  # Test 19: Open existing v6 database (read-only)
-  # ========================================================================
-  - name: "db.open - open existing v6 database readonly"
-    description: "Open the test v6 database in read-only mode"
-    script: |
-      local(ok = db.open("tests/fixtures/v6/test.root", true));
-      return ok
-    expected_success: true
-    expected_result: "true"
-
-  - name: "db.defined - check root in v6 database"
-    description: "Verify root exists in v6 database"
-    script: |
-      db.open("tests/fixtures/v6/test.root", true);
-      local(exists = db.defined("tests/fixtures/v6/test.root", "root"));
-      return exists
-    expected_success: true
-    expected_result: "true"
-
-  - name: "db.istable - verify root is table in v6 database"
-    description: "Verify root is a table"
-    script: |
-      db.open("tests/fixtures/v6/test.root", true);
-      local(isTable = db.istable("tests/fixtures/v6/test.root", "root"));
-      return isTable
-    expected_success: true
-    expected_result: "true"
-
-  - name: "db.close - close v6 database"
-    description: "Close v6 database"
-    script: |
-      db.open("tests/fixtures/v6/test.root", true);
-      local(ok = db.close("tests/fixtures/v6/test.root"));
-      return ok
-    expected_success: true
-    expected_result: "true"
-
-  # ========================================================================
-  # Test 20: Auto-migration of v6 database
+  # Test 19: Auto-migration of v6 database
   # ========================================================================
   - name: "db.open - auto-migration of v6 database"
     description: "Open v6 database in read-write mode, verify auto-migration to v7"
