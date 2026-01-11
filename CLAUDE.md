@@ -729,54 +729,6 @@ Use $(./tools/get_test_temp_path.sh) to get a safe temp directory.
 
 ---
 
-## Outline Structure - Critical Architectural Fact ⚠️
-
-**All new outlines start with a single empty summit headline.**
-
-This is fundamental to Frontier's outline implementation:
-
-```usertalk
-lang.new(outlineType, @outline);  // Creates outline with 1 empty headline
-target.set(@outline);
-op.insert("First Item", down);     // Adds BELOW empty summit (now 2 lines)
-```
-
-**Key Implications**:
-- `op.insert()` **adds** to the outline, does NOT replace the empty summit
-- To replace empty summit: use `op.setLineText("text")` on first operation
-- To skip empty summit: use `op.deleteLine()` before first insert
-- Line counts include the empty summit (2-node parent+child = 3 total lines)
-- `op.firstSummit()` lands on the empty summit (line 1)
-
-**Documentation**: See `docs/OUTLINE_STRUCTURE.md` for complete details.
-
----
-
-## Memory Logging False Alarms - Not Corruption ⚠️
-
-**Symptom**: `loadfromhandle fail: ix=0 ct=24 size=12` errors during list operations
-
-**Cause**: These are NOT memory corruption - they're **verbose format detection logging**.
-
-The `langunpackvalue()` function tries to unpack values in two formats:
-1. **Old format** (24-byte header) - tried first, logs error if handle too small
-2. **New format** (4-byte header) - tried second, succeeds
-
-**Example error log:**
-```
-[general-ERROR] memory.c:1480: loadfromhandle fail: ix=0 ct=24 size=12 caller=langunpackdata
-```
-
-**Translation**: "Tried old format (24 bytes), handle only has 12 bytes, falling back to new format"
-
-**Expected behavior**: Operations complete successfully despite the error logs.
-
-**Fix**: These errors can be suppressed by adjusting log level, but are harmless.
-
-**File**: `Common/source/langpack.c` lines 505-539 (langunpackvalue format detection)
-
----
-
 ## Architectural Patterns to Avoid
 
 ### Hash Table Lookup API - Null Pointer Gotcha ⚠️

@@ -1764,7 +1764,7 @@ tests:
     expected_result: "true"
 
   - name: "op.setScrollState - round-trip scroll state"
-    description: "Get scroll state, navigate, restore scroll state (noop in headless)"
+    description: "Get scroll state, navigate, restore scroll state"
     script: |
       lang.new(outlineType, @workspace.outline);
       target.set(@workspace.outline);
@@ -1778,7 +1778,7 @@ tests:
       op.setScrollState(topState);
       return op.getLineText()
     expected_success: true
-    expected_result: "Line 10"  # Headless: setScrollState is noop, bar stays at Line 10
+    expected_result: "Line 20"
 
   - name: "op.setScrollState - requires address parameter"
     description: "setScrollState requires address parameter (should fail without it)"
@@ -2449,17 +2449,14 @@ tests:
       op.insert("Child 1", right);
       op.go(left, 1);
       op.expand(1);
+      local(expanded1 = op.subsExpanded());
       op.insert("Parent 2", down);
       op.insert("Child 2", right);
       op.go(left, 1);
-      op.collapse();  /* Collapse Parent 2, cursor stays on Parent 2 (Child 2 becomes inaccessible) */
-      op.go(up, 1);  /* Move cursor to Parent 1 (away from Parent 2) */
-      local(state = op.getExpansionState());  /* Capture state: Parent 1 expanded, Parent 2 collapsed */
-      op.collapse();  /* Collapse Parent 1 */
-      op.setExpansionState(state);  /* Restore: should re-expand Parent 1, keep Parent 2 collapsed */
-      local(expanded1 = op.subsExpanded());  /* Check Parent 1 - should be expanded */
-      op.go(down, 1);  /* Move to Parent 2 */
-      local(expanded2 = op.subsExpanded());  /* Check Parent 2 - should be collapsed */
+      local(state = op.getExpansionState());
+      op.collapse();
+      op.setExpansionState(state);
+      local(expanded2 = op.subsExpanded());
       return expanded1 and (not expanded2)
     expected_success: true
     expected_result: "true"
@@ -2507,7 +2504,7 @@ tests:
     expected_result: "true"
 
   - name: "op.getScrollState - independent across multiple outlines"
-    description: "Each outline has independent scroll state (always 1 in headless)"
+    description: "Each outline has independent scroll state"
     script: |
       lang.new(outlineType, @workspace.outline1);
       lang.new(outlineType, @workspace.outline2);
@@ -2519,7 +2516,7 @@ tests:
       local(state2 = op.getScrollState());
       return state1 != state2
     expected_success: true
-    expected_result: "false"  # Headless: getScrollState always returns 1, so 1 != 1 is false
+    expected_result: "true"
 
   # ====================================================================
   # Phase 3: Refcon Edge Cases
@@ -2660,6 +2657,7 @@ tests:
       op.setRefcon(1003);
       op.go(up, 1);
       op.demote();
+      op.go(up, 1);
       local(refconB = op.getRefcon());
       op.go(right, 1);
       local(refconBChild = op.getRefcon());
@@ -2670,7 +2668,6 @@ tests:
   - name: "workflow - display off during state save/restore cycle"
     description: "Disable display, save state, modify outline, restore state, enable display"
     script: |
-      lang.new(tableType, @workspace);
       lang.new(outlineType, @workspace.outline);
       target.set(@workspace.outline);
       op.setDisplay(false);
@@ -2678,8 +2675,8 @@ tests:
       for i = 1 to 20 {
         op.insert("Line " + i, down)
       };
-      local(savedCursor = op.getCursor());
       op.firstSummit();
+      local(savedCursor = op.getCursor());
       op.go(down, 10);
       op.setCursor(savedCursor);
       op.setDisplay(true);
@@ -2818,91 +2815,56 @@ tests:
   # Phase 3: Type Safety Tests
   # ====================================================================
 
-  - name: "type safety - setCursor with invalid cursor returns false"
-    description: "setCursor returns false when given a cursor that can't be set"
+  - name: "type safety - setCursor requires address type"
+    description: "setCursor rejects non-address types"
     script: |
       lang.new(outlineType, @workspace.outline);
       target.set(@workspace.outline);
       op.insert("Line", down);
-      return op.setCursor(12345)
-    expected_success: true
-    expected_result: "false"
+      op.setCursor(12345)
+    expected_success: false
+    expected_error_type: "script_error"
 
-  - name: "type safety - setDisplay with non-boolean coerces to boolean"
-    description: "setDisplay coerces non-boolean types via UserTalk type coercion (1 -> true)"
+  - name: "type safety - setDisplay requires boolean type"
+    description: "setDisplay rejects non-boolean types"
     script: |
       lang.new(outlineType, @workspace.outline);
       target.set(@workspace.outline);
-      op.setDisplay(1);  /* UserTalk coerces 1 to true */
-      return op.getDisplay()
-    expected_success: true
-    expected_result: "true"
+      op.setDisplay(1)
+    expected_success: false
+    expected_error_type: "script_error"
 
-  - name: "type safety - setExpansionState requires list of numbers"
-    description: "setExpansionState takes a list of line numbers (coercion error for string)"
+  - name: "type safety - setExpansionState requires address type"
+    description: "setExpansionState rejects non-address types"
     script: |
       lang.new(outlineType, @workspace.outline);
       target.set(@workspace.outline);
       op.insert("Parent", down);
       op.insert("Child", right);
       op.go(left, 1);
-      op.setExpansionState("not a list")
+      op.setExpansionState("not an address")
     expected_success: false
     expected_error_type: "script_error"
 
-  - name: "type safety - setScrollState is noop in headless"
-    description: "setScrollState returns true and does nothing in headless mode (scroll state is visual)"
+  - name: "type safety - setScrollState requires address type"
+    description: "setScrollState rejects non-address types"
     script: |
       lang.new(outlineType, @workspace.outline);
       target.set(@workspace.outline);
       op.insert("Line", down);
-      return op.setScrollState(42)
-    expected_success: true
-    expected_result: "true"
+      op.setScrollState(42)
+    expected_success: false
+    expected_error_type: "script_error"
 
-  - name: "type safety - setRefcon accepts any type (boolean)"
-    description: "setRefcon can store boolean values (round-trip test)"
+  - name: "type safety - setRefcon requires long type"
+    description: "setRefcon rejects non-long types"
     script: |
       lang.new(outlineType, @workspace.outline);
       target.set(@workspace.outline);
       op.insert("Line", down);
-      op.setRefcon(true);
-      return op.getRefcon()
-    expected_success: true
-    expected_result: "true"
-
-  - name: "type safety - setRefcon accepts any type (string)"
-    description: "setRefcon can store string values (round-trip test)"
-    script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
-      op.insert("Line", down);
-      op.setRefcon("test string");
-      return op.getRefcon()
-    expected_success: true
-    expected_result: "test string"
-
-  - name: "type safety - setRefcon accepts any type (long)"
-    description: "setRefcon can store long values (round-trip test)"
-    script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
-      op.insert("Line", down);
-      op.setRefcon(42);
-      return op.getRefcon()
-    expected_success: true
-    expected_result: "42"
-
-  - name: "type safety - setRefcon accepts any type (double)"
-    description: "setRefcon can store double values (round-trip test)"
-    script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
-      op.insert("Line", down);
-      op.setRefcon(3.14159);
-      return op.getRefcon()
-    expected_success: true
-    expected_result: "3.14159"
+      op.setRefcon(true)
+    expected_success: false
+    expected_error_type: "script_error"
 
   # ====================================================================
   # Phase 3: Return Type Validation Tests

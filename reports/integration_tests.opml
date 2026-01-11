@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Frontier Integration Tests</title>
-    <dateCreated>Sun, 11 Jan 2026 00:25:03 GMT</dateCreated>
+    <dateCreated>Sun, 11 Jan 2026 00:28:48 GMT</dateCreated>
   </head>
   <body>
     <outline text="Db Verbs (db_verbs)">
@@ -4319,9 +4319,9 @@
           <outline text="return op.setScrollState(state)"/>
         </outline>
       </outline>
-      <outline text="op.setScrollState - round-trip scroll state - Get scroll state, navigate, restore scroll state (noop in headless)">
+      <outline text="op.setScrollState - round-trip scroll state - Get scroll state, navigate, restore scroll state">
         <outline text="Metadata">
-          <outline text="expected_result: Line 10"/>
+          <outline text="expected_result: Line 20"/>
         </outline>
         <outline text="Script">
           <outline text="lang.new(outlineType, @workspace.outline)"/>
@@ -5037,17 +5037,14 @@
           <outline text="op.insert(&quot;Child 1&quot;, right)"/>
           <outline text="op.go(left, 1)"/>
           <outline text="op.expand(1)"/>
+          <outline text="local(expanded1 = op.subsExpanded())"/>
           <outline text="op.insert(&quot;Parent 2&quot;, down)"/>
           <outline text="op.insert(&quot;Child 2&quot;, right)"/>
           <outline text="op.go(left, 1)"/>
-          <outline text="op.collapse();  /* Collapse Parent 2, cursor stays on Parent 2 (Child 2 becomes inaccessible) */"/>
-          <outline text="op.go(up, 1);  /* Move cursor to Parent 1 (away from Parent 2) */"/>
-          <outline text="local(state = op.getExpansionState());  /* Capture state: Parent 1 expanded, Parent 2 collapsed */"/>
-          <outline text="op.collapse();  /* Collapse Parent 1 */"/>
-          <outline text="op.setExpansionState(state);  /* Restore: should re-expand Parent 1, keep Parent 2 collapsed */"/>
-          <outline text="local(expanded1 = op.subsExpanded());  /* Check Parent 1 - should be expanded */"/>
-          <outline text="op.go(down, 1);  /* Move to Parent 2 */"/>
-          <outline text="local(expanded2 = op.subsExpanded());  /* Check Parent 2 - should be collapsed */"/>
+          <outline text="local(state = op.getExpansionState())"/>
+          <outline text="op.collapse()"/>
+          <outline text="op.setExpansionState(state)"/>
+          <outline text="local(expanded2 = op.subsExpanded())"/>
           <outline text="return expanded1 and (not expanded2)"/>
         </outline>
       </outline>
@@ -5093,9 +5090,9 @@
           <outline text="return op.setScrollState(savedState)"/>
         </outline>
       </outline>
-      <outline text="op.getScrollState - independent across multiple outlines - Each outline has independent scroll state (always 1 in headless)">
+      <outline text="op.getScrollState - independent across multiple outlines - Each outline has independent scroll state">
         <outline text="Metadata">
-          <outline text="expected_result: false"/>
+          <outline text="expected_result: true"/>
         </outline>
         <outline text="Script">
           <outline text="lang.new(outlineType, @workspace.outline1)"/>
@@ -5249,6 +5246,7 @@
           <outline text="op.setRefcon(1003)"/>
           <outline text="op.go(up, 1)"/>
           <outline text="op.demote()"/>
+          <outline text="op.go(up, 1)"/>
           <outline text="local(refconB = op.getRefcon())"/>
           <outline text="op.go(right, 1)"/>
           <outline text="local(refconBChild = op.getRefcon())"/>
@@ -5260,7 +5258,6 @@
           <outline text="expected_result: Line 20"/>
         </outline>
         <outline text="Script">
-          <outline text="lang.new(tableType, @workspace)"/>
           <outline text="lang.new(outlineType, @workspace.outline)"/>
           <outline text="target.set(@workspace.outline)"/>
           <outline text="op.setDisplay(false)"/>
@@ -5268,8 +5265,8 @@
           <outline text="for i = 1 to 20">
             <outline text="op.insert(&quot;Line &quot; + i, down)"/>
           </outline>
-          <outline text="local(savedCursor = op.getCursor())"/>
           <outline text="op.firstSummit()"/>
+          <outline text="local(savedCursor = op.getCursor())"/>
           <outline text="op.go(down, 10)"/>
           <outline text="op.setCursor(savedCursor)"/>
           <outline text="op.setDisplay(true)"/>
@@ -5405,29 +5402,30 @@
           <outline text="op.setRefcon(100)"/>
         </outline>
       </outline>
-      <outline text="type safety - setCursor with invalid cursor returns false - setCursor returns false when given a cursor that can't be set">
+      <outline text="type safety - setCursor requires address type - setCursor rejects non-address types">
         <outline text="Metadata">
-          <outline text="expected_result: false"/>
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
         </outline>
         <outline text="Script">
           <outline text="lang.new(outlineType, @workspace.outline)"/>
           <outline text="target.set(@workspace.outline)"/>
           <outline text="op.insert(&quot;Line&quot;, down)"/>
-          <outline text="return op.setCursor(12345)"/>
+          <outline text="op.setCursor(12345)"/>
         </outline>
       </outline>
-      <outline text="type safety - setDisplay with non-boolean coerces to boolean - setDisplay coerces non-boolean types via UserTalk type coercion (1 -&gt; true)">
+      <outline text="type safety - setDisplay requires boolean type - setDisplay rejects non-boolean types">
         <outline text="Metadata">
-          <outline text="expected_result: true"/>
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
         </outline>
         <outline text="Script">
           <outline text="lang.new(outlineType, @workspace.outline)"/>
           <outline text="target.set(@workspace.outline)"/>
-          <outline text="op.setDisplay(1);  /* UserTalk coerces 1 to true */"/>
-          <outline text="return op.getDisplay()"/>
+          <outline text="op.setDisplay(1)"/>
         </outline>
       </outline>
-      <outline text="type safety - setExpansionState requires list of numbers - setExpansionState takes a list of line numbers (coercion error for string)">
+      <outline text="type safety - setExpansionState requires address type - setExpansionState rejects non-address types">
         <outline text="Metadata">
           <outline text="expected_success: False"/>
           <outline text="expected_error_type: script_error"/>
@@ -5438,66 +5436,31 @@
           <outline text="op.insert(&quot;Parent&quot;, down)"/>
           <outline text="op.insert(&quot;Child&quot;, right)"/>
           <outline text="op.go(left, 1)"/>
-          <outline text="op.setExpansionState(&quot;not a list&quot;)"/>
+          <outline text="op.setExpansionState(&quot;not an address&quot;)"/>
         </outline>
       </outline>
-      <outline text="type safety - setScrollState is noop in headless - setScrollState returns true and does nothing in headless mode (scroll state is visual)">
+      <outline text="type safety - setScrollState requires address type - setScrollState rejects non-address types">
         <outline text="Metadata">
-          <outline text="expected_result: true"/>
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
         </outline>
         <outline text="Script">
           <outline text="lang.new(outlineType, @workspace.outline)"/>
           <outline text="target.set(@workspace.outline)"/>
           <outline text="op.insert(&quot;Line&quot;, down)"/>
-          <outline text="return op.setScrollState(42)"/>
+          <outline text="op.setScrollState(42)"/>
         </outline>
       </outline>
-      <outline text="type safety - setRefcon accepts any type (boolean) - setRefcon can store boolean values (round-trip test)">
+      <outline text="type safety - setRefcon requires long type - setRefcon rejects non-long types">
         <outline text="Metadata">
-          <outline text="expected_result: true"/>
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
         </outline>
         <outline text="Script">
           <outline text="lang.new(outlineType, @workspace.outline)"/>
           <outline text="target.set(@workspace.outline)"/>
           <outline text="op.insert(&quot;Line&quot;, down)"/>
           <outline text="op.setRefcon(true)"/>
-          <outline text="return op.getRefcon()"/>
-        </outline>
-      </outline>
-      <outline text="type safety - setRefcon accepts any type (string) - setRefcon can store string values (round-trip test)">
-        <outline text="Metadata">
-          <outline text="expected_result: test string"/>
-        </outline>
-        <outline text="Script">
-          <outline text="lang.new(outlineType, @workspace.outline)"/>
-          <outline text="target.set(@workspace.outline)"/>
-          <outline text="op.insert(&quot;Line&quot;, down)"/>
-          <outline text="op.setRefcon(&quot;test string&quot;)"/>
-          <outline text="return op.getRefcon()"/>
-        </outline>
-      </outline>
-      <outline text="type safety - setRefcon accepts any type (long) - setRefcon can store long values (round-trip test)">
-        <outline text="Metadata">
-          <outline text="expected_result: 42"/>
-        </outline>
-        <outline text="Script">
-          <outline text="lang.new(outlineType, @workspace.outline)"/>
-          <outline text="target.set(@workspace.outline)"/>
-          <outline text="op.insert(&quot;Line&quot;, down)"/>
-          <outline text="op.setRefcon(42)"/>
-          <outline text="return op.getRefcon()"/>
-        </outline>
-      </outline>
-      <outline text="type safety - setRefcon accepts any type (double) - setRefcon can store double values (round-trip test)">
-        <outline text="Metadata">
-          <outline text="expected_result: 3.14159"/>
-        </outline>
-        <outline text="Script">
-          <outline text="lang.new(outlineType, @workspace.outline)"/>
-          <outline text="target.set(@workspace.outline)"/>
-          <outline text="op.insert(&quot;Line&quot;, down)"/>
-          <outline text="op.setRefcon(3.14159)"/>
-          <outline text="return op.getRefcon()"/>
         </outline>
       </outline>
       <outline text="return type - getCursor returns address - Verify getCursor return type is longType (1-based line number)">
