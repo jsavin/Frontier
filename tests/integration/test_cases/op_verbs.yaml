@@ -2839,7 +2839,7 @@ tests:
     expected_result: "true"
 
   - name: "type safety - setExpansionState requires list of numbers"
-    description: "setExpansionState takes a list of line numbers (not a string)"
+    description: "setExpansionState takes a list of line numbers (coercion error for string)"
     script: |
       lang.new(outlineType, @workspace.outline);
       target.set(@workspace.outline);
@@ -2848,7 +2848,7 @@ tests:
       op.go(left, 1);
       op.setExpansionState("not a list")
     expected_success: false
-    expected_error_type: "json_parse_error"
+    expected_error_type: "script_error"
 
   - name: "type safety - setScrollState is noop in headless"
     description: "setScrollState returns true and does nothing in headless mode (scroll state is visual)"
