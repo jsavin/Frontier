@@ -24,6 +24,7 @@ from verb_exceptions import (
     is_pattern_d_processor,
     generate_pattern_d_candidates
 )
+from script_implemented_verbs import is_script_implemented
 
 # Constants for validation and limits
 MIN_VERB_NAME_LENGTH = 2  # Minimum characters for a valid verb name
@@ -565,19 +566,37 @@ class VerbImplementationAnalyzer:
                     case_source, processor_name, verb_name, i, impl_file, line_num
                 )
             else:
-                # No case found - assume stub
-                impl = VerbImplementation(
-                    processor=processor_name,
-                    verb_name=verb_name,
-                    token=i,
-                    is_implemented=False,
-                    impl_file=impl_file,
-                    impl_line=0,
-                    has_carbon_deps=False,
-                    uses_ui_adapter=False,
-                    platform_specific=False,
-                    complexity=1
-                )
+                # No C case found - check if script-implemented
+                is_script_impl = is_script_implemented(processor_name, verb_name)
+
+                if is_script_impl:
+                    # Verb is implemented in UserTalk scripts
+                    impl = VerbImplementation(
+                        processor=processor_name,
+                        verb_name=verb_name,
+                        token=i,
+                        is_implemented=True,  # Script-implemented counts as implemented
+                        impl_file="<UserTalk script>",
+                        impl_line=0,
+                        has_carbon_deps=False,
+                        uses_ui_adapter=False,
+                        platform_specific=False,
+                        complexity=1
+                    )
+                else:
+                    # Not found in C or scripts - assume stub
+                    impl = VerbImplementation(
+                        processor=processor_name,
+                        verb_name=verb_name,
+                        token=i,
+                        is_implemented=False,
+                        impl_file=impl_file,
+                        impl_line=0,
+                        has_carbon_deps=False,
+                        uses_ui_adapter=False,
+                        platform_specific=False,
+                        complexity=1
+                    )
 
             implementations.append(impl)
 
