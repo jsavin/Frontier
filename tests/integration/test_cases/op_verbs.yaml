@@ -523,45 +523,26 @@ tests:
   # ====================================================================
 
   - name: "op.promote - move child to sibling of parent"
-    description: "op.promote() promotes children of current node (moves subheads left one level)"
-    script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
-      op.insert("Parent", down);
-      op.insert("Child 1", right);
-      op.insert("Child 2", down);
-      /* Outline structure:
-         Parent (level 1)
-           Child 1 (level 2)
-           Child 2 (level 2)
-         Cursor is on Child 2 */
-      op.go(up, 1);
-      /* Cursor on Child 1 - check its level before promoting Parent's children */
-      local(child1LevelBefore = op.level());
-      op.go(left, 1);
-      /* Cursor on Parent - promote its children (Child 1 and Child 2) */
-      op.promote();
-      /* After promote, children move left one level:
-         Parent (level 1)
-         Child 1 (level 1) - was level 2
-         Child 2 (level 1) - was level 2 */
-      op.go(down, 1);
-      /* Cursor on Child 1 - verify it's now level 1 */
-      local(child1LevelAfter = op.level());
-      return child1LevelBefore == 2 and child1LevelAfter == 1
-    expected_success: true
-    expected_result: "true"
-
-  - name: "op.promote - returns boolean"
-    description: "promote returns true when children exist to promote"
+    description: "Promote child node to same level as parent (outdent)"
     script: |
       lang.new(outlineType, @workspace.outline);
       target.set(@workspace.outline);
       op.insert("Parent", down);
       op.insert("Child", right);
-      /* Cursor is on Child after inserting it */
-      op.go(left, 1);
-      /* Cursor is on Parent - promote its children */
+      local(before = op.level());
+      op.promote();
+      local(after = op.level());
+      return before == 2 and after == 1
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.promote - returns boolean"
+    description: "promote returns true when node is promoted"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Parent", down);
+      op.insert("Child", right);
       return op.promote()
     expected_success: true
     expected_result: "true"
@@ -581,43 +562,26 @@ tests:
   # ====================================================================
 
   - name: "op.demote - make sibling a child"
-    description: "op.demote() demotes siblings after current node (moves following siblings right to become children)"
+    description: "Demote node to child of previous sibling (indent)"
     script: |
       lang.new(outlineType, @workspace.outline);
       target.set(@workspace.outline);
-      op.insert("Parent", down);
       op.insert("Sibling 1", down);
       op.insert("Sibling 2", down);
-      /* Outline structure:
-         Parent (level 1)
-         Sibling 1 (level 1)
-         Sibling 2 (level 1)
-         Cursor is on Sibling 2 */
-      local(sibling2LevelBefore = op.level());
-      op.go(up, 1);
-      /* Cursor on Sibling 1 - demote following siblings (Sibling 2) */
+      local(before = op.level());
       op.demote();
-      /* After demote:
-         Parent (level 1)
-         Sibling 1 (level 1)
-           Sibling 2 (level 2) - was level 1 */
-      op.go(right, 1);
-      /* Cursor on Sibling 2 (now a child of Sibling 1) */
-      local(sibling2LevelAfter = op.level());
-      return sibling2LevelBefore == 1 and sibling2LevelAfter == 2
+      local(after = op.level());
+      return before == 1 and after == 2
     expected_success: true
     expected_result: "true"
 
   - name: "op.demote - returns boolean"
-    description: "demote returns true when siblings exist to demote"
+    description: "demote returns true when node is demoted"
     script: |
       lang.new(outlineType, @workspace.outline);
       target.set(@workspace.outline);
       op.insert("Line 1", down);
       op.insert("Line 2", down);
-      /* Cursor is on Line 2 */
-      op.go(up, 1);
-      /* Cursor is on Line 1 - demote following siblings (Line 2 exists) */
       return op.demote()
     expected_success: true
     expected_result: "true"
