@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Frontier Integration Tests</title>
-    <dateCreated>Sun, 11 Jan 2026 00:37:15 GMT</dateCreated>
+    <dateCreated>Sun, 11 Jan 2026 00:52:40 GMT</dateCreated>
   </head>
   <body>
     <outline text="Db Verbs (db_verbs)">
@@ -431,31 +431,6 @@
           <outline text="db.open(dbPath, false)"/>
           <outline text="local(ok = db.close(dbPath))"/>
           <outline text="return ok"/>
-        </outline>
-      </outline>
-      <outline text="db.open - auto-migration of v6 database - Open v6 database in read-write mode, verify auto-migration to v7">
-        <outline text="Metadata">
-          <outline text="expected_result: true"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(srcPath = tmpDir + &quot;/&quot; + &quot;v6_automigrate_src.root&quot;)"/>
-          <outline text="local(v7Path = tmpDir + &quot;/&quot; + &quot;v6_automigrate_src.root7&quot;)"/>
-          <outline text="// Copy v6 fixture to temp location"/>
-          <outline text="file.copy(&quot;tests/fixtures/v6/test.root&quot;, srcPath)"/>
-          <outline text="// Open in read-write mode (should trigger auto-migration)"/>
-          <outline text="local(ok = db.open(srcPath, false))"/>
-          <outline text="// Verify .root7 was created"/>
-          <outline text="local(v7Exists = file.exists(v7Path))"/>
-          <outline text="// Verify can read data from migrated database (root table exists in v6 fixture)"/>
-          <outline text="local(rootExists = db.defined(srcPath, &quot;root&quot;))"/>
-          <outline text="db.close(srcPath)"/>
-          <outline text="// Clean up"/>
-          <outline text="file.delete(srcPath)"/>
-          <outline text="if v7Exists">
-            <outline text="file.delete(v7Path)"/>
-          </outline>
-          <outline text="return ok and v7Exists and rootExists"/>
         </outline>
       </outline>
       <outline text="db.open - auto-migration of v6 database - Open v6 database in read-write mode, verify auto-migration to v7">
