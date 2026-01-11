@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Frontier Integration Tests</title>
-    <dateCreated>Sun, 11 Jan 2026 00:19:27 GMT</dateCreated>
+    <dateCreated>Sun, 11 Jan 2026 00:25:03 GMT</dateCreated>
   </head>
   <body>
     <outline text="Db Verbs (db_verbs)">
@@ -5427,10 +5427,10 @@
           <outline text="return op.getDisplay()"/>
         </outline>
       </outline>
-      <outline text="type safety - setExpansionState requires list of numbers - setExpansionState takes a list of line numbers (not a string)">
+      <outline text="type safety - setExpansionState requires list of numbers - setExpansionState takes a list of line numbers (coercion error for string)">
         <outline text="Metadata">
           <outline text="expected_success: False"/>
-          <outline text="expected_error_type: json_parse_error"/>
+          <outline text="expected_error_type: script_error"/>
         </outline>
         <outline text="Script">
           <outline text="lang.new(outlineType, @workspace.outline)"/>
