@@ -93,6 +93,45 @@ For each identified issue:
 - **Clear Communication**: Use diagrams, code examples, and plain language
 - **Education**: Explain the "why" behind recommendations to build team capability
 
+## Frontier-Specific Refactoring Patterns
+
+When working on Frontier, you should be aware of established refactoring patterns:
+
+### Global State Elimination (Critical for Launch)
+
+Frontier must be thread-safe before launch. Two proven refactoring patterns:
+
+**Pattern 1: Thread-Local Storage** (for per-thread state)
+- Example: ADR-005 (parameter state thread-safety)
+- Template: `docs/THREAD_LOCAL_GLOBALS_PATTERN.md`
+- Add field to `tythreadglobals` structure
+- Update thread swap functions
+- Replace global with macro accessor
+- Zero API changes - transparent to existing code
+
+**Pattern 2: Explicit Context Passing** (for per-operation state)
+- Example: ADR-002 (context-based format versioning)
+- Create explicit context structure (e.g., `db_context`, `op_context`)
+- Thread context through function parameters
+- Use `_internal(const context *ctx, ...)` pattern
+- Maintain backward-compatible wrappers
+- Document in `planning/architectural_decision_records/`
+
+### Mode Stack Anti-Pattern Refactoring
+
+The mode stack (db_format_mode_push/pop) is an anti-pattern that causes bugs:
+- Problem: Implicit mode inheritance in recursive operations
+- Solution: Explicit context passing (see ADR-002)
+- Migration: `planning/phase3/mode_stack_refactor/MODE_STACK_REFACTOR_PHASE1_DETAILED_v2.md`
+- Never recommend new mode stack usage - always use context passing
+
+### Reference Materials
+
+- `planning/architectural_decision_records/ADR-002-context-based-format-versioning.md` - **Essential reading** for context refactoring
+- `planning/architectural_decision_records/ADR-005-parameter-state-thread-safety.md` - Thread-local pattern
+- `docs/THREAD_LOCAL_GLOBALS_PATTERN.md` - Step-by-step thread-local migration
+- `CLAUDE.md` section "Global Mutable State - CRITICAL FOR LAUNCH" - Requirements and patterns
+
 ## Decision-Making Framework
 
 When evaluating refactoring options, consider:
