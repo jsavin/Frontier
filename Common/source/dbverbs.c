@@ -60,6 +60,15 @@
 #include "odbinternal.h"
 #include "db_format.h" /* migration helpers */
 
+/* Path buffer size - macOS typically supports up to 1024 byte paths */
+#ifndef DB_PATH_MAX
+#define DB_PATH_MAX 1024
+#endif
+
+/* Database file extension lengths */
+#define ROOT_EXTENSION_LEN 5   /* ".root" */
+#define ROOT7_EXTENSION_LEN 6  /* ".root7" */
+
 /*
 if we're generating cfm (powerpc), we're linking to an odb engine shared
 library, which has it's own globals. on 68k machines, we're staically linked,
@@ -372,8 +381,11 @@ typedef struct tyodblistrecord {
 	} tyodbrecord, *ptrodbrecord, **hdlodbrecord;
 #pragma options align=reset
 
-/* Global ODB list - used by both GUI and headless dbinitverbs() */
-hdlodbrecord hodblist = nil;
+/* Global ODB list - used by both GUI and headless dbinitverbs()
+ * Uses sentinel pattern to prevent UAF when closing last database.
+ * The sentinel is a permanent allocated handle that's never freed,
+ * preventing hodblist from becoming a dangling pointer. */
+hdlodbrecord hodblist = nil;  /* Initialized to sentinel handle on first use */
 
 
 typedef enum tydbtoken { /*verbs that are processed by db*/
@@ -453,18 +465,18 @@ static boolean getodbparam (hdltreenode hparam1, short pnum, hdlodbrecord *hodbr
 	if (!getfilespecvalue (hparam1, pnum, ptrfs))
 		return (false);
 
-	/* Try exact match first */
-	for (hodb = hodblist; hodb != nil; hodb = (**hodb).hnext) {
+	/* Try exact match first - skip sentinel (hodblist itself) */
+	for (hodb = (**hodblist).hnext; hodb != nil; hodb = (**hodb).hnext) {
 		if ( equalfilespecs ( &( **hodb ).fs, ptrfs ) ) {
 			*hodbrecord = hodb;
 			return (true);
 			}
 		}
 
-	/* If .root path provided and not found, try .root7 fallback */
+	/* If .root path provided and not found, try .root7 fallback - skip sentinel */
 	tyfilespec fs_root7;
 	if (odb_check_root7_exists(ptrfs, &fs_root7)) {
-		for (hodb = hodblist; hodb != nil; hodb = (**hodb).hnext) {
+		for (hodb = (**hodblist).hnext; hodb != nil; hodb = (**hodb).hnext) {
 			if ( equalfilespecs ( &( **hodb ).fs, &fs_root7 ) ) {
 				*hodbrecord = hodb;
 				return (true);
@@ -546,6 +558,9 @@ static boolean odb_detect_database_version(const tyfilespec *fs, unsigned char *
 	long ctread = 2;
 	boolean ok = false;
 
+	if (fs == NULL)
+		return false;
+
 	if (version != NULL)
 		*version = 0;
 
@@ -556,13 +571,18 @@ static boolean odb_detect_database_version(const tyfilespec *fs, unsigned char *
 	}
 
 	/* Read first 2 bytes (version is at byte offset 1) */
-	if (filereaddata(fnum, ctread, &ctread, header) && ctread == 2) {
-		if (version != NULL)
-			*version = header[1];  /* Version is second byte */
-		log_trace(LOG_COMP_DB, "odb_detect_database_version: detected version=%d", *version);
-		ok = true;
+	if (filereaddata(fnum, ctread, &ctread, header)) {
+		if (ctread >= 2) {  /* Validate we read enough bytes before parsing */
+			if (version != NULL) {
+				*version = header[1];  /* Version is second byte */
+				log_trace(LOG_COMP_DB, "odb_detect_database_version: detected version=%d", *version);
+			}
+			ok = true;
+		} else {
+			log_trace(LOG_COMP_DB, "odb_detect_database_version: read %ld bytes (expected 2)", ctread);
+		}
 	} else {
-		log_trace(LOG_COMP_DB, "odb_detect_database_version: filereaddata failed or read %ld bytes (expected 2)", ctread);
+		log_trace(LOG_COMP_DB, "odb_detect_database_version: filereaddata failed");
 	}
 
 	closefile(fnum);
@@ -584,18 +604,18 @@ static boolean odb_check_root7_exists(const tyfilespec *fs, tyfilespec *fs_root7
 	long len = stringlength(bspath);
 
 	/* Only proceed if path ends with .root */
-	if (len < 5)
+	if (len < ROOT_EXTENSION_LEN)
 		return false;
 
 	bigstring bsext;
-	midstring(bspath, len - 4, 5, bsext);  /* Extract last 5 chars */
+	midstring(bspath, len - (ROOT_EXTENSION_LEN - 1), ROOT_EXTENSION_LEN, bsext);
 
 	if (!equalstrings(bsext, BIGSTRING("\x05.root")))
 		return false;  /* Doesn't end with .root */
 
 	/* Build .root7 version of the path */
 	copystring(bspath, bspath7);
-	setstringlength(bspath7, len - 5);  /* Remove .root */
+	setstringlength(bspath7, len - ROOT_EXTENSION_LEN);  /* Remove .root */
 	pushstring(BIGSTRING("\x06.root7"), bspath7);  /* Append .root7 */
 
 	/* Check if .root7 file exists */
@@ -763,8 +783,8 @@ static boolean dbopenverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 				log_debug(LOG_COMP_DB, "dbopenverb: detected v6 database (version=%d), migrating to v7", version);
 
 				bigstring bspath_cstr;
-				char cpath[1024];
-				char output_path[1024];
+				char cpath[DB_PATH_MAX];
+				char output_path[DB_PATH_MAX];
 				boolean migrated = false;
 
 				filespectopath(&odbrec.fs, bspath_cstr);
@@ -792,7 +812,7 @@ static boolean dbopenverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 				log_debug(LOG_COMP_DB, "dbopenverb: migration complete, will open %s", output_path);
 			}
 		} else {
-			log_warn(LOG_COMP_DB, "dbopenverb: failed to detect database version");
+			log_debug(LOG_COMP_DB, "dbopenverb: failed to detect database version");
 		}
 	}
 
@@ -836,15 +856,15 @@ static boolean dbopenverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 		return (false);
 		}
 
-	/* Add to open database list */
-	if (hodblist == nil) {
-		/* First database - start the list */
-		hodblist = hodb;
+	/* Add to open database list after sentinel (hodblist itself is the sentinel) */
+	if ((**hodblist).hnext == nil) {
+		/* First real database after sentinel */
+		(**hodblist).hnext = hodb;
 		(**hodb).hnext = nil;
 	}
 	else {
-		/* Add to existing list */
-		listlink ((hdllinkedlist) hodblist, (hdllinkedlist) hodb);
+		/* Add to existing list (after sentinel) */
+		listlink ((hdllinkedlist) (**hodblist).hnext, (hdllinkedlist) hodb);
 	}
 
 	return (setbooleanvalue (true, vreturned));
@@ -1195,6 +1215,8 @@ boolean dbinitverbs (void) {
 	if (!loadfunctionprocessor (iddbverbs, &dbfunctionvalue))
 		return (false);
 
+	/* Initialize sentinel handle to prevent UAF when closing last database
+	 * This handle is never freed, so hodblist never becomes a dangling pointer */
 	if (!newclearhandle (sizeof (tyodbrecord), (Handle *) &hodblist))
 		return (false);
 
@@ -1208,7 +1230,8 @@ boolean dbinitverbs (void) {
 /* Exposed helpers for Save-path migration */
 boolean db_get_path_for_odb(odbref odb, bigstring out) {
     hdlodbrecord hodb;
-    for (hodb = hodblist; hodb != nil; hodb = (**hodb).hnext) {
+    /* Skip sentinel (hodblist itself) when searching */
+    for (hodb = (**hodblist).hnext; hodb != nil; hodb = (**hodb).hnext) {
         if ((**hodb).odb == odb) {
             return filegetpath(&(**hodb).fs, out);
         }

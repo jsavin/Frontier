@@ -315,10 +315,11 @@ boolean fileexists(const ptrfilespec fs, boolean *flfolder) {
     char cpath[512];
     struct stat st;
 
-    if (!fs || !flfolder)
+    if (!fs)
         return false;
 
-    *flfolder = false;
+    if (flfolder)
+        *flfolder = false;
 
     /* Convert filespec to path */
     if (!filespectopath(fs, bspath))
@@ -332,7 +333,8 @@ boolean fileexists(const ptrfilespec fs, boolean *flfolder) {
         return false;
 
     /* Set folder flag if it's a directory */
-    *flfolder = S_ISDIR(st.st_mode);
+    if (flfolder)
+        *flfolder = S_ISDIR(st.st_mode);
 
     return true;
 }
