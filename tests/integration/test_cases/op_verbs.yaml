@@ -3204,3 +3204,47 @@ tests:
     expected_success: true
     expected_result: "true"
     notes: "Full functional test of visiting behavior deferred - requires pre-stored callback script infrastructure"
+
+  # ====================================================================
+  # Phase 5a: Noop Verbs (GUI-only features, not applicable in headless)
+  # ====================================================================
+
+  - name: "op.sethtmlformatting - noop returns false"
+    description: "Verify op.sethtmlformatting returns false (noop) in headless mode"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      return op.sethtmlformatting(true)
+    expected_success: true
+    expected_result: "false"
+
+  - name: "op.gethtmlformatting - noop returns false"
+    description: "Verify op.gethtmlformatting returns false (noop) in headless mode"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      return op.gethtmlformatting()
+    expected_success: true
+    expected_result: "false"
+
+  - name: "op.setdynamic - noop returns false"
+    description: "Verify op.setdynamic returns false (noop) in headless mode"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      return op.setdynamic(true)
+    expected_success: true
+    expected_result: "false"
+
+  - name: "op.getdynamic - noop returns false"
+    description: "Verify op.getdynamic returns false (noop) in headless mode"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      return op.getdynamic()
+    expected_success: true
+    expected_result: "false"

@@ -1416,22 +1416,56 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
             /* Verb #40: op.outlinetoxml - not yet implemented */
             if (bserror) seterrorstring("not implemented", bserror);
             return false;
-        case opv_sethtmlformatting:
-            /* Verb #41: op.sethtmlformatting - not yet implemented */
-            if (bserror) seterrorstring("not implemented", bserror);
-            return false;
-        case opv_gethtmlformatting:
-            /* Verb #42: op.gethtmlformatting - not yet implemented */
-            if (bserror) seterrorstring("not implemented", bserror);
-            return false;
-        case opv_setdynamic:
-            /* Verb #43: op.setdynamic - not yet implemented */
-            if (bserror) seterrorstring("not implemented", bserror);
-            return false;
-        case opv_getdynamic:
-            /* Verb #44: op.getdynamic - not yet implemented */
-            if (bserror) seterrorstring("not implemented", bserror);
-            return false;
+        case opv_sethtmlformatting: {
+            /* Verb #41: op.sethtmlformatting(fl) -> boolean
+             * NOOP in headless mode - HTML formatting is GUI-only feature
+             * Accepts boolean parameter for API compatibility
+             * Always returns false without error
+             */
+            boolean fl;
+
+            flnextparamislast = true;
+            if (!getbooleanvalue(hparam1, 1, &fl))
+                return false;
+
+            (void)fl;  /* Intentionally unused in headless mode */
+            return setbooleanvalue(false, vreturned);
+        }
+        case opv_gethtmlformatting: {
+            /* Verb #42: op.gethtmlformatting() -> boolean
+             * NOOP in headless mode - HTML formatting is GUI-only feature
+             * Always returns false without error
+             */
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+
+            return setbooleanvalue(false, vreturned);
+        }
+        case opv_setdynamic: {
+            /* Verb #43: op.setdynamic(fl) -> boolean
+             * NOOP in headless mode - dynamic outline mode is GUI-only feature
+             * Accepts boolean parameter for API compatibility
+             * Always returns false without error
+             */
+            boolean fl;
+
+            flnextparamislast = true;
+            if (!getbooleanvalue(hparam1, 1, &fl))
+                return false;
+
+            (void)fl;  /* Intentionally unused in headless mode */
+            return setbooleanvalue(false, vreturned);
+        }
+        case opv_getdynamic: {
+            /* Verb #44: op.getdynamic() -> boolean
+             * NOOP in headless mode - dynamic outline mode is GUI-only feature
+             * Always returns false without error
+             */
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+
+            return setbooleanvalue(false, vreturned);
+        }
         default:
             return false;
     }
