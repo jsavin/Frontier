@@ -165,7 +165,7 @@ typedef struct xmltoken {
 
 static boolean xmlvaltostring (tyvaluerecord xmlval, short indentlevel, boolean fltranslatestrings, Handle *string);
 
-static boolean xmlfrontiervaltotaggedtext (tyvaluerecord *val, short indentlevel, Handle *xmltext, hdlhashnode);
+boolean xmlfrontiervaltotaggedtext (tyvaluerecord *val, short indentlevel, Handle *xmltext, hdlhashnode);
 
 static boolean xmlstructtofrontiervalue (tyaddress *adrstruct, tyvaluerecord *v);
 
@@ -377,8 +377,8 @@ on frontierValueToTaggedText (adrFrontierValue, indentlevel) {
 	return (xmltext)}	*/
 
 		
-static boolean xmlfrontiervaltotaggedtext (tyvaluerecord *val, short indentlevel, Handle *xmltext, hdlhashnode hnode) {
-	
+boolean xmlfrontiervaltotaggedtext (tyvaluerecord *val, short indentlevel, Handle *xmltext, hdlhashnode hnode) {
+
 	/*
 	6.1d3 AR: build the xml representation of a Frontier value.
 	*/
@@ -3662,12 +3662,14 @@ static boolean xmlfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 	} /*xmlfunctionvalue*/
 
 
+#ifndef FRONTIER_HEADLESS
 boolean xmlinitverbs (void) {
-	
+
 	/*
 	5.0.2 dmb: new verbs
 	*/
-	
+
 	return (loadfunctionprocessor (idxmlverbs, &xmlfunctionvalue));
 	} /*xmlinitverbs*/
+#endif /* !FRONTIER_HEADLESS */
 	

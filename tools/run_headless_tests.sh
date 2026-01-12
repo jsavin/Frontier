@@ -41,20 +41,20 @@ fi
 chmod 444 databases/Frontier-v6.root 2>/dev/null || true
 
 # Create v7 migrated database
-if [ ! -f databases/Frontier-v7.root ] || [ databases/Frontier-v6.root -nt databases/Frontier-v7.root ]; then
+if [ ! -f databases/Frontier-v6.root7 ] || [ databases/Frontier-v6.root -nt databases/Frontier-v6.root7 ]; then
     # Run CLI with v6 database - creates v7 output file automatically
-    # Pattern: Frontier-v6.root → Frontier-v7.root (version suffix stripped and replaced)
+    # Pattern: Frontier-v6.root → Frontier-v6.root7 (.root7 extension appended)
     # Note: Migration may exit with non-zero code (startup script errors) but still succeed
     ./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root -e "1" > /dev/null 2>&1
 
     # Check if migration succeeded by verifying output file exists and has v7 header
-    if [ ! -f databases/Frontier-v7.root ]; then
+    if [ ! -f databases/Frontier-v6.root7 ]; then
         echo "[headless-tests] ERROR: Database migration failed - no output file created"
         echo "[headless-tests] Try running manually: ./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root -e \"1\""
         exit 1
     fi
 
-    v7_version=$(xxd -l 2 -p databases/Frontier-v7.root)
+    v7_version=$(xxd -l 2 -p databases/Frontier-v6.root7)
     if [ "$v7_version" != "0007" ]; then
         echo "[headless-tests] ERROR: Migration created invalid output (expected v7, got: $v7_version)"
         exit 1

@@ -32,7 +32,7 @@ The reported "regression" was caused by running integration tests incorrectly (w
 
 ### After 64-Bit Packing (Correct Invocation) ✅
 **Command:** `./tools/run_integration_tests.sh`
-**Includes:** `--system-root databases/Frontier-v7.root`
+**Includes:** `--system-root databases/Frontier-v6.root7`
 - Total tests: 599
 - Passing: 539 (90%)
 - Failing: 60 (10%)
@@ -70,7 +70,7 @@ These are **pre-existing or expected failures**, not caused by 64-bit packing:
 
 **Evidence:**
 ```bash
-./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root -e 'db.new("/tmp/test.root"); return file.exists("/tmp/test.root")'
+./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root7 -e 'db.new("/tmp/test.root"); return file.exists("/tmp/test.root")'
 # Expected: true
 # Actual: false
 ```
@@ -135,7 +135,7 @@ These are **pre-existing or expected failures**, not caused by 64-bit packing:
 
 ### 2. Manual CLI Testing ✅
 ```bash
-./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root -e '
+./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root7 -e '
   new(outlineType, @workspace.test);
   target.set(@workspace.test);
   op.insert("Test Line", down);
@@ -145,9 +145,9 @@ These are **pre-existing or expected failures**, not caused by 64-bit packing:
 
 ### 3. Database Migration ✅
 ```bash
-rm -f databases/Frontier-v7.root
+rm -f databases/Frontier-v6.root7
 ./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root -e "1"
-# Result: Frontier-v7.root created (9.9MB) ✓
+# Result: Frontier-v6.root7 created (9.9MB) ✓
 ```
 
 ### 4. Integration Tests (Correct Invocation) ✅
@@ -187,7 +187,7 @@ python3 tests/integration/runner.py tests/integration/test_cases/*.yaml
 **Correct:**
 ```bash
 ./tools/run_integration_tests.sh
-# Includes --system-root databases/Frontier-v7.root
+# Includes --system-root databases/Frontier-v6.root7
 # Result: 90% pass rate ✓
 ```
 

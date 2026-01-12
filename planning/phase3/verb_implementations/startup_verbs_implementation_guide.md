@@ -206,7 +206,7 @@ if (!headless_set_frontier_file(&fspec)) {
 make -C frontier-cli
 
 # Test
-./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root \
+./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root7 \
     -e "msg(frontier.getFilePath())"
 
 # Expected output: path to database file
@@ -492,20 +492,20 @@ ADD_VERB("folderFromPath", fv_folderFromPath);
 make -C frontier-cli
 
 # Test folderFromPath
-./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root \
+./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root7 \
     -e "msg(file.folderFromPath('/Users/test/file.txt'))"
 # Expected: /Users/test
 
-./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root \
+./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root7 \
     -e "msg(file.folderFromPath('/Users/test/'))"
 # Expected: /Users
 
-./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root \
+./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root7 \
     -e "msg(file.folderFromPath('file.txt'))"
 # Expected: (empty string)
 
 # Test fileFromPath
-./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root \
+./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root7 \
     -e "msg(file.fileFromPath('/Users/test/file.txt'))"
 # Expected: file.txt
 ```
@@ -701,7 +701,7 @@ The `frontier.getFilePath()` returns a filespec, which is a complex type includi
 Implementation is successful when:
 
 ```bash
-./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root \
+./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root7 \
     -e "clock.now()"
 ```
 

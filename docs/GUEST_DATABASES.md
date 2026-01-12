@@ -220,7 +220,7 @@ Guest Database operations involve global state:
    - Most functionality requires integration test coverage
 
 3. **Manual Testing** (during development)
-   - Use `./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root`
+   - Use `./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root7`
    - Verify system.compiler.files entries after db.open()
    - Check global scope access to Guest Database items
    - Confirm cleanup after db.close()

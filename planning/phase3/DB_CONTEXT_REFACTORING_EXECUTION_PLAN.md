@@ -1298,7 +1298,7 @@ tests:
 ./tools/run_headless_tests.sh
 
 # Run integration tests with system root
-cd tests && make test-integration FRONTIER_CLI_ARGS="--system-root ../databases/Frontier-v7.root"
+cd tests && make test-integration FRONTIER_CLI_ARGS="--system-root ../databases/Frontier-v6.root7"
 
 # Run db_verbs tests specifically
 cd tests && python3 run_integration_tests.py integration/db_verbs/*.yaml
@@ -1809,7 +1809,7 @@ int main(void) {
 ./tools/run_headless_tests.sh
 
 # Integration tests with system root
-cd tests && make test-integration FRONTIER_CLI_ARGS="--system-root ../databases/Frontier-v7.root"
+cd tests && make test-integration FRONTIER_CLI_ARGS="--system-root ../databases/Frontier-v6.root7"
 
 # Concurrent operations stress test
 ./tests/stress_test_concurrent_db_ops.sh
@@ -1896,7 +1896,7 @@ python3 run_integration_tests.py integration/db_verbs/*.yaml
 
 ```bash
 cd tests
-python3 run_integration_tests.py integration/db_verbs/*.yaml --system-root ../databases/Frontier-v7.root
+python3 run_integration_tests.py integration/db_verbs/*.yaml --system-root ../databases/Frontier-v6.root7
 ```
 
 ### Migration Tests
@@ -1905,7 +1905,7 @@ python3 run_integration_tests.py integration/db_verbs/*.yaml --system-root ../da
 
 ```bash
 # Migrate system root
-rm -f databases/Frontier-v7.root
+rm -f databases/Frontier-v6.root7
 ./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root -e "1"
 
 # Run migration tests
@@ -1948,7 +1948,7 @@ Expected: Migration succeeds, no errors.
 1. Run full test suite: `./tools/run_headless_tests.sh`
 2. Run advanced isolation tests: `python3 run_integration_tests.py integration/db_verbs/context_isolation_advanced.yaml`
 3. **CRITICAL:** Run Issue #266 regression test: `cd tests && python3 run_integration_tests.py integration/db_verbs/issue_266_regression.yaml`
-4. Verify with system root: `cd tests && make test-integration FRONTIER_CLI_ARGS="--system-root ../databases/Frontier-v7.root"`
+4. Verify with system root: `cd tests && make test-integration FRONTIER_CLI_ARGS="--system-root ../databases/Frontier-v6.root7"`
 
 **Exit Criteria:**
 
@@ -2130,7 +2130,7 @@ Expected: Migration succeeds, no errors.
    ```bash
    make clean && make
    ./tools/run_headless_tests.sh
-   cd tests && make test-integration FRONTIER_CLI_ARGS="--system-root ../databases/Frontier-v7.root"
+   cd tests && make test-integration FRONTIER_CLI_ARGS="--system-root ../databases/Frontier-v6.root7"
    ```
 
 3. **File issue for Phase 2 as future work:**

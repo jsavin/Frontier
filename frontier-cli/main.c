@@ -295,7 +295,7 @@ static void print_usage(const char* program_name) {
     printf("  %s myscript.usertalk\n", program_name);
     printf("\n");
     printf("  # Execute with system root database\n");
-    printf("  %s --system-root databases/Frontier-v7.root -e \"sizeOf(system)\"\n", program_name);
+    printf("  %s --system-root databases/Frontier-v6.root7 -e \"sizeOf(system)\"\n", program_name);
     printf("\n");
     printf("  # Upgrade v6 database to v7 format\n");
     printf("  %s --system-root databases/Frontier-v6.root --upgrade-system-root\n", program_name);

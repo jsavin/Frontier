@@ -374,7 +374,7 @@ class TestRunner:
 def main():
     # Configuration
     cli_path = "./frontier-cli/frontier-cli"
-    system_root = "./databases/Frontier-v7.root"
+    system_root = "./databases/Frontier-v6.root7"
     test_dir = Path("tests/integration/test_cases")
 
     # Initialize
@@ -683,7 +683,7 @@ fi
 ### Reusing Existing Test Patterns
 
 **From C unit tests**, we can reuse:
-- Database setup/teardown patterns (create clean Frontier-v7.root)
+- Database setup/teardown patterns (create clean Frontier-v6.root7)
 - Test fixture data (test databases with known tables)
 - Error message validation patterns
 
@@ -712,7 +712,7 @@ class FrontierCLI:
 ### Test Database Strategy
 
 **Option A: Shared read-only database** (RECOMMENDED for Phase 1)
-- Use `databases/Frontier-v7.root` for all tests
+- Use `databases/Frontier-v6.root7` for all tests
 - Tests are read-only (don't modify database)
 - Fast, simple, low overhead
 

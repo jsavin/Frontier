@@ -1,0 +1,310 @@
+# Integration tests for xml.* verbs
+#
+# Test suite for XML processor verb implementations
+# Coverage: xml.frontiervaluetotaggedtext (complete coverage of all value types)
+
+processor: "xml"
+
+tests:
+  # ========================================
+  # xml.frontiervaluetotaggedtext - String values
+  # ========================================
+
+  - name: "xml.frontiervaluetotaggedtext - simple string"
+    script: |
+      local(s = "hello");
+      return xml.frontiervaluetotaggedtext(@s, 0)
+    expected_output: "hello"
+    expected_success: true
+
+  - name: "xml.frontiervaluetotaggedtext - string with XML entities"
+    script: |
+      local(s = "a < b & c > d");
+      return xml.frontiervaluetotaggedtext(@s, 0)
+    expected_output: "a &lt; b &amp; c &gt; d"
+    expected_success: true
+
+  - name: "xml.frontiervaluetotaggedtext - string with quotes"
+    script: |
+      local(s = "say \"hello\"");
+      return xml.frontiervaluetotaggedtext(@s, 0)
+    expected_output: "say \"hello\""
+    expected_success: true
+
+  - name: "xml.frontiervaluetotaggedtext - empty string"
+    script: |
+      local(s = "");
+      return xml.frontiervaluetotaggedtext(@s, 0)
+    expected_output: ""
+    expected_success: true
+
+  # ========================================
+  # xml.frontiervaluetotaggedtext - Integer values
+  # ========================================
+
+  - name: "xml.frontiervaluetotaggedtext - positive integer"
+    script: |
+      local(n = 42);
+      return xml.frontiervaluetotaggedtext(@n, 0)
+    expected_output: "<i4>42</i4>"
+    expected_success: true
+
+  - name: "xml.frontiervaluetotaggedtext - negative integer"
+    script: |
+      local(n = -100);
+      return xml.frontiervaluetotaggedtext(@n, 0)
+    expected_output: "<i4>-100</i4>"
+    expected_success: true
+
+  - name: "xml.frontiervaluetotaggedtext - zero"
+    script: |
+      local(n = 0);
+      return xml.frontiervaluetotaggedtext(@n, 0)
+    expected_output: "<i4>0</i4>"
+    expected_success: true
+
+  # ========================================
+  # xml.frontiervaluetotaggedtext - Boolean values
+  # ========================================
+
+  - name: "xml.frontiervaluetotaggedtext - boolean true"
+    script: |
+      local(b = true);
+      return xml.frontiervaluetotaggedtext(@b, 0)
+    expected_output: "<boolean>1</boolean>"
+    expected_success: true
+
+  - name: "xml.frontiervaluetotaggedtext - boolean false"
+    script: |
+      local(b = false);
+      return xml.frontiervaluetotaggedtext(@b, 0)
+    expected_output: "<boolean>0</boolean>"
+    expected_success: true
+
+  # ========================================
+  # xml.frontiervaluetotaggedtext - Double values
+  # ========================================
+
+  - name: "xml.frontiervaluetotaggedtext - double value"
+    script: |
+      local(d = 3.14159);
+      return xml.frontiervaluetotaggedtext(@d, 0)
+    expected_pattern: "^<double>3\\.14159.*</double>$"
+    expected_success: true
+
+  - name: "xml.frontiervaluetotaggedtext - negative double"
+    script: |
+      local(d = -2.5);
+      return xml.frontiervaluetotaggedtext(@d, 0)
+    expected_pattern: "^<double>-2\\.5.*</double>$"
+    expected_success: true
+
+  # ========================================
+  # xml.frontiervaluetotaggedtext - Date values
+  # ========================================
+
+  - name: "xml.frontiervaluetotaggedtext - date value"
+    script: |
+      local(dt = date.set(2024, 1, 15, 10, 30, 0));
+      return xml.frontiervaluetotaggedtext(@dt, 0)
+    expected_pattern: "^<dateTime\\.iso8601>20240115T10:30:00</dateTime\\.iso8601>$"
+    expected_success: true
+
+  # ========================================
+  # xml.frontiervaluetotaggedtext - Table (struct) values
+  # ========================================
+
+  - name: "xml.frontiervaluetotaggedtext - simple table"
+    script: |
+      local(t);
+      new(tableType, @t);
+      t.name = "John";
+      t.age = 30;
+      return xml.frontiervaluetotaggedtext(@t, 0)
+    expected_contains:
+      - "<struct>"
+      - "<member>"
+      - "<name>name</name>"
+      - "<value><string>John</string></value>"
+      - "<name>age</name>"
+      - "<value><i4>30</i4></value>"
+      - "</member>"
+      - "</struct>"
+    expected_success: true
+
+  - name: "xml.frontiervaluetotaggedtext - empty table"
+    script: |
+      local(t);
+      new(tableType, @t);
+      return xml.frontiervaluetotaggedtext(@t, 0)
+    expected_output: "<struct></struct>"
+    expected_success: true
+
+  - name: "xml.frontiervaluetotaggedtext - nested table"
+    script: |
+      local(t);
+      new(tableType, @t);
+      new(tableType, @t.address);
+      t.address.city = "Boston";
+      t.address.zip = 02101;
+      return xml.frontiervaluetotaggedtext(@t, 0)
+    expected_contains:
+      - "<struct>"
+      - "<member>"
+      - "<name>address</name>"
+      - "<value><struct>"
+      - "<name>city</name>"
+      - "<value><string>Boston</string></value>"
+      - "<name>zip</name>"
+      - "<value><i4>2101</i4></value>"
+      - "</struct></value>"
+      - "</member>"
+      - "</struct>"
+    expected_success: true
+
+  # ========================================
+  # xml.frontiervaluetotaggedtext - List (array) values
+  # ========================================
+
+  - name: "xml.frontiervaluetotaggedtext - simple list"
+    script: |
+      local(lst);
+      new(listType, @lst);
+      lst[1] = 10;
+      lst[2] = 20;
+      lst[3] = 30;
+      return xml.frontiervaluetotaggedtext(@lst, 0)
+    expected_contains:
+      - "<array>"
+      - "<data>"
+      - "<value><i4>10</i4></value>"
+      - "<value><i4>20</i4></value>"
+      - "<value><i4>30</i4></value>"
+      - "</data>"
+      - "</array>"
+    expected_success: true
+
+  - name: "xml.frontiervaluetotaggedtext - empty list"
+    script: |
+      local(lst);
+      new(listType, @lst);
+      return xml.frontiervaluetotaggedtext(@lst, 0)
+    expected_output: "<array><data></data></array>"
+    expected_success: true
+
+  - name: "xml.frontiervaluetotaggedtext - mixed type list"
+    script: |
+      local(lst);
+      new(listType, @lst);
+      lst[1] = "hello";
+      lst[2] = 42;
+      lst[3] = true;
+      return xml.frontiervaluetotaggedtext(@lst, 0)
+    expected_contains:
+      - "<array>"
+      - "<data>"
+      - "<value><string>hello</string></value>"
+      - "<value><i4>42</i4></value>"
+      - "<value><boolean>1</boolean></value>"
+      - "</data>"
+      - "</array>"
+    expected_success: true
+
+  # ========================================
+  # xml.frontiervaluetotaggedtext - Indent level parameter
+  # ========================================
+
+  - name: "xml.frontiervaluetotaggedtext - with indent level 0"
+    script: |
+      local(s = "test");
+      return xml.frontiervaluetotaggedtext(@s, 0)
+    expected_output: "<string>test</string>"
+    expected_success: true
+
+  - name: "xml.frontiervaluetotaggedtext - with indent level 1"
+    script: |
+      local(t);
+      new(tableType, @t);
+      t.key = "value";
+      local(result = xml.frontiervaluetotaggedtext(@t, 1));
+      return string.countFields(result, string.filledString("\t", 1))
+    expected_output: "6"
+    expected_success: true
+
+  # ========================================
+  # xml.frontiervaluetotaggedtext - Complex nested structures
+  # ========================================
+
+  - name: "xml.frontiervaluetotaggedtext - complex nested structure"
+    script: |
+      local(root);
+      new(tableType, @root);
+      root.title = "Test Document";
+      new(listType, @root.items);
+      new(tableType, @root.items[1]);
+      root.items[1].id = 1;
+      root.items[1].name = "First Item";
+      new(tableType, @root.items[2]);
+      root.items[2].id = 2;
+      root.items[2].name = "Second Item";
+      return xml.frontiervaluetotaggedtext(@root, 0)
+    expected_contains:
+      - "<struct>"
+      - "<name>title</name>"
+      - "<value><string>Test Document</string></value>"
+      - "<name>items</name>"
+      - "<value><array>"
+      - "<data>"
+      - "<value><struct>"
+      - "<name>id</name>"
+      - "<value><i4>1</i4></value>"
+      - "<name>name</name>"
+      - "<value><string>First Item</string></value>"
+      - "</struct></value>"
+      - "<value><struct>"
+      - "<name>id</name>"
+      - "<value><i4>2</i4></value>"
+      - "<name>name</name>"
+      - "<value><string>Second Item</string></value>"
+      - "</struct></value>"
+      - "</data>"
+      - "</array></value>"
+      - "</struct>"
+    expected_success: true
+
+  # ========================================
+  # xml.frontiervaluetotaggedtext - Edge cases
+  # ========================================
+
+  - name: "xml.frontiervaluetotaggedtext - table with special chars in keys"
+    script: |
+      local(t);
+      new(tableType, @t);
+      t.["key<>&"] = "value";
+      return xml.frontiervaluetotaggedtext(@t, 0)
+    expected_contains:
+      - "<struct>"
+      - "<member>"
+      - "<name>key&lt;&gt;&amp;</name>"
+      - "<value><string>value</string></value>"
+      - "</member>"
+      - "</struct>"
+    expected_success: true
+
+  - name: "xml.frontiervaluetotaggedtext - deeply nested tables"
+    script: |
+      local(t);
+      new(tableType, @t);
+      new(tableType, @t.level1);
+      new(tableType, @t.level1.level2);
+      new(tableType, @t.level1.level2.level3);
+      t.level1.level2.level3.value = "deep";
+      return xml.frontiervaluetotaggedtext(@t, 0)
+    expected_contains:
+      - "<struct>"
+      - "<name>level1</name>"
+      - "<name>level2</name>"
+      - "<name>level3</name>"
+      - "<name>value</name>"
+      - "<value><string>deep</string></value>"
+    expected_success: true
