@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Frontier Integration Tests</title>
-    <dateCreated>Mon, 12 Jan 2026 01:26:27 GMT</dateCreated>
+    <dateCreated>Mon, 12 Jan 2026 14:53:09 GMT</dateCreated>
   </head>
   <body>
     <outline text="Db Verbs (db_verbs)">
@@ -6589,6 +6589,403 @@
         </outline>
         <outline text="Script">
           <outline text="lang.string(-42)"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="Sys Processor Tests (sys_processor_tests)">
+      <outline text="sys.osversion - returns OS version string - Get OS version - returns distribution on Linux, sw_vers on macOS">
+        <outline text="Metadata">
+          <outline text="expected_result: TEXT"/>
+        </outline>
+        <outline text="Script">
+          <outline text="typeof(sys.osversion())"/>
+        </outline>
+      </outline>
+      <outline text="sys.osversion - non-empty result - OS version should return non-empty string">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="string.length(sys.osversion()) &gt; 0"/>
+        </outline>
+      </outline>
+      <outline text="sys.machine - returns machine architecture - Get machine architecture (uname -m output)">
+        <outline text="Metadata">
+          <outline text="expected_result: TEXT"/>
+        </outline>
+        <outline text="Script">
+          <outline text="typeof(sys.machine())"/>
+        </outline>
+      </outline>
+      <outline text="sys.machine - non-empty result - Machine architecture should return non-empty string">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="string.length(sys.machine()) &gt; 0"/>
+        </outline>
+      </outline>
+      <outline text="sys.machine - valid architecture values - Machine should be one of common architectures">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(m = sys.machine())"/>
+          <outline text="return (m == &quot;x86_64&quot;) or (m == &quot;arm64&quot;) or (m == &quot;aarch64&quot;) or (m == &quot;i386&quot;) or (m == &quot;i686&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="sys.os - returns OS name string - Get OS name (returns 'MacOS' on macOS for backward compatibility)">
+        <outline text="Metadata">
+          <outline text="expected_result: TEXT"/>
+        </outline>
+        <outline text="Script">
+          <outline text="typeof(sys.os())"/>
+        </outline>
+      </outline>
+      <outline text="sys.os - non-empty result - OS name should return non-empty string">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="string.length(sys.os()) &gt; 0"/>
+        </outline>
+      </outline>
+      <outline text="sys.os - valid OS values - OS should be one of supported platforms">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(os = sys.os())"/>
+          <outline text="return (os == &quot;MacOS&quot;) or (os == &quot;Linux&quot;) or (os == &quot;Windows&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="sys.memavail - returns zero in headless mode - Memory availability returns 0 in headless (no GUI memory pool)">
+        <outline text="Metadata">
+          <outline text="expected_result: 0"/>
+        </outline>
+        <outline text="Script">
+          <outline text="sys.memavail()"/>
+        </outline>
+      </outline>
+      <outline text="sys.memavail - returns long type - Memory availability should return long integer">
+        <outline text="Metadata">
+          <outline text="expected_result: long"/>
+        </outline>
+        <outline text="Script">
+          <outline text="typeof(sys.memavail())"/>
+        </outline>
+      </outline>
+      <outline text="sys.systemtask - returns true - systemtask yields to other processes, returns true">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="sys.systemtask()"/>
+        </outline>
+      </outline>
+      <outline text="sys.systemtask - returns boolean type - systemtask should return boolean">
+        <outline text="Metadata">
+          <outline text="expected_result: bool"/>
+        </outline>
+        <outline text="Script">
+          <outline text="typeof(sys.systemtask())"/>
+        </outline>
+      </outline>
+      <outline text="sys.systemtask - callable in loop - systemtask should work when called multiple times">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(i, ok = true)"/>
+          <outline text="for i = 1 to 10">
+            <outline text="ok = sys.systemtask()"/>
+            <outline text="if not ok { return false }"/>
+          </outline>
+          <outline text="return true"/>
+        </outline>
+      </outline>
+      <outline text="sys.countapps - returns positive count - Count of running processes should be positive">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="sys.countapps() &gt; 0"/>
+        </outline>
+      </outline>
+      <outline text="sys.countapps - returns long type - Process count should return long integer">
+        <outline text="Metadata">
+          <outline text="expected_result: long"/>
+        </outline>
+        <outline text="Script">
+          <outline text="typeof(sys.countapps())"/>
+        </outline>
+      </outline>
+      <outline text="sys.countapps - reasonable count range - Process count should be in reasonable range (1-10000)">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(count = sys.countapps())"/>
+          <outline text="return (count &gt;= 1) and (count &lt;= 10000)"/>
+        </outline>
+      </outline>
+      <outline text="sys.appisrunning - current process returns true - Check if frontier-cli process is running">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="sys.appisrunning(&quot;frontier-cli&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="sys.appisrunning - nonexistent process returns false - Check for nonexistent process should return false">
+        <outline text="Metadata">
+          <outline text="expected_result: false"/>
+        </outline>
+        <outline text="Script">
+          <outline text="sys.appisrunning(&quot;nonexistent_process_xyz_12345&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="sys.appisrunning - returns boolean type - appisrunning should return boolean">
+        <outline text="Metadata">
+          <outline text="expected_result: bool"/>
+        </outline>
+        <outline text="Script">
+          <outline text="typeof(sys.appisrunning(&quot;frontier-cli&quot;))"/>
+        </outline>
+      </outline>
+      <outline text="sys.appisrunning - case sensitivity - Test process name case sensitivity (platform-dependent)">
+        <outline text="Metadata">
+          <outline text="expected_result: bool"/>
+        </outline>
+        <outline text="Script">
+          <outline text="typeof(sys.appisrunning(&quot;FRONTIER-CLI&quot;))"/>
+        </outline>
+      </outline>
+      <outline text="sys.appisrunning - empty string parameter - Empty process name should return false or error gracefully">
+        <outline text="Metadata">
+          <outline text="expected_result: false"/>
+        </outline>
+        <outline text="Script">
+          <outline text="sys.appisrunning(&quot;&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="sys.getapppath - current process returns path - Get path to frontier-cli executable">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="string.length(sys.getapppath(&quot;frontier-cli&quot;)) &gt; 0"/>
+        </outline>
+      </outline>
+      <outline text="sys.getapppath - returns string type - getapppath should return string (full path)">
+        <outline text="Metadata">
+          <outline text="expected_result: TEXT"/>
+        </outline>
+        <outline text="Script">
+          <outline text="typeof(sys.getapppath(&quot;frontier-cli&quot;))"/>
+        </outline>
+      </outline>
+      <outline text="sys.getapppath - path contains process name - Returned path should contain the process name">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(path = sys.getapppath(&quot;frontier-cli&quot;))"/>
+          <outline text="return string.patternMatch(&quot;frontier-cli&quot;, path) &gt; 0"/>
+        </outline>
+      </outline>
+      <outline text="sys.getapppath - nonexistent process - Get path for nonexistent process should return empty or error">
+        <outline text="Script">
+          <outline text="local(path = sys.getapppath(&quot;nonexistent_process_xyz_12345&quot;))"/>
+          <outline text="return (path == &quot;&quot;) or (path == nil)"/>
+        </outline>
+      </outline>
+      <outline text="sys.frontmostapp - returns string in headless - frontmostapp returns empty string in headless mode (no GUI)">
+        <outline text="Metadata">
+          <outline text="expected_result: TEXT"/>
+        </outline>
+        <outline text="Script">
+          <outline text="typeof(sys.frontmostapp())"/>
+        </outline>
+      </outline>
+      <outline text="sys.frontmostapp - empty or valid result - In headless mode, frontmostapp should return empty or process name">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(app = sys.frontmostapp())"/>
+          <outline text="return typeof(app) == stringType"/>
+        </outline>
+      </outline>
+      <outline text="sys.bringapptofront - returns false in headless - bringapptofront cannot work in headless mode">
+        <outline text="Metadata">
+          <outline text="expected_result: false"/>
+        </outline>
+        <outline text="Script">
+          <outline text="sys.bringapptofront(&quot;frontier-cli&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="sys.bringapptofront - returns boolean type - bringapptofront should return boolean">
+        <outline text="Metadata">
+          <outline text="expected_result: bool"/>
+        </outline>
+        <outline text="Script">
+          <outline text="typeof(sys.bringapptofront(&quot;any_app&quot;))"/>
+        </outline>
+      </outline>
+      <outline text="sys.bringapptofront - empty string parameter - Empty app name should return false">
+        <outline text="Metadata">
+          <outline text="expected_result: false"/>
+        </outline>
+        <outline text="Script">
+          <outline text="sys.bringapptofront(&quot;&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="sys.browsenetwork - not available in headless - browsenetwork requires GUI, should fail in headless">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+        </outline>
+        <outline text="Script">
+          <outline text="sys.browsenetwork()"/>
+        </outline>
+      </outline>
+      <outline text="sys.getnthapp - returns string type - getnthapp should return string (empty in headless)">
+        <outline text="Metadata">
+          <outline text="expected_result: TEXT"/>
+        </outline>
+        <outline text="Script">
+          <outline text="typeof(sys.getnthapp(1))"/>
+        </outline>
+      </outline>
+      <outline text="sys.getnthapp - first process - Get first running process (may return empty in headless)">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(app = sys.getnthapp(1))"/>
+          <outline text="return typeof(app) == stringType"/>
+        </outline>
+      </outline>
+      <outline text="sys.getnthapp - zero index - Process index 0 should return empty or error gracefully">
+        <outline text="Script">
+          <outline text="local(app = sys.getnthapp(0))"/>
+          <outline text="return (app == &quot;&quot;) or (app == nil)"/>
+        </outline>
+      </outline>
+      <outline text="sys.getnthapp - negative index - Negative process index should return empty or error gracefully">
+        <outline text="Script">
+          <outline text="local(app = sys.getnthapp(-1))"/>
+          <outline text="return (app == &quot;&quot;) or (app == nil)"/>
+        </outline>
+      </outline>
+      <outline text="sys.getnthapp - very large index - Process index beyond count should return empty">
+        <outline text="Script">
+          <outline text="local(app = sys.getnthapp(999999))"/>
+          <outline text="return (app == &quot;&quot;) or (app == nil)"/>
+        </outline>
+      </outline>
+      <outline text="sys verbs - system information suite - Verify all system info verbs return valid types">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(osv = sys.osversion())"/>
+          <outline text="local(machine = sys.machine())"/>
+          <outline text="local(os = sys.os())"/>
+          <outline text="local(mem = sys.memavail())"/>
+          <outline text="return (typeof(osv) == stringType) and">
+            <outline text="(typeof(machine) == stringType) and"/>
+            <outline text="(typeof(os) == stringType) and"/>
+            <outline text="(typeof(mem) == longType)"/>
+          </outline>
+        </outline>
+      </outline>
+      <outline text="sys verbs - process management suite - Verify process management verbs work together">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(count = sys.countapps())"/>
+          <outline text="local(running = sys.appisrunning(&quot;frontier-cli&quot;))"/>
+          <outline text="local(task = sys.systemtask())"/>
+          <outline text="return (count &gt; 0) and running and task"/>
+        </outline>
+      </outline>
+      <outline text="sys verbs - app running and path correlation - If app is running, getapppath should return non-empty">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(running = sys.appisrunning(&quot;frontier-cli&quot;))"/>
+          <outline text="if running">
+            <outline text="local(path = sys.getapppath(&quot;frontier-cli&quot;))"/>
+            <outline text="return string.length(path) &gt; 0"/>
+          </outline>
+          <outline text="return true"/>
+        </outline>
+      </outline>
+      <outline text="sys.appisrunning - very long process name - Long process name should handle gracefully">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(longName = &quot;a&quot;)"/>
+          <outline text="local(i)"/>
+          <outline text="for i = 1 to 100">
+            <outline text="longName = longName + &quot;a&quot;"/>
+          </outline>
+          <outline text="return typeof(sys.appisrunning(longName)) == booleanType"/>
+        </outline>
+      </outline>
+      <outline text="sys.getapppath - special characters in name - Process name with special characters should handle gracefully">
+        <outline text="Metadata">
+          <outline text="expected_result: TEXT"/>
+        </outline>
+        <outline text="Script">
+          <outline text="typeof(sys.getapppath(&quot;app-name.with.dots&quot;))"/>
+        </outline>
+      </outline>
+      <outline text="sys.countapps - multiple calls consistent - Multiple calls to countapps should return similar values">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(count1 = sys.countapps())"/>
+          <outline text="sys.systemtask()"/>
+          <outline text="local(count2 = sys.countapps())"/>
+          <outline text="return (count1 &gt; 0) and (count2 &gt; 0)"/>
+        </outline>
+      </outline>
+      <outline text="sys verbs - all info verbs return strings - OS info verbs should all return string types">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="return (typeof(sys.osversion()) == stringType) and">
+            <outline text="(typeof(sys.machine()) == stringType) and"/>
+            <outline text="(typeof(sys.os()) == stringType)"/>
+          </outline>
+        </outline>
+      </outline>
+      <outline text="sys verbs - numeric verbs return long - Numeric sys verbs should return long type">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="return (typeof(sys.memavail()) == longType) and">
+            <outline text="(typeof(sys.countapps()) == longType)"/>
+          </outline>
+        </outline>
+      </outline>
+      <outline text="sys verbs - boolean verbs return bool - Boolean sys verbs should return boolean type">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="return (typeof(sys.systemtask()) == booleanType) and">
+            <outline text="(typeof(sys.appisrunning(&quot;test&quot;)) == booleanType) and"/>
+            <outline text="(typeof(sys.bringapptofront(&quot;test&quot;)) == booleanType)"/>
+          </outline>
         </outline>
       </outline>
     </outline>

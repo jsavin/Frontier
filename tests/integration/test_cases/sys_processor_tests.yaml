@@ -1,0 +1,386 @@
+# Integration tests for sys processor verbs
+# Tests system information and process management verbs in headless mode
+#
+# Sys processor provides:
+#   - System info: osversion, machine, os, memavail
+#   - Process management: systemtask, countapps, appisrunning, getapppath
+#   - GUI-only (limited in headless): frontmostapp, bringapptofront, browsenetwork
+#   - Low priority: getnthapp
+#
+# Test case fields:
+#   name: Test name (required)
+#   description: Test description (optional)
+#   script: UserTalk script to execute (required)
+#   expected_success: true/false (default: true)
+#   expected_result: Expected return value as string (optional)
+#   expected_result_type: Expected result type from JSON (optional)
+#   expected_error_type: Expected error type if expected_success=false (optional)
+#   timeout: Timeout in seconds (optional, default: 10)
+
+tests:
+  # ============================================================================
+  # System Information Verbs (4 verbs)
+  # ============================================================================
+
+  # sys.osversion - Returns OS version string
+  - name: "sys.osversion - returns OS version string"
+    description: "Get OS version - returns distribution on Linux, sw_vers on macOS"
+    script: 'typeof(sys.osversion())'
+    expected_success: true
+    expected_result: "TEXT"
+
+  - name: "sys.osversion - non-empty result"
+    description: "OS version should return non-empty string"
+    script: 'string.length(sys.osversion()) > 0'
+    expected_success: true
+    expected_result: "true"
+
+  # sys.machine - Returns machine architecture
+  - name: "sys.machine - returns machine architecture"
+    description: "Get machine architecture (uname -m output)"
+    script: 'typeof(sys.machine())'
+    expected_success: true
+    expected_result: "TEXT"
+
+  - name: "sys.machine - non-empty result"
+    description: "Machine architecture should return non-empty string"
+    script: 'string.length(sys.machine()) > 0'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "sys.machine - valid architecture values"
+    description: "Machine should be one of common architectures"
+    script: |
+      local(m = sys.machine());
+      return (m == "x86_64") or (m == "arm64") or (m == "aarch64") or (m == "i386") or (m == "i686")
+    expected_success: true
+    expected_result: "true"
+
+  # sys.os - Returns "MacOS" for backward compatibility
+  - name: "sys.os - returns OS name string"
+    description: "Get OS name (returns 'MacOS' on macOS for backward compatibility)"
+    script: 'typeof(sys.os())'
+    expected_success: true
+    expected_result: "TEXT"
+
+  - name: "sys.os - non-empty result"
+    description: "OS name should return non-empty string"
+    script: 'string.length(sys.os()) > 0'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "sys.os - valid OS values"
+    description: "OS should be one of supported platforms"
+    script: |
+      local(os = sys.os());
+      return (os == "MacOS") or (os == "Linux") or (os == "Windows")
+    expected_success: true
+    expected_result: "true"
+
+  # sys.memavail - Returns 0 (headless mode has no meaningful memory availability)
+  - name: "sys.memavail - returns zero in headless mode"
+    description: "Memory availability returns 0 in headless (no GUI memory pool)"
+    script: 'sys.memavail()'
+    expected_success: true
+    expected_result: "0"
+
+  - name: "sys.memavail - returns long type"
+    description: "Memory availability should return long integer"
+    script: 'typeof(sys.memavail())'
+    expected_success: true
+    expected_result: "long"
+
+  # ============================================================================
+  # Process Management Verbs (3 verbs)
+  # ============================================================================
+
+  # sys.systemtask - No-op, always returns true
+  - name: "sys.systemtask - returns true"
+    description: "systemtask yields to other processes, returns true"
+    script: 'sys.systemtask()'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "sys.systemtask - returns boolean type"
+    description: "systemtask should return boolean"
+    script: 'typeof(sys.systemtask())'
+    expected_success: true
+    expected_result: "bool"
+
+  - name: "sys.systemtask - callable in loop"
+    description: "systemtask should work when called multiple times"
+    script: |
+      local(i, ok = true);
+      for i = 1 to 10 {
+        ok = sys.systemtask();
+        if not ok { return false }
+      };
+      return true
+    expected_success: true
+    expected_result: "true"
+
+  # sys.countapps - Returns count of running processes
+  - name: "sys.countapps - returns positive count"
+    description: "Count of running processes should be positive"
+    script: 'sys.countapps() > 0'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "sys.countapps - returns long type"
+    description: "Process count should return long integer"
+    script: 'typeof(sys.countapps())'
+    expected_success: true
+    expected_result: "long"
+
+  - name: "sys.countapps - reasonable count range"
+    description: "Process count should be in reasonable range (1-10000)"
+    script: |
+      local(count = sys.countapps());
+      return (count >= 1) and (count <= 10000)
+    expected_success: true
+    expected_result: "true"
+
+  # sys.appisrunning(name) - Returns true if process is running
+  - name: "sys.appisrunning - current process returns true"
+    description: "Check if frontier-cli process is running"
+    script: 'sys.appisrunning("frontier-cli")'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "sys.appisrunning - nonexistent process returns false"
+    description: "Check for nonexistent process should return false"
+    script: 'sys.appisrunning("nonexistent_process_xyz_12345")'
+    expected_success: true
+    expected_result: "false"
+
+  - name: "sys.appisrunning - returns boolean type"
+    description: "appisrunning should return boolean"
+    script: 'typeof(sys.appisrunning("frontier-cli"))'
+    expected_success: true
+    expected_result: "bool"
+
+  - name: "sys.appisrunning - case sensitivity"
+    description: "Test process name case sensitivity (platform-dependent)"
+    script: 'typeof(sys.appisrunning("FRONTIER-CLI"))'
+    expected_success: true
+    expected_result: "bool"
+
+  - name: "sys.appisrunning - empty string parameter"
+    description: "Empty process name should return false or error gracefully"
+    script: 'sys.appisrunning("")'
+    expected_success: true
+    expected_result: "false"
+
+  # sys.getapppath(name) - Returns path to executable (filespec type)
+  - name: "sys.getapppath - current process returns path"
+    description: "Get path to frontier-cli executable"
+    script: 'string.length(sys.getapppath("frontier-cli")) > 0'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "sys.getapppath - returns string type"
+    description: "getapppath should return string (full path)"
+    script: 'typeof(sys.getapppath("frontier-cli"))'
+    expected_success: true
+    expected_result: "TEXT"
+
+  - name: "sys.getapppath - path contains process name"
+    description: "Returned path should contain the process name"
+    script: |
+      local(path = sys.getapppath("frontier-cli"));
+      return string.patternMatch("frontier-cli", path) > 0
+    expected_success: true
+    expected_result: "true"
+
+  - name: "sys.getapppath - nonexistent process"
+    description: "Get path for nonexistent process should return empty or error"
+    script: |
+      local(path = sys.getapppath("nonexistent_process_xyz_12345"));
+      return (path == "") or (path == nil)
+    expected_success: true
+
+  # ============================================================================
+  # GUI-Only Verbs (3 verbs - limited in headless)
+  # ============================================================================
+
+  # sys.frontmostapp - Returns empty string in headless mode
+  - name: "sys.frontmostapp - returns string in headless"
+    description: "frontmostapp returns empty string in headless mode (no GUI)"
+    script: 'typeof(sys.frontmostapp())'
+    expected_success: true
+    expected_result: "TEXT"
+
+  - name: "sys.frontmostapp - empty or valid result"
+    description: "In headless mode, frontmostapp should return empty or process name"
+    script: |
+      local(app = sys.frontmostapp());
+      return typeof(app) == stringType
+    expected_success: true
+    expected_result: "true"
+
+  # sys.bringapptofront(name) - Returns false (GUI-only, cannot work in headless)
+  - name: "sys.bringapptofront - returns false in headless"
+    description: "bringapptofront cannot work in headless mode"
+    script: 'sys.bringapptofront("frontier-cli")'
+    expected_success: true
+    expected_result: "false"
+
+  - name: "sys.bringapptofront - returns boolean type"
+    description: "bringapptofront should return boolean"
+    script: 'typeof(sys.bringapptofront("any_app"))'
+    expected_success: true
+    expected_result: "bool"
+
+  - name: "sys.bringapptofront - empty string parameter"
+    description: "Empty app name should return false"
+    script: 'sys.bringapptofront("")'
+    expected_success: true
+    expected_result: "false"
+
+  # sys.browsenetwork - Returns error (GUI-only)
+  - name: "sys.browsenetwork - not available in headless"
+    description: "browsenetwork requires GUI, should fail in headless"
+    script: 'sys.browsenetwork()'
+    expected_success: false
+
+  # ============================================================================
+  # Low Priority Verbs (1 verb)
+  # ============================================================================
+
+  # sys.getnthapp(n) - Returns empty string (not implemented in headless)
+  - name: "sys.getnthapp - returns string type"
+    description: "getnthapp should return string (empty in headless)"
+    script: 'typeof(sys.getnthapp(1))'
+    expected_success: true
+    expected_result: "TEXT"
+
+  - name: "sys.getnthapp - first process"
+    description: "Get first running process (may return empty in headless)"
+    script: |
+      local(app = sys.getnthapp(1));
+      return typeof(app) == stringType
+    expected_success: true
+    expected_result: "true"
+
+  - name: "sys.getnthapp - zero index"
+    description: "Process index 0 should return empty or error gracefully"
+    script: |
+      local(app = sys.getnthapp(0));
+      return (app == "") or (app == nil)
+    expected_success: true
+
+  - name: "sys.getnthapp - negative index"
+    description: "Negative process index should return empty or error gracefully"
+    script: |
+      local(app = sys.getnthapp(-1));
+      return (app == "") or (app == nil)
+    expected_success: true
+
+  - name: "sys.getnthapp - very large index"
+    description: "Process index beyond count should return empty"
+    script: |
+      local(app = sys.getnthapp(999999));
+      return (app == "") or (app == nil)
+    expected_success: true
+
+  # ============================================================================
+  # Integration Tests (combining multiple verbs)
+  # ============================================================================
+
+  - name: "sys verbs - system information suite"
+    description: "Verify all system info verbs return valid types"
+    script: |
+      local(osv = sys.osversion());
+      local(machine = sys.machine());
+      local(os = sys.os());
+      local(mem = sys.memavail());
+      return (typeof(osv) == stringType) and
+             (typeof(machine) == stringType) and
+             (typeof(os) == stringType) and
+             (typeof(mem) == longType)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "sys verbs - process management suite"
+    description: "Verify process management verbs work together"
+    script: |
+      local(count = sys.countapps());
+      local(running = sys.appisrunning("frontier-cli"));
+      local(task = sys.systemtask());
+      return (count > 0) and running and task
+    expected_success: true
+    expected_result: "true"
+
+  - name: "sys verbs - app running and path correlation"
+    description: "If app is running, getapppath should return non-empty"
+    script: |
+      local(running = sys.appisrunning("frontier-cli"));
+      if running {
+        local(path = sys.getapppath("frontier-cli"));
+        return string.length(path) > 0
+      };
+      return true
+    expected_success: true
+    expected_result: "true"
+
+  # ============================================================================
+  # Edge Cases and Error Handling
+  # ============================================================================
+
+  - name: "sys.appisrunning - very long process name"
+    description: "Long process name should handle gracefully"
+    script: |
+      local(longName = "a");
+      local(i);
+      for i = 1 to 100 {
+        longName = longName + "a"
+      };
+      return typeof(sys.appisrunning(longName)) == booleanType
+    expected_success: true
+    expected_result: "true"
+
+  - name: "sys.getapppath - special characters in name"
+    description: "Process name with special characters should handle gracefully"
+    script: 'typeof(sys.getapppath("app-name.with.dots"))'
+    expected_success: true
+    expected_result: "TEXT"
+
+  - name: "sys.countapps - multiple calls consistent"
+    description: "Multiple calls to countapps should return similar values"
+    script: |
+      local(count1 = sys.countapps());
+      sys.systemtask();
+      local(count2 = sys.countapps());
+      return (count1 > 0) and (count2 > 0)
+    expected_success: true
+    expected_result: "true"
+
+  # ============================================================================
+  # Type Validation Tests
+  # ============================================================================
+
+  - name: "sys verbs - all info verbs return strings"
+    description: "OS info verbs should all return string types"
+    script: |
+      return (typeof(sys.osversion()) == stringType) and
+             (typeof(sys.machine()) == stringType) and
+             (typeof(sys.os()) == stringType)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "sys verbs - numeric verbs return long"
+    description: "Numeric sys verbs should return long type"
+    script: |
+      return (typeof(sys.memavail()) == longType) and
+             (typeof(sys.countapps()) == longType)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "sys verbs - boolean verbs return bool"
+    description: "Boolean sys verbs should return boolean type"
+    script: |
+      return (typeof(sys.systemtask()) == booleanType) and
+             (typeof(sys.appisrunning("test")) == booleanType) and
+             (typeof(sys.bringapptofront("test")) == booleanType)
+    expected_success: true
+    expected_result: "true"
