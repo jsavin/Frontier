@@ -3054,3 +3054,160 @@ tests:
       return typeof(result)
     expected_success: true
     expected_result: "bool"
+
+  # ====================================================================
+  # Phase 4 Op Verbs - Advanced Operations
+  # ====================================================================
+
+  - name: "op.subsexpanded - check expansion state (not expanded)"
+    description: "Verify op.subsexpanded returns false when node has no children"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Parent", down);
+      return op.subsexpanded()
+    expected_success: true
+    expected_result: "false"
+
+  - name: "op.subsexpanded - check expansion state (collapsed)"
+    description: "Verify op.subsexpanded returns false when children are collapsed"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Parent", down);
+      op.insert("Child1", right);
+      op.insert("Child2", down);
+      op.go(left, 1);
+      op.collapse();
+      return op.subsexpanded()
+    expected_success: true
+    expected_result: "false"
+
+  - name: "op.subsexpanded - check expansion state (expanded)"
+    description: "Verify op.subsexpanded returns true when children are expanded"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Parent", down);
+      op.insert("Child1", right);
+      op.insert("Child2", down);
+      op.go(left, 1);
+      op.expand(1);
+      return op.subsexpanded()
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.sort - sort siblings alphabetically"
+    description: "Verify op.sort orders sibling nodes alphabetically"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Charlie", down);
+      op.insert("Alice", down);
+      op.insert("Bob", down);
+      op.insert("David", down);
+      op.sort();
+      op.firstSummit();
+      op.go(down, 1);
+      return op.getLineText()
+    expected_success: true
+    expected_result: "Alice"
+
+  - name: "op.sort - sort preserves subheads"
+    description: "Verify op.sort keeps children with their parents after sorting"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Zebra", down);
+      op.insert("Zebra-Child", right);
+      op.go(left, 1);
+      op.insert("Apple", down);
+      op.insert("Apple-Child", right);
+      op.go(left, 1);
+      op.sort();
+      op.firstSummit();
+      op.go(down, 1);
+      local(parent = op.getLineText());
+      op.go(right, 1);
+      local(child = op.getLineText());
+      return parent + "," + child
+    expected_success: true
+    expected_result: "Apple,Apple-Child"
+
+  - name: "op.sort - sort only siblings at same level"
+    description: "Verify op.sort doesn't sort children, only siblings"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Parent", down);
+      op.insert("Zebra", right);
+      op.insert("Apple", down);
+      op.insert("Middle", down);
+      op.go(left, 1);
+      op.sort();
+      op.firstSummit();
+      op.go(down, 1);
+      op.go(right, 1);
+      return op.getLineText()
+    expected_success: true
+    expected_result: "Zebra"
+
+  - name: "op.hoist - GUI-only operation returns error"
+    description: "Verify op.hoist returns false in headless mode"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      return op.hoist()
+    expected_success: true
+    expected_result: "false"
+
+  - name: "op.dehoist - GUI-only operation returns error"
+    description: "Verify op.dehoist returns false in headless mode"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      return op.dehoist()
+    expected_success: true
+    expected_result: "false"
+
+  - name: "op.flatcursorkeys - noop returns success"
+    description: "Verify op.flatcursorkeys returns true (noop) in headless mode"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      return op.flatcursorkeys()
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.tabkeyreorg - noop returns success"
+    description: "Verify op.tabkeyreorg returns true (noop) in headless mode"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      return op.tabkeyreorg()
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.find - deferred implementation returns false"
+    description: "Verify op.find returns false (not yet implemented)"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Search this text", down);
+      return op.find("text")
+    expected_success: true
+    expected_result: "false"
+
+  - name: "op.visitall - deferred implementation returns false"
+    description: "Verify op.visitall returns false (not yet implemented)"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      return op.visitall("system.verbs.builtins.string.upper")
+    expected_success: true
+    expected_result: "false"
