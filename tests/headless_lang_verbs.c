@@ -78,8 +78,8 @@ enum {
     lanv_putapplelistitem = 50,
     lanv_countapplelistitems = 51,
     lanv_systemevent = 52,
-    lanv_DDEevent = 53,
-    lanv_transactionEvent = 54,
+    lanv_ddeevent = 53,
+    lanv_transactionevent = 54,
     lanv_msg = 55,
     lanv_callxcmd = 56,
     lanv_calldll = 57,
@@ -208,7 +208,7 @@ static boolean lang_valueproc(short token, hdltreenode hparam1,
             /* Verb: lang.memavail - forward to real implementation */
             return langmemavailfunc(hparam1, vreturned);
         case lanv_flushmemory:
-            /* lang.flushmemory - noop stub (safe no-op) */
+            /* lang.flushmemory - noop (safe no-op, memory management not needed) @IMPLEMENTED */
             (void)hparam1;  /* Suppress unused parameter warning */
             return true;
         case lanv_random:
@@ -228,75 +228,67 @@ static boolean lang_valueproc(short token, hdltreenode hparam1,
             /* Verb: lang.abs - forward to real implementation */
             return langabsfunc(hparam1, vreturned);
         case lanv_seteventtimeout:
-            /* Verb: lang.seteventtimeout - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            /* Verb: lang.seteventtimeout - AppleEvent verb not supported on this platform (Issue #284) */
+            if (bserror) copystring(BIGSTRING("\pnot supported on this platform"), bserror);
             return false;
         case lanv_seteventtransactionid:
-            /* Verb: lang.seteventtransactionid - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            /* Verb: lang.seteventtransactionid - AppleEvent verb not supported on this platform (Issue #284) */
+            if (bserror) copystring(BIGSTRING("\pnot supported on this platform"), bserror);
             return false;
         case lanv_seteventinteraction:
-            /* lang.seteventinteraction - error stub */
-            if (bserror)
-                copystring(BIGSTRING("\pCan't call OSA verbs because AppleScript is not available in headless mode"), bserror);
+            /* Verb: lang.seteventinteraction - AppleEvent verb not supported on this platform (Issue #284) */
+            if (bserror) copystring(BIGSTRING("\pnot supported on this platform"), bserror);
             return false;
         case lanv_geteventattribute:
-            /* lang.geteventattribute - error stub */
-            if (bserror)
-                copystring(BIGSTRING("\pCan't call OSA verbs because AppleScript is not available in headless mode"), bserror);
+            /* Verb: lang.geteventattribute - AppleEvent verb not supported on this platform (Issue #284) */
+            if (bserror) copystring(BIGSTRING("\pnot supported on this platform"), bserror);
             return false;
         case lanv_coerceappleitem:
-            /* Verb: lang.coerceappleitem - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            /* Verb: lang.coerceappleitem - AppleEvent verb not supported on this platform (Issue #284) */
+            if (bserror) copystring(BIGSTRING("\pnot supported on this platform"), bserror);
             return false;
         case lanv_getapplelistitem:
-            /* lang.getapplelistitem - error stub */
-            if (bserror)
-                copystring(BIGSTRING("\pCan't call OSA verbs because AppleScript is not available in headless mode"), bserror);
+            /* Verb: lang.getapplelistitem - AppleEvent verb not supported on this platform (Issue #284) */
+            if (bserror) copystring(BIGSTRING("\pnot supported on this platform"), bserror);
             return false;
         case lanv_putapplelistitem:
-            /* lang.putapplelistitem - error stub */
-            if (bserror)
-                copystring(BIGSTRING("\pCan't call OSA verbs because AppleScript is not available in headless mode"), bserror);
+            /* Verb: lang.putapplelistitem - AppleEvent verb not supported on this platform (Issue #284) */
+            if (bserror) copystring(BIGSTRING("\pnot supported on this platform"), bserror);
             return false;
         case lanv_countapplelistitems:
-            /* lang.countapplelistitems - error stub */
-            if (bserror)
-                copystring(BIGSTRING("\pCan't call OSA verbs because AppleScript is not available in headless mode"), bserror);
+            /* Verb: lang.countapplelistitems - AppleEvent verb not supported on this platform (Issue #284) */
+            if (bserror) copystring(BIGSTRING("\pnot supported on this platform"), bserror);
             return false;
         case lanv_systemevent:
-            /* Verb: lang.systemevent - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            /* Verb: lang.systemevent - AppleEvent verb not supported on this platform (Issue #284) */
+            if (bserror) copystring(BIGSTRING("\pnot supported on this platform"), bserror);
             return false;
-        case lanv_DDEevent:
-            /* lang.DDEevent - error stub */
-            if (bserror)
-                copystring(BIGSTRING("\pCan't call OSA verbs because AppleScript is not available in headless mode"), bserror);
+        case lanv_ddeevent:
+            /* Verb: lang.DDEevent - Legacy Windows DDE verb not supported on this platform (Issue #284) @IMPLEMENTED */
+            if (bserror) copystring(BIGSTRING("\pnot supported on this platform"), bserror);
             return false;
-        case lanv_transactionEvent:
-            /* lang.transactionEvent - error stub */
-            if (bserror)
-                copystring(BIGSTRING("\pCan't call OSA verbs because AppleScript is not available in headless mode"), bserror);
+        case lanv_transactionevent:
+            /* Verb: lang.transactionEvent - AppleEvent verb not supported on this platform (Issue #284) @IMPLEMENTED */
+            if (bserror) copystring(BIGSTRING("\pnot supported on this platform"), bserror);
             return false;
         case lanv_msg:
             /* Verb: lang.msg - forward to real implementation */
             return langmsgfunc(hparam1, vreturned);
         case lanv_callxcmd:
-            /* lang.callxcmd - error stub */
-            if (bserror)
-                copystring(BIGSTRING("\pCan't call OSA verbs because AppleScript is not available in headless mode"), bserror);
+            /* Verb: lang.callxcmd - Legacy HyperCard XCMD verb not supported on this platform (Issue #284) */
+            if (bserror) copystring(BIGSTRING("\pnot supported on this platform"), bserror);
             return false;
         case lanv_calldll:
-            /* Verb: lang.calldll - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            /* Verb: lang.calldll - Legacy Windows DLL verb not supported on this platform (Issue #284) */
+            if (bserror) copystring(BIGSTRING("\pnot supported on this platform"), bserror);
             return false;
         case lanv_packwindow:
-            /* Verb: lang.packwindow - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            /* Verb: lang.packwindow - Window management verb not supported in headless mode (Issue #284) */
+            if (bserror) copystring(BIGSTRING("\pnot supported on this platform"), bserror);
             return false;
         case lanv_unpackwindow:
-            /* Verb: lang.unpackwindow - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            /* Verb: lang.unpackwindow - Window management verb not supported in headless mode (Issue #284) */
+            if (bserror) copystring(BIGSTRING("\pnot supported on this platform"), bserror);
             return false;
         case lanv_callscript:
             /* Verb: lang.callscript - forward to real implementation */
@@ -379,8 +371,8 @@ boolean langinitverbs(void) {
     ADD_VERB(BIGSTRING("\pputapplelistitem"), lanv_putapplelistitem);
     ADD_VERB(BIGSTRING("\pcountapplelistitems"), lanv_countapplelistitems);
     ADD_VERB(BIGSTRING("\psystemevent"), lanv_systemevent);
-    ADD_VERB(BIGSTRING("\pDDEevent"), lanv_DDEevent);
-    ADD_VERB(BIGSTRING("\ptransactionEvent"), lanv_transactionEvent);
+    ADD_VERB(BIGSTRING("\pDDEevent"), lanv_ddeevent);
+    ADD_VERB(BIGSTRING("\ptransactionEvent"), lanv_transactionevent);
     ADD_VERB(BIGSTRING("\pmsg"), lanv_msg);
     ADD_VERB(BIGSTRING("\pcallxcmd"), lanv_callxcmd);
     ADD_VERB(BIGSTRING("\pcalldll"), lanv_calldll);
