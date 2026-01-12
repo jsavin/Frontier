@@ -166,6 +166,13 @@ static boolean langexternalgetinfo (bigstring bs, hdlhashtable *htable, langvalu
  * This function enables proper lexical scoping for external variable resolution,
  * allowing local variables to shadow global names during serialization operations.
  *
+ * IMPORTANT: This function ONLY supports table external types (idtableprocessor).
+ * Other external types (outlines, scripts, menus, WPText) continue to use global
+ * lookup only. Rationale: Tables are the primary use case for local shadowing during
+ * XML-RPC serialization. Other external types typically represent top-level objects
+ * that exist in global scope by design (e.g., outline windows, script objects).
+ * Future enhancement: Could extend to other external types if use case emerges.
+ *
  * Added: 2026-01-11 - Issue #280 fix (Approach C)
  */
 static boolean langexternalgettable_localscope(bigstring bs, hdlhashtable *htable) {
@@ -184,22 +191,31 @@ static boolean langexternalgettable_localscope(bigstring bs, hdlhashtable *htabl
 	 *
 	 * Issue #280: Prevents crashes in save_migration_tests.
 	 *
-	 * Guards (evaluated in order):
-	 * 1. Runtime not initialized (roottable=nil) - no system root loaded
-	 * 2. Not in local scope (currenthashtable=nil or not fllocaltable)
+	 * Guards (evaluated in order - optimized for fast rejection):
+	 * 1. Not in local scope (currenthashtable=nil or invalid)
+	 * 2. Runtime not initialized (roottable=nil) - no system root loaded
+	 * 3. Current hashtable not a local table (fllocaltable=false)
 	 */
 
-	/* Guard 1: Runtime must be fully initialized (system root loaded) */
+	/* Guard 1: Must be in a local scope context (fail fast - check TLS first) */
+	if (currenthashtable == nil)
+		return false;
+
+	/* Guard 1a: Verify handle validity before dereferencing */
+	if (!validhandle((Handle)currenthashtable)) {
+		log_trace(LOG_COMP_EXTERNAL, "langexternalgettable_localscope: invalid currenthashtable handle, skipping %s",
+		          PSTR(bs));
+		return false;
+	}
+
+	/* Guard 2: Runtime must be fully initialized (system root loaded) */
 	if (roottable == nil) {
 		log_trace(LOG_COMP_EXTERNAL, "langexternalgettable_localscope: runtime not initialized (roottable=nil), skipping %s",
 		          PSTR(bs));
 		return false;
 	}
 
-	/* Guard 2: Only lookup in local (script) tables, not database tables */
-	if (currenthashtable == nil)
-		return false;
-
+	/* Guard 3: Only lookup in local (script) tables, not database tables */
 	if (!(**currenthashtable).fllocaltable) {
 		log_trace(LOG_COMP_EXTERNAL, "langexternalgettable_localscope: currenthashtable not local (fllocaltable=0), skipping %s",
 		          PSTR(bs));
