@@ -13,7 +13,16 @@
  * - Phase 3 (10 verbs): COMPLETE - getDisplay, setDisplay, getCursor, setCursor,
  *                                   getRefcon, setRefcon, getExpansionState,
  *                                   setExpansionState, getScrollState, setScrollState
- * - Phase 4 (17 verbs): PENDING   - Advanced operations
+ * - Phase 4 (8 verbs):  COMPLETE - All verbs implemented for headless mode
+ *
+ * Phase 4 Headless Adaptations:
+ * - op.hoist/dehoist:     GUI-only operations, return error in headless mode
+ * - op.subsexpanded:      Implemented using opsubheadsexpanded()
+ * - op.find:              Headless search - moves cursor to matching headline
+ * - op.sort:              Implemented using opsortlevel()
+ * - op.visitall:          Headless iteration with callback script support
+ * - op.flatcursorkeys:    Noop (keyboard preference, N/A in headless)
+ * - op.tabkeyreorg:       Noop (keyboard preference, N/A in headless)
  *
  * See planning/phase3/op_verb_implementation_plan.md for complete roadmap.
  */
@@ -117,6 +126,43 @@ static boolean getoutlinefromtarget(hdloutlinerecord *ho, bigstring bserror) {
     }
 
     *ho = (hdloutlinerecord)(**hv).variabledata;
+    return true;
+}
+
+/*
+ * Callback for op.visitall() - invoked for each node in outline
+ *
+ * This is called by opvisiteverything() for each headline in the outline.
+ * It runs the callback script with the cursor positioned at the current node.
+ *
+ * Pattern: Based on opvisitallvisit() from Common/source/opverbs.c
+ */
+typedef struct {
+    bigstring scriptname;
+    hdloutlinerecord houtline;
+} opvisitall_context;
+
+static boolean opvisitall_callback(hdlheadrecord hnode, ptrvoid refcon) {
+    opvisitall_context *ctx = (opvisitall_context *)refcon;
+    tyvaluerecord vreturned;
+
+    /* Push outline context for this callback - ensures op.* verbs work correctly
+     * within the callback script. Note: The outline is already pushed by the caller
+     * for opvisiteverything traversal, but we push again here to set cursor position. */
+    oppushoutline(ctx->houtline);
+
+    /* Set cursor to current node */
+    (**ctx->houtline).hbarcursor = hnode;
+
+    /* Call the callback script */
+    if (!langrunscript(ctx->scriptname, NULL, NULL, &vreturned)) {
+        /* Log callback failure to help with debugging */
+        log_warn(LOG_COMP_OP, "op.visitall callback script failed: %s", stringbaseaddress(ctx->scriptname));
+        oppopoutline();
+        return false;
+    }
+
+    oppopoutline();
     return true;
 }
 
@@ -438,55 +484,138 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
             return setbooleanvalue(fl, vreturned);
         }
         case opv_find: {
-            /* Verb #10: op.find(searchText [, flWrap] [, flCase]) - DEFERRED
+            /* Verb #10: op.find(searchText [, wholewords] [, casesensitive]) -> boolean
              *
-             * DEFERRED: Requires GUI text selection/editing infrastructure.
+             * Searches through outline headlines for text matching searchText.
+             * Moves the bar cursor to the first matching headline.
              *
-             * The legacy opflatfind() function requires text edit mode and selection state
-             * to properly highlight found text. In headless mode, we would need to:
-             * 1. Implement custom search loop through headlines
-             * 2. Move bar cursor to matching headline (without text selection)
-             * 3. Handle search state without GUI display infrastructure
+             * HEADLESS ADAPTATION:
+             * Unlike the GUI version (opflatfind), we don't highlight text or enter edit mode.
+             * We simply search headlines and move the bar cursor to the matching node.
              *
-             * This verb is rarely used in production UserTalk without a GUI, so deferred
-             * to future PR that implements headless-specific search infrastructure.
+             * LIMITATION: The wholewords parameter is accepted for API compatibility but NOT
+             * implemented in this headless version - all searches are substring matches.
+             * For example, op.find("test", true, false) will match "testing" even though
+             * wholewords=true was specified. Full word-boundary matching requires tokenization
+             * logic that is deferred for future implementation.
              *
              * Parameters:
              *   searchText (required) - text to search for
-             *   flWrap (optional) - wrap around search, defaults from search params
-             *   flCase (optional) - case sensitive, defaults from search params
+             *   wholewords (optional) - whole word matching (ACCEPTED BUT NOT IMPLEMENTED), default false
+             *   casesensitive (optional) - case sensitive search, default false
              *
-             * Note: Matches kernel signature where flWrap and flCase are optional.
-             * For now, validate parameters and return false (not found).
+             * Returns true if found and cursor moved, false if not found.
+             *
+             * Algorithm:
+             * - Start searching from current cursor position (or next node)
+             * - Use textpatternmatch() for Boyer-Moore search
+             * - Search flatdown through outline (depth-first traversal)
+             * - Stop when match found or back to original position
              */
+            hdloutlinerecord ho;
             bigstring bs;
-            boolean flwrap = false;  /* Default: no wrap */
+            boolean flwholewords = false;  /* Default: substring match (not implemented) */
             boolean flcase = false;  /* Default: case insensitive */
+            hdlheadrecord nomad, orignomad;
+            Handle htext;
+            boolean found = false;
+
+            /* Get outline from target */
+            if (!getoutlinefromtarget(&ho, bserror))
+                return false;
 
             /* Get required searchText parameter */
             if (!getstringvalue(hparam1, 1, bs))
                 return false;
 
-            /* Get optional flWrap parameter (param 2) if provided */
+            /* Get optional wholewords parameter (param 2) if provided */
             if (langgetparamcount(hparam1) >= 2) {
-                if (!getbooleanvalue(hparam1, 2, &flwrap))
+                if (!getbooleanvalue(hparam1, 2, &flwholewords))
                     return false;
+                /* NOTE: wholewords not implemented - accepted for API compatibility */
             }
 
-            /* Get optional flCase parameter (param 3) if provided */
+            /* Get optional casesensitive parameter (param 3) if provided */
             if (langgetparamcount(hparam1) >= 3) {
                 flnextparamislast = true;
                 if (!getbooleanvalue(hparam1, 3, &flcase))
                     return false;
             }
 
-            /* Return false (not found) - deferred implementation */
-            return setbooleanvalue(false, vreturned);
+            /* Start search from current cursor */
+            nomad = (**ho).hbarcursor;
+            orignomad = nomad;
+
+            /* Search loop - pattern from opflatfind */
+            while (true) {
+                /* Defensive nil check (opbumpflatdown returns same node at end, not nil) */
+                if (nomad == nil)
+                    break;
+
+                /* Get headline text and search it */
+                htext = (**nomad).headstring;
+                if (htext != nil) {
+                    long len = gethandlesize(htext);
+                    /* Use textpatternmatch for Boyer-Moore search */
+                    if (textpatternmatch(*htext, len, bs, !flcase) >= 0) {
+                        /* Found match - move cursor to this node */
+                        (**ho).hbarcursor = nomad;
+                        found = true;
+                        break;
+                    }
+                }
+
+                /* Move to next node in flat order */
+                nomad = opbumpflatdown(nomad, true);
+
+                /* Check if we've returned to original position - search complete */
+                if (nomad == orignomad) {
+                    break;
+                }
+            }
+
+            return setbooleanvalue(found, vreturned);
         }
-        case opv_sort:
-            /* Verb #11: op.sort - not yet implemented */
-            if (bserror) seterrorstring("not implemented", bserror);
-            return false;
+        case opv_sort: {
+            /* Verb #11: op.sort() -> boolean
+             *
+             * Sorts the current headline and all its siblings alphabetically by headline text.
+             * Does NOT sort subheads - only siblings at the same level as the cursor.
+             *
+             * Algorithm:
+             * - Uses opsortlevel() which implements selection sort
+             * - Finds all siblings at same level as bar cursor
+             * - Sorts them alphabetically (case-insensitive by default)
+             * - Preserves subhead hierarchy (each node's children stay with their parent)
+             *
+             * Example:
+             *   Before:         After:
+             *   - Charlie       - Alice
+             *     - Sub1          - Sub2
+             *   - Alice         - Bob
+             *     - Sub2        - Charlie
+             *   - Bob             - Sub1
+             *
+             * Returns true if sort succeeded, false otherwise.
+             */
+            hdloutlinerecord ho;
+            hdlheadrecord hbarcursor;
+            boolean fl;
+
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+
+            if (!getoutlinefromtarget(&ho, bserror))
+                return false;
+
+            oppushoutline(ho);
+            opsettextmode(false);  /* Ensure outline mode */
+            hbarcursor = (**ho).hbarcursor;
+            fl = opsortlevel(hbarcursor);
+            oppopoutline();
+
+            return setbooleanvalue(fl, vreturned);
+        }
         case opv_setlinetext: {
             /* Verb #12: op.setlinetext - Modify headline text at cursor
              * Note: opsetheadtext() consumes htext handle, so don't dispose it */
@@ -609,14 +738,41 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
 
             return setbooleanvalue(fl, vreturned);
         }
-        case opv_hoist:
-            /* Verb #16: op.hoist - not yet implemented */
-            if (bserror) seterrorstring("not implemented", bserror);
-            return false;
-        case opv_dehoist:
-            /* Verb #17: op.dehoist - not yet implemented */
-            if (bserror) seterrorstring("not implemented", bserror);
-            return false;
+        case opv_hoist: {
+            /* Verb #16: op.hoist() -> boolean
+             *
+             * GUI DISPLAY OPERATION: "Hoist" collapses the outline view to show only
+             * the current node's subheads as if they were top-level nodes.
+             *
+             * HEADLESS MODE: This is a visual display transformation that doesn't apply
+             * without a GUI window. In headless mode, there's no concept of "hoisted view"
+             * since we're working with the underlying data structure directly.
+             *
+             * Returns false with error message indicating this is GUI-only.
+             */
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+
+            seterrorstring("Can't hoist in headless mode (GUI-only operation)", bserror);
+            return setbooleanvalue(false, vreturned);
+        }
+        case opv_dehoist: {
+            /* Verb #17: op.dehoist() -> boolean
+             *
+             * GUI DISPLAY OPERATION: Reverses a "hoist" operation, restoring the full
+             * outline view after having collapsed to show only subheads.
+             *
+             * HEADLESS MODE: Since hoisting doesn't apply in headless mode (no GUI display),
+             * dehoisting is also not applicable. Returns false with error.
+             *
+             * Returns false with error message indicating this is GUI-only.
+             */
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+
+            seterrorstring("Can't dehoist in headless mode (GUI-only operation)", bserror);
+            return setbooleanvalue(false, vreturned);
+        }
         case opv_deletesubs: {
             /* Verb #18: op.deletesubs - Delete children without deleting parent */
             hdloutlinerecord ho;
@@ -697,14 +853,59 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
 
             return setbooleanvalue(true, vreturned);
         }
-        case opv_tabkeyreorg:
-            /* Verb #20: op.tabkeyreorg - not yet implemented */
-            if (bserror) seterrorstring("not implemented", bserror);
-            return false;
-        case opv_flatcursorkeys:
-            /* Verb #21: op.flatcursorkeys - not yet implemented */
-            if (bserror) seterrorstring("not implemented", bserror);
-            return false;
+        case opv_tabkeyreorg: {
+            /* Verb #20: op.tabkeyreorg(setting) -> boolean
+             *
+             * PREFERENCE TOGGLE: In GUI Frontier, this controls whether Tab key indents/outdents
+             * nodes or just inserts a tab character.
+             *
+             * HEADLESS MODE: Preferences for keyboard behavior don't apply without an interactive
+             * GUI environment. This is a noop that always returns true for API compatibility.
+             *
+             * Parameters:
+             *   setting (boolean) - enable/disable tab key reorganization (ignored in headless)
+             *
+             * Returns true (success) without performing any action.
+             */
+            boolean setting;
+
+            /* Accept setting parameter for API compatibility */
+            flnextparamislast = true;
+            if (!getbooleanvalue(hparam1, 1, &setting))
+                return false;
+
+            (void)setting;  /* Intentionally unused in headless mode */
+
+            /* Noop in headless mode - return success */
+            return setbooleanvalue(true, vreturned);
+        }
+        case opv_flatcursorkeys: {
+            /* Verb #21: op.flatcursorkeys(setting) -> boolean
+             *
+             * PREFERENCE TOGGLE: In GUI Frontier, this controls whether cursor keys navigate
+             * the outline structure (structured mode) or move through text character-by-character
+             * (flat mode).
+             *
+             * HEADLESS MODE: Keyboard navigation preferences don't apply without an interactive
+             * GUI environment. This is a noop that always returns true for API compatibility.
+             *
+             * Parameters:
+             *   setting (boolean) - enable/disable flat cursor keys (ignored in headless)
+             *
+             * Returns true (success) without performing any action.
+             */
+            boolean setting;
+
+            /* Accept setting parameter for API compatibility */
+            flnextparamislast = true;
+            if (!getbooleanvalue(hparam1, 1, &setting))
+                return false;
+
+            (void)setting;  /* Intentionally unused in headless mode */
+
+            /* Noop in headless mode - return success */
+            return setbooleanvalue(true, vreturned);
+        }
         case opv_getdisplay: {
             /* Verb #22: op.getDisplay() -> boolean
              * Returns true if display updates are enabled (outline redraws on changes).
@@ -1087,10 +1288,122 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
             /* Verb #36: op.getheadnumber - not yet implemented */
             if (bserror) seterrorstring("not implemented", bserror);
             return false;
-        case opv_visitall:
-            /* Verb #37: op.visitall - not yet implemented */
-            if (bserror) seterrorstring("not implemented", bserror);
-            return false;
+        case opv_visitall: {
+            /* Verb #37: op.visitall(adrOutline, adrCallback) -> boolean
+             *
+             * Visits every headline in the outline, calling the specified callback script
+             * for each node. Unlike op.visit() which only visits subheads of the current node,
+             * visitall() traverses the ENTIRE outline structure.
+             *
+             * HEADLESS ADAPTATION:
+             * The GUI version (opvisitallverb in opverbs.c) does complex window management:
+             * - Opens outline window in hidden mode
+             * - Sets outline as target
+             * - Iterates through nodes calling callback
+             * - Restores previous target
+             *
+             * In headless mode:
+             * - Get outline from address parameter
+             * - Set outline as target (save previous target)
+             * - Iterate using opvisiteverything() to call the callback
+             * - Restore previous target and cursor after visiting
+             *
+             * Parameters:
+             *   adrOutline - address of outline table to visit
+             *   adrCallback - address of callback script to run for each headline
+             *
+             * The callback script is called with the cursor positioned at each node.
+             * The outline target is set before each callback, so the script can use
+             * op.getLineText(), op.level(), etc. to inspect the current headline.
+             *
+             * Returns true if successful, false on error.
+             */
+            hdloutlinerecord ho;
+            bigstring bsscriptname, bsoutline;
+            hdlheadrecord horigcursor;
+            tyvaluerecord voutline, vcallback, vprevtarget;
+            hdlhashtable htablecallback, htableoutline;
+            boolean fl;
+
+            /* Get outline address parameter */
+            if (!getaddressparam(hparam1, 1, &voutline))
+                return false;
+
+            /* Get callback address parameter */
+            flnextparamislast = true;
+            if (!getaddressparam(hparam1, 2, &vcallback))
+                return false;
+
+            /* Get callback script name from address */
+            if (!getaddressvalue(vcallback, &htablecallback, bsscriptname)) {
+                if (bserror) seterrorstring("Can't resolve callback address", bserror);
+                return false;
+            }
+
+            /* Get outline table and name from address */
+            if (!getaddressvalue(voutline, &htableoutline, bsoutline)) {
+                if (bserror) seterrorstring("Can't resolve outline address", bserror);
+                return false;
+            }
+
+            /* Save previous target and set outline as the new target */
+            initvalue(&vprevtarget, novaluetype);
+            if (!langsettarget(htableoutline, bsoutline, &vprevtarget)) {
+                if (bserror) seterrorstring("Can't set outline as target", bserror);
+                return false;
+            }
+
+            /* Now get the outline from the newly set target */
+            if (!getoutlinefromtarget(&ho, bserror)) {
+                /* Restore previous target before returning - critical for state consistency */
+                if (vprevtarget.valuetype == addressvaluetype) {
+                    hdlhashtable htprev;
+                    bigstring bsprev;
+                    if (getaddressvalue(vprevtarget, &htprev, bsprev)) {
+                        if (!langsettarget(htprev, bsprev, nil)) {
+                            /* Target restoration failed - log error but still return failure */
+                            log_error(LOG_COMP_OP, "op.visitall: failed to restore previous target on error path");
+                        }
+                    }
+                }
+                return false;
+            }
+
+            /* Save original cursor position */
+            horigcursor = (**ho).hbarcursor;
+
+            /* Set up context for callback - see opvisitall_callback above */
+            opvisitall_context ctx;
+            copystring(bsscriptname, ctx.scriptname);
+            ctx.houtline = ho;
+
+            /* Push outline onto stack so opvisiteverything traverses correct outline
+             * (opvisiteverything reads from global outline data via op_get_outlinedata) */
+            oppushoutline(ho);
+
+            /* Visit every node in the outline - callback also pushes for cursor positioning */
+            fl = opvisiteverything(&opvisitall_callback, &ctx);
+
+            /* Pop outline from stack */
+            oppopoutline();
+
+            /* Restore original cursor */
+            (**ho).hbarcursor = horigcursor;
+
+            /* Restore previous target */
+            if (vprevtarget.valuetype == addressvaluetype) {
+                hdlhashtable htprev;
+                bigstring bsprev;
+                if (getaddressvalue(vprevtarget, &htprev, bsprev)) {
+                    if (!langsettarget(htprev, bsprev, nil)) {
+                        /* Target restoration failed - log but don't fail the visitall operation */
+                        log_error(LOG_COMP_OP, "op.visitall: failed to restore previous target after success");
+                    }
+                }
+            }
+
+            return setbooleanvalue(fl, vreturned);
+        }
         case opv_getselectedsuboutlines:
             /* Verb #38: op.getselectedsuboutlines - not yet implemented */
             if (bserror) seterrorstring("not implemented", bserror);

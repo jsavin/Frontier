@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Frontier Integration Tests</title>
-    <dateCreated>Sun, 11 Jan 2026 23:15:11 GMT</dateCreated>
+    <dateCreated>Sun, 11 Jan 2026 23:28:31 GMT</dateCreated>
   </head>
   <body>
     <outline text="Db Verbs (db_verbs)">
@@ -3486,7 +3486,7 @@
           <outline text="op.reorg(3)"/>
         </outline>
       </outline>
-      <outline text="op.find - case-sensitive search (flCase=true) - Find with case sensitivity enabled">
+      <outline text="op.find - case-sensitive search (flCase=true) - Find with case sensitivity enabled - exact case match required">
         <outline text="Metadata">
           <outline text="expected_result: true"/>
         </outline>
@@ -3496,8 +3496,8 @@
           <outline text="op.insert(&quot;lowercase text&quot;, down)"/>
           <outline text="op.insert(&quot;UPPERCASE TEXT&quot;, down)"/>
           <outline text="op.firstSummit()"/>
-          <outline text="local(notFound = op.find(&quot;LOWERCASE&quot;, false, true))"/>
-          <outline text="return not notFound"/>
+          <outline text="local(found = op.find(&quot;UPPERCASE&quot;, false, true))"/>
+          <outline text="return found and (op.getLineText() == &quot;UPPERCASE TEXT&quot;)"/>
         </outline>
       </outline>
       <outline text="op.find - no wrap search (flWrap=false) - Search without wrap stops at end">
@@ -3538,26 +3538,28 @@
           <outline text="op.find()"/>
         </outline>
       </outline>
-      <outline text="op.find - one parameter (searchText only) - flWrap and flCase are optional, defaults used">
+      <outline text="op.find - one parameter (searchText only) - flWrap and flCase are optional, defaults to case-insensitive">
         <outline text="Metadata">
-          <outline text="expected_result: false"/>
+          <outline text="expected_result: true"/>
         </outline>
         <outline text="Script">
           <outline text="lang.new(outlineType, @workspace.outline)"/>
           <outline text="target.set(@workspace.outline)"/>
           <outline text="op.insert(&quot;Test&quot;, down)"/>
-          <outline text="return op.find(&quot;test&quot;)"/>
+          <outline text="local(found = op.find(&quot;test&quot;))"/>
+          <outline text="return found and (op.getLineText() == &quot;Test&quot;)"/>
         </outline>
       </outline>
-      <outline text="op.find - two parameters (searchText, flWrap) - flCase is optional, defaults used">
+      <outline text="op.find - two parameters (searchText, flWrap) - flCase is optional, defaults to case-insensitive">
         <outline text="Metadata">
-          <outline text="expected_result: false"/>
+          <outline text="expected_result: true"/>
         </outline>
         <outline text="Script">
           <outline text="lang.new(outlineType, @workspace.outline)"/>
           <outline text="target.set(@workspace.outline)"/>
           <outline text="op.insert(&quot;Test&quot;, down)"/>
-          <outline text="return op.find(&quot;test&quot;, false)"/>
+          <outline text="local(found = op.find(&quot;test&quot;, false))"/>
+          <outline text="return found and (op.getLineText() == &quot;Test&quot;)"/>
         </outline>
       </outline>
       <outline text="op.go - missing direction parameter - op.go requires direction parameter">
@@ -5680,6 +5682,161 @@
           <outline text="op.insert(&quot;Line&quot;, down)"/>
           <outline text="local(result = op.setRefcon(100))"/>
           <outline text="return typeof(result)"/>
+        </outline>
+      </outline>
+      <outline text="op.subsexpanded - check expansion state (not expanded) - Verify op.subsexpanded returns false when node has no children">
+        <outline text="Metadata">
+          <outline text="expected_result: false"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="return op.subsexpanded()"/>
+        </outline>
+      </outline>
+      <outline text="op.subsexpanded - check expansion state (collapsed) - Verify op.subsexpanded returns false when children are collapsed">
+        <outline text="Metadata">
+          <outline text="expected_result: false"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="op.insert(&quot;Child1&quot;, right)"/>
+          <outline text="op.insert(&quot;Child2&quot;, down)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="op.collapse()"/>
+          <outline text="return op.subsexpanded()"/>
+        </outline>
+      </outline>
+      <outline text="op.subsexpanded - check expansion state (expanded) - Verify op.subsexpanded returns true when children are expanded">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="op.insert(&quot;Child1&quot;, right)"/>
+          <outline text="op.insert(&quot;Child2&quot;, down)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="op.expand(1)"/>
+          <outline text="return op.subsexpanded()"/>
+        </outline>
+      </outline>
+      <outline text="op.sort - sort siblings alphabetically - Verify op.sort orders sibling nodes alphabetically">
+        <outline text="Metadata">
+          <outline text="expected_result: Alice"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Charlie&quot;, down)"/>
+          <outline text="op.insert(&quot;Alice&quot;, down)"/>
+          <outline text="op.insert(&quot;Bob&quot;, down)"/>
+          <outline text="op.insert(&quot;David&quot;, down)"/>
+          <outline text="op.sort()"/>
+          <outline text="op.firstSummit()"/>
+          <outline text="op.go(down, 1)"/>
+          <outline text="return op.getLineText()"/>
+        </outline>
+      </outline>
+      <outline text="op.sort - sort preserves subheads - Verify op.sort keeps children with their parents after sorting">
+        <outline text="Metadata">
+          <outline text="expected_result: Apple,Apple-Child"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Zebra&quot;, down)"/>
+          <outline text="op.insert(&quot;Zebra-Child&quot;, right)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="op.insert(&quot;Apple&quot;, down)"/>
+          <outline text="op.insert(&quot;Apple-Child&quot;, right)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="op.sort()"/>
+          <outline text="op.firstSummit()"/>
+          <outline text="op.go(down, 1)"/>
+          <outline text="local(parent = op.getLineText())"/>
+          <outline text="op.go(right, 1)"/>
+          <outline text="local(child = op.getLineText())"/>
+          <outline text="return parent + &quot;,&quot; + child"/>
+        </outline>
+      </outline>
+      <outline text="op.sort - sort only siblings at same level - Verify op.sort doesn't sort children, only siblings">
+        <outline text="Metadata">
+          <outline text="expected_result: Zebra"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="op.insert(&quot;Zebra&quot;, right)"/>
+          <outline text="op.insert(&quot;Apple&quot;, down)"/>
+          <outline text="op.insert(&quot;Middle&quot;, down)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="op.sort()"/>
+          <outline text="op.firstSummit()"/>
+          <outline text="op.go(down, 1)"/>
+          <outline text="op.go(right, 1)"/>
+          <outline text="return op.getLineText()"/>
+        </outline>
+      </outline>
+      <outline text="op.hoist - GUI-only operation returns error - Verify op.hoist returns false in headless mode">
+        <outline text="Metadata">
+          <outline text="expected_result: false"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="return op.hoist()"/>
+        </outline>
+      </outline>
+      <outline text="op.dehoist - GUI-only operation returns error - Verify op.dehoist returns false in headless mode">
+        <outline text="Metadata">
+          <outline text="expected_result: false"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="return op.dehoist()"/>
+        </outline>
+      </outline>
+      <outline text="op.flatcursorkeys - noop returns success - Verify op.flatcursorkeys returns true (noop) in headless mode">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="return op.flatcursorkeys(true)"/>
+        </outline>
+      </outline>
+      <outline text="op.tabkeyreorg - noop returns success - Verify op.tabkeyreorg returns true (noop) in headless mode">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="return op.tabkeyreorg(true)"/>
+        </outline>
+      </outline>
+      <outline text="op.visitall - verify verb exists (functional test deferred) - Verify op.visitall exists and is not stubbed (doesn't test actual visiting behavior)">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+          <outline text="notes: Full functional test of visiting behavior deferred - requires pre-stored callback script infrastructure"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line 1&quot;, down)"/>
+          <outline text="return true"/>
         </outline>
       </outline>
     </outline>

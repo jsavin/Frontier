@@ -62,3 +62,5 @@ extern boolean sqliteinitverbs (void); /* langsqlite.c */
 
 extern boolean mysqlinitverbs (void); /* langmysql.c */
 
+extern boolean targetinitverbs (void); /* headless_target_verbs.c */
+

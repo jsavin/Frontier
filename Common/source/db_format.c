@@ -28,6 +28,7 @@
 #include "strings.h"
 #include "lang.h"
 #include "tablestructure.h"
+#include "kernelverbs.h"  /* For targetinitverbs() declaration */
 #include "tableinternal.h"
 #include "threads.h"
 #include "tableverbs.h"
@@ -238,6 +239,10 @@ boolean db_format_prepare_runtime(void) {
         return false;
 
 #ifdef FRONTIER_HEADLESS
+    /* Initialize target processor verbs (must be before headless_init_kernel_verbs) */
+    if (!targetinitverbs())
+        return false;
+
     /* Initialize all headless verb processors (auto-generated) */
     log_trace(LOG_COMP_STARTUP, "db_format_prepare_runtime: calling headless_init_kernel_verbs");
     if (!headless_init_kernel_verbs()) {
