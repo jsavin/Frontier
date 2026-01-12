@@ -264,11 +264,11 @@ static boolean lang_valueproc(short token, hdltreenode hparam1,
             if (bserror) copystring(BIGSTRING("\pnot supported on this platform"), bserror);
             return false;
         case lanv_ddeevent:
-            /* Verb: lang.DDEevent - Legacy Windows DDE verb not supported on this platform (Issue #284) @IMPLEMENTED */
+            /* Verb: lang.ddeevent - Legacy Windows DDE verb not supported on this platform (Issue #284) @IMPLEMENTED */
             if (bserror) copystring(BIGSTRING("\pnot supported on this platform"), bserror);
             return false;
         case lanv_transactionevent:
-            /* Verb: lang.transactionEvent - AppleEvent verb not supported on this platform (Issue #284) @IMPLEMENTED */
+            /* Verb: lang.transactionevent - AppleEvent verb not supported on this platform (Issue #284) @IMPLEMENTED */
             if (bserror) copystring(BIGSTRING("\pnot supported on this platform"), bserror);
             return false;
         case lanv_msg:
