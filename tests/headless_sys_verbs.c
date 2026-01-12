@@ -46,6 +46,47 @@ enum {
     sysv_winshellcommand = 15
 };
 
+/* Helper function to safely escape shell arguments for single-quote wrapping
+ * Converts: foo'bar -> 'foo'\''bar'
+ * This prevents command injection by escaping all single quotes and wrapping in quotes
+ */
+static boolean shellescapestring(bigstring input, Handle *hescaped) {
+    Handle h;
+    short i;
+
+    if (!newtexthandle(BIGSTRING("\p'"), &h))
+        return false;
+
+    /* Escape each single quote as '\'' and copy other chars verbatim */
+    for (i = 1; i <= stringlength(input); i++) {
+        if (input[i] == '\'') {
+            /* Close quote, add escaped quote, reopen quote: '\'' */
+            if (!pushtexthandle(BIGSTRING("\p'\\''"), h)) {
+                disposehandle(h);
+                return false;
+            }
+        } else {
+            /* Copy single character */
+            bigstring singlechar;
+            setstringlength(singlechar, 1);
+            singlechar[1] = input[i];
+            if (!pushtexthandle(singlechar, h)) {
+                disposehandle(h);
+                return false;
+            }
+        }
+    }
+
+    /* Close final quote */
+    if (!pushtexthandle(BIGSTRING("\p'"), h)) {
+        disposehandle(h);
+        return false;
+    }
+
+    *hescaped = h;
+    return true;
+}
+
 static boolean sys_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
@@ -105,9 +146,10 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
         case sysv_appisrunning: {
             /* @IMPLEMENTED sys.appisrunning(name) - returns true if process is running
              * Uses pgrep -x to check for exact process name match
+             * SECURITY: Shell-escapes process name to prevent command injection
              */
             bigstring appname;
-            Handle hcommand, houtput;
+            Handle hcommand, houtput, hescaped;
             int exit_status;
             boolean fl;
 
@@ -120,24 +162,31 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
             if (stringlength(appname) == 0)
                 return setbooleanvalue(false, vreturned);
 
-            /* Build pgrep command: pgrep -x "processname" > /dev/null 2>&1
+            /* Escape the process name to prevent command injection */
+            if (!shellescapestring(appname, &hescaped))
+                return false;
+
+            /* Build pgrep command: pgrep -x 'escaped_name' > /dev/null 2>&1
+             * Single quotes prevent all shell interpretation
              * Exit code 0 = process found, non-zero = not found
              */
-            Handle hcmd;
-            if (!newtexthandle(BIGSTRING("\ppgrep -x \""), &hcmd))
-                return false;
-
-            if (!pushtexthandle(appname, hcmd)) {
-                disposehandle(hcmd);
+            if (!newtexthandle(BIGSTRING("\ppgrep -x "), &hcommand)) {
+                disposehandle(hescaped);
                 return false;
             }
 
-            if (!pushtexthandle(BIGSTRING("\p\" > /dev/null 2>&1"), hcmd)) {
-                disposehandle(hcmd);
+            if (!pushhandle(hescaped, hcommand)) {
+                disposehandle(hescaped);
+                disposehandle(hcommand);
+                return false;
+            }
+            disposehandle(hescaped);
+
+            if (!pushtexthandle(BIGSTRING("\p > /dev/null 2>&1"), hcommand)) {
+                disposehandle(hcommand);
                 return false;
             }
 
-            hcommand = hcmd;
             newemptyhandle(&houtput);
 
             /* Use unixshellcall_separatestderr to get exit status */
@@ -233,9 +282,10 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
              * Strategy:
              * 1. Use 'which' command to find executable in PATH
              * 2. If not found, return empty string
+             * SECURITY: Shell-escapes process name to prevent command injection
              */
             bigstring appname;
-            Handle hcommand, houtput;
+            Handle hcommand, houtput, hescaped;
             bigstring resultpath;
 
             flnextparamislast = true;
@@ -247,22 +297,29 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
             if (stringlength(appname) == 0)
                 return setstringvalue(BIGSTRING("\p"), vreturned);
 
-            /* Build which command: which "processname" 2>/dev/null */
-            Handle hcmd;
-            if (!newtexthandle(BIGSTRING("\pwhich \""), &hcmd))
+            /* Escape the process name to prevent command injection */
+            if (!shellescapestring(appname, &hescaped))
                 return false;
 
-            if (!pushtexthandle(appname, hcmd)) {
-                disposehandle(hcmd);
-                return false;
-            }
-
-            if (!pushtexthandle(BIGSTRING("\p\" 2>/dev/null"), hcmd)) {
-                disposehandle(hcmd);
+            /* Build which command: which 'escaped_name' 2>/dev/null
+             * Single quotes prevent all shell interpretation
+             */
+            if (!newtexthandle(BIGSTRING("\pwhich "), &hcommand)) {
+                disposehandle(hescaped);
                 return false;
             }
 
-            hcommand = hcmd;
+            if (!pushhandle(hescaped, hcommand)) {
+                disposehandle(hescaped);
+                disposehandle(hcommand);
+                return false;
+            }
+            disposehandle(hescaped);
+
+            if (!pushtexthandle(BIGSTRING("\p 2>/dev/null"), hcommand)) {
+                disposehandle(hcommand);
+                return false;
+            }
             newemptyhandle(&houtput);
 
             if (!unixshellcall(hcommand, houtput)) {
