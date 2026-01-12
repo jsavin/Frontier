@@ -176,16 +176,5 @@ void handlepoptrailingchars (Handle htext, byte ch) {
 }
 #endif
 
-// Minimal base64 helpers: pass-through for headless tests
-boolean base64encodehandle (Handle htext, Handle h64, short linelength) {
-    (void)linelength;
-    if (!htext || !h64) return false;
-    sethandlesize(h64, 0);
-    return pushhandle(htext, h64);
-}
-
-boolean base64decodehandle (Handle h64, Handle htext) {
-    if (!h64 || !htext) return false;
-    sethandlesize(htext, 0);
-    return pushhandle(h64, htext);
-}
+// base64 functions are now implemented in Common/source/base64.c
+// (removed stub implementations to avoid duplicate symbols)

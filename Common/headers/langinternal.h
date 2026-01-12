@@ -580,6 +580,10 @@ extern boolean langinitbuiltins (void); /*langverbs.h*/
 
 extern boolean langreleasesemaphores (hdlprocessrecord);
 
+extern boolean locksemaphoreverb (hdltreenode hparam1, tyvaluerecord *vreturned);
+
+extern boolean unlocksemaphoreverb (hdltreenode hparam1, tyvaluerecord *vreturned);
+
 
 // langxml.c
 

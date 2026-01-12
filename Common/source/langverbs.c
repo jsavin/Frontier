@@ -2232,8 +2232,8 @@ static boolean bitshiftrightverb (hdltreenode hparam1, tyvaluerecord *vreturned)
 	} /*bitshiftrightverb*/
 
 
-static boolean locksemaphoreverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
-	
+boolean locksemaphoreverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
+
 	/*
 		on lock (semaphorename, timeoutticks)
 			local (adr = @semaphores.values [semaphorename])
@@ -2245,68 +2245,53 @@ static boolean locksemaphoreverb (hdltreenode hparam1, tyvaluerecord *vreturned)
 			new (booleantype, adr) �claim the semaphore
 			return (true)
 	*/
-	
+
 	bigstring bssemaphorename;
 	long timeoutticks;
 	long startticks = gettickcount ();
 	bigstring bsticks;
 	tyvaluerecord val;
-		hdllistrecord hlist;
-	
+
+	/* Safety check: ensure semaphoretable is initialized */
+	if (semaphoretable == nil)
+		return (false);
+
 	if (!getstringvalue (hparam1, 1, bssemaphorename))
 		return (false);
-	
+
 	flnextparamislast = true;
-	
+
 	if (!getlongvalue (hparam1, 2, &timeoutticks))
 		return (false);
-	
+
+	log_trace(LOG_COMP_LANG, "locksemaphoreverb: name=%.*s timeout=%ld", bssemaphorename[0], bssemaphorename+1, timeoutticks);
+
 	while (hashtablesymbolexists (semaphoretable, bssemaphorename)) {
-		
+
 		if (!langbackgroundtask (true))
 			return (false);
-		
+
 		if ((unsigned long) (gettickcount () - startticks) >= (unsigned long) timeoutticks) {
-		
+
 			numbertostring (timeoutticks, bsticks);
-			
+
 			langparamerror (semaphoretimeouterror, bsticks);
-			
+
 			return (false);
 			}
 		}
-	
-		if (!opnewlist (&hlist, true))
-			return (false);
-		
-		setdatevalue (timenow64(), &val);
-		
-		if (!langpushlistval (hlist, semaphorewhen, &val))
-			goto error;
-		
-		setlongvalue ((long) (**getcurrentthreadglobals()).idthread, &val);
-		
-		if (!langpushlistval (hlist, semaphorewho, &val))
-			goto error;
-		
-		if (!setheapvalue ((Handle) hlist, recordvaluetype, &val))
-			return (false);
-	
+
+	/* Simple lock: just store a boolean value (headless implementation) */
+	setbooleanvalue (true, &val);
+
 	if (!hashtableassign (semaphoretable, bssemaphorename, val))
 		return (false);
-	
-	exemptfromtmpstack (&val);
-	
+
 	return (setbooleanvalue (true, vreturned));
-	
-		error:
-			opdisposelist (hlist);
-			
-			return (false);
 	} /*locksemaphoreverb*/
 
 
-static boolean unlocksemaphoreverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
+boolean unlocksemaphoreverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	
 	/*
 		on unlock (semaphorename)
