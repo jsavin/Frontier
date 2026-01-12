@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Frontier Integration Tests</title>
-    <dateCreated>Sun, 11 Jan 2026 23:04:45 GMT</dateCreated>
+    <dateCreated>Sun, 11 Jan 2026 23:25:38 GMT</dateCreated>
   </head>
   <body>
     <outline text="Db Verbs (db_verbs)">
@@ -5827,10 +5827,10 @@
           <outline text="return op.tabkeyreorg(true)"/>
         </outline>
       </outline>
-      <outline text="op.visitall - implementation is no longer deferred - Verify op.visitall is implemented (not a stub that always returns false)">
+      <outline text="op.visitall - verify verb exists (functional test deferred) - Verify op.visitall exists and is not stubbed (doesn't test actual visiting behavior)">
         <outline text="Metadata">
           <outline text="expected_result: true"/>
-          <outline text="notes: Full functional test deferred - requires pre-stored callback script infrastructure"/>
+          <outline text="notes: Full functional test of visiting behavior deferred - requires pre-stored callback script infrastructure"/>
         </outline>
         <outline text="Script">
           <outline text="lang.new(outlineType, @workspace.outline)"/>
