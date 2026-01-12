@@ -3248,3 +3248,159 @@ tests:
       return op.getdynamic()
     expected_success: true
     expected_result: "false"
+
+  # ====================================================================
+  # Phase 5c: Utility Op Verbs
+  # ====================================================================
+
+  - name: "op.getheadnumber - first node"
+    description: "Verify op.getheadnumber returns 1 for first sibling"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("First", down);
+      op.insert("Second", down);
+      op.insert("Third", down);
+      op.firstSummit();
+      return op.getheadnumber()
+    expected_success: true
+    expected_result: "1"
+
+  - name: "op.getheadnumber - third node"
+    description: "Verify op.getheadnumber returns 3 for third sibling"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("First", down);
+      op.insert("Second", down);
+      op.insert("Third", down);
+      op.firstSummit();
+      op.go(down, 2);
+      return op.getheadnumber()
+    expected_success: true
+    expected_result: "3"
+
+  - name: "op.setmodified - set dirty flag true"
+    description: "Verify op.setmodified(true) marks outline as modified"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      return op.setmodified(true)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.setmodified - clear dirty flag false"
+    description: "Verify op.setmodified(false) clears dirty flag"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      op.setmodified(true);
+      return op.setmodified(false)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.getsuboutline - single line"
+    description: "Verify op.getsuboutline extracts text from single line"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("First line", down);
+      return op.getsuboutline()
+    expected_success: true
+    expected_result: "First line\r"
+
+  - name: "op.getsuboutline - multi-level indented"
+    description: "Verify op.getsuboutline extracts indented text from hierarchy"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Parent", down);
+      op.insert("Child1", right);
+      op.insert("Child2", down);
+      op.go(left, 1);
+      local(text = op.getsuboutline());
+      return sizeOf(text) > 15
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.getsuboutline - flindent false"
+    description: "Verify op.getsuboutline(false) returns unindented text without tabs"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Parent", down);
+      op.insert("Child", right);
+      op.go(left, 1);
+      local(text = op.getsuboutline(false));
+      return sizeOf(text) < 20
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.insertoutline - insert source into target"
+    description: "Verify op.insertoutline copies structure from source to target"
+    script: |
+      lang.new(outlineType, @workspace.source);
+      lang.new(outlineType, @workspace.dest);
+      target.set(@workspace.source);
+      op.insert("Source1", down);
+      op.insert("Source2", down);
+      target.set(@workspace.dest);
+      op.insert("Dest1", down);
+      op.insertoutline(@workspace.source, down);
+      return op.countSummits()
+    expected_success: true
+    expected_result: "5"
+
+  - name: "op.insertoutline - preserve source outline"
+    description: "Verify op.insertoutline does not modify source outline"
+    script: |
+      lang.new(outlineType, @workspace.source);
+      lang.new(outlineType, @workspace.dest);
+      target.set(@workspace.source);
+      op.insert("Source1", down);
+      op.insert("Source2", down);
+      local(before = op.countSummits());
+      target.set(@workspace.dest);
+      op.insert("Dest1", down);
+      op.insertoutline(@workspace.source, down);
+      target.set(@workspace.source);
+      local(after = op.countSummits());
+      return before == after
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.getselection - no nodes marked returns cursor"
+    description: "Verify op.getselection returns list with current cursor when no nodes are marked"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("First", down);
+      op.insert("Second", down);
+      op.insert("Third", down);
+      local(sel = op.getselection());
+      return sizeOf(sel) == 1
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.getselection - returns list type"
+    description: "Verify op.getselection returns a list"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      local(sel = op.getselection());
+      return typeOf(sel)
+    expected_success: true
+    expected_result: "list"
+
+  - name: "op.getselection - empty outline"
+    description: "Verify op.getselection works with empty outline (just summit)"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      local(sel = op.getselection());
+      return sizeOf(sel)
+    expected_success: true
+    expected_result: "1"
