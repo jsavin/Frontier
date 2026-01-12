@@ -46,3 +46,5 @@ extern boolean xmlgetattribute (hdlhashtable ht, bigstring name, hdlhashtable *a
 extern boolean gethashnodetable (hdlhashnode hn, hdlhashtable *ht);
 
 extern boolean replaceallinhandle (bigstring bsfind, bigstring bsreplace, Handle htext);
+
+extern boolean xmlfrontiervaltotaggedtext (tyvaluerecord *val, short indentlevel, Handle *xmltext, hdlhashnode hnode);

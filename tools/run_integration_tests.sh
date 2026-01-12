@@ -10,7 +10,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 RUNNER="$PROJECT_ROOT/tests/integration/runner.py"
 CLI_PATH="$PROJECT_ROOT/frontier-cli/frontier-cli"
-SYSTEM_ROOT="$PROJECT_ROOT/databases/Frontier-v7.root"
+SYSTEM_ROOT="$PROJECT_ROOT/databases/Frontier-v6.root7"
 TEST_CASES_DIR="$PROJECT_ROOT/tests/integration/test_cases"
 
 # Colors for output

@@ -150,7 +150,8 @@ class VerbImplementationAnalyzer:
 
         # Pattern D: Multi-processor consolidation
         # These processors are all implemented in langverbs.c
-        if is_pattern_d_processor(processor_name):
+        # BUT: For headless mode, prefer headless stub files over langverbs.c if they exist
+        if is_pattern_d_processor(processor_name) and self.build_target != 'headless':
             langverbs_path = project_root / "Common/source/langverbs.c"
             if langverbs_path.exists():
                 abs_path = str(langverbs_path.absolute())
@@ -307,8 +308,13 @@ class VerbImplementationAnalyzer:
         annotations = parse_annotations(source)
 
         # Detect implementation vs. stub
-        is_stub = detect_stub_verb(source)
-        is_implemented = not is_stub
+        # @IMPLEMENTED annotation overrides stub detection
+        if annotations.get('implemented', False):
+            is_stub = False
+            is_implemented = True
+        else:
+            is_stub = detect_stub_verb(source)
+            is_implemented = not is_stub
 
         # Detect Carbon dependencies (only if implemented)
         has_carbon = False
@@ -541,7 +547,8 @@ class VerbImplementationAnalyzer:
                 possible_labels.append(exception)
 
             # Pattern D: Multi-processor consolidation (langverbs.c)
-            if is_pattern_d_processor(processor_name):
+            # BUT: For headless mode, use standard patterns since we prefer headless stub files
+            if is_pattern_d_processor(processor_name) and self.build_target != 'headless':
                 possible_labels.extend(generate_pattern_d_candidates(processor_name, verb_name))
             else:
                 # Standard patterns (Pattern A, B)

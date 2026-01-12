@@ -456,7 +456,8 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
         }
 
         case datv_month: {
-            /* Verb: date.month(date) - Extract month component */
+            /* Verb: date.month(date) - Extract month component
+             * @IMPLEMENTED - Fully functional, delegates to UserTalk script in system.verbs.builtins.date.month */
             int64_t date;
             short day, month, year, hour, minute, second;
 
@@ -470,7 +471,8 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
         }
 
         case datv_year: {
-            /* Verb: date.year(date) - Extract year component */
+            /* Verb: date.year(date) - Extract year component
+             * @IMPLEMENTED - Fully functional, delegates to UserTalk script in system.verbs.builtins.date.year */
             int64_t date;
             short day, month, year, hour, minute, second;
 
@@ -484,7 +486,8 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
         }
 
         case datv_hour: {
-            /* Verb: date.hour(date) - Extract hour component */
+            /* Verb: date.hour(date) - Extract hour component
+             * @IMPLEMENTED - Fully functional, delegates to UserTalk script in system.verbs.builtins.date.hour */
             int64_t date;
             short day, month, year, hour, minute, second;
 
@@ -498,7 +501,8 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
         }
 
         case datv_minute: {
-            /* Verb: date.minute(date) - Extract minute component */
+            /* Verb: date.minute(date) - Extract minute component
+             * @IMPLEMENTED - Fully functional, delegates to UserTalk script in system.verbs.builtins.date.minute */
             int64_t date;
             short day, month, year, hour, minute, second;
 

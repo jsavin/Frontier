@@ -176,6 +176,7 @@ HEADLESS_STUBS = \
     $(TESTSDIR)/headless_string_verbs.c \
     $(TESTSDIR)/headless_db_verbs.c \
     $(TESTSDIR)/headless_html_verbs.c \
+    $(TESTSDIR)/headless_xml_verbs.c \
     $(TESTSDIR)/headless_re_verbs.c \
     $(TESTSDIR)/headless_sqlite_verbs.c \
     $(TESTSDIR)/headless_mysql_verbs.c \

@@ -141,7 +141,7 @@ The CLI **creates a new output file** during migration, it does NOT modify the i
 
 ```bash
 # Clean migration workflow:
-rm -f databases/Frontier-v7.root
+rm -f databases/Frontier-v6.root7
 
 # Run CLI with v6 database - creates v7 output file automatically
 FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli \
@@ -149,7 +149,7 @@ FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli \
 
 # Result:
 # - Input:  databases/Frontier-v6.root (unchanged, still v6)
-# - Output: databases/Frontier-v7.root (new file, v7 format)
+# - Output: databases/Frontier-v6.root7 (new file, v7 format)
 ```
 
 **Pattern:** `INPUT.root` → `INPUT-v7.root`

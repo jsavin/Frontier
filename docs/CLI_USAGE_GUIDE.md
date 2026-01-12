@@ -107,7 +107,7 @@ Load a Frontier database file before executing scripts. This makes all tables an
 
 **Usage:**
 ```bash
-./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root -e "sizeOf(system)"
+./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root7 -e "sizeOf(system)"
 ```
 
 **Automatic Migration:**
@@ -115,7 +115,7 @@ Load a Frontier database file before executing scripts. This makes all tables an
 If you specify a v6 database, the CLI will automatically migrate it to v7 format and use the migrated version:
 
 ```bash
-# This will create Frontier-v7.root if it doesn't exist
+# This will create Frontier-v6.root7 if it doesn't exist
 ./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root -e "1"
 ```
 
@@ -130,7 +130,7 @@ Upgrade a database to v7 format without loading or executing any scripts. Must b
 
 **Output:**
 ```
-System root upgraded to v7 format (written to): databases/Frontier-v7.root
+System root upgraded to v7 format (written to): databases/Frontier-v6.root7
 ```
 
 #### `-v, --verbose`
@@ -198,7 +198,7 @@ Load a Frontier database and execute scripts that interact with its contents.
 
 **Example:**
 ```bash
-./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root -e "sizeOf(system.verbs)"
+./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root7 -e "sizeOf(system.verbs)"
 ```
 
 ---
@@ -228,7 +228,7 @@ Filter logs to show only specific components.
 **Example:**
 ```bash
 export FRONTIER_LOG_COMPONENT=DB
-./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root -e "1"
+./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root7 -e "1"
 ```
 
 **Multiple Components:**
@@ -255,13 +255,13 @@ Enable execution of `system.startup` scripts when loading a database (default: s
 **Example (run startup scripts):**
 ```bash
 export FRONTIER_HEADLESS_RUN_STARTUP=1
-./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root -e "1"
+./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root7 -e "1"
 ```
 
 **Default behavior (startup scripts skipped):**
 ```bash
 # No env var needed - startup scripts are skipped by default
-./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root -e "1"
+./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root7 -e "1"
 ```
 
 ---
@@ -282,7 +282,7 @@ The CLI **only loads v7 databases** but will automatically migrate v6 databases 
 Use the `--system-root` option to load a database:
 
 ```bash
-./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root -e "defined(system)"
+./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root7 -e "defined(system)"
 ```
 
 ### Automatic Migration
@@ -290,16 +290,16 @@ Use the `--system-root` option to load a database:
 When you specify a v6 database, the CLI automatically:
 
 1. Detects the database format
-2. Creates a migrated v7 copy (e.g., `Frontier-v6.root` → `Frontier-v7.root`)
+2. Creates a migrated v7 copy (e.g., `Frontier-v6.root` → `Frontier-v6.root7`)
 3. Loads the v7 database
 4. Leaves the v6 database untouched
 
 **Example:**
 ```bash
-# First run: migrates Frontier-v6.root → Frontier-v7.root
+# First run: migrates Frontier-v6.root → Frontier-v6.root7
 ./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root -e "1"
 
-# Subsequent runs: uses existing Frontier-v7.root
+# Subsequent runs: uses existing Frontier-v6.root7
 ./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root -e "1"
 ```
 
@@ -313,7 +313,7 @@ To migrate a database without executing scripts:
 
 **Output:**
 ```
-System root upgraded to v7 format (written to): databases/Frontier-v7.root
+System root upgraded to v7 format (written to): databases/Frontier-v6.root7
 ```
 
 ### Accessing Database Contents
@@ -322,13 +322,13 @@ Once a database is loaded, you can access its tables and scripts:
 
 ```bash
 # Check if system table exists
-./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root -e "defined(system)"
+./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root7 -e "defined(system)"
 
 # Get size of system.verbs table
-./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root -e "sizeOf(system.verbs)"
+./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root7 -e "sizeOf(system.verbs)"
 
 # List top-level tables
-./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root -e "getTableNames()"
+./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root7 -e "getTableNames()"
 ```
 
 ---
@@ -380,10 +380,10 @@ Once a database is loaded, you can access its tables and scripts:
 
 ```bash
 # Check system table size
-./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root -e "sizeOf(system)"
+./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root7 -e "sizeOf(system)"
 
 # List system.verbs subtables
-./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root -e "sizeOf(system.verbs)"
+./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root7 -e "sizeOf(system.verbs)"
 ```
 
 ### Script Files
@@ -413,7 +413,7 @@ return result
 ./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root --upgrade-system-root
 
 # Use the migrated database
-./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root -e "defined(system)"
+./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root7 -e "defined(system)"
 ```
 
 ---
@@ -471,7 +471,7 @@ Enable detailed logging to diagnose issues:
 FRONTIER_LOG_LEVEL=DEBUG ./frontier-cli/frontier-cli -e "1 + 1"
 
 # Show only database-related messages
-FRONTIER_LOG_COMPONENT=DB FRONTIER_LOG_LEVEL=DEBUG ./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root -e "1"
+FRONTIER_LOG_COMPONENT=DB FRONTIER_LOG_LEVEL=DEBUG ./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root7 -e "1"
 
 # Trace-level logging (very verbose)
 FRONTIER_LOG_LEVEL=TRACE ./frontier-cli/frontier-cli -e "1 + 1"
@@ -530,7 +530,7 @@ else
     export FRONTIER_LOG_LEVEL=WARN
 fi
 
-./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root -e "sizeOf(system)"
+./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root7 -e "sizeOf(system)"
 ```
 
 ### Database Testing
@@ -541,13 +541,13 @@ Test database integrity:
 #!/bin/bash
 
 # Test that system table exists
-if ! ./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root -e "defined(system)" > /dev/null; then
+if ! ./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root7 -e "defined(system)" > /dev/null; then
     echo "ERROR: System table not found in database"
     exit 1
 fi
 
 # Test that system.verbs exists
-if ! ./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root -e "defined(system.verbs)" > /dev/null; then
+if ! ./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root7 -e "defined(system.verbs)" > /dev/null; then
     echo "ERROR: system.verbs table not found"
     exit 1
 fi

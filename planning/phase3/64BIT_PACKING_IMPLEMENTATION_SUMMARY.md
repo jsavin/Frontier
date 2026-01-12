@@ -108,16 +108,16 @@ make -C frontier-cli clean && make -C frontier-cli
 ./frontier-cli/frontier-cli -e "1+1"
 # Output: 2 ✓
 
-./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root -e "return 42"
+./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root7 -e "return 42"
 # Output: 42 ✓
 ```
 
 ### Migration Test ✅
 ```bash
-rm -f databases/Frontier-v7.root
+rm -f databases/Frontier-v6.root7
 ./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root -e "1"
 ```
-- Frontier-v6.root (5.8MB) → Frontier-v7.root (9.9MB)
+- Frontier-v6.root (5.8MB) → Frontier-v6.root7 (9.9MB)
 - Header verified: `0007` (v7 format) ✓
 - Migration completes successfully
 
