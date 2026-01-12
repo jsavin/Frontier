@@ -621,6 +621,7 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
         }
         case opv_find: {
             /* Verb #10: op.find(searchText [, wholewords] [, casesensitive]) -> boolean
+             * @IMPLEMENTED
              *
              * Searches through outline headlines for text matching searchText.
              * Moves the bar cursor to the first matching headline.
