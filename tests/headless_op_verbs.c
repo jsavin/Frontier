@@ -154,6 +154,8 @@ static boolean opvisitall_callback(hdlheadrecord hnode, ptrvoid refcon) {
 
     /* Call the callback script */
     if (!langrunscript(ctx->scriptname, NULL, NULL, &vreturned)) {
+        /* Log callback failure to help with debugging */
+        log_warn(LOG_COMP_OP, "op.visitall callback script failed: %s", stringbaseaddress(ctx->scriptname));
         oppopoutline();
         return false;
     }
@@ -480,7 +482,7 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
             return setbooleanvalue(fl, vreturned);
         }
         case opv_find: {
-            /* Verb #10: op.find(searchText [, flWrap] [, flCase]) -> boolean
+            /* Verb #10: op.find(searchText [, wholewords] [, casesensitive]) -> boolean
              *
              * Searches through outline headlines for text matching searchText.
              * Moves the bar cursor to the first matching headline.
@@ -488,11 +490,13 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
              * HEADLESS ADAPTATION:
              * Unlike the GUI version (opflatfind), we don't highlight text or enter edit mode.
              * We simply search headlines and move the bar cursor to the matching node.
+             * NOTE: The wholewords parameter is accepted for API compatibility but not
+             * implemented in this headless version - all searches are substring matches.
              *
              * Parameters:
              *   searchText (required) - text to search for
-             *   flWrap (optional) - wrap around to top if not found, default false
-             *   flCase (optional) - case sensitive search, default false
+             *   wholewords (optional) - whole word matching (accepted but not implemented), default false
+             *   casesensitive (optional) - case sensitive search, default false
              *
              * Returns true if found and cursor moved, false if not found.
              *
@@ -500,12 +504,11 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
              * - Start searching from current cursor position (or next node)
              * - Use textpatternmatch() for Boyer-Moore search
              * - Search flatdown through outline (depth-first traversal)
-             * - If wrap enabled, restart from top when reaching end
              * - Stop when match found or back to original position
              */
             hdloutlinerecord ho;
             bigstring bs;
-            boolean flwrap = false;  /* Default: no wrap */
+            boolean flwholewords = false;  /* Default: substring match (not implemented) */
             boolean flcase = false;  /* Default: case insensitive */
             hdlheadrecord nomad, orignomad;
             Handle htext;
@@ -519,13 +522,14 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
             if (!getstringvalue(hparam1, 1, bs))
                 return false;
 
-            /* Get optional flWrap parameter (param 2) if provided */
+            /* Get optional wholewords parameter (param 2) if provided */
             if (langgetparamcount(hparam1) >= 2) {
-                if (!getbooleanvalue(hparam1, 2, &flwrap))
+                if (!getbooleanvalue(hparam1, 2, &flwholewords))
                     return false;
+                /* NOTE: wholewords not implemented - accepted for API compatibility */
             }
 
-            /* Get optional flCase parameter (param 3) if provided */
+            /* Get optional casesensitive parameter (param 3) if provided */
             if (langgetparamcount(hparam1) >= 3) {
                 flnextparamislast = true;
                 if (!getbooleanvalue(hparam1, 3, &flcase))
@@ -538,6 +542,10 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
 
             /* Search loop - pattern from opflatfind */
             while (true) {
+                /* Check for nil before dereferencing (opbumpflatdown can return nil) */
+                if (nomad == nil)
+                    break;
+
                 /* Get headline text and search it */
                 htext = (**nomad).headstring;
                 if (htext != nil) {
@@ -554,21 +562,10 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
                 /* Move to next node in flat order */
                 nomad = opbumpflatdown(nomad, true);
 
-                /* Check if we've wrapped back to original position */
+                /* Check if we've returned to original position - search complete */
                 if (nomad == orignomad) {
-                    /* If we're at the end and wrap is enabled, try from top */
-                    if (flwrap && nomad != (**ho).hsummit) {
-                        nomad = (**ho).hsummit;
-                        /* Continue searching from top */
-                    } else {
-                        /* No wrap or already at top - search failed */
-                        break;
-                    }
-                }
-
-                /* If we've looped back to start, we're done */
-                if (nomad == orignomad)
                     break;
+                }
             }
 
             return setbooleanvalue(found, vreturned);
@@ -851,7 +848,7 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
             return setbooleanvalue(true, vreturned);
         }
         case opv_tabkeyreorg: {
-            /* Verb #20: op.tabkeyreorg() -> boolean
+            /* Verb #20: op.tabkeyreorg(setting) -> boolean
              *
              * PREFERENCE TOGGLE: In GUI Frontier, this controls whether Tab key indents/outdents
              * nodes or just inserts a tab character.
@@ -859,16 +856,23 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
              * HEADLESS MODE: Preferences for keyboard behavior don't apply without an interactive
              * GUI environment. This is a noop that always returns true for API compatibility.
              *
+             * Parameters:
+             *   setting (boolean) - enable/disable tab key reorganization (ignored in headless)
+             *
              * Returns true (success) without performing any action.
              */
-            if (!langcheckparamcount(hparam1, 0))
+            boolean setting;
+
+            /* Accept setting parameter for API compatibility */
+            flnextparamislast = true;
+            if (!getbooleanvalue(hparam1, 1, &setting))
                 return false;
 
             /* Noop in headless mode - return success */
             return setbooleanvalue(true, vreturned);
         }
         case opv_flatcursorkeys: {
-            /* Verb #21: op.flatcursorkeys() -> boolean
+            /* Verb #21: op.flatcursorkeys(setting) -> boolean
              *
              * PREFERENCE TOGGLE: In GUI Frontier, this controls whether cursor keys navigate
              * the outline structure (structured mode) or move through text character-by-character
@@ -877,9 +881,16 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
              * HEADLESS MODE: Keyboard navigation preferences don't apply without an interactive
              * GUI environment. This is a noop that always returns true for API compatibility.
              *
+             * Parameters:
+             *   setting (boolean) - enable/disable flat cursor keys (ignored in headless)
+             *
              * Returns true (success) without performing any action.
              */
-            if (!langcheckparamcount(hparam1, 0))
+            boolean setting;
+
+            /* Accept setting parameter for API compatibility */
+            flnextparamislast = true;
+            if (!getbooleanvalue(hparam1, 1, &setting))
                 return false;
 
             /* Noop in headless mode - return success */
@@ -1268,7 +1279,7 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
             if (bserror) seterrorstring("not implemented", bserror);
             return false;
         case opv_visitall: {
-            /* Verb #37: op.visitall(scriptname) -> boolean
+            /* Verb #37: op.visitall(adrOutline, adrCallback) -> boolean
              *
              * Visits every headline in the outline, calling the specified callback script
              * for each node. Unlike op.visit() which only visits subheads of the current node,
@@ -1281,14 +1292,15 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
              * - Iterates through nodes calling callback
              * - Restores previous target
              *
-             * In headless mode, we simplify:
-             * - Outline is already in memory (no window needed)
-             * - Target is already set (getoutlinefromtarget verified this)
-             * - We iterate using opvisiteverything() to call the callback
-             * - Cursor is restored after visiting
+             * In headless mode:
+             * - Get outline from address parameter
+             * - Set outline as target (save previous target)
+             * - Iterate using opvisiteverything() to call the callback
+             * - Restore previous target and cursor after visiting
              *
              * Parameters:
-             *   scriptname (string) - Name of callback script to run for each headline
+             *   adrOutline - address of outline table to visit
+             *   adrCallback - address of callback script to run for each headline
              *
              * The callback script is called with the cursor positioned at each node.
              * The outline target is set before each callback, so the script can use
@@ -1297,18 +1309,51 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
              * Returns true if successful, false on error.
              */
             hdloutlinerecord ho;
-            bigstring bsscriptname;
+            bigstring bsscriptname, bsoutline;
             hdlheadrecord horigcursor;
+            tyvaluerecord voutline, vcallback, vprevtarget;
+            hdlhashtable htablecallback, htableoutline;
             boolean fl;
 
-            /* Get callback script name parameter */
-            flnextparamislast = true;
-            if (!getstringvalue(hparam1, 1, bsscriptname))
+            /* Get outline address parameter */
+            if (!getaddressparam(hparam1, 1, &voutline))
                 return false;
 
-            /* Get outline from target */
-            if (!getoutlinefromtarget(&ho, bserror))
+            /* Get callback address parameter */
+            flnextparamislast = true;
+            if (!getaddressparam(hparam1, 2, &vcallback))
                 return false;
+
+            /* Get callback script name from address */
+            if (!getaddressvalue(vcallback, &htablecallback, bsscriptname)) {
+                if (bserror) seterrorstring("Can't resolve callback address", bserror);
+                return false;
+            }
+
+            /* Get outline table and name from address */
+            if (!getaddressvalue(voutline, &htableoutline, bsoutline)) {
+                if (bserror) seterrorstring("Can't resolve outline address", bserror);
+                return false;
+            }
+
+            /* Save previous target and set outline as the new target */
+            initvalue(&vprevtarget, novaluetype);
+            if (!langsettarget(htableoutline, bsoutline, &vprevtarget)) {
+                if (bserror) seterrorstring("Can't set outline as target", bserror);
+                return false;
+            }
+
+            /* Now get the outline from the newly set target */
+            if (!getoutlinefromtarget(&ho, bserror)) {
+                /* Restore previous target before returning */
+                if (vprevtarget.valuetype == addressvaluetype) {
+                    hdlhashtable htprev;
+                    bigstring bsprev;
+                    if (getaddressvalue(vprevtarget, &htprev, bsprev))
+                        langsettarget(htprev, bsprev, nil);
+                }
+                return false;
+            }
 
             /* Save original cursor position */
             horigcursor = (**ho).hbarcursor;
@@ -1323,6 +1368,14 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
 
             /* Restore original cursor */
             (**ho).hbarcursor = horigcursor;
+
+            /* Restore previous target */
+            if (vprevtarget.valuetype == addressvaluetype) {
+                hdlhashtable htprev;
+                bigstring bsprev;
+                if (getaddressvalue(vprevtarget, &htprev, bsprev))
+                    langsettarget(htprev, bsprev, nil);
+            }
 
             return setbooleanvalue(fl, vreturned);
         }

@@ -3180,7 +3180,7 @@ tests:
       lang.new(outlineType, @workspace.outline);
       target.set(@workspace.outline);
       op.insert("Line", down);
-      return op.flatcursorkeys()
+      return op.flatcursorkeys(true)
     expected_success: true
     expected_result: "true"
 
@@ -3190,7 +3190,7 @@ tests:
       lang.new(outlineType, @workspace.outline);
       target.set(@workspace.outline);
       op.insert("Line", down);
-      return op.tabkeyreorg()
+      return op.tabkeyreorg(true)
     expected_success: true
     expected_result: "true"
 
