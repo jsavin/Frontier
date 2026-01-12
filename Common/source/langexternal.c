@@ -46,6 +46,7 @@
 #include "langinternal.h"
 #include "langtokens.h"
 #include "tablestructure.h"
+#include "tableinternal.h"
 #include "langexternal.h"
 #include "cancoon.h"
 #include "menuverbs.h"
@@ -154,7 +155,128 @@ static boolean langexternalgetinfo (bigstring bs, hdlhashtable *htable, langvalu
 	
 	return (true);
 	} /*langexternalgetinfo*/
-	
+
+
+/*
+ * langexternalgettable_localscope
+ *
+ * Check if bs exists in local scope chain (currenthashtable) and is a table.
+ * Returns true if found and successfully resolved to a table.
+ *
+ * This function enables proper lexical scoping for external variable resolution,
+ * allowing local variables to shadow global names during serialization operations.
+ *
+ * IMPORTANT: This function ONLY supports table external types (idtableprocessor).
+ * Other external types (outlines, scripts, menus, WPText) continue to use global
+ * lookup only. Rationale: Tables are the primary use case for local shadowing during
+ * XML-RPC serialization. Other external types typically represent top-level objects
+ * that exist in global scope by design (e.g., outline windows, script objects).
+ * Future enhancement: Could extend to other external types if use case emerges.
+ *
+ * Added: 2026-01-11 - Issue #280 fix (Approach C)
+ */
+static boolean langexternalgettable_localscope(bigstring bs, hdlhashtable *htable) {
+	hdlhashnode hnode = nil;
+	hdlhashtable ht_temp = nil;
+	hdlhashtable ht_found = nil;
+	tyvaluerecord val;
+	hdlexternalvariable hv;
+
+	/* CRITICAL: Local scope lookup is ONLY valid during script execution with a fully
+	 * initialized runtime. During database loading/migration/packing, currenthashtable
+	 * may point to database tables being serialized, not script local scopes.
+	 *
+	 * Attempting to resolve external variables in this context can trigger loads from
+	 * disk (flinmemory=0) which may segfault if valueroutines aren't initialized.
+	 *
+	 * Issue #280: Prevents crashes in save_migration_tests.
+	 *
+	 * Guards (evaluated in order - optimized for fast rejection):
+	 * 1. Not in local scope (currenthashtable=nil or invalid)
+	 * 2. Runtime not initialized (roottable=nil) - no system root loaded
+	 * 3. Current hashtable not a local table (fllocaltable=false)
+	 */
+
+	/* Guard 1: Must be in a local scope context (fail fast - check TLS first) */
+	if (currenthashtable == nil)
+		return false;
+
+	/* Guard 1a: Verify handle validity before dereferencing */
+	if (!validhandle((Handle)currenthashtable)) {
+		log_trace(LOG_COMP_EXTERNAL, "langexternalgettable_localscope: invalid currenthashtable handle, skipping %s",
+		          PSTR(bs));
+		return false;
+	}
+
+	/* Guard 2: Runtime must be fully initialized (system root loaded) */
+	if (roottable == nil) {
+		log_trace(LOG_COMP_EXTERNAL, "langexternalgettable_localscope: runtime not initialized (roottable=nil), skipping %s",
+		          PSTR(bs));
+		return false;
+	}
+
+	/* Guard 3: Only lookup in local (script) tables, not database tables */
+	if (!(**currenthashtable).fllocaltable) {
+		log_trace(LOG_COMP_EXTERNAL, "langexternalgettable_localscope: currenthashtable not local (fllocaltable=0), skipping %s",
+		          PSTR(bs));
+		return false;
+	}
+
+	/* Search local scope chain (respects lexical scoping) */
+	if (!langfindsymbol(bs, &ht_temp, &hnode))
+		return false;
+
+	/* Sanity check: hnode should be non-nil if langfindsymbol succeeded */
+	if (hnode == nil)
+		return false;
+
+	/* Get the value from the hash node */
+	val = (**hnode).val;
+
+	/* Only attempt table resolution if value is actually an external type */
+	if (val.valuetype != externalvaluetype) {
+		log_trace(LOG_COMP_EXTERNAL, "langexternalgettable_localscope: %s found but not external (type=%d)",
+		          PSTR(bs), (int)val.valuetype);
+		return false;
+	}
+
+	/* Additional safety: Check if external is in memory before attempting table extraction.
+	 * All external variables have the flinmemory field at the same offset (inherited from
+	 * tyexternalvariable base structure), so we can safely check it regardless of external type.
+	 */
+	hv = (hdlexternalvariable)val.data.externalvalue;
+	if (hv == nil) {
+		log_trace(LOG_COMP_EXTERNAL, "langexternalgettable_localscope: %s has nil external handle, skipping",
+		          PSTR(bs));
+		return false;
+	}
+
+	/* Only proceed if external is a table type */
+	if ((**hv).id != idtableprocessor) {
+		log_trace(LOG_COMP_EXTERNAL, "langexternalgettable_localscope: %s not a table (id=%d), skipping",
+		          PSTR(bs), (int)(**hv).id);
+		return false;
+	}
+
+	/* Check if table is in memory (flinmemory is at same offset for all external types) */
+	if (!(**hv).flinmemory) {
+		log_trace(LOG_COMP_EXTERNAL, "langexternalgettable_localscope: %s table not in memory (flinmemory=0), skipping",
+		          PSTR(bs));
+		return false;
+	}
+
+	/* Found in local scope - verify it's a table and extract handle */
+	if (!tablevaltotable(val, &ht_found, hnode))
+		return false;
+
+	*htable = ht_found;
+
+	log_trace(LOG_COMP_EXTERNAL, "langexternalgettable_localscope: resolved %s -> %p",
+	          PSTR(bs), (void *)*htable);
+
+	return true;
+} /*langexternalgettable_localscope*/
+
 
 boolean langexternalgettable (bigstring bs, hdlhashtable *htable) {
 
@@ -162,6 +284,15 @@ boolean langexternalgettable (bigstring bs, hdlhashtable *htable) {
 
 	log_trace(LOG_COMP_EXTERNAL, "langexternalgettable enter %s", PSTR(bs));
 
+	/* NEW (Issue #280): Check local scope first for external table variables.
+	 * This allows local variables to shadow global names during XML serialization.
+	 */
+	if (langexternalgettable_localscope(bs, htable)) {
+		log_trace(LOG_COMP_EXTERNAL, "langexternalgettable: local scope hit %s -> %p", PSTR(bs), (void *)*htable);
+		return true;
+	}
+
+	/* Existing global lookup paths (unchanged) */
     if (langexternalgetinfo (bs, htable, &valueroutine)) {
 		log_trace(LOG_COMP_EXTERNAL, "langexternalgettable: info hit %s -> %p", PSTR(bs), (void *)*htable);
         return true;
