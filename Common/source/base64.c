@@ -30,6 +30,7 @@
 
 #include "memory.h"
 #include "lang.h"
+#include "langinternal.h"
 #include "BASE64.H"
 
 

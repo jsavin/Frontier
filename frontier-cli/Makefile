@@ -61,6 +61,7 @@ RUNTIME_SOURCES = \
     ../Common/source/lang.c \
     ../Common/source/langcallbacks.c \
     ../Common/source/langcrypt.c \
+    ../Common/source/base64.c \
     ../Common/source/langerror.c \
     ../Common/source/langscan.c \
     ../Common/source/langparser.c \
