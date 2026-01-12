@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Frontier Integration Tests</title>
-    <dateCreated>Mon, 12 Jan 2026 00:09:07 GMT</dateCreated>
+    <dateCreated>Mon, 12 Jan 2026 00:26:49 GMT</dateCreated>
   </head>
   <body>
     <outline text="Db Verbs (db_verbs)">
@@ -5839,50 +5839,6 @@
           <outline text="return true"/>
         </outline>
       </outline>
-      <outline text="op.sethtmlformatting - noop returns false - Verify op.sethtmlformatting returns false (noop) in headless mode">
-        <outline text="Metadata">
-          <outline text="expected_result: false"/>
-        </outline>
-        <outline text="Script">
-          <outline text="lang.new(outlineType, @workspace.outline)"/>
-          <outline text="target.set(@workspace.outline)"/>
-          <outline text="op.insert(&quot;Line&quot;, down)"/>
-          <outline text="return op.sethtmlformatting(true)"/>
-        </outline>
-      </outline>
-      <outline text="op.gethtmlformatting - noop returns false - Verify op.gethtmlformatting returns false (noop) in headless mode">
-        <outline text="Metadata">
-          <outline text="expected_result: false"/>
-        </outline>
-        <outline text="Script">
-          <outline text="lang.new(outlineType, @workspace.outline)"/>
-          <outline text="target.set(@workspace.outline)"/>
-          <outline text="op.insert(&quot;Line&quot;, down)"/>
-          <outline text="return op.gethtmlformatting()"/>
-        </outline>
-      </outline>
-      <outline text="op.setdynamic - noop returns false - Verify op.setdynamic returns false (noop) in headless mode">
-        <outline text="Metadata">
-          <outline text="expected_result: false"/>
-        </outline>
-        <outline text="Script">
-          <outline text="lang.new(outlineType, @workspace.outline)"/>
-          <outline text="target.set(@workspace.outline)"/>
-          <outline text="op.insert(&quot;Line&quot;, down)"/>
-          <outline text="return op.setdynamic(true)"/>
-        </outline>
-      </outline>
-      <outline text="op.getdynamic - noop returns false - Verify op.getdynamic returns false (noop) in headless mode">
-        <outline text="Metadata">
-          <outline text="expected_result: false"/>
-        </outline>
-        <outline text="Script">
-          <outline text="lang.new(outlineType, @workspace.outline)"/>
-          <outline text="target.set(@workspace.outline)"/>
-          <outline text="op.insert(&quot;Line&quot;, down)"/>
-          <outline text="return op.getdynamic()"/>
-        </outline>
-      </outline>
     </outline>
     <outline text="Runtime Parameter State (runtime_parameter_state)">
       <outline text="Runtime: Parameter state - basic if condition evaluation - Verify parameter state is correctly maintained during if condition evaluation">
@@ -7431,19 +7387,62 @@
           <outline text="return string.countFields(result, string.filledString(&quot;\t&quot;, 1))"/>
         </outline>
       </outline>
-      <outline text="xml.frontiervaluetotaggedtext - complex nested structure">
+      <outline text="xml.frontiervaluetotaggedtext - local variable with nested external">
         <outline text="Metadata">
-          <outline text="expected_contains: ['&lt;struct&gt;', '&lt;name&gt;title&lt;/name&gt;', '&lt;value&gt;Test Document&lt;/value&gt;', '&lt;name&gt;items&lt;/name&gt;', '&lt;value&gt;&lt;array&gt;', '&lt;data&gt;', '&lt;value&gt;First Item&lt;/value&gt;', '&lt;value&gt;Second Item&lt;/value&gt;', '&lt;/data&gt;', '&lt;/array&gt;&lt;/value&gt;', '&lt;/struct&gt;']"/>
+          <outline text="expected_contains: ['&lt;struct&gt;', '&lt;name&gt;title&lt;/name&gt;', '&lt;value&gt;Test&lt;/value&gt;', '&lt;name&gt;items&lt;/name&gt;', '&lt;value&gt;&lt;array&gt;', '&lt;data&gt;', '&lt;value&gt;a&lt;/value&gt;', '&lt;value&gt;b&lt;/value&gt;', '&lt;/data&gt;', '&lt;/array&gt;&lt;/value&gt;', '&lt;/struct&gt;']"/>
         </outline>
         <outline text="Script">
-          <outline text="new(tableType, @workspace.xmltest)"/>
-          <outline text="workspace.xmltest.title = &quot;Test Document&quot;"/>
-          <outline text="new(listType, @workspace.xmltest.items)"/>
-          <outline text="workspace.xmltest.items[1] = &quot;First Item&quot;"/>
-          <outline text="workspace.xmltest.items[2] = &quot;Second Item&quot;"/>
-          <outline text="local(result = xml.frontiervaluetotaggedtext(@workspace.xmltest, 0))"/>
-          <outline text="delete(@workspace.xmltest)"/>
+          <outline text="local(testroot)"/>
+          <outline text="new(tableType, @testroot)"/>
+          <outline text="testroot.title = &quot;Test&quot;"/>
+          <outline text="new(listType, @testroot.items)"/>
+          <outline text="testroot.items[1] = &quot;a&quot;"/>
+          <outline text="testroot.items[2] = &quot;b&quot;"/>
+          <outline text="return xml.frontiervaluetotaggedtext(@testroot, 0)"/>
+        </outline>
+      </outline>
+      <outline text="xml.frontiervaluetotaggedtext - global variable (no local shadow)">
+        <outline text="Metadata">
+          <outline text="expected_contains: ['&lt;struct&gt;', '&lt;name&gt;value&lt;/name&gt;', '&lt;value&gt;&lt;i4&gt;42&lt;/i4&gt;&lt;/value&gt;', '&lt;/struct&gt;']"/>
+        </outline>
+        <outline text="Script">
+          <outline text="new(tableType, @workspace.globaltest)"/>
+          <outline text="workspace.globaltest.value = 42"/>
+          <outline text="local(result = xml.frontiervaluetotaggedtext(@workspace.globaltest, 0))"/>
+          <outline text="delete(@workspace.globaltest)"/>
           <outline text="return result"/>
+        </outline>
+      </outline>
+      <outline text="xml.frontiervaluetotaggedtext - with statement scope">
+        <outline text="Metadata">
+          <outline text="expected_contains: ['&lt;name&gt;value&lt;/name&gt;', '&lt;value&gt;test&lt;/value&gt;']"/>
+        </outline>
+        <outline text="Script">
+          <outline text="new(tableType, @workspace.outer)"/>
+          <outline text="local(data)"/>
+          <outline text="new(tableType, @data)"/>
+          <outline text="data.value = &quot;inner&quot;"/>
+          <outline text="with workspace.outer">
+            <outline text="local(data)"/>
+            <outline text="new(tableType, @data)"/>
+            <outline text="data.value = &quot;test&quot;"/>
+            <outline text="local(result = xml.frontiervaluetotaggedtext(@data, 0))"/>
+            <outline text="delete(@workspace.outer)"/>
+            <outline text="return result"/>
+          </outline>
+        </outline>
+      </outline>
+      <outline text="xml.frontiervaluetotaggedtext - deeply nested local structure">
+        <outline text="Metadata">
+          <outline text="expected_contains: ['&lt;name&gt;level1&lt;/name&gt;', '&lt;name&gt;level2&lt;/name&gt;', '&lt;name&gt;value&lt;/name&gt;', '&lt;value&gt;deep&lt;/value&gt;']"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(obj)"/>
+          <outline text="new(tableType, @obj)"/>
+          <outline text="new(tableType, @obj.level1)"/>
+          <outline text="new(tableType, @obj.level1.level2)"/>
+          <outline text="obj.level1.level2.value = &quot;deep&quot;"/>
+          <outline text="return xml.frontiervaluetotaggedtext(@obj, 0)"/>
         </outline>
       </outline>
       <outline text="xml.frontiervaluetotaggedtext - table with special chars in keys">
