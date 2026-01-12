@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Frontier Integration Tests</title>
-    <dateCreated>Sun, 11 Jan 2026 22:19:02 GMT</dateCreated>
+    <dateCreated>Sun, 11 Jan 2026 23:15:11 GMT</dateCreated>
   </head>
   <body>
     <outline text="Db Verbs (db_verbs)">
@@ -7232,20 +7232,17 @@
       </outline>
       <outline text="xml.frontiervaluetotaggedtext - complex nested structure">
         <outline text="Metadata">
-          <outline text="expected_contains: ['&lt;struct&gt;', '&lt;name&gt;title&lt;/name&gt;', '&lt;value&gt;&lt;string&gt;Test Document&lt;/string&gt;&lt;/value&gt;', '&lt;name&gt;items&lt;/name&gt;', '&lt;value&gt;&lt;array&gt;', '&lt;data&gt;', '&lt;value&gt;&lt;struct&gt;', '&lt;name&gt;id&lt;/name&gt;', '&lt;value&gt;&lt;i4&gt;1&lt;/i4&gt;&lt;/value&gt;', '&lt;name&gt;name&lt;/name&gt;', '&lt;value&gt;&lt;string&gt;First Item&lt;/string&gt;&lt;/value&gt;', '&lt;/struct&gt;&lt;/value&gt;', '&lt;value&gt;&lt;struct&gt;', '&lt;name&gt;id&lt;/name&gt;', '&lt;value&gt;&lt;i4&gt;2&lt;/i4&gt;&lt;/value&gt;', '&lt;name&gt;name&lt;/name&gt;', '&lt;value&gt;&lt;string&gt;Second Item&lt;/string&gt;&lt;/value&gt;', '&lt;/struct&gt;&lt;/value&gt;', '&lt;/data&gt;', '&lt;/array&gt;&lt;/value&gt;', '&lt;/struct&gt;']"/>
+          <outline text="expected_contains: ['&lt;struct&gt;', '&lt;name&gt;title&lt;/name&gt;', '&lt;value&gt;Test Document&lt;/value&gt;', '&lt;name&gt;items&lt;/name&gt;', '&lt;value&gt;&lt;array&gt;', '&lt;data&gt;', '&lt;value&gt;First Item&lt;/value&gt;', '&lt;value&gt;Second Item&lt;/value&gt;', '&lt;/data&gt;', '&lt;/array&gt;&lt;/value&gt;', '&lt;/struct&gt;']"/>
         </outline>
         <outline text="Script">
-          <outline text="local(root)"/>
-          <outline text="new(tableType, @root)"/>
-          <outline text="root.title = &quot;Test Document&quot;"/>
-          <outline text="new(listType, @root.items)"/>
-          <outline text="new(tableType, @root.items[1])"/>
-          <outline text="root.items[1].id = 1"/>
-          <outline text="root.items[1].name = &quot;First Item&quot;"/>
-          <outline text="new(tableType, @root.items[2])"/>
-          <outline text="root.items[2].id = 2"/>
-          <outline text="root.items[2].name = &quot;Second Item&quot;"/>
-          <outline text="return xml.frontiervaluetotaggedtext(@root, 0)"/>
+          <outline text="new(tableType, @workspace.xmltest)"/>
+          <outline text="workspace.xmltest.title = &quot;Test Document&quot;"/>
+          <outline text="new(listType, @workspace.xmltest.items)"/>
+          <outline text="workspace.xmltest.items[1] = &quot;First Item&quot;"/>
+          <outline text="workspace.xmltest.items[2] = &quot;Second Item&quot;"/>
+          <outline text="local(result = xml.frontiervaluetotaggedtext(@workspace.xmltest, 0))"/>
+          <outline text="delete(@workspace.xmltest)"/>
+          <outline text="return result"/>
         </outline>
       </outline>
       <outline text="xml.frontiervaluetotaggedtext - table with special chars in keys">

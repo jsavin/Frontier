@@ -40,8 +40,8 @@ enum {
 };
 
 static boolean xml_valueproc(short token, hdltreenode hparam1,
-                                     tyvaluerecord *vreturned,
-                                     bigstring bserror) {
+                              tyvaluerecord *vreturned,
+                              bigstring bserror) {
     switch(token) {
         case xmlv_addtable:
             /* Verb #0: xml.addtable - not yet implemented */
@@ -110,8 +110,11 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
             if (!langhashtablelookup(ht, bs, &val, &hnode))
                 return false;
 
-            /* Convert to XML-RPC tagged text */
-            if (!xmlfrontiervaltotaggedtext(&val, indentlevel, &htext, hnode))
+            /* Convert to XML-RPC tagged text
+             * Pass HNoNode instead of hnode to avoid context issues when serializing
+             * nested structures. The hnode from the parameter lookup isn't relevant
+             * for serializing the value's internal structure. */
+            if (!xmlfrontiervaltotaggedtext(&val, indentlevel, &htext, HNoNode))
                 return false;
 
             /* Return the XML text as a string */
