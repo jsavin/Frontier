@@ -658,18 +658,9 @@ static boolean init_efp_1005(langvaluecallback valuecallback) {
         return false;
     pophashtable();
 
-    /* Processor: target (3 verbs) */
-    if (!newfunctionprocessor(BIGSTRING("\006target"), valuecallback, true, &htable))
-        return false;
-
-    pushhashtable(htable);
-    if (!langaddkeyword(BIGSTRING("\003get"), ixverb++))
-        return false;
-    if (!langaddkeyword(BIGSTRING("\003set"), ixverb++))
-        return false;
-    if (!langaddkeyword(BIGSTRING("\005clear"), ixverb++))
-        return false;
-    pophashtable();
+    /* SKIP init_efp_target (target processor) - already registered by targetinitverbs()
+     * in headless_target_verbs.c, which properly forwards to lang.gettarget/settarget/cleartarget
+     */
 
     /* Processor: bit (8 verbs) */
     if (!newfunctionprocessor(BIGSTRING("\003bit"), valuecallback, false, &htable))
