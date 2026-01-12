@@ -4,6 +4,11 @@
 # Usage:
 #   frontier-cli/Makefile: Uses $(TESTSDIR)/$(file) for each file
 #   tests/Makefile: Uses $(file) directly (files are in same directory)
+#
+# When adding new headless verb files:
+#   1. Add the filename to HEADLESS_VERBS_SOURCES below
+#   2. Both frontier-cli and tests Makefiles will automatically pick it up
+#   3. No need to modify frontier-cli/Makefile or tests/Makefile directly
 
 HEADLESS_VERBS_SOURCES = \
     headless_lang_verbs.c \
