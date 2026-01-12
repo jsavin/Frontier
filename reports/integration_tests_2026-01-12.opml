@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Frontier Integration Tests</title>
-    <dateCreated>Mon, 12 Jan 2026 00:26:49 GMT</dateCreated>
+    <dateCreated>Mon, 12 Jan 2026 01:26:27 GMT</dateCreated>
   </head>
   <body>
     <outline text="Db Verbs (db_verbs)">
@@ -5837,6 +5837,344 @@
           <outline text="target.set(@workspace.outline)"/>
           <outline text="op.insert(&quot;Line 1&quot;, down)"/>
           <outline text="return true"/>
+        </outline>
+      </outline>
+      <outline text="op.sethtmlformatting - noop returns false - Verify op.sethtmlformatting returns false (noop) in headless mode">
+        <outline text="Metadata">
+          <outline text="expected_result: false"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="return op.sethtmlformatting(true)"/>
+        </outline>
+      </outline>
+      <outline text="op.gethtmlformatting - noop returns false - Verify op.gethtmlformatting returns false (noop) in headless mode">
+        <outline text="Metadata">
+          <outline text="expected_result: false"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="return op.gethtmlformatting()"/>
+        </outline>
+      </outline>
+      <outline text="op.setdynamic - noop returns false - Verify op.setdynamic returns false (noop) in headless mode">
+        <outline text="Metadata">
+          <outline text="expected_result: false"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="return op.setdynamic(true)"/>
+        </outline>
+      </outline>
+      <outline text="op.getdynamic - noop returns false - Verify op.getdynamic returns false (noop) in headless mode">
+        <outline text="Metadata">
+          <outline text="expected_result: false"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="return op.getdynamic()"/>
+        </outline>
+      </outline>
+      <outline text="op.getheadnumber - first node - Verify op.getheadnumber returns 1 for first sibling">
+        <outline text="Metadata">
+          <outline text="expected_result: 1"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;First&quot;, down)"/>
+          <outline text="op.insert(&quot;Second&quot;, down)"/>
+          <outline text="op.insert(&quot;Third&quot;, down)"/>
+          <outline text="op.firstSummit()"/>
+          <outline text="return op.getheadnumber()"/>
+        </outline>
+      </outline>
+      <outline text="op.getheadnumber - third node - Verify op.getheadnumber returns 3 for third sibling">
+        <outline text="Metadata">
+          <outline text="expected_result: 3"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;First&quot;, down)"/>
+          <outline text="op.insert(&quot;Second&quot;, down)"/>
+          <outline text="op.insert(&quot;Third&quot;, down)"/>
+          <outline text="op.firstSummit()"/>
+          <outline text="op.go(down, 2)"/>
+          <outline text="return op.getheadnumber()"/>
+        </outline>
+      </outline>
+      <outline text="op.setmodified - set dirty flag true - Verify op.setmodified(true) marks outline as modified">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="return op.setmodified(true)"/>
+        </outline>
+      </outline>
+      <outline text="op.setmodified - clear dirty flag false - Verify op.setmodified(false) clears dirty flag">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="op.setmodified(true)"/>
+          <outline text="return op.setmodified(false)"/>
+        </outline>
+      </outline>
+      <outline text="op.getsuboutline - single line - Verify op.getsuboutline extracts text from single line">
+        <outline text="Metadata">
+          <outline text="expected_result: First line&#13;"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;First line&quot;, down)"/>
+          <outline text="return op.getsuboutline()"/>
+        </outline>
+      </outline>
+      <outline text="op.getsuboutline - multi-level indented - Verify op.getsuboutline extracts indented text from hierarchy">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="op.insert(&quot;Child1&quot;, right)"/>
+          <outline text="op.insert(&quot;Child2&quot;, down)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="local(text = op.getsuboutline())"/>
+          <outline text="return sizeOf(text) &gt; 15"/>
+        </outline>
+      </outline>
+      <outline text="op.getsuboutline - flindent false - Verify op.getsuboutline(false) returns unindented text without tabs">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="op.insert(&quot;Child&quot;, right)"/>
+          <outline text="op.go(left, 1)"/>
+          <outline text="local(text = op.getsuboutline(false))"/>
+          <outline text="return sizeOf(text) &lt; 20"/>
+        </outline>
+      </outline>
+      <outline text="op.insertoutline - insert source into target - Verify op.insertoutline copies structure from source to target">
+        <outline text="Metadata">
+          <outline text="expected_result: 5"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.source)"/>
+          <outline text="lang.new(outlineType, @workspace.dest)"/>
+          <outline text="target.set(@workspace.source)"/>
+          <outline text="op.insert(&quot;Source1&quot;, down)"/>
+          <outline text="op.insert(&quot;Source2&quot;, down)"/>
+          <outline text="target.set(@workspace.dest)"/>
+          <outline text="op.insert(&quot;Dest1&quot;, down)"/>
+          <outline text="op.insertoutline(@workspace.source, down)"/>
+          <outline text="return op.countSummits()"/>
+        </outline>
+      </outline>
+      <outline text="op.insertoutline - preserve source outline - Verify op.insertoutline does not modify source outline">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.source)"/>
+          <outline text="lang.new(outlineType, @workspace.dest)"/>
+          <outline text="target.set(@workspace.source)"/>
+          <outline text="op.insert(&quot;Source1&quot;, down)"/>
+          <outline text="op.insert(&quot;Source2&quot;, down)"/>
+          <outline text="local(before = op.countSummits())"/>
+          <outline text="target.set(@workspace.dest)"/>
+          <outline text="op.insert(&quot;Dest1&quot;, down)"/>
+          <outline text="op.insertoutline(@workspace.source, down)"/>
+          <outline text="target.set(@workspace.source)"/>
+          <outline text="local(after = op.countSummits())"/>
+          <outline text="return before == after"/>
+        </outline>
+      </outline>
+      <outline text="op.getselection - no nodes marked returns cursor - Verify op.getselection returns list with current cursor when no nodes are marked">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;First&quot;, down)"/>
+          <outline text="op.insert(&quot;Second&quot;, down)"/>
+          <outline text="op.insert(&quot;Third&quot;, down)"/>
+          <outline text="local(sel = op.getselection())"/>
+          <outline text="return sizeOf(sel) == 1"/>
+        </outline>
+      </outline>
+      <outline text="op.getselection - returns list type - Verify op.getselection returns a list">
+        <outline text="Metadata">
+          <outline text="expected_result: list"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="local(sel = op.getselection())"/>
+          <outline text="return typeOf(sel)"/>
+        </outline>
+      </outline>
+      <outline text="op.getselection - empty outline - Verify op.getselection works with empty outline (just summit)">
+        <outline text="Metadata">
+          <outline text="expected_result: 1"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="local(sel = op.getselection())"/>
+          <outline text="return sizeOf(sel)"/>
+        </outline>
+      </outline>
+      <outline text="op.outlinetoxml - basic conversion - Convert simple outline to OPML XML format">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;First&quot;, down)"/>
+          <outline text="op.insert(&quot;Second&quot;, down)"/>
+          <outline text="local(xml = op.outlinetoxml(@workspace.outline, &quot;TestUser&quot;, &quot;test@example.com&quot;))"/>
+          <outline text="return sizeOf(xml) &gt; 100 and string.mid(xml, 1, 5) == &quot;&lt;?xml&quot;"/>
+        </outline>
+      </outline>
+      <outline text="op.outlinetoxml - contains outline text - Verify OPML contains headline text">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Hello World&quot;, down)"/>
+          <outline text="local(xml = op.outlinetoxml(@workspace.outline, &quot;TestUser&quot;, &quot;test@example.com&quot;))"/>
+          <outline text="return string.patternMatch(&quot;Hello World&quot;, xml) &gt; 0"/>
+        </outline>
+      </outline>
+      <outline text="op.outlinetoxml - preserves hierarchy - Verify OPML preserves parent-child structure">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="op.insert(&quot;Child&quot;, right)"/>
+          <outline text="local(xml = op.outlinetoxml(@workspace.outline, &quot;TestUser&quot;, &quot;test@example.com&quot;))"/>
+          <outline text="local(hasParent = string.patternMatch(&quot;Parent&quot;, xml) &gt; 0)"/>
+          <outline text="local(hasChild = string.patternMatch(&quot;Child&quot;, xml) &gt; 0)"/>
+          <outline text="return hasParent and hasChild"/>
+        </outline>
+      </outline>
+      <outline text="op.xmltooutline - basic import - Import simple OPML XML into outline">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(xml = &quot;&lt;?xml version=\&quot;1.0\&quot; encoding=\&quot;ISO-8859-1\&quot;?&gt;&lt;opml version=\&quot;1.1\&quot;&gt;&lt;body&gt;&lt;outline text=\&quot;Test\&quot;/&gt;&lt;/body&gt;&lt;/opml&gt;&quot;)"/>
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="local(ok = op.xmltooutline(xml, @workspace.outline, true))"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.firstSummit()"/>
+          <outline text="return ok and op.getLineText() == &quot;Test&quot;"/>
+        </outline>
+      </outline>
+      <outline text="op.xmltooutline - round trip - Export outline to XML and re-import preserves content">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.out1)"/>
+          <outline text="target.set(@workspace.out1)"/>
+          <outline text="op.insert(&quot;Line1&quot;, down)"/>
+          <outline text="op.insert(&quot;Line2&quot;, down)"/>
+          <outline text="local(xml = op.outlinetoxml(@workspace.out1, &quot;User&quot;, &quot;user@example.com&quot;))"/>
+          <outline text="lang.new(outlineType, @workspace.out2)"/>
+          <outline text="op.xmltooutline(xml, @workspace.out2, true)"/>
+          <outline text="target.set(@workspace.out2)"/>
+          <outline text="op.firstSummit()"/>
+          <outline text="local(first = op.getLineText())"/>
+          <outline text="op.go(down, 1)"/>
+          <outline text="local(second = op.getLineText())"/>
+          <outline text="return (first == &quot;Line1&quot;) and (second == &quot;Line2&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="op.xmltooutline - empty outline - Import XML into empty outline with flnewoutline=true">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(xml = &quot;&lt;?xml version=\&quot;1.0\&quot;?&gt;&lt;opml version=\&quot;1.1\&quot;&gt;&lt;body&gt;&lt;outline text=\&quot;NewLine\&quot;/&gt;&lt;/body&gt;&lt;/opml&gt;&quot;)"/>
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="local(ok = op.xmltooutline(xml, @workspace.outline, true))"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="local(count = op.countSummits())"/>
+          <outline text="return ok and (count &gt;= 1)"/>
+        </outline>
+      </outline>
+      <outline text="op.getselectedsuboutlines - empty source - Get selected suboutlines from outline with no marked nodes">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.source)"/>
+          <outline text="lang.new(outlineType, @workspace.dest)"/>
+          <outline text="target.set(@workspace.source)"/>
+          <outline text="op.insert(&quot;Line1&quot;, down)"/>
+          <outline text="local(ok = op.getselectedsuboutlines(@workspace.dest))"/>
+          <outline text="return ok"/>
+        </outline>
+      </outline>
+      <outline text="op.getselectedsuboutlines - destination outline type - Verify destination remains valid outline after operation">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.source)"/>
+          <outline text="lang.new(outlineType, @workspace.dest)"/>
+          <outline text="target.set(@workspace.source)"/>
+          <outline text="op.insert(&quot;Source Line&quot;, down)"/>
+          <outline text="local(ok = op.getselectedsuboutlines(@workspace.dest))"/>
+          <outline text="return ok and defined(workspace.dest)"/>
+        </outline>
+      </outline>
+      <outline text="op.getselectedsuboutlines - with destination content - Add to destination outline that already has content">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.source)"/>
+          <outline text="lang.new(outlineType, @workspace.dest)"/>
+          <outline text="target.set(@workspace.dest)"/>
+          <outline text="op.insert(&quot;Existing&quot;, down)"/>
+          <outline text="local(beforeCount = op.countSummits())"/>
+          <outline text="target.set(@workspace.source)"/>
+          <outline text="op.insert(&quot;New&quot;, down)"/>
+          <outline text="op.getselectedsuboutlines(@workspace.dest)"/>
+          <outline text="target.set(@workspace.dest)"/>
+          <outline text="local(afterCount = op.countSummits())"/>
+          <outline text="return afterCount &gt;= beforeCount"/>
         </outline>
       </outline>
     </outline>
