@@ -106,7 +106,7 @@ Pure UserTalk implementation of the same 45 tests, allowing:
 **Usage:**
 ```bash
 FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli \
-  --system-root databases/Frontier-v7.root \
+  --system-root databases/Frontier-v6.root7 \
   -e "load(\"tests/table_operations/table_operations.ut\")"
 ```
 

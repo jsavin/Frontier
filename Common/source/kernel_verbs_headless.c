@@ -2088,6 +2088,11 @@ boolean headless_init_kernel_verbs(void) {
     if (!init_efp_1027(&langfunctionvalue))
         return false;
 
+    /* Register xml processor with custom callback */
+    extern boolean xmlinitverbs(void);
+    if (!xmlinitverbs())
+        return false;
+
     return true;
 }
 

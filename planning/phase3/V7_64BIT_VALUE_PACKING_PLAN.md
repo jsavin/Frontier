@@ -664,7 +664,7 @@ tests:
 
 ```bash
 # Terminal test
-./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root -e $'
+./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root7 -e $'
 local (ht);
 new(tableType, @ht);
 ht.smallValue = 42;

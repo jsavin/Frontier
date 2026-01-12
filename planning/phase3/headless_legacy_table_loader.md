@@ -20,7 +20,7 @@ Overview
 - This plan tracks the remaining conversion work needed so external value types (scripts, menus, outlines, etc.) can round-trip cleanly after migration.
 
 Current Progress
-- ✅ Header migration lands root `views[0]` at the correct block in `Frontier-v7.root`.
+- ✅ Header migration lands root `views[0]` at the correct block in `Frontier-v6.root7`.
 - ✅ `tableexternal_common.c` detects the legacy `[header][strings][records]` layout and converts tables to the modern merged representation.
 - ✅ The migrated system table hydrates, allowing UserTalk scripts to run after load.
 - ✅ Format notes captured in `docs/legacy_frontier_bootstrap.md`.

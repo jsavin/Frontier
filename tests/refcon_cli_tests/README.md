@@ -51,7 +51,7 @@ Phase 2 of the refcon test suite validates refcon persistence through outline pa
 ## Current Issues
 
 ### Database Errors
-All tests currently SKIP due to database loading errors when running with `Frontier-v7.root`:
+All tests currently SKIP due to database loading errors when running with `Frontier-v6.root7`:
 
 ```
 [db-ERROR] db.c:618: dbread read failed fnum=1 adr=0x9cf8aa bytes=8 saveas=0 source=0x0 current=0x600000c37ad8 dest=0x0
@@ -100,7 +100,7 @@ Tests should either:
 
 ## Next Steps
 
-1. **Fix Database Issues**: Resolve `Frontier-v7.root` external table address errors
+1. **Fix Database Issues**: Resolve `Frontier-v6.root7` external table address errors
 2. **Verify Verb Bindings**: Check which op.* verbs are actually wired up in headless mode
 3. **Alternative Test Approach**: Consider testing without database dependency (pure in-memory outlines)
 4. **Phase 3**: Once Phase 2 passes, implement Phase 3 (v6→v7 migration) tests

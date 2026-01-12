@@ -762,16 +762,16 @@ cd tools/kernelverbs_parser && python3 cli.py analyze
 
 ```bash
 # Capture baseline behavior
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root -e "defined(system)" > baseline.txt
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root -e "sizeOf(system.verbs)" >> baseline.txt
+FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root7 -e "defined(system)" > baseline.txt
+FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root7 -e "sizeOf(system.verbs)" >> baseline.txt
 ```
 
 **After Phase 3 (GUI stubbing)**:
 
 ```bash
 # Compare behavior
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root -e "defined(system)" > after_gui.txt
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root -e "sizeOf(system.verbs)" >> after_gui.txt
+FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root7 -e "defined(system)" > after_gui.txt
+FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root7 -e "sizeOf(system.verbs)" >> after_gui.txt
 
 # Should be identical
 diff baseline.txt after_gui.txt

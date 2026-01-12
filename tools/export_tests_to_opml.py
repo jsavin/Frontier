@@ -229,16 +229,26 @@ def main():
     project_root = script_dir.parent
 
     test_dir = project_root / 'tests' / 'integration' / 'test_cases'
-    output_file = project_root / 'reports' / 'integration_tests.opml'
+
+    # Use date-based filename to avoid conflicts when working on multiple branches
+    today = datetime.now().strftime('%Y-%m-%d')
+    dated_output = project_root / 'reports' / f'integration_tests_{today}.opml'
+    symlink_path = project_root / 'reports' / 'integration_tests.opml'
 
     # Create output directory if needed
-    output_file.parent.mkdir(parents=True, exist_ok=True)
+    dated_output.parent.mkdir(parents=True, exist_ok=True)
 
     if not test_dir.exists():
         print(f"Error: Test directory not found: {test_dir}", file=sys.stderr)
         sys.exit(1)
 
-    export_tests_to_opml(test_dir, output_file)
+    export_tests_to_opml(test_dir, dated_output)
+
+    # Create/update symlink for backward compatibility (Dave Winer's subscription)
+    if symlink_path.exists() or symlink_path.is_symlink():
+        symlink_path.unlink()
+    symlink_path.symlink_to(dated_output.name)
+    print(f"Created symlink: integration_tests.opml -> {dated_output.name}")
 
 
 if __name__ == '__main__':

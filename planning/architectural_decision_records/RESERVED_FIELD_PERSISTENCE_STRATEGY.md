@@ -89,7 +89,7 @@ typedef struct v7_headrecord {
 
 **Migration tool** (new utility):
 ```bash
-./frontier-migrate --format v7 --output v7.5 databases/Frontier-v7.root
+./frontier-migrate --format v7 --output v7.5 databases/Frontier-v6.root7
 # Output: databases/Frontier-v7.5.root
 # This reserves the 16-byte space, fills with zeros
 ```
@@ -196,20 +196,20 @@ Tests will validate:
 
 ```bash
 # User starts Frontier v7.0
-$ frontier --database databases/Frontier-v7.root
+$ frontier --database databases/Frontier-v6.root7
 # ... works normally ...
 
 # User upgrades to Frontier v7.5
 $ frontier-update v7.5
 
-$ frontier --database databases/Frontier-v7.root
+$ frontier --database databases/Frontier-v6.root7
 # v7.5 automatically reads v7 files:
 # - Loads all nodes
 # - reserved_identity treated as zeros
 # - No changes on disk until write
 
 # If user edits an outline:
-$ ./frontier --database databases/Frontier-v7.root
+$ ./frontier --database databases/Frontier-v6.root7
 # User edits "My Outline" node
 # - First modification triggers UUID assignment
 # - reserved_identity populated with UUID
@@ -217,7 +217,7 @@ $ ./frontier --database databases/Frontier-v7.root
 # - v7 client can't open database anymore
 
 # To stay compatible with v7 clients:
-# $ frontier-migrate --keep-v7-compatible databases/Frontier-v7.root
+# $ frontier-migrate --keep-v7-compatible databases/Frontier-v6.root7
 # (doesn't assign UUIDs, only reserves space)
 ```
 

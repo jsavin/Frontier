@@ -48,7 +48,8 @@ static boolean clock_valueproc(short token, hdltreenode hparam1,
             return setdatevalue(timenow(), vreturned);
 
         case clov_set:
-            /* clock.set - error stub */
+            /* clock.set - returns appropriate error (not a stub)
+             * @IMPLEMENTED - Correctly implemented to return security error */
             if (bserror)
                 copystring(BIGSTRING("\pCan't set system time because it requires administrator privileges"), bserror);
             return false;

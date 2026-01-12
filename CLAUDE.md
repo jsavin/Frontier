@@ -47,7 +47,7 @@ cd tests && make test-integration
 cd tests && make test-all
 
 # Database migration (v6 → v7)
-rm -f databases/Frontier-v7.root
+rm -f databases/Frontier-v6.root7
 ./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root -e "1"
 
 # Verb coverage analysis
@@ -365,7 +365,7 @@ Before starting major work in any session:
 - **Fix**: Each session rebuilds its own binary, or remove old one: `rm frontier-cli/frontier-cli`
 
 **Gotcha 2: Database corruption from parallel test runs**
-- Session 1 runs migration test, updates Frontier-v7.root
+- Session 1 runs migration test, updates Frontier-v6.root7
 - Session 2 runs test at same time, expects old database state
 - **Fix**: Don't run tests in parallel; use `git checkout` to reset databases between test runs
 
@@ -566,7 +566,7 @@ case yourverb:
 ./frontier-cli/frontier-cli -e $'lang.new(tableType, @t);\nt.a=1;\nreturn t.a'
 
 # With database loaded
-./frontier-cli/frontier-cli --system-root databases/Frontier-v7.root -e "sizeOf(system)"
+./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root7 -e "sizeOf(system)"
 
 # Run system.startup scripts (opt-in, rarely needed)
 FRONTIER_HEADLESS_RUN_STARTUP=1 ./frontier-cli/frontier-cli -e "1+1"
