@@ -3194,8 +3194,8 @@ tests:
     expected_success: true
     expected_result: "true"
 
-  - name: "op.visitall - implementation is no longer deferred"
-    description: "Verify op.visitall is implemented (not a stub that always returns false)"
+  - name: "op.visitall - verify verb exists (functional test deferred)"
+    description: "Verify op.visitall exists and is not stubbed (doesn't test actual visiting behavior)"
     script: |
       lang.new(outlineType, @workspace.outline);
       target.set(@workspace.outline);
@@ -3203,4 +3203,4 @@ tests:
       return true
     expected_success: true
     expected_result: "true"
-    notes: "Full functional test deferred - requires pre-stored callback script infrastructure"
+    notes: "Full functional test of visiting behavior deferred - requires pre-stored callback script infrastructure"

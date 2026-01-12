@@ -146,7 +146,9 @@ static boolean opvisitall_callback(hdlheadrecord hnode, ptrvoid refcon) {
     opvisitall_context *ctx = (opvisitall_context *)refcon;
     tyvaluerecord vreturned;
 
-    /* Push outline context for this callback */
+    /* Push outline context for this callback - ensures op.* verbs work correctly
+     * within the callback script. Note: The outline is already pushed by the caller
+     * for opvisiteverything traversal, but we push again here to set cursor position. */
     oppushoutline(ctx->houtline);
 
     /* Set cursor to current node */
@@ -490,12 +492,16 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
              * HEADLESS ADAPTATION:
              * Unlike the GUI version (opflatfind), we don't highlight text or enter edit mode.
              * We simply search headlines and move the bar cursor to the matching node.
-             * NOTE: The wholewords parameter is accepted for API compatibility but not
+             *
+             * LIMITATION: The wholewords parameter is accepted for API compatibility but NOT
              * implemented in this headless version - all searches are substring matches.
+             * For example, op.find("test", true, false) will match "testing" even though
+             * wholewords=true was specified. Full word-boundary matching requires tokenization
+             * logic that is deferred for future implementation.
              *
              * Parameters:
              *   searchText (required) - text to search for
-             *   wholewords (optional) - whole word matching (accepted but not implemented), default false
+             *   wholewords (optional) - whole word matching (ACCEPTED BUT NOT IMPLEMENTED), default false
              *   casesensitive (optional) - case sensitive search, default false
              *
              * Returns true if found and cursor moved, false if not found.
@@ -542,7 +548,7 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
 
             /* Search loop - pattern from opflatfind */
             while (true) {
-                /* Check for nil before dereferencing (opbumpflatdown can return nil) */
+                /* Defensive nil check (opbumpflatdown returns same node at end, not nil) */
                 if (nomad == nil)
                     break;
 
@@ -868,6 +874,8 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
             if (!getbooleanvalue(hparam1, 1, &setting))
                 return false;
 
+            (void)setting;  /* Intentionally unused in headless mode */
+
             /* Noop in headless mode - return success */
             return setbooleanvalue(true, vreturned);
         }
@@ -892,6 +900,8 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
             flnextparamislast = true;
             if (!getbooleanvalue(hparam1, 1, &setting))
                 return false;
+
+            (void)setting;  /* Intentionally unused in headless mode */
 
             /* Noop in headless mode - return success */
             return setbooleanvalue(true, vreturned);
@@ -1345,12 +1355,16 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
 
             /* Now get the outline from the newly set target */
             if (!getoutlinefromtarget(&ho, bserror)) {
-                /* Restore previous target before returning */
+                /* Restore previous target before returning - critical for state consistency */
                 if (vprevtarget.valuetype == addressvaluetype) {
                     hdlhashtable htprev;
                     bigstring bsprev;
-                    if (getaddressvalue(vprevtarget, &htprev, bsprev))
-                        langsettarget(htprev, bsprev, nil);
+                    if (getaddressvalue(vprevtarget, &htprev, bsprev)) {
+                        if (!langsettarget(htprev, bsprev, nil)) {
+                            /* Target restoration failed - log error but still return failure */
+                            log_error(LOG_COMP_OP, "op.visitall: failed to restore previous target on error path");
+                        }
+                    }
                 }
                 return false;
             }
@@ -1363,8 +1377,15 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
             copystring(bsscriptname, ctx.scriptname);
             ctx.houtline = ho;
 
-            /* Visit every node in the outline - callback handles push/pop */
+            /* Push outline onto stack so opvisiteverything traverses correct outline
+             * (opvisiteverything reads from global outline data via op_get_outlinedata) */
+            oppushoutline(ho);
+
+            /* Visit every node in the outline - callback also pushes for cursor positioning */
             fl = opvisiteverything(&opvisitall_callback, &ctx);
+
+            /* Pop outline from stack */
+            oppopoutline();
 
             /* Restore original cursor */
             (**ho).hbarcursor = horigcursor;
@@ -1373,8 +1394,12 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
             if (vprevtarget.valuetype == addressvaluetype) {
                 hdlhashtable htprev;
                 bigstring bsprev;
-                if (getaddressvalue(vprevtarget, &htprev, bsprev))
-                    langsettarget(htprev, bsprev, nil);
+                if (getaddressvalue(vprevtarget, &htprev, bsprev)) {
+                    if (!langsettarget(htprev, bsprev, nil)) {
+                        /* Target restoration failed - log but don't fail the visitall operation */
+                        log_error(LOG_COMP_OP, "op.visitall: failed to restore previous target after success");
+                    }
+                }
             }
 
             return setbooleanvalue(fl, vreturned);
