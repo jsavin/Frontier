@@ -13,16 +13,14 @@
  * - Phase 3 (10 verbs): COMPLETE - getDisplay, setDisplay, getCursor, setCursor,
  *                                   getRefcon, setRefcon, getExpansionState,
  *                                   setExpansionState, getScrollState, setScrollState
- * - Phase 4 (8 verbs):  COMPLETE - hoist (GUI-only), dehoist (GUI-only), subsexpanded,
- *                                   find (deferred), sort, visitall (deferred),
- *                                   flatcursorkeys (noop), tabkeyreorg (noop)
+ * - Phase 4 (8 verbs):  COMPLETE - All verbs implemented for headless mode
  *
  * Phase 4 Headless Adaptations:
  * - op.hoist/dehoist:     GUI-only operations, return error in headless mode
  * - op.subsexpanded:      Implemented using opsubheadsexpanded()
- * - op.find:              DEFERRED - Requires text selection infrastructure
+ * - op.find:              Headless search - moves cursor to matching headline
  * - op.sort:              Implemented using opsortlevel()
- * - op.visitall:          DEFERRED - Requires callback mechanism investigation
+ * - op.visitall:          Headless iteration with callback script support
  * - op.flatcursorkeys:    Noop (keyboard preference, N/A in headless)
  * - op.tabkeyreorg:       Noop (keyboard preference, N/A in headless)
  *
@@ -128,6 +126,39 @@ static boolean getoutlinefromtarget(hdloutlinerecord *ho, bigstring bserror) {
     }
 
     *ho = (hdloutlinerecord)(**hv).variabledata;
+    return true;
+}
+
+/*
+ * Callback for op.visitall() - invoked for each node in outline
+ *
+ * This is called by opvisiteverything() for each headline in the outline.
+ * It runs the callback script with the cursor positioned at the current node.
+ *
+ * Pattern: Based on opvisitallvisit() from Common/source/opverbs.c
+ */
+typedef struct {
+    bigstring scriptname;
+    hdloutlinerecord houtline;
+} opvisitall_context;
+
+static boolean opvisitall_callback(hdlheadrecord hnode, ptrvoid refcon) {
+    opvisitall_context *ctx = (opvisitall_context *)refcon;
+    tyvaluerecord vreturned;
+
+    /* Push outline context for this callback */
+    oppushoutline(ctx->houtline);
+
+    /* Set cursor to current node */
+    (**ctx->houtline).hbarcursor = hnode;
+
+    /* Call the callback script */
+    if (!langrunscript(ctx->scriptname, NULL, NULL, &vreturned)) {
+        oppopoutline();
+        return false;
+    }
+
+    oppopoutline();
     return true;
 }
 
@@ -449,30 +480,40 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
             return setbooleanvalue(fl, vreturned);
         }
         case opv_find: {
-            /* Verb #10: op.find(searchText [, flWrap] [, flCase]) - DEFERRED
+            /* Verb #10: op.find(searchText [, flWrap] [, flCase]) -> boolean
              *
-             * DEFERRED: Requires GUI text selection/editing infrastructure.
+             * Searches through outline headlines for text matching searchText.
+             * Moves the bar cursor to the first matching headline.
              *
-             * The legacy opflatfind() function requires text edit mode and selection state
-             * to properly highlight found text. In headless mode, we would need to:
-             * 1. Implement custom search loop through headlines
-             * 2. Move bar cursor to matching headline (without text selection)
-             * 3. Handle search state without GUI display infrastructure
-             *
-             * This verb is rarely used in production UserTalk without a GUI, so deferred
-             * to future PR that implements headless-specific search infrastructure.
+             * HEADLESS ADAPTATION:
+             * Unlike the GUI version (opflatfind), we don't highlight text or enter edit mode.
+             * We simply search headlines and move the bar cursor to the matching node.
              *
              * Parameters:
              *   searchText (required) - text to search for
-             *   flWrap (optional) - wrap around search, defaults from search params
-             *   flCase (optional) - case sensitive, defaults from search params
+             *   flWrap (optional) - wrap around to top if not found, default false
+             *   flCase (optional) - case sensitive search, default false
              *
-             * Note: Matches kernel signature where flWrap and flCase are optional.
-             * For now, validate parameters and return false (not found).
+             * Returns true if found and cursor moved, false if not found.
+             *
+             * Algorithm:
+             * - Start searching from current cursor position (or next node)
+             * - Use textpatternmatch() for Boyer-Moore search
+             * - Search flatdown through outline (depth-first traversal)
+             * - If wrap enabled, restart from top when reaching end
+             * - Stop when match found or back to original position
              */
+            hdloutlinerecord ho;
             bigstring bs;
             boolean flwrap = false;  /* Default: no wrap */
             boolean flcase = false;  /* Default: case insensitive */
+            hdlheadrecord nomad, orignomad;
+            Handle htext;
+            boolean found = false;
+
+            /* Get outline from target */
+            if (!getoutlinefromtarget(&ho, bserror))
+                return false;
 
             /* Get required searchText parameter */
             if (!getstringvalue(hparam1, 1, bs))
@@ -491,8 +532,46 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
                     return false;
             }
 
-            /* Return false (not found) - deferred implementation */
-            return setbooleanvalue(false, vreturned);
+            /* Start search from current cursor */
+            nomad = (**ho).hbarcursor;
+            orignomad = nomad;
+
+            /* Search loop - pattern from opflatfind */
+            while (true) {
+                /* Get headline text and search it */
+                htext = (**nomad).headstring;
+                if (htext != nil) {
+                    long len = gethandlesize(htext);
+                    /* Use textpatternmatch for Boyer-Moore search */
+                    if (textpatternmatch(*htext, len, bs, !flcase) >= 0) {
+                        /* Found match - move cursor to this node */
+                        (**ho).hbarcursor = nomad;
+                        found = true;
+                        break;
+                    }
+                }
+
+                /* Move to next node in flat order */
+                nomad = opbumpflatdown(nomad, true);
+
+                /* Check if we've wrapped back to original position */
+                if (nomad == orignomad) {
+                    /* If we're at the end and wrap is enabled, try from top */
+                    if (flwrap && nomad != (**ho).hsummit) {
+                        nomad = (**ho).hsummit;
+                        /* Continue searching from top */
+                    } else {
+                        /* No wrap or already at top - search failed */
+                        break;
+                    }
+                }
+
+                /* If we've looped back to start, we're done */
+                if (nomad == orignomad)
+                    break;
+            }
+
+            return setbooleanvalue(found, vreturned);
         }
         case opv_sort: {
             /* Verb #11: op.sort() -> boolean
@@ -1216,14 +1295,11 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
              * op.getLineText(), op.level(), etc. to inspect the current headline.
              *
              * Returns true if successful, false on error.
-             *
-             * NOTE: This implementation is DEFERRED pending investigation of how to
-             * properly invoke UserTalk callback scripts from C in headless mode without
-             * the window management infrastructure. The signature is validated but the
-             * implementation returns false (not supported yet).
              */
             hdloutlinerecord ho;
             bigstring bsscriptname;
+            hdlheadrecord horigcursor;
+            boolean fl;
 
             /* Get callback script name parameter */
             flnextparamislast = true;
@@ -1234,12 +1310,21 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
             if (!getoutlinefromtarget(&ho, bserror))
                 return false;
 
-            /* DEFERRED: Headless implementation requires window-less callback mechanism
-             * For now, return false to indicate this verb is not yet supported in headless mode.
-             * Future PR will implement proper headless callback pattern.
-             */
-            seterrorstring("op.visitall not yet supported in headless mode", bserror);
-            return setbooleanvalue(false, vreturned);
+            /* Save original cursor position */
+            horigcursor = (**ho).hbarcursor;
+
+            /* Set up context for callback - see opvisitall_callback above */
+            opvisitall_context ctx;
+            copystring(bsscriptname, ctx.scriptname);
+            ctx.houtline = ho;
+
+            /* Visit every node in the outline - callback handles push/pop */
+            fl = opvisiteverything(&opvisitall_callback, &ctx);
+
+            /* Restore original cursor */
+            (**ho).hbarcursor = horigcursor;
+
+            return setbooleanvalue(fl, vreturned);
         }
         case opv_getselectedsuboutlines:
             /* Verb #38: op.getselectedsuboutlines - not yet implemented */
