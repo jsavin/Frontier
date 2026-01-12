@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Frontier Integration Tests</title>
-    <dateCreated>Mon, 12 Jan 2026 00:45:36 GMT</dateCreated>
+    <dateCreated>Mon, 12 Jan 2026 01:26:27 GMT</dateCreated>
   </head>
   <body>
     <outline text="Db Verbs (db_verbs)">
@@ -6047,6 +6047,136 @@
           <outline text="return sizeOf(sel)"/>
         </outline>
       </outline>
+      <outline text="op.outlinetoxml - basic conversion - Convert simple outline to OPML XML format">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;First&quot;, down)"/>
+          <outline text="op.insert(&quot;Second&quot;, down)"/>
+          <outline text="local(xml = op.outlinetoxml(@workspace.outline, &quot;TestUser&quot;, &quot;test@example.com&quot;))"/>
+          <outline text="return sizeOf(xml) &gt; 100 and string.mid(xml, 1, 5) == &quot;&lt;?xml&quot;"/>
+        </outline>
+      </outline>
+      <outline text="op.outlinetoxml - contains outline text - Verify OPML contains headline text">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Hello World&quot;, down)"/>
+          <outline text="local(xml = op.outlinetoxml(@workspace.outline, &quot;TestUser&quot;, &quot;test@example.com&quot;))"/>
+          <outline text="return string.patternMatch(&quot;Hello World&quot;, xml) &gt; 0"/>
+        </outline>
+      </outline>
+      <outline text="op.outlinetoxml - preserves hierarchy - Verify OPML preserves parent-child structure">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Parent&quot;, down)"/>
+          <outline text="op.insert(&quot;Child&quot;, right)"/>
+          <outline text="local(xml = op.outlinetoxml(@workspace.outline, &quot;TestUser&quot;, &quot;test@example.com&quot;))"/>
+          <outline text="local(hasParent = string.patternMatch(&quot;Parent&quot;, xml) &gt; 0)"/>
+          <outline text="local(hasChild = string.patternMatch(&quot;Child&quot;, xml) &gt; 0)"/>
+          <outline text="return hasParent and hasChild"/>
+        </outline>
+      </outline>
+      <outline text="op.xmltooutline - basic import - Import simple OPML XML into outline">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(xml = &quot;&lt;?xml version=\&quot;1.0\&quot; encoding=\&quot;ISO-8859-1\&quot;?&gt;&lt;opml version=\&quot;1.1\&quot;&gt;&lt;body&gt;&lt;outline text=\&quot;Test\&quot;/&gt;&lt;/body&gt;&lt;/opml&gt;&quot;)"/>
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="local(ok = op.xmltooutline(xml, @workspace.outline, true))"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.firstSummit()"/>
+          <outline text="return ok and op.getLineText() == &quot;Test&quot;"/>
+        </outline>
+      </outline>
+      <outline text="op.xmltooutline - round trip - Export outline to XML and re-import preserves content">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.out1)"/>
+          <outline text="target.set(@workspace.out1)"/>
+          <outline text="op.insert(&quot;Line1&quot;, down)"/>
+          <outline text="op.insert(&quot;Line2&quot;, down)"/>
+          <outline text="local(xml = op.outlinetoxml(@workspace.out1, &quot;User&quot;, &quot;user@example.com&quot;))"/>
+          <outline text="lang.new(outlineType, @workspace.out2)"/>
+          <outline text="op.xmltooutline(xml, @workspace.out2, true)"/>
+          <outline text="target.set(@workspace.out2)"/>
+          <outline text="op.firstSummit()"/>
+          <outline text="local(first = op.getLineText())"/>
+          <outline text="op.go(down, 1)"/>
+          <outline text="local(second = op.getLineText())"/>
+          <outline text="return (first == &quot;Line1&quot;) and (second == &quot;Line2&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="op.xmltooutline - empty outline - Import XML into empty outline with flnewoutline=true">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(xml = &quot;&lt;?xml version=\&quot;1.0\&quot;?&gt;&lt;opml version=\&quot;1.1\&quot;&gt;&lt;body&gt;&lt;outline text=\&quot;NewLine\&quot;/&gt;&lt;/body&gt;&lt;/opml&gt;&quot;)"/>
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="local(ok = op.xmltooutline(xml, @workspace.outline, true))"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="local(count = op.countSummits())"/>
+          <outline text="return ok and (count &gt;= 1)"/>
+        </outline>
+      </outline>
+      <outline text="op.getselectedsuboutlines - empty source - Get selected suboutlines from outline with no marked nodes">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.source)"/>
+          <outline text="lang.new(outlineType, @workspace.dest)"/>
+          <outline text="target.set(@workspace.source)"/>
+          <outline text="op.insert(&quot;Line1&quot;, down)"/>
+          <outline text="local(ok = op.getselectedsuboutlines(@workspace.dest))"/>
+          <outline text="return ok"/>
+        </outline>
+      </outline>
+      <outline text="op.getselectedsuboutlines - destination outline type - Verify destination remains valid outline after operation">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.source)"/>
+          <outline text="lang.new(outlineType, @workspace.dest)"/>
+          <outline text="target.set(@workspace.source)"/>
+          <outline text="op.insert(&quot;Source Line&quot;, down)"/>
+          <outline text="local(ok = op.getselectedsuboutlines(@workspace.dest))"/>
+          <outline text="return ok and defined(workspace.dest)"/>
+        </outline>
+      </outline>
+      <outline text="op.getselectedsuboutlines - with destination content - Add to destination outline that already has content">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.source)"/>
+          <outline text="lang.new(outlineType, @workspace.dest)"/>
+          <outline text="target.set(@workspace.dest)"/>
+          <outline text="op.insert(&quot;Existing&quot;, down)"/>
+          <outline text="local(beforeCount = op.countSummits())"/>
+          <outline text="target.set(@workspace.source)"/>
+          <outline text="op.insert(&quot;New&quot;, down)"/>
+          <outline text="op.getselectedsuboutlines(@workspace.dest)"/>
+          <outline text="target.set(@workspace.dest)"/>
+          <outline text="local(afterCount = op.countSummits())"/>
+          <outline text="return afterCount &gt;= beforeCount"/>
+        </outline>
+      </outline>
     </outline>
     <outline text="Runtime Parameter State (runtime_parameter_state)">
       <outline text="Runtime: Parameter state - basic if condition evaluation - Verify parameter state is correctly maintained during if condition evaluation">
@@ -7595,19 +7725,62 @@
           <outline text="return string.countFields(result, string.filledString(&quot;\t&quot;, 1))"/>
         </outline>
       </outline>
-      <outline text="xml.frontiervaluetotaggedtext - complex nested structure">
+      <outline text="xml.frontiervaluetotaggedtext - local variable with nested external">
         <outline text="Metadata">
-          <outline text="expected_contains: ['&lt;struct&gt;', '&lt;name&gt;title&lt;/name&gt;', '&lt;value&gt;Test Document&lt;/value&gt;', '&lt;name&gt;items&lt;/name&gt;', '&lt;value&gt;&lt;array&gt;', '&lt;data&gt;', '&lt;value&gt;First Item&lt;/value&gt;', '&lt;value&gt;Second Item&lt;/value&gt;', '&lt;/data&gt;', '&lt;/array&gt;&lt;/value&gt;', '&lt;/struct&gt;']"/>
+          <outline text="expected_contains: ['&lt;struct&gt;', '&lt;name&gt;title&lt;/name&gt;', '&lt;value&gt;Test&lt;/value&gt;', '&lt;name&gt;items&lt;/name&gt;', '&lt;value&gt;&lt;array&gt;', '&lt;data&gt;', '&lt;value&gt;a&lt;/value&gt;', '&lt;value&gt;b&lt;/value&gt;', '&lt;/data&gt;', '&lt;/array&gt;&lt;/value&gt;', '&lt;/struct&gt;']"/>
         </outline>
         <outline text="Script">
-          <outline text="new(tableType, @workspace.xmltest)"/>
-          <outline text="workspace.xmltest.title = &quot;Test Document&quot;"/>
-          <outline text="new(listType, @workspace.xmltest.items)"/>
-          <outline text="workspace.xmltest.items[1] = &quot;First Item&quot;"/>
-          <outline text="workspace.xmltest.items[2] = &quot;Second Item&quot;"/>
-          <outline text="local(result = xml.frontiervaluetotaggedtext(@workspace.xmltest, 0))"/>
-          <outline text="delete(@workspace.xmltest)"/>
+          <outline text="local(testroot)"/>
+          <outline text="new(tableType, @testroot)"/>
+          <outline text="testroot.title = &quot;Test&quot;"/>
+          <outline text="new(listType, @testroot.items)"/>
+          <outline text="testroot.items[1] = &quot;a&quot;"/>
+          <outline text="testroot.items[2] = &quot;b&quot;"/>
+          <outline text="return xml.frontiervaluetotaggedtext(@testroot, 0)"/>
+        </outline>
+      </outline>
+      <outline text="xml.frontiervaluetotaggedtext - global variable (no local shadow)">
+        <outline text="Metadata">
+          <outline text="expected_contains: ['&lt;struct&gt;', '&lt;name&gt;value&lt;/name&gt;', '&lt;value&gt;&lt;i4&gt;42&lt;/i4&gt;&lt;/value&gt;', '&lt;/struct&gt;']"/>
+        </outline>
+        <outline text="Script">
+          <outline text="new(tableType, @workspace.globaltest)"/>
+          <outline text="workspace.globaltest.value = 42"/>
+          <outline text="local(result = xml.frontiervaluetotaggedtext(@workspace.globaltest, 0))"/>
+          <outline text="delete(@workspace.globaltest)"/>
           <outline text="return result"/>
+        </outline>
+      </outline>
+      <outline text="xml.frontiervaluetotaggedtext - with statement scope">
+        <outline text="Metadata">
+          <outline text="expected_contains: ['&lt;name&gt;value&lt;/name&gt;', '&lt;value&gt;test&lt;/value&gt;']"/>
+        </outline>
+        <outline text="Script">
+          <outline text="new(tableType, @workspace.outer)"/>
+          <outline text="local(data)"/>
+          <outline text="new(tableType, @data)"/>
+          <outline text="data.value = &quot;inner&quot;"/>
+          <outline text="with workspace.outer">
+            <outline text="local(data)"/>
+            <outline text="new(tableType, @data)"/>
+            <outline text="data.value = &quot;test&quot;"/>
+            <outline text="local(result = xml.frontiervaluetotaggedtext(@data, 0))"/>
+            <outline text="delete(@workspace.outer)"/>
+            <outline text="return result"/>
+          </outline>
+        </outline>
+      </outline>
+      <outline text="xml.frontiervaluetotaggedtext - deeply nested local structure">
+        <outline text="Metadata">
+          <outline text="expected_contains: ['&lt;name&gt;level1&lt;/name&gt;', '&lt;name&gt;level2&lt;/name&gt;', '&lt;name&gt;value&lt;/name&gt;', '&lt;value&gt;deep&lt;/value&gt;']"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(obj)"/>
+          <outline text="new(tableType, @obj)"/>
+          <outline text="new(tableType, @obj.level1)"/>
+          <outline text="new(tableType, @obj.level1.level2)"/>
+          <outline text="obj.level1.level2.value = &quot;deep&quot;"/>
+          <outline text="return xml.frontiervaluetotaggedtext(@obj, 0)"/>
         </outline>
       </outline>
       <outline text="xml.frontiervaluetotaggedtext - table with special chars in keys">

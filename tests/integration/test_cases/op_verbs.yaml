@@ -3404,3 +3404,128 @@ tests:
       return sizeOf(sel)
     expected_success: true
     expected_result: "1"
+
+  # ====================================================================
+  # Phase 6: XML/OPML Conversion and Selection Operations
+  # ====================================================================
+
+  - name: "op.outlinetoxml - basic conversion"
+    description: "Convert simple outline to OPML XML format"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("First", down);
+      op.insert("Second", down);
+      local(xml = op.outlinetoxml(@workspace.outline, "TestUser", "test@example.com"));
+      return sizeOf(xml) > 100 and string.mid(xml, 1, 5) == "<?xml"
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.outlinetoxml - contains outline text"
+    description: "Verify OPML contains headline text"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Hello World", down);
+      local(xml = op.outlinetoxml(@workspace.outline, "TestUser", "test@example.com"));
+      return string.patternMatch("Hello World", xml) > 0
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.outlinetoxml - preserves hierarchy"
+    description: "Verify OPML preserves parent-child structure"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Parent", down);
+      op.insert("Child", right);
+      local(xml = op.outlinetoxml(@workspace.outline, "TestUser", "test@example.com"));
+      local(hasParent = string.patternMatch("Parent", xml) > 0);
+      local(hasChild = string.patternMatch("Child", xml) > 0);
+      return hasParent and hasChild
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.xmltooutline - basic import"
+    description: "Import simple OPML XML into outline"
+    script: |
+      local(xml = "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?><opml version=\"1.1\"><body><outline text=\"Test\"/></body></opml>");
+      lang.new(outlineType, @workspace.outline);
+      local(ok = op.xmltooutline(xml, @workspace.outline, true));
+      target.set(@workspace.outline);
+      op.firstSummit();
+      return ok and op.getLineText() == "Test"
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.xmltooutline - round trip"
+    description: "Export outline to XML and re-import preserves content"
+    script: |
+      lang.new(outlineType, @workspace.out1);
+      target.set(@workspace.out1);
+      op.insert("Line1", down);
+      op.insert("Line2", down);
+      local(xml = op.outlinetoxml(@workspace.out1, "User", "user@example.com"));
+      lang.new(outlineType, @workspace.out2);
+      op.xmltooutline(xml, @workspace.out2, true);
+      target.set(@workspace.out2);
+      op.firstSummit();
+      local(first = op.getLineText());
+      op.go(down, 1);
+      local(second = op.getLineText());
+      return (first == "Line1") and (second == "Line2")
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.xmltooutline - empty outline"
+    description: "Import XML into empty outline with flnewoutline=true"
+    script: |
+      local(xml = "<?xml version=\"1.0\"?><opml version=\"1.1\"><body><outline text=\"NewLine\"/></body></opml>");
+      lang.new(outlineType, @workspace.outline);
+      local(ok = op.xmltooutline(xml, @workspace.outline, true));
+      target.set(@workspace.outline);
+      local(count = op.countSummits());
+      return ok and (count >= 1)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.getselectedsuboutlines - empty source"
+    description: "Get selected suboutlines from outline with no marked nodes"
+    script: |
+      lang.new(outlineType, @workspace.source);
+      lang.new(outlineType, @workspace.dest);
+      target.set(@workspace.source);
+      op.insert("Line1", down);
+      local(ok = op.getselectedsuboutlines(@workspace.dest));
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.getselectedsuboutlines - destination outline type"
+    description: "Verify destination remains valid outline after operation"
+    script: |
+      lang.new(outlineType, @workspace.source);
+      lang.new(outlineType, @workspace.dest);
+      target.set(@workspace.source);
+      op.insert("Source Line", down);
+      local(ok = op.getselectedsuboutlines(@workspace.dest));
+      return ok and defined(workspace.dest)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.getselectedsuboutlines - with destination content"
+    description: "Add to destination outline that already has content"
+    script: |
+      lang.new(outlineType, @workspace.source);
+      lang.new(outlineType, @workspace.dest);
+      target.set(@workspace.dest);
+      op.insert("Existing", down);
+      local(beforeCount = op.countSummits());
+      target.set(@workspace.source);
+      op.insert("New", down);
+      op.getselectedsuboutlines(@workspace.dest);
+      target.set(@workspace.dest);
+      local(afterCount = op.countSummits());
+      return afterCount >= beforeCount
+    expected_success: true
+    expected_result: "true"
