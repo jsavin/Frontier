@@ -477,6 +477,64 @@ This error indicates you tried to use single quotes for a multi-character string
 
 **See also:** `docs/USERTALK_SYNTAX_REFERENCE.md` for comprehensive syntax guide.
 
+### date.set() Parameter Order
+
+**IMPORTANT:** `date.set()` uses DAY, MONTH, YEAR order (NOT month, day, year like JavaScript Date).
+
+**Correct:**
+```usertalk
+date.set(15, 1, 2024, 10, 30, 0)  // January 15, 2024 at 10:30:00
+// Arguments: day, month, year, hour, minute, second
+```
+
+**Wrong:**
+```usertalk
+date.set(2024, 1, 15, 10, 30, 0)  // WRONG - this is year=2024, month=1, day=15
+```
+
+**Mnemonic:** Think European date format (DD/MM/YYYY) rather than US format (MM/DD/YYYY).
+
+### typeof() Comparisons and Type Constants
+
+**typeof() returns OSType codes (4-byte constants), NOT string names.**
+
+**Correct:**
+```usertalk
+// Using system.compiler.language.constants (requires system root loaded)
+if typeof(x) == stringType { ... }    // stringType = 'TEXT'
+if typeof(obj) == tableType { ... }   // tableType = 'tabl'
+
+// Using literal OSType codes (works without system root)
+if typeof(x) == 'TEXT' { ... }
+if typeof(obj) == 'tabl' { ... }
+```
+
+**Wrong:**
+```usertalk
+if typeof(x) == "string" { ... }  // WRONG - typeof() returns 'TEXT', not "string"
+```
+
+**Test Framework Note:** In integration tests (YAML), use string literals like `"tabl"` because JSON serialization converts OSType codes to strings. This is a test framework limitation, not runtime behavior.
+
+### contains Keyword vs. string.patternMatch()
+
+**`contains` is a KEYWORD OPERATOR, not a verb.**
+
+**Correct:**
+```usertalk
+if string1 contains string2 { ... }    // ✓ Keyword operator syntax
+if string.patternMatch(string1, "*" + string2 + "*") { ... }  // ✓ Verb alternative
+```
+
+**Wrong:**
+```usertalk
+if string.contains(string1, string2) { ... }  // ✗ No such verb exists
+```
+
+**When to use each:**
+- `contains` keyword: Simple substring checks, more readable
+- `string.patternMatch()`: Pattern matching with wildcards (`*`, `?`), more powerful
+
 ---
 
 ## System Dependencies

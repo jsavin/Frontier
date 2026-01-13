@@ -49,7 +49,20 @@
 static boolean xmldecodeentities_headless(Handle htext) {
     /*
     Decode XML entities in text.
-    Decoding order matters: & must be decoded last to avoid partial decoding.
+
+    Supported entities:
+    - &quot; -> "
+    - &lt; -> <
+    - &gt; -> >
+    - &amp; -> & (must be decoded last)
+
+    NOT supported (by design):
+    - Numeric entities: &#60; &#x3C; (decimal/hex character references)
+    - &apos; -> ' (XML apostrophe entity)
+    - Custom entities defined in DOCTYPE
+
+    Decoding order matters: & must be decoded last to avoid partial decoding
+    (e.g., &amp;lt; -> &lt; -> < requires &amp; last).
 
     Uses replaceallinhandle from langxml.h (declared extern in langxml.h:57)
     */
@@ -180,7 +193,8 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
             if (exists) {
                 log_trace(LOG_COMP_LANG, "xml.addvalue: found existing entry '%.*s', deleting for overwrite", (int)bsexisting[0], &bsexisting[1]);
                 if (!hashtabledelete(parentht, bsexisting)) {
-                    log_warn(LOG_COMP_LANG, "xml.addvalue: hashtabledelete failed for existing entry (continuing anyway)");
+                    log_error(LOG_COMP_LANG, "xml.addvalue: hashtabledelete failed for existing entry '%.*s'", (int)bsexisting[0], &bsexisting[1]);
+                    return false;  /* Don't continue in inconsistent state */
                 }
             }
 
@@ -204,7 +218,12 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
             /* Verb #2: xml.compile(xmlString, adrTable)
              * @IMPLEMENTED - Parse XML string into table structure
              * Calls xmlcompile to populate the specified table with parsed XML
-             * Returns: boolean (true on success) */
+             * Returns: boolean (true on success)
+             *
+             * Error context: xmlcompile() provides detailed error messages including
+             * parse position information through scriptError() when parsing fails.
+             * Check preceding error messages for specific line/column details.
+             */
             Handle hxmltext;
             xmladdress adr;
 
@@ -225,9 +244,10 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
 
             log_trace(LOG_COMP_LANG, "xml.compile: calling xmlcompile");
 
-            /* Call existing XML parser to populate the table */
+            /* Call existing XML parser to populate the table
+             * Note: xmlcompile() reports detailed parse errors with position info */
             if (!xmlcompile(hxmltext, &adr)) {
-                log_error(LOG_COMP_LANG, "xml.compile: xmlcompile failed");
+                log_debug(LOG_COMP_LANG, "xml.compile: xmlcompile failed (see preceding error for details)");
                 return false;
             }
 

@@ -815,6 +815,79 @@ tests:
     expected_output: "second"
     expected_success: true
 
+  - name: "xml.getPathAddress - array index [1] (first element)"
+    script: |
+      local(xmlText = "<root><items><item>first</item><item>second</item></items></root>");
+      local(t);
+      new(tableType, @t);
+      xml.compile(xmlText, @t);
+      local(adr);
+      if xml.getPathAddress(@t, "root/items/item[1]", @adr) {
+        return adr^
+      }
+    expected_output: "first"
+    expected_success: true
+
+  - name: "xml.getPathAddress - array index [0] (invalid, treated as literal)"
+    script: |
+      local(xmlText = "<root><items><item>first</item><item>second</item></items></root>");
+      local(t);
+      new(tableType, @t);
+      xml.compile(xmlText, @t);
+      local(adr);
+      if xml.getPathAddress(@t, "root/items/item[0]", @adr) {
+        return "found"
+      } else {
+        return "not found"
+      }
+    expected_output: "not found"
+    expected_success: true
+
+  - name: "xml.getPathAddress - array index out of bounds"
+    script: |
+      local(xmlText = "<root><items><item>first</item><item>second</item></items></root>");
+      local(t);
+      new(tableType, @t);
+      xml.compile(xmlText, @t);
+      local(adr);
+      if xml.getPathAddress(@t, "root/items/item[999]", @adr) {
+        return "found"
+      } else {
+        return "not found"
+      }
+    expected_output: "not found"
+    expected_success: true
+
+  - name: "xml.getPathAddress - malformed array index (empty brackets)"
+    script: |
+      local(xmlText = "<root><items><item>first</item><item>second</item></items></root>");
+      local(t);
+      new(tableType, @t);
+      xml.compile(xmlText, @t);
+      local(adr);
+      if xml.getPathAddress(@t, "root/items/item[]", @adr) {
+        return "found"
+      } else {
+        return "not found"
+      }
+    expected_output: "not found"
+    expected_success: true
+
+  - name: "xml.getPathAddress - malformed array index (non-numeric)"
+    script: |
+      local(xmlText = "<root><items><item>first</item><item>second</item></items></root>");
+      local(t);
+      new(tableType, @t);
+      xml.compile(xmlText, @t);
+      local(adr);
+      if xml.getPathAddress(@t, "root/items/item[abc]", @adr) {
+        return "found"
+      } else {
+        return "not found"
+      }
+    expected_output: "not found"
+    expected_success: true
+
   # ========================================
   # xml.addTable - Create sub-table element
   # ========================================

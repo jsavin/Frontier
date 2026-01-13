@@ -3221,6 +3221,12 @@ boolean xmlgetaddress (hdlhashtable ht, bigstring name) {
 
 	2026-01-12: Added array index support. If name ends with "[N]", returns the Nth occurrence
 	(1-based indexing) instead of the first. Example: "item[2]" returns second item.
+
+	Array index behavior:
+	- Valid syntax: "item[2]" returns 2nd occurrence of "item"
+	- Invalid index (0, negative, non-numeric): treated as literal name (e.g., "item[0]" searches for that exact string)
+	- Out of bounds: returns error if fewer than N occurrences exist
+	- Malformed syntax ("item[]", "item[abc]"): treated as literal name
 	*/
 
 	hdlhashnode hn;
@@ -3250,12 +3256,13 @@ boolean xmlgetaddress (hdlhashtable ht, bigstring name) {
 						moveleft(stringbaseaddress(bsname) + i, stringbaseaddress(bsindex), indexlen - 1);
 					}
 
-					/* Convert to long */
+					/* Convert to long - reject 0, negative, and non-numeric */
 					if (stringtonumber(bsindex, &arrayindex) && arrayindex > 0) {
 						/* Valid array index - truncate name at '[' */
 						setstringlength(bsname, i - 1);
 						break;
 					}
+					/* Invalid index: fall through and treat whole string as literal name */
 				}
 			}
 		}
