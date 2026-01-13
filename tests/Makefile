@@ -7,6 +7,9 @@
 # 2025-12-01 Codex: Link real tableexternal code for migration tests to avoid stubbed table lookups.
 # Phase 1.1: Comprehensive Testing Implementation
 
+# Include shared headless verb file list
+include headless_verbs.mk
+
 CC = clang
 # Opt-in sanitizers: set SANITIZE=1 to enable ASan/UBSan for easier debugging
 SANITIZE ?= 0
@@ -161,10 +164,7 @@ LANG_RUNTIME_SOURCES = \
     ../Common/source/legacy/opverbs_legacy.c \
     ../Common/source/opxml.c \
     ../Common/source/langxml.c \
-    headless_file_verbs.c \
-    headless_frontier_verbs.c \
-    headless_table_verbs.c \
-    headless_lang_verbs.c \
+    $(HEADLESS_VERBS_SOURCES) \
     ../Common/source/tableops.c \
     ../Common/source/tableexternal.c \
     ../Common/source/tableexternal_common.c \
@@ -185,7 +185,6 @@ LANG_RUNTIME_SOURCES = \
     headless_lang_runtime_more_stubs.c \
     headless_shellhooks.c \
     headless_table_stubs.c \
-    headless_db_verbs.c \
     ../portable/wptext_runtime.c \
     ../portable/paige_text_extractor.c \
     headless_pict_stubs.c \
@@ -193,8 +192,6 @@ LANG_RUNTIME_SOURCES = \
     headless_search_stubs.c \
     headless_mac_compat.c \
     headless_langregexp_stub.c \
-    headless_threadglobals.c \
-    \
     headless_langipc_stub.c
 LANG_RUNTIME_SOURCES += \
     ../portable/classic_handle.c \
@@ -265,7 +262,7 @@ time_portability_test: time_portability_test.c $(LANG_RUNTIME_SOURCES) headless_
 test_sys_shell_command_verbs: test_sys_shell_command_verbs.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
 		test_sys_shell_command_verbs.c $(LANG_RUNTIME_SOURCES) headless_shell.c \
-		../Common/source/sysshellcall.c headless_sys_verbs.c -o $@ $(LINK_LIBS)
+		../Common/source/sysshellcall.c -o $@ $(LINK_LIBS)
 
 headless_selection_tests: headless_selection_tests.c ../Common/source/headless_selection.c $(LANG_RUNTIME_SOURCES) headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
@@ -311,21 +308,21 @@ runtime_tests: runtime_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c
 parser_tests: parser_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable parser_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@ $(LINK_LIBS)
 
-save_migration_tests: save_migration_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_odb_stubs.c headless_shell.c
+save_migration_tests: save_migration_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -DHEADLESS_LINKS_REAL_DB -I../Common/headers -I../Common/SystemHeaders -I../portable save_migration_tests.c \
-		$(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_odb_stubs.c headless_shell.c -o $@ $(LINK_LIBS)
+		$(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_shell.c -o $@ $(LINK_LIBS)
 
-refcon_migration_64bit_test: refcon_migration_64bit_test.c $(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_odb_stubs.c headless_shell.c
+refcon_migration_64bit_test: refcon_migration_64bit_test.c $(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -DHEADLESS_LINKS_REAL_DB -I../Common/headers -I../Common/SystemHeaders -I../portable refcon_migration_64bit_test.c \
-		$(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_odb_stubs.c headless_shell.c -o $@ $(LINK_LIBS)
+		$(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_shell.c -o $@ $(LINK_LIBS)
 
-test_efp_augmentation: test_efp_augmentation.c $(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_odb_stubs.c headless_shell.c
+test_efp_augmentation: test_efp_augmentation.c $(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -DHEADLESS_LINKS_REAL_DB -I../Common/headers -I../Common/SystemHeaders -I../portable test_efp_augmentation.c \
-		$(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_odb_stubs.c headless_shell.c -o $@ $(LINK_LIBS)
+		$(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_shell.c -o $@ $(LINK_LIBS)
 
-test_dump_system_paths: test_dump_system_paths.c $(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_odb_stubs.c headless_shell.c
+test_dump_system_paths: test_dump_system_paths.c $(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -DHEADLESS_LINKS_REAL_DB -I../Common/headers -I../Common/SystemHeaders -I../portable test_dump_system_paths.c \
-		$(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_odb_stubs.c headless_shell.c -o $@ $(LINK_LIBS)
+		$(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_shell.c -o $@ $(LINK_LIBS)
 
 file_portable_tests: file_portable_tests.c ../portable/file_portable.c headless_shell.c ../Common/source/portable_handles.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -I../Common/headers -I../Common/SystemHeaders -I../portable file_portable_tests.c ../portable/file_portable.c headless_shell.c ../Common/source/portable_handles.c -o $@ $(LINK_LIBS)
