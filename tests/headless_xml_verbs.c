@@ -299,10 +299,41 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
             /* Return copy of the attribute value */
             return copyvaluerecord(val, vreturned);
         }
-        case xmlv_getvalue:
-            /* Verb #8: xml.getvalue - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+        case xmlv_getvalue: {
+            /* Verb #8: xml.getvalue(adrTable, name)
+             * @IMPLEMENTED - Get element value with special handling for tables
+             * If element is a table, tries to get "/pcdata" or "/contents" from it
+             * Returns: value of the element (dereferenced) */
+            hdlhashtable ht;
+            bigstring name;
+            tyvaluerecord val;
+            hdlhashnode hnode;
+
+            /* Get table value parameter */
+            if (!gettablevalue(hparam1, 1, &ht))
+                return false;
+
+            /* Get name parameter */
+            flnextparamislast = true;
+            if (!getstringvalue(hparam1, 2, name))
+                return false;
+
+            /* Find first matching element by name (GUI: langxml.c:3300) */
+            if (!xmlgetaddress(ht, name))
+                return false;
+
+            /* Look up the value at the address (GUI: langxml.c:3303) */
+            hashtablelookup(ht, name, &val, &hnode);
+
+            /* If value is a table, try to get /pcdata or /contents (GUI: langxml.c:3305-3307) */
+            if (langexternalvaltotable(val, &ht, hnode)) {
+                if (!hashtablelookup(ht, BIGSTRING("\x07/pcdata"), &val, &hnode))
+                    hashtablelookup(ht, BIGSTRING("\x09/contents"), &val, &hnode);
+            }
+
+            /* Return copy of the value */
+            return copyvaluerecord(val, vreturned);
+        }
         case xmlv_valtostring: {
             /* Verb #9: xml.valtostring(value, indentLevel=0)
              * @IMPLEMENTED - Convert value to XML-RPC formatted string
