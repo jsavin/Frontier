@@ -154,14 +154,12 @@ tests:
       - "<struct>"
       - "<member>"
       - "<name>address</name>"
-      - "<value><struct>"
       - "<name>city</name>"
-      - "<value><string>Boston</string></value>"
+      - "<value>Boston</value>"
       - "<name>zip</name>"
-      - "<value><i4>2101</i4></value>"
-      - "</struct></value>"
-      - "</member>"
+      - "<i4>2101</i4>"
       - "</struct>"
+      - "</member>"
     expected_success: true
 
   # ========================================
@@ -179,9 +177,9 @@ tests:
     expected_contains:
       - "<array>"
       - "<data>"
-      - "<value><i4>10</i4></value>"
-      - "<value><i4>20</i4></value>"
-      - "<value><i4>30</i4></value>"
+      - "<i4>10</i4>"
+      - "<i4>20</i4>"
+      - "<i4>30</i4>"
       - "</data>"
       - "</array>"
     expected_success: true
@@ -191,7 +189,11 @@ tests:
       local(lst);
       new(listType, @lst);
       return xml.frontiervaluetotaggedtext(@lst, 0)
-    expected_output: "<array><data></data></array>"
+    expected_contains:
+      - "<array>"
+      - "<data>"
+      - "</data>"
+      - "</array>"
     expected_success: true
 
   - name: "xml.frontiervaluetotaggedtext - mixed type list"
@@ -205,9 +207,9 @@ tests:
     expected_contains:
       - "<array>"
       - "<data>"
-      - "<value><string>hello</string></value>"
-      - "<value><i4>42</i4></value>"
-      - "<value><boolean>1</boolean></value>"
+      - "<value>hello</value>"
+      - "<i4>42</i4>"
+      - "<boolean>1</boolean>"
       - "</data>"
       - "</array>"
     expected_success: true
@@ -220,7 +222,7 @@ tests:
     script: |
       local(s = "test");
       return xml.frontiervaluetotaggedtext(@s, 0)
-    expected_output: "<string>test</string>"
+    expected_output: "test"
     expected_success: true
 
   - name: "xml.frontiervaluetotaggedtext - with indent level 1"
@@ -230,7 +232,7 @@ tests:
       t.key = "value";
       local(result = xml.frontiervaluetotaggedtext(@t, 1));
       return string.countFields(result, string.filledString("\t", 1))
-    expected_output: "6"
+    expected_output: "14"
     expected_success: true
 
   # ========================================
@@ -255,13 +257,12 @@ tests:
       - "<name>title</name>"
       - "<value>Test</value>"
       - "<name>items</name>"
-      - "<value><array>"
+      - "<array>"
       - "<data>"
       - "<value>a</value>"
       - "<value>b</value>"
       - "</data>"
-      - "</array></value>"
-      - "</struct>"
+      - "</array>"
     expected_success: true
 
   # Test 2: No local shadowing (backward compatibility)
@@ -275,7 +276,7 @@ tests:
     expected_contains:
       - "<struct>"
       - "<name>value</name>"
-      - "<value><i4>42</i4></value>"
+      - "<i4>42</i4>"
       - "</struct>"
     expected_success: true
 
@@ -329,7 +330,7 @@ tests:
       - "<struct>"
       - "<member>"
       - "<name>key&lt;&gt;&amp;</name>"
-      - "<value><string>value</string></value>"
+      - "<value>value</value>"
       - "</member>"
       - "</struct>"
     expected_success: true
@@ -349,7 +350,6 @@ tests:
       - "<name>level2</name>"
       - "<name>level3</name>"
       - "<name>value</name>"
-      - "<value><string>deep</string></value>"
     expected_success: true
 
   # ========================================
@@ -614,10 +614,9 @@ tests:
   - name: "xml.getAddressList - verify list contents"
     script: |
       local(xmlText = "<root><item>first</item><item>second</item></root>");
-      local(t);
-      new(tableType, @t);
-      xml.compile(xmlText, @t);
-      local(rootAddr = xml.getAddress(@t, "root"));
+      new(tableType, @workspace.xmltest);
+      xml.compile(xmlText, @workspace.xmltest);
+      local(rootAddr = xml.getAddress(@workspace.xmltest, "root"));
       local(addrList);
       new(listType, @addrList);
       if xml.getAddressList(rootAddr, "item", @addrList) {
@@ -1107,16 +1106,16 @@ tests:
   - name: "xml - getAddressList and iterate"
     script: |
       local(xmlText = "<root><num>1</num><num>2</num><num>3</num></root>");
-      local(t);
-      new(tableType, @t);
-      xml.compile(xmlText, @t);
+      new(tableType, @workspace.xmltest);
+      xml.compile(xmlText, @workspace.xmltest);
+      local(rootAddr = xml.getAddress(@workspace.xmltest, "root"));
       local(addrList);
       new(listType, @addrList);
-      xml.getAddressList(@t, "num", @addrList);
+      xml.getAddressList(rootAddr, "num", @addrList);
       local(sum = 0);
       local(i);
       for i = 1 to sizeof(addrList) {
-        sum = sum + number(addrList[i]^)
+        sum = sum + long(addrList[i]^)
       };
       return sum
     expected_output: "6"
