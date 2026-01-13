@@ -230,9 +230,9 @@ def main():
 
     test_dir = project_root / 'tests' / 'integration' / 'test_cases'
 
-    # Use date-based filename to avoid conflicts when working on multiple branches
-    today = datetime.now().strftime('%Y-%m-%d')
-    dated_output = project_root / 'reports' / f'integration_tests_{today}.opml'
+    # Use timestamp-based filename to avoid conflicts when working on multiple sessions
+    timestamp = datetime.now().strftime('%Y-%m-%d-%H%M')
+    dated_output = project_root / 'reports' / f'integration_tests_{timestamp}.opml'
     symlink_path = project_root / 'reports' / 'integration_tests.opml'
 
     # Create output directory if needed
