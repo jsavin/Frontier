@@ -7,15 +7,19 @@
  * DO NOT regenerate - this file contains production implementations.
  *
  * Implementation status:
- * - xml.compile: IMPLEMENTED (parse XML string to table structure)
- * - xml.decompile: IMPLEMENTED (serialize table structure to XML string)
+ * - xml.compile: IMPLEMENTED (Phase 1 - parse XML string to table structure)
+ * - xml.decompile: IMPLEMENTED (Phase 1 - serialize table structure to XML string)
  * - xml.getaddress: IMPLEMENTED (Phase 2 - find first element by name)
  * - xml.getaddresslist: IMPLEMENTED (Phase 2 - find all elements with same name)
  * - xml.getattribute: IMPLEMENTED (Phase 2 - get attribute address)
  * - xml.getattributevalue: IMPLEMENTED (Phase 2 - get attribute value)
  * - xml.getpathaddress: IMPLEMENTED (Phase 2 - navigate slash-separated path)
- * - xml.frontiervaluetotaggedtext: IMPLEMENTED (converts Frontier values to XML-RPC tagged text)
- * - Other xml verbs: STUBBED (not yet implemented)
+ * - xml.frontiervaluetotaggedtext: IMPLEMENTED (Phase 2 - converts Frontier values to XML-RPC tagged text)
+ * - xml.addtable: IMPLEMENTED (Phase 3 - create sub-table with serial naming)
+ * - xml.addvalue: IMPLEMENTED (Phase 3 - create value with serial naming)
+ * - xml.valtostring: IMPLEMENTED (Phase 4 - convert scalar to XML-RPC format)
+ * - xml.structtofrontiervalue: IMPLEMENTED (Phase 4 - convert XML struct to Frontier value)
+ * - xml.converttodisplayname: IMPLEMENTED (Phase 5 - strip serial prefix and decode name)
  */
 
 #include "frontier.h"
@@ -27,6 +31,7 @@
 #include "langinternal.h"
 #include "tablestructure.h"
 #include "tableverbs.h"
+#include "tableinternal.h"
 #include "langxml.h"
 #include "oplist.h"
 
@@ -52,14 +57,78 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
                               tyvaluerecord *vreturned,
                               bigstring bserror) {
     switch(token) {
-        case xmlv_addtable:
-            /* Verb #0: xml.addtable - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case xmlv_addvalue:
-            /* Verb #1: xml.addvalue - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+        case xmlv_addtable: {
+            /* Verb #0: xml.addtable(adrParent, name)
+             * @IMPLEMENTED - Create sub-table with serial naming
+             * Calls getnewitemaddress() for serial naming and creates new table
+             * Returns: boolean (true on success) */
+            tyvaluerecord val;
+            tyaddress parent;
+            bigstring name;
+            xmladdress adrnew;
+            tyvaluerecord newtableval;
+            hdlhashtable newtable;
+
+            /* Get parent table address parameter */
+            if (!getaddressparam(hparam1, 1, &val))
+                return false;
+
+            if (!getaddressvalue(val, &parent.ht, parent.bs))
+                return false;
+
+            /* Get name parameter */
+            flnextparamislast = true;
+            if (!getstringvalue(hparam1, 2, name))
+                return false;
+
+            /* Get new item address with serial naming */
+            getnewitemaddress(parent.ht, name, &adrnew);
+
+            /* Create new table value */
+            if (!tablenewtablevalue(&newtable, &newtableval))
+                return false;
+
+            /* Assign the new table to the parent at the address */
+            if (!hashtableassign(adrnew.ht, adrnew.bs, newtableval))
+                return false;
+
+            return setbooleanvalue(true, vreturned);
+        }
+        case xmlv_addvalue: {
+            /* Verb #1: xml.addvalue(adrParent, name, value)
+             * @IMPLEMENTED - Create value with serial naming
+             * Calls getnewitemaddress() for serial naming and assigns value
+             * Returns: boolean (true on success) */
+            tyvaluerecord addressval, val;
+            tyaddress parent;
+            bigstring name;
+            xmladdress adrnew;
+
+            /* Get parent table address parameter */
+            if (!getaddressparam(hparam1, 1, &addressval))
+                return false;
+
+            if (!getaddressvalue(addressval, &parent.ht, parent.bs))
+                return false;
+
+            /* Get name parameter */
+            if (!getstringvalue(hparam1, 2, name))
+                return false;
+
+            /* Get value parameter */
+            flnextparamislast = true;
+            if (!getparamvalue(hparam1, 3, &val))
+                return false;
+
+            /* Get new item address with serial naming */
+            getnewitemaddress(parent.ht, name, &adrnew);
+
+            /* Assign the value to the parent at the address */
+            if (!hashtableassign(adrnew.ht, adrnew.bs, val))
+                return false;
+
+            return setbooleanvalue(true, vreturned);
+        }
         case xmlv_compile: {
             /* Verb #2: xml.compile(xmlString, adrTable)
              * @IMPLEMENTED - Parse XML string into table structure
@@ -213,10 +282,44 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
             /* Verb #8: xml.getvalue - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case xmlv_valtostring:
-            /* Verb #9: xml.valtostring - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+        case xmlv_valtostring: {
+            /* Verb #9: xml.valtostring(adrVal, indentLevel=0)
+             * @IMPLEMENTED - Convert value to XML-RPC formatted string
+             * Calls xmlvaltostring to generate XML representation
+             * Returns: string containing XML-RPC tagged value */
+            tyvaluerecord addressval, val;
+            hdlhashtable ht;
+            bigstring bs;
+            long indentlevel = 0;
+            Handle hresult;
+            hdlhashnode hnode;
+
+            /* Get address parameter */
+            if (!getaddressparam(hparam1, 1, &addressval))
+                return false;
+
+            /* Extract address components */
+            if (!getaddressvalue(addressval, &ht, bs))
+                return false;
+
+            /* Look up the actual value at the address */
+            if (!hashtablelookup(ht, bs, &val, &hnode))
+                return false;
+
+            /* Get indent level parameter (optional, defaults to 0) */
+            if (langgetparamcount(hparam1) > 1) {
+                flnextparamislast = true;
+                if (!getlongvalue(hparam1, 2, &indentlevel))
+                    return false;
+            }
+
+            /* Call xmlvaltostring with fltranslatestrings = true */
+            if (!xmlvaltostring(val, (short)indentlevel, true, &hresult))
+                return false;
+
+            /* Return the XML text as a string */
+            return setheapvalue(hresult, stringvaluetype, vreturned);
+        }
         case xmlv_frontiervaluetotaggedtext: {
             /* Verb #10: xml.frontiervaluetotaggedtext(adrValue, indentLevel=0)
              * @IMPLEMENTED - Converts Frontier value to XML-RPC tagged text format */
@@ -254,10 +357,41 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
             /* Return the XML text as a string */
             return setheapvalue(htext, stringvaluetype, vreturned);
         }
-        case xmlv_structtofrontiervalue:
-            /* Verb #11: xml.structtofrontiervalue - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+        case xmlv_structtofrontiervalue: {
+            /* Verb #11: xml.structtofrontiervalue(adrStruct, adrFrontierVal)
+             * @IMPLEMENTED - Convert XML struct to Frontier value
+             * Calls xmlstructtofrontiervalue to convert XML structure to native types
+             * Returns: boolean (true on success), stores result in adrFrontierVal */
+            tyvaluerecord val;
+            tyaddress adrfrontierval;
+            tyaddress adrstruct;
+            tyvaluerecord frontierval;
+
+            /* Get XML struct address parameter */
+            if (!getaddressparam(hparam1, 1, &val))
+                return false;
+
+            if (!getaddressvalue(val, &adrstruct.ht, adrstruct.bs))
+                return false;
+
+            /* Get frontier value address parameter (out parameter) */
+            flnextparamislast = true;
+            if (!getaddressparam(hparam1, 2, &val))
+                return false;
+
+            if (!getaddressvalue(val, &adrfrontierval.ht, adrfrontierval.bs))
+                return false;
+
+            /* Call xmlstructtofrontiervalue to convert the structure */
+            if (!xmlstructtofrontiervalue(&adrstruct, &frontierval))
+                return false;
+
+            /* Assign the converted value to the output parameter */
+            if (!hashtableassign(adrfrontierval.ht, adrfrontierval.bs, frontierval))
+                return false;
+
+            return setbooleanvalue(true, vreturned);
+        }
         case xmlv_getpathaddress: {
             /* Verb #12: xml.getpathaddress(adrTable, path, adrResult)
              * @IMPLEMENTED - Navigate slash-separated path
@@ -298,10 +432,25 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
             /* Return boolean indicating if path was valid */
             return setbooleanvalue(fl, vreturned);
         }
-        case xmlv_converttodisplayname:
-            /* Verb #13: xml.converttodisplayname - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+        case xmlv_converttodisplayname: {
+            /* Verb #13: xml.converttodisplayname(name)
+             * @IMPLEMENTED - Strip serial prefix and convert encoded name to display name
+             * Calls xmlgetname to remove serial prefix and decode special characters
+             * Returns: string (display name without serial encoding) */
+            bigstring name;
+
+            /* Get name parameter */
+            flnextparamislast = true;
+            if (!getstringvalue(hparam1, 1, name))
+                return false;
+
+            /* Call xmlgetname to process the name (strip serial prefix, decode entities) */
+            if (!xmlgetname(name))
+                return false;
+
+            /* Return the processed display name */
+            return setstringvalue(name, vreturned);
+        }
         default:
             return false;
     }

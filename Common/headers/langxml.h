@@ -32,7 +32,9 @@ langxml.h -- 7.0b21 PBS
 #ifndef langxmlinclude
 #define langxmlinclude
 
-#include "oplist.h"
+#ifndef oplistinclude
+	#include "oplist.h"
+#endif
 
 typedef struct xmladdress {
 	
@@ -62,5 +64,12 @@ extern boolean xmlgetaddress (hdlhashtable ht, bigstring name);
 extern boolean xmlgetaddresslist (hdlhashtable ht, bigstring name, boolean justone, hdllistrecord *hlist);
 
 extern boolean xmlgetpathaddress (tyaddress *xtable, Handle h, tyaddress *adrresult, boolean *flvalid);
+
+/* Value and structure conversion functions - exported for Phase 3-5 implementations */
+extern void getnewitemaddress (hdlhashtable ht, bigstring bs, xmladdress *adr);
+
+extern boolean xmlvaltostring (tyvaluerecord xmlval, short indentlevel, boolean fltranslatestrings, Handle *string);
+
+extern boolean xmlstructtofrontiervalue (tyaddress *adrstruct, tyvaluerecord *v);
 
 #endif /* langxmlinclude */

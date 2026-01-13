@@ -163,11 +163,11 @@ typedef struct xmltoken {
 
 /* function templates */
 
-static boolean xmlvaltostring (tyvaluerecord xmlval, short indentlevel, boolean fltranslatestrings, Handle *string);
+boolean xmlvaltostring (tyvaluerecord xmlval, short indentlevel, boolean fltranslatestrings, Handle *string);
 
 boolean xmlfrontiervaltotaggedtext (tyvaluerecord *val, short indentlevel, Handle *xmltext, hdlhashnode);
 
-static boolean xmlstructtofrontiervalue (tyaddress *adrstruct, tyvaluerecord *v);
+boolean xmlstructtofrontiervalue (tyaddress *adrstruct, tyvaluerecord *v);
 
 
 static boolean handlebeginswith (Handle h, bigstring bs) {
@@ -698,8 +698,8 @@ static boolean arraytofrontiervalvisit (hdlhashnode hn, hdllistrecord hlist) {
 	} /*arraytofrontiervalvisit*/
 
 
-static boolean xmlstructtofrontiervalue (tyaddress *adrstruct, tyvaluerecord *v) {
-	
+boolean xmlstructtofrontiervalue (tyaddress *adrstruct, tyvaluerecord *v) {
+
 	bigstring bsname;
 	tyvaluerecord vstruct, val;
 	hdlhashnode hnode;
@@ -1273,17 +1273,17 @@ static boolean serialstring (hdlhashtable ht, bigstring serializedname) {
 	} /*serialstring*/
 
 
-static void getnewitemaddress (hdlhashtable ht, bigstring bs, xmladdress *adr) {
+void getnewitemaddress (hdlhashtable ht, bigstring bs, xmladdress *adr) {
 
 	/*
 	on newitemaddress () { //this code was turning up all over
 		return (@nomad^.[serialstring () + token.tokenstring])};
 	*/
-	
+
 	(*adr).ht = ht;
-	
+
 	serialstring (ht, (*adr).bs);
-	
+
 	pushstring (bs, (*adr).bs);
 	} /*getnewitemaddress*/
 
@@ -2257,7 +2257,7 @@ boolean xmlgetname (bigstring bsname) {
 	} /*xmlgetname*/
 
 
-static boolean xmlvaltostring (tyvaluerecord xmlval, short indentlevel, boolean fltranslatestrings, Handle *string) {
+boolean xmlvaltostring (tyvaluerecord xmlval, short indentlevel, boolean fltranslatestrings, Handle *string) {
 #pragma unused(indentlevel)
 
 	/*
