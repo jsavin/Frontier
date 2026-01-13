@@ -392,10 +392,15 @@ Still use HTTP protocol over these transports (HTTP over Unix socket is standard
 ## Open Questions
 
 1. **Current State**: What is the state of Frontier's web server in headless builds?
+   - **Answer (2026-01-12)**: Unknown - requires exploration in Phase 1
 2. **Routing Mechanism**: How are URLs mapped to UserTalk handlers? (hierarchical, table, pattern matching?)
+   - **Answer (2026-01-12)**: "It's complicated ;-)" - requires exploration in Phase 1
 3. **JSON Support**: Should we port from OPML Editor or implement fresh?
+   - **Answer (2026-01-12)**: Asked Dave Winer for OPML Editor code - will port if available
 4. **Authentication**: Token-based auth sufficient, or need OAuth/JWT?
+   - **Answer (2026-01-12)**: Open to modern best practices, but reluctant to build full identity system. Simple token-based auth likely sufficient for MVP. Discuss requirements before implementation.
 5. **Rate Limiting**: Implement in C or UserTalk?
+   - **Answer**: TBD - depends on performance requirements
 
 ## Notes
 
