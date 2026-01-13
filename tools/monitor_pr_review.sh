@@ -115,6 +115,8 @@ START_TIME=$(date +%s)
 LAST_COMMENT_COUNT=$INITIAL_COMMENTS
 LAST_REVIEW_COUNT=$INITIAL_REVIEWS
 REVIEWS_DETECTED=0
+LAST_REVIEW_TIME=0  # Track when last review was detected
+COOLDOWN_PERIOD=120  # Wait 2 minutes after last review before exiting
 
 while true; do
     CURRENT_TIME=$(date +%s)
@@ -124,6 +126,17 @@ while true; do
         echo "[$(date)] TIMEOUT: Monitoring complete after ${TIMEOUT}s"
         echo "Total reviews detected: $REVIEWS_DETECTED"
         exit 0
+    fi
+
+    # Exit after cooldown period if we've detected reviews
+    if [ $LAST_REVIEW_TIME -gt 0 ]; then
+        TIME_SINCE_LAST_REVIEW=$((CURRENT_TIME - LAST_REVIEW_TIME))
+        if [ $TIME_SINCE_LAST_REVIEW -gt $COOLDOWN_PERIOD ]; then
+            echo "[$(date)] Cooldown period expired (${COOLDOWN_PERIOD}s since last review)"
+            echo "Total reviews detected: $REVIEWS_DETECTED"
+            echo "Exiting monitor"
+            exit 0
+        fi
     fi
 
     # Get current counts
@@ -165,6 +178,7 @@ while true; do
                 echo ""
 
                 REVIEWS_DETECTED=$((REVIEWS_DETECTED + 1))
+                LAST_REVIEW_TIME=$CURRENT_TIME  # Reset cooldown timer
             fi
         done
         LAST_COMMENT_COUNT=$CURRENT_COMMENTS
@@ -199,6 +213,7 @@ while true; do
                 echo ""
 
                 REVIEWS_DETECTED=$((REVIEWS_DETECTED + 1))
+                LAST_REVIEW_TIME=$CURRENT_TIME  # Reset cooldown timer
             fi
         done
         LAST_REVIEW_COUNT=$CURRENT_REVIEWS
