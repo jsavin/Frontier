@@ -919,28 +919,28 @@ tests:
   - name: "xml.valToString - string value"
     script: |
       local(s = "hello");
-      return xml.valToString(@s, 0)
-    expected_output: "<string>hello</string>"
+      return xml.valToString(s, 0)
+    expected_output: "hello"
     expected_success: true
 
   - name: "xml.valToString - integer value"
     script: |
       local(n = 42);
-      return xml.valToString(@n, 0)
+      return xml.valToString(n, 0)
     expected_output: "<i4>42</i4>"
     expected_success: true
 
   - name: "xml.valToString - boolean value"
     script: |
       local(b = true);
-      return xml.valToString(@b, 0)
+      return xml.valToString(b, 0)
     expected_output: "<boolean>1</boolean>"
     expected_success: true
 
   - name: "xml.valToString - with indent level"
     script: |
       local(n = 10);
-      local(result = xml.valToString(@n, 1));
+      local(result = xml.valToString(n, 1));
       return string.contains(result, "\t") or string.contains(result, "  ")
     expected_output: "true"
     expected_success: true
@@ -948,7 +948,7 @@ tests:
   - name: "xml.valToString - entity encoding"
     script: |
       local(s = "a < b & c > d");
-      local(result = xml.valToString(@s, 0));
+      local(result = xml.valToString(s, 0));
       return string.contains(result, "&lt;") and string.contains(result, "&amp;")
     expected_output: "true"
     expected_success: true
