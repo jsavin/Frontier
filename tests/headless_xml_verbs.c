@@ -366,11 +366,14 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
             /* If output address provided (headless pattern), assign list and return boolean */
             if (htoutput != nil) {
                 tyvaluerecord listval;
+                log_trace(LOG_COMP_LANG, "xml.getaddresslist: creating list value from hlist=%p", hlist);
                 if (!setheapvalue((Handle)hlist, listvaluetype, &listval)) {
                     log_error(LOG_COMP_LANG, "xml.getaddresslist: failed to create list value");
                     opdisposelist(hlist);
                     return false;
                 }
+                log_trace(LOG_COMP_LANG, "xml.getaddresslist: calling hashtableassign htoutput=%p name='%.*s'",
+                          htoutput, (int)bsoutput[0], &bsoutput[1]);
                 if (!hashtableassign(htoutput, bsoutput, listval)) {
                     log_error(LOG_COMP_LANG, "xml.getaddresslist: failed to assign list to output parameter");
                     disposevaluerecord(listval, false);

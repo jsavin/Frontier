@@ -2371,8 +2371,13 @@ boolean xmlvaltostring (tyvaluerecord xmlval, short indentlevel, boolean fltrans
 				
 				if (!replaceallinhandle (BIGSTRING ("\x01" "<"), BIGSTRING ("\x04" "&lt;"), val.data.stringvalue))
 					return (false);
-				
+
+				/* 2026-01-12: Encode ]]> BEFORE encoding standalone > to avoid double-encoding */
 				if (!replaceallinhandle (BIGSTRING ("\x03" "]]>"), BIGSTRING ("\x06" "]]&gt;"), val.data.stringvalue))
+					return (false);
+
+				/* 2026-01-12: Also encode > for consistency (not just in CDATA) */
+				if (!replaceallinhandle (BIGSTRING ("\x01" ">"), BIGSTRING ("\x04" "&gt;"), val.data.stringvalue))
 					return (false);
 				}
 			

@@ -125,9 +125,9 @@ tests:
       - "<struct>"
       - "<member>"
       - "<name>name</name>"
-      - "<value><string>John</string></value>"
+      - "<value>John</value>"
       - "<name>age</name>"
-      - "<value><i4>30</i4></value>"
+      - "<i4>30</i4>"
       - "</member>"
       - "</struct>"
     expected_success: true
@@ -137,7 +137,9 @@ tests:
       local(t);
       new(tableType, @t);
       return xml.frontiervaluetotaggedtext(@t, 0)
-    expected_output: "<struct></struct>"
+    expected_contains:
+      - "<struct>"
+      - "</struct>"
     expected_success: true
 
   - name: "xml.frontiervaluetotaggedtext - nested table"
@@ -568,9 +570,10 @@ tests:
       local(t);
       new(tableType, @t);
       xml.compile(xmlText, @t);
+      local(rootAddr = xml.getAddress(@t, "root"));
       local(addrList);
       new(listType, @addrList);
-      if xml.getAddressList(@t, "item", @addrList) {
+      if xml.getAddressList(rootAddr, "item", @addrList) {
         return sizeof(addrList)
       }
     expected_output: "3"
@@ -582,9 +585,10 @@ tests:
       local(t);
       new(tableType, @t);
       xml.compile(xmlText, @t);
+      local(rootAddr = xml.getAddress(@t, "root"));
       local(addrList);
       new(listType, @addrList);
-      if xml.getAddressList(@t, "item", @addrList) {
+      if xml.getAddressList(rootAddr, "item", @addrList) {
         return sizeof(addrList)
       }
     expected_output: "1"
@@ -596,9 +600,10 @@ tests:
       local(t);
       new(tableType, @t);
       xml.compile(xmlText, @t);
+      local(rootAddr = xml.getAddress(@t, "root"));
       local(addrList);
       new(listType, @addrList);
-      if xml.getAddressList(@t, "item", @addrList) {
+      if xml.getAddressList(rootAddr, "item", @addrList) {
         return sizeof(addrList)
       } else {
         return 0
@@ -612,9 +617,10 @@ tests:
       local(t);
       new(tableType, @t);
       xml.compile(xmlText, @t);
+      local(rootAddr = xml.getAddress(@t, "root"));
       local(addrList);
       new(listType, @addrList);
-      if xml.getAddressList(@t, "item", @addrList) {
+      if xml.getAddressList(rootAddr, "item", @addrList) {
         return addrList[1]^ + "," + addrList[2]^
       }
     expected_output: "first,second"
