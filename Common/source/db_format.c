@@ -269,6 +269,11 @@ boolean db_format_prepare_runtime(void) {
     }
     log_trace(LOG_COMP_STARTUP, "db_format_prepare_runtime: opattributesinitverbs completed successfully");
 
+    /* Save reference to headless-created efptable before database loading */
+    extern void save_headless_efptable(void);  /* Forward declaration */
+    save_headless_efptable();
+    log_debug(LOG_COMP_STARTUP, "db_format_prepare_runtime: saved headless efptable reference");
+
     /* Link system table structure to make processors accessible via system.compiler.kernel.* */
     log_trace(LOG_COMP_STARTUP, "db_format_prepare_runtime: linking system table structure");
     if (!linksystemtablestructure(roottable)) {

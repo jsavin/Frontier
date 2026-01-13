@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Frontier Integration Tests</title>
-    <dateCreated>Mon, 12 Jan 2026 21:48:33 GMT</dateCreated>
+    <dateCreated>Mon, 12 Jan 2026 22:15:50 GMT</dateCreated>
   </head>
   <body>
     <outline text="Db Verbs (db_verbs)">
@@ -8956,11 +8956,11 @@
       </outline>
       <outline text="xml.valToString - string value">
         <outline text="Metadata">
-          <outline text="expected_output: &lt;string&gt;hello&lt;/string&gt;"/>
+          <outline text="expected_output: hello"/>
         </outline>
         <outline text="Script">
           <outline text="local(s = &quot;hello&quot;)"/>
-          <outline text="return xml.valToString(@s, 0)"/>
+          <outline text="return xml.valToString(s, 0)"/>
         </outline>
       </outline>
       <outline text="xml.valToString - integer value">
@@ -8969,7 +8969,7 @@
         </outline>
         <outline text="Script">
           <outline text="local(n = 42)"/>
-          <outline text="return xml.valToString(@n, 0)"/>
+          <outline text="return xml.valToString(n, 0)"/>
         </outline>
       </outline>
       <outline text="xml.valToString - boolean value">
@@ -8978,7 +8978,7 @@
         </outline>
         <outline text="Script">
           <outline text="local(b = true)"/>
-          <outline text="return xml.valToString(@b, 0)"/>
+          <outline text="return xml.valToString(b, 0)"/>
         </outline>
       </outline>
       <outline text="xml.valToString - with indent level">
@@ -8987,7 +8987,7 @@
         </outline>
         <outline text="Script">
           <outline text="local(n = 10)"/>
-          <outline text="local(result = xml.valToString(@n, 1))"/>
+          <outline text="local(result = xml.valToString(n, 1))"/>
           <outline text="return string.contains(result, &quot;\t&quot;) or string.contains(result, &quot;  &quot;)"/>
         </outline>
       </outline>
@@ -8997,7 +8997,7 @@
         </outline>
         <outline text="Script">
           <outline text="local(s = &quot;a &lt; b &amp; c &gt; d&quot;)"/>
-          <outline text="local(result = xml.valToString(@s, 0))"/>
+          <outline text="local(result = xml.valToString(s, 0))"/>
           <outline text="return string.contains(result, &quot;&amp;lt;&quot;) and string.contains(result, &quot;&amp;amp;&quot;)"/>
         </outline>
       </outline>

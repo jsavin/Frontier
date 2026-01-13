@@ -117,6 +117,22 @@ hdlhashtable internaltable = nil;
 
 hdlhashtable efptable = nil;
 
+#if defined(FRONTIER_HEADLESS)
+/* 2026-01-12 Codex: Save reference to headless-created efptable before database loading.
+   When database is loaded, efptable gets overwritten with tokenvaluetype entries from database.
+   We need to preserve the original headless-created table with working valueroutines. */
+static hdlhashtable headless_efptable_original = nil;
+
+void save_headless_efptable(void) {
+    headless_efptable_original = efptable;
+    log_debug(LOG_COMP_LANG, "save_headless_efptable: saved efptable=%p", (void*)efptable);
+}
+
+hdlhashtable get_headless_efptable(void) {
+    return headless_efptable_original;
+}
+#endif
+
 hdlhashtable langtable = nil;
 
 hdlhashtable runtimestacktable = nil;

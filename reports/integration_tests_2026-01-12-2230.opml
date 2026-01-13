@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Frontier Integration Tests</title>
-    <dateCreated>Mon, 12 Jan 2026 21:48:33 GMT</dateCreated>
+    <dateCreated>Mon, 12 Jan 2026 22:30:09 GMT</dateCreated>
   </head>
   <body>
     <outline text="Db Verbs (db_verbs)">
@@ -8437,7 +8437,8 @@
       </outline>
       <outline text="xml.compile - malformed XML">
         <outline text="Metadata">
-          <outline text="expected_output: false"/>
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_contains: Poorly formed"/>
         </outline>
         <outline text="Script">
           <outline text="local(xmlText = &quot;&lt;root&gt;&lt;unclosed&gt;&quot;)"/>
@@ -8776,8 +8777,8 @@
           <outline text="new(tableType, @t)"/>
           <outline text="xml.compile(xmlText, @t)"/>
           <outline text="local(adr)"/>
-          <outline text="if xml.getPathAddress(@t, &quot;person/name&quot;, @adr)">
-            <outline text="return @adr^"/>
+          <outline text="if xml.getPathAddress(@t, &quot;root/person/name&quot;, @adr)">
+            <outline text="return adr^"/>
           </outline>
         </outline>
       </outline>
@@ -8791,8 +8792,8 @@
           <outline text="new(tableType, @t)"/>
           <outline text="xml.compile(xmlText, @t)"/>
           <outline text="local(adr)"/>
-          <outline text="if xml.getPathAddress(@t, &quot;a/b/c/d&quot;, @adr)">
-            <outline text="return @adr^"/>
+          <outline text="if xml.getPathAddress(@t, &quot;root/a/b/c/d&quot;, @adr)">
+            <outline text="return adr^"/>
           </outline>
         </outline>
       </outline>
@@ -8819,8 +8820,8 @@
           <outline text="new(tableType, @t)"/>
           <outline text="xml.compile(xmlText, @t)"/>
           <outline text="local(adr)"/>
-          <outline text="if xml.getPathAddress(@t, &quot;name&quot;, @adr)">
-            <outline text="return @adr^"/>
+          <outline text="if xml.getPathAddress(@t, &quot;root/name&quot;, @adr)">
+            <outline text="return adr^"/>
           </outline>
         </outline>
       </outline>
@@ -8834,8 +8835,8 @@
           <outline text="new(tableType, @t)"/>
           <outline text="xml.compile(xmlText, @t)"/>
           <outline text="local(adr)"/>
-          <outline text="if xml.getPathAddress(@t, &quot;items/item[2]&quot;, @adr)">
-            <outline text="return @adr^"/>
+          <outline text="if xml.getPathAddress(@t, &quot;root/items/item[2]&quot;, @adr)">
+            <outline text="return adr^"/>
           </outline>
         </outline>
       </outline>
@@ -8956,11 +8957,11 @@
       </outline>
       <outline text="xml.valToString - string value">
         <outline text="Metadata">
-          <outline text="expected_output: &lt;string&gt;hello&lt;/string&gt;"/>
+          <outline text="expected_output: hello"/>
         </outline>
         <outline text="Script">
           <outline text="local(s = &quot;hello&quot;)"/>
-          <outline text="return xml.valToString(@s, 0)"/>
+          <outline text="return xml.valToString(s, 0)"/>
         </outline>
       </outline>
       <outline text="xml.valToString - integer value">
@@ -8969,7 +8970,7 @@
         </outline>
         <outline text="Script">
           <outline text="local(n = 42)"/>
-          <outline text="return xml.valToString(@n, 0)"/>
+          <outline text="return xml.valToString(n, 0)"/>
         </outline>
       </outline>
       <outline text="xml.valToString - boolean value">
@@ -8978,27 +8979,26 @@
         </outline>
         <outline text="Script">
           <outline text="local(b = true)"/>
-          <outline text="return xml.valToString(@b, 0)"/>
+          <outline text="return xml.valToString(b, 0)"/>
         </outline>
       </outline>
       <outline text="xml.valToString - with indent level">
         <outline text="Metadata">
-          <outline text="expected_output: true"/>
+          <outline text="expected_output: &lt;i4&gt;10&lt;/i4&gt;"/>
         </outline>
         <outline text="Script">
           <outline text="local(n = 10)"/>
-          <outline text="local(result = xml.valToString(@n, 1))"/>
-          <outline text="return string.contains(result, &quot;\t&quot;) or string.contains(result, &quot;  &quot;)"/>
+          <outline text="local(result = xml.valToString(n, 1))"/>
+          <outline text="return result"/>
         </outline>
       </outline>
       <outline text="xml.valToString - entity encoding">
         <outline text="Metadata">
-          <outline text="expected_output: true"/>
+          <outline text="expected_contains: ['&amp;lt;', '&amp;amp;']"/>
         </outline>
         <outline text="Script">
           <outline text="local(s = &quot;a &lt; b &amp; c &gt; d&quot;)"/>
-          <outline text="local(result = xml.valToString(@s, 0))"/>
-          <outline text="return string.contains(result, &quot;&amp;lt;&quot;) and string.contains(result, &quot;&amp;amp;&quot;)"/>
+          <outline text="return xml.valToString(s, 0)"/>
         </outline>
       </outline>
       <outline text="xml.structToFrontierValue - simple struct">

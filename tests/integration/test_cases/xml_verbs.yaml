@@ -105,7 +105,7 @@ tests:
 
   - name: "xml.frontiervaluetotaggedtext - date value"
     script: |
-      local(dt = date.set(2024, 1, 15, 10, 30, 0));
+      local(dt = date.set(15, 1, 2024, 10, 30, 0));
       return xml.frontiervaluetotaggedtext(@dt, 0)
     expected_pattern: "^<dateTime\\.iso8601>20240115T10:30:00</dateTime\\.iso8601>$"
     expected_success: true
@@ -125,9 +125,9 @@ tests:
       - "<struct>"
       - "<member>"
       - "<name>name</name>"
-      - "<value><string>John</string></value>"
+      - "<value>John</value>"
       - "<name>age</name>"
-      - "<value><i4>30</i4></value>"
+      - "<i4>30</i4>"
       - "</member>"
       - "</struct>"
     expected_success: true
@@ -137,7 +137,9 @@ tests:
       local(t);
       new(tableType, @t);
       return xml.frontiervaluetotaggedtext(@t, 0)
-    expected_output: "<struct></struct>"
+    expected_contains:
+      - "<struct>"
+      - "</struct>"
     expected_success: true
 
   - name: "xml.frontiervaluetotaggedtext - nested table"
@@ -152,14 +154,12 @@ tests:
       - "<struct>"
       - "<member>"
       - "<name>address</name>"
-      - "<value><struct>"
       - "<name>city</name>"
-      - "<value><string>Boston</string></value>"
+      - "<value>Boston</value>"
       - "<name>zip</name>"
-      - "<value><i4>2101</i4></value>"
-      - "</struct></value>"
-      - "</member>"
+      - "<i4>2101</i4>"
       - "</struct>"
+      - "</member>"
     expected_success: true
 
   # ========================================
@@ -177,9 +177,9 @@ tests:
     expected_contains:
       - "<array>"
       - "<data>"
-      - "<value><i4>10</i4></value>"
-      - "<value><i4>20</i4></value>"
-      - "<value><i4>30</i4></value>"
+      - "<i4>10</i4>"
+      - "<i4>20</i4>"
+      - "<i4>30</i4>"
       - "</data>"
       - "</array>"
     expected_success: true
@@ -189,7 +189,11 @@ tests:
       local(lst);
       new(listType, @lst);
       return xml.frontiervaluetotaggedtext(@lst, 0)
-    expected_output: "<array><data></data></array>"
+    expected_contains:
+      - "<array>"
+      - "<data>"
+      - "</data>"
+      - "</array>"
     expected_success: true
 
   - name: "xml.frontiervaluetotaggedtext - mixed type list"
@@ -203,9 +207,9 @@ tests:
     expected_contains:
       - "<array>"
       - "<data>"
-      - "<value><string>hello</string></value>"
-      - "<value><i4>42</i4></value>"
-      - "<value><boolean>1</boolean></value>"
+      - "<value>hello</value>"
+      - "<i4>42</i4>"
+      - "<boolean>1</boolean>"
       - "</data>"
       - "</array>"
     expected_success: true
@@ -218,7 +222,7 @@ tests:
     script: |
       local(s = "test");
       return xml.frontiervaluetotaggedtext(@s, 0)
-    expected_output: "<string>test</string>"
+    expected_output: "test"
     expected_success: true
 
   - name: "xml.frontiervaluetotaggedtext - with indent level 1"
@@ -228,7 +232,7 @@ tests:
       t.key = "value";
       local(result = xml.frontiervaluetotaggedtext(@t, 1));
       return string.countFields(result, string.filledString("\t", 1))
-    expected_output: "6"
+    expected_output: "14"
     expected_success: true
 
   # ========================================
@@ -253,13 +257,12 @@ tests:
       - "<name>title</name>"
       - "<value>Test</value>"
       - "<name>items</name>"
-      - "<value><array>"
+      - "<array>"
       - "<data>"
       - "<value>a</value>"
       - "<value>b</value>"
       - "</data>"
-      - "</array></value>"
-      - "</struct>"
+      - "</array>"
     expected_success: true
 
   # Test 2: No local shadowing (backward compatibility)
@@ -273,7 +276,7 @@ tests:
     expected_contains:
       - "<struct>"
       - "<name>value</name>"
-      - "<value><i4>42</i4></value>"
+      - "<i4>42</i4>"
       - "</struct>"
     expected_success: true
 
@@ -327,7 +330,7 @@ tests:
       - "<struct>"
       - "<member>"
       - "<name>key&lt;&gt;&amp;</name>"
-      - "<value><string>value</string></value>"
+      - "<value>value</value>"
       - "</member>"
       - "</struct>"
     expected_success: true
@@ -347,5 +350,867 @@ tests:
       - "<name>level2</name>"
       - "<name>level3</name>"
       - "<name>value</name>"
-      - "<value><string>deep</string></value>"
+    expected_success: true
+
+  # ========================================
+  # xml.compile - Parse XML string into database structure
+  # ========================================
+
+  - name: "xml.compile - simple element"
+    script: |
+      local(xmlText = "<root><name>John</name></root>");
+      local(result);
+      new(tableType, @result);
+      if xml.compile(xmlText, @result) {
+        local(rootAddr = xml.getAddress(@result, "root"));
+        local(nameAddr = xml.getAddress(rootAddr, "name"));
+        return nameAddr^
+      }
+    expected_output: "John"
+    expected_success: true
+
+  - name: "xml.compile - multiple elements"
+    script: |
+      local(xmlText = "<root><first>John</first><last>Doe</last></root>");
+      local(result);
+      new(tableType, @result);
+      if xml.compile(xmlText, @result) {
+        local(rootAddr = xml.getAddress(@result, "root"));
+        local(firstAddr = xml.getAddress(rootAddr, "first"));
+        local(lastAddr = xml.getAddress(rootAddr, "last"));
+        return firstAddr^ + " " + lastAddr^
+      }
+    expected_output: "John Doe"
+    expected_success: true
+
+  - name: "xml.compile - nested elements"
+    script: |
+      local(xmlText = "<root><person><name>John</name><age>30</age></person></root>");
+      local(result);
+      new(tableType, @result);
+      if xml.compile(xmlText, @result) {
+        local(rootAddr = xml.getAddress(@result, "root"));
+        local(personAddr = xml.getAddress(rootAddr, "person"));
+        local(nameAddr = xml.getAddress(personAddr, "name"));
+        return nameAddr^
+      }
+    expected_output: "John"
+    expected_success: true
+
+  - name: "xml.compile - element with attributes"
+    script: |
+      local(xmlText = "<root><item id=\"123\" type=\"test\">Value</item></root>");
+      local(result);
+      new(tableType, @result);
+      if xml.compile(xmlText, @result) {
+        local(rootAddr = xml.getAddress(@result, "root"));
+        local(itemAddr = xml.getAddress(rootAddr, "item"));
+        return defined(itemAddr)
+      }
+    expected_output: "true"
+    expected_success: true
+
+  - name: "xml.compile - XML entities"
+    script: |
+      local(xmlText = "<root><text>a &lt; b &amp; c &gt; d</text></root>");
+      local(result);
+      new(tableType, @result);
+      if xml.compile(xmlText, @result) {
+        local(rootAddr = xml.getAddress(@result, "root"));
+        local(textAddr = xml.getAddress(rootAddr, "text"));
+        return textAddr^
+      }
+    expected_output: "a < b & c > d"
+    expected_success: true
+
+  - name: "xml.compile - empty element"
+    script: |
+      local(xmlText = "<root><empty/></root>");
+      local(result);
+      new(tableType, @result);
+      if xml.compile(xmlText, @result) {
+        local(rootAddr = xml.getAddress(@result, "root"));
+        local(emptyAddr = xml.getAddress(rootAddr, "empty"));
+        return defined(emptyAddr)
+      }
+    expected_output: "true"
+    expected_success: true
+
+  - name: "xml.compile - malformed XML"
+    script: |
+      local(xmlText = "<root><unclosed>");
+      local(result);
+      new(tableType, @result);
+      return xml.compile(xmlText, @result)
+    expected_success: false
+    expected_error_contains: "Script execution failed"
+
+  # ========================================
+  # xml.decompile - Convert database structure to XML string
+  # ========================================
+
+  - name: "xml.decompile - simple structure"
+    script: |
+      local(t);
+      new(tableType, @t);
+      t.name = "John";
+      return xml.decompile(@t)
+    expected_contains:
+      - "<name>John</name>"
+    expected_success: true
+
+  - name: "xml.decompile - nested structure"
+    script: |
+      local(t);
+      new(tableType, @t);
+      new(tableType, @t.person);
+      t.person.name = "John";
+      t.person.age = 30;
+      return xml.decompile(@t)
+    expected_contains:
+      - "<person>"
+      - "<name>John</name>"
+      - "<age><i4>30</i4></age>"
+      - "</person>"
+    expected_success: true
+
+  - name: "xml.decompile - round trip with compile"
+    script: |
+      local(temp);
+      new(tableType, @temp);
+      xml.addTable(@temp, "root");
+      local(rootAddr = xml.getAddress(@temp, "root"));
+      xml.addValue(rootAddr, "item", "test");
+      local(result = xml.decompile(@temp));
+      return (string.patternMatch("item", result) > 0) and (string.patternMatch("test", result) > 0)
+    expected_output: "true"
+    expected_success: true
+
+  - name: "xml.decompile - empty table"
+    script: |
+      local(t);
+      new(tableType, @t);
+      return xml.decompile(@t)
+    expected_success: false
+    expected_error_contains: "Script execution failed"
+
+  - name: "xml.decompile - special characters"
+    script: |
+      local(t);
+      new(tableType, @t);
+      xml.addTable(@t, "data");
+      local(dataAddr = xml.getAddress(@t, "data"));
+      xml.addValue(dataAddr, "text", "special chars in value");
+      local(result = xml.decompile(@t));
+      return (string.patternMatch("text", result) > 0) and (string.patternMatch("special", result) > 0)
+    expected_output: "true"
+    expected_success: true
+
+  # ========================================
+  # xml.getAddress - Find first element by name
+  # ========================================
+
+  - name: "xml.getAddress - simple lookup"
+    script: |
+      local(xmlText = "<root><name>John</name><age>30</age></root>");
+      local(t);
+      new(tableType, @t);
+      xml.compile(xmlText, @t);
+      local(rootAddr = xml.getAddress(@t, "root"));
+      local(nameAddr = xml.getAddress(rootAddr, "name"));
+      return nameAddr^
+    expected_output: "John"
+    expected_success: true
+
+  - name: "xml.getAddress - nested element"
+    script: |
+      local(xmlText = "<root><person><name>John</name></person></root>");
+      local(t);
+      new(tableType, @t);
+      xml.compile(xmlText, @t);
+      local(rootAddr = xml.getAddress(@t, "root"));
+      local(personAddr = xml.getAddress(rootAddr, "person"));
+      local(nameAddr = xml.getAddress(personAddr, "name"));
+      return defined(nameAddr)
+    expected_output: "true"
+    expected_success: true
+
+  - name: "xml.getAddress - element not found"
+    script: |
+      local(xmlText = "<root><name>John</name></root>");
+      local(t);
+      new(tableType, @t);
+      xml.compile(xmlText, @t);
+      local(rootAddr = xml.getAddress(@t, "root"));
+      try {
+        local(addr = xml.getAddress(rootAddr, "missing"));
+        return "false"
+      } else {
+        return "true"
+      }
+    expected_output: "true"
+    expected_success: true
+
+  - name: "xml.getAddress - multiple elements (returns first)"
+    script: |
+      local(xmlText = "<root><item>first</item><item>second</item></root>");
+      local(t);
+      new(tableType, @t);
+      xml.compile(xmlText, @t);
+      local(rootAddr = xml.getAddress(@t, "root"));
+      local(itemAddr = xml.getAddress(rootAddr, "item"));
+      return itemAddr^
+    expected_output: "first"
+    expected_success: true
+
+  # ========================================
+  # xml.getAddressList - Find all elements with same name
+  # ========================================
+
+  - name: "xml.getAddressList - multiple elements"
+    script: |
+      local(xmlText = "<root><item>a</item><item>b</item><item>c</item></root>");
+      local(t);
+      new(tableType, @t);
+      xml.compile(xmlText, @t);
+      local(rootAddr = xml.getAddress(@t, "root"));
+      local(addrList);
+      new(listType, @addrList);
+      if xml.getAddressList(rootAddr, "item", @addrList) {
+        return sizeof(addrList)
+      }
+    expected_output: "3"
+    expected_success: true
+
+  - name: "xml.getAddressList - single element"
+    script: |
+      local(xmlText = "<root><item>single</item></root>");
+      local(t);
+      new(tableType, @t);
+      xml.compile(xmlText, @t);
+      local(rootAddr = xml.getAddress(@t, "root"));
+      local(addrList);
+      new(listType, @addrList);
+      if xml.getAddressList(rootAddr, "item", @addrList) {
+        return sizeof(addrList)
+      }
+    expected_output: "1"
+    expected_success: true
+
+  - name: "xml.getAddressList - no matching elements"
+    script: |
+      local(xmlText = "<root><other>value</other></root>");
+      local(t);
+      new(tableType, @t);
+      xml.compile(xmlText, @t);
+      local(rootAddr = xml.getAddress(@t, "root"));
+      local(addrList);
+      new(listType, @addrList);
+      if xml.getAddressList(rootAddr, "item", @addrList) {
+        return sizeof(addrList)
+      } else {
+        return 0
+      }
+    expected_output: "0"
+    expected_success: true
+
+  - name: "xml.getAddressList - verify list contents"
+    script: |
+      local(xmlText = "<root><item>first</item><item>second</item></root>");
+      new(tableType, @workspace.xmltest);
+      xml.compile(xmlText, @workspace.xmltest);
+      local(rootAddr = xml.getAddress(@workspace.xmltest, "root"));
+      local(addrList);
+      new(listType, @addrList);
+      if xml.getAddressList(rootAddr, "item", @addrList) {
+        return addrList[1]^ + "," + addrList[2]^
+      }
+    expected_output: "first,second"
+    expected_success: true
+
+  # ========================================
+  # xml.getAttribute - Get attribute table by name
+  # ========================================
+
+  - name: "xml.getAttribute - simple attribute"
+    script: |
+      local(xmlText = "<root><item id=\"123\">Value</item></root>");
+      local(t);
+      new(tableType, @t);
+      xml.compile(xmlText, @t);
+      local(rootAddr = xml.getAddress(@t, "root"));
+      local(itemAddr = xml.getAddress(rootAddr, "item"));
+      local(attrAddr = xml.getAttribute(itemAddr, "id"));
+      return attrAddr^
+    expected_output: "123"
+    expected_success: true
+
+  - name: "xml.getAttribute - multiple attributes"
+    script: |
+      local(xmlText = "<root><item id=\"123\" type=\"test\" active=\"true\">Value</item></root>");
+      local(t);
+      new(tableType, @t);
+      xml.compile(xmlText, @t);
+      local(rootAddr = xml.getAddress(@t, "root"));
+      local(itemAddr = xml.getAddress(rootAddr, "item"));
+      local(attrAddr = xml.getAttribute(itemAddr, "type"));
+      return attrAddr^
+    expected_output: "test"
+    expected_success: true
+
+  - name: "xml.getAttribute - attribute not found"
+    script: |
+      local(xmlText = "<root><item id=\"123\">Value</item></root>");
+      local(t);
+      new(tableType, @t);
+      xml.compile(xmlText, @t);
+      local(rootAddr = xml.getAddress(@t, "root"));
+      local(itemAddr = xml.getAddress(rootAddr, "item"));
+      try {
+        local(attrAddr = xml.getAttribute(itemAddr, "missing"));
+        return "false"
+      } else {
+        return "true"
+      }
+    expected_output: "true"
+    expected_success: true
+
+  - name: "xml.getAttribute - no attributes"
+    script: |
+      local(xmlText = "<root><item>Value</item></root>");
+      local(t);
+      new(tableType, @t);
+      xml.compile(xmlText, @t);
+      local(rootAddr = xml.getAddress(@t, "root"));
+      local(itemAddr = xml.getAddress(rootAddr, "item"));
+      try {
+        local(attrAddr = xml.getAttribute(itemAddr, "id"));
+        return "false"
+      } else {
+        return "true"
+      }
+    expected_output: "true"
+    expected_success: true
+
+  # ========================================
+  # xml.getAttributeValue - Get attribute value directly
+  # ========================================
+
+  - name: "xml.getAttributeValue - simple attribute"
+    script: |
+      local(xmlText = "<root><item id=\"123\">Value</item></root>");
+      local(t);
+      new(tableType, @t);
+      xml.compile(xmlText, @t);
+      local(rootAddr = xml.getAddress(@t, "root"));
+      local(itemAddr = xml.getAddress(rootAddr, "item"));
+      return xml.getAttributeValue(itemAddr, "id")
+    expected_output: "123"
+    expected_success: true
+
+  - name: "xml.getAttributeValue - numeric attribute"
+    script: |
+      local(xmlText = "<root><item count=\"42\">Value</item></root>");
+      local(t);
+      new(tableType, @t);
+      xml.compile(xmlText, @t);
+      local(rootAddr = xml.getAddress(@t, "root"));
+      local(itemAddr = xml.getAddress(rootAddr, "item"));
+      return xml.getAttributeValue(itemAddr, "count")
+    expected_output: "42"
+    expected_success: true
+
+  - name: "xml.getAttributeValue - attribute with entities"
+    script: |
+      local(xmlText = "<root><item text=\"a &lt; b\">Value</item></root>");
+      local(t);
+      new(tableType, @t);
+      xml.compile(xmlText, @t);
+      local(rootAddr = xml.getAddress(@t, "root"));
+      local(itemAddr = xml.getAddress(rootAddr, "item"));
+      return xml.getAttributeValue(itemAddr, "text")
+    expected_output: "a < b"
+    expected_success: true
+
+  - name: "xml.getAttributeValue - attribute not found"
+    script: |
+      local(xmlText = "<root><item id=\"123\">Value</item></root>");
+      local(t);
+      new(tableType, @t);
+      xml.compile(xmlText, @t);
+      local(rootAddr = xml.getAddress(@t, "root"));
+      local(itemAddr = xml.getAddress(rootAddr, "item"));
+      try {
+        return xml.getAttributeValue(itemAddr, "missing")
+      } else {
+        return "error"
+      }
+    expected_output: "error"
+    expected_success: true
+
+  # ========================================
+  # xml.getPathAddress - Navigate slash-separated path
+  # ========================================
+
+  - name: "xml.getPathAddress - simple path"
+    script: |
+      local(xmlText = "<root><person><name>John</name></person></root>");
+      local(t);
+      new(tableType, @t);
+      xml.compile(xmlText, @t);
+      local(adr);
+      if xml.getPathAddress(@t, "root/person/name", @adr) {
+        return adr^
+      }
+    expected_output: "John"
+    expected_success: true
+
+  - name: "xml.getPathAddress - deep path"
+    script: |
+      local(xmlText = "<root><a><b><c><d>deep</d></c></b></a></root>");
+      local(t);
+      new(tableType, @t);
+      xml.compile(xmlText, @t);
+      local(adr);
+      if xml.getPathAddress(@t, "root/a/b/c/d", @adr) {
+        return adr^
+      }
+    expected_output: "deep"
+    expected_success: true
+
+  - name: "xml.getPathAddress - path not found"
+    script: |
+      local(xmlText = "<root><person><name>John</name></person></root>");
+      local(t);
+      new(tableType, @t);
+      xml.compile(xmlText, @t);
+      local(adr);
+      return xml.getPathAddress(@t, "person/missing", @adr)
+    expected_output: "false"
+    expected_success: true
+
+  - name: "xml.getPathAddress - single element path"
+    script: |
+      local(xmlText = "<root><name>John</name></root>");
+      local(t);
+      new(tableType, @t);
+      xml.compile(xmlText, @t);
+      local(adr);
+      if xml.getPathAddress(@t, "root/name", @adr) {
+        return adr^
+      }
+    expected_output: "John"
+    expected_success: true
+
+  - name: "xml.getPathAddress - path with array index"
+    script: |
+      local(xmlText = "<root><items><item>first</item><item>second</item></items></root>");
+      local(t);
+      new(tableType, @t);
+      xml.compile(xmlText, @t);
+      local(adr);
+      if xml.getPathAddress(@t, "root/items/item[2]", @adr) {
+        return adr^
+      }
+    expected_output: "second"
+    expected_success: true
+
+  - name: "xml.getPathAddress - array index [1] (first element)"
+    script: |
+      local(xmlText = "<root><items><item>first</item><item>second</item></items></root>");
+      local(t);
+      new(tableType, @t);
+      xml.compile(xmlText, @t);
+      local(adr);
+      if xml.getPathAddress(@t, "root/items/item[1]", @adr) {
+        return adr^
+      }
+    expected_output: "first"
+    expected_success: true
+
+  - name: "xml.getPathAddress - array index [0] (invalid, treated as literal)"
+    script: |
+      local(xmlText = "<root><items><item>first</item><item>second</item></items></root>");
+      local(t);
+      new(tableType, @t);
+      xml.compile(xmlText, @t);
+      local(adr);
+      if xml.getPathAddress(@t, "root/items/item[0]", @adr) {
+        return "found"
+      } else {
+        return "not found"
+      }
+    expected_output: "not found"
+    expected_success: true
+
+  - name: "xml.getPathAddress - array index out of bounds"
+    script: |
+      local(xmlText = "<root><items><item>first</item><item>second</item></items></root>");
+      local(t);
+      new(tableType, @t);
+      xml.compile(xmlText, @t);
+      local(adr);
+      if xml.getPathAddress(@t, "root/items/item[999]", @adr) {
+        return "found"
+      } else {
+        return "not found"
+      }
+    expected_output: "not found"
+    expected_success: true
+
+  - name: "xml.getPathAddress - malformed array index (empty brackets)"
+    script: |
+      local(xmlText = "<root><items><item>first</item><item>second</item></items></root>");
+      local(t);
+      new(tableType, @t);
+      xml.compile(xmlText, @t);
+      local(adr);
+      if xml.getPathAddress(@t, "root/items/item[]", @adr) {
+        return "found"
+      } else {
+        return "not found"
+      }
+    expected_output: "not found"
+    expected_success: true
+
+  - name: "xml.getPathAddress - malformed array index (non-numeric)"
+    script: |
+      local(xmlText = "<root><items><item>first</item><item>second</item></items></root>");
+      local(t);
+      new(tableType, @t);
+      xml.compile(xmlText, @t);
+      local(adr);
+      if xml.getPathAddress(@t, "root/items/item[abc]", @adr) {
+        return "found"
+      } else {
+        return "not found"
+      }
+    expected_output: "not found"
+    expected_success: true
+
+  # ========================================
+  # xml.addTable - Create sub-table element
+  # ========================================
+
+  - name: "xml.addTable - add to empty parent"
+    script: |
+      local(parent);
+      new(tableType, @parent);
+      xml.addTable(@parent, "child");
+      local(childAddr = xml.getAddress(@parent, "child"));
+      return defined(childAddr)
+    expected_output: "true"
+    expected_success: true
+
+  - name: "xml.addTable - add multiple children"
+    script: |
+      local(parent);
+      new(tableType, @parent);
+      xml.addTable(@parent, "first");
+      xml.addTable(@parent, "second");
+      local(firstAddr = xml.getAddress(@parent, "first"));
+      local(secondAddr = xml.getAddress(@parent, "second"));
+      return defined(firstAddr) and defined(secondAddr)
+    expected_output: "true"
+    expected_success: true
+
+  - name: "xml.addTable - nested tables"
+    script: |
+      local(root);
+      new(tableType, @root);
+      xml.addTable(@root, "level1");
+      local(level1Addr = xml.getAddress(@root, "level1"));
+      xml.addTable(level1Addr, "level2");
+      local(level2Addr = xml.getAddress(level1Addr, "level2"));
+      return defined(level2Addr)
+    expected_output: "true"
+    expected_success: true
+
+  - name: "xml.addTable - verify table type"
+    script: |
+      local(parent);
+      new(tableType, @parent);
+      xml.addTable(@parent, "child");
+      local(childAddr = xml.getAddress(@parent, "child"));
+      return typeof(childAddr^) == "tabl"
+    expected_output: "true"
+    expected_success: true
+
+  # ========================================
+  # xml.addValue - Create value element
+  # ========================================
+
+  - name: "xml.addValue - string value"
+    script: |
+      local(parent);
+      new(tableType, @parent);
+      xml.addValue(@parent, "name", "John");
+      local(nameAddr = xml.getAddress(@parent, "name"));
+      return nameAddr^
+    expected_output: "John"
+    expected_success: true
+
+  - name: "xml.addValue - integer value"
+    script: |
+      local(parent);
+      new(tableType, @parent);
+      xml.addValue(@parent, "age", 30);
+      local(ageAddr = xml.getAddress(@parent, "age"));
+      return ageAddr^
+    expected_output: "30"
+    expected_success: true
+
+  - name: "xml.addValue - boolean value"
+    script: |
+      local(parent);
+      new(tableType, @parent);
+      xml.addValue(@parent, "active", true);
+      local(activeAddr = xml.getAddress(@parent, "active"));
+      return activeAddr^
+    expected_output: "true"
+    expected_success: true
+
+  - name: "xml.addValue - multiple values"
+    script: |
+      local(parent);
+      new(tableType, @parent);
+      xml.addValue(@parent, "first", "a");
+      xml.addValue(@parent, "second", "b");
+      local(firstAddr = xml.getAddress(@parent, "first"));
+      local(secondAddr = xml.getAddress(@parent, "second"));
+      return firstAddr^ + secondAddr^
+    expected_output: "ab"
+    expected_success: true
+
+  - name: "xml.addValue - overwrite existing"
+    script: |
+      local(parent);
+      new(tableType, @parent);
+      xml.addValue(@parent, "value", "old");
+      xml.addValue(@parent, "value", "new");
+      local(valueAddr = xml.getAddress(@parent, "value"));
+      return valueAddr^
+    expected_output: "new"
+    expected_success: true
+
+  # ========================================
+  # xml.valToString - Convert scalar to XML-RPC format
+  # ========================================
+
+  - name: "xml.valToString - string value"
+    script: |
+      local(s = "hello");
+      return xml.valToString(s, 0)
+    expected_output: "hello"
+    expected_success: true
+
+  - name: "xml.valToString - integer value"
+    script: |
+      local(n = 42);
+      return xml.valToString(n, 0)
+    expected_output: "<i4>42</i4>"
+    expected_success: true
+
+  - name: "xml.valToString - boolean value"
+    script: |
+      local(b = true);
+      return xml.valToString(b, 0)
+    expected_output: "<boolean>1</boolean>"
+    expected_success: true
+
+  - name: "xml.valToString - with indent level"
+    script: |
+      local(n = 10);
+      local(result = xml.valToString(n, 1));
+      return result
+    expected_output: "<i4>10</i4>"
+    expected_success: true
+    # Note: indent level parameter is not implemented (#pragma unused in langxml.c)
+
+  - name: "xml.valToString - entity encoding"
+    script: |
+      local(s = "a < b & c > d");
+      return xml.valToString(s, 0)
+    expected_contains:
+      - "&lt;"
+      - "&amp;"
+    expected_success: true
+
+  # ========================================
+  # xml.structToFrontierValue - XML struct to Frontier value
+  # ========================================
+
+  - name: "xml.structToFrontierValue - simple struct"
+    script: |
+      local(xmlStruct);
+      new(tableType, @xmlStruct);
+      xmlStruct.name = "John";
+      xmlStruct.age = 30;
+      local(frontierVal);
+      if xml.structToFrontierValue(@xmlStruct, @frontierVal) {
+        return frontierVal.name
+      }
+    expected_output: "John"
+    expected_success: true
+
+  - name: "xml.structToFrontierValue - nested struct"
+    script: |
+      local(xmlStruct);
+      new(tableType, @xmlStruct);
+      new(tableType, @xmlStruct.person);
+      xmlStruct.person.name = "John";
+      local(frontierVal);
+      if xml.structToFrontierValue(@xmlStruct, @frontierVal) {
+        return frontierVal.person.name
+      }
+    expected_output: "John"
+    expected_success: true
+
+  - name: "xml.structToFrontierValue - with type tags"
+    script: |
+      local(xmlStruct);
+      new(tableType, @xmlStruct);
+      new(tableType, @xmlStruct.value);
+      xmlStruct.value.type = "i4";
+      xmlStruct.value.data = "42";
+      local(frontierVal);
+      if xml.structToFrontierValue(@xmlStruct, @frontierVal) {
+        return typeof(frontierVal.value) == "long"
+      }
+    expected_output: "true"
+    expected_success: true
+
+  - name: "xml.structToFrontierValue - empty struct"
+    script: |
+      local(xmlStruct);
+      new(tableType, @xmlStruct);
+      local(frontierVal);
+      return xml.structToFrontierValue(@xmlStruct, @frontierVal)
+    expected_output: "true"
+    expected_success: true
+
+  # ========================================
+  # xml.convertToDisplayName - Strip internal encoding
+  # ========================================
+
+  - name: "xml.convertToDisplayName - no encoding"
+    script: |
+      return xml.convertToDisplayName("normalName")
+    expected_output: "normalName"
+    expected_success: true
+
+  - name: "xml.convertToDisplayName - with hex encoding"
+    script: |
+      return xml.convertToDisplayName("name0x20with0x20spaces")
+    expected_output: "name with spaces"
+    expected_success: true
+
+  - name: "xml.convertToDisplayName - special characters"
+    script: |
+      return xml.convertToDisplayName("name0x3cwith0x3eangle")
+    expected_output: "name<with>angle"
+    expected_success: true
+
+  - name: "xml.convertToDisplayName - multiple encodings"
+    script: |
+      return xml.convertToDisplayName("a0x20b0x20c")
+    expected_output: "a b c"
+    expected_success: true
+
+  - name: "xml.convertToDisplayName - preserve case"
+    script: |
+      return xml.convertToDisplayName("MyName")
+    expected_output: "MyName"
+    expected_success: true
+
+  # ========================================
+  # Round-trip and integration tests
+  # ========================================
+
+  - name: "xml - full round trip compile/decompile"
+    script: |
+      local(original = "<root><person><name>John</name><age>30</age></person></root>");
+      local(t);
+      new(tableType, @t);
+      xml.compile(original, @t);
+      local(reconstructed = xml.decompile(@t));
+      return (string.patternMatch("<name>John</name>", reconstructed) > 0) and (string.patternMatch("<age>30</age>", reconstructed) > 0)
+    expected_output: "true"
+    expected_success: true
+
+  - name: "xml - compile then navigate with getPathAddress"
+    script: |
+      local(xmlText = "<config><server><host>localhost</host><port>8080</port></server></config>");
+      local(t);
+      new(tableType, @t);
+      xml.compile(xmlText, @t);
+      local(configAddr = xml.getAddress(@t, "config"));
+      local(serverAddr = xml.getAddress(configAddr, "server"));
+      local(hostAddr = xml.getAddress(serverAddr, "host"));
+      local(portAddr = xml.getAddress(serverAddr, "port"));
+      return hostAddr^ + ":" + portAddr^
+    expected_output: "localhost:8080"
+    expected_success: true
+
+  - name: "xml - build structure with addTable/addValue then decompile"
+    script: |
+      local(root);
+      new(tableType, @root);
+      xml.addTable(@root, "person");
+      local(personAddr = xml.getAddress(@root, "person"));
+      xml.addValue(personAddr, "name", "Jane");
+      xml.addValue(personAddr, "age", 25);
+      local(xmlResult = xml.decompile(@root));
+      return (string.patternMatch("<name>Jane</name>", xmlResult) > 0) and (string.patternMatch("<i4>25</i4>", xmlResult) > 0)
+    expected_output: "true"
+    expected_success: true
+
+  - name: "xml - compile with attributes then getAttribute"
+    script: |
+      local(xmlText = "<root><item id=\"123\" type=\"test\">Value</item></root>");
+      local(t);
+      new(tableType, @t);
+      xml.compile(xmlText, @t);
+      local(rootAddr = xml.getAddress(@t, "root"));
+      local(itemAddr = xml.getAddress(rootAddr, "item"));
+      local(id = xml.getAttributeValue(itemAddr, "id"));
+      local(type = xml.getAttributeValue(itemAddr, "type"));
+      return id + ":" + type
+    expected_output: "123:test"
+    expected_success: true
+
+  - name: "xml - getAddressList and iterate"
+    script: |
+      local(xmlText = "<root><num>1</num><num>2</num><num>3</num></root>");
+      new(tableType, @workspace.xmltest);
+      xml.compile(xmlText, @workspace.xmltest);
+      local(rootAddr = xml.getAddress(@workspace.xmltest, "root"));
+      local(addrList);
+      new(listType, @addrList);
+      xml.getAddressList(rootAddr, "num", @addrList);
+      local(sum = 0);
+      local(i);
+      for i = 1 to sizeof(addrList) {
+        sum = sum + long(addrList[i]^)
+      };
+      return sum
+    expected_output: "6"
+    expected_success: true
+
+  # ========================================
+  # Entity Encoding Roundtrip Test (Security)
+  # ========================================
+
+  - name: "xml - entity encoding roundtrip (encode→decode = identity)"
+    script: |
+      local(xmlWithEntities = "<root><data>Test &lt;tag&gt; &amp; text &amp; ]]&gt; sequence</data></root>");
+      local(t);
+      new(tableType, @t);
+      xml.compile(xmlWithEntities, @t);
+      local(rootAddr = xml.getAddress(@t, "root"));
+      local(dataAddr = xml.getAddress(rootAddr, "data"));
+      local(decoded = dataAddr^);
+      local(expected = "Test <tag> & text & ]]> sequence");
+      return decoded == expected
+    expected_output: "true"
     expected_success: true

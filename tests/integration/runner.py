@@ -127,9 +127,12 @@ class TestCase:
         self.name = data.get('name', 'Unnamed Test')
         self.script = data.get('script', '')
         self.expected_success = data.get('expected_success', True)
-        self.expected_result = data.get('expected_result')
+        self.expected_result = data.get('expected_result') or data.get('expected_output')  # Support both names
         self.expected_result_type = data.get('expected_result_type')
         self.expected_error_type = data.get('expected_error_type')
+        self.expected_contains = data.get('expected_contains')  # List of strings that should be in result
+        self.expected_pattern = data.get('expected_pattern')    # Regex pattern to match result
+        self.expected_error_contains = data.get('expected_error_contains')  # String that should be in error
         self.description = data.get('description', '')
         self.timeout = data.get('timeout', 10)  # Default 10 seconds, configurable per test
 
@@ -148,6 +151,7 @@ class TestCase:
 
     def validate(self, output: Dict) -> Tuple[bool, Optional[str]]:
         """Validate test output against expectations."""
+        import re
 
         # Check success/failure status
         if output.get('success') != self.expected_success:
@@ -158,6 +162,19 @@ class TestCase:
             actual_result = output.get('result')
             if str(actual_result) != str(self.expected_result):
                 return False, f"Expected result={self.expected_result!r}, got {actual_result!r}"
+
+        # Check if result contains all expected strings
+        if self.expected_success and self.expected_contains is not None:
+            actual_result = str(output.get('result', ''))
+            for expected_string in self.expected_contains:
+                if expected_string not in actual_result:
+                    return False, f"Expected result to contain {expected_string!r}, but got {actual_result!r}"
+
+        # Check if result matches expected pattern (regex)
+        if self.expected_success and self.expected_pattern is not None:
+            actual_result = str(output.get('result', ''))
+            if not re.search(self.expected_pattern, actual_result):
+                return False, f"Expected result to match pattern {self.expected_pattern!r}, but got {actual_result!r}"
 
         # Check result type if specified
         if self.expected_success and self.expected_result_type is not None:
@@ -173,6 +190,12 @@ class TestCase:
             actual_error_type = output.get('error_type')
             if actual_error_type != self.expected_error_type:
                 return False, f"Expected error_type={self.expected_error_type}, got {actual_error_type}"
+
+        # If expecting failure, check error contains string
+        if not self.expected_success and self.expected_error_contains:
+            actual_error = str(output.get('error', ''))
+            if self.expected_error_contains not in actual_error:
+                return False, f"Expected error to contain {self.expected_error_contains!r}, but got {actual_error!r}"
 
         return True, None
 

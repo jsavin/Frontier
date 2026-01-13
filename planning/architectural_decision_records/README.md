@@ -61,6 +61,70 @@ This directory contains architectural decisions and design patterns that affect 
 
 ---
 
+### Address Value Resolution
+**File**: `ADR-003-address-value-resolution.md`
+**Status**: Active Decision
+
+**Scope**:
+- How database addresses are resolved during unpacking
+- Legacy vs modern address handling
+- Context propagation patterns
+
+---
+
+### Dynamic Verb Binding Architecture
+**File**: `ADR-004-dynamic-verb-binding-architecture.md`
+**Status**: Active Decision
+**Related Issues**: #166 (Verb dispatch), PR #276 (Implementation)
+
+**Scope**:
+- Runtime verb resolution and dispatch mechanism
+- Callback registration for processor tables
+- External function processor (efptable) lookup
+
+---
+
+### Parameter State Thread-Safety
+**File**: `ADR-005-parameter-state-thread-safety.md`
+**Status**: Active Decision
+**Related Issues**: Issue #135 (Collaborative ODB)
+
+**Scope**:
+- Thread-local storage for parameter handling globals
+- Migration pattern from global to thread-local state
+- Foundation for collaborative ODB editing (Phase 6+)
+
+**Key Takeaway**: Establishes pattern for migrating globals to thread-local storage using existing `tythreadglobals` infrastructure. Zero API changes via macro accessors.
+
+---
+
+### Outline Push/Pop Elimination
+**File**: `ADR-006-outline-push-pop-elimination.md`
+**Status**: Active Decision
+**Related Issues**: Issue #135 (Outline context refactoring)
+
+**Scope**:
+- Replacing outline push/pop pattern with explicit context
+- Reference counting for outline lifecycle
+- Foundation for multi-user outline editing
+
+---
+
+### Processor Table Lifecycle Workaround
+**File**: `ADR-008-processor-table-lifecycle-workaround.md`
+**Status**: Accepted (Temporary Workaround)
+**Related Issues**: PR #291 (XML verbs), Issue #135 (Collaborative ODB)
+
+**Scope**:
+- Database loading overwrites runtime-created processor tables
+- Workaround using `get_headless_efptable()` to preserve original tables
+- Symptom of broader global state management problem
+- Proper fix requires explicit processor context (Phase 6+)
+
+**Key Takeaway**: This is a TEMPORARY workaround, not the long-term solution. Documents the problem and links to proper fix (eliminating global `efptable`).
+
+---
+
 ## Explicit Context Passing Refactoring
 **Directory**: `explicit-context-passing/`
 
@@ -112,12 +176,17 @@ A comprehensive refactoring effort to convert global state management to explici
 | Passing format/mode info through call chain | Context struct | ADR-002-context-based-format-versioning.md |
 | Supporting multiple databases | Database context | ADR-001-multi-database-context.md |
 | Converting code from push/pop to context | Explicit context pattern | explicit-context-passing/CONTEXT_PASSING_QUICK_REFERENCE.md |
+| Resolving database addresses during unpacking | Address value resolution | ADR-003-address-value-resolution.md |
+| Implementing verb dispatch and callbacks | Dynamic verb binding | ADR-004-dynamic-verb-binding-architecture.md |
+| Migrating globals to thread-local storage | Thread-local pattern | ADR-005-parameter-state-thread-safety.md |
+| Eliminating outline push/pop anti-pattern | Explicit outline context | ADR-006-outline-push-pop-elimination.md |
+| Processor table not found after DB load | Headless efptable workaround | ADR-008-processor-table-lifecycle-workaround.md |
 
 ---
 
 ## Document Maintenance
 
-- **Last Updated**: 2025-12-24
+- **Last Updated**: 2026-01-12
 - **Created By**: Migration refactoring session (Dec 2025)
 - **Maintained By**: Development team
 

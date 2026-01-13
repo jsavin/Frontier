@@ -12,6 +12,7 @@ Complete guide for testing the headless Frontier runtime, including CLI usage, d
 4. [Testing Patterns](#testing-patterns)
 5. [UserTalk Syntax Guide](#usertalk-syntax-guide)
 6. [System Dependencies](#system-dependencies)
+7. [Known Test Framework Limitations](#known-test-framework-limitations)
 
 ---
 
@@ -476,6 +477,64 @@ This error indicates you tried to use single quotes for a multi-character string
 
 **See also:** `docs/USERTALK_SYNTAX_REFERENCE.md` for comprehensive syntax guide.
 
+### date.set() Parameter Order
+
+**IMPORTANT:** `date.set()` uses DAY, MONTH, YEAR order (NOT month, day, year like JavaScript Date).
+
+**Correct:**
+```usertalk
+date.set(15, 1, 2024, 10, 30, 0)  // January 15, 2024 at 10:30:00
+// Arguments: day, month, year, hour, minute, second
+```
+
+**Wrong:**
+```usertalk
+date.set(2024, 1, 15, 10, 30, 0)  // WRONG - this is year=2024, month=1, day=15
+```
+
+**Mnemonic:** Think European date format (DD/MM/YYYY) rather than US format (MM/DD/YYYY).
+
+### typeof() Comparisons and Type Constants
+
+**typeof() returns OSType codes (4-byte constants), NOT string names.**
+
+**Correct:**
+```usertalk
+// Using system.compiler.language.constants (requires system root loaded)
+if typeof(x) == stringType { ... }    // stringType = 'TEXT'
+if typeof(obj) == tableType { ... }   // tableType = 'tabl'
+
+// Using literal OSType codes (works without system root)
+if typeof(x) == 'TEXT' { ... }
+if typeof(obj) == 'tabl' { ... }
+```
+
+**Wrong:**
+```usertalk
+if typeof(x) == "string" { ... }  // WRONG - typeof() returns 'TEXT', not "string"
+```
+
+**Test Framework Note:** In integration tests (YAML), use string literals like `"tabl"` because JSON serialization converts OSType codes to strings. This is a test framework limitation, not runtime behavior.
+
+### contains Keyword vs. string.patternMatch()
+
+**`contains` is a KEYWORD OPERATOR, not a verb.**
+
+**Correct:**
+```usertalk
+if string1 contains string2 { ... }    // ✓ Keyword operator syntax
+if string.patternMatch(string1, "*" + string2 + "*") { ... }  // ✓ Verb alternative
+```
+
+**Wrong:**
+```usertalk
+if string.contains(string1, string2) { ... }  // ✗ No such verb exists
+```
+
+**When to use each:**
+- `contains` keyword: Simple substring checks, more readable
+- `string.patternMatch()`: Pattern matching with wildcards (`*`, `?`), more powerful
+
 ---
 
 ## System Dependencies
@@ -500,6 +559,68 @@ xxd -l 2 -p databases/Frontier-v6.root
 ```
 
 **See also:** `planning/DATABASE_CORRUPTION_PREVENTION.md` for database protection details
+
+---
+
+## Known Test Framework Limitations
+
+### OSType/JSON Serialization Issue
+
+**Problem**: The integration test framework has a fundamental limitation with OSType constant comparisons due to JSON serialization.
+
+**Background**:
+- UserTalk's `typeof()` verb returns **OSType codes** (4-byte constants like `'tabl'`, `'TEXT'`, `'fss '`)
+- Type constants (`tableType`, `stringType`, `filespecType`) are defined in `system.compiler.language.constants` and resolve to these OSType codes
+- Production UserTalk code uses type constants: `if typeof(x) == tableType { ... }`
+
+**The Limitation**:
+- The test framework uses `--output-json` to capture CLI results
+- JSON serialization converts OSType codes to strings during the conversion process
+- When the test framework parses the JSON output, OSType values become string literals
+- Result: Tests must use **string literals** instead of **type constants** for comparisons to work
+
+**Example**:
+
+Production code (correct):
+```usertalk
+if typeof(x) == tableType {
+    return "is a table"
+}
+```
+
+Integration test (workaround):
+```yaml
+tests:
+  - name: "typeof - table check"
+    script: |
+      lang.new(tableType, @x);
+      if typeof(x) == "tabl" {
+          return "is a table"
+      }
+    expected_success: true
+    expected_result: "is a table"
+```
+
+**Why This Matters**:
+- Creates divergence from production code patterns
+- Tests look "wrong" compared to real UserTalk code
+- May confuse developers reviewing test cases
+- **Not a bug in `typeof()` or the runtime** - purely a test framework serialization issue
+
+**Common OSType String Literals in Tests**:
+- `"tabl"` instead of `tableType`
+- `"TEXT"` instead of `stringType`
+- `"bool"` instead of `booleanType`
+- `"long"` instead of `intType`
+- `"fss "` instead of `filespecType` (note trailing space!)
+
+**The Correct Approach**:
+- ✅ Use type constants (`tableType`, `stringType`) in production code
+- ✅ Use string literals (`"tabl"`, `"TEXT"`) in integration tests
+- ✅ Document this divergence when it appears in test files
+- ❌ Don't "fix" `typeof()` to return string names - breaks all production code
+
+**Reference**: Issue #291 (PR review feedback identifying this pattern)
 
 ---
 

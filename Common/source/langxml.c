@@ -57,7 +57,11 @@
 #define STR_i4		(BIGSTRING ("\x02" "i4"))
 #define STR_i2		(BIGSTRING ("\x02" "i2"))
 #define STR_i1		(BIGSTRING ("\x02" "i1"))
+#define STR_int		(BIGSTRING ("\x03" "int"))
 #define STR_float	(BIGSTRING ("\x05" "float"))
+#define STR_double	(BIGSTRING ("\x06" "double"))
+#define STR_boolean	(BIGSTRING ("\x07" "boolean"))
+#define STR_string	(BIGSTRING ("\x06" "string"))
 
 #define STR_base64_begin	(BIGSTRING ("\x08" "<base64>"))
 #define STR_base64_end		(BIGSTRING ("\x09" "</base64>"))
@@ -163,13 +167,11 @@ typedef struct xmltoken {
 
 /* function templates */
 
-static boolean xmlvaltostring (tyvaluerecord xmlval, short indentlevel, boolean fltranslatestrings, Handle *string);
+boolean xmlvaltostring (tyvaluerecord xmlval, short indentlevel, boolean fltranslatestrings, Handle *string);
 
 boolean xmlfrontiervaltotaggedtext (tyvaluerecord *val, short indentlevel, Handle *xmltext, hdlhashnode);
 
-static boolean xmlstructtofrontiervalue (tyaddress *adrstruct, tyvaluerecord *v);
-
-static boolean xmlgetaddress (hdlhashtable ht, bigstring name);
+boolean xmlstructtofrontiervalue (tyaddress *adrstruct, tyvaluerecord *v);
 
 
 static boolean handlebeginswith (Handle h, bigstring bs) {
@@ -234,6 +236,56 @@ boolean replaceallinhandle (bigstring bsfind, bigstring bsreplace, Handle htext)
 	
 	return (fl);
 	} /*replaceallinhandle*/
+
+
+static boolean xmlencodeentities (Handle htext) {
+
+	/*
+	2026-01-12: Encode XML entities in text.
+	This encodes special characters to their XML entity representations.
+
+	Encoding order matters: & must be encoded first to avoid double-encoding.
+	*/
+
+	if (!replaceallinhandle (BIGSTRING("\x01" "&"), BIGSTRING("\x05" "&amp;"), htext))
+		return (false);
+
+	if (!replaceallinhandle (BIGSTRING("\x01" "\""), BIGSTRING("\x06" "&quot;"), htext))
+		return (false);
+
+	if (!replaceallinhandle (BIGSTRING("\x01" "<"), BIGSTRING("\x04" "&lt;"), htext))
+		return (false);
+
+	if (!replaceallinhandle (BIGSTRING("\x01" ">"), BIGSTRING("\x04" "&gt;"), htext))
+		return (false);
+
+	return (true);
+	} /*xmlencodeentities*/
+
+
+static boolean xmldecodeentities (Handle htext) {
+
+	/*
+	2026-01-12: Decode XML entities in text.
+	This is the inverse of xmlencodeentities.
+
+	Decoding order matters: & must be decoded last to avoid partial decoding.
+	*/
+
+	if (!replaceallinhandle (BIGSTRING("\x06" "&quot;"), BIGSTRING("\x01" "\""), htext))
+		return (false);
+
+	if (!replaceallinhandle (BIGSTRING("\x04" "&lt;"), BIGSTRING("\x01" "<"), htext))
+		return (false);
+
+	if (!replaceallinhandle (BIGSTRING("\x04" "&gt;"), BIGSTRING("\x01" ">"), htext))
+		return (false);
+
+	if (!replaceallinhandle (BIGSTRING("\x05" "&amp;"), BIGSTRING("\x01" "&"), htext))
+		return (false);
+
+	return (true);
+	} /*xmldecodeentities*/
 
 
 static boolean trimtrailingwhitespace (Handle htext) {
@@ -465,11 +517,17 @@ boolean xmlfrontiervaltotaggedtext (tyvaluerecord *val, short indentlevel, Handl
 					
 					if (!newtexthandle (bsname, &h))
 						goto exit;
-					
+
+					/* 2026-01-12: Encode XML entities in table key name */
+					if (!xmlencodeentities (h)) {
+						disposehandle (h);
+						goto exit;
+					}
+
 					fl = inserttextinhandle (h, 0, STR_name_begin)
 							&& pushtexthandle (STR_name_end, h)
 							&& writehandlestreamhandleindent (&s, h, indentlevel);
-					
+
 					disposehandle (h);						
 					
 					if (!fl)
@@ -700,8 +758,8 @@ static boolean arraytofrontiervalvisit (hdlhashnode hn, hdllistrecord hlist) {
 	} /*arraytofrontiervalvisit*/
 
 
-static boolean xmlstructtofrontiervalue (tyaddress *adrstruct, tyvaluerecord *v) {
-	
+boolean xmlstructtofrontiervalue (tyaddress *adrstruct, tyvaluerecord *v) {
+
 	bigstring bsname;
 	tyvaluerecord vstruct, val;
 	hdlhashnode hnode;
@@ -766,34 +824,209 @@ static boolean xmlstructtofrontiervalue (tyaddress *adrstruct, tyvaluerecord *v)
 				return (false);
 		}
 	else if (equalstrings (bsname, STR_base64)) {
-		
+
 		Handle htext;
 
 		if (!copyvaluerecord (vstruct, &vstruct)
 				|| !coercetostring (&vstruct))
 			return (false);
-		
+
 		if (!newemptyhandle (&htext))
 			return (false);
-			
+
 		if (!base64decodehandle (vstruct.data.stringvalue, htext)) {
-			
+
 			disposehandle (htext);
-			
+
 			return (false);
 			}
-		
+
 		setbinaryvalue (htext, '\?\?\?\?', &val);
 		}
-	else {
+	else if (equalstrings (bsname, STR_i4) || equalstrings (bsname, STR_int)) {
+		/* 2026-01-12: Type tag coercion for XML-RPC <i4> or <int> */
+		long longval;
 
+		if (!copyvaluerecord (vstruct, &val) || !coercetostring (&val))
+			return (false);
+
+		if (!stringtonumber (val.data.stringvalue, &longval)) {
+			disposevaluerecord (val, false);
+			return (false);
+		}
+
+		disposevaluerecord (val, false);
+		setlongvalue (longval, &val);
+		}
+	else if (equalstrings (bsname, STR_i1) || equalstrings (bsname, STR_i2)) {
+		/* 2026-01-12: Type tag coercion for XML-RPC <i1> or <i2> (short integer) */
+		long longval;
+
+		if (!copyvaluerecord (vstruct, &val) || !coercetostring (&val))
+			return (false);
+
+		if (!stringtonumber (val.data.stringvalue, &longval)) {
+			disposevaluerecord (val, false);
+			return (false);
+		}
+
+		disposevaluerecord (val, false);
+		setintvalue ((short)longval, &val);
+		}
+	else if (equalstrings (bsname, STR_float) || equalstrings (bsname, STR_double)) {
+		/* 2026-01-12: Type tag coercion for XML-RPC <float> or <double> */
+		double doubleval;
+		bigstring bs;
+
+		if (!copyvaluerecord (vstruct, &val) || !coercetostring (&val))
+			return (false);
+
+		texthandletostring (val.data.stringvalue, bs);
+
+		if (!stringtofloat (bs, &doubleval)) {
+			disposevaluerecord (val, false);
+			return (false);
+		}
+
+		disposevaluerecord (val, false);
+		setdoublevalue (doubleval, &val);
+		}
+	else if (equalstrings (bsname, STR_boolean)) {
+		/* 2026-01-12: Type tag coercion for XML-RPC <boolean> */
+		boolean boolval;
+
+		if (!copyvaluerecord (vstruct, &val) || !coercetoboolean (&val))
+			return (false);
+
+		boolval = val.data.flvalue;
+		disposevaluerecord (val, false);
+		setbooleanvalue (boolval, &val);
+		}
+	else {
+		/* 2026-01-12: Check if this is a type/data pair structure
+		 * (e.g., { type: "i4", data: "42" }) and handle type coercion
+		 * OR if it's a table of members to recursively convert */
+		hdlhashtable ht, htnew;
+		tyvaluerecord vtype, vdata;
+		hdlhashnode hnode, hn;
+		bigstring bstype;
+		long ix;
+
+		if (langexternalvaltotable (vstruct, &ht, hnode)) {
+			/* It's a table - check for type/data pattern first */
+			if (hashtablelookup (ht, BIGSTRING("\x04" "type"), &vtype, &hnode) &&
+			    hashtablelookup (ht, BIGSTRING("\x04" "data"), &vdata, &hnode)) {
+				/* Found type/data pattern - coerce based on type */
+				if (vtype.valuetype == stringvaluetype) {
+					pullstringvalue (&vtype, bstype);
+
+					if (equalstrings (bstype, STR_i4) || equalstrings (bstype, STR_int)) {
+						long longval;
+						bigstring bs;
+						if (!copyvaluerecord (vdata, &val) || !coercetostring (&val))
+							return (false);
+						texthandletostring (val.data.stringvalue, bs);
+						if (!stringtonumber (bs, &longval)) {
+							disposevaluerecord (val, false);
+							return (false);
+						}
+						disposevaluerecord (val, false);
+						setlongvalue (longval, &val);
+						goto done;
+					}
+					else if (equalstrings (bstype, STR_i1) || equalstrings (bstype, STR_i2)) {
+						long longval;
+						bigstring bs;
+						if (!copyvaluerecord (vdata, &val) || !coercetostring (&val))
+							return (false);
+						texthandletostring (val.data.stringvalue, bs);
+						if (!stringtonumber (bs, &longval)) {
+							disposevaluerecord (val, false);
+							return (false);
+						}
+						disposevaluerecord (val, false);
+						setintvalue ((short)longval, &val);
+						goto done;
+					}
+					else if (equalstrings (bstype, STR_float) || equalstrings (bstype, STR_double)) {
+						double doubleval;
+						bigstring bs;
+						if (!copyvaluerecord (vdata, &val) || !coercetostring (&val))
+							return (false);
+						texthandletostring (val.data.stringvalue, bs);
+						if (!stringtofloat (bs, &doubleval)) {
+							disposevaluerecord (val, false);
+							return (false);
+						}
+						disposevaluerecord (val, false);
+						setdoublevalue (doubleval, &val);
+						goto done;
+					}
+					else if (equalstrings (bstype, STR_boolean)) {
+						boolean boolval;
+						if (!copyvaluerecord (vdata, &val) || !coercetoboolean (&val))
+							return (false);
+						boolval = val.data.flvalue;
+						disposevaluerecord (val, false);
+						setbooleanvalue (boolval, &val);
+						goto done;
+					}
+				}
+			}
+			else {
+				/* Not a type/data pattern - check if it's a table of members to convert */
+				/* Create a new table to hold converted values */
+				if (!tablenewtablevalue (&htnew, &val))
+					return (false);
+
+				pushvalueontmpstack (&val);
+
+				/* Process each member of the table */
+				ix = 0;
+				while (hashgetnthnode (ht, ix++, &hn)) {
+					bigstring membername, membernameclean;
+					tyaddress adrmember;
+					tyvaluerecord vmember, vconverted;
+
+					/* Get the member name (strip serial prefix if present) */
+					gethashkey (hn, membername);
+					copystring (membername, membernameclean);
+					if (stringfindchar ('\t', membernameclean))
+						nthword (membernameclean, 2, '\t', membernameclean);
+
+					/* Set up address for this member */
+					adrmember.ht = ht;
+					copystring (membername, adrmember.bs);
+
+					/* Recursively convert this member */
+					if (!xmlstructtofrontiervalue (&adrmember, &vconverted)) {
+						/* If conversion fails, just copy the value as-is */
+						if (!hashtablelookup (ht, membername, &vmember, &hnode))
+							continue;
+						if (!copyvaluerecord (vmember, &vconverted))
+							continue;
+					}
+
+					exemptfromtmpstack (&vconverted);
+
+					/* Assign to new table with clean name */
+					if (!hashtableassign (htnew, membernameclean, vconverted)) {
+						disposevaluerecord (vconverted, false);
+					}
+				}
+
+				goto done;
+			}
+		}
+
+		/* No special handling - just copy the value */
 		if (!copyvaluerecord (vstruct, &val) || !copyvaluedata (&val))
 			return (false);
-		}	
+		}
 
 done:
 	*v = val;
-	
+
 	return (true);
 	} /*xmlstructtofrontierval*/
 
@@ -1275,17 +1508,17 @@ static boolean serialstring (hdlhashtable ht, bigstring serializedname) {
 	} /*serialstring*/
 
 
-static void getnewitemaddress (hdlhashtable ht, bigstring bs, xmladdress *adr) {
+void getnewitemaddress (hdlhashtable ht, bigstring bs, xmladdress *adr) {
 
 	/*
 	on newitemaddress () { //this code was turning up all over
 		return (@nomad^.[serialstring () + token.tokenstring])};
 	*/
-	
+
 	(*adr).ht = ht;
-	
+
 	serialstring (ht, (*adr).bs);
-	
+
 	pushstring (bs, (*adr).bs);
 	} /*getnewitemaddress*/
 
@@ -1322,10 +1555,12 @@ static boolean assignemptytag (hdlhashtable htable, bigstring bstoken, xmltoken 
 					
 
 static boolean assignstringtag (hdlhashtable htable, bigstring bstoken, xmltoken *tagtoken, xmltoken *elementtoken) {
-	
+
 	xmladdress adrnewitem;
 	hdlhashtable newitemtable;
-	
+
+	log_trace(LOG_COMP_PARSE, "assignstringtag: tag='%.*s'", (int)bstoken[0], bstoken+1);
+
 	// local (adrnewitem = newitemaddress ())
 	getnewitemaddress (htable, bstoken, &adrnewitem);
 	
@@ -1394,16 +1629,20 @@ static void push2digitnum (int n, bigstring s) {
 	} /*push2digitnum*/
 
 
-static void getiso8601datetimestring (unsigned long secs, bigstring bs) {
-	
+static void getiso8601datetimestring (int64_t secs, bigstring bs) {
+
 	/*
 	6.1b2 AR: Return seconds as a two-digit number, too.
+
+	2026-01-12 Codex: Changed parameter from unsigned long to int64_t to match
+	frontier_time_t standard and prevent truncation of 64-bit date values.
+	Fixes segfault when converting date values with xml.frontiervaluetotaggedtext.
 	*/
 
 	//	return (string (year) + string.padWithZeros(month, 2) + string.padWithZeros(day, 2) +"T"+ string.padWithZeros(hour, 2)+":"+ string.padWithZeros(minute, 2)+":"+second;
-	
+
 	short day, month, year, hour, minute, second;
-	
+
 	secondstodatetime (secs, &day, &month, &year, &hour, &minute, &second);
 	
 	shorttostring (year, bs);
@@ -1423,31 +1662,36 @@ static void getiso8601datetimestring (unsigned long secs, bigstring bs) {
 	} /*getiso8601datetimestring*/
 
 
-static void setiso8601datetimestring (bigstring bsiso8601, unsigned long *secs) {
+static void setiso8601datetimestring (bigstring bsiso8601, int64_t *secs) {
 
 	//	19980616T09:54:52
-	
+
+	/*
+	2026-01-12 Codex: Changed parameter from unsigned long* to int64_t* to match
+	frontier_time_t standard and prevent truncation of 64-bit date values.
+	*/
+
 	short day, month, year, hour, minute, second;
 	bigstring bs;
-	
+
 	midstring (bsiso8601, 1, 4, bs);
 	stringtoshort (bs, &year);
-	
+
 	midstring (bsiso8601, 5, 2, bs);
 	stringtoshort (bs, &month);
-	
+
 	midstring (bsiso8601, 7, 2, bs);
 	stringtoshort (bs, &day);
-	
+
 	midstring (bsiso8601, 10, 2, bs);
 	stringtoshort (bs, &hour);
-	
+
 	midstring (bsiso8601, 13, 2, bs);
 	stringtoshort (bs, &minute);
-	
+
 	midstring (bsiso8601, 16, 2, bs);
 	stringtoshort (bs, &second);
-	
+
 	*secs = datetimetoseconds (day, month, year, hour, minute, second);
 	} /*setiso8601datetimestring*/
 
@@ -1873,10 +2117,12 @@ boolean xmlcompile (Handle htext, xmladdress *xmladr) {
 	log_trace(LOG_COMP_PARSE, "compile: start");
 
     #ifdef FRONTIER_HEADLESS
-    /* Headless: avoid external table processor dependency; use root table directly */
-    nomadtable = (*xmladr).ht;
-    (**nomadtable).parenthashtable = (*xmladr).ht; /* satisfy downstream assert */
-    log_trace(LOG_COMP_PARSE, "compile: using root table as nomad");
+    /* Headless: create new table at specified address, same as GUI version */
+    if (!langassignnewtablevalue ((*xmladr).ht, (*xmladr).bs, &nomadtable)) {
+        log_error(LOG_COMP_PARSE, "compile: langassignnewtablevalue failed");
+        return (false);
+    }
+    log_trace(LOG_COMP_PARSE, "compile: created new table at address");
     #else
     if (!langassignnewtablevalue ((*xmladr).ht, (*xmladr).bs, &nomadtable)) {
         return (false);
@@ -1985,29 +2231,32 @@ boolean xmlcompile (Handle htext, xmladdress *xmladr) {
 			}
 		
 		if (token.isTag) {
-			
+
 			// if token.tokenstring beginswith '?'
 			// assert (token.isPI == (getstringcharacter (bstoken, 0) == '?'));
-			
+
 			if (token.openTag) {
-				
+				log_trace(LOG_COMP_PARSE, "compile: open tag '%.*s'", (int)bstoken[0], bstoken+1);
+
 				if (lastchar (bstoken) == '/') { //self-contained empty tag, like <hello/>
-					
+
 					setstringlength (bstoken, stringlength (bstoken) - 1);
-					
+
+					log_trace(LOG_COMP_PARSE, "compile: self-closing empty tag '%.*s'", (int)bstoken[0], bstoken+1);
 					if (!assignemptytag (nomadtable, bstoken, &token))
 						goto exit;
-					
+
 					assert (reuselookahead == false); // dmb: shouldn't need this anymore
 					}
-						
+
 				else {
 					if (!getnexttoken (&source, namespaces, &lookaheadtoken))
 						scriptError (badxmltexterror, STR_itcantendontag, nil, token.pos);
-					
+
 					if (lookaheadtoken.isTag) {
-						
+
 						if (lookaheadtoken.openTag) { //create a sub-table
+							log_trace(LOG_COMP_PARSE, "compile: creating sub-table for '%.*s'", (int)bstoken[0], bstoken+1);
 							
 							// nomad = newitemaddress ()
 							getnewitemaddress (nomadtable, bstoken, &nomad);
@@ -2035,7 +2284,8 @@ boolean xmlcompile (Handle htext, xmladdress *xmladr) {
 							}
 						}
 					else { // lookahead is not a tag
-						
+						log_trace(LOG_COMP_PARSE, "compile: lookahead is not a tag (text content)");
+
 						if (!getnexttoken (&source, namespaces, &closetoken))
 							scriptError (badxmltexterror, STR_itmustendwithtag, nil, source.pos);
 						
@@ -2159,13 +2409,13 @@ boolean xmlcompile (Handle htext, xmladdress *xmladr) {
 					
 					else if (equalstrings (namesubitem, STR_datetimeiso8601)) {
 						bigstring bsiso8601;
-						unsigned long secs;
-						
+						int64_t secs;  /* 2026-01-12 Codex: Changed from unsigned long to int64_t */
+
 						if (!hashtablelookup (adrsubitem.ht, adrsubitem.bs, &val, &hnode))
 							goto exit;
-						
+
 						pullstringvalue (&val, bsiso8601);
-						
+
 						setiso8601datetimestring (bsiso8601, &secs);
 						
 						setdatevalue (secs, &val);
@@ -2259,7 +2509,7 @@ boolean xmlgetname (bigstring bsname) {
 	} /*xmlgetname*/
 
 
-static boolean xmlvaltostring (tyvaluerecord xmlval, short indentlevel, boolean fltranslatestrings, Handle *string) {
+boolean xmlvaltostring (tyvaluerecord xmlval, short indentlevel, boolean fltranslatestrings, Handle *string) {
 #pragma unused(indentlevel)
 
 	/*
@@ -2300,8 +2550,13 @@ static boolean xmlvaltostring (tyvaluerecord xmlval, short indentlevel, boolean 
 				
 				if (!replaceallinhandle (BIGSTRING ("\x01" "<"), BIGSTRING ("\x04" "&lt;"), val.data.stringvalue))
 					return (false);
-				
+
+				/* 2026-01-12: Encode ]]> BEFORE encoding standalone > to avoid double-encoding */
 				if (!replaceallinhandle (BIGSTRING ("\x03" "]]>"), BIGSTRING ("\x06" "]]&gt;"), val.data.stringvalue))
+					return (false);
+
+				/* 2026-01-12: Also encode > for consistency (not just in CDATA) */
+				if (!replaceallinhandle (BIGSTRING ("\x01" ">"), BIGSTRING ("\x04" "&gt;"), val.data.stringvalue))
 					return (false);
 				}
 			
@@ -2866,7 +3121,7 @@ static boolean decompilevisit (hdlhashtable adrtable, bigstring nametable, short
 	} /*decompilevisit*/
 
 
-static boolean xmldecompile (hdlhashtable hxmltable, Handle *htext) {
+boolean xmldecompile (hdlhashtable hxmltable, Handle *htext) {
 	
 	/*
 	turn a Frontier-table structure into XML text
@@ -2959,36 +3214,88 @@ static void xmlmakenewaddress (hdlhashtable ht, bigstring name) {
 	} /*xmlmakenewaddress*/
 
 
-static boolean xmlgetaddress (hdlhashtable ht, bigstring name) {
-	
+boolean xmlgetaddress (hdlhashtable ht, bigstring name) {
+
 	/*
 	on getAddress (adrtable, name) { //return the address of the first object in the table with the indicated name
+
+	2026-01-12: Added array index support. If name ends with "[N]", returns the Nth occurrence
+	(1-based indexing) instead of the first. Example: "item[2]" returns second item.
+
+	Array index behavior:
+	- Valid syntax: "item[2]" returns 2nd occurrence of "item"
+	- Invalid index (0, negative, non-numeric): treated as literal name (e.g., "item[0]" searches for that exact string)
+	- Out of bounds: returns error if fewer than N occurrences exist
+	- Malformed syntax ("item[]", "item[abc]"): treated as literal name
 	*/
-	
+
 	hdlhashnode hn;
-	
-	for (hn = (**ht).hfirstsort; hn != nil; hn = (**hn).sortedlink) {
-		
-		if (isxmlmatch (hn, name)) {
-			
-			gethashkey (hn, name);
-			
-			return (true);
+	bigstring bsname;
+	long arrayindex = 1; /* default to first occurrence */
+	long matchcount = 0;
+
+	/* Copy name for parsing */
+	copystring (name, bsname);
+
+	/* Check for array index suffix [N] */
+	{
+		short len = stringlength(bsname);
+		short i;
+
+		/* Scan backwards for '[' */
+		for (i = len; i >= 1; i--) {
+			if (getstringcharacter(bsname, i - 1) == '[') {
+				/* Found '[', check if followed by number and ']' */
+				bigstring bsindex;
+				short indexlen = len - i;
+
+				if (indexlen > 0 && getstringcharacter(bsname, len - 1) == ']') {
+					/* Extract the number between [ and ] */
+					setstringlength(bsindex, indexlen - 1);
+					if (indexlen > 1) {
+						moveleft(stringbaseaddress(bsname) + i, stringbaseaddress(bsindex), indexlen - 1);
+					}
+
+					/* Convert to long - reject 0, negative, and non-numeric */
+					if (stringtonumber(bsindex, &arrayindex) && arrayindex > 0) {
+						/* Valid array index - truncate name at '[' */
+						setstringlength(bsname, i - 1);
+						break;
+					}
+					/* Invalid index: fall through and treat whole string as literal name */
+				}
 			}
 		}
-	
+	}
+
+	/* Search for Nth matching node */
+	for (hn = (**ht).hfirstsort; hn != nil; hn = (**hn).sortedlink) {
+
+		if (isxmlmatch (hn, bsname)) {
+
+			matchcount++;
+
+			if (matchcount == arrayindex) {
+				/* Found the Nth occurrence */
+				gethashkey (hn, name);
+
+				return (true);
+			}
+		}
+	}
+
 	langparamerror (cantgetxmladdresserror, name);
-	
+
 	return (false);
 	} /*xmlgetaddress*/
 
 
-static boolean xmlgetaddresslist (hdlhashtable ht, bigstring name, boolean justone, hdllistrecord *hlist) {
-	
+boolean xmlgetaddresslist (hdlhashtable ht, bigstring name, boolean justone, hdllistrecord *hlist) {
+
 	/*
-	on getAddressList (adrtable, commonname, justone=false) { //return a list of all 
+	on getAddressList (adrtable, commonname, justone=false) { //return a list of all
 	objects with this name in the table
-	
+
 	5.1.3 dmb: if ht is nil, just return the empty list
 	*/
 	
@@ -3064,8 +3371,8 @@ boolean xmlgetattribute (hdlhashtable ht, bigstring name, hdlhashtable *adratts)
 	} /*xmlgetattribute*/
 
 
-static boolean xmlgetpathaddress (tyaddress *xtable, Handle h, tyaddress *adrresult, boolean *flvalid) {
-	
+boolean xmlgetpathaddress (tyaddress *xtable, Handle h, tyaddress *adrresult, boolean *flvalid) {
+
 	/*
 	6.1d5 AR: Kernelized. From the root of the table, travel from the top down
 	the /-separated path, e.g. "/ticket/header/title". Set adrresult^ to point
