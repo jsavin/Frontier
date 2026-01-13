@@ -1,14 +1,22 @@
 # Competitive Analysis: Mac Automation Tools
 
 **Status**: Market Analysis
-**Date**: 2026-01-13
-**Focus**: Keyboard Maestro, BetterTouchTool, and Mac automation ecosystem
+**Date**: 2026-01-13 (Revised)
+**Focus**: Keyboard Maestro, BetterTouchTool, and productivity automation ecosystem
 
 ## Executive Summary
 
-**Key Insight**: Keyboard Maestro ($36) and BetterTouchTool ($20+) prove there's a PAYING market for local automation on Mac. Combined user base: 500K+. But both are limited to Mac and lack AI assistance.
+**Market Validation**: Keyboard Maestro ($36) and BetterTouchTool ($20+) prove there's a PAYING market for local automation. Combined user base: 500K+.
 
-**Frontier's Opportunity**: Take what works (local automation, visual builder, community) and add what's missing (cross-platform, AI, structured data, collaboration, MCP).
+**What Users Want**: Save time, automate repetitive tasks, increase productivity
+
+**Frontier's Positioning**: Powerful automation and scripting platform (like classic Frontier) that deeply integrates with AI workflows people are already using (Claude Desktop, MCP servers). Not an "AI tool" - a full automation platform that happens to work seamlessly with AI.
+
+**Key Differentiator vs Keyboard Maestro**:
+- Structured data (ODB) vs just variables
+- Deep MCP integration (works with Claude Desktop, other AI tools)
+- Modern collaboration features
+- Full scripting language (UserTalk) vs macro paradigm
 
 ---
 
@@ -21,48 +29,23 @@
 - No coding required for basic automations
 - Library of 100+ built-in actions
 
-**Example Macro**:
-```
-Trigger: Type ".eml" abbreviation
-Actions:
-  1. Type my email address
-  2. Press Tab
-```
-
-**Example Advanced**:
-```
-Trigger: App "Mail" launches
-Actions:
-  1. If unread count > 50
-  2. Display notification "You have mail overload"
-  3. Pause until user clicks
-  4. Run AppleScript to filter by sender
-```
-
 **2. Rich Trigger System**
-- Hotkeys (⌘⌥⇧ + key)
-- Typed strings (text expansion)
-- App launch/quit/focus
-- Time-based (every hour, daily, etc.)
-- USB device connected
-- Login/wake/sleep
+- Hotkeys, text expansion, app events
+- Time-based scheduling
 - File/folder changes
-- Web hook
+- USB devices, login/wake/sleep
+- Web hooks
 
 **3. Powerful Actions**
-- Keystroke simulation
-- Mouse clicks (coordinates or image matching)
-- Run shell scripts
-- Execute AppleScript/JavaScript
-- Manipulate windows (move, resize, minimize)
+- Keystroke/mouse simulation
+- Shell scripts, AppleScript/JavaScript
+- Window management
 - Clipboard management
-- Text processing (find/replace, regex)
-- Control music players
+- Text processing
 
 **4. Variables & Logic**
 - Local/global variables
-- Conditionals (if/then/else)
-- Loops (for/while)
+- Conditionals, loops
 - Subroutines (call other macros)
 - Calculation engine
 
@@ -72,106 +55,107 @@ Actions:
 - Third-party integrations
 - Extensive documentation
 
+**Bottom Line**: Keyboard Maestro is a mature, powerful tool that works well for what it does.
+
 ---
 
-### Where It Falls Short
+### Where Frontier Differentiates
 
-**1. Mac-Only** ❌
-- No Windows, no Linux
-- Can't share macros with non-Mac users
-- Limits market size
+**1. Structured Data vs Variables** 🎯
 
-**2. No AI Assistance** ❌
-- Manual macro building
-- No natural language: "Organize my Downloads"
-- No code generation
-- No intelligent suggestions
+**Keyboard Maestro**:
+- Variables (ephemeral or file-based)
+- No persistent structured storage
+- Hard to build data-centric workflows
 
-**3. No Structured Data Store** ❌
-- Variables are ephemeral or file-based
-- No database for persistent state
-- Can't build data-centric workflows
+**Frontier**:
+- ODB: Full hierarchical database
+- Tables, outlines, persistent structured data
+- Query, filter, transform data
+- Build workflows around data, not just actions
 
-**4. No Collaboration** ❌
-- Single user per Mac
-- Can't co-edit macros
-- No shared databases
-- Export/import only sharing method
+**Example**: Track client projects with tasks, deadlines, notes, history - all in structured database, not scattered variables or files.
 
-**5. Limited to Macro Paradigm** ❌
-- Everything is trigger → actions
+---
+
+**2. Deep AI Integration (Not AI-First)** 🎯
+
+**Keyboard Maestro**:
+- No integration with AI tools
+- Manual macro building only
+- Isolated from Claude Desktop, other AI workflows
+
+**Frontier**:
+- MCP-native: Expose your automations as tools to Claude Desktop
+- Works great without AI (full scripting platform)
+- When you're already using Claude Desktop, Frontier gives Claude access to your local workflows
+- Optional: AI can help write automation code if you want
+
+**Example**: You're using Claude Desktop for research. Claude can now trigger your Frontier automations (process PDFs, update database, send notifications) without you switching contexts.
+
+**This is the key**: Frontier isn't "an AI tool" that's useless without AI. It's a full automation platform that seamlessly integrates with AI tools you're already using.
+
+---
+
+**3. Scripting Platform vs Macro Paradigm** 🎯
+
+**Keyboard Maestro**:
+- Macro paradigm: trigger → sequence of actions
 - Hard to build complex stateful systems
-- No first-class functions/objects
-- Scripting is bolt-on, not native
+- Scripting (AppleScript) is bolt-on, not native
 
-**6. No MCP Integration** ❌
-- Can't expose macros as tools to Claude
-- Can't call remote MCP servers
-- Isolated from AI ecosystem
+**Frontier**:
+- Full scripting language (UserTalk)
+- First-class functions, objects, tables
+- Visual builder AND code view (switch seamlessly)
+- Build complex logic, not just action sequences
 
-**7. Steep Learning Curve for Advanced Use** ❌
-- Simple macros: Easy
-- Complex logic: Requires understanding variables, conditions, loops
-- AppleScript: Separate language to learn
-- No AI to help debug
+**Example**: Process incoming data with business logic, state management, error handling - not just "run these 20 actions in sequence".
 
 ---
 
-## BetterTouchTool Deep Dive
+**4. Collaboration** 🎯
 
-### What It Does Well
+**Keyboard Maestro**:
+- Single user per Mac
+- Export/import only sharing
+- No co-editing
+- No shared databases
 
-**1. Custom Gestures**
-- Trackpad gestures (3-finger swipe, pinch, rotate)
-- Magic Mouse gestures
-- Touch Bar customization (pre-2023 MacBooks)
-- Force Touch actions
+**Frontier**:
+- Multi-user ODB access
+- Real-time collaboration (future)
+- Shared automation library
+- Team permissions
 
-**2. Window Management**
-- Snap windows to screen areas (like Windows Snap)
-- Custom window sizes
-- Move windows between displays
-- Keyboard shortcuts for positioning
-
-**3. App-Specific Shortcuts**
-- Different shortcuts per app
-- Context-aware actions
-- Menu bar control
-
-**4. Some Automation**
-- Run AppleScript/shell scripts
-- Execute JavaScript
-- Control media players
-- System events
+**Example**: Team shares automation workflows and databases. Updates benefit everyone, not just the person who built it.
 
 ---
 
-### Where It Falls Short
+**5. Modern Architecture** 🎯
 
-**1. Primarily UI Customization** ❌
-- Focus is gestures/shortcuts, not full automation
-- Automation is secondary feature
-- Limited action library vs Keyboard Maestro
+**Keyboard Maestro**:
+- Monolithic Mac app
+- No API access
+- Isolated from modern tool ecosystem
 
-**2. Mac-Only** ❌
-- Same problem as Keyboard Maestro
+**Frontier**:
+- MCP protocol support (standard, not proprietary)
+- REST API for external access
+- Can connect to other MCP servers
+- Part of broader AI tool ecosystem
 
-**3. No AI Assistance** ❌
-- Manual setup
-- No intelligence
+**Example**: Your automations can call Slack MCP server, GitHub MCP server, etc. Compose tools together.
 
-**4. No Structured Data** ❌
-- No database
-- No persistent state beyond preferences
+---
 
-**5. No Collaboration** ❌
-- Single user
-- Can't share complex setups easily
+## BetterTouchTool Analysis
 
-**6. Complex Pricing** ❌
-- Standard ($22), Lifetime ($30), Family ($50)
-- Separate iOS app ($7)
-- Feature upgrades cost extra
+**What It Does**: UI customization (gestures, window management, Touch Bar)
+
+**What It Doesn't Do**: Full automation platform
+
+**Frontier's Position**: Not competing with BTT's gesture expertise. Users can use both! Frontier focuses on automation workflows, not UI customization.
 
 ---
 
@@ -180,63 +164,47 @@ Actions:
 ### Proven Demand
 
 **Keyboard Maestro**:
-- $36 purchase
-- ~300K users (estimated)
-- Active since 2002 (22+ years!)
-- Still growing, regular updates
+- $36 purchase, ~300K users
+- Active since 2002 (22+ years)
+- Regular updates, loyal community
 
 **BetterTouchTool**:
-- $20-50 purchase
-- ~200K users (estimated)
+- $20-50 purchase, ~200K users
 - Active since 2010 (14+ years)
-- Strong user loyalty
 
-**Combined**: 500K+ paying users for Mac-only automation
-
-**Key Takeaway**: People WILL pay for local automation tools
+**Key Takeaway**: 500K+ people pay for local automation. The market exists and is stable.
 
 ---
 
-### User Profiles (From Forums)
+### User Profiles
 
 **Power Users**:
-- Own both Keyboard Maestro AND BetterTouchTool
-- Spend hours setting up perfect workflows
-- Share macros in community
-- Often developers or tech-savvy professionals
-
-**Productivity Enthusiasts**:
-- Follow productivity YouTubers/bloggers
-- Subscribe to productivity tools
-- Love optimizing workflows
-- Not necessarily developers
+- Own multiple automation tools
+- Spend time perfecting workflows
+- Share creations in community
+- Value productivity gains
 
 **Professionals with Repetitive Tasks**:
-- Writers (text expansion, formatting macros)
-- Designers (window management, app switching)
-- Video editors (keyboard shortcuts for Final Cut/Premiere)
-- Researchers (citation formatting, PDF management)
+- Writers (text expansion, formatting)
+- Designers (window management, shortcuts)
+- Video editors (app-specific automation)
+- Researchers (citation formatting, PDF workflows)
+
+**What They Care About**: Saving time, reducing tedium, increasing output quality.
 
 ---
 
-## What Frontier Can Learn
+## What Frontier Learns from Keyboard Maestro
 
 ### 1. Visual Builder is Essential
 
-**Lesson**: Even technical users prefer visual macro builders for simple tasks
+**Lesson**: Even technical users prefer visual builders for simple tasks
 
-**Frontier Should**:
-- Offer visual workflow builder (like Keyboard Maestro's action palette)
-- But also: Show generated UserTalk code ("Show Code" button)
-- Let users switch between visual and code view
-- AI can generate EITHER visual workflow OR code
-
-**Example**:
-```
-User (visual): Drag "File Watch" → "Email Send" blocks
-User (text): "When PDF added to folder, email it to me"
-AI: "I'll create that. [Shows visual workflow AND code]"
-```
+**Frontier Approach**:
+- Offer visual workflow builder (like KM)
+- Show generated UserTalk code ("Show Code" button)
+- Users can switch between visual and code view
+- Learn by example: see the code, understand the pattern
 
 ---
 
@@ -244,40 +212,39 @@ AI: "I'll create that. [Shows visual workflow AND code]"
 
 **Lesson**: Multiple trigger types unlock different use cases
 
-**Frontier Should Support**:
-- ✅ Hotkeys (Keyboard Maestro parity)
-- ✅ File/folder changes (already planned - file watchers)
-- ✅ Time-based (cron-style scheduling)
-- ✅ App launch/focus (via MCP + OS integration)
-- ✅ Web hooks (REST API endpoints)
-- 🆕 Email arrival (IMAP integration)
-- 🆕 ODB changes (trigger when table modified)
-- 🆕 AI-suggested triggers ("You do this manually every day - automate it?")
+**Frontier Triggers**:
+- Hotkeys, text expansion
+- File/folder watches
+- Time-based (cron-style)
+- App lifecycle events
+- Web hooks (REST API endpoints)
+- ODB changes (trigger when table modified)
+- Email arrival (IMAP integration)
+- MCP-based triggers (when Claude calls a tool)
 
 ---
 
 ### 3. Community-Driven Growth
 
-**Lesson**: Shared macros/workflows drive adoption
+**Lesson**: Shared workflows drive adoption
 
-**Frontier Should**:
-- Marketplace for automations (like Zapier templates)
-- One-click install: "Install Marcus's Research Paper Workflow"
-- Rating/reviews
-- Categories (business, creative, academic, etc.)
-- AI can search marketplace: "Find automation for email invoicing"
+**Frontier Approach**:
+- Marketplace for automations
+- One-click install: "Install [User]'s workflow"
+- Rating/reviews, categories
+- Document by example
 
 ---
 
-### 4. Documentation & Examples
+### 4. Strong Documentation
 
 **Lesson**: Users need to see what's possible
 
-**Frontier Should**:
+**Frontier Approach**:
 - Gallery of example automations
 - Video tutorials (short, focused)
-- Interactive onboarding: "Let's create your first automation together"
-- AI-generated docs: Ask AI to explain any automation
+- Interactive onboarding
+- Show both visual and code views
 
 ---
 
@@ -285,316 +252,227 @@ AI: "I'll create that. [Shows visual workflow AND code]"
 
 ### Frontier vs Keyboard Maestro
 
-| Feature | Keyboard Maestro | Frontier AI |
-|---------|------------------|-------------|
-| Visual builder | ✅ Excellent | ✅ Excellent |
-| Code view | ⚠️ AppleScript only | ✅ UserTalk (simpler) |
-| AI assistance | ❌ None | ✅ Code generation, debugging |
-| Cross-platform | ❌ Mac only | ✅ Mac, Windows, Linux |
-| Structured data | ❌ Variables only | ✅ ODB (database) |
-| Collaboration | ❌ Single user | ✅ Multi-user, real-time |
-| MCP integration | ❌ None | ✅ Native |
-| Natural language | ❌ None | ✅ "Just describe what you want" |
-| Price | $36 one-time | $9/month OR $99 lifetime |
-| Target user | Mac power users | Everyone, all platforms |
+| Dimension | Keyboard Maestro | Frontier |
+|-----------|------------------|----------|
+| **Core Model** | Macro sequences | Scripting platform + ODB |
+| **Visual Builder** | ✅ Excellent | ✅ Excellent |
+| **Code View** | ⚠️ AppleScript (separate) | ✅ UserTalk (native) |
+| **Data Storage** | Variables only | ✅ ODB (full database) |
+| **AI Integration** | ❌ None | ✅ MCP-native (Claude, etc.) |
+| **Collaboration** | ❌ Single user | ✅ Multi-user, shared workflows |
+| **Modern APIs** | ❌ Isolated | ✅ REST API, MCP protocol |
+| **Community** | ✅ Strong | 🆕 Building |
+| **Maturity** | ✅ 22 years | 🆕 New (but based on 30-year platform) |
+| **Price** | $36 one-time | TBD ($99 lifetime OR $9/month) |
 
-**Migration Path**: "Import your Keyboard Maestro macros, AI will convert them to Frontier automations"
-
----
-
-### Frontier vs BetterTouchTool
-
-| Feature | BetterTouchTool | Frontier AI |
-|---------|-----------------|-------------|
-| Gestures | ✅ Excellent | ⚠️ Via OS integration |
-| Window management | ✅ Excellent | ✅ Via MCP tools |
-| Automation | ⚠️ Limited | ✅ Full-featured |
-| AI assistance | ❌ None | ✅ Code generation |
-| Cross-platform | ❌ Mac only | ✅ Mac, Windows, Linux |
-| Data workflows | ❌ None | ✅ ODB + automation |
-| Collaboration | ❌ Single user | ✅ Multi-user |
-| Price | $20-50 one-time | $9/month OR $99 lifetime |
-
-**Note**: Frontier doesn't try to replace BTT's gesture expertise. Users can use both!
+**Bottom Line**: Keyboard Maestro is excellent at what it does (macro automation). Frontier is a different category: full scripting platform with structured data and modern AI integration.
 
 ---
 
-## Market Opportunity Analysis
+## Target Users: Overlap and Expansion
 
-### TAM Expansion
+### Existing KM Users (Opportunity)
 
-**Current Mac Automation Market**:
-- Keyboard Maestro: ~300K users × $36 = $10.8M
-- BetterTouchTool: ~200K users × $30 = $6M
-- **Total**: ~500K users, ~$17M market
+**Who They Are**:
+- Already value local automation
+- Willing to pay for productivity tools
+- Technically savvy (can learn new tools)
 
-**Frontier's Addressable Market**:
-- Mac users (existing): 500K → 5M (10x via AI accessibility)
-- Windows users: +10M (no good automation tool exists)
-- Linux users: +2M (developers, tech enthusiasts)
-- **Total**: ~17M users
+**Why They'd Consider Frontier**:
+- Hit limitations of macro paradigm (need structured data)
+- Want to integrate with Claude Desktop workflows
+- Need collaboration features (team workflows)
+- Interested in modern architecture (MCP, APIs)
 
-**Revenue Potential**:
-- 17M users × 5% paid conversion = 850K paying users
-- 850K × $9/month = $7.65M/month = $91.8M ARR
-- **50x bigger than current Mac automation market**
+**Positioning**: "You've outgrown Keyboard Maestro's macro model. Time for a full scripting platform."
 
 ---
 
-### Why Frontier Wins
+### New Users KM Doesn't Reach (Expansion)
 
-**1. Cross-Platform** = 20x larger market
-- Not just Mac: Windows + Linux too
-- Same automation works everywhere
-- Teams with mixed OS can collaborate
+**Who They Are**:
+- Already using Claude Desktop
+- Want automation but intimidated by KM's complexity
+- Need data-centric workflows (not just action sequences)
+- Work in teams (need collaboration)
 
-**2. AI Assistance** = 10x lower barrier
-- No need to learn macro building
-- Just describe what you want
-- Non-technical users can automate
+**Why They'd Choose Frontier Over KM**:
+- Fits into existing AI workflow (Claude Desktop)
+- Structured data (ODB) for complex workflows
+- Can start simple (AI helps), grow to advanced (scripting)
+- Modern architecture (not learning 22-year-old tool)
 
-**3. Structured Data** = New use cases
-- Not just macros: data-centric workflows
-- Persistent state beyond variables
-- Database-backed automation
-
-**4. Collaboration** = Team multiplier
-- Share automations with team
-- Co-edit workflows
-- Shared data in ODB
-
-**5. MCP Native** = Future-proof
-- Works with Claude Desktop today
-- Works with future AI agents
-- Ecosystem effect: more MCP tools = more powerful
+**Positioning**: "The automation platform that works with your AI tools."
 
 ---
 
-## User Migration Strategy
+## Honest Assessment: What KM Still Does Better
 
-### Phase 1: Make It Easy to Switch
+### KM Advantages (Today)
 
-**Import Keyboard Maestro Macros**:
-```
-Frontier: "I see you have Keyboard Maestro. Import your macros?"
-User: "Yes"
-Frontier: [Scans Keyboard Maestro's macro library]
-AI: "Found 47 macros. I've converted 42 automatically.
-     5 need manual review (use advanced AppleScript features).
-     Should I show you those?"
-```
+**1. Maturity**: 22 years of refinement, edge cases handled
+**2. Community**: Large library of shared macros, active forum
+**3. Documentation**: Comprehensive, battle-tested
+**4. Mac Integration**: Deep hooks into macOS internals
+**5. Proven Stability**: Just works, rarely crashes
 
-**Side-by-side comparison**:
-- Run both tools for transition period
-- Gradually move workflows to Frontier
-- When confident, uninstall Keyboard Maestro
+**Frontier Reality**: We're new. We'll have bugs. Documentation will be sparse initially. Community needs to grow.
 
 ---
 
-### Phase 2: Show What's Newly Possible
+### How Frontier Competes Anyway
 
-**"Here's what you couldn't do before"**:
+**1. Better Architecture**: Built for modern workflows (MCP, APIs, structured data)
+**2. AI Integration**: Seamless with Claude Desktop (KM can't match this)
+**3. Structured Data**: ODB unlocks use cases KM can't handle
+**4. Collaboration**: Teams, not just individuals
+**5. Future-Proof**: MCP ecosystem will grow, KM stays isolated
 
-**Example 1: Cross-Platform**
-```
-"That macro you use on your Mac? Now it works on your Windows work laptop too."
-```
-
-**Example 2: AI Improvement**
-```
-"Your invoice processing macro has 30 actions.
- I simplified it to 8 actions with better error handling.
- Want to see the new version?"
-```
-
-**Example 3: Collaboration**
-```
-"Your team can now use your macros too.
- I've created a shared workflow library."
-```
+**Strategy**: Start with early adopters who value modern architecture more than maturity. Build community over time.
 
 ---
 
-### Phase 3: Community Migration
+## Product Requirements
 
-**Target Keyboard Maestro Forum**:
-- "I rebuilt my KM library in Frontier AI - here's how"
-- Share conversion experiences
-- Offer to help migrate popular macros
-
-**Create comparison content**:
-- "Keyboard Maestro vs Frontier AI: Side-by-side"
-- YouTube video: "I switched from KM to Frontier - here's why"
-- Blog post: "How Frontier AI saved me 10 hours/week"
-
----
-
-## Product Requirements from This Analysis
-
-### Must-Have Features (KM Parity)
+### Must-Have Features (Productivity Essentials)
 
 **1. Visual Workflow Builder**
 - Drag-drop action blocks
-- Condition/loop blocks
-- Variable inspector
+- Show generated UserTalk code
 - Test mode (run without enabling)
 
 **2. Rich Triggers**
-- Hotkey registration (global, app-specific)
-- Text expansion (typed strings)
+- Hotkey registration
+- Text expansion
 - File/folder watches
 - Time-based scheduling
-- App lifecycle events
+- MCP-based triggers
 
 **3. Action Library**
-- File operations (read, write, move, delete)
+- File operations
 - Clipboard operations
-- Keystroke/click simulation
-- Window management
-- Script execution
 - HTTP requests
+- Process execution
 - Notifications
+- ODB operations (read/write/query)
 
-**4. Variables & Logic**
-- Local/global variables
-- Conditionals
-- Loops
-- Functions/subroutines
-
----
-
-### Differentiating Features (Beyond KM)
-
-**1. AI Code Generation**
-- Natural language → automation
-- "Convert this manual workflow to automation"
-- Debug: "Why isn't this working?"
-
-**2. Structured Data (ODB)**
-- Database-backed workflows
-- Persistent state
-- Query/filter data
-- Export to any format
-
-**3. Cross-Platform**
-- Mac, Windows, Linux
-- Same automation works everywhere
-- Cloud sync (optional)
-
-**4. Collaboration**
-- Multi-user editing
-- Shared automation library
-- Team permissions
+**4. Structured Data (ODB)**
+- Persistent tables
+- Query/filter
+- Import/export
+- Version history
 
 **5. MCP Integration**
-- Expose automations as Claude tools
-- Call remote MCP servers
-- Future-proof for AI agents
+- Expose Frontier tools to Claude Desktop
+- Connect to remote MCP servers
+- Dynamic tool discovery
 
 ---
 
-## Pricing Strategy vs Competition
+### Differentiating Features (What KM Can't Do)
 
-### Competitive Landscape
+**1. Deep AI Integration**
+- MCP-native architecture
+- Works with Claude Desktop, other AI tools
+- Optional AI-assisted script writing
 
-| Tool | Price | Model |
-|------|-------|-------|
-| Keyboard Maestro | $36 | One-time |
-| BetterTouchTool | $20-50 | One-time |
-| Alfred Powerpack | $34-64 | One-time |
-| Hazel | $42 | One-time |
+**2. ODB (Structured Data)**
+- Database-backed workflows
+- Not just variables
+- Query, transform, persist
 
-**Mac Automation Average**: $30-40 one-time
+**3. Collaboration**
+- Multi-user ODB
+- Shared automation library
+- Team permissions (future)
 
----
-
-### Frontier Pricing (Revised)
-
-**Consumer Tier**: $99 Lifetime (KM parity)
-- Personal use
-- Unlimited automations
-- AI assistance included
-- All platforms (Mac, Windows, Linux)
-- Cloud sync optional
-
-**OR**: $9/month (for those who prefer subscription)
-
-**Pro Tier**: $199 Lifetime OR $19/month
-- Everything in Consumer
-- Team collaboration (5 users)
-- Priority support
-- Custom connectors
-
-**Why This Works**:
-- Lifetime option removes subscription objection
-- Competitive with Keyboard Maestro ($36) when considering cross-platform value
-- Monthly option for those who want to try first
-- Pro tier for teams (KM has no team option)
+**4. Modern APIs**
+- REST API for external access
+- MCP protocol support
+- Connect to ecosystem of tools
 
 ---
 
-## Marketing Message to KM/BTT Users
+## Pricing Strategy
 
-### Primary Hook
+### Market Context
 
-**"Everything Keyboard Maestro can do, but with AI assistance and cross-platform"**
+**Keyboard Maestro**: $36 one-time
+**BetterTouchTool**: $20-50 one-time
+**Alfred Powerpack**: $34-64 one-time
 
-### Supporting Points
-
-✅ Import your existing KM macros
-✅ AI simplifies and improves them
-✅ Works on Windows and Linux too
-✅ Collaborate with team (not just single-user)
-✅ Natural language: "Organize my Downloads" → done
-✅ MCP-native: Works with Claude Desktop
-✅ One-time purchase option (like KM)
-
-### Social Proof
-
-**"I've used Keyboard Maestro for 10 years. Frontier AI is what I've been waiting for - cross-platform, AI-assisted, and finally collaborative."**
-- Alex, Developer & KM Power User
+**Average Mac Automation Tool**: $30-40 one-time
 
 ---
 
-## Next Steps
+### Frontier Pricing (Preliminary)
 
-### Research Phase (Week 1-2)
-- [ ] Survey 50 Keyboard Maestro users
-- [ ] Interview 10 power users
-- [ ] Analyze top 100 shared macros (what are common patterns?)
-- [ ] Identify most painful limitations
+**Option A: Lifetime Purchase (KM Parity)**
+- $99 lifetime (competitive with KM when considering broader feature set)
+- All features included
+- Free updates for major versions
 
-### Prototype Phase (Week 3-4)
-- [ ] Build KM macro importer (parse plist format)
-- [ ] Demo AI converting KM macro to Frontier automation
-- [ ] Side-by-side comparison video
+**Option B: Subscription (Sustainability)**
+- $9/month or $90/year
+- Continuous updates
+- Cloud sync (optional)
 
-### Launch Phase
-- [ ] Post in Keyboard Maestro forum
-- [ ] Sponsor productivity podcasts
-- [ ] Create migration guide
+**Option C: Hybrid**
+- $99 lifetime desktop license
+- OR $9/month (includes cloud features)
+
+**Decision**: TBD based on user feedback during validation phase
+
+---
+
+## Go-To-Market
+
+### Phase 1: Early Adopters (Months 1-3)
+
+**Target**: Claude Desktop power users + automation enthusiasts
+**Message**: "Give Claude access to your local workflows"
+**Channels**: Hacker News, r/ClaudeAI, automation forums
+
+---
+
+### Phase 2: KM User Outreach (Months 4-6)
+
+**Target**: Keyboard Maestro users hitting limitations
+**Message**: "You've outgrown macros. Time for structured data + AI integration."
+**Channels**: KM forum (respectfully), productivity blogs, comparison content
+
+**Note**: NOT migration path. NOT "replace KM". Position as complementary or next step.
+
+---
+
+### Phase 3: Mainstream Productivity (Months 7-12)
+
+**Target**: Knowledge workers with repetitive tasks
+**Message**: "Automate your work, integrate with AI tools you already use"
+**Channels**: Productivity podcasts, YouTube, Reddit (broader subs)
 
 ---
 
 ## Key Insights
 
-**1. Market is Proven**: 500K+ paying users for Mac automation
-**2. Room for Improvement**: Mac-only, no AI, no collaboration
-**3. Frontier's Edge**: Cross-platform + AI + structured data + MCP
-**4. Migration Path**: Import KM macros, AI improves them
-**5. Pricing**: Competitive with one-time option
-**6. TAM Expansion**: 50x larger market (cross-platform + AI accessibility)
+**1. Market Exists**: 500K+ paying users for Mac automation
+**2. Room for Innovation**: Structured data, AI integration, collaboration
+**3. Honest Positioning**: Full platform with AI integration, not "AI tool"
+**4. Learn from KM**: Visual builder, rich triggers, community-driven
+**5. Differentiate Clearly**: ODB + MCP + modern architecture
+**6. Respect Competition**: KM is excellent at what it does; we do something different
 
 ---
 
 ## Related Documents
 
 - [Mass Market Positioning](MASS_MARKET_POSITIONING.md) - Automation for everyone
-- [AI Automation Platform Vision](AI_AUTOMATION_PLATFORM_VISION.md) - Product vision
+- [AI Automation Platform Vision](AI_AUTOMATION_PLATFORM_VISION.md) - Product details
+- [MCP Integration Architecture](MCP_INTEGRATION_ARCHITECTURE.md) - Technical design
 - [GUI IDE AI Integration](GUI_IDE_AI_INTEGRATION.md) - Visual workflow builder
 
 ---
 
-**Last Updated**: 2026-01-13
-**Status**: Competitive analysis - validates market, identifies gaps
-**Key Insight**: Mac automation tools prove people pay for local automation; Frontier can 50x the market
+**Last Updated**: 2026-01-13 (Revised)
+**Status**: Competitive analysis - productivity focus, honest positioning
+**Key Insight**: Full automation platform with deep AI integration, not AI-first tool
