@@ -1366,6 +1366,14 @@ Error: Can't find a variable named "x"
 
 **Design Goal**: Enable remote REPL access over network with minimal changes to evaluation engine.
 
+**⚠️ Implementation Note**: The REST API will use **Frontier's built-in web server** with UserTalk-based endpoint handlers, rather than embedding an external HTTP library. See [ADR-007: REST API via Frontier's Built-in Web Server](../../architectural_decision_records/ADR-007-rest-api-via-frontier-web-server.md) for architectural decision and rationale.
+
+This provides:
+- Zero external dependencies (Frontier already has HTTP server)
+- UserTalk-based handlers (users can extend API without recompiling)
+- Deep integration with runtime (native evaluation, ODB access)
+- HTTP 1.0 support (sufficient for REST, TLS via reverse proxy)
+
 **Architecture**:
 ```
 ┌───────────────────────┐
