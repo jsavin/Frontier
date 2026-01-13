@@ -34,6 +34,7 @@
 #include "tableinternal.h"
 #include "langxml.h"
 #include "oplist.h"
+#include "logging.h"
 
 /* Token enum for all verbs in the xml processor */
 enum {
@@ -68,26 +69,39 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
             tyvaluerecord newtableval;
             hdlhashtable newtable;
 
+            log_trace(LOG_COMP_LANG, "xml.addtable: entry");
+
             /* Get parent table value directly */
-            if (!gettablevalue(hparam1, 1, &parentht))
+            if (!gettablevalue(hparam1, 1, &parentht)) {
+                log_error(LOG_COMP_LANG, "xml.addtable: gettablevalue failed for parent table");
                 return false;
+            }
 
             /* Get name parameter */
             flnextparamislast = true;
-            if (!getstringvalue(hparam1, 2, name))
+            if (!getstringvalue(hparam1, 2, name)) {
+                log_error(LOG_COMP_LANG, "xml.addtable: getstringvalue failed for name parameter");
                 return false;
+            }
+
+            log_trace(LOG_COMP_LANG, "xml.addtable: creating new table with name '%.*s'", (int)name[0], &name[1]);
 
             /* Get new item address with serial naming */
             getnewitemaddress(parentht, name, &adrnew);
 
             /* Create new table value */
-            if (!tablenewtablevalue(&newtable, &newtableval))
+            if (!tablenewtablevalue(&newtable, &newtableval)) {
+                log_error(LOG_COMP_LANG, "xml.addtable: tablenewtablevalue failed");
                 return false;
+            }
 
             /* Assign the new table to the parent at the serialized address */
-            if (!hashtableassign(adrnew.ht, adrnew.bs, newtableval))
+            if (!hashtableassign(adrnew.ht, adrnew.bs, newtableval)) {
+                log_error(LOG_COMP_LANG, "xml.addtable: hashtableassign failed");
                 return false;
+            }
 
+            log_trace(LOG_COMP_LANG, "xml.addtable: exit (success)");
             /* Return address of newly created table for chaining (GUI: langxml.c:3237) */
             return setaddressvalue(adrnew.ht, adrnew.bs, vreturned);
         }
@@ -101,29 +115,42 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
             bigstring name;
             xmladdress adrnew;
 
+            log_trace(LOG_COMP_LANG, "xml.addvalue: entry");
+
             /* Get parent table value directly */
-            if (!gettablevalue(hparam1, 1, &parentht))
+            if (!gettablevalue(hparam1, 1, &parentht)) {
+                log_error(LOG_COMP_LANG, "xml.addvalue: gettablevalue failed for parent table");
                 return false;
+            }
 
             /* Get name parameter */
-            if (!getstringvalue(hparam1, 2, name))
+            if (!getstringvalue(hparam1, 2, name)) {
+                log_error(LOG_COMP_LANG, "xml.addvalue: getstringvalue failed for name parameter");
                 return false;
+            }
 
             /* Get value parameter */
             flnextparamislast = true;
-            if (!getparamvalue(hparam1, 3, &val))
+            if (!getparamvalue(hparam1, 3, &val)) {
+                log_error(LOG_COMP_LANG, "xml.addvalue: getparamvalue failed for value parameter");
                 return false;
+            }
+
+            log_trace(LOG_COMP_LANG, "xml.addvalue: adding value with name '%.*s'", (int)name[0], &name[1]);
 
             /* Get new item address with serial naming */
             getnewitemaddress(parentht, name, &adrnew);
 
             /* Assign the value to the parent at the serialized address */
-            if (!hashtableassign(adrnew.ht, adrnew.bs, val))
+            if (!hashtableassign(adrnew.ht, adrnew.bs, val)) {
+                log_error(LOG_COMP_LANG, "xml.addvalue: hashtableassign failed");
                 return false;
+            }
 
             /* Exempt from temp stack cleanup (GUI: langxml.c:3270) */
             exemptfromtmpstack(&val);
 
+            log_trace(LOG_COMP_LANG, "xml.addvalue: exit (success)");
             /* Return address of newly created value for chaining (GUI: langxml.c:3272) */
             return setaddressvalue(adrnew.ht, adrnew.bs, vreturned);
         }
@@ -135,19 +162,30 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
             Handle hxmltext;
             xmladdress adr;
 
+            log_trace(LOG_COMP_LANG, "xml.compile: entry");
+
             /* Get XML string parameter - gettextvalue returns a Handle to text */
-            if (!gettextvalue(hparam1, 1, &hxmltext))
+            if (!gettextvalue(hparam1, 1, &hxmltext)) {
+                log_error(LOG_COMP_LANG, "xml.compile: gettextvalue failed for XML string");
                 return false;
+            }
 
             /* Get table address parameter - getvarparam gets variable reference */
             flnextparamislast = true;
-            if (!getvarparam(hparam1, 2, &adr.ht, adr.bs))
+            if (!getvarparam(hparam1, 2, &adr.ht, adr.bs)) {
+                log_error(LOG_COMP_LANG, "xml.compile: getvarparam failed for table address");
                 return false;
+            }
+
+            log_trace(LOG_COMP_LANG, "xml.compile: calling xmlcompile");
 
             /* Call existing XML parser to populate the table */
-            if (!xmlcompile(hxmltext, &adr))
+            if (!xmlcompile(hxmltext, &adr)) {
+                log_error(LOG_COMP_LANG, "xml.compile: xmlcompile failed");
                 return false;
+            }
 
+            log_trace(LOG_COMP_LANG, "xml.compile: exit (success)");
             return setbooleanvalue(true, vreturned);
         }
         case xmlv_decompile: {
@@ -158,15 +196,24 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
             hdlhashtable ht;
             Handle hxmltext;
 
+            log_trace(LOG_COMP_LANG, "xml.decompile: entry");
+
             /* Get table value parameter - gettablevalue gets the table directly */
             flnextparamislast = true;
-            if (!gettablevalue(hparam1, 1, &ht))
+            if (!gettablevalue(hparam1, 1, &ht)) {
+                log_error(LOG_COMP_LANG, "xml.decompile: gettablevalue failed for table parameter");
                 return false;
+            }
+
+            log_trace(LOG_COMP_LANG, "xml.decompile: calling xmldecompile");
 
             /* Call existing XML serializer to generate XML string */
-            if (!xmldecompile(ht, &hxmltext))
+            if (!xmldecompile(ht, &hxmltext)) {
+                log_error(LOG_COMP_LANG, "xml.decompile: xmldecompile failed");
                 return false;
+            }
 
+            log_trace(LOG_COMP_LANG, "xml.decompile: exit (success)");
             /* Return the XML text as a string */
             return setheapvalue(hxmltext, stringvaluetype, vreturned);
         }
@@ -177,19 +224,30 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
             hdlhashtable ht;
             bigstring name;
 
+            log_trace(LOG_COMP_LANG, "xml.getaddress: entry");
+
             /* Get table value parameter */
-            if (!gettablevalue(hparam1, 1, &ht))
+            if (!gettablevalue(hparam1, 1, &ht)) {
+                log_error(LOG_COMP_LANG, "xml.getaddress: gettablevalue failed for table parameter");
                 return false;
+            }
 
             /* Get name parameter */
             flnextparamislast = true;
-            if (!getstringvalue(hparam1, 2, name))
+            if (!getstringvalue(hparam1, 2, name)) {
+                log_error(LOG_COMP_LANG, "xml.getaddress: getstringvalue failed for name parameter");
                 return false;
+            }
+
+            log_trace(LOG_COMP_LANG, "xml.getaddress: searching for element '%.*s'", (int)name[0], &name[1]);
 
             /* Find first matching element by name */
-            if (!xmlgetaddress(ht, name))
+            if (!xmlgetaddress(ht, name)) {
+                log_error(LOG_COMP_LANG, "xml.getaddress: xmlgetaddress failed (element not found)");
                 return false;
+            }
 
+            log_trace(LOG_COMP_LANG, "xml.getaddress: exit (success)");
             /* Return address of the found element */
             return setaddressvalue(ht, name, vreturned);
         }
@@ -207,20 +265,28 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
             hdllistrecord hlist;
             bigstring bserror;
 
+            log_trace(LOG_COMP_LANG, "xml.getaddresslist: entry");
+
             /* Get table address parameter (GUI: langxml.c:3369) */
-            if (!getvarparam(hparam1, 1, &ht, varname))
+            if (!getvarparam(hparam1, 1, &ht, varname)) {
+                log_error(LOG_COMP_LANG, "xml.getaddresslist: getvarparam failed for table address");
                 return false;
+            }
 
             /* Look up the value to check its type (GUI: langxml.c:3372) */
-            if (!langsymbolreference(ht, varname, &val, &hnode))
+            if (!langsymbolreference(ht, varname, &val, &hnode)) {
+                log_error(LOG_COMP_LANG, "xml.getaddresslist: langsymbolreference failed");
                 return false;
+            }
 
             /* Handle string-address edge case (GUI: langxml.c:3375-3376) */
             if (val.valuetype == stringvaluetype) {
+                log_trace(LOG_COMP_LANG, "xml.getaddresslist: string value type, returning empty list");
                 ht = nil;  /* Will return empty list */
             } else {
                 /* Convert value to table (GUI: langxml.c:3379-3389) */
                 if (!tablevaltotable(val, &ht, hnode)) {
+                    log_error(LOG_COMP_LANG, "xml.getaddresslist: tablevaltotable failed (not a table)");
                     if (!fllangerror) {
                         copystring(BIGSTRING("\pCan't coerce the value because it's not a table"), bserror);
                         langerrormessage(bserror);
@@ -230,20 +296,30 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
             }
 
             /* Get name parameter */
-            if (!getstringvalue(hparam1, 2, name))
+            if (!getstringvalue(hparam1, 2, name)) {
+                log_error(LOG_COMP_LANG, "xml.getaddresslist: getstringvalue failed for name parameter");
                 return false;
+            }
 
             /* Get optional justone parameter */
             if (langgetparamcount(hparam1) > 2) {
                 flnextparamislast = true;
-                if (!getbooleanvalue(hparam1, 3, &justone))
+                if (!getbooleanvalue(hparam1, 3, &justone)) {
+                    log_error(LOG_COMP_LANG, "xml.getaddresslist: getbooleanvalue failed for justone parameter");
                     return false;
+                }
             }
 
-            /* Find all matching elements (handles nil ht gracefully) */
-            if (!xmlgetaddresslist(ht, name, justone, &hlist))
-                return false;
+            log_trace(LOG_COMP_LANG, "xml.getaddresslist: calling xmlgetaddresslist for '%.*s', justone=%d",
+                      (int)name[0], &name[1], justone);
 
+            /* Find all matching elements (handles nil ht gracefully) */
+            if (!xmlgetaddresslist(ht, name, justone, &hlist)) {
+                log_error(LOG_COMP_LANG, "xml.getaddresslist: xmlgetaddresslist failed");
+                return false;
+            }
+
+            log_trace(LOG_COMP_LANG, "xml.getaddresslist: exit (success)");
             /* Return list of addresses */
             return setheapvalue((Handle)hlist, listvaluetype, vreturned);
         }
@@ -254,19 +330,30 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
             hdlhashtable ht;
             bigstring name;
 
+            log_trace(LOG_COMP_LANG, "xml.getattribute: entry");
+
             /* Get table value parameter */
-            if (!gettablevalue(hparam1, 1, &ht))
+            if (!gettablevalue(hparam1, 1, &ht)) {
+                log_error(LOG_COMP_LANG, "xml.getattribute: gettablevalue failed for table parameter");
                 return false;
+            }
 
             /* Get attribute name parameter */
             flnextparamislast = true;
-            if (!getstringvalue(hparam1, 2, name))
+            if (!getstringvalue(hparam1, 2, name)) {
+                log_error(LOG_COMP_LANG, "xml.getattribute: getstringvalue failed for name parameter");
                 return false;
+            }
+
+            log_trace(LOG_COMP_LANG, "xml.getattribute: searching for attribute '%.*s'", (int)name[0], &name[1]);
 
             /* Get attributes subtable and verify attribute exists */
-            if (!xmlgetattribute(ht, name, &ht))
+            if (!xmlgetattribute(ht, name, &ht)) {
+                log_error(LOG_COMP_LANG, "xml.getattribute: xmlgetattribute failed (attribute not found)");
                 return false;
+            }
 
+            log_trace(LOG_COMP_LANG, "xml.getattribute: exit (success)");
             /* Return address of the attribute */
             return setaddressvalue(ht, name, vreturned);
         }
@@ -279,23 +366,34 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
             tyvaluerecord val;
             hdlhashnode hnode;
 
+            log_trace(LOG_COMP_LANG, "xml.getattributevalue: entry");
+
             /* Get table value parameter */
-            if (!gettablevalue(hparam1, 1, &ht))
+            if (!gettablevalue(hparam1, 1, &ht)) {
+                log_error(LOG_COMP_LANG, "xml.getattributevalue: gettablevalue failed for table parameter");
                 return false;
+            }
 
             /* Get attribute name parameter */
             flnextparamislast = true;
-            if (!getstringvalue(hparam1, 2, name))
+            if (!getstringvalue(hparam1, 2, name)) {
+                log_error(LOG_COMP_LANG, "xml.getattributevalue: getstringvalue failed for name parameter");
                 return false;
+            }
 
             /* Get attributes subtable and verify attribute exists */
-            if (!xmlgetattribute(ht, name, &ht))
+            if (!xmlgetattribute(ht, name, &ht)) {
+                log_error(LOG_COMP_LANG, "xml.getattributevalue: xmlgetattribute failed");
                 return false;
+            }
 
             /* Look up the attribute value in the attributes table */
-            if (!hashtablelookup(ht, name, &val, &hnode))
+            if (!hashtablelookup(ht, name, &val, &hnode)) {
+                log_error(LOG_COMP_LANG, "xml.getattributevalue: hashtablelookup failed");
                 return false;
+            }
 
+            log_trace(LOG_COMP_LANG, "xml.getattributevalue: exit (success)");
             /* Return copy of the attribute value */
             return copyvaluerecord(val, vreturned);
         }
@@ -309,28 +407,40 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
             tyvaluerecord val;
             hdlhashnode hnode;
 
+            log_trace(LOG_COMP_LANG, "xml.getvalue: entry");
+
             /* Get table value parameter */
-            if (!gettablevalue(hparam1, 1, &ht))
+            if (!gettablevalue(hparam1, 1, &ht)) {
+                log_error(LOG_COMP_LANG, "xml.getvalue: gettablevalue failed for table parameter");
                 return false;
+            }
 
             /* Get name parameter */
             flnextparamislast = true;
-            if (!getstringvalue(hparam1, 2, name))
+            if (!getstringvalue(hparam1, 2, name)) {
+                log_error(LOG_COMP_LANG, "xml.getvalue: getstringvalue failed for name parameter");
                 return false;
+            }
+
+            log_trace(LOG_COMP_LANG, "xml.getvalue: searching for element '%.*s'", (int)name[0], &name[1]);
 
             /* Find first matching element by name (GUI: langxml.c:3300) */
-            if (!xmlgetaddress(ht, name))
+            if (!xmlgetaddress(ht, name)) {
+                log_error(LOG_COMP_LANG, "xml.getvalue: xmlgetaddress failed");
                 return false;
+            }
 
             /* Look up the value at the address (GUI: langxml.c:3303) */
             hashtablelookup(ht, name, &val, &hnode);
 
             /* If value is a table, try to get /pcdata or /contents (GUI: langxml.c:3305-3307) */
             if (langexternalvaltotable(val, &ht, hnode)) {
+                log_trace(LOG_COMP_LANG, "xml.getvalue: value is table, checking for /pcdata or /contents");
                 if (!hashtablelookup(ht, BIGSTRING("\x07/pcdata"), &val, &hnode))
                     hashtablelookup(ht, BIGSTRING("\x09/contents"), &val, &hnode);
             }
 
+            log_trace(LOG_COMP_LANG, "xml.getvalue: exit (success)");
             /* Return copy of the value */
             return copyvaluerecord(val, vreturned);
         }
@@ -343,21 +453,32 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
             long indentlevel = 0;
             Handle hresult;
 
+            log_trace(LOG_COMP_LANG, "xml.valtostring: entry");
+
             /* Get value parameter directly (GUI: langxml.c:3484) */
-            if (!getparamvalue(hparam1, 1, &val))
+            if (!getparamvalue(hparam1, 1, &val)) {
+                log_error(LOG_COMP_LANG, "xml.valtostring: getparamvalue failed for value parameter");
                 return false;
+            }
 
             /* Get indent level parameter (optional, defaults to 0) */
             if (langgetparamcount(hparam1) > 1) {
                 flnextparamislast = true;
-                if (!getlongvalue(hparam1, 2, &indentlevel))
+                if (!getlongvalue(hparam1, 2, &indentlevel)) {
+                    log_error(LOG_COMP_LANG, "xml.valtostring: getlongvalue failed for indentlevel parameter");
                     return false;
+                }
             }
 
-            /* Call xmlvaltostring with fltranslatestrings = true */
-            if (!xmlvaltostring(val, (short)indentlevel, true, &hresult))
-                return false;
+            log_trace(LOG_COMP_LANG, "xml.valtostring: calling xmlvaltostring with indentlevel=%ld", indentlevel);
 
+            /* Call xmlvaltostring with fltranslatestrings = true */
+            if (!xmlvaltostring(val, (short)indentlevel, true, &hresult)) {
+                log_error(LOG_COMP_LANG, "xml.valtostring: xmlvaltostring failed");
+                return false;
+            }
+
+            log_trace(LOG_COMP_LANG, "xml.valtostring: exit (success)");
             /* Return the XML text as a string */
             return setheapvalue(hresult, stringvaluetype, vreturned);
         }
@@ -371,30 +492,45 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
             long indentlevel;
             hdlhashnode hnode;
 
-            /* Get address parameter */
-            if (!getaddressparam(hparam1, 1, &val))
-                return false;
+            log_trace(LOG_COMP_LANG, "xml.frontiervaluetotaggedtext: entry");
 
-            if (!getaddressvalue(val, &ht, bs))
+            /* Get address parameter */
+            if (!getaddressparam(hparam1, 1, &val)) {
+                log_error(LOG_COMP_LANG, "xml.frontiervaluetotaggedtext: getaddressparam failed");
                 return false;
+            }
+
+            if (!getaddressvalue(val, &ht, bs)) {
+                log_error(LOG_COMP_LANG, "xml.frontiervaluetotaggedtext: getaddressvalue failed");
+                return false;
+            }
 
             /* Get indent level parameter (defaults handled by getlongvalue) */
             flnextparamislast = true;
 
-            if (!getlongvalue(hparam1, 2, &indentlevel))
+            if (!getlongvalue(hparam1, 2, &indentlevel)) {
+                log_error(LOG_COMP_LANG, "xml.frontiervaluetotaggedtext: getlongvalue failed for indentlevel");
                 return false;
+            }
 
             /* Look up the value in the hash table */
-            if (!langhashtablelookup(ht, bs, &val, &hnode))
+            if (!langhashtablelookup(ht, bs, &val, &hnode)) {
+                log_error(LOG_COMP_LANG, "xml.frontiervaluetotaggedtext: langhashtablelookup failed");
                 return false;
+            }
+
+            log_trace(LOG_COMP_LANG, "xml.frontiervaluetotaggedtext: calling xmlfrontiervaltotaggedtext with indentlevel=%ld", indentlevel);
 
             /* Convert to XML-RPC tagged text
              * Pass HNoNode instead of hnode to avoid context issues when serializing
              * nested structures. The hnode from the parameter lookup isn't relevant
              * for serializing the value's internal structure. */
-            if (!xmlfrontiervaltotaggedtext(&val, indentlevel, &htext, HNoNode))
+            if (!xmlfrontiervaltotaggedtext(&val, indentlevel, &htext, HNoNode)) {
+                log_error(LOG_COMP_LANG, "xml.frontiervaluetotaggedtext: xmlfrontiervaltotaggedtext failed");
                 return false;
+            }
 
+            log_trace(LOG_COMP_LANG, "xml.frontiervaluetotaggedtext: exit (success)");
             /* Return the XML text as a string */
             return setheapvalue(htext, stringvaluetype, vreturned);
         }
@@ -408,35 +544,51 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
             tyaddress adrstruct;
             tyvaluerecord frontierval;
 
-            /* Get XML struct address parameter */
-            if (!getaddressparam(hparam1, 1, &val))
-                return false;
+            log_trace(LOG_COMP_LANG, "xml.structtofrontiervalue: entry");
 
-            if (!getaddressvalue(val, &adrstruct.ht, adrstruct.bs))
+            /* Get XML struct address parameter */
+            if (!getaddressparam(hparam1, 1, &val)) {
+                log_error(LOG_COMP_LANG, "xml.structtofrontiervalue: getaddressparam failed for struct address");
                 return false;
+            }
+
+            if (!getaddressvalue(val, &adrstruct.ht, adrstruct.bs)) {
+                log_error(LOG_COMP_LANG, "xml.structtofrontiervalue: getaddressvalue failed for struct");
+                return false;
+            }
 
             /* Get frontier value address parameter (out parameter) */
             flnextparamislast = true;
-            if (!getaddressparam(hparam1, 2, &val))
+            if (!getaddressparam(hparam1, 2, &val)) {
+                log_error(LOG_COMP_LANG, "xml.structtofrontiervalue: getaddressparam failed for output address");
                 return false;
+            }
 
-            if (!getaddressvalue(val, &adrfrontierval.ht, adrfrontierval.bs))
+            if (!getaddressvalue(val, &adrfrontierval.ht, adrfrontierval.bs)) {
+                log_error(LOG_COMP_LANG, "xml.structtofrontiervalue: getaddressvalue failed for output");
                 return false;
+            }
+
+            log_trace(LOG_COMP_LANG, "xml.structtofrontiervalue: calling xmlstructtofrontiervalue");
 
             /* Call xmlstructtofrontiervalue to convert the structure */
-            if (!xmlstructtofrontiervalue(&adrstruct, &frontierval))
+            if (!xmlstructtofrontiervalue(&adrstruct, &frontierval)) {
+                log_error(LOG_COMP_LANG, "xml.structtofrontiervalue: xmlstructtofrontiervalue failed");
                 return false;
+            }
 
             /* Exempt from temp stack cleanup (GUI: langxml.c:3552) */
             exemptfromtmpstack(&frontierval);
 
             /* Assign the converted value to the output parameter */
             if (!hashtableassign(adrfrontierval.ht, adrfrontierval.bs, frontierval)) {
+                log_error(LOG_COMP_LANG, "xml.structtofrontiervalue: hashtableassign failed");
                 /* Clean up on failure (GUI: langxml.c:3556) */
                 disposevaluerecord(frontierval, false);
                 return false;
             }
 
+            log_trace(LOG_COMP_LANG, "xml.structtofrontiervalue: exit (success)");
             return setbooleanvalue(true, vreturned);
         }
         case xmlv_getpathaddress: {
@@ -449,33 +601,52 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
             Handle path;
             boolean fl;
 
-            /* Get table address parameter */
-            if (!getaddressparam(hparam1, 1, &val))
-                return false;
+            log_trace(LOG_COMP_LANG, "xml.getpathaddress: entry");
 
-            if (!getaddressvalue(val, &xtable.ht, xtable.bs))
+            /* Get table address parameter */
+            if (!getaddressparam(hparam1, 1, &val)) {
+                log_error(LOG_COMP_LANG, "xml.getpathaddress: getaddressparam failed for table address");
                 return false;
+            }
+
+            if (!getaddressvalue(val, &xtable.ht, xtable.bs)) {
+                log_error(LOG_COMP_LANG, "xml.getpathaddress: getaddressvalue failed for table");
+                return false;
+            }
 
             /* Get path string parameter */
-            if (!getreadonlytextvalue(hparam1, 2, &path))
+            if (!getreadonlytextvalue(hparam1, 2, &path)) {
+                log_error(LOG_COMP_LANG, "xml.getpathaddress: getreadonlytextvalue failed for path");
                 return false;
+            }
 
             /* Get result address parameter (out parameter) */
             flnextparamislast = true;
-            if (!getaddressparam(hparam1, 3, &val))
+            if (!getaddressparam(hparam1, 3, &val)) {
+                log_error(LOG_COMP_LANG, "xml.getpathaddress: getaddressparam failed for result address");
                 return false;
+            }
 
-            if (!getaddressvalue(val, &adrresult.ht, adrresult.bs))
+            if (!getaddressvalue(val, &adrresult.ht, adrresult.bs)) {
+                log_error(LOG_COMP_LANG, "xml.getpathaddress: getaddressvalue failed for result");
                 return false;
+            }
+
+            log_trace(LOG_COMP_LANG, "xml.getpathaddress: calling xmlgetpathaddress");
 
             /* Navigate through the path and find the target element */
-            if (!xmlgetpathaddress(&xtable, path, &adr, &fl))
+            if (!xmlgetpathaddress(&xtable, path, &adr, &fl)) {
+                log_error(LOG_COMP_LANG, "xml.getpathaddress: xmlgetpathaddress failed");
                 return false;
+            }
 
             /* Store the result address in the output parameter */
-            if (!langassignaddressvalue(adrresult.ht, adrresult.bs, &adr))
+            if (!langassignaddressvalue(adrresult.ht, adrresult.bs, &adr)) {
+                log_error(LOG_COMP_LANG, "xml.getpathaddress: langassignaddressvalue failed");
                 return false;
+            }
 
+            log_trace(LOG_COMP_LANG, "xml.getpathaddress: exit (success, path valid=%d)", fl);
             /* Return boolean indicating if path was valid */
             return setbooleanvalue(fl, vreturned);
         }
@@ -486,15 +657,24 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
              * Returns: string (display name without serial encoding) */
             bigstring name;
 
+            log_trace(LOG_COMP_LANG, "xml.converttodisplayname: entry");
+
             /* Get name parameter */
             flnextparamislast = true;
-            if (!getstringvalue(hparam1, 1, name))
+            if (!getstringvalue(hparam1, 1, name)) {
+                log_error(LOG_COMP_LANG, "xml.converttodisplayname: getstringvalue failed for name parameter");
                 return false;
+            }
+
+            log_trace(LOG_COMP_LANG, "xml.converttodisplayname: processing name '%.*s'", (int)name[0], &name[1]);
 
             /* Call xmlgetname to process the name (strip serial prefix, decode entities) */
-            if (!xmlgetname(name))
+            if (!xmlgetname(name)) {
+                log_error(LOG_COMP_LANG, "xml.converttodisplayname: xmlgetname failed");
                 return false;
+            }
 
+            log_trace(LOG_COMP_LANG, "xml.converttodisplayname: exit (success, result='%.*s')", (int)name[0], &name[1]);
             /* Return the processed display name */
             return setstringvalue(name, vreturned);
         }
