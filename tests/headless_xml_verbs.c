@@ -137,13 +137,15 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
         }
         case xmlv_addvalue: {
             /* Verb #1: xml.addvalue(adrParent, name, value)
-             * @IMPLEMENTED - Create value with serial naming
+             * @IMPLEMENTED - Create value with serial naming, with overwrite semantics
+             * 2026-01-12: If name already exists, deletes old entry first (overwrite behavior)
              * Calls getnewitemaddress() for serial naming and assigns value
-             * Returns: boolean (true on success) */
+             * Returns: address of newly created value */
             tyvaluerecord val, valcopy;
             hdlhashtable parentht;
-            bigstring name;
+            bigstring name, bsexisting;
             xmladdress adrnew;
+            hdlhashnode hn;
 
             log_trace(LOG_COMP_LANG, "xml.addvalue: entry");
 
@@ -167,6 +169,20 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
             }
 
             log_trace(LOG_COMP_LANG, "xml.addvalue: adding value with name '%.*s'", (int)name[0], &name[1]);
+
+            /* 2026-01-12: Check if name already exists and delete it (overwrite semantics)
+             * This allows xml.addValue to be called multiple times with same name */
+            copystring(name, bsexisting);
+            disablelangerror();
+            boolean exists = xmlgetaddress(parentht, bsexisting);
+            enablelangerror();
+
+            if (exists) {
+                log_trace(LOG_COMP_LANG, "xml.addvalue: found existing entry '%.*s', deleting for overwrite", (int)bsexisting[0], &bsexisting[1]);
+                if (!hashtabledelete(parentht, bsexisting)) {
+                    log_warn(LOG_COMP_LANG, "xml.addvalue: hashtabledelete failed for existing entry (continuing anyway)");
+                }
+            }
 
             /* Get new item address with serial naming */
             getnewitemaddress(parentht, name, &adrnew);

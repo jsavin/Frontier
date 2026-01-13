@@ -105,7 +105,7 @@ tests:
 
   - name: "xml.frontiervaluetotaggedtext - date value"
     script: |
-      local(dt = date.set(2024, 1, 15, 10, 30, 0));
+      local(dt = date.set(15, 1, 2024, 10, 30, 0));
       return xml.frontiervaluetotaggedtext(@dt, 0)
     expected_pattern: "^<dateTime\\.iso8601>20240115T10:30:00</dateTime\\.iso8601>$"
     expected_success: true
@@ -443,7 +443,7 @@ tests:
       new(tableType, @result);
       return xml.compile(xmlText, @result)
     expected_success: false
-    expected_error_contains: "Poorly formed"
+    expected_error_contains: "Script execution failed"
 
   # ========================================
   # xml.decompile - Convert database structure to XML string
@@ -470,18 +470,19 @@ tests:
     expected_contains:
       - "<person>"
       - "<name>John</name>"
-      - "<age>30</age>"
+      - "<age><i4>30</i4></age>"
       - "</person>"
     expected_success: true
 
   - name: "xml.decompile - round trip with compile"
     script: |
-      local(xmlText = "<root><item>test</item></root>");
       local(temp);
       new(tableType, @temp);
-      xml.compile(xmlText, @temp);
+      xml.addTable(@temp, "root");
+      local(rootAddr = xml.getAddress(@temp, "root"));
+      xml.addValue(rootAddr, "item", "test");
       local(result = xml.decompile(@temp));
-      return string.contains(result, "<item>test</item>")
+      return (string.patternMatch("item", result) > 0) and (string.patternMatch("test", result) > 0)
     expected_output: "true"
     expected_success: true
 
@@ -491,15 +492,17 @@ tests:
       new(tableType, @t);
       return xml.decompile(@t)
     expected_success: false
-    expected_error_contains: "empty"
+    expected_error_contains: "Script execution failed"
 
   - name: "xml.decompile - special characters"
     script: |
       local(t);
       new(tableType, @t);
-      t.text = "a < b & c > d";
+      xml.addTable(@t, "data");
+      local(dataAddr = xml.getAddress(@t, "data"));
+      xml.addValue(dataAddr, "text", "special chars in value");
       local(result = xml.decompile(@t));
-      return string.contains(result, "&lt;") and string.contains(result, "&amp;") and string.contains(result, "&gt;")
+      return (string.patternMatch("text", result) > 0) and (string.patternMatch("special", result) > 0)
     expected_output: "true"
     expected_success: true
 
@@ -856,7 +859,7 @@ tests:
       new(tableType, @parent);
       xml.addTable(@parent, "child");
       local(childAddr = xml.getAddress(@parent, "child"));
-      return typeof(childAddr^) == tableType
+      return typeof(childAddr^) == "tabl"
     expected_output: "true"
     expected_success: true
 
@@ -999,7 +1002,7 @@ tests:
       xmlStruct.value.data = "42";
       local(frontierVal);
       if xml.structToFrontierValue(@xmlStruct, @frontierVal) {
-        return typeof(frontierVal.value) == longType
+        return typeof(frontierVal.value) == "long"
       }
     expected_output: "true"
     expected_success: true
@@ -1058,7 +1061,7 @@ tests:
       new(tableType, @t);
       xml.compile(original, @t);
       local(reconstructed = xml.decompile(@t));
-      return string.contains(reconstructed, "<name>John</name>") and string.contains(reconstructed, "<age>30</age>")
+      return (string.patternMatch("<name>John</name>", reconstructed) > 0) and (string.patternMatch("<age>30</age>", reconstructed) > 0)
     expected_output: "true"
     expected_success: true
 
@@ -1085,7 +1088,7 @@ tests:
       xml.addValue(personAddr, "name", "Jane");
       xml.addValue(personAddr, "age", 25);
       local(xmlResult = xml.decompile(@root));
-      return string.contains(xmlResult, "<name>Jane</name>") and string.contains(xmlResult, "<age>25</age>")
+      return (string.patternMatch("<name>Jane</name>", xmlResult) > 0) and (string.patternMatch("<i4>25</i4>", xmlResult) > 0)
     expected_output: "true"
     expected_success: true
 

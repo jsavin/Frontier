@@ -57,7 +57,11 @@
 #define STR_i4		(BIGSTRING ("\x02" "i4"))
 #define STR_i2		(BIGSTRING ("\x02" "i2"))
 #define STR_i1		(BIGSTRING ("\x02" "i1"))
+#define STR_int		(BIGSTRING ("\x03" "int"))
 #define STR_float	(BIGSTRING ("\x05" "float"))
+#define STR_double	(BIGSTRING ("\x06" "double"))
+#define STR_boolean	(BIGSTRING ("\x07" "boolean"))
+#define STR_string	(BIGSTRING ("\x06" "string"))
 
 #define STR_base64_begin	(BIGSTRING ("\x08" "<base64>"))
 #define STR_base64_end		(BIGSTRING ("\x09" "</base64>"))
@@ -820,34 +824,209 @@ boolean xmlstructtofrontiervalue (tyaddress *adrstruct, tyvaluerecord *v) {
 				return (false);
 		}
 	else if (equalstrings (bsname, STR_base64)) {
-		
+
 		Handle htext;
 
 		if (!copyvaluerecord (vstruct, &vstruct)
 				|| !coercetostring (&vstruct))
 			return (false);
-		
+
 		if (!newemptyhandle (&htext))
 			return (false);
-			
+
 		if (!base64decodehandle (vstruct.data.stringvalue, htext)) {
-			
+
 			disposehandle (htext);
-			
+
 			return (false);
 			}
-		
+
 		setbinaryvalue (htext, '\?\?\?\?', &val);
 		}
-	else {
+	else if (equalstrings (bsname, STR_i4) || equalstrings (bsname, STR_int)) {
+		/* 2026-01-12: Type tag coercion for XML-RPC <i4> or <int> */
+		long longval;
 
+		if (!copyvaluerecord (vstruct, &val) || !coercetostring (&val))
+			return (false);
+
+		if (!stringtonumber (val.data.stringvalue, &longval)) {
+			disposevaluerecord (val, false);
+			return (false);
+		}
+
+		disposevaluerecord (val, false);
+		setlongvalue (longval, &val);
+		}
+	else if (equalstrings (bsname, STR_i1) || equalstrings (bsname, STR_i2)) {
+		/* 2026-01-12: Type tag coercion for XML-RPC <i1> or <i2> (short integer) */
+		long longval;
+
+		if (!copyvaluerecord (vstruct, &val) || !coercetostring (&val))
+			return (false);
+
+		if (!stringtonumber (val.data.stringvalue, &longval)) {
+			disposevaluerecord (val, false);
+			return (false);
+		}
+
+		disposevaluerecord (val, false);
+		setintvalue ((short)longval, &val);
+		}
+	else if (equalstrings (bsname, STR_float) || equalstrings (bsname, STR_double)) {
+		/* 2026-01-12: Type tag coercion for XML-RPC <float> or <double> */
+		double doubleval;
+		bigstring bs;
+
+		if (!copyvaluerecord (vstruct, &val) || !coercetostring (&val))
+			return (false);
+
+		texthandletostring (val.data.stringvalue, bs);
+
+		if (!stringtofloat (bs, &doubleval)) {
+			disposevaluerecord (val, false);
+			return (false);
+		}
+
+		disposevaluerecord (val, false);
+		setdoublevalue (doubleval, &val);
+		}
+	else if (equalstrings (bsname, STR_boolean)) {
+		/* 2026-01-12: Type tag coercion for XML-RPC <boolean> */
+		boolean boolval;
+
+		if (!copyvaluerecord (vstruct, &val) || !coercetoboolean (&val))
+			return (false);
+
+		boolval = val.data.flvalue;
+		disposevaluerecord (val, false);
+		setbooleanvalue (boolval, &val);
+		}
+	else {
+		/* 2026-01-12: Check if this is a type/data pair structure
+		 * (e.g., { type: "i4", data: "42" }) and handle type coercion
+		 * OR if it's a table of members to recursively convert */
+		hdlhashtable ht, htnew;
+		tyvaluerecord vtype, vdata;
+		hdlhashnode hnode, hn;
+		bigstring bstype;
+		long ix;
+
+		if (langexternalvaltotable (vstruct, &ht, hnode)) {
+			/* It's a table - check for type/data pattern first */
+			if (hashtablelookup (ht, BIGSTRING("\x04" "type"), &vtype, &hnode) &&
+			    hashtablelookup (ht, BIGSTRING("\x04" "data"), &vdata, &hnode)) {
+				/* Found type/data pattern - coerce based on type */
+				if (vtype.valuetype == stringvaluetype) {
+					pullstringvalue (&vtype, bstype);
+
+					if (equalstrings (bstype, STR_i4) || equalstrings (bstype, STR_int)) {
+						long longval;
+						bigstring bs;
+						if (!copyvaluerecord (vdata, &val) || !coercetostring (&val))
+							return (false);
+						texthandletostring (val.data.stringvalue, bs);
+						if (!stringtonumber (bs, &longval)) {
+							disposevaluerecord (val, false);
+							return (false);
+						}
+						disposevaluerecord (val, false);
+						setlongvalue (longval, &val);
+						goto done;
+					}
+					else if (equalstrings (bstype, STR_i1) || equalstrings (bstype, STR_i2)) {
+						long longval;
+						bigstring bs;
+						if (!copyvaluerecord (vdata, &val) || !coercetostring (&val))
+							return (false);
+						texthandletostring (val.data.stringvalue, bs);
+						if (!stringtonumber (bs, &longval)) {
+							disposevaluerecord (val, false);
+							return (false);
+						}
+						disposevaluerecord (val, false);
+						setintvalue ((short)longval, &val);
+						goto done;
+					}
+					else if (equalstrings (bstype, STR_float) || equalstrings (bstype, STR_double)) {
+						double doubleval;
+						bigstring bs;
+						if (!copyvaluerecord (vdata, &val) || !coercetostring (&val))
+							return (false);
+						texthandletostring (val.data.stringvalue, bs);
+						if (!stringtofloat (bs, &doubleval)) {
+							disposevaluerecord (val, false);
+							return (false);
+						}
+						disposevaluerecord (val, false);
+						setdoublevalue (doubleval, &val);
+						goto done;
+					}
+					else if (equalstrings (bstype, STR_boolean)) {
+						boolean boolval;
+						if (!copyvaluerecord (vdata, &val) || !coercetoboolean (&val))
+							return (false);
+						boolval = val.data.flvalue;
+						disposevaluerecord (val, false);
+						setbooleanvalue (boolval, &val);
+						goto done;
+					}
+				}
+			}
+			else {
+				/* Not a type/data pattern - check if it's a table of members to convert */
+				/* Create a new table to hold converted values */
+				if (!tablenewtablevalue (&htnew, &val))
+					return (false);
+
+				pushvalueontmpstack (&val);
+
+				/* Process each member of the table */
+				ix = 0;
+				while (hashgetnthnode (ht, ix++, &hn)) {
+					bigstring membername, membernameclean;
+					tyaddress adrmember;
+					tyvaluerecord vmember, vconverted;
+
+					/* Get the member name (strip serial prefix if present) */
+					gethashkey (hn, membername);
+					copystring (membername, membernameclean);
+					if (stringfindchar ('\t', membernameclean))
+						nthword (membernameclean, 2, '\t', membernameclean);
+
+					/* Set up address for this member */
+					adrmember.ht = ht;
+					copystring (membername, adrmember.bs);
+
+					/* Recursively convert this member */
+					if (!xmlstructtofrontiervalue (&adrmember, &vconverted)) {
+						/* If conversion fails, just copy the value as-is */
+						if (!hashtablelookup (ht, membername, &vmember, &hnode))
+							continue;
+						if (!copyvaluerecord (vmember, &vconverted))
+							continue;
+					}
+
+					exemptfromtmpstack (&vconverted);
+
+					/* Assign to new table with clean name */
+					if (!hashtableassign (htnew, membernameclean, vconverted)) {
+						disposevaluerecord (vconverted, false);
+					}
+				}
+
+				goto done;
+			}
+		}
+
+		/* No special handling - just copy the value */
 		if (!copyvaluerecord (vstruct, &val) || !copyvaluedata (&val))
 			return (false);
-		}	
+		}
 
 done:
 	*v = val;
-	
+
 	return (true);
 	} /*xmlstructtofrontierval*/
 
@@ -3039,22 +3218,67 @@ boolean xmlgetaddress (hdlhashtable ht, bigstring name) {
 
 	/*
 	on getAddress (adrtable, name) { //return the address of the first object in the table with the indicated name
+
+	2026-01-12: Added array index support. If name ends with "[N]", returns the Nth occurrence
+	(1-based indexing) instead of the first. Example: "item[2]" returns second item.
 	*/
-	
+
 	hdlhashnode hn;
-	
-	for (hn = (**ht).hfirstsort; hn != nil; hn = (**hn).sortedlink) {
-		
-		if (isxmlmatch (hn, name)) {
-			
-			gethashkey (hn, name);
-			
-			return (true);
+	bigstring bsname;
+	long arrayindex = 1; /* default to first occurrence */
+	long matchcount = 0;
+
+	/* Copy name for parsing */
+	copystring (name, bsname);
+
+	/* Check for array index suffix [N] */
+	{
+		short len = stringlength(bsname);
+		short i;
+
+		/* Scan backwards for '[' */
+		for (i = len; i >= 1; i--) {
+			if (getstringcharacter(bsname, i - 1) == '[') {
+				/* Found '[', check if followed by number and ']' */
+				bigstring bsindex;
+				short indexlen = len - i;
+
+				if (indexlen > 0 && getstringcharacter(bsname, len - 1) == ']') {
+					/* Extract the number between [ and ] */
+					setstringlength(bsindex, indexlen - 1);
+					if (indexlen > 1) {
+						moveleft(stringbaseaddress(bsname) + i, stringbaseaddress(bsindex), indexlen - 1);
+					}
+
+					/* Convert to long */
+					if (stringtonumber(bsindex, &arrayindex) && arrayindex > 0) {
+						/* Valid array index - truncate name at '[' */
+						setstringlength(bsname, i - 1);
+						break;
+					}
+				}
 			}
 		}
-	
+	}
+
+	/* Search for Nth matching node */
+	for (hn = (**ht).hfirstsort; hn != nil; hn = (**hn).sortedlink) {
+
+		if (isxmlmatch (hn, bsname)) {
+
+			matchcount++;
+
+			if (matchcount == arrayindex) {
+				/* Found the Nth occurrence */
+				gethashkey (hn, name);
+
+				return (true);
+			}
+		}
+	}
+
 	langparamerror (cantgetxmladdresserror, name);
-	
+
 	return (false);
 	} /*xmlgetaddress*/
 
