@@ -1523,6 +1523,216 @@ Error: Can't find a variable named "x"
 
 ---
 
+### Remote Connection to Running Instance
+
+**Design Goal**: Connect to an already-running frontier-cli instance without spawning a new process.
+
+**Use Cases**:
+- Inspect state of long-running server process
+- Debug issues in production without restart
+- Multiple REPL sessions attached to same runtime (collaborative debugging)
+
+**Architecture**:
+```bash
+# Terminal 1: Start server with REPL endpoint
+./frontier-cli --server --repl-port 5555
+
+# Terminal 2: Connect to running instance
+./frontier-cli --connect localhost:5555
+[remote:root]> workspace.x = 42
+[remote:root]> /vars
+# Shows workspace from server process, not local
+```
+
+**Implementation Approach**:
+- Reuse server mode infrastructure from Phase 4
+- Add `--connect <host:port>` flag that switches to client mode
+- Client sends eval requests over network, displays results locally
+- Server maintains single shared workspace (not isolated per connection)
+- Prompt shows `[remote:context]` to indicate remote connection
+
+**Security**:
+- Require authentication token for remote connections
+- Default: Only accept connections from localhost
+- Use `--repl-bind 0.0.0.0` to expose to network (with warning)
+
+---
+
+### Text-Based Interactive UI Elements
+
+**Design Goal**: Provide text-based equivalents for GUI-centric UserTalk verbs (dialogs, alerts, file choosers).
+
+**Current GUI Verbs to Adapt**:
+- `dialog.alert()` → Print message with visual border/attention
+- `dialog.confirm()` → Prompt for Y/N input
+- `dialog.ask()` → Prompt for string input
+- `file.openDialog()` → Text-based file browser or path prompt
+- `file.saveDialog()` → Path prompt with validation
+
+**Example Implementations**:
+```bash
+[root]> dialog.ask("Enter your name:")
+┌─────────────────────────────┐
+│ Enter your name:            │
+│ ▶ _                         │
+└─────────────────────────────┘
+Jake
+
+[root]> dialog.confirm("Delete this file?")
+┌─────────────────────────────┐
+│ Delete this file?           │
+│ [Y]es / [N]o                │
+└─────────────────────────────┘
+y
+true
+```
+
+**Implementation Notes**:
+- Use ANSI escape codes for boxes and formatting
+- Fall back to plain text for non-TTY environments
+- Consider `dialog` command-line tool integration for richer UI
+- Document headless-specific behavior for each verb
+
+---
+
+### Integrated Text-Based Outline/Script Editor
+
+**Design Goal**: Edit UserTalk scripts and ODB outlines directly in REPL without external editor.
+
+**Commands**:
+- `/edit <table.path.script>` - Open script in built-in editor
+- `/outline <table.path.outline>` - Open outline in tree editor
+- Ctrl-X Ctrl-E - Edit current line buffer (existing feature from readline)
+
+**Editor Requirements**:
+- Line editing with syntax awareness (indent/dedent)
+- Save back to ODB on exit
+- Cancel/revert on Ctrl-C
+- Show line numbers for debugging
+
+**Possible Implementations**:
+- **Simple**: Multi-line input mode with basic commands (`:save`, `:quit`)
+- **Advanced**: Integrate micro/nano-style editor library
+- **Rich**: Embed tree-sitter for syntax highlighting
+
+**Example Session**:
+```bash
+[root]> /edit system.startup.mainResponder
+# Opens editor with script content:
+┌─────────────────────────────────────┐
+│ 1 | on startup() {                  │
+│ 2 |   msg("System starting...");    │
+│ 3 |   return true                   │
+│ 4 | }                               │
+│ ──────────────────────────────────  │
+│ :save to save, :quit to exit        │
+└─────────────────────────────────────┘
+```
+
+**Out of Scope**: Full GUI-level outline editor (collapsing, drag-drop). Focus on text-based viewing/editing.
+
+---
+
+### Status Bar and Message Display
+
+**Design Goal**: Show `msg()` output in a persistent status bar without interrupting REPL prompt.
+
+**Current Behavior**:
+```bash
+[root]> msg("Processing..."); 1+1
+Processing...
+2
+```
+Output appears inline, disrupting REPL flow.
+
+**Proposed Enhancement**:
+```bash
+┌─────────────────────────────────────┐ ← Status Bar
+│ Processing...                       │
+└─────────────────────────────────────┘
+[root]> 1+1
+2
+[root]> _
+```
+Status bar updates in place, prompt stays clean.
+
+**Implementation**:
+- Use ANSI cursor positioning to reserve top line(s) for status
+- `msg()` writes to status buffer, not stdout
+- Redraw status bar when content changes
+- Clear status on next prompt (or keep persistent with fade)
+- Disable in non-TTY mode (fall back to inline output)
+
+**Advanced Feature**:
+- Multi-line status bar for complex messages
+- Color coding (errors in red, warnings in yellow)
+- `/status clear` command to manually clear
+
+---
+
+### Text-Based Multi-Window GUI
+
+**Design Goal**: Provide split-pane, mouse-enabled terminal UI for advanced workflows.
+
+**Library Integration Options**:
+- **ncurses** - Traditional, widely available, keyboard-only
+- **notcurses** - Modern ncurses alternative with mouse, images, multimedia
+- **blessed** (Node.js) - Rich widgets, but requires Node runtime
+- **textual** (Python) - Modern, reactive, CSS-like styling (Python dependency)
+- **ratatui** (Rust) - Modern TUI framework (would need Rust FFI)
+- **Existing terminal libraries**: Consider FTXUI (C++), imtui (immediate mode)
+
+**Recommended**: **notcurses** or **ncurses with mouse support**
+- C library, no external runtime dependencies
+- Mouse support for clicks, drags, scrolling
+- UTF-8 and rich color support
+- Actively maintained
+
+**Example Layout**:
+```
+┌─────────────────────────────────────────────────┐
+│ File  Edit  View  Help                          │ ← Menu bar
+├──────────────────┬──────────────────────────────┤
+│ [Workspace]      │ [root]> workspace.x = 42     │
+│  x = 42          │ 42                           │
+│  greeting = "Hi" │ [root]> workspace.greeting   │
+│                  │ "Hi"                         │
+│                  │ [root]> _                    │
+│                  │                              │
+│                  │                              │
+├──────────────────┴──────────────────────────────┤
+│ msg: Processing complete. 42 items loaded.     │ ← Status bar
+└─────────────────────────────────────────────────┘
+```
+
+**Panes**:
+- **Left**: Variable inspector, outline tree, or help
+- **Right**: REPL input/output (scrollable)
+- **Bottom**: Status bar with `msg()` output
+- **Top**: Menu bar (File, Edit, View, Help)
+
+**Mouse Support**:
+- Click to focus pane
+- Scroll in REPL history or variable inspector
+- Drag to resize panes
+- Double-click to expand/collapse outline nodes
+
+**Commands**:
+- `/gui on` - Enable multi-window mode (default: off for backward compatibility)
+- `/gui off` - Return to simple line-based REPL
+- `/pane left|right|both` - Show/hide panes
+- Keyboard shortcuts: Ctrl-W to switch panes, Ctrl-L to redraw
+
+**Implementation Phases**:
+1. **Phase 1**: Basic ncurses integration, split screen (REPL + workspace inspector)
+2. **Phase 2**: Mouse support, scrollable history
+3. **Phase 3**: Outline tree viewer, script editor pane
+4. **Phase 4**: Menu bar, customizable layouts
+
+**Out of Scope**: Full IDE-level features (debugging UI, visual diff, git integration). Focus on improving REPL experience, not replacing IDEs.
+
+---
+
 ## Migration Path
 
 ### Backward Compatibility
