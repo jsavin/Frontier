@@ -3,7 +3,7 @@
 Status
 - State: In Progress
 - Phase: Carbon Migration / Runtime Modernization
-- Last Updated: 2025-11-20 (Night)
+- Last Updated: 2026-01-12
 - Owner: Codex
 - Notes: Entry point for active planning docs; keep this in sync with `_CURRENT_STATUS.md`.
 
@@ -40,6 +40,7 @@ Change Log
 - **Legacy Follow-ups**
   - Phase 2 open items – `planning/phase2/`
   - Phase 3 headless runtime plans – `planning/phase3/`
+    - [REPL Interactive Mode Design](phase3/REPL_INTERACTIVE_MODE_DESIGN.md) - frontier-cli REPL implementation (4 phases, server foundation)
   - Phase 4 text modernization backlog – `planning/phase4/`
   - Phase 5 parser/tooling roadmap – `planning/phase5/`
 
