@@ -61,7 +61,7 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
             /* Verb #0: xml.addtable(adrParent, name)
              * @IMPLEMENTED - Create sub-table with serial naming
              * Calls getnewitemaddress() for serial naming and creates new table
-             * Returns: boolean (true on success) */
+             * Returns: address of newly created table for chaining (GUI: langxml.c:3237) */
             hdlhashtable parentht;
             bigstring name;
             xmladdress adrnew;
@@ -88,7 +88,8 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
             if (!hashtableassign(adrnew.ht, adrnew.bs, newtableval))
                 return false;
 
-            return setbooleanvalue(true, vreturned);
+            /* Return address of newly created table for chaining (GUI: langxml.c:3237) */
+            return setaddressvalue(adrnew.ht, adrnew.bs, vreturned);
         }
         case xmlv_addvalue: {
             /* Verb #1: xml.addvalue(adrParent, name, value)
@@ -113,18 +114,18 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
             if (!getparamvalue(hparam1, 3, &val))
                 return false;
 
-            /* Copy the value since hashtableassign takes ownership */
-            if (!copyvaluerecord(val, &valcopy))
-                return false;
-
             /* Get new item address with serial naming */
             getnewitemaddress(parentht, name, &adrnew);
 
             /* Assign the value to the parent at the serialized address */
-            if (!hashtableassign(adrnew.ht, adrnew.bs, valcopy))
+            if (!hashtableassign(adrnew.ht, adrnew.bs, val))
                 return false;
 
-            return setbooleanvalue(true, vreturned);
+            /* Exempt from temp stack cleanup (GUI: langxml.c:3270) */
+            exemptfromtmpstack(&val);
+
+            /* Return address of newly created value for chaining (GUI: langxml.c:3272) */
+            return setaddressvalue(adrnew.ht, adrnew.bs, vreturned);
         }
         case xmlv_compile: {
             /* Verb #2: xml.compile(xmlString, adrTable)
@@ -195,15 +196,38 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
         case xmlv_getaddresslist: {
             /* Verb #5: xml.getaddresslist(adrTable, name, justone=false)
              * @IMPLEMENTED - Find all elements with same name
-             * Returns list of addresses for all matching elements */
+             * Returns list of addresses for all matching elements
+             * Special case: If first param is string address, returns empty list (GUI: langxml.c:3356) */
             hdlhashtable ht;
+            bigstring varname;
             bigstring name;
+            tyvaluerecord val;
+            hdlhashnode hnode;
             boolean justone = false;
             hdllistrecord hlist;
+            bigstring bserror;
 
-            /* Get table value parameter */
-            if (!getvarparam(hparam1, 1, &ht, name))
+            /* Get table address parameter (GUI: langxml.c:3369) */
+            if (!getvarparam(hparam1, 1, &ht, varname))
                 return false;
+
+            /* Look up the value to check its type (GUI: langxml.c:3372) */
+            if (!langsymbolreference(ht, varname, &val, &hnode))
+                return false;
+
+            /* Handle string-address edge case (GUI: langxml.c:3375-3376) */
+            if (val.valuetype == stringvaluetype) {
+                ht = nil;  /* Will return empty list */
+            } else {
+                /* Convert value to table (GUI: langxml.c:3379-3389) */
+                if (!tablevaltotable(val, &ht, hnode)) {
+                    if (!fllangerror) {
+                        copystring(BIGSTRING("\pCan't coerce the value because it's not a table"), bserror);
+                        langerrormessage(bserror);
+                    }
+                    return false;
+                }
+            }
 
             /* Get name parameter */
             if (!getstringvalue(hparam1, 2, name))
@@ -216,7 +240,7 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
                     return false;
             }
 
-            /* Find all matching elements */
+            /* Find all matching elements (handles nil ht gracefully) */
             if (!xmlgetaddresslist(ht, name, justone, &hlist))
                 return false;
 
@@ -280,27 +304,16 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case xmlv_valtostring: {
-            /* Verb #9: xml.valtostring(adrVal, indentLevel=0)
+            /* Verb #9: xml.valtostring(value, indentLevel=0)
              * @IMPLEMENTED - Convert value to XML-RPC formatted string
-             * Calls xmlvaltostring to generate XML representation
+             * Accepts any value expression, not just addresses (GUI: langxml.c:3484)
              * Returns: string containing XML-RPC tagged value */
-            tyvaluerecord addressval, val;
-            hdlhashtable ht;
-            bigstring bs;
+            tyvaluerecord val;
             long indentlevel = 0;
             Handle hresult;
-            hdlhashnode hnode;
 
-            /* Get address parameter */
-            if (!getaddressparam(hparam1, 1, &addressval))
-                return false;
-
-            /* Extract address components */
-            if (!getaddressvalue(addressval, &ht, bs))
-                return false;
-
-            /* Look up the actual value at the address */
-            if (!hashtablelookup(ht, bs, &val, &hnode))
+            /* Get value parameter directly (GUI: langxml.c:3484) */
+            if (!getparamvalue(hparam1, 1, &val))
                 return false;
 
             /* Get indent level parameter (optional, defaults to 0) */
@@ -383,9 +396,15 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
             if (!xmlstructtofrontiervalue(&adrstruct, &frontierval))
                 return false;
 
+            /* Exempt from temp stack cleanup (GUI: langxml.c:3552) */
+            exemptfromtmpstack(&frontierval);
+
             /* Assign the converted value to the output parameter */
-            if (!hashtableassign(adrfrontierval.ht, adrfrontierval.bs, frontierval))
+            if (!hashtableassign(adrfrontierval.ht, adrfrontierval.bs, frontierval)) {
+                /* Clean up on failure (GUI: langxml.c:3556) */
+                disposevaluerecord(frontierval, false);
                 return false;
+            }
 
             return setbooleanvalue(true, vreturned);
         }
