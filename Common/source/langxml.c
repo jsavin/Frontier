@@ -234,6 +234,56 @@ boolean replaceallinhandle (bigstring bsfind, bigstring bsreplace, Handle htext)
 	} /*replaceallinhandle*/
 
 
+static boolean xmlencodeentities (Handle htext) {
+
+	/*
+	2026-01-12: Encode XML entities in text.
+	This encodes special characters to their XML entity representations.
+
+	Encoding order matters: & must be encoded first to avoid double-encoding.
+	*/
+
+	if (!replaceallinhandle (BIGSTRING("\x01" "&"), BIGSTRING("\x05" "&amp;"), htext))
+		return (false);
+
+	if (!replaceallinhandle (BIGSTRING("\x01" "\""), BIGSTRING("\x06" "&quot;"), htext))
+		return (false);
+
+	if (!replaceallinhandle (BIGSTRING("\x01" "<"), BIGSTRING("\x04" "&lt;"), htext))
+		return (false);
+
+	if (!replaceallinhandle (BIGSTRING("\x01" ">"), BIGSTRING("\x04" "&gt;"), htext))
+		return (false);
+
+	return (true);
+	} /*xmlencodeentities*/
+
+
+static boolean xmldecodeentities (Handle htext) {
+
+	/*
+	2026-01-12: Decode XML entities in text.
+	This is the inverse of xmlencodeentities.
+
+	Decoding order matters: & must be decoded last to avoid partial decoding.
+	*/
+
+	if (!replaceallinhandle (BIGSTRING("\x06" "&quot;"), BIGSTRING("\x01" "\""), htext))
+		return (false);
+
+	if (!replaceallinhandle (BIGSTRING("\x04" "&lt;"), BIGSTRING("\x01" "<"), htext))
+		return (false);
+
+	if (!replaceallinhandle (BIGSTRING("\x04" "&gt;"), BIGSTRING("\x01" ">"), htext))
+		return (false);
+
+	if (!replaceallinhandle (BIGSTRING("\x05" "&amp;"), BIGSTRING("\x01" "&"), htext))
+		return (false);
+
+	return (true);
+	} /*xmldecodeentities*/
+
+
 static boolean trimtrailingwhitespace (Handle htext) {
 	
 	/*
@@ -463,11 +513,17 @@ boolean xmlfrontiervaltotaggedtext (tyvaluerecord *val, short indentlevel, Handl
 					
 					if (!newtexthandle (bsname, &h))
 						goto exit;
-					
+
+					/* 2026-01-12: Encode XML entities in table key name */
+					if (!xmlencodeentities (h)) {
+						disposehandle (h);
+						goto exit;
+					}
+
 					fl = inserttextinhandle (h, 0, STR_name_begin)
 							&& pushtexthandle (STR_name_end, h)
 							&& writehandlestreamhandleindent (&s, h, indentlevel);
-					
+
 					disposehandle (h);						
 					
 					if (!fl)
@@ -1394,16 +1450,20 @@ static void push2digitnum (int n, bigstring s) {
 	} /*push2digitnum*/
 
 
-static void getiso8601datetimestring (unsigned long secs, bigstring bs) {
-	
+static void getiso8601datetimestring (int64_t secs, bigstring bs) {
+
 	/*
 	6.1b2 AR: Return seconds as a two-digit number, too.
+
+	2026-01-12 Codex: Changed parameter from unsigned long to int64_t to match
+	frontier_time_t standard and prevent truncation of 64-bit date values.
+	Fixes segfault when converting date values with xml.frontiervaluetotaggedtext.
 	*/
 
 	//	return (string (year) + string.padWithZeros(month, 2) + string.padWithZeros(day, 2) +"T"+ string.padWithZeros(hour, 2)+":"+ string.padWithZeros(minute, 2)+":"+second;
-	
+
 	short day, month, year, hour, minute, second;
-	
+
 	secondstodatetime (secs, &day, &month, &year, &hour, &minute, &second);
 	
 	shorttostring (year, bs);
@@ -1423,31 +1483,36 @@ static void getiso8601datetimestring (unsigned long secs, bigstring bs) {
 	} /*getiso8601datetimestring*/
 
 
-static void setiso8601datetimestring (bigstring bsiso8601, unsigned long *secs) {
+static void setiso8601datetimestring (bigstring bsiso8601, int64_t *secs) {
 
 	//	19980616T09:54:52
-	
+
+	/*
+	2026-01-12 Codex: Changed parameter from unsigned long* to int64_t* to match
+	frontier_time_t standard and prevent truncation of 64-bit date values.
+	*/
+
 	short day, month, year, hour, minute, second;
 	bigstring bs;
-	
+
 	midstring (bsiso8601, 1, 4, bs);
 	stringtoshort (bs, &year);
-	
+
 	midstring (bsiso8601, 5, 2, bs);
 	stringtoshort (bs, &month);
-	
+
 	midstring (bsiso8601, 7, 2, bs);
 	stringtoshort (bs, &day);
-	
+
 	midstring (bsiso8601, 10, 2, bs);
 	stringtoshort (bs, &hour);
-	
+
 	midstring (bsiso8601, 13, 2, bs);
 	stringtoshort (bs, &minute);
-	
+
 	midstring (bsiso8601, 16, 2, bs);
 	stringtoshort (bs, &second);
-	
+
 	*secs = datetimetoseconds (day, month, year, hour, minute, second);
 	} /*setiso8601datetimestring*/
 
@@ -2165,13 +2230,13 @@ boolean xmlcompile (Handle htext, xmladdress *xmladr) {
 					
 					else if (equalstrings (namesubitem, STR_datetimeiso8601)) {
 						bigstring bsiso8601;
-						unsigned long secs;
-						
+						int64_t secs;  /* 2026-01-12 Codex: Changed from unsigned long to int64_t */
+
 						if (!hashtablelookup (adrsubitem.ht, adrsubitem.bs, &val, &hnode))
 							goto exit;
-						
+
 						pullstringvalue (&val, bsiso8601);
-						
+
 						setiso8601datetimestring (bsiso8601, &secs);
 						
 						setdatevalue (secs, &val);

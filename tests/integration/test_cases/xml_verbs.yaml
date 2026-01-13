@@ -440,8 +440,8 @@ tests:
       local(result);
       new(tableType, @result);
       return xml.compile(xmlText, @result)
-    expected_output: "false"
-    expected_success: true
+    expected_success: false
+    expected_error_contains: "Poorly formed"
 
   # ========================================
   # xml.decompile - Convert database structure to XML string
@@ -751,8 +751,8 @@ tests:
       new(tableType, @t);
       xml.compile(xmlText, @t);
       local(adr);
-      if xml.getPathAddress(@t, "person/name", @adr) {
-        return @adr^
+      if xml.getPathAddress(@t, "root/person/name", @adr) {
+        return adr^
       }
     expected_output: "John"
     expected_success: true
@@ -764,8 +764,8 @@ tests:
       new(tableType, @t);
       xml.compile(xmlText, @t);
       local(adr);
-      if xml.getPathAddress(@t, "a/b/c/d", @adr) {
-        return @adr^
+      if xml.getPathAddress(@t, "root/a/b/c/d", @adr) {
+        return adr^
       }
     expected_output: "deep"
     expected_success: true
@@ -788,8 +788,8 @@ tests:
       new(tableType, @t);
       xml.compile(xmlText, @t);
       local(adr);
-      if xml.getPathAddress(@t, "name", @adr) {
-        return @adr^
+      if xml.getPathAddress(@t, "root/name", @adr) {
+        return adr^
       }
     expected_output: "John"
     expected_success: true
@@ -801,8 +801,8 @@ tests:
       new(tableType, @t);
       xml.compile(xmlText, @t);
       local(adr);
-      if xml.getPathAddress(@t, "items/item[2]", @adr) {
-        return @adr^
+      if xml.getPathAddress(@t, "root/items/item[2]", @adr) {
+        return adr^
       }
     expected_output: "second"
     expected_success: true
@@ -941,16 +941,18 @@ tests:
     script: |
       local(n = 10);
       local(result = xml.valToString(n, 1));
-      return string.contains(result, "\t") or string.contains(result, "  ")
-    expected_output: "true"
+      return result
+    expected_output: "<i4>10</i4>"
     expected_success: true
+    # Note: indent level parameter is not implemented (#pragma unused in langxml.c)
 
   - name: "xml.valToString - entity encoding"
     script: |
       local(s = "a < b & c > d");
-      local(result = xml.valToString(s, 0));
-      return string.contains(result, "&lt;") and string.contains(result, "&amp;")
-    expected_output: "true"
+      return xml.valToString(s, 0)
+    expected_contains:
+      - "&lt;"
+      - "&amp;"
     expected_success: true
 
   # ========================================

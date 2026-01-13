@@ -315,8 +315,10 @@ boolean langexternalgettable (bigstring bs, hdlhashtable *htable) {
                 return true;
             }
 			log_trace(LOG_COMP_EXTERNAL, "langexternalgettable: tablevaltotable FAILED");
-            /* Direct headless coercion: extract table pointer from external */
-            {
+            /* Direct headless coercion: extract table pointer from external
+			   2026-01-12 Codex: Only attempt this if value is externalvaluetype to avoid
+			   segfault when casting non-external values (e.g., tokenvaluetype for processors) */
+            if (val.valuetype == externalvaluetype) {
                 hdlexternalvariable hv3 = (hdlexternalvariable) val.data.externalvalue;
                 if (hv3 && (**hv3).id == idtableprocessor) {
                     *htable = (hdlhashtable) (**hv3).variabledata;

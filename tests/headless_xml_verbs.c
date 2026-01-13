@@ -25,6 +25,7 @@
 #include "frontier.h"
 #include "standard.h"
 
+#include <ctype.h>
 #include "memory.h"
 #include "strings.h"
 #include "lang.h"
@@ -35,6 +36,42 @@
 #include "langxml.h"
 #include "oplist.h"
 #include "logging.h"
+
+/*
+ * xmldecodeentities_headless - Decode XML entities in a string handle
+ *
+ * This decodes standard XML entities (&lt; &gt; &amp; &quot;) to their
+ * character equivalents. Used when retrieving attribute values that were
+ * stored with encoded entities during XML compilation.
+ *
+ * 2026-01-12: Added to fix Issue #2 - attribute values need decoding
+ */
+static boolean xmldecodeentities_headless(Handle htext) {
+    /*
+    Decode XML entities in text.
+    Decoding order matters: & must be decoded last to avoid partial decoding.
+
+    Uses replaceallinhandle from langxml.h (declared extern in langxml.h:57)
+    */
+
+    /* Decode &quot; -> " */
+    if (!replaceallinhandle(BIGSTRING("\x06" "&quot;"), BIGSTRING("\x01" "\""), htext))
+        return false;
+
+    /* Decode &lt; -> < */
+    if (!replaceallinhandle(BIGSTRING("\x04" "&lt;"), BIGSTRING("\x01" "<"), htext))
+        return false;
+
+    /* Decode &gt; -> > */
+    if (!replaceallinhandle(BIGSTRING("\x04" "&gt;"), BIGSTRING("\x01" ">"), htext))
+        return false;
+
+    /* Decode &amp; -> & (MUST be last to avoid partial decoding) */
+    if (!replaceallinhandle(BIGSTRING("\x05" "&amp;"), BIGSTRING("\x01" "&"), htext))
+        return false;
+
+    return true;
+}
 
 /* Token enum for all verbs in the xml processor */
 enum {
@@ -66,7 +103,6 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
             hdlhashtable parentht;
             bigstring name;
             xmladdress adrnew;
-            tyvaluerecord newtableval;
             hdlhashtable newtable;
 
             log_trace(LOG_COMP_LANG, "xml.addtable: entry");
@@ -86,18 +122,12 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
 
             log_trace(LOG_COMP_LANG, "xml.addtable: creating new table with name '%.*s'", (int)name[0], &name[1]);
 
-            /* Get new item address with serial naming */
+            /* Get new item address with serial naming (modifies name in-place) */
             getnewitemaddress(parentht, name, &adrnew);
 
-            /* Create new table value */
-            if (!tablenewtablevalue(&newtable, &newtableval)) {
-                log_error(LOG_COMP_LANG, "xml.addtable: tablenewtablevalue failed");
-                return false;
-            }
-
-            /* Assign the new table to the parent at the serialized address */
-            if (!hashtableassign(adrnew.ht, adrnew.bs, newtableval)) {
-                log_error(LOG_COMP_LANG, "xml.addtable: hashtableassign failed");
+            /* Create new table value and assign it (GUI: langxml.c:3234) */
+            if (!langassignnewtablevalue(adrnew.ht, adrnew.bs, &newtable)) {
+                log_error(LOG_COMP_LANG, "xml.addtable: langassignnewtablevalue failed");
                 return false;
             }
 
@@ -252,9 +282,11 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
             return setaddressvalue(ht, name, vreturned);
         }
         case xmlv_getaddresslist: {
-            /* Verb #5: xml.getaddresslist(adrTable, name, justone=false)
+            /* Verb #5: xml.getaddresslist(adrTable, name, @resultList)
              * @IMPLEMENTED - Find all elements with same name
-             * Returns list of addresses for all matching elements
+             * Two calling patterns:
+             * 1. GUI style: xml.getAddressList(@t, "name") - Returns list directly
+             * 2. Headless style: xml.getAddressList(@t, "name", @list) - Populates list param, returns boolean
              * Special case: If first param is string address, returns empty list (GUI: langxml.c:3356) */
             hdlhashtable ht;
             bigstring varname;
@@ -264,6 +296,9 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
             boolean justone = false;
             hdllistrecord hlist;
             bigstring bserror;
+            int paramcount;
+            hdlhashtable htoutput = nil;
+            bigstring bsoutput;
 
             log_trace(LOG_COMP_LANG, "xml.getaddresslist: entry");
 
@@ -301,12 +336,21 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
                 return false;
             }
 
-            /* Get optional justone parameter */
-            if (langgetparamcount(hparam1) > 2) {
+            /* Check for optional third parameter - could be output list address or justone boolean */
+            paramcount = langgetparamcount(hparam1);
+            if (paramcount > 2) {
                 flnextparamislast = true;
-                if (!getbooleanvalue(hparam1, 3, &justone)) {
-                    log_error(LOG_COMP_LANG, "xml.getaddresslist: getbooleanvalue failed for justone parameter");
-                    return false;
+                /* Try to get as output address first (headless pattern) */
+                if (getvarparam(hparam1, 3, &htoutput, bsoutput)) {
+                    log_trace(LOG_COMP_LANG, "xml.getaddresslist: third param is output address (headless pattern) htoutput=%p name='%.*s'", htoutput, (int)bsoutput[0], &bsoutput[1]);
+                    /* Headless pattern: populate output parameter and return boolean */
+                } else {
+                    /* GUI pattern: third param is justone boolean */
+                    if (!getbooleanvalue(hparam1, 3, &justone)) {
+                        log_error(LOG_COMP_LANG, "xml.getaddresslist: getbooleanvalue failed for justone parameter");
+                        return false;
+                    }
+                    log_trace(LOG_COMP_LANG, "xml.getaddresslist: third param is justone=%d (GUI pattern)", justone);
                 }
             }
 
@@ -319,8 +363,27 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
                 return false;
             }
 
-            log_trace(LOG_COMP_LANG, "xml.getaddresslist: exit (success)");
-            /* Return list of addresses */
+            /* If output address provided (headless pattern), assign list and return boolean */
+            if (htoutput != nil) {
+                tyvaluerecord listval;
+                if (!setheapvalue((Handle)hlist, listvaluetype, &listval)) {
+                    log_error(LOG_COMP_LANG, "xml.getaddresslist: failed to create list value");
+                    opdisposelist(hlist);
+                    return false;
+                }
+                if (!hashtableassign(htoutput, bsoutput, listval)) {
+                    log_error(LOG_COMP_LANG, "xml.getaddresslist: failed to assign list to output parameter");
+                    disposevaluerecord(listval, false);
+                    return false;
+                }
+                /* Exempt from temp stack - value now owned by hash table */
+                exemptfromtmpstack(&listval);
+                log_trace(LOG_COMP_LANG, "xml.getaddresslist: exit (success, populated output parameter)");
+                return setbooleanvalue(true, vreturned);
+            }
+
+            /* GUI pattern: return list directly */
+            log_trace(LOG_COMP_LANG, "xml.getaddresslist: exit (success, returning list)");
             return setheapvalue((Handle)hlist, listvaluetype, vreturned);
         }
         case xmlv_getattribute: {
@@ -393,8 +456,32 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
                 return false;
             }
 
+            /* 2026-01-12: Decode XML entities in string attribute values
+             * Attributes are stored with encoded entities during XML compilation,
+             * but should be decoded when retrieved (Issue #2) */
+            if (val.valuetype == stringvaluetype) {
+                Handle hcopy;
+
+                /* Make a copy of the string to decode */
+                if (!copyhandle(val.data.stringvalue, &hcopy)) {
+                    log_error(LOG_COMP_LANG, "xml.getattributevalue: copyhandle failed");
+                    return false;
+                }
+
+                /* Decode entities in the copy */
+                if (!xmldecodeentities_headless(hcopy)) {
+                    log_error(LOG_COMP_LANG, "xml.getattributevalue: xmldecodeentities_headless failed");
+                    disposehandle(hcopy);
+                    return false;
+                }
+
+                /* Return the decoded string */
+                log_trace(LOG_COMP_LANG, "xml.getattributevalue: exit (success, decoded)");
+                return setheapvalue(hcopy, stringvaluetype, vreturned);
+            }
+
             log_trace(LOG_COMP_LANG, "xml.getattributevalue: exit (success)");
-            /* Return copy of the attribute value */
+            /* Return copy of the attribute value (non-string types) */
             return copyvaluerecord(val, vreturned);
         }
         case xmlv_getvalue: {
@@ -652,10 +739,13 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
         }
         case xmlv_converttodisplayname: {
             /* Verb #13: xml.converttodisplayname(name)
-             * @IMPLEMENTED - Strip serial prefix and convert encoded name to display name
-             * Calls xmlgetname to remove serial prefix and decode special characters
-             * Returns: string (display name without serial encoding) */
+             * @IMPLEMENTED - Strip serial prefix and decode hex-encoded characters
+             * Decodes "0xHH" sequences (e.g., "0x20" -> space, "0x3c" -> '<')
+             * Returns: string (display name with decoded characters) */
             bigstring name;
+            bigstring result;
+            unsigned char *src, *dst;
+            short len, i;
 
             log_trace(LOG_COMP_LANG, "xml.converttodisplayname: entry");
 
@@ -668,15 +758,75 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
 
             log_trace(LOG_COMP_LANG, "xml.converttodisplayname: processing name '%.*s'", (int)name[0], &name[1]);
 
-            /* Call xmlgetname to process the name (strip serial prefix, decode entities) */
-            if (!xmlgetname(name)) {
-                log_error(LOG_COMP_LANG, "xml.converttodisplayname: xmlgetname failed");
-                return false;
+            /* Strip serial prefix (4 or 8 digits followed by tab) */
+            len = stringlength(name);
+            if (len > 5 && name[5] == '\t') {
+                /* 4-digit prefix: "0001\tname" */
+                memmove(&name[1], &name[6], len - 5);
+                setstringlength(name, len - 5);
+                len = len - 5;
+            } else if (len > 9 && name[9] == '\t') {
+                /* 8-digit prefix: "00000001\tname" */
+                memmove(&name[1], &name[10], len - 9);
+                setstringlength(name, len - 9);
+                len = len - 9;
             }
 
-            log_trace(LOG_COMP_LANG, "xml.converttodisplayname: exit (success, result='%.*s')", (int)name[0], &name[1]);
+            /* Decode "0xHH" hex sequences */
+            setstringlength(result, 0);
+            src = &name[1];
+            dst = &result[1];
+            i = 0;
+
+            while (i < len) {
+                /* Check for "0xHH" pattern (4 characters) */
+                if (i + 3 < len &&
+                    src[i] == '0' &&
+                    src[i+1] == 'x' &&
+                    isxdigit(src[i+2]) &&
+                    isxdigit(src[i+3])) {
+
+                    /* Convert hex digits to byte value */
+                    unsigned char byte_val = 0;
+                    char hex_high = src[i+2];
+                    char hex_low = src[i+3];
+
+                    /* Convert high nibble */
+                    if (hex_high >= '0' && hex_high <= '9')
+                        byte_val = (hex_high - '0') << 4;
+                    else if (hex_high >= 'a' && hex_high <= 'f')
+                        byte_val = (hex_high - 'a' + 10) << 4;
+                    else if (hex_high >= 'A' && hex_high <= 'F')
+                        byte_val = (hex_high - 'A' + 10) << 4;
+
+                    /* Convert low nibble */
+                    if (hex_low >= '0' && hex_low <= '9')
+                        byte_val |= (hex_low - '0');
+                    else if (hex_low >= 'a' && hex_low <= 'f')
+                        byte_val |= (hex_low - 'a' + 10);
+                    else if (hex_low >= 'A' && hex_low <= 'F')
+                        byte_val |= (hex_low - 'A' + 10);
+
+                    /* Store decoded character */
+                    *dst++ = byte_val;
+                    i += 4;  /* Skip "0xHH" */
+
+                    log_trace(LOG_COMP_LANG, "xml.converttodisplayname: decoded 0x%02x%02x -> char 0x%02x",
+                             hex_high, hex_low, byte_val);
+                } else {
+                    /* Copy character as-is */
+                    *dst++ = src[i++];
+                }
+            }
+
+            /* Set result length */
+            setstringlength(result, dst - &result[1]);
+
+            log_trace(LOG_COMP_LANG, "xml.converttodisplayname: exit (success, result='%.*s')",
+                     (int)result[0], &result[1]);
+
             /* Return the processed display name */
-            return setstringvalue(name, vreturned);
+            return setstringvalue(result, vreturned);
         }
         default:
             return false;
