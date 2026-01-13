@@ -48,6 +48,8 @@ extern boolean dbgetsize_internal(dbaddress adr, long *logicalsize);
 #ifdef FRONTIER_HEADLESS
 extern boolean headless_init_kernel_verbs(void);  /* Auto-generated from kernelverbs.rc */
 extern boolean dbinitverbs(void);  /* dbverbs.c - initialize Guest Database infrastructure */
+extern boolean opinitverbs(void);  /* op processor verbs */
+extern boolean opattributesinitverbs(void);  /* opattributes processor verbs */
 #endif
 
 // 2025-10-27 Codex: Added optional migration tracing to inspect v6/v7 table layouts during conversion.
@@ -250,6 +252,22 @@ boolean db_format_prepare_runtime(void) {
         return false;
     }
     log_trace(LOG_COMP_STARTUP, "db_format_prepare_runtime: headless_init_kernel_verbs completed successfully");
+
+    /* Initialize op processor with custom callback */
+    log_trace(LOG_COMP_STARTUP, "db_format_prepare_runtime: calling opinitverbs");
+    if (!opinitverbs()) {
+        log_error(LOG_COMP_STARTUP, "db_format_prepare_runtime: opinitverbs FAILED");
+        return false;
+    }
+    log_trace(LOG_COMP_STARTUP, "db_format_prepare_runtime: opinitverbs completed successfully");
+
+    /* Initialize opattributes processor with custom callback */
+    log_trace(LOG_COMP_STARTUP, "db_format_prepare_runtime: calling opattributesinitverbs");
+    if (!opattributesinitverbs()) {
+        log_error(LOG_COMP_STARTUP, "db_format_prepare_runtime: opattributesinitverbs FAILED");
+        return false;
+    }
+    log_trace(LOG_COMP_STARTUP, "db_format_prepare_runtime: opattributesinitverbs completed successfully");
 
     /* Link system table structure to make processors accessible via system.compiler.kernel.* */
     log_trace(LOG_COMP_STARTUP, "db_format_prepare_runtime: linking system table structure");

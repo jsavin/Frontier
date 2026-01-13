@@ -1,0 +1,98 @@
+# Integration tests for op.attributes verbs
+# Tests outline attribute management verbs (GUI-centric stubs in headless mode)
+#
+# Opattributes verbs provide access to per-node binary attributes stored in
+# outline node refcon fields. These operations are GUI-centric and require
+# an active outline target window. In headless CLI mode, these operations
+# return "not supported in headless mode" errors.
+#
+# Opattributes verbs (5 total, all stubs):
+#   Management: op.attributes.addgroup(name), op.attributes.makeempty()
+#   Access: op.attributes.getone(name), op.attributes.getall()
+#   Update: op.attributes.setone(name, value)
+#
+# Headless Behavior Notes:
+# - All op.attributes.* verbs are GUI-centric stubs
+# - Return error: "op.attributes verbs are not supported in headless mode"
+# - Attribute data is stored in outline node refcon (GUI-only)
+# - No meaningful use cases for CLI attribute operations
+# - Future GUI builds will implement full pack/unpack with BE64 compliance
+#
+# Reference:
+# - planning/phase3/processor_audits/op.md
+# - tests/headless_opattributes_verbs.c (stub implementations)
+
+tests:
+  # ====================================================================
+  # Phase 5a: Opattributes Verbs (GUI-only stubs)
+  # ====================================================================
+
+  - name: "op.attributes.addgroup - GUI-only stub returns error"
+    description: "Verify op.attributes.addgroup returns 'not supported' error in headless mode"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      return op.attributes.addgroup("testGroup")
+    expected_success: false
+    expected_error_contains: "op.attributes verbs are not supported in headless mode"
+
+  - name: "op.attributes.getall - GUI-only stub returns error"
+    description: "Verify op.attributes.getall returns 'not supported' error in headless mode"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      return op.attributes.getall()
+    expected_success: false
+    expected_error_contains: "op.attributes verbs are not supported in headless mode"
+
+  - name: "op.attributes.getone - GUI-only stub returns error"
+    description: "Verify op.attributes.getone returns 'not supported' error in headless mode"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      return op.attributes.getone("testGroup")
+    expected_success: false
+    expected_error_contains: "op.attributes verbs are not supported in headless mode"
+
+  - name: "op.attributes.makeempty - GUI-only stub returns error"
+    description: "Verify op.attributes.makeempty returns 'not supported' error in headless mode"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      return op.attributes.makeempty()
+    expected_success: false
+    expected_error_contains: "op.attributes verbs are not supported in headless mode"
+
+  - name: "op.attributes.setone - GUI-only stub returns error"
+    description: "Verify op.attributes.setone returns 'not supported' error in headless mode"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("Line", down);
+      return op.attributes.setone("testGroup", "testValue")
+    expected_success: false
+    expected_error_contains: "op.attributes verbs are not supported in headless mode"
+
+  # ====================================================================
+  # Edge Cases: Verify error behavior without outline target
+  # ====================================================================
+
+  - name: "op.attributes.addgroup - error without outline target"
+    description: "Verify op.attributes.addgroup fails gracefully when no outline target is set"
+    script: |
+      return op.attributes.addgroup("testGroup")
+    expected_success: false
+    expected_error_contains: "op.attributes verbs are not supported in headless mode"
+    notes: "Stub implementation returns same error regardless of target state"
+
+  - name: "op.attributes.getall - error without outline target"
+    description: "Verify op.attributes.getall fails gracefully when no outline target is set"
+    script: |
+      return op.attributes.getall()
+    expected_success: false
+    expected_error_contains: "op.attributes verbs are not supported in headless mode"
+    notes: "Stub implementation returns same error regardless of target state"
