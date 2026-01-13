@@ -37,6 +37,8 @@ typedef struct xmladdress {
 
 extern boolean xmlcompile (Handle htext, xmladdress *xmladr);
 
+extern boolean xmldecompile (hdlhashtable hxmltable, Handle *htext);
+
 extern boolean isxmlmatch (hdlhashnode hn, bigstring name);
 
 extern boolean xmlgetname (bigstring bsname);

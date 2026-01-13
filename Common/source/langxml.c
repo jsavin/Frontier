@@ -2866,7 +2866,7 @@ static boolean decompilevisit (hdlhashtable adrtable, bigstring nametable, short
 	} /*decompilevisit*/
 
 
-static boolean xmldecompile (hdlhashtable hxmltable, Handle *htext) {
+boolean xmldecompile (hdlhashtable hxmltable, Handle *htext) {
 	
 	/*
 	turn a Frontier-table structure into XML text

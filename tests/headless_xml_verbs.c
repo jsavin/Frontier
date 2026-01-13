@@ -7,6 +7,8 @@
  * DO NOT regenerate - this file contains production implementations.
  *
  * Implementation status:
+ * - xml.compile: IMPLEMENTED (parse XML string to table structure)
+ * - xml.decompile: IMPLEMENTED (serialize table structure to XML string)
  * - xml.frontiervaluetotaggedtext: IMPLEMENTED (converts Frontier values to XML-RPC tagged text)
  * - Other xml verbs: STUBBED (not yet implemented)
  */
@@ -19,6 +21,7 @@
 #include "lang.h"
 #include "langinternal.h"
 #include "tablestructure.h"
+#include "tableverbs.h"
 #include "langxml.h"
 
 /* Token enum for all verbs in the xml processor */
@@ -51,14 +54,49 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
             /* Verb #1: xml.addvalue - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case xmlv_compile:
-            /* Verb #2: xml.compile - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case xmlv_decompile:
-            /* Verb #3: xml.decompile - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+        case xmlv_compile: {
+            /* Verb #2: xml.compile(xmlString, adrTable)
+             * @IMPLEMENTED - Parse XML string into table structure
+             * Calls xmlcompile to populate the specified table with parsed XML
+             * Returns: boolean (true on success) */
+            Handle hxmltext;
+            xmladdress adr;
+
+            /* Get XML string parameter - gettextvalue returns a Handle to text */
+            if (!gettextvalue(hparam1, 1, &hxmltext))
+                return false;
+
+            /* Get table address parameter - getvarparam gets variable reference */
+            flnextparamislast = true;
+            if (!getvarparam(hparam1, 2, &adr.ht, adr.bs))
+                return false;
+
+            /* Call existing XML parser to populate the table */
+            if (!xmlcompile(hxmltext, &adr))
+                return false;
+
+            return setbooleanvalue(true, vreturned);
+        }
+        case xmlv_decompile: {
+            /* Verb #3: xml.decompile(adrTable)
+             * @IMPLEMENTED - Serialize table structure to XML string
+             * Calls xmldecompile to convert table into XML text
+             * Returns: string containing XML */
+            hdlhashtable ht;
+            Handle hxmltext;
+
+            /* Get table value parameter - gettablevalue gets the table directly */
+            flnextparamislast = true;
+            if (!gettablevalue(hparam1, 1, &ht))
+                return false;
+
+            /* Call existing XML serializer to generate XML string */
+            if (!xmldecompile(ht, &hxmltext))
+                return false;
+
+            /* Return the XML text as a string */
+            return setheapvalue(hxmltext, stringvaluetype, vreturned);
+        }
         case xmlv_getaddress:
             /* Verb #4: xml.getaddress - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
