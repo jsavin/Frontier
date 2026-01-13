@@ -30,21 +30,7 @@
 #include "tablestructure.h"
 #include "op.h"
 #include "opinternal.h"
-
-/* Token enum for all verbs in the opattributes processor */
-/* Exposed publicly for testing */
-enum {
-    opav_addgroup = 0,
-    opav_getall = 1,
-    opav_getone = 2,
-    opav_makeempty = 3,
-    opav_setone = 4
-};
-
-/* Public interface for testing */
-extern boolean opattributes_valueproc(short token, hdltreenode hparam1,
-                                     tyvaluerecord *vreturned,
-                                     bigstring bserror);
+#include "headless_opattributes_verbs.h"
 
 static void seterrorstring(const char *msg, bigstring bserror) {
     if (bserror == NULL)

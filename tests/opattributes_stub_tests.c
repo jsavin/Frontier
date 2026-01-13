@@ -20,22 +20,11 @@
 #include "tablestructure.h"
 #include "op.h"
 #include "opinternal.h"
+#include "headless_opattributes_verbs.h"
 #include <stdio.h>
 #include <string.h>
 
-/* Verb token values from headless_opattributes_verbs.c */
-enum {
-    opav_addgroup = 0,
-    opav_getall = 1,
-    opav_getone = 2,
-    opav_makeempty = 3,
-    opav_setone = 4
-};
-
 /* Forward declarations */
-extern boolean opattributes_valueproc(short token, hdltreenode hparam1,
-                                     tyvaluerecord *vreturned,
-                                     bigstring bserror);
 static boolean test_opattributes_not_supported(void);
 static void pstring_to_cstring(const unsigned char *pstr, char *out, size_t out_size);
 
