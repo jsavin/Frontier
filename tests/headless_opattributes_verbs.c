@@ -68,3 +68,52 @@ boolean opattributes_valueproc(short token, hdltreenode hparam1,
     seterrorstring("op.attributes verbs are not supported in headless mode", bserror);
     return false;
 }
+
+boolean opattributesinitverbs(void) {
+    /*
+     * Initialize the opattributes processor and register all verbs.
+     *
+     * This creates a top-level function processor "opattributes" and registers
+     * all 5 opattributes verbs with their token values. The verbs are:
+     *
+     * - opattributes.addgroup(groupName)
+     * - opattributes.getall()
+     * - opattributes.getone(groupName, itemName)
+     * - opattributes.makeempty()
+     * - opattributes.setone(groupName, itemName, value)
+     *
+     * In headless mode, all these verbs return "not supported" errors since
+     * opattributes is GUI-centric and requires an active outline target.
+     *
+     * Returns: true if initialization succeeds, false on error.
+     */
+    hdlhashtable htable = nil;
+    bigstring bsname;
+
+    copystring(BIGSTRING("\popattributes"), bsname);
+
+    if (!newfunctionprocessor(bsname, &opattributes_valueproc, false, &htable))
+        return false;
+
+    pushhashtable(htable);
+
+    #define ADD_VERB(name, tok) do { \
+        bigstring bs; \
+        copystring(name, bs); \
+        if (!langaddkeyword(bs, tok)) { \
+            pophashtable(); \
+            return false; \
+        } \
+    } while(0)
+
+    ADD_VERB(BIGSTRING("\paddgroup"), opav_addgroup);
+    ADD_VERB(BIGSTRING("\pgetall"), opav_getall);
+    ADD_VERB(BIGSTRING("\pgetone"), opav_getone);
+    ADD_VERB(BIGSTRING("\pmakeempty"), opav_makeempty);
+    ADD_VERB(BIGSTRING("\psetone"), opav_setone);
+
+    #undef ADD_VERB
+
+    pophashtable();
+    return true;
+}
