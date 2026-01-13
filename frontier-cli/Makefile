@@ -121,7 +121,8 @@ RUNTIME_SOURCES = \
     ../Common/source/dbverbs.c \
     ../Common/source/headless_selection.c \
     ../Common/source/shell_api.c \
-    ../Common/source/shell_api_headless.c
+    ../Common/source/shell_api_headless.c \
+    ../Common/source/sysshellcall.c
 
 # Headless adapters mirrored from tests/
 HEADLESS_STUBS = \
