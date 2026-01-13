@@ -62,18 +62,14 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
              * @IMPLEMENTED - Create sub-table with serial naming
              * Calls getnewitemaddress() for serial naming and creates new table
              * Returns: boolean (true on success) */
-            tyvaluerecord val;
-            tyaddress parent;
+            hdlhashtable parentht;
             bigstring name;
             xmladdress adrnew;
             tyvaluerecord newtableval;
             hdlhashtable newtable;
 
-            /* Get parent table address parameter */
-            if (!getaddressparam(hparam1, 1, &val))
-                return false;
-
-            if (!getaddressvalue(val, &parent.ht, parent.bs))
+            /* Get parent table value directly */
+            if (!gettablevalue(hparam1, 1, &parentht))
                 return false;
 
             /* Get name parameter */
@@ -82,13 +78,13 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
                 return false;
 
             /* Get new item address with serial naming */
-            getnewitemaddress(parent.ht, name, &adrnew);
+            getnewitemaddress(parentht, name, &adrnew);
 
             /* Create new table value */
             if (!tablenewtablevalue(&newtable, &newtableval))
                 return false;
 
-            /* Assign the new table to the parent at the address */
+            /* Assign the new table to the parent at the serialized address */
             if (!hashtableassign(adrnew.ht, adrnew.bs, newtableval))
                 return false;
 
@@ -99,16 +95,13 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
              * @IMPLEMENTED - Create value with serial naming
              * Calls getnewitemaddress() for serial naming and assigns value
              * Returns: boolean (true on success) */
-            tyvaluerecord addressval, val;
-            tyaddress parent;
+            tyvaluerecord val, valcopy;
+            hdlhashtable parentht;
             bigstring name;
             xmladdress adrnew;
 
-            /* Get parent table address parameter */
-            if (!getaddressparam(hparam1, 1, &addressval))
-                return false;
-
-            if (!getaddressvalue(addressval, &parent.ht, parent.bs))
+            /* Get parent table value directly */
+            if (!gettablevalue(hparam1, 1, &parentht))
                 return false;
 
             /* Get name parameter */
@@ -120,11 +113,15 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
             if (!getparamvalue(hparam1, 3, &val))
                 return false;
 
-            /* Get new item address with serial naming */
-            getnewitemaddress(parent.ht, name, &adrnew);
+            /* Copy the value since hashtableassign takes ownership */
+            if (!copyvaluerecord(val, &valcopy))
+                return false;
 
-            /* Assign the value to the parent at the address */
-            if (!hashtableassign(adrnew.ht, adrnew.bs, val))
+            /* Get new item address with serial naming */
+            getnewitemaddress(parentht, name, &adrnew);
+
+            /* Assign the value to the parent at the serialized address */
+            if (!hashtableassign(adrnew.ht, adrnew.bs, valcopy))
                 return false;
 
             return setbooleanvalue(true, vreturned);

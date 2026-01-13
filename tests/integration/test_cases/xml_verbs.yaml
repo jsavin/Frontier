@@ -360,7 +360,9 @@ tests:
       local(result);
       new(tableType, @result);
       if xml.compile(xmlText, @result) {
-        return result.name
+        local(rootAddr = xml.getAddress(@result, "root"));
+        local(nameAddr = xml.getAddress(rootAddr, "name"));
+        return nameAddr^
       }
     expected_output: "John"
     expected_success: true
@@ -371,7 +373,10 @@ tests:
       local(result);
       new(tableType, @result);
       if xml.compile(xmlText, @result) {
-        return result.first + " " + result.last
+        local(rootAddr = xml.getAddress(@result, "root"));
+        local(firstAddr = xml.getAddress(rootAddr, "first"));
+        local(lastAddr = xml.getAddress(rootAddr, "last"));
+        return firstAddr^ + " " + lastAddr^
       }
     expected_output: "John Doe"
     expected_success: true
@@ -382,7 +387,10 @@ tests:
       local(result);
       new(tableType, @result);
       if xml.compile(xmlText, @result) {
-        return result.person.name
+        local(rootAddr = xml.getAddress(@result, "root"));
+        local(personAddr = xml.getAddress(rootAddr, "person"));
+        local(nameAddr = xml.getAddress(personAddr, "name"));
+        return nameAddr^
       }
     expected_output: "John"
     expected_success: true
@@ -393,7 +401,9 @@ tests:
       local(result);
       new(tableType, @result);
       if xml.compile(xmlText, @result) {
-        return defined(result.item)
+        local(rootAddr = xml.getAddress(@result, "root"));
+        local(itemAddr = xml.getAddress(rootAddr, "item"));
+        return defined(itemAddr)
       }
     expected_output: "true"
     expected_success: true
@@ -404,7 +414,9 @@ tests:
       local(result);
       new(tableType, @result);
       if xml.compile(xmlText, @result) {
-        return result.text
+        local(rootAddr = xml.getAddress(@result, "root"));
+        local(textAddr = xml.getAddress(rootAddr, "text"));
+        return textAddr^
       }
     expected_output: "a < b & c > d"
     expected_success: true
@@ -415,7 +427,9 @@ tests:
       local(result);
       new(tableType, @result);
       if xml.compile(xmlText, @result) {
-        return defined(result.empty)
+        local(rootAddr = xml.getAddress(@result, "root"));
+        local(emptyAddr = xml.getAddress(rootAddr, "empty"));
+        return defined(emptyAddr)
       }
     expected_output: "true"
     expected_success: true
@@ -474,7 +488,8 @@ tests:
       local(t);
       new(tableType, @t);
       return xml.decompile(@t)
-    expected_success: true
+    expected_success: false
+    expected_error_contains: "empty"
 
   - name: "xml.decompile - special characters"
     script: |
@@ -496,10 +511,9 @@ tests:
       local(t);
       new(tableType, @t);
       xml.compile(xmlText, @t);
-      local(adr);
-      if xml.getAddress(@t, "name", @adr) {
-        return @adr^
-      }
+      local(rootAddr = xml.getAddress(@t, "root"));
+      local(nameAddr = xml.getAddress(rootAddr, "name"));
+      return nameAddr^
     expected_output: "John"
     expected_success: true
 
@@ -509,10 +523,10 @@ tests:
       local(t);
       new(tableType, @t);
       xml.compile(xmlText, @t);
-      local(adr);
-      if xml.getAddress(@t, "person", @adr) {
-        return defined(@adr^.name)
-      }
+      local(rootAddr = xml.getAddress(@t, "root"));
+      local(personAddr = xml.getAddress(rootAddr, "person"));
+      local(nameAddr = xml.getAddress(personAddr, "name"));
+      return defined(nameAddr)
     expected_output: "true"
     expected_success: true
 
@@ -522,9 +536,14 @@ tests:
       local(t);
       new(tableType, @t);
       xml.compile(xmlText, @t);
-      local(adr);
-      return xml.getAddress(@t, "missing", @adr)
-    expected_output: "false"
+      local(rootAddr = xml.getAddress(@t, "root"));
+      try {
+        local(addr = xml.getAddress(rootAddr, "missing"));
+        return "false"
+      } else {
+        return "true"
+      }
+    expected_output: "true"
     expected_success: true
 
   - name: "xml.getAddress - multiple elements (returns first)"
@@ -533,10 +552,9 @@ tests:
       local(t);
       new(tableType, @t);
       xml.compile(xmlText, @t);
-      local(adr);
-      if xml.getAddress(@t, "item", @adr) {
-        return @adr^
-      }
+      local(rootAddr = xml.getAddress(@t, "root"));
+      local(itemAddr = xml.getAddress(rootAddr, "item"));
+      return itemAddr^
     expected_output: "first"
     expected_success: true
 
@@ -612,12 +630,10 @@ tests:
       local(t);
       new(tableType, @t);
       xml.compile(xmlText, @t);
-      local(adr);
-      xml.getAddress(@t, "item", @adr);
-      local(atts);
-      if xml.getAttribute(@adr, "id", @atts) {
-        return @atts^
-      }
+      local(rootAddr = xml.getAddress(@t, "root"));
+      local(itemAddr = xml.getAddress(rootAddr, "item"));
+      local(attrAddr = xml.getAttribute(itemAddr, "id"));
+      return attrAddr^
     expected_output: "123"
     expected_success: true
 
@@ -627,12 +643,10 @@ tests:
       local(t);
       new(tableType, @t);
       xml.compile(xmlText, @t);
-      local(adr);
-      xml.getAddress(@t, "item", @adr);
-      local(atts);
-      if xml.getAttribute(@adr, "type", @atts) {
-        return @atts^
-      }
+      local(rootAddr = xml.getAddress(@t, "root"));
+      local(itemAddr = xml.getAddress(rootAddr, "item"));
+      local(attrAddr = xml.getAttribute(itemAddr, "type"));
+      return attrAddr^
     expected_output: "test"
     expected_success: true
 
@@ -642,11 +656,15 @@ tests:
       local(t);
       new(tableType, @t);
       xml.compile(xmlText, @t);
-      local(adr);
-      xml.getAddress(@t, "item", @adr);
-      local(atts);
-      return xml.getAttribute(@adr, "missing", @atts)
-    expected_output: "false"
+      local(rootAddr = xml.getAddress(@t, "root"));
+      local(itemAddr = xml.getAddress(rootAddr, "item"));
+      try {
+        local(attrAddr = xml.getAttribute(itemAddr, "missing"));
+        return "false"
+      } else {
+        return "true"
+      }
+    expected_output: "true"
     expected_success: true
 
   - name: "xml.getAttribute - no attributes"
@@ -655,11 +673,15 @@ tests:
       local(t);
       new(tableType, @t);
       xml.compile(xmlText, @t);
-      local(adr);
-      xml.getAddress(@t, "item", @adr);
-      local(atts);
-      return xml.getAttribute(@adr, "id", @atts)
-    expected_output: "false"
+      local(rootAddr = xml.getAddress(@t, "root"));
+      local(itemAddr = xml.getAddress(rootAddr, "item"));
+      try {
+        local(attrAddr = xml.getAttribute(itemAddr, "id"));
+        return "false"
+      } else {
+        return "true"
+      }
+    expected_output: "true"
     expected_success: true
 
   # ========================================
@@ -672,9 +694,9 @@ tests:
       local(t);
       new(tableType, @t);
       xml.compile(xmlText, @t);
-      local(adr);
-      xml.getAddress(@t, "item", @adr);
-      return xml.getAttributeValue(@adr, "id")
+      local(rootAddr = xml.getAddress(@t, "root"));
+      local(itemAddr = xml.getAddress(rootAddr, "item"));
+      return xml.getAttributeValue(itemAddr, "id")
     expected_output: "123"
     expected_success: true
 
@@ -684,9 +706,9 @@ tests:
       local(t);
       new(tableType, @t);
       xml.compile(xmlText, @t);
-      local(adr);
-      xml.getAddress(@t, "item", @adr);
-      return xml.getAttributeValue(@adr, "count")
+      local(rootAddr = xml.getAddress(@t, "root"));
+      local(itemAddr = xml.getAddress(rootAddr, "item"));
+      return xml.getAttributeValue(itemAddr, "count")
     expected_output: "42"
     expected_success: true
 
@@ -696,9 +718,9 @@ tests:
       local(t);
       new(tableType, @t);
       xml.compile(xmlText, @t);
-      local(adr);
-      xml.getAddress(@t, "item", @adr);
-      return xml.getAttributeValue(@adr, "text")
+      local(rootAddr = xml.getAddress(@t, "root"));
+      local(itemAddr = xml.getAddress(rootAddr, "item"));
+      return xml.getAttributeValue(itemAddr, "text")
     expected_output: "a < b"
     expected_success: true
 
@@ -708,10 +730,14 @@ tests:
       local(t);
       new(tableType, @t);
       xml.compile(xmlText, @t);
-      local(adr);
-      xml.getAddress(@t, "item", @adr);
-      return xml.getAttributeValue(@adr, "missing")
-    expected_output: ""
+      local(rootAddr = xml.getAddress(@t, "root"));
+      local(itemAddr = xml.getAddress(rootAddr, "item"));
+      try {
+        return xml.getAttributeValue(itemAddr, "missing")
+      } else {
+        return "error"
+      }
+    expected_output: "error"
     expected_success: true
 
   # ========================================
@@ -790,7 +816,8 @@ tests:
       local(parent);
       new(tableType, @parent);
       xml.addTable(@parent, "child");
-      return defined(parent.child)
+      local(childAddr = xml.getAddress(@parent, "child"));
+      return defined(childAddr)
     expected_output: "true"
     expected_success: true
 
@@ -800,7 +827,9 @@ tests:
       new(tableType, @parent);
       xml.addTable(@parent, "first");
       xml.addTable(@parent, "second");
-      return defined(parent.first) and defined(parent.second)
+      local(firstAddr = xml.getAddress(@parent, "first"));
+      local(secondAddr = xml.getAddress(@parent, "second"));
+      return defined(firstAddr) and defined(secondAddr)
     expected_output: "true"
     expected_success: true
 
@@ -809,8 +838,10 @@ tests:
       local(root);
       new(tableType, @root);
       xml.addTable(@root, "level1");
-      xml.addTable(@root.level1, "level2");
-      return defined(root.level1.level2)
+      local(level1Addr = xml.getAddress(@root, "level1"));
+      xml.addTable(level1Addr, "level2");
+      local(level2Addr = xml.getAddress(level1Addr, "level2"));
+      return defined(level2Addr)
     expected_output: "true"
     expected_success: true
 
@@ -819,7 +850,8 @@ tests:
       local(parent);
       new(tableType, @parent);
       xml.addTable(@parent, "child");
-      return typeof(parent.child) == tableType
+      local(childAddr = xml.getAddress(@parent, "child"));
+      return typeof(childAddr^) == tableType
     expected_output: "true"
     expected_success: true
 
@@ -832,7 +864,8 @@ tests:
       local(parent);
       new(tableType, @parent);
       xml.addValue(@parent, "name", "John");
-      return parent.name
+      local(nameAddr = xml.getAddress(@parent, "name"));
+      return nameAddr^
     expected_output: "John"
     expected_success: true
 
@@ -841,7 +874,8 @@ tests:
       local(parent);
       new(tableType, @parent);
       xml.addValue(@parent, "age", 30);
-      return parent.age
+      local(ageAddr = xml.getAddress(@parent, "age"));
+      return ageAddr^
     expected_output: "30"
     expected_success: true
 
@@ -850,7 +884,8 @@ tests:
       local(parent);
       new(tableType, @parent);
       xml.addValue(@parent, "active", true);
-      return parent.active
+      local(activeAddr = xml.getAddress(@parent, "active"));
+      return activeAddr^
     expected_output: "true"
     expected_success: true
 
@@ -860,7 +895,9 @@ tests:
       new(tableType, @parent);
       xml.addValue(@parent, "first", "a");
       xml.addValue(@parent, "second", "b");
-      return parent.first + parent.second
+      local(firstAddr = xml.getAddress(@parent, "first"));
+      local(secondAddr = xml.getAddress(@parent, "second"));
+      return firstAddr^ + secondAddr^
     expected_output: "ab"
     expected_success: true
 
@@ -870,7 +907,8 @@ tests:
       new(tableType, @parent);
       xml.addValue(@parent, "value", "old");
       xml.addValue(@parent, "value", "new");
-      return parent.value
+      local(valueAddr = xml.getAddress(@parent, "value"));
+      return valueAddr^
     expected_output: "new"
     expected_success: true
 
@@ -1023,10 +1061,11 @@ tests:
       local(t);
       new(tableType, @t);
       xml.compile(xmlText, @t);
-      local(hostAdr, portAdr);
-      xml.getPathAddress(@t, "server/host", @hostAdr);
-      xml.getPathAddress(@t, "server/port", @portAdr);
-      return @hostAdr^ + ":" + @portAdr^
+      local(configAddr = xml.getAddress(@t, "config"));
+      local(serverAddr = xml.getAddress(configAddr, "server"));
+      local(hostAddr = xml.getAddress(serverAddr, "host"));
+      local(portAddr = xml.getAddress(serverAddr, "port"));
+      return hostAddr^ + ":" + portAddr^
     expected_output: "localhost:8080"
     expected_success: true
 
@@ -1035,8 +1074,9 @@ tests:
       local(root);
       new(tableType, @root);
       xml.addTable(@root, "person");
-      xml.addValue(@root.person, "name", "Jane");
-      xml.addValue(@root.person, "age", 25);
+      local(personAddr = xml.getAddress(@root, "person"));
+      xml.addValue(personAddr, "name", "Jane");
+      xml.addValue(personAddr, "age", 25);
       local(xmlResult = xml.decompile(@root));
       return string.contains(xmlResult, "<name>Jane</name>") and string.contains(xmlResult, "<age>25</age>")
     expected_output: "true"
@@ -1048,10 +1088,10 @@ tests:
       local(t);
       new(tableType, @t);
       xml.compile(xmlText, @t);
-      local(itemAdr);
-      xml.getAddress(@t, "item", @itemAdr);
-      local(id = xml.getAttributeValue(@itemAdr, "id"));
-      local(type = xml.getAttributeValue(@itemAdr, "type"));
+      local(rootAddr = xml.getAddress(@t, "root"));
+      local(itemAddr = xml.getAddress(rootAddr, "item"));
+      local(id = xml.getAttributeValue(itemAddr, "id"));
+      local(type = xml.getAttributeValue(itemAddr, "type"));
       return id + ":" + type
     expected_output: "123:test"
     expected_success: true

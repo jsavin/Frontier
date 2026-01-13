@@ -1320,10 +1320,12 @@ static boolean assignemptytag (hdlhashtable htable, bigstring bstoken, xmltoken 
 					
 
 static boolean assignstringtag (hdlhashtable htable, bigstring bstoken, xmltoken *tagtoken, xmltoken *elementtoken) {
-	
+
 	xmladdress adrnewitem;
 	hdlhashtable newitemtable;
-	
+
+	log_trace(LOG_COMP_PARSE, "assignstringtag: tag='%.*s'", (int)bstoken[0], bstoken+1);
+
 	// local (adrnewitem = newitemaddress ())
 	getnewitemaddress (htable, bstoken, &adrnewitem);
 	
@@ -1871,10 +1873,12 @@ boolean xmlcompile (Handle htext, xmladdress *xmladr) {
 	log_trace(LOG_COMP_PARSE, "compile: start");
 
     #ifdef FRONTIER_HEADLESS
-    /* Headless: avoid external table processor dependency; use root table directly */
-    nomadtable = (*xmladr).ht;
-    (**nomadtable).parenthashtable = (*xmladr).ht; /* satisfy downstream assert */
-    log_trace(LOG_COMP_PARSE, "compile: using root table as nomad");
+    /* Headless: create new table at specified address, same as GUI version */
+    if (!langassignnewtablevalue ((*xmladr).ht, (*xmladr).bs, &nomadtable)) {
+        log_error(LOG_COMP_PARSE, "compile: langassignnewtablevalue failed");
+        return (false);
+    }
+    log_trace(LOG_COMP_PARSE, "compile: created new table at address");
     #else
     if (!langassignnewtablevalue ((*xmladr).ht, (*xmladr).bs, &nomadtable)) {
         return (false);
@@ -1983,29 +1987,32 @@ boolean xmlcompile (Handle htext, xmladdress *xmladr) {
 			}
 		
 		if (token.isTag) {
-			
+
 			// if token.tokenstring beginswith '?'
 			// assert (token.isPI == (getstringcharacter (bstoken, 0) == '?'));
-			
+
 			if (token.openTag) {
-				
+				log_trace(LOG_COMP_PARSE, "compile: open tag '%.*s'", (int)bstoken[0], bstoken+1);
+
 				if (lastchar (bstoken) == '/') { //self-contained empty tag, like <hello/>
-					
+
 					setstringlength (bstoken, stringlength (bstoken) - 1);
-					
+
+					log_trace(LOG_COMP_PARSE, "compile: self-closing empty tag '%.*s'", (int)bstoken[0], bstoken+1);
 					if (!assignemptytag (nomadtable, bstoken, &token))
 						goto exit;
-					
+
 					assert (reuselookahead == false); // dmb: shouldn't need this anymore
 					}
-						
+
 				else {
 					if (!getnexttoken (&source, namespaces, &lookaheadtoken))
 						scriptError (badxmltexterror, STR_itcantendontag, nil, token.pos);
-					
+
 					if (lookaheadtoken.isTag) {
-						
+
 						if (lookaheadtoken.openTag) { //create a sub-table
+							log_trace(LOG_COMP_PARSE, "compile: creating sub-table for '%.*s'", (int)bstoken[0], bstoken+1);
 							
 							// nomad = newitemaddress ()
 							getnewitemaddress (nomadtable, bstoken, &nomad);
@@ -2033,7 +2040,8 @@ boolean xmlcompile (Handle htext, xmladdress *xmladr) {
 							}
 						}
 					else { // lookahead is not a tag
-						
+						log_trace(LOG_COMP_PARSE, "compile: lookahead is not a tag (text content)");
+
 						if (!getnexttoken (&source, namespaces, &closetoken))
 							scriptError (badxmltexterror, STR_itmustendwithtag, nil, source.pos);
 						

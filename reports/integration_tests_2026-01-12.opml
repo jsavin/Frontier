@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Frontier Integration Tests</title>
-    <dateCreated>Mon, 12 Jan 2026 19:48:03 GMT</dateCreated>
+    <dateCreated>Mon, 12 Jan 2026 21:38:42 GMT</dateCreated>
   </head>
   <body>
     <outline text="Db Verbs (db_verbs)">
@@ -8270,7 +8270,9 @@
           <outline text="local(result)"/>
           <outline text="new(tableType, @result)"/>
           <outline text="if xml.compile(xmlText, @result)">
-            <outline text="return result.name"/>
+            <outline text="local(rootAddr = xml.getAddress(@result, &quot;root&quot;))"/>
+            <outline text="local(nameAddr = xml.getAddress(rootAddr, &quot;name&quot;))"/>
+            <outline text="return nameAddr^"/>
           </outline>
         </outline>
       </outline>
@@ -8283,7 +8285,10 @@
           <outline text="local(result)"/>
           <outline text="new(tableType, @result)"/>
           <outline text="if xml.compile(xmlText, @result)">
-            <outline text="return result.first + &quot; &quot; + result.last"/>
+            <outline text="local(rootAddr = xml.getAddress(@result, &quot;root&quot;))"/>
+            <outline text="local(firstAddr = xml.getAddress(rootAddr, &quot;first&quot;))"/>
+            <outline text="local(lastAddr = xml.getAddress(rootAddr, &quot;last&quot;))"/>
+            <outline text="return firstAddr^ + &quot; &quot; + lastAddr^"/>
           </outline>
         </outline>
       </outline>
@@ -8296,7 +8301,10 @@
           <outline text="local(result)"/>
           <outline text="new(tableType, @result)"/>
           <outline text="if xml.compile(xmlText, @result)">
-            <outline text="return result.person.name"/>
+            <outline text="local(rootAddr = xml.getAddress(@result, &quot;root&quot;))"/>
+            <outline text="local(personAddr = xml.getAddress(rootAddr, &quot;person&quot;))"/>
+            <outline text="local(nameAddr = xml.getAddress(personAddr, &quot;name&quot;))"/>
+            <outline text="return nameAddr^"/>
           </outline>
         </outline>
       </outline>
@@ -8309,7 +8317,9 @@
           <outline text="local(result)"/>
           <outline text="new(tableType, @result)"/>
           <outline text="if xml.compile(xmlText, @result)">
-            <outline text="return defined(result.item)"/>
+            <outline text="local(rootAddr = xml.getAddress(@result, &quot;root&quot;))"/>
+            <outline text="local(itemAddr = xml.getAddress(rootAddr, &quot;item&quot;))"/>
+            <outline text="return defined(itemAddr)"/>
           </outline>
         </outline>
       </outline>
@@ -8322,7 +8332,9 @@
           <outline text="local(result)"/>
           <outline text="new(tableType, @result)"/>
           <outline text="if xml.compile(xmlText, @result)">
-            <outline text="return result.text"/>
+            <outline text="local(rootAddr = xml.getAddress(@result, &quot;root&quot;))"/>
+            <outline text="local(textAddr = xml.getAddress(rootAddr, &quot;text&quot;))"/>
+            <outline text="return textAddr^"/>
           </outline>
         </outline>
       </outline>
@@ -8335,7 +8347,9 @@
           <outline text="local(result)"/>
           <outline text="new(tableType, @result)"/>
           <outline text="if xml.compile(xmlText, @result)">
-            <outline text="return defined(result.empty)"/>
+            <outline text="local(rootAddr = xml.getAddress(@result, &quot;root&quot;))"/>
+            <outline text="local(emptyAddr = xml.getAddress(rootAddr, &quot;empty&quot;))"/>
+            <outline text="return defined(emptyAddr)"/>
           </outline>
         </outline>
       </outline>
@@ -8388,6 +8402,10 @@
         </outline>
       </outline>
       <outline text="xml.decompile - empty table">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_contains: empty"/>
+        </outline>
         <outline text="Script">
           <outline text="local(t)"/>
           <outline text="new(tableType, @t)"/>
@@ -8415,10 +8433,9 @@
           <outline text="local(t)"/>
           <outline text="new(tableType, @t)"/>
           <outline text="xml.compile(xmlText, @t)"/>
-          <outline text="local(adr)"/>
-          <outline text="if xml.getAddress(@t, &quot;name&quot;, @adr)">
-            <outline text="return @adr^"/>
-          </outline>
+          <outline text="local(rootAddr = xml.getAddress(@t, &quot;root&quot;))"/>
+          <outline text="local(nameAddr = xml.getAddress(rootAddr, &quot;name&quot;))"/>
+          <outline text="return nameAddr^"/>
         </outline>
       </outline>
       <outline text="xml.getAddress - nested element">
@@ -8430,23 +8447,29 @@
           <outline text="local(t)"/>
           <outline text="new(tableType, @t)"/>
           <outline text="xml.compile(xmlText, @t)"/>
-          <outline text="local(adr)"/>
-          <outline text="if xml.getAddress(@t, &quot;person&quot;, @adr)">
-            <outline text="return defined(@adr^.name)"/>
-          </outline>
+          <outline text="local(rootAddr = xml.getAddress(@t, &quot;root&quot;))"/>
+          <outline text="local(personAddr = xml.getAddress(rootAddr, &quot;person&quot;))"/>
+          <outline text="local(nameAddr = xml.getAddress(personAddr, &quot;name&quot;))"/>
+          <outline text="return defined(nameAddr)"/>
         </outline>
       </outline>
       <outline text="xml.getAddress - element not found">
         <outline text="Metadata">
-          <outline text="expected_output: false"/>
+          <outline text="expected_output: true"/>
         </outline>
         <outline text="Script">
           <outline text="local(xmlText = &quot;&lt;root&gt;&lt;name&gt;John&lt;/name&gt;&lt;/root&gt;&quot;)"/>
           <outline text="local(t)"/>
           <outline text="new(tableType, @t)"/>
           <outline text="xml.compile(xmlText, @t)"/>
-          <outline text="local(adr)"/>
-          <outline text="return xml.getAddress(@t, &quot;missing&quot;, @adr)"/>
+          <outline text="local(rootAddr = xml.getAddress(@t, &quot;root&quot;))"/>
+          <outline text="try">
+            <outline text="local(addr = xml.getAddress(rootAddr, &quot;missing&quot;))"/>
+            <outline text="return &quot;false&quot;"/>
+          </outline>
+          <outline text="} else">
+            <outline text="return &quot;true&quot;"/>
+          </outline>
         </outline>
       </outline>
       <outline text="xml.getAddress - multiple elements (returns first)">
@@ -8458,10 +8481,9 @@
           <outline text="local(t)"/>
           <outline text="new(tableType, @t)"/>
           <outline text="xml.compile(xmlText, @t)"/>
-          <outline text="local(adr)"/>
-          <outline text="if xml.getAddress(@t, &quot;item&quot;, @adr)">
-            <outline text="return @adr^"/>
-          </outline>
+          <outline text="local(rootAddr = xml.getAddress(@t, &quot;root&quot;))"/>
+          <outline text="local(itemAddr = xml.getAddress(rootAddr, &quot;item&quot;))"/>
+          <outline text="return itemAddr^"/>
         </outline>
       </outline>
       <outline text="xml.getAddressList - multiple elements">
@@ -8540,12 +8562,10 @@
           <outline text="local(t)"/>
           <outline text="new(tableType, @t)"/>
           <outline text="xml.compile(xmlText, @t)"/>
-          <outline text="local(adr)"/>
-          <outline text="xml.getAddress(@t, &quot;item&quot;, @adr)"/>
-          <outline text="local(atts)"/>
-          <outline text="if xml.getAttribute(@adr, &quot;id&quot;, @atts)">
-            <outline text="return @atts^"/>
-          </outline>
+          <outline text="local(rootAddr = xml.getAddress(@t, &quot;root&quot;))"/>
+          <outline text="local(itemAddr = xml.getAddress(rootAddr, &quot;item&quot;))"/>
+          <outline text="local(attrAddr = xml.getAttribute(itemAddr, &quot;id&quot;))"/>
+          <outline text="return attrAddr^"/>
         </outline>
       </outline>
       <outline text="xml.getAttribute - multiple attributes">
@@ -8557,42 +8577,50 @@
           <outline text="local(t)"/>
           <outline text="new(tableType, @t)"/>
           <outline text="xml.compile(xmlText, @t)"/>
-          <outline text="local(adr)"/>
-          <outline text="xml.getAddress(@t, &quot;item&quot;, @adr)"/>
-          <outline text="local(atts)"/>
-          <outline text="if xml.getAttribute(@adr, &quot;type&quot;, @atts)">
-            <outline text="return @atts^"/>
-          </outline>
+          <outline text="local(rootAddr = xml.getAddress(@t, &quot;root&quot;))"/>
+          <outline text="local(itemAddr = xml.getAddress(rootAddr, &quot;item&quot;))"/>
+          <outline text="local(attrAddr = xml.getAttribute(itemAddr, &quot;type&quot;))"/>
+          <outline text="return attrAddr^"/>
         </outline>
       </outline>
       <outline text="xml.getAttribute - attribute not found">
         <outline text="Metadata">
-          <outline text="expected_output: false"/>
+          <outline text="expected_output: true"/>
         </outline>
         <outline text="Script">
           <outline text="local(xmlText = &quot;&lt;root&gt;&lt;item id=\&quot;123\&quot;&gt;Value&lt;/item&gt;&lt;/root&gt;&quot;)"/>
           <outline text="local(t)"/>
           <outline text="new(tableType, @t)"/>
           <outline text="xml.compile(xmlText, @t)"/>
-          <outline text="local(adr)"/>
-          <outline text="xml.getAddress(@t, &quot;item&quot;, @adr)"/>
-          <outline text="local(atts)"/>
-          <outline text="return xml.getAttribute(@adr, &quot;missing&quot;, @atts)"/>
+          <outline text="local(rootAddr = xml.getAddress(@t, &quot;root&quot;))"/>
+          <outline text="local(itemAddr = xml.getAddress(rootAddr, &quot;item&quot;))"/>
+          <outline text="try">
+            <outline text="local(attrAddr = xml.getAttribute(itemAddr, &quot;missing&quot;))"/>
+            <outline text="return &quot;false&quot;"/>
+          </outline>
+          <outline text="} else">
+            <outline text="return &quot;true&quot;"/>
+          </outline>
         </outline>
       </outline>
       <outline text="xml.getAttribute - no attributes">
         <outline text="Metadata">
-          <outline text="expected_output: false"/>
+          <outline text="expected_output: true"/>
         </outline>
         <outline text="Script">
           <outline text="local(xmlText = &quot;&lt;root&gt;&lt;item&gt;Value&lt;/item&gt;&lt;/root&gt;&quot;)"/>
           <outline text="local(t)"/>
           <outline text="new(tableType, @t)"/>
           <outline text="xml.compile(xmlText, @t)"/>
-          <outline text="local(adr)"/>
-          <outline text="xml.getAddress(@t, &quot;item&quot;, @adr)"/>
-          <outline text="local(atts)"/>
-          <outline text="return xml.getAttribute(@adr, &quot;id&quot;, @atts)"/>
+          <outline text="local(rootAddr = xml.getAddress(@t, &quot;root&quot;))"/>
+          <outline text="local(itemAddr = xml.getAddress(rootAddr, &quot;item&quot;))"/>
+          <outline text="try">
+            <outline text="local(attrAddr = xml.getAttribute(itemAddr, &quot;id&quot;))"/>
+            <outline text="return &quot;false&quot;"/>
+          </outline>
+          <outline text="} else">
+            <outline text="return &quot;true&quot;"/>
+          </outline>
         </outline>
       </outline>
       <outline text="xml.getAttributeValue - simple attribute">
@@ -8604,9 +8632,9 @@
           <outline text="local(t)"/>
           <outline text="new(tableType, @t)"/>
           <outline text="xml.compile(xmlText, @t)"/>
-          <outline text="local(adr)"/>
-          <outline text="xml.getAddress(@t, &quot;item&quot;, @adr)"/>
-          <outline text="return xml.getAttributeValue(@adr, &quot;id&quot;)"/>
+          <outline text="local(rootAddr = xml.getAddress(@t, &quot;root&quot;))"/>
+          <outline text="local(itemAddr = xml.getAddress(rootAddr, &quot;item&quot;))"/>
+          <outline text="return xml.getAttributeValue(itemAddr, &quot;id&quot;)"/>
         </outline>
       </outline>
       <outline text="xml.getAttributeValue - numeric attribute">
@@ -8618,9 +8646,9 @@
           <outline text="local(t)"/>
           <outline text="new(tableType, @t)"/>
           <outline text="xml.compile(xmlText, @t)"/>
-          <outline text="local(adr)"/>
-          <outline text="xml.getAddress(@t, &quot;item&quot;, @adr)"/>
-          <outline text="return xml.getAttributeValue(@adr, &quot;count&quot;)"/>
+          <outline text="local(rootAddr = xml.getAddress(@t, &quot;root&quot;))"/>
+          <outline text="local(itemAddr = xml.getAddress(rootAddr, &quot;item&quot;))"/>
+          <outline text="return xml.getAttributeValue(itemAddr, &quot;count&quot;)"/>
         </outline>
       </outline>
       <outline text="xml.getAttributeValue - attribute with entities">
@@ -8632,23 +8660,28 @@
           <outline text="local(t)"/>
           <outline text="new(tableType, @t)"/>
           <outline text="xml.compile(xmlText, @t)"/>
-          <outline text="local(adr)"/>
-          <outline text="xml.getAddress(@t, &quot;item&quot;, @adr)"/>
-          <outline text="return xml.getAttributeValue(@adr, &quot;text&quot;)"/>
+          <outline text="local(rootAddr = xml.getAddress(@t, &quot;root&quot;))"/>
+          <outline text="local(itemAddr = xml.getAddress(rootAddr, &quot;item&quot;))"/>
+          <outline text="return xml.getAttributeValue(itemAddr, &quot;text&quot;)"/>
         </outline>
       </outline>
       <outline text="xml.getAttributeValue - attribute not found">
         <outline text="Metadata">
-          <outline text="expected_output: "/>
+          <outline text="expected_output: error"/>
         </outline>
         <outline text="Script">
           <outline text="local(xmlText = &quot;&lt;root&gt;&lt;item id=\&quot;123\&quot;&gt;Value&lt;/item&gt;&lt;/root&gt;&quot;)"/>
           <outline text="local(t)"/>
           <outline text="new(tableType, @t)"/>
           <outline text="xml.compile(xmlText, @t)"/>
-          <outline text="local(adr)"/>
-          <outline text="xml.getAddress(@t, &quot;item&quot;, @adr)"/>
-          <outline text="return xml.getAttributeValue(@adr, &quot;missing&quot;)"/>
+          <outline text="local(rootAddr = xml.getAddress(@t, &quot;root&quot;))"/>
+          <outline text="local(itemAddr = xml.getAddress(rootAddr, &quot;item&quot;))"/>
+          <outline text="try">
+            <outline text="return xml.getAttributeValue(itemAddr, &quot;missing&quot;)"/>
+          </outline>
+          <outline text="} else">
+            <outline text="return &quot;error&quot;"/>
+          </outline>
         </outline>
       </outline>
       <outline text="xml.getPathAddress - simple path">
@@ -8732,7 +8765,8 @@
           <outline text="local(parent)"/>
           <outline text="new(tableType, @parent)"/>
           <outline text="xml.addTable(@parent, &quot;child&quot;)"/>
-          <outline text="return defined(parent.child)"/>
+          <outline text="local(childAddr = xml.getAddress(@parent, &quot;child&quot;))"/>
+          <outline text="return defined(childAddr)"/>
         </outline>
       </outline>
       <outline text="xml.addTable - add multiple children">
@@ -8744,7 +8778,9 @@
           <outline text="new(tableType, @parent)"/>
           <outline text="xml.addTable(@parent, &quot;first&quot;)"/>
           <outline text="xml.addTable(@parent, &quot;second&quot;)"/>
-          <outline text="return defined(parent.first) and defined(parent.second)"/>
+          <outline text="local(firstAddr = xml.getAddress(@parent, &quot;first&quot;))"/>
+          <outline text="local(secondAddr = xml.getAddress(@parent, &quot;second&quot;))"/>
+          <outline text="return defined(firstAddr) and defined(secondAddr)"/>
         </outline>
       </outline>
       <outline text="xml.addTable - nested tables">
@@ -8755,8 +8791,10 @@
           <outline text="local(root)"/>
           <outline text="new(tableType, @root)"/>
           <outline text="xml.addTable(@root, &quot;level1&quot;)"/>
-          <outline text="xml.addTable(@root.level1, &quot;level2&quot;)"/>
-          <outline text="return defined(root.level1.level2)"/>
+          <outline text="local(level1Addr = xml.getAddress(@root, &quot;level1&quot;))"/>
+          <outline text="xml.addTable(level1Addr, &quot;level2&quot;)"/>
+          <outline text="local(level2Addr = xml.getAddress(level1Addr, &quot;level2&quot;))"/>
+          <outline text="return defined(level2Addr)"/>
         </outline>
       </outline>
       <outline text="xml.addTable - verify table type">
@@ -8767,7 +8805,8 @@
           <outline text="local(parent)"/>
           <outline text="new(tableType, @parent)"/>
           <outline text="xml.addTable(@parent, &quot;child&quot;)"/>
-          <outline text="return typeof(parent.child) == tableType"/>
+          <outline text="local(childAddr = xml.getAddress(@parent, &quot;child&quot;))"/>
+          <outline text="return typeof(childAddr^) == tableType"/>
         </outline>
       </outline>
       <outline text="xml.addValue - string value">
@@ -8778,7 +8817,8 @@
           <outline text="local(parent)"/>
           <outline text="new(tableType, @parent)"/>
           <outline text="xml.addValue(@parent, &quot;name&quot;, &quot;John&quot;)"/>
-          <outline text="return parent.name"/>
+          <outline text="local(nameAddr = xml.getAddress(@parent, &quot;name&quot;))"/>
+          <outline text="return nameAddr^"/>
         </outline>
       </outline>
       <outline text="xml.addValue - integer value">
@@ -8789,7 +8829,8 @@
           <outline text="local(parent)"/>
           <outline text="new(tableType, @parent)"/>
           <outline text="xml.addValue(@parent, &quot;age&quot;, 30)"/>
-          <outline text="return parent.age"/>
+          <outline text="local(ageAddr = xml.getAddress(@parent, &quot;age&quot;))"/>
+          <outline text="return ageAddr^"/>
         </outline>
       </outline>
       <outline text="xml.addValue - boolean value">
@@ -8800,7 +8841,8 @@
           <outline text="local(parent)"/>
           <outline text="new(tableType, @parent)"/>
           <outline text="xml.addValue(@parent, &quot;active&quot;, true)"/>
-          <outline text="return parent.active"/>
+          <outline text="local(activeAddr = xml.getAddress(@parent, &quot;active&quot;))"/>
+          <outline text="return activeAddr^"/>
         </outline>
       </outline>
       <outline text="xml.addValue - multiple values">
@@ -8812,7 +8854,9 @@
           <outline text="new(tableType, @parent)"/>
           <outline text="xml.addValue(@parent, &quot;first&quot;, &quot;a&quot;)"/>
           <outline text="xml.addValue(@parent, &quot;second&quot;, &quot;b&quot;)"/>
-          <outline text="return parent.first + parent.second"/>
+          <outline text="local(firstAddr = xml.getAddress(@parent, &quot;first&quot;))"/>
+          <outline text="local(secondAddr = xml.getAddress(@parent, &quot;second&quot;))"/>
+          <outline text="return firstAddr^ + secondAddr^"/>
         </outline>
       </outline>
       <outline text="xml.addValue - overwrite existing">
@@ -8824,7 +8868,8 @@
           <outline text="new(tableType, @parent)"/>
           <outline text="xml.addValue(@parent, &quot;value&quot;, &quot;old&quot;)"/>
           <outline text="xml.addValue(@parent, &quot;value&quot;, &quot;new&quot;)"/>
-          <outline text="return parent.value"/>
+          <outline text="local(valueAddr = xml.getAddress(@parent, &quot;value&quot;))"/>
+          <outline text="return valueAddr^"/>
         </outline>
       </outline>
       <outline text="xml.valToString - string value">
@@ -8993,10 +9038,11 @@
           <outline text="local(t)"/>
           <outline text="new(tableType, @t)"/>
           <outline text="xml.compile(xmlText, @t)"/>
-          <outline text="local(hostAdr, portAdr)"/>
-          <outline text="xml.getPathAddress(@t, &quot;server/host&quot;, @hostAdr)"/>
-          <outline text="xml.getPathAddress(@t, &quot;server/port&quot;, @portAdr)"/>
-          <outline text="return @hostAdr^ + &quot;:&quot; + @portAdr^"/>
+          <outline text="local(configAddr = xml.getAddress(@t, &quot;config&quot;))"/>
+          <outline text="local(serverAddr = xml.getAddress(configAddr, &quot;server&quot;))"/>
+          <outline text="local(hostAddr = xml.getAddress(serverAddr, &quot;host&quot;))"/>
+          <outline text="local(portAddr = xml.getAddress(serverAddr, &quot;port&quot;))"/>
+          <outline text="return hostAddr^ + &quot;:&quot; + portAddr^"/>
         </outline>
       </outline>
       <outline text="xml - build structure with addTable/addValue then decompile">
@@ -9007,8 +9053,9 @@
           <outline text="local(root)"/>
           <outline text="new(tableType, @root)"/>
           <outline text="xml.addTable(@root, &quot;person&quot;)"/>
-          <outline text="xml.addValue(@root.person, &quot;name&quot;, &quot;Jane&quot;)"/>
-          <outline text="xml.addValue(@root.person, &quot;age&quot;, 25)"/>
+          <outline text="local(personAddr = xml.getAddress(@root, &quot;person&quot;))"/>
+          <outline text="xml.addValue(personAddr, &quot;name&quot;, &quot;Jane&quot;)"/>
+          <outline text="xml.addValue(personAddr, &quot;age&quot;, 25)"/>
           <outline text="local(xmlResult = xml.decompile(@root))"/>
           <outline text="return string.contains(xmlResult, &quot;&lt;name&gt;Jane&lt;/name&gt;&quot;) and string.contains(xmlResult, &quot;&lt;age&gt;25&lt;/age&gt;&quot;)"/>
         </outline>
@@ -9022,10 +9069,10 @@
           <outline text="local(t)"/>
           <outline text="new(tableType, @t)"/>
           <outline text="xml.compile(xmlText, @t)"/>
-          <outline text="local(itemAdr)"/>
-          <outline text="xml.getAddress(@t, &quot;item&quot;, @itemAdr)"/>
-          <outline text="local(id = xml.getAttributeValue(@itemAdr, &quot;id&quot;))"/>
-          <outline text="local(type = xml.getAttributeValue(@itemAdr, &quot;type&quot;))"/>
+          <outline text="local(rootAddr = xml.getAddress(@t, &quot;root&quot;))"/>
+          <outline text="local(itemAddr = xml.getAddress(rootAddr, &quot;item&quot;))"/>
+          <outline text="local(id = xml.getAttributeValue(itemAddr, &quot;id&quot;))"/>
+          <outline text="local(type = xml.getAttributeValue(itemAddr, &quot;type&quot;))"/>
           <outline text="return id + &quot;:&quot; + type"/>
         </outline>
       </outline>
