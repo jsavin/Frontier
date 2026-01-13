@@ -169,8 +169,6 @@ boolean xmlfrontiervaltotaggedtext (tyvaluerecord *val, short indentlevel, Handl
 
 static boolean xmlstructtofrontiervalue (tyaddress *adrstruct, tyvaluerecord *v);
 
-static boolean xmlgetaddress (hdlhashtable ht, bigstring name);
-
 
 static boolean handlebeginswith (Handle h, bigstring bs) {
 	
@@ -2959,8 +2957,8 @@ static void xmlmakenewaddress (hdlhashtable ht, bigstring name) {
 	} /*xmlmakenewaddress*/
 
 
-static boolean xmlgetaddress (hdlhashtable ht, bigstring name) {
-	
+boolean xmlgetaddress (hdlhashtable ht, bigstring name) {
+
 	/*
 	on getAddress (adrtable, name) { //return the address of the first object in the table with the indicated name
 	*/
@@ -2983,12 +2981,12 @@ static boolean xmlgetaddress (hdlhashtable ht, bigstring name) {
 	} /*xmlgetaddress*/
 
 
-static boolean xmlgetaddresslist (hdlhashtable ht, bigstring name, boolean justone, hdllistrecord *hlist) {
-	
+boolean xmlgetaddresslist (hdlhashtable ht, bigstring name, boolean justone, hdllistrecord *hlist) {
+
 	/*
-	on getAddressList (adrtable, commonname, justone=false) { //return a list of all 
+	on getAddressList (adrtable, commonname, justone=false) { //return a list of all
 	objects with this name in the table
-	
+
 	5.1.3 dmb: if ht is nil, just return the empty list
 	*/
 	
@@ -3064,8 +3062,8 @@ boolean xmlgetattribute (hdlhashtable ht, bigstring name, hdlhashtable *adratts)
 	} /*xmlgetattribute*/
 
 
-static boolean xmlgetpathaddress (tyaddress *xtable, Handle h, tyaddress *adrresult, boolean *flvalid) {
-	
+boolean xmlgetpathaddress (tyaddress *xtable, Handle h, tyaddress *adrresult, boolean *flvalid) {
+
 	/*
 	6.1d5 AR: Kernelized. From the root of the table, travel from the top down
 	the /-separated path, e.g. "/ticket/header/title". Set adrresult^ to point

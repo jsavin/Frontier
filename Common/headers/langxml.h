@@ -29,6 +29,11 @@
 langxml.h -- 7.0b21 PBS
 */
 
+#ifndef langxmlinclude
+#define langxmlinclude
+
+#include "oplist.h"
+
 typedef struct xmladdress {
 	
 	hdlhashtable ht;
@@ -50,3 +55,12 @@ extern boolean gethashnodetable (hdlhashnode hn, hdlhashtable *ht);
 extern boolean replaceallinhandle (bigstring bsfind, bigstring bsreplace, Handle htext);
 
 extern boolean xmlfrontiervaltotaggedtext (tyvaluerecord *val, short indentlevel, Handle *xmltext, hdlhashnode hnode);
+
+/* Tree navigation functions - exported for headless implementation */
+extern boolean xmlgetaddress (hdlhashtable ht, bigstring name);
+
+extern boolean xmlgetaddresslist (hdlhashtable ht, bigstring name, boolean justone, hdllistrecord *hlist);
+
+extern boolean xmlgetpathaddress (tyaddress *xtable, Handle h, tyaddress *adrresult, boolean *flvalid);
+
+#endif /* langxmlinclude */

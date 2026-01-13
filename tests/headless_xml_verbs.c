@@ -9,6 +9,11 @@
  * Implementation status:
  * - xml.compile: IMPLEMENTED (parse XML string to table structure)
  * - xml.decompile: IMPLEMENTED (serialize table structure to XML string)
+ * - xml.getaddress: IMPLEMENTED (Phase 2 - find first element by name)
+ * - xml.getaddresslist: IMPLEMENTED (Phase 2 - find all elements with same name)
+ * - xml.getattribute: IMPLEMENTED (Phase 2 - get attribute address)
+ * - xml.getattributevalue: IMPLEMENTED (Phase 2 - get attribute value)
+ * - xml.getpathaddress: IMPLEMENTED (Phase 2 - navigate slash-separated path)
  * - xml.frontiervaluetotaggedtext: IMPLEMENTED (converts Frontier values to XML-RPC tagged text)
  * - Other xml verbs: STUBBED (not yet implemented)
  */
@@ -23,6 +28,7 @@
 #include "tablestructure.h"
 #include "tableverbs.h"
 #include "langxml.h"
+#include "oplist.h"
 
 /* Token enum for all verbs in the xml processor */
 enum {
@@ -97,22 +103,112 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
             /* Return the XML text as a string */
             return setheapvalue(hxmltext, stringvaluetype, vreturned);
         }
-        case xmlv_getaddress:
-            /* Verb #4: xml.getaddress - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case xmlv_getaddresslist:
-            /* Verb #5: xml.getaddresslist - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case xmlv_getattribute:
-            /* Verb #6: xml.getattribute - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case xmlv_getattributevalue:
-            /* Verb #7: xml.getattributevalue - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+        case xmlv_getaddress: {
+            /* Verb #4: xml.getaddress(adrTable, name)
+             * @IMPLEMENTED - Find first element by name
+             * Returns address of first matching element in table */
+            hdlhashtable ht;
+            bigstring name;
+
+            /* Get table value parameter */
+            if (!gettablevalue(hparam1, 1, &ht))
+                return false;
+
+            /* Get name parameter */
+            flnextparamislast = true;
+            if (!getstringvalue(hparam1, 2, name))
+                return false;
+
+            /* Find first matching element by name */
+            if (!xmlgetaddress(ht, name))
+                return false;
+
+            /* Return address of the found element */
+            return setaddressvalue(ht, name, vreturned);
+        }
+        case xmlv_getaddresslist: {
+            /* Verb #5: xml.getaddresslist(adrTable, name, justone=false)
+             * @IMPLEMENTED - Find all elements with same name
+             * Returns list of addresses for all matching elements */
+            hdlhashtable ht;
+            bigstring name;
+            boolean justone = false;
+            hdllistrecord hlist;
+
+            /* Get table value parameter */
+            if (!getvarparam(hparam1, 1, &ht, name))
+                return false;
+
+            /* Get name parameter */
+            if (!getstringvalue(hparam1, 2, name))
+                return false;
+
+            /* Get optional justone parameter */
+            if (langgetparamcount(hparam1) > 2) {
+                flnextparamislast = true;
+                if (!getbooleanvalue(hparam1, 3, &justone))
+                    return false;
+            }
+
+            /* Find all matching elements */
+            if (!xmlgetaddresslist(ht, name, justone, &hlist))
+                return false;
+
+            /* Return list of addresses */
+            return setheapvalue((Handle)hlist, listvaluetype, vreturned);
+        }
+        case xmlv_getattribute: {
+            /* Verb #6: xml.getattribute(adrTable, name)
+             * @IMPLEMENTED - Get attribute address
+             * Returns address of the /atts subtable for the named attribute */
+            hdlhashtable ht;
+            bigstring name;
+
+            /* Get table value parameter */
+            if (!gettablevalue(hparam1, 1, &ht))
+                return false;
+
+            /* Get attribute name parameter */
+            flnextparamislast = true;
+            if (!getstringvalue(hparam1, 2, name))
+                return false;
+
+            /* Get attributes subtable and verify attribute exists */
+            if (!xmlgetattribute(ht, name, &ht))
+                return false;
+
+            /* Return address of the attribute */
+            return setaddressvalue(ht, name, vreturned);
+        }
+        case xmlv_getattributevalue: {
+            /* Verb #7: xml.getattributevalue(adrTable, name)
+             * @IMPLEMENTED - Get attribute value
+             * Returns the value of the named attribute (dereferences address) */
+            hdlhashtable ht;
+            bigstring name;
+            tyvaluerecord val;
+            hdlhashnode hnode;
+
+            /* Get table value parameter */
+            if (!gettablevalue(hparam1, 1, &ht))
+                return false;
+
+            /* Get attribute name parameter */
+            flnextparamislast = true;
+            if (!getstringvalue(hparam1, 2, name))
+                return false;
+
+            /* Get attributes subtable and verify attribute exists */
+            if (!xmlgetattribute(ht, name, &ht))
+                return false;
+
+            /* Look up the attribute value in the attributes table */
+            if (!hashtablelookup(ht, name, &val, &hnode))
+                return false;
+
+            /* Return copy of the attribute value */
+            return copyvaluerecord(val, vreturned);
+        }
         case xmlv_getvalue:
             /* Verb #8: xml.getvalue - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
@@ -162,10 +258,46 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
             /* Verb #11: xml.structtofrontiervalue - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case xmlv_getpathaddress:
-            /* Verb #12: xml.getpathaddress - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+        case xmlv_getpathaddress: {
+            /* Verb #12: xml.getpathaddress(adrTable, path, adrResult)
+             * @IMPLEMENTED - Navigate slash-separated path
+             * Navigates through nested table structure via "/" delimited path
+             * Returns boolean indicating if path is valid, stores result in adrResult */
+            tyvaluerecord val;
+            tyaddress xtable, adrresult, adr;
+            Handle path;
+            boolean fl;
+
+            /* Get table address parameter */
+            if (!getaddressparam(hparam1, 1, &val))
+                return false;
+
+            if (!getaddressvalue(val, &xtable.ht, xtable.bs))
+                return false;
+
+            /* Get path string parameter */
+            if (!getreadonlytextvalue(hparam1, 2, &path))
+                return false;
+
+            /* Get result address parameter (out parameter) */
+            flnextparamislast = true;
+            if (!getaddressparam(hparam1, 3, &val))
+                return false;
+
+            if (!getaddressvalue(val, &adrresult.ht, adrresult.bs))
+                return false;
+
+            /* Navigate through the path and find the target element */
+            if (!xmlgetpathaddress(&xtable, path, &adr, &fl))
+                return false;
+
+            /* Store the result address in the output parameter */
+            if (!langassignaddressvalue(adrresult.ht, adrresult.bs, &adr))
+                return false;
+
+            /* Return boolean indicating if path was valid */
+            return setbooleanvalue(fl, vreturned);
+        }
         case xmlv_converttodisplayname:
             /* Verb #13: xml.converttodisplayname - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
