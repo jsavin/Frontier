@@ -385,3 +385,59 @@ tests:
              (typeof(sys.bringapptofront("test")) == booleanType)
     expected_success: true
     expected_result: "true"
+
+  # ============================================================================
+  # sys.unixshellcommand Tests (4 parameter variants)
+  # ============================================================================
+
+  # 1-param variant: command only
+  - name: "sys.unixshellcommand - 1 param (command only)"
+    description: "Execute command and return exit status as boolean"
+    script: 'sys.unixshellcommand("echo hello")'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "sys.unixshellcommand - 1 param (command fails)"
+    description: "Failed command returns false"
+    script: 'sys.unixshellcommand("false")'
+    expected_success: true
+    expected_result: "false"
+
+  # 2-param variant: command + stdout
+  - name: "sys.unixshellcommand - 2 params (command + stdout)"
+    description: "Capture stdout to address"
+    script: |
+      local(stdout);
+      sys.unixshellcommand("echo hello", @stdout);
+      return string.patternMatch("hello", stdout) > 0
+    expected_success: true
+    expected_result: "true"
+
+  # 3-param variant: command + stdout + stderr
+  - name: "sys.unixshellcommand - 3 params (command + stdout + stderr)"
+    description: "Capture both stdout and stderr"
+    script: |
+      local(stdout, stderr);
+      sys.unixshellcommand("ls /nonexistent 2>&1", @stdout, @stderr);
+      return typeof(stdout) == stringType and typeof(stderr) == stringType
+    expected_success: true
+    expected_result: "true"
+
+  # 4-param variant: command + stdout + stderr + exitstatus
+  - name: "sys.unixshellcommand - 4 params (all outputs)"
+    description: "Capture stdout, stderr, and exit status"
+    script: |
+      local(stdout, stderr, exitstatus);
+      sys.unixshellcommand("echo test", @stdout, @stderr, @exitstatus);
+      return (exitstatus == 0) and (string.patternMatch("test", stdout) > 0)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "sys.unixshellcommand - 4 params (non-zero exit)"
+    description: "Exit status captures non-zero return codes"
+    script: |
+      local(stdout, stderr, exitstatus);
+      sys.unixshellcommand("exit 42", @stdout, @stderr, @exitstatus);
+      return exitstatus == 42
+    expected_success: true
+    expected_result: "true"

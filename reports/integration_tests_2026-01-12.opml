@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Frontier Integration Tests</title>
-    <dateCreated>Mon, 12 Jan 2026 16:06:36 GMT</dateCreated>
+    <dateCreated>Mon, 12 Jan 2026 16:17:24 GMT</dateCreated>
   </head>
   <body>
     <outline text="Db Verbs (db_verbs)">
@@ -6986,6 +6986,62 @@
             <outline text="(typeof(sys.appisrunning(&quot;test&quot;)) == booleanType) and"/>
             <outline text="(typeof(sys.bringapptofront(&quot;test&quot;)) == booleanType)"/>
           </outline>
+        </outline>
+      </outline>
+      <outline text="sys.unixshellcommand - 1 param (command only) - Execute command and return exit status as boolean">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="sys.unixshellcommand(&quot;echo hello&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="sys.unixshellcommand - 1 param (command fails) - Failed command returns false">
+        <outline text="Metadata">
+          <outline text="expected_result: false"/>
+        </outline>
+        <outline text="Script">
+          <outline text="sys.unixshellcommand(&quot;false&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="sys.unixshellcommand - 2 params (command + stdout) - Capture stdout to address">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(stdout)"/>
+          <outline text="sys.unixshellcommand(&quot;echo hello&quot;, @stdout)"/>
+          <outline text="return string.patternMatch(&quot;hello&quot;, stdout) &gt; 0"/>
+        </outline>
+      </outline>
+      <outline text="sys.unixshellcommand - 3 params (command + stdout + stderr) - Capture both stdout and stderr">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(stdout, stderr)"/>
+          <outline text="sys.unixshellcommand(&quot;ls /nonexistent 2&gt;&amp;1&quot;, @stdout, @stderr)"/>
+          <outline text="return typeof(stdout) == stringType and typeof(stderr) == stringType"/>
+        </outline>
+      </outline>
+      <outline text="sys.unixshellcommand - 4 params (all outputs) - Capture stdout, stderr, and exit status">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(stdout, stderr, exitstatus)"/>
+          <outline text="sys.unixshellcommand(&quot;echo test&quot;, @stdout, @stderr, @exitstatus)"/>
+          <outline text="return (exitstatus == 0) and (string.patternMatch(&quot;test&quot;, stdout) &gt; 0)"/>
+        </outline>
+      </outline>
+      <outline text="sys.unixshellcommand - 4 params (non-zero exit) - Exit status captures non-zero return codes">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(stdout, stderr, exitstatus)"/>
+          <outline text="sys.unixshellcommand(&quot;exit 42&quot;, @stdout, @stderr, @exitstatus)"/>
+          <outline text="return exitstatus == 42"/>
         </outline>
       </outline>
     </outline>

@@ -118,8 +118,8 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
             if (!newtexthandle(BIGSTRING("\psw_vers -productVersion"), &hcommand))
                 return false;
             #else
-            /* Linux: Try to get distribution version, fall back to uname -r */
-            if (!newtexthandle(BIGSTRING("\p(grep VERSION_ID /etc/os-release 2>/dev/null | cut -d= -f2 | tr -d '\"') || uname -r"), &hcommand))
+            /* Linux: Try to get distribution name and version, fall back to uname -r */
+            if (!newtexthandle(BIGSTRING("\p(grep PRETTY_NAME /etc/os-release 2>/dev/null | cut -d= -f2 | tr -d '\"') || uname -r"), &hcommand))
                 return false;
             #endif
 
@@ -233,16 +233,17 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
             }
         case sysv_countapps: {
             /* @IMPLEMENTED sys.countapps - returns count of running processes
-             * Uses ps aux | wc -l to count all running processes
+             * Uses ps aux | tail -n +2 | wc -l to count all running processes (excluding header)
              */
             Handle hcommand, houtput;
             long count;
             bigstring countstr;
 
-            flnextparamislast = true;
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
 
-            /* Build command: ps aux | wc -l */
-            if (!newtexthandle(BIGSTRING("\pps aux | wc -l"), &hcommand))
+            /* Build command: ps aux | tail -n +2 | wc -l (skip header line) */
+            if (!newtexthandle(BIGSTRING("\pps aux | tail -n +2 | wc -l"), &hcommand))
                 return false;
 
             newemptyhandle(&houtput);
@@ -261,12 +262,17 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
 
             /* Parse the count from the string using sscanf */
             /* Convert bigstring to C string for sscanf */
-            char cstr[256];
-            copyptocstring(countstr, cstr);
+            char cstr[32];  /* Sufficient for process counts */
 
-            if (sscanf(cstr, "%ld", &count) != 1) {
-                /* If parsing fails, return 0 */
-                count = 0;
+            /* Validate string length before copying */
+            if (stringlength(countstr) >= sizeof(cstr)) {
+                count = 0;  /* Sanity check failed */
+            } else {
+                copyptocstring(countstr, cstr);
+                if (sscanf(cstr, "%ld", &count) != 1) {
+                    /* If parsing fails, return 0 */
+                    count = 0;
+                }
             }
 
             return setlongvalue(count, vreturned);
