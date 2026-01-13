@@ -46,6 +46,21 @@ enum {
     sysv_winshellcommand = 15
 };
 
+/* Helper function to trim trailing whitespace (newlines, carriage returns) from a handle
+ * Modifies the handle in place by shrinking it
+ */
+static void trimtrailingwhitespace(Handle h) {
+    if (gethandlesize(h) > 0) {
+        long size = gethandlesize(h);
+        lockhandle(h);
+        while (size > 0 && ((*h)[size-1] == '\n' || (*h)[size-1] == '\r')) {
+            size--;
+        }
+        unlockhandle(h);
+        sethandlesize(h, size);
+    }
+}
+
 /* Helper function to safely escape shell arguments for single-quote wrapping
  * Converts: foo'bar -> 'foo'\''bar'
  * This prevents command injection by escaping all single quotes and wrapping in quotes
@@ -103,8 +118,8 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
             if (!newtexthandle(BIGSTRING("\psw_vers -productVersion"), &hcommand))
                 return false;
             #else
-            /* Linux: Try to get distribution version */
-            if (!newtexthandle(BIGSTRING("\pcat /etc/os-release | grep VERSION_ID | cut -d= -f2 | tr -d '\"'"), &hcommand))
+            /* Linux: Try to get distribution version, fall back to uname -r */
+            if (!newtexthandle(BIGSTRING("\p(grep VERSION_ID /etc/os-release 2>/dev/null | cut -d= -f2 | tr -d '\"') || uname -r"), &hcommand))
                 return false;
             #endif
 
@@ -119,15 +134,7 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
             disposehandle(hcommand);
 
             /* Trim trailing newline if present */
-            if (gethandlesize(hversion) > 0) {
-                long size = gethandlesize(hversion);
-                lockhandle(hversion);
-                while (size > 0 && ((*hversion)[size-1] == '\n' || (*hversion)[size-1] == '\r')) {
-                    size--;
-                }
-                unlockhandle(hversion);
-                sethandlesize(hversion, size);
-            }
+            trimtrailingwhitespace(hversion);
 
             return setheapvalue(hversion, stringvaluetype, vreturned);
             }
@@ -136,13 +143,17 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
              * In GUI mode, this yields time to other applications.
              * In headless mode, this is a no-op that always returns true.
              */
-            flnextparamislast = true;
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+
             return setbooleanvalue(true, vreturned);
         case sysv_browsenetwork:
             /* @IMPLEMENTED sys.browsenetwork - GUI-only feature not available in headless */
             /* This verb displays GUI network browser dialog - cannot work without window manager */
-            if (bserror) copystring(BIGSTRING("\pnot available in headless mode"), bserror);
-            return false;
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+
+            return setbooleanvalue(false, vreturned);
         case sysv_appisrunning: {
             /* @IMPLEMENTED sys.appisrunning(name) - returns true if process is running
              * Uses pgrep -x to check for exact process name match
@@ -251,11 +262,7 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
             /* Parse the count from the string using sscanf */
             /* Convert bigstring to C string for sscanf */
             char cstr[256];
-            int i;
-            for (i = 0; i < stringlength(countstr) && i < 255; i++) {
-                cstr[i] = countstr[i+1];  /* Skip Pascal string length byte */
-            }
-            cstr[i] = '\0';
+            copyptocstring(countstr, cstr);
 
             if (sscanf(cstr, "%ld", &count) != 1) {
                 /* If parsing fails, return 0 */
@@ -331,13 +338,12 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
 
             disposehandle(hcommand);
 
-            /* Convert output to string and trim whitespace */
+            /* Trim trailing newline if present */
+            trimtrailingwhitespace(houtput);
+
+            /* Convert output to string */
             texthandletostring(houtput, resultpath);
             disposehandle(houtput);
-
-            /* Trim trailing newline if present */
-            if (stringlength(resultpath) > 0 && resultpath[stringlength(resultpath)] == '\n')
-                setstringlength(resultpath, stringlength(resultpath) - 1);
 
             /* Return the path (empty if not found) */
             return setstringvalue(resultpath, vreturned);
@@ -371,15 +377,7 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
             disposehandle(hcommand);
 
             /* Trim trailing newline if present */
-            if (gethandlesize(hmachine) > 0) {
-                long size = gethandlesize(hmachine);
-                lockhandle(hmachine);
-                while (size > 0 && ((*hmachine)[size-1] == '\n' || (*hmachine)[size-1] == '\r')) {
-                    size--;
-                }
-                unlockhandle(hmachine);
-                sethandlesize(hmachine, size);
-            }
+            trimtrailingwhitespace(hmachine);
 
             return setheapvalue(hmachine, stringvaluetype, vreturned);
             }

@@ -237,11 +237,12 @@ tests:
     expected_success: true
     expected_result: "false"
 
-  # sys.browsenetwork - Returns error (GUI-only)
+  # sys.browsenetwork - Returns false (GUI-only)
   - name: "sys.browsenetwork - not available in headless"
-    description: "browsenetwork requires GUI, should fail in headless"
+    description: "browsenetwork requires GUI, returns false in headless"
     script: 'sys.browsenetwork()'
-    expected_success: false
+    expected_success: true
+    expected_result: "false"
 
   # ============================================================================
   # Low Priority Verbs (1 verb)
