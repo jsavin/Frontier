@@ -12,6 +12,7 @@ Complete guide for testing the headless Frontier runtime, including CLI usage, d
 4. [Testing Patterns](#testing-patterns)
 5. [UserTalk Syntax Guide](#usertalk-syntax-guide)
 6. [System Dependencies](#system-dependencies)
+7. [Known Test Framework Limitations](#known-test-framework-limitations)
 
 ---
 
@@ -500,6 +501,68 @@ xxd -l 2 -p databases/Frontier-v6.root
 ```
 
 **See also:** `planning/DATABASE_CORRUPTION_PREVENTION.md` for database protection details
+
+---
+
+## Known Test Framework Limitations
+
+### OSType/JSON Serialization Issue
+
+**Problem**: The integration test framework has a fundamental limitation with OSType constant comparisons due to JSON serialization.
+
+**Background**:
+- UserTalk's `typeof()` verb returns **OSType codes** (4-byte constants like `'tabl'`, `'TEXT'`, `'fss '`)
+- Type constants (`tableType`, `stringType`, `filespecType`) are defined in `system.compiler.language.constants` and resolve to these OSType codes
+- Production UserTalk code uses type constants: `if typeof(x) == tableType { ... }`
+
+**The Limitation**:
+- The test framework uses `--output-json` to capture CLI results
+- JSON serialization converts OSType codes to strings during the conversion process
+- When the test framework parses the JSON output, OSType values become string literals
+- Result: Tests must use **string literals** instead of **type constants** for comparisons to work
+
+**Example**:
+
+Production code (correct):
+```usertalk
+if typeof(x) == tableType {
+    return "is a table"
+}
+```
+
+Integration test (workaround):
+```yaml
+tests:
+  - name: "typeof - table check"
+    script: |
+      lang.new(tableType, @x);
+      if typeof(x) == "tabl" {
+          return "is a table"
+      }
+    expected_success: true
+    expected_result: "is a table"
+```
+
+**Why This Matters**:
+- Creates divergence from production code patterns
+- Tests look "wrong" compared to real UserTalk code
+- May confuse developers reviewing test cases
+- **Not a bug in `typeof()` or the runtime** - purely a test framework serialization issue
+
+**Common OSType String Literals in Tests**:
+- `"tabl"` instead of `tableType`
+- `"TEXT"` instead of `stringType`
+- `"bool"` instead of `booleanType`
+- `"long"` instead of `intType`
+- `"fss "` instead of `filespecType` (note trailing space!)
+
+**The Correct Approach**:
+- ✅ Use type constants (`tableType`, `stringType`) in production code
+- ✅ Use string literals (`"tabl"`, `"TEXT"`) in integration tests
+- ✅ Document this divergence when it appears in test files
+- ❌ Don't "fix" `typeof()` to return string names - breaks all production code
+
+**Reference**: Issue #291 (PR review feedback identifying this pattern)
 
 ---
 

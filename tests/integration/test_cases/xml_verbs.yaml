@@ -1123,3 +1123,21 @@ tests:
       return sum
     expected_output: "6"
     expected_success: true
+
+  # ========================================
+  # Entity Encoding Roundtrip Test (Security)
+  # ========================================
+
+  - name: "xml - entity encoding roundtrip (encode→decode = identity)"
+    script: |
+      local(xmlWithEntities = "<root><data>Test &lt;tag&gt; &amp; text &amp; ]]&gt; sequence</data></root>");
+      local(t);
+      new(tableType, @t);
+      xml.compile(xmlWithEntities, @t);
+      local(rootAddr = xml.getAddress(@t, "root"));
+      local(dataAddr = xml.getAddress(rootAddr, "data"));
+      local(decoded = dataAddr^);
+      local(expected = "Test <tag> & text & ]]> sequence");
+      return decoded == expected
+    expected_output: "true"
+    expected_success: true

@@ -327,7 +327,9 @@ boolean langexternalgettable (bigstring bs, hdlhashtable *htable) {
                and are accessible through other lookup paths (roottable fallback, etc.).
                Skip tokens here and let the code fall through to those working tables. */
             if (val.valuetype == tokenvaluetype) {
-                log_trace(LOG_COMP_EXTERNAL, "langexternalgettable: tokenvaluetype skipped, falling through to other lookups");
+                /* Token types appear in efptable after database load (serialization artifact).
+                   These are not functional processors, so fall through to other lookups. */
+                log_debug(LOG_COMP_EXTERNAL, "langexternalgettable: tokenvaluetype skipped, falling through to other lookups");
                 /* Don't return - let it fall through to roottable/systemtable fallbacks */
             }
             else if (tablevaltotable (val, htable, hnode)) {
