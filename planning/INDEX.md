@@ -40,10 +40,9 @@ Change Log
 - **Legacy Follow-ups**
   - Phase 2 open items – `planning/phase2/`
   - Phase 3 headless runtime plans – `planning/phase3/`
-    - [REPL Interactive Mode Design](phase3/REPL_INTERACTIVE_MODE_DESIGN.md) - frontier-cli REPL Phases 1-3 (interactive terminal, multi-line, file ops)
   - Phase 4 networking/server infrastructure – `planning/phase4/`
     - [Frontier Web Server Analysis](phase4/FRONTIER_WEB_SERVER_ANALYSIS.md) - webserver/inetd/tcp/betty components for REST API (CORE Phase 4)
-    - [REPL Interactive Mode Design](phase3/REPL_INTERACTIVE_MODE_DESIGN.md) - Phase 4 section covers server mode (depends on networking)
+    - [REPL Interactive Mode Design](phase4/REPL_INTERACTIVE_MODE_DESIGN.md) - frontier-cli REPL implementation (4 phases: terminal → server mode)
   - Phase 5 parser/tooling roadmap – `planning/phase5/`
 
 ## Archive

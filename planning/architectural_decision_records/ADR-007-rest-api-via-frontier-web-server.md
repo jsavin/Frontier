@@ -379,7 +379,7 @@ Still use HTTP protocol over these transports (HTTP over Unix socket is standard
 
 ## References
 
-- [REPL Interactive Mode Design](../phase3/REPL_INTERACTIVE_MODE_DESIGN.md) - Context for server mode
+- [REPL Interactive Mode Design](../phase4/REPL_INTERACTIVE_MODE_DESIGN.md) - Context for server mode
 - [Frontier Web Server Documentation](TBD) - Legacy Frontier server architecture
 - [REST API Specification](TBD) - OpenAPI/Swagger spec (Phase 3 deliverable)
 - [Dave Winer's OPML Editor](https://github.com/scripting/opmlEditor) - JSON parser source
