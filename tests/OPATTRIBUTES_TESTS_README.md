@@ -4,7 +4,7 @@
 
 This test verifies that the opattributes C verb stubs are properly integrated into the headless build system.
 
-**Test File**: `tests/opattributes_integration_tests.c` (70 lines)
+**Test File**: `tests/opattributes_stub_tests.c` (160+ lines)
 
 **Implementation File**: `tests/headless_opattributes_verbs.c`
 
@@ -40,21 +40,30 @@ return false;
 
 ```bash
 cd tests
-make opattributes_integration_tests
-./opattributes_integration_tests
+make opattributes_stub_tests
+./opattributes_stub_tests
 ```
 
 **Expected Output**:
 ```
-opattributes_integration_tests: Testing headless opattributes stubs
+opattributes_stub_tests: Testing headless opattributes stubs
 ========================================================================
 TEST: opattributes verbs should be stubbed in headless mode
-  ✓ opattributes verbs are correctly stubbed as not supported
-    - addgroup: Not supported in headless
-    - getall:   Not supported in headless
-    - getone:   Not supported in headless
-    - makeempty: Not supported in headless
-    - setone:   Not supported in headless
+
+Calling verbs with dispatcher and verifying error messages:
+
+  ✓ op.attributes.addgroup: Returns error (not supported)
+    Error message: "op.attributes verbs are not supported in headless mode"
+  ✓ op.attributes.getall: Returns error (not supported)
+    Error message: "op.attributes verbs are not supported in headless mode"
+  ✓ op.attributes.getone: Returns error (not supported)
+    Error message: "op.attributes verbs are not supported in headless mode"
+  ✓ op.attributes.makeempty: Returns error (not supported)
+    Error message: "op.attributes verbs are not supported in headless mode"
+  ✓ op.attributes.setone: Returns error (not supported)
+    Error message: "op.attributes verbs are not supported in headless mode"
+
+Results: 5 passed, 0 failed
 
 ========================================================================
 All tests passed
@@ -79,4 +88,4 @@ For GUI-capable builds, implement full opattributes with:
 ## Files
 
 - `headless_opattributes_verbs.c` - Stub implementation (returns error)
-- `opattributes_integration_tests.c` - Stub verification test
+- `opattributes_stub_tests.c` - Stub verification test (calls verbs and verifies error messages)

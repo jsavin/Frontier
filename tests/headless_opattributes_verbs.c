@@ -32,6 +32,7 @@
 #include "opinternal.h"
 
 /* Token enum for all verbs in the opattributes processor */
+/* Exposed publicly for testing */
 enum {
     opav_addgroup = 0,
     opav_getall = 1,
@@ -40,15 +41,20 @@ enum {
     opav_setone = 4
 };
 
+/* Public interface for testing */
+extern boolean opattributes_valueproc(short token, hdltreenode hparam1,
+                                     tyvaluerecord *vreturned,
+                                     bigstring bserror);
+
 static void seterrorstring(const char *msg, bigstring bserror) {
     if (bserror == NULL)
         return;
     copyctopstring(msg, bserror);
 }
 
-static boolean opattributes_valueproc(short token, hdltreenode hparam1,
-                                     tyvaluerecord *vreturned,
-                                     bigstring bserror) {
+boolean opattributes_valueproc(short token, hdltreenode hparam1,
+                               tyvaluerecord *vreturned,
+                               bigstring bserror) {
     /*
      * Headless stub for opattributes verbs
      *
