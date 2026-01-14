@@ -24,7 +24,10 @@ static char* read_line_with_editing(void) {
 	/* Save terminal state and enable raw mode */
 	term_state = terminal_save_state();
 	if (!term_state || !terminal_set_raw_mode()) {
-		terminal_free_state(term_state);
+		if (term_state) {
+			terminal_restore_state(term_state);
+			terminal_free_state(term_state);
+		}
 		return NULL;
 	}
 
@@ -106,7 +109,10 @@ bool dialog_ask(const char *prompt) {
 	/* Save terminal state and enable raw mode */
 	term_state = terminal_save_state();
 	if (!term_state || !terminal_set_raw_mode()) {
-		terminal_free_state(term_state);
+		if (term_state) {
+			terminal_restore_state(term_state);
+			terminal_free_state(term_state);
+		}
 		return false;
 	}
 
@@ -278,7 +284,10 @@ char* dialog_get_password(const char *prompt) {
 	/* Save terminal state and enable raw mode */
 	term_state = terminal_save_state();
 	if (!term_state || !terminal_set_raw_mode()) {
-		terminal_free_state(term_state);
+		if (term_state) {
+			terminal_restore_state(term_state);
+			terminal_free_state(term_state);
+		}
 		return NULL;
 	}
 
@@ -337,8 +346,8 @@ char* dialog_get_password(const char *prompt) {
 
 				buffer[len++] = key.ch;
 
-				/* Display bullet point (U+2022 = • in UTF-8: 0xE2 0x80 0xA2) */
-				fputs("\xe2\x80\xa2", stderr);
+				/* Display asterisk for password masking (ASCII, safe single byte) */
+				fputc('*', stderr);
 				fflush(stderr);
 				break;
 

@@ -101,22 +101,22 @@ class FrontierCLI:
                 env=process_env
             )
 
-            # Parse JSON from stderr (keeping stdout clean for user messages like lang.msg)
-            # When dialog prompts are active, stderr contains prompt output + JSON at the end
-            # Extract the last JSON object from stderr
+            # Parse JSON from stdout (stderr contains prompts and logs)
+            # When dialog prompts are active, stderr contains prompt output
+            # stdout contains the clean JSON result
             try:
-                stderr_lines = result.stderr
+                stdout_lines = result.stdout
                 # Find last occurrence of '{\n  "success"' which marks start of JSON
-                json_start = stderr_lines.rfind('{\n  "success"')
+                json_start = stdout_lines.rfind('{\n  "success"')
                 if json_start == -1:
-                    # Fallback: try to parse entire stderr as JSON
-                    json_text = stderr_lines
+                    # Fallback: try to parse entire stdout as JSON
+                    json_text = stdout_lines
                 else:
-                    json_text = stderr_lines[json_start:]
+                    json_text = stdout_lines[json_start:]
 
                 output = json.loads(json_text)
                 output['exit_code'] = result.returncode
-                output['stdout'] = result.stdout  # Preserve stdout for user messages
+                output['stderr'] = result.stderr  # Preserve stderr for prompts/logs
                 return output
             except json.JSONDecodeError as e:
                 return {

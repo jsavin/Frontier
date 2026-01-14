@@ -96,6 +96,11 @@ static file_dialog_result interactive_file_loop(const char *prompt,
 	char current_dir[PATH_MAX];
 	if (start_path && start_path[0] != '\0') {
 		if (is_directory(start_path)) {
+			size_t len = strlen(start_path);
+			if (len >= sizeof(current_dir)) {
+				log_warn(LOG_COMP_GENERAL, "file_dialog: Start path truncated (length %zu >= %zu)",
+				         len, sizeof(current_dir));
+			}
 			strncpy(current_dir, start_path, sizeof(current_dir) - 1);
 		} else {
 			split_path(start_path, current_dir, sizeof(current_dir), NULL, 0);
@@ -213,13 +218,22 @@ static file_dialog_result interactive_file_loop(const char *prompt,
 
 			if (count == 1) {
 				/* Single match: auto-complete */
+				size_t name_len = strlen(entries[0].name);
+				if (name_len >= sizeof(input)) {
+					log_warn(LOG_COMP_GENERAL, "file_dialog: Entry name truncated (length %zu >= %zu)",
+					         name_len, sizeof(input));
+				}
 				strncpy(input, entries[0].name, sizeof(input) - 1);
 				input[sizeof(input) - 1] = '\0';
 				input_pos = strlen(input);
 
 				/* If directory, update current_dir and clear input */
 				if (entries[0].is_directory) {
-					snprintf(current_dir, sizeof(current_dir), "%s/%s", current_dir, entries[0].name);
+					int ret = snprintf(current_dir, sizeof(current_dir), "%s/%s", current_dir, entries[0].name);
+					if (ret >= (int)sizeof(current_dir)) {
+						log_warn(LOG_COMP_GENERAL, "file_dialog: Path truncated when navigating to directory: %s/%s",
+						         current_dir, entries[0].name);
+					}
 					input_pos = 0;
 					input[0] = '\0';
 				}
@@ -240,12 +254,22 @@ static file_dialog_result interactive_file_loop(const char *prompt,
 			/* Check if selected entry is a directory */
 			if (is_directory(tab_result.selected_path)) {
 				/* Navigate into directory */
+				size_t path_len = strlen(tab_result.selected_path);
+				if (path_len >= sizeof(current_dir)) {
+					log_warn(LOG_COMP_GENERAL, "file_dialog: Selected directory path truncated (length %zu >= %zu)",
+					         path_len, sizeof(current_dir));
+				}
 				strncpy(current_dir, tab_result.selected_path, sizeof(current_dir) - 1);
 				current_dir[sizeof(current_dir) - 1] = '\0';
 				input_pos = 0;
 				input[0] = '\0';
 			} else {
 				/* File selected */
+				size_t path_len = strlen(tab_result.selected_path);
+				if (path_len >= sizeof(result.path)) {
+					log_warn(LOG_COMP_GENERAL, "file_dialog: Selected file path truncated (length %zu >= %zu)",
+					         path_len, sizeof(result.path));
+				}
 				strncpy(result.path, tab_result.selected_path, sizeof(result.path) - 1);
 				result.path[sizeof(result.path) - 1] = '\0';
 				result.success = true;
@@ -258,6 +282,11 @@ static file_dialog_result interactive_file_loop(const char *prompt,
 		if (input_pos == 0) {
 			/* Empty input: return current directory (for folder selection) */
 			if (!require_file) {
+				size_t dir_len = strlen(current_dir);
+				if (dir_len >= sizeof(result.path)) {
+					log_warn(LOG_COMP_GENERAL, "file_dialog: Current directory path truncated (length %zu >= %zu)",
+					         dir_len, sizeof(result.path));
+				}
 				strncpy(result.path, current_dir, sizeof(result.path) - 1);
 				result.path[sizeof(result.path) - 1] = '\0';
 				result.success = true;
@@ -272,10 +301,19 @@ static file_dialog_result interactive_file_loop(const char *prompt,
 		char full_path[PATH_MAX];
 		if (input[0] == '/') {
 			/* Absolute path */
+			size_t input_len = strlen(input);
+			if (input_len >= sizeof(full_path)) {
+				log_warn(LOG_COMP_GENERAL, "file_dialog: Absolute input path truncated (length %zu >= %zu)",
+				         input_len, sizeof(full_path));
+			}
 			strncpy(full_path, input, sizeof(full_path) - 1);
 		} else {
 			/* Relative to current_dir */
-			snprintf(full_path, sizeof(full_path), "%s/%s", current_dir, input);
+			int ret = snprintf(full_path, sizeof(full_path), "%s/%s", current_dir, input);
+			if (ret >= (int)sizeof(full_path)) {
+				log_warn(LOG_COMP_GENERAL, "file_dialog: Path truncated when building full path: %s/%s",
+				         current_dir, input);
+			}
 		}
 		full_path[sizeof(full_path) - 1] = '\0';
 
@@ -302,6 +340,11 @@ static file_dialog_result interactive_file_loop(const char *prompt,
 		}
 
 		/* Success */
+		size_t path_len = strlen(full_path);
+		if (path_len >= sizeof(result.path)) {
+			log_warn(LOG_COMP_GENERAL, "file_dialog: Full path truncated (length %zu >= %zu)",
+			         path_len, sizeof(result.path));
+		}
 		strncpy(result.path, full_path, sizeof(result.path) - 1);
 		result.path[sizeof(result.path) - 1] = '\0';
 		result.success = true;
@@ -377,14 +420,32 @@ file_dialog_result file_dialog_get_disk(void) {
 	fprintf(stderr, "Enter volume number (or 0 to cancel): ");
 	fflush(stderr);
 
-	int selection = 0;
-	if (scanf("%d", &selection) != 1 || selection < 1 || selection > count) {
+	char input_buf[32];
+	if (!fgets(input_buf, sizeof(input_buf), stdin)) {
+		fprintf(stderr, "Cancelled.\n");
+		free(mounts);
+		return result;
+	}
+
+	char *endptr;
+	errno = 0;
+	long selection_long = strtol(input_buf, &endptr, 10);
+	int selection = (int)selection_long;
+
+	/* Validate: must be valid integer, in range, no overflow */
+	if (errno != 0 || (*endptr != '\n' && *endptr != '\0') ||
+	    selection_long != (long)selection || selection < 1 || selection > count) {
 		fprintf(stderr, "Cancelled.\n");
 		free(mounts);
 		return result;
 	}
 
 	/* Return selected volume path */
+	size_t mount_len = strlen(mounts[selection - 1].f_mntonname);
+	if (mount_len >= sizeof(result.path)) {
+		log_warn(LOG_COMP_GENERAL, "file_dialog: Mount path truncated (length %zu >= %zu)",
+		         mount_len, sizeof(result.path));
+	}
 	strncpy(result.path, mounts[selection - 1].f_mntonname, sizeof(result.path) - 1);
 	result.path[sizeof(result.path) - 1] = '\0';
 	result.success = true;
@@ -397,8 +458,20 @@ file_dialog_result file_dialog_get_disk(void) {
 	fprintf(stderr, "Enter 1 to select root, or 0 to cancel: ");
 	fflush(stderr);
 
-	int selection = 0;
-	if (scanf("%d", &selection) != 1 || selection != 1) {
+	char input_buf[32];
+	if (!fgets(input_buf, sizeof(input_buf), stdin)) {
+		fprintf(stderr, "Cancelled.\n");
+		return result;
+	}
+
+	char *endptr;
+	errno = 0;
+	long selection_long = strtol(input_buf, &endptr, 10);
+	int selection = (int)selection_long;
+
+	/* Validate: must be valid integer, equal to 1, no overflow */
+	if (errno != 0 || (*endptr != '\n' && *endptr != '\0') ||
+	    selection_long != (long)selection || selection != 1) {
 		fprintf(stderr, "Cancelled.\n");
 		return result;
 	}

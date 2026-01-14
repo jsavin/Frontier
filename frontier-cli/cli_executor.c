@@ -271,59 +271,59 @@ void cli_print_execution_result(const usertalk_execution_t* execution) {
 // multi-byte sequences will be addressed when runtime string encoding is unified.
 static void cli_print_json_escaped_string(const char* str) {
     if (str == NULL) {
-        fprintf(stderr, "null");
+        printf( "null");
         return;
     }
 
-    fprintf(stderr, "\"");
+    printf( "\"");
     for (const char* p = str; *p != '\0'; p++) {
         switch (*p) {
-            case '"':  fprintf(stderr, "\\\""); break;
-            case '\\': fprintf(stderr, "\\\\"); break;
-            case '\b': fprintf(stderr, "\\b"); break;
-            case '\f': fprintf(stderr, "\\f"); break;
-            case '\n': fprintf(stderr, "\\n"); break;
-            case '\r': fprintf(stderr, "\\r"); break;
-            case '\t': fprintf(stderr, "\\t"); break;
+            case '"':  printf( "\\\""); break;
+            case '\\': printf( "\\\\"); break;
+            case '\b': printf( "\\b"); break;
+            case '\f': printf( "\\f"); break;
+            case '\n': printf( "\\n"); break;
+            case '\r': printf( "\\r"); break;
+            case '\t': printf( "\\t"); break;
             default:
                 if ((unsigned char)*p < 32) {
                     // Escape control characters
-                    fprintf(stderr, "\\u%04x", (unsigned char)*p);
+                    printf( "\\u%04x", (unsigned char)*p);
                 } else {
                     // Pass through printable ASCII and UTF-8 multi-byte sequences
                     // JSON spec (RFC 8259) allows unescaped UTF-8
-                    fputc(*p, stderr);
+                    putchar(*p);
                 }
                 break;
         }
     }
-    fprintf(stderr, "\"");
+    printf( "\"");
 }
 
-// Print execution result as JSON (to stderr, keeping stdout clean for user messages)
+// Print execution result as JSON to stdout for clean separation from prompts/logs
 static void cli_print_execution_result_json(const usertalk_execution_t* execution, boolean success) {
-    fprintf(stderr, "{\n");
-    fprintf(stderr, "  \"success\": %s,\n", success ? "true" : "false");
+    printf( "{\n");
+    printf( "  \"success\": %s,\n", success ? "true" : "false");
 
     if (success && execution != NULL && execution->result != NULL) {
-        fprintf(stderr, "  \"result\": ");
+        printf( "  \"result\": ");
         cli_print_json_escaped_string(execution->result);
-        fprintf(stderr, ",\n");
-        fprintf(stderr, "  \"result_type\": \"string\",\n");
+        printf( ",\n");
+        printf( "  \"result_type\": \"string\",\n");
     } else {
-        fprintf(stderr, "  \"result\": null,\n");
-        fprintf(stderr, "  \"result_type\": null,\n");
+        printf( "  \"result\": null,\n");
+        printf( "  \"result_type\": null,\n");
     }
 
     if (!success && execution != NULL && execution->error_message != NULL) {
-        fprintf(stderr, "  \"error\": ");
+        printf( "  \"error\": ");
         cli_print_json_escaped_string(execution->error_message);
-        fprintf(stderr, ",\n");
-        fprintf(stderr, "  \"error_type\": \"script_error\"\n");
+        printf( ",\n");
+        printf( "  \"error_type\": \"script_error\"\n");
     } else {
-        fprintf(stderr, "  \"error\": null,\n");
-        fprintf(stderr, "  \"error_type\": null\n");
+        printf( "  \"error\": null,\n");
+        printf( "  \"error_type\": null\n");
     }
 
-    fprintf(stderr, "}\n");
+    printf( "}\n");
 }
