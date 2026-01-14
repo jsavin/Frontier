@@ -155,9 +155,15 @@ boolean repl_eval_script(
     HUnlock(htext);
 
     /* Execute script using langrunhandletraperror
-     * Note: Name resolution will find workspace.x as root.workspace.x
+     *
+     * IMPORTANT: langrunhandletraperror() CONSUMES the text handle.
+     * It disposes htext before returning (both success and error paths).
+     * Do NOT access htext after this call.
+     *
+     * Name resolution: workspace.x resolves to root.workspace.x
      * Don't set currenthashtable - let normal lookup work
-     * Note: langrunhandletraperror returns result in one param, error in another.
+     *
+     * Returns: result in one param, error in another (separated cleanly)
      */
     boolean ok = langrunhandletraperror(htext, result, error_msg);
 
