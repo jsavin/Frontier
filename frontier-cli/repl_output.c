@@ -15,6 +15,7 @@
 #include "../Common/headers/lang.h"
 #include "../Common/headers/langexternal.h"
 #include "../Common/headers/strings.h"
+#include "../Common/headers/logging.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -39,7 +40,7 @@ void repl_output_prompt(const char *system_root_name) {
 	if (system_root_name != NULL && strlen(system_root_name) > 0) {
 		fprintf(stderr, "[%s]> ", system_root_name);
 	} else {
-		fputs("[no-root]> ", stderr);
+		fputs("[root]> ", stderr);
 	}
 	fflush(stderr);
 }
@@ -137,8 +138,10 @@ void repl_output_result(bigstring result) {
 /* Display error message */
 void repl_output_error(const char *error_msg) {
 	if (error_msg == NULL) {
+		log_error(LOG_COMP_GENERAL, "Unknown error");
 		fprintf(stderr, "Error: (unknown error)\n");
 	} else {
+		log_error(LOG_COMP_GENERAL, "%s", error_msg);
 		fprintf(stderr, "Error: %s\n", error_msg);
 	}
 	fflush(stderr);
@@ -152,15 +155,12 @@ void repl_output_help(void) {
 	fputs("  /clear         Clear workspace variables\n", stdout);
 	fputs("  /vars          Show workspace variables\n", stdout);
 	fputs("\n", stdout);
-	fputs("Multi-line input:\n", stdout);
-	fputs("  Use backslash (\\) at end of line to continue on next line\n", stdout);
-	fputs("\n", stdout);
 	fputs("Examples:\n", stdout);
 	fputs("  workspace.x = 42\n", stdout);
 	fputs("  workspace.x * 2\n", stdout);
-	fputs("  local(sum = 0); \\\n", stdout);
-	fputs("    for i = 1 to 10 { sum = sum + i }; \\\n", stdout);
-	fputs("    return sum\n", stdout);
+	fputs("  workspace.sum = workspace.x + 10\n", stdout);
+	fputs("\n", stdout);
+	fputs("Multi-line input: Coming in Phase 2\n", stdout);
 	fflush(stdout);
 }
 

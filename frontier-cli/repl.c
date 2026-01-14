@@ -43,6 +43,7 @@ int repl_main(cli_options_t *options) {
     memset(&workspace, 0, sizeof(workspace));
 
     if (!repl_workspace_init(&workspace)) {
+        log_error(LOG_COMP_GENERAL, "Failed to initialize REPL workspace");
         fprintf(stderr, "Error: Failed to initialize REPL workspace\n");
         return 1;
     }
