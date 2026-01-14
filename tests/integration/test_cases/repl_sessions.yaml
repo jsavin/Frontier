@@ -1,0 +1,578 @@
+# REPL Phase 1 Session Tests
+#
+# Tests for REPL session lifecycle and system integration:
+# - System root auto-loading
+# - Session isolation
+# - Startup/shutdown behavior
+# - Error recovery across multiple evaluations
+# - Workspace persistence within session
+#
+# Reference: planning/phase4/REPL_INTERACTIVE_MODE_DESIGN.md (Phase 1)
+
+tests:
+  # =========================================================================
+  # System Root Auto-Loading
+  # =========================================================================
+
+  - name: "REPL - system root auto-loaded"
+    description: "System root should be auto-loaded if available"
+    repl_mode: true
+    stdin_input: |
+      typeof(system)
+      /exit
+    expected_output_contains:
+      - "tabl"
+    expected_success: true
+
+  - name: "REPL - system.paths available"
+    description: "system.paths should be initialized"
+    repl_mode: true
+    stdin_input: |
+      typeof(system.paths)
+      /exit
+    expected_output_contains:
+      - "tabl"
+    expected_success: true
+
+  - name: "REPL - kernel verbs available"
+    description: "Kernel verbs should work with system root loaded"
+    repl_mode: true
+    stdin_input: |
+      sizeOf("test")
+      /exit
+    expected_output_contains:
+      - "4"
+    expected_success: true
+
+  - name: "REPL - string verbs available"
+    description: "String verbs should be accessible"
+    repl_mode: true
+    stdin_input: |
+      string.upper("hello")
+      /exit
+    expected_output_contains:
+      - "HELLO"
+    expected_success: true
+
+  # =========================================================================
+  # Workspace Isolation from System
+  # =========================================================================
+
+  - name: "REPL - workspace separate from system table"
+    description: "Workspace should be separate table under system.repl.workspace"
+    repl_mode: true
+    stdin_input: |
+      workspace.testvar = 42
+      typeof(system.repl.workspace)
+      /exit
+    expected_output_contains:
+      - "tabl"
+    expected_success: true
+
+  - name: "REPL - workspace doesn't pollute root"
+    description: "Variables in workspace shouldn't appear in root scope"
+    repl_mode: true
+    stdin_input: |
+      workspace.x = 42
+      # Try to access x without workspace prefix (should fail)
+      try { x } else { 0 }
+      /exit
+    expected_output_contains:
+      - "0"
+    expected_success: true
+
+  - name: "REPL - workspace doesn't affect system.compiler"
+    description: "Workspace assignments shouldn't modify system tables"
+    repl_mode: true
+    stdin_input: |
+      workspace.compiler = "custom"
+      typeof(system.compiler)
+      /exit
+    expected_output_contains:
+      - "tabl"
+    expected_success: true
+
+  # =========================================================================
+  # Error Recovery
+  # =========================================================================
+
+  - name: "REPL - continues after syntax error"
+    description: "Syntax errors shouldn't crash REPL"
+    repl_mode: true
+    stdin_input: |
+      1 +
+      2 + 2
+      /exit
+    expected_output_contains:
+      - "syntax"
+      - "4"
+    expected_success: true
+
+  - name: "REPL - continues after runtime error"
+    description: "Runtime errors shouldn't crash REPL"
+    repl_mode: true
+    stdin_input: |
+      1 / 0
+      42
+      /exit
+    expected_output_contains:
+      - "division by zero"
+      - "42"
+    expected_success: true
+
+  - name: "REPL - continues after undefined variable"
+    description: "Undefined variable errors shouldn't crash REPL"
+    repl_mode: true
+    stdin_input: |
+      nonexistent_var
+      workspace.x = 10
+      workspace.x
+      /exit
+    expected_output_contains:
+      - "Can't find"
+      - "10"
+    expected_success: true
+
+  - name: "REPL - workspace intact after error"
+    description: "Errors shouldn't corrupt workspace"
+    repl_mode: true
+    stdin_input: |
+      workspace.safe = 100
+      1 / 0
+      workspace.safe
+      /exit
+    expected_output_contains:
+      - "division by zero"
+      - "100"
+    expected_success: true
+
+  - name: "REPL - multiple errors in sequence"
+    description: "REPL should handle multiple consecutive errors"
+    repl_mode: true
+    stdin_input: |
+      1 / 0
+      undefined_var
+      1 +
+      42
+      /exit
+    expected_output_contains:
+      - "42"
+    expected_success: true
+
+  # =========================================================================
+  # Workspace Persistence Within Session
+  # =========================================================================
+
+  - name: "REPL - variables persist across evaluations"
+    description: "Variables should persist within same session"
+    repl_mode: true
+    stdin_input: |
+      workspace.x = 1
+      workspace.x = workspace.x + 1
+      workspace.x = workspace.x + 1
+      workspace.x
+      /exit
+    expected_output_contains:
+      - "3"
+    expected_success: true
+
+  - name: "REPL - multiple variables coexist"
+    description: "Multiple variables should persist together"
+    repl_mode: true
+    stdin_input: |
+      workspace.a = 10
+      workspace.b = 20
+      workspace.c = 30
+      workspace.a + workspace.b + workspace.c
+      /exit
+    expected_output_contains:
+      - "60"
+    expected_success: true
+
+  - name: "REPL - complex state builds up"
+    description: "Complex workspace state should persist"
+    repl_mode: true
+    stdin_input: |
+      workspace.counter = 0
+      workspace.counter = workspace.counter + 1
+      workspace.counter = workspace.counter + 1
+      workspace.sum = 0
+      workspace.sum = workspace.sum + workspace.counter
+      workspace.sum
+      /exit
+    expected_output_contains:
+      - "2"
+    expected_success: true
+
+  - name: "REPL - table variables persist"
+    description: "Table values should persist in workspace"
+    repl_mode: true
+    stdin_input: |
+      lang.new(tableType, @workspace.data)
+      workspace.data.x = 1
+      workspace.data.y = 2
+      workspace.data.x + workspace.data.y
+      /exit
+    expected_output_contains:
+      - "3"
+    expected_success: true
+
+  # =========================================================================
+  # Function Definitions in Workspace
+  # =========================================================================
+
+  - name: "REPL - define function in workspace"
+    description: "Functions defined in workspace should persist"
+    repl_mode: true
+    stdin_input: |
+      on workspace.double(x) { return x * 2 }
+      workspace.double(21)
+      /exit
+    expected_output_contains:
+      - "42"
+    expected_success: true
+
+  - name: "REPL - call workspace function multiple times"
+    description: "Workspace functions should be reusable"
+    repl_mode: true
+    stdin_input: |
+      on workspace.add(a, b) { return a + b }
+      workspace.add(1, 2)
+      workspace.add(10, 20)
+      workspace.add(100, 200)
+      /exit
+    expected_output_contains:
+      - "3"
+      - "30"
+      - "300"
+    expected_success: true
+
+  # =========================================================================
+  # Workspace Clear and Rebuild
+  # =========================================================================
+
+  - name: "REPL - clear and rebuild workspace"
+    description: "Should be able to clear and rebuild workspace"
+    repl_mode: true
+    stdin_input: |
+      workspace.old = 1
+      /clear
+      workspace.new = 2
+      workspace.new
+      /exit
+    expected_output_contains:
+      - "2"
+    expected_success: true
+
+  - name: "REPL - cleared variables inaccessible"
+    description: "After clear, old variables should error"
+    repl_mode: true
+    stdin_input: |
+      workspace.x = 42
+      /clear
+      workspace.x
+      /exit
+    expected_output_contains:
+      - "Can't find"
+    expected_success: true
+
+  # =========================================================================
+  # Long-Running Session Simulation
+  # =========================================================================
+
+  - name: "REPL - many sequential operations"
+    description: "REPL should handle many sequential evaluations"
+    repl_mode: true
+    stdin_input: |
+      workspace.sum = 0
+      workspace.sum = workspace.sum + 1
+      workspace.sum = workspace.sum + 2
+      workspace.sum = workspace.sum + 3
+      workspace.sum = workspace.sum + 4
+      workspace.sum = workspace.sum + 5
+      workspace.sum
+      /exit
+    expected_output_contains:
+      - "15"
+    expected_success: true
+
+  - name: "REPL - accumulate complex state"
+    description: "Complex workspace state should accumulate correctly"
+    repl_mode: true
+    stdin_input: |
+      workspace.count = 0
+      workspace.total = 0
+      workspace.count = workspace.count + 1
+      workspace.total = workspace.total + workspace.count
+      workspace.count = workspace.count + 1
+      workspace.total = workspace.total + workspace.count
+      workspace.count = workspace.count + 1
+      workspace.total = workspace.total + workspace.count
+      workspace.total
+      /exit
+    expected_output_contains:
+      - "6"  # 1 + 2 + 3
+    expected_success: true
+
+  # =========================================================================
+  # System Verb Integration
+  # =========================================================================
+
+  - name: "REPL - use lang verbs"
+    description: "Language verbs should work in REPL"
+    repl_mode: true
+    stdin_input: |
+      lang.new(tableType, @workspace.t)
+      typeof(workspace.t)
+      /exit
+    expected_output_contains:
+      - "tabl"
+    expected_success: true
+
+  - name: "REPL - use string verbs"
+    description: "String manipulation should work"
+    repl_mode: true
+    stdin_input: |
+      workspace.s = "hello"
+      string.upper(workspace.s)
+      /exit
+    expected_output_contains:
+      - "HELLO"
+    expected_success: true
+
+  - name: "REPL - use typeof"
+    description: "typeof should work on workspace variables"
+    repl_mode: true
+    stdin_input: |
+      workspace.num = 42
+      workspace.str = "text"
+      workspace.bool = true
+      typeof(workspace.num)
+      /exit
+    expected_output_contains:
+      - "long"
+    expected_success: true
+
+  - name: "REPL - use sizeOf on workspace"
+    description: "sizeOf should work on workspace table"
+    repl_mode: true
+    stdin_input: |
+      workspace.a = 1
+      workspace.b = 2
+      workspace.c = 3
+      sizeOf(workspace)
+      /exit
+    expected_output_contains:
+      - "3"
+    expected_success: true
+
+  # =========================================================================
+  # Mixed Code and Commands
+  # =========================================================================
+
+  - name: "REPL - interleave code and commands"
+    description: "Should seamlessly mix code and commands"
+    repl_mode: true
+    stdin_input: |
+      workspace.x = 10
+      /vars
+      workspace.y = 20
+      /vars
+      workspace.x + workspace.y
+      /exit
+    expected_output_contains:
+      - "x = 10"
+      - "y = 20"
+      - "30"
+    expected_success: true
+
+  - name: "REPL - help doesn't affect workspace"
+    description: "/help command shouldn't affect workspace"
+    repl_mode: true
+    stdin_input: |
+      workspace.x = 42
+      /help
+      workspace.x
+      /exit
+    expected_output_contains:
+      - "Available commands"
+      - "42"
+    expected_success: true
+
+  # =========================================================================
+  # Startup Messages
+  # =========================================================================
+
+  - name: "REPL - shows welcome message"
+    description: "REPL should show welcome on startup"
+    repl_mode: true
+    stdin_input: "/exit\n"
+    expected_output_contains:
+      - "Frontier REPL"
+      - "Interactive"
+      - "UserTalk"
+    expected_success: true
+
+  - name: "REPL - shows help hint"
+    description: "Welcome should mention /help command"
+    repl_mode: true
+    stdin_input: "/exit\n"
+    expected_output_contains:
+      - "/help"
+    expected_success: true
+
+  - name: "REPL - shows exit hint"
+    description: "Welcome should mention /exit command"
+    repl_mode: true
+    stdin_input: "/exit\n"
+    expected_output_contains:
+      - "/exit"
+    expected_success: true
+
+  # =========================================================================
+  # Context Display (Prompt)
+  # =========================================================================
+
+  - name: "REPL - prompt shows context"
+    description: "Prompt should display current context"
+    repl_mode: true
+    stdin_input: "/exit\n"
+    expected_output_contains:
+      - "[root]>"  # or "[workspace]>" depending on implementation
+    expected_success: true
+
+  - name: "REPL - prompt appears after each evaluation"
+    description: "Prompt should appear after each input"
+    repl_mode: true
+    stdin_input: |
+      1 + 1
+      2 + 2
+      /exit
+    expected_output_contains:
+      - "[root]>"
+    expected_success: true
+
+  # =========================================================================
+  # Edge Cases
+  # =========================================================================
+
+  - name: "REPL - handles very long workspace names"
+    description: "Long variable names should work"
+    repl_mode: true
+    stdin_input: |
+      workspace.this_is_a_very_long_variable_name_that_should_still_work = 42
+      workspace.this_is_a_very_long_variable_name_that_should_still_work
+      /exit
+    expected_output_contains:
+      - "42"
+    expected_success: true
+
+  - name: "REPL - handles unicode in workspace variables"
+    description: "Unicode variable names should work (if supported)"
+    repl_mode: true
+    stdin_input: |
+      workspace.grüße = "Hello"
+      workspace.grüße
+      /exit
+    expected_output_contains:
+      - "Hello"
+    expected_success: true
+    # Note: UserTalk identifier rules may restrict this
+
+  - name: "REPL - nil return doesn't display"
+    description: "Nil values should not display (Phase 1 behavior)"
+    repl_mode: true
+    stdin_input: |
+      nil
+      42
+      /exit
+    expected_output_contains:
+      - "42"
+    expected_success: true
+
+  - name: "REPL - empty statement block"
+    description: "Empty blocks should not error"
+    repl_mode: true
+    stdin_input: |
+      if false { }
+      42
+      /exit
+    expected_output_contains:
+      - "42"
+    expected_success: true
+
+  # =========================================================================
+  # Session Cleanup
+  # =========================================================================
+
+  - name: "REPL - clean exit with /exit"
+    description: "/exit should cleanly exit without errors"
+    repl_mode: true
+    stdin_input: "/exit\n"
+    expected_output_contains:
+      - "Goodbye"
+    expected_success: true
+
+  - name: "REPL - clean exit with EOF"
+    description: "EOF (Ctrl-D) should cleanly exit"
+    repl_mode: true
+    stdin_input: ""  # EOF
+    expected_output_contains:
+      - "Goodbye"
+    expected_success: true
+
+  - name: "REPL - workspace cleanup on exit"
+    description: "Exit should cleanly dispose workspace"
+    repl_mode: true
+    stdin_input: |
+      workspace.x = 42
+      /exit
+    expected_success: true
+    # No memory leaks or errors on cleanup
+
+  # =========================================================================
+  # System Root Not Available
+  # =========================================================================
+
+  - name: "REPL - works without system root"
+    description: "REPL should work even if system root not loaded"
+    repl_mode: true
+    no_system_root: true
+    stdin_input: |
+      workspace.x = 42
+      workspace.x
+      /exit
+    expected_output_contains:
+      - "42"
+    expected_success: true
+
+  - name: "REPL - basic verbs work without system root"
+    description: "Kernel verbs should work without system root"
+    repl_mode: true
+    no_system_root: true
+    stdin_input: |
+      typeof(42)
+      /exit
+    expected_output_contains:
+      - "long"
+    expected_success: true
+
+# Test suite notes:
+#
+# 1. Session tests verify REPL lifecycle from startup to shutdown.
+#
+# 2. Error recovery tests ensure REPL is robust against malformed input.
+#
+# 3. Workspace persistence tests verify state accumulates correctly within
+#    a single session (not across sessions - that's out of scope for Phase 1).
+#
+# 4. System root integration tests verify auto-loading and verb availability.
+#
+# 5. The no_system_root flag tests REPL behavior when system root is explicitly
+#    not loaded (using --no-system-root flag).
+#
+# 6. Tests assume test runner can:
+#    - Detect repl_mode: true and invoke frontier-cli in interactive mode
+#    - Feed stdin_input as simulated user input
+#    - Capture stdout/stderr for output validation
+#    - Check exit codes and termination behavior

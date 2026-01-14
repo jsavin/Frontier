@@ -50,13 +50,10 @@ boolean cli_validate_options(const cli_options_t* options) {
             log_error(LOG_COMP_GENERAL, "Error: --hydrate-system-root requires --system-root PATH");
             return false;
         }
-    } else {
-        // Check for script execution parameters
-        if (options->script_file == NULL && options->inline_script == NULL) {
-            log_error(LOG_COMP_GENERAL, "Error: No execution mode specified");
-            return false;
-        }
     }
+
+    // Note: No script_file and no inline_script means REPL mode (interactive)
+    // This is now a valid execution mode, so we don't error out here
 
     if (options->system_root != NULL) {
         if (!cli_file_exists(options->system_root)) {

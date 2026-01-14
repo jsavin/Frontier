@@ -46,6 +46,7 @@
 #include "cli_parser.h"
 #include "cli_executor.h"
 #include "cli_utils.h"
+#include "repl.h"
 
 extern long grabthreadglobals(void);
 extern long releasethreadglobals(void);
@@ -169,20 +170,23 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    // Execute script mode
+    // Determine execution mode
     boolean success = false;
+    int exit_code = 0;
 
     if (g_cli_options.script_file != NULL || g_cli_options.inline_script != NULL) {
+        // Batch mode - execute script and exit
         success = execute_script_mode();
+        exit_code = success ? 0 : 1;
     } else {
-        log_error(LOG_COMP_GENERAL, "Error: No execution mode specified");
-        print_usage(argv[0]);
+        // Interactive mode - enter REPL
+        exit_code = repl_main(&g_cli_options);
     }
 
     // Cleanup
     cleanup_frontier_runtime();
 
-    return success ? 0 : 1;
+    return exit_code;
 }
 
 static uint64_t read_big_endian(const unsigned char *data, size_t length) {

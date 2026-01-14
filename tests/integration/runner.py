@@ -150,6 +150,58 @@ class FrontierCLI:
                 'exit_code': -1
             }
 
+    def execute_repl(self, stdin_input: str, timeout: int = 30, env: Optional[Dict[str, str]] = None) -> subprocess.CompletedProcess:
+        """
+        Execute frontier-cli in REPL mode with stdin input.
+
+        Args:
+            stdin_input: Input to pipe to REPL stdin
+            timeout: Execution timeout in seconds (default 30)
+            env: Optional environment variables to set
+
+        Returns:
+            CompletedProcess with stdout, stderr, and returncode
+        """
+        # Build command for REPL mode (no --output-json, no -e)
+        cmd = [self.cli_path]
+
+        if self.system_root:
+            cmd.extend(['--system-root', self.system_root])
+
+        # Merge environment variables with current environment
+        process_env = os.environ.copy()
+        if env:
+            process_env.update(env)
+
+        try:
+            result = subprocess.run(
+                cmd,
+                input=stdin_input,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                env=process_env
+            )
+            return result
+
+        except subprocess.TimeoutExpired as e:
+            # Create a fake CompletedProcess for timeout
+            return subprocess.CompletedProcess(
+                args=cmd,
+                returncode=-1,
+                stdout=e.stdout or '',
+                stderr=f'REPL execution timed out ({timeout}s)'
+            )
+
+        except Exception as e:
+            # Create a fake CompletedProcess for errors
+            return subprocess.CompletedProcess(
+                args=cmd,
+                returncode=-1,
+                stdout='',
+                stderr=f'REPL execution error: {str(e)}'
+            )
+
 
 class TestCase:
     """Represents a single test case from YAML."""
@@ -169,6 +221,11 @@ class TestCase:
         self.stdin_input = data.get('stdin_input')  # Optional stdin input for interactive tests
         self.batch_mode = data.get('batch_mode', False)  # Set true to test batch mode error behavior
         self.environment = data.get('environment', {})  # Optional environment variables
+
+        # REPL mode support
+        self.repl_mode = data.get('repl_mode', False)  # Run test in REPL interactive mode
+        self.expected_output_contains = data.get('expected_output_contains', [])  # Substrings in stdout/stderr
+        self.expected_output_not_contains = data.get('expected_output_not_contains', [])  # Forbidden substrings
 
     def get_script_with_substitutions(self, test_root_dir: Optional[str] = None) -> str:
         """Get the script with path substitutions applied."""
@@ -247,6 +304,34 @@ class TestCase:
 
         return True, None
 
+    def validate_repl_output(self, result: subprocess.CompletedProcess) -> Tuple[bool, Optional[str]]:
+        """
+        Validate REPL test output against expectations.
+
+        REPL tests check stdout/stderr text, not JSON output.
+        """
+        # Combine stdout and stderr for checking
+        output = result.stdout + result.stderr
+
+        # Check expected_output_contains (all must be present)
+        for substring in self.expected_output_contains:
+            if substring not in output:
+                return False, f"Expected substring not found: {substring!r}"
+
+        # Check expected_output_not_contains (all must be absent)
+        for substring in self.expected_output_not_contains:
+            if substring in output:
+                return False, f"Unexpected substring found: {substring!r}"
+
+        # Check exit code
+        if self.expected_success and result.returncode != 0:
+            return False, f"Expected success but got exit code {result.returncode}"
+
+        if not self.expected_success and result.returncode == 0:
+            return False, f"Expected failure but got exit code 0"
+
+        return True, None
+
 
 class TestRunner:
     """Main test runner that executes test cases."""
@@ -275,6 +360,14 @@ class TestRunner:
             if test.description:
                 print(f"    {test.description}")
 
+        # Route to REPL executor if repl_mode is true
+        if test.repl_mode:
+            return self.run_repl_test(test)
+        else:
+            return self.run_batch_test(test)
+
+    def run_batch_test(self, test: TestCase) -> TestResult:
+        """Run a test in batch mode (traditional --output-json)."""
         # Get script with path substitutions applied
         script = test.get_script_with_substitutions(self.test_root_dir)
 
@@ -304,6 +397,38 @@ class TestRunner:
         details = None
         if not passed and self.verbose:
             details = f"Output: {json.dumps(output, indent=2)}"
+
+        return TestResult(test.name, passed, error, details)
+
+    def run_repl_test(self, test: TestCase) -> TestResult:
+        """Run a test in REPL interactive mode."""
+        # Get stdin input with path substitutions applied
+        stdin_input = test.get_stdin_with_substitutions(self.test_root_dir)
+
+        # Default to "/exit\n" if no input provided
+        if stdin_input is None:
+            stdin_input = "/exit\n"
+
+        # Prepare environment variables
+        test_env = test.environment.copy()
+
+        # Execute REPL with stdin
+        result = self.cli.execute_repl(
+            stdin_input=stdin_input,
+            timeout=test.timeout,
+            env=test_env
+        )
+
+        # Validate REPL output
+        passed, error = test.validate_repl_output(result)
+
+        details = None
+        if not passed and self.verbose:
+            details = (
+                f"Exit code: {result.returncode}\n"
+                f"Stdout:\n{result.stdout}\n"
+                f"Stderr:\n{result.stderr}"
+            )
 
         return TestResult(test.name, passed, error, details)
 
