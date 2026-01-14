@@ -49,9 +49,22 @@ boolean repl_workspace_init(repl_workspace *ws) {
 
     /* Find or create root.workspace table
      *
-     * IMPORTANT: root.workspace usually already exists in the database with user data.
-     * We use findnamedtable() first to find the existing table - only create if missing.
-     * This preserves any existing data in root.workspace (like notepad, pt, etc.)
+     * IMPORTANT: We use root.workspace, not root.repl.workspace, for these reasons:
+     *
+     * 1. root.workspace already exists in Frontier databases with user data
+     *    (notepad, pt, userlandSamples, etc.)
+     * 2. The REPL should be able to interact with this existing data
+     * 3. Users can already access workspace.x in UserTalk scripts
+     * 4. Creating a separate root.repl.workspace adds complexity without benefit
+     * 5. The /clear command clears ONLY root.workspace entries, not the entire table
+     *
+     * If we used root.repl.workspace instead:
+     * - Pro: /clear wouldn't affect user's existing root.workspace data
+     * - Con: REPL variables would be isolated from existing user data
+     * - Con: Users would need to reference repl.workspace.x instead of workspace.x
+     * - Con: More confusing mental model (where do my variables go?)
+     *
+     * Decision: Stick with root.workspace for simplicity and consistency.
      *
      * Normal name resolution will find workspace.x as root.workspace.x
      */

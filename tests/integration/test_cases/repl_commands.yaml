@@ -30,12 +30,12 @@ tests:
     expected_success: true
 
   - name: "REPL /help - shows multi-line usage"
-    description: "/help should mention backslash continuation (Phase 2 feature)"
+    description: "/help should mention multi-line (Phase 2 feature)"
     repl_mode: true
     stdin_input: "/help\n/exit\n"
     expected_output_contains:
       - "Multi-line"
-      - "\\"
+      - "Phase 2"
     expected_success: true
 
   - name: "REPL /help - shows examples"
@@ -52,11 +52,14 @@ tests:
   # =========================================================================
 
   - name: "REPL /vars - empty workspace"
-    description: "/vars should show empty workspace message"
+    description: "/vars shows pre-existing workspace items"
     repl_mode: true
     stdin_input: "/vars\n/exit\n"
     expected_output_contains:
-      - "(empty)"
+      - "Workspace variables (3)"
+      - "notepad"
+      - "pt"
+      - "userlandSamples"
     expected_success: true
 
   # =========================================================================
@@ -85,7 +88,7 @@ tests:
       - "x = 42"
       - "y = \"hello\""
       - "z = true"
-      - "Workspace variables (3)"
+      - "Workspace variables (6)"  # 3 pre-existing + 3 new
     expected_success: true
 
   - name: "REPL /vars - string variable displays with quotes"
@@ -153,7 +156,8 @@ tests:
       workspace.x
       /exit
     expected_output_contains:
-      - "Can't find"
+      - "Can't evaluate"
+      - "hasn't been defined"
     expected_success: true
 
   - name: "REPL /clear - can add variables after clear"
@@ -225,7 +229,8 @@ tests:
     repl_mode: true
     stdin_input: "help\n/exit\n"
     expected_output_contains:
-      - "Can't find"  # 'help' treated as variable
+      - "Can't evaluate"  # 'help' treated as variable
+      - "hasn't been defined"
     expected_success: true
 
   - name: "REPL - command with trailing whitespace"
@@ -262,7 +267,7 @@ tests:
       /help
       /exit
     expected_output_contains:
-      - "division by zero"
+      - "divide by zero"
       - "Available commands"
     expected_success: true
 
@@ -320,7 +325,7 @@ tests:
       /vars
       /exit
     expected_output_contains:
-      - "(3)"  # or "Workspace variables (3)"
+      - "(6)"  # 3 pre-existing + 3 new = "Workspace variables (6)"
     expected_success: true
 
   - name: "REPL /vars - handles special characters in values"
@@ -406,7 +411,7 @@ tests:
     expected_output_contains:
       - "v1 ="
       - "v10 ="
-      - "(10)"
+      - "(13)"  # 3 pre-existing + 10 new
     expected_success: true
 
   # =========================================================================

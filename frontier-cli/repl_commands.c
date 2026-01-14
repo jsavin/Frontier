@@ -13,6 +13,9 @@
 #include <string.h>
 #include <ctype.h>
 
+// Maximum buffer size for command parsing
+#define REPL_MAX_COMMAND_LENGTH 256
+
 /*
  * Helper: Trim leading whitespace from string
  */
@@ -81,7 +84,7 @@ repl_command_result repl_process_command(
     const char *cmd = input + 1;
 
     /* Extract command name (copy to buffer so we can trim trailing whitespace) */
-    char cmd_buf[256];
+    char cmd_buf[REPL_MAX_COMMAND_LENGTH];
     size_t cmd_len = strlen(cmd);
     if (cmd_len >= sizeof(cmd_buf)) {
         cmd_len = sizeof(cmd_buf) - 1;

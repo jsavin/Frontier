@@ -22,6 +22,9 @@
 #include "../Common/headers/lang.h"
 #include "../Common/headers/strings.h"
 
+// Maximum input buffer size for REPL
+#define REPL_MAX_INPUT_LENGTH 4096
+
 // Trim trailing whitespace from a string
 static void trim_trailing_whitespace(char* str) {
     if (str == NULL) {
@@ -64,7 +67,7 @@ int repl_main(cli_options_t *options) {
         repl_output_prompt(NULL);
 
         // b. Read line from stdin (use fgets for Phase 1)
-        char input[4096];
+        char input[REPL_MAX_INPUT_LENGTH];
         if (!fgets(input, sizeof(input), stdin)) {
             // EOF (Ctrl-D)
             break;

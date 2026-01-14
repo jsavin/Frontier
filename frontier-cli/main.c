@@ -55,6 +55,10 @@ extern long releasethreadglobals(void);
 #define FRONTIER_CLI_VERSION "1.0.0"
 #define FRONTIER_CLI_BUILD_DATE __DATE__
 
+// Default system root paths (v7 = modern format, v6 = legacy format)
+#define DEFAULT_SYSTEM_ROOT_V7 "databases/Frontier.root7"
+#define DEFAULT_SYSTEM_ROOT_V6 "databases/Frontier.root"
+
 // Global variables
 static cli_options_t g_cli_options = {0};
 static boolean g_initialized = false;
@@ -167,11 +171,11 @@ int main(int argc, char* argv[]) {
     const char *system_root_to_load = g_cli_options.system_root;
     if (system_root_to_load == NULL) {
         /* Try v7 format first (already migrated), then v6 (will auto-migrate) */
-        if (access("databases/Frontier.root7", F_OK) == 0) {
-            system_root_to_load = "databases/Frontier.root7";
+        if (access(DEFAULT_SYSTEM_ROOT_V7, F_OK) == 0) {
+            system_root_to_load = DEFAULT_SYSTEM_ROOT_V7;
             log_info(LOG_COMP_STARTUP, "Auto-loading system root: %s", system_root_to_load);
-        } else if (access("databases/Frontier.root", F_OK) == 0) {
-            system_root_to_load = "databases/Frontier.root";
+        } else if (access(DEFAULT_SYSTEM_ROOT_V6, F_OK) == 0) {
+            system_root_to_load = DEFAULT_SYSTEM_ROOT_V6;
             log_info(LOG_COMP_STARTUP, "Auto-loading system root: %s (will auto-migrate to v7)", system_root_to_load);
         }
         /* If neither exists, continue without system root (headless mode) */

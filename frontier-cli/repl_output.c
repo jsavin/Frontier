@@ -9,6 +9,17 @@
  * - Prompts go to stderr (keeps stdout clean for piping)
  * - Values and help text go to stdout
  * - Errors go to stderr
+ *
+ * String Conversion Strategy:
+ *
+ * Frontier stores strings in two formats:
+ * 1. Heap strings (hdlstring): Raw character data in handle, NO length byte
+ * 2. Pascal strings (bigstring): Length byte at [0], data starts at [1]
+ *
+ * For value display, we use texthandletostring() to convert heap strings
+ * to Pascal strings. This properly handles the format difference.
+ *
+ * DO NOT use copyheapstring() - it expects Pascal format in the handle.
  */
 
 #include "repl_output.h"
