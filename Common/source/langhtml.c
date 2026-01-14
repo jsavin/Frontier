@@ -2942,7 +2942,7 @@ static boolean additemtopagetable (hdlhashtable htable, hdlhashnode hnode, hdlha
 	} /*additemtopagetable*/
 
 
-static boolean buildpagetableverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
+boolean buildpagetableverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 
 	/*
 	on buildTable (adrobject, adrpagetable) {
@@ -3034,7 +3034,7 @@ static boolean buildpagetableverb (hdltreenode hparam1, tyvaluerecord *vreturned
 
 #pragma mark === verbs ===
 
-static boolean getprefverb (hdltreenode hp1, tyvaluerecord *v) {
+boolean getprefverb (hdltreenode hp1, tyvaluerecord *v) {
 	
 	/*
 	on getPref (prefName, adrpagedata=@websites.["#data"]) { �new in 4.1
@@ -3096,7 +3096,7 @@ static boolean htmlrundirective (typrocessmacrosinfo *pmi, Handle s, bigstring f
 	} /*htmlrundirective*/
 
 
-static boolean rundirectiveverb (hdltreenode hp1, tyvaluerecord *v) {
+boolean rundirectiveverb (hdltreenode hp1, tyvaluerecord *v) {
 	
 	/*
 	on runDirective (linetext, adrpagetable=@websites.["#data"]) { �4.2 -- extracted from renderObject macro
@@ -3150,7 +3150,7 @@ static boolean rundirectiveverb (hdltreenode hp1, tyvaluerecord *v) {
 	} /*rundirectiveverb*/
 
 
-static boolean rundirectivesverb (hdltreenode hp1, tyvaluerecord *v) {
+boolean rundirectivesverb (hdltreenode hp1, tyvaluerecord *v) {
 	
 	/*
 	on runDirectives (wpstring, adrpagetable=@websites.["#data"]) { �4.2 -- extracted from renderObject macro
@@ -3247,7 +3247,7 @@ static boolean rundirectivesverb (hdltreenode hp1, tyvaluerecord *v) {
 	} /*rundirectivesverb*/
 
 
-static boolean runoutlinedirectivesverb (hdltreenode hp1, tyvaluerecord *v) {
+boolean runoutlinedirectivesverb (hdltreenode hp1, tyvaluerecord *v) {
 #pragma unused(v)
 
 	/*
@@ -3416,7 +3416,7 @@ static boolean runoutlinedirectivesverb (hdltreenode hp1, tyvaluerecord *v) {
 	} /*runoutlinedirectivesverb*/
 
 
-static boolean cleanforexportverb (hdltreenode hp1, tyvaluerecord *v) {
+boolean cleanforexportverb (hdltreenode hp1, tyvaluerecord *v) {
 	
 	/*
 on cleanForExport (text) { �prepare text to leave Mac environment
@@ -3455,7 +3455,7 @@ on cleanForExport (text) { �prepare text to leave Mac environment
 
 
 
-static boolean glossarypatcherverb (hdltreenode hp1, tyvaluerecord *v) {
+boolean glossarypatcherverb (hdltreenode hp1, tyvaluerecord *v) {
 
 	/*
 	on glossaryPatcher (adrpagedata=@websites.["#data"]) {
@@ -3685,7 +3685,7 @@ exit:
 	} /*glossarypatcherverb*/
 
 
-static boolean expandurlsverb (hdltreenode hp1, tyvaluerecord *v) {
+boolean expandurlsverb (hdltreenode hp1, tyvaluerecord *v) {
 	
 	/*
 	5.0.2b18 dmb: new verb, a very abridged version of processhtmlmacros
@@ -3726,7 +3726,7 @@ static boolean expandurlsverb (hdltreenode hp1, tyvaluerecord *v) {
 	return (false)}
 */
 
-static boolean traversalskipverb (hdltreenode hp1, tyvaluerecord *v) {
+boolean traversalskipverb (hdltreenode hp1, tyvaluerecord *v) {
 
 	tyvaluerecord val;
 	hdlhashtable ht;
@@ -3764,7 +3764,7 @@ static boolean traversalskipverb (hdltreenode hp1, tyvaluerecord *v) {
 	} /*traversalskipverb*/
 
 
-static boolean getpagetableaddressverb (hdltreenode hp1, tyvaluerecord *v) {
+boolean getpagetableaddressverb (hdltreenode hp1, tyvaluerecord *v) {
 
 	/*
 	6.1d7 AR: Implemented.
@@ -4209,7 +4209,7 @@ static boolean indexpage (bigstring bsaddress, bigstring bsurl, bigstring bstitl
 	} /*indexpage*/
 
 
-static boolean stripmarkupverb (hdltreenode hp1, tyvaluerecord *v) {
+boolean stripmarkupverb (hdltreenode hp1, tyvaluerecord *v) {
 	
 	/*
 	5.1.4 dmb
@@ -9532,7 +9532,7 @@ exit:
 	}/*neutermacros*/
 
 
-static boolean htmlneutermacrosverb (hdltreenode hp1, tyvaluerecord *v) {
+boolean htmlneutermacrosverb (hdltreenode hp1, tyvaluerecord *v) {
 
 	Handle htext;
 	hdlhashtable hsafemacrostable;
@@ -9767,7 +9767,7 @@ exit:
 	}/*neutertags*/
 
 
-static boolean htmlneutertagsverb (hdltreenode hp1, tyvaluerecord *v) {
+boolean htmlneutertagsverb (hdltreenode hp1, tyvaluerecord *v) {
 
 	Handle htext;
 	hdlhashtable htagstable;
@@ -10084,12 +10084,14 @@ static boolean htmlfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 	} /*htmlfunctionvalue*/
 
 
+#ifndef FRONTIER_HEADLESS
 boolean htmlinitverbs (void) {
-	
+
 	/*
 	5.0.2 dmb: new verbs
 	*/
-	
+
 	return (loadfunctionprocessor (idhtmlverbs, &htmlfunctionvalue));
 	} /*htmlinitverbs*/
+#endif /* !FRONTIER_HEADLESS */
 	

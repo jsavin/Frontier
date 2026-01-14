@@ -1,0 +1,248 @@
+# Integration tests for Phase 2 HTML verbs - Image Analysis
+# Tests the 2 image dimension reading verbs for GIF and JPEG files
+#
+# Phase 2 Image verbs covered (2 verbs):
+#   - html.getgifheightwidth - Read GIF dimensions
+#   - html.getjpegheightwidth - Read JPEG dimensions
+#
+# Reference: planning/phase3/html_verbs_implementation_plan.md
+# C Implementation: Common/source/langhtml.c (getgifheightwidthverb, getjpegheightwidthverb)
+# Documentation: docs/usertalk/docserver/html/
+
+tests:
+  # =============================================================================
+  # html.getgifheightwidth - Read GIF dimensions
+  # =============================================================================
+
+  - name: "html.getgifheightwidth - basic GIF file"
+    description: "Read dimensions from valid GIF file"
+    skip: "Need sample GIF test fixture"
+    script: |
+      local(testDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(gifPath = testDir + "/sample_100x50.gif");
+      local(dimensions = html.getgifheightwidth(gifPath));
+      return (dimensions[1] == 50) and (dimensions[2] == 100)
+    expected_result: "true"
+
+  - name: "html.getgifheightwidth - square GIF"
+    description: "Read dimensions from square GIF file"
+    skip: "Need sample GIF test fixture"
+    script: |
+      local(testDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(gifPath = testDir + "/sample_200x200.gif");
+      local(dimensions = html.getgifheightwidth(gifPath));
+      return (dimensions[1] == 200) and (dimensions[2] == 200)
+    expected_result: "true"
+
+  - name: "html.getgifheightwidth - small GIF (1x1)"
+    description: "Read dimensions from tiny 1x1 pixel GIF"
+    skip: "Need sample GIF test fixture"
+    script: |
+      local(testDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(gifPath = testDir + "/sample_1x1.gif");
+      local(dimensions = html.getgifheightwidth(gifPath));
+      return (dimensions[1] == 1) and (dimensions[2] == 1)
+    expected_result: "true"
+
+  - name: "html.getgifheightwidth - large GIF"
+    description: "Read dimensions from large GIF file"
+    skip: "Need sample GIF test fixture"
+    script: |
+      local(testDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(gifPath = testDir + "/sample_1024x768.gif");
+      local(dimensions = html.getgifheightwidth(gifPath));
+      return (dimensions[1] == 768) and (dimensions[2] == 1024)
+    expected_result: "true"
+
+  - name: "html.getgifheightwidth - missing file"
+    description: "Gracefully handle missing file (should return error or false)"
+    script: |
+      local(testDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(gifPath = testDir + "/nonexistent.gif");
+      try {
+        html.getgifheightwidth(gifPath);
+        return false
+      };
+      return true
+    expected_result: "true"
+
+  - name: "html.getgifheightwidth - empty file"
+    description: "Handle empty file gracefully"
+    skip: "Need empty test fixture"
+    script: |
+      local(testDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(emptyPath = testDir + "/empty.gif");
+      try {
+        html.getgifheightwidth(emptyPath);
+        return false
+      };
+      return true
+    expected_result: "true"
+
+  - name: "html.getgifheightwidth - corrupted GIF header"
+    description: "Handle corrupted GIF header gracefully"
+    skip: "Need corrupted test fixture"
+    script: |
+      local(testDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(corruptPath = testDir + "/corrupt.gif");
+      try {
+        html.getgifheightwidth(corruptPath);
+        return false
+      };
+      return true
+    expected_result: "true"
+
+  - name: "html.getgifheightwidth - JPEG with .gif extension"
+    description: "Handle file with wrong extension gracefully"
+    skip: "Need misnamed test fixture"
+    script: |
+      local(testDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(wrongPath = testDir + "/actually_jpeg.gif");
+      try {
+        html.getgifheightwidth(wrongPath);
+        return false
+      };
+      return true
+    expected_result: "true"
+
+  # =============================================================================
+  # html.getjpegheightwidth - Read JPEG dimensions
+  # =============================================================================
+
+  - name: "html.getjpegheightwidth - basic JPEG file"
+    description: "Read dimensions from valid JPEG file"
+    skip: "Need sample JPEG test fixture"
+    script: |
+      local(testDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(jpegPath = testDir + "/sample_100x50.jpg");
+      local(dimensions = html.getjpegheightwidth(jpegPath));
+      return (dimensions[1] == 50) and (dimensions[2] == 100)
+    expected_result: "true"
+
+  - name: "html.getjpegheightwidth - square JPEG"
+    description: "Read dimensions from square JPEG file"
+    skip: "Need sample JPEG test fixture"
+    script: |
+      local(testDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(jpegPath = testDir + "/sample_200x200.jpg");
+      local(dimensions = html.getjpegheightwidth(jpegPath));
+      return (dimensions[1] == 200) and (dimensions[2] == 200)
+    expected_result: "true"
+
+  - name: "html.getjpegheightwidth - large JPEG"
+    description: "Read dimensions from large JPEG file"
+    skip: "Need sample JPEG test fixture"
+    script: |
+      local(testDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(jpegPath = testDir + "/sample_1920x1080.jpg");
+      local(dimensions = html.getjpegheightwidth(jpegPath));
+      return (dimensions[1] == 1080) and (dimensions[2] == 1920)
+    expected_result: "true"
+
+  - name: "html.getjpegheightwidth - portrait orientation"
+    description: "Read dimensions from portrait-oriented JPEG"
+    skip: "Need sample JPEG test fixture"
+    script: |
+      local(testDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(jpegPath = testDir + "/sample_600x800.jpg");
+      local(dimensions = html.getjpegheightwidth(jpegPath));
+      return (dimensions[1] == 800) and (dimensions[2] == 600)
+    expected_result: "true"
+
+  - name: "html.getjpegheightwidth - missing file"
+    description: "Gracefully handle missing file"
+    script: |
+      local(testDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(jpegPath = testDir + "/nonexistent.jpg");
+      try {
+        html.getjpegheightwidth(jpegPath);
+        return false
+      };
+      return true
+    expected_result: "true"
+
+  - name: "html.getjpegheightwidth - empty file"
+    description: "Handle empty file gracefully"
+    skip: "Need empty test fixture"
+    script: |
+      local(testDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(emptyPath = testDir + "/empty.jpg");
+      try {
+        html.getjpegheightwidth(emptyPath);
+        return false
+      };
+      return true
+    expected_result: "true"
+
+  - name: "html.getjpegheightwidth - corrupted JPEG header"
+    description: "Handle corrupted JPEG header gracefully"
+    skip: "Need corrupted test fixture"
+    script: |
+      local(testDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(corruptPath = testDir + "/corrupt.jpg");
+      try {
+        html.getjpegheightwidth(corruptPath);
+        return false
+      };
+      return true
+    expected_result: "true"
+
+  - name: "html.getjpegheightwidth - progressive JPEG"
+    description: "Read dimensions from progressive JPEG"
+    skip: "Need progressive JPEG test fixture"
+    script: |
+      local(testDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(jpegPath = testDir + "/sample_progressive.jpg");
+      local(dimensions = html.getjpegheightwidth(jpegPath));
+      return (dimensions[1] > 0) and (dimensions[2] > 0)
+    expected_result: "true"
+
+  - name: "html.getjpegheightwidth - GIF with .jpg extension"
+    description: "Handle file with wrong extension gracefully"
+    skip: "Need misnamed test fixture"
+    script: |
+      local(testDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(wrongPath = testDir + "/actually_gif.jpg");
+      try {
+        html.getjpegheightwidth(wrongPath);
+        return false
+      };
+      return true
+    expected_result: "true"
+
+  # =============================================================================
+  # Image verb integration tests
+  # =============================================================================
+
+  - name: "html - image dimension workflow"
+    description: "Read dimensions and use in page table"
+    skip: "Need sample image fixtures"
+    script: |
+      local(testDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(gifPath = testDir + "/sample_100x50.gif");
+      local(jpegPath = testDir + "/sample_200x200.jpg");
+
+      local(gifDims = html.getgifheightwidth(gifPath));
+      local(jpegDims = html.getjpegheightwidth(jpegPath));
+
+      # Verify both work correctly
+      local(gifOK = (gifDims[1] == 50) and (gifDims[2] == 100));
+      local(jpegOK = (jpegDims[1] == 200) and (jpegDims[2] == 200));
+
+      return gifOK and jpegOK
+    expected_result: "true"
+
+  - name: "html - generate image tag with dimensions"
+    description: "Use image dimensions to generate complete img tags"
+    skip: "Need sample image fixtures"
+    script: |
+      local(testDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(imagePath = testDir + "/sample_100x50.gif");
+      local(dimensions = html.getgifheightwidth(imagePath));
+
+      local(imgTag = "<img src=\"sample.gif\"");
+      imgTag = imgTag + " width=\"" + dimensions[2] + "\"";
+      imgTag = imgTag + " height=\"" + dimensions[1] + "\">";
+
+      return string.contains(imgTag, "width=\"100\"") and string.contains(imgTag, "height=\"50\"")
+    expected_result: "true"
