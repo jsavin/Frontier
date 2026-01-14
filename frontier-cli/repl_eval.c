@@ -154,24 +154,21 @@ boolean repl_eval_script(
     memcpy(*htext, script, script_len);
     HUnlock(htext);
 
-    /* Execute script using langrunhandle
+    /* Execute script using langrunhandletraperror
      * Note: Name resolution will find workspace.x as root.workspace.x
      * Don't set currenthashtable - let normal lookup work
-     * Note: langrunhandle returns the result OR error message in the result parameter.
-     * On failure, the result parameter contains the error message.
+     * Note: langrunhandletraperror returns result in one param, error in another.
      */
-    boolean ok = langrunhandle(htext, result);
+    boolean ok = langrunhandletraperror(htext, result, error_msg);
 
     if (!ok) {
-        /* Execution failed - error message is already in result parameter */
-        copystring(result, error_msg);
-        setemptystring(result);
+        /* Execution failed - error message is in error_msg parameter */
         if (stringlength(error_msg) == 0) {
             copyctopstring("Script execution failed", error_msg);
         }
         return false;
     }
 
-    /* Success - result is already set by langrunhandle */
+    /* Success - result is already set by langrunhandletraperror */
     return true;
 }

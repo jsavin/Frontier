@@ -135,7 +135,13 @@ void repl_output_result(bigstring result) {
 	fflush(stdout);
 }
 
-/* Display error message */
+/* Display error message
+ *
+ * Dual-purpose error reporting:
+ * - log_error() for diagnostic logging (debug builds, log files)
+ * - fprintf(stderr) for user-facing terminal output
+ * Both are intentional and serve different purposes.
+ */
 void repl_output_error(const char *error_msg) {
 	if (error_msg == NULL) {
 		log_error(LOG_COMP_GENERAL, "Unknown error");
@@ -187,7 +193,7 @@ static void format_value_summary(tyvaluerecord *val, char *buffer, size_t bufsiz
 			break;
 
 		case stringvaluetype:
-			copyheapstring(val->data.stringvalue, bs);
+			texthandletostring(val->data.stringvalue, bs);
 			snprintf(buffer, bufsize, "\"%.*s\"",
 				(int)stringlength(bs), stringbaseaddress(bs));
 			break;
@@ -209,7 +215,7 @@ static void format_value_summary(tyvaluerecord *val, char *buffer, size_t bufsiz
 			/* Use coercetostring for other types */
 			val_copy = *val;
 			if (coercetostring(&val_copy)) {
-				copyheapstring(val_copy.data.stringvalue, bs);
+				texthandletostring(val_copy.data.stringvalue, bs);
 				snprintf(buffer, bufsize, "%.*s",
 					(int)stringlength(bs), stringbaseaddress(bs));
 				disposevaluerecord(val_copy, false);

@@ -43,6 +43,11 @@ int repl_main(cli_options_t *options) {
     memset(&workspace, 0, sizeof(workspace));
 
     if (!repl_workspace_init(&workspace)) {
+        /* Dual-purpose error reporting:
+         * - log_error() for diagnostic logging (debug builds, log files)
+         * - fprintf(stderr) for user-facing terminal output
+         * Both are intentional and serve different purposes.
+         */
         log_error(LOG_COMP_GENERAL, "Failed to initialize REPL workspace");
         fprintf(stderr, "Error: Failed to initialize REPL workspace\n");
         return 1;
@@ -65,15 +70,26 @@ int repl_main(cli_options_t *options) {
             break;
         }
 
-        // c. Trim trailing newline
+        // c. Check for input truncation
+        size_t len = strlen(input);
+        if (len > 0 && len == sizeof(input) - 1 && input[len - 1] != '\n') {
+            fprintf(stderr, "Warning: Input exceeded %zu bytes and was truncated\n",
+                    sizeof(input) - 1);
+            /* Consume rest of line to prevent buffer overflow on next read */
+            int c;
+            while ((c = getchar()) != '\n' && c != EOF)
+                ;
+        }
+
+        // d. Trim trailing newline
         trim_trailing_whitespace(input);
 
-        // d. Skip empty lines
+        // e. Skip empty lines
         if (strlen(input) == 0) {
             continue;
         }
 
-        // e. Check if command
+        // f. Check if command
         if (input[0] == '/') {
             repl_command_result result = repl_process_command(input, &workspace);
             if (result == REPL_CMD_EXIT) {
@@ -82,7 +98,7 @@ int repl_main(cli_options_t *options) {
             continue;
         }
 
-        // f. Evaluate as UserTalk
+        // g. Evaluate as UserTalk
         bigstring result;
         bigstring error_msg;
         if (repl_eval_script(&workspace, input, result, error_msg)) {
