@@ -12,6 +12,7 @@
 #include "../Common/headers/logging.h"
 
 #include <limits.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -143,7 +144,8 @@ static file_dialog_result interactive_file_loop(const char *prompt,
 
 			if (fgets_result == NULL) {
 				/* EOF reached - user cancelled or no more input */
-				fprintf(stderr, "\nCancelled.\n");
+				fputs("\n", stderr);
+				log_info(LOG_COMP_GENERAL, "File dialog cancelled (EOF on stdin)");
 				terminal_cleanup(&terminal);
 				return result;
 			}
@@ -164,7 +166,8 @@ static file_dialog_result interactive_file_loop(const char *prompt,
 				int c = getchar();
 
 				if (c == EOF || c == 3) {  /* Ctrl+C */
-					fprintf(stderr, "\nCancelled.\n");
+					fputs("\n", stderr);
+					log_info(LOG_COMP_GENERAL, "File dialog cancelled (Ctrl+C or EOF)");
 					terminal_cleanup(&terminal);
 					return result;
 				}
@@ -210,7 +213,8 @@ static file_dialog_result interactive_file_loop(const char *prompt,
 			                                           true);  /* show_hidden = true */
 
 			if (count == 0) {
-				fprintf(stderr, "\nNo matches found.\n");
+				fputs("\n", stderr);
+				log_debug(LOG_COMP_GENERAL, "No tab completion matches found for input: %s", input);
 				input_pos = 0;
 				input[0] = '\0';
 				continue;
@@ -292,7 +296,7 @@ static file_dialog_result interactive_file_loop(const char *prompt,
 				result.success = true;
 				done = true;
 			} else {
-				fprintf(stderr, "Error: No file specified.\n");
+				log_error(LOG_COMP_GENERAL, "File dialog: No file specified");
 			}
 			continue;
 		}
@@ -319,21 +323,21 @@ static file_dialog_result interactive_file_loop(const char *prompt,
 
 		/* Validate requirements */
 		if (require_exists && access(full_path, F_OK) != 0) {
-			fprintf(stderr, "Error: Path does not exist: %s\n", full_path);
+			log_error(LOG_COMP_GENERAL, "Path does not exist: %s", full_path);
 			input_pos = 0;
 			input[0] = '\0';
 			continue;
 		}
 
 		if (require_file && !is_regular_file(full_path)) {
-			fprintf(stderr, "Error: Not a regular file: %s\n", full_path);
+			log_error(LOG_COMP_GENERAL, "Not a regular file: %s", full_path);
 			input_pos = 0;
 			input[0] = '\0';
 			continue;
 		}
 
 		if (require_dir && !is_directory(full_path)) {
-			fprintf(stderr, "Error: Not a directory: %s\n", full_path);
+			log_error(LOG_COMP_GENERAL, "Not a directory: %s", full_path);
 			input_pos = 0;
 			input[0] = '\0';
 			continue;
@@ -397,6 +401,12 @@ file_dialog_result file_dialog_get_disk(void) {
 		return result;
 	}
 
+	/* Check for integer overflow in malloc size calculation */
+	if (count > 0 && (SIZE_MAX / sizeof(struct statfs)) < (size_t)count) {
+		log_error(LOG_COMP_GENERAL, "file_dialog_get_disk: malloc size would overflow");
+		return result;
+	}
+
 	mounts = malloc((size_t)count * sizeof(struct statfs));
 	if (!mounts) {
 		log_error(LOG_COMP_GENERAL, "file_dialog_get_disk: malloc failed");
@@ -422,7 +432,7 @@ file_dialog_result file_dialog_get_disk(void) {
 
 	char input_buf[32];
 	if (!fgets(input_buf, sizeof(input_buf), stdin)) {
-		fprintf(stderr, "Cancelled.\n");
+		log_info(LOG_COMP_GENERAL, "Volume selection cancelled (EOF on stdin)");
 		free(mounts);
 		return result;
 	}
@@ -435,7 +445,7 @@ file_dialog_result file_dialog_get_disk(void) {
 	/* Validate: must be valid integer, in range, no overflow */
 	if (errno != 0 || (*endptr != '\n' && *endptr != '\0') ||
 	    selection_long != (long)selection || selection < 1 || selection > count) {
-		fprintf(stderr, "Cancelled.\n");
+		log_info(LOG_COMP_GENERAL, "Volume selection cancelled (invalid selection)");
 		free(mounts);
 		return result;
 	}
@@ -460,7 +470,7 @@ file_dialog_result file_dialog_get_disk(void) {
 
 	char input_buf[32];
 	if (!fgets(input_buf, sizeof(input_buf), stdin)) {
-		fprintf(stderr, "Cancelled.\n");
+		log_info(LOG_COMP_GENERAL, "Volume selection cancelled (EOF on stdin)");
 		return result;
 	}
 
@@ -472,7 +482,7 @@ file_dialog_result file_dialog_get_disk(void) {
 	/* Validate: must be valid integer, equal to 1, no overflow */
 	if (errno != 0 || (*endptr != '\n' && *endptr != '\0') ||
 	    selection_long != (long)selection || selection != 1) {
-		fprintf(stderr, "Cancelled.\n");
+		log_info(LOG_COMP_GENERAL, "Volume selection cancelled (invalid selection)");
 		return result;
 	}
 

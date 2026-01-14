@@ -148,16 +148,19 @@ static boolean dialog_valueproc(short token, hdltreenode hparam1,
                 return false;
             }
 
-            if (!getstringvalue(hparam1, 1, bsprompt))
-                return false;
-
             /* Check if second parameter (default) is provided */
             if (langgetparamcount(hparam1) >= 2) {
+                if (!getstringvalue(hparam1, 1, bsprompt))
+                    return false;
                 flnextparamislast = true;
                 if (!getlongvalue(hparam1, 2, &default_value))
                     return false;
+            } else {
+                /* Only one parameter - mark it as last */
+                flnextparamislast = true;
+                if (!getstringvalue(hparam1, 1, bsprompt))
+                    return false;
             }
-            /* else: No default provided, use 0 */
 
             /* Convert Pascal string to C string */
             char prompt[256];
@@ -182,16 +185,19 @@ static boolean dialog_valueproc(short token, hdltreenode hparam1,
                 return false;
             }
 
-            if (!getstringvalue(hparam1, 1, bsprompt))
-                return false;
-
             /* Check if second parameter (default) is provided */
             if (langgetparamcount(hparam1) >= 2) {
+                if (!getstringvalue(hparam1, 1, bsprompt))
+                    return false;
                 flnextparamislast = true;
                 if (!getstringvalue(hparam1, 2, bsdefault))
                     return false;
                 has_default = true;
             } else {
+                /* Only one parameter - mark it as last */
+                flnextparamislast = true;
+                if (!getstringvalue(hparam1, 1, bsprompt))
+                    return false;
                 /* No default - use empty string */
                 setemptystring(bsdefault);
             }
