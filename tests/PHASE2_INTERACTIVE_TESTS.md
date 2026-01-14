@@ -204,7 +204,7 @@ Some features require manual verification (arrow keys, visual display, Ctrl+C):
    touch /tmp/test_dialog/{config.txt,data.json,README.md,.gitignore}
    ```
 2. Run: `./frontier-cli -e "file.getFileDialog('Select file', @f); return f"`
-3. Type "/tmp/test" and press **Tab**
+3. Type "tests/tmp/test" and press **Tab**
 4. **Expected Output:**
    ```
    Select file: /tmp/test_dialog/

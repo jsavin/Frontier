@@ -172,7 +172,7 @@ tests:
       local(hiddenPath = "{FRONTIER_TEST_TMP_DIR}/.hidden");
       file.getFolderDialog("Select folder", @result);
       return string.mid(result, 1, 1) == "/"
-    stdin_input: "/tmp\n"
+    stdin_input: "{FRONTIER_TEST_TMP_DIR}\n"
     expected_success: true
     expected_result: "true"
 
