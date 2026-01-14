@@ -99,39 +99,12 @@ Use `$(./tools/get_test_temp_path.sh)` for manual testing paths.
 
 ## Permanent Branches (Never Merge to Develop)
 
-The following branches exist independently of the main development flow and should **never be merged** to develop:
+Several archive branches exist independently and should **never be merged** to develop:
+- `archive/codex-sessions` - AI session transcripts (~950k lines)
+- `archive/portable-refactoring` - Refactoring experiments (348 files, 98k lines)
+- `archive/carbon-migration` - Legacy documentation (85 files)
 
-### archive/codex-sessions
-**Purpose:** Session recordings and transcripts from Claude Code interactions
-**Status:** Archive/documentation branch
-**Size:** ~950k lines (session data)
-**Created:** October 2025
-**Note:** Contains historical record of AI-assisted development sessions. This data is for reference and documentation purposes only.
-
-**Important:** This branch has a git note attached. View with:
-```bash
-git notes show refs/heads/archive/codex-sessions
-```
-
-### archive/portable-refactoring
-**Purpose:** Stash snapshot from portable refactoring cleanup work
-**Status:** Archive/experimental branch
-**Size:** 348 files changed, 98k lines modified
-**Created:** November 2025
-**Note:** Historical snapshot of portable handle refactoring experiments. Preserved for reference but superseded by subsequent refactoring work.
-
-### archive/carbon-migration
-**Purpose:** Legacy planning phase documentation archival
-**Status:** Archive/documentation branch
-**Size:** 85 files changed, 228 lines modified
-**Created:** October 2025
-**Note:** Historical snapshot of planning documentation reorganization. Preserved for reference.
-
-**View git notes for archived branches:**
-```bash
-git notes show refs/heads/archive/portable-refactoring
-git notes show refs/heads/archive/carbon-migration
-```
+**Full details:** See [`docs/PERMANENT_BRANCHES.md`](docs/PERMANENT_BRANCHES.md) for descriptions, purposes, and git notes.
 
 ---
 
@@ -273,61 +246,9 @@ fix/database-corruption       →  Frontier-database-corruption
 # Pattern: Strip prefix (feature/, fix/), prepend 'Frontier-'
 ```
 
-**Creating a New Worktree:**
-
-```bash
-# From main Frontier directory on develop
-cd /Users/jake/dev/jsavin/Frontier
-git worktree add ../Frontier-<feature-name> -b feature/<feature-name>
-cd ../Frontier-<feature-name>
-
-# Verify setup
-pwd && git branch
-# Should show: /Users/jake/dev/jsavin/Frontier-<feature-name>
-#              * feature/<feature-name>
-
-# Build and work here
-make clean && make
-./tools/run_headless_tests.sh
-```
-
-**Cleaning Up After PR Merged:**
-
-```bash
-# After PR is merged to develop
-cd /Users/jake/dev/jsavin
-rm -rf Frontier-<feature-name>
-cd Frontier
-git worktree prune  # Clean up worktree metadata
-git branch -d feature/<feature-name>  # Delete local branch (optional)
-```
+**Full Guide:** See [`docs/WORKTREE_WORKFLOW.md`](docs/WORKTREE_WORKFLOW.md) for detailed creation/cleanup commands, examples, and troubleshooting.
 
 ---
-
-### Recommended Setup for This Project
-
-**Session 1 (Feature Development):**
-```bash
-cd /Users/jake/dev/jsavin/Frontier-build-fix  # worktree on feature branch
-git branch -a  # verify you're on feature/*, not develop
-# Do work, test locally with ./tools/run_headless_tests.sh
-# Create PR when ready, let bot review
-```
-
-**Session 2 (Other Work):**
-```bash
-cd /Users/jake/dev/jsavin/Frontier  # main directory on develop
-git checkout develop  # verify you're on develop
-# Work on separate feature branch, or research tasks that don't modify code
-# Coordinate if you need to push to develop (ask Session 1 first)
-```
-
-**Parallel Development Rules:**
-- Session 1 (worktree): Feature work on feature/issues-171-159-167
-- Session 2 (main dir): Only research, analysis, or separate feature work
-- **Never both sessions push to develop simultaneously** - use PR workflow for visibility
-- If Session 2 wants to commit to develop, check if Session 1 has open PRs first
-- Session 1 should merge and clean up worktree before Session 2 does major develop work
 
 ### Critical Worktree Discipline ⚠️
 
@@ -347,55 +268,6 @@ git rebase origin/develop
 - This ensures your feature branch starts from the latest code
 - Prevents conflicts and keeps your PR clean
 - Do this EVERY TIME you switch to a worktree to start fresh work
-
-### Pre-Work Checklist
-
-Before starting major work in any session:
-1. ✅ Verify which worktree/directory you're in: `pwd && git branch`
-2. ✅ Check for uncommitted changes: `git status` (should show "working tree clean")
-3. ✅ Sync with origin: `git fetch origin` (see if develop has changed)
-4. ✅ If you're on develop, check recent commits: `git log -3`
-5. ✅ Ask yourself: "Am I about to work on the right branch for this task?"
-
-### Common Multi-Session Gotchas
-
-**Gotcha 1: Building wrong binary**
-- You're in Session 1's worktree, run tests, then switch to Session 2's directory
-- Session 2 has stale CLI binary from old build
-- **Fix**: Each session rebuilds its own binary, or remove old one: `rm frontier-cli/frontier-cli`
-
-**Gotcha 2: Database corruption from parallel test runs**
-- Session 1 runs migration test, updates Frontier-v6.root7
-- Session 2 runs test at same time, expects old database state
-- **Fix**: Don't run tests in parallel; use `git checkout` to reset databases between test runs
-
-**Gotcha 3: Develop branch changes while working on feature**
-- Session 1 is on feature branch, hasn't fetched in a while
-- Session 2 merges PR to develop
-- Session 1's PR conflicts because develop moved
-- **Fix**: Session 1 runs `git fetch origin && git rebase origin/develop` before push
-
-**Gotcha 4: Worktree gets "stuck" on merged branch**
-- Feature branch was merged, worktree is still pointing to that branch
-- Attempting to push fails with "branch no longer exists"
-- **Fix**: Delete worktree when feature is merged: `git worktree remove feature-branch-name`
-
-### When Something Goes Wrong
-
-If parallel sessions cause conflicts:
-
-1. **Both sessions on same branch?** Only one should push
-   - Coordinate via chat/discussion
-   - One session rebases onto latest origin before pushing
-   - Other session pulls/rebases after first push succeeds
-
-2. **Database state inconsistent?**
-   - Restore: `git checkout databases/*.root`
-   - Rebuild: `make -C tests clean && make -C tests save_migration_tests`
-   - This resets to known-good state
-
-3. **Worktree "detached" or in bad state?**
-   - Delete and recreate: `git worktree remove <name> && git worktree add <name> origin/<branch>`
 
 ---
 
@@ -453,71 +325,6 @@ When delegating to the pull-request agent:
 - ✅ Trace full call chains to verify global state reliability
 - ✅ Don't stop at surface-level fixes
 
-### Agent Parallelization & Background Execution
-
-**Default Strategy**: Parallelize agents when tasks are truly independent.
-
-#### When to Run Agents in Parallel
-
-Run multiple agents in parallel when:
-- Tasks are **completely independent** (no shared state, no dependencies)
-- Each agent is researching/analyzing different aspects of the codebase
-- Multiple exploration tasks can run simultaneously
-- Code review + security review can happen independently
-- Gathering information from different sources/subsystems
-
-**Pattern**: Launch all independent agents in a **single message** with multiple Task tool calls, using `run_in_background: true`.
-
-**Limit**: Don't spawn more than **10 agents at once** in a single session.
-
-#### When Sequential Execution is Required
-
-Run agents sequentially when:
-- **Dependency chain exists**: Agent B needs Agent A's results
-  - Example: Explore codebase → Plan implementation (plan needs exploration findings)
-  - Example: Research options → Present to user → Implement (user decision gates next step)
-- **Logical flow matters**: Design before implementation, research before decision
-- **User review needed**: Intermediate results require user approval/direction before proceeding
-- **Potential conflicts**: Multiple agents might modify same files or make conflicting recommendations
-- **Scope refinement**: Agent A's output determines what Agent B should focus on
-
-#### Background vs Foreground Execution
-
-**Default rules**:
-- **Parallel agents**: Always use `run_in_background: true`
-- **Single agent**: Default to foreground (blocking) unless you have reason to continue work while it runs
-
-**When to use background (single agent)**:
-- Long-running exploration while you continue implementing
-- Large codebase analysis that takes >30 seconds
-- You have other work to do while agent runs
-- User explicitly requests it
-
-#### Example Patterns
-
-**Parallel exploration** (multiple independent searches):
-```markdown
-I'm going to launch 3 explore agents in parallel to search different subsystems:
-<single message with 3 Task tool calls, all with run_in_background: true>
-```
-
-**Sequential with user gate** (research → user decision → implement):
-```markdown
-First, I'll use the explore agent to find all implementations...
-<wait for results>
-I found 3 approaches. Which would you prefer?
-<wait for user response>
-Now I'll use the plan agent to design the implementation...
-```
-
-**Mixed approach** (parallel research, sequential implementation):
-```markdown
-I'll launch 2 agents in parallel to gather context:
-<explore agent + system-architect agent in parallel>
-Once they complete, I'll review findings and create implementation plan.
-<sequential plan agent after parallel tasks complete>
-```
-
 ---
 
 ## Implementing Kernel Verbs
@@ -574,7 +381,9 @@ FRONTIER_HEADLESS_RUN_STARTUP=1 ./frontier-cli/frontier-cli -e "1+1"
 
 **Note on Startup Scripts**: By default, frontier-cli skips `system.startup` scripts for faster execution and cleaner testing. This is the correct behavior for development and testing. Only set `FRONTIER_HEADLESS_RUN_STARTUP=1` if you specifically need startup scripts to run.
 
-### UserTalk Syntax Gotcha ⚠️
+## UserTalk Critical Facts ⚠️
+
+### Syntax: String Quotes
 
 **CRITICAL**: Double quotes for strings, single quotes for character constants!
 
@@ -585,9 +394,7 @@ sizeOf('hello')  // ❌ WRONG - syntax error (single quotes = char constant)
 
 This is **opposite** of JavaScript/Python where `'x'` and `"x"` are equivalent!
 
----
-
-### UserTalk typeof() - ABSOLUTELY NOT TO BE CHANGED ⚠️⚠️⚠️
+### typeof() - ABSOLUTELY NOT TO BE CHANGED ⚠️⚠️⚠️
 
 **CRITICAL**: `typeof()` MUST always return OSType codes (4-byte constants), NEVER string names.
 
@@ -626,9 +433,7 @@ typeof(filespecValue) => "filespec"     ❌ WRONG - code expects 'fss '
 
 **LESSON**: When fixing typeof() test failures, check the test expectations first - don't change typeof() behavior. The correct approach is to fix the test to match the correct typeof() behavior.
 
----
-
-### UserTalk File Path Requirements ⚠️
+### File Path Requirements
 
 **CRITICAL**: All UserTalk verbs dealing with files require FULL/ABSOLUTE paths, not relative paths.
 
@@ -899,90 +704,48 @@ Frontier has multiple global mutable state variables that must be eliminated bef
 
 ### Timestamp Type Migration - uint32_t Audit Required ⚠️
 
-**Context**: Frontier migrated to 64-bit timestamps (`frontier_time_t` = `int64_t`) to avoid the Year 2038 problem. However, legacy code may still use `uint32_t` for timestamps, defeating this migration.
+**Context**: Frontier uses 64-bit timestamps (`frontier_time_t` = `int64_t`) to avoid Year 2038 problem. When pulling new source files into headless builds, ALWAYS audit for uint32_t timestamp usage.
 
-**When pulling new source files into headless builds, ALWAYS audit for uint32_t timestamp usage.**
-
-#### Pre-Merge Checklist for New Files
-
-Before adding any file to headless builds (frontier-cli/Makefile), run this audit:
-
+**Automated Checking**: Test suite automatically checks for datetime type issues.
 ```bash
-# Search for potential timestamp fields
-grep -n "uint32_t.*time\|uint32_t.*date\|uint32_t.*second" <new_file>.c
+./tools/run_headless_tests.sh  # includes datetime type check
+./tools/check_datetime_types.sh  # manual check
 ```
-
-For each match, determine if it's:
-1. **Disk format structure** (OK - for backward compatibility with legacy databases)
-2. **In-memory state** (MUST migrate to `frontier_time_t`)
-3. **API parameters** (MUST use `int64_t`/`frontier_time_t`)
-
-#### Example: Correct Pattern
-
-```c
-/* Disk format (legacy v4) - OK to keep uint32_t */
-typedef struct legacy_diskheader {
-    uint32_t timecreated;    // ✅ OK - reading old database format
-    uint32_t timelastsave;   // ✅ OK - with conversion to frontier_time_t
-} legacy_diskheader;
-
-/* In-memory state - MUST use frontier_time_t */
-typedef struct runtime_state {
-    frontier_time_t timecreated;    // ✅ Correct - 64-bit in memory
-    frontier_time_t timelastsave;   // ✅ Correct - 64-bit in memory
-} runtime_state;
-
-/* Conversion when reading disk format */
-state.timecreated = (frontier_time_t)disk_header.timecreated;  // ✅ Widen to 64-bit
-```
-
-### Automated DateTime Type Checking ✅
-
-**Pre-Merge Enforcement**: The test suite automatically checks for datetime type issues.
-
-```bash
-# Runs automatically as part of:
-./tools/run_headless_tests.sh
-
-# Or run manually:
-./tools/check_datetime_types.sh
-```
-
-**What It Checks**:
-1. `long` or `unsigned long` used with timestamp field names (timecreated, timemodified, timelastsave)
-2. `int32_t`/`uint32_t` with timestamp fields (warnings for manual review)
-3. Function parameters using `long` for date/time values
-
-**Whitelisted Files** (Mac GUI only, not in headless):
-- `Common/headers/claybrowser.h`
-- `Common/source/claybrowserexpand.c`
-- `portable/shelltypes_portable.h`
-- `portable/wptext_runtime.c` (legacy wp_diskheader disk format)
-
-**When You See Warnings About uint32_t**:
-- ✅ **Legacy v4/v6 disk format structures** → OK (backward compatibility for reading old databases)
-- ❌ **Modern v7 (BE64) disk format structures** → BAD (use uint64_t)
-- ❌ **In-memory structures** → BAD (use frontier_time_t / int64_t)
-- ❌ **API parameters** → BAD (use int64_t / frontier_time_t)
 
 **Rule of Thumb**:
-- Legacy readers (`Common/source/legacy/`, v4/v6 disk formats): uint32_t OK
+- Legacy readers (v4/v6 disk formats): uint32_t OK
 - Everything else: Use int64_t or frontier_time_t
 
-**See**: `planning/phase3/datetime_handling_audit.md` for complete findings.
+**Full Guide:** See [`docs/TIMESTAMP_AUDIT.md`](docs/TIMESTAMP_AUDIT.md) for detailed audit procedures, examples, and whitelisted files.
+
+**References:** `docs/frontier_time_t_standard.md`, `planning/phase3/datetime_handling_audit.md`, PR #231, Issue #167
 
 ---
 
-**References**:
-- `docs/frontier_time_t_standard.md` - 64-bit time standard
-- PR #231 - Discovered during file verb implementation
-- Issue #167 - Original time_t portability bug
-
----
-
-### Database Format Debugging & Corruption Detection ⚠️
+### Database Debugging Patterns ⚠️
 
 **CRITICAL LESSONS FROM PR #185**
+
+#### When Investigating Database-Related Bugs
+
+1. **Always verify if crashes are pre-existing** using git bisect-style testing
+   - Checkout commits before/after suspected changes
+   - Rebuild and test at each point
+   - **For format bugs**: Re-migrate at each bisect step (pre-migrated v7 database gives false results)
+
+2. **Trace global state reliability through full call chains**
+   - Don't assume globals are wrong without verification
+   - Globals may be set correctly at higher levels even if not explicitly passed
+
+3. **Check context propagation patterns**
+   - Look for `db_context *ctx` parameters in unpacking functions
+   - Verify context→global assignments
+
+4. **Key files for database context debugging**:
+   - `Common/source/db_format.c` - Context→global assignments during unpacking
+   - `Common/source/langhash.c` - Hash table unpacking flow
+   - `Common/source/tablepack.c` - Table unpacking implementation
+   - `Common/source/langexternal.c` - External variable creation and lifecycle
 
 #### Database File Corruption in Git
 
@@ -998,10 +761,6 @@ xxd databases/Frontier-v6.root | head -1
 1. Find last known-good commit: `git log --oneline -- databases/Frontier-v6.root`
 2. Restore: `git show <commit>:databases/Frontier-v6.root > databases/Frontier-v6.root`
 3. Verify with `xxd`
-
-#### Git Bisect for Database Format Issues
-
-When debugging database format bugs, **you MUST re-migrate at each bisect step**. Testing with pre-migrated v7 database gives false results if bug is in migration code.
 
 #### Context Guard Pattern is CORRECT ✅
 
@@ -1099,29 +858,6 @@ Whenever you discover something significant about this project or its implementa
 
 ---
 
-## Database Context Debugging Pattern
-
-When investigating database-related bugs:
-
-1. **Always verify if crashes are pre-existing** using git bisect-style testing
-   - Checkout commits before/after suspected changes
-   - Rebuild and test at each point
-
-2. **Trace global state reliability through full call chains**
-   - Don't assume globals are wrong without verification
-   - Globals may be set correctly at higher levels even if not explicitly passed
-
-3. **Check context propagation patterns**
-   - Look for `db_context *ctx` parameters in unpacking functions
-   - Verify context→global assignments
-
-4. **Key files for database context debugging**:
-   - `Common/source/db_format.c` - Context→global assignments during unpacking
-   - `Common/source/langhash.c` - Hash table unpacking flow
-   - `Common/source/tablepack.c` - Table unpacking implementation
-   - `Common/source/langexternal.c` - External variable creation and lifecycle
-
----
 
 ## Anti-Pattern: Auto-Generated Files Requiring Hand-Edits
 
@@ -1148,55 +884,18 @@ When investigating database-related bugs:
 - Update generator if needed
 - **Don't hand-edit the output** - fix the generator instead
 
-### When Stub Files Transition to Production (Issue #256)
+### When Stub Files Transition to Production
 
 **CRITICAL**: When implementing verbs in generated stub files, **immediately update the file header** to prevent accidental regeneration.
 
-**Pattern to Follow**:
+**Pattern**: Change header from "GENERATED FILE - DO NOT EDIT BY HAND" to "Originally generated, now contains production implementations - DO NOT regenerate".
 
-1. **Before implementation** (generated stub):
-```c
-/*
- * headless_op_verbs.c - Op processor verbs (GENERATED FILE)
- *
- * Auto-generated by tools/kernelverbs_parser/generate_processor_stubs.py
- * DO NOT EDIT BY HAND - To regenerate, run: python3 generate_processor_stubs.py
- */
-```
-
-2. **After implementation** (production code):
-```c
-/*
- * headless_op_verbs.c - Op processor verb implementations
- *
- * Originally generated by tools/kernelverbs_parser/generate_processor_stubs.py,
- * now contains hand-written implementations for Phase 1-4 op verbs.
- *
- * DO NOT regenerate - this file contains production implementations.
- *
- * Implementation status:
- * - Phase 1 (10 verbs): COMPLETE - insert, getLineText, level, ...
- * - Phase 2 (8 verbs):  PENDING   - setLineText, promote, demote, ...
- * - Phase 3 (10 verbs): PENDING   - State management verbs
- * - Phase 4 (17 verbs): PENDING   - Advanced operations
- *
- * See planning/phase3/op_verb_implementation_plan.md for complete roadmap.
- */
-```
-
-**Why This Matters** (P1 Issue):
+**Why This Matters**:
 - Risk of accidental regeneration overwriting production code
 - Misleads future developers about file editability
 - Could cause data loss if someone runs generator without checking git
-- Creates confusion about source of truth (generator vs. hand-edits)
 
-**Files Already Updated** (as of Issue #256):
-- ✅ `tests/headless_op_verbs.c` - Phase 1 op verbs (10 complete)
-- ✅ `tests/headless_date_verbs.c` - All date verbs fully implemented
-- ✅ `tests/headless_clock_verbs.c` - Most clock verbs implemented
-- ✅ `tests/headless_lang_verbs.c` - Dispatcher pattern forwarding
-
-**Reference**: See Issue #256 for full context and rationale.
+**Reference**: See Issue #256 for detailed before/after examples and complete file list.
 
 ---
 
