@@ -89,6 +89,7 @@ tests/*.dSYM/
 # Database backups and test artifacts
 *.root.bak
 *.root.prev*
+*.root7
 # Migration test database files - now under tests/tmp/migration/
 test_save_migration*.root
 tests/test_*.root
