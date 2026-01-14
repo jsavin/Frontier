@@ -28,7 +28,8 @@ extern short emptyhashtable(hdlhashtable htable, boolean fldisk);
 /*
  * repl_workspace_init - Initialize workspace table
  *
- * Creates system.repl.workspace table in the system root.
+ * Creates root.workspace table for REPL variables.
+ * When system.paths is loaded, workspace.x resolves to root.workspace.x
  * The workspace persists across all REPL evaluations.
  */
 boolean repl_workspace_init(repl_workspace *ws) {
@@ -41,31 +42,27 @@ boolean repl_workspace_init(repl_workspace *ws) {
     ws->initialized = false;
 
     /* Check if system root is loaded */
-    if (systemtable == nil) {
-        log_error(LOG_COMP_GENERAL, "System table not loaded - cannot create workspace");
+    if (roottable == nil) {
+        log_error(LOG_COMP_GENERAL, "Root table not loaded - cannot create workspace");
         return false;
     }
 
-    /* Find or create system.repl */
-    hdlhashtable repl_table = nil;
-    bigstring bs_repl;
-    copyctopstring("repl", bs_repl);
-
-    if (!findnamedtable(systemtable, bs_repl, &repl_table)) {
-        if (!tablenewsubtable(systemtable, bs_repl, &repl_table)) {
-            log_error(LOG_COMP_GENERAL, "Failed to create system.repl table");
-            return false;
-        }
-    }
-
-    /* Find or create system.repl.workspace */
+    /* Find or create root.workspace table
+     *
+     * IMPORTANT: root.workspace usually already exists in the database with user data.
+     * We use findnamedtable() first to find the existing table - only create if missing.
+     * This preserves any existing data in root.workspace (like notepad, pt, etc.)
+     *
+     * Normal name resolution will find workspace.x as root.workspace.x
+     */
     hdlhashtable workspace = nil;
     bigstring bs_workspace;
     copyctopstring("workspace", bs_workspace);
 
-    if (!findnamedtable(repl_table, bs_workspace, &workspace)) {
-        if (!tablenewsubtable(repl_table, bs_workspace, &workspace)) {
-            log_error(LOG_COMP_GENERAL, "Failed to create workspace table");
+    if (!findnamedtable(roottable, bs_workspace, &workspace)) {
+        /* Table doesn't exist - safe to create new one */
+        if (!tablenewsubtable(roottable, bs_workspace, &workspace)) {
+            log_error(LOG_COMP_GENERAL, "Failed to create root.workspace table");
             return false;
         }
     }
@@ -73,7 +70,7 @@ boolean repl_workspace_init(repl_workspace *ws) {
     ws->workspace_table = workspace;
     ws->initialized = true;
 
-    log_debug(LOG_COMP_GENERAL, "REPL workspace initialized");
+    log_debug(LOG_COMP_GENERAL, "REPL workspace initialized as root.workspace");
     return true;
 }
 
@@ -157,18 +154,13 @@ boolean repl_eval_script(
     memcpy(*htext, script, script_len);
     HUnlock(htext);
 
-    /* Set workspace as current context */
-    hdlhashtable saved_current = currenthashtable;
-    currenthashtable = ws->workspace_table;
-
     /* Execute script using langrunhandle
+     * Note: Name resolution will find workspace.x as root.workspace.x
+     * Don't set currenthashtable - let normal lookup work
      * Note: langrunhandle returns the result OR error message in the result parameter.
      * On failure, the result parameter contains the error message.
      */
     boolean ok = langrunhandle(htext, result);
-
-    /* Restore previous context */
-    currenthashtable = saved_current;
 
     if (!ok) {
         /* Execution failed - error message is already in result parameter */

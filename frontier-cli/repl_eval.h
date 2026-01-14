@@ -31,7 +31,7 @@ typedef struct repl_workspace_t {
 /*
  * repl_workspace_init - Initialize workspace (call once at REPL startup)
  *
- * Creates system.repl.workspace table in the system root.
+ * Creates 'workspace' as a top-level table in the system root.
  * If no system root is loaded, this will fail.
  *
  * Returns: true on success, false on error
