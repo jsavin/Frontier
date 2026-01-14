@@ -55,7 +55,7 @@ class VerbImplementationAnalyzer:
         self.build_target = build_target
         self._build_sources: Optional[set] = None  # Cached set of source files in build
 
-    def _parse_makefile_with_vars(self, makefile_path: Path, project_root: Path, parent_variables: Optional[dict] = None) -> tuple:
+    def _parse_makefile_with_vars(self, makefile_path: Path, project_root: Path, parent_variables: Optional[dict] = None, visited: Optional[set] = None) -> tuple:
         """
         Internal helper that parses Makefile and returns both sources and variables.
 
@@ -63,10 +63,25 @@ class VerbImplementationAnalyzer:
             makefile_path: Path to Makefile
             project_root: Project root directory
             parent_variables: Variables from parent Makefile (for recursive calls)
+            visited: Set of already-visited Makefile paths (prevents circular includes)
 
         Returns:
             Tuple of (sources_set, variables_dict)
         """
+        # Initialize visited set on first call
+        if visited is None:
+            visited = set()
+
+        # Resolve path to canonical form for circular include detection
+        makefile_canonical = makefile_path.resolve()
+
+        # Check for circular includes
+        if makefile_canonical in visited:
+            return set(), {}
+
+        # Mark this file as visited
+        visited.add(makefile_canonical)
+
         sources = set()
         # Start with parent variables (from outer scope) and add new ones
         variables = parent_variables.copy() if parent_variables else {}
@@ -135,9 +150,18 @@ class VerbImplementationAnalyzer:
                             # Resolve relative to Makefile's directory
                             include_abs = (makefile_path.parent / include_path).resolve()
 
-                            if include_abs.exists():
-                                # Recursively parse included file, passing current variables
-                                included_sources, included_vars = self._parse_makefile_with_vars(include_abs, project_root, variables)
+                            # Security: Validate that included file is within project boundaries
+                            try:
+                                include_abs.relative_to(project_root)
+                                is_within_project = True
+                            except ValueError:
+                                is_within_project = False
+
+                            if not is_within_project:
+                                print(f"  Warning: Included file outside project boundaries: {include_abs}")
+                            elif include_abs.exists():
+                                # Recursively parse included file, passing current variables and visited set
+                                included_sources, included_vars = self._parse_makefile_with_vars(include_abs, project_root, variables, visited)
                                 sources.update(included_sources)
                                 # Merge variables from included file (included file's variables take precedence)
                                 variables.update(included_vars)
