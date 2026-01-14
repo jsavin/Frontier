@@ -145,10 +145,10 @@ int main(void) {
     assert(langinitverbs());
 
     // Pick a legacy database to migrate
-    const char *src = "databases/Frontier-v6.root";
+    const char *src = "databases/Frontier.root";
     FILE *in = fopen(src, "rb");
     if (!in) {
-        src = "../databases/Frontier-v6.root"; // when running from tests/
+        src = "../databases/Frontier.root"; // when running from tests/
         in = fopen(src, "rb");
     }
     assert(in != NULL);

@@ -298,7 +298,7 @@ Ensure normal (non-migration) database operations still work:
 ```bash
 # Test with non-migrated database
 FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli \
-  --system-root databases/Frontier-v6.root \
+  --system-root databases/Frontier.root \
   -e "sizeOf(system.verbs.globals)"
 ```
 
@@ -329,9 +329,9 @@ From DEBUG_NOTES.md lines 122-127, the source v6 database was being modified dur
 
 **After this fix**, verify source database is NEVER modified:
 ```bash
-md5sum databases/Frontier-v6.root  # Before
+md5sum databases/Frontier.root  # Before
 # Run migration
-md5sum databases/Frontier-v6.root  # After - should match!
+md5sum databases/Frontier.root  # After - should match!
 ```
 
 ### Issue #2: Missing `dbcopy()` Destination Routing

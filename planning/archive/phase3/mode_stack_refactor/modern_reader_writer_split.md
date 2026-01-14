@@ -39,7 +39,7 @@
     - Add synthetic round-trip: build a tiny legacy-packed table payload (externals + scalars), decode with legacy reader, widen + repack via modern writer, decode with modern reader, and assert logical equality (types/keys/values; addresses may differ). Fail on any 32-bit or mixed-endian remnant. **Pending.**
     - File-level round-trip: migrate canonical v6 root to v7, reopen with modern reader, and verify sentinel tables/externals logically match legacy reads. Confirm view0/variance and Cancoon removal. **Pending (after payload widening).**
    - Re-enable `runtime_tests`/`cli_runtime_tests` once the modern path is clean; log paths in `_CURRENT_STATUS.md`. **Done (tests passing).**
-   - Rerun `FRONTIER_REGEN_ROOT=databases/Frontier-v6.root ./tests/runtime_tests`; verify view0 variance and Cancoon drop. **Done (view0 set, headerLength=90 with 2-byte padding, Cancoon dropped; regression added).**
+   - Rerun `FRONTIER_REGEN_ROOT=databases/Frontier.root ./tests/runtime_tests`; verify view0 variance and Cancoon drop. **Done (view0 set, headerLength=90 with 2-byte padding, Cancoon dropped; regression added).**
 5) **Docs/Tracking**
    - Update `_CURRENT_STATUS.md` and the two phase3 docs with milestones as each slice lands. **Partial (current status updated).**
    - Track remaining warnings (`__builtin_return_address`, unused helpers) for cleanup after BE64 path is solid. **Warnings cleared in tests; runtime logs only.**

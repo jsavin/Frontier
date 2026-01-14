@@ -732,7 +732,7 @@ Loading all WPText objects upfront would:
 - See `./tools/run_headless_tests.sh` results
 
 **Real-World Testing**:
-- Tested with production Frontier-v6.root containing 200+ WPText objects
+- Tested with production Frontier.root containing 200+ WPText objects
 - Migration completes without memory exhaustion or hangs
 - All WPText objects successfully migrated to v7 format
 

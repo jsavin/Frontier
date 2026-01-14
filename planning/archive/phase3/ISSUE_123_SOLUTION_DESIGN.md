@@ -234,7 +234,7 @@ if (!(**hv).flinmemory) {
 **Test cases**:
 1. Clean migration: `rm test_save_migration* && make -C tests save_migration_tests && ./tests/save_migration_tests`
 2. Verify external access: `FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root ./test_save_migration-v7.root -e "sizeOf(system.verbs.globals)"`
-3. Verify v6 unchanged: `md5sum databases/Frontier-v6.root` before/after
+3. Verify v6 unchanged: `md5sum databases/Frontier.root` before/after
 4. Run full test suite: `./tools/run_headless_tests.sh`
 
 **Expected results**:
@@ -285,7 +285,7 @@ if (!(**hv).flinmemory) {
 ## Success Criteria
 
 **Migration succeeds when**:
-1. ✅ All external tables in Frontier-v6.root migrate successfully
+1. ✅ All external tables in Frontier.root migrate successfully
 2. ✅ No `dbnormalizeaddress()` failures post-migration
 3. ✅ `sizeOf(system.verbs.globals)` returns valid number
 4. ✅ `sizeOf(workspace)` returns valid number

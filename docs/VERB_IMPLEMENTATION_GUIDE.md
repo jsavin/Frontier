@@ -286,7 +286,7 @@ This rebuilds the CLI, migrates the test database, and runs the complete test su
 FRONTIER_HEADLESS_RUN_STARTUP=1 ./frontier-cli/frontier-cli -e "yourverb(args)"
 
 # Test a verb with system root loaded
-./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root7 -e "yourverb(args)"
+./frontier-cli/frontier-cli --system-root databases/Frontier.root7 -e "yourverb(args)"
 ```
 
 ### Common Test Patterns

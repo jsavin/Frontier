@@ -213,7 +213,7 @@ oppopoutline();
 
 **Current Limitation**: Integration tests use `@workspace.testScript` pattern, which requires system root database.
 
-**Why**: The workspace table is provided by the system root database (`Frontier-v6.root`).
+**Why**: The workspace table is provided by the system root database (`Frontier.root`).
 
 **Future**: Refactor tests to use self-contained table structures:
 ```usertalk
@@ -278,7 +278,7 @@ C unit tests in `tests/headless_script_verbs.c`:
 
 **Approach**: Use `@local.testTable.script` pattern instead of `@workspace.script`.
 
-**Benefit**: Tests run without requiring `Frontier-v6.root` to be loaded.
+**Benefit**: Tests run without requiring `Frontier.root` to be loaded.
 
 ### 3. Bytecode Caching
 

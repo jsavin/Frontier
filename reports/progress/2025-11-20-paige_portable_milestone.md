@@ -15,7 +15,7 @@ Status
 ## Fixtures, Tools & Tests
 - Captured genuine Paige blobs (`hello_macroman`, `examples_testText`) plus a binary-to-RTF dumper (`tools/wptext_dump_rtf`) for manual validation.
 - Expanded `tests/components/paige_text_tests` with regression coverage for plaintext extraction, RTF emission, and style assertions (bold/italic runs stay accurate).
-- Extended `tests/runtime_tests` with the `wptext RTF smoke test` and ran `FRONTIER_REGEN_ROOT=databases/Frontier-v6.root ./tests/runtime_tests` to completion—latest log saved at `/tmp/runtime_tests.log`.
+- Extended `tests/runtime_tests` with the `wptext RTF smoke test` and ran `FRONTIER_REGEN_ROOT=databases/Frontier.root ./tests/runtime_tests` to completion—latest log saved at `/tmp/runtime_tests.log`.
 
 ## Planning & Documentation
 - Marked Phase 1/Phase 2 of `planning/phase3/paige_text_extractor.md` as completed and recorded the Phase 3 (font tables) plan as `Planned (P1)`.

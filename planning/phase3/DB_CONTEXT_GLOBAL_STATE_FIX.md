@@ -436,7 +436,7 @@ void db_release(hdldatabaserecord hdb) {
 
 **Exit Criteria:**
 - `db.save()` correctly saves guest database when system root is loaded
-- All db_verbs integration tests pass with `--system-root databases/Frontier-v6.root7`
+- All db_verbs integration tests pass with `--system-root databases/Frontier.root7`
 - Verified with `xxd` that correct database file is written
 - No regression in tests without system root
 
@@ -531,7 +531,7 @@ if (hsubtable == nil && *htable != nil) {
 ```bash
 # Create empty guest database, populate, verify cancoon record
 TESTDIR=$(./tools/get_test_temp_path.sh)
-./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root7 -e '
+./frontier-cli/frontier-cli --system-root databases/Frontier.root7 -e '
 local(dbPath = "'$TESTDIR'/test_lazy_root.root7");
 db.new(dbPath);
 db.open(dbPath, false);
@@ -557,7 +557,7 @@ Expected: Should NOT contain "examples" table or system.* references
 ```bash
 # Open multiple guest databases, verify each saves correctly
 TESTDIR=$(./tools/get_test_temp_path.sh)
-./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root7 -e '
+./frontier-cli/frontier-cli --system-root databases/Frontier.root7 -e '
 local(db1 = "'$TESTDIR'/test_db1.root7");
 local(db2 = "'$TESTDIR'/test_db2.root7");
 db.new(db1); db.open(db1, false);
@@ -579,7 +579,7 @@ Expected: SUCCESS (both databases save correctly)
 **Run full db_verbs test suite with system root:**
 ```bash
 cd tests
-make test-integration FRONTIER_CLI_ARGS="--system-root ../databases/Frontier-v6.root7"
+make test-integration FRONTIER_CLI_ARGS="--system-root ../databases/Frontier.root7"
 ```
 
 Expected: All db_verbs tests PASS

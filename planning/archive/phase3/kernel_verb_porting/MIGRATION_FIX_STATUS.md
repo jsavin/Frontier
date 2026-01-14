@@ -69,7 +69,7 @@ FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli --system-root datab
 
 ## Possible Root Causes (To Investigate)
 
-1. **Empty Database**: The Frontier-v6.root may be a minimal/bootstrap database without much content
+1. **Empty Database**: The Frontier.root may be a minimal/bootstrap database without much content
 2. **Missing Verb Implementations**: Table assignment/access verbs may not be fully implemented in headless mode
 3. **Table Structure Issues**: The database structure may be incomplete or malformed
 4. **Silent Error Handling**: Errors may be occurring but not being displayed by the CLI

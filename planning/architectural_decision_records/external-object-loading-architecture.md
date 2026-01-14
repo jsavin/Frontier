@@ -47,7 +47,7 @@ This document establishes the architectural patterns for loading and materializi
 - Production databases may contain **200+ WPText objects** requiring **500MB-2GB** if all loaded eagerly
 - Loading all WPText upfront causes memory exhaustion and hangs
 - Lazy loading trades CPU (on-demand deserialization) for RAM (load only what's needed)
-- Pattern validated on real Frontier-v6.root databases with hundreds of WPText objects
+- Pattern validated on real Frontier.root databases with hundreds of WPText objects
 
 ### 1.3 The External Variable State Machine
 
@@ -730,7 +730,7 @@ The patterns in this document were discovered and validated during v6→v7 datab
 4. **Materialization Strategy**: Different external types need different loading strategies
 
 ### Validation
-- Migration tested on production Frontier-v6.root (200+ WPText objects, 100+ menu objects)
+- Migration tested on production Frontier.root (200+ WPText objects, 100+ menu objects)
 - Successfully migrates without memory exhaustion
 - All external types materialize correctly
 - Pattern scales to larger databases

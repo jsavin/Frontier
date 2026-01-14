@@ -88,7 +88,7 @@ system_context* get_system_context(void);  // Global accessor
 ./tools/run_headless_tests.sh
 cd tests && make test-integration
 # Verify processor resolution works
-./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root -e "sizeOf(system)"
+./frontier-cli/frontier-cli --system-root databases/Frontier.root -e "sizeOf(system)"
 ```
 
 **Success**: System tables in context, no efptable workaround

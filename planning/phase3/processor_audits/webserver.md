@@ -16,7 +16,7 @@
 | **Window Required** | NO |
 | **Documentation** | [webserver/](../../../docs/usertalk/docserver.userland.com/webserver/index.html) |
 | **Stub Implementation** | [headless_webserver_verbs.c](../../../tests/headless_webserver_verbs.c) |
-| **Script Implementation** | `system.verbs.builtins.webserver` (Frontier-v6.root) |
+| **Script Implementation** | `system.verbs.builtins.webserver` (Frontier.root) |
 
 ---
 
@@ -146,7 +146,7 @@ Parses URL-encoded arguments:
 - Example: `"name=John&age=30&tag=web&tag=server"` → `{name:"John", age:"30", tag:{"web", "server"}}`
 
 **Script Location:**
-All UserTalk implementations are in the Frontier-v6.root database:
+All UserTalk implementations are in the Frontier.root database:
 - Path: `system.verbs.builtins.webserver`
 - Contains actual script implementations
 - Kernel verbs are likely just thin wrappers calling these scripts
@@ -276,7 +276,7 @@ inetd.startOne("http")
 **Dependencies:**
 - tcp processor (for socket I/O)
 - inetd processor (for connection management)
-- Access to Frontier-v6.root to review scripts
+- Access to Frontier.root to review scripts
 
 ---
 
@@ -289,7 +289,7 @@ inetd.startOne("http")
 **Blockers/Prerequisites:**
 - tcp processor (socket I/O)
 - inetd processor (daemon management)
-- Access to UserTalk scripts in Frontier-v6.root
+- Access to UserTalk scripts in Frontier.root
 
 **Implementation Sequence:**
 1. Review UserTalk scripts in system.verbs.builtins.webserver
@@ -376,7 +376,7 @@ system.webserver.config
 
 **⚠️ Need Access to UserTalk Scripts:**
 To complete this audit, need to:
-1. Access `system.verbs.builtins.webserver` from Frontier-v6.root
+1. Access `system.verbs.builtins.webserver` from Frontier.root
 2. Review actual UserTalk implementations
 3. Verify headless compatibility
 4. Document script behavior
@@ -404,7 +404,7 @@ Based on architecture and user feedback:
 
 **Implementation:**
 - Stub: `tests/headless_webserver_verbs.c`
-- Scripts: `system.verbs.builtins.webserver` (Frontier-v6.root)
+- Scripts: `system.verbs.builtins.webserver` (Frontier.root)
 - Canonical verb list: `Common/resources/Win32/kernelverbs.rc` (lines 1009-1019)
 
 **Standards:**

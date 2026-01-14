@@ -135,7 +135,7 @@ return testFile
 ```usertalk
 local (
     dbDir = file.fullPath(file.getPath()) + "/" + "databases",
-    v6Path = dbDir + "/" + "Frontier-v6.root",
+    v6Path = dbDir + "/" + "Frontier.root",
     v7Path = dbDir + "/" + "Frontier-v7.root"
 );
 

@@ -56,7 +56,7 @@ To safely transition from v6 to v7 format while preserving production stability,
 - Migration creates `.root7` alongside original `.root`
 
 **Database Naming Examples:**
-- System root: `Frontier-v6.root` (original) + `Frontier.root7` (migrated)
+- System root: `Frontier.root` (original) + `Frontier.root7` (migrated)
 - Guest databases: `test.root` (v6) + `test.root7` (v7)
 - Test databases: `{FRONTIER_TEST_TMP_DIR}/mydb.root7`
 
@@ -1189,9 +1189,9 @@ This documentation will be updated when Phase 2 begins.
 The `migrate_32bit_to_64bit()` function must be updated to output `.root7` files instead of replacing the original:
 
 **Current Behavior** (System Root):
-- Input: `Frontier-v6.root`
+- Input: `Frontier.root`
 - Output: `Frontier.root7` (temporary backup path)
-- Original: `Frontier-v6.root` preserved
+- Original: `Frontier.root` preserved
 
 **Phase 1 Behavior** (Guest Databases):
 - Input: `mydb.root` (v6 format)
@@ -1210,7 +1210,7 @@ boolean migrate_32bit_to_64bit(const char *db_path) {
     char output_path[1024];
 
     // Check if input is system root (special case - existing behavior)
-    if (strstr(db_path, "Frontier-v6.root") != NULL ||
+    if (strstr(db_path, "Frontier.root") != NULL ||
         strstr(db_path, "Frontier.root") != NULL) {
         // System root: use existing Frontier.root7 naming
         const char *dir = dirname_portable(db_path);

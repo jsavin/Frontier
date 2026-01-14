@@ -514,7 +514,7 @@ on user.webserver.data.restAPI.handlers.GET(adrParams)
 **Headless Compatibility**: ⚠️ **Needs ODB Scripts**
 - UserTalk scripts must be loaded from `Frontier.root`
 - Scripts live in: `system.verbs.builtins.webserver.*`
-- Must ensure `--system-root databases/Frontier-v6.root` loaded
+- Must ensure `--system-root databases/Frontier.root` loaded
 
 ---
 
@@ -583,7 +583,7 @@ on betty.responders.RPC2.methods.POST(adrParams)
 - `system.verbs.builtins.inetd.supervisor` - Required
 - `system.verbs.builtins.webserver.server` - Required
 - `system.verbs.builtins.webserver.dispatch` - Required
-- Currently loaded from: `databases/Frontier-v6.root` via `--system-root`
+- Currently loaded from: `databases/Frontier.root` via `--system-root`
 
 **Warnings During Startup**:
 ```
@@ -627,25 +627,25 @@ LDFLAGS = -Wl,-undefined,dynamic_lookup -lpthread
 #### 2. Verify UserTalk Scripts Load from ODB
 
 **Current Behavior**:
-- CLI loads `Frontier.root` via `--system-root databases/Frontier-v6.root`
+- CLI loads `Frontier.root` via `--system-root databases/Frontier.root`
 - Scripts should be in: `system.verbs.builtins.webserver.*`
 
 **Verification Steps**:
 ```bash
 # Test if webserver.server exists
-./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root \
+./frontier-cli/frontier-cli --system-root databases/Frontier.root \
   -e "defined(system.verbs.builtins.webserver.server)"
 # Expected: true
 
 # Test if inetd.supervisor exists
-./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root \
+./frontier-cli/frontier-cli --system-root databases/Frontier.root \
   -e "defined(system.verbs.builtins.inetd.supervisor)"
 # Expected: true
 ```
 
 **If Missing**:
 - Scripts may be in legacy Frontier.root, not ported to headless database
-- Solution: Export scripts from legacy Frontier, import to `Frontier-v6.root`
+- Solution: Export scripts from legacy Frontier, import to `Frontier.root`
 
 **Estimated Effort**: 2-4 hours (if scripts need porting)
 

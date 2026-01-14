@@ -709,7 +709,7 @@ Some verbs depend on ODB structures being initialized:
 - **Preference verbs** require `user.html.prefs` table
 - **Glossary verbs** require glossary tables
 
-**Testing note**: Integration tests should load Frontier-v6.root to ensure proper ODB initialization.
+**Testing note**: Integration tests should load Frontier.root to ensure proper ODB initialization.
 
 ---
 
@@ -804,7 +804,7 @@ Two verbs are commented out in the C source:
 
 **`html.normalizename`** is implemented as a UserTalk script, not in C.
 
-**Impact**: Verb works only if Frontier-v6.root is loaded (contains the script).
+**Impact**: Verb works only if Frontier.root is loaded (contains the script).
 
 **Workaround**: Document that users must load system root for this verb.
 

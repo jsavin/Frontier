@@ -72,7 +72,7 @@ void test_batch_flag_non_interactive_alias(void) {
 // Test 4: Batch flag combines with other options
 void test_batch_flag_with_system_root(void) {
     char* argv[] = {"frontier-cli", "--batch", "--system-root",
-                    "databases/Frontier-v6.root", "-e", "1+1"};
+                    "databases/Frontier.root", "-e", "1+1"};
     int argc = 6;
     cli_options_t options;
 
@@ -81,7 +81,7 @@ void test_batch_flag_with_system_root(void) {
     assert(result == true);
     assert(options.batch_mode == true);
     assert(options.system_root != NULL);
-    assert(strcmp(options.system_root, "databases/Frontier-v6.root") == 0);
+    assert(strcmp(options.system_root, "databases/Frontier.root") == 0);
 }
 
 // Test 5: Batch flag can appear in different positions
@@ -153,7 +153,7 @@ test_case "CLI accepts --non-interactive" \
 
 # Test 4: Batch flag with system-root
 test_case "Batch flag combines with --system-root" \
-    $CLI --batch --system-root databases/Frontier-v6.root -e "1"
+    $CLI --batch --system-root databases/Frontier.root -e "1"
 
 # Test 5: Batch flag at different positions
 test_case "Batch flag at end of args" \

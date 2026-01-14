@@ -544,10 +544,10 @@ void test_migration_deterministic(void) {
     char output1[1024], output2[1024];
 
     // Run migration twice
-    migrate_32bit_to_64bit("databases/Frontier-v6.root");
+    migrate_32bit_to_64bit("databases/Frontier.root");
     strcpy(output1, db_format_last_backup_path());
 
-    migrate_32bit_to_64bit("databases/Frontier-v6.root");
+    migrate_32bit_to_64bit("databases/Frontier.root");
     strcpy(output2, db_format_last_backup_path());
 
     // Outputs should be binary identical

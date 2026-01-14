@@ -63,9 +63,9 @@ test_case "CLI accepts --non-interactive" \
     $CLI --non-interactive -e "1+1"
 
 # Test 4: Batch flag with --system-root
-if [ -f "$PROJECT_ROOT/databases/Frontier-v6.root" ]; then
+if [ -f "$PROJECT_ROOT/databases/Frontier.root" ]; then
     test_case "Batch flag combines with --system-root" \
-        $CLI --batch --system-root "$PROJECT_ROOT/databases/Frontier-v6.root" -e "1"
+        $CLI --batch --system-root "$PROJECT_ROOT/databases/Frontier.root" -e "1"
 else
     echo -e "${YELLOW}SKIP${NC}: Batch flag combines with --system-root (database not found)"
 fi

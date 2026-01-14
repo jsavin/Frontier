@@ -179,16 +179,16 @@ FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli \
 Ensure non-migrated database operations still work:
 ```bash
 FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli \
-  --system-root databases/Frontier-v6.root \
+  --system-root databases/Frontier.root \
   -e "sizeOf(system.verbs.globals)"
 ```
 
 ### Source Database Integrity
 Verify source database is never modified:
 ```bash
-md5sum databases/Frontier-v6.root  # Before
+md5sum databases/Frontier.root  # Before
 ./tools/run_headless_tests.sh
-md5sum databases/Frontier-v6.root  # After - should match!
+md5sum databases/Frontier.root  # After - should match!
 ```
 
 ---

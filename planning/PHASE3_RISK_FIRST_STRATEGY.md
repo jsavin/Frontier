@@ -210,9 +210,9 @@ Phase 3 implementation (kernel verb porting) is at a critical juncture: we've re
 **Tasks** (in priority order):
 
 1. **Validate Migration Works** (30 min - 1 hour)
-   - Run: `make -C frontier-cli && ./frontier-cli --migrate databases/Frontier-v6.root databases/test-v7.root`
+   - Run: `make -C frontier-cli && ./frontier-cli --migrate databases/Frontier.root databases/test-v7.root`
    - Test external access: `FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli --system-root databases/test-v7.root -e "sizeOf(system.verbs.globals)"`
-   - Verify source unchanged: `md5sum databases/Frontier-v6.root` (before and after)
+   - Verify source unchanged: `md5sum databases/Frontier.root` (before and after)
    - Document results
    - **Issue**: None specific (validation task)
 
