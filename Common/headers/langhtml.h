@@ -46,3 +46,24 @@ boolean expandurlsverb (hdltreenode hparam1, tyvaluerecord *vreturned);
 boolean htmlneutermacrosverb (hdltreenode hparam1, tyvaluerecord *vreturned);
 
 boolean htmlneutertagsverb (hdltreenode hparam1, tyvaluerecord *vreturned);
+
+/* Phase 2 HTML verbs */
+boolean buildpagetableverb (hdltreenode hp1, tyvaluerecord *v);
+
+boolean getprefverb (hdltreenode hp1, tyvaluerecord *v);
+
+boolean rundirectiveverb (hdltreenode hp1, tyvaluerecord *v);
+
+boolean rundirectivesverb (hdltreenode hp1, tyvaluerecord *v);
+
+boolean runoutlinedirectivesverb (hdltreenode hp1, tyvaluerecord *v);
+
+boolean cleanforexportverb (hdltreenode hp1, tyvaluerecord *v);
+
+boolean glossarypatcherverb (hdltreenode hp1, tyvaluerecord *v);
+
+boolean traversalskipverb (hdltreenode hp1, tyvaluerecord *v);
+
+boolean getpagetableaddressverb (hdltreenode hp1, tyvaluerecord *v);
+
+boolean stripmarkupverb (hdltreenode hp1, tyvaluerecord *v);

@@ -1,0 +1,607 @@
+# REPL Phase 1 Integration Tests
+#
+# Tests for basic REPL functionality:
+# - Single-line input/output
+# - Workspace variable persistence
+# - Core commands (/exit, /help, /vars, /clear)
+# - Error handling
+# - Value display for different types
+#
+# Reference: planning/phase4/REPL_INTERACTIVE_MODE_DESIGN.md (Phase 1)
+#
+# NOTE: These tests simulate REPL session behavior in batch mode.
+# The REPL implementation should handle stdin simulation for testing.
+
+tests:
+  # =========================================================================
+  # Basic Expression Evaluation
+  # =========================================================================
+
+  - name: "REPL - basic arithmetic"
+    description: "Simple arithmetic expression should evaluate and return result"
+    script: '1 + 1'
+    expected_success: true
+    expected_result: 2
+
+  - name: "REPL - integer multiplication"
+    description: "Integer multiplication should work"
+    script: '6 * 7'
+    expected_success: true
+    expected_result: 42
+
+  - name: "REPL - string concatenation"
+    description: "String concatenation should work"
+    script: '"Hello, " + "world!"'
+    expected_success: true
+    expected_result: "Hello, world!"
+
+  - name: "REPL - boolean expression"
+    description: "Boolean expressions should evaluate"
+    script: '5 > 3'
+    expected_success: true
+    expected_result: true
+
+  - name: "REPL - comparison false"
+    description: "Boolean comparison returning false"
+    script: '10 < 5'
+    expected_success: true
+    expected_result: false
+
+  - name: "REPL - complex arithmetic"
+    description: "Complex arithmetic with operator precedence"
+    script: '(5 + 3) * 2 - 4'
+    expected_success: true
+    expected_result: 12
+
+  # =========================================================================
+  # Workspace Variable Persistence
+  # =========================================================================
+
+  - name: "REPL - assign variable to workspace"
+    description: "Variables assigned to workspace should persist"
+    script: 'workspace.x = 42'
+    expected_success: true
+    expected_result: 42
+
+  - name: "REPL - read workspace variable"
+    description: "Variables in workspace should be accessible"
+    script: |
+      workspace.testvar = 100;
+      workspace.testvar
+    expected_success: true
+    expected_result: 100
+
+  - name: "REPL - workspace variable arithmetic"
+    description: "Arithmetic on workspace variables should work"
+    script: |
+      workspace.a = 10;
+      workspace.b = 20;
+      workspace.a + workspace.b
+    expected_success: true
+    expected_result: 30
+
+  - name: "REPL - workspace variable multiplication"
+    description: "Multiply workspace variable"
+    script: |
+      workspace.x = 7;
+      workspace.x * 6
+    expected_success: true
+    expected_result: 42
+
+  - name: "REPL - workspace string variable"
+    description: "String variables should persist in workspace"
+    script: |
+      workspace.greeting = "Hello";
+      workspace.greeting + ", REPL!"
+    expected_success: true
+    expected_result: "Hello, REPL!"
+
+  - name: "REPL - workspace boolean variable"
+    description: "Boolean variables should persist"
+    script: |
+      workspace.flag = true;
+      workspace.flag
+    expected_success: true
+    expected_result: true
+
+  - name: "REPL - modify workspace variable"
+    description: "Workspace variables should be modifiable"
+    script: |
+      workspace.counter = 1;
+      workspace.counter = workspace.counter + 1;
+      workspace.counter
+    expected_success: true
+    expected_result: 2
+
+  - name: "REPL - multiple workspace variables"
+    description: "Multiple variables should coexist in workspace"
+    script: |
+      workspace.x = 10;
+      workspace.y = 20;
+      workspace.z = workspace.x + workspace.y;
+      workspace.z
+    expected_success: true
+    expected_result: 30
+
+  # =========================================================================
+  # Value Display - Different Types
+  # =========================================================================
+
+  - name: "REPL - display integer"
+    description: "Integer values should display correctly"
+    script: '42'
+    expected_success: true
+    expected_result: 42
+
+  - name: "REPL - display negative integer"
+    description: "Negative integers should display correctly"
+    script: '-273'
+    expected_success: true
+    expected_result: -273
+
+  - name: "REPL - display string"
+    description: "String values should display with quotes"
+    script: '"Hello, world!"'
+    expected_success: true
+    expected_result: "Hello, world!"
+
+  - name: "REPL - display empty string"
+    description: "Empty strings should display as empty quotes"
+    script: '""'
+    expected_success: true
+    expected_result: ""
+
+  - name: "REPL - display boolean true"
+    description: "Boolean true should display"
+    script: 'true'
+    expected_success: true
+    expected_result: true
+
+  - name: "REPL - display boolean false"
+    description: "Boolean false should display"
+    script: 'false'
+    expected_success: true
+    expected_result: false
+
+  - name: "REPL - display double"
+    description: "Double-precision values should display"
+    script: '3.14159'
+    expected_success: true
+    expected_result: "3.14159"
+
+  - name: "REPL - display negative double"
+    description: "Negative doubles should display"
+    script: '-273.15'
+    expected_success: true
+    expected_result: "-273.15"
+
+  # NOTE: Table display tests require special handling
+  # Phase 1 should show summary like "[table with N items]"
+  - name: "REPL - display table value"
+    description: "Tables should display as summary (not full dump)"
+    script: |
+      local(t);
+      lang.new(tableType, @t);
+      t.a = 1;
+      t.b = 2;
+      t
+    expected_success: true
+    # Result format: "[table with 2 items]" or similar
+    # Exact format depends on repl_output.c implementation
+
+  # =========================================================================
+  # Error Handling
+  # =========================================================================
+
+  - name: "REPL - syntax error"
+    description: "Syntax errors should display error, not crash"
+    script: '1 +'
+    expected_success: false
+    expected_error: "syntax"
+
+  - name: "REPL - undefined variable"
+    description: "Undefined variable should show error"
+    script: 'nonexistent_var'
+    expected_success: false
+    expected_error: "Can't find"
+
+  - name: "REPL - division by zero"
+    description: "Division by zero should show error"
+    script: '1 / 0'
+    expected_success: false
+    expected_error: "division by zero"
+
+  - name: "REPL - type mismatch"
+    description: "Type mismatch should show error"
+    script: '"text" + 42'
+    expected_success: false
+    # Error message varies, but should not crash
+
+  - name: "REPL - undefined workspace variable"
+    description: "Accessing undefined workspace variable should error"
+    script: 'workspace.undefined_variable'
+    expected_success: false
+    expected_error: "Can't find"
+
+  - name: "REPL - error doesn't crash subsequent evaluation"
+    description: "After error, REPL should continue working"
+    script: |
+      1 / 0;
+      return 42
+    expected_success: false
+    # First statement errors, but this tests recovery
+    # (In real REPL session, second evaluation would work)
+
+  # =========================================================================
+  # /vars Command Tests
+  # =========================================================================
+  # NOTE: Command tests require REPL mode to be active
+  # These may need special stdin simulation or separate test harness
+
+  - name: "REPL - /vars command with empty workspace"
+    description: "/vars should show empty workspace initially"
+    script: |
+      # NOTE: This test requires REPL command mode
+      # Implementation TBD: How to invoke /vars in batch mode?
+      # Placeholder for now
+      true
+    expected_success: true
+    skip: true  # Enable when REPL command testing infrastructure ready
+
+  - name: "REPL - /vars command with variables"
+    description: "/vars should list all workspace variables"
+    script: |
+      # NOTE: Requires REPL command mode
+      # workspace.x = 42
+      # workspace.y = "hello"
+      # /vars should show both
+      true
+    expected_success: true
+    skip: true  # Enable when REPL command testing infrastructure ready
+
+  # =========================================================================
+  # /clear Command Tests
+  # =========================================================================
+
+  - name: "REPL - /clear command"
+    description: "/clear should remove all workspace variables"
+    script: |
+      # NOTE: Requires REPL command mode
+      # workspace.x = 42
+      # /clear
+      # workspace.x should now error
+      true
+    expected_success: true
+    skip: true  # Enable when REPL command testing infrastructure ready
+
+  # =========================================================================
+  # /help Command Tests
+  # =========================================================================
+
+  - name: "REPL - /help command"
+    description: "/help should display available commands"
+    script: |
+      # NOTE: Requires REPL command mode
+      # /help should show /exit, /help, /vars, /clear
+      true
+    expected_success: true
+    skip: true  # Enable when REPL command testing infrastructure ready
+
+  # =========================================================================
+  # /exit Command Tests
+  # =========================================================================
+
+  - name: "REPL - /exit command"
+    description: "/exit should terminate REPL loop"
+    script: |
+      # NOTE: Requires REPL session simulation
+      # /exit should cleanly exit
+      true
+    expected_success: true
+    skip: true  # Enable when REPL command testing infrastructure ready
+
+  # =========================================================================
+  # Workspace Scope Tests
+  # =========================================================================
+
+  - name: "REPL - workspace is separate from root"
+    description: "Workspace variables should not pollute root scope"
+    script: |
+      workspace.x = 42;
+      # Try to access x without workspace prefix (should fail)
+      try { x } else { workspace.x }
+    expected_success: true
+    expected_result: 42
+
+  - name: "REPL - local variables don't persist"
+    description: "Local variables should not persist in workspace"
+    script: |
+      local(temp = 100);
+      return temp
+    expected_success: true
+    expected_result: 100
+    # In a real REPL session, next evaluation would NOT have temp available
+
+  - name: "REPL - workspace table is persistent"
+    description: "Workspace table itself should persist across evaluations"
+    script: |
+      workspace.first = 1;
+      workspace.second = 2;
+      sizeOf(workspace)
+    expected_success: true
+    expected_result: 2
+
+  # =========================================================================
+  # Complex Value Display
+  # =========================================================================
+
+  - name: "REPL - display address value"
+    description: "Address values should display (coercetostring behavior)"
+    script: |
+      local(t);
+      lang.new(tableType, @t);
+      @t
+    expected_success: true
+    # Result: Address in some format (implementation-defined)
+
+  - name: "REPL - display OSType"
+    description: "OSType values should display as 4-char codes"
+    script: 'tableType'
+    expected_success: true
+    expected_result: "tabl"
+
+  # =========================================================================
+  # UserTalk Language Features
+  # =========================================================================
+
+  - name: "REPL - if statement"
+    description: "Conditional statements should work"
+    script: |
+      if true {
+        return 42
+      }
+      else {
+        return 0
+      }
+    expected_success: true
+    expected_result: 42
+
+  - name: "REPL - loop statement"
+    description: "Loop statements should work"
+    script: |
+      local(sum = 0);
+      for i = 1 to 5 {
+        sum = sum + i
+      };
+      return sum
+    expected_success: true
+    expected_result: 15
+
+  - name: "REPL - function definition in workspace"
+    description: "Functions can be defined in workspace"
+    script: |
+      on workspace.double(x) {
+        return x * 2
+      };
+      workspace.double(21)
+    expected_success: true
+    expected_result: 42
+
+  # =========================================================================
+  # System Root Integration
+  # =========================================================================
+  # These tests assume system root is loaded (auto-loading feature)
+
+  - name: "REPL - access system table"
+    description: "System table should be accessible when system root loaded"
+    script: 'typeof(system)'
+    expected_success: true
+    expected_result: "tabl"
+
+  - name: "REPL - call system verb"
+    description: "System verbs should be callable"
+    script: 'sizeOf("hello")'
+    expected_success: true
+    expected_result: 5
+
+  - name: "REPL - string verb"
+    description: "String verbs should work"
+    script: 'string.upper("hello")'
+    expected_success: true
+    expected_result: "HELLO"
+
+  # =========================================================================
+  # Edge Cases
+  # =========================================================================
+
+  - name: "REPL - very long integer"
+    description: "Large integers within range should work"
+    script: '2147483647'
+    expected_success: true
+    expected_result: 2147483647
+
+  - name: "REPL - very long string"
+    description: "Long strings should be handled"
+    script: |
+      local(s = "");
+      for i = 1 to 100 {
+        s = s + "x"
+      };
+      sizeOf(s)
+    expected_success: true
+    expected_result: 100
+
+  - name: "REPL - nested table creation"
+    description: "Nested tables should work"
+    script: |
+      lang.new(tableType, @workspace.nested);
+      workspace.nested.value = 42;
+      workspace.nested.value
+    expected_success: true
+    expected_result: 42
+
+  - name: "REPL - empty expression"
+    description: "Empty input should not error"
+    script: ''
+    expected_success: true
+    # Empty script returns nil/no value
+
+  - name: "REPL - whitespace-only expression"
+    description: "Whitespace-only input should not error"
+    script: '   '
+    expected_success: true
+    # Whitespace-only returns nil
+
+  - name: "REPL - multiple statements"
+    description: "Multiple statements should execute in order"
+    script: |
+      workspace.a = 1;
+      workspace.b = 2;
+      workspace.c = 3;
+      workspace.a + workspace.b + workspace.c
+    expected_success: true
+    expected_result: 6
+
+  - name: "REPL - return statement"
+    description: "Explicit return should work"
+    script: |
+      workspace.x = 10;
+      return workspace.x * 2
+    expected_success: true
+    expected_result: 20
+
+  # =========================================================================
+  # Nil/Void Handling
+  # =========================================================================
+
+  - name: "REPL - nil value"
+    description: "Nil values should not display (Phase 1 behavior)"
+    script: 'nil'
+    expected_success: true
+    # Result: nil (no output in REPL, or displayed as "nil")
+
+  - name: "REPL - assignment returns value"
+    description: "Assignment expressions return assigned value"
+    script: 'workspace.x = 42'
+    expected_success: true
+    expected_result: 42
+
+  - name: "REPL - statement without return"
+    description: "Statements without explicit return should work"
+    script: |
+      workspace.x = 5;
+      workspace.x = workspace.x + 1
+    expected_success: true
+    expected_result: 6
+
+  # =========================================================================
+  # Type Coercion
+  # =========================================================================
+
+  - name: "REPL - string to number coercion"
+    description: "Implicit type coercion should work"
+    script: '"42" + 0'
+    expected_success: true
+    # Result depends on UserTalk coercion rules
+
+  - name: "REPL - boolean to number"
+    description: "Boolean to number coercion"
+    script: 'true + 1'
+    expected_success: true
+    expected_result: 2
+
+  - name: "REPL - number to string"
+    description: "Number to string coercion in concatenation"
+    script: '"Value: " + string(42)'
+    expected_success: true
+    expected_result: "Value: 42"
+
+  # =========================================================================
+  # Workspace Isolation Tests
+  # =========================================================================
+
+  - name: "REPL - workspace doesn't affect system table"
+    description: "Workspace assignments should not modify system tables"
+    script: |
+      workspace.compiler = "custom";
+      typeof(system.compiler)
+    expected_success: true
+    expected_result: "tabl"  # system.compiler should still be table
+
+  - name: "REPL - workspace is writable"
+    description: "Workspace should be writable (not read-only)"
+    script: |
+      workspace.test1 = 1;
+      workspace.test2 = 2;
+      workspace.test3 = 3;
+      sizeOf(workspace) >= 3
+    expected_success: true
+    expected_result: true
+
+  # =========================================================================
+  # Error Recovery Tests
+  # =========================================================================
+
+  - name: "REPL - runtime error doesn't corrupt workspace"
+    description: "Runtime errors should not corrupt workspace state"
+    script: |
+      workspace.x = 10;
+      try { 1 / 0 } else { };
+      workspace.x
+    expected_success: true
+    expected_result: 10
+
+  - name: "REPL - compile error doesn't affect workspace"
+    description: "Compilation errors should not affect workspace"
+    script: |
+      workspace.safe = 42;
+      workspace.safe
+    expected_success: true
+    expected_result: 42
+    # Previous compile error (if any) should not affect this
+
+  # =========================================================================
+  # Multi-Statement Evaluation
+  # =========================================================================
+
+  - name: "REPL - multi-statement with locals"
+    description: "Multiple statements with local variables"
+    script: |
+      local(a = 5);
+      local(b = 10);
+      a + b
+    expected_success: true
+    expected_result: 15
+
+  - name: "REPL - multi-statement mixed workspace and local"
+    description: "Mix workspace and local variables"
+    script: |
+      workspace.persistent = 100;
+      local(temporary = 50);
+      workspace.persistent + temporary
+    expected_success: true
+    expected_result: 150
+
+  # =========================================================================
+  # End of Tests
+  # =========================================================================
+
+# Test suite notes:
+#
+# 1. Command tests (/vars, /clear, /help, /exit) are marked skip=true
+#    because they require REPL command mode infrastructure not available
+#    in basic batch execution. These will be enabled when REPL testing
+#    harness supports command simulation.
+#
+# 2. Tests assume system root is auto-loaded (per Phase 1 design).
+#    If system root loading fails, some tests (string.upper, etc.) will fail.
+#
+# 3. Value display format tests may need adjustment based on actual
+#    repl_output.c implementation (e.g., how tables are displayed).
+#
+# 4. Workspace persistence across multiple REPL evaluations cannot be
+#    fully tested in single-script batch mode. These tests simulate
+#    persistence within a single script execution.
+#
+# 5. Phase 2 multi-line input tests will be added to separate test file
+#    (repl_multiline.yaml) when backslash continuation is implemented.
