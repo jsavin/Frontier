@@ -10,6 +10,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -80,7 +81,6 @@ class FrontierCLI:
         """
         # Write script to temporary file to avoid shell quoting issues
         # Multi-line scripts with complex quoting don't work well with -e flag
-        import tempfile
         script_fd, script_path = tempfile.mkstemp(suffix='.usertalk', text=True)
         try:
             with os.fdopen(script_fd, 'w') as f:
@@ -161,8 +161,8 @@ class FrontierCLI:
             # Clean up temporary script file
             try:
                 os.unlink(script_path)
-            except:
-                pass  # Ignore cleanup errors
+            except OSError:
+                pass  # Ignore file deletion errors only
 
     def execute_repl(self, stdin_input: str, timeout: int = 30, env: Optional[Dict[str, str]] = None) -> subprocess.CompletedProcess:
         """
