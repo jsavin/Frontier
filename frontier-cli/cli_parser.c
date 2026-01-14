@@ -83,6 +83,8 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
     static struct option long_options[] = {
         {"execute", required_argument, 0, 'e'},
         {"system-root", required_argument, 0, 'R'},
+        {"batch", no_argument, 0, 'b'},
+        {"non-interactive", no_argument, 0, 'b'},  /* Alias for --batch */
         {"hydrate-system-root", no_argument, 0, 'H'},
         {"upgrade-system-root", no_argument, 0, 'U'},
         {"output-json", no_argument, 0, 'J'},
@@ -94,7 +96,7 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
     };
 
     // Parse command line arguments
-    while ((opt = getopt_long(argc, argv, "e:R:HUJvDhV", long_options, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "e:R:bHUJvDhV", long_options, &option_index)) != -1) {
         switch (opt) {
             case 'e':
                 // Inline script execution
@@ -119,6 +121,11 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
                     return false;
                 }
                 options->system_root = strdup(optarg);
+                break;
+
+            case 'b':
+                // Batch mode (no interactive prompts)
+                options->batch_mode = true;
                 break;
 
             case 'H':

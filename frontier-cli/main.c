@@ -156,6 +156,11 @@ int main(int argc, char* argv[]) {
         log_error(LOG_COMP_GENERAL, "Error: Failed to initialize Frontier runtime");
         return 1;
     }
+
+    /* Initialize interactive mode detection after thread globals are ready.
+     * Note: cli_init_interactive_mode() accesses fl_batch_mode and fl_interactive_detected
+     * which are thread-local via macros defined in processinternal.h. */
+    cli_init_interactive_mode(g_cli_options.batch_mode);
     if (g_cli_options.system_root != NULL) {
         if (!hydrate_system_root_database(g_cli_options.system_root)) {
             log_error(LOG_COMP_GENERAL, "Error: Failed to load system root: %s", g_cli_options.system_root);
@@ -273,6 +278,8 @@ static void print_usage(const char* program_name) {
     printf("Options:\n");
     printf("  -e, --execute SCRIPT     Execute inline UserTalk script\n");
     printf("  --system-root PATH       Load system root database before executing scripts\n");
+    printf("  -b, --batch              Batch mode (disable interactive prompts)\n");
+    printf("  --non-interactive        Alias for --batch\n");
     printf("  --upgrade-system-root    Upgrade system root to v7 format (use with --system-root)\n");
     printf("  --output-json            Output results in JSON format\n");
     printf("  -v, --verbose            Verbose output\n");

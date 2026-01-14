@@ -742,5 +742,54 @@ tests:
     expected_success: true
     expected_result: "true"
 
+  # File Dialog Verbs - Phase 1: Should Error in Headless Mode
+  # These tests validate that file dialog verbs properly detect headless/batch mode
+  # and return unimplementedverberror instead of hanging or crashing.
+  #
+  # TODO: When Phase 2 (stdio prompts) is implemented, update these tests to:
+  # - Test interactive mode with stdin provided
+  # - Test batch mode (--batch flag) still errors
+  # - Test CI environment (CI=true) forces batch mode
+  #
+  # Reference: planning/phase3/HEADLESS_INTERACTIVE_MODE.md
+
+  - name: "file.getFileDialog - not implemented in headless mode"
+    description: "File picker dialog should error in batch/headless mode"
+    script: |
+      local(selectedFile);
+      local(result = file.getFileDialog("Select a file", @selectedFile));
+      return result
+    expected_success: false
+    expected_error: "not implemented"
+
+  - name: "file.putFileDialog - not implemented in headless mode"
+    description: "Save file dialog should error in batch/headless mode"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(defaultPath = tmpDir + "/" + "save_target.txt");
+      local(selectedFile);
+      local(result = file.putFileDialog("Save file as", defaultPath, @selectedFile));
+      return result
+    expected_success: false
+    expected_error: "not implemented"
+
+  - name: "file.getFolderDialog - not implemented in headless mode"
+    description: "Folder picker dialog should error in batch/headless mode"
+    script: |
+      local(selectedFolder);
+      local(result = file.getFolderDialog("Select a folder", @selectedFolder));
+      return result
+    expected_success: false
+    expected_error: "not implemented"
+
+  - name: "file.getDiskDialog - not implemented in headless mode"
+    description: "Volume/disk picker dialog should error in batch/headless mode"
+    script: |
+      local(selectedDisk);
+      local(result = file.getDiskDialog("Select a volume", @selectedDisk));
+      return result
+    expected_success: false
+    expected_error: "not implemented"
+
   # Note: Test runner automatically removes {FRONTIER_TEST_TMP_DIR} after all tests
   # No explicit cleanup needed - all test files are automatically removed

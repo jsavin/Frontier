@@ -49,4 +49,8 @@ const char* cli_get_error(void);
 void cli_set_error(const char* error);
 void cli_clear_error(void);
 
+// Interactive mode detection (Phase 1 headless interactive mode)
+void cli_init_interactive_mode(boolean batch_mode_flag);
+boolean isInteractiveMode(void);
+
 #endif /* CLI_UTILS_H */

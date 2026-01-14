@@ -1391,6 +1391,10 @@ boolean newthreadglobals (hdlthreadglobals *hglobals) {
 	(**hg).fllanghashassignprotect = false;
 	(**hg).fllangexternalvalueprotect = false;
 
+	/* Headless interactive mode detection initialization */
+	(**hg).fl_batch_mode = false;
+	(**hg).fl_interactive_detected = false;
+
 	/* Explicitly zero reserved pointers for defensive coding */
 	memset((**hg).param_reserved, 0, sizeof((**hg).param_reserved));
 
@@ -1540,6 +1544,10 @@ void copythreadglobals (hdlthreadglobals hglobals) {
 		moveleft(bsfunctionname, (**hg).bsfunctionname, sizeof(bigstring));
 		(**hg).fllanghashassignprotect = fllanghashassignprotect;
 		(**hg).fllangexternalvalueprotect = fllangexternalvalueprotect;
+
+		/* Headless interactive mode detection */
+		(**hg).fl_batch_mode = fl_batch_mode;
+		(**hg).fl_interactive_detected = fl_interactive_detected;
 		}
 
 	(**hg).langcallbacks = langcallbacks;
@@ -1675,6 +1683,10 @@ void swapinthreadglobals (hdlthreadglobals hglobals) {
 	moveleft((**hg).bsfunctionname, bsfunctionname, sizeof(bigstring));
 	fllanghashassignprotect = (**hg).fllanghashassignprotect;
 	fllangexternalvalueprotect = (**hg).fllangexternalvalueprotect;
+
+	/* Headless interactive mode detection */
+	fl_batch_mode = (**hg).fl_batch_mode;
+	fl_interactive_detected = (**hg).fl_interactive_detected;
 
 #ifdef landinclude
 	

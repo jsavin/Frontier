@@ -70,6 +70,8 @@ To run `frontier-cli` from any directory, either:
 | `-e` | `--execute` | `SCRIPT` | Execute inline UserTalk script |
 | | `--system-root` | `PATH` | Load system root database before executing scripts |
 | | `--upgrade-system-root` | | Upgrade system root to v7 format (use with `--system-root`) |
+| `-b` | `--batch` | | Batch mode (disable interactive prompts) |
+| | `--non-interactive` | | Alias for `--batch` |
 | `-v` | `--verbose` | | Enable verbose output |
 | | `--debug` | | Enable debug mode |
 | `-h` | `--help` | | Show help message |
@@ -132,6 +134,57 @@ Upgrade a database to v7 format without loading or executing any scripts. Must b
 ```
 System root upgraded to v7 format (written to): databases/Frontier-v6.root7
 ```
+
+#### `-b, --batch, --non-interactive`
+
+Force batch (non-interactive) mode, disabling all interactive prompts. This is useful for:
+- Automated testing and CI/CD pipelines
+- Scripted workflows that should never prompt for user input
+- Reproducible builds where interactive input would cause inconsistency
+- Running in non-TTY environments (pipes, redirects, daemons)
+
+**Behavior:**
+- Interactive dialog verbs (`dialog.ask`, `dialog.getPassword`, etc.) return errors instead of prompting
+- File dialog verbs (`file.getFileDialog`, `file.putFileDialog`, etc.) return errors instead of prompting
+- Prevents scripts from hanging waiting for user input
+
+**Auto-Detection:**
+By default, the CLI automatically detects whether it's running in an interactive terminal:
+- **Interactive mode** (TTY detected): Interactive prompts are allowed
+- **Batch mode** (no TTY or `CI` environment variable set): Interactive prompts return errors
+
+The `--batch` flag explicitly forces batch mode even when running from a terminal.
+
+**Usage:**
+```bash
+# Force batch mode (even from terminal)
+./frontier-cli/frontier-cli --batch -e "dialog.ask('Continue?')"
+# Error: Interactive prompts not available in batch mode
+
+# Short form
+./frontier-cli/frontier-cli -b -e "1 + 1"
+
+# Longer alias (GNU style)
+./frontier-cli/frontier-cli --non-interactive -e "1 + 1"
+```
+
+**Use Cases:**
+```bash
+# CI/CD pipeline (auto-detected)
+CI=true ./frontier-cli/frontier-cli -e "run_tests()"
+
+# Automated testing (explicit batch mode)
+./frontier-cli/frontier-cli --batch -e "test_suite()"
+
+# Piped input (auto-detected as batch)
+echo "1 + 1" | ./frontier-cli/frontier-cli -e -
+
+# Terminal interactive (default)
+./frontier-cli/frontier-cli -e "dialog.ask('Continue?')"
+# Prompts for input
+```
+
+**See Also:** `planning/phase3/HEADLESS_INTERACTIVE_MODE.md` for complete interactive vs batch mode documentation.
 
 #### `-v, --verbose`
 

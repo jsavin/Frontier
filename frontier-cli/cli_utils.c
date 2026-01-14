@@ -10,6 +10,7 @@
 #include <unistd.h>
 
 #include "../Common/headers/logging.h"
+#include "../Common/headers/processinternal.h"
 
 static boolean g_cli_verbose = false;
 static boolean g_cli_debug = false;
@@ -283,4 +284,40 @@ void cli_set_error(const char* error) {
 
 void cli_clear_error(void) {
     g_cli_error_buffer[0] = '\0';
+}
+
+/**
+ * cli_init_interactive_mode - Initialize interactive mode detection (call once at startup)
+ *
+ * @param batch_mode_flag: true if --batch flag was set on command line
+ *
+ * Checks CI environment and caches TTY detection result.
+ * Must be called after thread globals are initialized.
+ */
+void cli_init_interactive_mode(boolean batch_mode_flag) {
+    /* Set batch mode from CLI flag */
+    fl_batch_mode = batch_mode_flag;
+
+    /* Check CI environment (once) */
+    if (getenv("CI")) {
+        fl_batch_mode = true;
+    }
+
+    /* Cache TTY detection (once) - both stdin AND stdout must be TTY */
+    fl_interactive_detected = isatty(STDIN_FILENO) && isatty(STDOUT_FILENO);
+}
+
+/**
+ * isInteractiveMode - Check if interactive prompts are allowed
+ *
+ * Returns false if:
+ *  - --batch flag set
+ *  - No TTY detected (piped/redirected)
+ *  - CI environment
+ *
+ * This function is called by dialog verbs and file dialog verbs to decide
+ * whether to prompt via stdio or return unimplementedverberror.
+ */
+boolean isInteractiveMode(void) {
+    return !fl_batch_mode && fl_interactive_detected;
 }
