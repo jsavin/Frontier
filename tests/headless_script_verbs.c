@@ -271,6 +271,13 @@ static boolean script_setsource(hdltreenode hparam1, tyvaluerecord *vreturned) {
         return false;
     }
 
+    /* Validate hv before dereferencing */
+    if (hv == nil) {
+        disposehandle(hsourcetext);
+        langerrormessage(BIGSTRING("\pscript variable is nil"));
+        return false;
+    }
+
     ho = (hdloutlinerecord)((**hv).variabledata);
 
     /* Check if outline is valid */

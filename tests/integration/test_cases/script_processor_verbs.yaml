@@ -10,6 +10,14 @@
 #   - script.setsource(addr, addrsource) - Set source text in script object
 #   - script.error(message_or_code) - Trigger script error (terminates execution)
 #
+# WORKSPACE TABLE DEPENDENCY:
+# These tests currently use @workspace table for storing script objects. This requires
+# the system root database (Frontier-v6.root) to be loaded, which provides the workspace
+# table. This is a known limitation that will be addressed in a follow-up:
+# - Refactor tests to use self-contained table structures (@local.testTable.script)
+# - Remove dependency on system root database for testing
+# - Related to global state elimination (Issue #135) - outline context refactoring
+#
 # Test case fields:
 #   name: Test name (required)
 #   description: Test description (optional)

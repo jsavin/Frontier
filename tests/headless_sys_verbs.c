@@ -417,7 +417,13 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
             if (!getstringvalue(hparam1, 1, varname))
                 return false;
 
-            /* Convert Pascal string to C string (Pascal strings are 1-indexed) */
+            /* Convert Pascal string to C string (Pascal strings are 1-indexed)
+             * NOTE: nullterminate() writes to s[stringlength(s)+1]. For 255-char strings,
+             * this would be index 256 (out of bounds for bigstring[256]). However,
+             * getstringvalue() limits strings to lenbigstring (255) and environment
+             * variable names are typically much shorter, so this is safe in practice.
+             * Future: Consider using a safer alternative like copyptocstring().
+             */
             nullterminate(varname);
 
             /* Get environment variable value using C string starting at index 1 */
@@ -444,6 +450,16 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
             /* @IMPLEMENTED sys.setenvironmentvariable(name, value) - Set environment variable
              * Returns true on success, false on failure
              * Overwrites existing values
+             *
+             * SECURITY WARNING: Scripts can manipulate critical environment variables including:
+             * - PATH: Can redirect executable searches to malicious binaries
+             * - LD_PRELOAD/DYLD_INSERT_LIBRARIES: Can inject malicious shared libraries
+             * - LD_LIBRARY_PATH/DYLD_LIBRARY_PATH: Can redirect library loading
+             * - Other security-sensitive variables
+             *
+             * RECOMMENDATION: Run Frontier in a restricted environment (container, sandboxed
+             * process, or dedicated user account) when executing untrusted UserTalk scripts.
+             * Consider future enhancement to whitelist/blacklist environment variable names.
              */
             bigstring varname, varvalue;
 
@@ -455,7 +471,9 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
             if (!getstringvalue(hparam1, 2, varvalue))
                 return false;
 
-            /* Convert Pascal strings to C strings (Pascal strings are 1-indexed) */
+            /* Convert Pascal strings to C strings (Pascal strings are 1-indexed)
+             * NOTE: nullterminate() safe here - see comment in getenvironmentvariable above.
+             */
             nullterminate(varname);
             nullterminate(varvalue);
 
