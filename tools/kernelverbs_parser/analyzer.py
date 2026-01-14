@@ -55,32 +55,118 @@ class VerbImplementationAnalyzer:
         self.build_target = build_target
         self._build_sources: Optional[set] = None  # Cached set of source files in build
 
-    def parse_makefile_sources(self) -> set:
+    def _parse_makefile_with_vars(self, makefile_path: Path, project_root: Path, parent_variables: Optional[dict] = None, visited: Optional[set] = None) -> tuple:
         """
-        Parse frontier-cli/Makefile to extract actual source files in the build.
+        Internal helper that parses Makefile and returns both sources and variables.
+
+        Args:
+            makefile_path: Path to Makefile
+            project_root: Project root directory
+            parent_variables: Variables from parent Makefile (for recursive calls)
+            visited: Set of already-visited Makefile paths (prevents circular includes)
 
         Returns:
-            Set of absolute paths to .c files actually compiled in the build
+            Tuple of (sources_set, variables_dict)
         """
-        if self._build_sources is not None:
-            return self._build_sources
+        # Initialize visited set on first call
+        if visited is None:
+            visited = set()
 
-        script_dir = Path(__file__).parent
-        project_root = script_dir.parent.parent
-        makefile_path = project_root / "frontier-cli/Makefile"
+        # Resolve path to canonical form for circular include detection
+        makefile_canonical = makefile_path.resolve()
 
-        if not makefile_path.exists():
-            print(f"Warning: Makefile not found at {makefile_path}")
-            self._build_sources = set()
-            return self._build_sources
+        # Check for circular includes
+        if makefile_canonical in visited:
+            return set(), {}
+
+        # Mark this file as visited
+        visited.add(makefile_canonical)
 
         sources = set()
+        # Start with parent variables (from outer scope) and add new ones
+        variables = parent_variables.copy() if parent_variables else {}
+
+        def expand_variables(text: str) -> str:
+            """Expand $(VAR) references in text using tracked variables."""
+            import re
+            def replace_var(match):
+                var_name = match.group(1)
+                return variables.get(var_name, match.group(0))  # Return original if not found
+            return re.sub(r'\$\((\w+)\)', replace_var, text)
 
         try:
             with open(makefile_path, 'r') as f:
                 in_sources = False
+                in_var_assignment = False
+                current_var_name = None
+                current_var_values = []
+
                 for line in f:
                     stripped = line.strip()
+
+                    # Parse variable assignments (e.g., TESTSDIR = tests)
+                    if '=' in line and not stripped.startswith('#'):
+                        # Start of variable assignment
+                        parts = stripped.split('=', 1)
+                        if len(parts) == 2:
+                            var_name = parts[0].strip()
+                            var_value = parts[1].strip()
+
+                            if '\\' in var_value:
+                                # Multi-line variable assignment starting
+                                in_var_assignment = True
+                                current_var_name = var_name
+                                current_var_values = [var_value.rstrip('\\').strip()]
+                            else:
+                                # Simple single-line assignment
+                                variables[var_name] = var_value
+                                in_var_assignment = False
+
+                    elif in_var_assignment:
+                        # Continuation of multi-line variable assignment
+                        value = stripped.rstrip('\\').strip()
+                        if value:
+                            current_var_values.append(value)
+
+                        # Check if this is the last line (no trailing backslash)
+                        if not stripped.endswith('\\'):
+                            # Store the accumulated values as space-separated list
+                            variables[current_var_name] = ' '.join(current_var_values)
+                            in_var_assignment = False
+                            current_var_name = None
+                            current_var_values = []
+
+                    # Check for -include directives
+                    if stripped.startswith('-include') or stripped.startswith('include'):
+                        # Extract include path
+                        # Example: "-include $(TESTSDIR)/headless_verbs.mk"
+                        parts = stripped.split(maxsplit=1)
+                        if len(parts) == 2:
+                            include_path = parts[1].strip()
+
+                            # Expand variables BEFORE resolving path
+                            include_path = expand_variables(include_path)
+
+                            # Resolve relative to Makefile's directory
+                            include_abs = (makefile_path.parent / include_path).resolve()
+
+                            # Security: Validate that included file is within project boundaries
+                            try:
+                                include_abs.relative_to(project_root)
+                                is_within_project = True
+                            except ValueError:
+                                is_within_project = False
+
+                            if not is_within_project:
+                                print(f"  Warning: Included file outside project boundaries: {include_abs}")
+                            elif include_abs.exists():
+                                # Recursively parse included file, passing current variables and visited set
+                                included_sources, included_vars = self._parse_makefile_with_vars(include_abs, project_root, variables, visited)
+                                sources.update(included_sources)
+                                # Merge variables from included file (included file's variables take precedence)
+                                variables.update(included_vars)
+                            else:
+                                print(f"  Warning: Included file not found: {include_abs}")
 
                     # Check if we're starting a variable assignment block with .c files
                     # Matches: CLI_SOURCES, RUNTIME_SOURCES, HEADLESS_STUBS, DATABASE_SOURCES, etc.
@@ -92,21 +178,50 @@ class VerbImplementationAnalyzer:
                         # Extract .c file path
                         # Lines look like: "    ../Common/source/lang.c \"
                         # or: "    $(TESTSDIR)/headless_file_verbs.c \"
+                        # or: "    $(addprefix $(TESTSDIR)/,$(HEADLESS_VERBS_SOURCES))"
 
-                        # Process .c files
-                        if '.c' in stripped:
+                        # Handle $(addprefix prefix,list) function calls
+                        import re
+                        addprefix_match = re.search(r'\$\(addprefix\s+([^,]+),\s*\$\((\w+)\)\s*\)', stripped)
+                        if addprefix_match:
+                            prefix = addprefix_match.group(1).strip()
+                            var_name = addprefix_match.group(2)
+
+                            # Expand the prefix (may contain variables like $(TESTSDIR)/)
+                            prefix = expand_variables(prefix)
+
+                            # Get the list variable value (e.g., HEADLESS_VERBS_SOURCES)
+                            if var_name in variables:
+                                # The variable value should be a whitespace-separated list
+                                file_list = variables[var_name].split()
+
+                                # Add prefix to each file
+                                for filename in file_list:
+                                    path = prefix + filename
+
+                                    # Resolve ../ prefix (all paths relative to makefile's directory)
+                                    if path.startswith('../'):
+                                        path = path[3:]  # Remove ../
+
+                                    # Convert to absolute path (relative to project root)
+                                    abs_path = (project_root / path).resolve()
+
+                                    if abs_path.exists():
+                                        sources.add(str(abs_path))
+
+                        # Process regular .c files
+                        elif '.c' in stripped:
                             # Extract path (remove trailing \ and whitespace)
                             path = stripped.rstrip('\\').strip()
 
-                            # Resolve $(TESTSDIR) to tests/
-                            path = path.replace('$(TESTSDIR)', 'tests')
-                            path = path.replace('$(COMMON)', 'Common/source')
+                            # Expand variables (e.g., $(TESTSDIR) -> tests)
+                            path = expand_variables(path)
 
-                            # Resolve ../ prefix (all paths relative to frontier-cli/)
+                            # Resolve ../ prefix (all paths relative to makefile's directory)
                             if path.startswith('../'):
                                 path = path[3:]  # Remove ../
 
-                            # Convert to absolute path
+                            # Convert to absolute path (relative to project root)
                             abs_path = (project_root / path).resolve()
 
                             if abs_path.exists():
@@ -119,7 +234,43 @@ class VerbImplementationAnalyzer:
         except IOError as e:
             print(f"Error reading Makefile: {e}")
 
-        self._build_sources = sources
+        return sources, variables
+
+    def parse_makefile_sources(self, makefile_path: Optional[Path] = None) -> set:
+        """
+        Parse Makefile to extract actual source files in the build.
+
+        Recursively follows -include directives to find all source files.
+
+        Args:
+            makefile_path: Path to Makefile (defaults to frontier-cli/Makefile)
+
+        Returns:
+            Set of absolute paths to .c files actually compiled in the build
+        """
+        # Use cached result for main Makefile
+        if makefile_path is None and self._build_sources is not None:
+            return self._build_sources
+
+        script_dir = Path(__file__).parent
+        project_root = script_dir.parent.parent
+
+        if makefile_path is None:
+            makefile_path = project_root / "frontier-cli/Makefile"
+
+        if not makefile_path.exists():
+            print(f"Warning: Makefile not found at {makefile_path}")
+            if makefile_path == project_root / "frontier-cli/Makefile":
+                self._build_sources = set()
+            return set()
+
+        # Call helper to get sources and variables
+        sources, _ = self._parse_makefile_with_vars(makefile_path, project_root)
+
+        # Cache result only for main Makefile
+        if makefile_path == project_root / "frontier-cli/Makefile":
+            self._build_sources = sources
+
         return sources
 
     def find_implementation_file(self, processor_name: str) -> Optional[str]:
@@ -506,9 +657,18 @@ class VerbImplementationAnalyzer:
                     verb_names = verb_names[:verb_count]
 
         # Detect dispatcher pattern (headless verbs that forward to real implementation)
-        # Pattern: headless_<processor>_verbs_callback function that forwards all verbs
-        dispatcher_pattern = re.search(rf'headless_{processor_name}_verbs_callback', source)
-        is_dispatcher = dispatcher_pattern is not None
+        # Pattern 1: headless_<processor>_verbs_callback function that forwards all verbs
+        # Pattern 2: <processor>_valueproc function with full switch (modular callback)
+        dispatcher_patterns = [
+            rf'headless_{processor_name}_verbs_callback',
+            rf'{processor_name}_valueproc\s*\(',  # e.g., date_valueproc(, clock_valueproc(
+        ]
+
+        is_dispatcher = False
+        for pattern in dispatcher_patterns:
+            if re.search(pattern, source):
+                is_dispatcher = True
+                break
 
         # If dispatcher pattern detected, check if file is overall implemented (not a stub)
         if is_dispatcher:
