@@ -409,6 +409,7 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
              * Uses heap-allocated string to support values > 255 characters
              */
             bigstring varname;
+            char cvarname[256];  /* C string buffer for environment variable name */
             char *value;
             Handle hvalue;
 
@@ -417,17 +418,13 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
             if (!getstringvalue(hparam1, 1, varname))
                 return false;
 
-            /* Convert Pascal string to C string (Pascal strings are 1-indexed)
-             * NOTE: nullterminate() writes to s[stringlength(s)+1]. For 255-char strings,
-             * this would be index 256 (out of bounds for bigstring[256]). However,
-             * getstringvalue() limits strings to lenbigstring (255) and environment
-             * variable names are typically much shorter, so this is safe in practice.
-             * Future: Consider using a safer alternative like copyptocstring().
+            /* Convert Pascal string to C string using safe copyptocstring()
+             * This avoids potential buffer overflow with nullterminate() on 255-char strings
              */
-            nullterminate(varname);
+            copyptocstring(varname, cvarname);
 
-            /* Get environment variable value using C string starting at index 1 */
-            value = getenv((char *)&varname[1]);
+            /* Get environment variable value using C string */
+            value = getenv(cvarname);
 
             if (value == NULL) {
                 /* Variable not found - return empty string */
@@ -462,6 +459,8 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
              * Consider future enhancement to whitelist/blacklist environment variable names.
              */
             bigstring varname, varvalue;
+            char cvarname[256];  /* C string buffer for variable name */
+            char cvarvalue[256]; /* C string buffer for variable value */
 
             if (!getstringvalue(hparam1, 1, varname))
                 return false;
@@ -471,20 +470,20 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
             if (!getstringvalue(hparam1, 2, varvalue))
                 return false;
 
-            /* Convert Pascal strings to C strings (Pascal strings are 1-indexed)
-             * NOTE: nullterminate() safe here - see comment in getenvironmentvariable above.
+            /* Convert Pascal strings to C strings using safe copyptocstring()
+             * This avoids potential buffer overflow with nullterminate() on 255-char strings
              */
-            nullterminate(varname);
-            nullterminate(varvalue);
+            copyptocstring(varname, cvarname);
+            copyptocstring(varvalue, cvarvalue);
 
-            /* Set environment variable using C strings starting at index 1
+            /* Set environment variable using C strings
              * POSIX setenv() third parameter (overwrite=1) replaces existing value if present
              * Windows _putenv_s() always overwrites, no flag needed
              */
             #ifdef WIN95VERSION
-            if (_putenv_s((char *)&varname[1], (char *)&varvalue[1]) != 0) {
+            if (_putenv_s(cvarname, cvarvalue) != 0) {
             #else
-            if (setenv((char *)&varname[1], (char *)&varvalue[1], 1) != 0) {
+            if (setenv(cvarname, cvarvalue, 1) != 0) {
             #endif
                 langerrormessage(BIGSTRING("\pCan't set environment variable because system call failed"));
                 return false;
