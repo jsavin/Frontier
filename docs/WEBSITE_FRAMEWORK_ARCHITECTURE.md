@@ -719,4 +719,4 @@ The framework's design demonstrates remarkable foresight in separating concerns 
 ---
 
 **Last Updated**: 2026-01-14
-**Contributors**: Claude Code (documentation), Dave Winer (original design), UserLand Software (implementation)
+**Contributors**: Claude Code (documentation), Dave Winer (original design), Doug Baron and UserLand Software (implementation)
