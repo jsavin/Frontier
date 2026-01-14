@@ -40,3 +40,9 @@ boolean iso8859encodeverb (hdltreenode hparam1, tyvaluerecord *vreturned);
 boolean getgifheightwidthverb (hdltreenode hparam1, tyvaluerecord *vreturned);
 
 boolean getjpegheightwidthverb (hdltreenode hparam1, tyvaluerecord *vreturned);
+
+boolean expandurlsverb (hdltreenode hparam1, tyvaluerecord *vreturned);
+
+boolean htmlneutermacrosverb (hdltreenode hparam1, tyvaluerecord *vreturned);
+
+boolean htmlneutertagsverb (hdltreenode hparam1, tyvaluerecord *vreturned);
