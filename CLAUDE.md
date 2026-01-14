@@ -1204,13 +1204,13 @@ When investigating database-related bugs:
 
 All debug and diagnostic output must use structured logging macros - **never use `fprintf(stderr, ...)`**.
 
-**Exception:** User-facing terminal output (lang.msg, dialog prompts) may use `fputs()` to stdout for interactive terminal UI. Diagnostic/debug output must use `log_*()` macros.
+**Exception:** User-facing terminal output (lang.msg, dialog prompts) may use `fputs()`/`fprintf()` to stdout/stderr for interactive terminal UI. Diagnostic/debug output must use `log_*()` macros.
 
 ### Rule: No fprintf(stderr) in New Code
 
 - ❌ NEVER: `fprintf(stderr, "message\n")`
 - ✓ ALWAYS: `log_trace(LOG_COMP_DB, "message")` or `log_error()`, `log_debug()`, etc.
-- ✅ EXCEPTION: `fputs("user message", stdout)` for terminal UI (not diagnostic logging)
+- ✅ EXCEPTION: `fputs("user message", stdout)` or `fprintf(stderr, "prompt")` for terminal UI (not diagnostic logging)
 
 ### Logging Macros (Priority Order)
 

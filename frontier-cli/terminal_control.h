@@ -22,6 +22,28 @@ typedef struct terminal_state {
 	bool raw_mode_enabled;
 } terminal_state;
 
+/*
+ * Terminal State Usage Patterns
+ *
+ * There are two ways to use terminal_state:
+ *
+ * Pattern 1: Heap-allocated (simple save/restore)
+ *   terminal_state *term_state = terminal_save_state();  // Returns malloc'd pointer
+ *   // ... perform operations with terminal state saved
+ *   terminal_restore_state(term_state);
+ *   terminal_free_state(term_state);  // MUST free or leaks memory
+ *
+ * Pattern 2: Stack-allocated (full lifecycle control)
+ *   terminal_state terminal;  // Stack-allocated
+ *   terminal_init(&terminal);
+ *   // ... perform operations with terminal control
+ *   terminal_cleanup(&terminal);  // MUST call or leaks memory from saved_termios
+ *
+ * IMPORTANT: Both patterns allocate memory that must be freed:
+ * - Pattern 1: Call terminal_free_state() when done
+ * - Pattern 2: Call terminal_cleanup() when done (frees internal saved_termios)
+ */
+
 /* Terminal initialization and cleanup */
 terminal_state* terminal_save_state(void);
 void terminal_restore_state(terminal_state *state);
