@@ -233,6 +233,10 @@ typedef struct tythreadglobals {
 	boolean fllanghashassignprotect;
 	boolean fllangexternalvalueprotect;
 
+	/* Headless interactive mode detection (Phase 3) */
+	boolean fl_batch_mode;           /* --batch flag set */
+	boolean fl_interactive_detected;  /* Cached isatty() result */
+
 	/* Reserved for future parameter state (Phase 6+) */
 	void *param_reserved[4];
 
@@ -246,6 +250,10 @@ typedef struct tythreadglobals {
 #define flinhibitnilcoercion ((**hthreadglobals).flinhibitnilcoercion)
 #define fllocaldotparamsonly ((**hthreadglobals).fllocaldotparamsonly)
 #define bsfunctionname ((**hthreadglobals).bsfunctionname)
+
+/* Headless interactive mode detection (backward-compatible macros) */
+#define fl_batch_mode ((**hthreadglobals).fl_batch_mode)
+#define fl_interactive_detected ((**hthreadglobals).fl_interactive_detected)
 #define fllanghashassignprotect ((**hthreadglobals).fllanghashassignprotect)
 #define fllangexternalvalueprotect ((**hthreadglobals).fllangexternalvalueprotect)
 

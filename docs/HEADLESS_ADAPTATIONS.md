@@ -290,9 +290,15 @@ CI=true ./frontier-cli -e "script.user"
 
 ### Implementation Status
 
-**Phase 1 (Current):** All interactive verbs return errors in headless mode
+**Phase 1 (✅ Complete):** Infrastructure implemented
+- `--batch` / `-b` / `--non-interactive` CLI flags added
+- `isInteractiveMode()` detection logic implemented (TTY + CI environment detection)
+- Thread-local storage for batch mode flags (no global mutable state)
+- All interactive verbs return errors in headless mode (safe fallback)
 
 **Phase 2 (Planned):** Stdio prompts enabled when `isInteractiveMode()` returns true
+- `dialog.*` verbs: stdio-based prompts for alert, ask, getInt, getPassword
+- `file.*Dialog` verbs: stdio-based prompts with path completion and validation
 
 ---
 
