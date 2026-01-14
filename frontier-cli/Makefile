@@ -56,7 +56,11 @@ CLI_SOURCES = \
     cli_parser.c \
     cli_utils.c \
     cli_executor.c \
-    headless_scripts_loader.c
+    headless_scripts_loader.c \
+    terminal_control.c \
+    dialog_prompts.c \
+    tab_completion.c \
+    file_dialog.c
 
 # Core runtime sources needed for script execution (aligned with tests/runtime_tests)
 RUNTIME_SOURCES = \

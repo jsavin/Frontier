@@ -15,6 +15,27 @@
 
 #include <stdio.h>
 
+/* Headless msg() verb implementation - outputs to stdout */
+static boolean headless_msgverb(hdltreenode hparam1, tyvaluerecord *vreturned) {
+	bigstring bsmsg;
+	char msg[256];
+
+	flnextparamislast = true;
+
+	if (!getstringvalue(hparam1, 1, bsmsg))
+		return false;
+
+	/* Convert Pascal string to C string */
+	copyptocstring(bsmsg, msg);
+
+	/* Output to stdout (user-facing output, not diagnostic logging) */
+	fputs(msg, stdout);
+	fputs("\n", stdout);
+	fflush(stdout);
+
+	return setbooleanvalue(true, vreturned);
+}
+
 extern boolean scriptbuildtree (Handle htext, long signature, hdltreenode *hcode);
 extern boolean langruncode (hdltreenode htree, hdlhashtable hcontext, tyvaluerecord *vreturned);
 extern boolean pushhashtable (hdlhashtable);
@@ -142,6 +163,10 @@ boolean loadsystemscripts (void) {
         log_error(LOG_COMP_STARTUP, "loadsystemscripts: system table is nil");
         return false;
     }
+
+    /* Register headless msg() verb callback */
+    langcallbacks.msgverbcallback = &headless_msgverb;
+    log_debug(LOG_COMP_STARTUP, "loadsystemscripts: registered headless msg() verb");
 
     /* Default: skip startup scripts (development/testing mode)
      * Set FRONTIER_HEADLESS_RUN_STARTUP=1 to run system.startup scripts */

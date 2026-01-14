@@ -303,8 +303,12 @@ void cli_init_interactive_mode(boolean batch_mode_flag) {
         fl_batch_mode = true;
     }
 
+    /* Check for force-interactive override (testing only) */
+    boolean force_interactive = getenv("FRONTIER_FORCE_INTERACTIVE") != NULL;
+
     /* Cache TTY detection (once) - both stdin AND stdout must be TTY */
-    fl_interactive_detected = isatty(STDIN_FILENO) && isatty(STDOUT_FILENO);
+    /* FRONTIER_FORCE_INTERACTIVE=1 overrides TTY detection for integration testing */
+    fl_interactive_detected = force_interactive || (isatty(STDIN_FILENO) && isatty(STDOUT_FILENO));
 }
 
 /**
@@ -314,6 +318,10 @@ void cli_init_interactive_mode(boolean batch_mode_flag) {
  *  - --batch flag set
  *  - No TTY detected (piped/redirected)
  *  - CI environment
+ *
+ * Returns true if:
+ *  - TTY detected on both stdin and stdout
+ *  - OR: FRONTIER_FORCE_INTERACTIVE=1 environment variable set (testing only)
  *
  * This function is called by dialog verbs and file dialog verbs to decide
  * whether to prompt via stdio or return unimplementedverberror.
