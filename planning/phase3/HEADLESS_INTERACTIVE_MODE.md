@@ -282,38 +282,246 @@ case 'b':
 
 **Goal:** Enable interactive prompts when running from terminal
 
-**Tasks:**
+**Status:** Ready for implementation (spec complete)
 
-1. **Implement stdio prompts for dialog verbs**
-   - [ ] `dialog.alert()` - print message, wait for Enter (if interactive)
-   - [ ] `dialog.ask()` - prompt yes/no, read stdin
-   - [ ] `dialog.getInt()` - prompt for number with default
-   - [ ] `dialog.getPassword()` - prompt with echo disabled (termios)
-   - [ ] Complex dialogs remain as errors (no stdio equivalent)
+---
 
-2. **Implement stdio prompts for file dialog verbs**
-   - [ ] `file.getFileDialog()` - prompt for file path with validation
-   - [ ] `file.putFileDialog()` - prompt for save path
-   - [ ] `file.getFolderDialog()` - prompt for folder path
-   - [ ] `file.getDiskDialog()` - prompt for volume/disk path
-   - [ ] Optional: Add readline-style path completion
+## Interactive Dialog UX Specification
 
-3. **Update conditional compilation**
-   - [ ] Replace error stubs with `isInteractiveMode()` checks
-   - [ ] Call stdio prompt functions when interactive
-   - [ ] Return error when batch mode
+### Design Principles
 
-4. **Testing**
-   - [ ] Integration tests with stdin provided
-   - [ ] Test defaults when Enter pressed
-   - [ ] Test batch mode forces error
-   - [ ] Test CI environment forces error
-   - [ ] Test password echo disabled
+1. **Interactive Selection** - Use arrow keys/tab to navigate options (no typing ambiguous text)
+2. **Visual Feedback** - Inverted text for selected option, dots for password input
+3. **Defaults Visible** - Always show default value when provided
+4. **Full Path Returns** - All file dialogs must return absolute paths (UserTalk requirement)
+5. **Developer-Focused** - Show hidden files, assume technical users
+
+### Dialog Verb Specifications
+
+#### `msg()` - Output (Already Works)
+```usertalk
+msg("Starting backup process")
+```
+**Terminal Output:**
+```
+Starting backup process
+```
+**Note:** Uses stdout, already implemented. Verify behavior in Phase 2.
+
+#### `dialog.ask()` - Yes/No Prompt
+```usertalk
+local(confirmed = dialog.ask("Proceed with backup?"))
+```
+**Terminal Output:**
+```
+Proceed with backup? Yes No
+                     ^^^
+                     (inverted text on selected option)
+```
+**Behavior:**
+- Default option shown in inverted text (white on black)
+- Arrow keys or Tab/Shift-Tab to switch selection
+- Enter to confirm
+- Returns boolean (true/false)
+
+#### `dialog.getInt()` - Integer Input with Default
+```usertalk
+local(count = dialog.getInt("How many iterations?", 10))
+```
+**Terminal Output:**
+```
+How many iterations? [10]: _
+```
+**Behavior:**
+- Shows default in brackets
+- Enter with no input accepts default
+- Type number + Enter to override
+- Returns long integer
+
+#### `dialog.getString()` - Text Input with Default
+```usertalk
+local(name = dialog.getString("Enter project name", "MyProject"))
+```
+**Terminal Output:**
+```
+Enter project name [MyProject]: _
+```
+**Behavior:**
+- Shows default in brackets
+- Enter with no input accepts default
+- Type text + Enter to override
+- Basic line editing (backspace, arrow keys, Ctrl+A/E via readline/libedit)
+- Returns string
+
+#### `dialog.getPassword()` - Password Input
+```usertalk
+local(password = dialog.getPassword("Enter encryption key"))
+```
+**Terminal Output:**
+```
+Enter encryption key: ••••••••••
+```
+**Behavior:**
+- Echo disabled via termios
+- Shows dots (U+2022) for visual feedback
+- Enter to confirm
+- Ctrl+C kills UserTalk thread
+- Returns string
+
+---
+
+### File Dialog Specifications
+
+**Common Behavior (All File Dialogs):**
+- **Interactive menu** - Zsh/Fish-style auto-complete with visual selection
+- **Arrow key navigation** - Up/down to select files/folders
+- **Tab completion** - Shows menu of matches, auto-completes unambiguous paths
+- **Enter on folder** - Descends into directory, shows contents
+- **Enter on file** - Confirms selection
+- **Backspace in empty path** - Goes up one directory level
+- **Shows metadata** - File size, type (file/<dir>), modification date
+- **Shows hidden files** - Files starting with `.` always visible (developer tool)
+- **Returns full path** - Always absolute path (UserTalk requirement)
+- **Starting directory:**
+  - If output address contains a path → start from that directory
+  - Otherwise → start from current working directory (cwd)
+  - (Matches legacy Frontier behavior)
+
+#### `file.getFileDialog()` - Select Existing File
+```usertalk
+file.getFileDialog("Select config file", @result)
+```
+**Terminal Output:**
+```
+Select config file: /Users/jake/project/[TAB]
+
+  .gitignore                   156 B   2024-01-13
+> config.txt                   4 KB    2024-01-14  ← inverted
+  data/                        <dir>   2024-01-12
+  logs/                        <dir>   2024-01-13
+  README.md                    2 KB    2024-01-13
+
+↑↓ to select | Enter to confirm | Tab to complete | Esc to cancel
+```
+**Behavior:**
+- Lists all files and directories (including hidden)
+- Only allows selecting files that exist
+- Descending into directories updates menu
+- Returns filespec with full absolute path
+
+#### `file.putFileDialog()` - Save File (Create or Overwrite)
+```usertalk
+file.putFileDialog("Save output as", @result)
+```
+**Terminal Output:**
+```
+Save output as: /Users/jake/project/[TAB]
+
+  .gitignore                   156 B   2024-01-13
+  config.txt                   4 KB    2024-01-14
+> data/                        <dir>   2024-01-12  ← inverted
+  logs/                        <dir>   2024-01-13
+  README.md                    2 KB    2024-01-13
+
+↑↓ to select | Enter to confirm | Tab to complete | Type filename
+```
+**Behavior:**
+- Browse directories like `getFolderDialog()` but showing all files
+- Showing existing files prevents accidental overwrites (user sees what exists)
+- After selecting directory, allow typing filename after trailing slash:
+  ```
+  Save output as: /Users/jake/project/output.txt_
+  ```
+- Can select existing file to overwrite
+- Returns filespec with full absolute path
+
+#### `file.getFolderDialog()` - Select Directory
+```usertalk
+file.getFolderDialog("Select output directory", @result)
+```
+**Terminal Output:**
+```
+Select output directory: /Users/jake/[TAB]
+
+> .config/                    <dir>   2024-01-10  ← inverted
+  Desktop/                    <dir>   2024-01-14
+  Documents/                  <dir>   2024-01-13
+  Downloads/                  <dir>   2024-01-14
+  project/                    <dir>   2024-01-12
+
+↑↓ to select | Enter to confirm | Tab to complete
+```
+**Behavior:**
+- Only lists directories and symlinks (no regular files)
+- Enter on directory either:
+  - Descends if browsing deeper
+  - Confirms if this is final selection
+- Returns filespec with full absolute path to directory
+
+#### `file.getDiskDialog()` - Select Volume
+```usertalk
+file.getDiskDialog("Select backup volume", @result)
+```
+**Terminal Output:**
+```
+Select backup volume:
+
+> /                            931 GB  macOS System     ← inverted
+  /Volumes/Backup              2 TB    External Drive
+  /Volumes/TimeMachine         1 TB    External Drive
+  /System/Volumes/Data         <mount>
+
+↑↓ to select | Enter to confirm
+```
+**Behavior:**
+- Lists mounted volumes/filesystems
+- Shows total size and label/description
+- Returns full path to volume mount point
+
+---
+
+### Implementation Details
+
+**Phase 2A: Basic Dialog Prompts** (1-2 days)
+- [ ] Verify `msg()` output behavior
+- [ ] `dialog.ask()` with arrow key selection (inverted text rendering)
+- [ ] `dialog.getInt()` with default in brackets
+- [ ] `dialog.getString()` with readline/libedit line editing
+- [ ] `dialog.getPassword()` with termios echo disable + dot rendering
+
+**Phase 2B: File Dialogs with Tab Completion** (3-4 days)
+- [ ] Tab completion engine (POSIX only: `readdir()`, `stat()`, termios, ANSI codes)
+- [ ] Visual menu rendering (file metadata, scrolling for long lists)
+- [ ] `file.getFileDialog()` - select existing files only
+- [ ] `file.putFileDialog()` - browse + type filename
+- [ ] `file.getFolderDialog()` - directories and symlinks only
+- [ ] `file.getDiskDialog()` - volume enumeration
+- [ ] Starting directory logic (output address path vs cwd)
+
+**Phase 2C: Integration & Testing** (1-2 days)
+- [ ] Replace error stubs with `isInteractiveMode()` checks
+- [ ] Batch mode forces errors (unchanged from Phase 1)
+- [ ] Integration tests with scripted input
+- [ ] Test defaults (Enter accepts default)
+- [ ] Test Ctrl+C behavior (kills UserTalk thread)
+- [ ] Edge cases: very long paths, many files, unicode filenames
+- [ ] Documentation updates
+
+**Implementation Notes:**
+- **No external dependencies** - Use POSIX APIs only (termios, readdir, stat)
+- **Terminal control** - ANSI escape codes for cursor movement and inverted text
+- **Readline/libedit** - Use standard library for line editing (available on macOS/Linux)
+- **Thread safety** - Prompts use stdin/stdout, safe in single-threaded CLI context
+- **Fuzzy matching** - Deferred (nice-to-have, doesn't work with putFileDialog)
 
 **Success Criteria:**
-- ✅ `dialog.ask()` works from terminal
-- ✅ `file.getFileDialog()` works from terminal
-- ✅ Same verbs error in batch mode
+- ✅ `dialog.ask()` shows inverted text selection
+- ✅ `dialog.getInt()` accepts defaults on Enter
+- ✅ `dialog.getPassword()` shows dots, no echo
+- ✅ `file.getFileDialog()` shows interactive menu with tab completion
+- ✅ `file.putFileDialog()` allows typing new filename
+- ✅ All file dialogs return full absolute paths
+- ✅ All verbs error gracefully in batch mode
 - ✅ CI environment auto-detects batch mode
 
 ---
@@ -359,23 +567,122 @@ echo "1" | ./frontier-cli -e -
 
 ### Phase 2 Tests
 
-**Interactive stdio prompts:**
+**Interactive Dialog Tests:**
+
+**Test 1: dialog.ask() with default selection**
 ```bash
-# Provide stdin for dialog.ask
-echo "yes" | ./frontier-cli -e "dialog.ask('Continue?')"
-
-# Should return true
-
-# Provide stdin for file.getFileDialog
-echo "/tmp/test.txt" | ./frontier-cli -e "file.getFileDialog('Select', @f); return f"
-
-# Should return filespec for /tmp/test.txt
+# Simulate Enter key (accepts default "Yes")
+echo -e "\n" | ./frontier-cli -e "dialog.ask('Continue?')"
+# Expected: true (Yes is default)
 ```
 
-**Batch mode errors:**
+**Test 2: dialog.ask() with arrow key selection**
+```bash
+# Simulate Right Arrow + Enter (selects "No")
+printf '\x1b[C\n' | ./frontier-cli -e "dialog.ask('Continue?')"
+# Expected: false
+```
+
+**Test 3: dialog.getInt() with default**
+```bash
+# Simulate Enter key (accepts default)
+echo -e "\n" | ./frontier-cli -e "dialog.getInt('How many?', 10)"
+# Expected: 10
+```
+
+**Test 4: dialog.getInt() override default**
+```bash
+# Type new value
+echo "42" | ./frontier-cli -e "dialog.getInt('How many?', 10)"
+# Expected: 42
+```
+
+**Test 5: dialog.getPassword()**
+```bash
+# Type password + Enter
+echo "secret123" | ./frontier-cli -e "dialog.getPassword('Password')"
+# Expected: "secret123" (dots shown during input)
+```
+
+**File Dialog Tests:**
+
+**Test 6: file.getFileDialog() tab completion**
+```bash
+# Simulate typing partial path + Tab + Arrow + Enter
+# (Complex - requires scripting terminal input)
+# Expected: Full path to selected file
+```
+
+**Test 7: file.putFileDialog() type new filename**
+```bash
+# Navigate to directory + type new filename
+# Expected: Full path to new file (may not exist yet)
+```
+
+**Test 8: file.getFolderDialog() directory selection**
+```bash
+# Navigate and select directory
+# Expected: Full path to directory
+```
+
+**Batch Mode Tests (Phase 1 behavior maintained):**
+
+**Test 9: Batch mode forces errors**
 ```bash
 # Force batch mode, expect error
 ./frontier-cli --batch -e "dialog.ask('Continue?')" 2>&1 | grep "not implemented"
+# Expected: Error message, exit code 1
+
+./frontier-cli --batch -e "file.getFileDialog('Select', @f)" 2>&1 | grep "not implemented"
+# Expected: Error message, exit code 1
+```
+
+**Test 10: CI environment auto-detection**
+```bash
+# CI env forces batch mode
+CI=true ./frontier-cli -e "dialog.ask('Continue?')" 2>&1 | grep "not implemented"
+# Expected: Error message (batch mode forced by CI env)
+```
+
+**Edge Case Tests:**
+
+**Test 11: Very long file paths**
+```bash
+# Test path with 256+ characters
+# Expected: Handles gracefully, scrolls horizontally
+```
+
+**Test 12: Unicode filenames**
+```bash
+# Test files with emoji, CJK characters, etc.
+# Expected: Displays correctly in menu
+```
+
+**Test 13: Ctrl+C during prompt**
+```bash
+# Simulate Ctrl+C (SIGINT)
+# Expected: Kills UserTalk thread, exits frontier-cli
+```
+
+**Test 14: Hidden files visibility**
+```bash
+# Directory with .gitignore, .env, etc.
+# Expected: All hidden files visible in menu
+```
+
+**Test 15: Starting directory logic**
+```yaml
+# Integration test
+- name: "file.getFileDialog - respects output address path"
+  script: |
+    local(pathvar = "/Users/jake/Documents/");
+    file.getFileDialog("Select file", @pathvar)
+  expected_behavior: "Starts in /Users/jake/Documents/"
+
+- name: "file.getFileDialog - defaults to cwd"
+  script: |
+    file.getFileDialog("Select file", @result)
+  expected_behavior: "Starts in current working directory"
 ```
 
 ---
