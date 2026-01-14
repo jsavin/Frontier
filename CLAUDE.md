@@ -47,8 +47,8 @@ cd tests && make test-integration
 cd tests && make test-all
 
 # Database migration (v6 → v7)
-rm -f databases/Frontier-v6.root7
-./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root -e "1"
+rm -f databases/Frontier.root7
+./frontier-cli/frontier-cli --system-root databases/Frontier.root -e "1"
 
 # Verb coverage analysis
 cd tools/kernelverbs_parser && python3 cli.py report
@@ -226,10 +226,10 @@ pwd && git branch
    - This prevents collisions when multiple sessions touch develop
 
 4. **Database State is Per-Session**
-   - Database files (Frontier-v6.root, test_*.root) may be modified by test runs
+   - Database files (Frontier.root, test_*.root) may be modified by test runs
    - Don't assume database state is consistent across sessions
    - If testing depends on specific database state, commit clean reference databases to git
-   - Use `git checkout databases/Frontier-v6.root` to restore reference state between tests
+   - Use `git checkout databases/Frontier.root` to restore reference state between tests
 
 5. **Build Artifacts Are Not Shared**
    - Keep `frontier-cli/frontier-cli` and test executables in their worktree/directory
@@ -365,7 +365,7 @@ Before starting major work in any session:
 - **Fix**: Each session rebuilds its own binary, or remove old one: `rm frontier-cli/frontier-cli`
 
 **Gotcha 2: Database corruption from parallel test runs**
-- Session 1 runs migration test, updates Frontier-v6.root7
+- Session 1 runs migration test, updates Frontier.root7
 - Session 2 runs test at same time, expects old database state
 - **Fix**: Don't run tests in parallel; use `git checkout` to reset databases between test runs
 
@@ -566,7 +566,7 @@ case yourverb:
 ./frontier-cli/frontier-cli -e $'lang.new(tableType, @t);\nt.a=1;\nreturn t.a'
 
 # With database loaded
-./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root7 -e "sizeOf(system)"
+./frontier-cli/frontier-cli --system-root databases/Frontier.root7 -e "sizeOf(system)"
 
 # Run system.startup scripts (opt-in, rarely needed)
 FRONTIER_HEADLESS_RUN_STARTUP=1 ./frontier-cli/frontier-cli -e "1+1"
@@ -668,7 +668,7 @@ file.write("output.txt", "data") // Will fail
 **Why system.paths Matters:**
 - `system.paths` contains full paths to important system locations
 - `target.*` verbs and other system verbs require `system.paths` to be initialized
-- Load system root with `--system-root databases/Frontier-v6.root` to initialize `system.paths`
+- Load system root with `--system-root databases/Frontier.root` to initialize `system.paths`
 - Without system root, many verbs will fail with "Can't find sub-table named X"
 
 **Example - Integration Test Setup:**
@@ -990,13 +990,13 @@ Database files can become corrupted in git if migration code has bugs. **Always 
 
 ```bash
 # Check database version (first 2 bytes: 0006 for v6, 0007 for v7)
-xxd databases/Frontier-v6.root | head -1
+xxd databases/Frontier.root | head -1
 # CORRUPT if v6 file shows: 0007 0000... (v7 header with v6 addresses)
 ```
 
 **If corrupted**:
-1. Find last known-good commit: `git log --oneline -- databases/Frontier-v6.root`
-2. Restore: `git show <commit>:databases/Frontier-v6.root > databases/Frontier-v6.root`
+1. Find last known-good commit: `git log --oneline -- databases/Frontier.root`
+2. Restore: `git show <commit>:databases/Frontier.root > databases/Frontier.root`
 3. Verify with `xxd`
 
 #### Git Bisect for Database Format Issues

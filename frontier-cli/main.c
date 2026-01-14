@@ -162,9 +162,24 @@ int main(int argc, char* argv[]) {
      * Note: cli_init_interactive_mode() accesses fl_batch_mode and fl_interactive_detected
      * which are thread-local via macros defined in processinternal.h. */
     cli_init_interactive_mode(g_cli_options.batch_mode);
-    if (g_cli_options.system_root != NULL) {
-        if (!hydrate_system_root_database(g_cli_options.system_root)) {
-            log_error(LOG_COMP_GENERAL, "Error: Failed to load system root: %s", g_cli_options.system_root);
+
+    /* Auto-load system root database if not explicitly specified */
+    const char *system_root_to_load = g_cli_options.system_root;
+    if (system_root_to_load == NULL) {
+        /* Try v7 format first (already migrated), then v6 (will auto-migrate) */
+        if (access("databases/Frontier.root7", F_OK) == 0) {
+            system_root_to_load = "databases/Frontier.root7";
+            log_info(LOG_COMP_STARTUP, "Auto-loading system root: %s", system_root_to_load);
+        } else if (access("databases/Frontier.root", F_OK) == 0) {
+            system_root_to_load = "databases/Frontier.root";
+            log_info(LOG_COMP_STARTUP, "Auto-loading system root: %s (will auto-migrate to v7)", system_root_to_load);
+        }
+        /* If neither exists, continue without system root (headless mode) */
+    }
+
+    if (system_root_to_load != NULL) {
+        if (!hydrate_system_root_database(system_root_to_load)) {
+            log_error(LOG_COMP_GENERAL, "Error: Failed to load system root: %s", system_root_to_load);
             cleanup_frontier_runtime();
             return 1;
         }
@@ -306,10 +321,10 @@ static void print_usage(const char* program_name) {
     printf("  %s myscript.usertalk\n", program_name);
     printf("\n");
     printf("  # Execute with system root database\n");
-    printf("  %s --system-root databases/Frontier-v6.root7 -e \"sizeOf(system)\"\n", program_name);
+    printf("  %s --system-root databases/Frontier.root7 -e \"sizeOf(system)\"\n", program_name);
     printf("\n");
     printf("  # Upgrade v6 database to v7 format\n");
-    printf("  %s --system-root databases/Frontier-v6.root --upgrade-system-root\n", program_name);
+    printf("  %s --system-root databases/Frontier.root --upgrade-system-root\n", program_name);
     printf("\n");
     printf("  # Execute with JSON output (for automation/testing)\n");
     printf("  %s --output-json -e \"1+1\"\n", program_name);
