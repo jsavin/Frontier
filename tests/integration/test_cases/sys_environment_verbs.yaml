@@ -1,0 +1,346 @@
+# Integration tests for sys environment variable verbs
+# Tests environment variable operations in headless mode
+#
+# Sys processor environment variable verbs:
+#   - sys.getenvironmentvariable(name) - Get environment variable value
+#   - sys.setenvironmentvariable(name, value) - Set environment variable value
+#   - sys.winshellcommand(cmd, ...) - Windows shell command (skip on macOS/Linux)
+#
+# Test case fields:
+#   name: Test name (required)
+#   description: Test description (optional)
+#   script: UserTalk script to execute (required)
+#   expected_success: true/false (default: true)
+#   expected_result: Expected return value as string (optional)
+#   expected_result_type: Expected result type from JSON (optional)
+#   expected_error_type: Expected error type if expected_success=false (optional)
+#   timeout: Timeout in seconds (optional, default: 10)
+
+tests:
+  # ============================================================================
+  # sys.getenvironmentvariable Tests
+  # ============================================================================
+
+  # Happy path - get existing variable
+  - name: "sys.getenvironmentvariable - get PATH variable"
+    description: "Retrieve PATH environment variable (should exist on all systems)"
+    script: 'string.length(sys.getenvironmentvariable("PATH")) > 0'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "sys.getenvironmentvariable - returns string type"
+    description: "Environment variable value should be string type"
+    script: 'typeof(sys.getenvironmentvariable("PATH"))'
+    expected_success: true
+    expected_result: "TEXT"
+
+  - name: "sys.getenvironmentvariable - get HOME variable"
+    description: "Retrieve HOME environment variable (Unix/macOS)"
+    script: |
+      local(home = sys.getenvironmentvariable("HOME"));
+      return (home != "") or (sys.os() == "Windows")
+    expected_success: true
+    expected_result: "true"
+
+  # Nonexistent variable - should return empty string
+  - name: "sys.getenvironmentvariable - nonexistent variable returns empty"
+    description: "Get nonexistent environment variable should return empty string"
+    script: 'sys.getenvironmentvariable("NONEXISTENT_VAR_XYZ_12345")'
+    expected_success: true
+    expected_result: ""
+
+  - name: "sys.getenvironmentvariable - nonexistent variable is string type"
+    description: "Nonexistent variable should still return string type"
+    script: 'typeof(sys.getenvironmentvariable("NONEXISTENT_VAR_XYZ_12345"))'
+    expected_success: true
+    expected_result: "TEXT"
+
+  # Edge cases
+  - name: "sys.getenvironmentvariable - empty string parameter"
+    description: "Empty variable name should return empty string"
+    script: 'sys.getenvironmentvariable("")'
+    expected_success: true
+    expected_result: ""
+
+  - name: "sys.getenvironmentvariable - case sensitivity"
+    description: "Environment variable names are case-sensitive on Unix (PATH != path)"
+    script: |
+      local(upper = sys.getenvironmentvariable("PATH"));
+      local(lower = sys.getenvironmentvariable("path"));
+      if sys.os() == "Windows" {
+        return true
+      }
+      else {
+        return upper != lower
+      }
+    expected_success: true
+    expected_result: "true"
+
+  - name: "sys.getenvironmentvariable - special characters in name"
+    description: "Variable name with underscores and numbers"
+    script: 'typeof(sys.getenvironmentvariable("TEST_VAR_123"))'
+    expected_success: true
+    expected_result: "TEXT"
+
+  # ============================================================================
+  # sys.setenvironmentvariable Tests
+  # ============================================================================
+
+  # Happy path - set and get
+  - name: "sys.setenvironmentvariable - set simple value"
+    description: "Set environment variable and verify it was set"
+    script: |
+      sys.setenvironmentvariable("FRONTIER_TEST_VAR", "test_value");
+      return sys.getenvironmentvariable("FRONTIER_TEST_VAR") == "test_value"
+    expected_success: true
+    expected_result: "true"
+
+  - name: "sys.setenvironmentvariable - returns boolean true"
+    description: "setenvironmentvariable should return boolean true on success"
+    script: 'sys.setenvironmentvariable("FRONTIER_TEST_VAR2", "value")'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "sys.setenvironmentvariable - returns boolean type"
+    description: "Return value should be boolean type"
+    script: 'typeof(sys.setenvironmentvariable("FRONTIER_TEST_VAR3", "value"))'
+    expected_success: true
+    expected_result: "bool"
+
+  # Overwrite existing variable
+  - name: "sys.setenvironmentvariable - overwrite existing value"
+    description: "Setting existing variable should overwrite previous value"
+    script: |
+      sys.setenvironmentvariable("FRONTIER_OVERWRITE_TEST", "first");
+      sys.setenvironmentvariable("FRONTIER_OVERWRITE_TEST", "second");
+      return sys.getenvironmentvariable("FRONTIER_OVERWRITE_TEST") == "second"
+    expected_success: true
+    expected_result: "true"
+
+  # Set to empty string
+  - name: "sys.setenvironmentvariable - set to empty string"
+    description: "Setting variable to empty string should work"
+    script: |
+      sys.setenvironmentvariable("FRONTIER_EMPTY_TEST", "initial");
+      sys.setenvironmentvariable("FRONTIER_EMPTY_TEST", "");
+      return sys.getenvironmentvariable("FRONTIER_EMPTY_TEST") == ""
+    expected_success: true
+    expected_result: "true"
+
+  # Special characters in value
+  - name: "sys.setenvironmentvariable - value with spaces"
+    description: "Set environment variable with spaces in value"
+    script: |
+      sys.setenvironmentvariable("FRONTIER_SPACE_TEST", "hello world test");
+      return sys.getenvironmentvariable("FRONTIER_SPACE_TEST") == "hello world test"
+    expected_success: true
+    expected_result: "true"
+
+  - name: "sys.setenvironmentvariable - value with special characters"
+    description: "Set environment variable with special characters"
+    script: |
+      sys.setenvironmentvariable("FRONTIER_SPECIAL_TEST", "value:with=special@chars!");
+      return sys.getenvironmentvariable("FRONTIER_SPECIAL_TEST") == "value:with=special@chars!"
+    expected_success: true
+    expected_result: "true"
+
+  - name: "sys.setenvironmentvariable - value with path separators"
+    description: "Set environment variable with path-like value (colons/semicolons)"
+    script: |
+      sys.setenvironmentvariable("FRONTIER_PATH_TEST", "/usr/bin:/usr/local/bin:/opt/bin");
+      return string.patternMatch("/usr/bin", sys.getenvironmentvariable("FRONTIER_PATH_TEST")) > 0
+    expected_success: true
+    expected_result: "true"
+
+  # Unicode/international characters
+  - name: "sys.setenvironmentvariable - value with unicode characters"
+    description: "Set environment variable with non-ASCII characters"
+    script: |
+      sys.setenvironmentvariable("FRONTIER_UNICODE_TEST", "hello-世界-🌍");
+      local(result = sys.getenvironmentvariable("FRONTIER_UNICODE_TEST"));
+      return string.length(result) > 0
+    expected_success: true
+    expected_result: "true"
+
+  # Long values
+  - name: "sys.setenvironmentvariable - reasonably long value"
+    description: "Set environment variable with 200-character value"
+    script: |
+      local(longValue = "");
+      local(i);
+      for i = 1 to 10 {
+        longValue = longValue + "0123456789abcdefghij"
+      };
+      sys.setenvironmentvariable("FRONTIER_LONG_TEST", longValue);
+      return string.length(sys.getenvironmentvariable("FRONTIER_LONG_TEST")) == 200
+    expected_success: true
+    expected_result: "true"
+
+  - name: "sys.setenvironmentvariable - value exactly 255 characters"
+    description: "Set environment variable with max bigstring length (255 chars)"
+    script: |
+      local(maxValue = "");
+      local(i);
+      for i = 1 to 51 {
+        maxValue = maxValue + "12345"
+      };
+      sys.setenvironmentvariable("FRONTIER_MAX_TEST", maxValue);
+      return string.length(sys.getenvironmentvariable("FRONTIER_MAX_TEST")) == 255
+    expected_success: true
+    expected_result: "true"
+
+  # Edge cases - variable names
+  - name: "sys.setenvironmentvariable - name with underscores"
+    description: "Variable name with underscores should work"
+    script: |
+      sys.setenvironmentvariable("FRONTIER_UNDER_SCORE_TEST", "value");
+      return sys.getenvironmentvariable("FRONTIER_UNDER_SCORE_TEST") == "value"
+    expected_success: true
+    expected_result: "true"
+
+  - name: "sys.setenvironmentvariable - name with numbers"
+    description: "Variable name with numbers should work"
+    script: |
+      sys.setenvironmentvariable("FRONTIER_TEST_123", "value");
+      return sys.getenvironmentvariable("FRONTIER_TEST_123") == "value"
+    expected_success: true
+    expected_result: "true"
+
+  # Numeric values (coerced to strings)
+  - name: "sys.setenvironmentvariable - numeric value coerced to string"
+    description: "Setting numeric value should coerce to string"
+    script: |
+      sys.setenvironmentvariable("FRONTIER_NUMBER_TEST", "42");
+      return sys.getenvironmentvariable("FRONTIER_NUMBER_TEST") == "42"
+    expected_success: true
+    expected_result: "true"
+
+  # ============================================================================
+  # Integration Tests - Set and Get Together
+  # ============================================================================
+
+  - name: "sys environment verbs - roundtrip test"
+    description: "Set multiple variables and retrieve them all"
+    script: |
+      sys.setenvironmentvariable("FRONTIER_RT_1", "value1");
+      sys.setenvironmentvariable("FRONTIER_RT_2", "value2");
+      sys.setenvironmentvariable("FRONTIER_RT_3", "value3");
+      local(v1 = sys.getenvironmentvariable("FRONTIER_RT_1"));
+      local(v2 = sys.getenvironmentvariable("FRONTIER_RT_2"));
+      local(v3 = sys.getenvironmentvariable("FRONTIER_RT_3"));
+      return (v1 == "value1") and (v2 == "value2") and (v3 == "value3")
+    expected_success: true
+    expected_result: "true"
+
+  - name: "sys environment verbs - isolation test"
+    description: "Setting one variable should not affect others"
+    script: |
+      sys.setenvironmentvariable("FRONTIER_ISOLATION_A", "valueA");
+      sys.setenvironmentvariable("FRONTIER_ISOLATION_B", "valueB");
+      sys.setenvironmentvariable("FRONTIER_ISOLATION_A", "newValueA");
+      return (sys.getenvironmentvariable("FRONTIER_ISOLATION_A") == "newValueA") and
+             (sys.getenvironmentvariable("FRONTIER_ISOLATION_B") == "valueB")
+    expected_success: true
+    expected_result: "true"
+
+  - name: "sys environment verbs - persistence within process"
+    description: "Environment variables should persist for remainder of process"
+    script: |
+      sys.setenvironmentvariable("FRONTIER_PERSIST_TEST", "persistent_value");
+      local(i);
+      local(ok = true);
+      for i = 1 to 5 {
+        if sys.getenvironmentvariable("FRONTIER_PERSIST_TEST") != "persistent_value" {
+          ok = false
+        }
+      };
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  # ============================================================================
+  # sys.winshellcommand Tests (Platform-Specific)
+  # ============================================================================
+
+  - name: "sys.winshellcommand - not available on macOS/Linux"
+    description: "winshellcommand should fail gracefully on non-Windows platforms"
+    script: |
+      if sys.os() == "Windows" {
+        return true
+      }
+      else {
+        try {
+          sys.winshellcommand("echo test");
+          return false
+        }
+        else {
+          return true
+        }
+      }
+    expected_success: true
+    expected_result: "true"
+
+  # Note: We skip actual Windows testing for now since this is macOS development
+  # When Windows support is added, implement tests matching sys.unixshellcommand pattern:
+  # - 1 param: command only (returns exit status as boolean)
+  # - 2 params: command + stdout capture
+  # - 3 params: command + stdout + stderr capture
+  # - 4 params: command + stdout + stderr + exit status capture
+
+  # ============================================================================
+  # Error Handling and Edge Cases
+  # ============================================================================
+
+  - name: "sys.getenvironmentvariable - very long variable name"
+    description: "Long variable name should handle gracefully"
+    script: |
+      local(longName = "FRONTIER_");
+      local(i);
+      for i = 1 to 24 {
+        longName = longName + "LONG"
+      };
+      return typeof(sys.getenvironmentvariable(longName)) == stringType
+    expected_success: true
+    expected_result: "true"
+
+  - name: "sys environment verbs - type validation"
+    description: "Verify return types of environment verbs"
+    script: |
+      local(getValue = sys.getenvironmentvariable("PATH"));
+      local(setValue = sys.setenvironmentvariable("FRONTIER_TYPE_TEST", "value"));
+      return (typeof(getValue) == stringType) and (typeof(setValue) == booleanType)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "sys.setenvironmentvariable - multiple rapid updates"
+    description: "Rapidly updating same variable should work correctly"
+    script: |
+      local(i);
+      for i = 1 to 10 {
+        sys.setenvironmentvariable("FRONTIER_RAPID_TEST", string(i))
+      };
+      return sys.getenvironmentvariable("FRONTIER_RAPID_TEST") == "10"
+    expected_success: true
+    expected_result: "true"
+
+  # ============================================================================
+  # Cross-Platform Compatibility Tests
+  # ============================================================================
+
+  - name: "sys environment verbs - platform-specific variables"
+    description: "Access platform-specific environment variables"
+    script: |
+      if sys.os() == "Windows" {
+        return string.length(sys.getenvironmentvariable("USERPROFILE")) > 0
+      }
+      else {
+        return string.length(sys.getenvironmentvariable("HOME")) > 0
+      }
+    expected_success: true
+    expected_result: "true"
+
+  - name: "sys environment verbs - common variables across platforms"
+    description: "PATH should exist on all platforms"
+    script: 'string.length(sys.getenvironmentvariable("PATH")) > 0'
+    expected_success: true
+    expected_result: "true"

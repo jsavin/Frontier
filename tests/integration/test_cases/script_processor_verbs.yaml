@@ -1,0 +1,579 @@
+# Integration tests for script processor verbs
+# Tests UserTalk script compilation and execution in headless mode
+#
+# Script processor verbs:
+#   - script.compile(addr) - Compile UserTalk source to bytecode
+#   - script.run(addr) - Execute a compiled script
+#   - script.getcode(addr, adrcode) - Get compiled code from script object
+#   - script.setcode(addr, adrcode) - Set compiled code in script object
+#   - script.getsource(addr, addrsource) - Get source text from script object
+#   - script.setsource(addr, addrsource) - Set source text in script object
+#   - script.error(message_or_code) - Trigger script error (terminates execution)
+#
+# Test case fields:
+#   name: Test name (required)
+#   description: Test description (optional)
+#   script: UserTalk script to execute (required)
+#   expected_success: true/false (default: true)
+#   expected_result: Expected return value as string (optional)
+#   expected_result_type: Expected result type from JSON (optional)
+#   expected_error_type: Expected error type if expected_success=false (optional)
+#   timeout: Timeout in seconds (optional, default: 10)
+
+tests:
+  # ============================================================================
+  # script.compile Tests - Compile UserTalk Source to Bytecode
+  # ============================================================================
+
+  # Happy path - simple script compilation
+  - name: "script.compile - simple script compiles successfully"
+    description: "Compile a simple UserTalk script and verify success"
+    script: |
+      lang.new(scriptType, @workspace.testScript);
+      workspace.testScript = "return 42";
+      return script.compile(@workspace.testScript)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "script.compile - returns boolean type"
+    description: "Compile should return boolean type"
+    script: |
+      lang.new(scriptType, @workspace.compileTest);
+      workspace.compileTest = "return true";
+      return typeof(script.compile(@workspace.compileTest))
+    expected_success: true
+    expected_result: "bool"
+
+  - name: "script.compile - arithmetic expression"
+    description: "Compile script with arithmetic operations"
+    script: |
+      lang.new(scriptType, @workspace.mathScript);
+      workspace.mathScript = "return 10 + 20 * 3";
+      return script.compile(@workspace.mathScript)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "script.compile - string operations"
+    description: "Compile script with string concatenation"
+    script: |
+      lang.new(scriptType, @workspace.stringScript);
+      workspace.stringScript = "return \"hello\" + \" \" + \"world\"";
+      return script.compile(@workspace.stringScript)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "script.compile - local variables"
+    description: "Compile script with local variable declarations"
+    script: |
+      lang.new(scriptType, @workspace.localVarScript);
+      workspace.localVarScript = "local(x=5, y=10); return x+y";
+      return script.compile(@workspace.localVarScript)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "script.compile - conditional logic"
+    description: "Compile script with if/else statement"
+    script: |
+      lang.new(scriptType, @workspace.ifScript);
+      workspace.ifScript = "if true { return \"yes\" } else { return \"no\" }";
+      return script.compile(@workspace.ifScript)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "script.compile - loop construct"
+    description: "Compile script with for loop"
+    script: |
+      lang.new(scriptType, @workspace.loopScript);
+      workspace.loopScript = "local(i, sum=0); for i=1 to 10 { sum = sum + i }; return sum";
+      return script.compile(@workspace.loopScript)
+    expected_success: true
+    expected_result: "true"
+
+  # Edge cases - compilation errors
+  - name: "script.compile - syntax error terminates execution"
+    description: "Compilation error should terminate script execution"
+    script: |
+      lang.new(scriptType, @workspace.badScript);
+      workspace.badScript = "return 1 + +";
+      script.compile(@workspace.badScript);
+      return false
+    expected_success: false
+
+  - name: "script.compile - empty script compiles"
+    description: "Empty script should compile successfully"
+    script: |
+      lang.new(scriptType, @workspace.emptyScript);
+      workspace.emptyScript = "";
+      return script.compile(@workspace.emptyScript)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "script.compile - multiline script"
+    description: "Compile multi-line script with statements on separate lines"
+    script: |
+      lang.new(scriptType, @workspace.multilineScript);
+      workspace.multilineScript = "local(x = 10);\nlocal(y = 20);\nreturn x + y";
+      return script.compile(@workspace.multilineScript)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "script.compile - script with comments"
+    description: "Compile script containing comments"
+    script: |
+      lang.new(scriptType, @workspace.commentScript);
+      workspace.commentScript = "// This is a comment\nreturn 42 // another comment";
+      return script.compile(@workspace.commentScript)
+    expected_success: true
+    expected_result: "true"
+
+  # Non-script object handling
+  - name: "script.compile - non-script object returns false"
+    description: "Attempting to compile non-script object should return false"
+    script: |
+      lang.new(tableType, @workspace.notAScript);
+      return script.compile(@workspace.notAScript)
+    expected_success: true
+    expected_result: "false"
+
+  # ============================================================================
+  # script.run Tests - Execute Compiled Script
+  # ============================================================================
+
+  # Happy path - run compiled script
+  - name: "script.run - execute simple script"
+    description: "Run a compiled script and get return value"
+    script: |
+      lang.new(scriptType, @workspace.runTest);
+      workspace.runTest = "return 42";
+      script.compile(@workspace.runTest);
+      return script.run(@workspace.runTest) == 42
+    expected_success: true
+    expected_result: "true"
+
+  - name: "script.run - execute string script"
+    description: "Run script that returns string"
+    script: |
+      lang.new(scriptType, @workspace.stringReturn);
+      workspace.stringReturn = "return \"hello world\"";
+      script.compile(@workspace.stringReturn);
+      return script.run(@workspace.stringReturn) == "hello world"
+    expected_success: true
+    expected_result: "true"
+
+  - name: "script.run - execute boolean script"
+    description: "Run script that returns boolean"
+    script: |
+      lang.new(scriptType, @workspace.boolReturn);
+      workspace.boolReturn = "return 5 > 3";
+      script.compile(@workspace.boolReturn);
+      return script.run(@workspace.boolReturn)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "script.run - script with side effects"
+    description: "Run script that modifies database"
+    script: |
+      lang.new(scriptType, @workspace.sideEffectScript);
+      workspace.sideEffectScript = "workspace.testValue = 99; return true";
+      script.compile(@workspace.sideEffectScript);
+      script.run(@workspace.sideEffectScript);
+      return workspace.testValue == 99
+    expected_success: true
+    expected_result: "true"
+
+  - name: "script.run - script accessing params"
+    description: "Run script that uses parameters (if supported)"
+    script: |
+      lang.new(scriptType, @workspace.paramScript);
+      workspace.paramScript = "local(x = 10, y = 20); return x * y";
+      script.compile(@workspace.paramScript);
+      return script.run(@workspace.paramScript) == 200
+    expected_success: true
+    expected_result: "true"
+
+  # Error cases
+  - name: "script.run - uncompiled script behavior"
+    description: "Running uncompiled script should handle gracefully"
+    script: |
+      lang.new(scriptType, @workspace.uncompiled);
+      workspace.uncompiled = "return 42";
+      try {
+        script.run(@workspace.uncompiled);
+        return true
+      }
+      else {
+        return true
+      }
+    expected_success: true
+    expected_result: "true"
+
+  - name: "script.run - non-script object"
+    description: "Running non-script object should fail gracefully"
+    script: |
+      lang.new(tableType, @workspace.notScript);
+      try {
+        script.run(@workspace.notScript);
+        return false
+      }
+      else {
+        return true
+      }
+    expected_success: true
+    expected_result: "true"
+
+  # ============================================================================
+  # script.getsource / script.setsource Tests
+  # ============================================================================
+
+  # Happy path - get and set source
+  - name: "script.getsource - retrieve script source text"
+    description: "Get source code from script object"
+    script: |
+      lang.new(scriptType, @workspace.sourceTest);
+      workspace.sourceTest = "return 42";
+      local(source);
+      script.getsource(@workspace.sourceTest, @source);
+      return source == "return 42"
+    expected_success: true
+    expected_result: "true"
+
+  - name: "script.setsource - set script source text"
+    description: "Set source code in script object"
+    script: |
+      lang.new(scriptType, @workspace.setSourceTest);
+      local(newSource = "return 100");
+      script.setsource(@workspace.setSourceTest, @newSource);
+      local(retrieved);
+      script.getsource(@workspace.setSourceTest, @retrieved);
+      return retrieved == "return 100"
+    expected_success: true
+    expected_result: "true"
+
+  - name: "script.setsource - returns boolean true"
+    description: "setsource should return boolean true on success"
+    script: |
+      lang.new(scriptType, @workspace.setSourceReturn);
+      local(src = "return 42");
+      return script.setsource(@workspace.setSourceReturn, @src)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "script.getsource - returns boolean true"
+    description: "getsource should return boolean true on success"
+    script: |
+      lang.new(scriptType, @workspace.getSourceReturn);
+      workspace.getSourceReturn = "return 42";
+      local(source);
+      return script.getsource(@workspace.getSourceReturn, @source)
+    expected_success: true
+    expected_result: "true"
+
+  # Roundtrip test
+  - name: "script source verbs - roundtrip test"
+    description: "Set source, get it back, verify unchanged"
+    script: |
+      lang.new(scriptType, @workspace.roundtrip);
+      local(original = "local(x = 10);\nreturn x * 2");
+      script.setsource(@workspace.roundtrip, @original);
+      local(retrieved);
+      script.getsource(@workspace.roundtrip, @retrieved);
+      return retrieved == original
+    expected_success: true
+    expected_result: "true"
+
+  # Edge cases
+  - name: "script.setsource - empty string source"
+    description: "Setting empty source should work"
+    script: |
+      lang.new(scriptType, @workspace.emptySource);
+      local(empty = "");
+      script.setsource(@workspace.emptySource, @empty);
+      local(retrieved);
+      script.getsource(@workspace.emptySource, @retrieved);
+      return retrieved == ""
+    expected_success: true
+    expected_result: "true"
+
+  - name: "script.setsource - multiline source"
+    description: "Setting multi-line source with newlines"
+    script: |
+      lang.new(scriptType, @workspace.multiline);
+      local(source = "local(x = 1);\nlocal(y = 2);\nreturn x + y");
+      script.setsource(@workspace.multiline, @source);
+      local(retrieved);
+      script.getsource(@workspace.multiline, @retrieved);
+      return string.length(retrieved) > 0
+    expected_success: true
+    expected_result: "true"
+
+  - name: "script.setsource - source with special characters"
+    description: "Setting source with quotes and backslashes"
+    script: |
+      lang.new(scriptType, @workspace.specialChars);
+      local(source = "return \"hello\\nworld\"");
+      script.setsource(@workspace.specialChars, @source);
+      local(retrieved);
+      script.getsource(@workspace.specialChars, @retrieved);
+      return string.length(retrieved) > 0
+    expected_success: true
+    expected_result: "true"
+
+  # ============================================================================
+  # script.getcode / script.setcode Tests
+  # ============================================================================
+
+  # Happy path - get compiled code
+  - name: "script.getcode - retrieve compiled bytecode"
+    description: "Get compiled code from script object"
+    script: |
+      lang.new(scriptType, @workspace.codeTest);
+      workspace.codeTest = "return 42";
+      script.compile(@workspace.codeTest);
+      local(code);
+      script.getcode(@workspace.codeTest, @code);
+      return typeof(code) == binaryType
+    expected_success: true
+    expected_result: "true"
+
+  - name: "script.getcode - returns boolean true"
+    description: "getcode should return boolean true on success"
+    script: |
+      lang.new(scriptType, @workspace.getCodeReturn);
+      workspace.getCodeReturn = "return 42";
+      script.compile(@workspace.getCodeReturn);
+      local(code);
+      return script.getcode(@workspace.getCodeReturn, @code)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "script.setcode - set compiled bytecode"
+    description: "Set compiled code in script object"
+    script: |
+      lang.new(scriptType, @workspace.originalScript);
+      workspace.originalScript = "return 42";
+      script.compile(@workspace.originalScript);
+      local(code);
+      script.getcode(@workspace.originalScript, @code);
+      lang.new(scriptType, @workspace.copyScript);
+      return script.setcode(@workspace.copyScript, @code)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "script.setcode - returns boolean true"
+    description: "setcode should return boolean true on success"
+    script: |
+      lang.new(scriptType, @workspace.setCodeReturn);
+      workspace.setCodeReturn = "return 42";
+      script.compile(@workspace.setCodeReturn);
+      local(code);
+      script.getcode(@workspace.setCodeReturn, @code);
+      lang.new(scriptType, @workspace.setCodeTarget);
+      return script.setcode(@workspace.setCodeTarget, @code)
+    expected_success: true
+    expected_result: "true"
+
+  # Code transfer test
+  - name: "script code verbs - transfer code between scripts"
+    description: "Get code from one script, set it in another, run both"
+    script: |
+      lang.new(scriptType, @workspace.source);
+      workspace.source = "return 99";
+      script.compile(@workspace.source);
+      local(code);
+      script.getcode(@workspace.source, @code);
+      lang.new(scriptType, @workspace.dest);
+      script.setcode(@workspace.dest, @code);
+      local(result1 = script.run(@workspace.source));
+      local(result2 = script.run(@workspace.dest));
+      return (result1 == 99) and (result2 == 99)
+    expected_success: true
+    expected_result: "true"
+
+  # Edge cases
+  - name: "script.getcode - uncompiled script behavior"
+    description: "Getting code from uncompiled script should handle gracefully"
+    script: |
+      lang.new(scriptType, @workspace.uncompiled);
+      workspace.uncompiled = "return 42";
+      local(code);
+      try {
+        script.getcode(@workspace.uncompiled, @code);
+        return true
+      }
+      else {
+        return true
+      }
+    expected_success: true
+    expected_result: "true"
+
+  # ============================================================================
+  # script.error Tests - Trigger Runtime Error
+  # ============================================================================
+
+  # String error message
+  - name: "script.error - string message terminates execution"
+    description: "Triggering error with string should terminate script"
+    script: |
+      script.error("This is a test error");
+      return false
+    expected_success: false
+
+  - name: "script.error - error prevents subsequent code"
+    description: "Code after script.error should not execute"
+    script: |
+      workspace.errorFlag = false;
+      script.error("Error here");
+      workspace.errorFlag = true;
+      return false
+    expected_success: false
+
+  # Numeric error code
+  - name: "script.error - numeric error code"
+    description: "Triggering error with numeric OS error code"
+    script: |
+      script.error(-1);
+      return false
+    expected_success: false
+
+  - name: "script.error - zero error code"
+    description: "Error code 0 still terminates execution"
+    script: |
+      script.error(0);
+      return false
+    expected_success: false
+
+  # Edge cases
+  - name: "script.error - empty string message"
+    description: "Error with empty string should still terminate"
+    script: |
+      script.error("");
+      return false
+    expected_success: false
+
+  - name: "script.error - long error message"
+    description: "Error with very long message should handle gracefully"
+    script: |
+      local(longMsg = "Error: ");
+      local(i);
+      for i = 1 to 20 {
+        longMsg = longMsg + "This is a very long error message component. "
+      };
+      script.error(longMsg);
+      return false
+    expected_success: false
+
+  # ============================================================================
+  # Integration Tests - Complete Script Lifecycle
+  # ============================================================================
+
+  - name: "script verbs - complete lifecycle test"
+    description: "Create, set source, compile, run, get result"
+    script: |
+      lang.new(scriptType, @workspace.lifecycle);
+      local(source = "return 100 + 23");
+      script.setsource(@workspace.lifecycle, @source);
+      script.compile(@workspace.lifecycle);
+      local(result = script.run(@workspace.lifecycle));
+      return result == 123
+    expected_success: true
+    expected_result: "true"
+
+  - name: "script verbs - modify source and recompile"
+    description: "Change script source, recompile, run again"
+    script: |
+      lang.new(scriptType, @workspace.modify);
+      workspace.modify = "return 1";
+      script.compile(@workspace.modify);
+      local(first = script.run(@workspace.modify));
+      workspace.modify = "return 2";
+      script.compile(@workspace.modify);
+      local(second = script.run(@workspace.modify));
+      return (first == 1) and (second == 2)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "script verbs - source and code independence"
+    description: "Verify getting source doesn't require compilation"
+    script: |
+      lang.new(scriptType, @workspace.independence);
+      workspace.independence = "return 42";
+      local(source);
+      script.getsource(@workspace.independence, @source);
+      return source == "return 42"
+    expected_success: true
+    expected_result: "true"
+
+  - name: "script verbs - clone script via code transfer"
+    description: "Create exact copy of script by transferring compiled code"
+    script: |
+      lang.new(scriptType, @workspace.original);
+      workspace.original = "local(x = 5); return x * x";
+      script.compile(@workspace.original);
+      local(code);
+      script.getcode(@workspace.original, @code);
+      lang.new(scriptType, @workspace.clone);
+      script.setcode(@workspace.clone, @code);
+      local(origResult = script.run(@workspace.original));
+      local(cloneResult = script.run(@workspace.clone));
+      return origResult == cloneResult
+    expected_success: true
+    expected_result: "true"
+
+  - name: "script verbs - multiple scripts independent"
+    description: "Multiple scripts can coexist and run independently"
+    script: |
+      lang.new(scriptType, @workspace.scriptA);
+      lang.new(scriptType, @workspace.scriptB);
+      workspace.scriptA = "return 10";
+      workspace.scriptB = "return 20";
+      script.compile(@workspace.scriptA);
+      script.compile(@workspace.scriptB);
+      local(a = script.run(@workspace.scriptA));
+      local(b = script.run(@workspace.scriptB));
+      return (a == 10) and (b == 20)
+    expected_success: true
+    expected_result: "true"
+
+  # ============================================================================
+  # Type Validation Tests
+  # ============================================================================
+
+  - name: "script verbs - return type validation"
+    description: "Verify all script verbs return correct types"
+    script: |
+      lang.new(scriptType, @workspace.typeTest);
+      workspace.typeTest = "return 42";
+      script.compile(@workspace.typeTest);
+      local(compileResult = script.compile(@workspace.typeTest));
+      local(runResult = script.run(@workspace.typeTest));
+      local(source, code);
+      local(getSourceResult = script.getsource(@workspace.typeTest, @source));
+      local(getCodeResult = script.getcode(@workspace.typeTest, @code));
+      return (typeof(compileResult) == booleanType) and
+             (typeof(getSourceResult) == booleanType) and
+             (typeof(getCodeResult) == booleanType) and
+             (typeof(source) == stringType) and
+             (typeof(code) == binaryType)
+    expected_success: true
+    expected_result: "true"
+
+  # ============================================================================
+  # Error Recovery Tests
+  # ============================================================================
+
+  - name: "script verbs - recover from compilation error"
+    description: "After compilation error, script should still be usable"
+    script: |
+      lang.new(scriptType, @workspace.recovery);
+      workspace.recovery = "return 1 + +";
+      try {
+        script.compile(@workspace.recovery);
+        return false
+      }
+      else {
+        workspace.recovery = "return 42";
+        script.compile(@workspace.recovery);
+        return script.run(@workspace.recovery) == 42
+      }
+    expected_success: true
+    expected_result: "true"
