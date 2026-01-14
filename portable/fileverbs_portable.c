@@ -1936,9 +1936,24 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 		case sfgetfilefunc:
 		case sfputfilefunc:
 		case sfgetfolderfunc:
-		case sfgetdiskfunc:
-			copyctopstring("File dialogs not supported in headless mode - use explicit paths", bserror);
-			return false;
+		case sfgetdiskfunc: {
+			#ifdef FRONTIER_HEADLESS
+				/* Phase 2B: Interactive file dialogs in headless mode */
+				extern boolean isInteractiveMode(void);
+				extern boolean portable_file_dialog_verb(short token, hdltreenode hparam1,
+				                                         tyvaluerecord *vreturned, bigstring bserror);
+
+				if (!isInteractiveMode()) {
+					copyctopstring("File dialogs require interactive mode (TTY) - use explicit paths in batch mode", bserror);
+					return false;
+				}
+
+				return portable_file_dialog_verb(token, hparam1, vreturned, bserror);
+			#else
+				copyctopstring("File dialogs not supported in headless mode - use explicit paths", bserror);
+				return false;
+			#endif
+		}
 
 		case filegeticonposfunc:
 		case fileseticonposfunc:
@@ -2135,3 +2150,125 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			return false;
 	}
 }
+
+#ifdef FRONTIER_HEADLESS
+/*
+ * portable_file_dialog_verb - Interactive file dialog implementation
+ *
+ * Phase 2B.4: File verb integration layer
+ *
+ * Implements file.getFileDialog, putFileDialog, getFolderDialog, getDiskDialog
+ * for interactive mode. Bridges UserTalk calling convention to file_dialog.c.
+ */
+boolean portable_file_dialog_verb(short token, hdltreenode hparam1,
+                                  tyvaluerecord *vreturned, bigstring bserror) {
+	/* Result structure matching file_dialog.h */
+	typedef struct {
+		char path[1024];
+		boolean success;
+	} file_dialog_result;
+
+	/* Forward declarations to avoid including file_dialog.h */
+	extern file_dialog_result file_dialog_get_file(const char *);
+	extern file_dialog_result file_dialog_put_file(const char *);
+	extern file_dialog_result file_dialog_get_folder(const char *);
+	extern file_dialog_result file_dialog_get_disk(void);
+
+	bigstring bsprompt;
+	bigstring bsvarname;
+	hdlhashtable htable;
+	tyvaluerecord val;
+	tyfilespec fs;
+	hdlhashnode hnode;
+
+	/* Extract prompt (parameter 1) */
+	if (!getstringvalue(hparam1, 1, bsprompt)) {
+		return false;
+	}
+
+	/* Extract variable name to store result (parameter 2) */
+	flnextparamislast = true;
+	if (!getvarparam(hparam1, 2, &htable, bsvarname)) {
+		return false;
+	}
+
+	/* Get starting path from current variable value (if exists) */
+	char start_path[1024] = {0};
+	if (hashtablelookup(htable, bsvarname, &val, &hnode)) {
+		tyvaluerecord valcopy;
+		if (copyvaluerecord(val, &valcopy)) {
+			disablelangerror();
+			if (coercetofilespec(&valcopy)) {
+				filespec_to_cstring(&valcopy.data.filespecvalue, start_path, sizeof(start_path));
+			}
+			enablelangerror();
+		}
+	}
+
+	/* Call appropriate file dialog function */
+	file_dialog_result result;
+	result.success = false;
+	result.path[0] = '\0';
+
+	switch (token) {
+		case sfgetfilefunc:
+			result = file_dialog_get_file(start_path[0] ? start_path : NULL);
+			break;
+
+		case sfputfilefunc:
+			result = file_dialog_put_file(start_path[0] ? start_path : NULL);
+			break;
+
+		case sfgetfolderfunc:
+			result = file_dialog_get_folder(start_path[0] ? start_path : NULL);
+			break;
+
+		case sfgetdiskfunc:
+			result = file_dialog_get_disk();
+			break;
+
+		default:
+			copyctopstring("Unknown file dialog verb", bserror);
+			return false;
+	}
+
+	/* User cancelled */
+	if (!result.success) {
+		setbooleanvalue(false, vreturned);
+		return true;
+	}
+
+	/* Convert result path to filespec */
+	bigstring bspath;
+	/* Copy C string to Pascal string manually */
+	size_t len = strlen(result.path);
+	if (len > 255)
+		len = 255;
+	memcpy(&bspath[1], result.path, len);
+	bspath[0] = (unsigned char)len;
+
+	if (!pathtofilespec(bspath, &fs)) {
+		copyctopstring("Failed to convert path to filespec", bserror);
+		return false;
+	}
+
+	if (!setfilespecvalue(&fs, &val)) {
+		return false;
+	}
+
+	/* Store result in variable */
+	pushhashtable(htable);
+	boolean fl = langsetsymbolval(bsvarname, val);
+	pophashtable();
+
+	if (!fl) {
+		return false;
+	}
+
+	exemptfromtmpstack(&val);
+
+	/* Return true to indicate user selected a file */
+	setbooleanvalue(true, vreturned);
+	return true;
+}
+#endif /* FRONTIER_HEADLESS */

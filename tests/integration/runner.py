@@ -66,26 +66,57 @@ class FrontierCLI:
         if not os.path.exists(cli_path):
             raise FileNotFoundError(f"frontier-cli not found: {cli_path}")
 
-    def execute(self, script: str, timeout: int = 10) -> Dict:
-        """Execute a UserTalk script and return JSON result."""
+    def execute(self, script: str, timeout: int = 10, stdin_input: Optional[str] = None,
+                batch_mode: bool = False, env: Optional[Dict[str, str]] = None) -> Dict:
+        """
+        Execute a UserTalk script and return JSON result.
+
+        Args:
+            script: UserTalk script to execute
+            timeout: Execution timeout in seconds
+            stdin_input: Optional stdin input for interactive prompts
+            batch_mode: If True, add --batch flag to disable interactive mode
+            env: Optional environment variables to set
+        """
         cmd = [self.cli_path, '--output-json', '-e', script]
 
         if self.system_root:
             cmd.extend(['--system-root', self.system_root])
+
+        if batch_mode:
+            cmd.append('--batch')
+
+        # Merge environment variables with current environment
+        process_env = os.environ.copy()
+        if env:
+            process_env.update(env)
 
         try:
             result = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
-                timeout=timeout
+                timeout=timeout,
+                input=stdin_input,  # Pass stdin input if provided
+                env=process_env
             )
 
-            # Parse JSON from stderr (keeping stdout clean for user messages like lang.msg)
+            # Parse JSON from stdout (stderr contains prompts and logs)
+            # When dialog prompts are active, stderr contains prompt output
+            # stdout contains the clean JSON result
             try:
-                output = json.loads(result.stderr)
+                stdout_lines = result.stdout
+                # Find last occurrence of '{\n  "success"' which marks start of JSON
+                json_start = stdout_lines.rfind('{\n  "success"')
+                if json_start == -1:
+                    # Fallback: try to parse entire stdout as JSON
+                    json_text = stdout_lines
+                else:
+                    json_text = stdout_lines[json_start:]
+
+                output = json.loads(json_text)
                 output['exit_code'] = result.returncode
-                output['stdout'] = result.stdout  # Preserve stdout for user messages
+                output['stderr'] = result.stderr  # Preserve stderr for prompts/logs
                 return output
             except json.JSONDecodeError as e:
                 return {
@@ -135,6 +166,9 @@ class TestCase:
         self.expected_error_contains = data.get('expected_error_contains')  # String that should be in error
         self.description = data.get('description', '')
         self.timeout = data.get('timeout', 10)  # Default 10 seconds, configurable per test
+        self.stdin_input = data.get('stdin_input')  # Optional stdin input for interactive tests
+        self.batch_mode = data.get('batch_mode', False)  # Set true to test batch mode error behavior
+        self.environment = data.get('environment', {})  # Optional environment variables
 
     def get_script_with_substitutions(self, test_root_dir: Optional[str] = None) -> str:
         """Get the script with path substitutions applied."""
@@ -148,6 +182,20 @@ class TestCase:
             script = script.replace('{FRONTIER_TEST_TMP_DIR}', test_tmp_dir)
 
         return script
+
+    def get_stdin_with_substitutions(self, test_root_dir: Optional[str] = None) -> Optional[str]:
+        """Get the stdin input with path substitutions applied."""
+        if self.stdin_input is None:
+            return None
+
+        stdin_input = self.stdin_input
+
+        # Substitute test directory paths
+        if test_root_dir:
+            test_tmp_dir = os.path.join(test_root_dir, 'tmp', 'integration')
+            stdin_input = stdin_input.replace('{FRONTIER_TEST_TMP_DIR}', test_tmp_dir)
+
+        return stdin_input
 
     def validate(self, output: Dict) -> Tuple[bool, Optional[str]]:
         """Validate test output against expectations."""
@@ -230,8 +278,25 @@ class TestRunner:
         # Get script with path substitutions applied
         script = test.get_script_with_substitutions(self.test_root_dir)
 
-        # Execute script with test-specific timeout
-        output = self.cli.execute(script, timeout=test.timeout)
+        # Get stdin input with path substitutions applied
+        stdin_input = test.get_stdin_with_substitutions(self.test_root_dir)
+
+        # Prepare environment variables
+        test_env = test.environment.copy()
+
+        # If test provides stdin_input and isn't in batch mode, force interactive mode
+        # This overrides TTY detection which fails when stdin is piped
+        if stdin_input is not None and not test.batch_mode:
+            test_env['FRONTIER_FORCE_INTERACTIVE'] = '1'
+
+        # Execute script with test-specific timeout, stdin input, batch mode, and environment
+        output = self.cli.execute(
+            script,
+            timeout=test.timeout,
+            stdin_input=stdin_input,
+            batch_mode=test.batch_mode,
+            env=test_env
+        )
 
         # Validate result
         passed, error = test.validate(output)

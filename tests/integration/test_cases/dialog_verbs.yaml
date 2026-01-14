@@ -1,0 +1,261 @@
+# Dialog Verb Integration Tests - Phase 2 Stdio Prompts
+#
+# Tests for interactive dialog prompts when isInteractiveMode() returns true.
+# These tests verify stdio-based prompts work correctly in terminal contexts.
+#
+# Phase 1 (merged): --batch flag, TTY detection, isInteractiveMode()
+# Phase 2 (implementing): Interactive stdio prompts with visual feedback
+#
+# Reference: planning/phase3/HEADLESS_INTERACTIVE_MODE.md (Phase 2 section)
+
+tests:
+  # lang.msg() - Output Verb (Already Works)
+  - name: "lang.msg - basic output to stdout"
+    description: "lang.msg() should output text to stdout"
+    script: |
+      lang.msg("Hello from Phase 2");
+      return true
+    expected_success: true
+    # Note: lang.msg() output to stdout, return value is boolean
+
+  - name: "lang.msg - multiple messages"
+    description: "Multiple lang.msg() calls should all output"
+    script: |
+      lang.msg("Line 1");
+      lang.msg("Line 2");
+      lang.msg("Line 3");
+      return true
+    expected_success: true
+
+  # dialog.ask() - Yes/No Prompt with Arrow Key Selection
+  - name: "dialog.ask - accept default Yes with Enter"
+    description: "Pressing Enter should accept default Yes option"
+    script: |
+      dialog.ask("Continue with operation?")
+    stdin_input: "\n"  # Just Enter key
+    expected_success: true
+    expected_result: "true"  # JSON serializes boolean as string
+    # Terminal output: "Continue with operation? Yes No" with Yes inverted
+
+  - name: "dialog.ask - select No with arrow key"
+    description: "Arrow key right then Enter should select No"
+    script: |
+      dialog.ask("Continue with operation?")
+    stdin_input: "\x1b[C\n"  # Right arrow + Enter
+    expected_success: true
+    expected_result: false
+
+  - name: "dialog.ask - Tab to switch options"
+    description: "Tab key should switch between Yes/No"
+    script: |
+      dialog.ask("Proceed?")
+    stdin_input: "\t\n"  # Tab to No, then Enter
+    expected_success: true
+    expected_result: false
+
+  - name: "dialog.ask - no default specified"
+    description: "When no default, should show first option (Yes) as default"
+    script: |
+      dialog.ask("Confirm action?")
+    stdin_input: "\n"
+    expected_success: true
+    expected_result: "true"  # JSON serializes boolean as string
+
+  # dialog.getInt() - Integer Input with Default
+  - name: "dialog.getInt - accept default with Enter"
+    description: "Pressing Enter should accept default value"
+    script: |
+      dialog.getInt("How many iterations?", 10)
+    stdin_input: "\n"
+    expected_success: true
+    expected_result: 10
+    # Terminal output: "How many iterations? [10]: "
+
+  - name: "dialog.getInt - override default with typed value"
+    description: "Typing number should override default"
+    script: |
+      dialog.getInt("How many iterations?", 10)
+    stdin_input: "42\n"
+    expected_success: true
+    expected_result: 42
+
+  - name: "dialog.getInt - no default specified"
+    description: "Without default, should prompt for required input"
+    script: |
+      dialog.getInt("Enter count")
+    stdin_input: "5\n"
+    expected_success: true
+    expected_result: 5
+
+  - name: "dialog.getInt - invalid input re-prompts"
+    description: "Non-numeric input should re-prompt"
+    script: |
+      dialog.getInt("Enter number", 10)
+    stdin_input: "abc\n20\n"  # Invalid, then valid
+    expected_success: true
+    expected_result: 20
+
+  - name: "dialog.getInt - negative numbers"
+    description: "Should accept negative integers"
+    script: |
+      dialog.getInt("Enter value", 0)
+    stdin_input: "-42\n"
+    expected_success: true
+    expected_result: -42
+
+  - name: "dialog.getInt - very large number"
+    description: "Should handle large integers (2^31-1)"
+    script: |
+      dialog.getInt("Enter large number")
+    stdin_input: "2147483647\n"
+    expected_success: true
+    expected_result: 2147483647
+
+  # dialog.getuserinfo() - Text Input with Default
+  - name: "dialog.getuserinfo - accept default with Enter"
+    description: "Pressing Enter should accept default string"
+    script: |
+      dialog.getuserinfo("Enter project name", "MyProject")
+    stdin_input: "\n"
+    expected_success: true
+    expected_result: "MyProject"
+    # Terminal output: "Enter project name [MyProject]: "
+
+  - name: "dialog.getuserinfo - override default"
+    description: "Typing text should override default"
+    script: |
+      dialog.getuserinfo("Enter project name", "MyProject")
+    stdin_input: "CustomName\n"
+    expected_success: true
+    expected_result: "CustomName"
+
+  - name: "dialog.getuserinfo - no default specified"
+    description: "Without default, should prompt for required input"
+    script: |
+      dialog.getuserinfo("Enter filename")
+    stdin_input: "test.txt\n"
+    expected_success: true
+    expected_result: "test.txt"
+
+  - name: "dialog.getuserinfo - empty string input"
+    description: "Should allow empty string as valid input"
+    script: |
+      dialog.getuserinfo("Enter optional note", "")
+    stdin_input: "\n"
+    expected_success: true
+    expected_result: ""
+
+  - name: "dialog.getuserinfo - unicode input (CJK)"
+    description: "Should handle CJK characters"
+    script: |
+      dialog.getuserinfo("Enter name")
+    stdin_input: "你好世界\n"
+    expected_success: true
+    expected_result: "你好世界"
+
+  - name: "dialog.getuserinfo - unicode input (emoji)"
+    description: "Should handle emoji characters"
+    script: |
+      dialog.getuserinfo("Enter project name")
+    stdin_input: "Project🚀\n"
+    expected_success: true
+    expected_result: "Project🚀"
+
+  # SKIP: dialog.getuserinfo - very long string test requires string.replicate() (not yet implemented)
+  # - name: "dialog.getuserinfo - very long string (500 chars)"
+  #   description: "Should handle long strings"
+  #   script: |
+  #     local(longString = string.replicate("A", 500));
+  #     dialog.getuserinfo("Enter text", longString)
+  #   stdin_input: "\n"
+  #   expected_success: true
+  #   # expected_result: 500 'A' characters
+
+  # dialog.getPassword() - Password Input with Dots
+  - name: "dialog.getPassword - basic password input"
+    description: "Should accept password and show dots during input"
+    script: |
+      dialog.getPassword("Enter encryption key")
+    stdin_input: "secret123\n"
+    expected_success: true
+    expected_result: "secret123"
+    # Terminal output: "Enter encryption key: •••••••••" (9 dots)
+
+  - name: "dialog.getPassword - empty password"
+    description: "Should allow empty password"
+    script: |
+      dialog.getPassword("Enter password")
+    stdin_input: "\n"
+    expected_success: true
+    expected_result: ""
+
+  - name: "dialog.getPassword - password with spaces"
+    description: "Should accept spaces in password"
+    script: |
+      dialog.getPassword("Enter passphrase")
+    stdin_input: "my secret pass\n"
+    expected_success: true
+    expected_result: "my secret pass"
+
+  - name: "dialog.getPassword - password with special chars"
+    description: "Should accept special characters in password"
+    script: |
+      dialog.getPassword("Enter password")
+    stdin_input: "P@ssw0rd!#$%\n"
+    expected_success: true
+    expected_result: "P@ssw0rd!#$%"
+
+  - name: "dialog.getPassword - very long password (256 chars)"
+    description: "Should handle long passwords"
+    script: |
+      dialog.getPassword("Enter master key")
+    stdin_input: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n"
+    expected_success: true
+    # 256 'a' characters
+
+  # Batch Mode Tests (Phase 1 behavior - should error)
+  - name: "dialog.ask - error in batch mode"
+    description: "Should return error when --batch flag set"
+    script: |
+      dialog.ask("Continue?")
+    batch_mode: true
+    expected_success: false
+    expected_error: "not implemented"
+
+  - name: "dialog.getInt - error in batch mode"
+    description: "Should return error when --batch flag set"
+    script: |
+      dialog.getInt("How many?", 10)
+    batch_mode: true
+    expected_success: false
+    expected_error: "not implemented"
+
+  - name: "dialog.getuserinfo - error in batch mode"
+    description: "Should return error when --batch flag set"
+    script: |
+      dialog.getuserinfo("Enter name", "default")
+    batch_mode: true
+    expected_success: false
+    expected_error: "not implemented"
+
+  - name: "dialog.getPassword - error in batch mode"
+    description: "Should return error when --batch flag set"
+    script: |
+      dialog.getPassword("Enter password")
+    batch_mode: true
+    expected_success: false
+    expected_error: "not implemented"
+
+  # CI Environment Auto-Detection (Phase 1 behavior)
+  - name: "dialog.ask - error in CI environment"
+    description: "Should auto-detect batch mode when CI=true"
+    script: |
+      dialog.ask("Proceed?")
+    environment:
+      CI: "true"
+    expected_success: false
+    expected_error: "not implemented"
+
+  # Ctrl+C Handling
+  # Note: Ctrl+C tests require special test runner support
+  # These are documented for manual testing
