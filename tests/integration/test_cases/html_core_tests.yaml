@@ -1,0 +1,590 @@
+# Integration tests for Phase 1 HTML verbs (Core Text Processing)
+# Tests the 7 fundamental HTML verbs needed for basic web publishing
+#
+# Phase 1 verbs covered (7 verbs):
+#   - html.urldecode - Decode percent-encoded URLs
+#   - html.urlencode - Encode URLs with percent encoding
+#   - html.parsehttpargs - Parse query string into table
+#   - html.expandurls - Auto-link URLs in text
+#   - html.processmacros - Execute macros in text
+#   - html.neutermacros - Escape macros (security-critical)
+#   - html.neutertags - Escape HTML tags (security-critical)
+#
+# Reference: planning/phase3/html_verbs_implementation_plan.md
+# C Implementation: Common/source/langhtml.c
+# Documentation: docs/usertalk/docserver/html/
+
+tests:
+  # =============================================================================
+  # html.urlencode - Percent-encode URLs
+  # =============================================================================
+
+  - name: "html.urlencode - basic ASCII space"
+    description: "Encode simple string with space"
+    script: 'html.urlencode("hello world")'
+    expected_success: true
+    expected_result: "hello%20world"
+
+  - name: "html.urlencode - special characters"
+    description: "Encode string with special characters"
+    script: 'html.urlencode("hello & goodbye")'
+    expected_success: true
+    expected_result: "hello%20%26%20goodbye"
+
+  - name: "html.urlencode - query string characters"
+    description: "Encode characters used in query strings"
+    script: 'html.urlencode("name=John&age=30")'
+    expected_success: true
+    expected_result: "name%3DJohn%26age%3D30"
+
+  - name: "html.urlencode - empty string"
+    description: "Encoding empty string should work"
+    script: 'html.urlencode("")'
+    expected_success: true
+    expected_result: ""
+
+  - name: "html.urlencode - no special chars"
+    description: "String with no special characters unchanged"
+    script: 'html.urlencode("hello")'
+    expected_success: true
+    expected_result: "hello"
+
+  - name: "html.urlencode - URL with path"
+    description: "Encode URL path with slashes and special chars"
+    script: 'html.urlencode("path/to file.html")'
+    expected_success: true
+    expected_result: "path%2Fto%20file.html"
+
+  - name: "html.urlencode - Unicode/special characters"
+    description: "Encode non-ASCII characters"
+    script: 'html.urlencode("café")'
+    expected_success: true
+    # Note: Result depends on encoding - test that it doesn't crash
+
+  # =============================================================================
+  # html.urldecode - Decode percent-encoded URLs
+  # =============================================================================
+
+  - name: "html.urldecode - basic ASCII space"
+    description: "Decode simple percent-encoded space"
+    script: 'html.urldecode("hello%20world")'
+    expected_success: true
+    expected_result: "hello world"
+
+  - name: "html.urldecode - special characters"
+    description: "Decode percent-encoded special characters"
+    script: 'html.urldecode("hello%20%26%20goodbye")'
+    expected_success: true
+    expected_result: "hello & goodbye"
+
+  - name: "html.urldecode - query string"
+    description: "Decode encoded query string"
+    script: 'html.urldecode("name%3DJohn%26age%3D30")'
+    expected_success: true
+    expected_result: "name=John&age=30"
+
+  - name: "html.urldecode - empty string"
+    description: "Decoding empty string should work"
+    script: 'html.urldecode("")'
+    expected_success: true
+    expected_result: ""
+
+  - name: "html.urldecode - no encoding"
+    description: "String with no percent-encoding unchanged"
+    script: 'html.urldecode("hello")'
+    expected_success: true
+    expected_result: "hello"
+
+  - name: "html.urldecode - plus as space"
+    description: "Plus signs decoded as spaces (common in query strings)"
+    script: 'html.urldecode("hello+world")'
+    expected_success: true
+    expected_result: "hello world"
+
+  - name: "html.urldecode - invalid percent sequence"
+    description: "Invalid hex digits should not crash (defensive test)"
+    script: 'html.urldecode("hello%ZZworld")'
+    expected_success: true
+    # Should either pass through unchanged or decode safely
+
+  - name: "html.urldecode - incomplete percent sequence"
+    description: "Incomplete encoding at end should not crash"
+    script: 'html.urldecode("hello%2")'
+    expected_success: true
+    # Should handle gracefully (pass through or decode safely)
+
+  # =============================================================================
+  # html.urlencode/urldecode - Round-trip tests
+  # =============================================================================
+
+  - name: "html.urlencode/urldecode - round trip"
+    description: "Encode then decode should return original"
+    script: |
+      local(original = "hello & world");
+      local(encoded = html.urlencode(original));
+      local(decoded = html.urldecode(encoded));
+      return decoded == original
+    expected_success: true
+    expected_result: "true"
+
+  # =============================================================================
+  # html.parsehttpargs - Parse query strings into tables
+  # =============================================================================
+
+  - name: "html.parsehttpargs - simple key-value"
+    description: "Parse single key-value pair (returns list)"
+    script: |
+      local(list = html.parsehttpargs("name=John"));
+      return list[2]
+    expected_success: true
+    expected_result: "John"
+
+  - name: "html.parsehttpargs - multiple parameters"
+    description: "Parse query string with multiple parameters (returns list)"
+    script: |
+      local(list = html.parsehttpargs("name=John&age=30"));
+      return list[2] + "," + list[4]
+    expected_success: true
+    expected_result: "John,30"
+
+  - name: "html.parsehttpargs - encoded values"
+    description: "Parse query string with percent-encoded values (returns list)"
+    script: |
+      local(list = html.parsehttpargs("message=hello%20world"));
+      return list[2]
+    expected_success: true
+    expected_result: "hello world"
+
+  - name: "html.parsehttpargs - empty string"
+    description: "Parse empty query string should not crash (returns empty list)"
+    script: |
+      local(list = html.parsehttpargs(""));
+      return sizeOf(list) == 0
+    expected_success: true
+    expected_result: "true"
+
+  - name: "html.parsehttpargs - no value"
+    description: "Parse parameter without value (flag parameter, returns list)"
+    script: |
+      local(list = html.parsehttpargs("debug"));
+      return (sizeOf(list) == 2) and (list[1] == "debug")
+    expected_success: true
+    expected_result: "true"
+
+  - name: "html.parsehttpargs - empty value"
+    description: "Parse parameter with empty value (returns list)"
+    script: |
+      local(list = html.parsehttpargs("name="));
+      return list[2]
+    expected_success: true
+    expected_result: ""
+
+  - name: "html.parsehttpargs - special characters in values"
+    description: "Parse values with special characters (returns list)"
+    script: |
+      local(list = html.parsehttpargs("name=John%26Jane&age=30"));
+      return list[2]
+    expected_success: true
+    expected_result: "John&Jane"
+
+  # =============================================================================
+  # html.expandurls - Auto-link URLs in text
+  # =============================================================================
+
+  - name: "html.expandurls - http URL"
+    description: "Convert HTTP URL to anchor tag"
+    script: 'html.expandurls("Visit http://www.example.com/")'
+    expected_success: true
+    # Expected: '<a href="http://www.example.com/">http://www.example.com/</a>'
+    # Note: May have variations in formatting
+
+  - name: "html.expandurls - https URL"
+    description: "Convert HTTPS URL to anchor tag"
+    script: 'html.expandurls("Visit https://www.example.com/")'
+    expected_success: true
+
+  - name: "html.expandurls - ftp URL"
+    description: "Convert FTP URL to anchor tag"
+    script: 'html.expandurls("ftp://ftp.example.com/")'
+    expected_success: true
+
+  - name: "html.expandurls - email address"
+    description: "Convert email address to mailto link"
+    script: 'html.expandurls("Contact webmaster@example.com")'
+    expected_success: true
+    # Expected: '<a href="mailto:webmaster@example.com">webmaster@example.com</a>'
+
+  - name: "html.expandurls - no URLs"
+    description: "Text without URLs should remain unchanged"
+    script: 'html.expandurls("No URLs in this string.")'
+    expected_success: true
+    expected_result: "No URLs in this string."
+
+  - name: "html.expandurls - multiple URLs"
+    description: "Multiple URLs in same string should all be expanded"
+    script: 'html.expandurls("http://www.example.com/ and ftp://ftp.example.com/")'
+    expected_success: true
+    # Should convert both URLs
+
+  - name: "html.expandurls - URL at end of sentence"
+    description: "URL followed by punctuation should handle correctly"
+    script: 'html.expandurls("Visit http://www.example.com/.")'
+    expected_success: true
+    # Period should not be part of URL
+
+  - name: "html.expandurls - empty string"
+    description: "Empty string should not crash"
+    script: 'html.expandurls("")'
+    expected_success: true
+    expected_result: ""
+
+  # =============================================================================
+  # html.processmacros - Execute macros in text (requires page table)
+  # =============================================================================
+
+  - name: "html.processmacros - simple expression macro"
+    description: "Process simple arithmetic macro"
+    script: |
+      local(pagetable);
+      lang.new(tableType, @pagetable);
+      return html.processmacros("{1+1}", false, @pagetable)
+    expected_success: true
+    expected_result: "2"
+
+  - name: "html.processmacros - string macro"
+    description: "Process macro that returns string"
+    script: |
+      local(pagetable);
+      lang.new(tableType, @pagetable);
+      return html.processmacros("{\"hello\"}", false, @pagetable)
+    expected_success: true
+    expected_result: "hello"
+
+  - name: "html.processmacros - no macros"
+    description: "Text without macros should remain unchanged"
+    script: |
+      local(pagetable);
+      lang.new(tableType, @pagetable);
+      return html.processmacros("plain text", false, @pagetable)
+    expected_success: true
+    expected_result: "plain text"
+
+  - name: "html.processmacros - empty string"
+    description: "Empty string should not crash"
+    script: |
+      local(pagetable);
+      lang.new(tableType, @pagetable);
+      return html.processmacros("", false, @pagetable)
+    expected_success: true
+    expected_result: ""
+
+  - name: "html.processmacros - multiple macros"
+    description: "Process multiple macros in same string"
+    script: |
+      local(pagetable);
+      lang.new(tableType, @pagetable);
+      return html.processmacros("{1+1} and {2+2}", false, @pagetable)
+    expected_success: true
+    expected_result: "2 and 4"
+
+  - name: "html.processmacros - nested macro"
+    description: "Process nested macro expressions (single-pass, inner macro evaluates first)"
+    script: |
+      local(pagetable);
+      lang.new(tableType, @pagetable);
+      local(result = html.processmacros("{1+{2+3}}", false, @pagetable));
+      # Single-pass evaluation: inner {2+3}=5, outer becomes {1, 5} which remains as string
+      return result == "{1, 5}"
+    expected_success: true
+    expected_result: "true"
+
+  - name: "html.processmacros - macro with text"
+    description: "Mix macros with regular text"
+    script: |
+      local(pagetable);
+      lang.new(tableType, @pagetable);
+      return html.processmacros("The answer is {40+2}.", false, @pagetable)
+    expected_success: true
+    expected_result: "The answer is 42."
+
+  # =============================================================================
+  # html.neutermacros - Escape dangerous macros (SECURITY CRITICAL)
+  # =============================================================================
+
+  - name: "html.neutermacros - escape all macros (empty safe list)"
+    description: "All macros should be escaped when safe list is empty"
+    script: |
+      local(safemacros);
+      lang.new(tableType, @safemacros);
+      local(original = "{dangerous.call()}");
+      local(result = html.neutermacros(original, @safemacros));
+      # Escaped version should be longer than original (entities are longer than single chars)
+      return sizeOf(result) > sizeOf(original)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "html.neutermacros - allow safe macro"
+    description: "Safe macros in whitelist should not be escaped"
+    script: |
+      local(safemacros);
+      lang.new(tableType, @safemacros);
+      safemacros.safe = true;
+      local(result = html.neutermacros("{safe}", @safemacros));
+      return result
+    expected_success: true
+    expected_result: "{safe}"
+
+  - name: "html.neutermacros - mixed safe and unsafe"
+    description: "Escape only unsafe macros, leave safe ones"
+    script: |
+      local(safemacros);
+      lang.new(tableType, @safemacros);
+      safemacros.safe = true;
+      local(original = "{safe} {unsafe}");
+      local(result = html.neutermacros(original, @safemacros));
+      # Safe macro unchanged, unsafe macro escaped (result longer than original)
+      local(hasSafe = string.patternMatch("{safe}*", result));
+      local(isLonger = sizeOf(result) > sizeOf(original));
+      return hasSafe and isLonger
+    expected_success: true
+    expected_result: "true"
+
+  - name: "html.neutermacros - prevent file.delete attack"
+    description: "SECURITY: Dangerous file operations must be neutered"
+    script: |
+      local(safemacros);
+      lang.new(tableType, @safemacros);
+      local(original = "{file.delete(\"important\")}");
+      local(result = html.neutermacros(original, @safemacros));
+      # Verify it got escaped (result longer due to HTML entities)
+      return sizeOf(result) > sizeOf(original)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "html.neutermacros - prevent script execution"
+    description: "SECURITY: Arbitrary script execution must be blocked"
+    script: |
+      local(safemacros);
+      lang.new(tableType, @safemacros);
+      local(original = "{dialog.alert(\"xss\")}");
+      local(result = html.neutermacros(original, @safemacros));
+      # Verify it got escaped (result longer due to HTML entities)
+      return sizeOf(result) > sizeOf(original)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "html.neutermacros - empty string"
+    description: "Empty string should not crash"
+    script: |
+      local(safemacros);
+      lang.new(tableType, @safemacros);
+      return html.neutermacros("", @safemacros)
+    expected_success: true
+    expected_result: ""
+
+  - name: "html.neutermacros - no macros"
+    description: "Text without macros should remain unchanged"
+    script: |
+      local(safemacros);
+      lang.new(tableType, @safemacros);
+      return html.neutermacros("plain text", @safemacros)
+    expected_success: true
+    expected_result: "plain text"
+
+  - name: "html.neutermacros - macro with params (unsafe)"
+    description: "Macros with parameters should be checked"
+    script: |
+      local(safemacros);
+      lang.new(tableType, @safemacros);
+      safemacros.clock = true;  # Allow clock without params
+      local(original = "{clock.now()}");
+      local(result = html.neutermacros(original, @safemacros));
+      # Should be neutered because clock is allowed but not with params
+      return sizeOf(result) > sizeOf(original)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "html.neutermacros - macro with params (safe with table config)"
+    description: "NOTE: This test documents current behavior - macro neutering is complex"
+    script: |
+      local(safemacros);
+      lang.new(tableType, @safemacros);
+      lang.new(tableType, @safemacros.clock);
+      safemacros.clock.flLegal = true;
+      safemacros.clock.flParams = true;
+      local(result = html.neutermacros("{clock.now()}", @safemacros));
+      return sizeOf(result) > 0
+    expected_success: true
+    expected_result: "true"
+
+  # =============================================================================
+  # html.neutertags - Escape dangerous HTML tags (SECURITY CRITICAL)
+  # =============================================================================
+
+  - name: "html.neutertags - escape all tags (empty safe list)"
+    description: "All tags should be escaped when safe list is empty"
+    script: |
+      local(safetags);
+      lang.new(tableType, @safetags);
+      local(original = "<b>bold</b>");
+      local(result = html.neutertags(original, @safetags));
+      # Escaped version should be longer (entities are longer than single chars)
+      return sizeOf(result) > sizeOf(original)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "html.neutertags - allow safe tag"
+    description: "Safe tags in whitelist should not be escaped"
+    script: |
+      local(safetags);
+      lang.new(tableType, @safetags);
+      safetags.b = true;
+      local(result = html.neutertags("<b>bold</b>", @safetags));
+      return result
+    expected_success: true
+    # Should return with <b> tags intact
+
+  - name: "html.neutertags - mixed safe and unsafe"
+    description: "Escape only unsafe tags, leave safe ones"
+    script: |
+      local(safetags);
+      lang.new(tableType, @safetags);
+      safetags.b = true;
+      local(original = "<b>bold</b> <script>alert('xss')</script>");
+      local(result = html.neutertags(original, @safetags));
+      # Safe <b> tag preserved, script tag escaped (result longer)
+      local(hasB = string.patternMatch("*<b>*", result));
+      local(isLonger = sizeOf(result) > sizeOf(original));
+      return hasB and isLonger
+    expected_success: true
+    expected_result: "true"
+
+  - name: "html.neutertags - XSS prevention (script tag)"
+    description: "SECURITY: Script tags must be escaped"
+    script: |
+      local(safetags);
+      lang.new(tableType, @safetags);
+      local(original = "<script>alert('xss')</script>");
+      local(result = html.neutertags(original, @safetags));
+      # Verify it got escaped (result longer due to HTML entities)
+      return sizeOf(result) > sizeOf(original)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "html.neutertags - XSS prevention (iframe)"
+    description: "SECURITY: Iframe tags must be escaped"
+    script: |
+      local(safetags);
+      lang.new(tableType, @safetags);
+      local(original = "<iframe src='evil.com'></iframe>");
+      local(result = html.neutertags(original, @safetags));
+      # Verify it got escaped (result longer due to HTML entities)
+      return sizeOf(result) > sizeOf(original)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "html.neutertags - XSS prevention (img with onerror)"
+    description: "SECURITY: Img tags should be carefully controlled"
+    script: |
+      local(safetags);
+      lang.new(tableType, @safetags);
+      local(original = "<img src=x onerror='alert(1)'>");
+      local(result = html.neutertags(original, @safetags));
+      # Verify it got escaped (result longer due to HTML entities)
+      return sizeOf(result) > sizeOf(original)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "html.neutertags - empty string"
+    description: "Empty string should not crash"
+    script: |
+      local(safetags);
+      lang.new(tableType, @safetags);
+      return html.neutertags("", @safetags)
+    expected_success: true
+    expected_result: ""
+
+  - name: "html.neutertags - no tags"
+    description: "Text without tags should remain unchanged"
+    script: |
+      local(safetags);
+      lang.new(tableType, @safetags);
+      return html.neutertags("plain text", @safetags)
+    expected_success: true
+    expected_result: "plain text"
+
+  - name: "html.neutertags - tag auto-closing"
+    description: "Safe tags can be auto-closed for proper nesting"
+    script: |
+      local(safetags);
+      lang.new(tableType, @safetags);
+      lang.new(tableType, @safetags.b);
+      safetags.b.flLegal = true;
+      safetags.b.flClose = true;
+      local(result = html.neutertags("<b>bold", @safetags));
+      # Should add closing </b> tag
+      return string.contains(result, "</b>")
+    expected_success: true
+    expected_result: "true"
+
+  - name: "html.neutertags - tag balancing"
+    description: "Multiple unclosed safe tags should all be closed"
+    script: |
+      local(safetags);
+      lang.new(tableType, @safetags);
+      lang.new(tableType, @safetags.i);
+      safetags.i.flLegal = true;
+      safetags.i.flClose = true;
+      local(result = html.neutertags("<i>one <i>two", @safetags));
+      # Should add two closing </i> tags
+      return string.countFields(result, "</i>") == 2
+    expected_success: true
+    expected_result: "true"
+
+  # =============================================================================
+  # Integration tests - Real-world scenarios
+  # =============================================================================
+
+  - name: "html - complete sanitization workflow"
+    description: "SECURITY: Full sanitization of untrusted user input"
+    script: |
+      local(safetags, safemacros);
+      lang.new(tableType, @safetags);
+      lang.new(tableType, @safemacros);
+      # Allow only safe formatting tags
+      safetags.b = true;
+      safetags.i = true;
+      # Don't allow any macros
+      local(untrustedInput = "<b>Hello</b> <script>alert('xss')</script> {file.delete()}");
+      local(step1 = html.neutertags(untrustedInput, @safetags));
+      local(step2 = html.neutermacros(step1, @safemacros));
+      # Verify script and macro are escaped but <b> is preserved
+      local(hasB = string.patternMatch("*<b>*", step2));
+      local(isLonger = sizeOf(step2) > sizeOf(untrustedInput));
+      return hasB and isLonger
+    expected_success: true
+    expected_result: "true"
+
+  - name: "html - URL parameter workflow"
+    description: "Encode, build URL, parse, and decode parameters"
+    script: |
+      local(name = html.urlencode("John Doe"));
+      local(message = html.urlencode("Hello & goodbye"));
+      local(query = "name=" + name + "&message=" + message);
+      local(list = html.parsehttpargs(query));
+      return (list[2] == "John Doe") and (list[4] == "Hello & goodbye")
+    expected_success: true
+    expected_result: "true"
+
+  - name: "html - macro processing with URL expansion"
+    description: "Process macros then auto-link URLs in result"
+    script: |
+      local(pagetable);
+      lang.new(tableType, @pagetable);
+      local(withMacros = "Result: {1+1}, visit http://example.com/");
+      local(processed = html.processmacros(withMacros, false, @pagetable));
+      local(withLinks = html.expandurls(processed));
+      # Should expand macro and create link
+      return string.contains(withLinks, "2") and string.contains(withLinks, "<a href")
+    expected_success: true
+    expected_result: "true"

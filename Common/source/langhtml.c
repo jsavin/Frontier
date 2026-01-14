@@ -3685,7 +3685,7 @@ exit:
 	} /*glossarypatcherverb*/
 
 
-static boolean expandurlsverb (hdltreenode hp1, tyvaluerecord *v) {
+boolean expandurlsverb (hdltreenode hp1, tyvaluerecord *v) {
 	
 	/*
 	5.0.2b18 dmb: new verb, a very abridged version of processhtmlmacros
@@ -9532,7 +9532,7 @@ exit:
 	}/*neutermacros*/
 
 
-static boolean htmlneutermacrosverb (hdltreenode hp1, tyvaluerecord *v) {
+boolean htmlneutermacrosverb (hdltreenode hp1, tyvaluerecord *v) {
 
 	Handle htext;
 	hdlhashtable hsafemacrostable;
@@ -9767,7 +9767,7 @@ exit:
 	}/*neutertags*/
 
 
-static boolean htmlneutertagsverb (hdltreenode hp1, tyvaluerecord *v) {
+boolean htmlneutertagsverb (hdltreenode hp1, tyvaluerecord *v) {
 
 	Handle htext;
 	hdlhashtable htagstable;
@@ -10084,12 +10084,14 @@ static boolean htmlfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 	} /*htmlfunctionvalue*/
 
 
+#ifndef FRONTIER_HEADLESS
 boolean htmlinitverbs (void) {
-	
+
 	/*
 	5.0.2 dmb: new verbs
 	*/
-	
+
 	return (loadfunctionprocessor (idhtmlverbs, &htmlfunctionvalue));
 	} /*htmlinitverbs*/
+#endif /* !FRONTIER_HEADLESS */
 	
