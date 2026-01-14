@@ -1,8 +1,9 @@
 # Headless Interactive Mode: Batch Flag and TTY Detection
 
-**Status:** Planning → Implementation
+**Status:** ✅ Complete (PR #297)
 **Phase:** Phase 3 (Headless Bring-Up)
 **Created:** 2026-01-01
+**Completed:** 2026-01-13
 **Owner:** Verb binding workstream
 
 ---
@@ -231,61 +232,6 @@ case 'b':
 
 ---
 
-## Implementation Plan
-
-### Phase 1: Error-Only Behavior (Current PR)
-
-**Goal:** Make file verbs build successfully, dialog verbs error correctly
-
-**Tasks:**
-
-1. **Add CLI flag infrastructure**
-   - [ ] Add `--batch` / `-b` flag to CLI parser
-   - [ ] Add `--non-interactive` as alias
-   - [ ] Set global `fl_batch_mode` boolean
-   - [ ] Test flag parsing
-
-2. **Implement detection logic**
-   - [ ] Add `isInteractiveMode()` function to CLI utils
-   - [ ] Check `isatty(STDIN_FILENO)` and `isatty(STDOUT_FILENO)`
-   - [ ] Check `fl_batch_mode` global
-   - [ ] Check `CI` environment variable
-   - [ ] Export to verb processors (extern declaration)
-
-3. **Wrap file dialog verbs**
-   - [ ] Add conditional compilation to `fileverbs.c`
-   - [ ] Wrap `sfgetfilefunc`, `sfputfilefunc`, `sfgetfolderfunc`, `sfgetdiskfunc`
-   - [ ] Return `unimplementedverberror` in headless mode
-   - [ ] Add TODO comments for Phase 2 stdio implementation
-
-4. **Documentation**
-   - [x] Create this planning document
-   - [ ] Update `docs/HEADLESS_ADAPTATIONS.md` with link
-   - [ ] Update `planning/phase3/processor_audits/file.md` with link
-   - [ ] Update `docs/CLI_USAGE_GUIDE.md` with `--batch` flag
-
-5. **Testing**
-   - [ ] Test `--batch` flag sets `fl_batch_mode`
-   - [ ] Test `isInteractiveMode()` returns false when `--batch` set
-   - [ ] Test `isInteractiveMode()` returns false when not TTY
-   - [ ] Test file dialog verbs return error in headless mode
-   - [ ] Test error message is clear and helpful
-
-**Success Criteria:**
-- ✅ `make` builds successfully (file verbs compile)
-- ✅ File dialog verbs return `unimplementedverberror` in headless mode
-- ✅ Error message indicates `--batch` mode or non-TTY context
-- ✅ `./frontier-cli --batch -e "1"` works
-- ✅ Tests pass
-
-### Phase 2: Stdio Prompt Implementation (Future PR)
-
-**Goal:** Enable interactive prompts when running from terminal
-
-**Status:** Ready for implementation (spec complete)
-
----
-
 ## Interactive Dialog UX Specification
 
 ### Design Principles
@@ -477,52 +423,6 @@ Select backup volume:
 - Lists mounted volumes/filesystems
 - Shows total size and label/description
 - Returns full path to volume mount point
-
----
-
-### Implementation Details
-
-**Phase 2A: Basic Dialog Prompts** (1-2 days)
-- [ ] Verify `msg()` output behavior
-- [ ] `dialog.ask()` with arrow key selection (inverted text rendering)
-- [ ] `dialog.getInt()` with default in brackets
-- [ ] `dialog.getString()` with readline/libedit line editing
-- [ ] `dialog.getPassword()` with termios echo disable + dot rendering
-
-**Phase 2B: File Dialogs with Tab Completion** (3-4 days)
-- [ ] Tab completion engine (POSIX only: `readdir()`, `stat()`, termios, ANSI codes)
-- [ ] Visual menu rendering (file metadata, scrolling for long lists)
-- [ ] `file.getFileDialog()` - select existing files only
-- [ ] `file.putFileDialog()` - browse + type filename
-- [ ] `file.getFolderDialog()` - directories and symlinks only
-- [ ] `file.getDiskDialog()` - volume enumeration
-- [ ] Starting directory logic (output address path vs cwd)
-
-**Phase 2C: Integration & Testing** (1-2 days)
-- [ ] Replace error stubs with `isInteractiveMode()` checks
-- [ ] Batch mode forces errors (unchanged from Phase 1)
-- [ ] Integration tests with scripted input
-- [ ] Test defaults (Enter accepts default)
-- [ ] Test Ctrl+C behavior (kills UserTalk thread)
-- [ ] Edge cases: very long paths, many files, unicode filenames
-- [ ] Documentation updates
-
-**Implementation Notes:**
-- **No external dependencies** - Use POSIX APIs only (termios, readdir, stat)
-- **Terminal control** - ANSI escape codes for cursor movement and inverted text
-- **Readline/libedit** - Use standard library for line editing (available on macOS/Linux)
-- **Thread safety** - Prompts use stdin/stdout, safe in single-threaded CLI context
-- **Fuzzy matching** - Deferred (nice-to-have, doesn't work with putFileDialog)
-
-**Success Criteria:**
-- ✅ `dialog.ask()` shows inverted text selection
-- ✅ `dialog.getInt()` accepts defaults on Enter
-- ✅ `dialog.getPassword()` shows dots, no echo
-- ✅ `file.getFileDialog()` shows interactive menu with tab completion
-- ✅ `file.putFileDialog()` allows typing new filename
-- ✅ All file dialogs return full absolute paths
-- ✅ All verbs error gracefully in batch mode
-- ✅ CI environment auto-detects batch mode
 
 ---
 
