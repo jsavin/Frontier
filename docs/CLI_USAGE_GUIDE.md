@@ -469,6 +469,47 @@ return result
 ./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root7 -e "defined(system)"
 ```
 
+### Interactive Mode
+
+**Dialog Prompts:**
+```bash
+# Yes/No prompt (arrow keys to select, Enter to confirm)
+./frontier-cli/frontier-cli -e 'dialog.ask("Continue?")'
+
+# Integer input (Enter accepts default [10])
+./frontier-cli/frontier-cli -e 'dialog.getInt("Count?", 10)'
+
+# String input (Enter accepts default)
+./frontier-cli/frontier-cli -e 'dialog.getString("Name?", "default")'
+
+# Password input (shows dots: ••••••)
+./frontier-cli/frontier-cli -e 'dialog.getPassword("Password:")'
+```
+
+**File Dialogs:**
+```bash
+# Select existing file (tab completion enabled)
+./frontier-cli/frontier-cli -e 'file.getFileDialog("/tmp")'
+
+# Browse and create new file
+./frontier-cli/frontier-cli -e 'file.putFileDialog("/tmp")'
+
+# Select folder
+./frontier-cli/frontier-cli -e 'file.getFolderDialog("/tmp")'
+
+# Select disk volume
+./frontier-cli/frontier-cli -e 'file.getDiskDialog()'
+```
+
+**Batch Mode (disable prompts):**
+```bash
+# Force errors instead of prompting
+./frontier-cli/frontier-cli --batch -e 'dialog.ask("Continue?")'
+# Error: Can't use dialog verbs in batch mode
+```
+
+**Auto-detection:** Interactive prompts work when stdin/stdout are TTYs. Use `--batch` to force errors in CI/CD or scripts.
+
 ---
 
 ## Troubleshooting
