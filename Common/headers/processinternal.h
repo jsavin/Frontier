@@ -244,6 +244,13 @@ typedef struct tythreadglobals {
 	} tythreadglobals, *ptrthreadglobals, **hdlthreadglobals;
 #pragma options align=reset
 
+/* ADR-009: Thread-local hash table stack migration (Phase 3A)
+ * NOTE: Macro not yet implemented due to bootstrap initialization requirements.
+ * The htablestack field is saved/restored in copythreadglobals/swapinthreadglobals,
+ * but global variable still used for access. Full macro migration deferred to Phase 6+.
+ */
+/* #define hashtablestack ((**hthreadglobals).htablestack) */
+
 /* ADR-005: Thread-local parameter and value protection state (backward-compatible macros) */
 #define flnextparamislast ((**hthreadglobals).flnextparamislast)
 #define flparamerrorenabled ((**hthreadglobals).flparamerrorenabled)

@@ -834,11 +834,11 @@ static void diskvalue_to_value_v7(const tydiskvaluedata_v7 *disk, tyvaluerecord 
 
 hdlhashtable currenthashtable = nil;
 
-/* ADR-009: Thread-local hash table stack (macro expands to thread globals) */
-/* Legacy declaration removed, now accessed via tythreadglobals */
-/* See Common/headers/lang.h for macro definition */
-
-/* hdltablestack hashtablestack = nil; */
+/* ADR-009: Thread-local hash table stack migration (Phase 3A)
+ * Field added to tythreadglobals, saved/restored in copythreadglobals/swapinthreadglobals.
+ * Global variable still used for direct access (macro migration deferred to Phase 6+).
+ */
+hdltablestack hashtablestack = nil;
 
 /* ADR-005: Thread-local value protection flags (macros expand to thread globals) */
 /* Legacy declarations removed, now accessed via tythreadglobals */
