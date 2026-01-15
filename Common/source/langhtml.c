@@ -3865,7 +3865,10 @@ static boolean stripmarkup (handlestream *s) {
 			fldidspace = false;
 		}
 
-	// Trim trailing spaces
+	// Trim trailing spaces from stripped markup output
+	// When HTML tags are removed, they can leave trailing whitespace artifacts
+	// For example: "<p>Text</p>" becomes "Text " with a trailing space
+	// This ensures clean text output without whitespace artifacts
 	while ((*s).eof > 0 && (*(*s).data)[(*s).eof - 1] == chspace) {
 		--(*s).eof;
 	}
