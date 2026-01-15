@@ -1,7 +1,8 @@
-# ADR-009: REPL Hash Table Stack Management Workaround
+# ADR-009: REPL Hash Table Stack Management + QuickScript Architecture
 
-**Status**: Proposed (Temporary Workaround)
+**Status**: Implemented (Phase 3A thread-local + Phase 3B QuickScript model)
 **Date**: 2026-01-14
+**Merged**: 2026-01-15 (PR #304)
 **Author**: System Architect
 **Relates to**: PR #300 (REPL Interactive Mode Phase 1), Issue #135 (Collaborative ODB), ADR-005 (Thread-Safety), ADR-006 (Outline Context), ADR-008 (Processor Table Lifecycle)
 **Supersedes**: N/A
@@ -1263,8 +1264,91 @@ From CLAUDE.md:
 
 ---
 
+## Implementation Update: QuickScript Model Decision
+
+### Context
+
+After initial implementation of the workaround approach (forcing workspace onto hash table stack), user feedback identified a better path: **abandon workspace persistence workarounds entirely and adopt the QuickScript model** from legacy Frontier.
+
+### The Insight
+
+During code review, it became clear that fighting against Frontier's thread lifecycle system with workarounds was the wrong direction. The legacy QuickScript window demonstrated that users actually appreciate a simpler model:
+
+- **Each evaluation runs in its own thread** → automatic cleanup
+- **Local variables don't persist** (by design)
+- **Users manage persistence explicitly** via database paths
+
+This is fundamentally simpler and follows proven Frontier patterns.
+
+### Decision: Implement QuickScript Model (Merged 2026-01-15)
+
+**Changes from Original Workaround Approach**:
+
+1. **Removed workspace management**:
+   - Deleted `repl_workspace_init()`, `repl_workspace_clear()`, `repl_workspace_cleanup()`
+   - Removed ~300 lines of workspace forcing/management code
+   - Simplified `repl_eval_script()` to just call `langrunhandletraperror()`
+
+2. **Removed workspace-dependent commands**:
+   - Deleted `/clear` command (no workspace to clear)
+   - Deleted `/vars` command (no workspace to display)
+   - Updated `/help` to explain QuickScript model
+
+3. **Documented three persistence scopes** in CLI_USAGE_GUIDE.md:
+   - **Local** (evaluation-scoped): Variables don't persist
+   - **Session** (system.temp.*): Persist within CLI session
+   - **Disk** (workspace.*): Persist when database saved
+
+4. **Marked 21 tests as not applicable**:
+   - Tests for `/vars` and `/clear` commands skipped
+   - Updated test file headers to explain QuickScript model
+
+### Why QuickScript is Better
+
+**Simplicity**:
+- Removes ~175 lines of complex workaround code
+- No hash table stack manipulation needed
+- Follows Frontier's thread lifecycle naturally
+
+**User Experience**:
+- Clear, documented persistence scopes
+- No surprising behavior from workarounds
+- Simple mental model: each Enter = new thread
+
+**Architecture**:
+- Aligns with "BURN THE GLOBALS WITH FIRE" principle
+- Thread-local infrastructure still in place (unused for now)
+- Foundation still supports Phase 6+ explicit context
+
+**Lesson**:
+- Sometimes the simplest solution is to follow established patterns
+- Don't fight the runtime; work with it
+- When in doubt, ask: "How did legacy Frontier solve this?"
+
+### Impact on Thread-Local Migration
+
+QuickScript model **doesn't change** the thread-local hash table stack infrastructure:
+- Thread-local field still added to `tythreadglobals`
+- Thread swap functions still save/restore hash table stack
+- Macro still commented out pending Phase 6+
+- Foundation still supports future explicit context architecture
+
+The only change: QuickScript doesn't USE the workspace table, so workarounds are unnecessary.
+
+### Status After Merge (2026-01-15)
+
+- ✅ PR #304 merged to develop
+- ✅ QuickScript model implemented and tested
+- ✅ Thread-local infrastructure in place
+- ✅ All non-workspace functionality working (all basic REPL tests pass)
+- ✅ 21 workaround-related tests properly marked as not applicable
+- ⏳ Phase 6+: Enable thread-local macro when bootstrap refactored
+- ⏳ Phase 6+: Explicit context architecture will remove remaining globals
+
+---
+
 ## Document History
 
+- **2026-01-15**: Update with QuickScript model decision (PR #304 merged)
 - **2026-01-14**: Initial draft (Phase 3A thread-local migration + Phase 3B documentation)
-- **Future**: Update with "Implemented" status when Phase 3A/3B complete
 - **Future**: Update with Phase 6+ implementation details when refactoring begins
