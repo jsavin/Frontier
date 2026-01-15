@@ -60,7 +60,11 @@ CLI_SOURCES = \
     terminal_control.c \
     dialog_prompts.c \
     tab_completion.c \
-    file_dialog.c
+    file_dialog.c \
+    repl.c \
+    repl_commands.c \
+    repl_eval.c \
+    repl_output.c
 
 # Core runtime sources needed for script execution (aligned with tests/runtime_tests)
 RUNTIME_SOURCES = \

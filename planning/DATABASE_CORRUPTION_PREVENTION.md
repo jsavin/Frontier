@@ -8,7 +8,7 @@
 
 ## Problem Summary
 
-The v6 test fixture database (`databases/Frontier-v6.root`) was corrupted to v7 format multiple times during development, causing unreliable migration testing and potential test failures.
+The v6 test fixture database (`databases/Frontier.root`) was corrupted to v7 format multiple times during development, causing unreliable migration testing and potential test failures.
 
 **Root Cause:** Before the migration process was fixed, the CLI was modifying the input database in-place during testing. Developers accidentally committed the v7-migrated version under the v6 filename.
 
@@ -33,7 +33,7 @@ The v6 test fixture database (`databases/Frontier-v6.root`) was corrupted to v7 
 ### Check Database Version
 ```bash
 # First 2 bytes should be 0006 for v6, 0007 for v7
-xxd -l 2 databases/Frontier-v6.root
+xxd -l 2 databases/Frontier.root
 
 # Expected for v6:
 # 00000000: 0006                                     ..
@@ -45,9 +45,9 @@ xxd -l 2 databases/Frontier-v6.root
 ### Check Git History for Corruption
 ```bash
 # Show version bytes at each commit
-for commit in $(git log --oneline --all -- databases/Frontier-v6.root | awk '{print $1}'); do
+for commit in $(git log --oneline --all -- databases/Frontier.root | awk '{print $1}'); do
     echo -n "$commit: "
-    git show "$commit:databases/Frontier-v6.root" | xxd -l 2 -p
+    git show "$commit:databases/Frontier.root" | xxd -l 2 -p
 done
 ```
 
@@ -59,28 +59,28 @@ done
 `tools/run_headless_tests.sh` now checks if v6 database has been corrupted before migration:
 
 ```bash
-version_bytes=$(xxd -l 2 -p databases/Frontier-v6.root)
+version_bytes=$(xxd -l 2 -p databases/Frontier.root)
 if [ "$version_bytes" = "0007" ]; then
-    echo "WARNING: Frontier-v6.root has been corrupted (v7 format), restoring from git..."
-    chmod 644 databases/Frontier-v6.root  # Make writable
-    git checkout databases/Frontier-v6.root
-    chmod 444 databases/Frontier-v6.root  # Protect
+    echo "WARNING: Frontier.root has been corrupted (v7 format), restoring from git..."
+    chmod 644 databases/Frontier.root  # Make writable
+    git checkout databases/Frontier.root
+    chmod 444 databases/Frontier.root  # Protect
 fi
 ```
 
 ### 2. Read-Only Protection
 ```bash
 # Ensure v6 database is read-only to prevent accidental modification
-chmod 444 databases/Frontier-v6.root
+chmod 444 databases/Frontier.root
 ```
 
 ### 3. Post-Migration Verification
 After migration completes, verify v6 wasn't modified:
 
 ```bash
-version_bytes=$(xxd -l 2 -p databases/Frontier-v6.root)
+version_bytes=$(xxd -l 2 -p databases/Frontier.root)
 if [ "$version_bytes" != "0006" ]; then
-    echo "ERROR: Frontier-v6.root was corrupted during migration!"
+    echo "ERROR: Frontier.root was corrupted during migration!"
     echo "Expected v6 (0006), found: $version_bytes"
     exit 1
 fi
@@ -94,29 +94,29 @@ If corruption is detected outside of the test runner:
 
 ### Step 1: Verify Corruption
 ```bash
-xxd -l 2 databases/Frontier-v6.root
+xxd -l 2 databases/Frontier.root
 # If shows 0007, database is corrupted
 ```
 
 ### Step 2: Find Last Known-Good Commit
 ```bash
-git log --reverse --oneline -- databases/Frontier-v6.root | head -1
+git log --reverse --oneline -- databases/Frontier.root | head -1
 # Usually b382768e (first commit)
 ```
 
 ### Step 3: Restore from Git
 ```bash
-chmod 644 databases/Frontier-v6.root  # Make writable if read-only
-git show b382768e:databases/Frontier-v6.root > databases/Frontier-v6.root
-chmod 444 databases/Frontier-v6.root  # Protect
+chmod 644 databases/Frontier.root  # Make writable if read-only
+git show b382768e:databases/Frontier.root > databases/Frontier.root
+chmod 444 databases/Frontier.root  # Protect
 ```
 
 ### Step 4: Verify Restoration
 ```bash
-xxd -l 2 databases/Frontier-v6.root
+xxd -l 2 databases/Frontier.root
 # Should show: 00000000: 0006
 
-ls -lh databases/Frontier-v6.root
+ls -lh databases/Frontier.root
 # Should show: -r--r--r-- (read-only)
 ```
 
@@ -141,15 +141,15 @@ The CLI **creates a new output file** during migration, it does NOT modify the i
 
 ```bash
 # Clean migration workflow:
-rm -f databases/Frontier-v6.root7
+rm -f databases/Frontier.root7
 
 # Run CLI with v6 database - creates v7 output file automatically
 FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli \
-  --system-root databases/Frontier-v6.root -e "1"
+  --system-root databases/Frontier.root -e "1"
 
 # Result:
-# - Input:  databases/Frontier-v6.root (unchanged, still v6)
-# - Output: databases/Frontier-v6.root7 (new file, v7 format)
+# - Input:  databases/Frontier.root (unchanged, still v6)
+# - Output: databases/Frontier.root7 (new file, v7 format)
 ```
 
 **Pattern:** `INPUT.root` → `INPUT-v7.root`
@@ -160,14 +160,14 @@ See `CLAUDE.md` section "Database Migration (v6→v7)" for details.
 
 ## Prevention Checklist
 
-Before committing changes to `databases/Frontier-v6.root`:
+Before committing changes to `databases/Frontier.root`:
 
-- [ ] Verify version bytes: `xxd -l 2 databases/Frontier-v6.root` shows `0006`
+- [ ] Verify version bytes: `xxd -l 2 databases/Frontier.root` shows `0006`
 - [ ] Check file size: Should be ~5.8M (not ~9.9M like v7)
 - [ ] Verify read-only: `ls -l` shows `-r--r--r--` permissions
 - [ ] If corrupted, restore from `b382768e` before committing
 
-**Rule:** Never commit `databases/Frontier-v6.root` unless you're intentionally updating the test fixture with a new known-good v6 database.
+**Rule:** Never commit `databases/Frontier.root` unless you're intentionally updating the test fixture with a new known-good v6 database.
 
 ---
 

@@ -37,7 +37,7 @@ echo "✓ Old v7 database removed"
 echo ""
 echo "Step 3: Restoring v6 database from git..."
 cd databases
-git checkout Frontier-v6.root > /dev/null 2>&1 || true
+git checkout Frontier.root > /dev/null 2>&1 || true
 cd ..
 echo "✓ v6 database restored"
 
@@ -49,7 +49,7 @@ echo ""
 echo "Step 4: Migrating v6 to v7..."
 
 # Copy v6 database to v7 location
-if ! cp databases/Frontier-v6.root databases/Frontier-v6-v7.root ; then
+if ! cp databases/Frontier.root databases/Frontier-v6-v7.root ; then
     echo "✗ Failed to copy v6 database - skipping (exit 125)"
     exit 125
 fi

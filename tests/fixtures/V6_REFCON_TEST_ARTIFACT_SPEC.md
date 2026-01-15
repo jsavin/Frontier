@@ -18,7 +18,7 @@ This document specifies the v6 database artifact needed to test refcon migration
 **Format**: Frontier v6 database (32-bit format)
 **Size**: Small (minimal test data only)
 
-**Creation Method**: Create a NEW standalone v6 database (not modifying Frontier-v6.root)
+**Creation Method**: Create a NEW standalone v6 database (not modifying Frontier.root)
 
 ---
 

@@ -1142,7 +1142,7 @@ Examples:
   frontier-cli
 
   # REPL with custom system root
-  frontier-cli --system-root databases/Frontier-v6.root
+  frontier-cli --system-root databases/Frontier.root
 
   # Batch execution
   frontier-cli -e "workspace.x = 42; workspace.x * 2"

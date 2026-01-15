@@ -23,7 +23,7 @@
   - Feeds widened structures into existing v7 packers for output (no new format mutations).
 - Add a v7-only reader entry point that assumes BE/64-bit payloads (no legacy heuristics), gated by header detection.
 - Wire migrator/open paths to choose adapter vs v7 reader based on detected version.
-- Status: reader/writer sources forked into dedicated files; adapter keeps legacy reads 32-bit while writes are BE64, and migrator now drops Cancoon by default with `migrate_32bit_to_64bit` succeeding on `Frontier-v6.root`. Remaining: clean modern writer view header bytes and route runtime/CLI to strict reader.
+- Status: reader/writer sources forked into dedicated files; adapter keeps legacy reads 32-bit while writes are BE64, and migrator now drops Cancoon by default with `migrate_32bit_to_64bit` succeeding on `Frontier.root`. Remaining: clean modern writer view header bytes and route runtime/CLI to strict reader.
 - Tests: unit coverage for adapter (legacy header → widened in-memory, cached for wide writes) **Done for header path**; table writer/repack BE64 regression and record reference BE64 check added; BE64 view0 serialization test added; procedural BE goldens still pass; runtime/CLI suites pass (clock.now still skipped due to frontier-cli exit=1).
 
 ### PR 2: Route Runtime/CLI to Clean V7 Reader and Drop Forks

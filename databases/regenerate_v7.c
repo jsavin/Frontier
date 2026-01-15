@@ -1,5 +1,5 @@
 /*
- * regenerate_v7.c - Regenerate Frontier-v6-v7.root from Frontier-v6.root
+ * regenerate_v7.c - Regenerate Frontier-v6-v7.root from Frontier.root
  *
  * Simple utility to migrate the v6 database to v7 format using the migration tools.
  */
@@ -14,7 +14,7 @@ extern bool migrate_32bit_to_64bit(const char *db_path);
 extern bool ensure_database_modern(const char *db_path, bool *migrated, char *output_path, size_t output_path_size);
 
 int main(int argc, char **argv) {
-	const char *source_db = "Frontier-v6.root";
+	const char *source_db = "Frontier.root";
 	const char *dest_db = "Frontier-v6-v7.root";
 	char output_path[1024] = {0};
 	bool migrated = false;

@@ -79,12 +79,12 @@ lldb tests/refcon_migration_64bit_test
 # Inspect values at breakpoint
 ```
 
-#### Option B: Full Frontier-v6.root Migration Test
+#### Option B: Full Frontier.root Migration Test
 Create test data in a full Frontier database:
 
 ```bash
-# 1. Copy Frontier-v6.root to working location
-cp databases/Frontier-v6.root tests/tmp/migration/full_refcon_test_v6.root
+# 1. Copy Frontier.root to working location
+cp databases/Frontier.root tests/tmp/migration/full_refcon_test_v6.root
 
 # 2. Add test data via CLI
 FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli \
@@ -204,7 +204,7 @@ This test procedure is documented here because:
 2. C test infrastructure requires significant boilerplate for database access
 3. The most reliable test is manual verification via CLI with a full Frontier database
 
-For CI/CD automation, use the full Frontier-v6.root database approach (Option B above).
+For CI/CD automation, use the full Frontier.root database approach (Option B above).
 
 ## References
 - `planning/phase3/LONG_VALUE_PACKING_DATA_LOSS_ANALYSIS.md` - Root cause analysis

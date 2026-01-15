@@ -9,7 +9,7 @@ records/strings + format blob).
 
 Usage:
   python3 scripts/extract_legacy_table.py \
-      --db databases/Frontier-v6.root \
+      --db databases/Frontier.root \
       --path system.verbs.globals \
       --out planning/phase3/carbon_migration/data/system_verbs_globals_legacy.bin
 """

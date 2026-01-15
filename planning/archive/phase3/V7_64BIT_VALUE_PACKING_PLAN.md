@@ -664,7 +664,7 @@ tests:
 
 ```bash
 # Terminal test
-./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root7 -e $'
+./frontier-cli/frontier-cli --system-root databases/Frontier.root7 -e $'
 local (ht);
 new(tableType, @ht);
 ht.smallValue = 42;
@@ -692,7 +692,7 @@ true
 ```bash
 # Migrate v6 database
 rm -f databases/Frontier-v7-migrated.root
-./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root -e "1"
+./frontier-cli/frontier-cli --system-root databases/Frontier.root -e "1"
 # Should create migrated v7 database
 
 # Verify long values preserved

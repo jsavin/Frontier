@@ -27,7 +27,7 @@ The frontier-cli executable must be run from the project root directory (NOT fro
 ./frontier-cli/frontier-cli -e "1+1"
 
 # Execute with system root database loaded:
-./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root7 -e "sizeOf(system)"
+./frontier-cli/frontier-cli --system-root databases/Frontier.root7 -e "sizeOf(system)"
 
 # Run startup scripts (rarely needed - slows down CLI, default skips them):
 FRONTIER_HEADLESS_RUN_STARTUP=1 ./frontier-cli/frontier-cli -e "1+1"
@@ -319,27 +319,27 @@ Old migrated databases may be corrupted artifacts from earlier broken migrations
 
 ```bash
 # Clean migration workflow (ALWAYS do this before testing):
-rm -f databases/Frontier-v6.root7
+rm -f databases/Frontier.root7
 
 # Run CLI with v6 database - creates v7 output file automatically
 ./frontier-cli/frontier-cli \
-  --system-root databases/Frontier-v6.root -e "1"
+  --system-root databases/Frontier.root -e "1"
 
-# Output: databases/Frontier-v6.root7 (new file created by migration)
+# Output: databases/Frontier.root7 (new file created by migration)
 ```
 
 ### What Happens During Migration
 
-1. CLI opens `databases/Frontier-v6.root` and detects v6 format
-2. Migration creates NEW output file: `databases/Frontier-v6.root7`
-3. Original `databases/Frontier-v6.root` is **never modified** (preserved)
-4. Pattern: Version suffix is stripped, then `-v7` added: `Frontier-v6.root` → `Frontier-v6.root7`
+1. CLI opens `databases/Frontier.root` and detects v6 format
+2. Migration creates NEW output file: `databases/Frontier.root7`
+3. Original `databases/Frontier.root` is **never modified** (preserved)
+4. Pattern: Version suffix is stripped, then `-v7` added: `Frontier.root` → `Frontier.root7`
 
 ### Verification
 
 ```bash
 # Check database version (first 2 bytes should be 0007 for v7)
-xxd -l 2 databases/Frontier-v6.root7
+xxd -l 2 databases/Frontier.root7
 # Expected output: 00000000: 0007  ..
 ```
 
@@ -414,7 +414,7 @@ python3 cli.py report -o -
 ./frontier-cli/frontier-cli -e "string.upper(\"test\")"
 
 # Test with database loaded:
-./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root7 -e "sizeOf(system)"
+./frontier-cli/frontier-cli --system-root databases/Frontier.root7 -e "sizeOf(system)"
 
 # Test table operations:
 ./frontier-cli/frontier-cli -e "lang.new(tableType, @t); t.a = 1; return sizeOf(t)"
@@ -553,7 +553,7 @@ The `xxd` command is used by `tools/run_headless_tests.sh` to verify database fi
 **Usage in Frontier:**
 ```bash
 # Check database version (first 2 bytes)
-xxd -l 2 -p databases/Frontier-v6.root
+xxd -l 2 -p databases/Frontier.root
 # Expected for v6: 0006
 # Expected for v7: 0007
 ```

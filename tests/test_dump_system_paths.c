@@ -150,7 +150,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	/* Open the v7 database */
-	const char *dbpath = "databases/Frontier-v6.root7";
+	const char *dbpath = "databases/Frontier.root7";
 	bigstring bsdbpath;
 
 	copyctopstring(dbpath, bsdbpath);

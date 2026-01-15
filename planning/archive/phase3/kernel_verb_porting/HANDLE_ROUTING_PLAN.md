@@ -221,9 +221,9 @@ boolean dbcopy (dbaddress adrorig, dbaddress *adrcopy) {
    ```
 3. Verify source database is never modified:
    ```bash
-   md5sum databases/Frontier-v6.root  # Before
+   md5sum databases/Frontier.root  # Before
    # Run migration
-   md5sum databases/Frontier-v6.root  # After - should match!
+   md5sum databases/Frontier.root  # After - should match!
    ```
 
 ---

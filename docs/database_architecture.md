@@ -24,7 +24,7 @@ Users interact with the **child tables** of the root table, which we call "top-l
 
 ### Legacy warning tables (v6 compatibility shim)
 
-All pristine v6 databases we ship (`Frontier-v6.root`, `prefs.root`, `manila.root`, `test.root`) place a compatibility payload at `views[0]`. Characteristics:
+All pristine v6 databases we ship (`Frontier.root`, `prefs.root`, `manila.root`, `test.root`) place a compatibility payload at `views[0]`. Characteristics:
 
 - fixed 442-byte payload
 - it is **not** a table; it is the serialized `tyversion2cancoonrecord` struct that drives the Frontier “About/Agents” window (also known as the Cancoon window)

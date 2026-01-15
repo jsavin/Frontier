@@ -108,16 +108,16 @@ make -C frontier-cli clean && make -C frontier-cli
 ./frontier-cli/frontier-cli -e "1+1"
 # Output: 2 ✓
 
-./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root7 -e "return 42"
+./frontier-cli/frontier-cli --system-root databases/Frontier.root7 -e "return 42"
 # Output: 42 ✓
 ```
 
 ### Migration Test ✅
 ```bash
-rm -f databases/Frontier-v6.root7
-./frontier-cli/frontier-cli --system-root databases/Frontier-v6.root -e "1"
+rm -f databases/Frontier.root7
+./frontier-cli/frontier-cli --system-root databases/Frontier.root -e "1"
 ```
-- Frontier-v6.root (5.8MB) → Frontier-v6.root7 (9.9MB)
+- Frontier.root (5.8MB) → Frontier.root7 (9.9MB)
 - Header verified: `0007` (v7 format) ✓
 - Migration completes successfully
 
@@ -219,7 +219,7 @@ db_format_write_be64(&val.data.datevalue, (uint64_t) val.data.datevalue);
 **Reason:** v6 test artifact (refcon_migration_test_v6.root) doesn't have system table structure required to load as system root
 
 **Recommended approach:**
-- Use full Frontier-v6.root as base
+- Use full Frontier.root as base
 - Add test data via db.open() operations
 - Read values after migration
 - Assert expected values match

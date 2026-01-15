@@ -1848,7 +1848,7 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
 
     /* Derive output path: replace .root with .root7 (Phase 1 naming convention) */
     /* Pattern: /*.root$/ → /*.root7/ */
-    /* Examples: Frontier-v6.root → Frontier-v6.root7, test.root → test.root7 */
+    /* Examples: Frontier.root → Frontier.root7, test.root → test.root7 */
     const char *ext = strrchr(db_path, '.');
     if (ext && strcmp(ext, ".root") == 0) {
         /* Replace .root with .root7 */

@@ -38,7 +38,7 @@ $ ./tests/save_migration_tests
 save_migration_tests: migration applied (v6 -> v7) output=test_save_migration-v7.root
 ```
 
-- Source database: `databases/Frontier-v6.root` (v6 format)
+- Source database: `databases/Frontier.root` (v6 format)
 - Migrated database: `test_save_migration-v7.root` (v7 format)
 - Migration function: `migrate_32bit_to_64bit()` (called via test harness)
 
@@ -49,8 +49,8 @@ save_migration_tests: migration applied (v6 -> v7) output=test_save_migration-v7
 ### 2. Source Database Integrity (✅ PASS)
 
 ```bash
-Before migration: b993ad8fbe5dd7c1decd88adb08a1d66  databases/Frontier-v6.root
-After migration:  b993ad8fbe5dd7c1decd88adb08a1d66  databases/Frontier-v6.root
+Before migration: b993ad8fbe5dd7c1decd88adb08a1d66  databases/Frontier.root
+After migration:  b993ad8fbe5dd7c1decd88adb08a1d66  databases/Frontier.root
 ```
 
 **Status**: Source database unchanged (as intended).

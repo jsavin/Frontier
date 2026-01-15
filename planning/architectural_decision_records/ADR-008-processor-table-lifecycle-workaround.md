@@ -16,7 +16,7 @@ Database loading in headless mode overwrites the global `efptable` variable with
 
 ### The Problem
 
-When Frontier headless runtime loads a database (e.g., `Frontier-v6.root`), the following sequence occurs:
+When Frontier headless runtime loads a database (e.g., `Frontier.root`), the following sequence occurs:
 
 1. **Runtime Initialization** (`db_format_prepare_runtime()`):
    - Creates processor tables (op, string, file, etc.) with working valueroutines
@@ -180,7 +180,7 @@ From CLAUDE.md:
 ### Testing Strategy
 
 **Verification**:
-1. Load database with `--system-root databases/Frontier-v6.root`
+1. Load database with `--system-root databases/Frontier.root`
 2. Execute verb requiring processor resolution (e.g., `op.insert()`, `string.upper()`)
 3. Verify processor found via `get_headless_efptable()`, not broken DB efptable
 4. Check logs for "tokenvaluetype skipped" messages
