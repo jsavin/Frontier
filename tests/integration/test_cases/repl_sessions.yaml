@@ -223,7 +223,9 @@ tests:
   # =========================================================================
 
   - name: "REPL - define function in workspace"
-    description: "Function definition works in Phase 1"
+    description: |
+      Function definitions in REPL. May be affected by ADR-009 hash table stack
+      restoration issue in some scenarios, though currently passing in most cases.
     repl_mode: true
     stdin_input: |
       on doubleIt(x) { return x * 2 }
@@ -232,10 +234,12 @@ tests:
     expected_output_contains:
       - "42"
     expected_success: true
-    # Function definitions work in Phase 1
+    # Function definitions work in Phase 1, but see ADR-009 for potential edge cases
 
   - name: "REPL - call workspace function multiple times"
-    description: "Function calls work in Phase 1"
+    description: |
+      Multiple function calls in REPL. May be affected by ADR-009 hash table stack
+      restoration issue in some scenarios.
     repl_mode: true
     stdin_input: |
       on add(a, b) { return a + b }
@@ -248,7 +252,7 @@ tests:
       - "30"
       - "300"
     expected_success: true
-    # Function calls work in Phase 1
+    # Function calls work in Phase 1, but see ADR-009 for potential edge cases
 
   # =========================================================================
   # Workspace Clear and Rebuild

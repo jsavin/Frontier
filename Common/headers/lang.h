@@ -701,7 +701,8 @@ extern byte bsfalse [];
 
 extern hdlhashtable currenthashtable; /*langhash.c*/
 
-extern hdltablestack hashtablestack;
+/* ADR-009: Thread-local hash table stack (backward-compatible macro) */
+#define hashtablestack ((**hthreadglobals).htablestack)
 
 /* ADR-005: Thread-local parameter and value protection state */
 /* Macros defined in processinternal.h after tythreadglobals structure */

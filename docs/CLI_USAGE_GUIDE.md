@@ -16,6 +16,7 @@
 7. [Examples](#examples)
 8. [Troubleshooting](#troubleshooting)
 9. [Advanced Usage](#advanced-usage)
+10. [REPL Known Limitations](#repl-known-limitations)
 
 ---
 
@@ -706,6 +707,51 @@ time ./frontier-cli/frontier-cli -e "local(i); for i = 1 to 1000 {i * 2}"
 - Environment variable configuration
 - Verbose and debug logging modes
 - Exit code support for shell scripting
+
+---
+
+## REPL Known Limitations
+
+The REPL Interactive Mode has the following known limitations due to architectural
+constraints documented in ADR-009:
+
+### 1. `/clear` Command Persistence Issue
+
+**Issue**: Variables assigned after using the `/clear` command may not persist correctly
+in the workspace.
+
+**Cause**: The `langrunhandletraperror()` function calls `pushprocess(nil)` / `popprocess()`,
+which saves and restores the entire hash table stack state. This can cause workspace
+modifications to be lost after operations that trigger process stack save/restore.
+
+**Workaround**: Re-assign variables after `/clear` if they don't appear in `/vars`.
+
+**Resolution**: Will be fixed in Phase 6+ when the hash table stack architecture is
+refactored to use explicit context passing (ADR-009 Option 5).
+
+### 2. Function Definitions (Edge Cases)
+
+**Issue**: In some scenarios, functions defined in the REPL may not be callable in
+subsequent evaluations.
+
+**Cause**: Related to the hash table stack restoration issue described above. Function
+definitions are stored in the hash table and may be lost during process stack restore.
+
+**Workaround**: Define functions in script files and load them with the `--system-root`
+option, or re-define functions if they become inaccessible.
+
+**Resolution**: Will be fixed in Phase 6+ with explicit hash table context architecture.
+
+### Current Status
+
+- **Test Pass Rate**: 133/136 tests passing (97.8%)
+- **Failing Tests**: 3 tests related to the above limitations
+- **Production Readiness**: REPL is production-ready for interactive development,
+  with the documented limitations acceptable for Phase 1.
+
+For complete technical details, see:
+- `planning/architectural_decision_records/ADR-009-repl-hash-table-stack-management.md`
+- `docs/REPL_WORKSPACE_ARCHITECTURE.md`
 
 ---
 
