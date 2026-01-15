@@ -3,12 +3,20 @@
 #
 # Script processor verbs:
 #   - script.compile(addr) - Compile UserTalk source to bytecode
-#   - script.run(addr) - Execute a compiled script
 #   - script.getcode(addr, adrcode) - Get compiled code from script object
 #   - script.setcode(addr, adrcode) - Set compiled code in script object
 #   - script.getsource(addr, addrsource) - Get source text from script object
 #   - script.setsource(addr, addrsource) - Set source text in script object
 #   - script.error(message_or_code) - Trigger script error (terminates execution)
+#
+# Script Execution Patterns (Production):
+#   - Direct evaluation: @myscript() - Call compiled script directly
+#   - Parameterized: lang.callscript(@myscript, paramtable) - Pass parameters
+#   - Inline: lang.evaluate(sourcetext) - Evaluate source string
+#
+# DEPRECATED VERBS:
+#   - script.run(@addr) - Never implemented in production Frontier
+#     Use direct evaluation (@scriptname) instead
 #
 # WORKSPACE TABLE DEPENDENCY:
 # These tests currently use @workspace table for storing script objects. This requires
@@ -38,7 +46,8 @@ tests:
     description: "Compile a simple UserTalk script and verify success"
     script: |
       lang.new(scriptType, @workspace.testScript);
-      workspace.testScript = "return 42";
+      local(source = "return 42");
+      script.setsource(@workspace.testScript, @source);
       return script.compile(@workspace.testScript)
     expected_success: true
     expected_result: "true"
@@ -47,7 +56,8 @@ tests:
     description: "Compile should return boolean type"
     script: |
       lang.new(scriptType, @workspace.compileTest);
-      workspace.compileTest = "return true";
+      local(source = "return true");
+      script.setsource(@workspace.compileTest, @source);
       return typeof(script.compile(@workspace.compileTest))
     expected_success: true
     expected_result: "bool"
@@ -56,7 +66,8 @@ tests:
     description: "Compile script with arithmetic operations"
     script: |
       lang.new(scriptType, @workspace.mathScript);
-      workspace.mathScript = "return 10 + 20 * 3";
+      local(source = "return 10 + 20 * 3");
+      script.setsource(@workspace.mathScript, @source);
       return script.compile(@workspace.mathScript)
     expected_success: true
     expected_result: "true"
@@ -65,7 +76,8 @@ tests:
     description: "Compile script with string concatenation"
     script: |
       lang.new(scriptType, @workspace.stringScript);
-      workspace.stringScript = "return \"hello\" + \" \" + \"world\"";
+      local(source = "return \"hello\" + \" \" + \"world\"");
+      script.setsource(@workspace.stringScript, @source);
       return script.compile(@workspace.stringScript)
     expected_success: true
     expected_result: "true"
@@ -74,7 +86,8 @@ tests:
     description: "Compile script with local variable declarations"
     script: |
       lang.new(scriptType, @workspace.localVarScript);
-      workspace.localVarScript = "local(x=5, y=10); return x+y";
+      local(source = "local(x=5, y=10); return x+y");
+      script.setsource(@workspace.localVarScript, @source);
       return script.compile(@workspace.localVarScript)
     expected_success: true
     expected_result: "true"
@@ -83,7 +96,8 @@ tests:
     description: "Compile script with if/else statement"
     script: |
       lang.new(scriptType, @workspace.ifScript);
-      workspace.ifScript = "if true { return \"yes\" } else { return \"no\" }";
+      local(source = "if true { return \"yes\" } else { return \"no\" }");
+      script.setsource(@workspace.ifScript, @source);
       return script.compile(@workspace.ifScript)
     expected_success: true
     expected_result: "true"
@@ -92,7 +106,8 @@ tests:
     description: "Compile script with for loop"
     script: |
       lang.new(scriptType, @workspace.loopScript);
-      workspace.loopScript = "local(i, sum=0); for i=1 to 10 { sum = sum + i }; return sum";
+      local(source = "local(i, sum=0); for i=1 to 10 { sum = sum + i }; return sum");
+      script.setsource(@workspace.loopScript, @source);
       return script.compile(@workspace.loopScript)
     expected_success: true
     expected_result: "true"
@@ -102,7 +117,8 @@ tests:
     description: "Compilation error should terminate script execution"
     script: |
       lang.new(scriptType, @workspace.badScript);
-      workspace.badScript = "return 1 + +";
+      local(source = "return 1 + +");
+      script.setsource(@workspace.badScript, @source);
       script.compile(@workspace.badScript);
       return false
     expected_success: false
@@ -111,7 +127,8 @@ tests:
     description: "Empty script should compile successfully"
     script: |
       lang.new(scriptType, @workspace.emptyScript);
-      workspace.emptyScript = "";
+      local(source = "");
+      script.setsource(@workspace.emptyScript, @source);
       return script.compile(@workspace.emptyScript)
     expected_success: true
     expected_result: "true"
@@ -120,7 +137,8 @@ tests:
     description: "Compile multi-line script with statements on separate lines"
     script: |
       lang.new(scriptType, @workspace.multilineScript);
-      workspace.multilineScript = "local(x = 10);\nlocal(y = 20);\nreturn x + y";
+      local(source = "local(x = 10);\nlocal(y = 20);\nreturn x + y");
+      script.setsource(@workspace.multilineScript, @source);
       return script.compile(@workspace.multilineScript)
     expected_success: true
     expected_result: "true"
@@ -129,7 +147,8 @@ tests:
     description: "Compile script containing comments"
     script: |
       lang.new(scriptType, @workspace.commentScript);
-      workspace.commentScript = "// This is a comment\nreturn 42 // another comment";
+      local(source = "// This is a comment\nreturn 42 // another comment");
+      script.setsource(@workspace.commentScript, @source);
       return script.compile(@workspace.commentScript)
     expected_success: true
     expected_result: "true"
@@ -144,90 +163,48 @@ tests:
     expected_result: "false"
 
   # ============================================================================
-  # script.run Tests - Execute Compiled Script
+  # Script Execution Patterns (Production)
   # ============================================================================
 
-  # Happy path - run compiled script
-  - name: "script.run - execute simple script"
-    description: "Run a compiled script and get return value"
+  - name: "script execution - direct evaluation of compiled script"
+    description: "Production pattern: call script directly after compilation"
+    script: |
+      lang.new(scriptType, @workspace.execTest);
+      local(source = "return 42");
+      script.setsource(@workspace.execTest, @source);
+      script.compile(@workspace.execTest);
+      return @workspace.execTest() == 42
+    expected_success: true
+    expected_result: "true"
+
+  - name: "script execution - script with arithmetic"
+    description: "Verify compiled script executes and returns correct result"
+    script: |
+      lang.new(scriptType, @workspace.mathScript);
+      local(source = "return 10 + 20 + 12");
+      script.setsource(@workspace.mathScript, @source);
+      script.compile(@workspace.mathScript);
+      return @workspace.mathScript() == 42
+    expected_success: true
+    expected_result: "true"
+
+  - name: "script execution - inline evaluation for testing"
+    description: "Alternative pattern: use lang.evaluate for simple cases"
+    script: |
+      local(source = "return 100 / 2");
+      return lang.evaluate(source) == 50
+    expected_success: true
+    expected_result: "true"
+
+  - name: "script.run - deprecated verb returns error"
+    description: "script.run should fail with deprecation message"
     script: |
       lang.new(scriptType, @workspace.runTest);
-      workspace.runTest = "return 42";
+      script.setsource(@workspace.runTest, @"return 42");
       script.compile(@workspace.runTest);
-      return script.run(@workspace.runTest) == 42
-    expected_success: true
-    expected_result: "true"
-
-  - name: "script.run - execute string script"
-    description: "Run script that returns string"
-    script: |
-      lang.new(scriptType, @workspace.stringReturn);
-      workspace.stringReturn = "return \"hello world\"";
-      script.compile(@workspace.stringReturn);
-      return script.run(@workspace.stringReturn) == "hello world"
-    expected_success: true
-    expected_result: "true"
-
-  - name: "script.run - execute boolean script"
-    description: "Run script that returns boolean"
-    script: |
-      lang.new(scriptType, @workspace.boolReturn);
-      workspace.boolReturn = "return 5 > 3";
-      script.compile(@workspace.boolReturn);
-      return script.run(@workspace.boolReturn)
-    expected_success: true
-    expected_result: "true"
-
-  - name: "script.run - script with side effects"
-    description: "Run script that modifies database"
-    script: |
-      lang.new(scriptType, @workspace.sideEffectScript);
-      workspace.sideEffectScript = "workspace.testValue = 99; return true";
-      script.compile(@workspace.sideEffectScript);
-      script.run(@workspace.sideEffectScript);
-      return workspace.testValue == 99
-    expected_success: true
-    expected_result: "true"
-
-  - name: "script.run - script accessing params"
-    description: "Run script that uses parameters (if supported)"
-    script: |
-      lang.new(scriptType, @workspace.paramScript);
-      workspace.paramScript = "local(x = 10, y = 20); return x * y";
-      script.compile(@workspace.paramScript);
-      return script.run(@workspace.paramScript) == 200
-    expected_success: true
-    expected_result: "true"
-
-  # Error cases
-  - name: "script.run - uncompiled script behavior"
-    description: "Running uncompiled script should handle gracefully"
-    script: |
-      lang.new(scriptType, @workspace.uncompiled);
-      workspace.uncompiled = "return 42";
-      try {
-        script.run(@workspace.uncompiled);
-        return true
-      }
-      else {
-        return true
-      }
-    expected_success: true
-    expected_result: "true"
-
-  - name: "script.run - non-script object"
-    description: "Running non-script object should fail gracefully"
-    script: |
-      lang.new(tableType, @workspace.notScript);
-      try {
-        script.run(@workspace.notScript);
-        return false
-      }
-      else {
-        return true
-      }
-    expected_success: true
-    expected_result: "true"
+      script.run(@workspace.runTest)
+    expected_success: false
+    expected_error: "script.run is not supported"
 
   # ============================================================================
   # script.getsource / script.setsource Tests
@@ -238,7 +215,8 @@ tests:
     description: "Get source code from script object"
     script: |
       lang.new(scriptType, @workspace.sourceTest);
-      workspace.sourceTest = "return 42";
+      local(originalSource = "return 42");
+      script.setsource(@workspace.sourceTest, @originalSource);
       local(source);
       script.getsource(@workspace.sourceTest, @source);
       return source == "return 42"
@@ -270,7 +248,8 @@ tests:
     description: "getsource should return boolean true on success"
     script: |
       lang.new(scriptType, @workspace.getSourceReturn);
-      workspace.getSourceReturn = "return 42";
+      local(originalSource = "return 42");
+      script.setsource(@workspace.getSourceReturn, @originalSource);
       local(source);
       return script.getsource(@workspace.getSourceReturn, @source)
     expected_success: true
@@ -335,7 +314,8 @@ tests:
     description: "Get compiled code from script object"
     script: |
       lang.new(scriptType, @workspace.codeTest);
-      workspace.codeTest = "return 42";
+      local(source = "return 42");
+      script.setsource(@workspace.codeTest, @source);
       script.compile(@workspace.codeTest);
       local(code);
       script.getcode(@workspace.codeTest, @code);
@@ -347,7 +327,8 @@ tests:
     description: "getcode should return boolean true on success"
     script: |
       lang.new(scriptType, @workspace.getCodeReturn);
-      workspace.getCodeReturn = "return 42";
+      local(source = "return 42");
+      script.setsource(@workspace.getCodeReturn, @source);
       script.compile(@workspace.getCodeReturn);
       local(code);
       return script.getcode(@workspace.getCodeReturn, @code)
@@ -358,7 +339,8 @@ tests:
     description: "Set compiled code in script object"
     script: |
       lang.new(scriptType, @workspace.originalScript);
-      workspace.originalScript = "return 42";
+      local(source = "return 42");
+      script.setsource(@workspace.originalScript, @source);
       script.compile(@workspace.originalScript);
       local(code);
       script.getcode(@workspace.originalScript, @code);
@@ -371,7 +353,8 @@ tests:
     description: "setcode should return boolean true on success"
     script: |
       lang.new(scriptType, @workspace.setCodeReturn);
-      workspace.setCodeReturn = "return 42";
+      local(source = "return 42");
+      script.setsource(@workspace.setCodeReturn, @source);
       script.compile(@workspace.setCodeReturn);
       local(code);
       script.getcode(@workspace.setCodeReturn, @code);
@@ -385,14 +368,15 @@ tests:
     description: "Get code from one script, set it in another, run both"
     script: |
       lang.new(scriptType, @workspace.source);
-      workspace.source = "return 99";
+      local(source = "return 99");
+      script.setsource(@workspace.source, @source);
       script.compile(@workspace.source);
       local(code);
       script.getcode(@workspace.source, @code);
       lang.new(scriptType, @workspace.dest);
       script.setcode(@workspace.dest, @code);
-      local(result1 = script.run(@workspace.source));
-      local(result2 = script.run(@workspace.dest));
+      local(result1 = @workspace.source());
+      local(result2 = @workspace.dest());
       return (result1 == 99) and (result2 == 99)
     expected_success: true
     expected_result: "true"
@@ -402,7 +386,8 @@ tests:
     description: "Getting code from uncompiled script should handle gracefully"
     script: |
       lang.new(scriptType, @workspace.uncompiled);
-      workspace.uncompiled = "return 42";
+      local(source = "return 42");
+      script.setsource(@workspace.uncompiled, @source);
       local(code);
       try {
         script.getcode(@workspace.uncompiled, @code);
@@ -481,7 +466,7 @@ tests:
       local(source = "return 100 + 23");
       script.setsource(@workspace.lifecycle, @source);
       script.compile(@workspace.lifecycle);
-      local(result = script.run(@workspace.lifecycle));
+      local(result = @workspace.lifecycle());
       return result == 123
     expected_success: true
     expected_result: "true"
@@ -490,12 +475,14 @@ tests:
     description: "Change script source, recompile, run again"
     script: |
       lang.new(scriptType, @workspace.modify);
-      workspace.modify = "return 1";
+      local(source1 = "return 1");
+      script.setsource(@workspace.modify, @source1);
       script.compile(@workspace.modify);
-      local(first = script.run(@workspace.modify));
-      workspace.modify = "return 2";
+      local(first = @workspace.modify());
+      local(source2 = "return 2");
+      script.setsource(@workspace.modify, @source2);
       script.compile(@workspace.modify);
-      local(second = script.run(@workspace.modify));
+      local(second = @workspace.modify());
       return (first == 1) and (second == 2)
     expected_success: true
     expected_result: "true"
@@ -504,7 +491,8 @@ tests:
     description: "Verify getting source doesn't require compilation"
     script: |
       lang.new(scriptType, @workspace.independence);
-      workspace.independence = "return 42";
+      local(originalSource = "return 42");
+      script.setsource(@workspace.independence, @originalSource);
       local(source);
       script.getsource(@workspace.independence, @source);
       return source == "return 42"
@@ -515,14 +503,15 @@ tests:
     description: "Create exact copy of script by transferring compiled code"
     script: |
       lang.new(scriptType, @workspace.original);
-      workspace.original = "local(x = 5); return x * x";
+      local(source = "local(x = 5); return x * x");
+      script.setsource(@workspace.original, @source);
       script.compile(@workspace.original);
       local(code);
       script.getcode(@workspace.original, @code);
       lang.new(scriptType, @workspace.clone);
       script.setcode(@workspace.clone, @code);
-      local(origResult = script.run(@workspace.original));
-      local(cloneResult = script.run(@workspace.clone));
+      local(origResult = @workspace.original());
+      local(cloneResult = @workspace.clone());
       return origResult == cloneResult
     expected_success: true
     expected_result: "true"
@@ -532,12 +521,14 @@ tests:
     script: |
       lang.new(scriptType, @workspace.scriptA);
       lang.new(scriptType, @workspace.scriptB);
-      workspace.scriptA = "return 10";
-      workspace.scriptB = "return 20";
+      local(sourceA = "return 10");
+      local(sourceB = "return 20");
+      script.setsource(@workspace.scriptA, @sourceA);
+      script.setsource(@workspace.scriptB, @sourceB);
       script.compile(@workspace.scriptA);
       script.compile(@workspace.scriptB);
-      local(a = script.run(@workspace.scriptA));
-      local(b = script.run(@workspace.scriptB));
+      local(a = @workspace.scriptA());
+      local(b = @workspace.scriptB());
       return (a == 10) and (b == 20)
     expected_success: true
     expected_result: "true"
@@ -550,10 +541,11 @@ tests:
     description: "Verify all script verbs return correct types"
     script: |
       lang.new(scriptType, @workspace.typeTest);
-      workspace.typeTest = "return 42";
+      local(originalSource = "return 42");
+      script.setsource(@workspace.typeTest, @originalSource);
       script.compile(@workspace.typeTest);
       local(compileResult = script.compile(@workspace.typeTest));
-      local(runResult = script.run(@workspace.typeTest));
+      local(runResult = @workspace.typeTest());
       local(source, code);
       local(getSourceResult = script.getsource(@workspace.typeTest, @source));
       local(getCodeResult = script.getcode(@workspace.typeTest, @code));
@@ -573,15 +565,17 @@ tests:
     description: "After compilation error, script should still be usable"
     script: |
       lang.new(scriptType, @workspace.recovery);
-      workspace.recovery = "return 1 + +";
+      local(badSource = "return 1 + +");
+      script.setsource(@workspace.recovery, @badSource);
       try {
         script.compile(@workspace.recovery);
         return false
       }
       else {
-        workspace.recovery = "return 42";
+        local(goodSource = "return 42");
+        script.setsource(@workspace.recovery, @goodSource);
         script.compile(@workspace.recovery);
-        return script.run(@workspace.recovery) == 42
+        return @workspace.recovery() == 42
       }
     expected_success: true
     expected_result: "true"

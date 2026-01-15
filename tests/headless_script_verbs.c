@@ -115,56 +115,28 @@ static boolean script_compile(hdltreenode hparam1, tyvaluerecord *vreturned) {
 }
 
 /*
- * script.run(@scriptObj) - Execute a compiled script
+ * script.run(@scriptObj) - NOT IMPLEMENTED (deprecated)
  *
- * Runs the compiled code in a script object and returns the result.
- * If script is not compiled, attempts to compile it first.
+ * This verb is not part of production Frontier and should not be used.
+ * Use direct script evaluation (@scriptname) or lang.callscript() instead.
+ *
+ * Historical note: This verb was never implemented in production Frontier.
+ * It exists in test code only, and has been deprecated in favor of production patterns.
+ *
+ * Production execution patterns:
+ * - Direct evaluation: @myscript()
+ * - Parameterized: lang.callscript(@myscript, paramtable)
+ * - Inline: lang.evaluate(sourcetext)
  */
 static boolean script_run(hdltreenode hparam1, tyvaluerecord *vreturned) {
-    hdlexternalvariable hv;
-    hdltreenode hcode = nil;
-    tyvaluerecord val;
-    boolean fl;
-
     flnextparamislast = true;
 
-    /* Get script object parameter */
-    if (!script_getscriptparam(hparam1, 1, &hv))
-        return false;
+    langerrormessage(BIGSTRING(
+        "\pscript.run is not supported. Use direct script evaluation "
+        "(@scriptname) or lang.callscript(@scriptname, params) instead."
+    ));
 
-    /* Get linked code (or nil if not compiled) */
-    opverbgetlinkedcode(hv, &hcode);
-
-    /* If no compiled code, try to compile first */
-    if (hcode == nil) {
-        Handle htext = nil;
-        long signature;
-
-        /* Get source and compile */
-        if (!opverbgetlangtext(hv, false, &htext, &signature))
-            return false;
-
-        if (!scriptbuildtree(htext, signature, &hcode))
-            return false;
-
-        /* Link the newly compiled code */
-        opverblinkcode(hv, hcode);
-    }
-
-    /* Execute the code */
-    initvalue(&val, novaluetype);
-
-    fl = evaluatelist(hcode, &val);
-
-    if (!fl) {
-        /* Execution failed - error already reported */
-        return false;
-    }
-
-    /* Return the result */
-    *vreturned = val;
-
-    return true;
+    return false;
 }
 
 /*
