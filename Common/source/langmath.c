@@ -25,6 +25,8 @@
 
 ******************************************************************************/
 
+/* 2026-01-14 Codex: Fix min()/max() comparison bug for ostypevaluetype by separating from longvaluetype cases. */
+
 #include <math.h>
 
 #include "frontier.h"
@@ -126,9 +128,13 @@ static boolean mathfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 					break;
 				
 				case longvaluetype:
-				case ostypevaluetype:
 					vResult = ( v1copy.data.longvalue <= v2copy.data.longvalue ) ? &v1 : &v2;
-					
+
+					break;
+
+				case ostypevaluetype:
+					vResult = ( v1copy.data.ostypevalue <= v2copy.data.ostypevalue ) ? &v1 : &v2;
+
 					break;
 				
 				case directionvaluetype:
@@ -230,9 +236,13 @@ static boolean mathfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 					break;
 				
 				case longvaluetype:
-				case ostypevaluetype:
 					vResult = ( v1copy.data.longvalue >= v2copy.data.longvalue ) ? &v1 : &v2;
-					
+
+					break;
+
+				case ostypevaluetype:
+					vResult = ( v1copy.data.ostypevalue >= v2copy.data.ostypevalue ) ? &v1 : &v2;
+
 					break;
 				
 				case directionvaluetype:
