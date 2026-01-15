@@ -128,11 +128,12 @@ typedef struct tythreadglobals {
 	typrocessstack processstack;
 	
 	hdlprocessrecord hprocess;
-	
+
 	hdlhashtable htable;
-	
+
+	/* ADR-009: Hash table stack (thread-local, accessed via macro) */
 	hdltablestack htablestack;
-	
+
 	tylangcallbacks langcallbacks;
 	
 	

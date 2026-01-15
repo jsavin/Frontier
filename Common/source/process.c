@@ -1479,9 +1479,10 @@ void copythreadglobals (hdlthreadglobals hglobals) {
 		(**hg).flthreadkilled = flthreadkilled;
 		
 		(**hg).fldisableyield = fldisableyield;
-		
+
+		/* ADR-009: Hash table stack migration (thread-local storage) */
 		(**hg).htablestack = hashtablestack;
-		
+
 		(**hg).processstack = processstack;
 		
 		(**hg).globalsstack = globalsstack;
@@ -1596,9 +1597,10 @@ void swapinthreadglobals (hdlthreadglobals hglobals) {
 	
 	if (hg == nil)
 		return;
-	
+
+	/* ADR-009: Hash table stack migration (thread-local storage) */
 	hashtablestack = (**hg).htablestack;
-	
+
 	hc = (hdlcancoonrecord) (**hg).hccglobals;
 	
 	if (hc != cancoonglobals) {

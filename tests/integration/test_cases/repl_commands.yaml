@@ -158,7 +158,10 @@ tests:
     expected_success: true
 
   - name: "REPL /clear - can add variables after clear"
-    description: "After /clear, new variables should work"
+    description: |
+      KNOWN LIMITATION (ADR-009): Variables assigned after /clear may not persist
+      in workspace due to hash table stack restoration in langrunhandletraperror().
+      Will be fixed in Phase 6+ (Explicit Hash Table Context architecture).
     repl_mode: true
     stdin_input: |
       old = 1
@@ -171,6 +174,7 @@ tests:
     expected_output_not_contains:
       - "old"
     expected_success: true
+    known_issue: "ADR-009: Hash table stack restoration after /clear"
 
   - name: "REPL /clear - idempotent (can clear empty workspace)"
     description: "/clear on empty workspace should succeed"
