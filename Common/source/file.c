@@ -156,7 +156,7 @@ boolean filewrite (hdlfilenum fnum, long ctwrite, void *buffer) {
 	if (ctwrite > 0) {
 
 			#if defined(FRONTIER_HEADLESS)
-			fprintf(stderr, "[filewrite] fnum=%d bytes=%ld\n", (int)fnum, ctwrite);
+			log_trace(LOG_COMP_DB, "filewrite fnum=%d bytes=%ld", (int)fnum, ctwrite);
 			#endif
 
 			if (oserror (FSWrite (fnum, &ctwrite, buffer)))
