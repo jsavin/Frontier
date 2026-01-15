@@ -223,7 +223,9 @@ tests:
   # =========================================================================
 
   - name: "REPL - define function in workspace"
-    description: "Function definition works in Phase 1"
+    description: |
+      Function definitions in REPL. May be affected by ADR-009 hash table stack
+      restoration issue in some scenarios, though currently passing in most cases.
     repl_mode: true
     stdin_input: |
       on doubleIt(x) { return x * 2 }
@@ -232,10 +234,13 @@ tests:
     expected_output_contains:
       - "42"
     expected_success: true
-    # Function definitions work in Phase 1
+    known_issue: "ADR-009: Function definitions may not persist across evaluations due to hash table stack restoration"
+    # Function definitions work in Phase 1, but see ADR-009 for potential edge cases
 
   - name: "REPL - call workspace function multiple times"
-    description: "Function calls work in Phase 1"
+    description: |
+      Multiple function calls in REPL. May be affected by ADR-009 hash table stack
+      restoration issue in some scenarios.
     repl_mode: true
     stdin_input: |
       on add(a, b) { return a + b }
@@ -248,7 +253,8 @@ tests:
       - "30"
       - "300"
     expected_success: true
-    # Function calls work in Phase 1
+    known_issue: "ADR-009: Multiple function calls may fail due to hash table stack restoration between evaluations"
+    # Function calls work in Phase 1, but see ADR-009 for potential edge cases
 
   # =========================================================================
   # Workspace Clear and Rebuild
@@ -257,6 +263,8 @@ tests:
   - name: "REPL - clear and rebuild workspace"
     description: "Should be able to clear and rebuild workspace"
     repl_mode: true
+    skip: true
+    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
     stdin_input: |
       old = 1
       /clear
@@ -270,6 +278,8 @@ tests:
   - name: "REPL - cleared variables inaccessible"
     description: "After clear, old variables should error"
     repl_mode: true
+    skip: true
+    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
     stdin_input: |
       x = 42
       /clear
@@ -377,6 +387,8 @@ tests:
   - name: "REPL - interleave code and commands"
     description: "Should seamlessly mix code and commands"
     repl_mode: true
+    skip: true
+    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
     stdin_input: |
       x = 10
       /vars

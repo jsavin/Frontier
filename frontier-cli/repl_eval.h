@@ -1,12 +1,13 @@
 /*
- * repl_eval.h - REPL evaluation engine (workspace management and script execution)
+ * repl_eval.h - REPL evaluation engine (QuickScript model)
  *
  * Part of Frontier REPL interactive mode (Phase 1).
- * Manages workspace table lifecycle and executes UserTalk scripts in REPL context.
+ * Evaluates UserTalk scripts following QuickScript model from legacy Frontier.
  *
  * Reference: planning/phase4/REPL_INTERACTIVE_MODE_DESIGN.md
  *
  * Created: 2026-01-13
+ * Updated: 2026-01-14 - Refactored to QuickScript model (removed workspace mechanism)
  */
 
 #ifndef REPL_EVAL_H
@@ -16,57 +17,18 @@
 #include "../Common/headers/lang.h"
 
 /*
- * repl_workspace_t - Ephemeral workspace for REPL variables
+ * repl_eval_script - Evaluate UserTalk script (QuickScript model)
  *
- * The workspace table is ephemeral (thread-local, not persisted).
- * Variables declared at the REPL prompt are stored here.
+ * Compiles and executes the script. Each evaluation runs independently in its own
+ * thread context. Local variables are thread-scoped and cleaned up automatically
+ * after evaluation completes.
  *
- * The ephemeral workspace is isolated from root.workspace - /clear never
- * touches persisted data.
- *
- * NOT thread-safe - CLI is single-threaded in Phase 1.
- */
-typedef struct repl_workspace_t {
-    hdlhashtable workspace_table;  /* Ephemeral workspace table */
-    boolean initialized;            /* Workspace initialized flag */
-} repl_workspace;
-
-/*
- * repl_workspace_init - Initialize workspace (call once at REPL startup)
- *
- * Creates ephemeral thread-local hash table for REPL variables.
- * This table is NOT persisted and is isolated from root.workspace.
- *
- * Returns: true on success, false on error
- */
-boolean repl_workspace_init(repl_workspace *ws);
-
-/*
- * repl_workspace_cleanup - Clean up workspace (call at REPL exit)
- *
- * Disposes the ephemeral workspace table and marks as uninitialized.
- */
-void repl_workspace_cleanup(repl_workspace *ws);
-
-/*
- * repl_workspace_clear - Clear workspace (for /clear command)
- *
- * Removes all variables from the ephemeral workspace table.
- * Refuses to clear non-local tables (safety check to prevent data loss).
- *
- * Returns: true on success, false on error
- */
-boolean repl_workspace_clear(repl_workspace *ws);
-
-/*
- * repl_eval_script - Evaluate UserTalk script in workspace context
- *
- * Compiles and executes the script with ephemeral workspace as the current table context.
- * Variables declared in the script (simple names) are stored in ephemeral workspace.
- * Dotted paths (root.workspace.x) access persisted database tables.
+ * This follows the QuickScript model from legacy Frontier - no implicit persistence
+ * between evaluations. Users who want persistent data use explicit database paths:
+ * - system.temp.x (session-scoped, cleared on exit)
+ * - workspace.x or other root tables (disk-scoped, saved with database)
  *
  * Parameters:
- *   ws         - Workspace context
  *   script     - UserTalk script to execute (null-terminated C string)
  *   result     - OUT: Result as string (bigstring)
  *   error_msg  - OUT: Error message if execution failed (bigstring)
@@ -80,7 +42,6 @@ boolean repl_workspace_clear(repl_workspace *ws);
  *       Error messages come from Frontier's error system.
  */
 boolean repl_eval_script(
-    repl_workspace *ws,
     const char *script,
     bigstring result,      /* OUT: result as string */
     bigstring error_msg    /* OUT: error message if failed */

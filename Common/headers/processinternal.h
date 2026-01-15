@@ -128,11 +128,12 @@ typedef struct tythreadglobals {
 	typrocessstack processstack;
 	
 	hdlprocessrecord hprocess;
-	
+
 	hdlhashtable htable;
-	
+
+	/* ADR-009: Hash table stack (thread-local, accessed via macro) */
 	hdltablestack htablestack;
-	
+
 	tylangcallbacks langcallbacks;
 	
 	
@@ -242,6 +243,27 @@ typedef struct tythreadglobals {
 
 	} tythreadglobals, *ptrthreadglobals, **hdlthreadglobals;
 #pragma options align=reset
+
+/* ADR-009: Thread-local hash table stack migration (Phase 3A)
+ *
+ * MACRO COMMENTED OUT - Bootstrap Initialization Constraint:
+ * Early initialization code (inittablestructure, main bootstrap, database loading)
+ * runs BEFORE hthreadglobals is created, requiring direct access to hashtablestack.
+ * Enabling this macro causes NULL pointer dereference during startup.
+ *
+ * Current Status:
+ * - htablestack field EXISTS in tythreadglobals and is saved/restored in thread swaps
+ * - Global variable still used for access (no functional change)
+ * - Foundation in place for Phase 6+ when bootstrap is refactored
+ *
+ * Path Forward:
+ * - Phase 4-5: Refactor bootstrap to initialize threads before hash tables (Issue #305)
+ * - Phase 6+: Enable macro OR skip to explicit context architecture
+ *
+ * See ADR-009 "Phase 3A Implementation Note: Bootstrap Initialization Constraint"
+ * for detailed analysis and refactoring options.
+ */
+/* #define hashtablestack ((**hthreadglobals).htablestack) */
 
 /* ADR-005: Thread-local parameter and value protection state (backward-compatible macros) */
 #define flnextparamislast ((**hthreadglobals).flnextparamislast)

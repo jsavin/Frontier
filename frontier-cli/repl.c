@@ -41,21 +41,12 @@ static void trim_trailing_whitespace(char* str) {
 int repl_main(cli_options_t *options) {
     (void)options;  /* Unused in Phase 1 */
 
-    // 1. Initialize workspace
-    repl_workspace workspace;
-    memset(&workspace, 0, sizeof(workspace));
-
-    if (!repl_workspace_init(&workspace)) {
-        log_error(LOG_COMP_GENERAL, "Failed to initialize REPL workspace");
-        return 1;
-    }
-
     boolean running = true;
 
-    // 2. Display welcome message
+    // 1. Display welcome message
     repl_output_welcome();
 
-    // 3. Main loop
+    // 2. Main loop
     while (running) {
         // a. Display prompt
         repl_output_prompt(NULL);
@@ -88,17 +79,17 @@ int repl_main(cli_options_t *options) {
 
         // f. Check if command
         if (input[0] == '/') {
-            repl_command_result result = repl_process_command(input, &workspace);
+            repl_command_result result = repl_process_command(input);
             if (result == REPL_CMD_EXIT) {
                 running = false;
             }
             continue;
         }
 
-        // g. Evaluate as UserTalk
+        // g. Evaluate as UserTalk (QuickScript model - no workspace parameter)
         bigstring result;
         bigstring error_msg;
-        if (repl_eval_script(&workspace, input, result, error_msg)) {
+        if (repl_eval_script(input, result, error_msg)) {
             // Success - display result
             repl_output_result(result);
         } else {
@@ -119,8 +110,7 @@ int repl_main(cli_options_t *options) {
         }
     }
 
-    // 4. Cleanup
+    // 3. Cleanup
     repl_output_goodbye();
-    repl_workspace_cleanup(&workspace);
     return 0;
 }

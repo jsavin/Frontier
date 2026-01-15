@@ -1961,12 +1961,54 @@ LIBS += -lreadline  # or -ledit on macOS
 
 ---
 
+## Known Limitations (Phase 1)
+
+### Hash Table Stack Restoration Issue (ADR-009)
+
+**Status**: Architectural limitation documented in ADR-009, workarounds in place.
+
+**Root Cause**: The `langrunhandletraperror()` function calls `pushprocess(nil)` / `popprocess()`,
+which saves and restores the entire hash table stack state. This causes REPL workspace
+modifications to be lost between evaluations.
+
+**Affected Functionality**:
+1. `/clear` command - Variables assigned after `/clear` may not persist
+2. Function definitions (edge cases) - Functions defined in REPL may not be callable
+3. Multiple function calls - Related to function definition persistence
+
+**Current Workarounds**:
+1. Force workspace onto stack before evaluation (`repl_eval.c:259-267`)
+2. Manual hash table clearing without callbacks (`repl_eval.c:142-170`)
+
+**Test Status**:
+- Total: 136 REPL integration tests
+- Passing: 133 (97.8%)
+- Failing: 3 (related to hash table stack restoration)
+
+**Resolution Plan**:
+- **Phase 3A** (Immediate): Migrate `hashtablestack` to thread-local storage (ADR-009)
+  - Enables thread-safety for Phase 6+ collaborative ODB
+  - Zero API changes (backward-compatible macro)
+  - Foundation for future refactoring
+- **Phase 6+** (Future): Explicit Hash Table Context architecture
+  - Eliminate global `hashtablestack` and `currenthashtable`
+  - Pass hash table context explicitly through function parameters
+  - Complete solution for all REPL issues (136/136 tests passing)
+
+**References**:
+- `planning/architectural_decision_records/ADR-009-repl-hash-table-stack-management.md`
+- `docs/REPL_WORKSPACE_ARCHITECTURE.md`
+- `docs/CLI_USAGE_GUIDE.md` (Known Limitations section)
+
+---
+
 **Document History**:
+- 2026-01-14: Added Known Limitations section (ADR-009)
 - 2026-01-12: Initial design document (Phase 1-4 specification)
 
 ---
 
-**Approval Status**: Draft - Pending TPM/CTO Review
+**Approval Status**: Phase 1 Implemented - Known limitations documented
 
 ---
 

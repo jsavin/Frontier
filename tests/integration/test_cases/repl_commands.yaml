@@ -2,9 +2,13 @@
 #
 # Tests for REPL special commands:
 # - /help - Show available commands
-# - /vars - List workspace variables
-# - /clear - Clear workspace
 # - /exit - Exit REPL
+#
+# QUICKSCRIPT MODEL (2026-01-15): /vars and /clear commands removed
+# - QuickScript model doesn't use workspace (each evaluation runs in clean thread)
+# - Tests for /vars and /clear marked as skip=true (not applicable)
+# - Persistence via explicit database paths: system.temp.x, workspace.x
+# - See ADR-009 and docs/CLI_USAGE_GUIDE.md for QuickScript model documentation
 #
 # These tests require REPL interactive mode with stdin simulation.
 # Reference: planning/phase4/REPL_INTERACTIVE_MODE_DESIGN.md (Phase 1)
@@ -18,15 +22,14 @@ tests:
   # =========================================================================
 
   - name: "REPL /help - displays available commands"
-    description: "/help should list all available commands"
+    description: "/help should list available commands (QuickScript model)"
     repl_mode: true
     stdin_input: "/help\n/exit\n"
     expected_output_contains:
       - "/exit"
       - "/help"
-      - "/vars"
-      - "/clear"
       - "Available commands"
+      - "QuickScript"  # Help text explains QuickScript model
     expected_success: true
 
   - name: "REPL /help - shows multi-line usage"
@@ -53,6 +56,8 @@ tests:
 
   - name: "REPL /vars - empty workspace"
     description: "/vars shows empty ephemeral workspace"
+    skip: true
+    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
     repl_mode: true
     stdin_input: "/vars\n/exit\n"
     expected_output_contains:
@@ -65,6 +70,8 @@ tests:
 
   - name: "REPL /vars - single variable"
     description: "/vars should list single workspace variable"
+    skip: true
+    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
     repl_mode: true
     stdin_input: "x = 42\n/vars\n/exit\n"
     expected_output_contains:
@@ -74,6 +81,8 @@ tests:
 
   - name: "REPL /vars - multiple variables"
     description: "/vars should list all workspace variables"
+    skip: true
+    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
     repl_mode: true
     stdin_input: |
       x = 42
@@ -90,6 +99,8 @@ tests:
 
   - name: "REPL /vars - string variable displays with quotes"
     description: "/vars should show strings with quote marks"
+    skip: true
+    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
     repl_mode: true
     stdin_input: |
       greeting = "Hello, world!"
@@ -101,6 +112,8 @@ tests:
 
   - name: "REPL /vars - boolean variables"
     description: "/vars should show true/false for booleans"
+    skip: true
+    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
     repl_mode: true
     stdin_input: |
       flag1 = true
@@ -114,6 +127,8 @@ tests:
 
   - name: "REPL /vars - table variable"
     description: "/vars should show table summary"
+    skip: true
+    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
     repl_mode: true
     stdin_input: |
       lang.new(tableType, @subtable)
@@ -132,6 +147,8 @@ tests:
 
   - name: "REPL /clear - clears workspace variables"
     description: "/clear should remove all workspace variables"
+    skip: true
+    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
     repl_mode: true
     stdin_input: |
       x = 42
@@ -146,6 +163,8 @@ tests:
 
   - name: "REPL /clear - variables inaccessible after clear"
     description: "After /clear, variables should not be accessible"
+    skip: true
+    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
     repl_mode: true
     stdin_input: |
       x = 42
@@ -158,7 +177,12 @@ tests:
     expected_success: true
 
   - name: "REPL /clear - can add variables after clear"
-    description: "After /clear, new variables should work"
+    description: |
+      KNOWN LIMITATION (ADR-009): Variables assigned after /clear may not persist
+      in workspace due to hash table stack restoration in langrunhandletraperror().
+      Will be fixed in Phase 6+ (Explicit Hash Table Context architecture).
+    skip: true
+    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
     repl_mode: true
     stdin_input: |
       old = 1
@@ -171,9 +195,12 @@ tests:
     expected_output_not_contains:
       - "old"
     expected_success: true
+    known_issue: "ADR-009: Hash table stack restoration after /clear"
 
   - name: "REPL /clear - idempotent (can clear empty workspace)"
     description: "/clear on empty workspace should succeed"
+    skip: true
+    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
     repl_mode: true
     stdin_input: "/clear\n/clear\n/exit\n"
     expected_output_contains:
@@ -244,6 +271,8 @@ tests:
 
   - name: "REPL - alternate between code and commands"
     description: "Should seamlessly switch between code and commands"
+    skip: true
+    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
     repl_mode: true
     stdin_input: |
       x = 10
@@ -270,6 +299,8 @@ tests:
 
   - name: "REPL - command after successful evaluation"
     description: "Commands should work after successful code"
+    skip: true
+    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
     repl_mode: true
     stdin_input: |
       result = 42
@@ -314,6 +345,8 @@ tests:
 
   - name: "REPL /vars - shows variable count"
     description: "/vars should show count of workspace variables"
+    skip: true
+    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
     repl_mode: true
     stdin_input: |
       a = 1
@@ -327,6 +360,8 @@ tests:
 
   - name: "REPL /vars - handles special characters in values"
     description: "/vars should properly display special characters"
+    skip: true
+    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
     repl_mode: true
     stdin_input: |
       special = "Line1\nLine2"
@@ -378,6 +413,8 @@ tests:
 
   - name: "REPL /vars - nested table display"
     description: "/vars should handle nested tables"
+    skip: true
+    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
     repl_mode: true
     stdin_input: |
       lang.new(tableType, @outer)
@@ -391,6 +428,8 @@ tests:
 
   - name: "REPL /vars - large workspace"
     description: "/vars should handle many variables"
+    skip: true
+    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
     repl_mode: true
     stdin_input: |
       v1 = 1
@@ -426,6 +465,8 @@ tests:
 
   - name: "REPL /help - documents /vars"
     description: "/help should explain /vars command"
+    skip: true
+    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
     repl_mode: true
     stdin_input: "/help\n/exit\n"
     expected_output_contains:
@@ -435,6 +476,8 @@ tests:
 
   - name: "REPL /help - documents /clear"
     description: "/help should explain /clear command"
+    skip: true
+    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
     repl_mode: true
     stdin_input: "/help\n/exit\n"
     expected_output_contains:

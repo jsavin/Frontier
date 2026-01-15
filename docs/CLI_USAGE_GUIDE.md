@@ -16,6 +16,7 @@
 7. [Examples](#examples)
 8. [Troubleshooting](#troubleshooting)
 9. [Advanced Usage](#advanced-usage)
+10. [REPL Known Limitations](#repl-known-limitations)
 
 ---
 
@@ -706,6 +707,91 @@ time ./frontier-cli/frontier-cli -e "local(i); for i = 1 to 1000 {i * 2}"
 - Environment variable configuration
 - Verbose and debug logging modes
 - Exit code support for shell scripting
+
+---
+
+## REPL QuickScript Model
+
+The REPL follows the **QuickScript model** from legacy Frontier: each evaluation runs
+independently in its own thread context, with automatic cleanup after completion.
+
+### Variable Persistence Scopes
+
+Understanding how variables persist is key to effective REPL usage:
+
+**1. Local Variables** (Evaluation-scoped - No Persistence)
+```
+> x = 5
+5
+> x + 1
+Error: Can't find variable named "x"
+```
+
+Local variables are thread-scoped and cleaned up immediately after evaluation completes.
+They do NOT persist between Enter presses.
+
+**2. Session-Scoped Variables** (`system.temp.*`)
+
+Persists across evaluations, cleared when frontier-cli exits:
+```
+> system.temp.counter = 0
+0
+> system.temp.counter = system.temp.counter + 1
+1
+> system.temp.counter = system.temp.counter + 1  // Next evaluation
+2
+```
+
+**3. Disk-Scoped Variables** (`workspace.*` or other root tables)
+
+Saved to database, survives restarts:
+```
+> workspace.prefs.theme = "dark"
+"dark"
+// Still available after restarting frontier-cli
+```
+
+### Why QuickScript?
+
+This follows proven Frontier patterns:
+- **Matches legacy behavior**: QuickScript window worked the same way
+- **Clean architecture**: No workarounds or state management needed
+- **Let users manage data**: Users choose appropriate persistence scope
+- **Thread-safe by design**: Each evaluation is isolated
+
+### Available Commands
+
+```
+/exit          Exit the REPL
+/help          Show help message with persistence examples
+```
+
+### Tips for REPL Usage
+
+1. **Quick Calculations**: Use locals for throwaway values
+   ```
+   > 42 * 1.5
+   63
+   ```
+
+2. **Session State**: Use `system.temp.*` for values needed across evaluations
+   ```
+   > system.temp.lastResult = someExpression()
+   ```
+
+3. **Persistent Configuration**: Use `workspace.*` for settings to save
+   ```
+   > workspace.config.apiKey = "abc123"
+   ```
+
+4. **Inspect Database**: Check what's stored
+   ```
+   > sizeOf(system.temp)
+   > sizeOf(workspace)
+   ```
+
+For technical details about the QuickScript architecture, see:
+- `planning/architectural_decision_records/ADR-009-repl-hash-table-stack-management.md`
 
 ---
 
