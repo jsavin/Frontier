@@ -1572,32 +1572,45 @@ static boolean hashlinknode (hdlhashtable htable, hdlhashnode hnode) {
 	
 
 boolean hashinsertnode (hdlhashnode hnode, hdlhashtable htable) {
-	
+
 	/*
 	3/23/93 dmb: don't invoke callback when flunpackingtable flag is set
 	*/
-	
+
 	register hdlhashnode hn = hnode;
 	register hdlhashtable ht = htable;
 	bigstring bs;
-	
+
 	hashlinknode (ht, hn);
-	
+
 	if (flunpackingtable) /*tableunpack will take care of sort links*/
 		return (true);
-	
+
+	/* DEBUG: Log before sorted insert - only for local tables (workspace) */
+	if ((**ht).fllocaltable) {
+		gethashkey(hn, bs);  /* Get key name for logging */
+		log_debug(LOG_COMP_HASH, "hashinsertnode LOCAL: key=%.*s, htable=%p, currenthashtable=%p, hfirstsort_before=%p",
+		          (int)stringlength(bs), stringbaseaddress(bs), ht, currenthashtable, (**ht).hfirstsort);
+	}
+
 	pushhashtable (ht);
-	
+
 	hashsortedinsert (hn);
-	
+
+	/* DEBUG: Log after sorted insert - only for local tables */
+	if ((**ht).fllocaltable) {
+		log_debug(LOG_COMP_HASH, "hashinsertnode LOCAL: after sortedinsert - hfirstsort_after=%p",
+		          (**ht).hfirstsort);
+	}
+
 	pophashtable ();
-	
+
 	dirtyhashtable (ht);
-	
+
 	gethashkey (hn, bs);
-	
+
 	langsymbolinserted (ht, bs, hn);
-	
+
 	return (true);
 	} /*hashinsertnode*/
 	
@@ -2075,6 +2088,12 @@ boolean hashassign (const bigstring bs, tyvaluerecord val) {
 	hdlhashnode hnode, hprev;
 	tyvaluerecord existingval;
 	boolean fllocal = (**currenthashtable).fllocaltable;
+
+	/* DEBUG: Log assignment target */
+	extern hdlhashtable roottable;
+	log_debug(LOG_COMP_HASH, "hashassign: key=%.*s, fllocal=%d, currenthashtable=%p (root=%d), hfirstsort=%p",
+	          (int)stringlength(bs), stringbaseaddress(bs), fllocal, currenthashtable,
+	          currenthashtable == roottable, (**currenthashtable).hfirstsort);
 
 	/*
 	fllangerror = false;

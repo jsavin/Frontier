@@ -16,23 +16,26 @@
 #include "../Common/headers/lang.h"
 
 /*
- * repl_workspace_t - Persistent workspace for REPL variables
+ * repl_workspace_t - Ephemeral workspace for REPL variables
  *
- * The workspace table persists across all REPL evaluations in a session.
+ * The workspace table is ephemeral (thread-local, not persisted).
  * Variables declared at the REPL prompt are stored here.
+ *
+ * The ephemeral workspace is isolated from root.workspace - /clear never
+ * touches persisted data.
  *
  * NOT thread-safe - CLI is single-threaded in Phase 1.
  */
 typedef struct repl_workspace_t {
-    hdlhashtable workspace_table;  /* Persistent workspace table */
+    hdlhashtable workspace_table;  /* Ephemeral workspace table */
     boolean initialized;            /* Workspace initialized flag */
 } repl_workspace;
 
 /*
  * repl_workspace_init - Initialize workspace (call once at REPL startup)
  *
- * Creates 'workspace' as a top-level table in the system root.
- * If no system root is loaded, this will fail.
+ * Creates ephemeral thread-local hash table for REPL variables.
+ * This table is NOT persisted and is isolated from root.workspace.
  *
  * Returns: true on success, false on error
  */
@@ -41,15 +44,15 @@ boolean repl_workspace_init(repl_workspace *ws);
 /*
  * repl_workspace_cleanup - Clean up workspace (call at REPL exit)
  *
- * Does NOT dispose the workspace table (it's part of system root).
- * Just marks workspace as uninitialized.
+ * Disposes the ephemeral workspace table and marks as uninitialized.
  */
 void repl_workspace_cleanup(repl_workspace *ws);
 
 /*
  * repl_workspace_clear - Clear workspace (for /clear command)
  *
- * Removes all variables from workspace table without disposing the table itself.
+ * Removes all variables from the ephemeral workspace table.
+ * Refuses to clear non-local tables (safety check to prevent data loss).
  *
  * Returns: true on success, false on error
  */
@@ -58,8 +61,9 @@ boolean repl_workspace_clear(repl_workspace *ws);
 /*
  * repl_eval_script - Evaluate UserTalk script in workspace context
  *
- * Compiles and executes the script with workspace as the current table context.
- * Variables declared in the script are stored in workspace.
+ * Compiles and executes the script with ephemeral workspace as the current table context.
+ * Variables declared in the script (simple names) are stored in ephemeral workspace.
+ * Dotted paths (root.workspace.x) access persisted database tables.
  *
  * Parameters:
  *   ws         - Workspace context
@@ -72,7 +76,7 @@ boolean repl_workspace_clear(repl_workspace *ws);
  * On success: result contains string representation of return value (may be empty)
  * On error: error_msg contains error description
  *
- * Note: Uses langrunhandle() for compilation and execution.
+ * Note: Uses langrunhandletraperror() for compilation and execution.
  *       Error messages come from Frontier's error system.
  */
 boolean repl_eval_script(

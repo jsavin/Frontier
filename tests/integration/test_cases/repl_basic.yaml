@@ -59,67 +59,67 @@ tests:
 
   - name: "REPL - assign variable to workspace"
     description: "Variables assigned to workspace should persist"
-    script: 'workspace.x = 42'
+    script: 'x = 42'
     expected_success: true
     expected_result: 42
 
   - name: "REPL - read workspace variable"
     description: "Variables in workspace should be accessible"
     script: |
-      workspace.testvar = 100;
-      workspace.testvar
+      testvar = 100;
+      testvar
     expected_success: true
     expected_result: 100
 
   - name: "REPL - workspace variable arithmetic"
     description: "Arithmetic on workspace variables should work"
     script: |
-      workspace.a = 10;
-      workspace.b = 20;
-      workspace.a + workspace.b
+      a = 10;
+      b = 20;
+      a + b
     expected_success: true
     expected_result: 30
 
   - name: "REPL - workspace variable multiplication"
     description: "Multiply workspace variable"
     script: |
-      workspace.x = 7;
-      workspace.x * 6
+      x = 7;
+      x * 6
     expected_success: true
     expected_result: 42
 
   - name: "REPL - workspace string variable"
     description: "String variables should persist in workspace"
     script: |
-      workspace.greeting = "Hello";
-      workspace.greeting + ", REPL!"
+      greeting = "Hello";
+      greeting + ", REPL!"
     expected_success: true
     expected_result: "Hello, REPL!"
 
   - name: "REPL - workspace boolean variable"
     description: "Boolean variables should persist"
     script: |
-      workspace.flag = true;
-      workspace.flag
+      flag = true;
+      flag
     expected_success: true
     expected_result: 'true'
 
   - name: "REPL - modify workspace variable"
     description: "Workspace variables should be modifiable"
     script: |
-      workspace.counter = 1;
-      workspace.counter = workspace.counter + 1;
-      workspace.counter
+      counter = 1;
+      counter = counter + 1;
+      counter
     expected_success: true
     expected_result: 2
 
   - name: "REPL - multiple workspace variables"
     description: "Multiple variables should coexist in workspace"
     script: |
-      workspace.x = 10;
-      workspace.y = 20;
-      workspace.z = workspace.x + workspace.y;
-      workspace.z
+      x = 10;
+      y = 20;
+      z = x + y;
+      z
     expected_success: true
     expected_result: 30
 
@@ -220,7 +220,7 @@ tests:
 
   - name: "REPL - undefined workspace variable"
     description: "Accessing undefined workspace variable should error"
-    script: 'workspace.undefined_variable'
+    script: 'undefined_variable'
     expected_success: false
     expected_error: "Can't find"
 
@@ -250,8 +250,8 @@ tests:
   - name: "REPL - workspace is separate from root"
     description: "Workspace variables should not pollute root scope"
     script: |
-      workspace.x = 42;
-      workspace.x
+      x = 42;
+      x
     expected_success: true
     expected_result: 42
     # Note: Testing that 'x' without workspace prefix fails requires error handling
@@ -265,14 +265,8 @@ tests:
     expected_result: 100
     # In a real REPL session, next evaluation would NOT have temp available
 
-  - name: "REPL - workspace table is persistent"
-    description: "Workspace table itself should persist across evaluations"
-    script: |
-      workspace.first = 1;
-      workspace.second = 2;
-      sizeOf(workspace)
-    expected_success: true
-    expected_result: 5  # 3 pre-existing items + 2 new items
+  # NOTE: "workspace table is persistent" test removed - architecturally incompatible
+  # with ephemeral workspace design. Ephemeral variables don't persist to root.workspace.
 
   # =========================================================================
   # Complex Value Display
@@ -321,15 +315,15 @@ tests:
     expected_result: 15
 
   - name: "REPL - function definition in workspace"
-    description: "Function definitions not yet supported"
+    description: "Function definitions work in Phase 1"
     script: |
-      on workspace.double(x) {
+      on doubleIt(x) {
         return x * 2
       };
-      workspace.double(21)
-    expected_success: false
-    expected_error: "syntax error"
-    # TODO: Function definitions should work in Phase 2
+      doubleIt(21)
+    expected_success: true
+    expected_result: 42
+    # Function definitions work in Phase 1 (not Phase 2 as originally expected)
 
   # =========================================================================
   # System Root Integration
@@ -378,9 +372,9 @@ tests:
   - name: "REPL - nested table creation"
     description: "Nested tables should work"
     script: |
-      lang.new(tableType, @workspace.nested);
-      workspace.nested.value = 42;
-      workspace.nested.value
+      lang.new(tableType, @nested);
+      nested.value = 42;
+      nested.value
     expected_success: true
     expected_result: 42
 
@@ -399,18 +393,18 @@ tests:
   - name: "REPL - multiple statements"
     description: "Multiple statements should execute in order"
     script: |
-      workspace.a = 1;
-      workspace.b = 2;
-      workspace.c = 3;
-      workspace.a + workspace.b + workspace.c
+      a = 1;
+      b = 2;
+      c = 3;
+      a + b + c
     expected_success: true
     expected_result: 6
 
   - name: "REPL - return statement"
     description: "Explicit return should work"
     script: |
-      workspace.x = 10;
-      return workspace.x * 2
+      x = 10;
+      return x * 2
     expected_success: true
     expected_result: 20
 
@@ -426,15 +420,15 @@ tests:
 
   - name: "REPL - assignment returns value"
     description: "Assignment expressions return assigned value"
-    script: 'workspace.x = 42'
+    script: 'x = 42'
     expected_success: true
     expected_result: 42
 
   - name: "REPL - statement without return"
     description: "Statements without explicit return should work"
     script: |
-      workspace.x = 5;
-      workspace.x = workspace.x + 1
+      x = 5;
+      x = x + 1
     expected_success: true
     expected_result: 6
 
@@ -467,7 +461,7 @@ tests:
   - name: "REPL - workspace doesn't affect system table"
     description: "Workspace assignments should not modify system tables"
     script: |
-      workspace.compiler = "custom";
+      compiler = "custom";
       typeof(system.compiler)
     expected_success: true
     expected_result: "tabl"  # system.compiler should still be table
@@ -475,9 +469,9 @@ tests:
   - name: "REPL - workspace is writable"
     description: "Workspace should be writable (not read-only)"
     script: |
-      workspace.test1 = 1;
-      workspace.test2 = 2;
-      workspace.test3 = 3;
+      test1 = 1;
+      test2 = 2;
+      test3 = 3;
       sizeOf(workspace) >= 3
     expected_success: true
     expected_result: 'true'
@@ -489,17 +483,17 @@ tests:
   - name: "REPL - runtime error doesn't corrupt workspace"
     description: "Runtime errors should not corrupt workspace state"
     script: |
-      workspace.x = 10;
+      x = 10;
       try { 1 / 0 } else { };
-      workspace.x
+      x
     expected_success: true
     expected_result: 10
 
   - name: "REPL - compile error doesn't affect workspace"
     description: "Compilation errors should not affect workspace"
     script: |
-      workspace.safe = 42;
-      workspace.safe
+      safe = 42;
+      safe
     expected_success: true
     expected_result: 42
     # Previous compile error (if any) should not affect this
@@ -520,9 +514,9 @@ tests:
   - name: "REPL - multi-statement mixed workspace and local"
     description: "Mix workspace and local variables"
     script: |
-      workspace.persistent = 100;
+      persistent = 100;
       local(temporary = 50);
-      workspace.persistent + temporary
+      persistent + temporary
     expected_success: true
     expected_result: 150
 

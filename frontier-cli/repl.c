@@ -46,13 +46,7 @@ int repl_main(cli_options_t *options) {
     memset(&workspace, 0, sizeof(workspace));
 
     if (!repl_workspace_init(&workspace)) {
-        /* Dual-purpose error reporting:
-         * - log_error() for diagnostic logging (debug builds, log files)
-         * - fprintf(stderr) for user-facing terminal output
-         * Both are intentional and serve different purposes.
-         */
         log_error(LOG_COMP_GENERAL, "Failed to initialize REPL workspace");
-        fprintf(stderr, "Error: Failed to initialize REPL workspace\n");
         return 1;
     }
 
@@ -113,10 +107,14 @@ int repl_main(cli_options_t *options) {
             char error_buf[256];
             size_t error_len = stringlength(error_msg);
             if (error_len > sizeof(error_buf) - 1) {
-                error_len = sizeof(error_buf) - 1;
+                /* Truncate with indicator */
+                error_len = sizeof(error_buf) - 4;  /* Reserve space for "..." */
+                memcpy(error_buf, stringbaseaddress(error_msg), error_len);
+                memcpy(error_buf + error_len, "...", 4);  /* Includes null terminator */
+            } else {
+                memcpy(error_buf, stringbaseaddress(error_msg), error_len);
+                error_buf[error_len] = '\0';
             }
-            memcpy(error_buf, stringbaseaddress(error_msg), error_len);
-            error_buf[error_len] = '\0';
             repl_output_error(error_buf);
         }
     }

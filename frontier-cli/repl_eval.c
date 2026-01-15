@@ -24,13 +24,36 @@ extern hdlhashtable roottable;
 
 /* Forward declarations for internal functions */
 extern short emptyhashtable(hdlhashtable htable, boolean fldisk);
+extern boolean disposehashtable(hdlhashtable htable, boolean fldisk);
+extern boolean newhashtable(hdlhashtable *htable);
+extern void disposevaluerecord(tyvaluerecord val, boolean fldisk);
 
 /*
- * repl_workspace_init - Initialize workspace table
+ * REPL Workspace Architecture
  *
- * Creates root.workspace table for REPL variables.
- * When system.paths is loaded, workspace.x resolves to root.workspace.x
- * The workspace persists across all REPL evaluations.
+ * The REPL workspace is a thread-local, ephemeral hash table for REPL variables.
+ *
+ * Variables assigned in the REPL (e.g., "x = 42") are stored in this ephemeral
+ * table and are:
+ * - NOT persisted to database
+ * - Thread-local (isolated per REPL session)
+ * - Clearable with /clear command
+ *
+ * Name Resolution:
+ * - Simple names (x, y, z) → REPL workspace (ephemeral)
+ * - Dotted paths (root.workspace.x, workspace.x) → Database tables (persistent)
+ *
+ * The /clear command empties ONLY the ephemeral REPL workspace, never touching
+ * root.workspace or any other persisted data.
+ *
+ * See docs/REPL_WORKSPACE_ARCHITECTURE.md for complete architecture details.
+ */
+
+/*
+ * repl_workspace_init - Initialize ephemeral thread-local workspace
+ *
+ * Creates thread-local hash table for REPL variables.
+ * This table is NOT persisted and is isolated from root.workspace.
  */
 boolean repl_workspace_init(repl_workspace *ws) {
     if (ws == NULL) {
@@ -41,61 +64,53 @@ boolean repl_workspace_init(repl_workspace *ws) {
     ws->workspace_table = nil;
     ws->initialized = false;
 
-    /* Check if system root is loaded */
-    if (roottable == nil) {
-        log_error(LOG_COMP_GENERAL, "Root table not loaded - cannot create workspace");
+    /* Create ephemeral thread-local hash table for REPL variables.
+     * This table is NOT persisted and is isolated from root.workspace.
+     */
+    hdlhashtable hnew = nil;
+
+    /* Create new hash table */
+    if (!newhashtable(&hnew)) {
+        log_error(LOG_COMP_GENERAL, "Failed to create ephemeral REPL workspace table");
         return false;
     }
 
-    /* Find or create root.workspace table
-     *
-     * IMPORTANT: We use root.workspace, not root.repl.workspace, for these reasons:
-     *
-     * 1. root.workspace already exists in Frontier databases with user data
-     *    (notepad, pt, userlandSamples, etc.)
-     * 2. The REPL should be able to interact with this existing data
-     * 3. Users can already access workspace.x in UserTalk scripts
-     * 4. Creating a separate root.repl.workspace adds complexity without benefit
-     * 5. The /clear command clears ONLY root.workspace entries, not the entire table
-     *
-     * If we used root.repl.workspace instead:
-     * - Pro: /clear wouldn't affect user's existing root.workspace data
-     * - Con: REPL variables would be isolated from existing user data
-     * - Con: Users would need to reference repl.workspace.x instead of workspace.x
-     * - Con: More confusing mental model (where do my variables go?)
-     *
-     * Decision: Stick with root.workspace for simplicity and consistency.
-     *
-     * Normal name resolution will find workspace.x as root.workspace.x
-     */
-    hdlhashtable workspace = nil;
-    bigstring bs_workspace;
-    copyctopstring("workspace", bs_workspace);
+    /* Configure as local scope (ephemeral, not persisted) */
+    (**hnew).fllocaltable = true;      /* Marks as ephemeral */
+    (**hnew).prevhashtable = currenthashtable;  /* Chain to previous table for name resolution */
+    (**hnew).hashtablerefcon = 0;      /* No database association */
 
-    if (!findnamedtable(roottable, bs_workspace, &workspace)) {
-        /* Table doesn't exist - safe to create new one */
-        if (!tablenewsubtable(roottable, bs_workspace, &workspace)) {
-            log_error(LOG_COMP_GENERAL, "Failed to create root.workspace table");
-            return false;
-        }
+    /* Push onto hash table stack for proper script execution context.
+     * pushhashtable() will set currenthashtable = hnew for us.
+     */
+    if (!pushhashtable(hnew)) {
+        disposehashtable(hnew, false);
+        log_error(LOG_COMP_GENERAL, "Failed to push REPL workspace onto hash table stack");
+        return false;
     }
 
-    ws->workspace_table = workspace;
+    /* Save reference in REPL context */
+    ws->workspace_table = hnew;
     ws->initialized = true;
 
-    log_debug(LOG_COMP_GENERAL, "REPL workspace initialized as root.workspace");
+    log_debug(LOG_COMP_GENERAL, "REPL workspace initialized (thread-local, ephemeral)");
     return true;
 }
 
 /*
- * repl_workspace_cleanup - Clean up workspace
+ * repl_workspace_cleanup - Clean up ephemeral workspace
  *
- * Does NOT dispose the workspace table (it's part of system root).
- * Just marks as uninitialized.
+ * Disposes the ephemeral workspace table and clears the reference.
  */
 void repl_workspace_cleanup(repl_workspace *ws) {
     if (ws == NULL) {
         return;
+    }
+
+    /* Pop workspace from hash table stack and dispose */
+    if (ws->workspace_table != nil) {
+        pophashtable();  /* Remove from stack */
+        disposehashtable(ws->workspace_table, false);
     }
 
     ws->workspace_table = nil;
@@ -103,19 +118,67 @@ void repl_workspace_cleanup(repl_workspace *ws) {
 }
 
 /*
- * repl_workspace_clear - Clear all workspace variables
+ * repl_workspace_clear - Clear all ephemeral workspace variables
  *
- * Removes all entries from workspace table using emptyhashtable().
+ * Removes all entries from the ephemeral workspace table.
+ * Refuses to clear non-local tables (safety check to prevent data loss).
  */
 boolean repl_workspace_clear(repl_workspace *ws) {
     if (ws == NULL || ws->workspace_table == nil) {
         return false;
     }
 
-    /* Clear all entries from workspace table */
-    emptyhashtable(ws->workspace_table, false);
+    /* SAFETY CHECK: Refuse to clear non-local tables (prevents data loss) */
+    if (!(**ws->workspace_table).fllocaltable) {
+        log_error(LOG_COMP_GENERAL, "Refusing to clear non-local table (safety check)");
+        return false;
+    }
 
-    log_debug(LOG_COMP_GENERAL, "REPL workspace cleared");
+    /* DEBUG: Check state before clear */
+    log_debug(LOG_COMP_GENERAL, "Before clear: ws->workspace_table=%p, currenthashtable=%p, match=%d, prevhashtable=%p",
+              ws->workspace_table, currenthashtable, ws->workspace_table == currenthashtable,
+              (**ws->workspace_table).prevhashtable);
+
+    /* CRITICAL FIX: Manually clear workspace table entries WITHOUT callbacks
+     * emptyhashtable() triggers callbacks (langsymboldeleted) that corrupt state.
+     * We can't dispose/recreate because process stack has saved pointers to this table.
+     * Instead, manually clear the hash buckets and sorted list.
+     */
+
+    /* Clear sorted list */
+    (**ws->workspace_table).hfirstsort = nil;
+
+    /* Clear all hash buckets (ctbuckets is defined in lang.h) */
+    #define ctbuckets 11
+    for (int i = 0; i < ctbuckets; i++) {
+        /* For each node in bucket, dispose it WITHOUT callbacks */
+        hdlhashnode nomad = (**ws->workspace_table).hashbucket[i];
+        while (nomad != nil) {
+            hdlhashnode nextnomad = (**nomad).hashlink;
+
+            /* Dispose node's value data */
+            disposevaluerecord((**nomad).val, false);  /* false = local table */
+
+            /* Dispose node itself */
+            disposehandle((Handle)nomad);
+
+            nomad = nextnomad;
+        }
+
+        /* Clear bucket pointer */
+        (**ws->workspace_table).hashbucket[i] = nil;
+    }
+
+    /* Re-set currenthashtable to ensure it's correct */
+    currenthashtable = ws->workspace_table;
+
+    /* DEBUG: Check state after clear */
+    log_debug(LOG_COMP_GENERAL, "After clear: ws->workspace_table=%p, currenthashtable=%p, match=%d, hfirstsort=%p, fllocaltable=%d, prevhashtable=%p",
+              ws->workspace_table, currenthashtable, ws->workspace_table == currenthashtable,
+              (**ws->workspace_table).hfirstsort, (**ws->workspace_table).fllocaltable,
+              (**ws->workspace_table).prevhashtable);
+
+    log_debug(LOG_COMP_GENERAL, "REPL workspace cleared (ephemeral variables only)");
     return true;
 }
 
@@ -164,6 +227,11 @@ boolean repl_eval_script(
     }
 
     HLock(htext);
+    if (*htext == NULL) {
+        disposehandle(htext);
+        copyctopstring("Handle lock failed", error_msg);
+        return false;
+    }
     memcpy(*htext, script, script_len);
     HUnlock(htext);
 
@@ -173,12 +241,46 @@ boolean repl_eval_script(
      * It disposes htext before returning (both success and error paths).
      * Do NOT access htext after this call.
      *
-     * Name resolution: workspace.x resolves to root.workspace.x
-     * Don't set currenthashtable - let normal lookup work
+     * Name resolution:
+     * - Simple names (x, y) → currenthashtable (ephemeral REPL workspace)
+     * - Dotted paths (root.workspace.x) → Database lookup (persistent)
+     *
+     * currenthashtable was set in repl_workspace_init() to point to the
+     * ephemeral workspace, so variable assignments automatically go there.
      *
      * Returns: result in one param, error in another (separated cleanly)
      */
+
+    /* DEBUG: Check currenthashtable BEFORE script execution */
+    log_debug(LOG_COMP_GENERAL, "BEFORE langrun: workspace_table=%p, currenthashtable=%p, match=%d, fllocal=%d",
+              ws->workspace_table, currenthashtable, ws->workspace_table == currenthashtable,
+              (**currenthashtable).fllocaltable);
+
+    /* CRITICAL WORKAROUND: Force workspace onto hash table stack
+     * langrunhandletraperror() does pushprocess/popprocess which restores old hashtablestack.
+     * This can leave workspace table OFF the stack, causing assignments to go elsewhere.
+     * Force workspace back onto stack before evaluation.
+     */
+    pophashtable();  /* Remove whatever's on top */
+    pushhashtable(ws->workspace_table);  /* Put workspace on top */
+    currenthashtable = ws->workspace_table;  /* Ensure currenthashtable is correct */
+    log_debug(LOG_COMP_GENERAL, "FORCED workspace onto stack: %p", currenthashtable);
+
     boolean ok = langrunhandletraperror(htext, result, error_msg);
+
+    /* DEBUG: Check currenthashtable AFTER script execution */
+    log_debug(LOG_COMP_GENERAL, "AFTER langrun: workspace_table=%p, currenthashtable=%p, match=%d",
+              ws->workspace_table, currenthashtable, ws->workspace_table == currenthashtable);
+
+    /* CRITICAL: Restore correct hash table state after langrun
+     * langrunhandletraperror may have left hash table stack in inconsistent state.
+     * Force workspace back as current table.
+     */
+    currenthashtable = ws->workspace_table;
+
+    /* DEBUG: Check workspace state after script execution */
+    log_debug(LOG_COMP_GENERAL, "After script eval: workspace_table=%p, currenthashtable=%p, hfirstsort=%p, fllocaltable=%d",
+              ws->workspace_table, currenthashtable, (**ws->workspace_table).hfirstsort, (**ws->workspace_table).fllocaltable);
 
     if (!ok) {
         /* Execution failed - error message is in error_msg parameter */

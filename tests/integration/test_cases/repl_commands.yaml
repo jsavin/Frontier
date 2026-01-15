@@ -52,14 +52,11 @@ tests:
   # =========================================================================
 
   - name: "REPL /vars - empty workspace"
-    description: "/vars shows pre-existing workspace items"
+    description: "/vars shows empty ephemeral workspace"
     repl_mode: true
     stdin_input: "/vars\n/exit\n"
     expected_output_contains:
-      - "Workspace variables (3)"
-      - "notepad"
-      - "pt"
-      - "userlandSamples"
+      - "(empty)"
     expected_success: true
 
   # =========================================================================
@@ -69,7 +66,7 @@ tests:
   - name: "REPL /vars - single variable"
     description: "/vars should list single workspace variable"
     repl_mode: true
-    stdin_input: "workspace.x = 42\n/vars\n/exit\n"
+    stdin_input: "x = 42\n/vars\n/exit\n"
     expected_output_contains:
       - "x = 42"
       - "Workspace variables"
@@ -79,23 +76,23 @@ tests:
     description: "/vars should list all workspace variables"
     repl_mode: true
     stdin_input: |
-      workspace.x = 42
-      workspace.y = "hello"
-      workspace.z = true
+      x = 42
+      y = "hello"
+      z = true
       /vars
       /exit
     expected_output_contains:
       - "x = 42"
       - "y = \"hello\""
       - "z = true"
-      - "Workspace variables (6)"  # 3 pre-existing + 3 new
+      - "Workspace variables (3)"
     expected_success: true
 
   - name: "REPL /vars - string variable displays with quotes"
     description: "/vars should show strings with quote marks"
     repl_mode: true
     stdin_input: |
-      workspace.greeting = "Hello, world!"
+      greeting = "Hello, world!"
       /vars
       /exit
     expected_output_contains:
@@ -106,8 +103,8 @@ tests:
     description: "/vars should show true/false for booleans"
     repl_mode: true
     stdin_input: |
-      workspace.flag1 = true
-      workspace.flag2 = false
+      flag1 = true
+      flag2 = false
       /vars
       /exit
     expected_output_contains:
@@ -119,14 +116,14 @@ tests:
     description: "/vars should show table summary"
     repl_mode: true
     stdin_input: |
-      lang.new(tableType, @workspace.subtable)
-      workspace.subtable.a = 1
-      workspace.subtable.b = 2
+      lang.new(tableType, @subtable)
+      subtable.a = 1
+      subtable.b = 2
       /vars
       /exit
     expected_output_contains:
       - "subtable ="
-      - "[external]"  # or "[table]" depending on implementation
+      - "[table with 2 items]"
     expected_success: true
 
   # =========================================================================
@@ -137,8 +134,8 @@ tests:
     description: "/clear should remove all workspace variables"
     repl_mode: true
     stdin_input: |
-      workspace.x = 42
-      workspace.y = 100
+      x = 42
+      y = 100
       /clear
       /vars
       /exit
@@ -151,9 +148,9 @@ tests:
     description: "After /clear, variables should not be accessible"
     repl_mode: true
     stdin_input: |
-      workspace.x = 42
+      x = 42
       /clear
-      workspace.x
+      x
       /exit
     expected_output_contains:
       - "Can't evaluate"
@@ -164,9 +161,9 @@ tests:
     description: "After /clear, new variables should work"
     repl_mode: true
     stdin_input: |
-      workspace.old = 1
+      old = 1
       /clear
-      workspace.new = 2
+      new = 2
       /vars
       /exit
     expected_output_contains:
@@ -198,7 +195,7 @@ tests:
   - name: "REPL /exit - ignores subsequent input"
     description: "/exit should terminate immediately"
     repl_mode: true
-    stdin_input: "/exit\nworkspace.x = 42\n"
+    stdin_input: "/exit\nx = 42\n"
     expected_output_not_contains:
       - "42"  # Should exit before evaluating second line
     expected_success: true
@@ -249,9 +246,9 @@ tests:
     description: "Should seamlessly switch between code and commands"
     repl_mode: true
     stdin_input: |
-      workspace.x = 10
+      x = 10
       /vars
-      workspace.x = 20
+      x = 20
       /vars
       /exit
     expected_output_contains:
@@ -275,7 +272,7 @@ tests:
     description: "Commands should work after successful code"
     repl_mode: true
     stdin_input: |
-      workspace.result = 42
+      result = 42
       /vars
       /exit
     expected_output_contains:
@@ -319,20 +316,20 @@ tests:
     description: "/vars should show count of workspace variables"
     repl_mode: true
     stdin_input: |
-      workspace.a = 1
-      workspace.b = 2
-      workspace.c = 3
+      a = 1
+      b = 2
+      c = 3
       /vars
       /exit
     expected_output_contains:
-      - "(6)"  # 3 pre-existing + 3 new = "Workspace variables (6)"
+      - "(3)"
     expected_success: true
 
   - name: "REPL /vars - handles special characters in values"
     description: "/vars should properly display special characters"
     repl_mode: true
     stdin_input: |
-      workspace.special = "Line1\nLine2"
+      special = "Line1\nLine2"
       /vars
       /exit
     expected_output_contains:
@@ -383,9 +380,9 @@ tests:
     description: "/vars should handle nested tables"
     repl_mode: true
     stdin_input: |
-      lang.new(tableType, @workspace.outer)
-      lang.new(tableType, @workspace.outer.inner)
-      workspace.outer.inner.value = 42
+      lang.new(tableType, @outer)
+      lang.new(tableType, @outer.inner)
+      outer.inner.value = 42
       /vars
       /exit
     expected_output_contains:
@@ -396,22 +393,22 @@ tests:
     description: "/vars should handle many variables"
     repl_mode: true
     stdin_input: |
-      workspace.v1 = 1
-      workspace.v2 = 2
-      workspace.v3 = 3
-      workspace.v4 = 4
-      workspace.v5 = 5
-      workspace.v6 = 6
-      workspace.v7 = 7
-      workspace.v8 = 8
-      workspace.v9 = 9
-      workspace.v10 = 10
+      v1 = 1
+      v2 = 2
+      v3 = 3
+      v4 = 4
+      v5 = 5
+      v6 = 6
+      v7 = 7
+      v8 = 8
+      v9 = 9
+      v10 = 10
       /vars
       /exit
     expected_output_contains:
       - "v1 ="
       - "v10 ="
-      - "(13)"  # 3 pre-existing + 10 new
+      - "(10)"
     expected_success: true
 
   # =========================================================================

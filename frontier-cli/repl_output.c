@@ -148,10 +148,8 @@ void repl_output_result(bigstring result) {
 
 /* Display error message
  *
- * Dual-purpose error reporting:
- * - log_error() for diagnostic logging (debug builds, log files)
- * - fprintf(stderr) for user-facing terminal output
- * Both are intentional and serve different purposes.
+ * User-facing REPL error output (exception to logging standards).
+ * This is terminal UI output, not diagnostic logging.
  */
 void repl_output_error(const char *error_msg) {
 	if (error_msg == NULL) {
