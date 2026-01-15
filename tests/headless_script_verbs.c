@@ -8,7 +8,7 @@
  *
  * Implementation status:
  * - script.compile:    COMPLETE - Compile UserTalk source to bytecode
- * - script.run:        COMPLETE - Execute compiled script
+ * - script.run:        DEPRECATED - Not production code (use @script() instead)
  * - script.getsource:  COMPLETE - Get source text from script object
  * - script.setsource:  COMPLETE - Set source text in script object
  * - script.getcode:    COMPLETE - Get compiled bytecode

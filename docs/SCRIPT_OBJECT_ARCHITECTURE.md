@@ -165,9 +165,9 @@ boolean script_getcode(hdlexternalvariable hv, hdlhashtable htable, bigstring va
 boolean script_setcode(hdlexternalvariable hv, hdlhashtable htable, bigstring varname);
 
 // NOTE: script.run(@addr) is NOT a production verb - use direct evaluation:
-//   @myscript()                              // Direct call
-//   lang.callscript(@myscript, params)       // With parameters
-//   lang.evaluate(sourcetext)                // Inline evaluation
+//   @myscript()
+//   lang.callscript(@myscript, params)
+//   lang.evaluate(sourcetext)
 ```
 
 ### Helper Functions
