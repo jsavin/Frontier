@@ -14,9 +14,10 @@
 #   - Parameterized: lang.callscript(@myscript, paramtable) - Pass parameters
 #   - Inline: lang.evaluate(sourcetext) - Evaluate source string
 #
-# DEPRECATED VERBS:
-#   - script.run(@addr) - Never implemented in production Frontier
-#     Use direct evaluation (@scriptname) instead
+# NON-PRODUCTION VERBS (no glue in Frontier.root):
+#   - script.run(@addr) - Test infrastructure only, never in production Frontier
+#   - script.getsource, script.setsource, script.getcode, script.setcode
+#     Use direct evaluation (@scriptname) instead of script.run
 #
 # WORKSPACE TABLE DEPENDENCY:
 # These tests currently use @workspace table for storing script objects. This requires

@@ -444,6 +444,8 @@ static boolean script_error(hdltreenode hparam1, tyvaluerecord *vreturned) {
 static boolean script_removesource(hdltreenode hparam1, tyvaluerecord *vreturned) {
     #pragma unused(hparam1, vreturned)
 
+    flnextparamislast = true;
+
     langerrormessage(BIGSTRING("\pscript.removeSource is not supported on this platform"));
     return false;
 }
