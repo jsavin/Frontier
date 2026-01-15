@@ -1345,10 +1345,41 @@ The only change: QuickScript doesn't USE the workspace table, so workarounds are
 - ⏳ Phase 6+: Enable thread-local macro when bootstrap refactored
 - ⏳ Phase 6+: Explicit context architecture will remove remaining globals
 
+### QuickScript as MVP - Scope Clarification
+
+**Product Strategy** (Added 2026-01-15):
+
+The QuickScript model represents the **Minimum Viable Product (MVP)** for Frontier's REPL interactive mode. This strategic decision prioritizes:
+
+1. **Shipping working functionality** - A simple, reliable REPL that works today
+2. **Clear user expectations** - Well-documented behavior users can understand
+3. **Avoiding premature optimization** - Not solving problems we don't have yet
+
+**Future Scope Deferred**:
+
+The original vision for persistent workspace (variables, functions, state) represents a **larger scope enhancement** that is explicitly deferred for future work. This includes:
+
+- Persistent workspace tables (originally Phase 3B)
+- `/vars` and `/clear` commands for workspace management
+- Cross-evaluation variable persistence
+- Function definition persistence
+
+**Rationale**:
+
+1. **MVP delivers value immediately** - Users can evaluate UserTalk, test code, debug issues
+2. **Complexity vs benefit tradeoff** - Workspace persistence requires fighting Frontier's thread lifecycle
+3. **Future-proof architecture** - Thread-local infrastructure is in place if/when we revisit workspace persistence
+4. **Learn from usage** - Real user feedback will guide whether workspace persistence is actually needed
+
+**Decision**: Ship QuickScript MVP now. Revisit workspace persistence only if users demonstrate clear need and we have capacity for the architectural complexity it requires.
+
+This approach follows the principle: "Solve real problems, not hypothetical ones."
+
 ---
 
 ## Document History
 
+- **2026-01-15**: Added QuickScript MVP scope clarification (PR #310 bot feedback response)
 - **2026-01-15**: Update with QuickScript model decision (PR #304 merged)
 - **2026-01-14**: Initial draft (Phase 3A thread-local migration + Phase 3B documentation)
 - **Future**: Update with Phase 6+ implementation details when refactoring begins

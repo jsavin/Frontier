@@ -484,7 +484,7 @@ static boolean hydrate_system_root_database(const char* path) {
     /* CRITICAL FIX: After migration, open v7 database in READ-ONLY mode.
      * This prevents the original v6 source file from being reopened and modified.
      * During hydration, we only read the database structure; we don't write to it. */
-    boolean flreadonly_for_hydration = migrated ? true : false;
+    boolean flreadonly_for_hydration = migrated;
 
     if (migrated) {
         cli_log_info("Migrated legacy system root to v7 format (written to): %s", actual_path);
@@ -517,7 +517,7 @@ static boolean hydrate_system_root_database(const char* path) {
     hdldatabaserecord previous = databasedata;
 
     if (!dbopenfile(fnum, flreadonly_for_hydration)) {
-        cli_log_error("dbopenfile failed for system root: %s (readonly=%d)", path, flreadonly_for_hydration);
+        cli_log_error("dbopenfile failed for system root: %s (readonly=%s)", path, flreadonly_for_hydration ? "true" : "false");
         goto cleanup;
     }
     db_open = true;
