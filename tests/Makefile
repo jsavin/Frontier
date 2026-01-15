@@ -548,3 +548,7 @@ verify-errors:
 	@../tools/verify_error_coverage.sh
 
 .PHONY: all test test-integration test-integration-verbose test-all clean install uninstall help results strings_generated verify-errors
+
+check_v6_tables: check_v6_tables.c $(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_shell.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -DHEADLESS_LINKS_REAL_DB -I../Common/headers -I../Common/SystemHeaders -I../portable check_v6_tables.c \
+		$(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_shell.c -o $@ $(LINK_LIBS)

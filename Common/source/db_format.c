@@ -1874,6 +1874,10 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     if (!openfile(&src_fs, &src_fnum, true))
         goto cleanup;
 
+#if defined(FRONTIER_HEADLESS)
+    log_trace(LOG_COMP_DB, "migrate: opened SOURCE file fnum=%d", (int)src_fnum);
+#endif
+
     fail_step = "dbopenfile(src)";
     if (!dbopenfile(src_fnum, true))
         goto cleanup;
@@ -1881,6 +1885,14 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     db_context_init(&source_context);
     source_context.mode = db_format_mode_current();
     source_context.database = databasedata;
+
+#if defined(FRONTIER_HEADLESS)
+    if (databasedata) {
+        log_trace(LOG_COMP_DB, "migrate: source database handle fnum=%ld flreadonly=%d",
+                  (long)(**databasedata).fnumdatabase,
+                  (int)(**databasedata).u.extensions.flreadonly);
+    }
+#endif
 
     db_context_init(&dest_context);
     /* Use v7 modern format for destination, not source's legacy v6 format.
@@ -1977,6 +1989,11 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     if (!opennewfile(&dst_fs, 'LAND', 'ROOT', &dst_fnum))
         goto cleanup;
 
+#if defined(FRONTIER_HEADLESS)
+    log_trace(LOG_COMP_DB, "migrate: opened DESTINATION file fnum=%d (source was %d)",
+              (int)dst_fnum, (int)src_fnum);
+#endif
+
     fail_step = "dbstartsaveas";
     if (!dbstartsaveas_context(&dest_context, dst_fnum))
         goto cleanup;
@@ -1988,6 +2005,14 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     /* From here on, writes should target the destination handle. */
     dest_context.database = dest_context.saveas.destination;
     db_saveas_state_apply(&dest_context.saveas);
+
+#if defined(FRONTIER_HEADLESS)
+    if (dest_context.database) {
+        log_trace(LOG_COMP_DB, "migrate: destination database handle fnum=%ld flreadonly=%d",
+                  (long)(**dest_context.database).fnumdatabase,
+                  (int)(**dest_context.database).u.extensions.flreadonly);
+    }
+#endif
 
     dest_context.mode = source_context.mode;
     dest_context.mode.use_64bit_format = true;

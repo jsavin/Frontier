@@ -147,19 +147,23 @@ boolean filetruncate (hdlfilenum fnum) {
 
 
 boolean filewrite (hdlfilenum fnum, long ctwrite, void *buffer) {
-	
+
 	/*
 	write ctwrite bytes from buffer to the current position in file number
 	fnum.  return true iff successful.
 	*/
 
 	if (ctwrite > 0) {
-		
+
+			#if defined(FRONTIER_HEADLESS)
+			log_trace(LOG_COMP_DB, "filewrite fnum=%d bytes=%ld", (int)fnum, ctwrite);
+			#endif
+
 			if (oserror (FSWrite (fnum, &ctwrite, buffer)))
 				return (false);
 
 		}
-	
+
 	return (true);
 	} /*filewrite*/
 
