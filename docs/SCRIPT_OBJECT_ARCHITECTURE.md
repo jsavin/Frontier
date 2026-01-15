@@ -144,30 +144,58 @@ When source is modified:
 
 ## Script Verbs Implementation
 
-### Key Functions
+### Production Verbs (Have Glue in Frontier.root)
 
-Located in `tests/headless_script_verbs.c`:
+Only two script.* verbs are production code in classic Frontier:
 
 ```c
 // script.compile(@addr) - Compile source to bytecode
+// Status: PRODUCTION - Has glue, fully implemented
 boolean script_compile(hdlexternalvariable hv);
 
+// script.error(errorMessage) - Trigger script error
+// Status: PRODUCTION - Has glue, fully implemented
+boolean script_error(hdltreenode hparam1, tyvaluerecord *vreturned);
+
+// script.removeSource(@addr) - Remove source (license protection)
+// Status: PLATFORM-SPECIFIC - Had glue on Mac, not supported on cross-platform
+// This was used to strip source code from compiled scripts as a license
+// protection mechanism. Not supported in modern Frontier runtime.
+boolean script_removesource(hdltreenode hparam1, tyvaluerecord *vreturned);
+```
+
+### Non-Production Verbs (No Glue in Frontier.root)
+
+The following verbs are **NOT** production Frontier code:
+
+```c
 // script.getsource(@addr, @dest) - Get source text
-boolean script_getsource(hdlexternalvariable hv, hdlhashtable htable, bigstring varname);
+// Status: NOT PRODUCTION - No glue in Frontier.root
 
 // script.setsource(@addr, @source) - Set source text
-boolean script_setsource(hdlexternalvariable hv, hdlhashtable htable, bigstring varname);
+// Status: NOT PRODUCTION - No glue in Frontier.root
+// Note: PR #309 implemented this, but it was never a real Frontier verb
 
 // script.getcode(@addr, @dest) - Get compiled code
-boolean script_getcode(hdlexternalvariable hv, hdlhashtable htable, bigstring varname);
+// Status: NOT PRODUCTION - No glue in Frontier.root
 
 // script.setcode(@addr, @code) - Set compiled code
-boolean script_setcode(hdlexternalvariable hv, hdlhashtable htable, bigstring varname);
+// Status: NOT PRODUCTION - No glue in Frontier.root
 
-// NOTE: script.run(@addr) is NOT a production verb - use direct evaluation:
-//   @myscript()
-//   lang.callscript(@myscript, params)
-//   lang.evaluate(sourcetext)
+// script.run(@addr) - Execute script
+// Status: NOT PRODUCTION - No glue, never implemented
+```
+
+**Production Script Execution Patterns**:
+```usertalk
+// Direct evaluation (compiled script)
+@myscript()
+
+// Parameterized (pass arguments)
+lang.callscript(@myscript, params)
+
+// Inline (evaluate source string)
+lang.evaluate(sourcetext)
 ```
 
 ### Helper Functions

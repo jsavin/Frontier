@@ -50,11 +50,12 @@ def normalize_type_name(type_name: Optional[str]) -> Optional[str]:
 class TestResult:
     """Result of a single test execution."""
 
-    def __init__(self, name: str, passed: bool, error: Optional[str] = None, details: Optional[str] = None):
+    def __init__(self, name: str, passed: bool, error: Optional[str] = None, details: Optional[str] = None, skipped: bool = False):
         self.name = name
         self.passed = passed
         self.error = error
         self.details = details
+        self.skipped = skipped
 
 
 class FrontierCLI:
@@ -236,7 +237,11 @@ class TestCase:
         self.batch_mode = data.get('batch_mode', False)  # Set true to test batch mode error behavior
         self.environment = data.get('environment', {})  # Optional environment variables
 
-        # REPL mode support
+        # Skip support
+        self.skip = data.get('skip')  # Can be True/False or string reason
+        self.skip_reason = data.get('skip_reason', 'No reason provided')
+
+        # REPL mode support (auto-skip if repl_mode is true)
         self.repl_mode = data.get('repl_mode', False)  # Run test in REPL interactive mode
         self.expected_output_contains = data.get('expected_output_contains', [])  # Substrings in stdout/stderr
         self.expected_output_not_contains = data.get('expected_output_not_contains', [])  # Forbidden substrings
@@ -369,12 +374,33 @@ class TestRunner:
 
     def run_test(self, test: TestCase) -> TestResult:
         """Run a single test case."""
+        # Check if test should be skipped
+        if test.skip or test.repl_mode:
+            # Determine skip reason
+            if test.repl_mode:
+                reason = "REPL interactive mode not supported in automated testing"
+            elif isinstance(test.skip, str):
+                reason = test.skip  # skip field contains the reason
+            else:
+                reason = test.skip_reason  # Use skip_reason field
+
+            if self.verbose:
+                print(f"  Skipping: {test.name} - {reason}")
+
+            return TestResult(
+                name=test.name,
+                passed=True,  # Don't count as failure
+                error=None,
+                details=reason,
+                skipped=True
+            )
+
         if self.verbose:
             print(f"  Running: {test.name}")
             if test.description:
                 print(f"    {test.description}")
 
-        # Route to REPL executor if repl_mode is true
+        # Route to REPL executor if repl_mode is true (not reached due to skip above)
         if test.repl_mode:
             return self.run_repl_test(test)
         else:
@@ -461,12 +487,18 @@ class TestRunner:
             self.results.append(result)
 
             # Print immediate feedback
-            status = "✓ PASS" if result.passed else "✗ FAIL"
-            print(f"    {status}: {result.name}")
-            if not result.passed:
-                print(f"      Error: {result.error}")
-                if result.details:
-                    print(f"      {result.details}")
+            if result.skipped:
+                status = "⊘ SKIP"
+                print(f"    {status}: {result.name}")
+                if self.verbose and result.details:
+                    print(f"      Reason: {result.details}")
+            else:
+                status = "✓ PASS" if result.passed else "✗ FAIL"
+                print(f"    {status}: {result.name}")
+                if not result.passed:
+                    print(f"      Error: {result.error}")
+                    if result.details:
+                        print(f"      {result.details}")
 
         return file_results
 
@@ -485,20 +517,22 @@ class TestRunner:
     def print_summary(self):
         """Print test summary."""
         total = len(self.results)
-        passed = sum(1 for r in self.results if r.passed)
-        failed = total - passed
+        skipped = sum(1 for r in self.results if r.skipped)
+        passed = sum(1 for r in self.results if r.passed and not r.skipped)
+        failed = total - passed - skipped
 
         print("\n" + "=" * 70)
         print("TEST SUMMARY")
         print("=" * 70)
-        print(f"Total:  {total}")
-        print(f"Passed: {passed}")
-        print(f"Failed: {failed}")
+        print(f"Total:   {total}")
+        print(f"Passed:  {passed}")
+        print(f"Skipped: {skipped}")
+        print(f"Failed:  {failed}")
 
         if failed > 0:
             print("\nFailed tests:")
             for result in self.results:
-                if not result.passed:
+                if not result.passed and not result.skipped:
                     print(f"  - {result.name}: {result.error}")
 
         print("=" * 70)

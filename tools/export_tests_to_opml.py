@@ -28,6 +28,33 @@ def prettify_category_name(filename):
     return f"{pretty} ({base})"
 
 
+def sanitize_xml_text(text):
+    """
+    Sanitize text for XML by removing invalid control characters.
+
+    XML 1.0 only allows specific control characters:
+    - Tab (0x09)
+    - Newline (0x0A)
+    - Carriage return (0x0D)
+    All other characters in range 0x00-0x1F are invalid.
+    """
+    if not isinstance(text, str):
+        return str(text)
+
+    # Filter out invalid XML control characters
+    result = []
+    for char in text:
+        ord_val = ord(char)
+        # Allow normal characters and the 3 allowed control characters
+        if ord_val >= 0x20 or ord_val in (0x09, 0x0A, 0x0D):
+            result.append(char)
+        else:
+            # Replace invalid control character with description
+            result.append(f'[0x{ord_val:02x}]')
+
+    return ''.join(result)
+
+
 def parse_script_to_outline(script_text):
     """
     Parse UserTalk script into outline structure.
@@ -104,7 +131,7 @@ def add_outline_elements(parent_elem, items):
     """Recursively add outline elements to XML tree."""
     for item in items:
         outline = SubElement(parent_elem, 'outline')
-        outline.set('text', item['text'])
+        outline.set('text', sanitize_xml_text(item['text']))
 
         if item.get('children'):
             add_outline_elements(outline, item['children'])
@@ -153,7 +180,7 @@ def export_tests_to_opml(test_dir, output_file):
 
         # Create category outline
         category_outline = SubElement(body, 'outline')
-        category_outline.set('text', category_name)
+        category_outline.set('text', sanitize_xml_text(category_name))
 
         # Process each test in category
         for test in data['tests']:
@@ -166,7 +193,7 @@ def export_tests_to_opml(test_dir, output_file):
                 test_text = test_name
 
             test_outline = SubElement(category_outline, 'outline')
-            test_outline.set('text', test_text)
+            test_outline.set('text', sanitize_xml_text(test_text))
 
             # Metadata section (only non-default fields)
             metadata_fields = []
@@ -188,7 +215,7 @@ def export_tests_to_opml(test_dir, output_file):
 
                 for key, value in metadata_fields:
                     field_outline = SubElement(metadata_outline, 'outline')
-                    field_outline.set('text', f"{key}: {value}")
+                    field_outline.set('text', sanitize_xml_text(f"{key}: {value}"))
 
             # Script section
             script_text = test.get('script', '')

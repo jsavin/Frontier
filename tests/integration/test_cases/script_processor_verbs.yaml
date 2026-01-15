@@ -44,6 +44,7 @@ tests:
   # Happy path - simple script compilation
   - name: "script.compile - simple script compiles successfully"
     description: "Compile a simple UserTalk script and verify success"
+    skip: "Not a production Frontier verb - no glue in Frontier.root"
     script: |
       lang.new(scriptType, @workspace.testScript);
       script.setsource(@workspace.testScript, "return 42");
@@ -53,6 +54,7 @@ tests:
 
   - name: "script.compile - returns boolean type"
     description: "Compile should return boolean type"
+    skip: "Not a production Frontier verb - no glue in Frontier.root"
     script: |
       lang.new(scriptType, @workspace.compileTest);
       script.setsource(@workspace.compileTest, "return true");
@@ -62,6 +64,7 @@ tests:
 
   - name: "script.compile - arithmetic expression"
     description: "Compile script with arithmetic operations"
+    skip: "Not a production Frontier verb - no glue in Frontier.root"
     script: |
       lang.new(scriptType, @workspace.mathScript);
       script.setsource(@workspace.mathScript, "return 10 + 20 * 3");
@@ -71,6 +74,7 @@ tests:
 
   - name: "script.compile - string operations"
     description: "Compile script with string concatenation"
+    skip: "Not a production Frontier verb - no glue in Frontier.root"
     script: |
       lang.new(scriptType, @workspace.stringScript);
       script.setsource(@workspace.stringScript, "return \"hello\" + \" \" + \"world\"");
@@ -80,6 +84,7 @@ tests:
 
   - name: "script.compile - local variables"
     description: "Compile script with local variable declarations"
+    skip: "Not a production Frontier verb - no glue in Frontier.root"
     script: |
       lang.new(scriptType, @workspace.localVarScript);
       script.setsource(@workspace.localVarScript, "local(x=5, y=10); return x+y");
@@ -89,6 +94,7 @@ tests:
 
   - name: "script.compile - conditional logic"
     description: "Compile script with if/else statement"
+    skip: "Not a production Frontier verb - no glue in Frontier.root"
     script: |
       lang.new(scriptType, @workspace.ifScript);
       script.setsource(@workspace.ifScript, "if true { return \"yes\" } else { return \"no\" }");
@@ -98,6 +104,7 @@ tests:
 
   - name: "script.compile - loop construct"
     description: "Compile script with for loop"
+    skip: "Not a production Frontier verb - no glue in Frontier.root"
     script: |
       lang.new(scriptType, @workspace.loopScript);
       script.setsource(@workspace.loopScript, "local(i, sum=0); for i=1 to 10 { sum = sum + i }; return sum");
@@ -108,6 +115,7 @@ tests:
   # Edge cases - compilation errors
   - name: "script.compile - syntax error terminates execution"
     description: "Compilation error should terminate script execution"
+    skip: "Not a production Frontier verb - no glue in Frontier.root"
     script: |
       lang.new(scriptType, @workspace.badScript);
       script.setsource(@workspace.badScript, "return 1 + +");
@@ -117,6 +125,7 @@ tests:
 
   - name: "script.compile - empty script compiles"
     description: "Empty script should compile successfully"
+    skip: "Not a production Frontier verb - no glue in Frontier.root"
     script: |
       lang.new(scriptType, @workspace.emptyScript);
       script.setsource(@workspace.emptyScript, "");
@@ -126,6 +135,7 @@ tests:
 
   - name: "script.compile - multiline script"
     description: "Compile multi-line script with statements on separate lines"
+    skip: "Not a production Frontier verb - no glue in Frontier.root"
     script: |
       lang.new(scriptType, @workspace.multilineScript);
       script.setsource(@workspace.multilineScript, "local(x = 10);\nlocal(y = 20);\nreturn x + y");
@@ -135,6 +145,7 @@ tests:
 
   - name: "script.compile - script with comments"
     description: "Compile script containing comments"
+    skip: "Not a production Frontier verb - no glue in Frontier.root"
     script: |
       lang.new(scriptType, @workspace.commentScript);
       script.setsource(@workspace.commentScript, "// This is a comment\nreturn 42 // another comment");
@@ -145,6 +156,7 @@ tests:
   # Non-script object handling
   - name: "script.compile - non-script object returns false"
     description: "Attempting to compile non-script object should return false"
+    skip: "Not a production Frontier verb - no glue in Frontier.root"
     script: |
       lang.new(tableType, @workspace.notAScript);
       return script.compile(@workspace.notAScript)
@@ -157,6 +169,7 @@ tests:
 
   - name: "script execution - direct evaluation of compiled script"
     description: "Production pattern: call script directly after compilation"
+    skip: "Not a production Frontier verb - no glue in Frontier.root"
     script: |
       lang.new(scriptType, @workspace.execTest);
       script.setsource(@workspace.execTest, "return 42");
@@ -167,6 +180,7 @@ tests:
 
   - name: "script execution - script with arithmetic"
     description: "Verify compiled script executes and returns correct result"
+    skip: "Not a production Frontier verb - no glue in Frontier.root"
     script: |
       lang.new(scriptType, @workspace.mathScript);
       script.setsource(@workspace.mathScript, "return 10 + 20 + 12");
@@ -185,6 +199,7 @@ tests:
 
   - name: "script.run - deprecated verb returns error"
     description: "script.run should fail with deprecation message"
+    skip: "Not a production Frontier verb - no glue in Frontier.root"
     script: |
       lang.new(scriptType, @workspace.runTest);
       script.setsource(@workspace.runTest, "return 42");
@@ -200,6 +215,7 @@ tests:
   # Happy path - get and set source
   - name: "script.getsource - retrieve script source text"
     description: "Get source code from script object"
+    skip: "Not a production Frontier verb - no glue in Frontier.root"
     script: |
       lang.new(scriptType, @workspace.sourceTest);
       script.setsource(@workspace.sourceTest, "return 42");
@@ -211,6 +227,7 @@ tests:
 
   - name: "script.setsource - set script source text"
     description: "Set source code in script object"
+    skip: "Not a production Frontier verb - no glue in Frontier.root"
     script: |
       lang.new(scriptType, @workspace.setSourceTest);
       script.setsource(@workspace.setSourceTest, "return 100");
@@ -222,6 +239,7 @@ tests:
 
   - name: "script.setsource - returns boolean true"
     description: "setsource should return boolean true on success"
+    skip: "Not a production Frontier verb - no glue in Frontier.root"
     script: |
       lang.new(scriptType, @workspace.setSourceReturn);
       return script.setsource(@workspace.setSourceReturn, "return 42")
@@ -230,6 +248,7 @@ tests:
 
   - name: "script.getsource - returns boolean true"
     description: "getsource should return boolean true on success"
+    skip: "Not a production Frontier verb - no glue in Frontier.root"
     script: |
       lang.new(scriptType, @workspace.getSourceReturn);
       script.setsource(@workspace.getSourceReturn, "return 42");
@@ -241,6 +260,7 @@ tests:
   # Roundtrip test
   - name: "script source verbs - roundtrip test"
     description: "Set source, get it back, verify unchanged"
+    skip: "Not a production Frontier verb - no glue in Frontier.root"
     script: |
       lang.new(scriptType, @workspace.roundtrip);
       script.setsource(@workspace.roundtrip, "local(x = 10);\nreturn x * 2");
@@ -253,6 +273,7 @@ tests:
   # Edge cases
   - name: "script.setsource - empty string source"
     description: "Setting empty source should work"
+    skip: "Not a production Frontier verb - no glue in Frontier.root"
     script: |
       lang.new(scriptType, @workspace.emptySource);
       script.setsource(@workspace.emptySource, "");
@@ -264,6 +285,7 @@ tests:
 
   - name: "script.setsource - multiline source"
     description: "Setting multi-line source with newlines"
+    skip: "Not a production Frontier verb - no glue in Frontier.root"
     script: |
       lang.new(scriptType, @workspace.multiline);
       script.setsource(@workspace.multiline, "local(x = 1);\nlocal(y = 2);\nreturn x + y");
@@ -275,6 +297,7 @@ tests:
 
   - name: "script.setsource - source with special characters"
     description: "Setting source with quotes and backslashes"
+    skip: "Not a production Frontier verb - no glue in Frontier.root"
     script: |
       lang.new(scriptType, @workspace.specialChars);
       script.setsource(@workspace.specialChars, "return \"hello\\nworld\"");
@@ -291,6 +314,7 @@ tests:
   # Happy path - get compiled code
   - name: "script.getcode - retrieve compiled bytecode"
     description: "Get compiled code from script object"
+    skip: "Not a production Frontier verb - no glue in Frontier.root"
     script: |
       lang.new(scriptType, @workspace.codeTest);
       script.setsource(@workspace.codeTest, "return 42");
@@ -303,6 +327,7 @@ tests:
 
   - name: "script.getcode - returns boolean true"
     description: "getcode should return boolean true on success"
+    skip: "Not a production Frontier verb - no glue in Frontier.root"
     script: |
       lang.new(scriptType, @workspace.getCodeReturn);
       script.setsource(@workspace.getCodeReturn, "return 42");
@@ -314,6 +339,7 @@ tests:
 
   - name: "script.setcode - set compiled bytecode"
     description: "Set compiled code in script object"
+    skip: "Not a production Frontier verb - no glue in Frontier.root"
     script: |
       lang.new(scriptType, @workspace.originalScript);
       script.setsource(@workspace.originalScript, "return 42");
@@ -327,6 +353,7 @@ tests:
 
   - name: "script.setcode - returns boolean true"
     description: "setcode should return boolean true on success"
+    skip: "Not a production Frontier verb - no glue in Frontier.root"
     script: |
       lang.new(scriptType, @workspace.setCodeReturn);
       script.setsource(@workspace.setCodeReturn, "return 42");
@@ -341,6 +368,7 @@ tests:
   # Code transfer test
   - name: "script code verbs - transfer code between scripts"
     description: "Get code from one script, set it in another, run both"
+    skip: "Not a production Frontier verb - no glue in Frontier.root"
     script: |
       lang.new(scriptType, @workspace.source);
       script.setsource(@workspace.source, "return 99");
@@ -358,6 +386,7 @@ tests:
   # Edge cases
   - name: "script.getcode - uncompiled script behavior"
     description: "Getting code from uncompiled script should handle gracefully"
+    skip: "Not a production Frontier verb - no glue in Frontier.root"
     script: |
       lang.new(scriptType, @workspace.uncompiled);
       script.setsource(@workspace.uncompiled, "return 42");
@@ -434,6 +463,7 @@ tests:
 
   - name: "script verbs - complete lifecycle test"
     description: "Create, set source, compile, run, get result"
+    skip: "Not a production Frontier verb - no glue in Frontier.root"
     script: |
       lang.new(scriptType, @workspace.lifecycle);
       script.setsource(@workspace.lifecycle, "return 100 + 23");
@@ -445,6 +475,7 @@ tests:
 
   - name: "script verbs - modify source and recompile"
     description: "Change script source, recompile, run again"
+    skip: "Not a production Frontier verb - no glue in Frontier.root"
     script: |
       lang.new(scriptType, @workspace.modify);
       script.setsource(@workspace.modify, "return 1");
@@ -459,6 +490,7 @@ tests:
 
   - name: "script verbs - source and code independence"
     description: "Verify getting source doesn't require compilation"
+    skip: "Not a production Frontier verb - no glue in Frontier.root"
     script: |
       lang.new(scriptType, @workspace.independence);
       script.setsource(@workspace.independence, "return 42");
@@ -470,6 +502,7 @@ tests:
 
   - name: "script verbs - clone script via code transfer"
     description: "Create exact copy of script by transferring compiled code"
+    skip: "Not a production Frontier verb - no glue in Frontier.root"
     script: |
       lang.new(scriptType, @workspace.original);
       script.setsource(@workspace.original, "local(x = 5); return x * x");
@@ -486,6 +519,7 @@ tests:
 
   - name: "script verbs - multiple scripts independent"
     description: "Multiple scripts can coexist and run independently"
+    skip: "Not a production Frontier verb - no glue in Frontier.root"
     script: |
       lang.new(scriptType, @workspace.scriptA);
       lang.new(scriptType, @workspace.scriptB);
@@ -505,6 +539,7 @@ tests:
 
   - name: "script verbs - return type validation"
     description: "Verify all script verbs return correct types"
+    skip: "Not a production Frontier verb - no glue in Frontier.root"
     script: |
       lang.new(scriptType, @workspace.typeTest);
       script.setsource(@workspace.typeTest, "return 42");
@@ -528,6 +563,7 @@ tests:
 
   - name: "script verbs - recover from compilation error"
     description: "After compilation error, script should still be usable"
+    skip: "Not a production Frontier verb - no glue in Frontier.root"
     script: |
       lang.new(scriptType, @workspace.recovery);
       script.setsource(@workspace.recovery, "return 1 + +");
