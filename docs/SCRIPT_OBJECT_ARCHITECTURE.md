@@ -67,10 +67,11 @@ typedef struct tyheadrecord {
    - Links compiled code via `opverblinkcode()`
    - Returns true/false for success/failure
 
-4. **Execution** (`script.run(@addr)`)
-   - Retrieves compiled code from script object
-   - Executes bytecode in language runtime
-   - Returns result value
+4. **Execution** (Production Patterns)
+   - **Direct evaluation**: `@myscript()` - Call compiled script directly
+   - **Parameterized**: `lang.callscript(@myscript, params)` - Pass parameters
+   - **Inline**: `lang.evaluate(sourcetext)` - Evaluate source string
+   - Note: `script.run(@addr)` is NOT production code (never implemented)
 
 5. **Persistence**
    - Script saved to ODB as external outline value
@@ -151,9 +152,6 @@ Located in `tests/headless_script_verbs.c`:
 // script.compile(@addr) - Compile source to bytecode
 boolean script_compile(hdlexternalvariable hv);
 
-// script.run(@addr) - Execute compiled script
-boolean script_run(hdlexternalvariable hv, tyvaluerecord *vreturned);
-
 // script.getsource(@addr, @dest) - Get source text
 boolean script_getsource(hdlexternalvariable hv, hdlhashtable htable, bigstring varname);
 
@@ -165,6 +163,11 @@ boolean script_getcode(hdlexternalvariable hv, hdlhashtable htable, bigstring va
 
 // script.setcode(@addr, @code) - Set compiled code
 boolean script_setcode(hdlexternalvariable hv, hdlhashtable htable, bigstring varname);
+
+// NOTE: script.run(@addr) is NOT a production verb - use direct evaluation:
+//   @myscript()
+//   lang.callscript(@myscript, params)
+//   lang.evaluate(sourcetext)
 ```
 
 ### Helper Functions

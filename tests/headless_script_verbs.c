@@ -8,7 +8,7 @@
  *
  * Implementation status:
  * - script.compile:    COMPLETE - Compile UserTalk source to bytecode
- * - script.run:        COMPLETE - Execute compiled script
+ * - script.run:        DEPRECATED - Not production code (use @script() instead)
  * - script.getsource:  COMPLETE - Get source text from script object
  * - script.setsource:  COMPLETE - Set source text in script object
  * - script.getcode:    COMPLETE - Get compiled bytecode
@@ -115,56 +115,28 @@ static boolean script_compile(hdltreenode hparam1, tyvaluerecord *vreturned) {
 }
 
 /*
- * script.run(@scriptObj) - Execute a compiled script
+ * script.run(@scriptObj) - NOT IMPLEMENTED (deprecated)
  *
- * Runs the compiled code in a script object and returns the result.
- * If script is not compiled, attempts to compile it first.
+ * This verb is not part of production Frontier and should not be used.
+ * Use direct script evaluation (@scriptname) or lang.callscript() instead.
+ *
+ * Historical note: This verb was never implemented in production Frontier.
+ * It exists in test code only, and has been deprecated in favor of production patterns.
+ *
+ * Production execution patterns:
+ * - Direct evaluation: @myscript()
+ * - Parameterized: lang.callscript(@myscript, paramtable)
+ * - Inline: lang.evaluate(sourcetext)
  */
 static boolean script_run(hdltreenode hparam1, tyvaluerecord *vreturned) {
-    hdlexternalvariable hv;
-    hdltreenode hcode = nil;
-    tyvaluerecord val;
-    boolean fl;
-
     flnextparamislast = true;
 
-    /* Get script object parameter */
-    if (!script_getscriptparam(hparam1, 1, &hv))
-        return false;
+    langerrormessage(BIGSTRING(
+        "\pscript.run is not supported. Use direct script evaluation "
+        "(@scriptname) or lang.callscript(@scriptname, params) instead."
+    ));
 
-    /* Get linked code (or nil if not compiled) */
-    opverbgetlinkedcode(hv, &hcode);
-
-    /* If no compiled code, try to compile first */
-    if (hcode == nil) {
-        Handle htext = nil;
-        long signature;
-
-        /* Get source and compile */
-        if (!opverbgetlangtext(hv, false, &htext, &signature))
-            return false;
-
-        if (!scriptbuildtree(htext, signature, &hcode))
-            return false;
-
-        /* Link the newly compiled code */
-        opverblinkcode(hv, hcode);
-    }
-
-    /* Execute the code */
-    initvalue(&val, novaluetype);
-
-    fl = evaluatelist(hcode, &val);
-
-    if (!fl) {
-        /* Execution failed - error already reported */
-        return false;
-    }
-
-    /* Return the result */
-    *vreturned = val;
-
-    return true;
+    return false;
 }
 
 /*
@@ -221,9 +193,7 @@ static boolean script_getsource(hdltreenode hparam1, tyvaluerecord *vreturned) {
  */
 static boolean script_setsource(hdltreenode hparam1, tyvaluerecord *vreturned) {
     hdlexternalvariable hv;
-    hdlhashtable htable;
-    bigstring varname;
-    tyvaluerecord sourceval;
+    bigstring bssource;
     Handle hsourcetext = nil;
     hdloutlinerecord ho = nil;
     hdlheadrecord hsummit;
@@ -235,35 +205,13 @@ static boolean script_setsource(hdltreenode hparam1, tyvaluerecord *vreturned) {
 
     flnextparamislast = true;
 
-    /* Get source variable */
-    if (!getvarparam(hparam1, 2, &htable, varname))
+    /* Get source string directly (accepts direct string values) */
+    if (!getstringvalue(hparam1, 2, bssource))
         return false;
 
-    /* Verify it's a script */
-
-    /* Look up source value */
-    hdlhashnode hnode;
-    if (!hashtablelookup(htable, varname, &sourceval, &hnode)) {
-        langerrormessage(BIGSTRING("\psource variable not found"));
+    /* Convert bigstring to handle for storage in outline */
+    if (!newtexthandle(bssource, &hsourcetext))
         return false;
-    }
-
-    /* Coerce to string if needed */
-    if (!copyvaluerecord(sourceval, &sourceval))
-        return false;
-
-    if (!coercetostring(&sourceval)) {
-        disposevaluerecord(sourceval, false);
-        return false;
-    }
-
-    /* Get string handle */
-    if (!copyhandle(sourceval.data.stringvalue, &hsourcetext)) {
-        disposevaluerecord(sourceval, false);
-        return false;
-    }
-
-    disposevaluerecord(sourceval, false);
 
     /* Ensure script is in memory */
     if (!opverbinmemory(NULL, hv)) {
