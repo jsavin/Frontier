@@ -263,6 +263,8 @@ tests:
   - name: "REPL - clear and rebuild workspace"
     description: "Should be able to clear and rebuild workspace"
     repl_mode: true
+    skip: true
+    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
     stdin_input: |
       old = 1
       /clear
@@ -276,6 +278,8 @@ tests:
   - name: "REPL - cleared variables inaccessible"
     description: "After clear, old variables should error"
     repl_mode: true
+    skip: true
+    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
     stdin_input: |
       x = 42
       /clear
@@ -383,6 +387,8 @@ tests:
   - name: "REPL - interleave code and commands"
     description: "Should seamlessly mix code and commands"
     repl_mode: true
+    skip: true
+    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
     stdin_input: |
       x = 10
       /vars

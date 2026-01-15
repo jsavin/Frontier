@@ -1,13 +1,20 @@
-# REPL Phase 1 Integration Tests
+# REPL Phase 1 Integration Tests - QuickScript Model
 #
 # Tests for basic REPL functionality:
 # - Single-line input/output
-# - Workspace variable persistence
-# - Core commands (/exit, /help, /vars, /clear)
+# - QuickScript model (each evaluation in clean thread)
+# - Core commands (/exit, /help)
 # - Error handling
 # - Value display for different types
 #
+# QUICKSCRIPT MODEL (2026-01-15):
+# - Each evaluation runs independently with automatic cleanup
+# - Local variables don't persist between evaluations
+# - For persistence: system.temp.x (session) or workspace.x (disk)
+# - /vars and /clear commands removed (see repl_commands.yaml for skipped tests)
+#
 # Reference: planning/phase4/REPL_INTERACTIVE_MODE_DESIGN.md (Phase 1)
+# Reference: ADR-009 and docs/CLI_USAGE_GUIDE.md for QuickScript model
 #
 # NOTE: These tests simulate REPL session behavior in batch mode.
 # The REPL implementation should handle stdin simulation for testing.
@@ -234,12 +241,10 @@ tests:
     # (In real REPL session, second evaluation would work)
 
   # =========================================================================
-  # /vars Command Tests
+  # Command Tests
   # =========================================================================
-  # NOTE: Command tests require REPL mode to be active
-  # These may need special stdin simulation or separate test harness
-
-  # NOTE: /vars, /clear, /help, /exit commands are tested in repl_commands.yaml
+  # NOTE: /help and /exit commands are tested in repl_commands.yaml
+  # NOTE: /vars and /clear were removed in QuickScript model (tests marked skip=true)
   # These require REPL interactive mode (repl_mode: true), not batch script execution
 
 
@@ -526,7 +531,8 @@ tests:
 
 # Test suite notes:
 #
-# 1. Command tests (/vars, /clear, /help, /exit) are marked skip=true
+# 1. QuickScript model: /vars and /clear commands removed (tests in repl_commands.yaml marked skip=true)
+# 2. Command tests (/help, /exit) are in repl_commands.yaml
 #    because they require REPL command mode infrastructure not available
 #    in basic batch execution. These will be enabled when REPL testing
 #    harness supports command simulation.
