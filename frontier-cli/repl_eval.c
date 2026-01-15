@@ -139,10 +139,21 @@ boolean repl_workspace_clear(repl_workspace *ws) {
               ws->workspace_table, currenthashtable, ws->workspace_table == currenthashtable,
               (**ws->workspace_table).prevhashtable);
 
-    /* CRITICAL FIX: Manually clear workspace table entries WITHOUT callbacks
-     * emptyhashtable() triggers callbacks (langsymboldeleted) that corrupt state.
-     * We can't dispose/recreate because process stack has saved pointers to this table.
-     * Instead, manually clear the hash buckets and sorted list.
+    /* WORKAROUND (ADR-009): Manually clear workspace table WITHOUT callbacks
+     *
+     * PROBLEM: emptyhashtable() triggers langsymboldeleted callbacks that corrupt
+     * state. We can't dispose/recreate the table because process stack has saved
+     * pointers to it via pushprocess/popprocess.
+     *
+     * TEMPORARY FIX: Manually clear hash buckets and sorted list, disposing values
+     * without triggering callbacks.
+     *
+     * PROPER FIX: Phase 6+ explicit hash table context architecture (ADR-009 Option 5).
+     * When hashtable_context is implemented, workspace lifecycle will be managed
+     * independently of process stack, allowing proper disposal/recreation.
+     *
+     * See: planning/architectural_decision_records/ADR-009-repl-hash-table-stack-management.md
+     * Follow-up: Issue #305 - Complete hashtablestack macro migration
      */
 
     /* Clear sorted list */
@@ -256,10 +267,21 @@ boolean repl_eval_script(
               ws->workspace_table, currenthashtable, ws->workspace_table == currenthashtable,
               (**currenthashtable).fllocaltable);
 
-    /* CRITICAL WORKAROUND: Force workspace onto hash table stack
-     * langrunhandletraperror() does pushprocess/popprocess which restores old hashtablestack.
-     * This can leave workspace table OFF the stack, causing assignments to go elsewhere.
-     * Force workspace back onto stack before evaluation.
+    /* WORKAROUND (ADR-009): Force workspace onto hash table stack before evaluation
+     *
+     * PROBLEM: langrunhandletraperror() → pushprocess(nil)/popprocess() restores
+     * saved hashtablestack, which may not include workspace table. This causes
+     * variable assignments to go to wrong table or fail entirely.
+     *
+     * TEMPORARY FIX: Manually force workspace onto stack before each evaluation.
+     * This ensures the workspace is always the target for variable assignments.
+     *
+     * PROPER FIX: Phase 6+ explicit hash table context architecture (ADR-009 Option 5).
+     * When hashtable_context is implemented, context will be passed explicitly to
+     * langrun_context(), eliminating pushprocess/popprocess stack manipulation.
+     *
+     * See: planning/architectural_decision_records/ADR-009-repl-hash-table-stack-management.md
+     * Follow-up: Issue #305 - Complete hashtablestack macro migration
      */
     pophashtable();  /* Remove whatever's on top */
     pushhashtable(ws->workspace_table);  /* Put workspace on top */

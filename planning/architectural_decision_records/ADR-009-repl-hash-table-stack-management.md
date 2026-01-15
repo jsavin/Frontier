@@ -701,6 +701,72 @@ boolean newthreadglobals(hdlthreadglobals *hglobals) {
 
 ---
 
+### Phase 3A Implementation Note: Bootstrap Initialization Constraint
+
+**CRITICAL LIMITATION**: The macro migration (`#define hashtablestack ((**hthreadglobals).hashtablestack)`) could not be completed in Phase 3A due to bootstrap initialization ordering issues.
+
+**Problem**: Early initialization code (before `hthreadglobals` is created) directly accesses `hashtablestack`:
+
+1. **`inittablestructure()`** (Common/source/langhash.c) - Called during runtime initialization
+2. **`main()` bootstrap** (frontier-cli/main.c) - Database loading before thread context exists
+3. **Other pre-thread initialization** - Various setup code that runs before threading is initialized
+
+**What Happens When Macro is Enabled**:
+```c
+// With macro enabled:
+#define hashtablestack ((**hthreadglobals).hashtablestack)
+
+// This code runs BEFORE hthreadglobals is created:
+inittablestructure();  // Segfaults! hthreadglobals is nil
+
+// Macro expands to:
+(**nil).hashtablestack  // CRASH
+```
+
+**Current Workaround** (Partial Migration):
+```c
+// Common/headers/lang.h - Macro commented out for now:
+// #define hashtablestack ((**hthreadglobals).hashtablestack)
+
+// Global variable retained for direct access during bootstrap:
+extern hdltablestack hashtablestack;
+
+// Thread-local field EXISTS and is saved/restored:
+// Common/headers/processinternal.h:
+typedef struct tythreadglobals {
+    hdltablestack htablestack;  // ← Field exists, just not accessed via macro yet
+} tythreadglobals;
+
+// Common/source/process.c - copythreadglobals/swapinthreadglobals:
+(**hg).htablestack = hashtablestack;  // ← Saves global to thread-local
+hashtablestack = (**hg).htablestack;  // ← Restores thread-local to global
+```
+
+**Why This is Still Valuable**:
+1. ✅ **Foundation for Phase 6+**: Thread-local field exists and is saved/restored
+2. ✅ **No regression**: Global variable works as before
+3. ✅ **Incremental progress**: When bootstrap is refactored, macro can be enabled trivially
+4. ✅ **Documented limitation**: Future developers understand the constraint
+
+**Path Forward** (Phase 4-5 or Phase 6+):
+
+**Option A: Bootstrap Refactoring** (Recommended for Phase 4-5):
+1. Move `inittablestructure()` to run AFTER `hthreadglobals` is created
+2. Ensure all hash table operations happen post-thread-initialization
+3. Enable macro once bootstrap ordering is fixed
+4. File issue: "Complete hashtablestack macro migration after bootstrap refactoring"
+
+**Option B: Defer to Phase 6+** (If bootstrap refactoring is too risky):
+1. Keep global variable until explicit context architecture
+2. Skip macro migration entirely (go straight to explicit context)
+3. Remove global and thread-local when `hashtable_context` is implemented
+
+**Precedent**: ADR-006 (Outline Context) had similar pre-thread initialization issues with `outlinedata`. Similar workarounds were needed until bootstrap could be refactored.
+
+**Follow-up Issue**: #XXX - "Complete hashtablestack macro migration after bootstrap refactoring"
+
+---
+
 ### Phase 3B: Document REPL Limitations (This PR)
 
 **Files Modified**:
@@ -1056,12 +1122,16 @@ pushprocess(repl_process);  // Saves REPL workspace
 
 ### Phase 3A: Thread-Local Migration Complete When:
 
-- [ ] `hashtablestack` field added to `tythreadglobals`
-- [ ] Thread swap functions preserve hash table stack
-- [ ] Macro replaces extern declaration
-- [ ] No direct global variable references remain
-- [ ] Full test suite passes (no regression)
-- [ ] REPL tests still pass (133/136)
+- [x] `hashtablestack` field added to `tythreadglobals`
+- [x] Thread swap functions preserve hash table stack (copythreadglobals/swapinthreadglobals)
+- [ ] Macro replaces extern declaration (blocked by bootstrap issue #XXX)
+- [ ] No direct global variable references remain (blocked by bootstrap issue #XXX)
+- [x] Full test suite passes (no regression)
+- [x] REPL tests still pass (133/136)
+- [x] Bootstrap initialization constraint documented
+- [x] Follow-up issue filed for macro migration (Issue #305)
+
+**Status**: Partially complete (6/8). Macro migration blocked by bootstrap initialization ordering - requires refactoring of early initialization code that runs before `hthreadglobals` is created. See "Phase 3A Implementation Note: Bootstrap Initialization Constraint" section above for details.
 
 ### Phase 3B: Documentation Complete When:
 
