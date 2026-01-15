@@ -193,9 +193,7 @@ static boolean script_getsource(hdltreenode hparam1, tyvaluerecord *vreturned) {
  */
 static boolean script_setsource(hdltreenode hparam1, tyvaluerecord *vreturned) {
     hdlexternalvariable hv;
-    hdlhashtable htable;
-    bigstring varname;
-    tyvaluerecord sourceval;
+    bigstring bssource;
     Handle hsourcetext = nil;
     hdloutlinerecord ho = nil;
     hdlheadrecord hsummit;
@@ -207,35 +205,13 @@ static boolean script_setsource(hdltreenode hparam1, tyvaluerecord *vreturned) {
 
     flnextparamislast = true;
 
-    /* Get source variable */
-    if (!getvarparam(hparam1, 2, &htable, varname))
+    /* Get source string directly (accepts direct string values) */
+    if (!getstringvalue(hparam1, 2, bssource))
         return false;
 
-    /* Verify it's a script */
-
-    /* Look up source value */
-    hdlhashnode hnode;
-    if (!hashtablelookup(htable, varname, &sourceval, &hnode)) {
-        langerrormessage(BIGSTRING("\psource variable not found"));
+    /* Convert bigstring to handle for storage in outline */
+    if (!newtexthandle(bssource, &hsourcetext))
         return false;
-    }
-
-    /* Coerce to string if needed */
-    if (!copyvaluerecord(sourceval, &sourceval))
-        return false;
-
-    if (!coercetostring(&sourceval)) {
-        disposevaluerecord(sourceval, false);
-        return false;
-    }
-
-    /* Get string handle */
-    if (!copyhandle(sourceval.data.stringvalue, &hsourcetext)) {
-        disposevaluerecord(sourceval, false);
-        return false;
-    }
-
-    disposevaluerecord(sourceval, false);
 
     /* Ensure script is in memory */
     if (!opverbinmemory(NULL, hv)) {
