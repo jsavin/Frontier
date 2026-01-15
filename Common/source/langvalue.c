@@ -30,6 +30,7 @@
 /* 2025-12-02 Codex: Treat missing kernel valueroutines as runtime errors in headless builds instead of aborting. */
 /* 2025-12-02 Codex: Log headless nodecode resolution for troubleshooting missing kernel bindings. */
 /* 2025-12-07 Codex: Widen in-memory numeric values to 64-bit and update coercion/string conversions. */
+/* 2026-01-14 Codex: Fix typeof() comparison bug for ostypevaluetype by separating from longvaluetype cases. */
 
 
 #ifdef FRONTIER_PORTABLE
@@ -6726,25 +6727,25 @@ boolean modvalue (tyvaluerecord v1, tyvaluerecord v2, tyvaluerecord *vreturned) 
 
 
 boolean EQvalue (tyvaluerecord v1, tyvaluerecord v2, tyvaluerecord *vreturned) {
-	
+
 	/*
 	12/21/92 dmb: added case for novaluetype
-	
-	2.1b3 dmb: if values can't be coerced, vreturned is false but don't generate 
+
+	2.1b3 dmb: if values can't be coerced, vreturned is false but don't generate
 	an error
 	*/
-	
+
 	boolean flcomparable;
 	boolean fl = true;
-	
+
 	initvalue (vreturned, booleanvaluetype);
-	
+
 	disablelangerror ();
-	
+
 	flcomparable = coercetypes (&v1, &v2);
-	
+
 	enablelangerror ();
-	
+
 	if (!flcomparable) {
 		
 		disposevalues (&v1, &v2);
@@ -6776,7 +6777,6 @@ boolean EQvalue (tyvaluerecord v1, tyvaluerecord v2, tyvaluerecord *vreturned) {
 			break;
 		
 		case longvaluetype:
-		case ostypevaluetype:
 		case pointvaluetype:
 		case fixedvaluetype:
 		case singlevaluetype:
@@ -6784,12 +6784,16 @@ boolean EQvalue (tyvaluerecord v1, tyvaluerecord v2, tyvaluerecord *vreturned) {
 			(*vreturned).data.flvalue = v1.data.longvalue == v2.data.longvalue;
 			
 			break;
+
+		case ostypevaluetype:
+			(*vreturned).data.flvalue = v1.data.ostypevalue == v2.data.ostypevalue;
+			
+			break;
 			
 		case directionvaluetype:
 			(*vreturned).data.flvalue = v1.data.dirvalue == v2.data.dirvalue;
 			
 			break;
-			
 		case datevaluetype:
 			(*vreturned).data.flvalue = v1.data.datevalue == v2.data.datevalue;
 			
@@ -6842,7 +6846,7 @@ boolean EQvalue (tyvaluerecord v1, tyvaluerecord v2, tyvaluerecord *vreturned) {
 		} /*switch*/
 	
 	disposevalues (&v1, &v2);
-	
+
 	return (fl);
 	} /*EQvalue*/
 
@@ -6899,12 +6903,16 @@ boolean GTvalue (tyvaluerecord v1, tyvaluerecord v2, tyvaluerecord *vreturned) {
 			break;
 		
 		case longvaluetype:
-		case ostypevaluetype:
 		case fixedvaluetype:
 			(*vreturned).data.flvalue = v1.data.longvalue > v2.data.longvalue;
 					
 			break;
-		
+
+		case ostypevaluetype:
+			(*vreturned).data.flvalue = v1.data.ostypevalue > v2.data.ostypevalue;
+
+			break;
+
 		case directionvaluetype:
 			(*vreturned).data.flvalue = (short) v1.data.dirvalue > (short) v2.data.dirvalue;
 			
@@ -6996,12 +7004,16 @@ boolean LTvalue (tyvaluerecord v1, tyvaluerecord v2, tyvaluerecord *vreturned) {
 			break;
 		
 		case longvaluetype:
-		case ostypevaluetype:
 		case fixedvaluetype:
 			(*vreturned).data.flvalue = v1.data.longvalue < v2.data.longvalue;
 					
 			break;
-			
+
+		case ostypevaluetype:
+			(*vreturned).data.flvalue = v1.data.ostypevalue < v2.data.ostypevalue;
+
+			break;
+
 		case directionvaluetype:
 			(*vreturned).data.flvalue = (short) v1.data.dirvalue < (short) v2.data.dirvalue;
 			
