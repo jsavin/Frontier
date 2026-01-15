@@ -234,6 +234,7 @@ tests:
     expected_output_contains:
       - "42"
     expected_success: true
+    known_issue: "ADR-009: Function definitions may not persist across evaluations due to hash table stack restoration"
     # Function definitions work in Phase 1, but see ADR-009 for potential edge cases
 
   - name: "REPL - call workspace function multiple times"
@@ -252,6 +253,7 @@ tests:
       - "30"
       - "300"
     expected_success: true
+    known_issue: "ADR-009: Multiple function calls may fail due to hash table stack restoration between evaluations"
     # Function calls work in Phase 1, but see ADR-009 for potential edge cases
 
   # =========================================================================
