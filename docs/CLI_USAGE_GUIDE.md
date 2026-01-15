@@ -710,48 +710,88 @@ time ./frontier-cli/frontier-cli -e "local(i); for i = 1 to 1000 {i * 2}"
 
 ---
 
-## REPL Known Limitations
+## REPL QuickScript Model
 
-The REPL Interactive Mode has the following known limitations due to architectural
-constraints documented in ADR-009:
+The REPL follows the **QuickScript model** from legacy Frontier: each evaluation runs
+independently in its own thread context, with automatic cleanup after completion.
 
-### 1. `/clear` Command Persistence Issue
+### Variable Persistence Scopes
 
-**Issue**: Variables assigned after using the `/clear` command may not persist correctly
-in the workspace.
+Understanding how variables persist is key to effective REPL usage:
 
-**Cause**: The `langrunhandletraperror()` function calls `pushprocess(nil)` / `popprocess()`,
-which saves and restores the entire hash table stack state. This can cause workspace
-modifications to be lost after operations that trigger process stack save/restore.
+**1. Local Variables** (Evaluation-scoped - No Persistence)
+```
+> x = 5
+5
+> x + 1
+Error: Can't find variable named "x"
+```
 
-**Workaround**: Re-assign variables after `/clear` if they don't appear in `/vars`.
+Local variables are thread-scoped and cleaned up immediately after evaluation completes.
+They do NOT persist between Enter presses.
 
-**Resolution**: Will be fixed in Phase 6+ when the hash table stack architecture is
-refactored to use explicit context passing (ADR-009 Option 5).
+**2. Session-Scoped Variables** (`system.temp.*`)
 
-### 2. Function Definitions (Edge Cases)
+Persists across evaluations, cleared when frontier-cli exits:
+```
+> system.temp.counter = 0
+0
+> system.temp.counter = system.temp.counter + 1
+1
+> system.temp.counter = system.temp.counter + 1  // Next evaluation
+2
+```
 
-**Issue**: In some scenarios, functions defined in the REPL may not be callable in
-subsequent evaluations.
+**3. Disk-Scoped Variables** (`workspace.*` or other root tables)
 
-**Cause**: Related to the hash table stack restoration issue described above. Function
-definitions are stored in the hash table and may be lost during process stack restore.
+Saved to database, survives restarts:
+```
+> workspace.prefs.theme = "dark"
+"dark"
+// Still available after restarting frontier-cli
+```
 
-**Workaround**: Define functions in script files and load them with the `--system-root`
-option, or re-define functions if they become inaccessible.
+### Why QuickScript?
 
-**Resolution**: Will be fixed in Phase 6+ with explicit hash table context architecture.
+This follows proven Frontier patterns:
+- **Matches legacy behavior**: QuickScript window worked the same way
+- **Clean architecture**: No workarounds or state management needed
+- **Let users manage data**: Users choose appropriate persistence scope
+- **Thread-safe by design**: Each evaluation is isolated
 
-### Current Status
+### Available Commands
 
-- **Test Pass Rate**: 133/136 tests passing (97.8%)
-- **Failing Tests**: 3 tests related to the above limitations
-- **Production Readiness**: REPL is production-ready for interactive development,
-  with the documented limitations acceptable for Phase 1.
+```
+/exit          Exit the REPL
+/help          Show help message with persistence examples
+```
 
-For complete technical details, see:
+### Tips for REPL Usage
+
+1. **Quick Calculations**: Use locals for throwaway values
+   ```
+   > 42 * 1.5
+   63
+   ```
+
+2. **Session State**: Use `system.temp.*` for values needed across evaluations
+   ```
+   > system.temp.lastResult = someExpression()
+   ```
+
+3. **Persistent Configuration**: Use `workspace.*` for settings to save
+   ```
+   > workspace.config.apiKey = "abc123"
+   ```
+
+4. **Inspect Database**: Check what's stored
+   ```
+   > sizeOf(system.temp)
+   > sizeOf(workspace)
+   ```
+
+For technical details about the QuickScript architecture, see:
 - `planning/architectural_decision_records/ADR-009-repl-hash-table-stack-management.md`
-- `docs/REPL_WORKSPACE_ARCHITECTURE.md`
 
 ---
 

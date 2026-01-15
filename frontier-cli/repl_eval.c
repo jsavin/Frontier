@@ -2,219 +2,68 @@
  * repl_eval.c - REPL evaluation engine implementation
  *
  * Part of Frontier REPL interactive mode (Phase 1).
- * Manages workspace table and executes UserTalk scripts.
+ * Implements QuickScript model: each evaluation runs independently with thread cleanup.
  *
  * Reference: planning/phase4/REPL_INTERACTIVE_MODE_DESIGN.md
  *
  * Created: 2026-01-13
+ * Updated: 2026-01-14 - Refactored to QuickScript model (no workspace, no persistence)
  */
 
 #include "repl_eval.h"
 #include "../Common/headers/lang.h"
 #include "../Common/headers/strings.h"
 #include "../Common/headers/memory.h"
-#include "../Common/headers/tablestructure.h"
-#include "../Common/headers/tableverbs.h"
 #include "../Common/headers/logging.h"
 
-/* External globals */
-extern hdlhashtable systemtable;
-extern hdlhashtable currenthashtable;
-extern hdlhashtable roottable;
-
-/* Forward declarations for internal functions */
-extern short emptyhashtable(hdlhashtable htable, boolean fldisk);
-extern boolean disposehashtable(hdlhashtable htable, boolean fldisk);
-extern boolean newhashtable(hdlhashtable *htable);
-extern void disposevaluerecord(tyvaluerecord val, boolean fldisk);
-
 /*
- * REPL Workspace Architecture
+ * REPL QuickScript Architecture
  *
- * The REPL workspace is a thread-local, ephemeral hash table for REPL variables.
+ * The REPL follows the QuickScript model from legacy Frontier:
+ * - Each Enter press runs code in its own thread
+ * - Local variables are thread-scoped and cleaned up after evaluation
+ * - No implicit persistence between evaluations
+ * - Users who want persistence use explicit database paths
  *
- * Variables assigned in the REPL (e.g., "x = 42") are stored in this ephemeral
- * table and are:
- * - NOT persisted to database
- * - Thread-local (isolated per REPL session)
- * - Clearable with /clear command
+ * Variable Persistence Scopes:
+ * - Local variables (x = 5): Evaluation-scoped, cleaned up immediately
+ * - system.temp.* : Session-scoped, persists across evaluations, cleared on exit
+ * - workspace.* or other root tables: Disk-scoped, saved with database
  *
- * Name Resolution:
- * - Simple names (x, y, z) → REPL workspace (ephemeral)
- * - Dotted paths (root.workspace.x, workspace.x) → Database tables (persistent)
+ * This is how legacy Frontier's QuickScript window worked. Let Frontier be Frontier.
  *
- * The /clear command empties ONLY the ephemeral REPL workspace, never touching
- * root.workspace or any other persisted data.
- *
- * See docs/REPL_WORKSPACE_ARCHITECTURE.md for complete architecture details.
+ * See docs/CLI_USAGE_GUIDE.md for user-facing persistence documentation.
  */
 
 /*
- * repl_workspace_init - Initialize ephemeral thread-local workspace
+ * repl_eval_script - Evaluate UserTalk script (QuickScript model)
  *
- * Creates thread-local hash table for REPL variables.
- * This table is NOT persisted and is isolated from root.workspace.
- */
-boolean repl_workspace_init(repl_workspace *ws) {
-    if (ws == NULL) {
-        return false;
-    }
-
-    /* Initialize struct */
-    ws->workspace_table = nil;
-    ws->initialized = false;
-
-    /* Create ephemeral thread-local hash table for REPL variables.
-     * This table is NOT persisted and is isolated from root.workspace.
-     */
-    hdlhashtable hnew = nil;
-
-    /* Create new hash table */
-    if (!newhashtable(&hnew)) {
-        log_error(LOG_COMP_GENERAL, "Failed to create ephemeral REPL workspace table");
-        return false;
-    }
-
-    /* Configure as local scope (ephemeral, not persisted) */
-    (**hnew).fllocaltable = true;      /* Marks as ephemeral */
-    (**hnew).prevhashtable = currenthashtable;  /* Chain to previous table for name resolution */
-    (**hnew).hashtablerefcon = 0;      /* No database association */
-
-    /* Push onto hash table stack for proper script execution context.
-     * pushhashtable() will set currenthashtable = hnew for us.
-     */
-    if (!pushhashtable(hnew)) {
-        disposehashtable(hnew, false);
-        log_error(LOG_COMP_GENERAL, "Failed to push REPL workspace onto hash table stack");
-        return false;
-    }
-
-    /* Save reference in REPL context */
-    ws->workspace_table = hnew;
-    ws->initialized = true;
-
-    log_debug(LOG_COMP_GENERAL, "REPL workspace initialized (thread-local, ephemeral)");
-    return true;
-}
-
-/*
- * repl_workspace_cleanup - Clean up ephemeral workspace
+ * Compiles and executes the script. Each evaluation runs independently.
+ * Local variables don't persist - they're cleaned up after evaluation returns.
  *
- * Disposes the ephemeral workspace table and clears the reference.
- */
-void repl_workspace_cleanup(repl_workspace *ws) {
-    if (ws == NULL) {
-        return;
-    }
-
-    /* Pop workspace from hash table stack and dispose */
-    if (ws->workspace_table != nil) {
-        pophashtable();  /* Remove from stack */
-        disposehashtable(ws->workspace_table, false);
-    }
-
-    ws->workspace_table = nil;
-    ws->initialized = false;
-}
-
-/*
- * repl_workspace_clear - Clear all ephemeral workspace variables
+ * For persistent data, users should use explicit database paths:
+ * - system.temp.x (session-scoped)
+ * - workspace.x (disk-scoped)
  *
- * Removes all entries from the ephemeral workspace table.
- * Refuses to clear non-local tables (safety check to prevent data loss).
- */
-boolean repl_workspace_clear(repl_workspace *ws) {
-    if (ws == NULL || ws->workspace_table == nil) {
-        return false;
-    }
-
-    /* SAFETY CHECK: Refuse to clear non-local tables (prevents data loss) */
-    if (!(**ws->workspace_table).fllocaltable) {
-        log_error(LOG_COMP_GENERAL, "Refusing to clear non-local table (safety check)");
-        return false;
-    }
-
-    /* DEBUG: Check state before clear */
-    log_debug(LOG_COMP_GENERAL, "Before clear: ws->workspace_table=%p, currenthashtable=%p, match=%d, prevhashtable=%p",
-              ws->workspace_table, currenthashtable, ws->workspace_table == currenthashtable,
-              (**ws->workspace_table).prevhashtable);
-
-    /* WORKAROUND (ADR-009): Manually clear workspace table WITHOUT callbacks
-     *
-     * PROBLEM: emptyhashtable() triggers langsymboldeleted callbacks that corrupt
-     * state. We can't dispose/recreate the table because process stack has saved
-     * pointers to it via pushprocess/popprocess.
-     *
-     * TEMPORARY FIX: Manually clear hash buckets and sorted list, disposing values
-     * without triggering callbacks.
-     *
-     * PROPER FIX: Phase 6+ explicit hash table context architecture (ADR-009 Option 5).
-     * When hashtable_context is implemented, workspace lifecycle will be managed
-     * independently of process stack, allowing proper disposal/recreation.
-     *
-     * See: planning/architectural_decision_records/ADR-009-repl-hash-table-stack-management.md
-     * Follow-up: Issue #305 - Complete hashtablestack macro migration
-     */
-
-    /* Clear sorted list */
-    (**ws->workspace_table).hfirstsort = nil;
-
-    /* Clear all hash buckets (ctbuckets is defined in lang.h) */
-    #define ctbuckets 11
-    for (int i = 0; i < ctbuckets; i++) {
-        /* For each node in bucket, dispose it WITHOUT callbacks */
-        hdlhashnode nomad = (**ws->workspace_table).hashbucket[i];
-        while (nomad != nil) {
-            hdlhashnode nextnomad = (**nomad).hashlink;
-
-            /* Dispose node's value data */
-            disposevaluerecord((**nomad).val, false);  /* false = local table */
-
-            /* Dispose node itself */
-            disposehandle((Handle)nomad);
-
-            nomad = nextnomad;
-        }
-
-        /* Clear bucket pointer */
-        (**ws->workspace_table).hashbucket[i] = nil;
-    }
-
-    /* Re-set currenthashtable to ensure it's correct */
-    currenthashtable = ws->workspace_table;
-
-    /* DEBUG: Check state after clear */
-    log_debug(LOG_COMP_GENERAL, "After clear: ws->workspace_table=%p, currenthashtable=%p, match=%d, hfirstsort=%p, fllocaltable=%d, prevhashtable=%p",
-              ws->workspace_table, currenthashtable, ws->workspace_table == currenthashtable,
-              (**ws->workspace_table).hfirstsort, (**ws->workspace_table).fllocaltable,
-              (**ws->workspace_table).prevhashtable);
-
-    log_debug(LOG_COMP_GENERAL, "REPL workspace cleared (ephemeral variables only)");
-    return true;
-}
-
-/*
- * repl_eval_script - Evaluate UserTalk script in workspace context
+ * Parameters:
+ *   script     - UserTalk script to execute (null-terminated C string)
+ *   result     - OUT: Result as string (bigstring)
+ *   error_msg  - OUT: Error message if execution failed (bigstring)
  *
- * Compiles and executes the script with workspace as current table context.
- * Variables declared in the script are stored in workspace.
+ * Returns: true if evaluation succeeded, false on error
+ *
+ * On success: result contains string representation of return value (may be empty)
+ * On error: error_msg contains error description
  */
 boolean repl_eval_script(
-    repl_workspace *ws,
     const char *script,
     bigstring result,
     bigstring error_msg
 ) {
-    if (ws == NULL || script == NULL || result == NULL || error_msg == NULL) {
+    if (script == NULL || result == NULL || error_msg == NULL) {
         if (error_msg != NULL) {
             copyctopstring("Invalid parameters", error_msg);
         }
-        return false;
-    }
-
-    /* Check workspace is initialized */
-    if (!ws->initialized || ws->workspace_table == nil) {
-        copyctopstring("Workspace not initialized", error_msg);
         return false;
     }
 
@@ -248,70 +97,28 @@ boolean repl_eval_script(
 
     /* Execute script using langrunhandletraperror
      *
+     * QuickScript Model:
+     * - Each evaluation runs in its own thread context
+     * - pushprocess(nil)/popprocess() handle thread lifecycle
+     * - Local variables are thread-scoped and cleaned up automatically
+     * - No workspace mechanism needed - let Frontier be Frontier
+     *
      * IMPORTANT: langrunhandletraperror() CONSUMES the text handle.
      * It disposes htext before returning (both success and error paths).
      * Do NOT access htext after this call.
      *
      * Name resolution:
-     * - Simple names (x, y) → currenthashtable (ephemeral REPL workspace)
-     * - Dotted paths (root.workspace.x) → Database lookup (persistent)
-     *
-     * currenthashtable was set in repl_workspace_init() to point to the
-     * ephemeral workspace, so variable assignments automatically go there.
+     * - Simple names (x, y) → Thread-local, cleaned up after evaluation
+     * - Dotted paths (system.temp.x, workspace.x) → Database tables (persistent)
      *
      * Returns: result in one param, error in another (separated cleanly)
      */
 
-    /* DEBUG: Check currenthashtable BEFORE script execution */
-    log_debug(LOG_COMP_GENERAL, "BEFORE langrun: workspace_table=%p, currenthashtable=%p, match=%d, fllocal=%d",
-              ws->workspace_table, currenthashtable, ws->workspace_table == currenthashtable,
-              (**currenthashtable).fllocaltable);
-
-    /* WORKAROUND (ADR-009): Force workspace onto hash table stack before evaluation
-     *
-     * PROBLEM: langrunhandletraperror() → pushprocess(nil)/popprocess() restores
-     * saved hashtablestack, which may not include workspace table. This causes
-     * variable assignments to go to wrong table or fail entirely.
-     *
-     * TEMPORARY FIX: Manually force workspace onto stack before each evaluation.
-     * This ensures the workspace is always the target for variable assignments.
-     *
-     * PROPER FIX: Phase 6+ explicit hash table context architecture (ADR-009 Option 5).
-     * When hashtable_context is implemented, context will be passed explicitly to
-     * langrun_context(), eliminating pushprocess/popprocess stack manipulation.
-     *
-     * See: planning/architectural_decision_records/ADR-009-repl-hash-table-stack-management.md
-     * Follow-up: Issue #305 - Complete hashtablestack macro migration
-     */
-    pophashtable();  /* Remove whatever's on top */
-    pushhashtable(ws->workspace_table);  /* Put workspace on top */
-    currenthashtable = ws->workspace_table;  /* Ensure currenthashtable is correct */
-    log_debug(LOG_COMP_GENERAL, "FORCED workspace onto stack: %p", currenthashtable);
+    log_debug(LOG_COMP_GENERAL, "Evaluating script (QuickScript model - thread-local execution)");
 
     boolean ok = langrunhandletraperror(htext, result, error_msg);
 
-    /* DEBUG: Check currenthashtable AFTER script execution */
-    log_debug(LOG_COMP_GENERAL, "AFTER langrun: workspace_table=%p, currenthashtable=%p, match=%d",
-              ws->workspace_table, currenthashtable, ws->workspace_table == currenthashtable);
+    log_debug(LOG_COMP_GENERAL, "Script evaluation %s", ok ? "succeeded" : "failed");
 
-    /* CRITICAL: Restore correct hash table state after langrun
-     * langrunhandletraperror may have left hash table stack in inconsistent state.
-     * Force workspace back as current table.
-     */
-    currenthashtable = ws->workspace_table;
-
-    /* DEBUG: Check workspace state after script execution */
-    log_debug(LOG_COMP_GENERAL, "After script eval: workspace_table=%p, currenthashtable=%p, hfirstsort=%p, fllocaltable=%d",
-              ws->workspace_table, currenthashtable, (**ws->workspace_table).hfirstsort, (**ws->workspace_table).fllocaltable);
-
-    if (!ok) {
-        /* Execution failed - error message is in error_msg parameter */
-        if (stringlength(error_msg) == 0) {
-            copyctopstring("Script execution failed", error_msg);
-        }
-        return false;
-    }
-
-    /* Success - result is already set by langrunhandletraperror */
-    return true;
+    return ok;
 }

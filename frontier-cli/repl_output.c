@@ -167,13 +167,12 @@ void repl_output_help(void) {
 	fputs("Available commands:\n", stdout);
 	fputs("  /exit          Exit the REPL\n", stdout);
 	fputs("  /help          Show this help message\n", stdout);
-	fputs("  /clear         Clear workspace variables\n", stdout);
-	fputs("  /vars          Show workspace variables\n", stdout);
 	fputs("\n", stdout);
-	fputs("Examples:\n", stdout);
-	fputs("  workspace.x = 42\n", stdout);
-	fputs("  workspace.x * 2\n", stdout);
-	fputs("  workspace.sum = workspace.x + 10\n", stdout);
+	fputs("QuickScript Model - Variable Persistence:\n", stdout);
+	fputs("  Local variables (x = 5) don't persist between evaluations\n", stdout);
+	fputs("  For persistence, use explicit database paths:\n", stdout);
+	fputs("    system.temp.x = 42       (session-scoped)\n", stdout);
+	fputs("    workspace.x = 42         (saved to database)\n", stdout);
 	fputs("\n", stdout);
 	fputs("Multi-line input: Coming in Phase 2\n", stdout);
 	fflush(stdout);
