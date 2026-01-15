@@ -83,6 +83,127 @@ Use `$(./tools/get_test_temp_path.sh)` for manual testing paths.
 
 ---
 
+## ⚠️ MANDATORY: Pre-Work Location Verification
+
+**STOP AND VERIFY BEFORE STARTING ANY WORK**
+
+Before writing code, making changes, or committing ANYTHING, you MUST verify your location and branch:
+
+```bash
+pwd && git branch --show-current
+```
+
+### Decision Tree: Where Should I Work?
+
+```
+┌─────────────────────────────────────────┐
+│ Am I about to start coding work?       │
+└──────────────┬──────────────────────────┘
+               │
+               ▼
+       ┌───────────────┐
+       │ Is it TRIVIAL?│ (single-line typo, doc fix)
+       └───┬───────────┘
+           │
+    ┌──────┴──────┐
+    │             │
+   YES           NO
+    │             │
+    │             ▼
+    │      ┌─────────────────────────┐
+    │      │ Am I on develop branch? │
+    │      └──────┬──────────────────┘
+    │             │
+    │      ┌──────┴──────┐
+    │      │             │
+    │     YES           NO (already on feature branch)
+    │      │             │
+    │      │             ▼
+    │      │      ┌──────────────────┐
+    │      │      │ Am I in worktree?│
+    │      │      └──────┬───────────┘
+    │      │             │
+    │      │      ┌──────┴──────┐
+    │      │      │             │
+    │      │     YES           NO
+    │      │      │             │
+    │      ▼      ▼             ▼
+    │   ┌───────────────┐   ┌─────────────────┐
+    │   │ STOP!         │   │ STOP!           │
+    │   │ Create        │   │ Create worktree │
+    │   │ worktree      │   │ for this branch │
+    │   │ & branch NOW  │   └─────────────────┘
+    │   └───────────────┘
+    │
+    ▼
+┌──────────────────────────┐
+│ OK to proceed            │
+│ - Trivial on develop OR  │
+│ - Non-trivial in worktree│
+└──────────────────────────┘
+```
+
+### Pre-Work Checklist (MANDATORY)
+
+Before **EVERY** coding session:
+
+1. ✅ **Verify location and branch**
+   ```bash
+   pwd && git branch --show-current
+   ```
+
+2. ✅ **Evaluate task complexity**
+   - Trivial: Single-line fix, typo, quick doc update → OK on develop
+   - Non-trivial: Feature, bug fix, multi-file change → MUST use worktree
+
+3. ✅ **If non-trivial AND on develop → STOP**
+   ```bash
+   # From main Frontier directory
+   cd /Users/jake/dev/jsavin/Frontier
+   git worktree add ../Frontier-<feature-name> -b feature/<feature-name>
+   cd ../Frontier-<feature-name>
+   # NOW start work here
+   ```
+
+4. ✅ **If already in worktree → Verify it's the right one**
+   ```bash
+   # Should show: /Users/jake/dev/jsavin/Frontier-<feature-name>
+   # Should show: * feature/<feature-name>
+   ```
+
+### Commit Verification (MANDATORY)
+
+Before **EVERY** commit:
+
+1. ✅ **Verify you're in the right place**
+   ```bash
+   pwd && git branch --show-current
+   ```
+
+2. ✅ **Check output:**
+   - `/Users/jake/dev/jsavin/Frontier` + `develop` → ONLY if user explicitly said "commit to develop"
+   - `/Users/jake/dev/jsavin/Frontier-<name>` + `feature/*` → ✅ CORRECT for non-trivial work
+   - Anything else → STOP AND ASK USER
+
+3. ✅ **Never push to origin/develop directly** (use PR workflow)
+
+### Why This Matters
+
+**Violating this process causes:**
+- ❌ Commits bypass PR review and bot feedback
+- ❌ Work not properly tracked in GitHub
+- ❌ No visibility for user on what's changing
+- ❌ Breaks the documented workflow in CLAUDE.md
+- ❌ Makes merge conflicts more likely
+
+**Following this process ensures:**
+- ✅ All non-trivial work reviewed before merge
+- ✅ Bot catches issues before they reach develop
+- ✅ User has visibility and approval control
+- ✅ Clean git history with proper PR documentation
+
+---
+
 ## Communication Standards
 
 ### Privacy & Entity References
