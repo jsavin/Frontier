@@ -10,6 +10,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -78,77 +79,90 @@ class FrontierCLI:
             batch_mode: If True, add --batch flag to disable interactive mode
             env: Optional environment variables to set
         """
-        cmd = [self.cli_path, '--output-json', '-e', script]
-
-        if self.system_root:
-            cmd.extend(['--system-root', self.system_root])
-
-        if batch_mode:
-            cmd.append('--batch')
-
-        # Merge environment variables with current environment
-        process_env = os.environ.copy()
-        if env:
-            process_env.update(env)
-
+        # Write script to temporary file to avoid shell quoting issues
+        # Multi-line scripts with complex quoting don't work well with -e flag
+        script_fd, script_path = tempfile.mkstemp(suffix='.usertalk', text=True)
         try:
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=timeout,
-                input=stdin_input,  # Pass stdin input if provided
-                env=process_env
-            )
+            with os.fdopen(script_fd, 'w') as f:
+                f.write(script)
 
-            # Parse JSON from stdout (stderr contains prompts and logs)
-            # When dialog prompts are active, stderr contains prompt output
-            # stdout contains the clean JSON result
+            cmd = [self.cli_path, '--output-json', script_path]
+
+            if self.system_root:
+                cmd.extend(['--system-root', self.system_root])
+
+            if batch_mode:
+                cmd.append('--batch')
+
+            # Merge environment variables with current environment
+            process_env = os.environ.copy()
+            if env:
+                process_env.update(env)
+
             try:
-                stdout_lines = result.stdout
-                # Find last occurrence of '{\n  "success"' which marks start of JSON
-                json_start = stdout_lines.rfind('{\n  "success"')
-                if json_start == -1:
-                    # Fallback: try to parse entire stdout as JSON
-                    json_text = stdout_lines
-                else:
-                    json_text = stdout_lines[json_start:]
+                result = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=timeout,
+                    input=stdin_input,  # Pass stdin input if provided
+                    env=process_env
+                )
 
-                output = json.loads(json_text)
-                output['exit_code'] = result.returncode
-                output['stderr'] = result.stderr  # Preserve stderr for prompts/logs
-                return output
-            except json.JSONDecodeError as e:
+                # Parse JSON from stdout (stderr contains prompts and logs)
+                # When dialog prompts are active, stderr contains prompt output
+                # stdout contains the clean JSON result
+                try:
+                    stdout_lines = result.stdout
+                    # Find last occurrence of '{\n  "success"' which marks start of JSON
+                    json_start = stdout_lines.rfind('{\n  "success"')
+                    if json_start == -1:
+                        # Fallback: try to parse entire stdout as JSON
+                        json_text = stdout_lines
+                    else:
+                        json_text = stdout_lines[json_start:]
+
+                    output = json.loads(json_text)
+                    output['exit_code'] = result.returncode
+                    output['stderr'] = result.stderr  # Preserve stderr for prompts/logs
+                    return output
+                except json.JSONDecodeError as e:
+                    return {
+                        'success': False,
+                        'result': None,
+                        'result_type': None,
+                        'error': f'Invalid JSON output: {e}',
+                        'error_type': 'json_parse_error',
+                        'exit_code': result.returncode,
+                        'stdout': result.stdout,
+                        'stderr': result.stderr
+                    }
+
+            except subprocess.TimeoutExpired:
                 return {
                     'success': False,
                     'result': None,
                     'result_type': None,
-                    'error': f'Invalid JSON output: {e}',
-                    'error_type': 'json_parse_error',
-                    'exit_code': result.returncode,
-                    'stdout': result.stdout,
-                    'stderr': result.stderr
+                    'error': f'Script execution timed out ({timeout}s)',
+                    'error_type': 'timeout',
+                    'exit_code': -1
                 }
 
-        except subprocess.TimeoutExpired:
-            return {
-                'success': False,
-                'result': None,
-                'result_type': None,
-                'error': f'Script execution timed out ({timeout}s)',
-                'error_type': 'timeout',
-                'exit_code': -1
-            }
-
-        except Exception as e:
-            return {
-                'success': False,
-                'result': None,
-                'result_type': None,
-                'error': str(e),
-                'error_type': 'execution_error',
-                'exit_code': -1
-            }
+            except Exception as e:
+                return {
+                    'success': False,
+                    'result': None,
+                    'result_type': None,
+                    'error': str(e),
+                    'error_type': 'execution_error',
+                    'exit_code': -1
+                }
+        finally:
+            # Clean up temporary script file
+            try:
+                os.unlink(script_path)
+            except OSError:
+                pass  # Ignore file deletion errors only
 
     def execute_repl(self, stdin_input: str, timeout: int = 30, env: Optional[Dict[str, str]] = None) -> subprocess.CompletedProcess:
         """
