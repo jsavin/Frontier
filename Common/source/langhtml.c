@@ -3864,7 +3864,12 @@ static boolean stripmarkup (handlestream *s) {
 		else
 			fldidspace = false;
 		}
-	
+
+	// Trim trailing spaces
+	while ((*s).eof > 0 && (*(*s).data)[(*s).eof - 1] == chspace) {
+		--(*s).eof;
+	}
+
 	return (true);
 	} /*stripmarkup*/
 
