@@ -614,7 +614,8 @@ static boolean dbseek (dbaddress adr) {
 boolean dbwrite (dbaddress adr, long ctbytes, ptrvoid pdata) {
 
 	/* CRITICAL: Prevent writes to read-only databases.
-	 * This protects v6 source database during migration. */
+	 * This protects v6 source database during migration.
+	 * Store databasedata once to avoid TOCTOU race condition. */
 #if defined(FRONTIER_HEADLESS)
 	hdldatabaserecord hdb = databasedata;
 	if (hdb && (**hdb).u.extensions.flreadonly) {
@@ -624,12 +625,14 @@ boolean dbwrite (dbaddress adr, long ctbytes, ptrvoid pdata) {
 		        ctbytes);
 		return (false);
 	}
+#else
+	hdldatabaserecord hdb = databasedata;
 #endif
 
 	if (!dbseek (adr)) {
 #if defined(FRONTIER_HEADLESS)
 		log_error(LOG_COMP_DB, "dbwrite seek failed fnum=%ld adr=0x%llx bytes=%ld",
-		        databasedata ? (long) (**databasedata).fnumdatabase : -1L,
+		        hdb ? (long) (**hdb).fnumdatabase : -1L,
 		        (unsigned long long) adr,
 		        ctbytes);
 #endif
@@ -638,20 +641,17 @@ boolean dbwrite (dbaddress adr, long ctbytes, ptrvoid pdata) {
 
 	/* Log every write operation to trace v6 modifications during migration */
 #if defined(FRONTIER_HEADLESS)
-	{
-		hdldatabaserecord hdb = databasedata;
-		log_trace(LOG_COMP_DB, "dbwrite WRITE fnum=%ld adr=0x%llx bytes=%ld flreadonly=%s",
-		        hdb ? (long) (**hdb).fnumdatabase : -1L,
-		        (unsigned long long) adr,
-		        ctbytes,
-		        (hdb && (**hdb).u.extensions.flreadonly) ? "TRUE" : "FALSE");
-	}
+	log_trace(LOG_COMP_DB, "dbwrite WRITE fnum=%ld adr=0x%llx bytes=%ld flreadonly=%s",
+	        hdb ? (long) (**hdb).fnumdatabase : -1L,
+	        (unsigned long long) adr,
+	        ctbytes,
+	        (hdb && (**hdb).u.extensions.flreadonly) ? "TRUE" : "FALSE");
 #endif
 
-	if (!filewrite ((hdlfilenum)((**databasedata).fnumdatabase), ctbytes, pdata)) {
+	if (!filewrite ((hdlfilenum)((**hdb).fnumdatabase), ctbytes, pdata)) {
 #if defined(FRONTIER_HEADLESS)
 		log_error(LOG_COMP_DB, "dbwrite filewrite failed fnum=%ld adr=0x%llx bytes=%ld",
-		        databasedata ? (long) (**databasedata).fnumdatabase : -1L,
+		        hdb ? (long) (**hdb).fnumdatabase : -1L,
 		        (unsigned long long) adr,
 		        ctbytes);
 #endif
