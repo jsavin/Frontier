@@ -138,6 +138,10 @@ boolean openfile(const ptrfilespec fs, hdlfilenum *pfnum, boolean flreadonly) {
     strncpy(slot->path, path, sizeof slot->path - 1);
     slot->path[sizeof slot->path - 1] = '\0';
     *pfnum = fnum;
+#if defined(FRONTIER_HEADLESS)
+    log_trace(LOG_COMP_DB, "openfile fnum=%d path=%s mode=%s flreadonly=%d",
+              (int)fnum, path, mode, (int)flreadonly);
+#endif
     return true;
 }
 
@@ -163,6 +167,9 @@ boolean opennewfile(ptrfilespec fs, OSType creator, OSType filetype, hdlfilenum 
     slot->path[sizeof slot->path - 1] = '\0';
     path_to_fsname(path, &fs->name);
     *pfnum = fnum;
+#if defined(FRONTIER_HEADLESS)
+    log_trace(LOG_COMP_DB, "opennewfile fnum=%d path=%s mode=wb+", (int)fnum, path);
+#endif
     return true;
 }
 
@@ -170,6 +177,9 @@ boolean closefile(hdlfilenum fnum) {
     fnum_entry *slot = entry_from(fnum);
     if (!slot || !slot->fp)
         return false;
+#if defined(FRONTIER_HEADLESS)
+    log_trace(LOG_COMP_DB, "closefile fnum=%d path=%s", (int)fnum, slot->path);
+#endif
     fclose(slot->fp);
     slot->fp = NULL;
     slot->path[0] = '\0';
@@ -228,6 +238,9 @@ boolean filewrite(hdlfilenum fnum, long ctbytes, void *pdata) {
     FILE *fp = fp_from(fnum);
     if (!fp)
         return false;
+#if defined(FRONTIER_HEADLESS)
+    log_trace(LOG_COMP_DB, "filewrite portable fnum=%d bytes=%ld", (int)fnum, ctbytes);
+#endif
     return fwrite(pdata, 1, (size_t) ctbytes, fp) == (size_t) ctbytes;
 }
 

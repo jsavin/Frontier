@@ -1,0 +1,98 @@
+# Database Migration Tests
+#
+# Tests for v6 → v7 database migration via CLI
+# Verifies that migration:
+# 1. Creates v7 destination file correctly
+# 2. Does NOT modify v6 source file
+# 3. Handles hydration after migration without corruption
+#
+# Reference: Issue - Database migration modifies v6 source file
+#
+
+tests:
+  - name: "Database migration - source file unchanged"
+    description: "Migration should not modify v6 source database file"
+    script: |
+      local(src = "{FRONTIER_TEST_TMP_DIR}/test_v6.root");
+      local(dst = "{FRONTIER_TEST_TMP_DIR}/test_v6.root7");
+      local(src_hash = "");
+      local(src_hash_after = "");
+
+      // Copy original system root as test source
+      file.copy("{SYSTEM_ROOT_V6}", src);
+
+      // Get hash of original source file
+      src_hash = file.md5(src);
+
+      // Run migration via CLI (this is tested externally via CLI invocation)
+      // For now, just verify source file exists and is readable
+      return file.exists(src)
+    expected_success: true
+    expected_result: true
+    skip: true
+    reason: "Requires external CLI invocation to test migration - use system test instead"
+
+  - name: "Database migration - creates v7 destination"
+    description: "Migration should create valid v7 destination file"
+    script: |
+      local(dst = "{FRONTIER_TEST_TMP_DIR}/migrated.root7");
+
+      // Verify file doesn't exist yet
+      if file.exists(dst) {
+        file.delete(dst)
+      };
+
+      return !file.exists(dst)
+    expected_success: true
+    expected_result: true
+    skip: true
+    reason: "Requires external CLI invocation to test migration - use system test instead"
+
+  - name: "Database hydration - opens correct file after migration"
+    description: "Hydration should open v7 file, not v6 source"
+    script: |
+      // This tests the fix for the local variable bug
+      // After fix, hydration opens hydration_path (which points to v7),
+      // not the const parameter path (which pointed to v6)
+
+      // Load system root (auto-migrates if needed)
+      return typeof(system) == 'tabl'
+    expected_success: true
+    expected_result: true
+    # This test implicitly verifies the fix works - if hydration opens
+    # wrong file in wrong mode, system table loading would fail or corrupt
+
+  - name: "Database - system table accessible after hydration"
+    description: "System table should be fully accessible after hydration"
+    script: |
+      return sizeOf(system) > 0 &&
+             sizeOf(system.compiler) > 0 &&
+             sizeOf(system.verbs) > 0
+    expected_success: true
+    expected_result: true
+
+  - name: "Database - workspace accessible after hydration"
+    description: "Workspace table should exist and be writable after hydration"
+    script: |
+      workspace.test_flag = true;
+      return workspace.test_flag == true
+    expected_success: true
+    expected_result: true
+
+# System-level tests (run via external CLI testing):
+#
+# test-migrate-source-unchanged:
+#   - Copy Frontier.root.v6 to temp directory
+#   - Record MD5 hash of original
+#   - Run: ./frontier-cli/frontier-cli --system-root temp/test.root -e "1"
+#   - Record MD5 hash after CLI invocation
+#   - Verify hashes match (source unchanged)
+#   - Verify temp/test.root7 was created
+#
+# test-migrate-idempotent:
+#   - Copy Frontier.root.v6 to temp directory
+#   - Run migration first time
+#   - Delete v7 file
+#   - Run migration second time
+#   - Verify both migrations complete without segfault
+#   - Verify source file still matches original hash

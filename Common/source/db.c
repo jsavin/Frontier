@@ -612,7 +612,19 @@ static boolean dbseek (dbaddress adr) {
 		
 	
 boolean dbwrite (dbaddress adr, long ctbytes, ptrvoid pdata) {
-	
+
+	/* CRITICAL: Prevent writes to read-only databases.
+	 * This protects v6 source database during migration. */
+#if defined(FRONTIER_HEADLESS)
+	if (databasedata && (**databasedata).u.extensions.flreadonly) {
+		log_error(LOG_COMP_DB, "dbwrite BLOCKED read-only fnum=%ld adr=0x%llx bytes=%ld",
+		        (long) (**databasedata).fnumdatabase,
+		        (unsigned long long) adr,
+		        ctbytes);
+		return (false);
+	}
+#endif
+
 	if (!dbseek (adr)) {
 #if defined(FRONTIER_HEADLESS)
 		log_error(LOG_COMP_DB, "dbwrite seek failed fnum=%ld adr=0x%llx bytes=%ld",
@@ -622,7 +634,16 @@ boolean dbwrite (dbaddress adr, long ctbytes, ptrvoid pdata) {
 #endif
 		return (false);
 	}
-		
+
+	/* Log every write operation to trace v6 modifications during migration */
+#if defined(FRONTIER_HEADLESS)
+	log_trace(LOG_COMP_DB, "dbwrite WRITE fnum=%ld adr=0x%llx bytes=%ld flreadonly=%s",
+	        databasedata ? (long) (**databasedata).fnumdatabase : -1L,
+	        (unsigned long long) adr,
+	        ctbytes,
+	        (databasedata && (**databasedata).u.extensions.flreadonly) ? "TRUE" : "FALSE");
+#endif
+
 	if (!filewrite ((hdlfilenum)((**databasedata).fnumdatabase), ctbytes, pdata)) {
 #if defined(FRONTIER_HEADLESS)
 		log_error(LOG_COMP_DB, "dbwrite filewrite failed fnum=%ld adr=0x%llx bytes=%ld",
@@ -717,8 +738,21 @@ static boolean dbflushheader (void) {
 	 * Call the non-context version directly so the mode persists. */
     db_format_adapter_enable_wide_writes(NULL);
 
+	/* CRITICAL FIX: Don't write to read-only databases.
+	 * Issue: v6 source database was being modified during migration because
+	 * dbflushheader wrote to it despite flreadonly=1.
+	 * Solution: Skip flush if database is read-only. */
+	if (hdb && (**hdb).u.extensions.flreadonly) {
+#if defined(FRONTIER_HEADLESS)
+		log_trace(LOG_COMP_DB, "dbflushheader skip write (read-only) fnum=%ld dirty=%d",
+		        (long) (**hdb).fnumdatabase,
+		        (int) isdirty(hdb));
+#endif
+		return (true);  /* Return success without writing */
+	}
+
 	if (isdirty (hdb)) { /*changes made to header*/
-		
+
 		cleardirty (hdb); /*clear it*/
 		
 		diskrec = **hdb;
@@ -3295,8 +3329,14 @@ boolean dbopenfile (hdlfilenum fnum, boolean flreadonly) {
          */
         if (db_use64())
             (**hdb).versionnumber = dbversionnumber; /* we can only write what we know */
-        
-        setdirty (hdb);
+
+        /* Only mark database dirty if opened for writing.
+         * CRITICAL FIX: Read-only databases must never have dirty headers flushed.
+         * This prevents database migration from modifying the source v6 database file.
+         * Issue: Migration opens source read-only but setdirty() was being called,
+         * causing dirty header to be flushed on close, corrupting the v6 source file. */
+        if (!flreadonly)
+            setdirty (hdb);
         }
 		
 	// Check if this is a legacy database that should be migrated
@@ -3335,13 +3375,22 @@ boolean dbclose (void) {
 	setdirty (databasedata);
 
 #if defined(FRONTIER_HEADLESS)
-	log_trace(LOG_COMP_DB, "dbclose enter databasedata=%p fnum=%ld dirty=%d",
+	log_trace(LOG_COMP_DB, "dbclose enter databasedata=%p fnum=%ld dirty=%d flreadonly=%s",
 	          (void *) databasedata,
 	          databasedata ? (long) (**databasedata).fnumdatabase : -1L,
-	          databasedata ? (int) isdirty(databasedata) : 0);
+	          databasedata ? (int) isdirty(databasedata) : 0,
+	          (databasedata && (**databasedata).u.extensions.flreadonly) ? "TRUE" : "FALSE");
 #endif
 
-	return (dbflushheader ());
+	boolean result = dbflushheader ();
+
+#if defined(FRONTIER_HEADLESS)
+	log_trace(LOG_COMP_DB, "dbclose exit fnum=%ld result=%s",
+	          databasedata ? (long) (**databasedata).fnumdatabase : -1L,
+	          result ? "TRUE" : "FALSE");
+#endif
+
+	return result;
 	} /*dbclose*/
 
 
