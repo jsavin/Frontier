@@ -83,14 +83,15 @@ static boolean html_valueproc(short token, hdltreenode hparam1,
             /* Phase 2: Forward to C implementation in langhtml.c */
             return buildpagetableverb(hparam1, vreturned);
         case htmv_refglossary:
-            /* Verb #8: html.refglossary - not yet implemented */
+            /* Verb #8: html.refglossary - @SCRIPT_IMPLEMENTED in system.verbs.builtins.html */
+            /* C helper htmlrefglossary() calls this via langrunscript() during macro processing */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case htmv_getpref:
             /* Phase 2: Forward to C implementation in langhtml.c */
             return getprefverb(hparam1, vreturned);
         case htmv_getonedirective:
-            /* Verb #10: html.getonedirective - not yet implemented */
+            /* Verb #10: html.getonedirective - @SCRIPT_IMPLEMENTED in system.verbs.builtins.html */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case htmv_rundirective:
@@ -106,7 +107,7 @@ static boolean html_valueproc(short token, hdltreenode hparam1,
             /* Phase 2: Forward to C implementation in langhtml.c */
             return cleanforexportverb(hparam1, vreturned);
         case htmv_normalizename:
-            /* Verb #15: html.normalizename - not yet implemented */
+            /* Verb #15: html.normalizename - @SCRIPT_IMPLEMENTED in system.verbs.builtins.html */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case htmv_glossarypatcher:

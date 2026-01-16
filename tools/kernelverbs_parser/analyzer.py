@@ -459,9 +459,12 @@ class VerbImplementationAnalyzer:
         annotations = parse_annotations(source)
 
         # Detect implementation vs. stub
-        # @IMPLEMENTED and @PLATFORM_SPECIFIC annotations override stub detection
+        # @IMPLEMENTED, @PLATFORM_SPECIFIC, and @SCRIPT_IMPLEMENTED annotations override stub detection
         # Platform-specific stubs are correct implementations for the target platform
-        if annotations.get('implemented', False) or annotations.get('platform_specific', False):
+        # Script-implemented verbs are implemented in UserTalk rather than C
+        if (annotations.get('implemented', False) or
+            annotations.get('platform_specific', False) or
+            annotations.get('script_implemented', False)):
             is_stub = False
             is_implemented = True
         else:

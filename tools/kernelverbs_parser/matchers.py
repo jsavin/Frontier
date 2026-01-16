@@ -161,6 +161,7 @@ def parse_annotations(source: str) -> dict:
         @CARBON_DEPS - Force Carbon dependency detection
         @PLATFORM_SPECIFIC - Mark as platform-specific
         @IMPLEMENTED - Override stub detection, mark as implemented
+        @SCRIPT_IMPLEMENTED - Mark as implemented in UserTalk scripts
 
     Args:
         source: Source code to analyze
@@ -173,6 +174,7 @@ def parse_annotations(source: str) -> dict:
         'carbon_deps': False,
         'platform_specific': False,
         'implemented': False,
+        'script_implemented': False,
     }
 
     if re.search(r'@UI_ADAPTER', source, re.IGNORECASE):
@@ -186,6 +188,9 @@ def parse_annotations(source: str) -> dict:
 
     if re.search(r'@IMPLEMENTED', source, re.IGNORECASE):
         annotations['implemented'] = True
+
+    if re.search(r'@SCRIPT_IMPLEMENTED', source, re.IGNORECASE):
+        annotations['script_implemented'] = True
 
     return annotations
 

@@ -169,16 +169,17 @@ CFLAGS += -DFRONTIER_CLI_VERSION_STRING=\"$(VERSION)\"
 
 #### Major Verb Family Implementations (Partially Complete)
 
-**sys.* Verbs (15/16) - 93%** (PR #288, #295)
+**sys.* Verbs (16/16) - 100%** (PR #288, #295)
 - Environment variables and script processor (PR #295)
 - Fixed typeof() comparison bug for OSType values (PR #306)
-- 1 verb remaining
+- Platform-specific stub (sys.winshellcommand) marked with @PLATFORM_SPECIFIC annotation
 
-**html.* Verbs (19/23) - 82%** (PR #301, #302)
+**html.* Verbs (22/23) - 95%** (PR #301, #302)
 - Phase 1: 7 core text processing verbs (PR #301)
 - Phase 2: Fixed integration test failures (PR #302)
+- 3 verbs marked as @SCRIPT_IMPLEMENTED (UserTalk implementations)
 - 100% pass rate on all tests
-- 4 verbs remaining
+- 1 verb remaining (html.drawcalendar - GUI-dependent)
 
 **dialog.* Verbs (4/19) - 21%** (PR #297)
 - Interactive dialog prompts
@@ -381,10 +382,10 @@ Type :help for commands, :quit to exit
 | table | 18 | 18 | 0 | 100% ✅ |
 | target | 3 | 3 | 0 | 100% ✅ |
 | xml | 14 | 14 | 0 | 100% ✅ |
-| sys | 16 | 15 | 1 | 93% 🚧 |
-| html | 23 | 19 | 4 | 82% 🚧 |
+| sys | 16 | 16 | 0 | 100% ✅ |
+| html | 23 | 22 | 1 | 95% 🚧 |
 | dialog | 19 | 4 | 15 | 21% 🚧 |
-| **OVERALL** | **710** | **407** | **303** | **57%** |
+| **OVERALL** | **710** | **411** | **299** | **57%** |
 
 ### Test Coverage
 

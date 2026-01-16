@@ -24,6 +24,17 @@ SCRIPT_IMPLEMENTED_VERBS = {
         # Note: op.visitAll is implemented in C (headless_op_verbs.c)
         # Note: op.visitSelection is also script-implemented but may not be in RC file
     },
+    'html': {
+        # Html processor verbs implemented in UserTalk
+        # These are called by C helper functions during macro processing (see langhtml.c)
+        # C helpers use langrunscript() to invoke UserTalk implementations
+        # This is intentional design per dmb (5.0.2b14): "these type of lookups aren't that slow in UserTalk"
+        'refglossary',        # html.refGlossary - glossary reference lookup
+        'getonedirective',    # html.getOneDirective - directive extraction
+        'normalizename',      # html.normalizeName - name normalization
+
+        # Note: html.drawcalendar is GUI-dependent (QuickDraw), intentionally stubbed in headless mode
+    },
 }
 
 
