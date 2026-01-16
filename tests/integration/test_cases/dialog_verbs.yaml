@@ -256,6 +256,171 @@ tests:
     expected_success: false
     expected_error: "not implemented"
 
+  # dialog.alert() - Message with Beep
+  - name: "dialog.alert - displays message and waits for Enter"
+    description: "Should display message with beep and wait for Enter key"
+    script: |
+      local(result = dialog.alert("Test alert message"));
+      return result
+    stdin_input: "\n"  # Press Enter
+    expected_success: true
+    expected_result: "true"
+
+  - name: "dialog.alert - returns true when Enter pressed"
+    description: "Should always return true"
+    script: |
+      return dialog.alert("Important notification")
+    stdin_input: "\n"
+    expected_success: true
+    expected_result: "true"
+
+  - name: "dialog.alert - error in batch mode"
+    description: "Should return error when not in interactive mode"
+    script: |
+      dialog.alert("Test")
+    batch_mode: true
+    expected_success: false
+    expected_error: "Can't use dialog verbs in batch mode"
+
+  # dialog.notify() - Message without Beep
+  - name: "dialog.notify - displays message and waits for Enter"
+    description: "Should display message without beep and wait for Enter"
+    script: |
+      local(result = dialog.notify("Test notification"));
+      return result
+    stdin_input: "\n"
+    expected_success: true
+    expected_result: "true"
+
+  - name: "dialog.notify - returns true when Enter pressed"
+    description: "Should always return true"
+    script: |
+      return dialog.notify("Info message")
+    stdin_input: "\n"
+    expected_success: true
+    expected_result: "true"
+
+  - name: "dialog.notify - error in batch mode"
+    description: "Should return error in batch mode"
+    script: |
+      dialog.notify("Test")
+    batch_mode: true
+    expected_success: false
+    expected_error: "Can't use dialog verbs in batch mode"
+
+  # dialog.twoway() - Two-button Choice
+  - name: "dialog.twoway - select first button with '1' key"
+    description: "Should return true when first button selected"
+    script: |
+      return dialog.twoway("Choose option", "First", "Second")
+    stdin_input: "1\n"
+    expected_success: true
+    expected_result: "true"
+
+  - name: "dialog.twoway - select second button with '2' key"
+    description: "Should return false when second button selected"
+    script: |
+      return dialog.twoway("Choose option", "First", "Second")
+    stdin_input: "2\n"
+    expected_success: true
+    expected_result: "false"
+
+  - name: "dialog.twoway - select first button with Enter (default)"
+    description: "Should default to first button (true) when Enter pressed"
+    script: |
+      return dialog.twoway("Proceed?", "Yes", "No")
+    stdin_input: "\n"
+    expected_success: true
+    expected_result: "true"
+
+  - name: "dialog.twoway - custom button labels"
+    description: "Should work with custom button text"
+    script: |
+      return dialog.twoway("Save changes?", "Save", "Discard")
+    stdin_input: "1\n"
+    expected_success: true
+    expected_result: "true"
+
+  - name: "dialog.twoway - error in batch mode"
+    description: "Should return error in batch mode"
+    script: |
+      dialog.twoway("Test", "A", "B")
+    batch_mode: true
+    expected_success: false
+    expected_error: "Can't use dialog verbs in batch mode"
+
+  # dialog.threeway() - Three-button Choice
+  - name: "dialog.threeway - select first button (returns 1)"
+    description: "Should return 1 when first button selected"
+    script: |
+      return dialog.threeway("Choose", "One", "Two", "Three")
+    stdin_input: "1\n"
+    expected_success: true
+    expected_result: "1"
+
+  - name: "dialog.threeway - select second button (returns 2)"
+    description: "Should return 2 when second button selected"
+    script: |
+      return dialog.threeway("Choose", "One", "Two", "Three")
+    stdin_input: "2\n"
+    expected_success: true
+    expected_result: "2"
+
+  - name: "dialog.threeway - select third button (returns 3)"
+    description: "Should return 3 when third button selected"
+    script: |
+      return dialog.threeway("Choose", "One", "Two", "Three")
+    stdin_input: "3\n"
+    expected_success: true
+    expected_result: "3"
+
+  - name: "dialog.threeway - default to first button with Enter"
+    description: "Should return 1 (first button) when Enter pressed"
+    script: |
+      return dialog.threeway("Pick one", "First", "Second", "Third")
+    stdin_input: "\n"
+    expected_success: true
+    expected_result: "1"
+
+  - name: "dialog.threeway - custom button labels"
+    description: "Should work with custom button text"
+    script: |
+      local(choice = dialog.threeway("Action?", "Save", "Don't Save", "Cancel"));
+      return choice >= 1 and choice <= 3
+    stdin_input: "2\n"
+    expected_success: true
+    expected_result: "true"
+
+  - name: "dialog.threeway - error in batch mode"
+    description: "Should return error in batch mode"
+    script: |
+      dialog.threeway("Test", "A", "B", "C")
+    batch_mode: true
+    expected_success: false
+    expected_error: "Can't use dialog verbs in batch mode"
+
+  # Platform-specific and Ghost Cruft Verbs
+  - name: "dialog.run - platform-specific error"
+    description: "Resource-based verbs should error in headless mode"
+    script: |
+      dialog.run()
+    expected_success: false
+    expected_error: "requires GUI resources"
+
+  - name: "dialog.getValue - platform-specific error"
+    description: "Should error outside dialog.run callback"
+    script: |
+      dialog.getValue()
+    expected_success: false
+    expected_error: "only works in GUI dialog callbacks"
+
+  - name: "dialog.runcard - ghost cruft error"
+    description: "Card-based verbs were never implemented"
+    script: |
+      dialog.runcard()
+    expected_success: false
+    expected_error: "was never implemented"
+
   # Ctrl+C Handling
   # Note: Ctrl+C tests require special test runner support
   # These are documented for manual testing
