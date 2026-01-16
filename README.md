@@ -1,7 +1,7 @@
 # Frontier Refactoring Project (develop branch status)
 
 **Last updated:** 2026-01-16
-**State:** v1.0.0-alpha.2 released; 20 verb processors at 100% (file, db, lang, op, sys, string, table, target, xml, date, clock, crypt, math, kb, mainwindow, base64, semaphore, point, rectangle, rgb); overall 57% coverage (411/710 verbs); headless + 64-bit aligned; v7 format stable; universal binary (arm64+x86_64)
+**State:** v1.0.0-alpha.2 released; 22 verb processors at 100% (file, db, lang, op, sys, string, table, target, xml, html, script, date, clock, crypt, math, kb, mainwindow, base64, semaphore, point, rectangle, rgb); overall 59% coverage (423/710 verbs); headless + 64-bit aligned; v7 format stable; universal binary (arm64+x86_64)
 **Primary contacts:** planning/INDEX.md (owners per phase)
 
 This repository is actively modernizing the Frontier runtime and toolchain. The `develop` branch now builds and tests with 64-bit alignment on both `arm64` and `x86_64`, includes a portable/headless runtime layer, and routes headless UserTalk `file.*` verbs through the external function processor (EFP) table so tests can exercise real UserTalk without `system.verbs.*` being loaded.
@@ -10,7 +10,7 @@ This repository is actively modernizing the Frontier runtime and toolchain. The 
 
 - **Pre-release distribution (v1.0.0-alpha.2)** – First packaged release for early adopters with universal binary (arm64+x86_64), automatic system root discovery, professional installer, and GitHub Actions automation. Release includes v7 database, SHA-256 checksums, and comprehensive documentation. Alpha.2 fixes critical upgrade bug that would destroy user data. Download: [GitHub Releases](https://github.com/jsavin/Frontier/releases/tag/v1.0.0-alpha.2)
 - **Complete ODB Engine API (db.* verbs 13/13)** – Guest database operations fully functional with transparent v6→v7 auto-migration, 64-bit timestamp handling (Y2038-safe), and context guard pattern for safe concurrent system root + guest database use. 32/32 integration tests passing (100%). Production-ready for external database manipulation.
-- **Comprehensive kernel verb implementation** – **57% coverage (411/710 verbs)** with 20 processors at 100%: file (86), db (13), lang (61), op (45), sys (16), string (60), table (18), target (3), xml (14), date (30), clock (7), crypt (5), math (3), kb (4), mainwindow (7), base64 (2), semaphore (2), point (2), rectangle (2), rgb (2). Plus html 95% (22/23), dialog 21% (4/19). All implementations tested via YAML-based integration framework (304+ tests passing).
+- **Comprehensive kernel verb implementation** – **59% coverage (423/710 verbs)** with 22 processors at 100%: file (86), db (13), lang (61), op (45), sys (16), string (60), table (18), target (3), xml (14), html (23), script (13), date (30), clock (7), crypt (5), math (3), kb (4), mainwindow (7), base64 (2), semaphore (2), point (2), rectangle (2), rgb (2). Plus dialog 21% (4/19). All implementations tested via YAML-based integration framework (304+ tests passing).
 - **64-bit/ARM + big-endian v7** – Core builds/tests compile on `arm64`/`x86_64`; v7 headers/trailers and table addresses write big-endian for cross-arch parity. Hash pack/unpack hardened with explicit 16-byte BE buffers, bounds checks, header detection. Migration coverage complete with Y2038-safe 64-bit timestamps throughout.
 - **Portable/headless + Paige-free** – The `portable/` layer + headless stubs power CLI/testing without UI deps; wptext uses Paige-free extractor/RTF path. v6→v7 migration complete with proper timestamp handling (64-bit frontier_time_t). System root auto-discovery eliminates need for --system-root flag.
 - **Automated kernel verb generation** – Python-based parser (`tools/kernelverbs_parser/`) automatically generates `kernel_verbs_init.c` from `kernelverbs.rc`, extracting all 51 EFP processor definitions (707 verbs). Next phase: automatic implementation detection via static analysis.
@@ -86,9 +86,10 @@ For in-flight work/status, see `planning/_CURRENT_STATUS.md`. Historical session
 | Math/crypt verbs   |   ✅    | 100% complete (8/8); math (3) + crypt (5)                                               |
 | Small processors   |   ✅    | 100% complete (27/27); kb, mainwindow, target, base64, semaphore, point, rectangle, rgb|
 | Sys verbs          |   ✅    | 100% complete (16/16); environment variables, script processor, platform-specific stubs |
-| HTML verbs         |   🚧    | 95% complete (22/23); Phase 1-2 implemented, 3 script-implemented                       |
+| HTML verbs         |   ✅    | 100% complete (23/23); Phase 1-2 implemented, 3 script-implemented, 1 ghost cruft       |
+| Script verbs       |   ✅    | 100% complete (13/13); 2 C-implemented, 11 script-implemented                           |
 | Dialog verbs       |   🚧    | 21% complete (4/19); interactive prompts, file dialogs                                  |
-| Overall coverage   |   🚧    | 57% complete (411/710); 20 processors at 100%                                           |
+| Overall coverage   |   🚧    | 59% complete (423/710); 22 processors at 100%                                           |
 | Tests (integrated) |   ✅    | YAML-based framework; 304+ tests passing; sandbox-safe paths                            |
 | Tests (runtime/db) |   ✅    | Full `SANITIZE=1` passes; Year 2038 safe                                                |
 | REPL interactive   |   ✅    | Basic read-eval-print loop; dialog prompts; file dialogs; batch mode                    |
@@ -130,8 +131,7 @@ Frontier/
 
 **Immediate priorities (next 1-2 weeks):**
 1. **Early adopter feedback** - Monitor v1.0.0-alpha.2 usage and address reported issues
-2. **Complete remaining html verb** (1/23 remaining) - html.drawcalendar is GUI-dependent
-3. **Complete remaining dialog verbs** (15/19 remaining) - Interactive operations
+2. **Complete remaining dialog verbs** (15/19 remaining) - Interactive operations
 4. **REPL enhancements** - Command history persistence, tab completion, syntax highlighting
 5. **Homebrew tap distribution** - Add `brew install jsavin/frontier/frontier-cli` support
 

@@ -478,38 +478,50 @@ static boolean script_valueproc(short token, hdltreenode hparam1,
         case scrv_removesource:
             return script_removesource(hparam1, vreturned);
 
-        /* Stubbed verbs for future implementation */
+        /* @SCRIPT_IMPLEMENTED - UserTalk glue implementations */
+        /* See usertalk_scripts/Frontier.root/system/verbs/builtins/script/ */
         case scrv_uncompile:
+            /* @SCRIPT_IMPLEMENTED - unCompile.ut */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case scrv_getlanguage:
+            /* @SCRIPT_IMPLEMENTED - getLanguage.ut */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case scrv_setlanguage:
+            /* @SCRIPT_IMPLEMENTED - setLanguage.ut */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case scrv_makecomment:
+            /* @SCRIPT_IMPLEMENTED - makeComment.ut */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case scrv_uncomment:
+            /* @SCRIPT_IMPLEMENTED - unComment.ut */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case scrv_iscomment:
+            /* @SCRIPT_IMPLEMENTED - isComment.ut */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case scrv_getbreakpoint:
+            /* @SCRIPT_IMPLEMENTED - getBreakpoint.ut */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case scrv_setbreakpoint:
+            /* @SCRIPT_IMPLEMENTED - setBreakpoint.ut */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case scrv_clearbreakpoint:
+            /* @SCRIPT_IMPLEMENTED - clearBreakpoint.ut */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case scrv_startprofile:
+            /* @SCRIPT_IMPLEMENTED - startProfile.ut */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case scrv_stopprofile:
+            /* @SCRIPT_IMPLEMENTED - stopProfile.ut */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         default:

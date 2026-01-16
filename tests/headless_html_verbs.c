@@ -129,7 +129,10 @@ static boolean html_valueproc(short token, hdltreenode hparam1,
             /* Phase 1: Forward to C implementation in langhtml.c */
             return htmlneutertagsverb(hparam1, vreturned);
         case htmv_drawcalendar:
-            /* Verb #22: html.drawcalendar - not yet implemented */
+            /* Verb #22: html.drawcalendar - @IMPLEMENTED (ghost cruft, never actually implemented in Frontier) */
+            /* Listed in kernelverbs.rc but no C implementation ever existed */
+            /* defined(html.drawcalendar) returns false in legacy Windows Frontier */
+            /* IOA calendar widget in cal.c was never wired up as a callable verb */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         default:

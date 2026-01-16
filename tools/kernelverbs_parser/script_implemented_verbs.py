@@ -35,6 +35,23 @@ SCRIPT_IMPLEMENTED_VERBS = {
 
         # Note: html.drawcalendar is GUI-dependent (QuickDraw), intentionally stubbed in headless mode
     },
+    'script': {
+        # Script processor verbs implemented in UserTalk glue scripts
+        # See usertalk_scripts/Frontier.root/system/verbs/builtins/script/
+        'uncompile',          # script.unCompile - decompile bytecode to source
+        'getlanguage',        # script.getLanguage - get script language
+        'setlanguage',        # script.setLanguage - set script language
+        'makecomment',        # script.makeComment - comment out lines
+        'uncomment',          # script.unComment - uncomment lines
+        'iscomment',          # script.isComment - check if line is comment
+        'getbreakpoint',      # script.getBreakpoint - get breakpoint info
+        'setbreakpoint',      # script.setBreakpoint - set breakpoint
+        'clearbreakpoint',    # script.clearBreakpoint - clear breakpoint
+        'startprofile',       # script.startProfile - start profiling
+        'stopprofile',        # script.stopProfile - stop profiling
+
+        # Note: compile and removeSource also have glue but are implemented in C
+    },
 }
 
 
