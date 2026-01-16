@@ -459,8 +459,9 @@ class VerbImplementationAnalyzer:
         annotations = parse_annotations(source)
 
         # Detect implementation vs. stub
-        # @IMPLEMENTED annotation overrides stub detection
-        if annotations.get('implemented', False):
+        # @IMPLEMENTED and @PLATFORM_SPECIFIC annotations override stub detection
+        # Platform-specific stubs are correct implementations for the target platform
+        if annotations.get('implemented', False) or annotations.get('platform_specific', False):
             is_stub = False
             is_implemented = True
         else:

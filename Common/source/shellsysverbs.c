@@ -783,7 +783,7 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 			}
 			}
 
-		case winshellcommandfunc: { /*Windows version of shell command verb; 2025-12-27: platform-specific stubs*/
+		case winshellcommandfunc: { /*Windows version of shell command verb; 2025-12-27: @PLATFORM_SPECIFIC*/
 
 			Handle hcommand;
 			short paramcount;

@@ -646,6 +646,7 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
             }
         case sysv_winshellcommand:
             /* sys.winshellcommand - implemented in shellsysverbs.c */
+            /* @PLATFORM_SPECIFIC - Windows-only verb, gracefully fails on macOS/Linux */
             /* This stub should never be reached */
             return false;
         default:
