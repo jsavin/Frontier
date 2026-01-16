@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-alpha.2] - 2026-01-15
+
+### Fixed
+
+- **Critical: Preserve user data on upgrade** - Installation script now checks if system root database already exists and prompts before overwriting (default: preserve existing). This prevents data loss when users upgrade to newer versions.
+
 ## [1.0.0-alpha.1] - 2026-01-15
 
 ### Added - Packaging and Distribution
@@ -80,5 +86,6 @@ For future releases, use this template:
 
 ---
 
-[Unreleased]: https://github.com/jsavin/Frontier/compare/v1.0.0-alpha.1...HEAD
+[Unreleased]: https://github.com/jsavin/Frontier/compare/v1.0.0-alpha.2...HEAD
+[1.0.0-alpha.2]: https://github.com/jsavin/Frontier/compare/v1.0.0-alpha.1...v1.0.0-alpha.2
 [1.0.0-alpha.1]: https://github.com/jsavin/Frontier/releases/tag/v1.0.0-alpha.1
