@@ -104,11 +104,25 @@ else
 fi
 print_success "Binary installed to $INSTALL_DIR/frontier-cli"
 
-# Install database
-print_info "Installing system root database..."
-cp "$DATABASE" "$DATA_DIR/$DATABASE"
-chmod 644 "$DATA_DIR/$DATABASE"
-print_success "Database installed to $DATA_DIR/$DATABASE"
+# Install database (only if it doesn't exist - preserve user data on upgrade)
+if [ -f "$DATA_DIR/$DATABASE" ]; then
+    print_info "System root database already exists at $DATA_DIR/$DATABASE"
+    echo ""
+    read -p "Overwrite existing database with fresh system root? [y/N] " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        cp "$DATABASE" "$DATA_DIR/$DATABASE"
+        chmod 644 "$DATA_DIR/$DATABASE"
+        print_success "Database replaced with fresh system root"
+    else
+        print_info "Keeping existing database (user data preserved)"
+    fi
+else
+    print_info "Installing system root database..."
+    cp "$DATABASE" "$DATA_DIR/$DATABASE"
+    chmod 644 "$DATA_DIR/$DATABASE"
+    print_success "Database installed to $DATA_DIR/$DATABASE"
+fi
 
 # Check if install directory is in PATH
 if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
