@@ -96,6 +96,36 @@ For in-flight work/status, see `planning/_CURRENT_STATUS.md`. Historical session
 | Docs/Planning      |   ✅    | ADR-009; OUTLINE_STRUCTURE.md; typeof() documented; repository clean                    |
 | GitHub Actions     |   ✅    | Automated releases on tags; universal binary builds; SHA-256 checksums                  |
 
+## Remaining Work
+
+**272 verbs remaining (38% of total)** across 28 processors:
+
+**Large processors (>20 verbs):**
+- window (31) - Window management, UI operations
+- mysql (27) - MySQL database integration
+- tcp (23) - TCP/IP networking
+
+**Medium processors (10-19 verbs):**
+- sqlite (17), thread (17) - Database and threading
+- editmenu (16), rez (15) - Edit menu operations, resource management
+- frontier (14), menu (14) - Frontier core, menu operations
+- mrcalendar (11) - Calendar widget
+- filemenu (10), re (10) - File menu, regular expressions
+
+**Small processors (<10 verbs):**
+- bit (8), htmlcontrol (8) - Bit operations, HTML controls
+- webserver (7), search (6) - Web server, search operations
+- opattributes (5), statusbar (5), launch (5) - Outline attributes, status bar, app launching
+- dll (4), pict (4) - DLL operations, picture handling
+- speaker (3) - Audio/beep operations
+- clipboard (2), mouse (2), osa (2) - Clipboard, mouse, OSA scripting
+- inetd (1), python (1) - Internet daemon, Python integration
+
+**Partial completion:**
+- searchengine (20%, 4/5 remaining) - Search engine operations
+
+Most stubbed verbs are platform-specific (GUI operations, resource forks) or legacy integrations (MySQL, Python, OSA) that may not be needed for headless operation.
+
 ## Historical progress
 
 Historical session summaries live under `planning/progress_reports/README.md`.
