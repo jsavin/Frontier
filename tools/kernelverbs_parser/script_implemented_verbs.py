@@ -52,6 +52,68 @@ SCRIPT_IMPLEMENTED_VERBS = {
 
         # Note: compile and removeSource also have glue but are implemented in C
     },
+    'inetd': {
+        # Inetd processor - internet daemon management (UserTalk-implemented)
+        # See usertalk_scripts/Frontier.root/system/verbs/builtins/inetd/
+        'supervisor',         # inetd.supervisor - daemon supervisor loop
+    },
+    'launch': {
+        # Launch processor - application launching (UserTalk-implemented)
+        # See usertalk_scripts/Frontier.root/system/verbs/builtins/launch/
+        'applemenu',          # launch.appleMenu - launch from Apple menu
+        'application',        # launch.application - launch application
+        'appwithdocument',    # launch.appWithDocument - launch app with document
+        'resource',           # launch.resource - launch resource
+        'anything',           # launch.anything - launch any file
+    },
+    'search': {
+        # Search processor - find/replace operations (UserTalk-implemented)
+        # See usertalk_scripts/Frontier.root/system/verbs/builtins/search/
+        'reset',              # search.reset - reset search state
+        'findnext',           # search.findNext - find next occurrence
+        'replace',            # search.replace - replace current match
+        'replaceall',         # search.replaceAll - replace all occurrences
+        'findtextdialog',     # search.findTextDialog - show find dialog
+        'replacetextdialog',  # search.replaceTextDialog - show replace dialog
+    },
+    'tcp': {
+        # TCP processor - TCP/IP networking (UserTalk-implemented)
+        # See usertalk_scripts/Frontier.root/system/verbs/builtins/tcp/
+        'addressdecode',      # tcp.addressDecode - decode IP address
+        'addressencode',      # tcp.addressEncode - encode IP address
+        'addresstoname',      # tcp.addressToName - resolve IP to hostname
+        'nametoaddress',      # tcp.nameToAddress - resolve hostname to IP
+        'myaddress',          # tcp.myAddress - get local IP address
+        'abortstream',        # tcp.abortStream - abort connection
+        'closestream',        # tcp.closeStream - close connection
+        'closelisten',        # tcp.closeListen - close listen socket
+        'openaddrstream',     # tcp.openAddrStream - open by IP address
+        'opennamestream',     # tcp.openNameStream - open by hostname
+        'readstream',         # tcp.readStream - read from stream
+        'writestream',        # tcp.writeStream - write to stream
+        'listenstream',       # tcp.listenStream - listen for connections
+        'statusstream',       # tcp.statusStream - get connection status
+        'getpeeraddress',     # tcp.getPeerAddress - get remote IP
+        'getpeerport',        # tcp.getPeerPort - get remote port
+        'writestringtostream', # tcp.writeStringToStream - write string
+        'writefiletostream',  # tcp.writeFileToStream - write file
+        'readstreamuntil',    # tcp.readStreamUntil - read until delimiter
+        'readstreambytes',    # tcp.readStreamBytes - read N bytes
+        'readstreamuntilclosed', # tcp.readStreamUntilClosed - read all
+        'getstats',           # tcp.getStats - get connection statistics
+        'countconnections',   # tcp.countConnections - count active connections
+    },
+    'webserver': {
+        # Webserver processor - HTTP server (UserTalk-implemented)
+        # See usertalk_scripts/Frontier.root/system/verbs/builtins/webserver/
+        'server',             # webserver.server - main server loop
+        'dispatch',           # webserver.dispatch - dispatch request
+        'parseheaders',       # webserver.parseHeaders - parse HTTP headers
+        'parsecookies',       # webserver.parseCookies - parse cookies
+        'buildresponse',      # webserver.buildResponse - build HTTP response
+        'builderrorpage',     # webserver.buildErrorPage - build error page
+        'getserverstring',    # webserver.getServerString - get server ID string
+    },
 }
 
 

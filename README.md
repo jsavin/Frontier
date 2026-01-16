@@ -1,7 +1,7 @@
 # Frontier Refactoring Project (develop branch status)
 
 **Last updated:** 2026-01-16
-**State:** v1.0.0-alpha.2 released; 23 verb processors at 100% (file, db, lang, op, sys, string, table, target, xml, html, script, dialog, date, clock, crypt, math, kb, mainwindow, base64, semaphore, point, rectangle, rgb); overall 61% coverage (438/710 verbs); headless + 64-bit aligned; v7 format stable; universal binary (arm64+x86_64)
+**State:** v1.0.0-alpha.2 released; 28 verb processors at 100% (file, db, lang, op, sys, string, table, target, xml, html, script, dialog, date, clock, crypt, math, kb, mainwindow, base64, semaphore, point, rectangle, rgb, inetd, launch, search, tcp, webserver); overall 67% coverage (480/710 verbs); headless + 64-bit aligned; v7 format stable; universal binary (arm64+x86_64)
 **Primary contacts:** planning/INDEX.md (owners per phase)
 
 This repository is actively modernizing the Frontier runtime and toolchain. The `develop` branch now builds and tests with 64-bit alignment on both `arm64` and `x86_64`, includes a portable/headless runtime layer, and routes headless UserTalk `file.*` verbs through the external function processor (EFP) table so tests can exercise real UserTalk without `system.verbs.*` being loaded.
@@ -10,7 +10,7 @@ This repository is actively modernizing the Frontier runtime and toolchain. The 
 
 - **Pre-release distribution (v1.0.0-alpha.2)** – First packaged release for early adopters with universal binary (arm64+x86_64), automatic system root discovery, professional installer, and GitHub Actions automation. Release includes v7 database, SHA-256 checksums, and comprehensive documentation. Alpha.2 fixes critical upgrade bug that would destroy user data. Download: [GitHub Releases](https://github.com/jsavin/Frontier/releases/tag/v1.0.0-alpha.2)
 - **Complete ODB Engine API (db.* verbs 13/13)** – Guest database operations fully functional with transparent v6→v7 auto-migration, 64-bit timestamp handling (Y2038-safe), and context guard pattern for safe concurrent system root + guest database use. 32/32 integration tests passing (100%). Production-ready for external database manipulation.
-- **Comprehensive kernel verb implementation** – **61% coverage (438/710 verbs)** with 23 processors at 100%: file (86), db (13), lang (61), op (45), sys (16), string (60), table (18), target (3), xml (14), html (23), script (13), dialog (19), date (30), clock (7), crypt (5), math (3), kb (4), mainwindow (7), base64 (2), semaphore (2), point (2), rectangle (2), rgb (2). All implementations tested via YAML-based integration framework (304+ tests passing).
+- **Comprehensive kernel verb implementation** – **67% coverage (480/710 verbs)** with 28 processors at 100%: file (86), db (13), lang (61), op (45), sys (16), string (60), table (18), target (3), xml (14), html (23), script (13), dialog (19), date (30), clock (7), crypt (5), math (3), kb (4), mainwindow (7), base64 (2), semaphore (2), point (2), rectangle (2), rgb (2), inetd (1), launch (5), search (6), tcp (23), webserver (7). All implementations tested via YAML-based integration framework (304+ tests passing).
 - **64-bit/ARM + big-endian v7** – Core builds/tests compile on `arm64`/`x86_64`; v7 headers/trailers and table addresses write big-endian for cross-arch parity. Hash pack/unpack hardened with explicit 16-byte BE buffers, bounds checks, header detection. Migration coverage complete with Y2038-safe 64-bit timestamps throughout.
 - **Portable/headless + Paige-free** – The `portable/` layer + headless stubs power CLI/testing without UI deps; wptext uses Paige-free extractor/RTF path. v6→v7 migration complete with proper timestamp handling (64-bit frontier_time_t). System root auto-discovery eliminates need for --system-root flag.
 - **Automated kernel verb generation** – Python-based parser (`tools/kernelverbs_parser/`) automatically generates `kernel_verbs_init.c` from `kernelverbs.rc`, extracting all 51 EFP processor definitions (707 verbs). Next phase: automatic implementation detection via static analysis.
@@ -89,7 +89,7 @@ For in-flight work/status, see `planning/_CURRENT_STATUS.md`. Historical session
 | HTML verbs         |   ✅    | 100% complete (23/23); Phase 1-2 implemented, 3 script-implemented, 1 ghost cruft       |
 | Script verbs       |   ✅    | 100% complete (13/13); 2 C-implemented, 11 script-implemented                           |
 | Dialog verbs       |   ✅    | 100% complete (19/19); 4 CLI prompts, 7 platform-specific, 4 twoway/threeway, 4 ghost  |
-| Overall coverage   |   🚧    | 61% complete (438/710); 23 processors at 100%                                           |
+| Overall coverage   |   🚧    | 67% complete (480/710); 28 processors at 100%                                           |
 | Tests (integrated) |   ✅    | YAML-based framework; 304+ tests passing; sandbox-safe paths                            |
 | Tests (runtime/db) |   ✅    | Full `SANITIZE=1` passes; Year 2038 safe                                                |
 | REPL interactive   |   ✅    | Basic read-eval-print loop; dialog prompts; file dialogs; batch mode                    |
@@ -98,33 +98,38 @@ For in-flight work/status, see `planning/_CURRENT_STATUS.md`. Historical session
 
 ## Remaining Work
 
-**272 verbs remaining (38% of total)** across 28 processors:
+**230 verbs remaining (33% of total)** across 23 processors. Most are platform-specific GUI operations or require C implementations.
 
-**Large processors (>20 verbs):**
-- window (31) - Window management, UI operations
-- mysql (27) - MySQL database integration
-- tcp (23) - TCP/IP networking
+**UserTalk-Implemented (0 remaining):**
+All UserTalk-implemented processors now recognized: tcp (23), webserver (7), search (6), launch (5), inetd (1) = 42 verbs implemented in pure UserTalk.
 
-**Medium processors (10-19 verbs):**
-- sqlite (17), thread (17) - Database and threading
-- editmenu (16), rez (15) - Edit menu operations, resource management
-- frontier (14), menu (14) - Frontier core, menu operations
-- mrcalendar (11) - Calendar widget
-- filemenu (10), re (10) - File menu, regular expressions
+**C Implementation Available, External Libraries Required:**
+- **mysql** (27 verbs) - Full C implementation in Common/source/langmysql.c (1782 lines), requires libmysqlclient
+- **sqlite** (17 verbs) - Full C implementation in Common/source/langsqlite.c (1198 lines), requires libsqlite3
 
-**Small processors (<10 verbs):**
-- bit (8), htmlcontrol (8) - Bit operations, HTML controls
-- webserver (7), search (6) - Web server, search operations
-- opattributes (5), statusbar (5), launch (5) - Outline attributes, status bar, app launching
-- dll (4), pict (4) - DLL operations, picture handling
-- speaker (3) - Audio/beep operations
-- clipboard (2), mouse (2), osa (2) - Clipboard, mouse, OSA scripting
-- inetd (1), python (1) - Internet daemon, Python integration
+**Needs C Implementation (146 verbs across 21 processors):**
 
-**Partial completion:**
-- searchengine (20%, 4/5 remaining) - Search engine operations
+**Priority: Fundamental operations:**
+- **re** (10 verbs) - Regular expressions, fundamental for text processing
+- **bit** (8 verbs) - Bitwise operations (shifts, masks, XOR)
+- **thread** (17 verbs) - Threading and concurrency primitives
 
-Most stubbed verbs are platform-specific (GUI operations, resource forks) or legacy integrations (MySQL, Python, OSA) that may not be needed for headless operation.
+**GUI/Platform-Specific (likely stubbed in headless):**
+- window (31), menu (14), editmenu (16), filemenu (10) = 71 verbs for window/menu management
+- htmlcontrol (8), mrcalendar (11), statusbar (5) = 24 verbs for UI widgets
+- clipboard (2), mouse (2), speaker (3), pict (4) = 11 verbs for platform I/O
+- rez (15) - Resource fork operations (Mac Classic)
+
+**Legacy/Special Purpose:**
+- frontier (14) - Frontier-specific verbs
+- dll (4), osa (2), python (1) = 7 verbs for external scripting
+- opattributes (5) - Outline attribute operations
+- searchengine (4 remaining) - Search engine operations (1/5 implemented)
+
+**Total breakdown:**
+- 480 implemented (67%): 438 C + 42 UserTalk
+- 44 C-implemented but not linked (mysql 27 + sqlite 17)
+- 186 stubbed/unimplemented (146 need C + 40 external libs not linked)
 
 ## Historical progress
 
