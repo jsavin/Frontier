@@ -61,8 +61,11 @@ python3 tools/export_tests_to_opml.py
 ./tools/install_git_hooks.sh
 
 # Create PR (after pushing branch)
-# Use pull-request agent, then:
-./tools/monitor_pr_review.sh <PR_NUMBER>
+# 1. Use pull-request agent to create PR
+# 2. Then run background monitor in same terminal:
+./tools/monitor_pr_review_bg.sh <PR_NUMBER>
+# 3. Watch with: tail -f tests/tmp/pr_monitor_<PR_NUMBER>.log
+# (CRITICAL: Never use ./tools/monitor_pr_review.sh directly - it blocks for 15 minutes)
 ```
 
 **Test Output Directory Structure**:
@@ -260,7 +263,12 @@ Several archive branches exist independently and should **never be merged** to d
      - **NEVER run `git push origin develop`** without explicit user instruction
      - All changes to develop MUST go through PR review process
   5. Use pull-request agent to create PR
-  6. **Run `./tools/monitor_pr_review.sh <PR>` after EVERY push**
+  6. **CRITICAL: Run PR monitor in BACKGROUND** ⚠️⚠️⚠️:
+     - **NEVER use `./tools/monitor_pr_review.sh` directly** (blocks session for 15 minutes)
+     - **ALWAYS use**: `./tools/monitor_pr_review_bg.sh <PR_NUMBER>`
+     - This returns immediately and runs monitoring in background
+     - Watch log with: `tail -f tests/tmp/pr_monitor_<PR_NUMBER>.log`
+     - See `docs/PR_MONITOR_BLOCKING_ISSUE.md` for full details
   7. **ALWAYS discuss bot feedback with user before addressing** - Never make changes autonomously
   8. **NEVER merge PRs without explicit user approval** - User must review and approve merge
 - Always create branch for new development work when on develop
@@ -445,6 +453,39 @@ When delegating to the pull-request agent:
 - ✅ Use git bisect to verify crash pre-existence
 - ✅ Trace full call chains to verify global state reliability
 - ✅ Don't stop at surface-level fixes
+
+### Pull-Request Agent - Background Monitoring MANDATORY ⚠️⚠️⚠️
+
+**CRITICAL CONSTRAINT**: The pull-request agent invokes `monitor_pr_review.sh` in the foreground, causing session freeze for up to 15 minutes.
+
+**Problem**:
+- Agent runs monitor script without `&` (foreground, blocking)
+- Script waits up to 900 seconds for reviews if none arrive
+- Session becomes unresponsive - Ctrl-C doesn't work
+- Terminal must be force-killed
+
+**Solution - Manual Background Monitoring**:
+
+When using pull-request agent to create PRs:
+
+1. Let agent create the PR (it will eventually timeout/complete)
+2. **Immediately after**, in your SAME terminal, manually start background monitor:
+   ```bash
+   cd /Users/jake/dev/jsavin/Frontier
+   ./tools/monitor_pr_review_bg.sh <PR_NUMBER>
+   ```
+3. Watch for reviews without blocking:
+   ```bash
+   tail -f tests/tmp/pr_monitor_<PR_NUMBER>.log
+   ```
+
+**Why This Works**:
+- `monitor_pr_review_bg.sh` uses `nohup` and `&` to run in true background
+- Returns immediately - your terminal stays responsive
+- Logs output to file for monitoring
+- Can kill with `kill <PID>` if needed
+
+**Full Documentation**: See `docs/PR_MONITOR_BLOCKING_ISSUE.md`
 
 ---
 
