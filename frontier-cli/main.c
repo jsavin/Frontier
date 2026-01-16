@@ -52,12 +52,18 @@ extern long grabthreadglobals(void);
 extern long releasethreadglobals(void);
 
 // Version information
-#define FRONTIER_CLI_VERSION "1.0.0"
+// FRONTIER_CLI_VERSION_STRING is defined at compile time from git tags via Makefile
+#ifndef FRONTIER_CLI_VERSION_STRING
+#define FRONTIER_CLI_VERSION_STRING "1.0.0-dev"
+#endif
 #define FRONTIER_CLI_BUILD_DATE __DATE__
 
 // Default system root paths (v7 = modern format, v6 = legacy format)
 #define DEFAULT_SYSTEM_ROOT_V7 "databases/Frontier.root7"
 #define DEFAULT_SYSTEM_ROOT_V6 "databases/Frontier.root"
+
+// System root search paths (for auto-discovery)
+#define MAX_SEARCH_PATHS 8
 
 // Global variables
 static cli_options_t g_cli_options = {0};
@@ -87,6 +93,7 @@ static void log_system_subtable_status(const char *phase,
                                        hdlhashtable resources,
                                        hdlhashtable menubar,
                                        hdlhashtable objectmodel);
+static int get_system_root_search_paths(char paths[][CLI_MAX_PATH_LENGTH + 1], int max_paths);
 
 int main(int argc, char* argv[]) {
     // Initialize logging system (reads FRONTIER_LOG_LEVEL, FRONTIER_LOG_COMPONENT, FRONTIER_LOG_FORMAT env vars)
@@ -170,15 +177,27 @@ int main(int argc, char* argv[]) {
     /* Auto-load system root database if not explicitly specified */
     const char *system_root_to_load = g_cli_options.system_root;
     if (system_root_to_load == NULL) {
-        /* Try v7 format first (already migrated), then v6 (will auto-migrate) */
-        if (access(DEFAULT_SYSTEM_ROOT_V7, F_OK) == 0) {
-            system_root_to_load = DEFAULT_SYSTEM_ROOT_V7;
-            log_info(LOG_COMP_STARTUP, "Auto-loading system root: %s", system_root_to_load);
-        } else if (access(DEFAULT_SYSTEM_ROOT_V6, F_OK) == 0) {
-            system_root_to_load = DEFAULT_SYSTEM_ROOT_V6;
-            log_info(LOG_COMP_STARTUP, "Auto-loading system root: %s (will auto-migrate to v7)", system_root_to_load);
+        /* Build search path list and try each location in order */
+        char search_paths[MAX_SEARCH_PATHS][CLI_MAX_PATH_LENGTH + 1];
+        int num_paths = get_system_root_search_paths(search_paths, MAX_SEARCH_PATHS);
+
+        for (int i = 0; i < num_paths; i++) {
+            if (access(search_paths[i], F_OK) == 0) {
+                system_root_to_load = search_paths[i];
+
+                /* Check if this is v6 format (will auto-migrate) */
+                const char *ext = strrchr(search_paths[i], '.');
+                boolean is_v6 = (ext != NULL && strcmp(ext, ".root") == 0);
+
+                if (is_v6) {
+                    log_info(LOG_COMP_STARTUP, "Auto-loading system root: %s (will auto-migrate to v7)", system_root_to_load);
+                } else {
+                    log_info(LOG_COMP_STARTUP, "Auto-loading system root: %s", system_root_to_load);
+                }
+                break;
+            }
         }
-        /* If neither exists, continue without system root (headless mode) */
+        /* If no path exists, continue without system root (headless mode) */
     }
 
     if (system_root_to_load != NULL) {
@@ -206,6 +225,90 @@ int main(int argc, char* argv[]) {
     cleanup_frontier_runtime();
 
     return exit_code;
+}
+
+/**
+ * Build list of system root search paths for auto-discovery.
+ *
+ * Search order:
+ * 1. FRONTIER_ROOT environment variable (if set)
+ * 2. ~/Library/Application Support/Frontier/Frontier.root7
+ * 3. ~/Library/Application Support/Frontier/Frontier.root (v6, will auto-migrate)
+ * 4. ~/.frontier/Frontier.root7
+ * 5. ~/.frontier/Frontier.root (v6, will auto-migrate)
+ * 6. databases/Frontier.root7 (current working directory)
+ * 7. databases/Frontier.root (current working directory, v6)
+ *
+ * Returns: Number of valid paths added to the search list
+ */
+static int get_system_root_search_paths(char paths[][CLI_MAX_PATH_LENGTH + 1], int max_paths) {
+    int count = 0;
+    char expanded_path[CLI_MAX_PATH_LENGTH + 1];
+
+    // 1. Check FRONTIER_ROOT environment variable
+    const char *frontier_root_env = getenv("FRONTIER_ROOT");
+    if (frontier_root_env != NULL && frontier_root_env[0] != '\0') {
+        // Expand ~ if present
+        if (frontier_root_env[0] == '~') {
+            const char *home = getenv("HOME");
+            if (home != NULL) {
+                snprintf(expanded_path, sizeof(expanded_path), "%s%s", home, frontier_root_env + 1);
+                strncpy(paths[count], expanded_path, CLI_MAX_PATH_LENGTH);
+                paths[count][CLI_MAX_PATH_LENGTH] = '\0';
+                count++;
+            }
+        } else {
+            strncpy(paths[count], frontier_root_env, CLI_MAX_PATH_LENGTH);
+            paths[count][CLI_MAX_PATH_LENGTH] = '\0';
+            count++;
+        }
+    }
+
+    // Get home directory for remaining paths
+    const char *home = getenv("HOME");
+    if (home != NULL && count < max_paths) {
+        // 2. ~/Library/Application Support/Frontier/Frontier.root7
+        snprintf(paths[count], CLI_MAX_PATH_LENGTH + 1,
+                 "%s/Library/Application Support/Frontier/Frontier.root7", home);
+        count++;
+
+        // 3. ~/Library/Application Support/Frontier/Frontier.root (v6)
+        if (count < max_paths) {
+            snprintf(paths[count], CLI_MAX_PATH_LENGTH + 1,
+                     "%s/Library/Application Support/Frontier/Frontier.root", home);
+            count++;
+        }
+
+        // 4. ~/.frontier/Frontier.root7
+        if (count < max_paths) {
+            snprintf(paths[count], CLI_MAX_PATH_LENGTH + 1,
+                     "%s/.frontier/Frontier.root7", home);
+            count++;
+        }
+
+        // 5. ~/.frontier/Frontier.root (v6)
+        if (count < max_paths) {
+            snprintf(paths[count], CLI_MAX_PATH_LENGTH + 1,
+                     "%s/.frontier/Frontier.root", home);
+            count++;
+        }
+    }
+
+    // 6. Current working directory - databases/Frontier.root7
+    if (count < max_paths) {
+        strncpy(paths[count], DEFAULT_SYSTEM_ROOT_V7, CLI_MAX_PATH_LENGTH);
+        paths[count][CLI_MAX_PATH_LENGTH] = '\0';
+        count++;
+    }
+
+    // 7. Current working directory - databases/Frontier.root (v6)
+    if (count < max_paths) {
+        strncpy(paths[count], DEFAULT_SYSTEM_ROOT_V6, CLI_MAX_PATH_LENGTH);
+        paths[count][CLI_MAX_PATH_LENGTH] = '\0';
+        count++;
+    }
+
+    return count;
 }
 
 static uint64_t read_big_endian(const unsigned char *data, size_t length) {
@@ -288,7 +391,7 @@ static boolean read_root_table_address(const char *path, dbaddress *adr_out, sho
 
 static void print_usage(const char* program_name) {
     printf("Frontier CLI - Command Line Interface for UserTalk Script Execution\n");
-    printf("Version %s (%s)\n\n", FRONTIER_CLI_VERSION, FRONTIER_CLI_BUILD_DATE);
+    printf("Version %s (%s)\n\n", FRONTIER_CLI_VERSION_STRING, FRONTIER_CLI_BUILD_DATE);
     
     printf("Usage: %s [OPTIONS] [SCRIPT_FILE]\n\n", program_name);
     
@@ -339,8 +442,8 @@ static void print_usage(const char* program_name) {
 }
 
 static void print_version(void) {
-    printf("Frontier CLI %s (%s)\n", FRONTIER_CLI_VERSION, FRONTIER_CLI_BUILD_DATE);
-    printf("Copyright (C) 1992-2004 UserLand Software, Inc.\n");
+    printf("Frontier CLI %s (%s)\n", FRONTIER_CLI_VERSION_STRING, FRONTIER_CLI_BUILD_DATE);
+    printf("Copyright (C) 1992-2026 UserLand Software, Inc. and Contributors\n");
     printf("This is free software; see the source for copying conditions.\n");
 }
 

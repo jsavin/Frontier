@@ -11,6 +11,16 @@ CFLAGS = -std=c17 -Wall -Wextra -O0 -g -fpascal-strings \
          -DHEADLESS_TEST_PORTABLE_FILE -DHEADLESS_LINKS_REAL_DB \
          -DHEADLESS_USE_REAL_TABLEPACK -DHEADLESS_USE_REAL_TABLEVALTOTABLE \
          -DUNIX_COMPILE -DC_LIBRARY -DNO_OS_INLINE
+
+# Architecture support (for universal binary builds)
+# Set ARCHES="arm64 x86_64" to build universal binary
+ARCHES ?= $(shell uname -m)
+ARCH_FLAGS = $(foreach arch,$(ARCHES),-arch $(arch))
+
+# Version embedding from git
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "1.0.0-dev")
+CFLAGS += -DFRONTIER_CLI_VERSION_STRING=\"$(VERSION)\"
+
 SANITIZE ?= 0
 ifeq ($(SANITIZE),1)
   CFLAGS += -fsanitize=address,undefined -fno-omit-frame-pointer
@@ -184,7 +194,7 @@ KERNELVERBS_CLI = ../tools/kernelverbs_parser/cli.py
 all: strings_generated kernel_verbs_generated $(TARGET)
 
 $(TARGET): $(CLI_SOURCES) $(FRONTIER_SOURCES) $(PAIGE_LIB)
-	$(CC) $(CFLAGS) $(INCLUDES) \
+	$(CC) $(CFLAGS) $(ARCH_FLAGS) $(INCLUDES) \
 		$(CLI_SOURCES) \
 		$(FRONTIER_SOURCES) \
 		-o $(TARGET) $(LIBS) $(LDFLAGS)
