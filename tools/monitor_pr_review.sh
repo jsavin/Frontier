@@ -34,6 +34,21 @@ INITIAL_REVIEWS=$(gh pr view "$PR_NUMBER" --json reviews --jq '.reviews | length
 
 echo "[$(date)] Initial state: $INITIAL_COMMENTS comments, $INITIAL_REVIEWS reviews"
 
+# Check for merge conflicts (blocks bot reviews)
+echo "[$(date)] Checking for merge conflicts..."
+MERGEABLE=$(gh pr view "$PR_NUMBER" --json mergeable --jq '.mergeable' 2>/dev/null)
+if [ "$MERGEABLE" = "CONFLICTING" ]; then
+    echo "[$(date)] ❌ MERGE CONFLICT DETECTED - Cannot proceed with bot review"
+    echo "[$(date)] Resolve conflict and rebase:"
+    echo "[$(date)]   git fetch origin && git rebase origin/develop"
+    echo "[$(date)]   git push -f origin <branch-name>"
+    exit 1
+fi
+
+if [ "$MERGEABLE" != "MERGEABLE" ]; then
+    echo "[$(date)] ⚠️  Merge status: $MERGEABLE (expected: MERGEABLE)"
+fi
+
 # ============================================================================
 # PHASE 1: Wait for bots to pick up the commit and start analyzing
 # ============================================================================
