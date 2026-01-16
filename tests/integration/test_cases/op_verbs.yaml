@@ -1232,19 +1232,41 @@ tests:
     expected_success: true
     expected_result: "Modified Line 1"
 
-  - name: "workflow - promote and demote hierarchy changes"
-    description: "Build hierarchy and reorganize with promote/demote"
+  - name: "workflow - promote children of current heading"
+    description: "Promote all subheads beneath current heading one level to the left"
     script: |
       lang.new(outlineType, @workspace.outline);
       target.set(@workspace.outline);
-      op.insert("Parent", down);
-      op.insert("Child", right);
-      local(level1 = op.level());
-      op.promote();
-      local(level2 = op.level());
-      op.demote();
-      local(level3 = op.level());
-      return (level1 == 2) and (level2 == 1) and (level3 == 2)
+      op.insert("Parent", down);         // Level 1 (empty summit + parent = 2 levels)
+      op.insert("Child1", right);        // Level 2, child of Parent
+      op.insert("Child2", down);         // Level 2, sibling of Child1
+      op.insert("GrandChild", right);    // Level 3, child of Child2
+      op.go(up, 2);                      // Move back to Parent (cursor on Parent)
+      local(parentLevel = op.level());   // Should be 1
+      local(promoteResult = op.promote()); // Promotes Child1, Child2, and GrandChild
+      // After promote: Child1 and Child2 should be level 1 (siblings of Parent)
+      // GrandChild should be level 2 (child of Child2, still level 2)
+      op.go(down, 1);                    // Move to first promoted child
+      local(child1LevelAfter = op.level()); // Should be 1 (promoted from 2)
+      return promoteResult and (parentLevel == 1) and (child1LevelAfter == 1)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "workflow - demote following siblings"
+    description: "Demote all following siblings to be children of current heading"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.insert("L1-Sibling1", down);     // Level 1
+      op.insert("L1-Sibling2", down);     // Level 1, following sibling
+      op.insert("L1-Sibling3", down);     // Level 1, following sibling
+      op.go(up, 2);                       // Move back to Sibling1
+      local(demoteResult = op.demote());  // Demotes Sibling2 and Sibling3 to children
+      // After demote: Sibling1 is still level 1, Sibling2 and Sibling3 are level 2
+      local(sibling1Level = op.level());  // Should still be 1
+      op.go(down, 1);                     // Move to first demoted child
+      local(sibling2LevelAfter = op.level()); // Should be 2 (demoted from 1)
+      return demoteResult and (sibling1Level == 1) and (sibling2LevelAfter == 2)
     expected_success: true
     expected_result: "true"
 
@@ -2824,14 +2846,17 @@ tests:
         op.expand(1)
       };
       op.firstSummit();
-      op.go(down, 1);  // Move past empty summit to L1
-      local(savedState = op.getExpansionState());
-      op.collapse();
-      op.setExpansionState(savedState);
-      op.go(right, 1);  // Go to L2 (first child of L1)
-      return op.level()
+      op.go(down, 1);              // Move past empty summit to L1 (level 1)
+      local(savedState = op.getExpansionState());  // Save expansion state at L1
+      op.collapse();               // Collapse L1 (and all descendants)
+      op.setExpansionState(savedState); // Restore expansion state should re-expand
+      op.go(down, 1);              // Go to first child L2 (level 2)
+      local(level2Check = op.level()); // Should be 2
+      op.go(down, 1);              // Go to first child L3 (level 3)
+      local(level3Check = op.level()); // Should be 3
+      return (level2Check == 2) and (level3Check == 3)
     expected_success: true
-    expected_result: "2"
+    expected_result: "true"
 
   # ====================================================================
   # Phase 3: Error Recovery Tests
