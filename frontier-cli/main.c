@@ -481,10 +481,9 @@ static boolean hydrate_system_root_database(const char* path) {
         return false;
     }
 
-    /* CRITICAL FIX: After migration, open v7 database in READ-ONLY mode.
-     * This prevents the original v6 source file from being reopened and modified.
-     * During hydration, we only read the database structure; we don't write to it. */
-    boolean flreadonly_for_hydration = migrated;
+    /* After migration, use the v7 file for hydration (which is writable for system.startup).
+     * The v6 source protection happens in dbwrite() during migration. */
+    boolean flreadonly_for_hydration = false;
 
     if (migrated) {
         cli_log_info("Migrated legacy system root to v7 format (written to): %s", actual_path);
