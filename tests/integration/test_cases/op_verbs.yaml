@@ -1211,8 +1211,9 @@ tests:
       op.go(left, 1);
       op.insert("Chapter 2", down);
       op.firstSummit();
+      op.go(down, 1);  // Move past empty summit to first real content
       local(ok1 = op.getLineText() == "Chapter 1");
-      local(ok2 = op.countSummits() == 2);
+      local(ok2 = op.countSummits() == 3);  // Empty summit + Chapter 1 + Chapter 2
       return ok1 and ok2
     expected_success: true
     expected_result: "true"
@@ -1307,7 +1308,7 @@ tests:
       };
       return op.countSummits()
     expected_success: true
-    expected_result: "5"
+    expected_result: "6"  # Empty summit + 5 remaining lines after deleting 5 of 10
 
   # ====================================================================
   # Phase 3: Cursor Management (op.getCursor, op.setCursor)
@@ -2186,6 +2187,7 @@ tests:
       op.go(left, 1);
       op.expand(infinity);
       op.firstSummit();
+      op.go(down, 1);  // Move past empty summit to Parent 1
       local(savedState = op.getExpansionState());
       op.collapse();
       local(collapsed = not op.subsExpanded());
@@ -2772,6 +2774,7 @@ tests:
         op.insert("Line " + i, down)
       };
       op.firstSummit();
+      op.go(down, 20);  // Move to last line (Line 20), past empty summit
       local(ok = true);
       for i = 1 to 10 {
         local(saved = op.getCursor());
@@ -2821,10 +2824,11 @@ tests:
         op.expand(1)
       };
       op.firstSummit();
+      op.go(down, 1);  // Move past empty summit to L1
       local(savedState = op.getExpansionState());
       op.collapse();
       op.setExpansionState(savedState);
-      op.go(right, 1);
+      op.go(right, 1);  // Go to L2 (first child of L1)
       return op.level()
     expected_success: true
     expected_result: "2"
@@ -3482,6 +3486,7 @@ tests:
       op.xmltooutline(xml, @workspace.out2, true);
       target.set(@workspace.out2);
       op.firstSummit();
+      op.go(down, 1);  // Move past empty summit to first imported line
       local(first = op.getLineText());
       op.go(down, 1);
       local(second = op.getLineText());
