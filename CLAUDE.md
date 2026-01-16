@@ -1,34 +1,10 @@
 # Frontier Development Guide
 
-## Project Leadership
-
-**The user is both TPM (Technical Product Manager) and CTO of this project.** This means:
-- Strategic vision (2.0 collaborative ODB, partnerships with Dave Winer and Automattic) comes from TPM perspective
-- Architectural decisions and technical risk management come from CTO perspective
-- When the user asks for trade-off analysis, they're looking for both product and technical viewpoints
-- Technical debt decisions are made with full product context in mind
-
----
-
 ## Technical Decision-Making Principles
 
-**When evaluating multiple approaches to solve a problem, default to the proper, maintainable, long-term solution.**
+**Default to proper, maintainable, long-term solutions.** Quick fixes accumulate as technical debt that becomes costly to unwind. Unless the user explicitly requests a quick fix for time constraints, recommend the approach that solves the problem correctly rather than suppressing symptoms.
 
-This project is building foundational infrastructure for collaborative ODB editing that will serve as the basis for multi-user systems and partnerships with Dave Winer and Automattic. Quick fixes and workarounds accumulate as technical debt that becomes costly to unwind later.
-
-**Decision Framework:**
-
-When presented with options like:
-- **Option 1: Header Guards** (Quick fix - 90% reduction)
-- **Option 2: Centralize Types** (Proper fix - 100% elimination)
-- **Option 3: Suppress Warnings** (Temporary workaround)
-
-**Default to the proper fix (Option 2) unless:**
-- User explicitly requests quick fix for time constraints
-- Proper fix would block critical path work (then quick fix + filed issue)
-- Quick fix is genuinely the right long-term solution (rare)
-
-**In 90% of cases, recommend the "Proper fix" or "maintainable long-term solution" approach.**
+**When in doubt:** Apply the proper fix, not temporary workarounds.
 
 ---
 
@@ -53,11 +29,11 @@ rm -f databases/Frontier.root7
 # Verb coverage analysis
 cd tools/kernelverbs_parser && python3 cli.py report
 
-# Export integration tests to OPML (for Dave Winer's subscription)
+# Export integration tests to OPML
 python3 tools/export_tests_to_opml.py
 # Output: reports/integration_tests.opml
 
-# Install git hooks (auto-regenerates OPML when tests change)
+# Install git hooks
 ./tools/install_git_hooks.sh
 
 # Create PR (after pushing branch)
@@ -88,122 +64,26 @@ Use `$(./tools/get_test_temp_path.sh)` for manual testing paths.
 
 ## ⚠️ MANDATORY: Pre-Work Location Verification
 
-**STOP AND VERIFY BEFORE STARTING ANY WORK**
-
-Before writing code, making changes, or committing ANYTHING, you MUST verify your location and branch:
+**STOP AND VERIFY** before starting any work:
 
 ```bash
 pwd && git branch --show-current
 ```
 
-### Decision Tree: Where Should I Work?
+**Quick Decision**:
+- ✅ **Trivial work** (typo, single-line fix, quick doc update) → OK on develop
+- ❌ **Non-trivial work** (feature, bug fix, multi-file change) → MUST create worktree
 
-```
-┌─────────────────────────────────────────┐
-│ Am I about to start coding work?       │
-└──────────────┬──────────────────────────┘
-               │
-               ▼
-       ┌───────────────┐
-       │ Is it TRIVIAL?│ (single-line typo, doc fix)
-       └───┬───────────┘
-           │
-    ┌──────┴──────┐
-    │             │
-   YES           NO
-    │             │
-    │             ▼
-    │      ┌─────────────────────────┐
-    │      │ Am I on develop branch? │
-    │      └──────┬──────────────────┘
-    │             │
-    │      ┌──────┴──────┐
-    │      │             │
-    │     YES           NO (already on feature branch)
-    │      │             │
-    │      │             ▼
-    │      │      ┌──────────────────┐
-    │      │      │ Am I in worktree?│
-    │      │      └──────┬───────────┘
-    │      │             │
-    │      │      ┌──────┴──────┐
-    │      │      │             │
-    │      │     YES           NO
-    │      │      │             │
-    │      ▼      ▼             ▼
-    │   ┌───────────────┐   ┌─────────────────┐
-    │   │ STOP!         │   │ STOP!           │
-    │   │ Create        │   │ Create worktree │
-    │   │ worktree      │   │ for this branch │
-    │   │ & branch NOW  │   └─────────────────┘
-    │   └───────────────┘
-    │
-    ▼
-┌──────────────────────────┐
-│ OK to proceed            │
-│ - Trivial on develop OR  │
-│ - Non-trivial in worktree│
-└──────────────────────────┘
+**If non-trivial AND on develop**:
+```bash
+cd /Users/jake/dev/jsavin/Frontier
+git worktree add ../Frontier-<feature-name> -b feature/<feature-name>
+cd ../Frontier-<feature-name>
 ```
 
-### Pre-Work Checklist (MANDATORY)
+**If committing**: Verify branch is `feature/*` in worktree, never `git push origin develop` directly.
 
-Before **EVERY** coding session:
-
-1. ✅ **Verify location and branch**
-   ```bash
-   pwd && git branch --show-current
-   ```
-
-2. ✅ **Evaluate task complexity**
-   - Trivial: Single-line fix, typo, quick doc update → OK on develop
-   - Non-trivial: Feature, bug fix, multi-file change → MUST use worktree
-
-3. ✅ **If non-trivial AND on develop → STOP**
-   ```bash
-   # From main Frontier directory
-   cd /Users/jake/dev/jsavin/Frontier
-   git worktree add ../Frontier-<feature-name> -b feature/<feature-name>
-   cd ../Frontier-<feature-name>
-   # NOW start work here
-   ```
-
-4. ✅ **If already in worktree → Verify it's the right one**
-   ```bash
-   # Should show: /Users/jake/dev/jsavin/Frontier-<feature-name>
-   # Should show: * feature/<feature-name>
-   ```
-
-### Commit Verification (MANDATORY)
-
-Before **EVERY** commit:
-
-1. ✅ **Verify you're in the right place**
-   ```bash
-   pwd && git branch --show-current
-   ```
-
-2. ✅ **Check output:**
-   - `/Users/jake/dev/jsavin/Frontier` + `develop` → ONLY if user explicitly said "commit to develop"
-   - `/Users/jake/dev/jsavin/Frontier-<name>` + `feature/*` → ✅ CORRECT for non-trivial work
-   - Anything else → STOP AND ASK USER
-
-3. ✅ **Never push to origin/develop directly** (use PR workflow)
-
-### Why This Matters
-
-**Violating this process causes:**
-- ❌ Commits bypass PR review and bot feedback
-- ❌ Work not properly tracked in GitHub
-- ❌ No visibility for user on what's changing
-- ❌ Breaks the documented workflow in CLAUDE.md
-- ❌ Makes merge conflicts more likely
-
-**Following this process ensures:**
-- ✅ All non-trivial work reviewed before merge
-- ✅ Bot catches issues before they reach develop
-- ✅ User has visibility and approval control
-- ✅ Clean git history with proper PR documentation
+**Full Guide**: See [`docs/WORKTREE_WORKFLOW.md`](docs/WORKTREE_WORKFLOW.md) and [`docs/PR_MONITOR_BLOCKING_ISSUE.md`](docs/PR_MONITOR_BLOCKING_ISSUE.md)
 
 ---
 
@@ -234,16 +114,10 @@ Several archive branches exist independently and should **never be merged** to d
 
 ## Strategic Roadmap
 
-**Master todo list**: https://drummer.land/me@jakesav.in/JakeShare.opml
-- User's longer-term vision in chronological order
-- Dave Winer (original Frontier designer) is key strategic partner for collaborative ODB
-- Consult this list to understand how tasks fit into broader roadmap
-- Source of truth for strategic direction and milestones
-
-**Planning Documentation**:
+**Planning Documentation** (source of truth for strategic direction):
 - `planning/INDEX.md` - Navigation for active and archived workstreams
 - `planning/phase_overview.md` - Overview of all phases
-- `planning/CRDT_FOUNDATION_ROADMAP.md` - Collaborative ODB foundation (Phase 2.0)
+- `planning/CRDT_FOUNDATION_ROADMAP.md` - Collaborative ODB foundation roadmap
 
 **Key Project Context**:
 - Frontier has "guest databases" - any databases opened that aren't system root. Top-level items in guest databases are in global scope (managed via `system.compiler.files`)
@@ -275,130 +149,6 @@ Several archive branches exist independently and should **never be merged** to d
 - Never delete branches without user confirmation
 - Never work on develop directly for larger changes
 
----
-## Multi-Session Stability Patterns
-
-**Working across multiple terminal sessions simultaneously requires explicit coordination to prevent conflicts.**
-
-### Before Starting Any Work - Decision Tree
-
-**Step 1: Check current branch**
-```bash
-git branch --show-current
-```
-
-**Step 2: Assess task complexity**
-- ✅ **Trivial** (typo fix, single-line change, quick doc update) → OK to work on develop
-- ❌ **Non-trivial** (feature, bug fix, refactoring, multi-file change) → Create worktree
-
-**Step 3: If non-trivial and on develop:**
-```bash
-# Create worktree for new feature (see Worktree Location below for naming)
-cd /Users/jake/dev/jsavin/Frontier
-git worktree add ../Frontier-<feature-name> -b feature/<feature-name>
-cd ../Frontier-<feature-name>
-# Now start work here
-```
-
-**Step 4: If already on feature branch in worktree:**
-```bash
-# Verify you're in right worktree
-pwd && git branch
-# Continue work
-```
-
----
-
-### Key Stability Principles
-
-1. **Worktrees Are Your Foundation**
-   - Use git worktrees for parallel work: `git worktree add feature-branch-name`
-   - Each worktree has its own working directory, branch state, and build artifacts
-   - This allows multiple git branches to be active simultaneously without conflicts
-   - Example: Main Frontier directory on develop, separate worktree on feature/new-work
-
-2. **One Feature Branch = One Worktree**
-   - Create a worktree when starting new feature development
-   - Keep worktrees on feature branches, never on develop
-   - When feature is complete, merge PR, then remove worktree: `git worktree remove feature-branch-name`
-
-3. **Develop is the Integration Point**
-   - develop branch should only change through merged PRs (never direct commits)
-   - All feature work happens on feature branches in worktrees
-   - This prevents collisions when multiple sessions touch develop
-
-4. **Database State is Per-Session**
-   - Database files (Frontier.root, test_*.root) may be modified by test runs
-   - Don't assume database state is consistent across sessions
-   - If testing depends on specific database state, commit clean reference databases to git
-   - Use `git checkout databases/Frontier.root` to restore reference state between tests
-
-5. **Build Artifacts Are Not Shared**
-   - Keep `frontier-cli/frontier-cli` and test executables in their worktree/directory
-   - Each session has its own build
-   - Don't rely on build artifacts from one terminal in another terminal's build
-
-6. **Communication Protocol for Blocked Work**
-   - If Session A blocks Session B (e.g., Session A pushes to develop while B is working on develop):
-     - Session B should immediately rebase: `git rebase origin/develop`
-     - Session B's worktree automatically reflects the new develop
-   - This is why commits to develop MUST go through PR workflow (ensures visibility and proper ordering)
-
----
-
-### Worktree Location and Naming Convention
-
-**Recommended: Sibling directories to main Frontier directory**
-
-```
-/Users/jake/dev/jsavin/
-  ├── Frontier/                      (main repo, on develop)
-  ├── Frontier-table-verbs-headless/ (worktree for feature/table-verbs-headless)
-  └── Frontier-build-fix/            (worktree for fix/build-fix)
-```
-
-**Why sibling directories:**
-- ✅ Complete isolation (build artifacts, git state, databases)
-- ✅ No git interference (worktrees don't appear in main repo's `git status`)
-- ✅ IDE-friendly (each appears as separate project)
-- ✅ Clear naming pattern makes purpose obvious
-- ✅ Easy cleanup when done
-
-**Naming Convention:**
-```bash
-# For feature branches:
-feature/table-verbs-headless  →  Frontier-table-verbs-headless
-
-# For fix branches:
-fix/database-corruption       →  Frontier-database-corruption
-
-# Pattern: Strip prefix (feature/, fix/), prepend 'Frontier-'
-```
-
-**Full Guide:** See [`docs/WORKTREE_WORKFLOW.md`](docs/WORKTREE_WORKFLOW.md) for detailed creation/cleanup commands, examples, and troubleshooting.
-
----
-
-### Critical Worktree Discipline ⚠️
-
-**Rule 1: All Work Happens in Worktrees, NOT in Main Directory**
-- The main `Frontier/` directory should only be used for research, viewing code, and running quick diagnostics
-- Any feature/bug fix work MUST be done in a dedicated worktree (e.g., `Frontier-<feature-name>`)
-- This prevents accidentally committing to develop or mixing multiple pieces of work
-- Exception: Trivial single-line fixes on develop are OK (see Decision Tree above)
-
-**Rule 2: Always Rebase Against develop HEAD When Switching to a Worktree**
-- Before starting new work in a worktree, sync with latest develop:
-```bash
-# In the new worktree, after creation:
-git fetch origin
-git rebase origin/develop
-```
-- This ensures your feature branch starts from the latest code
-- Prevents conflicts and keeps your PR clean
-- Do this EVERY TIME you switch to a worktree to start fresh work
-
----
 
 ## Working with Agents
 
@@ -597,55 +347,24 @@ typeof(filespecValue) => "filespec"     ❌ WRONG - code expects 'fss '
 
 ### File Path Requirements
 
-**CRITICAL**: All UserTalk verbs dealing with files require FULL/ABSOLUTE paths, not relative paths.
+**CRITICAL**: All UserTalk file/database verbs require FULL/ABSOLUTE paths—the runtime has NO cwd awareness at the UserTalk level.
 
-**The Runtime Has No CWD Awareness at UserTalk Level:**
-- UserTalk scripts cannot use relative paths like `"test.root"` or `"../data/file.txt"`
-- The runtime has NO awareness of current working directory (cwd) at the UserTalk level
-- Exception: Explicit cwd verb calls (`file.getcwd()`) return the process cwd, but this is NOT used for path resolution
+**Affected Verbs**: `db.new()`, `db.open()`, `file.create()`, `file.write()`, `file.read()`, and all file.* operations
 
-**Affected Verbs:**
-- `db.new(path)` - Requires full path: `/full/path/to/database.root`
-- `db.open(path, readOnly)` - Requires full path
-- `file.create(path)` - Requires full path
-- `file.write(path, data)` - Requires full path
-- `file.read(path)` - Requires full path
-- All file.* verbs that take a path parameter
-
-**Correct Usage:**
+**Correct Usage**:
 ```usertalk
-// ✅ CORRECT - Full paths
+// ✅ CORRECT
 db.new("/Users/jake/test.root")
-file.write("/tmp/output.txt", "data")
-
-// ✅ CORRECT - Build full path from cwd
 local(fullPath = file.getcwd() + "/test.root")
 db.new(fullPath)
 
-// ❌ WRONG - Relative paths don't work
-db.new("test.root")              // Will fail or create in undefined location
-file.write("output.txt", "data") // Will fail
+// ❌ WRONG - relative paths fail
+db.new("test.root")
 ```
 
-**Testing Implications:**
-- Integration tests MUST use `{FRONTIER_TEST_TMP_DIR}` template (auto-replaced with full path)
-- Manual CLI testing MUST use `$(./tools/get_test_temp_path.sh)` for full paths
-- Never use relative paths in test scripts
+**Testing**: Use `{FRONTIER_TEST_TMP_DIR}` template in integration tests or `$(./tools/get_test_temp_path.sh)` for CLI testing.
 
-**Why system.paths Matters:**
-- `system.paths` contains full paths to important system locations
-- `target.*` verbs and other system verbs require `system.paths` to be initialized
-- Load system root with `--system-root databases/Frontier.root` to initialize `system.paths`
-- Without system root, many verbs will fail with "Can't find sub-table named X"
-
-**Example - Integration Test Setup:**
-```yaml
-script: |
-  local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");  # Full path template
-  local(dbPath = tmpDir + "/" + "test.root");
-  db.new(dbPath);
-  return db.open(dbPath, false)
-```
+**Note**: Load system root with `--system-root databases/Frontier.root` to initialize `system.paths` and enable `target.*` verbs.
 
 ---
 
@@ -864,23 +583,13 @@ Frontier has multiple global mutable state variables that must be eliminated bef
 
 ---
 
-### Timestamp Type Migration - uint32_t Audit Required ⚠️
+### Timestamp Type Migration ⚠️
 
-**Context**: Frontier uses 64-bit timestamps (`frontier_time_t` = `int64_t`) to avoid Year 2038 problem. When pulling new source files into headless builds, ALWAYS audit for uint32_t timestamp usage.
+Frontier uses 64-bit timestamps (`frontier_time_t` = `int64_t`) to avoid Year 2038. When pulling new source, audit for uint32_t usage. Test suite automatically checks this.
 
-**Automated Checking**: Test suite automatically checks for datetime type issues.
-```bash
-./tools/run_headless_tests.sh  # includes datetime type check
-./tools/check_datetime_types.sh  # manual check
-```
+**Rule**: Legacy disk readers (v4/v6) can use uint32_t; everything else must use int64_t or `frontier_time_t`.
 
-**Rule of Thumb**:
-- Legacy readers (v4/v6 disk formats): uint32_t OK
-- Everything else: Use int64_t or frontier_time_t
-
-**Full Guide:** See [`docs/TIMESTAMP_AUDIT.md`](docs/TIMESTAMP_AUDIT.md) for detailed audit procedures, examples, and whitelisted files.
-
-**References:** `docs/frontier_time_t_standard.md`, `planning/phase3/datetime_handling_audit.md`, PR #231, Issue #167
+See [`docs/TIMESTAMP_AUDIT.md`](docs/TIMESTAMP_AUDIT.md) and `docs/frontier_time_t_standard.md`
 
 ---
 
@@ -961,49 +670,16 @@ boolean dbrefhandle_context(const db_context *context, dbaddress adr, Handle *h)
 
 ---
 
-## Collaborative ODB Editing - North Star Vision 🎯
+## Collaborative ODB Editing - Architectural Foundation
 
-**Strategic Context:**
+Frontier's Object Database (ODB) is designed to support multi-user collaborative editing at scale. This is a **foundational architectural decision**, not a future feature—every design choice must accommodate this trajectory.
 
-Frontier's Object Database (ODB) is being positioned as the backend for next-generation collaborative editing:
-- Dave Winer's outline-centric workflow (currently non-collaborative)
-- Multi-user server config management (Automattic partnership)
-- Concurrent source code workflows (GitHub integration patterns)
-- Any ODB object type (outlines, scripts, WPText, tables, menus, etc.)
+**Key Requirements**:
+1. **Reference Counting for All External Object Contexts** - ODB objects stay valid while any thread holds a reference
+2. **Single-Threaded Developer Model** - UserTalk scripts see isolated, transactional operations without explicit locking
+3. **Stable Data Under Concurrent Load** - No data corruption, race conditions, or mysterious failures with dozens of concurrent operations
 
-**The Vision (Frontier 2.0):**
-
-Frontier should support **Google Docs/Sheets-style collaborative editing of ODB objects**:
-- Multiple users edit different ODB objects simultaneously (potentially same object concurrently)
-- Developers write functionally single-threaded code (no concurrency awareness required)
-- Runtime handles all concurrency, locking, and conflict resolution transparently
-- Stability guaranteed even with dozens of concurrent operations
-
-**What This Means NOW (Frontier 1.0)**:
-
-This is a **foundational architectural decision**, not a future feature. Every design choice must accommodate this trajectory:
-
-1. **Reference Counting for All External Object Contexts**
-   - Outline context, script context, WPText context must support multiple concurrent references
-   - ODB objects stay valid while ANY thread holds a reference
-   - Foundation applies to all external object types
-
-2. **Single-Threaded Developer Model**
-   - UserTalk scripts should NOT see concurrent modifications from other users
-   - Runtime isolates each developer's operations (transactional semantics or versioning)
-   - Conflict resolution happens automatically
-   - Developers never write `lock(object)` or `await(lock)`
-
-3. **Stable Data Under Concurrent Load**
-   - Multiple users editing same ODB objects = stable, correct results
-   - No data corruption, race conditions, or mysterious failures
-   - Launch-blocking requirement for Automattic partnership
-
-**Known Strategic Partnerships**:
-- **Dave Winer** - Multi-user 2.0 with full ODB collaboration
-- **Automattic ecosystem** - WordPress, WordPress.com (~40% of public web)
-
-See Issue #135 (outline context refactoring) - where collaborative ODB foundation gets built.
+See Issue #135 (outline context refactoring) and `planning/CRDT_FOUNDATION_ROADMAP.md`
 
 ---
 
