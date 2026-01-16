@@ -50,4 +50,34 @@ char* dialog_get_string(const char *prompt, const char *default_value);
  */
 char* dialog_get_password(const char *prompt);
 
+/* Alert prompt with beep and OK button
+ *
+ * Displays: "message" with beep, waits for Enter
+ * Returns: true (always)
+ */
+bool dialog_alert(const char *message);
+
+/* Notify prompt with OK button (no beep)
+ *
+ * Displays: "message", waits for Enter
+ * Returns: true (always)
+ */
+bool dialog_notify(const char *message);
+
+/* Two-way button choice
+ *
+ * Displays: "prompt? [button1] button2" with first button inverted
+ * Arrow keys/Tab switch selection, Enter confirms
+ * Returns: true if button1 selected, false if button2 selected
+ */
+bool dialog_twoway(const char *prompt, const char *button1, const char *button2);
+
+/* Three-way button choice
+ *
+ * Displays: "prompt? [button1] button2 button3" with current selection inverted
+ * Arrow keys/Tab switch selection, Enter confirms
+ * Returns: 1 if button1, 2 if button2, 3 if button3
+ */
+int dialog_threeway(const char *prompt, const char *button1, const char *button2, const char *button3);
+
 #endif /* DIALOG_PROMPTS_H */

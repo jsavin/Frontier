@@ -357,3 +357,280 @@ char* dialog_get_password(const char *prompt) {
 		}
 	}
 }
+
+/* Alert prompt with beep */
+
+bool dialog_alert(const char *message) {
+	if (!isInteractiveMode()) {
+		return false;
+	}
+
+	/* Sound beep */
+	fputc('\a', stderr);
+	fflush(stderr);
+
+	/* Display message */
+	fprintf(stderr, "%s\n", message);
+	fprintf(stderr, "[Press Enter to continue]");
+	fflush(stderr);
+
+	/* Wait for Enter */
+	terminal_state *term_state = terminal_save_state();
+	if (!term_state || !terminal_set_raw_mode()) {
+		if (term_state) {
+			terminal_restore_state(term_state);
+			terminal_free_state(term_state);
+		}
+		/* Fall back to getchar if raw mode fails */
+		getchar();
+		fputs("\n", stderr);
+		return true;
+	}
+
+	/* Wait for Enter key */
+	while (1) {
+		key_input key = terminal_read_key();
+		if (key.type == KEY_ENTER) {
+			fputs("\n", stderr);
+			break;
+		}
+		if (key.type == KEY_CTRL_C || key.type == KEY_CTRL_D) {
+			fputs("\n", stderr);
+			break;
+		}
+	}
+
+	terminal_restore_state(term_state);
+	terminal_free_state(term_state);
+	return true;
+}
+
+/* Notify prompt (no beep) */
+
+bool dialog_notify(const char *message) {
+	if (!isInteractiveMode()) {
+		return false;
+	}
+
+	/* Display message */
+	fprintf(stderr, "%s\n", message);
+	fprintf(stderr, "[Press Enter to continue]");
+	fflush(stderr);
+
+	/* Wait for Enter */
+	terminal_state *term_state = terminal_save_state();
+	if (!term_state || !terminal_set_raw_mode()) {
+		if (term_state) {
+			terminal_restore_state(term_state);
+			terminal_free_state(term_state);
+		}
+		/* Fall back to getchar if raw mode fails */
+		getchar();
+		fputs("\n", stderr);
+		return true;
+	}
+
+	/* Wait for Enter key */
+	while (1) {
+		key_input key = terminal_read_key();
+		if (key.type == KEY_ENTER) {
+			fputs("\n", stderr);
+			break;
+		}
+		if (key.type == KEY_CTRL_C || key.type == KEY_CTRL_D) {
+			fputs("\n", stderr);
+			break;
+		}
+	}
+
+	terminal_restore_state(term_state);
+	terminal_free_state(term_state);
+	return true;
+}
+
+/* Two-way button choice */
+
+bool dialog_twoway(const char *prompt, const char *button1, const char *button2) {
+	int selection = 0;  /* 0 = button1, 1 = button2 */
+	terminal_state *term_state = NULL;
+
+	if (!isInteractiveMode()) {
+		return true;  /* Default to button1 in batch mode */
+	}
+
+	/* Save terminal state and enable raw mode */
+	term_state = terminal_save_state();
+	if (!term_state || !terminal_set_raw_mode()) {
+		if (term_state) {
+			terminal_restore_state(term_state);
+			terminal_free_state(term_state);
+		}
+		return true;  /* Fall back to button1 */
+	}
+
+	/* Initial display */
+	while (1) {
+		/* Clear line and move to start */
+		fputs("\r\033[K", stderr);
+		
+		/* Display prompt and buttons */
+		fprintf(stderr, "%s? ", prompt);
+		
+		/* Display button1 (inverted if selected) */
+		if (selection == 0) {
+			fprintf(stderr, "\033[7m%s\033[0m ", button1);
+		} else {
+			fprintf(stderr, "%s ", button1);
+		}
+		
+		/* Display button2 (inverted if selected) */
+		if (selection == 1) {
+			fprintf(stderr, "\033[7m%s\033[0m", button2);
+		} else {
+			fprintf(stderr, "%s", button2);
+		}
+		
+		fflush(stderr);
+
+		/* Read key */
+		key_input key = terminal_read_key();
+
+		switch (key.type) {
+			case KEY_ENTER:
+				/* Confirm selection */
+				fputs("\n", stderr);
+				terminal_restore_state(term_state);
+				terminal_free_state(term_state);
+				return (selection == 0);
+
+			case KEY_ARROW_LEFT:
+			case KEY_ARROW_RIGHT:
+			case KEY_TAB:
+				/* Toggle selection */
+				selection = 1 - selection;
+				break;
+
+			case KEY_CTRL_C:
+			case KEY_CTRL_D:
+				/* Cancel - default to button1 */
+				fputs("\n", stderr);
+				terminal_restore_state(term_state);
+				terminal_free_state(term_state);
+				return true;
+
+			case KEY_CHAR:
+				/* Also allow 1/2 keys */
+				if (key.ch == '1') {
+					selection = 0;
+				} else if (key.ch == '2') {
+					selection = 1;
+				}
+				break;
+
+			default:
+				break;
+		}
+	}
+}
+
+/* Three-way button choice */
+
+int dialog_threeway(const char *prompt, const char *button1, const char *button2, const char *button3) {
+	int selection = 0;  /* 0 = button1, 1 = button2, 2 = button3 */
+	terminal_state *term_state = NULL;
+
+	if (!isInteractiveMode()) {
+		return 1;  /* Default to button1 in batch mode */
+	}
+
+	/* Save terminal state and enable raw mode */
+	term_state = terminal_save_state();
+	if (!term_state || !terminal_set_raw_mode()) {
+		if (term_state) {
+			terminal_restore_state(term_state);
+			terminal_free_state(term_state);
+		}
+		return 1;  /* Fall back to button1 */
+	}
+
+	/* Initial display */
+	while (1) {
+		/* Clear line and move to start */
+		fputs("\r\033[K", stderr);
+		
+		/* Display prompt and buttons */
+		fprintf(stderr, "%s? ", prompt);
+		
+		/* Display button1 (inverted if selected) */
+		if (selection == 0) {
+			fprintf(stderr, "\033[7m%s\033[0m ", button1);
+		} else {
+			fprintf(stderr, "%s ", button1);
+		}
+		
+		/* Display button2 (inverted if selected) */
+		if (selection == 1) {
+			fprintf(stderr, "\033[7m%s\033[0m ", button2);
+		} else {
+			fprintf(stderr, "%s ", button2);
+		}
+		
+		/* Display button3 (inverted if selected) */
+		if (selection == 2) {
+			fprintf(stderr, "\033[7m%s\033[0m", button3);
+		} else {
+			fprintf(stderr, "%s", button3);
+		}
+		
+		fflush(stderr);
+
+		/* Read key */
+		key_input key = terminal_read_key();
+
+		switch (key.type) {
+			case KEY_ENTER:
+				/* Confirm selection (return 1, 2, or 3) */
+				fputs("\n", stderr);
+				terminal_restore_state(term_state);
+				terminal_free_state(term_state);
+				return (selection + 1);
+
+			case KEY_ARROW_LEFT:
+				/* Move left */
+				if (selection > 0) {
+					selection--;
+				}
+				break;
+
+			case KEY_ARROW_RIGHT:
+			case KEY_TAB:
+				/* Move right */
+				if (selection < 2) {
+					selection++;
+				}
+				break;
+
+			case KEY_CTRL_C:
+			case KEY_CTRL_D:
+				/* Cancel - default to button1 */
+				fputs("\n", stderr);
+				terminal_restore_state(term_state);
+				terminal_free_state(term_state);
+				return 1;
+
+			case KEY_CHAR:
+				/* Also allow 1/2/3 keys */
+				if (key.ch == '1') {
+					selection = 0;
+				} else if (key.ch == '2') {
+					selection = 1;
+				} else if (key.ch == '3') {
+					selection = 2;
+				}
+				break;
+
+			default:
+				break;
+		}
+	}
+}

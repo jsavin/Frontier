@@ -55,66 +55,169 @@ static boolean dialog_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
     switch(token) {
-        case diav_alert:
-            /* Verb: dialog.alert - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+        case diav_alert: {
+            /* dialog.alert(message) - Display message with beep and OK button */
+            bigstring bsmessage;
+
+            if (!isInteractiveMode()) {
+                if (bserror) copystring(BIGSTRING("\pCan't use dialog verbs in batch mode"), bserror);
+                return false;
+            }
+
+            flnextparamislast = true;
+            if (!getstringvalue(hparam1, 1, bsmessage))
+                return false;
+
+            /* Convert Pascal string to C string */
+            char message[256];
+            copyptocstring(bsmessage, message);
+
+            /* Call interactive alert */
+            boolean result = dialog_alert(message);
+
+            return setbooleanvalue(result, vreturned);
+        }
+        case diav_notify: {
+            /* dialog.notify(message) - Display message with OK button (no beep) */
+            bigstring bsmessage;
+
+            if (!isInteractiveMode()) {
+                if (bserror) copystring(BIGSTRING("\pCan't use dialog verbs in batch mode"), bserror);
+                return false;
+            }
+
+            flnextparamislast = true;
+            if (!getstringvalue(hparam1, 1, bsmessage))
+                return false;
+
+            /* Convert Pascal string to C string */
+            char message[256];
+            copyptocstring(bsmessage, message);
+
+            /* Call interactive notify */
+            boolean result = dialog_notify(message);
+
+            return setbooleanvalue(result, vreturned);
+        }
+        case diav_twoway: {
+            /* dialog.twoway(prompt, button1, button2) - Two-button choice */
+            bigstring bsprompt, bsbutton1, bsbutton2;
+
+            if (!isInteractiveMode()) {
+                if (bserror) copystring(BIGSTRING("\pCan't use dialog verbs in batch mode"), bserror);
+                return false;
+            }
+
+            /* Get all three parameters */
+            if (!getstringvalue(hparam1, 1, bsprompt))
+                return false;
+            if (!getstringvalue(hparam1, 2, bsbutton1))
+                return false;
+            flnextparamislast = true;
+            if (!getstringvalue(hparam1, 3, bsbutton2))
+                return false;
+
+            /* Convert Pascal strings to C strings */
+            char prompt[256], button1[256], button2[256];
+            copyptocstring(bsprompt, prompt);
+            copyptocstring(bsbutton1, button1);
+            copyptocstring(bsbutton2, button2);
+
+            /* Call interactive twoway */
+            boolean result = dialog_twoway(prompt, button1, button2);
+
+            return setbooleanvalue(result, vreturned);
+        }
+        case diav_threeway: {
+            /* dialog.threeway(prompt, button1, button2, button3) - Three-button choice */
+            bigstring bsprompt, bsbutton1, bsbutton2, bsbutton3;
+
+            if (!isInteractiveMode()) {
+                if (bserror) copystring(BIGSTRING("\pCan't use dialog verbs in batch mode"), bserror);
+                return false;
+            }
+
+            /* Get all four parameters */
+            if (!getstringvalue(hparam1, 1, bsprompt))
+                return false;
+            if (!getstringvalue(hparam1, 2, bsbutton1))
+                return false;
+            if (!getstringvalue(hparam1, 3, bsbutton2))
+                return false;
+            flnextparamislast = true;
+            if (!getstringvalue(hparam1, 4, bsbutton3))
+                return false;
+
+            /* Convert Pascal strings to C strings */
+            char prompt[256], button1[256], button2[256], button3[256];
+            copyptocstring(bsprompt, prompt);
+            copyptocstring(bsbutton1, button1);
+            copyptocstring(bsbutton2, button2);
+            copyptocstring(bsbutton3, button3);
+
+            /* Call interactive threeway */
+            int result = dialog_threeway(prompt, button1, button2, button3);
+
+            return setlongvalue(result, vreturned);
+        }
+
+        /* @PLATFORM_SPECIFIC - Resource-based dialog verbs (Mac OS Classic/Windows only) */
         case diav_run:
-            /* Verb: dialog.run - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            /* dialog.run - @PLATFORM_SPECIFIC (requires DLOG resources from Mac/Windows resource fork) */
+            if (bserror)
+                copystring(BIGSTRING("\pdialog.run requires GUI resources (Mac/Windows only)"), bserror);
             return false;
         case diav_runmodeless:
-            /* Verb: dialog.runmodeless - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case diav_runcard:
-            /* dialog.runcard - error stub */
+            /* dialog.runModeless - @PLATFORM_SPECIFIC (requires DLOG resources) */
             if (bserror)
-                copystring(BIGSTRING("\pCan't use modal dialog verbs because GUI is not available in headless mode"), bserror);
-            return false;
-        case diav_runmodalcard:
-            /* Verb: dialog.runmodalcard - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case diav_ismodalcard:
-            /* dialog.ismodalcard - error stub */
-            if (bserror)
-                copystring(BIGSTRING("\pCan't use modal dialog verbs because GUI is not available in headless mode"), bserror);
-            return false;
-        case diav_setmodalcardtimeout:
-            /* dialog.setmodalcardtimeout - error stub */
-            if (bserror)
-                copystring(BIGSTRING("\pCan't use modal dialog verbs because GUI is not available in headless mode"), bserror);
+                copystring(BIGSTRING("\pdialog.runModeless requires GUI resources (Mac/Windows only)"), bserror);
             return false;
         case diav_getvalue:
-            /* Verb: dialog.getvalue - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            /* dialog.getValue - @PLATFORM_SPECIFIC (only works within dialog.run itemhit callback) */
+            if (bserror)
+                copystring(BIGSTRING("\pdialog.getValue only works in GUI dialog callbacks (Mac/Windows only)"), bserror);
             return false;
         case diav_setvalue:
-            /* Verb: dialog.setvalue - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            /* dialog.setValue - @PLATFORM_SPECIFIC (only works within dialog.run itemhit callback) */
+            if (bserror)
+                copystring(BIGSTRING("\pdialog.setValue only works in GUI dialog callbacks (Mac/Windows only)"), bserror);
             return false;
         case diav_setitemenable:
-            /* Verb: dialog.setitemenable - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            /* dialog.setItemEnable - @PLATFORM_SPECIFIC (only works within dialog.run itemhit callback) */
+            if (bserror)
+                copystring(BIGSTRING("\pdialog.setItemEnable only works in GUI dialog callbacks (Mac/Windows only)"), bserror);
             return false;
         case diav_showitem:
-            /* dialog.showitem - error stub */
+            /* dialog.showItem - @PLATFORM_SPECIFIC (only works within dialog.run itemhit callback) */
             if (bserror)
-                copystring(BIGSTRING("\pCan't use modal dialog verbs because GUI is not available in headless mode"), bserror);
+                copystring(BIGSTRING("\pdialog.showItem only works in GUI dialog callbacks (Mac/Windows only)"), bserror);
             return false;
         case diav_hideitem:
-            /* dialog.hideitem - error stub */
+            /* dialog.hideItem - @PLATFORM_SPECIFIC (only works within dialog.run itemhit callback) */
             if (bserror)
-                copystring(BIGSTRING("\pCan't use modal dialog verbs because GUI is not available in headless mode"), bserror);
+                copystring(BIGSTRING("\pdialog.hideItem only works in GUI dialog callbacks (Mac/Windows only)"), bserror);
             return false;
-        case diav_twoway:
-            /* Verb: dialog.twoway - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+
+        /* @IMPLEMENTED - Ghost cruft (card-based dialogs never had UserTalk glue) */
+        case diav_runcard:
+            /* dialog.runcard - @IMPLEMENTED (ghost cruft, no glue ever existed) */
+            if (bserror)
+                copystring(BIGSTRING("\pdialog.runcard was never implemented"), bserror);
             return false;
-        case diav_threeway:
-            /* Verb: dialog.threeway - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+        case diav_runmodalcard:
+            /* dialog.runmodalcard - @IMPLEMENTED (ghost cruft, no glue ever existed) */
+            if (bserror)
+                copystring(BIGSTRING("\pdialog.runmodalcard was never implemented"), bserror);
+            return false;
+        case diav_ismodalcard:
+            /* dialog.ismodalcard - @IMPLEMENTED (ghost cruft, no glue ever existed) */
+            if (bserror)
+                copystring(BIGSTRING("\pdialog.ismodalcard was never implemented"), bserror);
+            return false;
+        case diav_setmodalcardtimeout:
+            /* dialog.setmodalcardtimeout - @IMPLEMENTED (ghost cruft, no glue ever existed) */
+            if (bserror)
+                copystring(BIGSTRING("\pdialog.setmodalcardtimeout was never implemented"), bserror);
             return false;
         case diav_ask: {
             /* dialog.ask(prompt) - Yes/No prompt with arrow key selection */
@@ -171,10 +274,6 @@ static boolean dialog_valueproc(short token, hdltreenode hparam1,
 
             return setlongvalue(result, vreturned);
         }
-        case diav_notify:
-            /* Verb: dialog.notify - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
         case diav_getuserinfo: {
             /* dialog.getuserinfo(prompt, [default]) - String input (legacy name for getString) */
             bigstring bsprompt, bsdefault;
