@@ -141,6 +141,7 @@ Several archive branches exist independently and should **never be merged** to d
      - **NEVER use `./tools/monitor_pr_review.sh` directly** (blocks session for 15 minutes)
      - **ALWAYS use**: `./tools/monitor_pr_review_bg.sh <PR_NUMBER>`
      - This returns immediately and runs monitoring in background
+     - Monitor automatically detects merge conflicts and exits with error (rebase required)
      - Watch log with: `tail -f tests/tmp/pr_monitor_<PR_NUMBER>.log`
      - See `docs/PR_MONITOR_BLOCKING_ISSUE.md` for full details
   7. **ALWAYS discuss bot feedback with user before addressing** - Never make changes autonomously
