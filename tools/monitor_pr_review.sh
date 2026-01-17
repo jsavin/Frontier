@@ -1,7 +1,10 @@
 #!/bin/bash
 
-# Monitor PR for new bot review comments and reviews (DETERMINISTIC VERSION)
+# Monitor PR for new bot review comments and reviews (AUTO-BACKGROUND VERSION)
 # Usage: ./monitor_pr_review.sh <pr_number> [timeout_seconds]
+#
+# CRITICAL: This script auto-backgrounds itself if not already backgrounded.
+# It is ALWAYS non-blocking, regardless of how it's invoked.
 #
 # Three-phase design for reliable bot monitoring:
 #   Phase 1: WAIT (30s) - Give bots time to pick up commit and start analyzing
@@ -14,6 +17,30 @@
 # Fixed polling: 15-second intervals (reduces API calls & log spam)
 # Clean exit: Logs reason for exit (timeout/cooldown/ci-complete/no-reviews)
 
+# ============================================================================
+# AUTO-BACKGROUND LOGIC: If not already backgrounded, re-exec self in background
+# ============================================================================
+if [ -z "$MONITOR_PR_REVIEW_BACKGROUNDED" ]; then
+    # We're being called from foreground - re-exec self in background and return immediately
+    PR_NUMBER="${1:-unknown}"
+    mkdir -p tests/tmp
+    LOG_FILE="tests/tmp/pr_monitor_${PR_NUMBER}.log"
+
+    # Re-exec self in background with marker env var set
+    MONITOR_PR_REVIEW_BACKGROUNDED=1 nohup "$0" "$@" >> "$LOG_FILE" 2>&1 &
+    MONITOR_PID=$!
+
+    echo "[$(date)] Starting background PR monitor for #${PR_NUMBER}"
+    echo "[$(date)] Output will be logged to: $LOG_FILE"
+    echo ""
+    echo "[$(date)] Monitor started with PID $MONITOR_PID"
+    echo "[$(date)] Watch with: tail -f $LOG_FILE"
+    echo "[$(date)] Kill with: kill $MONITOR_PID"
+    echo ""
+    exit 0
+fi
+
+# We are now in the background - continue with monitoring logic
 # Configuration
 PR_NUMBER="${1:-}"
 TIMEOUT="${2:-600}"  # 10 minutes (bots typically finish in 5-10 min)

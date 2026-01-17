@@ -4,25 +4,33 @@
  * Thread-safe registry for managing pthread-to-thread-ID mappings.
  * Uses a fixed-size array with mutex protection for all operations.
  *
+ * Reference Counting:
+ * Each record has a reference count that prevents destruction while in use.
+ * This solves the use-after-free problem by ensuring synchronization primitives
+ * (mutexes, condition variables) are only destroyed when refcount reaches zero.
+ *
  * Implementation Details:
  * - Fixed array of MAX_THREADS (64) thread records
  * - Linear search for slot allocation and lookup
- * - Monotonically increasing thread IDs (never reused within lifecycle)
+ * - Monotonically increasing thread IDs (wrapped on overflow)
  * - Per-record mutex/condvar for sleep/wake operations
+ * - Per-record refcount_mutex for reference count protection
  * - Global mutex for registry-level operations
  *
  * Thread Safety:
  * - All public functions acquire registry_mutex
- * - Per-record state_mutex protects individual record state
- * - init/cleanup are NOT thread-safe (call from main thread only)
+ * - Per-record state_mutex protects sleep/kill state
+ * - Per-record refcount_mutex protects reference count
+ * - Cleanup must be called only when no threads are using the registry
  *
- * Reference: planning/phase3/THREAD_SAFETY_PHASE1_PLAN.md
+ * Reference: planning/phase4/p0a-critical-thread-safety/
  *
  * Author: Frontier Development Team
  * Date: 2026-01-16
  */
 
 #include "threadregistry.h"
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -60,16 +68,25 @@ boolean init_thread_registry(void) {
 
 /*
  * cleanup_thread_registry - Shutdown the thread registry
+ *
+ * IMPORTANT: Must only be called when no other threads are using the registry.
+ * Records with non-zero refcount are force-freed (may cause issues if threads
+ * are still using them). This is acceptable for shutdown since no new threads
+ * should be spawned at this point.
  */
 void cleanup_thread_registry(void) {
+    int i;
+
     pthread_mutex_lock(&registry_mutex);
 
-    /* Destroy mutexes and condvars for in-use records */
-    for (int i = 0; i < MAX_THREADS; i++) {
+    /* Destroy mutexes and condvars for in-use records, regardless of refcount */
+    for (i = 0; i < MAX_THREADS; i++) {
         if (thread_records[i].in_use) {
+            pthread_mutex_destroy(&thread_records[i].refcount_mutex);
             pthread_mutex_destroy(&thread_records[i].state_mutex);
             pthread_cond_destroy(&thread_records[i].wake_cond);
             thread_records[i].in_use = false;
+            thread_records[i].refcount = 0;
         }
     }
 
@@ -83,6 +100,7 @@ void cleanup_thread_registry(void) {
  */
 frontier_pthread_record *allocate_thread_record(void) {
     frontier_pthread_record *result = NULL;
+    int i;
 
     pthread_mutex_lock(&registry_mutex);
 
@@ -92,7 +110,7 @@ frontier_pthread_record *allocate_thread_record(void) {
     }
 
     /* Find a free slot */
-    for (int i = 0; i < MAX_THREADS; i++) {
+    for (i = 0; i < MAX_THREADS; i++) {
         if (!thread_records[i].in_use) {
             frontier_pthread_record *rec = &thread_records[i];
 
@@ -104,10 +122,29 @@ frontier_pthread_record *allocate_thread_record(void) {
             rec->is_killed = false;
             rec->wakeup_ticks = 0;
             rec->hglobals = nil;
+            rec->refcount = 1;  /* Start with refcount=1 (caller owns it) */
 
             /* Initialize synchronization primitives */
-            pthread_mutex_init(&rec->state_mutex, NULL);
-            pthread_cond_init(&rec->wake_cond, NULL);
+            if (pthread_mutex_init(&rec->refcount_mutex, NULL) != 0) {
+                rec->in_use = false;
+                pthread_mutex_unlock(&registry_mutex);
+                return NULL;
+            }
+
+            if (pthread_mutex_init(&rec->state_mutex, NULL) != 0) {
+                pthread_mutex_destroy(&rec->refcount_mutex);
+                rec->in_use = false;
+                pthread_mutex_unlock(&registry_mutex);
+                return NULL;
+            }
+
+            if (pthread_cond_init(&rec->wake_cond, NULL) != 0) {
+                pthread_mutex_destroy(&rec->state_mutex);
+                pthread_mutex_destroy(&rec->refcount_mutex);
+                rec->in_use = false;
+                pthread_mutex_unlock(&registry_mutex);
+                return NULL;
+            }
 
             result = rec;
             break;
@@ -120,6 +157,11 @@ frontier_pthread_record *allocate_thread_record(void) {
 
 /*
  * free_thread_record - Release a thread record
+ *
+ * Decrements the refcount. When refcount reaches zero, destroys synchronization
+ * primitives. Slot remains in_use until explicitly cleared during cleanup.
+ *
+ * Safe to call with NULL (no-op).
  */
 void free_thread_record(frontier_pthread_record *rec) {
     if (rec == NULL) {
@@ -131,14 +173,21 @@ void free_thread_record(frontier_pthread_record *rec) {
     /* Verify this is a valid record in our array */
     if (rec >= thread_records && rec < thread_records + MAX_THREADS) {
         if (rec->in_use) {
-            /* Destroy synchronization primitives */
-            pthread_mutex_destroy(&rec->state_mutex);
-            pthread_cond_destroy(&rec->wake_cond);
+            /* Decrement refcount */
+            pthread_mutex_lock(&rec->refcount_mutex);
+            rec->refcount--;
+            boolean should_destroy = (rec->refcount == 0);
+            pthread_mutex_unlock(&rec->refcount_mutex);
 
-            /* Mark slot as free */
-            rec->in_use = false;
+            /* Only destroy primitives when refcount reaches zero */
+            if (should_destroy) {
+                pthread_mutex_destroy(&rec->state_mutex);
+                pthread_cond_destroy(&rec->wake_cond);
+                pthread_mutex_destroy(&rec->refcount_mutex);
+                rec->in_use = false;
+            }
         }
-        /* If already freed, this is a no-op (double-free safe) */
+        /* If already freed (in_use=false), this is a no-op (double-free safe) */
     }
 
     pthread_mutex_unlock(&registry_mutex);
@@ -149,6 +198,7 @@ void free_thread_record(frontier_pthread_record *rec) {
  */
 frontier_pthread_record *get_thread_by_id(long user_id) {
     frontier_pthread_record *result = NULL;
+    int i;
 
     /* Invalid IDs */
     if (user_id <= 0) {
@@ -163,9 +213,14 @@ frontier_pthread_record *get_thread_by_id(long user_id) {
     }
 
     /* Linear search for the ID */
-    for (int i = 0; i < MAX_THREADS; i++) {
+    for (i = 0; i < MAX_THREADS; i++) {
         if (thread_records[i].in_use &&
             thread_records[i].user_thread_id == user_id) {
+            /* Found it - increment refcount before returning */
+            pthread_mutex_lock(&thread_records[i].refcount_mutex);
+            thread_records[i].refcount++;
+            pthread_mutex_unlock(&thread_records[i].refcount_mutex);
+
             result = &thread_records[i];
             break;
         }
@@ -182,7 +237,15 @@ long allocate_thread_id(void) {
     long id;
 
     pthread_mutex_lock(&registry_mutex);
-    id = next_thread_id++;
+    id = next_thread_id;
+
+    /* Handle overflow: wrap to 1 (IDs only unique within registry lifecycle) */
+    if (next_thread_id == LONG_MAX) {
+        next_thread_id = 1;
+    } else {
+        next_thread_id++;
+    }
+
     pthread_mutex_unlock(&registry_mutex);
 
     return id;
@@ -193,10 +256,15 @@ long allocate_thread_id(void) {
  */
 int get_thread_count(void) {
     int count = 0;
+    int i;
+
+    if (!registry_initialized) {
+        return 0;
+    }
 
     pthread_mutex_lock(&registry_mutex);
 
-    for (int i = 0; i < MAX_THREADS; i++) {
+    for (i = 0; i < MAX_THREADS; i++) {
         if (thread_records[i].in_use) {
             count++;
         }
@@ -204,4 +272,50 @@ int get_thread_count(void) {
 
     pthread_mutex_unlock(&registry_mutex);
     return count;
+}
+
+/*
+ * acquire_thread_record - Increment refcount for a thread record
+ */
+void acquire_thread_record(frontier_pthread_record *rec) {
+    if (rec == NULL) {
+        return;
+    }
+
+    pthread_mutex_lock(&registry_mutex);
+
+    if (rec >= thread_records && rec < thread_records + MAX_THREADS && rec->in_use) {
+        pthread_mutex_lock(&rec->refcount_mutex);
+        rec->refcount++;
+        pthread_mutex_unlock(&rec->refcount_mutex);
+    }
+
+    pthread_mutex_unlock(&registry_mutex);
+}
+
+/*
+ * release_thread_record - Decrement refcount for a thread record
+ */
+void release_thread_record(frontier_pthread_record *rec) {
+    if (rec == NULL) {
+        return;
+    }
+
+    pthread_mutex_lock(&registry_mutex);
+
+    if (rec >= thread_records && rec < thread_records + MAX_THREADS && rec->in_use) {
+        pthread_mutex_lock(&rec->refcount_mutex);
+        rec->refcount--;
+        boolean should_destroy = (rec->refcount == 0);
+        pthread_mutex_unlock(&rec->refcount_mutex);
+
+        if (should_destroy) {
+            pthread_mutex_destroy(&rec->state_mutex);
+            pthread_cond_destroy(&rec->wake_cond);
+            pthread_mutex_destroy(&rec->refcount_mutex);
+            rec->in_use = false;
+        }
+    }
+
+    pthread_mutex_unlock(&registry_mutex);
 }

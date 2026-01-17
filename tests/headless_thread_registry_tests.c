@@ -358,6 +358,12 @@ TEST(pre_init_safety) {
 
 /*
  * Test 14: Lookup after free returns NULL
+ *
+ * With reference counting:
+ * - allocate_thread_record() gives you refcount=1
+ * - get_thread_by_id() increments refcount (you must release it)
+ * - free_thread_record() decrements your original refcount
+ * - Record only becomes unfindable when refcount=0
  */
 TEST(lookup_after_free) {
     init_thread_registry();
@@ -367,12 +373,48 @@ TEST(lookup_after_free) {
     long id = rec->user_thread_id;
 
     /* Can find before free */
-    ASSERT_EQ(get_thread_by_id(id), rec);
+    frontier_pthread_record *found = get_thread_by_id(id);
+    ASSERT_EQ(found, rec);
+    /* Release the reference from get_thread_by_id() */
+    release_thread_record(found);
 
+    /* Now free our own reference */
     free_thread_record(rec);
 
-    /* Cannot find after free */
+    /* Cannot find after all references released */
     ASSERT_NULL(get_thread_by_id(id));
+
+    cleanup_thread_registry();
+}
+
+/*
+ * Test 15: MAX_THREADS boundary - allocate all 64 slots, then fail on 65th
+ */
+TEST(max_threads_boundary) {
+    init_thread_registry();
+
+    /* Allocate all 64 allowed slots */
+    frontier_pthread_record *records[64];
+    int i;
+    for (i = 0; i < 64; i++) {
+        records[i] = allocate_thread_record();
+        ASSERT_NOT_NULL(records[i]);
+    }
+
+    /* Verify we can't allocate the 65th */
+    frontier_pthread_record *overflow = allocate_thread_record();
+    ASSERT_NULL(overflow);
+
+    /* Free one slot and verify we can allocate a new one */
+    free_thread_record(records[0]);
+    frontier_pthread_record *new_rec = allocate_thread_record();
+    ASSERT_NOT_NULL(new_rec);
+
+    /* Clean up all remaining records */
+    for (i = 1; i < 64; i++) {
+        free_thread_record(records[i]);
+    }
+    free_thread_record(new_rec);
 
     cleanup_thread_registry();
 }
@@ -401,6 +443,7 @@ int main(void) {
     RUN_TEST(double_free_safety);
     RUN_TEST(pre_init_safety);
     RUN_TEST(lookup_after_free);
+    RUN_TEST(max_threads_boundary);
 
     printf("\n=====================================\n");
     printf("Results: %d passed, %d failed\n", tests_passed, tests_failed);

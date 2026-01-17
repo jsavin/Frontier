@@ -63,6 +63,12 @@ typedef unsigned char boolean;
  * This includes synchronization primitives for sleep/wake and a link to
  * the thread's UserTalk globals.
  *
+ * REFERENCE COUNTING:
+ * Each record has a refcount that must be incremented when a thread gets a
+ * pointer to it (via get_thread_by_id or allocate_thread_record). The refcount
+ * is decremented when done (via release_thread_record). Only when refcount
+ * reaches zero are synchronization primitives destroyed.
+ *
  * Field Descriptions:
  * - pthread_id: The POSIX thread handle (set when pthread is created)
  * - hglobals: Handle to thread-local UserTalk globals
@@ -73,6 +79,8 @@ typedef unsigned char boolean;
  * - wakeup_ticks: Tick count when thread should auto-wake (0 = no auto-wake)
  * - is_killed: True if thread.kill() was called
  * - in_use: True if this slot contains an active thread record
+ * - refcount: Reference count for safe multi-threaded access
+ * - refcount_mutex: Protects refcount field
  */
 typedef struct frontier_pthread_record {
     pthread_t pthread_id;           /* POSIX thread handle */
@@ -80,10 +88,12 @@ typedef struct frontier_pthread_record {
     long user_thread_id;            /* UserTalk-visible thread ID */
     pthread_cond_t wake_cond;       /* Condition variable for sleep/wake */
     pthread_mutex_t state_mutex;    /* Protects sleep/kill state */
+    pthread_mutex_t refcount_mutex; /* Protects refcount */
     boolean is_sleeping;            /* Thread is sleeping */
     unsigned long wakeup_ticks;     /* Auto-wake tick count (0 = disabled) */
     boolean is_killed;              /* Thread has been killed */
     boolean in_use;                 /* Slot is in use */
+    volatile int refcount;          /* Reference count (0 = can destroy primitives) */
 } frontier_pthread_record;
 
 /*
@@ -182,5 +192,35 @@ long allocate_thread_id(void);
  * Thread Safety: Thread-safe
  */
 int get_thread_count(void);
+
+/*
+ * acquire_thread_record - Increment refcount for a thread record
+ *
+ * Must be called after getting a pointer to a record via allocate_thread_record()
+ * or get_thread_by_id(). Prevents the record from being destroyed while in use.
+ *
+ * Safe to call with NULL (no-op).
+ *
+ * Parameters:
+ *   rec - Record to acquire (may be NULL)
+ *
+ * Thread Safety: Thread-safe
+ */
+void acquire_thread_record(frontier_pthread_record *rec);
+
+/*
+ * release_thread_record - Decrement refcount for a thread record
+ *
+ * Must be called when done with a thread record. When refcount reaches zero,
+ * synchronization primitives are safely destroyed and the record can be reused.
+ *
+ * Safe to call with NULL (no-op).
+ *
+ * Parameters:
+ *   rec - Record to release (may be NULL)
+ *
+ * Thread Safety: Thread-safe
+ */
+void release_thread_record(frontier_pthread_record *rec);
 
 #endif /* THREADREGISTRY_H */
