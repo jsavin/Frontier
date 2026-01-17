@@ -367,8 +367,7 @@ static boolean wp_portable_state_cache_rtf(hdlexternalvariable hv, wp_portable_s
                     gethandlesize(hrtf), char_count);
 #endif
             } else {
-                fprintf(stdout, "[wp-plain] RTF emit failed: %s\n", errbuf[0] ? errbuf : "<unknown>");
-                fflush(stdout);
+                log_error(LOG_COMP_GENERAL, "[wp-plain] RTF emit failed: %s", errbuf[0] ? errbuf : "<unknown>");
             }
         }
     }
@@ -666,8 +665,7 @@ Boolean wp_portable_extract_plaintext(hdlexternalvariable hv, Handle *hout_utf8)
             return true;
         }
 
-        fprintf(stdout, "[wp-plain] unable to decode RTF payload, returning raw bytes\n");
-        fflush(stdout);
+        log_warn(LOG_COMP_GENERAL, "[wp-plain] unable to decode RTF payload, returning raw bytes");
 
         if (!newclearhandle(payload_len, &hutf8)) {
             disposehandle(hpacked);
@@ -685,14 +683,12 @@ Boolean wp_portable_extract_plaintext(hdlexternalvariable hv, Handle *hout_utf8)
     disposehandle(hpacked);
 
     if (!ok) {
-        fprintf(stdout, "[wp-plain] extractor failed: %s\n", errbuf[0] ? errbuf : "<unknown>");
-        fflush(stdout);
+        log_error(LOG_COMP_GENERAL, "[wp-plain] extractor failed: %s", errbuf[0] ? errbuf : "<unknown>");
         return false;
     }
 
     if (stats.returned_macroman) {
-        fprintf(stdout, "[wp-plain] macromantoutf8 conversion failed, returning MacRoman bytes\n");
-        fflush(stdout);
+        log_debug(LOG_COMP_GENERAL, "[wp-plain] macromantoutf8 conversion failed, returning MacRoman bytes");
     }
 
 #if defined(FRONTIER_HEADLESS)
@@ -730,8 +726,7 @@ Boolean wp_portable_external_was_legacy_ws(hdlexternalvariable hv) {
 
 static void wp_portable_log_event(const char *tag, hdlexternalvariable hv, const char *name_hint) {
     const char *path = (name_hint != NULL) ? name_hint : "<unknown>";
-    fprintf(stdout, "[wp-plain] %s external=%p path=%s\n", tag, (void *)hv, path);
-    fflush(stdout);
+    log_debug(LOG_COMP_GENERAL, "[wp-plain] %s external=%p path=%s", tag, (void *)hv, path);
 }
 
 void wp_portable_note_drop_logged(hdlexternalvariable hv, const char *name_hint) {

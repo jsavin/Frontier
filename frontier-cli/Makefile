@@ -47,7 +47,7 @@ CMAKE_BIN = $(THIRDPARTYDIR)/cmake-install/bin/cmake
 PAIGE_ARCHES = arm64;x86_64
 
 INCLUDES += -I$(PAIGE_DIR)/PGHEADER
-LIBS = $(PAIGE_LIB)
+LIBS = $(PAIGE_LIB) -ledit
 LDFLAGS = -Wl,-undefined,dynamic_lookup
 
 # Strings compiler integration (shared with tests)
