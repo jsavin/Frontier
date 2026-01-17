@@ -165,7 +165,10 @@ static void merge_and_save_history(const char *history_path) {
         }
         free(merged);
 
-        // Clear session tracking (already freed via merged)
+        // Clear session tracking - NULL pointers to prevent double-free
+        for (size_t i = 0; i < session_command_count; i++) {
+            session_commands[i] = NULL;
+        }
         session_command_count = 0;
     }
 
@@ -302,7 +305,7 @@ int repl_main(cli_options_t *options) {
 
     // 1. Initialize linenoise
     if (!init_linenoise()) {
-        fprintf(stderr, "Error: Failed to initialize linenoise.\n");
+        log_error(LOG_COMP_GENERAL, "Failed to initialize linenoise");
         return 1;
     }
 
