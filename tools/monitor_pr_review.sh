@@ -8,13 +8,15 @@
 #   Phase 2: POLL (until review detected or timeout) - Check for incoming reviews
 #   Phase 3: COOLDOWN (30s after last review) - Wait for any final reviews
 #
-# Default timeout: 900 seconds (15 minutes)
+# Also monitors GitHub Actions CI status (claude-review check) for early exit.
+#
+# Default timeout: 600 seconds (10 minutes) - bots typically finish in 5-10 min
 # Fixed polling: 15-second intervals (reduces API calls & log spam)
-# Clean exit: Logs reason for exit (timeout/cooldown/no-reviews)
+# Clean exit: Logs reason for exit (timeout/cooldown/ci-complete/no-reviews)
 
 # Configuration
 PR_NUMBER="${1:-}"
-TIMEOUT="${2:-900}"
+TIMEOUT="${2:-600}"  # 10 minutes (bots typically finish in 5-10 min)
 WAIT_FOR_BOTS=30     # Phase 1: Initial wait for bots to pick up commit
 POLL_INTERVAL=15     # Poll every 15s (not too aggressive)
 COOLDOWN_AFTER_REVIEW=30  # Phase 3: How long to wait after last review
@@ -80,6 +82,10 @@ while true; do
     # Fetch current state
     CURRENT_COMMENTS=$(gh pr view "$PR_NUMBER" --json comments --jq '.comments | length' 2>/dev/null || echo "$LAST_COMMENT_COUNT")
     CURRENT_REVIEWS=$(gh pr view "$PR_NUMBER" --json reviews --jq '.reviews | length' 2>/dev/null || echo "$LAST_REVIEW_COUNT")
+
+    # Check CI status for claude-review (allows early exit when check completes)
+    CI_STATUS=$(gh pr view "$PR_NUMBER" --json statusCheckRollup --jq '.statusCheckRollup[] | select(.name=="claude-review") | .status' 2>/dev/null || echo "")
+    CI_CONCLUSION=$(gh pr view "$PR_NUMBER" --json statusCheckRollup --jq '.statusCheckRollup[] | select(.name=="claude-review") | .conclusion' 2>/dev/null || echo "")
 
     # Check for new comments (bot reviews as comments)
     if [ "$CURRENT_COMMENTS" -gt "$LAST_COMMENT_COUNT" ]; then
@@ -147,8 +153,23 @@ while true; do
         fi
     fi
 
-    # Status log (every poll interval)
-    printf "[$(date)] Polling... (%3ds elapsed) | Comments: %d | Reviews: %d | Detected: %d\n" $ELAPSED $CURRENT_COMMENTS $CURRENT_REVIEWS $REVIEWS_DETECTED
+    # ========================================================================
+    # CI Status Check - Exit early if claude-review check completed
+    # ========================================================================
+    if [ "$CI_STATUS" = "COMPLETED" ] && [ $REVIEWS_DETECTED -gt 0 ]; then
+        echo "[$(date)] CI COMPLETE: claude-review check finished (conclusion: $CI_CONCLUSION)"
+        echo "[$(date)] Reviews detected: $REVIEWS_DETECTED"
+        exit 0
+    fi
+
+    # Status log (every poll interval) - now includes CI status
+    if [ -n "$CI_STATUS" ]; then
+        printf "[$(date)] Polling... (%3ds elapsed) | CI: %s/%s | Comments: %d | Reviews: %d | Detected: %d\n" \
+            $ELAPSED "$CI_STATUS" "${CI_CONCLUSION:-pending}" $CURRENT_COMMENTS $CURRENT_REVIEWS $REVIEWS_DETECTED
+    else
+        printf "[$(date)] Polling... (%3ds elapsed) | Comments: %d | Reviews: %d | Detected: %d\n" \
+            $ELAPSED $CURRENT_COMMENTS $CURRENT_REVIEWS $REVIEWS_DETECTED
+    fi
 
     sleep $POLL_INTERVAL
 done
