@@ -119,58 +119,56 @@ static void merge_and_save_history(const char *history_path) {
         return;
     }
 
-    if (merged) {
-        // Add file commands (skip if duplicate of session command)
-        for (size_t i = 0; i < file_count; i++) {
-            int is_dup = 0;
-            for (size_t j = 0; j < session_command_count; j++) {
-                if (strcmp(file_commands[i], session_commands[j]) == 0) {
-                    is_dup = 1;
-                    break;
-                }
-            }
-            if (!is_dup) {
-                merged[merged_count++] = file_commands[i];
-            } else {
-                free(file_commands[i]);
+    // Add file commands (skip if duplicate of session command)
+    for (size_t i = 0; i < file_count; i++) {
+        int is_dup = 0;
+        for (size_t j = 0; j < session_command_count; j++) {
+            if (strcmp(file_commands[i], session_commands[j]) == 0) {
+                is_dup = 1;
+                break;
             }
         }
-
-        // Add all session commands (they're the most recent)
-        for (size_t i = 0; i < session_command_count; i++) {
-            merged[merged_count++] = session_commands[i];
+        if (!is_dup) {
+            merged[merged_count++] = file_commands[i];
+        } else {
+            free(file_commands[i]);
         }
+    }
 
-        // Trim to HISTORY_SIZE (keep most recent)
-        size_t start = 0;
-        if (merged_count > HISTORY_SIZE) {
-            start = merged_count - HISTORY_SIZE;
-            for (size_t i = 0; i < start; i++) {
-                free(merged[i]);
-            }
-        }
+    // Add all session commands (they're the most recent)
+    for (size_t i = 0; i < session_command_count; i++) {
+        merged[merged_count++] = session_commands[i];
+    }
 
-        // Write merged history
-        f = fopen(history_path, "w");
-        if (f) {
-            for (size_t i = start; i < merged_count; i++) {
-                fprintf(f, "%s\n", merged[i]);
-            }
-            fclose(f);
-        }
-
-        // Free merged entries (session_commands are now owned by merged)
-        for (size_t i = start; i < merged_count; i++) {
+    // Trim to HISTORY_SIZE (keep most recent)
+    size_t start = 0;
+    if (merged_count > HISTORY_SIZE) {
+        start = merged_count - HISTORY_SIZE;
+        for (size_t i = 0; i < start; i++) {
             free(merged[i]);
         }
-        free(merged);
-
-        // Clear session tracking - NULL pointers to prevent double-free
-        for (size_t i = 0; i < session_command_count; i++) {
-            session_commands[i] = NULL;
-        }
-        session_command_count = 0;
     }
+
+    // Write merged history
+    f = fopen(history_path, "w");
+    if (f) {
+        for (size_t i = start; i < merged_count; i++) {
+            fprintf(f, "%s\n", merged[i]);
+        }
+        fclose(f);
+    }
+
+    // Free merged entries (session_commands are now owned by merged)
+    for (size_t i = start; i < merged_count; i++) {
+        free(merged[i]);
+    }
+    free(merged);
+
+    // Clear session tracking - NULL pointers to prevent double-free
+    for (size_t i = 0; i < session_command_count; i++) {
+        session_commands[i] = NULL;
+    }
+    session_command_count = 0;
 
     // Free file_commands array (entries already freed or moved to merged)
     free(file_commands);
@@ -291,7 +289,12 @@ static void linenoise_completion_callback(const char *buf, linenoiseCompletions 
 
         // Add trailing character based on type
         if (matches.items[i].is_table) {
-            strncat(completion, ".", remaining - strlen(matches.items[i].name));
+            // Recalculate remaining space after first strncat
+            size_t current_len = strlen(completion);
+            size_t space_left = sizeof(completion) - current_len - 1;
+            if (space_left > 0) {
+                strncat(completion, ".", space_left);
+            }
         }
 
         linenoiseAddCompletion(lc, completion);
