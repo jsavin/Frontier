@@ -298,9 +298,11 @@ void completion_parse_context(const char *line, int cursor_pos, completion_conte
         memcpy(ctx->table_path, ctx->token, path_len);
         ctx->table_path[path_len] = '\0';
 
-        strcpy(ctx->leaf_prefix, last_dot + 1);
+        strncpy(ctx->leaf_prefix, last_dot + 1, COMPLETION_MAX_NAME_LEN - 1);
+        ctx->leaf_prefix[COMPLETION_MAX_NAME_LEN - 1] = '\0';
     } else {
-        strcpy(ctx->leaf_prefix, ctx->token);
+        strncpy(ctx->leaf_prefix, ctx->token, COMPLETION_MAX_NAME_LEN - 1);
+        ctx->leaf_prefix[COMPLETION_MAX_NAME_LEN - 1] = '\0';
     }
 
     /* Detect context type if not already address */
@@ -528,94 +530,4 @@ bool completion_init(void) {
 
 void completion_cleanup(void) {
     /* Nothing to cleanup for now */
-}
-
-unsigned char completion_callback(EditLine *el, int ch) {
-    (void)ch;  /* Unused */
-
-    const LineInfo *li = el_line(el);
-    if (li == NULL) {
-        return CC_ERROR;
-    }
-
-    /* Parse completion context */
-    completion_context_t ctx;
-    completion_parse_context(li->buffer, (int)(li->cursor - li->buffer), &ctx);
-
-    /* No completion inside strings */
-    if (ctx.ctx_type == COMPLETION_CTX_STRING) {
-        return CC_ERROR;
-    }
-
-    /* Collect matches */
-    completion_matches_t matches;
-    completion_matches_init(&matches);
-
-    if (ctx.has_dot) {
-        /* Phase 3: Dotted path completion */
-        hdlhashtable target = completion_navigate_path(ctx.table_path);
-        if (target != nil) {
-            completion_add_table_entries(&matches, target, ctx.leaf_prefix);
-        }
-    } else if (ctx.ctx_type == COMPLETION_CTX_ADDRESS) {
-        /* Phase 4: Address completion - search from roottable */
-        completion_add_table_entries(&matches, roottable, ctx.token);
-    } else if (ctx.ctx_type == COMPLETION_CTX_VERB_CALL) {
-        /* Phase 4: Verb processor context - already handled by dotted path */
-        /* This branch handles "file." -> enumerate file processor verbs */
-        hdlhashtable target = completion_navigate_path(ctx.table_path);
-        if (target != nil) {
-            completion_add_table_entries(&matches, target, ctx.leaf_prefix);
-        }
-    } else {
-        /* Phase 1 & 2: General completion */
-        /* Add keywords */
-        completion_add_keywords(&matches, ctx.token);
-
-        /* Add database entries */
-        if (roottable != nil) {
-            completion_add_table_entries(&matches, roottable, ctx.token);
-        }
-        if (systemtable != nil) {
-            completion_add_table_entries(&matches, systemtable, ctx.token);
-        }
-    }
-
-    /* Handle results */
-    if (matches.count == 0) {
-        /* No matches - beep */
-        return CC_ERROR;
-    }
-
-    /* Compute common prefix */
-    completion_compute_common_prefix(&matches);
-
-    if (matches.count == 1) {
-        /* Single match - complete it */
-        const char *suffix = matches.items[0].name + strlen(ctx.leaf_prefix);
-        if (strlen(suffix) > 0) {
-            el_insertstr(el, suffix);
-
-            /* Add trailing space or dot based on type */
-            if (matches.items[0].is_table) {
-                el_insertstr(el, ".");
-            } else {
-                el_insertstr(el, " ");
-            }
-        }
-        return CC_REFRESH;
-    }
-
-    /* Multiple matches */
-    size_t prefix_extension = strlen(matches.common_prefix) - strlen(ctx.leaf_prefix);
-    if (prefix_extension > 0) {
-        /* Can extend with common prefix */
-        const char *to_insert = matches.common_prefix + strlen(ctx.leaf_prefix);
-        el_insertstr(el, to_insert);
-        return CC_REFRESH;
-    }
-
-    /* Show all matches */
-    completion_display_matches(&matches);
-    return CC_REDISPLAY;
 }

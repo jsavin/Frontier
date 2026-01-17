@@ -17,7 +17,6 @@
 #ifndef COMPLETION_H
 #define COMPLETION_H
 
-#include <histedit.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include "../Common/headers/frontier.h"
@@ -97,13 +96,6 @@ bool completion_init(void);
  * Call at REPL shutdown.
  */
 void completion_cleanup(void);
-
-/*
- * Main editline completion callback.
- * Register with: el_set(el, EL_ADDFN, "ed-complete", "Complete", completion_callback)
- *                el_set(el, EL_BIND, "\t", "ed-complete", NULL)
- */
-unsigned char completion_callback(EditLine *el, int ch);
 
 /*
  * Initialize a matches collection.

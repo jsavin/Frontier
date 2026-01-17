@@ -110,6 +110,15 @@ static void merge_and_save_history(const char *history_path) {
     char **merged = malloc((file_count + session_command_count) * sizeof(char *));
     size_t merged_count = 0;
 
+    if (!merged) {
+        // Malloc failed - cleanup file_commands entries to avoid memory leak
+        for (size_t i = 0; i < file_count; i++) {
+            free(file_commands[i]);
+        }
+        free(file_commands);
+        return;
+    }
+
     if (merged) {
         // Add file commands (skip if duplicate of session command)
         for (size_t i = 0; i < file_count; i++) {
@@ -173,8 +182,12 @@ static boolean init_linenoise(void) {
     const char *home = getenv("HOME");
     if (home) {
         char history_path[1024];
-        snprintf(history_path, sizeof(history_path), "%s/%s", home, HISTORY_FILE);
-        linenoiseHistoryLoad(history_path);
+        int written = snprintf(history_path, sizeof(history_path), "%s/%s", home, HISTORY_FILE);
+        if (written >= (int)sizeof(history_path)) {
+            log_warn(LOG_COMP_GENERAL, "HOME path too long, history disabled");
+        } else {
+            linenoiseHistoryLoad(history_path);
+        }
     }
 
     // Set up tab completion callback
@@ -201,8 +214,12 @@ static void cleanup_linenoise(void) {
     const char *home = getenv("HOME");
     if (home) {
         char history_path[1024];
-        snprintf(history_path, sizeof(history_path), "%s/%s", home, HISTORY_FILE);
-        merge_and_save_history(history_path);
+        int written = snprintf(history_path, sizeof(history_path), "%s/%s", home, HISTORY_FILE);
+        if (written >= (int)sizeof(history_path)) {
+            log_warn(LOG_COMP_GENERAL, "HOME path too long, history not saved");
+        } else {
+            merge_and_save_history(history_path);
+        }
     }
 
     // Free any remaining session commands
