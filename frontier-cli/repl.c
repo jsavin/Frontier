@@ -274,7 +274,14 @@ static void linenoise_completion_callback(const char *buf, linenoiseCompletions 
     for (size_t i = 0; i < matches.count; i++) {
         // Build full completion string (prefix + match)
         char completion[1024];
-        size_t prefix_len = strlen(buf) - strlen(ctx.leaf_prefix);
+        size_t buf_len = strlen(buf);
+        size_t leaf_len = strlen(ctx.leaf_prefix);
+
+        // Guard against integer underflow if leaf_prefix longer than buf
+        if (leaf_len > buf_len) {
+            continue;
+        }
+        size_t prefix_len = buf_len - leaf_len;
 
         // Copy the prefix part of the buffer
         if (prefix_len > sizeof(completion) - 1) {
