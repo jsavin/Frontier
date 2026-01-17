@@ -20,6 +20,7 @@
 #include "repl_eval.h"
 #include "repl_output.h"
 #include "repl_commands.h"
+#include "completion.h"
 #include "../Common/headers/frontier.h"
 #include "../Common/headers/logging.h"
 #include "../Common/headers/lang.h"
@@ -41,16 +42,8 @@ static char *repl_prompt(EditLine *el) {
     return "[root]> ";
 }
 
-// Tab completion callback for editline
-static unsigned char repl_complete(EditLine *el, int ch) {
-    (void)el;
-    (void)ch;
-
-    // For now, just insert a tab character
-    // TODO: Implement UserTalk keyword completion
-    el_insertstr(el, "\t");
-    return CC_REFRESH;
-}
+// Tab completion callback - delegates to completion engine
+// (completion.c implements all four phases of completion)
 
 // Initialize editline and history
 static boolean init_editline(void) {
@@ -67,9 +60,15 @@ static boolean init_editline(void) {
     // Enable editor mode (emacs-style editing)
     el_set(g_el, EL_EDITOR, "emacs");
 
-    // Set up tab completion
-    el_set(g_el, EL_ADDFN, "ed-complete", "Complete command", repl_complete);
+    // Set up tab completion (uses completion engine from completion.c)
+    el_set(g_el, EL_ADDFN, "ed-complete", "Complete command", completion_callback);
     el_set(g_el, EL_BIND, "\t", "ed-complete", NULL);
+
+    // Initialize completion engine
+    if (!completion_init()) {
+        log_warn(LOG_COMP_GENERAL, "Tab completion initialization failed");
+        // Continue without completion - not fatal
+    }
 
     // Initialize history
     g_hist = history_init();
@@ -101,6 +100,9 @@ static boolean init_editline(void) {
 
 // Cleanup editline and history
 static void cleanup_editline(void) {
+    // Cleanup completion engine
+    completion_cleanup();
+
     if (g_hist) {
         // Save history to file
         const char *home = getenv("HOME");
