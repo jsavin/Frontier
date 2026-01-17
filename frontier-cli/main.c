@@ -147,6 +147,15 @@ int main(int argc, char* argv[]) {
     cli_set_json_mode(g_cli_options.output_json);
     log_set_suppressed(g_cli_options.output_json);
 
+    /* Set default log level to ERROR for REPL mode (unless user explicitly set FRONTIER_LOG_LEVEL)
+     * This reduces startup noise from database warnings and WPText conversion messages.
+     * Script mode keeps default WARN level for better diagnostics. */
+    if (getenv("FRONTIER_LOG_LEVEL") == NULL &&
+        g_cli_options.script_file == NULL &&
+        g_cli_options.inline_script == NULL) {
+        log_set_level(LOG_LEVEL_ERROR);
+    }
+
     /* Always hydrate the system root in headless/CLI; defaults to g_cli_options.system_root if provided. */
     if (g_cli_options.upgrade_system_root) {
         boolean migrated = false;
