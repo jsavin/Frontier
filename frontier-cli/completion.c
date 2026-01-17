@@ -25,6 +25,13 @@
 #include <string.h>
 #include <ctype.h>
 
+/* Terminal width detection - POSIX only */
+#if defined(__unix__) || defined(__APPLE__)
+#include <unistd.h>
+#include <sys/ioctl.h>
+#define HAVE_IOCTL 1
+#endif
+
 /* ============================================================================
  * Phase 1: UserTalk Keywords
  * ============================================================================ */
@@ -192,12 +199,14 @@ void completion_compute_common_prefix(completion_matches_t *matches) {
     }
 
     if (matches->count == 1) {
-        strcpy(matches->common_prefix, matches->items[0].name);
+        strncpy(matches->common_prefix, matches->items[0].name, COMPLETION_MAX_NAME_LEN - 1);
+        matches->common_prefix[COMPLETION_MAX_NAME_LEN - 1] = '\0';
         return;
     }
 
     /* Start with first match as prefix */
-    strcpy(matches->common_prefix, matches->items[0].name);
+    strncpy(matches->common_prefix, matches->items[0].name, COMPLETION_MAX_NAME_LEN - 1);
+    matches->common_prefix[COMPLETION_MAX_NAME_LEN - 1] = '\0';
 
     /* Shorten prefix until it matches all items */
     for (size_t i = 1; i < matches->count; i++) {
@@ -272,7 +281,7 @@ void completion_parse_context(const char *line, int cursor_pos, completion_conte
         ctx->ctx_type = COMPLETION_CTX_ADDRESS;
         /* Strip @ from token for matching */
         if (ctx->token[0] == '@') {
-            memmove(ctx->token, ctx->token + 1, strlen(ctx->token));
+            memmove(ctx->token, ctx->token + 1, strlen(ctx->token) + 1);  /* +1 for null terminator */
         }
     }
 
@@ -475,7 +484,16 @@ void completion_display_matches(const completion_matches_t *matches) {
 
     /* Add padding and type indicator space */
     int col_width = max_len + 4;
-    int term_width = 80;  /* Assume 80 columns */
+
+    /* Get actual terminal width, fall back to 80 columns */
+    int term_width = 80;
+#ifdef HAVE_IOCTL
+    struct winsize ws;
+    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0) {
+        term_width = ws.ws_col;
+    }
+#endif
+
     int cols = term_width / col_width;
     if (cols < 1) cols = 1;
 

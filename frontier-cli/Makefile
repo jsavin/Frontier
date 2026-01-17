@@ -46,9 +46,12 @@ PAIGE_LIB = $(PAIGE_BUILD_DIR)/libpaige.a
 CMAKE_BIN = $(THIRDPARTYDIR)/cmake-install/bin/cmake
 PAIGE_ARCHES = arm64;x86_64
 
-INCLUDES += -I$(PAIGE_DIR)/PGHEADER
-LIBS = $(PAIGE_LIB) -ledit
+INCLUDES += -I$(PAIGE_DIR)/PGHEADER -I$(THIRDPARTYDIR)/linenoise
+LIBS = $(PAIGE_LIB)
 LDFLAGS = -Wl,-undefined,dynamic_lookup
+
+# Linenoise (cross-platform readline alternative)
+LINENOISE_SRC = $(THIRDPARTYDIR)/linenoise/linenoise.c
 
 # Strings compiler integration (shared with tests)
 STRINGS_COMPILER_DIR = ../tools/strings_compiler
@@ -194,10 +197,11 @@ KERNELVERBS_CLI = ../tools/kernelverbs_parser/cli.py
 
 all: strings_generated kernel_verbs_generated $(TARGET)
 
-$(TARGET): $(CLI_SOURCES) $(FRONTIER_SOURCES) $(PAIGE_LIB)
+$(TARGET): $(CLI_SOURCES) $(FRONTIER_SOURCES) $(PAIGE_LIB) $(LINENOISE_SRC)
 	$(CC) $(CFLAGS) $(ARCH_FLAGS) $(INCLUDES) \
 		$(CLI_SOURCES) \
 		$(FRONTIER_SOURCES) \
+		$(LINENOISE_SRC) \
 		-o $(TARGET) $(LIBS) $(LDFLAGS)
 
 $(STRINGS_COMPILER):
