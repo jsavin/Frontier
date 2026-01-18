@@ -294,7 +294,8 @@ boolean filesetposition(hdlfilenum fnum, long pos) {
     boolean result = fseeko(fp, (off_t) pos, SEEK_SET) == 0;
 
     pthread_mutex_lock(&ftable_mutex);
-    if (slot && slot->refcount > 0)
+    /* Validate FILE* still matches (slot not reused) before decrementing refcount */
+    if (slot && slot->refcount > 0 && slot->fp == fp)
         slot->refcount--;
     pthread_mutex_unlock(&ftable_mutex);
 
@@ -318,7 +319,8 @@ boolean filegetposition(hdlfilenum fnum, long *ppos) {
     off_t cur = ftello(fp);
 
     pthread_mutex_lock(&ftable_mutex);
-    if (slot && slot->refcount > 0)
+    /* Validate FILE* still matches (slot not reused) before decrementing refcount */
+    if (slot && slot->refcount > 0 && slot->fp == fp)
         slot->refcount--;
     pthread_mutex_unlock(&ftable_mutex);
 
@@ -345,7 +347,8 @@ boolean filegeteof(hdlfilenum fnum, long *ppos) {
     off_t cur = ftello(fp);
     if (cur < 0) {
         pthread_mutex_lock(&ftable_mutex);
-        if (slot && slot->refcount > 0)
+        /* Validate FILE* still matches (slot not reused) before decrementing refcount */
+        if (slot && slot->refcount > 0 && slot->fp == fp)
             slot->refcount--;
         pthread_mutex_unlock(&ftable_mutex);
         return false;
@@ -353,7 +356,8 @@ boolean filegeteof(hdlfilenum fnum, long *ppos) {
 
     if (fseeko(fp, 0, SEEK_END) != 0) {
         pthread_mutex_lock(&ftable_mutex);
-        if (slot && slot->refcount > 0)
+        /* Validate FILE* still matches (slot not reused) before decrementing refcount */
+        if (slot && slot->refcount > 0 && slot->fp == fp)
             slot->refcount--;
         pthread_mutex_unlock(&ftable_mutex);
         return false;
@@ -362,7 +366,8 @@ boolean filegeteof(hdlfilenum fnum, long *ppos) {
     off_t end = ftello(fp);
     if (end < 0) {
         pthread_mutex_lock(&ftable_mutex);
-        if (slot && slot->refcount > 0)
+        /* Validate FILE* still matches (slot not reused) before decrementing refcount */
+        if (slot && slot->refcount > 0 && slot->fp == fp)
             slot->refcount--;
         pthread_mutex_unlock(&ftable_mutex);
         return false;
@@ -370,14 +375,16 @@ boolean filegeteof(hdlfilenum fnum, long *ppos) {
 
     if (fseeko(fp, cur, SEEK_SET) != 0) {
         pthread_mutex_lock(&ftable_mutex);
-        if (slot && slot->refcount > 0)
+        /* Validate FILE* still matches (slot not reused) before decrementing refcount */
+        if (slot && slot->refcount > 0 && slot->fp == fp)
             slot->refcount--;
         pthread_mutex_unlock(&ftable_mutex);
         return false;
     }
 
     pthread_mutex_lock(&ftable_mutex);
-    if (slot && slot->refcount > 0)
+    /* Validate FILE* still matches (slot not reused) before decrementing refcount */
+    if (slot && slot->refcount > 0 && slot->fp == fp)
         slot->refcount--;
     pthread_mutex_unlock(&ftable_mutex);
 
@@ -400,7 +407,8 @@ boolean fileseteof(hdlfilenum fnum, long size) {
     boolean result = ftruncate(fd, (off_t) size) == 0;
 
     pthread_mutex_lock(&ftable_mutex);
-    if (slot && slot->refcount > 0)
+    /* Validate FILE* still matches (slot not reused) before decrementing refcount */
+    if (slot && slot->refcount > 0 && slot->fp == fp)
         slot->refcount--;
     pthread_mutex_unlock(&ftable_mutex);
 
@@ -437,7 +445,8 @@ boolean filewrite(hdlfilenum fnum, long ctbytes, void *pdata) {
 
     /* Release reference */
     pthread_mutex_lock(&ftable_mutex);
-    if (slot && slot->refcount > 0)
+    /* Validate FILE* still matches (slot not reused) before decrementing refcount */
+    if (slot && slot->refcount > 0 && slot->fp == fp)
         slot->refcount--;
     pthread_mutex_unlock(&ftable_mutex);
 
@@ -464,7 +473,8 @@ boolean fileread(hdlfilenum fnum, long ctbytes, void *pdata) {
     boolean result = fread(pdata, 1, (size_t) ctbytes, fp) == (size_t) ctbytes;
 
     pthread_mutex_lock(&ftable_mutex);
-    if (slot && slot->refcount > 0)
+    /* Validate FILE* still matches (slot not reused) before decrementing refcount */
+    if (slot && slot->refcount > 0 && slot->fp == fp)
         slot->refcount--;
     pthread_mutex_unlock(&ftable_mutex);
 
@@ -492,7 +502,8 @@ boolean filereaddata(hdlfilenum fnum, long ctread, long *pctactual, void *pbuf) 
     *pctactual = (long) n;
 
     pthread_mutex_lock(&ftable_mutex);
-    if (slot && slot->refcount > 0)
+    /* Validate FILE* still matches (slot not reused) before decrementing refcount */
+    if (slot && slot->refcount > 0 && slot->fp == fp)
         slot->refcount--;
     pthread_mutex_unlock(&ftable_mutex);
 
@@ -520,7 +531,8 @@ boolean fileputchar(hdlfilenum fnum, char ch) {
     boolean result = fputc((unsigned char) ch, fp) != EOF;
 
     pthread_mutex_lock(&ftable_mutex);
-    if (slot && slot->refcount > 0)
+    /* Validate FILE* still matches (slot not reused) before decrementing refcount */
+    if (slot && slot->refcount > 0 && slot->fp == fp)
         slot->refcount--;
     pthread_mutex_unlock(&ftable_mutex);
 
@@ -544,7 +556,8 @@ boolean filegetchar(hdlfilenum fnum, char *ch) {
     int c = fgetc(fp);
 
     pthread_mutex_lock(&ftable_mutex);
-    if (slot && slot->refcount > 0)
+    /* Validate FILE* still matches (slot not reused) before decrementing refcount */
+    if (slot && slot->refcount > 0 && slot->fp == fp)
         slot->refcount--;
     pthread_mutex_unlock(&ftable_mutex);
 
@@ -689,7 +702,8 @@ long headless_readline(hdlfilenum fnum, char *buf, long bufsz) {
     }
 
     pthread_mutex_lock(&ftable_mutex);
-    if (slot && slot->refcount > 0)
+    /* Validate FILE* still matches (slot not reused) before decrementing refcount */
+    if (slot && slot->refcount > 0 && slot->fp == fp)
         slot->refcount--;
     pthread_mutex_unlock(&ftable_mutex);
 

@@ -277,21 +277,21 @@ static long allocate_thread_id_locked(void) {
      *
      * Boundary policy: LONG_MAX is treated as a reserved sentinel value that is
      * NEVER allocated as a thread ID. Valid thread IDs are in range [1, LONG_MAX-1].
-     * When next_thread_id reaches LONG_MAX, we immediately wrap to 1.
+     * Check next_thread_id BEFORE incrementing to prevent it from ever reaching LONG_MAX.
      *
      * This avoids edge cases with using the maximum signed value as a normal thread ID,
      * and provides a clear sentinel value for any future signaling requirements.
      *
-     * Check BEFORE incrementing to detect wraparound safely. Incrementing past
-     * LONG_MAX is undefined behavior in C, so we check and wrap explicitly. */
+     * Check '>= LONG_MAX - 1' to catch the case when next_thread_id is one away from
+     * the boundary. This prevents next_thread_id from ever becoming LONG_MAX. */
 
-    if (next_thread_id >= LONG_MAX) {
-        /* At boundary: wrap to 1 and trigger collision search */
+    if (next_thread_id >= LONG_MAX - 1) {
+        /* At or near boundary: wrap to 1 and trigger collision search */
         candidate_id = 1;
         next_thread_id = 1;
         need_collision_check = true;
     } else {
-        /* Normal case: just increment */
+        /* Normal case: just increment next_thread_id for next allocation */
         next_thread_id++;
     }
 
@@ -324,17 +324,18 @@ static long allocate_thread_id_locked(void) {
             }
 
             if (!id_in_use) {
-                /* Found an unused ID - update next_thread_id to prepare for next allocation */
+                /* Found an unused ID - update next_thread_id to prepare for next allocation.
+                 * Ensure next_thread_id never reaches LONG_MAX (reserved sentinel). */
                 next_thread_id = candidate_id + 1;
-                if (next_thread_id >= LONG_MAX) {
+                if (next_thread_id >= LONG_MAX - 1) {
                     next_thread_id = 1;
                 }
                 break;
             }
 
-            /* Try next ID */
+            /* Try next ID in collision search. Skip LONG_MAX (reserved sentinel). */
             candidate_id++;
-            if (candidate_id >= LONG_MAX) {
+            if (candidate_id >= LONG_MAX - 1) {
                 candidate_id = 1;
             }
         }
