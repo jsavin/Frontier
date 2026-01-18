@@ -136,6 +136,8 @@ frontier_pthread_record *allocate_thread_record(void) {
             allocated_id = allocate_thread_id_locked();
             if (allocated_id < 0) {
                 /* ID allocation failed (all IDs exhausted) */
+                log_error(LOG_COMP_LANG,
+                         "allocate_thread_record: Thread ID allocation failed (all IDs exhausted)");
                 pthread_mutex_unlock(&registry_mutex);
                 return NULL;
             }
@@ -285,8 +287,8 @@ static long allocate_thread_id_locked(void) {
     } else {
         /* Normal case: just increment */
         next_thread_id++;
-        if (next_thread_id >= LONG_MAX) {
-            /* Crossed boundary: wrapped from LONG_MAX to 1 */
+        if (next_thread_id > LONG_MAX) {
+            /* Crossed boundary: wrapped from LONG_MAX to beyond, set to 1 */
             next_thread_id = 1;
             need_collision_check = true;
         }
@@ -323,7 +325,7 @@ static long allocate_thread_id_locked(void) {
             if (!id_in_use) {
                 /* Found an unused ID - update next_thread_id to prepare for next allocation */
                 next_thread_id = candidate_id + 1;
-                if (next_thread_id >= LONG_MAX) {
+                if (next_thread_id > LONG_MAX) {
                     next_thread_id = 1;
                 }
                 break;
@@ -331,7 +333,7 @@ static long allocate_thread_id_locked(void) {
 
             /* Try next ID */
             candidate_id++;
-            if (candidate_id >= LONG_MAX) {
+            if (candidate_id > LONG_MAX) {
                 candidate_id = 1;
             }
         }

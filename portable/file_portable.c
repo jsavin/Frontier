@@ -36,6 +36,7 @@ typedef struct {
 #define PORTABLE_MAX_FNUM 256
 static fnum_entry ftable[PORTABLE_MAX_FNUM];
 static boolean ftable_initialized = false;
+static pthread_mutex_t ftable_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /*
  * ftable_init_impl - Internal initialization function for pthread_once
@@ -63,10 +64,16 @@ static void ensure_ftable_initialized(void) {
 
 static hdlfilenum alloc_fnum(void) {
     ensure_ftable_initialized();
+    pthread_mutex_lock(&ftable_mutex);
+
     for (int i = 1; i < PORTABLE_MAX_FNUM; ++i) {
-        if (ftable[i].fp == NULL)
+        if (ftable[i].fp == NULL) {
+            pthread_mutex_unlock(&ftable_mutex);
             return (hdlfilenum) i;
+        }
     }
+
+    pthread_mutex_unlock(&ftable_mutex);
     return 0;
 }
 
@@ -160,16 +167,28 @@ boolean openfile(const ptrfilespec fs, hdlfilenum *pfnum, boolean flreadonly) {
         fclose(fp);
         return false;
     }
+
+    /* Protect slot assignment with mutex to prevent race with other threads
+     * reading/writing the same slot concurrently */
+    pthread_mutex_lock(&ftable_mutex);
     fnum_entry *slot = entry_from(fnum);
-    slot->fp = fp;
-    strncpy(slot->path, path, sizeof slot->path - 1);
-    slot->path[sizeof slot->path - 1] = '\0';
-    *pfnum = fnum;
+    if (slot && slot->fp == NULL) {
+        slot->fp = fp;
+        strncpy(slot->path, path, sizeof slot->path - 1);
+        slot->path[sizeof slot->path - 1] = '\0';
+        *pfnum = fnum;
+        pthread_mutex_unlock(&ftable_mutex);
 
-    log_trace(LOG_COMP_GENERAL, "openfile fnum=%d path=%s mode=%s flreadonly=%d",
-              (int)fnum, path, mode, (int)flreadonly);
+        log_trace(LOG_COMP_DB, "openfile fnum=%d path=%s mode=%s flreadonly=%d",
+                  (int)fnum, path, mode, (int)flreadonly);
 
-    return true;
+        return true;
+    }
+    pthread_mutex_unlock(&ftable_mutex);
+
+    /* Slot was already taken by another thread - close our handle and fail */
+    fclose(fp);
+    return false;
 }
 
 boolean opennewfile(ptrfilespec fs, OSType creator, OSType filetype, hdlfilenum *pfnum) {
@@ -188,17 +207,29 @@ boolean opennewfile(ptrfilespec fs, OSType creator, OSType filetype, hdlfilenum 
         fclose(fp);
         return false;
     }
+
+    /* Protect slot assignment with mutex to prevent race with other threads
+     * reading/writing the same slot concurrently */
+    pthread_mutex_lock(&ftable_mutex);
     fnum_entry *slot = entry_from(fnum);
-    slot->fp = fp;
-    strncpy(slot->path, path, sizeof slot->path - 1);
-    slot->path[sizeof slot->path - 1] = '\0';
-    path_to_fsname(path, &fs->name);
-    *pfnum = fnum;
+    if (slot && slot->fp == NULL) {
+        slot->fp = fp;
+        strncpy(slot->path, path, sizeof slot->path - 1);
+        slot->path[sizeof slot->path - 1] = '\0';
+        path_to_fsname(path, &fs->name);
+        *pfnum = fnum;
+        pthread_mutex_unlock(&ftable_mutex);
 
-    log_trace(LOG_COMP_GENERAL, "opennewfile fnum=%d path=%s creator/filetype ignored",
-              (int)fnum, path);
+        log_trace(LOG_COMP_DB, "opennewfile fnum=%d path=%s creator/filetype ignored",
+                  (int)fnum, path);
 
-    return true;
+        return true;
+    }
+    pthread_mutex_unlock(&ftable_mutex);
+
+    /* Slot was already taken by another thread - close our handle and fail */
+    fclose(fp);
+    return false;
 }
 
 boolean closefile(hdlfilenum fnum) {
@@ -209,7 +240,7 @@ boolean closefile(hdlfilenum fnum) {
     slot->fp = NULL;
     slot->path[0] = '\0';
 
-    log_trace(LOG_COMP_GENERAL, "closefile fnum=%d", (int)fnum);
+    log_trace(LOG_COMP_DB, "closefile fnum=%d", (int)fnum);
 
     return true;
 }

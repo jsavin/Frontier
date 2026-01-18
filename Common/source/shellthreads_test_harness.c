@@ -63,6 +63,9 @@ static struct {
  * catches attempts to use the harness from multiple threads, preventing silent
  * data corruption.
  *
+ * TODO: Issue #322 tracks adding mutex protection to make this thread-safe.
+ * For now, this DEBUG assertion provides detection in development builds.
+ *
  * See Issue #322: Thread Test Harness: Add mutex protection for race conditions
  */
 static void assert_single_threaded_test_mode(void) {
