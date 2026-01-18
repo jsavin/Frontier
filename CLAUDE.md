@@ -270,6 +270,41 @@ case yourverb:
 
 ---
 
+## Verb Testing Requirements ⚠️ MANDATORY
+
+**Policy**: PRs or commits that implement new verbs or modify existing verb functionality **MUST include integration tests** that validate the new or changed behavior.
+
+**When This Applies**:
+- ✅ Adding new kernel verbs
+- ✅ Modifying verb behavior in C code
+- ✅ Fixing verb bugs
+- ✅ Updating verb implementations
+
+**What Must Be Included**:
+1. **Integration tests in YAML format** (in `tests/integration/test_cases/`)
+   - Test the verb from UserTalk (end-to-end)
+   - Cover happy path, edge cases, and error conditions
+   - Tests must PASS before code is merged to develop
+2. **Unit tests in C** (if appropriate for the complexity)
+   - Test C helper functions directly
+   - Test error handling and boundary conditions
+
+**Why This Matters**:
+- Verbs are the public API - they must work reliably
+- Integration tests prevent regression of verb functionality
+- Tests serve as usage documentation and examples
+- We cannot ship verb code without proof that it works
+
+**Cannot Merge Without Passing Tests**:
+- Unit tests MUST pass: `./tools/run_headless_tests.sh`
+- Integration tests MUST pass: `cd tests && make test-integration`
+- All test output must be reviewed as part of PR feedback
+- If tests fail, the PR is incomplete - fix tests and verb together
+
+**Reference**: See `docs/TESTING_GUIDE.md` and `tests/integration/test_cases/` for examples of well-written verb integration tests.
+
+---
+
 ## Testing & CLI Usage
 
 **Full Guide:** See [`docs/TESTING_GUIDE.md`](docs/TESTING_GUIDE.md)
