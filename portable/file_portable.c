@@ -255,14 +255,12 @@ boolean closefile(hdlfilenum fnum) {
 boolean filesetposition(hdlfilenum fnum, long pos) {
     pthread_mutex_lock(&ftable_mutex);
     FILE *fp = fp_from(fnum);
-    if (!fp) {
-        pthread_mutex_unlock(&ftable_mutex);
-        return false;
-    }
-
-    boolean result = fseeko(fp, (off_t) pos, SEEK_SET) == 0;
     pthread_mutex_unlock(&ftable_mutex);
-    return result;
+
+    if (!fp)
+        return false;
+
+    return fseeko(fp, (off_t) pos, SEEK_SET) == 0;
 }
 
 boolean filegetposition(hdlfilenum fnum, long *ppos) {
@@ -271,14 +269,12 @@ boolean filegetposition(hdlfilenum fnum, long *ppos) {
 
     pthread_mutex_lock(&ftable_mutex);
     FILE *fp = fp_from(fnum);
-    if (!fp) {
-        pthread_mutex_unlock(&ftable_mutex);
-        return false;
-    }
-
-    off_t cur = ftello(fp);
     pthread_mutex_unlock(&ftable_mutex);
 
+    if (!fp)
+        return false;
+
+    off_t cur = ftello(fp);
     if (cur < 0)
         return false;
     *ppos = (long) cur;
@@ -291,34 +287,25 @@ boolean filegeteof(hdlfilenum fnum, long *ppos) {
 
     pthread_mutex_lock(&ftable_mutex);
     FILE *fp = fp_from(fnum);
-    if (!fp) {
-        pthread_mutex_unlock(&ftable_mutex);
+    pthread_mutex_unlock(&ftable_mutex);
+
+    if (!fp)
         return false;
-    }
 
     off_t cur = ftello(fp);
-    if (cur < 0) {
-        pthread_mutex_unlock(&ftable_mutex);
+    if (cur < 0)
         return false;
-    }
 
-    if (fseeko(fp, 0, SEEK_END) != 0) {
-        pthread_mutex_unlock(&ftable_mutex);
+    if (fseeko(fp, 0, SEEK_END) != 0)
         return false;
-    }
 
     off_t end = ftello(fp);
-    if (end < 0) {
-        pthread_mutex_unlock(&ftable_mutex);
+    if (end < 0)
         return false;
-    }
 
-    if (fseeko(fp, cur, SEEK_SET) != 0) {
-        pthread_mutex_unlock(&ftable_mutex);
+    if (fseeko(fp, cur, SEEK_SET) != 0)
         return false;
-    }
 
-    pthread_mutex_unlock(&ftable_mutex);
     *ppos = (long) end;
     return true;
 }
@@ -326,47 +313,57 @@ boolean filegeteof(hdlfilenum fnum, long *ppos) {
 boolean fileseteof(hdlfilenum fnum, long size) {
     pthread_mutex_lock(&ftable_mutex);
     FILE *fp = fp_from(fnum);
-    if (!fp) {
-        pthread_mutex_unlock(&ftable_mutex);
-        return false;
-    }
-
-    int fd = fileno(fp);
+    int fd = -1;
+    if (fp)
+        fd = fileno(fp);
     pthread_mutex_unlock(&ftable_mutex);
+
+    if (fd < 0)
+        return false;
 
     return ftruncate(fd, (off_t) size) == 0;
 }
 
 boolean filewrite(hdlfilenum fnum, long ctbytes, void *pdata) {
+    /* Get FILE* while holding mutex, then release before I/O to avoid
+     * serializing all file operations on a global lock. This improves
+     * concurrency: Thread A writing to file1 won't block Thread B from
+     * reading file2.
+     *
+     * Trade-off: If closefile() is called concurrently on the same fnum,
+     * the FILE* pointer remains valid but points to a closed file.
+     * The fwrite() will fail safely (return 0). This is acceptable for now;
+     * per-file refcounting could prevent even this race if needed.
+     */
     pthread_mutex_lock(&ftable_mutex);
     FILE *fp = fp_from(fnum);
-    if (!fp) {
-        pthread_mutex_unlock(&ftable_mutex);
-        return false;
-    }
-
-    /* Perform write while holding mutex to prevent ftable entry from being
-     * modified (e.g., by closefile()) while we're using the FILE pointer */
-    boolean result = fwrite(pdata, 1, (size_t) ctbytes, fp) == (size_t) ctbytes;
-
     pthread_mutex_unlock(&ftable_mutex);
-    return result;
+
+    if (!fp)
+        return false;
+
+    return fwrite(pdata, 1, (size_t) ctbytes, fp) == (size_t) ctbytes;
 }
 
 boolean fileread(hdlfilenum fnum, long ctbytes, void *pdata) {
+    /* Get FILE* while holding mutex, then release before I/O to avoid
+     * serializing all file operations on a global lock. This improves
+     * concurrency: Thread A reading file1 won't block Thread B from
+     * writing file2.
+     *
+     * Trade-off: If closefile() is called concurrently on the same fnum,
+     * the FILE* pointer remains valid but points to a closed file.
+     * The fread() will fail safely (return 0). This is acceptable for now;
+     * per-file refcounting could prevent even this race if needed.
+     */
     pthread_mutex_lock(&ftable_mutex);
     FILE *fp = fp_from(fnum);
-    if (!fp) {
-        pthread_mutex_unlock(&ftable_mutex);
-        return false;
-    }
-
-    /* Perform read while holding mutex to prevent ftable entry from being
-     * modified (e.g., by closefile()) while we're using the FILE pointer */
-    boolean result = fread(pdata, 1, (size_t) ctbytes, fp) == (size_t) ctbytes;
-
     pthread_mutex_unlock(&ftable_mutex);
-    return result;
+
+    if (!fp)
+        return false;
+
+    return fread(pdata, 1, (size_t) ctbytes, fp) == (size_t) ctbytes;
 }
 
 boolean filereaddata(hdlfilenum fnum, long ctread, long *pctactual, void *pbuf) {
@@ -375,15 +372,14 @@ boolean filereaddata(hdlfilenum fnum, long ctread, long *pctactual, void *pbuf) 
 
     pthread_mutex_lock(&ftable_mutex);
     FILE *fp = fp_from(fnum);
-    if (!fp) {
-        pthread_mutex_unlock(&ftable_mutex);
+    pthread_mutex_unlock(&ftable_mutex);
+
+    if (!fp)
         return false;
-    }
 
     size_t n = fread(pbuf, 1, (size_t) ctread, fp);
     *pctactual = (long) n;
 
-    pthread_mutex_unlock(&ftable_mutex);
     return true;
 }
 
@@ -397,14 +393,12 @@ long filegetsize(hdlfilenum fnum) {
 boolean fileputchar(hdlfilenum fnum, char ch) {
     pthread_mutex_lock(&ftable_mutex);
     FILE *fp = fp_from(fnum);
-    if (!fp) {
-        pthread_mutex_unlock(&ftable_mutex);
-        return false;
-    }
-
-    boolean result = fputc((unsigned char) ch, fp) != EOF;
     pthread_mutex_unlock(&ftable_mutex);
-    return result;
+
+    if (!fp)
+        return false;
+
+    return fputc((unsigned char) ch, fp) != EOF;
 }
 
 boolean filegetchar(hdlfilenum fnum, char *ch) {
@@ -413,14 +407,12 @@ boolean filegetchar(hdlfilenum fnum, char *ch) {
 
     pthread_mutex_lock(&ftable_mutex);
     FILE *fp = fp_from(fnum);
-    if (!fp) {
-        pthread_mutex_unlock(&ftable_mutex);
-        return false;
-    }
-
-    int c = fgetc(fp);
     pthread_mutex_unlock(&ftable_mutex);
 
+    if (!fp)
+        return false;
+
+    int c = fgetc(fp);
     if (c == EOF)
         return false;
     *ch = (char) c;
@@ -535,10 +527,10 @@ long headless_readline(hdlfilenum fnum, char *buf, long bufsz) {
 
     pthread_mutex_lock(&ftable_mutex);
     FILE *fp = fp_from(fnum);
-    if (!fp) {
-        pthread_mutex_unlock(&ftable_mutex);
+    pthread_mutex_unlock(&ftable_mutex);
+
+    if (!fp)
         return -1;
-    }
 
     long n = 0;
     int c = EOF;
@@ -557,8 +549,6 @@ long headless_readline(hdlfilenum fnum, char *buf, long bufsz) {
         if (n < bufsz - 1)
             buf[n++] = (char) c;
     }
-
-    pthread_mutex_unlock(&ftable_mutex);
 
     buf[(n < bufsz) ? n : (bufsz - 1)] = '\0';
     if (c == EOF && n == 0)

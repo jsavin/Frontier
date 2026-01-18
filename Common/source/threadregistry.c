@@ -271,27 +271,21 @@ static long allocate_thread_id_locked(void) {
     candidate_id = next_thread_id;
 
     /* CRITICAL: After wraparound, must search for an unused ID to prevent collision.
-     * Two scenarios where wraparound can occur:
-     * 1. next_thread_id == LONG_MAX at entry (explicit wraparound)
-     * 2. next_thread_id increments to LONG_MAX and wraps to 1 (crossing boundary)
+     * Wraparound scenario: System runs for months. Thread with ID=1 from boot cycle
+     * still exists. Without collision checking, new ID allocation would reuse ID=1
+     * and cause use-after-free.
      *
-     * Scenario: System runs for months. Thread with ID=1 from boot cycle still exists.
-     * Without collision checking, new ID allocation would reuse ID=1 and cause use-after-free.
-     *
-     * Solution: After any wraparound that lands on ID=1, check if it's in use.
-     * If in use, run the collision avoidance search to find an unused ID. */
+     * Check BEFORE incrementing to detect wraparound safely. Incrementing past
+     * LONG_MAX is undefined behavior in C, so we check and wrap explicitly. */
 
-    if (next_thread_id == LONG_MAX) {
-        /* Entry at boundary: about to wrap on next increment */
+    if (next_thread_id >= LONG_MAX) {
+        /* At boundary: wrap to 1 and trigger collision search */
+        candidate_id = 1;
+        next_thread_id = 1;
         need_collision_check = true;
     } else {
         /* Normal case: just increment */
         next_thread_id++;
-        if (next_thread_id > LONG_MAX) {
-            /* Crossed boundary: wrapped from LONG_MAX to beyond, set to 1 */
-            next_thread_id = 1;
-            need_collision_check = true;
-        }
     }
 
     /* If we're at or near a wraparound point, verify the candidate ID isn't already in use.
@@ -325,7 +319,7 @@ static long allocate_thread_id_locked(void) {
             if (!id_in_use) {
                 /* Found an unused ID - update next_thread_id to prepare for next allocation */
                 next_thread_id = candidate_id + 1;
-                if (next_thread_id > LONG_MAX) {
+                if (next_thread_id >= LONG_MAX) {
                     next_thread_id = 1;
                 }
                 break;
@@ -333,7 +327,7 @@ static long allocate_thread_id_locked(void) {
 
             /* Try next ID */
             candidate_id++;
-            if (candidate_id > LONG_MAX) {
+            if (candidate_id >= LONG_MAX) {
                 candidate_id = 1;
             }
         }
