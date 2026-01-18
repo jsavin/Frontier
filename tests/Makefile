@@ -307,9 +307,9 @@ opattributes_stub_tests: opattributes_stub_tests.c $(LANG_RUNTIME_SOURCES) headl
 		opattributes_stub_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@ $(LINK_LIBS)
 
 # Thread safety Layer 1 tests - standalone, no full runtime needed
-headless_thread_registry_tests: headless_thread_registry_tests.c ../Common/source/threadregistry.c
+headless_thread_registry_tests: headless_thread_registry_tests.c ../Common/source/threadregistry.c ../Common/source/logging.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
-		headless_thread_registry_tests.c ../Common/source/threadregistry.c -o $@ -lpthread
+		headless_thread_registry_tests.c ../Common/source/threadregistry.c ../Common/source/logging.c -o $@ -lpthread
 
 runtime_tests: runtime_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable runtime_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@ $(LINK_LIBS)

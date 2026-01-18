@@ -110,6 +110,10 @@ TEST(record_allocation) {
     /* Count should be 1 */
     ASSERT_EQ(get_thread_count(), 1);
 
+    /* Must free the record before cleanup */
+    free_thread_record(rec);
+    ASSERT_EQ(get_thread_count(), 0);
+
     cleanup_thread_registry();
 }
 
@@ -141,6 +145,11 @@ TEST(lookup_success) {
 
     frontier_pthread_record *found = get_thread_by_id(id);
     ASSERT_EQ(found, rec);
+    /* Release the reference from get_thread_by_id() */
+    release_thread_record(found);
+
+    /* Free the original reference from allocate */
+    free_thread_record(rec);
 
     cleanup_thread_registry();
 }
@@ -191,10 +200,23 @@ TEST(multiple_records) {
     /* Count should be 3 */
     ASSERT_EQ(get_thread_count(), 3);
 
-    /* All should be findable */
-    ASSERT_EQ(get_thread_by_id(rec1->user_thread_id), rec1);
-    ASSERT_EQ(get_thread_by_id(rec2->user_thread_id), rec2);
-    ASSERT_EQ(get_thread_by_id(rec3->user_thread_id), rec3);
+    /* All should be findable - release the references from get_thread_by_id() */
+    frontier_pthread_record *found1 = get_thread_by_id(rec1->user_thread_id);
+    ASSERT_EQ(found1, rec1);
+    release_thread_record(found1);
+
+    frontier_pthread_record *found2 = get_thread_by_id(rec2->user_thread_id);
+    ASSERT_EQ(found2, rec2);
+    release_thread_record(found2);
+
+    frontier_pthread_record *found3 = get_thread_by_id(rec3->user_thread_id);
+    ASSERT_EQ(found3, rec3);
+    release_thread_record(found3);
+
+    /* Free the original references */
+    free_thread_record(rec1);
+    free_thread_record(rec2);
+    free_thread_record(rec3);
 
     cleanup_thread_registry();
 }
@@ -219,6 +241,9 @@ TEST(field_initialization) {
     /* state_mutex and wake_cond should be initialized (we can't easily test this
      * without actually using them, but we verify no crash on cleanup) */
 
+    /* Must free the record before cleanup */
+    free_thread_record(rec);
+
     cleanup_thread_registry();
 }
 
@@ -238,6 +263,8 @@ TEST(reinit_after_cleanup) {
     long id1 = rec1->user_thread_id;
     ASSERT_EQ(id1, 1);  /* First ID should be 1 */
     ASSERT_EQ(get_thread_count(), 1);
+    /* Free the record before cleanup */
+    free_thread_record(rec1);
     cleanup_thread_registry();
 
     /* After cleanup, registry should be empty */
@@ -258,7 +285,13 @@ TEST(reinit_after_cleanup) {
     ASSERT_EQ(get_thread_count(), 1);
 
     /* If we look up ID 1, we should find rec2 (the new record, not the old one) */
-    ASSERT_EQ(get_thread_by_id(1), rec2);
+    frontier_pthread_record *found = get_thread_by_id(1);
+    ASSERT_EQ(found, rec2);
+    /* Release the reference from get_thread_by_id() */
+    release_thread_record(found);
+
+    /* Free the original reference */
+    free_thread_record(rec2);
 
     cleanup_thread_registry();
 }
@@ -286,6 +319,9 @@ TEST(slot_reuse) {
     /* Old ID should not be found */
     ASSERT_NULL(get_thread_by_id(id1));
 
+    /* Free the new record before cleanup */
+    free_thread_record(rec2);
+
     cleanup_thread_registry();
 }
 
@@ -302,6 +338,9 @@ TEST(null_free_safety) {
     frontier_pthread_record *rec = allocate_thread_record();
     ASSERT_NOT_NULL(rec);
     ASSERT_EQ(get_thread_count(), 1);
+
+    /* Free the record before cleanup */
+    free_thread_record(rec);
 
     cleanup_thread_registry();
 }
@@ -330,6 +369,9 @@ TEST(double_free_safety) {
     ASSERT_NOT_NULL(rec2);
     ASSERT_EQ(get_thread_count(), 1);
 
+    /* Free rec2 before cleanup */
+    free_thread_record(rec2);
+
     cleanup_thread_registry();
 }
 
@@ -352,6 +394,9 @@ TEST(pre_init_safety) {
     init_thread_registry();
     rec = allocate_thread_record();
     ASSERT_NOT_NULL(rec);
+
+    /* Free the record before cleanup */
+    free_thread_record(rec);
 
     cleanup_thread_registry();
 }

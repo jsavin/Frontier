@@ -30,6 +30,8 @@
  */
 
 #include "threadregistry.h"
+#include "logging.h"
+#include <assert.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -77,24 +79,24 @@ boolean init_thread_registry(void) {
  */
 void cleanup_thread_registry(void) {
     int i;
-    boolean any_leaked = false;
 
     pthread_mutex_lock(&registry_mutex);
 
     /* Destroy mutexes and condvars for in-use records.
-     * CRITICAL: Verify refcount is 0 before destroying primitives.
-     * If threads are still using records, destroying mutexes causes undefined behavior
-     * per POSIX spec: "Attempting to destroy a locked mutex results in undefined behavior." */
+     * CRITICAL: Refcount must be 0 before destroying primitives.
+     * Per POSIX spec: "Attempting to destroy a locked mutex results in undefined behavior."
+     * FAIL-FAST: Assert on non-zero refcounts to catch thread leaks during development. */
     for (i = 0; i < MAX_THREADS; i++) {
         if (thread_records[i].in_use) {
-            /* Check if record is still in use by other threads */
+            /* FAIL-FAST: Verify no threads are still using this record */
             if (thread_records[i].refcount != 0) {
-                any_leaked = true;
-                fprintf(stderr, "[WARNING] cleanup_thread_registry: Record %d has refcount=%d (threads leaked)\n",
-                        i, thread_records[i].refcount);
+                log_error(LOG_COMP_THREAD,
+                         "cleanup_thread_registry: Record %d has refcount=%d (threads leaked at shutdown)",
+                         i, thread_records[i].refcount);
+                assert(thread_records[i].refcount == 0 && "Thread records leaked at cleanup time");
             }
 
-            /* Safe to destroy only if refcount is 0 */
+            /* Safe to destroy now that refcount is verified to be 0 */
             pthread_mutex_destroy(&thread_records[i].refcount_mutex);
             pthread_mutex_destroy(&thread_records[i].state_mutex);
             pthread_cond_destroy(&thread_records[i].wake_cond);
@@ -106,10 +108,6 @@ void cleanup_thread_registry(void) {
     registry_initialized = false;
 
     pthread_mutex_unlock(&registry_mutex);
-
-    if (any_leaked) {
-        fprintf(stderr, "[ERROR] cleanup_thread_registry: Thread records were leaked (not fully released)\n");
-    }
 }
 
 /*
@@ -246,8 +244,18 @@ long allocate_thread_id(void) {
      * Scenario: System runs for months, wraps from LONG_MAX→1. If thread with ID=1
      * from boot cycle still exists, collision would occur. Search for unused ID. */
     if (next_thread_id == LONG_MAX) {
-        /* We've wrapped - must find an ID not in use */
+        /* We've wrapped - must find an ID not in use.
+         * Guard against infinite loop with iteration counter. Should never exceed MAX_THREADS
+         * iterations since we can have at most MAX_THREADS threads alive at once. */
+        int attempts = 0;
         for (;;) {
+            if (++attempts > MAX_THREADS) {
+                /* Should never happen - all slots can't be in use if we're trying to allocate.
+                 * But if it does, bail out with an error. */
+                pthread_mutex_unlock(&registry_mutex);
+                return -1;
+            }
+
             /* Check if this ID is already allocated */
             id_in_use = false;
             for (i = 0; i < MAX_THREADS; i++) {
@@ -360,22 +368,20 @@ void release_thread_record(frontier_pthread_record *rec) {
         pthread_mutex_lock(&rec->refcount_mutex);
         rec->refcount--;
         should_destroy = (rec->refcount == 0);
-
-        /* Set in_use=false WITHIN refcount_mutex WHILE registry_mutex held
-         * This prevents allocate_thread_record() from reusing this slot before
-         * we finish destroying its synchronization primitives. */
-        if (should_destroy) {
-            rec->in_use = false;
-        }
         pthread_mutex_unlock(&rec->refcount_mutex);
 
-        /* Safe to destroy primitives: registry_mutex ensures no new acquisitions,
-         * in_use=false prevents allocation of this slot, and refcount=0 means
-         * no existing references can use these mutexes. */
+        /* Destroy primitives WHILE holding registry_mutex to ensure atomic destruction.
+         * CRITICAL: registry_mutex prevents allocate_thread_record() from reusing this slot
+         * until AFTER we've destroyed all synchronization primitives. Only after destruction
+         * complete do we mark in_use=false to signal the slot is available. */
         if (should_destroy) {
             pthread_mutex_destroy(&rec->state_mutex);
             pthread_cond_destroy(&rec->wake_cond);
             pthread_mutex_destroy(&rec->refcount_mutex);
+            /* Mark slot as free AFTER destroying primitives, while registry_mutex held.
+             * This prevents another thread from allocating and initializing new mutexes
+             * in this slot while we're still destroying the old ones. */
+            rec->in_use = false;
         }
     }
 
