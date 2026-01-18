@@ -36,6 +36,19 @@ typedef struct {
 static fnum_entry ftable[PORTABLE_MAX_FNUM];
 static boolean ftable_initialized = false;
 
+/*
+ * ensure_ftable_initialized - Initialize file descriptor table on first use
+ *
+ * THREAD SAFETY: This function is NOT thread-safe. Multiple threads calling
+ * alloc_fnum() concurrently before initialization completes could race on
+ * initialization. This is acceptable because:
+ * - File operations are single-threaded in current runtime
+ * - CLI/headless mode has no concurrent file access
+ *
+ * If thread-safe file operations are needed in future, add pthread_once():
+ *   static pthread_once_t once_control = PTHREAD_ONCE_INIT;
+ *   pthread_once(&once_control, ensure_ftable_initialized_impl);
+ */
 static void ensure_ftable_initialized(void) {
     if (ftable_initialized)
         return;

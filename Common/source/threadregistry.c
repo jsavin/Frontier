@@ -160,14 +160,14 @@ frontier_pthread_record *allocate_thread_record(void) {
                     if (!id_in_use) {
                         allocated_id = candidate_id;
                         next_thread_id = candidate_id + 1;
-                        if (next_thread_id > LONG_MAX) {
+                        if (next_thread_id >= LONG_MAX) {
                             next_thread_id = 1;
                         }
                         break;
                     }
 
                     candidate_id++;
-                    if (candidate_id > LONG_MAX) {
+                    if (candidate_id >= LONG_MAX) {
                         candidate_id = 1;
                     }
                 }
@@ -315,7 +315,7 @@ long allocate_thread_id(void) {
             if (!id_in_use) {
                 /* Found an unused ID */
                 next_thread_id = candidate_id + 1;
-                if (next_thread_id > LONG_MAX) {
+                if (next_thread_id >= LONG_MAX) {
                     next_thread_id = 1;
                 }
                 break;
@@ -323,7 +323,7 @@ long allocate_thread_id(void) {
 
             /* Try next ID */
             candidate_id++;
-            if (candidate_id > LONG_MAX) {
+            if (candidate_id >= LONG_MAX) {
                 candidate_id = 1;
             }
         }
