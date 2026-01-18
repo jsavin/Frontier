@@ -667,7 +667,7 @@ tests:
     expected_result: "true"
 
   # File Locking Tests - DEFERRED
-  # P2: File locking verbs not yet implemented. See issue #XXX for implementation plan.
+  # P2: File locking verbs not yet implemented. See issue #324 for implementation plan.
   # These verbs require platform-specific APIs for reliable cross-platform operation.
   - name: "file.islocked - unlocked file returns false"
     description: "Check that writable file is not locked"

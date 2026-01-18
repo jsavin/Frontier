@@ -32,6 +32,7 @@
 #include "time_portable.h"
 #include "error.h"
 #include "claybrowser.h"
+#include "shellthreads_test_harness.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -934,6 +935,11 @@ void Microseconds(UnsignedWide *result) {
 }
 
 UInt32 TickCount(void) {
+    // Check if thread test harness is in deterministic mode
+    if (thread_test_is_enabled()) {
+        return thread_test_current_ticks();
+    }
+
     // 2025-12-15 Codex: Use portable monotonic time layer
     // Legacy Mac ticks are 1/60th second intervals
     uint64_t ms = frontier_time_monotonic_millis();

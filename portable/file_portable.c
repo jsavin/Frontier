@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <limits.h>
+#include <pthread.h>
 #ifdef __APPLE__
 #include <sys/attr.h>
 #endif
@@ -25,21 +26,67 @@
  * Portable/headless file layer that backs the classic Frontier file API with
  * stdio. This is sufficient for CLI/tests that use FRONTIER_HEADLESS or
  * FRONTIER_PORTABLE builds.
+ *
+ * THREADING MODEL:
+ * - Global file descriptor table protected by ftable_mutex
+ * - Reference counting pattern prevents use-after-free during concurrent I/O
+ * - closefile() returns false if file has active references (refcount > 0)
+ * - Caller responsible for synchronization - must not close file with active I/O
+ * - Edge case: If thread crashes while holding reference, file stays open
+ *   (acceptable for process lifetime; cleanup required only at shutdown)
+ *
+ * LOGGING: Uses LOG_COMP_DB since file layer is part of database persistence.
+ * No LOG_COMP_FILE exists - file operations are semantically database operations.
  */
 
 typedef struct {
     FILE *fp;
     char path[4096];
+    int refcount;  /* Number of threads with active I/O operations on this file.
+                    * closefile() fails if refcount > 0 to prevent use-after-free. */
 } fnum_entry;
 
 #define PORTABLE_MAX_FNUM 256
 static fnum_entry ftable[PORTABLE_MAX_FNUM];
+static boolean ftable_initialized = false;
+static pthread_mutex_t ftable_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+/*
+ * ftable_init_impl - Internal initialization function for pthread_once
+ * Guarantees single-invocation initialization even under concurrent access.
+ */
+static void ftable_init_impl(void) {
+    memset(ftable, 0, sizeof(ftable));
+    ftable_initialized = true;
+}
+
+/*
+ * ensure_ftable_initialized - Initialize file descriptor table on first use
+ *
+ * Uses pthread_once() to guarantee thread-safe, single-invocation initialization.
+ * Even if multiple threads call this concurrently, the table is initialized exactly once.
+ *
+ * Addresses launch blocker (CLAUDE.md: "Global Mutable State - CRITICAL FOR LAUNCH").
+ * Issue #323 originally tracked this; now implemented.
+ */
+static pthread_once_t ftable_once = PTHREAD_ONCE_INIT;
+
+static void ensure_ftable_initialized(void) {
+    pthread_once(&ftable_once, ftable_init_impl);
+}
 
 static hdlfilenum alloc_fnum(void) {
+    ensure_ftable_initialized();
+    pthread_mutex_lock(&ftable_mutex);
+
     for (int i = 1; i < PORTABLE_MAX_FNUM; ++i) {
-        if (ftable[i].fp == NULL)
+        if (ftable[i].fp == NULL) {
+            pthread_mutex_unlock(&ftable_mutex);
             return (hdlfilenum) i;
+        }
     }
+
+    pthread_mutex_unlock(&ftable_mutex);
     return 0;
 }
 
@@ -133,16 +180,29 @@ boolean openfile(const ptrfilespec fs, hdlfilenum *pfnum, boolean flreadonly) {
         fclose(fp);
         return false;
     }
+
+    /* Protect slot assignment with mutex to prevent race with other threads
+     * reading/writing the same slot concurrently */
+    pthread_mutex_lock(&ftable_mutex);
     fnum_entry *slot = entry_from(fnum);
-    slot->fp = fp;
-    strncpy(slot->path, path, sizeof slot->path - 1);
-    slot->path[sizeof slot->path - 1] = '\0';
-    *pfnum = fnum;
-#if defined(FRONTIER_HEADLESS)
-    log_trace(LOG_COMP_DB, "openfile fnum=%d path=%s mode=%s flreadonly=%d",
-              (int)fnum, path, mode, (int)flreadonly);
-#endif
-    return true;
+    if (slot && slot->fp == NULL) {
+        slot->fp = fp;
+        slot->refcount = 0;  /* Initialize refcount for new entry */
+        strncpy(slot->path, path, sizeof slot->path - 1);
+        slot->path[sizeof slot->path - 1] = '\0';
+        *pfnum = fnum;
+        pthread_mutex_unlock(&ftable_mutex);
+
+        log_trace(LOG_COMP_DB, "openfile fnum=%d path=%s mode=%s flreadonly=%d",
+                  (int)fnum, path, mode, (int)flreadonly);
+
+        return true;
+    }
+    pthread_mutex_unlock(&ftable_mutex);
+
+    /* Slot was already taken by another thread - close our handle and fail */
+    fclose(fp);
+    return false;
 }
 
 boolean opennewfile(ptrfilespec fs, OSType creator, OSType filetype, hdlfilenum *pfnum) {
@@ -161,45 +221,109 @@ boolean opennewfile(ptrfilespec fs, OSType creator, OSType filetype, hdlfilenum 
         fclose(fp);
         return false;
     }
+
+    /* Protect slot assignment with mutex to prevent race with other threads
+     * reading/writing the same slot concurrently */
+    pthread_mutex_lock(&ftable_mutex);
     fnum_entry *slot = entry_from(fnum);
-    slot->fp = fp;
-    strncpy(slot->path, path, sizeof slot->path - 1);
-    slot->path[sizeof slot->path - 1] = '\0';
-    path_to_fsname(path, &fs->name);
-    *pfnum = fnum;
-#if defined(FRONTIER_HEADLESS)
-    log_trace(LOG_COMP_DB, "opennewfile fnum=%d path=%s mode=wb+", (int)fnum, path);
-#endif
-    return true;
+    if (slot && slot->fp == NULL) {
+        slot->fp = fp;
+        slot->refcount = 0;  /* Initialize refcount for new entry */
+        strncpy(slot->path, path, sizeof slot->path - 1);
+        slot->path[sizeof slot->path - 1] = '\0';
+        path_to_fsname(path, &fs->name);
+        *pfnum = fnum;
+        pthread_mutex_unlock(&ftable_mutex);
+
+        log_trace(LOG_COMP_DB, "opennewfile fnum=%d path=%s creator/filetype ignored",
+                  (int)fnum, path);
+
+        return true;
+    }
+    pthread_mutex_unlock(&ftable_mutex);
+
+    /* Slot was already taken by another thread - close our handle and fail */
+    fclose(fp);
+    return false;
 }
 
 boolean closefile(hdlfilenum fnum) {
+    pthread_mutex_lock(&ftable_mutex);
+
     fnum_entry *slot = entry_from(fnum);
-    if (!slot || !slot->fp)
+    if (!slot || !slot->fp) {
+        pthread_mutex_unlock(&ftable_mutex);
         return false;
-#if defined(FRONTIER_HEADLESS)
-    log_trace(LOG_COMP_DB, "closefile fnum=%d path=%s", (int)fnum, slot->path);
-#endif
+    }
+
+    /* CRITICAL: Check refcount before closing.
+     * If refcount > 0, another thread has active I/O on this file.
+     * Closing now would cause use-after-free for that thread.
+     * Caller must synchronize to ensure no I/O is in progress. */
+    if (slot->refcount > 0) {
+        log_warn(LOG_COMP_DB,
+                 "closefile fnum=%d failed: %d threads have active I/O (refcount=%d)",
+                 (int)fnum, slot->refcount, slot->refcount);
+        pthread_mutex_unlock(&ftable_mutex);
+        return false;
+    }
+
     fclose(slot->fp);
     slot->fp = NULL;
     slot->path[0] = '\0';
+    slot->refcount = 0;
+
+    pthread_mutex_unlock(&ftable_mutex);
+
+    log_trace(LOG_COMP_DB, "closefile fnum=%d", (int)fnum);
+
     return true;
 }
 
 boolean filesetposition(hdlfilenum fnum, long pos) {
-    FILE *fp = fp_from(fnum);
-    if (!fp)
+    pthread_mutex_lock(&ftable_mutex);
+    fnum_entry *slot = entry_from(fnum);
+    if (!slot || !slot->fp) {
+        pthread_mutex_unlock(&ftable_mutex);
         return false;
-    return fseeko(fp, (off_t) pos, SEEK_SET) == 0;
+    }
+    FILE *fp = slot->fp;
+    slot->refcount++;
+    pthread_mutex_unlock(&ftable_mutex);
+
+    boolean result = fseeko(fp, (off_t) pos, SEEK_SET) == 0;
+
+    pthread_mutex_lock(&ftable_mutex);
+    /* Validate FILE* still matches (slot not reused) before decrementing refcount */
+    if (slot && slot->refcount > 0 && slot->fp == fp)
+        slot->refcount--;
+    pthread_mutex_unlock(&ftable_mutex);
+
+    return result;
 }
 
 boolean filegetposition(hdlfilenum fnum, long *ppos) {
     if (!ppos)
         return false;
-    FILE *fp = fp_from(fnum);
-    if (!fp)
+
+    pthread_mutex_lock(&ftable_mutex);
+    fnum_entry *slot = entry_from(fnum);
+    if (!slot || !slot->fp) {
+        pthread_mutex_unlock(&ftable_mutex);
         return false;
+    }
+    FILE *fp = slot->fp;
+    slot->refcount++;
+    pthread_mutex_unlock(&ftable_mutex);
+
     off_t cur = ftello(fp);
+
+    pthread_mutex_lock(&ftable_mutex);
+    /* Validate FILE* still matches (slot not reused) before decrementing refcount */
+    if (slot && slot->refcount > 0 && slot->fp == fp)
+        slot->refcount--;
+    pthread_mutex_unlock(&ftable_mutex);
+
     if (cur < 0)
         return false;
     *ppos = (long) cur;
@@ -209,56 +333,180 @@ boolean filegetposition(hdlfilenum fnum, long *ppos) {
 boolean filegeteof(hdlfilenum fnum, long *ppos) {
     if (!ppos)
         return false;
-    FILE *fp = fp_from(fnum);
-    if (!fp)
+
+    pthread_mutex_lock(&ftable_mutex);
+    fnum_entry *slot = entry_from(fnum);
+    if (!slot || !slot->fp) {
+        pthread_mutex_unlock(&ftable_mutex);
         return false;
+    }
+    FILE *fp = slot->fp;
+    slot->refcount++;
+    pthread_mutex_unlock(&ftable_mutex);
+
     off_t cur = ftello(fp);
-    if (cur < 0)
+    if (cur < 0) {
+        pthread_mutex_lock(&ftable_mutex);
+        /* Validate FILE* still matches (slot not reused) before decrementing refcount */
+        if (slot && slot->refcount > 0 && slot->fp == fp)
+            slot->refcount--;
+        pthread_mutex_unlock(&ftable_mutex);
         return false;
-    if (fseeko(fp, 0, SEEK_END) != 0)
+    }
+
+    if (fseeko(fp, 0, SEEK_END) != 0) {
+        pthread_mutex_lock(&ftable_mutex);
+        /* Validate FILE* still matches (slot not reused) before decrementing refcount */
+        if (slot && slot->refcount > 0 && slot->fp == fp)
+            slot->refcount--;
+        pthread_mutex_unlock(&ftable_mutex);
         return false;
+    }
+
     off_t end = ftello(fp);
-    if (end < 0)
+    if (end < 0) {
+        pthread_mutex_lock(&ftable_mutex);
+        /* Validate FILE* still matches (slot not reused) before decrementing refcount */
+        if (slot && slot->refcount > 0 && slot->fp == fp)
+            slot->refcount--;
+        pthread_mutex_unlock(&ftable_mutex);
         return false;
-    if (fseeko(fp, cur, SEEK_SET) != 0)
+    }
+
+    if (fseeko(fp, cur, SEEK_SET) != 0) {
+        pthread_mutex_lock(&ftable_mutex);
+        /* Validate FILE* still matches (slot not reused) before decrementing refcount */
+        if (slot && slot->refcount > 0 && slot->fp == fp)
+            slot->refcount--;
+        pthread_mutex_unlock(&ftable_mutex);
         return false;
+    }
+
+    pthread_mutex_lock(&ftable_mutex);
+    /* Validate FILE* still matches (slot not reused) before decrementing refcount */
+    if (slot && slot->refcount > 0 && slot->fp == fp)
+        slot->refcount--;
+    pthread_mutex_unlock(&ftable_mutex);
+
     *ppos = (long) end;
     return true;
 }
 
 boolean fileseteof(hdlfilenum fnum, long size) {
-    FILE *fp = fp_from(fnum);
-    if (!fp)
+    pthread_mutex_lock(&ftable_mutex);
+    fnum_entry *slot = entry_from(fnum);
+    if (!slot || !slot->fp) {
+        pthread_mutex_unlock(&ftable_mutex);
         return false;
+    }
+    FILE *fp = slot->fp;
     int fd = fileno(fp);
-    return ftruncate(fd, (off_t) size) == 0;
+    slot->refcount++;
+    pthread_mutex_unlock(&ftable_mutex);
+
+    boolean result = ftruncate(fd, (off_t) size) == 0;
+
+    pthread_mutex_lock(&ftable_mutex);
+    /* Validate FILE* still matches (slot not reused) before decrementing refcount */
+    if (slot && slot->refcount > 0 && slot->fp == fp)
+        slot->refcount--;
+    pthread_mutex_unlock(&ftable_mutex);
+
+    return result;
 }
 
 boolean filewrite(hdlfilenum fnum, long ctbytes, void *pdata) {
-    FILE *fp = fp_from(fnum);
-    if (!fp)
+    /* REFERENCE COUNTING PATTERN: Increment refcount while accessing file
+     * to prevent closefile() from closing the FILE* mid-operation.
+     *
+     * 1. Lock ftable_mutex
+     * 2. Get FILE* pointer and increment refcount
+     * 3. RELEASE mutex
+     * 4. Perform fwrite()
+     * 5. Lock mutex, decrement refcount, release
+     *
+     * This ensures closefile() will fail if any thread has active I/O (refcount > 0).
+     */
+    pthread_mutex_lock(&ftable_mutex);
+
+    fnum_entry *slot = entry_from(fnum);
+    if (!slot || !slot->fp) {
+        pthread_mutex_unlock(&ftable_mutex);
         return false;
-#if defined(FRONTIER_HEADLESS)
-    log_trace(LOG_COMP_DB, "filewrite portable fnum=%d bytes=%ld", (int)fnum, ctbytes);
-#endif
-    return fwrite(pdata, 1, (size_t) ctbytes, fp) == (size_t) ctbytes;
+    }
+
+    FILE *fp = slot->fp;
+    slot->refcount++;  /* Increment refcount while we have reference */
+
+    pthread_mutex_unlock(&ftable_mutex);
+
+    /* Perform I/O without holding mutex - allows concurrent access to other files */
+    boolean result = fwrite(pdata, 1, (size_t) ctbytes, fp) == (size_t) ctbytes;
+
+    /* Release reference */
+    pthread_mutex_lock(&ftable_mutex);
+    /* Validate FILE* still matches (slot not reused) before decrementing refcount */
+    if (slot && slot->refcount > 0 && slot->fp == fp)
+        slot->refcount--;
+    pthread_mutex_unlock(&ftable_mutex);
+
+    return result;
 }
 
 boolean fileread(hdlfilenum fnum, long ctbytes, void *pdata) {
-    FILE *fp = fp_from(fnum);
-    if (!fp)
+    /* REFERENCE COUNTING PATTERN: See filewrite() for implementation details.
+     * Increments refcount during I/O to prevent concurrent closefile().
+     */
+    pthread_mutex_lock(&ftable_mutex);
+
+    fnum_entry *slot = entry_from(fnum);
+    if (!slot || !slot->fp) {
+        pthread_mutex_unlock(&ftable_mutex);
         return false;
-    return fread(pdata, 1, (size_t) ctbytes, fp) == (size_t) ctbytes;
+    }
+
+    FILE *fp = slot->fp;
+    slot->refcount++;
+
+    pthread_mutex_unlock(&ftable_mutex);
+
+    boolean result = fread(pdata, 1, (size_t) ctbytes, fp) == (size_t) ctbytes;
+
+    pthread_mutex_lock(&ftable_mutex);
+    /* Validate FILE* still matches (slot not reused) before decrementing refcount */
+    if (slot && slot->refcount > 0 && slot->fp == fp)
+        slot->refcount--;
+    pthread_mutex_unlock(&ftable_mutex);
+
+    return result;
 }
 
 boolean filereaddata(hdlfilenum fnum, long ctread, long *pctactual, void *pbuf) {
     if (!pctactual)
         return false;
-    FILE *fp = fp_from(fnum);
-    if (!fp)
+
+    pthread_mutex_lock(&ftable_mutex);
+
+    fnum_entry *slot = entry_from(fnum);
+    if (!slot || !slot->fp) {
+        pthread_mutex_unlock(&ftable_mutex);
         return false;
+    }
+
+    FILE *fp = slot->fp;
+    slot->refcount++;
+
+    pthread_mutex_unlock(&ftable_mutex);
+
     size_t n = fread(pbuf, 1, (size_t) ctread, fp);
     *pctactual = (long) n;
+
+    pthread_mutex_lock(&ftable_mutex);
+    /* Validate FILE* still matches (slot not reused) before decrementing refcount */
+    if (slot && slot->refcount > 0 && slot->fp == fp)
+        slot->refcount--;
+    pthread_mutex_unlock(&ftable_mutex);
+
     return true;
 }
 
@@ -270,19 +518,49 @@ long filegetsize(hdlfilenum fnum) {
 }
 
 boolean fileputchar(hdlfilenum fnum, char ch) {
-    FILE *fp = fp_from(fnum);
-    if (!fp)
+    pthread_mutex_lock(&ftable_mutex);
+    fnum_entry *slot = entry_from(fnum);
+    if (!slot || !slot->fp) {
+        pthread_mutex_unlock(&ftable_mutex);
         return false;
-    return fputc((unsigned char) ch, fp) != EOF;
+    }
+    FILE *fp = slot->fp;
+    slot->refcount++;
+    pthread_mutex_unlock(&ftable_mutex);
+
+    boolean result = fputc((unsigned char) ch, fp) != EOF;
+
+    pthread_mutex_lock(&ftable_mutex);
+    /* Validate FILE* still matches (slot not reused) before decrementing refcount */
+    if (slot && slot->refcount > 0 && slot->fp == fp)
+        slot->refcount--;
+    pthread_mutex_unlock(&ftable_mutex);
+
+    return result;
 }
 
 boolean filegetchar(hdlfilenum fnum, char *ch) {
     if (!ch)
         return false;
-    FILE *fp = fp_from(fnum);
-    if (!fp)
+
+    pthread_mutex_lock(&ftable_mutex);
+    fnum_entry *slot = entry_from(fnum);
+    if (!slot || !slot->fp) {
+        pthread_mutex_unlock(&ftable_mutex);
         return false;
+    }
+    FILE *fp = slot->fp;
+    slot->refcount++;
+    pthread_mutex_unlock(&ftable_mutex);
+
     int c = fgetc(fp);
+
+    pthread_mutex_lock(&ftable_mutex);
+    /* Validate FILE* still matches (slot not reused) before decrementing refcount */
+    if (slot && slot->refcount > 0 && slot->fp == fp)
+        slot->refcount--;
+    pthread_mutex_unlock(&ftable_mutex);
+
     if (c == EOF)
         return false;
     *ch = (char) c;
@@ -394,9 +672,17 @@ boolean getfsfile(const ptrfilespec pfs, bigstring name) {
 long headless_readline(hdlfilenum fnum, char *buf, long bufsz) {
     if (bufsz <= 0)
         return -1;
-    FILE *fp = fp_from(fnum);
-    if (!fp)
+
+    pthread_mutex_lock(&ftable_mutex);
+    fnum_entry *slot = entry_from(fnum);
+    if (!slot || !slot->fp) {
+        pthread_mutex_unlock(&ftable_mutex);
         return -1;
+    }
+    FILE *fp = slot->fp;
+    slot->refcount++;
+    pthread_mutex_unlock(&ftable_mutex);
+
     long n = 0;
     int c = EOF;
     while (1) {
@@ -414,6 +700,13 @@ long headless_readline(hdlfilenum fnum, char *buf, long bufsz) {
         if (n < bufsz - 1)
             buf[n++] = (char) c;
     }
+
+    pthread_mutex_lock(&ftable_mutex);
+    /* Validate FILE* still matches (slot not reused) before decrementing refcount */
+    if (slot && slot->refcount > 0 && slot->fp == fp)
+        slot->refcount--;
+    pthread_mutex_unlock(&ftable_mutex);
+
     buf[(n < bufsz) ? n : (bufsz - 1)] = '\0';
     if (c == EOF && n == 0)
         return 0;
@@ -421,31 +714,51 @@ long headless_readline(hdlfilenum fnum, char *buf, long bufsz) {
 }
 
 const char *headless_fnum_path(hdlfilenum fnum) {
+    /* Note: This function returns a pointer into the ftable, so caller must
+     * understand the pointer may become invalid if another thread calls
+     * closefile() or headless_reopen_fnum(). For true thread-safety of the
+     * returned string, consider having the caller copy it. */
+    pthread_mutex_lock(&ftable_mutex);
+
     fnum_entry *slot = entry_from(fnum);
-    if (!slot || !slot->fp)
-        return NULL;
-    return slot->path[0] ? slot->path : NULL;
+    const char *result = (slot && slot->fp && slot->path[0]) ? slot->path : NULL;
+
+    pthread_mutex_unlock(&ftable_mutex);
+    return result;
 }
 
 boolean headless_reopen_fnum(hdlfilenum fnum, const char *path, boolean flreadonly) {
     if (!path || path[0] == '\0')
         return false;
-    fnum_entry *slot = entry_from(fnum);
-    if (!slot)
-        return false;
-    if (slot->fp) {
-        fclose(slot->fp);
-        slot->fp = NULL;
-    }
+
     const char *mode = flreadonly ? "rb" : "rb+";
     FILE *fp = fopen(path, mode);
     if (!fp && !flreadonly)
         fp = fopen(path, "rb");
     if (!fp)
         return false;
+
+    /* Protect ftable modification with mutex */
+    pthread_mutex_lock(&ftable_mutex);
+
+    fnum_entry *slot = entry_from(fnum);
+    if (!slot) {
+        pthread_mutex_unlock(&ftable_mutex);
+        fclose(fp);
+        return false;
+    }
+
+    if (slot->fp) {
+        fclose(slot->fp);
+        slot->fp = NULL;
+    }
+
     slot->fp = fp;
+    slot->refcount = 0;  /* Reset refcount when reopening file */
     strncpy(slot->path, path, sizeof slot->path - 1);
     slot->path[sizeof slot->path - 1] = '\0';
+
+    pthread_mutex_unlock(&ftable_mutex);
     return true;
 }
 

@@ -130,49 +130,16 @@ frontier_pthread_record *allocate_thread_record(void) {
             frontier_pthread_record *rec = &thread_records[i];
             long allocated_id;
 
-            /* Allocate a unique thread ID using the dedicated allocate function.
-             * This ensures ID uniqueness, monotonicity, and handles wraparound correctly.
-             * Note: allocate_thread_id() also acquires registry_mutex, but we're already
-             * holding it, so we need to use the internal ID allocation logic directly. */
-            allocated_id = next_thread_id;
-            if (next_thread_id == LONG_MAX) {
-                /* Handle wraparound: must find an unused ID to avoid collision */
-                int attempts = 0;
-                long candidate_id = next_thread_id;
-                boolean id_in_use;
-                int j;
-
-                for (;;) {
-                    if (++attempts > MAX_THREADS) {
-                        /* All slots in use - shouldn't happen but bail out safely */
-                        pthread_mutex_unlock(&registry_mutex);
-                        return NULL;
-                    }
-
-                    id_in_use = false;
-                    for (j = 0; j < MAX_THREADS; j++) {
-                        if (thread_records[j].in_use && thread_records[j].user_thread_id == candidate_id) {
-                            id_in_use = true;
-                            break;
-                        }
-                    }
-
-                    if (!id_in_use) {
-                        allocated_id = candidate_id;
-                        next_thread_id = candidate_id + 1;
-                        if (next_thread_id > LONG_MAX) {
-                            next_thread_id = 1;
-                        }
-                        break;
-                    }
-
-                    candidate_id++;
-                    if (candidate_id > LONG_MAX) {
-                        candidate_id = 1;
-                    }
-                }
-            } else {
-                next_thread_id++;
+            /* Allocate a unique thread ID using the shared helper.
+             * allocate_thread_id_locked() assumes registry_mutex is already held,
+             * which it is here, so we avoid duplicating the wraparound logic. */
+            allocated_id = allocate_thread_id_locked();
+            if (allocated_id < 0) {
+                /* ID allocation failed (all IDs exhausted) */
+                log_error(LOG_COMP_LANG,
+                         "allocate_thread_record: Thread ID allocation failed (all IDs exhausted)");
+                pthread_mutex_unlock(&registry_mutex);
+                return NULL;
             }
 
             /* Initialize the record */
@@ -210,6 +177,13 @@ frontier_pthread_record *allocate_thread_record(void) {
             result = rec;
             break;
         }
+    }
+
+    if (result == NULL && registry_initialized) {
+        /* All thread slots in use - this shouldn't happen in normal operation */
+        log_error(LOG_COMP_LANG,
+                 "allocate_thread_record: All thread slots exhausted (MAX_THREADS=%d)",
+                 MAX_THREADS);
     }
 
     pthread_mutex_unlock(&registry_mutex);
@@ -272,33 +246,70 @@ frontier_pthread_record *get_thread_by_id(long user_id) {
 }
 
 /*
- * allocate_thread_id - Allocate a new unique thread ID
+ * allocate_thread_id_locked - Internal helper that allocates a unique thread ID
+ *
+ * ASSUMES: registry_mutex is ALREADY HELD by caller
  *
  * Returns a new thread ID. After wraparound at LONG_MAX, searches for an
  * unused ID to avoid collisions with long-lived threads from earlier cycles.
+ *
+ * Updates global next_thread_id to track the next ID to try.
  */
-long allocate_thread_id(void) {
+static long allocate_thread_id_locked(void) {
     long candidate_id;
     int i;
     boolean id_in_use;
+    boolean need_collision_check = false;
 
-    pthread_mutex_lock(&registry_mutex);
+#ifdef DEBUG
+    /* Verify caller holds registry_mutex (defensive programming) */
+    int lock_status = pthread_mutex_trylock(&registry_mutex);
+    assert(lock_status == EBUSY && "allocate_thread_id_locked requires registry_mutex to be held by caller");
+    /* We don't actually want to unlock - trylock would have failed if locked, so this is just an assertion */
+#endif
 
     candidate_id = next_thread_id;
 
-    /* CRITICAL: After overflow, must skip IDs already in use to prevent collision.
-     * Scenario: System runs for months, wraps from LONG_MAX→1. If thread with ID=1
-     * from boot cycle still exists, collision would occur. Search for unused ID. */
-    if (next_thread_id == LONG_MAX) {
-        /* We've wrapped - must find an ID not in use.
+    /* CRITICAL: After wraparound, must search for an unused ID to prevent collision.
+     * Wraparound scenario: System runs for months. Thread with ID=1 from boot cycle
+     * still exists. Without collision checking, new ID allocation would reuse ID=1
+     * and cause use-after-free.
+     *
+     * Boundary policy: LONG_MAX is treated as a reserved sentinel value that is
+     * NEVER allocated as a thread ID. Valid thread IDs are in range [1, LONG_MAX-1].
+     * Check next_thread_id BEFORE incrementing to prevent it from ever reaching LONG_MAX.
+     *
+     * This avoids edge cases with using the maximum signed value as a normal thread ID,
+     * and provides a clear sentinel value for any future signaling requirements.
+     *
+     * Check '>= LONG_MAX - 1' to catch the case when next_thread_id is one away from
+     * the boundary. This prevents next_thread_id from ever becoming LONG_MAX. */
+
+    if (next_thread_id >= LONG_MAX - 1) {
+        /* At or near boundary: wrap to 1 and trigger collision search */
+        candidate_id = 1;
+        next_thread_id = 1;
+        need_collision_check = true;
+    } else {
+        /* Normal case: just increment next_thread_id for next allocation */
+        next_thread_id++;
+    }
+
+    /* If we're at or near a wraparound point, verify the candidate ID isn't already in use.
+     * This protects against ID collisions when long-lived threads from earlier cycles overlap
+     * with newly allocated IDs from a wrapped counter. */
+    if (need_collision_check) {
+        int attempts = 0;
+
+        /* Search for an unused ID, starting from candidate_id.
          * Guard against infinite loop with iteration counter. Should never exceed MAX_THREADS
          * iterations since we can have at most MAX_THREADS threads alive at once. */
-        int attempts = 0;
         for (;;) {
             if (++attempts > MAX_THREADS) {
-                /* Should never happen - all slots can't be in use if we're trying to allocate.
-                 * But if it does, bail out with an error. */
-                pthread_mutex_unlock(&registry_mutex);
+                /* All slots exhausted - shouldn't happen in normal operation */
+                log_error(LOG_COMP_LANG,
+                         "allocate_thread_id_locked: All thread IDs exhausted (MAX_THREADS=%d)",
+                         MAX_THREADS);
                 return -1;
             }
 
@@ -313,28 +324,40 @@ long allocate_thread_id(void) {
             }
 
             if (!id_in_use) {
-                /* Found an unused ID */
+                /* Found an unused ID - update next_thread_id to prepare for next allocation.
+                 * Ensure next_thread_id never reaches LONG_MAX (reserved sentinel). */
                 next_thread_id = candidate_id + 1;
-                if (next_thread_id > LONG_MAX) {
+                if (next_thread_id >= LONG_MAX - 1) {
                     next_thread_id = 1;
                 }
                 break;
             }
 
-            /* Try next ID */
+            /* Try next ID in collision search. Skip LONG_MAX (reserved sentinel). */
             candidate_id++;
-            if (candidate_id > LONG_MAX) {
+            if (candidate_id >= LONG_MAX - 1) {
                 candidate_id = 1;
             }
         }
-    } else {
-        /* Normal case: just increment */
-        next_thread_id++;
     }
 
+    return candidate_id;
+}
+
+/*
+ * allocate_thread_id - Allocate a new unique thread ID
+ *
+ * Returns a new thread ID. After wraparound at LONG_MAX, searches for an
+ * unused ID to avoid collisions with long-lived threads from earlier cycles.
+ */
+long allocate_thread_id(void) {
+    long result;
+
+    pthread_mutex_lock(&registry_mutex);
+    result = allocate_thread_id_locked();
     pthread_mutex_unlock(&registry_mutex);
 
-    return candidate_id;
+    return result;
 }
 
 /*
