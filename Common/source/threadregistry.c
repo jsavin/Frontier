@@ -51,6 +51,11 @@ static pthread_mutex_t registry_mutex = PTHREAD_MUTEX_INITIALIZER;
 static boolean registry_initialized = false;
 
 /*
+ * Forward declarations
+ */
+static long allocate_thread_id_locked(void);
+
+/*
  * init_thread_registry - Initialize the thread registry
  */
 boolean init_thread_registry(void) {
