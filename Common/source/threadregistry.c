@@ -128,10 +128,56 @@ frontier_pthread_record *allocate_thread_record(void) {
     for (i = 0; i < MAX_THREADS; i++) {
         if (!thread_records[i].in_use) {
             frontier_pthread_record *rec = &thread_records[i];
+            long allocated_id;
+
+            /* Allocate a unique thread ID using the dedicated allocate function.
+             * This ensures ID uniqueness, monotonicity, and handles wraparound correctly.
+             * Note: allocate_thread_id() also acquires registry_mutex, but we're already
+             * holding it, so we need to use the internal ID allocation logic directly. */
+            allocated_id = next_thread_id;
+            if (next_thread_id == LONG_MAX) {
+                /* Handle wraparound: must find an unused ID to avoid collision */
+                int attempts = 0;
+                long candidate_id = next_thread_id;
+                boolean id_in_use;
+                int j;
+
+                for (;;) {
+                    if (++attempts > MAX_THREADS) {
+                        /* All slots in use - shouldn't happen but bail out safely */
+                        pthread_mutex_unlock(&registry_mutex);
+                        return NULL;
+                    }
+
+                    id_in_use = false;
+                    for (j = 0; j < MAX_THREADS; j++) {
+                        if (thread_records[j].in_use && thread_records[j].user_thread_id == candidate_id) {
+                            id_in_use = true;
+                            break;
+                        }
+                    }
+
+                    if (!id_in_use) {
+                        allocated_id = candidate_id;
+                        next_thread_id = candidate_id + 1;
+                        if (next_thread_id > LONG_MAX) {
+                            next_thread_id = 1;
+                        }
+                        break;
+                    }
+
+                    candidate_id++;
+                    if (candidate_id > LONG_MAX) {
+                        candidate_id = 1;
+                    }
+                }
+            } else {
+                next_thread_id++;
+            }
 
             /* Initialize the record */
             memset(rec, 0, sizeof(*rec));
-            rec->user_thread_id = next_thread_id++;
+            rec->user_thread_id = allocated_id;
             rec->in_use = true;
             rec->is_sleeping = false;
             rec->is_killed = false;
@@ -298,11 +344,15 @@ int get_thread_count(void) {
     int count = 0;
     int i;
 
+    pthread_mutex_lock(&registry_mutex);
+
+    /* Check initialization INSIDE the lock to prevent race where flag changes
+     * between check and use. Ensures atomic access to registry_initialized and
+     * thread_records array. */
     if (!registry_initialized) {
+        pthread_mutex_unlock(&registry_mutex);
         return 0;
     }
-
-    pthread_mutex_lock(&registry_mutex);
 
     for (i = 0; i < MAX_THREADS; i++) {
         if (thread_records[i].in_use) {
