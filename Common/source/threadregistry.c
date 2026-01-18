@@ -180,6 +180,10 @@ frontier_pthread_record *get_thread_by_id(long user_id) {
         return NULL;
     }
 
+    /* SYNCHRONIZATION: registry_mutex protects registry_initialized flag and
+     * thread_records array during lookup. refcount is incremented while
+     * registry_mutex held to ensure record can't be destroyed before caller
+     * takes ownership of the reference. */
     pthread_mutex_lock(&registry_mutex);
 
     if (!registry_initialized) {
@@ -191,7 +195,8 @@ frontier_pthread_record *get_thread_by_id(long user_id) {
     for (i = 0; i < MAX_THREADS; i++) {
         if (thread_records[i].in_use &&
             thread_records[i].user_thread_id == user_id) {
-            /* Found it - increment refcount before returning */
+            /* Found it - increment refcount WHILE holding registry_mutex to ensure
+             * this record can't be freed/destroyed before we return to caller. */
             pthread_mutex_lock(&thread_records[i].refcount_mutex);
             thread_records[i].refcount++;
             pthread_mutex_unlock(&thread_records[i].refcount_mutex);
@@ -276,21 +281,32 @@ void release_thread_record(frontier_pthread_record *rec) {
         return;
     }
 
+    /* SYNCHRONIZATION: registry_mutex held for entire operation prevents races with:
+     * - allocate_thread_record() scanning for free slots
+     * - get_thread_by_id() incrementing refcount
+     * - cleanup_thread_registry() destroying records
+     */
     pthread_mutex_lock(&registry_mutex);
 
     if (rec >= thread_records && rec < thread_records + MAX_THREADS && rec->in_use) {
         boolean should_destroy;
 
+        /* Decrement refcount under its own lock */
         pthread_mutex_lock(&rec->refcount_mutex);
         rec->refcount--;
         should_destroy = (rec->refcount == 0);
 
-        /* Mark as not-in-use BEFORE unlocking to prevent acquire race */
+        /* Set in_use=false WITHIN refcount_mutex WHILE registry_mutex held
+         * This prevents allocate_thread_record() from reusing this slot before
+         * we finish destroying its synchronization primitives. */
         if (should_destroy) {
             rec->in_use = false;
         }
         pthread_mutex_unlock(&rec->refcount_mutex);
 
+        /* Safe to destroy primitives: registry_mutex ensures no new acquisitions,
+         * in_use=false prevents allocation of this slot, and refcount=0 means
+         * no existing references can use these mutexes. */
         if (should_destroy) {
             pthread_mutex_destroy(&rec->state_mutex);
             pthread_cond_destroy(&rec->wake_cond);

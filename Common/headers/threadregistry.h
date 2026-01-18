@@ -18,9 +18,35 @@
  * 4. Use free_thread_record() when thread exits
  * 5. Call cleanup_thread_registry() at shutdown
  *
- * Thread Safety:
- * - All functions are thread-safe (internally synchronized)
- * - Records remain valid until explicitly freed
+ * THREAD SAFETY MODEL:
+ *
+ * Lifecycle Functions (NOT thread-safe - require external synchronization):
+ * - init_thread_registry() - Must be called from main thread BEFORE workers spawn
+ * - cleanup_thread_registry() - Must be called from main thread AFTER all workers exit
+ *
+ * Runtime Functions (FULLY thread-safe):
+ * - allocate_thread_record() - Can be called from any thread
+ * - free_thread_record() - Can be called from any thread
+ * - get_thread_by_id() - Can be called from any thread
+ * - get_thread_count() - Can be called from any thread
+ *
+ * REFERENCE COUNTING MODEL (Critical for thread safety):
+ *
+ * Ownership Rules:
+ * - allocate_thread_record() returns refcount=1 (caller owns it)
+ * - get_thread_by_id() auto-increments refcount (caller must release)
+ * - free_thread_record()/release_thread_record() decrement refcount
+ * - Synchronization primitives only destroyed when refcount reaches 0
+ *
+ * Usage Pattern:
+ *   rec = allocate_thread_record();  // refcount=1
+ *   // use rec...
+ *   free_thread_record(rec);          // refcount--; if 0, destroy primitives
+ *
+ * Lookup Pattern:
+ *   rec = get_thread_by_id(id);       // refcount++ (you now own this ref)
+ *   // use rec...
+ *   release_thread_record(rec);       // refcount--; if 0, destroy primitives
  *
  * Reference: planning/phase3/THREAD_SAFETY_PHASE1_PLAN.md
  *
