@@ -2258,6 +2258,27 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
     if (db_path == NULL || db_path[0] == '\0')
         return false;
 
+    /* Check if a v7 file already exists (from previous migration).
+     * If user specifies "Frontier.root" but "Frontier.root7" exists, use the v7 file. */
+    char v7_path[1024];
+    snprintf(v7_path, sizeof v7_path, "%s7", db_path);
+    FILE *fp_v7 = fopen(v7_path, "rb");
+    if (fp_v7) {
+        tydatabaserecord header_v7;
+        boolean ok = fread(&header_v7, sizeof header_v7, 1, fp_v7) == 1;
+        fclose(fp_v7);
+        if (ok && header_v7.versionnumber >= 7) {
+            /* v7 file exists and is valid - use it instead of v6 source */
+            if (output_path && output_path_size > 0) {
+                strncpy(output_path, v7_path, output_path_size);
+                if (output_path_size > 0)
+                    output_path[output_path_size - 1] = '\0';
+            }
+            /* Don't set migrated=true since we're just using existing v7 file */
+            return true;
+        }
+    }
+
     FILE *fp = fopen(db_path, "rb");
     if (!fp)
         return false;
