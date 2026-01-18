@@ -159,44 +159,13 @@ frontier_pthread_record *allocate_thread_record(void) {
  * free_thread_record - Release a thread record
  *
  * Decrements the refcount. When refcount reaches zero, destroys synchronization
- * primitives. Slot remains in_use until explicitly cleared during cleanup.
+ * primitives. This is an alias for release_thread_record() to simplify the API.
  *
  * Safe to call with NULL (no-op).
  */
 void free_thread_record(frontier_pthread_record *rec) {
-    if (rec == NULL) {
-        return;
-    }
-
-    pthread_mutex_lock(&registry_mutex);
-
-    /* Verify this is a valid record in our array */
-    if (rec >= thread_records && rec < thread_records + MAX_THREADS) {
-        if (rec->in_use) {
-            boolean should_destroy;
-
-            /* Decrement refcount */
-            pthread_mutex_lock(&rec->refcount_mutex);
-            rec->refcount--;
-            should_destroy = (rec->refcount == 0);
-
-            /* Mark as not-in-use BEFORE unlocking to prevent acquire race */
-            if (should_destroy) {
-                rec->in_use = false;
-            }
-            pthread_mutex_unlock(&rec->refcount_mutex);
-
-            /* Only destroy primitives when refcount reaches zero */
-            if (should_destroy) {
-                pthread_mutex_destroy(&rec->state_mutex);
-                pthread_cond_destroy(&rec->wake_cond);
-                pthread_mutex_destroy(&rec->refcount_mutex);
-            }
-        }
-        /* If already freed (in_use=false), this is a no-op (double-free safe) */
-    }
-
-    pthread_mutex_unlock(&registry_mutex);
+    /* free_thread_record is an alias for release_thread_record */
+    release_thread_record(rec);
 }
 
 /*

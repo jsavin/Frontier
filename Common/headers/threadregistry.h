@@ -147,11 +147,14 @@ frontier_pthread_record *allocate_thread_record(void);
 /*
  * free_thread_record - Release a thread record
  *
- * Marks the record as no longer in use and releases resources.
- * The slot may be reused for future allocations.
+ * ALIAS for release_thread_record(). Decrements refcount. When refcount reaches zero,
+ * synchronization primitives are destroyed and the slot can be reused.
+ *
+ * TYPICAL USAGE:
+ * - After allocate_thread_record(): call free_thread_record() to release initial refcount
+ * - After get_thread_by_id(): call release_thread_record() (preferred for lookup case)
  *
  * Safe to call with NULL (no-op).
- * Safe to call on already-freed records (no-op or gracefully handled).
  *
  * Parameters:
  *   rec - Record to free (may be NULL)
