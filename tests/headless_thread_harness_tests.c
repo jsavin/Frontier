@@ -5,8 +5,15 @@
  * Verifies that virtual time control works correctly for testing
  * thread sleep and timeout behavior.
  *
+ * ENVIRONMENT REQUIREMENT:
+ * These tests require the environment variable FRONTIER_THREAD_TEST_MODE=1
+ * to be set. Without it, tests will fail to enable test harness.
+ *
+ * To run:
+ *   FRONTIER_THREAD_TEST_MODE=1 ./tests/headless_thread_harness_tests
+ *
  * Test Categories:
- * 1. Enable/disable lifecycle
+ * 1. Enable/disable lifecycle (with proper state reset)
  * 2. Virtual tick manipulation (get, set, advance)
  * 3. Time freezing behavior
  * 4. Edge cases (wraparound, disable while running)
@@ -162,12 +169,12 @@ TEST(repeated_enable_disable) {
     result = thread_test_disable();
     ASSERT_TRUE(result);
 
-    /* Second cycle - should work independently */
+    /* Second cycle - should start fresh with zeroed state */
     result = thread_test_enable();
     ASSERT_TRUE(result);
 
     ticks = thread_test_get_ticks();
-    ASSERT_EQ(ticks, 100U);  /* Should preserve value across disable/enable */
+    ASSERT_EQ(ticks, 0U);  /* Each enable starts fresh - state reset on disable */
 
     thread_test_disable();
 }

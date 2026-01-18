@@ -103,6 +103,7 @@ boolean thread_test_disable(void) {
 
     thread_test_harness.enabled = false;
     thread_test_harness.freeze_system_time = false;
+    thread_test_harness.virtual_ticks = 0;  /* Reset state for test isolation */
 
     log_info(LOG_COMP_LANG, "Thread test harness DISABLED - restored to system time");
 
