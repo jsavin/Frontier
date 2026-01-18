@@ -233,12 +233,19 @@ boolean opennewfile(ptrfilespec fs, OSType creator, OSType filetype, hdlfilenum 
 }
 
 boolean closefile(hdlfilenum fnum) {
+    pthread_mutex_lock(&ftable_mutex);
+
     fnum_entry *slot = entry_from(fnum);
-    if (!slot || !slot->fp)
+    if (!slot || !slot->fp) {
+        pthread_mutex_unlock(&ftable_mutex);
         return false;
+    }
+
     fclose(slot->fp);
     slot->fp = NULL;
     slot->path[0] = '\0';
+
+    pthread_mutex_unlock(&ftable_mutex);
 
     log_trace(LOG_COMP_DB, "closefile fnum=%d", (int)fnum);
 
@@ -246,19 +253,32 @@ boolean closefile(hdlfilenum fnum) {
 }
 
 boolean filesetposition(hdlfilenum fnum, long pos) {
+    pthread_mutex_lock(&ftable_mutex);
     FILE *fp = fp_from(fnum);
-    if (!fp)
+    if (!fp) {
+        pthread_mutex_unlock(&ftable_mutex);
         return false;
-    return fseeko(fp, (off_t) pos, SEEK_SET) == 0;
+    }
+
+    boolean result = fseeko(fp, (off_t) pos, SEEK_SET) == 0;
+    pthread_mutex_unlock(&ftable_mutex);
+    return result;
 }
 
 boolean filegetposition(hdlfilenum fnum, long *ppos) {
     if (!ppos)
         return false;
+
+    pthread_mutex_lock(&ftable_mutex);
     FILE *fp = fp_from(fnum);
-    if (!fp)
+    if (!fp) {
+        pthread_mutex_unlock(&ftable_mutex);
         return false;
+    }
+
     off_t cur = ftello(fp);
+    pthread_mutex_unlock(&ftable_mutex);
+
     if (cur < 0)
         return false;
     *ppos = (long) cur;
@@ -268,53 +288,102 @@ boolean filegetposition(hdlfilenum fnum, long *ppos) {
 boolean filegeteof(hdlfilenum fnum, long *ppos) {
     if (!ppos)
         return false;
+
+    pthread_mutex_lock(&ftable_mutex);
     FILE *fp = fp_from(fnum);
-    if (!fp)
+    if (!fp) {
+        pthread_mutex_unlock(&ftable_mutex);
         return false;
+    }
+
     off_t cur = ftello(fp);
-    if (cur < 0)
+    if (cur < 0) {
+        pthread_mutex_unlock(&ftable_mutex);
         return false;
-    if (fseeko(fp, 0, SEEK_END) != 0)
+    }
+
+    if (fseeko(fp, 0, SEEK_END) != 0) {
+        pthread_mutex_unlock(&ftable_mutex);
         return false;
+    }
+
     off_t end = ftello(fp);
-    if (end < 0)
+    if (end < 0) {
+        pthread_mutex_unlock(&ftable_mutex);
         return false;
-    if (fseeko(fp, cur, SEEK_SET) != 0)
+    }
+
+    if (fseeko(fp, cur, SEEK_SET) != 0) {
+        pthread_mutex_unlock(&ftable_mutex);
         return false;
+    }
+
+    pthread_mutex_unlock(&ftable_mutex);
     *ppos = (long) end;
     return true;
 }
 
 boolean fileseteof(hdlfilenum fnum, long size) {
+    pthread_mutex_lock(&ftable_mutex);
     FILE *fp = fp_from(fnum);
-    if (!fp)
+    if (!fp) {
+        pthread_mutex_unlock(&ftable_mutex);
         return false;
+    }
+
     int fd = fileno(fp);
+    pthread_mutex_unlock(&ftable_mutex);
+
     return ftruncate(fd, (off_t) size) == 0;
 }
 
 boolean filewrite(hdlfilenum fnum, long ctbytes, void *pdata) {
+    pthread_mutex_lock(&ftable_mutex);
     FILE *fp = fp_from(fnum);
-    if (!fp)
+    if (!fp) {
+        pthread_mutex_unlock(&ftable_mutex);
         return false;
-    return fwrite(pdata, 1, (size_t) ctbytes, fp) == (size_t) ctbytes;
+    }
+
+    /* Perform write while holding mutex to prevent ftable entry from being
+     * modified (e.g., by closefile()) while we're using the FILE pointer */
+    boolean result = fwrite(pdata, 1, (size_t) ctbytes, fp) == (size_t) ctbytes;
+
+    pthread_mutex_unlock(&ftable_mutex);
+    return result;
 }
 
 boolean fileread(hdlfilenum fnum, long ctbytes, void *pdata) {
+    pthread_mutex_lock(&ftable_mutex);
     FILE *fp = fp_from(fnum);
-    if (!fp)
+    if (!fp) {
+        pthread_mutex_unlock(&ftable_mutex);
         return false;
-    return fread(pdata, 1, (size_t) ctbytes, fp) == (size_t) ctbytes;
+    }
+
+    /* Perform read while holding mutex to prevent ftable entry from being
+     * modified (e.g., by closefile()) while we're using the FILE pointer */
+    boolean result = fread(pdata, 1, (size_t) ctbytes, fp) == (size_t) ctbytes;
+
+    pthread_mutex_unlock(&ftable_mutex);
+    return result;
 }
 
 boolean filereaddata(hdlfilenum fnum, long ctread, long *pctactual, void *pbuf) {
     if (!pctactual)
         return false;
+
+    pthread_mutex_lock(&ftable_mutex);
     FILE *fp = fp_from(fnum);
-    if (!fp)
+    if (!fp) {
+        pthread_mutex_unlock(&ftable_mutex);
         return false;
+    }
+
     size_t n = fread(pbuf, 1, (size_t) ctread, fp);
     *pctactual = (long) n;
+
+    pthread_mutex_unlock(&ftable_mutex);
     return true;
 }
 
@@ -326,19 +395,32 @@ long filegetsize(hdlfilenum fnum) {
 }
 
 boolean fileputchar(hdlfilenum fnum, char ch) {
+    pthread_mutex_lock(&ftable_mutex);
     FILE *fp = fp_from(fnum);
-    if (!fp)
+    if (!fp) {
+        pthread_mutex_unlock(&ftable_mutex);
         return false;
-    return fputc((unsigned char) ch, fp) != EOF;
+    }
+
+    boolean result = fputc((unsigned char) ch, fp) != EOF;
+    pthread_mutex_unlock(&ftable_mutex);
+    return result;
 }
 
 boolean filegetchar(hdlfilenum fnum, char *ch) {
     if (!ch)
         return false;
+
+    pthread_mutex_lock(&ftable_mutex);
     FILE *fp = fp_from(fnum);
-    if (!fp)
+    if (!fp) {
+        pthread_mutex_unlock(&ftable_mutex);
         return false;
+    }
+
     int c = fgetc(fp);
+    pthread_mutex_unlock(&ftable_mutex);
+
     if (c == EOF)
         return false;
     *ch = (char) c;
@@ -450,9 +532,14 @@ boolean getfsfile(const ptrfilespec pfs, bigstring name) {
 long headless_readline(hdlfilenum fnum, char *buf, long bufsz) {
     if (bufsz <= 0)
         return -1;
+
+    pthread_mutex_lock(&ftable_mutex);
     FILE *fp = fp_from(fnum);
-    if (!fp)
+    if (!fp) {
+        pthread_mutex_unlock(&ftable_mutex);
         return -1;
+    }
+
     long n = 0;
     int c = EOF;
     while (1) {
@@ -470,6 +557,9 @@ long headless_readline(hdlfilenum fnum, char *buf, long bufsz) {
         if (n < bufsz - 1)
             buf[n++] = (char) c;
     }
+
+    pthread_mutex_unlock(&ftable_mutex);
+
     buf[(n < bufsz) ? n : (bufsz - 1)] = '\0';
     if (c == EOF && n == 0)
         return 0;
@@ -477,31 +567,50 @@ long headless_readline(hdlfilenum fnum, char *buf, long bufsz) {
 }
 
 const char *headless_fnum_path(hdlfilenum fnum) {
+    /* Note: This function returns a pointer into the ftable, so caller must
+     * understand the pointer may become invalid if another thread calls
+     * closefile() or headless_reopen_fnum(). For true thread-safety of the
+     * returned string, consider having the caller copy it. */
+    pthread_mutex_lock(&ftable_mutex);
+
     fnum_entry *slot = entry_from(fnum);
-    if (!slot || !slot->fp)
-        return NULL;
-    return slot->path[0] ? slot->path : NULL;
+    const char *result = (slot && slot->fp && slot->path[0]) ? slot->path : NULL;
+
+    pthread_mutex_unlock(&ftable_mutex);
+    return result;
 }
 
 boolean headless_reopen_fnum(hdlfilenum fnum, const char *path, boolean flreadonly) {
     if (!path || path[0] == '\0')
         return false;
-    fnum_entry *slot = entry_from(fnum);
-    if (!slot)
-        return false;
-    if (slot->fp) {
-        fclose(slot->fp);
-        slot->fp = NULL;
-    }
+
     const char *mode = flreadonly ? "rb" : "rb+";
     FILE *fp = fopen(path, mode);
     if (!fp && !flreadonly)
         fp = fopen(path, "rb");
     if (!fp)
         return false;
+
+    /* Protect ftable modification with mutex */
+    pthread_mutex_lock(&ftable_mutex);
+
+    fnum_entry *slot = entry_from(fnum);
+    if (!slot) {
+        pthread_mutex_unlock(&ftable_mutex);
+        fclose(fp);
+        return false;
+    }
+
+    if (slot->fp) {
+        fclose(slot->fp);
+        slot->fp = NULL;
+    }
+
     slot->fp = fp;
     strncpy(slot->path, path, sizeof slot->path - 1);
     slot->path[sizeof slot->path - 1] = '\0';
+
+    pthread_mutex_unlock(&ftable_mutex);
     return true;
 }
 
