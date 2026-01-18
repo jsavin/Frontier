@@ -31,6 +31,7 @@
 
 #include "threadregistry.h"
 #include <limits.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -76,12 +77,24 @@ boolean init_thread_registry(void) {
  */
 void cleanup_thread_registry(void) {
     int i;
+    boolean any_leaked = false;
 
     pthread_mutex_lock(&registry_mutex);
 
-    /* Destroy mutexes and condvars for in-use records, regardless of refcount */
+    /* Destroy mutexes and condvars for in-use records.
+     * CRITICAL: Verify refcount is 0 before destroying primitives.
+     * If threads are still using records, destroying mutexes causes undefined behavior
+     * per POSIX spec: "Attempting to destroy a locked mutex results in undefined behavior." */
     for (i = 0; i < MAX_THREADS; i++) {
         if (thread_records[i].in_use) {
+            /* Check if record is still in use by other threads */
+            if (thread_records[i].refcount != 0) {
+                any_leaked = true;
+                fprintf(stderr, "[WARNING] cleanup_thread_registry: Record %d has refcount=%d (threads leaked)\n",
+                        i, thread_records[i].refcount);
+            }
+
+            /* Safe to destroy only if refcount is 0 */
             pthread_mutex_destroy(&thread_records[i].refcount_mutex);
             pthread_mutex_destroy(&thread_records[i].state_mutex);
             pthread_cond_destroy(&thread_records[i].wake_cond);
@@ -93,6 +106,10 @@ void cleanup_thread_registry(void) {
     registry_initialized = false;
 
     pthread_mutex_unlock(&registry_mutex);
+
+    if (any_leaked) {
+        fprintf(stderr, "[ERROR] cleanup_thread_registry: Thread records were leaked (not fully released)\n");
+    }
 }
 
 /*
@@ -212,23 +229,58 @@ frontier_pthread_record *get_thread_by_id(long user_id) {
 
 /*
  * allocate_thread_id - Allocate a new unique thread ID
+ *
+ * Returns a new thread ID. After wraparound at LONG_MAX, searches for an
+ * unused ID to avoid collisions with long-lived threads from earlier cycles.
  */
 long allocate_thread_id(void) {
-    long id;
+    long candidate_id;
+    int i;
+    boolean id_in_use;
 
     pthread_mutex_lock(&registry_mutex);
-    id = next_thread_id;
 
-    /* Handle overflow: wrap to 1 (IDs only unique within registry lifecycle) */
+    candidate_id = next_thread_id;
+
+    /* CRITICAL: After overflow, must skip IDs already in use to prevent collision.
+     * Scenario: System runs for months, wraps from LONG_MAX→1. If thread with ID=1
+     * from boot cycle still exists, collision would occur. Search for unused ID. */
     if (next_thread_id == LONG_MAX) {
-        next_thread_id = 1;
+        /* We've wrapped - must find an ID not in use */
+        for (;;) {
+            /* Check if this ID is already allocated */
+            id_in_use = false;
+            for (i = 0; i < MAX_THREADS; i++) {
+                if (thread_records[i].in_use &&
+                    thread_records[i].user_thread_id == candidate_id) {
+                    id_in_use = true;
+                    break;
+                }
+            }
+
+            if (!id_in_use) {
+                /* Found an unused ID */
+                next_thread_id = candidate_id + 1;
+                if (next_thread_id > LONG_MAX) {
+                    next_thread_id = 1;
+                }
+                break;
+            }
+
+            /* Try next ID */
+            candidate_id++;
+            if (candidate_id > LONG_MAX) {
+                candidate_id = 1;
+            }
+        }
     } else {
+        /* Normal case: just increment */
         next_thread_id++;
     }
 
     pthread_mutex_unlock(&registry_mutex);
 
-    return id;
+    return candidate_id;
 }
 
 /*
@@ -264,6 +316,13 @@ void acquire_thread_record(frontier_pthread_record *rec) {
 
     pthread_mutex_lock(&registry_mutex);
 
+    /* Guard against operating on records after cleanup. If registry is not initialized,
+     * the thread_records array is in undefined state and may be destroyed. */
+    if (!registry_initialized) {
+        pthread_mutex_unlock(&registry_mutex);
+        return;
+    }
+
     if (rec >= thread_records && rec < thread_records + MAX_THREADS && rec->in_use) {
         pthread_mutex_lock(&rec->refcount_mutex);
         rec->refcount++;
@@ -287,6 +346,12 @@ void release_thread_record(frontier_pthread_record *rec) {
      * - cleanup_thread_registry() destroying records
      */
     pthread_mutex_lock(&registry_mutex);
+
+    /* Guard against operating on records after cleanup */
+    if (!registry_initialized) {
+        pthread_mutex_unlock(&registry_mutex);
+        return;
+    }
 
     if (rec >= thread_records && rec < thread_records + MAX_THREADS && rec->in_use) {
         boolean should_destroy;
