@@ -234,9 +234,11 @@ boolean thread_test_advance(uint32_t delta) {
     uint32_t old_ticks = thread_test_harness.virtual_ticks;
     thread_test_harness.virtual_ticks += delta;
 
-    /* NOTE: Wraparound is intentional behavior - virtual ticks use uint32_t arithmetic.
-     * Tests can rely on this wraparound to verify timeout handling across tick boundaries.
-     * When advancing near UINT32_MAX, the result naturally wraps back to 0 and continues.
+    /* INTENTIONAL WRAPAROUND: virtual_ticks uses uint32_t arithmetic and wraps
+     * naturally. This is INTENTIONAL for testing timeout boundary conditions.
+     * Tests can advance near UINT32_MAX and verify that timeout logic correctly
+     * handles wraparound from 0xFFFFFFFF back to 0. This tests edge cases that
+     * would be hard to hit with real system time.
      */
     uint32_t new_ticks = thread_test_harness.virtual_ticks;
 

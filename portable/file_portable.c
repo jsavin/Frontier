@@ -325,15 +325,23 @@ boolean fileseteof(hdlfilenum fnum, long size) {
 }
 
 boolean filewrite(hdlfilenum fnum, long ctbytes, void *pdata) {
-    /* Get FILE* while holding mutex, then release before I/O to avoid
-     * serializing all file operations on a global lock. This improves
-     * concurrency: Thread A writing to file1 won't block Thread B from
-     * reading file2.
+    /* CONCURRENCY PATTERN: Release mutex before I/O to allow concurrent access
+     * to different files. This avoids serializing ALL file operations on a
+     * global lock.
      *
-     * Trade-off: If closefile() is called concurrently on the same fnum,
-     * the FILE* pointer remains valid but points to a closed file.
-     * The fwrite() will fail safely (return 0). This is acceptable for now;
-     * per-file refcounting could prevent even this race if needed.
+     * 1. Lock ftable_mutex
+     * 2. Get FILE* pointer for fnum
+     * 3. RELEASE mutex (before I/O!)
+     * 4. Perform fwrite()
+     *
+     * INTENTIONAL RACE CONDITION: If closefile(fnum) is called by another
+     * thread between step 2-3, we may write to a closed FILE*. This will
+     * fail safely (fwrite returns 0). Caller must ensure file isn't closed
+     * while writes are in progress (application-level synchronization).
+     *
+     * Trade-off: Allows concurrent operations on different files; requires
+     * caller discipline to avoid concurrent close of same file.
+     * Alternative: Per-file refcounting would eliminate this race.
      */
     pthread_mutex_lock(&ftable_mutex);
     FILE *fp = fp_from(fnum);
@@ -346,15 +354,9 @@ boolean filewrite(hdlfilenum fnum, long ctbytes, void *pdata) {
 }
 
 boolean fileread(hdlfilenum fnum, long ctbytes, void *pdata) {
-    /* Get FILE* while holding mutex, then release before I/O to avoid
-     * serializing all file operations on a global lock. This improves
-     * concurrency: Thread A reading file1 won't block Thread B from
-     * writing file2.
-     *
-     * Trade-off: If closefile() is called concurrently on the same fnum,
-     * the FILE* pointer remains valid but points to a closed file.
-     * The fread() will fail safely (return 0). This is acceptable for now;
-     * per-file refcounting could prevent even this race if needed.
+    /* CONCURRENCY PATTERN: Release mutex before I/O (see filewrite() for details).
+     * Allows concurrent reads from different files; intentional race with closefile()
+     * fails safely (fread returns 0).
      */
     pthread_mutex_lock(&ftable_mutex);
     FILE *fp = fp_from(fnum);
