@@ -173,10 +173,17 @@ void free_thread_record(frontier_pthread_record *rec) {
     /* Verify this is a valid record in our array */
     if (rec >= thread_records && rec < thread_records + MAX_THREADS) {
         if (rec->in_use) {
+            boolean should_destroy;
+
             /* Decrement refcount */
             pthread_mutex_lock(&rec->refcount_mutex);
             rec->refcount--;
-            boolean should_destroy = (rec->refcount == 0);
+            should_destroy = (rec->refcount == 0);
+
+            /* Mark as not-in-use BEFORE unlocking to prevent acquire race */
+            if (should_destroy) {
+                rec->in_use = false;
+            }
             pthread_mutex_unlock(&rec->refcount_mutex);
 
             /* Only destroy primitives when refcount reaches zero */
@@ -184,7 +191,6 @@ void free_thread_record(frontier_pthread_record *rec) {
                 pthread_mutex_destroy(&rec->state_mutex);
                 pthread_cond_destroy(&rec->wake_cond);
                 pthread_mutex_destroy(&rec->refcount_mutex);
-                rec->in_use = false;
             }
         }
         /* If already freed (in_use=false), this is a no-op (double-free safe) */
@@ -304,16 +310,22 @@ void release_thread_record(frontier_pthread_record *rec) {
     pthread_mutex_lock(&registry_mutex);
 
     if (rec >= thread_records && rec < thread_records + MAX_THREADS && rec->in_use) {
+        boolean should_destroy;
+
         pthread_mutex_lock(&rec->refcount_mutex);
         rec->refcount--;
-        boolean should_destroy = (rec->refcount == 0);
+        should_destroy = (rec->refcount == 0);
+
+        /* Mark as not-in-use BEFORE unlocking to prevent acquire race */
+        if (should_destroy) {
+            rec->in_use = false;
+        }
         pthread_mutex_unlock(&rec->refcount_mutex);
 
         if (should_destroy) {
             pthread_mutex_destroy(&rec->state_mutex);
             pthread_cond_destroy(&rec->wake_cond);
             pthread_mutex_destroy(&rec->refcount_mutex);
-            rec->in_use = false;
         }
     }
 

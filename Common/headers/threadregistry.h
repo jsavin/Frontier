@@ -93,7 +93,7 @@ typedef struct frontier_pthread_record {
     unsigned long wakeup_ticks;     /* Auto-wake tick count (0 = disabled) */
     boolean is_killed;              /* Thread has been killed */
     boolean in_use;                 /* Slot is in use */
-    volatile int refcount;          /* Reference count (0 = can destroy primitives) */
+    int refcount;                   /* Reference count (0 = can destroy primitives; protected by refcount_mutex) */
 } frontier_pthread_record;
 
 /*
@@ -102,9 +102,13 @@ typedef struct frontier_pthread_record {
  * Must be called before any other registry functions. Initializes the
  * internal data structures and synchronization primitives.
  *
+ * CRITICAL: Must be called from main thread BEFORE spawning any worker threads.
+ * NOT thread-safe. Calling this while other threads use the registry causes
+ * undefined behavior (data races on registry_initialized flag).
+ *
  * Returns: true on success, false on failure
  *
- * Thread Safety: NOT thread-safe - call from main thread at startup
+ * Thread Safety: NOT thread-safe - call from main thread at startup only
  */
 boolean init_thread_registry(void);
 
