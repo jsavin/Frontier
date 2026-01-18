@@ -1,82 +1,58 @@
-# PR Monitor Blocking Issue - Known Problem
+# PR Monitor Blocking Issue - RESOLVED ✅
 
-## Problem
+## Problem (Previously)
 
-When using the pull-request agent to create PRs and monitor for review feedback, the session freezes and becomes unresponsive. This occurs because:
+The pull-request agent would invoke `monitor_pr_review.sh` in the foreground, causing session freeze for up to 15 minutes. The session became unresponsive and could not be interrupted.
 
-1. The pull-request agent invokes `monitor_pr_review.sh` in the **foreground**
-2. The monitor script polls for reviews every 5 seconds for up to **900 seconds (15 minutes)**
-3. If no reviews arrive, it blocks for the full 15 minutes with no escape route
-4. The session remains frozen - Ctrl-C doesn't work because the process is buried in sub-shells
-5. Terminal must be force-killed
+## Solution (Implemented)
 
-This has occurred multiple times in single sessions when creating multiple PRs.
+`monitor_pr_review.sh` now **auto-backgrounds itself** using environment variable detection.
 
-## Why This Happens
+### How It Works
 
-The monitor script is designed to:
-- Wait for bot reviews to arrive (which legitimately takes a few minutes)
-- Poll every 5 seconds and display reviews as they come in
-- Exit after 2 minutes of inactivity following review detection
-- OR timeout after 900 seconds of total monitoring
+When `monitor_pr_review.sh` is invoked:
 
-However, if a PR gets created but no reviews are submitted (e.g., PR is still being reviewed by bots), the agent blocks for the full 15 minutes.
+1. **First call (foreground)**:
+   - Checks `MONITOR_PR_REVIEW_BACKGROUNDED` environment variable
+   - If not set, re-execs itself in background with `nohup` and sets the marker variable
+   - Parent process returns immediately with PID information
+   - Returns to user's prompt
 
-## Workaround - Until Pull-Request Agent is Fixed
+2. **Background execution**:
+   - Child process continues with monitoring logic
+   - Output logged to `tests/tmp/pr_monitor_<PR_NUMBER>.log`
+   - Runs independently - no blocking
 
-### Option A: Manual Background Monitoring (Recommended)
+**Key Result**: No matter how the script is invoked (by agent, manually, or in scripts), it **always returns immediately** and runs in the background.
 
-After the pull-request agent creates your PR:
+## Usage
 
 ```bash
-# In a SEPARATE terminal (don't wait for this in same terminal)
-cd /Users/jake/dev/jsavin/Frontier
-./tools/monitor_pr_review_bg.sh <PR_NUMBER>
+# Start background monitor (returns immediately)
+./tools/monitor_pr_review.sh <PR_NUMBER>
 
-# Watch the log in your original terminal
+# Watch the output asynchronously
 tail -f tests/tmp/pr_monitor_<PR_NUMBER>.log
+
+# Kill if needed
+kill <PID>  # PID shown when monitor starts
 ```
 
-This returns immediately and runs monitoring in the background.
+## Why This is Deterministic
 
-### Option B: Kill Frozen Session
+The auto-background mechanism uses:
+- **Environment variable marker** (`MONITOR_PR_REVIEW_BACKGROUNDED`)
+- **`nohup` + process backgrounding** for true background execution
+- **Shell re-execution** to ensure child inherits marker and continues normally
 
-If your session freezes:
+This means:
+- ✅ No race conditions
+- ✅ Works with `pull-request` agent
+- ✅ Works with manual invocation
+- ✅ Works in scripts without explicit `&`
+- ✅ Impossible to accidentally block
 
-```bash
-# In another terminal
-pkill -f "monitor_pr_review.sh"
-# OR find specific process
-ps aux | grep monitor_pr_review
-kill -9 <PID>
-```
+## Removed
 
-## Recommended Feedback to Anthropic
-
-File issue at https://github.com/anthropics/claude-code/issues:
-
-**Title**: `pull-request agent blocks on PR monitoring - causes session freeze`
-
-**Description**:
-The pull-request agent invokes `monitor_pr_review.sh` in the foreground, causing session freeze for up to 15 minutes when monitoring for PR reviews. This is particularly problematic when creating multiple PRs in sequence.
-
-**Suggested Fix**:
-The agent should invoke the monitor script in background:
-```bash
-./tools/monitor_pr_review.sh <PR_NUMBER> &
-# Returns immediately instead of blocking
-```
-
----
-
-## Root Cause Analysis
-
-**File**: `tools/monitor_pr_review.sh` lines 131-139
-
-The exit logic requires either:
-1. Timeout after 900 seconds, OR
-2. Reviews detected + 2-minute cooldown
-
-If reviews never arrive, case 2 never triggers and it blocks for the full 15 minutes.
-
-A proper fix would require making the agent invoke the script non-blocking, which is outside the scope of this script.
+- `tools/monitor_pr_review_bg.sh` - No longer needed, consolidated into single canonical script
+- Previous workaround documentation - No longer applicable

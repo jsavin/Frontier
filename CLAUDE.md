@@ -37,11 +37,12 @@ python3 tools/export_tests_to_opml.py
 ./tools/install_git_hooks.sh
 
 # Create PR (after pushing branch)
-# 1. Use pull-request agent to create PR
-# 2. Then run background monitor in same terminal:
-./tools/monitor_pr_review_bg.sh <PR_NUMBER>
+# 1. Use pull-request agent to create PR, OR create manually with:
+gh pr create --title "..." --body "..." --base develop
+# 2. Start background monitor (auto-backgrounds itself - always non-blocking):
+./tools/monitor_pr_review.sh <PR_NUMBER>
 # 3. Watch with: tail -f tests/tmp/pr_monitor_<PR_NUMBER>.log
-# (CRITICAL: Never use ./tools/monitor_pr_review.sh directly - it blocks for 15 minutes)
+# (monitor_pr_review.sh ALWAYS runs in background, regardless of invocation method)
 ```
 
 **Test Output Directory Structure**:
@@ -205,38 +206,38 @@ When delegating to the pull-request agent:
 - ✅ Trace full call chains to verify global state reliability
 - ✅ Don't stop at surface-level fixes
 
-### Pull-Request Agent - Background Monitoring MANDATORY ⚠️⚠️⚠️
+### Pull-Request Agent - Auto-Backgrounding Monitor ✅
 
-**CRITICAL CONSTRAINT**: The pull-request agent invokes `monitor_pr_review.sh` in the foreground, causing session freeze for up to 15 minutes.
+**SOLUTION IMPLEMENTED**: `monitor_pr_review.sh` auto-backgrounds itself - it is ALWAYS non-blocking.
 
-**Problem**:
-- Agent runs monitor script without `&` (foreground, blocking)
-- Script waits up to 900 seconds for reviews if none arrive
-- Session becomes unresponsive - Ctrl-C doesn't work
-- Terminal must be force-killed
+**How It Works**:
+- If called from foreground → automatically re-execs itself in background and returns immediately
+- If already backgrounded → continues with monitoring logic
+- **Result**: No matter how it's invoked (by agent, manually, or script), always non-blocking
 
-**Solution - Manual Background Monitoring**:
+**Standard Workflow**:
 
-When using pull-request agent to create PRs:
-
-1. Let agent create the PR (it will eventually timeout/complete)
-2. **Immediately after**, in your SAME terminal, manually start background monitor:
+1. Create PR:
    ```bash
-   cd /Users/jake/dev/jsavin/Frontier
-   ./tools/monitor_pr_review_bg.sh <PR_NUMBER>
+   gh pr create --title "..." --body "..." --base develop
    ```
-3. Watch for reviews without blocking:
+
+2. Start background monitor (returns immediately):
+   ```bash
+   ./tools/monitor_pr_review.sh <PR_NUMBER>
+   ```
+
+3. Watch asynchronously (Ctrl-C to stop tail):
    ```bash
    tail -f tests/tmp/pr_monitor_<PR_NUMBER>.log
    ```
 
-**Why This Works**:
-- `monitor_pr_review_bg.sh` uses `nohup` and `&` to run in true background
-- Returns immediately - your terminal stays responsive
-- Logs output to file for monitoring
-- Can kill with `kill <PID>` if needed
+**Key Property**: The auto-background behavior makes it **impossible** to accidentally block, even if:
+- Agent calls the script
+- Script is called without explicit `&` or `nohup`
+- Called from any context
 
-**Full Documentation**: See `docs/PR_MONITOR_BLOCKING_ISSUE.md`
+**Deprecation Note**: `monitor_pr_review_bg.sh` has been removed - use `monitor_pr_review.sh` directly.
 
 ---
 
