@@ -27,6 +27,7 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
 
@@ -183,6 +184,15 @@ TEST(repeated_enable_disable) {
  * Main test runner
  */
 int main(void) {
+    const char *env = getenv("FRONTIER_THREAD_TEST_MODE");
+
+    /* Require environment variable to be set - tests expect test mode to work */
+    if (env == NULL || strcmp(env, "1") != 0) {
+        printf("ERROR: Tests require FRONTIER_THREAD_TEST_MODE=1 environment variable\n");
+        printf("Run with: FRONTIER_THREAD_TEST_MODE=1 ./tests/headless_thread_harness_tests\n");
+        return 1;
+    }
+
     printf("Thread Test Harness Unit Tests\n");
     printf("===============================\n\n");
 

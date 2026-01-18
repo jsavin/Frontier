@@ -46,7 +46,7 @@ static boolean ftable_initialized = false;
  * Current Status:
  * - File operations are single-threaded in current runtime
  * - CLI/headless mode has no concurrent file access
- * - ACCEPTABLE FOR NOW but IS A LAUNCH BLOCKER (CLAUDE.md sec "Global Mutable State - CRITICAL FOR LAUNCH")
+ * - IS A LAUNCH BLOCKER (CLAUDE.md: "Global Mutable State - CRITICAL FOR LAUNCH")
  *
  * REQUIRED FOR MULTI-THREADED FILE OPERATIONS:
  * See Issue #323: File portable: Add thread-safe FD table initialization

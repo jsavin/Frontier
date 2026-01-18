@@ -73,17 +73,18 @@ boolean thread_test_enable(void) {
         return false;
     }
 
-    if (thread_test_harness.enabled) {
-        log_debug(LOG_COMP_LANG, "thread.test.enable() - already enabled");
-        return true;
-    }
-
+    /* Always reset state defensively to prevent contamination from crashed tests */
+    boolean was_enabled = thread_test_harness.enabled;
     thread_test_harness.enabled = true;
-    thread_test_harness.virtual_ticks = 0;
+    thread_test_harness.virtual_ticks = 0;  /* Reset even if already enabled */
     thread_test_harness.freeze_system_time = true;
 
-    log_info(LOG_COMP_LANG,
-        "Thread test harness ENABLED - virtual ticks = 0, system time frozen");
+    if (was_enabled) {
+        log_debug(LOG_COMP_LANG, "thread.test.enable() - already enabled, reset state");
+    } else {
+        log_info(LOG_COMP_LANG,
+            "Thread test harness ENABLED - virtual ticks = 0, system time frozen");
+    }
 
     return true;
 }

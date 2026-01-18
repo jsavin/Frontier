@@ -305,6 +305,9 @@ static long allocate_thread_id_locked(void) {
     } else {
         /* Normal case: just increment */
         next_thread_id++;
+        if (next_thread_id >= LONG_MAX) {
+            next_thread_id = 1;
+        }
     }
 
     return candidate_id;
