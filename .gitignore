@@ -129,3 +129,4 @@ test_type.txt
 .claude/settings.local.json
 .claude/.DS_Store
 test_tmp/
+reports/*.opml
