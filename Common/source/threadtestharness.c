@@ -15,9 +15,9 @@
  */
 
 #include "threadtestharness.h"
+#include "logging.h"
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 
 /*
  * Test harness state - all runtime-only, not persisted
@@ -44,7 +44,7 @@ unsigned char thread_test_enable(void) {
     thread_test_harness.virtual_ticks = 0;
 
     /* Warning: visible in logs if accidentally enabled */
-    fprintf(stderr, "[WARN] THREAD TEST MODE ACTIVE - NOT FOR PRODUCTION USE\n");
+    log_warn(LOG_COMP_LANG, "THREAD TEST MODE ACTIVE - NOT FOR PRODUCTION USE");
 
     return 1;
 }

@@ -1,4 +1,4 @@
-# ADR-006: Deterministic Thread Testing Strategy for Frontier
+# ADR-010: Deterministic Thread Testing Strategy for Frontier
 
 **Date**: 2026-01-17
 **Status**: ACCEPTED (Phase 1 Foundation)
@@ -149,7 +149,7 @@ assert(system.test.threadTiming.wakeTime == 500)
    - Coverage of core thread operations
    - Foundation for Phase 2 determinism tests
 
-4. **`planning/architectural_decision_records/ADR-006-DETERMINISTIC_THREAD_TESTING.md`**
+4. **`planning/architectural_decision_records/ADR-010-DETERMINISTIC_THREAD_TESTING.md`**
    - This document
    - Strategic rationale
    - Implementation roadmap
