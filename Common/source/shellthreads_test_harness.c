@@ -53,7 +53,37 @@ static struct {
     boolean enabled;              /* Test mode active */
     uint32_t virtual_ticks;       /* Injected tick count */
     boolean freeze_system_time;   /* Block real gettickcount(), use virtual ticks */
-} thread_test_harness = {false, 0, false};
+    pthread_t test_thread;        /* Thread that enabled test mode (for assertions) */
+} thread_test_harness = {false, 0, false, 0};
+
+/*
+ * assert_single_threaded_test_mode - Verify test harness called from single thread
+ *
+ * THREAD-SAFETY: Test harness is NOT thread-safe. This assertion (in DEBUG builds)
+ * catches attempts to use the harness from multiple threads, preventing silent
+ * data corruption.
+ *
+ * See Issue #322: Thread Test Harness: Add mutex protection for race conditions
+ */
+static void assert_single_threaded_test_mode(void) {
+#ifdef DEBUG
+    if (thread_test_harness.enabled) {
+        pthread_t current = pthread_self();
+
+        /* First call to test function after enable: store thread ID */
+        if (thread_test_harness.test_thread == 0) {
+            thread_test_harness.test_thread = current;
+        }
+        /* Verify still same thread */
+        else if (!pthread_equal(current, thread_test_harness.test_thread)) {
+            log_error(LOG_COMP_LANG,
+                "FATAL: Thread test harness accessed from multiple threads! "
+                "See Issue #322 for mutex protection implementation.");
+            assert(false && "Thread test harness is single-threaded only");
+        }
+    }
+#endif
+}
 
 
 /*
@@ -65,6 +95,8 @@ static struct {
  * Returns: true if test mode activated, false otherwise
  */
 boolean thread_test_enable(void) {
+    assert_single_threaded_test_mode();
+
     const char *env = getenv("FRONTIER_THREAD_TEST_MODE");
 
     if (env == NULL || strcmp(env, "1") != 0) {
@@ -98,6 +130,8 @@ boolean thread_test_enable(void) {
  * Returns: true if test mode was active and is now disabled, false otherwise
  */
 boolean thread_test_disable(void) {
+    assert_single_threaded_test_mode();
+
     if (!thread_test_harness.enabled) {
         return false;
     }
@@ -120,6 +154,8 @@ boolean thread_test_disable(void) {
  * Returns: true if test mode enabled and ticks set, false otherwise
  */
 boolean thread_test_set_ticks(uint32_t ticks) {
+    assert_single_threaded_test_mode();
+
     if (!thread_test_harness.enabled) {
         return false;
     }
@@ -138,6 +174,8 @@ boolean thread_test_set_ticks(uint32_t ticks) {
  * Returns: Current virtual ticks, or 0 if test mode not enabled
  */
 uint32_t thread_test_get_ticks(void) {
+    assert_single_threaded_test_mode();
+
     if (!thread_test_harness.enabled) {
         return 0;
     }
@@ -155,6 +193,8 @@ uint32_t thread_test_get_ticks(void) {
  * Returns: true if test mode enabled and time advanced, false otherwise
  */
 boolean thread_test_advance(uint32_t delta) {
+    assert_single_threaded_test_mode();
+
     if (!thread_test_harness.enabled) {
         return false;
     }
@@ -179,6 +219,8 @@ boolean thread_test_advance(uint32_t delta) {
  * Returns: true if test mode enabled and processing executed, false otherwise
  */
 boolean thread_test_process_once(void) {
+    assert_single_threaded_test_mode();
+
     if (!thread_test_harness.enabled) {
         return false;
     }
@@ -203,6 +245,8 @@ boolean thread_test_process_once(void) {
  * Returns: true if test mode enabled and system time frozen
  */
 boolean thread_test_is_enabled(void) {
+    assert_single_threaded_test_mode();
+
     return (thread_test_harness.enabled && thread_test_harness.freeze_system_time);
 }
 
@@ -216,5 +260,7 @@ boolean thread_test_is_enabled(void) {
  * Returns: Current virtual ticks (only valid when test mode enabled)
  */
 uint32_t thread_test_current_ticks(void) {
+    assert_single_threaded_test_mode();
+
     return thread_test_harness.virtual_ticks;
 }
