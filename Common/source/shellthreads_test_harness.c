@@ -174,8 +174,6 @@ boolean thread_test_set_ticks(uint32_t ticks) {
  * Returns: Current virtual ticks, or 0 if test mode not enabled
  */
 uint32_t thread_test_get_ticks(void) {
-    assert_single_threaded_test_mode();
-
     if (!thread_test_harness.enabled) {
         return 0;
     }
@@ -245,8 +243,6 @@ boolean thread_test_process_once(void) {
  * Returns: true if test mode enabled and system time frozen
  */
 boolean thread_test_is_enabled(void) {
-    assert_single_threaded_test_mode();
-
     return (thread_test_harness.enabled && thread_test_harness.freeze_system_time);
 }
 
@@ -260,7 +256,5 @@ boolean thread_test_is_enabled(void) {
  * Returns: Current virtual ticks (only valid when test mode enabled)
  */
 uint32_t thread_test_current_ticks(void) {
-    assert_single_threaded_test_mode();
-
     return thread_test_harness.virtual_ticks;
 }

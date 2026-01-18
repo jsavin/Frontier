@@ -258,6 +258,13 @@ static long allocate_thread_id_locked(void) {
     int i;
     boolean id_in_use;
 
+#ifdef DEBUG
+    /* Verify caller holds registry_mutex (defensive programming) */
+    int lock_status = pthread_mutex_trylock(&registry_mutex);
+    assert(lock_status == EBUSY && "allocate_thread_id_locked requires registry_mutex to be held by caller");
+    /* We don't actually want to unlock - trylock would have failed if locked, so this is just an assertion */
+#endif
+
     candidate_id = next_thread_id;
 
     /* CRITICAL: After overflow, must skip IDs already in use to prevent collision.

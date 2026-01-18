@@ -181,6 +181,57 @@ TEST(repeated_enable_disable) {
 }
 
 /*
+ * Test 6: TickCount() integration - verify virtual time propagates to gettickcount()
+ */
+extern UInt32 TickCount(void);  /* Forward declare for integration test */
+
+TEST(tickcount_integration) {
+    boolean result;
+    uint32_t virtual_ticks;
+    UInt32 reported_ticks;
+
+    /* Verify disabled state - TickCount returns real time (non-deterministic) */
+    thread_test_disable();
+    UInt32 initial_real_ticks = TickCount();
+    ASSERT_TRUE(initial_real_ticks > 0);  /* Real time should be > 0 */
+
+    /* Enable test mode and set specific virtual time */
+    result = thread_test_enable();
+    ASSERT_TRUE(result);
+
+    result = thread_test_set_ticks(1000);
+    ASSERT_TRUE(result);
+
+    /* Verify TickCount() returns virtual ticks */
+    virtual_ticks = thread_test_get_ticks();
+    ASSERT_EQ(virtual_ticks, 1000U);
+
+    reported_ticks = TickCount();
+    ASSERT_EQ(reported_ticks, 1000U);
+
+    /* Advance virtual time and verify propagation */
+    result = thread_test_advance(500);
+    ASSERT_TRUE(result);
+
+    virtual_ticks = thread_test_get_ticks();
+    ASSERT_EQ(virtual_ticks, 1500U);
+
+    reported_ticks = TickCount();
+    ASSERT_EQ(reported_ticks, 1500U);
+
+    /* Disable and verify TickCount returns real time again */
+    result = thread_test_disable();
+    ASSERT_TRUE(result);
+
+    reported_ticks = TickCount();
+    /* Real time should be >= initial time (only comparing relative values) */
+    ASSERT_TRUE(reported_ticks >= initial_real_ticks);
+
+    /* Most likely NOT equal to our virtual ticks anymore */
+    ASSERT_TRUE(reported_ticks != 1500U);
+}
+
+/*
  * Main test runner
  */
 int main(void) {
@@ -201,6 +252,7 @@ int main(void) {
     RUN_TEST(disabled_operations_fail);
     RUN_TEST(large_tick_values);
     RUN_TEST(repeated_enable_disable);
+    RUN_TEST(tickcount_integration);
 
     printf("\n");
     printf("Results: %d passed, %d failed\n", tests_passed, tests_failed);

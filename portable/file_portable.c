@@ -165,6 +165,10 @@ boolean openfile(const ptrfilespec fs, hdlfilenum *pfnum, boolean flreadonly) {
     strncpy(slot->path, path, sizeof slot->path - 1);
     slot->path[sizeof slot->path - 1] = '\0';
     *pfnum = fnum;
+
+    log_trace(LOG_COMP_FILE, "openfile fnum=%d path=%s mode=%s flreadonly=%d",
+              (int)fnum, path, mode, (int)flreadonly);
+
     return true;
 }
 
@@ -190,6 +194,10 @@ boolean opennewfile(ptrfilespec fs, OSType creator, OSType filetype, hdlfilenum 
     slot->path[sizeof slot->path - 1] = '\0';
     path_to_fsname(path, &fs->name);
     *pfnum = fnum;
+
+    log_trace(LOG_COMP_FILE, "opennewfile fnum=%d path=%s creator/filetype ignored",
+              (int)fnum, path);
+
     return true;
 }
 
@@ -200,6 +208,9 @@ boolean closefile(hdlfilenum fnum) {
     fclose(slot->fp);
     slot->fp = NULL;
     slot->path[0] = '\0';
+
+    log_trace(LOG_COMP_FILE, "closefile fnum=%d", (int)fnum);
+
     return true;
 }
 
