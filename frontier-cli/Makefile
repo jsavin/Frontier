@@ -36,7 +36,7 @@ TESTSDIR = ../tests
 # Include shared headless verb file list
 include $(TESTSDIR)/headless_verbs.mk
 
-INCLUDES = -I$(HEADERDIR) -I$(SYSTEMHEADERDIR) -I$(PORTABLEDIR) -I../build_Xcode_modern -I../generated
+INCLUDES = -I$(HEADERDIR) -I$(SYSTEMHEADERDIR) -I$(PORTABLEDIR) -I../generated
 
 # Paige integration (WPText engine)
 THIRDPARTYDIR = ../third_party

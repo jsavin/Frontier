@@ -48,7 +48,6 @@ GENERATED_STRINGS = $(STRINGS_C) $(STRINGS_H) $(STRINGS_MANIFEST)
 FRONTIER_CLI_DIR = ../frontier-cli
 SYSTEMHEADERDIR = ../Common/SystemHeaders
 HEADERDIR = ../Common/headers
-MODERNHEADERDIR = ../build_Xcode_modern
 FRAMEWORKS = -framework CoreFoundation -framework Carbon
 
 # Paige integration (WPText engine)
@@ -383,7 +382,7 @@ test_64bit_structures: components/test_64bit_structures.c $(TEST_FRAMEWORK) $(FR
 	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable $^ -o $@ $(LINK_LIBS)
 
 test_dbnew: components/test_dbnew.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES)
-	$(CC) $(CFLAGS) -I$(SYSTEMHEADERDIR) -I../Common/SystemHeaders -I$(HEADERDIR) -I$(MODERNHEADERDIR) -I../portable $^ -o $@ $(LINK_LIBS) $(FRAMEWORKS)
+	$(CC) $(CFLAGS) -I$(SYSTEMHEADERDIR) -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable $^ -o $@ $(LINK_LIBS) $(FRAMEWORKS)
 
 paige_text_tests: components/paige_text_tests.c $(TEST_FRAMEWORK) components/macromantoutf8_stub.c components/newclearhandle_stub.c ../Common/source/portable_handles.c ../portable/classic_handle.c ../portable/paige_text_extractor.c ../Common/source/logging.c
 	$(CC) $(CFLAGS) -I../Common/headers -I../portable components/paige_text_tests.c framework/test_framework.c components/macromantoutf8_stub.c components/newclearhandle_stub.c ../Common/source/portable_handles.c ../portable/classic_handle.c ../portable/paige_text_extractor.c ../Common/source/logging.c -DFRONTIER_PORTABLE -o $@ $(LDFLAGS)
