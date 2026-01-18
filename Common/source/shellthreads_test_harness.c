@@ -139,6 +139,7 @@ boolean thread_test_disable(void) {
     thread_test_harness.enabled = false;
     thread_test_harness.freeze_system_time = false;
     thread_test_harness.virtual_ticks = 0;  /* Reset state for test isolation */
+    thread_test_harness.test_thread = 0;    /* Reset for next test cycle */
 
     log_info(LOG_COMP_LANG, "Thread test harness DISABLED - restored to system time");
 
@@ -200,6 +201,10 @@ boolean thread_test_advance(uint32_t delta) {
     uint32_t old_ticks = thread_test_harness.virtual_ticks;
     thread_test_harness.virtual_ticks += delta;
 
+    /* NOTE: Wraparound is intentional behavior - virtual ticks use uint32_t arithmetic.
+     * Tests can rely on this wraparound to verify timeout handling across tick boundaries.
+     * When advancing near UINT32_MAX, the result naturally wraps back to 0 and continues.
+     */
     log_debug(LOG_COMP_LANG,
         "thread.test.advance(%u) - virtual time %u -> %u",
         delta, old_ticks, thread_test_harness.virtual_ticks);

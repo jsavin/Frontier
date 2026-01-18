@@ -257,6 +257,7 @@ static long allocate_thread_id_locked(void) {
     long candidate_id;
     int i;
     boolean id_in_use;
+    boolean need_collision_check = false;
 
 #ifdef DEBUG
     /* Verify caller holds registry_mutex (defensive programming) */
@@ -267,14 +268,39 @@ static long allocate_thread_id_locked(void) {
 
     candidate_id = next_thread_id;
 
-    /* CRITICAL: After overflow, must skip IDs already in use to prevent collision.
-     * Scenario: System runs for months, wraps from LONG_MAX→1. If thread with ID=1
-     * from boot cycle still exists, collision would occur. Search for unused ID. */
+    /* CRITICAL: After wraparound, must search for an unused ID to prevent collision.
+     * Two scenarios where wraparound can occur:
+     * 1. next_thread_id == LONG_MAX at entry (explicit wraparound)
+     * 2. next_thread_id increments to LONG_MAX and wraps to 1 (crossing boundary)
+     *
+     * Scenario: System runs for months. Thread with ID=1 from boot cycle still exists.
+     * Without collision checking, new ID allocation would reuse ID=1 and cause use-after-free.
+     *
+     * Solution: After any wraparound that lands on ID=1, check if it's in use.
+     * If in use, run the collision avoidance search to find an unused ID. */
+
     if (next_thread_id == LONG_MAX) {
-        /* We've wrapped - must find an ID not in use.
+        /* Entry at boundary: about to wrap on next increment */
+        need_collision_check = true;
+    } else {
+        /* Normal case: just increment */
+        next_thread_id++;
+        if (next_thread_id >= LONG_MAX) {
+            /* Crossed boundary: wrapped from LONG_MAX to 1 */
+            next_thread_id = 1;
+            need_collision_check = true;
+        }
+    }
+
+    /* If we're at or near a wraparound point, verify the candidate ID isn't already in use.
+     * This protects against ID collisions when long-lived threads from earlier cycles overlap
+     * with newly allocated IDs from a wrapped counter. */
+    if (need_collision_check) {
+        int attempts = 0;
+
+        /* Search for an unused ID, starting from candidate_id.
          * Guard against infinite loop with iteration counter. Should never exceed MAX_THREADS
          * iterations since we can have at most MAX_THREADS threads alive at once. */
-        int attempts = 0;
         for (;;) {
             if (++attempts > MAX_THREADS) {
                 /* All slots exhausted - shouldn't happen in normal operation */
@@ -295,7 +321,7 @@ static long allocate_thread_id_locked(void) {
             }
 
             if (!id_in_use) {
-                /* Found an unused ID */
+                /* Found an unused ID - update next_thread_id to prepare for next allocation */
                 next_thread_id = candidate_id + 1;
                 if (next_thread_id >= LONG_MAX) {
                     next_thread_id = 1;
@@ -308,12 +334,6 @@ static long allocate_thread_id_locked(void) {
             if (candidate_id >= LONG_MAX) {
                 candidate_id = 1;
             }
-        }
-    } else {
-        /* Normal case: just increment */
-        next_thread_id++;
-        if (next_thread_id >= LONG_MAX) {
-            next_thread_id = 1;
         }
     }
 

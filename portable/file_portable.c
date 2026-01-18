@@ -166,7 +166,7 @@ boolean openfile(const ptrfilespec fs, hdlfilenum *pfnum, boolean flreadonly) {
     slot->path[sizeof slot->path - 1] = '\0';
     *pfnum = fnum;
 
-    log_trace(LOG_COMP_FILE, "openfile fnum=%d path=%s mode=%s flreadonly=%d",
+    log_trace(LOG_COMP_GENERAL, "openfile fnum=%d path=%s mode=%s flreadonly=%d",
               (int)fnum, path, mode, (int)flreadonly);
 
     return true;
@@ -195,7 +195,7 @@ boolean opennewfile(ptrfilespec fs, OSType creator, OSType filetype, hdlfilenum 
     path_to_fsname(path, &fs->name);
     *pfnum = fnum;
 
-    log_trace(LOG_COMP_FILE, "opennewfile fnum=%d path=%s creator/filetype ignored",
+    log_trace(LOG_COMP_GENERAL, "opennewfile fnum=%d path=%s creator/filetype ignored",
               (int)fnum, path);
 
     return true;
@@ -209,7 +209,7 @@ boolean closefile(hdlfilenum fnum) {
     slot->fp = NULL;
     slot->path[0] = '\0';
 
-    log_trace(LOG_COMP_FILE, "closefile fnum=%d", (int)fnum);
+    log_trace(LOG_COMP_GENERAL, "closefile fnum=%d", (int)fnum);
 
     return true;
 }
