@@ -41,13 +41,18 @@ static boolean ftable_initialized = false;
  *
  * THREAD SAFETY: This function is NOT thread-safe. Multiple threads calling
  * alloc_fnum() concurrently before initialization completes could race on
- * initialization. This is acceptable because:
+ * initialization.
+ *
+ * Current Status:
  * - File operations are single-threaded in current runtime
  * - CLI/headless mode has no concurrent file access
+ * - ACCEPTABLE FOR NOW but IS A LAUNCH BLOCKER (CLAUDE.md sec "Global Mutable State - CRITICAL FOR LAUNCH")
  *
- * If thread-safe file operations are needed in future, add pthread_once():
+ * REQUIRED FOR MULTI-THREADED FILE OPERATIONS:
+ * See Issue #323: File portable: Add thread-safe FD table initialization
+ * Must add pthread_once() before file operations are called from multiple threads:
  *   static pthread_once_t once_control = PTHREAD_ONCE_INIT;
- *   pthread_once(&once_control, ensure_ftable_initialized_impl);
+ *   pthread_once(&once_control, ensure_ftable_initialized);
  */
 static void ensure_ftable_initialized(void) {
     if (ftable_initialized)

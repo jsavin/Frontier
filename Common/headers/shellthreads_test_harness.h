@@ -51,9 +51,12 @@
  * - Provides control APIs for UserTalk test scripts
  * - Minimal changes to production code (single interception point)
  *
- * THREAD-SAFETY:
- * - Uses existing process.c locking mechanisms for state access
- * - Safe to call from single UserTalk thread (test scripts are single-threaded)
+ * THREAD-SAFETY: NOT THREAD-SAFE
+ * - Current implementation has no mutex protection on shared state
+ * - Safe to call only from single UserTalk test thread (test scripts are single-threaded)
+ * - Multiple concurrent calls will experience data races
+ * - See Issue #322: Thread Test Harness: Add mutex protection for race conditions
+ * - FUTURE: Add pthread_mutex protection for multi-threaded test scenarios
  */
 
 /* Test harness control - returns false if test mode not enabled or operation failed */

@@ -159,7 +159,7 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
             /* @DEFERRED sys.appisrunning(name) - returns true if process is running
              * Current implementation uses pgrep -x which has reliability issues on macOS.
              * Needs more robust process matching strategy.
-             * TODO: Create tracking issue for P2 implementation (proper cross-platform process detection)
+             * Issue #319: P2 - Implement robust sys.appisrunning() with cross-platform process detection
              * SECURITY: Shell-escapes process name to prevent command injection
              */
             bigstring appname;
@@ -298,7 +298,7 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
              * Current implementation uses 'which' command which only finds binaries in PATH.
              * Does not work for processes launched via absolute paths or external tools.
              * Needs platform-specific implementation (e.g., proc_pidpath on macOS, /proc on Linux).
-             * TODO: Create tracking issue for P2 implementation (proper cross-platform process path detection)
+             * Issue #320: P2 - Implement robust sys.getapppath() with platform-specific process path detection
              * SECURITY: Shell-escapes process name to prevent command injection
              */
             bigstring appname;
