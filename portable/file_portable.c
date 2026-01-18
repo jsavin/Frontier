@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <limits.h>
+#include <pthread.h>
 #ifdef __APPLE__
 #include <sys/attr.h>
 #endif
@@ -37,28 +38,27 @@ static fnum_entry ftable[PORTABLE_MAX_FNUM];
 static boolean ftable_initialized = false;
 
 /*
- * ensure_ftable_initialized - Initialize file descriptor table on first use
- *
- * THREAD SAFETY: This function is NOT thread-safe. Multiple threads calling
- * alloc_fnum() concurrently before initialization completes could race on
- * initialization.
- *
- * Current Status:
- * - File operations are single-threaded in current runtime
- * - CLI/headless mode has no concurrent file access
- * - IS A LAUNCH BLOCKER (CLAUDE.md: "Global Mutable State - CRITICAL FOR LAUNCH")
- *
- * REQUIRED FOR MULTI-THREADED FILE OPERATIONS:
- * See Issue #323: File portable: Add thread-safe FD table initialization
- * Must add pthread_once() before file operations are called from multiple threads:
- *   static pthread_once_t once_control = PTHREAD_ONCE_INIT;
- *   pthread_once(&once_control, ensure_ftable_initialized);
+ * ftable_init_impl - Internal initialization function for pthread_once
+ * Guarantees single-invocation initialization even under concurrent access.
  */
-static void ensure_ftable_initialized(void) {
-    if (ftable_initialized)
-        return;
+static void ftable_init_impl(void) {
     memset(ftable, 0, sizeof(ftable));
     ftable_initialized = true;
+}
+
+/*
+ * ensure_ftable_initialized - Initialize file descriptor table on first use
+ *
+ * Uses pthread_once() to guarantee thread-safe, single-invocation initialization.
+ * Even if multiple threads call this concurrently, the table is initialized exactly once.
+ *
+ * Addresses launch blocker (CLAUDE.md: "Global Mutable State - CRITICAL FOR LAUNCH").
+ * Issue #323 originally tracked this; now implemented.
+ */
+static pthread_once_t ftable_once = PTHREAD_ONCE_INIT;
+
+static void ensure_ftable_initialized(void) {
+    pthread_once(&ftable_once, ftable_init_impl);
 }
 
 static hdlfilenum alloc_fnum(void) {
