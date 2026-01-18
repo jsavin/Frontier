@@ -156,8 +156,10 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
 
             return setbooleanvalue(false, vreturned);
         case sysv_appisrunning: {
-            /* @IMPLEMENTED sys.appisrunning(name) - returns true if process is running
-             * Uses pgrep -x to check for exact process name match
+            /* @DEFERRED sys.appisrunning(name) - returns true if process is running
+             * Current implementation uses pgrep -x which has reliability issues on macOS.
+             * Needs more robust process matching strategy.
+             * Issue: #XXX (P2 - implement proper cross-platform process detection)
              * SECURITY: Shell-escapes process name to prevent command injection
              */
             bigstring appname;
@@ -292,10 +294,11 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
             return setstringvalue(BIGSTRING("\p"), vreturned);
             }
         case sysv_getapppath: {
-            /* @IMPLEMENTED sys.getapppath(name) - returns full path to executable
-             * Strategy:
-             * 1. Use 'which' command to find executable in PATH
-             * 2. If not found, return empty string
+            /* @DEFERRED sys.getapppath(name) - returns full path to executable
+             * Current implementation uses 'which' command which only finds binaries in PATH.
+             * Does not work for processes launched via absolute paths or external tools.
+             * Needs platform-specific implementation (e.g., proc_pidpath on macOS, /proc on Linux).
+             * Issue: #XXX (P2 - implement proper cross-platform process path detection)
              * SECURITY: Shell-escapes process name to prevent command injection
              */
             bigstring appname;
