@@ -275,9 +275,12 @@ static long allocate_thread_id_locked(void) {
      * still exists. Without collision checking, new ID allocation would reuse ID=1
      * and cause use-after-free.
      *
-     * Boundary policy: LONG_MAX is treated as a reserved sentinel value.
-     * We never allocate it; instead, we wrap to 1. This avoids edge cases with
-     * using the maximum signed value as a normal thread ID.
+     * Boundary policy: LONG_MAX is treated as a reserved sentinel value that is
+     * NEVER allocated as a thread ID. Valid thread IDs are in range [1, LONG_MAX-1].
+     * When next_thread_id reaches LONG_MAX, we immediately wrap to 1.
+     *
+     * This avoids edge cases with using the maximum signed value as a normal thread ID,
+     * and provides a clear sentinel value for any future signaling requirements.
      *
      * Check BEFORE incrementing to detect wraparound safely. Incrementing past
      * LONG_MAX is undefined behavior in C, so we check and wrap explicitly. */

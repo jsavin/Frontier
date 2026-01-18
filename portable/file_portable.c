@@ -26,6 +26,17 @@
  * Portable/headless file layer that backs the classic Frontier file API with
  * stdio. This is sufficient for CLI/tests that use FRONTIER_HEADLESS or
  * FRONTIER_PORTABLE builds.
+ *
+ * THREADING MODEL:
+ * - Global file descriptor table protected by ftable_mutex
+ * - Reference counting pattern prevents use-after-free during concurrent I/O
+ * - closefile() returns false if file has active references (refcount > 0)
+ * - Caller responsible for synchronization - must not close file with active I/O
+ * - Edge case: If thread crashes while holding reference, file stays open
+ *   (acceptable for process lifetime; cleanup required only at shutdown)
+ *
+ * LOGGING: Uses LOG_COMP_DB since file layer is part of database persistence.
+ * No LOG_COMP_FILE exists - file operations are semantically database operations.
  */
 
 typedef struct {
