@@ -3,9 +3,10 @@
 # Foundation tests for thread verb functionality.
 # Validates basic thread operations: creation, execution, sleep, kill, error handling.
 #
-# These tests form the basis for deterministic testing infrastructure.
-# Currently validates thread behavior through observable side effects.
-# Future: Will integrate with tick-control harness for true determinism.
+# These tests validate thread behavior through observable side effects using wall-clock timing.
+# Phase 2 will integrate tick-control harness for controlled timing.
+#
+# Timeouts set to 3s (tests complete in ~1s, margin for CI stability)
 #
 # Run with: python3 runner.py --filter thread_verbs
 
@@ -18,10 +19,10 @@ setup: |
   new(tableType, @system.temp.threadTiming)
 
 cleanup: |
-  # Clean up test data
-  delete(@system.temp.threadData)
-  delete(@system.temp.threadFlags)
-  delete(@system.temp.threadTiming)
+  # Clean up test data (defensive - handles cases where setup fails midway)
+  if defined(@system.temp.threadData) { delete(@system.temp.threadData) }
+  if defined(@system.temp.threadFlags) { delete(@system.temp.threadFlags) }
+  if defined(@system.temp.threadTiming) { delete(@system.temp.threadTiming) }
 
 tests:
   # Test 1: Basic thread creation and execution
@@ -38,7 +39,7 @@ tests:
       return system.temp.threadFlags.basicThreadRan
     expected_result: true
     expected_success: true
-    timeout: 10
+    timeout: 3
 
   # Test 2: Thread with return value via shared storage
   - name: "thread.evaluate - return value from thread"
@@ -55,7 +56,7 @@ tests:
              system.temp.threadData.message == "computation complete"
     expected_result: true
     expected_success: true
-    timeout: 10
+    timeout: 3
 
   # Test 3: Thread sleep and wake
   - name: "thread.sleepFor - thread sleeps and wakes"
@@ -71,7 +72,7 @@ tests:
       return system.temp.threadFlags.sleepCompleted
     expected_result: true
     expected_success: true
-    timeout: 10
+    timeout: 3
 
   # Test 4: Thread wake - manually wake sleeping thread
   - name: "thread.wake - wake sleeping thread"
@@ -92,7 +93,7 @@ tests:
       return system.temp.threadFlags.wokByWake
     expected_result: true
     expected_success: true
-    timeout: 10
+    timeout: 3
 
   # Test 5: Thread kill - terminate thread
   - name: "thread.kill - terminate thread"
@@ -114,7 +115,7 @@ tests:
              not (system.temp.threadFlags.threadCompletedAfterKill)
     expected_result: true
     expected_success: true
-    timeout: 10
+    timeout: 3
 
   # Test 6: Error handling in thread
   - name: "thread.evaluate - script error in thread is handled gracefully"
@@ -134,7 +135,7 @@ tests:
              system.temp.threadFlags.systemStillWorks
     expected_result: true
     expected_success: true
-    timeout: 10
+    timeout: 3
 
   # Test 7: Multiple threads independent operation
   - name: "thread.evaluate - multiple threads run independently"
@@ -151,7 +152,7 @@ tests:
              system.temp.threadFlags.thread2Ran
     expected_result: true
     expected_success: true
-    timeout: 10
+    timeout: 3
 
   # Test 8: Thread accessing ODB
   - name: "thread.evaluate - safely modify ODB during execution"
@@ -168,7 +169,7 @@ tests:
              system.temp.threadData.innerTable.c == 30
     expected_result: true
     expected_success: true
-    timeout: 10
+    timeout: 3
 
   # Test 9: Thread count reporting
   - name: "thread.getCount - report active thread count"
@@ -187,7 +188,7 @@ tests:
       return system.temp.threadData.countDuringThread >= 1 and countAfter >= 0
     expected_result: true
     expected_success: true
-    timeout: 10
+    timeout: 3
 
   # Test 10: Thread getCurrentID reports valid ID
   - name: "thread.getCurrentID - get current thread ID"
@@ -204,4 +205,4 @@ tests:
       return mainThreadID > 0 and system.temp.threadData.threadIDInThread > 0
     expected_result: true
     expected_success: true
-    timeout: 10
+    timeout: 3

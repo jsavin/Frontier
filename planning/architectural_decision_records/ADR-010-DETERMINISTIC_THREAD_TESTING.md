@@ -134,20 +134,20 @@ assert(system.test.threadTiming.wakeTime == 500)
 
 ### Files Created
 
-1. **`Common/headers/threadtestharness.h`**
-   - Public API declarations
+1. **`Common/headers/shellthreads_test_harness.h`**
+   - Public API declarations (~78 lines)
    - Function documentation
-   - Safety notes
+   - Thread-safety notes
 
-2. **`Common/source/threadtestharness.c`**
-   - Implementation (~130 lines)
+2. **`Common/source/shellthreads_test_harness.c`**
+   - Implementation (~330 lines with mutex protection)
    - Environment variable gating
-   - State management
+   - State management with pthread_mutex
 
-3. **`tests/integration/test_cases/thread_verbs_deterministic.yaml`**
-   - 10 integration tests
+3. **`tests/integration/test_cases/thread_verbs_foundation.yaml`**
+   - 10 integration tests (Phase 1 foundation)
    - Coverage of core thread operations
-   - Foundation for Phase 2 determinism tests
+   - Uses wall-clock timing (Phase 2 will add controlled timing)
 
 4. **`planning/architectural_decision_records/ADR-010-DETERMINISTIC_THREAD_TESTING.md`**
    - This document
