@@ -14,7 +14,7 @@ UserTalk scripts are converted to outline format by:
 import yaml
 import sys
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from xml.etree.ElementTree import Element, SubElement, ElementTree, tostring
 from xml.dom import minidom
@@ -26,6 +26,60 @@ def prettify_category_name(filename):
     # Convert underscores to spaces and title case
     pretty = base.replace('_', ' ').title()
     return f"{pretty} ({base})"
+
+
+def extract_category_key(filename):
+    """
+    Extract category key from test filename.
+
+    Args:
+        filename: Test YAML filename (e.g., 'db_verbs.yaml')
+
+    Returns:
+        Category key (e.g., 'db_verbs')
+    """
+    return filename.replace('.yaml', '')
+
+
+def group_tests_by_category(test_dir):
+    """
+    Group test files by category.
+
+    Args:
+        test_dir: Path to tests/integration/test_cases/
+
+    Returns:
+        dict: {category_key: {
+            'filename': Path,
+            'pretty_name': str,
+            'tests': list,
+            'test_count': int
+        }}
+    """
+    test_files = sorted(Path(test_dir).glob('*.yaml'))
+    categories = {}
+
+    for test_file in test_files:
+        category_key = extract_category_key(test_file.name)
+        pretty_name = prettify_category_name(test_file.name)
+
+        # Load YAML
+        with open(test_file, 'r') as f:
+            data = yaml.safe_load(f)
+
+        if not data or 'tests' not in data:
+            print(f"Warning: No tests found in {test_file}", file=sys.stderr)
+            continue
+
+        tests = data['tests']
+        categories[category_key] = {
+            'filename': test_file,
+            'pretty_name': pretty_name,
+            'tests': tests,
+            'test_count': len(tests)
+        }
+
+    return categories
 
 
 def sanitize_xml_text(text):
@@ -137,6 +191,187 @@ def add_outline_elements(parent_elem, items):
             add_outline_elements(outline, item['children'])
 
 
+def generate_category_opml(category_key, category_data, output_file):
+    """
+    Generate standalone OPML for a single test category.
+
+    Args:
+        category_key: Base category name (e.g., 'db_verbs')
+        category_data: Dict with 'pretty_name', 'tests', etc.
+        output_file: Path to output OPML file
+    """
+    # Create OPML structure
+    opml = Element('opml')
+    opml.set('version', '2.0')
+
+    # Head section
+    head = SubElement(opml, 'head')
+    title = SubElement(head, 'title')
+    title.text = category_data['pretty_name']
+    date_created = SubElement(head, 'dateCreated')
+    date_created.text = datetime.now(timezone.utc).strftime('%a, %d %b %Y %H:%M:%S GMT')
+
+    # Body section
+    body = SubElement(opml, 'body')
+
+    # Create category outline
+    category_outline = SubElement(body, 'outline')
+    category_outline.set('text', sanitize_xml_text(category_data['pretty_name']))
+
+    # Process each test in category
+    for test in category_data['tests']:
+        # Build test name with description
+        test_name = test.get('name', 'Unnamed Test')
+        test_desc = test.get('description', '')
+        if test_desc:
+            test_text = f"{test_name} - {test_desc}"
+        else:
+            test_text = test_name
+
+        test_outline = SubElement(category_outline, 'outline')
+        test_outline.set('text', sanitize_xml_text(test_text))
+
+        # Metadata section (only non-default fields)
+        metadata_fields = []
+        for key, value in test.items():
+            if key in ['name', 'description', 'script']:
+                continue  # Skip these, handled separately
+
+            # Skip default values
+            if key == 'expected_success' and value is True:
+                continue
+            if key == 'timeout' and value == 10:
+                continue
+
+            metadata_fields.append((key, value))
+
+        if metadata_fields:
+            metadata_outline = SubElement(test_outline, 'outline')
+            metadata_outline.set('text', 'Metadata')
+
+            for key, value in metadata_fields:
+                field_outline = SubElement(metadata_outline, 'outline')
+                field_outline.set('text', sanitize_xml_text(f"{key}: {value}"))
+
+        # Script section
+        script_text = test.get('script', '')
+        if script_text:
+            script_outline = SubElement(test_outline, 'outline')
+            script_outline.set('text', 'Script')
+
+            # Parse script into outline format
+            parsed_lines = parse_script_to_outline(script_text)
+            hierarchy = build_outline_hierarchy(parsed_lines)
+            add_outline_elements(script_outline, hierarchy)
+
+    # Write OPML to file with pretty formatting
+    tree = ElementTree(opml)
+    xml_str = minidom.parseString(
+        tostring(opml, encoding='unicode')
+    ).toprettyxml(indent='  ')
+
+    # Remove extra blank lines that minidom adds
+    xml_lines = [line for line in xml_str.split('\n') if line.strip()]
+    xml_str = '\n'.join(xml_lines) + '\n'
+
+    with open(output_file, 'w') as f:
+        f.write(xml_str)
+
+
+def generate_manifest_opml(categories, output_file):
+    """
+    Generate top-level manifest OPML with transclusion links.
+
+    Args:
+        categories: Dict mapping category_key -> category_data
+        output_file: Path to output manifest OPML file
+    """
+    # Create OPML structure
+    opml = Element('opml')
+    opml.set('version', '2.0')
+
+    # Head section
+    head = SubElement(opml, 'head')
+    title = SubElement(head, 'title')
+    title.text = 'Frontier Integration Test Categories'
+    date_created = SubElement(head, 'dateCreated')
+    date_created.text = datetime.now(timezone.utc).strftime('%a, %d %b %Y %H:%M:%S GMT')
+
+    # Body section
+    body = SubElement(opml, 'body')
+
+    # Create container outline
+    container = SubElement(body, 'outline')
+    container.set('text', 'Frontier Integration Test Categories')
+
+    # Add category links (sorted by key for deterministic ordering)
+    for category_key in sorted(categories.keys()):
+        category_data = categories[category_key]
+
+        # Create outline element with transclusion link
+        category_outline = SubElement(container, 'outline')
+        category_outline.set('text', sanitize_xml_text(category_data['pretty_name']))
+        category_outline.set('type', 'link')
+        category_outline.set('url', f'integration_tests_{category_key}.opml')
+
+    # Write OPML to file with pretty formatting
+    tree = ElementTree(opml)
+    xml_str = minidom.parseString(
+        tostring(opml, encoding='unicode')
+    ).toprettyxml(indent='  ')
+
+    # Remove extra blank lines that minidom adds
+    xml_lines = [line for line in xml_str.split('\n') if line.strip()]
+    xml_str = '\n'.join(xml_lines) + '\n'
+
+    with open(output_file, 'w') as f:
+        f.write(xml_str)
+
+
+def export_hierarchical_opml(test_dir, output_dir):
+    """
+    Generate hierarchical OPML structure.
+
+    Creates one manifest file and one file per category.
+
+    Args:
+        test_dir: Path to tests/integration/test_cases/
+        output_dir: Path to reports/ directory
+
+    Returns:
+        List of generated file paths
+    """
+    # Group tests by category
+    categories = group_tests_by_category(test_dir)
+
+    if not categories:
+        print("Warning: No test categories found", file=sys.stderr)
+        return []
+
+    generated_files = []
+
+    # Generate each category file
+    for category_key, category_data in categories.items():
+        category_file = output_dir / f'integration_tests_{category_key}.opml'
+        generate_category_opml(category_key, category_data, category_file)
+        generated_files.append(category_file)
+        print(f"Generated: {category_file.name} ({category_data['test_count']} tests)")
+
+    # Generate manifest file
+    manifest_file = output_dir / 'integration_tests.opml'
+    generate_manifest_opml(categories, manifest_file)
+    generated_files.append(manifest_file)
+    print(f"Generated: {manifest_file.name} (manifest with {len(categories)} categories)")
+
+    # Validate file count
+    expected_file_count = len(categories) + 1  # categories + manifest
+    if len(generated_files) != expected_file_count:
+        print(f"Warning: Expected {expected_file_count} files, generated {len(generated_files)}",
+              file=sys.stderr)
+
+    return generated_files
+
+
 def export_tests_to_opml(test_dir, output_file):
     """
     Read all YAML test files and generate OPML.
@@ -243,10 +478,13 @@ def export_tests_to_opml(test_dir, output_file):
 
     print(f"Successfully exported {len(test_files)} test categories to {output_file}")
 
-    # Count total tests
-    total_tests = sum(len(yaml.safe_load(open(tf))['tests'])
-                     for tf in test_files
-                     if yaml.safe_load(open(tf)).get('tests'))
+    # Count total tests (load each file once)
+    total_tests = 0
+    for tf in test_files:
+        with open(tf, 'r') as f:
+            data = yaml.safe_load(f)
+        if data and 'tests' in data:
+            total_tests += len(data['tests'])
     print(f"Total tests exported: {total_tests}")
 
 
@@ -256,26 +494,31 @@ def main():
     project_root = script_dir.parent
 
     test_dir = project_root / 'tests' / 'integration' / 'test_cases'
-
-    # Use timestamp-based filename to avoid conflicts when working on multiple sessions
-    timestamp = datetime.now().strftime('%Y-%m-%d-%H%M')
-    dated_output = project_root / 'reports' / f'integration_tests_{timestamp}.opml'
-    symlink_path = project_root / 'reports' / 'integration_tests.opml'
+    output_dir = project_root / 'reports'
 
     # Create output directory if needed
-    dated_output.parent.mkdir(parents=True, exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     if not test_dir.exists():
         print(f"Error: Test directory not found: {test_dir}", file=sys.stderr)
         sys.exit(1)
 
-    export_tests_to_opml(test_dir, dated_output)
+    # Generate hierarchical OPML structure
+    print("Generating hierarchical OPML structure...")
+    generated_files = export_hierarchical_opml(test_dir, output_dir)
 
-    # Create/update symlink for backward compatibility (Dave Winer's subscription)
-    if symlink_path.exists() or symlink_path.is_symlink():
-        symlink_path.unlink()
-    symlink_path.symlink_to(dated_output.name)
-    print(f"Created symlink: integration_tests.opml -> {dated_output.name}")
+    if generated_files:
+        # Calculate total tests
+        categories = group_tests_by_category(test_dir)
+        total_tests = sum(cat['test_count'] for cat in categories.values())
+
+        print(f"\nSuccessfully generated hierarchical OPML:")
+        print(f"  Manifest: integration_tests.opml")
+        print(f"  Category files: {len(categories)} files")
+        print(f"  Total tests: {total_tests}")
+    else:
+        print("Error: No files were generated", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == '__main__':

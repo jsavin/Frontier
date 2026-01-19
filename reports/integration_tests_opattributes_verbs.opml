@@ -1,0 +1,98 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>Opattributes Verbs (opattributes_verbs)</title>
+    <dateCreated>Mon, 19 Jan 2026 08:33:40 GMT</dateCreated>
+  </head>
+  <body>
+    <outline text="Opattributes Verbs (opattributes_verbs)">
+      <outline text="op.attributes.addgroup - GUI-only stub returns error - Verify op.attributes.addgroup returns 'not supported' error in headless mode">
+        <outline text="Metadata">
+          <outline text="skip: Phase 3: op.attributes verbs are GUI-only and not supported in headless mode"/>
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_contains: op.attributes verbs are not supported in headless mode"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="return op.attributes.addgroup(&quot;testGroup&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="op.attributes.getall - GUI-only stub returns error - Verify op.attributes.getall returns 'not supported' error in headless mode">
+        <outline text="Metadata">
+          <outline text="skip: Phase 3: op.attributes verbs are GUI-only and not supported in headless mode"/>
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_contains: op.attributes verbs are not supported in headless mode"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="return op.attributes.getall()"/>
+        </outline>
+      </outline>
+      <outline text="op.attributes.getone - GUI-only stub returns error - Verify op.attributes.getone returns 'not supported' error in headless mode">
+        <outline text="Metadata">
+          <outline text="skip: Phase 3: op.attributes verbs are GUI-only and not supported in headless mode"/>
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_contains: op.attributes verbs are not supported in headless mode"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="return op.attributes.getone(&quot;testGroup&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="op.attributes.makeempty - GUI-only stub returns error - Verify op.attributes.makeempty returns 'not supported' error in headless mode">
+        <outline text="Metadata">
+          <outline text="skip: Phase 3: op.attributes verbs are GUI-only and not supported in headless mode"/>
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_contains: op.attributes verbs are not supported in headless mode"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="return op.attributes.makeempty()"/>
+        </outline>
+      </outline>
+      <outline text="op.attributes.setone - GUI-only stub returns error - Verify op.attributes.setone returns 'not supported' error in headless mode">
+        <outline text="Metadata">
+          <outline text="skip: Phase 3: op.attributes verbs are GUI-only and not supported in headless mode"/>
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_contains: op.attributes verbs are not supported in headless mode"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(outlineType, @workspace.outline)"/>
+          <outline text="target.set(@workspace.outline)"/>
+          <outline text="op.insert(&quot;Line&quot;, down)"/>
+          <outline text="return op.attributes.setone(&quot;testGroup&quot;, &quot;testValue&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="op.attributes.addgroup - error without outline target - Verify op.attributes.addgroup fails gracefully when no outline target is set">
+        <outline text="Metadata">
+          <outline text="skip: Phase 3: op.attributes verbs are GUI-only and not supported in headless mode"/>
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_contains: op.attributes verbs are not supported in headless mode"/>
+          <outline text="notes: Stub implementation returns same error regardless of target state"/>
+        </outline>
+        <outline text="Script">
+          <outline text="return op.attributes.addgroup(&quot;testGroup&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="op.attributes.getall - error without outline target - Verify op.attributes.getall fails gracefully when no outline target is set">
+        <outline text="Metadata">
+          <outline text="skip: Phase 3: op.attributes verbs are GUI-only and not supported in headless mode"/>
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_contains: op.attributes verbs are not supported in headless mode"/>
+          <outline text="notes: Stub implementation returns same error regardless of target state"/>
+        </outline>
+        <outline text="Script">
+          <outline text="return op.attributes.getall()"/>
+        </outline>
+      </outline>
+    </outline>
+  </body>
+</opml>

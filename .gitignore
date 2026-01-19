@@ -129,4 +129,7 @@ test_type.txt
 .claude/settings.local.json
 .claude/.DS_Store
 test_tmp/
-reports/*.opml
+
+# Reports - OPML files are tracked
+# Integration test OPML files use stable hierarchical structure (1 manifest + 25 categories)
+# and should be tracked in git for test documentation and subscriptions

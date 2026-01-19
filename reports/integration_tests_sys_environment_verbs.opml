@@ -1,0 +1,338 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>Sys Environment Verbs (sys_environment_verbs)</title>
+    <dateCreated>Mon, 19 Jan 2026 08:33:40 GMT</dateCreated>
+  </head>
+  <body>
+    <outline text="Sys Environment Verbs (sys_environment_verbs)">
+      <outline text="sys.getenvironmentvariable - get PATH variable - Retrieve PATH environment variable (should exist on all systems)">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="string.length(sys.getenvironmentvariable(&quot;PATH&quot;)) &gt; 0"/>
+        </outline>
+      </outline>
+      <outline text="sys.getenvironmentvariable - returns string type - Environment variable value should be string type">
+        <outline text="Metadata">
+          <outline text="expected_result: TEXT"/>
+        </outline>
+        <outline text="Script">
+          <outline text="typeof(sys.getenvironmentvariable(&quot;PATH&quot;))"/>
+        </outline>
+      </outline>
+      <outline text="sys.getenvironmentvariable - get HOME variable - Retrieve HOME environment variable (Unix/macOS)">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(home = sys.getenvironmentvariable(&quot;HOME&quot;))"/>
+          <outline text="return (home != &quot;&quot;) or (sys.os() == &quot;Windows&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="sys.getenvironmentvariable - nonexistent variable returns empty - Get nonexistent environment variable should return empty string">
+        <outline text="Metadata">
+          <outline text="expected_result: "/>
+        </outline>
+        <outline text="Script">
+          <outline text="sys.getenvironmentvariable(&quot;NONEXISTENT_VAR_XYZ_12345&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="sys.getenvironmentvariable - nonexistent variable is string type - Nonexistent variable should still return string type">
+        <outline text="Metadata">
+          <outline text="expected_result: TEXT"/>
+        </outline>
+        <outline text="Script">
+          <outline text="typeof(sys.getenvironmentvariable(&quot;NONEXISTENT_VAR_XYZ_12345&quot;))"/>
+        </outline>
+      </outline>
+      <outline text="sys.getenvironmentvariable - empty string parameter - Empty variable name should return empty string">
+        <outline text="Metadata">
+          <outline text="expected_result: "/>
+        </outline>
+        <outline text="Script">
+          <outline text="sys.getenvironmentvariable(&quot;&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="sys.getenvironmentvariable - case sensitivity - Environment variable names are case-sensitive on Unix (PATH != path)">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(upper = sys.getenvironmentvariable(&quot;PATH&quot;))"/>
+          <outline text="local(lower = sys.getenvironmentvariable(&quot;path&quot;))"/>
+          <outline text="if sys.os() == &quot;Windows&quot;">
+            <outline text="return true"/>
+          </outline>
+          <outline text="else">
+            <outline text="return upper != lower"/>
+          </outline>
+        </outline>
+      </outline>
+      <outline text="sys.getenvironmentvariable - special characters in name - Variable name with underscores and numbers">
+        <outline text="Metadata">
+          <outline text="expected_result: TEXT"/>
+        </outline>
+        <outline text="Script">
+          <outline text="typeof(sys.getenvironmentvariable(&quot;TEST_VAR_123&quot;))"/>
+        </outline>
+      </outline>
+      <outline text="sys.setenvironmentvariable - set simple value - Set environment variable and verify it was set">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="sys.setenvironmentvariable(&quot;FRONTIER_TEST_VAR&quot;, &quot;test_value&quot;)"/>
+          <outline text="return sys.getenvironmentvariable(&quot;FRONTIER_TEST_VAR&quot;) == &quot;test_value&quot;"/>
+        </outline>
+      </outline>
+      <outline text="sys.setenvironmentvariable - returns boolean true - setenvironmentvariable should return boolean true on success">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="sys.setenvironmentvariable(&quot;FRONTIER_TEST_VAR2&quot;, &quot;value&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="sys.setenvironmentvariable - returns boolean type - Return value should be boolean type">
+        <outline text="Metadata">
+          <outline text="expected_result: bool"/>
+        </outline>
+        <outline text="Script">
+          <outline text="typeof(sys.setenvironmentvariable(&quot;FRONTIER_TEST_VAR3&quot;, &quot;value&quot;))"/>
+        </outline>
+      </outline>
+      <outline text="sys.setenvironmentvariable - overwrite existing value - Setting existing variable should overwrite previous value">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="sys.setenvironmentvariable(&quot;FRONTIER_OVERWRITE_TEST&quot;, &quot;first&quot;)"/>
+          <outline text="sys.setenvironmentvariable(&quot;FRONTIER_OVERWRITE_TEST&quot;, &quot;second&quot;)"/>
+          <outline text="return sys.getenvironmentvariable(&quot;FRONTIER_OVERWRITE_TEST&quot;) == &quot;second&quot;"/>
+        </outline>
+      </outline>
+      <outline text="sys.setenvironmentvariable - set to empty string - Setting variable to empty string should work">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="sys.setenvironmentvariable(&quot;FRONTIER_EMPTY_TEST&quot;, &quot;initial&quot;)"/>
+          <outline text="sys.setenvironmentvariable(&quot;FRONTIER_EMPTY_TEST&quot;, &quot;&quot;)"/>
+          <outline text="return sys.getenvironmentvariable(&quot;FRONTIER_EMPTY_TEST&quot;) == &quot;&quot;"/>
+        </outline>
+      </outline>
+      <outline text="sys.setenvironmentvariable - value with spaces - Set environment variable with spaces in value">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="sys.setenvironmentvariable(&quot;FRONTIER_SPACE_TEST&quot;, &quot;hello world test&quot;)"/>
+          <outline text="return sys.getenvironmentvariable(&quot;FRONTIER_SPACE_TEST&quot;) == &quot;hello world test&quot;"/>
+        </outline>
+      </outline>
+      <outline text="sys.setenvironmentvariable - value with special characters - Set environment variable with special characters">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="sys.setenvironmentvariable(&quot;FRONTIER_SPECIAL_TEST&quot;, &quot;value:with=special@chars!&quot;)"/>
+          <outline text="return sys.getenvironmentvariable(&quot;FRONTIER_SPECIAL_TEST&quot;) == &quot;value:with=special@chars!&quot;"/>
+        </outline>
+      </outline>
+      <outline text="sys.setenvironmentvariable - value with path separators - Set environment variable with path-like value (colons/semicolons)">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="sys.setenvironmentvariable(&quot;FRONTIER_PATH_TEST&quot;, &quot;/usr/bin:/usr/local/bin:/opt/bin&quot;)"/>
+          <outline text="return string.patternMatch(&quot;/usr/bin&quot;, sys.getenvironmentvariable(&quot;FRONTIER_PATH_TEST&quot;)) &gt; 0"/>
+        </outline>
+      </outline>
+      <outline text="sys.setenvironmentvariable - value with unicode characters - Set environment variable with non-ASCII characters">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="sys.setenvironmentvariable(&quot;FRONTIER_UNICODE_TEST&quot;, &quot;hello-世界-🌍&quot;)"/>
+          <outline text="local(result = sys.getenvironmentvariable(&quot;FRONTIER_UNICODE_TEST&quot;))"/>
+          <outline text="return string.length(result) &gt; 0"/>
+        </outline>
+      </outline>
+      <outline text="sys.setenvironmentvariable - reasonably long value - Set environment variable with 200-character value">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(longValue = &quot;&quot;)"/>
+          <outline text="local(i)"/>
+          <outline text="for i = 1 to 10">
+            <outline text="longValue = longValue + &quot;0123456789abcdefghij&quot;"/>
+          </outline>
+          <outline text="sys.setenvironmentvariable(&quot;FRONTIER_LONG_TEST&quot;, longValue)"/>
+          <outline text="return string.length(sys.getenvironmentvariable(&quot;FRONTIER_LONG_TEST&quot;)) == 200"/>
+        </outline>
+      </outline>
+      <outline text="sys.setenvironmentvariable - value exactly 255 characters - Set environment variable with max bigstring length (255 chars)">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(maxValue = &quot;&quot;)"/>
+          <outline text="local(i)"/>
+          <outline text="for i = 1 to 51">
+            <outline text="maxValue = maxValue + &quot;12345&quot;"/>
+          </outline>
+          <outline text="sys.setenvironmentvariable(&quot;FRONTIER_MAX_TEST&quot;, maxValue)"/>
+          <outline text="return string.length(sys.getenvironmentvariable(&quot;FRONTIER_MAX_TEST&quot;)) == 255"/>
+        </outline>
+      </outline>
+      <outline text="sys.setenvironmentvariable - name with underscores - Variable name with underscores should work">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="sys.setenvironmentvariable(&quot;FRONTIER_UNDER_SCORE_TEST&quot;, &quot;value&quot;)"/>
+          <outline text="return sys.getenvironmentvariable(&quot;FRONTIER_UNDER_SCORE_TEST&quot;) == &quot;value&quot;"/>
+        </outline>
+      </outline>
+      <outline text="sys.setenvironmentvariable - name with numbers - Variable name with numbers should work">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="sys.setenvironmentvariable(&quot;FRONTIER_TEST_123&quot;, &quot;value&quot;)"/>
+          <outline text="return sys.getenvironmentvariable(&quot;FRONTIER_TEST_123&quot;) == &quot;value&quot;"/>
+        </outline>
+      </outline>
+      <outline text="sys.setenvironmentvariable - numeric value coerced to string - Setting numeric value should coerce to string">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="sys.setenvironmentvariable(&quot;FRONTIER_NUMBER_TEST&quot;, &quot;42&quot;)"/>
+          <outline text="return sys.getenvironmentvariable(&quot;FRONTIER_NUMBER_TEST&quot;) == &quot;42&quot;"/>
+        </outline>
+      </outline>
+      <outline text="sys environment verbs - roundtrip test - Set multiple variables and retrieve them all">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="sys.setenvironmentvariable(&quot;FRONTIER_RT_1&quot;, &quot;value1&quot;)"/>
+          <outline text="sys.setenvironmentvariable(&quot;FRONTIER_RT_2&quot;, &quot;value2&quot;)"/>
+          <outline text="sys.setenvironmentvariable(&quot;FRONTIER_RT_3&quot;, &quot;value3&quot;)"/>
+          <outline text="local(v1 = sys.getenvironmentvariable(&quot;FRONTIER_RT_1&quot;))"/>
+          <outline text="local(v2 = sys.getenvironmentvariable(&quot;FRONTIER_RT_2&quot;))"/>
+          <outline text="local(v3 = sys.getenvironmentvariable(&quot;FRONTIER_RT_3&quot;))"/>
+          <outline text="return (v1 == &quot;value1&quot;) and (v2 == &quot;value2&quot;) and (v3 == &quot;value3&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="sys environment verbs - isolation test - Setting one variable should not affect others">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="sys.setenvironmentvariable(&quot;FRONTIER_ISOLATION_A&quot;, &quot;valueA&quot;)"/>
+          <outline text="sys.setenvironmentvariable(&quot;FRONTIER_ISOLATION_B&quot;, &quot;valueB&quot;)"/>
+          <outline text="sys.setenvironmentvariable(&quot;FRONTIER_ISOLATION_A&quot;, &quot;newValueA&quot;)"/>
+          <outline text="return (sys.getenvironmentvariable(&quot;FRONTIER_ISOLATION_A&quot;) == &quot;newValueA&quot;) and">
+            <outline text="(sys.getenvironmentvariable(&quot;FRONTIER_ISOLATION_B&quot;) == &quot;valueB&quot;)"/>
+          </outline>
+        </outline>
+      </outline>
+      <outline text="sys environment verbs - persistence within process - Environment variables should persist for remainder of process">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="sys.setenvironmentvariable(&quot;FRONTIER_PERSIST_TEST&quot;, &quot;persistent_value&quot;)"/>
+          <outline text="local(i)"/>
+          <outline text="local(ok = true)"/>
+          <outline text="for i = 1 to 5">
+            <outline text="if sys.getenvironmentvariable(&quot;FRONTIER_PERSIST_TEST&quot;) != &quot;persistent_value&quot;">
+              <outline text="ok = false"/>
+            </outline>
+          </outline>
+          <outline text="return ok"/>
+        </outline>
+      </outline>
+      <outline text="sys.winshellcommand - not available on macOS/Linux - winshellcommand should fail gracefully on non-Windows platforms">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="if sys.os() == &quot;Windows&quot;">
+            <outline text="return true"/>
+          </outline>
+          <outline text="else">
+            <outline text="try">
+              <outline text="sys.winshellcommand(&quot;echo test&quot;)"/>
+              <outline text="return false"/>
+            </outline>
+            <outline text="else">
+              <outline text="return true"/>
+            </outline>
+          </outline>
+        </outline>
+      </outline>
+      <outline text="sys.getenvironmentvariable - very long variable name - Long variable name should handle gracefully">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(longName = &quot;FRONTIER_&quot;)"/>
+          <outline text="local(i)"/>
+          <outline text="for i = 1 to 24">
+            <outline text="longName = longName + &quot;LONG&quot;"/>
+          </outline>
+          <outline text="return typeof(sys.getenvironmentvariable(longName)) == stringType"/>
+        </outline>
+      </outline>
+      <outline text="sys environment verbs - type validation - Verify return types of environment verbs">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(getValue = sys.getenvironmentvariable(&quot;PATH&quot;))"/>
+          <outline text="local(setValue = sys.setenvironmentvariable(&quot;FRONTIER_TYPE_TEST&quot;, &quot;value&quot;))"/>
+          <outline text="return (typeof(getValue) == stringType) and (typeof(setValue) == booleanType)"/>
+        </outline>
+      </outline>
+      <outline text="sys.setenvironmentvariable - multiple rapid updates - Rapidly updating same variable should work correctly">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(i)"/>
+          <outline text="for i = 1 to 10">
+            <outline text="sys.setenvironmentvariable(&quot;FRONTIER_RAPID_TEST&quot;, string(i))"/>
+          </outline>
+          <outline text="return sys.getenvironmentvariable(&quot;FRONTIER_RAPID_TEST&quot;) == &quot;10&quot;"/>
+        </outline>
+      </outline>
+      <outline text="sys environment verbs - platform-specific variables - Access platform-specific environment variables">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="if sys.os() == &quot;Windows&quot;">
+            <outline text="return string.length(sys.getenvironmentvariable(&quot;USERPROFILE&quot;)) &gt; 0"/>
+          </outline>
+          <outline text="else">
+            <outline text="return string.length(sys.getenvironmentvariable(&quot;HOME&quot;)) &gt; 0"/>
+          </outline>
+        </outline>
+      </outline>
+      <outline text="sys environment verbs - common variables across platforms - PATH should exist on all platforms">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="string.length(sys.getenvironmentvariable(&quot;PATH&quot;)) &gt; 0"/>
+        </outline>
+      </outline>
+    </outline>
+  </body>
+</opml>

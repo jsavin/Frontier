@@ -26,6 +26,24 @@ Automatic verb binding analyzer reports showing implementation status across all
   - Markdown tables for easy review
 - **See also**: [`coverage/verb-binding/README.md`](./coverage/verb-binding/README.md)
 
+### Integration Test OPML Files
+
+**Hierarchical OPML structure** for browsing integration tests in outline editors like [Drummer](https://drummer.land/).
+
+- **Files**: 26 total (1 manifest + 25 category files)
+  - `integration_tests.opml` - Manifest with transclusion links
+  - `integration_tests_{category}.opml` - Individual category files
+- **Format**: OPML 2.0 with transclusion (`type="link"` attributes)
+- **Tests**: 1,247 integration tests across 25 categories
+- **Regenerate**: `python3 tools/export_tests_to_opml.py`
+
+**Benefits**:
+- No merge conflicts when adding tests to different categories
+- Atomic changes (only affected category file changes)
+- Scalable (category files stay ~450-3,600 lines)
+
+**Opening**: Open `integration_tests.opml` in Drummer or any OPML 2.0-compatible editor. Category links load inline via transclusion.
+
 ## Adding New Reports
 
 When adding a new report type:
