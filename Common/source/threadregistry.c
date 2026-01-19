@@ -276,7 +276,7 @@ static long allocate_thread_id_locked(void) {
             if (!id_in_use) {
                 /* Found an unused ID */
                 next_thread_id = candidate_id + 1;
-                if (next_thread_id > LONG_MAX) {
+                if (next_thread_id >= LONG_MAX) {
                     next_thread_id = 1;
                 }
                 break;
@@ -284,7 +284,7 @@ static long allocate_thread_id_locked(void) {
 
             /* Try next ID */
             candidate_id++;
-            if (candidate_id > LONG_MAX) {
+            if (candidate_id >= LONG_MAX) {
                 candidate_id = 1;
             }
         }

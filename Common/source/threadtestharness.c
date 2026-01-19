@@ -94,6 +94,12 @@ unsigned char thread_test_advance(uint32_t delta) {
         return 0;  /* Test mode not enabled */
     }
 
+    /* Check for overflow before incrementing */
+    if (thread_test_harness.virtual_ticks > UINT32_MAX - delta) {
+        log_error(LOG_COMP_LANG, "thread_test_advance: virtual tick overflow detected");
+        return 0;
+    }
+
     thread_test_harness.virtual_ticks += delta;
     return 1;
 }

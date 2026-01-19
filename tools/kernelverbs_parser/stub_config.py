@@ -213,6 +213,7 @@ def get_stub_implementation(processor: str, verb: str, token_name: str) -> list:
     else:  # STUB_DEFAULT
         lines.extend([
             f"            /* Verb: {processor}.{verb} - not yet implemented */",
+            f"            log_warn(LOG_COMP_LANG, \"{processor}.{verb} not yet implemented\");",
             f"            if (bserror) copystring(BIGSTRING(\"\\pnot implemented\"), bserror);",
             f"            return false;",
         ])
