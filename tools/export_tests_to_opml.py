@@ -214,11 +214,7 @@ def generate_category_opml(category_key, category_data, output_file):
     # Body section
     body = SubElement(opml, 'body')
 
-    # Create category outline
-    category_outline = SubElement(body, 'outline')
-    category_outline.set('text', sanitize_xml_text(category_data['pretty_name']))
-
-    # Process each test in category
+    # Process each test in category (tests at top level)
     for test in category_data['tests']:
         # Build test name with description
         test_name = test.get('name', 'Unnamed Test')
@@ -228,7 +224,7 @@ def generate_category_opml(category_key, category_data, output_file):
         else:
             test_text = test_name
 
-        test_outline = SubElement(category_outline, 'outline')
+        test_outline = SubElement(body, 'outline')
         test_outline.set('text', sanitize_xml_text(test_text))
 
         # Metadata section (only non-default fields)

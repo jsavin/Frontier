@@ -2,840 +2,838 @@
 <opml version="2.0">
   <head>
     <title>File Verbs (file_verbs)</title>
-    <dateCreated>Mon, 19 Jan 2026 09:10:49 GMT</dateCreated>
+    <dateCreated>Mon, 19 Jan 2026 09:22:07 GMT</dateCreated>
   </head>
   <body>
-    <outline text="File Verbs (file_verbs)">
-      <outline text="file.fileFromPath - extract filename from path - Extract filename component from path string (like basename)">
-        <outline text="Metadata">
-          <outline text="expected_result: test.txt"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(fullPath = tmpDir + &quot;/&quot; + &quot;test.txt&quot;)"/>
-          <outline text="local(filename = file.fileFromPath(fullPath))"/>
-          <outline text="return filename"/>
-        </outline>
-      </outline>
-      <outline text="file.exists - nonexistent file - Check that nonexistent file returns false">
-        <outline text="Metadata">
-          <outline text="expected_result: false"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;nonexistent_file_12345.txt&quot;)"/>
-          <outline text="return file.exists(fs)"/>
-        </outline>
-      </outline>
-      <outline text="file.new - create new empty file - Create new file in project tmp directory">
-        <outline text="Metadata">
-          <outline text="expected_result: true"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(filePath = tmpDir + &quot;/&quot; + &quot;frontier_test_new.txt&quot;)"/>
-          <outline text="local(ok = file.new(filePath))"/>
-          <outline text="return ok"/>
-        </outline>
-      </outline>
-      <outline text="file.exists - file created with file.new - Verify file.new created the file">
-        <outline text="Metadata">
-          <outline text="expected_result: true"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_new.txt&quot;)"/>
-          <outline text="return file.exists(fs)"/>
-        </outline>
-      </outline>
-      <outline text="file.writeWholeFile - write string to file - Write text content to file">
-        <outline text="Metadata">
-          <outline text="expected_result: true"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_write.txt&quot;)"/>
-          <outline text="local(ok = file.writeWholeFile(fs, &quot;Hello, Frontier!&quot;))"/>
-          <outline text="return ok"/>
-        </outline>
-      </outline>
-      <outline text="file.readWholeFile - read back written content - Read file and verify content matches">
-        <outline text="Metadata">
-          <outline text="expected_result: Hello, Frontier!"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_write.txt&quot;)"/>
-          <outline text="local(readData = file.readWholeFile(fs))"/>
-          <outline text="return readData"/>
-        </outline>
-      </outline>
-      <outline text="file.readWholeFile - round trip binary data - Write and read back binary data">
-        <outline text="Metadata">
-          <outline text="expected_result: true"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_binary.dat&quot;)"/>
-          <outline text="local(binaryData = &quot;\x00\x01\x02\xFF&quot;)"/>
-          <outline text="file.writeWholeFile(fs, binaryData)"/>
-          <outline text="local(readData = file.readWholeFile(fs))"/>
-          <outline text="return (readData == binaryData)"/>
-        </outline>
-      </outline>
-      <outline text="file.delete - delete existing file - Delete file created in previous test">
-        <outline text="Metadata">
-          <outline text="expected_result: true"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_write.txt&quot;)"/>
-          <outline text="local(ok = file.delete(fs))"/>
-          <outline text="return ok"/>
-        </outline>
-      </outline>
-      <outline text="file.exists - file deleted successfully - Verify file.delete removed the file">
-        <outline text="Metadata">
-          <outline text="expected_result: false"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_write.txt&quot;)"/>
-          <outline text="return file.exists(fs)"/>
-        </outline>
-      </outline>
-      <outline text="file.readWholeFile - nonexistent file error - Reading nonexistent file should fail">
-        <outline text="Metadata">
-          <outline text="expected_success: False"/>
-          <outline text="expected_result: None"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;does_not_exist_12345.txt&quot;)"/>
-          <outline text="return file.readWholeFile(fs)"/>
-        </outline>
-      </outline>
-      <outline text="file.delete - nonexistent file error - Deleting nonexistent file should fail">
-        <outline text="Metadata">
-          <outline text="expected_success: False"/>
-          <outline text="expected_result: None"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;does_not_exist_12345.txt&quot;)"/>
-          <outline text="return file.delete(fs)"/>
-        </outline>
-      </outline>
-      <outline text="file.size - get file size - Get size of file in bytes">
-        <outline text="Metadata">
-          <outline text="expected_result: 5"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_size.txt&quot;)"/>
-          <outline text="local(testData = &quot;12345&quot;)"/>
-          <outline text="file.writeWholeFile(fs, testData)"/>
-          <outline text="return file.size(fs)"/>
-        </outline>
-      </outline>
-      <outline text="file.created - get file creation date - Get creation date of file (Frontier epoch)">
-        <outline text="Metadata">
-          <outline text="expected_result: date"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_created.txt&quot;)"/>
-          <outline text="file.new(fs)"/>
-          <outline text="local(createdDate = file.created(fs))"/>
-          <outline text="return typeof(createdDate)"/>
-        </outline>
-      </outline>
-      <outline text="file.modified - get file modification date - Get modification date of file (Frontier epoch)">
-        <outline text="Metadata">
-          <outline text="expected_result: date"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_modified.txt&quot;)"/>
-          <outline text="file.writeWholeFile(fs, &quot;initial content&quot;)"/>
-          <outline text="local(modifiedDate = file.modified(fs))"/>
-          <outline text="return typeof(modifiedDate)"/>
-        </outline>
-      </outline>
-      <outline text="file.copy - copy file to new location - Copy file and verify both exist">
-        <outline text="Metadata">
-          <outline text="expected_result: true"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(source = tmpDir + &quot;/&quot; + &quot;frontier_test_copy_source.txt&quot;)"/>
-          <outline text="local(dest = tmpDir + &quot;/&quot; + &quot;frontier_test_copy_dest.txt&quot;)"/>
-          <outline text="file.writeWholeFile(source, &quot;test content for copy&quot;)"/>
-          <outline text="local(ok = file.copy(source, dest))"/>
-          <outline text="return ok"/>
-        </outline>
-      </outline>
-      <outline text="file.copy - verify destination exists with same content - Check copied file has same content as source">
-        <outline text="Metadata">
-          <outline text="expected_result: true"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(source = tmpDir + &quot;/&quot; + &quot;frontier_test_copy_source.txt&quot;)"/>
-          <outline text="local(dest = tmpDir + &quot;/&quot; + &quot;frontier_test_copy_dest.txt&quot;)"/>
-          <outline text="local(sourceContent = file.readWholeFile(source))"/>
-          <outline text="local(destContent = file.readWholeFile(dest))"/>
-          <outline text="return (sourceContent == destContent)"/>
-        </outline>
-      </outline>
-      <outline text="file.rename - rename file - Rename file and verify new name exists">
-        <outline text="Metadata">
-          <outline text="expected_result: true"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(oldName = tmpDir + &quot;/&quot; + &quot;frontier_test_rename_old.txt&quot;)"/>
-          <outline text="local(newName = tmpDir + &quot;/&quot; + &quot;frontier_test_rename_new.txt&quot;)"/>
-          <outline text="file.writeWholeFile(oldName, &quot;rename test content&quot;)"/>
-          <outline text="local(ok = file.rename(oldName, newName))"/>
-          <outline text="return ok"/>
-        </outline>
-      </outline>
-      <outline text="file.rename - verify old name no longer exists - Check that old filename is gone after rename">
-        <outline text="Metadata">
-          <outline text="expected_result: false"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(oldName = tmpDir + &quot;/&quot; + &quot;frontier_test_rename_old.txt&quot;)"/>
-          <outline text="return file.exists(oldName)"/>
-        </outline>
-      </outline>
-      <outline text="file.rename - verify new name exists with same content - Check renamed file has original content">
-        <outline text="Metadata">
-          <outline text="expected_result: true"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(newName = tmpDir + &quot;/&quot; + &quot;frontier_test_rename_new.txt&quot;)"/>
-          <outline text="local(content = file.readWholeFile(newName))"/>
-          <outline text="return (content == &quot;rename test content&quot;)"/>
-        </outline>
-      </outline>
-      <outline text="file.move - move file to different location - Move file and verify it appears at destination">
-        <outline text="Metadata">
-          <outline text="expected_result: true"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(source = tmpDir + &quot;/&quot; + &quot;frontier_test_move_source.txt&quot;)"/>
-          <outline text="local(dest = tmpDir + &quot;/&quot; + &quot;frontier_test_move_dest.txt&quot;)"/>
-          <outline text="file.writeWholeFile(source, &quot;move test content&quot;)"/>
-          <outline text="local(ok = file.move(source, dest))"/>
-          <outline text="return ok"/>
-        </outline>
-      </outline>
-      <outline text="file.move - verify source no longer exists - Check that source file is gone after move">
-        <outline text="Metadata">
-          <outline text="expected_result: false"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(source = tmpDir + &quot;/&quot; + &quot;frontier_test_move_source.txt&quot;)"/>
-          <outline text="return file.exists(source)"/>
-        </outline>
-      </outline>
-      <outline text="file.move - verify destination exists with same content - Check moved file has original content">
-        <outline text="Metadata">
-          <outline text="expected_result: true"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(dest = tmpDir + &quot;/&quot; + &quot;frontier_test_move_dest.txt&quot;)"/>
-          <outline text="local(content = file.readWholeFile(dest))"/>
-          <outline text="return (content == &quot;move test content&quot;)"/>
-        </outline>
-      </outline>
-      <outline text="file.newfolder - create new folder - Create new folder in temp directory">
-        <outline text="Metadata">
-          <outline text="expected_result: true"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(folderPath = tmpDir + &quot;/&quot; + &quot;frontier_test_newfolder_unique&quot;)"/>
-          <outline text="if file.exists(folderPath) { file.delete(folderPath); }"/>
-          <outline text="local(ok = file.newfolder(folderPath))"/>
-          <outline text="return ok"/>
-        </outline>
-      </outline>
-      <outline text="file.newfolder - verify folder exists - Check that created folder exists">
-        <outline text="Metadata">
-          <outline text="expected_result: true"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(folderPath = tmpDir + &quot;/&quot; + &quot;frontier_test_newfolder_unique&quot;)"/>
-          <outline text="return file.exists(folderPath)"/>
-        </outline>
-      </outline>
-      <outline text="file.getpathchar - get path separator character - Get platform-specific path separator (/ on Unix)">
-        <outline text="Metadata">
-          <outline text="expected_result: /"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(pathChar = file.getpathchar())"/>
-          <outline text="return pathChar"/>
-        </outline>
-      </outline>
-      <outline text="file.fullpath - get absolute path - Convert relative or partial path to absolute path">
-        <outline text="Metadata">
-          <outline text="expected_result: true"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_fullpath.txt&quot;)"/>
-          <outline text="file.new(fs)"/>
-          <outline text="local(fullPath = file.fullpath(fs))"/>
-          <outline text="return (string.length(fullPath) &gt; 0)"/>
-        </outline>
-      </outline>
-      <outline text="file.fullpath - verify absolute path starts with / - Absolute paths on Unix should start with /">
-        <outline text="Metadata">
-          <outline text="expected_result: true"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_fullpath.txt&quot;)"/>
-          <outline text="local(fullPath = file.fullpath(fs))"/>
-          <outline text="return (string.mid(fullPath, 1, 1) == &quot;/&quot;)"/>
-        </outline>
-      </outline>
-      <outline text="file.folderfrompath - extract folder from path - Get folder portion of a file path">
-        <outline text="Metadata">
-          <outline text="expected_result: true"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(testPath = tmpDir + &quot;/&quot; + &quot;testfile.txt&quot;)"/>
-          <outline text="local(folder = file.folderfrompath(testPath))"/>
-          <outline text="return (folder == tmpDir)"/>
-        </outline>
-      </outline>
-      <outline text="file.getpath - get current working directory - Get the current working directory path">
-        <outline text="Metadata">
-          <outline text="expected_result: true"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(currentPath = file.getpath())"/>
-          <outline text="return (string.length(currentPath) &gt; 0)"/>
-        </outline>
-      </outline>
-      <outline text="file.setpath - set working directory - Change working directory and verify">
-        <outline text="Metadata">
-          <outline text="expected_result: true"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(originalPath = file.getpath())"/>
-          <outline text="local(ok = file.setpath(tmpDir))"/>
-          <outline text="local(newPath = file.getpath())"/>
-          <outline text="file.setpath(originalPath)"/>
-          <outline text="return ok"/>
-        </outline>
-      </outline>
-      <outline text="file.setpath/getpath - round trip working directory - Verify setpath actually changes working directory">
-        <outline text="Metadata">
-          <outline text="expected_result: true"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(originalPath = file.getpath())"/>
-          <outline text="file.setpath(tmpDir)"/>
-          <outline text="local(newPath = file.getpath())"/>
-          <outline text="file.setpath(originalPath)"/>
-          <outline text="return (newPath == tmpDir)"/>
-        </outline>
-      </outline>
-      <outline text="file.open/close - open and close file for reading - Open file, verify handle, then close it">
-        <outline text="Metadata">
-          <outline text="expected_result: true"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_io.txt&quot;)"/>
-          <outline text="file.writeWholeFile(fs, &quot;test content&quot;)"/>
-          <outline text="local(f = file.open(fs, &quot;r&quot;))"/>
-          <outline text="local(ok = (f != nil))"/>
-          <outline text="file.close(f)"/>
-          <outline text="return ok"/>
-        </outline>
-      </outline>
-      <outline text="file.read - read bytes from file - Open file and read specific number of bytes">
-        <outline text="Metadata">
-          <outline text="expected_result: Hello"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_read.txt&quot;)"/>
-          <outline text="file.writeWholeFile(fs, &quot;Hello World!&quot;)"/>
-          <outline text="local(f = file.open(fs, &quot;r&quot;))"/>
-          <outline text="local(data = file.read(f, 5))"/>
-          <outline text="file.close(f)"/>
-          <outline text="return data"/>
-        </outline>
-      </outline>
-      <outline text="file.readline - read line from file - Read text file line by line">
-        <outline text="Metadata">
-          <outline text="expected_result: Line 1"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_readline.txt&quot;)"/>
-          <outline text="file.writeWholeFile(fs, &quot;Line 1\nLine 2\nLine 3&quot;)"/>
-          <outline text="local(f = file.open(fs, &quot;r&quot;))"/>
-          <outline text="local(line1 = file.readline(f))"/>
-          <outline text="file.close(f)"/>
-          <outline text="return line1"/>
-        </outline>
-      </outline>
-      <outline text="file.endoffile - check if at end of file - Detect EOF condition after reading past end">
-        <outline text="Metadata">
-          <outline text="expected_result: true"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_eof.txt&quot;)"/>
-          <outline text="file.writeWholeFile(fs, &quot;AB&quot;)"/>
-          <outline text="local(f = file.open(fs, &quot;r&quot;))"/>
-          <outline text="file.read(f, 2)"/>
-          <outline text="file.read(f, 1)"/>
-          <outline text="local(isEof = file.endoffile(f))"/>
-          <outline text="file.close(f)"/>
-          <outline text="return isEof"/>
-        </outline>
-      </outline>
-      <outline text="file.getposition - get current file position - Check file position after reading">
-        <outline text="Metadata">
-          <outline text="expected_result: 5"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_getpos.txt&quot;)"/>
-          <outline text="file.writeWholeFile(fs, &quot;0123456789&quot;)"/>
-          <outline text="local(f = file.open(fs, &quot;r&quot;))"/>
-          <outline text="file.read(f, 5)"/>
-          <outline text="local(pos = file.getposition(f))"/>
-          <outline text="file.close(f)"/>
-          <outline text="return pos"/>
-        </outline>
-      </outline>
-      <outline text="file.setposition - seek to file position - Move file pointer and read from new position">
-        <outline text="Metadata">
-          <outline text="expected_result: DE"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_setpos.txt&quot;)"/>
-          <outline text="file.writeWholeFile(fs, &quot;ABCDEFGH&quot;)"/>
-          <outline text="local(f = file.open(fs, &quot;r&quot;))"/>
-          <outline text="file.setposition(f, 3)"/>
-          <outline text="local(data = file.read(f, 2))"/>
-          <outline text="file.close(f)"/>
-          <outline text="return data"/>
-        </outline>
-      </outline>
-      <outline text="file.getendoffile - get file size via handle - Get file size using open file handle">
-        <outline text="Metadata">
-          <outline text="expected_result: 5"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_geteof.txt&quot;)"/>
-          <outline text="file.writeWholeFile(fs, &quot;12345&quot;)"/>
-          <outline text="local(f = file.open(fs, &quot;r&quot;))"/>
-          <outline text="local(size = file.getendoffile(f))"/>
-          <outline text="file.close(f)"/>
-          <outline text="return size"/>
-        </outline>
-      </outline>
-      <outline text="file.isfolder - check if path is folder - Verify folder detection">
-        <outline text="Metadata">
-          <outline text="expected_result: true"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(folderPath = tmpDir + &quot;/&quot; + &quot;test_folder_unique2&quot;)"/>
-          <outline text="if file.exists(folderPath) { file.delete(folderPath); }"/>
-          <outline text="file.newfolder(folderPath)"/>
-          <outline text="return file.isfolder(folderPath)"/>
-        </outline>
-      </outline>
-      <outline text="file.isfolder - verify file is not folder - Check that regular file returns false">
-        <outline text="Metadata">
-          <outline text="expected_result: false"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(filePath = tmpDir + &quot;/&quot; + &quot;test_file.txt&quot;)"/>
-          <outline text="file.new(filePath)"/>
-          <outline text="return file.isfolder(filePath)"/>
-        </outline>
-      </outline>
-      <outline text="file.compare - compare identical files - Compare two files with same content">
-        <outline text="Metadata">
-          <outline text="expected_result: true"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(file1 = tmpDir + &quot;/&quot; + &quot;compare1.txt&quot;)"/>
-          <outline text="local(file2 = tmpDir + &quot;/&quot; + &quot;compare2.txt&quot;)"/>
-          <outline text="file.writeWholeFile(file1, &quot;same content&quot;)"/>
-          <outline text="file.writeWholeFile(file2, &quot;same content&quot;)"/>
-          <outline text="return file.compare(file1, file2)"/>
-        </outline>
-      </outline>
-      <outline text="file.compare - compare different files - Compare two files with different content">
-        <outline text="Metadata">
-          <outline text="expected_result: false"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(file1 = tmpDir + &quot;/&quot; + &quot;diff1.txt&quot;)"/>
-          <outline text="local(file2 = tmpDir + &quot;/&quot; + &quot;diff2.txt&quot;)"/>
-          <outline text="file.writeWholeFile(file1, &quot;content A&quot;)"/>
-          <outline text="file.writeWholeFile(file2, &quot;content B&quot;)"/>
-          <outline text="return file.compare(file1, file2)"/>
-        </outline>
-      </outline>
-      <outline text="file.copy - copy empty file - Copy 0-byte file and verify both exist with same size">
-        <outline text="Metadata">
-          <outline text="expected_result: true"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(source = tmpDir + &quot;/&quot; + &quot;empty_source.txt&quot;)"/>
-          <outline text="local(dest = tmpDir + &quot;/&quot; + &quot;empty_dest.txt&quot;)"/>
-          <outline text="file.new(source)"/>
-          <outline text="local(ok = file.copy(source, dest))"/>
-          <outline text="local(sourceSize = file.size(source))"/>
-          <outline text="local(destSize = file.size(dest))"/>
-          <outline text="return ok and (sourceSize == 0) and (destSize == 0)"/>
-        </outline>
-      </outline>
-      <outline text="file.move - move empty file - Move 0-byte file and verify old gone, new exists">
-        <outline text="Metadata">
-          <outline text="expected_result: true"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(source = tmpDir + &quot;/&quot; + &quot;empty_move_source.txt&quot;)"/>
-          <outline text="local(dest = tmpDir + &quot;/&quot; + &quot;empty_move_dest.txt&quot;)"/>
-          <outline text="file.new(source)"/>
-          <outline text="local(ok = file.move(source, dest))"/>
-          <outline text="return ok and (not file.exists(source)) and file.exists(dest)"/>
-        </outline>
-      </outline>
-      <outline text="file.compare - compare two empty files - Two 0-byte files should be equal">
-        <outline text="Metadata">
-          <outline text="expected_result: true"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(file1 = tmpDir + &quot;/&quot; + &quot;empty1.txt&quot;)"/>
-          <outline text="local(file2 = tmpDir + &quot;/&quot; + &quot;empty2.txt&quot;)"/>
-          <outline text="file.new(file1)"/>
-          <outline text="file.new(file2)"/>
-          <outline text="return file.compare(file1, file2)"/>
-        </outline>
-      </outline>
-      <outline text="file.setposition - position beyond EOF - Test seeking beyond end of file">
-        <outline text="Metadata">
-          <outline text="expected_result: true"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(filePath = tmpDir + &quot;/&quot; + &quot;setpos_beyond_eof.txt&quot;)"/>
-          <outline text="file.writeWholeFile(filePath, &quot;test&quot;)"/>
-          <outline text="local(f = file.open(filePath, &quot;r&quot;))"/>
-          <outline text="local(eofPos = file.getendoffile(f))"/>
-          <outline text="local(ok = file.setposition(f, eofPos + 100))"/>
-          <outline text="local(newPos = file.getposition(f))"/>
-          <outline text="file.close(f)"/>
-          <outline text="return ok and (newPos == (eofPos + 100))"/>
-        </outline>
-      </outline>
-      <outline text="file.readline - Unix line ending (LF) - Read line with \n delimiter">
-        <outline text="Metadata">
-          <outline text="expected_result: line1"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(filePath = tmpDir + &quot;/&quot; + &quot;readline_lf.txt&quot;)"/>
-          <outline text="file.writeWholeFile(filePath, &quot;line1\nline2&quot;)"/>
-          <outline text="local(f = file.open(filePath, &quot;r&quot;))"/>
-          <outline text="local(line = file.readline(f))"/>
-          <outline text="file.close(f)"/>
-          <outline text="return line"/>
-        </outline>
-      </outline>
-      <outline text="file.readline - Windows line ending (CRLF) - Read line with \r\n delimiter">
-        <outline text="Metadata">
-          <outline text="expected_result: line1"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(filePath = tmpDir + &quot;/&quot; + &quot;readline_crlf.txt&quot;)"/>
-          <outline text="file.writeWholeFile(filePath, &quot;line1\r\nline2&quot;)"/>
-          <outline text="local(f = file.open(filePath, &quot;r&quot;))"/>
-          <outline text="local(line = file.readline(f))"/>
-          <outline text="file.close(f)"/>
-          <outline text="return line"/>
-        </outline>
-      </outline>
-      <outline text="file.readline - Classic Mac line ending (CR) - Read line with \r delimiter">
-        <outline text="Metadata">
-          <outline text="expected_result: line1"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(filePath = tmpDir + &quot;/&quot; + &quot;readline_cr.txt&quot;)"/>
-          <outline text="file.writeWholeFile(filePath, &quot;line1\rline2&quot;)"/>
-          <outline text="local(f = file.open(filePath, &quot;r&quot;))"/>
-          <outline text="local(line = file.readline(f))"/>
-          <outline text="file.close(f)"/>
-          <outline text="return line"/>
-        </outline>
-      </outline>
-      <outline text="file.folderfrompath - filename with no folder - Extract folder from bare filename">
-        <outline text="Metadata">
-          <outline text="expected_result: "/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(path = &quot;justfilename.txt&quot;)"/>
-          <outline text="local(folder = file.folderfrompath(path))"/>
-          <outline text="return folder"/>
-        </outline>
-      </outline>
-      <outline text="file.folderfrompath - path with trailing slash - Extract folder from path with trailing slash - should return parent">
-        <outline text="Metadata">
-          <outline text="expected_result: /parent"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(path = &quot;/parent/child/&quot;)"/>
-          <outline text="local(folder = file.folderfrompath(path))"/>
-          <outline text="return folder"/>
-        </outline>
-      </outline>
-      <outline text="file.type - extract extension from .txt file - Get file extension with dot prefix">
-        <outline text="Metadata">
-          <outline text="expected_result: .txt"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(filePath = tmpDir + &quot;/&quot; + &quot;test_type.txt&quot;)"/>
-          <outline text="file.writeWholeFile(filePath, &quot;test&quot;)"/>
-          <outline text="return file.type(filePath)"/>
-        </outline>
-      </outline>
-      <outline text="file.type - file with no extension - Get type of file without extension returns empty string">
-        <outline text="Metadata">
-          <outline text="expected_result: "/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(filePath = tmpDir + &quot;/&quot; + &quot;testfile_noext&quot;)"/>
-          <outline text="file.writeWholeFile(filePath, &quot;test&quot;)"/>
-          <outline text="return file.type(filePath)"/>
-        </outline>
-      </outline>
-      <outline text="file.type - file with multiple extensions - Get type of file.tar.gz returns last extension (space-padded OSType)">
-        <outline text="Metadata">
-          <outline text="expected_result: .gz "/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(filePath = tmpDir + &quot;/&quot; + &quot;archive.tar.gz&quot;)"/>
-          <outline text="file.writeWholeFile(filePath, &quot;test&quot;)"/>
-          <outline text="return file.type(filePath)"/>
-        </outline>
-      </outline>
-      <outline text="file.creator - returns empty string in headless mode - Creator codes are Mac-specific, headless returns empty string">
-        <outline text="Metadata">
-          <outline text="expected_result: "/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(filePath = tmpDir + &quot;/&quot; + &quot;test_creator.txt&quot;)"/>
-          <outline text="file.writeWholeFile(filePath, &quot;test&quot;)"/>
-          <outline text="return file.creator(filePath)"/>
-        </outline>
-      </outline>
-      <outline text="file.setmodified - set modification time - Set file modification time and verify it changed">
-        <outline text="Metadata">
-          <outline text="expected_result: true"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(filePath = tmpDir + &quot;/&quot; + &quot;test_setmodified.txt&quot;)"/>
-          <outline text="file.writeWholeFile(filePath, &quot;test&quot;)"/>
-          <outline text="local(oldTime = file.modified(filePath))"/>
-          <outline text="local(newTime = clock.now() - (60 * 60 * 24));  // 1 day ago"/>
-          <outline text="local(result = file.setmodified(filePath, newTime))"/>
-          <outline text="local(verifyTime = file.modified(filePath))"/>
-          <outline text="return result and (verifyTime &lt; oldTime)"/>
-        </outline>
-      </outline>
-      <outline text="file.setcreated - behavior on different platforms - Set creation time (works on macOS, returns false on Linux)">
-        <outline text="Metadata">
-          <outline text="expected_result: true"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(filePath = tmpDir + &quot;/&quot; + &quot;test_setcreated.txt&quot;)"/>
-          <outline text="file.writeWholeFile(filePath, &quot;test&quot;)"/>
-          <outline text="local(newTime = clock.now() - (60 * 60 * 24));  // 1 day ago"/>
-          <outline text="local(result = file.setcreated(filePath, newTime))"/>
-          <outline text="// Returns true on macOS, false on Linux - both are valid"/>
-          <outline text="return typeof(result) == booleanType"/>
-        </outline>
-      </outline>
-      <outline text="file.islocked - unlocked file returns false - Check that writable file is not locked">
-        <outline text="Metadata">
-          <outline text="skip: P2: File locking not yet implemented - deferred pending proper cross-platform API implementation"/>
-          <outline text="expected_result: false"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(filePath = tmpDir + &quot;/&quot; + &quot;test_lock.txt&quot;)"/>
-          <outline text="file.writeWholeFile(filePath, &quot;test&quot;)"/>
-          <outline text="return file.islocked(filePath)"/>
-        </outline>
-      </outline>
-      <outline text="file.lock - not implemented on this platform - Verify file.lock returns platform error">
-        <outline text="Metadata">
-          <outline text="skip: P2: File locking not yet implemented - deferred pending proper cross-platform API implementation"/>
-          <outline text="expected_result: true"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(filePath = tmpDir + &quot;/&quot; + &quot;test_lock2.txt&quot;)"/>
-          <outline text="file.writeWholeFile(filePath, &quot;test&quot;)"/>
-          <outline text="try">
-            <outline text="file.lock(filePath)"/>
-            <outline text="return &quot;false&quot;  // Should not reach here - lock succeeded unexpectedly"/>
-          </outline>
-          <outline text="} else">
-            <outline text="return &quot;true&quot;  // Expected: lock failed with platform error"/>
-          </outline>
-        </outline>
-      </outline>
-      <outline text="file.unlock - not implemented on this platform - Verify file.unlock returns platform error">
-        <outline text="Metadata">
-          <outline text="skip: P2: File locking not yet implemented - deferred pending proper cross-platform API implementation"/>
-          <outline text="expected_result: true"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(filePath = tmpDir + &quot;/&quot; + &quot;test_lock3.txt&quot;)"/>
-          <outline text="file.writeWholeFile(filePath, &quot;test&quot;)"/>
-          <outline text="try">
-            <outline text="file.unlock(filePath)"/>
-            <outline text="return &quot;false&quot;  // Should not reach here - unlock succeeded unexpectedly"/>
-          </outline>
-          <outline text="} else">
-            <outline text="return &quot;true&quot;  // Expected: unlock failed with platform error"/>
-          </outline>
-        </outline>
-      </outline>
-      <outline text="file.freespaceonvolume - get free space on root volume - Get free space on root filesystem">
-        <outline text="Metadata">
-          <outline text="expected_result: true"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(freeBytes = file.freespaceonvolume(&quot;/&quot;))"/>
-          <outline text="return freeBytes &gt; 0"/>
-        </outline>
-      </outline>
-      <outline text="file.volumesize - get total size of root volume - Get total size of root filesystem">
-        <outline text="Metadata">
-          <outline text="expected_result: true"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(totalBytes = file.volumesize(&quot;/&quot;))"/>
-          <outline text="return totalBytes &gt; 0"/>
-        </outline>
-      </outline>
-      <outline text="file.volumeblocksize - get block size - Get filesystem block size">
-        <outline text="Metadata">
-          <outline text="expected_result: true"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(blockSize = file.volumeblocksize(&quot;/&quot;))"/>
-          <outline text="return blockSize &gt; 0"/>
-        </outline>
-      </outline>
-      <outline text="file.isvolume - root is always a volume - Root path should be detected as a mount point">
-        <outline text="Metadata">
-          <outline text="expected_result: true"/>
-        </outline>
-        <outline text="Script">
-          <outline text="return file.isvolume(&quot;/&quot;)"/>
-        </outline>
-      </outline>
-      <outline text="file.isvolume - regular directory is not a volume - Subdirectory should not be detected as mount point">
-        <outline text="Metadata">
-          <outline text="expected_result: true"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="return !file.isvolume(tmpDir)"/>
-        </outline>
-      </outline>
-      <outline text="file.getFileDialog - not implemented in headless mode - File picker dialog should error in batch/headless mode">
-        <outline text="Metadata">
-          <outline text="expected_success: False"/>
-          <outline text="expected_error: not implemented"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(selectedFile)"/>
-          <outline text="local(result = file.getFileDialog(&quot;Select a file&quot;, @selectedFile))"/>
-          <outline text="return result"/>
-        </outline>
-      </outline>
-      <outline text="file.putFileDialog - not implemented in headless mode - Save file dialog should error in batch/headless mode">
-        <outline text="Metadata">
-          <outline text="expected_success: False"/>
-          <outline text="expected_error: not implemented"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-          <outline text="local(defaultPath = tmpDir + &quot;/&quot; + &quot;save_target.txt&quot;)"/>
-          <outline text="local(selectedFile)"/>
-          <outline text="local(result = file.putFileDialog(&quot;Save file as&quot;, defaultPath, @selectedFile))"/>
-          <outline text="return result"/>
-        </outline>
-      </outline>
-      <outline text="file.getFolderDialog - not implemented in headless mode - Folder picker dialog should error in batch/headless mode">
-        <outline text="Metadata">
-          <outline text="expected_success: False"/>
-          <outline text="expected_error: not implemented"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(selectedFolder)"/>
-          <outline text="local(result = file.getFolderDialog(&quot;Select a folder&quot;, @selectedFolder))"/>
-          <outline text="return result"/>
-        </outline>
-      </outline>
-      <outline text="file.getDiskDialog - not implemented in headless mode - Volume/disk picker dialog should error in batch/headless mode">
-        <outline text="Metadata">
-          <outline text="expected_success: False"/>
-          <outline text="expected_error: not implemented"/>
-        </outline>
-        <outline text="Script">
-          <outline text="local(selectedDisk)"/>
-          <outline text="local(result = file.getDiskDialog(&quot;Select a volume&quot;, @selectedDisk))"/>
-          <outline text="return result"/>
-        </outline>
+    <outline text="file.fileFromPath - extract filename from path - Extract filename component from path string (like basename)">
+      <outline text="Metadata">
+        <outline text="expected_result: test.txt"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(fullPath = tmpDir + &quot;/&quot; + &quot;test.txt&quot;)"/>
+        <outline text="local(filename = file.fileFromPath(fullPath))"/>
+        <outline text="return filename"/>
+      </outline>
+    </outline>
+    <outline text="file.exists - nonexistent file - Check that nonexistent file returns false">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;nonexistent_file_12345.txt&quot;)"/>
+        <outline text="return file.exists(fs)"/>
+      </outline>
+    </outline>
+    <outline text="file.new - create new empty file - Create new file in project tmp directory">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(filePath = tmpDir + &quot;/&quot; + &quot;frontier_test_new.txt&quot;)"/>
+        <outline text="local(ok = file.new(filePath))"/>
+        <outline text="return ok"/>
+      </outline>
+    </outline>
+    <outline text="file.exists - file created with file.new - Verify file.new created the file">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_new.txt&quot;)"/>
+        <outline text="return file.exists(fs)"/>
+      </outline>
+    </outline>
+    <outline text="file.writeWholeFile - write string to file - Write text content to file">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_write.txt&quot;)"/>
+        <outline text="local(ok = file.writeWholeFile(fs, &quot;Hello, Frontier!&quot;))"/>
+        <outline text="return ok"/>
+      </outline>
+    </outline>
+    <outline text="file.readWholeFile - read back written content - Read file and verify content matches">
+      <outline text="Metadata">
+        <outline text="expected_result: Hello, Frontier!"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_write.txt&quot;)"/>
+        <outline text="local(readData = file.readWholeFile(fs))"/>
+        <outline text="return readData"/>
+      </outline>
+    </outline>
+    <outline text="file.readWholeFile - round trip binary data - Write and read back binary data">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_binary.dat&quot;)"/>
+        <outline text="local(binaryData = &quot;\x00\x01\x02\xFF&quot;)"/>
+        <outline text="file.writeWholeFile(fs, binaryData)"/>
+        <outline text="local(readData = file.readWholeFile(fs))"/>
+        <outline text="return (readData == binaryData)"/>
+      </outline>
+    </outline>
+    <outline text="file.delete - delete existing file - Delete file created in previous test">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_write.txt&quot;)"/>
+        <outline text="local(ok = file.delete(fs))"/>
+        <outline text="return ok"/>
+      </outline>
+    </outline>
+    <outline text="file.exists - file deleted successfully - Verify file.delete removed the file">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_write.txt&quot;)"/>
+        <outline text="return file.exists(fs)"/>
+      </outline>
+    </outline>
+    <outline text="file.readWholeFile - nonexistent file error - Reading nonexistent file should fail">
+      <outline text="Metadata">
+        <outline text="expected_success: False"/>
+        <outline text="expected_result: None"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;does_not_exist_12345.txt&quot;)"/>
+        <outline text="return file.readWholeFile(fs)"/>
+      </outline>
+    </outline>
+    <outline text="file.delete - nonexistent file error - Deleting nonexistent file should fail">
+      <outline text="Metadata">
+        <outline text="expected_success: False"/>
+        <outline text="expected_result: None"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;does_not_exist_12345.txt&quot;)"/>
+        <outline text="return file.delete(fs)"/>
+      </outline>
+    </outline>
+    <outline text="file.size - get file size - Get size of file in bytes">
+      <outline text="Metadata">
+        <outline text="expected_result: 5"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_size.txt&quot;)"/>
+        <outline text="local(testData = &quot;12345&quot;)"/>
+        <outline text="file.writeWholeFile(fs, testData)"/>
+        <outline text="return file.size(fs)"/>
+      </outline>
+    </outline>
+    <outline text="file.created - get file creation date - Get creation date of file (Frontier epoch)">
+      <outline text="Metadata">
+        <outline text="expected_result: date"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_created.txt&quot;)"/>
+        <outline text="file.new(fs)"/>
+        <outline text="local(createdDate = file.created(fs))"/>
+        <outline text="return typeof(createdDate)"/>
+      </outline>
+    </outline>
+    <outline text="file.modified - get file modification date - Get modification date of file (Frontier epoch)">
+      <outline text="Metadata">
+        <outline text="expected_result: date"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_modified.txt&quot;)"/>
+        <outline text="file.writeWholeFile(fs, &quot;initial content&quot;)"/>
+        <outline text="local(modifiedDate = file.modified(fs))"/>
+        <outline text="return typeof(modifiedDate)"/>
+      </outline>
+    </outline>
+    <outline text="file.copy - copy file to new location - Copy file and verify both exist">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(source = tmpDir + &quot;/&quot; + &quot;frontier_test_copy_source.txt&quot;)"/>
+        <outline text="local(dest = tmpDir + &quot;/&quot; + &quot;frontier_test_copy_dest.txt&quot;)"/>
+        <outline text="file.writeWholeFile(source, &quot;test content for copy&quot;)"/>
+        <outline text="local(ok = file.copy(source, dest))"/>
+        <outline text="return ok"/>
+      </outline>
+    </outline>
+    <outline text="file.copy - verify destination exists with same content - Check copied file has same content as source">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(source = tmpDir + &quot;/&quot; + &quot;frontier_test_copy_source.txt&quot;)"/>
+        <outline text="local(dest = tmpDir + &quot;/&quot; + &quot;frontier_test_copy_dest.txt&quot;)"/>
+        <outline text="local(sourceContent = file.readWholeFile(source))"/>
+        <outline text="local(destContent = file.readWholeFile(dest))"/>
+        <outline text="return (sourceContent == destContent)"/>
+      </outline>
+    </outline>
+    <outline text="file.rename - rename file - Rename file and verify new name exists">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(oldName = tmpDir + &quot;/&quot; + &quot;frontier_test_rename_old.txt&quot;)"/>
+        <outline text="local(newName = tmpDir + &quot;/&quot; + &quot;frontier_test_rename_new.txt&quot;)"/>
+        <outline text="file.writeWholeFile(oldName, &quot;rename test content&quot;)"/>
+        <outline text="local(ok = file.rename(oldName, newName))"/>
+        <outline text="return ok"/>
+      </outline>
+    </outline>
+    <outline text="file.rename - verify old name no longer exists - Check that old filename is gone after rename">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(oldName = tmpDir + &quot;/&quot; + &quot;frontier_test_rename_old.txt&quot;)"/>
+        <outline text="return file.exists(oldName)"/>
+      </outline>
+    </outline>
+    <outline text="file.rename - verify new name exists with same content - Check renamed file has original content">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(newName = tmpDir + &quot;/&quot; + &quot;frontier_test_rename_new.txt&quot;)"/>
+        <outline text="local(content = file.readWholeFile(newName))"/>
+        <outline text="return (content == &quot;rename test content&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="file.move - move file to different location - Move file and verify it appears at destination">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(source = tmpDir + &quot;/&quot; + &quot;frontier_test_move_source.txt&quot;)"/>
+        <outline text="local(dest = tmpDir + &quot;/&quot; + &quot;frontier_test_move_dest.txt&quot;)"/>
+        <outline text="file.writeWholeFile(source, &quot;move test content&quot;)"/>
+        <outline text="local(ok = file.move(source, dest))"/>
+        <outline text="return ok"/>
+      </outline>
+    </outline>
+    <outline text="file.move - verify source no longer exists - Check that source file is gone after move">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(source = tmpDir + &quot;/&quot; + &quot;frontier_test_move_source.txt&quot;)"/>
+        <outline text="return file.exists(source)"/>
+      </outline>
+    </outline>
+    <outline text="file.move - verify destination exists with same content - Check moved file has original content">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(dest = tmpDir + &quot;/&quot; + &quot;frontier_test_move_dest.txt&quot;)"/>
+        <outline text="local(content = file.readWholeFile(dest))"/>
+        <outline text="return (content == &quot;move test content&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="file.newfolder - create new folder - Create new folder in temp directory">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(folderPath = tmpDir + &quot;/&quot; + &quot;frontier_test_newfolder_unique&quot;)"/>
+        <outline text="if file.exists(folderPath) { file.delete(folderPath); }"/>
+        <outline text="local(ok = file.newfolder(folderPath))"/>
+        <outline text="return ok"/>
+      </outline>
+    </outline>
+    <outline text="file.newfolder - verify folder exists - Check that created folder exists">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(folderPath = tmpDir + &quot;/&quot; + &quot;frontier_test_newfolder_unique&quot;)"/>
+        <outline text="return file.exists(folderPath)"/>
+      </outline>
+    </outline>
+    <outline text="file.getpathchar - get path separator character - Get platform-specific path separator (/ on Unix)">
+      <outline text="Metadata">
+        <outline text="expected_result: /"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(pathChar = file.getpathchar())"/>
+        <outline text="return pathChar"/>
+      </outline>
+    </outline>
+    <outline text="file.fullpath - get absolute path - Convert relative or partial path to absolute path">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_fullpath.txt&quot;)"/>
+        <outline text="file.new(fs)"/>
+        <outline text="local(fullPath = file.fullpath(fs))"/>
+        <outline text="return (string.length(fullPath) &gt; 0)"/>
+      </outline>
+    </outline>
+    <outline text="file.fullpath - verify absolute path starts with / - Absolute paths on Unix should start with /">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_fullpath.txt&quot;)"/>
+        <outline text="local(fullPath = file.fullpath(fs))"/>
+        <outline text="return (string.mid(fullPath, 1, 1) == &quot;/&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="file.folderfrompath - extract folder from path - Get folder portion of a file path">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(testPath = tmpDir + &quot;/&quot; + &quot;testfile.txt&quot;)"/>
+        <outline text="local(folder = file.folderfrompath(testPath))"/>
+        <outline text="return (folder == tmpDir)"/>
+      </outline>
+    </outline>
+    <outline text="file.getpath - get current working directory - Get the current working directory path">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(currentPath = file.getpath())"/>
+        <outline text="return (string.length(currentPath) &gt; 0)"/>
+      </outline>
+    </outline>
+    <outline text="file.setpath - set working directory - Change working directory and verify">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(originalPath = file.getpath())"/>
+        <outline text="local(ok = file.setpath(tmpDir))"/>
+        <outline text="local(newPath = file.getpath())"/>
+        <outline text="file.setpath(originalPath)"/>
+        <outline text="return ok"/>
+      </outline>
+    </outline>
+    <outline text="file.setpath/getpath - round trip working directory - Verify setpath actually changes working directory">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(originalPath = file.getpath())"/>
+        <outline text="file.setpath(tmpDir)"/>
+        <outline text="local(newPath = file.getpath())"/>
+        <outline text="file.setpath(originalPath)"/>
+        <outline text="return (newPath == tmpDir)"/>
+      </outline>
+    </outline>
+    <outline text="file.open/close - open and close file for reading - Open file, verify handle, then close it">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_io.txt&quot;)"/>
+        <outline text="file.writeWholeFile(fs, &quot;test content&quot;)"/>
+        <outline text="local(f = file.open(fs, &quot;r&quot;))"/>
+        <outline text="local(ok = (f != nil))"/>
+        <outline text="file.close(f)"/>
+        <outline text="return ok"/>
+      </outline>
+    </outline>
+    <outline text="file.read - read bytes from file - Open file and read specific number of bytes">
+      <outline text="Metadata">
+        <outline text="expected_result: Hello"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_read.txt&quot;)"/>
+        <outline text="file.writeWholeFile(fs, &quot;Hello World!&quot;)"/>
+        <outline text="local(f = file.open(fs, &quot;r&quot;))"/>
+        <outline text="local(data = file.read(f, 5))"/>
+        <outline text="file.close(f)"/>
+        <outline text="return data"/>
+      </outline>
+    </outline>
+    <outline text="file.readline - read line from file - Read text file line by line">
+      <outline text="Metadata">
+        <outline text="expected_result: Line 1"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_readline.txt&quot;)"/>
+        <outline text="file.writeWholeFile(fs, &quot;Line 1\nLine 2\nLine 3&quot;)"/>
+        <outline text="local(f = file.open(fs, &quot;r&quot;))"/>
+        <outline text="local(line1 = file.readline(f))"/>
+        <outline text="file.close(f)"/>
+        <outline text="return line1"/>
+      </outline>
+    </outline>
+    <outline text="file.endoffile - check if at end of file - Detect EOF condition after reading past end">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_eof.txt&quot;)"/>
+        <outline text="file.writeWholeFile(fs, &quot;AB&quot;)"/>
+        <outline text="local(f = file.open(fs, &quot;r&quot;))"/>
+        <outline text="file.read(f, 2)"/>
+        <outline text="file.read(f, 1)"/>
+        <outline text="local(isEof = file.endoffile(f))"/>
+        <outline text="file.close(f)"/>
+        <outline text="return isEof"/>
+      </outline>
+    </outline>
+    <outline text="file.getposition - get current file position - Check file position after reading">
+      <outline text="Metadata">
+        <outline text="expected_result: 5"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_getpos.txt&quot;)"/>
+        <outline text="file.writeWholeFile(fs, &quot;0123456789&quot;)"/>
+        <outline text="local(f = file.open(fs, &quot;r&quot;))"/>
+        <outline text="file.read(f, 5)"/>
+        <outline text="local(pos = file.getposition(f))"/>
+        <outline text="file.close(f)"/>
+        <outline text="return pos"/>
+      </outline>
+    </outline>
+    <outline text="file.setposition - seek to file position - Move file pointer and read from new position">
+      <outline text="Metadata">
+        <outline text="expected_result: DE"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_setpos.txt&quot;)"/>
+        <outline text="file.writeWholeFile(fs, &quot;ABCDEFGH&quot;)"/>
+        <outline text="local(f = file.open(fs, &quot;r&quot;))"/>
+        <outline text="file.setposition(f, 3)"/>
+        <outline text="local(data = file.read(f, 2))"/>
+        <outline text="file.close(f)"/>
+        <outline text="return data"/>
+      </outline>
+    </outline>
+    <outline text="file.getendoffile - get file size via handle - Get file size using open file handle">
+      <outline text="Metadata">
+        <outline text="expected_result: 5"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_geteof.txt&quot;)"/>
+        <outline text="file.writeWholeFile(fs, &quot;12345&quot;)"/>
+        <outline text="local(f = file.open(fs, &quot;r&quot;))"/>
+        <outline text="local(size = file.getendoffile(f))"/>
+        <outline text="file.close(f)"/>
+        <outline text="return size"/>
+      </outline>
+    </outline>
+    <outline text="file.isfolder - check if path is folder - Verify folder detection">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(folderPath = tmpDir + &quot;/&quot; + &quot;test_folder_unique2&quot;)"/>
+        <outline text="if file.exists(folderPath) { file.delete(folderPath); }"/>
+        <outline text="file.newfolder(folderPath)"/>
+        <outline text="return file.isfolder(folderPath)"/>
+      </outline>
+    </outline>
+    <outline text="file.isfolder - verify file is not folder - Check that regular file returns false">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(filePath = tmpDir + &quot;/&quot; + &quot;test_file.txt&quot;)"/>
+        <outline text="file.new(filePath)"/>
+        <outline text="return file.isfolder(filePath)"/>
+      </outline>
+    </outline>
+    <outline text="file.compare - compare identical files - Compare two files with same content">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(file1 = tmpDir + &quot;/&quot; + &quot;compare1.txt&quot;)"/>
+        <outline text="local(file2 = tmpDir + &quot;/&quot; + &quot;compare2.txt&quot;)"/>
+        <outline text="file.writeWholeFile(file1, &quot;same content&quot;)"/>
+        <outline text="file.writeWholeFile(file2, &quot;same content&quot;)"/>
+        <outline text="return file.compare(file1, file2)"/>
+      </outline>
+    </outline>
+    <outline text="file.compare - compare different files - Compare two files with different content">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(file1 = tmpDir + &quot;/&quot; + &quot;diff1.txt&quot;)"/>
+        <outline text="local(file2 = tmpDir + &quot;/&quot; + &quot;diff2.txt&quot;)"/>
+        <outline text="file.writeWholeFile(file1, &quot;content A&quot;)"/>
+        <outline text="file.writeWholeFile(file2, &quot;content B&quot;)"/>
+        <outline text="return file.compare(file1, file2)"/>
+      </outline>
+    </outline>
+    <outline text="file.copy - copy empty file - Copy 0-byte file and verify both exist with same size">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(source = tmpDir + &quot;/&quot; + &quot;empty_source.txt&quot;)"/>
+        <outline text="local(dest = tmpDir + &quot;/&quot; + &quot;empty_dest.txt&quot;)"/>
+        <outline text="file.new(source)"/>
+        <outline text="local(ok = file.copy(source, dest))"/>
+        <outline text="local(sourceSize = file.size(source))"/>
+        <outline text="local(destSize = file.size(dest))"/>
+        <outline text="return ok and (sourceSize == 0) and (destSize == 0)"/>
+      </outline>
+    </outline>
+    <outline text="file.move - move empty file - Move 0-byte file and verify old gone, new exists">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(source = tmpDir + &quot;/&quot; + &quot;empty_move_source.txt&quot;)"/>
+        <outline text="local(dest = tmpDir + &quot;/&quot; + &quot;empty_move_dest.txt&quot;)"/>
+        <outline text="file.new(source)"/>
+        <outline text="local(ok = file.move(source, dest))"/>
+        <outline text="return ok and (not file.exists(source)) and file.exists(dest)"/>
+      </outline>
+    </outline>
+    <outline text="file.compare - compare two empty files - Two 0-byte files should be equal">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(file1 = tmpDir + &quot;/&quot; + &quot;empty1.txt&quot;)"/>
+        <outline text="local(file2 = tmpDir + &quot;/&quot; + &quot;empty2.txt&quot;)"/>
+        <outline text="file.new(file1)"/>
+        <outline text="file.new(file2)"/>
+        <outline text="return file.compare(file1, file2)"/>
+      </outline>
+    </outline>
+    <outline text="file.setposition - position beyond EOF - Test seeking beyond end of file">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(filePath = tmpDir + &quot;/&quot; + &quot;setpos_beyond_eof.txt&quot;)"/>
+        <outline text="file.writeWholeFile(filePath, &quot;test&quot;)"/>
+        <outline text="local(f = file.open(filePath, &quot;r&quot;))"/>
+        <outline text="local(eofPos = file.getendoffile(f))"/>
+        <outline text="local(ok = file.setposition(f, eofPos + 100))"/>
+        <outline text="local(newPos = file.getposition(f))"/>
+        <outline text="file.close(f)"/>
+        <outline text="return ok and (newPos == (eofPos + 100))"/>
+      </outline>
+    </outline>
+    <outline text="file.readline - Unix line ending (LF) - Read line with \n delimiter">
+      <outline text="Metadata">
+        <outline text="expected_result: line1"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(filePath = tmpDir + &quot;/&quot; + &quot;readline_lf.txt&quot;)"/>
+        <outline text="file.writeWholeFile(filePath, &quot;line1\nline2&quot;)"/>
+        <outline text="local(f = file.open(filePath, &quot;r&quot;))"/>
+        <outline text="local(line = file.readline(f))"/>
+        <outline text="file.close(f)"/>
+        <outline text="return line"/>
+      </outline>
+    </outline>
+    <outline text="file.readline - Windows line ending (CRLF) - Read line with \r\n delimiter">
+      <outline text="Metadata">
+        <outline text="expected_result: line1"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(filePath = tmpDir + &quot;/&quot; + &quot;readline_crlf.txt&quot;)"/>
+        <outline text="file.writeWholeFile(filePath, &quot;line1\r\nline2&quot;)"/>
+        <outline text="local(f = file.open(filePath, &quot;r&quot;))"/>
+        <outline text="local(line = file.readline(f))"/>
+        <outline text="file.close(f)"/>
+        <outline text="return line"/>
+      </outline>
+    </outline>
+    <outline text="file.readline - Classic Mac line ending (CR) - Read line with \r delimiter">
+      <outline text="Metadata">
+        <outline text="expected_result: line1"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(filePath = tmpDir + &quot;/&quot; + &quot;readline_cr.txt&quot;)"/>
+        <outline text="file.writeWholeFile(filePath, &quot;line1\rline2&quot;)"/>
+        <outline text="local(f = file.open(filePath, &quot;r&quot;))"/>
+        <outline text="local(line = file.readline(f))"/>
+        <outline text="file.close(f)"/>
+        <outline text="return line"/>
+      </outline>
+    </outline>
+    <outline text="file.folderfrompath - filename with no folder - Extract folder from bare filename">
+      <outline text="Metadata">
+        <outline text="expected_result: "/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(path = &quot;justfilename.txt&quot;)"/>
+        <outline text="local(folder = file.folderfrompath(path))"/>
+        <outline text="return folder"/>
+      </outline>
+    </outline>
+    <outline text="file.folderfrompath - path with trailing slash - Extract folder from path with trailing slash - should return parent">
+      <outline text="Metadata">
+        <outline text="expected_result: /parent"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(path = &quot;/parent/child/&quot;)"/>
+        <outline text="local(folder = file.folderfrompath(path))"/>
+        <outline text="return folder"/>
+      </outline>
+    </outline>
+    <outline text="file.type - extract extension from .txt file - Get file extension with dot prefix">
+      <outline text="Metadata">
+        <outline text="expected_result: .txt"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(filePath = tmpDir + &quot;/&quot; + &quot;test_type.txt&quot;)"/>
+        <outline text="file.writeWholeFile(filePath, &quot;test&quot;)"/>
+        <outline text="return file.type(filePath)"/>
+      </outline>
+    </outline>
+    <outline text="file.type - file with no extension - Get type of file without extension returns empty string">
+      <outline text="Metadata">
+        <outline text="expected_result: "/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(filePath = tmpDir + &quot;/&quot; + &quot;testfile_noext&quot;)"/>
+        <outline text="file.writeWholeFile(filePath, &quot;test&quot;)"/>
+        <outline text="return file.type(filePath)"/>
+      </outline>
+    </outline>
+    <outline text="file.type - file with multiple extensions - Get type of file.tar.gz returns last extension (space-padded OSType)">
+      <outline text="Metadata">
+        <outline text="expected_result: .gz "/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(filePath = tmpDir + &quot;/&quot; + &quot;archive.tar.gz&quot;)"/>
+        <outline text="file.writeWholeFile(filePath, &quot;test&quot;)"/>
+        <outline text="return file.type(filePath)"/>
+      </outline>
+    </outline>
+    <outline text="file.creator - returns empty string in headless mode - Creator codes are Mac-specific, headless returns empty string">
+      <outline text="Metadata">
+        <outline text="expected_result: "/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(filePath = tmpDir + &quot;/&quot; + &quot;test_creator.txt&quot;)"/>
+        <outline text="file.writeWholeFile(filePath, &quot;test&quot;)"/>
+        <outline text="return file.creator(filePath)"/>
+      </outline>
+    </outline>
+    <outline text="file.setmodified - set modification time - Set file modification time and verify it changed">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(filePath = tmpDir + &quot;/&quot; + &quot;test_setmodified.txt&quot;)"/>
+        <outline text="file.writeWholeFile(filePath, &quot;test&quot;)"/>
+        <outline text="local(oldTime = file.modified(filePath))"/>
+        <outline text="local(newTime = clock.now() - (60 * 60 * 24));  // 1 day ago"/>
+        <outline text="local(result = file.setmodified(filePath, newTime))"/>
+        <outline text="local(verifyTime = file.modified(filePath))"/>
+        <outline text="return result and (verifyTime &lt; oldTime)"/>
+      </outline>
+    </outline>
+    <outline text="file.setcreated - behavior on different platforms - Set creation time (works on macOS, returns false on Linux)">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(filePath = tmpDir + &quot;/&quot; + &quot;test_setcreated.txt&quot;)"/>
+        <outline text="file.writeWholeFile(filePath, &quot;test&quot;)"/>
+        <outline text="local(newTime = clock.now() - (60 * 60 * 24));  // 1 day ago"/>
+        <outline text="local(result = file.setcreated(filePath, newTime))"/>
+        <outline text="// Returns true on macOS, false on Linux - both are valid"/>
+        <outline text="return typeof(result) == booleanType"/>
+      </outline>
+    </outline>
+    <outline text="file.islocked - unlocked file returns false - Check that writable file is not locked">
+      <outline text="Metadata">
+        <outline text="skip: P2: File locking not yet implemented - deferred pending proper cross-platform API implementation"/>
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(filePath = tmpDir + &quot;/&quot; + &quot;test_lock.txt&quot;)"/>
+        <outline text="file.writeWholeFile(filePath, &quot;test&quot;)"/>
+        <outline text="return file.islocked(filePath)"/>
+      </outline>
+    </outline>
+    <outline text="file.lock - not implemented on this platform - Verify file.lock returns platform error">
+      <outline text="Metadata">
+        <outline text="skip: P2: File locking not yet implemented - deferred pending proper cross-platform API implementation"/>
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(filePath = tmpDir + &quot;/&quot; + &quot;test_lock2.txt&quot;)"/>
+        <outline text="file.writeWholeFile(filePath, &quot;test&quot;)"/>
+        <outline text="try">
+          <outline text="file.lock(filePath)"/>
+          <outline text="return &quot;false&quot;  // Should not reach here - lock succeeded unexpectedly"/>
+        </outline>
+        <outline text="} else">
+          <outline text="return &quot;true&quot;  // Expected: lock failed with platform error"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="file.unlock - not implemented on this platform - Verify file.unlock returns platform error">
+      <outline text="Metadata">
+        <outline text="skip: P2: File locking not yet implemented - deferred pending proper cross-platform API implementation"/>
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(filePath = tmpDir + &quot;/&quot; + &quot;test_lock3.txt&quot;)"/>
+        <outline text="file.writeWholeFile(filePath, &quot;test&quot;)"/>
+        <outline text="try">
+          <outline text="file.unlock(filePath)"/>
+          <outline text="return &quot;false&quot;  // Should not reach here - unlock succeeded unexpectedly"/>
+        </outline>
+        <outline text="} else">
+          <outline text="return &quot;true&quot;  // Expected: unlock failed with platform error"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="file.freespaceonvolume - get free space on root volume - Get free space on root filesystem">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(freeBytes = file.freespaceonvolume(&quot;/&quot;))"/>
+        <outline text="return freeBytes &gt; 0"/>
+      </outline>
+    </outline>
+    <outline text="file.volumesize - get total size of root volume - Get total size of root filesystem">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(totalBytes = file.volumesize(&quot;/&quot;))"/>
+        <outline text="return totalBytes &gt; 0"/>
+      </outline>
+    </outline>
+    <outline text="file.volumeblocksize - get block size - Get filesystem block size">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(blockSize = file.volumeblocksize(&quot;/&quot;))"/>
+        <outline text="return blockSize &gt; 0"/>
+      </outline>
+    </outline>
+    <outline text="file.isvolume - root is always a volume - Root path should be detected as a mount point">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="return file.isvolume(&quot;/&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="file.isvolume - regular directory is not a volume - Subdirectory should not be detected as mount point">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="return !file.isvolume(tmpDir)"/>
+      </outline>
+    </outline>
+    <outline text="file.getFileDialog - not implemented in headless mode - File picker dialog should error in batch/headless mode">
+      <outline text="Metadata">
+        <outline text="expected_success: False"/>
+        <outline text="expected_error: not implemented"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(selectedFile)"/>
+        <outline text="local(result = file.getFileDialog(&quot;Select a file&quot;, @selectedFile))"/>
+        <outline text="return result"/>
+      </outline>
+    </outline>
+    <outline text="file.putFileDialog - not implemented in headless mode - Save file dialog should error in batch/headless mode">
+      <outline text="Metadata">
+        <outline text="expected_success: False"/>
+        <outline text="expected_error: not implemented"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(defaultPath = tmpDir + &quot;/&quot; + &quot;save_target.txt&quot;)"/>
+        <outline text="local(selectedFile)"/>
+        <outline text="local(result = file.putFileDialog(&quot;Save file as&quot;, defaultPath, @selectedFile))"/>
+        <outline text="return result"/>
+      </outline>
+    </outline>
+    <outline text="file.getFolderDialog - not implemented in headless mode - Folder picker dialog should error in batch/headless mode">
+      <outline text="Metadata">
+        <outline text="expected_success: False"/>
+        <outline text="expected_error: not implemented"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(selectedFolder)"/>
+        <outline text="local(result = file.getFolderDialog(&quot;Select a folder&quot;, @selectedFolder))"/>
+        <outline text="return result"/>
+      </outline>
+    </outline>
+    <outline text="file.getDiskDialog - not implemented in headless mode - Volume/disk picker dialog should error in batch/headless mode">
+      <outline text="Metadata">
+        <outline text="expected_success: False"/>
+        <outline text="expected_error: not implemented"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(selectedDisk)"/>
+        <outline text="local(result = file.getDiskDialog(&quot;Select a volume&quot;, @selectedDisk))"/>
+        <outline text="return result"/>
       </outline>
     </outline>
   </body>

@@ -2,297 +2,295 @@
 <opml version="2.0">
   <head>
     <title>Repl Commands (repl_commands)</title>
-    <dateCreated>Mon, 19 Jan 2026 09:10:49 GMT</dateCreated>
+    <dateCreated>Mon, 19 Jan 2026 09:22:07 GMT</dateCreated>
   </head>
   <body>
-    <outline text="Repl Commands (repl_commands)">
-      <outline text="REPL /help - displays available commands - /help should list available commands (QuickScript model)">
-        <outline text="Metadata">
-          <outline text="repl_mode: True"/>
-          <outline text="stdin_input: /help&#10;/exit&#10;"/>
-          <outline text="expected_output_contains: ['/exit', '/help', 'Available commands', 'QuickScript']"/>
-        </outline>
+    <outline text="REPL /help - displays available commands - /help should list available commands (QuickScript model)">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /help&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['/exit', '/help', 'Available commands', 'QuickScript']"/>
       </outline>
-      <outline text="REPL /help - shows multi-line usage - /help should mention multi-line (Phase 2 feature)">
-        <outline text="Metadata">
-          <outline text="repl_mode: True"/>
-          <outline text="stdin_input: /help&#10;/exit&#10;"/>
-          <outline text="expected_output_contains: ['Multi-line', 'Phase 2']"/>
-        </outline>
+    </outline>
+    <outline text="REPL /help - shows multi-line usage - /help should mention multi-line (Phase 2 feature)">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /help&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['Multi-line', 'Phase 2']"/>
       </outline>
-      <outline text="REPL /help - shows examples - /help should provide usage examples">
-        <outline text="Metadata">
-          <outline text="repl_mode: True"/>
-          <outline text="stdin_input: /help&#10;/exit&#10;"/>
-          <outline text="expected_output_contains: ['Examples', 'workspace']"/>
-        </outline>
+    </outline>
+    <outline text="REPL /help - shows examples - /help should provide usage examples">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /help&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['Examples', 'workspace']"/>
       </outline>
-      <outline text="REPL /vars - empty workspace - /vars shows empty ephemeral workspace">
-        <outline text="Metadata">
-          <outline text="skip: True"/>
-          <outline text="skip_reason: QuickScript model: /vars and /clear commands removed (not applicable)"/>
-          <outline text="repl_mode: True"/>
-          <outline text="stdin_input: /vars&#10;/exit&#10;"/>
-          <outline text="expected_output_contains: ['(empty)']"/>
-        </outline>
+    </outline>
+    <outline text="REPL /vars - empty workspace - /vars shows empty ephemeral workspace">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: QuickScript model: /vars and /clear commands removed (not applicable)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /vars&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['(empty)']"/>
       </outline>
-      <outline text="REPL /vars - single variable - /vars should list single workspace variable">
-        <outline text="Metadata">
-          <outline text="skip: True"/>
-          <outline text="skip_reason: QuickScript model: /vars and /clear commands removed (not applicable)"/>
-          <outline text="repl_mode: True"/>
-          <outline text="stdin_input: x = 42&#10;/vars&#10;/exit&#10;"/>
-          <outline text="expected_output_contains: ['x = 42', 'Workspace variables']"/>
-        </outline>
+    </outline>
+    <outline text="REPL /vars - single variable - /vars should list single workspace variable">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: QuickScript model: /vars and /clear commands removed (not applicable)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: x = 42&#10;/vars&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['x = 42', 'Workspace variables']"/>
       </outline>
-      <outline text="REPL /vars - multiple variables - /vars should list all workspace variables">
-        <outline text="Metadata">
-          <outline text="skip: True"/>
-          <outline text="skip_reason: QuickScript model: /vars and /clear commands removed (not applicable)"/>
-          <outline text="repl_mode: True"/>
-          <outline text="stdin_input: x = 42&#10;y = &quot;hello&quot;&#10;z = true&#10;/vars&#10;/exit&#10;"/>
-          <outline text="expected_output_contains: ['x = 42', 'y = &quot;hello&quot;', 'z = true', 'Workspace variables (3)']"/>
-        </outline>
+    </outline>
+    <outline text="REPL /vars - multiple variables - /vars should list all workspace variables">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: QuickScript model: /vars and /clear commands removed (not applicable)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: x = 42&#10;y = &quot;hello&quot;&#10;z = true&#10;/vars&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['x = 42', 'y = &quot;hello&quot;', 'z = true', 'Workspace variables (3)']"/>
       </outline>
-      <outline text="REPL /vars - string variable displays with quotes - /vars should show strings with quote marks">
-        <outline text="Metadata">
-          <outline text="skip: True"/>
-          <outline text="skip_reason: QuickScript model: /vars and /clear commands removed (not applicable)"/>
-          <outline text="repl_mode: True"/>
-          <outline text="stdin_input: greeting = &quot;Hello, world!&quot;&#10;/vars&#10;/exit&#10;"/>
-          <outline text="expected_output_contains: ['greeting = &quot;Hello, world!&quot;']"/>
-        </outline>
+    </outline>
+    <outline text="REPL /vars - string variable displays with quotes - /vars should show strings with quote marks">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: QuickScript model: /vars and /clear commands removed (not applicable)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: greeting = &quot;Hello, world!&quot;&#10;/vars&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['greeting = &quot;Hello, world!&quot;']"/>
       </outline>
-      <outline text="REPL /vars - boolean variables - /vars should show true/false for booleans">
-        <outline text="Metadata">
-          <outline text="skip: True"/>
-          <outline text="skip_reason: QuickScript model: /vars and /clear commands removed (not applicable)"/>
-          <outline text="repl_mode: True"/>
-          <outline text="stdin_input: flag1 = true&#10;flag2 = false&#10;/vars&#10;/exit&#10;"/>
-          <outline text="expected_output_contains: ['flag1 = true', 'flag2 = false']"/>
-        </outline>
+    </outline>
+    <outline text="REPL /vars - boolean variables - /vars should show true/false for booleans">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: QuickScript model: /vars and /clear commands removed (not applicable)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: flag1 = true&#10;flag2 = false&#10;/vars&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['flag1 = true', 'flag2 = false']"/>
       </outline>
-      <outline text="REPL /vars - table variable - /vars should show table summary">
-        <outline text="Metadata">
-          <outline text="skip: True"/>
-          <outline text="skip_reason: QuickScript model: /vars and /clear commands removed (not applicable)"/>
-          <outline text="repl_mode: True"/>
-          <outline text="stdin_input: lang.new(tableType, @subtable)&#10;subtable.a = 1&#10;subtable.b = 2&#10;/vars&#10;/exit&#10;"/>
-          <outline text="expected_output_contains: ['subtable =', '[table with 2 items]']"/>
-        </outline>
+    </outline>
+    <outline text="REPL /vars - table variable - /vars should show table summary">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: QuickScript model: /vars and /clear commands removed (not applicable)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: lang.new(tableType, @subtable)&#10;subtable.a = 1&#10;subtable.b = 2&#10;/vars&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['subtable =', '[table with 2 items]']"/>
       </outline>
-      <outline text="REPL /clear - clears workspace variables - /clear should remove all workspace variables">
-        <outline text="Metadata">
-          <outline text="skip: True"/>
-          <outline text="skip_reason: QuickScript model: /vars and /clear commands removed (not applicable)"/>
-          <outline text="repl_mode: True"/>
-          <outline text="stdin_input: x = 42&#10;y = 100&#10;/clear&#10;/vars&#10;/exit&#10;"/>
-          <outline text="expected_output_contains: ['Workspace cleared', '(empty)']"/>
-        </outline>
+    </outline>
+    <outline text="REPL /clear - clears workspace variables - /clear should remove all workspace variables">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: QuickScript model: /vars and /clear commands removed (not applicable)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: x = 42&#10;y = 100&#10;/clear&#10;/vars&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['Workspace cleared', '(empty)']"/>
       </outline>
-      <outline text="REPL /clear - variables inaccessible after clear - After /clear, variables should not be accessible">
-        <outline text="Metadata">
-          <outline text="skip: True"/>
-          <outline text="skip_reason: QuickScript model: /vars and /clear commands removed (not applicable)"/>
-          <outline text="repl_mode: True"/>
-          <outline text="stdin_input: x = 42&#10;/clear&#10;x&#10;/exit&#10;"/>
-          <outline text="expected_output_contains: [&quot;Can't evaluate&quot;, &quot;hasn't been defined&quot;]"/>
-        </outline>
+    </outline>
+    <outline text="REPL /clear - variables inaccessible after clear - After /clear, variables should not be accessible">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: QuickScript model: /vars and /clear commands removed (not applicable)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: x = 42&#10;/clear&#10;x&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: [&quot;Can't evaluate&quot;, &quot;hasn't been defined&quot;]"/>
       </outline>
-      <outline text="REPL /clear - can add variables after clear - KNOWN LIMITATION (ADR-009): Variables assigned after /clear may not persist&#10;in workspace due to hash table stack restoration in langrunhandletraperror().&#10;Will be fixed in Phase 6+ (Explicit Hash Table Context architecture).&#10;">
-        <outline text="Metadata">
-          <outline text="skip: True"/>
-          <outline text="skip_reason: QuickScript model: /vars and /clear commands removed (not applicable)"/>
-          <outline text="repl_mode: True"/>
-          <outline text="stdin_input: old = 1&#10;/clear&#10;new = 2&#10;/vars&#10;/exit&#10;"/>
-          <outline text="expected_output_contains: ['new = 2']"/>
-          <outline text="expected_output_not_contains: ['old']"/>
-          <outline text="known_issue: ADR-009: Hash table stack restoration after /clear"/>
-        </outline>
+    </outline>
+    <outline text="REPL /clear - can add variables after clear - KNOWN LIMITATION (ADR-009): Variables assigned after /clear may not persist&#10;in workspace due to hash table stack restoration in langrunhandletraperror().&#10;Will be fixed in Phase 6+ (Explicit Hash Table Context architecture).&#10;">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: QuickScript model: /vars and /clear commands removed (not applicable)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: old = 1&#10;/clear&#10;new = 2&#10;/vars&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['new = 2']"/>
+        <outline text="expected_output_not_contains: ['old']"/>
+        <outline text="known_issue: ADR-009: Hash table stack restoration after /clear"/>
       </outline>
-      <outline text="REPL /clear - idempotent (can clear empty workspace) - /clear on empty workspace should succeed">
-        <outline text="Metadata">
-          <outline text="skip: True"/>
-          <outline text="skip_reason: QuickScript model: /vars and /clear commands removed (not applicable)"/>
-          <outline text="repl_mode: True"/>
-          <outline text="stdin_input: /clear&#10;/clear&#10;/exit&#10;"/>
-          <outline text="expected_output_contains: ['Workspace cleared']"/>
-        </outline>
+    </outline>
+    <outline text="REPL /clear - idempotent (can clear empty workspace) - /clear on empty workspace should succeed">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: QuickScript model: /vars and /clear commands removed (not applicable)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /clear&#10;/clear&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['Workspace cleared']"/>
       </outline>
-      <outline text="REPL /exit - exits cleanly - /exit should terminate REPL without error">
-        <outline text="Metadata">
-          <outline text="repl_mode: True"/>
-          <outline text="stdin_input: /exit&#10;"/>
-          <outline text="expected_output_contains: ['Goodbye']"/>
-        </outline>
+    </outline>
+    <outline text="REPL /exit - exits cleanly - /exit should terminate REPL without error">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /exit&#10;"/>
+        <outline text="expected_output_contains: ['Goodbye']"/>
       </outline>
-      <outline text="REPL /exit - ignores subsequent input - /exit should terminate immediately">
-        <outline text="Metadata">
-          <outline text="repl_mode: True"/>
-          <outline text="stdin_input: /exit&#10;x = 42&#10;"/>
-          <outline text="expected_output_not_contains: ['42']"/>
-        </outline>
+    </outline>
+    <outline text="REPL /exit - ignores subsequent input - /exit should terminate immediately">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /exit&#10;x = 42&#10;"/>
+        <outline text="expected_output_not_contains: ['42']"/>
       </outline>
-      <outline text="REPL - unknown command - Unknown commands should show error and continue">
-        <outline text="Metadata">
-          <outline text="repl_mode: True"/>
-          <outline text="stdin_input: /unknown&#10;/exit&#10;"/>
-          <outline text="expected_output_contains: ['Unknown command', '/help']"/>
-        </outline>
+    </outline>
+    <outline text="REPL - unknown command - Unknown commands should show error and continue">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /unknown&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['Unknown command', '/help']"/>
       </outline>
-      <outline text="REPL - command case sensitivity - Commands should be case-sensitive">
-        <outline text="Metadata">
-          <outline text="repl_mode: True"/>
-          <outline text="stdin_input: /EXIT&#10;/exit&#10;"/>
-          <outline text="expected_output_contains: ['Unknown command']"/>
-        </outline>
+    </outline>
+    <outline text="REPL - command case sensitivity - Commands should be case-sensitive">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /EXIT&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['Unknown command']"/>
       </outline>
-      <outline text="REPL - leading slash required - Commands without leading slash are treated as code">
-        <outline text="Metadata">
-          <outline text="repl_mode: True"/>
-          <outline text="stdin_input: help&#10;/exit&#10;"/>
-          <outline text="expected_output_contains: [&quot;Can't evaluate&quot;, &quot;hasn't been defined&quot;]"/>
-        </outline>
+    </outline>
+    <outline text="REPL - leading slash required - Commands without leading slash are treated as code">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: help&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: [&quot;Can't evaluate&quot;, &quot;hasn't been defined&quot;]"/>
       </outline>
-      <outline text="REPL - command with trailing whitespace - Commands should work with trailing spaces">
-        <outline text="Metadata">
-          <outline text="repl_mode: True"/>
-          <outline text="stdin_input: /help   &#10;/exit&#10;"/>
-          <outline text="expected_output_contains: ['Available commands']"/>
-        </outline>
+    </outline>
+    <outline text="REPL - command with trailing whitespace - Commands should work with trailing spaces">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /help   &#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['Available commands']"/>
       </outline>
-      <outline text="REPL - alternate between code and commands - Should seamlessly switch between code and commands">
-        <outline text="Metadata">
-          <outline text="skip: True"/>
-          <outline text="skip_reason: QuickScript model: /vars and /clear commands removed (not applicable)"/>
-          <outline text="repl_mode: True"/>
-          <outline text="stdin_input: x = 10&#10;/vars&#10;x = 20&#10;/vars&#10;/exit&#10;"/>
-          <outline text="expected_output_contains: ['x = 10', 'x = 20']"/>
-        </outline>
+    </outline>
+    <outline text="REPL - alternate between code and commands - Should seamlessly switch between code and commands">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: QuickScript model: /vars and /clear commands removed (not applicable)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: x = 10&#10;/vars&#10;x = 20&#10;/vars&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['x = 10', 'x = 20']"/>
       </outline>
-      <outline text="REPL - error doesn't affect commands - Runtime errors shouldn't break command execution">
-        <outline text="Metadata">
-          <outline text="repl_mode: True"/>
-          <outline text="stdin_input: 1 / 0&#10;/help&#10;/exit&#10;"/>
-          <outline text="expected_output_contains: ['divide by zero', 'Available commands']"/>
-        </outline>
+    </outline>
+    <outline text="REPL - error doesn't affect commands - Runtime errors shouldn't break command execution">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: 1 / 0&#10;/help&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['divide by zero', 'Available commands']"/>
       </outline>
-      <outline text="REPL - command after successful evaluation - Commands should work after successful code">
-        <outline text="Metadata">
-          <outline text="skip: True"/>
-          <outline text="skip_reason: QuickScript model: /vars and /clear commands removed (not applicable)"/>
-          <outline text="repl_mode: True"/>
-          <outline text="stdin_input: result = 42&#10;/vars&#10;/exit&#10;"/>
-          <outline text="expected_output_contains: ['result = 42']"/>
-        </outline>
+    </outline>
+    <outline text="REPL - command after successful evaluation - Commands should work after successful code">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: QuickScript model: /vars and /clear commands removed (not applicable)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: result = 42&#10;/vars&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['result = 42']"/>
       </outline>
-      <outline text="REPL - welcome message - REPL should show welcome message on startup">
-        <outline text="Metadata">
-          <outline text="repl_mode: True"/>
-          <outline text="stdin_input: /exit&#10;"/>
-          <outline text="expected_output_contains: ['Frontier REPL', 'Interactive']"/>
-        </outline>
+    </outline>
+    <outline text="REPL - welcome message - REPL should show welcome message on startup">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /exit&#10;"/>
+        <outline text="expected_output_contains: ['Frontier REPL', 'Interactive']"/>
       </outline>
-      <outline text="REPL - prompt displays - REPL should show prompt before each input">
-        <outline text="Metadata">
-          <outline text="repl_mode: True"/>
-          <outline text="stdin_input: /exit&#10;"/>
-          <outline text="expected_output_contains: ['[root]&gt;']"/>
-        </outline>
+    </outline>
+    <outline text="REPL - prompt displays - REPL should show prompt before each input">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /exit&#10;"/>
+        <outline text="expected_output_contains: ['[root]&gt;']"/>
       </outline>
-      <outline text="REPL - goodbye message - REPL should show goodbye message on exit">
-        <outline text="Metadata">
-          <outline text="repl_mode: True"/>
-          <outline text="stdin_input: /exit&#10;"/>
-          <outline text="expected_output_contains: ['Goodbye']"/>
-        </outline>
+    </outline>
+    <outline text="REPL - goodbye message - REPL should show goodbye message on exit">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /exit&#10;"/>
+        <outline text="expected_output_contains: ['Goodbye']"/>
       </outline>
-      <outline text="REPL /vars - shows variable count - /vars should show count of workspace variables">
-        <outline text="Metadata">
-          <outline text="skip: True"/>
-          <outline text="skip_reason: QuickScript model: /vars and /clear commands removed (not applicable)"/>
-          <outline text="repl_mode: True"/>
-          <outline text="stdin_input: a = 1&#10;b = 2&#10;c = 3&#10;/vars&#10;/exit&#10;"/>
-          <outline text="expected_output_contains: ['(3)']"/>
-        </outline>
+    </outline>
+    <outline text="REPL /vars - shows variable count - /vars should show count of workspace variables">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: QuickScript model: /vars and /clear commands removed (not applicable)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: a = 1&#10;b = 2&#10;c = 3&#10;/vars&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['(3)']"/>
       </outline>
-      <outline text="REPL /vars - handles special characters in values - /vars should properly display special characters">
-        <outline text="Metadata">
-          <outline text="skip: True"/>
-          <outline text="skip_reason: QuickScript model: /vars and /clear commands removed (not applicable)"/>
-          <outline text="repl_mode: True"/>
-          <outline text="stdin_input: special = &quot;Line1\nLine2&quot;&#10;/vars&#10;/exit&#10;"/>
-          <outline text="expected_output_contains: ['special =']"/>
-        </outline>
+    </outline>
+    <outline text="REPL /vars - handles special characters in values - /vars should properly display special characters">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: QuickScript model: /vars and /clear commands removed (not applicable)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: special = &quot;Line1\nLine2&quot;&#10;/vars&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['special =']"/>
       </outline>
-      <outline text="REPL - empty line ignored - Empty input should show next prompt">
-        <outline text="Metadata">
-          <outline text="repl_mode: True"/>
-          <outline text="stdin_input: &#10;&#10;/exit&#10;"/>
-          <outline text="expected_output_contains: ['[root]&gt;']"/>
-        </outline>
+    </outline>
+    <outline text="REPL - empty line ignored - Empty input should show next prompt">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: &#10;&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['[root]&gt;']"/>
       </outline>
-      <outline text="REPL - whitespace-only line ignored - Whitespace-only input should be ignored">
-        <outline text="Metadata">
-          <outline text="repl_mode: True"/>
-          <outline text="stdin_input:    &#10;&#9;&#10;/exit&#10;"/>
-        </outline>
+    </outline>
+    <outline text="REPL - whitespace-only line ignored - Whitespace-only input should be ignored">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input:    &#10;&#9;&#10;/exit&#10;"/>
       </outline>
-      <outline text="REPL - EOF exits cleanly - Ctrl-D (EOF) should exit REPL">
-        <outline text="Metadata">
-          <outline text="repl_mode: True"/>
-          <outline text="stdin_input: "/>
-          <outline text="expected_output_contains: ['Goodbye']"/>
-        </outline>
+    </outline>
+    <outline text="REPL - EOF exits cleanly - Ctrl-D (EOF) should exit REPL">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: "/>
+        <outline text="expected_output_contains: ['Goodbye']"/>
       </outline>
-      <outline text="REPL - EOF after expressions - EOF should exit after evaluating expressions">
-        <outline text="Metadata">
-          <outline text="repl_mode: True"/>
-          <outline text="stdin_input: workspace.x = 42&#10;"/>
-        </outline>
+    </outline>
+    <outline text="REPL - EOF after expressions - EOF should exit after evaluating expressions">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: workspace.x = 42&#10;"/>
       </outline>
-      <outline text="REPL /vars - nested table display - /vars should handle nested tables">
-        <outline text="Metadata">
-          <outline text="skip: True"/>
-          <outline text="skip_reason: QuickScript model: /vars and /clear commands removed (not applicable)"/>
-          <outline text="repl_mode: True"/>
-          <outline text="stdin_input: lang.new(tableType, @outer)&#10;lang.new(tableType, @outer.inner)&#10;outer.inner.value = 42&#10;/vars&#10;/exit&#10;"/>
-          <outline text="expected_output_contains: ['outer =']"/>
-        </outline>
+    </outline>
+    <outline text="REPL /vars - nested table display - /vars should handle nested tables">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: QuickScript model: /vars and /clear commands removed (not applicable)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: lang.new(tableType, @outer)&#10;lang.new(tableType, @outer.inner)&#10;outer.inner.value = 42&#10;/vars&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['outer =']"/>
       </outline>
-      <outline text="REPL /vars - large workspace - /vars should handle many variables">
-        <outline text="Metadata">
-          <outline text="skip: True"/>
-          <outline text="skip_reason: QuickScript model: /vars and /clear commands removed (not applicable)"/>
-          <outline text="repl_mode: True"/>
-          <outline text="stdin_input: v1 = 1&#10;v2 = 2&#10;v3 = 3&#10;v4 = 4&#10;v5 = 5&#10;v6 = 6&#10;v7 = 7&#10;v8 = 8&#10;v9 = 9&#10;v10 = 10&#10;/vars&#10;/exit&#10;"/>
-          <outline text="expected_output_contains: ['v1 =', 'v10 =', '(10)']"/>
-        </outline>
+    </outline>
+    <outline text="REPL /vars - large workspace - /vars should handle many variables">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: QuickScript model: /vars and /clear commands removed (not applicable)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: v1 = 1&#10;v2 = 2&#10;v3 = 3&#10;v4 = 4&#10;v5 = 5&#10;v6 = 6&#10;v7 = 7&#10;v8 = 8&#10;v9 = 9&#10;v10 = 10&#10;/vars&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['v1 =', 'v10 =', '(10)']"/>
       </outline>
-      <outline text="REPL /help - documents /exit - /help should explain /exit command">
-        <outline text="Metadata">
-          <outline text="repl_mode: True"/>
-          <outline text="stdin_input: /help&#10;/exit&#10;"/>
-          <outline text="expected_output_contains: ['/exit', 'Exit']"/>
-        </outline>
+    </outline>
+    <outline text="REPL /help - documents /exit - /help should explain /exit command">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /help&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['/exit', 'Exit']"/>
       </outline>
-      <outline text="REPL /help - documents /vars - /help should explain /vars command">
-        <outline text="Metadata">
-          <outline text="skip: True"/>
-          <outline text="skip_reason: QuickScript model: /vars and /clear commands removed (not applicable)"/>
-          <outline text="repl_mode: True"/>
-          <outline text="stdin_input: /help&#10;/exit&#10;"/>
-          <outline text="expected_output_contains: ['/vars', 'workspace']"/>
-        </outline>
+    </outline>
+    <outline text="REPL /help - documents /vars - /help should explain /vars command">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: QuickScript model: /vars and /clear commands removed (not applicable)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /help&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['/vars', 'workspace']"/>
       </outline>
-      <outline text="REPL /help - documents /clear - /help should explain /clear command">
-        <outline text="Metadata">
-          <outline text="skip: True"/>
-          <outline text="skip_reason: QuickScript model: /vars and /clear commands removed (not applicable)"/>
-          <outline text="repl_mode: True"/>
-          <outline text="stdin_input: /help&#10;/exit&#10;"/>
-          <outline text="expected_output_contains: ['/clear', 'Clear']"/>
-        </outline>
+    </outline>
+    <outline text="REPL /help - documents /clear - /help should explain /clear command">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: QuickScript model: /vars and /clear commands removed (not applicable)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /help&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['/clear', 'Clear']"/>
       </outline>
     </outline>
   </body>
