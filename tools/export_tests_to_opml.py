@@ -300,16 +300,12 @@ def generate_manifest_opml(categories, output_file):
     # Body section
     body = SubElement(opml, 'body')
 
-    # Create container outline
-    container = SubElement(body, 'outline')
-    container.set('text', 'Frontier Integration Test Categories')
-
-    # Add category links (sorted by key for deterministic ordering)
+    # Add category links at top level (sorted by key for deterministic ordering)
     for category_key in sorted(categories.keys()):
         category_data = categories[category_key]
 
         # Create outline element with transclusion link (absolute GitHub URL for Drummer)
-        category_outline = SubElement(container, 'outline')
+        category_outline = SubElement(body, 'outline')
         category_outline.set('text', sanitize_xml_text(category_data['pretty_name']))
         category_outline.set('type', 'link')
         category_outline.set('url', f'https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_{category_key}.opml')

@@ -2,35 +2,33 @@
 <opml version="2.0">
   <head>
     <title>Frontier Integration Test Categories</title>
-    <dateCreated>Mon, 19 Jan 2026 08:51:25 GMT</dateCreated>
+    <dateCreated>Mon, 19 Jan 2026 09:10:49 GMT</dateCreated>
   </head>
   <body>
-    <outline text="Frontier Integration Test Categories">
-      <outline text="Db Migration (db_migration)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_db_migration.opml"/>
-      <outline text="Db Verbs (db_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_db_verbs.opml"/>
-      <outline text="Dialog Verbs (dialog_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_dialog_verbs.opml"/>
-      <outline text="File Dialog Verbs (file_dialog_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_file_dialog_verbs.opml"/>
-      <outline text="File Verbs (file_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_file_verbs.opml"/>
-      <outline text="Html Core Tests (html_core_tests)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_html_core_tests.opml"/>
-      <outline text="Html Framework Tests (html_framework_tests)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_html_framework_tests.opml"/>
-      <outline text="Html Image Tests (html_image_tests)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_html_image_tests.opml"/>
-      <outline text="Html Text Processing Phase2 Tests (html_text_processing_phase2_tests)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_html_text_processing_phase2_tests.opml"/>
-      <outline text="Lang Verbs (lang_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_lang_verbs.opml"/>
-      <outline text="Op Verbs (op_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_op_verbs.opml"/>
-      <outline text="Opattributes Verbs (opattributes_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_opattributes_verbs.opml"/>
-      <outline text="Repl Basic (repl_basic)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_repl_basic.opml"/>
-      <outline text="Repl Commands (repl_commands)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_repl_commands.opml"/>
-      <outline text="Repl Sessions (repl_sessions)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_repl_sessions.opml"/>
-      <outline text="Runtime Parameter State (runtime_parameter_state)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_runtime_parameter_state.opml"/>
-      <outline text="Script Processor Verbs (script_processor_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_script_processor_verbs.opml"/>
-      <outline text="String Verbs (string_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_string_verbs.opml"/>
-      <outline text="Sys Environment Verbs (sys_environment_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_sys_environment_verbs.opml"/>
-      <outline text="Sys Processor Tests (sys_processor_tests)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_sys_processor_tests.opml"/>
-      <outline text="Table Sorting Verbs (table_sorting_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_table_sorting_verbs.opml"/>
-      <outline text="Table Verbs (table_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_table_verbs.opml"/>
-      <outline text="Target Verbs (target_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_target_verbs.opml"/>
-      <outline text="Thread Verbs Foundation (thread_verbs_foundation)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_thread_verbs_foundation.opml"/>
-      <outline text="Xml Verbs (xml_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_xml_verbs.opml"/>
-    </outline>
+    <outline text="Db Migration (db_migration)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_db_migration.opml"/>
+    <outline text="Db Verbs (db_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_db_verbs.opml"/>
+    <outline text="Dialog Verbs (dialog_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_dialog_verbs.opml"/>
+    <outline text="File Dialog Verbs (file_dialog_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_file_dialog_verbs.opml"/>
+    <outline text="File Verbs (file_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_file_verbs.opml"/>
+    <outline text="Html Core Tests (html_core_tests)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_html_core_tests.opml"/>
+    <outline text="Html Framework Tests (html_framework_tests)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_html_framework_tests.opml"/>
+    <outline text="Html Image Tests (html_image_tests)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_html_image_tests.opml"/>
+    <outline text="Html Text Processing Phase2 Tests (html_text_processing_phase2_tests)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_html_text_processing_phase2_tests.opml"/>
+    <outline text="Lang Verbs (lang_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_lang_verbs.opml"/>
+    <outline text="Op Verbs (op_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_op_verbs.opml"/>
+    <outline text="Opattributes Verbs (opattributes_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_opattributes_verbs.opml"/>
+    <outline text="Repl Basic (repl_basic)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_repl_basic.opml"/>
+    <outline text="Repl Commands (repl_commands)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_repl_commands.opml"/>
+    <outline text="Repl Sessions (repl_sessions)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_repl_sessions.opml"/>
+    <outline text="Runtime Parameter State (runtime_parameter_state)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_runtime_parameter_state.opml"/>
+    <outline text="Script Processor Verbs (script_processor_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_script_processor_verbs.opml"/>
+    <outline text="String Verbs (string_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_string_verbs.opml"/>
+    <outline text="Sys Environment Verbs (sys_environment_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_sys_environment_verbs.opml"/>
+    <outline text="Sys Processor Tests (sys_processor_tests)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_sys_processor_tests.opml"/>
+    <outline text="Table Sorting Verbs (table_sorting_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_table_sorting_verbs.opml"/>
+    <outline text="Table Verbs (table_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_table_verbs.opml"/>
+    <outline text="Target Verbs (target_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_target_verbs.opml"/>
+    <outline text="Thread Verbs Foundation (thread_verbs_foundation)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_thread_verbs_foundation.opml"/>
+    <outline text="Xml Verbs (xml_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_xml_verbs.opml"/>
   </body>
 </opml>
