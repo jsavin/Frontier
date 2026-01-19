@@ -1,0 +1,223 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>Table Sorting Verbs (table_sorting_verbs)</title>
+    <dateCreated>Mon, 19 Jan 2026 00:10:48 GMT</dateCreated>
+  </head>
+  <body>
+    <outline text="Table Sorting Verbs (table_sorting_verbs)">
+      <outline text="table.sortby - sort by name (default) - Sort table by name column">
+        <outline text="Metadata">
+          <outline text="expected_result: name"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(tableType, @t)"/>
+          <outline text="t.zebra = &quot;last&quot;"/>
+          <outline text="t.alpha = &quot;first&quot;"/>
+          <outline text="t.middle = &quot;mid&quot;"/>
+          <outline text="lang.settarget(@t)"/>
+          <outline text="table.sortby(&quot;name&quot;)"/>
+          <outline text="return table.getsortorder()"/>
+        </outline>
+      </outline>
+      <outline text="table.sortby - sort by value - Sort table by value column">
+        <outline text="Metadata">
+          <outline text="expected_result: value"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(tableType, @t)"/>
+          <outline text="t.a = &quot;zzz&quot;"/>
+          <outline text="t.b = &quot;aaa&quot;"/>
+          <outline text="t.c = &quot;mmm&quot;"/>
+          <outline text="lang.settarget(@t)"/>
+          <outline text="table.sortby(&quot;value&quot;)"/>
+          <outline text="return table.getsortorder()"/>
+        </outline>
+      </outline>
+      <outline text="table.sortby - sort by kind - Sort table by kind (type) column">
+        <outline text="Metadata">
+          <outline text="expected_result: kind"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(tableType, @t)"/>
+          <outline text="t.x = 123"/>
+          <outline text="t.y = &quot;string&quot;"/>
+          <outline text="t.z = true"/>
+          <outline text="lang.settarget(@t)"/>
+          <outline text="table.sortby(&quot;kind&quot;)"/>
+          <outline text="return table.getsortorder()"/>
+        </outline>
+      </outline>
+      <outline text="table.sortby - case insensitive NAME - Column names should be case-insensitive">
+        <outline text="Metadata">
+          <outline text="expected_result: name"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(tableType, @t)"/>
+          <outline text="lang.settarget(@t)"/>
+          <outline text="table.sortby(&quot;NAME&quot;)"/>
+          <outline text="return table.getsortorder()"/>
+        </outline>
+      </outline>
+      <outline text="table.sortby - case insensitive VaLuE - Mixed case should work">
+        <outline text="Metadata">
+          <outline text="expected_result: value"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(tableType, @t)"/>
+          <outline text="lang.settarget(@t)"/>
+          <outline text="table.sortby(&quot;VaLuE&quot;)"/>
+          <outline text="return table.getsortorder()"/>
+        </outline>
+      </outline>
+      <outline text="table.sortby - case insensitive kind - Lowercase should work">
+        <outline text="Metadata">
+          <outline text="expected_result: kind"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(tableType, @t)"/>
+          <outline text="lang.settarget(@t)"/>
+          <outline text="table.sortby(&quot;kind&quot;)"/>
+          <outline text="return table.getsortorder()"/>
+        </outline>
+      </outline>
+      <outline text="table.getsortorder - default is name - New tables default to sorting by name">
+        <outline text="Metadata">
+          <outline text="expected_result: name"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(tableType, @t)"/>
+          <outline text="lang.settarget(@t)"/>
+          <outline text="return table.getsortorder()"/>
+        </outline>
+      </outline>
+      <outline text="table.sortby - multiple sequential sorts - Changing sort order multiple times should work">
+        <outline text="Metadata">
+          <outline text="expected_result: name,value,kind"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(tableType, @t)"/>
+          <outline text="lang.settarget(@t)"/>
+          <outline text="table.sortby(&quot;name&quot;)"/>
+          <outline text="local(order1 = table.getsortorder())"/>
+          <outline text="table.sortby(&quot;value&quot;)"/>
+          <outline text="local(order2 = table.getsortorder())"/>
+          <outline text="table.sortby(&quot;kind&quot;)"/>
+          <outline text="local(order3 = table.getsortorder())"/>
+          <outline text="return order1 + &quot;,&quot; + order2 + &quot;,&quot; + order3"/>
+        </outline>
+      </outline>
+      <outline text="table.sortby - invalid column name - Invalid column name should fail">
+        <outline text="Metadata">
+          <outline text="expected_result: ERROR_CAUGHT"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(tableType, @t)"/>
+          <outline text="lang.settarget(@t)"/>
+          <outline text="try">
+            <outline text="table.sortby(&quot;invalid&quot;)"/>
+            <outline text="return &quot;SHOULD_HAVE_FAILED&quot;"/>
+          </outline>
+          <outline text="else">
+            <outline text="return &quot;ERROR_CAUGHT&quot;"/>
+          </outline>
+        </outline>
+      </outline>
+      <outline text="table.sortby - no target set - Sorting without a target should fail">
+        <outline text="Metadata">
+          <outline text="expected_result: ERROR_CAUGHT"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.cleartarget()"/>
+          <outline text="try">
+            <outline text="table.sortby(&quot;name&quot;)"/>
+            <outline text="return &quot;SHOULD_HAVE_FAILED&quot;"/>
+          </outline>
+          <outline text="else">
+            <outline text="return &quot;ERROR_CAUGHT&quot;"/>
+          </outline>
+        </outline>
+      </outline>
+      <outline text="lang.settarget - set table as target - Set a table as the current target">
+        <outline text="Metadata">
+          <outline text="expected_result: table1"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(tableType, @t1)"/>
+          <outline text="lang.new(tableType, @t2)"/>
+          <outline text="lang.settarget(@t1)"/>
+          <outline text="t1.marker = &quot;table1&quot;"/>
+          <outline text="return t1.marker"/>
+        </outline>
+      </outline>
+      <outline text="lang.gettarget - retrieve current target - Get the current target table address (must dereference with ^)">
+        <outline text="Metadata">
+          <outline text="expected_result: test_table"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(tableType, @t)"/>
+          <outline text="t.identifier = &quot;test_table&quot;"/>
+          <outline text="lang.settarget(@t)"/>
+          <outline text="local(target = lang.gettarget())"/>
+          <outline text="return target^.identifier"/>
+        </outline>
+      </outline>
+      <outline text="lang.cleartarget - verify target cleared but table still current - lang.cleartarget() clears target but table remains in selection context">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(tableType, @t)"/>
+          <outline text="lang.settarget(@t)"/>
+          <outline text="lang.cleartarget()"/>
+          <outline text="return (lang.gettarget() == nil) and table.sortby(&quot;name&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="lang.settarget - switch between tables - Switch target between multiple tables">
+        <outline text="Metadata">
+          <outline text="expected_result: first,second"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(tableType, @t1)"/>
+          <outline text="lang.new(tableType, @t2)"/>
+          <outline text="t1.name = &quot;first&quot;"/>
+          <outline text="t2.name = &quot;second&quot;"/>
+          <outline text="lang.settarget(@t1)"/>
+          <outline text="local(val1 = lang.gettarget()^.name)"/>
+          <outline text="lang.settarget(@t2)"/>
+          <outline text="local(val2 = lang.gettarget()^.name)"/>
+          <outline text="return val1 + &quot;,&quot; + val2"/>
+        </outline>
+      </outline>
+      <outline text="table.sortby - with explicit target - Combine target setting and sorting">
+        <outline text="Metadata">
+          <outline text="expected_result: name"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(tableType, @t)"/>
+          <outline text="t.z = 3"/>
+          <outline text="t.a = 1"/>
+          <outline text="t.m = 2"/>
+          <outline text="lang.settarget(@t)"/>
+          <outline text="table.sortby(&quot;name&quot;)"/>
+          <outline text="local(order = table.getsortorder())"/>
+          <outline text="return order"/>
+        </outline>
+      </outline>
+      <outline text="table.getsortorder - persists after setting - Sort order should persist">
+        <outline text="Metadata">
+          <outline text="expected_result: value,kind"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(tableType, @t)"/>
+          <outline text="lang.settarget(@t)"/>
+          <outline text="table.sortby(&quot;value&quot;)"/>
+          <outline text="local(order1 = table.getsortorder())"/>
+          <outline text="table.sortby(&quot;kind&quot;)"/>
+          <outline text="local(order2 = table.getsortorder())"/>
+          <outline text="return order1 + &quot;,&quot; + order2"/>
+        </outline>
+      </outline>
+    </outline>
+  </body>
+</opml>

@@ -1,0 +1,274 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>File Dialog Verbs (file_dialog_verbs)</title>
+    <dateCreated>Mon, 19 Jan 2026 00:10:48 GMT</dateCreated>
+  </head>
+  <body>
+    <outline text="File Dialog Verbs (file_dialog_verbs)">
+      <outline text="file.getFileDialog - select file with full path - Should accept typed full path to existing file">
+        <outline text="Metadata">
+          <outline text="stdin_input: {FRONTIER_TEST_TMP_DIR}/test.txt&#10;"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(testPath = &quot;{FRONTIER_TEST_TMP_DIR}/test.txt&quot;)"/>
+          <outline text="file.writeWholeFile(testPath, &quot;test content&quot;)"/>
+          <outline text="file.getFileDialog(&quot;Select config file&quot;, @result)"/>
+          <outline text="return result"/>
+        </outline>
+      </outline>
+      <outline text="file.getFileDialog - tab completion shows menu - Tab key should show file list menu">
+        <outline text="Metadata">
+          <outline text="stdin_input: /Users&#9;"/>
+        </outline>
+        <outline text="Script">
+          <outline text="file.getFileDialog(&quot;Select file&quot;, @result)"/>
+        </outline>
+      </outline>
+      <outline text="file.getFileDialog - returns full absolute path - Must return full absolute path (UserTalk requirement)">
+        <outline text="Metadata">
+          <outline text="stdin_input: {FRONTIER_TEST_TMP_DIR}/config.txt&#10;"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(testFile = &quot;{FRONTIER_TEST_TMP_DIR}/config.txt&quot;)"/>
+          <outline text="file.writeWholeFile(testFile, &quot;data&quot;)"/>
+          <outline text="file.getFileDialog(&quot;Select&quot;, @result)"/>
+          <outline text="return string.mid(result, 1, 1) == &quot;/&quot;"/>
+        </outline>
+      </outline>
+      <outline text="file.getFileDialog - only allows existing files - Should reject non-existent file paths">
+        <outline text="Metadata">
+          <outline text="stdin_input: /nonexistent/file.txt&#10;{FRONTIER_TEST_TMP_DIR}/real.txt&#10;"/>
+          <outline text="setup_script: file.writeWholeFile(&quot;{FRONTIER_TEST_TMP_DIR}/real.txt&quot;, &quot;exists&quot;)&#10;"/>
+        </outline>
+        <outline text="Script">
+          <outline text="file.getFileDialog(&quot;Select existing file&quot;, @result)"/>
+        </outline>
+      </outline>
+      <outline text="file.getFileDialog - shows hidden files - Hidden files (starting with .) should be visible">
+        <outline text="Metadata">
+          <outline text="stdin_input: {FRONTIER_TEST_TMP_DIR}/.gitignore&#10;"/>
+        </outline>
+        <outline text="Script">
+          <outline text="file.writeWholeFile(&quot;{FRONTIER_TEST_TMP_DIR}/.gitignore&quot;, &quot;*.tmp&quot;)"/>
+          <outline text="file.getFileDialog(&quot;Select file&quot;, @result)"/>
+        </outline>
+      </outline>
+      <outline text="file.getFileDialog - unicode filename (CJK) - Should handle CJK characters in filenames">
+        <outline text="Metadata">
+          <outline text="stdin_input: {FRONTIER_TEST_TMP_DIR}/文件.txt&#10;"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(unicodePath = &quot;{FRONTIER_TEST_TMP_DIR}/文件.txt&quot;)"/>
+          <outline text="file.writeWholeFile(unicodePath, &quot;content&quot;)"/>
+          <outline text="file.getFileDialog(&quot;Select&quot;, @result)"/>
+          <outline text="return result"/>
+        </outline>
+      </outline>
+      <outline text="file.getFileDialog - unicode filename (emoji) - Should handle emoji in filenames">
+        <outline text="Metadata">
+          <outline text="stdin_input: {FRONTIER_TEST_TMP_DIR}/file🚀.txt&#10;"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(emojiPath = &quot;{FRONTIER_TEST_TMP_DIR}/file🚀.txt&quot;)"/>
+          <outline text="file.writeWholeFile(emojiPath, &quot;content&quot;)"/>
+          <outline text="file.getFileDialog(&quot;Select&quot;, @result)"/>
+          <outline text="return result"/>
+        </outline>
+      </outline>
+      <outline text="file.getFileDialog - filename with spaces - Should handle spaces in filenames">
+        <outline text="Metadata">
+          <outline text="stdin_input: {FRONTIER_TEST_TMP_DIR}/my file.txt&#10;"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(spacePath = &quot;{FRONTIER_TEST_TMP_DIR}/my file.txt&quot;)"/>
+          <outline text="file.writeWholeFile(spacePath, &quot;data&quot;)"/>
+          <outline text="file.getFileDialog(&quot;Select&quot;, @result)"/>
+          <outline text="return result"/>
+        </outline>
+      </outline>
+      <outline text="file.getFileDialog - very long path (256 chars) - Should handle long file paths">
+        <outline text="Metadata">
+          <outline text="stdin_input: {FRONTIER_TEST_TMP_DIR}/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.txt&#10;"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(longPath = &quot;{FRONTIER_TEST_TMP_DIR}/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.txt&quot;)"/>
+          <outline text="file.writeWholeFile(longPath, &quot;test&quot;)"/>
+          <outline text="file.getFileDialog(&quot;Select&quot;, @result)"/>
+          <outline text="return string.patternMatch(&quot;aaaaaaa&quot;, result) &gt; 0"/>
+        </outline>
+      </outline>
+      <outline text="file.putFileDialog - type new filename - Should allow typing new filename after directory path">
+        <outline text="Metadata">
+          <outline text="stdin_input: {FRONTIER_TEST_TMP_DIR}/output.txt&#10;"/>
+          <outline text="expected_result_contains: output.txt"/>
+        </outline>
+        <outline text="Script">
+          <outline text="file.putFileDialog(&quot;Save output as&quot;, @result)"/>
+          <outline text="return result"/>
+        </outline>
+      </outline>
+      <outline text="file.putFileDialog - select existing file to overwrite - Should allow selecting existing file">
+        <outline text="Metadata">
+          <outline text="stdin_input: {FRONTIER_TEST_TMP_DIR}/existing.txt&#10;"/>
+        </outline>
+        <outline text="Script">
+          <outline text="file.writeWholeFile(&quot;{FRONTIER_TEST_TMP_DIR}/existing.txt&quot;, &quot;old&quot;)"/>
+          <outline text="file.putFileDialog(&quot;Save as&quot;, @result)"/>
+          <outline text="return result"/>
+        </outline>
+      </outline>
+      <outline text="file.putFileDialog - returns full absolute path - Must return full path even for new files">
+        <outline text="Metadata">
+          <outline text="stdin_input: {FRONTIER_TEST_TMP_DIR}/newfile.txt&#10;"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="file.putFileDialog(&quot;Save&quot;, @result)"/>
+          <outline text="return string.mid(result, 1, 1) == &quot;/&quot;"/>
+        </outline>
+      </outline>
+      <outline text="file.putFileDialog - shows all files (not just directories) - Menu should show existing files to prevent overwrites">
+        <outline text="Metadata">
+          <outline text="stdin_input: {FRONTIER_TEST_TMP_DIR}/file3.txt&#10;"/>
+        </outline>
+        <outline text="Script">
+          <outline text="file.writeWholeFile(&quot;{FRONTIER_TEST_TMP_DIR}/file1.txt&quot;, &quot;a&quot;)"/>
+          <outline text="file.writeWholeFile(&quot;{FRONTIER_TEST_TMP_DIR}/file2.txt&quot;, &quot;b&quot;)"/>
+          <outline text="file.putFileDialog(&quot;Save as&quot;, @result)"/>
+        </outline>
+      </outline>
+      <outline text="file.getFolderDialog - select directory - Should accept directory path">
+        <outline text="Metadata">
+          <outline text="stdin_input: {FRONTIER_TEST_TMP_DIR}&#10;"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="file.getFolderDialog(&quot;Select output directory&quot;, @result)"/>
+          <outline text="return string.patternMatch(&quot;/integration&quot;, result) &gt; 0"/>
+        </outline>
+      </outline>
+      <outline text="file.getFolderDialog - only shows directories and symlinks - Should not show regular files in menu">
+        <outline text="Metadata">
+          <outline text="stdin_input: {FRONTIER_TEST_TMP_DIR}&#10;"/>
+        </outline>
+        <outline text="Script">
+          <outline text="file.writeWholeFile(&quot;{FRONTIER_TEST_TMP_DIR}/file.txt&quot;, &quot;data&quot;)"/>
+          <outline text="file.getFolderDialog(&quot;Select folder&quot;, @result)"/>
+        </outline>
+      </outline>
+      <outline text="file.getFolderDialog - returns full absolute path - Must return full path to directory">
+        <outline text="Metadata">
+          <outline text="stdin_input: {FRONTIER_TEST_TMP_DIR}&#10;"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="file.getFolderDialog(&quot;Select&quot;, @result)"/>
+          <outline text="return string.mid(result, 1, 1) == &quot;/&quot;"/>
+        </outline>
+      </outline>
+      <outline text="file.getFolderDialog - hidden directories visible - Hidden directories (like .git) should be visible">
+        <outline text="Metadata">
+          <outline text="stdin_input: {FRONTIER_TEST_TMP_DIR}&#10;"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(hiddenPath = &quot;{FRONTIER_TEST_TMP_DIR}/.hidden&quot;)"/>
+          <outline text="file.getFolderDialog(&quot;Select folder&quot;, @result)"/>
+          <outline text="return string.mid(result, 1, 1) == &quot;/&quot;"/>
+        </outline>
+      </outline>
+      <outline text="file.getDiskDialog - select root volume - Should list mounted volumes">
+        <outline text="Metadata">
+          <outline text="stdin_input: 1&#10;"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="file.getDiskDialog(&quot;Select backup volume&quot;, @result)"/>
+          <outline text="return string.mid(result, 1, 1) == &quot;/&quot;"/>
+        </outline>
+      </outline>
+      <outline text="file.getDiskDialog - returns full path to mount point - Must return mount point path">
+        <outline text="Metadata">
+          <outline text="stdin_input: 1&#10;"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="file.getDiskDialog(&quot;Select volume&quot;, @result)"/>
+          <outline text="return string.mid(result, 1, 1) == &quot;/&quot;"/>
+        </outline>
+      </outline>
+      <outline text="file.getFileDialog - starts from output address path - If output variable contains path, use that as starting dir">
+        <outline text="Metadata">
+          <outline text="stdin_input: &#10;"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(pathHint = &quot;{FRONTIER_TEST_TMP_DIR}/file.txt&quot;)"/>
+          <outline text="file.writeWholeFile(pathHint, &quot;data&quot;)"/>
+          <outline text="file.getFileDialog(&quot;Select&quot;, @pathHint)"/>
+          <outline text="return pathHint"/>
+        </outline>
+      </outline>
+      <outline text="file.getFileDialog - defaults to cwd when no path hint - Without path in output address, should start from cwd">
+        <outline text="Metadata">
+          <outline text="stdin_input: {FRONTIER_TEST_TMP_DIR}/file.txt&#10;"/>
+        </outline>
+        <outline text="Script">
+          <outline text="file.getFileDialog(&quot;Select file&quot;, @result)"/>
+        </outline>
+      </outline>
+      <outline text="file.getFileDialog - error in batch mode - Should return error when --batch flag set">
+        <outline text="Metadata">
+          <outline text="batch_mode: True"/>
+          <outline text="expected_success: False"/>
+          <outline text="expected_error: not implemented"/>
+        </outline>
+        <outline text="Script">
+          <outline text="file.getFileDialog(&quot;Select&quot;, @result)"/>
+        </outline>
+      </outline>
+      <outline text="file.putFileDialog - error in batch mode - Should return error when --batch flag set">
+        <outline text="Metadata">
+          <outline text="batch_mode: True"/>
+          <outline text="expected_success: False"/>
+          <outline text="expected_error: not implemented"/>
+        </outline>
+        <outline text="Script">
+          <outline text="file.putFileDialog(&quot;Save as&quot;, @result)"/>
+        </outline>
+      </outline>
+      <outline text="file.getFolderDialog - error in batch mode - Should return error when --batch flag set">
+        <outline text="Metadata">
+          <outline text="batch_mode: True"/>
+          <outline text="expected_success: False"/>
+          <outline text="expected_error: not implemented"/>
+        </outline>
+        <outline text="Script">
+          <outline text="file.getFolderDialog(&quot;Select folder&quot;, @result)"/>
+        </outline>
+      </outline>
+      <outline text="file.getDiskDialog - error in batch mode - Should return error when --batch flag set">
+        <outline text="Metadata">
+          <outline text="batch_mode: True"/>
+          <outline text="expected_success: False"/>
+          <outline text="expected_error: not implemented"/>
+        </outline>
+        <outline text="Script">
+          <outline text="file.getDiskDialog(&quot;Select volume&quot;, @result)"/>
+        </outline>
+      </outline>
+      <outline text="file.getFileDialog - error in CI environment - Should auto-detect batch mode when CI=true">
+        <outline text="Metadata">
+          <outline text="environment: {'CI': 'true'}"/>
+          <outline text="expected_success: False"/>
+          <outline text="expected_error: not implemented"/>
+        </outline>
+        <outline text="Script">
+          <outline text="file.getFileDialog(&quot;Select&quot;, @result)"/>
+        </outline>
+      </outline>
+    </outline>
+  </body>
+</opml>

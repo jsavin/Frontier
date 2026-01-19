@@ -1,0 +1,157 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>Thread Verbs Foundation (thread_verbs_foundation)</title>
+    <dateCreated>Mon, 19 Jan 2026 00:10:48 GMT</dateCreated>
+  </head>
+  <body>
+    <outline text="Thread Verbs Foundation (thread_verbs_foundation)">
+      <outline text="thread.evaluate - execute simple script in new thread - Verify that thread.evaluate() creates a new thread, executes the provided&#10;script, and completes successfully.&#10;">
+        <outline text="Metadata">
+          <outline text="expected_result: True"/>
+          <outline text="timeout: 3"/>
+        </outline>
+        <outline text="Script">
+          <outline text="thread.evaluate(&quot;system.temp.threadFlags.basicThreadRan = true&quot;)"/>
+          <outline text="// Give thread time to execute"/>
+          <outline text="clock.waitSeconds(1)"/>
+          <outline text="return system.temp.threadFlags.basicThreadRan"/>
+        </outline>
+      </outline>
+      <outline text="thread.evaluate - return value from thread - Verify that values computed in a thread can be captured via shared&#10;table storage (since thread.evaluate doesn't return directly).&#10;">
+        <outline text="Metadata">
+          <outline text="expected_result: True"/>
+          <outline text="timeout: 3"/>
+        </outline>
+        <outline text="Script">
+          <outline text="thread.evaluate(&quot;system.temp.threadData.result = 42; system.temp.threadData.message = \&quot;computation complete\&quot;&quot;)"/>
+          <outline text="// Give thread time to execute"/>
+          <outline text="clock.waitSeconds(1)"/>
+          <outline text="return system.temp.threadData.result == 42 and \">
+            <outline text="system.temp.threadData.message == &quot;computation complete&quot;"/>
+          </outline>
+        </outline>
+      </outline>
+      <outline text="thread.sleepFor - thread sleeps and wakes - Verify that thread.sleepFor(N) causes thread to sleep.&#10;This test validates the sleep mechanism works (not exact timing).&#10;">
+        <outline text="Metadata">
+          <outline text="expected_result: True"/>
+          <outline text="timeout: 3"/>
+        </outline>
+        <outline text="Script">
+          <outline text="thread.evaluate(&quot;thread.sleepFor(100); system.temp.threadFlags.sleepCompleted = true&quot;)"/>
+          <outline text="// Give thread time to sleep and wake"/>
+          <outline text="clock.waitSeconds(2)"/>
+          <outline text="return system.temp.threadFlags.sleepCompleted"/>
+        </outline>
+      </outline>
+      <outline text="thread.wake - wake sleeping thread - Verify that thread.wake() wakes a sleeping thread.&#10;">
+        <outline text="Metadata">
+          <outline text="expected_result: True"/>
+          <outline text="timeout: 3"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(threadID = thread.evaluate(&quot;thread.sleepFor(10000); system.temp.threadFlags.wokByWake = true&quot;))"/>
+          <outline text="// Let thread start sleeping"/>
+          <outline text="clock.waitSeconds(1)"/>
+          <outline text="// Wake the thread"/>
+          <outline text="thread.wake(threadID)"/>
+          <outline text="// Let thread execute and mark completion"/>
+          <outline text="clock.waitSeconds(1)"/>
+          <outline text="return system.temp.threadFlags.wokByWake"/>
+        </outline>
+      </outline>
+      <outline text="thread.kill - terminate thread - Verify that thread.kill() terminates a thread.&#10;">
+        <outline text="Metadata">
+          <outline text="expected_result: True"/>
+          <outline text="timeout: 3"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(threadID = thread.evaluate(&quot;system.temp.threadFlags.threadStarted = true; thread.sleepFor(10000); system.temp.threadFlags.threadCompletedAfterKill = true&quot;))"/>
+          <outline text="// Let thread start and start sleeping"/>
+          <outline text="clock.waitSeconds(1)"/>
+          <outline text="// Kill the thread"/>
+          <outline text="thread.kill(threadID)"/>
+          <outline text="// Let system process"/>
+          <outline text="clock.waitSeconds(1)"/>
+          <outline text="return system.temp.threadFlags.threadStarted and \">
+            <outline text="not (system.temp.threadFlags.threadCompletedAfterKill)"/>
+          </outline>
+        </outline>
+      </outline>
+      <outline text="thread.evaluate - script error in thread is handled gracefully - Verify that script errors in thread context don't crash the system.&#10;">
+        <outline text="Metadata">
+          <outline text="expected_result: True"/>
+          <outline text="timeout: 3"/>
+        </outline>
+        <outline text="Script">
+          <outline text="thread.evaluate(&quot;system.temp.threadFlags.errorThreadStarted = true; scriptError(\\\&quot;intentional error\\\&quot;); system.temp.threadFlags.neverExecute = true&quot;)"/>
+          <outline text="// Let thread run and error"/>
+          <outline text="clock.waitSeconds(1)"/>
+          <outline text="// System should still be responsive"/>
+          <outline text="system.temp.threadFlags.systemStillWorks = true"/>
+          <outline text="return system.temp.threadFlags.errorThreadStarted and \">
+            <outline text="not (system.temp.threadFlags.neverExecute) and \"/>
+            <outline text="system.temp.threadFlags.systemStillWorks"/>
+          </outline>
+        </outline>
+      </outline>
+      <outline text="thread.evaluate - multiple threads run independently - Verify that multiple threads can run simultaneously without interference.&#10;">
+        <outline text="Metadata">
+          <outline text="expected_result: True"/>
+          <outline text="timeout: 3"/>
+        </outline>
+        <outline text="Script">
+          <outline text="thread.evaluate(&quot;system.temp.threadFlags.thread1Ran = true&quot;)"/>
+          <outline text="thread.evaluate(&quot;system.temp.threadFlags.thread2Ran = true&quot;)"/>
+          <outline text="// Give threads time to execute"/>
+          <outline text="clock.waitSeconds(2)"/>
+          <outline text="return system.temp.threadFlags.thread1Ran and \">
+            <outline text="system.temp.threadFlags.thread2Ran"/>
+          </outline>
+        </outline>
+      </outline>
+      <outline text="thread.evaluate - safely modify ODB during execution - Verify that threads can safely create and modify ODB structures.&#10;">
+        <outline text="Metadata">
+          <outline text="expected_result: True"/>
+          <outline text="timeout: 3"/>
+        </outline>
+        <outline text="Script">
+          <outline text="thread.evaluate(&quot;new(tableType, @system.temp.threadData.innerTable); system.temp.threadData.innerTable.a = 10; system.temp.threadData.innerTable.b = 20; system.temp.threadData.innerTable.c = system.temp.threadData.innerTable.a + system.temp.threadData.innerTable.b&quot;)"/>
+          <outline text="// Give thread time to execute"/>
+          <outline text="clock.waitSeconds(1)"/>
+          <outline text="return system.temp.threadData.innerTable.a == 10 and \">
+            <outline text="system.temp.threadData.innerTable.b == 20 and \"/>
+            <outline text="system.temp.threadData.innerTable.c == 30"/>
+          </outline>
+        </outline>
+      </outline>
+      <outline text="thread.getCount - report active thread count - Verify that thread.getCount() reports number of active threads.&#10;">
+        <outline text="Metadata">
+          <outline text="expected_result: True"/>
+          <outline text="timeout: 3"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(countBefore = thread.getCount())"/>
+          <outline text="thread.evaluate(&quot;system.temp.threadData.countDuringThread = thread.getCount(); clock.waitSeconds(1)&quot;)"/>
+          <outline text="// Should have at least 1 thread (the new one)"/>
+          <outline text="clock.waitSeconds(2)"/>
+          <outline text="local(countAfter = thread.getCount())"/>
+          <outline text="return system.temp.threadData.countDuringThread &gt;= 1 and countAfter &gt;= 0"/>
+        </outline>
+      </outline>
+      <outline text="thread.getCurrentID - get current thread ID - Verify that thread.getCurrentID() returns valid thread ID.&#10;">
+        <outline text="Metadata">
+          <outline text="expected_result: True"/>
+          <outline text="timeout: 3"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(mainThreadID = thread.getCurrentID())"/>
+          <outline text="thread.evaluate(&quot;system.temp.threadData.threadIDInThread = thread.getCurrentID()&quot;)"/>
+          <outline text="// Let thread execute"/>
+          <outline text="clock.waitSeconds(1)"/>
+          <outline text="return mainThreadID &gt; 0 and system.temp.threadData.threadIDInThread &gt; 0"/>
+        </outline>
+      </outline>
+    </outline>
+  </body>
+</opml>

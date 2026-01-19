@@ -1,0 +1,270 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>Html Image Tests (html_image_tests)</title>
+    <dateCreated>Mon, 19 Jan 2026 00:10:48 GMT</dateCreated>
+  </head>
+  <body>
+    <outline text="Html Image Tests (html_image_tests)">
+      <outline text="html.getgifheightwidth - basic GIF file - Read dimensions from valid GIF file">
+        <outline text="Metadata">
+          <outline text="skip: Need sample GIF test fixture"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(testDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(gifPath = testDir + &quot;/sample_100x50.gif&quot;)"/>
+          <outline text="local(dimensions = html.getgifheightwidth(gifPath))"/>
+          <outline text="return (dimensions[1] == 50) and (dimensions[2] == 100)"/>
+        </outline>
+      </outline>
+      <outline text="html.getgifheightwidth - square GIF - Read dimensions from square GIF file">
+        <outline text="Metadata">
+          <outline text="skip: Need sample GIF test fixture"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(testDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(gifPath = testDir + &quot;/sample_200x200.gif&quot;)"/>
+          <outline text="local(dimensions = html.getgifheightwidth(gifPath))"/>
+          <outline text="return (dimensions[1] == 200) and (dimensions[2] == 200)"/>
+        </outline>
+      </outline>
+      <outline text="html.getgifheightwidth - small GIF (1x1) - Read dimensions from tiny 1x1 pixel GIF">
+        <outline text="Metadata">
+          <outline text="skip: Need sample GIF test fixture"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(testDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(gifPath = testDir + &quot;/sample_1x1.gif&quot;)"/>
+          <outline text="local(dimensions = html.getgifheightwidth(gifPath))"/>
+          <outline text="return (dimensions[1] == 1) and (dimensions[2] == 1)"/>
+        </outline>
+      </outline>
+      <outline text="html.getgifheightwidth - large GIF - Read dimensions from large GIF file">
+        <outline text="Metadata">
+          <outline text="skip: Need sample GIF test fixture"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(testDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(gifPath = testDir + &quot;/sample_1024x768.gif&quot;)"/>
+          <outline text="local(dimensions = html.getgifheightwidth(gifPath))"/>
+          <outline text="return (dimensions[1] == 768) and (dimensions[2] == 1024)"/>
+        </outline>
+      </outline>
+      <outline text="html.getgifheightwidth - missing file - Gracefully handle missing file (should return error or false)">
+        <outline text="Metadata">
+          <outline text="skip: Need sample GIF/JPEG test fixture files in tests/fixtures directory"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(testDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(gifPath = testDir + &quot;/nonexistent.gif&quot;)"/>
+          <outline text="try">
+            <outline text="html.getgifheightwidth(gifPath)"/>
+            <outline text="return false"/>
+          </outline>
+          <outline text="return true"/>
+        </outline>
+      </outline>
+      <outline text="html.getgifheightwidth - empty file - Handle empty file gracefully">
+        <outline text="Metadata">
+          <outline text="skip: Need empty test fixture"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(testDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(emptyPath = testDir + &quot;/empty.gif&quot;)"/>
+          <outline text="try">
+            <outline text="html.getgifheightwidth(emptyPath)"/>
+            <outline text="return false"/>
+          </outline>
+          <outline text="return true"/>
+        </outline>
+      </outline>
+      <outline text="html.getgifheightwidth - corrupted GIF header - Handle corrupted GIF header gracefully">
+        <outline text="Metadata">
+          <outline text="skip: Need corrupted test fixture"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(testDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(corruptPath = testDir + &quot;/corrupt.gif&quot;)"/>
+          <outline text="try">
+            <outline text="html.getgifheightwidth(corruptPath)"/>
+            <outline text="return false"/>
+          </outline>
+          <outline text="return true"/>
+        </outline>
+      </outline>
+      <outline text="html.getgifheightwidth - JPEG with .gif extension - Handle file with wrong extension gracefully">
+        <outline text="Metadata">
+          <outline text="skip: Need misnamed test fixture"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(testDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(wrongPath = testDir + &quot;/actually_jpeg.gif&quot;)"/>
+          <outline text="try">
+            <outline text="html.getgifheightwidth(wrongPath)"/>
+            <outline text="return false"/>
+          </outline>
+          <outline text="return true"/>
+        </outline>
+      </outline>
+      <outline text="html.getjpegheightwidth - basic JPEG file - Read dimensions from valid JPEG file">
+        <outline text="Metadata">
+          <outline text="skip: Need sample JPEG test fixture"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(testDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(jpegPath = testDir + &quot;/sample_100x50.jpg&quot;)"/>
+          <outline text="local(dimensions = html.getjpegheightwidth(jpegPath))"/>
+          <outline text="return (dimensions[1] == 50) and (dimensions[2] == 100)"/>
+        </outline>
+      </outline>
+      <outline text="html.getjpegheightwidth - square JPEG - Read dimensions from square JPEG file">
+        <outline text="Metadata">
+          <outline text="skip: Need sample JPEG test fixture"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(testDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(jpegPath = testDir + &quot;/sample_200x200.jpg&quot;)"/>
+          <outline text="local(dimensions = html.getjpegheightwidth(jpegPath))"/>
+          <outline text="return (dimensions[1] == 200) and (dimensions[2] == 200)"/>
+        </outline>
+      </outline>
+      <outline text="html.getjpegheightwidth - large JPEG - Read dimensions from large JPEG file">
+        <outline text="Metadata">
+          <outline text="skip: Need sample JPEG test fixture"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(testDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(jpegPath = testDir + &quot;/sample_1920x1080.jpg&quot;)"/>
+          <outline text="local(dimensions = html.getjpegheightwidth(jpegPath))"/>
+          <outline text="return (dimensions[1] == 1080) and (dimensions[2] == 1920)"/>
+        </outline>
+      </outline>
+      <outline text="html.getjpegheightwidth - portrait orientation - Read dimensions from portrait-oriented JPEG">
+        <outline text="Metadata">
+          <outline text="skip: Need sample JPEG test fixture"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(testDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(jpegPath = testDir + &quot;/sample_600x800.jpg&quot;)"/>
+          <outline text="local(dimensions = html.getjpegheightwidth(jpegPath))"/>
+          <outline text="return (dimensions[1] == 800) and (dimensions[2] == 600)"/>
+        </outline>
+      </outline>
+      <outline text="html.getjpegheightwidth - missing file - Gracefully handle missing file">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(testDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(jpegPath = testDir + &quot;/nonexistent.jpg&quot;)"/>
+          <outline text="try">
+            <outline text="html.getjpegheightwidth(jpegPath)"/>
+            <outline text="return false"/>
+          </outline>
+          <outline text="return true"/>
+        </outline>
+      </outline>
+      <outline text="html.getjpegheightwidth - empty file - Handle empty file gracefully">
+        <outline text="Metadata">
+          <outline text="skip: Need empty test fixture"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(testDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(emptyPath = testDir + &quot;/empty.jpg&quot;)"/>
+          <outline text="try">
+            <outline text="html.getjpegheightwidth(emptyPath)"/>
+            <outline text="return false"/>
+          </outline>
+          <outline text="return true"/>
+        </outline>
+      </outline>
+      <outline text="html.getjpegheightwidth - corrupted JPEG header - Handle corrupted JPEG header gracefully">
+        <outline text="Metadata">
+          <outline text="skip: Need corrupted test fixture"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(testDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(corruptPath = testDir + &quot;/corrupt.jpg&quot;)"/>
+          <outline text="try">
+            <outline text="html.getjpegheightwidth(corruptPath)"/>
+            <outline text="return false"/>
+          </outline>
+          <outline text="return true"/>
+        </outline>
+      </outline>
+      <outline text="html.getjpegheightwidth - progressive JPEG - Read dimensions from progressive JPEG">
+        <outline text="Metadata">
+          <outline text="skip: Need progressive JPEG test fixture"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(testDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(jpegPath = testDir + &quot;/sample_progressive.jpg&quot;)"/>
+          <outline text="local(dimensions = html.getjpegheightwidth(jpegPath))"/>
+          <outline text="return (dimensions[1] &gt; 0) and (dimensions[2] &gt; 0)"/>
+        </outline>
+      </outline>
+      <outline text="html.getjpegheightwidth - GIF with .jpg extension - Handle file with wrong extension gracefully">
+        <outline text="Metadata">
+          <outline text="skip: Need misnamed test fixture"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(testDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(wrongPath = testDir + &quot;/actually_gif.jpg&quot;)"/>
+          <outline text="try">
+            <outline text="html.getjpegheightwidth(wrongPath)"/>
+            <outline text="return false"/>
+          </outline>
+          <outline text="return true"/>
+        </outline>
+      </outline>
+      <outline text="html - image dimension workflow - Read dimensions and use in page table">
+        <outline text="Metadata">
+          <outline text="skip: Need sample image fixtures"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(testDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(gifPath = testDir + &quot;/sample_100x50.gif&quot;)"/>
+          <outline text="local(jpegPath = testDir + &quot;/sample_200x200.jpg&quot;)"/>
+          <outline text="local(gifDims = html.getgifheightwidth(gifPath))"/>
+          <outline text="local(jpegDims = html.getjpegheightwidth(jpegPath))"/>
+          <outline text="# Verify both work correctly"/>
+          <outline text="local(gifOK = (gifDims[1] == 50) and (gifDims[2] == 100))"/>
+          <outline text="local(jpegOK = (jpegDims[1] == 200) and (jpegDims[2] == 200))"/>
+          <outline text="return gifOK and jpegOK"/>
+        </outline>
+      </outline>
+      <outline text="html - generate image tag with dimensions - Use image dimensions to generate complete img tags">
+        <outline text="Metadata">
+          <outline text="skip: Need sample image fixtures"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(testDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+          <outline text="local(imagePath = testDir + &quot;/sample_100x50.gif&quot;)"/>
+          <outline text="local(dimensions = html.getgifheightwidth(imagePath))"/>
+          <outline text="local(imgTag = &quot;&lt;img src=\&quot;sample.gif\&quot;&quot;)"/>
+          <outline text="imgTag = imgTag + &quot; width=\&quot;&quot; + dimensions[2] + &quot;\&quot;&quot;"/>
+          <outline text="imgTag = imgTag + &quot; height=\&quot;&quot; + dimensions[1] + &quot;\&quot;&gt;&quot;"/>
+          <outline text="return string.contains(imgTag, &quot;width=\&quot;100\&quot;&quot;) and string.contains(imgTag, &quot;height=\&quot;50\&quot;&quot;)"/>
+        </outline>
+      </outline>
+    </outline>
+  </body>
+</opml>

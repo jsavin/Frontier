@@ -1,0 +1,182 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>String Verbs (string_verbs)</title>
+    <dateCreated>Mon, 19 Jan 2026 00:10:48 GMT</dateCreated>
+  </head>
+  <body>
+    <outline text="String Verbs (string_verbs)">
+      <outline text="string.length - simple string - Get length of a simple string">
+        <outline text="Metadata">
+          <outline text="expected_result: 5"/>
+          <outline text="expected_result_type: string"/>
+        </outline>
+        <outline text="Script">
+          <outline text="string.length(&quot;hello&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="string.length - empty string - Get length of empty string">
+        <outline text="Metadata">
+          <outline text="expected_result: 0"/>
+        </outline>
+        <outline text="Script">
+          <outline text="string.length(&quot;&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="string.upper - basic case - Convert string to uppercase">
+        <outline text="Metadata">
+          <outline text="expected_result: HELLO"/>
+        </outline>
+        <outline text="Script">
+          <outline text="string.upper(&quot;hello&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="string.lower - basic case - Convert string to lowercase">
+        <outline text="Metadata">
+          <outline text="expected_result: world"/>
+        </outline>
+        <outline text="Script">
+          <outline text="string.lower(&quot;WORLD&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="string.nthCharacter - first char - Get first character of string">
+        <outline text="Metadata">
+          <outline text="expected_result: h"/>
+        </outline>
+        <outline text="Script">
+          <outline text="string.nthCharacter(&quot;hello&quot;, 1)"/>
+        </outline>
+      </outline>
+      <outline text="string.nthCharacter - last char - Get last character of string">
+        <outline text="Metadata">
+          <outline text="expected_result: o"/>
+        </outline>
+        <outline text="Script">
+          <outline text="string.nthCharacter(&quot;hello&quot;, 5)"/>
+        </outline>
+      </outline>
+      <outline text="string concatenation with + - Concatenate two strings using +">
+        <outline text="Metadata">
+          <outline text="expected_result: hello world"/>
+        </outline>
+        <outline text="Script">
+          <outline text="&quot;hello&quot; + &quot; &quot; + &quot;world&quot;"/>
+        </outline>
+      </outline>
+      <outline text="string equality - true case - Compare equal strings">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="&quot;test&quot; == &quot;test&quot;"/>
+        </outline>
+      </outline>
+      <outline text="string equality - false case - Compare different strings">
+        <outline text="Metadata">
+          <outline text="expected_result: false"/>
+        </outline>
+        <outline text="Script">
+          <outline text="&quot;test&quot; == &quot;other&quot;"/>
+        </outline>
+      </outline>
+      <outline text="string.mid - extract substring - Extract middle substring">
+        <outline text="Metadata">
+          <outline text="expected_result: world"/>
+        </outline>
+        <outline text="Script">
+          <outline text="string.mid(&quot;hello world&quot;, 7, 5)"/>
+        </outline>
+      </outline>
+      <outline text="string.mid - from beginning - Extract from beginning">
+        <outline text="Metadata">
+          <outline text="expected_result: hello"/>
+        </outline>
+        <outline text="Script">
+          <outline text="string.mid(&quot;hello world&quot;, 1, 5)"/>
+        </outline>
+      </outline>
+      <outline text="string.patternMatch - found - Find pattern in string">
+        <outline text="Metadata">
+          <outline text="expected_result: 7"/>
+        </outline>
+        <outline text="Script">
+          <outline text="string.patternMatch(&quot;world&quot;, &quot;hello world&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="string.patternMatch - not found - Pattern not found returns 0">
+        <outline text="Metadata">
+          <outline text="expected_result: 0"/>
+        </outline>
+        <outline text="Script">
+          <outline text="string.patternMatch(&quot;xyz&quot;, &quot;hello world&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="string.trimWhitespace - both sides - Trim whitespace from both sides">
+        <outline text="Metadata">
+          <outline text="expected_result: hello"/>
+        </outline>
+        <outline text="Script">
+          <outline text="string.trimWhitespace(&quot;  hello  &quot;)"/>
+        </outline>
+      </outline>
+      <outline text="string.trimWhitespace - no whitespace - String with no whitespace unchanged">
+        <outline text="Metadata">
+          <outline text="expected_result: hello"/>
+        </outline>
+        <outline text="Script">
+          <outline text="string.trimWhitespace(&quot;hello&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="string.length - unicode characters - Length with unicode chars (UTF-8 encoding test)">
+        <outline text="Metadata">
+          <outline text="expected_result: 9"/>
+        </outline>
+        <outline text="Script">
+          <outline text="string.length(&quot;hello🎉&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="empty string operations - Operations on empty string">
+        <outline text="Metadata">
+          <outline text="expected_result: "/>
+        </outline>
+        <outline text="Script">
+          <outline text="string.upper(&quot;&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="string.nthCharacter - index out of bounds - Access character beyond string length">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="string.nthCharacter(&quot;hello&quot;, 10)"/>
+        </outline>
+      </outline>
+      <outline text="string.mid - invalid range - Extract substring with invalid range">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="string.mid(&quot;hello&quot;, 10, 5)"/>
+        </outline>
+      </outline>
+      <outline text="string.numberToString - positive integer - Convert positive number to string">
+        <outline text="Metadata">
+          <outline text="expected_result: 42"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.string(42)"/>
+        </outline>
+      </outline>
+      <outline text="string.numberToString - negative integer - Convert negative number to string">
+        <outline text="Metadata">
+          <outline text="expected_result: -42"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.string(-42)"/>
+        </outline>
+      </outline>
+    </outline>
+  </body>
+</opml>

@@ -1,0 +1,516 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>Repl Basic (repl_basic)</title>
+    <dateCreated>Mon, 19 Jan 2026 00:10:48 GMT</dateCreated>
+  </head>
+  <body>
+    <outline text="Repl Basic (repl_basic)">
+      <outline text="REPL - basic arithmetic - Simple arithmetic expression should evaluate and return result">
+        <outline text="Metadata">
+          <outline text="expected_result: 2"/>
+        </outline>
+        <outline text="Script">
+          <outline text="1 + 1"/>
+        </outline>
+      </outline>
+      <outline text="REPL - integer multiplication - Integer multiplication should work">
+        <outline text="Metadata">
+          <outline text="expected_result: 42"/>
+        </outline>
+        <outline text="Script">
+          <outline text="6 * 7"/>
+        </outline>
+      </outline>
+      <outline text="REPL - string concatenation - String concatenation should work">
+        <outline text="Metadata">
+          <outline text="expected_result: Hello, world!"/>
+        </outline>
+        <outline text="Script">
+          <outline text="&quot;Hello, &quot; + &quot;world!&quot;"/>
+        </outline>
+      </outline>
+      <outline text="REPL - boolean expression - Boolean expressions should evaluate">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="5 &gt; 3"/>
+        </outline>
+      </outline>
+      <outline text="REPL - comparison false - Boolean comparison returning false">
+        <outline text="Metadata">
+          <outline text="expected_result: False"/>
+        </outline>
+        <outline text="Script">
+          <outline text="10 &lt; 5"/>
+        </outline>
+      </outline>
+      <outline text="REPL - complex arithmetic - Complex arithmetic with operator precedence">
+        <outline text="Metadata">
+          <outline text="expected_result: 12"/>
+        </outline>
+        <outline text="Script">
+          <outline text="(5 + 3) * 2 - 4"/>
+        </outline>
+      </outline>
+      <outline text="REPL - assign variable to workspace - Variables assigned to workspace should persist">
+        <outline text="Metadata">
+          <outline text="expected_result: 42"/>
+        </outline>
+        <outline text="Script">
+          <outline text="x = 42"/>
+        </outline>
+      </outline>
+      <outline text="REPL - read workspace variable - Variables in workspace should be accessible">
+        <outline text="Metadata">
+          <outline text="expected_result: 100"/>
+        </outline>
+        <outline text="Script">
+          <outline text="testvar = 100"/>
+          <outline text="testvar"/>
+        </outline>
+      </outline>
+      <outline text="REPL - workspace variable arithmetic - Arithmetic on workspace variables should work">
+        <outline text="Metadata">
+          <outline text="expected_result: 30"/>
+        </outline>
+        <outline text="Script">
+          <outline text="a = 10"/>
+          <outline text="b = 20"/>
+          <outline text="a + b"/>
+        </outline>
+      </outline>
+      <outline text="REPL - workspace variable multiplication - Multiply workspace variable">
+        <outline text="Metadata">
+          <outline text="expected_result: 42"/>
+        </outline>
+        <outline text="Script">
+          <outline text="x = 7"/>
+          <outline text="x * 6"/>
+        </outline>
+      </outline>
+      <outline text="REPL - workspace string variable - String variables should persist in workspace">
+        <outline text="Metadata">
+          <outline text="expected_result: Hello, REPL!"/>
+        </outline>
+        <outline text="Script">
+          <outline text="greeting = &quot;Hello&quot;"/>
+          <outline text="greeting + &quot;, REPL!&quot;"/>
+        </outline>
+      </outline>
+      <outline text="REPL - workspace boolean variable - Boolean variables should persist">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="flag = true"/>
+          <outline text="flag"/>
+        </outline>
+      </outline>
+      <outline text="REPL - modify workspace variable - Workspace variables should be modifiable">
+        <outline text="Metadata">
+          <outline text="expected_result: 2"/>
+        </outline>
+        <outline text="Script">
+          <outline text="counter = 1"/>
+          <outline text="counter = counter + 1"/>
+          <outline text="counter"/>
+        </outline>
+      </outline>
+      <outline text="REPL - multiple workspace variables - Multiple variables should coexist in workspace">
+        <outline text="Metadata">
+          <outline text="expected_result: 30"/>
+        </outline>
+        <outline text="Script">
+          <outline text="x = 10"/>
+          <outline text="y = 20"/>
+          <outline text="z = x + y"/>
+          <outline text="z"/>
+        </outline>
+      </outline>
+      <outline text="REPL - display integer - Integer values should display correctly">
+        <outline text="Metadata">
+          <outline text="expected_result: 42"/>
+        </outline>
+        <outline text="Script">
+          <outline text="42"/>
+        </outline>
+      </outline>
+      <outline text="REPL - display negative integer - Negative integers should display correctly">
+        <outline text="Metadata">
+          <outline text="expected_result: -273"/>
+        </outline>
+        <outline text="Script">
+          <outline text="-273"/>
+        </outline>
+      </outline>
+      <outline text="REPL - display string - String values should display with quotes">
+        <outline text="Metadata">
+          <outline text="expected_result: Hello, world!"/>
+        </outline>
+        <outline text="Script">
+          <outline text="&quot;Hello, world!&quot;"/>
+        </outline>
+      </outline>
+      <outline text="REPL - display empty string - Empty strings should display as empty quotes">
+        <outline text="Metadata">
+          <outline text="expected_result: "/>
+        </outline>
+        <outline text="Script">
+          <outline text="&quot;&quot;"/>
+        </outline>
+      </outline>
+      <outline text="REPL - display boolean true - Boolean true should display">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="true"/>
+        </outline>
+      </outline>
+      <outline text="REPL - display boolean false - Boolean false should display">
+        <outline text="Metadata">
+          <outline text="expected_result: False"/>
+        </outline>
+        <outline text="Script">
+          <outline text="false"/>
+        </outline>
+      </outline>
+      <outline text="REPL - display double - Double-precision values should display">
+        <outline text="Metadata">
+          <outline text="expected_result: 3.14159"/>
+        </outline>
+        <outline text="Script">
+          <outline text="3.14159"/>
+        </outline>
+      </outline>
+      <outline text="REPL - display negative double - Negative doubles should display">
+        <outline text="Metadata">
+          <outline text="expected_result: -273.15"/>
+        </outline>
+        <outline text="Script">
+          <outline text="-273.15"/>
+        </outline>
+      </outline>
+      <outline text="REPL - display table value - Table display currently crashes (known issue)">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(t)"/>
+          <outline text="lang.new(tableType, @t)"/>
+          <outline text="t.a = 1"/>
+          <outline text="t.b = 2"/>
+          <outline text="t"/>
+        </outline>
+      </outline>
+      <outline text="REPL - syntax error - Syntax errors should display error, not crash">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error: syntax"/>
+        </outline>
+        <outline text="Script">
+          <outline text="1 +"/>
+        </outline>
+      </outline>
+      <outline text="REPL - undefined variable - Undefined variable should show error">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error: Can't find"/>
+        </outline>
+        <outline text="Script">
+          <outline text="nonexistent_var"/>
+        </outline>
+      </outline>
+      <outline text="REPL - division by zero - Division by zero should show error">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error: divide by zero"/>
+        </outline>
+        <outline text="Script">
+          <outline text="1 / 0"/>
+        </outline>
+      </outline>
+      <outline text="REPL - type mismatch - Type coercion should work for string + number">
+        <outline text="Metadata">
+          <outline text="expected_result: text42"/>
+        </outline>
+        <outline text="Script">
+          <outline text="&quot;text&quot; + 42"/>
+        </outline>
+      </outline>
+      <outline text="REPL - undefined workspace variable - Accessing undefined workspace variable should error">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error: Can't find"/>
+        </outline>
+        <outline text="Script">
+          <outline text="undefined_variable"/>
+        </outline>
+      </outline>
+      <outline text="REPL - error doesn't crash subsequent evaluation - After error, REPL should continue working">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+        </outline>
+        <outline text="Script">
+          <outline text="1 / 0"/>
+          <outline text="return 42"/>
+        </outline>
+      </outline>
+      <outline text="REPL - workspace is separate from root - Workspace variables should not pollute root scope">
+        <outline text="Metadata">
+          <outline text="expected_result: 42"/>
+        </outline>
+        <outline text="Script">
+          <outline text="x = 42"/>
+          <outline text="x"/>
+        </outline>
+      </outline>
+      <outline text="REPL - local variables don't persist - Local variables should not persist in workspace">
+        <outline text="Metadata">
+          <outline text="expected_result: 100"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(temp = 100)"/>
+          <outline text="return temp"/>
+        </outline>
+      </outline>
+      <outline text="REPL - display address value - Address values should display (coercetostring behavior)">
+        <outline text="Script">
+          <outline text="local(t)"/>
+          <outline text="lang.new(tableType, @t)"/>
+          <outline text="@t"/>
+        </outline>
+      </outline>
+      <outline text="REPL - display OSType - OSType values should display as 4-char codes">
+        <outline text="Metadata">
+          <outline text="expected_result: tabl"/>
+        </outline>
+        <outline text="Script">
+          <outline text="tableType"/>
+        </outline>
+      </outline>
+      <outline text="REPL - if statement - Conditional statements should work">
+        <outline text="Metadata">
+          <outline text="expected_result: 42"/>
+        </outline>
+        <outline text="Script">
+          <outline text="if true">
+            <outline text="return 42"/>
+          </outline>
+          <outline text="else">
+            <outline text="return 0"/>
+          </outline>
+        </outline>
+      </outline>
+      <outline text="REPL - loop statement - Loop statements should work">
+        <outline text="Metadata">
+          <outline text="expected_result: 15"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(sum = 0)"/>
+          <outline text="for i = 1 to 5">
+            <outline text="sum = sum + i"/>
+          </outline>
+          <outline text="return sum"/>
+        </outline>
+      </outline>
+      <outline text="REPL - function definition in workspace - Function definitions work in Phase 1">
+        <outline text="Metadata">
+          <outline text="expected_result: 42"/>
+        </outline>
+        <outline text="Script">
+          <outline text="on doubleIt(x)">
+            <outline text="return x * 2"/>
+          </outline>
+          <outline text="doubleIt(21)"/>
+        </outline>
+      </outline>
+      <outline text="REPL - access system table - System table should be accessible when system root loaded">
+        <outline text="Metadata">
+          <outline text="expected_result: tabl"/>
+        </outline>
+        <outline text="Script">
+          <outline text="typeof(system)"/>
+        </outline>
+      </outline>
+      <outline text="REPL - call system verb - System verbs should be callable">
+        <outline text="Metadata">
+          <outline text="expected_result: 5"/>
+        </outline>
+        <outline text="Script">
+          <outline text="sizeOf(&quot;hello&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="REPL - string verb - String verbs should work">
+        <outline text="Metadata">
+          <outline text="expected_result: HELLO"/>
+        </outline>
+        <outline text="Script">
+          <outline text="string.upper(&quot;hello&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="REPL - very long integer - Large integers within range should work">
+        <outline text="Metadata">
+          <outline text="expected_result: 2147483647"/>
+        </outline>
+        <outline text="Script">
+          <outline text="2147483647"/>
+        </outline>
+      </outline>
+      <outline text="REPL - very long string - Long strings should be handled">
+        <outline text="Metadata">
+          <outline text="expected_result: 100"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(s = &quot;&quot;)"/>
+          <outline text="for i = 1 to 100">
+            <outline text="s = s + &quot;x&quot;"/>
+          </outline>
+          <outline text="sizeOf(s)"/>
+        </outline>
+      </outline>
+      <outline text="REPL - nested table creation - Nested tables should work">
+        <outline text="Metadata">
+          <outline text="expected_result: 42"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(tableType, @nested)"/>
+          <outline text="nested.value = 42"/>
+          <outline text="nested.value"/>
+        </outline>
+      </outline>
+      <outline text="REPL - empty expression - Empty input returns error">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+        </outline>
+      </outline>
+      <outline text="REPL - whitespace-only expression - Whitespace-only input should not error">
+        <outline text="Script"/>
+      </outline>
+      <outline text="REPL - multiple statements - Multiple statements should execute in order">
+        <outline text="Metadata">
+          <outline text="expected_result: 6"/>
+        </outline>
+        <outline text="Script">
+          <outline text="a = 1"/>
+          <outline text="b = 2"/>
+          <outline text="c = 3"/>
+          <outline text="a + b + c"/>
+        </outline>
+      </outline>
+      <outline text="REPL - return statement - Explicit return should work">
+        <outline text="Metadata">
+          <outline text="expected_result: 20"/>
+        </outline>
+        <outline text="Script">
+          <outline text="x = 10"/>
+          <outline text="return x * 2"/>
+        </outline>
+      </outline>
+      <outline text="REPL - nil value - Nil values should not display (Phase 1 behavior)">
+        <outline text="Script">
+          <outline text="nil"/>
+        </outline>
+      </outline>
+      <outline text="REPL - assignment returns value - Assignment expressions return assigned value">
+        <outline text="Metadata">
+          <outline text="expected_result: 42"/>
+        </outline>
+        <outline text="Script">
+          <outline text="x = 42"/>
+        </outline>
+      </outline>
+      <outline text="REPL - statement without return - Statements without explicit return should work">
+        <outline text="Metadata">
+          <outline text="expected_result: 6"/>
+        </outline>
+        <outline text="Script">
+          <outline text="x = 5"/>
+          <outline text="x = x + 1"/>
+        </outline>
+      </outline>
+      <outline text="REPL - string to number coercion - Implicit type coercion should work">
+        <outline text="Script">
+          <outline text="&quot;42&quot; + 0"/>
+        </outline>
+      </outline>
+      <outline text="REPL - boolean to number - Boolean to number coercion">
+        <outline text="Metadata">
+          <outline text="expected_result: 2"/>
+        </outline>
+        <outline text="Script">
+          <outline text="true + 1"/>
+        </outline>
+      </outline>
+      <outline text="REPL - number to string - Number to string coercion in concatenation">
+        <outline text="Metadata">
+          <outline text="expected_result: Value: 42"/>
+        </outline>
+        <outline text="Script">
+          <outline text="&quot;Value: &quot; + string(42)"/>
+        </outline>
+      </outline>
+      <outline text="REPL - workspace doesn't affect system table - Workspace assignments should not modify system tables">
+        <outline text="Metadata">
+          <outline text="expected_result: tabl"/>
+        </outline>
+        <outline text="Script">
+          <outline text="compiler = &quot;custom&quot;"/>
+          <outline text="typeof(system.compiler)"/>
+        </outline>
+      </outline>
+      <outline text="REPL - workspace is writable - Workspace should be writable (not read-only)">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="test1 = 1"/>
+          <outline text="test2 = 2"/>
+          <outline text="test3 = 3"/>
+          <outline text="sizeOf(workspace) &gt;= 3"/>
+        </outline>
+      </outline>
+      <outline text="REPL - runtime error doesn't corrupt workspace - Runtime errors should not corrupt workspace state">
+        <outline text="Metadata">
+          <outline text="expected_result: 10"/>
+        </outline>
+        <outline text="Script">
+          <outline text="x = 10"/>
+          <outline text="try { 1 / 0 } else { }"/>
+          <outline text="x"/>
+        </outline>
+      </outline>
+      <outline text="REPL - compile error doesn't affect workspace - Compilation errors should not affect workspace">
+        <outline text="Metadata">
+          <outline text="expected_result: 42"/>
+        </outline>
+        <outline text="Script">
+          <outline text="safe = 42"/>
+          <outline text="safe"/>
+        </outline>
+      </outline>
+      <outline text="REPL - multi-statement with locals - Multiple statements with local variables">
+        <outline text="Metadata">
+          <outline text="expected_result: 15"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(a = 5)"/>
+          <outline text="local(b = 10)"/>
+          <outline text="a + b"/>
+        </outline>
+      </outline>
+      <outline text="REPL - multi-statement mixed workspace and local - Mix workspace and local variables">
+        <outline text="Metadata">
+          <outline text="expected_result: 150"/>
+        </outline>
+        <outline text="Script">
+          <outline text="persistent = 100"/>
+          <outline text="local(temporary = 50)"/>
+          <outline text="persistent + temporary"/>
+        </outline>
+      </outline>
+    </outline>
+  </body>
+</opml>

@@ -1,0 +1,1386 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>Lang Verbs (lang_verbs)</title>
+    <dateCreated>Mon, 19 Jan 2026 00:10:48 GMT</dateCreated>
+  </head>
+  <body>
+    <outline text="Lang Verbs (lang_verbs)">
+      <outline text="lang.double - integer to double - Convert integer to double-precision float">
+        <outline text="Metadata">
+          <outline text="expected_result: 42.0"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.double(42)"/>
+        </outline>
+      </outline>
+      <outline text="lang.double - string to double - Convert string representation to double">
+        <outline text="Metadata">
+          <outline text="expected_result: 3.14159"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.double(&quot;3.14159&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="lang.double - negative value - Convert negative number to double">
+        <outline text="Metadata">
+          <outline text="expected_result: -273.15"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.double(-273.15)"/>
+        </outline>
+      </outline>
+      <outline text="lang.double - boolean true - Convert boolean true to double (1.0)">
+        <outline text="Metadata">
+          <outline text="expected_result: 1.0"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.double(true)"/>
+        </outline>
+      </outline>
+      <outline text="lang.double - boolean false - Convert boolean false to double (0.0)">
+        <outline text="Metadata">
+          <outline text="expected_result: 0.0"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.double(false)"/>
+        </outline>
+      </outline>
+      <outline text="lang.single - integer to single - Convert integer to single-precision float">
+        <outline text="Metadata">
+          <outline text="expected_result: 42.0"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.single(42)"/>
+        </outline>
+      </outline>
+      <outline text="lang.single - string to single - Convert string representation to single-precision">
+        <outline text="Metadata">
+          <outline text="expected_result: sing"/>
+        </outline>
+        <outline text="Script">
+          <outline text="typeof(lang.single(&quot;3.14159&quot;))"/>
+        </outline>
+      </outline>
+      <outline text="lang.single - negative value - Convert negative number to single">
+        <outline text="Metadata">
+          <outline text="expected_result: -100.5"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.single(-100.5)"/>
+        </outline>
+      </outline>
+      <outline text="lang.single - double to single precision - Convert double to single (may lose precision)">
+        <outline text="Metadata">
+          <outline text="expected_result: sing"/>
+        </outline>
+        <outline text="Script">
+          <outline text="typeof(lang.single(1.23456789))"/>
+        </outline>
+      </outline>
+      <outline text="lang.fixed - integer to fixed - Convert integer to fixed-point">
+        <outline text="Metadata">
+          <outline text="expected_result: 42.0"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.fixed(42)"/>
+        </outline>
+      </outline>
+      <outline text="lang.fixed - double to fixed - Convert double to fixed-point">
+        <outline text="Metadata">
+          <outline text="expected_result: fixd"/>
+        </outline>
+        <outline text="Script">
+          <outline text="typeof(lang.fixed(3.14159))"/>
+        </outline>
+      </outline>
+      <outline text="lang.fixed - string to fixed - Convert string to fixed-point">
+        <outline text="Metadata">
+          <outline text="expected_result: fixd"/>
+        </outline>
+        <outline text="Script">
+          <outline text="typeof(lang.fixed(&quot;100.25&quot;))"/>
+        </outline>
+      </outline>
+      <outline text="lang.fixed - negative value - Convert negative number to fixed">
+        <outline text="Metadata">
+          <outline text="expected_result: fixd"/>
+        </outline>
+        <outline text="Script">
+          <outline text="typeof(lang.fixed(-50.75))"/>
+        </outline>
+      </outline>
+      <outline text="lang.direction - string 'up' - Convert string 'up' to direction">
+        <outline text="Metadata">
+          <outline text="expected_result: up"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.direction(&quot;up&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="lang.direction - string 'down' - Convert string 'down' to direction">
+        <outline text="Metadata">
+          <outline text="expected_result: down"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.direction(&quot;down&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="lang.direction - string 'left' - Convert string 'left' to direction">
+        <outline text="Metadata">
+          <outline text="expected_result: left"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.direction(&quot;left&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="lang.direction - string 'right' - Convert string 'right' to direction">
+        <outline text="Metadata">
+          <outline text="expected_result: right"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.direction(&quot;right&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="lang.direction - string 'flatup' - Convert string 'flatup' to direction">
+        <outline text="Metadata">
+          <outline text="expected_result: flatup"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.direction(&quot;flatup&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="lang.direction - string 'flatdown' - Convert string 'flatdown' to direction">
+        <outline text="Metadata">
+          <outline text="expected_result: flatdown"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.direction(&quot;flatdown&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="lang.direction - invalid direction - Attempt to convert invalid direction string">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.direction(&quot;invalid&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="lang.string4 - 4-char string - Convert 4-character string to OSType">
+        <outline text="Metadata">
+          <outline text="expected_result: TEXT"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.string4(&quot;TEXT&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="lang.string4 - integer code - Convert integer code to OSType">
+        <outline text="Metadata">
+          <outline text="expected_result: type"/>
+        </outline>
+        <outline text="Script">
+          <outline text="typeof(lang.string4(1414745172))"/>
+        </outline>
+      </outline>
+      <outline text="lang.string4 - padded string - Convert short string to OSType (should pad)">
+        <outline text="Metadata">
+          <outline text="expected_result: type"/>
+        </outline>
+        <outline text="Script">
+          <outline text="typeof(lang.string4(&quot;ZIP&quot;))"/>
+        </outline>
+      </outline>
+      <outline text="lang.double roundtrip - Convert to double and back via string">
+        <outline text="Metadata">
+          <outline text="expected_result: 42.0"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.double(lang.string(lang.double(42)))"/>
+        </outline>
+      </outline>
+      <outline text="lang.single roundtrip - Convert to single and back via string">
+        <outline text="Metadata">
+          <outline text="expected_result: sing"/>
+        </outline>
+        <outline text="Script">
+          <outline text="typeof(lang.single(lang.string(lang.single(3.14))))"/>
+        </outline>
+      </outline>
+      <outline text="lang.double - zero - Convert zero to double">
+        <outline text="Metadata">
+          <outline text="expected_result: 0.0"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.double(0)"/>
+        </outline>
+      </outline>
+      <outline text="lang.double - very large number - Convert large number to double">
+        <outline text="Metadata">
+          <outline text="expected_result: 1234567890.0"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.double(1234567890)"/>
+        </outline>
+      </outline>
+      <outline text="lang.single - very small number - Convert very small number to single">
+        <outline text="Metadata">
+          <outline text="expected_result: sing"/>
+        </outline>
+        <outline text="Script">
+          <outline text="typeof(lang.single(0.0001))"/>
+        </outline>
+      </outline>
+      <outline text="lang.fixed - zero - Convert zero to fixed">
+        <outline text="Metadata">
+          <outline text="expected_result: 0.0"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.fixed(0)"/>
+        </outline>
+      </outline>
+      <outline text="lang.double - no parameters - Parameter validation: missing parameter should fail">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.double()"/>
+        </outline>
+      </outline>
+      <outline text="lang.double - too many parameters - Parameter validation: extra parameters should fail">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.double(1, 2)"/>
+        </outline>
+      </outline>
+      <outline text="lang.single - no parameters - Parameter validation: missing parameter should fail">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.single()"/>
+        </outline>
+      </outline>
+      <outline text="lang.fixed - too many parameters - Parameter validation: extra parameters should fail">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.fixed(1, 2)"/>
+        </outline>
+      </outline>
+      <outline text="lang.direction - no parameters - Parameter validation: missing parameter should fail">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.direction()"/>
+        </outline>
+      </outline>
+      <outline text="lang.string4 - too many parameters - Parameter validation: extra parameters should fail">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.string4(&quot;TEXT&quot;, &quot;EXTRA&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="lang.abs - positive long - Absolute value of positive number (no change)">
+        <outline text="Metadata">
+          <outline text="expected_result: 42"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.abs(42)"/>
+        </outline>
+      </outline>
+      <outline text="lang.abs - negative long - Absolute value of negative number">
+        <outline text="Metadata">
+          <outline text="expected_result: 42"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.abs(-42)"/>
+        </outline>
+      </outline>
+      <outline text="lang.abs - zero - Absolute value of zero">
+        <outline text="Metadata">
+          <outline text="expected_result: 0"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.abs(0)"/>
+        </outline>
+      </outline>
+      <outline text="lang.abs - negative double - Absolute value of negative double">
+        <outline text="Metadata">
+          <outline text="expected_result: 3.14159"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.abs(-3.14159)"/>
+        </outline>
+      </outline>
+      <outline text="lang.abs - positive double - Absolute value of positive double (no change)">
+        <outline text="Metadata">
+          <outline text="expected_result: 2.71828"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.abs(2.71828)"/>
+        </outline>
+      </outline>
+      <outline text="lang.abs - negative single - Absolute value of negative single-precision">
+        <outline text="Metadata">
+          <outline text="expected_result: 100.5"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.abs(-100.5)"/>
+        </outline>
+      </outline>
+      <outline text="lang.abs - very large negative - Absolute value of large negative number">
+        <outline text="Metadata">
+          <outline text="expected_result: 999999999"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.abs(-999999999)"/>
+        </outline>
+      </outline>
+      <outline text="lang.abs - no parameters - Parameter validation: missing parameter should fail">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.abs()"/>
+        </outline>
+      </outline>
+      <outline text="lang.abs - too many parameters - Parameter validation: extra parameters should fail">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.abs(1, 2)"/>
+        </outline>
+      </outline>
+      <outline text="lang.random - in range - Random number should be in valid range [0, max-1]">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local (x = lang.random(100))"/>
+          <outline text="return (x &gt;= 0) and (x &lt; 100)"/>
+        </outline>
+      </outline>
+      <outline text="lang.random - max=1 - Random(1) should always return 0">
+        <outline text="Metadata">
+          <outline text="expected_result: 0"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.random(1)"/>
+        </outline>
+      </outline>
+      <outline text="lang.random - max=10 - Random(10) should be in [0,9]">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local (x = lang.random(10))"/>
+          <outline text="return (x &gt;= 0) and (x &lt;= 9)"/>
+        </outline>
+      </outline>
+      <outline text="lang.random - multiple calls differ - Multiple random calls should (usually) produce different values">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local (x = lang.random(1000))"/>
+          <outline text="local (y = lang.random(1000))"/>
+          <outline text="local (z = lang.random(1000))"/>
+          <outline text="return (x != y) or (y != z)"/>
+        </outline>
+      </outline>
+      <outline text="lang.random - max=0 error - Random(0) should fail (invalid range)">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.random(0)"/>
+        </outline>
+      </outline>
+      <outline text="lang.random - negative max error - Random with negative max should fail">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.random(-10)"/>
+        </outline>
+      </outline>
+      <outline text="lang.random - no parameters - Parameter validation: missing parameter should fail">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.random()"/>
+        </outline>
+      </outline>
+      <outline text="lang.memavail - returns positive - Available memory should be a positive number">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.memavail() &gt; 0"/>
+        </outline>
+      </outline>
+      <outline text="lang.memavail - returns long - Memory available should return a numeric value">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local (m = lang.memavail())"/>
+          <outline text="return typeof(m) == &quot;long&quot;"/>
+        </outline>
+      </outline>
+      <outline text="lang.memavail - reasonable value - Memory available should be at least 1MB (sanity check)">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.memavail() &gt;= (1024 * 1024)"/>
+        </outline>
+      </outline>
+      <outline text="lang.flushmemory - succeeds - Flush memory should always succeed (no-op)">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.flushmemory()"/>
+        </outline>
+      </outline>
+      <outline text="lang.flushmemory - returns boolean - Flush memory should return boolean true">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local (result = lang.flushmemory())"/>
+          <outline text="return typeof(result) == &quot;bool&quot;"/>
+        </outline>
+      </outline>
+      <outline text="lang.flushmemory - idempotent - Multiple flush calls should all succeed">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="return lang.flushmemory() and lang.flushmemory() and lang.flushmemory()"/>
+        </outline>
+      </outline>
+      <outline text="lang.delete - simple variable - Delete a simple variable from current scope">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local (x = 42)"/>
+          <outline text="lang.delete(@x)"/>
+          <outline text="return true"/>
+        </outline>
+      </outline>
+      <outline text="lang.delete - table entry - Delete an entry from a table">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(tableType, @t)"/>
+          <outline text="t.a = &quot;hello&quot;"/>
+          <outline text="t.b = &quot;world&quot;"/>
+          <outline text="lang.delete(@t.a)"/>
+          <outline text="return t.b == &quot;world&quot;"/>
+        </outline>
+      </outline>
+      <outline text="lang.delete - non-existent variable - Deleting non-existent variable should error (correct UserTalk semantics)">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.delete(@nonexistent)"/>
+        </outline>
+      </outline>
+      <outline text="lang.delete - no parameters - Parameter validation: missing parameter should fail">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.delete()"/>
+        </outline>
+      </outline>
+      <outline text="lang.evaluate - simple expression - Evaluate simple arithmetic expression">
+        <outline text="Metadata">
+          <outline text="expected_result: 2"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.evaluate(&quot;1 + 1&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="lang.evaluate - string expression - Evaluate string concatenation">
+        <outline text="Metadata">
+          <outline text="expected_result: Hello World"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.evaluate(&quot;\&quot;Hello\&quot; + \&quot; \&quot; + \&quot;World\&quot;&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="lang.evaluate - boolean expression - Evaluate boolean logic">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.evaluate(&quot;(5 &gt; 3) and (2 &lt; 4)&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="lang.evaluate - multi-line code - Evaluate multi-line UserTalk code">
+        <outline text="Metadata">
+          <outline text="expected_result: 20"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.evaluate(&quot;local (x = 10); x * 2&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="lang.evaluate - syntax error - Evaluation with syntax error should fail with scriptError">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.evaluate(&quot;1 + + 1&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="lang.evaluate - empty string - Evaluate empty string">
+        <outline text="Script">
+          <outline text="lang.evaluate(&quot;&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="lang.evaluate - no parameters - Parameter validation: missing parameter should fail">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.evaluate()"/>
+        </outline>
+      </outline>
+      <outline text="lang.callscript - simple script - Call a simple script that returns a value">
+        <outline text="Metadata">
+          <outline text="skip: Phase 3: Type coercion and platform-specific verbs not implemented"/>
+          <outline text="expected_result: 42"/>
+        </outline>
+        <outline text="Script">
+          <outline text="on testscript() { return 42 }"/>
+          <outline text="return lang.callscript(&quot;testscript&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="lang.callscript - script with side effects - Call a script that modifies state">
+        <outline text="Metadata">
+          <outline text="skip: Phase 3: Type coercion and platform-specific verbs not implemented"/>
+          <outline text="expected_result: 100"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local (result = 0)"/>
+          <outline text="on setresult() { result = 100 }"/>
+          <outline text="lang.callscript(&quot;setresult&quot;)"/>
+          <outline text="return result"/>
+        </outline>
+      </outline>
+      <outline text="lang.callscript - non-existent script - Calling non-existent script should fail">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.callscript(&quot;nonexistentscript&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="lang.callscript - no parameters - Parameter validation: missing parameter should fail">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.callscript()"/>
+        </outline>
+      </outline>
+      <outline text="lang.msg - simple message - Display simple message (should output to stdout and return true)">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.msg(&quot;Hello from headless mode&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="lang.msg - empty message - Display empty message (no-op, returns true)">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.msg(&quot;&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="lang.msg - message with special characters - Display message with special characters">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.msg(&quot;Test: 1+1=2, \&quot;quoted\&quot;, tab\ttab&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="lang.msg - long message - Display a longer message">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.msg(&quot;This is a longer message to test that lang.msg() can handle strings of various lengths without issue.&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="lang.msg - no parameters - Parameter validation: missing parameter should fail">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.msg()"/>
+        </outline>
+      </outline>
+      <outline text="lang.timecreated - table creation time - Get creation time of a newly created table">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(tableType, @t)"/>
+          <outline text="local (tc = lang.timecreated(@t))"/>
+          <outline text="return typeof(tc) == &quot;date&quot;"/>
+        </outline>
+      </outline>
+      <outline text="lang.timecreated - timestamp is recent - Creation time should be close to current time">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(tableType, @t)"/>
+          <outline text="local (tc = lang.timecreated(@t))"/>
+          <outline text="local (now = clock.now())"/>
+          <outline text="return (now - tc) &lt; 10"/>
+        </outline>
+      </outline>
+      <outline text="lang.timecreated - timestamp not zero - Creation time should not be zero">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(tableType, @t)"/>
+          <outline text="return lang.timecreated(@t) &gt; 0"/>
+        </outline>
+      </outline>
+      <outline text="lang.timecreated - timestamp not in future - Creation time should not be in the future">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(tableType, @t)"/>
+          <outline text="local (tc = lang.timecreated(@t))"/>
+          <outline text="local (now = clock.now())"/>
+          <outline text="return tc &lt;= now"/>
+        </outline>
+      </outline>
+      <outline text="lang.timecreated - no parameters - Parameter validation: missing parameter should fail">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.timecreated()"/>
+        </outline>
+      </outline>
+      <outline text="lang.timemodified - table modification time - Get modification time of a newly created table">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(tableType, @t)"/>
+          <outline text="local (tm = lang.timemodified(@t))"/>
+          <outline text="return typeof(tm) == &quot;date&quot;"/>
+        </outline>
+      </outline>
+      <outline text="lang.timemodified - timestamp is recent - Modification time should be close to current time">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(tableType, @t)"/>
+          <outline text="local (tm = lang.timemodified(@t))"/>
+          <outline text="local (now = clock.now())"/>
+          <outline text="return (now - tm) &lt; 10"/>
+        </outline>
+      </outline>
+      <outline text="lang.timemodified - equals timecreated initially - For new table, timemodified should equal timecreated">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(tableType, @t)"/>
+          <outline text="local (tc = lang.timecreated(@t))"/>
+          <outline text="local (tm = lang.timemodified(@t))"/>
+          <outline text="return tc == tm"/>
+        </outline>
+      </outline>
+      <outline text="lang.timemodified - no parameters - Parameter validation: missing parameter should fail">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.timemodified()"/>
+        </outline>
+      </outline>
+      <outline text="lang.settimecreated - set to 1 year ago - Set creation time to 1 year ago and verify">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(tableType, @t)"/>
+          <outline text="local (oneyearago = clock.now() - (60*60*24*365))"/>
+          <outline text="lang.settimecreated(@t, oneyearago)"/>
+          <outline text="local (tc = lang.timecreated(@t))"/>
+          <outline text="return (tc - oneyearago) &lt; 2"/>
+        </outline>
+      </outline>
+      <outline text="lang.settimecreated - returns boolean true - settimecreated should return true on success">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(tableType, @t)"/>
+          <outline text="return lang.settimecreated(@t, clock.now() - 1000)"/>
+        </outline>
+      </outline>
+      <outline text="lang.settimecreated - custom timestamp persists - Set custom timestamp and verify it persists">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(tableType, @t)"/>
+          <outline text="local (customtime = 1000000000)"/>
+          <outline text="lang.settimecreated(@t, customtime)"/>
+          <outline text="return lang.timecreated(@t) == customtime"/>
+        </outline>
+      </outline>
+      <outline text="lang.settimecreated - no parameters - Parameter validation: missing parameters should fail">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.settimecreated()"/>
+        </outline>
+      </outline>
+      <outline text="lang.settimecreated - one parameter only - Parameter validation: need both address and date">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(tableType, @t)"/>
+          <outline text="lang.settimecreated(@t)"/>
+        </outline>
+      </outline>
+      <outline text="lang.settimemodified - set to 100 days ago - Set modification time to 100 days ago and verify">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(tableType, @t)"/>
+          <outline text="local (hundreddays = clock.now() - (60*60*24*100))"/>
+          <outline text="lang.settimemodified(@t, hundreddays)"/>
+          <outline text="local (tm = lang.timemodified(@t))"/>
+          <outline text="return (tm - hundreddays) &lt; 2"/>
+        </outline>
+      </outline>
+      <outline text="lang.settimemodified - returns boolean true - settimemodified should return true on success">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(tableType, @t)"/>
+          <outline text="return lang.settimemodified(@t, clock.now() - 5000)"/>
+        </outline>
+      </outline>
+      <outline text="lang.settimemodified - custom timestamp persists - Set custom timestamp and verify it persists">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(tableType, @t)"/>
+          <outline text="local (customtime = 2000000000)"/>
+          <outline text="lang.settimemodified(@t, customtime)"/>
+          <outline text="return lang.timemodified(@t) == customtime"/>
+        </outline>
+      </outline>
+      <outline text="lang.settimemodified - independent of timecreated - Setting timemodified should not affect timecreated">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(tableType, @t)"/>
+          <outline text="local (tc = lang.timecreated(@t))"/>
+          <outline text="lang.settimemodified(@t, clock.now() - 100000)"/>
+          <outline text="return lang.timecreated(@t) == tc"/>
+        </outline>
+      </outline>
+      <outline text="lang.settimemodified - no parameters - Parameter validation: missing parameters should fail">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.settimemodified()"/>
+        </outline>
+      </outline>
+      <outline text="lang.settimemodified - one parameter only - Parameter validation: need both address and date">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(tableType, @t)"/>
+          <outline text="lang.settimemodified(@t)"/>
+        </outline>
+      </outline>
+      <outline text="lang.boolean - integer 1 to true - Convert non-zero integer to boolean true">
+        <outline text="Metadata">
+          <outline text="expected_result: bool"/>
+        </outline>
+        <outline text="Script">
+          <outline text="typeof(lang.boolean(1))"/>
+        </outline>
+      </outline>
+      <outline text="lang.boolean - integer 0 to false - Convert zero to boolean false">
+        <outline text="Metadata">
+          <outline text="expected_result: bool"/>
+        </outline>
+        <outline text="Script">
+          <outline text="typeof(lang.boolean(0))"/>
+        </outline>
+      </outline>
+      <outline text="lang.boolean - string 'true' - Convert string 'true' to boolean">
+        <outline text="Metadata">
+          <outline text="expected_result: bool"/>
+        </outline>
+        <outline text="Script">
+          <outline text="typeof(lang.boolean(&quot;true&quot;))"/>
+        </outline>
+      </outline>
+      <outline text="lang.boolean - string 'false' - Convert string 'false' to boolean">
+        <outline text="Metadata">
+          <outline text="expected_result: bool"/>
+        </outline>
+        <outline text="Script">
+          <outline text="typeof(lang.boolean(&quot;false&quot;))"/>
+        </outline>
+      </outline>
+      <outline text="lang.boolean - no parameters - Parameter validation: missing parameter should fail">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.boolean()"/>
+        </outline>
+      </outline>
+      <outline text="lang.char - integer to char - Convert ASCII value to character">
+        <outline text="Metadata">
+          <outline text="expected_result: char"/>
+        </outline>
+        <outline text="Script">
+          <outline text="typeof(lang.char(65))"/>
+        </outline>
+      </outline>
+      <outline text="lang.char - string to char - Convert single character string to char">
+        <outline text="Metadata">
+          <outline text="expected_result: char"/>
+        </outline>
+        <outline text="Script">
+          <outline text="typeof(lang.char(&quot;H&quot;))"/>
+        </outline>
+      </outline>
+      <outline text="lang.char - no parameters - Parameter validation: missing parameter should fail">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.char()"/>
+        </outline>
+      </outline>
+      <outline text="lang.short - integer conversion - Convert integer to short (returns 64-bit long type)">
+        <outline text="Metadata">
+          <outline text="expected_result: 42"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.short(42)"/>
+        </outline>
+      </outline>
+      <outline text="lang.short - typeof returns long - Verify lang.short returns long type (64-bit internally)">
+        <outline text="Metadata">
+          <outline text="expected_result: long"/>
+        </outline>
+        <outline text="Script">
+          <outline text="typeof(lang.short(100))"/>
+        </outline>
+      </outline>
+      <outline text="lang.short - double to short - Convert double to short (truncates decimals)">
+        <outline text="Metadata">
+          <outline text="expected_result: 42"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.short(42.9)"/>
+        </outline>
+      </outline>
+      <outline text="lang.short - string to short - Convert numeric string to short">
+        <outline text="Metadata">
+          <outline text="expected_result: 9999"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.short(&quot;9999&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="lang.short - negative value - Convert negative number to short">
+        <outline text="Metadata">
+          <outline text="expected_result: -123"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.short(-123)"/>
+        </outline>
+      </outline>
+      <outline text="lang.short - no parameters - Parameter validation: missing parameter should fail">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.short()"/>
+        </outline>
+      </outline>
+      <outline text="lang.long - double to long - Convert double to long (truncates decimals)">
+        <outline text="Metadata">
+          <outline text="expected_result: long"/>
+        </outline>
+        <outline text="Script">
+          <outline text="typeof(lang.long(42.9))"/>
+        </outline>
+      </outline>
+      <outline text="lang.long - string to long - Convert numeric string to long">
+        <outline text="Metadata">
+          <outline text="expected_result: long"/>
+        </outline>
+        <outline text="Script">
+          <outline text="typeof(lang.long(&quot;12345&quot;))"/>
+        </outline>
+      </outline>
+      <outline text="lang.long - boolean true - Convert boolean true to 1">
+        <outline text="Metadata">
+          <outline text="expected_result: long"/>
+        </outline>
+        <outline text="Script">
+          <outline text="typeof(lang.long(true))"/>
+        </outline>
+      </outline>
+      <outline text="lang.long - boolean false - Convert boolean false to 0">
+        <outline text="Metadata">
+          <outline text="expected_result: long"/>
+        </outline>
+        <outline text="Script">
+          <outline text="typeof(lang.long(false))"/>
+        </outline>
+      </outline>
+      <outline text="lang.long - negative value - Convert negative double to long">
+        <outline text="Metadata">
+          <outline text="expected_result: long"/>
+        </outline>
+        <outline text="Script">
+          <outline text="typeof(lang.long(-999.7))"/>
+        </outline>
+      </outline>
+      <outline text="lang.long - no parameters - Parameter validation: missing parameter should fail">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.long()"/>
+        </outline>
+      </outline>
+      <outline text="lang.date - current time - Convert current timestamp to date type">
+        <outline text="Metadata">
+          <outline text="expected_result: date"/>
+        </outline>
+        <outline text="Script">
+          <outline text="typeof(lang.date(clock.now()))"/>
+        </outline>
+      </outline>
+      <outline text="lang.date - long to date - Convert long integer to date">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local (timestamp = clock.now())"/>
+          <outline text="local (converted = lang.date(timestamp))"/>
+          <outline text="return typeof(converted) == &quot;date&quot;"/>
+        </outline>
+      </outline>
+      <outline text="lang.date - post-2038 timestamp - Verify 64-bit date handling (Year 2038+ compatibility)">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local (future = date.set(1, 1, 2050, 0, 0, 0))"/>
+          <outline text="local (converted = lang.date(future))"/>
+          <outline text="return converted &gt; 0"/>
+        </outline>
+      </outline>
+      <outline text="lang.date - year 2100 timestamp - Verify far-future date handling">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local (farFuture = date.set(1, 1, 2100, 0, 0, 0))"/>
+          <outline text="local (converted = lang.date(farFuture))"/>
+          <outline text="return typeof(converted) == &quot;date&quot;"/>
+        </outline>
+      </outline>
+      <outline text="lang.date - no parameters - Parameter validation: missing parameter should fail">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.date()"/>
+        </outline>
+      </outline>
+      <outline text="lang.string - number to string - Convert integer to string">
+        <outline text="Metadata">
+          <outline text="expected_result: 42"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.string(42)"/>
+        </outline>
+      </outline>
+      <outline text="lang.string - boolean to string - Convert boolean true to string">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.string(true)"/>
+        </outline>
+      </outline>
+      <outline text="lang.string - double to string - Convert double to string">
+        <outline text="Metadata">
+          <outline text="expected_result: TEXT"/>
+        </outline>
+        <outline text="Script">
+          <outline text="typeof(lang.string(3.14159))"/>
+        </outline>
+      </outline>
+      <outline text="lang.string - no parameters - Parameter validation: missing parameter should fail">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.string()"/>
+        </outline>
+      </outline>
+      <outline text="lang.address - table address - Convert table to address type">
+        <outline text="Metadata">
+          <outline text="expected_result: addr"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(tableType, @t)"/>
+          <outline text="return typeof(lang.address(@t))"/>
+        </outline>
+      </outline>
+      <outline text="lang.address - no parameters - Parameter validation: missing parameter should fail">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.address()"/>
+        </outline>
+      </outline>
+      <outline text="lang.binary - string to binary - Convert string to binary data">
+        <outline text="Metadata">
+          <outline text="expected_result: data"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local (bin = lang.binary(&quot;test data&quot;))"/>
+          <outline text="return typeof(bin)"/>
+        </outline>
+      </outline>
+      <outline text="lang.binary - no parameters - Parameter validation: missing parameter should fail">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.binary()"/>
+        </outline>
+      </outline>
+      <outline text="lang.point - record to point - Convert point record to point type">
+        <outline text="Metadata">
+          <outline text="skip: Phase 3: Type coercion and platform-specific verbs not implemented"/>
+          <outline text="expected_result: point"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local (pt)"/>
+          <outline text="point.make(100, 200, @pt)"/>
+          <outline text="return typeof(lang.point(pt))"/>
+        </outline>
+      </outline>
+      <outline text="lang.point - no parameters - Parameter validation: missing parameter should fail">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.point()"/>
+        </outline>
+      </outline>
+      <outline text="lang.rect - record to rect - Convert rect record to rect type">
+        <outline text="Metadata">
+          <outline text="skip: Phase 3: Type coercion and platform-specific verbs not implemented"/>
+          <outline text="expected_result: rect"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local (r)"/>
+          <outline text="rectangle.make(10, 20, 110, 220, @r)"/>
+          <outline text="return typeof(lang.rect(r))"/>
+        </outline>
+      </outline>
+      <outline text="lang.rect - no parameters - Parameter validation: missing parameter should fail">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.rect()"/>
+        </outline>
+      </outline>
+      <outline text="lang.rgb - record to rgb - Convert RGB record to rgb type">
+        <outline text="Metadata">
+          <outline text="skip: Phase 3: Type coercion and platform-specific verbs not implemented"/>
+          <outline text="expected_result: rgb"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local (color)"/>
+          <outline text="rgb.make(255, 128, 64, @color)"/>
+          <outline text="return typeof(lang.rgb(color))"/>
+        </outline>
+      </outline>
+      <outline text="lang.rgb - no parameters - Parameter validation: missing parameter should fail">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.rgb()"/>
+        </outline>
+      </outline>
+      <outline text="lang.pattern - binary to pattern - Convert binary data to pattern type">
+        <outline text="Metadata">
+          <outline text="skip: Phase 3: Type coercion and platform-specific verbs not implemented"/>
+          <outline text="expected_result: pattern"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local (pat = lang.pattern(string.filledstring(chr(0xFF), 8)))"/>
+          <outline text="return typeof(pat)"/>
+        </outline>
+      </outline>
+      <outline text="lang.pattern - no parameters - Parameter validation: missing parameter should fail">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.pattern()"/>
+        </outline>
+      </outline>
+      <outline text="lang.filespec - string to filespec - Convert path string to filespec type">
+        <outline text="Metadata">
+          <outline text="expected_result: fss "/>
+        </outline>
+        <outline text="Script">
+          <outline text="local (fspec = lang.filespec(&quot;{FRONTIER_TEST_TMP_DIR}/test.txt&quot;))"/>
+          <outline text="return typeof(fspec)"/>
+        </outline>
+      </outline>
+      <outline text="lang.filespec - no parameters - Parameter validation: missing parameter should fail">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.filespec()"/>
+        </outline>
+      </outline>
+      <outline text="lang.list - string to list - Coerce string to list type">
+        <outline text="Metadata">
+          <outline text="expected_result: list"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local (lst = lang.list(&quot;test&quot;))"/>
+          <outline text="return typeof(lst)"/>
+        </outline>
+      </outline>
+      <outline text="lang.list - binary to list - Coerce binary to list type">
+        <outline text="Metadata">
+          <outline text="skip: Phase 3: Type coercion and platform-specific verbs not implemented"/>
+          <outline text="expected_result: list"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local (bin = pack(&quot;test&quot;))"/>
+          <outline text="local (lst = lang.list(bin))"/>
+          <outline text="return typeof(lst)"/>
+        </outline>
+      </outline>
+      <outline text="lang.list - no parameters - Parameter validation: missing parameter should fail">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.list()"/>
+        </outline>
+      </outline>
+      <outline text="lang.record - list to record - Coerce list to record type">
+        <outline text="Metadata">
+          <outline text="skip: Phase 3: Type coercion and platform-specific verbs not implemented"/>
+          <outline text="expected_result: record"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local (lst = {1, 2, 3})"/>
+          <outline text="local (rec = lang.record(lst))"/>
+          <outline text="return typeof(rec)"/>
+        </outline>
+      </outline>
+      <outline text="lang.record - no parameters - Parameter validation: missing parameter should fail">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.record()"/>
+        </outline>
+      </outline>
+      <outline text="lang.enum - string to enum - Coerce string to enum type">
+        <outline text="Metadata">
+          <outline text="skip: Phase 3: Type coercion and platform-specific verbs not implemented"/>
+          <outline text="expected_result: enum"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local (en = lang.enum(&quot;testvalue&quot;))"/>
+          <outline text="return typeof(en)"/>
+        </outline>
+      </outline>
+      <outline text="lang.enum - no parameters - Parameter validation: missing parameter should fail">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_type: script_error"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.enum()"/>
+        </outline>
+      </outline>
+      <outline text="lang.calldll - platform error - Windows DLL call should fail with platform error">
+        <outline text="Metadata">
+          <outline text="skip: macOS/Linux platform - Windows-only verb not supported"/>
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_contains: not supported"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.calldll(&quot;kernel32.dll&quot;, &quot;GetTickCount&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="lang.callxcmd - platform error - Legacy Mac XCMD call should fail with platform error">
+        <outline text="Metadata">
+          <outline text="skip: macOS/Linux platform - Windows-only verb not supported"/>
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_contains: not supported"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.callxcmd(&quot;MyXCMD&quot;, &quot;param&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="lang.coerceappleitem - platform error - AppleEvent coercion should fail with platform error">
+        <outline text="Metadata">
+          <outline text="skip: macOS/Linux platform - Windows-only verb not supported"/>
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_contains: AppleEvent"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(tableType, @x)"/>
+          <outline text="lang.coerceappleitem(@x, &quot;TEXT&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="lang.packwindow - platform error - Window packing should fail with platform error">
+        <outline text="Metadata">
+          <outline text="skip: macOS/Linux platform - Windows-only verb not supported"/>
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_contains: Window"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(tableType, @x)"/>
+          <outline text="lang.packwindow(@x)"/>
+        </outline>
+      </outline>
+      <outline text="lang.rollbeachball - noop succeeds - Beachball animation is a noop in headless mode, returns true">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.rollbeachball()"/>
+        </outline>
+      </outline>
+      <outline text="lang.edit - noop in headless - Edit verb is a noop in headless mode, returns true">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.new(stringType, @x)"/>
+          <outline text="x = &quot;test&quot;"/>
+          <outline text="return lang.edit(@x)"/>
+        </outline>
+      </outline>
+      <outline text="lang.scripterror - string message - Script error with custom message should fail">
+        <outline text="Metadata">
+          <outline text="skip: Phase 3: Type coercion and platform-specific verbs not implemented"/>
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_contains: Custom error message"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.scripterror(&quot;Custom error message&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="lang.scripterror - numeric error code - Script error with numeric code should trigger OS error">
+        <outline text="Metadata">
+          <outline text="expected_success: False"/>
+        </outline>
+        <outline text="Script">
+          <outline text="lang.scripterror(-1)"/>
+        </outline>
+      </outline>
+      <outline text="lang.scripterror - terminates execution - Script error should stop execution immediately">
+        <outline text="Metadata">
+          <outline text="skip: Phase 3: Type coercion and platform-specific verbs not implemented"/>
+          <outline text="expected_success: False"/>
+          <outline text="expected_error_contains: Should stop here"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(x = 0)"/>
+          <outline text="lang.scripterror(&quot;Should stop here&quot;)"/>
+          <outline text="x = 1"/>
+          <outline text="return x"/>
+        </outline>
+      </outline>
+    </outline>
+  </body>
+</opml>

@@ -1,0 +1,630 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>Html Framework Tests (html_framework_tests)</title>
+    <dateCreated>Mon, 19 Jan 2026 00:10:48 GMT</dateCreated>
+  </head>
+  <body>
+    <outline text="Html Framework Tests (html_framework_tests)">
+      <outline text="html.getpref - default file extension - Get default file extension preference">
+        <outline text="Metadata">
+          <outline text="requires_system_root: True"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(ext = html.getpref(&quot;fileExtension&quot;))"/>
+          <outline text="return ext == &quot;.html&quot;"/>
+        </outline>
+      </outline>
+      <outline text="html.getpref - default filename - Get default filename preference">
+        <outline text="Metadata">
+          <outline text="requires_system_root: True"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(name = html.getpref(&quot;defaultFileName&quot;))"/>
+          <outline text="return name == &quot;index&quot;"/>
+        </outline>
+      </outline>
+      <outline text="html.getpref - charset preference - Get character encoding preference">
+        <outline text="Metadata">
+          <outline text="requires_system_root: True"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(charset = html.getpref(&quot;charset&quot;))"/>
+          <outline text="return sizeOf(charset) &gt; 0"/>
+        </outline>
+      </outline>
+      <outline text="html.getpref - boolean preference (activeURLs) - Get boolean preference for URL auto-linking">
+        <outline text="Metadata">
+          <outline text="requires_system_root: True"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(active = html.getpref(&quot;activeURLs&quot;))"/>
+          <outline text="return typeof(active) == booleanType"/>
+        </outline>
+      </outline>
+      <outline text="html.getpref - maxFileNameLength - Get maximum filename length preference">
+        <outline text="Metadata">
+          <outline text="requires_system_root: True"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(maxLen = html.getpref(&quot;maxFileNameLength&quot;))"/>
+          <outline text="return (typeof(maxLen) == longType) and (maxLen &gt; 0)"/>
+        </outline>
+      </outline>
+      <outline text="html.getpref - useGlossPatcher preference - Get glossary patcher preference (needed for Phase 2)">
+        <outline text="Metadata">
+          <outline text="requires_system_root: True"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(usePatcher = html.getpref(&quot;useGlossPatcher&quot;))"/>
+          <outline text="return typeof(usePatcher) == booleanType"/>
+        </outline>
+      </outline>
+      <outline text="html.getpref - directivesOnlyAtBeginning - Get directive processing preference">
+        <outline text="Metadata">
+          <outline text="requires_system_root: True"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(directivesAtStart = html.getpref(&quot;directivesOnlyAtBeginning&quot;))"/>
+          <outline text="return typeof(directivesAtStart) == booleanType"/>
+        </outline>
+      </outline>
+      <outline text="html.getpref - with page table parameter - Get preference with explicit page table">
+        <outline text="Metadata">
+          <outline text="requires_system_root: True"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(pageTable)"/>
+          <outline text="lang.new(tableType, @pageTable)"/>
+          <outline text="local(ext = html.getpref(&quot;fileExtension&quot;, @pageTable))"/>
+          <outline text="return ext == &quot;.html&quot;"/>
+        </outline>
+      </outline>
+      <outline text="html.getpref - page table override - Page-specific preference overrides global">
+        <outline text="Metadata">
+          <outline text="requires_system_root: True"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(pageTable)"/>
+          <outline text="lang.new(tableType, @pageTable)"/>
+          <outline text="lang.new(tableType, @pageTable.prefs)"/>
+          <outline text="pageTable.prefs.fileExtension = &quot;.php&quot;"/>
+          <outline text="local(ext = html.getpref(&quot;fileExtension&quot;, @pageTable))"/>
+          <outline text="return ext == &quot;.php&quot;"/>
+        </outline>
+      </outline>
+      <outline text="html.getpref - undefined preference returns default - Undefined preferences should return sensible defaults">
+        <outline text="Metadata">
+          <outline text="requires_system_root: True"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(result = html.getpref(&quot;nonExistentPref&quot;))"/>
+          <outline text="return true"/>
+        </outline>
+      </outline>
+      <outline text="html.rundirective - simple string directive - Process simple title directive">
+        <outline text="Metadata">
+          <outline text="requires_system_root: True"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(pageTable)"/>
+          <outline text="lang.new(tableType, @pageTable)"/>
+          <outline text="pageTable.adrObject = @websites.samples.default"/>
+          <outline text="pageTable.ftpsite = @websites.&quot;#ftpSite&quot;"/>
+          <outline text="html.rundirective(&quot;#title = \&quot;Test Page\&quot;&quot;, @pageTable)"/>
+          <outline text="return pageTable.title == &quot;Test Page&quot;"/>
+        </outline>
+      </outline>
+      <outline text="html.rundirective - numeric directive - Process numeric directive">
+        <outline text="Metadata">
+          <outline text="requires_system_root: True"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(pageTable)"/>
+          <outline text="lang.new(tableType, @pageTable)"/>
+          <outline text="pageTable.adrObject = @websites.samples.default"/>
+          <outline text="pageTable.ftpsite = @websites.&quot;#ftpSite&quot;"/>
+          <outline text="html.rundirective(&quot;#priority = 10&quot;, @pageTable)"/>
+          <outline text="return pageTable.priority == 10"/>
+        </outline>
+      </outline>
+      <outline text="html.rundirective - boolean directive - Process boolean directive">
+        <outline text="Metadata">
+          <outline text="requires_system_root: True"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(pageTable)"/>
+          <outline text="lang.new(tableType, @pageTable)"/>
+          <outline text="pageTable.adrObject = @websites.samples.default"/>
+          <outline text="pageTable.ftpsite = @websites.&quot;#ftpSite&quot;"/>
+          <outline text="html.rundirective(&quot;#published = true&quot;, @pageTable)"/>
+          <outline text="return pageTable.published == true"/>
+        </outline>
+      </outline>
+      <outline text="html.rundirective - expression directive - Process directive with expression">
+        <outline text="Metadata">
+          <outline text="requires_system_root: True"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(pageTable)"/>
+          <outline text="lang.new(tableType, @pageTable)"/>
+          <outline text="pageTable.adrObject = @websites.samples.default"/>
+          <outline text="pageTable.ftpsite = @websites.&quot;#ftpSite&quot;"/>
+          <outline text="html.rundirective(&quot;#count = 5 + 5&quot;, @pageTable)"/>
+          <outline text="return pageTable.count == 10"/>
+        </outline>
+      </outline>
+      <outline text="html.rundirective - date directive - Process directive with date expression">
+        <outline text="Metadata">
+          <outline text="requires_system_root: True"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(pageTable)"/>
+          <outline text="lang.new(tableType, @pageTable)"/>
+          <outline text="pageTable.adrObject = @websites.samples.default"/>
+          <outline text="pageTable.ftpsite = @websites.&quot;#ftpSite&quot;"/>
+          <outline text="html.rundirective(&quot;#timestamp = clock.now()&quot;, @pageTable)"/>
+          <outline text="return defined(pageTable.timestamp)"/>
+        </outline>
+      </outline>
+      <outline text="html.rundirective - template directive (indirect) - Process template directive with address">
+        <outline text="Metadata">
+          <outline text="requires_system_root: True"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(pageTable)"/>
+          <outline text="lang.new(tableType, @pageTable)"/>
+          <outline text="pageTable.adrObject = @websites.samples.default"/>
+          <outline text="pageTable.ftpsite = @websites.&quot;#ftpSite&quot;"/>
+          <outline text="html.rundirective(&quot;#template = @websites.samples.default&quot;, @pageTable)"/>
+          <outline text="return defined(pageTable.template) and (pageTable.indirectTemplate == true)"/>
+        </outline>
+      </outline>
+      <outline text="html.rundirective - without # prefix (should still work) - Directive without # prefix should be handled">
+        <outline text="Metadata">
+          <outline text="requires_system_root: True"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(pageTable)"/>
+          <outline text="lang.new(tableType, @pageTable)"/>
+          <outline text="pageTable.adrObject = @websites.samples.default"/>
+          <outline text="pageTable.ftpsite = @websites.&quot;#ftpSite&quot;"/>
+          <outline text="html.rundirective(&quot;author = \&quot;John Doe\&quot;&quot;, @pageTable)"/>
+          <outline text="return pageTable.author == &quot;John Doe&quot;"/>
+        </outline>
+      </outline>
+      <outline text="html.rundirectives - multiple directives - Process multiple directives in text block">
+        <outline text="Metadata">
+          <outline text="requires_system_root: True"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(pageTable)"/>
+          <outline text="lang.new(tableType, @pageTable)"/>
+          <outline text="pageTable.adrObject = @websites.samples.default"/>
+          <outline text="pageTable.ftpsite = @websites.&quot;#ftpSite&quot;"/>
+          <outline text="local(text = &quot;#title = \&quot;My Page\&quot;\r#author = \&quot;John\&quot;\r&lt;p&gt;Content here&lt;/p&gt;&quot;)"/>
+          <outline text="local(result = html.rundirectives(text, @pageTable))"/>
+          <outline text="local(hasTitle = pageTable.title == &quot;My Page&quot;)"/>
+          <outline text="local(hasAuthor = pageTable.author == &quot;John&quot;)"/>
+          <outline text="local(hasContent = string.contains(result, &quot;&lt;p&gt;Content here&lt;/p&gt;&quot;))"/>
+          <outline text="return hasTitle and hasAuthor and hasContent"/>
+        </outline>
+      </outline>
+      <outline text="html.rundirectives - directives only at beginning - With directivesOnlyAtBeginning=true, only process leading directives">
+        <outline text="Metadata">
+          <outline text="requires_system_root: True"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(pageTable)"/>
+          <outline text="lang.new(tableType, @pageTable)"/>
+          <outline text="pageTable.adrObject = @websites.samples.default"/>
+          <outline text="pageTable.ftpsite = @websites.&quot;#ftpSite&quot;"/>
+          <outline text="user.html.prefs.directivesOnlyAtBeginning = true"/>
+          <outline text="local(text = &quot;#title = \&quot;Test\&quot;\r&lt;p&gt;Text&lt;/p&gt;\r#ignored = \&quot;value\&quot;&quot;)"/>
+          <outline text="html.rundirectives(text, @pageTable)"/>
+          <outline text="return defined(pageTable.title) and not defined(pageTable.ignored)"/>
+        </outline>
+      </outline>
+      <outline text="html.rundirectives - directives throughout text - With directivesOnlyAtBeginning=false, process all directives">
+        <outline text="Metadata">
+          <outline text="requires_system_root: True"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(pageTable)"/>
+          <outline text="lang.new(tableType, @pageTable)"/>
+          <outline text="pageTable.adrObject = @websites.samples.default"/>
+          <outline text="pageTable.ftpsite = @websites.&quot;#ftpSite&quot;"/>
+          <outline text="user.html.prefs.directivesOnlyAtBeginning = false"/>
+          <outline text="local(text = &quot;&lt;p&gt;Start&lt;/p&gt;\r#middle = \&quot;value\&quot;\r&lt;p&gt;End&lt;/p&gt;&quot;)"/>
+          <outline text="html.rundirectives(text, @pageTable)"/>
+          <outline text="return pageTable.middle == &quot;value&quot;"/>
+        </outline>
+      </outline>
+      <outline text="html.rundirectives - no directives - Text without directives should pass through unchanged">
+        <outline text="Metadata">
+          <outline text="requires_system_root: True"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(pageTable)"/>
+          <outline text="lang.new(tableType, @pageTable)"/>
+          <outline text="pageTable.adrObject = @websites.samples.default"/>
+          <outline text="pageTable.ftpsite = @websites.&quot;#ftpSite&quot;"/>
+          <outline text="local(text = &quot;&lt;p&gt;Plain HTML content&lt;/p&gt;&quot;)"/>
+          <outline text="local(result = html.rundirectives(text, @pageTable))"/>
+          <outline text="return result == text"/>
+        </outline>
+      </outline>
+      <outline text="html.rundirectives - empty string - Empty string should not crash">
+        <outline text="Metadata">
+          <outline text="requires_system_root: True"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(pageTable)"/>
+          <outline text="lang.new(tableType, @pageTable)"/>
+          <outline text="pageTable.adrObject = @websites.samples.default"/>
+          <outline text="pageTable.ftpsite = @websites.&quot;#ftpSite&quot;"/>
+          <outline text="local(result = html.rundirectives(&quot;&quot;, @pageTable))"/>
+          <outline text="return result == &quot;&quot;"/>
+        </outline>
+      </outline>
+      <outline text="html.rundirectives - strip processed directives - Processed directives should be removed from output">
+        <outline text="Metadata">
+          <outline text="requires_system_root: True"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(pageTable)"/>
+          <outline text="lang.new(tableType, @pageTable)"/>
+          <outline text="pageTable.adrObject = @websites.samples.default"/>
+          <outline text="pageTable.ftpsite = @websites.&quot;#ftpSite&quot;"/>
+          <outline text="local(text = &quot;#title = \&quot;Test\&quot;\r&lt;p&gt;Content&lt;/p&gt;&quot;)"/>
+          <outline text="local(result = html.rundirectives(text, @pageTable))"/>
+          <outline text="return not string.contains(result, &quot;#title&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="html.runoutlinedirectives - outline with directives - Process directives in outline headlines">
+        <outline text="Metadata">
+          <outline text="requires_system_root: True"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(pageTable)"/>
+          <outline text="lang.new(tableType, @pageTable)"/>
+          <outline text="pageTable.adrObject = @websites.samples.default"/>
+          <outline text="pageTable.ftpsite = @websites.&quot;#ftpSite&quot;"/>
+          <outline text="local(outline)"/>
+          <outline text="lang.new(outlineType, @outline)"/>
+          <outline text="target.set(@outline)"/>
+          <outline text="op.setlinetext(&quot;#title = \&quot;Outline Title\&quot;&quot;)"/>
+          <outline text="op.insert(&quot;Content line&quot;, down)"/>
+          <outline text="html.runoutlinedirectives(@outline, @pageTable)"/>
+          <outline text="return pageTable.title == &quot;Outline Title&quot;"/>
+        </outline>
+      </outline>
+      <outline text="html.runoutlinedirectives - multiple outline directives - Process multiple directives in outline">
+        <outline text="Metadata">
+          <outline text="requires_system_root: True"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(pageTable)"/>
+          <outline text="lang.new(tableType, @pageTable)"/>
+          <outline text="pageTable.adrObject = @websites.samples.default"/>
+          <outline text="pageTable.ftpsite = @websites.&quot;#ftpSite&quot;"/>
+          <outline text="local(outline)"/>
+          <outline text="lang.new(outlineType, @outline)"/>
+          <outline text="target.set(@outline)"/>
+          <outline text="op.setlinetext(&quot;#author = \&quot;John\&quot;&quot;)"/>
+          <outline text="op.insert(&quot;#date = \&quot;2026-01-14\&quot;&quot;, down)"/>
+          <outline text="op.insert(&quot;Content&quot;, down)"/>
+          <outline text="html.runoutlinedirectives(@outline, @pageTable)"/>
+          <outline text="return (pageTable.author == &quot;John&quot;) and (pageTable.date == &quot;2026-01-14&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="html.runoutlinedirectives - directives removed from outline - Processed directives should be deleted from outline">
+        <outline text="Metadata">
+          <outline text="requires_system_root: True"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(pageTable)"/>
+          <outline text="lang.new(tableType, @pageTable)"/>
+          <outline text="pageTable.adrObject = @websites.samples.default"/>
+          <outline text="pageTable.ftpsite = @websites.&quot;#ftpSite&quot;"/>
+          <outline text="local(outline)"/>
+          <outline text="lang.new(outlineType, @outline)"/>
+          <outline text="target.set(@outline)"/>
+          <outline text="op.setlinetext(&quot;#title = \&quot;Test\&quot;&quot;)"/>
+          <outline text="op.insert(&quot;Content&quot;, down)"/>
+          <outline text="local(initialCount = op.countlines())"/>
+          <outline text="html.runoutlinedirectives(@outline, @pageTable)"/>
+          <outline text="target.set(@outline)"/>
+          <outline text="local(finalCount = op.countlines())"/>
+          <outline text="return finalCount &lt; initialCount"/>
+        </outline>
+      </outline>
+      <outline text="html.buildpagetable - basic page table - Build page table from object address">
+        <outline text="Metadata">
+          <outline text="requires_system_root: True"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(pageTable)"/>
+          <outline text="lang.new(tableType, @pageTable)"/>
+          <outline text="html.buildpagetable(@websites.samples.default, @pageTable)"/>
+          <outline text="return defined(pageTable.adrObject)"/>
+        </outline>
+      </outline>
+      <outline text="html.buildpagetable - inherits site preferences - Built page table should inherit site-level prefs">
+        <outline text="Metadata">
+          <outline text="requires_system_root: True"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(pageTable)"/>
+          <outline text="lang.new(tableType, @pageTable)"/>
+          <outline text="html.buildpagetable(@websites.samples.default, @pageTable)"/>
+          <outline text="return defined(pageTable.ftpsite)"/>
+        </outline>
+      </outline>
+      <outline text="html.cleanforexport - basic ASCII text - Plain ASCII should pass through unchanged">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(text = &quot;Hello World&quot;)"/>
+          <outline text="local(result = html.cleanforexport(text))"/>
+          <outline text="return result == text"/>
+        </outline>
+      </outline>
+      <outline text="html.cleanforexport - Mac line endings - Convert Mac line endings (CR) to Unix (LF) or DOS (CRLF)">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(text = &quot;Line 1\rLine 2\rLine 3&quot;)"/>
+          <outline text="local(result = html.cleanforexport(text))"/>
+          <outline text="return sizeOf(result) &gt; 0"/>
+        </outline>
+      </outline>
+      <outline text="html.cleanforexport - Mac curly quotes - Convert Mac smart quotes to ASCII equivalents">
+        <outline text="Metadata">
+          <outline text="skip: UserTalk doesn't support curly quote literals in source - would need char codes"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(text = &quot;Hello World&quot;)"/>
+          <outline text="local(result = html.cleanforexport(text))"/>
+          <outline text="return sizeOf(result) &gt; 0"/>
+        </outline>
+      </outline>
+      <outline text="html.cleanforexport - Mac special characters - Handle Mac-specific special characters">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(text = &quot;©®™&quot;)"/>
+          <outline text="local(result = html.cleanforexport(text))"/>
+          <outline text="return sizeOf(result) &gt; 0"/>
+        </outline>
+      </outline>
+      <outline text="html.cleanforexport - empty string - Empty string should not crash">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(result = html.cleanforexport(&quot;&quot;))"/>
+          <outline text="return result == &quot;&quot;"/>
+        </outline>
+      </outline>
+      <outline text="html.cleanforexport - HTML entities preserved - HTML entities should pass through cleanly">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(text = &quot;&amp;lt;tag&amp;gt; &amp;amp; &amp;quot;text&amp;quot;&quot;)"/>
+          <outline text="local(result = html.cleanforexport(text))"/>
+          <outline text="return string.contains(result, &quot;&amp;lt;&quot;) and string.contains(result, &quot;&amp;amp;&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="html.glossarypatcher - basic glossary patch - Convert glossary reference to relative link">
+        <outline text="Metadata">
+          <outline text="requires_system_root: True"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(pageTable)"/>
+          <outline text="lang.new(tableType, @pageTable)"/>
+          <outline text="pageTable.adrObject = @websites.samples.default"/>
+          <outline text="pageTable.ftpsite = @websites.&quot;#ftpSite&quot;"/>
+          <outline text="pageTable.renderedtext = &quot;&lt;p&gt;See [[#glossPatch about|About Us]]&lt;/p&gt;&quot;"/>
+          <outline text="user.html.prefs.useGlossPatcher = true"/>
+          <outline text="html.glossarypatcher(@pageTable)"/>
+          <outline text="return string.contains(pageTable.renderedtext, &quot;&lt;a href=&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="html.glossarypatcher - multiple patches - Process multiple glossary references">
+        <outline text="Metadata">
+          <outline text="requires_system_root: True"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(pageTable)"/>
+          <outline text="lang.new(tableType, @pageTable)"/>
+          <outline text="pageTable.adrObject = @websites.samples.default"/>
+          <outline text="pageTable.ftpsite = @websites.&quot;#ftpSite&quot;"/>
+          <outline text="pageTable.renderedtext = &quot;[[#glossPatch home|Home]] and [[#glossPatch about|About]]&quot;"/>
+          <outline text="user.html.prefs.useGlossPatcher = true"/>
+          <outline text="html.glossarypatcher(@pageTable)"/>
+          <outline text="return string.countfields(pageTable.renderedtext, &quot;&lt;a href=&quot;) &gt;= 2"/>
+        </outline>
+      </outline>
+      <outline text="html.glossarypatcher - URL only (no link text) - Generate URL without link when text is empty">
+        <outline text="Metadata">
+          <outline text="requires_system_root: True"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(pageTable)"/>
+          <outline text="lang.new(tableType, @pageTable)"/>
+          <outline text="pageTable.adrObject = @websites.samples.default"/>
+          <outline text="pageTable.ftpsite = @websites.&quot;#ftpSite&quot;"/>
+          <outline text="pageTable.renderedtext = &quot;[[#glossPatch contact|]]&quot;"/>
+          <outline text="user.html.prefs.useGlossPatcher = true"/>
+          <outline text="html.glossarypatcher(@pageTable)"/>
+          <outline text="return sizeOf(pageTable.renderedtext) &gt; 0"/>
+        </outline>
+      </outline>
+      <outline text="html.glossarypatcher - disabled when pref is false - Skip patching when useGlossPatcher is false">
+        <outline text="Metadata">
+          <outline text="requires_system_root: True"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(pageTable)"/>
+          <outline text="lang.new(tableType, @pageTable)"/>
+          <outline text="pageTable.adrObject = @websites.samples.default"/>
+          <outline text="pageTable.ftpsite = @websites.&quot;#ftpSite&quot;"/>
+          <outline text="local(original = &quot;[[#glossPatch about|About]]&quot;)"/>
+          <outline text="pageTable.renderedtext = original"/>
+          <outline text="user.html.prefs.useGlossPatcher = false"/>
+          <outline text="html.glossarypatcher(@pageTable)"/>
+          <outline text="return pageTable.renderedtext == original"/>
+        </outline>
+      </outline>
+      <outline text="html.glossarypatcher - no patches in text - Text without patches should pass through unchanged">
+        <outline text="Metadata">
+          <outline text="requires_system_root: True"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(pageTable)"/>
+          <outline text="lang.new(tableType, @pageTable)"/>
+          <outline text="pageTable.adrObject = @websites.samples.default"/>
+          <outline text="pageTable.ftpsite = @websites.&quot;#ftpSite&quot;"/>
+          <outline text="local(original = &quot;&lt;p&gt;Plain HTML content&lt;/p&gt;&quot;)"/>
+          <outline text="pageTable.renderedtext = original"/>
+          <outline text="user.html.prefs.useGlossPatcher = true"/>
+          <outline text="html.glossarypatcher(@pageTable)"/>
+          <outline text="return pageTable.renderedtext == original"/>
+        </outline>
+      </outline>
+      <outline text="html.traversalskip - skip object starting with # - Objects with # prefix should be skipped">
+        <outline text="Metadata">
+          <outline text="requires_system_root: True"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="return html.traversalskip(@websites[&quot;#ftpSite&quot;]) == true"/>
+        </outline>
+      </outline>
+      <outline text="html.traversalskip - normal object not skipped - Regular objects should not be skipped">
+        <outline text="Metadata">
+          <outline text="requires_system_root: True"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="return html.traversalskip(@websites.samples) == false"/>
+        </outline>
+      </outline>
+      <outline text="html.traversalskip - internal objects skipped - Internal system objects (starting with #) skipped">
+        <outline text="Metadata">
+          <outline text="requires_system_root: True"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="return html.traversalskip(@websites[&quot;#data&quot;]) == true"/>
+        </outline>
+      </outline>
+      <outline text="html.getpagetableaddress - retrieve stored address - Get page table address from global context">
+        <outline text="Metadata">
+          <outline text="requires_system_root: True"/>
+          <outline text="skip: Requires page table to be set in html.data.adrpagetable"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(pageTable)"/>
+          <outline text="lang.new(tableType, @pageTable)"/>
+          <outline text="html.data.adrpagetable = @pageTable"/>
+          <outline text="local(addr = html.getpagetableaddress())"/>
+          <outline text="return addr == @pageTable"/>
+        </outline>
+      </outline>
+      <outline text="html - complete page generation workflow - Build page table, process directives, patch glossary">
+        <outline text="Metadata">
+          <outline text="requires_system_root: True"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(pageTable)"/>
+          <outline text="lang.new(tableType, @pageTable)"/>
+          <outline text="html.buildpagetable(@websites.samples.default, @pageTable)"/>
+          <outline text="local(text = &quot;#title = \&quot;My Page\&quot;\r&lt;p&gt;Content&lt;/p&gt;&quot;)"/>
+          <outline text="local(content = html.rundirectives(text, @pageTable))"/>
+          <outline text="return (pageTable.title == &quot;My Page&quot;) and string.contains(content, &quot;&lt;p&gt;Content&lt;/p&gt;&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="html - preference inheritance chain - Page prefs override global prefs">
+        <outline text="Metadata">
+          <outline text="requires_system_root: True"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(globalExt = html.getpref(&quot;fileExtension&quot;))"/>
+          <outline text="local(pageTable)"/>
+          <outline text="lang.new(tableType, @pageTable)"/>
+          <outline text="lang.new(tableType, @pageTable.prefs)"/>
+          <outline text="pageTable.prefs.fileExtension = &quot;.php&quot;"/>
+          <outline text="local(pageExt = html.getpref(&quot;fileExtension&quot;, @pageTable))"/>
+          <outline text="return (globalExt == &quot;.html&quot;) and (pageExt == &quot;.php&quot;)"/>
+        </outline>
+      </outline>
+      <outline text="html - directive processing with macro expansion - Directives can contain macro expressions">
+        <outline text="Metadata">
+          <outline text="requires_system_root: True"/>
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(pageTable)"/>
+          <outline text="lang.new(tableType, @pageTable)"/>
+          <outline text="pageTable.adrObject = @websites.samples.default"/>
+          <outline text="pageTable.ftpsite = @websites.&quot;#ftpSite&quot;"/>
+          <outline text="html.rundirective(&quot;#year = 2020 + 6&quot;, @pageTable)"/>
+          <outline text="return pageTable.year == 2026"/>
+        </outline>
+      </outline>
+      <outline text="html - cleanforexport in publishing pipeline - Clean text before writing to file">
+        <outline text="Metadata">
+          <outline text="expected_result: true"/>
+        </outline>
+        <outline text="Script">
+          <outline text="local(macText = &quot;Hello\\r\\\&quot;World\\\&quot;\\r&quot;)"/>
+          <outline text="local(cleanText = html.cleanforexport(macText))"/>
+          <outline text="return cleanText != macText"/>
+        </outline>
+      </outline>
+    </outline>
+  </body>
+</opml>
