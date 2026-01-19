@@ -14,7 +14,7 @@ UserTalk scripts are converted to outline format by:
 import yaml
 import sys
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from xml.etree.ElementTree import Element, SubElement, ElementTree, tostring
 from xml.dom import minidom
@@ -209,7 +209,7 @@ def generate_category_opml(category_key, category_data, output_file):
     title = SubElement(head, 'title')
     title.text = category_data['pretty_name']
     date_created = SubElement(head, 'dateCreated')
-    date_created.text = datetime.utcnow().strftime('%a, %d %b %Y %H:%M:%S GMT')
+    date_created.text = datetime.now(timezone.utc).strftime('%a, %d %b %Y %H:%M:%S GMT')
 
     # Body section
     body = SubElement(opml, 'body')
@@ -295,7 +295,7 @@ def generate_manifest_opml(categories, output_file):
     title = SubElement(head, 'title')
     title.text = 'Frontier Integration Test Categories'
     date_created = SubElement(head, 'dateCreated')
-    date_created.text = datetime.utcnow().strftime('%a, %d %b %Y %H:%M:%S GMT')
+    date_created.text = datetime.now(timezone.utc).strftime('%a, %d %b %Y %H:%M:%S GMT')
 
     # Body section
     body = SubElement(opml, 'body')
