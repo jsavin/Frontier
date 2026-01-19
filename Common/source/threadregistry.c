@@ -36,6 +36,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 /*
  * Registry configuration
@@ -89,11 +90,15 @@ void cleanup_thread_registry(void) {
     for (i = 0; i < MAX_THREADS; i++) {
         if (thread_records[i].in_use) {
             /* FAIL-FAST: Verify no threads are still using this record */
-            if (thread_records[i].refcount != 0) {
+            pthread_mutex_lock(&thread_records[i].refcount_mutex);
+            int current_refcount = thread_records[i].refcount;
+            pthread_mutex_unlock(&thread_records[i].refcount_mutex);
+
+            if (current_refcount != 0) {
                 log_error(LOG_COMP_THREAD,
-                         "cleanup_thread_registry: Record %d has refcount=%d (threads leaked at shutdown)",
-                         i, thread_records[i].refcount);
-                assert(thread_records[i].refcount == 0 && "Thread records leaked at cleanup time");
+                         "FATAL: Thread registry cleanup while threads active (record=%d refcount=%d)",
+                         i, current_refcount);
+                abort();  /* Use abort() not assert() - must fail in release builds too */
             }
 
             /* Safe to destroy now that refcount is verified to be 0 */
@@ -253,13 +258,24 @@ static long allocate_thread_id_locked(void) {
      * from boot cycle still exists, collision would occur. Search for unused ID. */
     if (next_thread_id == LONG_MAX) {
         /* We've wrapped - must find an ID not in use.
-         * Guard against infinite loop with iteration counter. Should never exceed MAX_THREADS
-         * iterations since we can have at most MAX_THREADS threads alive at once. */
+         * Guard against infinite loop with iteration counter AND time-based timeout.
+         * Should never exceed MAX_THREADS iterations since we can have at most
+         * MAX_THREADS threads alive at once. */
         int attempts = 0;
+        time_t start_time = time(NULL);
+
         for (;;) {
             if (++attempts > MAX_THREADS) {
                 /* Should never happen - all slots can't be in use if we're trying to allocate.
                  * But if it does, bail out with an error. */
+                log_error(LOG_COMP_THREAD, "Thread ID allocation failed - registry exhausted");
+                return -1;
+            }
+
+            /* Defensive: Prevent true infinite loop if registry corrupted */
+            if ((time(NULL) - start_time) > 5) {  /* 5 second timeout */
+                log_error(LOG_COMP_THREAD,
+                         "Thread ID allocation timeout - possible registry corruption");
                 return -1;
             }
 

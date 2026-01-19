@@ -204,18 +204,6 @@ void free_thread_record(frontier_pthread_record *rec);
 frontier_pthread_record *get_thread_by_id(long user_id);
 
 /*
- * allocate_thread_id - Allocate a new unique thread ID
- *
- * Returns a new unique thread ID. IDs are positive integers that
- * increase monotonically within a registry lifecycle.
- *
- * Returns: New unique thread ID (always > 0)
- *
- * Thread Safety: Thread-safe
- */
-long allocate_thread_id(void);
-
-/*
  * get_thread_count - Get the number of active threads
  *
  * Returns the count of thread records currently in use.

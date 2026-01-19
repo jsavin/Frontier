@@ -75,6 +75,9 @@ static pthread_mutex_t harness_mutex = PTHREAD_MUTEX_INITIALIZER;
  */
 static void assert_single_threaded_test_mode(void) {
 #ifdef DEBUG
+    /* Acquire mutex BEFORE reading any harness state to prevent TOCTOU race */
+    pthread_mutex_lock(&harness_mutex);
+
     if (thread_test_harness.enabled) {
         pthread_t current = pthread_self();
 
@@ -84,12 +87,15 @@ static void assert_single_threaded_test_mode(void) {
         }
         /* Verify still same thread */
         else if (!pthread_equal(current, thread_test_harness.test_thread)) {
+            pthread_mutex_unlock(&harness_mutex);
             log_error(LOG_COMP_LANG,
                 "FATAL: Thread test harness accessed from multiple threads! "
                 "See Issue #322 for mutex protection implementation.");
             assert(false && "Thread test harness is single-threaded only");
         }
     }
+
+    pthread_mutex_unlock(&harness_mutex);
 #endif
 }
 
