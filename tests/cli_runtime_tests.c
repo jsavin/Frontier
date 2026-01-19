@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <dirent.h>
+#include <errno.h>
 #include <limits.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -300,8 +301,22 @@ static void test_system_root_hydration_allows_scripts(void) {
     bool failed_hydrate = string_contains(output, "Failed to hydrate system root");
     bool execution_error = string_contains(output, "Execution error");
 
-    bool restored = copy_file(temp_copy_path, source_path);
+    /* Restore original file from backup. Since we open the database read-only for hydration,
+     * the source file shouldn't have been modified. If the source is read-only (as it is in git),
+     * we need to make it writable before restoration, or skip restoration if it wasn't modified. */
+    bool restored = true;
+    #ifndef _WIN32
+    if (chmod(source_path, 0644) != 0) {
+        fprintf(stderr, "Warning: chmod failed for %s: %s\n", source_path, strerror(errno));
+    }
+    #endif
+    restored = copy_file(temp_copy_path, source_path);
     unlink(temp_copy_path);
+    #ifndef _WIN32
+    if (chmod(source_path, 0444) != 0) {
+        fprintf(stderr, "Warning: chmod failed for %s: %s\n", source_path, strerror(errno));
+    }
+    #endif
 
     char databases_dir[PATH_MAX];
     if (snprintf(databases_dir, sizeof databases_dir, "%s/databases", root) < (int)sizeof databases_dir) {

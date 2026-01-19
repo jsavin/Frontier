@@ -593,14 +593,20 @@ static boolean hydrate_system_root_database(const char* path) {
         return false;
     }
 
-    /* After migration, use the v7 file for hydration (which is writable for system.startup).
-     * The v6 source protection happens in dbwrite() during migration. */
-    boolean flreadonly_for_hydration = false;
+    /* After ensure_database_v7, we always have a v7 database (either the original if already v7,
+     * or a newly migrated .root7 file if the source was v6). v6 source files remain untouched.
+     *
+     * v7 databases are opened read-write by default to allow startup scripts and system table
+     * updates. Use FRONTIER_OPEN_READONLY=1 environment variable to force read-only mode. */
+    boolean flreadonly_for_hydration = (getenv("FRONTIER_OPEN_READONLY") != NULL);
 
-    if (migrated) {
-        cli_log_info("Migrated legacy system root to v7 format (written to): %s", actual_path);
+    /* Use the output path from ensure_database_v7 if it differs from input.
+     * This handles both fresh migrations and cases where a v7 file already exists. */
+    if (actual_path[0] != '\0' && strcmp(path, actual_path) != 0) {
+        if (migrated) {
+            cli_log_info("Migrated legacy system root to v7 format (written to): %s", actual_path);
+        }
         path = actual_path;  /* Use the v7 file for hydration */
-        /* Freshly-migrated database is already fully hydrated - skip the save step below */
     }
 
     bigstring bspath;
