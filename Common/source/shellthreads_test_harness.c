@@ -108,7 +108,7 @@ boolean thread_test_enable(void) {
     const char *env = getenv("FRONTIER_THREAD_TEST_MODE");
 
     if (env == NULL || strcmp(env, "1") != 0) {
-        log_warn(LOG_COMP_LANG,
+        log_debug(LOG_COMP_LANG,
             "thread.test.enable() called but FRONTIER_THREAD_TEST_MODE != 1 (safety gate)");
         return false;
     }
