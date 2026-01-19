@@ -308,11 +308,11 @@ def generate_manifest_opml(categories, output_file):
     for category_key in sorted(categories.keys()):
         category_data = categories[category_key]
 
-        # Create outline element with transclusion link
+        # Create outline element with transclusion link (absolute GitHub URL for Drummer)
         category_outline = SubElement(container, 'outline')
         category_outline.set('text', sanitize_xml_text(category_data['pretty_name']))
         category_outline.set('type', 'link')
-        category_outline.set('url', f'integration_tests_{category_key}.opml')
+        category_outline.set('url', f'https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_{category_key}.opml')
 
     # Write OPML to file with pretty formatting
     tree = ElementTree(opml)
