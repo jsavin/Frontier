@@ -209,7 +209,7 @@ def generate_category_opml(category_key, category_data, output_file):
     title = SubElement(head, 'title')
     title.text = category_data['pretty_name']
     date_created = SubElement(head, 'dateCreated')
-    date_created.text = datetime.now().strftime('%a, %d %b %Y %H:%M:%S GMT')
+    date_created.text = datetime.utcnow().strftime('%a, %d %b %Y %H:%M:%S GMT')
 
     # Body section
     body = SubElement(opml, 'body')
@@ -295,7 +295,7 @@ def generate_manifest_opml(categories, output_file):
     title = SubElement(head, 'title')
     title.text = 'Frontier Integration Test Categories'
     date_created = SubElement(head, 'dateCreated')
-    date_created.text = datetime.now().strftime('%a, %d %b %Y %H:%M:%S GMT')
+    date_created.text = datetime.utcnow().strftime('%a, %d %b %Y %H:%M:%S GMT')
 
     # Body section
     body = SubElement(opml, 'body')
@@ -362,6 +362,12 @@ def export_hierarchical_opml(test_dir, output_dir):
     generate_manifest_opml(categories, manifest_file)
     generated_files.append(manifest_file)
     print(f"Generated: {manifest_file.name} (manifest with {len(categories)} categories)")
+
+    # Validate file count
+    expected_file_count = len(categories) + 1  # categories + manifest
+    if len(generated_files) != expected_file_count:
+        print(f"Warning: Expected {expected_file_count} files, generated {len(generated_files)}",
+              file=sys.stderr)
 
     return generated_files
 
@@ -472,10 +478,13 @@ def export_tests_to_opml(test_dir, output_file):
 
     print(f"Successfully exported {len(test_files)} test categories to {output_file}")
 
-    # Count total tests
-    total_tests = sum(len(yaml.safe_load(open(tf))['tests'])
-                     for tf in test_files
-                     if yaml.safe_load(open(tf)).get('tests'))
+    # Count total tests (load each file once)
+    total_tests = 0
+    for tf in test_files:
+        with open(tf, 'r') as f:
+            data = yaml.safe_load(f)
+        if data and 'tests' in data:
+            total_tests += len(data['tests'])
     print(f"Total tests exported: {total_tests}")
 
 
