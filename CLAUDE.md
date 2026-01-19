@@ -759,18 +759,32 @@ Whenever you discover something significant about this project or its implementa
 - Update generator if needed
 - **Don't hand-edit the output** - fix the generator instead
 
-### When Stub Files Transition to Production
+### When You Encounter a Generated File That Needs Custom Logic
 
-**CRITICAL**: When implementing verbs in generated stub files, **immediately update the file header** to prevent accidental regeneration.
+**CRITICAL DECISION TREE**: If you find a generated file that needs custom implementations:
 
-**Pattern**: Change header from "GENERATED FILE - DO NOT EDIT BY HAND" to "Originally generated, now contains production implementations - DO NOT regenerate".
+**Option 1: Fix the Generator** (Preferred)
+1. Create wrapper functions in appropriate source files (e.g., `shellsysverbs.c`)
+2. Add entries to `stub_config.py` with `STUB_FORWARD` pointing to wrappers
+3. Regenerate the file - implementations stay in sync with generator
+
+**Option 2: Stop and Ask**
+- If custom logic is too complex to auto-generate
+- If you're unsure whether generator can handle it
+- STOP and consult with user/maintainers
+- Do NOT hand-edit the generated file
+
+**❌ NEVER: Mark Generated File as Production**
+- Do NOT change header to say "PRODUCTION IMPLEMENTATION"
+- Do NOT add "DO NOT regenerate" warnings to generated files
+- This creates a non-scalable pattern and causes confusion
+- If file already has production code, it's a special case (see Option 2)
 
 **Why This Matters**:
-- Risk of accidental regeneration overwriting production code
-- Misleads future developers about file editability
-- Could cause data loss if someone runs generator without checking git
-
-**Reference**: See Issue #256 for detailed before/after examples and complete file list.
+- Hand-editing generated files is not scalable
+- Future developers won't know if file can be regenerated
+- Creates confusion about which version is authoritative
+- Violates the principle of keeping generator as source of truth
 
 ---
 
