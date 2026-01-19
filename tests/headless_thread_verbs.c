@@ -21,6 +21,9 @@
 #include "process.h"
 #include "shellthreads.h"
 
+/* Constant for tick-to-second conversion (classic Mac ticks = 60/sec) */
+#define TICKS_PER_SECOND 60
+
 /* Token enum for all verbs in the thread processor */
 enum {
     thrv_exists = 0,
@@ -94,10 +97,12 @@ static boolean thread_valueproc(short token, hdltreenode hparam1,
         }
         case thrv_getcurrentid: {
             /* Verb #3: thread.getcurrentid - Get current thread ID */
+            hdlprocessthread hthread;
+
             if (!langcheckparamcount(hparam1, 0))
                 return false;
 
-            hdlprocessthread hthread = getcurrentthread();
+            hthread = getcurrentthread();
             if (hthread == nil)
                 return setlongvalue(0, vreturned);
             return setlongvalue(getthreadid(hthread), vreturned);
@@ -112,12 +117,16 @@ static boolean thread_valueproc(short token, hdltreenode hparam1,
         case thrv_getnthid: {
             /* Verb #5: thread.getnthid - Get Nth thread ID */
             short n;
+            hdlprocessthread hthread;
             flnextparamislast = true;
 
             if (!getintvalue(hparam1, 1, &n))
                 return false;
 
-            return setlongvalue(getthreadid(nthprocessthread(n)), vreturned);
+            hthread = nthprocessthread(n);
+            if (hthread == nil)
+                return setlongvalue(0, vreturned);
+            return setlongvalue(getthreadid(hthread), vreturned);
         }
         case thrv_sleep:
             /* Verb #6: thread.sleep - not yet implemented */
@@ -126,34 +135,37 @@ static boolean thread_valueproc(short token, hdltreenode hparam1,
         case thrv_sleepfor: {
             /* Verb #7: thread.sleepfor - Sleep for N seconds (60-tick seconds) */
             long seconds;
+            boolean fl;
             flnextparamislast = true;
 
             if (!getlongvalue(hparam1, 1, &seconds))
                 return false;
 
-            boolean fl = processsleep(getcurrentthread(), seconds * 60);
+            fl = processsleep(getcurrentthread(), seconds * TICKS_PER_SECOND);
             return setbooleanvalue(fl, vreturned);
         }
         case thrv_sleepticks: {
             /* Verb #8: thread.sleepticks - Sleep for N ticks */
             long ticks;
+            boolean fl;
             flnextparamislast = true;
 
             if (!getlongvalue(hparam1, 1, &ticks))
                 return false;
 
-            boolean fl = processsleep(getcurrentthread(), ticks);
+            fl = processsleep(getcurrentthread(), ticks);
             return setbooleanvalue(fl, vreturned);
         }
         case thrv_issleeping: {
             /* Verb #9: thread.issleeping - Check if thread is sleeping */
             long id;
+            hdlprocessthread hthread;
             flnextparamislast = true;
 
             if (!getlongvalue(hparam1, 1, &id))
                 return false;
 
-            hdlprocessthread hthread = getprocessthread(id);
+            hthread = getprocessthread(id);
             if (hthread == nil)
                 return false;
 
@@ -162,12 +174,13 @@ static boolean thread_valueproc(short token, hdltreenode hparam1,
         case thrv_wake: {
             /* Verb #10: thread.wake - Wake sleeping thread */
             long id;
+            hdlprocessthread hthread;
             flnextparamislast = true;
 
             if (!getlongvalue(hparam1, 1, &id))
                 return false;
 
-            hdlprocessthread hthread = getprocessthread(id);
+            hthread = getprocessthread(id);
             if (hthread == nil)
                 return false;
 
@@ -176,12 +189,13 @@ static boolean thread_valueproc(short token, hdltreenode hparam1,
         case thrv_kill: {
             /* Verb #11: thread.kill - Terminate thread */
             long id;
+            hdlprocessthread hthread;
             flnextparamislast = true;
 
             if (!getlongvalue(hparam1, 1, &id))
                 return false;
 
-            hdlprocessthread hthread = getprocessthread(id);
+            hthread = getprocessthread(id);
             if (hthread == nil)
                 return false;
 

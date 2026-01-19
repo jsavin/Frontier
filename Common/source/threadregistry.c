@@ -128,10 +128,19 @@ frontier_pthread_record *allocate_thread_record(void) {
     for (i = 0; i < MAX_THREADS; i++) {
         if (!thread_records[i].in_use) {
             frontier_pthread_record *rec = &thread_records[i];
+            long thread_id;
+
+            /* Allocate thread ID with wraparound collision detection */
+            thread_id = allocate_thread_id_locked();
+            if (thread_id < 0) {
+                /* Failed to allocate ID (all slots in use after wraparound) */
+                pthread_mutex_unlock(&registry_mutex);
+                return NULL;
+            }
 
             /* Initialize the record */
             memset(rec, 0, sizeof(*rec));
-            rec->user_thread_id = next_thread_id++;
+            rec->user_thread_id = thread_id;
             rec->in_use = true;
             rec->is_sleeping = false;
             rec->is_killed = false;
@@ -226,17 +235,16 @@ frontier_pthread_record *get_thread_by_id(long user_id) {
 }
 
 /*
- * allocate_thread_id - Allocate a new unique thread ID
+ * allocate_thread_id_locked - Allocate a new unique thread ID (caller holds mutex)
  *
+ * PRECONDITION: Caller must hold registry_mutex.
  * Returns a new thread ID. After wraparound at LONG_MAX, searches for an
  * unused ID to avoid collisions with long-lived threads from earlier cycles.
  */
-long allocate_thread_id(void) {
+static long allocate_thread_id_locked(void) {
     long candidate_id;
     int i;
     boolean id_in_use;
-
-    pthread_mutex_lock(&registry_mutex);
 
     candidate_id = next_thread_id;
 
@@ -252,7 +260,6 @@ long allocate_thread_id(void) {
             if (++attempts > MAX_THREADS) {
                 /* Should never happen - all slots can't be in use if we're trying to allocate.
                  * But if it does, bail out with an error. */
-                pthread_mutex_unlock(&registry_mutex);
                 return -1;
             }
 
@@ -286,8 +293,6 @@ long allocate_thread_id(void) {
         next_thread_id++;
     }
 
-    pthread_mutex_unlock(&registry_mutex);
-
     return candidate_id;
 }
 
@@ -298,11 +303,12 @@ int get_thread_count(void) {
     int count = 0;
     int i;
 
+    pthread_mutex_lock(&registry_mutex);
+
     if (!registry_initialized) {
+        pthread_mutex_unlock(&registry_mutex);
         return 0;
     }
-
-    pthread_mutex_lock(&registry_mutex);
 
     for (i = 0; i < MAX_THREADS; i++) {
         if (thread_records[i].in_use) {

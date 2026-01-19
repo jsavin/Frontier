@@ -2261,6 +2261,9 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
     /* Check if a v7 file already exists (from previous migration).
      * If user specifies "Frontier.root" but "Frontier.root7" exists, use the v7 file. */
     char v7_path[1024];
+    if (strlen(db_path) >= sizeof(v7_path) - 1) {
+        return false;  /* Path too long for v7 suffix */
+    }
     snprintf(v7_path, sizeof v7_path, "%s7", db_path);
     FILE *fp_v7 = fopen(v7_path, "rb");
     if (fp_v7) {
@@ -2274,7 +2277,9 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
                 if (output_path_size > 0)
                     output_path[output_path_size - 1] = '\0';
             }
-            /* Don't set migrated=true since we're just using existing v7 file */
+            /* Explicitly confirm migrated=false - not a fresh migration */
+            if (migrated)
+                *migrated = false;
             return true;
         }
     }

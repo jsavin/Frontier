@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <dirent.h>
+#include <errno.h>
 #include <limits.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -305,12 +306,16 @@ static void test_system_root_hydration_allows_scripts(void) {
      * we need to make it writable before restoration, or skip restoration if it wasn't modified. */
     bool restored = true;
     #ifndef _WIN32
-    chmod(source_path, 0644);  /* Make writable for restoration */
+    if (chmod(source_path, 0644) != 0) {
+        fprintf(stderr, "Warning: chmod failed for %s: %s\n", source_path, strerror(errno));
+    }
     #endif
     restored = copy_file(temp_copy_path, source_path);
     unlink(temp_copy_path);
     #ifndef _WIN32
-    chmod(source_path, 0444);  /* Restore original read-only permissions */
+    if (chmod(source_path, 0444) != 0) {
+        fprintf(stderr, "Warning: chmod failed for %s: %s\n", source_path, strerror(errno));
+    }
     #endif
 
     char databases_dir[PATH_MAX];
