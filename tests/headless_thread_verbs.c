@@ -17,6 +17,9 @@
 #include "lang.h"
 #include "langinternal.h"
 #include "tablestructure.h"
+#include "tableverbs.h"
+#include "process.h"
+#include "shellthreads.h"
 
 /* Token enum for all verbs in the thread processor */
 enum {
@@ -43,54 +46,147 @@ static boolean thread_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
     switch(token) {
-        case thrv_exists:
-            /* Verb #0: thread.exists - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case thrv_evaluate:
-            /* Verb #1: thread.evaluate - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case thrv_callscript:
-            /* Verb #2: thread.callscript - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case thrv_getcurrentid:
-            /* Verb #3: thread.getcurrentid - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case thrv_getcount:
-            /* Verb #4: thread.getcount - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case thrv_getnthid:
-            /* Verb #5: thread.getnthid - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+        case thrv_exists: {
+            /* Verb #0: thread.exists - Check if thread exists */
+            long id;
+            flnextparamislast = true;
+
+            if (!getlongvalue(hparam1, 1, &id))
+                return false;
+
+            return setbooleanvalue(getprocessthread(id) != nil, vreturned);
+        }
+        case thrv_evaluate: {
+            /* Verb #1: thread.evaluate - Evaluate code string in new thread */
+            bigstring bscode;
+            flnextparamislast = true;
+
+            if (!getstringvalue(hparam1, 1, bscode))
+                return false;
+
+            return thread_evaluate_kernel(bscode, vreturned);
+        }
+        case thrv_callscript: {
+            /* Verb #2: thread.callscript - Call script in new thread */
+            bigstring bsscriptname;
+            tyvaluerecord vparams;
+            hdlhashtable hcontext = nil;
+
+            /* Get script name (required) */
+            if (!getstringvalue(hparam1, 1, bsscriptname))
+                return false;
+
+            /* Get parameters (required) */
+            if (!getparamvalue(hparam1, 2, &vparams))
+                return false;
+
+            /* Get optional context table (3rd param) */
+            if (langgetparamcount(hparam1) > 2) {
+                flnextparamislast = true;
+
+                if (!gettablevalue(hparam1, 3, &hcontext))
+                    return false;
+            } else {
+                flnextparamislast = true;
+            }
+
+            return thread_callscript_kernel(bsscriptname, vparams, hcontext, vreturned);
+        }
+        case thrv_getcurrentid: {
+            /* Verb #3: thread.getcurrentid - Get current thread ID */
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+
+            hdlprocessthread hthread = getcurrentthread();
+            if (hthread == nil)
+                return setlongvalue(0, vreturned);
+            return setlongvalue(getthreadid(hthread), vreturned);
+        }
+        case thrv_getcount: {
+            /* Verb #4: thread.getcount - Get count of active threads */
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+
+            return setlongvalue(processthreadcount(), vreturned);
+        }
+        case thrv_getnthid: {
+            /* Verb #5: thread.getnthid - Get Nth thread ID */
+            short n;
+            flnextparamislast = true;
+
+            if (!getintvalue(hparam1, 1, &n))
+                return false;
+
+            return setlongvalue(getthreadid(nthprocessthread(n)), vreturned);
+        }
         case thrv_sleep:
             /* Verb #6: thread.sleep - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case thrv_sleepfor:
-            /* Verb #7: thread.sleepfor - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case thrv_sleepticks:
-            /* Verb #8: thread.sleepticks - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case thrv_issleeping:
-            /* Verb #9: thread.issleeping - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case thrv_wake:
-            /* Verb #10: thread.wake - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case thrv_kill:
-            /* Verb #11: thread.kill - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+        case thrv_sleepfor: {
+            /* Verb #7: thread.sleepfor - Sleep for N seconds (60-tick seconds) */
+            long seconds;
+            flnextparamislast = true;
+
+            if (!getlongvalue(hparam1, 1, &seconds))
+                return false;
+
+            boolean fl = processsleep(getcurrentthread(), seconds * 60);
+            return setbooleanvalue(fl, vreturned);
+        }
+        case thrv_sleepticks: {
+            /* Verb #8: thread.sleepticks - Sleep for N ticks */
+            long ticks;
+            flnextparamislast = true;
+
+            if (!getlongvalue(hparam1, 1, &ticks))
+                return false;
+
+            boolean fl = processsleep(getcurrentthread(), ticks);
+            return setbooleanvalue(fl, vreturned);
+        }
+        case thrv_issleeping: {
+            /* Verb #9: thread.issleeping - Check if thread is sleeping */
+            long id;
+            flnextparamislast = true;
+
+            if (!getlongvalue(hparam1, 1, &id))
+                return false;
+
+            hdlprocessthread hthread = getprocessthread(id);
+            if (hthread == nil)
+                return false;
+
+            return setbooleanvalue(processissleeping(hthread), vreturned);
+        }
+        case thrv_wake: {
+            /* Verb #10: thread.wake - Wake sleeping thread */
+            long id;
+            flnextparamislast = true;
+
+            if (!getlongvalue(hparam1, 1, &id))
+                return false;
+
+            hdlprocessthread hthread = getprocessthread(id);
+            if (hthread == nil)
+                return false;
+
+            return setbooleanvalue(wakeprocessthread(hthread), vreturned);
+        }
+        case thrv_kill: {
+            /* Verb #11: thread.kill - Terminate thread */
+            long id;
+            flnextparamislast = true;
+
+            if (!getlongvalue(hparam1, 1, &id))
+                return false;
+
+            hdlprocessthread hthread = getprocessthread(id);
+            if (hthread == nil)
+                return false;
+
+            return setbooleanvalue(killprocessthread(hthread), vreturned);
+        }
         case thrv_gettimeslice:
             /* Verb #12: thread.gettimeslice - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);

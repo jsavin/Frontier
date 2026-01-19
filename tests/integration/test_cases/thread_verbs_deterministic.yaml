@@ -25,14 +25,12 @@ cleanup: |
 
 tests:
   # Test 1: Basic thread creation and execution
-  - name: "thread.call - execute simple script in new thread"
+  - name: "thread.evaluate - execute simple script in new thread"
     description: |
-      Verify that thread.call() creates a new thread, executes the provided
+      Verify that thread.evaluate() creates a new thread, executes the provided
       script, and completes successfully.
     script: |
-      thread.call("basicThread", {
-        system.test.threadFlags.basicThreadRan = true
-      })
+      thread.evaluate("system.test.threadFlags.basicThreadRan = true")
 
       // Give thread time to execute
       for i = 0; i < 10; i++ {
@@ -45,15 +43,12 @@ tests:
     timeout: 5
 
   # Test 2: Thread with return value via shared storage
-  - name: "thread.call - return value from thread"
+  - name: "thread.evaluate - return value from thread"
     description: |
       Verify that values computed in a thread can be captured via shared
-      table storage (since thread.call doesn't return directly).
+      table storage (since thread.evaluate doesn't return directly).
     script: |
-      thread.call("calculatingThread", {
-        system.test.threadData.result = 42
-        system.test.threadData.message = "computation complete"
-      })
+      thread.evaluate("system.test.threadData.result = 42; system.test.threadData.message = \"computation complete\"")
 
       // Give thread time to execute
       for i = 0; i < 10; i++ {
@@ -72,10 +67,7 @@ tests:
       Verify that thread.sleepFor(N) causes thread to sleep.
       This test validates the sleep mechanism works (not exact timing).
     script: |
-      thread.call("sleepingThread", {
-        thread.sleepFor(100)
-        system.test.threadFlags.sleepCompleted = true
-      })
+      thread.evaluate("thread.sleepFor(100); system.test.threadFlags.sleepCompleted = true")
 
       // Give thread time to sleep and wake
       for i = 0; i < 20; i++ {
@@ -92,10 +84,7 @@ tests:
     description: |
       Verify that thread.wake() wakes a sleeping thread.
     script: |
-      thread.call("earlySleeper", {
-        thread.sleepFor(10000)  // Long sleep
-        system.test.threadFlags.wokByWake = true
-      })
+      local(threadID = thread.evaluate("thread.sleepFor(10000); system.test.threadFlags.wokByWake = true"))
 
       // Let thread start sleeping
       for i = 0; i < 5; i++ {
@@ -103,7 +92,7 @@ tests:
       }
 
       // Wake the thread
-      thread.wake("earlySleeper")
+      thread.wake(threadID)
 
       // Let thread execute and mark completion
       for i = 0; i < 10; i++ {
@@ -120,11 +109,7 @@ tests:
     description: |
       Verify that thread.kill() terminates a thread.
     script: |
-      thread.call("expendableThread", {
-        system.test.threadFlags.threadStarted = true
-        thread.sleepFor(10000)  // Long sleep
-        system.test.threadFlags.threadCompletedAfterKill = true
-      })
+      local(threadID = thread.evaluate("system.test.threadFlags.threadStarted = true; thread.sleepFor(10000); system.test.threadFlags.threadCompletedAfterKill = true"))
 
       // Let thread start and start sleeping
       for i = 0; i < 5; i++ {
@@ -132,7 +117,7 @@ tests:
       }
 
       // Kill the thread
-      thread.kill("expendableThread")
+      thread.kill(threadID)
 
       // Let system process
       for i = 0; i < 10; i++ {
@@ -146,15 +131,11 @@ tests:
     timeout: 5
 
   # Test 6: Error handling in thread
-  - name: "thread.call - script error in thread is handled gracefully"
+  - name: "thread.evaluate - script error in thread is handled gracefully"
     description: |
       Verify that script errors in thread context don't crash the system.
     script: |
-      thread.call("errorThread", {
-        system.test.threadFlags.errorThreadStarted = true
-        scriptError("intentional error")
-        system.test.threadFlags.neverExecute = true
-      })
+      thread.evaluate("system.test.threadFlags.errorThreadStarted = true; scriptError(\\\"intentional error\\\"); system.test.threadFlags.neverExecute = true")
 
       // Let thread run and error
       for i = 0; i < 10; i++ {
@@ -172,17 +153,12 @@ tests:
     timeout: 5
 
   # Test 7: Multiple threads independent operation
-  - name: "thread.call - multiple threads run independently"
+  - name: "thread.evaluate - multiple threads run independently"
     description: |
       Verify that multiple threads can run simultaneously without interference.
     script: |
-      thread.call("thread1", {
-        system.test.threadFlags.thread1Ran = true
-      })
-
-      thread.call("thread2", {
-        system.test.threadFlags.thread2Ran = true
-      })
+      thread.evaluate("system.test.threadFlags.thread1Ran = true")
+      thread.evaluate("system.test.threadFlags.thread2Ran = true")
 
       // Give threads time to execute
       for i = 0; i < 20; i++ {
@@ -196,16 +172,11 @@ tests:
     timeout: 5
 
   # Test 8: Thread accessing ODB
-  - name: "thread.call - safely modify ODB during execution"
+  - name: "thread.evaluate - safely modify ODB during execution"
     description: |
       Verify that threads can safely create and modify ODB structures.
     script: |
-      thread.call("odobThread", {
-        lang.new(tableType, @system.test.threadData.innerTable)
-        system.test.threadData.innerTable.a = 10
-        system.test.threadData.innerTable.b = 20
-        system.test.threadData.innerTable.c = system.test.threadData.innerTable.a + system.test.threadData.innerTable.b
-      })
+      thread.evaluate("lang.new(tableType, @system.test.threadData.innerTable); system.test.threadData.innerTable.a = 10; system.test.threadData.innerTable.b = 20; system.test.threadData.innerTable.c = system.test.threadData.innerTable.a + system.test.threadData.innerTable.b")
 
       // Give thread time to execute
       for i = 0; i < 10; i++ {
@@ -226,12 +197,7 @@ tests:
     script: |
       local(countBefore = thread.getCount())
 
-      thread.call("countThread", {
-        system.test.threadData.countDuringThread = thread.getCount()
-        for i = 0; i < 10; i++ {
-          sys.systemTask()
-        }
-      })
+      thread.evaluate("system.test.threadData.countDuringThread = thread.getCount(); local(i); for i = 0; i < 10; i++ { sys.systemTask() }")
 
       // Should have at least 1 thread (the new one)
       for i = 0; i < 15; i++ {
@@ -240,7 +206,7 @@ tests:
 
       local(countAfter = thread.getCount())
 
-      return countDuringThread >= 1 and countAfter >= 0
+      return system.test.threadData.countDuringThread >= 1 and countAfter >= 0
     expected_result: true
     expected_success: true
     timeout: 5
@@ -252,9 +218,7 @@ tests:
     script: |
       local(mainThreadID = thread.getCurrentID())
 
-      thread.call("idThread", {
-        system.test.threadData.threadIDInThread = thread.getCurrentID()
-      })
+      thread.evaluate("system.test.threadData.threadIDInThread = thread.getCurrentID()")
 
       // Let thread execute
       for i = 0; i < 10; i++ {

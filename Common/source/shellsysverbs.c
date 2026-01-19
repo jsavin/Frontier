@@ -1335,6 +1335,57 @@ exit:
 	}/*threadcallscriptverb*/
 
 
+/*
+ * Public wrapper functions for thread verb kernel access from headless mode.
+ * These expose the internal thread management functions for use by headless_thread_verbs.c
+ */
+
+boolean thread_callscript_kernel(bigstring bsscriptname,
+                                  tyvaluerecord vparams,
+                                  hdlhashtable hcontext,
+                                  tyvaluerecord *vreturned) {
+	/*
+	 * Public wrapper for threadcallscriptverb.
+	 * Allows headless verb stubs to create threads without duplicating code.
+	 */
+	return threadcallscriptverb(bsscriptname, vparams, hcontext, vreturned);
+}
+
+
+boolean thread_evaluate_kernel(bigstring bscode, tyvaluerecord *vreturned) {
+	/*
+	 * Public wrapper for thread.evaluate functionality.
+	 * Evaluates a code string in a new thread and returns the thread ID.
+	 */
+	Handle htext;
+	hdlprocessrecord hp;
+	hdlprocessthread hthread;
+
+	/* Convert bigstring to handle */
+	if (!newtexthandle(bscode, &htext))
+		return false;
+
+	newlyaddedprocess = nil; /* process manager global */
+
+	if (!processruntext(htext)) {
+		disposehandle(htext);
+		return false;
+	}
+
+	hp = newlyaddedprocess; /* process.c global; will be nil if a process wasn't just added */
+
+	if ((hp == nil) || !scheduleprocess(hp, &hthread)) {
+		disposehandle(htext);
+		return setlongvalue(0, vreturned);
+	}
+
+	(**hp).processstartedroutine = &threadverbprocessstarted;
+
+	disposehandle(htext);
+	return setlongvalue(getthreadid(hthread), vreturned);
+}
+
+
 static boolean threadstatsverb (hdltreenode hparam1, tyvaluerecord *v) {
 	
 	/*
