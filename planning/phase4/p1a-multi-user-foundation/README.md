@@ -19,13 +19,36 @@
 
 ---
 
+## Model Selection Guide
+
+Each week uses the appropriate Claude model based on task complexity:
+
+| Week | Scope | Complexity | Model | Rationale |
+|------|-------|------------|-------|-----------|
+| **Week 7** | Outline Reference Counting | Medium | 🟡 Sonnet | Architectural pattern, first refcount implementation, lifecycle API design |
+| **Week 8** | Hash Table Reference Counting | Low | 🟢 Haiku | Pattern-following from Week 7, same refcount pattern |
+| **Week 9** | System Context Lifecycle | Medium | 🟡 Sonnet | Thread-local caching design, context lifecycle complexity |
+
+**Using This Guide**:
+- **🟢 Haiku**: Pattern-following once refcount pattern established (Week 8)
+- **🟡 Sonnet**: First implementation of pattern (Week 7), or complex lifecycle (Week 9)
+
+**When to Escalate to Sonnet**:
+- Reference counting leaks or cycles discovered
+- Performance issues from atomic operations
+- Thread-local caching proves more complex than expected
+
+---
+
 ## Week-by-Week Plan
 
 ### Week 7: Outline Reference Counting
 
+**Model**: 🟡 **Sonnet** - First refcount pattern implementation, lifecycle API design
+
 **Goal**: Add refcount lifecycle to outline objects
 
-**Implementation**:
+**Implementation** (🟡 Sonnet for all tasks):
 ```c
 // Add to tyoutlinerecord
 typedef struct tyoutlinerecord {
@@ -56,9 +79,11 @@ void op_outline_release(hdloutlinerecord ho);
 
 ### Week 8: Hash Table Reference Counting
 
+**Model**: 🟢 **Haiku** - Pattern-following from Week 7, same refcount pattern
+
 **Goal**: Add refcount lifecycle to hash tables
 
-**Implementation**:
+**Implementation** (🟢 Haiku for all tasks):
 ```c
 // Add to tyhashtable
 typedef struct tyhashtable {
@@ -88,9 +113,11 @@ void hashtable_release(hdlhashtable ht);
 
 ### Week 9: System Context Reference Counting
 
+**Model**: 🟡 **Sonnet** - Thread-local caching design, context lifecycle complexity
+
 **Goal**: Complete system_context lifecycle with thread-local caching
 
-**Implementation**:
+**Implementation** (🟡 Sonnet for all tasks):
 ```c
 // Already has refcount from P0b Week 4
 // Add thread-local caching:
@@ -179,5 +206,5 @@ P1b stress tests concurrent operations and prepares for collaborative ODB.
 
 ---
 
-**Last Updated**: 2026-01-13
-**Status**: Starts after P0b completion (Week 7)
+**Last Updated**: 2026-01-19
+**Status**: Starts after P0b completion (Week 10, with model selection guidance)

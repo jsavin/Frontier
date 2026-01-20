@@ -19,15 +19,38 @@
 
 ---
 
+## Model Selection Guide
+
+Each week uses the appropriate Claude model based on task complexity:
+
+| Week | Scope | Complexity | Model | Rationale |
+|------|-------|------------|-------|-----------|
+| **Week 4** | System Context Structure | High | 🟡 Sonnet | Architectural design, reference counting patterns, new context structure |
+| **Week 5** | System Table Migration | High | 🟡 Sonnet | Complex migration, removing ADR-008 workaround, system-wide impact |
+| **Week 6** | Shell Config & Dialog State | Low | 🟢 Haiku | Pattern-following from P0a, established thread-local template |
+
+**Using This Guide**:
+- **🟢 Haiku**: Pattern-following with clear template from P0a Week 1-3
+- **🟡 Sonnet**: Architectural design, complex system interactions, critical infrastructure
+
+**When to Escalate to Sonnet**:
+- System context lifecycle proves more complex than expected
+- ADR-008 removal breaks processor resolution
+- Test failures requiring architectural debugging
+
+---
+
 ## Week-by-Week Plan
 
 ### Week 4: System Context Structure
+
+**Model**: 🟡 **Sonnet** - Architectural design, reference counting patterns, new context structure
 
 **Goal**: Design and implement `system_context` structure
 
 **What**: Create container for all system tables with reference counting
 
-**Implementation**:
+**Implementation** (🟡 Sonnet for all tasks):
 ```c
 typedef struct system_context {
     // Core tables
@@ -69,9 +92,11 @@ system_context* get_system_context(void);  // Global accessor
 
 ### Week 5: System Table Migration
 
+**Model**: 🟡 **Sonnet** - Complex migration, removing ADR-008 workaround, system-wide impact
+
 **Goal**: Migrate all system tables to system_context
 
-**Implementation**:
+**Implementation** (🟡 Sonnet for all tasks):
 1. Move global system table pointers into system_context
 2. Update `settablestructureglobals()` to use context
 3. Create backward-compatible macros:
@@ -98,6 +123,8 @@ cd tests && make test-integration
 ---
 
 ### Week 6: Shell Configuration & Dialog State
+
+**Model**: 🟢 **Haiku** - Pattern-following from P0a, established thread-local template
 
 **Goal**: Thread-safe shell configuration and dialog nesting
 
@@ -203,5 +230,5 @@ P1a adds reference counting for multi-user object sharing.
 
 ---
 
-**Last Updated**: 2026-01-13
-**Status**: Starts after P0a completion (Week 4)
+**Last Updated**: 2026-01-19
+**Status**: Starts after P0a completion (Week 4, with model selection guidance)

@@ -20,13 +20,37 @@
 
 ---
 
+## Model Selection Guide
+
+Each phase uses the appropriate Claude model based on task complexity:
+
+| Weeks | Scope | Complexity | Model | Rationale |
+|-------|-------|------------|-------|-----------|
+| **13-14** | Static Buffer Audit | Medium | 🟡 Sonnet | Audit and decision framework, migration strategy |
+| **15-16** | Cache Thread-Safety | Medium | 🟡 Sonnet | Performance-critical, requires benchmarking and tradeoffs |
+| **17** | Final Global Audit | Low | 🟢 Haiku | Pattern-following, comprehensive checklist execution |
+| **18** | Documentation & Milestone | Low | 🟢 Haiku | Documentation writing, celebration content |
+
+**Using This Guide**:
+- **🟢 Haiku**: Audit execution (Week 17), documentation (Week 18)
+- **🟡 Sonnet**: Migration strategy (Weeks 13-14), performance analysis (Weeks 15-16)
+
+**When to Escalate to Sonnet**:
+- Cache migration causes performance regression > 10%
+- Unexpected complexity in static buffer patterns
+- Final audit discovers critical globals missed
+
+---
+
 ## Week-by-Week Plan
 
 ### Week 13-14: Static Buffer Audit & Migration
 
+**Model**: 🟡 **Sonnet** - Audit and decision framework, migration strategy
+
 **Goal**: Audit all static buffers, migrate to thread-local or dynamic allocation
 
-**Approach**:
+**Approach** (🟡 Sonnet for audit and strategy):
 ```bash
 # Audit script to find static buffers
 grep -n "static.*\[" Common/source/*.c | grep -v "const"
@@ -60,9 +84,11 @@ _Thread_local bigstring tempbuffer;
 
 ### Week 15-16: Cache Thread-Safety
 
+**Model**: 🟡 **Sonnet** - Performance-critical, requires benchmarking and tradeoffs
+
 **Goal**: Make caches thread-safe or thread-local
 
-**Caches to Audit**:
+**Caches to Audit** (🟡 Sonnet for performance analysis):
 - Font cache (`cachedfontname`, `cachedfontnum`)
 - Error cushions (`herrorcushion`)
 - Memory cushions (`hsafetycushion`)
@@ -83,9 +109,11 @@ _Thread_local bigstring tempbuffer;
 
 ### Week 17: Final Global Audit
 
+**Model**: 🟢 **Haiku** - Pattern-following, comprehensive checklist execution
+
 **Goal**: Comprehensive audit to catch any remaining globals
 
-**Audit Process**:
+**Audit Process** (🟢 Haiku for systematic execution):
 ```bash
 # Find all global variables
 ./tools/audit_global_variables.sh
@@ -111,9 +139,11 @@ Create `planning/phase4/REMAINING_GLOBALS.md`:
 
 ### Week 18: Documentation & Milestone
 
+**Model**: 🟢 **Haiku** - Documentation writing, celebration content
+
 **Goal**: Comprehensive documentation, celebrate completion
 
-**Tasks**:
+**Tasks** (🟢 Haiku for all documentation):
 1. Update all ADRs with "Implemented" status
 2. Create architecture documentation:
    - `docs/GLOBAL_STATE_ELIMINATION_COMPLETE.md`
@@ -277,5 +307,5 @@ Implementation of actual collaborative editing features on top of thread-safe fo
 
 ---
 
-**Last Updated**: 2026-01-13
-**Status**: Starts after P1b completion (Week 13)
+**Last Updated**: 2026-01-19
+**Status**: Starts after P1b completion (Week 19, with model selection guidance)

@@ -2,11 +2,56 @@
 
 Status: In Progress (Updated 2026-01-19)
 
-## 🚀 IMMEDIATE PRIORITY – Phase 4: Global State Elimination + TCP Networking
+## 🚀 IMMEDIATE PRIORITY – TCP Networking Phase 1A (Core Sockets)
 
-**Goal**: Begin Phase 4 P0a (Global State Elimination) and TCP Networking Phase 1A (Core Socket Implementation) - foundational work for Frontier's networking layer.
+**Strategic Decision**: Start TCP Phase 1A-2 BEFORE Phase 4 P0a (Global State Elimination)
+
+**Rationale**:
+- ✅ **No P0a dependency** - TCP Phase 1A-2 (client operations) are single-threaded, don't hit push/pop issues
+- ✅ **No rework needed** - TCP verbs use hash table APIs that have identical signatures before/after P0a
+- ✅ **Faster validation** - Working HTTP client in 6 weeks (vs 9 weeks if P0a first)
+- ✅ **Same total effort** - TCP implementation identical whether done before or after P0a
+- ⏸️ **TCP Phase 3 blocked** - Server operations require P0a-P0b (threading infrastructure for callbacks)
+
+**Dependency Analysis**:
+```
+TCP Phase 1A-1B (Core sockets + DNS)  → ❌ No P0a dependency (single-threaded client)
+TCP Phase 2 (Buffered I/O)             → ❌ No P0a dependency (still client-side)
+TCP Phase 3 (Server operations)       → ✅ REQUIRES P0a + P0b (multi-threaded callbacks)
+```
+
+**Execution Sequence**:
+1. **Weeks 1-2**: TCP Phase 1A (Core sockets) - 7 verbs → Basic connectivity
+2. **Weeks 3-4**: TCP Phase 1B (DNS/address) - 6 verbs → Name resolution
+3. **Weeks 5-6**: TCP Phase 2 (Buffered I/O) - 4 verbs → **HTTP client works** 🎯
+4. **Weeks 7-9**: Phase 4 P0a (Hash table thread-safety) → Launch blocking work
+5. **Weeks 10-13**: TCP Phase 3 (Server operations) - 3 verbs → Async callbacks
 
 **Context**: Hierarchical OPML export complete (PR #326). Deterministic thread testing foundation complete (PR #318). Ready to start networking infrastructure.
+
+---
+
+## Strategic Timeline (Next 13 Weeks)
+
+**Optimized for**: Fastest path to working HTTP client, then launch readiness
+
+| Weeks | Phase | Status | Milestone |
+|-------|-------|--------|-----------|
+| **1-2** | TCP Phase 1A (Core Sockets) | 🚀 Starting | Basic connectivity |
+| **3-4** | TCP Phase 1B (DNS) | Queued | Name resolution |
+| **5-6** | TCP Phase 2 (Buffered I/O) | Queued | **HTTP client works** 🎯 |
+| **7-9** | Phase 4 P0a (Hash table thread-safety) | Queued | Launch blocking complete |
+| **10-12** | Phase 4 P0b (System context) | Queued | **LAUNCH READY** 🚀 |
+| **13+** | TCP Phase 3 (Server ops) | Blocked | Async callbacks enabled |
+
+**Key Dependencies**:
+- TCP Phase 3 **blocked until** P0a-P0b complete (needs thread-safe infrastructure)
+- P0a-P0b **independent** from TCP Phase 1A-2 (can be done in any order)
+
+**Why This Order**:
+1. TCP Phase 1A-2 first → HTTP client working in 6 weeks
+2. P0a-P0b next → Launch readiness in 12 weeks
+3. TCP Phase 3 last → Server operations enabled (depends on threading)
 
 ---
 
@@ -14,7 +59,7 @@ Status: In Progress (Updated 2026-01-19)
 
 ### Workstream 1: Phase 4 Threading Foundation & Global State Elimination
 
-**Status**: Phase 1 complete (PR #318), starting P0a
+**Status**: Phase 1 complete (PR #318), P0a DEFERRED until after TCP Phase 1A-2
 
 **Completed**:
 - ✅ **Phase 1: Deterministic Thread Testing Foundation** (PR #318 merged)
@@ -23,17 +68,23 @@ Status: In Progress (Updated 2026-01-19)
   - Thread ID assignment with collision detection
   - Comprehensive unit tests passing
 
-**Active Work**:
-- 🚀 **P0a (Weeks 1-6): Hash Table Context Migration** - LAUNCH BLOCKING
-  - Migrate hash table operations from global state to explicit context
-  - Thread-safe hash table access patterns
-  - Reference: planning/phase4/INDEX.md
-  - Timeline: ~2-3 weeks
+**Deferred Work** (starts Week 7, after TCP Phase 2):
+- ⏸️ **P0a (Weeks 7-9): Hash Table Context Migration** - LAUNCH BLOCKING
+  - Migrate hash table operations from global state to thread-local
+  - Week 1: Hash table context (currenthashtable, hmagictable) - 🟡 Sonnet
+  - Week 2: Parser state (yylval, yyval, langparser_result) - 🟡 Sonnet
+  - Week 3: Control flow & error state (flbreak, flcontinue) - 🟢 Haiku
+  - Reference: planning/phase4/p0a-critical-thread-safety/README.md
 
-**Upcoming**:
-- **P0b (Weeks 7-12)**: Outline context migration, external object processing audit
-- **P1a-P1b (Weeks 13-24)**: Multi-user collaborative ODB foundation
-- **P2 (Weeks 25-36)**: Cleanup and optimization
+**Why Deferred**:
+- TCP Phase 1A-2 don't depend on P0a (single-threaded client operations)
+- TCP Phase 3 (server) REQUIRES P0a-P0b (multi-threaded callbacks)
+- Optimizes for faster HTTP client validation milestone
+
+**Upcoming** (after P0a):
+- **P0b (Weeks 10-12)**: System context migration, shell config thread-safety
+- **P1a-P1b (Weeks 13-18)**: Multi-user collaborative ODB foundation
+- **P2 (Weeks 19-24)**: Comprehensive cleanup and optimization
 
 **Reference Documentation**:
 - planning/phase4/INDEX.md - Phase 4 roadmap overview
@@ -45,26 +96,47 @@ Status: In Progress (Updated 2026-01-19)
 
 ### Workstream 2: TCP Networking Implementation
 
-**Status**: Starting Phase 1A
+**Status**: Starting Phase 1A (PRIORITIZED - before P0a)
 
-**Active Work**:
-- 🚀 **Phase 1A (Weeks 1-2): Core Socket Implementation**
-  - Basic TCP socket verbs: tcp.open, tcp.close, tcp.send, tcp.receive
-  - POSIX socket abstraction layer
-  - Cross-platform socket handling (macOS, Linux)
-  - Error handling and resource cleanup
+**Current Phase: 1A - Core Socket Primitives (Weeks 1-2)**
 
-**Upcoming**:
-- **Phase 1B (Weeks 3-4)**: DNS resolution (tcp.resolvehostname, tcp.getaddress)
-- **Phase 2 (Weeks 5-6)**: Buffered I/O (tcp.receiveline, tcp.sendline, tcp.setbuffer)
-- **Phase 3 (Weeks 7-10)**: Server operations - REQUIRES THREADING FOUNDATION
-  - tcp.listen, tcp.accept, tcp.setlistener (callback registration)
-  - Depends on: Phase 4 P0a-P0b completion
-- **Phase 4 (Weeks 11-14)**: Advanced features (timeouts, non-blocking, SSL/TLS)
+**Model**: 🟢 **Haiku** - Pattern-following implementation
+
+**Verbs to Implement** (7 total):
+1. `tcp.openNameStream(hostname, port)` → streamID - DNS + connect
+2. `tcp.openAddrStream(addr, port)` → streamID - IP + connect
+3. `tcp.readStream(stream, bytes)` → data - Non-blocking recv
+4. `tcp.writeStream(stream, data)` → true - Blocking send
+5. `tcp.closeStream(stream)` → true - Graceful shutdown
+6. `tcp.abortStream(stream)` → true - Immediate RST
+7. `tcp.countConnections()` → count - Active stream count
+
+**Implementation Approach**:
+- Create `Common/source/tcpverbs.c` + `Common/headers/tcpverbs.h`
+- Define `tcp_stream_t` struct and stream management
+- POSIX socket abstraction (socket, connect, send, recv, close)
+- TDD: Write integration tests FIRST, then implementation
+- Follow `/doit` workflow
+
+**Upcoming Phases**:
+- **Phase 1B (Weeks 3-4)**: DNS resolution (6 verbs)
+- **Phase 2 (Weeks 5-6)**: Buffered I/O (4 verbs) → **HTTP client milestone** 🎯
+- **Phase 3 (Weeks 7-10)**: Server operations (3 verbs) - **BLOCKED on P0a-P0b**
+  - Requires: Thread-safe hash tables + system context for async callbacks
+  - Example: `tcp.listenStream(port, @callback)` calls UserTalk in separate threads
+- **Phase 4 (Weeks 11-14)**: Advanced features (2 verbs)
+
+**Why This Sequence**:
+- TCP Phase 1A-2 are single-threaded client operations
+- No dependency on P0a (hash table thread-safety)
+- No rework needed after P0a (verb APIs unchanged)
+- Working HTTP client sooner (validation milestone)
 
 **Reference Documentation**:
 - planning/phase4/networking/INDEX.md - TCP networking roadmap
-- planning/phase4/networking/SOCKET_IMPLEMENTATION_PLAN.md - Detailed socket implementation
+- planning/phase4/networking/IMPLEMENTATION_PLAN.md - Detailed execution plan (~450 lines)
+- planning/phase4/networking/TCP_VERBS_ANALYSIS.md - Complete API analysis (22 verbs)
+- planning/phase4/networking/NETWORKING_ARCHITECTURE.md - POSIX C architecture (~1100 lines)
 - Issue #88 (P0): Networking architecture & security decisions
 
 ---

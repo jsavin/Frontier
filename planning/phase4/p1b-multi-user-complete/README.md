@@ -19,13 +19,35 @@
 
 ---
 
+## Model Selection Guide
+
+Each week uses the appropriate Claude model based on task complexity:
+
+| Week | Scope | Complexity | Model | Rationale |
+|------|-------|------------|-------|-----------|
+| **Week 10** | Concurrent Stress Testing | Medium | 🟡 Sonnet | Test infrastructure design, stress test suite implementation |
+| **Week 11** | Lock State Design (CRDT prep) | High | 🟡 Sonnet | Architectural design for future collaborative ODB, ADR creation |
+| **Week 12** | Multi-User Documentation | Low | 🟢 Haiku | Documentation writing, capturing established patterns |
+
+**Using This Guide**:
+- **🟢 Haiku**: Documentation writing for established patterns (Week 12)
+- **🟡 Sonnet**: Test infrastructure design (Week 10), architectural planning (Week 11)
+
+**When to Escalate to Opus**:
+- CRDT design becomes more complex than expected
+- Need deep architectural consultation on collaborative ODB
+
+---
+
 ## Week-by-Week Plan
 
 ### Week 10: Concurrent Operation Testing
 
+**Model**: 🟡 **Sonnet** - Test infrastructure design, stress test suite implementation
+
 **Goal**: Stress test with 10+ threads executing UserTalk concurrently
 
-**Test Scenarios**:
+**Test Scenarios** (🟡 Sonnet for design and implementation):
 1. **Concurrent Script Execution**
    - 10 threads running different UserTalk scripts simultaneously
    - Verify no race conditions, no crashes
@@ -57,11 +79,13 @@ make TSAN=1 && ./tests/stress_test_concurrent
 
 ### Week 11: Lock State Preparation (CRDT Foundation)
 
+**Model**: 🟡 **Sonnet** - Architectural design for collaborative ODB, ADR creation
+
 **Goal**: Design lock state structure for collaborative ODB (Phase 6+)
 
 **Not Implementing**: Full CRDT system (deferred to Phase 6+)
 
-**Preparing**:
+**Preparing** (🟡 Sonnet for architectural design):
 1. Add reserved fields to structures for future lock state
 2. Design CRDT lock state structure (on paper)
 3. Document lock state requirements
@@ -90,9 +114,11 @@ typedef struct tyoutlinerecord {
 
 ### Week 12: Multi-User Documentation
 
+**Model**: 🟢 **Haiku** - Documentation writing for established patterns
+
 **Goal**: Comprehensive architecture documentation for multi-user operations
 
-**Documents to Create**:
+**Documents to Create** (🟢 Haiku for all documentation):
 1. **docs/MULTI_USER_ARCHITECTURE.md**
    - Thread-safety guarantees
    - Reference counting patterns
@@ -204,5 +230,5 @@ P2 eliminates remaining P2 globals (static buffers, caches).
 
 ---
 
-**Last Updated**: 2026-01-13
-**Status**: Starts after P1a completion (Week 10)
+**Last Updated**: 2026-01-19
+**Status**: Starts after P1a completion (Week 13, with model selection guidance)
