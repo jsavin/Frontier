@@ -66,6 +66,8 @@ typedef struct tcp_stream {
 #define TCP_FIRST_STREAM_ID 1         /* Stream IDs start at 1 (0 reserved) */
 #define MAX_HOSTNAME_LEN 255          /* Maximum DNS hostname length */
 #define MAX_IPV4_STRING_LEN 15        /* "xxx.xxx.xxx.xxx" max length */
+#define TCP_RATE_LIMIT_WINDOW 64      /* Max connection timestamps to track */
+#define TCP_DEFAULT_RATE_LIMIT 10     /* Default connections per second */
 
 /* TCP Context (Per-Process State) */
 typedef struct tcp_context {
@@ -85,9 +87,15 @@ typedef struct tcp_context {
     int             default_timeout_sec;  /* Default operation timeout */
     boolean         initialized;          /* Context has been initialized */
 
+    /* Rate Limiting */
+    time_t          connection_timestamps[TCP_RATE_LIMIT_WINDOW];  /* Sliding window of connection times */
+    int             timestamp_write_pos;   /* Next position to write in circular buffer */
+    int             connections_per_sec;   /* Maximum connections per second (configurable) */
+
     /* Statistics (for monitoring) */
     long            total_connections;    /* Lifetime connection count */
     long            failed_connections;   /* Lifetime failure count */
+    long            rate_limited_count;   /* Connections rejected due to rate limit */
 } tcp_context_t;
 
 /* Error Codes */

@@ -246,6 +246,40 @@ boolean tcp_is_private_ip(uint32_t addr) {
     return false;
 }
 
+/* Check rate limit before opening new connection
+ * Returns true if rate limit allows connection, false if rejected.
+ * Must be called with TCP_LOCK() held.
+ *
+ * Uses sliding window algorithm:
+ * - Tracks timestamps of recent connections in circular buffer
+ * - Counts connections in last second
+ * - Rejects if count >= connections_per_sec limit */
+static boolean tcp_check_rate_limit(void) {
+    time_t now = time(NULL);
+    int connections_in_last_second = 0;
+
+    /* Count connections in the last second */
+    for (int i = 0; i < TCP_RATE_LIMIT_WINDOW; i++) {
+        if (g_tcp_context.connection_timestamps[i] >= (now - 1)) {
+            connections_in_last_second++;
+        }
+    }
+
+    /* Check if we're over the limit */
+    if (connections_in_last_second >= g_tcp_context.connections_per_sec) {
+        g_tcp_context.rate_limited_count++;
+        log_warn(LOG_COMP_LANG, "tcp_check_rate_limit: rate limit exceeded (%d conn/sec, limit=%d)",
+                 connections_in_last_second, g_tcp_context.connections_per_sec);
+        return false;
+    }
+
+    /* Record this connection attempt */
+    g_tcp_context.connection_timestamps[g_tcp_context.timestamp_write_pos] = now;
+    g_tcp_context.timestamp_write_pos = (g_tcp_context.timestamp_write_pos + 1) % TCP_RATE_LIMIT_WINDOW;
+
+    return true;
+}
+
 /* ========================================================================
  * Phase 1B: Address Operations (No Network I/O)
  * ======================================================================== */
@@ -316,6 +350,15 @@ boolean tcp_open_stream_addr(long addr, long port, long *stream_id_out) {
         tcp_set_error(TCP_ERR_CONNECTION_FAILED, "Invalid port");
         return false;
     }
+
+    /* Check rate limit before attempting connection */
+    TCP_LOCK();
+    if (!tcp_check_rate_limit()) {
+        TCP_UNLOCK();
+        tcp_set_error(TCP_ERR_NO_FREE_STREAMS, "Connection rate limit exceeded");
+        return false;
+    }
+    TCP_UNLOCK();
 
     /* Create socket */
     sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -751,6 +794,15 @@ boolean tcp_open_stream_name(bigstring hostname, long port, long *stream_id_out)
         return false;
     }
 
+    /* Check rate limit before attempting connection */
+    TCP_LOCK();
+    if (!tcp_check_rate_limit()) {
+        TCP_UNLOCK();
+        tcp_set_error(TCP_ERR_NO_FREE_STREAMS, "Connection rate limit exceeded");
+        return false;
+    }
+    TCP_UNLOCK();
+
     /* Convert Pascal string to C string */
     if (stringlength(hostname) > 255) {
         tcp_set_error(TCP_ERR_DNS_FAILED, "Hostname too long");
@@ -874,9 +926,16 @@ boolean tcp_init_context(void) {
 
     g_tcp_context.default_timeout_sec = 30;
     g_tcp_context.next_listen_id = 1;
+
+    /* Initialize rate limiting */
+    g_tcp_context.connections_per_sec = TCP_DEFAULT_RATE_LIMIT;
+    g_tcp_context.timestamp_write_pos = 0;
+    /* connection_timestamps[] already zeroed by memset above */
+
     g_tcp_context.initialized = true;
 
-    log_info(LOG_COMP_LANG, "TCP context initialized successfully");
+    log_info(LOG_COMP_LANG, "TCP context initialized successfully (rate limit: %d conn/sec)",
+             g_tcp_context.connections_per_sec);
 
     return true;
 }
