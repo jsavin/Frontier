@@ -20,16 +20,39 @@
 
 ---
 
+## Model Selection Guide
+
+Each week uses the appropriate Claude model based on task complexity:
+
+| Week | Scope | Globals | Complexity | Model | Rationale |
+|------|-------|---------|------------|-------|-----------|
+| **Week 1** | Hash Table Context | 3 | Medium | 🟡 Sonnet | Architectural refactoring, proven pattern (ADR-005) but requires understanding hash scope resolution |
+| **Week 2** | Parser State | 3 | High | 🟡 Sonnet | Parser modification is complex/risky, Bison-generated code, careful analysis needed |
+| **Week 3** | Control Flow & Error | 4 | Low | 🟢 Haiku | Pattern-following (same as Week 1-2), simpler flag state, established template |
+
+**Using This Guide**:
+- **🟢 Haiku**: Pattern-following with clear template, straightforward implementation
+- **🟡 Sonnet**: Architectural understanding required, complex system interaction, proven patterns need adaptation
+
+**When to Escalate to Sonnet**:
+- Unexpected complexity during implementation
+- Test failures that require architectural debugging
+- Need to understand cross-module interactions
+
+---
+
 ## Week-by-Week Plan
 
 ### Week 1: Hash Table Context Migration
+
+**Model**: 🟡 **Sonnet** - Architectural refactoring with proven pattern (ADR-005)
 
 **Globals to Migrate**:
 - `currenthashtable` (langhash.c:835) - Variable scope resolution
 - `hmagictable` (lang.c:71) - Eval communication
 - `hashtablestack` (related) - Table scope stack
 
-**Implementation**:
+**Implementation** (🟡 Sonnet for all tasks):
 1. Add fields to `tythreadglobals` structure
 2. Create backward-compatible macros
 3. Update thread swap functions (copythreadglobals, swapinthreadglobals, newthreadglobals)
@@ -49,12 +72,14 @@ cd tests && make test-integration
 
 ### Week 2: Parser State Migration
 
+**Model**: 🟡 **Sonnet** - Parser modification is complex/risky, Bison-generated code
+
 **Globals to Migrate**:
 - `yylval` (langparser.h:33) - Parser token value
 - `yyval` (langparser.h:33) - Parser result value
 - `langparser_result` (langparser.h:35) - Final parse result
 
-**Implementation**:
+**Implementation** (🟡 Sonnet for all tasks):
 1. Add fields to `tythreadglobals`
 2. Create backward-compatible macros
 3. Update thread swap functions
@@ -75,6 +100,8 @@ cd tests && make test-integration
 
 ### Week 3: Control Flow & Error State
 
+**Model**: 🟢 **Haiku** - Pattern-following (same template as Week 1-2), simpler flag state
+
 **Globals to Migrate**:
 - `flbreak` (langinternal.h:333) - Break statement flag
 - `flcontinue` (langinternal.h:335) - Continue statement flag
@@ -83,7 +110,7 @@ cd tests && make test-integration
 
 **Note**: `flreturn`, `fllangerror` already in tythreadglobals (lines 184, 196)
 
-**Implementation**:
+**Implementation** (🟢 Haiku for all tasks):
 1. Add remaining control flow fields to `tythreadglobals`
 2. Create backward-compatible macros
 3. Update thread swap functions
@@ -165,5 +192,5 @@ P0b will establish system context pattern and migrate system tables.
 
 ---
 
-**Last Updated**: 2026-01-13
-**Status**: Ready to start Week 1
+**Last Updated**: 2026-01-19
+**Status**: Ready to start Week 1 (with model selection guidance)
