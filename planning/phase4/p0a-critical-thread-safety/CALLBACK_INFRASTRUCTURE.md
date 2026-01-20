@@ -399,6 +399,379 @@ Callbacks preserve the **single-threaded illusion** for UserTalk developers:
 
 ---
 
+## Legacy Implementation Analysis
+
+**Source**: `/Users/jake/dev/tedchoward/Frontier` - Original Frontier codebase review
+
+### 1. How Legacy Code Invoked Callbacks WITH Parameters
+
+Legacy Frontier used **two distinct mechanisms** for parameterized callbacks:
+
+#### Mechanism 1: String Template Substitution (`parsedialogstring`)
+
+**Pattern**: Build callback script string with parameter substitution using `^0`, `^1`, `^2`, `^3` placeholders.
+
+**Function**: `parsedialogstring()` (Common/source/strings.c:1385-1451)
+
+**How It Worked**:
+```c
+// Window close callback - from shellwindow.c:1871
+tyvaluerecord val;
+bigstring bsname, bsscript, bsresult;
+
+// Get callback script template: "system.callbacks.closeWindow(^0)"
+getsystemtablescript(idclosewindowscript, bsscript);
+
+// Convert window handle to string (title or ODB address)
+setwinvalue(pwindow, &val);
+coercetostring(&val);
+pullstringvalue(&val, bsname);
+
+// Substitute parameter into script template
+parsedialogstring(bsscript, bsname, nil, nil, nil, bsscript);
+// Result: "system.callbacks.closeWindow("Document Title")"
+
+// Execute substituted script
+langrunstringnoerror(bsscript, bsresult);
+```
+
+**Callback Template Examples** (from `Common/resources/Mac/lang.r`):
+```c
+"system.callbacks.closeWindow(�^0�)"           // 1 parameter
+"system.callbacks.saveWindow(�^0�,^1)"         // 2 parameters
+"system.callbacks.control2click(�^0�)"         // 1 parameter
+"system.callbacks.compileChangedScript(address(�^0�))" // 1 parameter wrapped
+```
+
+**Advantages**:
+- ✅ Simple string substitution
+- ✅ Works with existing infrastructure
+- ✅ Template defined in resources (easy to customize)
+- ✅ Handles up to 4 parameters (`^0` through `^3`)
+
+**Disadvantages**:
+- ❌ String escaping complexity (quotes, special characters)
+- ❌ Limited to string-coercible parameters
+- ❌ No type safety
+- ❌ Parameter limit (4 max)
+- ❌ Can't pass complex types (handles, addresses) reliably
+
+#### Mechanism 2: List-Based Parameter Passing (`langrunscriptcode`)
+
+**Pattern**: Build parameter list as `tyvaluerecord` list, pass to script execution.
+
+**Function**: `langrunscriptcode()` (Common/source/lang.c:1375-1461)
+
+**How It Worked** (from regexp callback - `langregexp.c:1582-1663`):
+```c
+// 1. Create local variable table for parameters
+hdlhashtable htlocals = nil;
+langpushlocalchain(&htlocals);
+
+// 2. Assign parameters to local table
+hashtableassign(htlocals, STR_matchInfo, vmatchinfo);
+hashtableassign(htlocals, STR_replacementString, vrepl);
+
+// 3. Build parameter list referencing locals
+hdllistrecord hparams;
+opnewlist(&hparams, false);
+setheapvalue((Handle)hparams, listvaluetype, &vparams);
+langpushlistaddress(hparams, htlocals, STR_matchInfo);
+langpushlistaddress(hparams, htlocals, STR_replacementString);
+
+// 4. Get code tree for callback script
+hdltreenode hcode;
+getcodetreefromscriptaddress(adrcallback.ht, adrcallback.bs, &hcode);
+
+// 5. Execute callback with parameter list
+langrunscriptcode(adrcallback.ht, adrcallback.bs, hcode, &vparams, nil, &vresult);
+
+// 6. Clean up local table
+langpoplocalchain(htlocals);
+```
+
+**Key Functions**:
+- `langpushlocalchain()` - Create temporary local variable scope
+- `langpushlistaddress()` - Build list of address parameters (Common/source/langlist.c:123)
+- `langrunscriptcode()` - Execute script with parameter list (Common/source/lang.c:1375)
+- `langbuildparamlist()` - Convert list value to parameter tree (Common/source/lang.c:1307)
+- `langpoplocalchain()` - Dispose temporary scope
+
+**Advantages**:
+- ✅ Type-safe parameter passing
+- ✅ Handles complex types (handles, addresses, tables)
+- ✅ No parameter limit
+- ✅ No string escaping issues
+- ✅ Parameters accessible as named variables in callback
+- ✅ Can pass parameters by address (local variables)
+
+**Disadvantages**:
+- ❌ More complex C API
+- ❌ Requires local table creation/cleanup
+- ❌ More invasive to thread-safety model
+
+**This is the CORRECT pattern for modern implementation.**
+
+### 2. Window Handles vs ODB Addresses - Critical Distinction
+
+**User's Warning**: Many legacy callbacks take an `adr` parameter that refers to a WINDOW HANDLE, not an ODB object address.
+
+**Evidence from `setwinvalue()`** (shellwindowverbs.c:188-251):
+
+```c
+boolean setwinvalue(WindowPtr pwindow, tyvaluerecord *val) {
+    /*
+    set val to the address of the database object contained by pwindow
+
+    5.0b16 dmb: for database objects, return an address, not a string
+    */
+
+    hdlexternalvariable hvariable = nil;
+    hdlhashtable htable;
+    bigstring bs;
+
+    // Try to find database object behind window
+    fl = (*shellglobals.getvariableroutine)(&hvariable);
+    fl = langexternalfindvariable(hvariable, &htable, bs);
+
+    if (fl) {
+        // Window represents a database object - return ODB address
+        return setaddressvalue(htable, bs, val);
+    } else {
+        // Window doesn't represent DB object - return title string
+        shellgetwindowtitle(hinfo, bs);
+        return setstringvalue(bs, val);
+    }
+}
+```
+
+**Key Insight**: Legacy code converted window handles to EITHER:
+1. **ODB address** - If window displayed a database object (table, script, outline)
+2. **String (title)** - If window was NOT backed by database object (file, standalone window)
+
+**Modern CLI Adaptation Required**:
+
+Since modern CLI is **headless** (no GUI windows):
+
+| Legacy Callback | Window Parameter | CLI Adaptation |
+|----------------|------------------|----------------|
+| `openWindow(adr)` | Window title or ODB path | **Map to ODB address** - CLI opens database objects, not windows |
+| `closeWindow(adr)` | Window title or ODB path | **Map to ODB address** - CLI closes database objects |
+| `saveWindow(adr, flag)` | Window title + save flag | **Map to ODB address** - CLI saves database objects |
+
+**Recommendation for Modern Implementation**:
+- ✅ **Keep callbacks** - Still useful for lifecycle hooks
+- ✅ **Replace window handle with ODB address** - CLI operates on database objects
+- ✅ **Use string path for file operations** - When object isn't in ODB
+
+**Example Modern Mapping**:
+```c
+// Legacy: closeWindow(window_handle) → converts to title or ODB address
+// Modern CLI: closeWindow(odb_address_string)
+
+// When closing a table object:
+tyvaluerecord param;
+setaddressvalue(htable, bsname, &param);
+langruncallbackwithparams(BIGSTRING("\psystem.callbacks.closeWindow"), 1, &param, &result);
+```
+
+### 3. GUI-Only vs Platform-Wide Callbacks
+
+**Analysis**: Which callbacks are GUI-specific vs headless-relevant?
+
+| Callback | Category | CLI Relevance | Notes |
+|----------|----------|---------------|-------|
+| **openWindow** | Window | ✅ ADAPT | Map to "open database object" |
+| **closeWindow** | Window | ✅ ADAPT | Map to "close database object" |
+| **saveWindow** | Window | ✅ ADAPT | Map to "save database object" |
+| **cmd2click** | UI | ❌ GUI-ONLY | Command-click on object (GUI interaction) |
+| **control2click** | UI | ❌ GUI-ONLY | Control-click on object (GUI interaction) |
+| **option2click** | UI | ❌ GUI-ONLY | Option-click on object (GUI interaction) |
+| **systemTrayIconRightClick** | UI | ❌ GUI-ONLY | System tray interaction (Windows GUI) |
+| **opExpand** | Outline | ⚠️ PARTIAL | Relevant if headless outline operations exist |
+| **opCollapse** | Outline | ⚠️ PARTIAL | Relevant if headless outline operations exist |
+| **opInsert** | Outline | ⚠️ PARTIAL | Relevant if headless outline operations exist |
+| **opCursorMoved** | Outline | ❌ GUI-ONLY | Visual cursor movement |
+| **opStruct2Click** | Outline | ❌ GUI-ONLY | Double-click in outline |
+| **opRightClick** | Outline | ❌ GUI-ONLY | Right-click in outline |
+| **opReturnKey** | Outline | ❌ GUI-ONLY | Return key in outline editor |
+| **suspend** | System | ✅ KEEP | Application suspend (relevant for server) |
+| **resume** | System | ✅ KEEP | Application resume (relevant for server) |
+| **compileChangedScript** | System | ✅ KEEP | Script recompilation hook |
+| **tcp.setOffline** | Network | ✅ KEEP | Network state change |
+
+**Recommendation**:
+- **Implement for CLI**: openWindow, closeWindow, saveWindow, suspend, resume, compileChangedScript, tcp.* callbacks
+- **Skip for CLI**: All click/UI callbacks, cursor movement, keyboard callbacks
+- **Future consideration**: Outline operation callbacks IF headless outline manipulation is added
+
+### 4. Design Patterns to Adopt
+
+**Pattern 1: List-Based Parameter Passing** ✅ **RECOMMENDED**
+
+**Why**: This is the proven approach for complex, type-safe parameter passing.
+
+**Adoption Strategy**:
+```c
+boolean langruncallbackwithparams(
+    bigstring callback_path,          // e.g., "system.callbacks.closeWindow"
+    short param_count,                // Number of parameters
+    tyvaluerecord *params,            // Array of parameter values
+    tyvaluerecord *result             // Returned value (optional)
+) {
+    hdlhashtable htlocals = nil;
+    hdllistrecord hparams = nil;
+    tyvaluerecord vparams;
+    hdltreenode hcode = nil;
+    hdlhashtable htable;
+    bigstring bsverb;
+    boolean fl = false;
+
+    // 1. Thread-safety: grab thread context
+    grabthreadglobals();
+    oppushoutline(op_get_outlinedata());
+
+    // 2. Create local variable scope for parameters
+    if (!langpushlocalchain(&htlocals))
+        goto cleanup;
+
+    // 3. Assign parameters to local table as param1, param2, etc.
+    for (short i = 0; i < param_count; i++) {
+        bigstring bsparamname;
+        numtostring(i + 1, bsparamname);
+        insertstring(BIGSTRING("\x05param"), bsparamname, bsparamname);
+
+        if (!hashtableassign(htlocals, bsparamname, params[i]))
+            goto cleanup;
+    }
+
+    // 4. Build parameter list
+    if (!opnewlist(&hparams, false))
+        goto cleanup;
+
+    if (!setheapvalue((Handle)hparams, listvaluetype, &vparams))
+        goto cleanup;
+
+    for (short i = 0; i < param_count; i++) {
+        bigstring bsparamname;
+        numtostring(i + 1, bsparamname);
+        insertstring(BIGSTRING("\x05param"), bsparamname, bsparamname);
+
+        if (!langpushlistaddress(hparams, htlocals, bsparamname))
+            goto cleanup;
+    }
+
+    // 5. Parse callback address
+    if (!parsefullname(callback_path, &htable, bsverb))
+        goto cleanup;
+
+    // 6. Get code tree for callback script
+    if (!getcodetreefromscriptaddress(htable, bsverb, &hcode))
+        goto cleanup;
+
+    // 7. Execute callback with parameters
+    fl = langrunscriptcode(htable, bsverb, hcode, &vparams, nil, result);
+
+cleanup:
+    // 8. Clean up local scope
+    if (htlocals != nil)
+        langpoplocalchain(htlocals);
+
+    // 9. Thread-safety: restore thread context
+    oppopoutline();
+    releasethreadglobals();
+
+    return fl;
+}
+```
+
+**Pattern 2: Thread-Safety Wrapper** ✅ **ALREADY ESTABLISHED**
+
+The `grabthreadglobals()` → work → `releasethreadglobals()` + `oppushoutline()` → `oppopoutline()` pattern is **proven correct** and must be preserved.
+
+**Pattern 3: Backward Compatibility** ✅ **REQUIRED**
+
+Keep existing `langopruncallbackscripts()` for parameterless callbacks:
+```c
+boolean langopruncallbackscripts(short idscript) {
+    bigstring bsscript;
+    if (!getsystemtablescript(idscript, bsscript))
+        return false;
+
+    // Delegate to new function with zero parameters
+    return langruncallbackwithparams(bsscript, 0, nil, nil);
+}
+```
+
+### 5. Patterns to Avoid
+
+**Anti-Pattern 1: String Template Substitution** ❌ **DON'T USE**
+
+**Why**: Limited to 4 parameters, string escaping issues, no type safety.
+
+**Exception**: May be useful for simple single-string-parameter callbacks where performance matters, but NOT as primary mechanism.
+
+**Anti-Pattern 2: Global Parameter Passing** ❌ **NEVER USE**
+
+Legacy code occasionally used globals to pass parameters. This is NOT thread-safe and must NEVER be adopted.
+
+**Anti-Pattern 3: Direct Window Handle Passing** ❌ **NOT APPLICABLE TO CLI**
+
+Window handles don't exist in headless environment. Always convert to ODB addresses or string paths.
+
+### 6. Implementation Recommendations
+
+**Phase 1: Core Infrastructure** (Week 1)
+
+1. ✅ Implement `langruncallbackwithparams()` using list-based parameter passing
+2. ✅ Extend thread-safety pattern (grabthreadglobals/oppushoutline)
+3. ✅ Write unit tests for 0, 1, 2, N parameter cases
+4. ✅ Document API in `docs/CALLBACK_INFRASTRUCTURE.md`
+
+**Phase 2: TCP Integration** (Week 2)
+
+1. ✅ Refactor `tcp.listenStream()` to use new callback infrastructure
+2. ✅ Test with 3-parameter callback: (stream_id, remote_addr, remote_port)
+3. ✅ Validate thread-safety with ThreadSanitizer
+
+**Phase 3: Database Lifecycle Callbacks** (Week 3)
+
+1. ✅ Implement `closeWindow` → `closeObject` callback with ODB address
+2. ✅ Implement `openWindow` → `openObject` callback with ODB address
+3. ⚠️ Consider renaming to `system.callbacks.closeObject` for clarity
+
+**Phase 4: Future Enhancements** (Post-P0a)
+
+1. ⏸️ Named parameter support (pass record instead of list)
+2. ⏸️ Async callback queuing (post callback to main thread)
+3. ⏸️ Callback error handling and retry logic
+
+### 7. Reference Implementation Files
+
+**Study These Legacy Files**:
+
+| File | Purpose | Key Functions |
+|------|---------|---------------|
+| `Common/source/lang.c:1375-1461` | Script execution with parameters | `langrunscriptcode()` |
+| `Common/source/lang.c:1307-1369` | Parameter list building | `langbuildparamlist()` |
+| `Common/source/langregexp.c:1582-1663` | Real-world callback example | `regexprunreplacecallback()` |
+| `Common/source/langlist.c:123-140` | List address pushing | `langpushlistaddress()` |
+| `Common/source/shellwindow.c:1851-1901` | Window callback pattern | `shellrunwindowconfirmationscript()` |
+| `Common/source/strings.c:1385-1451` | String template substitution | `parsedialogstring()` |
+
+**Key Insight from Legacy Code**:
+
+The **regexp callback implementation** (`regexprunreplacecallback`) is the **gold standard** for parameterized callbacks:
+- ✅ Uses local variable table for parameters
+- ✅ Builds list of addresses
+- ✅ Calls `langrunscriptcode()` with parameter list
+- ✅ Cleans up local scope properly
+- ✅ Type-safe and robust
+
+**This should be the template for modern implementation.**
+
+---
+
 **Last Updated**: 2026-01-20
-**Status**: Architecture documented, implementation not started
-**Next Step**: Design detailed API for `langruncallbackwithparams()` and parameter marshalling strategy
+**Status**: Legacy implementation analyzed, modern design patterns identified
+**Next Step**: Implement `langruncallbackwithparams()` based on regexp callback pattern
