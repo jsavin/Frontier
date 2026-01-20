@@ -179,6 +179,29 @@ Several archive branches exist independently and should **never be merged** to d
 
 Don't do complex analysis or design work manually when an agent can do it better and faster.
 
+### Error Type Delegation Patterns
+
+**When encountering specific error types, delegate to specialized agents rather than attempting fixes yourself:**
+
+- **UserTalk syntax errors** → `usertalk-engineer` agent
+  - Missing parentheses, incorrect escape sequences, wrong verb names
+  - Example: `\r\n` vs `char(13) + char(10)`, `sizeOf()` vs `string.length()`
+
+- **Integration test framework issues** → `frontier-sdet` agent
+  - Test harness reporting incorrect exit codes
+  - Test infrastructure bugs (not test content issues)
+  - Example: Manual CLI works but test framework reports failure
+
+- **Test content verification** → `frontier-sdet` or `usertalk-engineer` agent
+  - Verify tests match expected behavior before blaming implementation
+  - Example: Test expects wrong result, implementation is actually correct
+
+- **Architecture/design decisions** → `system-architect` agent
+  - Thread-safety patterns, memory management strategies
+  - Complex refactoring requiring architectural insight
+
+**Rationale**: Specialized agents have domain expertise and can fix issues more reliably than attempting manual fixes. This conserves context in the main conversation and leads to better outcomes.
+
 ### Delegating to Pull-Request Agent - Test Efficiency ⚠️
 
 **IMPORTANT**: Avoid redundant test runs to conserve tokens.

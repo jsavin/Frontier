@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Sys Environment Verbs (sys_environment_verbs)</title>
-    <dateCreated>Mon, 19 Jan 2026 09:22:07 GMT</dateCreated>
+    <dateCreated>Tue, 20 Jan 2026 08:32:54 GMT</dateCreated>
   </head>
   <body>
     <outline text="sys.getenvironmentvariable - get PATH variable - Retrieve PATH environment variable (should exist on all systems)">

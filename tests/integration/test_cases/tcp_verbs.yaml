@@ -29,7 +29,7 @@ tests:
         local(stream = tcp.openAddrStream(0, 80));
         return false
       } else {
-        return true  /* Expected to fail */
+        return true  // Expected to fail
       }
     expected_success: true
     expected_result: "true"
@@ -38,12 +38,12 @@ tests:
     description: "Test connection to closed port"
     script: |
       try {
-        /* Connect to localhost port that should be closed */
+        // Connect to localhost port that should be closed
         local(localhostAddr = tcp.addressEncode("127.0.0.1"));
         local(stream = tcp.openAddrStream(localhostAddr, 9));
-        return "false"  /* Should not reach here */
+        return "false"  // Should not reach here
       } else {
-        return "true"  /* Expected connection refused */
+        return "true"  // Expected connection refused
       }
     expected_success: true
     expected_result: "true"
@@ -57,7 +57,7 @@ tests:
         tcp.closeStream(999);
         return "false"
       } else {
-        return "true"  /* Expected to fail */
+        return "true"  // Expected to fail
       }
     expected_success: true
     expected_result: "true"
@@ -69,7 +69,7 @@ tests:
         tcp.closeStream(0);
         return "false"
       } else {
-        return "true"  /* Expected to fail */
+        return "true"  // Expected to fail
       }
     expected_success: true
     expected_result: "true"
@@ -81,7 +81,7 @@ tests:
         tcp.abortStream(999);
         return "false"
       } else {
-        return "true"  /* Expected to fail */
+        return "true"  // Expected to fail
       }
     expected_success: true
     expected_result: "true"
@@ -95,7 +95,7 @@ tests:
         local(data = tcp.readStream(999, 1024));
         return "false"
       } else {
-        return "true"  /* Expected to fail */
+        return "true"  // Expected to fail
       }
     expected_success: true
     expected_result: "true"
@@ -107,7 +107,7 @@ tests:
         tcp.writeStream(999, "test data");
         return "false"
       } else {
-        return "true"  /* Expected to fail */
+        return "true"  // Expected to fail
       }
     expected_success: true
     expected_result: "true"
@@ -126,7 +126,7 @@ tests:
     description: "Encode 127.0.0.1 to verify host byte order"
     script: |
       local(addr = tcp.addressEncode("127.0.0.1"));
-      /* 127.0.0.1 in host byte order = 0x7F000001 = 2130706433 */
+      // 127.0.0.1 in host byte order = 0x7F000001 = 2130706433
       return (addr == 2130706433)
     expected_success: true
     expected_result: "true"
@@ -157,7 +157,7 @@ tests:
         local(addr = tcp.addressEncode("not.an.ip.address"));
         return "false"
       } else {
-        return "true"  /* Expected to fail */
+        return "true"  // Expected to fail
       }
     expected_success: true
     expected_result: "true"
