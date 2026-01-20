@@ -59,8 +59,12 @@ typedef struct tcp_stream {
     time_t          last_activity; /* Last read/write timestamp */
 } tcp_stream_t;
 
-/* Maximum concurrent connections */
-#define TCP_MAX_STREAMS 256
+/* Configuration Constants */
+#define TCP_MAX_STREAMS 256           /* Maximum concurrent connections */
+#define TCP_MAX_READ_BYTES (16*1024*1024)  /* 16MB max read size */
+#define TCP_FIRST_STREAM_ID 1         /* Stream IDs start at 1 (0 reserved) */
+#define MAX_HOSTNAME_LEN 255          /* Maximum DNS hostname length */
+#define MAX_IPV4_STRING_LEN 15        /* "xxx.xxx.xxx.xxx" max length */
 
 /* TCP Context (Per-Process State) */
 typedef struct tcp_context {
@@ -120,8 +124,9 @@ boolean tcp_listen_stream(long port, long depth, bigstring callback,
                           long refcon, long bind_addr, long *listen_id_out);
 boolean tcp_close_listen(long listen_id);
 
-/* Initialization */
+/* Initialization and Shutdown */
 boolean tcp_init_context(void);
+boolean tcp_shutdown_context(void);
 
 /* Internal Helpers (not exposed to UserTalk) */
 tcp_error_t tcp_map_errno(int err);

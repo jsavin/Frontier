@@ -1,0 +1,20 @@
+#title "tcp.openAddrStream"
+Syntax	tcp.openAddrStream (addr, port)
+Params	addr is a long integer (4-byte) IP address in host byte order, typically obtained from tcp.addressEncode
+	port is the port number to connect to (1-65535)
+Action	Makes a direct TCP/IP connection to the specified IP address and port using blocking I/O.
+	This is a Phase 1A core socket operation that requires the IP address to already be known.
+	Use tcp.openNameStream if you need to resolve a DNS hostname first.
+Returns	A stream ID (integer 1-255) that can be used with tcp.readStream, tcp.writeStream, tcp.closeStream, and tcp.abortStream.
+	Returns an error if connection fails or all 256 stream slots are in use.
+Examples	local (addr = tcp.addressEncode ("93.184.216.34"))
+	local (stream = tcp.openAddrStream (addr, 80))
+	tcp.writeStream (stream, "GET / HTTP/1.0\r\n\r\n")
+	local (response = tcp.readStream (stream, 1024))
+	tcp.closeStream (stream)
+Platform Notes	This verb is implemented on macOS and Linux using POSIX BSD sockets. Windows support is not yet available.
+Notes	Connection establishment is blocking and may take several seconds if the remote host is slow to respond.
+	The maximum number of concurrent connections is 256 (stream IDs 1-255, with 0 reserved).
+	All streams are automatically closed when Frontier exits.
+	For DNS-based connections, use tcp.openNameStream instead.
+	This verb replaces the legacy NetEvents.openStream for direct IP connections.

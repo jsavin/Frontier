@@ -108,7 +108,7 @@ void tcp_set_error(tcp_error_t err, const char *detail) {
 /* Internal function: Find free stream slot
  * Must be called with TCP_LOCK() held */
 static int tcp_alloc_stream_id(void) {
-    for (int i = 1; i < TCP_MAX_STREAMS; i++) {  /* Start at 1 (0 is invalid) */
+    for (int i = TCP_FIRST_STREAM_ID; i < TCP_MAX_STREAMS; i++) {  /* Start at 1 (0 is invalid) */
         if (g_tcp_context.streams[i].sockfd == -1) {
             /* Initialize stream record */
             memset(&g_tcp_context.streams[i], 0, sizeof(tcp_stream_t));
@@ -168,7 +168,7 @@ boolean tcp_address_encode(bigstring ip_string, long *addr_out) {
     struct in_addr addr;
 
     /* Convert Pascal string to C string */
-    if (stringlength(ip_string) > 15) {
+    if (stringlength(ip_string) > MAX_IPV4_STRING_LEN) {
         tcp_set_error(TCP_ERR_SOCKET_ERROR, "IP address too long");
         return false;
     }
@@ -297,7 +297,13 @@ boolean tcp_read_stream(long stream_id, long bytes_to_read, Handle *data_out) {
     /* Validate parameters */
     if (bytes_to_read <= 0) {
         *data_out = nil;
-        tcp_set_error(TCP_ERR_SOCKET_ERROR, "Invalid byte count");
+        tcp_set_error(TCP_ERR_SOCKET_ERROR, "Invalid byte count (must be positive)");
+        return false;
+    }
+
+    if (bytes_to_read > TCP_MAX_READ_BYTES) {
+        *data_out = nil;
+        tcp_set_error(TCP_ERR_SOCKET_ERROR, "Read size exceeds maximum (16MB limit)");
         return false;
     }
 
@@ -536,7 +542,7 @@ boolean tcp_name_to_address(bigstring domain_name, long *addr_out) {
     log_debug(LOG_COMP_LANG, "tcp_name_to_address: looking up hostname");
 
     /* Convert Pascal string to C string */
-    if (stringlength(domain_name) > 255) {
+    if (stringlength(domain_name) > MAX_HOSTNAME_LEN) {
         tcp_set_error(TCP_ERR_DNS_FAILED, "Hostname too long");
         return false;
     }
@@ -566,7 +572,15 @@ boolean tcp_name_to_address(bigstring domain_name, long *addr_out) {
 }
 
 /* tcp.addressToName(addr) -> domainName
- * Reverse DNS: IP address -> hostname (blocking) */
+ * Reverse DNS: IP address -> hostname (blocking)
+ *
+ * IMPORTANT: This function ALWAYS returns true and never signals failure.
+ * If reverse DNS lookup fails, it falls back to returning the IP address
+ * as a dotted-decimal string (e.g., "192.168.1.1"). This is intentional
+ * behavior to ensure UserTalk scripts always get a usable result.
+ *
+ * To detect if reverse DNS succeeded, compare the result with the original
+ * IP address string - if they match, reverse lookup failed. */
 boolean tcp_address_to_name(long addr, bigstring name_out) {
     struct sockaddr_in sa;
     char hostname[NI_MAXHOST];
@@ -577,11 +591,12 @@ boolean tcp_address_to_name(long addr, bigstring name_out) {
     sa.sin_family = AF_INET;
     sa.sin_addr.s_addr = htonl((uint32_t)addr);
 
-    /* Reverse lookup (blocking) */
+    /* Reverse lookup (blocking) - may take 5-30 seconds on timeout */
     if (getnameinfo((struct sockaddr*)&sa, sizeof(sa),
                     hostname, sizeof(hostname),
                     NULL, 0, 0) != 0) {
-        /* Reverse lookup failed, return IP as string */
+        /* Reverse lookup failed - return IP address as fallback (intentional) */
+        log_debug(LOG_COMP_LANG, "tcp_address_to_name: reverse lookup failed, returning IP string");
         tcp_address_decode(addr, name_out);
         return true;
     }
@@ -703,6 +718,12 @@ boolean tcp_open_stream_name(bigstring hostname, long port, long *stream_id_out)
 /* tcp_init_context() - Initialize TCP subsystem
  * Called from tcpinitverbs() during Frontier CLI startup */
 boolean tcp_init_context(void) {
+    /* Guard against double-initialization */
+    if (g_tcp_context.initialized) {
+        log_warn(LOG_COMP_LANG, "TCP context already initialized, skipping");
+        return true;
+    }
+
     log_info(LOG_COMP_LANG, "Initializing TCP context");
 
     /* Initialize TCP context */
@@ -721,6 +742,44 @@ boolean tcp_init_context(void) {
     g_tcp_context.initialized = true;
 
     log_info(LOG_COMP_LANG, "TCP context initialized successfully");
+
+    return true;
+}
+
+/* tcp_shutdown_context() - Cleanup TCP subsystem
+ * Closes all active streams and destroys synchronization primitives.
+ * Called during Frontier shutdown or verb system cleanup. */
+boolean tcp_shutdown_context(void) {
+    if (!g_tcp_context.initialized) {
+        log_debug(LOG_COMP_LANG, "TCP context not initialized, nothing to shutdown");
+        return true;
+    }
+
+    log_info(LOG_COMP_LANG, "Shutting down TCP context");
+
+    TCP_LOCK();
+
+    /* Close all active streams */
+    int closed_count = 0;
+    for (int i = TCP_FIRST_STREAM_ID; i < TCP_MAX_STREAMS; i++) {
+        if (g_tcp_context.streams[i].sockfd >= 0) {
+            close(g_tcp_context.streams[i].sockfd);
+            g_tcp_context.streams[i].sockfd = -1;
+            g_tcp_context.streams[i].state = STREAM_INVALID;
+            closed_count++;
+        }
+    }
+
+    g_tcp_context.active_count = 0;
+    g_tcp_context.initialized = false;
+
+    TCP_UNLOCK();
+
+    /* Destroy synchronization primitives */
+    pthread_mutex_destroy(&g_tcp_context.mutex);
+    pthread_cond_destroy(&g_tcp_context.activity_cond);
+
+    log_info(LOG_COMP_LANG, "TCP context shutdown complete (closed %d streams)", closed_count);
 
     return true;
 }

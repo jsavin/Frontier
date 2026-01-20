@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Tcp Verbs (tcp_verbs)</title>
-    <dateCreated>Tue, 20 Jan 2026 08:43:00 GMT</dateCreated>
+    <dateCreated>Tue, 20 Jan 2026 08:49:17 GMT</dateCreated>
   </head>
   <body>
     <outline text="tcp.countConnections - initial state - Verify no active connections at start">
@@ -167,8 +167,8 @@
     </outline>
     <outline text="tcp.openAddrStream - connect to example.com port 80 - Test real HTTP connection via IP address">
       <outline text="Metadata">
-        <outline text="skip_if_unavailable: True"/>
         <outline text="expected_result: true"/>
+        <outline text="skip: Requires external network connectivity"/>
       </outline>
       <outline text="Script">
         <outline text="try">
@@ -187,30 +187,25 @@
     </outline>
     <outline text="tcp connection lifecycle - open and close - Test complete stream lifecycle">
       <outline text="Metadata">
-        <outline text="skip_if_unavailable: True"/>
         <outline text="expected_result: true"/>
+        <outline text="skip: Requires external network connectivity"/>
       </outline>
       <outline text="Script">
         <outline text="try">
           <outline text="local(addr = tcp.addressEncode(&quot;93.184.216.34&quot;))"/>
           <outline text="local(stream = tcp.openAddrStream(addr, 80))"/>
           <outline text="if (stream &lt;= 0)">
-            <outline text="// Connection failed"/>
             <outline text="return &quot;false&quot;"/>
           </outline>
-          <outline text="// Verify connection count increased"/>
           <outline text="local(count1 = tcp.countConnections())"/>
           <outline text="if (count1 == 0)">
             <outline text="tcp.closeStream(stream)"/>
             <outline text="return &quot;false&quot;"/>
           </outline>
-          <outline text="// Close connection"/>
           <outline text="local(ok = tcp.closeStream(stream))"/>
           <outline text="if (not ok)">
-            <outline text="// Close failed"/>
             <outline text="return &quot;false&quot;"/>
           </outline>
-          <outline text="// Note: Count may not immediately decrease due to TIME_WAIT"/>
           <outline text="return &quot;true&quot;"/>
         </outline>
         <outline text="} else">
@@ -220,8 +215,8 @@
     </outline>
     <outline text="tcp.readStream - empty read non-blocking - Test non-blocking read returns empty when no data">
       <outline text="Metadata">
-        <outline text="skip_if_unavailable: True"/>
         <outline text="expected_result: true"/>
+        <outline text="skip: Requires external network connectivity"/>
       </outline>
       <outline text="Script">
         <outline text="try">
@@ -230,9 +225,7 @@
           <outline text="if (stream &lt;= 0)">
             <outline text="return &quot;false&quot;"/>
           </outline>
-          <outline text="// Try to read immediately (no data sent yet)"/>
           <outline text="local(data = tcp.readStream(stream, 1024))"/>
-          <outline text="// Non-blocking read should return empty string"/>
           <outline text="local(isEmpty = (string.length(data) == 0))"/>
           <outline text="tcp.closeStream(stream)"/>
           <outline text="if (isEmpty)">
@@ -249,8 +242,8 @@
     </outline>
     <outline text="tcp.writeStream and readStream - HTTP request - Test write and read with real HTTP server">
       <outline text="Metadata">
-        <outline text="skip_if_unavailable: True"/>
         <outline text="expected_result: true"/>
+        <outline text="skip: Requires external network connectivity"/>
       </outline>
       <outline text="Script">
         <outline text="try">
@@ -259,7 +252,6 @@
           <outline text="if (stream &lt;= 0)">
             <outline text="return &quot;false&quot;"/>
           </outline>
-          <outline text="// Send minimal HTTP request"/>
           <outline text="local(crlf = char(13) + char(10))"/>
           <outline text="local(request = &quot;GET / HTTP/1.0&quot; + crlf + crlf)"/>
           <outline text="local(writeOk = tcp.writeStream(stream, request))"/>
@@ -267,10 +259,8 @@
             <outline text="tcp.closeStream(stream)"/>
             <outline text="return &quot;false&quot;"/>
           </outline>
-          <outline text="// Read response (may need small delay for server response)"/>
           <outline text="local(response = tcp.readStream(stream, 1024))"/>
           <outline text="tcp.closeStream(stream)"/>
-          <outline text="// Accept either empty (too fast) or HTTP response"/>
           <outline text="if ((string.length(response) == 0) or (string.contains(response, &quot;HTTP&quot;, false)))">
             <outline text="return &quot;true&quot;"/>
           </outline>
@@ -285,8 +275,8 @@
     </outline>
     <outline text="tcp.abortStream - immediate close - Test RST close vs graceful close">
       <outline text="Metadata">
-        <outline text="skip_if_unavailable: True"/>
         <outline text="expected_result: true"/>
+        <outline text="skip: Requires external network connectivity"/>
       </outline>
       <outline text="Script">
         <outline text="try">
@@ -295,7 +285,6 @@
           <outline text="if (stream &lt;= 0)">
             <outline text="return &quot;false&quot;"/>
           </outline>
-          <outline text="// Abort immediately (send RST)"/>
           <outline text="local(ok = tcp.abortStream(stream))"/>
           <outline text="if (ok)">
             <outline text="return &quot;true&quot;"/>
@@ -311,23 +300,20 @@
     </outline>
     <outline text="tcp.countConnections - multiple connections - Test connection counting with multiple streams">
       <outline text="Metadata">
-        <outline text="skip_if_unavailable: True"/>
         <outline text="expected_result: true"/>
+        <outline text="skip: Requires external network connectivity"/>
       </outline>
       <outline text="Script">
         <outline text="try">
           <outline text="local(addr = tcp.addressEncode(&quot;93.184.216.34&quot;))"/>
-          <outline text="// Open multiple connections"/>
           <outline text="local(stream1 = tcp.openAddrStream(addr, 80))"/>
           <outline text="local(stream2 = tcp.openAddrStream(addr, 80))"/>
           <outline text="local(stream3 = tcp.openAddrStream(addr, 80))"/>
           <outline text="if ((stream1 &lt;= 0) or (stream2 &lt;= 0) or (stream3 &lt;= 0))">
             <outline text="return &quot;false&quot;"/>
           </outline>
-          <outline text="// Check count"/>
           <outline text="local(count = tcp.countConnections())"/>
           <outline text="local(hasMultiple = (count &gt;= 3))"/>
-          <outline text="// Clean up"/>
           <outline text="tcp.closeStream(stream1)"/>
           <outline text="tcp.closeStream(stream2)"/>
           <outline text="tcp.closeStream(stream3)"/>
@@ -345,8 +331,8 @@
     </outline>
     <outline text="tcp.closeStream - double close - Test closing already-closed stream">
       <outline text="Metadata">
-        <outline text="skip_if_unavailable: True"/>
         <outline text="expected_result: true"/>
+        <outline text="skip: Requires external network connectivity"/>
       </outline>
       <outline text="Script">
         <outline text="try">
@@ -355,9 +341,7 @@
           <outline text="if (stream &lt;= 0)">
             <outline text="return &quot;false&quot;"/>
           </outline>
-          <outline text="// Close once"/>
           <outline text="tcp.closeStream(stream)"/>
-          <outline text="// Try to close again - should fail"/>
           <outline text="try">
             <outline text="tcp.closeStream(stream)"/>
             <outline text="return &quot;false&quot;"/>
@@ -373,8 +357,8 @@
     </outline>
     <outline text="tcp.readStream - read from closed stream - Test read after stream closed">
       <outline text="Metadata">
-        <outline text="skip_if_unavailable: True"/>
         <outline text="expected_result: true"/>
+        <outline text="skip: Requires external network connectivity"/>
       </outline>
       <outline text="Script">
         <outline text="try">
@@ -384,7 +368,6 @@
             <outline text="return &quot;false&quot;"/>
           </outline>
           <outline text="tcp.closeStream(stream)"/>
-          <outline text="// Try to read after close - should fail"/>
           <outline text="try">
             <outline text="local(data = tcp.readStream(stream, 1024))"/>
             <outline text="return &quot;false&quot;"/>
@@ -400,8 +383,8 @@
     </outline>
     <outline text="tcp.writeStream - empty data - Test write with zero-length data">
       <outline text="Metadata">
-        <outline text="skip_if_unavailable: True"/>
         <outline text="expected_result: true"/>
+        <outline text="skip: Requires external network connectivity"/>
       </outline>
       <outline text="Script">
         <outline text="try">
@@ -410,7 +393,6 @@
           <outline text="if (stream &lt;= 0)">
             <outline text="return &quot;false&quot;"/>
           </outline>
-          <outline text="// Write empty string - should succeed (no-op)"/>
           <outline text="local(ok = tcp.writeStream(stream, &quot;&quot;))"/>
           <outline text="tcp.closeStream(stream)"/>
           <outline text="if (ok)">

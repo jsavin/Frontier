@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>File Verbs (file_verbs)</title>
-    <dateCreated>Tue, 20 Jan 2026 08:43:00 GMT</dateCreated>
+    <dateCreated>Tue, 20 Jan 2026 08:49:17 GMT</dateCreated>
   </head>
   <body>
     <outline text="file.fileFromPath - extract filename from path - Extract filename component from path string (like basename)">

@@ -1,0 +1,19 @@
+#title "tcp.openNameStream"
+Syntax	tcp.openNameStream (hostname, port)
+Params	hostname is a DNS domain name (e.g., "example.com") or dotted IP address string
+	port is the port number to connect to (1-65535)
+Action	Performs DNS lookup and establishes TCP/IP connection in a single operation (both blocking).
+	This is a Phase 1B convenience verb that combines tcp.nameToAddress and tcp.openAddrStream.
+Returns	A stream ID (integer 1-255) that can be used with tcp.readStream, tcp.writeStream, tcp.closeStream, and tcp.abortStream.
+	Returns an error if DNS lookup fails, connection fails, or all 256 stream slots are in use.
+Examples	local (stream = tcp.openNameStream ("example.com", 80))
+	tcp.writeStream (stream, "GET / HTTP/1.0\r\n\r\n")
+	local (response = tcp.readStream (stream, 1024))
+	tcp.closeStream (stream)
+Platform Notes	This verb is implemented on macOS and Linux using POSIX BSD sockets. Windows support is not yet available.
+Notes	DNS lookup is blocking and may take 5-30 seconds on timeout or slow DNS servers.
+	Connection establishment is also blocking and may take several seconds.
+	For best performance with multiple connections to the same host, use tcp.nameToAddress once, then tcp.openAddrStream multiple times.
+	The maximum number of concurrent connections is 256 (stream IDs 1-255, with 0 reserved).
+	All streams are automatically closed when Frontier exits.
+	This verb replaces the legacy NetEvents.openStream when using DNS names.

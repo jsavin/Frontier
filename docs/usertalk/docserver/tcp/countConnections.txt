@@ -1,0 +1,20 @@
+#title "tcp.countConnections"
+Syntax	tcp.countConnections ()
+Params	None
+Action	Returns the number of currently active TCP stream connections.
+Returns	An integer (0-255) indicating how many streams are currently open.
+Examples	// Check if any connections are active
+	if tcp.countConnections() > 0 {
+		dialog.notify ("You have " + tcp.countConnections() + " active TCP connections")}
+
+	// Prevent opening too many connections
+	if tcp.countConnections() >= 250 {
+		dialog.alert ("Too many connections - close some before opening more")
+		return}
+	local (stream = tcp.openNameStream ("example.com", 80))
+Platform Notes	This verb is implemented on macOS and Linux. Windows support is not yet available.
+Notes	The maximum number of concurrent connections is 256 (stream IDs 1-255).
+	This count includes all states: connecting, connected, and closing streams.
+	Streams in TIME_WAIT state after closing may still be counted briefly.
+	Use this verb to monitor connection usage and prevent hitting the limit.
+	This is a new Phase 1A verb not present in legacy Frontier versions.
