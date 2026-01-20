@@ -1,0 +1,195 @@
+tests:
+- name: tcp.countConnections - initial state
+  description: Verify no active connections at start
+  script: 'return tcp.countConnections()
+
+    '
+  expected_success: true
+  expected_result: '0'
+- name: tcp.openAddrStream - invalid address format
+  description: Test error handling for invalid stream
+  script: "try {\n  local(stream = tcp.openAddrStream(0, 80));\n  return false\n}\
+    \ else {\n  return true\n}\n"
+  expected_success: true
+  expected_result: 'true'
+- name: tcp.openAddrStream - connection refused
+  description: Test connection to closed port
+  script: "try {\n  local(localhostAddr = tcp.addressEncode(\"127.0.0.1\"));\n  local(stream\
+    \ = tcp.openAddrStream(localhostAddr, 9));\n  return \"false\"\n} else {\n  return\
+    \ \"true\"\n}\n"
+  expected_success: true
+  expected_result: 'true'
+- name: tcp.closeStream - invalid stream ID
+  description: Test error handling for invalid stream
+  script: "try {\n  tcp.closeStream(999);\n  return \"false\"\n} else {\n  return\
+    \ \"true\"\n}\n"
+  expected_success: true
+  expected_result: 'true'
+- name: tcp.closeStream - stream ID zero
+  description: Test error handling for zero stream ID
+  script: "try {\n  tcp.closeStream(0);\n  return \"false\"\n} else {\n  return \"\
+    true\"\n}\n"
+  expected_success: true
+  expected_result: 'true'
+- name: tcp.abortStream - invalid stream ID
+  description: Test abort with invalid stream
+  script: "try {\n  tcp.abortStream(999);\n  return \"false\"\n} else {\n  return\
+    \ \"true\"\n}\n"
+  expected_success: true
+  expected_result: 'true'
+- name: tcp.readStream - invalid stream ID
+  description: Test read from invalid stream
+  script: "try {\n  local(data = tcp.readStream(999, 1024));\n  return \"false\"\n\
+    } else {\n  return \"true\"\n}\n"
+  expected_success: true
+  expected_result: 'true'
+- name: tcp.writeStream - invalid stream ID
+  description: Test write to invalid stream
+  script: "try {\n  tcp.writeStream(999, \"test data\");\n  return \"false\"\n} else\
+    \ {\n  return \"true\"\n}\n"
+  expected_success: true
+  expected_result: 'true'
+- name: tcp.addressEncode - valid IPv4
+  description: Encode dotted decimal IP to long
+  script: 'local(addr = tcp.addressEncode("192.168.1.1"));
+
+    return (addr > 0)
+
+    '
+  expected_success: true
+  expected_result: 'true'
+- name: tcp.addressEncode - localhost
+  description: Encode 127.0.0.1 to verify host byte order
+  script: 'local(addr = tcp.addressEncode("127.0.0.1"));
+
+    return (addr == 2130706433)
+
+    '
+  expected_success: true
+  expected_result: 'true'
+- name: tcp.addressDecode - valid address
+  description: Decode long address back to dotted decimal
+  script: 'local(encoded = tcp.addressEncode("192.168.1.1"));
+
+    local(decoded = tcp.addressDecode(encoded));
+
+    return decoded
+
+    '
+  expected_success: true
+  expected_result: 192.168.1.1
+- name: tcp.addressDecode - localhost round trip
+  description: Verify encode/decode round trip
+  script: 'local(original = "127.0.0.1");
+
+    local(encoded = tcp.addressEncode(original));
+
+    local(decoded = tcp.addressDecode(encoded));
+
+    return (decoded == original)
+
+    '
+  expected_success: true
+  expected_result: 'true'
+- name: tcp.addressEncode - invalid format
+  description: Test error handling for invalid IP string
+  script: "try {\n  local(addr = tcp.addressEncode(\"not.an.ip.address\"));\n  return\
+    \ \"false\"\n} else {\n  return \"true\"\n}\n"
+  expected_success: true
+  expected_result: 'true'
+- name: tcp.openAddrStream - connect to example.com port 80
+  description: Test real HTTP connection via IP address
+  script: "try {\n  local(addr = tcp.addressEncode(\"93.184.216.34\"));\n  local(stream\
+    \ = tcp.openAddrStream(addr, 80));\n  if (stream > 0) {\n    tcp.closeStream(stream);\n\
+    \    return \"true\"\n  };\n  return \"false\"\n} else {\n  return \"false\"\n\
+    }\n"
+  expected_success: true
+  expected_result: 'true'
+  skip: Requires external network connectivity
+- name: tcp connection lifecycle - open and close
+  description: Test complete stream lifecycle
+  script: "try {\n  local(addr = tcp.addressEncode(\"93.184.216.34\"));\n  local(stream\
+    \ = tcp.openAddrStream(addr, 80));\n\n  if (stream <= 0) {\n    return \"false\"\
+    \n  };\n\n  local(count1 = tcp.countConnections());\n  if (count1 == 0) {\n  \
+    \  tcp.closeStream(stream);\n    return \"false\"\n  };\n\n  local(ok = tcp.closeStream(stream));\n\
+    \  if (not ok) {\n    return \"false\"\n  };\n\n  return \"true\"\n} else {\n\
+    \  return \"false\"\n}\n"
+  expected_success: true
+  expected_result: 'true'
+  skip: Requires external network connectivity
+- name: tcp.readStream - empty read non-blocking
+  description: Test non-blocking read returns empty when no data
+  script: "try {\n  local(addr = tcp.addressEncode(\"93.184.216.34\"));\n  local(stream\
+    \ = tcp.openAddrStream(addr, 80));\n\n  if (stream <= 0) {\n    return \"false\"\
+    \n  };\n\n  local(data = tcp.readStream(stream, 1024));\n\n  local(isEmpty = (string.length(data)\
+    \ == 0));\n\n  tcp.closeStream(stream);\n  if (isEmpty) {\n    return \"true\"\
+    \n  } else {\n    return \"false\"\n  }\n} else {\n  return \"false\"\n}\n"
+  expected_success: true
+  expected_result: 'true'
+  skip: Requires external network connectivity
+- name: tcp.writeStream and readStream - HTTP request
+  description: Test write and read with real HTTP server
+  script: "try {\n  local(addr = tcp.addressEncode(\"93.184.216.34\"));\n  local(stream\
+    \ = tcp.openAddrStream(addr, 80));\n\n  if (stream <= 0) {\n    return \"false\"\
+    \n  };\n\n  local(crlf = char(13) + char(10));\n  local(request = \"GET / HTTP/1.0\"\
+    \ + crlf + crlf);\n  local(writeOk = tcp.writeStream(stream, request));\n\n  if\
+    \ (not writeOk) {\n    tcp.closeStream(stream);\n    return \"false\"\n  };\n\n\
+    \  local(response = tcp.readStream(stream, 1024));\n\n  tcp.closeStream(stream);\n\
+    \n  if ((string.length(response) == 0) or (string.contains(response, \"HTTP\"\
+    , false))) {\n    return \"true\"\n  } else {\n    return \"false\"\n  }\n} else\
+    \ {\n  return \"false\"\n}\n"
+  expected_success: true
+  expected_result: 'true'
+  skip: Requires external network connectivity
+- name: tcp.abortStream - immediate close
+  description: Test RST close vs graceful close
+  script: "try {\n  local(addr = tcp.addressEncode(\"93.184.216.34\"));\n  local(stream\
+    \ = tcp.openAddrStream(addr, 80));\n\n  if (stream <= 0) {\n    return \"false\"\
+    \n  };\n\n  local(ok = tcp.abortStream(stream));\n  if (ok) {\n    return \"true\"\
+    \n  } else {\n    return \"false\"\n  }\n} else {\n  return \"false\"\n}\n"
+  expected_success: true
+  expected_result: 'true'
+  skip: Requires external network connectivity
+- name: tcp.countConnections - multiple connections
+  description: Test connection counting with multiple streams
+  script: "try {\n  local(addr = tcp.addressEncode(\"93.184.216.34\"));\n\n  local(stream1\
+    \ = tcp.openAddrStream(addr, 80));\n  local(stream2 = tcp.openAddrStream(addr,\
+    \ 80));\n  local(stream3 = tcp.openAddrStream(addr, 80));\n\n  if ((stream1 <=\
+    \ 0) or (stream2 <= 0) or (stream3 <= 0)) {\n    return \"false\"\n  };\n\n  local(count\
+    \ = tcp.countConnections());\n  local(hasMultiple = (count >= 3));\n\n  tcp.closeStream(stream1);\n\
+    \  tcp.closeStream(stream2);\n  tcp.closeStream(stream3);\n\n  if (hasMultiple)\
+    \ {\n    return \"true\"\n  } else {\n    return \"false\"\n  }\n} else {\n  return\
+    \ \"false\"\n}\n"
+  expected_success: true
+  expected_result: 'true'
+  skip: Requires external network connectivity
+- name: tcp.closeStream - double close
+  description: Test closing already-closed stream
+  script: "try {\n  local(addr = tcp.addressEncode(\"93.184.216.34\"));\n  local(stream\
+    \ = tcp.openAddrStream(addr, 80));\n\n  if (stream <= 0) {\n    return \"false\"\
+    \n  };\n\n  tcp.closeStream(stream);\n\n  try {\n    tcp.closeStream(stream);\n\
+    \    return \"false\"\n  } else {\n    return \"true\"\n  }\n} else {\n  return\
+    \ \"false\"\n}\n"
+  expected_success: true
+  expected_result: 'true'
+  skip: Requires external network connectivity
+- name: tcp.readStream - read from closed stream
+  description: Test read after stream closed
+  script: "try {\n  local(addr = tcp.addressEncode(\"93.184.216.34\"));\n  local(stream\
+    \ = tcp.openAddrStream(addr, 80));\n\n  if (stream <= 0) {\n    return \"false\"\
+    \n  };\n\n  tcp.closeStream(stream);\n\n  try {\n    local(data = tcp.readStream(stream,\
+    \ 1024));\n    return \"false\"\n  } else {\n    return \"true\"\n  }\n} else\
+    \ {\n  return \"false\"\n}\n"
+  expected_success: true
+  expected_result: 'true'
+  skip: Requires external network connectivity
+- name: tcp.writeStream - empty data
+  description: Test write with zero-length data
+  script: "try {\n  local(addr = tcp.addressEncode(\"93.184.216.34\"));\n  local(stream\
+    \ = tcp.openAddrStream(addr, 80));\n\n  if (stream <= 0) {\n    return \"false\"\
+    \n  };\n\n  local(ok = tcp.writeStream(stream, \"\"));\n\n  tcp.closeStream(stream);\n\
+    \  if (ok) {\n    return \"true\"\n  } else {\n    return \"false\"\n  }\n} else\
+    \ {\n  return \"false\"\n}\n"
+  expected_success: true
+  expected_result: 'true'
+  skip: Requires external network connectivity

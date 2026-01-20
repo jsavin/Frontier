@@ -1,1 +1,25 @@
-#title "tcp.addressToName"Syntax	tcp.addressToName (adr) Params	adr is a packed 4-byte IP addressAction	Looks up the DNS name for the specified IP addressReturns	A string containing the DNS name for the specified IP addressExamples	tcp.addressToName (-839093064)		"www5.erols.com"Notes	Use tcp.addressToName ("tcp.addressEncode" (adr)) to convert a dotted decimal IP address string into a DNS name.
+#title "tcp.addressToName"
+Syntax	tcp.addressToName (addr)
+Params	addr is a long integer (4-byte) IP address in host byte order
+Action	Performs reverse DNS lookup to find the hostname for the specified IP address (blocking operation).
+	IMPORTANT: This verb ALWAYS succeeds and never returns an error.
+	If reverse DNS fails, it returns the IP address as a dotted-decimal string instead.
+Returns	A string containing either:
+	- The DNS hostname if reverse lookup succeeded (e.g., "example.com")
+	- The IP address as a string if reverse lookup failed (e.g., "192.168.1.1")
+Examples	local (addr = tcp.addressEncode ("93.184.216.34"))
+	local (hostname = tcp.addressToName (addr))
+	// Returns "example.com" if DNS works, or "93.184.216.34" if it fails
+
+	// Detect reverse DNS failure
+	local (addr = tcp.addressEncode ("192.168.1.1"))
+	local (hostname = tcp.addressToName (addr))
+	local (ipString = tcp.addressDecode (addr))
+	if hostname == ipString {
+		dialog.notify ("Reverse DNS failed - got IP string back")}
+Platform Notes	This verb is implemented on macOS and Linux using POSIX getnameinfo(). Windows support is not yet available.
+Notes	Reverse DNS lookup is blocking and may take 5-30 seconds on timeout.
+	The fallback to IP string is intentional to ensure scripts always get a usable result.
+	To detect if reverse DNS succeeded, compare result with tcp.addressDecode (addr).
+	For forward DNS (hostname to IP), use tcp.nameToAddress instead.
+	This verb is part of Phase 1B DNS operations.

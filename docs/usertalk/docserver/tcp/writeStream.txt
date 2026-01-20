@@ -1,1 +1,23 @@
-#title "tcp.writeStream"Syntax	tcp.writeStream (stream, data)Params	stream is a stream reference returned by "tcp.openStream".	data is the data to be written to the connectionAction	Sends the specified data through the specified TCP/IP connection.Returns	TrueExamplesNotes	This verb obsoletes NetEvents.writeStream.
+#title "tcp.writeStream"
+Syntax	tcp.writeStream (stream, data)
+Params	stream is a stream ID returned from tcp.openAddrStream or tcp.openNameStream
+	data is a string or binary value containing the data to send
+Action	Sends the specified data through the TCP/IP connection using blocking I/O.
+	Waits until all data is accepted by the TCP send buffer before returning.
+Returns	True if the write succeeded, or an error if the stream is invalid or the write failed.
+Examples	// Send HTTP request
+	local (stream = tcp.openNameStream ("example.com", 80))
+	local (crlf = char(13) + char(10))
+	tcp.writeStream (stream, "GET / HTTP/1.0" + crlf + crlf)
+	local (response = tcp.readStream (stream, 4096))
+	tcp.closeStream (stream)
+
+	// Send binary data
+	local (binaryData = pack.binary ("Hello", binaryType))
+	tcp.writeStream (stream, binaryData)
+Platform Notes	This verb is implemented on macOS and Linux using POSIX BSD sockets in blocking mode. Windows support is not yet available.
+Notes	This verb blocks until all data is sent - it does NOT return immediately.
+	TCP flow control and socket buffer management are handled automatically.
+	Large writes may take time depending on network speed and remote buffer availability.
+	If the remote peer closes the connection during write, an error is returned.
+	This verb replaces NetEvents.writeStream with blocking semantics for reliability.

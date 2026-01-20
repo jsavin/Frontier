@@ -142,6 +142,7 @@ RUNTIME_SOURCES = \
     ../Common/source/tableverbs.c \
     ../Common/source/stringverbs.c \
     ../Common/source/dbverbs.c \
+    ../Common/source/tcpverbs.c \
     ../Common/source/headless_selection.c \
     ../Common/source/shell_api.c \
     ../Common/source/shell_api_headless.c \

@@ -1,1 +1,31 @@
-#title "tcp.readStream"Syntax	tcp.readStream (stream, bytesToRead)Params	stream is a stream reference returned by "tcp.openStream".	bytesToRead is the number of bytes that tcp.readStream will attempt to read from the connectionAction	Reads waiting data from an open TCP/IP connection.Returns	The data that was read from the connection.Examples	Notes	This verb obsoletes NetEvents.readStream.
+#title "tcp.readStream"
+Syntax	tcp.readStream (stream, maxBytes)
+Params	stream is a stream ID returned from tcp.openAddrStream or tcp.openNameStream
+	maxBytes is the maximum number of bytes to read (1 to 16MB limit)
+Action	Reads available data from the TCP stream using non-blocking I/O.
+	Returns immediately with whatever data is available (may be empty if none ready).
+	This allows scripts to poll for data without hanging.
+Returns	A binary or string value containing the data read (0 to maxBytes bytes).
+	Returns empty string if no data is available yet.
+	Returns an error if the stream is invalid or closed.
+Examples	// Read with timeout loop
+	local (data = "")
+	local (timeout = clock.ticks() + 600) // 10 second timeout
+	while string.length(data) == 0 {
+		data = tcp.readStream (stream, 1024)
+		if clock.ticks() > timeout {
+			tcp.closeStream (stream)
+			return ("timeout") }}
+
+	// Simple immediate read
+	local (response = tcp.readStream (stream, 4096))
+	if string.length(response) > 0 {
+		dialog.notify ("Got " + string.length(response) + " bytes")}
+Platform Notes	This verb is implemented on macOS and Linux using POSIX BSD sockets with O_NONBLOCK flag. Windows support is not yet available.
+Notes	This verb returns immediately - it does NOT block waiting for data.
+	If no data is available, an empty string is returned (this is not an error).
+	The actual bytes read may be less than maxBytes depending on network buffering.
+	To read until a specific delimiter or EOF, see tcp.readStreamUntil and tcp.readStreamUntilClosed (Phase 2).
+	Maximum read size is 16MB per call to prevent excessive memory allocation.
+	Connection closure by peer returns empty string (same as no data available).
+	This verb replaces NetEvents.readStream with non-blocking semantics.
