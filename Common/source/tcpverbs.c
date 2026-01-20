@@ -219,8 +219,8 @@ boolean tcp_is_private_ip(uint32_t addr) {
     if (octet1 == 10)
         return true;
 
-    /* 127.0.0.0/8 - Loopback */
-    if (octet1 == 127)
+    /* 127.0.0.0/8 - Loopback (allow 127.0.0.1 for local development) */
+    if (octet1 == 127 && addr != 0x7F000001)  /* 0x7F000001 = 127.0.0.1 */
         return true;
 
     /* 169.254.0.0/16 - Link-local */
@@ -623,11 +623,17 @@ boolean tcp_close_stream(long stream_id) {
 
     sockfd = stream->sockfd;
     stream->state = STREAM_CLOSING;
-    stream->sockfd = -1;  /* Mark socket invalid BEFORE unlock to prevent double-close */
+
+    /* CRITICAL: Mark socket as -1 BEFORE releasing lock to prevent double-close race.
+     * Between TCP_UNLOCK() and the subsequent TCP_LOCK(), another thread could attempt
+     * to close this stream. By setting sockfd = -1 first, we ensure tcp_get_stream()
+     * will reject the stream (it checks sockfd < 0), preventing concurrent close operations.
+     * This pattern is intentional and must be preserved. */
+    stream->sockfd = -1;
     refcount = stream->refcount;
     TCP_UNLOCK();
 
-    /* Graceful shutdown */
+    /* Graceful shutdown (performed without lock - blocking syscalls) */
     shutdown(sockfd, SHUT_RDWR);  /* Send FIN */
     close(sockfd);
 
@@ -664,12 +670,18 @@ boolean tcp_abort_stream(long stream_id) {
 
     sockfd = stream->sockfd;
     stream->state = STREAM_CLOSING;
-    stream->sockfd = -1;  /* Mark socket invalid BEFORE unlock to prevent double-close */
+
+    /* SAFETY: Mark socket as -1 to prevent double-close. While lock is held throughout
+     * tcp_abort_stream(), marking sockfd=-1 ensures stream validation fails if another
+     * operation attempts to access this stream. This is a defensive pattern. */
+    stream->sockfd = -1;
     refcount = stream->refcount;
 
     /* Set SO_LINGER to 0 for immediate RST */
     struct linger linger_opt = {1, 0};  /* on, timeout=0 */
-    setsockopt(sockfd, SOL_SOCKET, SO_LINGER, &linger_opt, sizeof(linger_opt));
+    if (setsockopt(sockfd, SOL_SOCKET, SO_LINGER, &linger_opt, sizeof(linger_opt)) == -1) {
+        log_warn(LOG_COMP_LANG, "tcp_abort_stream: setsockopt(SO_LINGER) failed: %s", strerror(errno));
+    }
 
     close(sockfd);  /* Sends RST */
 
@@ -760,6 +772,11 @@ boolean tcp_name_to_address(bigstring domain_name, long *addr_out) {
  *
  * To detect if reverse DNS succeeded, compare the result with the original
  * IP address string - if they match, reverse lookup failed. */
+/* tcp.addressToName(addr) -> string
+ *
+ * NOTE: Boolean return always true by design. This function cannot fail - it either
+ * returns the reverse DNS hostname or falls back to IP string representation. This
+ * signature matches legacy Frontier convention for consistency. */
 boolean tcp_address_to_name(long addr, bigstring name_out) {
     struct sockaddr_in sa;
     char hostname[NI_MAXHOST];
