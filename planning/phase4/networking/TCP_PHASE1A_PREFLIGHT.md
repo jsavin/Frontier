@@ -337,8 +337,9 @@ tcp.listenStream(8080, 5, @handleConnection, nil)
 - Phase 3: Network tests migrate to localhost using `tcp.listenStream()` (self-contained)
 
 **Phase 3 Blockers** (not applicable to Phase 1A):
-- Listen/accept requires threading infrastructure (deferred)
-- Callbacks need thread-local database context (Phase 4 P0a work)
+- Listen/accept requires parameterized callback infrastructure (P0a work - general-purpose, not TCP-specific)
+- See `planning/phase4/p0a-critical-thread-safety/CALLBACK_INFRASTRUCTURE.md` for complete analysis
+- P0a callback work will enable ALL parameterized callbacks (TCP, window, outline, system)
 
 ---
 

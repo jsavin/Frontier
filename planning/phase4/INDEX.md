@@ -66,14 +66,23 @@
 
 **Goal**: Eliminate globals causing immediate thread-safety violations
 
-**Scope**: Hash table context, parser state, control flow flags (30 globals)
+**Scope**: Hash table context, parser state, control flow flags (30 globals) + **General-Purpose Parameterized Callback Infrastructure**
+
+**⚠️ NEW (2026-01-20)**: P0a includes **parameterized callback infrastructure** - NOT just thread-local globals!
+
+See: [CALLBACK_INFRASTRUCTURE.md](p0a-critical-thread-safety/CALLBACK_INFRASTRUCTURE.md)
+- Extends existing `langopruncallbackscripts()` to support callbacks WITH parameters
+- Unblocks TCP Phase 3 (`tcp.listenStream` with connection parameters)
+- Enables window callbacks (`closeWindow(title)`), outline callbacks with context, etc.
+- **Platform capability** - supports ALL parameterized callbacks, not just TCP
 
 **Deliverables**:
 - Week 1: Hash table context (currenthashtable, hmagictable)
 - Week 2: Parser state (yylval, yyval, langparser_result)
 - Week 3: Control flow (flbreak, flcontinue, error state)
+- **Additional**: Parameterized callback infrastructure design & implementation
 
-**Success**: Multiple threads can execute UserTalk concurrently without race conditions
+**Success**: Multiple threads can execute UserTalk concurrently without race conditions + callbacks can receive parameters
 
 [→ Start P0a](p0a-critical-thread-safety/README.md)
 

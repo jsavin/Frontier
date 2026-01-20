@@ -46,7 +46,10 @@
 1. **22 kernel verbs** need C implementation
 2. **Existing reference**: WinSockNetEvents.c has POSIX (GUSI) code paths
 3. **Thread safety critical**: Global `sockstack[]` needs mutex
-4. **Blocking dependency**: Phase 3 requires threading infrastructure for callbacks
+4. **Blocking dependency**: Phase 3 requires **general-purpose parameterized callback infrastructure** (P0a work)
+   - See: `planning/phase4/p0a-critical-thread-safety/CALLBACK_INFRASTRUCTURE.md`
+   - NOT TCP-specific - enables ALL parameterized callbacks (TCP, window, outline, system)
+   - Extends existing `langopruncallbackscripts()` pattern to pass parameters
 5. **HTTP client works after Phase 2**: Existing UserTalk scripts use primitives
 
 ---

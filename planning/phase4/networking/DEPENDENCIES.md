@@ -117,8 +117,26 @@ LDFLAGS += -lpthread
 Phase 3 (server operations) requires the ability to:
 
 1. **Create worker threads** for accept loop
-2. **Execute UserTalk scripts from C threads**
+2. **Execute UserTalk scripts from C threads with parameters** (NEW: parameterized callback infrastructure)
 3. **Maintain thread-local database context**
+
+### CRITICAL: General-Purpose Callback Infrastructure (P0a)
+
+**UPDATED 2026-01-20**: Callback infrastructure is NOT TCP-specific - it's a **general-purpose platform capability**.
+
+**See**: `planning/phase4/p0a-critical-thread-safety/CALLBACK_INFRASTRUCTURE.md` - Complete analysis
+
+**Key Findings**:
+- Existing `langopruncallbackscripts()` mechanism (Common/source/lang.c:1171) supports PARAMETERLESS callbacks
+- 22+ callbacks already defined in `system.callbacks.*` (window, outline, UI, system, network)
+- TCP needs callbacks WITH parameters: `callback(stream_id, remote_addr, remote_port)`
+- Window operations need parameterized callbacks: `closeWindow(title)`
+- Thread-safety pattern already established: grabthreadglobals/releasethreadglobals + oppushoutline/oppopoutline
+
+**Required Enhancement**:
+- Extend callback mechanism to support arbitrary parameters
+- Design: `langruncallbackwithparams(callback_script, param_count, params, result)`
+- Benefits: Unblocks TCP Phase 3, window callbacks, and all future parameterized callbacks
 
 ### Current State (from WinSockNetEvents.c analysis)
 
@@ -134,16 +152,17 @@ Phase 3 (server operations) requires the ability to:
 | Component | Status | Notes |
 |-----------|--------|-------|
 | pthread_create/join | ✅ Available | Standard POSIX |
-| Thread-local globals | ⚠️ Check tythreadglobals | May need additions |
-| Script execution from C | ⚠️ Investigate | `langrunscript()` or similar |
+| Thread-local globals | ✅ Available | tythreadglobals in processinternal.h |
+| Script execution from C | ✅ Available | `langrunstringnoerror()` pattern exists |
+| Parameterized callbacks | ⚠️ **P0a WORK** | Need to extend `langopruncallbackscripts()` |
 | Database context per thread | ⚠️ Investigate | `hdldatabaserecord` handling |
 
 ### Recommendation
 
 Before Phase 3 implementation:
-1. Audit existing threading code in Frontier
-2. Document how to execute UserTalk from worker threads
-3. Verify thread-local database context pattern
+1. ✅ Complete P0a callback infrastructure work (general-purpose, not TCP-specific)
+2. Audit existing threading code in Frontier
+3. Verify thread-local database context pattern for worker threads
 
 ---
 

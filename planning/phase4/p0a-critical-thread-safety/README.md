@@ -20,6 +20,23 @@
 
 ---
 
+## IMPORTANT: P0a Includes General-Purpose Callback Infrastructure
+
+**CRITICAL FINDING (2026-01-20)**: P0a also includes **general-purpose parameterized callback infrastructure** - NOT just for TCP!
+
+**See**: [CALLBACK_INFRASTRUCTURE.md](./CALLBACK_INFRASTRUCTURE.md) - Complete analysis
+
+**Key Points**:
+- Existing callback system (`system.callbacks.*`) has 22+ callbacks but limited to parameterless callbacks
+- Current `langopruncallbackscripts()` mechanism exists but can't pass parameters
+- TCP `tcp.listenStream()` needs callbacks with (stream_id, remote_addr, remote_port)
+- Window callbacks need parameters (e.g., `closeWindow(title)`)
+- This is a **PLATFORM CAPABILITY**, not TCP-specific
+
+**Impact**: Makes P0a MORE VALUABLE - unblocks TCP, window operations, and all future parameterized callbacks.
+
+---
+
 ## Model Selection Guide
 
 Each week uses the appropriate Claude model based on task complexity:

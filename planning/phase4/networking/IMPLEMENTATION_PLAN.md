@@ -96,24 +96,40 @@ Once `tcp.listenStream()` is implemented, network tests will be **migrated** to 
 
 ## Critical Dependencies
 
-### Blocking Dependency: Thread Callback Infrastructure
+### Blocking Dependency: General-Purpose Parameterized Callback Infrastructure (P0a)
 
-**`tcp.listenStream` requires Frontier's threading/agent infrastructure** to execute UserTalk callbacks in separate threads for each accepted connection.
+**UPDATED 2026-01-20**: Callback infrastructure is NOT TCP-specific - it's a **general-purpose platform capability**.
+
+**See**: `planning/phase4/p0a-critical-thread-safety/CALLBACK_INFRASTRUCTURE.md` - Complete analysis
+
+**`tcp.listenStream` requires parameterized callback infrastructure** to execute UserTalk callbacks with connection parameters.
 
 From docserver documentation:
 > "tcp.listenStream returns immediately and calls the callback script **asynchronously in separate threads** for each incoming connection."
 
-**Required Infrastructure**:
-1. **Thread-local database context** (`hdldatabaserecord hdatabase` per thread)
-2. **Script execution from C thread** (invoke UserTalk callback with parameters)
-3. **Thread-safe global state** (protect `sockstack[]` with mutex)
+**Required Infrastructure** (P0a work):
+1. **Parameterized callback mechanism** - Extend `langopruncallbackscripts()` to pass parameters (stream_id, remote_addr, remote_port)
+2. **Thread-local database context** (`hdldatabaserecord hdatabase` per thread)
+3. **Script execution from C thread** (existing pattern: grabthreadglobals → langrunstringnoerror → releasethreadglobals)
+4. **Thread-safe global state** (protect `sockstack[]` with mutex)
+
+**Key Finding**: Frontier already has callback system (`system.callbacks.*`) with 22+ callbacks, but current implementation (`langopruncallbackscripts()`) only supports PARAMETERLESS callbacks. TCP needs callbacks WITH parameters.
+
+**Impact**: This callback infrastructure is BROADER than TCP - it will also enable:
+- Window callbacks with parameters (e.g., `closeWindow(title)`)
+- Enhanced outline callbacks with context
+- System lifecycle callbacks with parameters
+- Any future parameterized callback needs
 
 **Options**:
-- **Option A**: Implement Phase 3 (listen/accept) after threading infrastructure exists
-- **Option B**: Create separate "Threading Foundation" workstream first
-- **Option C**: Implement blocking listen-in-main-thread first, add async later
+- **Option A**: Implement Phase 3 (listen/accept) after P0a callback infrastructure exists ✅ **RECOMMENDED**
+- **Option B**: Create separate "Threading Foundation" workstream first (NOT needed - pattern exists)
+- **Option C**: Implement blocking listen-in-main-thread first, add async later (workaround, not recommended)
 
-**Recommendation**: Proceed with Phases 1-2 immediately (client-side networking). These have no threading dependency. Phase 3 can wait for threading infrastructure or be implemented with Option C as interim solution.
+**Recommendation**:
+1. Proceed with Phases 1-2 immediately (client-side networking) - NO threading dependency
+2. Complete P0a callback infrastructure work (general-purpose, not TCP-specific)
+3. Implement Phase 3 (server operations) after P0a callback work is complete
 
 ---
 

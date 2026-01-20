@@ -83,6 +83,17 @@
 | `langcallbacks` | lang.h:720 | struct | Language hooks | ✅ **In tythreadglobals:136** |
 | `launchcallbacks` | launch.h:48 | struct | Launch hooks | ❌ **Needs Analysis** |
 
+**⚠️ NEW: General-Purpose Parameterized Callback Infrastructure (P0a Component)**
+
+See: `planning/phase4/p0a-critical-thread-safety/CALLBACK_INFRASTRUCTURE.md`
+
+**Key Finding (2026-01-20)**: Existing callback system (`system.callbacks.*`) has 22+ callbacks but `langopruncallbackscripts()` only supports PARAMETERLESS callbacks. Multiple use cases need PARAMETERIZED callbacks:
+- TCP: `tcp.listenStream()` callbacks with (stream_id, remote_addr, remote_port)
+- Window: `closeWindow(title)` callbacks
+- Future: Any parameterized callback needs
+
+**Status**: Part of P0a work - extends existing thread-safe callback pattern to support arbitrary parameters. NOT TCP-specific - this is a **platform capability** that unblocks TCP Phase 3, window operations, and all future parameterized callbacks.
+
 ### 1.2 High Priority Globals (P1 - Multi-User Foundation)
 
 **System Configuration**
