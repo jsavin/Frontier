@@ -471,13 +471,19 @@ boolean tcp_read_stream(long stream_id, long bytes_to_read, Handle *data_out) {
 
     /* Set socket to non-blocking mode for this read */
     int flags = fcntl(sockfd, F_GETFL, 0);
-    fcntl(sockfd, F_SETFL, flags | O_NONBLOCK);
+    if (flags == -1) {
+        log_warn(LOG_COMP_LANG, "tcp_read_stream: fcntl(F_GETFL) failed: %s", strerror(errno));
+    } else if (fcntl(sockfd, F_SETFL, flags | O_NONBLOCK) == -1) {
+        log_warn(LOG_COMP_LANG, "tcp_read_stream: fcntl(F_SETFL, O_NONBLOCK) failed: %s", strerror(errno));
+    }
 
     /* Read from socket (may return less than requested or EAGAIN) */
     bytes_read = recv(sockfd, buffer, bytes_to_read, 0);
 
     /* Restore blocking mode */
-    fcntl(sockfd, F_SETFL, flags);
+    if (flags != -1 && fcntl(sockfd, F_SETFL, flags) == -1) {
+        log_warn(LOG_COMP_LANG, "tcp_read_stream: fcntl(F_SETFL, restore) failed: %s", strerror(errno));
+    }
 
     unlockhandle(hdata);
 
@@ -571,6 +577,10 @@ boolean tcp_write_stream(long stream_id, Handle hdata) {
                             data_size - total_written, 0);
 
         if (bytes_written < 0) {
+            /* Retry on interrupted system call */
+            if (errno == EINTR) {
+                continue;
+            }
             unlockhandle(hdata);
             tcp_stream_release(stream);
             tcp_set_error(TCP_ERR_SOCKET_ERROR, "Write failed");
