@@ -31,6 +31,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <stdio.h>
+#include <limits.h>
 
 #include "frontier.h"
 #include "standard.h"
@@ -155,6 +156,94 @@ static tcp_stream_t* tcp_get_stream(int stream_id) {
         return NULL;
 
     return stream;
+}
+
+/* Acquire reference to stream (TOCTOU protection)
+ * Returns stream pointer with incremented refcount, or NULL if invalid.
+ * Caller MUST call tcp_stream_release() when done with the stream.
+ * This prevents the stream from being freed while in use. */
+tcp_stream_t* tcp_stream_acquire(int stream_id) {
+    TCP_LOCK();
+    tcp_stream_t *stream = tcp_get_stream(stream_id);
+    if (stream) {
+        stream->refcount++;
+        log_trace(LOG_COMP_LANG, "tcp_stream_acquire: stream_id=%d refcount=%d",
+                  stream_id, stream->refcount);
+    }
+    TCP_UNLOCK();
+    return stream;
+}
+
+/* Release reference to stream
+ * Decrements refcount and frees stream if refcount reaches 0 and state is CLOSING.
+ * Must be called after tcp_stream_acquire() when done with stream. */
+void tcp_stream_release(tcp_stream_t *stream) {
+    if (!stream)
+        return;
+
+    TCP_LOCK();
+    stream->refcount--;
+    log_trace(LOG_COMP_LANG, "tcp_stream_release: refcount=%d state=%d",
+              stream->refcount, stream->state);
+
+    /* If refcount reached 0 and stream is closing, complete the close */
+    if (stream->refcount == 0 && stream->state == STREAM_CLOSING) {
+        /* Find stream_id from pointer offset */
+        int stream_id = (int)(stream - g_tcp_context.streams);
+        log_debug(LOG_COMP_LANG, "tcp_stream_release: completing close for stream_id=%d", stream_id);
+        tcp_free_stream_id(stream_id);
+    }
+    TCP_UNLOCK();
+}
+
+/* Check if IP address is private/reserved (DNS rebinding/SSRF protection)
+ * Returns true if addr is in private/reserved ranges that should not be accessed.
+ * Addresses (in host byte order):
+ * - 0.0.0.0/8        (current network)
+ * - 10.0.0.0/8       (private)
+ * - 127.0.0.0/8      (loopback)
+ * - 169.254.0.0/16   (link-local)
+ * - 172.16.0.0/12    (private)
+ * - 192.168.0.0/16   (private)
+ * - 224.0.0.0/4      (multicast)
+ * - 240.0.0.0/4      (reserved) */
+boolean tcp_is_private_ip(uint32_t addr) {
+    uint8_t octet1 = (addr >> 24) & 0xFF;
+    uint8_t octet2 = (addr >> 16) & 0xFF;
+
+    /* 0.0.0.0/8 - Current network */
+    if (octet1 == 0)
+        return true;
+
+    /* 10.0.0.0/8 - Private */
+    if (octet1 == 10)
+        return true;
+
+    /* 127.0.0.0/8 - Loopback */
+    if (octet1 == 127)
+        return true;
+
+    /* 169.254.0.0/16 - Link-local */
+    if (octet1 == 169 && octet2 == 254)
+        return true;
+
+    /* 172.16.0.0/12 - Private (172.16.0.0 to 172.31.255.255) */
+    if (octet1 == 172 && octet2 >= 16 && octet2 <= 31)
+        return true;
+
+    /* 192.168.0.0/16 - Private */
+    if (octet1 == 192 && octet2 == 168)
+        return true;
+
+    /* 224.0.0.0/4 - Multicast (224-239) */
+    if (octet1 >= 224 && octet1 <= 239)
+        return true;
+
+    /* 240.0.0.0/4 - Reserved (240-255) */
+    if (octet1 >= 240)
+        return true;
+
+    return false;
 }
 
 /* ========================================================================
@@ -307,21 +396,28 @@ boolean tcp_read_stream(long stream_id, long bytes_to_read, Handle *data_out) {
         return false;
     }
 
-    /* Get stream */
-    TCP_LOCK();
-    stream = tcp_get_stream(stream_id);
+    /* Additional integer overflow protection for buffer allocation */
+    if (bytes_to_read > (LONG_MAX - 1024)) {  /* Leave safety margin */
+        *data_out = nil;
+        tcp_set_error(TCP_ERR_SOCKET_ERROR, "Read size too large (overflow risk)");
+        return false;
+    }
+
+    /* Acquire stream reference (TOCTOU protection) */
+    stream = tcp_stream_acquire(stream_id);
     if (!stream || stream->state != STREAM_CONNECTED) {
-        TCP_UNLOCK();
+        if (stream)
+            tcp_stream_release(stream);
         *data_out = nil;
         tcp_set_error(TCP_ERR_INVALID_STREAM, "Stream not connected");
         return false;
     }
 
     sockfd = stream->sockfd;
-    TCP_UNLOCK();
 
     /* Allocate buffer */
     if (!newhandle(bytes_to_read, &hdata)) {
+        tcp_stream_release(stream);
         *data_out = nil;
         tcp_set_error(TCP_ERR_NO_MEMORY, "Could not allocate buffer");
         return false;
@@ -347,15 +443,18 @@ boolean tcp_read_stream(long stream_id, long bytes_to_read, Handle *data_out) {
             /* No data available - return empty handle */
             disposehandle(hdata);
             if (!newhandle(0, data_out)) {
+                tcp_stream_release(stream);
                 tcp_set_error(TCP_ERR_NO_MEMORY, "Could not allocate empty buffer");
                 return false;
             }
+            tcp_stream_release(stream);
             log_debug(LOG_COMP_LANG, "tcp_read_stream: no data available (non-blocking)");
             return true;
         }
 
         /* Real error */
         disposehandle(hdata);
+        tcp_stream_release(stream);
         *data_out = nil;  /* Prevent caller from accessing freed memory */
         tcp_set_error(TCP_ERR_SOCKET_ERROR, "Read failed");
         return false;
@@ -365,9 +464,11 @@ boolean tcp_read_stream(long stream_id, long bytes_to_read, Handle *data_out) {
         /* Connection closed by peer */
         disposehandle(hdata);
         if (!newhandle(0, data_out)) {
+            tcp_stream_release(stream);
             tcp_set_error(TCP_ERR_NO_MEMORY, "Could not allocate empty buffer");
             return false;
         }
+        tcp_stream_release(stream);
         log_debug(LOG_COMP_LANG, "tcp_read_stream: connection closed by peer");
         return true;
     }
@@ -375,12 +476,12 @@ boolean tcp_read_stream(long stream_id, long bytes_to_read, Handle *data_out) {
     /* Resize handle to actual bytes read */
     sethandlesize(hdata, bytes_read);
 
-    /* Update activity timestamp */
+    /* Update activity timestamp while still holding reference */
     TCP_LOCK();
-    stream = tcp_get_stream(stream_id);
-    if (stream)
-        stream->last_activity = time(NULL);
+    stream->last_activity = time(NULL);
     TCP_UNLOCK();
+
+    tcp_stream_release(stream);
 
     log_debug(LOG_COMP_LANG, "tcp_read_stream: read %zd bytes", bytes_read);
 
@@ -399,21 +500,21 @@ boolean tcp_write_stream(long stream_id, Handle hdata) {
 
     log_debug(LOG_COMP_LANG, "tcp_write_stream: stream_id=%ld", stream_id);
 
-    /* Get stream */
-    TCP_LOCK();
-    stream = tcp_get_stream(stream_id);
+    /* Acquire stream reference (TOCTOU protection) */
+    stream = tcp_stream_acquire(stream_id);
     if (!stream || stream->state != STREAM_CONNECTED) {
-        TCP_UNLOCK();
+        if (stream)
+            tcp_stream_release(stream);
         tcp_set_error(TCP_ERR_INVALID_STREAM, "Stream not connected");
         return false;
     }
 
     sockfd = stream->sockfd;
-    TCP_UNLOCK();
 
     data_size = gethandlesize(hdata);
     if (data_size == 0) {
         /* Nothing to write - succeed immediately */
+        tcp_stream_release(stream);
         return true;
     }
 
@@ -428,6 +529,7 @@ boolean tcp_write_stream(long stream_id, Handle hdata) {
 
         if (bytes_written < 0) {
             unlockhandle(hdata);
+            tcp_stream_release(stream);
             tcp_set_error(TCP_ERR_SOCKET_ERROR, "Write failed");
             return false;
         }
@@ -437,12 +539,12 @@ boolean tcp_write_stream(long stream_id, Handle hdata) {
 
     unlockhandle(hdata);
 
-    /* Update activity timestamp */
+    /* Update activity timestamp while still holding reference */
     TCP_LOCK();
-    stream = tcp_get_stream(stream_id);
-    if (stream)
-        stream->last_activity = time(NULL);
+    stream->last_activity = time(NULL);
     TCP_UNLOCK();
+
+    tcp_stream_release(stream);
 
     log_debug(LOG_COMP_LANG, "tcp_write_stream: wrote %ld bytes", total_written);
 
@@ -454,6 +556,7 @@ boolean tcp_write_stream(long stream_id, Handle hdata) {
 boolean tcp_close_stream(long stream_id) {
     tcp_stream_t *stream;
     int sockfd;
+    int refcount;
 
     log_debug(LOG_COMP_LANG, "tcp_close_stream: stream_id=%ld", stream_id);
 
@@ -467,18 +570,24 @@ boolean tcp_close_stream(long stream_id) {
 
     sockfd = stream->sockfd;
     stream->state = STREAM_CLOSING;
+    stream->sockfd = -1;  /* Mark socket invalid BEFORE unlock to prevent double-close */
+    refcount = stream->refcount;
     TCP_UNLOCK();
 
     /* Graceful shutdown */
     shutdown(sockfd, SHUT_RDWR);  /* Send FIN */
     close(sockfd);
 
-    /* Free stream record */
+    /* Free stream record only if no active references */
     TCP_LOCK();
-    tcp_free_stream_id(stream_id);
+    if (refcount == 0) {
+        tcp_free_stream_id(stream_id);
+        log_info(LOG_COMP_LANG, "tcp_close_stream: stream_id=%ld closed immediately", stream_id);
+    } else {
+        log_info(LOG_COMP_LANG, "tcp_close_stream: stream_id=%ld deferred (refcount=%d)",
+                 stream_id, refcount);
+    }
     TCP_UNLOCK();
-
-    log_info(LOG_COMP_LANG, "tcp_close_stream: stream_id=%ld closed", stream_id);
 
     return true;
 }
@@ -488,6 +597,7 @@ boolean tcp_close_stream(long stream_id) {
 boolean tcp_abort_stream(long stream_id) {
     tcp_stream_t *stream;
     int sockfd;
+    int refcount;
 
     log_debug(LOG_COMP_LANG, "tcp_abort_stream: stream_id=%ld", stream_id);
 
@@ -500,6 +610,9 @@ boolean tcp_abort_stream(long stream_id) {
     }
 
     sockfd = stream->sockfd;
+    stream->state = STREAM_CLOSING;
+    stream->sockfd = -1;  /* Mark socket invalid BEFORE unlock to prevent double-close */
+    refcount = stream->refcount;
 
     /* Set SO_LINGER to 0 for immediate RST */
     struct linger linger_opt = {1, 0};  /* on, timeout=0 */
@@ -507,10 +620,15 @@ boolean tcp_abort_stream(long stream_id) {
 
     close(sockfd);  /* Sends RST */
 
-    tcp_free_stream_id(stream_id);
+    /* Free stream record only if no active references */
+    if (refcount == 0) {
+        tcp_free_stream_id(stream_id);
+        log_info(LOG_COMP_LANG, "tcp_abort_stream: stream_id=%ld aborted immediately", stream_id);
+    } else {
+        log_info(LOG_COMP_LANG, "tcp_abort_stream: stream_id=%ld deferred (refcount=%d)",
+                 stream_id, refcount);
+    }
     TCP_UNLOCK();
-
-    log_info(LOG_COMP_LANG, "tcp_abort_stream: stream_id=%ld aborted", stream_id);
 
     return true;
 }
@@ -562,10 +680,18 @@ boolean tcp_name_to_address(bigstring domain_name, long *addr_out) {
 
     /* Get first IPv4 address */
     struct sockaddr_in *addr = (struct sockaddr_in*)result->ai_addr;
-    *addr_out = (long)ntohl(addr->sin_addr.s_addr);  /* Convert to host byte order */
+    uint32_t resolved_addr = (uint32_t)ntohl(addr->sin_addr.s_addr);  /* Convert to host byte order */
 
     freeaddrinfo(result);
 
+    /* DNS rebinding/SSRF protection: reject private/reserved IPs */
+    if (tcp_is_private_ip(resolved_addr)) {
+        log_warn(LOG_COMP_LANG, "tcp_name_to_address: rejected private/reserved IP (DNS rebinding protection)");
+        tcp_set_error(TCP_ERR_DNS_FAILED, "DNS resolved to private/reserved IP (not allowed)");
+        return false;
+    }
+
+    *addr_out = (long)resolved_addr;
     log_info(LOG_COMP_LANG, "tcp_name_to_address: resolved to %ld", *addr_out);
 
     return true;
@@ -648,6 +774,15 @@ boolean tcp_open_stream_name(bigstring hostname, long port, long *stream_id_out)
 
     /* Try each address until we successfully connect */
     for (rp = result; rp != NULL; rp = rp->ai_next) {
+        /* DNS rebinding/SSRF protection: validate IP is not private/reserved */
+        struct sockaddr_in *addr_in = (struct sockaddr_in*)rp->ai_addr;
+        uint32_t resolved_addr = ntohl(addr_in->sin_addr.s_addr);
+
+        if (tcp_is_private_ip(resolved_addr)) {
+            log_warn(LOG_COMP_LANG, "tcp_open_stream_name: skipping private/reserved IP (DNS rebinding protection)");
+            continue;  /* Skip this address */
+        }
+
         sockfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
         if (sockfd == -1)
             continue;

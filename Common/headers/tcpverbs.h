@@ -34,6 +34,7 @@ typedef struct tcp_stream {
     /* Socket */
     int             sockfd;        /* POSIX socket file descriptor (-1 if unused) */
     stream_state_t  state;         /* Current stream state */
+    int             refcount;      /* Reference count for TOCTOU protection */
 
     /* Address info */
     uint16_t        local_port;    /* Local port (host byte order) */
@@ -131,5 +132,8 @@ boolean tcp_shutdown_context(void);
 /* Internal Helpers (not exposed to UserTalk) */
 tcp_error_t tcp_map_errno(int err);
 void tcp_set_error(tcp_error_t err, const char *detail);
+tcp_stream_t* tcp_stream_acquire(int stream_id);
+void tcp_stream_release(tcp_stream_t *stream);
+boolean tcp_is_private_ip(uint32_t addr);
 
 #endif /* __TCPVERBS_H__ */
