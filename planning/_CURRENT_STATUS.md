@@ -1,97 +1,149 @@
-# Carbon Migration – Current Status
+# Current Status
 
-Status
-- State: In Progress
-- Phase: Carbon Migration / Runtime Modernization + Verb Porting
-- Last Updated: 2026-01-05
-- Owner: Codex / Claude
-- Notes: Active snapshot only; older entries moved to `_STATUS_ARCHIVE.md`.
+Last Updated: 2026-01-19
 
-Recent Updates
-- **2026-01-05 (Repository Branch Cleanup & Codebase Organization)**: Completed comprehensive repository cleanup session. **WORK**: Deleted 78 branches from ~87 to 3 local branches (13 low-risk, 44 merged, 6 zombie, 3 stale Nov, 1 stash, 2 archive snapshots, 7 superseded, 2 remote zombies). Extracted typeof() OSType code documentation (180 lines, commit 5456c5eb). **OUTCOME**: Significantly improved repository hygiene and branch organization. Only 3 local branches remain: develop, archive/codex-sessions (permanent), feature/issue-135-phase5-callsite-migration (active worktree). **METRICS**: Verb coverage updated: file verbs 100% (86/86), lang verbs 16%, overall 37% (264/710 verbs). **RECENT COMPLETED PRs**: #246 (Phase 5 lang type conversion verbs - 15 verbs), #245 (lang verbs fixes), #241 (file verb coverage - 86/86 complete), #232 (wptext_runtime.c frontier_time_t migration), multiple lang/table verb PRs. **ARCHITECTURAL LESSON**: typeof() OSType extraction highlighted value of extracting domain-specific documentation from code into dedicated reference documents for future maintainability.
-- **2025-12-31 (Verb Binding Analyzer Fix - CRITICAL)**: Fixed critical bug in verb binding analyzer that was vastly over-reporting implementation status. **ROOT CAUSE**: Analyzer was searching GUI source files (Common/source/fileverbs.c, etc.) that aren't linked in headless build, giving false positives. **BEFORE**: 487 verbs (68%) reported as implemented; **AFTER**: 97 verbs (13%) actually implemented in headless. **FIX**: Added Makefile parsing to determine what's actually compiled, defaulted to headless mode, added --legacy flag for full codebase analysis. **IMPACT**: Accurate source-of-truth for headless verb coverage. Deleted 17 invalid reports generated with broken analyzer. **DISCOVERY**: The bottleneck is NOT missing implementations - it's missing bindings. Many verbs are fully implemented but not accessible because auto-generated stub files don't forward to them. **QUICK WINS IDENTIFIED**: 22 verbs (file, table, string) can be bound in 3-6 hours to increase coverage from 13% → 16% and unlock skipped file_verb_tests. Created comprehensive implementation plan: `planning/phase3/VERB_BINDING_QUICK_WINS.md`. Commits: 54b2bd08, 95a233a5, d660916f.
-- **2025-12-30 (Documentation Modernization - COMPLETE)**: Condensed CLAUDE.md from 1059 to 628 lines (40% reduction) while preserving all specifics. Extracted detailed guides: `docs/VERB_IMPLEMENTATION_GUIDE.md` (verb implementation patterns), `docs/TESTING_GUIDE.md` (CLI usage, testing, database migration). Added worktree workflow decision tree, explicit worktree location/naming convention (sibling directories), and creation/cleanup commands. Consolidated agent guidance into single table (11 agents). Added Quick Reference section with essential commands including v6→v7 migration. Commit: 90c2a439. **PURPOSE**: Improved maintainability and scannability; enforces proper worktree workflow for all non-trivial work.
-- **2025-12-30 (Table Verbs Phase 2-3 - COMPLETE)**: Merged PR #210 implementing comprehensive table verb infrastructure for headless mode. **PHASE 2**: Made outline operations headless-capable (op.expand, op.collapse, op.setlinetext, op.getlinetext, op.firstsummit, op.go, op.countitems). Added thread-local table selection context with cursor tracking and expansion state awareness. **PHASE 3**: Implemented table navigation verbs (table.goto, table.go, table.getselection with multi-select support), verb dispatch fixes, and auto-set current table pattern. Created critical error infrastructure (error(), scriptError()) for UserTalk domain errors. Added comprehensive investigation documentation and tooling. **RESOLVES**: Core table verb functionality for headless runtime. All tests passing.
-- **2025-12-30 (Test Infrastructure Stabilization - COMPLETE)**: Merged PR #212 stabilizing test suite after logging migration. Fixed runtime initialization issues (log_init(), langinitresources_headless() missing from tests). Fixed memory.c redefinitions causing test build failures. All headless tests now building and passing cleanly. Created comprehensive testing documentation.
-- **2025-12-30 (Migration Naming Convention - COMPLETE)**: Multiple commits improving migration filename convention. Migrated from `<original>-v7.root` pattern to cleaner naming. Updated documentation and test infrastructure to match. Check migration success by file existence rather than exit codes.
-- **2025-12-30 (Time Portability - COMPLETE)**: Completed comprehensive migration of all timenow() callsites to timenow64() for 64-bit time_t portability (Issue #167 follow-up). Created timenow64() helper to centralize Frontier epoch to Unix timestamp conversion. Ensures Y2038 readiness across all time operations. Added comprehensive time portability tests.
-- **2025-12-28 (Test Suite Stabilization - COMPLETE)**: Fixed 7 failing tests after logging migration (PR #187). Root cause: tests missing `log_init()` and `langinitresources_headless()` initialization calls. **FIXES**: (1) Added `log_init()` to paige_text_tests, save_migration_tests, refcon_tests; (2) Added `op_context.c` to Makefile LANG_RUNTIME_SOURCES (outline packing dependency); (3) Added `langinitresources_headless()` to parser_tests, runtime_tests, test_sys_shell_command_verbs (installs UserTalk constants/keywords/built-ins). **RESULTS**: 5/6 tests fully passing, 1 partially passing (test_sys_shell_command_verbs 4/16 due to verb implementation bugs). Discovered and filed Issue #197 (P0) for missing UserTalk `!` (NOT) and `!=` operators - temporarily skipped these tests. All fixes on branch `fix/test-suite-failures` with 8 commits. Documentation: `planning/phase3/test_suite_stabilization_post_logging.md`. **RESOLVES**: Issue #128 (full headless test suite validation).
-- **2025-12-27 (Database Loading Segfault - FIXED)**: Used automated git bisect with database re-migration to identify and fix the commit that introduced database loading segfault during v6→v7 migration. **ROOT CAUSE**: Commit fb57ac53 (Dec 20) made two breaking changes: (1) Removed `db_context_guard` save/restore pattern from all `_context` wrapper functions in `db_format.c`, causing global state corruption; (2) Removed `dbpushdatabase()` call from `tableverbinmemory_common()`, breaking table variable materialization. **FIX IMPLEMENTED**: (1) Restored `db_context_guard` pattern to 7 wrapper functions + migration code in db_format.c; (2) Restored `dbpushdatabase()` and `dbpopdatabase()` functions to db.c; (3) Modified `tableverbinmemory_common()` to use push/pop for database context switching. **VALIDATION**: Tested successfully with actual v6 database (restored from commit afea32c9) - migration and external table access working. Bisect script created: `tools/bisect_test_db_load.sh`. **NOTE**: Discovered Frontier.root in git was corrupted (v7 header with v6 addresses) - restored from commit afea32c9.
-- **2025-12-27 (UserTalk Integration / Bare Verb Resolution - PAUSED)**: Implementing bare verb resolution (Issue #166) and dynamic verb binding architecture (ADR-004). Session progress: (1) **ADR-003 IMPLEMENTED**: Two-phase address value resolution strategy (lazy during unpack with htable=-1 markers, eager for system.paths after EFP linking) - all 14 system.paths entries resolve correctly; (2) **DOUBLE-NESTING INVESTIGATION**: Observed paths like `system.compiler.["kernel"].["system.compiler.[\"kernel\"].lang"]` returned by `getaddresspath()` for resolved addresses. Attempted fix in commit f662f454 broke all code execution - reverted in commit 6696ad49. Double-nesting may not be actual bug - needs deeper investigation of `langsearchpathlookup()` logic; (3) **WIP - Database-driven augmentation**: Implemented `augment_database_tables_with_efp()` to merge EFP verb implementations into database tables, but discovered architectural issue - system.paths ALREADY points to EFP tables (e.g., `system.compiler.["kernel"].lang`) which have valueroutines, yet bare `new()` still fails. **CURRENT INVESTIGATION**: Understanding why `langsearchpathlookup()` doesn't find verbs despite system.paths correctly resolving to EFP tables with valueroutines. Comparing with legacy Frontier (tedchoward) implementation. Branch: `feature/usertalk-integration-tests`. References: `ADR-003-address-value-resolution.md`, `ADR-004-dynamic-verb-binding-architecture.md`.
-- **2025-12-24 (Mode Stack Refactor - Phase 2 COMPLETE)**: Completed Phase 2 helper function refactoring with 7 commits. **91% reduction achieved** (22 → 2 remaining dbpushdatabase calls). Session 3: (1) Created Phase 2 detailed implementation plan via system-architect agent; (2) Created `copyvaluerecord_internal()` context-aware variant; (3) Converted langxml.c and langhtml.c to use `copyvaluerecord_internal()`; (4) Created `meloadoutline_internal()` for menu outline loading; (5) Created `meloadmenurecord_internal()` for menu record packing; (6) Converted menuverbs.c to use `meloadmenurecord_internal()`; (7) Milestone commit documenting Phase 2 completion. **Results**: All 3 Phase 1 deferred files successfully refactored (langxml.c, langhtml.c, menuverbs.c), 3 helper functions created following ADR-002 patterns, only 2 calls remaining (dbstats.c diagnostic tool + db.c wrapper). Mode warnings nearly eliminated. All tests passing, deterministic migration maintained. Branch: `refactor/explicit-context-no-mode-stack`. References: `MODE_STACK_REFACTOR_PROGRESS.md`, `MODE_STACK_REFACTOR_PHASE2_DETAILED.md`, `ADR-002-context-based-format-versioning.md`.
-- **2025-12-23 (Mode Stack Refactor - Phase 1 COMPLETE)**: Substantial progress on Phase 1 execution with 8 commits over 2 sessions. Session 1 (5 commits): (1) Mode stack corruption fix - cleared mode depth before v7 apply to prevent stacked v6 override; (2) External materialization for tables/outlines/scripts/wptext/pictures with correct recursion (tables only, not leaf nodes); (3) Picture externals refactored with `pictverbinmemory()` and `pictverbpack_internal()` taking explicit context; (4) Fixed `langexternalpack_internal()` to set v7 write mode for ALL externals (not just loaded-from-disk); (5) Removed push/pop from `wp_portable_state_dbref()`. Session 2 (3 commits + ADR): (6) Created **ADR-002: Context-Based Format Versioning** documenting architectural decision with rationale, implementation patterns, pitfalls, and validation criteria; (7) Eliminated `dbpushdatabase` from langexternal.c, opverbs.c, langhash.c (4 patterns: disposehashnode, hashassign, hashresolvevalue, hashpackscalar); (8) Eliminated `dbpushdatabase` from claycallbacks.c, menueditor.c, menupack.c (menu/clay functions). **Progress**: Reduced from 22 → 5 remaining calls (77% complete). Remaining 4 calls deferred to Phase 2 (require helper function refactoring: copyvaluerecord_context, meloadmenurecord_context). Branch: `refactor/explicit-context-no-mode-stack`. References: `ADR-002-context-based-format-versioning.md`, `MODE_STACK_REFACTOR_PROGRESS.md`, `MODE_STACK_REFACTOR_PHASE1_DETAILED_v2.md`.
-- **2025-12-23 (Phase 1 Mode Stack Refactor Plan - Production Ready)**: Refreshed and enhanced the Phase 1 detailed plan for the Mode Stack Refactor based on comprehensive system-architect feedback. Plan is now production-ready for autonomous execution by Claude Sonnet. Critical improvements: added infrastructure audit step (Step 0.1), explicit coding conventions, granular substeps for helper function conversion, byte-level validation (table headers), Issue #123 regression tests, pre-commit validation, and emergency rollback procedures. Plan explicitly addresses root cause of migration segfault (writing legacy-format v4 headers into v7 database due to mode stack inheritance). Each step 30min-3hrs, clear success/failure criteria, determinism testing at every step. Reference: `planning/phase3/mode_stack_refactor/MODE_STACK_REFACTOR_PHASE1_DETAILED_v2.md`
-- **2025-12-23 (Logging Infrastructure COMPLETE - 100% Migration)**: Completed all 6 phases of logging infrastructure migration! Summary: migrated 377 fprintf(stderr) statements to structured logging across all user-facing code. Phases 3.2-3.6 completed:
-  - PR #155: Phase 3.2 (13 statements) - trivial files with single/few logs
-  - PR #157: Phase 3.3 (18 statements) - simple multi-statement files
-  - PR #158: Phase 3.4 (50 statements) - medium complexity with hex dumps, conditional removal, ifdef removal
-  - PR #160: Phase 3.5 (16 statements) - special cases: macro replacements (HEADLESS_LOG, OP_HEADLESS_TRACE) and Bison parser source migration
-  - Phase 3.6: Meta-logging exemption added to check_fprintf.sh for logging.c (8 intentional statements for bootstrap/logging system diagnostics)
-  - All tests passing; check_fprintf.sh shows zero violations in migrated files. Logging.c exempted as it IS the logging system itself. **All fprintf migration work complete!**
-- **2025-12-22 (PR #137 MERGED - Migration Double-Free Fix)**: Fixed critical segmentation fault in `save_migration_tests` caused by double-free during cleanup. Root cause: `dbendsaveas_context()` internally calls `dbdispose()`, but cleanup code unconditionally called it again. Solution: Set `databasedata = nil` immediately after `dbendsaveas*()` calls to prevent double-free. Additional fixes: removed context guards from `dbzeroreleasestack()` (guard patterns during disposal cause dangling pointers), added defensive `validhandle()` check before dereferencing in cleanup, extracted `cleanup_migration_database()` helper function to improve testability and document three distinct cleanup scenarios. Added cleanup state validation test (`save_migration_tests.c` now validates `fldatabasesaveas` flag properly reset). All commits include planning doc references per CLAUDE.md guidelines. Follow-up issues filed: #138 (make disposal explicit in dbendsaveas), #139 (cleanup path duplication), #140 (audit context guards in disposal paths), #141 (final cleanup restructuring), #142 (error path test coverage), #143 (cleanup_migration_database error scenarios). **PR #137** merged with 7 commits addressing comprehensive code review feedback across multiple rounds.
-- **2025-12-19 (Mode Stack Refactor - Planning Complete)**: Completed comprehensive planning for full mode stack to explicit context refactor. Decision made: pursue Option B (full refactor) instead of Option A (incremental) because stability is paramount and incremental approach just kicks the pebble down the road. Created detailed implementation plan (`planning/phase3/MODE_STACK_REFACTOR_PLAN.md`) covering 5 phases over 8-13 days: Phase 1 (core serialization), Phase 2 (DB operations), Phase 3 (format readers/writers), Phase 4 (migration code), Phase 5 (cleanup). Also created quick-start guide (`MODE_STACK_REFACTOR_QUICKSTART.md`) for easy resumption. Root cause analysis: mode stack is global state that implicitly propagates through recursive operations, causing every Issue #123 bug (reader fork, writer fork, invalid addresses). New architecture uses explicit `db_context` structure passed through all operations, making mode deterministic and preventing inheritance bugs. Ready to begin implementation Phase 1: converting langhash.c and tablepack.c to context-based (~25 call sites).
-- **2025-12-18 Evening (Issue #123 RESOLVED - PR #124)**: Fixed external table access failures post-migration. Root cause was **reader/writer fork issue**: root table unpacked with legacy 32-bit reader (`use64=0`) despite v7 database format (`use64=1`), while child tables correctly used modern reader. Two critical bugs fixed: (1) `hashunpacktable()` reader selection logic now respects database format mode (lines 4034-4036 in langhash.c); (2) `tableverbpack()` mode stack issue - now explicitly pushes modern mode before packing to prevent inherited legacy mode (lines 376-381 in tablepack.c). Enhanced `save_migration_tests.c` with 4-phase validation: version check, migration execution, format validation, and external table accessibility testing. All 6/6 validation checks passing. Comprehensive documentation created: `docs/external_table_variable_management.md` (498 lines, lifecycle/states/migration), updated `planning/phase3/ISSUE_123_SOLUTION_DESIGN.md` with actual root cause analysis and evidence, and enhanced `CLAUDE.md` with new "Architectural Patterns to Avoid" section documenting mode stack issues and reader/writer fork gotchas. **PR #124** (`fix/issue-123-migration-validation` branch) submitted with all commits and awaits bot review. Mode stack push/pop mechanism flagged as architectural debt for future refactoring (Issue #123 repeatedly exposed this pattern causing bugs).
-- **2025-12-15 (PR #109 merged)**: Completed Phase 3.E-F automatic verb binding improvements. Phase 3.E: Added 7 missing exception table entries and normalized verb names to lowercase in parser, improving coverage from 56% → 67% (477 verbs detected). Phase 3.F: Implemented `sys.getenvironmentvariable()` and `sys.setenvironmentvariable()` with POSIX cross-platform support and buffer overflow protection (length check for >255 char values). Added platform-specific documentation and updated planning docs. See `planning/phase3/kernel_verb_porting/automatic_verb_binding_phase3_plan.md` for full Phase 3.E-F details. Coverage now 68% (479/707 verbs).
-- **2025-12-13 (PR #75 merged)**: Hardened hash pack/unpack with explicit 16-byte BE buffers, bounds-checked `hashunpackstring`, header detection guards, optional logging (`FRONTIER_HASHUNPACK_LOG`), and compile-time layout asserts. Table globals now reset cleanly after migration/load; CLI always hydrates the system root and clears globals before/after migrations. Docs updated (`docs/database_architecture.md` v7 hash record layout). Full `SANITIZE=1 make -C tests test` passes; CLI still reports exit=1 for stubbed verbs (clock.*) but harness marks tests as passed.
-- **2025-12-09 (migration text encoding fix)**: Guarded TEC converter disposal in `converttextencoding`; `save_migration_tests` now clean under ASan/UBSan.
-- **2025-12-08 (headless verb coverage)**: Added headless `string.upper/lower/length` and `math.random` (with bounds checks); CLI inline `-e` path now uses `langrunhandle`.
+## Current Focus: Starting Networking Layer Implementation 🚀
 
-Open Items (active)
-- **WORKTREE: feature/table-sorting-and-settarget** (IN REVIEW): Implements table sorting verbs (table.sortby, table.getsortorder) and target verbs (lang.gettarget, lang.settarget, lang.cleartarget) for headless mode. Per-table sort order stored in database. Comprehensive test suite created (8 test cases). Tests blocked by pre-existing UserTalk object test infrastructure build errors. Worktree: `/Users/jake/dev/jsavin/Frontier-table-sorting-and-settarget`. Branch ahead of develop by 1 commit (8d773bcd). **NEXT**: Create PR and address test infrastructure issues.
-- **WORKTREE: fix/usertalk-object-test-infrastructure** (NOT STARTED): Fix pre-existing build errors in UserTalk object test infrastructure (memory.c redefinitions, undefined chnul/chspace identifiers). Blocks test_table_sorting.c and other UserTalk object tests from building. Worktree: `/Users/jake/dev/jsavin/Frontier-usertalk-object-test-infrastructure`. No commits yet. **NEXT**: Investigate and fix build errors.
-- **MODE STACK REFACTOR (SUBSTANTIALLY COMPLETE)**: Phase 1-2 complete with **91% reduction** achieved (22 → 2 remaining dbpushdatabase calls). All critical paths refactored, mode warnings nearly eliminated. Only cleanup work remains: (1) dbstats.c diagnostic tool (1 call - low priority), (2) memory optimization (Issue #136). Phase 3 optional - can pause to focus on other priorities. Branch: `refactor/explicit-context-no-mode-stack`. References: `MODE_STACK_REFACTOR_PROGRESS.md`, `ADR-002-context-based-format-versioning.md`.
-- Implement remaining headless/kernel verbs needed for CLI runtime so all verb families have complete coverage.
-- Follow-ups filed:
-  - #76: Add corruption/bounds tests for hash unpack (OOB name index, truncated records, header edge cases).
-  - #77: Factor BE pack/unpack helpers (reduce manual memcpy repetition).
-  - #78: Cross-arch BE64 serialization verification (golden blobs on x86_64/arm64).
-- Continue Phase 3 verb porting per processor audits; prioritize quick wins (clock/date/dialog stubs to reduce CLI gaps).
+**Next Up**: Beginning Phase 4 P0a (Global State Elimination) and TCP Networking Phase 1A (Core Socket Implementation) - the foundational work for Frontier's networking layer.
 
-Next Steps (Recommended Priority Order)
+## Recent Major Achievements
 
-**Immediate** (Foundational & unblocking):
-0. **Logging Infrastructure Refactor** (PRIORITIZED - ~2-3 days)
-   - Create logging.h/logging.c with runtime log level control
-   - Replace 76 debug ifdef blocks incrementally
-   - Migrate database layer debug ifdefs first (highest-impact subsystem)
-   - Reference: `planning/phase3/code-cleanup/IFDEF_CLEANUP_STRATEGY.md` (Sections 2A-2B)
-   - Reason: Foundational infrastructure improving all future work; enables runtime debugging without rebuild
+### PR #326: Hierarchical OPML Export - MERGED ✅ (2026-01-19)
+- **Impact**: Converted monolithic 14,002-line OPML file into hierarchical structure (1 manifest + 25 category files) using OPML 2.0 transclusion
+- **Problem Solved**: Eliminated merge conflicts when multiple developers add tests to different categories
+- **Implementation**:
+  - Manifest file with type="link" transclusion to 25 category files
+  - Absolute GitHub URLs for Drummer compatibility
+  - Flattened structure for optimal UX (tests at top level)
+  - All 1,247 integration tests preserved across 26 files
+- **Testing**: Verified working in Drummer (https://drummer.land/)
+- **Documentation**: Added comprehensive OPML usage guide in reports/README.md
+- **Commits**: b151c674, 2afcb6c6, f9489d3f
+- **Milestone**: Scalable test documentation structure, no more OPML merge conflicts
 
-1. **Phase 1 Mode Stack Refactor Prerequisites**: Complete Issues #135 & #136
-   - Issue #135: Refactor outline (op) management from push/pop to deterministic context (~3-5 days)
-   - Issue #136: Audit external object processing for push/pop anti-patterns (~1-2 days)
-   - Reason: Blocks clean mode stack refactor Phase 1; prevents same push/pop anti-pattern bugs
+### PR #318: Phase 1 - Deterministic Thread Testing Foundation - MERGED ✅ (2026-01-18)
+- **Impact**: Established foundation for deterministic thread testing with tickcount-based scheduling
+- **Implementation**:
+  - Added `clockticks_headless()` with millisecond precision using `frontier_time_milliseconds()`
+  - Created test-controlled tickcount via `FRONTIER_TEST_TICKCOUNT` environment variable
+  - Implemented thread ID assignment with collision detection and wraparound handling
+  - Added comprehensive unit tests for thread harness lifecycle
+- **Testing**: All thread foundation tests passing, including collision detection edge cases
+- **Documentation**: Created planning/phase4/threading/HEADLESS_THREAD_VERBS_IMPLEMENTATION.md
+- **Milestone**: Thread scheduling now deterministic and testable in headless environment
 
-2. **PR #137 Follow-Ups**: Complete Issues #138 & #140
-   - Issue #138: Make dbendsaveas disposal explicit (~4-6 hours)
-   - Issue #140: Audit db_context_guard usage in disposal paths (~2-4 hours)
-   - Reason: Code quality, prevents future double-free regressions
+### PR #246: Phase 5 Lang Type Conversion Verbs - MERGED ✅ (2026-01-05)
+- **Impact**: Added 15 critical type conversion verbs for headless runtime
+- **Verbs Added**: lang.gettype(), lang.typeof(), lang.new(), lang.coerce(), lang.copyvalue(), and 10 others
+- **Coverage**: Lang verbs: 13% → 16% (22 new verbs)
+- **Testing**: All integration tests passing
+- **Milestone**: Unlocks dynamic type operations in headless UserTalk
 
-**Short-term** (Code cleanup & quick wins):
-3. **Phase 1 Code Cleanup Completion**: ~3 blocks remaining
-   - Remove `oldMACVERSION` blocks (3 in langhash.c)
-   - Remove commented `WIN95VERSION` blocks (already mostly cleaned)
-   - ~50 lines total; low-risk cleanup
+### PR #241: File Verb Coverage Completion - MERGED ✅ (2025-12-31)
+- **Impact**: 100% file verb coverage (86/86 verbs)
+- **Verbs**: file.exists, file.readwholefile, file.writewholefile, file.delete, file.rename, file.newfolder, file.size, and 79 others
+- **Implementation**: Thin forwarding layers from headless_file_verbs.c → portable/file_portable.c
+- **Testing**: All file verb integration tests passing
+- **Milestone**: File operations fully operational in headless runtime
 
-4. **Issue #121**: Implement 28 error stubs for remaining verbs (~3-4 hours)
-   - Quick win; unblocks CLI testing
-   - Can be done in parallel with other work
+### Logging Infrastructure - COMPLETE ✅ (2025-12-23)
+- **Impact**: Migrated 377 fprintf(stderr) statements to structured logging across all user-facing code
+- **Phases**: Completed all 6 phases (3.1-3.6) with component-based filtering and runtime log levels
+- **API**: log_error/warn/info/debug/trace per component (DB, Hash, Table, Lang, OP, Parse, etc.)
+- **Configuration**: Environment variables (FRONTIER_LOG_LEVEL, FRONTIER_LOG_COMPONENT)
+- **PRs**: #154, #155, #157, #158, #160
+- **Milestone**: Production-ready logging infrastructure with zero fprintf violations
 
-**Medium-term** (Testing & infrastructure):
-5. **Issue #77**: Add BE pack/unpack helper macros (~4-6 hours)
-   - Foundation for #78 and #79
-   - Reduces manual memcpy repetition
+## Current Work Status
 
-6. **Issue #78**: Cross-arch BE64 serialization verification (~6-8 hours, depends on #77)
-   - Ensures v7 database format portability
+### Active Development Areas
 
-7. **Issue #79**: Extended type bounds tests for hash unpack (~6-8 hours)
-   - Comprehensive edge case coverage
+**Phase 4 Threading Foundation**:
+- ✅ **Phase 1 Complete**: Deterministic thread testing foundation (PR #318)
+- 🚀 **Starting P0a**: Global state elimination (hash table context migration)
+  - Reference: planning/phase4/INDEX.md, planning/phase4/threading/README.md
+  - Timeline: Weeks 1-6 (launch blocking)
 
-**Later** (Major refactors - requires decisions):
-- Begin full mode stack refactor Phase 1 (after prerequisites complete; ~2-3 days)
-  - Reference: `planning/phase3/MODE_STACK_REFACTOR_QUICKSTART.md`
-  - Branch: `refactor/explicit-context-no-mode-stack`
-- Continue mode stack Phases 2-5 (8-13 days total)
-- Address remaining architectural P0s (#86, #87, #85, #88) requiring design decisions
-- Deferred: PIKE removal implementation (approved; scheduled for Phase 4, Week 13)
+**TCP Networking**:
+- 🚀 **Starting Phase 1A**: Core socket implementation
+  - Reference: planning/phase4/networking/INDEX.md
+  - Phases: 1A (core sockets), 1B (DNS), 2 (buffered I/O), 3 (server ops - requires threading), 4 (advanced)
+
+**Verb Implementation Coverage**:
+- File verbs: 100% (86/86) ✅
+- Lang verbs: 16% (ongoing)
+- Overall: 37% (264/710 verbs)
+- Active work: String verbs, table verbs, system verbs
+
+### Known Issues and Blockers
+
+**Active Worktrees**:
+- **feature/table-sorting-and-settarget** (P1 - IN REVIEW)
+  - Location: `/Users/jake/dev/jsavin/Frontier-table-sorting-and-settarget`
+  - Status: Implementation complete, awaiting PR creation
+  - Blockers: Pre-existing UserTalk object test infrastructure build errors
+
+**P0 Architectural Decisions Required**:
+- Issue #86: Global runtime context & lifecycle (blocks concurrency model, remote runtime)
+- Issue #87: Headless EFP routing parity (depends on #86)
+- Issue #88: Networking architecture & security (Phase 2 priority)
+- Issue #166: UserTalk integration tests for table context (blocked on new() verb binding)
+
+## Next Steps (Priority Order)
+
+### Immediate (Starting Now)
+
+1. **Phase 4 P0a: Hash Table Context Migration** (~2-3 weeks, launch blocking)
+   - Migrate hash table operations from global state to explicit context
+   - Reference: planning/phase4/INDEX.md
+   - Foundational for threading support
+
+2. **TCP Networking Phase 1A: Core Socket Implementation** (~1-2 weeks)
+   - Implement basic TCP socket verbs (tcp.open, tcp.close, tcp.send, tcp.receive)
+   - POSIX socket abstraction layer
+   - Reference: planning/phase4/networking/INDEX.md
+
+### Short-Term (Next 1-2 weeks)
+
+3. **Fix UserTalk Object Test Infrastructure** (P1 - ~4-6 hours)
+   - Fix memory.c redefinitions and undefined identifiers
+   - Unblocks table sorting PR
+
+4. **Create PR for Table Sorting** (P1 - ~2 hours)
+   - Once test infrastructure fixed
+   - Use pull-request agent to create comprehensive PR
+
+### Medium-Term (Following 2-4 weeks)
+
+5. **Phase 4 P0b: Continue Global State Elimination** (weeks 7-12)
+   - Outline context migration
+   - External object processing audit
+   - Reference: planning/phase4/INDEX.md
+
+6. **TCP Networking Phase 1B-2** (weeks 3-6)
+   - DNS resolution (Phase 1B)
+   - Buffered I/O (Phase 2)
+
+## Reference Documentation
+
+### Planning Documents
+- **Phase 4 Overview**: planning/phase4/INDEX.md
+- **Threading Plan**: planning/phase4/threading/README.md
+- **Networking Plan**: planning/phase4/networking/INDEX.md
+- **CRDT Foundation**: planning/CRDT_FOUNDATION_ROADMAP.md
+
+### Implementation Guides
+- **Verb Implementation**: docs/VERB_IMPLEMENTATION_GUIDE.md
+- **Testing Guide**: docs/TESTING_GUIDE.md
+- **CLI Usage**: docs/CLI_USAGE_GUIDE.md
+- **Logging Standards**: docs/LOGGING_STANDARDS.md
+
+### Architecture Decisions
+- **ADR-002**: Context-Based Format Versioning
+- **ADR-003**: Two-Phase Address Value Resolution
+- **ADR-004**: Dynamic Verb Binding Architecture
+- **ADR-005**: Parameter State Thread-Safety
+
+### Historical Context
+- **Status Archive**: planning/_STATUS_ARCHIVE.md (entries before 2026-01-05)
+- **TODO Archive**: Historical completed work (see _CURRENT_TODO_LIST.md)

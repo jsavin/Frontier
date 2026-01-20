@@ -1,450 +1,339 @@
-# Carbon Migration / Runtime Modernization – Active TODO
+# Frontier - Current TODO List
 
-Status: In Progress (Updated 2026-01-05)
-Owner: Codex
+Status: In Progress (Updated 2026-01-19)
 
-## 🔥 CURRENT PRIORITY – Continue Verb Implementation & Lang Type Conversion (2026-01-05)
+## 🚀 IMMEDIATE PRIORITY – Phase 4: Global State Elimination + TCP Networking
 
-**Goal**: Rapidly expand verb binding coverage from 13% → 16% by adding bindings for verbs with existing implementations.
+**Goal**: Begin Phase 4 P0a (Global State Elimination) and TCP Networking Phase 1A (Core Socket Implementation) - foundational work for Frontier's networking layer.
 
-**Discovery**: The bottleneck is NOT missing implementations - it's missing bindings. Many verbs are fully implemented but not accessible because auto-generated stub files in `tests/headless_*_verbs.c` don't forward to them.
-
-### Phase 1 Quick Wins (3-6 hours total)
-
-**Immediate - File Verbs Proof of Concept** (1-2 hours):
-- [ ] Implement 7 file verb bindings (file.exists, file.readwholefile, file.writewholefile, file.delete, file.rename, file.newfolder, file.size)
-- [ ] Pattern: Thin forwarding layers from `tests/headless_file_verbs.c` → `portable/file_portable.c`
-- [ ] Unlock skipped `file_verb_tests`
-- [ ] Validate approach and refine estimates
-
-**Table Verbs** (1-2 hours):
-- [ ] Bind 5 table verbs (table.assign, table.getcursor, table.goto, table.emptytable, table.packtable)
-- [ ] Forward to implementations in `Common/source/tableverbs.c` and `tableops.c`
-
-**String Verbs** (1-2 hours):
-- [ ] Bind 10 basic string verbs (length, mid, delete, insert, replace, replaceall, lower, upper, countfields, nthfield)
-- [ ] Forward to implementations in `Common/source/langverbs.c`
-
-**Success Criteria**:
-- Coverage increases from 13% → 16% (22 new verbs)
-- `file_verb_tests` passing (no longer skipped)
-- No regressions in existing tests
-- Clear binding pattern documented
-
-**Reference**: `planning/phase3/VERB_BINDING_QUICK_WINS.md`
-
-## Recently Completed – 2026-01-05
-
-✅ **Repository Branch Cleanup & Codebase Organization (commit 5456c5eb)**
-- Cleaned up 78 branches from ~87 to 3 local branches
-  - 13 low-risk branches deleted
-  - 44 merged branches deleted
-  - 6 zombie branches deleted
-  - 3 stale November branches deleted
-  - 1 stash branch deleted
-  - 2 archive stash snapshots deleted
-  - 7 branches reviewed and deleted (superseded work)
-  - 2 remote zombie branches deleted
-- Extracted typeof() OSType code documentation (180 lines)
-- Only 3 local branches remain: develop, archive/codex-sessions (permanent), feature/issue-135-phase5-callsite-migration (active worktree)
-- **Impact**: Improved repository hygiene; cleaner branch history for future work
-
-✅ **Recent PR Completions (Latest First)**
-- PR #246: Phase 5 lang type conversion verbs (15 new verbs)
-- PR #245: Lang verbs fixes
-- PR #241: File verb coverage completion (86/86 verbs = 100%)
-- PR #232: wptext_runtime.c frontier_time_t migration
-- Multiple lang and table verb implementation PRs
-- **CURRENT METRICS**: File: 100% (86/86), Lang: 16%, Overall: 37% (264/710 verbs)
-
-## Recently Completed – 2025-12-31
-
-✅ **Verb Binding Analyzer Fix – CRITICAL BUG (commits 54b2bd08, 95a233a5, d660916f)**
-- Fixed analyzer over-reporting: 68% (FALSE) → 13% (CORRECT)
-- Added Makefile parsing to know what's actually compiled
-- Default headless mode, --legacy flag for full codebase
-- Deleted 17 invalid reports generated with broken analyzer
-- **Impact**: Accurate source-of-truth for verb coverage; identified quick wins
-
-## Recently Completed – 2025-12-30
-
-✅ **Documentation Modernization – COMPLETE (commit 90c2a439)**
-- Condensed CLAUDE.md from 1059 to 628 lines (40% reduction)
-- Extracted detailed guides: `docs/VERB_IMPLEMENTATION_GUIDE.md`, `docs/TESTING_GUIDE.md`
-- Added worktree workflow decision tree and location/naming conventions
-- Consolidated agent guidance (11 agents in single table)
-- Added Quick Reference section with essential commands
-- **Impact**: Improved maintainability; enforces worktree workflow for non-trivial work
-
-✅ **Table Verbs Phase 2-3 – COMPLETE (PR #210 merged)**
-- Phase 2: Made outline operations headless-capable (op.expand, op.collapse, op.setlinetext, etc.)
-- Phase 3: Implemented table navigation verbs (table.goto, table.go, table.getselection)
-- Added thread-local table selection context with cursor and expansion state tracking
-- Created critical error infrastructure (error(), scriptError())
-- **Impact**: Core table verb functionality for headless runtime operational
-
-✅ **Test Infrastructure Stabilization – COMPLETE (PR #212 merged)**
-- Fixed runtime initialization issues (log_init(), langinitresources_headless())
-- Fixed memory.c redefinitions causing build failures
-- All headless tests building and passing
-- **Impact**: Clean test infrastructure foundation
-
-✅ **Migration Naming Convention – COMPLETE (multiple commits)**
-- Improved migration filename patterns
-- Updated documentation and test infrastructure
-- **Impact**: Cleaner, more consistent migration workflow
-
-✅ **Time Portability – COMPLETE (Issue #167 follow-up, PR #204 merged)**
-- Migrated all timenow() callsites to timenow64()
-- Created timenow64() helper for centralized epoch conversion
-- Y2038-ready time operations
-- **Impact**: Future-proof time handling across platform
-
-## Recently Completed – Phase 4A (2025-12-25)
-
-✅ **Phase 4A: Table Context & Mutation Tracking – COMPLETE (PR #165 merged)**
-- Implemented `table_context_t` structure with per-table version tracking (uint64_t version_number, monotonically increasing from 1)
-- Integrated context pointer into `tyhashtable` structure via lazy initialization in `tablenewtable()`
-- Added mutation recording to 6 core table verbs: tableassignverb, tablemoveverb, tablecopyverb, tablerenameverb, tablemoveandrenameverb, tableemptytableverb
-- Created comprehensive C unit test suite: 20 unit tests covering lifecycle, version tracking, mutation types, change tracking, callback guards, integration scenarios, and edge cases – **all passing**
-- Documented callback guard infrastructure as deferred to Phase 5+ (callbacks exist but don't trigger mutations yet)
-- Created 5 planning documents: CRDT_FOUNDATION_ROADMAP.md, CONTEXT_PATTERN_FOR_ODB_COLLABORATION.md, CRDT_IMPLEMENTATION_ROADMAP.md, OUTLINE_OPERATION_CONTEXT.md, RESERVED_FIELD_PERSISTENCE_STRATEGY.md
-- Addressed all code review feedback: type-safe context access helper, thread safety TODOs, defensive initialization, mutation type count constant, documented integration test requirements
-- **Status**: All 20 unit tests passing, no regressions, bot approved, PR merged with 4 commits
-- **Pending**: UserTalk integration tests blocked on new() verb binding and table.getversion() verb (filed as Issue #166, P0)
-- **Reference**: `planning/architectural_decision_records/CONTEXT_PATTERN_FOR_ODB_COLLABORATION.md`
-
-## Approved Architectural Decisions
-
-**Code Cleanup Strategy (IFDEF Cleanup - from IFDEF_CLEANUP_STRATEGY.md)**
-- ✅ **PIKE variant removal**: APPROVED - Remove all 29 PIKE ifdefs (Frontier-only codebase, Pike was separate product)
-  - Implementation: Phase 4, Week 13 of ifdef cleanup roadmap
-  - Files affected: progressbar.c and 28 others
-  - Impact: Simplifies codebase significantly
-  - Update docs: Remove Pike references from README.md, build documentation
-
-- ✅ **Optional database backends**: APPROVED - Keep as optional compile-time features (MySQL, SQLite, Python)
-  - Current: FRONTIER_MYSQL, FRONTIER_SQLITE, FRONTIER_PYTHON (3 patterns each, 8 total blocks)
-  - Approach: Compile-time flags via Makefile/CMake configuration
-  - Note: If we want to support Python integration or other optional backends going forward, will need architectural rethinking to avoid ifdef proliferation
-  - Action: Document in build system instead of hardcoding
+**Context**: Hierarchical OPML export complete (PR #326). Deterministic thread testing foundation complete (PR #318). Ready to start networking infrastructure.
 
 ---
 
-## P0s – Critical Blockers (Architectural Decisions Required)
+## Large In-Flight Workstreams
+
+### Workstream 1: Phase 4 Threading Foundation & Global State Elimination
+
+**Status**: Phase 1 complete (PR #318), starting P0a
+
+**Completed**:
+- ✅ **Phase 1: Deterministic Thread Testing Foundation** (PR #318 merged)
+  - Tickcount-based scheduling with millisecond precision
+  - Test-controlled tickcount via environment variable
+  - Thread ID assignment with collision detection
+  - Comprehensive unit tests passing
+
+**Active Work**:
+- 🚀 **P0a (Weeks 1-6): Hash Table Context Migration** - LAUNCH BLOCKING
+  - Migrate hash table operations from global state to explicit context
+  - Thread-safe hash table access patterns
+  - Reference: planning/phase4/INDEX.md
+  - Timeline: ~2-3 weeks
+
+**Upcoming**:
+- **P0b (Weeks 7-12)**: Outline context migration, external object processing audit
+- **P1a-P1b (Weeks 13-24)**: Multi-user collaborative ODB foundation
+- **P2 (Weeks 25-36)**: Cleanup and optimization
+
+**Reference Documentation**:
+- planning/phase4/INDEX.md - Phase 4 roadmap overview
+- planning/phase4/threading/README.md - POSIX threading plan (5 phases)
+- planning/phase4/threading/HEADLESS_THREAD_VERBS_IMPLEMENTATION.md - Thread verb implementation details
+- planning/CRDT_FOUNDATION_ROADMAP.md - Collaborative ODB foundation
+
+---
+
+### Workstream 2: TCP Networking Implementation
+
+**Status**: Starting Phase 1A
+
+**Active Work**:
+- 🚀 **Phase 1A (Weeks 1-2): Core Socket Implementation**
+  - Basic TCP socket verbs: tcp.open, tcp.close, tcp.send, tcp.receive
+  - POSIX socket abstraction layer
+  - Cross-platform socket handling (macOS, Linux)
+  - Error handling and resource cleanup
+
+**Upcoming**:
+- **Phase 1B (Weeks 3-4)**: DNS resolution (tcp.resolvehostname, tcp.getaddress)
+- **Phase 2 (Weeks 5-6)**: Buffered I/O (tcp.receiveline, tcp.sendline, tcp.setbuffer)
+- **Phase 3 (Weeks 7-10)**: Server operations - REQUIRES THREADING FOUNDATION
+  - tcp.listen, tcp.accept, tcp.setlistener (callback registration)
+  - Depends on: Phase 4 P0a-P0b completion
+- **Phase 4 (Weeks 11-14)**: Advanced features (timeouts, non-blocking, SSL/TLS)
+
+**Reference Documentation**:
+- planning/phase4/networking/INDEX.md - TCP networking roadmap
+- planning/phase4/networking/SOCKET_IMPLEMENTATION_PLAN.md - Detailed socket implementation
+- Issue #88 (P0): Networking architecture & security decisions
+
+---
+
+### Workstream 3: Verb Implementation Coverage
+
+**Status**: Ongoing - 37% overall coverage (264/710 verbs)
+
+**Coverage by Category**:
+- ✅ File verbs: 100% (86/86) - COMPLETE
+- 🔄 Lang verbs: 16% (ongoing)
+- 🔄 String verbs: ~30% (in progress)
+- 🔄 Table verbs: ~40% (in progress)
+- 🔄 System verbs: ~25% (in progress)
+
+**Active Work**:
+- String verb bindings (string.length, string.mid, string.delete, string.insert, etc.)
+- Table verb bindings (table.assign, table.goto, table.packtable, etc.)
+- System verb bindings (sys.getenvironmentvariable, sys.setenvironmentvariable)
+
+**Reference Documentation**:
+- docs/VERB_IMPLEMENTATION_GUIDE.md - Verb implementation patterns
+- tools/kernelverbs_parser/ - Verb coverage analysis tools
+- planning/phase3/VERB_BINDING_QUICK_WINS.md - Quick win opportunities
+
+---
+
+### Workstream 4: Active Worktrees & Blocked Work
+
+**Active Worktrees**:
+
+1. **feature/table-sorting-and-settarget** (P1 - IN REVIEW)
+   - Location: `/Users/jake/dev/jsavin/Frontier-table-sorting-and-settarget`
+   - Branch: `feature/table-sorting-and-settarget` (1 commit ahead: 8d773bcd)
+   - Status: Implementation complete, awaiting PR creation
+   - Content:
+     - Table sorting verbs: table.sortby(), table.getsortorder()
+     - Per-table sort order stored in database
+     - Target verbs: lang.gettarget(), lang.settarget(), lang.cleartarget()
+     - Comprehensive test suite (8 test cases)
+   - **Blocker**: Pre-existing UserTalk object test infrastructure build errors
+   - **Next**: Fix test infrastructure, then create PR
+
+2. **fix/usertalk-object-test-infrastructure** (P1 - NOT STARTED)
+   - Location: `/Users/jake/dev/jsavin/Frontier-usertalk-object-test-infrastructure`
+   - Branch: `fix/usertalk-object-test-infrastructure` (no commits yet)
+   - Scope: Fix pre-existing build errors
+   - Issues:
+     - memory.c redefinitions (lockhandle, unlockhandle, etc.)
+     - Undefined identifiers: chnul, chspace
+   - **Impact**: Blocks table sorting PR from being tested
+   - **Next**: Investigate and fix build errors
+
+---
+
+## P0 Issues - Critical Blockers (Architectural Decisions Required)
+
 These block deployment and major system decisions. All require design/planning before implementation.
 
-- **Issue #86**: P0: Global runtime context & lifecycle
+### Launch Blocking
+
+- **Issue #86** (P0): Global runtime context & lifecycle
   - Scope: Large - impacts all concurrent CLI/runtime clients
   - Status: Design/decision needed
   - Blocks: #94 (concurrency model), #97 (remote runtime), #87 (EFP routing parity)
+  - **Related to**: Phase 4 P0a global state elimination work
 
-- **Issue #87**: P0: Headless EFP routing parity
+- **Issue #87** (P0): Headless EFP routing parity
   - Scope: Large - requires equivalence with UI-mode event flow
   - Depends on: #86 (runtime context)
   - Blocks: CLI stability, proper testing infrastructure
 
-- **Issue #85**: P0: UI boundary via Ports & Adapters
-  - Scope: Large - architectural refactor
-  - Depends on: #86 (runtime context)
-  - Status: Design/decision needed
-
-- **Issue #84**: P0: Memory management audit (rolling)
-  - Scope: Ongoing - continuous verification
-  - Status: Active (completed in PR #137 for migration cleanup paths)
-  - Note: Continue periodic audits as new code lands
-
-- **Issue #88**: P0: Networking architecture & security
+- **Issue #88** (P0): Networking architecture & security
   - Scope: Medium - HTTP/WebSocket scaffolding with secure defaults
-  - Status: Design/decision needed, deferred until Phase 2
+  - Status: Design/decision needed
   - Timeline: Before broad CLI distribution
-  - Reference: `planning/1.0_phase1_cli_implementation_plan.md`
+  - **Related to**: TCP Networking workstream (Phase 1A starting)
+
+### Development Blockers
 
 - **Issue #166** (P0): UserTalk integration tests for table context mutation tracking
   - Scope: Small - C + UserTalk integration testing
   - Status: Blocked on new() verb binding and table.getversion() verb implementation
-  - Dependencies: Requires table.new() (to create test tables) and table.getversion() (to verify version tracking)
-  - Impact: Validates Phase 4A table_context_t works correctly from UserTalk perspective
-  - Note: Created as follow-up to PR #165 (Phase 4A). C unit tests pass; UserTalk integration needed for runtime validation.
+  - Impact: Validates Phase 4A table_context_t works correctly from UserTalk
   - Timeline: Can proceed after new() and table.getversion() verbs are bound
+
+- **Issue #84** (P0): Memory management audit (rolling)
+  - Scope: Ongoing - continuous verification
+  - Status: Active (completed in PR #137 for migration cleanup paths)
+  - Note: Continue periodic audits as new code lands
 
 ---
 
-## Active Worktrees – In Progress
+## P1 Issues - High Priority (Recommended Work Order)
 
-- **WORKTREE: feature/table-sorting-and-settarget** (P1 - IN REVIEW)
-  - Location: `/Users/jake/dev/jsavin/Frontier-table-sorting-and-settarget`
-  - Branch: `feature/table-sorting-and-settarget` (1 commit ahead of develop: 8d773bcd)
-  - Scope: Table sorting + target verb implementation
-  - Status: Implementation complete, awaiting PR creation and test infrastructure fixes
-  - Content:
-    * Table sorting verbs: table.sortby(), table.getsortorder()
-    * Per-table sort order stored in database (sortbyname/sortbyvalue/sortbykind)
-    * Target verbs: lang.gettarget(), lang.settarget(), lang.cleartarget()
-    * Comprehensive test suite (8 test cases in test_table_sorting.c)
-  - Blockers: Tests cannot run due to pre-existing UserTalk object test infrastructure build errors
-  - Next steps:
-    1. Fix test infrastructure issues (see next worktree)
-    2. Verify tests pass
-    3. Create PR via pull-request agent
-    4. Run `./tools/monitor_pr_review.sh <PR>` after every push
-    5. Address bot feedback and merge
+### Short-Term (1-2 weeks)
 
-- **WORKTREE: fix/usertalk-object-test-infrastructure** (P1 - NOT STARTED)
-  - Location: `/Users/jake/dev/jsavin/Frontier-usertalk-object-test-infrastructure`
-  - Branch: `fix/usertalk-object-test-infrastructure` (no commits yet)
-  - Scope: Fix pre-existing build errors in UserTalk object test infrastructure
-  - Issues to fix:
-    * memory.c redefinitions (lockhandle, unlockhandle, etc.)
-    * Undefined identifiers: chnul, chspace
-  - Impact: Blocks test_table_sorting.c and other UserTalk object tests
-  - Next steps:
-    1. Investigate build errors
-    2. Fix memory.c redefinitions
-    3. Fix undefined identifier issues
-    4. Verify all UserTalk object tests build
-    5. Create PR and merge
-  - Urgency: Blocks table sorting PR from being tested
+1. **Fix UserTalk Object Test Infrastructure** (~4-6 hours)
+   - Fix memory.c redefinitions and undefined identifiers
+   - Unblocks table sorting PR
+   - Worktree: fix/usertalk-object-test-infrastructure
 
-## P1s – High Priority (Recommended Work Order)
+2. **Create PR for Table Sorting** (~2 hours)
+   - Once test infrastructure fixed
+   - Use pull-request agent for comprehensive PR
+   - Worktree: feature/table-sorting-and-settarget
 
-### ✅ Phase 0: Logging Infrastructure (COMPLETE - 100%)
-**Status**: DONE - All 377 fprintf(stderr) statements migrated to structured logging
+3. **Issue #121**: Implement 28 error stubs for remaining verbs (~3-4 hours)
+   - Quick win - unblocks CLI testing
+   - Files affected: Shell verb implementations in `Common/source/shell*.c`
 
-- ✅ **Logging infrastructure** (logging.h/logging.c) - COMPLETE
-  - Created runtime-controlled log levels via environment variables
-  - Component-based filtering (DB, Hash, Table, Pack, Eval, Lang, OP, Parse)
-  - Replaced 76 debug ifdef blocks
-  - Reference: `planning/phase3/LOGGING_INFRASTRUCTURE_PLAN.md`
-  - Deliverables:
-    * logging.h/logging.c with API: log_error/warn/info/debug/trace per component ✅
-    * Environment variable configuration (FRONTIER_LOG_LEVEL, FRONTIER_LOG_COMPONENT) ✅
-    * All migrations documented in PRs #154-#160 ✅
-    * Integrated with all user-facing code ✅
+### Medium-Term (2-4 weeks)
 
-- ✅ **Migration phases completed** (all user-facing code)
-  - Phase 3.1: Language runtime (52 stmts, PR #154) ✅
-  - Phase 3.2: Quick wins (13 stmts, PR #155) ✅
-  - Phase 3.3: Simple files (18 stmts, PR #157) ✅
-  - Phase 3.4: Medium complexity (50 stmts, PR #158) ✅
-  - Phase 3.5: Special cases - macros + Bison (16 stmts, PR #160) ✅
-  - Phase 3.6: Meta-logging exemption (check_fprintf.sh) ✅
-  - **Total: 377 of 377 statements (100%)** ✅
+4. **Issue #135** (P1): Refactor outline (op) management from push/pop to deterministic context
+   - Scope: Medium - Similar push/pop pattern to mode stack
+   - LOE: ~3-5 days (multiple file changes)
+   - Files affected: `Common/source/op.c`, op management throughout codebase
+   - **Related to**: Phase 4 global state elimination
 
-### Phase 1: Code Cleanup Completion (LOW RISK - ~1-2 hours)
-**Complete remaining dead code removal:**
+5. **Issue #136** (P1): Audit external object processing for push/pop anti-patterns
+   - Scope: Medium - Code review + planning
+   - LOE: ~1-2 days
+   - Output: Planning doc listing all external object push/pop patterns
+
+6. **Issue #138** (P1): Refactor dbendsaveas to make implicit disposal explicit
+   - Scope: Small - Documentation + minor API improvement
+   - LOE: ~4-6 hours
+   - Files affected: `Common/source/db.c`, `Common/headers/db.h`
+
+7. **Issue #140** (P1): Audit db_context_guard usage in database disposal paths
+   - Scope: Small - Code review + verification
+   - LOE: ~2-4 hours
+   - Depends on: #138
+
+### Testing & Infrastructure
+
+8. **Issue #77** (P1): Add helper macros for BE pack/unpack in langhash
+   - Scope: Medium - Code quality improvement
+   - LOE: ~4-6 hours
+   - Files affected: `Common/source/langhash.c`
+
+9. **Issue #78** (P1): Cross-arch BE64 serialization verification
+   - Scope: Medium - Adding regression tests with golden blobs
+   - LOE: ~6-8 hours
+   - Depends on: #77
+
+10. **Issue #79** (P1): Add extended type bounds tests for hash unpack
+    - Scope: Medium - Comprehensive testing
+    - LOE: ~6-8 hours
+    - Files affected: `tests/db_format_tests.c`
+
+---
+
+## P2 Issues - Nice to Have
+
+### Code Cleanup
+
+- **Issue #139** (P2): Cleanup path duplication (factor out repeated cleanup logic)
+- **Issue #141** (P2): Final cleanup restructuring (consolidate cleanup patterns)
+- **Issue #142** (P2): Error path test coverage (add tests for migration failures)
+- **Issue #143** (P2): cleanup_migration_database error scenarios (add tests)
+
+### Phase 1 Code Cleanup Completion (LOW RISK - ~1-2 hours)
 
 - [ ] Remove obsolete platform code (~3 blocks remaining)
   - `oldMACVERSION` (3 blocks in langhash.c - v7 format doesn't use Mac aliases)
   - Commented `WIN95VERSION` blocks (already mostly cleaned)
   - ~50 lines total; quick cleanup
 
-### Phase 2: PR #137 Follow-Ups (Code Quality - ~6-10 hours)
+### Additional Follow-Ups
 
-- **Issue #138** (P1): Refactor dbendsaveas to make implicit disposal explicit
-  - Scope: Small - Documentation + minor API improvement
-  - LOE: ~4-6 hours
-  - Files affected: `Common/source/db.c`, `Common/headers/db.h`
-  - Note: Add clear documentation about internal `dbdispose()` call; prevents future double-free bugs
+- **Issue #76** (P2): Add corruption/bounds tests for hash unpack
+- **Issue #132** (P2): Investigate hash table disposal in unit test environment
+- **Issue #73** (P2): Document magic sizes (path buffers, menu padding)
 
-- **Issue #140** (P1): Audit db_context_guard usage in database disposal paths
-  - Scope: Small - Code review + verification
-  - LOE: ~2-4 hours
-  - Files affected: `Common/source/db.c`, `Common/source/db_format.c`
-  - Depends on: #138 (context for disposal patterns)
-  - Output: Confirmation that context guards have been properly removed from disposal paths
+---
 
-### Phase 3: Mode Stack Refactor Prerequisites (ARCHITECTURE - ~4-7 days)
-**Foundational work for operation context pattern (extended by Phase 4A):**
+## Deferred / Design-Dependent (Phase 2+)
 
-- **Issue #135** (P1): Refactor outline (op) management from push/pop to deterministic context model
-  - Scope: Medium - Similar push/pop pattern to mode stack
-  - LOE: ~3-5 days (multiple file changes, similar refactor pattern to mode stack)
-  - Interdependency: Same push/pop anti-pattern as mode stack; fixing now prevents future bugs
-  - Files affected: `Common/source/op.c`, op management throughout codebase
-  - Related issue: #136 (audit external object processing)
-  - **Note**: Phase 4A (table context) extended the operation context pattern to tables; same context-passing architecture being applied to outlines here
+### Major Architectural Decisions
 
-- **Issue #136** (P1): Audit external object processing for push/pop anti-patterns
-  - Scope: Medium - Code review + planning
-  - LOE: ~1-2 days
-  - Dependency: Complements #135; identifies all similar patterns
-  - Output: Planning doc listing all external object push/pop patterns and refactor plan
-  - **Note**: Phase 4A validates the context pattern is sound; this audit refines what other subsystems need similar treatment
-
-### Phase 4: Quick Wins & Verb Porting (~3-4 hours)
-
-- **Issue #121** (P1): Implement 28 error stubs for remaining verbs
-  - Scope: Quick win - 3-4 hours
-  - Files affected: Shell verb implementations in `Common/source/shell*.c`
-  - Impact: Unblocks CLI testing by stubbing error returns instead of crashes
-  - Note: Can be done in parallel with other work
-
-- **Issue #122** (P1): Implement TCP/Socket abstraction layer for networking verbs
-  - Scope: Medium - 6-8 hours
-  - Depends on: #88 (networking architecture decision - may block)
-  - Status: Decision-dependent; defer until architecture P0 resolved
-
-### Phase 5: Testing & Infrastructure (~20-30 hours)
-
-- **Issue #77** (P1): Add helper macros for BE pack/unpack in langhash
-  - Scope: Medium - Code quality improvement
-  - LOE: ~4-6 hours
-  - Files affected: `Common/source/langhash.c`, new helpers in `Common/headers/db_format.h`
-  - Impact: Reduces manual memcpy repetition, improves maintainability
-  - Related: Supports Issues #78, #79 (testing follow-ups)
-
-- **Issue #78** (P1): Cross-arch BE64 serialization verification
-  - Scope: Medium - Adding regression tests with golden blobs
-  - LOE: ~6-8 hours
-  - Depends on: #77 (BE helpers)
-  - Output: Procedural + file-based regression tests for x86_64/arm64 compatibility
-  - Impact: Ensures v7 database format portability across architectures
-
-- **Issue #79** (P1): Add extended type bounds tests for hash unpack (lists, tables, records)
-  - Scope: Medium - Comprehensive testing
-  - LOE: ~6-8 hours
-  - Files affected: `tests/db_format_tests.c`
-  - Impact: Catches edge cases in deserialization before they hit production
-  - Related: Issue #76 (corruption tests), #75 (hash hardening PR)
-
-- **Issue #132** (P1): Investigate hash table disposal in unit test environment
-  - Scope: Small - Debugging + verification
-  - LOE: ~2-4 hours
-  - Impact: Ensures test harness doesn't leak handles between tests
-
-- **Issue #73** (P1): Document magic sizes (path buffers, menu padding)
-  - Scope: Small - Documentation
-  - LOE: ~2-3 hours
-  - Output: Adds comments/docs to `Common/headers/shell.h` and related files
-  - Impact: Improves maintainability, prevents size mistakes in future refactors
-
-### Phase 6: Major Architectural Decisions (DEFERRED - Design-dependent)
+- **Issue #85** (P1): UI boundary via Ports & Adapters
+  - Scope: Large - architectural refactor
+  - Depends on: #86 (runtime context)
+  - Status: Design/decision needed
 
 - **Issue #89** (P1): OSA / IPC strategy
   - Scope: Large - Architectural decision
   - Blocks: UI/headless bridge, cross-process communication
-  - Status: Decision needed
-  - Related docs: `planning/TODO_future_improvements.md`
 
 - **Issue #90** (P1): File I/O & path policy
   - Scope: Large - Security/access control decisions
   - Blocks: File verb implementations, sandboxing model (#106)
-  - Status: Decision needed
-  - Dependency: Related to #106 (permission/sandboxing)
 
 - **Issue #91** (P1): Unicode strategy
   - Scope: Medium - Encoding/platform decisions
   - Blocks: Comprehensive verb porting (date/file/string verbs)
-  - Status: Decision needed
-  - Note: Likely affects multiple verb families
 
 - **Issue #93** (P1): Hash table modernization
   - Scope: Large - Data structure refactor
-  - Blocks: Long-term performance improvements
-  - Status: Design phase
   - Note: Post-1.0 work
 
 - **Issue #94** (P1): Concurrency model & task contexts
   - Scope: Large - Runtime architecture
   - Depends on: #86 (global runtime context)
-  - Status: Design/decision needed
   - Blocks: Multi-threaded operation, background tasks
 
 - **Issue #97** (P1): Remote runtime + local guest databases
   - Scope: Large - Multi-tier architecture
   - Depends on: #86 (runtime context), #88 (networking)
-  - Status: Design/decision needed
   - Timeline: Phase 2+
 
 - **Issue #102** (P1): Developer experience improvements
   - Scope: Medium - Tooling & documentation
   - Status: Ongoing
-  - Examples: Better error messages, improved debugging support
 
 - **Issue #105** (P1): Modernize file.getSystemFolderPath for multi-platform support
   - Scope: Medium - Cross-platform file system access
-  - LOE: ~4-6 hours
   - Depends on: #90 (file I/O & path policy)
-  - Files affected: `Common/source/file*.c`
-  - Impact: Enables proper cross-platform file operations
 
-- **Issue #106** (P1): Design permission/sandboxing model for daemon vs userspace execution
+- **Issue #106** (P1): Design permission/sandboxing model
   - Scope: Large - Security model
   - Depends on: #90 (file I/O & path policy)
-  - Status: Design/decision needed
   - Blocks: Daemon/service deployment
 
 - **Issue #81** (P1): Unvendor temporary build dependencies (CMake + Paige)
   - Scope: Medium - Build system refactor
-  - LOE: ~2-3 weeks
   - Status: Deferred until Phase 2 (post v6→v7 migration)
-  - Note: Vendor Paige statically for now to unblock testing
 
-## Runtime / CLI Stabilization
-- [x] Implement headless/kernel clock verbs (`clock.now`, `clock.ticks`, `clock.milliseconds`, `clock.sleepfor`, `clock.waitseconds`, `clock.waitsixtieths`).
-  - Implemented using portable time layer (`frontier_time_*` functions) for cross-platform compatibility
-  - All clock verbs tested and integrated with CLI runtime
-  - Existing `cli_runtime_tests` covers `clock.now()` and `clock.ticks()` validation
-  - Date coercions working through `timenow()` with Mac epoch offset (2,082,844,800 seconds)
-- [x] Confirm `make -C tests cli_runtime_tests` passes with real clock verb implementations (no more exit=1 skips).
-- [ ] Implement remaining date verbs (`date.*` functions) for full CLI coverage.
-  - Related: `docs/verb_implementation_status.md` references date verb roadmap
+---
 
-## P2 Follow-Ups (Medium Priority - Nice to Have)
+## Recently Completed (Last 2 Weeks)
 
-### Migration / Cleanup Follow-Ups (PR #137)
-- [ ] Issue #139: Cleanup path duplication (factor out repeated cleanup logic across cancoon.c and other files).
-- [ ] Issue #141: Final cleanup restructuring (consolidate all cleanup scenarios into consistent patterns).
-- [ ] Issue #142: Error path test coverage (add tests for migration failures at various points in the flow).
-- [ ] Issue #143: cleanup_migration_database error scenarios (add tests for scenarios 2 and 3 - error with Save As active, error with allocated destination).
+### PR #326: Hierarchical OPML Export - MERGED ✅ (2026-01-19)
+- Converted monolithic 14,002-line OPML to 26-file hierarchical structure
+- OPML 2.0 transclusion with absolute GitHub URLs
+- Flattened structure for Drummer compatibility
+- All 1,247 integration tests preserved
+- Commits: b151c674, 2afcb6c6, f9489d3f
 
-### Code Cleanup Completed (IFDEF Cleanup - Approved Strategy)
-**Reference**: `planning/phase3/code-cleanup/IFDEF_CLEANUP_STRATEGY.md` (approved)
+### PR #318: Phase 1 - Deterministic Thread Testing Foundation - MERGED ✅ (2026-01-18)
+- Tickcount-based thread scheduling with millisecond precision
+- Test-controlled tickcount via FRONTIER_TEST_TICKCOUNT
+- Thread ID collision detection and wraparound handling
+- Comprehensive unit tests passing
+- Documentation: planning/phase4/threading/HEADLESS_THREAD_VERBS_IMPLEMENTATION.md
 
-**Summary of Completed Work:**
-- [x] Remove "xxx"-prefixed dead code blocks (~15 blocks, ~150 lines) ✅ DONE (Commit 3e73fffb)
-  - `xxxWIN95VERSION`, `xxxPIKE`, `xxxfldebug`, `xxxver`, etc.
+---
 
-- [x] Remove explicit dead code markers (~3 blocks) ✅ DONE (Commit 46c5ff58)
-  - `OBSOLETE` (whirlpool.c: ~1000 lines of obsolete crypto tables)
-  - `NEVER` (langevaluate.c: error reporting code)
-  - **Keep**: `NeverDefine_For_Reference` (defensive guard pattern)
+## Reference Documentation
 
-- [x] Remove orphaned platform entry points (3 files) ✅ DONE (PR #134)
-  - `Common/source/FrontierWinMain.c`, `FrontierMacMain.c`, `FrontierWinMain.h`
-  - Impact: ~2600 lines of dead legacy UI code removed
+### Phase 4 Planning
+- **planning/phase4/INDEX.md** - Phase 4 roadmap overview (global state elimination)
+- **planning/phase4/threading/README.md** - POSIX threading implementation plan
+- **planning/phase4/networking/INDEX.md** - TCP networking roadmap
+- **planning/CRDT_FOUNDATION_ROADMAP.md** - Collaborative ODB foundation
 
-**Feature Flag Cleanup (APPROVED DECISIONS):**
-- ✅ **PIKE removal** (29 blocks): APPROVED - scheduled Week 13 per roadmap
-- ✅ **Optional database backends**: Keep as compile-time flags (MySQL, SQLite, Python)
-  - Document via Makefile/CMake instead of hardcoding
+### Implementation Guides
+- **docs/VERB_IMPLEMENTATION_GUIDE.md** - Verb implementation patterns
+- **docs/TESTING_GUIDE.md** - CLI usage, testing, database migration
+- **docs/CLI_USAGE_GUIDE.md** - Complete frontier-cli reference
+- **docs/LOGGING_STANDARDS.md** - Structured logging requirements
 
-**Deferred to later (Phase 4+):**
-- Threading/networking ifdef cleanup (defer until architecture stabilized)
-- SMART_DB_OPENING, xmlfeature, and miscellaneous flags (audit separately)
+### Architecture Decisions
+- **ADR-002**: Context-Based Format Versioning
+- **ADR-003**: Two-Phase Address Value Resolution
+- **ADR-004**: Dynamic Verb Binding Architecture
+- **ADR-005**: Parameter State Thread-Safety
 
-### Additional Hash / Serialization Follow-Ups (P2)
-- [ ] Issue #76: Add corruption/bounds tests for hash unpack (OOB name index, truncated records, header edge cases).
-- [ ] Consider small gating for verbose hash unpack logging to keep perf predictable when enabled.
-
-## Numeric Type System (mostly done)
-- [x] 64-bit widening for int/long/date in `tyvaluedata`; arithmetic/bitwise paths operate on 64-bit.
-- [x] Infinity constant set to INT64_MAX; constants seeded at startup.
-- [ ] Add targeted tests for 64-bit infinity usage (e.g., `string.mid(..., infinity)`), and date range around 2040+ per `planning/phase3/date_time_format_standard.md`.
-- [ ] (Deferred) Drop double handle indirection; only when confident it won’t affect runtime semantics.
-
-## Docs / Planning
-- [x] Document v7 hash record layout and logging env var in `docs/database_architecture.md`.
-- [ ] Keep `_STATUS_ARCHIVE.md` and `_CURRENT_STATUS.md` in sync with future milestones; note any new env vars or tooling expectations.
-- [ ] Update documentation to remove Pike product references (from approved PIKE removal decision)
-  - Files: README.md, build documentation, architecture docs
-  - Emphasize: Frontier-only codebase, Pike was a separate product
-- [ ] Document optional database backend flags in build system documentation
-  - Note: FRONTIER_MYSQL, FRONTIER_SQLITE, FRONTIER_PYTHON compile-time flags
-  - Update: Makefile/CMake build documentation
-  - Caveat: If Python integration wanted in future, will need architectural rethinking
-
-## Nice-to-Haves / Future
-- [ ] Add small helper macros for BE packing in other packers if duplication grows.
-- [ ] Add path validation tests for logging env vars to guard against unsafe paths (headless only).
+### Status & History
+- **planning/_CURRENT_STATUS.md** - Recent achievements and current focus
+- **planning/_STATUS_ARCHIVE.md** - Historical entries (before 2026-01-05)
