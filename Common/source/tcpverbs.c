@@ -148,7 +148,10 @@ static tcp_stream_t* tcp_get_stream(int stream_id) {
 
     tcp_stream_t *stream = &g_tcp_context.streams[stream_id];
 
-    if (stream->state == STREAM_INVALID || stream->sockfd < 0)
+    /* Reject invalid, closing, or closed streams to prevent race conditions */
+    if (stream->state == STREAM_INVALID ||
+        stream->state == STREAM_CLOSING ||
+        stream->sockfd < 0)
         return NULL;
 
     return stream;
@@ -293,6 +296,7 @@ boolean tcp_read_stream(long stream_id, long bytes_to_read, Handle *data_out) {
 
     /* Validate parameters */
     if (bytes_to_read <= 0) {
+        *data_out = nil;
         tcp_set_error(TCP_ERR_SOCKET_ERROR, "Invalid byte count");
         return false;
     }
@@ -302,6 +306,7 @@ boolean tcp_read_stream(long stream_id, long bytes_to_read, Handle *data_out) {
     stream = tcp_get_stream(stream_id);
     if (!stream || stream->state != STREAM_CONNECTED) {
         TCP_UNLOCK();
+        *data_out = nil;
         tcp_set_error(TCP_ERR_INVALID_STREAM, "Stream not connected");
         return false;
     }
@@ -311,6 +316,7 @@ boolean tcp_read_stream(long stream_id, long bytes_to_read, Handle *data_out) {
 
     /* Allocate buffer */
     if (!newhandle(bytes_to_read, &hdata)) {
+        *data_out = nil;
         tcp_set_error(TCP_ERR_NO_MEMORY, "Could not allocate buffer");
         return false;
     }
@@ -344,6 +350,7 @@ boolean tcp_read_stream(long stream_id, long bytes_to_read, Handle *data_out) {
 
         /* Real error */
         disposehandle(hdata);
+        *data_out = nil;  /* Prevent caller from accessing freed memory */
         tcp_set_error(TCP_ERR_SOCKET_ERROR, "Read failed");
         return false;
     }
@@ -668,7 +675,16 @@ boolean tcp_open_stream_name(bigstring hostname, long port, long *stream_id_out)
     stream->state = STREAM_CONNECTED;
     stream->remote_port = (uint16_t)port;
     stream->last_activity = time(NULL);
-    /* TODO: Extract remote_addr from connected socket */
+
+    /* Extract remote_addr from connected socket */
+    struct sockaddr_in peer_addr;
+    socklen_t addr_len = sizeof(peer_addr);
+    if (getpeername(sockfd, (struct sockaddr*)&peer_addr, &addr_len) == 0) {
+        stream->remote_addr = ntohl(peer_addr.sin_addr.s_addr);
+    } else {
+        log_warn(LOG_COMP_LANG, "tcp_open_stream_name: getpeername() failed, remote_addr unavailable");
+        stream->remote_addr = 0;  /* Mark as unavailable */
+    }
 
     g_tcp_context.active_count++;
     g_tcp_context.total_connections++;

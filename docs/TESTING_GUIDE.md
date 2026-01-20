@@ -451,6 +451,57 @@ CORRECT (UserTalk style):
 sizeOf("hello")  // Works - double quotes for strings
 ```
 
+### Comment Syntax (IMPORTANT - STRICT RULES)
+
+**UserTalk has strict limitations on where comments can appear.**
+
+**Comment types**:
+1. **`//` comments** - Single-line comments to end of line
+2. **`« ... »` comments** - Multi-line comments using special MacRoman characters (0xC7, 0xC8)
+3. **`/* ... */` C-style comments** - NOT SUPPORTED (will cause syntax errors)
+
+**CRITICAL: `//` comments CANNOT appear inside `try` or `else` blocks!**
+
+```usertalk
+// This is allowed - comment at top level
+local(x = 1);
+
+// WRONG - comment inside try block causes syntax error:
+try {
+  // THIS BREAKS THE PARSER
+  local(x = 1);
+  return x
+}
+
+// CORRECT - no comments inside try block:
+try {
+  local(x = 1);
+  return x
+}
+
+// WRONG - comment inside else block also breaks:
+try {
+  local(x = 1/0)
+} else {
+  // THIS ALSO BREAKS
+  return "error"
+}
+
+// CORRECT - comment before try/else is fine:
+try {
+  local(x = 1/0)
+} else {
+  return "error"
+}
+```
+
+**Integration Test Guidelines**:
+- DO NOT use `//` comments inside `try` or `else` blocks
+- DO NOT use `/* */` style comments anywhere (not supported)
+- Comments before or after try/else blocks are fine
+- Comments at file top level are fine
+- Use test descriptions in YAML instead of inline comments
+
 ### Testing UserTalk Code
 
 When testing built-in functions or verbs, ALWAYS use double quotes for string literals:

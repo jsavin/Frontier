@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Tcp Verbs (tcp_verbs)</title>
-    <dateCreated>Tue, 20 Jan 2026 08:37:48 GMT</dateCreated>
+    <dateCreated>Tue, 20 Jan 2026 08:43:00 GMT</dateCreated>
   </head>
   <body>
     <outline text="tcp.countConnections - initial state - Verify no active connections at start">
@@ -23,7 +23,7 @@
           <outline text="return false"/>
         </outline>
         <outline text="} else">
-          <outline text="return true  // Expected to fail"/>
+          <outline text="return true"/>
         </outline>
       </outline>
     </outline>
@@ -33,13 +33,12 @@
       </outline>
       <outline text="Script">
         <outline text="try">
-          <outline text="// Connect to localhost port that should be closed"/>
           <outline text="local(localhostAddr = tcp.addressEncode(&quot;127.0.0.1&quot;))"/>
           <outline text="local(stream = tcp.openAddrStream(localhostAddr, 9))"/>
-          <outline text="return &quot;false&quot;  // Should not reach here"/>
+          <outline text="return &quot;false&quot;"/>
         </outline>
         <outline text="} else">
-          <outline text="return &quot;true&quot;  // Expected connection refused"/>
+          <outline text="return &quot;true&quot;"/>
         </outline>
       </outline>
     </outline>
@@ -53,7 +52,7 @@
           <outline text="return &quot;false&quot;"/>
         </outline>
         <outline text="} else">
-          <outline text="return &quot;true&quot;  // Expected to fail"/>
+          <outline text="return &quot;true&quot;"/>
         </outline>
       </outline>
     </outline>
@@ -67,7 +66,7 @@
           <outline text="return &quot;false&quot;"/>
         </outline>
         <outline text="} else">
-          <outline text="return &quot;true&quot;  // Expected to fail"/>
+          <outline text="return &quot;true&quot;"/>
         </outline>
       </outline>
     </outline>
@@ -81,7 +80,7 @@
           <outline text="return &quot;false&quot;"/>
         </outline>
         <outline text="} else">
-          <outline text="return &quot;true&quot;  // Expected to fail"/>
+          <outline text="return &quot;true&quot;"/>
         </outline>
       </outline>
     </outline>
@@ -95,7 +94,7 @@
           <outline text="return &quot;false&quot;"/>
         </outline>
         <outline text="} else">
-          <outline text="return &quot;true&quot;  // Expected to fail"/>
+          <outline text="return &quot;true&quot;"/>
         </outline>
       </outline>
     </outline>
@@ -109,7 +108,7 @@
           <outline text="return &quot;false&quot;"/>
         </outline>
         <outline text="} else">
-          <outline text="return &quot;true&quot;  // Expected to fail"/>
+          <outline text="return &quot;true&quot;"/>
         </outline>
       </outline>
     </outline>
@@ -128,7 +127,6 @@
       </outline>
       <outline text="Script">
         <outline text="local(addr = tcp.addressEncode(&quot;127.0.0.1&quot;))"/>
-        <outline text="// 127.0.0.1 in host byte order = 0x7F000001 = 2130706433"/>
         <outline text="return (addr == 2130706433)"/>
       </outline>
     </outline>
@@ -163,7 +161,7 @@
           <outline text="return &quot;false&quot;"/>
         </outline>
         <outline text="} else">
-          <outline text="return &quot;true&quot;  // Expected to fail"/>
+          <outline text="return &quot;true&quot;"/>
         </outline>
       </outline>
     </outline>
@@ -174,7 +172,6 @@
       </outline>
       <outline text="Script">
         <outline text="try">
-          <outline text="/* example.com = 93.184.216.34 */"/>
           <outline text="local(addr = tcp.addressEncode(&quot;93.184.216.34&quot;))"/>
           <outline text="local(stream = tcp.openAddrStream(addr, 80))"/>
           <outline text="if (stream &gt; 0)">
@@ -184,7 +181,6 @@
           <outline text="return &quot;false&quot;"/>
         </outline>
         <outline text="} else">
-          <outline text="/* Network unavailable - acceptable failure */"/>
           <outline text="return &quot;false&quot;"/>
         </outline>
       </outline>
@@ -196,28 +192,28 @@
       </outline>
       <outline text="Script">
         <outline text="try">
-          <outline text="/* Connect to example.com:80 */"/>
           <outline text="local(addr = tcp.addressEncode(&quot;93.184.216.34&quot;))"/>
           <outline text="local(stream = tcp.openAddrStream(addr, 80))"/>
           <outline text="if (stream &lt;= 0)">
-            <outline text="return &quot;false&quot;  /* Connection failed */"/>
+            <outline text="// Connection failed"/>
+            <outline text="return &quot;false&quot;"/>
           </outline>
-          <outline text="/* Verify connection count increased */"/>
+          <outline text="// Verify connection count increased"/>
           <outline text="local(count1 = tcp.countConnections())"/>
           <outline text="if (count1 == 0)">
             <outline text="tcp.closeStream(stream)"/>
-            <outline text="return &quot;false&quot;  /* Count should be &gt; 0 */"/>
+            <outline text="return &quot;false&quot;"/>
           </outline>
-          <outline text="/* Close connection */"/>
+          <outline text="// Close connection"/>
           <outline text="local(ok = tcp.closeStream(stream))"/>
           <outline text="if (not ok)">
-            <outline text="return &quot;false&quot;  /* Close failed */"/>
+            <outline text="// Close failed"/>
+            <outline text="return &quot;false&quot;"/>
           </outline>
-          <outline text="/* Note: Count may not immediately decrease due to TIME_WAIT */"/>
+          <outline text="// Note: Count may not immediately decrease due to TIME_WAIT"/>
           <outline text="return &quot;true&quot;"/>
         </outline>
         <outline text="} else">
-          <outline text="/* Network unavailable */"/>
           <outline text="return &quot;false&quot;"/>
         </outline>
       </outline>
@@ -234,9 +230,9 @@
           <outline text="if (stream &lt;= 0)">
             <outline text="return &quot;false&quot;"/>
           </outline>
-          <outline text="/* Try to read immediately (no data sent yet) */"/>
+          <outline text="// Try to read immediately (no data sent yet)"/>
           <outline text="local(data = tcp.readStream(stream, 1024))"/>
-          <outline text="/* Non-blocking read should return empty string */"/>
+          <outline text="// Non-blocking read should return empty string"/>
           <outline text="local(isEmpty = (string.length(data) == 0))"/>
           <outline text="tcp.closeStream(stream)"/>
           <outline text="if (isEmpty)">
@@ -263,7 +259,7 @@
           <outline text="if (stream &lt;= 0)">
             <outline text="return &quot;false&quot;"/>
           </outline>
-          <outline text="/* Send minimal HTTP request */"/>
+          <outline text="// Send minimal HTTP request"/>
           <outline text="local(crlf = char(13) + char(10))"/>
           <outline text="local(request = &quot;GET / HTTP/1.0&quot; + crlf + crlf)"/>
           <outline text="local(writeOk = tcp.writeStream(stream, request))"/>
@@ -271,11 +267,10 @@
             <outline text="tcp.closeStream(stream)"/>
             <outline text="return &quot;false&quot;"/>
           </outline>
-          <outline text="/* Read response (may need small delay for server response) */"/>
-          <outline text="/* Note: First read might return empty if server hasn't responded yet */"/>
+          <outline text="// Read response (may need small delay for server response)"/>
           <outline text="local(response = tcp.readStream(stream, 1024))"/>
           <outline text="tcp.closeStream(stream)"/>
-          <outline text="/* Accept either empty (too fast) or HTTP response */"/>
+          <outline text="// Accept either empty (too fast) or HTTP response"/>
           <outline text="if ((string.length(response) == 0) or (string.contains(response, &quot;HTTP&quot;, false)))">
             <outline text="return &quot;true&quot;"/>
           </outline>
@@ -300,7 +295,7 @@
           <outline text="if (stream &lt;= 0)">
             <outline text="return &quot;false&quot;"/>
           </outline>
-          <outline text="/* Abort immediately (send RST) */"/>
+          <outline text="// Abort immediately (send RST)"/>
           <outline text="local(ok = tcp.abortStream(stream))"/>
           <outline text="if (ok)">
             <outline text="return &quot;true&quot;"/>
@@ -322,17 +317,17 @@
       <outline text="Script">
         <outline text="try">
           <outline text="local(addr = tcp.addressEncode(&quot;93.184.216.34&quot;))"/>
-          <outline text="/* Open multiple connections */"/>
+          <outline text="// Open multiple connections"/>
           <outline text="local(stream1 = tcp.openAddrStream(addr, 80))"/>
           <outline text="local(stream2 = tcp.openAddrStream(addr, 80))"/>
           <outline text="local(stream3 = tcp.openAddrStream(addr, 80))"/>
           <outline text="if ((stream1 &lt;= 0) or (stream2 &lt;= 0) or (stream3 &lt;= 0))">
             <outline text="return &quot;false&quot;"/>
           </outline>
-          <outline text="/* Check count */"/>
+          <outline text="// Check count"/>
           <outline text="local(count = tcp.countConnections())"/>
           <outline text="local(hasMultiple = (count &gt;= 3))"/>
-          <outline text="/* Clean up */"/>
+          <outline text="// Clean up"/>
           <outline text="tcp.closeStream(stream1)"/>
           <outline text="tcp.closeStream(stream2)"/>
           <outline text="tcp.closeStream(stream3)"/>
@@ -360,15 +355,15 @@
           <outline text="if (stream &lt;= 0)">
             <outline text="return &quot;false&quot;"/>
           </outline>
-          <outline text="/* Close once */"/>
+          <outline text="// Close once"/>
           <outline text="tcp.closeStream(stream)"/>
-          <outline text="/* Try to close again - should fail */"/>
+          <outline text="// Try to close again - should fail"/>
           <outline text="try">
             <outline text="tcp.closeStream(stream)"/>
-            <outline text="return &quot;false&quot;  /* Should not succeed */"/>
+            <outline text="return &quot;false&quot;"/>
           </outline>
           <outline text="} else">
-            <outline text="return &quot;true&quot;  /* Expected failure on double close */"/>
+            <outline text="return &quot;true&quot;"/>
           </outline>
         </outline>
         <outline text="} else">
@@ -389,13 +384,13 @@
             <outline text="return &quot;false&quot;"/>
           </outline>
           <outline text="tcp.closeStream(stream)"/>
-          <outline text="/* Try to read after close - should fail */"/>
+          <outline text="// Try to read after close - should fail"/>
           <outline text="try">
             <outline text="local(data = tcp.readStream(stream, 1024))"/>
-            <outline text="return &quot;false&quot;  /* Should not succeed */"/>
+            <outline text="return &quot;false&quot;"/>
           </outline>
           <outline text="} else">
-            <outline text="return &quot;true&quot;  /* Expected failure */"/>
+            <outline text="return &quot;true&quot;"/>
           </outline>
         </outline>
         <outline text="} else">
@@ -415,7 +410,7 @@
           <outline text="if (stream &lt;= 0)">
             <outline text="return &quot;false&quot;"/>
           </outline>
-          <outline text="/* Write empty string - should succeed (no-op) */"/>
+          <outline text="// Write empty string - should succeed (no-op)"/>
           <outline text="local(ok = tcp.writeStream(stream, &quot;&quot;))"/>
           <outline text="tcp.closeStream(stream)"/>
           <outline text="if (ok)">
