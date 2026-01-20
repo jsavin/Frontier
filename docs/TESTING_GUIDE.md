@@ -282,6 +282,76 @@ This script will scan tests/, portable/, and integration test YAML files for har
 
 ---
 
+## Network Tests (TCP Verbs)
+
+### Test Suite Organization
+
+TCP networking tests are split into two suites based on network dependencies:
+
+**Local Tests (Always Run)**:
+- File: `tests/integration/test_cases/tcp_verbs.yaml`
+- 13 local-only tests (error handling, address encoding, parameter validation)
+- No external network connectivity required
+- Run automatically in all test contexts
+
+**Network Tests (Opt-In)**:
+- File: `tests/integration/test_cases/tcp_verbs_network.yaml`
+- 9 network-dependent tests (connect to example.com:80)
+- Require external internet connectivity
+- Run manually via: `FRONTIER_RUN_NETWORK_TESTS=1 make test-integration`
+- Skipped by default to avoid test fragility
+
+### Why Separate Network Tests?
+
+**Problem**: External network dependencies create test fragility
+- DNS resolution failures
+- Network timeouts and latency
+- Firewall restrictions in CI/CD
+- Tests fail for reasons unrelated to code changes
+
+**Solution**: Split tests into local (always run) and network (opt-in)
+- CI/CD runs local tests only (fast, deterministic)
+- Developers run network tests manually for verification
+- Network test failures don't block PR merges
+
+### Future: Phase 3 Self-Contained Tests
+
+Once `tcp.listenStream()` is implemented (Phase 3), network tests will become **self-contained**:
+- Launch Frontier-based test server within test harness
+- Tests connect to localhost instead of external servers
+- Fully deterministic with no external dependencies
+- Safe for air-gapped CI/CD environments
+
+**Example future self-contained test**:
+```yaml
+# Phase 3 pattern - test server runs within test harness
+tests:
+  - name: "tcp.openStream - local test server"
+    setup_script: |
+      on serverHandler(stream, refcon) {
+        tcp.writeStream(stream, "OK");
+        tcp.closeStream(stream)
+      };
+      tcp.listenStream(8080, 5, @serverHandler)
+
+    script: |
+      local(stream = tcp.openAddrStream("127.0.0.1", 8080));
+      local(response = tcp.readStream(stream, 1024));
+      tcp.closeStream(stream);
+      return response == "OK"
+```
+
+**Benefits of self-contained tests**:
+- No external network dependencies
+- Deterministic behavior (no DNS/network flakiness)
+- Complete control over server responses
+- Can simulate error conditions
+- CI/CD friendly
+
+**See also**: `docs/TCP_ARCHITECTURE.md` - Testing Strategy section
+
+---
+
 ### Test Output
 
 ```

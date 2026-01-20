@@ -27,19 +27,43 @@ Key findings:
 **Network testing is fully supported**:
 - Integration tests can make actual network connections (no sandbox restrictions)
 - Use `{FRONTIER_TEST_TMP_DIR}` template for any file operations
-- Can test against external servers (e.g., httpbin.org) or localhost
+- Can test against external servers (e.g., example.com) or localhost
 - Thread sanitizer available: `make TSAN=1`
 
-**Test Strategy**:
+**Test Strategy - Split Suites**:
+
+Tests are organized into two suites based on network dependencies:
+
+**Local Tests** (`tcp_verbs.yaml` - always run):
 ```yaml
-# tests/integration/test_cases/tcp_verbs.yaml
 tests:
-  - name: "tcp.openAddrStream - basic connectivity"
+  - name: "tcp.addressEncode - valid IP address"
     script: |
-      local (stream = tcp.openAddrStream("127.0.0.1", 80));
-      tcp.closeStream(stream)
+      local(encoded = tcp.addressEncode("192.168.1.1"));
+      return encoded != 0
     expected_success: true
 ```
+
+**Network Tests** (`tcp_verbs_network.yaml` - opt-in):
+```yaml
+tests:
+  - name: "tcp.openStream - basic connectivity"
+    script: |
+      local (stream = tcp.openStream("example.com", 80));
+      tcp.closeStream(stream);
+      return stream > 0
+    expected_success: true
+    skip: "Requires external network connectivity"
+```
+
+**Why split tests?**:
+- Local tests run in all contexts (CI/CD, air-gapped environments)
+- Network tests are opt-in for manual verification (`FRONTIER_RUN_NETWORK_TESTS=1`)
+- Avoids test fragility from DNS/network issues
+
+**Future (Phase 3)**: Once `tcp.listenStream()` is implemented, network tests will become self-contained using localhost test servers (zero external dependencies).
+
+**See**: `planning/phase4/networking/IMPLEMENTATION_PLAN.md` - Testing Strategy section
 
 ---
 
@@ -239,13 +263,15 @@ tcp.listenStream(8080, 5, @handleConnection, nil)
 - [ ] Add stream state enum (INVALID, CONNECTING, CONNECTED, CLOSING, CLOSED)
 
 **Step 2: Write Integration Tests** (2-3 hours, TDD)
-- [ ] Create `tests/integration/test_cases/tcp_verbs.yaml`
-- [ ] Test: tcp.openAddrStream + closeStream (localhost or external)
-- [ ] Test: tcp.readStream empty (non-blocking behavior)
-- [ ] Test: tcp.writeStream + readStream (echo pattern)
-- [ ] Test: tcp.abortStream (immediate close)
-- [ ] Test: tcp.countConnections (stream lifecycle)
-- [ ] Test: Invalid stream ID error handling
+- [ ] Create `tests/integration/test_cases/tcp_verbs.yaml` (local tests)
+- [ ] Create `tests/integration/test_cases/tcp_verbs_network.yaml` (network tests)
+- [ ] Local tests: addressEncode/Decode, invalid parameters, error handling
+- [ ] Network tests: tcp.openStream + closeStream (example.com:80)
+- [ ] Network tests: tcp.readStream empty (non-blocking behavior)
+- [ ] Network tests: tcp.writeStream + readStream (echo pattern)
+- [ ] Network tests: tcp.abortStream (immediate close)
+- [ ] Network tests: tcp.countConnections (stream lifecycle)
+- [ ] All network tests marked with `skip: "Requires external network connectivity"`
 
 **Step 3: Implement Kernel Verbs** (6-8 hours)
 - [ ] Create `Common/source/tcpverbs.c`
@@ -305,9 +331,10 @@ tcp.listenStream(8080, 5, @handleConnection, nil)
 5. Maximum concurrent connections: **256** (configurable constant)
 
 **Testing Constraints**:
-- Integration tests can use network but **SHOULD NOT depend on internet**
-- Use localhost for server tests (Phase 3)
-- External server tests should skip gracefully if unavailable
+- Integration tests split into local (always run) and network (opt-in) suites
+- Network tests connect to example.com:80 for Phase 1-2 validation
+- Network tests are opt-in via `FRONTIER_RUN_NETWORK_TESTS=1`
+- Phase 3: Network tests migrate to localhost using `tcp.listenStream()` (self-contained)
 
 **Phase 3 Blockers** (not applicable to Phase 1A):
 - Listen/accept requires threading infrastructure (deferred)

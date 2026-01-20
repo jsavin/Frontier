@@ -15,6 +15,85 @@ This plan implements POSIX-compliant TCP networking for Frontier CLI in **4 phas
 
 ---
 
+## Testing Strategy and Progression
+
+### Phase 1-2: External Dependencies (Current)
+
+**Problem**: Testing TCP networking requires actual network connections, but external dependencies create fragility:
+- DNS resolution failures
+- Network timeouts and latency
+- Firewall restrictions in CI/CD
+- Tests fail for reasons unrelated to code changes
+
+**Solution**: Split tests into two suites:
+
+**Suite 1: Local Tests** (`tcp_verbs.yaml`)
+- 13 tests with no external network dependencies
+- Tests error handling, address encoding/decoding, parameter validation
+- Always run in all test contexts (CI/CD, air-gapped environments)
+- Fast, deterministic, reliable
+
+**Suite 2: Network Tests** (`tcp_verbs_network.yaml`)
+- 9 tests requiring external connectivity (connect to example.com:80)
+- Validate actual TCP connectivity and protocol behavior
+- Opt-in via `FRONTIER_RUN_NETWORK_TESTS=1 make test-integration`
+- Skipped by default to avoid test fragility
+- Used for manual verification during development
+
+### Phase 3: Self-Contained Deterministic Tests (Future)
+
+Once `tcp.listenStream()` is implemented, network tests will be **migrated** to become self-contained:
+
+**Pattern**:
+1. Launch Frontier-based test server within integration test harness
+2. Client tests connect to localhost (127.0.0.1) instead of external servers
+3. Tests become fully deterministic with zero external dependencies
+4. Network tests migrate from `tcp_verbs_network.yaml` to `tcp_verbs.yaml`
+5. Eventually deprecate `tcp_verbs_network.yaml` (no longer needed)
+
+**Example self-contained test**:
+```yaml
+- name: "HTTP GET request - self-contained"
+  setup_script: |
+    # Start test HTTP server on localhost
+    on httpHandler(stream, refcon) {
+      local(request = tcp.readStream(stream, 1024));
+      tcp.writeStream(stream, "HTTP/1.0 200 OK\r\n\r\nOK");
+      tcp.closeStream(stream)
+    };
+    tcp.listenStream(8080, 5, @httpHandler, 0)
+
+  script: |
+    # Client connects to test server (localhost)
+    local (stream = tcp.openAddrStream("127.0.0.1", 8080));
+    tcp.writeStream(stream, "GET / HTTP/1.0\r\n\r\n");
+    local (response = tcp.readStream(stream, 1024));
+    tcp.closeStream(stream);
+    return response contains "OK"
+  expected_success: true
+```
+
+**Why Phase 3 Self-Contained Tests Are Superior**:
+- **Zero external dependencies** - No DNS, no internet required
+- **Fully deterministic** - No network timeouts, DNS failures, or connection errors
+- **Complete control** - Test server responses are under test control
+- **Error simulation** - Can simulate server crashes, malformed responses, etc.
+- **CI/CD friendly** - Works in air-gapped environments, behind firewalls
+- **Performance** - Tests run at full speed without network latency
+- **Reliability** - Tests never fail due to external service outages
+
+### Testing Progression Summary
+
+| Phase | Test Strategy | External Deps | CI/CD Safe | Notes |
+|-------|---------------|---------------|------------|-------|
+| **Phase 1-2** | Split suites (local + network) | Yes (opt-in) | Yes (local only) | Network tests skipped by default |
+| **Phase 3** | Self-contained (localhost server) | No | Yes (all tests) | Migrate network tests to localhost |
+| **Result** | All tests deterministic | No | Yes | Deprecate external dependency tests |
+
+**See also**: `docs/TCP_ARCHITECTURE.md` - Testing Strategy section
+
+---
+
 ## Critical Dependencies
 
 ### Blocking Dependency: Thread Callback Infrastructure
@@ -95,38 +174,81 @@ From docserver documentation:
 
 ### Tests (TDD - Write First)
 
-```yaml
-# Integration tests to write BEFORE implementation
+**Test Organization Strategy**:
 
-- name: "tcp.openStream basic connectivity"
+Phase 1A/1B tests are split into two files:
+1. `tcp_verbs.yaml` - Local tests only (always run)
+2. `tcp_verbs_network.yaml` - Network tests (opt-in via `FRONTIER_RUN_NETWORK_TESTS=1`)
+
+**Local Tests (No External Network)**:
+```yaml
+# tests/integration/test_cases/tcp_verbs.yaml
+
+- name: "tcp.addressEncode - valid IP address"
   script: |
-    local (stream = tcp.openStream("httpbin.org", 80));
+    local(encoded = tcp.addressEncode("192.168.1.1"));
+    return encoded != 0
+  expected_success: true
+  expected_result: "true"
+
+- name: "tcp.addressDecode - roundtrip"
+  script: |
+    local(encoded = tcp.addressEncode("192.168.1.1"));
+    local(decoded = tcp.addressDecode(encoded));
+    return decoded == "192.168.1.1"
+  expected_success: true
+  expected_result: "true"
+
+- name: "tcp.openAddrStream - invalid stream ID"
+  script: |
+    tcp.closeStream(-1)
+  expected_success: false
+  expected_error_type: "script_error"
+```
+
+**Network Tests (External Connectivity Required)**:
+```yaml
+# tests/integration/test_cases/tcp_verbs_network.yaml
+# Run with: FRONTIER_RUN_NETWORK_TESTS=1 make test-integration
+
+- name: "tcp.openStream - basic connectivity"
+  script: |
+    local (stream = tcp.openStream("example.com", 80));
     tcp.closeStream(stream);
     return stream > 0
   expected_success: true
-  expected_result: true
+  expected_result: "true"
+  skip: "Requires external network connectivity"
 
-- name: "tcp.readStream after HTTP request"
+- name: "tcp.readStream - after HTTP request"
   script: |
-    local (stream = tcp.openStream("httpbin.org", 80));
-    tcp.writeStream(stream, "GET /get HTTP/1.0\r\nHost: httpbin.org\r\n\r\n");
+    local (stream = tcp.openStream("example.com", 80));
+    tcp.writeStream(stream, "GET / HTTP/1.0\r\nHost: example.com\r\n\r\n");
     local (response = tcp.readStream(stream, 1024));
     tcp.closeStream(stream);
     return sizeOf(response) > 0
   expected_success: true
-  expected_result: true
+  expected_result: "true"
+  skip: "Requires external network connectivity"
 
 - name: "tcp.countConnections"
   script: |
     local (before = tcp.countConnections());
-    local (stream = tcp.openStream("httpbin.org", 80));
+    local (stream = tcp.openStream("example.com", 80));
     local (during = tcp.countConnections());
     tcp.closeStream(stream);
     local (after = tcp.countConnections());
     return during == before + 1 and after == before
   expected_success: true
-  expected_result: true
+  expected_result: "true"
+  skip: "Requires external network connectivity"
 ```
+
+**Why Split Tests?**:
+- Local tests run in all contexts (CI/CD, air-gapped environments)
+- Network tests are opt-in for manual verification
+- Avoids test fragility from DNS/network issues
+- Enables faster test cycles during development
 
 ### /doit Process
 
@@ -189,6 +311,7 @@ From docserver documentation:
 
 ### Tests
 
+**Local Tests** (added to `tcp_verbs.yaml`):
 ```yaml
 - name: "tcp.addressEncode and addressDecode roundtrip"
   script: |
@@ -197,12 +320,7 @@ From docserver documentation:
     local (decoded = tcp.addressDecode(encoded));
     return decoded == ip
   expected_success: true
-
-- name: "tcp.nameToAddress resolves known host"
-  script: |
-    local (addr = tcp.nameToAddress("dns.google"));
-    return addr != 0
-  expected_success: true
+  expected_result: "true"
 
 - name: "tcp.myAddress returns valid address"
   script: |
@@ -210,6 +328,27 @@ From docserver documentation:
     local (dotted = tcp.addressDecode(addr));
     return sizeOf(dotted) > 6  // "0.0.0.0" is 7 chars
   expected_success: true
+  expected_result: "true"
+```
+
+**Network Tests** (added to `tcp_verbs_network.yaml`):
+```yaml
+- name: "tcp.nameToAddress resolves known host"
+  script: |
+    local (addr = tcp.nameToAddress("example.com"));
+    return addr != 0
+  expected_success: true
+  expected_result: "true"
+  skip: "Requires external network connectivity"
+
+- name: "tcp.addressToName reverse DNS lookup"
+  script: |
+    local (addr = tcp.nameToAddress("example.com"));
+    local (name = tcp.addressToName(addr));
+    return sizeOf(name) > 0
+  expected_success: true
+  expected_result: "true"
+  skip: "Requires external network connectivity"
 ```
 
 ### Definition of Done
@@ -264,21 +403,34 @@ These verbs require:
 
 ### Tests
 
+**Network Tests** (added to `tcp_verbs_network.yaml`):
 ```yaml
 - name: "tcp.readStreamUntil finds HTTP headers"
   script: |
-    local (stream = tcp.openStream("httpbin.org", 80));
-    tcp.writeStream(stream, "GET /get HTTP/1.0\r\nHost: httpbin.org\r\n\r\n");
+    local (stream = tcp.openStream("example.com", 80));
+    tcp.writeStream(stream, "GET / HTTP/1.0\r\nHost: example.com\r\n\r\n");
     local (headers = "");
     tcp.readStreamUntil(stream, "\r\n\r\n", 30, @headers);
     tcp.closeStream(stream);
     return headers contains "HTTP/1."
   expected_success: true
+  expected_result: "true"
+  skip: "Requires external network connectivity"
 
 - name: "tcp.readStreamBytes gets exact count"
   script: |
-    // ... test with known-length response
+    local (stream = tcp.openStream("example.com", 80));
+    tcp.writeStream(stream, "GET / HTTP/1.0\r\nHost: example.com\r\n\r\n");
+    local (response = "");
+    tcp.readStreamBytes(stream, 100, 30, @response);
+    tcp.closeStream(stream);
+    return sizeOf(response) == 100
+  expected_success: true
+  expected_result: "true"
+  skip: "Requires external network connectivity"
 ```
+
+**Note**: Phase 2 has no local-only tests - all buffered I/O verbs require actual network connections to validate behavior
 
 ### Definition of Done
 - [ ] All 4 verbs implemented with proper timeout handling
@@ -331,15 +483,65 @@ These verbs require:
 
 ### Tests
 
+**Phase 3 Tests Become Self-Contained** (no external dependencies):
+
+Once `tcp.listenStream()` is implemented, all TCP tests can become **self-contained** with no external network dependencies:
+
 ```yaml
+# tests/integration/test_cases/tcp_verbs.yaml (migrated from tcp_verbs_network.yaml)
+
 - name: "tcp.listenStream accepts connection"
+  setup_script: |
+    # Start test server within test harness
+    on echoHandler(stream, refcon) {
+      local(data = tcp.readStream(stream, 1024));
+      tcp.writeStream(stream, "ECHO: " + data);
+      tcp.closeStream(stream)
+    };
+    tcp.listenStream(8080, 5, @echoHandler, 0)
+
   script: |
-    # Complex test requiring:
-    # 1. Start listener
-    # 2. Connect from another thread/process
-    # 3. Verify callback invoked
-    # 4. Close listener
+    # Client connects to localhost test server
+    local (stream = tcp.openAddrStream("127.0.0.1", 8080));
+    tcp.writeStream(stream, "TEST");
+    local (response = tcp.readStream(stream, 1024));
+    tcp.closeStream(stream);
+    return response == "ECHO: TEST"
+  expected_success: true
+  expected_result: "true"
+
+- name: "tcp.httpClient with local test server"
+  setup_script: |
+    on httpHandler(stream, refcon) {
+      local(request = tcp.readStream(stream, 1024));
+      tcp.writeStream(stream, "HTTP/1.0 200 OK\r\n\r\nTest Response");
+      tcp.closeStream(stream)
+    };
+    tcp.listenStream(8081, 5, @httpHandler, 0)
+
+  script: |
+    local (stream = tcp.openAddrStream("127.0.0.1", 8081));
+    tcp.writeStream(stream, "GET / HTTP/1.0\r\n\r\n");
+    local (response = tcp.readStream(stream, 1024));
+    tcp.closeStream(stream);
+    return response contains "Test Response"
+  expected_success: true
+  expected_result: "true"
 ```
+
+**Benefits of Phase 3 Self-Contained Tests**:
+- No external network dependencies (no DNS, no internet required)
+- Fully deterministic (no network timeouts or failures)
+- Complete control over server responses
+- Can simulate error conditions (server crashes, malformed responses)
+- Safe for CI/CD in air-gapped environments
+- Tests run at full speed without network latency
+
+**Migration Strategy**:
+1. Phase 1-2: Network tests in `tcp_verbs_network.yaml` (opt-in)
+2. Phase 3: Migrate network tests to `tcp_verbs.yaml` using localhost test servers
+3. Phase 3: Deprecate `tcp_verbs_network.yaml` (no longer needed)
+4. Result: All TCP tests run by default with zero external dependencies
 
 ### Definition of Done
 - [ ] Listen sockets can accept incoming connections

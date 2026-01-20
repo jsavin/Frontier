@@ -235,6 +235,93 @@ log_warn(LOG_COMP_LANG, "tcp_name_to_address: rejected private/reserved IP"); //
 
 ---
 
+## Testing Strategy
+
+### Test Suite Organization
+
+TCP tests are organized into separate suites based on network dependencies:
+
+**Local Tests (Always Run)**:
+- `tests/integration/test_cases/tcp_verbs.yaml` - 13 local-only tests
+- No external network connectivity required
+- Tests error handling, address encoding/decoding, parameter validation
+- Safe for CI/CD environments with restricted network access
+- Run automatically in all test execution contexts
+
+**Network Tests (Opt-In)**:
+- `tests/integration/test_cases/tcp_verbs_network.yaml` - 9 network-dependent tests
+- Require external connectivity (connect to example.com:80)
+- Run manually via `FRONTIER_RUN_NETWORK_TESTS=1 make test-integration`
+- Validate actual TCP connectivity and protocol behavior
+- Not run by default to avoid test fragility
+
+### Testing Progression (Phase 1 → Phase 3)
+
+**Phase 1A/1B (Current)**: External dependency tests
+- Network tests connect to `example.com:80` for validation
+- Tests are opt-in and skipped by default
+- Enables manual verification of TCP implementation
+
+**Phase 2**: Buffered I/O with external dependencies
+- Continue pattern of separate network test suite
+- Add tests for `tcp.readStreamUntil`, `tcp.readStreamBytes`, etc.
+- Remain opt-in via `FRONTIER_RUN_NETWORK_TESTS=1`
+
+**Phase 3 (Future)**: Self-contained deterministic tests
+- Once `tcp.listenStream()` is implemented, tests become fully self-contained
+- Launch Frontier-based test server within integration test harness
+- Client tests connect to localhost instead of external servers
+- Network tests become deterministic and CI/CD-friendly
+- No external dependencies, no test fragility from internet connectivity
+
+**Example Phase 3 Self-Contained Test**:
+```yaml
+# Future test pattern using tcp.listenStream (Phase 3)
+tests:
+  - name: "tcp.openStream - connect to local test server"
+    setup_script: |
+      # Start test server on localhost:8080
+      on serverHandler(stream, refcon) {
+        local(data = tcp.readStream(stream, 1024));
+        tcp.writeStream(stream, "Echo: " + data);
+        tcp.closeStream(stream)
+      };
+      tcp.listenStream(8080, 5, @serverHandler)
+
+    script: |
+      # Client connects to test server
+      local(stream = tcp.openAddrStream("127.0.0.1", 8080));
+      tcp.writeStream(stream, "Hello");
+      local(response = tcp.readStream(stream, 1024));
+      tcp.closeStream(stream);
+      return response == "Echo: Hello"
+
+    expected_success: true
+    expected_result: "true"
+```
+
+**Why Phase 3 Self-Contained Tests Are Superior**:
+- No dependency on external internet connectivity
+- Deterministic behavior (no DNS flakiness, no network timeouts)
+- Complete control over test server responses
+- Can test error conditions by simulating server failures
+- Safe for air-gapped CI/CD environments
+- Tests run at full speed without network latency
+
+### Running Network Tests
+
+```bash
+# Run all tests (local tests only, network tests skipped)
+cd tests && make test-integration
+
+# Run with network tests enabled (manual verification)
+FRONTIER_RUN_NETWORK_TESTS=1 cd tests && make test-integration
+```
+
+**See also**: `planning/phase4/networking/IMPLEMENTATION_PLAN.md` - Phase 2/3 testing roadmap
+
+---
+
 ## Future Enhancements
 
 ### Phase 2 Considerations
@@ -249,6 +336,7 @@ log_warn(LOG_COMP_LANG, "tcp_name_to_address: rejected private/reserved IP"); //
 - Lock-free reference counting optimization
 - Thread lifecycle management (graceful shutdown, join, cancellation)
 - Migration from global `g_tcp_context` to thread-local storage
+- **Self-contained integration tests** using `tcp.listenStream()` (see Testing Strategy above)
 
 **Phase 3 Blockers:**
 - Current global mutex will create contention bottleneck
@@ -257,6 +345,6 @@ log_warn(LOG_COMP_LANG, "tcp_name_to_address: rejected private/reserved IP"); //
 
 ---
 
-**Document Version**: 1.0
+**Document Version**: 1.1
 **Last Updated**: 2026-01-20
 **PR**: #327 (TCP Phase 1A/1B Implementation)
