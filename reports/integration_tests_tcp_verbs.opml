@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Tcp Verbs (tcp_verbs)</title>
-    <dateCreated>Tue, 20 Jan 2026 08:32:54 GMT</dateCreated>
+    <dateCreated>Tue, 20 Jan 2026 08:37:48 GMT</dateCreated>
   </head>
   <body>
     <outline text="tcp.countConnections - initial state - Verify no active connections at start">
@@ -23,7 +23,7 @@
           <outline text="return false"/>
         </outline>
         <outline text="} else">
-          <outline text="return true  /* Expected to fail */"/>
+          <outline text="return true  // Expected to fail"/>
         </outline>
       </outline>
     </outline>
@@ -33,13 +33,13 @@
       </outline>
       <outline text="Script">
         <outline text="try">
-          <outline text="/* Connect to localhost port that should be closed */"/>
+          <outline text="// Connect to localhost port that should be closed"/>
           <outline text="local(localhostAddr = tcp.addressEncode(&quot;127.0.0.1&quot;))"/>
           <outline text="local(stream = tcp.openAddrStream(localhostAddr, 9))"/>
-          <outline text="return &quot;false&quot;  /* Should not reach here */"/>
+          <outline text="return &quot;false&quot;  // Should not reach here"/>
         </outline>
         <outline text="} else">
-          <outline text="return &quot;true&quot;  /* Expected connection refused */"/>
+          <outline text="return &quot;true&quot;  // Expected connection refused"/>
         </outline>
       </outline>
     </outline>
@@ -53,7 +53,7 @@
           <outline text="return &quot;false&quot;"/>
         </outline>
         <outline text="} else">
-          <outline text="return &quot;true&quot;  /* Expected to fail */"/>
+          <outline text="return &quot;true&quot;  // Expected to fail"/>
         </outline>
       </outline>
     </outline>
@@ -67,7 +67,7 @@
           <outline text="return &quot;false&quot;"/>
         </outline>
         <outline text="} else">
-          <outline text="return &quot;true&quot;  /* Expected to fail */"/>
+          <outline text="return &quot;true&quot;  // Expected to fail"/>
         </outline>
       </outline>
     </outline>
@@ -81,7 +81,7 @@
           <outline text="return &quot;false&quot;"/>
         </outline>
         <outline text="} else">
-          <outline text="return &quot;true&quot;  /* Expected to fail */"/>
+          <outline text="return &quot;true&quot;  // Expected to fail"/>
         </outline>
       </outline>
     </outline>
@@ -95,7 +95,7 @@
           <outline text="return &quot;false&quot;"/>
         </outline>
         <outline text="} else">
-          <outline text="return &quot;true&quot;  /* Expected to fail */"/>
+          <outline text="return &quot;true&quot;  // Expected to fail"/>
         </outline>
       </outline>
     </outline>
@@ -109,7 +109,7 @@
           <outline text="return &quot;false&quot;"/>
         </outline>
         <outline text="} else">
-          <outline text="return &quot;true&quot;  /* Expected to fail */"/>
+          <outline text="return &quot;true&quot;  // Expected to fail"/>
         </outline>
       </outline>
     </outline>
@@ -128,7 +128,7 @@
       </outline>
       <outline text="Script">
         <outline text="local(addr = tcp.addressEncode(&quot;127.0.0.1&quot;))"/>
-        <outline text="/* 127.0.0.1 in host byte order = 0x7F000001 = 2130706433 */"/>
+        <outline text="// 127.0.0.1 in host byte order = 0x7F000001 = 2130706433"/>
         <outline text="return (addr == 2130706433)"/>
       </outline>
     </outline>
@@ -163,7 +163,7 @@
           <outline text="return &quot;false&quot;"/>
         </outline>
         <outline text="} else">
-          <outline text="return &quot;true&quot;  /* Expected to fail */"/>
+          <outline text="return &quot;true&quot;  // Expected to fail"/>
         </outline>
       </outline>
     </outline>

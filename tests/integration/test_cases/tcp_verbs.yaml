@@ -29,7 +29,7 @@ tests:
         local(stream = tcp.openAddrStream(0, 80));
         return false
       } else {
-        return true  // Expected to fail
+        return true
       }
     expected_success: true
     expected_result: "true"
@@ -38,12 +38,11 @@ tests:
     description: "Test connection to closed port"
     script: |
       try {
-        // Connect to localhost port that should be closed
         local(localhostAddr = tcp.addressEncode("127.0.0.1"));
         local(stream = tcp.openAddrStream(localhostAddr, 9));
-        return "false"  // Should not reach here
+        return "false"
       } else {
-        return "true"  // Expected connection refused
+        return "true"
       }
     expected_success: true
     expected_result: "true"
@@ -57,7 +56,7 @@ tests:
         tcp.closeStream(999);
         return "false"
       } else {
-        return "true"  // Expected to fail
+        return "true"
       }
     expected_success: true
     expected_result: "true"
@@ -69,7 +68,7 @@ tests:
         tcp.closeStream(0);
         return "false"
       } else {
-        return "true"  // Expected to fail
+        return "true"
       }
     expected_success: true
     expected_result: "true"
@@ -81,7 +80,7 @@ tests:
         tcp.abortStream(999);
         return "false"
       } else {
-        return "true"  // Expected to fail
+        return "true"
       }
     expected_success: true
     expected_result: "true"
@@ -95,7 +94,7 @@ tests:
         local(data = tcp.readStream(999, 1024));
         return "false"
       } else {
-        return "true"  // Expected to fail
+        return "true"
       }
     expected_success: true
     expected_result: "true"
@@ -107,7 +106,7 @@ tests:
         tcp.writeStream(999, "test data");
         return "false"
       } else {
-        return "true"  // Expected to fail
+        return "true"
       }
     expected_success: true
     expected_result: "true"
@@ -126,7 +125,6 @@ tests:
     description: "Encode 127.0.0.1 to verify host byte order"
     script: |
       local(addr = tcp.addressEncode("127.0.0.1"));
-      // 127.0.0.1 in host byte order = 0x7F000001 = 2130706433
       return (addr == 2130706433)
     expected_success: true
     expected_result: "true"
@@ -157,7 +155,7 @@ tests:
         local(addr = tcp.addressEncode("not.an.ip.address"));
         return "false"
       } else {
-        return "true"  // Expected to fail
+        return "true"
       }
     expected_success: true
     expected_result: "true"
@@ -170,7 +168,6 @@ tests:
     skip_if_unavailable: true
     script: |
       try {
-        /* example.com = 93.184.216.34 */
         local(addr = tcp.addressEncode("93.184.216.34"));
         local(stream = tcp.openAddrStream(addr, 80));
         if (stream > 0) {
@@ -179,7 +176,6 @@ tests:
         };
         return "false"
       } else {
-        /* Network unavailable - acceptable failure */
         return "false"
       }
     expected_success: true
@@ -190,31 +186,31 @@ tests:
     skip_if_unavailable: true
     script: |
       try {
-        /* Connect to example.com:80 */
         local(addr = tcp.addressEncode("93.184.216.34"));
         local(stream = tcp.openAddrStream(addr, 80));
 
         if (stream <= 0) {
-          return "false"  /* Connection failed */
+          // Connection failed
+          return "false"
         };
 
-        /* Verify connection count increased */
+        // Verify connection count increased
         local(count1 = tcp.countConnections());
         if (count1 == 0) {
           tcp.closeStream(stream);
-          return "false"  /* Count should be > 0 */
+          return "false"
         };
 
-        /* Close connection */
+        // Close connection
         local(ok = tcp.closeStream(stream));
         if (not ok) {
-          return "false"  /* Close failed */
+          // Close failed
+          return "false"
         };
 
-        /* Note: Count may not immediately decrease due to TIME_WAIT */
+        // Note: Count may not immediately decrease due to TIME_WAIT
         return "true"
       } else {
-        /* Network unavailable */
         return "false"
       }
     expected_success: true
@@ -232,10 +228,10 @@ tests:
           return "false"
         };
 
-        /* Try to read immediately (no data sent yet) */
+        // Try to read immediately (no data sent yet)
         local(data = tcp.readStream(stream, 1024));
 
-        /* Non-blocking read should return empty string */
+        // Non-blocking read should return empty string
         local(isEmpty = (string.length(data) == 0));
 
         tcp.closeStream(stream);
@@ -262,7 +258,7 @@ tests:
           return "false"
         };
 
-        /* Send minimal HTTP request */
+        // Send minimal HTTP request
         local(crlf = char(13) + char(10));
         local(request = "GET / HTTP/1.0" + crlf + crlf);
         local(writeOk = tcp.writeStream(stream, request));
@@ -272,13 +268,12 @@ tests:
           return "false"
         };
 
-        /* Read response (may need small delay for server response) */
-        /* Note: First read might return empty if server hasn't responded yet */
+        // Read response (may need small delay for server response)
         local(response = tcp.readStream(stream, 1024));
 
         tcp.closeStream(stream);
 
-        /* Accept either empty (too fast) or HTTP response */
+        // Accept either empty (too fast) or HTTP response
         if ((string.length(response) == 0) or (string.contains(response, "HTTP", false))) {
           return "true"
         } else {
@@ -302,7 +297,7 @@ tests:
           return "false"
         };
 
-        /* Abort immediately (send RST) */
+        // Abort immediately (send RST)
         local(ok = tcp.abortStream(stream));
         if (ok) {
           return "true"
@@ -324,7 +319,7 @@ tests:
       try {
         local(addr = tcp.addressEncode("93.184.216.34"));
 
-        /* Open multiple connections */
+        // Open multiple connections
         local(stream1 = tcp.openAddrStream(addr, 80));
         local(stream2 = tcp.openAddrStream(addr, 80));
         local(stream3 = tcp.openAddrStream(addr, 80));
@@ -333,11 +328,11 @@ tests:
           return "false"
         };
 
-        /* Check count */
+        // Check count
         local(count = tcp.countConnections());
         local(hasMultiple = (count >= 3));
 
-        /* Clean up */
+        // Clean up
         tcp.closeStream(stream1);
         tcp.closeStream(stream2);
         tcp.closeStream(stream3);
@@ -367,15 +362,15 @@ tests:
           return "false"
         };
 
-        /* Close once */
+        // Close once
         tcp.closeStream(stream);
 
-        /* Try to close again - should fail */
+        // Try to close again - should fail
         try {
           tcp.closeStream(stream);
-          return "false"  /* Should not succeed */
+          return "false"
         } else {
-          return "true"  /* Expected failure on double close */
+          return "true"
         }
       } else {
         return "false"
@@ -397,12 +392,12 @@ tests:
 
         tcp.closeStream(stream);
 
-        /* Try to read after close - should fail */
+        // Try to read after close - should fail
         try {
           local(data = tcp.readStream(stream, 1024));
-          return "false"  /* Should not succeed */
+          return "false"
         } else {
-          return "true"  /* Expected failure */
+          return "true"
         }
       } else {
         return "false"
@@ -422,7 +417,7 @@ tests:
           return "false"
         };
 
-        /* Write empty string - should succeed (no-op) */
+        // Write empty string - should succeed (no-op)
         local(ok = tcp.writeStream(stream, ""));
 
         tcp.closeStream(stream);

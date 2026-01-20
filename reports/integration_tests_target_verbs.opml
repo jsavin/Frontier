@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Target Verbs (target_verbs)</title>
-    <dateCreated>Tue, 20 Jan 2026 08:32:54 GMT</dateCreated>
+    <dateCreated>Tue, 20 Jan 2026 08:37:48 GMT</dateCreated>
   </head>
   <body>
     <outline text="target.get - no target set returns nil - When no explicit target is set, target.get() returns nil (no implicit target in headless)">
