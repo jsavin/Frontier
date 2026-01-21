@@ -70,6 +70,7 @@ typedef struct tcp_stream {
 
 /* Configuration Constants */
 #define TCP_MAX_STREAMS 256           /* Maximum concurrent connections */
+#define TCP_MAX_LISTENERS 32          /* Maximum concurrent listen sockets (Phase 3) */
 #define TCP_MAX_READ_BYTES (16*1024*1024)  /* 16MB max read size */
 #define TCP_FIRST_STREAM_ID 1         /* Stream IDs start at 1 (0 reserved) */
 #define MAX_HOSTNAME_LEN 255          /* Maximum DNS hostname length */

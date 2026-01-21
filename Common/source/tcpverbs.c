@@ -49,8 +49,8 @@ static tcp_context_t g_tcp_context;
 
 /* Listener Registry - Tracks active listen sockets (Phase 3)
  * Each listener has its own accept thread and callback configuration.
- * Registry is protected by g_tcp_context.mutex. */
-#define MAX_LISTENERS 32
+ * Registry is protected by g_tcp_context.mutex.
+ * Maximum concurrent listeners is defined in tcpverbs.h as TCP_TCP_MAX_LISTENERS. */
 typedef struct tcp_listener {
     int             listen_socket;     /* Listen socket FD (-1 if unused) */
     long            listener_id;       /* Unique listener ID */
@@ -76,7 +76,7 @@ typedef struct tcp_listener {
     long            refcon;            /* User refcon data */
 } tcp_listener_t;
 
-static tcp_listener_t *g_tcp_listeners[MAX_LISTENERS];
+static tcp_listener_t *g_tcp_listeners[TCP_MAX_LISTENERS];
 static pthread_mutex_t g_listeners_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* Mutex Macros */
@@ -1280,7 +1280,7 @@ boolean tcp_listen_stream(long port, long depth, hdlhashtable callback_htable,
     LISTENERS_LOCK();
 
     /* Find free listener slot */
-    for (int i = 0; i < MAX_LISTENERS; i++) {
+    for (int i = 0; i < TCP_MAX_LISTENERS; i++) {
         if (g_tcp_listeners[i] == NULL) {
             listener_slot = i;
             break;
@@ -1391,7 +1391,7 @@ boolean tcp_close_listen(long listen_id) {
     /* Find listener in registry (but DON'T remove yet - thread still running) */
     LISTENERS_LOCK();
 
-    for (int i = 0; i < MAX_LISTENERS; i++) {
+    for (int i = 0; i < TCP_MAX_LISTENERS; i++) {
         if (g_tcp_listeners[i] != NULL &&
             g_tcp_listeners[i]->listener_id == listen_id) {
             listener = g_tcp_listeners[i];
@@ -1519,7 +1519,7 @@ boolean tcp_shutdown_context(void) {
      * we can safely destroy global synchronization primitives.
      * tcp_close_listen() properly joins threads before freeing memory. */
     int listener_count = 0;
-    for (int i = 0; i < MAX_LISTENERS; i++) {
+    for (int i = 0; i < TCP_MAX_LISTENERS; i++) {
         LISTENERS_LOCK();
         if (g_tcp_listeners[i] != NULL) {
             long listener_id = g_tcp_listeners[i]->listener_id;
