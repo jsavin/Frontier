@@ -504,6 +504,11 @@ TEST(state_values_distinct) {
 
 /* ========================================================================
  * Test Category 6: Rate Limiting Tests
+ *
+ * NOTE: These tests validate rate limiting configuration constants only.
+ * Actual rate limiting enforcement is not tested in Phase 1A unit tests.
+ * Rate limiting behavior will be validated in integration tests when
+ * the enforcement mechanism is fully implemented.
  * ======================================================================== */
 
 /*

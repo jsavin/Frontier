@@ -252,7 +252,7 @@ tests:
         local(response = tcp.readStream(stream, 1024));
         tcp.closeStream(stream);
         // Response should contain HTTP header
-        if (string.length(response) > 0 or string.contains(response, "HTTP", false)) {
+        if (string.length(response) > 0 and string.contains(response, "HTTP", false)) {
           return "true"
         }
         else {
@@ -452,7 +452,7 @@ tests:
         local(response = tcp.readStream(stream, 2048));
         tcp.closeStream(stream);
         // Should get HTTP response header
-        if (string.length(response) > 0 or string.contains(response, "HTTP", false)) {
+        if (string.length(response) > 0 and string.contains(response, "HTTP", false)) {
           return "true"
         }
         else {
