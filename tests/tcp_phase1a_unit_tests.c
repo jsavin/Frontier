@@ -80,20 +80,23 @@ static int tests_failed = 0;
  * Reference: tcpverbs.c:tcp_alloc_stream_id()
  */
 TEST(stream_allocation_valid_id) {
+    /* Note: This test validates stream ID constraints without directly testing
+     * tcp_alloc_stream_id() since it's a static function. Stream allocation is
+     * thoroughly tested by integration tests (tcp_verbs.yaml) which exercise
+     * tcp.openNameStream() and tcp.openAddrStream() end-to-end. This unit test
+     * focuses on validating the connection count state and TCP_MAX_STREAMS limit. */
+
     /* Create a dummy socket (we won't actually use it for I/O) */
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
     ASSERT(sockfd >= 0);
 
-    /* Manually allocate stream - we can't call tcp_alloc_stream_id directly
-     * since it's static, so we use tcp_count_connections to verify state */
+    /* Verify initial state is sane - connection count should be valid */
     long initial_count = tcp_count_connections();
+    ASSERT_GTE(initial_count, 0);
+    ASSERT_LT(initial_count, 256);  /* TCP_MAX_STREAMS */
 
     /* Clean up socket */
     close(sockfd);
-
-    /* Verify initial state is sane */
-    ASSERT_GTE(initial_count, 0);
-    ASSERT_LT(initial_count, 256);  /* TCP_MAX_STREAMS */
 }
 
 /*
@@ -583,18 +586,20 @@ TEST(config_max_ipv4_string_len) {
 /*
  * Test 8.1: tcp_is_private_ip() detects loopback (127.0.0.0/8)
  *
- * Purpose: Verify loopback addresses are detected as private
- * Why: Prevents DNS rebinding attacks using localhost
+ * Purpose: Verify loopback addresses are correctly classified
+ * Why: Prevents DNS rebinding attacks while allowing local development
  * Reference: tcpverbs.c:tcp_is_private_ip()
  *
- * Note: 127.0.0.1 is ALLOWED (for local development), but other
- * 127.x.x.x addresses should be rejected.
+ * Note: tcp_is_private_ip() returns FALSE for 127.0.0.1 (not blocked) to enable
+ * local development and testing. This exemption allows connections to localhost.
+ * All other 127.x.x.x addresses return TRUE (blocked) as they're considered
+ * private/reserved and pose DNS rebinding risks.
  */
 TEST(security_private_ip_loopback) {
-    /* 127.0.0.1 is allowed (special case) */
+    /* 127.0.0.1 returns FALSE (not private, connections allowed) */
     ASSERT_FALSE(tcp_is_private_ip(0x7F000001));  /* 127.0.0.1 */
 
-    /* Other 127.x.x.x addresses are private */
+    /* Other 127.x.x.x addresses return TRUE (private, connections blocked) */
     ASSERT_TRUE(tcp_is_private_ip(0x7F000002));   /* 127.0.0.2 */
     ASSERT_TRUE(tcp_is_private_ip(0x7FFFFFFF));   /* 127.255.255.255 */
 }

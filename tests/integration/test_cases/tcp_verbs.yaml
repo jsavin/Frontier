@@ -261,7 +261,10 @@ tests:
     expected_result: "true"
 
   - name: "tcp.openAddrStream - invalid address (zero)"
-    description: "Address 0.0.0.0 is invalid for connect"
+    description: "Address 0.0.0.0 is invalid for client connect (Phase 1A)"
+    # Note: 0.0.0.0 is invalid for Phase 1A client connections (tcp.openAddrStream).
+    # Phase 2 may allow 0.0.0.0 for server binding (tcp.listenStream), but that's
+    # a different use case. This test validates Phase 1A client-side behavior.
     script: |
       try {
         tcp.openAddrStream(0, 80);
