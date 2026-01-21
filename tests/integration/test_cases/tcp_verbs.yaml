@@ -180,6 +180,19 @@ tests:
     expected_success: true
     expected_result: "true"
 
+  - name: "tcp.readStream - invalid byte count (zero)"
+    description: "Zero byte count should raise error (must be positive)"
+    script: |
+      try {
+        tcp.readStream(1, 0);
+        return "false"
+      }
+      else {
+        return "true"
+      }
+    expected_success: true
+    expected_result: "true"
+
   - name: "tcp.openNameStream - invalid port (negative)"
     description: "Negative port number should raise error"
     script: |

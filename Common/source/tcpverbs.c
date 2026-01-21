@@ -290,6 +290,12 @@ boolean tcp_address_encode(bigstring ip_string, long *addr_out) {
     char ip_cstr[16];
     struct in_addr addr;
 
+    /* NULL pointer validation */
+    if (!addr_out) {
+        tcp_set_error(TCP_ERR_SOCKET_ERROR, "NULL output pointer");
+        return false;
+    }
+
     /* Convert Pascal string to C string */
     if (stringlength(ip_string) > MAX_IPV4_STRING_LEN) {
         tcp_set_error(TCP_ERR_SOCKET_ERROR, "IP address too long");
@@ -314,6 +320,12 @@ boolean tcp_address_encode(bigstring ip_string, long *addr_out) {
 boolean tcp_address_decode(long addr, bigstring ip_string_out) {
     struct in_addr in_addr;
     char ip_cstr[INET_ADDRSTRLEN];
+
+    /* NULL pointer validation */
+    if (!ip_string_out) {
+        tcp_set_error(TCP_ERR_SOCKET_ERROR, "NULL output pointer");
+        return false;
+    }
 
     /* Convert to network byte order */
     in_addr.s_addr = htonl((uint32_t)addr);

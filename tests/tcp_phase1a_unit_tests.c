@@ -440,16 +440,29 @@ TEST(error_invalid_stream_id_overflow) {
  * Test 4.4: NULL pointer safety in address operations
  *
  * Purpose: Verify address encode/decode handle NULL output pointers safely
- * Why: Prevents segfaults from programming errors
+ * Why: Prevents segfaults from programming errors (defense-in-depth)
  * Reference: tcpverbs.c:tcp_address_encode(), tcp_address_decode()
- *
- * Note: SKIPPED - current implementation does not check for NULL output
- * pointers. This is acceptable for Phase 1A since callers are trusted code.
- * Future enhancement: Add NULL pointer validation.
  */
 TEST(error_null_pointer_safety) {
-    /* SKIPPED - See note above */
-    ASSERT_TRUE(true);
+    bigstring ip_string;
+    long addr;
+    boolean result;
+
+    /* Test tcp_address_encode() with NULL output pointer */
+    copyctopstring("192.168.1.1", ip_string);
+    result = tcp_address_encode(ip_string, NULL);
+    ASSERT_FALSE(result);  /* Should fail safely, not segfault */
+
+    /* Test tcp_address_decode() with NULL output pointer */
+    addr = 0xC0A80101;  /* 192.168.1.1 in host byte order */
+    result = tcp_address_decode(addr, NULL);
+    ASSERT_FALSE(result);  /* Should fail safely, not segfault */
+
+    /* Sanity check: valid parameters should still work */
+    copyctopstring("8.8.8.8", ip_string);
+    result = tcp_address_encode(ip_string, &addr);
+    ASSERT_TRUE(result);
+    ASSERT_EQ(addr, 0x08080808);
 }
 
 /* ========================================================================
