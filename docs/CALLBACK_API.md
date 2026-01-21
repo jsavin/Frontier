@@ -101,6 +101,67 @@ langruncallbackwithparams(htable, BIGSTRING("\pmyCallback"), 4, params, nil);
 
 ---
 
+## Memory Management
+
+### Parameter Array Ownership
+
+**IMPORTANT**: The caller retains ownership of the `params` array and must manage its lifecycle.
+
+- **Parameter values are COPIED**: The callback infrastructure uses `hashtableassign()` to copy parameter values into the local scope, not reference them.
+- **Caller retains ownership**: The `params` array and its contents remain owned by the caller.
+- **Disposal responsibility**: Caller must dispose `params` array elements after `langruncallbackwithparams()` returns.
+
+**Example - Proper parameter disposal**:
+```c
+// Create parameters
+tyvaluerecord params[3];
+setlongvalue(stream_id, &params[0]);
+setlongvalue(remote_addr, &params[1]);
+setlongvalue(remote_port, &params[2]);
+
+// Execute callback (parameters are COPIED internally)
+boolean success = langruncallbackwithparams(htable, callback_name, 3, params, nil);
+
+// Clean up parameters (caller's responsibility)
+for (short i = 0; i < 3; i++) {
+    disposevaluerecord(params[i], false);
+}
+```
+
+### Return Value Ownership
+
+If `result != nil`, the caller receives a **copy** of the callback's return value and owns it.
+
+- **Copied value**: The return value is copied via `copyvaluerecord()`, not referenced.
+- **Caller must dispose**: Caller must call `disposevaluerecord(*result, false)` when done with the result.
+- **nil result allowed**: If `result == nil`, the callback's return value is discarded (no cleanup needed).
+
+**Example - Handling return value**:
+```c
+tyvaluerecord result;
+
+// Execute callback and capture return value
+if (langruncallbackwithparams(htable, callback_name, 0, nil, &result)) {
+    // Use result...
+    if (result.valuetype == booleanvaluetype) {
+        boolean accept = result.data.flvalue;
+        // ... handle boolean result
+    }
+
+    // CRITICAL: Dispose result when done (caller owns it)
+    disposevaluerecord(result, false);
+}
+```
+
+### Memory Safety Rules
+
+1. **Never pass stack-allocated strings as parameters without copying**: Use `setstringvalue()` which copies the string.
+2. **Never assume parameter lifetime**: Parameters are copied, so modifying the original after the call has no effect.
+3. **Always dispose heap values**: Any heap-allocated parameter (strings, lists, tables) must be disposed by the caller.
+4. **nil result pointer is safe**: If you don't need the return value, pass `result = nil` (no cleanup needed).
+
+---
+
 ## Thread-Safety Guarantees
 
 **CRITICAL**: This function is **thread-safe** and can be called from worker threads.

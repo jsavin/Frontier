@@ -1314,14 +1314,38 @@ boolean langruncallbackwithparams (
 	boolean fl = false;
 	short i;
 
-	/* Input validation */
-	if (param_count > 0 && params == nil) {
-		return false;  /* Invalid: param_count specified but params array is nil */
-	}
+	/* Initialize value records to safe state for cleanup */
+	initvalue(&vparams, novaluetype);
+	initvalue(&vresult, novaluetype);
 
 	/* Thread-safety wrapper - ENTRY */
 	grabthreadglobals();
 	oppushoutline(op_get_outlinedata());
+
+	/* Input validation - AFTER thread setup to ensure cleanup is called */
+	if (htable == nil) {
+		log_error(LOG_COMP_LANG, "langruncallbackwithparams: htable is nil");
+		goto cleanup;
+	}
+
+	if (stringlength(callback_name) == 0) {
+		log_error(LOG_COMP_LANG, "langruncallbackwithparams: callback_name is empty");
+		goto cleanup;
+	}
+
+	if (param_count < 0) {
+		log_error(LOG_COMP_LANG, "langruncallbackwithparams: param_count is negative (%d)", param_count);
+		goto cleanup;
+	}
+
+	if (param_count > 0 && params == nil) {
+		log_error(LOG_COMP_LANG, "langruncallbackwithparams: param_count=%d but params array is nil", param_count);
+		goto cleanup;
+	}
+
+	/* Debug logging */
+	log_debug(LOG_COMP_LANG, "Executing callback '%.*s' with %d parameters",
+	          (int)callback_name[0], callback_name + 1, param_count);
 
 	/* Create local variable table for parameters */
 	if (!langpushlocalchain(&htlocals)) {
@@ -1366,8 +1390,6 @@ boolean langruncallbackwithparams (
 	}
 
 	/* Execute callback with parameter list */
-	initvalue(&vresult, novaluetype);
-
 	if (!langrunscriptcode(htable, callback_name, hcode, &vparams, nil, &vresult)) {
 		goto cleanup;
 	}
@@ -1376,16 +1398,32 @@ boolean langruncallbackwithparams (
 	if (result != nil) {
 		if (!copyvaluerecord(vresult, result)) {
 			disposevaluerecord(vresult, false);
+			vresult.valuetype = novaluetype;  /* Prevent double-dispose in cleanup */
 			goto cleanup;
 		}
 	}
 
 	disposevaluerecord(vresult, false);
+	vresult.valuetype = novaluetype;  /* Prevent double-dispose in cleanup */
 
 	/* Success */
 	fl = true;
 
 cleanup:
+	/* Clean up parameter list - dispose vparams if allocated */
+	if (vparams.valuetype == listvaluetype) {
+		/* Ownership was transferred to vparams - dispose it */
+		disposevaluerecord(vparams, false);
+	} else if (hparams != nil) {
+		/* hparams allocated but ownership never transferred - must dispose manually */
+		opdisposelist(hparams);
+	}
+
+	/* Clean up result value */
+	if (vresult.valuetype != novaluetype) {
+		disposevaluerecord(vresult, false);
+	}
+
 	/* Clean up local table */
 	if (htlocals != nil) {
 		langpoplocalchain(htlocals);
