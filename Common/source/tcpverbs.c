@@ -49,8 +49,8 @@ static tcp_context_t g_tcp_context;
 
 /* Listener Registry - Tracks active listen sockets (Phase 3)
  * Each listener has its own accept thread and callback configuration.
- * Registry is protected by g_tcp_context.mutex.
- * Maximum concurrent listeners is defined in tcpverbs.h as TCP_TCP_MAX_LISTENERS. */
+ * Registry is protected by g_listeners_mutex (separate mutex for listener operations).
+ * Maximum concurrent listeners is defined in tcpverbs.h as TCP_MAX_LISTENERS. */
 typedef struct tcp_listener {
     int             listen_socket;     /* Listen socket FD (-1 if unused) */
     long            listener_id;       /* Unique listener ID */
@@ -1388,14 +1388,19 @@ boolean tcp_close_listen(long listen_id) {
         return false;
     }
 
-    /* Find listener in registry (but DON'T remove yet - thread still running) */
+    /* Find listener in registry (but DON'T remove yet - thread still running)
+     * Check running flag to prevent double-close if concurrent threads call
+     * tcp_close_listen() with same ID. First thread sets running=false, second
+     * thread won't find it due to this check. */
     LISTENERS_LOCK();
 
     for (int i = 0; i < TCP_MAX_LISTENERS; i++) {
         if (g_tcp_listeners[i] != NULL &&
-            g_tcp_listeners[i]->listener_id == listen_id) {
+            g_tcp_listeners[i]->listener_id == listen_id &&
+            g_tcp_listeners[i]->running == true) {
             listener = g_tcp_listeners[i];
             listener_slot = i;
+            listener->running = false;  /* Mark as closing BEFORE unlock */
             /* DO NOT remove from registry yet - thread still needs access */
             break;
         }
@@ -1404,12 +1409,12 @@ boolean tcp_close_listen(long listen_id) {
     LISTENERS_UNLOCK();
 
     if (!listener) {
-        tcp_set_error(TCP_ERR_INVALID_STREAM, "Listener not found");
+        tcp_set_error(TCP_ERR_INVALID_STREAM, "Listener not found or already closing");
         return false;
     }
 
-    /* Signal thread to stop */
-    listener->running = false;
+    /* Thread stop signal was set atomically inside lock above.
+     * Get socket and thread handles for cleanup. */
     listen_socket = listener->listen_socket;
     accept_thread = listener->accept_thread;
 

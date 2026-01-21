@@ -229,6 +229,52 @@ When delegating to the pull-request agent:
 - ✅ Trace full call chains to verify global state reliability
 - ✅ Don't stop at surface-level fixes
 
+### Agent Working Directory Context - CRITICAL FOR /DOIT ⚠️⚠️⚠️
+
+**MANDATORY REQUIREMENT**: When launching sub-agents during /doit workflow (or any workflow involving feature branches/worktrees), you MUST explicitly pass the working directory path in the agent's task prompt.
+
+**Why This Matters**:
+- Agents don't automatically inherit the correct working directory
+- Without explicit path, agents may work in the main Frontier directory on develop
+- This introduces breaking changes to develop branch instead of feature branch
+- Creates redundant work when changes need to be moved/redone
+- Violates the fundamental worktree workflow discipline
+
+**CORRECT Pattern** ✅:
+```markdown
+When launching agent in /doit workflow Phase 4 or Phase 6:
+
+Task Prompt MUST include:
+"WORKING DIRECTORY: /Users/jake/dev/jsavin/Frontier-<feature-name>
+BRANCH: feature/<feature-name>
+
+You MUST execute all commands and file operations in this working directory.
+Verify your location with 'pwd && git branch' before making any changes.
+
+[Rest of task description...]"
+```
+
+**WRONG Pattern** ❌:
+```markdown
+# Missing working directory context
+"Implement the new verb dispatch logic for system.verbs.table.assign..."
+# Agent may work in wrong directory!
+```
+
+**Verification Steps**:
+1. Before launching ANY agent during /doit: Store worktree path from Phase 1
+2. Include explicit working directory path in EVERY agent prompt
+3. Instruct agent to verify location before starting work
+4. After agent completes: Verify changes are in correct worktree
+
+**Code Review Checkpoint**:
+When reviewing /doit workflow execution, check:
+- ✅ Did all sub-agents receive explicit working directory path?
+- ✅ Are changes in the feature branch worktree, not main directory?
+- ✅ Does `git status` show changes on feature/* branch, not develop?
+
+**Enforcement**: This is a BLOCKING requirement. Never proceed with agent launch during /doit without explicit working directory context.
+
 ### Pull-Request Agent - Auto-Backgrounding Monitor ✅
 
 **SOLUTION IMPLEMENTED**: `monitor_pr_review.sh` auto-backgrounds itself - it is ALWAYS non-blocking.
