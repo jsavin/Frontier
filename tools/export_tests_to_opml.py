@@ -191,6 +191,53 @@ def add_outline_elements(parent_elem, items):
             add_outline_elements(outline, item['children'])
 
 
+def write_opml_if_changed(opml_element, output_file):
+    """
+    Write OPML to file only if content (excluding timestamp) has changed.
+
+    This prevents unnecessary git commits when only timestamps differ.
+
+    Args:
+        opml_element: XML Element tree representing OPML
+        output_file: Path to output file
+
+    Returns:
+        True if file was written (content changed), False otherwise
+    """
+    # Generate new XML string
+    xml_str = minidom.parseString(
+        tostring(opml_element, encoding='unicode')
+    ).toprettyxml(indent='  ')
+
+    # Remove extra blank lines that minidom adds
+    xml_lines = [line for line in xml_str.split('\n') if line.strip()]
+    new_content = '\n'.join(xml_lines) + '\n'
+
+    # Check if file exists
+    if os.path.exists(output_file):
+        with open(output_file, 'r') as f:
+            existing_content = f.read()
+
+        # Compare without dateCreated lines
+        new_without_date = '\n'.join([
+            line for line in new_content.split('\n')
+            if '<dateCreated>' not in line
+        ])
+        existing_without_date = '\n'.join([
+            line for line in existing_content.split('\n')
+            if '<dateCreated>' not in line
+        ])
+
+        if new_without_date == existing_without_date:
+            # Content unchanged - don't write file
+            return False
+
+    # Content changed or file doesn't exist - write it
+    with open(output_file, 'w') as f:
+        f.write(new_content)
+    return True
+
+
 def generate_category_opml(category_key, category_data, output_file):
     """
     Generate standalone OPML for a single test category.
@@ -260,18 +307,8 @@ def generate_category_opml(category_key, category_data, output_file):
             hierarchy = build_outline_hierarchy(parsed_lines)
             add_outline_elements(script_outline, hierarchy)
 
-    # Write OPML to file with pretty formatting
-    tree = ElementTree(opml)
-    xml_str = minidom.parseString(
-        tostring(opml, encoding='unicode')
-    ).toprettyxml(indent='  ')
-
-    # Remove extra blank lines that minidom adds
-    xml_lines = [line for line in xml_str.split('\n') if line.strip()]
-    xml_str = '\n'.join(xml_lines) + '\n'
-
-    with open(output_file, 'w') as f:
-        f.write(xml_str)
+    # Write OPML to file only if content changed
+    write_opml_if_changed(opml, output_file)
 
 
 def generate_manifest_opml(categories, output_file):
@@ -306,18 +343,8 @@ def generate_manifest_opml(categories, output_file):
         category_outline.set('type', 'link')
         category_outline.set('url', f'https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_{category_key}.opml')
 
-    # Write OPML to file with pretty formatting
-    tree = ElementTree(opml)
-    xml_str = minidom.parseString(
-        tostring(opml, encoding='unicode')
-    ).toprettyxml(indent='  ')
-
-    # Remove extra blank lines that minidom adds
-    xml_lines = [line for line in xml_str.split('\n') if line.strip()]
-    xml_str = '\n'.join(xml_lines) + '\n'
-
-    with open(output_file, 'w') as f:
-        f.write(xml_str)
+    # Write OPML to file only if content changed
+    write_opml_if_changed(opml, output_file)
 
 
 def export_hierarchical_opml(test_dir, output_dir):
@@ -455,18 +482,8 @@ def export_tests_to_opml(test_dir, output_file):
                 hierarchy = build_outline_hierarchy(parsed_lines)
                 add_outline_elements(script_outline, hierarchy)
 
-    # Write OPML to file with pretty formatting
-    tree = ElementTree(opml)
-    xml_str = minidom.parseString(
-        tostring(opml, encoding='unicode')
-    ).toprettyxml(indent='  ')
-
-    # Remove extra blank lines that minidom adds
-    xml_lines = [line for line in xml_str.split('\n') if line.strip()]
-    xml_str = '\n'.join(xml_lines) + '\n'
-
-    with open(output_file, 'w') as f:
-        f.write(xml_str)
+    # Write OPML to file only if content changed
+    write_opml_if_changed(opml, output_file)
 
     print(f"Successfully exported {len(test_files)} test categories to {output_file}")
 
