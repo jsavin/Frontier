@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Tcp Verbs Network (tcp_verbs_network)</title>
-    <dateCreated>Wed, 21 Jan 2026 06:27:58 GMT</dateCreated>
+    <dateCreated>Wed, 21 Jan 2026 07:06:16 GMT</dateCreated>
   </head>
   <body>
     <outline text="tcp.openNameStream - connect to example.com - Test DNS resolution and TCP connect using hostname">
@@ -230,7 +230,7 @@
           <outline text="local(response = tcp.readStream(stream, 1024))"/>
           <outline text="tcp.closeStream(stream)"/>
           <outline text="// Response should contain HTTP header"/>
-          <outline text="if (string.length(response) &gt; 0 or string.contains(response, &quot;HTTP&quot;, false))">
+          <outline text="if (string.length(response) &gt; 0 and string.contains(response, &quot;HTTP&quot;, false))">
             <outline text="return &quot;true&quot;"/>
           </outline>
           <outline text="else">
@@ -425,7 +425,7 @@
           <outline text="local(response = tcp.readStream(stream, 2048))"/>
           <outline text="tcp.closeStream(stream)"/>
           <outline text="// Should get HTTP response header"/>
-          <outline text="if (string.length(response) &gt; 0 or string.contains(response, &quot;HTTP&quot;, false))">
+          <outline text="if (string.length(response) &gt; 0 and string.contains(response, &quot;HTTP&quot;, false))">
             <outline text="return &quot;true&quot;"/>
           </outline>
           <outline text="else">
