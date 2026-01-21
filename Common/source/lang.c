@@ -49,6 +49,7 @@
 #include "langparser.h"
 #include "langsystem7.h"
 #include "op.h"
+#include "oplist.h"
 #include "shell.rsrc.h"
 #include "shellhooks.h"
 #include "timedate.h" /* for the milliseconds function */
@@ -1197,6 +1198,243 @@ boolean langopruncallbackscripts (short idscript) {
 
 	return (flresult);
 	} /*langopruncallbackscripts */
+
+
+static boolean getcodetreefromscriptaddress (hdlhashtable htable, bigstring bsverb, hdltreenode *hcode) {
+
+	/*
+	Given the address of an object, assume it's a script or code object and get its code tree
+
+	Code cribbed from langrunscript in lang.c
+
+	2026-01-20 Phase 4 P0a: Extracted from langregexp.c for use in parameterized callback infrastructure
+	*/
+
+	tyvaluerecord vhandler;
+	hdlhashnode handlernode;
+
+	if (!hashtablelookupnode (htable, bsverb, &handlernode)) {
+
+		langparamerror (unknownfunctionerror, bsverb);
+
+		return (false);
+		}
+
+	vhandler = (**handlernode).val;
+
+	/*build a code tree and call the handler, with our error hook in place*/
+
+	*hcode = nil;
+
+	if (vhandler.valuetype == codevaluetype) {
+
+		*hcode = vhandler.data.codevalue;
+	}
+	else if ((**htable).valueroutine == nil) { /*not a kernel table*/
+
+		if (!langexternalvaltocode (vhandler, hcode)) {
+
+			langparamerror (notfunctionerror, bsverb);
+
+			return (false);
+			}
+
+		if (*hcode == nil) { /*needs compilation*/
+
+			if (!langcompilescript (handlernode, hcode))
+				return (false);
+			}
+		}
+
+	return (true);
+	} /*getcodetreefromscriptaddress*/
+
+
+static void buildparamname (short param_index, bigstring param_name) {
+	/*
+	2026-01-20 Phase 4 P0a: Helper function to build parameter names
+
+	Builds parameter name strings like "param1", "param2", etc.
+	Used by langruncallbackwithparams to create consistent parameter names
+	for local variable assignment and list building.
+
+	Parameters:
+	  param_index - Zero-based parameter index (0 = param1, 1 = param2, etc.)
+	  param_name  - Output string to receive the parameter name
+	*/
+
+	bigstring num_str;
+
+	numbertostring(param_index + 1, num_str);
+	copystring(BIGSTRING("\pparam"), param_name);
+	pushstring(num_str, param_name);
+	} /*buildparamname*/
+
+
+boolean langruncallbackwithparams (
+	hdlhashtable htable,             /* Hash table containing callback script */
+	bigstring callback_name,          /* Name of callback script */
+	short param_count,                /* Number of parameters */
+	tyvaluerecord *params,            /* Array of parameter values */
+	tyvaluerecord *result             /* Returned value (optional, can be nil) */
+) {
+	/*
+	2026-01-20 Phase 4 P0a: Parameterized callback infrastructure
+
+	General-purpose parameterized callback execution based on legacy regexp callback pattern.
+
+	This function executes a UserTalk script callback with parameters passed as local variables.
+	Parameters are named param1, param2, param3, etc. and are accessible within the callback script.
+
+	Based on legacy regexp callback pattern (langregexp.c:1591-1672):
+	  1. Create local variable table for parameters
+	  2. Assign parameters to local table with names (param1, param2, ...)
+	  3. Build parameter list using langpushlistaddress()
+	  4. Execute callback with langrunscriptcode()
+	  5. Clean up local scope
+	  6. Wrap in thread-safety pattern (grabthreadglobals/oppushoutline)
+
+	Parameters:
+	  htable        - Hash table containing the callback script
+	  callback_name - Name of the callback script to execute
+	  param_count   - Number of parameters to pass (0 for no parameters)
+	  params        - Array of parameter values (can be nil if param_count == 0)
+	  result        - Pointer to store return value (can be nil if return value not needed)
+
+	Returns:
+	  true if callback executed successfully, false on error
+
+	Reference: planning/phase4/p0a-critical-thread-safety/CALLBACK_INFRASTRUCTURE.md
+	*/
+
+	hdlhashtable htlocals = nil;
+	hdllistrecord hparams = nil;
+	tyvaluerecord vparams, vresult;
+	hdltreenode hcode = nil;
+	boolean fl = false;
+	short i;
+
+	/* Initialize value records to safe state for cleanup */
+	initvalue(&vparams, novaluetype);
+	initvalue(&vresult, novaluetype);
+
+	/* Thread-safety wrapper - ENTRY */
+	grabthreadglobals();
+	oppushoutline(op_get_outlinedata());
+
+	/* Input validation - AFTER thread setup to ensure cleanup is called */
+	if (htable == nil) {
+		log_error(LOG_COMP_LANG, "langruncallbackwithparams: htable is nil");
+		goto cleanup;
+	}
+
+	if (stringlength(callback_name) == 0) {
+		log_error(LOG_COMP_LANG, "langruncallbackwithparams: callback_name is empty");
+		goto cleanup;
+	}
+
+	if (param_count < 0) {
+		log_error(LOG_COMP_LANG, "langruncallbackwithparams: param_count is negative (%d)", param_count);
+		goto cleanup;
+	}
+
+	if (param_count > 0 && params == nil) {
+		log_error(LOG_COMP_LANG, "langruncallbackwithparams: param_count=%d but params array is nil", param_count);
+		goto cleanup;
+	}
+
+	/* Debug logging */
+	log_debug(LOG_COMP_LANG, "Executing callback '%.*s' with %d parameters",
+	          (int)callback_name[0], callback_name + 1, param_count);
+
+	/* Create local variable table for parameters */
+	if (!langpushlocalchain(&htlocals)) {
+		goto cleanup;
+	}
+
+	/* Assign parameters to local table with names (param1, param2, ...) */
+	for (i = 0; i < param_count; i++) {
+		bigstring param_name;
+
+		buildparamname(i, param_name);
+
+		/* Assign parameter value to local table */
+		if (!hashtableassign(htlocals, param_name, params[i])) {
+			goto cleanup;
+		}
+	}
+
+	/* Build parameter list for langrunscriptcode */
+	if (!opnewlist(&hparams, false)) {
+		goto cleanup;
+	}
+
+	if (!setheapvalue((Handle)hparams, listvaluetype, &vparams)) {
+		goto cleanup;
+	}
+
+	/* Add address references to parameters in the list */
+	for (i = 0; i < param_count; i++) {
+		bigstring param_name;
+
+		buildparamname(i, param_name);
+
+		if (!langpushlistaddress(hparams, htlocals, param_name)) {
+			goto cleanup;
+		}
+	}
+
+	/* Get code tree for callback script */
+	if (!getcodetreefromscriptaddress(htable, callback_name, &hcode)) {
+		goto cleanup;
+	}
+
+	/* Execute callback with parameter list */
+	if (!langrunscriptcode(htable, callback_name, hcode, &vparams, nil, &vresult)) {
+		goto cleanup;
+	}
+
+	/* Copy result if requested */
+	if (result != nil) {
+		if (!copyvaluerecord(vresult, result)) {
+			disposevaluerecord(vresult, false);
+			vresult.valuetype = novaluetype;  /* Prevent double-dispose in cleanup */
+			goto cleanup;
+		}
+	}
+
+	disposevaluerecord(vresult, false);
+	vresult.valuetype = novaluetype;  /* Prevent double-dispose in cleanup */
+
+	/* Success */
+	fl = true;
+
+cleanup:
+	/* Clean up parameter list - dispose vparams if allocated */
+	if (vparams.valuetype == listvaluetype) {
+		/* Ownership was transferred to vparams - dispose it */
+		disposevaluerecord(vparams, false);
+	} else if (hparams != nil) {
+		/* hparams allocated but ownership never transferred - must dispose manually */
+		opdisposelist(hparams);
+	}
+
+	/* Clean up result value */
+	if (vresult.valuetype != novaluetype) {
+		disposevaluerecord(vresult, false);
+	}
+
+	/* Clean up local table */
+	if (htlocals != nil) {
+		langpoplocalchain(htlocals);
+	}
+
+	/* Thread-safety wrapper - EXIT */
+	oppopoutline();
+	releasethreadglobals();
+
+	return fl;
+	} /*langruncallbackwithparams*/
 
 
 boolean langzoomobject (const bigstring bsobject) {

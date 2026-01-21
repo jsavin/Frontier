@@ -772,6 +772,237 @@ The **regexp callback implementation** (`regexprunreplacecallback`) is the **gol
 
 ---
 
+---
+
+## Implementation Complete
+
+**Date**: 2026-01-20
+**Status**: IMPLEMENTED - API ready for TCP Phase 3 integration
+**Location**: `Common/source/lang.c:1253-1381`, `Common/headers/lang.h:766`
+
+### C API Signature
+
+```c
+/**
+ * Execute a UserTalk callback with parameters
+ *
+ * @param htable         Hash table containing the callback script
+ * @param callback_name  Name of the callback script (bigstring)
+ * @param param_count    Number of parameters to pass
+ * @param params         Array of tyvaluerecord parameters
+ * @param result         Pointer to receive return value (can be nil)
+ * @return               true if callback executed successfully, false on error
+ *
+ * Parameters are accessible in UserTalk as param1, param2, param3, etc.
+ *
+ * Thread-Safety: This function is thread-safe. It uses grabthreadglobals/
+ * releasethreadglobals and oppushoutline/oppopoutline wrappers.
+ *
+ * Implementation Pattern:
+ *   1. Create local variable table for parameters
+ *   2. Assign parameters to local table with names (param1, param2, ...)
+ *   3. Build parameter list using langpushlistaddress()
+ *   4. Execute callback with langrunscriptcode()
+ *   5. Clean up local scope
+ *   6. Wrap in thread-safety pattern (grabthreadglobals/oppushoutline)
+ *
+ * Based on legacy regexp callback pattern (langregexp.c:1591-1672).
+ *
+ * Reference: planning/phase4/p0a-critical-thread-safety/CALLBACK_INFRASTRUCTURE.md
+ */
+extern boolean langruncallbackwithparams (
+    hdlhashtable htable,
+    bigstring callback_name,
+    short param_count,
+    tyvaluerecord *params,
+    tyvaluerecord *result
+);
+```
+
+### Usage Examples
+
+#### Example 1: TCP Connection Callback (3 parameters)
+
+```c
+// TCP accept thread invokes callback with connection parameters
+tyvaluerecord params[3];
+setlongvalue(stream_id, &params[0]);       // long: stream ID
+setlongvalue(remote_addr, &params[1]);     // long: remote IP address (packed)
+setlongvalue(remote_port, &params[2]);     // long: remote port number
+
+tyvaluerecord result;
+boolean success = langruncallbackwithparams(
+    htable,
+    BIGSTRING("\psystem.callbacks.tcpConnection"),
+    3,
+    params,
+    &result
+);
+
+if (!success) {
+    // Callback execution failed
+    log_error(LOG_COMP_NETWORK, "TCP callback failed");
+}
+```
+
+**UserTalk callback script**:
+```usertalk
+on tcpConnection(stream, remote_addr, remote_port) {
+    local(peer_ip = tcp.addressDecode(remote_addr));
+    log.add("Connection from " + peer_ip + ":" + remote_port);
+
+    local(data = tcp.readStream(stream, 1024));
+    tcp.writeStream(stream, "HTTP/1.0 200 OK\r\n\r\nHello");
+    tcp.closeStream(stream);
+
+    return true
+}
+```
+
+#### Example 2: Window Close Callback (1 parameter - string)
+
+```c
+// Window manager requests permission to close window
+tyvaluerecord param;
+setstringvalue(BIGSTRING("\pDocument 1"), &param);
+
+tyvaluerecord result;
+boolean success = langruncallbackwithparams(
+    htable,
+    BIGSTRING("\psystem.callbacks.closeWindow"),
+    1,
+    &param,
+    &result
+);
+
+boolean allow_close = false;
+if (success && result.valuetype == booleanvaluetype) {
+    allow_close = result.data.flvalue;
+}
+
+if (!allow_close) {
+    // User vetoed close - cancel operation
+}
+```
+
+**UserTalk callback script**:
+```usertalk
+on closeWindow(title) {
+    if title == "Important Document" {
+        if not dialog.confirm("Really close " + title + "?") {
+            return false  // Veto close
+        }
+    };
+    return true  // Allow close
+}
+```
+
+#### Example 3: Database Operation Callback (1 parameter - table address)
+
+```c
+// Notify callback before closing database object
+tyvaluerecord param;
+setaddressvalue(htable, bsname, &param);  // Table address
+
+tyvaluerecord result;
+boolean success = langruncallbackwithparams(
+    htable,
+    BIGSTRING("\psystem.callbacks.closeObject"),
+    1,
+    &param,
+    &result
+);
+```
+
+**UserTalk callback script**:
+```usertalk
+on closeObject(object_address) {
+    local(obj_type = typeof(object_address^));
+    log.add("Closing object: " + nameof(object_address) + " (type: " + obj_type + ")");
+    return true
+}
+```
+
+#### Example 4: Backward Compatibility (0 parameters)
+
+```c
+// Invoke parameterless callback (backward compatible)
+tyvaluerecord result;
+boolean success = langruncallbackwithparams(
+    htable,
+    BIGSTRING("\psystem.callbacks.startup"),
+    0,         // No parameters
+    nil,       // params can be nil when param_count == 0
+    &result
+);
+```
+
+**UserTalk callback script**:
+```usertalk
+on startup() {
+    log.add("System startup complete");
+    return true
+}
+```
+
+### Thread-Safety Guarantees
+
+**CRITICAL**: This function is thread-safe and can be called from worker threads (e.g., TCP accept thread).
+
+**Thread-Safety Pattern**:
+1. `grabthreadglobals()` - Acquires per-thread state
+2. `oppushoutline()` - Saves outline context
+3. Execute callback with local parameter scope
+4. `oppopoutline()` - Restores outline context
+5. `releasethreadglobals()` - Releases per-thread state
+
+**Result**: Each callback execution runs in isolated thread context, preventing race conditions.
+
+### Error Handling
+
+The function returns `false` on any error:
+- Callback script not found
+- Parameter marshalling failure
+- Script compilation failure
+- Script execution error
+
+**Example with error checking**:
+```c
+tyvaluerecord params[2];
+setlongvalue(value1, &params[0]);
+setstringvalue(BIGSTRING("\ptest"), &params[1]);
+
+tyvaluerecord result;
+if (!langruncallbackwithparams(htable, BIGSTRING("\psystem.callbacks.test"), 2, params, &result)) {
+    // Error occurred - check logs for details
+    log_error(LOG_COMP_LANG, "Callback execution failed");
+    return false;
+}
+
+// Success - process result
+if (result.valuetype == booleanvaluetype) {
+    boolean callback_result = result.data.flvalue;
+    // Use callback result
+}
+
+// Clean up result value
+disposevaluerecord(result, false);
+```
+
+### Integration Points
+
+**TCP Phase 3**:
+- `tcp.listenStream()` will use this API to invoke user callbacks on incoming connections
+- See: `planning/phase4/networking/phase3_server_operations.md`
+
+**Future Use Cases**:
+- Window lifecycle callbacks (open, close, save)
+- Database change notifications
+- Outline operation callbacks
+- System lifecycle callbacks with parameters
+
+---
+
 **Last Updated**: 2026-01-20
-**Status**: Legacy implementation analyzed, modern design patterns identified
-**Next Step**: Implement `langruncallbackwithparams()` based on regexp callback pattern
+**Status**: Implementation complete - Ready for TCP Phase 3 integration
+**Next Step**: Integrate with `tcp.listenStream()` implementation
