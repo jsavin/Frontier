@@ -38,6 +38,7 @@
 #include "tcpverbs.h"
 #include "langexternal.h"
 #include "langinternal.h"
+#include "lang.h"  /* langruncallbackwithparams() */
 #include "memory.h"
 #include "strings.h"
 #include "logging.h"
@@ -45,9 +46,32 @@
 /* Global TCP Context */
 static tcp_context_t g_tcp_context;
 
+/* Listener Registry - Tracks active listen sockets (Phase 3)
+ * Each listener has its own accept thread and callback configuration.
+ * Registry is protected by g_tcp_context.mutex. */
+#define MAX_LISTENERS 32
+typedef struct tcp_listener {
+    int             listen_socket;     /* Listen socket FD (-1 if unused) */
+    long            listener_id;       /* Unique listener ID */
+    pthread_t       accept_thread;     /* Accept thread handle */
+    boolean         running;           /* Thread should continue running */
+    uint16_t        port;              /* Bound port (host byte order) */
+    uint32_t        bind_addr;         /* Bound address (host byte order) */
+
+    /* Callback configuration */
+    bigstring       callback_name;     /* UserTalk callback script name */
+    hdlhashtable    callback_table;    /* Hash table containing callback */
+    long            refcon;            /* User refcon data */
+} tcp_listener_t;
+
+static tcp_listener_t *g_tcp_listeners[MAX_LISTENERS];
+static pthread_mutex_t g_listeners_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 /* Mutex Macros */
-#define TCP_LOCK()   pthread_mutex_lock(&g_tcp_context.mutex)
-#define TCP_UNLOCK() pthread_mutex_unlock(&g_tcp_context.mutex)
+#define TCP_LOCK()       pthread_mutex_lock(&g_tcp_context.mutex)
+#define TCP_UNLOCK()     pthread_mutex_unlock(&g_tcp_context.mutex)
+#define LISTENERS_LOCK() pthread_mutex_lock(&g_listeners_mutex)
+#define LISTENERS_UNLOCK() pthread_mutex_unlock(&g_listeners_mutex)
 
 /* ========================================================================
  * Internal Helper Functions
@@ -353,6 +377,12 @@ boolean tcp_open_stream_addr(long addr, long port, long *stream_id_out) {
 
     log_debug(LOG_COMP_LANG, "tcp_open_stream_addr: addr=%ld port=%ld", addr, port);
 
+    /* NULL pointer validation */
+    if (!stream_id_out) {
+        tcp_set_error(TCP_ERR_SOCKET_ERROR, "NULL output pointer");
+        return false;
+    }
+
     /* Validate parameters */
     if (addr <= 0) {
         tcp_set_error(TCP_ERR_CONNECTION_FAILED, "Invalid address");
@@ -437,6 +467,12 @@ boolean tcp_read_stream(long stream_id, long bytes_to_read, Handle *data_out) {
     int sockfd;
 
     log_debug(LOG_COMP_LANG, "tcp_read_stream: stream_id=%ld bytes=%ld", stream_id, bytes_to_read);
+
+    /* NULL pointer validation */
+    if (!data_out) {
+        tcp_set_error(TCP_ERR_SOCKET_ERROR, "NULL output pointer");
+        return false;
+    }
 
     /* Validate parameters */
     if (bytes_to_read <= 0) {
@@ -736,6 +772,12 @@ boolean tcp_name_to_address(bigstring domain_name, long *addr_out) {
 
     log_debug(LOG_COMP_LANG, "tcp_name_to_address: looking up hostname");
 
+    /* NULL pointer validation */
+    if (!addr_out) {
+        tcp_set_error(TCP_ERR_SOCKET_ERROR, "NULL output pointer");
+        return false;
+    }
+
     /* Convert Pascal string to C string */
     if (stringlength(domain_name) > MAX_HOSTNAME_LEN) {
         tcp_set_error(TCP_ERR_DNS_FAILED, "Hostname too long");
@@ -795,6 +837,12 @@ boolean tcp_address_to_name(long addr, bigstring name_out) {
 
     log_debug(LOG_COMP_LANG, "tcp_address_to_name: addr=%ld", addr);
 
+    /* NULL pointer validation */
+    if (!name_out) {
+        tcp_set_error(TCP_ERR_SOCKET_ERROR, "NULL output pointer");
+        return false;
+    }
+
     memset(&sa, 0, sizeof(sa));
     sa.sin_family = AF_INET;
     sa.sin_addr.s_addr = htonl((uint32_t)addr);
@@ -826,6 +874,12 @@ boolean tcp_open_stream_name(bigstring hostname, long port, long *stream_id_out)
     char port_str[16];
 
     log_debug(LOG_COMP_LANG, "tcp_open_stream_name: hostname port=%ld", port);
+
+    /* NULL pointer validation */
+    if (!stream_id_out) {
+        tcp_set_error(TCP_ERR_SOCKET_ERROR, "NULL output pointer");
+        return false;
+    }
 
     /* Validate port */
     if (port <= 0 || port > 65535) {
@@ -939,6 +993,344 @@ boolean tcp_open_stream_name(bigstring hostname, long port, long *stream_id_out)
     log_info(LOG_COMP_LANG, "tcp_open_stream_name: stream_id=%d allocated", stream_id);
 
     *stream_id_out = stream_id;
+    return true;
+}
+
+/* ========================================================================
+ * Phase 3: Server Operations (Listen/Accept)
+ * ======================================================================== */
+
+/* Accept thread main function - runs in background for each listener
+ * Accepts incoming connections and invokes UserTalk callback with parameters:
+ *   param1: streamID (long) - Accepted connection stream ID
+ *   param2: remoteAddr (long) - Client IP address (host byte order)
+ *   param3: remotePort (long) - Client port number (host byte order)
+ *
+ * Thread-Safety: Uses grabthreadglobals/releasethreadglobals pattern
+ * Callback API: langruncallbackwithparams() from P0a infrastructure (PR #328)
+ */
+static void *tcp_accept_thread(void *arg) {
+    tcp_listener_t *listener = (tcp_listener_t *)arg;
+    struct sockaddr_in client_addr;
+    socklen_t addr_len;
+    int client_sock;
+    int stream_id;
+
+    log_info(LOG_COMP_LANG, "tcp_accept_thread: started for listener_id=%ld port=%d",
+             listener->listener_id, listener->port);
+
+    while (listener->running) {
+        addr_len = sizeof(client_addr);
+        memset(&client_addr, 0, addr_len);
+
+        /* Accept connection (blocking) */
+        client_sock = accept(listener->listen_socket,
+                            (struct sockaddr *)&client_addr,
+                            &addr_len);
+
+        if (client_sock < 0) {
+            if (listener->running) {
+                /* Real error - log it */
+                log_error(LOG_COMP_LANG, "tcp_accept_thread: accept() failed: %s",
+                         strerror(errno));
+            }
+            /* Either error or shutdown - check running flag */
+            if (!listener->running)
+                break;
+            continue;  /* Try again */
+        }
+
+        log_debug(LOG_COMP_LANG, "tcp_accept_thread: accepted connection from %s:%d",
+                 inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+
+        /* Allocate stream ID for accepted connection */
+        TCP_LOCK();
+        stream_id = tcp_alloc_stream_id();
+        if (stream_id < 0) {
+            TCP_UNLOCK();
+            log_error(LOG_COMP_LANG, "tcp_accept_thread: no free stream slots");
+            close(client_sock);
+            continue;  /* Continue accepting other connections */
+        }
+
+        /* Initialize stream record */
+        tcp_stream_t *stream = &g_tcp_context.streams[stream_id];
+        stream->sockfd = client_sock;
+        stream->state = STREAM_ACCEPTED;
+        stream->remote_addr = ntohl(client_addr.sin_addr.s_addr);
+        stream->remote_port = ntohs(client_addr.sin_port);
+        stream->parent_listen_id = listener->listener_id;
+        stream->last_activity = time(NULL);
+
+        g_tcp_context.active_count++;
+        g_tcp_context.total_connections++;
+        TCP_UNLOCK();
+
+        log_info(LOG_COMP_LANG, "tcp_accept_thread: allocated stream_id=%d for connection", stream_id);
+
+        /* Invoke UserTalk callback with parameters (if callback defined) */
+        if (stringlength(listener->callback_name) > 0) {
+            tyvaluerecord params[3];
+            setlongvalue(stream_id, &params[0]);                      /* streamID */
+            setlongvalue((long)stream->remote_addr, &params[1]);      /* remoteAddr */
+            setlongvalue((long)stream->remote_port, &params[2]);      /* remotePort */
+
+            tyvaluerecord result;
+            initvalue(&result, novaluetype);
+
+            log_debug(LOG_COMP_LANG, "tcp_accept_thread: invoking callback for stream_id=%d", stream_id);
+
+            boolean callback_success = langruncallbackwithparams(
+                listener->callback_table,
+                listener->callback_name,
+                3,
+                params,
+                &result
+            );
+
+            if (!callback_success) {
+                log_warn(LOG_COMP_LANG, "tcp_accept_thread: callback failed for stream_id=%d", stream_id);
+            }
+
+            /* Dispose result value */
+            disposevaluerecord(result, false);
+        }
+    }
+
+    log_info(LOG_COMP_LANG, "tcp_accept_thread: exiting for listener_id=%ld", listener->listener_id);
+    return NULL;
+}
+
+/* tcp.listenStream(port, depth, callback, refcon, addr) -> listenID
+ * Start listening for TCP connections on specified port and address.
+ * Spawns accept thread that invokes callback for each connection.
+ *
+ * Parameters:
+ *   port            - Port number to listen on (1-65535)
+ *   depth           - Listen queue depth (backlog, >= 1)
+ *   callback_htable - Hash table containing the callback script
+ *   callback_name   - UserTalk script name to invoke on connection
+ *   refcon          - User reference data (currently unused, reserved)
+ *   bind_addr       - IP address to bind to (0 = INADDR_ANY, or specific IP)
+ *
+ * Returns:
+ *   listenID - Unique listener identifier (> 0) for use with tcp.closeListen()
+ *
+ * Callback signature:
+ *   on handler(streamID, remoteAddr, remotePort) { ... }
+ */
+boolean tcp_listen_stream(long port, long depth, hdlhashtable callback_htable,
+                          bigstring callback_name, long refcon, long bind_addr,
+                          long *listen_id_out) {
+    int listen_sock;
+    struct sockaddr_in server_addr;
+    int optval = 1;
+    tcp_listener_t *listener = NULL;
+    int listener_slot = -1;
+
+    log_debug(LOG_COMP_LANG, "tcp_listen_stream: port=%ld depth=%ld bind_addr=%ld",
+             port, depth, bind_addr);
+
+    /* NULL pointer validation */
+    if (!listen_id_out) {
+        tcp_set_error(TCP_ERR_SOCKET_ERROR, "NULL output pointer");
+        return false;
+    }
+
+    /* Validate parameters */
+    if (port <= 0 || port > 65535) {
+        tcp_set_error(TCP_ERR_INVALID_STREAM, "Invalid port (must be 1-65535)");
+        return false;
+    }
+
+    if (depth <= 0) {
+        tcp_set_error(TCP_ERR_INVALID_STREAM, "Invalid queue depth (must be >= 1)");
+        return false;
+    }
+
+    /* Create listen socket */
+    listen_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (listen_sock < 0) {
+        tcp_set_error(tcp_map_errno(errno), "Could not create listen socket");
+        return false;
+    }
+
+    /* Set SO_REUSEADDR to allow quick restart */
+    if (setsockopt(listen_sock, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) < 0) {
+        log_warn(LOG_COMP_LANG, "tcp_listen_stream: setsockopt(SO_REUSEADDR) failed: %s",
+                strerror(errno));
+    }
+
+    /* Bind to address and port */
+    memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons((uint16_t)port);
+    server_addr.sin_addr.s_addr = htonl((uint32_t)bind_addr);  /* 0 = INADDR_ANY */
+
+    if (bind(listen_sock, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+        int saved_errno = errno;
+        close(listen_sock);
+        tcp_set_error(tcp_map_errno(saved_errno), "Bind failed (port already in use?)");
+        return false;
+    }
+
+    /* Start listening */
+    if (listen(listen_sock, (int)depth) < 0) {
+        int saved_errno = errno;
+        close(listen_sock);
+        tcp_set_error(tcp_map_errno(saved_errno), "Listen failed");
+        return false;
+    }
+
+    log_info(LOG_COMP_LANG, "tcp_listen_stream: listening on port %ld", port);
+
+    /* Allocate listener structure */
+    LISTENERS_LOCK();
+
+    /* Find free listener slot */
+    for (int i = 0; i < MAX_LISTENERS; i++) {
+        if (g_tcp_listeners[i] == NULL) {
+            listener_slot = i;
+            break;
+        }
+    }
+
+    if (listener_slot < 0) {
+        LISTENERS_UNLOCK();
+        close(listen_sock);
+        tcp_set_error(TCP_ERR_NO_FREE_STREAMS, "Too many listeners (max 32)");
+        return false;
+    }
+
+    /* Allocate and initialize listener */
+    listener = (tcp_listener_t *)malloc(sizeof(tcp_listener_t));
+    if (!listener) {
+        LISTENERS_UNLOCK();
+        close(listen_sock);
+        tcp_set_error(TCP_ERR_NO_MEMORY, "Could not allocate listener");
+        return false;
+    }
+
+    memset(listener, 0, sizeof(tcp_listener_t));
+    listener->listen_socket = listen_sock;
+    listener->running = true;
+    listener->port = (uint16_t)port;
+    listener->bind_addr = (uint32_t)bind_addr;
+    listener->refcon = refcon;
+
+    /* Assign unique listener ID */
+    TCP_LOCK();
+    listener->listener_id = g_tcp_context.next_listen_id++;
+    g_tcp_context.listen_count++;
+    TCP_UNLOCK();
+
+    /* Store callback configuration */
+    copystring(callback_name, listener->callback_name);
+    listener->callback_table = callback_htable;
+
+    /* Register listener */
+    g_tcp_listeners[listener_slot] = listener;
+
+    /* Spawn accept thread */
+    if (pthread_create(&listener->accept_thread, NULL, tcp_accept_thread, listener) != 0) {
+        /* Thread creation failed - cleanup */
+        g_tcp_listeners[listener_slot] = NULL;
+        LISTENERS_UNLOCK();
+
+        TCP_LOCK();
+        g_tcp_context.listen_count--;
+        TCP_UNLOCK();
+
+        close(listen_sock);
+        free(listener);
+
+        tcp_set_error(TCP_ERR_SOCKET_ERROR, "Could not create accept thread");
+        return false;
+    }
+
+    LISTENERS_UNLOCK();
+
+    *listen_id_out = listener->listener_id;
+
+    log_info(LOG_COMP_LANG, "tcp_listen_stream: listener_id=%ld started on port %d",
+             listener->listener_id, listener->port);
+
+    return true;
+}
+
+/* tcp.closeListen(listenID) -> true
+ * Stop listening for connections and cleanup listener resources.
+ * Joins accept thread and frees listener structure.
+ * Does NOT close accepted connections (they remain open).
+ *
+ * Parameters:
+ *   listenID - Listener ID returned by tcp.listenStream()
+ *
+ * Returns:
+ *   true on success
+ */
+boolean tcp_close_listen(long listen_id) {
+    tcp_listener_t *listener = NULL;
+    int listener_slot = -1;
+    pthread_t accept_thread;
+    int listen_socket;
+
+    log_debug(LOG_COMP_LANG, "tcp_close_listen: listen_id=%ld", listen_id);
+
+    /* Validate listen_id */
+    if (listen_id <= 0) {
+        tcp_set_error(TCP_ERR_INVALID_STREAM, "Invalid listener ID");
+        return false;
+    }
+
+    /* Find and remove listener from registry */
+    LISTENERS_LOCK();
+
+    for (int i = 0; i < MAX_LISTENERS; i++) {
+        if (g_tcp_listeners[i] != NULL &&
+            g_tcp_listeners[i]->listener_id == listen_id) {
+            listener = g_tcp_listeners[i];
+            listener_slot = i;
+            g_tcp_listeners[i] = NULL;  /* Remove from registry */
+            break;
+        }
+    }
+
+    LISTENERS_UNLOCK();
+
+    if (!listener) {
+        tcp_set_error(TCP_ERR_INVALID_STREAM, "Listener not found");
+        return false;
+    }
+
+    /* Signal thread to stop */
+    listener->running = false;
+    listen_socket = listener->listen_socket;
+    accept_thread = listener->accept_thread;
+
+    /* Close listen socket to break out of blocking accept() */
+    close(listen_socket);
+
+    log_info(LOG_COMP_LANG, "tcp_close_listen: closed listen socket for listener_id=%ld", listen_id);
+
+    /* Wait for accept thread to exit (may take up to a few seconds) */
+    if (pthread_join(accept_thread, NULL) != 0) {
+        log_warn(LOG_COMP_LANG, "tcp_close_listen: pthread_join failed for listener_id=%ld", listen_id);
+        /* Continue with cleanup anyway */
+    }
+
+    log_info(LOG_COMP_LANG, "tcp_close_listen: accept thread joined for listener_id=%ld", listen_id);
+
+    /* Update listener count */
+    TCP_LOCK();
+    g_tcp_context.listen_count--;
+    TCP_UNLOCK();
+
+    /* Free listener structure */
+    free(listener);
+
+    log_info(LOG_COMP_LANG, "tcp_close_listen: listener_id=%ld closed successfully", listen_id);
+
     return true;
 }
 

@@ -465,6 +465,76 @@ TEST(error_null_pointer_safety) {
     ASSERT_EQ(addr, 0x08080808);
 }
 
+/*
+ * Test 4.5: NULL pointer safety in connection operations
+ *
+ * Purpose: Verify connection functions handle NULL output pointers safely
+ * Why: Prevents segfaults from programming errors (defense-in-depth)
+ * Reference: tcpverbs.c:tcp_open_stream_addr(), tcp_open_stream_name(), tcp_read_stream()
+ *
+ * Note: These tests verify NULL validation without requiring network connectivity.
+ * Integration tests will validate full connection flow with valid pointers.
+ */
+TEST(error_null_pointer_connection_ops) {
+    bigstring hostname;
+    boolean result;
+
+    /* Test tcp_open_stream_addr() with NULL output pointer */
+    result = tcp_open_stream_addr(0x7F000001L, 80, NULL);
+    ASSERT_FALSE(result);  /* Should fail safely, not segfault */
+
+    /* Test tcp_open_stream_name() with NULL output pointer */
+    copyctopstring("localhost", hostname);
+    result = tcp_open_stream_name(hostname, 80, NULL);
+    ASSERT_FALSE(result);  /* Should fail safely, not segfault */
+
+    /* Test tcp_read_stream() with NULL output pointer */
+    result = tcp_read_stream(1, 1024, NULL);
+    ASSERT_FALSE(result);  /* Should fail safely, not segfault */
+}
+
+/*
+ * Test 4.6: NULL pointer safety in listener operations
+ *
+ * Purpose: Verify listener functions handle NULL output pointers safely
+ * Why: Prevents segfaults from programming errors (defense-in-depth)
+ * Reference: tcpverbs.c:tcp_listen_stream()
+ *
+ * Note: This test validates NULL pointer rejection without binding to a real port.
+ */
+TEST(error_null_pointer_listener_ops) {
+    bigstring callback_name;
+    boolean result;
+
+    /* Test tcp_listen_stream() with NULL output pointer */
+    copyctopstring("testCallback", callback_name);
+    result = tcp_listen_stream(8080, 5, NULL, callback_name, 0, 0, NULL);
+    ASSERT_FALSE(result);  /* Should fail safely, not segfault */
+}
+
+/*
+ * Test 4.7: NULL pointer safety in DNS operations
+ *
+ * Purpose: Verify DNS functions handle NULL output pointers safely
+ * Why: Prevents segfaults from programming errors (defense-in-depth)
+ * Reference: tcpverbs.c:tcp_name_to_address(), tcp_address_to_name()
+ *
+ * Note: These tests verify NULL validation without requiring network/DNS access.
+ */
+TEST(error_null_pointer_dns_ops) {
+    bigstring hostname;
+    boolean result;
+
+    /* Test tcp_name_to_address() with NULL output pointer */
+    copyctopstring("example.com", hostname);
+    result = tcp_name_to_address(hostname, NULL);
+    ASSERT_FALSE(result);  /* Should fail safely, not segfault */
+
+    /* Test tcp_address_to_name() with NULL output pointer */
+    result = tcp_address_to_name(0x08080808L, NULL);  /* 8.8.8.8 */
+    ASSERT_FALSE(result);  /* Should fail safely, not segfault */
+}
+
 /* ========================================================================
  * Test Category 5: State Transition Tests
  * ======================================================================== */
@@ -737,6 +807,9 @@ int main(void) {
     RUN_TEST(error_invalid_stream_id_negative);
     RUN_TEST(error_invalid_stream_id_overflow);
     RUN_TEST(error_null_pointer_safety);
+    RUN_TEST(error_null_pointer_connection_ops);
+    RUN_TEST(error_null_pointer_listener_ops);
+    RUN_TEST(error_null_pointer_dns_ops);
 
     printf("\nTest Category 5: State Transitions\n");
     RUN_TEST(state_invalid_value);

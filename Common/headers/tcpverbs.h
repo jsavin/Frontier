@@ -18,6 +18,14 @@
 #include <stdint.h>
 #include <time.h>
 
+#ifndef __FRONTIER_H__
+#include "frontier.h"
+#endif
+
+/* Forward declarations */
+struct tyhashtable;
+typedef struct tyhashtable **hdlhashtable;
+
 /* Stream States */
 typedef enum {
     STREAM_INVALID     = -1,  /* Uninitialized slot */
@@ -129,8 +137,9 @@ boolean tcp_address_encode(bigstring ip_string, long *addr_out);
 boolean tcp_address_decode(long addr, bigstring ip_string_out);
 
 /* Phase 3: Server Operations (Listen/Accept) */
-boolean tcp_listen_stream(long port, long depth, bigstring callback,
-                          long refcon, long bind_addr, long *listen_id_out);
+boolean tcp_listen_stream(long port, long depth, hdlhashtable callback_htable,
+                          bigstring callback_name, long refcon, long bind_addr,
+                          long *listen_id_out);
 boolean tcp_close_listen(long listen_id);
 
 /* Initialization and Shutdown */
