@@ -2,13 +2,12 @@
 <opml version="2.0">
   <head>
     <title>Tcp Verbs Network (tcp_verbs_network)</title>
-    <dateCreated>Wed, 21 Jan 2026 06:10:39 GMT</dateCreated>
+    <dateCreated>Wed, 21 Jan 2026 06:27:58 GMT</dateCreated>
   </head>
   <body>
     <outline text="tcp.openNameStream - connect to example.com - Test DNS resolution and TCP connect using hostname">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
-        <outline text="skip: Requires external network connectivity"/>
       </outline>
       <outline text="Script">
         <outline text="try">
@@ -19,7 +18,7 @@
           </outline>
           <outline text="return &quot;false&quot;"/>
         </outline>
-        <outline text="} else">
+        <outline text="else">
           <outline text="return &quot;false&quot;"/>
         </outline>
       </outline>
@@ -27,7 +26,6 @@
     <outline text="tcp.openNameStream - returns positive stream ID - Verify stream ID is positive integer">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
-        <outline text="skip: Requires external network connectivity"/>
       </outline>
       <outline text="Script">
         <outline text="try">
@@ -36,7 +34,7 @@
           <outline text="tcp.closeStream(stream)"/>
           <outline text="return isValid"/>
         </outline>
-        <outline text="} else">
+        <outline text="else">
           <outline text="return &quot;false&quot;"/>
         </outline>
       </outline>
@@ -44,7 +42,6 @@
     <outline text="tcp.openNameStream - connection refused error - Connect to closed port should raise error">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
-        <outline text="skip: Requires external network connectivity"/>
       </outline>
       <outline text="Script">
         <outline text="try">
@@ -52,7 +49,7 @@
           <outline text="tcp.closeStream(stream)"/>
           <outline text="return &quot;false&quot;"/>
         </outline>
-        <outline text="} else">
+        <outline text="else">
           <outline text="return &quot;true&quot;"/>
         </outline>
       </outline>
@@ -60,7 +57,6 @@
     <outline text="tcp.openNameStream - DNS failure for invalid hostname - Invalid hostname should raise DNS error">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
-        <outline text="skip: Requires external network connectivity"/>
       </outline>
       <outline text="Script">
         <outline text="try">
@@ -68,7 +64,7 @@
           <outline text="tcp.closeStream(stream)"/>
           <outline text="return &quot;false&quot;"/>
         </outline>
-        <outline text="} else">
+        <outline text="else">
           <outline text="return &quot;true&quot;"/>
         </outline>
       </outline>
@@ -76,7 +72,6 @@
     <outline text="tcp.openAddrStream - connect to example.com via IP - Test direct IP connect (no DNS lookup)">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
-        <outline text="skip: Requires external network connectivity"/>
       </outline>
       <outline text="Script">
         <outline text="try">
@@ -90,7 +85,7 @@
           </outline>
           <outline text="return &quot;false&quot;"/>
         </outline>
-        <outline text="} else">
+        <outline text="else">
           <outline text="return &quot;false&quot;"/>
         </outline>
       </outline>
@@ -98,7 +93,6 @@
     <outline text="tcp.openAddrStream - localhost connection - Connect to localhost using 127.0.0.1 encoded address">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
-        <outline text="skip: Requires external network connectivity"/>
       </outline>
       <outline text="Script">
         <outline text="try">
@@ -109,7 +103,7 @@
           <outline text="tcp.closeStream(stream)"/>
           <outline text="return &quot;true&quot;"/>
         </outline>
-        <outline text="} else">
+        <outline text="else">
           <outline text="// Connection refused is expected if no server on localhost:80"/>
           <outline text="return &quot;true&quot;"/>
         </outline>
@@ -118,7 +112,6 @@
     <outline text="tcp.closeStream - graceful close after connect - Test complete stream lifecycle: open → close">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
-        <outline text="skip: Requires external network connectivity"/>
       </outline>
       <outline text="Script">
         <outline text="try">
@@ -131,11 +124,11 @@
           <outline text="if (ok)">
             <outline text="return &quot;true&quot;"/>
           </outline>
-          <outline text="} else">
+          <outline text="else">
             <outline text="return &quot;false&quot;"/>
           </outline>
         </outline>
-        <outline text="} else">
+        <outline text="else">
           <outline text="return &quot;false&quot;"/>
         </outline>
       </outline>
@@ -143,7 +136,6 @@
     <outline text="tcp.abortStream - immediate close after connect - Test RST close vs graceful FIN close">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
-        <outline text="skip: Requires external network connectivity"/>
       </outline>
       <outline text="Script">
         <outline text="try">
@@ -156,11 +148,11 @@
           <outline text="if (ok)">
             <outline text="return &quot;true&quot;"/>
           </outline>
-          <outline text="} else">
+          <outline text="else">
             <outline text="return &quot;false&quot;"/>
           </outline>
         </outline>
-        <outline text="} else">
+        <outline text="else">
           <outline text="return &quot;false&quot;"/>
         </outline>
       </outline>
@@ -168,7 +160,6 @@
     <outline text="tcp.countConnections - track stream lifecycle - Verify countConnections tracks open/close correctly">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
-        <outline text="skip: Requires external network connectivity"/>
       </outline>
       <outline text="Script">
         <outline text="try">
@@ -184,7 +175,7 @@
           <outline text="// During should be 1 more than before, after should equal before"/>
           <outline text="return (during == before + 1) and (after == before)"/>
         </outline>
-        <outline text="} else">
+        <outline text="else">
           <outline text="return &quot;false&quot;"/>
         </outline>
       </outline>
@@ -192,7 +183,6 @@
     <outline text="tcp.readStream - empty read when no data sent - Verify non-blocking read returns empty string when no data">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
-        <outline text="skip: Requires external network connectivity"/>
       </outline>
       <outline text="Script">
         <outline text="try">
@@ -208,11 +198,11 @@
           <outline text="if (isEmpty)">
             <outline text="return &quot;true&quot;"/>
           </outline>
-          <outline text="} else">
+          <outline text="else">
             <outline text="return &quot;false&quot;"/>
           </outline>
         </outline>
-        <outline text="} else">
+        <outline text="else">
           <outline text="return &quot;false&quot;"/>
         </outline>
       </outline>
@@ -220,7 +210,6 @@
     <outline text="tcp.readStream - read after HTTP request - Verify read returns data after sending HTTP request">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
-        <outline text="skip: Requires external network connectivity"/>
       </outline>
       <outline text="Script">
         <outline text="try">
@@ -244,11 +233,11 @@
           <outline text="if (string.length(response) &gt; 0 or string.contains(response, &quot;HTTP&quot;, false))">
             <outline text="return &quot;true&quot;"/>
           </outline>
-          <outline text="} else">
+          <outline text="else">
             <outline text="return &quot;false&quot;"/>
           </outline>
         </outline>
-        <outline text="} else">
+        <outline text="else">
           <outline text="return &quot;false&quot;"/>
         </outline>
       </outline>
@@ -256,7 +245,6 @@
     <outline text="tcp.writeStream - write HTTP request - Test blocking write sends all data">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
-        <outline text="skip: Requires external network connectivity"/>
       </outline>
       <outline text="Script">
         <outline text="try">
@@ -272,11 +260,11 @@
           <outline text="if (ok)">
             <outline text="return &quot;true&quot;"/>
           </outline>
-          <outline text="} else">
+          <outline text="else">
             <outline text="return &quot;false&quot;"/>
           </outline>
         </outline>
-        <outline text="} else">
+        <outline text="else">
           <outline text="return &quot;false&quot;"/>
         </outline>
       </outline>
@@ -284,7 +272,6 @@
     <outline text="tcp.writeStream - empty data - Writing zero-length data should succeed (no-op)">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
-        <outline text="skip: Requires external network connectivity"/>
       </outline>
       <outline text="Script">
         <outline text="try">
@@ -298,11 +285,11 @@
           <outline text="if (ok)">
             <outline text="return &quot;true&quot;"/>
           </outline>
-          <outline text="} else">
+          <outline text="else">
             <outline text="return &quot;false&quot;"/>
           </outline>
         </outline>
-        <outline text="} else">
+        <outline text="else">
           <outline text="return &quot;false&quot;"/>
         </outline>
       </outline>
@@ -310,7 +297,6 @@
     <outline text="tcp.closeStream - double close (idempotent) - Closing already-closed stream should be safe">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
-        <outline text="skip: Requires external network connectivity"/>
       </outline>
       <outline text="Script">
         <outline text="try">
@@ -325,11 +311,11 @@
             <outline text="tcp.closeStream(stream)"/>
             <outline text="return &quot;true&quot;"/>
           </outline>
-          <outline text="} else">
+          <outline text="else">
             <outline text="return &quot;false&quot;"/>
           </outline>
         </outline>
-        <outline text="} else">
+        <outline text="else">
           <outline text="return &quot;false&quot;"/>
         </outline>
       </outline>
@@ -337,7 +323,6 @@
     <outline text="tcp.readStream - read from closed stream - Reading from closed stream should raise error">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
-        <outline text="skip: Requires external network connectivity"/>
       </outline>
       <outline text="Script">
         <outline text="try">
@@ -352,11 +337,11 @@
             <outline text="local(data = tcp.readStream(stream, 1024))"/>
             <outline text="return &quot;false&quot;"/>
           </outline>
-          <outline text="} else">
+          <outline text="else">
             <outline text="return &quot;true&quot;"/>
           </outline>
         </outline>
-        <outline text="} else">
+        <outline text="else">
           <outline text="return &quot;false&quot;"/>
         </outline>
       </outline>
@@ -364,7 +349,6 @@
     <outline text="tcp.writeStream - write to closed stream - Writing to closed stream should raise error">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
-        <outline text="skip: Requires external network connectivity"/>
       </outline>
       <outline text="Script">
         <outline text="try">
@@ -379,11 +363,11 @@
             <outline text="tcp.writeStream(stream, &quot;test data&quot;)"/>
             <outline text="return &quot;false&quot;"/>
           </outline>
-          <outline text="} else">
+          <outline text="else">
             <outline text="return &quot;true&quot;"/>
           </outline>
         </outline>
-        <outline text="} else">
+        <outline text="else">
           <outline text="return &quot;false&quot;"/>
         </outline>
       </outline>
@@ -391,7 +375,6 @@
     <outline text="tcp.countConnections - multiple concurrent streams - Verify tracking of multiple open connections">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
-        <outline text="skip: Requires external network connectivity"/>
       </outline>
       <outline text="Script">
         <outline text="try">
@@ -410,11 +393,11 @@
           <outline text="if (hasMultiple)">
             <outline text="return &quot;true&quot;"/>
           </outline>
-          <outline text="} else">
+          <outline text="else">
             <outline text="return &quot;false&quot;"/>
           </outline>
         </outline>
-        <outline text="} else">
+        <outline text="else">
           <outline text="return &quot;false&quot;"/>
         </outline>
       </outline>
@@ -422,7 +405,6 @@
     <outline text="tcp connection lifecycle - full HTTP exchange - Test complete HTTP GET request/response cycle">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
-        <outline text="skip: Requires external network connectivity"/>
       </outline>
       <outline text="Script">
         <outline text="try">
@@ -446,11 +428,11 @@
           <outline text="if (string.length(response) &gt; 0 or string.contains(response, &quot;HTTP&quot;, false))">
             <outline text="return &quot;true&quot;"/>
           </outline>
-          <outline text="} else">
+          <outline text="else">
             <outline text="return &quot;false&quot;"/>
           </outline>
         </outline>
-        <outline text="} else">
+        <outline text="else">
           <outline text="return &quot;false&quot;"/>
         </outline>
       </outline>
@@ -458,7 +440,6 @@
     <outline text="tcp.readStream - zero byte count - Reading zero bytes should return empty string (not error)">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
-        <outline text="skip: Requires external network connectivity"/>
       </outline>
       <outline text="Script">
         <outline text="try">
@@ -472,11 +453,11 @@
           <outline text="if (string.length(data) == 0)">
             <outline text="return &quot;true&quot;"/>
           </outline>
-          <outline text="} else">
+          <outline text="else">
             <outline text="return &quot;false&quot;"/>
           </outline>
         </outline>
-        <outline text="} else">
+        <outline text="else">
           <outline text="return &quot;false&quot;"/>
         </outline>
       </outline>
@@ -484,7 +465,6 @@
     <outline text="tcp.writeStream - large data write - Test writing larger data block (multi-KB)">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
-        <outline text="skip: Requires external network connectivity"/>
       </outline>
       <outline text="Script">
         <outline text="try">
@@ -504,11 +484,11 @@
           <outline text="if (ok)">
             <outline text="return &quot;true&quot;"/>
           </outline>
-          <outline text="} else">
+          <outline text="else">
             <outline text="return &quot;false&quot;"/>
           </outline>
         </outline>
-        <outline text="} else">
+        <outline text="else">
           <outline text="return &quot;false&quot;"/>
         </outline>
       </outline>
