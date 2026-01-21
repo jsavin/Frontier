@@ -1,0 +1,252 @@
+category: "TCP Callbacks"
+description: "Integration tests for TCP callback infrastructure using langruncallbackwithparams()"
+
+tests:
+  # Test 1: Basic 3-parameter callback (stream, addr, port)
+  - name: "TCP callback - basic parameter passing"
+    description: "Verify callback receives stream_id, remote_addr, remote_port correctly"
+    script: |
+      on handleConnection(stream, addr, port) {
+        return (stream > 0) and (addr > 0) and (port > 0)
+      };
+      handleConnection(1, 2130706433, 8080)
+    expected_success: true
+    expected_result: 'true'
+
+  # Test 2: Parameter access by name
+  - name: "TCP callback - parameter access by name"
+    description: "Verify callback can access parameters by declared names"
+    script: |
+      on tcpHandler(stream, addr, port) {
+        local(s = stream);
+        local(a = addr);
+        local(p = port);
+        return s + a + p
+      };
+      tcpHandler(100, 200, 300)
+    expected_success: true
+    expected_result: '600'
+
+  # Test 3: Realistic TCP connection handler with address decoding
+  - name: "TCP callback - connection handler with address decoding"
+    description: "Simulate real TCP connection handler with IP address operations"
+    script: |
+      on handleTCPConnection(stream_id, remote_addr, remote_port) {
+        local(ip = tcp.addressDecode(remote_addr));
+        return stream_id
+      };
+      local(localhost = tcp.addressEncode("127.0.0.1"));
+      handleTCPConnection(42, localhost, 8080)
+    expected_success: true
+    expected_result: '42'
+
+  # Test 4: 4-parameter callback with refcon (user data)
+  - name: "TCP callback - with refcon parameter"
+    description: "Test 4-parameter callback including refcon user data"
+    script: |
+      on listenHandler(stream, addr, port, refcon) {
+        return refcon == 12345
+      };
+      listenHandler(1, 2, 3, 12345)
+    expected_success: true
+    expected_result: 'true'
+
+  # Test 5: Boolean return for accept/reject pattern
+  - name: "TCP callback - boolean return for connection filtering"
+    description: "Callback returns true to accept connection, false to reject"
+    script: |
+      on connectionFilter(stream, addr, port) {
+        local(localhost = tcp.addressEncode("127.0.0.1"));
+        return addr == localhost
+      };
+      local(localhost = tcp.addressEncode("127.0.0.1"));
+      connectionFilter(1, localhost, 8080)
+    expected_success: true
+    expected_result: 'true'
+
+  # Test 6: Callback returns false to reject connection
+  - name: "TCP callback - reject non-localhost connections"
+    description: "Verify callback can reject connections by returning false"
+    script: |
+      on connectionFilter(stream, addr, port) {
+        local(localhost = tcp.addressEncode("127.0.0.1"));
+        return addr == localhost
+      };
+      local(remote = tcp.addressEncode("192.168.1.100"));
+      connectionFilter(1, remote, 8080)
+    expected_success: true
+    expected_result: 'false'
+
+  # Test 7: Callback performs stream operations
+  - name: "TCP callback - stream operation simulation"
+    description: "Callback extracts and returns stream ID for stream operations"
+    script: |
+      on connectionHandler(stream, addr, port) {
+        if stream > 0 {
+          return stream
+        };
+        return 0
+      };
+      connectionHandler(99, 0, 0)
+    expected_success: true
+    expected_result: '99'
+
+  # Test 8: Callback with port range validation
+  - name: "TCP callback - port range validation"
+    description: "Verify callback can validate port numbers"
+    script: |
+      on portValidator(stream, addr, port) {
+        return (port >= 1024) and (port <= 65535)
+      };
+      portValidator(1, 2, 8080)
+    expected_success: true
+    expected_result: 'true'
+
+  # Test 9: Callback with invalid port
+  - name: "TCP callback - reject privileged port"
+    description: "Callback rejects connections on privileged ports"
+    script: |
+      on portValidator(stream, addr, port) {
+        return (port >= 1024) and (port <= 65535)
+      };
+      portValidator(1, 2, 80)
+    expected_success: true
+    expected_result: 'false'
+
+  # Test 10: Multiple parameter calculations
+  - name: "TCP callback - complex parameter calculation"
+    description: "Callback performs calculations with all parameters"
+    script: |
+      on complexHandler(stream, addr, port) {
+        local(result = (stream * 1000) + port);
+        return result
+      };
+      complexHandler(5, 0, 8080)
+    expected_success: true
+    expected_result: '13080'
+
+  # Test 11: Callback with conditional logic
+  - name: "TCP callback - conditional parameter handling"
+    description: "Callback uses conditional logic based on parameters"
+    script: |
+      on conditionalHandler(stream, addr, port) {
+        if port == 80 {
+          return 1
+        };
+        if port == 443 {
+          return 2
+        };
+        return 3
+      };
+      conditionalHandler(1, 0, 443)
+    expected_success: true
+    expected_result: '2'
+
+  # Test 12: Callback with string return (for logging scenarios)
+  - name: "TCP callback - string return value"
+    description: "Callback can return string for logging/diagnostic purposes"
+    script: |
+      on diagnosticHandler(stream, addr, port) {
+        return "stream:" + stream + ",port:" + port
+      };
+      diagnosticHandler(42, 0, 8080)
+    expected_success: true
+    expected_result: 'stream:42,port:8080'
+
+  # Test 13: Callback with local variables
+  - name: "TCP callback - local variable scope"
+    description: "Verify callback local variables don't leak to caller"
+    script: |
+      on scopeTest(stream, addr, port) {
+        local(temp = stream + port);
+        return temp
+      };
+      local(result = scopeTest(100, 0, 200));
+      result
+    expected_success: true
+    expected_result: '300'
+
+  # Test 14: Callback parameter type preservation
+  - name: "TCP callback - parameter type preservation"
+    description: "Verify parameters maintain correct types (long integers)"
+    script: |
+      on typeTest(stream, addr, port) {
+        return typeof(stream) == longType
+      };
+      typeTest(1, 2, 3)
+    expected_success: true
+    expected_result: 'true'
+
+  # Test 15: Refcon with table/object data
+  - name: "TCP callback - refcon as table reference"
+    description: "Refcon can pass complex data structures to callback"
+    script: |
+      local(config);
+      new(tableType, @config);
+      config.maxConnections = 100;
+      on configuredHandler(stream, addr, port, cfg) {
+        return cfg^.maxConnections
+      };
+      configuredHandler(1, 2, 3, @config)
+    expected_success: true
+    expected_result: '100'
+
+  # Test 16: Callback with address comparison
+  - name: "TCP callback - address equality comparison"
+    description: "Verify address parameters can be compared for equality"
+    script: |
+      on addressTest(stream, addr1, addr2) {
+        return addr1 == addr2
+      };
+      local(ip1 = tcp.addressEncode("127.0.0.1"));
+      local(ip2 = tcp.addressEncode("127.0.0.1"));
+      addressTest(1, ip1, ip2)
+    expected_success: true
+    expected_result: 'true'
+
+  # Test 17: Callback with zero parameters (edge case)
+  - name: "TCP callback - zero stream ID edge case"
+    description: "Callback handles stream ID of 0 (invalid stream)"
+    script: |
+      on edgeHandler(stream, addr, port) {
+        return stream == 0
+      };
+      edgeHandler(0, 0, 0)
+    expected_success: true
+    expected_result: 'true'
+
+  # Test 18: Callback with maximum port number
+  - name: "TCP callback - maximum port number"
+    description: "Verify callback handles maximum valid port (65535)"
+    script: |
+      on maxPortTest(stream, addr, port) {
+        return port == 65535
+      };
+      maxPortTest(1, 0, 65535)
+    expected_success: true
+    expected_result: 'true'
+
+  # Test 19: Callback arithmetic with all parameters
+  - name: "TCP callback - arithmetic with all parameters"
+    description: "Perform complex arithmetic using all callback parameters"
+    script: |
+      on arithmeticTest(stream, addr, port) {
+        return (stream * 10) + (port / 10)
+      };
+      arithmeticTest(5, 0, 8080)
+    expected_success: true
+    expected_result: '858'
+
+  # Test 20: Callback with nested function calls
+  - name: "TCP callback - nested function calls"
+    description: "Callback can invoke other UserTalk functions"
+    script: |
+      on helper(x) {
+        return x * 2
+      };
+      on mainHandler(stream, addr, port) {
+        return helper(stream) + helper(port)
+      };
+      mainHandler(10, 0, 20)
+    expected_success: true
+    expected_result: '60'

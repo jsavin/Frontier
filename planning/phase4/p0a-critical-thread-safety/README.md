@@ -22,18 +22,37 @@
 
 ## IMPORTANT: P0a Includes General-Purpose Callback Infrastructure
 
-**CRITICAL FINDING (2026-01-20)**: P0a also includes **general-purpose parameterized callback infrastructure** - NOT just for TCP!
+**IMPLEMENTATION COMPLETE (2026-01-20)**: P0a includes **general-purpose parameterized callback infrastructure** - NOT just for TCP!
 
-**See**: [CALLBACK_INFRASTRUCTURE.md](./CALLBACK_INFRASTRUCTURE.md) - Complete analysis
+**Status**: ✅ **IMPLEMENTED** - API ready for TCP Phase 3 integration
 
-**Key Points**:
-- Existing callback system (`system.callbacks.*`) has 22+ callbacks but limited to parameterless callbacks
-- Current `langopruncallbackscripts()` mechanism exists but can't pass parameters
-- TCP `tcp.listenStream()` needs callbacks with (stream_id, remote_addr, remote_port)
-- Window callbacks need parameters (e.g., `closeWindow(title)`)
+**Documentation**:
+- [CALLBACK_INFRASTRUCTURE.md](./CALLBACK_INFRASTRUCTURE.md) - Architecture and design analysis
+- [docs/CALLBACK_API.md](../../../docs/CALLBACK_API.md) - C Developer API guide with examples
+
+**Implementation**:
+- Location: `Common/source/lang.c:1253-1381`, `Common/headers/lang.h:766`
+- Function: `langruncallbackwithparams()`
+- Thread-safe: Yes (uses `grabthreadglobals`/`oppushoutline` pattern)
+- Parameters: Accessible in UserTalk as param1, param2, param3, etc.
+
+**Key Capabilities**:
+- ✅ Type-safe parameter passing (long, string, boolean, double, addresses)
+- ✅ Thread-safe execution from worker threads
+- ✅ Backward compatible with parameterless callbacks
+- ✅ Supports unlimited parameters
+- ✅ Returns result value to caller
+
+**Use Cases Enabled**:
+- TCP `tcp.listenStream()` callbacks with (stream_id, remote_addr, remote_port)
+- Window callbacks with parameters (e.g., `closeWindow(title)`)
+- Database operation callbacks with object addresses
+- System lifecycle callbacks with context
 - This is a **PLATFORM CAPABILITY**, not TCP-specific
 
 **Impact**: Makes P0a MORE VALUABLE - unblocks TCP, window operations, and all future parameterized callbacks.
+
+**Next Step**: Integrate with `tcp.listenStream()` implementation in TCP Phase 3
 
 ---
 

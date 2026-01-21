@@ -1,0 +1,443 @@
+# Integration tests for database/window callback infrastructure
+# Tests parameterized callback system for database lifecycle operations
+#
+# CONTEXT: These tests validate the new langruncallbackwithparams() function
+# which replaces the old param-less callback system with a flexible
+# parameter-passing mechanism.
+#
+# CRITICAL DESIGN:
+# - In GUI Frontier: callbacks like closeWindow(title) handle window events
+# - In CLI Frontier: adapted to database/object concepts for headless use
+# - Callbacks receive string parameters (database title, object names)
+# - Callbacks return boolean (allow/cancel) or string (message/data)
+#
+# ARCHITECTURAL FOUNDATION:
+# The parameterized callback infrastructure is essential for:
+# 1. Database lifecycle management (open/save/close operations)
+# 2. User script intervention points (validation, logging, veto)
+# 3. Future collaborative editing (notify on external changes)
+#
+# Reference: planning/phase4/P0a/CALLBACK_INFRASTRUCTURE_DESIGN.md
+# Issue: #166 (verb dispatch requiring callback parameter support)
+
+tests:
+  # ========================================================================
+  # Test 1: Basic callback - single string parameter
+  # ========================================================================
+  - name: "callback - single string parameter"
+    description: "Verify callback receives and processes single string parameter"
+    script: |
+      on testCallback(message) {
+        return "Received: " + message
+      };
+      testCallback("Hello, World!")
+    expected_success: true
+    expected_result: "Received: Hello, World!"
+
+  # ========================================================================
+  # Test 2: Basic callback - return boolean
+  # ========================================================================
+  - name: "callback - boolean return value"
+    description: "Verify callback can return boolean for allow/deny pattern"
+    script: |
+      on testCallback(value) {
+        return string.length(value) > 0
+      };
+      testCallback("non-empty")
+    expected_success: true
+    expected_result: "true"
+
+  - name: "callback - boolean false on empty string"
+    description: "Verify callback returns false for empty string"
+    script: |
+      on testCallback(value) {
+        return string.length(value) > 0
+      };
+      testCallback("")
+    expected_success: true
+    expected_result: "false"
+
+  # ========================================================================
+  # Test 3: Database lifecycle callback - closeObject
+  # ========================================================================
+  - name: "database callback - closeObject with title parameter"
+    description: "Simulate database close callback receiving database title"
+    script: |
+      on closeObject(title) {
+        return title == "TestDatabase"
+      };
+      closeObject("TestDatabase")
+    expected_success: true
+    expected_result: "true"
+
+  - name: "database callback - closeObject cancel case"
+    description: "Verify closeObject can cancel operation by returning false"
+    script: |
+      on closeObject(title) {
+        return not (title == "Protected")
+      };
+      closeObject("Protected")
+    expected_success: true
+    expected_result: "false"
+
+  # ========================================================================
+  # Test 4: Database lifecycle callback - saveObject
+  # ========================================================================
+  - name: "database callback - saveObject with title parameter"
+    description: "Simulate database save callback receiving database title"
+    script: |
+      on saveObject(title) {
+        return not (title == "ReadOnly")
+      };
+      saveObject("MyDatabase")
+    expected_success: true
+    expected_result: "true"
+
+  - name: "database callback - saveObject cancel for read-only"
+    description: "Verify saveObject can prevent saving read-only databases"
+    script: |
+      on saveObject(title) {
+        return not (title == "ReadOnly")
+      };
+      saveObject("ReadOnly")
+    expected_success: true
+    expected_result: "false"
+
+  # ========================================================================
+  # Test 5: Database lifecycle callback - openObject
+  # ========================================================================
+  - name: "database callback - openObject with path parameter"
+    description: "Simulate database open callback receiving path"
+    script: |
+      on openObject(dbPath) {
+        return string.length(dbPath) > 0
+      };
+      openObject("/path/to/database.root")
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # Test 6: Multiple string parameters
+  # ========================================================================
+  - name: "callback - two string parameters"
+    description: "Test callback with multiple string parameters"
+    script: |
+      on doubleString(str1, str2) {
+        return str1 + str2
+      };
+      doubleString("Hello, ", "World!")
+    expected_success: true
+    expected_result: "Hello, World!"
+
+  - name: "callback - three string parameters"
+    description: "Test callback with three string parameters (concat)"
+    script: |
+      on tripleString(str1, str2, str3) {
+        return str1 + str2 + str3
+      };
+      tripleString("One ", "Two ", "Three")
+    expected_success: true
+    expected_result: "One Two Three"
+
+  # ========================================================================
+  # Test 7: Database operation with validation callback
+  # ========================================================================
+  - name: "database callback - validation on save"
+    description: "Use callback to validate database before saving"
+    script: |
+      on validateBeforeSave(dbName, itemCount) {
+        return itemCount > 0
+      };
+      validateBeforeSave("MyDB", 5)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "database callback - reject empty database save"
+    description: "Callback prevents saving empty database"
+    script: |
+      on validateBeforeSave(dbName, itemCount) {
+        return itemCount > 0
+      };
+      validateBeforeSave("EmptyDB", 0)
+    expected_success: true
+    expected_result: "false"
+
+  # ========================================================================
+  # Test 8: Callback with local variables and logic
+  # ========================================================================
+  - name: "callback - complex logic with locals"
+    description: "Verify callback can use local variables and complex logic"
+    script: |
+      on complexCallback(name, value) {
+        local(nameLen = string.length(name));
+        local(valueLen = string.length(value));
+        local(totalLen = nameLen + valueLen);
+        return string(totalLen)
+      };
+      complexCallback("Hello", "World")
+    expected_success: true
+    expected_result: "10"
+
+  # ========================================================================
+  # Test 9: Callback logging pattern (message generation)
+  # ========================================================================
+  - name: "callback - generate log message on close"
+    description: "Callback generates informational message on database close"
+    script: |
+      on closeLogger(dbName) {
+        return "Closing database: " + dbName
+      };
+      closeLogger("MyDatabase")
+    expected_success: true
+    expected_result: "Closing database: MyDatabase"
+
+  # ========================================================================
+  # Test 10: Callback error handling pattern
+  # ========================================================================
+  - name: "callback - error message generation"
+    description: "Callback detects error condition and returns message"
+    script: |
+      on errorDetector(operation, status) {
+        if status == "error" {
+          return "Operation " + operation + " failed"
+        }
+        else {
+          return "Operation " + operation + " succeeded"
+        }
+      };
+      errorDetector("save", "error")
+    expected_success: true
+    expected_result: "Operation save failed"
+
+  - name: "callback - success message generation"
+    description: "Callback detects success condition"
+    script: |
+      on errorDetector(operation, status) {
+        if status == "error" {
+          return "Operation " + operation + " failed"
+        }
+        else {
+          return "Operation " + operation + " succeeded"
+        }
+      };
+      errorDetector("open", "ok")
+    expected_success: true
+    expected_result: "Operation open succeeded"
+
+  # ========================================================================
+  # Test 11: Callback with database table address (future use)
+  # ========================================================================
+  - name: "database callback - table address parameter concept"
+    description: "Test callback receiving table address (foundation for future work)"
+    script: |
+      lang.new(tableType, @testTable);
+      testTable.name = "TestDB";
+      testTable.itemCount = 42;
+      on tableCallback(addr) {
+        return typeof(addr) == addressType
+      };
+      tableCallback(@testTable)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "database callback - extract data from table address"
+    description: "Callback dereferences address to read table data"
+    script: |
+      lang.new(tableType, @testTable);
+      testTable.dbName = "Production";
+      on getDbName(tableAddr) {
+        return tableAddr^.dbName
+      };
+      getDbName(@testTable)
+    expected_success: true
+    expected_result: "Production"
+
+  # ========================================================================
+  # Test 12: Nested callback invocations
+  # ========================================================================
+  - name: "callback - nested invocation pattern"
+    description: "Test callback that invokes another callback"
+    script: |
+      on innerCallback(value) {
+        return "Inner: " + value
+      };
+      on outerCallback(value) {
+        local(innerResult = innerCallback(value));
+        return "Outer(" + innerResult + ")"
+      };
+      outerCallback("test")
+    expected_success: true
+    expected_result: "Outer(Inner: test)"
+
+  # ========================================================================
+  # Test 13: Callback with empty string parameter
+  # ========================================================================
+  - name: "callback - empty string parameter handling"
+    description: "Verify callback handles empty string correctly"
+    script: |
+      on emptyHandler(value) {
+        if value == "" {
+          return "empty"
+        }
+        else {
+          return "non-empty"
+        }
+      };
+      emptyHandler("")
+    expected_success: true
+    expected_result: "empty"
+
+  # ========================================================================
+  # Test 14: Callback with special characters in strings
+  # ========================================================================
+  - name: "callback - special characters in string parameters"
+    description: "Verify callback handles special characters correctly"
+    script: |
+      on specialCharHandler(value) {
+        return "Received: " + value
+      };
+      specialCharHandler("Hello\nWorld\tTab")
+    expected_success: true
+    expected_result: "Received: Hello\nWorld\tTab"
+
+  # ========================================================================
+  # Test 15: Real-world database callback scenario
+  # ========================================================================
+  - name: "database callback - realistic save validation"
+    description: "Realistic callback validates database state before save"
+    script: |
+      lang.new(tableType, @dbContext);
+      dbContext.title = "MyDatabase";
+      dbContext.modified = true;
+      dbContext.hasErrors = false;
+      on canSaveDatabase(contextAddr) {
+        local(ctx = contextAddr^);
+        if ctx.hasErrors {
+          return false
+        };
+        if not ctx.modified {
+          return false
+        };
+        return true
+      };
+      canSaveDatabase(@dbContext)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "database callback - prevent save with errors"
+    description: "Callback prevents save when database has errors"
+    script: |
+      lang.new(tableType, @dbContext);
+      dbContext.title = "ErrorDB";
+      dbContext.modified = true;
+      dbContext.hasErrors = true;
+      on canSaveDatabase(contextAddr) {
+        local(ctx = contextAddr^);
+        if ctx.hasErrors {
+          return false
+        };
+        if not ctx.modified {
+          return false
+        };
+        return true
+      };
+      canSaveDatabase(@dbContext)
+    expected_success: true
+    expected_result: "false"
+
+  # ========================================================================
+  # Test 16: Callback parameter count validation (foundation)
+  # ========================================================================
+  - name: "callback - single parameter defined, single provided"
+    description: "Verify callback with 1 param works when 1 arg provided"
+    script: |
+      on oneParam(arg1) {
+        return arg1
+      };
+      oneParam("value1")
+    expected_success: true
+    expected_result: "value1"
+
+  - name: "callback - two parameters defined, two provided"
+    description: "Verify callback with 2 params works when 2 args provided"
+    script: |
+      on twoParams(arg1, arg2) {
+        return arg1 + "," + arg2
+      };
+      twoParams("value1", "value2")
+    expected_success: true
+    expected_result: "value1,value2"
+
+  # ========================================================================
+  # Test 17: Database lifecycle - complete workflow
+  # ========================================================================
+  - name: "database callbacks - complete lifecycle workflow"
+    description: "Test sequence of callbacks for database lifecycle"
+    script: |
+      local(log = "");
+      on logEvent(event, dbName) {
+        return event + ":" + dbName
+      };
+      local(openEvent = logEvent("open", "TestDB"));
+      local(saveEvent = logEvent("save", "TestDB"));
+      local(closeEvent = logEvent("close", "TestDB"));
+      return openEvent + "," + saveEvent + "," + closeEvent
+    expected_success: true
+    expected_result: "open:TestDB,save:TestDB,close:TestDB"
+
+  # ========================================================================
+  # Test 18: Callback returning numeric value (as string)
+  # ========================================================================
+  - name: "callback - numeric return value"
+    description: "Callback performs calculation and returns number"
+    script: |
+      on calculateTotal(count, price) {
+        local(total = count * price);
+        return total
+      };
+      calculateTotal(5, 10)
+    expected_success: true
+    expected_result: "50"
+
+  # ========================================================================
+  # Test 19: Callback with conditional logic branches
+  # ========================================================================
+  - name: "callback - multiple conditional branches"
+    description: "Callback with complex branching logic"
+    script: |
+      on statusMessage(operation, code) {
+        if code == "0" {
+          return operation + " succeeded"
+        }
+        else {
+          if code == "1" {
+            return operation + " failed"
+          }
+          else {
+            if code == "2" {
+              return operation + " cancelled"
+            }
+            else {
+              return operation + " unknown status"
+            }
+          }
+        }
+      };
+      statusMessage("save", "2")
+    expected_success: true
+    expected_result: "save cancelled"
+
+  # ========================================================================
+  # Test 20: Callback with UserTalk string operations
+  # ========================================================================
+  - name: "callback - UserTalk string manipulation"
+    description: "Callback uses UserTalk string verbs for processing"
+    script: |
+      on formatDbTitle(rawTitle) {
+        local(trimmed = string.trimWhitespace(rawTitle));
+        local(formatted = string.upper(string.mid(trimmed, 1, 1)) + string.mid(trimmed, 2, infinity));
+        return formatted
+      };
+      formatDbTitle("  myDatabase  ")
+    expected_success: true
+    expected_result: "MyDatabase"

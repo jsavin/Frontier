@@ -763,6 +763,8 @@ extern void langpopscopechain (void);
 
 extern boolean langopruncallbackscripts (short);
 
+extern boolean langruncallbackwithparams (hdlhashtable, bigstring, short, tyvaluerecord *, tyvaluerecord *);
+
 extern boolean langzoomobject (const bigstring);
 
 extern boolean langbuildparamlist (tyvaluerecord *, hdltreenode *); //6.1b7 AR

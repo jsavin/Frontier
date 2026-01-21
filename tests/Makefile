@@ -229,7 +229,7 @@ USERTALK_OBJECT_TESTS = \
 	test_usertalk_runner
 
 # Buildable test executables on this branch
-RUN_BUILDABLE = core_tests db_format_tests runtime_tests parser_tests save_migration_tests test_efp_augmentation file_portable_tests file_readline_tests file_verb_tests handle_tests cli_runtime_tests paige_text_tests oppack_tests hashpack_modern_tests hash_corruption_tests langvalue_64_tests table_operations_integration refcon_tests refcon_phase2_tests op_context_tests table_context_tests time_portability_test test_sys_shell_command_verbs headless_selection_tests opattributes_stub_tests headless_thread_registry_tests
+RUN_BUILDABLE = core_tests db_format_tests runtime_tests parser_tests save_migration_tests test_efp_augmentation file_portable_tests file_readline_tests file_verb_tests handle_tests cli_runtime_tests paige_text_tests oppack_tests hashpack_modern_tests hash_corruption_tests langvalue_64_tests table_operations_integration refcon_tests refcon_phase2_tests op_context_tests table_context_tests time_portability_test test_sys_shell_command_verbs headless_selection_tests opattributes_stub_tests headless_thread_registry_tests test_callback_infrastructure
 # Note: table_verb_tests skipped - pre-existing macOS path detection issue
 # Note: test_error_messages skipped - needs full runtime linking (tracked in separate task)
 # Note: test_table_sorting skipped - script execution errors cause segfault (Issue #219 tracks verb runtime fixes)
@@ -309,6 +309,11 @@ opattributes_stub_tests: opattributes_stub_tests.c $(LANG_RUNTIME_SOURCES) headl
 headless_thread_registry_tests: headless_thread_registry_tests.c ../Common/source/threadregistry.c ../Common/source/logging.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
 		headless_thread_registry_tests.c ../Common/source/threadregistry.c ../Common/source/logging.c -o $@ -lpthread
+
+# P0a: Parameterized callback infrastructure tests
+test_callback_infrastructure: test_callback_infrastructure.c $(LANG_RUNTIME_SOURCES) headless_shell.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
+		test_callback_infrastructure.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@ $(LINK_LIBS)
 
 runtime_tests: runtime_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable runtime_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@ $(LINK_LIBS)
