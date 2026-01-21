@@ -831,6 +831,11 @@ boolean tcp_open_stream_name(bigstring hostname, long port, long *stream_id_out)
     TCP_UNLOCK();
 
     /* Convert Pascal string to C string */
+    if (stringlength(hostname) == 0) {
+        tcp_set_error(TCP_ERR_DNS_FAILED, "Hostname cannot be empty");
+        return false;
+    }
+
     if (stringlength(hostname) > 255) {
         tcp_set_error(TCP_ERR_DNS_FAILED, "Hostname too long");
         return false;
