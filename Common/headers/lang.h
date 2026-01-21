@@ -51,6 +51,8 @@
 
 #endif
 
+/* Forward declarations for types from tableinternal.h */
+typedef struct tytablevariable **hdltablevariable;
 
 
 #define idconsthashresource 128
@@ -291,6 +293,23 @@ typedef enum tyvaluetype { /*use care -- these are saved on disk inside symbol t
 	ctvaluetypes
 
 	} tyvaluetype;
+
+
+/*
+ * tableLookupMode - Reserved for future Phase 2 metadata optimization work
+ *
+ * This enum was intended to distinguish between metadata-only operations
+ * (defined, nameOf, typeof, timecreated, timemodified) and value operations
+ * (property access, sizeOf, script execution) to avoid loading external tables
+ * from disk unnecessarily.
+ *
+ * Currently not used in production code (langgettableval uses legacy behavior).
+ * Kept for future optimization work with langresolve_table_child_* utility functions.
+ */
+typedef enum tableLookupMode {
+	TABLE_LOOKUP_METADATA = 0,  /* Check existence only, never load from disk */
+	TABLE_LOOKUP_VALUE = 1      /* Load from disk if needed, return handle */
+	} tableLookupMode;
 
 #pragma pack(push, 2)
 typedef struct tydiskvalue {	/*4.0.2b1 dmb*/
@@ -1165,6 +1184,12 @@ extern boolean langgetidentifier (hdltreenode, bigstring);
 extern boolean langtablelookup (hdlhashtable, bigstring, hdlhashtable *);
 
 extern boolean langsearchpathlookup (bigstring, hdlhashtable *);
+
+extern boolean langresolve_table_child_metadata (hdlhashtable, bigstring, hdltablevariable *);
+
+extern boolean langresolve_table_child_value (hdltablevariable, hdlhashtable *, hdlhashnode);
+
+extern boolean langresolve_table_child (hdlhashtable, bigstring, hdlhashtable *, hdlhashnode *);
 
 extern boolean langexpandtodotparams (bigstring, hdlhashtable *, bigstring);
 

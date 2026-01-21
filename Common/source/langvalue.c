@@ -72,6 +72,7 @@
 #include "db_format.h" /* 2025-11-23 Codex: BE helpers for packed typeids */
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
 #include "logging.h"  /* Phase 3: fprintf migration */
+#include "tableinternal.h"  /* For hdltablevariable struct access */
 
 
 
@@ -3631,19 +3632,173 @@ boolean coercetypes (tyvaluerecord *v1, tyvaluerecord *v2) {
 	} /*coercetypes*/
 
 
+/*
+ * langresolve_table_child_metadata - Check if a child exists in a table WITHOUT loading external tables
+ *
+ * This is the metadata-only path for nested table resolution. Use this when you only need to know
+ * if a table exists (e.g., defined(), nameOf(), typeof(), timecreated(), timemodified()).
+ *
+ * Parameters:
+ *   hparent - Parent hash table to search in
+ *   bschildname - Name of child to look for
+ *   hvariable_out - Output: table variable handle (optional, may be nil)
+ *
+ * Returns:
+ *   true if child exists and is a table (may be on disk, flinmemory=0)
+ *   false if child doesn't exist or is not a table
+ *
+ * CRITICAL: Does NOT load external tables from disk. If flinmemory=0, the table
+ * is verified to exist but not materialized into memory.
+ */
+boolean langresolve_table_child_metadata (hdlhashtable hparent, bigstring bschildname, hdltablevariable *hvariable_out) {
+
+	tyvaluerecord val;
+	hdlhashnode hnode;
+	hdltablevariable hvariable;
+	short errorcode;
+
+	if (hparent == nil)
+		return (false);
+
+	pushhashtable (hparent);
+
+	/* Look up child in parent table */
+	if (!langsymbolreference (hparent, bschildname, &val, &hnode)) {
+		pophashtable ();
+		return (false);  /* Not found */
+	}
+
+	/* Validate it's a table type (but don't load from disk) */
+	if (!gettablevariable (val, &hvariable, &errorcode)) {
+		pophashtable ();
+		return (false);  /* Not a table */
+	}
+
+	/* Success: child exists and is a table (may be on disk) */
+	if (hvariable_out != nil)
+		*hvariable_out = hvariable;
+
+	pophashtable ();
+
+	return (true);
+	} /*langresolve_table_child_metadata*/
+
+
+/*
+ * langresolve_table_child_value - Force loading of external table if needed
+ *
+ * This is the value-access path. Use this when you need the actual table contents
+ * (e.g., accessing fields, counting items, executing scripts).
+ *
+ * Parameters:
+ *   hvariable - Table variable handle (from langresolve_table_child_metadata)
+ *   htable_out - Output: loaded hash table handle
+ *   hnode - Hash node (for loading context)
+ *
+ * Returns:
+ *   true if table is loaded successfully
+ *   false if loading failed
+ *
+ * IMPORTANT: If flinmemory=1 (already in memory), returns immediately.
+ * If flinmemory=0 (on disk), loads from database and updates variabledata.
+ */
+boolean langresolve_table_child_value (hdltablevariable hvariable, hdlhashtable *htable_out, hdlhashnode hnode) {
+
+	/* If already in memory, return immediately */
+	if ((**hvariable).flinmemory) {
+		*htable_out = (hdlhashtable) (**hvariable).variabledata;
+		return (true);
+	}
+
+	/* Load from disk */
+	if (!tableverbinmemory (nil, (hdlexternalvariable) hvariable, hnode))
+		return (false);
+
+	*htable_out = (hdlhashtable) (**hvariable).variabledata;
+
+	return (true);
+	} /*langresolve_table_child_value*/
+
+
+/*
+ * NOTE: The following utility functions (langresolve_table_child_*) are kept for
+ * future Phase 2 metadata optimization work. They are not currently used in production
+ * code but provide a foundation for optimizing metadata-only operations (defined, typeof,
+ * nameOf, etc.) to avoid loading external tables from disk unnecessarily.
+ *
+ * Current behavior reverts to legacy pattern where langgettableval() delegates to
+ * langexternalgettable() for all table resolution (see below).
+ */
+
+/*
+ * langresolve_table_child - Convenience wrapper that resolves and loads immediately
+ *
+ * Use this for value operations where you need the loaded table and don't care about
+ * optimizing metadata access. This is equivalent to the old behavior of langgettableval().
+ *
+ * Parameters:
+ *   hparent - Parent hash table
+ *   bschildname - Name of child to resolve
+ *   htable_out - Output: loaded hash table handle
+ *   hnode_out - Output: hash node (optional, may be nil)
+ *
+ * Returns:
+ *   true if child exists, is a table, and was loaded successfully
+ *   false otherwise
+ */
+boolean langresolve_table_child (hdlhashtable hparent, bigstring bschildname, hdlhashtable *htable_out, hdlhashnode *hnode_out) {
+
+	tyvaluerecord val;
+	hdlhashnode hnode;
+	hdltablevariable hvariable;
+
+	/* Metadata check: does child exist and is it a table? */
+	if (!langresolve_table_child_metadata (hparent, bschildname, &hvariable))
+		return (false);
+
+	/* Get hnode if caller needs it */
+	if (hnode_out != nil) {
+		pushhashtable (hparent);
+		langsymbolreference (hparent, bschildname, &val, &hnode);
+		*hnode_out = hnode;
+		pophashtable ();
+	}
+	else {
+		hnode = nil;
+	}
+
+	/* Load value */
+	return (langresolve_table_child_value (hvariable, htable_out, hnode));
+	} /*langresolve_table_child*/
+
+
+/*
+ * langgettableval - Legacy table resolution behavior (RESTORED)
+ *
+ * This function resolves table children by delegating to langexternalgettable(),
+ * which handles all the complexity of loading external tables from disk.
+ *
+ * The previous _ex() pattern with metadata-only mode has been removed because
+ * it broke terse EFP reference resolution (e.g., defined(webserver.init)).
+ * The issue was that tableverbinmemory() doesn't properly initialize hash table
+ * handles when called from our modified code.
+ *
+ * Future work: Phase 2 metadata optimization can use the utility functions above
+ * (langresolve_table_child_metadata, langresolve_table_child_value, langresolve_table_child)
+ * with proper initialization logic to avoid loading tables for metadata-only operations.
+ */
 static boolean langgettableval (hdlhashtable htable, bigstring bsname, hdlhashtable *hval) {
-	
 	boolean fl;
-	
+
 	if (htable == nil)
 		return (false);
-	
+
 	pushhashtable (htable);
-	
+
 	fl = langexternalgettable (bsname, hval);
-	
+
 	pophashtable ();
-	
+
 	return (fl);
 	} /*langgettableval*/
 
@@ -3904,11 +4059,11 @@ boolean langgetdotparams (hdltreenode htree, hdlhashtable *htable, bigstring bsn
 		}
 	else
 		fl = langgettableval (hsubtable, bsname, htable);
-	
+
 	if (!fl) {
-	
+
 		langparamerror (nosuchtableerror, bsname);
-		
+
 		return (false);
 		}
 	
@@ -4467,9 +4622,13 @@ boolean evaluatereadonlyparam (hdltreenode hparam, tyvaluerecord *vparam) {
 			break;
 		}
 	
-	if (htable != nil)
+	if (htable != nil) {
+		char cname[256];
+		copyptocstring (bs, cname);
+		log_trace(LOG_COMP_LANG, "evaluatereadonlyparam before langsymbolreference table=%p name=%s", (void *)htable, cname);
 		if (!langsymbolreference (htable, bs, vparam, &hnode))
 			return (false);
+	}
 	
 	langseterrorline (hparam); /*restore to param before caller attempts coercion*/
 	
@@ -5495,9 +5654,11 @@ static boolean tablearrayvalue (tyvaluerecord *varray, bigstring bsname, tyvalue
 	hdlhashnode hnode;
 	
 	if (!langexternalvaltotable (*varray, &htable, HNoNode)) {
-		
+
+		fllangerror = true;
+
 		langarrayreferror (arraynottableerror, bsname, varray, nil);
-		
+
 		return (false);
 		}
 	
@@ -5514,9 +5675,11 @@ static boolean tablearrayvalue (tyvaluerecord *varray, bigstring bsname, tyvalue
 		pophashtable ();
 		
 		if (!fl) {
-			
+
+			fllangerror = true;
+
 			langarrayreferror (arraystringindexerror, bsname, varray, vindex);
-			
+
 			return (false);
 			}
 		
@@ -5529,9 +5692,11 @@ static boolean tablearrayvalue (tyvaluerecord *varray, bigstring bsname, tyvalue
 		intindex = (*vindex).data.longvalue;
 		
 		if ((intindex <= 0) || !hashgetiteminfo (htable, intindex - 1, bsname, val)) {
-			
+
+			fllangerror = true;
+
 			langarrayreferror (arrayindexerror, bsname, varray, vindex);
-			
+
 			return (false);
 			}
 		}
