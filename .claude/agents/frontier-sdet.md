@@ -86,6 +86,53 @@ void test_replaceAll_empty_replacement() {
 }
 ```
 
+### UserTalk Integration Test Constraints (CRITICAL)
+
+When writing integration tests in UserTalk (YAML test cases):
+
+1. **NO Inline Comments Inside Code Blocks**
+   - ❌ WRONG: `if true { // comment inside block`
+   - ❌ WRONG: `on handler() { // comment`
+   - ✅ CORRECT: Place all // comments OUTSIDE blocks (before `if`, `on`, `try`, etc.)
+   - **Why**: The UserTalk parser does not support inline // comments inside `{ }` blocks
+   - **Pattern**: Use compact formatting without comments inside blocks
+
+2. **Blank Lines Must Match Indentation Level**
+   - ❌ WRONG: Blank line with zero indentation inside an indented block
+   - ✅ CORRECT: Blank lines must have same indentation as surrounding code
+   - ✅ SIMPLEST: Avoid blank lines inside blocks entirely (use compact formatting)
+   - **Why**: The parser expects consistent indentation even for blank lines
+   - **Best Practice**: UserTalk code is typically compact without blank lines for visual separation
+
+3. **Test Data Isolation - Use system.temp, NEVER system table**
+   - ❌ WRONG: `system.verbs.tcp.test.foo = "bar"` (modifies system table!)
+   - ✅ CORRECT: `new(tableType, @system.temp.tcpTest); system.temp.tcpTest.foo = "bar"`
+   - **Cleanup**: Always `delete(@system.temp.tcpTest)` at end of test
+   - **Why**: The system table is OFF LIMITS for modification by test/application code
+   - **Pattern**: Create temporary tables in system.temp.* namespace, clean up when done
+
+**Example of Correct UserTalk Test Structure:**
+```yaml
+- name: "tcp.listenStream - callback invocation"
+  script: |
+    new(tableType, @system.temp.tcpTest);
+    on tcpHandler(streamID, remoteAddr, remotePort) {
+      system.temp.tcpTest.callbackInvoked = true;
+      tcp.closeStream(streamID);
+      return true
+    };
+    local(listenID = tcp.listenStream(9006, 5, @tcpHandler, 0, tcp.addressEncode("127.0.0.1")));
+    local(clientStream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9006));
+    tcp.closeStream(clientStream);
+    thread.sleepFor(50);
+    tcp.closeListen(listenID);
+    local(result = system.temp.tcpTest.callbackInvoked);
+    delete(@system.temp.tcpTest);
+    return result
+  expected_success: true
+  expected_result: "true"
+```
+
 ### Test Documentation Requirements
 
 Every test must include:
