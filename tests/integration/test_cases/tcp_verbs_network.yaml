@@ -37,12 +37,12 @@ tests:
           return "true"
         };
         return "false"
-      } else {
+      }
+      else {
         return "false"
       }
     expected_success: true
     expected_result: "true"
-    skip: "Requires external network connectivity"
 
   - name: "tcp.openNameStream - returns positive stream ID"
     description: "Verify stream ID is positive integer"
@@ -52,12 +52,12 @@ tests:
         local(isValid = (stream > 0));
         tcp.closeStream(stream);
         return isValid
-      } else {
+      }
+      else {
         return "false"
       }
     expected_success: true
     expected_result: "true"
-    skip: "Requires external network connectivity"
 
   - name: "tcp.openNameStream - connection refused error"
     description: "Connect to closed port should raise error"
@@ -66,12 +66,12 @@ tests:
         local(stream = tcp.openNameStream("example.com", 9));
         tcp.closeStream(stream);
         return "false"
-      } else {
+      }
+      else {
         return "true"
       }
     expected_success: true
     expected_result: "true"
-    skip: "Requires external network connectivity"
 
   - name: "tcp.openNameStream - DNS failure for invalid hostname"
     description: "Invalid hostname should raise DNS error"
@@ -80,12 +80,12 @@ tests:
         local(stream = tcp.openNameStream("this.hostname.does.not.exist.invalid", 80));
         tcp.closeStream(stream);
         return "false"
-      } else {
+      }
+      else {
         return "true"
       }
     expected_success: true
     expected_result: "true"
-    skip: "Requires external network connectivity"
 
   # ===========================================================================
   # tcp.openAddrStream - Direct IP connect
@@ -104,12 +104,12 @@ tests:
           return "true"
         };
         return "false"
-      } else {
+      }
+      else {
         return "false"
       }
     expected_success: true
     expected_result: "true"
-    skip: "Requires external network connectivity"
 
   - name: "tcp.openAddrStream - localhost connection"
     description: "Connect to localhost using 127.0.0.1 encoded address"
@@ -121,13 +121,13 @@ tests:
         local(stream = tcp.openAddrStream(localhostIP, 80));
         tcp.closeStream(stream);
         return "true"
-      } else {
+      }
+      else {
         // Connection refused is expected if no server on localhost:80
         return "true"
       }
     expected_success: true
     expected_result: "true"
-    skip: "Requires external network connectivity"
 
   # ===========================================================================
   # Stream Lifecycle - Open, Use, Close
@@ -145,15 +145,16 @@ tests:
         local(ok = tcp.closeStream(stream));
         if (ok) {
           return "true"
-        } else {
+        }
+        else {
           return "false"
         }
-      } else {
+      }
+      else {
         return "false"
       }
     expected_success: true
     expected_result: "true"
-    skip: "Requires external network connectivity"
 
   - name: "tcp.abortStream - immediate close after connect"
     description: "Test RST close vs graceful FIN close"
@@ -167,15 +168,16 @@ tests:
         local(ok = tcp.abortStream(stream));
         if (ok) {
           return "true"
-        } else {
+        }
+        else {
           return "false"
         }
-      } else {
+      }
+      else {
         return "false"
       }
     expected_success: true
     expected_result: "true"
-    skip: "Requires external network connectivity"
 
   - name: "tcp.countConnections - track stream lifecycle"
     description: "Verify countConnections tracks open/close correctly"
@@ -192,12 +194,12 @@ tests:
         local(after = tcp.countConnections());
         // During should be 1 more than before, after should equal before
         return (during == before + 1) and (after == before)
-      } else {
+      }
+      else {
         return "false"
       }
     expected_success: true
     expected_result: "true"
-    skip: "Requires external network connectivity"
 
   # ===========================================================================
   # tcp.readStream - Non-blocking read behavior
@@ -218,15 +220,16 @@ tests:
         tcp.closeStream(stream);
         if (isEmpty) {
           return "true"
-        } else {
+        }
+        else {
           return "false"
         }
-      } else {
+      }
+      else {
         return "false"
       }
     expected_success: true
     expected_result: "true"
-    skip: "Requires external network connectivity"
 
   - name: "tcp.readStream - read after HTTP request"
     description: "Verify read returns data after sending HTTP request"
@@ -251,15 +254,16 @@ tests:
         // Response should contain HTTP header
         if (string.length(response) > 0 or string.contains(response, "HTTP", false)) {
           return "true"
-        } else {
+        }
+        else {
           return "false"
         }
-      } else {
+      }
+      else {
         return "false"
       }
     expected_success: true
     expected_result: "true"
-    skip: "Requires external network connectivity"
 
   # ===========================================================================
   # tcp.writeStream - Blocking write behavior
@@ -280,15 +284,16 @@ tests:
         tcp.closeStream(stream);
         if (ok) {
           return "true"
-        } else {
+        }
+        else {
           return "false"
         }
-      } else {
+      }
+      else {
         return "false"
       }
     expected_success: true
     expected_result: "true"
-    skip: "Requires external network connectivity"
 
   - name: "tcp.writeStream - empty data"
     description: "Writing zero-length data should succeed (no-op)"
@@ -303,15 +308,16 @@ tests:
         tcp.closeStream(stream);
         if (ok) {
           return "true"
-        } else {
+        }
+        else {
           return "false"
         }
-      } else {
+      }
+      else {
         return "false"
       }
     expected_success: true
     expected_result: "true"
-    skip: "Requires external network connectivity"
 
   # ===========================================================================
   # Error Cases - Operations on closed streams
@@ -331,15 +337,16 @@ tests:
         try {
           tcp.closeStream(stream);
           return "true"
-        } else {
+        }
+        else {
           return "false"
         }
-      } else {
+      }
+      else {
         return "false"
       }
     expected_success: true
     expected_result: "true"
-    skip: "Requires external network connectivity"
 
   - name: "tcp.readStream - read from closed stream"
     description: "Reading from closed stream should raise error"
@@ -355,15 +362,16 @@ tests:
         try {
           local(data = tcp.readStream(stream, 1024));
           return "false"
-        } else {
+        }
+        else {
           return "true"
         }
-      } else {
+      }
+      else {
         return "false"
       }
     expected_success: true
     expected_result: "true"
-    skip: "Requires external network connectivity"
 
   - name: "tcp.writeStream - write to closed stream"
     description: "Writing to closed stream should raise error"
@@ -379,15 +387,16 @@ tests:
         try {
           tcp.writeStream(stream, "test data");
           return "false"
-        } else {
+        }
+        else {
           return "true"
         }
-      } else {
+      }
+      else {
         return "false"
       }
     expected_success: true
     expected_result: "true"
-    skip: "Requires external network connectivity"
 
   # ===========================================================================
   # Resource Management - Multiple connections
@@ -411,15 +420,16 @@ tests:
         tcp.closeStream(stream3);
         if (hasMultiple) {
           return "true"
-        } else {
+        }
+        else {
           return "false"
         }
-      } else {
+      }
+      else {
         return "false"
       }
     expected_success: true
     expected_result: "true"
-    skip: "Requires external network connectivity"
 
   - name: "tcp connection lifecycle - full HTTP exchange"
     description: "Test complete HTTP GET request/response cycle"
@@ -444,15 +454,16 @@ tests:
         // Should get HTTP response header
         if (string.length(response) > 0 or string.contains(response, "HTTP", false)) {
           return "true"
-        } else {
+        }
+        else {
           return "false"
         }
-      } else {
+      }
+      else {
         return "false"
       }
     expected_success: true
     expected_result: "true"
-    skip: "Requires external network connectivity"
 
   # ===========================================================================
   # Edge Cases
@@ -471,15 +482,16 @@ tests:
         tcp.closeStream(stream);
         if (string.length(data) == 0) {
           return "true"
-        } else {
+        }
+        else {
           return "false"
         }
-      } else {
+      }
+      else {
         return "false"
       }
     expected_success: true
     expected_result: "true"
-    skip: "Requires external network connectivity"
 
   - name: "tcp.writeStream - large data write"
     description: "Test writing larger data block (multi-KB)"
@@ -500,12 +512,13 @@ tests:
         tcp.closeStream(stream);
         if (ok) {
           return "true"
-        } else {
+        }
+        else {
           return "false"
         }
-      } else {
+      }
+      else {
         return "false"
       }
     expected_success: true
     expected_result: "true"
-    skip: "Requires external network connectivity"

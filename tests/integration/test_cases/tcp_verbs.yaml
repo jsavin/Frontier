@@ -52,7 +52,8 @@ tests:
       try {
         tcp.closeStream(-1);
         return "false"
-      } else {
+      }
+      else {
         return "true"
       }
     expected_success: true
@@ -64,7 +65,8 @@ tests:
       try {
         tcp.closeStream(0);
         return "false"
-      } else {
+      }
+      else {
         return "true"
       }
     expected_success: true
@@ -76,7 +78,8 @@ tests:
       try {
         tcp.closeStream(999999);
         return "false"
-      } else {
+      }
+      else {
         return "true"
       }
     expected_success: true
@@ -88,7 +91,8 @@ tests:
       try {
         tcp.abortStream(-1);
         return "false"
-      } else {
+      }
+      else {
         return "true"
       }
     expected_success: true
@@ -100,7 +104,8 @@ tests:
       try {
         tcp.abortStream(0);
         return "false"
-      } else {
+      }
+      else {
         return "true"
       }
     expected_success: true
@@ -112,7 +117,8 @@ tests:
       try {
         tcp.readStream(-1, 1024);
         return "false"
-      } else {
+      }
+      else {
         return "true"
       }
     expected_success: true
@@ -124,7 +130,8 @@ tests:
       try {
         tcp.readStream(0, 1024);
         return "false"
-      } else {
+      }
+      else {
         return "true"
       }
     expected_success: true
@@ -136,7 +143,8 @@ tests:
       try {
         tcp.writeStream(-1, "test data");
         return "false"
-      } else {
+      }
+      else {
         return "true"
       }
     expected_success: true
@@ -148,7 +156,8 @@ tests:
       try {
         tcp.writeStream(0, "test data");
         return "false"
-      } else {
+      }
+      else {
         return "true"
       }
     expected_success: true
@@ -164,7 +173,8 @@ tests:
       try {
         tcp.readStream(1, -1);
         return "false"
-      } else {
+      }
+      else {
         return "true"
       }
     expected_success: true
@@ -176,7 +186,8 @@ tests:
       try {
         tcp.openNameStream("localhost", -1);
         return "false"
-      } else {
+      }
+      else {
         return "true"
       }
     expected_success: true
@@ -188,7 +199,8 @@ tests:
       try {
         tcp.openNameStream("localhost", 0);
         return "false"
-      } else {
+      }
+      else {
         return "true"
       }
     expected_success: true
@@ -200,7 +212,8 @@ tests:
       try {
         tcp.openNameStream("localhost", 70000);
         return "false"
-      } else {
+      }
+      else {
         return "true"
       }
     expected_success: true
@@ -212,7 +225,8 @@ tests:
       try {
         tcp.openNameStream("", 80);
         return "false"
-      } else {
+      }
+      else {
         return "true"
       }
     expected_success: true
@@ -225,7 +239,8 @@ tests:
         local(localhost = 0x7F000001);
         tcp.openAddrStream(localhost, -1);
         return "false"
-      } else {
+      }
+      else {
         return "true"
       }
     expected_success: true
@@ -238,7 +253,8 @@ tests:
         local(localhost = 0x7F000001);
         tcp.openAddrStream(localhost, 70000);
         return "false"
-      } else {
+      }
+      else {
         return "true"
       }
     expected_success: true
@@ -250,7 +266,8 @@ tests:
       try {
         tcp.openAddrStream(0, 80);
         return "false"
-      } else {
+      }
+      else {
         return "true"
       }
     expected_success: true
