@@ -50,9 +50,17 @@ TEST_FILES=()
 VERBOSE=""
 
 if [ $# -eq 0 ]; then
-    # No arguments - run all tests
+    # No arguments - run all tests (except network tests unless opt-in)
     for f in "$TEST_CASES_DIR"/*.yaml; do
         if [ -f "$f" ]; then
+            # Skip network tests unless FRONTIER_RUN_NETWORK_TESTS=1
+            if [[ "$f" == *"_network.yaml" ]]; then
+                if [ "${FRONTIER_RUN_NETWORK_TESTS:-0}" != "1" ]; then
+                    echo -e "${YELLOW}Skipping network tests: $(basename "$f")${NC}"
+                    echo "  (Set FRONTIER_RUN_NETWORK_TESTS=1 to enable)"
+                    continue
+                fi
+            fi
             TEST_FILES+=("$f")
         fi
     done
@@ -72,9 +80,14 @@ else
                 echo "  -h, --help         Show this help"
                 echo
                 echo "If no test files are specified, all tests in tests/integration/test_cases/ will be run."
+                echo "Network tests (*_network.yaml) are skipped by default unless FRONTIER_RUN_NETWORK_TESTS=1."
+                echo
+                echo "Environment Variables:"
+                echo "  FRONTIER_RUN_NETWORK_TESTS=1    Enable network-dependent tests (default: 0)"
                 echo
                 echo "Examples:"
-                echo "  $0                                    # Run all tests"
+                echo "  $0                                    # Run all local tests (skip network)"
+                echo "  FRONTIER_RUN_NETWORK_TESTS=1 $0      # Run all tests including network"
                 echo "  $0 tests/integration/test_cases/string_verbs.yaml"
                 echo "  $0 --verbose tests/integration/test_cases/*.yaml"
                 exit 0
