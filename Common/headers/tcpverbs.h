@@ -18,6 +18,14 @@
 #include <stdint.h>
 #include <time.h>
 
+#ifndef __FRONTIER_H__
+#include "frontier.h"
+#endif
+
+/* Forward declarations */
+struct tyhashtable;
+typedef struct tyhashtable **hdlhashtable;
+
 /* Stream States */
 typedef enum {
     STREAM_INVALID     = -1,  /* Uninitialized slot */
@@ -62,6 +70,7 @@ typedef struct tcp_stream {
 
 /* Configuration Constants */
 #define TCP_MAX_STREAMS 256           /* Maximum concurrent connections */
+#define TCP_MAX_LISTENERS 32          /* Maximum concurrent listen sockets (Phase 3) */
 #define TCP_MAX_READ_BYTES (16*1024*1024)  /* 16MB max read size */
 #define TCP_FIRST_STREAM_ID 1         /* Stream IDs start at 1 (0 reserved) */
 #define MAX_HOSTNAME_LEN 255          /* Maximum DNS hostname length */
@@ -87,8 +96,8 @@ typedef struct tcp_context {
     int             default_timeout_sec;  /* Default operation timeout */
     boolean         initialized;          /* Context has been initialized */
 
-    /* Rate Limiting */
-    time_t          connection_timestamps[TCP_RATE_LIMIT_WINDOW];  /* Sliding window of connection times */
+    /* Rate Limiting (SECURITY FIX Issue #7: High-resolution timestamps to prevent burst attacks) */
+    uint64_t        connection_timestamps_us[TCP_RATE_LIMIT_WINDOW];  /* Sliding window (microseconds) */
     int             timestamp_write_pos;   /* Next position to write in circular buffer */
     int             connections_per_sec;   /* Maximum connections per second (configurable) */
 
@@ -129,8 +138,9 @@ boolean tcp_address_encode(bigstring ip_string, long *addr_out);
 boolean tcp_address_decode(long addr, bigstring ip_string_out);
 
 /* Phase 3: Server Operations (Listen/Accept) */
-boolean tcp_listen_stream(long port, long depth, bigstring callback,
-                          long refcon, long bind_addr, long *listen_id_out);
+boolean tcp_listen_stream(long port, long depth, hdlhashtable callback_htable,
+                          bigstring callback_name, long refcon, long bind_addr,
+                          long *listen_id_out);
 boolean tcp_close_listen(long listen_id);
 
 /* Initialization and Shutdown */

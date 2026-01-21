@@ -426,6 +426,61 @@ db.new("test.root")
 
 **Note**: Load system root with `--system-root databases/Frontier.root` to initialize `system.paths` and enable `target.*` verbs.
 
+### UserTalk Coding Style for Tests ⚠️
+
+**CRITICAL RULES** for writing UserTalk test scripts:
+
+1. **Inline Comments NOT Supported Inside Blocks**
+   - ❌ WRONG: `if true { // comment ... }`
+   - ❌ WRONG: `try { // comment ... }`
+   - ❌ WRONG: `on handler() { // comment ... }`
+   - ✅ CORRECT: `// comment` at top level (outside blocks)
+   - **Reason**: UserTalk parser limitation - inline comments only work at file level, not inside code blocks
+
+2. **Blank Lines Inside Blocks Must Have Matching Indentation**
+   - ❌ WRONG: Blank line with no indentation inside indented block
+   - ❌ WRONG: Blank line with wrong indentation level
+   - ✅ CORRECT: Blank lines must match the indentation level of surrounding statements
+   - ✅ SIMPLEST: Avoid blank lines inside blocks entirely (use compact formatting)
+   - **Reason**: UserTalk file parser requires indentation level to match previous line, even for blank lines
+   - **Practical advice**: Tests should use compact formatting without blank lines inside handlers/blocks
+
+3. **Test Data Storage: Use system.temp, NOT system.verbs**
+   - ❌ WRONG: `system.verbs.tcp.test.foo = "bar"`  (modifies system table)
+   - ✅ CORRECT: `new(tableType, @system.temp.tcpTest); system.temp.tcpTest.foo = "bar"`
+   - **Rule**: NEVER modify `system` table in tests - always use `system.temp.*`
+   - **Cleanup**: Always `delete(@system.temp.tcpTest)` at end of test
+
+4. **Prefer Flat, Simple Structure**
+   - Avoid complex multi-line blocks where possible
+   - Keep blocks short and obvious
+   - UserTalk was designed for outline editing, not complex text-based nesting
+   - **Historical Context**: Original Frontier used outline editor where indentation was automatic - braces `{`, `}`, and `;` were rarely typed
+
+**Example - Proper Test Pattern**:
+```usertalk
+new(tableType, @system.temp.tcpTest);
+system.temp.tcpTest.result = false;
+
+on tcpHandler(streamID, addr, port) {
+  system.temp.tcpTest.result = true;
+  tcp.closeStream(streamID);
+  return true
+};
+
+local(listenID = tcp.listenStream(9000, 5, @tcpHandler, 0, 0));
+local(clientID = tcp.openAddrStream(0x7F000001, 9000));
+
+thread.sleepFor(100);
+
+local(success = system.temp.tcpTest.result);
+tcp.closeStream(clientID);
+tcp.closeListen(listenID);
+delete(@system.temp.tcpTest);
+
+return success
+```
+
 ---
 
 ## Critical Testing Constraints ⚠️

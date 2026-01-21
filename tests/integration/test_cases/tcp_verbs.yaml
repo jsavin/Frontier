@@ -408,3 +408,262 @@ tests:
       return true
     expected_success: true
     expected_result: "true"
+
+  # ===========================================================================
+  # Phase 1B: Address Encoding Verbs
+  # ===========================================================================
+  # tcp.addressEncode(ipString) → addr - Convert dotted decimal to long
+  # tcp.addressDecode(addr) → ipString - Convert long to dotted decimal
+  #
+  # These verbs provide UserTalk-accessible IP address conversion:
+  # - addressEncode: "192.168.1.1" → 0xC0A80101 (network byte order long)
+  # - addressDecode: 0xC0A80101 → "192.168.1.1" (dotted decimal string)
+  #
+  # Reference:
+  #   - planning/phase4/networking/TCP_PHASE1B_SPEC.md
+  #   - tests/TCP_PHASE1A_TEST_SUMMARY.md (C unit tests show expected behavior)
+  #   - Common/source/tcpverbs.c (tcp_address_encode, tcp_address_decode)
+
+  # ---------------------------------------------------------------------------
+  # Happy Path - Valid IP Addresses
+  # ---------------------------------------------------------------------------
+
+  - name: "tcp.addressEncode - private IP (192.168.1.1)"
+    description: "Encode private IP address to long (network byte order)"
+    script: |
+      local(addr = tcp.addressEncode("192.168.1.1"));
+      return addr == 3232235777
+    expected_success: true
+    expected_result: "true"
+
+  - name: "tcp.addressEncode - localhost (127.0.0.1)"
+    description: "Encode localhost to long"
+    script: |
+      local(addr = tcp.addressEncode("127.0.0.1"));
+      return addr == 0x7F000001
+    expected_success: true
+    expected_result: "true"
+
+  - name: "tcp.addressEncode - public DNS (8.8.8.8)"
+    description: "Encode Google DNS IP to long"
+    script: |
+      local(addr = tcp.addressEncode("8.8.8.8"));
+      return addr == 0x08080808
+    expected_success: true
+    expected_result: "true"
+
+  - name: "tcp.addressDecode - private IP (3232235777)"
+    description: "Decode network byte order long to dotted decimal"
+    script: |
+      local(ipString = tcp.addressDecode(3232235777));
+      return ipString == "192.168.1.1"
+    expected_success: true
+    expected_result: "true"
+
+  - name: "tcp.addressDecode - localhost (0x7F000001)"
+    description: "Decode localhost address to string"
+    script: |
+      local(ipString = tcp.addressDecode(0x7F000001));
+      return ipString == "127.0.0.1"
+    expected_success: true
+    expected_result: "true"
+
+  - name: "tcp.addressDecode - public DNS (134744072)"
+    description: "Decode Google DNS address to string"
+    script: |
+      local(ipString = tcp.addressDecode(134744072));
+      return ipString == "8.8.8.8"
+    expected_success: true
+    expected_result: "true"
+
+  # ---------------------------------------------------------------------------
+  # Roundtrip Tests - Encode → Decode → Original
+  # ---------------------------------------------------------------------------
+
+  - name: "tcp.addressEncode/Decode - roundtrip 192.168.1.1"
+    description: "Verify encode→decode→original for private IP"
+    script: |
+      local(original = "192.168.1.1");
+      local(encoded = tcp.addressEncode(original));
+      local(decoded = tcp.addressDecode(encoded));
+      return decoded == original
+    expected_success: true
+    expected_result: "true"
+
+  - name: "tcp.addressEncode/Decode - roundtrip 127.0.0.1"
+    description: "Verify encode→decode→original for localhost"
+    script: |
+      local(original = "127.0.0.1");
+      local(encoded = tcp.addressEncode(original));
+      local(decoded = tcp.addressDecode(encoded));
+      return decoded == original
+    expected_success: true
+    expected_result: "true"
+
+  - name: "tcp.addressEncode/Decode - roundtrip 8.8.8.8"
+    description: "Verify encode→decode→original for public DNS"
+    script: |
+      local(original = "8.8.8.8");
+      local(encoded = tcp.addressEncode(original));
+      local(decoded = tcp.addressDecode(encoded));
+      return decoded == original
+    expected_success: true
+    expected_result: "true"
+
+  # ---------------------------------------------------------------------------
+  # Edge Cases - Boundary Values
+  # ---------------------------------------------------------------------------
+
+  - name: "tcp.addressEncode - wildcard address (0.0.0.0)"
+    description: "Encode wildcard/INADDR_ANY address"
+    script: |
+      local(addr = tcp.addressEncode("0.0.0.0"));
+      return addr == 0
+    expected_success: true
+    expected_result: "true"
+
+  - name: "tcp.addressEncode - broadcast address (255.255.255.255)"
+    description: "Encode broadcast address"
+    script: |
+      local(addr = tcp.addressEncode("255.255.255.255"));
+      return addr == 4294967295
+    expected_success: true
+    expected_result: "true"
+
+  - name: "tcp.addressDecode - wildcard (0)"
+    description: "Decode zero to 0.0.0.0"
+    script: |
+      local(ipString = tcp.addressDecode(0));
+      return ipString == "0.0.0.0"
+    expected_success: true
+    expected_result: "true"
+
+  - name: "tcp.addressDecode - broadcast (4294967295)"
+    description: "Decode max value to 255.255.255.255"
+    script: |
+      local(ipString = tcp.addressDecode(4294967295));
+      return ipString == "255.255.255.255"
+    expected_success: true
+    expected_result: "true"
+
+  - name: "tcp.addressEncode/Decode - roundtrip 0.0.0.0"
+    description: "Verify encode→decode→original for wildcard"
+    script: |
+      local(original = "0.0.0.0");
+      local(encoded = tcp.addressEncode(original));
+      local(decoded = tcp.addressDecode(encoded));
+      return decoded == original
+    expected_success: true
+    expected_result: "true"
+
+  - name: "tcp.addressEncode/Decode - roundtrip 255.255.255.255"
+    description: "Verify encode→decode→original for broadcast"
+    script: |
+      local(original = "255.255.255.255");
+      local(encoded = tcp.addressEncode(original));
+      local(decoded = tcp.addressDecode(encoded));
+      return decoded == original
+    expected_success: true
+    expected_result: "true"
+
+  # ---------------------------------------------------------------------------
+  # Error Cases - Invalid IP Strings
+  # ---------------------------------------------------------------------------
+
+  - name: "tcp.addressEncode - invalid format (too many octets)"
+    description: "Reject IP string with 5 octets"
+    script: |
+      try {
+        tcp.addressEncode("192.168.1.1.1");
+        return "false"
+      }
+      else {
+        return "true"
+      }
+    expected_success: true
+    expected_result: "true"
+
+  - name: "tcp.addressEncode - invalid format (too few octets)"
+    description: "Reject IP string with 3 octets"
+    script: |
+      try {
+        tcp.addressEncode("192.168.1");
+        return "false"
+      }
+      else {
+        return "true"
+      }
+    expected_success: true
+    expected_result: "true"
+
+  - name: "tcp.addressEncode - invalid format (octet overflow)"
+    description: "Reject IP string with octet > 255"
+    script: |
+      try {
+        tcp.addressEncode("192.168.1.256");
+        return "false"
+      }
+      else {
+        return "true"
+      }
+    expected_success: true
+    expected_result: "true"
+
+  - name: "tcp.addressEncode - invalid format (negative octet)"
+    description: "Reject IP string with negative octet"
+    script: |
+      try {
+        tcp.addressEncode("192.168.-1.1");
+        return "false"
+      }
+      else {
+        return "true"
+      }
+    expected_success: true
+    expected_result: "true"
+
+  - name: "tcp.addressEncode - invalid format (non-numeric)"
+    description: "Reject IP string with letters"
+    script: |
+      try {
+        tcp.addressEncode("192.168.1.x");
+        return "false"
+      }
+      else {
+        return "true"
+      }
+    expected_success: true
+    expected_result: "true"
+
+  - name: "tcp.addressEncode - invalid format (empty string)"
+    description: "Reject empty IP string"
+    script: |
+      try {
+        tcp.addressEncode("");
+        return "false"
+      }
+      else {
+        return "true"
+      }
+    expected_success: true
+    expected_result: "true"
+
+  # ---------------------------------------------------------------------------
+  # Return Type Validation
+  # ---------------------------------------------------------------------------
+
+  - name: "tcp.addressEncode - return type"
+    description: "Verify addressEncode returns longType"
+    script: |
+      local(addr = tcp.addressEncode("192.168.1.1"));
+      return typeof(addr) == longType
+    expected_success: true
+    expected_result: "true"
+
+  - name: "tcp.addressDecode - return type"
+    description: "Verify addressDecode returns stringType"
+    script: |
+      local(ipString = tcp.addressDecode(0xC0A80101));
+      return typeof(ipString) == stringType
+    expected_success: true
+    expected_result: "true"

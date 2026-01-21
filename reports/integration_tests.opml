@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Frontier Integration Test Categories</title>
-    <dateCreated>Wed, 21 Jan 2026 06:10:39 GMT</dateCreated>
+    <dateCreated>Wed, 21 Jan 2026 08:44:42 GMT</dateCreated>
   </head>
   <body>
     <outline text="Callback Database (callback_database)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_callback_database.opml"/>
@@ -30,6 +30,8 @@
     <outline text="Table Sorting Verbs (table_sorting_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_table_sorting_verbs.opml"/>
     <outline text="Table Verbs (table_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_table_verbs.opml"/>
     <outline text="Target Verbs (target_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_target_verbs.opml"/>
+    <outline text="Tcp Client Verbs (tcp_client_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_tcp_client_verbs.opml"/>
+    <outline text="Tcp Server Verbs (tcp_server_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_tcp_server_verbs.opml"/>
     <outline text="Tcp Verbs (tcp_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_tcp_verbs.opml"/>
     <outline text="Tcp Verbs Network (tcp_verbs_network)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_tcp_verbs_network.opml"/>
     <outline text="Thread Verbs Foundation (thread_verbs_foundation)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_thread_verbs_foundation.opml"/>

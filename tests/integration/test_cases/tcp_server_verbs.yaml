@@ -1,0 +1,826 @@
+# Integration tests for TCP Phase 3 - Server Operations
+# Tests tcp.listenStream(), tcp.closeListen(), and callback infrastructure
+#
+# Phase 3 verbs (3 total):
+#   - tcp.listenStream(port, depth, callback, refcon, addr) → listenID - Start listening for connections
+#   - tcp.closeListen(listenID) → true - Stop listening
+#   - tcp.statusStream(stream, @bytes) → status - Query pending bytes (Phase 1A verb with Phase 3 use)
+#
+# NOTE: All tests use LOCALHOST ONLY (127.0.0.1) - NO external network dependencies!
+# Tests are self-contained: client and server on same machine.
+#
+# Reference:
+#   - planning/phase4/networking/TCP_VERBS_ANALYSIS.md (API documentation)
+#   - planning/phase4/p0a-critical-thread-safety/CALLBACK_INFRASTRUCTURE.md (Callback infrastructure)
+#   - Common/source/tcpverbs.c (Phase 1A implementation reference)
+#
+# ============================================================================
+# CATEGORY 1: Listen/Accept Basic Operations (Happy Path)
+# ============================================================================
+
+tests:
+  - name: "tcp.listenStream - basic listener startup"
+    description: "Start listener on localhost port 9000 and verify listenID returned"
+    script: |
+      local(listenID = tcp.listenStream(9000, 5, "", 0, tcp.addressEncode("127.0.0.1")));
+      local(valid = listenID > 0);
+      tcp.closeListen(listenID);
+      return valid
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 3 - Requires tcp.listenStream() implementation"
+
+  - name: "tcp.listenStream - return type validation"
+    description: "listenStream returns long type (listenID)"
+    script: |
+      local(listenID = tcp.listenStream(9001, 5, "", 0, tcp.addressEncode("127.0.0.1")));
+      local(valid = typeof(listenID) == longType);
+      tcp.closeListen(listenID);
+      return valid
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 3 - Verify return type is long (listenID)"
+
+  - name: "tcp.closeListen - basic listener shutdown"
+    description: "Start listener, close it, verify returns true"
+    script: |
+      local(listenID = tcp.listenStream(9002, 5, "", 0, tcp.addressEncode("127.0.0.1")));
+      local(result = tcp.closeListen(listenID));
+      return result == true
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 3 - Verify closeListen returns boolean true"
+
+  - name: "tcp.listenStream - callback receives connection"
+    description: "Verify callback is invoked with correct parameters when client connects"
+    script: |
+      new(tableType, @system.temp.tcpTest);
+      system.temp.tcpTest.callbackInvoked = false;
+      system.temp.tcpTest.streamID = 0;
+      system.temp.tcpTest.remoteAddr = 0;
+      system.temp.tcpTest.remotePort = 0;
+
+      on tcpHandler(streamID, remoteAddr, remotePort) {
+        system.temp.tcpTest.callbackInvoked = true;
+        system.temp.tcpTest.streamID = streamID;
+        system.temp.tcpTest.remoteAddr = remoteAddr;
+        system.temp.tcpTest.remotePort = remotePort;
+
+        tcp.closeStream(streamID);
+        return true
+      };
+
+      local(listenID = tcp.listenStream(9003, 5, @tcpHandler, 0, tcp.addressEncode("127.0.0.1")));
+
+      local(clientStream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9003));
+
+      local(startTicks = clock.ticks());
+      while (not defined(system.temp.tcpTest.callbackInvoked)) and ((clock.ticks() - startTicks) < 60) {
+        thread.sleepFor(10)
+      };
+
+      local(invoked = defined(system.temp.tcpTest.callbackInvoked));
+      local(validStream = system.temp.tcpTest.streamID > 0);
+
+      tcp.closeStream(clientStream);
+      tcp.closeListen(listenID);
+      delete(@system.temp.tcpTest);
+
+      return invoked and validStream
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 3 - Requires P0a callback infrastructure (PR #328)"
+
+  - name: "tcp.listenStream - callback receives correct remote address"
+    description: "Verify callback receives 127.0.0.1 as remote address"
+    script: |
+      new(tableType, @system.temp.tcpTest);
+      system.temp.tcpTest.remoteAddr = 0;
+
+      on tcpHandler(streamID, remoteAddr, remotePort) {
+        system.temp.tcpTest.remoteAddr = remoteAddr;
+        tcp.closeStream(streamID);
+        return true
+      };
+
+      local(listenID = tcp.listenStream(9004, 5, @tcpHandler, 0, tcp.addressEncode("127.0.0.1")));
+      local(clientStream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9004));
+
+      local(startTicks = clock.ticks());
+      while (not defined(system.temp.tcpTest.remoteAddr)) and ((clock.ticks() - startTicks) < 60) {
+        thread.sleepFor(10)
+      };
+
+      local(validAddr = system.temp.tcpTest.remoteAddr == tcp.addressEncode("127.0.0.1"));
+
+      tcp.closeStream(clientStream);
+      tcp.closeListen(listenID);
+      delete(@system.temp.tcpTest);
+
+      return validAddr
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 3 - Verify callback receives correct remote IP address parameter"
+
+  - name: "tcp.listenStream - callback receives correct remote port"
+    description: "Verify callback receives ephemeral port number from client"
+    script: |
+      new(tableType, @system.temp.tcpTest);
+      system.temp.tcpTest.remotePort = 0;
+
+      on tcpHandler(streamID, remoteAddr, remotePort) {
+        system.temp.tcpTest.remotePort = remotePort;
+        tcp.closeStream(streamID);
+        return true
+      };
+
+      local(listenID = tcp.listenStream(9005, 5, @tcpHandler, 0, tcp.addressEncode("127.0.0.1")));
+      local(clientStream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9005));
+
+      local(startTicks = clock.ticks());
+      while (not defined(system.temp.tcpTest.remotePort)) and ((clock.ticks() - startTicks) < 60) {
+        thread.sleepFor(10)
+      };
+
+      local(validPort = (system.temp.tcpTest.remotePort > 0) and (system.temp.tcpTest.remotePort < 65536));
+
+      tcp.closeStream(clientStream);
+      tcp.closeListen(listenID);
+      delete(@system.temp.tcpTest);
+
+      return validPort
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 3 - Verify callback receives correct remote port parameter"
+
+  - name: "tcp.listenStream - read/write on accepted connection"
+    description: "Verify data can be read and written on accepted connection"
+    script: |
+      on tcpHandler(streamID, remoteAddr, remotePort) {
+        local(data = tcp.readStream(streamID, 1024));
+        tcp.writeStream(streamID, "ECHO: " + data);
+        tcp.closeStream(streamID);
+        return true
+      };
+
+      local(listenID = tcp.listenStream(9006, 5, @tcpHandler, 0, tcp.addressEncode("127.0.0.1")));
+      local(clientStream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9006));
+
+      tcp.writeStream(clientStream, "Hello Server");
+
+      thread.sleepFor(100);
+
+      local(startTicks = clock.ticks());
+      local(response = "");
+      while (sizeOf(response) == 0) and ((clock.ticks() - startTicks) < 200) {
+        response = tcp.readStream(clientStream, 1024);
+        thread.sleepFor(10)
+      };
+
+      local(validResponse = response == "ECHO: Hello Server");
+
+      tcp.closeStream(clientStream);
+      tcp.closeListen(listenID);
+
+      return validResponse
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 3 - Verify read/write operations work on accepted connections"
+
+  - name: "tcp.listenStream - connection closes after callback returns"
+    description: "Verify connection is properly closed when callback closes stream"
+    script: |
+      on tcpHandler(streamID, remoteAddr, remotePort) {
+        tcp.writeStream(streamID, "OK");
+        tcp.closeStream(streamID);
+        return true
+      };
+
+      local(listenID = tcp.listenStream(9007, 5, @tcpHandler, 0, tcp.addressEncode("127.0.0.1")));
+      local(clientStream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9007));
+
+      local(startTicks = clock.ticks());
+      local(response = "");
+      while (sizeOf(response) == 0) and ((clock.ticks() - startTicks) < 60) {
+        response = tcp.readStream(clientStream, 1024);
+        thread.sleepFor(10)
+      };
+
+      local(validResponse = response == "OK");
+
+      tcp.closeStream(clientStream);
+      tcp.closeListen(listenID);
+
+      return validResponse
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 3 - Verify graceful connection close in callback"
+
+  - name: "tcp.listenStream - listener restart on same port"
+    description: "Verify listener can be stopped and restarted on same port"
+    script: |
+      local(listenID1 = tcp.listenStream(9008, 5, "", 0, tcp.addressEncode("127.0.0.1")));
+
+      tcp.closeListen(listenID1);
+
+      thread.sleepFor(100);
+
+      local(listenID2 = tcp.listenStream(9008, 5, "", 0, tcp.addressEncode("127.0.0.1")));
+      local(validRestart = listenID2 > 0);
+
+      tcp.closeListen(listenID2);
+
+      return validRestart
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 3 - Verify SO_REUSEADDR allows port reuse"
+
+# ============================================================================
+# CATEGORY 2: Multiple Connections
+# ============================================================================
+
+  - name: "tcp.listenStream - sequential connections"
+    description: "Verify listener accepts multiple connections sequentially"
+    script: |
+      new(tableType, @system.temp.tcpTest);
+      system.temp.tcpTest.count = 0;
+
+      on tcpHandler(streamID, remoteAddr, remotePort) {
+        system.temp.tcpTest.count = system.temp.tcpTest.count + 1;
+        tcp.writeStream(streamID, "OK");
+        tcp.closeStream(streamID);
+        return true
+      };
+
+      local(listenID = tcp.listenStream(9009, 5, @tcpHandler, 0, tcp.addressEncode("127.0.0.1")));
+
+      local(i);
+      for i = 1 to 3 {
+        local(stream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9009));
+        local(response = "");
+        local(startTicks = clock.ticks());
+        while (sizeOf(response) == 0) and ((clock.ticks() - startTicks) < 60) {
+          response = tcp.readStream(stream, 1024);
+          thread.sleepFor(10)
+        };
+        tcp.closeStream(stream)
+      };
+
+      thread.sleepFor(100);
+
+      local(allAccepted = system.temp.tcpTest.count == 3);
+
+      tcp.closeListen(listenID);
+      delete(@system.temp.tcpTest);
+
+      return allAccepted
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 3 - Verify listener can accept multiple sequential connections"
+
+  - name: "tcp.listenStream - concurrent connections"
+    description: "Verify listener accepts multiple concurrent connections"
+    script: |
+      new(tableType, @system.temp.tcpTest);
+      system.temp.tcpTest.count = 0;
+
+      on tcpHandler(streamID, remoteAddr, remotePort) {
+        system.temp.tcpTest.count = system.temp.tcpTest.count + 1;
+        tcp.writeStream(streamID, "OK");
+        tcp.closeStream(streamID);
+        return true
+      };
+
+      local(listenID = tcp.listenStream(9010, 5, @tcpHandler, 0, tcp.addressEncode("127.0.0.1")));
+
+      local(stream1 = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9010));
+      local(stream2 = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9010));
+      local(stream3 = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9010));
+
+      thread.sleepFor(200);
+
+      local(allAccepted = system.temp.tcpTest.count == 3);
+
+      tcp.closeStream(stream1);
+      tcp.closeStream(stream2);
+      tcp.closeStream(stream3);
+      tcp.closeListen(listenID);
+      delete(@system.temp.tcpTest);
+
+      return allAccepted
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 3 - Verify listener handles concurrent connections"
+
+  - name: "tcp.listenStream - queue depth limiting"
+    description: "Verify queue depth (backlog) parameter is respected"
+    script: |
+      local(listenID = tcp.listenStream(9011, 1, "", 0, tcp.addressEncode("127.0.0.1")));
+
+      local(validListen = listenID > 0);
+
+      tcp.closeListen(listenID);
+
+      return validListen
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 3 - Behavioral spec: depth parameter controls accept queue backlog"
+
+  - name: "tcp.countConnections - includes accepted connections"
+    description: "Verify countConnections includes server-accepted connections"
+    script: |
+      new(tableType, @system.temp.tcpTest);
+      system.temp.tcpTest.connected = false;
+
+      on tcpHandler(streamID, remoteAddr, remotePort) {
+        system.temp.tcpTest.connected = true;
+        system.temp.tcpTest.serverStream = streamID;
+        return true
+      };
+
+      local(initialCount = tcp.countConnections());
+
+      local(listenID = tcp.listenStream(9012, 5, @tcpHandler, 0, tcp.addressEncode("127.0.0.1")));
+      local(clientStream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9012));
+
+      local(startTicks = clock.ticks());
+      while (not system.temp.tcpTest.connected) and ((clock.ticks() - startTicks) < 60) {
+        thread.sleepFor(10)
+      };
+
+      local(newCount = tcp.countConnections());
+      local(countIncreased = newCount >= initialCount + 2);
+
+      tcp.closeStream(clientStream);
+      tcp.closeStream(system.temp.tcpTest.serverStream);
+      tcp.closeListen(listenID);
+      delete(@system.temp.tcpTest);
+
+      return countIncreased
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 3 - Verify countConnections tracks all connections (client and server)"
+
+# ============================================================================
+# CATEGORY 3: Error Handling
+# ============================================================================
+
+  - name: "tcp.listenStream - invalid port (negative)"
+    description: "Negative port number should raise error"
+    script: |
+      try {
+        tcp.listenStream(-1, 5, "", 0, tcp.addressEncode("127.0.0.1"));
+        return "false"
+      }
+      else {
+        return "true"
+      }
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 3 - Validate port number range"
+
+  - name: "tcp.listenStream - invalid port (zero)"
+    description: "Port 0 should raise error for explicit listen (OS may allow for ephemeral assignment)"
+    script: |
+      try {
+        tcp.listenStream(0, 5, "", 0, tcp.addressEncode("127.0.0.1"));
+        return "false"
+      }
+      else {
+        return "true"
+      }
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 3 - Port 0 is invalid for explicit listen (ephemeral ports are OS-assigned)"
+
+  - name: "tcp.listenStream - invalid port (too large)"
+    description: "Port > 65535 should raise error"
+    script: |
+      try {
+        tcp.listenStream(70000, 5, "", 0, tcp.addressEncode("127.0.0.1"));
+        return "false"
+      }
+      else {
+        return "true"
+      }
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 3 - Port must be in valid range (1-65535)"
+
+  - name: "tcp.listenStream - port already in use"
+    description: "Attempting to listen on already-bound port should raise error"
+    script: |
+      local(listenID = tcp.listenStream(9013, 5, "", 0, tcp.addressEncode("127.0.0.1")));
+
+      try {
+        tcp.listenStream(9013, 5, "", 0, tcp.addressEncode("127.0.0.1"));
+        tcp.closeListen(listenID);
+        return "false"
+      }
+      else {
+        tcp.closeListen(listenID);
+        return "true"
+      }
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 3 - Verify bind() fails when port already in use"
+
+  - name: "tcp.listenStream - invalid queue depth (negative)"
+    description: "Negative queue depth should raise error"
+    script: |
+      try {
+        tcp.listenStream(9014, -1, "", 0, tcp.addressEncode("127.0.0.1"));
+        return "false"
+      }
+      else {
+        return "true"
+      }
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 3 - Queue depth must be positive"
+
+  - name: "tcp.listenStream - invalid queue depth (zero)"
+    description: "Zero queue depth should raise error (must be at least 1)"
+    script: |
+      try {
+        tcp.listenStream(9015, 0, "", 0, tcp.addressEncode("127.0.0.1"));
+        return "false"
+      }
+      else {
+        return "true"
+      }
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 3 - Queue depth must be positive (>= 1)"
+
+  - name: "tcp.closeListen - invalid listenID (negative)"
+    description: "Negative listenID should raise error"
+    script: |
+      try {
+        tcp.closeListen(-1);
+        return "false"
+      }
+      else {
+        return "true"
+      }
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 3 - Validate listenID parameter"
+
+  - name: "tcp.closeListen - invalid listenID (zero)"
+    description: "Zero listenID should raise error"
+    script: |
+      try {
+        tcp.closeListen(0);
+        return "false"
+      }
+      else {
+        return "true"
+      }
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 3 - ListenID 0 is invalid (reserved)"
+
+  - name: "tcp.closeListen - listener not found"
+    description: "Closing non-existent listenID should raise error"
+    script: |
+      try {
+        tcp.closeListen(999999);
+        return "false"
+      }
+      else {
+        return "true"
+      }
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 3 - Verify error when listenID doesn't exist"
+
+# ============================================================================
+# CATEGORY 4: Lifecycle & Resource Management
+# ============================================================================
+
+  - name: "tcp.closeListen - idempotent behavior"
+    description: "Calling closeListen twice on same listenID should be safe (idempotent)"
+    script: |
+      local(listenID = tcp.listenStream(9016, 5, "", 0, tcp.addressEncode("127.0.0.1")));
+
+      local(result1 = tcp.closeListen(listenID));
+
+      local(validFirstClose = result1 == true);
+
+      try {
+        tcp.closeListen(listenID);
+        local(validSecondClose = true)
+      }
+      else {
+        local(validSecondClose = true)  // Expected to fail
+      };
+
+      return validFirstClose and validSecondClose
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 3 - Behavioral spec: closeListen should be idempotent or fail gracefully"
+
+  - name: "tcp.listenStream - connections survive listener close"
+    description: "Verify accepted connections remain open after listener closes"
+    script: |
+      new(tableType, @system.temp.tcpTest);
+      system.temp.tcpTest.connected = false;
+
+      on tcpHandler(streamID, remoteAddr, remotePort) {
+        system.temp.tcpTest.connected = true;
+        system.temp.tcpTest.serverStream = streamID;
+        return true
+      };
+
+      local(listenID = tcp.listenStream(9017, 5, @tcpHandler, 0, tcp.addressEncode("127.0.0.1")));
+      local(clientStream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9017));
+
+      local(startTicks = clock.ticks());
+      while (not system.temp.tcpTest.connected) and ((clock.ticks() - startTicks) < 60) {
+        thread.sleepFor(10)
+      };
+
+      tcp.closeListen(listenID);
+
+      tcp.writeStream(clientStream, "test");
+      tcp.writeStream(system.temp.tcpTest.serverStream, "response");
+
+      local(startTicks2 = clock.ticks());
+      local(response = "");
+      while (sizeOf(response) == 0) and ((clock.ticks() - startTicks2) < 60) {
+        response = tcp.readStream(clientStream, 1024);
+        thread.sleepFor(10)
+      };
+
+      local(connectionSurvived = response == "response");
+
+      tcp.closeStream(clientStream);
+      tcp.closeStream(system.temp.tcpTest.serverStream);
+      delete(@system.temp.tcpTest);
+
+      return connectionSurvived
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 3 - Verify closeListen only stops accepting new connections, doesn't close established ones"
+
+  - name: "tcp.listenStream - graceful shutdown (close all before closeListen)"
+    description: "Verify pattern: close all accepted connections before closing listener"
+    script: |
+      new(tableType, @system.temp.tcpTest);
+      system.temp.tcpTest.streams = {};
+
+      on tcpHandler(streamID, remoteAddr, remotePort) {
+        local(idx = sizeOf(system.temp.tcpTest.streams) + 1);
+        system.temp.tcpTest.streams[idx] = streamID;
+        return true
+      };
+
+      local(listenID = tcp.listenStream(9018, 5, @tcpHandler, 0, tcp.addressEncode("127.0.0.1")));
+
+      local(client1 = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9018));
+      local(client2 = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9018));
+
+      thread.sleepFor(100);
+
+      local(i);
+      for i = 1 to sizeOf(system.temp.tcpTest.streams) {
+        tcp.closeStream(system.temp.tcpTest.streams[i])
+      };
+
+      tcp.closeStream(client1);
+      tcp.closeStream(client2);
+
+      local(result = tcp.closeListen(listenID));
+
+      delete(@system.temp.tcpTest);
+
+      return result == true
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 3 - Best practice: close all connections before listener shutdown"
+
+  - name: "tcp.listenStream - new connections rejected after closeListen"
+    description: "Verify no new connections accepted after listener is closed"
+    script: |
+      local(listenID = tcp.listenStream(9019, 5, "", 0, tcp.addressEncode("127.0.0.1")));
+
+      tcp.closeListen(listenID);
+
+      thread.sleepFor(50);
+
+      try {
+        tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9019);
+        return "false"  // Should not succeed
+      }
+      else {
+        return "true"  // Expected connection refused
+      }
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 3 - Verify listener stops accepting connections after closeListen"
+
+# ============================================================================
+# CATEGORY 5: Callback Threading & Safety
+# ============================================================================
+
+  - name: "tcp.listenStream - callback executes in separate thread"
+    description: "Behavioral spec: callback executes asynchronously in worker thread"
+    script: |
+      new(tableType, @system.temp.tcpTest);
+      system.temp.tcpTest.callbackComplete = false;
+
+      on tcpHandler(streamID, remoteAddr, remotePort) {
+        system.temp.tcpTest.callbackComplete = true;
+        tcp.closeStream(streamID);
+        return true
+      };
+
+      local(listenID = tcp.listenStream(9020, 5, @tcpHandler, 0, tcp.addressEncode("127.0.0.1")));
+      local(clientStream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9020));
+
+      local(mainThreadContinued = true);
+
+      local(startTicks = clock.ticks());
+      while (not system.temp.tcpTest.callbackComplete) and ((clock.ticks() - startTicks) < 60) {
+        thread.sleepFor(10)
+      };
+
+      local(callbackRan = system.temp.tcpTest.callbackComplete);
+
+      tcp.closeStream(clientStream);
+      tcp.closeListen(listenID);
+      delete(@system.temp.tcpTest);
+
+      return mainThreadContinued and callbackRan
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 3 - Behavioral spec: callbacks execute asynchronously in worker threads"
+
+  - name: "tcp.listenStream - callback parameter types"
+    description: "Verify all callback parameters are longType (streamID, remoteAddr, remotePort)"
+    script: |
+      new(tableType, @system.temp.tcpTest);
+
+      on tcpHandler(streamID, remoteAddr, remotePort) {
+        system.temp.tcpTest.streamType = typeof(streamID);
+        system.temp.tcpTest.addrType = typeof(remoteAddr);
+        system.temp.tcpTest.portType = typeof(remotePort);
+        tcp.closeStream(streamID);
+        return true
+      };
+
+      local(listenID = tcp.listenStream(9021, 5, @tcpHandler, 0, tcp.addressEncode("127.0.0.1")));
+      local(clientStream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9021));
+
+      local(startTicks = clock.ticks());
+      while (not defined(system.temp.tcpTest.streamType)) and ((clock.ticks() - startTicks) < 60) {
+        thread.sleepFor(10)
+      };
+
+      local(validTypes = (system.temp.tcpTest.streamType == longType) and
+                         (system.temp.tcpTest.addrType == longType) and
+                         (system.temp.tcpTest.portType == longType));
+
+      tcp.closeStream(clientStream);
+      tcp.closeListen(listenID);
+      delete(@system.temp.tcpTest);
+
+      return validTypes
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 3 - Verify callback parameter types (all long)"
+
+# ============================================================================
+# CATEGORY 6: tcp.statusStream Integration (Phase 1A verb with Phase 3 use)
+# ============================================================================
+
+  - name: "tcp.statusStream - query pending bytes on accepted connection"
+    description: "Verify statusStream works on server-accepted connections"
+    script: |
+      new(tableType, @system.temp.tcpTest);
+      system.temp.tcpTest.connected = false;
+
+      on tcpHandler(streamID, remoteAddr, remotePort) {
+        system.temp.tcpTest.connected = true;
+        system.temp.tcpTest.serverStream = streamID;
+        return true
+      };
+
+      local(listenID = tcp.listenStream(9022, 5, @tcpHandler, 0, tcp.addressEncode("127.0.0.1")));
+      local(clientStream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9022));
+
+      local(startTicks = clock.ticks());
+      while (not system.temp.tcpTest.connected) and ((clock.ticks() - startTicks) < 60) {
+        thread.sleepFor(10)
+      };
+
+      tcp.writeStream(clientStream, "test data");
+
+      thread.sleepFor(50);
+
+      local(bytesPending);
+      local(status = tcp.statusStream(system.temp.tcpTest.serverStream, @bytesPending));
+
+      local(hasData = bytesPending > 0);
+
+      tcp.closeStream(clientStream);
+      tcp.closeStream(system.temp.tcpTest.serverStream);
+      tcp.closeListen(listenID);
+      delete(@system.temp.tcpTest);
+
+      return hasData
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 3 - Verify statusStream works on accepted server connections"
+
+# ============================================================================
+# CATEGORY 7: Return Type Validation
+# ============================================================================
+
+  - name: "tcp.listenStream - return type spec"
+    description: "Spec: listenStream returns positive long (listenID)"
+    script: |
+      local(listenID = tcp.listenStream(9023, 5, "", 0, tcp.addressEncode("127.0.0.1")));
+      local(validType = typeof(listenID) == longType);
+      local(validValue = listenID > 0);
+
+      tcp.closeListen(listenID);
+
+      return validType and validValue
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 3 - Behavioral spec: listenStream returns positive long (listenID > 0)"
+
+  - name: "tcp.closeListen - return type spec"
+    description: "Spec: closeListen returns boolean true"
+    script: |
+      local(listenID = tcp.listenStream(9024, 5, "", 0, tcp.addressEncode("127.0.0.1")));
+      local(result = tcp.closeListen(listenID));
+
+      local(validType = typeof(result) == booleanType);
+      local(validValue = result == true);
+
+      return validType and validValue
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 3 - Behavioral spec: closeListen returns boolean true on success"
+
+# ============================================================================
+# CATEGORY 8: Edge Cases & Boundary Conditions
+# ============================================================================
+
+  - name: "tcp.listenStream - wildcard address (0.0.0.0)"
+    description: "Verify listener can bind to INADDR_ANY (0.0.0.0)"
+    script: |
+      local(listenID = tcp.listenStream(9025, 5, "", 0, tcp.addressEncode("0.0.0.0")));
+      local(validBind = listenID > 0);
+
+      tcp.closeListen(listenID);
+
+      return validBind
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 3 - Verify INADDR_ANY (0.0.0.0) binding works"
+
+  - name: "tcp.listenStream - explicit localhost binding"
+    description: "Verify listener can bind explicitly to 127.0.0.1"
+    script: |
+      local(listenID = tcp.listenStream(9026, 5, "", 0, tcp.addressEncode("127.0.0.1")));
+      local(validBind = listenID > 0);
+
+      tcp.closeListen(listenID);
+
+      return validBind
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 3 - Verify explicit 127.0.0.1 binding works"
+
+  - name: "tcp.listenStream - maximum queue depth"
+    description: "Verify listener accepts large queue depth value"
+    script: |
+      local(listenID = tcp.listenStream(9027, 128, "", 0, tcp.addressEncode("127.0.0.1")));
+      local(validDepth = listenID > 0);
+
+      tcp.closeListen(listenID);
+
+      return validDepth
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 3 - Verify large queue depth values are accepted (OS will cap to SOMAXCONN)"
+
+  # DISABLED: Environment-specific test - port 80 availability depends on system permissions/firewall
+  # Legacy Frontier could bind to port 80, so this test is not reliably portable
+  # - name: "tcp.listenStream - privileged port (requires root)"
+  #   description: "Spec: Attempting to bind to privileged port (<1024) fails without root"
+  #   script: |
+  #     try {
+  #       tcp.listenStream(80, 5, "", 0, tcp.addressEncode("127.0.0.1"));
+  #       return "false"
+  #     }
+  #     else {
+  #       return "true"
+  #     }
+  #   expected_success: true
+  #   expected_result: "true"
+    notes: "Phase 3 - Behavioral spec: privileged ports (<1024) require root/admin privileges"

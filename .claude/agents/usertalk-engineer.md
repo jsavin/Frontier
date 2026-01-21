@@ -263,6 +263,29 @@ else {
 
 4. **Comments:** Explain the "why", not the "what"—code structure is already clear from outline
 
+**CRITICAL UserTalk Parser Constraints:**
+
+1. **NO Inline Comments Inside Code Blocks**
+   - ❌ WRONG: `if true { // comment inside block`
+   - ❌ WRONG: `on handler() { // comment`
+   - ✅ CORRECT: Place all // comments OUTSIDE blocks (before `if`, `on`, `try`, etc.)
+   - **Why**: The UserTalk parser does not support inline // comments inside `{ }` blocks
+   - **Pattern**: Use compact formatting without comments inside blocks
+
+2. **Blank Lines Must Match Indentation Level**
+   - ❌ WRONG: Blank line with zero indentation inside an indented block
+   - ✅ CORRECT: Blank lines must have same indentation as surrounding code
+   - ✅ SIMPLEST: Avoid blank lines inside blocks entirely (use compact formatting)
+   - **Why**: The parser expects consistent indentation even for blank lines
+   - **Best Practice**: UserTalk code is typically compact without blank lines for visual separation
+
+3. **Test Data Isolation - Use system.temp, NEVER system table**
+   - ❌ WRONG: `system.verbs.tcp.test.foo = "bar"` (modifies system table!)
+   - ✅ CORRECT: `new(tableType, @system.temp.tcpTest); system.temp.tcpTest.foo = "bar"`
+   - **Cleanup**: Always `delete(@system.temp.tcpTest)` at end of test
+   - **Why**: The system table is OFF LIMITS for modification by test/application code
+   - **Pattern**: Create temporary tables in system.temp.* namespace, clean up when done
+
 **Persistent Global Variables (ODB Advantage):**
 
 Key concept: Globals stored in ODB retain values across sessions and can be edited independently from scripts.

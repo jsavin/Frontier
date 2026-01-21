@@ -149,10 +149,19 @@ static boolean tcp_valueproc(short token, hdltreenode hparam1,
             return setbooleanvalue(true, v);
         }
 
-        case tcpv_closelisten:
-            /* Verb #7: tcp.closelisten - Not yet implemented (Phase 3) */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+        case tcpv_closelisten: {
+            /* Verb #7: tcp.closeListen(listenID) -> true */
+            long listen_id;
+
+            flnextparamislast = true;
+            if (!getlongvalue(hp1, 1, &listen_id))
+                return false;
+
+            if (!tcp_close_listen(listen_id))
+                return false;
+
+            return setbooleanvalue(true, v);
+        }
 
         case tcpv_openaddrstream: {
             /* Verb #8: tcp.openAddrStream(addr, port) -> streamID */
@@ -227,10 +236,44 @@ static boolean tcp_valueproc(short token, hdltreenode hparam1,
             return setbooleanvalue(true, v);
         }
 
-        case tcpv_listenstream:
-            /* Verb #12: tcp.listenstream - Not yet implemented (Phase 3) */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+        case tcpv_listenstream: {
+            /* Verb #12: tcp.listenStream(port, depth, callback, refcon, addr) -> listenID */
+            long port, depth, refcon, bind_addr;
+            tyvaluerecord vcallback;
+            hdlhashtable callback_htable;
+            bigstring callback_name;
+            long listen_id;
+
+            /* Extract parameters */
+            if (!getlongvalue(hp1, 1, &port))
+                return false;
+
+            if (!getlongvalue(hp1, 2, &depth))
+                return false;
+
+            /* Get callback address parameter */
+            if (!getaddressparam(hp1, 3, &vcallback))
+                return false;
+
+            /* Extract hash table and script name from address */
+            if (!getaddressvalue(vcallback, &callback_htable, callback_name)) {
+                if (bserror) copystring(BIGSTRING("\pCan't resolve callback address"), bserror);
+                return false;
+            }
+
+            if (!getlongvalue(hp1, 4, &refcon))
+                return false;
+
+            flnextparamislast = true;
+            if (!getlongvalue(hp1, 5, &bind_addr))
+                return false;
+
+            /* Call implementation */
+            if (!tcp_listen_stream(port, depth, callback_htable, callback_name, refcon, bind_addr, &listen_id))
+                return false;
+
+            return setlongvalue(listen_id, v);
+        }
 
         case tcpv_statusstream:
             /* Verb #13: tcp.statusstream - Not yet implemented (Phase 2) */
