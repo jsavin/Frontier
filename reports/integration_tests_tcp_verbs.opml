@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Tcp Verbs (tcp_verbs)</title>
-    <dateCreated>Wed, 21 Jan 2026 07:09:57 GMT</dateCreated>
+    <dateCreated>Wed, 21 Jan 2026 08:44:42 GMT</dateCreated>
   </head>
   <body>
     <outline text="tcp.countConnections - initial state - Verify countConnections returns a number (should be &gt;= 0)">
@@ -397,6 +397,253 @@
         <outline text="// Always returns true (even if stream already closed - idempotent)."/>
         <outline text="// This test documents the expected behavior."/>
         <outline text="return true"/>
+      </outline>
+    </outline>
+    <outline text="tcp.addressEncode - private IP (192.168.1.1) - Encode private IP address to long (network byte order)">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(addr = tcp.addressEncode(&quot;192.168.1.1&quot;))"/>
+        <outline text="return addr == 3232235777"/>
+      </outline>
+    </outline>
+    <outline text="tcp.addressEncode - localhost (127.0.0.1) - Encode localhost to long">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(addr = tcp.addressEncode(&quot;127.0.0.1&quot;))"/>
+        <outline text="return addr == 0x7F000001"/>
+      </outline>
+    </outline>
+    <outline text="tcp.addressEncode - public DNS (8.8.8.8) - Encode Google DNS IP to long">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(addr = tcp.addressEncode(&quot;8.8.8.8&quot;))"/>
+        <outline text="return addr == 0x08080808"/>
+      </outline>
+    </outline>
+    <outline text="tcp.addressDecode - private IP (3232235777) - Decode network byte order long to dotted decimal">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(ipString = tcp.addressDecode(3232235777))"/>
+        <outline text="return ipString == &quot;192.168.1.1&quot;"/>
+      </outline>
+    </outline>
+    <outline text="tcp.addressDecode - localhost (0x7F000001) - Decode localhost address to string">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(ipString = tcp.addressDecode(0x7F000001))"/>
+        <outline text="return ipString == &quot;127.0.0.1&quot;"/>
+      </outline>
+    </outline>
+    <outline text="tcp.addressDecode - public DNS (134744072) - Decode Google DNS address to string">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(ipString = tcp.addressDecode(134744072))"/>
+        <outline text="return ipString == &quot;8.8.8.8&quot;"/>
+      </outline>
+    </outline>
+    <outline text="tcp.addressEncode/Decode - roundtrip 192.168.1.1 - Verify encode→decode→original for private IP">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(original = &quot;192.168.1.1&quot;)"/>
+        <outline text="local(encoded = tcp.addressEncode(original))"/>
+        <outline text="local(decoded = tcp.addressDecode(encoded))"/>
+        <outline text="return decoded == original"/>
+      </outline>
+    </outline>
+    <outline text="tcp.addressEncode/Decode - roundtrip 127.0.0.1 - Verify encode→decode→original for localhost">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(original = &quot;127.0.0.1&quot;)"/>
+        <outline text="local(encoded = tcp.addressEncode(original))"/>
+        <outline text="local(decoded = tcp.addressDecode(encoded))"/>
+        <outline text="return decoded == original"/>
+      </outline>
+    </outline>
+    <outline text="tcp.addressEncode/Decode - roundtrip 8.8.8.8 - Verify encode→decode→original for public DNS">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(original = &quot;8.8.8.8&quot;)"/>
+        <outline text="local(encoded = tcp.addressEncode(original))"/>
+        <outline text="local(decoded = tcp.addressDecode(encoded))"/>
+        <outline text="return decoded == original"/>
+      </outline>
+    </outline>
+    <outline text="tcp.addressEncode - wildcard address (0.0.0.0) - Encode wildcard/INADDR_ANY address">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(addr = tcp.addressEncode(&quot;0.0.0.0&quot;))"/>
+        <outline text="return addr == 0"/>
+      </outline>
+    </outline>
+    <outline text="tcp.addressEncode - broadcast address (255.255.255.255) - Encode broadcast address">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(addr = tcp.addressEncode(&quot;255.255.255.255&quot;))"/>
+        <outline text="return addr == 4294967295"/>
+      </outline>
+    </outline>
+    <outline text="tcp.addressDecode - wildcard (0) - Decode zero to 0.0.0.0">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(ipString = tcp.addressDecode(0))"/>
+        <outline text="return ipString == &quot;0.0.0.0&quot;"/>
+      </outline>
+    </outline>
+    <outline text="tcp.addressDecode - broadcast (4294967295) - Decode max value to 255.255.255.255">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(ipString = tcp.addressDecode(4294967295))"/>
+        <outline text="return ipString == &quot;255.255.255.255&quot;"/>
+      </outline>
+    </outline>
+    <outline text="tcp.addressEncode/Decode - roundtrip 0.0.0.0 - Verify encode→decode→original for wildcard">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(original = &quot;0.0.0.0&quot;)"/>
+        <outline text="local(encoded = tcp.addressEncode(original))"/>
+        <outline text="local(decoded = tcp.addressDecode(encoded))"/>
+        <outline text="return decoded == original"/>
+      </outline>
+    </outline>
+    <outline text="tcp.addressEncode/Decode - roundtrip 255.255.255.255 - Verify encode→decode→original for broadcast">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(original = &quot;255.255.255.255&quot;)"/>
+        <outline text="local(encoded = tcp.addressEncode(original))"/>
+        <outline text="local(decoded = tcp.addressDecode(encoded))"/>
+        <outline text="return decoded == original"/>
+      </outline>
+    </outline>
+    <outline text="tcp.addressEncode - invalid format (too many octets) - Reject IP string with 5 octets">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="try">
+          <outline text="tcp.addressEncode(&quot;192.168.1.1.1&quot;)"/>
+          <outline text="return &quot;false&quot;"/>
+        </outline>
+        <outline text="else">
+          <outline text="return &quot;true&quot;"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="tcp.addressEncode - invalid format (too few octets) - Reject IP string with 3 octets">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="try">
+          <outline text="tcp.addressEncode(&quot;192.168.1&quot;)"/>
+          <outline text="return &quot;false&quot;"/>
+        </outline>
+        <outline text="else">
+          <outline text="return &quot;true&quot;"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="tcp.addressEncode - invalid format (octet overflow) - Reject IP string with octet &gt; 255">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="try">
+          <outline text="tcp.addressEncode(&quot;192.168.1.256&quot;)"/>
+          <outline text="return &quot;false&quot;"/>
+        </outline>
+        <outline text="else">
+          <outline text="return &quot;true&quot;"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="tcp.addressEncode - invalid format (negative octet) - Reject IP string with negative octet">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="try">
+          <outline text="tcp.addressEncode(&quot;192.168.-1.1&quot;)"/>
+          <outline text="return &quot;false&quot;"/>
+        </outline>
+        <outline text="else">
+          <outline text="return &quot;true&quot;"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="tcp.addressEncode - invalid format (non-numeric) - Reject IP string with letters">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="try">
+          <outline text="tcp.addressEncode(&quot;192.168.1.x&quot;)"/>
+          <outline text="return &quot;false&quot;"/>
+        </outline>
+        <outline text="else">
+          <outline text="return &quot;true&quot;"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="tcp.addressEncode - invalid format (empty string) - Reject empty IP string">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="try">
+          <outline text="tcp.addressEncode(&quot;&quot;)"/>
+          <outline text="return &quot;false&quot;"/>
+        </outline>
+        <outline text="else">
+          <outline text="return &quot;true&quot;"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="tcp.addressEncode - return type - Verify addressEncode returns longType">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(addr = tcp.addressEncode(&quot;192.168.1.1&quot;))"/>
+        <outline text="return typeof(addr) == longType"/>
+      </outline>
+    </outline>
+    <outline text="tcp.addressDecode - return type - Verify addressDecode returns stringType">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(ipString = tcp.addressDecode(0xC0A80101))"/>
+        <outline text="return typeof(ipString) == stringType"/>
       </outline>
     </outline>
   </body>

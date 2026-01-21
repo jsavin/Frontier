@@ -158,7 +158,6 @@ tests:
     script: |
       on tcpHandler(streamID, remoteAddr, remotePort) {
         local(data = tcp.readStream(streamID, 1024));
-
         tcp.writeStream(streamID, "ECHO: " + data);
         tcp.closeStream(streamID);
         return true

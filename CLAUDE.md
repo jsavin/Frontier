@@ -433,16 +433,24 @@ db.new("test.root")
 1. **Inline Comments NOT Supported Inside Blocks**
    - ❌ WRONG: `if true { // comment ... }`
    - ❌ WRONG: `try { // comment ... }`
+   - ❌ WRONG: `on handler() { // comment ... }`
    - ✅ CORRECT: `// comment` at top level (outside blocks)
    - **Reason**: UserTalk parser limitation - inline comments only work at file level, not inside code blocks
 
-2. **Test Data Storage: Use system.temp, NOT system.verbs**
+2. **Blank Lines NOT Supported Inside Blocks**
+   - ❌ WRONG: `on handler() { stmt1; \n\n stmt2; }` (blank line inside block)
+   - ❌ WRONG: `if true { stmt1; \n\n stmt2; }` (blank line inside block)
+   - ✅ CORRECT: `on handler() { stmt1; stmt2; }` (no blank lines)
+   - ✅ CORRECT: Blank lines between top-level statements (outside blocks)
+   - **Reason**: UserTalk file parser limitation - blank lines inside blocks cause "Failed to execute script" errors
+
+3. **Test Data Storage: Use system.temp, NOT system.verbs**
    - ❌ WRONG: `system.verbs.tcp.test.foo = "bar"`  (modifies system table)
    - ✅ CORRECT: `new(tableType, @system.temp.tcpTest); system.temp.tcpTest.foo = "bar"`
    - **Rule**: NEVER modify `system` table in tests - always use `system.temp.*`
    - **Cleanup**: Always `delete(@system.temp.tcpTest)` at end of test
 
-3. **Prefer Flat, Simple Structure**
+4. **Prefer Flat, Simple Structure**
    - Avoid complex multi-line blocks where possible
    - Keep blocks short and obvious
    - UserTalk was designed for outline editing, not complex text-based nesting
