@@ -95,8 +95,8 @@ typedef struct tcp_context {
     int             default_timeout_sec;  /* Default operation timeout */
     boolean         initialized;          /* Context has been initialized */
 
-    /* Rate Limiting */
-    time_t          connection_timestamps[TCP_RATE_LIMIT_WINDOW];  /* Sliding window of connection times */
+    /* Rate Limiting (SECURITY FIX Issue #7: High-resolution timestamps to prevent burst attacks) */
+    uint64_t        connection_timestamps_us[TCP_RATE_LIMIT_WINDOW];  /* Sliding window (microseconds) */
     int             timestamp_write_pos;   /* Next position to write in circular buffer */
     int             connections_per_sec;   /* Maximum connections per second (configurable) */
 
