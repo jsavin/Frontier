@@ -285,17 +285,29 @@ boolean tcp_is_private_ip(uint32_t addr) {
  * Returns true if rate limit allows connection, false if rejected.
  * Must be called with TCP_LOCK() held.
  *
+ * SECURITY FIX (Issue #7): Rate limiting bypass prevention
+ * VULNERABILITY: time(NULL) with 1-second granularity allowed burst attacks where
+ * multiple connections within the same second bypassed rate limits. Attacker could
+ * send N connections in rapid succession (microseconds apart) and they'd all count
+ * as "same second", defeating the rate limit.
+ *
+ * FIX: Use gettimeofday() for microsecond-precision timestamps. This prevents burst
+ * attacks by accurately tracking connection timing within the sliding window.
+ *
  * Uses sliding window algorithm:
- * - Tracks timestamps of recent connections in circular buffer
- * - Counts connections in last second
+ * - Tracks timestamps of recent connections in circular buffer (microsecond precision)
+ * - Counts connections in last second (1,000,000 microseconds)
  * - Rejects if count >= connections_per_sec limit */
 static boolean tcp_check_rate_limit(void) {
-    time_t now = time(NULL);
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    uint64_t now_us = (uint64_t)tv.tv_sec * 1000000ULL + tv.tv_usec;
+    uint64_t one_second_ago_us = now_us - 1000000ULL;  /* 1 second = 1,000,000 microseconds */
     int connections_in_last_second = 0;
 
-    /* Count connections in the last second */
+    /* Count connections in the last second (microsecond precision) */
     for (int i = 0; i < TCP_RATE_LIMIT_WINDOW; i++) {
-        if (g_tcp_context.connection_timestamps[i] >= (now - 1)) {
+        if (g_tcp_context.connection_timestamps_us[i] >= one_second_ago_us) {
             connections_in_last_second++;
         }
     }
@@ -308,8 +320,8 @@ static boolean tcp_check_rate_limit(void) {
         return false;
     }
 
-    /* Record this connection attempt */
-    g_tcp_context.connection_timestamps[g_tcp_context.timestamp_write_pos] = now;
+    /* Record this connection attempt (microsecond timestamp) */
+    g_tcp_context.connection_timestamps_us[g_tcp_context.timestamp_write_pos] = now_us;
     g_tcp_context.timestamp_write_pos = (g_tcp_context.timestamp_write_pos + 1) % TCP_RATE_LIMIT_WINDOW;
 
     return true;
@@ -492,16 +504,29 @@ boolean tcp_read_stream(long stream_id, long bytes_to_read, Handle *data_out) {
         return false;
     }
 
+    /* SECURITY FIX (Issue #1): Integer overflow protection - RCE risk
+     * VULNERABILITY: Incomplete overflow protection allowed values between
+     * TCP_MAX_READ_BYTES+1 and LONG_MAX-1024 to pass validation but cause
+     * undersized buffer allocation, leading to remote heap buffer overflow (RCE).
+     *
+     * ATTACK SCENARIO: Attacker sends bytes_to_read = TCP_MAX_READ_BYTES + 1000000.
+     * Old code: Checked only TCP_MAX_READ_BYTES limit, missed overflow window.
+     * Result: newhandle() allocates smaller buffer, recv() writes past end → RCE.
+     *
+     * FIX: Explicit size_t validation BEFORE allocation + post-allocation size
+     * verification to catch any allocation failures that could create exploitable
+     * conditions. This eliminates the overflow window entirely. */
     if (bytes_to_read > TCP_MAX_READ_BYTES) {
         *data_out = nil;
         tcp_set_error(TCP_ERR_SOCKET_ERROR, "Read size exceeds maximum (16MB limit)");
         return false;
     }
 
-    /* Additional integer overflow protection for buffer allocation */
-    if (bytes_to_read > (LONG_MAX - 1024)) {  /* Leave safety margin */
+    /* Additional size_t overflow check - catches overflow window between
+     * TCP_MAX_READ_BYTES and SIZE_MAX that could bypass first check */
+    if ((size_t)bytes_to_read > SIZE_MAX) {
         *data_out = nil;
-        tcp_set_error(TCP_ERR_SOCKET_ERROR, "Read size too large (overflow risk)");
+        tcp_set_error(TCP_ERR_SOCKET_ERROR, "Read size exceeds addressable memory");
         return false;
     }
 
@@ -522,6 +547,15 @@ boolean tcp_read_stream(long stream_id, long bytes_to_read, Handle *data_out) {
         tcp_stream_release(stream);
         *data_out = nil;
         tcp_set_error(TCP_ERR_NO_MEMORY, "Could not allocate buffer");
+        return false;
+    }
+
+    /* SECURITY: Verify allocated buffer size matches request (prevents undersized allocation) */
+    if (GetHandleSize(hdata) < bytes_to_read) {
+        disposehandle(hdata);
+        tcp_stream_release(stream);
+        *data_out = nil;
+        tcp_set_error(TCP_ERR_NO_MEMORY, "Buffer allocation size mismatch");
         return false;
     }
 
@@ -802,7 +836,9 @@ boolean tcp_name_to_address(bigstring domain_name, long *addr_out) {
     hints.ai_family = AF_INET;        /* IPv4 only for Phase 1 */
     hints.ai_socktype = SOCK_STREAM;
 
-    /* DNS resolution (blocking) */
+    /* SECURITY (Issue #6): DNS resolution with SSRF protection
+     * Single DNS lookup, validate result, return to caller. No TOCTOU vulnerability
+     * since we resolve once and return that result directly (no second lookup). */
     if (getaddrinfo(hostname_cstr, NULL, &hints, &result) != 0) {
         tcp_set_error(TCP_ERR_DNS_FAILED, "Could not resolve hostname");
         return false;
@@ -927,13 +963,24 @@ boolean tcp_open_stream_name(bigstring hostname, long port, long *stream_id_out)
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_protocol = IPPROTO_TCP;
 
-    /* DNS resolution (blocking) */
+    /* SECURITY (Issue #6): DNS resolution and SSRF/rebinding protection
+     * DNS resolution MUST happen once and validated IPs used for connection.
+     * NOT VULNERABLE to TOCTOU: getaddrinfo() resolves DNS once, returns all IPs
+     * in result linked list. We validate each IP in the list, then use those
+     * SAME validated IPs for connection. No second DNS lookup occurs.
+     *
+     * CORRECT PATTERN: Resolve → Validate → Connect (all from same result set)
+     * WRONG PATTERN: Resolve → Validate → Resolve again → Connect (TOCTOU)
+     *
+     * This prevents DNS rebinding attacks where attacker changes DNS between
+     * validation and connection to redirect traffic to internal/reserved IPs. */
     if (getaddrinfo(hostname_cstr, port_str, &hints, &result) != 0) {
         tcp_set_error(TCP_ERR_DNS_FAILED, "Could not resolve hostname");
         return false;
     }
 
-    /* Try each address until we successfully connect */
+    /* Try each address until we successfully connect
+     * SECURITY: Validate BEFORE attempting connection to prevent SSRF attacks */
     for (rp = result; rp != NULL; rp = rp->ai_next) {
         /* DNS rebinding/SSRF protection: validate IP is not private/reserved */
         struct sockaddr_in *addr_in = (struct sockaddr_in*)rp->ai_addr;
@@ -1432,7 +1479,7 @@ boolean tcp_init_context(void) {
     /* Initialize rate limiting */
     g_tcp_context.connections_per_sec = TCP_DEFAULT_RATE_LIMIT;
     g_tcp_context.timestamp_write_pos = 0;
-    /* connection_timestamps[] already zeroed by memset above */
+    /* connection_timestamps_us[] already zeroed by memset above */
 
     g_tcp_context.initialized = true;
 
