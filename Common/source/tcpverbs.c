@@ -58,9 +58,20 @@ typedef struct tcp_listener {
     uint16_t        port;              /* Bound port (host byte order) */
     uint32_t        bind_addr;         /* Bound address (host byte order) */
 
-    /* Callback configuration */
+    /* Callback configuration
+     * THREAD-SAFETY LIMITATION (Issue #3): Storing hdlhashtable across thread boundary.
+     * Handles (pointer to pointer) are generally unsafe across threads as hash tables
+     * could be relocated by memory manager. However, for Phase 1, we accept this
+     * limitation with the following mitigations:
+     * 1. Validate callback_table is non-nil before use
+     * 2. Check callback_name exists in table (detects if callback was deleted)
+     * 3. Document this as a known limitation for future enhancement
+     *
+     * FUTURE FIX: Implement reference counting on hash tables or use address-based
+     * lookup that resolves at use time. This requires broader ODB infrastructure changes.
+     */
     bigstring       callback_name;     /* UserTalk callback script name */
-    hdlhashtable    callback_table;    /* Hash table containing callback */
+    hdlhashtable    callback_table;    /* Hash table containing callback (see THREAD-SAFETY note) */
     long            refcon;            /* User refcon data */
 } tcp_listener_t;
 
@@ -719,9 +730,9 @@ boolean tcp_abort_stream(long stream_id) {
     sockfd = stream->sockfd;
     stream->state = STREAM_CLOSING;
 
-    /* SAFETY: Mark socket as -1 to prevent double-close. While lock is held throughout
-     * tcp_abort_stream(), marking sockfd=-1 ensures stream validation fails if another
-     * operation attempts to access this stream. This is a defensive pattern. */
+    /* SECURITY FIX (Issue #8): TOCTOU race protection - same fix as tcp_close_stream
+     * Atomically mark sockfd=-1 while holding lock to prevent double-close race.
+     * See tcp_close_stream() for detailed vulnerability explanation. */
     stream->sockfd = -1;
     refcount = stream->refcount;
 
@@ -1019,6 +1030,19 @@ static void *tcp_accept_thread(void *arg) {
     log_info(LOG_COMP_LANG, "tcp_accept_thread: started for listener_id=%ld port=%d",
              listener->listener_id, listener->port);
 
+    /* FIX Issue #2: Grab thread globals BEFORE any UserTalk operations.
+     * This thread invokes UserTalk callbacks via langruncallbackwithparams(), which
+     * accesses thread-local state (flnextparamislast, current outline, etc.).
+     * Without grabthreadglobals(), callback execution crashes on uninitialized context.
+     *
+     * CRITICAL: Must be FIRST operation in thread, paired with releasethreadglobals()
+     * on exit. This allocates and initializes thread-local storage for this pthread. */
+    if (!grabthreadglobals()) {
+        log_error(LOG_COMP_LANG, "tcp_accept_thread: failed to grab thread globals for listener_id=%ld",
+                 listener->listener_id);
+        return NULL;
+    }
+
     while (listener->running) {
         addr_len = sizeof(client_addr);
         memset(&client_addr, 0, addr_len);
@@ -1068,8 +1092,23 @@ static void *tcp_accept_thread(void *arg) {
 
         log_info(LOG_COMP_LANG, "tcp_accept_thread: allocated stream_id=%d for connection", stream_id);
 
-        /* Invoke UserTalk callback with parameters (if callback defined) */
-        if (stringlength(listener->callback_name) > 0) {
+        /* Invoke UserTalk callback with parameters (if callback defined)
+         * MITIGATION Issue #3: Validate callback_table handle before use.
+         * While storing hdlhashtable across thread boundary is unsafe (hash table
+         * could be relocated), we mitigate by checking:
+         * 1. Callback name is non-empty (indicates callback was configured)
+         * 2. Hash table handle is non-nil (basic handle validity)
+         * 3. Callback name exists in table (detects if callback was deleted)
+         * This provides defense-in-depth, though not perfect. Future fix: reference counting. */
+        if (stringlength(listener->callback_name) > 0 && listener->callback_table != nil) {
+            /* Validate callback still exists in hash table before invoking */
+            hdlhashnode hnode;
+            if (!hashtablelookupnode(listener->callback_table, listener->callback_name, &hnode)) {
+                log_warn(LOG_COMP_LANG, "tcp_accept_thread: callback '%.*s' no longer exists in table for stream_id=%d",
+                        stringlength(listener->callback_name), listener->callback_name+1, stream_id);
+                continue;  /* Skip callback but continue accepting connections */
+            }
+
             tyvaluerecord params[3];
             setlongvalue(stream_id, &params[0]);                      /* streamID */
             setlongvalue((long)stream->remote_addr, &params[1]);      /* remoteAddr */
@@ -1096,6 +1135,11 @@ static void *tcp_accept_thread(void *arg) {
             disposevaluerecord(result, false);
         }
     }
+
+    /* FIX Issue #2: Release thread globals on exit.
+     * Must be paired with grabthreadglobals() at thread start.
+     * Cleans up thread-local storage before pthread terminates. */
+    releasethreadglobals();
 
     log_info(LOG_COMP_LANG, "tcp_accept_thread: exiting for listener_id=%ld", listener->listener_id);
     return NULL;
@@ -1263,6 +1307,19 @@ boolean tcp_listen_stream(long port, long depth, hdlhashtable callback_htable,
  * Joins accept thread and frees listener structure.
  * Does NOT close accepted connections (they remain open).
  *
+ * FIX Issue #4: Critical cleanup ordering to prevent use-after-free.
+ * VULNERABILITY: Original code removed listener from registry BEFORE joining thread.
+ * Accept thread could access freed memory during shutdown sequence.
+ *
+ * CORRECT ORDERING:
+ * 1. Find listener in registry (but don't remove yet - thread still running)
+ * 2. Signal shutdown and close socket to wake thread from accept()
+ * 3. pthread_join() - BLOCKS until thread fully exits
+ * 4. ONLY THEN remove from registry and free memory (thread has exited)
+ *
+ * WHY THIS MATTERS: Accept thread accesses listener-> fields during shutdown.
+ * If we free before join, thread hits use-after-free → crash or corruption.
+ *
  * Parameters:
  *   listenID - Listener ID returned by tcp.listenStream()
  *
@@ -1283,7 +1340,7 @@ boolean tcp_close_listen(long listen_id) {
         return false;
     }
 
-    /* Find and remove listener from registry */
+    /* Find listener in registry (but DON'T remove yet - thread still running) */
     LISTENERS_LOCK();
 
     for (int i = 0; i < MAX_LISTENERS; i++) {
@@ -1291,7 +1348,7 @@ boolean tcp_close_listen(long listen_id) {
             g_tcp_listeners[i]->listener_id == listen_id) {
             listener = g_tcp_listeners[i];
             listener_slot = i;
-            g_tcp_listeners[i] = NULL;  /* Remove from registry */
+            /* DO NOT remove from registry yet - thread still needs access */
             break;
         }
     }
@@ -1313,13 +1370,22 @@ boolean tcp_close_listen(long listen_id) {
 
     log_info(LOG_COMP_LANG, "tcp_close_listen: closed listen socket for listener_id=%ld", listen_id);
 
-    /* Wait for accept thread to exit (may take up to a few seconds) */
+    /* CRITICAL: Wait for accept thread to exit BEFORE freeing memory.
+     * Thread may still be accessing listener structure during shutdown (checking
+     * listener->running flag, accessing listener->callback_name, etc.).
+     * pthread_join() blocks until thread fully terminates and returns from
+     * tcp_accept_thread(). ONLY AFTER this point is it safe to free memory. */
     if (pthread_join(accept_thread, NULL) != 0) {
         log_warn(LOG_COMP_LANG, "tcp_close_listen: pthread_join failed for listener_id=%ld", listen_id);
-        /* Continue with cleanup anyway */
+        /* Continue with cleanup anyway - best effort */
     }
 
     log_info(LOG_COMP_LANG, "tcp_close_listen: accept thread joined for listener_id=%ld", listen_id);
+
+    /* NOW safe to remove from registry and free - thread has fully exited */
+    LISTENERS_LOCK();
+    g_tcp_listeners[listener_slot] = NULL;
+    LISTENERS_UNLOCK();
 
     /* Update listener count */
     TCP_LOCK();
@@ -1377,8 +1443,21 @@ boolean tcp_init_context(void) {
 }
 
 /* tcp_shutdown_context() - Cleanup TCP subsystem
- * Closes all active streams and destroys synchronization primitives.
- * Called during Frontier shutdown or verb system cleanup. */
+ * Closes all active listeners and streams, destroys synchronization primitives.
+ * Called during Frontier shutdown or verb system cleanup.
+ *
+ * FIX Issue #5: Missing listener shutdown creates zombie accept threads.
+ * VULNERABILITY: Original code only closed streams, not listeners. Accept threads
+ * continued running after shutdown, accessing potentially-freed global state.
+ *
+ * CORRECT ORDERING:
+ * 1. Close all listeners FIRST (joins accept threads via tcp_close_listen)
+ * 2. THEN close streams (no active accept threads to interfere)
+ * 3. Destroy synchronization primitives (all threads have exited)
+ *
+ * WHY THIS MATTERS: Accept threads run in background and access g_tcp_context.
+ * If we destroy mutex/cond while threads still running → undefined behavior.
+ * tcp_close_listen() properly joins threads before returning. */
 boolean tcp_shutdown_context(void) {
     if (!g_tcp_context.initialized) {
         log_debug(LOG_COMP_LANG, "TCP context not initialized, nothing to shutdown");
@@ -1386,6 +1465,29 @@ boolean tcp_shutdown_context(void) {
     }
 
     log_info(LOG_COMP_LANG, "Shutting down TCP context");
+
+    /* CRITICAL: Close all active listeners FIRST (before streams).
+     * Each listener has an accept thread that must be joined before
+     * we can safely destroy global synchronization primitives.
+     * tcp_close_listen() properly joins threads before freeing memory. */
+    int listener_count = 0;
+    for (int i = 0; i < MAX_LISTENERS; i++) {
+        LISTENERS_LOCK();
+        if (g_tcp_listeners[i] != NULL) {
+            long listener_id = g_tcp_listeners[i]->listener_id;
+            LISTENERS_UNLOCK();
+
+            log_debug(LOG_COMP_LANG, "tcp_shutdown_context: closing listener_id=%ld", listener_id);
+            tcp_close_listen(listener_id);  /* Proper cleanup with thread join */
+            listener_count++;
+        } else {
+            LISTENERS_UNLOCK();
+        }
+    }
+
+    if (listener_count > 0) {
+        log_info(LOG_COMP_LANG, "tcp_shutdown_context: closed %d listeners", listener_count);
+    }
 
     TCP_LOCK();
 
