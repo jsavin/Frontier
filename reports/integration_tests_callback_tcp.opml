@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Callback Tcp (callback_tcp)</title>
-    <dateCreated>Wed, 21 Jan 2026 02:19:44 GMT</dateCreated>
+    <dateCreated>Wed, 21 Jan 2026 05:26:11 GMT</dateCreated>
   </head>
   <body>
     <outline text="TCP callback - basic parameter passing - Verify callback receives stream_id, remote_addr, remote_port correctly">
@@ -137,19 +137,17 @@
           <outline text="if port == 80">
             <outline text="return 1"/>
           </outline>
-          <outline text="else if port == 443">
+          <outline text="if port == 443">
             <outline text="return 2"/>
           </outline>
-          <outline text="else">
-            <outline text="return 3"/>
-          </outline>
+          <outline text="return 3"/>
         </outline>
         <outline text="conditionalHandler(1, 0, 443)"/>
       </outline>
     </outline>
     <outline text="TCP callback - string return value - Callback can return string for logging/diagnostic purposes">
       <outline text="Metadata">
-        <outline text="expected_result: &quot;stream:42,port:8080&quot;"/>
+        <outline text="expected_result: stream:42,port:8080"/>
       </outline>
       <outline text="Script">
         <outline text="on diagnosticHandler(stream, addr, port)">
