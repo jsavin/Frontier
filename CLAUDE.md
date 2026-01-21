@@ -437,12 +437,13 @@ db.new("test.root")
    - ✅ CORRECT: `// comment` at top level (outside blocks)
    - **Reason**: UserTalk parser limitation - inline comments only work at file level, not inside code blocks
 
-2. **Blank Lines NOT Supported Inside Blocks**
-   - ❌ WRONG: `on handler() { stmt1; \n\n stmt2; }` (blank line inside block)
-   - ❌ WRONG: `if true { stmt1; \n\n stmt2; }` (blank line inside block)
-   - ✅ CORRECT: `on handler() { stmt1; stmt2; }` (no blank lines)
-   - ✅ CORRECT: Blank lines between top-level statements (outside blocks)
-   - **Reason**: UserTalk file parser limitation - blank lines inside blocks cause "Failed to execute script" errors
+2. **Blank Lines Inside Blocks Must Have Matching Indentation**
+   - ❌ WRONG: Blank line with no indentation inside indented block
+   - ❌ WRONG: Blank line with wrong indentation level
+   - ✅ CORRECT: Blank lines must match the indentation level of surrounding statements
+   - ✅ SIMPLEST: Avoid blank lines inside blocks entirely (use compact formatting)
+   - **Reason**: UserTalk file parser requires indentation level to match previous line, even for blank lines
+   - **Practical advice**: Tests should use compact formatting without blank lines inside handlers/blocks
 
 3. **Test Data Storage: Use system.temp, NOT system.verbs**
    - ❌ WRONG: `system.verbs.tcp.test.foo = "bar"`  (modifies system table)
