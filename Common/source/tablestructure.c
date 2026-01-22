@@ -366,23 +366,44 @@ boolean resolve_system_paths (hdlhashtable hroot) {
 
 			if (fl && htable_resolved != nil) {
 
-				// Update the htable in the address handle
-				hdlstring hstring = val->data.addressvalue;
-				long ixtable = stringlength(bspath) + 1;
+				// CRITICAL: Update BOTH the string part (to local name) AND the htable pointer
+				//
+				// Background: langexpandtodotparams() returns:
+				//   - htable_resolved = parent table pointer (e.g., system.macintosh)
+				//   - bs_resolved = local name only (e.g., "globals")
+				//
+				// The address value must have:
+				//   - String part = local name only (for getaddresspath() during packing)
+				//   - htable pointer = parent table
+				//
+				// If we don't update the string part, getaddresspath() will see the full path
+				// and add brackets to it, resulting in: system.macintosh.["system.macintosh.globals"]
 
-				// Write the resolved htable directly into the handle
-				hdlhashtable *phtable = (hdlhashtable *)((*hstring) + ixtable);
-				*phtable = htable_resolved;
+				// Dispose old address value and create new one with correct structure
+				disposehandle((Handle)val->data.addressvalue);
+
+				// Use setexemptaddressvalue() to create properly-structured address value
+				tyvaluerecord val_new;
+				if (!setexemptaddressvalue(htable_resolved, bs_resolved, &val_new)) {
+					log_warn(LOG_COMP_LANG, "Failed to create resolved address value for: %s", cpath);
+					continue;
+				}
+
+				// Replace the value in the hash node
+				*val = val_new;
 
 				(**h).flunresolvedaddress = false;
 				resolved_count++;
 
-				log_debug(LOG_COMP_LANG, "Resolved system.paths entry: %s -> htable=%p", cpath, (void*)htable_resolved);
+				char clocal[256];
+				copyptocstring(bs_resolved, clocal);
+				log_debug(LOG_COMP_LANG, "Resolved system.paths entry: %s -> htable=%p, local name='%s'",
+						  cpath, (void*)htable_resolved, clocal);
 				} else {
 				log_warn(LOG_COMP_LANG, "Failed to resolve system.paths entry: %s", cpath);
 				}
 			}
-		}
+	}
 
 	log_info(LOG_COMP_LANG, "Resolved %d of %d system.paths entries", resolved_count, unresolved_count);
 
@@ -444,6 +465,8 @@ boolean headless_init_system_paths (hdlhashtable hroot) {
 	}
 
 	// Find or create system.paths
+	boolean created_new = false;
+
 	if (!findnamedtable (hsystem, namepathstable, &hpaths)) {
 		// Create system.paths if it doesn't exist
 		if (!tablenewsubtable (hsystem, namepathstable, &hpaths)) {
@@ -451,9 +474,18 @@ boolean headless_init_system_paths (hdlhashtable hroot) {
 			return (false);
 		}
 		log_debug(LOG_COMP_LANG, "Created system.paths table at %p", (void*)hpaths);
+		created_new = true;
 	}
 
-	log_info(LOG_COMP_LANG, "Populating system.paths with processor shortcuts from efptable");
+	// Only populate if we just created it - preserve existing database entries
+	if (!created_new) {
+		long ctitems = 0;
+		hashcountitems(hpaths, &ctitems);
+		log_debug(LOG_COMP_LANG, "system.paths already exists (%ld entries), skipping population", ctitems);
+		return (true);
+	}
+
+	log_info(LOG_COMP_LANG, "Populating NEW system.paths with processor shortcuts from efptable");
 
 	// Iterate all processor tables in efptable (system.compiler.kernel.*)
 	for (h = (**hefptable).hfirstsort; h != nil; h = (**h).sortedlink) {
@@ -472,10 +504,17 @@ boolean headless_init_system_paths (hdlhashtable hroot) {
 		char cname[256];
 		copyptocstring(bs_processor_name, cname);
 
-		// Create address value pointing to this processor
+		// Check if this processor already exists in system.paths (from database)
+		tyvaluerecord existing_val;
+		hdlhashnode existing_node;
+		if (hashtablelookup(hpaths, bs_processor_name, &existing_val, &existing_node)) {
+			// Entry already exists (from database) - don't overwrite it
+			log_trace(LOG_COMP_LANG, "Processor '%s' already in system.paths (from database), skipping", cname);
+			continue;
+		}
+
+		// Create address value pointing to this processor in efptable
 		// Address values store the PARENT table handle and the CHILD name
-		// So we pass hefptable (system.compiler.kernel) and the processor name ("op")
-		// Later, when resolving, langgettableval will look up "op" in hefptable
 		// Use setexemptaddressvalue to avoid tmpstack operations (runtime not initialized yet)
 		tyvaluerecord addr_val;
 		if (!setexemptaddressvalue(hefptable, bs_processor_name, &addr_val)) {
@@ -490,8 +529,7 @@ boolean headless_init_system_paths (hdlhashtable hroot) {
 		}
 
 		processor_count++;
-
-		log_debug(LOG_COMP_LANG, "Added system.paths.%s -> %s", cname, cname);
+		log_debug(LOG_COMP_LANG, "Added system.paths.%s -> system.compiler.kernel.%s", cname, cname);
 	}
 
 	log_info(LOG_COMP_LANG, "Populated system.paths with %d processor shortcuts", processor_count);

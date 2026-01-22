@@ -107,30 +107,34 @@ typedef struct tyfastflagsvaluerecord {
 
 
 boolean langsymbolreference (hdlhashtable htable, bigstring bs, tyvaluerecord *val, hdlhashnode * hnode) {
-	
+
 	/*
 	a bundle that was getting replicated everywhere.  look up the indicated name in
 	the table, and return true with *val equal to its value if the symbol is defined.
 	*/
-	
+
 	boolean fl;
-	
+
+	log_trace(LOG_COMP_LANG, "langsymbolreference: htable=%p looking for '%s'", (void *)htable, stringbaseaddress(bs));
+
 	pushhashtable (htable);
-	
+
 	fl = langgetsymbolval (bs, val, hnode);
-	
+
+	log_trace(LOG_COMP_LANG, "langsymbolreference: langgetsymbolval returned %d", (int)fl);
+
 	pophashtable ();
-	
+
 	if (!fl) {
-		
+
 		if ((htable == nil) && isemptystring (bs))
 			langerror (niladdresserror);
 		else
 			langparamerror (unknownidentifiererror, bs);
-		
+
 		return (false);
 		}
-	
+
 	return (true);
 	} /*langsymbolreference*/
 
@@ -3650,13 +3654,30 @@ boolean coercetypes (tyvaluerecord *v1, tyvaluerecord *v2) {
  */
 static boolean langgettableval (hdlhashtable htable, bigstring bsname, hdlhashtable *hval) {
 	boolean fl;
+	tyvaluerecord val;
+	hdlhashnode hnode;
 
 	if (htable == nil)
 		return (false);
 
+	log_trace(LOG_COMP_LANG, "langgettableval: htable=%p looking for '%s'", (void *)htable, stringbaseaddress(bsname));
+
 	pushhashtable (htable);
 
-	fl = langexternalgettable (bsname, hval);
+	// First, try looking up name INSIDE the provided table
+	// Use hashtablelookup directly (doesn't raise errors) instead of langsymbolreference
+	if (hashtablelookup(htable, bsname, &val, &hnode)) {
+		log_trace(LOG_COMP_LANG, "langgettableval: found '%s' in table=%p valtype=%d", stringbaseaddress(bsname), (void *)htable, (int)val.valuetype);
+		// Found it - check if it's a table type
+		fl = tablevaltotable(val, hval, hnode);
+		log_trace(LOG_COMP_LANG, "langgettableval: tablevaltotable returned %d hval=%p", (int)fl, (void *)*hval);
+	}
+	else {
+		log_trace(LOG_COMP_LANG, "langgettableval: '%s' not found in table=%p, trying langexternalgettable", stringbaseaddress(bsname), (void *)htable);
+		// Fallback: try external table lookup (preserves backward compatibility)
+		fl = langexternalgettable (bsname, hval);
+		log_trace(LOG_COMP_LANG, "langgettableval: langexternalgettable returned %d hval=%p", (int)fl, (void *)(hval ? *hval : nil));
+	}
 
 	pophashtable ();
 
