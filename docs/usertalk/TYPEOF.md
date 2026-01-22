@@ -95,6 +95,12 @@ typeof(tableValue)    => "table"      // ❌ WRONG
 4. Realized this would break everything
 5. Reverted immediately
 
+**Git Reference:**
+- Incident documented in commit [5456c5eb](https://github.com/jsavin/Frontier/commit/5456c5eb6627b660c579cfdab4c2fd9e95b875fc)
+- Branch: `feature/file-verbs-debug` (never merged)
+- Date: 2026-01-02 (caught in review)
+- Resolution: Documentation added to prevent recurrence (2026-01-05)
+
 ### The Lesson
 
 **When typeof() tests fail, fix the TEST expectations, not typeof() behavior.**
@@ -232,6 +238,6 @@ This pattern exists in thousands of production UserTalk scripts and MUST continu
 
 ## See Also
 
-- **Syntax reference:** `docs/usertalk/SYNTAX.md`
-- **File operations:** `docs/usertalk/FILE_AND_DB.md`
+- **Syntax reference:** [SYNTAX.md](SYNTAX.md)
+- **File operations:** [FILE_AND_DB.md](FILE_AND_DB.md)
 - **Type constant definitions:** `system.compiler.language.constants` table

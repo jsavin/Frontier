@@ -103,6 +103,6 @@ Modern text-based development requires awareness of these parser constraints.
 
 ## See Also
 
-- **typeof() behavior:** `docs/usertalk/TYPEOF.md`
-- **File operations:** `docs/usertalk/FILE_AND_DB.md`
-- **Test patterns:** `docs/TESTING_GUIDE.md` § UserTalk Test Patterns
+- **typeof() behavior:** [TYPEOF.md](TYPEOF.md)
+- **File operations:** [FILE_AND_DB.md](FILE_AND_DB.md)
+- **Test patterns:** [docs/TESTING_GUIDE.md](../TESTING_GUIDE.md) § UserTalk Test Patterns

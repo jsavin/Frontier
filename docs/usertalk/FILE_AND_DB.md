@@ -296,7 +296,7 @@ For integration tests, use {FRONTIER_TEST_TMP_DIR} template in YAML files.
 
 ## See Also
 
-- **Syntax reference:** `docs/usertalk/SYNTAX.md`
-- **typeof() behavior:** `docs/usertalk/TYPEOF.md`
-- **Testing guide:** `docs/TESTING_GUIDE.md`
-- **CLI usage:** `docs/CLI_USAGE_GUIDE.md`
+- **Syntax reference:** [SYNTAX.md](SYNTAX.md)
+- **typeof() behavior:** [TYPEOF.md](TYPEOF.md)
+- **Testing guide:** [docs/TESTING_GUIDE.md](../TESTING_GUIDE.md)
+- **CLI usage:** [docs/CLI_USAGE_GUIDE.md](../CLI_USAGE_GUIDE.md)
