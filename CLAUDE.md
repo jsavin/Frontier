@@ -401,131 +401,22 @@ FRONTIER_HEADLESS_RUN_STARTUP=1 ./frontier-cli/frontier-cli -e "1+1"
 
 ## UserTalk Critical Facts ⚠️
 
-### Syntax: String Quotes
+**The Big Three Gotchas:**
 
-**CRITICAL**: Double quotes for strings, single quotes for character constants!
+1. **Double quotes for strings** - `"hello"` not `'hello'` (opposite of JS/Python)
+2. **typeof() returns OSType codes** - `'TEXT'` not `"string"` - **NEVER CHANGE THIS**
+3. **Absolute paths required** - No cwd awareness, all file/db verbs need full paths
 
-```usertalk
-sizeOf("hello")  // ✅ CORRECT - double quotes for strings
-sizeOf('hello')  // ❌ WRONG - syntax error (single quotes = char constant)
-```
+**When writing UserTalk code:**
+- Syntax reference → `docs/usertalk/SYNTAX.md`
+- File/DB operations → `docs/usertalk/FILE_AND_DB.md`
+- Test patterns → `docs/TESTING_GUIDE.md` § UserTalk Test Patterns
 
-This is **opposite** of JavaScript/Python where `'x'` and `"x"` are equivalent!
+**When implementing verbs:**
+- Verb implementation → `docs/VERB_IMPLEMENTATION_GUIDE.md`
+- Testing requirements → `docs/TESTING_GUIDE.md` § Verb Testing
 
-### typeof() - ABSOLUTELY NOT TO BE CHANGED ⚠️⚠️⚠️
-
-**CRITICAL**: `typeof()` MUST always return OSType codes (4-byte constants), NEVER string names.
-
-**CORRECT BEHAVIOR**:
-```usertalk
-typeof("hello")           => 'TEXT'    (OSType code)
-typeof(filespecValue)     => 'fss '    (OSType code)
-typeof(tableValue)        => 'tabl'    (OSType code)
-
-/* Comparisons use system.compiler.language.constants */
-if typeof(x) == stringType { ... }    /* where stringType = 'TEXT' */
-if typeof(obj) == filespecType { ... } /* where filespecType = 'fss ' */
-```
-
-**WRONG - BREAKS PRODUCTION**:
-```usertalk
-typeof("hello")      => "string"       ❌ WRONG - breaks all comparisons
-typeof(filespecValue) => "filespec"     ❌ WRONG - code expects 'fss '
-```
-
-**WHY THIS MATTERS**:
-- Entire UserTalk codebase relies on typeof() returning OSType codes
-- Constants are looked up in `system.compiler.language.constants` to get the 4-byte values
-- Changing to string names breaks ALL typeof() comparisons in production code
-- Even "improving" the type system by returning strings would catastrophically break code
-
-**HISTORICAL INCIDENT** (2026-01-02):
-- Attempt made to "fix" typeof() to return string names like "filespec"
-- Would have caused production failure in all UserTalk code using typeof()
-- Caught and reverted immediately - this must NEVER happen again
-
-**IMPLEMENTATION**:
-- `typeof()` implementation: Common/source/langvalue.c, function `typefunc()`
-- Type mappings: Common/source/langops.c, `typeinfo[]` array and `langgettypeid()`
-- String to type conversion: `langgetvaluetype()` converts OSType codes back to tyvaluetype enum
-
-**LESSON**: When fixing typeof() test failures, check the test expectations first - don't change typeof() behavior. The correct approach is to fix the test to match the correct typeof() behavior.
-
-### File Path Requirements
-
-**CRITICAL**: All UserTalk file/database verbs require FULL/ABSOLUTE paths—the runtime has NO cwd awareness at the UserTalk level.
-
-**Affected Verbs**: `db.new()`, `db.open()`, `file.create()`, `file.write()`, `file.read()`, and all file.* operations
-
-**Correct Usage**:
-```usertalk
-// ✅ CORRECT
-db.new("/Users/jake/test.root")
-local(fullPath = file.getcwd() + "/test.root")
-db.new(fullPath)
-
-// ❌ WRONG - relative paths fail
-db.new("test.root")
-```
-
-**Testing**: Use `{FRONTIER_TEST_TMP_DIR}` template in integration tests or `$(./tools/get_test_temp_path.sh)` for CLI testing.
-
-**Note**: Load system root with `--system-root databases/Frontier.root` to initialize `system.paths` and enable `target.*` verbs.
-
-### UserTalk Coding Style for Tests ⚠️
-
-**CRITICAL RULES** for writing UserTalk test scripts:
-
-1. **Inline Comments NOT Supported Inside Blocks**
-   - ❌ WRONG: `if true { // comment ... }`
-   - ❌ WRONG: `try { // comment ... }`
-   - ❌ WRONG: `on handler() { // comment ... }`
-   - ✅ CORRECT: `// comment` at top level (outside blocks)
-   - **Reason**: UserTalk parser limitation - inline comments only work at file level, not inside code blocks
-
-2. **Blank Lines Inside Blocks Must Have Matching Indentation**
-   - ❌ WRONG: Blank line with no indentation inside indented block
-   - ❌ WRONG: Blank line with wrong indentation level
-   - ✅ CORRECT: Blank lines must match the indentation level of surrounding statements
-   - ✅ SIMPLEST: Avoid blank lines inside blocks entirely (use compact formatting)
-   - **Reason**: UserTalk file parser requires indentation level to match previous line, even for blank lines
-   - **Practical advice**: Tests should use compact formatting without blank lines inside handlers/blocks
-
-3. **Test Data Storage: Use system.temp, NOT system.verbs**
-   - ❌ WRONG: `system.verbs.tcp.test.foo = "bar"`  (modifies system table)
-   - ✅ CORRECT: `new(tableType, @system.temp.tcpTest); system.temp.tcpTest.foo = "bar"`
-   - **Rule**: NEVER modify `system` table in tests - always use `system.temp.*`
-   - **Cleanup**: Always `delete(@system.temp.tcpTest)` at end of test
-
-4. **Prefer Flat, Simple Structure**
-   - Avoid complex multi-line blocks where possible
-   - Keep blocks short and obvious
-   - UserTalk was designed for outline editing, not complex text-based nesting
-   - **Historical Context**: Original Frontier used outline editor where indentation was automatic - braces `{`, `}`, and `;` were rarely typed
-
-**Example - Proper Test Pattern**:
-```usertalk
-new(tableType, @system.temp.tcpTest);
-system.temp.tcpTest.result = false;
-
-on tcpHandler(streamID, addr, port) {
-  system.temp.tcpTest.result = true;
-  tcp.closeStream(streamID);
-  return true
-};
-
-local(listenID = tcp.listenStream(9000, 5, @tcpHandler, 0, 0));
-local(clientID = tcp.openAddrStream(0x7F000001, 9000));
-
-thread.sleepFor(100);
-
-local(success = system.temp.tcpTest.result);
-tcp.closeStream(clientID);
-tcp.closeListen(listenID);
-delete(@system.temp.tcpTest);
-
-return success
-```
+**Historical landmine:** typeof() was almost changed to return strings in Jan 2026 - would have broken all production code. Full history in `docs/usertalk/TYPEOF.md`.
 
 ---
 
