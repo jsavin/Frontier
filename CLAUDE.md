@@ -705,6 +705,99 @@ See `docs/external_table_variable_management.md` for migration patterns.
 
 ---
 
+### Address Value Structure - Migration Gotcha ⚠️
+
+**CRITICAL**: Address values have two parts that MUST be updated together:
+
+```c
+// Address value structure:
+// [local_name_string][htable_pointer]
+```
+
+**The Bug Pattern**:
+```c
+// ❌ WRONG - only updates pointer, string part still has full path
+hdlhashtable *phtable = (hdlhashtable *)((*hstring) + ixtable);
+*phtable = htable_resolved;
+// String part still has "system.macintosh.globals" instead of "globals"
+// Packing will corrupt the path: ["system.macintosh.globals"]
+```
+
+**The Correct Pattern**:
+```c
+// ✅ CORRECT - dispose old value, create new with proper structure
+disposehandle((Handle)val->data.addressvalue);
+tyvaluerecord val_new;
+setexemptaddressvalue(htable_resolved, bs_local_name, &val_new);
+*val = val_new;
+```
+
+**Why This Matters**:
+- `getaddresspath()` extracts the string part during packing
+- If string has full path, packing adds brackets: `["system.macintosh.globals"]`
+- Migration from v6→v7 corrupts all address values in `system.paths`
+
+**Rule**: Always use `setexemptaddressvalue()` to create address values. Never manually modify address value handle memory.
+
+**Files**:
+- `Common/source/tablestructure.c:367-402` (resolve_system_paths)
+- `Common/source/langvalue.c` (setexemptaddressvalue, getaddresspath)
+- Issue #336, commit 9e59c0a9
+
+---
+
+### Table Lookup Search Order - langgettableval() ⚠️
+
+**Pattern**: When resolving table children (e.g., `builtins.webserver.init`), search INSIDE the provided table first, then fall back to external lookup.
+
+**The Bug Pattern**:
+```c
+// ❌ WRONG - only searches external tables
+static boolean langgettableval(hdlhashtable htable, bigstring bsname, hdlhashtable *hval) {
+    pushhashtable(htable);
+    boolean fl = langexternalgettable(bsname, hval);  // Only external lookup
+    pophashtable();
+    return fl;
+}
+// This fails for nested children like "init" inside "builtins.webserver"
+```
+
+**The Correct Pattern**:
+```c
+// ✅ CORRECT - search inside table first, fall back to external
+static boolean langgettableval(hdlhashtable htable, bigstring bsname, hdlhashtable *hval) {
+    pushhashtable(htable);
+
+    // First: search INSIDE the provided table
+    if (hashtablelookup(htable, bsname, &val, &hnode)) {
+        fl = tablevaltotable(val, hval, hnode);
+    }
+    else {
+        // Fallback: external lookup (preserves backward compatibility)
+        fl = langexternalgettable(bsname, hval);
+    }
+
+    pophashtable();
+    return fl;
+}
+```
+
+**Why Use hashtablelookup() Instead of langsymbolreference()**:
+- `langsymbolreference()` raises errors if not found
+- Errors prevent fallback to `langexternalgettable()`
+- `hashtablelookup()` returns false silently, allowing fallback
+
+**Use Cases**:
+- Resolving terse EFP references: `defined(webserver.init)`
+- Nested table lookups during verb resolution
+- system.paths traversal
+
+**Files**:
+- `Common/source/langvalue.c:3651-3673` (langgettableval fix)
+- Issue #336, commit 9e59c0a9
+
+---
+
 ### Global Mutable State - CRITICAL FOR LAUNCH ⚠️⚠️⚠️
 
 **BURN THE GLOBALS WITH FIRE. EVERYWHERE.**

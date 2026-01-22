@@ -707,7 +707,67 @@ void langexternalsetdatabase(hdlexternalvariable hv, hdldatabaserecord hdb) {
 
 ---
 
+## 15. Address Value Migration and system.paths Resolution (2026-01-21)
+
+### Critical Pattern: Address Value Structure
+
+**Address values must have BOTH parts correct**:
+1. **String part**: Local name only (e.g., "globals"), NOT full path
+2. **htable pointer**: Parent table (e.g., `system.macintosh`)
+
+**Why this matters**:
+- `getaddresspath()` extracts the string part during packing
+- If string part has full path, packing adds brackets: `["system.macintosh.globals"]`
+- Results in corrupted paths after migration
+
+### The Migration Bug (Issue #336)
+
+**Problem**: `resolve_system_paths()` only updated htable pointer, not string part:
+
+```c
+// WRONG - only updates pointer, string part still has full path
+hdlhashtable *phtable = (hdlhashtable *)((*hstring) + ixtable);
+*phtable = htable_resolved;
+```
+
+**Fix**: Dispose old value, create new with correct structure:
+
+```c
+// CORRECT - creates properly-structured address value
+disposehandle((Handle)val->data.addressvalue);
+tyvaluerecord val_new;
+setexemptaddressvalue(htable_resolved, bs_local_name, &val_new);
+*val = val_new;
+```
+
+### system.paths Initialization Pattern
+
+**CRITICAL**: Only populate `system.paths` if newly created:
+
+```c
+if (!findnamedtable(hsystem, namepathstable, &hpaths)) {
+    tablenewsubtable(hsystem, namepathstable, &hpaths);
+    created_new = true;
+}
+
+// Only populate if we just created it
+if (!created_new) {
+    log_debug("system.paths already exists, skipping population");
+    return true;
+}
+```
+
+**Why**: Preserves original database entries during migration instead of adding duplicates.
+
+### Related Files
+
+- `Common/source/tablestructure.c:367-402` - resolve_system_paths() fix
+- `Common/source/tablestructure.c:467-484` - headless_init_system_paths() fix
+- `Common/source/langvalue.c:3651-3673` - langgettableval() search order fix
+
+---
+
 **Document Status**: Comprehensive reference based on code analysis (2025-12-18)
-**Updated**: 2025-12-29 - Added transient vs persistable semantics and `hdatabase` invariants
+**Updated**: 2026-01-21 - Added address value migration and system.paths resolution patterns
 **Reviewed**: Pending
 **Updates**: Will be maintained as implementation evolves
