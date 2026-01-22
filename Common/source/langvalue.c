@@ -3777,7 +3777,13 @@ static boolean langsearchpathvisit (tysearchpathcallback visit, bigstring bsname
 
 		log_trace(LOG_COMP_LANG, "langsearchpathvisit: path entry %s -> %p", stringbaseaddress(bs), (void *)hsearch);
 
-		if (!langgettableval (hsearch, bs, &hsearch)) /*not the address of a table*/
+		/*
+		NOTE: The original code called langgettableval(hsearch, bs, &hsearch) here, which was
+		the ROOT CAUSE of the bug. It tried to look up bs (the path entry's leaf name) INSIDE
+		the table that the path entry points to - effectively doing a second lookup that didn't
+		make sense. We just need to verify hsearch is not nil.
+		*/
+		if (hsearch == nil)  /* path entry doesn't point to a table */
 			goto next;
 
 		log_trace(LOG_COMP_LANG, "langsearchpathvisit: resolved leaf %s -> %p", stringbaseaddress(bs), (void *)hsearch);
@@ -3796,8 +3802,8 @@ static boolean langsearchpathvisit (tysearchpathcallback visit, bigstring bsname
 		log_trace(LOG_COMP_LANG, "langsearchpathvisit: path entry '%s' -> table %p, searching for '%s'",
 		          stringbaseaddress(path_entry_name), (void *)hsearch, stringbaseaddress(bsname));
 
-		/* First, check if path entry name matches identifier */
-		if (equalstrings(path_entry_name, bsname)) {
+		/* First, check if path entry name matches identifier (case-insensitive, with nil guard) */
+		if (bsname != nil && equalidentifiers(path_entry_name, bsname)) {
 			log_trace(LOG_COMP_LANG, "langsearchpathvisit: path entry name matches! returning table");
 			*htable = hsearch;
 			return (true);
