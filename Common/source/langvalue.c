@@ -3760,18 +3760,18 @@ static boolean langsearchpathvisit (tysearchpathcallback visit, bigstring bsname
 	nomad = (**ht).hfirstsort;
 	
 	while (nomad != nil) {
-		
+
 		/*
 		val = (**nomad).val;
 		*/
-		
+
 		if ((**nomad).val.valuetype != addressvaluetype) /*not an address*/
 			goto next;
-		
+
 		if ((**nomad).flunresolvedaddress)
 			if (!hashresolvevalue (ht, nomad))
 				goto next;
-		
+
 		if (!getaddressvalue ((**nomad).val, &hsearch, bs)) /*address error*/
 			goto next;
 
@@ -3781,7 +3781,29 @@ static boolean langsearchpathvisit (tysearchpathcallback visit, bigstring bsname
 			goto next;
 
 		log_trace(LOG_COMP_LANG, "langsearchpathvisit: resolved leaf %s -> %p", stringbaseaddress(bs), (void *)hsearch);
-		
+
+		/*
+		BUG FIX: Check path entry name first, then try callback for nested lookups.
+
+		For defined(webserver): path entry name "webserver" matches → return table immediately
+		For defined(webserver.init): called twice:
+		  1st: bsname="webserver", path entry "webserver" matches → returns webserver table
+		  2nd: bsname="init", langgetdotparams looks inside webserver table (not via paths)
+		*/
+		bigstring path_entry_name;
+		gethashkey(nomad, path_entry_name);
+
+		log_trace(LOG_COMP_LANG, "langsearchpathvisit: path entry '%s' -> table %p, searching for '%s'",
+		          stringbaseaddress(path_entry_name), (void *)hsearch, stringbaseaddress(bsname));
+
+		/* First, check if path entry name matches identifier */
+		if (equalstrings(path_entry_name, bsname)) {
+			log_trace(LOG_COMP_LANG, "langsearchpathvisit: path entry name matches! returning table");
+			*htable = hsearch;
+			return (true);
+		}
+
+		/* Path entry name doesn't match - try callback (for lookups inside the table) */
 		if ((*visit) (hsearch, bsname, htable))
 			return (true);
 		
