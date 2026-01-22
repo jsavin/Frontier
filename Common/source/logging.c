@@ -34,17 +34,19 @@ static bool g_log_suppressed = false;  // Suppress all output (for JSON mode)
 
 // Component names (for display and parsing)
 static const char *component_names[] = {
-    [LOG_COMP_DB]       = "db",
-    [LOG_COMP_HASH]     = "hash",
-    [LOG_COMP_TABLE]    = "table",
-    [LOG_COMP_PACK]     = "pack",
-    [LOG_COMP_PARSE]    = "parse",
-    [LOG_COMP_EVAL]     = "eval",
-    [LOG_COMP_OP]       = "op",
-    [LOG_COMP_LANG]     = "lang",
-    [LOG_COMP_EXTERNAL] = "external",
-    [LOG_COMP_STARTUP]  = "startup",
-    [LOG_COMP_GENERAL]  = "general"
+    [LOG_COMP_DB]           = "db",
+    [LOG_COMP_HASH]         = "hash",
+    [LOG_COMP_TABLE]        = "table",
+    [LOG_COMP_TABLE_LOOKUP] = "table_lookup",
+    [LOG_COMP_PACK]         = "pack",
+    [LOG_COMP_PARSE]        = "parse",
+    [LOG_COMP_EVAL]         = "eval",
+    [LOG_COMP_OP]           = "op",
+    [LOG_COMP_LANG]         = "lang",
+    [LOG_COMP_EXTERNAL]     = "external",
+    [LOG_COMP_STARTUP]      = "startup",
+    [LOG_COMP_THREAD]       = "thread",
+    [LOG_COMP_GENERAL]      = "general"
 };
 
 // Level names (for display and parsing)

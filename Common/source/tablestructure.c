@@ -379,15 +379,16 @@ boolean resolve_system_paths (hdlhashtable hroot) {
 				// If we don't update the string part, getaddresspath() will see the full path
 				// and add brackets to it, resulting in: system.macintosh.["system.macintosh.globals"]
 
-				// Dispose old address value and create new one with correct structure
-				disposehandle((Handle)val->data.addressvalue);
-
-				// Use setexemptaddressvalue() to create properly-structured address value
+				// Create new address value with correct structure BEFORE disposing old one
+				// This prevents use-after-free if allocation fails (allocate-then-free pattern)
 				tyvaluerecord val_new;
 				if (!setexemptaddressvalue(htable_resolved, bs_resolved, &val_new)) {
 					log_warn(LOG_COMP_LANG, "Failed to create resolved address value for: %s", cpath);
-					continue;
+					continue;  // Safe: old handle still valid, hash node unchanged
 				}
+
+				// Only dispose old address after successful allocation
+				disposehandle((Handle)val->data.addressvalue);
 
 				// Replace the value in the hash node
 				*val = val_new;

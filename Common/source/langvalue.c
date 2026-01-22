@@ -3660,23 +3660,23 @@ static boolean langgettableval (hdlhashtable htable, bigstring bsname, hdlhashta
 	if (htable == nil)
 		return (false);
 
-	log_trace(LOG_COMP_LANG, "langgettableval: htable=%p looking for '%s'", (void *)htable, stringbaseaddress(bsname));
+	log_trace(LOG_COMP_TABLE_LOOKUP, "langgettableval: htable=%p looking for '%s'", (void *)htable, stringbaseaddress(bsname));
 
 	pushhashtable (htable);
 
 	// First, try looking up name INSIDE the provided table
 	// Use hashtablelookup directly (doesn't raise errors) instead of langsymbolreference
 	if (hashtablelookup(htable, bsname, &val, &hnode)) {
-		log_trace(LOG_COMP_LANG, "langgettableval: found '%s' in table=%p valtype=%d", stringbaseaddress(bsname), (void *)htable, (int)val.valuetype);
+		log_trace(LOG_COMP_TABLE_LOOKUP, "langgettableval: found '%s' in table=%p valtype=%d", stringbaseaddress(bsname), (void *)htable, (int)val.valuetype);
 		// Found it - check if it's a table type
 		fl = tablevaltotable(val, hval, hnode);
-		log_trace(LOG_COMP_LANG, "langgettableval: tablevaltotable returned %d hval=%p", (int)fl, (void *)*hval);
+		log_trace(LOG_COMP_TABLE_LOOKUP, "langgettableval: tablevaltotable returned %d hval=%p", (int)fl, (void *)*hval);
 	}
 	else {
-		log_trace(LOG_COMP_LANG, "langgettableval: '%s' not found in table=%p, trying langexternalgettable", stringbaseaddress(bsname), (void *)htable);
+		log_trace(LOG_COMP_TABLE_LOOKUP, "langgettableval: '%s' not found in table=%p, trying langexternalgettable", stringbaseaddress(bsname), (void *)htable);
 		// Fallback: try external table lookup (preserves backward compatibility)
 		fl = langexternalgettable (bsname, hval);
-		log_trace(LOG_COMP_LANG, "langgettableval: langexternalgettable returned %d hval=%p", (int)fl, (void *)(hval ? *hval : nil));
+		log_trace(LOG_COMP_TABLE_LOOKUP, "langgettableval: langexternalgettable returned %d hval=%p", (int)fl, (void *)(hval ? *hval : nil));
 	}
 
 	pophashtable ();
