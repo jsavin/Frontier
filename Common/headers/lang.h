@@ -51,6 +51,8 @@
 
 #endif
 
+/* Forward declaration for types from tableinternal.h */
+struct tytablevariable;
 
 
 #define idconsthashresource 128
@@ -291,6 +293,18 @@ typedef enum tyvaluetype { /*use care -- these are saved on disk inside symbol t
 	ctvaluetypes
 
 	} tyvaluetype;
+
+
+/*
+ * tableLookupMode - Reserved for Phase 2 metadata optimization (Issue #334)
+ *
+ * TABLE_LOOKUP_METADATA: Check existence only, never load from disk
+ * TABLE_LOOKUP_VALUE: Load from disk if needed
+ */
+typedef enum tableLookupMode {
+	TABLE_LOOKUP_METADATA = 0,
+	TABLE_LOOKUP_VALUE = 1
+	} tableLookupMode;
 
 #pragma pack(push, 2)
 typedef struct tydiskvalue {	/*4.0.2b1 dmb*/

@@ -1,0 +1,252 @@
+# Integration tests for runtime error halting behavior
+#
+# CRITICAL TESTS: These verify that runtime errors properly halt execution instead of
+# allowing scripts to continue executing after errors occur.
+#
+# This test suite validates three categories of runtime error handling:
+#
+# Category 1: defined() on External File Path (EFP) Tables (Issue #1)
+#   - EFP tables (external=true, flinmemory=0) have addresses that point to disk blocks
+#   - defined() should correctly check if table exists and return true
+#   - Bug: Currently returns false for valid EFP tables due to address validation issues
+#
+# Category 2: Table Index Errors Should Halt Execution (Issue #2)
+#   - Out-of-bounds table access should throw scriptError and halt
+#   - Invalid index operations should not allow subsequent code to execute
+#   - Bug: Currently some index errors don't halt, allowing execution to continue
+#
+# Category 3: General scriptError Halting
+#   - All scriptError conditions should halt execution immediately
+#   - No code after error should execute (the "executionContinued" pattern)
+#
+# Testing Pattern: The "executionContinued" flag pattern
+#   1. Set flag to false before error operation
+#   2. Call operation that should throw scriptError
+#   3. Try to set flag to true (should never execute)
+#   4. Return flag value
+#   5. If execution halted properly, returns false (test passes)
+#   6. If execution continued, returns true (test fails)
+#
+# Test case fields:
+#   name: Test name (required)
+#   description: Test description (optional)
+#   script: UserTalk script to execute (required)
+#   expected_success: true/false (default: true)
+#   expected_result: Expected return value as string (optional)
+#   expected_error_type: Expected error type if expected_success=false (optional)
+#   timeout: Timeout in seconds (optional, default: 10)
+
+tests:
+  # ============================================================================
+  # Category 1: defined() on External File Path (EFP) Tables
+  # ============================================================================
+  # These tests verify that defined() correctly identifies existing EFP tables
+  # that are stored on disk (external=true, flinmemory=0).
+
+  - name: "defined() - webserver.init EFP table should exist"
+    description: "CRITICAL: webserver.init is an EFP table in system root. defined() should return true. Currently returns false (BUG)"
+    script: 'defined(webserver.init)'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "defined() - webserver.nonexistent should not exist"
+    description: "Verify defined() returns false for non-existent path under webserver table"
+    script: 'defined(webserver.nonexistent)'
+    expected_success: true
+    expected_result: "false"
+
+  - name: "defined() - builtins.init EFP table should exist"
+    description: "Regression check: builtins.init is another EFP table. Verify defined() works correctly"
+    script: 'defined(builtins.init)'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "defined() - system.verbs.builtins.user.radio3.init EFP table should exist"
+    description: "Deep nested EFP table path: system.verbs.builtins.user.radio3.init. Verify defined() returns true"
+    script: 'defined(system.verbs.builtins.user.radio3.init)'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "defined() - suites.tcp EFP table should exist"
+    description: "Another EFP table in system root. Verify defined() correctly identifies it"
+    script: 'defined(suites.tcp)'
+    expected_success: true
+    expected_result: "true"
+
+  # ============================================================================
+  # Category 2: Table Index Errors Should Halt Execution
+  # ============================================================================
+  # These tests use the "executionContinued" pattern to verify that table index
+  # errors properly halt execution and don't allow subsequent code to run.
+
+  - name: "Table index error - out of bounds positive index halts execution"
+    description: "CRITICAL: Access t[100] on table with 1 item should throw scriptError and halt. executionContinued should remain false"
+    script: |
+      local(t);
+      lang.new(tableType, @t);
+      t.a = 1;
+      local(executionContinued = false);
+      t[100];
+      executionContinued = true;
+      return executionContinued
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "Table index error - zero index halts execution"
+    description: "CRITICAL: t[0] is invalid (tables are 1-indexed). Should throw scriptError and halt"
+    script: |
+      local(t);
+      lang.new(tableType, @t);
+      t.a = 1;
+      local(executionContinued = false);
+      t[0];
+      executionContinued = true;
+      return executionContinued
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "Table index error - negative index halts execution"
+    description: "CRITICAL: Negative table index t[-1] should throw scriptError and halt"
+    script: |
+      local(t);
+      lang.new(tableType, @t);
+      t.a = 1;
+      local(executionContinued = false);
+      t[-1];
+      executionContinued = true;
+      return executionContinued
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "Table index error - string key not found halts execution"
+    description: "Access non-existent string key in table should throw scriptError and halt"
+    script: |
+      local(t);
+      lang.new(tableType, @t);
+      t.a = 1;
+      local(executionContinued = false);
+      local(val = t["nonexistent"]);
+      executionContinued = true;
+      return executionContinued
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "Table index error - deeply nested missing key halts execution"
+    description: "Access t.a.b.c where t.a exists but t.a.b does not. Should halt at missing nested path"
+    script: |
+      local(t);
+      lang.new(tableType, @t);
+      t.a = 1;
+      local(executionContinued = false);
+      local(val = t.a.b.c);
+      executionContinued = true;
+      return executionContinued
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "Table index error - index on empty table halts execution"
+    description: "Access t[1] when table is empty should throw scriptError and halt"
+    script: |
+      local(t);
+      lang.new(tableType, @t);
+      local(executionContinued = false);
+      t[1];
+      executionContinued = true;
+      return executionContinued
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "Array access error - integer value indexed like array halts execution"
+    description: "Attempting to index an integer value as if it were a table should halt"
+    script: |
+      local(num = 42);
+      local(executionContinued = false);
+      num[1];
+      executionContinued = true;
+      return executionContinued
+    expected_success: false
+    expected_error_type: "script_error"
+
+  # ============================================================================
+  # Category 3: General scriptError Halting
+  # ============================================================================
+  # These tests verify that other common scriptError conditions properly halt
+  # execution and don't allow subsequent code to run.
+
+  - name: "Undefined path access - nonexistent.deep.path halts execution"
+    description: "CRITICAL: Accessing completely undefined nested path should throw scriptError and halt"
+    script: |
+      local(executionContinued = false);
+      local(val = nonexistent.deep.path);
+      executionContinued = true;
+      return executionContinued
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "Undefined variable - accessing undefined local halts execution"
+    description: "Accessing undefined local variable should throw scriptError and halt"
+    script: |
+      local(executionContinued = false);
+      local(val = undefinedVariable);
+      executionContinued = true;
+      return executionContinued
+    expected_success: false
+    expected_error_type: "script_error"
+
+  - name: "Type error - calling non-existent verb halts execution"
+    description: "Calling verb that doesn't exist should throw scriptError and halt"
+    script: |
+      local(executionContinued = false);
+      nonexistent.verb.call();
+      executionContinued = true;
+      return executionContinued
+    expected_success: false
+    expected_error_type: "script_error"
+
+  # ============================================================================
+  # Positive Tests: Valid Operations Should Succeed
+  # ============================================================================
+  # These tests verify that valid operations work correctly and don't falsely
+  # trigger error halting behavior.
+
+  - name: "Valid table index - t[1] on single-item table succeeds"
+    description: "POSITIVE: Access t[1] when table has 1 item should succeed and return value"
+    script: |
+      local(t);
+      lang.new(tableType, @t);
+      t.a = 42;
+      return t[1]
+    expected_success: true
+    expected_result: "42"
+
+  - name: "Valid table index - t[2] on two-item table succeeds"
+    description: "POSITIVE: Access t[2] when table has 2 items should succeed"
+    script: |
+      local(t);
+      lang.new(tableType, @t);
+      t.a = 10;
+      t.b = 20;
+      return t[2]
+    expected_success: true
+    expected_result: "20"
+
+  - name: "Valid string key access - existing key succeeds"
+    description: "POSITIVE: Access existing string key in table should succeed"
+    script: |
+      local(t);
+      lang.new(tableType, @t);
+      t.mykey = "myvalue";
+      return t["mykey"]
+    expected_success: true
+    expected_result: "myvalue"
+
+  - name: "Valid nested path access - defined nested path succeeds"
+    description: "POSITIVE: Access valid nested path in table hierarchy should succeed"
+    script: |
+      local(t);
+      lang.new(tableType, @t);
+      lang.new(tableType, @t.sub);
+      t.sub.value = 99;
+      return t.sub.value
+    expected_success: true
+    expected_result: "99"

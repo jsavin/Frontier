@@ -72,6 +72,7 @@
 #include "db_format.h" /* 2025-11-23 Codex: BE helpers for packed typeids */
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
 #include "logging.h"  /* Phase 3: fprintf migration */
+#include "tableinternal.h"  /* For hdltablevariable struct access */
 
 
 
@@ -3631,19 +3632,34 @@ boolean coercetypes (tyvaluerecord *v1, tyvaluerecord *v2) {
 	} /*coercetypes*/
 
 
+
+/*
+ * langgettableval - Legacy table resolution behavior (RESTORED)
+ *
+ * This function resolves table children by delegating to langexternalgettable(),
+ * which handles all the complexity of loading external tables from disk.
+ *
+ * The previous _ex() pattern with metadata-only mode has been removed because
+ * it broke terse EFP reference resolution (e.g., defined(webserver.init)).
+ * The issue was that tableverbinmemory() doesn't properly initialize hash table
+ * handles when called from our modified code.
+ *
+ * Future work: Phase 2 metadata optimization can use the utility functions above
+ * (langresolve_table_child_metadata, langresolve_table_child_value, langresolve_table_child)
+ * with proper initialization logic to avoid loading tables for metadata-only operations.
+ */
 static boolean langgettableval (hdlhashtable htable, bigstring bsname, hdlhashtable *hval) {
-	
 	boolean fl;
-	
+
 	if (htable == nil)
 		return (false);
-	
+
 	pushhashtable (htable);
-	
+
 	fl = langexternalgettable (bsname, hval);
-	
+
 	pophashtable ();
-	
+
 	return (fl);
 	} /*langgettableval*/
 
@@ -3904,11 +3920,11 @@ boolean langgetdotparams (hdltreenode htree, hdlhashtable *htable, bigstring bsn
 		}
 	else
 		fl = langgettableval (hsubtable, bsname, htable);
-	
+
 	if (!fl) {
-	
+
 		langparamerror (nosuchtableerror, bsname);
-		
+
 		return (false);
 		}
 	
@@ -4467,9 +4483,10 @@ boolean evaluatereadonlyparam (hdltreenode hparam, tyvaluerecord *vparam) {
 			break;
 		}
 	
-	if (htable != nil)
+	if (htable != nil) {
 		if (!langsymbolreference (htable, bs, vparam, &hnode))
 			return (false);
+	}
 	
 	langseterrorline (hparam); /*restore to param before caller attempts coercion*/
 	
@@ -5495,9 +5512,11 @@ static boolean tablearrayvalue (tyvaluerecord *varray, bigstring bsname, tyvalue
 	hdlhashnode hnode;
 	
 	if (!langexternalvaltotable (*varray, &htable, HNoNode)) {
-		
+
+		fllangerror = true;
+
 		langarrayreferror (arraynottableerror, bsname, varray, nil);
-		
+
 		return (false);
 		}
 	
@@ -5514,9 +5533,11 @@ static boolean tablearrayvalue (tyvaluerecord *varray, bigstring bsname, tyvalue
 		pophashtable ();
 		
 		if (!fl) {
-			
+
+			fllangerror = true;
+
 			langarrayreferror (arraystringindexerror, bsname, varray, vindex);
-			
+
 			return (false);
 			}
 		
@@ -5529,9 +5550,11 @@ static boolean tablearrayvalue (tyvaluerecord *varray, bigstring bsname, tyvalue
 		intindex = (*vindex).data.longvalue;
 		
 		if ((intindex <= 0) || !hashgetiteminfo (htable, intindex - 1, bsname, val)) {
-			
+
+			fllangerror = true;
+
 			langarrayreferror (arrayindexerror, bsname, varray, vindex);
-			
+
 			return (false);
 			}
 		}

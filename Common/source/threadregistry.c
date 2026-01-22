@@ -51,6 +51,11 @@ static long next_thread_id = 1;
 static pthread_mutex_t registry_mutex = PTHREAD_MUTEX_INITIALIZER;
 static boolean registry_initialized = false;
 
+/* Forward declarations for internal functions
+ * Note: allocate_thread_id_locked was forward-declared to fix compilation
+ * when utility functions were added to langvalue.c (now removed) */
+static long allocate_thread_id_locked(void);
+
 /*
  * init_thread_registry - Initialize the thread registry
  */
