@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Table Verbs (table_verbs)</title>
-    <dateCreated>Wed, 21 Jan 2026 02:19:44 GMT</dateCreated>
+    <dateCreated>Thu, 22 Jan 2026 06:24:13 GMT</dateCreated>
   </head>
   <body>
     <outline text="table.assign - simple assignment - Assign a value to a table element">
@@ -220,6 +220,22 @@
         <outline text="nested.x = 10"/>
         <outline text="table.assign(@t.sub, nested)"/>
         <outline text="return t.sub.x"/>
+      </outline>
+    </outline>
+    <outline text="Table lookup - nested table child resolution - langgettableval should search inside parent table before falling back to external lookup">
+      <outline text="Metadata">
+        <outline text="expected_result: found"/>
+        <outline text="skip: True"/>
+        <outline text="reason: Test validates langgettableval() fix but currently blocked by target.set implementation"/>
+      </outline>
+      <outline text="Script">
+        <outline text="# Create parent table with child"/>
+        <outline text="lang.new(tableType, @parent)"/>
+        <outline text="lang.new(tableType, @parent.child)"/>
+        <outline text="parent.child.value = &quot;found&quot;"/>
+        <outline text="# Verify child is accessible via nested lookup"/>
+        <outline text="# This tests that langgettableval() searches inside parent.child before external lookup"/>
+        <outline text="return parent.child.value"/>
       </outline>
     </outline>
   </body>

@@ -35,6 +35,7 @@ typedef enum {
     LOG_COMP_DB = 0,          // Database layer (db.c, db_format.c)
     LOG_COMP_HASH,            // Hash tables (langhash.c)
     LOG_COMP_TABLE,           // Table operations (tablepack.c, tableops.c)
+    LOG_COMP_TABLE_LOOKUP,    // Table value resolution in hot paths (langvalue.c:langgettableval)
     LOG_COMP_PACK,            // Serialization (oppack_v7.c)
     LOG_COMP_PARSE,           // Parser (langparser.c)
     LOG_COMP_EVAL,            // Evaluator (langevaluate.c, langops.c)
@@ -42,6 +43,7 @@ typedef enum {
     LOG_COMP_LANG,            // Language runtime (lang.c, langvalue.c)
     LOG_COMP_EXTERNAL,        // External objects (langexternal.c)
     LOG_COMP_STARTUP,         // Startup/initialization (langstartup.c)
+    LOG_COMP_THREAD,          // Thread registry (threadregistry.c)
     LOG_COMP_GENERAL,         // General/uncategorized
     LOG_COMP_COUNT            // Number of components
 } log_component_t;
@@ -217,6 +219,9 @@ FRONTIER_LOG_LEVEL=debug FRONTIER_LOG_COMPONENT=hash ./frontier-cli -e "..."
 
 # Example: Full trace with JSON output
 FRONTIER_LOG_LEVEL=trace FRONTIER_LOG_FORMAT=json ./frontier-cli --system-root db.root
+
+# Example: Trace table lookups in hot path (reduce noise from general language runtime)
+FRONTIER_LOG_LEVEL=trace FRONTIER_LOG_COMPONENT=table_lookup ./frontier-cli --system-root db.root -e "sizeOf(system)"
 ```
 
 ### Programmatic Control

@@ -39,6 +39,7 @@ typedef enum {
     LOG_COMP_DB = 0,          // Database layer (db.c, db_format.c)
     LOG_COMP_HASH,            // Hash tables (langhash.c)
     LOG_COMP_TABLE,           // Table operations (tablepack.c, tableops.c, tableexternal*.c)
+    LOG_COMP_TABLE_LOOKUP,    // Table value resolution in hot paths (langvalue.c:langgettableval)
     LOG_COMP_PACK,            // Serialization (oppack_v7.c)
     LOG_COMP_PARSE,           // Parser (langparser.c)
     LOG_COMP_EVAL,            // Evaluator (langevaluate.c, langops.c)
