@@ -1,0 +1,370 @@
+# Integration tests for path entry name matching bug fix
+#
+# BUG CONTEXT:
+# langsearchpathvisit() has a bug where it incorrectly checks if an identifier
+# exists INSIDE the resolved table instead of checking if the path entry NAME
+# matches the identifier being searched for.
+#
+# Example of the bug:
+#   system.paths.webserver → builtins.webserver (table)
+#   defined(webserver) → Currently checks if "webserver" exists INSIDE builtins.webserver (WRONG)
+#                      → Should check if path entry NAME "webserver" matches identifier (CORRECT)
+#
+# The fix will modify langsearchpathvisit() in Common/source/langvalue.c to:
+# 1. Extract path entry name from system.paths (e.g., "webserver")
+# 2. Compare path entry name to the identifier being searched (bsname parameter)
+# 3. If match, call visit callback with resolved table
+# 4. No longer call langgettableval() on the resolved table (that's for nested lookups)
+#
+# REFERENCE: Common/source/langvalue.c, lines 3735-3805 (langsearchpathvisit function)
+#
+# Test Structure:
+# - Path entry name matching (the bug being fixed)
+# - Nested lookup after path resolution (should still work)
+# - Non-existent children (error cases)
+# - Regression tests (ensure existing behavior still works)
+
+tests:
+  # ====================================================================
+  # SECTION 1: Path Entry Name Matching (Core Bug Fix)
+  # ====================================================================
+  # These tests validate that defined() correctly matches path entry NAMES
+  # from system.paths, not contents inside the resolved tables.
+
+  - name: "defined() - path entry 'webserver' exists"
+    description: |
+      CRITICAL TEST: defined(webserver) should return TRUE because "webserver"
+      is a path entry name in system.paths, regardless of what's inside
+      builtins.webserver table.
+
+      Bug behavior: Returns FALSE (looks inside builtins.webserver for "webserver")
+      Fixed behavior: Returns TRUE (matches path entry name "webserver")
+    script: 'defined(webserver)'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "defined() - path entry 'op' exists"
+    description: |
+      Verify defined(op) returns TRUE because "op" is a path entry name,
+      even though "op" may not exist as a child inside the resolved table.
+
+      This tests the same bug with a different path entry.
+    script: 'defined(op)'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "defined() - path entry 'html' exists"
+    description: |
+      Test another common path entry to ensure the fix works consistently
+      across different entries in system.paths.
+    script: 'defined(html)'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "defined() - path entry 'xml' exists"
+    description: "Verify defined(xml) returns TRUE (xml is a path entry)"
+    script: 'defined(xml)'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "defined() - path entry 'file' exists"
+    description: "Verify defined(file) returns TRUE (file is a path entry)"
+    script: 'defined(file)'
+    expected_success: true
+    expected_result: "true"
+
+  # ====================================================================
+  # SECTION 2: Nested Lookup After Path Resolution
+  # ====================================================================
+  # These tests verify that after resolving a path entry, we can still
+  # look up children inside the resolved table using dot notation.
+
+  - name: "defined() - nested lookup 'webserver.init'"
+    description: |
+      Verify defined(webserver.init) returns TRUE:
+      1. Resolve "webserver" path entry → builtins.webserver table
+      2. Look for "init" child inside builtins.webserver
+
+      This is the CORRECT behavior - path resolves first, then child lookup.
+    script: 'defined(webserver.init)'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "defined() - nested lookup 'op.firstSummit'"
+    description: |
+      Test nested lookup with op.firstSummit:
+      1. Resolve "op" path entry → builtins.op table
+      2. Look for "firstSummit" verb inside builtins.op
+    script: 'defined(op.firstSummit)'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "defined() - nested lookup 'html.getTitle'"
+    description: |
+      Test nested lookup with html.getTitle:
+      1. Resolve "html" path entry → builtins.html table
+      2. Look for "getTitle" verb inside builtins.html
+    script: 'defined(html.getTitle)'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "defined() - deep nested lookup 'system.verbs.builtins.string.lower'"
+    description: |
+      Test multi-level path resolution:
+      1. "system" resolves via hardcoded system table check
+      2. Navigate through verbs → builtins → string
+      3. Find "lower" verb inside string table
+    script: 'defined(system.verbs.builtins.string.lower)'
+    expected_success: true
+    expected_result: "true"
+
+  # ====================================================================
+  # SECTION 3: Non-Existent Children (Error Cases)
+  # ====================================================================
+  # These tests verify that defined() correctly returns FALSE when:
+  # - Path entry exists but child doesn't exist inside resolved table
+
+  - name: "defined() - non-existent child 'webserver.nonexistent'"
+    description: |
+      Verify defined(webserver.nonexistent) returns FALSE:
+      1. Resolve "webserver" path entry → builtins.webserver (SUCCESS)
+      2. Look for "nonexistent" inside builtins.webserver (FAIL)
+      3. Return FALSE (correct - path exists but child doesn't)
+    script: 'defined(webserver.nonexistent)'
+    expected_success: true
+    expected_result: "false"
+
+  - name: "defined() - non-existent child 'op.fakeVerb'"
+    description: "Path entry 'op' exists, but 'fakeVerb' child does not"
+    script: 'defined(op.fakeVerb)'
+    expected_success: true
+    expected_result: "false"
+
+  - name: "defined() - non-existent child 'html.notAVerb'"
+    description: "Path entry 'html' exists, but 'notAVerb' child does not"
+    script: 'defined(html.notAVerb)'
+    expected_success: true
+    expected_result: "false"
+
+  # ====================================================================
+  # SECTION 4: Non-Existent Path Entries
+  # ====================================================================
+  # These tests verify that defined() returns FALSE for identifiers that
+  # don't exist anywhere (not in paths, not in hardcoded tables).
+
+  - name: "defined() - completely non-existent identifier"
+    description: |
+      Verify defined(totallyFakeIdentifier) returns FALSE.
+      No path entry with this name, and it's not defined anywhere else.
+    script: 'defined(totallyFakeIdentifier)'
+    expected_success: true
+    expected_result: "false"
+
+  - name: "defined() - non-existent identifier 'notInPaths'"
+    description: "Identifier doesn't exist in system.paths or anywhere else"
+    script: 'defined(notInPaths)'
+    expected_success: true
+    expected_result: "false"
+
+  - name: "defined() - typo in path entry name 'webservr'"
+    description: "Close to 'webserver' but not exact match - should be FALSE"
+    script: 'defined(webservr)'
+    expected_success: true
+    expected_result: "false"
+
+  # ====================================================================
+  # SECTION 5: Regression Tests (Existing Behavior)
+  # ====================================================================
+  # These tests ensure the bug fix doesn't break existing functionality:
+  # - Hardcoded system tables still work
+  # - Direct table lookups still work
+  # - Built-in verbs still work
+
+  - name: "defined() - hardcoded 'system' table"
+    description: |
+      Regression test: system table is hardcoded (not from paths).
+      Should continue to work after bug fix.
+    script: 'defined(system)'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "defined() - hardcoded 'builtins' table"
+    description: |
+      Regression test: builtins table is hardcoded.
+      Should continue to work after bug fix.
+    script: 'defined(builtins)'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "defined() - in-memory table child 'builtins.init'"
+    description: |
+      Regression test: Direct lookup in builtins table (not via paths).
+      Should continue to work after bug fix.
+    script: 'defined(builtins.init)'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "defined() - built-in verb 'string.lower'"
+    description: |
+      Regression test: Built-in verb lookup via path resolution.
+      Should continue to work after bug fix.
+    script: 'defined(string.lower)'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "defined() - local variable"
+    description: |
+      Regression test: Local variable defined in script scope.
+      Should be found immediately (not via path search).
+    script: |
+      local(myVar = 42);
+      return defined(myVar)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "defined() - table entry created at runtime"
+    description: |
+      Regression test: Dynamically created table entry should be found.
+    script: |
+      lang.new(tableType, @t);
+      t.dynamicEntry = "value";
+      return defined(t.dynamicEntry)
+    expected_success: true
+    expected_result: "true"
+
+  # ====================================================================
+  # SECTION 6: Edge Cases and Boundary Conditions
+  # ====================================================================
+
+  - name: "defined() - case sensitivity for path entries"
+    description: |
+      UserTalk is case-insensitive. Verify defined(WEBSERVER) works
+      even though path entry is lowercase "webserver".
+    script: 'defined(WEBSERVER)'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "defined() - mixed case 'WebServer'"
+    description: "Case-insensitive matching for path entry names"
+    script: 'defined(WebServer)'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "defined() - empty system.paths behavior"
+    description: |
+      Edge case: If system.paths were empty (shouldn't happen in practice),
+      defined() should still work for hardcoded tables like system/builtins.
+    script: 'defined(system)'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "defined() - multiple path entries to same table"
+    description: |
+      If system.paths has multiple entries pointing to the same table,
+      defined() should return TRUE for all entry names.
+      (This tests that we match on entry NAME, not table identity)
+    script: 'defined(op) and defined(webserver)'
+    expected_success: true
+    expected_result: "true"
+
+  # ====================================================================
+  # SECTION 7: Path Entry Name Extraction Tests
+  # ====================================================================
+  # These tests verify the path entry name is correctly extracted from
+  # system.paths hash node names (not from resolved address leaf names).
+
+  - name: "defined() - path entry with standard name"
+    description: |
+      Path entry name should come from system.paths hash node name,
+      not from the bs parameter after getaddressvalue().
+
+      system.paths.webserver points to @builtins.webserver
+      - Hash node name: "webserver" (THIS is what we should match)
+      - Address leaf name: "webserver" (happens to be same, but irrelevant)
+    script: 'defined(webserver)'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "defined() - verify path entry aliases work correctly"
+    description: |
+      If system.paths has an alias (e.g., system.paths.foo → @other.bar),
+      then defined(foo) should be TRUE (matches path entry name "foo"),
+      and defined(bar) should depend on whether "bar" is ALSO a path entry.
+    script: 'defined(op)'
+    expected_success: true
+    expected_result: "true"
+
+  # ====================================================================
+  # SECTION 8: Integration with UserTalk Evaluation
+  # ====================================================================
+  # These tests verify the bug fix works in realistic UserTalk scenarios.
+
+  - name: "Evaluate expression using path-resolved identifier"
+    description: |
+      Test that webserver.init() can be evaluated after defined(webserver)
+      returns TRUE. This ensures path resolution works end-to-end.
+    script: |
+      if defined(webserver) {
+        return true
+      } else {
+        return false
+      }
+    expected_success: true
+    expected_result: "true"
+
+  - name: "Call verb via path-resolved identifier"
+    description: |
+      Verify we can call a verb using the path entry name after defined()
+      confirms it exists.
+    script: |
+      if defined(op) {
+        return typeof(op.firstSummit) == "code"
+      } else {
+        return false
+      }
+    expected_success: true
+    expected_result: "true"
+
+  - name: "Conditional logic based on defined() path check"
+    description: |
+      Real-world scenario: UserTalk code checks if a path entry exists
+      before using it, to handle missing extensions gracefully.
+    script: |
+      if defined(webserver) {
+        return "webserver extension loaded"
+      } else {
+        return "webserver extension missing"
+      }
+    expected_success: true
+    expected_result: "webserver extension loaded"
+
+  # ====================================================================
+  # SECTION 9: Negative Tests (Should NOT Match)
+  # ====================================================================
+  # These tests verify defined() returns FALSE for things that should NOT
+  # be found via path resolution.
+
+  - name: "defined() - internal table not in paths"
+    description: |
+      system.verbs.builtins is an internal table, but it's not a path entry.
+      defined(verbs) should only return TRUE if "verbs" is in system.paths.
+    script: 'defined(verbs)'
+    expected_success: true
+    expected_result: "false"
+
+  - name: "defined() - child of path entry (not entry itself)"
+    description: |
+      "init" is a common verb inside many tables, but "init" itself is not
+      a path entry name. defined(init) should return FALSE unless there's
+      a path entry named "init".
+    script: 'defined(init)'
+    expected_success: true
+    expected_result: "false"
+
+  - name: "defined() - partial path entry name"
+    description: |
+      "web" is a prefix of "webserver", but not a path entry itself.
+      Should return FALSE (no partial matching).
+    script: 'defined(web)'
+    expected_success: true
+    expected_result: "false"

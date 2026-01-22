@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Frontier Integration Test Categories</title>
-    <dateCreated>Wed, 21 Jan 2026 23:58:55 GMT</dateCreated>
+    <dateCreated>Thu, 22 Jan 2026 08:26:16 GMT</dateCreated>
   </head>
   <body>
     <outline text="Callback Database (callback_database)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_callback_database.opml"/>
@@ -19,6 +19,7 @@
     <outline text="Lang Verbs (lang_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_lang_verbs.opml"/>
     <outline text="Op Verbs (op_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_op_verbs.opml"/>
     <outline text="Opattributes Verbs (opattributes_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_opattributes_verbs.opml"/>
+    <outline text="Path Resolution (path_resolution)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_path_resolution.opml"/>
     <outline text="Repl Basic (repl_basic)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_repl_basic.opml"/>
     <outline text="Repl Commands (repl_commands)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_repl_commands.opml"/>
     <outline text="Repl Sessions (repl_sessions)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_repl_sessions.opml"/>
