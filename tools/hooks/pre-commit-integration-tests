@@ -43,4 +43,20 @@ else
     git add "$OPML_FILE"
 fi
 
+# Check if CLAUDE.md or docs/ files are being committed
+DOC_FILES_CHANGED=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^(CLAUDE\.md|docs/.*\.md)$' || true)
+
+if [ -n "$DOC_FILES_CHANGED" ]; then
+    echo -e "${YELLOW}Documentation files changed, validating doc references...${NC}"
+
+    # Run doc validation
+    if ! "$GIT_ROOT/tools/validate_docs.sh"; then
+        echo -e "${RED}Error: Documentation validation failed${NC}" >&2
+        echo -e "${YELLOW}Fix the issues above and try again${NC}" >&2
+        exit 1
+    fi
+
+    echo -e "${GREEN}✓ Documentation validation passed${NC}"
+fi
+
 exit 0
