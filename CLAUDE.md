@@ -138,13 +138,11 @@ Several archive branches exist independently and should **never be merged** to d
      - **NEVER run `git push origin develop`** without explicit user instruction
      - All changes to develop MUST go through PR review process
   5. Use pull-request agent to create PR
-  6. **CRITICAL: Run PR monitor in BACKGROUND** ⚠️⚠️⚠️:
-     - **NEVER use `./tools/monitor_pr_review.sh` directly** (blocks session for 15 minutes)
-     - **ALWAYS use**: `./tools/monitor_pr_review_bg.sh <PR_NUMBER>`
-     - This returns immediately and runs monitoring in background
+  6. **Start PR monitoring in background** ⚠️:
+     - Run: `./tools/monitor_pr_review.sh <PR_NUMBER>`
+     - Script auto-backgrounds itself and returns immediately (always non-blocking)
      - Monitor automatically detects merge conflicts and exits with error (rebase required)
      - Watch log with: `tail -f tests/tmp/pr_monitor_<PR_NUMBER>.log`
-     - See `docs/PR_MONITOR_BLOCKING_ISSUE.md` for full details
   7. **ALWAYS discuss bot feedback with user before addressing** - Never make changes autonomously
   8. **NEVER merge PRs without explicit user approval** - User must review and approve merge
 - Always create branch for new development work when on develop
