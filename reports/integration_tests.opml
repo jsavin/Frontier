@@ -2,9 +2,10 @@
 <opml version="2.0">
   <head>
     <title>Frontier Integration Test Categories</title>
-    <dateCreated>Thu, 22 Jan 2026 08:26:16 GMT</dateCreated>
+    <dateCreated>Fri, 23 Jan 2026 08:40:06 GMT</dateCreated>
   </head>
   <body>
+    <outline text="Builtins Priority (builtins_priority)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_builtins_priority.opml"/>
     <outline text="Callback Database (callback_database)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_callback_database.opml"/>
     <outline text="Callback Tcp (callback_tcp)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_callback_tcp.opml"/>
     <outline text="Db Migration (db_migration)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_db_migration.opml"/>

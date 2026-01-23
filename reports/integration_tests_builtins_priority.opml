@@ -1,0 +1,212 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>Builtins Priority (builtins_priority)</title>
+    <dateCreated>Fri, 23 Jan 2026 08:40:06 GMT</dateCreated>
+  </head>
+  <body>
+    <outline text="REGRESSION - defined(webserver.init) - CRITICAL: webserver.init is an external scriptType object in builtins.webserver.&#10;Before fix: defined(webserver.init) returned FALSE (found EFP stub with 7 items).&#10;After fix: defined(webserver.init) returns TRUE (finds builtins.webserver with 31+ items).&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(webserver.init)"/>
+      </outline>
+    </outline>
+    <outline text="REGRESSION - typeof(webserver.init) is script - Verify we can access webserver.init and it's the correct type.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: scpt"/>
+      </outline>
+      <outline text="Script">
+        <outline text="typeof(webserver.init)"/>
+      </outline>
+    </outline>
+    <outline text="REGRESSION - defined(op.firstSummit) - op.firstSummit is another external script in builtins.op.&#10;Verify this works via path resolution.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(op.firstSummit)"/>
+      </outline>
+    </outline>
+    <outline text="REGRESSION - typeof(op.firstSummit) is script">
+      <outline text="Metadata">
+        <outline text="expected_result: scpt"/>
+      </outline>
+      <outline text="Script">
+        <outline text="typeof(op.firstSummit)"/>
+      </outline>
+    </outline>
+    <outline text="defined(target.set) - target processor - Verify target processor is accessible via search path.&#10;target.set is a kernel verb for setting the target table.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(target.set)"/>
+      </outline>
+    </outline>
+    <outline text="defined(table.assign) - table processor - Verify table processor is accessible via search path.&#10;table.assign is a kernel verb for assigning table values.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(table.assign)"/>
+      </outline>
+    </outline>
+    <outline text="defined(string.length) - string processor - Verify string processor is accessible via search path.&#10;string.length is a kernel verb for getting string length.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(string.length)"/>
+      </outline>
+    </outline>
+    <outline text="defined(file.exists) - file processor - Verify file processor is accessible via search path.&#10;file.exists is a kernel verb for checking file existence.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(file.exists)"/>
+      </outline>
+    </outline>
+    <outline text="defined(db.open) - db processor - Verify db processor is accessible via search path.&#10;db.open is a kernel verb for opening databases.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(db.open)"/>
+      </outline>
+    </outline>
+    <outline text="defined(xml.compile) - xml processor - Verify xml processor is accessible via search path.&#10;xml.compile is a kernel verb for compiling XML.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(xml.compile)"/>
+      </outline>
+    </outline>
+    <outline text="builtins.webserver table size - Verify builtins.webserver has UserTalk scripts (not just kernel verbs).&#10;The exact count may vary with augmentation, but should be &gt;= 31.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(t=@builtins.webserver); return sizeOf(t) &gt;= 31"/>
+      </outline>
+    </outline>
+    <outline text="path-resolved webserver includes builtins entries - The path-resolved @webserver should include entries from builtins.webserver.&#10;It may have MORE entries (from augmentation) but should have at least 31.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(t=@webserver); return sizeOf(t) &gt;= 31"/>
+      </outline>
+    </outline>
+    <outline text="Direct builtins path still works - Verify accessing builtins.webserver.init directly still works.&#10;This is the path that worked even before the fix.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(builtins.webserver.init)"/>
+      </outline>
+    </outline>
+    <outline text="Full system path still works - Verify accessing system.compiler paths works.&#10;This tests that deep system paths resolve correctly.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(system.compiler)"/>
+      </outline>
+    </outline>
+    <outline text="system.paths entries resolve correctly - Verify system.paths.webserver entry exists and resolves.&#10;This tests that system.paths initialization worked.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(system.paths.webserver)"/>
+      </outline>
+    </outline>
+    <outline text="2-level nested lookup - webserver.init - Verify 2-level dot-path resolution works.&#10;This is the core regression case.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(webserver.init)"/>
+      </outline>
+    </outline>
+    <outline text="2-level nested lookup - webserver.data - Verify 2-level lookup works for table children.&#10;webserver.data should be a table.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(webserver.data)"/>
+      </outline>
+    </outline>
+    <outline text="3-level nested lookup - webserver.data.prefs - Verify 3-level dot-path resolution works.&#10;This tests deeper nesting if webserver.data.prefs exists.&#10;">
+      <outline text="Script">
+        <outline text="defined(webserver.data.prefs)"/>
+      </outline>
+    </outline>
+    <outline text="Deep nesting - final component doesn't exist - Verify defined() returns false for non-existent deep paths.&#10;This should NOT error, just return false.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(webserver.data.nonexistent)"/>
+      </outline>
+    </outline>
+    <outline text="Resolve to script type - webserver.init - Verify typeof() works correctly for path-resolved scripts.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: scpt"/>
+      </outline>
+      <outline text="Script">
+        <outline text="typeof(webserver.init)"/>
+      </outline>
+    </outline>
+    <outline text="Resolve to table type - webserver.data - Verify typeof() works correctly for path-resolved tables.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: tabl"/>
+      </outline>
+      <outline text="Script">
+        <outline text="typeof(webserver.data)"/>
+      </outline>
+    </outline>
+    <outline text="Case sensitive - lowercase webserver.init - Verify case-sensitive matching works.&#10;UserTalk identifiers are case-insensitive, but this tests the baseline.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(webserver.init)"/>
+      </outline>
+    </outline>
+    <outline text="Undefined child of valid processor - Verify defined() returns false (not error) for non-existent children.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(webserver.nonexistent)"/>
+      </outline>
+    </outline>
+    <outline text="Undefined processor child - Verify defined() returns false for non-existent nested paths.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(target.nonexistent)"/>
+      </outline>
+    </outline>
+    <outline text="Large script with many path lookups - Simulate a realistic script that makes many different path lookups.&#10;This tests that the fix doesn't introduce performance issues.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: wotsf"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(results = &quot;&quot;)"/>
+        <outline text="if defined(webserver.init) { results = results + &quot;w&quot; }"/>
+        <outline text="if defined(op.firstSummit) { results = results + &quot;o&quot; }"/>
+        <outline text="if defined(table.assign) { results = results + &quot;t&quot; }"/>
+        <outline text="if defined(string.length) { results = results + &quot;s&quot; }"/>
+        <outline text="if defined(file.exists) { results = results + &quot;f&quot; }"/>
+        <outline text="return results"/>
+      </outline>
+    </outline>
+  </body>
+</opml>

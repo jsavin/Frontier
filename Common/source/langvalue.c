@@ -3801,8 +3801,9 @@ static boolean langsearchpathvisit (tysearchpathcallback visit, bigstring bsname
 
 		/* Try to find bsname in builtins (e.g., builtins.webserver) */
 		if (findnamedtable(builtinstable, bsname, &hbuiltins_child)) {
-			log_trace(LOG_COMP_LANG, "langsearchpathvisit: found builtins.%s directly, returning",
-			          stringbaseaddress(bsname));
+			char cname[256];
+			copyptocstring(bsname, cname);
+			log_trace(LOG_COMP_LANG, "langsearchpathvisit: found builtins.%s directly, returning", cname);
 			*htable = hbuiltins_child;
 			return (true);
 		}
@@ -4005,16 +4006,20 @@ boolean langgetdotparams (hdltreenode htree, hdlhashtable *htable, bigstring bsn
 		*/
 		if (builtinstable != nil && bsname != nil) {
 			if (findnamedtable(builtinstable, bsname, htable)) {
-				log_trace(LOG_COMP_LANG, "langgetdotparams: found builtins.%s, using that instead of EFP",
-				          stringbaseaddress(bsname));
+				char cname[256];
+				copyptocstring(bsname, cname);
+				log_trace(LOG_COMP_LANG, "langgetdotparams: found builtins.%s, using that instead of EFP", cname);
 				goto L1;
 			}
 		}
 
         if (langexternalgettable (bsname, htable)) /*found bsname in current context*/
             goto L1;
-		else
-			log_trace(LOG_COMP_LANG, "langgetdotparams: langexternalgettable miss for %s", stringbaseaddress(bsname));
+		else {
+			char cname[256];
+			copyptocstring(bsname, cname);
+			log_trace(LOG_COMP_LANG, "langgetdotparams: langexternalgettable miss for %s", cname);
+		}
 		
 		if (fllocaldotparamsonly)
 			fl = false;
@@ -4600,28 +4605,6 @@ boolean evaluatereadonlyparam (hdltreenode hparam, tyvaluerecord *vparam) {
 		}
 	
 	if (htable != nil) {
-		{
-			char cname[256];
-			long ct = 0;
-			copyptocstring(bs, cname);
-			hashcountitems(htable, &ct);
-			log_trace(LOG_COMP_LANG, "evaluatereadonlyparam about to langsymbolreference: htable=%p name='%s' itemcount=%ld", (void *)htable, cname, ct);
-
-			/* Debug: list first few items in table */
-			if (ct > 0 && ct < 20) {
-				bigstring itemname;
-				hdlhashnode itemnode;
-				long i;
-				for (i = 0; i < ct && i < 10; i++) {
-					if (hashgetnthnode(htable, i, &itemnode)) {
-						gethashkey(itemnode, itemname);
-						char citemname[256];
-						copyptocstring(itemname, citemname);
-						log_trace(LOG_COMP_LANG, "  table item %ld: '%s'", i, citemname);
-					}
-				}
-			}
-		}
 		if (!langsymbolreference (htable, bs, vparam, &hnode))
 			return (false);
 	}
