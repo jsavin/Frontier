@@ -3653,33 +3653,62 @@ boolean coercetypes (tyvaluerecord *v1, tyvaluerecord *v2) {
  * with proper initialization logic to avoid loading tables for metadata-only operations.
  */
 static boolean langgettableval (hdlhashtable htable, bigstring bsname, hdlhashtable *hval) {
-	boolean fl;
+	/*
+	2026-01-23 fix: Search inside the provided table first, then fall back to external lookup.
+
+	langgetdotparams() calls this for intermediate components in dot paths (e.g.,
+	"webserver" in "builtins.webserver.init"). These intermediate components MUST be
+	tables since we need to traverse into them.
+
+	However, the final component (e.g., "init") is resolved by the caller using the
+	parent table and name returned by langgetdotparams(). The final component can be
+	any type (script, string, etc.).
+
+	Critical: We must search INSIDE the provided htable first (using hashtablelookup),
+	not search the global context (via langexternalgettable). The previous "legacy
+	behavior" was actually wrong - it ignored the htable parameter and searched globally.
+
+	The fix from PR #337 was correct to search inside htable first, but it used
+	tablevaltotable() which rejects non-table types. We need to:
+	1. Search inside htable using hashtablelookup()
+	2. If found AND it's a table type, success
+	3. If found but NOT a table type, FAIL (intermediate components must be tables)
+	4. If not found, fall back to langexternalgettable() for backward compatibility
+	*/
+	boolean fl = false;
 	tyvaluerecord val;
 	hdlhashnode hnode;
+	char cname[256];
+
+	copyptocstring(bsname, cname);
+	log_trace(LOG_COMP_LANG, "langgettableval: htable=%p name='%s'", (void *)htable, cname);
 
 	if (htable == nil)
 		return (false);
 
-	log_trace(LOG_COMP_TABLE_LOOKUP, "langgettableval: htable=%p looking for '%s'", (void *)htable, stringbaseaddress(bsname));
-
 	pushhashtable (htable);
 
-	// First, try looking up name INSIDE the provided table
-	// Use hashtablelookup directly (doesn't raise errors) instead of langsymbolreference
-	if (hashtablelookup(htable, bsname, &val, &hnode)) {
-		log_trace(LOG_COMP_TABLE_LOOKUP, "langgettableval: found '%s' in table=%p valtype=%d", stringbaseaddress(bsname), (void *)htable, (int)val.valuetype);
-		// Found it - check if it's a table type
-		fl = tablevaltotable(val, hval, hnode);
-		log_trace(LOG_COMP_TABLE_LOOKUP, "langgettableval: tablevaltotable returned %d hval=%p", (int)fl, (void *)*hval);
+	/* First: search INSIDE the provided table for a child entry */
+	if (hashtablelookup (htable, bsname, &val, &hnode)) {
+		/* Found an entry - but is it a table? (intermediate components must be tables) */
+		fl = tablevaltotable (val, hval, hnode);
+
+		if (fl) {
+			log_trace(LOG_COMP_LANG, "langgettableval: found table in htable, hval=%p", (void *)*hval);
+		}
+		else {
+			log_trace(LOG_COMP_LANG, "langgettableval: found non-table in htable (type=%d)", val.valuetype);
+		}
 	}
 	else {
-		log_trace(LOG_COMP_TABLE_LOOKUP, "langgettableval: '%s' not found in table=%p, trying langexternalgettable", stringbaseaddress(bsname), (void *)htable);
-		// Fallback: try external table lookup (preserves backward compatibility)
+		/* Not found in htable - fall back to external lookup for backward compatibility */
+		log_trace(LOG_COMP_LANG, "langgettableval: not found in htable, trying langexternalgettable");
 		fl = langexternalgettable (bsname, hval);
-		log_trace(LOG_COMP_TABLE_LOOKUP, "langgettableval: langexternalgettable returned %d hval=%p", (int)fl, (void *)(hval ? *hval : nil));
 	}
 
 	pophashtable ();
+
+	log_trace(LOG_COMP_LANG, "langgettableval: result=%d hval=%p", fl, fl ? (void *)*hval : NULL);
 
 	return (fl);
 	} /*langgettableval*/
@@ -3753,10 +3782,33 @@ static boolean langsearchpathvisit (tysearchpathcallback visit, bigstring bsname
 	register hdlhashnode nomad;
 	hdlhashtable hsearch;
 	bigstring bs;
-	
+
 	if (ht == nil)
 		return (false);
-	
+
+	/*
+	WORKAROUND: Check builtins.PROCESSOR_NAME directly before checking system.paths.
+	This bypasses handle management issues where system.paths.webserver might point
+	to a different table instance than builtins.webserver.
+
+	For defined(webserver), we find builtins.webserver and return it directly.
+	For defined(webserver.init), langgetdotparams() will recursively call this function
+	twice: first for "webserver" (returns builtins.webserver), then looks for "init" inside
+	that table using the normal lookup path.
+	*/
+	if (builtinstable != nil && bsname != nil) {
+		hdlhashtable hbuiltins_child = nil;
+
+		/* Try to find bsname in builtins (e.g., builtins.webserver) */
+		if (findnamedtable(builtinstable, bsname, &hbuiltins_child)) {
+			log_trace(LOG_COMP_LANG, "langsearchpathvisit: found builtins.%s directly, returning",
+			          stringbaseaddress(bsname));
+			*htable = hbuiltins_child;
+			return (true);
+		}
+	}
+
+	/* Builtins check didn't work, fall through to system.paths lookup */
 	nomad = (**ht).hfirstsort;
 	
 	while (nomad != nil) {
@@ -3941,11 +3993,24 @@ boolean langgetdotparams (hdltreenode htree, hdlhashtable *htable, bigstring bsn
 	if (!langgetdotparams ((**h).param1, &hsubtable, bsname)) /*recurse*/
 		return (false);
 	
-    if (hsubtable == nil) { /*we're at the very first table in the dot list*/
-		
+     if (hsubtable == nil) { /*we're at the very first table in the dot list*/
+
 		if (langgetspecialtable (bsname, htable)) /*translate "root" to roottable, etc.*/
 			goto L1;
-		
+
+		/*
+		WORKAROUND: Check builtins.PROCESSOR_NAME before langexternalgettable.
+		This ensures we get the full database table (e.g., builtins.webserver with 31 items)
+		instead of the EFP stub (e.g., system.compiler.kernel.webserver with 7 items).
+		*/
+		if (builtinstable != nil && bsname != nil) {
+			if (findnamedtable(builtinstable, bsname, htable)) {
+				log_trace(LOG_COMP_LANG, "langgetdotparams: found builtins.%s, using that instead of EFP",
+				          stringbaseaddress(bsname));
+				goto L1;
+			}
+		}
+
         if (langexternalgettable (bsname, htable)) /*found bsname in current context*/
             goto L1;
 		else
@@ -4479,7 +4544,9 @@ boolean evaluatereadonlyparam (hdltreenode hparam, tyvaluerecord *vparam) {
 	bigstring bs;
 	tyvaluerecord val;
 	hdlhashnode hnode;
-	
+
+	setemptystring(bs);  /* Initialize to prevent reading garbage from stack */
+
 	copystring (bsfunctionname, bssave);
 	
 	switch ((**hparam).nodetype) {
@@ -4533,6 +4600,28 @@ boolean evaluatereadonlyparam (hdltreenode hparam, tyvaluerecord *vparam) {
 		}
 	
 	if (htable != nil) {
+		{
+			char cname[256];
+			long ct = 0;
+			copyptocstring(bs, cname);
+			hashcountitems(htable, &ct);
+			log_trace(LOG_COMP_LANG, "evaluatereadonlyparam about to langsymbolreference: htable=%p name='%s' itemcount=%ld", (void *)htable, cname, ct);
+
+			/* Debug: list first few items in table */
+			if (ct > 0 && ct < 20) {
+				bigstring itemname;
+				hdlhashnode itemnode;
+				long i;
+				for (i = 0; i < ct && i < 10; i++) {
+					if (hashgetnthnode(htable, i, &itemnode)) {
+						gethashkey(itemnode, itemname);
+						char citemname[256];
+						copyptocstring(itemname, citemname);
+						log_trace(LOG_COMP_LANG, "  table item %ld: '%s'", i, citemname);
+					}
+				}
+			}
+		}
 		if (!langsymbolreference (htable, bs, vparam, &hnode))
 			return (false);
 	}

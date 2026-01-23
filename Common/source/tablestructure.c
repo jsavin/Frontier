@@ -27,6 +27,7 @@
 
 #include "frontier.h"
 #include "standard.h"
+#include <ctype.h>
 
 #include "file.h"
 #include "memory.h"
@@ -447,6 +448,13 @@ boolean headless_init_system_paths (hdlhashtable hroot) {
 
 	log_trace(LOG_COMP_LANG, "headless_init_system_paths called with hroot=%p", (void*)hroot);
 
+	// Debug: check what's in root table
+	{
+		long root_count = 0;
+		hashcountitems(hroot, &root_count);
+		log_debug(LOG_COMP_LANG, "Root table has %ld entries", root_count);
+	}
+
 	// Find system table
 	if (!findnamedtable (hroot, namesystembranch, &hsystem)) {
 		log_warn(LOG_COMP_LANG, "No system table found, cannot init system.paths");
@@ -478,15 +486,60 @@ boolean headless_init_system_paths (hdlhashtable hroot) {
 		created_new = true;
 	}
 
-	// Only populate if we just created it - preserve existing database entries
+	// Check if existing system.paths has corrupted/legacy entries
+	// (migration from v6 can leave invalid address values)
 	if (!created_new) {
 		long ctitems = 0;
 		hashcountitems(hpaths, &ctitems);
-		log_debug(LOG_COMP_LANG, "system.paths already exists (%ld entries), skipping population", ctitems);
-		return (true);
+
+		// Check if first entry looks corrupted (named "path01" instead of a processor name)
+		if (ctitems > 0) {
+			hdlhashnode hfirst = (**hpaths).hfirstsort;
+			if (hfirst != nil) {
+				bigstring bsfirstname;
+				gethashkey(hfirst, bsfirstname);
+				char cfirstname[256];
+				copyptocstring(bsfirstname, cfirstname);
+
+				// If first entry is named "path01", "path02", etc., these are corrupted entries
+				if (strncmp(cfirstname, "path", 4) == 0 && isdigit(cfirstname[4])) {
+					log_warn(LOG_COMP_LANG, "system.paths has corrupted entries (e.g., '%s'), clearing and repopulating", cfirstname);
+
+					// Clear all entries
+					while ((**hpaths).hfirstsort != nil) {
+						bigstring bsname;
+						gethashkey((**hpaths).hfirstsort, bsname);
+						hashtabledelete(hpaths, bsname);
+					}
+
+					log_info(LOG_COMP_LANG, "Cleared %ld corrupted entries from system.paths", ctitems);
+					// Fall through to population code below
+				} else {
+					// Entries look valid, preserve them
+					log_debug(LOG_COMP_LANG, "system.paths already exists (%ld entries), skipping population", ctitems);
+					return (true);
+				}
+			}
+		} else {
+			// Empty table, fall through to population
+			log_debug(LOG_COMP_LANG, "system.paths exists but is empty, populating");
+		}
 	}
 
 	log_info(LOG_COMP_LANG, "Populating NEW system.paths with processor shortcuts from efptable");
+
+	// Check if builtinstable global is available
+	// NOTE: builtinstable is a global variable, not in root or system table structure
+	hdlhashtable hbuiltins = builtinstable;
+	boolean has_builtins = (hbuiltins != nil);
+	if (has_builtins) {
+		long builtins_count = 0;
+		hashcountitems(hbuiltins, &builtins_count);
+		log_debug(LOG_COMP_LANG, "Found builtinstable global at %p with %ld entries for fallback lookups",
+		          (void*)hbuiltins, builtins_count);
+	} else {
+		log_debug(LOG_COMP_LANG, "builtinstable global is nil - all paths will point to EFP tables");
+	}
 
 	// Iterate all processor tables in efptable (system.compiler.kernel.*)
 	for (h = (**hefptable).hfirstsort; h != nil; h = (**h).sortedlink) {
@@ -514,23 +567,83 @@ boolean headless_init_system_paths (hdlhashtable hroot) {
 			continue;
 		}
 
-		// Create address value pointing to this processor in efptable
-		// Address values store the PARENT table handle and the CHILD name
-		// Use setexemptaddressvalue to avoid tmpstack operations (runtime not initialized yet)
-		tyvaluerecord addr_val;
-		if (!setexemptaddressvalue(hefptable, bs_processor_name, &addr_val)) {
-			log_warn(LOG_COMP_LANG, "Failed to create address value for processor: %s", cname);
-			continue;
+		// Check if a table exists in builtins.PROCESSOR_NAME (e.g., builtins.webserver)
+		// If so, point to that instead of efptable.PROCESSOR_NAME
+		hdlhashtable htarget_table = nil;
+		hdlhashtable hparent_table = hefptable;  // Default to efptable
+		const char *target_location = "system.compiler.kernel";
+
+		if (has_builtins) {
+			// CRITICAL FIX: Force hydration of external table variables before findnamedtable
+			// Without this, builtins.webserver exists but isn't loaded into memory yet,
+			// so findnamedtable fails and system.paths points to the wrong table (7-item EFP stub
+			// instead of 31-item database table)
+			tyvaluerecord val_check;
+			hdlhashnode hnode_check;
+			if (hashtablelookup(hbuiltins, bs_processor_name, &val_check, &hnode_check)) {
+				if (val_check.valuetype == externalvaluetype) {
+					// Force hydration by calling tableverbinmemory
+					hdlexternalvariable hv = (hdlexternalvariable)val_check.data.externalvalue;
+					if (tableverbinmemory(NULL, hv, hnode_check)) {
+						log_trace(LOG_COMP_LANG, "Hydrated external table %s before findnamedtable", cname);
+					} else {
+						log_warn(LOG_COMP_LANG, "Failed to hydrate external table %s", cname);
+					}
+				}
+			}
+
+			// Now findnamedtable should succeed if the table exists
+			if (findnamedtable(hbuiltins, bs_processor_name, &htarget_table)) {
+				// Found matching table in builtins - use that instead
+				hparent_table = hbuiltins;
+				target_location = "builtins";
+				log_debug(LOG_COMP_LANG, "Found %s table in builtins (%p), will point path there instead of EFP",
+				          cname, (void*)htarget_table);
+			} else {
+				log_trace(LOG_COMP_LANG, "No table found in builtins.%s, using EFP table", cname);
+			}
+		} else {
+			log_trace(LOG_COMP_LANG, "No builtins table available, using EFP table for %s", cname);
+		}
+
+		// For builtins tables, copy the external variable value directly instead of creating
+		// an address value. This ensures system.paths.webserver points to the SAME table
+		// handle as builtins.webserver, not a re-looked-up version.
+		tyvaluerecord path_val;
+
+		if (hparent_table == hbuiltins && htarget_table != nil) {
+			// Copy the external variable value from builtins directly
+			tyvaluerecord val_from_builtins;
+			hdlhashnode hnode_from_builtins;
+			if (hashtablelookup(hbuiltins, bs_processor_name, &val_from_builtins, &hnode_from_builtins)) {
+				// Copy the value directly - this preserves the same external variable handle
+				path_val = val_from_builtins;
+				log_debug(LOG_COMP_LANG, "Copied external value from builtins.%s (type=%d)",
+				          cname, (int)val_from_builtins.valuetype);
+			} else {
+				// Fallback: create address value
+				log_warn(LOG_COMP_LANG, "Couldn't copy value from builtins.%s, using address fallback", cname);
+				if (!setexemptaddressvalue(hparent_table, bs_processor_name, &path_val)) {
+					log_warn(LOG_COMP_LANG, "Failed to create address value for processor: %s", cname);
+					continue;
+				}
+			}
+		} else {
+			// For EFP tables, use address value as before
+			if (!setexemptaddressvalue(hparent_table, bs_processor_name, &path_val)) {
+				log_warn(LOG_COMP_LANG, "Failed to create address value for processor: %s", cname);
+				continue;
+			}
 		}
 
 		// Add to system.paths with processor short name (e.g., "op")
-		if (!hashtableassign(hpaths, bs_processor_name, addr_val)) {
+		if (!hashtableassign(hpaths, bs_processor_name, path_val)) {
 			log_warn(LOG_COMP_LANG, "Failed to assign processor to system.paths: %s", cname);
 			continue;
 		}
 
 		processor_count++;
-		log_debug(LOG_COMP_LANG, "Added system.paths.%s -> system.compiler.kernel.%s", cname, cname);
+		log_debug(LOG_COMP_LANG, "Added system.paths.%s -> %s.%s", cname, target_location, cname);
 	}
 
 	log_info(LOG_COMP_LANG, "Populated system.paths with %d processor shortcuts", processor_count);

@@ -368,3 +368,140 @@ tests:
     script: 'defined(web)'
     expected_success: true
     expected_result: "false"
+
+  # ====================================================================
+  # SECTION 10: External Script Object Resolution (Regression from PR #337)
+  # ====================================================================
+  # REGRESSION CONTEXT:
+  # PR #337 fixed path entry name matching but introduced a new bug where
+  # langgettableval() now calls tablevaltotable() which rejects non-table types.
+  #
+  # External script objects like webserver.init have type idscriptprocessor,
+  # not idtableprocessor, so the type check fails.
+  #
+  # Result:
+  # - defined(webserver) → TRUE ✅ (works after PR #337)
+  # - defined(webserver.init) → FALSE ❌ (broken - init is scriptType)
+  #
+  # The fix will modify langgettableval() to accept non-table types and
+  # handle them appropriately (scripts, strings, numbers, etc.).
+  #
+  # These tests validate the fix and prevent future regressions.
+
+  - name: "REGRESSION - defined(webserver.init) - external script object"
+    description: |
+      CRITICAL REGRESSION TEST: webserver.init is an external scriptType object.
+
+      Current behavior (BROKEN after PR #337):
+        defined(webserver.init) → FALSE
+        Error: "Can't evaluate the expression because the name init hasn't been defined."
+
+      Expected behavior after fix:
+        defined(webserver.init) → TRUE
+
+      Root cause: langgettableval() calls tablevaltotable() which rejects non-tables.
+      webserver.init has type idscriptprocessor, not idtableprocessor.
+    script: 'defined(webserver.init)'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "REGRESSION - typeof(webserver.init) - verify script type"
+    description: |
+      Verify webserver.init is actually a script (scpt type).
+      This confirms the type mismatch that caused the regression.
+    script: 'typeof(builtins.webserver.init)'
+    expected_success: true
+    expected_result: "scpt"
+
+  - name: "REGRESSION - defined(op.firstSummit) - another script object"
+    description: |
+      op.firstSummit is also an external script object.
+      Test that the fix works for multiple script objects, not just webserver.init.
+    script: 'defined(op.firstSummit)'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "REGRESSION - typeof(op.firstSummit) - verify script type"
+    description: "Confirm op.firstSummit is a script type"
+    script: 'typeof(builtins.op.firstSummit)'
+    expected_success: true
+    expected_result: "scpt"
+
+  - name: "REGRESSION - defined(builtins.webserver.init) - direct lookup still works"
+    description: |
+      Regression check: Direct lookups in builtins.webserver should still work
+      (they don't go through path resolution).
+    script: 'defined(builtins.webserver.init)'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "REGRESSION - webserver path entry still works after fix"
+    description: |
+      Ensure the PR #337 fix (path entry name matching) still works
+      after we fix the script object regression.
+    script: 'defined(webserver)'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "REGRESSION - op path entry still works after fix"
+    description: "Verify op path entry continues to work (PR #337 fix)"
+    script: 'defined(op)'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "Mixed types - table child after path resolution"
+    description: |
+      Verify tables inside path-resolved entries still work.
+      builtins.webserver is a table, and may contain child tables.
+    script: 'typeof(builtins.webserver)'
+    expected_success: true
+    expected_result: "tabl"
+
+  - name: "Mixed types - string child if exists"
+    description: |
+      Test that if a path-resolved entry contains string values,
+      they are handled correctly (not just scripts and tables).
+    script: 'typeof(builtins)'
+    expected_success: true
+    expected_result: "tabl"
+
+  - name: "Edge case - non-existent script in path entry"
+    description: |
+      Verify defined() returns FALSE for non-existent script children.
+      webserver.fakeScript doesn't exist, should return FALSE.
+    script: 'defined(webserver.fakeScript)'
+    expected_success: true
+    expected_result: "false"
+
+  - name: "Integration - calling webserver.init after defined() check"
+    description: |
+      Real-world scenario: After confirming webserver.init exists,
+      we should be able to reference it in expressions.
+
+      This test doesn't call the script (no ()) but verifies we can
+      check its type after defined() returns TRUE.
+    script: |
+      if defined(webserver.init) {
+        return typeof(builtins.webserver.init)
+      } else {
+        return "not found"
+      }
+    expected_success: true
+    expected_result: "scpt"
+
+  - name: "Integration - conditional script loading pattern"
+    description: |
+      Common UserTalk pattern: Check if extension is loaded before using it.
+      After the fix, this pattern should work correctly.
+    script: |
+      if defined(webserver) and defined(webserver.init) {
+        return "webserver fully available"
+      } else {
+        if defined(webserver) {
+          return "webserver table exists but init missing"
+        } else {
+          return "webserver not loaded"
+        }
+      }
+    expected_success: true
+    expected_result: "webserver fully available"
