@@ -310,6 +310,45 @@ When reviewing /doit workflow execution, check:
 
 ---
 
+## /doit Workflow - Feature Development
+
+**For comprehensive /doit workflow guidance**, see the global instructions in `~/.claude/CLAUDE.md`.
+
+This section provides **Frontier-specific agent selection** for each /doit phase.
+
+### /doit Agent Selection for Frontier
+
+| Phase | Primary Agent(s) | When to Use in Parallel | Notes |
+|-------|------------------|-------------------------|-------|
+| **Phase 2: Research** | Explore | Always use for multi-file analysis | Fast codebase exploration and architectural context |
+| **Phase 3: Planning** | Plan, system-architect | Use system-architect if architecture/design decisions needed | Plan for implementation steps, system-architect for tech decisions |
+| **Phase 4: Implementation** | system-architect (C code, architecture)<br>usertalk-engineer (UserTalk scripts)<br>odb-database-expert (DB format)<br>logging-expert (logging) | Parallelize independent work:<br>- C implementation + tests<br>- Multiple independent verbs<br>- UserTalk + C components | Choose based on domain:<br>- C runtime → system-architect<br>- UserTalk → usertalk-engineer<br>- Database → odb-database-expert<br>- Logging → logging-expert |
+| **Phase 5: Testing** | frontier-sdet | Can parallel with code-review-bar-raiser | Write tests (unit + integration), ensure all pass |
+| **Phase 6: PR** | pull-request<br>code-review-bar-raiser<br>security-reviewer | **Always parallel**: All three agents | PR creation + quality review + security review |
+
+### Common Parallel Agent Patterns for Frontier
+
+**New kernel verb**:
+1. Explore (find existing verb patterns) + Plan (design approach) - sequential
+2. system-architect (C implementation) + frontier-sdet (test design) - **parallel**
+3. code-review-bar-raiser + security-reviewer - **parallel**
+
+**Database format change**:
+1. Explore (affected code) + odb-database-expert (format analysis) - sequential
+2. odb-database-expert (implementation) + frontier-sdet (migration tests) - **parallel**
+3. code-review-bar-raiser + security-reviewer - **parallel**
+
+**UserTalk feature**:
+1. usertalk-engineer (implementation) + frontier-sdet (integration tests) - **parallel**
+2. code-review-bar-raiser (review UserTalk patterns) - sequential
+
+**Refactoring work**:
+1. refactoring-consultant (design refactoring approach) - sequential
+2. system-architect (implement refactoring) + frontier-sdet (update tests) - **parallel**
+3. code-review-bar-raiser (verify no regressions) - sequential
+
+---
+
 ## Implementing Kernel Verbs
 
 **Full Guide:** See [`docs/VERB_IMPLEMENTATION_GUIDE.md`](docs/VERB_IMPLEMENTATION_GUIDE.md)
