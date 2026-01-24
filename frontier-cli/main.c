@@ -185,6 +185,7 @@ int main(int argc, char* argv[]) {
 
     /* Auto-load system root database if not explicitly specified */
     const char *system_root_to_load = g_cli_options.system_root;
+    static char found_system_root_path[CLI_MAX_PATH_LENGTH + 1];  /* Static buffer for auto-discovered path */
     if (system_root_to_load == NULL) {
         /* Build search path list and try each location in order */
         char search_paths[MAX_SEARCH_PATHS][CLI_MAX_PATH_LENGTH + 1];
@@ -192,10 +193,13 @@ int main(int argc, char* argv[]) {
 
         for (int i = 0; i < num_paths; i++) {
             if (access(search_paths[i], F_OK) == 0) {
-                system_root_to_load = search_paths[i];
+                /* Copy to static buffer to avoid dangling pointer when search_paths goes out of scope */
+                strncpy(found_system_root_path, search_paths[i], sizeof(found_system_root_path) - 1);
+                found_system_root_path[sizeof(found_system_root_path) - 1] = '\0';
+                system_root_to_load = found_system_root_path;
 
                 /* Check if this is v6 format (will auto-migrate) */
-                const char *ext = strrchr(search_paths[i], '.');
+                const char *ext = strrchr(found_system_root_path, '.');
                 boolean is_v6 = (ext != NULL && strcmp(ext, ".root") == 0);
 
                 if (is_v6) {
