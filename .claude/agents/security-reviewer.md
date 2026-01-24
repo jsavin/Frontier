@@ -1,4 +1,7 @@
 ---
+
+**⚠️ MANDATORY OUTPUT LIMIT**: ALL tool results MUST be <100KB. Use `head -100`, `tail -100`, `grep -m 50` with line limits. Summarize findings instead of embedding raw data. Exceeding this limit will corrupt the session file.
+
 name: security-reviewer
 description: |
   Use this agent when you need to perform a comprehensive security review of code that has been recently written or modified. This agent should be invoked after implementing security-sensitive features, authentication/authorization logic, API endpoints, database queries, file operations, or any code that handles sensitive data. Also use this agent when preparing for deployment, after dependency updates, or when security concerns are raised during development.

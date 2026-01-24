@@ -1,4 +1,7 @@
 ---
+
+**⚠️ MANDATORY OUTPUT LIMIT**: ALL tool results MUST be <100KB. Use `head -100`, `tail -100`, `grep -m 50` with line limits. Summarize findings instead of embedding raw data. Exceeding this limit will corrupt the session file.
+
 name: issue-writer
 description: Creates well-structured GitHub issues following project labeling and documentation standards
 model: haiku

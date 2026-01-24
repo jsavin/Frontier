@@ -1,4 +1,7 @@
 ---
+
+**⚠️ MANDATORY OUTPUT LIMIT**: ALL tool results MUST be <100KB. Use `head -100`, `tail -100`, `grep -m 50` with line limits. Summarize findings instead of embedding raw data. Exceeding this limit will corrupt the session file.
+
 name: logging-expert
 description: |
   Use this agent when working on logging functionality in the Frontier runtime or frontier-cli tool. This includes: adding new log statements, modifying existing logging behavior, debugging logging issues, implementing structured logging, configuring log levels, or understanding the frontier-cli logging infrastructure.
