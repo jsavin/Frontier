@@ -486,44 +486,12 @@ boolean headless_init_system_paths (hdlhashtable hroot) {
 		created_new = true;
 	}
 
-	// Check if existing system.paths has corrupted/legacy entries
-	// (migration from v6 can leave invalid address values)
+	// Only populate if we just created it - preserve existing database entries (PR #336)
 	if (!created_new) {
 		long ctitems = 0;
 		hashcountitems(hpaths, &ctitems);
-
-		// Check if first entry looks corrupted (named "path01" instead of a processor name)
-		if (ctitems > 0) {
-			hdlhashnode hfirst = (**hpaths).hfirstsort;
-			if (hfirst != nil) {
-				bigstring bsfirstname;
-				gethashkey(hfirst, bsfirstname);
-				char cfirstname[256];
-				copyptocstring(bsfirstname, cfirstname);
-
-				// If first entry is named "path01", "path02", etc., these are corrupted entries
-				if (strncmp(cfirstname, "path", 4) == 0 && isdigit(cfirstname[4])) {
-					log_warn(LOG_COMP_LANG, "system.paths has corrupted entries (e.g., '%s'), clearing and repopulating", cfirstname);
-
-					// Clear all entries
-					while ((**hpaths).hfirstsort != nil) {
-						bigstring bsname;
-						gethashkey((**hpaths).hfirstsort, bsname);
-						hashtabledelete(hpaths, bsname);
-					}
-
-					log_info(LOG_COMP_LANG, "Cleared %ld corrupted entries from system.paths", ctitems);
-					// Fall through to population code below
-				} else {
-					// Entries look valid, preserve them
-					log_debug(LOG_COMP_LANG, "system.paths already exists (%ld entries), skipping population", ctitems);
-					return (true);
-				}
-			}
-		} else {
-			// Empty table, fall through to population
-			log_debug(LOG_COMP_LANG, "system.paths exists but is empty, populating");
-		}
+		log_debug(LOG_COMP_LANG, "system.paths already exists (%ld entries), skipping population", ctitems);
+		return (true);
 	}
 
 	log_info(LOG_COMP_LANG, "Populating NEW system.paths with processor shortcuts from efptable");

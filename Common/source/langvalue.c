@@ -3786,30 +3786,6 @@ static boolean langsearchpathvisit (tysearchpathcallback visit, bigstring bsname
 	if (ht == nil)
 		return (false);
 
-	/*
-	WORKAROUND: Check builtins.PROCESSOR_NAME directly before checking system.paths.
-	This bypasses handle management issues where system.paths.webserver might point
-	to a different table instance than builtins.webserver.
-
-	For defined(webserver), we find builtins.webserver and return it directly.
-	For defined(webserver.init), langgetdotparams() will recursively call this function
-	twice: first for "webserver" (returns builtins.webserver), then looks for "init" inside
-	that table using the normal lookup path.
-	*/
-	if (builtinstable != nil && bsname != nil) {
-		hdlhashtable hbuiltins_child = nil;
-
-		/* Try to find bsname in builtins (e.g., builtins.webserver) */
-		if (findnamedtable(builtinstable, bsname, &hbuiltins_child)) {
-			char cname[256];
-			copyptocstring(bsname, cname);
-			log_trace(LOG_COMP_LANG, "langsearchpathvisit: found builtins.%s directly, returning", cname);
-			*htable = hbuiltins_child;
-			return (true);
-		}
-	}
-
-	/* Builtins check didn't work, fall through to system.paths lookup */
 	nomad = (**ht).hfirstsort;
 	
 	while (nomad != nil) {
@@ -3998,20 +3974,6 @@ boolean langgetdotparams (hdltreenode htree, hdlhashtable *htable, bigstring bsn
 
 		if (langgetspecialtable (bsname, htable)) /*translate "root" to roottable, etc.*/
 			goto L1;
-
-		/*
-		WORKAROUND: Check builtins.PROCESSOR_NAME before langexternalgettable.
-		This ensures we get the full database table (e.g., builtins.webserver with 31 items)
-		instead of the EFP stub (e.g., system.compiler.kernel.webserver with 7 items).
-		*/
-		if (builtinstable != nil && bsname != nil) {
-			if (findnamedtable(builtinstable, bsname, htable)) {
-				char cname[256];
-				copyptocstring(bsname, cname);
-				log_trace(LOG_COMP_LANG, "langgetdotparams: found builtins.%s, using that instead of EFP", cname);
-				goto L1;
-			}
-		}
 
         if (langexternalgettable (bsname, htable)) /*found bsname in current context*/
             goto L1;
