@@ -115,8 +115,6 @@ boolean langsymbolreference (hdlhashtable htable, bigstring bs, tyvaluerecord *v
 
 	boolean fl;
 
-	log_trace(LOG_COMP_LANG, "langsymbolreference: htable=%p looking for '%s'", (void *)htable, stringbaseaddress(bs));
-
 	pushhashtable (htable);
 
 	fl = langgetsymbolval (bs, val, hnode);
@@ -3653,33 +3651,59 @@ boolean coercetypes (tyvaluerecord *v1, tyvaluerecord *v2) {
  * with proper initialization logic to avoid loading tables for metadata-only operations.
  */
 static boolean langgettableval (hdlhashtable htable, bigstring bsname, hdlhashtable *hval) {
-	boolean fl;
+	/*
+	2026-01-23 fix: Search inside the provided table first, then fall back to external lookup.
+
+	langgetdotparams() calls this for intermediate components in dot paths (e.g.,
+	"webserver" in "builtins.webserver.init"). These intermediate components MUST be
+	tables since we need to traverse into them.
+
+	However, the final component (e.g., "init") is resolved by the caller using the
+	parent table and name returned by langgetdotparams(). The final component can be
+	any type (script, string, etc.).
+
+	Critical: We must search INSIDE the provided htable first (using hashtablelookup),
+	not search the global context (via langexternalgettable). The previous "legacy
+	behavior" was actually wrong - it ignored the htable parameter and searched globally.
+
+	The fix from PR #337 was correct to search inside htable first, but it used
+	tablevaltotable() which rejects non-table types. We need to:
+	1. Search inside htable using hashtablelookup()
+	2. If found AND it's a table type, success
+	3. If found but NOT a table type, FAIL (intermediate components must be tables)
+	4. If not found, fall back to langexternalgettable() for backward compatibility
+	*/
+	boolean fl = false;
 	tyvaluerecord val;
 	hdlhashnode hnode;
+	char cname[256];
+
+	copyptocstring(bsname, cname);
+	log_trace(LOG_COMP_LANG, "langgettableval: htable=%p name='%s'", (void *)htable, cname);
 
 	if (htable == nil)
 		return (false);
 
-	log_trace(LOG_COMP_TABLE_LOOKUP, "langgettableval: htable=%p looking for '%s'", (void *)htable, stringbaseaddress(bsname));
-
 	pushhashtable (htable);
 
-	// First, try looking up name INSIDE the provided table
-	// Use hashtablelookup directly (doesn't raise errors) instead of langsymbolreference
-	if (hashtablelookup(htable, bsname, &val, &hnode)) {
-		log_trace(LOG_COMP_TABLE_LOOKUP, "langgettableval: found '%s' in table=%p valtype=%d", stringbaseaddress(bsname), (void *)htable, (int)val.valuetype);
-		// Found it - check if it's a table type
-		fl = tablevaltotable(val, hval, hnode);
-		log_trace(LOG_COMP_TABLE_LOOKUP, "langgettableval: tablevaltotable returned %d hval=%p", (int)fl, (void *)*hval);
+	/* First: search INSIDE the provided table for a child entry */
+	if (hashtablelookup (htable, bsname, &val, &hnode)) {
+		/* Found an entry - but is it a table? (intermediate components must be tables) */
+		fl = tablevaltotable (val, hval, hnode);
+
+		if (!fl) {
+			log_trace(LOG_COMP_LANG, "langgettableval: found non-table in htable (type=%d)", val.valuetype);
+		}
 	}
 	else {
-		log_trace(LOG_COMP_TABLE_LOOKUP, "langgettableval: '%s' not found in table=%p, trying langexternalgettable", stringbaseaddress(bsname), (void *)htable);
-		// Fallback: try external table lookup (preserves backward compatibility)
+		/* Not found in htable - fall back to external lookup for backward compatibility */
+		log_trace(LOG_COMP_LANG, "langgettableval: not found in htable, trying langexternalgettable");
 		fl = langexternalgettable (bsname, hval);
-		log_trace(LOG_COMP_TABLE_LOOKUP, "langgettableval: langexternalgettable returned %d hval=%p", (int)fl, (void *)(hval ? *hval : nil));
 	}
 
 	pophashtable ();
+
+	log_trace(LOG_COMP_LANG, "langgettableval: result=%d hval=%p", fl, fl ? (void *)*hval : NULL);
 
 	return (fl);
 	} /*langgettableval*/
@@ -3732,38 +3756,75 @@ boolean langgetidentifier (hdltreenode htree, bigstring bs) {
 typedef boolean (*tysearchpathcallback) (hdlhashtable, bigstring, hdlhashtable *);
 
 
-static boolean langsearchpathvisit (tysearchpathcallback visit, bigstring bsname, hdlhashtable *htable) {
-	
+static boolean langdirecttablelookup (hdlhashtable htable, bigstring bsname, hdlhashtable *hresult) {
 	/*
-	look in the paths table for addresses of tables to look in.
-	
-	call the visit routine for each table pointed to in the paths table.
-	we pass along bsname and htable for convenience; we never look at them
-	ourself.
-	
-	return true when a visit routine returns true; return false when an 
-	error occurs or when we run out of addresses
-	
-	4/3/92 dmb: added check for unresolved address
+	2026-01-24: Direct table lookup callback for langsearchpathvisit.
 
-	5.1b21 dmb: handle guest databases via filewindowtable
+	Looks up bsname directly in htable without going through langexternalgettable,
+	which would check builtinstable (EFP table) and return the wrong result.
+
+	This is used when searching system.paths to ensure we find "webserver" in
+	builtins.webserver (21 items), not in builtinstable's EFP entry (7 items).
 	*/
-	
+	tyvaluerecord val;
+	hdlhashnode hnode;
+
+	if (htable == nil)
+		return (false);
+
+	pushhashtable (htable);
+
+	/* Direct lookup in the table - no global fallbacks */
+	if (!hashtablelookup (htable, bsname, &val, &hnode)) {
+		pophashtable ();
+		return (false);
+	}
+
+	/* Convert to table if it's a table type */
+	boolean fl = tablevaltotable (val, hresult, hnode);
+
+	pophashtable ();
+
+	return (fl);
+}
+
+
+static boolean langsearchpathvisit (tysearchpathcallback visit, bigstring bsname, hdlhashtable *htable) {
+
+	/*
+	2026-01-24: Rewrite to fix path resolution search order.
+
+	Algorithm:
+	1. Set fllocaldotparamsonly = true to prevent recursive path search
+	2. Loop through system.paths entries (already sorted alphabetically)
+	3. For each path entry, get the table it points to
+	4. Call the callback to look up bsname in that table
+	5. Return true when callback succeeds (found the item)
+
+	The recursion guard (fllocaldotparamsonly) is critical: it ensures that when
+	the callback calls langgettableval → langgetdotparams, it won't recursively
+	trigger another path search, avoiding infinite recursion.
+
+	This ensures that defined(webserver.init) searches paths in alphabetical order
+	and finds builtins.webserver (21 items) instead of a wrong table.
+	*/
+
 	register hdlhashtable ht = pathstable;
 	register hdlhashnode nomad;
 	hdlhashtable hsearch;
-	bigstring bs;
-	
+	boolean saved_fllocaldotparamsonly;
+	boolean result = false;
+
 	if (ht == nil)
 		return (false);
-	
-	nomad = (**ht).hfirstsort;
-	
-	while (nomad != nil) {
 
-		/*
-		val = (**nomad).val;
-		*/
+	/* Guard against recursive path search */
+	saved_fllocaldotparamsonly = fllocaldotparamsonly;
+	fllocaldotparamsonly = true;
+
+	nomad = (**ht).hfirstsort;  /* Already sorted alphabetically */
+
+	while (nomad != nil) {
 
 		if ((**nomad).val.valuetype != addressvaluetype) /*not an address*/
 			goto next;
@@ -3772,64 +3833,70 @@ static boolean langsearchpathvisit (tysearchpathcallback visit, bigstring bsname
 			if (!hashresolvevalue (ht, nomad))
 				goto next;
 
-		if (!getaddressvalue ((**nomad).val, &hsearch, bs)) /*address error*/
+		/* Get the table that this path entry points to */
+		bigstring bs_local;
+		hdlhashtable hparent;
+		if (!getaddressvalue ((**nomad).val, &hparent, bs_local))
 			goto next;
 
-		log_trace(LOG_COMP_LANG, "langsearchpathvisit: path entry %s -> %p", stringbaseaddress(bs), (void *)hsearch);
-
-		/*
-		NOTE: The original code called langgettableval(hsearch, bs, &hsearch) here, which was
-		the ROOT CAUSE of the bug. It tried to look up bs (the path entry's leaf name) INSIDE
-		the table that the path entry points to - effectively doing a second lookup that didn't
-		make sense. We just need to verify hsearch is not nil.
-		*/
-		if (hsearch == nil)  /* path entry doesn't point to a table */
+		if (hparent == nil)
 			goto next;
 
-		log_trace(LOG_COMP_LANG, "langsearchpathvisit: resolved leaf %s -> %p", stringbaseaddress(bs), (void *)hsearch);
-
-		/*
-		BUG FIX: Check path entry name first, then try callback for nested lookups.
-
-		For defined(webserver): path entry name "webserver" matches → return table immediately
-		For defined(webserver.init): called twice:
-		  1st: bsname="webserver", path entry "webserver" matches → returns webserver table
-		  2nd: bsname="init", langgetdotparams looks inside webserver table (not via paths)
-		*/
-		bigstring path_entry_name;
-		gethashkey(nomad, path_entry_name);
-
-		log_trace(LOG_COMP_LANG, "langsearchpathvisit: path entry '%s' -> table %p, searching for '%s'",
-		          stringbaseaddress(path_entry_name), (void *)hsearch, stringbaseaddress(bsname));
-
-		/* First, check if path entry name matches identifier (case-insensitive, with nil guard) */
-		if (bsname != nil && equalidentifiers(path_entry_name, bsname)) {
-			log_trace(LOG_COMP_LANG, "langsearchpathvisit: path entry name matches! returning table");
-			*htable = hsearch;
-			return (true);
+		/* Resolve bs_local in hparent to get the actual target table.
+		 * For example, if address is @system.verbs.builtins:
+		 *   hparent = system.verbs
+		 *   bs_local = "builtins"
+		 * We need to look up "builtins" in system.verbs to get the builtins table.
+		 *
+		 * CRITICAL: All exit paths from this block must call pophashtable().
+		 */
+		tyvaluerecord val;
+		hdlhashnode hnode;
+		pushhashtable(hparent);
+		if (!hashtablelookup(hparent, bs_local, &val, &hnode)) {
+			pophashtable();
+			goto next;
 		}
 
-		/* Path entry name doesn't match - try callback (for lookups inside the table) */
-		if ((*visit) (hsearch, bsname, htable))
-			return (true);
-		
+		if (!tablevaltotable(val, &hsearch, hnode)) {
+			pophashtable();
+			goto next;
+		}
+		pophashtable();
+
+		if (hsearch == nil)
+			goto next;
+
+		/* Call the callback to look up bsname in this table */
+		if ((*visit) (hsearch, bsname, htable)) {
+			result = true;
+			goto done;
+		}
+
 		next:
-		
+
 		if (fllangerror)
 			break;
-		
+
 		nomad = (**nomad).sortedlink;
 		} /*while*/
 	
 	if (filewindowtable != nil) {
-		
+
 		for (nomad = (**filewindowtable).hfirstsort; nomad != nil; nomad = (**nomad).sortedlink)
 			if (langexternalvaltotable ((**nomad).val, &hsearch, nomad))
-				if ((*visit) (hsearch, bsname, htable))
-					return (true);
+				if ((*visit) (hsearch, bsname, htable)) {
+					result = true;
+					goto done;
+				}
 		}
 
-	return (false);
+	done:
+
+	/* Restore fllocaldotparamsonly to its original value */
+	fllocaldotparamsonly = saved_fllocaldotparamsonly;
+
+	return (result);
 	} /*langsearchpathvisit*/
 
 
@@ -3941,23 +4008,33 @@ boolean langgetdotparams (hdltreenode htree, hdlhashtable *htable, bigstring bsn
 	if (!langgetdotparams ((**h).param1, &hsubtable, bsname)) /*recurse*/
 		return (false);
 	
-    if (hsubtable == nil) { /*we're at the very first table in the dot list*/
-		
+     if (hsubtable == nil) { /*we're at the very first table in the dot list*/
+
 		if (langgetspecialtable (bsname, htable)) /*translate "root" to roottable, etc.*/
 			goto L1;
-		
-        if (langexternalgettable (bsname, htable)) /*found bsname in current context*/
+
+		/* 2026-01-24: Check system.paths FIRST (in alphabetical order) before checking current context.
+		 * Use langdirecttablelookup callback to avoid EFP table interference.
+		 * langsearchpathvisit handles recursion guard internally. */
+		if (!fllocaldotparamsonly) {
+			fl = langsearchpathvisit (&langdirecttablelookup, bsname, htable); /*check user paths - direct lookup only*/
+			if (fl)
+				goto L1;
+		}
+
+		/* Fallback: check current context (builtinstable, local variables, etc.) */
+        if (langexternalgettable (bsname, htable))
             goto L1;
-		else
-			log_trace(LOG_COMP_LANG, "langgetdotparams: langexternalgettable miss for %s", stringbaseaddress(bsname));
-		
+		else {
+			char cname[256];
+			copyptocstring(bsname, cname);
+			log_trace(LOG_COMP_LANG, "langgetdotparams: langexternalgettable miss for %s", cname);
+		}
+
 		if (fllocaldotparamsonly)
 			fl = false;
 		else {
-			
-			fl = langsearchpathvisit (&langgettableval, bsname, htable); /*check user paths*/
-			
-			if (!fl) { // about to fail; last ditch effort for local paths
+			// about to fail; last ditch effort for local paths
 				
 				flfindanyspecialsymbol = true;
 				
@@ -4479,7 +4556,9 @@ boolean evaluatereadonlyparam (hdltreenode hparam, tyvaluerecord *vparam) {
 	bigstring bs;
 	tyvaluerecord val;
 	hdlhashnode hnode;
-	
+
+	setemptystring(bs);  /* Initialize to prevent reading garbage from stack */
+
 	copystring (bsfunctionname, bssave);
 	
 	switch ((**hparam).nodetype) {
@@ -4502,11 +4581,6 @@ boolean evaluatereadonlyparam (hdltreenode hparam, tyvaluerecord *vparam) {
 		case dotop:  // use dotvalue w/out the copyvaluerecord
 			if (!langgetdotparams (hparam, &htable, bs))
 				return (false);
-			{
-				char cname[256];
-				copyptocstring (bs, cname);
-				log_trace(LOG_COMP_LANG, "evaluatereadonlyparam dot table=%p name=%s", (void *)htable, cname);
-			}
 
 			break;
 		

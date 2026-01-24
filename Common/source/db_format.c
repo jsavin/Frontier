@@ -282,6 +282,14 @@ boolean db_format_prepare_runtime(void) {
     }
     log_debug(LOG_COMP_STARTUP, "db_format_prepare_runtime: system table structure linked successfully");
 
+    /* Resolve address values in system.paths from v6 migration (PR #336 fix) */
+    log_trace(LOG_COMP_STARTUP, "db_format_prepare_runtime: resolving system.paths addresses");
+    if (!resolve_system_paths(roottable)) {
+        log_error(LOG_COMP_STARTUP, "db_format_prepare_runtime: resolve_system_paths FAILED");
+        return false;
+    }
+    log_debug(LOG_COMP_STARTUP, "db_format_prepare_runtime: system.paths addresses resolved successfully");
+
     /* Populate system.paths with processor shortcuts for bare verb resolution */
     log_trace(LOG_COMP_STARTUP, "db_format_prepare_runtime: populating system.paths");
     if (!headless_init_system_paths(roottable)) {
