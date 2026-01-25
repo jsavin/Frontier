@@ -1,7 +1,7 @@
 # Frontier CLI Usage Guide
 
-**Version:** 1.0.0
-**Last Updated:** 2025-12-30
+**Version:** 1.1.0
+**Last Updated:** 2026-01-25
 
 ---
 
@@ -113,6 +113,16 @@ Load a Frontier database file before executing scripts. This makes all tables an
 ./frontier-cli/frontier-cli --system-root databases/Frontier.root7 -e "sizeOf(system)"
 ```
 
+**Positional Database Loading:**
+
+You can also load a database by passing it as a positional argument (without the `--system-root` flag):
+
+```bash
+./frontier-cli/frontier-cli databases/Frontier.root7 -e "sizeOf(system)"
+```
+
+Files ending in `.root` or `.root7` are automatically treated as system root databases. You cannot use both a positional database argument and the `--system-root` flag in the same command.
+
 **Automatic Migration:**
 
 If you specify a v6 database, the CLI will automatically migrate it to v7 format and use the migrated version:
@@ -120,6 +130,9 @@ If you specify a v6 database, the CLI will automatically migrate it to v7 format
 ```bash
 # This will create Frontier.root7 if it doesn't exist
 ./frontier-cli/frontier-cli --system-root databases/Frontier.root -e "1"
+
+# Same behavior with positional argument
+./frontier-cli/frontier-cli databases/Frontier.root -e "1"
 ```
 
 #### `--upgrade-system-root`
@@ -250,9 +263,29 @@ return x + y
 
 Load a Frontier database and execute scripts that interact with its contents.
 
-**Example:**
+**Using --system-root flag:**
 ```bash
 ./frontier-cli/frontier-cli --system-root databases/Frontier.root7 -e "sizeOf(system.verbs)"
+```
+
+**Using positional argument:**
+```bash
+# Database before -e flag
+./frontier-cli/frontier-cli databases/Frontier.root7 -e "sizeOf(system.verbs)"
+
+# Database after -e flag (argument order is flexible)
+./frontier-cli/frontier-cli -e "sizeOf(system.verbs)" databases/Frontier.root7
+```
+
+The CLI displays which database was loaded at startup:
+```
+[startup-INFO] Loaded system root: databases/Frontier.root7
+16
+```
+
+If a v6 database is migrated automatically, you'll see:
+```
+[startup-INFO] Loaded system root: databases/Frontier.root7 (migrated from v6 to v7)
 ```
 
 ---
@@ -430,13 +463,58 @@ Once a database is loaded, you can access its tables and scripts:
 # Output: 2
 ```
 
+### Database Loading
+
+**Positional Database Argument:**
+
+You can load a database by passing it as a positional argument:
+
+```bash
+# Basic usage
+./frontier-cli/frontier-cli databases/Frontier.root7 -e "sizeOf(system)"
+# Output:
+# [startup-INFO] Loaded system root: databases/Frontier.root7
+# 16
+```
+
+**Flexible Argument Ordering:**
+
+The database can appear before or after the `-e` flag:
+
+```bash
+# Database before -e
+./frontier-cli/frontier-cli databases/Frontier.root7 -e "1+1"
+
+# Database after -e
+./frontier-cli/frontier-cli -e "1+1" databases/Frontier.root7
+```
+
+**Auto-Migration from v6 to v7:**
+
+When loading a v6 database, automatic migration occurs and is indicated in the output:
+
+```bash
+./frontier-cli/frontier-cli databases/Frontier.root -e "1+1"
+# Output:
+# [startup-INFO] Loaded system root: databases/Frontier.root7 (migrated from v6 to v7)
+# 2
+```
+
+**Traditional --system-root Flag:**
+
+The traditional flag syntax still works:
+
+```bash
+./frontier-cli/frontier-cli --system-root databases/Frontier.root7 -e "sizeOf(system)"
+```
+
 ### Database Queries
 
 ```bash
-# Check system table size
-./frontier-cli/frontier-cli --system-root databases/Frontier.root7 -e "sizeOf(system)"
+# Check system table size (positional argument)
+./frontier-cli/frontier-cli databases/Frontier.root7 -e "sizeOf(system)"
 
-# List system.verbs subtables
+# List system.verbs subtables (traditional flag)
 ./frontier-cli/frontier-cli --system-root databases/Frontier.root7 -e "sizeOf(system.verbs)"
 ```
 
@@ -535,6 +613,22 @@ return result
 **Solution:** Verify the path and use an absolute path if needed:
 ```bash
 ./frontier-cli/frontier-cli --system-root /absolute/path/to/database.root -e "1"
+```
+
+#### "Error: System root already specified via --system-root"
+
+**Problem:** You used both a positional database argument and the `--system-root` flag in the same command.
+
+**Solution:** Use only one method to specify the database:
+```bash
+# Use positional argument only
+./frontier-cli/frontier-cli databases/Frontier.root7 -e "1+1"
+
+# OR use --system-root flag only
+./frontier-cli/frontier-cli --system-root databases/Frontier.root7 -e "1+1"
+
+# NOT both (this will error)
+./frontier-cli/frontier-cli --system-root databases/A.root databases/B.root -e "1"
 ```
 
 #### Database Migration Errors
@@ -695,6 +789,13 @@ time ./frontier-cli/frontier-cli -e "local(i); for i = 1 to 1000 {i * 2}"
 ---
 
 ## Version History
+
+### 1.1.0 (2026-01-25)
+
+- Added positional database argument support (`.root` and `.root7` files)
+- Flexible argument ordering (database can appear before or after `-e` flag)
+- Output messages showing which database was loaded and if migration occurred
+- Conflict detection between positional and `--system-root` arguments
 
 ### 1.0.0 (2025-12-30)
 
