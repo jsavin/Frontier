@@ -784,8 +784,14 @@ static boolean hydrate_system_root_database(const char* path) {
     }
 
     dbsetview(cancoonview, adr);
-    cli_log_info("Hydrated system root: %s%s", path,
-                 created_optional ? " (created optional tables)" : "");
+
+    /* Log which system root was loaded and whether it was auto-migrated */
+    if (migrated) {
+        log_info(LOG_COMP_STARTUP, "Loaded system root: %s (migrated from v6 to v7)", path);
+    } else {
+        log_info(LOG_COMP_STARTUP, "Loaded system root: %s", path);
+    }
+
     ok = true;
 
 cleanup:
