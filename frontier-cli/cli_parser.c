@@ -219,6 +219,10 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
                 return false;
             }
             options->system_root = strdup(arg);
+            if (options->system_root == NULL) {
+                log_error(LOG_COMP_GENERAL, "Error: Memory allocation failed");
+                return false;
+            }
         } else {
             // Positional argument is a script file
             if (options->script_file != NULL) {
@@ -226,11 +230,20 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
                 return false;
             }
             options->script_file = strdup(arg);
+            if (options->script_file == NULL) {
+                log_error(LOG_COMP_GENERAL, "Error: Memory allocation failed");
+                return false;
+            }
         }
 
         // Check for additional arguments
         if (optind + 1 < argc) {
-            log_error(LOG_COMP_GENERAL, "Error: Unexpected argument '%s'", argv[optind + 1]);
+            const char* next_arg = argv[optind + 1];
+            if (cli_is_root_file(next_arg)) {
+                log_error(LOG_COMP_GENERAL, "Error: Multiple .root files not allowed");
+            } else {
+                log_error(LOG_COMP_GENERAL, "Error: Unexpected argument '%s'", next_arg);
+            }
             return false;
         }
     }
