@@ -1,7 +1,7 @@
 # ADR-011: Prioritize system.paths Over Local Context in Name Resolution
 
 ## Status
-Accepted
+`[IMPLEMENTED]` - Search order corrected (PR #342), 38 integration tests passing
 
 ## Context
 Prior to PR #342, UserTalk name resolution checked local context (builtinstable, local variables) before searching system.paths. This caused `defined(webserver.init)` to return false because:

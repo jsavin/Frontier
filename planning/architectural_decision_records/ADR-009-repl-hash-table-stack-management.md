@@ -1,9 +1,10 @@
 # ADR-009: REPL Hash Table Stack Management + QuickScript Architecture
 
-**Status**: Implemented (Phase 3A thread-local + Phase 3B QuickScript model)
+**Status**: `[IMPLEMENTED]` - QuickScript model deployed (PR #304), thread-local foundation in place
 **Date**: 2026-01-14
 **Merged**: 2026-01-15 (PR #304)
 **Author**: System Architect
+**Implementation**: PR #304 - QuickScript model with thread-local hash table stack infrastructure
 **Relates to**: PR #300 (REPL Interactive Mode Phase 1), Issue #135 (Collaborative ODB), ADR-005 (Thread-Safety), ADR-006 (Outline Context), ADR-008 (Processor Table Lifecycle)
 **Supersedes**: N/A
 

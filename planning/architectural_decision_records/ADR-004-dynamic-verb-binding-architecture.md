@@ -1,6 +1,6 @@
 # ADR-004: Dynamic Verb Binding Architecture
 
-**Status**: Proposed
+**Status**: `[NOT STARTED]` - Strategic design document for future implementation
 **Date**: 2025-12-27
 **Author**: Codex
 **Related Issues**: #166 (bare verb resolution), verb binding evolution

@@ -1,10 +1,11 @@
 # ADR-005: Parameter State Thread-Safety Architecture
 
-**Status**: Accepted
+**Status**: `[IN PROGRESS]` - Pattern established, foundation for ongoing global elimination
 **Date**: 2026-01-02
 **Author**: System Architect
 **Relates to**: Collaborative ODB (Phase 6+), Issue TBD
 **Supersedes**: N/A
+**Note**: Foundation pattern used by ADR-006, ADR-009, and future refactoring work
 
 ## Executive Summary
 
