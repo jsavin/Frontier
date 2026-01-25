@@ -1,6 +1,6 @@
 # ADR-003: Address Value Resolution Strategy
 
-**Status**: Implemented
+**Status**: `[IMPLEMENTED]` - Lazy/eager resolution working, address migration complete (PR #336)
 **Date**: 2025-12-27
 **Author**: Codex
 **Related Issues**: #166 (bare verb resolution), v6→v7 migration

@@ -1,6 +1,10 @@
 # TCP Architecture Documentation
 
-This document explains key architectural decisions in the TCP Phase 1A/1B implementation.
+This document explains key architectural decisions in the TCP Phase 1A/1B/3 implementation.
+
+**Status**: Phase 1A, 1B, and 3 complete (as of 2026-01-24)
+**PRs**: #327 (Phase 1A), #330 (Phase 1B + Phase 3)
+**Last Updated**: 2026-01-24
 
 ## Stream Slot Design
 
@@ -242,37 +246,42 @@ log_warn(LOG_COMP_LANG, "tcp_name_to_address: rejected private/reserved IP"); //
 TCP tests are organized into separate suites based on network dependencies:
 
 **Local Tests (Always Run)**:
-- `tests/integration/test_cases/tcp_verbs.yaml` - 13 local-only tests
+- `tests/integration/test_cases/tcp_verbs.yaml` - 27 local-only tests (as of 2026-01-24)
 - No external network connectivity required
 - Tests error handling, address encoding/decoding, parameter validation
 - Safe for CI/CD environments with restricted network access
 - Run automatically in all test execution contexts
 
 **Network Tests (Opt-In)**:
-- `tests/integration/test_cases/tcp_verbs_network.yaml` - 9 network-dependent tests
+- `tests/integration/test_cases/tcp_verbs_network.yaml` - 20 network-dependent tests (as of 2026-01-24)
 - Require external connectivity (connect to example.com:80)
 - Run manually via `FRONTIER_RUN_NETWORK_TESTS=1 make test-integration`
 - Validate actual TCP connectivity and protocol behavior
 - Not run by default to avoid test fragility
 
+**Server Operation Tests** (Phase 3):
+- `tests/integration/test_cases/tcp_server_verbs.yaml` - 37 tests for server operations
+- `tests/integration/test_cases/tcp_client_verbs.yaml` - 27 tests for client operations
+- Tests for `tcp.listenStream()`, `tcp.closeListen()` callback infrastructure
+
 ### Testing Progression (Phase 1 → Phase 3)
 
-**Phase 1A/1B (Current)**: External dependency tests
+**Phase 1A/1B (Complete)**: External dependency tests
 - Network tests connect to `example.com:80` for validation
 - Tests are opt-in and skipped by default
 - Enables manual verification of TCP implementation
 
-**Phase 2**: Buffered I/O with external dependencies
+**Phase 2 (Planned)**: Buffered I/O with external dependencies
 - Continue pattern of separate network test suite
 - Add tests for `tcp.readStreamUntil`, `tcp.readStreamBytes`, etc.
 - Remain opt-in via `FRONTIER_RUN_NETWORK_TESTS=1`
 
-**Phase 3 (Future)**: Self-contained deterministic tests
-- Once `tcp.listenStream()` is implemented, tests become fully self-contained
-- Launch Frontier-based test server within integration test harness
-- Client tests connect to localhost instead of external servers
-- Network tests become deterministic and CI/CD-friendly
-- No external dependencies, no test fragility from internet connectivity
+**Phase 3 (Complete as of PR #330)**: Self-contained deterministic tests
+- `tcp.listenStream()` and `tcp.closeListen()` implemented
+- Tests can launch Frontier-based test server within integration test harness
+- Client tests can connect to localhost instead of external servers
+- Enables fully deterministic and CI/CD-friendly network tests
+- No external dependencies required for server operation testing
 
 **Example Phase 3 Self-Contained Test**:
 ```yaml
@@ -322,29 +331,52 @@ FRONTIER_RUN_NETWORK_TESTS=1 cd tests && make test-integration
 
 ---
 
+## Completed Phases
+
+### Phase 1A: Core Socket Operations (PR #327)
+- 6 fundamental TCP verbs for client connectivity
+- Thread-safe with mutex protection
+- Rate limiting and security features (SSRF protection)
+
+### Phase 1B: Address Encoding (PR #330)
+- 5 public address handling verbs
+- DNS forward and reverse lookup
+- IP address encoding/decoding
+
+### Phase 3: Server Operations (PR #330)
+- `tcp.listenStream()` - Accept connections with callback dispatch
+- `tcp.closeListen()` - Stop listening on port
+- Listener registry with per-listener accept threads
+- Callback infrastructure via `langruncallbackwithparams()`
+- **Self-contained integration tests** now possible using localhost servers
+
+**Current Status**: 11 TCP verbs implemented and tested (Phase 1A: 6, Phase 1B: 5, Phase 3: 3 server operations)
+
+---
+
 ## Future Enhancements
 
-### Phase 2 Considerations
+### Phase 2 Considerations (Planned)
 - Configurable timeouts for DNS and I/O operations
 - Persistent non-blocking mode with `select()/poll()`
 - `MSG_NOSIGNAL` to prevent SIGPIPE
 - Per-stream write timeout detection
+- Buffered I/O operations (`tcp.readStreamUntil`, `tcp.readStreamBytes`)
 
-### Phase 3 Requirements
+### Phase 4+ Requirements (Long-term)
 - Per-stream locking for higher concurrency
 - `SO_REUSEPORT` for multi-threaded listeners
 - Lock-free reference counting optimization
 - Thread lifecycle management (graceful shutdown, join, cancellation)
 - Migration from global `g_tcp_context` to thread-local storage
-- **Self-contained integration tests** using `tcp.listenStream()` (see Testing Strategy above)
 
-**Phase 3 Blockers:**
-- Current global mutex will create contention bottleneck
-- Global state incompatible with Frontier's collaborative editing vision
+**Phase 4+ Considerations:**
+- Current global mutex may create contention bottleneck at scale
+- Global state migration needed for full collaborative editing support
 - Requires architectural refactoring per `docs/THREAD_LOCAL_GLOBALS_PATTERN.md`
 
 ---
 
-**Document Version**: 1.1
-**Last Updated**: 2026-01-20
-**PR**: #327 (TCP Phase 1A/1B Implementation)
+**Document Version**: 1.2
+**Last Updated**: 2026-01-24
+**PRs**: #327 (TCP Phase 1A), #330 (TCP Phase 1B + Phase 3)

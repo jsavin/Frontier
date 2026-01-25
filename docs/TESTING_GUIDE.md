@@ -314,13 +314,15 @@ TCP networking tests are split into two suites based on network dependencies:
 - Developers run network tests manually for verification
 - Network test failures don't block PR merges
 
-### Future: Phase 3 Self-Contained Tests
+### Phase 3 Self-Contained Tests (Now Available)
 
-Once `tcp.listenStream()` is implemented (Phase 3), network tests will become **self-contained**:
+As of PR #330 (2026-01-24), `tcp.listenStream()` is implemented, enabling **self-contained** network tests:
 - Launch Frontier-based test server within test harness
 - Tests connect to localhost instead of external servers
 - Fully deterministic with no external dependencies
 - Safe for air-gapped CI/CD environments
+
+**Status**: Infrastructure is complete. New tests can use localhost test servers for deterministic TCP testing.
 
 **Example future self-contained test**:
 ```yaml

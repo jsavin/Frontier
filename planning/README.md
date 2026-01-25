@@ -1,30 +1,77 @@
-# Frontier Refactoring – Planning Docs
+# Frontier Planning Documentation
 
-Status
-- State: Carbon Migration In Progress
-- Active Plan: `planning/phase3/carbon_migration/README.md`
-- Last Updated: 2025-10-30
-- Notes: Draft/Planned/In-Progress legacy docs were restored to `planning/phase*/`; only completed notes remain in `planning/archive/`.
+**Status**: Phase 4 Active (TCP Phase 2 Next, P0a Queued)
+**Last Updated**: 2026-01-25
 
-Related Docs
-- `planning/INDEX.md` – navigation for active and archived workstreams
-- `planning/Frontier_Refactoring_Plan.md` – narrative goals and risks (historical)
-- `planning/phase_gates.md` – readiness checks (archived)
-- `planning/archive/phase3/pascal_runtime_modernization.md` – Pascal-era data layout modernization roadmap (archived)
+**Quick Navigation**:
+- **Current Work**: See `_CURRENT_STATUS.md` for recent achievements and focus
+- **Work Queue**: See `_CURRENT_TODO_LIST.md` for priority-ordered tasks
+- **Planning Index**: See `INDEX.md` for comprehensive navigation
+- **Archive**: See `archive/README.md` for completed work and historical context
 
-Change Log
-- 2025-10-30: Reactivated unfinished phase docs (moved back to `planning/phase*/`) and pointed navigation to the Carbon plan.
-- 2025-10-12: Reorganized legacy docs into phase subdirectories and refreshed status.
-- 2025-09-29: Initial skeleton (status/related/change log sections).
+## Current Focus (Jan 2026)
+
+**TCP Networking Phase 2** (🚀 STARTING)
+- Phase 1A/1B/3 complete (13 verbs, PRs #327, #329, #330)
+- Phase 2: Buffered I/O (4 verbs) - HTTP client milestone
+
+**Phase 4 Global State Elimination** (⏸️ QUEUED)
+- Thread registry complete (PR #317)
+- Deterministic testing foundation complete (PR #318)
+- P0a queued for weeks 7-9 after TCP Phase 2
+
+**Database & Path Resolution** (✅ COMPLETE)
+- System.paths migration fixes (PR #336)
+- Path entry matching fixes (PR #337)
+- Builtins priority fixes (PR #342)
+
+## Related Documentation
+
+**Active Planning**:
+- `INDEX.md` - Comprehensive planning navigation
+- `_CURRENT_STATUS.md` - Recent achievements and current focus
+- `_CURRENT_TODO_LIST.md` - Priority-ordered work queue
+- `phase4/INDEX.md` - Phase 4 roadmap (threading, networking, global state)
+- `CRDT_FOUNDATION_ROADMAP.md` - Collaborative ODB foundation strategy
+
+**Architecture Decisions**:
+- `architectural_decision_records/` - ADRs for major decisions
+- `EXTERNAL_ATOMICITY_AND_COLLABORATION_ROADMAP.md` - Multi-user collaboration
+- `DATABASE_CORRUPTION_PREVENTION.md` - Safety guidelines
+
+**Historical Context**:
+- `archive/` - Completed workstreams and reference material
+- `_STATUS_ARCHIVE.md` - Status history before 2026-01-05
+
+## Change Log
+
+- **2026-01-25**: Planning directory reorganization
+  - Updated INDEX.md to reflect TCP Phase 1A/1B/3 completion
+  - Created archive structure (completed-workstreams, reference, experimental)
+  - Archived TCP Phase 1A preflight and hierarchical OPML design
+  - Updated networking INDEX with completion status
+- 2025-10-30: Reactivated unfinished phase docs, pointed navigation to Carbon plan
+- 2025-10-12: Reorganized legacy docs into phase subdirectories
+- 2025-09-29: Initial planning structure
 
 ## Directory Layout
 
-| Directory | Purpose |
-|-----------|---------|
-| `carbon_migration/` | **Active.** Canonical plan for removing Carbon dependencies (inventory, phases, decision log, status log). |
-| `phase2/`, `phase3/`, `phase4/`, `phase5/` | Legacy work still in motion. Each doc retains its own Status block; update there when progress changes. |
-| `archive/phase1`, `archive/phase2`, `archive/phase3` | Completed/retired material from earlier phases (read-only). |
-| `adr/`, `issues/`, `phase_overview.md`, `INDEX.md` | Cross-cutting decision records, backlog, navigation aids. `phase_overview.md` maps both active and archived phase docs. |
+| Directory | Purpose | Status |
+|-----------|---------|--------|
+| `phase4/` | **Active.** Threading, networking, global state elimination | Current priority |
+| `phase3/` | Verb implementation, UI abstraction, database migration | Ongoing |
+| `phase5/` | Future: Parser modernization, UTF-8, string handling | Planning |
+| `architectural_decision_records/` | ADRs for major architectural decisions | Active reference |
+| `archive/` | Completed workstreams, historical reference, experimental | Read-only |
+| Root files | Status, TODO, INDEX, strategic roadmaps | Active navigation |
+
+**Archive Structure**:
+- `archive/completed-workstreams/` - Successfully implemented major initiatives
+- `archive/completed-phases/` - Phase 1, 2, 3 milestone documentation
+- `archive/reference/` - Historical context and superseded designs
+- `archive/experimental/` - Tried approaches (not adopted or deferred)
+
+See `archive/README.md` for complete archive navigation.
 
 ## Writing Guidelines
 

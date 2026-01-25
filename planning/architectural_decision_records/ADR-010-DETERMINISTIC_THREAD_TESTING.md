@@ -1,7 +1,7 @@
 # ADR-010: Deterministic Thread Testing Strategy for Frontier
 
+**Status**: `[IN PROGRESS]` - Phase 1 foundation complete, Phase 2 planned (PR #318)
 **Date**: 2026-01-17
-**Status**: ACCEPTED (Phase 1 Foundation)
 **Author**: Claude (Frontier Dev Team)
 **Context**: PR #317 (Thread Registry Foundation) identified critical need for deterministic threading tests to prevent flaky test failures and ensure thread safety correctness.
 

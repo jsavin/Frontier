@@ -1,25 +1,77 @@
 # Current Status
 
-Last Updated: 2026-01-19
+Last Updated: 2026-01-24
 
-## Current Focus: Starting Networking Layer Implementation 🚀
+## Current Focus: TCP Phase 1 Complete, Starting Phase 2 (Buffered I/O) 🚀
 
-**Next Up**: Beginning Phase 4 P0a (Global State Elimination) and TCP Networking Phase 1A (Core Socket Implementation) - the foundational work for Frontier's networking layer.
+**Status**: TCP Phase 1A (Core Sockets), 1B (DNS/Address), and Phase 3 (Server Operations) are COMPLETE and MERGED ✅
+
+**Next Up**: Beginning TCP Phase 2 (Buffered I/O) - the final piece needed for HTTP client functionality. Phase 4 P0a (Global State Elimination) queued for weeks 7-9.
 
 ## Recent Major Achievements
 
-### PR #326: Hierarchical OPML Export - MERGED ✅ (2026-01-19)
-- **Impact**: Converted monolithic 14,002-line OPML file into hierarchical structure (1 manifest + 25 category files) using OPML 2.0 transclusion
-- **Problem Solved**: Eliminated merge conflicts when multiple developers add tests to different categories
-- **Implementation**:
-  - Manifest file with type="link" transclusion to 25 category files
-  - Absolute GitHub URLs for Drummer compatibility
-  - Flattened structure for optimal UX (tests at top level)
-  - All 1,247 integration tests preserved across 26 files
-- **Testing**: Verified working in Drummer (https://drummer.land/)
-- **Documentation**: Added comprehensive OPML usage guide in reports/README.md
-- **Commits**: b151c674, 2afcb6c6, f9489d3f
-- **Milestone**: Scalable test documentation structure, no more OPML merge conflicts
+### TCP Networking Phase 1A/1B/3 Complete - MERGED ✅ (2026-01-19 to 2026-01-24)
+- **Impact**: Frontier now has production-ready TCP networking layer supporting client-server architecture
+- **Phase 1A (PR #327)**: Core socket operations (6 verbs)
+  - `tcp.openAddrStream()`, `tcp.openNameStream()`, `tcp.readStream()`, `tcp.writeStream()`, `tcp.closeStream()`, `tcp.abortStream()`
+  - 710 lines C code, POSIX BSD sockets, thread-safe with mutex protection
+- **Phase 1B (PR #330)**: DNS and address handling (5 verbs)
+  - `tcp.addressEncode()`, `tcp.addressDecode()`, `tcp.nameToAddress()`, `tcp.addressToName()`
+  - General-purpose IP utilities for network applications
+- **Phase 3 (PR #330)**: Server-side operations (2 verbs)
+  - `tcp.listenStream()`, `tcp.closeListen()`
+  - Listener registry, per-listener accept threads, callback dispatch
+- **Testing (PR #329)**: Comprehensive test suite (150+ tests)
+  - 28 C unit tests, 29 local integration tests, 20 network integration tests
+  - Security features validated (SSRF/DNS rebinding protection)
+- **Documentation**: Complete callback infrastructure guide (677 lines)
+- **Milestone**: Network server platform ready, foundation for HTTP client and server applications
+
+### Thread Registry & Testing Foundation - MERGED ✅ (2026-01-18 to 2026-01-22)
+- **Impact**: Established infrastructure for POSIX thread safety and deterministic testing
+- **Thread Registry (PR #317)**:
+  - Thread ID allocation and tracking
+  - Per-thread ID lookup with collision detection
+  - Foundation for eliminating global mutable state (Phase 4 roadmap)
+- **Testing Infrastructure (PR #318)**:
+  - Test harness C infrastructure with mutex protection
+  - 10 integration tests for basic thread operations
+  - 11 of 17 thread verbs now working
+  - ADR-010 documenting three-phase implementation roadmap
+- **Milestone**: Critical infrastructure for testing thread-safety guarantees before launch
+
+### Database Migration & Path Resolution Fixes - MERGED ✅ (2026-01-20 to 2026-01-24)
+- **Impact**: Fixed critical v6→v7 migration issues and namespace resolution regressions
+- **System.paths Migration Fix (PR #336)**:
+  - Fixed address value string corruption (full path stored instead of local name)
+  - Fixed system.paths table overwriting with 30 extra entries
+  - Fixed langgettableval() not searching inside provided table
+- **Path Entry Name Matching Fix (PR #337)**:
+  - Fixed `defined(webserver)` returning false (was checking inside table instead of name match)
+  - Restored correct `defined()` behavior for path-based lookups
+- **Builtins Priority Fix (PR #342)**:
+  - Fixed regression where `defined(webserver.init)` returned false
+  - Root cause: EFP stub found instead of full builtins table
+  - Solution: Check builtins directly before falling back to system.paths
+  - 25 new integration tests, all passing
+- **Milestone**: Critical path resolution now works correctly, lookups find complete tables
+
+### Infrastructure Improvements - MERGED ✅ (2026-01-19 to 2026-01-24)
+- **Modular Context Architecture (PR #338)**: Reduced CLAUDE.md from 1,033 to 937 lines
+  - Moved UserTalk domain docs to `docs/usertalk/` (3 focused files)
+  - Agents load context on-demand for better maintainability
+- **/doit Workflow Integration (PR #340)**: Added Frontier-specific agent mappings
+  - Agent selection table for each /doit phase
+  - Common parallel agent patterns for typical workflows
+- **Hierarchical OPML Export (PR #326)**: Converted monolithic 14,002-line OPML to 26-file structure
+  - Eliminates merge conflicts when multiple developers add tests
+  - 1 manifest + 25 category files using OPML 2.0 transclusion
+- **CLI Documentation (PR #343)**: Complete CLI usage guide
+  - 600+ lines comprehensive reference
+  - Database migration patterns, testing workflows
+- **Bug Fixes (PRs #324, #321)**: Build fixes, file descriptor table initialization
+- **Milestone**: Cleaner documentation, better workflow, reduced technical friction
+
 
 ### PR #318: Phase 1 - Deterministic Thread Testing Foundation - MERGED ✅ (2026-01-18)
 - **Impact**: Established foundation for deterministic thread testing with tickcount-based scheduling
@@ -60,14 +112,18 @@ Last Updated: 2026-01-19
 
 **Phase 4 Threading Foundation**:
 - ✅ **Phase 1 Complete**: Deterministic thread testing foundation (PR #318)
-- 🚀 **Starting P0a**: Global state elimination (hash table context migration)
+- ✅ **Thread Registry Complete**: Infrastructure for thread-safe operations (PR #317)
+- ⏸️ **P0a Queued**: Global state elimination (hash table context migration)
   - Reference: planning/phase4/INDEX.md, planning/phase4/threading/README.md
-  - Timeline: Weeks 1-6 (launch blocking)
+  - Timeline: Weeks 7-9 (launch blocking, deferred until after TCP Phase 2)
 
 **TCP Networking**:
-- 🚀 **Starting Phase 1A**: Core socket implementation
+- ✅ **Phase 1A Complete**: Core socket implementation (PR #327, 6 verbs)
+- ✅ **Phase 1B Complete**: DNS and address handling (PR #330, 5 verbs)
+- ✅ **Phase 3 Complete**: Server-side operations (PR #330, 2 verbs)
+- 🚀 **Starting Phase 2**: Buffered I/O (4 verbs) - HTTP client milestone
   - Reference: planning/phase4/networking/INDEX.md
-  - Phases: 1A (core sockets), 1B (DNS), 2 (buffered I/O), 3 (server ops - requires threading), 4 (advanced)
+  - Timeline: Weeks 5-6, enables working HTTP client
 
 **Verb Implementation Coverage**:
 - File verbs: 100% (86/86) ✅
@@ -93,17 +149,17 @@ Last Updated: 2026-01-19
 
 ### Immediate (Starting Now)
 
-1. **Phase 4 P0a: Hash Table Context Migration** (~2-3 weeks, launch blocking)
-   - Migrate hash table operations from global state to explicit context
-   - Reference: planning/phase4/INDEX.md
-   - Foundational for threading support
-
-2. **TCP Networking Phase 1A: Core Socket Implementation** (~1-2 weeks)
-   - Implement basic TCP socket verbs (tcp.open, tcp.close, tcp.send, tcp.receive)
-   - POSIX socket abstraction layer
+1. **TCP Networking Phase 2: Buffered I/O** (~1-2 weeks)
+   - Implement buffered socket operations (4 verbs)
+   - Enable HTTP client functionality (validation milestone)
    - Reference: planning/phase4/networking/INDEX.md
 
-### Short-Term (Next 1-2 weeks)
+### Short-Term (Next 2-3 weeks)
+
+2. **Phase 4 P0a: Hash Table Context Migration** (~2-3 weeks, launch blocking)
+   - Migrate hash table operations from global state to explicit context
+   - Reference: planning/phase4/INDEX.md
+   - Timeline: Weeks 7-9 (deferred until after TCP Phase 2)
 
 3. **Fix UserTalk Object Test Infrastructure** (P1 - ~4-6 hours)
    - Fix memory.c redefinitions and undefined identifiers
@@ -113,16 +169,16 @@ Last Updated: 2026-01-19
    - Once test infrastructure fixed
    - Use pull-request agent to create comprehensive PR
 
-### Medium-Term (Following 2-4 weeks)
+### Medium-Term (Following 4-8 weeks)
 
-5. **Phase 4 P0b: Continue Global State Elimination** (weeks 7-12)
+5. **Phase 4 P0b: Continue Global State Elimination** (weeks 10-12)
    - Outline context migration
    - External object processing audit
    - Reference: planning/phase4/INDEX.md
 
-6. **TCP Networking Phase 1B-2** (weeks 3-6)
-   - DNS resolution (Phase 1B)
-   - Buffered I/O (Phase 2)
+6. **TCP Networking Phase 4: Advanced Features** (weeks 11-14)
+   - After P0a-P0b complete (threading infrastructure required)
+   - Reference: planning/phase4/networking/INDEX.md
 
 ## Reference Documentation
 

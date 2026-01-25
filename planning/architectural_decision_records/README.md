@@ -4,6 +4,30 @@ This directory contains architectural decisions and design patterns that affect 
 
 ---
 
+## Implementation Status Summary
+
+| ADR | Status | Description |
+|-----|--------|-------------|
+| ADR-001 | `[IMPLEMENTED]` | Multi-Database Context Management - Core routing in place |
+| ADR-002 | `[IN PROGRESS]` | Context-Based Format Versioning - Picture/WPText done, ongoing |
+| ADR-003 | `[IMPLEMENTED]` | Address Value Resolution - Migration complete (PR #336) |
+| ADR-004 | `[NOT STARTED]` | Dynamic Verb Binding - Strategic design for future |
+| ADR-005 | `[IN PROGRESS]` | Parameter State Thread-Safety - Pattern established |
+| ADR-006 | `[IMPLEMENTED]` | Outline Push/Pop Elimination - Complete (PR #261) |
+| ADR-007 | `[NOT STARTED]` | REST API - Decision made, implementation deferred |
+| ADR-008 | `[IMPLEMENTED]` | Processor Table Workaround - Temporary fix in place |
+| ADR-009 | `[IMPLEMENTED]` | REPL Hash Table Stack - QuickScript model (PR #304) |
+| ADR-010 | `[IN PROGRESS]` | Thread Testing - Phase 1 done (PR #318), Phase 2 planned |
+| ADR-011 | `[IMPLEMENTED]` | Search Path Priority - Fixed (PR #342) |
+
+**Legend**:
+- `[IMPLEMENTED]` - Fully implemented and in production use
+- `[IN PROGRESS]` - Partially implemented, ongoing work
+- `[NOT STARTED]` - Design accepted, implementation not yet begun
+- `[SUPERSEDED]` - Replaced by a newer ADR or approach
+
+---
+
 ## Active Architectural Patterns
 
 ### External Object Loading Architecture
@@ -52,7 +76,8 @@ This directory contains architectural decisions and design patterns that affect 
 
 ### Multi-Database Context
 **File**: `ADR-001-multi-database-context.md`
-**Status**: Active Decision
+**Status**: `[IMPLEMENTED]` - Core context routing working
+**Implementation**: Ongoing refinements to database operations
 
 **Scope**:
 - Supporting multiple concurrent databases (system root + guest databases)
@@ -63,30 +88,37 @@ This directory contains architectural decisions and design patterns that affect 
 
 ### Address Value Resolution
 **File**: `ADR-003-address-value-resolution.md`
-**Status**: Active Decision
+**Status**: `[IMPLEMENTED]` - Lazy/eager resolution complete (PR #336)
 
 **Scope**:
 - How database addresses are resolved during unpacking
 - Legacy vs modern address handling
 - Context propagation patterns
 
+**Implementation Notes**:
+- Fixed system.paths migration corruption (PR #336)
+- Two-phase resolution working correctly
+- Address values migrate cleanly from v6→v7
+
 ---
 
 ### Dynamic Verb Binding Architecture
 **File**: `ADR-004-dynamic-verb-binding-architecture.md`
-**Status**: Active Decision
-**Related Issues**: #166 (Verb dispatch), PR #276 (Implementation)
+**Status**: `[NOT STARTED]` - Strategic design document
+**Related Issues**: #166 (Verb dispatch)
 
 **Scope**:
 - Runtime verb resolution and dispatch mechanism
 - Callback registration for processor tables
 - External function processor (efptable) lookup
 
+**Key Takeaway**: Design for minimal kernel + UserTalk libraries; awaits implementation in future phase.
+
 ---
 
 ### Parameter State Thread-Safety
 **File**: `ADR-005-parameter-state-thread-safety.md`
-**Status**: Active Decision
+**Status**: `[IN PROGRESS]` - Foundation pattern established
 **Related Issues**: Issue #135 (Collaborative ODB)
 
 **Scope**:
@@ -94,13 +126,18 @@ This directory contains architectural decisions and design patterns that affect 
 - Migration pattern from global to thread-local state
 - Foundation for collaborative ODB editing (Phase 6+)
 
-**Key Takeaway**: Establishes pattern for migrating globals to thread-local storage using existing `tythreadglobals` infrastructure. Zero API changes via macro accessors.
+**Key Takeaway**: Establishes proven pattern for migrating globals to thread-local storage using existing `tythreadglobals` infrastructure. Zero API changes via macro accessors. Used by ADR-006, ADR-009.
+
+**Implementation Notes**:
+- Pattern validated through multiple migrations
+- Ongoing global elimination using this template
+- Foundation for Phase 6+ collaborative ODB
 
 ---
 
 ### Outline Push/Pop Elimination
 **File**: `ADR-006-outline-push-pop-elimination.md`
-**Status**: Active Decision
+**Status**: `[IMPLEMENTED]` - Thread-local migration complete (PR #261)
 **Related Issues**: Issue #135 (Outline context refactoring)
 
 **Scope**:
@@ -108,12 +145,18 @@ This directory contains architectural decisions and design patterns that affect 
 - Reference counting for outline lifecycle
 - Foundation for multi-user outline editing
 
+**Implementation Notes**:
+- 677 call sites migrated to type-safe accessors
+- All tests passing (unit + integration)
+- Thread-safe outline context access achieved
+- Stale pointer footgun eliminated
+
 ---
 
 ### Processor Table Lifecycle Workaround
 **File**: `ADR-008-processor-table-lifecycle-workaround.md`
-**Status**: Accepted (Temporary Workaround)
-**Related Issues**: PR #291 (XML verbs), Issue #135 (Collaborative ODB)
+**Status**: `[IMPLEMENTED]` - Temporary workaround active (PR #291)
+**Related Issues**: Issue #135 (Collaborative ODB)
 
 **Scope**:
 - Database loading overwrites runtime-created processor tables
@@ -122,6 +165,61 @@ This directory contains architectural decisions and design patterns that affect 
 - Proper fix requires explicit processor context (Phase 6+)
 
 **Key Takeaway**: This is a TEMPORARY workaround, not the long-term solution. Documents the problem and links to proper fix (eliminating global `efptable`).
+
+**Implementation Notes**:
+- Unblocks processor resolution in headless mode
+- Will be replaced with explicit context in Phase 6+
+- Clearly marked as temporary in code
+
+---
+
+### REPL Hash Table Stack Management
+**File**: `ADR-009-repl-hash-table-stack-management.md`
+**Status**: `[IMPLEMENTED]` - QuickScript model deployed (PR #304)
+**Related Issues**: PR #300 (REPL Phase 1)
+
+**Scope**:
+- REPL workspace persistence architecture
+- Thread-local hash table stack migration
+- QuickScript model (evaluation-scoped locals)
+
+**Implementation Notes**:
+- QuickScript model chosen over workspace persistence workarounds
+- Thread-local infrastructure in place for future use
+- Foundation supports Phase 6+ explicit context architecture
+
+---
+
+### Deterministic Thread Testing
+**File**: `ADR-010-DETERMINISTIC_THREAD_TESTING.md`
+**Status**: `[IN PROGRESS]` - Phase 1 foundation complete (PR #318)
+**Related Issues**: PR #317 (Thread Registry)
+
+**Scope**:
+- Controlled tick injection for repeatable thread tests
+- Test harness infrastructure
+- Integration test patterns for thread verbs
+
+**Implementation Notes**:
+- Phase 1: Test harness + 10 integration tests (complete)
+- Phase 2: Controlled timing and multi-thread tests (planned)
+- Foundation for thread-safety validation before launch
+
+---
+
+### Search Path Priority
+**File**: `ADR-011-search-path-priority-in-name-resolution.md`
+**Status**: `[IMPLEMENTED]` - Search order corrected (PR #342)
+
+**Scope**:
+- Prioritize system.paths over local context
+- Fix builtins table resolution
+- Ensure complete implementations found
+
+**Implementation Notes**:
+- Fixed defined(webserver.init) regression
+- 38 integration tests validate fix
+- Performance acceptable (O(n) where n ≈ 14)
 
 ---
 
@@ -186,9 +284,10 @@ A comprehensive refactoring effort to convert global state management to explici
 
 ## Document Maintenance
 
-- **Last Updated**: 2026-01-12
+- **Last Updated**: 2026-01-25 (Implementation status review)
 - **Created By**: Migration refactoring session (Dec 2025)
 - **Maintained By**: Development team
+- **Status Review**: Based on work completed 2026-01-16 to 2026-01-25 (31 commits, 13 PRs)
 
 When adding new ADRs:
 1. Name the file clearly (e.g., `ADR-NNN-short-title.md`)

@@ -1,9 +1,8 @@
 # ADR-001: Multi-Database Context Management
 
+**Status**: `[IMPLEMENTED]` - Core context routing in place, PR #117 (external database handle mismatch fix)
 **Date**: 2025-12-17
-**Status**: Accepted
 **Author**: System Architecture Analysis
-**Related**: PR #117 (external database handle mismatch fix)
 **Implementation Plan**: planning/phase3/database_architecture/MULTI_DATABASE_PREVENTION_STRATEGY.md
 
 ---

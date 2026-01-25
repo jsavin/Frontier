@@ -1,6 +1,6 @@
 # Frontier Refactoring Project (develop branch status)
 
-**Last updated:** 2026-01-16
+**Last updated:** 2026-01-25
 **State:** v1.0.0-alpha.2 released; 28 verb processors at 100% (file, db, lang, op, sys, string, table, target, xml, html, script, dialog, date, clock, crypt, math, kb, mainwindow, base64, semaphore, point, rectangle, rgb, inetd, launch, search, tcp, webserver); overall 67% coverage (480/710 verbs); headless + 64-bit aligned; v7 format stable; universal binary (arm64+x86_64)
 **Primary contacts:** planning/INDEX.md (owners per phase)
 
@@ -8,15 +8,23 @@ This repository is actively modernizing the Frontier runtime and toolchain. The 
 
 ## Highlights
 
+- **Production-ready TCP networking (Phase 1A/1B/3)** – 11 socket verbs implemented (tcp.openAddrStream, tcp.readStream, tcp.writeStream, tcp.listenStream, etc.) enabling client-server architecture. 93 integration tests, security hardened (SSRF/DNS rebinding protection). Foundation for networked applications and HTTP server support.
+- **Thread-safety foundation (Phase 1)** – Thread registry established, deterministic test infrastructure for controlled timing, 11 of 17 thread verbs operational. ADR-010 documents roadmap for eliminating global mutable state before launch (Phase 4 blocker).
 - **Pre-release distribution (v1.0.0-alpha.2)** – First packaged release for early adopters with universal binary (arm64+x86_64), automatic system root discovery, professional installer, and GitHub Actions automation. Release includes v7 database, SHA-256 checksums, and comprehensive documentation. Alpha.2 fixes critical upgrade bug that would destroy user data. Download: [GitHub Releases](https://github.com/jsavin/Frontier/releases/tag/v1.0.0-alpha.2)
 - **Complete ODB Engine API (db.* verbs 13/13)** – Guest database operations fully functional with transparent v6→v7 auto-migration, 64-bit timestamp handling (Y2038-safe), and context guard pattern for safe concurrent system root + guest database use. 32/32 integration tests passing (100%). Production-ready for external database manipulation.
-- **Comprehensive kernel verb implementation** – **67% coverage (480/710 verbs)** with 28 processors at 100%: file (86), db (13), lang (61), op (45), sys (16), string (60), table (18), target (3), xml (14), html (23), script (13), dialog (19), date (30), clock (7), crypt (5), math (3), kb (4), mainwindow (7), base64 (2), semaphore (2), point (2), rectangle (2), rgb (2), inetd (1), launch (5), search (6), tcp (23), webserver (7). All implementations tested via YAML-based integration framework (304+ tests passing).
+- **Comprehensive kernel verb implementation** – **67% coverage (480/710 verbs)** with 28 processors at 100%: file (86), db (13), lang (61), op (45), sys (16), string (60), table (18), target (3), xml (14), html (23), script (13), dialog (19), date (30), clock (7), crypt (5), math (3), kb (4), mainwindow (7), base64 (2), semaphore (2), point (2), rectangle (2), rgb (2), inetd (1), launch (5), search (6), tcp (23), webserver (7). All implementations tested via YAML-based integration framework (1,100+ tests passing).
+- **Database migration fixes** – Resolved system.paths corruption, path entry name matching, and builtins priority issues (PR #336-#342). Path resolution now works correctly; lookups find complete tables instead of partial stubs.
 - **64-bit/ARM + big-endian v7** – Core builds/tests compile on `arm64`/`x86_64`; v7 headers/trailers and table addresses write big-endian for cross-arch parity. Hash pack/unpack hardened with explicit 16-byte BE buffers, bounds checks, header detection. Migration coverage complete with Y2038-safe 64-bit timestamps throughout.
 - **Portable/headless + Paige-free** – The `portable/` layer + headless stubs power CLI/testing without UI deps; wptext uses Paige-free extractor/RTF path. v6→v7 migration complete with proper timestamp handling (64-bit frontier_time_t). System root auto-discovery eliminates need for --system-root flag.
+- **CLI documentation complete (PR #343)** – Comprehensive frontier-cli reference with usage patterns, database operations, UserTalk scripting, testing strategies.
 - **Automated kernel verb generation** – Python-based parser (`tools/kernelverbs_parser/`) automatically generates `kernel_verbs_init.c` from `kernelverbs.rc`, extracting all 51 EFP processor definitions (707 verbs). Next phase: automatic implementation detection via static analysis.
-- **Modernized test harness** – Cross-platform C test suite with sanitizer presets (`SANITIZE=1 make -C tests`). Integration test framework supports YAML-based verb testing with path templating for sandbox safety. 304+ integration tests passing (file, db, lang verbs).
-- **Critical architectural documentation** – typeof() OSType code behavior documented. ADR-005 thread-local parameter state integrated. Database context debugging patterns captured. Op verb semantics validated against docserver reference (PR #314).
+- **Modernized test harness** – Cross-platform C test suite with sanitizer presets (`SANITIZE=1 make -C tests`). Integration test framework supports YAML-based verb testing with path templating for sandbox safety. 1,100+ integration tests passing (file, db, lang, tcp, thread verbs).
+- **Critical architectural documentation** – typeof() OSType code behavior documented. ADR-005 thread-local parameter state integrated. Database context debugging patterns captured. Op verb semantics validated against docserver reference. TCP testing strategy and callback infrastructure documented.
 - **Repository hygiene** – 78 branches cleaned up (88→3 active local branches). All zombie branches (merged PRs) and stale/superseded work removed. Permanent archive branches preserved.
+
+---
+
+**Note on test counts**: Framework contains ~1,495 total tests. Default test run (~1,100) excludes optional network-dependent tests. TCP-specific tests (150+) are subset of total. See `docs/TEST_STATUS_SUMMARY.md` for breakdown by category.
 
 ## Quick start
 
@@ -64,7 +72,7 @@ See `docs/mysql_client_setup.md` for detailed guidance.
 - `planning/big_endian_portability_audit.md` – current BE v7 portability audit/tasks
 - `codex_sessions/README.md` – how to fetch/view Codex transcript logs
 
-For in-flight work/status, see `planning/_CURRENT_STATUS.md`. Historical session context lives in `planning/progress_reports/README.md`.
+For in-flight work/status, see `planning/_CURRENT_STATUS.md`. Historical session context lives in `planning/progress_reports/README.md`. For recent accomplishments (Jan 16-25), see `docs/WORK_SUMMARY_2026_01_16_TO_NOW.md`.
 
 ## Current status matrix
 
@@ -89,8 +97,10 @@ For in-flight work/status, see `planning/_CURRENT_STATUS.md`. Historical session
 | HTML verbs         |   ✅    | 100% complete (23/23); Phase 1-2 implemented, 3 script-implemented, 1 ghost cruft       |
 | Script verbs       |   ✅    | 100% complete (13/13); 2 C-implemented, 11 script-implemented                           |
 | Dialog verbs       |   ✅    | 100% complete (19/19); 4 CLI prompts, 7 platform-specific, 4 twoway/threeway, 4 ghost  |
-| Overall coverage   |   🚧    | 67% complete (480/710); 28 processors at 100%                                           |
-| Tests (integrated) |   ✅    | YAML-based framework; 304+ tests passing; sandbox-safe paths                            |
+| TCP verbs          |   ✅    | Phase 1A/1B/3 complete (11/23); client sockets, server listen, address operations       |
+| Thread verbs       |   🚧    | Phase 1 complete (11/17); registry, deterministic testing, thread lifecycle             |
+| Overall coverage   |   🚧    | 67% complete (480/710); 28 processors at 100%; TCP/thread foundations ready             |
+| Tests (integrated) |   ✅    | YAML-based framework; 1,100+ tests passing; sandbox-safe paths; 99% pass rate           |
 | Tests (runtime/db) |   ✅    | Full `SANITIZE=1` passes; Year 2038 safe                                                |
 | REPL interactive   |   ✅    | Basic read-eval-print loop; dialog prompts; file dialogs; batch mode                    |
 | Docs/Planning      |   ✅    | ADR-009; OUTLINE_STRUCTURE.md; typeof() documented; repository clean                    |
@@ -165,13 +175,16 @@ Frontier/
 ## Next milestone snapshot
 
 **Immediate priorities (next 1-2 weeks):**
-1. **Early adopter feedback** - Monitor v1.0.0-alpha.2 usage and address reported issues
-2. **Complete remaining dialog verbs** (15/19 remaining) - Interactive operations
-4. **REPL enhancements** - Command history persistence, tab completion, syntax highlighting
-5. **Homebrew tap distribution** - Add `brew install jsavin/frontier/frontier-cli` support
+1. **TCP Phase 2: Buffered I/O** (#345) - Add `tcp.writeBuffer()`, `tcp.flushBuffer()`, `tcp.readLine()` for efficient HTTP client support. Blocks HTTP networking features.
+2. **Thread Phase 2: Controlled Timing** - Wire up `gettickcount()` interception for deterministic multi-thread testing (15 tests with explicit scheduling).
+3. **Early adopter feedback** - Monitor v1.0.0-alpha.2 usage and address reported issues
+4. **REPL enhancements** (#315) - Command history persistence, tab completion, syntax highlighting
+5. **Metadata optimization** (#334) - Optimize `defined()` to check metadata without disk loading
 
 **Short-term (2–4 weeks):**
-- Window verb implementations (headless-compatible subset)
+- TCP Phase 4: HTTP client support (connection pooling, chunked encoding, keepalive)
+- Window verb implementations (headless-compatible subset for async callbacks via P0a infrastructure)
+- Database callbacks via parameterized callbacks infrastructure
 - Search, menu, and other UI-adjacent processors (selective headless support)
 - Automatic verb binding phases 2–3 (verification, test infrastructure)
 - v1.0.0-beta.1 release with 70%+ verb coverage
@@ -179,12 +192,14 @@ Frontier/
 **Medium-term (1–2 months):**
 - v1.0.0 stable release (target: 80%+ verb coverage)
 - Linux distribution and packaging
-- Collaborative ODB foundation (Phase 2.0) for multi-user support
+- Collaborative ODB foundation (Phase 2.0) for multi-user support with thread-safe database operations
 - Performance benchmarking and optimization
+- Global mutable state elimination (Phase 4 preparatory work)
 
 **CI/Infrastructure:**
 - GitHub Actions workflow expansion (test automation, coverage tracking)
 - Automated integration test runs on PRs
 - Performance regression detection
+- Homebrew tap distribution for macOS (`brew install jsavin/frontier/frontier-cli`)
 
-For detailed planning see `planning/INDEX.md` and current work in `planning/_CURRENT_STATUS.md`.
+For detailed planning see `planning/INDEX.md` and current work in `planning/_CURRENT_STATUS.md`. For recent accomplishments, see `docs/WORK_SUMMARY_2026_01_16_TO_NOW.md`.

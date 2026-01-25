@@ -1,29 +1,33 @@
 # Phase 4: TCP Networking - Planning Index
 
 **Created**: 2026-01-16
-**Status**: Planning complete, ready for Phase 1 execution
+**Last Updated**: 2026-01-25
+**Status**: Phase 1A/1B/3 COMPLETE ✅, Phase 2 (Buffered I/O) NEXT 🚀
 
 ---
 
 ## Quick Start
 
-**To begin implementation**:
+**Current Priority: TCP Phase 2 (Buffered I/O)**
 1. Read [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) - Phased execution plan
-2. Create worktree: `git worktree add ../Frontier-tcp-phase1a -b feature/tcp-phase1a`
-3. Follow `/doit` process for Phase 1A
+2. Create worktree: `git worktree add ../Frontier-tcp-phase2 -b feature/tcp-phase2`
+3. Follow `/doit` process for Phase 2
 
 ---
 
 ## Documents
 
-| Document | Purpose | Lines |
-|----------|---------|-------|
-| [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) | **Primary execution plan** - phases, tasks, Haiku/Sonnet markers | ~450 |
-| [TCP_VERBS_ANALYSIS.md](TCP_VERBS_ANALYSIS.md) | Complete API analysis - 22 kernel verbs, signatures, behaviors | ~800 |
-| [NETWORKING_ARCHITECTURE.md](NETWORKING_ARCHITECTURE.md) | POSIX C architecture - data structures, code examples | ~1100 |
-| [DEPENDENCIES.md](DEPENDENCIES.md) | Build system, headers, platform requirements | ~200 |
-| [EXISTING_IMPLEMENTATION_NOTES.md](EXISTING_IMPLEMENTATION_NOTES.md) | Analysis of WinSockNetEvents.c reference code | ~170 |
-| [PRELIMINARY_FINDINGS.md](PRELIMINARY_FINDINGS.md) | Initial discovery notes (superseded by above) | ~120 |
+| Document | Purpose | Lines | Status |
+|----------|---------|-------|--------|
+| [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) | **Primary execution plan** - phases, tasks, Haiku/Sonnet markers | ~450 | Active |
+| [TCP_VERBS_ANALYSIS.md](TCP_VERBS_ANALYSIS.md) | Complete API analysis - 22 kernel verbs, signatures, behaviors | ~800 | Reference |
+| [NETWORKING_ARCHITECTURE.md](NETWORKING_ARCHITECTURE.md) | POSIX C architecture - data structures, code examples | ~1100 | Reference |
+| [DEPENDENCIES.md](DEPENDENCIES.md) | Build system, headers, platform requirements | ~200 | Reference |
+| [EXISTING_IMPLEMENTATION_NOTES.md](EXISTING_IMPLEMENTATION_NOTES.md) | Analysis of WinSockNetEvents.c reference code | ~170 | Reference |
+| [PRELIMINARY_FINDINGS.md](PRELIMINARY_FINDINGS.md) | Initial discovery notes (superseded by above) | ~120 | Reference |
+
+**Archived Documents** (see `planning/archive/completed-workstreams/`):
+- **TCP_PHASE1A_PREFLIGHT.md** - Pre-flight checklist for Phase 1A (✅ COMPLETE, PRs #327, #329, #330)
 
 ---
 
@@ -31,13 +35,21 @@
 
 | Phase | Scope | Model | Status |
 |-------|-------|-------|--------|
-| **1A** | Core Socket (7 verbs) | 🟢 Haiku | Ready |
-| **1B** | DNS/Address (6 verbs) | 🟢 Haiku | Ready |
-| **2** | Buffered I/O (4 verbs) | 🟡 Sonnet | After 1A/1B |
-| **3** | Server Ops (3 verbs) | 🟡 Sonnet | Needs threading |
+| **1A** | Core Socket (7 verbs) | 🟢 Haiku | ✅ COMPLETE (PR #327) |
+| **1B** | DNS/Address (5 verbs) | 🟢 Haiku | ✅ COMPLETE (PR #330) |
+| **3** | Server Ops (2 verbs) | 🟡 Sonnet | ✅ COMPLETE (PR #330) |
+| **2** | Buffered I/O (4 verbs) | 🟢 Haiku | 🚀 NEXT |
 | **4** | Advanced (2 verbs) | 🟢 Haiku | After 2 |
 
-**Total**: 22 kernel verbs
+**Total**: 22 kernel verbs (13 complete, 9 remaining)
+
+**Completed Verbs** (13):
+- Phase 1A: `tcp.openAddrStream`, `tcp.openNameStream`, `tcp.readStream`, `tcp.writeStream`, `tcp.closeStream`, `tcp.abortStream`, `tcp.countConnections`
+- Phase 1B: `tcp.addressEncode`, `tcp.addressDecode`, `tcp.nameToAddress`, `tcp.addressToName`
+- Phase 3: `tcp.listenStream`, `tcp.closeListen`
+
+**Next Priority** (Phase 2 - 4 verbs):
+- `tcp.flushStream`, `tcp.setStreamBuffer`, `tcp.getStreamBuffer`, `tcp.drainStream`
 
 ---
 
@@ -67,6 +79,28 @@ See [IMPLEMENTATION_PLAN.md#open-questions-for-user](IMPLEMENTATION_PLAN.md#open
 
 ## Validation Milestones
 
-- **After Phase 2**: Basic HTTP GET works
+- ✅ **After Phase 1A**: Basic TCP connectivity works (PR #327)
+- ✅ **After Phase 1B**: DNS resolution works (PR #330)
+- ✅ **After Phase 3**: TCP server listener works (PR #330)
+- 🚀 **After Phase 2**: Basic HTTP GET works (buffered I/O milestone)
 - **After Phase 2**: `tcp.httpClient` script works
-- **After Phase 3**: Echo server works
+- **After Phase 4**: Advanced features complete
+
+## Completed Work
+
+**PR #327** (2026-01-19) - TCP Phase 1A: Core Socket Operations
+- 6 verbs implemented, 710 lines C code
+- 28 C unit tests for stream lifecycle, thread-safety, security
+- POSIX BSD sockets with mutex protection
+
+**PR #329** (2026-01-19) - TCP Testing Infrastructure
+- 93 total tests (28 C unit, 29 local integration, 20 network integration)
+- Security features validated (SSRF/DNS rebinding protection)
+
+**PR #330** (2026-01-24) - TCP Phase 1B (DNS/Address) + Phase 3 (Server Operations)
+- Phase 1B: 5 verbs for IP address encoding/decoding and DNS operations
+- Phase 3: 2 verbs for server-side operations (listener infrastructure)
+- 57 integration tests (23 for Phase 1B, 34 for Phase 3)
+- Listener registry, per-listener accept threads, callback dispatch
+
+**Impact**: Frontier now has production-ready TCP networking layer supporting client-server architecture.

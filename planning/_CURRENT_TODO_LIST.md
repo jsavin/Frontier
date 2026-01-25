@@ -1,33 +1,43 @@
 # Frontier - Current TODO List
 
-Status: In Progress (Updated 2026-01-19)
+Status: In Progress (Updated 2026-01-24)
 
-## 🚀 IMMEDIATE PRIORITY – TCP Networking Phase 1A (Core Sockets)
+## 🚀 IMMEDIATE PRIORITY – TCP Networking Phase 2 (Buffered I/O)
 
-**Strategic Decision**: Start TCP Phase 1A-2 BEFORE Phase 4 P0a (Global State Elimination)
+**Strategic Decision**: Complete TCP Phase 1A-1B-3 BEFORE Phase 4 P0a (Global State Elimination)
 
-**Rationale**:
-- ✅ **No P0a dependency** - TCP Phase 1A-2 (client operations) are single-threaded, don't hit push/pop issues
-- ✅ **No rework needed** - TCP verbs use hash table APIs that have identical signatures before/after P0a
+**Status Update (2026-01-24)**:
+- ✅ **TCP Phase 1A COMPLETE** (PR #327) - Core socket operations (6 verbs)
+- ✅ **TCP Phase 1B COMPLETE** (PR #330) - DNS and address handling (5 verbs)
+- ✅ **TCP Phase 3 COMPLETE** (PR #330) - Server-side operations (2 verbs)
+- 🚀 **TCP Phase 2 STARTING** - Buffered I/O (4 verbs) → HTTP client milestone
+- ⏸️ **Phase 4 P0a QUEUED** - Weeks 7-9 (after TCP Phase 2)
+
+**Rationale (Validated)**:
+- ✅ **No P0a dependency confirmed** - TCP Phase 1A-1B-3 completed without P0a
+- ✅ **No rework needed** - TCP verbs use hash table APIs with identical signatures
 - ✅ **Faster validation** - Working HTTP client in 6 weeks (vs 9 weeks if P0a first)
 - ✅ **Same total effort** - TCP implementation identical whether done before or after P0a
-- ⏸️ **TCP Phase 3 blocked** - Server operations require P0a-P0b (threading infrastructure for callbacks)
+- ✅ **Server ops complete** - Phase 3 merged alongside 1A/1B (listener infrastructure ready)
 
-**Dependency Analysis**:
+**Dependency Analysis (Confirmed)**:
 ```
-TCP Phase 1A-1B (Core sockets + DNS)  → ❌ No P0a dependency (single-threaded client)
-TCP Phase 2 (Buffered I/O)             → ❌ No P0a dependency (still client-side)
-TCP Phase 3 (Server operations)       → ✅ REQUIRES P0a + P0b (multi-threaded callbacks)
+TCP Phase 1A (Core sockets)      → ✅ COMPLETE (no P0a dependency)
+TCP Phase 1B (DNS/address)       → ✅ COMPLETE (no P0a dependency)
+TCP Phase 3 (Server operations)  → ✅ COMPLETE (listener thread infrastructure works)
+TCP Phase 2 (Buffered I/O)       → 🚀 NEXT (no P0a dependency)
+Phase 4 P0a (Thread-safety)      → ⏸️ QUEUED (weeks 7-9)
 ```
 
-**Execution Sequence**:
-1. **Weeks 1-2**: TCP Phase 1A (Core sockets) - 7 verbs → Basic connectivity
-2. **Weeks 3-4**: TCP Phase 1B (DNS/address) - 6 verbs → Name resolution
-3. **Weeks 5-6**: TCP Phase 2 (Buffered I/O) - 4 verbs → **HTTP client works** 🎯
-4. **Weeks 7-9**: Phase 4 P0a (Hash table thread-safety) → Launch blocking work
-5. **Weeks 10-13**: TCP Phase 3 (Server operations) - 3 verbs → Async callbacks
+**Execution Sequence (Updated)**:
+1. ✅ **Weeks 1-2**: TCP Phase 1A (Core sockets) - 6 verbs → Basic connectivity
+2. ✅ **Weeks 3-4**: TCP Phase 1B (DNS/address) - 5 verbs → Name resolution
+3. ✅ **Weeks 3-4**: TCP Phase 3 (Server operations) - 2 verbs → Listener infrastructure
+4. 🚀 **Weeks 5-6**: TCP Phase 2 (Buffered I/O) - 4 verbs → **HTTP client works** 🎯
+5. ⏸️ **Weeks 7-9**: Phase 4 P0a (Hash table thread-safety) → Launch blocking work
+6. **Weeks 10-13**: TCP Phase 4 (Advanced features) - Optional enhancements
 
-**Context**: Hierarchical OPML export complete (PR #326). Deterministic thread testing foundation complete (PR #318). Ready to start networking infrastructure.
+**Context**: TCP Phase 1A/1B/3 complete and merged (PRs #327, #329, #330). Thread registry infrastructure complete (PR #317). Database migration fixes complete (PRs #336, #337, #342). Ready for TCP Phase 2 (buffered I/O).
 
 ---
 
@@ -37,21 +47,24 @@ TCP Phase 3 (Server operations)       → ✅ REQUIRES P0a + P0b (multi-threaded
 
 | Weeks | Phase | Status | Milestone |
 |-------|-------|--------|-----------|
-| **1-2** | TCP Phase 1A (Core Sockets) | 🚀 Starting | Basic connectivity |
-| **3-4** | TCP Phase 1B (DNS) | Queued | Name resolution |
-| **5-6** | TCP Phase 2 (Buffered I/O) | Queued | **HTTP client works** 🎯 |
+| **1-2** | TCP Phase 1A (Core Sockets) | ✅ DONE | Basic connectivity |
+| **3-4** | TCP Phase 1B (DNS) | ✅ DONE | Name resolution |
+| **3-4** | TCP Phase 3 (Server ops) | ✅ DONE | Listener infrastructure |
+| **5-6** | TCP Phase 2 (Buffered I/O) | 🚀 NEXT | **HTTP client works** 🎯 |
 | **7-9** | Phase 4 P0a (Hash table thread-safety) | Queued | Launch blocking complete |
 | **10-12** | Phase 4 P0b (System context) | Queued | **LAUNCH READY** 🚀 |
-| **13+** | TCP Phase 3 (Server ops) | Blocked | Async callbacks enabled |
+| **13+** | TCP Phase 4 (Advanced features) | Queued | Optional enhancements |
 
-**Key Dependencies**:
-- TCP Phase 3 **blocked until** P0a-P0b complete (needs thread-safe infrastructure)
-- P0a-P0b **independent** from TCP Phase 1A-2 (can be done in any order)
+**Key Dependencies (Updated)**:
+- TCP Phase 1A-1B-3 **COMPLETE** without P0a dependency (validated approach)
+- TCP Phase 2 **independent** from P0a (client-side buffered I/O)
+- P0a-P0b **queued** for weeks 7-12 (launch blocking work)
 
-**Why This Order**:
-1. TCP Phase 1A-2 first → HTTP client working in 6 weeks
-2. P0a-P0b next → Launch readiness in 12 weeks
-3. TCP Phase 3 last → Server operations enabled (depends on threading)
+**Why This Order (Validated)**:
+1. ✅ TCP Phase 1A-1B-3 complete → Server infrastructure ready (weeks 1-4)
+2. 🚀 TCP Phase 2 next → HTTP client working in 6 weeks (week 6 milestone)
+3. ⏸️ P0a-P0b after → Launch readiness in 12 weeks (weeks 7-12)
+4. TCP Phase 4 last → Advanced features (optional, weeks 13+)
 
 ---
 
@@ -59,27 +72,36 @@ TCP Phase 3 (Server operations)       → ✅ REQUIRES P0a + P0b (multi-threaded
 
 ### Workstream 1: Phase 4 Threading Foundation & Global State Elimination
 
-**Status**: Phase 1 complete (PR #318), P0a DEFERRED until after TCP Phase 1A-2
+**Status**: Phase 1 complete (PR #318), Thread Registry complete (PR #317), P0a QUEUED for weeks 7-9
 
 **Completed**:
-- ✅ **Phase 1: Deterministic Thread Testing Foundation** (PR #318 merged)
+- ✅ **Phase 1: Deterministic Thread Testing Foundation** (PR #318 merged 2026-01-18)
   - Tickcount-based scheduling with millisecond precision
-  - Test-controlled tickcount via environment variable
+  - Test-controlled tickcount via FRONTIER_TEST_TICKCOUNT
   - Thread ID assignment with collision detection
-  - Comprehensive unit tests passing
+  - 10 integration tests, 11 of 17 thread verbs working
+  - ADR-010 documenting three-phase implementation roadmap
 
-**Deferred Work** (starts Week 7, after TCP Phase 2):
+- ✅ **Thread Registry Infrastructure** (PR #317 merged 2026-01-22)
+  - Thread ID allocation and tracking
+  - Per-thread ID lookup with collision detection
+  - Foundation for eliminating global mutable state
+  - Pattern proven for thread-local storage migration
+
+**Queued Work** (starts Week 7, after TCP Phase 2):
 - ⏸️ **P0a (Weeks 7-9): Hash Table Context Migration** - LAUNCH BLOCKING
+  - Priority changed: TCP Phase 2 first (HTTP client milestone)
   - Migrate hash table operations from global state to thread-local
   - Week 1: Hash table context (currenthashtable, hmagictable) - 🟡 Sonnet
   - Week 2: Parser state (yylval, yyval, langparser_result) - 🟡 Sonnet
   - Week 3: Control flow & error state (flbreak, flcontinue) - 🟢 Haiku
   - Reference: planning/phase4/p0a-critical-thread-safety/README.md
 
-**Why Deferred**:
-- TCP Phase 1A-2 don't depend on P0a (single-threaded client operations)
-- TCP Phase 3 (server) REQUIRES P0a-P0b (multi-threaded callbacks)
-- Optimizes for faster HTTP client validation milestone
+**Why Queued**:
+- ✅ TCP Phase 1A-1B-3 completed without P0a (validated approach)
+- 🚀 TCP Phase 2 next priority (HTTP client milestone in week 6)
+- ⏸️ P0a starts week 7 (launch blocking work, 3-week effort)
+- Optimizes for faster HTTP client validation milestone (week 6 vs week 9)
 
 **Upcoming** (after P0a):
 - **P0b (Weeks 10-12)**: System context migration, shell config thread-safety
@@ -96,41 +118,66 @@ TCP Phase 3 (Server operations)       → ✅ REQUIRES P0a + P0b (multi-threaded
 
 ### Workstream 2: TCP Networking Implementation
 
-**Status**: Starting Phase 1A (PRIORITIZED - before P0a)
+**Status**: Phases 1A/1B/3 COMPLETE ✅, Starting Phase 2 🚀
 
-**Current Phase: 1A - Core Socket Primitives (Weeks 1-2)**
+**Completed Phases**:
+
+**Phase 1A: Core Socket Primitives (Weeks 1-2)** - ✅ MERGED (PR #327)
+- **Verbs Implemented** (6 total):
+  1. `tcp.openAddrStream(addr, port)` → streamID - Direct IP connection
+  2. `tcp.openNameStream(hostname, port)` → streamID - DNS + connect wrapper
+  3. `tcp.readStream(stream, bytes)` → data - Non-blocking recv
+  4. `tcp.writeStream(stream, data)` → true - Blocking send
+  5. `tcp.closeStream(stream)` → true - Graceful shutdown (FIN)
+  6. `tcp.abortStream(stream)` → true - Immediate close (RST)
+  7. `tcp.countConnections()` → count - Active stream count
+- **Implementation**: `Common/source/tcpverbs.c` (710 lines), POSIX BSD sockets
+- **Thread Safety**: Mutex protection for stream registry
+- **Tests**: 28 C unit tests (PR #329)
+
+**Phase 1B: Address & DNS Handling (Weeks 3-4)** - ✅ MERGED (PR #330)
+- **Verbs Implemented** (5 total):
+  1. `tcp.addressEncode(ipString)` → addr - "192.168.1.1" → 3232235777
+  2. `tcp.addressDecode(addr)` → ipString - 3232235777 → "192.168.1.1"
+  3. `tcp.nameToAddress(hostname)` → addr - DNS forward lookup
+  4. `tcp.addressToName(addr)` → hostname - Reverse DNS lookup
+- **Purpose**: General-purpose IP utilities for network applications
+- **Tests**: 23 integration tests, all passing
+
+**Phase 3: Server Operations (Weeks 3-4)** - ✅ MERGED (PR #330)
+- **Verbs Implemented** (2 total):
+  1. `tcp.listenStream(address, port, callback, table)` → listenerID - Accept connections
+  2. `tcp.closeListen(listenerID)` → true - Stop listening
+- **Infrastructure**: Listener registry, per-listener accept threads, callback dispatch
+- **Impact**: Transforms Frontier from network client to server platform
+- **Tests**: 34 integration tests
+
+**Test Suite (PR #329)** - ✅ MERGED
+- 28 C unit tests (stream lifecycle, thread-safety, address encoding, security)
+- 29 local integration tests (verb functionality)
+- 20 network integration tests (actual connectivity, optional)
+- Security features validated (SSRF/DNS rebinding protection)
+
+**Current Phase: 2 - Buffered I/O (Weeks 5-6)** - 🚀 STARTING
 
 **Model**: 🟢 **Haiku** - Pattern-following implementation
 
-**Verbs to Implement** (7 total):
-1. `tcp.openNameStream(hostname, port)` → streamID - DNS + connect
-2. `tcp.openAddrStream(addr, port)` → streamID - IP + connect
-3. `tcp.readStream(stream, bytes)` → data - Non-blocking recv
-4. `tcp.writeStream(stream, data)` → true - Blocking send
-5. `tcp.closeStream(stream)` → true - Graceful shutdown
-6. `tcp.abortStream(stream)` → true - Immediate RST
-7. `tcp.countConnections()` → count - Active stream count
+**Verbs to Implement** (4 total):
+1. `tcp.flushStream(stream)` → true - Flush write buffer
+2. `tcp.setStreamBuffer(stream, size)` → true - Configure buffer size
+3. `tcp.getStreamBuffer(stream)` → size - Query buffer size
+4. `tcp.drainStream(stream)` → true - Read and discard buffered data
 
-**Implementation Approach**:
-- Create `Common/source/tcpverbs.c` + `Common/headers/tcpverbs.h`
-- Define `tcp_stream_t` struct and stream management
-- POSIX socket abstraction (socket, connect, send, recv, close)
-- TDD: Write integration tests FIRST, then implementation
-- Follow `/doit` workflow
+**Milestone**: **HTTP client works** 🎯 (week 6)
 
 **Upcoming Phases**:
-- **Phase 1B (Weeks 3-4)**: DNS resolution (6 verbs)
-- **Phase 2 (Weeks 5-6)**: Buffered I/O (4 verbs) → **HTTP client milestone** 🎯
-- **Phase 3 (Weeks 7-10)**: Server operations (3 verbs) - **BLOCKED on P0a-P0b**
-  - Requires: Thread-safe hash tables + system context for async callbacks
-  - Example: `tcp.listenStream(port, @callback)` calls UserTalk in separate threads
-- **Phase 4 (Weeks 11-14)**: Advanced features (2 verbs)
+- **Phase 4 (Weeks 11-14)**: Advanced features (optional enhancements)
 
-**Why This Sequence**:
-- TCP Phase 1A-2 are single-threaded client operations
-- No dependency on P0a (hash table thread-safety)
-- No rework needed after P0a (verb APIs unchanged)
-- Working HTTP client sooner (validation milestone)
+**Why This Sequence (Validated)**:
+- ✅ TCP Phase 1A-1B-3 completed without P0a (approach validated)
+- 🚀 TCP Phase 2 next (HTTP client milestone in week 6)
+- ⏸️ P0a queued for weeks 7-9 (launch blocking work)
+- No rework needed (verb APIs unchanged before/after P0a)
 
 **Reference Documentation**:
 - planning/phase4/networking/INDEX.md - TCP networking roadmap
@@ -368,7 +415,35 @@ These block deployment and major system decisions. All require design/planning b
 
 ---
 
-## Recently Completed (Last 2 Weeks)
+## Recently Completed (Jan 19-24, 2026)
+
+### TCP Networking Phase 1A/1B/3 - MERGED ✅
+- **PR #327**: Phase 1A core socket operations (6 verbs, 710 lines C)
+- **PR #329**: Comprehensive test suite (93 total tests)
+- **PR #330**: Phase 1B address/DNS handling (5 verbs) + Phase 3 server operations (2 verbs)
+- **Impact**: Production-ready TCP networking layer supporting client-server architecture
+- **Milestone**: Network server platform ready, foundation for HTTP client and server applications
+
+### Database Migration & Path Resolution Fixes - MERGED ✅
+- **PR #336**: System.paths migration fix (address value corruption, table overwriting)
+- **PR #337**: Path entry name matching fix (`defined(webserver)` behavior)
+- **PR #342**: Builtins priority fix (`defined(webserver.init)` regression)
+- **Impact**: Critical path resolution now works correctly, lookups find complete tables
+- **Tests**: 1,124+ integration tests passing
+
+### Thread Registry & Testing Foundation - MERGED ✅
+- **PR #317**: Thread registry infrastructure (thread ID allocation, collision detection)
+- **PR #318**: Deterministic thread testing foundation (10 integration tests, 11 of 17 verbs working)
+- **Impact**: Infrastructure for POSIX thread safety and testing before launch
+- **Documentation**: ADR-010 three-phase implementation roadmap
+
+### Infrastructure Improvements - MERGED ✅
+- **PR #338**: Modular context architecture (CLAUDE.md reduced from 1,033 to 937 lines)
+- **PR #340**: /doit workflow integration (Frontier-specific agent mappings)
+- **PR #343**: CLI documentation (600+ lines comprehensive reference)
+- **PR #326**: Hierarchical OPML export (14,002-line file → 26-file structure)
+- **PRs #324, #321**: Build fixes, file descriptor table initialization
+- **Impact**: Cleaner documentation, better workflow, reduced technical friction
 
 ### PR #326: Hierarchical OPML Export - MERGED ✅ (2026-01-19)
 - Converted monolithic 14,002-line OPML to 26-file hierarchical structure
