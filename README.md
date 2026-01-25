@@ -35,9 +35,18 @@ SANITIZE=1 make -C tests test
 # CLI build (multi-arch)
 make -C frontier-cli
 
+# Run interactive REPL (Read-Eval-Print Loop)
+./frontier-cli/frontier-cli
+# Use /exit to quit, /help for commands
+
+# Execute inline UserTalk code
+./frontier-cli/frontier-cli -e "1 + 1"
+
 # Build MySQL client libraries (installs into Common/MySQL)
 scripts/build_mysql_client.sh
 ```
+
+For comprehensive CLI usage and REPL documentation, see [docs/CLI_USAGE_GUIDE.md](docs/CLI_USAGE_GUIDE.md).
 
 ## MySQL Client Setup
 
