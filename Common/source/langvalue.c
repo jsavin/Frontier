@@ -4035,14 +4035,13 @@ boolean langgetdotparams (hdltreenode htree, hdlhashtable *htable, bigstring bsn
 			fl = false;
 		else {
 			// about to fail; last ditch effort for local paths
-				
+
 				flfindanyspecialsymbol = true;
-				
+
 				fl = langexternalgettable (bsname, htable);
-				
+
 				flfindanyspecialsymbol = false;
 				}
-			}
 		}
 	else
 		fl = langgettableval (hsubtable, bsname, htable);
