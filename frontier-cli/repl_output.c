@@ -1,25 +1,12 @@
 /*
- * repl_output.c - REPL output formatter implementation
+ * repl_output.c - Formats and displays REPL output (values, errors, prompts, help)
  *
- * Displays UserTalk values, errors, prompts, and help text for REPL mode.
+ * Output routing: prompts go to stderr (keeps stdout clean for piping),
+ * values and help go to stdout, errors go to stderr with logging.
  *
- * Implementation notes:
- * - Uses coercetostring() for value-to-string conversion
- * - Special handling for tables (show summary instead of full dump)
- * - Prompts go to stderr (keeps stdout clean for piping)
- * - Values and help text go to stdout
- * - Errors go to stderr
- *
- * String Conversion Strategy:
- *
- * Frontier stores strings in two formats:
- * 1. Heap strings (hdlstring): Raw character data in handle, NO length byte
- * 2. Pascal strings (bigstring): Length byte at [0], data starts at [1]
- *
- * For value display, we use texthandletostring() to convert heap strings
- * to Pascal strings. This properly handles the format difference.
- *
- * DO NOT use copyheapstring() - it expects Pascal format in the handle.
+ * String Conversion: Uses coercetostring() for value display. Tables get
+ * special handling (summary instead of full dump). See texthandletostring()
+ * for heap-to-Pascal string conversion.
  */
 
 #include "repl_output.h"
@@ -56,9 +43,7 @@ void repl_output_prompt(const char *system_root_name) {
 	fflush(stderr);
 }
 
-/* Get count of items in hash table
- * (hashtablecount is not exported, so we count manually)
- */
+/* Counts items in a hash table by traversing the sorted link list. */
 static long count_hashtable_items(hdlhashtable htable) {
 	long count = 0;
 	hdlhashnode nomad;
@@ -77,7 +62,7 @@ static long count_hashtable_items(hdlhashtable htable) {
 	return count;
 }
 
-/* Display value result from evaluation */
+/* Displays a tyvaluerecord, with special formatting for tables and strings. */
 void repl_output_value(tyvaluerecord *val) {
 	bigstring bs;
 	tyvaluerecord val_copy;
@@ -130,7 +115,7 @@ void repl_output_value(tyvaluerecord *val) {
 	disposevaluerecord(val_copy, false);
 }
 
-/* Display result from evaluation (as bigstring) */
+/* Displays evaluation result as a string (empty results are suppressed). */
 void repl_output_result(bigstring result) {
 	if (result == nil) {
 		return;
@@ -146,11 +131,7 @@ void repl_output_result(bigstring result) {
 	fflush(stdout);
 }
 
-/* Display error message
- *
- * User-facing REPL error output (exception to logging standards).
- * This is terminal UI output, not diagnostic logging.
- */
+/* Displays error message to stderr and logs it (terminal UI output). */
 void repl_output_error(const char *error_msg) {
 	if (error_msg == NULL) {
 		log_error(LOG_COMP_GENERAL, "Unknown error");
@@ -162,7 +143,7 @@ void repl_output_error(const char *error_msg) {
 	fflush(stderr);
 }
 
-/* Display help text (for /help command) */
+/* Displays the /help command output with available commands and persistence info. */
 void repl_output_help(void) {
 	fputs("Available commands:\n", stdout);
 	fputs("  /exit          Exit the REPL\n", stdout);
@@ -178,7 +159,7 @@ void repl_output_help(void) {
 	fflush(stdout);
 }
 
-/* Helper: format a value for compact display in /vars output */
+/* Formats a value as a compact string for /vars output (e.g., "42", "[table with 3 items]"). */
 static void format_value_summary(tyvaluerecord *val, char *buffer, size_t bufsize) {
 	bigstring bs;
 	tyvaluerecord val_copy;
@@ -234,7 +215,7 @@ static void format_value_summary(tyvaluerecord *val, char *buffer, size_t bufsiz
 	}
 }
 
-/* Display workspace variables (for /vars command) */
+/* Displays all variables in a workspace table with their values. */
 void repl_output_vars(hdlhashtable workspace) {
 	hdlhashnode nomad;
 	long count;

@@ -169,11 +169,13 @@ static boolean completion_visitor_callback(hdlhashnode node, ptrvoid refcon) {
  * Match Collection Management
  * ============================================================================ */
 
+/* Initializes a match collection for use. */
 void completion_matches_init(completion_matches_t *matches) {
     matches->count = 0;
     matches->common_prefix[0] = '\0';
 }
 
+/* Adds a completion match to the collection; returns false if collection is full. */
 bool completion_matches_add(completion_matches_t *matches,
                             const char *name,
                             tyvaluetype type,
@@ -192,6 +194,7 @@ bool completion_matches_add(completion_matches_t *matches,
     return true;
 }
 
+/* Computes the longest common prefix shared by all matches for auto-expansion. */
 void completion_compute_common_prefix(completion_matches_t *matches) {
     if (matches->count == 0) {
         matches->common_prefix[0] = '\0';
@@ -238,6 +241,7 @@ static bool is_path_char(char c) {
     return is_ident_char(c) || c == '.';
 }
 
+/* Parses the input line at cursor position to extract completion context. */
 void completion_parse_context(const char *line, int cursor_pos, completion_context_t *ctx) {
     ctx->line = line;
     ctx->cursor_pos = cursor_pos;
@@ -315,6 +319,7 @@ void completion_parse_context(const char *line, int cursor_pos, completion_conte
  * Phase 1: Keyword Completion
  * ============================================================================ */
 
+/* Adds matching UserTalk keywords to the completion results. */
 void completion_add_keywords(completion_matches_t *matches, const char *prefix) {
     size_t prefix_len = strlen(prefix);
 
@@ -334,6 +339,7 @@ void completion_add_keywords(completion_matches_t *matches, const char *prefix) 
  * Phase 2: Database Name Completion
  * ============================================================================ */
 
+/* Adds matching entries from a hash table to the completion results. */
 void completion_add_table_entries(completion_matches_t *matches,
                                   hdlhashtable table,
                                   const char *prefix) {
@@ -354,6 +360,7 @@ void completion_add_table_entries(completion_matches_t *matches,
  * Phase 3: Dotted Path Navigation
  * ============================================================================ */
 
+/* Navigates a dotted path (e.g., "system.verbs") and returns the target table. */
 hdlhashtable completion_navigate_path(const char *path) {
     if (path == NULL || path[0] == '\0') {
         return roottable;
@@ -421,6 +428,7 @@ static const char *verb_processors[] = {
     NULL
 };
 
+/* Determines completion context type (address, verb call, string, or general). */
 completion_context_type_t completion_detect_context(const char *line, int cursor_pos) {
     if (line == NULL || cursor_pos <= 0) {
         return COMPLETION_CTX_GENERAL;
@@ -468,6 +476,7 @@ completion_context_type_t completion_detect_context(const char *line, int cursor
  * Display Matches
  * ============================================================================ */
 
+/* Prints completion matches in a multi-column format to the terminal. */
 void completion_display_matches(const completion_matches_t *matches) {
     if (matches->count == 0) {
         return;
@@ -523,11 +532,13 @@ void completion_display_matches(const completion_matches_t *matches) {
  * Main Completion Callback
  * ============================================================================ */
 
+/* Initializes the completion engine (placeholder for future state). */
 bool completion_init(void) {
     /* Nothing to initialize for now */
     return true;
 }
 
+/* Cleans up completion engine resources (placeholder for future state). */
 void completion_cleanup(void) {
     /* Nothing to cleanup for now */
 }

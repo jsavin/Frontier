@@ -1,6 +1,5 @@
 /*
- * Frontier CLI - REPL Core Loop Implementation
- * Phase 2: Linenoise Integration (command history and tab completion)
+ * repl.c - Main REPL loop with linenoise integration for line editing and history
  *
  * Uses linenoise (https://github.com/antirez/linenoise) for cross-platform
  * line editing, history, and tab completion support.
@@ -46,7 +45,7 @@ static size_t session_command_count = 0;
 // Forward declaration for completion callback
 static void linenoise_completion_callback(const char *buf, linenoiseCompletions *lc);
 
-// Add command to session tracking
+/* Adds a command to the session tracking list for history merge-before-save. */
 static void track_session_command(const char *cmd) {
     if (session_command_count >= MAX_SESSION_COMMANDS) {
         // Shift out oldest command
@@ -61,7 +60,7 @@ static void track_session_command(const char *cmd) {
     }
 }
 
-// Free session command tracking
+/* Frees all tracked session commands and resets the counter. */
 static void free_session_commands(void) {
     for (size_t i = 0; i < session_command_count; i++) {
         free(session_commands[i]);
@@ -70,7 +69,7 @@ static void free_session_commands(void) {
     session_command_count = 0;
 }
 
-// Merge session history with existing file (for concurrent session support)
+/* Merges session commands with existing history file, deduplicating and trimming to HISTORY_SIZE. */
 static void merge_and_save_history(const char *history_path) {
     // Read existing history file
     char **file_commands = NULL;
@@ -174,7 +173,7 @@ static void merge_and_save_history(const char *history_path) {
     free(file_commands);
 }
 
-// Initialize linenoise
+/* Initializes linenoise with history, tab completion, and multi-line mode. */
 static boolean init_linenoise(void) {
     // Set history size
     linenoiseHistorySetMaxLen(HISTORY_SIZE);
@@ -206,7 +205,7 @@ static boolean init_linenoise(void) {
     return true;
 }
 
-// Cleanup linenoise
+/* Cleans up linenoise resources and saves merged history to disk. */
 static void cleanup_linenoise(void) {
     // Cleanup completion engine
     completion_cleanup();
@@ -227,7 +226,7 @@ static void cleanup_linenoise(void) {
     free_session_commands();
 }
 
-// Linenoise completion callback - bridges to our completion engine
+/* Bridges linenoise tab completion to the Frontier completion engine. */
 static void linenoise_completion_callback(const char *buf, linenoiseCompletions *lc) {
     // Parse completion context
     completion_context_t ctx;
@@ -308,6 +307,7 @@ static void linenoise_completion_callback(const char *buf, linenoiseCompletions 
     }
 }
 
+/* Main REPL entry point: initializes linenoise, runs the read-eval-print loop, and cleans up. */
 int repl_main(cli_options_t *options) {
     (void)options;  /* Unused in Phase 1 */
 

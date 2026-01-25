@@ -96,8 +96,7 @@ static char* read_line_with_editing(void) {
 	}
 }
 
-/* Yes/No prompt */
-
+/* Displays a yes/no prompt with arrow key selection, returns true for Yes. */
 bool dialog_ask(const char *prompt) {
 	terminal_state *term_state = NULL;
 	bool selected_yes = true;  /* Default to Yes */
@@ -188,8 +187,7 @@ bool dialog_ask(const char *prompt) {
 	}
 }
 
-/* Integer input prompt */
-
+/* Prompts for an integer value with a default; validates input before returning. */
 long dialog_get_int(const char *prompt, long default_value) {
 	char *input = NULL;
 	long result = 0;
@@ -231,8 +229,7 @@ long dialog_get_int(const char *prompt, long default_value) {
 	}
 }
 
-/* String input prompt */
-
+/* Prompts for a string value with a default; caller must free returned string. */
 char* dialog_get_string(const char *prompt, const char *default_value) {
 	char *input = NULL;
 
@@ -265,8 +262,7 @@ char* dialog_get_string(const char *prompt, const char *default_value) {
 	return input;
 }
 
-/* Password input prompt */
-
+/* Prompts for a password with masked input (asterisks); caller must free returned string. */
 char* dialog_get_password(const char *prompt) {
 	char *buffer = NULL;
 	size_t bufsize = 0;
@@ -358,8 +354,7 @@ char* dialog_get_password(const char *prompt) {
 	}
 }
 
-/* Alert prompt with beep */
-
+/* Displays an alert message with audible beep, waits for Enter to continue. */
 bool dialog_alert(const char *message) {
 	if (!isInteractiveMode()) {
 		return false;
@@ -405,8 +400,7 @@ bool dialog_alert(const char *message) {
 	return true;
 }
 
-/* Notify prompt (no beep) */
-
+/* Displays a notification message without beep, waits for Enter to continue. */
 bool dialog_notify(const char *message) {
 	if (!isInteractiveMode()) {
 		return false;
@@ -448,8 +442,7 @@ bool dialog_notify(const char *message) {
 	return true;
 }
 
-/* Two-way button choice */
-
+/* Displays a two-button choice dialog; returns true if first button selected. */
 bool dialog_twoway(const char *prompt, const char *button1, const char *button2) {
 	int selection = 0;  /* 0 = button1, 1 = button2 */
 	terminal_state *term_state = NULL;
@@ -533,8 +526,7 @@ bool dialog_twoway(const char *prompt, const char *button1, const char *button2)
 	}
 }
 
-/* Three-way button choice */
-
+/* Displays a three-button choice dialog; returns 1, 2, or 3 for the selected button. */
 int dialog_threeway(const char *prompt, const char *button1, const char *button2, const char *button3) {
 	int selection = 0;  /* 0 = button1, 1 = button2, 2 = button3 */
 	terminal_state *term_state = NULL;

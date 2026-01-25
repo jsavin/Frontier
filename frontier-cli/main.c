@@ -1,12 +1,22 @@
 /*
  * Frontier CLI - Command Line Interface for UserTalk Script Execution
  * Phase 1: CLI-Based UserTalk Invocation Implementation
- * 
+ *
  * Copyright (C) 1992-2004 UserLand Software, Inc.
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
+ */
+
+/*
+ * main.c - Entry point for frontier-cli, handles argument parsing and runtime initialization
+ *
+ * This file orchestrates the CLI startup sequence: parsing command-line arguments,
+ * initializing the Frontier runtime, loading the system root database, and dispatching
+ * to either script execution mode or the interactive REPL.
+ *
+ * See docs/CLI_USAGE_GUIDE.md for usage documentation.
  */
 
 // 2025-10-27 Codex: Added diagnostics around system table hydration to surface missing subtables.
@@ -95,6 +105,7 @@ static void log_system_subtable_status(const char *phase,
                                        hdlhashtable objectmodel);
 static int get_system_root_search_paths(char paths[][CLI_MAX_PATH_LENGTH + 1], int max_paths);
 
+/* Main entry point: initializes runtime, loads database, and dispatches to execution mode. */
 int main(int argc, char* argv[]) {
     // Initialize logging system (reads FRONTIER_LOG_LEVEL, FRONTIER_LOG_COMPONENT, FRONTIER_LOG_FORMAT env vars)
     log_init();
@@ -240,20 +251,7 @@ int main(int argc, char* argv[]) {
     return exit_code;
 }
 
-/**
- * Build list of system root search paths for auto-discovery.
- *
- * Search order:
- * 1. FRONTIER_ROOT environment variable (if set)
- * 2. ~/Library/Application Support/Frontier/Frontier.root7
- * 3. ~/Library/Application Support/Frontier/Frontier.root (v6, will auto-migrate)
- * 4. ~/.frontier/Frontier.root7
- * 5. ~/.frontier/Frontier.root (v6, will auto-migrate)
- * 6. databases/Frontier.root7 (current working directory)
- * 7. databases/Frontier.root (current working directory, v6)
- *
- * Returns: Number of valid paths added to the search list
- */
+/* Builds list of system root search paths for auto-discovery (env var, standard locations, cwd). */
 static int get_system_root_search_paths(char paths[][CLI_MAX_PATH_LENGTH + 1], int max_paths) {
     int count = 0;
     char expanded_path[CLI_MAX_PATH_LENGTH + 1];
@@ -324,6 +322,7 @@ static int get_system_root_search_paths(char paths[][CLI_MAX_PATH_LENGTH + 1], i
     return count;
 }
 
+/* Reads a big-endian integer of specified length from a byte buffer. */
 static uint64_t read_big_endian(const unsigned char *data, size_t length) {
     uint64_t value = 0;
     for (size_t i = 0; i < length; ++i) {
@@ -332,6 +331,7 @@ static uint64_t read_big_endian(const unsigned char *data, size_t length) {
     return value;
 }
 
+/* Locates the root table address in the database by reading the Cancoon view header. */
 static boolean read_root_table_address(const char *path, dbaddress *adr_out, short *version_out) {
     (void)path; /* path only used for logging; runtime state comes from databasedata */
 
@@ -402,6 +402,7 @@ static boolean read_root_table_address(const char *path, dbaddress *adr_out, sho
     return true;
 }
 
+/* Prints command-line usage information and examples. */
 static void print_usage(const char* program_name) {
     printf("Frontier CLI - Command Line Interface for UserTalk Script Execution\n");
     printf("Version %s (%s)\n\n", FRONTIER_CLI_VERSION_STRING, FRONTIER_CLI_BUILD_DATE);
@@ -454,12 +455,14 @@ static void print_usage(const char* program_name) {
     printf("\n");
 }
 
+/* Prints version and copyright information. */
 static void print_version(void) {
     printf("Frontier CLI %s (%s)\n", FRONTIER_CLI_VERSION_STRING, FRONTIER_CLI_BUILD_DATE);
     printf("Copyright (C) 1992-2026 UserLand Software, Inc. and Contributors\n");
     printf("This is free software; see the source for copying conditions.\n");
 }
 
+/* Initializes the Frontier runtime: logging, thread globals, and optionally loads the system root. */
 static boolean initialize_frontier_runtime(void) {
     if (g_initialized) {
         return true;
@@ -492,6 +495,7 @@ static boolean initialize_frontier_runtime(void) {
     return true;
 }
 
+/* Releases runtime resources: unloads database, releases thread globals, cleans up logging. */
 static void cleanup_frontier_runtime(void) {
     if (!g_initialized) {
         return;
@@ -512,6 +516,7 @@ static void cleanup_frontier_runtime(void) {
     g_initialized = false;
 }
 
+/* Finds or creates a named subtable under a parent table. */
 static boolean ensure_named_subtable(hdlhashtable parent, const unsigned char *name, hdlhashtable *out, boolean mark_dont_save) {
     if (parent == nil || name == NULL) {
         return false;
@@ -548,6 +553,7 @@ static boolean ensure_named_subtable(hdlhashtable parent, const unsigned char *n
     return false;
 }
 
+/* Logs the current state of system subtables for debugging hydration issues. */
 static void log_system_subtable_status(const char *phase,
                                        hdlhashtable system,
                                        hdlhashtable verbs,
@@ -573,6 +579,7 @@ static void log_system_subtable_status(const char *phase,
                  (void *)objectmodel);
 }
 
+/* Loads and fully initializes the system root database, linking EFP tables and resolving paths. */
 static boolean hydrate_system_root_database(const char* path) {
     /* Always start from a clean slate; useful to confirm entry. */
 #if defined(FRONTIER_HEADLESS)
@@ -811,6 +818,7 @@ cleanup:
     return ok;
 }
 
+/* Internal implementation for loading the system root database with optional hydration. */
 static boolean load_system_root_database_internal(const char* path, boolean allow_hydrate) {
     (void) allow_hydrate;
     if (path == NULL) {
@@ -1019,10 +1027,12 @@ static boolean load_system_root_database_internal(const char* path, boolean allo
     return true;
 }
 
+/* Loads the system root database with full hydration enabled. */
 static boolean load_system_root_database(const char* path) {
     return load_system_root_database_internal(path, true);
 }
 
+/* Unloads the system root database and clears all global table structures. */
 static void unload_system_root_database(void) {
     if (!g_system_root_loaded) {
         return;
@@ -1057,6 +1067,7 @@ static void unload_system_root_database(void) {
     g_system_root_path[0] = '\0';
 }
 
+/* Executes a script from file or inline source and returns success status. */
 static boolean execute_script_mode(void) {
     cli_log_info("Executing script mode");
 

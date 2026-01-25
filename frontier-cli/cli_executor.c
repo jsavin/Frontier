@@ -1,4 +1,11 @@
-#include "cli_executor.h"
+/*
+ * cli_executor.c - UserTalk script compilation and execution engine
+ *
+ * Provides the execution context for running UserTalk scripts, including
+ * compilation, execution, result capture, and JSON output formatting.
+ * Uses langrunstring for short scripts and langrunhandle for longer ones.
+ */
+
 #include "cli_executor.h"
 
 /* 2025-12-08 Codex: Route long inline CLI scripts through langrunhandle so compiled evals return results without bogus empty verb names. */
@@ -11,6 +18,7 @@
 static void cli_print_json_escaped_string(const char* str);
 static void cli_print_execution_result_json(const usertalk_execution_t* execution, boolean success);
 
+/* Duplicates a C string using CLI memory allocation. */
 static char* cli_dup_string(const char* source) {
     if (source == NULL) {
         return NULL;
@@ -24,11 +32,13 @@ static char* cli_dup_string(const char* source) {
     return copy;
 }
 
+/* Allocates a new execution context for running UserTalk scripts. */
 usertalk_execution_t* cli_create_execution_context(void) {
     usertalk_execution_t* exec = cli_calloc(1, sizeof(*exec));
     return exec;
 }
 
+/* Frees an execution context and all associated memory. */
 void cli_free_execution_context(usertalk_execution_t* execution) {
     if (execution == NULL) {
         return;
@@ -39,6 +49,7 @@ void cli_free_execution_context(usertalk_execution_t* execution) {
     cli_free(execution);
 }
 
+/* Clears any existing error message from the execution context. */
 static void cli_clear_execution_error(usertalk_execution_t* execution) {
     if (execution == NULL) {
         return;
@@ -47,6 +58,7 @@ static void cli_clear_execution_error(usertalk_execution_t* execution) {
     execution->error_message = NULL;
 }
 
+/* Sets the error message in the execution context. */
 static void cli_set_execution_error_internal(usertalk_execution_t* execution, const char* message) {
     if (execution == NULL) {
         return;
@@ -58,6 +70,7 @@ static void cli_set_execution_error_internal(usertalk_execution_t* execution, co
     }
 }
 
+/* Stores the script source in the execution context for later execution. */
 boolean cli_compile_script(const char* script_code, usertalk_execution_t* execution) {
     if (execution == NULL) {
         return false;
@@ -80,6 +93,7 @@ boolean cli_compile_script(const char* script_code, usertalk_execution_t* execut
     return true;
 }
 
+/* Runs the compiled script and captures the result or error. */
 boolean cli_execute_compiled_script(usertalk_execution_t* execution) {
     if (execution == NULL || execution->script_source == NULL) {
         return false;
@@ -174,6 +188,7 @@ boolean cli_execute_compiled_script(usertalk_execution_t* execution) {
     return true;
 }
 
+/* Reads a script file from disk and executes it. */
 boolean cli_execute_script_file(const char* script_path, boolean output_json) {
     if (!cli_file_exists(script_path)) {
         cli_log_error("Script file does not exist: %s", script_path);
@@ -191,6 +206,7 @@ boolean cli_execute_script_file(const char* script_path, boolean output_json) {
     return success;
 }
 
+/* Executes an inline script string and outputs the result. */
 boolean cli_execute_inline_script(const char* script_code, boolean output_json) {
     usertalk_execution_t* exec = cli_create_execution_context();
     if (exec == NULL) {
@@ -231,6 +247,7 @@ boolean cli_execute_inline_script(const char* script_code, boolean output_json) 
     return ok;
 }
 
+/* Returns a copy of the execution result string (caller must free). */
 char* cli_get_execution_result_string(const usertalk_execution_t* execution) {
     if (execution == NULL || execution->result == NULL) {
         return NULL;
@@ -238,6 +255,7 @@ char* cli_get_execution_result_string(const usertalk_execution_t* execution) {
     return cli_strdup(execution->result);
 }
 
+/* Returns the error message from the execution context (do not free). */
 const char* cli_get_execution_error(const usertalk_execution_t* execution) {
     if (execution == NULL || execution->error_message == NULL) {
         return NULL;
@@ -245,10 +263,12 @@ const char* cli_get_execution_error(const usertalk_execution_t* execution) {
     return execution->error_message;
 }
 
+/* Checks if the execution context contains an error. */
 boolean cli_has_execution_error(const usertalk_execution_t* execution) {
     return execution != NULL && execution->error_message != NULL;
 }
 
+/* Prints the execution result to stdout as plain text. */
 void cli_print_execution_result(const usertalk_execution_t* execution) {
     if (execution == NULL || execution->result == NULL) {
         printf("(no result)\n");

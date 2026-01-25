@@ -1,7 +1,9 @@
 /*
  * Frontier CLI - Command Line Interface for UserTalk Script Execution
  * CLI Network Implementation
- * 
+ *
+ * cli_network.c - HTTP and WebSocket server implementation for remote script execution
+ *
  * Copyright (C) 1992-2004 UserLand Software, Inc.
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,7 +33,7 @@ static char g_network_error_buffer[1024] = {0};
 static network_server_t* g_current_server = NULL;
 static boolean g_server_running = false;
 
-// Set network error
+/* Sets the global network error message for later retrieval. */
 void cli_set_network_error(const char* error) {
     if (error == NULL) {
         g_network_error_buffer[0] = '\0';
@@ -41,22 +43,22 @@ void cli_set_network_error(const char* error) {
     }
 }
 
-// Get network error
+/* Returns the current network error message. */
 const char* cli_get_network_error(void) {
     return g_network_error_buffer;
 }
 
-// Clear network error
+/* Clears the network error buffer. */
 void cli_clear_network_error(void) {
     g_network_error_buffer[0] = '\0';
 }
 
-// Validate port number
+/* Validates that a port number is in the valid TCP range (1-65535). */
 boolean cli_validate_port(int port) {
     return (port >= 1 && port <= 65535);
 }
 
-// Create network server
+/* Allocates and initializes a new network server context for the given port. */
 network_server_t* cli_create_network_server(int port) {
     if (!cli_validate_port(port)) {
         cli_set_network_error("Invalid port number");
@@ -80,7 +82,7 @@ network_server_t* cli_create_network_server(int port) {
     return server;
 }
 
-// Free network server
+/* Stops the server if running and frees the server context. */
 void cli_free_network_server(network_server_t* server) {
     if (server == NULL) {
         return;
@@ -95,7 +97,7 @@ void cli_free_network_server(network_server_t* server) {
     cli_log_debug("Freed network server");
 }
 
-// Start server
+/* Starts the network server and begins accepting connections. */
 boolean cli_start_server(network_server_t* server) {
     if (server == NULL) {
         cli_set_network_error("Invalid server context");
@@ -119,7 +121,7 @@ boolean cli_start_server(network_server_t* server) {
     return true;
 }
 
-// Stop server
+/* Stops the network server and closes all connections. */
 boolean cli_stop_server(network_server_t* server) {
     if (server == NULL) {
         return false;
@@ -141,7 +143,7 @@ boolean cli_stop_server(network_server_t* server) {
     return true;
 }
 
-// Start HTTP server
+/* Creates and starts an HTTP server on the specified port. */
 boolean cli_start_http_server(int port) {
     if (!cli_validate_port(port)) {
         cli_set_network_error("Invalid port number for HTTP server");
@@ -169,7 +171,7 @@ boolean cli_start_http_server(int port) {
     return true;
 }
 
-// Stop HTTP server
+/* Stops the currently running HTTP server. */
 boolean cli_stop_http_server(void) {
     if (g_current_server == NULL || !g_current_server->flhttp) {
         cli_set_network_error("No HTTP server running");
@@ -179,12 +181,12 @@ boolean cli_stop_http_server(void) {
     return cli_stop_server(g_current_server);
 }
 
-// Check if HTTP server is running
+/* Returns true if an HTTP server is currently running. */
 boolean cli_http_server_is_running(void) {
     return (g_current_server != NULL && g_current_server->flhttp && g_current_server->flrunning);
 }
 
-// Start WebSocket server
+/* Creates and starts a WebSocket server on the specified port. */
 boolean cli_start_websocket_server(int port) {
     if (!cli_validate_port(port)) {
         cli_set_network_error("Invalid port number for WebSocket server");
@@ -212,7 +214,7 @@ boolean cli_start_websocket_server(int port) {
     return true;
 }
 
-// Stop WebSocket server
+/* Stops the currently running WebSocket server. */
 boolean cli_stop_websocket_server(void) {
     if (g_current_server == NULL || !g_current_server->flwebsocket) {
         cli_set_network_error("No WebSocket server running");
@@ -222,12 +224,12 @@ boolean cli_stop_websocket_server(void) {
     return cli_stop_server(g_current_server);
 }
 
-// Check if WebSocket server is running
+/* Returns true if a WebSocket server is currently running. */
 boolean cli_websocket_server_is_running(void) {
     return (g_current_server != NULL && g_current_server->flwebsocket && g_current_server->flrunning);
 }
 
-// Get server status
+/* Returns a formatted string describing the current server status. */
 char* cli_get_server_status(void) {
     if (g_current_server == NULL) {
         return cli_strdup("No server running");
@@ -241,7 +243,7 @@ char* cli_get_server_status(void) {
                            g_current_server->flrunning ? "Running" : "Stopped");
 }
 
-// Print server information
+/* Prints server configuration and status to stdout. */
 void cli_print_server_info(const network_server_t* server) {
     if (server == NULL) {
         printf("Server: NULL\n");
@@ -255,7 +257,7 @@ void cli_print_server_info(const network_server_t* server) {
     printf("  Status: %s\n", server->flrunning ? "running" : "stopped");
 }
 
-// Handle HTTP request
+/* Dispatches HTTP requests to appropriate handlers based on method and path. */
 char* cli_handle_http_request(const char* method, const char* path, const char* body) {
     if (method == NULL || path == NULL) {
         return cli_create_json_error("Invalid request parameters");
@@ -277,7 +279,7 @@ char* cli_handle_http_request(const char* method, const char* path, const char* 
     }
 }
 
-// Handle HTTP GET request
+/* Handles HTTP GET requests including /status and /execute endpoints. */
 static char* cli_handle_http_get(const char* path) {
     if (strcmp(path, "/") == 0 || strcmp(path, "/status") == 0) {
         // Return server status
@@ -335,7 +337,7 @@ static char* cli_handle_http_get(const char* path) {
     }
 }
 
-// Handle HTTP POST request
+/* Handles HTTP POST requests for script execution from request body. */
 static char* cli_handle_http_post(const char* path, const char* body) {
     if (strcmp(path, "/execute") == 0) {
         // Execute UserTalk script from body
@@ -376,17 +378,17 @@ static char* cli_handle_http_post(const char* path, const char* body) {
     }
 }
 
-// Handle HTTP PUT request
+/* Placeholder for HTTP PUT request handling (not yet implemented). */
 static char* cli_handle_http_put(const char* path, const char* body) {
     return cli_create_json_error("PUT method not yet implemented");
 }
 
-// Handle HTTP DELETE request
+/* Placeholder for HTTP DELETE request handling (not yet implemented). */
 static char* cli_handle_http_delete(const char* path) {
     return cli_create_json_error("DELETE method not yet implemented");
 }
 
-// Handle WebSocket message
+/* Handles incoming WebSocket messages by executing them as UserTalk scripts. */
 char* cli_handle_websocket_message(const char* message) {
     if (message == NULL) {
         return cli_create_json_error("No message provided");
@@ -424,7 +426,7 @@ char* cli_handle_websocket_message(const char* message) {
     return response;
 }
 
-// Create JSON response
+/* Creates a JSON response object with success status and data or error message. */
 char* cli_create_json_response(boolean success, const char* data, const char* error) {
     if (success) {
         return cli_format_string("{\"success\":true,\"data\":\"%s\"}", data ? data : "");
@@ -433,12 +435,12 @@ char* cli_create_json_response(boolean success, const char* data, const char* er
     }
 }
 
-// Create JSON error response
+/* Creates a JSON error response with the given error message. */
 char* cli_create_json_error(const char* error) {
     return cli_create_json_response(false, NULL, error);
 }
 
-// Create JSON success response
+/* Creates a JSON success response with the given data. */
 char* cli_create_json_success(const char* data) {
     return cli_create_json_response(true, data, NULL);
 }

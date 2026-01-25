@@ -1,3 +1,11 @@
+/*
+ * headless_scripts_loader.c - Loads and executes system startup scripts in headless mode
+ *
+ * Provides headless-compatible implementations for startup script execution,
+ * including a msg() verb that outputs to stdout instead of GUI dialogs.
+ * Startup scripts are skipped by default; set FRONTIER_HEADLESS_RUN_STARTUP=1 to enable.
+ */
+
 /* 2025-12-02 Codex: Allow headless startup scripts to be skipped for debugging (env flag). */
 
 #include "../Common/headers/frontier.h"
@@ -15,7 +23,7 @@
 
 #include <stdio.h>
 
-/* Headless msg() verb implementation - outputs to stdout */
+/* Headless msg() verb that outputs to stdout instead of showing a dialog. */
 static boolean headless_msgverb(hdltreenode hparam1, tyvaluerecord *vreturned) {
 	bigstring bsmsg;
 	char msg[256];
@@ -43,6 +51,7 @@ extern boolean pophashtable (void);
 extern hdlhashtable currenthashtable;
 extern hdlhashtable roottable;
 
+/* Compiles a script node from the ODB into executable code. */
 static boolean headless_compile_script (hdlhashnode hnode, hdltreenode *hcode) {
     tyvaluerecord val = (**hnode).val;
     hdlexternalvariable hv;
@@ -90,6 +99,7 @@ static boolean headless_compile_script (hdlhashnode hnode, hdltreenode *hcode) {
     return true;
 }
 
+/* Compiles and executes a single script node. */
 static boolean headless_execute_script (hdlhashnode hnode) {
     hdltreenode hcode = nil;
     tyvaluerecord result;
@@ -124,11 +134,13 @@ static boolean headless_execute_script (hdlhashnode hnode) {
     return ok;
 }
 
+/* Visitor callback that executes each script in a table. */
 static boolean headless_run_script_visit (hdlhashnode hnode, ptrvoid refcon) {
 #pragma unused(refcon)
     return headless_execute_script (hnode);
 }
 
+/* Runs all scripts in a named system table (e.g., "startup"). */
 static boolean headless_run_special_scripts (const unsigned char *bsspecialtable) {
     hdlhashtable htable;
     bigstring bstemp;
@@ -156,6 +168,7 @@ static boolean headless_run_special_scripts (const unsigned char *bsspecialtable
     return result;
 }
 
+/* Initializes the headless environment and optionally runs startup scripts. */
 boolean loadsystemscripts (void) {
     const char *run_startup = getenv("FRONTIER_HEADLESS_RUN_STARTUP");
 

@@ -33,7 +33,7 @@ static int compare_file_entries(const void *a, const void *b) {
 	return strcasecmp(fa->name, fb->name);
 }
 
-/* Find matching files in directory */
+/* Finds files/directories matching prefix; sorts results with directories first. */
 size_t tab_completion_find_matches(const char *directory,
                                    const char *prefix,
                                    file_entry *entries,
@@ -112,7 +112,7 @@ static void format_file_size(off_t size, char *buffer, size_t buffer_size) {
 	}
 }
 
-/* Display completion menu and handle navigation */
+/* Displays an interactive completion menu; user navigates with arrow keys. */
 tab_completion_result tab_completion_show_menu(const file_entry *entries,
                                                size_t count,
                                                const char *directory,

@@ -22,8 +22,7 @@ typedef struct {
 /* Global signal handler (restored on cleanup) */
 static terminal_sigint_handler original_sigint_handler = NULL;
 
-/* Terminal state save/restore */
-
+/* Saves current terminal settings; caller must free with terminal_free_state(). */
 terminal_state* terminal_save_state(void) {
 	internal_terminal_state *state = (internal_terminal_state*)malloc(sizeof(internal_terminal_state));
 	if (!state) {
@@ -34,6 +33,7 @@ terminal_state* terminal_save_state(void) {
 	return (terminal_state*)state;
 }
 
+/* Restores terminal settings from a previously saved state. */
 void terminal_restore_state(terminal_state *state) {
 	internal_terminal_state *istate = (internal_terminal_state*)state;
 	if (!istate || !istate->saved) {
@@ -43,12 +43,14 @@ void terminal_restore_state(terminal_state *state) {
 	tcsetattr(STDIN_FILENO, TCSAFLUSH, &istate->original_termios);
 }
 
+/* Frees memory allocated by terminal_save_state(). */
 void terminal_free_state(terminal_state *state) {
 	if (state) {
 		free(state);
 	}
 }
 
+/* Initializes terminal state struct and saves current settings for later restore. */
 bool terminal_init(terminal_state *state) {
 	if (!state) {
 		return false;
@@ -63,6 +65,7 @@ bool terminal_init(terminal_state *state) {
 	return true;
 }
 
+/* Restores terminal to original state and frees resources. */
 void terminal_cleanup(terminal_state *state) {
 	if (!state) {
 		return;
@@ -77,6 +80,7 @@ void terminal_cleanup(terminal_state *state) {
 	state->raw_mode_enabled = false;
 }
 
+/* Enables raw mode for the given terminal state; tracks mode for cleanup. */
 bool terminal_enable_raw_mode(terminal_state *state) {
 	if (!state) {
 		return false;
@@ -90,6 +94,7 @@ bool terminal_enable_raw_mode(terminal_state *state) {
 	return false;
 }
 
+/* Disables raw mode and restores previous terminal settings. */
 void terminal_disable_raw_mode(terminal_state *state) {
 	if (!state || !state->raw_mode_enabled) {
 		return;
@@ -102,8 +107,7 @@ void terminal_disable_raw_mode(terminal_state *state) {
 	state->raw_mode_enabled = false;
 }
 
-/* Terminal mode control */
-
+/* Sets terminal to raw mode globally; disables canonical mode and echo. */
 bool terminal_set_raw_mode(void) {
 	struct termios raw;
 
@@ -127,6 +131,7 @@ bool terminal_set_raw_mode(void) {
 	return tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) == 0;
 }
 
+/* Disables character echo on terminal input. */
 bool terminal_disable_echo(void) {
 	struct termios term;
 
@@ -139,6 +144,7 @@ bool terminal_disable_echo(void) {
 	return tcsetattr(STDIN_FILENO, TCSAFLUSH, &term) == 0;
 }
 
+/* Re-enables character echo on terminal input. */
 bool terminal_enable_echo(void) {
 	struct termios term;
 
@@ -151,28 +157,31 @@ bool terminal_enable_echo(void) {
 	return tcsetattr(STDIN_FILENO, TCSAFLUSH, &term) == 0;
 }
 
-/* Cursor control */
-
+/* Saves cursor position using ANSI escape sequence. */
 void terminal_save_cursor(void) {
 	fputs("\x1b[s", stderr);
 	fflush(stderr);
 }
 
+/* Restores cursor to previously saved position. */
 void terminal_restore_cursor(void) {
 	fputs("\x1b[u", stderr);
 	fflush(stderr);
 }
 
+/* Moves cursor to absolute row and column position (1-based). */
 void terminal_move_cursor(int row, int col) {
 	fprintf(stderr, "\x1b[%d;%dH", row, col);
 	fflush(stderr);
 }
 
+/* Clears the current line and moves cursor to beginning. */
 void terminal_clear_line(void) {
 	fputs("\x1b[2K\r", stderr);
 	fflush(stderr);
 }
 
+/* Moves cursor up by specified number of lines. */
 void terminal_move_cursor_up(int lines) {
 	if (lines > 0) {
 		fprintf(stderr, "\x1b[%dA", lines);
@@ -180,6 +189,7 @@ void terminal_move_cursor_up(int lines) {
 	}
 }
 
+/* Moves cursor down by specified number of lines. */
 void terminal_move_cursor_down(int lines) {
 	if (lines > 0) {
 		fprintf(stderr, "\x1b[%dB", lines);
@@ -187,18 +197,19 @@ void terminal_move_cursor_down(int lines) {
 	}
 }
 
-/* Display formatting */
-
+/* Starts inverted (reverse video) text mode. */
 void terminal_start_inverted(void) {
 	fputs("\x1b[7m", stderr);
 	fflush(stderr);
 }
 
+/* Ends inverted text mode and restores normal video. */
 void terminal_end_inverted(void) {
 	fputs("\x1b[27m", stderr);
 	fflush(stderr);
 }
 
+/* Outputs text in bold, then restores normal weight. */
 void terminal_bold_text(const char *text) {
 	if (!text) {
 		return;
@@ -212,8 +223,7 @@ void terminal_bold_text(const char *text) {
 	fflush(stderr);
 }
 
-/* Key input */
-
+/* Reads a single keystroke, parsing escape sequences for special keys. */
 key_input terminal_read_key(void) {
 	key_input result = {KEY_UNKNOWN, 0};
 	char ch;
@@ -295,8 +305,7 @@ key_input terminal_read_key(void) {
 	return result;
 }
 
-/* Signal handling */
-
+/* Sets a custom SIGINT handler; returns the previous handler. */
 terminal_sigint_handler terminal_set_sigint_handler(terminal_sigint_handler handler) {
 	terminal_sigint_handler old_handler = original_sigint_handler;
 
