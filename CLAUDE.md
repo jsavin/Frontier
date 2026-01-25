@@ -55,10 +55,17 @@ Use `$(./tools/get_test_temp_path.sh)` for manual testing paths.
 
 ### Documentation Quick Links
 
+**Implementation & Testing**:
 - **[Verb Implementation Guide](docs/VERB_IMPLEMENTATION_GUIDE.md)** - Implementing kernel verbs in C
 - **[Testing Guide](docs/TESTING_GUIDE.md)** - CLI usage, testing patterns, database migration
 - **[CLI Usage Guide](docs/CLI_USAGE_GUIDE.md)** - Complete frontier-cli reference (600+ lines)
 - **[Logging Standards](docs/LOGGING_STANDARDS.md)** - Structured logging requirements
+
+**Debugging & Architecture** (living documents - suggest updates as you learn):
+- **[Verb Resolution Architecture](docs/VERB_RESOLUTION_ARCHITECTURE.md)** - How verb lookup works
+- **[Debugging Guide](docs/DEBUGGING_GUIDE.md)** - LLDB, git bisect, investigation patterns
+
+**Reference**:
 - **[UserTalk Documentation](docs/usertalk/docserver/)** - DocServer verb reference (75+ categories, source markup from docserver.userland.com)
 
 ---
@@ -305,6 +312,47 @@ When reviewing /doit workflow execution, check:
 - Called from any context
 
 **Deprecation Note**: `monitor_pr_review_bg.sh` has been removed - use `monitor_pr_review.sh` directly.
+
+---
+
+## 🔬 Investigation Templates
+
+**For bug investigations**, use these templates in `planning/investigations/`:
+
+### Verb Resolution Bug Template
+
+```markdown
+## Verb Resolution Investigation
+
+### Test Case
+- Expression: `_______________`
+- Expected: `_______________`
+- Actual: `_______________`
+
+### Theory
+_______________
+
+### Verification Method
+- [ ] LLDB trace
+- [ ] Git bisect
+- [ ] Logging at key points
+
+### LLDB Breakpoints (if applicable)
+- langgetdotparams
+- langgethandlercode
+- langfindsymbol
+- langsearchpathvisit
+- langdirecttablelookup / langtablelookup
+- [error location]
+
+### Results
+_______________
+
+### Root Cause
+_______________
+```
+
+**See**: [`docs/VERB_RESOLUTION_ARCHITECTURE.md`](docs/VERB_RESOLUTION_ARCHITECTURE.md) and [`docs/DEBUGGING_GUIDE.md`](docs/DEBUGGING_GUIDE.md)
 
 ---
 
