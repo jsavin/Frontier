@@ -4,7 +4,6 @@
 **Date**: 2025-12-27
 **Author**: Codex
 **Related Issues**: #166 (bare verb resolution), verb binding evolution
-**Related ADRs**: ADR-003 (address value resolution)
 
 ## Context
 

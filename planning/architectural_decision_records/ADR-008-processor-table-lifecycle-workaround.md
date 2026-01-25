@@ -1,11 +1,9 @@
 # ADR-008: Processor Table Lifecycle Workaround
 
-**Status**: `[IMPLEMENTED]` - Temporary workaround in place (proper fix deferred to Phase 6+)
+**Status**: `[IMPLEMENTED]` - Temporary workaround in place (proper fix deferred to Phase 6+, PR #291)
 **Date**: 2026-01-12
 **Author**: System Architect
-**Relates to**: PR #291, Issue #135 (Collaborative ODB), ADR-005 (Thread-Safety)
-**Supersedes**: N/A
-**Implementation**: PR #291 - `get_headless_efptable()` workaround unblocks processor resolution
+**Relates to**: Issue #135 (Collaborative ODB), ADR-005 (Thread-Safety)
 **Note**: TEMPORARY SOLUTION - will be replaced with explicit processor context in Phase 6+
 
 ## Executive Summary

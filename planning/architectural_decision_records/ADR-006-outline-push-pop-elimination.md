@@ -1,12 +1,10 @@
 # ADR-006: Eliminating Outline Push/Pop Global State Pattern
 
-**Status**: `[IMPLEMENTED]` - Thread-local migration complete (PR #261)
+**Status**: `[IMPLEMENTED]` - Thread-local migration complete, 677 call sites migrated (PR #261)
 **Date**: 2026-01-08 (Investigation), 2026-01-09 (Implementation)
 **Author**: System Architect
 **Relates to**: Issue #135 (Outline Context Refactoring), Collaborative ODB (Phase 6+)
-**Supersedes**: N/A
-**Depends on**: ADR-005 (Thread-Local Storage Pattern), OUTLINE_OPERATION_CONTEXT.md
-**Implementation**: PR #261 (feature/adr-006-outline-context) - 677 call sites migrated, all tests passing
+**Depends on**: ADR-005 (Thread-Local Storage Pattern)
 
 ## Implementation Summary (2026-01-09)
 

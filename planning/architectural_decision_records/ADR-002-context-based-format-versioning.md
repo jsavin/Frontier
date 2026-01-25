@@ -1,7 +1,7 @@
 # ADR-002: Context-Based Format Versioning for Database Serialization
 
-**Date**: 2025-12-23
 **Status**: `[IN PROGRESS]` - Picture/WPText externals done, ongoing hash/table refactoring
+**Date**: 2025-12-23
 **Author**: System Architecture Analysis
 **Related**:
 - ADR-001 (Multi-Database Context Management)

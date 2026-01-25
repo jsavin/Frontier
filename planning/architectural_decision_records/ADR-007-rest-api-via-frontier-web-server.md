@@ -4,7 +4,6 @@
 **Date**: 2026-01-12
 **Author**: TPM/CTO
 **Relates to**: REPL Interactive Mode (Phase 3), GUI Development, Frontier 2.0
-**Supersedes**: N/A
 **Dependencies**: Long-running process support (prerequisite), JSON parsing verbs (future)
 **Note**: Decision to use built-in web server accepted; awaiting Phase 4+ implementation
 

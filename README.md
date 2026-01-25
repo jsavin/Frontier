@@ -22,6 +22,10 @@ This repository is actively modernizing the Frontier runtime and toolchain. The 
 - **Critical architectural documentation** – typeof() OSType code behavior documented. ADR-005 thread-local parameter state integrated. Database context debugging patterns captured. Op verb semantics validated against docserver reference. TCP testing strategy and callback infrastructure documented.
 - **Repository hygiene** – 78 branches cleaned up (88→3 active local branches). All zombie branches (merged PRs) and stale/superseded work removed. Permanent archive branches preserved.
 
+---
+
+**Note on test counts**: Framework contains ~1,495 total tests. Default test run (~1,100) excludes optional network-dependent tests. TCP-specific tests (150+) are subset of total. See `docs/TEST_STATUS_SUMMARY.md` for breakdown by category.
+
 ## Quick start
 
 ```bash
