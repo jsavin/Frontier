@@ -1,7 +1,9 @@
 /*
  * Frontier CLI - Command Line Interface for UserTalk Script Execution
  * CLI Database Implementation
- * 
+ *
+ * cli_database.c - ODB database operations including open, close, backup, and migration
+ *
  * Copyright (C) 1992-2004 UserLand Software, Inc.
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,10 +25,10 @@
 #include "../Common/headers/dbinternal.h"
 #include "../Common/headers/file.h"
 
-// Global database error buffer
+/* Global database error buffer */
 static char g_database_error_buffer[1024] = {0};
 
-// Set database error
+/* Sets the current database error message. */
 void cli_set_database_error(const char* error) {
     if (error == NULL) {
         g_database_error_buffer[0] = '\0';
@@ -36,17 +38,17 @@ void cli_set_database_error(const char* error) {
     }
 }
 
-// Get database error
+/* Returns the current database error message. */
 const char* cli_get_database_error(void) {
     return g_database_error_buffer;
 }
 
-// Clear database error
+/* Clears the current database error message. */
 void cli_clear_database_error(void) {
     g_database_error_buffer[0] = '\0';
 }
 
-// Check if database exists
+/* Checks if a database file exists at the specified path. */
 boolean cli_database_exists(const char* db_path) {
     if (db_path == NULL) {
         return false;
@@ -55,7 +57,7 @@ boolean cli_database_exists(const char* db_path) {
     return cli_file_exists(db_path);
 }
 
-// Get database size
+/* Returns the size of the database file in bytes. */
 long cli_database_size(const char* db_path) {
     if (db_path == NULL) {
         return -1;
@@ -64,7 +66,7 @@ long cli_database_size(const char* db_path) {
     return cli_file_size(db_path);
 }
 
-// Create database backup path
+/* Generates a timestamped backup path for the database file. */
 char* cli_database_backup_path(const char* db_path) {
     if (db_path == NULL) {
         return NULL;
@@ -79,7 +81,7 @@ char* cli_database_backup_path(const char* db_path) {
                            tm_info->tm_hour, tm_info->tm_min, tm_info->tm_sec);
 }
 
-// Create database backup
+/* Creates a backup copy of the database file with a timestamp suffix. */
 boolean cli_create_database_backup(const char* db_path) {
     if (db_path == NULL) {
         cli_set_database_error("No database path specified");
@@ -119,7 +121,7 @@ boolean cli_create_database_backup(const char* db_path) {
     return true;
 }
 
-// Validate database path
+/* Validates that a database path is non-null and non-empty. */
 boolean cli_validate_database_path(const char* db_path) {
     if (db_path == NULL) {
         cli_set_database_error("No database path specified");
@@ -131,7 +133,7 @@ boolean cli_validate_database_path(const char* db_path) {
         return false;
     }
     
-    // Check if path contains invalid characters
+    /* Check if path contains invalid characters */
     if (strchr(db_path, '\0') != NULL) {
         cli_set_database_error("Database path contains null characters");
         return false;
@@ -140,7 +142,7 @@ boolean cli_validate_database_path(const char* db_path) {
     return true;
 }
 
-// Create database context
+/* Allocates and initializes a database context for the given path. */
 cli_database_t* cli_create_database_context(const char* db_path) {
     if (!cli_validate_database_path(db_path)) {
         return NULL;
@@ -162,18 +164,18 @@ cli_database_t* cli_create_database_context(const char* db_path) {
     return db;
 }
 
-// Free database context
+/* Frees a database context and closes the database if open. */
 void cli_free_database_context(cli_database_t* db) {
     if (db == NULL) {
         return;
     }
     
-    // Close database if open
+    /* Close database if open */
     if (db->flopen) {
         cli_close_database(db);
     }
     
-    // Free allocated memory
+    /* Free allocated memory */
     if (db->db_path != NULL) {
         cli_free(db->db_path);
         db->db_path = NULL;
@@ -184,7 +186,7 @@ void cli_free_database_context(cli_database_t* db) {
     cli_log_debug("Freed database context");
 }
 
-// Open database
+/* Opens a database file for reading or writing. */
 boolean cli_open_database(const char* db_path, boolean read_only, cli_database_t* db) {
     if (db == NULL) {
         cli_set_database_error("Invalid database context");
@@ -202,7 +204,7 @@ boolean cli_open_database(const char* db_path, boolean read_only, cli_database_t
     
     cli_log_info("Opening database: %s (read-only: %s)", db_path, read_only ? "yes" : "no");
     
-    // Open the file
+    /* Open the file */
     tyfilespec fs;
     if (!filepathtofilespec(db_path, &fs)) {
         cli_set_database_error("Failed to convert path to filespec: %s", db_path);
@@ -214,7 +216,7 @@ boolean cli_open_database(const char* db_path, boolean read_only, cli_database_t
         return false;
     }
     
-    // Open the database
+    /* Open the database */
     if (!dbopenfile(db->fnum, read_only)) {
         cli_set_database_error("Failed to open database: %s", db_path);
         fileclose(db->fnum);
@@ -228,25 +230,25 @@ boolean cli_open_database(const char* db_path, boolean read_only, cli_database_t
     return true;
 }
 
-// Close database
+/* Closes an open database and releases the file handle. */
 boolean cli_close_database(cli_database_t* db) {
     if (db == NULL) {
         return false;
     }
     
     if (!db->flopen) {
-        return true; // Already closed
+        return true; /* Already closed */
     }
     
     cli_log_info("Closing database: %s", db->db_path);
     
-    // Close the database
+    /* Close the database */
     if (!dbclose()) {
         cli_set_database_error("Failed to close database: %s", db->db_path);
         return false;
     }
     
-    // Close the file
+    /* Close the file */
     fileclose(db->fnum);
     
     db->flopen = false;
@@ -256,7 +258,7 @@ boolean cli_close_database(cli_database_t* db) {
     return true;
 }
 
-// Create new database
+/* Creates a new database file in v7 format. */
 boolean cli_create_database(const char* db_path) {
     if (!cli_validate_database_path(db_path)) {
         return false;
@@ -268,8 +270,8 @@ boolean cli_create_database(const char* db_path) {
     }
     
     cli_log_info("Creating new database: %s", db_path);
-    
-    // Create the file
+
+    /* Create the file */
     tyfilespec fs;
     if (!filepathtofilespec(db_path, &fs)) {
         cli_set_database_error("Failed to convert path to filespec: %s", db_path);
@@ -282,21 +284,21 @@ boolean cli_create_database(const char* db_path) {
         return false;
     }
     
-    // Create the database (v7 format)
+    /* Create the database (v7 format) */
     if (!dbnew(fnum, true)) {
         cli_set_database_error("Failed to create new database: %s", db_path);
         fileclose(fnum);
         return false;
     }
     
-    // Close the file
+    /* Close the file */
     fileclose(fnum);
-    
+
     cli_log_info("Successfully created database: %s", db_path);
     return true;
 }
 
-// Migrate database to 64-bit format
+/* Migrates a legacy v6 database to the modern v7 64-bit format. */
 boolean cli_migrate_database(const char* db_path) {
     if (!cli_validate_database_path(db_path)) {
         return false;
@@ -308,23 +310,20 @@ boolean cli_migrate_database(const char* db_path) {
     }
     
     cli_log_info("Migrating database to 64-bit format: %s", db_path);
-    
-    // Create backup first
+
+    /* Create backup first */
     if (!cli_create_database_backup(db_path)) {
         cli_set_database_error("Failed to create backup before migration");
         return false;
     }
-    
-    // Use the existing migration function from db.c
-    // Note: This assumes the migration function is available
-    // In a real implementation, we would call the migration function
-    // from Common/source/db.c
-    
+
+    /* TODO: Call the actual migration function from Common/source/db.c */
+
     cli_log_info("Database migration completed: %s", db_path);
     return true;
 }
 
-// Execute database query
+/* Executes a UserTalk query against a database. */
 boolean cli_execute_database_query(const char* db_path, const char* query) {
     if (!cli_validate_database_path(db_path)) {
         return false;
@@ -336,20 +335,20 @@ boolean cli_execute_database_query(const char* db_path, const char* query) {
     }
     
     cli_log_info("Executing database query: %s", query);
-    
-    // Create database context
+
+    /* Create database context */
     cli_database_t* db = cli_create_database_context(db_path);
     if (db == NULL) {
         return false;
     }
-    
-    // Open database
+
+    /* Open database */
     if (!cli_open_database(db_path, true, db)) {
         cli_free_database_context(db);
         return false;
     }
-    
-    // Execute the query as a UserTalk script
+
+    /* Execute the query as a UserTalk script */
     char* script = cli_format_string("db.open('%s'); %s", db_path, query);
     if (script == NULL) {
         cli_set_database_error("Failed to format query script");
@@ -358,43 +357,43 @@ boolean cli_execute_database_query(const char* db_path, const char* query) {
     }
     
     boolean success = cli_execute_inline_script(script);
-    
-    // Cleanup
+
+    /* Cleanup */
     cli_free(script);
     cli_free_database_context(db);
     
     return success;
 }
 
-// Get database value
+/* Retrieves a value from the database at the specified path. */
 boolean cli_db_get_value(const char* db_path, const char* path, char** result) {
     if (!cli_validate_database_path(db_path) || path == NULL || result == NULL) {
         return false;
     }
     
     cli_log_debug("Getting database value: %s -> %s", db_path, path);
-    
-    // Create database context
+
+    /* Create database context */
     cli_database_t* db = cli_create_database_context(db_path);
     if (db == NULL) {
         return false;
     }
-    
-    // Open database
+
+    /* Open database */
     if (!cli_open_database(db_path, true, db)) {
         cli_free_database_context(db);
         return false;
     }
-    
-    // Execute query to get value
+
+    /* Execute query to get value */
     char* script = cli_format_string("db.getValue('%s', '%s')", db_path, path);
     if (script == NULL) {
         cli_set_database_error("Failed to format get value script");
         cli_free_database_context(db);
         return false;
     }
-    
-    // Execute the script and capture result
+
+    /* Execute the script and capture result */
     usertalk_execution_t* execution = cli_create_execution_context();
     if (execution == NULL) {
         cli_free(script);
@@ -415,8 +414,8 @@ boolean cli_db_get_value(const char* db_path, const char* path, char** result) {
         *result = NULL;
         cli_set_database_error("Failed to get database value: %s", cli_get_execution_error(execution));
     }
-    
-    // Cleanup
+
+    /* Cleanup */
     cli_free(script);
     cli_free_execution_context(execution);
     cli_free_database_context(db);
@@ -424,7 +423,7 @@ boolean cli_db_get_value(const char* db_path, const char* path, char** result) {
     return (*result != NULL);
 }
 
-// Get database information
+/* Returns a formatted string with database path, size, and backup information. */
 char* cli_get_database_info(const char* db_path) {
     if (!cli_validate_database_path(db_path)) {
         return NULL;

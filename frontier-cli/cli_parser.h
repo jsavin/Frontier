@@ -1,7 +1,9 @@
 /*
  * Frontier CLI - Command Line Interface for UserTalk Script Execution
  * CLI Parser Header
- * 
+ *
+ * cli_parser.h - Declarations for command-line argument parsing and options structure
+ *
  * Copyright (C) 1992-2004 UserLand Software, Inc.
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

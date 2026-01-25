@@ -1,13 +1,11 @@
 /*
- * repl_eval.c - REPL evaluation engine implementation
+ * repl_eval.c - Compiles and executes UserTalk scripts using the QuickScript model
  *
- * Part of Frontier REPL interactive mode (Phase 1).
- * Implements QuickScript model: each evaluation runs independently with thread cleanup.
+ * Each evaluation runs independently with thread-local variables that are
+ * cleaned up after execution. For persistence, users should use explicit
+ * database paths (system.temp.x or workspace.x).
  *
  * Reference: planning/phase4/REPL_INTERACTIVE_MODE_DESIGN.md
- *
- * Created: 2026-01-13
- * Updated: 2026-01-14 - Refactored to QuickScript model (no workspace, no persistence)
  */
 
 #include "repl_eval.h"

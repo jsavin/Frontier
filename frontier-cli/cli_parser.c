@@ -1,6 +1,9 @@
 /*
- * Frontier CLI - Command Line Interface for UserTalk Script Execution
- * CLI Parser Implementation
+ * cli_parser.c - Command-Line Argument Parsing for frontier-cli
+ *
+ * Parses and validates command-line options using getopt_long.
+ * Supports script execution (-e), database loading (--system-root),
+ * output modes (--output-json), and maintenance operations (--hydrate, --upgrade).
  *
  * Copyright (C) 1992-2004 UserLand Software, Inc.
  * This program is free software; you can redistribute it and/or modify
@@ -19,12 +22,12 @@
 #include "cli_utils.h"
 #include "../Common/headers/logging.h"
 
-// Initialize CLI options with default values
+/* Initializes all options to zero/NULL defaults. */
 static void cli_init_options(cli_options_t* options) {
     memset(options, 0, sizeof(cli_options_t));
 }
 
-// Validate CLI options for consistency
+/* Validates parsed options for consistency and required dependencies. */
 boolean cli_validate_options(const cli_options_t* options) {
     if (options->show_help || options->show_version) {
         return true;
@@ -69,6 +72,7 @@ boolean cli_validate_options(const cli_options_t* options) {
     return true;
 }
 
+/* Parses command-line arguments and populates the options structure. */
 boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
     int opt;
     int option_index = 0;
@@ -191,6 +195,7 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
     return cli_validate_options(options);
 }
 
+/* Frees dynamically allocated strings in the options structure. */
 void cli_free_options(cli_options_t* options) {
     if (options == NULL) {
         return;
@@ -213,6 +218,7 @@ void cli_free_options(cli_options_t* options) {
     }
 }
 
+/* Prints parsed options for debugging purposes. */
 void cli_print_options(const cli_options_t* options) {
     if (options == NULL) {
         printf("CLI Options: NULL\n");

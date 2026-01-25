@@ -1,7 +1,9 @@
 /*
  * Frontier CLI - Command Line Interface for UserTalk Script Execution
  * CLI Network Header
- * 
+ *
+ * cli_network.h - Declarations for HTTP and WebSocket server functionality
+ *
  * Copyright (C) 1992-2004 UserLand Software, Inc.
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

@@ -83,7 +83,7 @@ static void split_path(const char *path, char *dir, size_t dir_size, char *file,
 	}
 }
 
-/* Interactive file selection loop */
+/* Core loop for interactive file/folder selection with tab completion and validation. */
 static file_dialog_result interactive_file_loop(const char *prompt,
                                                 const char *start_path,
                                                 bool require_exists,
@@ -359,7 +359,7 @@ static file_dialog_result interactive_file_loop(const char *prompt,
 	return result;
 }
 
-/* Get existing file dialog */
+/* Opens dialog to select an existing file; returns path or empty result on cancel. */
 file_dialog_result file_dialog_get_file(const char *start_path) {
 	return interactive_file_loop("Select an existing file:",
 	                             start_path,
@@ -368,7 +368,7 @@ file_dialog_result file_dialog_get_file(const char *start_path) {
 	                             false); /* require_dir */
 }
 
-/* Put file dialog */
+/* Opens dialog to choose a save location; allows non-existent paths for new files. */
 file_dialog_result file_dialog_put_file(const char *start_path) {
 	return interactive_file_loop("Choose location to save file:",
 	                             start_path,
@@ -377,7 +377,7 @@ file_dialog_result file_dialog_put_file(const char *start_path) {
 	                             false); /* require_dir */
 }
 
-/* Get folder dialog */
+/* Opens dialog to select an existing directory. */
 file_dialog_result file_dialog_get_folder(const char *start_path) {
 	return interactive_file_loop("Select a directory:",
 	                             start_path,
@@ -386,7 +386,7 @@ file_dialog_result file_dialog_get_folder(const char *start_path) {
 	                             true);  /* require_dir */
 }
 
-/* Get disk/volume dialog */
+/* Opens dialog to select a mounted disk/volume; enumerates available volumes. */
 file_dialog_result file_dialog_get_disk(void) {
 	file_dialog_result result;
 	result.success = false;

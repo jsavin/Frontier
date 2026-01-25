@@ -1,3 +1,10 @@
+/*
+ * cli_executor.h - Declarations for UserTalk script execution
+ *
+ * Defines the execution context structure and functions for compiling,
+ * running, and retrieving results from UserTalk scripts.
+ */
+
 #ifndef CLI_EXECUTOR_H
 #define CLI_EXECUTOR_H
 

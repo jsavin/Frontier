@@ -1,3 +1,10 @@
+/*
+ * cli_utils.h - Common utility functions for the CLI subsystem
+ *
+ * Provides logging, file I/O helpers, memory allocation wrappers,
+ * string utilities, and interactive mode detection.
+ */
+
 #ifndef CLI_UTILS_H
 #define CLI_UTILS_H
 

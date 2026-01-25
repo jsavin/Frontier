@@ -1,12 +1,9 @@
 /*
- * repl_commands.c - REPL special command processor implementation
+ * repl_commands.c - Processes slash commands (/exit, /help) in the REPL
  *
- * Part of Frontier REPL interactive mode (Phase 1).
- * Handles special commands: /exit, /help, /vars
+ * Commands start with '/' and are handled separately from UserTalk evaluation.
  *
  * Reference: planning/phase4/REPL_INTERACTIVE_MODE_DESIGN.md
- *
- * Updated: 2026-01-14 - Removed /clear command (QuickScript model has no workspace)
  */
 
 #include "repl_commands.h"
@@ -17,9 +14,7 @@
 // Maximum buffer size for command parsing
 #define REPL_MAX_COMMAND_LENGTH 256
 
-/*
- * Helper: Trim leading whitespace from string
- */
+/* Returns pointer to first non-whitespace character in string. */
 static const char *trim_leading_whitespace(const char *str) {
     if (str == NULL) {
         return NULL;
@@ -32,10 +27,7 @@ static const char *trim_leading_whitespace(const char *str) {
     return str;
 }
 
-/*
- * Helper: Trim trailing whitespace from string
- * Modifies buffer in place
- */
+/* Removes trailing whitespace from string in place. */
 static void trim_trailing_whitespace(char *str) {
     if (str == NULL || *str == '\0') {
         return;
@@ -47,9 +39,7 @@ static void trim_trailing_whitespace(char *str) {
     }
 }
 
-/*
- * Check if input is a command (starts with '/')
- */
+/* Returns true if input starts with '/' (indicating a REPL command). */
 boolean repl_is_command(const char *input) {
     if (input == NULL) {
         return false;
@@ -62,9 +52,7 @@ boolean repl_is_command(const char *input) {
     return (input[0] == '/');
 }
 
-/*
- * Process a command and execute it
- */
+/* Parses and executes a slash command, returning the appropriate result code. */
 repl_command_result repl_process_command(const char *input) {
     if (input == NULL) {
         return REPL_CMD_NOT_COMMAND;

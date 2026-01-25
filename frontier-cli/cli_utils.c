@@ -1,3 +1,15 @@
+/*
+ * cli_utils.c - CLI Utility Functions for Logging, File I/O, and Memory
+ *
+ * Provides common utilities used throughout frontier-cli:
+ * - Structured logging wrappers (error, warn, info, debug)
+ * - File existence and permission checks
+ * - File read/write operations
+ * - String manipulation helpers
+ * - Memory allocation wrappers with error logging
+ * - Interactive mode detection for TTY/batch environments
+ */
+
 #include "cli_utils.h"
 
 #include <errno.h>
@@ -18,6 +30,7 @@ static boolean g_cli_json_mode = false;  /* Suppress logs in JSON mode to keep s
 
 char g_cli_error_buffer[1024] = {0};
 
+/* Routes log messages to structured logging based on level and verbosity settings. */
 static void cli_vlog(int level, const char* label, const char* format, va_list args) {
     /* Suppress logs in JSON mode to keep stderr clean for JSON output */
     if (g_cli_json_mode) {
@@ -48,16 +61,19 @@ static void cli_vlog(int level, const char* label, const char* format, va_list a
     }
 }
 
+/* Initializes logging subsystem with verbosity settings from CLI flags. */
 boolean cli_init_logging(boolean verbose, boolean debug) {
     g_cli_verbose = verbose;
     g_cli_debug = debug;
     return true;
 }
 
+/* Enables JSON output mode, which suppresses log messages to keep stderr clean. */
 void cli_set_json_mode(boolean json_mode) {
     g_cli_json_mode = json_mode;
 }
 
+/* Resets logging state to defaults during shutdown. */
 void cli_cleanup_logging(void) {
     g_cli_verbose = false;
     g_cli_debug = false;
@@ -91,6 +107,7 @@ void cli_log_debug(const char* format, ...) {
     va_end(args);
 }
 
+/* Returns true if path exists on the filesystem. */
 boolean cli_file_exists(const char* path) {
     if (path == NULL) {
         return false;
@@ -99,6 +116,7 @@ boolean cli_file_exists(const char* path) {
     return stat(path, &st) == 0;
 }
 
+/* Returns true if path is readable by the current process. */
 boolean cli_file_readable(const char* path) {
     if (path == NULL) {
         return false;
@@ -106,6 +124,7 @@ boolean cli_file_readable(const char* path) {
     return access(path, R_OK) == 0;
 }
 
+/* Returns true if path is writable by the current process. */
 boolean cli_file_writable(const char* path) {
     if (path == NULL) {
         return false;
@@ -113,6 +132,7 @@ boolean cli_file_writable(const char* path) {
     return access(path, W_OK) == 0;
 }
 
+/* Returns file size in bytes, or -1 on error. */
 long cli_file_size(const char* path) {
     if (path == NULL) {
         return -1;
@@ -124,6 +144,7 @@ long cli_file_size(const char* path) {
     return (long)st.st_size;
 }
 
+/* Reads entire file into a null-terminated buffer; caller must free with cli_free. */
 char* cli_read_file(const char* path, long* size) {
     if (path == NULL || size == NULL) {
         return NULL;
@@ -169,6 +190,7 @@ char* cli_read_file(const char* path, long* size) {
     return buffer;
 }
 
+/* Writes data buffer to file, creating or overwriting as needed. */
 boolean cli_write_file(const char* path, const char* data, long size) {
     if (path == NULL || data == NULL || size < 0) {
         return false;
@@ -185,6 +207,7 @@ boolean cli_write_file(const char* path, const char* data, long size) {
     return written == (size_t)size;
 }
 
+/* Duplicates a string; caller must free with cli_free. */
 char* cli_strdup(const char* str) {
     if (str == NULL) {
         return NULL;
@@ -198,6 +221,7 @@ char* cli_strdup(const char* str) {
     return copy;
 }
 
+/* Concatenates two strings into a new buffer; caller must free with cli_free. */
 char* cli_concat_strings(const char* str1, const char* str2) {
     if (str1 == NULL || str2 == NULL) {
         return NULL;
@@ -213,6 +237,7 @@ char* cli_concat_strings(const char* str1, const char* str2) {
     return result;
 }
 
+/* Creates a formatted string using printf syntax; caller must free with cli_free. */
 char* cli_format_string(const char* format, ...) {
     va_list args;
     va_start(args, format);
@@ -237,10 +262,12 @@ char* cli_format_string(const char* format, ...) {
     return buffer;
 }
 
+/* Frees a string allocated by cli_strdup, cli_concat_strings, or cli_format_string. */
 void cli_free_string(char* str) {
     cli_free(str);
 }
 
+/* Allocates memory with error logging on failure. */
 void* cli_malloc(size_t size) {
     void* ptr = malloc(size);
     if (ptr == NULL && size > 0) {
@@ -249,6 +276,7 @@ void* cli_malloc(size_t size) {
     return ptr;
 }
 
+/* Allocates zeroed memory with error logging on failure. */
 void* cli_calloc(size_t count, size_t size) {
     void* ptr = calloc(count, size);
     if (ptr == NULL && count > 0 && size > 0) {
@@ -257,6 +285,7 @@ void* cli_calloc(size_t count, size_t size) {
     return ptr;
 }
 
+/* Resizes an allocation with error logging on failure. */
 void* cli_realloc(void* ptr, size_t size) {
     void* result = realloc(ptr, size);
     if (result == NULL && size > 0) {
@@ -265,14 +294,17 @@ void* cli_realloc(void* ptr, size_t size) {
     return result;
 }
 
+/* Frees memory allocated by cli_malloc, cli_calloc, or cli_realloc. */
 void cli_free(void* ptr) {
     free(ptr);
 }
 
+/* Returns the current error message, or empty string if none. */
 const char* cli_get_error(void) {
     return g_cli_error_buffer;
 }
 
+/* Sets the error message buffer for later retrieval. */
 void cli_set_error(const char* error) {
     if (error == NULL) {
         g_cli_error_buffer[0] = '\0';
@@ -282,18 +314,12 @@ void cli_set_error(const char* error) {
     g_cli_error_buffer[sizeof(g_cli_error_buffer) - 1] = '\0';
 }
 
+/* Clears the error message buffer. */
 void cli_clear_error(void) {
     g_cli_error_buffer[0] = '\0';
 }
 
-/**
- * cli_init_interactive_mode - Initialize interactive mode detection (call once at startup)
- *
- * @param batch_mode_flag: true if --batch flag was set on command line
- *
- * Checks CI environment and caches TTY detection result.
- * Must be called after thread globals are initialized.
- */
+/* Initializes interactive mode detection based on TTY, CI environment, and CLI flags. */
 void cli_init_interactive_mode(boolean batch_mode_flag) {
     /* Set batch mode from CLI flag */
     fl_batch_mode = batch_mode_flag;
@@ -311,21 +337,7 @@ void cli_init_interactive_mode(boolean batch_mode_flag) {
     fl_interactive_detected = force_interactive || (isatty(STDIN_FILENO) && isatty(STDOUT_FILENO));
 }
 
-/**
- * isInteractiveMode - Check if interactive prompts are allowed
- *
- * Returns false if:
- *  - --batch flag set
- *  - No TTY detected (piped/redirected)
- *  - CI environment
- *
- * Returns true if:
- *  - TTY detected on both stdin and stdout
- *  - OR: FRONTIER_FORCE_INTERACTIVE=1 environment variable set (testing only)
- *
- * This function is called by dialog verbs and file dialog verbs to decide
- * whether to prompt via stdio or return unimplementedverberror.
- */
+/* Returns true if interactive prompts are allowed (TTY detected, not in batch/CI mode). */
 boolean isInteractiveMode(void) {
     return !fl_batch_mode && fl_interactive_detected;
 }
