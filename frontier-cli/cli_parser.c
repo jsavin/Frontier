@@ -22,6 +22,33 @@
 #include "cli_utils.h"
 #include "../Common/headers/logging.h"
 
+/* Checks if a path ends with .root or .root7 (case-insensitive). */
+static boolean cli_is_root_file(const char* path) {
+    if (path == NULL) {
+        return false;
+    }
+
+    size_t len = strlen(path);
+
+    // Check for .root (5 chars minimum)
+    if (len >= 5) {
+        const char* ext = path + len - 5;
+        if (strcasecmp(ext, ".root") == 0) {
+            return true;
+        }
+    }
+
+    // Check for .root7 (6 chars minimum)
+    if (len >= 6) {
+        const char* ext = path + len - 6;
+        if (strcasecmp(ext, ".root7") == 0) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 /* Initializes all options to zero/NULL defaults. */
 static void cli_init_options(cli_options_t* options) {
     memset(options, 0, sizeof(cli_options_t));
@@ -54,6 +81,9 @@ boolean cli_validate_options(const cli_options_t* options) {
             return false;
         }
     }
+
+    // Note: Conflict validation for positional .root argument is handled in cli_parse_arguments()
+    // when we detect a .root file and system_root is already set.
 
     // Note: No script_file and no inline_script means REPL mode (interactive)
     // This is now a valid execution mode, so we don't error out here
@@ -172,21 +202,48 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
         }
     }
 
-    // Handle non-option arguments (script files)
+    // Handle non-option arguments (script files or database roots)
     if (optind < argc) {
-        if (options->script_file != NULL) {
-            log_error(LOG_COMP_GENERAL, "Error: Multiple script files not allowed");
+        const char* arg = argv[optind];
+
+        if (strlen(arg) > CLI_MAX_PATH_LENGTH) {
+            log_error(LOG_COMP_GENERAL, "Error: Path too long (max %d characters)", CLI_MAX_PATH_LENGTH);
             return false;
         }
-        if (strlen(argv[optind]) > CLI_MAX_PATH_LENGTH) {
-            log_error(LOG_COMP_GENERAL, "Error: Script file path too long (max %d characters)", CLI_MAX_PATH_LENGTH);
-            return false;
+
+        // Detect if this is a .root or .root7 file
+        if (cli_is_root_file(arg)) {
+            // Positional argument is a database root
+            if (options->system_root != NULL) {
+                log_error(LOG_COMP_GENERAL, "Error: System root already specified via --system-root");
+                return false;
+            }
+            options->system_root = strdup(arg);
+            if (options->system_root == NULL) {
+                log_error(LOG_COMP_GENERAL, "Error: Memory allocation failed");
+                return false;
+            }
+        } else {
+            // Positional argument is a script file
+            if (options->script_file != NULL) {
+                log_error(LOG_COMP_GENERAL, "Error: Multiple script files not allowed");
+                return false;
+            }
+            options->script_file = strdup(arg);
+            if (options->script_file == NULL) {
+                log_error(LOG_COMP_GENERAL, "Error: Memory allocation failed");
+                return false;
+            }
         }
-        options->script_file = strdup(argv[optind]);
 
         // Check for additional arguments
         if (optind + 1 < argc) {
-            log_error(LOG_COMP_GENERAL, "Error: Unexpected argument '%s'", argv[optind + 1]);
+            const char* next_arg = argv[optind + 1];
+            if (cli_is_root_file(next_arg)) {
+                log_error(LOG_COMP_GENERAL, "Error: Multiple .root files not allowed");
+            } else {
+                log_error(LOG_COMP_GENERAL, "Error: Unexpected argument '%s'", next_arg);
+            }
             return false;
         }
     }
