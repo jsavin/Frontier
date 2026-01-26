@@ -22,31 +22,48 @@ For comprehensive status details, see [STATUS.md](STATUS.md). For the full progr
 
 ## Quick Start
 
+### Prerequisites
+
+- **macOS** (12.0 Monterey or later recommended)
+- **Xcode Command Line Tools**: Install with `xcode-select --install`
+
+### Build and Run
+
 ```bash
-# Build + run headless tests (multi-arch ready)
-make -C tests file_verb_tests && ./tests/file_verb_tests
-./tests/file_portable_tests
-./tests/file_readline_tests
-make -C tests runtime_tests
+# 1. Clone the repository
+git clone https://github.com/jsavin/Frontier.git
+cd Frontier
 
-# Sanitizer run
-SANITIZE=1 make -C tests test
-
-# CLI build (multi-arch)
+# 2. Build the CLI (creates universal binary for arm64 + x86_64)
 make -C frontier-cli
 
-# Run interactive REPL (Read-Eval-Print Loop)
-./frontier-cli/frontier-cli
-# Use /exit to quit, /help for commands
-
-# Execute inline UserTalk code
+# 3. Verify the build works
 ./frontier-cli/frontier-cli -e "1 + 1"
+# Output: 2
 
-# Build MySQL client libraries (installs into Common/MySQL)
-scripts/build_mysql_client.sh
+# 4. Launch the interactive REPL
+./frontier-cli/frontier-cli
+# Type UserTalk expressions, use /help for commands, /exit to quit
 ```
 
-For comprehensive CLI usage and REPL documentation, see [docs/CLI_USAGE_GUIDE.md](docs/CLI_USAGE_GUIDE.md).
+### Run Tests
+
+```bash
+# Unit tests (C test suite)
+./tools/run_headless_tests.sh
+
+# Integration tests (Python/YAML-based UserTalk tests)
+cd tests && make test-integration
+
+# Both unit and integration tests
+cd tests && make test-all
+```
+
+### Next Steps
+
+- **[Getting Started Guide](docs/GETTING_STARTED.md)** - Complete newcomer guide with detailed setup
+- **[CLI Usage Guide](docs/CLI_USAGE_GUIDE.md)** - Comprehensive CLI and REPL documentation
+- **[Testing Guide](docs/TESTING_GUIDE.md)** - Writing and running tests
 
 ## MySQL Client Setup
 
