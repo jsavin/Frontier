@@ -13,6 +13,9 @@
 ### Essential Commands
 
 ```bash
+# Build the CLI (universal binary for arm64 + x86_64)
+make -C frontier-cli
+
 # Run full test suite (unit tests)
 ./tools/run_headless_tests.sh
 
@@ -55,10 +58,13 @@ Use `$(./tools/get_test_temp_path.sh)` for manual testing paths.
 
 ### Documentation Quick Links
 
+**Getting Started**:
+- **[Getting Started Guide](docs/GETTING_STARTED.md)** - Complete newcomer guide (build, run, test)
+- **[CLI Usage Guide](docs/CLI_USAGE_GUIDE.md)** - Complete frontier-cli reference (900+ lines)
+
 **Implementation & Testing**:
 - **[Verb Implementation Guide](docs/VERB_IMPLEMENTATION_GUIDE.md)** - Implementing kernel verbs in C
 - **[Testing Guide](docs/TESTING_GUIDE.md)** - CLI usage, testing patterns, database migration
-- **[CLI Usage Guide](docs/CLI_USAGE_GUIDE.md)** - Complete frontier-cli reference (600+ lines)
 - **[Logging Standards](docs/LOGGING_STANDARDS.md)** - Structured logging requirements
 
 **Debugging & Architecture** (living documents - suggest updates as you learn):
