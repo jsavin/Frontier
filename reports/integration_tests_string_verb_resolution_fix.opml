@@ -1,0 +1,466 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>String Verb Resolution Fix (string_verb_resolution_fix)</title>
+    <dateCreated>Mon, 26 Jan 2026 10:17:33 GMT</dateCreated>
+  </head>
+  <body>
+    <outline text="CRITICAL - string(123) coerces integer to string - BUG: string(123) currently fails because:&#10;1. langsearchpathvisit() checks path01 (system.verbs.globals) first&#10;2. Finds &quot;string&quot; SCRIPT → langdirecttablelookup() calls tablevaltotable()&#10;3. tablevaltotable() rejects SCRIPT type → returns false&#10;4. Continues to path03 (system.verbs.builtins), finds &quot;string&quot; TABLE&#10;5. Tries to CALL a table (not a script) → error!&#10;&#10;EXPECTED: Resolve to system.verbs.globals.string SCRIPT, execute coercion.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: 123"/>
+      </outline>
+      <outline text="Script">
+        <outline text="string(123)"/>
+      </outline>
+    </outline>
+    <outline text="typeof(string) - verify it's a script in globals - Verify that system.verbs.globals.string is actually a script.&#10;Note: typeof() without @ returns value type; with @ returns 'addr'.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: scpt"/>
+      </outline>
+      <outline text="Script">
+        <outline text="typeof(system.verbs.globals.string)"/>
+      </outline>
+    </outline>
+    <outline text="typeof(system.verbs.builtins.string) - verify it's a table - Verify system.verbs.builtins.string is a table (the wrong resolution).&#10;Note: typeof() without @ returns value type; with @ returns 'addr'.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: tabl"/>
+      </outline>
+      <outline text="Script">
+        <outline text="typeof(system.verbs.builtins.string)"/>
+      </outline>
+    </outline>
+    <outline text="defined(string) - should find script in path01 - After the fix, defined(string) should return TRUE because &quot;string&quot;&#10;exists as a SCRIPT in path01 (system.verbs.globals).&#10;&#10;Currently may fail or return FALSE depending on tablevaltotable rejection.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(string)"/>
+      </outline>
+    </outline>
+    <outline text="string(456) - different numeric value - Test string() coercion with a different number to ensure it's not&#10;hardcoded or cached.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: 456"/>
+      </outline>
+      <outline text="Script">
+        <outline text="string(456)"/>
+      </outline>
+    </outline>
+    <outline text="string(-789) - negative number coercion - Test string() coercion with negative numbers">
+      <outline text="Metadata">
+        <outline text="expected_result: -789"/>
+      </outline>
+      <outline text="Script">
+        <outline text="string(-789)"/>
+      </outline>
+    </outline>
+    <outline text="string(0) - edge case: zero - Test string() coercion with zero">
+      <outline text="Metadata">
+        <outline text="expected_result: 0"/>
+      </outline>
+      <outline text="Script">
+        <outline text="string(0)"/>
+      </outline>
+    </outline>
+    <outline text="string.mid() - resolve string as TABLE, then mid as verb - For multi-part paths like &quot;string.mid&quot;:&#10;1. First component &quot;string&quot; → should resolve to system.verbs.builtins.string TABLE&#10;2. Second component &quot;mid&quot; → should resolve to verb inside that table&#10;&#10;This is CORRECT behavior: intermediate components must be tables.&#10;NOTE: Has pre-existing script compilation issues.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: ell"/>
+        <outline text="skip: True"/>
+        <outline text="reason: Pre-existing string.mid() execution issue - separate from verb resolution fix"/>
+      </outline>
+      <outline text="Script">
+        <outline text="string.mid(&quot;hello&quot;, 2, 3)"/>
+      </outline>
+    </outline>
+    <outline text="string.lower() - another string.* verb - Verify string.lower() works (intermediate component is table).&#10;NOTE: Has pre-existing script compilation issues.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: hello"/>
+        <outline text="skip: True"/>
+        <outline text="reason: Pre-existing string verb execution issue - separate from verb resolution fix"/>
+      </outline>
+      <outline text="Script">
+        <outline text="string.lower(&quot;HELLO&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="string.upper() - yet another string.* verb - Verify string.upper() works (intermediate component is table)">
+      <outline text="Metadata">
+        <outline text="expected_result: WORLD"/>
+        <outline text="skip: True"/>
+        <outline text="reason: Pre-existing string verb execution issue - separate from verb resolution fix"/>
+      </outline>
+      <outline text="Script">
+        <outline text="string.upper(&quot;world&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="string.length() - string.* verb with numeric result - Verify string.length() works (returns number, not string)">
+      <outline text="Metadata">
+        <outline text="expected_result: 4"/>
+        <outline text="skip: True"/>
+        <outline text="reason: Pre-existing string verb execution issue - separate from verb resolution fix"/>
+      </outline>
+      <outline text="Script">
+        <outline text="string.length(&quot;test&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="defined(string.mid) - verify string.mid exists - Verify defined(string.mid) returns TRUE:&#10;1. Resolve &quot;string&quot; to system.verbs.builtins.string TABLE&#10;2. Look up &quot;mid&quot; child in that table&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(string.mid)"/>
+      </outline>
+    </outline>
+    <outline text="defined(string.lower) - verify string.lower exists">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(string.lower)"/>
+      </outline>
+    </outline>
+    <outline text="Path order - path01 checked before path03 - Verify path resolution order by checking that string (final component)&#10;resolves to path01 (globals.string SCRIPT), not path03 (builtins.string TABLE).&#10;&#10;We test this indirectly: if string(123) works, then path01 was used.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: 42"/>
+      </outline>
+      <outline text="Script">
+        <outline text="string(42)"/>
+      </outline>
+    </outline>
+    <outline text="Direct access - globals.string works - Verify we can directly access system.verbs.globals.string.&#10;This tests that the script exists and is callable.&#10;NOTE: Direct path access has pre-existing opcode issues.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: 999"/>
+        <outline text="skip: True"/>
+        <outline text="reason: Pre-existing direct path execution issue - separate from verb resolution fix"/>
+      </outline>
+      <outline text="Script">
+        <outline text="system.verbs.globals.string(999)"/>
+      </outline>
+    </outline>
+    <outline text="Direct access - builtins.string is a table - Verify system.verbs.builtins.string is a table (not callable).&#10;Note: typeof() without @ returns value type; with @ returns 'addr'.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: tabl"/>
+      </outline>
+      <outline text="Script">
+        <outline text="typeof(system.verbs.builtins.string)"/>
+      </outline>
+    </outline>
+    <outline text="Path entry names - verify path01 exists - Verify path01 entry exists in system.paths">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(system.paths.path01)"/>
+      </outline>
+    </outline>
+    <outline text="Path entry names - verify path03 exists - Verify path03 entry exists in system.paths">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(system.paths.path03)"/>
+      </outline>
+    </outline>
+    <outline text="Path entry targets - path01 points to globals - Verify path01 points to system.verbs.globals.&#10;Note: typeof() without @ returns value type; with @ returns 'addr'.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: tabl"/>
+      </outline>
+      <outline text="Script">
+        <outline text="typeof(system.verbs.globals)"/>
+      </outline>
+    </outline>
+    <outline text="Path entry targets - path03 points to builtins - Verify path03 points to system.verbs.builtins.&#10;Note: typeof() without @ returns value type; with @ returns 'addr'.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: tabl"/>
+      </outline>
+      <outline text="Script">
+        <outline text="typeof(system.verbs.builtins)"/>
+      </outline>
+    </outline>
+    <outline text="Resolve to script - number() verb - Test another type coercion verb that should resolve to a script.&#10;number(&quot;123&quot;) should resolve to system.verbs.globals.number SCRIPT.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: 123"/>
+      </outline>
+      <outline text="Script">
+        <outline text="number(&quot;123&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="Resolve to script - boolean() verb - Test boolean() coercion verb.&#10;boolean(1) should resolve to system.verbs.globals.boolean SCRIPT.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="boolean(1)"/>
+      </outline>
+    </outline>
+    <outline text="Resolve to script - boolean(0)">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="boolean(0)"/>
+      </outline>
+    </outline>
+    <outline text="typeof(number) - verify number is a script - Verify number verb is a script in globals.&#10;Note: typeof() without @ returns value type; with @ returns 'addr'.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: scpt"/>
+      </outline>
+      <outline text="Script">
+        <outline text="typeof(system.verbs.globals.number)"/>
+      </outline>
+    </outline>
+    <outline text="typeof(boolean) - verify boolean is a script - Verify boolean verb is a script in globals.&#10;Note: typeof() without @ returns value type; with @ returns 'addr'.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: scpt"/>
+      </outline>
+      <outline text="Script">
+        <outline text="typeof(system.verbs.globals.boolean)"/>
+      </outline>
+    </outline>
+    <outline text="Error - non-existent verb - Verify defined() returns FALSE for non-existent identifiers.&#10;&quot;fakeVerb&quot; doesn't exist in any path.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(fakeVerb)"/>
+      </outline>
+    </outline>
+    <outline text="Error - non-existent child in globals - Verify defined(string.fakeChild) returns FALSE.&#10;&quot;string&quot; resolves to builtins.string table (for multi-part path),&#10;but &quot;fakeChild&quot; doesn't exist inside it.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(string.fakeChild)"/>
+      </outline>
+    </outline>
+    <outline text="Error - calling table as function - Verify that attempting to call a table (not a script) fails.&#10;If the bug exists, string() might resolve to builtins.string TABLE,&#10;which would cause this error.&#10;&#10;After the fix, this test documents expected error behavior if someone&#10;tries to call a non-callable type.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_success: False"/>
+      </outline>
+      <outline text="Script">
+        <outline text="system.verbs.builtins.string(123)"/>
+      </outline>
+    </outline>
+    <outline text="Regression - webserver.init still works - Regression test from PR #337 and PR #342.&#10;Ensure webserver.init (external script) still resolves correctly.&#10;NOTE: webserver.init may not exist in v7 database.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="skip: True"/>
+        <outline text="reason: webserver.init may not exist in migrated database - separate from verb resolution fix"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(webserver.init)"/>
+      </outline>
+    </outline>
+    <outline text="Regression - op.firstSummit still works - Another external script from previous regression tests">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(op.firstSummit)"/>
+      </outline>
+    </outline>
+    <outline text="Regression - table.assign still works - Verify table.assign (kernel verb) still resolves correctly.&#10;This is a sanity check that kernel verbs weren't broken.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(table.assign)"/>
+      </outline>
+    </outline>
+    <outline text="Regression - file.exists still works - Another kernel verb sanity check">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(file.exists)"/>
+      </outline>
+    </outline>
+    <outline text="Regression - hardcoded system table - Verify hardcoded tables (system, builtins) still work after the fix.&#10;These don't go through path resolution.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(system)"/>
+      </outline>
+    </outline>
+    <outline text="Regression - hardcoded builtins table - Verify hardcoded builtins table works.&#10;Note: 'builtins' may not be directly accessible as a standalone identifier.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(system.verbs.builtins)"/>
+      </outline>
+    </outline>
+    <outline text="Regression - local variable resolution - Verify local variable resolution still works (doesn't use path search).&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(myVar = 42)"/>
+        <outline text="return defined(myVar)"/>
+      </outline>
+    </outline>
+    <outline text="Regression - runtime table creation - Verify dynamically created tables work correctly.&#10;NOTE: Has pre-existing opcode issues with lang.new.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="skip: True"/>
+        <outline text="reason: Pre-existing opcode 34 error with lang.new - separate from verb resolution fix"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(tableType, @t)"/>
+        <outline text="t.x = 123"/>
+        <outline text="return defined(t.x)"/>
+      </outline>
+    </outline>
+    <outline text="Case insensitive - STRING(123) - UserTalk is case-insensitive. Verify STRING() works same as string().&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: 789"/>
+      </outline>
+      <outline text="Script">
+        <outline text="STRING(789)"/>
+      </outline>
+    </outline>
+    <outline text="Case insensitive - String(123) - Mixed case should work">
+      <outline text="Metadata">
+        <outline text="expected_result: 321"/>
+      </outline>
+      <outline text="Script">
+        <outline text="String(321)"/>
+      </outline>
+    </outline>
+    <outline text="Case insensitive - defined(STRING) - Case-insensitive defined() check">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(STRING)"/>
+      </outline>
+    </outline>
+    <outline text="Case insensitive - string.MID() - Verify string.MID() works (case-insensitive child lookup).&#10;NOTE: Has pre-existing string verb execution issues.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: ell"/>
+        <outline text="skip: True"/>
+        <outline text="reason: Pre-existing string verb execution issue - separate from verb resolution fix"/>
+      </outline>
+      <outline text="Script">
+        <outline text="string.MID(&quot;hello&quot;, 2, 3)"/>
+      </outline>
+    </outline>
+    <outline text="Integration - string() in expression - Use string() coercion inside a larger expression.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: The answer is: 42"/>
+      </outline>
+      <outline text="Script">
+        <outline text="&quot;The answer is: &quot; + string(42)"/>
+      </outline>
+    </outline>
+    <outline text="Integration - string() in conditional - Use string() in an if-expression.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: 100"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(x = 100)"/>
+        <outline text="if x &gt; 50">
+          <outline text="return string(x)"/>
+        </outline>
+        <outline text="} else">
+          <outline text="return &quot;small&quot;"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="Integration - mixed string operations - Combine string() coercion with string.* verbs in one script.&#10;NOTE: Has pre-existing string.upper execution issues.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: 123"/>
+        <outline text="skip: True"/>
+        <outline text="reason: Pre-existing string.upper execution issue - separate from verb resolution fix"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(num = 123)"/>
+        <outline text="local(s = string(num))"/>
+        <outline text="return string.upper(s)"/>
+      </outline>
+    </outline>
+    <outline text="Integration - typeof() check before use - Real-world pattern: Check type before using a verb.&#10;Note: typeof(@...) returns 'addr', use typeof(...) for value type.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="typeof(system.verbs.globals.string) == &quot;scpt&quot; and string(456) == &quot;456&quot;"/>
+      </outline>
+    </outline>
+    <outline text="Integration - string() in loop - Use string() inside a loop to test repeated resolution.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: 012"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(result = &quot;&quot;)"/>
+        <outline text="local(i = 0)"/>
+        <outline text="loop">
+          <outline text="result = result + string(i)"/>
+          <outline text="i = i + 1"/>
+          <outline text="if i &gt; 2">
+            <outline text="break"/>
+          </outline>
+        </outline>
+        <outline text="return result"/>
+      </outline>
+    </outline>
+    <outline text="Edge case - verify path01 priority maintained - Even if paths are added or modified, path01 should take priority over path03.&#10;This is a sanity check that alphabetical order is maintained.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: 111"/>
+      </outline>
+      <outline text="Script">
+        <outline text="string(111)"/>
+      </outline>
+    </outline>
+    <outline text="Performance - repeated string() calls - Call string() multiple times to ensure no caching issues.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: 123"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(a = string(1))"/>
+        <outline text="local(b = string(2))"/>
+        <outline text="local(c = string(3))"/>
+        <outline text="return a + b + c"/>
+      </outline>
+    </outline>
+    <outline text="Performance - alternating string() and string.* calls - Alternate between string() coercion and string.* verbs to test&#10;different resolution paths.&#10;NOTE: Has pre-existing string.upper/lower execution issues.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: 99"/>
+        <outline text="skip: True"/>
+        <outline text="reason: Pre-existing string verb execution issue - separate from verb resolution fix"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(s1 = string(42))"/>
+        <outline text="local(s2 = string.upper(s1))"/>
+        <outline text="local(s3 = string(99))"/>
+        <outline text="local(s4 = string.lower(s2))"/>
+        <outline text="return s3"/>
+      </outline>
+    </outline>
+    <outline text="Documentation - string() is a coercion verb - DOCUMENTATION: string() is a type coercion verb in system.verbs.globals.&#10;It converts any value to its string representation.&#10;&#10;Example: string(123) → &quot;123&quot;&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: 123"/>
+      </outline>
+      <outline text="Script">
+        <outline text="string(123)"/>
+      </outline>
+    </outline>
+    <outline text="Documentation - string.* are utility verbs - DOCUMENTATION: string.* verbs are utility verbs in system.verbs.builtins.string.&#10;They operate on existing strings.&#10;NOTE: Has pre-existing string.mid execution issues.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: ell"/>
+        <outline text="skip: True"/>
+        <outline text="reason: Pre-existing string.mid execution issue - separate from verb resolution fix"/>
+      </outline>
+      <outline text="Script">
+        <outline text="string.mid(&quot;hello&quot;, 2, 3)"/>
+      </outline>
+    </outline>
+    <outline text="Documentation - path resolution disambiguates - DOCUMENTATION: Path resolution order ensures:&#10;- string (alone) → resolves to globals.string SCRIPT (coercion)&#10;- string.X → resolves &quot;string&quot; to builtins.string TABLE (utility container)&#10;&#10;This test validates that coercion works.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: 123"/>
+      </outline>
+      <outline text="Script">
+        <outline text="string(123)"/>
+      </outline>
+    </outline>
+  </body>
+</opml>

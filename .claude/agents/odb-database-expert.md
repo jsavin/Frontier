@@ -6,6 +6,10 @@ name: odb-database-expert
 description: |
   Use this agent when working with Frontier's Object Database (ODB) system, including: reading/writing database files, implementing or debugging pack/unpack operations, handling database migration between v6 and v7 formats, managing in-memory object representations, debugging address format issues or external table variables, refactoring legacy push/pop mode stack patterns to explicit context-passing architectures, investigating database-related test failures, or reviewing/maintaining documentation in planning/phase3/ related to database formats, migration, or persistence.
 
+  DO NOT use this agent for working on architectural issues involving thread-safety, investigating Push/Pop anti-pattern usage or bugs resulting from it, or when working across a broad context that extends beyond ODB storage formats and in-memory ODB data structures.
+
+  DO NOT use this agent for working on UserTalk code or integration tests.
+
   Examples:
   - User: "I need to add support for persisting new field X in table headers for v7 format." → Implement the v7 format change for persisting field X in table headers.
   - User: "The migration test is failing with 'dbnormalizeaddress failed for adr=0x62bb33' - can you investigate?" → Debug this database address normalization failure during migration.

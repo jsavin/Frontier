@@ -590,6 +590,11 @@ static void db_sync_use64_to_current_db(void) {
 static inline hdldatabaserecord db_begin_source_read(void) {
 	if (fldatabasesaveas && dbsaveas_source != nil) {
 		hdldatabaserecord previous = databasedata;
+#if defined(FRONTIER_HEADLESS)
+		log_debug(LOG_COMP_DB, "db_begin_source_read: switching from dest fnum=%ld to source fnum=%ld",
+		          previous ? (long)(**previous).fnumdatabase : -1L,
+		          (long)(**dbsaveas_source).fnumdatabase);
+#endif
 		databasedata = dbsaveas_source;
 		db_sync_use64_to_current_db();
 		return previous;
@@ -606,7 +611,12 @@ static inline void db_end_source_read(hdldatabaserecord previous) {
 
 
 static boolean dbseek (dbaddress adr) {
-	
+#if defined(FRONTIER_HEADLESS)
+	log_debug(LOG_COMP_DB, "dbseek: adr=0x%llx fnum=%ld databasedata=%p",
+	          (unsigned long long)adr,
+	          (long)(**databasedata).fnumdatabase,
+	          (void*)databasedata);
+#endif
 	return (filesetposition((hdlfilenum)((**databasedata).fnumdatabase), adr));
 	} /*dbseek*/
 		

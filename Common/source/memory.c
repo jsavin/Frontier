@@ -1609,6 +1609,16 @@ boolean pushlongondiskhandle (long x, Handle hpush) {
 	db_format_mode current_mode = db_format_mode_current();
 	boolean use_64bit = current_mode.use_64bit_format;
 
+#if defined(FRONTIER_HEADLESS)
+	if (x >= 0x900000) {
+		log_error(LOG_COMP_DB, "pushlongondiskhandle adr=0x%lx ENTRY mode.use_64bit=%d adapter=%d saveas=%d",
+		          x,
+		          current_mode.use_64bit_format ? 1 : 0,
+		          current_mode.adapter_repack ? 1 : 0,
+		          fldatabasesaveas ? 1 : 0);
+	}
+#endif
+
 	/* During Save As to v7 destination, always use 64-bit addresses */
 	if (!use_64bit && fldatabasesaveas) {
 		hdldatabaserecord hdest = nil;
@@ -1620,11 +1630,22 @@ boolean pushlongondiskhandle (long x, Handle hpush) {
 		/* Write 64-bit BE address for v7 databases */
 		unsigned char adrbuffer[8];
 		db_format_write_be64(adrbuffer, (uint64_t) x);
+#if defined(FRONTIER_HEADLESS)
+		if (x >= 0x900000) {
+			log_error(LOG_COMP_DB, "pushlongondiskhandle WRITING 64-BIT adr=0x%lx", x);
+		}
+#endif
 		return (enlargehandle (hpush, (long) sizeof(adrbuffer), adrbuffer));
 	} else {
 		/* Write 32-bit BE address for v6 databases */
 		int32_t disk32 = (int32_t) x;
 		db_format_write_be32(&disk32, (uint32_t) disk32);
+#if defined(FRONTIER_HEADLESS)
+		if (x >= 0x900000) {
+			log_error(LOG_COMP_DB, "pushlongondiskhandle WRITING 32-BIT adr=0x%x (use_64bit=%d sizeof=%d)",
+			          (uint32_t) x, use_64bit ? 1 : 0, (int)sizeof(dbaddress));
+		}
+#endif
 		return (enlargehandle (hpush, (long) sizeof (disk32), &disk32));
 	}
 	} /*pushlongondiskhandle*/
@@ -1648,7 +1669,10 @@ boolean loadlongfromdiskhandle (Handle hload, long *ixload, long *x) {
 			unsigned char adrbytes[sizeof(dbaddress)];
 			if (!loadfromhandle(hload, ixload, (long)sizeof(dbaddress), adrbytes))
 				return (false);
-			*x = (long) db_format_read_be64(adrbytes);
+			dbaddress full_adr = db_format_read_be64(adrbytes);
+			*x = (long) full_adr;
+			log_error(LOG_COMP_DB, "loadlongfromdiskhandle: Read 64-bit adr=0x%llx, TRUNCATED to long=0x%lx (sizeof(long)=%d)",
+			          (unsigned long long)full_adr, (unsigned long)*x, (int)sizeof(long));
 			return (true);
 		} else if (remaining == (long)sizeof(int32_t)) {
 			/* Fall back to 32-bit for legacy compatibility */

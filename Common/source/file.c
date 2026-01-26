@@ -491,29 +491,38 @@ boolean openfile ( const ptrfilespec fs, hdlfilenum *fnum, boolean flreadonly ) 
 			return ( false );
 			
 		if ( oserror ( FSOpenFork ( &fsref, dataforkname.length, dataforkname.unicode, perm, fnum ) ) ) {
-			
+
 			*fnum = 0;
-			
+
 			return (false);
 			}
-		
+
+		#ifdef FRONTIER_HEADLESS
+		{
+			char path[1024];
+			FSRefMakePath(&fsref, (UInt8*)path, sizeof(path));
+			log_trace(LOG_COMP_DB, "openfile: Opened '%s' as fnum=%d (readonly=%d)",
+				path, (int)*fnum, flreadonly);
+		}
+		#endif
+
 		FSCatalogInfo catalogInfo;
-		
+
 		OSErr err = FSGetCatalogInfo(&fsref, kFSCatInfoFinderInfo, &catalogInfo, NULL, NULL, NULL);
-		
+
 		if (oserror(err)) {
 			return false;
 		}
-		
+
 		((FileInfo *)&catalogInfo.finderInfo)->finderFlags |= kNameLocked;
-		
+
 		err = FSSetCatalogInfo(&fsref, kFSCatInfoFinderInfo, &catalogInfo);
-		
+
 		if (oserror(err)) {
 			return false;
 		}
-	
-		
+
+
 		return (true);
 		
 
@@ -563,8 +572,20 @@ boolean closefile (hdlfilenum fnum) {
 				//WriteToConsole(s);
 				}
 			
+			#ifdef FRONTIER_HEADLESS
+			log_trace(LOG_COMP_DB, "closefile: Closing fnum=%d", (int)fnum);
+			#endif
+
 			err = FSCloseFork ( fnum );
-			
+
+			#ifdef FRONTIER_HEADLESS
+			if (!oserror(err)) {
+				log_trace(LOG_COMP_DB, "closefile: Successfully closed fnum=%d", (int)fnum);
+			} else {
+				log_error(LOG_COMP_DB, "closefile: Failed to close fnum=%d, err=%d", (int)fnum, err);
+			}
+			#endif
+
 			return ( ! oserror ( err ) );
 			
 			}

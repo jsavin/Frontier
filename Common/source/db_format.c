@@ -1593,8 +1593,8 @@ static boolean db_format_force_materialize_external_tables_recursive(
         boolean was_in_memory = (**hv).flinmemory;
 
 #if defined(FRONTIER_HEADLESS)
-        log_debug(LOG_COMP_DB, "    external: id=%d v6_adr=0x%llx was_in_memory=%d",
-                  var_id, (unsigned long long) v6_adr, (int) was_in_memory);
+        log_error(LOG_COMP_DB, "MATERIALIZE: name='%.*s' id=%d v6_adr=0x%llx was_in_memory=%d depth=%d",
+                  (int) bsname[0], (char *) &bsname[1], var_id, (unsigned long long) v6_adr, (int) was_in_memory, depth);
 #endif
 
         /* Load into memory if not already loaded */
@@ -1607,7 +1607,7 @@ static boolean db_format_force_materialize_external_tables_recursive(
                 log_debug(LOG_COMP_DB, "    calling tableverbinmemory for '%.*s'",
                           (int) bsname[0], (char *) &bsname[1]);
 #endif
-                loaded = tableverbinmemory(NULL, hv, hnode);
+                loaded = tableverbinmemory(context, hv, hnode);
             } else if (var_id == idoutlineprocessor || var_id == idscriptprocessor) {
                 /* Scripts and outlines share the same infrastructure (both use hdloutlinerecord).
                  * idscriptprocessor is just an outline with (**hv).flscript = true flag set. */
@@ -1616,7 +1616,7 @@ static boolean db_format_force_materialize_external_tables_recursive(
                           (int) bsname[0], (char *) &bsname[1], var_id,
                           var_id == idscriptprocessor ? "script" : "outline");
 #endif
-                loaded = opverbinmemory(NULL, hv);
+                loaded = opverbinmemory(context, hv);
             } else if (var_id == idwordprocessor) {
 #if defined(FRONTIER_HEADLESS)
                 log_debug(LOG_COMP_DB, "    leaf external (wptext) - will clear oldaddress without loading (memory optimization)");
@@ -1654,7 +1654,7 @@ static boolean db_format_force_materialize_external_tables_recursive(
                 log_debug(LOG_COMP_DB, "    calling pictverbinmemory for '%.*s' hv=%p",
                           (int) bsname[0], (char *) &bsname[1], (void*)hv);
 #endif
-                loaded = pictverbinmemory(NULL, hv);
+                loaded = pictverbinmemory(context, hv);
 #if defined(FRONTIER_HEADLESS)
                 log_debug(LOG_COMP_DB, "    pictverbinmemory returned: %d", loaded);
 #endif
@@ -1726,9 +1726,9 @@ static boolean db_format_force_materialize_external_tables_recursive(
         (**hv).oldaddress = nildbaddress;
 
 #if defined(FRONTIER_HEADLESS)
-        log_debug(LOG_COMP_DB, "    cleared oldaddress for external type=%d name='%.*s': was=0x%llx now=nil",
-                  var_id, (int) bsname[0], (char *) &bsname[1],
-                  (unsigned long long) old_oldaddr);
+        log_error(LOG_COMP_DB, "CLEARED oldaddress: name='%.*s' type=%d was=0x%llx now=nil depth=%d",
+                  (int) bsname[0], (char *) &bsname[1], var_id,
+                  (unsigned long long) old_oldaddr, depth);
 #endif
 
         /* Recurse into newly-loaded table (only for table externals, not pictures/outlines/etc.) */
@@ -1976,7 +1976,7 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     }
     /* Load root into memory - should be a no-op since tableloadsystemtable() already loaded it */
     fail_step = "tableverbinmemory(root)";
-    if (!tableverbinmemory(NULL, (hdlexternalvariable) hrootvariable, HNoNode))
+    if (!tableverbinmemory(&source_context, (hdlexternalvariable) hrootvariable, HNoNode))
         goto cleanup;
 #if defined(FRONTIER_HEADLESS)
     {

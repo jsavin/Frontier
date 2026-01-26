@@ -3780,6 +3780,16 @@ static boolean langdirecttablelookup (hdlhashtable htable, bigstring bsname, hdl
 		return (false);
 	}
 
+	/* Debug logging for string specifically */
+	{
+		char cname[256];
+		copyptocstring(bsname, cname);
+		if (strcmp(cname, "string") == 0) {
+			fprintf(stderr, "[DEBUG] langdirecttablelookup: Found 'string' in table %p, valuetype=%d\n",
+			        (void*)htable, val.valuetype);
+		}
+	}
+
 	/* Accept ANY type for final component resolution.
 	 * Return the parent table so caller can perform final lookup.
 	 * This follows the same pattern as langtablelookup().
@@ -3825,9 +3835,15 @@ static boolean langsearchpathvisit (tysearchpathcallback visit, bigstring bsname
 	if (ht == nil)
 		return (false);
 
-	/* Guard against recursive path search */
+	/* 2026-01-25: REMOVED recursion guard setting here.
+	 * The legacy production code did NOT set the guard in langsearchpathvisit.
+	 * Only langgethandlercode sets it. This was causing string(123) to fail
+	 * because the guard blocked legitimate path searches during handler lookups.
+	 *
+	 * The guard in langgethandlercode is sufficient to prevent infinite recursion
+	 * for the specific case it was designed for. */
 	saved_fllocaldotparamsonly = fllocaldotparamsonly;
-	fllocaldotparamsonly = true;
+	/* fllocaldotparamsonly = true;  -- REMOVED, legacy didn't set it here */
 
 	nomad = (**ht).hfirstsort;  /* Already sorted alphabetically */
 
@@ -3901,8 +3917,8 @@ static boolean langsearchpathvisit (tysearchpathcallback visit, bigstring bsname
 
 	done:
 
-	/* Restore fllocaldotparamsonly to its original value */
-	fllocaldotparamsonly = saved_fllocaldotparamsonly;
+	/* 2026-01-25: Not restoring since we're not setting it anymore */
+	/* fllocaldotparamsonly = saved_fllocaldotparamsonly; -- REMOVED */
 
 	return (result);
 	} /*langsearchpathvisit*/
@@ -4021,36 +4037,72 @@ boolean langgetdotparams (hdltreenode htree, hdlhashtable *htable, bigstring bsn
 		if (langgetspecialtable (bsname, htable)) /*translate "root" to roottable, etc.*/
 			goto L1;
 
-		/* 2026-01-24: Check system.paths FIRST (in alphabetical order) before checking current context.
-		 * Use langdirecttablelookup callback to avoid EFP table interference.
-		 * langsearchpathvisit handles recursion guard internally. */
-		if (!fllocaldotparamsonly) {
-			fl = langsearchpathvisit (&langdirecttablelookup, bsname, htable); /*check user paths - direct lookup only*/
-			if (fl)
-				goto L1;
-		}
+		/* 2026-01-25: REVERTING to legacy search order to fix string(123)
+		 *
+		 * The legacy production code that worked for years did:
+		 * 1. Special tables (root, etc.)
+		 * 2. External/current context
+		 * 3. Path search (if not blocked by guard)
+		 *
+		 * PR #342 reversed #2 and #3 to fix EFP issues, but this broke handler
+		 * resolution because the recursion guard blocks path searches during
+		 * handler lookups. Reverting to legacy order fixes string(123).
+		 *
+		 * TODO: Find different solution for the EFP stub issue (defined(webserver.init))
+		 */
 
-		/* Fallback: check current context (builtinstable, local variables, etc.) */
-        if (langexternalgettable (bsname, htable))
-            goto L1;
-		else {
+		/* 2. Check current context (builtinstable, local variables, etc.) */
+		/* Debug: log external lookup for string */
+		{
 			char cname[256];
 			copyptocstring(bsname, cname);
-			log_trace(LOG_COMP_LANG, "langgetdotparams: langexternalgettable miss for %s", cname);
+			if (strcmp(cname, "string") == 0) {
+				fprintf(stderr, "[DEBUG] langgetdotparams: Trying langexternalgettable for 'string'\n");
+			}
+		}
+        if (langexternalgettable (bsname, htable)) {
+			char cname[256];
+			copyptocstring(bsname, cname);
+			if (strcmp(cname, "string") == 0) {
+				fprintf(stderr, "[DEBUG] langgetdotparams: langexternalgettable found 'string', htable=%p\n", (void*)*htable);
+			}
+			goto L1;
 		}
 
+		/* 3. As last resort, check system.paths (if not blocked by recursion guard) */
 		if (fllocaldotparamsonly)
 			fl = false;
 		else {
-			// about to fail; last ditch effort for local paths
+			/* Debug: log path search for string */
+			{
+				char cname[256];
+				copyptocstring(bsname, cname);
+				if (strcmp(cname, "string") == 0) {
+					fprintf(stderr, "[DEBUG] langgetdotparams: Trying langsearchpathvisit for 'string' as fallback\n");
+				}
+			}
+			fl = langsearchpathvisit (&langdirecttablelookup, bsname, htable); /*check user paths - direct lookup only*/
+
+			if (fl) {
+				/* Path search succeeded */
+				char cname[256];
+				copyptocstring(bsname, cname);
+				if (strcmp(cname, "string") == 0) {
+					fprintf(stderr, "[DEBUG] langgetdotparams: langsearchpathvisit SUCCESS for 'string', htable=%p\n", (void*)*htable);
+				}
+				goto L1;
+			}
+
+			if (!fl) { /* about to fail; last ditch effort for local paths */
 
 				flfindanyspecialsymbol = true;
 
 				fl = langexternalgettable (bsname, htable);
 
 				flfindanyspecialsymbol = false;
-				}
+			}
 		}
+	}
 	else
 		fl = langgettableval (hsubtable, bsname, htable);
 
@@ -8553,15 +8605,19 @@ static boolean langgethandlercode (hdlhashtable intable, hdltreenode hnamenode, 
     }
 #endif
 	
+	/* 2026-01-25: RESTORED legacy guard behavior.
+	 * The guard is set ONLY when searching non-default scope (path search iterations).
+	 * This prevents recursive path searches while allowing the first search in
+	 * currenthashtable to find names via langexternalgettable or path search. */
 	if (intable != currenthashtable) /*not being called for default scope*/
 		fllocaldotparamsonly = true;
-	
+
 	pushhashtable (intable);
-	
+
 	fl = langgetdotparams (hnamenode, htable, bs);
-	
+
 	pophashtable ();
-	
+
 	fllocaldotparamsonly = false;
 	
 	if (!isemptystring (bs)) {
@@ -8689,14 +8745,49 @@ boolean langhandlercall (hdltreenode htree, hdltreenode hparam1, tyvaluerecord *
 	
 	setemptystring (bsfunctionname); /*must initialize for langgethandlercode error logic*/
 	
-	if (langgethandlercode (currenthashtable, htree, &hcode, &htable, &hnode)) /*found it in root structure*/
+	/* Debug: check what we're searching for */
+	{
+		bigstring bs;
+		if (langgetidentifier(htree, bs)) {
+			char cname[256];
+			copyptocstring(bs, cname);
+			if (strcmp(cname, "string") == 0) {
+				fprintf(stderr, "[DEBUG] langhandlercall: Searching for 'string'\n");
+			}
+		}
+	}
+
+	if (langgethandlercode (currenthashtable, htree, &hcode, &htable, &hnode)) { /*found it in root structure*/
+		/* Debug: check if we found string here */
+		bigstring bs;
+		if (langgetidentifier(htree, bs)) {
+			char cname[256];
+			copyptocstring(bs, cname);
+			if (strcmp(cname, "string") == 0) {
+				fprintf(stderr, "[DEBUG] langhandlercall: Found 'string' in currenthashtable, htable=%p hcode=%p\n",
+				        (void*)htable, (void*)hcode);
+			}
+		}
 		goto runhandler;
+	}
 	
 	if (fllangerror) /*found it, but error getting code*/
 		return (false);
 	
 	handlercode.htree = htree;
-	
+
+	/* Debug: check if we're doing path search for string */
+	{
+		bigstring bs;
+		if (langgetidentifier(htree, bs)) {
+			char cname[256];
+			copyptocstring(bs, cname);
+			if (strcmp(cname, "string") == 0) {
+				fprintf(stderr, "[DEBUG] langhandlercall: Starting path search for 'string'\n");
+			}
+		}
+	}
+
 	if (langsearchpathvisit (&langgethandlervisit, nil, &htable)) {
 		
 		hcode = handlercode.hcode;

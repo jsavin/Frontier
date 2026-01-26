@@ -795,31 +795,27 @@ static boolean hydrate_system_root_database(const char* path) {
     ok = true;
 
 cleanup:
-    if (db_open) {
-        if (!dbclose()) {
-            cli_log_warn("dbclose reported failure while hydrating %s", path);
-            ok = false;
-        }
-    }
-
-    /* On failure, dispose root variable, clear globals, and restore previous database */
+    /* On failure, close database, dispose root variable, clear globals, and restore previous database */
     if (!ok) {
+        if (db_open) {
+            if (!dbclose()) {
+                cli_log_warn("dbclose reported failure while hydrating %s", path);
+            }
+            dbdispose();
+        }
+
         if (dispose_rootvariable && hrootvariable != nil)
             disposehandle(hrootvariable);
-
-        if (db_open)
-            dbdispose();
 
         databasedata = previous;
         cleartablestructureglobals();
         currenthashtable = nil;
+
+        if (file_open && !closefile(fnum)) {
+            cli_log_warn("Failed to close hydrated system root file handle: %s", path);
+        }
     }
     /* On success, database remains open and globals remain set for runtime use */
-
-    if (file_open && !closefile(fnum)) {
-        cli_log_warn("Failed to close hydrated system root file handle: %s", path);
-        ok = false;
-    }
 
     return ok;
 }
