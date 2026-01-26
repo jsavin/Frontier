@@ -305,14 +305,13 @@ tests:
 
   - name: "Regression - webserver.init still works"
     description: |
-      Regression test from PR #337 and PR #342.
+      Regression test from PR #337, PR #342, and PR #351.
       Ensure webserver.init (external script) still resolves correctly.
-      NOTE: webserver.init may not exist in v7 database.
+      Fixed in PR #351: webserver processor excluded from EFP whitelist,
+      allowing builtins.webserver table (with init script) to be found.
     script: 'defined(webserver.init)'
     expected_success: true
     expected_result: "true"
-    skip: true
-    reason: "webserver.init may not exist in migrated database - separate from verb resolution fix"
 
   - name: "Regression - op.firstSummit still works"
     description: "Another external script from previous regression tests"
