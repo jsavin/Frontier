@@ -488,6 +488,17 @@ class VerbImplementationAnalyzer:
         # Platform-specific flag
         platform_specific = annotations.get('platform_specific', False)
 
+        # Script-implemented flag - override impl_file to indicate UserTalk implementation
+        # This is critical for whitelist generation: processors where ALL verbs are
+        # script-implemented should NOT be registered as EFPs (they shadow database tables)
+        is_script_impl = annotations.get('script_implemented', False)
+        if is_script_impl:
+            actual_impl_file = "<UserTalk script>"
+            actual_line_num = 0
+        else:
+            actual_impl_file = impl_file
+            actual_line_num = line_num
+
         # Estimate complexity
         complexity = estimate_complexity(source) if is_implemented else 1
 
@@ -496,8 +507,8 @@ class VerbImplementationAnalyzer:
             verb_name=verb_name,
             token=token,
             is_implemented=is_implemented,
-            impl_file=impl_file,
-            impl_line=line_num,
+            impl_file=actual_impl_file,
+            impl_line=actual_line_num,
             has_carbon_deps=has_carbon,
             uses_ui_adapter=uses_ui_adapter,
             platform_specific=platform_specific,

@@ -116,8 +116,20 @@ class VerbMetadataWriter:
         Generate HEADLESS_REGISTERED whitelist from implemented verbs.
 
         Returns:
-            List of processor names that have at least one implemented verb
+            List of processor names that have at least one C-implemented verb
             and are headless-compatible (no Carbon dependencies).
+
+        Note:
+            Processors where ALL verbs are script-implemented (impl_file contains
+            "<UserTalk script>") are EXCLUDED. Such processors have no C code to
+            dispatch to - the database table (builtins.*) already has the full
+            implementation. Registering an EFP for them would shadow the database
+            table, causing defined(processor.item) to fail for items not in the
+            EFP stub.
+
+            Example: webserver has 7 verbs, all script-implemented. Without this
+            exclusion, defined(webserver.init) fails because the EFP stub (7 items)
+            shadows builtins.webserver (21 items including 'init').
         """
         # Group verbs by processor
         by_processor = {}
@@ -128,14 +140,20 @@ class VerbMetadataWriter:
 
         whitelist = []
         for processor, verbs in sorted(by_processor.items()):
-            # Check if processor has any implemented verbs
-            has_impl = any(v.is_implemented for v in verbs)
+            # Check if processor has any C-implemented verbs (not just script-implemented)
+            # A verb is C-implemented if is_implemented=True AND impl_file is NOT "<UserTalk script>"
+            has_c_impl = any(
+                v.is_implemented and v.impl_file != "<UserTalk script>"
+                for v in verbs
+            )
 
             # Check if processor has Carbon dependencies
             has_carbon = any(v.has_carbon_deps for v in verbs if v.is_implemented)
 
-            # Include if implemented and no Carbon dependencies
-            if has_impl and not has_carbon:
+            # Include only if has C implementation and no Carbon dependencies
+            # Processors with ONLY script-implemented verbs should NOT be registered
+            # (they use the database table builtins.* instead of EFP)
+            if has_c_impl and not has_carbon:
                 whitelist.append(processor)
 
         return whitelist
