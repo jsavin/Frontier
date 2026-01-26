@@ -139,7 +139,10 @@ HEADLESS_REGISTERED: Set[str] = {
     'mainwindow',        # tests/headless_mainwindow_verbs.c
     'searchengine',      # tests/headless_searchengine_verbs.c
     'mrcalendar',        # tests/headless_mrcalendar_verbs.c
-    'webserver',         # tests/headless_webserver_verbs.c
+    # EXCLUDED: 'webserver' - All verbs are script-implemented (see script_implemented_verbs.py)
+    #           The real webserver table is in builtins.webserver with full content.
+    #           Registering an incomplete EFP stub shadows the database table and
+    #           causes defined(webserver.init) to incorrectly return false.
     'inetd',             # tests/headless_inetd_verbs.c
 }
 

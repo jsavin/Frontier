@@ -851,6 +851,10 @@ boolean opverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handl
 
 	adr = (**hv).oldaddress; /*place where this outline used to be stored*/
 
+#if defined(FRONTIER_HEADLESS)
+	log_error(LOG_COMP_OP, "PACK START: oldaddress=0x%llx adapter_repack=%d", (unsigned long long) adr, (int) adapter_repack);
+#endif
+
 	if (adapter_repack) {
 		(**ho).fldirty = true;
 		(**ho).fldirtyview = true;
@@ -917,6 +921,15 @@ boolean opverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handl
 	else
 		*flnewdbaddress = true;
 
+#if defined(FRONTIER_HEADLESS)
+	db_format_mode mode_before_push = db_format_mode_current();
+	log_error(LOG_COMP_OP, "PACK SCRIPT/OUTLINE: pushing adr=0x%llx mode.use_64bit=%d adapter=%d saveas=%d",
+	          (unsigned long long) adr,
+	          mode_before_push.use_64bit_format ? 1 : 0,
+	          mode_before_push.adapter_repack ? 1 : 0,
+	          fldatabasesaveas ? 1 : 0);
+#endif
+
 	return (pushlongondiskhandle (adr, *hpacked));
 	} /*opverbpack_internal*/
 
@@ -930,10 +943,12 @@ boolean opverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddr
 boolean opverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *hvariable) {
 
 	long rawadr = 0;
-	
-	if (!loadlongfromdiskhandle (hpacked, ixload, &rawadr)) 
+
+	if (!loadlongfromdiskhandle (hpacked, ixload, &rawadr))
 		return (false);
-		
+
+	log_error(LOG_COMP_DB, "opverbunpack: rawadr=0x%lx (32-bit long), casting to dbaddress", (unsigned long)rawadr);
+
 	return (newoutlinevariable (false, (dbaddress) rawadr, (hdloutlinevariable *) hvariable));
 	} /*opverbunpack*/
 
