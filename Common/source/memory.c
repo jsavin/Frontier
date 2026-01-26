@@ -1611,7 +1611,7 @@ boolean pushlongondiskhandle (long x, Handle hpush) {
 
 #if defined(FRONTIER_HEADLESS)
 	if (x >= 0x900000) {
-		log_error(LOG_COMP_DB, "pushlongondiskhandle adr=0x%lx ENTRY mode.use_64bit=%d adapter=%d saveas=%d",
+		log_trace(LOG_COMP_DB, "pushlongondiskhandle adr=0x%lx ENTRY mode.use_64bit=%d adapter=%d saveas=%d",
 		          x,
 		          current_mode.use_64bit_format ? 1 : 0,
 		          current_mode.adapter_repack ? 1 : 0,
@@ -1632,7 +1632,7 @@ boolean pushlongondiskhandle (long x, Handle hpush) {
 		db_format_write_be64(adrbuffer, (uint64_t) x);
 #if defined(FRONTIER_HEADLESS)
 		if (x >= 0x900000) {
-			log_error(LOG_COMP_DB, "pushlongondiskhandle WRITING 64-BIT adr=0x%lx", x);
+			log_trace(LOG_COMP_DB, "pushlongondiskhandle WRITING 64-BIT adr=0x%lx", x);
 		}
 #endif
 		return (enlargehandle (hpush, (long) sizeof(adrbuffer), adrbuffer));
@@ -1642,7 +1642,7 @@ boolean pushlongondiskhandle (long x, Handle hpush) {
 		db_format_write_be32(&disk32, (uint32_t) disk32);
 #if defined(FRONTIER_HEADLESS)
 		if (x >= 0x900000) {
-			log_error(LOG_COMP_DB, "pushlongondiskhandle WRITING 32-BIT adr=0x%x (use_64bit=%d sizeof=%d)",
+			log_trace(LOG_COMP_DB, "pushlongondiskhandle WRITING 32-BIT adr=0x%x (use_64bit=%d sizeof=%d)",
 			          (uint32_t) x, use_64bit ? 1 : 0, (int)sizeof(dbaddress));
 		}
 #endif

@@ -3765,9 +3765,20 @@ static boolean langdirecttablelookup (hdlhashtable htable, bigstring bsname, hdl
 
 	This is used when searching system.paths to ensure we find "webserver" in
 	builtins.webserver (21 items), not in builtinstable's EFP entry (7 items).
+
+	2026-01-26: FIXED to return the TARGET TABLE, not the parent table.
+	This matches what langexternalgettable returns, enabling proper EFP-style
+	resolution via path search.
+
+	For example, searching for "string" in builtins:
+	- OLD: returned builtins (parent), then caller looks up "string" again
+	- NEW: returns string-table (target), consistent with EFP lookup
+
+	This is critical for verb dispatch to work when path search runs first.
 	*/
 	tyvaluerecord val;
 	hdlhashnode hnode;
+	hdlhashtable htarget;
 
 	if (htable == nil)
 		return (false);
@@ -3780,28 +3791,16 @@ static boolean langdirecttablelookup (hdlhashtable htable, bigstring bsname, hdl
 		return (false);
 	}
 
-	/* Debug logging for string specifically */
-	{
-		char cname[256];
-		copyptocstring(bsname, cname);
-		if (strcmp(cname, "string") == 0) {
-			fprintf(stderr, "[DEBUG] langdirecttablelookup: Found 'string' in table %p, valuetype=%d\n",
-			        (void*)htable, val.valuetype);
-		}
-	}
-
-	/* Accept ANY type for final component resolution.
-	 * Return the parent table so caller can perform final lookup.
-	 * This follows the same pattern as langtablelookup().
-	 *
-	 * The caller (typically langsymbolreference) will extract the actual
-	 * value from the parent table, regardless of its type (script, scalar, table, etc.)
-	 */
-	*hresult = htable;
-
-
 	pophashtable ();
 
+	/* Convert the found value to a table.
+	 * This handles both external table values and direct table references.
+	 * If the value isn't a table, return false so we can try other paths. */
+	if (!tablevaltotable (val, &htarget, hnode)) {
+		return (false);
+	}
+
+	*hresult = htarget;
 	return (true);
 }
 
@@ -3824,6 +3823,17 @@ static boolean langsearchpathvisit (tysearchpathcallback visit, bigstring bsname
 
 	This ensures that defined(webserver.init) searches paths in alphabetical order
 	and finds builtins.webserver (21 items) instead of a wrong table.
+
+	Note on recursion guard removal being safe:
+	The fllocaldotparamsonly guard only blocks path search DURING the path search
+	iteration itself. This is safe because:
+	1. Legacy Frontier uses the same pattern - guard prevents infinite recursion
+	2. Once path search completes (success or fail), guard is restored
+	3. New integration tests validate this behavior:
+	   - test_string_verb_resolution.yaml: string.length(), string.delete(), etc.
+	   - test_defined_verb_resolution.yaml: defined(webserver.init), etc.
+
+	See planning/phase4/path-resolution/RECURSION_GUARD_INVESTIGATION.md for details.
 	*/
 
 	register hdlhashtable ht = pathstable;
@@ -4037,59 +4047,39 @@ boolean langgetdotparams (hdltreenode htree, hdlhashtable *htable, bigstring bsn
 		if (langgetspecialtable (bsname, htable)) /*translate "root" to roottable, etc.*/
 			goto L1;
 
-		/* 2026-01-25: REVERTING to legacy search order to fix string(123)
+		/* 2026-01-26: RESTORED legacy search order (EFP first, then paths)
 		 *
-		 * The legacy production code that worked for years did:
-		 * 1. Special tables (root, etc.)
-		 * 2. External/current context
-		 * 3. Path search (if not blocked by guard)
+		 * Search order:
+		 * 1. Special tables (root, etc.) - handled above
+		 * 2. EFP/current context (langexternalgettable) - kernel verb tables
+		 * 3. system.paths search (if not blocked by recursion guard)
 		 *
-		 * PR #342 reversed #2 and #3 to fix EFP issues, but this broke handler
-		 * resolution because the recursion guard blocks path searches during
-		 * handler lookups. Reverting to legacy order fixes string(123).
+		 * This order is critical for verb dispatch:
+		 * - EFP tables have valueroutine callbacks for kernel verb dispatch
+		 * - Database tables don't have valueroutine
+		 * - string(123) MUST find EFP string table, not database builtins.string
 		 *
-		 * TODO: Find different solution for the EFP stub issue (defined(webserver.init))
+		 * For defined(webserver.init) to work:
+		 * - webserver EFP stub registration is SKIPPED (see kernel_verbs_init.c)
+		 * - So EFP lookup fails, falls through to path search
+		 * - Path search finds builtins.webserver with full content
+		 *
+		 * Note: Processors with all-script implementations should NOT register
+		 * as EFPs. See tools/kernelverbs_parser/script_implemented_verbs.py
 		 */
 
-		/* 2. Check current context (builtinstable, local variables, etc.) */
-		/* Debug: log external lookup for string */
-		{
-			char cname[256];
-			copyptocstring(bsname, cname);
-			if (strcmp(cname, "string") == 0) {
-				fprintf(stderr, "[DEBUG] langgetdotparams: Trying langexternalgettable for 'string'\n");
-			}
-		}
+		/* 2. Check current context / EFP (kernel verb tables) */
         if (langexternalgettable (bsname, htable)) {
-			char cname[256];
-			copyptocstring(bsname, cname);
-			if (strcmp(cname, "string") == 0) {
-				fprintf(stderr, "[DEBUG] langgetdotparams: langexternalgettable found 'string', htable=%p\n", (void*)*htable);
-			}
 			goto L1;
 		}
 
-		/* 3. As last resort, check system.paths (if not blocked by recursion guard) */
+		/* 3. Search system.paths (if not blocked by recursion guard) */
 		if (fllocaldotparamsonly)
 			fl = false;
 		else {
-			/* Debug: log path search for string */
-			{
-				char cname[256];
-				copyptocstring(bsname, cname);
-				if (strcmp(cname, "string") == 0) {
-					fprintf(stderr, "[DEBUG] langgetdotparams: Trying langsearchpathvisit for 'string' as fallback\n");
-				}
-			}
-			fl = langsearchpathvisit (&langdirecttablelookup, bsname, htable); /*check user paths - direct lookup only*/
+			fl = langsearchpathvisit (&langdirecttablelookup, bsname, htable);
 
 			if (fl) {
-				/* Path search succeeded */
-				char cname[256];
-				copyptocstring(bsname, cname);
-				if (strcmp(cname, "string") == 0) {
-					fprintf(stderr, "[DEBUG] langgetdotparams: langsearchpathvisit SUCCESS for 'string', htable=%p\n", (void*)*htable);
-				}
 				goto L1;
 			}
 
@@ -4211,7 +4201,7 @@ boolean langtablelookup (hdlhashtable intable, bigstring bsname, hdlhashtable *h
 	{
 		char cname[256];
 		copyptocstring(bsname, cname);
-		log_error(LOG_COMP_LANG, "langtablelookup: found '%s' in table=%p, returning table=%p valueroutine=%p",
+		log_trace(LOG_COMP_LANG, "langtablelookup: found '%s' in table=%p, returning table=%p valueroutine=%p",
 		          cname, (void*)intable, (void*)intable, (void*)(**intable).valueroutine);
 	}
 
@@ -8436,7 +8426,7 @@ static hdltreenode langgetentrypoint (hdltreenode hcode, bigstring bsname, hdlha
 
 boolean langgetnodecode (hdlhashtable ht, bigstring bs, hdlhashnode hnode, hdltreenode *hcode) {
 
-	log_error(LOG_COMP_LANG, "langgetnodecode ENTER: name=%s ht=%p hnode=%p", PSTR(bs), (void*)ht, (void*)hnode);
+	log_trace(LOG_COMP_LANG, "langgetnodecode ENTER: name=%s ht=%p hnode=%p", PSTR(bs), (void*)ht, (void*)hnode);
 
 	tyvaluerecord val = (**hnode).val;
     if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_LANG))
@@ -8455,7 +8445,7 @@ boolean langgetnodecode (hdlhashtable ht, bigstring bs, hdlhashnode hnode, hdltr
 
 		case externalvaluetype: /*might be a script*/
 
-			log_error(LOG_COMP_LANG, "langgetnodecode: externalvaluetype case for %s", PSTR(bs));
+			log_trace(LOG_COMP_LANG, "langgetnodecode: externalvaluetype case for %s", PSTR(bs));
 
 			if (!langexternalvaltocode (val, hcode)) { // error; not a code node
 				log_error(LOG_COMP_LANG, "langgetnodecode: langexternalvaltocode FAILED for %s", PSTR(bs));
@@ -8464,20 +8454,20 @@ boolean langgetnodecode (hdlhashtable ht, bigstring bs, hdlhashnode hnode, hdltr
 			
 			if (*hcode == nil) { /*it needs to be compiled*/
 
-				log_error(LOG_COMP_LANG, "langgetnodecode: script needs compilation for %s", PSTR(bs));
-				log_error(LOG_COMP_LANG, "langgetnodecode: callback=%p", (void*)langcallbacks.scriptcompilecallback);
+				log_trace(LOG_COMP_LANG, "langgetnodecode: script needs compilation for %s", PSTR(bs));
+				log_trace(LOG_COMP_LANG, "langgetnodecode: callback=%p", (void*)langcallbacks.scriptcompilecallback);
 
 				if (!(*langcallbacks.scriptcompilecallback) (hnode, hcode)) { /*error compiling the script*/
 					log_error(LOG_COMP_LANG, "langgetnodecode: compilation FAILED for %s", PSTR(bs));
 					return (false);
 				}
 
-				log_error(LOG_COMP_LANG, "langgetnodecode: compilation SUCCESS for %s, hcode=%p", PSTR(bs), (void*)*hcode);
+				log_trace(LOG_COMP_LANG, "langgetnodecode: compilation SUCCESS for %s, hcode=%p", PSTR(bs), (void*)*hcode);
 
 				langseterrorline (herrornode);	/*4.1b4 dmb: compiling screws up the line/char globals*/
 				}
 
-			log_error(LOG_COMP_LANG, "langgetnodecode: about to break from externalvaluetype, hcode=%p", (void*)*hcode);
+			log_trace(LOG_COMP_LANG, "langgetnodecode: about to break from externalvaluetype, hcode=%p", (void*)*hcode);
             
 		if (log_enabled(LOG_LEVEL_DEBUG, LOG_COMP_LANG))
 			log_debug(LOG_COMP_LANG, "langgetnodecode post-compile hnode=0x%p hcode=0x%p",
@@ -8669,7 +8659,7 @@ static boolean langgethandlercode (hdlhashtable intable, hdltreenode hnamenode, 
 	
 	/*we've found the table entry, now let's try to get some code out of it*/
 
-	log_error(LOG_COMP_LANG, "langgethandlercode: about to call langgetnodecode for %s, ht=%p hnode=%p", PSTR(bs), (void*)ht, (void*)*hnode);
+	log_trace(LOG_COMP_LANG, "langgethandlercode: about to call langgetnodecode for %s, ht=%p hnode=%p", PSTR(bs), (void*)ht, (void*)*hnode);
 
 	if (!langgetnodecode (ht, bs, *hnode, hcode)) {
 
@@ -8680,7 +8670,7 @@ static boolean langgethandlercode (hdlhashtable intable, hdltreenode hnamenode, 
 		return (false);
 		}
 
-	log_error(LOG_COMP_LANG, "langgethandlercode: langgetnodecode SUCCESS for %s, hcode=%p", PSTR(bs), (void*)*hcode);
+	log_trace(LOG_COMP_LANG, "langgethandlercode: langgetnodecode SUCCESS for %s, hcode=%p", PSTR(bs), (void*)*hcode);
 
 	return (true);
 	} /*langgethandlercode*/
@@ -8744,49 +8734,15 @@ boolean langhandlercall (hdltreenode htree, hdltreenode hparam1, tyvaluerecord *
 	// tyvaluerecord osacode;
 	
 	setemptystring (bsfunctionname); /*must initialize for langgethandlercode error logic*/
-	
-	/* Debug: check what we're searching for */
-	{
-		bigstring bs;
-		if (langgetidentifier(htree, bs)) {
-			char cname[256];
-			copyptocstring(bs, cname);
-			if (strcmp(cname, "string") == 0) {
-				fprintf(stderr, "[DEBUG] langhandlercall: Searching for 'string'\n");
-			}
-		}
-	}
 
 	if (langgethandlercode (currenthashtable, htree, &hcode, &htable, &hnode)) { /*found it in root structure*/
-		/* Debug: check if we found string here */
-		bigstring bs;
-		if (langgetidentifier(htree, bs)) {
-			char cname[256];
-			copyptocstring(bs, cname);
-			if (strcmp(cname, "string") == 0) {
-				fprintf(stderr, "[DEBUG] langhandlercall: Found 'string' in currenthashtable, htable=%p hcode=%p\n",
-				        (void*)htable, (void*)hcode);
-			}
-		}
 		goto runhandler;
 	}
-	
+
 	if (fllangerror) /*found it, but error getting code*/
 		return (false);
-	
-	handlercode.htree = htree;
 
-	/* Debug: check if we're doing path search for string */
-	{
-		bigstring bs;
-		if (langgetidentifier(htree, bs)) {
-			char cname[256];
-			copyptocstring(bs, cname);
-			if (strcmp(cname, "string") == 0) {
-				fprintf(stderr, "[DEBUG] langhandlercall: Starting path search for 'string'\n");
-			}
-		}
-	}
+	handlercode.htree = htree;
 
 	if (langsearchpathvisit (&langgethandlervisit, nil, &htable)) {
 		

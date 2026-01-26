@@ -1593,7 +1593,7 @@ static boolean db_format_force_materialize_external_tables_recursive(
         boolean was_in_memory = (**hv).flinmemory;
 
 #if defined(FRONTIER_HEADLESS)
-        log_error(LOG_COMP_DB, "MATERIALIZE: name='%.*s' id=%d v6_adr=0x%llx was_in_memory=%d depth=%d",
+        log_debug(LOG_COMP_DB, "MATERIALIZE: name='%.*s' id=%d v6_adr=0x%llx was_in_memory=%d depth=%d",
                   (int) bsname[0], (char *) &bsname[1], var_id, (unsigned long long) v6_adr, (int) was_in_memory, depth);
 #endif
 
@@ -1726,7 +1726,7 @@ static boolean db_format_force_materialize_external_tables_recursive(
         (**hv).oldaddress = nildbaddress;
 
 #if defined(FRONTIER_HEADLESS)
-        log_error(LOG_COMP_DB, "CLEARED oldaddress: name='%.*s' type=%d was=0x%llx now=nil depth=%d",
+        log_debug(LOG_COMP_DB, "CLEARED oldaddress: name='%.*s' type=%d was=0x%llx now=nil depth=%d",
                   (int) bsname[0], (char *) &bsname[1], var_id,
                   (unsigned long long) old_oldaddr, depth);
 #endif
