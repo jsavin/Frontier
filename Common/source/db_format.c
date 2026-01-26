@@ -228,6 +228,13 @@ boolean db_format_prepare_runtime(void) {
     if (!initlang())
         return false;
 
+#ifdef FRONTIER_HEADLESS
+    /* Initialize script compilation callbacks for JIT compilation */
+    extern void headless_init_script_compiler(void);
+    headless_init_script_compiler();
+    log_trace(LOG_COMP_STARTUP, "db_format_prepare_runtime: initialized headless script compiler");
+#endif
+
     if (!inittablestructure())
         return false;
 

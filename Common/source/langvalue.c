@@ -3780,12 +3780,19 @@ static boolean langdirecttablelookup (hdlhashtable htable, bigstring bsname, hdl
 		return (false);
 	}
 
-	/* Convert to table if it's a table type */
-	boolean fl = tablevaltotable (val, hresult, hnode);
+	/* Accept ANY type for final component resolution.
+	 * Return the parent table so caller can perform final lookup.
+	 * This follows the same pattern as langtablelookup().
+	 *
+	 * The caller (typically langsymbolreference) will extract the actual
+	 * value from the parent table, regardless of its type (script, scalar, table, etc.)
+	 */
+	*hresult = htable;
+
 
 	pophashtable ();
 
-	return (fl);
+	return (true);
 }
 
 
@@ -3841,6 +3848,7 @@ static boolean langsearchpathvisit (tysearchpathcallback visit, bigstring bsname
 
 		if (hparent == nil)
 			goto next;
+
 
 		/* Resolve bs_local in hparent to get the actual target table.
 		 * For example, if address is @system.verbs.builtins:
@@ -4145,9 +4153,16 @@ boolean langtablelookup (hdlhashtable intable, bigstring bsname, hdlhashtable *h
 	
 	if (!hashtablesymbolexists (intable, bsname))
 		return (false);
-	
+
 	*htable = intable; /*don't set this on failure*/
-	
+
+	{
+		char cname[256];
+		copyptocstring(bsname, cname);
+		log_error(LOG_COMP_LANG, "langtablelookup: found '%s' in table=%p, returning table=%p valueroutine=%p",
+		          cname, (void*)intable, (void*)intable, (void*)(**intable).valueroutine);
+	}
+
 	return (true);
 	} /*langtablelookup*/
 
@@ -8369,6 +8384,8 @@ static hdltreenode langgetentrypoint (hdltreenode hcode, bigstring bsname, hdlha
 
 boolean langgetnodecode (hdlhashtable ht, bigstring bs, hdlhashnode hnode, hdltreenode *hcode) {
 
+	log_error(LOG_COMP_LANG, "langgetnodecode ENTER: name=%s ht=%p hnode=%p", PSTR(bs), (void*)ht, (void*)hnode);
+
 	tyvaluerecord val = (**hnode).val;
     if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_LANG))
         log_trace(LOG_COMP_LANG, "langgetnodecode: table=%p name=%s valuetype=%d valueroutine=%p",
@@ -8383,19 +8400,32 @@ boolean langgetnodecode (hdlhashtable ht, bigstring bs, hdlhashnode hnode, hdltr
                 (void *)val.data.externalvalue);
 	
 	switch (val.valuetype) {
-		
+
 		case externalvaluetype: /*might be a script*/
-			
-			if (!langexternalvaltocode (val, hcode)) // error; not a code node
+
+			log_error(LOG_COMP_LANG, "langgetnodecode: externalvaluetype case for %s", PSTR(bs));
+
+			if (!langexternalvaltocode (val, hcode)) { // error; not a code node
+				log_error(LOG_COMP_LANG, "langgetnodecode: langexternalvaltocode FAILED for %s", PSTR(bs));
 				return (false);
+			}
 			
 			if (*hcode == nil) { /*it needs to be compiled*/
-				
-				if (!(*langcallbacks.scriptcompilecallback) (hnode, hcode)) /*error compiling the script*/
+
+				log_error(LOG_COMP_LANG, "langgetnodecode: script needs compilation for %s", PSTR(bs));
+				log_error(LOG_COMP_LANG, "langgetnodecode: callback=%p", (void*)langcallbacks.scriptcompilecallback);
+
+				if (!(*langcallbacks.scriptcompilecallback) (hnode, hcode)) { /*error compiling the script*/
+					log_error(LOG_COMP_LANG, "langgetnodecode: compilation FAILED for %s", PSTR(bs));
 					return (false);
-				
+				}
+
+				log_error(LOG_COMP_LANG, "langgetnodecode: compilation SUCCESS for %s, hcode=%p", PSTR(bs), (void*)*hcode);
+
 				langseterrorline (herrornode);	/*4.1b4 dmb: compiling screws up the line/char globals*/
 				}
+
+			log_error(LOG_COMP_LANG, "langgetnodecode: about to break from externalvaluetype, hcode=%p", (void*)*hcode);
             
 		if (log_enabled(LOG_LEVEL_DEBUG, LOG_COMP_LANG))
 			log_debug(LOG_COMP_LANG, "langgetnodecode post-compile hnode=0x%p hcode=0x%p",
@@ -8582,14 +8612,20 @@ static boolean langgethandlercode (hdlhashtable intable, hdltreenode hnamenode, 
 		}
 	
 	/*we've found the table entry, now let's try to get some code out of it*/
-	
+
+	log_error(LOG_COMP_LANG, "langgethandlercode: about to call langgetnodecode for %s, ht=%p hnode=%p", PSTR(bs), (void*)ht, (void*)*hnode);
+
 	if (!langgetnodecode (ht, bs, *hnode, hcode)) {
-		
+
+		log_error(LOG_COMP_LANG, "langgethandlercode: langgetnodecode FAILED for %s", PSTR(bs));
+
 		langparamerror (notfunctionerror, bs);
-		
+
 		return (false);
 		}
-	
+
+	log_error(LOG_COMP_LANG, "langgethandlercode: langgetnodecode SUCCESS for %s, hcode=%p", PSTR(bs), (void*)*hcode);
+
 	return (true);
 	} /*langgethandlercode*/
 
