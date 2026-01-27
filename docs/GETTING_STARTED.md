@@ -27,7 +27,10 @@ This guide walks you through setting up Frontier from scratch, building the CLI,
 | Disk Space | 500 MB | 1 GB+ |
 | RAM | 4 GB | 8 GB+ |
 
-**Note**: Linux support is in progress. Windows support is planned but not yet available.
+**Notes**:
+- frontier-cli is built as a universal binary and runs natively on both Intel and Apple Silicon Macs
+- All vendored dependencies (cmake, Paige library) are universal binaries
+- Linux support is in progress. Windows support is planned but not yet available.
 
 ---
 

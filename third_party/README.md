@@ -4,7 +4,7 @@
 | --- | --- | --- | --- | --- | --- |
 | libyaml | https://github.com/yaml/libyaml | MIT | 0.2.5 release | YAML parser used by `tools/strings_compiler` to load STR# replacements | Vendored source under `third_party/libyaml`; linked directly by the strings compiler; no local patches beyond build glue. |
 | Paige (HERMES fork) | https://github.com/nmatavka/HERMES-Paige | GPL-2.0 | commit `a2fe9b1` (2024-01-19) | Rich text engine powering WPText serialization/migration | Snapshot checked into `third_party/Paige` (no longer a submodule) with our headless platform file `PGPLATFO/PGUNX.C`. `CMakeLists.txt` is patched to append that file, define `UNIX_COMPILE`/`C_LIBRARY`/`NO_OS_INLINE`, and treat `PGPLATFO/PGIO.C`, `PGSCRAP.C`, and `PGOSUTL.C` as C sources (these files were originally built as C++ due to the `.C` extension, which produced mangled exports). Those three files also carry small signature fixes so `pgScrapMemoryWrite`, `pgStandardRead/Write`, `pgOSRead/Write`, and `pgUnicodeToBytes` match their headers (`size_t` parameters instead of `long`). Headless runtime links `libpaige.a` built from this tree. |
-| CMake | https://cmake.org | BSD-3-Clause | 3.29.6 | Builds Paige (system image lacks cmake) | Built from source into `third_party/cmake-install/`; Paige Makefiles call `third_party/cmake-install/bin/cmake`. |
+| CMake | https://cmake.org | BSD-3-Clause | 3.29.6 | Builds Paige (system image lacks cmake) | Official pre-built universal binary (arm64 + x86_64) installed to `third_party/cmake-install/`; Paige Makefiles call `third_party/cmake-install/bin/cmake`. |
 
 Add new entries here whenever we vendor or patch third-party code so future upgrades stay tractable.
 
@@ -26,7 +26,36 @@ Add new entries here whenever we vendor or patch third-party code so future upgr
 5. Update the commit hash in the table above and note any additional integration steps.
 
 ### CMake
-1. Download the desired CMake source tarball from https://cmake.org/download/.
-2. Extract into `third_party/cmake-src`, build/install into `third_party/cmake-install` (see previous bootstrap command history for flags).
-3. Verify `third_party/cmake-install/bin/cmake --version` reports the new version.
-4. Update this README with the new version number.
+
+**Note**: We use the official pre-built universal binary from cmake.org to ensure both Intel and Apple Silicon Mac support.
+
+1. Download the universal binary from https://cmake.org/download/ (look for "macOS universal" under Binary distributions)
+   ```bash
+   cd third_party
+   curl -L -O https://github.com/Kitware/CMake/releases/download/v3.29.6/cmake-3.29.6-macos-universal.tar.gz
+   ```
+
+2. Extract and install:
+   ```bash
+   rm -rf cmake-install
+   tar -xzf cmake-3.29.6-macos-universal.tar.gz
+   mv cmake-3.29.6-macos-universal cmake-install
+   cd cmake-install
+   ln -s CMake.app/Contents/bin bin
+   ln -s CMake.app/Contents/share share
+   ```
+
+3. Verify universal binary:
+   ```bash
+   lipo -info cmake-install/bin/cmake
+   # Should show: Architectures in the fat file: ... are: x86_64 arm64
+   ```
+
+4. Update the pinned version in the table above.
+
+5. Test by rebuilding Paige:
+   ```bash
+   rm -rf Paige/build-headless
+   cmake-install/bin/cmake -S Paige -B Paige/build-headless -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+   cmake-install/bin/cmake --build Paige/build-headless
+   ```
