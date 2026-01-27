@@ -39,10 +39,16 @@ Frontier resolves verbs (function names) through multiple mechanisms depending o
 ### Path 3: Builtin/EFP Resolution
 
 **Call Chain**:
-1. `langexternalgettable()` - Checks `builtinstable` (EFP)
-2. Returns EFP function pointers for built-in verbs
+1. `langexternalgettable()` - Checks local scope and legacy paths
+2. `langhandlercall()` - For verb dispatch, checks efptable AFTER system.paths
 
-**Gotcha**: Should NOT be checked before `system.paths` for terse names
+**Fixed (PR #352)**: The explicit EFP table search was removed from `langexternalgettable()`.
+Previously, EFP tables were searched BEFORE `system.paths`, causing introspection bugs:
+- `parentOf(string.mid)` returned `system.compiler.["kernel"].string` instead of `system.verbs.builtins.string`
+- `typeOf(op.outlineToXml)` returned `tokn` instead of `scpt`
+
+Verb dispatch still works because `langhandlercall()` has its own search order that checks
+efptable AFTER system.paths (see langvalue.c lines ~8737-8760).
 
 ## Function Reference
 
@@ -83,6 +89,7 @@ Frontier resolves verbs (function names) through multiple mechanisms depending o
 - ⚠️ **Bare identifier path search not implemented** (Issue #344)
 - ⚠️ `langtablelookup` may not be called in current code
 - ✅ `langdirecttablelookup` fixed to return parent table (2026-01-25, PR #344)
+- ✅ EFP introspection bugs fixed (2026-01-26, PR #352) - `parentOf()` and `typeOf()` now return correct database paths
 
 ## Related Files
 
@@ -93,4 +100,5 @@ Frontier resolves verbs (function names) through multiple mechanisms depending o
 
 ## Update History
 
+- 2026-01-26: Updated Path 3 (EFP Resolution) to reflect PR #352 fix
 - 2026-01-25: Initial version created during Issue #344 investigation
