@@ -55,6 +55,7 @@ CMAKE_TARBALL_URL="https://github.com/Kitware/CMake/releases/download/v${CMAKE_V
 CMAKE_TARBALL_PATH="third_party/${CMAKE_TARBALL}"
 CMAKE_INSTALL_DIR="third_party/cmake-install"
 CMAKE_EXTRACTED_DIR="third_party/cmake-${CMAKE_VERSION}-macos-universal"
+CMAKE_EXPECTED_SHA256="c3029b29fa47747b69a1e0d3466af62b26af9ff6a5f10608a3bcdcc076810e4c"
 
 print_status "Installing cmake ${CMAKE_VERSION} universal binary"
 echo "  Source: ${CMAKE_TARBALL_URL}"
@@ -68,11 +69,27 @@ mkdir -p third_party
 if [[ ! -f "$CMAKE_TARBALL_PATH" ]]; then
     print_status "Downloading cmake ${CMAKE_VERSION} universal binary..."
     print_warning "This may take a few minutes (~50 MB download)..."
-    curl -L -o "$CMAKE_TARBALL_PATH" "$CMAKE_TARBALL_URL"
+    if ! curl -L --fail --show-error -o "$CMAKE_TARBALL_PATH" "$CMAKE_TARBALL_URL"; then
+        print_error "Download failed"
+        rm -f "$CMAKE_TARBALL_PATH"
+        exit 1
+    fi
     print_success "Download complete"
 else
     print_status "Using cached tarball: $CMAKE_TARBALL_PATH"
 fi
+
+# Verify checksum
+print_status "Verifying checksum..."
+ACTUAL_CHECKSUM=$(shasum -a 256 "$CMAKE_TARBALL_PATH" | cut -d' ' -f1)
+if [[ "$ACTUAL_CHECKSUM" != "$CMAKE_EXPECTED_SHA256" ]]; then
+    print_error "Checksum verification failed!"
+    echo "  Expected: $CMAKE_EXPECTED_SHA256"
+    echo "  Got:      $ACTUAL_CHECKSUM"
+    rm -f "$CMAKE_TARBALL_PATH"
+    exit 1
+fi
+print_success "Checksum verified"
 
 # Backup existing install if it exists
 if [[ -d "$CMAKE_INSTALL_DIR" ]]; then

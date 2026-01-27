@@ -6,8 +6,17 @@ cmake-src/bin/
 cmake-src/**/*.o
 cmake-src/**/*.a
 
-# Ignore CMake installation directory (will be rebuilt)
-cmake-install/
+# Ignore CMake app bundle bloat (Qt frameworks, docs, etc.)
+cmake-install/CMake.app/
+
+# Allow only cmake binaries to be tracked
+!cmake-install/CMake.app/Contents/
+!cmake-install/CMake.app/Contents/bin/
+!cmake-install/CMake.app/Contents/bin/**
+
+# Allow symlinks in root
+!cmake-install/bin
+!cmake-install/share
 
 # Ignore CMake build stage directories
 cmake-build-stage1/
