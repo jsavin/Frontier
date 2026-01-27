@@ -29,6 +29,15 @@ Add new entries here whenever we vendor or patch third-party code so future upgr
 
 **Note**: We use the official pre-built universal binary from cmake.org to ensure both Intel and Apple Silicon Mac support.
 
+**Quick Install**:
+```bash
+./tools/install_cmake_universal.sh
+```
+
+This script automatically downloads, extracts, and verifies the cmake universal binary.
+
+**Manual Install** (if needed):
+
 1. Download the universal binary from https://cmake.org/download/ (look for "macOS universal" under Binary distributions)
    ```bash
    cd third_party
