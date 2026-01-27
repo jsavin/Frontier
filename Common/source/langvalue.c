@@ -7598,36 +7598,54 @@ static boolean namefunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 
 
 static boolean parentfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
-	
+
 	/*
 	4.0b7 4/26/96 dmb: new verb
-	
+
 	5.0d19 dmb: special-case file window table as nil parent
 
 	5.0b7 dmb: deal with items in locally-created table
-	
-	5.0.2 dmb: we now call findinparenttable, which encorporated our patentsearch 
+
+	5.0.2 dmb: we now call findinparenttable, which encorporated our patentsearch
 	functionality. the table's parenthashtable is maintained for better performance
+
+	2026-01-27: Fix nested function calls by evaluating parameter first if needed
 	*/
-	
+
 	register hdltreenode hp1 = hparam1;
 	hdlhashtable htable = nil;
 	bigstring bsname;
 	boolean flnoparent;
-	
+	tyvaluerecord veval;
+	boolean fladdress = false;
+
 	if (!langcheckparamcount (hp1, 1))
 		return (false);
-	
+
 	disablelangerror (); /*any error will result in a null return*/
-	
-	if (!langgetdotparams (hp1, &htable, bsname)) { /*need to try something else*/
-		
-		if ((**hp1).nodetype == arrayop) { /*may be array into record*/
-		
-			parsearrayreference (hp1, nil, &htable, bsname, nil);
+
+	/* First try to evaluate the parameter in case it's a function call or other expression */
+	if (getreadonlyparamvalue (hp1, 1, &veval)) {
+
+		if (veval.valuetype == addressvaluetype) {
+
+			if (getaddressvalue (veval, &htable, bsname))
+				fladdress = true;
 			}
 		}
-	
+
+	/* If we didn't get an address from evaluation, try the traditional dot notation */
+	if (!fladdress) {
+
+		if (!langgetdotparams (hp1, &htable, bsname)) { /*need to try something else*/
+
+			if ((**hp1).nodetype == arrayop) { /*may be array into record*/
+
+				parsearrayreference (hp1, nil, &htable, bsname, nil);
+				}
+			}
+		}
+
 	enablelangerror ();
 	
 	if (htable == nil) {
