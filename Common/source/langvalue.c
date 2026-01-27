@@ -7632,6 +7632,15 @@ static boolean parentfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 			if (getaddressvalue (veval, &htable, bsname))
 				fladdress = true;
 			}
+
+		/*
+		2026-01-27 jsavin: Dispose of evaluated value. getreadonlyparamvalue() may return
+		either a readonly reference (no disposal needed) or a newly allocated temporary
+		value (requires disposal). The fltmpdata flag indicates ownership. When the param
+		is a function call like parentOf(nameOf(x)), evaluatetree() creates a new value
+		that we must free to avoid leaking memory.
+		*/
+		disposevaluerecord (veval, false);
 		}
 
 	/* If we didn't get an address from evaluation, try the traditional dot notation */
