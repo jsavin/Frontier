@@ -148,6 +148,7 @@ void repl_output_help(void) {
 	fputs("Available commands:\n", stdout);
 	fputs("  /exit          Exit the REPL\n", stdout);
 	fputs("  /help          Show this help message\n", stdout);
+	fputs("  /keycodes      Debug terminal key sequences\n", stdout);
 	fputs("\n", stdout);
 	fputs("QuickScript Model - Variable Persistence:\n", stdout);
 	fputs("  Local variables (x = 5) don't persist between evaluations\n", stdout);
