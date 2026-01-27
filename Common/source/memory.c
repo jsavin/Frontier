@@ -1671,7 +1671,7 @@ boolean loadlongfromdiskhandle (Handle hload, long *ixload, long *x) {
 				return (false);
 			dbaddress full_adr = db_format_read_be64(adrbytes);
 			*x = (long) full_adr;
-			log_error(LOG_COMP_DB, "loadlongfromdiskhandle: Read 64-bit adr=0x%llx, TRUNCATED to long=0x%lx (sizeof(long)=%d)",
+			log_trace(LOG_COMP_MIGRATION, "loadlongfromdiskhandle: Read 64-bit adr=0x%llx, TRUNCATED to long=0x%lx (sizeof(long)=%d)",
 			          (unsigned long long)full_adr, (unsigned long)*x, (int)sizeof(long));
 			return (true);
 		} else if (remaining == (long)sizeof(int32_t)) {
