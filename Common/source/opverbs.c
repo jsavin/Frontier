@@ -947,7 +947,7 @@ boolean opverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *hvariab
 	if (!loadlongfromdiskhandle (hpacked, ixload, &rawadr))
 		return (false);
 
-	log_error(LOG_COMP_DB, "opverbunpack: rawadr=0x%lx (32-bit long), casting to dbaddress", (unsigned long)rawadr);
+	log_trace(LOG_COMP_MIGRATION, "opverbunpack: rawadr=0x%lx (32-bit long), casting to dbaddress", (unsigned long)rawadr);
 
 	return (newoutlinevariable (false, (dbaddress) rawadr, (hdloutlinevariable *) hvariable));
 	} /*opverbunpack*/

@@ -46,6 +46,7 @@ static const char *component_names[] = {
     [LOG_COMP_EXTERNAL]     = "external",
     [LOG_COMP_STARTUP]      = "startup",
     [LOG_COMP_THREAD]       = "thread",
+    [LOG_COMP_MIGRATION]    = "migration",
     [LOG_COMP_GENERAL]      = "general"
 };
 
@@ -112,17 +113,18 @@ static int parse_component(const char *str) {
  */
 static void parse_components(const char *str) {
     if (!str) {
-        // Default: enable all components
+        // Default: enable all components EXCEPT migration (disabled by default)
         for (int i = 0; i < LOG_COMP_COUNT; i++) {
-            g_component_enabled[i] = true;
+            g_component_enabled[i] = (i != LOG_COMP_MIGRATION);
         }
         return;
     }
 
     // Check for "all" or "*"
     if (strcasecmp(str, "all") == 0 || strcmp(str, "*") == 0) {
+        // Enable all components EXCEPT migration (disabled by default)
         for (int i = 0; i < LOG_COMP_COUNT; i++) {
-            g_component_enabled[i] = true;
+            g_component_enabled[i] = (i != LOG_COMP_MIGRATION);
         }
         return;
     }

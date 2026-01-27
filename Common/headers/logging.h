@@ -48,6 +48,7 @@ typedef enum {
     LOG_COMP_EXTERNAL,        // External objects (langexternal.c)
     LOG_COMP_STARTUP,         // Startup/initialization (langstartup.c)
     LOG_COMP_THREAD,          // Thread registry (threadregistry.c)
+    LOG_COMP_MIGRATION,       // Database v6→v7 migration diagnostics (disabled by default)
     LOG_COMP_GENERAL,         // General/uncategorized
     LOG_COMP_COUNT            // Number of components (internal use)
 } log_component_t;
