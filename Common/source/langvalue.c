@@ -7622,7 +7622,13 @@ static boolean parentfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	if (!langcheckparamcount (hp1, 1))
 		return (false);
 
-	disablelangerror (); /*any error will result in a null return*/
+	/*
+	 * Disable errors during evaluation attempt. If the parameter is a function call
+	 * that produces an error, we want to fall back to langgetdotparams() rather than
+	 * propagating the error. This allows parentOf() to work with both evaluated
+	 * expressions and direct notation.
+	 */
+	disablelangerror ();
 
 	/* First try to evaluate the parameter in case it's a function call or other expression */
 	if (getreadonlyparamvalue (hp1, 1, &veval)) {
@@ -7699,24 +7705,57 @@ static boolean parentfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 
 
 static boolean indexfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
-	
+
 	/*
 	6.1d7 AR: Started implementation of indexOf verb.
+
+	2026-01-27: Fix nested function calls by evaluating parameter first if needed
 	*/
-	
+
 	register hdltreenode hp1 = hparam1;
 	hdlhashtable htemp, htable = nil;
 	bigstring bsname, bstemp;
 	register hdlhashnode nomad;
 	long ix = 0;
-	
+	tyvaluerecord veval;
+	boolean fladdress = false;
+
 	if (!langcheckparamcount (hp1, 1))
 		return (false);
-	
+
+	/*
+	 * Disable errors during evaluation attempt. If the parameter is a function call
+	 * that produces an error, we want to fall back to langgetdotparams() rather than
+	 * propagating the error. This allows indexOf() to work with both evaluated
+	 * expressions and direct notation.
+	 */
 	disablelangerror ();
 
-	if (!langgetdotparams (hp1, &htable, bsname))
-		goto exit;
+	/* First try to evaluate the parameter in case it's a function call or other expression */
+	if (getreadonlyparamvalue (hp1, 1, &veval)) {
+
+		if (veval.valuetype == addressvaluetype) {
+
+			if (getaddressvalue (veval, &htable, bsname))
+				fladdress = true;
+			}
+
+		/*
+		2026-01-27 jsavin: Dispose of evaluated value. getreadonlyparamvalue() may return
+		either a readonly reference (no disposal needed) or a newly allocated temporary
+		value (requires disposal). The fltmpdata flag indicates ownership. When the param
+		is a function call like indexOf(parentOf(x)), evaluatetree() creates a new value
+		that we must free to avoid leaking memory.
+		*/
+		disposevaluerecord (veval, false);
+		}
+
+	/* If we didn't get an address from evaluation, try the traditional dot notation */
+	if (!fladdress) {
+
+		if (!langgetdotparams (hp1, &htable, bsname))
+			goto exit;
+		}
 
 	if (htable == nil && !equalstrings (bsname, nameroottable))	// leave it nil if we're at root
 		langsearchpathlookup (bsname, &htable);
