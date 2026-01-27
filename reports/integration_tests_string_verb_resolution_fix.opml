@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>String Verb Resolution Fix (string_verb_resolution_fix)</title>
-    <dateCreated>Mon, 26 Jan 2026 10:17:33 GMT</dateCreated>
+    <dateCreated>Tue, 27 Jan 2026 05:12:53 GMT</dateCreated>
   </head>
   <body>
     <outline text="CRITICAL - string(123) coerces integer to string - BUG: string(123) currently fails because:&#10;1. langsearchpathvisit() checks path01 (system.verbs.globals) first&#10;2. Finds &quot;string&quot; SCRIPT → langdirecttablelookup() calls tablevaltotable()&#10;3. tablevaltotable() rejects SCRIPT type → returns false&#10;4. Continues to path03 (system.verbs.builtins), finds &quot;string&quot; TABLE&#10;5. Tries to CALL a table (not a script) → error!&#10;&#10;EXPECTED: Resolve to system.verbs.globals.string SCRIPT, execute coercion.&#10;">
@@ -239,11 +239,9 @@
         <outline text="system.verbs.builtins.string(123)"/>
       </outline>
     </outline>
-    <outline text="Regression - webserver.init still works - Regression test from PR #337 and PR #342.&#10;Ensure webserver.init (external script) still resolves correctly.&#10;NOTE: webserver.init may not exist in v7 database.&#10;">
+    <outline text="Regression - webserver.init still works - Regression test from PR #337, PR #342, and PR #351.&#10;Ensure webserver.init (external script) still resolves correctly.&#10;Fixed in PR #351: webserver processor excluded from EFP whitelist,&#10;allowing builtins.webserver table (with init script) to be found.&#10;">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
-        <outline text="skip: True"/>
-        <outline text="reason: webserver.init may not exist in migrated database - separate from verb resolution fix"/>
       </outline>
       <outline text="Script">
         <outline text="defined(webserver.init)"/>

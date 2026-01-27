@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Frontier Integration Test Categories</title>
-    <dateCreated>Mon, 26 Jan 2026 10:17:33 GMT</dateCreated>
+    <dateCreated>Tue, 27 Jan 2026 05:12:53 GMT</dateCreated>
   </head>
   <body>
     <outline text="Builtins Priority (builtins_priority)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_builtins_priority.opml"/>
@@ -11,6 +11,7 @@
     <outline text="Db Migration (db_migration)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_db_migration.opml"/>
     <outline text="Db Verbs (db_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_db_verbs.opml"/>
     <outline text="Dialog Verbs (dialog_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_dialog_verbs.opml"/>
+    <outline text="Efp Introspection (efp_introspection)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_efp_introspection.opml"/>
     <outline text="File Dialog Verbs (file_dialog_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_file_dialog_verbs.opml"/>
     <outline text="File Verbs (file_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_file_verbs.opml"/>
     <outline text="Html Core Tests (html_core_tests)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_html_core_tests.opml"/>
