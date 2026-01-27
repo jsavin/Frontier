@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Frontier Integration Test Categories</title>
-    <dateCreated>Tue, 27 Jan 2026 05:12:53 GMT</dateCreated>
+    <dateCreated>Tue, 27 Jan 2026 09:12:06 GMT</dateCreated>
   </head>
   <body>
     <outline text="Builtins Priority (builtins_priority)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_builtins_priority.opml"/>
@@ -20,6 +20,7 @@
     <outline text="Html Text Processing Phase2 Tests (html_text_processing_phase2_tests)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_html_text_processing_phase2_tests.opml"/>
     <outline text="Lang Verbs (lang_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_lang_verbs.opml"/>
     <outline text="Migration Externals (migration_externals)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_migration_externals.opml"/>
+    <outline text="Nested Parentof (nested_parentof)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_nested_parentof.opml"/>
     <outline text="Op Verbs (op_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_op_verbs.opml"/>
     <outline text="Opattributes Verbs (opattributes_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_opattributes_verbs.opml"/>
     <outline text="Path Resolution (path_resolution)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_path_resolution.opml"/>
