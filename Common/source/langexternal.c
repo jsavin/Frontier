@@ -297,66 +297,31 @@ boolean langexternalgettable (bigstring bs, hdlhashtable *htable) {
 		log_trace(LOG_COMP_EXTERNAL, "langexternalgettable: info hit %s -> %p", PSTR(bs), (void *)*htable);
         return true;
     }
-	log_trace(LOG_COMP_EXTERNAL, "langexternalgettable: getinfo miss %s, trying efptable fallback", PSTR(bs));
+	log_trace(LOG_COMP_EXTERNAL, "langexternalgettable: getinfo miss %s, trying fallbacks", PSTR(bs));
 #if defined(FRONTIER_HEADLESS)
-    /* Headless fallback: look up external function processor under efptable.
-       2026-01-12 Codex: Use headless-created efptable if available, not database efptable.
-       When database is loaded, global efptable gets overwritten with tokenvaluetype entries.
-       We need to use the original headless-created table with working valueroutines. */
-    extern hdlhashtable get_headless_efptable(void);
-    hdlhashtable efp_to_search = get_headless_efptable();
-    if (efp_to_search == nil) {
-        efp_to_search = efptable;  /* Fallback if not saved yet */
-    }
-
-    {
-        hdlhashnode hnode = nil;
-        tyvaluerecord val;
-        pushhashtable(efp_to_search);
-		log_trace(LOG_COMP_EXTERNAL, "langexternalgettable: searching efptable=%p (headless=%p db=%p) for %s (len=%d)",
-                  (void *)efp_to_search, (void*)get_headless_efptable(), (void *)efptable, PSTR(bs), (int)bs[0]);
-        if (hashtablelookupnode(efp_to_search, bs, &hnode)) {
-			log_trace(LOG_COMP_EXTERNAL, "langexternalgettable: found %s in efptable hnode=%p", PSTR(bs), (void *)hnode);
-            val = (**hnode).val;
-			log_trace(LOG_COMP_EXTERNAL, "langexternalgettable: val.valuetype=%d", (int)val.valuetype);
-
-            /* 2026-01-12 Codex: Skip tokenvaluetype entries in efptable.
-               When database is loaded, efptable gets populated with tokenvaluetype entries
-               from the database. These are stale references that don't have valueroutines.
-               The actual working processor tables were created by headless runtime init
-               and are accessible through other lookup paths (roottable fallback, etc.).
-               Skip tokens here and let the code fall through to those working tables. */
-            if (val.valuetype == tokenvaluetype) {
-                /* Token types appear in efptable after database load (serialization artifact).
-                   These are not functional processors, so fall through to other lookups. */
-                log_debug(LOG_COMP_EXTERNAL, "langexternalgettable: tokenvaluetype skipped, falling through to other lookups");
-                /* Don't return - let it fall through to roottable/systemtable fallbacks */
-            }
-            else if (tablevaltotable (val, htable, hnode)) {
-				log_trace(LOG_COMP_EXTERNAL, "langexternalgettable: tablevaltotable SUCCESS htable=%p", (void *)*htable);
-                pophashtable();
-                return true;
-            }
-            else {
-			    log_trace(LOG_COMP_EXTERNAL, "langexternalgettable: tablevaltotable FAILED");
-            }
-
-            /* Direct headless coercion: extract table pointer from external
-			   Only attempt this if value is externalvaluetype to avoid
-			   segfault when casting non-external values */
-            if (val.valuetype == externalvaluetype) {
-                hdlexternalvariable hv3 = (hdlexternalvariable) val.data.externalvalue;
-                if (hv3 && (**hv3).id == idtableprocessor) {
-                    *htable = (hdlhashtable) (**hv3).variabledata;
-                    if (*htable != nil) {
-                        pophashtable();
-                        return true;
-                    }
-                }
-            }
-        }
-        pophashtable();
-    }
+    /* 2026-01-26 Issue #352: REMOVED explicit EFP table search
+     *
+     * The explicit efptable search was causing EFP processor tables (string, file,
+     * clock, etc.) to be found BEFORE database tables via system.paths. This broke
+     * introspection operations like parentOf() and typeOf().
+     *
+     * Example bugs this caused:
+     * - parentOf(string.mid) returned @system.compiler.["kernel"].string
+     *   instead of @system.verbs.builtins.string
+     * - typeOf(op.outlineToXml) returned 'tokn' instead of 'scpt'
+     *
+     * WHY REMOVING THIS IS SAFE:
+     * Verb dispatch (calling string.mid(), file.exists(), etc.) still works because
+     * langhandlercall() has its own search order that explicitly checks efptable
+     * AFTER system.paths. See langhandlercall() at line ~8756 in langvalue.c:
+     *   1. langgethandlercode(currenthashtable, ...) - local context
+     *   2. langsearchpathvisit(&langgethandlervisit, ...) - system.paths
+     *   3. langgethandlercode(efptable, ...) - EFP tables LAST
+     *
+     * With the explicit EFP search removed from here:
+     * - Introspection (parentOf, typeOf) finds database tables correctly
+     * - Verb dispatch still works via langhandlercall's explicit efptable search
+     */
 
     /* Direct lookup in root/system tables as headless-specific fallback.
        In headless mode, system tables (system, system.verbs, builtins, agents, root) are

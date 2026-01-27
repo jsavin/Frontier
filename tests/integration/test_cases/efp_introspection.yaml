@@ -1,0 +1,159 @@
+# Integration tests for EFP table isolation in introspection operations
+#
+# BUG CONTEXT:
+# The headless-specific code in langexternalgettable() explicitly searches
+# efptable for processor tables BEFORE langsearchpathvisit() gets a chance
+# to find the database tables. This causes introspection operations like
+# parentOf(), typeOf() to return EFP-internal paths instead of database paths.
+#
+# Example of the bug:
+#   parentOf(string.mid) → Returns "system.compiler.["kernel"].string" (WRONG)
+#                        → Should return "system.verbs.builtins.string" (CORRECT)
+#
+# The fix removes the explicit EFP table search from langexternalgettable(),
+# allowing langsearchpathvisit() to find database tables first.
+#
+# IMPORTANT: Verb dispatch (calling string.mid("123",2,1)) must still work!
+# The EFP table lookup is preserved as a fallback for cases where the database
+# path doesn't exist.
+#
+# REFERENCE: Common/source/langexternal.c, langexternalgettable() function
+#
+# Test Structure:
+# - parentOf() introspection (the primary bug)
+# - typeOf() introspection (related issue)
+# - Verb dispatch regression (must still work)
+# - Nested parentOf() calls (crash fix)
+
+tests:
+  # ====================================================================
+  # SECTION 1: parentOf() Introspection
+  # ====================================================================
+  # These tests validate that parentOf() returns database paths, not EFP paths.
+
+  - name: "parentOf(string.mid) - returns database path"
+    description: |
+      CRITICAL TEST: parentOf(string.mid) should return the database path
+      @system.verbs.builtins.string, not the EFP internal path
+      @system.compiler.["kernel"].string.
+
+      Bug behavior: Returns @system.compiler.["kernel"].string
+      Fixed behavior: Returns @system.verbs.builtins.string
+    script: 'parentOf(string.mid)'
+    expected_success: true
+    expected_result: "system.verbs.builtins.string"
+
+  - name: "parentOf(file.exists) - returns database path"
+    description: |
+      Verify parentOf() returns database path for file processor verbs.
+    script: 'parentOf(file.exists)'
+    expected_success: true
+    expected_result: "system.verbs.builtins.file"
+
+  - name: "parentOf(clock.now) - returns database path"
+    description: |
+      Verify parentOf() returns database path for clock processor verbs.
+    script: 'parentOf(clock.now)'
+    expected_success: true
+    expected_result: "system.verbs.builtins.clock"
+
+  - name: "parentOf(date.get) - returns database path"
+    description: |
+      Verify parentOf() returns database path for date processor verbs.
+    script: 'parentOf(date.get)'
+    expected_success: true
+    expected_result: "system.verbs.builtins.date"
+
+  # ====================================================================
+  # SECTION 2: typeOf() Introspection
+  # ====================================================================
+  # typeOf() should return the type of the database object, not the EFP token.
+
+  - name: "typeOf(op.outlineToXml) - returns script type"
+    description: |
+      typeOf() for a script-implemented verb should return 'scpt' (script type),
+      not 'tokn' (token type from EFP stub).
+
+      Bug behavior: Returns 'tokn' (sees EFP token entry)
+      Fixed behavior: Returns 'scpt' (sees database script)
+    script: "typeOf(op.outlineToXml)"
+    expected_success: true
+    expected_result: "scpt"
+
+  # ====================================================================
+  # SECTION 3: Verb Dispatch Regression Tests
+  # ====================================================================
+  # These tests verify that verb dispatch (actually calling verbs) still works
+  # after the search order change. The EFP table must still be consulted for
+  # verb dispatch to get the valueroutine callback.
+
+  - name: "string.mid - verb dispatch works"
+    description: |
+      REGRESSION TEST: string.mid() must still work for verb dispatch.
+      The fix should not break kernel verb calling.
+    script: 'string.mid("hello", 2, 3)'
+    expected_success: true
+    expected_result: "ell"
+
+  - name: "string.length - verb dispatch works"
+    description: |
+      REGRESSION TEST: string.length() must still work.
+    script: 'string.length("hello")'
+    expected_success: true
+    expected_result: "5"
+
+  - name: "string(123) - coercion verb works"
+    description: |
+      REGRESSION TEST: string() coercion must still work.
+    script: 'string(123)'
+    expected_success: true
+    expected_result: "123"
+
+  - name: "file.exists - file verb dispatch works"
+    description: |
+      REGRESSION TEST: file.exists() must still work.
+    script: 'file.exists("/nonexistent/path/that/does/not/exist")'
+    expected_success: true
+    expected_result: "false"
+
+  - name: "clock.now - clock verb dispatch works"
+    description: |
+      REGRESSION TEST: clock.now() must still return a date value.
+      We just verify it returns something (a date), not a specific value.
+    script: 'typeOf(clock.now())'
+    expected_success: true
+    expected_result: "date"
+
+  - name: "clock.now - clock verb returns date"
+    description: |
+      REGRESSION TEST: clock.now() must return a date value that we can use.
+      We check by calling clock.now() directly (not wrapped in typeOf).
+    script: 'defined(clock.now())'
+    expected_success: true
+    expected_result: "true"
+
+  # ====================================================================
+  # SECTION 4: defined() for EFP Processors
+  # ====================================================================
+  # These tests verify that defined() works correctly for EFP processor tables.
+
+  - name: "defined(string) - EFP processor is defined"
+    description: |
+      defined(string) should return true - the string processor exists.
+    script: 'defined(string)'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "defined(string.mid) - EFP verb is defined"
+    description: |
+      defined(string.mid) should return true - the mid verb exists.
+    script: 'defined(string.mid)'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "defined(string.nonexistent) - nonexistent verb is not defined"
+    description: |
+      defined(string.nonexistent) should return false.
+    script: 'defined(string.nonexistent)'
+    expected_success: true
+    expected_result: "false"

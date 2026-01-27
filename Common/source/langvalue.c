@@ -4047,28 +4047,27 @@ boolean langgetdotparams (hdltreenode htree, hdlhashtable *htable, bigstring bsn
 		if (langgetspecialtable (bsname, htable)) /*translate "root" to roottable, etc.*/
 			goto L1;
 
-		/* 2026-01-26: RESTORED legacy search order (EFP first, then paths)
+		/* 2026-01-26: Search order matches legacy Frontier
 		 *
 		 * Search order:
 		 * 1. Special tables (root, etc.) - handled above
-		 * 2. EFP/current context (langexternalgettable) - kernel verb tables
+		 * 2. Current context via langexternalgettable
 		 * 3. system.paths search (if not blocked by recursion guard)
+		 * 4. Last-ditch effort for local paths
 		 *
-		 * This order is critical for verb dispatch:
-		 * - EFP tables have valueroutine callbacks for kernel verb dispatch
-		 * - Database tables don't have valueroutine
-		 * - string(123) MUST find EFP string table, not database builtins.string
+		 * IMPORTANT: The fix for Issue #352 (EFP introspection bugs) is in
+		 * langexternalgettable(), NOT here. The headless code was explicitly
+		 * searching efptable in langexternalgettable(), which caused EFP
+		 * tables to be found before database tables.
 		 *
-		 * For defined(webserver.init) to work:
-		 * - webserver EFP stub registration is SKIPPED (see kernel_verbs_init.c)
-		 * - So EFP lookup fails, falls through to path search
-		 * - Path search finds builtins.webserver with full content
-		 *
-		 * Note: Processors with all-script implementations should NOT register
-		 * as EFPs. See tools/kernelverbs_parser/script_implemented_verbs.py
+		 * After that fix, this search order works correctly:
+		 * - langexternalgettable only searches local scope + legacy paths
+		 * - langsearchpathvisit finds database tables via system.paths
+		 * - Verb dispatch still works because langhandlercall() has its own
+		 *   search that explicitly checks efptable AFTER paths
 		 */
 
-		/* 2. Check current context / EFP (kernel verb tables) */
+		/* 2. Check current context (local scope, NOT efptable) */
         if (langexternalgettable (bsname, htable)) {
 			goto L1;
 		}
