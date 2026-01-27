@@ -1,0 +1,23 @@
+# Ignore CMake build artifacts in cmake-src
+cmake-src/Bootstrap.cmk/
+cmake-src/CMakeCache.txt
+cmake-src/CMakeFiles/
+cmake-src/bin/
+cmake-src/**/*.o
+cmake-src/**/*.a
+
+# Ignore CMake installation directory (will be rebuilt)
+cmake-install/
+
+# Ignore CMake build stage directories
+cmake-build-stage1/
+cmake-build-stage2/
+
+# Ignore downloaded CMake tarballs (can be re-downloaded)
+cmake-*.tar.gz
+
+# Ignore backup directories
+cmake-install.backup.*/
+
+# Ignore CMake logs
+cmake-*.log
