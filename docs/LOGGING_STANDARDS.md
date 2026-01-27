@@ -44,12 +44,25 @@ typedef enum {
     LOG_COMP_EXTERNAL,        // External objects (langexternal.c)
     LOG_COMP_STARTUP,         // Startup/initialization (langstartup.c)
     LOG_COMP_THREAD,          // Thread registry (threadregistry.c)
+    LOG_COMP_MIGRATION,       // Database v6→v7 migration diagnostics (disabled by default)
     LOG_COMP_GENERAL,         // General/uncategorized
     LOG_COMP_COUNT            // Number of components
 } log_component_t;
 ```
 
 **Choose the component that best matches the subsystem being debugged.** For new code, default to `LOG_COMP_GENERAL` if unsure.
+
+### Special Components
+
+**`LOG_COMP_MIGRATION`** is disabled by default (unlike other components). This prevents verbose v6→v7 database migration diagnostics from appearing during normal operation. Enable it explicitly when debugging migration issues:
+
+```bash
+# Enable migration diagnostics
+FRONTIER_LOG_LEVEL=trace FRONTIER_LOG_COMPONENT=migration ./frontier-cli -e "..."
+
+# Or with other components
+FRONTIER_LOG_COMPONENT=db,migration ./frontier-cli --system-root old.root
+```
 
 ---
 
