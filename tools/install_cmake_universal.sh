@@ -126,8 +126,8 @@ file "$CMAKE_BINARY"
 print_status "Detailed architecture info:"
 lipo -info "$CMAKE_BINARY"
 
-# Verify it's a universal binary
-if lipo -info "$CMAKE_BINARY" | grep -q "arm64 x86_64"; then
+# Verify it's a universal binary (check for both architectures in any order)
+if lipo -info "$CMAKE_BINARY" | grep -q "arm64" && lipo -info "$CMAKE_BINARY" | grep -q "x86_64"; then
     print_success "Successfully installed universal binary (arm64 + x86_64)"
 else
     print_error "Binary is not universal!"
