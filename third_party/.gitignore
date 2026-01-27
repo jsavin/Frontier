@@ -1,0 +1,33 @@
+# Ignore CMake build artifacts in cmake-src
+cmake-src/Bootstrap.cmk/
+cmake-src/CMakeCache.txt
+cmake-src/CMakeFiles/
+cmake-src/bin/
+cmake-src/**/*.o
+cmake-src/**/*.a
+
+# Ignore CMake app bundle bloat (Qt frameworks, docs, etc.)
+cmake-install/CMake.app/
+
+# Allow only cmake binaries to be tracked
+!cmake-install/CMake.app/Contents/
+!cmake-install/CMake.app/Contents/bin/
+!cmake-install/CMake.app/Contents/bin/**
+
+# Allow symlinks in root
+!cmake-install/bin
+!cmake-install/share
+
+# Ignore CMake build stage directories
+cmake-build-stage1/
+cmake-build-stage2/
+cmake-build-universal/
+
+# Ignore downloaded CMake tarballs (can be re-downloaded)
+cmake-*.tar.gz
+
+# Ignore backup directories
+cmake-install.backup.*/
+
+# Ignore CMake logs
+cmake-*.log
