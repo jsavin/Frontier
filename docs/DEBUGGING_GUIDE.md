@@ -190,6 +190,118 @@ Before implementing a fix:
 - [ ] Identified potential side effects
 - [ ] Confirmed fix addresses root cause, not symptoms
 
+---
+
+## Debugging Lessons: Common Incorrect Assumptions
+
+**Source**: These lessons come from real debugging sessions. They capture patterns where initial assumptions led investigations astray.
+
+### Lesson 1: Check ALL Functions in the Call Chain
+
+**Case Study**: PR #352 - Introspection bugs (`parentOf`, `typeOf` returning wrong values)
+
+**Initial assumption**: "The bug must be in the orchestrator function (`langgetdotparams`)"
+- Thought the search order in the top-level function was wrong
+- Tried changing the order of operations in `langgetdotparams`
+- Result: Stack overflow / infinite recursion
+
+**What was actually wrong**: A function **called by** the orchestrator was doing extra work
+- `langexternalgettable()` had explicit EFP search that shouldn't have been there
+- The orchestrator's search order was correct
+- The bug was in a helper function adding unwanted behavior
+
+**Lesson**: When debugging search order or resolution issues:
+1. Trace the ENTIRE call chain, not just the top function
+2. Check what each called function does, not just the orchestrator
+3. Bug may be extra work in a helper, not wrong order in the caller
+4. Compare ALL functions in the call chain between legacy and current code
+
+### Lesson 2: Name Resolution vs Verb Dispatch Are Different
+
+**Case Study**: PR #352 - Removing EFP search from `langexternalgettable`
+
+**Initial concern**: "Removing EFP search will break verb dispatch"
+- Worried that kernel verbs like `string.mid()` wouldn't be found
+- Seemed like EFP search was needed for verbs to work
+
+**What was actually true**: Two separate code paths with different search orders
+- **Name resolution** (`langexternalgettable`) - used for introspection, should find database tables
+- **Verb dispatch** (`langhandlercall`) - used for actually calling verbs, has its own EFP search
+- EFP search in name resolution was redundant AND broke introspection
+
+**Lesson**: Understand the architecture before making assumptions
+1. Name resolution and verb dispatch use different code paths
+2. EFP stubs are implementation details for dispatch, not canonical locations for introspection
+3. Don't assume a function is the only place something happens - check for parallel code paths
+4. Read `docs/VERB_RESOLUTION_ARCHITECTURE.md` before modifying verb lookup code
+
+### Lesson 3: Search Order Bugs May Be Addition, Not Reordering
+
+**Case Study**: PR #352 - EFP search prioritized over database tables
+
+**Initial diagnosis approach**: "Need to change the order of searches"
+- Focused on reordering steps in the orchestrator function
+- Tried moving database search before external search
+- Didn't recognize the problem was an extra search that shouldn't exist
+
+**What actually fixed it**: Removing code, not reordering it
+- The ~60 lines of explicit EFP search in `langexternalgettable()` were the entire problem
+- No reordering needed - the search order was already correct
+- The fix was deleting code that shouldn't have been there
+
+**Lesson**: When debugging search order:
+1. Consider that the bug might be an EXTRA search, not wrong order
+2. Ask "should this search be here at all?" before asking "should it be earlier/later?"
+3. Compare with legacy code to find additions, not just differences in order
+4. Sometimes the right fix is deletion, not rearrangement
+
+### Lesson 4: Legacy Comparison Requires Complete Call Chain Analysis
+
+**Case Study**: PR #352 - Comparing search behavior with legacy Frontier
+
+**Initial assumption**: "Legacy code must do something different in the orchestrator"
+- Only compared `langgetdotparams()` between legacy and current
+- Assumed differences would be in the top-level function
+
+**What we discovered**: Orchestrator was identical, but helper function was different
+- `langgetdotparams()` was the SAME in both codebases
+- `langexternalgettable()` had extra EFP search in headless code that legacy didn't have
+- The addition was ~60 lines deeper in the call chain
+
+**Lesson**: When comparing with legacy code:
+1. Compare ALL functions in the call chain, not just the entry point
+2. Look for additions in helper functions, not just top-level changes
+3. Pay attention to conditional compilation or headless-specific code
+4. The difference may be subtle (extra code in one function) even if behavior is very different
+
+### Lesson 5: Symptoms vs Root Cause
+
+**Case Study**: PR #352 - Multiple symptoms, single root cause
+
+**Observed symptoms**:
+- `parentOf(string.mid)` returned wrong path
+- `typeOf(op.outlineToXml)` returned wrong type
+- `defined()` couldn't find some verbs
+- Multiple different introspection operations were broken
+
+**Initial thought**: "These might be separate bugs"
+- Seemed like multiple unrelated problems
+- Each symptom appeared in different code
+
+**Actual root cause**: Single search order issue affecting all introspection
+- All symptoms traced to same EFP search priority problem
+- All introspection operations use `langexternalgettable()`
+- Single fix (removing EFP search) solved all symptoms
+
+**Lesson**: When seeing multiple related symptoms:
+1. Look for a common code path that all symptoms share
+2. Don't assume multiple symptoms = multiple bugs
+3. Architectural bugs often have wide-ranging symptoms
+4. Fix the architecture, not individual symptoms
+
+---
+
 ## Update History
 
 - 2026-01-25: Initial version created during Issue #344 investigation
+- 2026-01-27: Added "Debugging Lessons" section with PR #352 case studies

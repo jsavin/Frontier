@@ -45,6 +45,30 @@ boolean langexternalgettable(bigstring bs, hdlhashtable *htable) {
 
 **Rule**: Keep EFP table searches in `langhandlercall()` only. Don't add them to name resolution functions.
 
+### Why This Bug Was Hard to Find (PR #352 Lessons)
+
+**The mistake seemed reasonable at the time**:
+- Headless mode needed kernel verbs to work without system.paths
+- Adding explicit EFP search to `langexternalgettable()` seemed like a logical fix
+- The ~60 lines of code looked correct in isolation
+- Verb dispatch (calling `string.mid()`) continued to work correctly
+
+**The actual problem**:
+- Name resolution and verb dispatch are **separate concerns**
+- Introspection needs database table structure, not EFP implementation details
+- `langhandlercall()` already had correct EFP search for verb dispatch
+- The explicit EFP search in `langexternalgettable()` was redundant AND wrong
+
+**Key principle**: **EFP stubs are implementation details, not the canonical location**
+- User code should see `system.verbs.builtins.string`, not `system.compiler.["kernel"].string`
+- Only verb dispatch needs to know about EFP internal structure
+- Introspection should reflect the logical database structure
+
+**How to recognize this pattern**:
+- If you're adding EFP table searches to name resolution functions → STOP
+- If verb dispatch works but introspection is wrong → Check if EFP search is in wrong place
+- If `parentOf()` or `typeOf()` returns EFP internal paths → EFP search is prioritized too early
+
 **Files**:
 - `Common/source/langexternal.c` - Name resolution (NO efptable search)
 - `Common/source/langvalue.c` - `langhandlercall()` has explicit efptable search (correct)
