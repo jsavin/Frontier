@@ -8,6 +8,7 @@
 
 #include "repl_commands.h"
 #include "repl_output.h"  /* For repl_output_help(), repl_output_vars() */
+#include "../third_party/linenoise/linenoise.h"  /* For linenoisePrintKeyCodes() */
 #include <string.h>
 #include <ctype.h>
 
@@ -106,6 +107,17 @@ repl_command_result repl_process_command(const char *input) {
     /* Note: /vars and /clear removed - QuickScript model has no workspace
      * Users can use 'sizeOf(system.temp)' or similar to inspect database tables
      */
+
+    /* ======================================================================
+     * /keycodes - Debug key sequences (for testing terminal keybindings)
+     * ====================================================================== */
+    if (strcmp(cmd_buf, "keycodes") == 0) {
+        printf("Entering key code debugging mode.\n");
+        printf("Press keys to see their escape sequences.\n");
+        printf("Type 'quit' to exit back to REPL.\n\n");
+        linenoisePrintKeyCodes();
+        return REPL_CMD_CONTINUE;
+    }
 
     /* ======================================================================
      * Unknown command

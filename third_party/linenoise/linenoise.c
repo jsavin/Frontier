@@ -1213,21 +1213,70 @@ void linenoiseEditBackspace(struct linenoiseState *l) {
     }
 }
 
+/* Returns true if character is part of a word.
+ * Word characters: alphanumeric, underscore, hyphen, period, and UserTalk operators.
+ * UserTalk operators: @ (address-of), ^ (dereference), [ ] (array indexing).
+ * Word boundaries: whitespace and all other punctuation/symbols. */
+static int isWordChar(char c) {
+    return isalnum((unsigned char)c) || c == '_' || c == '-' || c == '.' ||
+           c == '@' || c == '^' || c == '[' || c == ']';
+}
+
 /* Delete the previous word, maintaining the cursor at the start of the
  * current word. Handles UTF-8 by moving character-by-character. */
 void linenoiseEditDeletePrevWord(struct linenoiseState *l) {
     size_t old_pos = l->pos;
     size_t diff;
 
-    /* Skip spaces before the word (move backwards by UTF-8 chars). */
-    while (l->pos > 0 && l->buf[l->pos-1] == ' ')
+    /* Skip non-word characters before the word (move backwards by UTF-8 chars). */
+    while (l->pos > 0 && !isWordChar(l->buf[l->pos-1]))
         l->pos -= utf8PrevCharLen(l->buf, l->pos);
-    /* Skip non-space characters (move backwards by UTF-8 chars). */
-    while (l->pos > 0 && l->buf[l->pos-1] != ' ')
+    /* Skip word characters (move backwards by UTF-8 chars). */
+    while (l->pos > 0 && isWordChar(l->buf[l->pos-1]))
         l->pos -= utf8PrevCharLen(l->buf, l->pos);
     diff = old_pos - l->pos;
     memmove(l->buf+l->pos, l->buf+old_pos, l->len-old_pos+1);
     l->len -= diff;
+    refreshLine(l);
+}
+
+/* Move cursor to the start of the previous word. Handles UTF-8. */
+void linenoiseEditMoveWordLeft(struct linenoiseState *l) {
+    if (l->pos == 0) return;
+
+    /* Skip non-word characters before the word (move backwards by UTF-8 chars). */
+    while (l->pos > 0 && !isWordChar(l->buf[l->pos-1]))
+        l->pos -= utf8PrevCharLen(l->buf, l->pos);
+    /* Skip word characters to the start of the word. */
+    while (l->pos > 0 && isWordChar(l->buf[l->pos-1]))
+        l->pos -= utf8PrevCharLen(l->buf, l->pos);
+    refreshLine(l);
+}
+
+/* Move cursor to the start of the next word. Handles UTF-8.
+ *
+ * Three-phase algorithm (intentional design for UserTalk expressions):
+ * 1. Skip any non-word chars at cursor (punctuation/spaces)
+ * 2. Skip word characters (the current word)
+ * 3. Skip trailing non-word chars to land at start of next word
+ *
+ * This allows navigating expressions like msg("hello") as three "words":
+ *   msg → ( → "hello"
+ * Single punctuation characters are treated as their own words for
+ * natural navigation through UserTalk syntax.
+ */
+void linenoiseEditMoveWordRight(struct linenoiseState *l) {
+    if (l->pos == l->len) return;
+
+    /* Skip non-word characters after the cursor (move forwards by UTF-8 chars). */
+    while (l->pos < l->len && !isWordChar(l->buf[l->pos]))
+        l->pos += utf8NextCharLen(l->buf, l->pos, l->len);
+    /* Skip word characters (the current word). */
+    while (l->pos < l->len && isWordChar(l->buf[l->pos]))
+        l->pos += utf8NextCharLen(l->buf, l->pos, l->len);
+    /* Skip trailing non-word characters to position at start of next word. */
+    while (l->pos < l->len && !isWordChar(l->buf[l->pos]))
+        l->pos += utf8NextCharLen(l->buf, l->pos, l->len);
     refreshLine(l);
 }
 
@@ -1400,10 +1449,23 @@ char *linenoiseEditFeed(struct linenoiseState *l) {
         linenoiseEditHistoryNext(l, LINENOISE_HISTORY_NEXT);
         break;
     case ESC:    /* escape sequence */
-        /* Read the next two bytes representing the escape sequence.
-         * Use two calls to handle slow terminals returning the two
-         * chars at different times. */
+        /* Read the first byte after ESC to determine sequence type. */
         if (read(l->ifd,seq,1) == -1) break;
+
+        /* Emacs-style single-char sequences (macOS Terminal.app default).
+         * ESC b = backward-word (Option+Left)
+         * ESC f = forward-word (Option+Right)
+         * Handle these BEFORE reading a second byte. */
+        if (seq[0] == 'b') {
+            linenoiseEditMoveWordLeft(l);
+            break;
+        }
+        else if (seq[0] == 'f') {
+            linenoiseEditMoveWordRight(l);
+            break;
+        }
+
+        /* For multi-byte sequences, read the second byte. */
         if (read(l->ifd,seq+1,1) == -1) break;
 
         /* ESC [ sequences. */
@@ -1416,6 +1478,24 @@ char *linenoiseEditFeed(struct linenoiseState *l) {
                     case '3': /* Delete key. */
                         linenoiseEditDelete(l);
                         break;
+                    }
+                } else if (seq[2] == ';') {
+                    /* Modified key sequences like ESC[1;3C (Option+Right).
+                     * Read modifier and final char. */
+                    char seq2[2];
+                    if (read(l->ifd,seq2,1) == -1) break;
+                    if (read(l->ifd,seq2+1,1) == -1) break;
+
+                    /* Check for Option modifier (3) on arrow keys. */
+                    if (seq[1] == '1' && seq2[0] == '3') {
+                        switch(seq2[1]) {
+                        case 'C': /* Option+Right: move word forward */
+                            linenoiseEditMoveWordRight(l);
+                            break;
+                        case 'D': /* Option+Left: move word backward */
+                            linenoiseEditMoveWordLeft(l);
+                            break;
+                        }
                     }
                 }
             } else {
@@ -1537,7 +1617,7 @@ void linenoisePrintKeyCodes(void) {
     char quit[4];
 
     printf("Linenoise key codes debugging mode.\n"
-            "Press keys to see scan codes. Type 'quit' at any time to exit.\n");
+            "Press keys to see scan codes. Type 'quit' or press ESC to exit.\n");
     if (enableRawMode(STDIN_FILENO) == -1) return;
     memset(quit,' ',4);
     while(1) {
@@ -1546,11 +1626,18 @@ void linenoisePrintKeyCodes(void) {
 
         nread = read(STDIN_FILENO,&c,1);
         if (nread <= 0) continue;
+
+        /* Exit on ESC key */
+        if (c == 27) {
+            printf("ESC pressed - exiting keycode mode\n");
+            break;
+        }
+
         memmove(quit,quit+1,sizeof(quit)-1); /* shift string to left. */
         quit[sizeof(quit)-1] = c; /* Insert current char on the right. */
         if (memcmp(quit,"quit",sizeof(quit)) == 0) break;
 
-        printf("'%c' %02x (%d) (type quit to exit)\n",
+        printf("'%c' %02x (%d) (type quit or ESC to exit)\n",
             isprint(c) ? c : '?', (int)c, (int)c);
         printf("\r"); /* Go left edge manually, we are in raw mode. */
         fflush(stdout);
