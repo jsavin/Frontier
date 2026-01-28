@@ -43,7 +43,8 @@ THIRDPARTYDIR = ../third_party
 PAIGE_DIR = $(THIRDPARTYDIR)/Paige
 PAIGE_BUILD_DIR = $(PAIGE_DIR)/build-headless
 PAIGE_LIB = $(PAIGE_BUILD_DIR)/libpaige.a
-CMAKE_BIN = $(THIRDPARTYDIR)/cmake-install/bin/cmake
+# Use local cmake-install if it exists, otherwise fall back to system cmake
+CMAKE_BIN = $(shell if [ -x $(THIRDPARTYDIR)/cmake-install/bin/cmake ]; then echo "$(THIRDPARTYDIR)/cmake-install/bin/cmake"; else echo "cmake"; fi)
 PAIGE_ARCHES = arm64;x86_64
 
 INCLUDES += -I$(PAIGE_DIR)/PGHEADER -I$(THIRDPARTYDIR)/linenoise
