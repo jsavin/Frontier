@@ -246,14 +246,17 @@ boolean tableverbmemorypack (hdlexternalvariable h, Handle *hpacked, hdlhashnode
 	register boolean fl;
 	boolean fltempload;
 	boolean fldummy;
-	db_context ctx;
 
 	fltempload = !(**hv).flinmemory;
 
-	db_context_init(&ctx);
-	if (!tableverbinmemory (&ctx, hv, hnode))
-		return (false);
-	
+	{
+		db_context ctx;
+		db_context_init(&ctx);
+
+		if (!tableverbinmemory (&ctx, hv, hnode))
+			return (false);
+	}
+
 	ht = (hdlhashtable) (**hv).variabledata; 
 	
 	tablecheckwindowrect (ht); 
@@ -598,23 +601,26 @@ boolean tableverbpacktotext (hdlexternalvariable h, Handle htext) {
 	register hdlhashtable ht;
 	register boolean fl;
 	boolean fltempload = !(**hv).flinmemory;
-	db_context ctx;
 
-	db_context_init(&ctx);
-	if (!tableverbinmemory (&ctx, hv, HNoNode))
-		return (false);
-	
+	{
+		db_context ctx;
+		db_context_init(&ctx);
+
+		if (!tableverbinmemory (&ctx, hv, HNoNode))
+			return (false);
+	}
+
 	ht = (hdlhashtable) (**hv).variabledata;
-	
+
 	//htextscrap = htext; /*set for visit routine*/
-	
+
 	//fl = !hashinversesearch (ht, &tablepacktotextvisit, bsname); /*false means complete traversal%/
-	
+
 	fl = !tablesortedinversesearch (ht, &tablepacktotextvisit, htext);
-	
+
 	if (fltempload)
 		tableverbunload (hv);
-	
+
 	return (fl);
 	} /*tableverbpacktotext*/
 
@@ -623,12 +629,15 @@ boolean tableverbgettimes (hdlexternalvariable h, int64_t *timecreated, int64_t 
 
 	register hdlexternalvariable hv = h;
 	register hdlhashtable ht;
-	db_context ctx;
 
-	db_context_init(&ctx);
-	if (!tableverbinmemory (&ctx, hv, hnode))
-		return (false);
-	
+	{
+		db_context ctx;
+		db_context_init(&ctx);
+
+		if (!tableverbinmemory (&ctx, hv, hnode))
+			return (false);
+	}
+
 	ht = (hdlhashtable) (**hv).variabledata;
 	
 	*timecreated = (**ht).timecreated;
@@ -643,12 +652,15 @@ boolean tableverbsettimes (hdlexternalvariable h, int64_t timecreated, int64_t t
 
 	register hdlexternalvariable hv = h;
 	register hdlhashtable ht;
-	db_context ctx;
 
-	db_context_init(&ctx);
-	if (!tableverbinmemory (&ctx, hv, hnode))
-		return (false);
-	
+	{
+		db_context ctx;
+		db_context_init(&ctx);
+
+		if (!tableverbinmemory (&ctx, hv, hnode))
+			return (false);
+	}
+
 	ht = (hdlhashtable) (**hv).variabledata;
 	
 	(**ht).timecreated = timecreated;
@@ -697,14 +709,17 @@ boolean tableverbfindusedblocks (hdlexternalvariable h, bigstring bspath) {
 	register hdlhashtable ht;
 	register boolean fl;
 	boolean fltempload;
-	db_context ctx;
 
 	fltempload = !(**hv).flinmemory;
 
-	db_context_init(&ctx);
-	if (!tableverbinmemory (&ctx, hv, HNoNode))
-		return (false);
-	
+	{
+		db_context ctx;
+		db_context_init(&ctx);
+
+		if (!tableverbinmemory (&ctx, hv, HNoNode))
+			return (false);
+	}
+
 	if (!statsblockinuse ((**hv).oldaddress, bspath))
 		return (false);
 	

@@ -378,9 +378,9 @@ static boolean langhash_materialize_external(tyvaluerecord *val, const char *pat
 				        path ? path : "<nil>");
 				langhash_materialize_current_path = prior_path;
 				return false;
-				}
 			}
-			hdlhashtable child = (hdlhashtable)(**hv).variabledata;
+		}
+		hdlhashtable child = (hdlhashtable)(**hv).variabledata;
 			/* During adapter_repack (migration), mark materialized tables as dirty to force save */
 			if (db_format_mode_current().adapter_repack && child != nil) {
 				(**child).fldirty = true;

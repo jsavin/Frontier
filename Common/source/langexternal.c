@@ -1661,8 +1661,8 @@ static boolean fullpathsearch (hdlhashtable intable, hdlhashtable fortable, bigs
 				return (false);
 			}
 
-		fltempload = true;
-			}
+			fltempload = true;
+		}
 		
 /////////			assert (tablesetdebugglobals (ht, x)); /*set debug globals*/
 		

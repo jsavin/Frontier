@@ -2693,8 +2693,8 @@ static boolean apptablevisit (bigstring bsname, hdlhashnode hnode, tyvaluerecord
 		return (false);
 	}
 
-ht = (hdlhashtable) (**hv).variabledata; 
-	
+	ht = (hdlhashtable) (**hv).variabledata;
+
 	if (appinfovisit (ht, bsname, appvisitinfo)) {
 		
 		(*appvisitinfo).apptablefound = ht;
