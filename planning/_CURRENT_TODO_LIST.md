@@ -1,25 +1,23 @@
 # Frontier - Current TODO List
 
-Status: In Progress (Updated 2026-01-27)
+Status: In Progress (Updated 2026-01-28)
 
-## 🚨 IMMEDIATE PRIORITY – P0 Blockers
+## 🎉 Recently Completed Milestones
 
-### 1. Issue #347 (P0): Audit and fix 50+ runtime calls passing NULL context
-**Status**: Open - Design/decision needed
-**Scope**: Large - pervasive issue affecting runtime stability
-**Impact**: Potential crashes and undefined behavior in verb dispatch
+### TCP Verbs 100% Coverage - ✅ COMPLETE
+**Resolution**: PR #361 merged (2026-01-28)
+- Implemented 10 remaining TCP verbs (Phase 2 buffered I/O)
+- Migrated all 22 TCP verb dispatches from legacy `fwsNetEvent*` to `tcp_*` API
+- Removed 2,406 lines of legacy code (MacSocketNetEvents.c, WinSockNetEvents.h)
+- Added security hardening: ARM64 type safety fix, slow-trickle DoS protection, O(n) pattern matching
+- New issue #362 filed for configurable throughput window (P1)
 
-**Details**:
-- 50+ locations in runtime pass NULL context to verbinmemory functions
-- Affects runtime stability and correctness
-- May require architectural decision on context propagation patterns
-- Related to Issue #86 (global runtime context)
-
-**Next Steps**:
-1. Catalog all NULL context call sites
-2. Determine correct context propagation pattern
-3. Plan phased fix approach
-4. Implement fixes with comprehensive testing
+### Issue #347 (P0): NULL context audit - ✅ CLOSED
+**Resolution**: PR #360 merged (2026-01-28)
+- Fixed 51 NULL context calls to *verbinmemory functions
+- Added explicit `db_context` structs with hard assertions
+- Narrowed context scope to block level for better code hygiene
+- Bonus fix: Thread registry test calling non-existent function
 
 ---
 
@@ -34,7 +32,7 @@ These require design/planning before implementation can proceed.
 - Issue #94 (concurrency model)
 - Issue #97 (remote runtime)
 - Issue #87 (EFP routing parity)
-- Issue #347 (NULL context audit)
+- Phase 4 P0a (global state elimination)
 
 **Context**: Related to Phase 4 P0a global state elimination work
 
@@ -54,16 +52,15 @@ These require design/planning before implementation can proceed.
 
 ## 📊 Current Work Status
 
-### Verb Coverage: 67% (481/710) ✅
+### Verb Coverage: 68% (491/720) ✅
 
 **Complete Processors** (100%):
 - base64, clock, crypt, date, db, dialog, file, html, inetd
 - kb, lang, launch, mainwindow, math, op, point, rectangle
 - rgb, script, search, semaphore, string, sys, table, target
-- webserver, xml
+- **tcp**, webserver, xml
 
 **Partial Processors**:
-- tcp: 56% (13/23) - Phase 1A/1B/3 complete, Phase 2 queued
 - thread: 64% (11/17) - Phase 1 foundation complete
 - searchengine: 20% (1/5)
 
@@ -78,31 +75,58 @@ Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 
 ---
 
+## 🚀 Tracer Bullet Milestones
+
+### 1. Webserver "Hello World" E2E Test
+**Status**: Not started
+**Goal**: Prove the full networking stack works end-to-end
+**What it validates**:
+- TCP networking kernel verbs (tcp.listen, tcp.accept, etc.)
+- inetd UserTalk implementation
+- webserver UserTalk implementation
+- Request → Handler → Response cycle
+
+**Approach**:
+1. Identify webserver/inetd code paths and required kernel verbs
+2. Verify those verbs are implemented and have test coverage
+3. Create minimal "Hello World" test case
+4. Run E2E and fix any gaps discovered
+
+### 2. system.startup.startupScript Analysis
+**Status**: Not started
+**Goal**: Ensure all critical-path kernel verbs for daemon mode are available
+**Prerequisites for**: Long-running HTTP process, daemon mode
+**What it validates**:
+- Bootstrap sequence is understood
+- All verbs in startup critical path are identified
+- Gaps in kernel verb coverage are surfaced before they cause runtime failures
+
+**Approach**:
+1. Read and analyze startupScript UserTalk code
+2. Trace dependencies (what it calls, including inetd/webserver init)
+3. Cross-reference against verb coverage report
+4. Create issue/task list for any missing verbs
+
+---
+
 ## 🎯 Recommended Work Priority
 
-### Tier 1: Critical Blockers (Do First)
-1. **Investigate Issue #347** (NULL context audit) - Design phase
-   - Catalog call sites and patterns
-   - Determine if architectural decision needed
-   - Create implementation plan
+### Tier 1: Tracer Bullets (Validate E2E)
+1. **Webserver "Hello World"** - Prove networking stack works
+   - Quick validation of existing implementation
+   - Surfaces gaps before deeper investment
 
-### Tier 2: Strategic Decisions (Before Major Features)
-3. **Resolve Issue #86** (Runtime context architecture)
+### Tier 2: Strategic Decisions (Gate Major Features)
+2. **Resolve Issue #86** (Runtime context architecture)
    - Unblocks concurrency model, remote runtime, EFP parity
    - Required for Phase 4 P0a (global state elimination)
    - Major architectural decision
 
-4. **Resolve Issue #88** (Networking security model)
+3. **Resolve Issue #88** (Networking security model)
    - Required before broad CLI distribution
-   - Impacts TCP Phase 2+ implementation
 
 ### Tier 3: Major Feature Work (After Decisions)
-5. **TCP Networking Phase 2** (Buffered I/O)
-   - 4 verbs remaining for HTTP client milestone
-   - Depends on: Issue #88 resolution
-   - Reference: planning/phase4/networking/INDEX.md
-
-6. **Phase 4 P0a** (Global State Elimination)
+4. **Phase 4 P0a** (Global State Elimination)
    - 3-week effort, launch blocking
    - Hash table context migration
    - Parser state migration
@@ -110,14 +134,17 @@ Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
    - Depends on: Issue #86 resolution
    - Reference: planning/phase4/p0a-critical-thread-safety/README.md
 
-### Tier 4: Ongoing Improvements
-7. **Verb Coverage Expansion** (Ongoing)
-   - Complete remaining TCP verbs (Phase 2-4)
-   - Complete remaining thread verbs
-   - Implement processors at 0%: bit, clipboard, mysql, sqlite, etc.
-
-8. **Address P1/P2 Issues** (As time permits)
+### Tier 4: Quality & Stability
+6. **P1 Bug Fixes** (As discovered)
+   - Issue #339: Pascal string logging garbage
+   - Issue #323: Thread-safe FD table initialization
+   - Issue #332: ODB reference counting (foundational for threading)
    - See "P1 Issues" section below
+
+### Tier 4: Ongoing Improvements
+6. **Verb Coverage Expansion** (Ongoing)
+   - Complete remaining thread verbs (6 remaining)
+   - Implement processors at 0%: bit, clipboard, mysql, sqlite, etc.
 
 ---
 
@@ -157,7 +184,17 @@ Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 
 ---
 
-## 🎉 Recently Completed (Jan 25-27, 2026)
+## 🎉 Recently Completed (Jan 25-28, 2026)
+
+### TCP Verbs 100% Coverage
+- **PR #361**: Implement 100% TCP verbs coverage and migrate from legacy API
+  - 10 new verbs: statusStream, getPeerAddress, getPeerPort, myAddress, readStreamUntil, readStreamBytes, readStreamUntilClosed, writeStringToStream, writeFileToStream, getStats
+  - Removed 2,406 lines legacy code (MacSocketNetEvents.c, WinSockNetEvents.h)
+  - Security: ARM64 ioctl type fix, slow-trickle DoS protection (35s throughput window), O(n) pattern matching
+  - Filed Issue #362 for configurable throughput window (P1)
+
+### P0 Blocker Resolution
+- **PR #360**: Fix 51 NULL context calls to *verbinmemory functions (Issue #347)
 
 ### Critical Bug Fixes
 - **PR #359**: Fix defined() error suppression (Issue #325) - langerrormessage() now respects error suppression state
@@ -243,16 +280,16 @@ See planning/_STATUS_ARCHIVE.md for:
 
 ### Strategic Context
 - **Current focus**: Stability, correctness, bug fixes
-- **Verb coverage**: 67% (481/710) - massive progress from 37% in early January
+- **Verb coverage**: 68% (491/720) - massive progress from 37% in early January
 - **Test health**: 1,124+ integration tests passing
+- **P0 blockers resolved**: Issue #347 (NULL context audit) closed via PR #360
 - **Next major milestones**:
-  1. Resolve P0 blocker (#347)
-  2. Make architectural decisions (#86, #88)
-  3. Resume feature work (TCP Phase 2, Phase 4 P0a)
+  1. Make architectural decisions (#86, #88)
+  2. Resume feature work (Phase 4 P0a)
 
 ### Workstream Status
-- **TCP Networking**: Phase 1 complete (13 verbs), Phase 2 queued (4 verbs)
+- **TCP Networking**: ✅ 100% COMPLETE (23/23 verbs) - PR #361 merged
 - **Threading**: Phase 1 foundation complete (11 verbs), P0a queued
-- **Verb Porting**: Ongoing - 67% coverage achieved
+- **Verb Porting**: Ongoing - 68% coverage achieved
 - **Bug Fixes**: Active - recent focus on verb resolution and REPL improvements
 - **Documentation**: Strong - comprehensive guides in place
