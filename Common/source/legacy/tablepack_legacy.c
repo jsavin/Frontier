@@ -210,19 +210,24 @@ boolean tableunpacktable_legacy (Handle hpacked, boolean flmemory, hdlhashtable 
 
 
 boolean tableverbmemorypack_legacy (hdlexternalvariable h, Handle *hpacked, hdlhashnode hnode) {
-	
+
 	register hdlexternalvariable hv = h;
 	register hdlhashtable ht;
 	Handle hpush;
 	register boolean fl;
 	boolean fltempload;
 	boolean fldummy;
-	
+
 	fltempload = !(**hv).flinmemory;
-	
-	if (!tableverbinmemory (NULL, hv, hnode))
-		return (false);
-	
+
+	{
+		db_context ctx;
+		db_context_init(&ctx);
+
+		if (!tableverbinmemory (&ctx, hv, hnode))
+			return (false);
+	}
+
 	ht = (hdlhashtable) (**hv).variabledata; 
 	
 	tablecheckwindowrect (ht); 
@@ -302,29 +307,32 @@ boolean tableverbpack_legacy (hdlexternalvariable h, Handle *hpacked, boolean *f
 	boolean flmustsave = false;
 	hdlwindowinfo hinfo;
 	const boolean adapter_repack = db_format_adapter_force_repack();
-    db_format_mode legacy_mode = {false, adapter_repack, false};
-    db_format_mode_push(&legacy_mode);
+	db_format_mode legacy_mode = {false, adapter_repack, false};
+	db_context ctx;
+	db_format_mode_push(&legacy_mode);
 
 #if defined(FRONTIER_HEADLESS)
 	log_debug(LOG_COMP_TABLE, "tableverbpack_legacy start");
 #endif
-	
+
+	db_context_init(&ctx);
+
 	if (fldatabasesaveas) {
-		
+
 		fltempload = !(**hv).flinmemory;
-		
-		if (!tableverbinmemory (NULL, hv, HNoNode))
+
+		if (!tableverbinmemory (&ctx, hv, HNoNode))
 			return (false);
-		
+
 		*flnewdbaddress = true; /*it's in another database even*/
 		}
 
 	if (adapter_repack && !(**hv).flinmemory) {
 		fltempload = true;
-		if (!tableverbinmemory(NULL, hv, HNoNode)) {
-            db_format_mode_pop();
+		if (!tableverbinmemory(&ctx, hv, HNoNode)) {
+			db_format_mode_pop();
 			return (false);
-        }
+		}
 	}
 
 	if (!(**hv).flinmemory && !adapter_repack) { /*not in memory, just push the old db address*/
@@ -510,25 +518,30 @@ static boolean tablepacktotextvisit (bigstring bsname, hdlhashnode hnode, tyvalu
 
 
 boolean tableverbpack_legacytotext (hdlexternalvariable h, Handle htext) {
-	
+
 	/*
 	12/23/92 dmb: hashinversesearch now takes table as param; don't push/pop
-	
+
 	12/31/92 dmb: use hashsortedinversesearch so text is in correct order
-	
+
 	5.0.2b20 dmb: unload if just loaded
-	
+
 	5.1.5 dmb: use tablesortedinversesearch for guest databases
 	*/
-	
+
 	register hdlexternalvariable hv = h;
 	register hdlhashtable ht;
 	register boolean fl;
 	boolean fltempload = !(**hv).flinmemory;
-	
-	if (!tableverbinmemory (NULL, hv, HNoNode))
-		return (false);
-	
+
+	{
+		db_context ctx;
+		db_context_init(&ctx);
+
+		if (!tableverbinmemory (&ctx, hv, HNoNode))
+			return (false);
+	}
+
 	ht = (hdlhashtable) (**hv).variabledata;
 	
 	//htextscrap = htext; /*set for visit routine*/
@@ -545,13 +558,18 @@ boolean tableverbpack_legacytotext (hdlexternalvariable h, Handle htext) {
 
 
 boolean tableverbgettimes_legacy (hdlexternalvariable h, long *timecreated, long *timemodified, hdlhashnode hnode) {
-	
+
 	register hdlexternalvariable hv = h;
 	register hdlhashtable ht;
-	
-	if (!tableverbinmemory (NULL, hv, hnode))
-		return (false);
-	
+
+	{
+		db_context ctx;
+		db_context_init(&ctx);
+
+		if (!tableverbinmemory (&ctx, hv, hnode))
+			return (false);
+	}
+
 	ht = (hdlhashtable) (**hv).variabledata;
 	
 	*timecreated = (**ht).timecreated;
@@ -563,13 +581,18 @@ boolean tableverbgettimes_legacy (hdlexternalvariable h, long *timecreated, long
 
 
 boolean tableverbsettimes_legacy (hdlexternalvariable h, long timecreated, long timemodified, hdlhashnode hnode) {
-	
+
 	register hdlexternalvariable hv = h;
 	register hdlhashtable ht;
-	
-	if (!tableverbinmemory (NULL, hv, hnode))
-		return (false);
-	
+
+	{
+		db_context ctx;
+		db_context_init(&ctx);
+
+		if (!tableverbinmemory (&ctx, hv, hnode))
+			return (false);
+	}
+
 	ht = (hdlhashtable) (**hv).variabledata;
 	
 	(**ht).timecreated = timecreated;
@@ -613,17 +636,22 @@ static boolean findusedblocksvisit (hdlhashnode hnode, ptrvoid refcon) {
 
 
 boolean tableverbfindusedblocks_legacy (hdlexternalvariable h, bigstring bspath) {
-	
+
 	register hdlexternalvariable hv = h;
 	register hdlhashtable ht;
 	register boolean fl;
 	boolean fltempload;
-	
+
 	fltempload = !(**hv).flinmemory;
-	
-	if (!tableverbinmemory (NULL, hv, HNoNode))
-		return (false);
-	
+
+	{
+		db_context ctx;
+		db_context_init(&ctx);
+
+		if (!tableverbinmemory (&ctx, hv, HNoNode))
+			return (false);
+	}
+
 	if (!statsblockinuse ((**hv).oldaddress, bspath))
 		return (false);
 	

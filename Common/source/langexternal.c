@@ -1653,11 +1653,16 @@ static boolean fullpathsearch (hdlhashtable intable, hdlhashtable fortable, bigs
 			if (flonlyinmemory)	/*can't find it if it isn't in memory*/
 				goto nextx;
 			
-			if (!tableverbinmemory (NULL, hv, x))
+			{
+			db_context ctx;
+			db_context_init(&ctx);
+
+			if (!tableverbinmemory (&ctx, hv, x))
 				return (false);
-				
-			fltempload = true;
 			}
+
+			fltempload = true;
+		}
 		
 /////////			assert (tablesetdebugglobals (ht, x)); /*set debug globals*/
 		

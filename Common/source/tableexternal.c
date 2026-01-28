@@ -51,20 +51,22 @@
 #include "claycallbacks.h"
 #include "cancoon.h"
 #include "logging.h"
+#include "db_format.h"
 
 /* 2025-12-01 Codex: Add headless diagnostics for tablevaltotable to trace migration lookups. */
 
 
 
 boolean tablevaltotable (tyvaluerecord val, hdlhashtable *htable, hdlhashnode hnode) {
-	
+
 	/*
 	called externally -- you give us a value that holds an external value that's
 	a tableprocessor variable, we'll return you a handle to the hashtable.
 	*/
-	
+
 	hdltablevariable hvariable;
 	short errorcode;
+	db_context ctx;
 
 	log_debug(LOG_COMP_TABLE, "tablevaltotable enter valtype=%d external=0x%llx hnode=%p",
 	          (int) val.valuetype,
@@ -75,9 +77,10 @@ boolean tablevaltotable (tyvaluerecord val, hdlhashtable *htable, hdlhashnode hn
 		log_debug(LOG_COMP_TABLE, "tablevaltotable gettablevariable failed err=%d valtype=%d",
 		          (int) errorcode, (int) val.valuetype);
 		return (false);
-    }
+	}
 
-	if (!tableverbinmemory (NULL, (hdlexternalvariable) hvariable, hnode)) {
+	db_context_init(&ctx);
+	if (!tableverbinmemory (&ctx, (hdlexternalvariable) hvariable, hnode)) {
 		log_debug(LOG_COMP_TABLE, "tablevaltotable tableverbinmemory failed valtype=%d oldaddr=%llx hnode=%p",
 		          (int) val.valuetype,
 		          (unsigned long long) (**hvariable).oldaddress,
@@ -177,22 +180,24 @@ static boolean tabledisposevariable (hdlexternalvariable hvariable, boolean fldi
 
 
 boolean tableverbdispose (hdlexternalvariable hvariable, boolean fldisk) {
-	
+
 	/*
-	1/25/91 dmb: special-case local tables; they're the only kind of 
-	system table that can be thrown out.  we might be able to get rid 
+	1/25/91 dmb: special-case local tables; they're the only kind of
+	system table that can be thrown out.  we might be able to get rid
 	of this dirtyness after we support locked tables
-	
-	12/22/91 dmb: in order to release all db nodes properly, must force 
+
+	12/22/91 dmb: in order to release all db nodes properly, must force
 	table to be loaded into memory when fldisk is true
 	*/
-	
+
 	register hdltablevariable hv = (hdltablevariable) hvariable;
 	register hdlhashtable ht;
-	
+	db_context ctx;
+
 	if (fldisk) { /*load table into memory so that all items can release their db nodes*/
-		
-		if (!tableverbinmemory (NULL, (hdlexternalvariable) hv, HNoNode))
+
+		db_context_init(&ctx);
+		if (!tableverbinmemory (&ctx, (hdlexternalvariable) hv, HNoNode))
 			return (false);
 		}
 	
@@ -235,11 +240,13 @@ boolean tableverbinmemory (const db_context *ctx, hdlexternalvariable hvariable,
 	
 
 boolean tableverbgetsize (hdlexternalvariable hvariable, long *size) {
-	
+
 	register hdlexternalvariable hv = hvariable;
 	long ctitems;
-	
-	if (!tableverbinmemory (NULL, hv, HNoNode))
+	db_context ctx;
+
+	db_context_init(&ctx);
+	if (!tableverbinmemory (&ctx, hv, HNoNode))
 		return (false);
 		
 	hashcountitems ((hdlhashtable) (**hv).variabledata, &ctitems);
@@ -271,15 +278,17 @@ boolean tableverbisdirty (hdlexternalvariable hvariable) {
 
 
 boolean tableverbsetdirty (hdlexternalvariable hvariable, boolean fldirty) {
-	
+
 	/*
-	4/15/92 dmb: see comments in langexternalsetdirty.  also note that when the table 
+	4/15/92 dmb: see comments in langexternalsetdirty.  also note that when the table
 	is being set as clean, its may still be dirty.
 	*/
-	
+
 	register hdltablevariable hv = (hdltablevariable) hvariable;
-	
-	if (!tableverbinmemory (NULL, (hdlexternalvariable) hv, HNoNode))
+	db_context ctx;
+
+	db_context_init(&ctx);
+	if (!tableverbinmemory (&ctx, (hdlexternalvariable) hv, HNoNode))
 		return (false);
 	
 	(**(hdlhashtable) (**hv).variabledata).fldirty = fldirty;
@@ -374,14 +383,14 @@ boolean tableverbsetupdisplay (hdlhashtable htable, hdlwindowinfo hinfo) {
 
 
 boolean tableedit (hdlexternalvariable hvariable, hdlwindowinfo hparent, ptrfilespec fs, bigstring bs, rectparam rzoom) {
-	
+
 	//
 	// 2006-09-16 creedon: on Mac, only set the window proxy icon when the file exists
 	//
 	// 1993--3-30 dmb:	don't resort the table before zooming. not sure why this was ever necessary, but it sure is slow
 	//				for large tables
 	//
-	
+
 	register hdltablevariable hv = (hdltablevariable) hvariable;
 	register hdlhashtable ht;
 	register hdltableformats hf;
@@ -390,10 +399,12 @@ boolean tableedit (hdlexternalvariable hvariable, hdlwindowinfo hparent, ptrfile
 	bigstring bsname;
 	WindowPtr w;
 	hdlwindowinfo hi;
+	db_context ctx;
 
-    (void) fs;
-	
-	if (!tableverbinmemory (NULL, (hdlexternalvariable) hv, HNoNode)) // couldn't swap it into memory
+	(void) fs;
+
+	db_context_init(&ctx);
+	if (!tableverbinmemory (&ctx, (hdlexternalvariable) hv, HNoNode)) // couldn't swap it into memory
 		return (false);
 	
 	ht = (hdlhashtable) (**hv).variabledata;

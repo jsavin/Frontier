@@ -47,6 +47,7 @@
 #include "frontier.h"
 #include "standard.h"
 
+#include "db_format.h"
 #include "memory.h"
 #include "strings.h"
 #include "lang.h"
@@ -134,9 +135,14 @@ static boolean getoutlinefromtarget(hdloutlinerecord *ho, bigstring bserror) {
     }
 
     /* Ensure outline is in memory */
-    if (!opverbinmemory(NULL, hv)) {
-        seterrorstring("could not load outline", bserror);
-        return false;
+    {
+        db_context ctx;
+        db_context_init(&ctx);
+
+        if (!opverbinmemory(&ctx, hv)) {
+            seterrorstring("could not load outline", bserror);
+            return false;
+        }
     }
 
     /* Get the outline record */
@@ -1486,8 +1492,13 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
             }
 
             /* Ensure outline is in memory */
-            if (!opverbinmemory(NULL, hv))
-                return false;
+            {
+                db_context ctx;
+                db_context_init(&ctx);
+
+                if (!opverbinmemory(&ctx, hv))
+                    return false;
+            }
 
             /* Get direction parameter */
             flnextparamislast = true;

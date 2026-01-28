@@ -69,9 +69,17 @@ TEST(init_and_cleanup) {
 TEST(id_allocation_unique) {
     init_thread_registry();
 
-    long id1 = allocate_thread_id();
-    long id2 = allocate_thread_id();
-    long id3 = allocate_thread_id();
+    frontier_pthread_record *rec1 = allocate_thread_record();
+    frontier_pthread_record *rec2 = allocate_thread_record();
+    frontier_pthread_record *rec3 = allocate_thread_record();
+
+    ASSERT_NOT_NULL(rec1);
+    ASSERT_NOT_NULL(rec2);
+    ASSERT_NOT_NULL(rec3);
+
+    long id1 = rec1->user_thread_id;
+    long id2 = rec2->user_thread_id;
+    long id3 = rec3->user_thread_id;
 
     /* IDs must be positive */
     ASSERT(id1 > 0);
@@ -86,6 +94,11 @@ TEST(id_allocation_unique) {
     /* IDs must be monotonically increasing */
     ASSERT(id2 > id1);
     ASSERT(id3 > id2);
+
+    /* Clean up records */
+    free_thread_record(rec1);
+    free_thread_record(rec2);
+    free_thread_record(rec3);
 
     cleanup_thread_registry();
 }

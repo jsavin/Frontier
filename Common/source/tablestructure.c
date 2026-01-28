@@ -552,7 +552,9 @@ boolean headless_init_system_paths (hdlhashtable hroot) {
 				if (val_check.valuetype == externalvaluetype) {
 					// Force hydration by calling tableverbinmemory
 					hdlexternalvariable hv = (hdlexternalvariable)val_check.data.externalvalue;
-					if (tableverbinmemory(NULL, hv, hnode_check)) {
+					db_context ctx;
+					db_context_init(&ctx);
+					if (tableverbinmemory(&ctx, hv, hnode_check)) {
 						log_trace(LOG_COMP_LANG, "Hydrated external table %s before findnamedtable", cname);
 					} else {
 						log_warn(LOG_COMP_LANG, "Failed to hydrate external table %s", cname);
@@ -933,39 +935,41 @@ boolean tableloadsystemtable (dbaddress adr, Handle *hvariable, hdlhashtable *ht
 	register hdlexternalvariable hv;
 	register hdlhashtable ht;
 	hdlhashtable hsubtable;
+	db_context ctx;
 
 	log_debug(LOG_COMP_TABLE, "tableloadsystemtable adr=0x%llx flcreate=%d",
 	          (unsigned long long) adr, (int) flcreate);
 
 	assert (sizeof (tyexternalvariable) == sizeof (tytablevariable));
-	
+
 	if (adr == nildbaddress) { /*start an empty table*/
-		
+
 		if (!tablenewtable ((hdltablevariable *) hvariable, htable)) /*this will be the root table*/
 			return (false);
-		
+
 		hv = (hdlexternalvariable) *hvariable;
-		
+
 		if (flcreate && !tablenewsubtable (*htable, namesystembranch, &hsubtable)) {
-			
+
 			tableverbdispose (hv, true);
-			
+
 			return (false);
 			}
 		}
 	else {
-		
+
 		if (!newtablevariable (false, adr, (hdltablevariable *) hvariable, false))
 			return (false);
-		
+
 		hv = (hdlexternalvariable) *hvariable;
-		
-	if (!tableverbinmemory (NULL, hv, HNoNode)) {
-		
-		disposehandle ((Handle) hv);
-		
-		return (false);
-		}
+
+		db_context_init(&ctx);
+		if (!tableverbinmemory (&ctx, hv, HNoNode)) {
+
+			disposehandle ((Handle) hv);
+
+			return (false);
+			}
 		}
 	
 	ht = (hdlhashtable) (**hv).variabledata;

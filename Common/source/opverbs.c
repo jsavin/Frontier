@@ -594,6 +594,11 @@ boolean opverbinmemory (const db_context *ctx, hdlexternalvariable hvariable) {
 	Handle hpackedoutline;
 	long ix = 0;
 
+	/* Issue #347: Assert context is not NULL - all callers should use db_context_init() */
+#if defined(FRONTIER_HEADLESS) && !defined(NDEBUG)
+	assert(ctx != NULL && "Issue #347: NULL context passed to opverbinmemory - use db_context_init()");
+#endif
+
 	if ((**hv).flinmemory) /*nothing to do, it's already in memory*/
 		return (true);
 
@@ -983,10 +988,12 @@ boolean opverbgetlangtext (hdlexternalvariable hvariable, boolean flpretty, Hand
 	register hdloutlinerecord ho;
 	register boolean fltempload;
 	boolean fl;
-	
+	db_context ctx;
+
 	fltempload = !(**hv).flinmemory;
-	
-	if (!opverbinmemory (NULL, hv))
+
+	db_context_init(&ctx);
+	if (!opverbinmemory (&ctx, hv))
 		return (false);
 	
 	ho = (hdloutlinerecord) (**hv).variabledata;
@@ -1015,12 +1022,14 @@ boolean opverbgetlangtext (hdlexternalvariable hvariable, boolean flpretty, Hand
 
 
 boolean opverbgetsize (hdlexternalvariable hvariable, long *size) {
-	
+
 	register hdloutlinevariable hv = (hdloutlinevariable) hvariable;
 	register hdloutlinerecord ho;
 	register long ctheads;
-	
-	if (!opverbinmemory (NULL, hv))
+	db_context ctx;
+
+	db_context_init(&ctx);
+	if (!opverbinmemory (&ctx, hv))
 		return (false);
 	
 	ho = (hdloutlinerecord) (**hv).variabledata;
@@ -1084,15 +1093,17 @@ boolean opverbisdirty (hdlexternalvariable hvariable) {
 
 
 boolean opverbsetdirty (hdlexternalvariable hvariable, boolean fldirty) {
-	
+
 	/*
 	4/15/92 dmb: see comments in langexternalsetdirty
 	*/
-	
+
 	register hdloutlinevariable hv = (hdloutlinevariable) hvariable;
 	register hdloutlinerecord ho;
-	
-	if (!opverbinmemory (NULL, hv))
+	db_context ctx;
+
+	db_context_init(&ctx);
+	if (!opverbinmemory (&ctx, hv))
 		return (false);
 	
 	ho = (hdloutlinerecord) (**hv).variabledata;
@@ -1104,21 +1115,23 @@ boolean opverbsetdirty (hdlexternalvariable hvariable, boolean fldirty) {
 
 
 boolean opverbpacktotext (hdlexternalvariable h, Handle htext) {
-	
+
 	/*
-	12/13/91 dmb: now that opgetlangtext can make it pretty, use it 
+	12/13/91 dmb: now that opgetlangtext can make it pretty, use it
 	when exporting scripts
-	
+
 	5.0.2b20 dmb: unload if just loaded
 	*/
-	
+
 	register hdloutlinevariable hv = (hdloutlinevariable) h;
 	register hdloutlinerecord ho;
 	register boolean fl;
 	Handle hprogram;
 	boolean fltempload = !(**hv).flinmemory;
-	
-	if (!opverbinmemory (NULL, hv))
+	db_context ctx;
+
+	db_context_init(&ctx);
+	if (!opverbinmemory (&ctx, hv))
 		return (false);
 	
 	ho = (hdloutlinerecord) (**hv).variabledata;
@@ -1145,11 +1158,13 @@ boolean opverbpacktotext (hdlexternalvariable h, Handle htext) {
 
 
 boolean opverbgettimes (hdlexternalvariable h, int64_t *timecreated, int64_t *timemodified) {
-	
+
 	register hdloutlinevariable hv = (hdloutlinevariable) h;
 	register hdloutlinerecord ho;
-	
-	if (!opverbinmemory (NULL, hv))
+	db_context ctx;
+
+	db_context_init(&ctx);
+	if (!opverbinmemory (&ctx, hv))
 		return (false);
 	
 	ho = (hdloutlinerecord) (**hv).variabledata;
@@ -1163,11 +1178,13 @@ boolean opverbgettimes (hdlexternalvariable h, int64_t *timecreated, int64_t *ti
 
 
 boolean opverbsettimes (hdlexternalvariable h, int64_t timecreated, int64_t timemodified) {
-	
+
 	register hdloutlinevariable hv = (hdloutlinevariable) h;
 	register hdloutlinerecord ho;
-	
-	if (!opverbinmemory (NULL, hv))
+	db_context ctx;
+
+	db_context_init(&ctx);
+	if (!opverbinmemory (&ctx, hv))
 		return (false);
 	
 	ho = (hdloutlinerecord) (**hv).variabledata;
@@ -1375,26 +1392,28 @@ static boolean getscriptparam (hdltreenode hfirst, short pnum, hdloutlinevariabl
 
 
 boolean getoutlinevalue (hdltreenode hfirst, short pnum, hdloutlinerecord *houtline) {
-	
+
 	/*
 	5.0.2b15 dmb: public routline - get an outline or script parameter, passed by reference
 	*/
-	
+
 	hdloutlinevariable hv;
 	bigstring bserror;
 	short id;
-	
+	db_context ctx;
+
 	if (!langexternalgetexternalparam (hfirst, pnum, &id, (hdlexternalvariable *) &hv) ||
 		 ((id != idoutlineprocessor) && (id != idscriptprocessor))) {
-		
+
 		getstringlist (operrorlist, namenotoutlineerror, bserror);
-		
+
 		langerrormessage (bserror);
-		
+
 		return (false);
 		}
-	
-	if (!opverbinmemory (NULL, hv))
+
+	db_context_init(&ctx);
+	if (!opverbinmemory (&ctx, hv))
 		return (false);
 	
 	*houtline = (hdloutlinerecord) (**hv).variabledata;
@@ -1405,13 +1424,15 @@ boolean getoutlinevalue (hdltreenode hfirst, short pnum, hdloutlinerecord *houtl
 
 
 boolean opverbarrayreference (hdlexternalvariable hvariable, long ix, hdlheadrecord *hnode) {
-	
+
 	register hdloutlinevariable hv = (hdloutlinevariable) hvariable;
 	register boolean fl;
-	
+	db_context ctx;
+
 	*hnode = nil;
-	
-	if (!opverbinmemory (NULL, hv)) /*couldn't swap into memory*/
+
+	db_context_init(&ctx);
+	if (!opverbinmemory (&ctx, hv)) /*couldn't swap into memory*/
 		return (false);
 		
 	oppushoutline ((hdloutlinerecord) (**hv).variabledata); /*assume it's in memory*/
@@ -1457,8 +1478,10 @@ boolean opedit (hdlexternalvariable hvariable, hdlwindowinfo hparent, ptrfilespe
 	WindowPtr w;
 	hdlwindowinfo hi;
 	short id;
+	db_context ctx;
 
-	if (!opverbinmemory (NULL, hv)) // couldn't swap it into memory
+	db_context_init(&ctx);
+	if (!opverbinmemory (&ctx, hv)) // couldn't swap it into memory
 		return (false);
 	
 	ho = (hdloutlinerecord) (**hv).variabledata; // assume it's in memory
@@ -1586,23 +1609,25 @@ boolean opedit (hdlexternalvariable hvariable, hdlwindowinfo hparent, ptrfilespe
 	
 	
 boolean opvaltoscript (tyvaluerecord val, hdloutlinerecord *houtline) {
-	
+
 	/*
 	called externally -- you give us a value that holds a script that's
 	a tableprocessor variable, we'll return you a handle to the outline.
 	*/
-	
+
 	register hdloutlinevariable hv;
-	
+	db_context ctx;
+
 	if (val.valuetype != externalvaluetype)
 		return (false);
-	
+
 	hv = (hdloutlinevariable) val.data.externalvalue;
-	
+
 	if ((**hv).id != idscriptprocessor)
 		return (false);
-	
-	if (!opverbinmemory (NULL, hv))
+
+	db_context_init(&ctx);
+	if (!opverbinmemory (&ctx, hv))
 		return (false);
 	
 	*houtline = (hdloutlinerecord) (**hv).variabledata;
@@ -2054,30 +2079,32 @@ static boolean opgettypeverb (hdltreenode hparam1, tyvaluerecord *v) {
 
 
 static boolean opsettypeverb (hdltreenode hparam1, tyvaluerecord *v) {
-	
+
 	/*
 	2.1b12 dmb: new verb
 	*/
-	
+
 	register hdltreenode hp1 = hparam1;
 	bigstring bsname;
 	hdloutlinevariable hv;
 	hdloutlinerecord ho;
 	long signature;
 	hdlwindowinfo hinfo;
-	
+	db_context ctx;
+
 	if (!getscriptparam (hp1, 1, &hv))
 		return (false);
-	
+
 	flnextparamislast = true;
-	
+
 	if (!getstringvalue (hp1, 2, bsname))
 		return (false);
-	
+
 	if (!scriptgetnametype (bsname, &signature)) /*unknown, let verb return false*/
 		return (true);
-	
-	if (!opverbinmemory (NULL, hv))
+
+	db_context_init(&ctx);
+	if (!opverbinmemory (&ctx, hv))
 		return (false);
 	
 	ho = (hdloutlinerecord) (**hv).variabledata;
@@ -3952,7 +3979,7 @@ static boolean opfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord 
 			}
 		
 		case insertoutlinefunc: {
-			
+
 			/*
 			7.0b13 PBS: menus can be inserted into menus now.
 			*/
@@ -3961,6 +3988,7 @@ static boolean opfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord 
 			short id;
 			tydirection dir;
 			boolean floutline = true;
+			db_context ctx;
 
 			if (!langexternalgetexternalparam (hparam1, 1, &id, (hdlexternalvariable *) &hv))
 				floutline = false;
@@ -3972,7 +4000,7 @@ static boolean opfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord 
 					case idoutlineprocessor:
 					case idmenuprocessor:
 					case idscriptprocessor:
-					
+
 						floutline = true;
 
 						break;
@@ -3982,20 +4010,21 @@ static boolean opfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord 
 						floutline = false;
 					} /*switch*/
 				} /*if*/
-			
+
 			//if (!langexternalgetexternalparam (hparam1, 1, &id, (hdlexternalvariable *) &hv) || (id != idoutlineprocessor)) {
 			if (!floutline) {
-					
+
 				bigstring lbserror;
-				
+
 				getstringlist (operrorlist, namenotoutlineerror, lbserror);
-				
+
 				langerrormessage (lbserror);
-				
+
 				return (false);
 				}
-			
-			if (!opverbinmemory (NULL, hv))
+
+			db_context_init(&ctx);
+			if (!opverbinmemory (&ctx, hv))
 				return (false);
 			
 			flnextparamislast = true;
@@ -4329,10 +4358,12 @@ boolean opverbfind (hdlexternalvariable hvariable, boolean *flzoom) {
 	boolean flwindowopen;
 	hdlwindowinfo hinfo;
 	boolean fldisplaywasenabled = true;
-	
+	db_context ctx;
+
 	fltempload = !(**hv).flinmemory;
-	
-	if (!opverbinmemory (NULL, hv))
+
+	db_context_init(&ctx);
+	if (!opverbinmemory (&ctx, hv))
 		return (false);
 	
 	ho = (hdloutlinerecord) (**hv).variabledata;

@@ -47,6 +47,7 @@
 #include "pictverbs.h"
 #include "kernelverbdefs.h"
 #include "logging.h"
+#include "db_format.h"
 
 
 
@@ -212,6 +213,11 @@ boolean pictverbinmemory (const db_context *ctx, hdlexternalvariable hv) {
 	Handle hpackedpict;
 	long ix = 0;
 	hdlpictrecord hpict;
+
+	/* Issue #347: Assert context is not NULL - all callers should use db_context_init() */
+#if defined(FRONTIER_HEADLESS) && !defined(NDEBUG)
+	assert(ctx != NULL && "Issue #347: NULL context passed to pictverbinmemory - use db_context_init()");
+#endif
 
 #if defined(FRONTIER_HEADLESS)
 	log_debug(LOG_COMP_OP, "pictverbinmemory: ENTER hv=%p", (void*)hv);
@@ -496,11 +502,13 @@ boolean pictverbpacktotext (hdlexternalvariable h, Handle htext) {
 
 
 boolean pictverbgetsize (hdlexternalvariable hvariable, long *size) {
-	
+
 	register hdlpictvariable hv = (hdlpictvariable) hvariable;
 	register PicHandle macpicture;
+	db_context ctx;
 
-	if (!pictverbinmemory (NULL, hvariable))
+	db_context_init(&ctx);
+	if (!pictverbinmemory (&ctx, hvariable))
 		return (false);
 
 	macpicture = (**(hdlpictrecord) (**hv).variabledata).macpicture;
@@ -556,14 +564,16 @@ boolean pictverbisdirty (hdlexternalvariable hvariable) {
 
 
 boolean pictverbsetdirty (hdlexternalvariable hvariable, boolean fldirty) {
-	
+
 	/*
 	4/15/92 dmb: see comments in langexternalsetdirty
 	*/
-	
-	register hdlpictvariable hv = (hdlpictvariable) hvariable;
 
-	if (!pictverbinmemory (NULL, hvariable))
+	register hdlpictvariable hv = (hdlpictvariable) hvariable;
+	db_context ctx;
+
+	db_context_init(&ctx);
+	if (!pictverbinmemory (&ctx, hvariable))
 		return (false);
 
 	(**(hdlpictrecord) (**hv).variabledata).fldirty = fldirty;
@@ -576,8 +586,10 @@ boolean pictverbgettimes (hdlexternalvariable h, int64_t *timecreated, int64_t *
 
 	register hdlpictvariable hv = (hdlpictvariable) h;
 	register hdlpictrecord hp;
+	db_context ctx;
 
-	if (!pictverbinmemory (NULL, h)) /*couldn't swap it into memory*/
+	db_context_init(&ctx);
+	if (!pictverbinmemory (&ctx, h)) /*couldn't swap it into memory*/
 		return (false);
 	
 	hp = (hdlpictrecord) (**hv).variabledata; /*assume it's in memory*/
@@ -594,8 +606,10 @@ boolean pictverbsettimes (hdlexternalvariable h, int64_t timecreated, int64_t ti
 
 	register hdlpictvariable hv = (hdlpictvariable) h;
 	register hdlpictrecord hp;
+	db_context ctx;
 
-	if (!pictverbinmemory (NULL, h)) /*couldn't swap it into memory*/
+	db_context_init(&ctx);
+	if (!pictverbinmemory (&ctx, h)) /*couldn't swap it into memory*/
 		return (false);
 	
 	hp = (hdlpictrecord) (**hv).variabledata; /*assume it's in memory*/
@@ -625,7 +639,7 @@ boolean pictwindowopen (hdlexternalvariable hvariable, hdlwindowinfo *hinfo) {
 
 
 boolean pictedit (hdlexternalvariable hvariable, hdlwindowinfo hparent, ptrfilespec fs, bigstring bstitle, rectparam rzoom) {
-	
+
 	/*
 	5.0.2b6 dmb: added flwindowopen loop to handle Windows async overlap
 	*/
@@ -635,8 +649,10 @@ boolean pictedit (hdlexternalvariable hvariable, hdlwindowinfo hparent, ptrfiles
 	Rect rwindow;
 	WindowPtr w;
 	hdlwindowinfo hi;
+	db_context ctx;
 
-	if (!pictverbinmemory (NULL, hvariable)) /*couldn't swap it into memory*/
+	db_context_init(&ctx);
+	if (!pictverbinmemory (&ctx, hvariable)) /*couldn't swap it into memory*/
 		return (false);
 	
 	hp = (hdlpictrecord) (**hv).variabledata; /*assume it's in memory*/

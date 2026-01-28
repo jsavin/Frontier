@@ -133,15 +133,17 @@ static boolean gettableparam (hdltreenode hfirst, short pnum, hdlhashtable *htab
 
 
 boolean gettablevalue (hdltreenode hfirst, short pnum, hdlhashtable *htable) {
-	
+
 	hdltablevariable hv;
 	bigstring bsname;
 	hdlhashnode hnode;
-	
+	db_context ctx;
+
 	if (!gettableparam (hfirst, pnum, htable, bsname, &hv, &hnode))
 		return (false);
-	
-	if (!tableverbinmemory (NULL, (hdlexternalvariable) hv, hnode)) /*couldn't swap it into memory*/
+
+	db_context_init(&ctx);
+	if (!tableverbinmemory (&ctx, (hdlexternalvariable) hv, hnode)) /*couldn't swap it into memory*/
 		return (false);
 	
 	*htable = (hdlhashtable) (**hv).variabledata;
