@@ -61,7 +61,6 @@
 #include "kernelverbdefs.h"
 #include "shell.rsrc.h"
 #include "timedate.h"
-#include "WinSockNetEvents.h"
 #include "osacomponent.h"
 #include "langpython.h"
 

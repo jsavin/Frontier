@@ -25,6 +25,8 @@
 /* Forward declarations */
 struct tyhashtable;
 typedef struct tyhashtable **hdlhashtable;
+struct tyfilespec;
+typedef struct tyfilespec *ptrfilespec;
 
 /* Stream States */
 typedef enum {
@@ -142,6 +144,20 @@ boolean tcp_listen_stream(long port, long depth, hdlhashtable callback_htable,
                           bigstring callback_name, long refcon, long bind_addr,
                           long *listen_id_out);
 boolean tcp_close_listen(long listen_id);
+
+/* Phase 2: Status and Peer Information */
+boolean tcp_status_stream(long stream_id, bigstring status_out, long *bytes_pending_out);
+boolean tcp_get_peer_address(long stream_id, long *addr_out);
+boolean tcp_get_peer_port(long stream_id, long *port_out);
+boolean tcp_my_address(long *addr_out);
+
+/* Phase 3: Buffered I/O with Timeouts */
+boolean tcp_read_stream_until(long stream_id, Handle hbuffer, Handle hpattern, long timeout_secs);
+boolean tcp_read_stream_bytes(long stream_id, Handle hbuffer, long count, long timeout_secs);
+boolean tcp_read_stream_until_closed(long stream_id, Handle hbuffer, long timeout_secs);
+boolean tcp_write_string_to_stream(long stream_id, Handle hdata, long chunk_size, long timeout_secs);
+boolean tcp_write_file_to_stream(long stream_id, Handle hprefix, Handle hsuffix, ptrfilespec fs);
+boolean tcp_get_stats(long listener_id, bigstring stats_out);
 
 /* Initialization and Shutdown */
 boolean tcp_init_context(void);

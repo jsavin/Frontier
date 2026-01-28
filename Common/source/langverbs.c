@@ -65,7 +65,7 @@
 #include "process.h"
 #include "processinternal.h"
 #include "kernelverbdefs.h"
-#include "WinSockNetEvents.h"
+#include "tcpverbs.h"
 #include "notify.h"
 #include "timedate.h"
 #include "langpython.h"
@@ -3819,7 +3819,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			if (!getlongvalue (hparam1, 1, &addr))
 				return (false);
 
-			if (fwsNetEventAddressDecode (addr, bs))
+			if (tcp_address_decode (addr, bs))
 				return (setstringvalue (bs, v));
 
 			return (false);
@@ -3834,7 +3834,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			if (!getstringvalue (hparam1, 1, bs))
 				return (false);
 
-			if (fwsNetEventAddressEncode(bs, (unsigned long *)(&addr)))
+			if (tcp_address_encode (bs, &addr))
 				return (setlongvalue (addr, v));
 
 			return (false);
@@ -3849,7 +3849,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			if (!getlongvalue (hparam1, 1, &addr))
 				return (false);
 
-			if (fwsNetEventAddressToName (addr, bs))
+			if (tcp_address_to_name (addr, bs))
 				return (setstringvalue (bs, v));
 
 			return (false);
@@ -3864,7 +3864,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			if (!getstringvalue (hparam1, 1, bs))
 				return (false);
 
-			if (fwsNetEventNameToAddress(bs, (unsigned long *)(&addr)))
+			if (tcp_name_to_address (bs, &addr))
 				return (setlongvalue (addr, v));
 
 			return (false);
@@ -3874,7 +3874,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			{
 			long addr;
 
-			if (fwsNetEventMyAddress((unsigned long *)(&addr)))
+			if (tcp_my_address (&addr))
 				return (setlongvalue (addr, v));
 
 			return (false);
@@ -3889,7 +3889,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			if (!getlongvalue (hparam1, 1, &stream))
 				return (false);
 
-			if (fwsNetEventAbortStream (stream))
+			if (tcp_abort_stream (stream))
 				return (setbooleanvalue (true, v));
 
 			return (false);
@@ -3904,7 +3904,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			if (!getlongvalue (hparam1, 1, &stream))
 				return (false);
 
-			if (fwsNetEventCloseStream (stream))
+			if (tcp_close_stream (stream))
 				return (setbooleanvalue (true, v));
 
 			return (false);
@@ -3919,7 +3919,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			if (!getlongvalue (hparam1, 1, &stream))
 				return (false);
 
-			if (fwsNetEventCloseListen (stream))
+			if (tcp_close_listen (stream))
 				return (setbooleanvalue (true, v));
 
 			return (false);
@@ -3939,7 +3939,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			if (!getlongvalue (hparam1, 2, &port))
 				return (false);
 
-			if (fwsNetEventOpenAddrStream (addr, port, (unsigned long *)(&stream)))
+			if (tcp_open_stream_addr (addr, port, &stream))
 				return (setlongvalue (stream, v));
 
 			return (false);
@@ -3958,7 +3958,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			if (!getlongvalue (hparam1, 2, &port))
 				return (false);
 
-			if (fwsNetEventOpenNameStream (bs, port, (unsigned long *)(&stream)))
+			if (tcp_open_stream_name (bs, port, &stream))
 				return (setlongvalue (stream, v));
 
 			return (false);
@@ -3968,7 +3968,6 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			{
 			long stream;
 			long len;
-			char * charbuffer;
 			Handle buf;
 
 			if (!getlongvalue (hparam1, 1, &stream))
@@ -3979,51 +3978,28 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			if (!getlongvalue (hparam1, 2, &len))
 				return (false);
 
-			if (!newhandle (len, &buf))
-				return (false);
-
-			lockhandle (buf);
-
-				charbuffer = (char *) *buf;
-
-			if (fwsNetEventReadStream (stream, (unsigned long *)(&len), charbuffer)) {
-				unlockhandle (buf);
-				SetHandleSize (buf, len);
+			if (tcp_read_stream (stream, len, &buf))
 				return (setbinaryvalue (buf, '\?\?\?\?', v));
-				}
 
-			unlockhandle (buf);		/*cleanup*/
-			disposehandle (buf);
 			return (false);
 			}
 
 		case netwritestream:
 			{
 			long stream;
-			long len;
-			char * charbuffer;
 			Handle buf;
 
 			if (!getlongvalue (hparam1, 1, &stream))
 				return (false);
 
 			flnextparamislast = true;
-	
+
 			if (!gettextvalue (hparam1, 2, &buf))
 				return (false);
 
-			len = gethandlesize (buf);
-
-			lockhandle (buf);
-
-				charbuffer = (char *) *buf;
-
-			if (fwsNetEventWriteStream (stream, len, charbuffer)) {
-				unlockhandle (buf);
+			if (tcp_write_stream (stream, buf))
 				return (setbooleanvalue (true, v));
-				}
 
-			unlockhandle (buf);
 			return (false);
 			}
 
@@ -4033,10 +4009,9 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			long port;
 			long refcon;
 			long depth;
-			unsigned long ipaddr;
+			long ipaddr;
 			tyvaluerecord callbackval;
-			hdlhashtable ht;	
-			bigstring bsFullName;
+			hdlhashtable ht;
 
 			if (!getlongvalue (hparam1, 1, &port))
 				return (false);
@@ -4046,22 +4021,19 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 
 			if (!getaddressparam (hparam1, 3, &callbackval))
 				return (false);
-			
-			if (!getaddressvalue (callbackval, &ht, bs))
-				return (false);
 
-			if (! langexternalgetquotedpath (ht, bs, bsFullName))
+			if (!getaddressvalue (callbackval, &ht, bs))
 				return (false);
 
 			if (!getlongvalue (hparam1, 4, &refcon))
 				return (false);
 
 			flnextparamislast = true;
-	
-			if (!getlongvalue (hparam1, 5, (long *)(&ipaddr)))
+
+			if (!getlongvalue (hparam1, 5, &ipaddr))
 				return (false);
-			
-			if (fwsNetEventListenStream (port, depth, bsFullName, refcon, (unsigned long *)(&stream), ipaddr, (long)(**((hdlexternalvariable)(**ht).hashtablerefcon)).hdatabase))
+
+			if (tcp_listen_stream (port, depth, ht, bs, refcon, ipaddr, &stream))
 				return (setlongvalue (stream, v));
 
 			return (false);
@@ -4071,7 +4043,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 		case netstatusstream:
 			{
 			long stream;
-			unsigned long bytesPending;
+			long bytesPending;
 
 			if (!langcheckparamcount (hparam1, 2))
 				return (false);
@@ -4079,7 +4051,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			if (!getlongvalue (hparam1, 1, &stream))
 				return (false);
 
-			if (fwsNetEventStatusStream (stream, bs, &bytesPending)) {
+			if (tcp_status_stream (stream, bs, &bytesPending)) {
 				langsetlongvarparam (hparam1, 2, bytesPending);
 				return (setstringvalue (bs, v));
 				}
@@ -4089,14 +4061,14 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 
 		case netgetpeeraddress: {
 			long stream;
-			unsigned long adr, port;
+			long adr;
 
 			flnextparamislast = true;
 
 			if (!getlongvalue (hparam1, 1, &stream))
 				return (false);
 
-			if (fwsNetEventGetPeerAddress (stream, &adr, &port))
+			if (tcp_get_peer_address (stream, &adr))
 				return (setlongvalue (adr, v));
 
 			return (false);
@@ -4104,14 +4076,14 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 
 		case netgetpeerport: {
 			long stream;
-			unsigned long adr, port;
+			long port;
 
 			flnextparamislast = true;
 
 			if (!getlongvalue (hparam1, 1, &stream))
 				return (false);
 
-			if (fwsNetEventGetPeerAddress (stream, &adr, &port))
+			if (tcp_get_peer_port (stream, &port))
 				return (setlongvalue (port, v));
 
 			return (false);
@@ -4129,13 +4101,13 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 
 			if (!getlongvalue (hparam1, 3, &chunksize))
 				return (false);
-			
+
 			flnextparamislast = true;
 
 			if (!getlongvalue (hparam1, 4, &timeout))
 				return (false);
 
-			if (!fwsNetEventWriteHandleToStream (stream, htext, chunksize, timeout))
+			if (!tcp_write_string_to_stream (stream, htext, chunksize, timeout))
 				return (false);
 
 			return (setbooleanvalue (true, v));
@@ -4151,23 +4123,23 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 
 			if (!getlongvalue (hparam1, 1, &stream))
 				return (false);
-				
+
 			if (!getfilespecvalue (hparam1, 2, &fs))
 				return (false);
-				
+
 			initvalue (&vprefix, stringvaluetype);
 
-			if (!getoptionalparamvalue (hparam1, &ctconsumed, &ctpositional, BIGSTRING ("\x06" "prefix"), &vprefix)) 
+			if (!getoptionalparamvalue (hparam1, &ctconsumed, &ctpositional, BIGSTRING ("\x06" "prefix"), &vprefix))
 				return (false);
-			
+
 			initvalue (&vsuffix, stringvaluetype);
 
 			flnextparamislast = true;
 
-			if (!getoptionalparamvalue (hparam1, &ctconsumed, &ctpositional, BIGSTRING ("\x06" "suffix"), &vsuffix)) 
+			if (!getoptionalparamvalue (hparam1, &ctconsumed, &ctpositional, BIGSTRING ("\x06" "suffix"), &vsuffix))
 				return (false);
 
-			if (!fwsNetEventWriteFileToStream (stream, vprefix.data.stringvalue, vsuffix.data.stringvalue, &fs))
+			if (!tcp_write_file_to_stream (stream, vprefix.data.stringvalue, vsuffix.data.stringvalue, &fs))
 				return (false);
 
 			return (setbooleanvalue (true, v));
@@ -4180,7 +4152,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			tyvaluerecord vadrbuffer, vbuffer;
 			tyaddress adrbuffer;
 			hdlhashnode hnode;
-			
+
 			if (!getlongvalue (hparam1, 1, &stream))
 				return (false);
 
@@ -4189,7 +4161,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 
 			if (!getlongvalue (hparam1, 3, &timeout))
 				return (false);
-			
+
 			flnextparamislast = true;
 
 			if (!getaddressparam (hparam1, 4, &vadrbuffer))
@@ -4204,10 +4176,9 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			if (!coercetostring (&vbuffer))
 				return (false);
 
-			if (!fwsNetEventReadStreamUntil (stream, vbuffer.data.stringvalue, hpattern, timeout))
+			if (!tcp_read_stream_until (stream, vbuffer.data.stringvalue, hpattern, timeout))
 				return (false);
 
-			// new hdlhashnode parameter set to nil, should be OK because we only care if it's externl
 			langsymbolchanged (adrbuffer.ht, adrbuffer.bs, nil, true);
 
 			return (setbooleanvalue (true, v));
@@ -4224,11 +4195,10 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 
 			if (!getlongvalue (hparam1, 2, &ctbytes))
 				return (false);
-			
 
 			if (!getlongvalue (hparam1, 3, &timeout))
 				return (false);
-			
+
 			flnextparamislast = true;
 
 			if (!getaddressparam (hparam1, 4, &vadrbuffer))
@@ -4243,7 +4213,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			if (!coercetostring (&vbuffer))
 				return (false);
 
-			if (!fwsNetEventReadStreamBytes (stream, vbuffer.data.stringvalue, ctbytes, timeout))
+			if (!tcp_read_stream_bytes (stream, vbuffer.data.stringvalue, ctbytes, timeout))
 				return (false);
 
 			langsymbolchanged (adrbuffer.ht, adrbuffer.bs, nil, true);
@@ -4256,13 +4226,13 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			tyvaluerecord vadrbuffer, vbuffer;
 			tyaddress adrbuffer;
 			hdlhashnode hnode;
-			
+
 			if (!getlongvalue (hparam1, 1, &stream))
 				return (false);
 
 			if (!getlongvalue (hparam1, 2, &timeout))
 				return (false);
-			
+
 			flnextparamislast = true;
 
 			if (!getaddressparam (hparam1, 3, &vadrbuffer))
@@ -4277,7 +4247,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			if (!coercetostring (&vbuffer))
 				return (false);
 
-			if (!fwsNetEventReadStreamUntilClosed (stream, vbuffer.data.stringvalue, timeout))
+			if (!tcp_read_stream_until_closed (stream, vbuffer.data.stringvalue, timeout))
 				return (false);
 
 			langsymbolchanged (adrbuffer.ht, adrbuffer.bs, nil, true);
@@ -4296,7 +4266,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 
 			/*7.0b37 PBS: return the current TCP connections count.*/
 
-			return (setlongvalue (fwsNetEventGetConnectionCount (), v));
+			return (setlongvalue (tcp_count_connections (), v));
 			}
 
 		//case pythondoscriptfunc:
