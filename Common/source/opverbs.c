@@ -594,6 +594,13 @@ boolean opverbinmemory (const db_context *ctx, hdlexternalvariable hvariable) {
 	Handle hpackedoutline;
 	long ix = 0;
 
+	/* Issue #347: Warn if caller passes NULL context (should use db_context_init) */
+#if defined(FRONTIER_HEADLESS) && !defined(NDEBUG)
+	if (ctx == NULL) {
+		log_warn(LOG_COMP_OP, "opverbinmemory: NULL context passed - caller should use db_context_init()");
+	}
+#endif
+
 	if ((**hv).flinmemory) /*nothing to do, it's already in memory*/
 		return (true);
 

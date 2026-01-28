@@ -315,6 +315,13 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
     bigstring bspath, bsunpackerror;
     boolean fl;
 
+    /* Issue #347: Warn if caller passes NULL context (should use db_context_init) */
+#if !defined(NDEBUG)
+    if (ctx == NULL) {
+        log_warn(LOG_COMP_TABLE, "tableverbinmemory_common: NULL context passed - caller should use db_context_init()");
+    }
+#endif
+
     log_trace(LOG_COMP_TABLE, "tableverbinmemory enter hvariable=%p hnode=%p flinmemory=%d",
             (void *) hvariable,
             (void *) hnode,
