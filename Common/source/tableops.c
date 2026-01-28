@@ -43,6 +43,7 @@
 #include "tableinternal.h"
 #include "tableverbs.h"
 #include "claybrowser.h"
+#include "db_format.h"
 
 /* 2025-12-01 Codex: Clamp headless table lookup logs to string length to keep debug output readable. */
 
@@ -443,45 +444,48 @@ boolean findvariablesearch (hdlhashtable intable, hdlexternalvariable forvariabl
 	register short i;
 	tyvaluerecord val;
 	register hdlexternalvariable hv = nil;
-	
+	db_context ctx;
+
+	db_context_init(&ctx);
+
 	for (i = 0; i < ctbuckets; i++) {
-		
+
 		x = (**ht).hashbucket [i];
-		
+
 		while (x != nil) { /*chain through the hash list*/
-			
+
 			register boolean fltempload = false;
-			
+
 			val = (**x).val;
-			
-			if (val.valuetype != externalvaluetype) 
+
+			if (val.valuetype != externalvaluetype)
 				goto nextx;
-				
+
 			hv = (hdlexternalvariable) val.data.externalvalue;
-			
+
 			if (hv == forvariable) { /*bravo!  we found it...*/
-				
+
 				*foundintable = ht;
-				
+
 				gethashkey (x, foundname);
-				
+
 				if (ancestorcallback != nil)
 					(*ancestorcallback) (ht, x);
-				
+
 				return (true);
 				}
-			
+
 			if (!istablevariable (hv))
 				goto nextx;
-			
+
 			if (!(**hv).flinmemory) {
-				
+
 				if (flonlyinmemory)
 					goto nextx;
-					
-				if (!tableverbinmemory (NULL, hv, x))
+
+				if (!tableverbinmemory (&ctx, hv, x))
 					return (false);
-					
+
 				fltempload = true;
 				}
 			
@@ -699,64 +703,67 @@ static boolean findtablevisit (hdlhashnode hnode, ptrvoid refcon) {
 
 
 static boolean parentsearch (hdlhashtable intable, hdlhashtable fortable, boolean flonlyinmemory, hdlhashtable *hparent, bigstring bsname) {
-	
+
 	/*
 	4/29/96 4.0b8 dmb: we need to convert fortable to a parenttable/name address pair
-	
+
 	root is a special case.
-	
-	we have no direct way of making a table-to-parent connection independent of 
-	windows. someday, we should make the parenttable field always valid, but that 
+
+	we have no direct way of making a table-to-parent connection independent of
+	windows. someday, we should make the parenttable field always valid, but that
 	will require relatively extensive (minor but widely distributed) code change.
-	
+
 	5.0.2b13 dmb: moved this in from langvalue.c
 	*/
-	
+
 	register hdlhashtable ht = intable;
 	register hdlhashnode x;
 	register short i;
 	tyvaluerecord val;
 	register hdlexternalvariable hv = nil;
-	
+	db_context ctx;
+
+	db_context_init(&ctx);
+
 	if (intable == fortable) {	/*special case for root*/
-	
+
 		*hparent = nil;
-		
+
 		if ((**intable).fllocaltable)
 			setemptystring (bsname);
 		else
 			copystring (nameroottable, bsname);
-		
+
 		return (true);
 		}
-	
+
 	for (i = 0; i < ctbuckets; i++) {
-		
+
 		x = (**ht).hashbucket [i];
-		
+
 		while (x != nil) { /*chain through the hash list*/
-			
+
 			register boolean fltempload = false;
 			hdlhashtable htable;
-			
+
 			val = (**x).val;
-			
-			if (val.valuetype != externalvaluetype) 
+
+			if (val.valuetype != externalvaluetype)
 				goto nextx;
-				
+
 			hv = (hdlexternalvariable) val.data.externalvalue;
-	
+
 			if ((**hv).id != idtableprocessor)
 				goto nextx;
-			
+
 			if (!(**hv).flinmemory) {
-			
+
 				if (flonlyinmemory)	/*can't find it if it isn't in memory*/
 					goto nextx;
-				
-				if (!tableverbinmemory (NULL, hv, x))
+
+				if (!tableverbinmemory (&ctx, hv, x))
 					return (false);
-					
+
 				fltempload = true;
 				}
 			
