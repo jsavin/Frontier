@@ -43,7 +43,6 @@
 // 2025-10-27 Codex: Headless runtime should populate builtins table like classic app.
 #include "tablestructure.h"
 #include "resources.h"
-#include "WinSockNetEvents.h"
 #include "sysshellcall.h" /* 2006-03-09 aradke: unixshellcall moved from CallMachOFramework.h */
 #include "byteorder.h"	/* 2006-04-16 aradke: swap byte-order in loadfunctionprocessor */
 #include <stdlib.h>

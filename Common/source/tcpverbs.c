@@ -22,17 +22,21 @@
  */
 
 #include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <sys/time.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <ifaddrs.h>
+#include <net/if.h>
 #include <pthread.h>
-#include <sys/time.h>
 #include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
 #include <stdio.h>
 #include <limits.h>
+#include <stdlib.h>
 
 #include "frontier.h"
 #include "standard.h"
@@ -43,6 +47,7 @@
 #include "memory.h"
 #include "strings.h"
 #include "logging.h"
+#include "file.h"  /* openfile, closefile, fileread */
 
 /* Global TCP Context */
 static tcp_context_t g_tcp_context;
@@ -1494,6 +1499,963 @@ boolean tcp_init_context(void) {
 
     return true;
 }
+
+/* ========================================================================
+ * Phase 2: Status and Peer Information Verbs
+ * ======================================================================== */
+
+/* tcp.statusStream(stream) -> status, bytesPending
+ * Get status of a TCP stream and number of bytes available to read.
+ * Status values: "DATA", "OPEN", "INACTIVE", "CLOSED", "CLOSING", "UNKNOWN"
+ *
+ * Parameters:
+ *   stream_id       - Stream ID to check
+ *   status_out      - Output: Status string (Pascal string)
+ *   bytes_pending   - Output: Number of bytes available to read (may be NULL)
+ *
+ * Returns:
+ *   true on success, false on error (invalid stream)
+ */
+boolean tcp_status_stream(long stream_id, bigstring status_out, long *bytes_pending_out) {
+    tcp_stream_t *stream;
+    int sockfd;
+    fd_set readset;
+    struct timeval tv;
+    int select_result;
+    int bytes_pending = 0;  /* Must be int for ioctl(FIONREAD) */
+
+    log_debug(LOG_COMP_LANG, "tcp_status_stream: stream_id=%ld", stream_id);
+
+    /* NULL pointer validation */
+    if (!status_out) {
+        tcp_set_error(TCP_ERR_SOCKET_ERROR, "NULL output pointer");
+        return false;
+    }
+
+    /* Initialize output */
+    setemptystring(status_out);
+    if (bytes_pending_out)
+        *bytes_pending_out = 0;
+
+    /* Acquire stream reference (TOCTOU protection) */
+    stream = tcp_stream_acquire(stream_id);
+    if (!stream) {
+        /* Stream doesn't exist or is invalid */
+        copyctopstring("INACTIVE", status_out);
+        tcp_set_error(TCP_ERR_INVALID_STREAM, "Invalid stream");
+        return false;
+    }
+
+    sockfd = stream->sockfd;
+
+    /* Handle stream states */
+    switch (stream->state) {
+        case STREAM_INVALID:
+            copyctopstring("INACTIVE", status_out);
+            tcp_stream_release(stream);
+            tcp_set_error(TCP_ERR_INVALID_STREAM, "Invalid stream");
+            return false;
+
+        case STREAM_CONNECTING:
+            copyctopstring("UNKNOWN", status_out);
+            break;
+
+        case STREAM_CONNECTED:
+        case STREAM_ACCEPTED:
+            /* Check for data availability using select() with zero timeout */
+            FD_ZERO(&readset);
+            FD_SET(sockfd, &readset);
+            tv.tv_sec = 0;
+            tv.tv_usec = 0;
+
+            select_result = select(sockfd + 1, &readset, NULL, NULL, &tv);
+
+            if (select_result < 0) {
+                /* select() error - stream may be in bad state */
+                log_warn(LOG_COMP_LANG, "tcp_status_stream: select() failed: %s", strerror(errno));
+                copyctopstring("INACTIVE", status_out);
+            } else if (select_result == 0) {
+                /* No data available - stream is open but idle */
+                copyctopstring("OPEN", status_out);
+            } else {
+                /* Data might be available - check with ioctl */
+                if (ioctl(sockfd, FIONREAD, &bytes_pending) < 0) {
+                    log_warn(LOG_COMP_LANG, "tcp_status_stream: ioctl(FIONREAD) failed: %s", strerror(errno));
+                    copyctopstring("INACTIVE", status_out);
+                } else if (bytes_pending == 0) {
+                    /* select() returned readable but no bytes - connection closed by peer */
+                    copyctopstring("INACTIVE", status_out);
+                } else {
+                    /* Data available */
+                    copyctopstring("DATA", status_out);
+                    if (bytes_pending_out)
+                        *bytes_pending_out = bytes_pending;
+                }
+            }
+            break;
+
+        case STREAM_LISTENING:
+            copyctopstring("LISTENING", status_out);
+            break;
+
+        case STREAM_CLOSING:
+            copyctopstring("CLOSING", status_out);
+            break;
+
+        case STREAM_CLOSED:
+            copyctopstring("CLOSED", status_out);
+            break;
+
+        default:
+            copyctopstring("UNKNOWN", status_out);
+            break;
+    }
+
+    tcp_stream_release(stream);
+
+    log_debug(LOG_COMP_LANG, "tcp_status_stream: status=%s bytes_pending=%ld",
+              stringbaseaddress(status_out), bytes_pending);
+
+    return true;
+}
+
+/* tcp.getPeerAddress(stream) -> addr
+ * Get the remote IP address of a connected stream.
+ *
+ * Parameters:
+ *   stream_id  - Stream ID to query
+ *   addr_out   - Output: Remote IP address (host byte order)
+ *
+ * Returns:
+ *   true on success, false on error
+ */
+boolean tcp_get_peer_address(long stream_id, long *addr_out) {
+    tcp_stream_t *stream;
+    struct sockaddr_in peer_addr;
+    socklen_t addr_len = sizeof(peer_addr);
+
+    log_debug(LOG_COMP_LANG, "tcp_get_peer_address: stream_id=%ld", stream_id);
+
+    /* NULL pointer validation */
+    if (!addr_out) {
+        tcp_set_error(TCP_ERR_SOCKET_ERROR, "NULL output pointer");
+        return false;
+    }
+
+    /* Acquire stream reference (TOCTOU protection) */
+    stream = tcp_stream_acquire(stream_id);
+    if (!stream) {
+        tcp_set_error(TCP_ERR_INVALID_STREAM, "Invalid stream");
+        return false;
+    }
+
+    /* Use getpeername() for accurate peer info */
+    if (getpeername(stream->sockfd, (struct sockaddr *)&peer_addr, &addr_len) < 0) {
+        tcp_stream_release(stream);
+        tcp_set_error(TCP_ERR_SOCKET_ERROR, "getpeername() failed");
+        return false;
+    }
+
+    tcp_stream_release(stream);
+
+    /* Convert to host byte order */
+    *addr_out = (long)ntohl(peer_addr.sin_addr.s_addr);
+
+    log_debug(LOG_COMP_LANG, "tcp_get_peer_address: addr=%ld", *addr_out);
+
+    return true;
+}
+
+/* tcp.getPeerPort(stream) -> port
+ * Get the remote port of a connected stream.
+ *
+ * Parameters:
+ *   stream_id  - Stream ID to query
+ *   port_out   - Output: Remote port number (host byte order)
+ *
+ * Returns:
+ *   true on success, false on error
+ */
+boolean tcp_get_peer_port(long stream_id, long *port_out) {
+    tcp_stream_t *stream;
+    struct sockaddr_in peer_addr;
+    socklen_t addr_len = sizeof(peer_addr);
+
+    log_debug(LOG_COMP_LANG, "tcp_get_peer_port: stream_id=%ld", stream_id);
+
+    /* NULL pointer validation */
+    if (!port_out) {
+        tcp_set_error(TCP_ERR_SOCKET_ERROR, "NULL output pointer");
+        return false;
+    }
+
+    /* Acquire stream reference (TOCTOU protection) */
+    stream = tcp_stream_acquire(stream_id);
+    if (!stream) {
+        tcp_set_error(TCP_ERR_INVALID_STREAM, "Invalid stream");
+        return false;
+    }
+
+    /* Use getpeername() for accurate peer info */
+    if (getpeername(stream->sockfd, (struct sockaddr *)&peer_addr, &addr_len) < 0) {
+        tcp_stream_release(stream);
+        tcp_set_error(TCP_ERR_SOCKET_ERROR, "getpeername() failed");
+        return false;
+    }
+
+    tcp_stream_release(stream);
+
+    /* Convert to host byte order */
+    *port_out = (long)ntohs(peer_addr.sin_port);
+
+    log_debug(LOG_COMP_LANG, "tcp_get_peer_port: port=%ld", *port_out);
+
+    return true;
+}
+
+/* tcp.myAddress() -> addr
+ * Get the local machine's primary IP address.
+ * Returns first non-loopback, up, IPv4 interface address.
+ * Falls back to 127.0.0.1 if no suitable address found.
+ *
+ * Parameters:
+ *   addr_out   - Output: Local IP address (host byte order)
+ *
+ * Returns:
+ *   true on success (always succeeds with fallback)
+ */
+boolean tcp_my_address(long *addr_out) {
+    struct ifaddrs *myaddrs, *ifa;
+
+    log_debug(LOG_COMP_LANG, "tcp_my_address: getting local address");
+
+    /* NULL pointer validation */
+    if (!addr_out) {
+        tcp_set_error(TCP_ERR_SOCKET_ERROR, "NULL output pointer");
+        return false;
+    }
+
+    /* Default to loopback */
+    *addr_out = 0x7F000001;  /* 127.0.0.1 */
+
+    if (getifaddrs(&myaddrs) != 0) {
+        log_warn(LOG_COMP_LANG, "tcp_my_address: getifaddrs() failed: %s", strerror(errno));
+        /* Return loopback as fallback */
+        return true;
+    }
+
+    for (ifa = myaddrs; ifa != NULL; ifa = ifa->ifa_next) {
+        /* Skip entries without addresses */
+        if (ifa->ifa_addr == NULL)
+            continue;
+
+        /* Skip interfaces that are down */
+        if (!(ifa->ifa_flags & IFF_UP))
+            continue;
+
+        /* Skip loopback interfaces */
+        if (ifa->ifa_flags & IFF_LOOPBACK)
+            continue;
+
+        /* Only IPv4 */
+        if (ifa->ifa_addr->sa_family == AF_INET) {
+            struct sockaddr_in *s4 = (struct sockaddr_in *)ifa->ifa_addr;
+            *addr_out = (long)ntohl(s4->sin_addr.s_addr);
+            log_info(LOG_COMP_LANG, "tcp_my_address: found address on interface %s", ifa->ifa_name);
+            break;
+        }
+    }
+
+    freeifaddrs(myaddrs);
+
+    log_debug(LOG_COMP_LANG, "tcp_my_address: addr=%ld", *addr_out);
+
+    return true;
+}
+
+/* ========================================================================
+ * Phase 3: Buffered I/O with Timeouts
+ * ======================================================================== */
+
+/* Timeout infrastructure using microsecond precision
+ *
+ * Implements both idle timeout and minimum throughput protection:
+ * - Idle timeout: Resets on each successful read (user-specified)
+ * - Throughput window: Requires at least 1 byte per 35-second window
+ *
+ * The throughput window prevents slow-trickle attacks where a malicious
+ * peer sends data just often enough to reset the idle timeout but slow
+ * enough to hold resources indefinitely. The 35-second interval provides
+ * margin over typical WebSocket ping intervals (25-30 seconds).
+ */
+#define TCP_THROUGHPUT_WINDOW_SECS 35   /* Minimum throughput window */
+#define TCP_MIN_BYTES_PER_WINDOW 1      /* Must receive at least 1 byte per window */
+
+typedef struct {
+    uint64_t idle_deadline_us;          /* Resets on any activity (user timeout) */
+    uint64_t throughput_window_start_us; /* Start of current throughput window */
+    long bytes_in_window;               /* Bytes received in current window */
+} tcp_timeout_t;
+
+static uint64_t tcp_get_now_us(void) {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return (uint64_t)tv.tv_sec * 1000000ULL + tv.tv_usec;
+}
+
+static void tcp_timeout_init(tcp_timeout_t *t, long timeout_secs) {
+    uint64_t now_us = tcp_get_now_us();
+    t->idle_deadline_us = now_us + (uint64_t)timeout_secs * 1000000ULL;
+    t->throughput_window_start_us = now_us;
+    t->bytes_in_window = 0;
+}
+
+static void tcp_timeout_reset_idle(tcp_timeout_t *t, long timeout_secs) {
+    t->idle_deadline_us = tcp_get_now_us() + (uint64_t)timeout_secs * 1000000ULL;
+}
+
+static void tcp_timeout_record_bytes(tcp_timeout_t *t, long bytes_received) {
+    uint64_t now_us = tcp_get_now_us();
+    uint64_t window_elapsed_us = now_us - t->throughput_window_start_us;
+
+    /* If window has elapsed, start a new window */
+    if (window_elapsed_us >= (uint64_t)TCP_THROUGHPUT_WINDOW_SECS * 1000000ULL) {
+        t->throughput_window_start_us = now_us;
+        t->bytes_in_window = bytes_received;
+    } else {
+        t->bytes_in_window += bytes_received;
+    }
+}
+
+static boolean tcp_timeout_expired(tcp_timeout_t *t) {
+    uint64_t now_us = tcp_get_now_us();
+
+    /* Check idle timeout */
+    if (now_us >= t->idle_deadline_us)
+        return true;
+
+    /* Check throughput window - if a full window has passed with insufficient data */
+    uint64_t window_elapsed_us = now_us - t->throughput_window_start_us;
+    if (window_elapsed_us >= (uint64_t)TCP_THROUGHPUT_WINDOW_SECS * 1000000ULL) {
+        if (t->bytes_in_window < TCP_MIN_BYTES_PER_WINDOW) {
+            log_debug(LOG_COMP_LANG, "tcp_timeout_expired: throughput too low (%ld bytes in %d sec window)",
+                      t->bytes_in_window, TCP_THROUGHPUT_WINDOW_SECS);
+            return true;
+        }
+        /* Window passed with sufficient data - reset for next window */
+        t->throughput_window_start_us = now_us;
+        t->bytes_in_window = 0;
+    }
+
+    return false;
+}
+
+static long tcp_timeout_remaining_ms(tcp_timeout_t *t) {
+    uint64_t now_us = tcp_get_now_us();
+    if (now_us >= t->idle_deadline_us)
+        return 0;
+    return (long)((t->idle_deadline_us - now_us) / 1000);
+}
+
+/* Default timeout and chunk size for buffered I/O */
+#define TCP_DEFAULT_TIMEOUT_SECS 60
+#define TCP_DEFAULT_CHUNK_SIZE 8192
+
+/* Read condition types for unified read implementation */
+typedef enum {
+    TCP_READ_UNTIL_CLOSED,
+    TCP_READ_UNTIL_BYTES,
+    TCP_READ_UNTIL_PATTERN
+} tcp_read_condition_t;
+
+/* Unified read implementation
+ * Reads from stream until condition is met or timeout expires.
+ *
+ * Timeout behavior:
+ * - Idle timeout: Resets on each successful read (user-specified via timeout_secs)
+ * - Throughput protection: Connection must transfer at least 1 byte per 35 seconds
+ *
+ * Pattern matching optimization:
+ * - For TCP_READ_UNTIL_PATTERN, we only scan newly-read bytes plus overlap
+ * - This provides O(n) performance instead of O(n²) for large buffers
+ */
+static boolean tcp_read_until_condition(
+    long stream_id,
+    Handle hbuffer,
+    tcp_read_condition_t condition,
+    long target_bytes,
+    Handle hpattern,
+    long timeout_secs)
+{
+    tcp_stream_t *stream;
+    int sockfd;
+    tcp_timeout_t timeout;
+    long current_size;
+    long bytes_read_total;
+    long pattern_scan_start;  /* For O(n) pattern matching optimization */
+    long pattern_len;
+
+    log_debug(LOG_COMP_LANG, "tcp_read_until_condition: stream_id=%ld condition=%d target=%ld timeout=%ld",
+              stream_id, condition, target_bytes, timeout_secs);
+
+    /* Validate timeout */
+    if (timeout_secs <= 0)
+        timeout_secs = TCP_DEFAULT_TIMEOUT_SECS;
+
+    /* Acquire stream reference (TOCTOU protection) */
+    stream = tcp_stream_acquire(stream_id);
+    if (!stream) {
+        tcp_set_error(TCP_ERR_INVALID_STREAM, "Invalid stream");
+        return false;
+    }
+
+    sockfd = stream->sockfd;
+
+    /* Initialize timeout */
+    tcp_timeout_init(&timeout, timeout_secs);
+
+    /* Get initial buffer size (may have prior data) */
+    current_size = gethandlesize(hbuffer);
+    bytes_read_total = current_size;
+
+    /* Initialize pattern matching optimization */
+    pattern_len = (condition == TCP_READ_UNTIL_PATTERN && hpattern) ? gethandlesize(hpattern) : 0;
+    pattern_scan_start = 0;  /* First scan starts at beginning */
+
+    while (true) {
+        fd_set readset;
+        struct timeval tv;
+        int select_result;
+        int bytes_available;  /* Must be int for ioctl(FIONREAD) */
+        long bytes_to_read;
+        ssize_t recv_result;
+
+        /* Check for timeout */
+        if (tcp_timeout_expired(&timeout)) {
+            tcp_stream_release(stream);
+            tcp_set_error(TCP_ERR_TIMEOUT, "Read timeout");
+            return false;
+        }
+
+        /* Check if condition is met */
+        if (condition == TCP_READ_UNTIL_PATTERN) {
+            /* O(n) optimization: only scan from pattern_scan_start, not from 0
+             * This avoids O(n²) behavior when reading large amounts of data.
+             * We need overlap of (pattern_len - 1) to catch patterns spanning reads.
+             */
+            if (searchhandle(hbuffer, hpattern, pattern_scan_start, current_size) >= 0) {
+                /* Pattern found */
+                break;
+            }
+            /* Update scan start for next iteration - back up by pattern overlap */
+            if (current_size > pattern_len) {
+                pattern_scan_start = current_size - pattern_len + 1;
+            }
+        } else if (condition == TCP_READ_UNTIL_BYTES) {
+            if (bytes_read_total >= target_bytes) {
+                /* Read enough bytes */
+                break;
+            }
+        }
+        /* TCP_READ_UNTIL_CLOSED continues until recv returns 0 */
+
+        /* Use select() with short timeout to check for data */
+        FD_ZERO(&readset);
+        FD_SET(sockfd, &readset);
+        tv.tv_sec = 0;
+        tv.tv_usec = 100000;  /* 100ms poll interval */
+
+        select_result = select(sockfd + 1, &readset, NULL, NULL, &tv);
+
+        if (select_result < 0) {
+            if (errno == EINTR)
+                continue;  /* Interrupted, retry */
+            tcp_stream_release(stream);
+            tcp_set_error(TCP_ERR_SOCKET_ERROR, "select() failed");
+            return false;
+        }
+
+        if (select_result == 0) {
+            /* No data available yet, continue waiting */
+            continue;
+        }
+
+        /* Data available - check how many bytes */
+        if (ioctl(sockfd, FIONREAD, &bytes_available) < 0) {
+            tcp_stream_release(stream);
+            tcp_set_error(TCP_ERR_SOCKET_ERROR, "ioctl(FIONREAD) failed");
+            return false;
+        }
+
+        if (bytes_available == 0) {
+            /* select() returned readable but no bytes - connection closed */
+            if (condition == TCP_READ_UNTIL_CLOSED) {
+                /* This is expected for READ_UNTIL_CLOSED */
+                break;
+            }
+            /* For other conditions, this is an error (connection closed prematurely) */
+            tcp_stream_release(stream);
+            tcp_set_error(TCP_ERR_SOCKET_ERROR, "Connection closed unexpectedly");
+            return false;
+        }
+
+        /* Limit bytes to read for BYTES condition */
+        bytes_to_read = bytes_available;
+        if (condition == TCP_READ_UNTIL_BYTES) {
+            long remaining = target_bytes - bytes_read_total;
+            if (bytes_to_read > remaining)
+                bytes_to_read = remaining;
+        }
+
+        /* Expand buffer to hold new data */
+        if (!sethandlesize(hbuffer, current_size + bytes_to_read)) {
+            tcp_stream_release(stream);
+            tcp_set_error(TCP_ERR_NO_MEMORY, "Could not expand buffer");
+            return false;
+        }
+
+        /* Read data into buffer */
+        lockhandle(hbuffer);
+        recv_result = recv(sockfd, (*hbuffer) + current_size, bytes_to_read, 0);
+        unlockhandle(hbuffer);
+
+        if (recv_result < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK)
+                continue;
+            tcp_stream_release(stream);
+            tcp_set_error(TCP_ERR_SOCKET_ERROR, "recv() failed");
+            return false;
+        }
+
+        if (recv_result == 0) {
+            /* Connection closed */
+            if (condition == TCP_READ_UNTIL_CLOSED) {
+                /* Shrink buffer to actual size */
+                sethandlesize(hbuffer, current_size);
+                break;
+            }
+            tcp_stream_release(stream);
+            tcp_set_error(TCP_ERR_SOCKET_ERROR, "Connection closed unexpectedly");
+            return false;
+        }
+
+        /* Adjust buffer if we read less than expected */
+        if (recv_result < bytes_to_read) {
+            sethandlesize(hbuffer, current_size + recv_result);
+        }
+
+        current_size = gethandlesize(hbuffer);
+        bytes_read_total = current_size;
+
+        /* Reset idle timeout and record throughput on successful read */
+        tcp_timeout_reset_idle(&timeout, timeout_secs);
+        tcp_timeout_record_bytes(&timeout, recv_result);
+
+        log_trace(LOG_COMP_LANG, "tcp_read_until_condition: read %zd bytes, total=%ld",
+                  recv_result, bytes_read_total);
+    }
+
+    /* Update activity timestamp */
+    TCP_LOCK();
+    stream->last_activity = time(NULL);
+    TCP_UNLOCK();
+
+    tcp_stream_release(stream);
+
+    log_debug(LOG_COMP_LANG, "tcp_read_until_condition: completed, total=%ld", bytes_read_total);
+
+    return true;
+}
+
+/* tcp.readStreamUntil(stream, buffer, pattern, timeout) -> true
+ * Read from stream until pattern is found or timeout.
+ * Pattern is searched in buffer (which may have prior data).
+ *
+ * Parameters:
+ *   stream_id    - Stream ID to read from
+ *   hbuffer      - Handle to buffer (data appended, may have prior data)
+ *   hpattern     - Handle containing pattern to search for
+ *   timeout_secs - Idle timeout in seconds (0 = default 60s)
+ *
+ * Returns:
+ *   true if pattern found, false on error or timeout
+ */
+boolean tcp_read_stream_until(long stream_id, Handle hbuffer, Handle hpattern, long timeout_secs) {
+    log_debug(LOG_COMP_LANG, "tcp_read_stream_until: stream_id=%ld timeout=%ld", stream_id, timeout_secs);
+
+    if (!hbuffer) {
+        tcp_set_error(TCP_ERR_SOCKET_ERROR, "NULL buffer handle");
+        return false;
+    }
+
+    if (!hpattern || gethandlesize(hpattern) == 0) {
+        tcp_set_error(TCP_ERR_SOCKET_ERROR, "Empty or NULL pattern");
+        return false;
+    }
+
+    return tcp_read_until_condition(stream_id, hbuffer, TCP_READ_UNTIL_PATTERN,
+                                    0, hpattern, timeout_secs);
+}
+
+/* tcp.readStreamBytes(stream, buffer, count, timeout) -> true
+ * Read exactly 'count' bytes from stream.
+ *
+ * Parameters:
+ *   stream_id    - Stream ID to read from
+ *   hbuffer      - Handle to buffer (data appended)
+ *   count        - Number of bytes to read
+ *   timeout_secs - Idle timeout in seconds (0 = default 60s)
+ *
+ * Returns:
+ *   true if all bytes read, false on error or timeout
+ */
+boolean tcp_read_stream_bytes(long stream_id, Handle hbuffer, long count, long timeout_secs) {
+    log_debug(LOG_COMP_LANG, "tcp_read_stream_bytes: stream_id=%ld count=%ld timeout=%ld",
+              stream_id, count, timeout_secs);
+
+    if (!hbuffer) {
+        tcp_set_error(TCP_ERR_SOCKET_ERROR, "NULL buffer handle");
+        return false;
+    }
+
+    if (count <= 0) {
+        tcp_set_error(TCP_ERR_SOCKET_ERROR, "Invalid byte count");
+        return false;
+    }
+
+    return tcp_read_until_condition(stream_id, hbuffer, TCP_READ_UNTIL_BYTES,
+                                    count, nil, timeout_secs);
+}
+
+/* tcp.readStreamUntilClosed(stream, buffer, timeout) -> true
+ * Read from stream until remote closes connection.
+ *
+ * Parameters:
+ *   stream_id    - Stream ID to read from
+ *   hbuffer      - Handle to buffer (data appended)
+ *   timeout_secs - Idle timeout in seconds (0 = default 60s)
+ *
+ * Returns:
+ *   true if stream closed gracefully, false on error or timeout
+ */
+boolean tcp_read_stream_until_closed(long stream_id, Handle hbuffer, long timeout_secs) {
+    log_debug(LOG_COMP_LANG, "tcp_read_stream_until_closed: stream_id=%ld timeout=%ld",
+              stream_id, timeout_secs);
+
+    if (!hbuffer) {
+        tcp_set_error(TCP_ERR_SOCKET_ERROR, "NULL buffer handle");
+        return false;
+    }
+
+    return tcp_read_until_condition(stream_id, hbuffer, TCP_READ_UNTIL_CLOSED,
+                                    0, nil, timeout_secs);
+}
+
+/* tcp.writeStringToStream(stream, data, chunksize, timeout) -> true
+ * Write data to stream in chunks, with timeout between chunks.
+ *
+ * Parameters:
+ *   stream_id    - Stream ID to write to
+ *   hdata        - Handle containing data to write
+ *   chunk_size   - Size of each chunk (0 = default 8KB)
+ *   timeout_secs - Timeout for each chunk write (0 = default 60s)
+ *
+ * Returns:
+ *   true if all data written, false on error or timeout
+ */
+boolean tcp_write_string_to_stream(long stream_id, Handle hdata, long chunk_size, long timeout_secs) {
+    tcp_stream_t *stream;
+    int sockfd;
+    long data_size;
+    long bytes_written = 0;
+
+    log_debug(LOG_COMP_LANG, "tcp_write_string_to_stream: stream_id=%ld chunk=%ld timeout=%ld",
+              stream_id, chunk_size, timeout_secs);
+
+    /* Validate parameters */
+    if (!hdata) {
+        tcp_set_error(TCP_ERR_SOCKET_ERROR, "NULL data handle");
+        return false;
+    }
+
+    if (chunk_size <= 0)
+        chunk_size = TCP_DEFAULT_CHUNK_SIZE;
+
+    if (timeout_secs <= 0)
+        timeout_secs = TCP_DEFAULT_TIMEOUT_SECS;
+
+    data_size = gethandlesize(hdata);
+    if (data_size == 0) {
+        /* Nothing to write */
+        return true;
+    }
+
+    /* Acquire stream reference (TOCTOU protection) */
+    stream = tcp_stream_acquire(stream_id);
+    if (!stream) {
+        tcp_set_error(TCP_ERR_INVALID_STREAM, "Invalid stream");
+        return false;
+    }
+
+    sockfd = stream->sockfd;
+
+    lockhandle(hdata);
+
+    while (bytes_written < data_size) {
+        fd_set writeset;
+        struct timeval tv;
+        int select_result;
+        long this_chunk;
+        ssize_t send_result;
+
+        /* Calculate chunk size for this iteration */
+        this_chunk = data_size - bytes_written;
+        if (this_chunk > chunk_size)
+            this_chunk = chunk_size;
+
+        /* Wait for socket to be writable */
+        FD_ZERO(&writeset);
+        FD_SET(sockfd, &writeset);
+        tv.tv_sec = timeout_secs;
+        tv.tv_usec = 0;
+
+        select_result = select(sockfd + 1, NULL, &writeset, NULL, &tv);
+
+        if (select_result < 0) {
+            if (errno == EINTR)
+                continue;
+            unlockhandle(hdata);
+            tcp_stream_release(stream);
+            tcp_set_error(TCP_ERR_SOCKET_ERROR, "select() failed");
+            return false;
+        }
+
+        if (select_result == 0) {
+            /* Timeout */
+            unlockhandle(hdata);
+            tcp_stream_release(stream);
+            tcp_set_error(TCP_ERR_TIMEOUT, "Write timeout");
+            return false;
+        }
+
+        /* Send chunk */
+        send_result = send(sockfd, (*hdata) + bytes_written, this_chunk, 0);
+
+        if (send_result < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK)
+                continue;
+            if (errno == EINTR)
+                continue;
+            unlockhandle(hdata);
+            tcp_stream_release(stream);
+            tcp_set_error(TCP_ERR_SOCKET_ERROR, "send() failed");
+            return false;
+        }
+
+        bytes_written += send_result;
+
+        log_trace(LOG_COMP_LANG, "tcp_write_string_to_stream: wrote %zd bytes, total=%ld/%ld",
+                  send_result, bytes_written, data_size);
+    }
+
+    unlockhandle(hdata);
+
+    /* Update activity timestamp */
+    TCP_LOCK();
+    stream->last_activity = time(NULL);
+    TCP_UNLOCK();
+
+    tcp_stream_release(stream);
+
+    log_debug(LOG_COMP_LANG, "tcp_write_string_to_stream: completed, wrote %ld bytes", bytes_written);
+
+    return true;
+}
+
+/* tcp.writeFileToStream(stream, prefix, suffix, filespec) -> true
+ * Write file contents to stream with optional prefix and suffix.
+ *
+ * Parameters:
+ *   stream_id - Stream ID to write to
+ *   hprefix   - Optional prefix data (may be NULL)
+ *   hsuffix   - Optional suffix data (may be NULL)
+ *   fs        - File specification to read from
+ *
+ * Returns:
+ *   true if all data written, false on error
+ */
+boolean tcp_write_file_to_stream(long stream_id, Handle hprefix, Handle hsuffix, ptrfilespec fs) {
+    tcp_stream_t *stream;
+    int sockfd;
+    hdlfilenum fnum;
+    static const long kFileBufferSize = 32768L;
+    char *buffer;
+    boolean success = true;
+
+    log_debug(LOG_COMP_LANG, "tcp_write_file_to_stream: stream_id=%ld", stream_id);
+
+    /* Validate parameters */
+    if (!fs) {
+        tcp_set_error(TCP_ERR_SOCKET_ERROR, "NULL filespec");
+        return false;
+    }
+
+    /* Acquire stream reference (TOCTOU protection) */
+    stream = tcp_stream_acquire(stream_id);
+    if (!stream) {
+        tcp_set_error(TCP_ERR_INVALID_STREAM, "Invalid stream");
+        return false;
+    }
+
+    sockfd = stream->sockfd;
+
+    /* Write prefix if provided */
+    if (hprefix != nil && gethandlesize(hprefix) > 0) {
+        if (!tcp_write_string_to_stream(stream_id, hprefix, 0, 0)) {
+            tcp_stream_release(stream);
+            return false;
+        }
+    }
+
+    /* Allocate file buffer */
+    buffer = (char *)malloc(kFileBufferSize);
+    if (buffer == NULL) {
+        tcp_stream_release(stream);
+        tcp_set_error(TCP_ERR_NO_MEMORY, "Could not allocate file buffer");
+        return false;
+    }
+
+    /* Open file */
+    if (!openfile(fs, &fnum, true)) {
+        free(buffer);
+        tcp_stream_release(stream);
+        /* openfile sets its own error */
+        return false;
+    }
+
+    /* Read and transmit file in chunks */
+    while (true) {
+        long bytes_read = kFileBufferSize;
+
+        if (!filereaddata(fnum, bytes_read, &bytes_read, buffer)) {
+            success = false;
+            break;
+        }
+
+        if (bytes_read == 0)
+            break;  /* EOF */
+
+        /* Create temporary handle for the chunk */
+        Handle hchunk;
+        if (!newfilledhandle(buffer, bytes_read, &hchunk)) {
+            success = false;
+            tcp_set_error(TCP_ERR_NO_MEMORY, "Could not allocate chunk handle");
+            break;
+        }
+
+        /* Write chunk to stream */
+        if (!tcp_write_string_to_stream(stream_id, hchunk, 0, 0)) {
+            disposehandle(hchunk);
+            success = false;
+            break;
+        }
+
+        disposehandle(hchunk);
+    }
+
+    closefile(fnum);
+    free(buffer);
+
+    /* Write suffix if provided and no errors so far */
+    if (success && hsuffix != nil && gethandlesize(hsuffix) > 0) {
+        if (!tcp_write_string_to_stream(stream_id, hsuffix, 0, 0)) {
+            tcp_stream_release(stream);
+            return false;
+        }
+    }
+
+    /* Update activity timestamp */
+    TCP_LOCK();
+    stream->last_activity = time(NULL);
+    TCP_UNLOCK();
+
+    tcp_stream_release(stream);
+
+    log_debug(LOG_COMP_LANG, "tcp_write_file_to_stream: completed success=%d", success);
+
+    return success;
+}
+
+/* tcp.getStats(listenID) -> stats
+ * Get statistics for a listener (count of streams by state).
+ *
+ * Parameters:
+ *   listener_id - Listener ID to get stats for
+ *   stats_out   - Output: Statistics string (Pascal string)
+ *
+ * Returns:
+ *   true on success, false if listener not found
+ */
+boolean tcp_get_stats(long listener_id, bigstring stats_out) {
+    unsigned long ct_connected = 0;
+    unsigned long ct_accepted = 0;
+    unsigned long ct_closing = 0;
+    unsigned long ct_closed = 0;
+    char stats_cstr[256];
+
+    log_debug(LOG_COMP_LANG, "tcp_get_stats: listener_id=%ld", listener_id);
+
+    /* NULL pointer validation */
+    if (!stats_out) {
+        tcp_set_error(TCP_ERR_SOCKET_ERROR, "NULL output pointer");
+        return false;
+    }
+
+    setemptystring(stats_out);
+
+    /* Count streams associated with this listener */
+    TCP_LOCK();
+
+    for (int i = TCP_FIRST_STREAM_ID; i < TCP_MAX_STREAMS; i++) {
+        tcp_stream_t *stream = &g_tcp_context.streams[i];
+
+        if (stream->parent_listen_id == listener_id) {
+            switch (stream->state) {
+                case STREAM_CONNECTED:
+                    ct_connected++;
+                    break;
+                case STREAM_ACCEPTED:
+                    ct_accepted++;
+                    break;
+                case STREAM_CLOSING:
+                    ct_closing++;
+                    break;
+                case STREAM_CLOSED:
+                    ct_closed++;
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+
+    TCP_UNLOCK();
+
+    /* Format stats string */
+    snprintf(stats_cstr, sizeof(stats_cstr),
+             "connected=%lu,accepted=%lu,closing=%lu,closed=%lu",
+             ct_connected, ct_accepted, ct_closing, ct_closed);
+
+    copyctopstring(stats_cstr, stats_out);
+
+    log_debug(LOG_COMP_LANG, "tcp_get_stats: %s", stats_cstr);
+
+    return true;
+}
+
+/* ========================================================================
+ * Shutdown and Cleanup
+ * ======================================================================== */
 
 /* tcp_shutdown_context() - Cleanup TCP subsystem
  * Closes all active listeners and streams, destroys synchronization primitives.

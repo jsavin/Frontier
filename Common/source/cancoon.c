@@ -62,7 +62,12 @@
 #include "cancooninternal.h"
 #include "serialnumber.h"
 
+#ifndef FRONTIER_HEADLESS
 #include "WinSockNetEvents.h" /*6.2a14 AR*/
+#else
+/* Stub declaration for headless mode - network events not available */
+#define fwsNetEventShutdownDependentListeners(x) ((void)0)
+#endif
 #include "db_format.h" /* 2025-11-23 Codex: BE helpers for cancoon addresses */
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
 #include "logging.h"

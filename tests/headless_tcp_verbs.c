@@ -18,6 +18,7 @@
 #include "lang.h"
 #include "langinternal.h"
 #include "tablestructure.h"
+#include "file.h"
 #include "tcpverbs.h"
 
 /* Token enum for all verbs in the tcp processor */
@@ -116,10 +117,18 @@ static boolean tcp_valueproc(short token, hdltreenode hparam1,
             return setlongvalue(addr, v);
         }
 
-        case tcpv_myaddress:
-            /* Verb #4: tcp.myaddress - Not yet implemented (Phase 2) */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+        case tcpv_myaddress: {
+            /* Verb #4: tcp.myAddress() -> address */
+            long addr;
+
+            if (!langcheckparamcount(hp1, 0))
+                return false;
+
+            if (!tcp_my_address(&addr))
+                return false;
+
+            return setlongvalue(addr, v);
+        }
 
         case tcpv_abortstream: {
             /* Verb #5: tcp.abortStream(stream) -> true */
@@ -275,50 +284,272 @@ static boolean tcp_valueproc(short token, hdltreenode hparam1,
             return setlongvalue(listen_id, v);
         }
 
-        case tcpv_statusstream:
-            /* Verb #13: tcp.statusstream - Not yet implemented (Phase 2) */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+        case tcpv_statusstream: {
+            /* Verb #13: tcp.statusStream(stream, @bytesPending) -> statusString */
+            long stream_id;
+            hdlhashtable htable;
+            bigstring varname;
+            bigstring status_out;
+            long bytes_pending;
+            tyvaluerecord val;
 
-        case tcpv_getpeeraddress:
-            /* Verb #14: tcp.getpeeraddress - Not yet implemented (Phase 2) */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            if (!getlongvalue(hp1, 1, &stream_id))
+                return false;
 
-        case tcpv_getpeerport:
-            /* Verb #15: tcp.getpeerport - Not yet implemented (Phase 2) */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            flnextparamislast = true;
+            if (!getvarparam(hp1, 2, &htable, varname))
+                return false;
 
-        case tcpv_writestringtostream:
-            /* Verb #16: tcp.writestringtostream - Not yet implemented (Phase 2) */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            if (!tcp_status_stream(stream_id, status_out, &bytes_pending))
+                return false;
 
-        case tcpv_writefiletostream:
-            /* Verb #17: tcp.writefiletostream - Not yet implemented (Phase 2) */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Set the bytesPending output variable */
+            setlongvalue(bytes_pending, &val);
+            if (!hashtableassign(htable, varname, val))
+                return false;
 
-        case tcpv_readstreamuntil:
-            /* Verb #18: tcp.readstreamuntil - Not yet implemented (Phase 2) */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            return setstringvalue(status_out, v);
+        }
 
-        case tcpv_readstreambytes:
-            /* Verb #19: tcp.readstreambytes - Not yet implemented (Phase 2) */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+        case tcpv_getpeeraddress: {
+            /* Verb #14: tcp.getPeerAddress(stream) -> address */
+            long stream_id;
+            long addr;
 
-        case tcpv_readstreamuntilclosed:
-            /* Verb #20: tcp.readstreamuntilclosed - Not yet implemented (Phase 2) */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            flnextparamislast = true;
+            if (!getlongvalue(hp1, 1, &stream_id))
+                return false;
 
-        case tcpv_getstats:
-            /* Verb #21: tcp.getstats - Not yet implemented (Phase 2) */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            if (!tcp_get_peer_address(stream_id, &addr))
+                return false;
+
+            return setlongvalue(addr, v);
+        }
+
+        case tcpv_getpeerport: {
+            /* Verb #15: tcp.getPeerPort(stream) -> port */
+            long stream_id;
+            long port;
+
+            flnextparamislast = true;
+            if (!getlongvalue(hp1, 1, &stream_id))
+                return false;
+
+            if (!tcp_get_peer_port(stream_id, &port))
+                return false;
+
+            return setlongvalue(port, v);
+        }
+
+        case tcpv_writestringtostream: {
+            /* Verb #16: tcp.writeStringToStream(stream, data, chunkSize, timeOutSecs) -> true */
+            long stream_id;
+            Handle hdata;
+            long chunk_size;
+            long timeout_secs;
+
+            if (!getlongvalue(hp1, 1, &stream_id))
+                return false;
+
+            if (!getexempttextvalue(hp1, 2, &hdata))
+                return false;
+
+            if (!getlongvalue(hp1, 3, &chunk_size))
+                return false;
+
+            flnextparamislast = true;
+            if (!getlongvalue(hp1, 4, &timeout_secs))
+                return false;
+
+            if (!tcp_write_string_to_stream(stream_id, hdata, chunk_size, timeout_secs))
+                return false;
+
+            return setbooleanvalue(true, v);
+        }
+
+        case tcpv_writefiletostream: {
+            /* Verb #17: tcp.writeFileToStream(stream, f, prefix="", suffix="") -> true */
+            long stream_id;
+            tyfilespec fs;
+            Handle hprefix = nil;
+            Handle hsuffix = nil;
+            short paramcount;
+
+            if (!getlongvalue(hp1, 1, &stream_id))
+                return false;
+
+            if (!getfilespecvalue(hp1, 2, &fs))
+                return false;
+
+            paramcount = langgetparamcount(hp1);
+
+            /* Get optional prefix (default empty) */
+            if (paramcount >= 3) {
+                if (!getexempttextvalue(hp1, 3, &hprefix))
+                    return false;
+            }
+
+            /* Get optional suffix (default empty) */
+            if (paramcount >= 4) {
+                flnextparamislast = true;
+                if (!getexempttextvalue(hp1, 4, &hsuffix))
+                    return false;
+            } else if (paramcount == 3) {
+                /* Verify no extra params when we have 3 */
+                if (!langcheckparamcount(hp1, 3))
+                    return false;
+            } else {
+                /* Verify no extra params when we have 2 */
+                if (!langcheckparamcount(hp1, 2))
+                    return false;
+            }
+
+            if (!tcp_write_file_to_stream(stream_id, hprefix, hsuffix, &fs))
+                return false;
+
+            return setbooleanvalue(true, v);
+        }
+
+        case tcpv_readstreamuntil: {
+            /* Verb #18: tcp.readStreamUntil(stream, pattern, timeOutSecs, @buffer) -> true */
+            long stream_id;
+            Handle hpattern;
+            long timeout_secs;
+            hdlhashtable htable;
+            bigstring varname;
+            Handle hbuffer = nil;
+
+            if (!getlongvalue(hp1, 1, &stream_id))
+                return false;
+
+            if (!getexempttextvalue(hp1, 2, &hpattern))
+                return false;
+
+            if (!getlongvalue(hp1, 3, &timeout_secs))
+                return false;
+
+            flnextparamislast = true;
+            if (!getvarparam(hp1, 4, &htable, varname))
+                return false;
+
+            /* Create an empty buffer handle for accumulating data */
+            if (!newemptyhandle(&hbuffer))
+                return false;
+
+            if (!tcp_read_stream_until(stream_id, hbuffer, hpattern, timeout_secs)) {
+                disposehandle(hbuffer);
+                return false;
+            }
+
+            /* Set the buffer output variable using langassigntextvalue */
+            if (!langassigntextvalue(htable, varname, hbuffer)) {
+                disposehandle(hbuffer);
+                return false;
+            }
+
+            return setbooleanvalue(true, v);
+        }
+
+        case tcpv_readstreambytes: {
+            /* Verb #19: tcp.readStreamBytes(stream, bytesToRead, timeOutSecs, @buffer) -> true */
+            long stream_id;
+            long bytes_to_read;
+            long timeout_secs;
+            hdlhashtable htable;
+            bigstring varname;
+            Handle hbuffer = nil;
+
+            if (!getlongvalue(hp1, 1, &stream_id))
+                return false;
+
+            if (!getlongvalue(hp1, 2, &bytes_to_read))
+                return false;
+
+            if (!getlongvalue(hp1, 3, &timeout_secs))
+                return false;
+
+            flnextparamislast = true;
+            if (!getvarparam(hp1, 4, &htable, varname))
+                return false;
+
+            /* Create an empty buffer handle for accumulating data */
+            if (!newemptyhandle(&hbuffer))
+                return false;
+
+            if (!tcp_read_stream_bytes(stream_id, hbuffer, bytes_to_read, timeout_secs)) {
+                disposehandle(hbuffer);
+                return false;
+            }
+
+            /* Set the buffer output variable using langassigntextvalue */
+            if (!langassigntextvalue(htable, varname, hbuffer)) {
+                disposehandle(hbuffer);
+                return false;
+            }
+
+            return setbooleanvalue(true, v);
+        }
+
+        case tcpv_readstreamuntilclosed: {
+            /* Verb #20: tcp.readStreamUntilClosed(stream, timeOutSecs, @buffer) -> true */
+            long stream_id;
+            long timeout_secs;
+            hdlhashtable htable;
+            bigstring varname;
+            Handle hbuffer = nil;
+
+            if (!getlongvalue(hp1, 1, &stream_id))
+                return false;
+
+            if (!getlongvalue(hp1, 2, &timeout_secs))
+                return false;
+
+            flnextparamislast = true;
+            if (!getvarparam(hp1, 3, &htable, varname))
+                return false;
+
+            /* Create an empty buffer handle for accumulating data */
+            if (!newemptyhandle(&hbuffer))
+                return false;
+
+            if (!tcp_read_stream_until_closed(stream_id, hbuffer, timeout_secs)) {
+                disposehandle(hbuffer);
+                return false;
+            }
+
+            /* Set the buffer output variable using langassigntextvalue */
+            if (!langassigntextvalue(htable, varname, hbuffer)) {
+                disposehandle(hbuffer);
+                return false;
+            }
+
+            return setbooleanvalue(true, v);
+        }
+
+        case tcpv_getstats: {
+            /* Verb #21: tcp.getStats(listenRef=nil) -> statsString */
+            long listener_id = 0;  /* Default: global stats */
+            bigstring stats_out;
+            short paramcount;
+
+            paramcount = langgetparamcount(hp1);
+
+            /* listenRef is optional */
+            if (paramcount >= 1) {
+                flnextparamislast = true;
+                if (!getlongvalue(hp1, 1, &listener_id))
+                    return false;
+            } else {
+                /* No params - verify no extra params */
+                if (!langcheckparamcount(hp1, 0))
+                    return false;
+            }
+
+            if (!tcp_get_stats(listener_id, stats_out))
+                return false;
+
+            return setstringvalue(stats_out, v);
+        }
 
         case tcpv_countconnections: {
             /* Verb #22: tcp.countConnections() -> count */

@@ -61,7 +61,6 @@
 #include "process.h"
 #include "processinternal.h"
 #include "kernelverbdefs.h"
-#include "WinSockNetEvents.h"
 #include "notify.h"
 #include "timedate.h"
 

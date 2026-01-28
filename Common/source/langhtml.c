@@ -56,7 +56,19 @@
 #include "kernelverbdefs.h"
 #include "shell.rsrc.h"
 #include "timedate.h"
+#ifndef FRONTIER_HEADLESS
 #include "WinSockNetEvents.h"
+#else
+/* Stub declarations for headless mode - web server not available */
+#define fwsNetEventReadStreamUntil(a,b,c,d) (false)
+#define fwsNetEventReadStreamBytes(a,b,c,d) (false)
+#define fwsNetEventCloseStream(a) (false)
+#define fwsNetEventGetPeerAddress(a,b,c) (false)
+#define fwsNetEventAddressDecode(a,b) (false)
+#define fwsNetEventInetdRead(a,b,c) (false)
+#define fwsNetEventWriteHandleToStream(a,b,c,d) (false)
+#define fwsNetEventAbortStream(a) ((void)0)
+#endif
 #include "osacomponent.h"
 
 #include "tableverbs.h"  //6.1b8 AR: we need gettablevalue

@@ -1,0 +1,640 @@
+# Integration tests for TCP Phase 2 - Status and Peer Information Verbs
+# Tests for tcp.statusStream, tcp.getPeerAddress, tcp.getPeerPort, tcp.myAddress
+#
+# Phase 2 verbs (4 total):
+#   - tcp.statusStream(stream, @bytesPending) -> status - Query stream status and pending bytes
+#   - tcp.getPeerAddress(stream) -> addr - Get remote IP address
+#   - tcp.getPeerPort(stream) -> port - Get remote port number
+#   - tcp.myAddress() -> addr - Get local machine's IP address
+#
+# IMPLEMENTATION STATUS:
+#   The C implementations exist in Common/source/tcpverbs.c:
+#   - tcp_status_stream() - line 1519
+#   - tcp_get_peer_address() - line 1632
+#   - tcp_get_peer_port() - line 1679
+#   - tcp_my_address() - line 1727
+#
+#   BUT the headless verb processor (tests/headless_tcp_verbs.c) returns "not implemented"
+#   for these verbs. The tcp_valueproc() cases need to be updated to call the C implementations:
+#   - tcpv_myaddress (line 119) -> needs tcp_my_address()
+#   - tcpv_statusstream (line 278) -> needs tcp_status_stream()
+#   - tcpv_getpeeraddress (line 283) -> needs tcp_get_peer_address()
+#   - tcpv_getpeerport (line 288) -> needs tcp_get_peer_port()
+#
+# NOTE: All tests use LOCALHOST ONLY (127.0.0.1) - NO external network dependencies!
+# Tests are self-contained: client and server on same machine.
+#
+# Reference:
+#   - docs/usertalk/docserver/tcp/statusStream.txt
+#   - docs/usertalk/docserver/tcp/getPeerAddress.txt
+#   - docs/usertalk/docserver/tcp/getPeerPort.txt
+#   - docs/usertalk/docserver/tcp/myAddress.txt
+#   - Common/source/tcpverbs.c (Phase 2 implementation)
+
+tests:
+  # ===========================================================================
+  # tcp.myAddress - Local Machine IP Address
+  # ===========================================================================
+
+  - name: "tcp.myAddress - returns valid address"
+    description: "Verify myAddress returns a valid IP address (not zero)"
+    script: |
+      local(addr = tcp.myAddress());
+      return addr != 0
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 2 - myAddress should return non-zero address"
+
+  - name: "tcp.myAddress - return type is long"
+    description: "Verify myAddress returns longType"
+    script: |
+      local(addr = tcp.myAddress());
+      return typeof(addr) == longType
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 2 - Return type validation"
+
+  - name: "tcp.myAddress - can decode to dotted decimal"
+    description: "Verify myAddress result can be decoded to valid IP string"
+    script: |
+      local(addr = tcp.myAddress());
+      local(ipString = tcp.addressDecode(addr));
+      // Valid IP string should have at least 7 chars (e.g., "1.1.1.1")
+      return string.length(ipString) >= 7
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 2 - Verify address can be decoded"
+
+  - name: "tcp.myAddress - roundtrip encode/decode"
+    description: "Verify myAddress result survives encode/decode roundtrip"
+    script: |
+      local(addr = tcp.myAddress());
+      local(ipString = tcp.addressDecode(addr));
+      local(reencoded = tcp.addressEncode(ipString));
+      return addr == reencoded
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 2 - Roundtrip consistency check"
+
+  # ===========================================================================
+  # tcp.statusStream - Stream Status Query
+  # ===========================================================================
+
+  - name: "tcp.statusStream - returns OPEN for idle connection"
+    description: "Verify statusStream returns OPEN when no data pending"
+    script: |
+      local(listenID = tcp.listenStream(9100, 5, "", 0, tcp.addressEncode("127.0.0.1")));
+
+      try {
+        local(stream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9100));
+        if (stream <= 0) {
+          tcp.closeListen(listenID);
+          return "false"
+        };
+
+        thread.sleepFor(50);
+
+        local(bytesPending);
+        local(status = tcp.statusStream(stream, @bytesPending));
+
+        tcp.closeStream(stream);
+        tcp.closeListen(listenID);
+
+        // Should be OPEN with no data pending
+        return (status == "OPEN") and (bytesPending == 0)
+      }
+      else {
+        tcp.closeListen(listenID);
+        return "false"
+      }
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 2 - Verify OPEN status for idle stream"
+
+  - name: "tcp.statusStream - returns DATA when bytes available"
+    description: "Verify statusStream returns DATA when data is pending"
+    script: |
+      new(tableType, @system.temp.tcpTest);
+      system.temp.tcpTest.connected = false;
+
+      on tcpHandler(streamID, remoteAddr, remotePort) {
+        system.temp.tcpTest.connected = true;
+        system.temp.tcpTest.serverStream = streamID;
+        return true
+      };
+
+      local(listenID = tcp.listenStream(9101, 5, @tcpHandler, 0, tcp.addressEncode("127.0.0.1")));
+      local(clientStream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9101));
+
+      // Wait for connection
+      local(startTicks = clock.ticks());
+      while (not system.temp.tcpTest.connected) and ((clock.ticks() - startTicks) < 60) {
+        thread.sleepFor(10)
+      };
+
+      // Send data from client to server
+      tcp.writeStream(clientStream, "Hello Server!");
+
+      // Wait for data to arrive
+      thread.sleepFor(100);
+
+      // Check server stream status
+      local(bytesPending);
+      local(status = tcp.statusStream(system.temp.tcpTest.serverStream, @bytesPending));
+
+      tcp.closeStream(clientStream);
+      tcp.closeStream(system.temp.tcpTest.serverStream);
+      tcp.closeListen(listenID);
+      delete(@system.temp.tcpTest);
+
+      return (status == "DATA") and (bytesPending > 0)
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 2 - Verify DATA status and bytesPending count"
+
+  - name: "tcp.statusStream - bytesPending matches sent data"
+    description: "Verify bytesPending equals length of sent data"
+    script: |
+      new(tableType, @system.temp.tcpTest);
+      system.temp.tcpTest.connected = false;
+
+      on tcpHandler(streamID, remoteAddr, remotePort) {
+        system.temp.tcpTest.connected = true;
+        system.temp.tcpTest.serverStream = streamID;
+        return true
+      };
+
+      local(listenID = tcp.listenStream(9102, 5, @tcpHandler, 0, tcp.addressEncode("127.0.0.1")));
+      local(clientStream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9102));
+
+      local(startTicks = clock.ticks());
+      while (not system.temp.tcpTest.connected) and ((clock.ticks() - startTicks) < 60) {
+        thread.sleepFor(10)
+      };
+
+      local(testData = "0123456789");  // 10 bytes
+      tcp.writeStream(clientStream, testData);
+
+      thread.sleepFor(100);
+
+      local(bytesPending);
+      tcp.statusStream(system.temp.tcpTest.serverStream, @bytesPending);
+
+      tcp.closeStream(clientStream);
+      tcp.closeStream(system.temp.tcpTest.serverStream);
+      tcp.closeListen(listenID);
+      delete(@system.temp.tcpTest);
+
+      return bytesPending == 10
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 2 - Verify bytesPending accuracy"
+
+  - name: "tcp.statusStream - return type is string"
+    description: "Verify statusStream returns stringType"
+    script: |
+      local(listenID = tcp.listenStream(9103, 5, "", 0, tcp.addressEncode("127.0.0.1")));
+
+      try {
+        local(stream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9103));
+        if (stream <= 0) {
+          tcp.closeListen(listenID);
+          return "false"
+        };
+
+        local(bytesPending);
+        local(status = tcp.statusStream(stream, @bytesPending));
+
+        tcp.closeStream(stream);
+        tcp.closeListen(listenID);
+
+        return typeof(status) == stringType
+      }
+      else {
+        tcp.closeListen(listenID);
+        return "false"
+      }
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 2 - Status is a string type"
+
+  - name: "tcp.statusStream - invalid stream returns error"
+    description: "Verify statusStream fails gracefully for invalid stream"
+    script: |
+      try {
+        local(bytesPending);
+        tcp.statusStream(999999, @bytesPending);
+        return "false"
+      }
+      else {
+        return "true"
+      }
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 2 - Error handling for invalid stream"
+
+  # ===========================================================================
+  # tcp.getPeerAddress - Remote IP Address Query
+  # ===========================================================================
+
+  - name: "tcp.getPeerAddress - returns localhost for local connection"
+    description: "Verify getPeerAddress returns 127.0.0.1 for localhost connection"
+    script: |
+      local(listenID = tcp.listenStream(9104, 5, "", 0, tcp.addressEncode("127.0.0.1")));
+
+      try {
+        local(stream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9104));
+        if (stream <= 0) {
+          tcp.closeListen(listenID);
+          return "false"
+        };
+
+        local(peerAddr = tcp.getPeerAddress(stream));
+        local(localhost = tcp.addressEncode("127.0.0.1"));
+
+        tcp.closeStream(stream);
+        tcp.closeListen(listenID);
+
+        return peerAddr == localhost
+      }
+      else {
+        tcp.closeListen(listenID);
+        return "false"
+      }
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 2 - Client sees server address as 127.0.0.1"
+
+  - name: "tcp.getPeerAddress - server sees client as localhost"
+    description: "Verify server callback receives 127.0.0.1 as peer address"
+    script: |
+      new(tableType, @system.temp.tcpTest);
+      system.temp.tcpTest.connected = false;
+
+      on tcpHandler(streamID, remoteAddr, remotePort) {
+        system.temp.tcpTest.connected = true;
+        system.temp.tcpTest.serverStream = streamID;
+        system.temp.tcpTest.peerAddrFromCallback = remoteAddr;
+        return true
+      };
+
+      local(listenID = tcp.listenStream(9105, 5, @tcpHandler, 0, tcp.addressEncode("127.0.0.1")));
+      local(clientStream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9105));
+
+      local(startTicks = clock.ticks());
+      while (not system.temp.tcpTest.connected) and ((clock.ticks() - startTicks) < 60) {
+        thread.sleepFor(10)
+      };
+
+      // Also verify via getPeerAddress
+      local(peerAddrFromVerb = tcp.getPeerAddress(system.temp.tcpTest.serverStream));
+
+      tcp.closeStream(clientStream);
+      tcp.closeStream(system.temp.tcpTest.serverStream);
+      tcp.closeListen(listenID);
+
+      local(localhost = tcp.addressEncode("127.0.0.1"));
+      local(callbackCorrect = system.temp.tcpTest.peerAddrFromCallback == localhost);
+      local(verbCorrect = peerAddrFromVerb == localhost);
+
+      delete(@system.temp.tcpTest);
+
+      return callbackCorrect and verbCorrect
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 2 - Server sees client as 127.0.0.1"
+
+  - name: "tcp.getPeerAddress - return type is long"
+    description: "Verify getPeerAddress returns longType"
+    script: |
+      local(listenID = tcp.listenStream(9106, 5, "", 0, tcp.addressEncode("127.0.0.1")));
+
+      try {
+        local(stream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9106));
+        if (stream <= 0) {
+          tcp.closeListen(listenID);
+          return "false"
+        };
+
+        local(peerAddr = tcp.getPeerAddress(stream));
+
+        tcp.closeStream(stream);
+        tcp.closeListen(listenID);
+
+        return typeof(peerAddr) == longType
+      }
+      else {
+        tcp.closeListen(listenID);
+        return "false"
+      }
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 2 - Return type validation"
+
+  - name: "tcp.getPeerAddress - invalid stream returns error"
+    description: "Verify getPeerAddress fails gracefully for invalid stream"
+    script: |
+      try {
+        tcp.getPeerAddress(999999);
+        return "false"
+      }
+      else {
+        return "true"
+      }
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 2 - Error handling for invalid stream"
+
+  # ===========================================================================
+  # tcp.getPeerPort - Remote Port Number Query
+  # ===========================================================================
+
+  - name: "tcp.getPeerPort - returns server port for client"
+    description: "Verify client's getPeerPort returns the server's listen port"
+    script: |
+      local(serverPort = 9107);
+      local(listenID = tcp.listenStream(serverPort, 5, "", 0, tcp.addressEncode("127.0.0.1")));
+
+      try {
+        local(stream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), serverPort));
+        if (stream <= 0) {
+          tcp.closeListen(listenID);
+          return "false"
+        };
+
+        local(peerPort = tcp.getPeerPort(stream));
+
+        tcp.closeStream(stream);
+        tcp.closeListen(listenID);
+
+        return peerPort == serverPort
+      }
+      else {
+        tcp.closeListen(listenID);
+        return "false"
+      }
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 2 - Client sees server's listen port"
+
+  - name: "tcp.getPeerPort - server sees ephemeral client port"
+    description: "Verify server sees client's ephemeral port (> 0 and < 65536)"
+    script: |
+      new(tableType, @system.temp.tcpTest);
+      system.temp.tcpTest.connected = false;
+
+      on tcpHandler(streamID, remoteAddr, remotePort) {
+        system.temp.tcpTest.connected = true;
+        system.temp.tcpTest.serverStream = streamID;
+        system.temp.tcpTest.peerPortFromCallback = remotePort;
+        return true
+      };
+
+      local(listenID = tcp.listenStream(9108, 5, @tcpHandler, 0, tcp.addressEncode("127.0.0.1")));
+      local(clientStream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9108));
+
+      local(startTicks = clock.ticks());
+      while (not system.temp.tcpTest.connected) and ((clock.ticks() - startTicks) < 60) {
+        thread.sleepFor(10)
+      };
+
+      local(peerPortFromVerb = tcp.getPeerPort(system.temp.tcpTest.serverStream));
+
+      tcp.closeStream(clientStream);
+      tcp.closeStream(system.temp.tcpTest.serverStream);
+      tcp.closeListen(listenID);
+
+      // Ephemeral ports are typically > 1024 and < 65536
+      local(callbackValid = (system.temp.tcpTest.peerPortFromCallback > 0) and (system.temp.tcpTest.peerPortFromCallback < 65536));
+      local(verbValid = (peerPortFromVerb > 0) and (peerPortFromVerb < 65536));
+      local(match = system.temp.tcpTest.peerPortFromCallback == peerPortFromVerb);
+
+      delete(@system.temp.tcpTest);
+
+      return callbackValid and verbValid and match
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 2 - Server sees client's ephemeral port"
+
+  - name: "tcp.getPeerPort - return type is long"
+    description: "Verify getPeerPort returns longType"
+    script: |
+      local(listenID = tcp.listenStream(9109, 5, "", 0, tcp.addressEncode("127.0.0.1")));
+
+      try {
+        local(stream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9109));
+        if (stream <= 0) {
+          tcp.closeListen(listenID);
+          return "false"
+        };
+
+        local(peerPort = tcp.getPeerPort(stream));
+
+        tcp.closeStream(stream);
+        tcp.closeListen(listenID);
+
+        return typeof(peerPort) == longType
+      }
+      else {
+        tcp.closeListen(listenID);
+        return "false"
+      }
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 2 - Return type validation"
+
+  - name: "tcp.getPeerPort - invalid stream returns error"
+    description: "Verify getPeerPort fails gracefully for invalid stream"
+    script: |
+      try {
+        tcp.getPeerPort(999999);
+        return "false"
+      }
+      else {
+        return "true"
+      }
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 2 - Error handling for invalid stream"
+
+  # ===========================================================================
+  # Combined Peer Information Tests
+  # ===========================================================================
+
+  - name: "tcp.getPeerAddress/getPeerPort - consistent with callback params"
+    description: "Verify getPeerAddress and getPeerPort match callback parameters"
+    script: |
+      new(tableType, @system.temp.tcpTest);
+      system.temp.tcpTest.connected = false;
+
+      on tcpHandler(streamID, remoteAddr, remotePort) {
+        system.temp.tcpTest.connected = true;
+        system.temp.tcpTest.serverStream = streamID;
+        system.temp.tcpTest.callbackAddr = remoteAddr;
+        system.temp.tcpTest.callbackPort = remotePort;
+        return true
+      };
+
+      local(listenID = tcp.listenStream(9110, 5, @tcpHandler, 0, tcp.addressEncode("127.0.0.1")));
+      local(clientStream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9110));
+
+      local(startTicks = clock.ticks());
+      while (not system.temp.tcpTest.connected) and ((clock.ticks() - startTicks) < 60) {
+        thread.sleepFor(10)
+      };
+
+      local(verbAddr = tcp.getPeerAddress(system.temp.tcpTest.serverStream));
+      local(verbPort = tcp.getPeerPort(system.temp.tcpTest.serverStream));
+
+      tcp.closeStream(clientStream);
+      tcp.closeStream(system.temp.tcpTest.serverStream);
+      tcp.closeListen(listenID);
+
+      local(addrMatch = verbAddr == system.temp.tcpTest.callbackAddr);
+      local(portMatch = verbPort == system.temp.tcpTest.callbackPort);
+
+      delete(@system.temp.tcpTest);
+
+      return addrMatch and portMatch
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 2 - Verbs and callback params should be consistent"
+
+  - name: "tcp.getPeerAddress/getPeerPort - usable for client identification"
+    description: "Verify peer info can be used to create unique client identifier"
+    script: |
+      new(tableType, @system.temp.tcpTest);
+      system.temp.tcpTest.connected = false;
+
+      on tcpHandler(streamID, remoteAddr, remotePort) {
+        system.temp.tcpTest.connected = true;
+        system.temp.tcpTest.serverStream = streamID;
+        return true
+      };
+
+      local(listenID = tcp.listenStream(9111, 5, @tcpHandler, 0, tcp.addressEncode("127.0.0.1")));
+      local(clientStream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9111));
+
+      local(startTicks = clock.ticks());
+      while (not system.temp.tcpTest.connected) and ((clock.ticks() - startTicks) < 60) {
+        thread.sleepFor(10)
+      };
+
+      // Create client identifier string: "ip:port"
+      local(peerAddr = tcp.getPeerAddress(system.temp.tcpTest.serverStream));
+      local(peerPort = tcp.getPeerPort(system.temp.tcpTest.serverStream));
+      local(ipString = tcp.addressDecode(peerAddr));
+      local(clientId = ipString + ":" + peerPort);
+
+      tcp.closeStream(clientStream);
+      tcp.closeStream(system.temp.tcpTest.serverStream);
+      tcp.closeListen(listenID);
+      delete(@system.temp.tcpTest);
+
+      // clientId should look like "127.0.0.1:xxxxx"
+      return string.length(clientId) > 12
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 2 - Practical use case: client identification"
+
+  # ===========================================================================
+  # Edge Cases and Error Handling
+  # ===========================================================================
+
+  - name: "tcp.statusStream - after stream closed"
+    description: "Verify statusStream handles closed stream gracefully"
+    script: |
+      local(listenID = tcp.listenStream(9112, 5, "", 0, tcp.addressEncode("127.0.0.1")));
+
+      try {
+        local(stream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9112));
+        if (stream <= 0) {
+          tcp.closeListen(listenID);
+          return "false"
+        };
+
+        tcp.closeStream(stream);
+
+        // Now try to get status of closed stream
+        try {
+          local(bytesPending);
+          tcp.statusStream(stream, @bytesPending);
+          tcp.closeListen(listenID);
+          return "false"  // Should have raised error
+        }
+        else {
+          tcp.closeListen(listenID);
+          return "true"  // Expected error
+        }
+      }
+      else {
+        tcp.closeListen(listenID);
+        return "false"
+      }
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 2 - Error handling for closed stream"
+
+  - name: "tcp.getPeerAddress - after stream closed"
+    description: "Verify getPeerAddress handles closed stream gracefully"
+    script: |
+      local(listenID = tcp.listenStream(9113, 5, "", 0, tcp.addressEncode("127.0.0.1")));
+
+      try {
+        local(stream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9113));
+        if (stream <= 0) {
+          tcp.closeListen(listenID);
+          return "false"
+        };
+
+        tcp.closeStream(stream);
+
+        try {
+          tcp.getPeerAddress(stream);
+          tcp.closeListen(listenID);
+          return "false"
+        }
+        else {
+          tcp.closeListen(listenID);
+          return "true"
+        }
+      }
+      else {
+        tcp.closeListen(listenID);
+        return "false"
+      }
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 2 - Error handling for closed stream"
+
+  - name: "tcp.getPeerPort - after stream closed"
+    description: "Verify getPeerPort handles closed stream gracefully"
+    script: |
+      local(listenID = tcp.listenStream(9114, 5, "", 0, tcp.addressEncode("127.0.0.1")));
+
+      try {
+        local(stream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9114));
+        if (stream <= 0) {
+          tcp.closeListen(listenID);
+          return "false"
+        };
+
+        tcp.closeStream(stream);
+
+        try {
+          tcp.getPeerPort(stream);
+          tcp.closeListen(listenID);
+          return "false"
+        }
+        else {
+          tcp.closeListen(listenID);
+          return "true"
+        }
+      }
+      else {
+        tcp.closeListen(listenID);
+        return "false"
+      }
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 2 - Error handling for closed stream"

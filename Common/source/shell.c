@@ -75,7 +75,13 @@
 #include "frontierdebug.h" /*6.2b7 AR*/
 #include "dockmenu.h"
 #include "services.h"
+#ifndef FRONTIER_HEADLESS
 #include "WinSockNetEvents.h"
+#else
+/* Stub declarations for headless mode - network events not available */
+#define fwsNetEventQuit() ((void)0)
+#define fwsNetEventCheckAndAcceptSocket() ((void)0)
+#endif
 #include "langdll.h" /*2004-11-29 aradke: for dllinitverbs*/
 
 	#include <uisharing.h>
