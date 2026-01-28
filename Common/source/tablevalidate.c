@@ -36,6 +36,7 @@
 #include "tableinternal.h"
 #include "tablestructure.h"
 #include "tableverbs.h"
+#include "db_format.h"
 
 
 
@@ -133,7 +134,11 @@ static boolean validate (hdlhashtable htable, boolean flalert) {
 				if (flonlyinmemory)
 					goto nextx;
 					
-				if (!tableverbinmemory (NULL, (hdlexternalvariable) hvariable, x)) {
+				{
+				db_context ctx;
+				db_context_init(&ctx);
+
+				if (!tableverbinmemory (&ctx, (hdlexternalvariable) hvariable, x)) {
 					
 					if (flalert)
 						shellinternalerror (iderrorloadingtable, BIGSTRING ("\x13" "error loading table"));
@@ -141,7 +146,8 @@ static boolean validate (hdlhashtable htable, boolean flalert) {
 					return (false);
 					}
 				}
-			
+			}
+
 			assert (tablesetdebugglobals (ht, x));
 			
 			if (!validate ((hdlhashtable) (**hvariable).variabledata, flalert)) /*recurse*/

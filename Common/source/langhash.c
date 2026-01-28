@@ -369,11 +369,16 @@ static boolean langhash_materialize_external(tyvaluerecord *val, const char *pat
 				log_trace(LOG_COMP_HASH, "materialize external path=%s id=table",
 				        path ? path : "<nil>");
 			}
-			if (!tableverbinmemory(NULL, hv, HNoNode)) {
+			{
+			db_context ctx;
+			db_context_init(&ctx);
+
+			if (!tableverbinmemory(&ctx, hv, HNoNode)) {
 				log_error(LOG_COMP_HASH, "materialize external table load failed path=%s",
 				        path ? path : "<nil>");
 				langhash_materialize_current_path = prior_path;
 				return false;
+				}
 			}
 			hdlhashtable child = (hdlhashtable)(**hv).variabledata;
 			/* During adapter_repack (migration), mark materialized tables as dirty to force save */

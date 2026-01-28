@@ -47,6 +47,7 @@
 #include "tableinternal.h" /*for error string numbers -- see langipctablemessage*/
 #include "tablestructure.h"
 #include "tableverbs.h"
+#include "db_format.h"
 #include "op.h"
 #include "meprograms.h"
 #include "process.h"
@@ -2684,10 +2685,15 @@ static boolean apptablevisit (bigstring bsname, hdlhashnode hnode, tyvaluerecord
 	
 	fltempload = !(**hv).flinmemory;
 	
-	if (!tableverbinmemory (NULL, (hdlexternalvariable) hv, hnode))
+	{
+	db_context ctx;
+	db_context_init(&ctx);
+
+	if (!tableverbinmemory (&ctx, (hdlexternalvariable) hv, hnode))
 		return (false);
-	
-	ht = (hdlhashtable) (**hv).variabledata; 
+	}
+
+ht = (hdlhashtable) (**hv).variabledata; 
 	
 	if (appinfovisit (ht, bsname, appvisitinfo)) {
 		

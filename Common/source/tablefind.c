@@ -38,6 +38,7 @@
 #include "tablestructure.h"
 #include "tableinternal.h"
 #include "tableverbs.h"
+#include "db_format.h"
 
 
 
@@ -343,9 +344,14 @@ boolean tableverbfind (hdlexternalvariable hvariable, boolean *flzoom) {
 	boolean fltempload;
 	
 	fltempload = !(**hv).flinmemory;
-	
-	if (!tableverbinmemory (NULL, (hdlexternalvariable) hv, HNoNode))
-		return (false);
+
+	{
+		db_context ctx;
+		db_context_init(&ctx);
+
+		if (!tableverbinmemory (&ctx, (hdlexternalvariable) hv, HNoNode))
+			return (false);
+		}
 	
 	ht = (hdlhashtable) (**hv).variabledata; 
 	
