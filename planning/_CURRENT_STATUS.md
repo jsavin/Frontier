@@ -1,6 +1,6 @@
 # Current Status
 
-Last Updated: 2026-01-27
+Last Updated: 2026-01-28
 
 ## Current Focus: Stability & Quality Improvements 🔧
 
@@ -8,7 +8,15 @@ Last Updated: 2026-01-27
 
 **Verb Coverage**: **67% (481/710 verbs)** - up from 37% in early January! Major progress on lang, string, table, op, and other core processors.
 
-## Recent Achievements (January 25-27, 2026)
+## Recent Achievements (January 25-28, 2026)
+
+### Context Passing Fix - MERGED ✅
+- **PR #360**: Fix 51 NULL context calls to *verbinmemory functions (Issue #347)
+  - Replaced all NULL context calls with explicit `db_context` structs
+  - Added hard assertions to catch future regressions in debug builds
+  - Narrowed context scope to block level for better code hygiene
+  - Bonus fix: Thread registry test calling non-existent function
+  - **Issue #347 CLOSED** - P0 blocker resolved
 
 ### REPL Improvements - MERGED ✅
 - **PR #356**: Option+Arrow word navigation
@@ -71,12 +79,6 @@ Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 
 ### Known P0 Issues
 
-**Launch Blocking:**
-- **Issue #347** (P0): Audit and fix 50+ runtime calls passing NULL context to verbinmemory functions
-  - Scope: Large - pervasive issue affecting runtime stability
-  - Status: Design/decision needed
-  - Impact: Potential crashes and undefined behavior
-
 **Architectural Decisions:**
 - **Issue #86** (P0): Global runtime context & lifecycle
   - Blocks: Concurrency model (#94), remote runtime (#97), EFP routing parity (#87)
@@ -117,14 +119,11 @@ All tests running via:
 
 ### Immediate Priorities
 
-1. **Address P0 Blockers**
-   - Investigate Issue #347 (NULL context audit) - may require architectural decision
-
-2. **Continue Stability & Bug Fixes**
+1. **Continue Stability & Bug Fixes**
    - Address open P1/P2 issues as discovered
    - Maintain test suite health
 
-3. **Verb Coverage Expansion** (Ongoing)
+2. **Verb Coverage Expansion** (Ongoing)
    - TCP Phase 2 (buffered I/O) - 4 verbs remaining
    - Thread verbs - 6 verbs remaining
    - Processors still at 0%: bit, clipboard, menu, mysql, sqlite, etc.
@@ -134,7 +133,6 @@ All tests running via:
 Before resuming major feature work (TCP Phase 2, P0a), need decisions on:
 - Issue #86: Runtime context architecture
 - Issue #88: Networking security model
-- Issue #347: Context passing patterns across codebase
 
 ## Reference Documentation
 
