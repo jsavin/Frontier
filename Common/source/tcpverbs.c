@@ -1777,32 +1777,84 @@ boolean tcp_my_address(long *addr_out) {
  * Phase 3: Buffered I/O with Timeouts
  * ======================================================================== */
 
-/* Timeout infrastructure using microsecond precision */
+/* Timeout infrastructure using microsecond precision
+ *
+ * Implements both idle timeout and minimum throughput protection:
+ * - Idle timeout: Resets on each successful read (user-specified)
+ * - Throughput window: Requires at least 1 byte per 35-second window
+ *
+ * The throughput window prevents slow-trickle attacks where a malicious
+ * peer sends data just often enough to reset the idle timeout but slow
+ * enough to hold resources indefinitely. The 35-second interval provides
+ * margin over typical WebSocket ping intervals (25-30 seconds).
+ */
+#define TCP_THROUGHPUT_WINDOW_SECS 35   /* Minimum throughput window */
+#define TCP_MIN_BYTES_PER_WINDOW 1      /* Must receive at least 1 byte per window */
+
 typedef struct {
-    uint64_t deadline_us;  /* Absolute deadline in microseconds since epoch */
+    uint64_t idle_deadline_us;          /* Resets on any activity (user timeout) */
+    uint64_t throughput_window_start_us; /* Start of current throughput window */
+    long bytes_in_window;               /* Bytes received in current window */
 } tcp_timeout_t;
 
-static void tcp_timeout_init(tcp_timeout_t *t, long timeout_secs) {
+static uint64_t tcp_get_now_us(void) {
     struct timeval tv;
     gettimeofday(&tv, NULL);
-    t->deadline_us = (uint64_t)tv.tv_sec * 1000000ULL + tv.tv_usec +
-                     (uint64_t)timeout_secs * 1000000ULL;
+    return (uint64_t)tv.tv_sec * 1000000ULL + tv.tv_usec;
+}
+
+static void tcp_timeout_init(tcp_timeout_t *t, long timeout_secs) {
+    uint64_t now_us = tcp_get_now_us();
+    t->idle_deadline_us = now_us + (uint64_t)timeout_secs * 1000000ULL;
+    t->throughput_window_start_us = now_us;
+    t->bytes_in_window = 0;
+}
+
+static void tcp_timeout_reset_idle(tcp_timeout_t *t, long timeout_secs) {
+    t->idle_deadline_us = tcp_get_now_us() + (uint64_t)timeout_secs * 1000000ULL;
+}
+
+static void tcp_timeout_record_bytes(tcp_timeout_t *t, long bytes_received) {
+    uint64_t now_us = tcp_get_now_us();
+    uint64_t window_elapsed_us = now_us - t->throughput_window_start_us;
+
+    /* If window has elapsed, start a new window */
+    if (window_elapsed_us >= (uint64_t)TCP_THROUGHPUT_WINDOW_SECS * 1000000ULL) {
+        t->throughput_window_start_us = now_us;
+        t->bytes_in_window = bytes_received;
+    } else {
+        t->bytes_in_window += bytes_received;
+    }
 }
 
 static boolean tcp_timeout_expired(tcp_timeout_t *t) {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    uint64_t now_us = (uint64_t)tv.tv_sec * 1000000ULL + tv.tv_usec;
-    return now_us >= t->deadline_us;
+    uint64_t now_us = tcp_get_now_us();
+
+    /* Check idle timeout */
+    if (now_us >= t->idle_deadline_us)
+        return true;
+
+    /* Check throughput window - if a full window has passed with insufficient data */
+    uint64_t window_elapsed_us = now_us - t->throughput_window_start_us;
+    if (window_elapsed_us >= (uint64_t)TCP_THROUGHPUT_WINDOW_SECS * 1000000ULL) {
+        if (t->bytes_in_window < TCP_MIN_BYTES_PER_WINDOW) {
+            log_debug(LOG_COMP_LANG, "tcp_timeout_expired: throughput too low (%ld bytes in %d sec window)",
+                      t->bytes_in_window, TCP_THROUGHPUT_WINDOW_SECS);
+            return true;
+        }
+        /* Window passed with sufficient data - reset for next window */
+        t->throughput_window_start_us = now_us;
+        t->bytes_in_window = 0;
+    }
+
+    return false;
 }
 
 static long tcp_timeout_remaining_ms(tcp_timeout_t *t) {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    uint64_t now_us = (uint64_t)tv.tv_sec * 1000000ULL + tv.tv_usec;
-    if (now_us >= t->deadline_us)
+    uint64_t now_us = tcp_get_now_us();
+    if (now_us >= t->idle_deadline_us)
         return 0;
-    return (long)((t->deadline_us - now_us) / 1000);
+    return (long)((t->idle_deadline_us - now_us) / 1000);
 }
 
 /* Default timeout and chunk size for buffered I/O */
@@ -1818,7 +1870,14 @@ typedef enum {
 
 /* Unified read implementation
  * Reads from stream until condition is met or timeout expires.
- * Timeout is reset on each successful read (idle timeout, not total timeout).
+ *
+ * Timeout behavior:
+ * - Idle timeout: Resets on each successful read (user-specified via timeout_secs)
+ * - Throughput protection: Connection must transfer at least 1 byte per 35 seconds
+ *
+ * Pattern matching optimization:
+ * - For TCP_READ_UNTIL_PATTERN, we only scan newly-read bytes plus overlap
+ * - This provides O(n) performance instead of O(n²) for large buffers
  */
 static boolean tcp_read_until_condition(
     long stream_id,
@@ -1833,6 +1892,8 @@ static boolean tcp_read_until_condition(
     tcp_timeout_t timeout;
     long current_size;
     long bytes_read_total;
+    long pattern_scan_start;  /* For O(n) pattern matching optimization */
+    long pattern_len;
 
     log_debug(LOG_COMP_LANG, "tcp_read_until_condition: stream_id=%ld condition=%d target=%ld timeout=%ld",
               stream_id, condition, target_bytes, timeout_secs);
@@ -1850,18 +1911,22 @@ static boolean tcp_read_until_condition(
 
     sockfd = stream->sockfd;
 
-    /* Initialize timeout (will be reset on each successful read) */
+    /* Initialize timeout */
     tcp_timeout_init(&timeout, timeout_secs);
 
     /* Get initial buffer size (may have prior data) */
     current_size = gethandlesize(hbuffer);
     bytes_read_total = current_size;
 
+    /* Initialize pattern matching optimization */
+    pattern_len = (condition == TCP_READ_UNTIL_PATTERN && hpattern) ? gethandlesize(hpattern) : 0;
+    pattern_scan_start = 0;  /* First scan starts at beginning */
+
     while (true) {
         fd_set readset;
         struct timeval tv;
         int select_result;
-        long bytes_available;
+        int bytes_available;  /* Must be int for ioctl(FIONREAD) */
         long bytes_to_read;
         ssize_t recv_result;
 
@@ -1874,9 +1939,17 @@ static boolean tcp_read_until_condition(
 
         /* Check if condition is met */
         if (condition == TCP_READ_UNTIL_PATTERN) {
-            if (searchhandle(hbuffer, hpattern, 0, current_size) >= 0) {
+            /* O(n) optimization: only scan from pattern_scan_start, not from 0
+             * This avoids O(n²) behavior when reading large amounts of data.
+             * We need overlap of (pattern_len - 1) to catch patterns spanning reads.
+             */
+            if (searchhandle(hbuffer, hpattern, pattern_scan_start, current_size) >= 0) {
                 /* Pattern found */
                 break;
+            }
+            /* Update scan start for next iteration - back up by pattern overlap */
+            if (current_size > pattern_len) {
+                pattern_scan_start = current_size - pattern_len + 1;
             }
         } else if (condition == TCP_READ_UNTIL_BYTES) {
             if (bytes_read_total >= target_bytes) {
@@ -1974,8 +2047,9 @@ static boolean tcp_read_until_condition(
         current_size = gethandlesize(hbuffer);
         bytes_read_total = current_size;
 
-        /* Reset timeout on successful read (idle timeout) */
-        tcp_timeout_init(&timeout, timeout_secs);
+        /* Reset idle timeout and record throughput on successful read */
+        tcp_timeout_reset_idle(&timeout, timeout_secs);
+        tcp_timeout_record_bytes(&timeout, recv_result);
 
         log_trace(LOG_COMP_LANG, "tcp_read_until_condition: read %zd bytes, total=%ld",
                   recv_result, bytes_read_total);
