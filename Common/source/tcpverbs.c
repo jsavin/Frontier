@@ -1522,7 +1522,7 @@ boolean tcp_status_stream(long stream_id, bigstring status_out, long *bytes_pend
     fd_set readset;
     struct timeval tv;
     int select_result;
-    long bytes_pending = 0;
+    int bytes_pending = 0;  /* Must be int for ioctl(FIONREAD) */
 
     log_debug(LOG_COMP_LANG, "tcp_status_stream: stream_id=%ld", stream_id);
 
