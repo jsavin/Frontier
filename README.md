@@ -1,22 +1,24 @@
 # Frontier Refactoring Project (develop branch status)
 
-**Last updated:** 2026-01-25
+**Last updated:** 2026-01-27
 
 This repository is actively modernizing the Frontier runtime and toolchain. The `develop` branch now builds and tests with 64-bit alignment on both `arm64` and `x86_64`, includes a portable/headless runtime layer, and routes headless UserTalk `file.*` verbs through the external function processor (EFP) table so tests can exercise real UserTalk without `system.verbs.*` being loaded.
 
-## What's New (Jan 16-25, 2026)
+## Latest Release: v1.0.0-alpha.3 (Jan 27, 2026)
 
-Recent 10-day infrastructure sprint delivered transformative networking and thread-safety foundations:
+**Download:** [GitHub Releases](https://github.com/jsavin/Frontier/releases/tag/v1.0.0-alpha.3)
 
-- **Production-Ready TCP Networking** – 11 socket verbs (client + server operations) with 93 integration tests, SSRF/DNS rebinding protection, and thread-safe stream registry. Frontier can now act as both TCP client and server platform.
-- **Thread-Safety Foundation** – Thread registry infrastructure established, deterministic testing framework operational, 11 of 17 thread verbs working. ADR-010 documents roadmap for eliminating global mutable state (Phase 4 requirement).
-- **Database Migration Fixes** – Resolved system.paths corruption, path entry name matching, and builtins priority issues. Path resolution and namespace lookups now work correctly.
-- **Pre-Release Distribution (v1.0.0-alpha.2)** – Universal binary (arm64+x86_64), automatic system root discovery, professional installer, GitHub Actions automation. Download: [GitHub Releases](https://github.com/jsavin/Frontier/releases/tag/v1.0.0-alpha.2)
-- **Infrastructure Improvements** – OPML hierarchical export (eliminates merge conflicts), /doit workflow integration, modular context architecture, comprehensive CLI documentation.
+Major improvements to the REPL experience, critical runtime fixes, and expanded platform support:
 
-**Overall Progress:** 67% verb coverage (480/710 verbs), 28 processors at 100%, 1,100+ integration tests passing (99% pass rate).
+- **Enhanced REPL** – Option+Arrow word navigation with UserTalk-aware boundaries, clean startup (no migration log spew), command history, and tab completion
+- **Intel Mac Support** – Universal binary (arm64 + x86_64) works natively on both Apple Silicon and Intel Macs
+- **Critical Runtime Fixes** – Nested `parentOf()` calls, introspection functions (`typeOf`, `defined`), table index error handling, and database hydration
+- **TCP Networking** – Phase 1A/1B complete with 20 networking verbs and 93 integration tests
+- **Thread Safety Foundation** – Thread registry infrastructure for future concurrent operations
 
-For comprehensive status details, see [STATUS.md](STATUS.md). For the full progress report, see [reports/progress/2026-01-25-networking-foundation-and-thread-safety.md](reports/progress/2026-01-25-networking-foundation-and-thread-safety.md).
+**Overall Progress:** 68% verb coverage (482/710 verbs), 22 processors at 100%, 1,100+ integration tests passing.
+
+For comprehensive status details, see [STATUS.md](STATUS.md). For release details, see the [v1.0.0-alpha.3 release notes](https://github.com/jsavin/Frontier/releases/tag/v1.0.0-alpha.3).
 
 ---
 
