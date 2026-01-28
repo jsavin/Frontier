@@ -133,3 +133,4 @@ test_tmp/
 # Reports - OPML files are tracked
 # Integration test OPML files use stable hierarchical structure (1 manifest + 25 categories)
 # and should be tracked in git for test documentation and subscriptions
+third_party/cmake-install/
