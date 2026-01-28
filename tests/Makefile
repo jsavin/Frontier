@@ -65,7 +65,8 @@ else
   PAIGE_TESTS_FLAG = OFF
 endif
 PAIGE_LIB = $(PAIGE_BUILD_DIR)/libpaige.a
-CMAKE_BIN = $(THIRDPARTYDIR)/cmake-install/bin/cmake
+# Use local cmake-install if it exists, otherwise fall back to system cmake
+CMAKE_BIN = $(shell if [ -x $(THIRDPARTYDIR)/cmake-install/bin/cmake ]; then echo "$(THIRDPARTYDIR)/cmake-install/bin/cmake"; else echo "cmake"; fi)
 PAIGE_ARCHES = arm64;x86_64
 PAIGE_CONFIG = $(PAIGE_BUILD_DIR)/CMakeCache.txt
 PAIGE_SOURCES := $(shell find $(PAIGE_DIR) -type f \( -name '*.C' -o -name '*.CPP' -o -name '*.c' -o -name '*.cpp' -o -name '*.H' -o -name '*.h' \))
