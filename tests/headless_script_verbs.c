@@ -33,6 +33,7 @@
 #include "frontier.h"
 #include "standard.h"
 
+#include "db_format.h"
 #include "memory.h"
 #include "strings.h"
 #include "lang.h"
@@ -227,9 +228,14 @@ static boolean script_setsource(hdltreenode hparam1, tyvaluerecord *vreturned) {
         return false;
 
     /* Ensure script is in memory */
-    if (!opverbinmemory(NULL, hv)) {
-        disposehandle(hsourcetext);
-        return false;
+    {
+        db_context ctx;
+        db_context_init(&ctx);
+
+        if (!opverbinmemory(&ctx, hv)) {
+            disposehandle(hsourcetext);
+            return false;
+        }
     }
 
     /* Validate hv before dereferencing */

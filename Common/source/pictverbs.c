@@ -214,11 +214,9 @@ boolean pictverbinmemory (const db_context *ctx, hdlexternalvariable hv) {
 	long ix = 0;
 	hdlpictrecord hpict;
 
-	/* Issue #347: Warn if caller passes NULL context (should use db_context_init) */
+	/* Issue #347: Assert context is not NULL - all callers should use db_context_init() */
 #if defined(FRONTIER_HEADLESS) && !defined(NDEBUG)
-	if (ctx == NULL) {
-		log_warn(LOG_COMP_OP, "pictverbinmemory: NULL context passed - caller should use db_context_init()");
-	}
+	assert(ctx != NULL && "Issue #347: NULL context passed to pictverbinmemory - use db_context_init()");
 #endif
 
 #if defined(FRONTIER_HEADLESS)
