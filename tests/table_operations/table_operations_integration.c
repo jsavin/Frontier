@@ -437,12 +437,21 @@ static void test_table_move_basic(void) {
 	fflush(stdout);
 }
 
-/* Test 17: table.move - Source entry removed after move */
+/* Test 17: table.move - Source entry removed after move, destination created
+ *
+ * This test verifies that table.move() properly:
+ * 1. Removes the entry from the source table (defined(src.mobile) == false)
+ * 2. Creates the entry in the destination table (defined(dst.mobile) == true)
+ * 3. Preserves the value (dst.mobile == "data")
+ *
+ * Note: This test also validates that defined() properly suppresses errors
+ * when checking for non-existent table entries (Issue #325).
+ */
 static void test_table_move_source_removed(void) {
 	printf("[table_operations_integration] test_table_move_source_removed: start\n");
 	fflush(stdout);
 
-	eval_expect_string("local (src, dst); new(tableType, @src); new(tableType, @dst); src.mobile = \"data\"; table.move(@src.mobile, @dst); if not defined(src.mobile) { return \"pass\" } else { return \"fail\" }", "pass");
+	eval_expect_string("local (src, dst); new(tableType, @src); new(tableType, @dst); src.mobile = \"data\"; table.move(@src.mobile, @dst); if (defined(src.mobile) == false) and (defined(dst.mobile) == true) and (dst.mobile == \"data\") { return \"pass\" } else { return \"fail\" }", "pass");
 
 	printf("[table_operations_integration] test_table_move_source_removed: PASS\n");
 	fflush(stdout);

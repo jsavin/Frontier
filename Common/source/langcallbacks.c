@@ -191,28 +191,34 @@ boolean langpopsourcecode (void) {
 
 
 boolean langerrormessage (bigstring bs) {
-	
+
 	/*
-	10/31/91 dmb: experimented with calling local "error" routine on all 
-	errors.  it's quickly becoming apparant that this is not a generally safe 
-	thing to do, and that certain classes of errors must not trigger this 
-	call (compiler errors, for example).  If we want to support this in the 
+	10/31/91 dmb: experimented with calling local "error" routine on all
+	errors.  it's quickly becoming apparant that this is not a generally safe
+	thing to do, and that certain classes of errors must not trigger this
+	call (compiler errors, for example).  If we want to support this in the
 	future, a more formal mechanism should be developed.
-	
+
 	4.1b3 dmb: added call to new langseterrorcallbackline for stack tracing (on error)
+
+	2026-01-28: Fixed error logging to respect error suppression (Issue #325).
+	When errors are disabled via disablelangerror() (e.g., by defined() verb),
+	we should not log them. This allows defined() to check for non-existent
+	table entries without generating spurious error messages.
 	*/
-    /* Headless/portable: safely print bigstring without VLAs or overflow */
-    {
-        char cs[256]; /* bigstring max length is 255 */
-        copyptocstring(bs, cs);
-        log_error(LOG_COMP_LANG, "%s", cs);
-    }
-	
+
 	if (!langerrorenabled ())
 		return (true);
-	
+
 	if (fllangerror) /*one message per script*/
 		return (true);
+
+	/* Headless/portable: safely print bigstring without VLAs or overflow */
+	{
+		char cs[256]; /* bigstring max length is 255 */
+		copyptocstring(bs, cs);
+		log_error(LOG_COMP_LANG, "%s", cs);
+	}
 	
 	fllangerror = true; /*only display once for each script*/
 	
