@@ -239,17 +239,19 @@ boolean tableunpacktable (Handle hpacked, boolean flmemory, hdlhashtable *htable
 
 
 boolean tableverbmemorypack (hdlexternalvariable h, Handle *hpacked, hdlhashnode hnode) {
-	
+
 	register hdlexternalvariable hv = h;
 	register hdlhashtable ht;
 	Handle hpush;
 	register boolean fl;
 	boolean fltempload;
 	boolean fldummy;
-	
+	db_context ctx;
+
 	fltempload = !(**hv).flinmemory;
-	
-	if (!tableverbinmemory (NULL, hv, hnode))
+
+	db_context_init(&ctx);
+	if (!tableverbinmemory (&ctx, hv, hnode))
 		return (false);
 	
 	ht = (hdlhashtable) (**hv).variabledata; 
@@ -581,23 +583,25 @@ static boolean tablepacktotextvisit (bigstring bsname, hdlhashnode hnode, tyvalu
 
 
 boolean tableverbpacktotext (hdlexternalvariable h, Handle htext) {
-	
+
 	/*
 	12/23/92 dmb: hashinversesearch now takes table as param; don't push/pop
-	
+
 	12/31/92 dmb: use hashsortedinversesearch so text is in correct order
-	
+
 	5.0.2b20 dmb: unload if just loaded
-	
+
 	5.1.5 dmb: use tablesortedinversesearch for guest databases
 	*/
-	
+
 	register hdlexternalvariable hv = h;
 	register hdlhashtable ht;
 	register boolean fl;
 	boolean fltempload = !(**hv).flinmemory;
-	
-	if (!tableverbinmemory (NULL, hv, HNoNode))
+	db_context ctx;
+
+	db_context_init(&ctx);
+	if (!tableverbinmemory (&ctx, hv, HNoNode))
 		return (false);
 	
 	ht = (hdlhashtable) (**hv).variabledata;
@@ -619,8 +623,10 @@ boolean tableverbgettimes (hdlexternalvariable h, int64_t *timecreated, int64_t 
 
 	register hdlexternalvariable hv = h;
 	register hdlhashtable ht;
-	
-	if (!tableverbinmemory (NULL, hv, hnode))
+	db_context ctx;
+
+	db_context_init(&ctx);
+	if (!tableverbinmemory (&ctx, hv, hnode))
 		return (false);
 	
 	ht = (hdlhashtable) (**hv).variabledata;
@@ -637,8 +643,10 @@ boolean tableverbsettimes (hdlexternalvariable h, int64_t timecreated, int64_t t
 
 	register hdlexternalvariable hv = h;
 	register hdlhashtable ht;
-	
-	if (!tableverbinmemory (NULL, hv, hnode))
+	db_context ctx;
+
+	db_context_init(&ctx);
+	if (!tableverbinmemory (&ctx, hv, hnode))
 		return (false);
 	
 	ht = (hdlhashtable) (**hv).variabledata;
@@ -684,15 +692,17 @@ static boolean findusedblocksvisit (hdlhashnode hnode, ptrvoid refcon) {
 
 
 boolean tableverbfindusedblocks (hdlexternalvariable h, bigstring bspath) {
-	
+
 	register hdlexternalvariable hv = h;
 	register hdlhashtable ht;
 	register boolean fl;
 	boolean fltempload;
-	
+	db_context ctx;
+
 	fltempload = !(**hv).flinmemory;
-	
-	if (!tableverbinmemory (NULL, hv, HNoNode))
+
+	db_context_init(&ctx);
+	if (!tableverbinmemory (&ctx, hv, HNoNode))
 		return (false);
 	
 	if (!statsblockinuse ((**hv).oldaddress, bspath))
