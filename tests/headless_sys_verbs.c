@@ -27,6 +27,9 @@
 #include "sysshellcall.h"
 #include "logging.h"
 
+/* External: Frontier verbs init (headless_frontier_verbs.c) */
+extern boolean frontierinitverbs(void);
+
 /* Token enum for all verbs in the sys processor */
 enum {
     sysv_osversion = 0,
@@ -697,5 +700,11 @@ boolean sysinitverbs(void) {
     #undef ADD_VERB
 
     pophashtable();
+
+    /* Initialize Frontier verbs (frontier.version, etc.) */
+    /* In main build, this is done via loadfunctionprocessor in sysinitverbs */
+    if (!frontierinitverbs())
+        return false;
+
     return true;
 }
