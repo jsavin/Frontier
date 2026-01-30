@@ -28,8 +28,8 @@ unsigned short fldisableyield = 0;
 boolean pushprocess (hdlprocessrecord p) { (void)p; return true; }
 boolean popprocess (void) { return true; }
 
-long grabthreadglobals (void) { return 0; }
-long releasethreadglobals (void) { return 0; }
+long grabthreadglobals (void) { return 1; }  /* Success - headless mode doesn't need thread globals */
+long releasethreadglobals (void) { return 1; }
 
 // DB helpers used during value/pack operations
 #if !defined(HEADLESS_LINKS_REAL_DB)
