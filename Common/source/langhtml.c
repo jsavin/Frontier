@@ -84,7 +84,12 @@
 #define fwsNetEventAbortStream(stream) \
     ((void)tcp_abort_stream((long)(stream)))
 
-/* Special: fwsNetEventGetPeerAddress splits into two tcp_* calls */
+/* Special: fwsNetEventGetPeerAddress splits into two tcp_* calls.
+ *
+ * Note: This function uses unsigned long for legacy Windows API compatibility,
+ * while the tcp_* API uses signed long. The values are always non-negative
+ * (IP addresses and ports), so conversion is safe.
+ */
 static inline boolean fwsNetEventGetPeerAddress(unsigned long stream, unsigned long *peeraddress, unsigned long *peerport) {
     long addr, port;
     if (!tcp_get_peer_address((long)stream, &addr))
