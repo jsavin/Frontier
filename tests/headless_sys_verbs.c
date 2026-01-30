@@ -29,6 +29,8 @@
 
 /* External: Frontier verbs init (headless_frontier_verbs.c) */
 extern boolean frontierinitverbs(void);
+extern boolean inetdinitverbs(void);
+extern boolean webserverinitverbs(void);
 
 /* Token enum for all verbs in the sys processor */
 enum {
@@ -704,6 +706,14 @@ boolean sysinitverbs(void) {
     /* Initialize Frontier verbs (frontier.version, etc.) */
     /* In main build, this is done via loadfunctionprocessor in sysinitverbs */
     if (!frontierinitverbs())
+        return false;
+
+    /* Initialize inetd verbs (inetd.supervisor for kernelized webserver) */
+    if (!inetdinitverbs())
+        return false;
+
+    /* Initialize webserver verbs (webserver.server, webserver.dispatch, etc.) */
+    if (!webserverinitverbs())
         return false;
 
     return true;

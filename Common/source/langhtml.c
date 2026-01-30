@@ -4754,7 +4754,7 @@ static boolean addHeaderToTable (Handle htext, long ix1, long len1, long ix2, lo
 	}/*addHeaderToTable*/
 
 
-static boolean webserverparseheaders (Handle htext, hdlhashtable hheadertable, Handle *hptr) {
+boolean webserverparseheaders (Handle htext, hdlhashtable hheadertable, Handle *hptr) {
 
 	/*
 	6.1d1 AR: Parse the headers of an HTTP request or response into the given table.
@@ -4860,7 +4860,7 @@ done:	/*set up return string: first line of headers*/
 	}/*webserverparseheaders*/
 
 
-static boolean webserverparsecookies (hdlhashtable hparamtable, tyvaluerecord *vreturn) {
+boolean webserverparsecookies (hdlhashtable hparamtable, tyvaluerecord *vreturn) {
 
 	/*
 	6.1d2 AR: Utility string for parsing the request's Cookie header.
@@ -4991,7 +4991,7 @@ static boolean webservergetpref (bigstring bsprefname, tyvaluerecord *vreturn) {
 	} /*webservergetpref*/
 
 
-static boolean webservergetserverstring ( tyvaluerecord *vreturn ) {
+boolean webservergetserverstring ( tyvaluerecord *vreturn ) {
 
 	//
 	// 2007-06-02 creedon: call webservergetpref to grab value at
@@ -5032,7 +5032,7 @@ static boolean webservergetserverstring ( tyvaluerecord *vreturn ) {
 	} // webservergetserverstring
 
 
-static boolean webserverbuilderrorpage (Handle hshort, Handle hlong, Handle *hpage) {
+boolean webserverbuilderrorpage (Handle hshort, Handle hlong, Handle *hpage) {
 
 	/*
 	6.1d2 AR: Build an error page.
@@ -5163,7 +5163,7 @@ static boolean writetableitemtostreamvisit (tyvaluerecord val, ptrhandlestream s
 	
 /*	system.verbs.builtins.webserver.util.buildResponse */
 
-static boolean webserverbuildresponse (bigstring bscode, hdlhashtable hheaderstable, Handle hbody, tyvaluerecord *vreturn) {
+boolean webserverbuildresponse (bigstring bscode, hdlhashtable hheaderstable, Handle hbody, tyvaluerecord *vreturn) {
 
 	/*
 	6.1d2 AR: Build the HTTP response headers and optionally body.
@@ -5934,7 +5934,7 @@ internal_error: {
 	} /*webservercallresponder*/
 
 
-static boolean webserverdispatch (tyaddress *pta, tyvaluerecord *vreturn) {
+boolean webserverdispatch (tyaddress *pta, tyvaluerecord *vreturn) {
 
 	/*
 	6.1d2 AR: Dispatch the request to the appropriate responder.
@@ -6511,7 +6511,7 @@ static boolean webservermaintainstats (void) {
 	} /*webservermaintainstats*/
 
 
-static boolean webserverserver (tyaddress *pta, Handle hrequest, tyvaluerecord *vreturn) {
+boolean webserverserver (tyaddress *pta, Handle hrequest, tyvaluerecord *vreturn) {
 
 	/*
 	6.1d1 AR: Kernelized system.verbs.builtins.webserver.server.
@@ -6678,7 +6678,7 @@ static boolean inetdaddtoerrorlog (long code, bigstring bserror, hdlhashtable hp
 	} /*inetdaddtoerrorlog*/
 
 
-static boolean inetdsupervisor (long stream, long refcon, tyvaluerecord * vreturn) {
+boolean inetdsupervisor (long stream, long refcon, tyvaluerecord * vreturn) {
 
 	/*
 	6.1d1 AR: The entry point for the kernelized webserver.

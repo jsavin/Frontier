@@ -2107,11 +2107,14 @@ boolean coercetolong (tyvaluerecord *v) {
 			return (coercelistvalue (v, longvaluetype));
 		
 		default:
+#if defined(FRONTIER_HEADLESS)
+			log_error(LOG_COMP_LANG, "coercetolong: cannot coerce valuetype=%d to long", (int)(*v).valuetype);
+#endif
 			langerror (longcoerceerror);
-			
+
 			return (false);
 		} /*switch*/
-	
+
 	return (setlongvalue (x, v));
 	} /*coercetolong*/
 

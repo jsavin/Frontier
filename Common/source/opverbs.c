@@ -65,6 +65,7 @@
 #include "opbuttons.h"
 #include "file.h" // 2006-09-17 creedon
 #include "db_format.h"
+#include "dbinternal.h"  /* 2026-01-29: For sizeheader in payload offset calculation */
 #include "logging.h"
 #include "op_context.h"
 
@@ -605,11 +606,41 @@ boolean opverbinmemory (const db_context *ctx, hdlexternalvariable hvariable) {
 	adr = (dbaddress) (**hv).variabledata;  /* DISK ADDRESS - format depends on source DB */
 
 #if defined(FRONTIER_HEADLESS)
-	log_debug(LOG_COMP_OP, "opverbinmemory: reading from hdatabase=%p adr=0x%llx use_64bit=%d (NO PUSH)",
-	        (void*)(**hv).hdatabase,
-	        (unsigned long long)adr,
-	        ctx ? ctx->mode.use_64bit_format : -1);
+	{
+		extern const char *langhash_materialize_current_path;
+		const char *path = (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<unknown>";
+		/* Also log the variable type to understand what kind of external this is */
+		short vartype = (**hv).id;  /* externalvariable.id holds the type */
+		dbaddress oldadr = (**hv).oldaddress;
+		fprintf(stderr, "[TRACE] opverbinmemory ENTER: path='%s' adr=0x%llx oldadr=0x%llx vartype=%d hdatabase=%p\n",
+		        path, (unsigned long long)adr, (unsigned long long)oldadr, (int)vartype, (void*)(**hv).hdatabase);
+		fflush(stderr);
+	}
 #endif
+
+	/*
+	 * 2026-01-29: Handle payload offset within database blocks.
+	 * The stored address may point INTO a block's data area, not to the block start.
+	 * We need to normalize to block start for dbrefhandle, then trim the leading
+	 * bytes after reading. Pattern copied from tableexternal_common.c:351-388.
+	 */
+	long payload_offset = 0;
+	{
+		dbaddress normalized = adr;
+		if (dbnormalizeaddress(&normalized)) {
+			if (normalized != adr) {
+				dbaddress data_start = normalized + sizeheader;
+				if (adr > data_start)
+					payload_offset = (long) (adr - data_start);
+#if defined(FRONTIER_HEADLESS)
+				fprintf(stderr, "[TRACE] opverbinmemory NORMALIZE: adr=0x%llx -> normalized=0x%llx data_start=0x%llx payload_offset=%ld\n",
+				        (unsigned long long)adr, (unsigned long long)normalized, (unsigned long long)data_start, payload_offset);
+				fflush(stderr);
+#endif
+				adr = normalized;
+			}
+		}
+	}
 
 	/* Read with explicit context - NO global state changes */
 	fl = dbrefhandle_context (ctx, adr, &hpackedoutline);
@@ -620,8 +651,39 @@ boolean opverbinmemory (const db_context *ctx, hdlexternalvariable hvariable) {
 		        (unsigned long long) adr);
 #endif
 	} else {
-#if defined(FRONTIER_HEADLESS)
+		/*
+		 * 2026-01-29: Trim leading bytes if address was inside block data area.
+		 * The payload_offset was calculated before normalization.
+		 */
 		long packed_size = gethandlesize(hpackedoutline);
+#if defined(FRONTIER_HEADLESS)
+		fprintf(stderr, "[TRACE] opverbinmemory READ: packed_size=%ld payload_offset=%ld\n", packed_size, payload_offset);
+		if (packed_size > 0) {
+			unsigned char *raw = (unsigned char *)(*hpackedoutline);
+			fprintf(stderr, "[TRACE] opverbinmemory RAW first 32: ");
+			for (int i = 0; i < 32 && i < packed_size; i++) fprintf(stderr, "%02x", raw[i]);
+			fprintf(stderr, "\n");
+			if (payload_offset > 0 && payload_offset < packed_size) {
+				fprintf(stderr, "[TRACE] opverbinmemory RAW at offset %ld: ", payload_offset);
+				for (int i = 0; i < 32 && (payload_offset + i) < packed_size; i++) fprintf(stderr, "%02x", raw[payload_offset + i]);
+				fprintf(stderr, "\n");
+			}
+		}
+		fflush(stderr);
+#endif
+		if (payload_offset > 0 && payload_offset < packed_size) {
+			pullfromhandle(hpackedoutline, 0, payload_offset, nil);
+			packed_size = gethandlesize(hpackedoutline);
+#if defined(FRONTIER_HEADLESS)
+			fprintf(stderr, "[TRACE] opverbinmemory TRIMMED: %ld bytes, new size=%ld\n", payload_offset, packed_size);
+			unsigned char *trimmed = (unsigned char *)(*hpackedoutline);
+			fprintf(stderr, "[TRACE] opverbinmemory AFTER TRIM first 32: ");
+			for (int i = 0; i < 32 && i < packed_size; i++) fprintf(stderr, "%02x", trimmed[i]);
+			fprintf(stderr, "\n");
+			fflush(stderr);
+#endif
+		}
+#if defined(FRONTIER_HEADLESS)
 		log_debug(LOG_COMP_OP, "opverbinmemory: dbrefhandle OK adr=0x%llx size=%ld",
 		        (unsigned long long)adr, packed_size);
 #endif
@@ -648,13 +710,30 @@ boolean opverbinmemory (const db_context *ctx, hdlexternalvariable hvariable) {
 		else
 			fl = opunpack (hpackedoutline, &ix, &ho);
 
-		disposehandle (hpackedoutline);
-
 #if defined(FRONTIER_HEADLESS)
-		if (!fl)
-			log_error(LOG_COMP_OP, "opverbinmemory opunpack failed adr=0x%llx",
-			        (unsigned long long) adr);
+		if (!fl) {
+			/* More detailed error logging for debugging unpack failures */
+			extern const char *langhash_materialize_current_path;
+			const char *path = (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<unknown>";
+			unsigned char *p = (unsigned char *)(*hpackedoutline);
+			log_error(LOG_COMP_OP, "opverbinmemory opunpack failed path='%s' adr=0x%llx version=%d islegacy=%d size=%ld first8bytes=%02x%02x%02x%02x%02x%02x%02x%02x",
+			        path,
+			        (unsigned long long) adr,
+			        (int) versionnumber,
+			        (int) islegacy,
+			        packed_size,
+			        (packed_size > 0 ? p[0] : 0),
+			        (packed_size > 1 ? p[1] : 0),
+			        (packed_size > 2 ? p[2] : 0),
+			        (packed_size > 3 ? p[3] : 0),
+			        (packed_size > 4 ? p[4] : 0),
+			        (packed_size > 5 ? p[5] : 0),
+			        (packed_size > 6 ? p[6] : 0),
+			        (packed_size > 7 ? p[7] : 0));
+		}
 #endif
+
+		disposehandle (hpackedoutline);
 		}
 
 	/* No database context restore needed - using explicit context parameter */
@@ -993,11 +1072,21 @@ boolean opverbgetlangtext (hdlexternalvariable hvariable, boolean flpretty, Hand
 	fltempload = !(**hv).flinmemory;
 
 	db_context_init(&ctx);
+	ctx.database = (**hv).hdatabase;  /* Use variable's own database for EFP support */
+#if defined(FRONTIER_HEADLESS)
+	{
+		extern const char *langhash_materialize_current_path;
+		const char *path = (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<unknown>";
+		log_debug(LOG_COMP_OP, "opverbgetlangtext: path='%s' hv=%p hdatabase=%p ctx.database=%p databasedata=%p variabledata=0x%llx flinmemory=%d",
+		        path, (void*)hv, (void*)(**hv).hdatabase, (void*)ctx.database, (void*)databasedata,
+		        (unsigned long long)(**hv).variabledata, (int)(**hv).flinmemory);
+	}
+#endif
 	if (!opverbinmemory (&ctx, hv))
 		return (false);
-	
+
 	ho = (hdloutlinerecord) (**hv).variabledata;
-	
+
 	*signature = (**ho).outlinesignature;
 	
 	if (htext == nil)
@@ -1029,13 +1118,14 @@ boolean opverbgetsize (hdlexternalvariable hvariable, long *size) {
 	db_context ctx;
 
 	db_context_init(&ctx);
+	ctx.database = (**hv).hdatabase;  /* Use variable's own database for EFP support */
 	if (!opverbinmemory (&ctx, hv))
 		return (false);
-	
+
 	ho = (hdloutlinerecord) (**hv).variabledata;
-	
+
 	oppushoutline (ho);
-	
+
 	ctheads = opcountheads ();
 	
 	oppopoutline ();
@@ -1103,11 +1193,12 @@ boolean opverbsetdirty (hdlexternalvariable hvariable, boolean fldirty) {
 	db_context ctx;
 
 	db_context_init(&ctx);
+	ctx.database = (**hv).hdatabase;  /* Use variable's own database for EFP support */
 	if (!opverbinmemory (&ctx, hv))
 		return (false);
-	
+
 	ho = (hdloutlinerecord) (**hv).variabledata;
-	
+
 	(**ho).fldirty = (**ho).fldirtyview = (**ho).flrecentlychanged = fldirty;
 	
 	return (true);
@@ -1131,13 +1222,14 @@ boolean opverbpacktotext (hdlexternalvariable h, Handle htext) {
 	db_context ctx;
 
 	db_context_init(&ctx);
+	ctx.database = (**hv).hdatabase;  /* Use variable's own database for EFP support */
 	if (!opverbinmemory (&ctx, hv))
 		return (false);
-	
+
 	ho = (hdloutlinerecord) (**hv).variabledata;
-	
+
 	if ((**hv).flscript) {
-		
+
 		fl = opgetlangtext (ho, true, &hprogram);
 		
 		if (fl) {
@@ -1164,13 +1256,14 @@ boolean opverbgettimes (hdlexternalvariable h, int64_t *timecreated, int64_t *ti
 	db_context ctx;
 
 	db_context_init(&ctx);
+	ctx.database = (**hv).hdatabase;  /* Use variable's own database for EFP support */
 	if (!opverbinmemory (&ctx, hv))
 		return (false);
-	
+
 	ho = (hdloutlinerecord) (**hv).variabledata;
-	
+
 	*timecreated = (**ho).timecreated;
-	
+
 	*timemodified = (**ho).timelastsave;
 	
 	return (true);
@@ -1184,13 +1277,14 @@ boolean opverbsettimes (hdlexternalvariable h, int64_t timecreated, int64_t time
 	db_context ctx;
 
 	db_context_init(&ctx);
+	ctx.database = (**hv).hdatabase;  /* Use variable's own database for EFP support */
 	if (!opverbinmemory (&ctx, hv))
 		return (false);
-	
+
 	ho = (hdloutlinerecord) (**hv).variabledata;
-	
+
 	(**ho).timecreated = timecreated;
-	
+
 	(**ho).timelastsave = timemodified;
 	
 	return (true);
@@ -1413,11 +1507,12 @@ boolean getoutlinevalue (hdltreenode hfirst, short pnum, hdloutlinerecord *houtl
 		}
 
 	db_context_init(&ctx);
+	ctx.database = (**hv).hdatabase;  /* Use variable's own database for EFP support */
 	if (!opverbinmemory (&ctx, hv))
 		return (false);
-	
+
 	*houtline = (hdloutlinerecord) (**hv).variabledata;
-	
+
 	return (true);
 	} /*getoutlinevalue*/
 
@@ -1432,9 +1527,10 @@ boolean opverbarrayreference (hdlexternalvariable hvariable, long ix, hdlheadrec
 	*hnode = nil;
 
 	db_context_init(&ctx);
+	ctx.database = (**hv).hdatabase;  /* Use variable's own database for EFP support */
 	if (!opverbinmemory (&ctx, hv)) /*couldn't swap into memory*/
 		return (false);
-		
+
 	oppushoutline ((hdloutlinerecord) (**hv).variabledata); /*assume it's in memory*/
 	
 	fl = oparrayreference (ix, hnode);
@@ -1481,11 +1577,12 @@ boolean opedit (hdlexternalvariable hvariable, hdlwindowinfo hparent, ptrfilespe
 	db_context ctx;
 
 	db_context_init(&ctx);
+	ctx.database = (**hv).hdatabase;  /* Use variable's own database for EFP support */
 	if (!opverbinmemory (&ctx, hv)) // couldn't swap it into memory
 		return (false);
-	
+
 	ho = (hdloutlinerecord) (**hv).variabledata; // assume it's in memory
-	
+
 	while ((**ho).flwindowopen) { // bring to front, return true
 		
 		if (shellfinddatawindow ((Handle) ho, &hi)) {
@@ -1627,11 +1724,12 @@ boolean opvaltoscript (tyvaluerecord val, hdloutlinerecord *houtline) {
 		return (false);
 
 	db_context_init(&ctx);
+	ctx.database = (**hv).hdatabase;  /* Use variable's own database for EFP support */
 	if (!opverbinmemory (&ctx, hv))
 		return (false);
-	
+
 	*houtline = (hdloutlinerecord) (**hv).variabledata;
-	
+
 	return (true);
 	} /*opvaltoscript*/
 
@@ -2104,13 +2202,14 @@ static boolean opsettypeverb (hdltreenode hparam1, tyvaluerecord *v) {
 		return (true);
 
 	db_context_init(&ctx);
+	ctx.database = (**hv).hdatabase;  /* Use variable's own database for EFP support */
 	if (!opverbinmemory (&ctx, hv))
 		return (false);
-	
+
 	ho = (hdloutlinerecord) (**hv).variabledata;
-	
+
 	(**ho).outlinesignature = signature;
-	
+
 	opverbsetdirty ((hdlexternalvariable) hv, true);
 	
 	if (opwindowopen ((hdlexternalvariable) hv, &hinfo)) /*crude, but effective update*/
@@ -4024,11 +4123,12 @@ static boolean opfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord 
 				}
 
 			db_context_init(&ctx);
+			ctx.database = (**hv).hdatabase;  /* Use variable's own database for EFP support */
 			if (!opverbinmemory (&ctx, hv))
 				return (false);
-			
+
 			flnextparamislast = true;
-			
+
 			if (!getdirectionvalue (hparam1, 2, &dir)) /*direction*/
 				break;
 
@@ -4363,11 +4463,12 @@ boolean opverbfind (hdlexternalvariable hvariable, boolean *flzoom) {
 	fltempload = !(**hv).flinmemory;
 
 	db_context_init(&ctx);
+	ctx.database = (**hv).hdatabase;  /* Use variable's own database for EFP support */
 	if (!opverbinmemory (&ctx, hv))
 		return (false);
-	
+
 	ho = (hdloutlinerecord) (**hv).variabledata;
-	
+
 	flwindowopen = opwindowopen ((hdlexternalvariable) hv, &hinfo) && hinfo;
 	
 	if (flwindowopen)
