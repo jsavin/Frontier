@@ -1162,20 +1162,27 @@ static void *tcp_accept_thread(void *arg) {
                 continue;  /* Skip callback but continue accepting connections */
             }
 
-            tyvaluerecord params[3];
+            /* Invoke callback with (streamID, refcon) - matches inetd.supervisor signature.
+             * The refcon was passed to tcp.listenStream and stored in listener->refcon.
+             * For inetd, refcon is the port number.
+             *
+             * Note: remoteAddr and remotePort are available on the stream record and
+             * can be retrieved via tcp.getPeerAddress() and tcp.getPeerPort() if needed.
+             */
+            tyvaluerecord params[2];
             setlongvalue(stream_id, &params[0]);                      /* streamID */
-            setlongvalue((long)stream->remote_addr, &params[1]);      /* remoteAddr */
-            setlongvalue((long)stream->remote_port, &params[2]);      /* remotePort */
+            setlongvalue(listener->refcon, &params[1]);               /* refcon (port for inetd) */
 
             tyvaluerecord result;
             initvalue(&result, novaluetype);
 
-            log_debug(LOG_COMP_LANG, "tcp_accept_thread: invoking callback for stream_id=%d", stream_id);
+            log_debug(LOG_COMP_LANG, "tcp_accept_thread: invoking callback stream_id=%d refcon=%ld",
+                     stream_id, listener->refcon);
 
             boolean callback_success = langruncallbackwithparams(
                 listener->callback_table,
                 listener->callback_name,
-                3,
+                2,
                 params,
                 &result
             );
