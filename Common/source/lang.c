@@ -1373,13 +1373,13 @@ boolean langruncallbackwithparams (
 		goto cleanup;
 	}
 
-	/* Add address references to parameters in the list */
+	/* Add parameter values to the list (not addresses)
+	 * The callback script receives actual values, not addresses to local variables.
+	 * This matches how handler parameters work in UserTalk - the called script
+	 * receives the values directly as its own local variables.
+	 */
 	for (i = 0; i < param_count; i++) {
-		bigstring param_name;
-
-		buildparamname(i, param_name);
-
-		if (!langpushlistaddress(hparams, htlocals, param_name)) {
+		if (!langpushlistval(hparams, nil, &params[i])) {
 			goto cleanup;
 		}
 	}
