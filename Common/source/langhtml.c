@@ -59,15 +59,47 @@
 #ifndef FRONTIER_HEADLESS
 #include "WinSockNetEvents.h"
 #else
-/* Stub declarations for headless mode - web server not available */
-#define fwsNetEventReadStreamUntil(a,b,c,d) (false)
-#define fwsNetEventReadStreamBytes(a,b,c,d) (false)
-#define fwsNetEventCloseStream(a) (false)
-#define fwsNetEventGetPeerAddress(a,b,c) (false)
-#define fwsNetEventAddressDecode(a,b) (false)
-#define fwsNetEventInetdRead(a,b,c) (false)
-#define fwsNetEventWriteHandleToStream(a,b,c,d) (false)
-#define fwsNetEventAbortStream(a) ((void)0)
+/* Headless mode: Map fwsNetEvent* functions to tcp_* API from tcpverbs.h */
+#include "tcpverbs.h"
+
+/* Direct replacements */
+#define fwsNetEventReadStreamUntil(stream, hbuffer, hpattern, timeout) \
+    tcp_read_stream_until((long)(stream), (hbuffer), (hpattern), (long)(timeout))
+
+#define fwsNetEventReadStreamBytes(stream, hbuffer, count, timeout) \
+    tcp_read_stream_bytes((long)(stream), (hbuffer), (long)(count), (long)(timeout))
+
+#define fwsNetEventCloseStream(stream) \
+    tcp_close_stream((long)(stream))
+
+#define fwsNetEventAddressDecode(addr, bs) \
+    tcp_address_decode((long)(addr), (bs))
+
+#define fwsNetEventInetdRead(stream, hbuffer, timeout) \
+    tcp_read_stream_inetd((long)(stream), (hbuffer), (long)(timeout))
+
+#define fwsNetEventWriteHandleToStream(stream, hdata, chunksize, timeout) \
+    tcp_write_string_to_stream((long)(stream), (hdata), (long)(chunksize), (long)(timeout))
+
+#define fwsNetEventAbortStream(stream) \
+    ((void)tcp_abort_stream((long)(stream)))
+
+/* Special: fwsNetEventGetPeerAddress splits into two tcp_* calls.
+ *
+ * Note: This function uses unsigned long for legacy Windows API compatibility,
+ * while the tcp_* API uses signed long. The values are always non-negative
+ * (IP addresses and ports), so conversion is safe.
+ */
+static inline boolean fwsNetEventGetPeerAddress(unsigned long stream, unsigned long *peeraddress, unsigned long *peerport) {
+    long addr, port;
+    if (!tcp_get_peer_address((long)stream, &addr))
+        return false;
+    if (!tcp_get_peer_port((long)stream, &port))
+        return false;
+    *peeraddress = (unsigned long)addr;
+    *peerport = (unsigned long)port;
+    return true;
+}
 #endif
 #include "osacomponent.h"
 

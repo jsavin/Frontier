@@ -83,10 +83,10 @@ tests:
   - name: "tcp.statusStream - returns OPEN for idle connection"
     description: "Verify statusStream returns OPEN when no data pending"
     script: |
-      local(listenID = tcp.listenStream(9100, 5, "", 0, tcp.addressEncode("127.0.0.1")));
+      local(listenID = tcp.listenStream(9100, 5, ""));
 
       try {
-        local(stream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9100));
+        local(stream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9100));
         if (stream <= 0) {
           tcp.closeListen(listenID);
           return "false"
@@ -123,8 +123,8 @@ tests:
         return true
       };
 
-      local(listenID = tcp.listenStream(9101, 5, @tcpHandler, 0, tcp.addressEncode("127.0.0.1")));
-      local(clientStream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9101));
+      local(listenID = tcp.listenStream(9101, 5, @tcpHandler);
+      local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9101));
 
       // Wait for connection
       local(startTicks = clock.ticks());
@@ -164,8 +164,8 @@ tests:
         return true
       };
 
-      local(listenID = tcp.listenStream(9102, 5, @tcpHandler, 0, tcp.addressEncode("127.0.0.1")));
-      local(clientStream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9102));
+      local(listenID = tcp.listenStream(9102, 5, @tcpHandler);
+      local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9102));
 
       local(startTicks = clock.ticks());
       while (not system.temp.tcpTest.connected) and ((clock.ticks() - startTicks) < 60) {
@@ -193,10 +193,10 @@ tests:
   - name: "tcp.statusStream - return type is string"
     description: "Verify statusStream returns stringType"
     script: |
-      local(listenID = tcp.listenStream(9103, 5, "", 0, tcp.addressEncode("127.0.0.1")));
+      local(listenID = tcp.listenStream(9103, 5, ""));
 
       try {
-        local(stream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9103));
+        local(stream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9103));
         if (stream <= 0) {
           tcp.closeListen(listenID);
           return "false"
@@ -240,10 +240,10 @@ tests:
   - name: "tcp.getPeerAddress - returns localhost for local connection"
     description: "Verify getPeerAddress returns 127.0.0.1 for localhost connection"
     script: |
-      local(listenID = tcp.listenStream(9104, 5, "", 0, tcp.addressEncode("127.0.0.1")));
+      local(listenID = tcp.listenStream(9104, 5, ""));
 
       try {
-        local(stream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9104));
+        local(stream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9104));
         if (stream <= 0) {
           tcp.closeListen(listenID);
           return "false"
@@ -278,8 +278,8 @@ tests:
         return true
       };
 
-      local(listenID = tcp.listenStream(9105, 5, @tcpHandler, 0, tcp.addressEncode("127.0.0.1")));
-      local(clientStream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9105));
+      local(listenID = tcp.listenStream(9105, 5, @tcpHandler);
+      local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9105));
 
       local(startTicks = clock.ticks());
       while (not system.temp.tcpTest.connected) and ((clock.ticks() - startTicks) < 60) {
@@ -307,10 +307,10 @@ tests:
   - name: "tcp.getPeerAddress - return type is long"
     description: "Verify getPeerAddress returns longType"
     script: |
-      local(listenID = tcp.listenStream(9106, 5, "", 0, tcp.addressEncode("127.0.0.1")));
+      local(listenID = tcp.listenStream(9106, 5, ""));
 
       try {
-        local(stream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9106));
+        local(stream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9106));
         if (stream <= 0) {
           tcp.closeListen(listenID);
           return "false"
@@ -353,10 +353,10 @@ tests:
     description: "Verify client's getPeerPort returns the server's listen port"
     script: |
       local(serverPort = 9107);
-      local(listenID = tcp.listenStream(serverPort, 5, "", 0, tcp.addressEncode("127.0.0.1")));
+      local(listenID = tcp.listenStream(serverPort, 5, ""));
 
       try {
-        local(stream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), serverPort));
+        local(stream = tcp.openStream(tcp.addressEncode("127.0.0.1"), serverPort));
         if (stream <= 0) {
           tcp.closeListen(listenID);
           return "false"
@@ -390,8 +390,8 @@ tests:
         return true
       };
 
-      local(listenID = tcp.listenStream(9108, 5, @tcpHandler, 0, tcp.addressEncode("127.0.0.1")));
-      local(clientStream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9108));
+      local(listenID = tcp.listenStream(9108, 5, @tcpHandler);
+      local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9108));
 
       local(startTicks = clock.ticks());
       while (not system.temp.tcpTest.connected) and ((clock.ticks() - startTicks) < 60) {
@@ -419,10 +419,10 @@ tests:
   - name: "tcp.getPeerPort - return type is long"
     description: "Verify getPeerPort returns longType"
     script: |
-      local(listenID = tcp.listenStream(9109, 5, "", 0, tcp.addressEncode("127.0.0.1")));
+      local(listenID = tcp.listenStream(9109, 5, ""));
 
       try {
-        local(stream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9109));
+        local(stream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9109));
         if (stream <= 0) {
           tcp.closeListen(listenID);
           return "false"
@@ -475,8 +475,8 @@ tests:
         return true
       };
 
-      local(listenID = tcp.listenStream(9110, 5, @tcpHandler, 0, tcp.addressEncode("127.0.0.1")));
-      local(clientStream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9110));
+      local(listenID = tcp.listenStream(9110, 5, @tcpHandler);
+      local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9110));
 
       local(startTicks = clock.ticks());
       while (not system.temp.tcpTest.connected) and ((clock.ticks() - startTicks) < 60) {
@@ -512,8 +512,8 @@ tests:
         return true
       };
 
-      local(listenID = tcp.listenStream(9111, 5, @tcpHandler, 0, tcp.addressEncode("127.0.0.1")));
-      local(clientStream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9111));
+      local(listenID = tcp.listenStream(9111, 5, @tcpHandler);
+      local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9111));
 
       local(startTicks = clock.ticks());
       while (not system.temp.tcpTest.connected) and ((clock.ticks() - startTicks) < 60) {
@@ -544,10 +544,10 @@ tests:
   - name: "tcp.statusStream - after stream closed"
     description: "Verify statusStream handles closed stream gracefully"
     script: |
-      local(listenID = tcp.listenStream(9112, 5, "", 0, tcp.addressEncode("127.0.0.1")));
+      local(listenID = tcp.listenStream(9112, 5, ""));
 
       try {
-        local(stream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9112));
+        local(stream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9112));
         if (stream <= 0) {
           tcp.closeListen(listenID);
           return "false"
@@ -578,10 +578,10 @@ tests:
   - name: "tcp.getPeerAddress - after stream closed"
     description: "Verify getPeerAddress handles closed stream gracefully"
     script: |
-      local(listenID = tcp.listenStream(9113, 5, "", 0, tcp.addressEncode("127.0.0.1")));
+      local(listenID = tcp.listenStream(9113, 5, ""));
 
       try {
-        local(stream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9113));
+        local(stream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9113));
         if (stream <= 0) {
           tcp.closeListen(listenID);
           return "false"
@@ -610,10 +610,10 @@ tests:
   - name: "tcp.getPeerPort - after stream closed"
     description: "Verify getPeerPort handles closed stream gracefully"
     script: |
-      local(listenID = tcp.listenStream(9114, 5, "", 0, tcp.addressEncode("127.0.0.1")));
+      local(listenID = tcp.listenStream(9114, 5, ""));
 
       try {
-        local(stream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 9114));
+        local(stream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9114));
         if (stream <= 0) {
           tcp.closeListen(listenID);
           return "false"

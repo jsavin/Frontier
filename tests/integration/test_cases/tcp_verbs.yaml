@@ -2,8 +2,8 @@
 # Tests basic TCP client connectivity (NO external network dependencies)
 #
 # Phase 1A verbs (7 total):
-#   - tcp.openNameStream(hostname, port) → streamID - DNS + connect (blocking)
-#   - tcp.openAddrStream(addr, port) → streamID - Direct IP connect
+#   - tcp.openStream(hostname, port) → streamID - DNS + connect (blocking)
+#   - tcp.openStream(addr, port) → streamID - Direct IP connect
 #   - tcp.readStream(stream, bytes) → data - Non-blocking read
 #   - tcp.writeStream(stream, data) → true - Blocking write
 #   - tcp.closeStream(stream) → true - Graceful shutdown (FIN)
@@ -193,11 +193,11 @@ tests:
     expected_success: true
     expected_result: "true"
 
-  - name: "tcp.openNameStream - invalid port (negative)"
+  - name: "tcp.openStream - invalid port (negative)"
     description: "Negative port number should raise error"
     script: |
       try {
-        tcp.openNameStream("localhost", -1);
+        tcp.openStream("localhost", -1);
         return "false"
       }
       else {
@@ -206,11 +206,11 @@ tests:
     expected_success: true
     expected_result: "true"
 
-  - name: "tcp.openNameStream - invalid port (zero)"
+  - name: "tcp.openStream - invalid port (zero)"
     description: "Port 0 should raise error for client connections"
     script: |
       try {
-        tcp.openNameStream("localhost", 0);
+        tcp.openStream("localhost", 0);
         return "false"
       }
       else {
@@ -219,11 +219,11 @@ tests:
     expected_success: true
     expected_result: "true"
 
-  - name: "tcp.openNameStream - invalid port (too large)"
+  - name: "tcp.openStream - invalid port (too large)"
     description: "Port > 65535 should raise error"
     script: |
       try {
-        tcp.openNameStream("localhost", 70000);
+        tcp.openStream("localhost", 70000);
         return "false"
       }
       else {
@@ -232,11 +232,11 @@ tests:
     expected_success: true
     expected_result: "true"
 
-  - name: "tcp.openNameStream - empty hostname"
+  - name: "tcp.openStream - empty hostname"
     description: "Empty hostname should raise error"
     script: |
       try {
-        tcp.openNameStream("", 80);
+        tcp.openStream("", 80);
         return "false"
       }
       else {
@@ -245,12 +245,12 @@ tests:
     expected_success: true
     expected_result: "true"
 
-  - name: "tcp.openAddrStream - invalid port (negative)"
+  - name: "tcp.openStream - invalid port (negative)"
     description: "Negative port number should raise error"
     script: |
       try {
         local(localhost = 0x7F000001);
-        tcp.openAddrStream(localhost, -1);
+        tcp.openStream(localhost, -1);
         return "false"
       }
       else {
@@ -259,12 +259,12 @@ tests:
     expected_success: true
     expected_result: "true"
 
-  - name: "tcp.openAddrStream - invalid port (too large)"
+  - name: "tcp.openStream - invalid port (too large)"
     description: "Port > 65535 should raise error"
     script: |
       try {
         local(localhost = 0x7F000001);
-        tcp.openAddrStream(localhost, 70000);
+        tcp.openStream(localhost, 70000);
         return "false"
       }
       else {
@@ -273,14 +273,14 @@ tests:
     expected_success: true
     expected_result: "true"
 
-  - name: "tcp.openAddrStream - invalid address (zero)"
+  - name: "tcp.openStream - invalid address (zero)"
     description: "Address 0.0.0.0 is invalid for client connect (Phase 1A)"
-    # Note: 0.0.0.0 is invalid for Phase 1A client connections (tcp.openAddrStream).
+    # Note: 0.0.0.0 is invalid for Phase 1A client connections (tcp.openStream).
     # Phase 2 may allow 0.0.0.0 for server binding (tcp.listenStream), but that's
     # a different use case. This test validates Phase 1A client-side behavior.
     script: |
       try {
-        tcp.openAddrStream(0, 80);
+        tcp.openStream(0, 80);
         return "false"
       }
       else {
@@ -339,10 +339,10 @@ tests:
     expected_success: true
     expected_result: "true"
 
-  - name: "tcp.openNameStream - blocking DNS spec"
+  - name: "tcp.openStream - blocking DNS spec"
     description: "Spec: openNameStream performs blocking DNS lookup + connect"
     script: |
-      // Behavioral specification: tcp.openNameStream is BLOCKING.
+      // Behavioral specification: tcp.openStream is BLOCKING.
       // It performs DNS resolution (if hostname not IP) and TCP connect.
       // Does not return until connection established or error.
       // Phase 1A uses blocking DNS; Phase 1B may add async.
@@ -351,10 +351,10 @@ tests:
     expected_success: true
     expected_result: "true"
 
-  - name: "tcp.openAddrStream - no DNS lookup spec"
+  - name: "tcp.openStream - no DNS lookup spec"
     description: "Spec: openAddrStream uses IP address directly (no DNS)"
     script: |
-      // Behavioral specification: tcp.openAddrStream bypasses DNS.
+      // Behavioral specification: tcp.openStream bypasses DNS.
       // Address parameter is a 4-byte encoded IP in host byte order.
       // Faster than openNameStream when IP is already known.
       // This test documents the expected behavior.
@@ -377,10 +377,10 @@ tests:
     expected_success: true
     expected_result: "true"
 
-  - name: "tcp.openAddrStream - return type spec"
+  - name: "tcp.openStream - return type spec"
     description: "Spec: openAddrStream returns positive long (stream ID)"
     script: |
-      // Behavioral specification: tcp.openAddrStream returns longType.
+      // Behavioral specification: tcp.openStream returns longType.
       // Stream ID is always a positive integer (> 0).
       // Zero is reserved as invalid stream ID.
       // This test documents the expected behavior.
