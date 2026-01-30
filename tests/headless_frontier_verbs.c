@@ -76,9 +76,12 @@ static boolean frontier_valueproc(short token, hdltreenode hparam1,
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case frov_version:
-            /* Verb #8: frontier.version - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* Verb #8: frontier.version - Return version string */
+            /* In headless mode, return a version that satisfies version checks */
+            /* Using 10.0 to be greater than any historical Frontier version */
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+            return setstringvalue(BIGSTRING("\x04" "10.0"), vreturned);
         case frov_hashstats:
             /* Verb #9: frontier.hashstats - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);

@@ -2151,6 +2151,174 @@ boolean tcp_read_stream_until_closed(long stream_id, Handle hbuffer, long timeou
                                     0, nil, timeout_secs);
 }
 
+/* tcp.readStreamInetd(stream, buffer, timeout) -> true
+ * Read from stream with two-stage timeout behavior for inetd-style requests.
+ *
+ * This implements special inetd read semantics:
+ * - Wait 'timeout_secs' for first packet
+ * - After first packet received, reduce timeout to 1 second for subsequent reads
+ * - Continue reading until timeout or connection closed
+ * - Return SUCCESS on timeout (not error) - graceful termination
+ *
+ * This is used by webserver.inetd for reading complete HTTP requests.
+ *
+ * Parameters:
+ *   stream_id    - Stream ID to read from
+ *   hbuffer      - Handle to buffer (data appended)
+ *   timeout_secs - Initial timeout in seconds for first packet
+ *
+ * Returns:
+ *   true if data was read (or timeout after receiving data), false on error
+ */
+boolean tcp_read_stream_inetd(long stream_id, Handle hbuffer, long timeout_secs) {
+    tcp_stream_t *stream;
+    int sockfd;
+    long current_size;
+    boolean first_packet_received = false;
+    long effective_timeout;
+    time_t start_time, last_read_time;
+
+    log_debug(LOG_COMP_LANG, "tcp_read_stream_inetd: stream_id=%ld timeout=%ld",
+              stream_id, timeout_secs);
+
+    if (!hbuffer) {
+        tcp_set_error(TCP_ERR_SOCKET_ERROR, "NULL buffer handle");
+        return false;
+    }
+
+    /* Validate timeout */
+    if (timeout_secs <= 0)
+        timeout_secs = TCP_DEFAULT_TIMEOUT_SECS;
+
+    /* Acquire stream reference (TOCTOU protection) */
+    stream = tcp_stream_acquire(stream_id);
+    if (!stream) {
+        tcp_set_error(TCP_ERR_INVALID_STREAM, "Invalid stream");
+        return false;
+    }
+
+    sockfd = stream->sockfd;
+
+    /* Get initial buffer size */
+    current_size = gethandlesize(hbuffer);
+    start_time = time(NULL);
+    last_read_time = start_time;
+    effective_timeout = timeout_secs;
+
+    while (true) {
+        fd_set readset;
+        struct timeval tv;
+        int select_result;
+        int bytes_available;
+        ssize_t recv_result;
+        time_t now = time(NULL);
+
+        /* Check timeout */
+        if (first_packet_received) {
+            /* After first packet, use 1 second timeout from last read */
+            if ((now - last_read_time) >= 1) {
+                /* Timeout after receiving data - this is SUCCESS for inetd */
+                log_debug(LOG_COMP_LANG, "tcp_read_stream_inetd: timeout after data, total=%ld", current_size);
+                break;
+            }
+            effective_timeout = 1;
+        } else {
+            /* Before first packet, use full timeout */
+            if ((now - start_time) >= timeout_secs) {
+                /* Timeout before any data - also SUCCESS for inetd (empty request) */
+                log_debug(LOG_COMP_LANG, "tcp_read_stream_inetd: timeout before data");
+                break;
+            }
+            effective_timeout = timeout_secs - (now - start_time);
+        }
+
+        /* Use select() with remaining timeout */
+        FD_ZERO(&readset);
+        FD_SET(sockfd, &readset);
+        tv.tv_sec = effective_timeout;
+        tv.tv_usec = 0;
+
+        select_result = select(sockfd + 1, &readset, NULL, NULL, &tv);
+
+        if (select_result < 0) {
+            if (errno == EINTR)
+                continue;
+            tcp_stream_release(stream);
+            tcp_set_error(TCP_ERR_SOCKET_ERROR, "select() failed");
+            return false;
+        }
+
+        if (select_result == 0) {
+            /* Timeout - this is SUCCESS for inetd */
+            log_debug(LOG_COMP_LANG, "tcp_read_stream_inetd: select timeout, total=%ld", current_size);
+            break;
+        }
+
+        /* Data available - check how many bytes */
+        if (ioctl(sockfd, FIONREAD, &bytes_available) < 0) {
+            tcp_stream_release(stream);
+            tcp_set_error(TCP_ERR_SOCKET_ERROR, "ioctl(FIONREAD) failed");
+            return false;
+        }
+
+        if (bytes_available == 0) {
+            /* Connection closed - this is SUCCESS for inetd */
+            log_debug(LOG_COMP_LANG, "tcp_read_stream_inetd: connection closed, total=%ld", current_size);
+            break;
+        }
+
+        /* Expand buffer to hold new data */
+        if (!sethandlesize(hbuffer, current_size + bytes_available)) {
+            tcp_stream_release(stream);
+            tcp_set_error(TCP_ERR_NO_MEMORY, "Could not expand buffer");
+            return false;
+        }
+
+        /* Read data into buffer */
+        lockhandle(hbuffer);
+        recv_result = recv(sockfd, (*hbuffer) + current_size, bytes_available, 0);
+        unlockhandle(hbuffer);
+
+        if (recv_result < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK)
+                continue;
+            tcp_stream_release(stream);
+            tcp_set_error(TCP_ERR_SOCKET_ERROR, "recv() failed");
+            return false;
+        }
+
+        if (recv_result == 0) {
+            /* Connection closed - shrink buffer and succeed */
+            sethandlesize(hbuffer, current_size);
+            log_debug(LOG_COMP_LANG, "tcp_read_stream_inetd: recv=0, total=%ld", current_size);
+            break;
+        }
+
+        /* Adjust buffer if we read less than expected */
+        if (recv_result < bytes_available) {
+            sethandlesize(hbuffer, current_size + recv_result);
+        }
+
+        current_size = gethandlesize(hbuffer);
+        first_packet_received = true;
+        last_read_time = time(NULL);
+
+        log_trace(LOG_COMP_LANG, "tcp_read_stream_inetd: read %zd bytes, total=%ld",
+                  recv_result, current_size);
+    }
+
+    /* Update activity timestamp */
+    TCP_LOCK();
+    stream->last_activity = time(NULL);
+    TCP_UNLOCK();
+
+    tcp_stream_release(stream);
+
+    log_debug(LOG_COMP_LANG, "tcp_read_stream_inetd: completed, total=%ld", current_size);
+
+    return true;
+}
+
 /* tcp.writeStringToStream(stream, data, chunksize, timeout) -> true
  * Write data to stream in chunks, with timeout between chunks.
  *

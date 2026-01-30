@@ -155,6 +155,7 @@ boolean tcp_my_address(long *addr_out);
 boolean tcp_read_stream_until(long stream_id, Handle hbuffer, Handle hpattern, long timeout_secs);
 boolean tcp_read_stream_bytes(long stream_id, Handle hbuffer, long count, long timeout_secs);
 boolean tcp_read_stream_until_closed(long stream_id, Handle hbuffer, long timeout_secs);
+boolean tcp_read_stream_inetd(long stream_id, Handle hbuffer, long timeout_secs);
 boolean tcp_write_string_to_stream(long stream_id, Handle hdata, long chunk_size, long timeout_secs);
 boolean tcp_write_file_to_stream(long stream_id, Handle hprefix, Handle hsuffix, ptrfilespec fs);
 boolean tcp_get_stats(long listener_id, bigstring stats_out);

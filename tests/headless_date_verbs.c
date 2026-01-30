@@ -430,10 +430,10 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
             /* Verb: date.versionlessthan(v1, v2) - Compare version strings */
             bigstring bsv1, bsv2;
 
-            flnextparamislast = true;
-
             if (!getstringvalue(hparam1, 1, bsv1))
                 return false;
+
+            flnextparamislast = true;
 
             if (!getstringvalue(hparam1, 2, bsv2))
                 return false;
