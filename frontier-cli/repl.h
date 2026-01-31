@@ -15,9 +15,32 @@
 #define REPL_H
 
 #include "cli_parser.h"
+#include "../Common/headers/frontier.h"
+#include "../Common/headers/lang.h"  /* For hdlhashtable */
 
 // Main REPL entry point
 // Returns: exit code (0 for success, 1 for error)
 int repl_main(cli_options_t *options);
+
+/* REPL Navigation - similar to CWD in a shell */
+
+/* Get the current REPL table (like CWD). Returns roottable if at root. */
+hdlhashtable repl_get_current_table(void);
+
+/* Get the current REPL path as a string. Empty string means root. */
+const char *repl_get_current_path(void);
+
+/* Navigate to a path. Accepts dot-paths with or without leading @.
+ * Returns true on success, false if path doesn't exist or isn't a table.
+ */
+boolean repl_jump_path(const char *path);
+
+/* Resolve a path to a table without changing current table.
+ * Accepts dot-paths, addresses, system.paths names, or script expressions.
+ * If resolved_path is non-NULL, fills it with the actual resolved path
+ * (e.g., "system.verbs.builtins" for "parentOf(fileMenu)").
+ * Returns the resolved table, or nil if path is invalid.
+ */
+hdlhashtable repl_resolve_path(const char *path, char *resolved_path, size_t path_bufsize);
 
 #endif // REPL_H

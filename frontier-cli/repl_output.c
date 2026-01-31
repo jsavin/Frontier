@@ -12,13 +12,17 @@
  */
 
 #include "repl_output.h"
+#include "repl.h"       /* For repl_get_current_table() */
 #include "linenoise.h"  /* For linenoiseHide/Show */
 #include "../Common/headers/lang.h"
 #include "../Common/headers/langexternal.h"
 #include "../Common/headers/strings.h"
+#include "../Common/headers/tablestructure.h"  /* For roottable */
 #include "../Common/headers/logging.h"
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
+#include <sys/ioctl.h>
 
 /* Global linenoise state for async output (set by event loop) */
 static struct linenoiseState *g_linenoisestate = NULL;
@@ -35,6 +39,39 @@ static void fputs_cr_to_lf(const char *str, size_t len, FILE *stream) {
 		} else {
 			putc(str[i], stream);
 		}
+	}
+}
+
+/* Get terminal width, defaulting to 80 columns if unavailable. */
+static int get_terminal_width(void) {
+	struct winsize ws;
+	if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0) {
+		return ws.ws_col;
+	}
+	return 80;
+}
+
+/* Returns true if the value type is a scalar that can be displayed inline. */
+static boolean is_scalar_valuetype(tyvaluetype vtype) {
+	switch (vtype) {
+		case charvaluetype:
+		case intvaluetype:
+		case longvaluetype:
+		case booleanvaluetype:
+		case stringvaluetype:
+		case addressvaluetype:
+		case doublevaluetype:
+		case singlevaluetype:
+		case fixedvaluetype:
+		case datevaluetype:
+		case ostypevaluetype:
+		case directionvaluetype:
+		case pointvaluetype:
+		case rectvaluetype:
+		case rgbvaluetype:
+			return true;
+		default:
+			return false;
 	}
 }
 
@@ -172,9 +209,25 @@ void repl_output_error(const char *error_msg) {
 /* Displays the /help command output with available commands and persistence info. */
 void repl_output_help(void) {
 	fputs("Available commands:\n", stdout);
-	fputs("  /exit          Exit the REPL\n", stdout);
-	fputs("  /help          Show this help message\n", stdout);
-	fputs("  /keycodes      Debug terminal key sequences\n", stdout);
+	fputs("  /exit              Exit the REPL\n", stdout);
+	fputs("  /help              Show this help message\n", stdout);
+	fputs("  /jump [path]       Navigate to a table (like cd)\n", stdout);
+	fputs("  /keycodes          Debug terminal key sequences\n", stdout);
+	fputs("  /list [path]       List contents of a table\n", stdout);
+	fputs("\n", stdout);
+	fputs("/jump - Navigate to a table (like cd in a shell):\n", stdout);
+	fputs("  /jump                     Return to root\n", stdout);
+	fputs("  /jump system              Navigate to system table\n", stdout);
+	fputs("  /jump user.inetd          Navigate to nested table\n", stdout);
+	fputs("  /jump ..                  Go to parent table\n", stdout);
+	fputs("  /jump fileMenu            Navigate via system.paths\n", stdout);
+	fputs("  /jump parentOf(@user)     Evaluate expression for address\n", stdout);
+	fputs("\n", stdout);
+	fputs("/list - List contents of a table:\n", stdout);
+	fputs("  /list                     List current table\n", stdout);
+	fputs("  /list system.verbs        List specific table by path\n", stdout);
+	fputs("  /list fileMenu            List via system.paths\n", stdout);
+	fputs("  /list parentOf(fileMenu)  Evaluate expression for table\n", stdout);
 	fputs("\n", stdout);
 	fputs("QuickScript Model - Variable Persistence:\n", stdout);
 	fputs("  Local variables (x = 5) don't persist between evaluations\n", stdout);
@@ -280,6 +333,142 @@ void repl_output_vars(hdlhashtable workspace) {
 		printf("  %.*s = %s\n",
 			(int)stringlength(name), stringbaseaddress(name),
 			value_buf);
+
+		nomad = (**nomad).sortedlink;
+	}
+
+	fflush(stdout);
+}
+
+/* --- /list Command Support --- */
+
+/* Display contents of a table (for /list command).
+ * If htable is nil, displays the current REPL table.
+ * path_label is displayed as a header (e.g., "user.prefs:"). Can be NULL.
+ */
+void repl_output_list(hdlhashtable htable, const char *path_label) {
+	if (htable == nil) {
+		htable = repl_get_current_table();
+	}
+	hdlhashnode nomad;
+	long count;
+
+	/* Check if we have a current table */
+	if (htable == nil) {
+		fputs("(no current table)\n", stdout);
+		fflush(stdout);
+		return;
+	}
+
+	/* Display path header */
+	if (path_label != NULL && path_label[0] != '\0') {
+		printf("%s:\n", path_label);
+	} else {
+		/* Use current path if no label provided */
+		const char *current_path = repl_get_current_path();
+		if (current_path != NULL && current_path[0] != '\0') {
+			printf("%s:\n", current_path);
+		} else {
+			printf("root:\n");
+		}
+	}
+
+	count = count_hashtable_items(htable);
+
+	if (count == 0) {
+		fputs("(empty table)\n", stdout);
+		fflush(stdout);
+		return;
+	}
+
+	/* First pass: calculate column widths for alignment */
+	size_t max_name_len = 0;
+	size_t max_type_len = 0;
+
+	nomad = (**htable).hfirstsort;
+
+	while (nomad != nil) {
+		bigstring name;
+		gethashkey(nomad, name);
+		size_t name_len = stringlength(name);
+		if (name_len > max_name_len) {
+			max_name_len = name_len;
+		}
+
+		/* Get type string */
+		bigstring type_str;
+		tyvaluerecord val = (**nomad).val;
+
+		if (val.valuetype == externalvaluetype) {
+			langexternaltypestring((hdlexternalvariable)val.data.externalvalue, type_str);
+		} else {
+			langgettypestring(val.valuetype, type_str);
+		}
+
+		size_t type_len = stringlength(type_str);
+		if (type_len > max_type_len) {
+			max_type_len = type_len;
+		}
+
+		nomad = (**nomad).sortedlink;
+	}
+
+	/* Get terminal width for value truncation */
+	int term_width = get_terminal_width();
+
+	/* Second pass: print entries with alignment */
+	nomad = (**htable).hfirstsort;
+
+	while (nomad != nil) {
+		bigstring name;
+		gethashkey(nomad, name);
+
+		/* Get type string */
+		bigstring type_str;
+		tyvaluerecord val = (**nomad).val;
+
+		if (val.valuetype == externalvaluetype) {
+			langexternaltypestring((hdlexternalvariable)val.data.externalvalue, type_str);
+		} else {
+			langgettypestring(val.valuetype, type_str);
+		}
+
+		/* Print: name : type */
+		int prefix_len = printf("  %-*.*s : %-*.*s",
+			(int)max_name_len,
+			(int)stringlength(name), stringbaseaddress(name),
+			(int)max_type_len,
+			(int)stringlength(type_str), stringbaseaddress(type_str));
+
+		/* Get display string - either external info or scalar value */
+		if (val.valuetype == externalvaluetype) {
+			/* External types: show "N items" or "on disk" */
+			bigstring display_str;
+			setemptystring(display_str);
+			langexternalgetdisplaystring((hdlexternalvariable)val.data.externalvalue, display_str);
+
+			if (stringlength(display_str) > 0) {
+				printf(" : %.*s", (int)stringlength(display_str), stringbaseaddress(display_str));
+			}
+		} else if (is_scalar_valuetype(val.valuetype)) {
+			/* Scalar types: show value inline, truncated to fit terminal */
+			char value_buf[512];
+			format_value_summary(&val, value_buf, sizeof(value_buf));
+
+			/* Calculate available space: terminal - prefix - " : " - "..." margin */
+			int available = term_width - prefix_len - 3 - 3;
+			if (available < 10) available = 10;  /* Minimum display width */
+
+			size_t value_len = strlen(value_buf);
+			if ((int)value_len <= available) {
+				printf(" : %s", value_buf);
+			} else {
+				/* Truncate with ellipsis */
+				printf(" : %.*s...", available, value_buf);
+			}
+		}
+
+		printf("\n");
 
 		nomad = (**nomad).sortedlink;
 	}

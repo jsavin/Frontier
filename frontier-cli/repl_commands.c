@@ -7,8 +7,10 @@
  */
 
 #include "repl_commands.h"
+#include "repl.h"         /* For repl_jump_path(), repl_get_current_path() */
 #include "repl_output.h"  /* For repl_output_help(), repl_output_vars() */
 #include "../third_party/linenoise/linenoise.h"  /* For linenoisePrintKeyCodes() */
+#include <stdio.h>
 #include <string.h>
 #include <ctype.h>
 
@@ -116,6 +118,61 @@ repl_command_result repl_process_command(const char *input) {
         printf("Press keys to see their escape sequences.\n");
         printf("Type 'quit' to exit back to REPL.\n\n");
         linenoisePrintKeyCodes();
+        return REPL_CMD_CONTINUE;
+    }
+
+    /* ======================================================================
+     * /list [path] - List contents of a table (current table if no path)
+     * ====================================================================== */
+    if (strncmp(cmd_buf, "list", 4) == 0) {
+        const char *path = cmd_buf + 4;
+
+        /* Skip whitespace after "list" */
+        while (*path && isspace((unsigned char)*path)) {
+            path++;
+        }
+
+        /* Empty path means list current table */
+        if (*path == '\0') {
+            repl_output_list(nil, NULL);
+            return REPL_CMD_CONTINUE;
+        }
+
+        /* Resolve the path to a table, getting the actual resolved path */
+        char resolved_path[512];
+        hdlhashtable target = repl_resolve_path(path, resolved_path, sizeof(resolved_path));
+        if (target == nil) {
+            printf("Error: '%s' is not a valid table path\n", path);
+            return REPL_CMD_CONTINUE;
+        }
+
+        repl_output_list(target, resolved_path);
+        return REPL_CMD_CONTINUE;
+    }
+
+    /* ======================================================================
+     * /jump <path> - Navigate to a table (like cd in a shell)
+     * ====================================================================== */
+    if (strncmp(cmd_buf, "jump", 4) == 0) {
+        const char *path = cmd_buf + 4;
+
+        /* Skip whitespace after "jump" */
+        while (*path && isspace((unsigned char)*path)) {
+            path++;
+        }
+
+        /* Empty path means go to root */
+        if (*path == '\0') {
+            if (!repl_jump_path("")) {
+                printf("Error: Cannot navigate to root\n");
+            }
+            return REPL_CMD_CONTINUE;
+        }
+
+        /* Try to navigate to the path */
+        if (!repl_jump_path(path)) {
+            printf("Error: '%s' is not a valid table path\n", path);
+        }
         return REPL_CMD_CONTINUE;
     }
 

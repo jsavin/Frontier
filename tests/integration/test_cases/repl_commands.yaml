@@ -22,14 +22,26 @@ tests:
   # =========================================================================
 
   - name: "REPL /help - displays available commands"
-    description: "/help should list available commands (QuickScript model)"
+    description: "/help should list all available commands"
     repl_mode: true
     stdin_input: "/help\n/exit\n"
     expected_output_contains:
       - "/exit"
       - "/help"
+      - "/jump"
+      - "/list"
+      - "/keycodes"
       - "Available commands"
-      - "QuickScript"  # Help text explains QuickScript model
+    expected_success: true
+
+  - name: "REPL /help - shows QuickScript model"
+    description: "/help should explain QuickScript variable persistence"
+    repl_mode: true
+    stdin_input: "/help\n/exit\n"
+    expected_output_contains:
+      - "QuickScript"
+      - "workspace"
+      - "system.temp"
     expected_success: true
 
   - name: "REPL /help - shows multi-line usage"
@@ -39,15 +51,6 @@ tests:
     expected_output_contains:
       - "Multi-line"
       - "Phase 2"
-    expected_success: true
-
-  - name: "REPL /help - shows examples"
-    description: "/help should provide usage examples"
-    repl_mode: true
-    stdin_input: "/help\n/exit\n"
-    expected_output_contains:
-      - "Examples"
-      - "workspace"
     expected_success: true
 
   # =========================================================================
@@ -225,6 +228,216 @@ tests:
     stdin_input: "/exit\nx = 42\n"
     expected_output_not_contains:
       - "42"  # Should exit before evaluating second line
+    expected_success: true
+
+  # =========================================================================
+  # /list Command
+  # =========================================================================
+
+  - name: "REPL /list - lists current table (root)"
+    description: "/list with no argument lists the current table"
+    repl_mode: true
+    stdin_input: "/list\n/exit\n"
+    expected_output_contains:
+      - "root:"
+      - "system"
+      - "user"
+    expected_success: true
+
+  - name: "REPL /list - shows table type"
+    description: "/list should show 'table' type for sub-tables"
+    repl_mode: true
+    stdin_input: "/list\n/exit\n"
+    expected_output_contains:
+      - "table"
+    expected_success: true
+
+  - name: "REPL /list - with dot-path argument"
+    description: "/list should accept dot-path to list specific table"
+    repl_mode: true
+    stdin_input: "/list system\n/exit\n"
+    expected_output_contains:
+      - "system:"
+      - "verbs"
+    expected_success: true
+
+  - name: "REPL /list - with nested dot-path"
+    description: "/list should accept nested dot-paths"
+    repl_mode: true
+    stdin_input: "/list system.verbs\n/exit\n"
+    expected_output_contains:
+      - "system.verbs:"
+      - "builtins"
+    expected_success: true
+
+  - name: "REPL /list - with system.paths name"
+    description: "/list should resolve names via system.paths"
+    repl_mode: true
+    stdin_input: "/list fileMenu\n/exit\n"
+    expected_output_contains:
+      - "system.verbs.builtins.fileMenu:"
+    expected_success: true
+
+  - name: "REPL /list - with script expression"
+    description: "/list should evaluate script expressions like parentOf()"
+    repl_mode: true
+    stdin_input: "/list parentOf(fileMenu)\n/exit\n"
+    expected_output_contains:
+      - "system.verbs.builtins:"
+    expected_success: true
+
+  - name: "REPL /list - with address expression"
+    description: "/list should work with @ address expressions"
+    repl_mode: true
+    stdin_input: "/list parentOf(@user.inetd)\n/exit\n"
+    expected_output_contains:
+      - "user:"
+    expected_success: true
+
+  - name: "REPL /list - shows scalar values inline"
+    description: "/list should display scalar values (numbers, strings) inline"
+    repl_mode: true
+    stdin_input: "/list user.prefs\n/exit\n"
+    expected_output_contains:
+      - "user.prefs:"
+    expected_success: true
+
+  - name: "REPL /list - invalid path shows error"
+    description: "/list with invalid path should show error message"
+    repl_mode: true
+    stdin_input: "/list nonexistent.path\n/exit\n"
+    expected_output_contains:
+      - "Error"
+      - "not a valid table path"
+    expected_success: true
+
+  - name: "REPL /list - empty path argument lists current"
+    description: "/list with just whitespace lists current table"
+    repl_mode: true
+    stdin_input: "/list   \n/exit\n"
+    expected_output_contains:
+      - "root:"
+    expected_success: true
+
+  # =========================================================================
+  # /jump Command
+  # =========================================================================
+
+  - name: "REPL /jump - to root (no argument)"
+    description: "/jump with no argument returns to root"
+    repl_mode: true
+    stdin_input: "/jump system\n/jump\n/exit\n"
+    expected_output_contains:
+      - "[root]>"
+    expected_success: true
+
+  - name: "REPL /jump - changes prompt"
+    description: "/jump should change the prompt to show current location"
+    repl_mode: true
+    stdin_input: "/jump system\n/exit\n"
+    expected_output_contains:
+      - "[system]>"
+    expected_success: true
+
+  - name: "REPL /jump - to nested table"
+    description: "/jump should navigate to nested tables"
+    repl_mode: true
+    stdin_input: "/jump system.verbs\n/exit\n"
+    expected_output_contains:
+      - "[system.verbs]>"
+    expected_success: true
+
+  - name: "REPL /jump - parent with .."
+    description: "/jump .. should go to parent table"
+    repl_mode: true
+    stdin_input: "/jump system.verbs\n/jump ..\n/exit\n"
+    expected_output_contains:
+      - "[system]>"
+    expected_success: true
+
+  - name: "REPL /jump - via system.paths"
+    description: "/jump should resolve names via system.paths"
+    repl_mode: true
+    stdin_input: "/jump fileMenu\n/exit\n"
+    expected_output_contains:
+      - "[system.verbs.builtins.fileMenu]>"
+    expected_success: true
+
+  - name: "REPL /jump - with script expression"
+    description: "/jump should evaluate script expressions"
+    repl_mode: true
+    stdin_input: "/jump parentOf(fileMenu)\n/exit\n"
+    expected_output_contains:
+      - "[system.verbs.builtins]>"
+    expected_success: true
+
+  - name: "REPL /jump - with address expression"
+    description: "/jump should work with @ address expressions"
+    repl_mode: true
+    stdin_input: "/jump parentOf(@user.inetd)\n/exit\n"
+    expected_output_contains:
+      - "[user]>"
+    expected_success: true
+
+  - name: "REPL /jump - invalid path shows error"
+    description: "/jump with invalid path should show error"
+    repl_mode: true
+    stdin_input: "/jump nonexistent.path\n/exit\n"
+    expected_output_contains:
+      - "Error"
+      - "not a valid table path"
+    expected_success: true
+
+  - name: "REPL /jump - doesn't change on error"
+    description: "/jump to invalid path shouldn't change current table"
+    repl_mode: true
+    stdin_input: "/jump system\n/jump nonexistent\n/exit\n"
+    expected_output_contains:
+      - "[system]>"
+      - "Error"
+    expected_success: true
+
+  - name: "REPL /jump - then /list shows jumped table"
+    description: "/list after /jump should show the jumped-to table"
+    repl_mode: true
+    stdin_input: "/jump system\n/list\n/exit\n"
+    expected_output_contains:
+      - "system:"
+      - "verbs"
+    expected_success: true
+
+  # =========================================================================
+  # /help Command - Documents All Commands
+  # =========================================================================
+
+  - name: "REPL /help - documents /jump command"
+    description: "/help should explain /jump command with examples"
+    repl_mode: true
+    stdin_input: "/help\n/exit\n"
+    expected_output_contains:
+      - "/jump"
+      - "Navigate"
+      - "system.paths"
+      - "parentOf"
+    expected_success: true
+
+  - name: "REPL /help - documents /list command"
+    description: "/help should explain /list command with examples"
+    repl_mode: true
+    stdin_input: "/help\n/exit\n"
+    expected_output_contains:
+      - "/list"
+      - "List"
+      - "system.paths"
+      - "parentOf"
+    expected_success: true
+
+  - name: "REPL /help - documents /keycodes command"
+    description: "/help should explain /keycodes command"
+    repl_mode: true
+    stdin_input: "/help\n/exit\n"
+    expected_output_contains:
+      - "/keycodes"
     expected_success: true
 
   # =========================================================================

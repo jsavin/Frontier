@@ -34,8 +34,10 @@
 #include "../Common/headers/lang.h"
 #include "../Common/headers/strings.h"
 #include "../Common/headers/tablestructure.h"
-#include "../Common/headers/tcpverbs.h"  /* tcp_process_callbacks */
-#include "../Common/headers/process.h"   /* agentsenabled, agentscheduler_tick */
+#include "../Common/headers/langexternal.h" /* langexternalvaltotable */
+#include "../Common/headers/memory.h"       /* newemptyhandle, sethandlesize */
+#include "../Common/headers/tcpverbs.h"     /* tcp_process_callbacks */
+#include "../Common/headers/process.h"      /* agentsenabled, agentscheduler_tick */
 
 // History configuration
 #define HISTORY_FILE ".frontier_history"
@@ -46,12 +48,443 @@
 // Event loop configuration
 #define POLL_TIMEOUT_MS 10  // 10ms = responsive while allowing ~100Hz callback processing
 
-// REPL prompt
-#define REPL_PROMPT "[root]> "
+// REPL prompt settings
+#define g_repl_prompt_MAX_LEN 256
+#define REPL_PATH_MAX_LEN 512
+
+// REPL navigation state - tracks current table like CWD in a shell
+static hdlhashtable g_repl_current_table = nil;
+static char g_repl_current_path[REPL_PATH_MAX_LEN] = "";
+static char g_repl_prompt[g_repl_prompt_MAX_LEN] = "[root]> ";
 
 // Session command tracking for merge-before-save
 static char *session_commands[MAX_SESSION_COMMANDS];
 static size_t session_command_count = 0;
+
+/* Updates the prompt string based on current path */
+static void update_prompt(void) {
+    if (g_repl_current_path[0] == '\0') {
+        snprintf(g_repl_prompt, g_repl_prompt_MAX_LEN, "[root]> ");
+    } else {
+        snprintf(g_repl_prompt, g_repl_prompt_MAX_LEN, "[%s]> ", g_repl_current_path);
+    }
+}
+
+/* Get the current REPL table (like CWD) */
+hdlhashtable repl_get_current_table(void) {
+    if (g_repl_current_table == nil) {
+        return roottable;
+    }
+    return g_repl_current_table;
+}
+
+/* Get the current REPL path */
+const char *repl_get_current_path(void) {
+    return g_repl_current_path;
+}
+
+/* Check if path looks like a script expression (contains ( ) or +) */
+static boolean path_is_script_expression(const char *path) {
+    if (path == NULL) return false;
+    while (*path) {
+        if (*path == '(' || *path == ')' || *path == '+') {
+            return true;
+        }
+        path++;
+    }
+    return false;
+}
+
+/* Evaluate a script and jump to the resulting address.
+ * Returns true if script evaluated to a valid table address.
+ */
+static boolean repl_jump_script(const char *script) {
+    /* Create handle for script text */
+    size_t script_len = strlen(script);
+    Handle htext = nil;
+
+    if (!newemptyhandle(&htext)) {
+        return false;
+    }
+    if (!sethandlesize(htext, (long)script_len)) {
+        disposehandle(htext);
+        return false;
+    }
+    HLock(htext);
+    memcpy(*htext, script, script_len);
+    HUnlock(htext);
+
+    /* Evaluate the script */
+    tyvaluerecord val;
+    boolean flpushpop = !flscriptrunning;
+
+    if (flpushpop)
+        flpushpop = pushprocess(nil);
+
+    boolean fl = langrun(htext, &val);  /* langrun consumes htext */
+
+    if (flpushpop)
+        popprocess();
+
+    if (!fl) {
+        return false;
+    }
+
+    /* Check if result is an address */
+    if (val.valuetype != addressvaluetype) {
+        /* Not an address - try to interpret as external table value */
+        if (val.valuetype == externalvaluetype) {
+            hdlhashtable target = nil;
+            if (langexternalvaltotable(val, &target, nil) && target != nil) {
+                g_repl_current_table = target;
+                /* For script results, show the expression in prompt */
+                strncpy(g_repl_current_path, script, REPL_PATH_MAX_LEN - 1);
+                g_repl_current_path[REPL_PATH_MAX_LEN - 1] = '\0';
+                update_prompt();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /* Extract table and name from address */
+    hdlhashtable htable = nil;
+    bigstring bsname;
+
+    if (!getaddressvalue(val, &htable, bsname)) {
+        return false;
+    }
+
+    /* Look up the final name in the table to get the target table */
+    tyvaluerecord targetval;
+    hdlhashnode hnode;
+
+    if (!hashtablelookup(htable, bsname, &targetval, &hnode)) {
+        return false;
+    }
+
+    /* The target must be a table */
+    hdlhashtable target = nil;
+    if (!langexternalvaltotable(targetval, &target, hnode) || target == nil) {
+        return false;
+    }
+
+    /* Build the path string from the address */
+    bigstring bspath;
+    if (!getaddresspath(val, bspath)) {
+        /* Fallback: use the script as the path display */
+        strncpy(g_repl_current_path, script, REPL_PATH_MAX_LEN - 1);
+    } else {
+        /* Convert bigstring to C string, skip leading @ and "root." prefix */
+        size_t pathlen = stringlength(bspath);
+        const char *pathstart = (const char *)stringbaseaddress(bspath);
+        if (pathlen > 0 && pathstart[0] == '@') {
+            pathstart++;
+            pathlen--;
+        }
+        /* Skip "root." prefix if present */
+        if (pathlen > 5 && strncmp(pathstart, "root.", 5) == 0) {
+            pathstart += 5;
+            pathlen -= 5;
+        }
+        if (pathlen >= REPL_PATH_MAX_LEN) {
+            pathlen = REPL_PATH_MAX_LEN - 1;
+        }
+        memcpy(g_repl_current_path, pathstart, pathlen);
+        g_repl_current_path[pathlen] = '\0';
+    }
+
+    g_repl_current_table = target;
+    update_prompt();
+    return true;
+}
+
+/* Set the current REPL table by navigating to a path.
+ * Returns true on success, false if path is invalid.
+ * Supports:
+ *   - Empty path or "@" to go to root
+ *   - ".." to go to parent
+ *   - Dot-paths like "system.verbs"
+ *   - Script expressions like "parentOf(@user.inetd)" if path contains ( ) or +
+ *   - Trailing dots are stripped (from tab completion)
+ */
+boolean repl_jump_path(const char *path) {
+    /* Handle empty path or "@" - go to root */
+    if (path == NULL || path[0] == '\0' ||
+        (path[0] == '@' && path[1] == '\0')) {
+        g_repl_current_table = roottable;
+        g_repl_current_path[0] = '\0';
+        update_prompt();
+        return true;
+    }
+
+    /* Check if this looks like a script expression */
+    if (path_is_script_expression(path)) {
+        return repl_jump_script(path);
+    }
+
+    /* Skip leading @ if present */
+    const char *clean_path = path;
+    if (path[0] == '@') {
+        clean_path = path + 1;
+    }
+
+    /* Make a mutable copy */
+    char path_buf[REPL_PATH_MAX_LEN];
+    strncpy(path_buf, clean_path, REPL_PATH_MAX_LEN - 1);
+    path_buf[REPL_PATH_MAX_LEN - 1] = '\0';
+
+    /* Handle ".." - go to parent (before stripping trailing dot) */
+    if (strcmp(path_buf, "..") == 0) {
+        if (g_repl_current_path[0] == '\0') {
+            /* Already at root, stay at root */
+            return true;
+        }
+
+        /* Find last dot in current path */
+        char *last_dot = strrchr(g_repl_current_path, '.');
+        if (last_dot == NULL) {
+            /* No dot means we're one level deep - go to root */
+            g_repl_current_table = roottable;
+            g_repl_current_path[0] = '\0';
+        } else {
+            /* Truncate at the last dot to get parent path */
+            *last_dot = '\0';
+            /* Navigate to the parent path */
+            hdlhashtable parent = completion_navigate_path(g_repl_current_path);
+            if (parent == nil) {
+                /* Shouldn't happen, but handle gracefully */
+                g_repl_current_table = roottable;
+                g_repl_current_path[0] = '\0';
+            } else {
+                g_repl_current_table = parent;
+            }
+        }
+        update_prompt();
+        return true;
+    }
+
+    /* Strip trailing dot (from tab completion) for regular paths */
+    size_t len = strlen(path_buf);
+    if (len > 0 && path_buf[len - 1] == '.') {
+        path_buf[len - 1] = '\0';
+    }
+
+    /* Check if this is a single-component path (no dots) */
+    boolean is_single_component = (strchr(path_buf, '.') == NULL);
+
+    hdlhashtable target = nil;
+    char resolved_path[REPL_PATH_MAX_LEN] = "";
+
+    if (is_single_component) {
+        /* Single component - try roottable first, then system.paths */
+        bigstring bs;
+        copyctopstring(path_buf, bs);
+        tyvaluerecord val;
+        hdlhashnode node;
+
+        if (roottable != nil && hashtablelookup(roottable, bs, &val, &node)) {
+            /* Found in roottable - use direct navigation */
+            if (!langexternalvaltotable(val, &target, node)) {
+                target = nil;
+            } else {
+                /* Path is just the name since it's at root level */
+                strncpy(resolved_path, path_buf, REPL_PATH_MAX_LEN - 1);
+                resolved_path[REPL_PATH_MAX_LEN - 1] = '\0';
+            }
+        }
+
+        if (target == nil) {
+            /* Try system.paths - this gives us both table and resolved path */
+            target = completion_search_paths_ex(path_buf, resolved_path, sizeof(resolved_path));
+        }
+    } else {
+        /* Multi-component path - use standard navigation */
+        target = completion_navigate_path(path_buf);
+        if (target != nil) {
+            strncpy(resolved_path, path_buf, REPL_PATH_MAX_LEN - 1);
+            resolved_path[REPL_PATH_MAX_LEN - 1] = '\0';
+        }
+    }
+
+    if (target == nil) {
+        return false;
+    }
+
+    /* Update state with the resolved path */
+    g_repl_current_table = target;
+    strncpy(g_repl_current_path, resolved_path, REPL_PATH_MAX_LEN - 1);
+    g_repl_current_path[REPL_PATH_MAX_LEN - 1] = '\0';
+    update_prompt();
+    return true;
+}
+
+/* Resolve a path to a table without changing the current REPL table.
+ * Supports the same path formats as repl_jump_path():
+ *   - Dot-paths like "system.verbs"
+ *   - Single names resolved via system.paths (e.g., "fileMenu")
+ *   - Script expressions like "parentOf(@user.inetd)"
+ *   - Addresses with leading @ like "@user.prefs"
+ *
+ * If resolved_path is non-NULL, fills it with the actual resolved path
+ * (e.g., "system.verbs.builtins" for "parentOf(fileMenu)").
+ *
+ * Returns the resolved table, or nil if path is invalid.
+ */
+hdlhashtable repl_resolve_path(const char *path, char *resolved_path, size_t path_bufsize) {
+    /* Handle empty path - return current table */
+    if (path == NULL || path[0] == '\0') {
+        if (resolved_path != NULL && path_bufsize > 0) {
+            const char *current = repl_get_current_path();
+            if (current != NULL && current[0] != '\0') {
+                strncpy(resolved_path, current, path_bufsize - 1);
+                resolved_path[path_bufsize - 1] = '\0';
+            } else {
+                resolved_path[0] = '\0';
+            }
+        }
+        return repl_get_current_table();
+    }
+
+    /* Check if this looks like a script expression */
+    if (path_is_script_expression(path)) {
+        /* Evaluate script and extract table from result */
+        size_t script_len = strlen(path);
+        Handle htext = nil;
+
+        if (!newemptyhandle(&htext)) {
+            return nil;
+        }
+        if (!sethandlesize(htext, (long)script_len)) {
+            disposehandle(htext);
+            return nil;
+        }
+        HLock(htext);
+        memcpy(*htext, path, script_len);
+        HUnlock(htext);
+
+        tyvaluerecord val;
+        boolean flpushpop = !flscriptrunning;
+
+        if (flpushpop)
+            flpushpop = pushprocess(nil);
+
+        boolean fl = langrun(htext, &val);
+
+        if (flpushpop)
+            popprocess();
+
+        if (!fl) {
+            return nil;
+        }
+
+        /* Extract table from result */
+        hdlhashtable result = nil;
+
+        if (val.valuetype == addressvaluetype) {
+            hdlhashtable htable = nil;
+            bigstring bsname;
+
+            if (getaddressvalue(val, &htable, bsname)) {
+                tyvaluerecord targetval;
+                hdlhashnode hnode;
+
+                if (hashtablelookup(htable, bsname, &targetval, &hnode)) {
+                    langexternalvaltotable(targetval, &result, hnode);
+                }
+
+                /* Get the resolved path from the address */
+                if (resolved_path != NULL && path_bufsize > 0) {
+                    bigstring bspath;
+                    if (getaddresspath(val, bspath)) {
+                        const char *pathstart = (const char *)stringbaseaddress(bspath);
+                        size_t pathlen = stringlength(bspath);
+                        /* Skip leading @ if present */
+                        if (pathlen > 0 && pathstart[0] == '@') {
+                            pathstart++;
+                            pathlen--;
+                        }
+                        /* Skip "root." prefix if present */
+                        if (pathlen > 5 && strncmp(pathstart, "root.", 5) == 0) {
+                            pathstart += 5;
+                            pathlen -= 5;
+                        }
+                        if (pathlen >= path_bufsize) {
+                            pathlen = path_bufsize - 1;
+                        }
+                        memcpy(resolved_path, pathstart, pathlen);
+                        resolved_path[pathlen] = '\0';
+                    } else {
+                        /* Fallback to input path */
+                        strncpy(resolved_path, path, path_bufsize - 1);
+                        resolved_path[path_bufsize - 1] = '\0';
+                    }
+                }
+            }
+        } else if (val.valuetype == externalvaluetype) {
+            langexternalvaltotable(val, &result, nil);
+            /* For direct external values, we can't easily get the path */
+            if (resolved_path != NULL && path_bufsize > 0) {
+                strncpy(resolved_path, path, path_bufsize - 1);
+                resolved_path[path_bufsize - 1] = '\0';
+            }
+        }
+
+        return result;
+    }
+
+    /* Skip leading @ if present */
+    const char *clean_path = path;
+    if (path[0] == '@') {
+        clean_path = path + 1;
+    }
+
+    /* Make a mutable copy */
+    char path_buf[REPL_PATH_MAX_LEN];
+    strncpy(path_buf, clean_path, REPL_PATH_MAX_LEN - 1);
+    path_buf[REPL_PATH_MAX_LEN - 1] = '\0';
+
+    /* Strip trailing dot (from tab completion) */
+    size_t len = strlen(path_buf);
+    if (len > 0 && path_buf[len - 1] == '.') {
+        path_buf[len - 1] = '\0';
+    }
+
+    /* Check if this is a single-component path (no dots) */
+    boolean is_single_component = (strchr(path_buf, '.') == NULL);
+
+    hdlhashtable target = nil;
+
+    if (is_single_component) {
+        /* Single component - try roottable first, then system.paths */
+        bigstring bs;
+        copyctopstring(path_buf, bs);
+        tyvaluerecord val;
+        hdlhashnode node;
+
+        if (roottable != nil && hashtablelookup(roottable, bs, &val, &node)) {
+            langexternalvaltotable(val, &target, node);
+            if (target != nil && resolved_path != NULL && path_bufsize > 0) {
+                strncpy(resolved_path, path_buf, path_bufsize - 1);
+                resolved_path[path_bufsize - 1] = '\0';
+            }
+        }
+
+        if (target == nil) {
+            /* Try system.paths - this gives us the resolved path */
+            target = completion_search_paths_ex(path_buf, resolved_path, path_bufsize);
+        }
+    } else {
+        /* Multi-component path - use standard navigation */
+        target = completion_navigate_path(path_buf);
+        if (target != nil && resolved_path != NULL && path_bufsize > 0) {
+            strncpy(resolved_path, path_buf, path_bufsize - 1);
+            resolved_path[path_bufsize - 1] = '\0';
+        }
+    }
+
+    return target;
+}
 
 // Global interrupt flag (signal-safe)
 // Declared as non-static so lang.c can check it for script interruption
@@ -135,7 +568,7 @@ static void handle_interrupt(struct linenoiseState *ls, char *buf, size_t buflen
         // Restart with fresh prompt using caller's buffer (not ls->buf which
         // may be invalid after linenoiseEditStop)
         if (linenoiseEditStart(ls, STDIN_FILENO, STDOUT_FILENO,
-                              buf, buflen, REPL_PROMPT) == -1) {
+                              buf, buflen, g_repl_prompt) == -1) {
             // Failed to restart - log error and set flag for main loop to exit
             log_error(LOG_COMP_GENERAL, "Failed to restart linenoise after interrupt");
             // Note: Main loop will exit on next iteration since ls is invalid
@@ -329,8 +762,10 @@ static void cleanup_linenoise(void) {
 /* List of REPL slash commands for tab completion */
 static const char *repl_slash_commands[] = {
     "exit",
+    "jump",
     "help",
     "keycodes",
+    "list",
     NULL
 };
 
@@ -340,6 +775,62 @@ static void linenoise_completion_callback(const char *buf, linenoiseCompletions 
 
     // Handle slash command completion
     if (buf_len > 0 && buf[0] == '/') {
+        // Check if this is "/jump <path>" - complete the path argument
+        if (strncasecmp(buf, "/jump ", 6) == 0) {
+            // Extract the path being typed
+            const char *path_start = buf + 6;
+
+            // Skip leading @ if present
+            if (*path_start == '@') {
+                path_start++;
+            }
+
+            // Parse as a dotted path for completion
+            completion_context_t ctx;
+            completion_parse_context(path_start, (int)strlen(path_start), &ctx);
+
+            // Collect matches from roottable (paths are always absolute)
+            completion_matches_t matches;
+            completion_matches_init(&matches);
+
+            if (ctx.has_dot) {
+                hdlhashtable target = completion_navigate_path(ctx.table_path);
+                if (target != nil) {
+                    completion_add_table_entries(&matches, target, ctx.leaf_prefix);
+                }
+            } else {
+                // For single-component paths, include both roottable and path entries
+                completion_add_table_entries(&matches, roottable, ctx.leaf_prefix);
+                completion_add_path_entries(&matches, ctx.leaf_prefix);
+            }
+
+            // Add matches - only include tables (navigable items)
+            for (size_t i = 0; i < matches.count; i++) {
+                if (matches.items[i].is_table) {
+                    char completion[1024];
+                    size_t leaf_len = strlen(ctx.leaf_prefix);
+                    size_t prefix_len = buf_len - leaf_len;
+
+                    // Copy everything before the leaf
+                    if (prefix_len > sizeof(completion) - 1) {
+                        prefix_len = sizeof(completion) - 1;
+                    }
+                    memcpy(completion, buf, prefix_len);
+                    completion[prefix_len] = '\0';
+
+                    // Append the match with trailing dot
+                    size_t remaining = sizeof(completion) - prefix_len - 1;
+                    strncat(completion, matches.items[i].name, remaining);
+                    remaining = sizeof(completion) - strlen(completion) - 1;
+                    strncat(completion, ".", remaining);
+
+                    linenoiseAddCompletion(lc, completion);
+                }
+            }
+            return;
+        }
+
+        // Regular slash command completion
         const char *cmd_prefix = buf + 1;  // Skip the '/'
         size_t prefix_len = buf_len - 1;
 
@@ -394,6 +885,9 @@ static void linenoise_completion_callback(const char *buf, linenoiseCompletions 
         if (systemtable != nil) {
             completion_add_table_entries(&matches, systemtable, ctx.token);
         }
+
+        // Phase 2.5: Add path-accessible names (fileMenu, new, etc.)
+        completion_add_path_entries(&matches, ctx.token);
     }
 
     // Add matches to linenoise
@@ -492,10 +986,18 @@ static boolean process_line(const char *line, boolean *running) {
  */
 static int repl_main_blocking(void) {
     boolean running = true;
+    boolean force_interactive = (getenv("FRONTIER_FORCE_INTERACTIVE") != NULL);
 
     while (running) {
+        // In force-interactive mode (testing), manually output the prompt
+        // since linenoise may suppress it when stdin isn't a real TTY
+        if (force_interactive) {
+            fputs(g_repl_prompt, stderr);
+            fflush(stderr);
+        }
+
         // Read line with blocking linenoise
-        char *line = linenoise(REPL_PROMPT);
+        char *line = linenoise(force_interactive ? "" : g_repl_prompt);
 
         if (line == NULL) {
             // EOF (Ctrl-D) or error
@@ -551,7 +1053,7 @@ int repl_main(cli_options_t *options) {
 
     // 5. Start non-blocking line editing (only for TTY)
     if (linenoiseEditStart(&ls, STDIN_FILENO, STDOUT_FILENO,
-                           line_buf, sizeof(line_buf), REPL_PROMPT) == -1) {
+                           line_buf, sizeof(line_buf), g_repl_prompt) == -1) {
         log_error(LOG_COMP_GENERAL, "Failed to start linenoise editing");
         cleanup_linenoise();
         return 1;
@@ -584,7 +1086,7 @@ int repl_main(cli_options_t *options) {
                 if (running) {
                     // Restart line editing for next command
                     if (linenoiseEditStart(&ls, STDIN_FILENO, STDOUT_FILENO,
-                                           line_buf, sizeof(line_buf), REPL_PROMPT) == -1) {
+                                           line_buf, sizeof(line_buf), g_repl_prompt) == -1) {
                         log_error(LOG_COMP_GENERAL, "Failed to restart linenoise editing");
                         running = false;
                         break;  // Exit immediately - linenoise state is invalid

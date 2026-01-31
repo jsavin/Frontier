@@ -50,6 +50,14 @@ void repl_output_help(void);
  */
 void repl_output_vars(hdlhashtable workspace);
 
+/* Display contents of a table (for /list command)
+ * Shows name, type, and display string (N items or "on disk") for each entry.
+ * Output is formatted in aligned columns.
+ * If htable is nil, displays the current REPL table.
+ * path_label is displayed as a header (e.g., "user.prefs:"). If NULL, uses current path.
+ */
+void repl_output_list(hdlhashtable htable, const char *path_label);
+
 /* --- Event Loop Support (Phase 4) --- */
 
 /* Set the active linenoise state for async output.
