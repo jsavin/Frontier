@@ -126,6 +126,15 @@ static void repl_sync_variables_callback(hdlhashtable hlocals) {
             continue;
         }
 
+        /* Skip code values (functions/scripts) - they require special handling
+         * to copy correctly and trigger assertion failures in langunpacktree.
+         * TODO: Support function persistence in a future update. */
+        if (val.valuetype == codevaluetype) {
+            log_trace(LOG_COMP_GENERAL, "Skipping code value: %.*s (function persistence not yet supported)",
+                      (int)bsname[0], bsname + 1);
+            continue;
+        }
+
         /* Copy value to persistent table */
         tyvaluerecord valcopy;
         if (!copyvaluerecord(val, &valcopy)) {
