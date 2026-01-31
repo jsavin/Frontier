@@ -11,7 +11,7 @@
 
 This 6-day period delivers the **most user-visible milestone since the project began**: the webserver works. For the first time, developers can build and serve dynamic web applications directly from the Frontier CLI. Combined with a transformed REPL featuring persistent variables, database navigation commands, and an event loop architecture, Frontier is now a genuinely useful interactive development environment.
 
-**Key Achievement:** `webserver.init()` and `inetd.supervisor(true)` now work in headless mode. Visit `http://localhost:8080/helloworld` and see Frontier serving web pages.
+**Key Achievement:** `webserver.init()` and `inetd.startOne(@user.inetd.config.http)` now work in headless mode. Visit `http://localhost:8080/helloworld` and see Frontier serving web pages.
 
 **Strategic Impact:** This release proves Frontier's viability as a modern development platform. The CLI is no longer just a test harness—it's a productive tool for exploring databases, writing scripts, and serving web applications.
 
@@ -25,16 +25,18 @@ This 6-day period delivers the **most user-visible milestone since the project b
 
 **Quick Start:**
 ```usertalk
-[root]> webserver.init()
+[root]> user.inetd.config.http.port = 8080
+8080
+[root]> user.webserver.responders.helloWorld.enabled = true
 true
-[root]> inetd.supervisor(true)
+[root]> inetd.startOne (@user.inetd.config.http)
 true
 # Visit http://localhost:8080/helloworld
 ```
 
 **What Was Built:**
-- `webserver.init()` initializes the web framework
-- `inetd.supervisor(true/false)` starts/stops the service supervisor
+- `inetd.startOne()` starts HTTP listener on configured port
+- `user.webserver.responders` configures URL handlers
 - HTTP request/response handling via UserTalk callbacks
 - Multiple concurrent connection support
 - Full integration with the classic Frontier web framework verbs

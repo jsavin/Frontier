@@ -6,7 +6,7 @@ Status: In Progress (Updated 2026-01-31)
 
 ### Webserver & inetd Working - ✅ RELEASED (v1.0.0-alpha.4)
 **Resolution**: PRs #366, #363 merged (2026-01-31)
-- `webserver.init()` and `inetd.supervisor(true)` functional in headless mode
+- `inetd.startOne()` and webserver responders functional in headless mode
 - Full HTTP request/response handling via UserTalk callbacks
 - Fixed `grabthreadglobals()` to return success in headless mode
 - Initialized Frontier verbs in headless `sysinitverbs()`

@@ -15,14 +15,15 @@ Last Updated: 2026-01-31
 ### Webserver & inetd Working - ✅ RELEASED
 - **PR #366**: Enable webserver Hello World in headless mode
 - **PR #363**: Webserver Hello World initial implementation
-- `webserver.init()` and `inetd.supervisor(true)` now functional
+- `inetd.startOne()` and webserver responders now functional
 - Full HTTP request/response handling via UserTalk callbacks
 - Visit `http://localhost:8080/helloworld` after starting
 
 **Quick Start:**
 ```usertalk
-[root]> webserver.init()
-[root]> inetd.supervisor(true)
+[root]> user.inetd.config.http.port = 8080
+[root]> user.webserver.responders.helloWorld.enabled = true
+[root]> inetd.startOne (@user.inetd.config.http)
 # Visit http://localhost:8080/helloworld
 ```
 
