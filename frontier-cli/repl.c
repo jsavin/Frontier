@@ -331,6 +331,7 @@ static const char *repl_slash_commands[] = {
     "exit",
     "help",
     "keycodes",
+    "list",
     NULL
 };
 

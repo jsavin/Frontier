@@ -120,6 +120,14 @@ repl_command_result repl_process_command(const char *input) {
     }
 
     /* ======================================================================
+     * /list - List contents of current table
+     * ====================================================================== */
+    if (strcmp(cmd_buf, "list") == 0) {
+        repl_output_list();
+        return REPL_CMD_CONTINUE;
+    }
+
+    /* ======================================================================
      * Unknown command
      * ====================================================================== */
     printf("Unknown command: /%s\n", cmd_buf);

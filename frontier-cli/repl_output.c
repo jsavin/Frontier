@@ -16,6 +16,7 @@
 #include "../Common/headers/lang.h"
 #include "../Common/headers/langexternal.h"
 #include "../Common/headers/strings.h"
+#include "../Common/headers/tablestructure.h"  /* For currenthashtable */
 #include "../Common/headers/logging.h"
 #include <stdio.h>
 #include <string.h>
@@ -175,6 +176,7 @@ void repl_output_help(void) {
 	fputs("  /exit          Exit the REPL\n", stdout);
 	fputs("  /help          Show this help message\n", stdout);
 	fputs("  /keycodes      Debug terminal key sequences\n", stdout);
+	fputs("  /list          List contents of current table\n", stdout);
 	fputs("\n", stdout);
 	fputs("QuickScript Model - Variable Persistence:\n", stdout);
 	fputs("  Local variables (x = 5) don't persist between evaluations\n", stdout);
@@ -280,6 +282,105 @@ void repl_output_vars(hdlhashtable workspace) {
 		printf("  %.*s = %s\n",
 			(int)stringlength(name), stringbaseaddress(name),
 			value_buf);
+
+		nomad = (**nomad).sortedlink;
+	}
+
+	fflush(stdout);
+}
+
+/* --- /list Command Support --- */
+
+/* Display contents of current table (for /list command) */
+void repl_output_list(void) {
+	hdlhashtable htable = currenthashtable;
+	hdlhashnode nomad;
+	long count;
+
+	/* Check if we have a current table */
+	if (htable == nil) {
+		fputs("(no current table)\n", stdout);
+		fflush(stdout);
+		return;
+	}
+
+	count = count_hashtable_items(htable);
+
+	if (count == 0) {
+		fputs("(empty table)\n", stdout);
+		fflush(stdout);
+		return;
+	}
+
+	/* First pass: calculate column widths for alignment */
+	size_t max_name_len = 0;
+	size_t max_type_len = 0;
+
+	nomad = (**htable).hfirstsort;
+
+	while (nomad != nil) {
+		bigstring name;
+		gethashkey(nomad, name);
+		size_t name_len = stringlength(name);
+		if (name_len > max_name_len) {
+			max_name_len = name_len;
+		}
+
+		/* Get type string */
+		bigstring type_str;
+		tyvaluerecord val = (**nomad).val;
+
+		if (val.valuetype == externalvaluetype) {
+			langexternaltypestring((hdlexternalvariable)val.data.externalvalue, type_str);
+		} else {
+			langgettypestring(val.valuetype, type_str);
+		}
+
+		size_t type_len = stringlength(type_str);
+		if (type_len > max_type_len) {
+			max_type_len = type_len;
+		}
+
+		nomad = (**nomad).sortedlink;
+	}
+
+	/* Second pass: print entries with alignment */
+	nomad = (**htable).hfirstsort;
+
+	while (nomad != nil) {
+		bigstring name;
+		gethashkey(nomad, name);
+
+		/* Get type string */
+		bigstring type_str;
+		tyvaluerecord val = (**nomad).val;
+
+		if (val.valuetype == externalvaluetype) {
+			langexternaltypestring((hdlexternalvariable)val.data.externalvalue, type_str);
+		} else {
+			langgettypestring(val.valuetype, type_str);
+		}
+
+		/* Get display string (N items or "on disk") */
+		bigstring display_str;
+		setemptystring(display_str);
+
+		if (val.valuetype == externalvaluetype) {
+			langexternalgetdisplaystring((hdlexternalvariable)val.data.externalvalue, display_str);
+		}
+
+		/* Print: name : type : display */
+		printf("  %-*.*s : %-*.*s",
+			(int)max_name_len,
+			(int)stringlength(name), stringbaseaddress(name),
+			(int)max_type_len,
+			(int)stringlength(type_str), stringbaseaddress(type_str));
+
+		if (stringlength(display_str) > 0) {
+			printf(" : %.*s", (int)stringlength(display_str), stringbaseaddress(display_str));
+		}
+
+		printf("\n");
 
 		nomad = (**nomad).sortedlink;
 	}
