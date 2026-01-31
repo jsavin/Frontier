@@ -175,12 +175,17 @@ static boolean repl_jump_script(const char *script) {
         /* Fallback: use the script as the path display */
         strncpy(g_repl_current_path, script, REPL_PATH_MAX_LEN - 1);
     } else {
-        /* Convert bigstring to C string, skip leading @ */
+        /* Convert bigstring to C string, skip leading @ and "root." prefix */
         size_t pathlen = stringlength(bspath);
         const char *pathstart = (const char *)stringbaseaddress(bspath);
         if (pathlen > 0 && pathstart[0] == '@') {
             pathstart++;
             pathlen--;
+        }
+        /* Skip "root." prefix if present */
+        if (pathlen > 5 && strncmp(pathstart, "root.", 5) == 0) {
+            pathstart += 5;
+            pathlen -= 5;
         }
         if (pathlen >= REPL_PATH_MAX_LEN) {
             pathlen = REPL_PATH_MAX_LEN - 1;
@@ -981,10 +986,18 @@ static boolean process_line(const char *line, boolean *running) {
  */
 static int repl_main_blocking(void) {
     boolean running = true;
+    boolean force_interactive = (getenv("FRONTIER_FORCE_INTERACTIVE") != NULL);
 
     while (running) {
+        // In force-interactive mode (testing), manually output the prompt
+        // since linenoise may suppress it when stdin isn't a real TTY
+        if (force_interactive) {
+            fputs(g_repl_prompt, stderr);
+            fflush(stderr);
+        }
+
         // Read line with blocking linenoise
-        char *line = linenoise(g_repl_prompt);
+        char *line = linenoise(force_interactive ? "" : g_repl_prompt);
 
         if (line == NULL) {
             // EOF (Ctrl-D) or error

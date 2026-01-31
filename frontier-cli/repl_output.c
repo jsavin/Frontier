@@ -209,24 +209,25 @@ void repl_output_error(const char *error_msg) {
 /* Displays the /help command output with available commands and persistence info. */
 void repl_output_help(void) {
 	fputs("Available commands:\n", stdout);
-	fputs("  /exit          Exit the REPL\n", stdout);
-	fputs("  /jump <path>   Navigate to a table (like cd)\n", stdout);
-	fputs("  /help          Show this help message\n", stdout);
-	fputs("  /keycodes      Debug terminal key sequences\n", stdout);
-	fputs("  /list [path]   List contents of table (current if no path)\n", stdout);
+	fputs("  /exit              Exit the REPL\n", stdout);
+	fputs("  /help              Show this help message\n", stdout);
+	fputs("  /jump [path]       Navigate to a table (like cd)\n", stdout);
+	fputs("  /keycodes          Debug terminal key sequences\n", stdout);
+	fputs("  /list [path]       List contents of a table\n", stdout);
 	fputs("\n", stdout);
-	fputs("Navigation:\n", stdout);
+	fputs("/jump - Navigate to a table (like cd in a shell):\n", stdout);
+	fputs("  /jump                     Return to root\n", stdout);
 	fputs("  /jump system              Navigate to system table\n", stdout);
 	fputs("  /jump user.inetd          Navigate to nested table\n", stdout);
 	fputs("  /jump ..                  Go to parent table\n", stdout);
-	fputs("  /jump                     Return to root\n", stdout);
 	fputs("  /jump fileMenu            Navigate via system.paths\n", stdout);
-	fputs("  /jump parentOf(@user)     Evaluate script for address\n", stdout);
+	fputs("  /jump parentOf(@user)     Evaluate expression for address\n", stdout);
 	fputs("\n", stdout);
-	fputs("Listing:\n", stdout);
+	fputs("/list - List contents of a table:\n", stdout);
 	fputs("  /list                     List current table\n", stdout);
-	fputs("  /list system.verbs        List specific table\n", stdout);
+	fputs("  /list system.verbs        List specific table by path\n", stdout);
 	fputs("  /list fileMenu            List via system.paths\n", stdout);
+	fputs("  /list parentOf(fileMenu)  Evaluate expression for table\n", stdout);
 	fputs("\n", stdout);
 	fputs("QuickScript Model - Variable Persistence:\n", stdout);
 	fputs("  Local variables (x = 5) don't persist between evaluations\n", stdout);

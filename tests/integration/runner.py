@@ -185,6 +185,8 @@ class FrontierCLI:
 
         # Merge environment variables with current environment
         process_env = os.environ.copy()
+        # Force interactive mode for testing (ensures prompts are shown)
+        process_env['FRONTIER_FORCE_INTERACTIVE'] = '1'
         if env:
             process_env.update(env)
 
@@ -375,11 +377,9 @@ class TestRunner:
     def run_test(self, test: TestCase) -> TestResult:
         """Run a single test case."""
         # Check if test should be skipped
-        if test.skip or test.repl_mode:
+        if test.skip:
             # Determine skip reason
-            if test.repl_mode:
-                reason = "REPL interactive mode not supported in automated testing"
-            elif isinstance(test.skip, str):
+            if isinstance(test.skip, str):
                 reason = test.skip  # skip field contains the reason
             else:
                 reason = test.skip_reason  # Use skip_reason field
