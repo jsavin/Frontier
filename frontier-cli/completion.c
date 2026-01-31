@@ -19,6 +19,7 @@
 #include "../Common/headers/strings.h"
 #include "../Common/headers/tablestructure.h"
 #include "../Common/headers/langexternal.h"
+#include "../Common/headers/langinternal.h"  /* hashresolvevalue */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -328,10 +329,236 @@ void completion_add_table_entries(completion_matches_t *matches,
 }
 
 /* ============================================================================
+ * Phase 2.5: system.paths Support
+ * ============================================================================
+ * system.paths contains address values pointing to tables that are in global
+ * scope. This allows verbs like fileMenu, new(), defined() to work without
+ * fully-qualified paths. We iterate through pathstable to:
+ * 1. Find names for tab completion (completion_add_path_entries)
+ * 2. Resolve single-component paths via path search (completion_search_paths)
+ */
+
+/* Searches system.paths for a name and returns the table, optionally with full path.
+ * Used as a fallback when direct roottable lookup fails.
+ *
+ * For example, searching for "fileMenu":
+ * - Iterates through pathstable entries
+ * - For each entry (e.g., @system.verbs.builtins), resolves to table
+ * - Looks up "fileMenu" in that table
+ * - If found and it's a table, returns it
+ * - If resolved_path is provided, fills it with "system.verbs.builtins.fileMenu"
+ *
+ * Parameters:
+ *   name - The name to search for (e.g., "fileMenu")
+ *   resolved_path - If non-NULL, filled with the full path (e.g., "system.verbs.builtins.fileMenu")
+ *   path_bufsize - Size of the resolved_path buffer
+ *
+ * Returns the target table, or nil if not found.
+ */
+hdlhashtable completion_search_paths_ex(const char *name, char *resolved_path, size_t path_bufsize) {
+    if (name == NULL || name[0] == '\0' || pathstable == nil) {
+        return nil;
+    }
+
+    bigstring bsname;
+    copyctopstring(name, bsname);
+
+    hdlhashnode nomad = (**pathstable).hfirstsort;
+
+    while (nomad != nil) {
+        /* Skip non-address entries */
+        if ((**nomad).val.valuetype != addressvaluetype) {
+            nomad = (**nomad).sortedlink;
+            continue;
+        }
+
+        /* Resolve unresolved addresses */
+        if ((**nomad).flunresolvedaddress) {
+            if (!hashresolvevalue(pathstable, nomad)) {
+                nomad = (**nomad).sortedlink;
+                continue;
+            }
+        }
+
+        /* Get the table that this path entry points to */
+        bigstring bs_local;
+        hdlhashtable hparent;
+        if (!getaddressvalue((**nomad).val, &hparent, bs_local)) {
+            nomad = (**nomad).sortedlink;
+            continue;
+        }
+
+        if (hparent == nil) {
+            nomad = (**nomad).sortedlink;
+            continue;
+        }
+
+        /* Resolve bs_local in hparent to get the actual target table */
+        tyvaluerecord pathval;
+        hdlhashnode pathnode;
+
+        if (!hashtablelookup(hparent, bs_local, &pathval, &pathnode)) {
+            nomad = (**nomad).sortedlink;
+            continue;
+        }
+
+        hdlhashtable hsearch;
+        if (!langexternalvaltotable(pathval, &hsearch, pathnode) || hsearch == nil) {
+            nomad = (**nomad).sortedlink;
+            continue;
+        }
+
+        /* Now look up the requested name in this path table */
+        tyvaluerecord val;
+        hdlhashnode node;
+        if (hashtablelookup(hsearch, bsname, &val, &node)) {
+            /* Found it - check if it's a navigable table */
+            hdlhashtable result;
+            if (langexternalvaltotable(val, &result, node) && result != nil) {
+                /* Build the full resolved path if requested */
+                if (resolved_path != NULL && path_bufsize > 0) {
+                    /* Get the path from the address value (e.g., "system.verbs.builtins") */
+                    bigstring bspath;
+                    if (getaddresspath((**nomad).val, bspath)) {
+                        /* Skip leading @ if present */
+                        const char *pathstart = (const char *)stringbaseaddress(bspath);
+                        size_t pathlen = stringlength(bspath);
+                        if (pathlen > 0 && pathstart[0] == '@') {
+                            pathstart++;
+                            pathlen--;
+                        }
+                        /* Build "path.name" */
+                        size_t namelen = strlen(name);
+                        if (pathlen + 1 + namelen < path_bufsize) {
+                            memcpy(resolved_path, pathstart, pathlen);
+                            resolved_path[pathlen] = '.';
+                            memcpy(resolved_path + pathlen + 1, name, namelen);
+                            resolved_path[pathlen + 1 + namelen] = '\0';
+                        } else {
+                            /* Buffer too small - just use the name */
+                            strncpy(resolved_path, name, path_bufsize - 1);
+                            resolved_path[path_bufsize - 1] = '\0';
+                        }
+                    } else {
+                        /* Couldn't get path - just use the name */
+                        strncpy(resolved_path, name, path_bufsize - 1);
+                        resolved_path[path_bufsize - 1] = '\0';
+                    }
+                }
+                return result;  /* Return the target table */
+            }
+        }
+
+        nomad = (**nomad).sortedlink;
+    }
+
+    return nil;  /* Not found in any path table */
+}
+
+/* Simple wrapper for completion_search_paths_ex without path output */
+hdlhashtable completion_search_paths(const char *name) {
+    return completion_search_paths_ex(name, NULL, 0);
+}
+
+/* Adds matching entries from all system.paths tables to completion results.
+ * This makes path-accessible names (like fileMenu, new, etc.) available
+ * for top-level tab completion without requiring the full path.
+ */
+void completion_add_path_entries(completion_matches_t *matches, const char *prefix) {
+    if (pathstable == nil) {
+        return;
+    }
+
+    size_t prefix_len = strlen(prefix);
+    hdlhashnode nomad = (**pathstable).hfirstsort;
+
+    while (nomad != nil && matches->count < COMPLETION_MAX_MATCHES) {
+        /* Skip non-address entries */
+        if ((**nomad).val.valuetype != addressvaluetype) {
+            nomad = (**nomad).sortedlink;
+            continue;
+        }
+
+        /* Resolve unresolved addresses */
+        if ((**nomad).flunresolvedaddress) {
+            if (!hashresolvevalue(pathstable, nomad)) {
+                nomad = (**nomad).sortedlink;
+                continue;
+            }
+        }
+
+        /* Get the table that this path entry points to */
+        bigstring bs_local;
+        hdlhashtable hparent;
+        if (!getaddressvalue((**nomad).val, &hparent, bs_local)) {
+            nomad = (**nomad).sortedlink;
+            continue;
+        }
+
+        if (hparent == nil) {
+            nomad = (**nomad).sortedlink;
+            continue;
+        }
+
+        /* Resolve bs_local in hparent to get the actual target table */
+        tyvaluerecord pathval;
+        hdlhashnode pathnode;
+
+        if (!hashtablelookup(hparent, bs_local, &pathval, &pathnode)) {
+            nomad = (**nomad).sortedlink;
+            continue;
+        }
+
+        hdlhashtable hsearch;
+        if (!langexternalvaltotable(pathval, &hsearch, pathnode) || hsearch == nil) {
+            nomad = (**nomad).sortedlink;
+            continue;
+        }
+
+        /* Add matching entries from this path table */
+        hdlhashnode entry = (**hsearch).hfirstsort;
+
+        while (entry != nil && matches->count < COMPLETION_MAX_MATCHES) {
+            bigstring bs;
+            gethashkey(entry, bs);
+
+            /* Convert to C string */
+            char name[COMPLETION_MAX_NAME_LEN];
+            size_t len = stringlength(bs);
+            if (len >= COMPLETION_MAX_NAME_LEN) {
+                len = COMPLETION_MAX_NAME_LEN - 1;
+            }
+            memcpy(name, stringbaseaddress(bs), len);
+            name[len] = '\0';
+
+            /* Check prefix match (case-insensitive) */
+            if (prefix_len == 0 || strncasecmp(name, prefix, prefix_len) == 0) {
+                tyvaluetype type = (**entry).val.valuetype;
+                bool is_table = (type == externalvaluetype);
+
+                if (is_table) {
+                    tyexternalid exttype = langexternalgettype((**entry).val);
+                    is_table = (exttype == idtableprocessor);
+                }
+
+                completion_matches_add(matches, name, type, is_table);
+            }
+
+            entry = (**entry).sortedlink;
+        }
+
+        nomad = (**nomad).sortedlink;
+    }
+}
+
+/* ============================================================================
  * Phase 3: Dotted Path Navigation
  * ============================================================================ */
 
-/* Navigates a dotted path (e.g., "system.verbs") and returns the target table. */
+/* Navigates a dotted path (e.g., "system.verbs") and returns the target table.
+ * For single-component paths, also searches system.paths as a fallback.
+ * This allows /jump fileMenu to navigate to system.verbs.builtins.fileMenu.
+ */
 hdlhashtable completion_navigate_path(const char *path) {
     if (path == NULL || path[0] == '\0') {
         return roottable;
@@ -344,6 +571,7 @@ hdlhashtable completion_navigate_path(const char *path) {
 
     hdlhashtable current = roottable;
     int depth = 0;
+    boolean first_component = true;
 
     char *saveptr = NULL;
     char *component = strtok_r(path_copy, ".", &saveptr);
@@ -357,6 +585,20 @@ hdlhashtable completion_navigate_path(const char *path) {
         tyvaluerecord val;
         hdlhashnode node;
         if (!hashtablelookup(current, bs, &val, &node)) {
+            /* Not found in current table.
+             * For the first component, try system.paths as fallback.
+             * This allows single names like "fileMenu" to resolve via paths.
+             */
+            if (first_component) {
+                hdlhashtable path_result = completion_search_paths(component);
+                if (path_result != nil) {
+                    current = path_result;
+                    component = strtok_r(NULL, ".", &saveptr);
+                    depth++;
+                    first_component = false;
+                    continue;
+                }
+            }
             return nil;  /* Path component not found */
         }
 
@@ -377,6 +619,7 @@ hdlhashtable completion_navigate_path(const char *path) {
 
         component = strtok_r(NULL, ".", &saveptr);
         depth++;
+        first_component = false;
     }
 
     return current;

@@ -36,7 +36,8 @@ static boolean headless_msgverb(hdltreenode hparam1, tyvaluerecord *vreturned) {
 	/* Convert Pascal string to C string */
 	copyptocstring(bsmsg, msg);
 
-	/* Output to stdout (user-facing output, not diagnostic logging) */
+	/* Output to stdout with "msg: " prefix to distinguish from return values */
+	fputs("msg: ", stdout);
 	fputs(msg, stdout);
 	fputs("\n", stdout);
 	fflush(stdout);

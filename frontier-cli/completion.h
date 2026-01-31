@@ -135,8 +135,29 @@ void completion_add_table_entries(completion_matches_t *matches,
                                   const char *prefix);
 
 /*
+ * Phase 2.5: Search system.paths for a name.
+ * Returns the table if found via system.paths, nil otherwise.
+ * Used as fallback when direct roottable lookup fails.
+ */
+hdlhashtable completion_search_paths(const char *name);
+
+/*
+ * Phase 2.5: Search system.paths for a name, returning full resolved path.
+ * Like completion_search_paths but also fills resolved_path with the full
+ * path (e.g., "system.verbs.builtins.fileMenu" for name "fileMenu").
+ */
+hdlhashtable completion_search_paths_ex(const char *name, char *resolved_path, size_t path_bufsize);
+
+/*
+ * Phase 2.5: Add matching entries from all system.paths tables.
+ * Makes path-accessible names available for top-level completion.
+ */
+void completion_add_path_entries(completion_matches_t *matches, const char *prefix);
+
+/*
  * Phase 3: Navigate to a table by dotted path.
  * Returns nil if path is invalid or not a table.
+ * For single-component paths, also searches system.paths as fallback.
  */
 hdlhashtable completion_navigate_path(const char *path);
 

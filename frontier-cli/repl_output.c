@@ -21,6 +21,8 @@
 #include "../Common/headers/logging.h"
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
+#include <sys/ioctl.h>
 
 /* Global linenoise state for async output (set by event loop) */
 static struct linenoiseState *g_linenoisestate = NULL;
@@ -37,6 +39,39 @@ static void fputs_cr_to_lf(const char *str, size_t len, FILE *stream) {
 		} else {
 			putc(str[i], stream);
 		}
+	}
+}
+
+/* Get terminal width, defaulting to 80 columns if unavailable. */
+static int get_terminal_width(void) {
+	struct winsize ws;
+	if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0) {
+		return ws.ws_col;
+	}
+	return 80;
+}
+
+/* Returns true if the value type is a scalar that can be displayed inline. */
+static boolean is_scalar_valuetype(tyvaluetype vtype) {
+	switch (vtype) {
+		case charvaluetype:
+		case intvaluetype:
+		case longvaluetype:
+		case booleanvaluetype:
+		case stringvaluetype:
+		case addressvaluetype:
+		case doublevaluetype:
+		case singlevaluetype:
+		case fixedvaluetype:
+		case datevaluetype:
+		case ostypevaluetype:
+		case directionvaluetype:
+		case pointvaluetype:
+		case rectvaluetype:
+		case rgbvaluetype:
+			return true;
+		default:
+			return false;
 	}
 }
 
@@ -353,6 +388,9 @@ void repl_output_list(void) {
 		nomad = (**nomad).sortedlink;
 	}
 
+	/* Get terminal width for value truncation */
+	int term_width = get_terminal_width();
+
 	/* Second pass: print entries with alignment */
 	nomad = (**htable).hfirstsort;
 
@@ -370,23 +408,39 @@ void repl_output_list(void) {
 			langgettypestring(val.valuetype, type_str);
 		}
 
-		/* Get display string (N items or "on disk") */
-		bigstring display_str;
-		setemptystring(display_str);
-
-		if (val.valuetype == externalvaluetype) {
-			langexternalgetdisplaystring((hdlexternalvariable)val.data.externalvalue, display_str);
-		}
-
-		/* Print: name : type : display */
-		printf("  %-*.*s : %-*.*s",
+		/* Print: name : type */
+		int prefix_len = printf("  %-*.*s : %-*.*s",
 			(int)max_name_len,
 			(int)stringlength(name), stringbaseaddress(name),
 			(int)max_type_len,
 			(int)stringlength(type_str), stringbaseaddress(type_str));
 
-		if (stringlength(display_str) > 0) {
-			printf(" : %.*s", (int)stringlength(display_str), stringbaseaddress(display_str));
+		/* Get display string - either external info or scalar value */
+		if (val.valuetype == externalvaluetype) {
+			/* External types: show "N items" or "on disk" */
+			bigstring display_str;
+			setemptystring(display_str);
+			langexternalgetdisplaystring((hdlexternalvariable)val.data.externalvalue, display_str);
+
+			if (stringlength(display_str) > 0) {
+				printf(" : %.*s", (int)stringlength(display_str), stringbaseaddress(display_str));
+			}
+		} else if (is_scalar_valuetype(val.valuetype)) {
+			/* Scalar types: show value inline, truncated to fit terminal */
+			char value_buf[512];
+			format_value_summary(&val, value_buf, sizeof(value_buf));
+
+			/* Calculate available space: terminal - prefix - " : " - "..." margin */
+			int available = term_width - prefix_len - 3 - 3;
+			if (available < 10) available = 10;  /* Minimum display width */
+
+			size_t value_len = strlen(value_buf);
+			if ((int)value_len <= available) {
+				printf(" : %s", value_buf);
+			} else {
+				/* Truncate with ellipsis */
+				printf(" : %.*s...", available, value_buf);
+			}
 		}
 
 		printf("\n");

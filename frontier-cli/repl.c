@@ -265,15 +265,50 @@ boolean repl_jump_path(const char *path) {
         path_buf[len - 1] = '\0';
     }
 
-    /* Navigate to the path */
-    hdlhashtable target = completion_navigate_path(path_buf);
+    /* Check if this is a single-component path (no dots) */
+    boolean is_single_component = (strchr(path_buf, '.') == NULL);
+
+    hdlhashtable target = nil;
+    char resolved_path[REPL_PATH_MAX_LEN] = "";
+
+    if (is_single_component) {
+        /* Single component - try roottable first, then system.paths */
+        bigstring bs;
+        copyctopstring(path_buf, bs);
+        tyvaluerecord val;
+        hdlhashnode node;
+
+        if (roottable != nil && hashtablelookup(roottable, bs, &val, &node)) {
+            /* Found in roottable - use direct navigation */
+            if (!langexternalvaltotable(val, &target, node)) {
+                target = nil;
+            } else {
+                /* Path is just the name since it's at root level */
+                strncpy(resolved_path, path_buf, REPL_PATH_MAX_LEN - 1);
+                resolved_path[REPL_PATH_MAX_LEN - 1] = '\0';
+            }
+        }
+
+        if (target == nil) {
+            /* Try system.paths - this gives us both table and resolved path */
+            target = completion_search_paths_ex(path_buf, resolved_path, sizeof(resolved_path));
+        }
+    } else {
+        /* Multi-component path - use standard navigation */
+        target = completion_navigate_path(path_buf);
+        if (target != nil) {
+            strncpy(resolved_path, path_buf, REPL_PATH_MAX_LEN - 1);
+            resolved_path[REPL_PATH_MAX_LEN - 1] = '\0';
+        }
+    }
+
     if (target == nil) {
         return false;
     }
 
-    /* Update state */
+    /* Update state with the resolved path */
     g_repl_current_table = target;
-    strncpy(g_repl_current_path, path_buf, REPL_PATH_MAX_LEN - 1);
+    strncpy(g_repl_current_path, resolved_path, REPL_PATH_MAX_LEN - 1);
     g_repl_current_path[REPL_PATH_MAX_LEN - 1] = '\0';
     update_prompt();
     return true;
@@ -592,7 +627,9 @@ static void linenoise_completion_callback(const char *buf, linenoiseCompletions 
                     completion_add_table_entries(&matches, target, ctx.leaf_prefix);
                 }
             } else {
+                // For single-component paths, include both roottable and path entries
                 completion_add_table_entries(&matches, roottable, ctx.leaf_prefix);
+                completion_add_path_entries(&matches, ctx.leaf_prefix);
             }
 
             // Add matches - only include tables (navigable items)
@@ -676,6 +713,9 @@ static void linenoise_completion_callback(const char *buf, linenoiseCompletions 
         if (systemtable != nil) {
             completion_add_table_entries(&matches, systemtable, ctx.token);
         }
+
+        // Phase 2.5: Add path-accessible names (fileMenu, new, etc.)
+        completion_add_path_entries(&matches, ctx.token);
     }
 
     // Add matches to linenoise
