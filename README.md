@@ -1,24 +1,31 @@
 # Frontier Refactoring Project (develop branch status)
 
-**Last updated:** 2026-01-27
+**Last updated:** 2026-01-31
 
 This repository is actively modernizing the Frontier runtime and toolchain. The `develop` branch now builds and tests with 64-bit alignment on both `arm64` and `x86_64`, includes a portable/headless runtime layer, and routes headless UserTalk `file.*` verbs through the external function processor (EFP) table so tests can exercise real UserTalk without `system.verbs.*` being loaded.
 
-## Latest Release: v1.0.0-alpha.3 (Jan 27, 2026)
+## Latest Release: v1.0.0-alpha.4 (Jan 31, 2026)
 
-**Download:** [GitHub Releases](https://github.com/jsavin/Frontier/releases/tag/v1.0.0-alpha.3)
+**Download:** [GitHub Releases](https://github.com/jsavin/Frontier/releases/tag/v1.0.0-alpha.4)
 
-Major improvements to the REPL experience, critical runtime fixes, and expanded platform support:
+**The webserver works!** Full web application layer now functional in headless mode, plus major REPL enhancements:
 
-- **Enhanced REPL** – Option+Arrow word navigation with UserTalk-aware boundaries, clean startup (no migration log spew), command history, and tab completion
-- **Intel Mac Support** – Universal binary (arm64 + x86_64) works natively on both Apple Silicon and Intel Macs
-- **Critical Runtime Fixes** – Nested `parentOf()` calls, introspection functions (`typeOf`, `defined`), table index error handling, and database hydration
-- **TCP Networking** – Phase 1A/1B complete with 20 networking verbs and 93 integration tests
-- **Thread Safety Foundation** – Thread registry infrastructure for future concurrent operations
+- **Working Webserver & inetd** – Build and serve dynamic web applications directly from the CLI
+- **Persistent REPL Variables** – Variables now survive across evaluations in `system.temp.FrontierREPL.variables`
+- **Navigation Commands** – `/jump` and `/list` for exploring the object database (like `cd` and `ls`)
+- **Event Loop Architecture** – Non-blocking REPL with concurrent TCP callback processing
+- **100% TCP Verb Coverage** – Complete TCP/IP networking support (all verbs implemented)
 
-**Overall Progress:** 68% verb coverage (482/710 verbs), 22 processors at 100%, 1,100+ integration tests passing.
+**Quick webserver demo:**
+```usertalk
+[root]> webserver.init()
+[root]> inetd.supervisor(true)
+# Visit http://localhost:8080/helloworld in your browser
+```
 
-For comprehensive status details, see [STATUS.md](STATUS.md). For release details, see the [v1.0.0-alpha.3 release notes](https://github.com/jsavin/Frontier/releases/tag/v1.0.0-alpha.3).
+**Overall Progress:** 68% verb coverage (482/710 verbs), 22 processors at 100%, 1,450+ integration tests passing.
+
+For comprehensive status details, see [STATUS.md](STATUS.md). For release details, see the [v1.0.0-alpha.4 release notes](https://github.com/jsavin/Frontier/releases/tag/v1.0.0-alpha.4).
 
 ---
 
