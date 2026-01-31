@@ -134,7 +134,7 @@ repl_command_result repl_process_command(const char *input) {
 
         /* Empty path means list current table */
         if (*path == '\0') {
-            repl_output_list(nil);
+            repl_output_list(nil, NULL);
             return REPL_CMD_CONTINUE;
         }
 
@@ -145,7 +145,7 @@ repl_command_result repl_process_command(const char *input) {
             return REPL_CMD_CONTINUE;
         }
 
-        repl_output_list(target);
+        repl_output_list(target, path);
         return REPL_CMD_CONTINUE;
     }
 

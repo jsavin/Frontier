@@ -343,8 +343,9 @@ void repl_output_vars(hdlhashtable workspace) {
 
 /* Display contents of a table (for /list command).
  * If htable is nil, displays the current REPL table.
+ * path_label is displayed as a header (e.g., "user.prefs:"). Can be NULL.
  */
-void repl_output_list(hdlhashtable htable) {
+void repl_output_list(hdlhashtable htable, const char *path_label) {
 	if (htable == nil) {
 		htable = repl_get_current_table();
 	}
@@ -356,6 +357,19 @@ void repl_output_list(hdlhashtable htable) {
 		fputs("(no current table)\n", stdout);
 		fflush(stdout);
 		return;
+	}
+
+	/* Display path header */
+	if (path_label != NULL && path_label[0] != '\0') {
+		printf("%s:\n", path_label);
+	} else {
+		/* Use current path if no label provided */
+		const char *current_path = repl_get_current_path();
+		if (current_path != NULL && current_path[0] != '\0') {
+			printf("%s:\n", current_path);
+		} else {
+			printf("root:\n");
+		}
 	}
 
 	count = count_hashtable_items(htable);
