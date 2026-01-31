@@ -257,7 +257,10 @@ void tcp_set_error(tcp_error_t err, const char *detail) {
             break;
     }
 
-    langerrormessage((unsigned char*)error_msg);
+    /* Convert C string to Pascal string for langerrormessage */
+    bigstring bs;
+    copyctopstring(error_msg, bs);
+    langerrormessage(bs);
 }
 
 /* Internal function: Find free stream slot
@@ -1625,10 +1628,30 @@ boolean tcp_status_stream(long stream_id, bigstring status_out, long *bytes_pend
     /* Acquire stream reference (TOCTOU protection) */
     stream = tcp_stream_acquire(stream_id);
     if (!stream) {
-        /* Stream doesn't exist or is invalid */
+        /* Stream not found - check if this is a listener ID instead.
+         * Legacy behavior: both listeners and streams share the same ID space,
+         * so tcp.statusStream() on a listener should return "LISTENING".
+         * This is used by scripts like inetd.isDaemonRunning() to check
+         * if a listener is still active. */
+        LISTENERS_LOCK();
+        for (int i = 0; i < TCP_MAX_LISTENERS; i++) {
+            if (g_tcp_listeners[i] != NULL &&
+                g_tcp_listeners[i]->listener_id == stream_id) {
+                /* Found a listener with this ID */
+                if (g_tcp_listeners[i]->running) {
+                    copyctopstring("LISTENING", status_out);
+                } else {
+                    copyctopstring("STOPPED", status_out);
+                }
+                LISTENERS_UNLOCK();
+                return true;
+            }
+        }
+        LISTENERS_UNLOCK();
+
+        /* Neither stream nor listener found - return INACTIVE (not an error) */
         copyctopstring("INACTIVE", status_out);
-        tcp_set_error(TCP_ERR_INVALID_STREAM, "Invalid stream");
-        return false;
+        return true;  /* Query succeeded - stream is inactive */
     }
 
     sockfd = stream->sockfd;
@@ -1636,10 +1659,10 @@ boolean tcp_status_stream(long stream_id, bigstring status_out, long *bytes_pend
     /* Handle stream states */
     switch (stream->state) {
         case STREAM_INVALID:
+            /* Stream exists but is in invalid state - also not an error for queries */
             copyctopstring("INACTIVE", status_out);
             tcp_stream_release(stream);
-            tcp_set_error(TCP_ERR_INVALID_STREAM, "Invalid stream");
-            return false;
+            return true;  /* Query succeeded - stream is inactive */
 
         case STREAM_CONNECTING:
             copyctopstring("UNKNOWN", status_out);
