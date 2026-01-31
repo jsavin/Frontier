@@ -110,7 +110,7 @@ static void install_signal_handlers(void) {
 }
 
 /* Handle interrupt in event loop */
-static void handle_interrupt(struct linenoiseState *ls) {
+static void handle_interrupt(struct linenoiseState *ls, char *buf, size_t buflen) {
     g_repl_interrupt_requested = 0;
 
     if (g_script_running) {
@@ -123,9 +123,10 @@ static void handle_interrupt(struct linenoiseState *ls) {
         linenoiseEditStop(ls);
         printf("^C\n");
         fflush(stdout);
-        // Restart with fresh prompt - buffer is already allocated
+        // Restart with fresh prompt using caller's buffer (not ls->buf which
+        // may be invalid after linenoiseEditStop)
         linenoiseEditStart(ls, STDIN_FILENO, STDOUT_FILENO,
-                          ls->buf, ls->buflen, REPL_PROMPT);
+                          buf, buflen, REPL_PROMPT);
     }
 }
 
@@ -554,7 +555,7 @@ int repl_main(cli_options_t *options) {
             // poll() error - check if it was interrupted by signal
             if (g_repl_interrupt_requested) {
                 // Handle interrupt
-                handle_interrupt(&ls);
+                handle_interrupt(&ls, line_buf, sizeof(line_buf));
             }
             // Otherwise continue (might be EINTR from other signal)
         }
@@ -569,7 +570,7 @@ int repl_main(cli_options_t *options) {
 
         // 6.5 Check for Ctrl-C flag (in case signal arrived during poll)
         if (g_repl_interrupt_requested) {
-            handle_interrupt(&ls);
+            handle_interrupt(&ls, line_buf, sizeof(line_buf));
         }
     }
 

@@ -3121,18 +3121,24 @@ void agentscheduler_tick (void) {
 			continue;
 
 		/* Found a ready agent - run it for one time slice */
-		(**hp).sleepuntil = x + 1; /*reschedule for a second later*/
+		(**hp).sleepuntil = x + 1; /*reschedule for next tick (1/60th second)*/
 
 		(**hlist).ctrunning++;
 
-		if (hthreadglobals != nil && !(**hthreadglobals).flretryagent) {
+		{
+			/* Cache thread globals pointer to avoid race condition.
+			 * hthreadglobals could become nil between check and dereference. */
+			hdlthreadglobals hglobals = hthreadglobals;
 
-			if (!processtimeslice (hp)) {
+			if (hglobals != nil && !(**hglobals).flretryagent) {
 
-				if ((**hthreadglobals).flretryagent)
-					(**hthreadglobals).flretryagent = false;
-				else
-					deleteprocess (hp);
+				if (!processtimeslice (hp)) {
+
+					if ((**hglobals).flretryagent)
+						(**hglobals).flretryagent = false;
+					else
+						deleteprocess (hp);
+					}
 				}
 			}
 

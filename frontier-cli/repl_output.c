@@ -23,6 +23,18 @@
 /* Global linenoise state for async output (set by event loop) */
 static struct linenoiseState *g_linenoisestate = NULL;
 
+/* Helper: Output string to FILE, converting CR (Mac) to LF (Unix).
+ * Frontier internally uses CR for line endings which corrupts terminal display. */
+static void fputs_cr_to_lf(const char *str, size_t len, FILE *stream) {
+	for (size_t i = 0; i < len; i++) {
+		if (str[i] == '\r') {
+			putc('\n', stream);
+		} else {
+			putc(str[i], stream);
+		}
+	}
+}
+
 /* Display welcome message at REPL startup */
 void repl_output_welcome(void) {
 	fputs("Frontier REPL - Interactive UserTalk Environment\n", stdout);
@@ -133,17 +145,8 @@ void repl_output_result(bigstring result) {
 		return;
 	}
 
-	/* Print result, converting \r to \n for terminal display.
-	 * Frontier internally uses \r (Mac classic line ending) in scripts,
-	 * which causes display issues on Unix terminals. */
-	const char *src = (const char *)stringbaseaddress(result);
-	for (size_t i = 0; i < len; i++) {
-		if (src[i] == '\r') {
-			putchar('\n');
-		} else {
-			putchar(src[i]);
-		}
-	}
+	/* Print result, converting CR to LF for terminal display */
+	fputs_cr_to_lf((const char *)stringbaseaddress(result), len, stdout);
 	putchar('\n');
 	fflush(stdout);
 }
@@ -154,8 +157,11 @@ void repl_output_error(const char *error_msg) {
 		log_error(LOG_COMP_GENERAL, "Unknown error");
 		fprintf(stderr, "Error: (unknown error)\n");
 	} else {
+		size_t len = strlen(error_msg);
 		log_error(LOG_COMP_GENERAL, "%s", error_msg);
-		fprintf(stderr, "Error: %s\n", error_msg);
+		fputs("Error: ", stderr);
+		fputs_cr_to_lf(error_msg, len, stderr);
+		putc('\n', stderr);
 	}
 	fflush(stderr);
 }
@@ -293,15 +299,19 @@ void repl_async_output(const char *message) {
 		return;
 	}
 
+	size_t len = strlen(message);
+
 	if (g_linenoisestate != NULL) {
 		/* In event loop mode - hide prompt, print, restore */
 		linenoiseHide(g_linenoisestate);
-		printf("%s\n", message);
+		fputs_cr_to_lf(message, len, stdout);
+		putchar('\n');
 		fflush(stdout);
 		linenoiseShow(g_linenoisestate);
 	} else {
 		/* Not in event loop mode - just print directly */
-		printf("%s\n", message);
+		fputs_cr_to_lf(message, len, stdout);
+		putchar('\n');
 		fflush(stdout);
 	}
 }
