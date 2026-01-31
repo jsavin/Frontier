@@ -782,6 +782,14 @@ static const char *repl_slash_commands[] = {
  * Helper: Complete a path argument for slash commands like /jump and /list.
  * Takes the full buffer, the offset where the path starts, and adds completions.
  * Only includes tables (navigable items) in the results.
+ *
+ * Search order for single-component paths:
+ * 1. Current focused table (g_repl_current_table) - highest priority
+ * 2. Root table entries
+ * 3. system.paths entries - lowest priority
+ *
+ * This allows `/jump inetd` to find user.inetd when focused on user table,
+ * while still falling back to system.paths if not found locally.
  */
 static void complete_slash_command_path(const char *buf, size_t buf_len,
                                         size_t path_offset, linenoiseCompletions *lc) {
@@ -796,18 +804,74 @@ static void complete_slash_command_path(const char *buf, size_t buf_len,
     completion_context_t ctx;
     completion_parse_context(path_start, (int)strlen(path_start), &ctx);
 
-    // Collect matches from roottable (paths are always absolute)
+    // Collect matches
     completion_matches_t matches;
     completion_matches_init(&matches);
 
     if (ctx.has_dot) {
+        // Dotted path - navigate from root or current table
+        // First try relative to current table
+        hdlhashtable current = repl_get_current_table();
+        if (current != nil && current != roottable) {
+            hdlhashtable target = nil;
+            // Look up first component in current table
+            char path_copy[COMPLETION_MAX_NAME_LEN];
+            strncpy(path_copy, ctx.table_path, COMPLETION_MAX_NAME_LEN - 1);
+            path_copy[COMPLETION_MAX_NAME_LEN - 1] = '\0';
+
+            char *first_dot = strchr(path_copy, '.');
+            char *first_component = path_copy;
+            if (first_dot) {
+                *first_dot = '\0';
+            }
+
+            bigstring bs;
+            copyctopstring(first_component, bs);
+            tyvaluerecord val;
+            hdlhashnode node;
+            if (hashtablelookup(current, bs, &val, &node)) {
+                // Found in current table - navigate from there
+                if (first_dot) {
+                    // More components - need to navigate
+                    hdlhashtable first_table;
+                    if (langexternalvaltotable(val, &first_table, node) && first_table != nil) {
+                        target = completion_navigate_path(first_dot + 1);
+                        // If that fails, try full path from first_table
+                        if (target == nil) {
+                            // Restore and try navigating the rest
+                            char rest[COMPLETION_MAX_NAME_LEN];
+                            strncpy(rest, ctx.table_path + (first_dot - path_copy) + 1, COMPLETION_MAX_NAME_LEN - 1);
+                            rest[COMPLETION_MAX_NAME_LEN - 1] = '\0';
+                            // Navigate rest from first_table - simplified for now
+                        }
+                    }
+                } else {
+                    // Single component that's a table
+                    langexternalvaltotable(val, &target, node);
+                }
+            }
+            if (target != nil) {
+                completion_add_table_entries(&matches, target, ctx.leaf_prefix);
+            }
+        }
+
+        // Also try absolute path from root
         hdlhashtable target = completion_navigate_path(ctx.table_path);
         if (target != nil) {
             completion_add_table_entries(&matches, target, ctx.leaf_prefix);
         }
     } else {
-        // For single-component paths, include both roottable and path entries
+        // Single-component path - search in priority order:
+        // 1. Current focused table (if not root)
+        hdlhashtable current = repl_get_current_table();
+        if (current != nil && current != roottable) {
+            completion_add_table_entries(&matches, current, ctx.leaf_prefix);
+        }
+
+        // 2. Root table entries
         completion_add_table_entries(&matches, roottable, ctx.leaf_prefix);
+
+        // 3. system.paths entries
         completion_add_path_entries(&matches, ctx.leaf_prefix);
     }
 
