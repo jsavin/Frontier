@@ -1,69 +1,61 @@
 # Current Status
 
-Last Updated: 2026-01-28
+Last Updated: 2026-01-31
 
-## Current Focus: Stability & Quality Improvements 🔧
+## Current Focus: Webserver Working & REPL Transformation 🚀
 
-**Status**: Focused on bug fixes, REPL improvements, and verb resolution correctness. TCP Phase 2 (Buffered I/O) and Phase 4 P0a (Global State Elimination) both queued for future work.
+**Status**: Major milestone achieved - **the webserver works!** Full web application layer functional in headless mode. REPL transformed with persistent variables, navigation commands, and event loop architecture.
 
-**Verb Coverage**: **67% (481/710 verbs)** - up from 37% in early January! Major progress on lang, string, table, op, and other core processors.
+**Latest Release**: **v1.0.0-alpha.4** (January 31, 2026)
 
-## Recent Achievements (January 25-28, 2026)
+**Verb Coverage**: **68% (482/710 verbs)** - TCP at 100%, all core processors complete.
 
-### Context Passing Fix - MERGED ✅
-- **PR #360**: Fix 51 NULL context calls to *verbinmemory functions (Issue #347)
-  - Replaced all NULL context calls with explicit `db_context` structs
-  - Added hard assertions to catch future regressions in debug builds
-  - Narrowed context scope to block level for better code hygiene
-  - Bonus fix: Thread registry test calling non-existent function
-  - **Issue #347 CLOSED** - P0 blocker resolved
+## Recent Achievements (January 25-31, 2026)
 
-### REPL Improvements - MERGED ✅
-- **PR #356**: Option+Arrow word navigation
-  - Industry-standard keyboard shortcuts for REPL word movement
-  - Matches behavior of terminal apps and IDEs
-- **PR #358**: Suppress v6→v7 migration log spew during startup
-  - Cleaner REPL startup experience
-  - Migration logging now properly scoped
+### Webserver & inetd Working - ✅ RELEASED
+- **PR #366**: Enable webserver Hello World in headless mode
+- **PR #363**: Webserver Hello World initial implementation
+- `webserver.init()` and `inetd.supervisor(true)` now functional
+- Full HTTP request/response handling via UserTalk callbacks
+- Visit `http://localhost:8080/helloworld` after starting
 
-### Critical Bug Fixes - MERGED ✅
-- **PR #359**: Fix defined() error suppression (Issue #325)
-  - langerrormessage() now respects error suppression state
-  - defined() can silently check for non-existent table entries
-  - Improved table.move() test to verify source removal and destination creation
-- **PR #354**: Enable nested parentOf() function calls
-  - Fixed crash when parentOf() called within parentOf() evaluation
-  - Root cause: Language evaluator not properly handling nested function calls
-  - 15 new integration tests covering nested scenarios
-- **PR #352**: Remove explicit EFP table search to fix introspection bugs
-  - Fixed multiple verb resolution regressions (defined(), typeof(), etc.)
-  - Eliminated duplicate EFP searches causing incorrect behavior
-  - Comprehensive architectural documentation in VERB_RESOLUTION_ARCHITECTURE.md
-- **PR #351**: Exclude script-only processors from EFP whitelist
-  - Fixed false positives in verb dispatch
-  - More accurate EFP routing for script-based processors
-- **PR #348**: Keep database open after successful hydration
-  - Fixed string verb resolution issues
-  - Database lifecycle now properly managed
+**Quick Start:**
+```usertalk
+[root]> webserver.init()
+[root]> inetd.supervisor(true)
+# Visit http://localhost:8080/helloworld
+```
 
-### Build & Compatibility - MERGED ✅
-- **PR #353**: Intel Mac compatibility with universal cmake binary
-  - Cross-architecture cmake support (arm64 + x86_64)
-  - Ensures build system works on all Mac platforms
+### REPL Transformation - ✅ RELEASED
+- **PR #371**: Persistent variables, focus tracking, tab completion
+  - Variables persist across evaluations in `system.temp.FrontierREPL.variables`
+  - Focus tracked in `system.temp.FrontierREPL.focus`
+  - Tab completion for `/list` command paths
+- **PR #370**: Navigation commands (`/jump`, `/list`)
+  - `/jump [path]` - Navigate to tables (like `cd`)
+  - `/list [path]` - List table contents (like `ls`)
+  - Prompt updates to show current location
+- **PR #368**: Event loop architecture
+  - Non-blocking REPL using linenoise async API
+  - TCP callbacks process while waiting for input
+  - Ctrl-C handling at prompt and during scripts
+  - `msg()` output prefixed with "msg: " for clarity
 
-### Documentation - MERGED ✅
-- **PR #350**: Getting Started guide
-  - Complete newcomer onboarding documentation
-  - Complements existing Quick Start guide
-- **PR #345**: Support positional .root/.root7 arguments in CLI
-  - More intuitive CLI usage patterns
-- **PR #344**: Update planning and documentation to reflect TCP Phase 1 completion
-  - Synchronized planning docs with actual state
+### 100% TCP Verb Coverage - ✅ COMPLETE
+- **PR #361**: All TCP verbs implemented, legacy API migrated
+- Removed 2,406 lines of legacy code
+- Security hardening: ARM64 type safety, DoS protection
+
+### Bug Fixes - ✅ MERGED
+- **PR #371**: Fix double-free crash in REPL variable sync
+- **PR #371**: Fix crash when defining functions (skip code values gracefully)
+- **PR #360**: Fix 51 NULL context calls to *verbinmemory functions
+- **PR #359**: Fix defined() error suppression
 
 ## Active Development Status
 
 ### Verb Implementation Coverage
-- **Overall: 67% (481/710 verbs)** ✅ - Major jump from 37%!
+- **Overall: 68% (482/710 verbs)** ✅
 - File verbs: 100% (86/86) ✅
 - String verbs: 100% (60/60) ✅
 - Lang verbs: 100% (61/61) ✅
@@ -71,11 +63,22 @@ Last Updated: 2026-01-28
 - Table verbs: 100% (18/18) ✅
 - Date verbs: 100% (30/30) ✅
 - DB verbs: 100% (13/13) ✅
-- TCP verbs: 56% (13/23) - Phase 1A/1B/3 complete
+- **TCP verbs: 100% (23/23)** ✅ - COMPLETE
 - Thread verbs: 64% (11/17) - Phase 1 foundation complete
-- Many other processors complete (dialog, html, xml, sys, etc.)
+- Many other processors complete (dialog, html, xml, sys, webserver, inetd, etc.)
 
 Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
+
+### Integration Test Status
+- **Current**: 1,698 tests total
+- **Passing**: 1,451 (85.4%)
+- **Skipped**: 151
+- **Failing**: 96 (pre-existing issues)
+
+All tests running via:
+- `./tools/run_headless_tests.sh` - C unit tests
+- `cd tests && make test-integration` - Integration tests (Python/YAML)
+- `cd tests && make test-all` - Full suite
 
 ### Known P0 Issues
 
@@ -90,14 +93,15 @@ Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 
 - **Issue #88** (P0): Networking architecture & security
   - Status: Design/decision needed before broad CLI distribution
-  - Related to: TCP networking implementation
+  - Note: TCP layer is secure; this is about HTTP-level security model
 
 ### Queued Work
 
-**TCP Networking Phase 2** (Queued - Future Work):
-- 4 buffered I/O verbs needed for HTTP client
-- Reference: planning/phase4/networking/INDEX.md
-- Status: Phase 1A/1B/3 complete (13 verbs), Phase 2 not yet started
+**GUI Application** (In Planning):
+- Planning documents in `docs/planning/gui/`
+- Native macOS application with documented API
+- Third-party UI connection support
+- Reference: docs/planning/gui/ARCHITECTURE.md
 
 **Phase 4 P0a: Global State Elimination** (Queued - Launch Blocking):
 - Hash table context migration
@@ -106,33 +110,28 @@ Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 - Reference: planning/phase4/INDEX.md, planning/phase4/p0a-critical-thread-safety/README.md
 - Timeline: 3-week effort when prioritized
 
-## Integration Test Status
-
-**Current**: 1,124+ tests passing (as of PR #342)
-
-All tests running via:
-- `./tools/run_headless_tests.sh` - C unit tests
-- `cd tests && make test-integration` - Integration tests (Python/YAML)
-- `cd tests && make test-all` - Full suite
+**REPL Enhancements** (Future):
+- Function persistence (requires code tree copying)
+- Custom slash commands in `system.temp.FrontierREPL.commands`
 
 ## Next Steps (Priority Order)
 
 ### Immediate Priorities
 
-1. **Continue Stability & Bug Fixes**
-   - Address open P1/P2 issues as discovered
-   - Maintain test suite health
+1. **GUI Application Planning**
+   - Finalize architecture for native macOS app
+   - Document API for third-party connections
+   - Begin prototype implementation
 
-2. **Verb Coverage Expansion** (Ongoing)
-   - TCP Phase 2 (buffered I/O) - 4 verbs remaining
-   - Thread verbs - 6 verbs remaining
-   - Processors still at 0%: bit, clipboard, menu, mysql, sqlite, etc.
+2. **Documentation Updates**
+   - Update CLI usage guide with new REPL commands
+   - Document `system.temp.FrontierREPL` structure for users
 
 ### Strategic Decisions Required
 
-Before resuming major feature work (TCP Phase 2, P0a), need decisions on:
+Before resuming major infrastructure work, need decisions on:
 - Issue #86: Runtime context architecture
-- Issue #88: Networking security model
+- Issue #88: HTTP-level security model (TCP is already secure)
 
 ## Reference Documentation
 
@@ -140,6 +139,7 @@ Before resuming major feature work (TCP Phase 2, P0a), need decisions on:
 - **Phase 4 Overview**: planning/phase4/INDEX.md
 - **Threading Plan**: planning/phase4/threading/README.md
 - **Networking Plan**: planning/phase4/networking/INDEX.md
+- **GUI Architecture**: docs/planning/gui/ARCHITECTURE.md
 - **CRDT Foundation**: planning/CRDT_FOUNDATION_ROADMAP.md
 
 ### Implementation Guides
@@ -156,6 +156,11 @@ Before resuming major feature work (TCP Phase 2, P0a), need decisions on:
 - **ADR-004**: Dynamic Verb Binding Architecture
 - **ADR-005**: Parameter State Thread-Safety
 - **ADR-010**: Three-Phase Thread Implementation Roadmap
+- **ADR-013**: REPL Event Loop Architecture
+
+### Progress Reports
+- **Latest**: reports/progress/2026-01-31-webserver-and-repl-transformation.md
+- **Previous**: reports/progress/2026-01-25-networking-foundation-and-thread-safety.md
 
 ### Historical Context
 - **Status Archive**: planning/_STATUS_ARCHIVE.md (entries before 2026-01-27)

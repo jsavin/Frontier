@@ -1,23 +1,36 @@
 # Frontier - Current TODO List
 
-Status: In Progress (Updated 2026-01-28)
+Status: In Progress (Updated 2026-01-31)
 
 ## 🎉 Recently Completed Milestones
 
+### Webserver & inetd Working - ✅ RELEASED (v1.0.0-alpha.4)
+**Resolution**: PRs #366, #363 merged (2026-01-31)
+- `webserver.init()` and `inetd.supervisor(true)` functional in headless mode
+- Full HTTP request/response handling via UserTalk callbacks
+- Fixed `grabthreadglobals()` to return success in headless mode
+- Initialized Frontier verbs in headless `sysinitverbs()`
+- Integration tests validate full request/response cycle
+
+### REPL Transformation - ✅ RELEASED (v1.0.0-alpha.4)
+**Resolution**: PRs #371, #370, #368 merged (2026-01-31)
+- **Persistent Variables**: Variables survive across evaluations in `system.temp.FrontierREPL.variables`
+- **Navigation Commands**: `/jump` and `/list` for database exploration
+- **Event Loop**: Non-blocking REPL with concurrent TCP callback processing
+- **Focus Tracking**: Current location in `system.temp.FrontierREPL.focus`
+- **Tab Completion**: Path completion for `/list` command
+
 ### TCP Verbs 100% Coverage - ✅ COMPLETE
 **Resolution**: PR #361 merged (2026-01-28)
-- Implemented 10 remaining TCP verbs (Phase 2 buffered I/O)
-- Migrated all 22 TCP verb dispatches from legacy `fwsNetEvent*` to `tcp_*` API
-- Removed 2,406 lines of legacy code (MacSocketNetEvents.c, WinSockNetEvents.h)
-- Added security hardening: ARM64 type safety fix, slow-trickle DoS protection, O(n) pattern matching
-- New issue #362 filed for configurable throughput window (P1)
+- All 23 TCP verbs implemented
+- Migrated from legacy `fwsNetEvent*` to `tcp_*` API
+- Removed 2,406 lines of legacy code
+- Security hardening: ARM64 type safety, DoS protection
 
 ### Issue #347 (P0): NULL context audit - ✅ CLOSED
 **Resolution**: PR #360 merged (2026-01-28)
 - Fixed 51 NULL context calls to *verbinmemory functions
 - Added explicit `db_context` structs with hard assertions
-- Narrowed context scope to block level for better code hygiene
-- Bonus fix: Thread registry test calling non-existent function
 
 ---
 
@@ -44,15 +57,15 @@ These require design/planning before implementation can proceed.
 
 ### Issue #88 (P0): Networking architecture & security
 **Status**: Design/decision needed
-**Scope**: Medium - HTTP/WebSocket scaffolding with secure defaults
+**Scope**: Medium - HTTP-level security model
 **Timeline**: Before broad CLI distribution
-**Related to**: TCP Networking workstream (Phase 1 complete, Phase 2 queued)
+**Note**: TCP layer is already secure; this is about HTTP-level policies
 
 ---
 
 ## 📊 Current Work Status
 
-### Verb Coverage: 68% (491/720) ✅
+### Verb Coverage: 68% (482/710) ✅
 
 **Complete Processors** (100%):
 - base64, clock, crypt, date, db, dialog, file, html, inetd
@@ -71,50 +84,50 @@ These require design/planning before implementation can proceed.
 
 Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 
-### Integration Tests: 1,124+ passing
+### Integration Tests: 1,698 total (1,451 passing)
 
 ---
 
-## 🚀 Tracer Bullet Milestones
+## 🚀 Next Milestones
 
-### 1. Webserver "Hello World" E2E Test
-**Status**: Not started
-**Goal**: Prove the full networking stack works end-to-end
-**What it validates**:
-- TCP networking kernel verbs (tcp.listen, tcp.accept, etc.)
-- inetd UserTalk implementation
-- webserver UserTalk implementation
-- Request → Handler → Response cycle
+### 1. GUI Application Development
+**Status**: In Planning
+**Goal**: Native macOS application with documented API for third-party connections
+**What's Ready**:
+- Planning documents in `docs/planning/gui/`
+- CLI proves the runtime works end-to-end
+- Webserver validates complex subsystem integration
 
 **Approach**:
-1. Identify webserver/inetd code paths and required kernel verbs
-2. Verify those verbs are implemented and have test coverage
-3. Create minimal "Hello World" test case
-4. Run E2E and fix any gaps discovered
+1. Finalize GUI architecture document
+2. Document connection API for third-party apps
+3. Build native macOS prototype
+4. Iterate based on real usage
 
-### 2. system.startup.startupScript Analysis
+### 2. REPL Function Persistence
+**Status**: Known limitation, future work
+**Goal**: Allow function definitions to persist across evaluations
+**Challenge**: Code values (codevaluetype) require special handling for tree copying
+**Current Behavior**: Functions defined but not callable in subsequent evaluations
+
+### 3. system.startup.startupScript Analysis
 **Status**: Not started
 **Goal**: Ensure all critical-path kernel verbs for daemon mode are available
 **Prerequisites for**: Long-running HTTP process, daemon mode
 **What it validates**:
 - Bootstrap sequence is understood
 - All verbs in startup critical path are identified
-- Gaps in kernel verb coverage are surfaced before they cause runtime failures
-
-**Approach**:
-1. Read and analyze startupScript UserTalk code
-2. Trace dependencies (what it calls, including inetd/webserver init)
-3. Cross-reference against verb coverage report
-4. Create issue/task list for any missing verbs
+- Gaps in kernel verb coverage are surfaced
 
 ---
 
 ## 🎯 Recommended Work Priority
 
-### Tier 1: Tracer Bullets (Validate E2E)
-1. **Webserver "Hello World"** - Prove networking stack works
-   - Quick validation of existing implementation
-   - Surfaces gaps before deeper investment
+### Tier 1: GUI Application (User-Facing Value)
+1. **GUI Architecture Finalization**
+   - Document API for third-party connections
+   - Design native macOS application structure
+   - Begin prototype implementation
 
 ### Tier 2: Strategic Decisions (Gate Major Features)
 2. **Resolve Issue #86** (Runtime context architecture)
@@ -122,8 +135,9 @@ Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
    - Required for Phase 4 P0a (global state elimination)
    - Major architectural decision
 
-3. **Resolve Issue #88** (Networking security model)
+3. **Resolve Issue #88** (HTTP security model)
    - Required before broad CLI distribution
+   - TCP is secure; need HTTP-level policies
 
 ### Tier 3: Major Feature Work (After Decisions)
 4. **Phase 4 P0a** (Global State Elimination)
@@ -135,13 +149,13 @@ Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
    - Reference: planning/phase4/p0a-critical-thread-safety/README.md
 
 ### Tier 4: Quality & Stability
-6. **P1 Bug Fixes** (As discovered)
+5. **P1 Bug Fixes** (As discovered)
    - Issue #339: Pascal string logging garbage
    - Issue #323: Thread-safe FD table initialization
    - Issue #332: ODB reference counting (foundational for threading)
    - See "P1 Issues" section below
 
-### Tier 4: Ongoing Improvements
+### Tier 5: Ongoing Improvements
 6. **Verb Coverage Expansion** (Ongoing)
    - Complete remaining thread verbs (6 remaining)
    - Implement processors at 0%: bit, clipboard, mysql, sqlite, etc.
@@ -184,38 +198,28 @@ Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 
 ---
 
-## 🎉 Recently Completed (Jan 25-28, 2026)
+## 🎉 Recently Completed (Jan 25-31, 2026)
 
-### TCP Verbs 100% Coverage
-- **PR #361**: Implement 100% TCP verbs coverage and migrate from legacy API
-  - 10 new verbs: statusStream, getPeerAddress, getPeerPort, myAddress, readStreamUntil, readStreamBytes, readStreamUntilClosed, writeStringToStream, writeFileToStream, getStats
-  - Removed 2,406 lines legacy code (MacSocketNetEvents.c, WinSockNetEvents.h)
-  - Security: ARM64 ioctl type fix, slow-trickle DoS protection (35s throughput window), O(n) pattern matching
-  - Filed Issue #362 for configurable throughput window (P1)
+### Webserver & inetd
+- **PR #366**: Enable webserver Hello World in headless mode
+- **PR #363**: Webserver Hello World initial implementation
 
-### P0 Blocker Resolution
-- **PR #360**: Fix 51 NULL context calls to *verbinmemory functions (Issue #347)
+### REPL Transformation
+- **PR #371**: Persistent variables, focus tracking, tab completion
+- **PR #370**: Navigation commands (`/jump`, `/list`)
+- **PR #368**: Event loop architecture and display improvements
 
-### Critical Bug Fixes
-- **PR #359**: Fix defined() error suppression (Issue #325) - langerrormessage() now respects error suppression state
-- **PR #358**: Suppress v6→v7 migration log spew during REPL startup
-- **PR #356**: Add Option+Arrow word navigation to REPL
-- **PR #354**: Enable nested parentOf() function calls (fixed crash)
-- **PR #352**: Remove explicit EFP table search to fix introspection bugs
-- **PR #351**: Exclude script-only processors from EFP whitelist
-- **PR #353**: Fix Intel Mac compatibility with universal cmake binary
-- **PR #348**: Keep database open after successful hydration
+### TCP & Bug Fixes
+- **PR #361**: 100% TCP verbs coverage and legacy API migration
+- **PR #360**: Fix 51 NULL context calls (Issue #347)
+- **PR #359**: Fix defined() error suppression (Issue #325)
 
-### Documentation & Infrastructure
-- **PR #350**: Add Getting Started guide
-- **PR #345**: Support positional .root/.root7 arguments in CLI
-- **PR #344**: Update planning docs to reflect TCP Phase 1 completion
-
-### Earlier Completions (Jan 19-24)
+### Earlier Completions (Jan 19-28)
 See planning/_STATUS_ARCHIVE.md for:
 - TCP Networking Phase 1A/1B/3 (PRs #327, #329, #330)
 - Thread Registry & Testing Foundation (PRs #317, #318)
 - Database Migration & Path Resolution Fixes (PRs #336, #337, #342)
+- REPL improvements (PRs #356, #358)
 - Infrastructure Improvements (PRs #338, #340, #343, #326)
 
 ---
@@ -226,6 +230,7 @@ See planning/_STATUS_ARCHIVE.md for:
 - **Phase 4 Overview**: planning/phase4/INDEX.md
 - **Threading Plan**: planning/phase4/threading/README.md
 - **Networking Plan**: planning/phase4/networking/INDEX.md
+- **GUI Architecture**: docs/planning/gui/ARCHITECTURE.md
 - **CRDT Foundation**: planning/CRDT_FOUNDATION_ROADMAP.md
 
 ### Implementation Guides
@@ -243,10 +248,12 @@ See planning/_STATUS_ARCHIVE.md for:
 - **ADR-004**: Dynamic Verb Binding Architecture
 - **ADR-005**: Parameter State Thread-Safety
 - **ADR-010**: Three-Phase Thread Implementation Roadmap
+- **ADR-013**: REPL Event Loop Architecture
 
 ### Status & History
 - **Current Status**: planning/_CURRENT_STATUS.md
 - **Status Archive**: planning/_STATUS_ARCHIVE.md (historical achievements)
+- **Progress Reports**: reports/progress/
 
 ---
 
@@ -279,17 +286,16 @@ See planning/_STATUS_ARCHIVE.md for:
 ## 📝 Notes
 
 ### Strategic Context
-- **Current focus**: Stability, correctness, bug fixes
-- **Verb coverage**: 68% (491/720) - massive progress from 37% in early January
-- **Test health**: 1,124+ integration tests passing
-- **P0 blockers resolved**: Issue #347 (NULL context audit) closed via PR #360
-- **Next major milestones**:
-  1. Make architectural decisions (#86, #88)
-  2. Resume feature work (Phase 4 P0a)
+- **Current focus**: GUI application development, documentation
+- **Major milestone achieved**: Webserver works, REPL transformed
+- **Verb coverage**: 68% (482/710) - all core processors complete
+- **Test health**: 1,698 integration tests (1,451 passing)
+- **Latest release**: v1.0.0-alpha.4 (January 31, 2026)
 
 ### Workstream Status
-- **TCP Networking**: ✅ 100% COMPLETE (23/23 verbs) - PR #361 merged
+- **Webserver**: ✅ WORKING - Full web application layer functional
+- **REPL**: ✅ TRANSFORMED - Persistent variables, navigation, event loop
+- **TCP Networking**: ✅ 100% COMPLETE (23/23 verbs)
 - **Threading**: Phase 1 foundation complete (11 verbs), P0a queued
-- **Verb Porting**: Ongoing - 68% coverage achieved
-- **Bug Fixes**: Active - recent focus on verb resolution and REPL improvements
+- **GUI**: In planning - next major focus
 - **Documentation**: Strong - comprehensive guides in place
