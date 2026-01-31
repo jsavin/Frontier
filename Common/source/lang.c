@@ -876,7 +876,7 @@ boolean langrunhandle (Handle htext, bigstring bsresult) {
 	
 	if (!fl)
 		return (false);
-	
+
 	fl = false;
 	
 	flpushroot = currenthashtable == nil;
@@ -888,13 +888,22 @@ boolean langrunhandle (Handle htext, bigstring bsresult) {
 		pushvalueontmpstack (&val);
 		}
 	
-	if (coercetostring (&val)) {
-		
-		texthandletostring (val.data.stringvalue, bsresult);
-		
-		fl = true; /*it worked, we'll return true*/
+	/* For external values (tables, scripts, outlines), use hashgetvaluestring
+	 * to produce display-friendly output like "21 items" or "on disk".
+	 * For regular values (strings, numbers, etc.), use coercetostring to get
+	 * the actual value without escaping (e.g., script text with newlines). */
+	if (val.valuetype == externalvaluetype) {
+
+		if (hashgetvaluestring (val, bsresult))
+			fl = true;
 		}
-	
+	else if (coercetostring (&val)) {
+
+		texthandletostring (val.data.stringvalue, bsresult);
+
+		fl = true;
+		}
+
 	cleartmpstack ();
 	
 	if (flpushroot)

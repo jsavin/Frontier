@@ -284,6 +284,7 @@ enum { /*lang interface strings*/
 
 
 #define langmiscstringlist 158
+#define opstringlist 159
 
 enum { /*lang misc display strings*/
 

@@ -4,6 +4,9 @@
  * Uses linenoise (https://github.com/antirez/linenoise) for cross-platform
  * line editing, history, and tab completion support.
  *
+ * Phase 4: Event loop architecture for concurrent REPL + webserver + agents.
+ * Uses non-blocking linenoise API with poll() for multiplexing.
+ *
  * Copyright (C) 1992-2004 UserLand Software, Inc.
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,6 +18,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <signal.h>
+#include <poll.h>
+#include <errno.h>
 
 #include "linenoise.h"
 
@@ -29,12 +35,16 @@
 #include "../Common/headers/strings.h"
 #include "../Common/headers/tablestructure.h"
 #include "../Common/headers/tcpverbs.h"  /* tcp_process_callbacks */
+#include "../Common/headers/process.h"   /* agentsenabled, agentscheduler_tick */
 
 // History configuration
 #define HISTORY_FILE ".frontier_history"
 #define HISTORY_SIZE 1000
 #define MAX_SESSION_COMMANDS 1000
 #define MAX_COMMAND_LEN 4096
+
+// Event loop configuration
+#define POLL_TIMEOUT_MS 10  // 10ms = responsive while allowing ~100Hz callback processing
 
 // REPL prompt
 #define REPL_PROMPT "[root]> "
@@ -43,8 +53,97 @@
 static char *session_commands[MAX_SESSION_COMMANDS];
 static size_t session_command_count = 0;
 
+// Global interrupt flag (signal-safe)
+// Declared as non-static so lang.c can check it for script interruption
+volatile sig_atomic_t g_repl_interrupt_requested = 0;
+
+// Global script running flag for interrupt handling
+static volatile sig_atomic_t g_script_running = 0;
+
+// Global linenoise state for terminal cleanup and async output
+static struct linenoiseState *g_active_linenoisestate = NULL;
+
 // Forward declaration for completion callback
 static void linenoise_completion_callback(const char *buf, linenoiseCompletions *lc);
+
+/* Signal handler for SIGINT (Ctrl-C) - must be async-signal-safe */
+static void sigint_handler(int sig) {
+    (void)sig;
+    g_repl_interrupt_requested = 1;
+}
+
+/* Signal handler for SIGTERM - exit immediately
+ * NOTE: We don't call linenoiseEditStop() here because it's not async-signal-safe.
+ * Terminal mode is automatically restored by the OS when the process exits.
+ * Using _exit() to avoid calling atexit handlers from signal context (unsafe). */
+static void sigterm_handler(int sig) {
+    (void)sig;
+    _exit(0);
+}
+
+/* Terminal cleanup for atexit() */
+static void cleanup_terminal(void) {
+    if (g_active_linenoisestate) {
+        linenoiseEditStop(g_active_linenoisestate);
+        g_active_linenoisestate = NULL;
+    }
+}
+
+/* Install signal handlers for Ctrl-C and SIGTERM */
+static void install_signal_handlers(void) {
+    struct sigaction sa;
+
+    // SIGINT handler (Ctrl-C)
+    sa.sa_handler = sigint_handler;
+    sa.sa_flags = 0;
+    sigemptyset(&sa.sa_mask);
+    sigaction(SIGINT, &sa, NULL);
+
+    // SIGTERM handler (for clean shutdown)
+    sa.sa_handler = sigterm_handler;
+    sa.sa_flags = 0;
+    sigemptyset(&sa.sa_mask);
+    sigaction(SIGTERM, &sa, NULL);
+
+    // Register terminal cleanup for atexit
+    atexit(cleanup_terminal);
+}
+
+/* Guard to prevent re-entrant interrupt handling */
+static volatile sig_atomic_t g_handling_interrupt = 0;
+
+/* Handle interrupt in event loop */
+static void handle_interrupt(struct linenoiseState *ls, char *buf, size_t buflen) {
+    /* Prevent double-handling if user mashes Ctrl-C rapidly */
+    if (g_handling_interrupt) {
+        g_repl_interrupt_requested = 0;
+        return;
+    }
+    g_handling_interrupt = 1;
+    g_repl_interrupt_requested = 0;
+
+    if (g_script_running) {
+        // Script is running - set interrupt flag for interpreter to check
+        // The interpreter's background task handler will see this
+        printf("\n^C (interrupting script...)\n");
+        fflush(stdout);
+    } else {
+        // At prompt - clear line and redisplay
+        linenoiseEditStop(ls);
+        printf("^C\n");
+        fflush(stdout);
+        // Restart with fresh prompt using caller's buffer (not ls->buf which
+        // may be invalid after linenoiseEditStop)
+        if (linenoiseEditStart(ls, STDIN_FILENO, STDOUT_FILENO,
+                              buf, buflen, REPL_PROMPT) == -1) {
+            // Failed to restart - log error and set flag for main loop to exit
+            log_error(LOG_COMP_GENERAL, "Failed to restart linenoise after interrupt");
+            // Note: Main loop will exit on next iteration since ls is invalid
+        }
+    }
+
+    g_handling_interrupt = 0;
+}
 
 /* Adds a command to the session tracking list for history merge-before-save. */
 static void track_session_command(const char *cmd) {
@@ -308,24 +407,67 @@ static void linenoise_completion_callback(const char *buf, linenoiseCompletions 
     }
 }
 
-/* Main REPL entry point: initializes linenoise, runs the read-eval-print loop, and cleans up. */
-int repl_main(cli_options_t *options) {
-    (void)options;  /* Unused in Phase 1 */
-
-    boolean running = true;
-
-    // 1. Initialize linenoise
-    if (!init_linenoise()) {
-        log_error(LOG_COMP_GENERAL, "Failed to initialize linenoise");
-        return 1;
+/* Process a single command line (extracted for use in event loop) */
+static boolean process_line(const char *line, boolean *running) {
+    // Skip empty lines
+    size_t len = strlen(line);
+    if (len == 0) {
+        return true;
     }
 
-    // 2. Display welcome message
-    repl_output_welcome();
+    // Add to history (skip commands starting with /)
+    if (line[0] != '/') {
+        linenoiseHistoryAdd(line);
+        track_session_command(line);  // Track for merge-before-save
+    }
 
-    // 3. Main loop
+    // Process command
+    if (line[0] == '/') {
+        repl_command_result result = repl_process_command(line);
+        if (result == REPL_CMD_EXIT) {
+            *running = false;
+        }
+        return true;
+    }
+
+    // Evaluate as UserTalk
+    g_script_running = 1;  // Mark script as running for interrupt handling
+
+    bigstring result;
+    bigstring error_msg;
+    boolean success = repl_eval_script(line, result, error_msg);
+
+    g_script_running = 0;  // Script finished
+
+    if (success) {
+        // Success - display result
+        repl_output_result(result);
+    } else {
+        // Error - display error
+        char error_buf[256];
+        size_t error_len = stringlength(error_msg);
+        if (error_len > sizeof(error_buf) - 1) {
+            error_len = sizeof(error_buf) - 4;
+            memcpy(error_buf, stringbaseaddress(error_msg), error_len);
+            memcpy(error_buf + error_len, "...", 4);
+        } else {
+            memcpy(error_buf, stringbaseaddress(error_msg), error_len);
+            error_buf[error_len] = '\0';
+        }
+        repl_output_error(error_buf);
+    }
+
+    return true;
+}
+
+/* Blocking REPL loop for non-TTY input (fallback mode).
+ * Used when stdin is not a terminal (e.g., piped input).
+ */
+static int repl_main_blocking(void) {
+    boolean running = true;
+
     while (running) {
-        // Read line with linenoise (handles editing, history, completion)
+        // Read line with blocking linenoise
         char *line = linenoise(REPL_PROMPT);
 
         if (line == NULL) {
@@ -333,57 +475,133 @@ int repl_main(cli_options_t *options) {
             break;
         }
 
-        // Skip empty lines
-        size_t len = strlen(line);
-        if (len == 0) {
-            linenoiseFree(line);
-            continue;
-        }
-
-        // Add to history (skip commands starting with /)
-        if (line[0] != '/') {
-            linenoiseHistoryAdd(line);
-            track_session_command(line);  // Track for merge-before-save
-        }
-
-        // Process command
-        if (line[0] == '/') {
-            repl_command_result result = repl_process_command(line);
-            if (result == REPL_CMD_EXIT) {
-                running = false;
-            }
-            linenoiseFree(line);
-            continue;
-        }
-
-        // Evaluate as UserTalk
-        bigstring result;
-        bigstring error_msg;
-        if (repl_eval_script(line, result, error_msg)) {
-            // Success - display result
-            repl_output_result(result);
-        } else {
-            // Error - display error
-            char error_buf[256];
-            size_t error_len = stringlength(error_msg);
-            if (error_len > sizeof(error_buf) - 1) {
-                error_len = sizeof(error_buf) - 4;
-                memcpy(error_buf, stringbaseaddress(error_msg), error_len);
-                memcpy(error_buf + error_len, "...", 4);
-            } else {
-                memcpy(error_buf, stringbaseaddress(error_msg), error_len);
-                error_buf[error_len] = '\0';
-            }
-            repl_output_error(error_buf);
-        }
-
-        // Process any pending TCP callbacks (from accept threads)
-        tcp_process_callbacks();
-
+        // Process the line
+        process_line(line, &running);
         linenoiseFree(line);
+
+        // Process callbacks after each command
+        tcp_process_callbacks();
     }
 
-    // 4. Cleanup
+    return 0;
+}
+
+/* Main REPL entry point: runs event loop with non-blocking linenoise.
+ * Falls back to blocking mode if stdin is not a TTY.
+ */
+int repl_main(cli_options_t *options) {
+    (void)options;  /* Unused in Phase 1 */
+
+    boolean running = true;
+    struct linenoiseState ls;
+    char line_buf[MAX_COMMAND_LEN];
+    boolean use_event_loop;
+
+    // 1. Initialize linenoise
+    if (!init_linenoise()) {
+        log_error(LOG_COMP_GENERAL, "Failed to initialize linenoise");
+        return 1;
+    }
+
+    // 2. Install signal handlers for Ctrl-C and terminal cleanup
+    install_signal_handlers();
+
+    // 3. Display welcome message
+    repl_output_welcome();
+
+    // 4. Check if we can use the event loop (requires TTY)
+    // The non-blocking linenoise API requires a real terminal for raw mode
+    use_event_loop = isatty(STDIN_FILENO);
+
+    if (!use_event_loop) {
+        // Fall back to blocking mode for non-TTY input
+        log_debug(LOG_COMP_GENERAL, "Non-TTY input detected, using blocking REPL mode");
+        int result = repl_main_blocking();
+        cleanup_linenoise();
+        repl_output_goodbye();
+        return result;
+    }
+
+    // 5. Start non-blocking line editing (only for TTY)
+    if (linenoiseEditStart(&ls, STDIN_FILENO, STDOUT_FILENO,
+                           line_buf, sizeof(line_buf), REPL_PROMPT) == -1) {
+        log_error(LOG_COMP_GENERAL, "Failed to start linenoise editing");
+        cleanup_linenoise();
+        return 1;
+    }
+
+    // Store global pointer for terminal cleanup and async output
+    g_active_linenoisestate = &ls;
+    repl_set_active_linenoisestate(&ls);
+
+    // 6. Event loop
+    while (running) {
+        // 6.1 Poll stdin with timeout
+        struct pollfd pfd = {STDIN_FILENO, POLLIN, 0};
+        int ready = poll(&pfd, 1, POLL_TIMEOUT_MS);
+
+        // 6.2 Feed input to linenoise if available
+        if (ready > 0 && (pfd.revents & POLLIN)) {
+            char *result = linenoiseEditFeed(&ls);
+
+            if (result == linenoiseEditMore) {
+                // User is still editing - continue polling
+            } else if (result != NULL) {
+                // User pressed Enter - stop line editing first (prints newline)
+                linenoiseEditStop(&ls);
+
+                // Process the line
+                process_line(result, &running);
+                linenoiseFree(result);
+
+                if (running) {
+                    // Restart line editing for next command
+                    if (linenoiseEditStart(&ls, STDIN_FILENO, STDOUT_FILENO,
+                                           line_buf, sizeof(line_buf), REPL_PROMPT) == -1) {
+                        log_error(LOG_COMP_GENERAL, "Failed to restart linenoise editing");
+                        running = false;
+                        break;  // Exit immediately - linenoise state is invalid
+                    }
+                }
+            } else {
+                // EOF (Ctrl-D) or error
+                running = false;
+            }
+        } else if (ready < 0) {
+            // poll() error - check errno to determine if recoverable
+            if (errno == EINTR) {
+                // Interrupted by signal - check if it was Ctrl-C
+                if (g_repl_interrupt_requested) {
+                    handle_interrupt(&ls, line_buf, sizeof(line_buf));
+                }
+                // Otherwise continue (e.g., SIGWINCH for terminal resize)
+            } else {
+                // Unrecoverable poll() error (EBADF, ENOMEM, etc.)
+                log_error(LOG_COMP_GENERAL, "poll() failed: %s", strerror(errno));
+                linenoiseEditStop(&ls);  // Restore terminal before exiting
+                running = false;
+                break;  // Exit immediately
+            }
+        }
+
+        // 6.3 Process TCP callbacks (webserver)
+        tcp_process_callbacks();
+
+        // 6.4 Run agent scheduler tick (if agents enabled)
+        if (agentsenabled()) {
+            agentscheduler_tick();
+        }
+
+        // 6.5 Check for Ctrl-C flag (in case signal arrived during poll)
+        if (g_repl_interrupt_requested) {
+            handle_interrupt(&ls, line_buf, sizeof(line_buf));
+        }
+    }
+
+    // 7. Cleanup
+    g_active_linenoisestate = NULL;
+    repl_set_active_linenoisestate(NULL);
+    linenoiseEditStop(&ls);
     cleanup_linenoise();
     repl_output_goodbye();
     return 0;

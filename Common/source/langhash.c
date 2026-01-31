@@ -4796,9 +4796,9 @@ boolean hashgetvaluestring (tyvaluerecord val, bigstring bs) {
 	*/
 	
 	disablelangerror ();
-	
+
 	switch (val.valuetype) {
-		
+
 		case novaluetype:
 			langgetmiscstring (nilstring, bs);
 			
@@ -4912,10 +4912,20 @@ boolean hashgetvaluestring (tyvaluerecord val, bigstring bs) {
 			break;
 			}
 		
-		case externalvaluetype:
-			langexternalgetdisplaystring ((hdlexternalhandle) val.data.externalvalue, bs);
-			
+		case externalvaluetype: {
+			bigstring bstype, bsdisplay;
+
+			langexternaltypestring ((hdlexternalhandle) val.data.externalvalue, bstype);
+
+			langexternalgetdisplaystring ((hdlexternalhandle) val.data.externalvalue, bsdisplay);
+
+			/* Format as "type: display" (e.g., "table: 21 items") */
+			copystring (bstype, bs);
+			pushstring (BIGSTRING ("\x02" ": "), bs);
+			pushstring (bsdisplay, bs);
+
 			break;
+			}
 		
 		
 		case codevaluetype:

@@ -7,15 +7,36 @@
  * String Conversion: Uses coercetostring() for value display. Tables get
  * special handling (summary instead of full dump). See texthandletostring()
  * for heap-to-Pascal string conversion.
+ *
+ * Phase 4: Added async output support using linenoiseHide/Show for event loop.
  */
 
 #include "repl_output.h"
+#include "linenoise.h"  /* For linenoiseHide/Show */
 #include "../Common/headers/lang.h"
 #include "../Common/headers/langexternal.h"
 #include "../Common/headers/strings.h"
 #include "../Common/headers/logging.h"
 #include <stdio.h>
 #include <string.h>
+
+/* Global linenoise state for async output (set by event loop) */
+static struct linenoiseState *g_linenoisestate = NULL;
+
+/* Helper: Output string to FILE, converting CR (Mac) to LF (Unix).
+ * Frontier internally uses CR for line endings (Classic Mac convention).
+ * This converts CR→LF for proper Unix terminal display.
+ * Note: Frontier never produces CRLF (Windows) - only CR (Mac) or LF (Unix).
+ * If CRLF were present, this would convert to LFLF (double newlines). */
+static void fputs_cr_to_lf(const char *str, size_t len, FILE *stream) {
+	for (size_t i = 0; i < len; i++) {
+		if (str[i] == '\r') {
+			putc('\n', stream);
+		} else {
+			putc(str[i], stream);
+		}
+	}
+}
 
 /* Display welcome message at REPL startup */
 void repl_output_welcome(void) {
@@ -122,12 +143,14 @@ void repl_output_result(bigstring result) {
 	}
 
 	/* Don't display empty results (like Python REPL for None) */
-	if (stringlength(result) == 0) {
+	size_t len = stringlength(result);
+	if (len == 0) {
 		return;
 	}
 
-	/* Print result */
-	printf("%.*s\n", (int)stringlength(result), stringbaseaddress(result));
+	/* Print result, converting CR to LF for terminal display */
+	fputs_cr_to_lf((const char *)stringbaseaddress(result), len, stdout);
+	putchar('\n');
 	fflush(stdout);
 }
 
@@ -137,8 +160,11 @@ void repl_output_error(const char *error_msg) {
 		log_error(LOG_COMP_GENERAL, "Unknown error");
 		fprintf(stderr, "Error: (unknown error)\n");
 	} else {
+		size_t len = strlen(error_msg);
 		log_error(LOG_COMP_GENERAL, "%s", error_msg);
-		fprintf(stderr, "Error: %s\n", error_msg);
+		fputs("Error: ", stderr);
+		fputs_cr_to_lf(error_msg, len, stderr);
+		putc('\n', stderr);
 	}
 	fflush(stderr);
 }
@@ -259,4 +285,36 @@ void repl_output_vars(hdlhashtable workspace) {
 	}
 
 	fflush(stdout);
+}
+
+/* --- Event Loop Support (Phase 4) --- */
+
+/* Set the active linenoise state for async output */
+void repl_set_active_linenoisestate(struct linenoiseState *ls) {
+	g_linenoisestate = ls;
+}
+
+/* Display async output while user is typing at prompt.
+ * Uses linenoiseHide/Show to preserve the user's current input.
+ */
+void repl_async_output(const char *message) {
+	if (message == NULL) {
+		return;
+	}
+
+	size_t len = strlen(message);
+
+	if (g_linenoisestate != NULL) {
+		/* In event loop mode - hide prompt, print, restore */
+		linenoiseHide(g_linenoisestate);
+		fputs_cr_to_lf(message, len, stdout);
+		putchar('\n');
+		fflush(stdout);
+		linenoiseShow(g_linenoisestate);
+	} else {
+		/* Not in event loop mode - just print directly */
+		fputs_cr_to_lf(message, len, stdout);
+		putchar('\n');
+		fflush(stdout);
+	}
 }
