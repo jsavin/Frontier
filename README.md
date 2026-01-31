@@ -18,8 +18,9 @@ Frontier is being brought back to life. This project is modernizing the classic 
 
 **Quick webserver demo:**
 ```usertalk
-[root]> webserver.init()
-[root]> inetd.supervisor(true)
+[root]> user.inetd.config.http.port = 8080
+[root]> user.webserver.responders.helloWorld.enabled = true
+[root]> inetd.startOne (@user.inetd.config.http)
 # Visit http://localhost:8080/helloworld in your browser
 ```
 
