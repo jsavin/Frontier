@@ -3101,7 +3101,9 @@ void agentscheduler_tick (void) {
 	if (hlist == nil)
 		return;
 
-	flprocesscodedisposed = false;
+	/* Note: flprocesscodedisposed not used here since we only run one agent
+	 * and break immediately. The full agentscheduler() uses it to exit loop
+	 * if process disposal happened during iteration. */
 
 	x = timenow64 ();
 

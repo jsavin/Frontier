@@ -20,6 +20,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <poll.h>
+#include <errno.h>
 
 #include "linenoise.h"
 
@@ -71,14 +72,13 @@ static void sigint_handler(int sig) {
     g_repl_interrupt_requested = 1;
 }
 
-/* Signal handler for SIGTERM - cleanup terminal and exit */
+/* Signal handler for SIGTERM - exit immediately
+ * NOTE: We don't call linenoiseEditStop() here because it's not async-signal-safe.
+ * Terminal mode is automatically restored by the OS when the process exits.
+ * Using _exit() to avoid calling atexit handlers from signal context (unsafe). */
 static void sigterm_handler(int sig) {
     (void)sig;
-    if (g_active_linenoisestate) {
-        linenoiseEditStop(g_active_linenoisestate);
-        g_active_linenoisestate = NULL;
-    }
-    _exit(0);  // Use _exit to avoid atexit handlers running twice
+    _exit(0);
 }
 
 /* Terminal cleanup for atexit() */
@@ -552,12 +552,18 @@ int repl_main(cli_options_t *options) {
                 running = false;
             }
         } else if (ready < 0) {
-            // poll() error - check if it was interrupted by signal
-            if (g_repl_interrupt_requested) {
-                // Handle interrupt
-                handle_interrupt(&ls, line_buf, sizeof(line_buf));
+            // poll() error - check errno to determine if recoverable
+            if (errno == EINTR) {
+                // Interrupted by signal - check if it was Ctrl-C
+                if (g_repl_interrupt_requested) {
+                    handle_interrupt(&ls, line_buf, sizeof(line_buf));
+                }
+                // Otherwise continue (e.g., SIGWINCH for terminal resize)
+            } else {
+                // Unrecoverable poll() error (EBADF, ENOMEM, etc.)
+                log_error(LOG_COMP_GENERAL, "poll() failed: %s", strerror(errno));
+                running = false;
             }
-            // Otherwise continue (might be EINTR from other signal)
         }
 
         // 6.3 Process TCP callbacks (webserver)
