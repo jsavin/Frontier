@@ -326,11 +326,38 @@ static void cleanup_linenoise(void) {
     free_session_commands();
 }
 
+/* List of REPL slash commands for tab completion */
+static const char *repl_slash_commands[] = {
+    "exit",
+    "help",
+    "keycodes",
+    NULL
+};
+
 /* Bridges linenoise tab completion to the Frontier completion engine. */
 static void linenoise_completion_callback(const char *buf, linenoiseCompletions *lc) {
+    size_t buf_len = strlen(buf);
+
+    // Handle slash command completion
+    if (buf_len > 0 && buf[0] == '/') {
+        const char *cmd_prefix = buf + 1;  // Skip the '/'
+        size_t prefix_len = buf_len - 1;
+
+        for (int i = 0; repl_slash_commands[i] != NULL; i++) {
+            const char *cmd = repl_slash_commands[i];
+            if (strncasecmp(cmd, cmd_prefix, prefix_len) == 0) {
+                // Build completion: "/" + command + " "
+                char completion[256];
+                snprintf(completion, sizeof(completion), "/%s ", cmd);
+                linenoiseAddCompletion(lc, completion);
+            }
+        }
+        return;  // Don't do regular completion for slash commands
+    }
+
     // Parse completion context
     completion_context_t ctx;
-    int cursor_pos = (int)strlen(buf);  // Linenoise doesn't expose cursor position, assume end of line
+    int cursor_pos = (int)buf_len;  // Linenoise doesn't expose cursor position, assume end of line
     completion_parse_context(buf, cursor_pos, &ctx);
 
     // No completion inside strings
