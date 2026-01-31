@@ -778,64 +778,77 @@ static const char *repl_slash_commands[] = {
     NULL
 };
 
+/*
+ * Helper: Complete a path argument for slash commands like /jump and /list.
+ * Takes the full buffer, the offset where the path starts, and adds completions.
+ * Only includes tables (navigable items) in the results.
+ */
+static void complete_slash_command_path(const char *buf, size_t buf_len,
+                                        size_t path_offset, linenoiseCompletions *lc) {
+    const char *path_start = buf + path_offset;
+
+    // Skip leading @ if present
+    if (*path_start == '@') {
+        path_start++;
+    }
+
+    // Parse as a dotted path for completion
+    completion_context_t ctx;
+    completion_parse_context(path_start, (int)strlen(path_start), &ctx);
+
+    // Collect matches from roottable (paths are always absolute)
+    completion_matches_t matches;
+    completion_matches_init(&matches);
+
+    if (ctx.has_dot) {
+        hdlhashtable target = completion_navigate_path(ctx.table_path);
+        if (target != nil) {
+            completion_add_table_entries(&matches, target, ctx.leaf_prefix);
+        }
+    } else {
+        // For single-component paths, include both roottable and path entries
+        completion_add_table_entries(&matches, roottable, ctx.leaf_prefix);
+        completion_add_path_entries(&matches, ctx.leaf_prefix);
+    }
+
+    // Add matches - only include tables (navigable items)
+    for (size_t i = 0; i < matches.count; i++) {
+        if (matches.items[i].is_table) {
+            char completion[1024];
+            size_t leaf_len = strlen(ctx.leaf_prefix);
+            size_t prefix_len = buf_len - leaf_len;
+
+            // Copy everything before the leaf
+            if (prefix_len > sizeof(completion) - 1) {
+                prefix_len = sizeof(completion) - 1;
+            }
+            memcpy(completion, buf, prefix_len);
+            completion[prefix_len] = '\0';
+
+            // Append the match with trailing dot
+            size_t remaining = sizeof(completion) - prefix_len - 1;
+            strncat(completion, matches.items[i].name, remaining);
+            remaining = sizeof(completion) - strlen(completion) - 1;
+            strncat(completion, ".", remaining);
+
+            linenoiseAddCompletion(lc, completion);
+        }
+    }
+}
+
 /* Bridges linenoise tab completion to the Frontier completion engine. */
 static void linenoise_completion_callback(const char *buf, linenoiseCompletions *lc) {
     size_t buf_len = strlen(buf);
 
     // Handle slash command completion
     if (buf_len > 0 && buf[0] == '/') {
-        // Check if this is "/jump <path>" - complete the path argument
+        // Check if this is "/jump <path>" or "/list <path>" - complete the path argument
         if (strncasecmp(buf, "/jump ", 6) == 0) {
-            // Extract the path being typed
-            const char *path_start = buf + 6;
-
-            // Skip leading @ if present
-            if (*path_start == '@') {
-                path_start++;
-            }
-
-            // Parse as a dotted path for completion
-            completion_context_t ctx;
-            completion_parse_context(path_start, (int)strlen(path_start), &ctx);
-
-            // Collect matches from roottable (paths are always absolute)
-            completion_matches_t matches;
-            completion_matches_init(&matches);
-
-            if (ctx.has_dot) {
-                hdlhashtable target = completion_navigate_path(ctx.table_path);
-                if (target != nil) {
-                    completion_add_table_entries(&matches, target, ctx.leaf_prefix);
-                }
-            } else {
-                // For single-component paths, include both roottable and path entries
-                completion_add_table_entries(&matches, roottable, ctx.leaf_prefix);
-                completion_add_path_entries(&matches, ctx.leaf_prefix);
-            }
-
-            // Add matches - only include tables (navigable items)
-            for (size_t i = 0; i < matches.count; i++) {
-                if (matches.items[i].is_table) {
-                    char completion[1024];
-                    size_t leaf_len = strlen(ctx.leaf_prefix);
-                    size_t prefix_len = buf_len - leaf_len;
-
-                    // Copy everything before the leaf
-                    if (prefix_len > sizeof(completion) - 1) {
-                        prefix_len = sizeof(completion) - 1;
-                    }
-                    memcpy(completion, buf, prefix_len);
-                    completion[prefix_len] = '\0';
-
-                    // Append the match with trailing dot
-                    size_t remaining = sizeof(completion) - prefix_len - 1;
-                    strncat(completion, matches.items[i].name, remaining);
-                    remaining = sizeof(completion) - strlen(completion) - 1;
-                    strncat(completion, ".", remaining);
-
-                    linenoiseAddCompletion(lc, completion);
-                }
-            }
+            complete_slash_command_path(buf, buf_len, 6, lc);
+            return;
+        }
+        if (strncasecmp(buf, "/list ", 6) == 0) {
+            complete_slash_command_path(buf, buf_len, 6, lc);
             return;
         }
 
