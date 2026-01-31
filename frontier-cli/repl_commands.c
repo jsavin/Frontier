@@ -122,10 +122,30 @@ repl_command_result repl_process_command(const char *input) {
     }
 
     /* ======================================================================
-     * /list - List contents of current table
+     * /list [path] - List contents of a table (current table if no path)
      * ====================================================================== */
-    if (strcmp(cmd_buf, "list") == 0) {
-        repl_output_list();
+    if (strncmp(cmd_buf, "list", 4) == 0) {
+        const char *path = cmd_buf + 4;
+
+        /* Skip whitespace after "list" */
+        while (*path && isspace((unsigned char)*path)) {
+            path++;
+        }
+
+        /* Empty path means list current table */
+        if (*path == '\0') {
+            repl_output_list(nil);
+            return REPL_CMD_CONTINUE;
+        }
+
+        /* Resolve the path to a table */
+        hdlhashtable target = repl_resolve_path(path);
+        if (target == nil) {
+            printf("Error: '%s' is not a valid table path\n", path);
+            return REPL_CMD_CONTINUE;
+        }
+
+        repl_output_list(target);
         return REPL_CMD_CONTINUE;
     }
 

@@ -314,6 +314,119 @@ boolean repl_jump_path(const char *path) {
     return true;
 }
 
+/* Resolve a path to a table without changing the current REPL table.
+ * Supports the same path formats as repl_jump_path():
+ *   - Dot-paths like "system.verbs"
+ *   - Single names resolved via system.paths (e.g., "fileMenu")
+ *   - Script expressions like "parentOf(@user.inetd)"
+ *   - Addresses with leading @ like "@user.prefs"
+ * Returns the resolved table, or nil if path is invalid.
+ */
+hdlhashtable repl_resolve_path(const char *path) {
+    /* Handle empty path - return current table */
+    if (path == NULL || path[0] == '\0') {
+        return repl_get_current_table();
+    }
+
+    /* Check if this looks like a script expression */
+    if (path_is_script_expression(path)) {
+        /* Evaluate script and extract table from result */
+        size_t script_len = strlen(path);
+        Handle htext = nil;
+
+        if (!newemptyhandle(&htext)) {
+            return nil;
+        }
+        if (!sethandlesize(htext, (long)script_len)) {
+            disposehandle(htext);
+            return nil;
+        }
+        HLock(htext);
+        memcpy(*htext, path, script_len);
+        HUnlock(htext);
+
+        tyvaluerecord val;
+        boolean flpushpop = !flscriptrunning;
+
+        if (flpushpop)
+            flpushpop = pushprocess(nil);
+
+        boolean fl = langrun(htext, &val);
+
+        if (flpushpop)
+            popprocess();
+
+        if (!fl) {
+            return nil;
+        }
+
+        /* Extract table from result */
+        hdlhashtable result = nil;
+
+        if (val.valuetype == addressvaluetype) {
+            hdlhashtable htable = nil;
+            bigstring bsname;
+
+            if (getaddressvalue(val, &htable, bsname)) {
+                tyvaluerecord targetval;
+                hdlhashnode hnode;
+
+                if (hashtablelookup(htable, bsname, &targetval, &hnode)) {
+                    langexternalvaltotable(targetval, &result, hnode);
+                }
+            }
+        } else if (val.valuetype == externalvaluetype) {
+            langexternalvaltotable(val, &result, nil);
+        }
+
+        return result;
+    }
+
+    /* Skip leading @ if present */
+    const char *clean_path = path;
+    if (path[0] == '@') {
+        clean_path = path + 1;
+    }
+
+    /* Make a mutable copy */
+    char path_buf[REPL_PATH_MAX_LEN];
+    strncpy(path_buf, clean_path, REPL_PATH_MAX_LEN - 1);
+    path_buf[REPL_PATH_MAX_LEN - 1] = '\0';
+
+    /* Strip trailing dot (from tab completion) */
+    size_t len = strlen(path_buf);
+    if (len > 0 && path_buf[len - 1] == '.') {
+        path_buf[len - 1] = '\0';
+    }
+
+    /* Check if this is a single-component path (no dots) */
+    boolean is_single_component = (strchr(path_buf, '.') == NULL);
+
+    hdlhashtable target = nil;
+
+    if (is_single_component) {
+        /* Single component - try roottable first, then system.paths */
+        bigstring bs;
+        copyctopstring(path_buf, bs);
+        tyvaluerecord val;
+        hdlhashnode node;
+
+        if (roottable != nil && hashtablelookup(roottable, bs, &val, &node)) {
+            langexternalvaltotable(val, &target, node);
+        }
+
+        if (target == nil) {
+            /* Try system.paths */
+            target = completion_search_paths(path_buf);
+        }
+    } else {
+        /* Multi-component path - use standard navigation */
+        target = completion_navigate_path(path_buf);
+    }
+
+    return target;
+}
+
 // Global interrupt flag (signal-safe)
 // Declared as non-static so lang.c can check it for script interruption
 volatile sig_atomic_t g_repl_interrupt_requested = 0;

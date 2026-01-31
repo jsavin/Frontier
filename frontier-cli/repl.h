@@ -35,4 +35,10 @@ const char *repl_get_current_path(void);
  */
 boolean repl_jump_path(const char *path);
 
+/* Resolve a path to a table without changing current table.
+ * Accepts dot-paths, addresses, system.paths names, or script expressions.
+ * Returns the resolved table, or nil if path is invalid.
+ */
+hdlhashtable repl_resolve_path(const char *path);
+
 #endif // REPL_H

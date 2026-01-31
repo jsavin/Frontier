@@ -50,11 +50,12 @@ void repl_output_help(void);
  */
 void repl_output_vars(hdlhashtable workspace);
 
-/* Display contents of current table (for /list command)
+/* Display contents of a table (for /list command)
  * Shows name, type, and display string (N items or "on disk") for each entry.
  * Output is formatted in aligned columns.
+ * If htable is nil, displays the current REPL table.
  */
-void repl_output_list(void);
+void repl_output_list(hdlhashtable htable);
 
 /* --- Event Loop Support (Phase 4) --- */
 

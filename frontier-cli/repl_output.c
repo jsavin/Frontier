@@ -213,14 +213,20 @@ void repl_output_help(void) {
 	fputs("  /jump <path>   Navigate to a table (like cd)\n", stdout);
 	fputs("  /help          Show this help message\n", stdout);
 	fputs("  /keycodes      Debug terminal key sequences\n", stdout);
-	fputs("  /list          List contents of current table\n", stdout);
+	fputs("  /list [path]   List contents of table (current if no path)\n", stdout);
 	fputs("\n", stdout);
 	fputs("Navigation:\n", stdout);
 	fputs("  /jump system              Navigate to system table\n", stdout);
 	fputs("  /jump user.inetd          Navigate to nested table\n", stdout);
 	fputs("  /jump ..                  Go to parent table\n", stdout);
 	fputs("  /jump                     Return to root\n", stdout);
+	fputs("  /jump fileMenu            Navigate via system.paths\n", stdout);
 	fputs("  /jump parentOf(@user)     Evaluate script for address\n", stdout);
+	fputs("\n", stdout);
+	fputs("Listing:\n", stdout);
+	fputs("  /list                     List current table\n", stdout);
+	fputs("  /list system.verbs        List specific table\n", stdout);
+	fputs("  /list fileMenu            List via system.paths\n", stdout);
 	fputs("\n", stdout);
 	fputs("QuickScript Model - Variable Persistence:\n", stdout);
 	fputs("  Local variables (x = 5) don't persist between evaluations\n", stdout);
@@ -335,9 +341,13 @@ void repl_output_vars(hdlhashtable workspace) {
 
 /* --- /list Command Support --- */
 
-/* Display contents of current table (for /list command) */
-void repl_output_list(void) {
-	hdlhashtable htable = repl_get_current_table();
+/* Display contents of a table (for /list command).
+ * If htable is nil, displays the current REPL table.
+ */
+void repl_output_list(hdlhashtable htable) {
+	if (htable == nil) {
+		htable = repl_get_current_table();
+	}
 	hdlhashnode nomad;
 	long count;
 
