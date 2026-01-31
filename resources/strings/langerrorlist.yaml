@@ -496,6 +496,30 @@ langerrorlist:
     text: "Can't compile query ^0."
 
 tablestringlist:
+  - id: system_table_type
+    index: 1
+    text: "system table"
+  - id: table_type
+    index: 2
+    text: "table"
+  - id: table_size_singular
+    index: 3
+    text: "1 item"
+  - id: table_size_plural
+    index: 4
+    text: "^0 items"
+  - id: copy_suffix
+    index: 5
+    text: " copy"
+  - id: pasted_text
+    index: 6
+    text: "pasted text"
+  - id: pasted_prefix
+    index: 7
+    text: "pasted "
+  - id: paste_as
+    index: 8
+    text: "Paste as:"
   - id: question_marks
     index: 9
     text: "???"
@@ -508,6 +532,61 @@ tablestringlist:
   - id: kind_title
     index: 12
     text: "kind"
+
+opstringlist:
+  - id: outline_type
+    index: 1
+    text: "outline"
+  - id: script_type
+    index: 2
+    text: "script"
+  - id: op_size_singular
+    index: 3
+    text: "1 line"
+  - id: op_size_plural
+    index: 4
+    text: "^0 lines"
+
+langmiscstringlist:
+  - id: unknown
+    index: 1
+    text: "unknown"
+  - id: error
+    index: 2
+    text: "error"
+  - id: on_disk
+    index: 3
+    text: "on disk"
+  - id: tree_size_singular
+    index: 4
+    text: "1 node"
+  - id: tree_size_plural
+    index: 5
+    text: "^0 nodes"
+  - id: token_equals
+    index: 6
+    text: "token = "
+  - id: breakpoint
+    index: 7
+    text: "breakpoint"
+  - id: level
+    index: 8
+    text: "level"
+  - id: enum
+    index: 9
+    text: "enum"
+  - id: number
+    index: 10
+    text: "number"
+  - id: none
+    index: 11
+    text: "(none)"
+  - id: nil
+    index: 12
+    text: "(nil)"
+  - id: just_nil
+    index: 13
+    text: "nil"
 
 directionlist:
   - id: up

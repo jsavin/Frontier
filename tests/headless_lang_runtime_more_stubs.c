@@ -97,6 +97,12 @@ boolean getstringlist (short listid, short index, bigstring bs) {
         case directionlistnumber:  // 135 from shell.rsrc.h
             table_name = "directionlist";
             break;
+        case 159:  // opstringlist - outline/script UI strings
+            table_name = "opstringlist";
+            break;
+        case langmiscstringlist:  // 158 from langinternal.h
+            table_name = "langmiscstringlist";
+            break;
         default:
             // Unknown list ID
             setemptystring(bs);

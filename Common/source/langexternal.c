@@ -622,25 +622,15 @@ boolean langexternalgetdisplaystring (hdlexternalhandle h, bigstring bs) {
 	if (!(**hv).flinmemory) {
 
 		langgetmiscstring (ondiskstring, bs);
-		
-		/*
-		copystring ("\pon disk", bs);
-		*/
-		
-		/*
-		copystring ("\pon disk at ", bs);
-		
-		pushlong ((**hv).variabledata, bs);
-		*/
-		
+
 		return (true);
 		}
-	
+
 	switch ((**h).id) {
-		
+
 		case idoutlineprocessor: case idscriptprocessor:
 			opverbgetsummitstring (hv, bs);
-			
+
 			break;
 		
 		case idwordprocessor:

@@ -888,11 +888,22 @@ boolean langrunhandle (Handle htext, bigstring bsresult) {
 		pushvalueontmpstack (&val);
 		}
 	
-	/* Use hashgetvaluestring for display-friendly output.
-	 * This produces strings like "[table: 21 items]" for external types
-	 * instead of just ":" from coercetostring. */
-	fl = hashgetvaluestring (val, bsresult);
-	
+	/* For external values (tables, scripts, outlines), use hashgetvaluestring
+	 * to produce display-friendly output like "21 items" or "on disk".
+	 * For regular values (strings, numbers, etc.), use coercetostring to get
+	 * the actual value without escaping (e.g., script text with newlines). */
+	if (val.valuetype == externalvaluetype) {
+
+		if (hashgetvaluestring (val, bsresult))
+			fl = true;
+		}
+	else if (coercetostring (&val)) {
+
+		texthandletostring (val.data.stringvalue, bsresult);
+
+		fl = true;
+		}
+
 	cleartmpstack ();
 	
 	if (flpushroot)
