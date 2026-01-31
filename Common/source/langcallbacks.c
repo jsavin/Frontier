@@ -59,10 +59,15 @@ boolean langpushlocalchain (hdlhashtable *htable) {
 	
 	/*stacktracer (hashgetstackdepth ());*/ /*debugging code*/
 	
+	log_trace(LOG_COMP_GENERAL, "langpushlocalchain: hmagictable=%p callback=%p",
+	          (void*)hmagictable, (void*)langmagictabledisposecallback);
+
 	if (hmagictable != nil) { /*make sure we've consumed any magic, even on error*/
-		
+
+		log_debug(LOG_COMP_GENERAL, "langpushlocalchain: consuming hmagictable=%p", (void*)hmagictable);
+
 		disposehashtable (hmagictable, false);
-		
+
 		hmagictable = nil;
 		}
 	
@@ -71,16 +76,26 @@ boolean langpushlocalchain (hdlhashtable *htable) {
 	
 	
 boolean langpoplocalchain (hdlhashtable hcheck) {
-	
+
 	register hdlhashtable ht = currenthashtable;
 	register boolean fl;
-	
+
 	assert (hcheck == ht);
-	
+
+	/*
+	 * Call REPL callback to sync variables BEFORE disposing the local table.
+	 * This allows the REPL to capture any variables that were created in
+	 * the `with` block before they are disposed.
+	 */
+	if (langmagictabledisposecallback != nil) {
+		log_debug(LOG_COMP_GENERAL, "langpoplocalchain: calling REPL callback for table=%p", (void*)ht);
+		(*langmagictabledisposecallback)(ht);
+	}
+
 	fl = (*langcallbacks.poptablecallback) (ht);
-	
+
 	/*stacktracer (hashgetstackdepth ());*/ /*debugging code*/
-	
+
 	return (fl);
 	} /*langpoplocalchain*/
 	

@@ -339,6 +339,15 @@ extern boolean flreturn; /*for return op*/
 
 extern hdlhashtable hmagictable; /*for communication with evaluatelist*/
 
+/*
+ * REPL variable persistence callback.
+ * Called just before hmagictable is disposed, allowing the REPL to sync
+ * any new variables from the local frame to persistent storage.
+ * Set to nil to disable.
+ */
+typedef void (*langmagictablecallback)(hdlhashtable hlocals);
+extern langmagictablecallback langmagictabledisposecallback;
+
 extern DialogPtr langmodaldialog;
 
 /* ADR-005: Thread-local parameter state - now macro in lang.h */

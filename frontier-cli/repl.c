@@ -26,6 +26,7 @@
 
 #include "repl.h"
 #include "repl_eval.h"
+#include "repl_variables.h"
 #include "repl_output.h"
 #include "repl_commands.h"
 #include "completion.h"
@@ -959,12 +960,12 @@ static boolean process_line(const char *line, boolean *running) {
         return true;
     }
 
-    // Evaluate as UserTalk
+    // Evaluate as UserTalk with persistent variables
     g_script_running = 1;  // Mark script as running for interrupt handling
 
     bigstring result;
     bigstring error_msg;
-    boolean success = repl_eval_script(line, result, error_msg);
+    boolean success = repl_eval_with_variables(line, result, error_msg);
 
     g_script_running = 0;  // Script finished
 
@@ -1043,11 +1044,17 @@ int repl_main(cli_options_t *options) {
     // 2. Install signal handlers for Ctrl-C and terminal cleanup
     install_signal_handlers();
 
-    // 3. Display welcome message and mark REPL as active
+    // 3. Initialize persistent variables subsystem
+    if (!repl_variables_init()) {
+        log_warn(LOG_COMP_GENERAL, "Failed to initialize REPL variables, continuing without persistence");
+        // Not fatal - we can continue without persistence
+    }
+
+    // 4. Display welcome message and mark REPL as active
     repl_output_welcome();
     g_repl_active = true;
 
-    // 4. Check if we can use the event loop (requires TTY)
+    // 5. Check if we can use the event loop (requires TTY)
     // The non-blocking linenoise API requires a real terminal for raw mode
     use_event_loop = isatty(STDIN_FILENO);
 
@@ -1056,6 +1063,7 @@ int repl_main(cli_options_t *options) {
         log_debug(LOG_COMP_GENERAL, "Non-TTY input detected, using blocking REPL mode");
         int result = repl_main_blocking();
         g_repl_active = false;
+        repl_variables_cleanup();
         cleanup_linenoise();
         repl_output_goodbye();
         return result;
@@ -1142,6 +1150,7 @@ int repl_main(cli_options_t *options) {
     g_active_linenoisestate = NULL;
     repl_set_active_linenoisestate(NULL);
     linenoiseEditStop(&ls);
+    repl_variables_cleanup();
     cleanup_linenoise();
     repl_output_goodbye();
     return 0;

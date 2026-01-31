@@ -71,6 +71,8 @@ byte bsfalse [] = "\x05" "false"; /*or this one, either*/
 
 hdlhashtable hmagictable = nil; /*for communication with evaluatelist*/
 
+langmagictablecallback langmagictabledisposecallback = nil; /*REPL variable sync callback*/
+
 hdlhashtable hkeywordtable; /*holds the language's keywords*/
 
 hdlhashtable hbuiltinfunctions; /*holds the names of the built-in functions*/
