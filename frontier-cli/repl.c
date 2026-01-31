@@ -57,6 +57,9 @@ static hdlhashtable g_repl_current_table = nil;
 static char g_repl_current_path[REPL_PATH_MAX_LEN] = "";
 static char g_repl_prompt[g_repl_prompt_MAX_LEN] = "[root]> ";
 
+// REPL active flag - set when REPL event loop is running
+static boolean g_repl_active = false;
+
 // Session command tracking for merge-before-save
 static char *session_commands[MAX_SESSION_COMMANDS];
 static size_t session_command_count = 0;
@@ -81,6 +84,11 @@ hdlhashtable repl_get_current_table(void) {
 /* Get the current REPL path */
 const char *repl_get_current_path(void) {
     return g_repl_current_path;
+}
+
+/* Check if REPL mode is active */
+boolean repl_is_active(void) {
+    return g_repl_active;
 }
 
 /* Check if path looks like a script expression (contains ( ) or +) */
@@ -1035,8 +1043,9 @@ int repl_main(cli_options_t *options) {
     // 2. Install signal handlers for Ctrl-C and terminal cleanup
     install_signal_handlers();
 
-    // 3. Display welcome message
+    // 3. Display welcome message and mark REPL as active
     repl_output_welcome();
+    g_repl_active = true;
 
     // 4. Check if we can use the event loop (requires TTY)
     // The non-blocking linenoise API requires a real terminal for raw mode
@@ -1046,6 +1055,7 @@ int repl_main(cli_options_t *options) {
         // Fall back to blocking mode for non-TTY input
         log_debug(LOG_COMP_GENERAL, "Non-TTY input detected, using blocking REPL mode");
         int result = repl_main_blocking();
+        g_repl_active = false;
         cleanup_linenoise();
         repl_output_goodbye();
         return result;
@@ -1128,6 +1138,7 @@ int repl_main(cli_options_t *options) {
     }
 
     // 7. Cleanup
+    g_repl_active = false;
     g_active_linenoisestate = NULL;
     repl_set_active_linenoisestate(NULL);
     linenoiseEditStop(&ls);
