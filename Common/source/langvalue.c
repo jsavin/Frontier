@@ -3713,20 +3713,23 @@ static boolean langgettableval (hdlhashtable htable, bigstring bsname, hdlhashta
 
 
 boolean langgetidentifier (hdltreenode htree, bigstring bs) {
-	
+
 	/*
 	call this guy if you are at a node which should contain an identifier, the name
 	of something in a symbol table.
-	
+
 	we allow the user to bracket a name like this ["ct" + "seconds"] so he can construct
 	the name of the variable at runtime.  above this level, this feature is transparent.
-	
+
 	dmb 4.1b2: added call to releaseheaptmp to avoid overflow
 	*/
-	
+
 	register hdltreenode h = htree;
-	tyvaluerecord val;		
-	
+	tyvaluerecord val;
+
+	if (h == nil)
+		return (false);
+
 	switch ((**h).nodetype) {
 	
 		case identifierop:
@@ -4108,15 +4111,15 @@ boolean langgetdotparams (hdltreenode htree, hdlhashtable *htable, bigstring bsn
 	L1: /*deal with param2 here*/
 	
 	if (nodetype == arrayop) { /*param2 is an index*/
-		
+
 		tyvaluerecord valindex;
-		
+
 		if (!evaluatetree ((**h).param2, &valindex))
 			return (false);
-		
+
 		return (langgettableitemname (*htable, &valindex, bsname));
 		}
-	
+
 	if (!langgetidentifier ((**h).param2, bsname))
 		return (false);
 
@@ -7643,13 +7646,19 @@ static boolean parentfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 			}
 
 		/*
-		2026-01-27 jsavin: Dispose of evaluated value. getreadonlyparamvalue() may return
-		either a readonly reference (no disposal needed) or a newly allocated temporary
-		value (requires disposal). The fltmpdata flag indicates ownership. When the param
-		is a function call like parentOf(nameOf(x)), evaluatetree() creates a new value
-		that we must free to avoid leaking memory.
+		2026-01-30 jsavin: CRITICAL FIX - Only dispose if fltmpdata is set.
+
+		getreadonlyparamvalue() may return a readonly reference to an external value
+		(like a script). Disposing that would destroy the actual script while it's
+		being executed, causing crashes. The fltmpdata flag indicates whether we own
+		the value and need to dispose it.
+
+		Previous code unconditionally called disposevaluerecord(), which worked for
+		simple values but caused use-after-free when the parameter was an external
+		value reference.
 		*/
-		disposevaluerecord (veval, false);
+		if (veval.fltmpdata)
+			disposevaluerecord (veval, false);
 		}
 
 	/* If we didn't get an address from evaluation, try the traditional dot notation */

@@ -164,6 +164,11 @@ boolean tcp_get_stats(long listener_id, bigstring stats_out);
 boolean tcp_init_context(void);
 boolean tcp_shutdown_context(void);
 
+/* Callback Queue Processing
+ * Must be called periodically from main thread to process TCP callbacks.
+ * Returns number of callbacks processed. */
+int tcp_process_callbacks(void);
+
 /* Internal Helpers (not exposed to UserTalk) */
 tcp_error_t tcp_map_errno(int err);
 void tcp_set_error(tcp_error_t err, const char *detail);

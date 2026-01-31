@@ -935,16 +935,8 @@ void Microseconds(UnsignedWide *result) {
 }
 
 UInt32 TickCount(void) {
-    // Check if thread test harness is in deterministic mode
-    if (thread_test_is_enabled()) {
-        return thread_test_current_ticks();
-    }
-
-    // 2025-12-15 Codex: Use portable monotonic time layer
-    // Legacy Mac ticks are 1/60th second intervals
-    uint64_t ms = frontier_time_monotonic_millis();
-    // Convert milliseconds to 60ths of a second: ms * 60 / 1000 = ms * 3 / 50
-    return (UInt32)((ms * 3ULL) / 50ULL);
+    // Use the portable time implementation - no test harness dependency
+    return (UInt32)frontier_time_ticks();
 }
 
 long FreeMem(void) {

@@ -28,6 +28,7 @@
 #include "../Common/headers/lang.h"
 #include "../Common/headers/strings.h"
 #include "../Common/headers/tablestructure.h"
+#include "../Common/headers/tcpverbs.h"  /* tcp_process_callbacks */
 
 // History configuration
 #define HISTORY_FILE ".frontier_history"
@@ -375,6 +376,9 @@ int repl_main(cli_options_t *options) {
             }
             repl_output_error(error_buf);
         }
+
+        // Process any pending TCP callbacks (from accept threads)
+        tcp_process_callbacks();
 
         linenoiseFree(line);
     }

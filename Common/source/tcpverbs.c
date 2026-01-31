@@ -84,6 +84,119 @@ typedef struct tcp_listener {
 static tcp_listener_t *g_tcp_listeners[TCP_MAX_LISTENERS];
 static pthread_mutex_t g_listeners_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+/* ========================================================================
+ * Callback Work Queue
+ *
+ * Accept threads cannot safely invoke UserTalk callbacks directly because
+ * ODB (Object Database) operations are not thread-safe. Instead, accept
+ * threads enqueue callback requests, and the main thread processes them.
+ *
+ * Queue is a circular buffer protected by a mutex. Main thread must call
+ * tcp_process_callbacks() periodically (e.g., in REPL loop or idle handler).
+ * ======================================================================== */
+
+#define TCP_CALLBACK_QUEUE_SIZE 64
+
+typedef struct tcp_callback_item {
+    hdlhashtable    callback_table;    /* Hash table containing callback */
+    bigstring       callback_name;     /* Callback script name */
+    long            stream_id;         /* Accepted stream ID */
+    long            refcon;            /* User refcon data */
+    boolean         valid;             /* Item is valid (not consumed) */
+} tcp_callback_item_t;
+
+static tcp_callback_item_t g_callback_queue[TCP_CALLBACK_QUEUE_SIZE];
+static int g_callback_queue_head = 0;  /* Next write position */
+static int g_callback_queue_tail = 0;  /* Next read position */
+static pthread_mutex_t g_callback_queue_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+#define CALLBACK_QUEUE_LOCK()   pthread_mutex_lock(&g_callback_queue_mutex)
+#define CALLBACK_QUEUE_UNLOCK() pthread_mutex_unlock(&g_callback_queue_mutex)
+
+/* Enqueue a callback request (called from accept thread)
+ * Returns true if queued, false if queue is full */
+static boolean tcp_enqueue_callback(hdlhashtable htable, bigstring callback_name,
+                                     long stream_id, long refcon) {
+    boolean result = false;
+
+    CALLBACK_QUEUE_LOCK();
+
+    /* Check if queue is full */
+    int next_head = (g_callback_queue_head + 1) % TCP_CALLBACK_QUEUE_SIZE;
+    if (next_head != g_callback_queue_tail) {
+        tcp_callback_item_t *item = &g_callback_queue[g_callback_queue_head];
+        item->callback_table = htable;
+        copystring(callback_name, item->callback_name);
+        item->stream_id = stream_id;
+        item->refcon = refcon;
+        item->valid = true;
+
+        g_callback_queue_head = next_head;
+        result = true;
+
+        log_debug(LOG_COMP_LANG, "tcp_enqueue_callback: queued callback stream_id=%ld refcon=%ld (queue depth=%d)",
+                 stream_id, refcon, (g_callback_queue_head - g_callback_queue_tail + TCP_CALLBACK_QUEUE_SIZE) % TCP_CALLBACK_QUEUE_SIZE);
+    } else {
+        log_error(LOG_COMP_LANG, "tcp_enqueue_callback: queue full, dropping callback for stream_id=%ld", stream_id);
+    }
+
+    CALLBACK_QUEUE_UNLOCK();
+    return result;
+}
+
+/* Process pending callbacks (called from main thread)
+ * Returns number of callbacks processed */
+int tcp_process_callbacks(void) {
+    int processed = 0;
+
+    while (1) {
+        tcp_callback_item_t item;
+        boolean have_item = false;
+
+        /* Dequeue under lock */
+        CALLBACK_QUEUE_LOCK();
+        if (g_callback_queue_tail != g_callback_queue_head) {
+            item = g_callback_queue[g_callback_queue_tail];
+            g_callback_queue[g_callback_queue_tail].valid = false;
+            g_callback_queue_tail = (g_callback_queue_tail + 1) % TCP_CALLBACK_QUEUE_SIZE;
+            have_item = true;
+        }
+        CALLBACK_QUEUE_UNLOCK();
+
+        if (!have_item)
+            break;
+
+        /* Invoke callback on main thread (safe for ODB access) */
+        log_debug(LOG_COMP_LANG, "tcp_process_callbacks: invoking callback '%.*s' stream_id=%ld refcon=%ld",
+                 stringlength(item.callback_name), item.callback_name + 1,
+                 item.stream_id, item.refcon);
+
+        tyvaluerecord params[2];
+        setlongvalue(item.stream_id, &params[0]);
+        setlongvalue(item.refcon, &params[1]);
+
+        tyvaluerecord result;
+        initvalue(&result, novaluetype);
+
+        boolean callback_success = langruncallbackwithparams(
+            item.callback_table,
+            item.callback_name,
+            2,
+            params,
+            &result
+        );
+
+        if (!callback_success) {
+            log_warn(LOG_COMP_LANG, "tcp_process_callbacks: callback failed for stream_id=%ld", item.stream_id);
+        }
+
+        disposevaluerecord(result, false);
+        processed++;
+    }
+
+    return processed;
+}
+
 /* Mutex Macros */
 #define TCP_LOCK()       pthread_mutex_lock(&g_tcp_context.mutex)
 #define TCP_UNLOCK()     pthread_mutex_unlock(&g_tcp_context.mutex)
@@ -1065,13 +1178,16 @@ boolean tcp_open_stream_name(bigstring hostname, long port, long *stream_id_out)
  * ======================================================================== */
 
 /* Accept thread main function - runs in background for each listener
- * Accepts incoming connections and invokes UserTalk callback with parameters:
- *   param1: streamID (long) - Accepted connection stream ID
- *   param2: remoteAddr (long) - Client IP address (host byte order)
- *   param3: remotePort (long) - Client port number (host byte order)
+ * Accepts incoming connections and enqueues callback requests for main thread.
  *
- * Thread-Safety: Uses grabthreadglobals/releasethreadglobals pattern
- * Callback API: langruncallbackwithparams() from P0a infrastructure (PR #328)
+ * THREAD-SAFETY DESIGN:
+ * This thread does NOT invoke UserTalk callbacks directly because ODB operations
+ * are not thread-safe. Instead, it:
+ *   1. Accepts connections (pure socket operations - thread-safe)
+ *   2. Allocates stream IDs (mutex-protected - thread-safe)
+ *   3. Enqueues callback requests (mutex-protected queue - thread-safe)
+ *
+ * The main thread must call tcp_process_callbacks() to drain the queue.
  */
 static void *tcp_accept_thread(void *arg) {
     tcp_listener_t *listener = (tcp_listener_t *)arg;
@@ -1082,20 +1198,6 @@ static void *tcp_accept_thread(void *arg) {
 
     log_info(LOG_COMP_LANG, "tcp_accept_thread: started for listener_id=%ld port=%d",
              listener->listener_id, listener->port);
-
-    /* FIX Issue #2: Grab thread globals BEFORE any UserTalk operations.
-     * This thread invokes UserTalk callbacks via langruncallbackwithparams(), which
-     * accesses thread-local state (flnextparamislast, current outline, etc.).
-     * Without grabthreadglobals(), callback execution crashes on uninitialized context.
-     *
-     * CRITICAL: Must be FIRST operation in thread, paired with releasethreadglobals()
-     * on exit. This allocates and initializes thread-local storage for this pthread. */
-    if (!grabthreadglobals()) {
-        log_error(LOG_COMP_LANG, "tcp_accept_thread: failed to grab thread globals for listener_id=%ld",
-                 listener->listener_id);
-        return NULL;
-    }
-
     while (listener->running) {
         addr_len = sizeof(client_addr);
         memset(&client_addr, 0, addr_len);
@@ -1143,63 +1245,28 @@ static void *tcp_accept_thread(void *arg) {
         g_tcp_context.total_connections++;
         TCP_UNLOCK();
 
-        log_info(LOG_COMP_LANG, "tcp_accept_thread: allocated stream_id=%d for connection", stream_id);
+        log_debug(LOG_COMP_LANG, "tcp_accept_thread: allocated stream_id=%d for connection", stream_id);
 
-        /* Invoke UserTalk callback with parameters (if callback defined)
-         * MITIGATION Issue #3: Validate callback_table handle before use.
-         * While storing hdlhashtable across thread boundary is unsafe (hash table
-         * could be relocated), we mitigate by checking:
-         * 1. Callback name is non-empty (indicates callback was configured)
-         * 2. Hash table handle is non-nil (basic handle validity)
-         * 3. Callback name exists in table (detects if callback was deleted)
-         * This provides defense-in-depth, though not perfect. Future fix: reference counting. */
+        /* Enqueue callback for main thread to process.
+         *
+         * THREAD-SAFETY: ODB operations are not thread-safe. The accept thread cannot
+         * directly invoke UserTalk callbacks because they trigger database access
+         * (script loading, compilation, etc.) which crashes when accessed concurrently.
+         *
+         * Solution: Enqueue callback requests to a thread-safe work queue. The main
+         * thread must call tcp_process_callbacks() to drain the queue and invoke
+         * callbacks safely. This is typically done in the REPL loop or idle handler.
+         */
         if (stringlength(listener->callback_name) > 0 && listener->callback_table != nil) {
-            /* Validate callback still exists in hash table before invoking */
-            hdlhashnode hnode;
-            if (!hashtablelookupnode(listener->callback_table, listener->callback_name, &hnode)) {
-                log_warn(LOG_COMP_LANG, "tcp_accept_thread: callback '%.*s' no longer exists in table for stream_id=%d",
-                        stringlength(listener->callback_name), listener->callback_name+1, stream_id);
-                continue;  /* Skip callback but continue accepting connections */
-            }
-
-            /* Invoke callback with (streamID, refcon) - matches inetd.supervisor signature.
-             * The refcon was passed to tcp.listenStream and stored in listener->refcon.
-             * For inetd, refcon is the port number.
-             *
-             * Note: remoteAddr and remotePort are available on the stream record and
-             * can be retrieved via tcp.getPeerAddress() and tcp.getPeerPort() if needed.
-             */
-            tyvaluerecord params[2];
-            setlongvalue(stream_id, &params[0]);                      /* streamID */
-            setlongvalue(listener->refcon, &params[1]);               /* refcon (port for inetd) */
-
-            tyvaluerecord result;
-            initvalue(&result, novaluetype);
-
-            log_debug(LOG_COMP_LANG, "tcp_accept_thread: invoking callback stream_id=%d refcon=%ld",
+            log_debug(LOG_COMP_LANG, "tcp_accept_thread: enqueueing callback for stream_id=%d refcon=%ld",
                      stream_id, listener->refcon);
 
-            boolean callback_success = langruncallbackwithparams(
-                listener->callback_table,
-                listener->callback_name,
-                2,
-                params,
-                &result
-            );
-
-            if (!callback_success) {
-                log_warn(LOG_COMP_LANG, "tcp_accept_thread: callback failed for stream_id=%d", stream_id);
+            if (!tcp_enqueue_callback(listener->callback_table, listener->callback_name,
+                                      stream_id, listener->refcon)) {
+                log_error(LOG_COMP_LANG, "tcp_accept_thread: failed to enqueue callback for stream_id=%d", stream_id);
             }
-
-            /* Dispose result value */
-            disposevaluerecord(result, false);
         }
     }
-
-    /* FIX Issue #2: Release thread globals on exit.
-     * Must be paired with grabthreadglobals() at thread start.
-     * Cleans up thread-local storage before pthread terminates. */
-    releasethreadglobals();
 
     log_info(LOG_COMP_LANG, "tcp_accept_thread: exiting for listener_id=%ld", listener->listener_id);
     return NULL;

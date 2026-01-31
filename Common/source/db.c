@@ -828,16 +828,6 @@ boolean dbreadheader (dbaddress adr, boolean *flfree, long *ctbytes, tyvariance 
 	if (databasedata != nil && db_format_is_legacy_db(databasedata))
 		use64 = false;
 
-#if defined(FRONTIER_HEADLESS)
-	/* Trace specific address that's causing issues */
-	if (adr == 0x59709b || adr == 0x59ac24) {
-		fprintf(stderr, "[TRACE] dbreadheader: adr=0x%llx use64=%d db_use64()=%d is_legacy=%d\n",
-		        (unsigned long long)adr, use64, db_use64(),
-		        (databasedata != nil) ? db_format_is_legacy_db(databasedata) : -1);
-		fflush(stderr);
-	}
-#endif
-
 	if (use64) {
 		tyheader64 header;
 

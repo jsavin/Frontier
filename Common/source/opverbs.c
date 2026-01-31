@@ -605,19 +605,6 @@ boolean opverbinmemory (const db_context *ctx, hdlexternalvariable hvariable) {
 
 	adr = (dbaddress) (**hv).variabledata;  /* DISK ADDRESS - format depends on source DB */
 
-#if defined(FRONTIER_HEADLESS)
-	{
-		extern const char *langhash_materialize_current_path;
-		const char *path = (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<unknown>";
-		/* Also log the variable type to understand what kind of external this is */
-		short vartype = (**hv).id;  /* externalvariable.id holds the type */
-		dbaddress oldadr = (**hv).oldaddress;
-		fprintf(stderr, "[TRACE] opverbinmemory ENTER: path='%s' adr=0x%llx oldadr=0x%llx vartype=%d hdatabase=%p\n",
-		        path, (unsigned long long)adr, (unsigned long long)oldadr, (int)vartype, (void*)(**hv).hdatabase);
-		fflush(stderr);
-	}
-#endif
-
 	/*
 	 * 2026-01-29: Handle payload offset within database blocks.
 	 * The stored address may point INTO a block's data area, not to the block start.
@@ -632,11 +619,6 @@ boolean opverbinmemory (const db_context *ctx, hdlexternalvariable hvariable) {
 				dbaddress data_start = normalized + sizeheader;
 				if (adr > data_start)
 					payload_offset = (long) (adr - data_start);
-#if defined(FRONTIER_HEADLESS)
-				fprintf(stderr, "[TRACE] opverbinmemory NORMALIZE: adr=0x%llx -> normalized=0x%llx data_start=0x%llx payload_offset=%ld\n",
-				        (unsigned long long)adr, (unsigned long long)normalized, (unsigned long long)data_start, payload_offset);
-				fflush(stderr);
-#endif
 				adr = normalized;
 			}
 		}
@@ -656,32 +638,9 @@ boolean opverbinmemory (const db_context *ctx, hdlexternalvariable hvariable) {
 		 * The payload_offset was calculated before normalization.
 		 */
 		long packed_size = gethandlesize(hpackedoutline);
-#if defined(FRONTIER_HEADLESS)
-		fprintf(stderr, "[TRACE] opverbinmemory READ: packed_size=%ld payload_offset=%ld\n", packed_size, payload_offset);
-		if (packed_size > 0) {
-			unsigned char *raw = (unsigned char *)(*hpackedoutline);
-			fprintf(stderr, "[TRACE] opverbinmemory RAW first 32: ");
-			for (int i = 0; i < 32 && i < packed_size; i++) fprintf(stderr, "%02x", raw[i]);
-			fprintf(stderr, "\n");
-			if (payload_offset > 0 && payload_offset < packed_size) {
-				fprintf(stderr, "[TRACE] opverbinmemory RAW at offset %ld: ", payload_offset);
-				for (int i = 0; i < 32 && (payload_offset + i) < packed_size; i++) fprintf(stderr, "%02x", raw[payload_offset + i]);
-				fprintf(stderr, "\n");
-			}
-		}
-		fflush(stderr);
-#endif
 		if (payload_offset > 0 && payload_offset < packed_size) {
 			pullfromhandle(hpackedoutline, 0, payload_offset, nil);
 			packed_size = gethandlesize(hpackedoutline);
-#if defined(FRONTIER_HEADLESS)
-			fprintf(stderr, "[TRACE] opverbinmemory TRIMMED: %ld bytes, new size=%ld\n", payload_offset, packed_size);
-			unsigned char *trimmed = (unsigned char *)(*hpackedoutline);
-			fprintf(stderr, "[TRACE] opverbinmemory AFTER TRIM first 32: ");
-			for (int i = 0; i < 32 && i < packed_size; i++) fprintf(stderr, "%02x", trimmed[i]);
-			fprintf(stderr, "\n");
-			fflush(stderr);
-#endif
 		}
 #if defined(FRONTIER_HEADLESS)
 		log_debug(LOG_COMP_OP, "opverbinmemory: dbrefhandle OK adr=0x%llx size=%ld",
@@ -740,15 +699,15 @@ boolean opverbinmemory (const db_context *ctx, hdlexternalvariable hvariable) {
 
 	if (!fl)
 		return (false);
-	
+
 	(**hv).flinmemory = true;
-	
+
 	(**hv).variabledata = (long) ho; /*link into variable structure*/
-	
+
 	(**hv).oldaddress = adr; /*last place this outline was stored*/
-	
+
 	opverbsetupoutline (ho, hv);
-	
+
 	return (true);
 	} /*opverbinmemory*/
 

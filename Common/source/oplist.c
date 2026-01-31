@@ -161,20 +161,20 @@ boolean opnewlist (hdllistrecord *hlist, boolean isrecord) {
 	
 	
 void opdisposelist (hdllistrecord hlist) {
-	
+
 	register hdloutlinerecord ho;
-	
+
 	if (hlist == nil) /*defensive driving*/
 		return;
-		
+
 	hcurrentlist = hlist; /*for our callback routines*/
-	
+
 	ho = (hdloutlinerecord) (**hlist).houtline;
-	
+
 	opdisposeoutline (ho, false);
-	
+
 	hcurrentlist = nil;
-	
+
 	disposehandle ((Handle) hlist);
 	} /*opdisposelist*/
 	

@@ -20,6 +20,7 @@
 
 #include <string.h>
 #include <time.h>
+#include <unistd.h>  /* usleep for processsleep */
 
 // Process globals expected by language engine
 hdlprocessrecord currentprocess = nil;
@@ -150,7 +151,32 @@ boolean myMoof (short a, long b) { (void)a; (void)b; return false; }
 // Threading helpers referenced by langxml
 boolean inmainthread (void) { return true; }
 hdlprocessthread getcurrentthread (void) { return nil; }
-boolean processsleep (hdlprocessthread t, unsigned long timeout) { (void)t; (void)timeout; return true; }
+
+/* Forward declaration for TCP callback processing */
+extern int tcp_process_callbacks(void);
+
+boolean processsleep (hdlprocessthread t, unsigned long timeout) {
+    (void)t;
+    /* timeout is in ticks (60/sec) - convert to milliseconds */
+    unsigned long ms = (timeout * 1000) / 60;
+    unsigned long elapsed = 0;
+    const unsigned long poll_interval_ms = 50;  /* Poll every 50ms */
+
+    while (elapsed < ms) {
+        /* Process any pending TCP callbacks */
+        tcp_process_callbacks();
+
+        /* Sleep for poll interval or remaining time, whichever is less */
+        unsigned long sleep_time = (ms - elapsed < poll_interval_ms) ? (ms - elapsed) : poll_interval_ms;
+        usleep((useconds_t)(sleep_time * 1000));  /* usleep takes microseconds */
+        elapsed += sleep_time;
+    }
+
+    /* Process callbacks one more time after sleep completes */
+    tcp_process_callbacks();
+
+    return true;
+}
 
 // Minimal string/handle helpers used by langxml
 // NOTE: These are now provided by stringverbs.c (compiled in headless mode)

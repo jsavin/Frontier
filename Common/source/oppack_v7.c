@@ -1116,44 +1116,44 @@ static boolean opunpackversion4 (handlestream *packstream) {
 	
 	
 boolean opunpack (Handle hpackedoutline, long *ixload, hdloutlinerecord *houtline) {
-	
+
 	/*
 	9/25/91 dmb: added call to testheapspace to try to improve low-mem handling
-	
+
 	9/15/92 dmb: removed support for version1 format; it never shipped
-	
+
 	12/17/96 dmb: tolerate version numbers new than now, unless high byte changes
 	*/
-	
+
 	handlestream packstream;
 	hdloutlinerecord ho;
 	short versionnumber;
 	boolean fl;
-	
+
 	*houtline = nil;
-	
+
 	if (!newoutlinerecord (&ho))
 		return (false);
-	
+
 	openhandlestream (hpackedoutline, &packstream);
-	
+
 	packstream.pos = *ixload;
-	
+
 	if (!readhandlestream (&packstream, &versionnumber, sizeof (versionnumber))) {
-	
+
 		shellerrormessage (BIGSTRING ("\x3d" "Can't unpack outline because unexpected data was encountered."));
-		
+
 		opdisposeoutline (ho, false);
-		
+
 		return (false);
 		}
-	
+
 	packstream.pos = *ixload;
-	
+
 	disktomemshort (versionnumber);
-	
+
 	oppushoutline (ho);
-	
+
 	/* V7 oppack only handles v4 portable format */
 	if (versionnumber == 4) {
 		fl = opunpackversion4 (&packstream);

@@ -242,13 +242,13 @@ static boolean alloctreenode (hdltreenode *hnode) {
 static void freetreenode (hdltreenode hnode) {
 
 	clearbytes (*hnode, sizeof (tytreenode));
-	
+
 	_entercriticaltreenodesection();
 
 	(**hnode).link = hfirstfreetreenode;
-	
+
 	hfirstfreetreenode = hnode;
-	
+
 	_leavecriticaltreenodesection();
 	} /*freetreenode*/
 
@@ -1126,18 +1126,18 @@ langunpacktreenode (
 	hn = *hnode;
 	
 	if ((*pn).nodevalsize > 0) {
-		
 		if (!newhandle ((*pn).nodevalsize, &hpackedval))
 			goto error;
-		
+
 		if (!pullfromhandle ((*ppi).htreenodevalues, 0, (*pn).nodevalsize, *hpackedval)) /*does _not_ move memory*/
 			goto error;
-		
-		if (!langunpackvalue (hpackedval, &val))
+
+		if (!langunpackvalue (hpackedval, &val)) {
 			goto error;
-		
+		}
+
 		disposehandle (hpackedval);
-		
+
 		(**hn).nodeval = val;
 		}
 	

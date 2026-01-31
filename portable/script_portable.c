@@ -169,10 +169,96 @@ const unsigned char *headless_get_last_lang_error(void) {
     return g_headless_error;
 }
 
+/*
+ * headless_scripterrorroutine - Error callback for script source tracking
+ *
+ * This is a headless-compatible version of systemscripterrorroutine from scripts.c.
+ * It handles the critical case where htable != nil, which is used by langgetthisaddress()
+ * to resolve the 'this' keyword.
+ *
+ * When called with htable != nil:
+ *   - Extracts the external variable from the hash node (scripterrorrefcon)
+ *   - Uses langexternalfindvariable to populate htable and bsname
+ *   - Returns true on success, allowing 'this' to be resolved
+ *
+ * When called with htable == nil:
+ *   - Would normally show error in GUI, but in headless we just return false
+ *   - Error display is handled by headless_error_callback instead
+ */
+static boolean headless_scripterrorroutine (long scripterrorrefcon, long lnum, short charnum, hdlhashtable *htable, bigstring bsname) {
+    #pragma unused (lnum, charnum)
+
+    register hdlhashnode h = (hdlhashnode) scripterrorrefcon;
+    hdlexternalvariable hv;
+
+    if (h == nil || *h == nil) /*defensive driving*/
+        return false;
+
+    if (htable != nil) { /*caller wants table, name - this is the 'this' resolution path*/
+
+        if ((**h).val.valuetype != externalvaluetype)
+            return false;
+
+        hv = (hdlexternalvariable) (**h).val.data.externalvalue;
+
+        return langexternalfindvariable (hv, htable, bsname);
+    }
+
+    /* htable == nil means we should display error - but in headless mode, just return false */
+    return false;
+}
+
+
+/*
+ * headless_pushsourcecode - Push source tracking for script execution
+ *
+ * This enables the 'this' keyword by pushing an error callback that can
+ * resolve the current script's address. Without this, 'this' returns
+ * "hasn't been defined" in headless mode.
+ *
+ * Matches the signature of langcallbacks.pushsourcecodecallback.
+ */
+static boolean headless_pushsourcecode (hdlhashtable htable, hdlhashnode hnode, bigstring bsname) {
+    #pragma unused (bsname)
+
+    register hdlhashnode h = hnode;
+
+    /* Handle local handlers - same logic as scriptpushsourcecode in scripts.c */
+    if (h != nil) {
+
+        if (((**h).val.valuetype == codevaluetype) && (**htable).fllocaltable) { /*a local handler*/
+
+            register hdltreenode hmodule = (**h).val.data.codevalue;
+
+            h = (hdlhashnode) (**hmodule).nodeval.data.longvalue;
+        }
+    }
+
+    /* Skip debugger source record setup - not needed in headless mode */
+
+    return langpusherrorcallback (&headless_scripterrorroutine, (long) h);
+}
+
+
+/*
+ * headless_popsourcecode - Pop source tracking after script execution
+ *
+ * Matches the signature of langcallbacks.popsourcecodecallback.
+ */
+static boolean headless_popsourcecode (void) {
+
+    return langpoperrorcallback ();
+}
+
+
 void headless_init_script_compiler(void) {
     langcallbacks.scriptcompilecallback = &headless_scriptcompiler;
     langcallbacks.errormessagecallback = &headless_error_callback;
     langcallbacks.debugerrormessagecallback = &headless_error_callback;
+
+    /* Enable 'this' keyword support by setting up source code tracking callbacks */
+    langcallbacks.pushsourcecodecallback = &headless_pushsourcecode;
+    langcallbacks.popsourcecodecallback = &headless_popsourcecode;
 }
 
 #endif /* FRONTIER_HEADLESS */

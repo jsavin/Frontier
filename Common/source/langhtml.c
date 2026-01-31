@@ -4533,13 +4533,13 @@ static boolean langlookupvaluefollow (hdlhashtable ht, bigstring bs, tyvaluereco
 
 
 static boolean langcallscriptwithaddress (tyaddress *adrscript, tyaddress *adrparamtable, hdlhashtable hcontext, tyvaluerecord *vreturned) {
-	
+
 	/*
 	6.1d2 AR: New script based on langrunscript.
 	Takes an address instead of a script name.
 	Also assumes a single address as a parameter instead of a parameter list.
 	*/
-	
+
 	boolean flchained = false, fltmpval;
 	boolean fl = false;
 	tyvaluerecord val;
@@ -4549,81 +4549,81 @@ static boolean langcallscriptwithaddress (tyaddress *adrscript, tyaddress *adrpa
 	hdltreenode hscriptcode;
 	tyvaluerecord vhandler;
 	hdlhashnode handlernode;
-		
+
 	if (!hashtablelookupnode ((*adrscript).ht, (*adrscript).bs, &handlernode)) {
-		
+
 		langparamerror (unknownfunctionerror, (*adrscript).bs);
-		
+
 		return (false);
 		}
-	
+
 	vhandler = (**handlernode).val;
-	
+
 	/* make sure the script we're going to call is compiled */
-	
+
 	if ((**(*adrscript).ht).valueroutine == nil) { /*not a kernel table*/
-		
+
 		if (!langexternalvaltocode (vhandler, &hscriptcode)) {
 
 			langparamerror (notfunctionerror, (*adrscript).bs);
 
 			return (false);
 			}
-		
+
 		if (hscriptcode == nil) { /*needs compilation*/
-			
+
 			if (!langcompilescript (handlernode, &hscriptcode))
 				return (false);
 			}
 		}
 
 	/*build a code tree and call the handler, with our error hook in place*/
-	
+
 	if (!setaddressvalue ((*adrscript).ht, (*adrscript).bs, &val))
 		return (false);
-	
+
 	if (!pushfunctionreference (val, &hfunctioncall))
 		return (false);
-	
+
 	if (!setaddressvalue ((*adrparamtable).ht, (*adrparamtable).bs, &val)
 			|| !exemptfromtmpstack (&val)
 			|| !newconstnode (val, &hparamlist)) {
-	
+
 		langdisposetree (hfunctioncall);
-		
+
 		return (false);
 		}
 
 	if (!pushfunctioncall (hfunctioncall, hparamlist, &hcode)) /*consumes input parameters*/
 		return (false);
-	
+
 	if (hcontext != nil) {
-		
+
 		flchained = (**hcontext).flchained;
-		
+
 		if (flchained)
 			pushhashtable (hcontext);
 		else
 			chainhashtable (hcontext); /*establishes outer local context*/
 		}
-	
+
 	fl = evaluatelist (hcode, vreturned);
-	
+
 	fltmpval = exemptfromtmpstack (vreturned); /*must survive disposing of local scope chain*/
-	
+
 	if (hcontext != nil) {
-		
+
 		if (flchained)
 			pophashtable ();
 		else
 			unchainhashtable ();
 		}
-	
+
 	if (fltmpval) /*insert into the next-most-global tmpstack, if one exists*/
 		pushvalueontmpstack (vreturned);
 
 	langdisposetree (hcode);
-		
+
 	return (fl);
 	} /*langcallscriptwithaddress*/
 
@@ -5322,14 +5322,13 @@ static boolean webservercallfilters (tyaddress *pta, bigstring bstable, bigstrin
 	ptrvoid saverefcon;
 	boolean fl;
 
-	
 	if (!langfastaddresstotable (roottable, bstable, &ht))
 		return (false);
-	
+
 	while (hashgetnthnode (ht, i++, &x)) {
 
 		setemptystring (bserror);
-	
+
 		langtraperrors (bserror, &savecallback, &saverefcon);
 
 		gethashkey (x, adrscript.bs);
@@ -5337,7 +5336,7 @@ static boolean webservercallfilters (tyaddress *pta, bigstring bstable, bigstrin
 		adrscript.ht = ht;
 
 		fl = followaddress (&adrscript); /*6.1b5 AR: don't ignore return value of this call*/
-			
+
 		fl = fl && langcallscriptwithaddress (&adrscript, pta, nil, &val);
 
 		languntraperrors (savecallback, saverefcon, !fl);
@@ -5350,7 +5349,7 @@ static boolean webservercallfilters (tyaddress *pta, bigstring bstable, bigstrin
 		if (!fl && !webserveraddtoerrorlog (&adrscript, bserrortype, bserror))
 			return (false);
 		} /*while*/
-	
+
 	return (true);
 	} /*webservercallfilters*/
 
@@ -5507,21 +5506,21 @@ static boolean webserverlocateresponder (hdlhashtable hparamtable, bigstring bs,
 	
 	if (!findinparenttable (hparamtable, &adrparamtable.ht, adrparamtable.bs))
 		return (false);
-	
+
 	if (!langfastaddresstotable (roottable, STR_P_USERWEBSERVERRESPONDERS, &hresponderstable))
 		return (false);
 
 	if (!webserverlocaterespondercontextbuilder (hparamtable, &hcontext))
 		return (false);
-	
+
 	disablelangerror ();
-	
+
 	while (hashgetnthnode (hresponderstable, i++, &hnode)) {
 
 		val = (**hnode).val;
 
 		gethashkey (hnode, bskey); /*7.0.1 PBS: save the key before we resolve addresses.*/
-						
+
 		if (val.valuetype == addressvaluetype) {
 
 			if (!getaddressvalue (val, &ht, bstemp))
@@ -5530,23 +5529,23 @@ static boolean webserverlocateresponder (hdlhashtable hparamtable, bigstring bs,
 			if (!langsymbolreference (ht, bstemp, &val, &hnode))
 				continue;
 			}
-			
+
 		if (!langexternalvaltotable (val, &ht, hnode))
 			continue;
-			
+
 		if (!langlookupbooleanvalue (ht, STR_P_ENABLED, &flenabled) || !flenabled)
 			continue;
-			
+
 		if (!hashtablelookup (ht, STR_P_CONDITION, &vcondition, &hnode2))
 			continue;
-			
+
 		if ((vcondition.valuetype == codevaluetype)
 				|| (vcondition.valuetype == externalvaluetype && langexternalgettype (vcondition) == idscriptprocessor)) {
-				
+
 			copystring (STR_P_CONDITION, adrscript.bs);
-				
+
 			adrscript.ht = ht;
-			
+
 			if (!langcallscriptwithaddress (&adrscript, &adrparamtable, hcontext, &v)) {
 
 				if (!ingoodthread ()) {/*unwind quickly*/
@@ -5559,7 +5558,7 @@ static boolean webserverlocateresponder (hdlhashtable hparamtable, bigstring bs,
 			}
 		else {
 			Handle htext;
-				
+
 			if (!copyvaluerecord (vcondition, &val)
 					|| !coercetostring (&val)
 					|| !copyhandle (val.data.stringvalue, &htext))
@@ -5575,31 +5574,31 @@ static boolean webserverlocateresponder (hdlhashtable hparamtable, bigstring bs,
 				continue;
 				}
 			}
-				
+
 		if (coercetoboolean (&v) && v.data.flvalue) { /* found it */
-				
+
 			//gethashkey (hnode, bs); /*7.0.1 PBS: commented out. We may have resolved one or more addresses.*/
 
 			copystring (bskey, bs); /*7.0.1 PBS: use the key we got before resolving addresses.*/
-				
+
 			flfound = true;
-				
+
 			break;
-			}	
+			}
 		} /*while*/
-	
+
 	enablelangerror ();
 
 	/* fall back to default responder if neccessary */
 
 	if (!flfound) {
 		hdlhashtable hprefstable;
-		
+
 		if (langfastaddresstotable (roottable, STR_P_USERWEBSERVERPREFS, &hprefstable)
 				&& langlookupstringvalue (hprefstable, STR_P_DEFAULTRESPONDER, bs))
 			flfound = true;
 		}
-	
+
 	if (flfound)
 		flfound = webservergetrespondertableaddress (bs, adrrespondertable);
 
@@ -5938,7 +5937,7 @@ boolean webserverdispatch (tyaddress *pta, tyvaluerecord *vreturn) {
 
 	/*
 	6.1d2 AR: Dispatch the request to the appropriate responder.
-		
+
 	6.1d4 AR: Reviewed for proper error handling and reporting.
 	*/
 
@@ -5946,25 +5945,25 @@ boolean webserverdispatch (tyaddress *pta, tyvaluerecord *vreturn) {
 	tyaddress adrresponder;
 	bigstring bsrespondername;
 	Handle h = nil;
-	
+
 	if (!langsuretablevalue ((*pta).ht, (*pta).bs, &hparamtable))
 		return (false);
-	
+
 	/* call pre-filters */
-	
+
 	if (!webservercallfilters (pta, STR_P_USERWEBSERVERPREFILTERS, STR_P_PREFILTERERROR))
 		return (false);
-	
+
 	/* determine name of responder and address of responder table */
-	
+
 	if (!webserverlocateresponder (hparamtable, bsrespondername, &adrresponder))
 		return (false);
-	
+
 	/* initialize paramtable fields */
-	
+
 	if (!langassignstringvalue (hparamtable, STR_P_RESPONDER, bsrespondername))
 		return (false);
-	
+
 	if (!langassignaddressvalue (hparamtable, STR_P_RESPONDERTABLEADR, &adrresponder))
 		return (false);
 
@@ -5975,16 +5974,16 @@ boolean webserverdispatch (tyaddress *pta, tyvaluerecord *vreturn) {
 		return (false);
 
 	if (!langassigntextvalue (hparamtable, STR_P_RESPONSEBODY, h)) {
-	
+
 		disposehandle (h);
-		
+
 		return (false);
 		}
-	
+
 	if (!langassignnewtablevalue (hparamtable, STR_P_RESPONSEHEADERS, &hresponseheaderstable))
 		return (false);
 
-	/* call responder, run postfilters, and build response */		
+	/* call responder, run postfilters, and build response */
 
 	return (webservercallresponder (pta, &adrresponder, vreturn));
 	} /*webserverdispatch*/
@@ -6554,7 +6553,7 @@ boolean webserverserver (tyaddress *pta, Handle hrequest, tyvaluerecord *vreturn
 
 	if (!webserverreadrequest (hparamtable, hrequest, &statuscode, bsexplanation))
 		goto exit;
-	
+
 	if (statuscode != 200)
 		goto internal_error;
 
@@ -6563,7 +6562,7 @@ boolean webserverserver (tyaddress *pta, Handle hrequest, tyvaluerecord *vreturn
 
 	if (!webserverprocessfirstline (hparamtable, &statuscode, bsexplanation))
 		goto exit;
-	
+
 	if (statuscode != 200)
 		goto internal_error;
 
