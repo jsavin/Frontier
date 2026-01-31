@@ -39,6 +39,8 @@ boolean fllangerror = false;  /*if true, the langerror dialog has already appear
 
 unsigned short langerrordisable = 0; /*it's possible to temporarily disable lang errors*/
 
+boolean flreplmode = false;  /*if true, we're in interactive REPL mode (set by CLI)*/
+
 
 
 

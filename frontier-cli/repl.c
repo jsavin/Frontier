@@ -39,6 +39,7 @@
 #include "../Common/headers/memory.h"       /* newemptyhandle, sethandlesize */
 #include "../Common/headers/tcpverbs.h"     /* tcp_process_callbacks */
 #include "../Common/headers/process.h"      /* agentsenabled, agentscheduler_tick */
+#include "../Common/headers/langinternal.h" /* flreplmode */
 
 // History configuration
 #define HISTORY_FILE ".frontier_history"
@@ -1135,6 +1136,7 @@ int repl_main(cli_options_t *options) {
     // 4. Display welcome message and mark REPL as active
     repl_output_welcome();
     g_repl_active = true;
+    flreplmode = true;  /* Set runtime flag for msg() prefix behavior */
 
     // 5. Check if we can use the event loop (requires TTY)
     // The non-blocking linenoise API requires a real terminal for raw mode
@@ -1145,6 +1147,7 @@ int repl_main(cli_options_t *options) {
         log_debug(LOG_COMP_GENERAL, "Non-TTY input detected, using blocking REPL mode");
         int result = repl_main_blocking();
         g_repl_active = false;
+        flreplmode = false;  /* Clear runtime flag */
         repl_variables_cleanup();
         cleanup_linenoise();
         repl_output_goodbye();
@@ -1229,6 +1232,7 @@ int repl_main(cli_options_t *options) {
 
     // 7. Cleanup
     g_repl_active = false;
+    flreplmode = false;  /* Clear runtime flag */
     g_active_linenoisestate = NULL;
     repl_set_active_linenoisestate(NULL);
     linenoiseEditStop(&ls);

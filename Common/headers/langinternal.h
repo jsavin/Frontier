@@ -322,6 +322,8 @@ enum { /*lang misc display strings*/
 
 extern boolean fllangerror; /*if true, the langerror dialog has already appeared*/
 
+extern boolean flreplmode; /*if true, we're in interactive REPL mode (set by CLI)*/
+
 extern unsigned short langerrordisable; /*6.1.1b2 AR: if > 0, don't execute langerrors*/
 
 extern Handle tryerror; /*non-nil after try error, until else is evaluated*/

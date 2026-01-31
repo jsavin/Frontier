@@ -73,6 +73,19 @@ static boolean ensure_subtable(hdlhashtable parent, byte *name, hdlhashtable *re
  * Callback to sync variables from the with-block's local table
  * to the persistent variables table before disposal.
  *
+ * FLOW DIAGRAM:
+ *   1. User enters code in REPL (e.g., "x = 42")
+ *   2. repl_eval_with_variables() wraps it: "with system.temp.FrontierREPL.variables { x = 42 }"
+ *   3. Sets g_repl_eval_active = true
+ *   4. langrunhandletraperror() evaluates the wrapped script
+ *   5. The `with` statement creates a local table with references to variables table
+ *   6. User's code executes, creating/modifying variables in the local table
+ *   7. When `with` block ends, langpoplocalchain() is called
+ *   8. langpoplocalchain() invokes this callback with the local table
+ *   9. We copy new/modified variables to system.temp.FrontierREPL.variables
+ *  10. Local table is disposed (but variables now persisted)
+ *  11. g_repl_eval_active = false
+ *
  * This is called by langpoplocalchain just before disposing the local table.
  * We only sync when g_repl_eval_active is true (we're in a REPL eval).
  */
@@ -163,7 +176,7 @@ static void repl_sync_variables_callback(hdlhashtable hlocals) {
     }
 
     if (count > 0) {
-        log_debug(LOG_COMP_GENERAL, "Synced %d variables to persistent storage", count);
+        log_info(LOG_COMP_GENERAL, "Synced %d variable(s) to persistent storage", count);
     }
 }
 
@@ -395,6 +408,15 @@ void repl_set_focus(hdlhashtable htable) {
      * We use setexemptaddressvalue instead of setaddressvalue to avoid
      * interacting with the tmpstack, which can cause issues when called
      * from REPL command handlers.
+     *
+     * CONTEXT GUARD NOTE (per docs/ARCHITECTURAL_ANTIPATTERNS.md):
+     * We do NOT need context guards here because:
+     * 1. We're not navigating through addresses (no langgetdotparams/langsymbolreference)
+     * 2. We're directly assigning a table handle we already have
+     * 3. setexemptaddressvalue() creates a simple address value without evaluation
+     * 4. hashassign() just stores the value - no interpreter state changes
+     * This function is called from REPL command handlers (/jump) outside of
+     * script evaluation context, so there's no mode stack to corrupt.
      */
     log_debug(LOG_COMP_GENERAL, "repl_set_focus: htable=%p", (void*)htable);
 
@@ -409,7 +431,8 @@ void repl_set_focus(hdlhashtable htable) {
     }
 
     /* Create address value pointing to this table.
-     * Use setexemptaddressvalue to avoid tmpstack interaction. */
+     * Use setexemptaddressvalue to avoid tmpstack interaction.
+     * This creates a direct reference without evaluating paths. */
     tyvaluerecord focusval;
     if (!setexemptaddressvalue(htable, zerostring, &focusval)) {
         log_warn(LOG_COMP_GENERAL, "repl_set_focus: failed to create address");

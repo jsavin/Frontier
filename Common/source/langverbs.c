@@ -73,7 +73,6 @@
 
 #ifdef FRONTIER_HEADLESS
 #include "headless_selection.h"
-#include "../../frontier-cli/repl.h"  /* For repl_is_active() */
 #endif
 
 
@@ -1253,7 +1252,7 @@ boolean langmsgfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	/* Skip output for empty strings (no-op) */
 	if (stringlength (bs) > 0) {
 		/* In REPL mode, prefix with "msg: " to distinguish from evaluation results */
-		if (repl_is_active()) {
+		if (flreplmode) {
 			fputs("msg: ", stdout);
 		}
 		/* Use fwrite with exact length for Pascal strings (not null-terminated) */
