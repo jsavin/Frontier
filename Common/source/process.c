@@ -3136,13 +3136,18 @@ void agentscheduler_tick (void) {
 
 				if (!processtimeslice (hp)) {
 
-					if ((**hglobals).flretryagent)
+					/* Re-fetch thread globals after processtimeslice - context may have changed */
+					hglobals = hthreadglobals;
+
+					if (hglobals != nil && (**hglobals).flretryagent) {
 						(**hglobals).flretryagent = false;
-					else
+					}
+					else {
 						deleteprocess (hp);
 					}
 				}
 			}
+		}
 
 		(**hlist).ctrunning--;
 

@@ -24,7 +24,10 @@
 static struct linenoiseState *g_linenoisestate = NULL;
 
 /* Helper: Output string to FILE, converting CR (Mac) to LF (Unix).
- * Frontier internally uses CR for line endings which corrupts terminal display. */
+ * Frontier internally uses CR for line endings (Classic Mac convention).
+ * This converts CR→LF for proper Unix terminal display.
+ * Note: Frontier never produces CRLF (Windows) - only CR (Mac) or LF (Unix).
+ * If CRLF were present, this would convert to LFLF (double newlines). */
 static void fputs_cr_to_lf(const char *str, size_t len, FILE *stream) {
 	for (size_t i = 0; i < len; i++) {
 		if (str[i] == '\r') {

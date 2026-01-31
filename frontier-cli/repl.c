@@ -109,8 +109,17 @@ static void install_signal_handlers(void) {
     atexit(cleanup_terminal);
 }
 
+/* Guard to prevent re-entrant interrupt handling */
+static volatile sig_atomic_t g_handling_interrupt = 0;
+
 /* Handle interrupt in event loop */
 static void handle_interrupt(struct linenoiseState *ls, char *buf, size_t buflen) {
+    /* Prevent double-handling if user mashes Ctrl-C rapidly */
+    if (g_handling_interrupt) {
+        g_repl_interrupt_requested = 0;
+        return;
+    }
+    g_handling_interrupt = 1;
     g_repl_interrupt_requested = 0;
 
     if (g_script_running) {
@@ -128,6 +137,8 @@ static void handle_interrupt(struct linenoiseState *ls, char *buf, size_t buflen
         linenoiseEditStart(ls, STDIN_FILENO, STDOUT_FILENO,
                           buf, buflen, REPL_PROMPT);
     }
+
+    g_handling_interrupt = 0;
 }
 
 /* Adds a command to the session tracking list for history merge-before-save. */
@@ -545,6 +556,7 @@ int repl_main(cli_options_t *options) {
                                            line_buf, sizeof(line_buf), REPL_PROMPT) == -1) {
                         log_error(LOG_COMP_GENERAL, "Failed to restart linenoise editing");
                         running = false;
+                        break;  // Exit immediately - linenoise state is invalid
                     }
                 }
             } else {
