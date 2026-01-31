@@ -5,6 +5,7 @@
  * in the REPL interactive mode.
  *
  * Phase 1 implementation: Basic value display using coercetostring()
+ * Phase 4 addition: Async output for event loop (linenoiseHide/Show)
  */
 
 #ifndef REPL_OUTPUT_H
@@ -12,6 +13,9 @@
 
 #include "../Common/headers/frontier.h"
 #include "../Common/headers/lang.h"
+
+/* Forward declaration for linenoise state */
+struct linenoiseState;
 
 /* Display welcome message at REPL startup */
 void repl_output_welcome(void);
@@ -45,5 +49,19 @@ void repl_output_help(void);
  * workspace: hash table containing workspace variables
  */
 void repl_output_vars(hdlhashtable workspace);
+
+/* --- Event Loop Support (Phase 4) --- */
+
+/* Set the active linenoise state for async output.
+ * Call this when entering/leaving the event loop.
+ * Pass NULL to disable async output mode.
+ */
+void repl_set_active_linenoisestate(struct linenoiseState *ls);
+
+/* Display async output while user is typing at prompt.
+ * Uses linenoiseHide/Show to preserve the user's current input.
+ * If not in event loop mode (linenoisestate is NULL), prints directly.
+ */
+void repl_async_output(const char *message);
 
 #endif /* REPL_OUTPUT_H */

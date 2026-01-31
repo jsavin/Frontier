@@ -155,6 +155,21 @@ hdlprocessthread getcurrentthread (void) { return nil; }
 /* Forward declaration for TCP callback processing */
 extern int tcp_process_callbacks(void);
 
+/* Agent scheduler stubs for headless mode.
+ * In headless CLI mode, we don't run background agents the traditional way.
+ * The event loop calls these to check if agents should run.
+ */
+boolean agentsenabled (void) {
+    /* In headless mode, agents are disabled by default.
+     * The full implementation would check user.prefs.flAgentsEnabled */
+    return false;
+}
+
+void agentscheduler_tick (void) {
+    /* No-op in headless mode - agents don't run in background.
+     * The full implementation in process.c handles agent scheduling. */
+}
+
 boolean processsleep (hdlprocessthread t, unsigned long timeout) {
     (void)t;
     /* timeout is in ticks (60/sec) - convert to milliseconds */

@@ -165,6 +165,17 @@ boolean setagentsenable (boolean flagents) {
 	} /*setagentsenable*/
 
 
+boolean agentsenabled (void) {
+
+	/*
+	2026-01-30: Return whether agents are enabled.
+	Used by event loop to determine whether to call agentscheduler_tick().
+	*/
+
+	return (flagentsenabled && !flagentsdisabled);
+	} /*agentsenabled*/
+
+
 boolean pushprocess (register hdlprocessrecord hp) {
 	
 	/*
@@ -3058,6 +3069,82 @@ static void agentscheduler (void) {
 	if ((**hlist).fldisposewhenidle) /*try disposing now; will check ctrunning again*/
 		disposeprocesslist (hlist);
 	} /*agentscheduler*/
+
+
+void agentscheduler_tick (void) {
+
+	/*
+	2026-01-30: Non-blocking agent scheduler tick for event loop integration.
+
+	Unlike agentscheduler() which runs in its own thread and processes all
+	ready agents, this function:
+	- Runs once and returns immediately
+	- Processes only ONE ready agent per call (to keep event loop responsive)
+	- Does not create or manage threads
+	- Is safe to call from the main thread's event loop
+
+	This enables the CLI REPL to run agents while waiting for user input,
+	without requiring a separate agent thread.
+	*/
+
+	register hdlprocesslist hlist = processlist;
+	register hdlprocessrecord hp;
+	register unsigned long x;
+	register hdlprocessrecord hnext;
+
+	if (!flagentsenabled)
+		return;
+
+	if (flagentsdisabled)
+		return;
+
+	if (hlist == nil)
+		return;
+
+	flprocesscodedisposed = false;
+
+	x = timenow64 ();
+
+	for (hp = (**hlist).hfirstprocess; hp != nil; hp = hnext) {
+
+		register unsigned long sleepuntil = (**hp).sleepuntil;
+
+		hnext = (**hp).hnextprocess;
+
+		if ((**hp).floneshot) /*we don't deal with one-shots here*/
+			continue;
+
+		if ((sleepuntil != 0) && (sleepuntil > x)) /*process is sleeping*/
+			continue;
+
+		if ((**hp).flrunning) /*skip if already running*/
+			continue;
+
+		/* Found a ready agent - run it for one time slice */
+		(**hp).sleepuntil = x + 1; /*reschedule for a second later*/
+
+		(**hlist).ctrunning++;
+
+		if (hthreadglobals != nil && !(**hthreadglobals).flretryagent) {
+
+			if (!processtimeslice (hp)) {
+
+				if ((**hthreadglobals).flretryagent)
+					(**hthreadglobals).flretryagent = false;
+				else
+					deleteprocess (hp);
+				}
+			}
+
+		(**hlist).ctrunning--;
+
+		/* Only run ONE agent per tick to keep event loop responsive */
+		break;
+		}
+
+	if ((**hlist).fldisposewhenidle)
+		disposeprocesslist (hlist);
+	} /*agentscheduler_tick*/
 
 
 static pascal void *agentthreadmain (void *ignore) {

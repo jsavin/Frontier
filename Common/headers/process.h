@@ -259,6 +259,8 @@ extern boolean scheduleprocess (hdlprocessrecord hprocess, hdlprocessthread *pne
 
 extern void processscheduler (void);
 
+extern void agentscheduler_tick (void);  /* Non-blocking tick for event loop integration */
+
 extern void processchecktimeouts (void);
 
 extern boolean processsymbolunlinking (hdlhashtable, hdlhashnode);

@@ -7,15 +7,21 @@
  * String Conversion: Uses coercetostring() for value display. Tables get
  * special handling (summary instead of full dump). See texthandletostring()
  * for heap-to-Pascal string conversion.
+ *
+ * Phase 4: Added async output support using linenoiseHide/Show for event loop.
  */
 
 #include "repl_output.h"
+#include "linenoise.h"  /* For linenoiseHide/Show */
 #include "../Common/headers/lang.h"
 #include "../Common/headers/langexternal.h"
 #include "../Common/headers/strings.h"
 #include "../Common/headers/logging.h"
 #include <stdio.h>
 #include <string.h>
+
+/* Global linenoise state for async output (set by event loop) */
+static struct linenoiseState *g_linenoisestate = NULL;
 
 /* Display welcome message at REPL startup */
 void repl_output_welcome(void) {
@@ -259,4 +265,32 @@ void repl_output_vars(hdlhashtable workspace) {
 	}
 
 	fflush(stdout);
+}
+
+/* --- Event Loop Support (Phase 4) --- */
+
+/* Set the active linenoise state for async output */
+void repl_set_active_linenoisestate(struct linenoiseState *ls) {
+	g_linenoisestate = ls;
+}
+
+/* Display async output while user is typing at prompt.
+ * Uses linenoiseHide/Show to preserve the user's current input.
+ */
+void repl_async_output(const char *message) {
+	if (message == NULL) {
+		return;
+	}
+
+	if (g_linenoisestate != NULL) {
+		/* In event loop mode - hide prompt, print, restore */
+		linenoiseHide(g_linenoisestate);
+		printf("%s\n", message);
+		fflush(stdout);
+		linenoiseShow(g_linenoisestate);
+	} else {
+		/* Not in event loop mode - just print directly */
+		printf("%s\n", message);
+		fflush(stdout);
+	}
 }
