@@ -1251,6 +1251,10 @@ boolean langmsgfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	/* In headless mode, output message to stdout as plain text */
 	/* Skip output for empty strings (no-op) */
 	if (stringlength (bs) > 0) {
+		/* In REPL mode, prefix with "msg: " to distinguish from evaluation results */
+		if (flreplmode) {
+			fputs("msg: ", stdout);
+		}
 		/* Use fwrite with exact length for Pascal strings (not null-terminated) */
 		fwrite(stringbaseaddress (bs), 1, stringlength (bs), stdout);
 		fputc('\n', stdout);

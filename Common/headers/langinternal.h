@@ -322,6 +322,8 @@ enum { /*lang misc display strings*/
 
 extern boolean fllangerror; /*if true, the langerror dialog has already appeared*/
 
+extern boolean flreplmode; /*if true, we're in interactive REPL mode (set by CLI)*/
+
 extern unsigned short langerrordisable; /*6.1.1b2 AR: if > 0, don't execute langerrors*/
 
 extern Handle tryerror; /*non-nil after try error, until else is evaluated*/
@@ -338,6 +340,15 @@ extern boolean flcontinue; /*for continue op*/
 extern boolean flreturn; /*for return op*/
 
 extern hdlhashtable hmagictable; /*for communication with evaluatelist*/
+
+/*
+ * REPL variable persistence callback.
+ * Called just before hmagictable is disposed, allowing the REPL to sync
+ * any new variables from the local frame to persistent storage.
+ * Set to nil to disable.
+ */
+typedef void (*langmagictablecallback)(hdlhashtable hlocals);
+extern langmagictablecallback langmagictabledisposecallback;
 
 extern DialogPtr langmodaldialog;
 

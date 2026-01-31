@@ -43,4 +43,9 @@ boolean repl_jump_path(const char *path);
  */
 hdlhashtable repl_resolve_path(const char *path, char *resolved_path, size_t path_bufsize);
 
+/* Check if REPL mode is currently active.
+ * Used by msg() to add "msg: " prefix in interactive mode.
+ */
+boolean repl_is_active(void);
+
 #endif // REPL_H

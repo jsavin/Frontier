@@ -42,6 +42,7 @@
 #include "langsystem7.h"
 #include "oplist.h"
 #include "ops.h"
+#include "logging.h"
 
 
 	#include "osacomponent.h"
@@ -869,7 +870,7 @@ static boolean evaluatewith (hdltreenode hwith, tyvaluerecord *valtree) {
 	unchainhashtable ();
 	
 	hmagictable = ht; /*evaluatelist uses this as its local symbol table*/
-	
+
 	return (evaluatelist ((**h).param2, valtree));
 	
 	error: {
@@ -1832,9 +1833,9 @@ boolean evaluatelist (hdltreenode hfirst, tyvaluerecord *val) {
 		return (false);
 	
 	flhavelocals = (**currenthashtable).fllocaltable;
-	
+
 	flneedthis = !flhavelocals && (hmagictable == nil);
-	
+
 	#if fltryerrorstackcode
 		flneedlocals = !flhavelocals || (hmagictable != nil) || (tryerror != nil) || (tryerrorstack != nil);
 	#else
