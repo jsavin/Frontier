@@ -34,8 +34,10 @@
 #include "../Common/headers/lang.h"
 #include "../Common/headers/strings.h"
 #include "../Common/headers/tablestructure.h"
-#include "../Common/headers/tcpverbs.h"  /* tcp_process_callbacks */
-#include "../Common/headers/process.h"   /* agentsenabled, agentscheduler_tick */
+#include "../Common/headers/langexternal.h" /* langexternalvaltotable */
+#include "../Common/headers/memory.h"       /* newemptyhandle, sethandlesize */
+#include "../Common/headers/tcpverbs.h"     /* tcp_process_callbacks */
+#include "../Common/headers/process.h"      /* agentsenabled, agentscheduler_tick */
 
 // History configuration
 #define HISTORY_FILE ".frontier_history"
@@ -81,12 +83,124 @@ const char *repl_get_current_path(void) {
     return g_repl_current_path;
 }
 
+/* Check if path looks like a script expression (contains ( ) or +) */
+static boolean path_is_script_expression(const char *path) {
+    if (path == NULL) return false;
+    while (*path) {
+        if (*path == '(' || *path == ')' || *path == '+') {
+            return true;
+        }
+        path++;
+    }
+    return false;
+}
+
+/* Evaluate a script and jump to the resulting address.
+ * Returns true if script evaluated to a valid table address.
+ */
+static boolean repl_jump_script(const char *script) {
+    /* Create handle for script text */
+    size_t script_len = strlen(script);
+    Handle htext = nil;
+
+    if (!newemptyhandle(&htext)) {
+        return false;
+    }
+    if (!sethandlesize(htext, (long)script_len)) {
+        disposehandle(htext);
+        return false;
+    }
+    HLock(htext);
+    memcpy(*htext, script, script_len);
+    HUnlock(htext);
+
+    /* Evaluate the script */
+    tyvaluerecord val;
+    boolean flpushpop = !flscriptrunning;
+
+    if (flpushpop)
+        flpushpop = pushprocess(nil);
+
+    boolean fl = langrun(htext, &val);  /* langrun consumes htext */
+
+    if (flpushpop)
+        popprocess();
+
+    if (!fl) {
+        return false;
+    }
+
+    /* Check if result is an address */
+    if (val.valuetype != addressvaluetype) {
+        /* Not an address - try to interpret as external table value */
+        if (val.valuetype == externalvaluetype) {
+            hdlhashtable target = nil;
+            if (langexternalvaltotable(val, &target, nil) && target != nil) {
+                g_repl_current_table = target;
+                /* For script results, show the expression in prompt */
+                strncpy(g_repl_current_path, script, REPL_PATH_MAX_LEN - 1);
+                g_repl_current_path[REPL_PATH_MAX_LEN - 1] = '\0';
+                update_prompt();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /* Extract table and name from address */
+    hdlhashtable htable = nil;
+    bigstring bsname;
+
+    if (!getaddressvalue(val, &htable, bsname)) {
+        return false;
+    }
+
+    /* Look up the final name in the table to get the target table */
+    tyvaluerecord targetval;
+    hdlhashnode hnode;
+
+    if (!hashtablelookup(htable, bsname, &targetval, &hnode)) {
+        return false;
+    }
+
+    /* The target must be a table */
+    hdlhashtable target = nil;
+    if (!langexternalvaltotable(targetval, &target, hnode) || target == nil) {
+        return false;
+    }
+
+    /* Build the path string from the address */
+    bigstring bspath;
+    if (!getaddresspath(val, bspath)) {
+        /* Fallback: use the script as the path display */
+        strncpy(g_repl_current_path, script, REPL_PATH_MAX_LEN - 1);
+    } else {
+        /* Convert bigstring to C string, skip leading @ */
+        size_t pathlen = stringlength(bspath);
+        const char *pathstart = (const char *)stringbaseaddress(bspath);
+        if (pathlen > 0 && pathstart[0] == '@') {
+            pathstart++;
+            pathlen--;
+        }
+        if (pathlen >= REPL_PATH_MAX_LEN) {
+            pathlen = REPL_PATH_MAX_LEN - 1;
+        }
+        memcpy(g_repl_current_path, pathstart, pathlen);
+        g_repl_current_path[pathlen] = '\0';
+    }
+
+    g_repl_current_table = target;
+    update_prompt();
+    return true;
+}
+
 /* Set the current REPL table by navigating to a path.
  * Returns true on success, false if path is invalid.
  * Supports:
  *   - Empty path or "@" to go to root
  *   - ".." to go to parent
  *   - Dot-paths like "system.verbs"
+ *   - Script expressions like "parentOf(@user.inetd)" if path contains ( ) or +
  *   - Trailing dots are stripped (from tab completion)
  */
 boolean repl_jump_path(const char *path) {
@@ -97,6 +211,11 @@ boolean repl_jump_path(const char *path) {
         g_repl_current_path[0] = '\0';
         update_prompt();
         return true;
+    }
+
+    /* Check if this looks like a script expression */
+    if (path_is_script_expression(path)) {
+        return repl_jump_script(path);
     }
 
     /* Skip leading @ if present */

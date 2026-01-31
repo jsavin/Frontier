@@ -181,9 +181,11 @@ void repl_output_help(void) {
 	fputs("  /list          List contents of current table\n", stdout);
 	fputs("\n", stdout);
 	fputs("Navigation:\n", stdout);
-	fputs("  /jump system        Navigate to system table\n", stdout);
-	fputs("  /jump user.inetd    Navigate to nested table\n", stdout);
-	fputs("  /jump               Return to root\n", stdout);
+	fputs("  /jump system              Navigate to system table\n", stdout);
+	fputs("  /jump user.inetd          Navigate to nested table\n", stdout);
+	fputs("  /jump ..                  Go to parent table\n", stdout);
+	fputs("  /jump                     Return to root\n", stdout);
+	fputs("  /jump parentOf(@user)     Evaluate script for address\n", stdout);
 	fputs("\n", stdout);
 	fputs("QuickScript Model - Variable Persistence:\n", stdout);
 	fputs("  Local variables (x = 5) don't persist between evaluations\n", stdout);
