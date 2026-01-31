@@ -1092,30 +1092,30 @@ static boolean langaddlocals (hdltreenode hnode) {
 	*/
 	
 	register hdltreenode nomad = (**hnode).param1;
-	
+
 	while (true) { /*step through name list, inserting each into symbol table*/
-		
+
 		tyvaluerecord val;
 		bigstring bs;
-		
+
 		if (nomad == nil) /*reached the end of the names list*/
 			return (true);
-		
+
 		if ((**nomad).nodetype == assignlocalop) {
-			
+
 			if (!langdebuggercall (nomad)) /*2.1b2*/
 				return (false);
-			
+
 			if (!evaluatetree ((**nomad).param2, &val))
 				return (false);
-			
+
 			if (fllangexternalvalueprotect && val.valuetype == externalvaluetype) { /*4.1b4 dmb*/
-				
+
 				langbadexternaloperror (externalassignerror, val);
-				
+
 				return (false);
 				}
-			
+
 			if (!langgetidentifier ((**nomad).param1, bs))
 				return (false);
 			}
@@ -1153,8 +1153,8 @@ static boolean langaddlocals (hdltreenode hnode) {
 		
 		exemptfromtmpstack (&val); /*it's been successfully added to local table*/
 		
-		cleartmpstack (); /*dealloc all outstanding temporary values*/	
-		
+		cleartmpstack (); /*dealloc all outstanding temporary values*/
+
 		nomad = (**nomad).link; /*advance to next name in list*/
 		} /*while*/
 	} /*langaddlocals*/

@@ -192,3 +192,15 @@ void frontier_time_sleep_millis(uint32_t millis) {
     }
 #endif
 }
+
+/*
+ * TickCount - Mac-compatible tick counter for headless/portable builds
+ *
+ * Returns time in 1/60th second intervals (Mac "ticks").
+ * This is the production implementation - no test harness dependencies.
+ */
+uint32_t frontier_time_ticks(void) {
+    uint64_t ms = frontier_time_monotonic_millis();
+    // Convert milliseconds to 60ths of a second: ms * 60 / 1000 = ms * 3 / 50
+    return (uint32_t)((ms * 3ULL) / 50ULL);
+}

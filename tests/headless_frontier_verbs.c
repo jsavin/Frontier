@@ -17,6 +17,7 @@
 #include "lang.h"
 #include "langinternal.h"
 #include "tablestructure.h"
+#include "process.h"  /* for hdlprocessthread */
 
 /* Token enum for all verbs in the frontier processor */
 enum {
@@ -107,6 +108,28 @@ static boolean frontier_valueproc(short token, hdltreenode hparam1,
     }
 }
 
+/*
+ * frontierversion - Direct C function called by langhtml.c for webserver headers
+ * Returns the Frontier version as a string value.
+ * This is NOT a verb - it's called directly from webservergetserverstring().
+ */
+boolean frontierversion(tyvaluerecord *v) {
+    return setstringvalue(BIGSTRING("\x04" "10.0"), v);
+}
+
+/*
+ * sysos - Direct C function called by langhtml.c for webserver headers
+ * Returns the OS name as a string value.
+ * Must match sys.os() verb which returns "MacOS" on Mac.
+ */
+boolean sysos(tyvaluerecord *v) {
+    #ifdef __APPLE__
+    return setstringvalue(BIGSTRING("\x05" "MacOS"), v);
+    #else
+    return setstringvalue(BIGSTRING("\x05" "Linux"), v);
+    #endif
+}
+
 boolean frontierinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
@@ -152,4 +175,49 @@ boolean frontierinitverbs(void) {
 boolean headless_frontier_verbs_callback(short token, hdltreenode hparam1,
                                          tyvaluerecord *vreturned, bigstring bserror) {
     return frontier_valueproc(token, hparam1, vreturned, bserror);
+}
+
+/*
+ * ingoodthread - Direct C function called by langhtml.c and other code
+ * Checks if the current thread is still valid (not killed).
+ * In headless mode, we always return true since we don't have
+ * the full cooperative threading infrastructure.
+ */
+boolean ingoodthread(void) {
+    return true;
+}
+
+/*
+ * processisoneshot - Check if current process is a one-shot (vs agent)
+ * Called during script execution to determine process type.
+ * In headless mode, we return true (one-shot) - scripts run once and exit.
+ */
+boolean processisoneshot(boolean flnilok) {
+    (void)flnilok;
+    return true;  /* headless scripts are one-shot */
+}
+
+/*
+ * processissleeping - Check if a process thread is sleeping
+ * In headless mode, threads don't sleep in the cooperative sense.
+ */
+boolean processissleeping(hdlprocessthread hthread) {
+    (void)hthread;
+    return false;  /* not sleeping */
+}
+
+/*
+ * processthreadcount - Return number of process threads
+ * In headless mode, we have a single main thread.
+ */
+short processthreadcount(void) {
+    return 1;
+}
+
+/*
+ * langdialogrunning - Check if a dialog is running
+ * In headless mode, no dialogs can run.
+ */
+boolean langdialogrunning(void) {
+    return false;
 }

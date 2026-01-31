@@ -49,6 +49,7 @@
 #include "db_format.h" /* 2025-11-23 Codex: BE helpers for packed values */
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
 #include "file.h" // 2006-09-15 creedon
+#include "logging.h"  /* 2026-01-30: Debug langunpackvalue crash */
 
 
 #define ctsigbytes 19 /*length of string + 1 byte for length*/
@@ -482,10 +483,10 @@ static boolean langunpackexternal (hdlexternalhandle *hexternal, hdlpackedvalue 
 
 
 static boolean langunpackoldheader (tyvaluetype *valuetype, hdlpackedvalue hpackedvalue, long *ptrixunpack) {
-	
+
 	long ixorig = *ptrixunpack;
 	tyoldpackedvalue oldheader;
-	
+
 	if (!langunpackdata (sizeof (oldheader), &oldheader, hpackedvalue, ptrixunpack))
 		return (false);
 	
@@ -503,40 +504,78 @@ static boolean langunpackoldheader (tyvaluetype *valuetype, hdlpackedvalue hpack
 
 
 boolean langunpackvalue (Handle hpacked, tyvaluerecord *val) {
-	
+
 	/*
 	6/4/91 dmb: new header is just type id, but retain backward compatibility.
-	
+
 	4/8/93 dmb: save/restore hdlpackedvalue to allow reentrancy needed for code values
-	
+
 	5.0.2b3 dmb: unpacking addresses, if stringtoaddress fails, set valuetype to string
-	
+
 	2006-04-20 sethdill & aradke: convert rgb values to native byte order
 	*/
-	
+
 	tyvaluerecord v;
 	register hdlpackedvalue h;
 	boolean fl, flpush;
 	typackedvalue header;
 	Handle hdata;
 	long ixunpack = 0;
-	
+
 	initvalue (&v, novaluetype);
-	
+
 	h = (hdlpackedvalue) hpacked; /*copy into register*/
-	
-	if (langunpackoldheader (&v.valuetype, h, &ixunpack))
+
+#if defined(FRONTIER_HEADLESS)
+	{
+		long size = (hpacked != nil) ? gethandlesize(hpacked) : -1;
+		log_debug(LOG_COMP_LANG, "langunpackvalue: hpacked=%p size=%ld", (void*)hpacked, size);
+		if (hpacked != nil && size > 0 && size < 64) {
+			unsigned char *raw = (unsigned char *)(*hpacked);
+			char hex[256];
+			int pos = 0;
+			for (int i = 0; i < size && pos < 250; i++) {
+				pos += snprintf(hex + pos, sizeof(hex) - pos, "%02x", raw[i]);
+			}
+			log_debug(LOG_COMP_LANG, "langunpackvalue: raw hex: %s", hex);
+		}
+	}
+#endif
+
+	if (langunpackoldheader (&v.valuetype, h, &ixunpack)) {
+#if defined(FRONTIER_HEADLESS)
+		log_debug(LOG_COMP_LANG, "langunpackvalue: old header OK valuetype=%d", (int)v.valuetype);
+#endif
 		goto unpack;
-	
-	if (!langunpackdata (sizeof (header), &header, h, &ixunpack))
+	}
+
+#if defined(FRONTIER_HEADLESS)
+	log_debug(LOG_COMP_LANG, "langunpackvalue: old header failed, trying new header (ixunpack=%ld)", ixunpack);
+#endif
+
+	if (!langunpackdata (sizeof (header), &header, h, &ixunpack)) {
+#if defined(FRONTIER_HEADLESS)
+		log_debug(LOG_COMP_LANG, "langunpackvalue: new header also FAILED, size=%ld", gethandlesize((Handle)h));
+#endif
 		goto formaterror;
-	
+	}
+
 	disktomemlong (header.typeid);
 
 	v.valuetype = langexternalgetvaluetype (header.typeid);
-	
-	langunpackoldheader (&v.valuetype, h, &ixunpack); /*may have added new header before old*/
-	
+
+#if defined(FRONTIER_HEADLESS)
+	log_debug(LOG_COMP_LANG, "langunpackvalue: new header OK typeid=0x%08lx valuetype=%d size=%ld",
+	        (unsigned long)header.typeid, (int)v.valuetype, gethandlesize((Handle)h));
+#endif
+
+	/* Only try old header if there's enough data remaining (handles hybrid format case).
+	 * The old header is 24 bytes (sizeof(tyoldpackedvalue)), so we need at least that much
+	 * remaining after the 4-byte new header. */
+	if (gethandlesize((Handle)h) - ixunpack >= (long)sizeof(tyoldpackedvalue)) {
+		langunpackoldheader (&v.valuetype, h, &ixunpack); /*may have added new header before old*/
+	}
+
 unpack:
 	
 	switch (v.valuetype) {

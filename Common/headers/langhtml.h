@@ -67,3 +67,15 @@ boolean traversalskipverb (hdltreenode hp1, tyvaluerecord *v);
 boolean getpagetableaddressverb (hdltreenode hp1, tyvaluerecord *v);
 
 boolean stripmarkupverb (hdltreenode hp1, tyvaluerecord *v);
+
+/* inetd verbs - exposed for headless mode */
+boolean inetdsupervisor (long stream, long refcon, tyvaluerecord *vreturn);
+
+/* webserver verbs - exposed for headless mode */
+boolean webserverserver (tyaddress *pta, Handle hrequest, tyvaluerecord *vreturn);
+boolean webserverdispatch (tyaddress *pta, tyvaluerecord *vreturn);
+boolean webserverparseheaders (Handle htext, hdlhashtable hheadertable, Handle *hptr);
+boolean webserverparsecookies (hdlhashtable hparamtable, tyvaluerecord *vreturn);
+boolean webserverbuildresponse (bigstring bscode, hdlhashtable hheaderstable, Handle hbody, tyvaluerecord *vreturn);
+boolean webserverbuilderrorpage (Handle hshort, Handle hlong, Handle *hpage);
+boolean webservergetserverstring (tyvaluerecord *vreturn);

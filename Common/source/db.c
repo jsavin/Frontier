@@ -1639,13 +1639,6 @@ boolean dbrefhandle (dbaddress adr, Handle *h) {
 
     ct = ctbytes - (long) variance;
 
-#if defined(FRONTIER_HEADLESS)
-    if (a == 0x76e) {
-        log_trace(LOG_COMP_DB, "dbrefhandle watch adr=0x%llx size=%ld variance=%ld flfree=%d",
-                  (unsigned long long)a, ctbytes, (long)variance, flfree ? 1 : 0);
-    }
-#endif
-
     if (flfree || (ct < 0)) { /*probably a bad address*/
 
         dberror (dbfreeblockerror);

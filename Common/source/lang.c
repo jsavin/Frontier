@@ -1213,6 +1213,9 @@ static boolean getcodetreefromscriptaddress (hdlhashtable htable, bigstring bsve
 	tyvaluerecord vhandler;
 	hdlhashnode handlernode;
 
+	log_debug(LOG_COMP_LANG, "getcodetreefromscriptaddress: ENTER htable=%p bsverb='%.*s'",
+	          (void*)htable, (int)bsverb[0], bsverb + 1);
+
 	if (!hashtablelookupnode (htable, bsverb, &handlernode)) {
 
 		langparamerror (unknownfunctionerror, bsverb);
@@ -1222,16 +1225,19 @@ static boolean getcodetreefromscriptaddress (hdlhashtable htable, bigstring bsve
 
 	vhandler = (**handlernode).val;
 
+	log_debug(LOG_COMP_LANG, "getcodetreefromscriptaddress: found node, valuetype=%d", (int)vhandler.valuetype);
+
 	/*build a code tree and call the handler, with our error hook in place*/
 
 	*hcode = nil;
 
 	if (vhandler.valuetype == codevaluetype) {
-
+		log_debug(LOG_COMP_LANG, "getcodetreefromscriptaddress: codevaluetype, using direct code");
 		*hcode = vhandler.data.codevalue;
 	}
 	else if ((**htable).valueroutine == nil) { /*not a kernel table*/
 
+		log_debug(LOG_COMP_LANG, "getcodetreefromscriptaddress: non-kernel table, calling langexternalvaltocode");
 		if (!langexternalvaltocode (vhandler, hcode)) {
 
 			langparamerror (notfunctionerror, bsverb);
@@ -1239,13 +1245,16 @@ static boolean getcodetreefromscriptaddress (hdlhashtable htable, bigstring bsve
 			return (false);
 			}
 
+		log_debug(LOG_COMP_LANG, "getcodetreefromscriptaddress: langexternalvaltocode returned hcode=%p", (void*)*hcode);
 		if (*hcode == nil) { /*needs compilation*/
-
+			log_debug(LOG_COMP_LANG, "getcodetreefromscriptaddress: needs compilation, calling langcompilescript");
 			if (!langcompilescript (handlernode, hcode))
 				return (false);
+			log_debug(LOG_COMP_LANG, "getcodetreefromscriptaddress: langcompilescript returned hcode=%p", (void*)*hcode);
 			}
 		}
 
+	log_debug(LOG_COMP_LANG, "getcodetreefromscriptaddress: EXIT hcode=%p", (void*)*hcode);
 	return (true);
 	} /*getcodetreefromscriptaddress*/
 
@@ -1344,8 +1353,12 @@ boolean langruncallbackwithparams (
 	}
 
 	/* Debug logging */
-	log_debug(LOG_COMP_LANG, "Executing callback '%.*s' with %d parameters",
+	log_info(LOG_COMP_LANG, "langruncallbackwithparams: callback='%.*s' param_count=%d",
 	          (int)callback_name[0], callback_name + 1, param_count);
+	for (i = 0; i < param_count; i++) {
+		log_info(LOG_COMP_LANG, "langruncallbackwithparams: param[%d] valuetype=%d longvalue=%ld",
+		         i, (int)params[i].valuetype, params[i].data.longvalue);
+	}
 
 	/* Create local variable table for parameters */
 	if (!langpushlocalchain(&htlocals)) {
@@ -1373,21 +1386,37 @@ boolean langruncallbackwithparams (
 		goto cleanup;
 	}
 
-	/* Add address references to parameters in the list */
+	/*
+	 * 2026-01-30 jsavin: CRITICAL FIX - Exempt vparams from tmpstack before calling script.
+	 *
+	 * setheapvalue() pushes vparams to htlocals's tmpstack. But langrunscriptcode->evaluatelist
+	 * may NOT create its own local table (if the callback script has no local vars). In that case,
+	 * evaluatelist's cleartmpstack() will clear htlocals's tmpstack, disposing vparams!
+	 *
+	 * Then our cleanup code tries to dispose vparams again = use-after-free/double-free.
+	 *
+	 * Solution: Exempt vparams from tmpstack immediately. We own it and will dispose it in cleanup.
+	 */
+	exemptfromtmpstack(&vparams);
+
+	/* Add parameter values to the list (not addresses)
+	 * The callback script receives actual values, not addresses to local variables.
+	 * This matches how handler parameters work in UserTalk - the called script
+	 * receives the values directly as its own local variables.
+	 */
 	for (i = 0; i < param_count; i++) {
-		bigstring param_name;
-
-		buildparamname(i, param_name);
-
-		if (!langpushlistaddress(hparams, htlocals, param_name)) {
+		if (!langpushlistval(hparams, nil, &params[i])) {
 			goto cleanup;
 		}
 	}
 
 	/* Get code tree for callback script */
+	log_debug(LOG_COMP_LANG, "langruncallbackwithparams: about to call getcodetreefromscriptaddress");
 	if (!getcodetreefromscriptaddress(htable, callback_name, &hcode)) {
+		log_error(LOG_COMP_LANG, "langruncallbackwithparams: getcodetreefromscriptaddress FAILED");
 		goto cleanup;
 	}
+	log_debug(LOG_COMP_LANG, "langruncallbackwithparams: got code tree hcode=%p", (void*)hcode);
 
 	/* Execute callback with parameter list */
 	if (!langrunscriptcode(htable, callback_name, hcode, &vparams, nil, &vresult)) {
@@ -1412,7 +1441,6 @@ boolean langruncallbackwithparams (
 cleanup:
 	/* Clean up parameter list - dispose vparams if allocated */
 	if (vparams.valuetype == listvaluetype) {
-		/* Ownership was transferred to vparams - dispose it */
 		disposevaluerecord(vparams, false);
 	} else if (hparams != nil) {
 		/* hparams allocated but ownership never transferred - must dispose manually */

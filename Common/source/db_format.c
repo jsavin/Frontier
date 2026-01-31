@@ -69,7 +69,10 @@ static tydatabaserecord_64 g_legacy_widened_header;
 static hdldatabaserecord g_legacy_source_db = nil;
 static _Thread_local db_format_mode g_mode_stack[4];
 static _Thread_local int g_mode_depth = 0;
-static _Thread_local db_format_mode g_mode_state = {false, false, false}; /* current mode when stack is empty */
+/* 2026-01-29: g_mode_state is NOT thread-local because all threads share the same database format.
+ * Worker threads (e.g., webserver accept thread) need to see the v7 mode set by the main thread.
+ * The stack remains thread-local so different threads can push/pop without interference. */
+static db_format_mode g_mode_state = {false, false, false}; /* current mode when stack is empty */
 
 typedef struct db_context_guard {
     db_format_mode prev_mode;

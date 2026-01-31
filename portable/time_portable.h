@@ -17,6 +17,7 @@ uint64_t frontier_time_monotonic_micros(void);
 int32_t frontier_time_local_offset_minutes(void);
 void frontier_time_snapshot(frontier_timestamp_v7 *out_timestamp);
 void frontier_time_sleep_millis(uint32_t millis);
+uint32_t frontier_time_ticks(void);
 
 #define FastMilliseconds() ((long)frontier_time_wallclock_millis())
 
