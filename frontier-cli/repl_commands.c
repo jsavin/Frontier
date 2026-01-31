@@ -138,14 +138,15 @@ repl_command_result repl_process_command(const char *input) {
             return REPL_CMD_CONTINUE;
         }
 
-        /* Resolve the path to a table */
-        hdlhashtable target = repl_resolve_path(path);
+        /* Resolve the path to a table, getting the actual resolved path */
+        char resolved_path[512];
+        hdlhashtable target = repl_resolve_path(path, resolved_path, sizeof(resolved_path));
         if (target == nil) {
             printf("Error: '%s' is not a valid table path\n", path);
             return REPL_CMD_CONTINUE;
         }
 
-        repl_output_list(target, path);
+        repl_output_list(target, resolved_path);
         return REPL_CMD_CONTINUE;
     }
 

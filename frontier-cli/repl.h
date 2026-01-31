@@ -37,8 +37,10 @@ boolean repl_jump_path(const char *path);
 
 /* Resolve a path to a table without changing current table.
  * Accepts dot-paths, addresses, system.paths names, or script expressions.
+ * If resolved_path is non-NULL, fills it with the actual resolved path
+ * (e.g., "system.verbs.builtins" for "parentOf(fileMenu)").
  * Returns the resolved table, or nil if path is invalid.
  */
-hdlhashtable repl_resolve_path(const char *path);
+hdlhashtable repl_resolve_path(const char *path, char *resolved_path, size_t path_bufsize);
 
 #endif // REPL_H

@@ -320,11 +320,24 @@ boolean repl_jump_path(const char *path) {
  *   - Single names resolved via system.paths (e.g., "fileMenu")
  *   - Script expressions like "parentOf(@user.inetd)"
  *   - Addresses with leading @ like "@user.prefs"
+ *
+ * If resolved_path is non-NULL, fills it with the actual resolved path
+ * (e.g., "system.verbs.builtins" for "parentOf(fileMenu)").
+ *
  * Returns the resolved table, or nil if path is invalid.
  */
-hdlhashtable repl_resolve_path(const char *path) {
+hdlhashtable repl_resolve_path(const char *path, char *resolved_path, size_t path_bufsize) {
     /* Handle empty path - return current table */
     if (path == NULL || path[0] == '\0') {
+        if (resolved_path != NULL && path_bufsize > 0) {
+            const char *current = repl_get_current_path();
+            if (current != NULL && current[0] != '\0') {
+                strncpy(resolved_path, current, path_bufsize - 1);
+                resolved_path[path_bufsize - 1] = '\0';
+            } else {
+                resolved_path[0] = '\0';
+            }
+        }
         return repl_get_current_table();
     }
 
@@ -374,9 +387,42 @@ hdlhashtable repl_resolve_path(const char *path) {
                 if (hashtablelookup(htable, bsname, &targetval, &hnode)) {
                     langexternalvaltotable(targetval, &result, hnode);
                 }
+
+                /* Get the resolved path from the address */
+                if (resolved_path != NULL && path_bufsize > 0) {
+                    bigstring bspath;
+                    if (getaddresspath(val, bspath)) {
+                        const char *pathstart = (const char *)stringbaseaddress(bspath);
+                        size_t pathlen = stringlength(bspath);
+                        /* Skip leading @ if present */
+                        if (pathlen > 0 && pathstart[0] == '@') {
+                            pathstart++;
+                            pathlen--;
+                        }
+                        /* Skip "root." prefix if present */
+                        if (pathlen > 5 && strncmp(pathstart, "root.", 5) == 0) {
+                            pathstart += 5;
+                            pathlen -= 5;
+                        }
+                        if (pathlen >= path_bufsize) {
+                            pathlen = path_bufsize - 1;
+                        }
+                        memcpy(resolved_path, pathstart, pathlen);
+                        resolved_path[pathlen] = '\0';
+                    } else {
+                        /* Fallback to input path */
+                        strncpy(resolved_path, path, path_bufsize - 1);
+                        resolved_path[path_bufsize - 1] = '\0';
+                    }
+                }
             }
         } else if (val.valuetype == externalvaluetype) {
             langexternalvaltotable(val, &result, nil);
+            /* For direct external values, we can't easily get the path */
+            if (resolved_path != NULL && path_bufsize > 0) {
+                strncpy(resolved_path, path, path_bufsize - 1);
+                resolved_path[path_bufsize - 1] = '\0';
+            }
         }
 
         return result;
@@ -413,15 +459,23 @@ hdlhashtable repl_resolve_path(const char *path) {
 
         if (roottable != nil && hashtablelookup(roottable, bs, &val, &node)) {
             langexternalvaltotable(val, &target, node);
+            if (target != nil && resolved_path != NULL && path_bufsize > 0) {
+                strncpy(resolved_path, path_buf, path_bufsize - 1);
+                resolved_path[path_bufsize - 1] = '\0';
+            }
         }
 
         if (target == nil) {
-            /* Try system.paths */
-            target = completion_search_paths(path_buf);
+            /* Try system.paths - this gives us the resolved path */
+            target = completion_search_paths_ex(path_buf, resolved_path, path_bufsize);
         }
     } else {
         /* Multi-component path - use standard navigation */
         target = completion_navigate_path(path_buf);
+        if (target != nil && resolved_path != NULL && path_bufsize > 0) {
+            strncpy(resolved_path, path_buf, path_bufsize - 1);
+            resolved_path[path_bufsize - 1] = '\0';
+        }
     }
 
     return target;
