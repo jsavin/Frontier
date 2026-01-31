@@ -4796,9 +4796,9 @@ boolean hashgetvaluestring (tyvaluerecord val, bigstring bs) {
 	*/
 	
 	disablelangerror ();
-	
+
 	switch (val.valuetype) {
-		
+
 		case novaluetype:
 			langgetmiscstring (nilstring, bs);
 			
@@ -4914,7 +4914,7 @@ boolean hashgetvaluestring (tyvaluerecord val, bigstring bs) {
 		
 		case externalvaluetype:
 			langexternalgetdisplaystring ((hdlexternalhandle) val.data.externalvalue, bs);
-			
+
 			break;
 		
 		

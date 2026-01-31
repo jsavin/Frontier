@@ -605,22 +605,22 @@ boolean langexternaltypestring (hdlexternalhandle h, bigstring bs) {
 
 
 boolean langexternalgetdisplaystring (hdlexternalhandle h, bigstring bs) {
-	
+
 	/*
-	10/22/90 dmb: now that we treat the external handle's data as an 
-	external variable, we can factor some code.  now we only need to 
+	10/22/90 dmb: now that we treat the external handle's data as an
+	external variable, we can factor some code.  now we only need to
 	switch on the id if the variable is in memory
 	*/
-	
+
 	register hdlexternalvariable hv = (hdlexternalvariable) h;
-	
+
 	setemptystring (bs);
-	
+
 	if (hv == nil) /*defensive driving*/
 		return (false);
-	
+
 	if (!(**hv).flinmemory) {
-		
+
 		langgetmiscstring (ondiskstring, bs);
 		
 		/*
@@ -650,7 +650,7 @@ boolean langexternalgetdisplaystring (hdlexternalhandle h, bigstring bs) {
 		
 		case idtableprocessor:
 			tableverbgetdisplaystring (hv, bs);
-			
+
 			break;
 			
 		case idmenuprocessor:

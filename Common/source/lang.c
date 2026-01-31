@@ -876,7 +876,7 @@ boolean langrunhandle (Handle htext, bigstring bsresult) {
 	
 	if (!fl)
 		return (false);
-	
+
 	fl = false;
 	
 	flpushroot = currenthashtable == nil;
@@ -888,12 +888,10 @@ boolean langrunhandle (Handle htext, bigstring bsresult) {
 		pushvalueontmpstack (&val);
 		}
 	
-	if (coercetostring (&val)) {
-		
-		texthandletostring (val.data.stringvalue, bsresult);
-		
-		fl = true; /*it worked, we'll return true*/
-		}
+	/* Use hashgetvaluestring for display-friendly output.
+	 * This produces strings like "[table: 21 items]" for external types
+	 * instead of just ":" from coercetostring. */
+	fl = hashgetvaluestring (val, bsresult);
 	
 	cleartmpstack ();
 	
