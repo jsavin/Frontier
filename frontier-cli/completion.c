@@ -110,62 +110,6 @@ static const char *usertalk_keywords[] = {
 };
 
 /* ============================================================================
- * Phase 2: Hash Table Visitor for Database Names
- * ============================================================================ */
-
-/*
- * Context passed to hash table visitor callback.
- */
-typedef struct {
-    completion_matches_t *matches;
-    const char *prefix;
-    size_t prefix_len;
-} completion_visitor_ctx_t;
-
-/*
- * Hash table visitor callback.
- * Called for each entry in a table.
- */
-static boolean completion_visitor_callback(hdlhashnode node, ptrvoid refcon) {
-    completion_visitor_ctx_t *ctx = (completion_visitor_ctx_t *)refcon;
-
-    /* Check if we've hit the match limit */
-    if (ctx->matches->count >= COMPLETION_MAX_MATCHES) {
-        return false;  /* Stop iteration */
-    }
-
-    /* Get the key name */
-    bigstring bs;
-    gethashkey(node, bs);
-
-    /* Convert to C string */
-    char name[COMPLETION_MAX_NAME_LEN];
-    size_t len = stringlength(bs);
-    if (len >= COMPLETION_MAX_NAME_LEN) {
-        len = COMPLETION_MAX_NAME_LEN - 1;
-    }
-    memcpy(name, stringbaseaddress(bs), len);
-    name[len] = '\0';
-
-    /* Check prefix match (case-insensitive) */
-    if (ctx->prefix_len == 0 || strncasecmp(name, ctx->prefix, ctx->prefix_len) == 0) {
-        tyvaluetype type = (**node).val.valuetype;
-        bool is_table = (type == externalvaluetype);
-
-        /* For external values, check if it's a table */
-        if (is_table) {
-            /* Check external type - tablevaluetype means navigable */
-            tyexternalid exttype = langexternalgettype((**node).val);
-            is_table = (exttype == idtableprocessor);
-        }
-
-        completion_matches_add(ctx->matches, name, type, is_table);
-    }
-
-    return true;  /* Continue iteration */
-}
-
-/* ============================================================================
  * Match Collection Management
  * ============================================================================ */
 
@@ -339,7 +283,8 @@ void completion_add_keywords(completion_matches_t *matches, const char *prefix) 
  * Phase 2: Database Name Completion
  * ============================================================================ */
 
-/* Adds matching entries from a hash table to the completion results. */
+/* Adds matching entries from a hash table to the completion results.
+ * Iterates in sorted (alphabetical) order using the table's sorted linked list. */
 void completion_add_table_entries(completion_matches_t *matches,
                                   hdlhashtable table,
                                   const char *prefix) {
@@ -347,13 +292,39 @@ void completion_add_table_entries(completion_matches_t *matches,
         return;
     }
 
-    completion_visitor_ctx_t ctx = {
-        .matches = matches,
-        .prefix = prefix,
-        .prefix_len = strlen(prefix)
-    };
+    size_t prefix_len = strlen(prefix);
+    hdlhashnode node = (**table).hfirstsort;
 
-    hashtablevisit(table, completion_visitor_callback, &ctx);
+    while (node != nil && matches->count < COMPLETION_MAX_MATCHES) {
+        /* Get the key name */
+        bigstring bs;
+        gethashkey(node, bs);
+
+        /* Convert to C string */
+        char name[COMPLETION_MAX_NAME_LEN];
+        size_t len = stringlength(bs);
+        if (len >= COMPLETION_MAX_NAME_LEN) {
+            len = COMPLETION_MAX_NAME_LEN - 1;
+        }
+        memcpy(name, stringbaseaddress(bs), len);
+        name[len] = '\0';
+
+        /* Check prefix match (case-insensitive) */
+        if (prefix_len == 0 || strncasecmp(name, prefix, prefix_len) == 0) {
+            tyvaluetype type = (**node).val.valuetype;
+            bool is_table = (type == externalvaluetype);
+
+            /* For external values, check if it's a table */
+            if (is_table) {
+                tyexternalid exttype = langexternalgettype((**node).val);
+                is_table = (exttype == idtableprocessor);
+            }
+
+            completion_matches_add(matches, name, type, is_table);
+        }
+
+        node = (**node).sortedlink;
+    }
 }
 
 /* ============================================================================
