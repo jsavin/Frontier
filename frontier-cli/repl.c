@@ -134,8 +134,12 @@ static void handle_interrupt(struct linenoiseState *ls, char *buf, size_t buflen
         fflush(stdout);
         // Restart with fresh prompt using caller's buffer (not ls->buf which
         // may be invalid after linenoiseEditStop)
-        linenoiseEditStart(ls, STDIN_FILENO, STDOUT_FILENO,
-                          buf, buflen, REPL_PROMPT);
+        if (linenoiseEditStart(ls, STDIN_FILENO, STDOUT_FILENO,
+                              buf, buflen, REPL_PROMPT) == -1) {
+            // Failed to restart - log error and set flag for main loop to exit
+            log_error(LOG_COMP_GENERAL, "Failed to restart linenoise after interrupt");
+            // Note: Main loop will exit on next iteration since ls is invalid
+        }
     }
 
     g_handling_interrupt = 0;
@@ -574,7 +578,9 @@ int repl_main(cli_options_t *options) {
             } else {
                 // Unrecoverable poll() error (EBADF, ENOMEM, etc.)
                 log_error(LOG_COMP_GENERAL, "poll() failed: %s", strerror(errno));
+                linenoiseEditStop(&ls);  // Restore terminal before exiting
                 running = false;
+                break;  // Exit immediately
             }
         }
 

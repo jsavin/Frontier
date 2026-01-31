@@ -3128,8 +3128,10 @@ void agentscheduler_tick (void) {
 		(**hlist).ctrunning++;
 
 		{
-			/* Cache thread globals pointer to avoid race condition.
-			 * hthreadglobals could become nil between check and dereference. */
+			/* Cache thread globals pointer for safe access across processtimeslice().
+			 * Although this is single-threaded code, hthreadglobals may be modified
+			 * during processtimeslice() execution (e.g., if script changes context).
+			 * Re-fetch after processtimeslice() to get current value. */
 			hdlthreadglobals hglobals = hthreadglobals;
 
 			if (hglobals != nil && !(**hglobals).flretryagent) {
