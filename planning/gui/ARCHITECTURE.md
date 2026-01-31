@@ -1,5 +1,19 @@
 # GUI Architecture
 
+| | |
+|---|---|
+| **Version** | 0.1.0 |
+| **Status** | Draft |
+| **Last Updated** | 2026-01-30 |
+
+## Change History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 0.1.0 | 2026-01-30 | Jake Savin, Claude | Initial draft capturing architecture discussions |
+
+---
+
 ## Overview
 
 This document describes the architecture for GUI applications that communicate with `frontier-cli` — the headless core runtime. The design prioritizes:
