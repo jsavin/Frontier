@@ -33,6 +33,6 @@ const char *repl_get_current_path(void);
 /* Navigate to a path. Accepts dot-paths with or without leading @.
  * Returns true on success, false if path doesn't exist or isn't a table.
  */
-boolean repl_goto_path(const char *path);
+boolean repl_jump_path(const char *path);
 
 #endif // REPL_H

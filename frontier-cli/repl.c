@@ -83,8 +83,13 @@ const char *repl_get_current_path(void) {
 
 /* Set the current REPL table by navigating to a path.
  * Returns true on success, false if path is invalid.
+ * Supports:
+ *   - Empty path or "@" to go to root
+ *   - ".." to go to parent
+ *   - Dot-paths like "system.verbs"
+ *   - Trailing dots are stripped (from tab completion)
  */
-boolean repl_goto_path(const char *path) {
+boolean repl_jump_path(const char *path) {
     /* Handle empty path or "@" - go to root */
     if (path == NULL || path[0] == '\0' ||
         (path[0] == '@' && path[1] == '\0')) {
@@ -100,15 +105,56 @@ boolean repl_goto_path(const char *path) {
         clean_path = path + 1;
     }
 
+    /* Make a mutable copy */
+    char path_buf[REPL_PATH_MAX_LEN];
+    strncpy(path_buf, clean_path, REPL_PATH_MAX_LEN - 1);
+    path_buf[REPL_PATH_MAX_LEN - 1] = '\0';
+
+    /* Handle ".." - go to parent (before stripping trailing dot) */
+    if (strcmp(path_buf, "..") == 0) {
+        if (g_repl_current_path[0] == '\0') {
+            /* Already at root, stay at root */
+            return true;
+        }
+
+        /* Find last dot in current path */
+        char *last_dot = strrchr(g_repl_current_path, '.');
+        if (last_dot == NULL) {
+            /* No dot means we're one level deep - go to root */
+            g_repl_current_table = roottable;
+            g_repl_current_path[0] = '\0';
+        } else {
+            /* Truncate at the last dot to get parent path */
+            *last_dot = '\0';
+            /* Navigate to the parent path */
+            hdlhashtable parent = completion_navigate_path(g_repl_current_path);
+            if (parent == nil) {
+                /* Shouldn't happen, but handle gracefully */
+                g_repl_current_table = roottable;
+                g_repl_current_path[0] = '\0';
+            } else {
+                g_repl_current_table = parent;
+            }
+        }
+        update_prompt();
+        return true;
+    }
+
+    /* Strip trailing dot (from tab completion) for regular paths */
+    size_t len = strlen(path_buf);
+    if (len > 0 && path_buf[len - 1] == '.') {
+        path_buf[len - 1] = '\0';
+    }
+
     /* Navigate to the path */
-    hdlhashtable target = completion_navigate_path(clean_path);
+    hdlhashtable target = completion_navigate_path(path_buf);
     if (target == nil) {
         return false;
     }
 
     /* Update state */
     g_repl_current_table = target;
-    strncpy(g_repl_current_path, clean_path, REPL_PATH_MAX_LEN - 1);
+    strncpy(g_repl_current_path, path_buf, REPL_PATH_MAX_LEN - 1);
     g_repl_current_path[REPL_PATH_MAX_LEN - 1] = '\0';
     update_prompt();
     return true;
@@ -390,7 +436,7 @@ static void cleanup_linenoise(void) {
 /* List of REPL slash commands for tab completion */
 static const char *repl_slash_commands[] = {
     "exit",
-    "goto",
+    "jump",
     "help",
     "keycodes",
     "list",
@@ -403,8 +449,8 @@ static void linenoise_completion_callback(const char *buf, linenoiseCompletions 
 
     // Handle slash command completion
     if (buf_len > 0 && buf[0] == '/') {
-        // Check if this is "/goto <path>" - complete the path argument
-        if (strncasecmp(buf, "/goto ", 6) == 0) {
+        // Check if this is "/jump <path>" - complete the path argument
+        if (strncasecmp(buf, "/jump ", 6) == 0) {
             // Extract the path being typed
             const char *path_start = buf + 6;
 

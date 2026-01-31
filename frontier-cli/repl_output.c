@@ -175,15 +175,15 @@ void repl_output_error(const char *error_msg) {
 void repl_output_help(void) {
 	fputs("Available commands:\n", stdout);
 	fputs("  /exit          Exit the REPL\n", stdout);
-	fputs("  /goto <path>   Navigate to a table (like cd)\n", stdout);
+	fputs("  /jump <path>   Navigate to a table (like cd)\n", stdout);
 	fputs("  /help          Show this help message\n", stdout);
 	fputs("  /keycodes      Debug terminal key sequences\n", stdout);
 	fputs("  /list          List contents of current table\n", stdout);
 	fputs("\n", stdout);
 	fputs("Navigation:\n", stdout);
-	fputs("  /goto system        Navigate to system table\n", stdout);
-	fputs("  /goto user.inetd    Navigate to nested table\n", stdout);
-	fputs("  /goto               Return to root\n", stdout);
+	fputs("  /jump system        Navigate to system table\n", stdout);
+	fputs("  /jump user.inetd    Navigate to nested table\n", stdout);
+	fputs("  /jump               Return to root\n", stdout);
 	fputs("\n", stdout);
 	fputs("QuickScript Model - Variable Persistence:\n", stdout);
 	fputs("  Local variables (x = 5) don't persist between evaluations\n", stdout);
