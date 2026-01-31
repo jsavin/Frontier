@@ -101,7 +101,7 @@ Frontier/
 ├── planning/             # Roadmap, ADRs, decisions, quickstarts
 ├── codex_sessions/       # README pointer (actual logs in codex-sessions branch, no longer used)
 ├── reports/              # Static analysis and progress reports (generated)
-└── build_Xcode_modern/   # Xcode build configuration (multi-arch)
+└── usertalk-scripts/     # Text file export of all the core UserTalk scripts in Frontier.root
 ```
 
 ---
