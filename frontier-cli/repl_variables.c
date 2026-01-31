@@ -35,6 +35,8 @@ static byte namerepltable[] = "\x0c" "FrontierREPL";     /* "FrontierREPL" (12 c
 static byte namevariables[] = "\x09" "variables";         /* "variables" (9 chars) */
 static byte namecommands[] = "\x08" "commands";           /* "commands" (8 chars) */
 static byte nametemptable[] = "\x04" "temp";              /* "temp" (4 chars) */
+static byte nametarget[] = "\x06" "target";               /* "target" (6 chars) */
+static byte namefocus[] = "\x05" "focus";                 /* "focus" (5 chars) */
 
 /* Cached handle to our tables for quick access */
 static hdlhashtable g_repl_variables_table = nil;
@@ -191,7 +193,34 @@ boolean repl_variables_init(void) {
         return false;
     }
 
-    /* target and focus are address values, not tables - created on demand */
+    /* Initialize target to nil (no target set) */
+    {
+        tyvaluerecord nilval;
+        initvalue(&nilval, novaluetype);
+        pushhashtable(hrepl);
+        if (!hashassign(nametarget, nilval)) {
+            pophashtable();
+            log_warn(LOG_COMP_GENERAL, "Failed to initialize REPL target");
+        } else {
+            pophashtable();
+        }
+    }
+
+    /* Initialize focus to @root (start at root table) */
+    {
+        tyvaluerecord focusval;
+        if (setaddressvalue(roottable, zerostring, &focusval)) {
+            pushhashtable(hrepl);
+            if (!hashassign(namefocus, focusval)) {
+                pophashtable();
+                disposevaluerecord(focusval, false);
+                log_warn(LOG_COMP_GENERAL, "Failed to initialize REPL focus");
+            } else {
+                pophashtable();
+                exemptfromtmpstack(&focusval);
+            }
+        }
+    }
 
     log_info(LOG_COMP_GENERAL, "REPL variables initialized: variables=%p, commands=%p",
              (void*)hvars, (void*)hcommands);
@@ -224,9 +253,14 @@ hdlhashtable repl_get_variables_table(void) {
  *   user code
  * Into:
  *   with system.temp.FrontierREPL.variables { user code }
+ *
+ * NOTE: We previously included target.set(@system.temp.FrontierREPL.variables)
+ * but calling target.set() multiple times crashes due to a bug in target verb
+ * implementation. See issue for target.set() double-call crash.
  */
 static boolean build_wrapped_script(const char *script, Handle *hresult) {
-    static const char prefix[] = "with system.temp.FrontierREPL.variables {\n";
+    static const char prefix[] =
+        "with system.temp.FrontierREPL.variables {\n";
     static const char suffix[] = "\n}";
 
     size_t script_len = strlen(script);
@@ -339,7 +373,47 @@ boolean repl_eval_with_variables(
     return ok;
 }
 
-void repl_set_focus(const char *path) {
-    /* TODO: Implement focus tracking - store address in system.temp.FrontierREPL.focus */
-    log_debug(LOG_COMP_GENERAL, "repl_set_focus: %s", path ? path : "(nil)");
+void repl_set_focus(hdlhashtable htable) {
+    /*
+     * Update system.temp.FrontierREPL.focus to point to the given table.
+     *
+     * We create an address value pointing to the table itself (with empty name)
+     * rather than trying to reconstruct the path. This avoids calling
+     * langexpandtodotparams which can corrupt interpreter state.
+     *
+     * We use setexemptaddressvalue instead of setaddressvalue to avoid
+     * interacting with the tmpstack, which can cause issues when called
+     * from REPL command handlers.
+     */
+    log_debug(LOG_COMP_GENERAL, "repl_set_focus: htable=%p", (void*)htable);
+
+    if (g_repl_table == nil) {
+        log_warn(LOG_COMP_GENERAL, "repl_set_focus: REPL table not initialized");
+        return;
+    }
+
+    /* Use roottable if htable is nil */
+    if (htable == nil) {
+        htable = roottable;
+    }
+
+    /* Create address value pointing to this table.
+     * Use setexemptaddressvalue to avoid tmpstack interaction. */
+    tyvaluerecord focusval;
+    if (!setexemptaddressvalue(htable, zerostring, &focusval)) {
+        log_warn(LOG_COMP_GENERAL, "repl_set_focus: failed to create address");
+        return;
+    }
+
+    /* Store in system.temp.FrontierREPL.focus */
+    pushhashtable(g_repl_table);
+    boolean ok = hashassign(namefocus, focusval);
+    pophashtable();
+
+    if (!ok) {
+        disposevaluerecord(focusval, false);
+        log_warn(LOG_COMP_GENERAL, "repl_set_focus: failed to assign focus");
+    } else {
+        log_debug(LOG_COMP_GENERAL, "repl_set_focus: focus set to table %p", (void*)htable);
+    }
 }

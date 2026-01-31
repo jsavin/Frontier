@@ -150,6 +150,7 @@ static boolean repl_jump_script(const char *script) {
                 strncpy(g_repl_current_path, script, REPL_PATH_MAX_LEN - 1);
                 g_repl_current_path[REPL_PATH_MAX_LEN - 1] = '\0';
                 update_prompt();
+                repl_set_focus(target);
                 return true;
             }
         }
@@ -205,6 +206,7 @@ static boolean repl_jump_script(const char *script) {
 
     g_repl_current_table = target;
     update_prompt();
+    repl_set_focus(target);
     return true;
 }
 
@@ -224,6 +226,7 @@ boolean repl_jump_path(const char *path) {
         g_repl_current_table = roottable;
         g_repl_current_path[0] = '\0';
         update_prompt();
+        repl_set_focus(roottable);
         return true;
     }
 
@@ -270,6 +273,7 @@ boolean repl_jump_path(const char *path) {
             }
         }
         update_prompt();
+        repl_set_focus(g_repl_current_table);
         return true;
     }
 
@@ -325,6 +329,7 @@ boolean repl_jump_path(const char *path) {
     strncpy(g_repl_current_path, resolved_path, REPL_PATH_MAX_LEN - 1);
     g_repl_current_path[REPL_PATH_MAX_LEN - 1] = '\0';
     update_prompt();
+    repl_set_focus(target);
     return true;
 }
 

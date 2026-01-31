@@ -68,13 +68,12 @@ boolean repl_eval_with_variables(
 );
 
 /*
- * Update the focus address to match the current /jump path.
+ * Update the focus address to match the current /jump table.
  * Called by /jump command after successful navigation.
  *
  * Parameters:
- *   path - The resolved path (e.g., "system.verbs.builtins")
- *          Empty string means root.
+ *   htable - The table to set as focus. If nil, sets focus to roottable.
  */
-void repl_set_focus(const char *path);
+void repl_set_focus(hdlhashtable htable);
 
 #endif /* REPL_VARIABLES_H */
