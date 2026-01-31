@@ -382,18 +382,27 @@ static boolean scriptzoomscript (hdlhashnode hnode, WindowPtr *w) {
 
 
 static boolean systemscripterrorroutine (long scripterrorrefcon, long lnum, short charnum, hdlhashtable *htable, bigstring bsname) {
-	
+
 	/*
-	display an error for a system script -- a handler, agent or startup script.
-	
-	called back from langerror.c.  we receive a handle to the table node that
-	made the error, and we zoom out a window that displays the attached script,
-	in text mode, with the character cursor pointing to line number lnum at
-	offset charnum -- the exact spot where the error occured, we hope...
-	
+	This function serves TWO distinct purposes:
+
+	1. ERROR DISPLAY: Display an error for a system script (handler, agent, or
+	   startup script). Called back from langerror.c. We receive a handle to the
+	   table node that made the error, and we zoom out a window that displays the
+	   attached script, in text mode, with the character cursor pointing to line
+	   number lnum at offset charnum -- the exact spot where the error occurred.
+
+	2. 'this' KEYWORD RESOLUTION: When called with htable != nil, this function
+	   resolves the 'this' keyword by returning the address of the currently
+	   executing script. langgetthisaddress() in lang.c calls the error callback
+	   with htable != nil to locate the script's table and name. This is critical
+	   for scripts that need to reference themselves (e.g., webserver responders).
+
+	The scripterrorrefcon is typically a hdlhashnode pointing to the script.
+
 	2/4/91 dmb: allow hdlheadrecords to end up here too
-	
-	4.0b8 dmb: if caller provides non-null htable, don't show error, just return 
+
+	4.0b8 dmb: if caller provides non-null htable, don't show error, just return
 	its location. bsname better be non-null too!
 
 	4/7/97 dmb: handle standalone scripts

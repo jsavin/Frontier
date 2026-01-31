@@ -1263,7 +1263,18 @@ static void *tcp_accept_thread(void *arg) {
 
             if (!tcp_enqueue_callback(listener->callback_table, listener->callback_name,
                                       stream_id, listener->refcon)) {
-                log_error(LOG_COMP_LANG, "tcp_accept_thread: failed to enqueue callback for stream_id=%d", stream_id);
+                /*
+                 * Queue overflow: Clean up the stream to prevent resource leaks.
+                 * Without this, the socket stays open, the stream slot stays allocated,
+                 * and the client hangs indefinitely waiting for a response that never comes.
+                 */
+                log_error(LOG_COMP_LANG, "tcp_accept_thread: queue full, closing stream_id=%d to prevent resource leak", stream_id);
+                close(client_sock);
+                TCP_LOCK();
+                stream->state = STREAM_CLOSED;
+                stream->sockfd = -1;
+                g_tcp_context.active_count--;
+                TCP_UNLOCK();
             }
         }
     }

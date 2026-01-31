@@ -1465,21 +1465,21 @@ boolean loadfromhandle (Handle hload, long *ixload, long ctload, ptrvoid pdata) 
 	if ((ix + ct) > size) /*asked for more bytes than there are*/
 	{
 #if defined(FRONTIER_HEADLESS)
-		/* Safe enough in our single-threaded test harness; guard parent with __builtin_frame_address to silence warning. */
+		/*
+		 * Use log_trace instead of log_error because this failure is EXPECTED
+		 * during format detection. For example, langunpackvalue() first tries
+		 * the old header format, which fails if the data uses new format, then
+		 * tries the new format. This is normal format probing, not an error.
+		 */
 		void *caller = __builtin_return_address(0);
-		void *parent = NULL;
 		const char *caller_name = "<unknown>";
-		const char *parent_name = "<unknown>";
 		Dl_info info = {0};
 		if (dladdr(caller, &info) && info.dli_sname != NULL)
 			caller_name = info.dli_sname;
-		Dl_info parent_info = {0};
-		if (dladdr(parent, &parent_info) && parent_info.dli_sname != NULL)
-			parent_name = parent_info.dli_sname;
-		log_error(LOG_COMP_GENERAL, "loadfromhandle fail: ix=%ld ct=%ld size=%ld caller=%s(%p) parent=%s(%p)",
-		        ix, ct, size, caller_name, caller, parent_name, parent);
+		log_trace(LOG_COMP_GENERAL, "loadfromhandle: size mismatch ix=%ld ct=%ld size=%ld caller=%s",
+		        ix, ct, size, caller_name);
 #endif
-		return (false); 
+		return (false);
 	}
 		
 	moveleft (*h + ix, p, ct); /*copy out of the handle*/
