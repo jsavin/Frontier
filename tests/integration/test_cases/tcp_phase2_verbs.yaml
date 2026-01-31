@@ -218,20 +218,27 @@ tests:
     expected_result: "true"
     notes: "Phase 2 - Status is a string type"
 
-  - name: "tcp.statusStream - invalid stream returns error"
-    description: "Verify statusStream fails gracefully for invalid stream"
+  - name: "tcp.statusStream - invalid stream returns INACTIVE"
+    description: "Verify statusStream returns INACTIVE for non-existent stream (not an error)"
     script: |
-      try {
-        local(bytesPending);
-        tcp.statusStream(999999, @bytesPending);
-        return "false"
-      }
-      else {
-        return "true"
-      }
+      local(bytesPending);
+      local(status = tcp.statusStream(999999, @bytesPending));
+      return status == "INACTIVE"
     expected_success: true
     expected_result: "true"
-    notes: "Phase 2 - Error handling for invalid stream"
+    notes: "Phase 2 - Non-existent streams return INACTIVE status, not an error"
+
+  - name: "tcp.statusStream - listener ID returns LISTENING"
+    description: "Verify statusStream with listener ID returns LISTENING (legacy script compatibility)"
+    script: |
+      local(listenID = tcp.listenStream(9109, 5, ""));
+      local(bytesPending);
+      local(status = tcp.statusStream(listenID, @bytesPending));
+      tcp.closeListen(listenID);
+      return status == "LISTENING"
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 2 - Listener IDs passed to statusStream return LISTENING (legacy compatibility)"
 
   # ===========================================================================
   # tcp.getPeerAddress - Remote IP Address Query
