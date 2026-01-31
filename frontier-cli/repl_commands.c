@@ -7,8 +7,10 @@
  */
 
 #include "repl_commands.h"
+#include "repl.h"         /* For repl_goto_path(), repl_get_current_path() */
 #include "repl_output.h"  /* For repl_output_help(), repl_output_vars() */
 #include "../third_party/linenoise/linenoise.h"  /* For linenoisePrintKeyCodes() */
+#include <stdio.h>
 #include <string.h>
 #include <ctype.h>
 
@@ -124,6 +126,32 @@ repl_command_result repl_process_command(const char *input) {
      * ====================================================================== */
     if (strcmp(cmd_buf, "list") == 0) {
         repl_output_list();
+        return REPL_CMD_CONTINUE;
+    }
+
+    /* ======================================================================
+     * /goto <path> - Navigate to a table (like cd in a shell)
+     * ====================================================================== */
+    if (strncmp(cmd_buf, "goto", 4) == 0) {
+        const char *path = cmd_buf + 4;
+
+        /* Skip whitespace after "goto" */
+        while (*path && isspace((unsigned char)*path)) {
+            path++;
+        }
+
+        /* Empty path means go to root */
+        if (*path == '\0') {
+            if (!repl_goto_path("")) {
+                printf("Error: Cannot navigate to root\n");
+            }
+            return REPL_CMD_CONTINUE;
+        }
+
+        /* Try to navigate to the path */
+        if (!repl_goto_path(path)) {
+            printf("Error: '%s' is not a valid table path\n", path);
+        }
         return REPL_CMD_CONTINUE;
     }
 

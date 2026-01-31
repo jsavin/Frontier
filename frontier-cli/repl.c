@@ -46,12 +46,73 @@
 // Event loop configuration
 #define POLL_TIMEOUT_MS 10  // 10ms = responsive while allowing ~100Hz callback processing
 
-// REPL prompt
-#define REPL_PROMPT "[root]> "
+// REPL prompt settings
+#define g_repl_prompt_MAX_LEN 256
+#define REPL_PATH_MAX_LEN 512
+
+// REPL navigation state - tracks current table like CWD in a shell
+static hdlhashtable g_repl_current_table = nil;
+static char g_repl_current_path[REPL_PATH_MAX_LEN] = "";
+static char g_repl_prompt[g_repl_prompt_MAX_LEN] = "[root]> ";
 
 // Session command tracking for merge-before-save
 static char *session_commands[MAX_SESSION_COMMANDS];
 static size_t session_command_count = 0;
+
+/* Updates the prompt string based on current path */
+static void update_prompt(void) {
+    if (g_repl_current_path[0] == '\0') {
+        snprintf(g_repl_prompt, g_repl_prompt_MAX_LEN, "[root]> ");
+    } else {
+        snprintf(g_repl_prompt, g_repl_prompt_MAX_LEN, "[%s]> ", g_repl_current_path);
+    }
+}
+
+/* Get the current REPL table (like CWD) */
+hdlhashtable repl_get_current_table(void) {
+    if (g_repl_current_table == nil) {
+        return roottable;
+    }
+    return g_repl_current_table;
+}
+
+/* Get the current REPL path */
+const char *repl_get_current_path(void) {
+    return g_repl_current_path;
+}
+
+/* Set the current REPL table by navigating to a path.
+ * Returns true on success, false if path is invalid.
+ */
+boolean repl_goto_path(const char *path) {
+    /* Handle empty path or "@" - go to root */
+    if (path == NULL || path[0] == '\0' ||
+        (path[0] == '@' && path[1] == '\0')) {
+        g_repl_current_table = roottable;
+        g_repl_current_path[0] = '\0';
+        update_prompt();
+        return true;
+    }
+
+    /* Skip leading @ if present */
+    const char *clean_path = path;
+    if (path[0] == '@') {
+        clean_path = path + 1;
+    }
+
+    /* Navigate to the path */
+    hdlhashtable target = completion_navigate_path(clean_path);
+    if (target == nil) {
+        return false;
+    }
+
+    /* Update state */
+    g_repl_current_table = target;
+    strncpy(g_repl_current_path, clean_path, REPL_PATH_MAX_LEN - 1);
+    g_repl_current_path[REPL_PATH_MAX_LEN - 1] = '\0';
+    update_prompt();
+    return true;
+}
 
 // Global interrupt flag (signal-safe)
 // Declared as non-static so lang.c can check it for script interruption
@@ -135,7 +196,7 @@ static void handle_interrupt(struct linenoiseState *ls, char *buf, size_t buflen
         // Restart with fresh prompt using caller's buffer (not ls->buf which
         // may be invalid after linenoiseEditStop)
         if (linenoiseEditStart(ls, STDIN_FILENO, STDOUT_FILENO,
-                              buf, buflen, REPL_PROMPT) == -1) {
+                              buf, buflen, g_repl_prompt) == -1) {
             // Failed to restart - log error and set flag for main loop to exit
             log_error(LOG_COMP_GENERAL, "Failed to restart linenoise after interrupt");
             // Note: Main loop will exit on next iteration since ls is invalid
@@ -329,6 +390,7 @@ static void cleanup_linenoise(void) {
 /* List of REPL slash commands for tab completion */
 static const char *repl_slash_commands[] = {
     "exit",
+    "goto",
     "help",
     "keycodes",
     "list",
@@ -341,6 +403,60 @@ static void linenoise_completion_callback(const char *buf, linenoiseCompletions 
 
     // Handle slash command completion
     if (buf_len > 0 && buf[0] == '/') {
+        // Check if this is "/goto <path>" - complete the path argument
+        if (strncasecmp(buf, "/goto ", 6) == 0) {
+            // Extract the path being typed
+            const char *path_start = buf + 6;
+
+            // Skip leading @ if present
+            if (*path_start == '@') {
+                path_start++;
+            }
+
+            // Parse as a dotted path for completion
+            completion_context_t ctx;
+            completion_parse_context(path_start, (int)strlen(path_start), &ctx);
+
+            // Collect matches from roottable (paths are always absolute)
+            completion_matches_t matches;
+            completion_matches_init(&matches);
+
+            if (ctx.has_dot) {
+                hdlhashtable target = completion_navigate_path(ctx.table_path);
+                if (target != nil) {
+                    completion_add_table_entries(&matches, target, ctx.leaf_prefix);
+                }
+            } else {
+                completion_add_table_entries(&matches, roottable, ctx.leaf_prefix);
+            }
+
+            // Add matches - only include tables (navigable items)
+            for (size_t i = 0; i < matches.count; i++) {
+                if (matches.items[i].is_table) {
+                    char completion[1024];
+                    size_t leaf_len = strlen(ctx.leaf_prefix);
+                    size_t prefix_len = buf_len - leaf_len;
+
+                    // Copy everything before the leaf
+                    if (prefix_len > sizeof(completion) - 1) {
+                        prefix_len = sizeof(completion) - 1;
+                    }
+                    memcpy(completion, buf, prefix_len);
+                    completion[prefix_len] = '\0';
+
+                    // Append the match with trailing dot
+                    size_t remaining = sizeof(completion) - prefix_len - 1;
+                    strncat(completion, matches.items[i].name, remaining);
+                    remaining = sizeof(completion) - strlen(completion) - 1;
+                    strncat(completion, ".", remaining);
+
+                    linenoiseAddCompletion(lc, completion);
+                }
+            }
+            return;
+        }
+
+        // Regular slash command completion
         const char *cmd_prefix = buf + 1;  // Skip the '/'
         size_t prefix_len = buf_len - 1;
 
@@ -496,7 +612,7 @@ static int repl_main_blocking(void) {
 
     while (running) {
         // Read line with blocking linenoise
-        char *line = linenoise(REPL_PROMPT);
+        char *line = linenoise(g_repl_prompt);
 
         if (line == NULL) {
             // EOF (Ctrl-D) or error
@@ -552,7 +668,7 @@ int repl_main(cli_options_t *options) {
 
     // 5. Start non-blocking line editing (only for TTY)
     if (linenoiseEditStart(&ls, STDIN_FILENO, STDOUT_FILENO,
-                           line_buf, sizeof(line_buf), REPL_PROMPT) == -1) {
+                           line_buf, sizeof(line_buf), g_repl_prompt) == -1) {
         log_error(LOG_COMP_GENERAL, "Failed to start linenoise editing");
         cleanup_linenoise();
         return 1;
@@ -585,7 +701,7 @@ int repl_main(cli_options_t *options) {
                 if (running) {
                     // Restart line editing for next command
                     if (linenoiseEditStart(&ls, STDIN_FILENO, STDOUT_FILENO,
-                                           line_buf, sizeof(line_buf), REPL_PROMPT) == -1) {
+                                           line_buf, sizeof(line_buf), g_repl_prompt) == -1) {
                         log_error(LOG_COMP_GENERAL, "Failed to restart linenoise editing");
                         running = false;
                         break;  // Exit immediately - linenoise state is invalid
