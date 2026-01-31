@@ -140,6 +140,8 @@ static void repl_sync_variables_callback(hdlhashtable hlocals) {
         pophashtable();
 
         if (fl) {
+            /* Remove from tmpstack since it's now owned by the hash table */
+            exemptfromtmpstack(&valcopy);
             count++;
             log_debug(LOG_COMP_GENERAL, "Synced variable %.*s to persistent storage",
                       (int)bsname[0], bsname + 1);
