@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-01-31
 
-This repository is actively modernizing the Frontier runtime and toolchain. The `develop` branch now builds and tests with 64-bit alignment on both `arm64` and `x86_64`, includes a portable/headless runtime layer, and routes headless UserTalk `file.*` verbs through the external function processor (EFP) table so tests can exercise real UserTalk without `system.verbs.*` being loaded.
+Frontier is being brought back to life. This project is modernizing the classic UserTalk scripting environment and object database into a contemporary cross-platform tool. The headless CLI is now fully functional—you can explore databases, write scripts, and serve web applications, all from the command line. A native GUI application with a documented API is being planned, and any developer will be able to connect their own apps and user interfaces to Frontier. Our goal: preserve everything that made Frontier powerful while making it accessible to a new generation of developers.
 
 ## Latest Release: v1.0.0-alpha.4 (Jan 31, 2026)
 
