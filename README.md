@@ -93,6 +93,7 @@ Frontier/
 ├── app_resources/        # App bundles/resources (Frontier, OPML, Radio)
 ├── Common/               # Legacy Frontier sources/headers
 ├── databases/            # Frontier.root + guest databases (test fixtures)
+├── docs/                 # Extensive documentation of Frontier's design and the UserTalk language and verbs
 ├── portable/             # Portable runtime layer + stubs
 ├── frontier-cli/         # Multi-arch CLI build
 ├── tests/                # Cross-platform C test suite
