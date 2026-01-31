@@ -128,12 +128,23 @@ void repl_output_result(bigstring result) {
 	}
 
 	/* Don't display empty results (like Python REPL for None) */
-	if (stringlength(result) == 0) {
+	size_t len = stringlength(result);
+	if (len == 0) {
 		return;
 	}
 
-	/* Print result */
-	printf("%.*s\n", (int)stringlength(result), stringbaseaddress(result));
+	/* Print result, converting \r to \n for terminal display.
+	 * Frontier internally uses \r (Mac classic line ending) in scripts,
+	 * which causes display issues on Unix terminals. */
+	const char *src = (const char *)stringbaseaddress(result);
+	for (size_t i = 0; i < len; i++) {
+		if (src[i] == '\r') {
+			putchar('\n');
+		} else {
+			putchar(src[i]);
+		}
+	}
+	putchar('\n');
 	fflush(stdout);
 }
 
