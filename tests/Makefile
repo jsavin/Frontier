@@ -477,8 +477,13 @@ test-integration-verbose:
 	@echo "Running integration tests (verbose)..."
 	@../tools/run_integration_tests.sh --verbose
 
-# Run all tests (unit + integration)
-test-all: test test-integration
+# Run CLI migration flag tests (shell-based)
+test-migrate-flag:
+	@echo "Running CLI migration flag tests..."
+	@./test_migrate_flag.sh
+
+# Run all tests (unit + integration + CLI migration)
+test-all: test test-integration test-migrate-flag
 	@echo "All test suites completed"
 
 $(STRINGS_COMPILER):
@@ -562,7 +567,7 @@ verify-errors:
 	@echo "Verifying error message coverage..."
 	@../tools/verify_error_coverage.sh
 
-.PHONY: all test test-integration test-integration-verbose test-all clean install uninstall help results strings_generated verify-errors
+.PHONY: all test test-integration test-integration-verbose test-migrate-flag test-all clean install uninstall help results strings_generated verify-errors
 
 check_v6_tables: check_v6_tables.c $(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -DHEADLESS_LINKS_REAL_DB -I../Common/headers -I../Common/SystemHeaders -I../portable check_v6_tables.c \

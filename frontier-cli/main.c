@@ -195,6 +195,10 @@ int main(int argc, char* argv[]) {
         /* Perform the migration */
         if (!ensure_database_v7(input, &migrated, default_output, sizeof(default_output))) {
             fprintf(stderr, "Error: Migration failed for: %s\n", input);
+            /* Clean up partial migration output if it exists */
+            if (default_output[0] != '\0') {
+                remove(default_output);
+            }
             return 1;
         }
 
