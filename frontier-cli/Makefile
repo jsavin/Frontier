@@ -199,7 +199,11 @@ KERNELVERBS_PARSER = ../tools/kernelverbs_parser/parse_kernelverbs.py
 KERNELVERBS_RC = ../Common/resources/Win32/kernelverbs.rc
 KERNELVERBS_CLI = ../tools/kernelverbs_parser/cli.py
 
-all: strings_generated kernel_verbs_generated $(TARGET)
+# Fast build target - just the binary (for quick iteration)
+build: strings_generated kernel_verbs_generated $(TARGET)
+
+# Full distribution build (required for testing mainResponder/Manila)
+all: build dist
 
 $(TARGET): $(CLI_SOURCES) $(FRONTIER_SOURCES) $(PAIGE_LIB) $(LINENOISE_SRC)
 	$(CC) $(CFLAGS) $(ARCH_FLAGS) $(INCLUDES) \
@@ -285,4 +289,43 @@ check-paige-cache:
 		fi; \
 	fi
 
-.PHONY: all clean strings_generated kernel_verbs_generated check-paige-cache
+# Distribution target - creates legacy Frontier 9.5 directory structure with v7 databases
+DIST_DIR = ../dist
+DATABASES_DIR = ../databases
+
+dist: $(TARGET)
+	@echo "Creating distribution in $(DIST_DIR)..."
+	@rm -rf $(DIST_DIR)
+	@mkdir -p $(DIST_DIR)
+	@# Copy executable
+	cp $(TARGET) $(DIST_DIR)/
+	@# Copy static files
+	cp $(DATABASES_DIR)/frontierStartupCommands.txt $(DIST_DIR)/
+	cp $(DATABASES_DIR)/License.rtf $(DIST_DIR)/
+	cp "$(DATABASES_DIR)/Manila User's Guide.pdf" "$(DIST_DIR)/"
+	@# Copy directories (excluding .DS_Store)
+	rsync -a --exclude='.DS_Store' $(DATABASES_DIR)/Appearance $(DIST_DIR)/
+	rsync -a --exclude='.DS_Store' $(DATABASES_DIR)/Extras $(DIST_DIR)/
+	rsync -a --exclude='.DS_Store' $(DATABASES_DIR)/DLLs $(DIST_DIR)/
+	@# Create Guest Databases structure
+	@mkdir -p "$(DIST_DIR)/Guest Databases/apps/Tools"
+	@mkdir -p "$(DIST_DIR)/Guest Databases/ops/themes"
+	@mkdir -p "$(DIST_DIR)/Guest Databases/ops/discussion group themes"
+	@mkdir -p "$(DIST_DIR)/Guest Databases/www"
+	@# Migrate databases to v7 format (fail fast on any error)
+	@echo "Migrating databases to v7 format..."
+	./$(TARGET) --migrate $(DATABASES_DIR)/Frontier.root --output $(DIST_DIR)/Frontier.root7 || exit 1
+	./$(TARGET) --migrate "$(DATABASES_DIR)/Guest Databases/apps/mainResponder.root" --output "$(DIST_DIR)/Guest Databases/apps/mainResponder.root7" || exit 1
+	./$(TARGET) --migrate "$(DATABASES_DIR)/Guest Databases/apps/manila.root" --output "$(DIST_DIR)/Guest Databases/apps/manila.root7" || exit 1
+	./$(TARGET) --migrate "$(DATABASES_DIR)/Guest Databases/apps/Tools/radioCommunityServer.root" --output "$(DIST_DIR)/Guest Databases/apps/Tools/radioCommunityServer.root7" || exit 1
+	./$(TARGET) --migrate "$(DATABASES_DIR)/Guest Databases/apps/Tools/serverMonitor.root" --output "$(DIST_DIR)/Guest Databases/apps/Tools/serverMonitor.root7" || exit 1
+	./$(TARGET) --migrate "$(DATABASES_DIR)/Guest Databases/apps/Tools/TheXmlFiles.root" --output "$(DIST_DIR)/Guest Databases/apps/Tools/TheXmlFiles.root7" || exit 1
+	./$(TARGET) --migrate "$(DATABASES_DIR)/Guest Databases/www/prefs.root" --output "$(DIST_DIR)/Guest Databases/www/prefs.root7" || exit 1
+	@echo ""
+	@echo "Distribution created in $(DIST_DIR)/"
+	@echo "Run with: ./dist/frontier-cli --system-root dist/Frontier.root7"
+
+dist-clean:
+	rm -rf $(DIST_DIR)
+
+.PHONY: all build clean strings_generated kernel_verbs_generated check-paige-cache dist dist-clean
