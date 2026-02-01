@@ -53,6 +53,7 @@
 // 2025-12-02 Codex: Log headless EFP registration to chase missing kernel valueroutines.
 
 #ifdef FRONTIER_HEADLESS
+__attribute__((unused))
 static int headless_should_log(void) {
     static int inited = 0;
     static int enabled = 0;
@@ -902,17 +903,18 @@ static boolean langinitkeywordtable (void) {
 	} /*langinitkeywordtable*/
 
 
+__attribute__((unused))
 static boolean langinstallresources (void) {
-	
+
 	if (!langinitconsttable ())
 		return (false);
-	
+
 	if (!langinitbuiltintable ())
 		return (false);
-	
+
 	if (!langinitkeywordtable ())
 		return (false);
-	
+
 	return (true);
 	} /*langinstallresources*/
 

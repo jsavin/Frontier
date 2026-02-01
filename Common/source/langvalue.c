@@ -3848,6 +3848,8 @@ static boolean langsearchpathvisit (tysearchpathcallback visit, bigstring bsname
 	boolean saved_fllocaldotparamsonly;
 	boolean result = false;
 
+	(void)saved_fllocaldotparamsonly;  /* Reserved for future use */
+
 	if (ht == nil)
 		return (false);
 

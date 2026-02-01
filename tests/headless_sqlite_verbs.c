@@ -42,6 +42,8 @@ enum {
 static boolean sqlite_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
+    (void)hparam1;
+    (void)vreturned;
     switch(token) {
         case sqlv_open:
             /* Verb #0: sqlite.open - not yet implemented */

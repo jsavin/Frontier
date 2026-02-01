@@ -41,7 +41,7 @@
 
 #include "lang.h"
 #include "logging.h"
-#include "CallMachOFramework.h"
+#include "CallMachOFrameWork.h"
 #include <fcntl.h> /* 2006-01-10 creedon */
 #include <unistd.h> /* 2025-12-27: for mkstemp, unlink */
 #include <sys/wait.h> /* 2025-12-27: for WEXITSTATUS macro */
@@ -79,7 +79,7 @@ static feofptr feoffunc; /* 2006-01-10 creedon */
 static filenoptr filenofunc; /* 2006-01-10 creedon */
 
 static boolean unixshellcallinited = false;
-static CFBundleRef sysBundle = nil;
+static CFBundleRef sysBundle __attribute__((unused)) = nil;  /* Reserved for future bundle operations */
 
 
 static boolean unixshellcallinit (void) {

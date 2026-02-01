@@ -143,6 +143,8 @@ static boolean script_compile(hdltreenode hparam1, tyvaluerecord *vreturned) {
  * - Inline: lang.evaluate(sourcetext)
  */
 static boolean script_run(hdltreenode hparam1, tyvaluerecord *vreturned) {
+    (void)hparam1;
+    (void)vreturned;
     flnextparamislast = true;
 
     langerrormessage(BIGSTRING(
@@ -397,6 +399,7 @@ static boolean script_setcode(hdltreenode hparam1, tyvaluerecord *vreturned) {
  * This function does not return normally - it throws a script error.
  */
 static boolean script_error(hdltreenode hparam1, tyvaluerecord *vreturned) {
+    (void)vreturned;
     tyvaluerecord val;
     bigstring bserror;
 

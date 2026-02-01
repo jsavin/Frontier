@@ -29,6 +29,7 @@ enum {
 static boolean point_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
+    (void)bserror;
     switch(token) {
         case poiv_get: {
             /* @IMPLEMENTED point.get (point, @h, @v) - Extract h,v from point */

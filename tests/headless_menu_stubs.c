@@ -24,6 +24,7 @@ boolean menuverbgettypestring (hdlexternalvariable h, bigstring bs) {
 boolean menuverbsetdirty (hdlexternalvariable h, boolean fldirty) { (void)h;(void)fldirty; return false; }
 boolean menuverbmemorypack (hdlexternalvariable h, Handle *hp) { (void)h; if (hp) *hp = nil; return false; }
 boolean menuverbmemoryunpack (Handle hpacked, long *ixload, hdlexternalvariable *h) { (void)hpacked;(void)ixload;(void)h; return false; }
+__attribute__((unused))
 static boolean headless_menu_dup_block(dbaddress source, dbaddress *dest) {
     dbaddress normalized = source;
     long payload_offset = 0;

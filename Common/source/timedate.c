@@ -269,6 +269,7 @@ boolean setsystemclock (unsigned long secs) {
 	} /*setsystemclock*/
 
 
+__attribute__((unused))
 static void
 adjustforcurrenttimezone (unsigned long *ptime)
 {
@@ -345,6 +346,7 @@ boolean timetotimestring (int64_t ptime, bigstring bstime, boolean flwantseconds
 
 boolean timetodatestring (int64_t ptime, bigstring bsdate, boolean flabbreviate) {
 
+	(void)flabbreviate;
         #if defined(FRONTIER_HEADLESS)
         /*
         2025-12-08 Codex: Headless fallback without CFDateFormatter – format Mac-epoch seconds
@@ -544,6 +546,7 @@ void secondstodayofweek (int64_t secs, short *dayofweek) {
 	} /*secondstodayofweek*/
 
 
+__attribute__((unused))
 static void fixdate (tydate * date) {
 		date->minute = date->minute + (date->second / 60);
 		date->second = date->second % 60;

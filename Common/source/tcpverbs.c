@@ -1958,6 +1958,7 @@ static boolean tcp_timeout_expired(tcp_timeout_t *t) {
     return false;
 }
 
+__attribute__((unused))
 static long tcp_timeout_remaining_ms(tcp_timeout_t *t) {
     uint64_t now_us = tcp_get_now_us();
     if (now_us >= t->idle_deadline_us)
@@ -2586,6 +2587,8 @@ boolean tcp_write_file_to_stream(long stream_id, Handle hprefix, Handle hsuffix,
     boolean success = true;
 
     log_debug(LOG_COMP_LANG, "tcp_write_file_to_stream: stream_id=%ld", stream_id);
+
+    (void)sockfd;  /* Reserved for future socket-level operations */
 
     /* Validate parameters */
     if (!fs) {

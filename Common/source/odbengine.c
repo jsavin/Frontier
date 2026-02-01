@@ -396,6 +396,7 @@ pascal boolean odbAccessWindow (WindowPtr w, odbref *odb) {
  *
  * Returns: true if Cancoon record detected, false if v7 root table
  */
+__attribute__((unused))
 static boolean odb_detect_cancoon_record(dbaddress adr) {
 	short versionnumber;
 

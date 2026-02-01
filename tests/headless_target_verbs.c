@@ -28,6 +28,7 @@ enum {
 static boolean target_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
+    (void)bserror;
     switch(token) {
         case tarv_get:
             /* Verb: target.get - forward to real implementation */

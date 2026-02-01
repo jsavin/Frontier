@@ -57,11 +57,19 @@
 #define STR_i4		(BIGSTRING ("\x02" "i4"))
 #define STR_i2		(BIGSTRING ("\x02" "i2"))
 #define STR_i1		(BIGSTRING ("\x02" "i1"))
+#ifndef STR_int
 #define STR_int		(BIGSTRING ("\x03" "int"))
+#endif
 #define STR_float	(BIGSTRING ("\x05" "float"))
+#ifndef STR_double
 #define STR_double	(BIGSTRING ("\x06" "double"))
+#endif
+#ifndef STR_boolean
 #define STR_boolean	(BIGSTRING ("\x07" "boolean"))
+#endif
+#ifndef STR_string
 #define STR_string	(BIGSTRING ("\x06" "string"))
+#endif
 
 #define STR_base64_begin	(BIGSTRING ("\x08" "<base64>"))
 #define STR_base64_end		(BIGSTRING ("\x09" "</base64>"))
@@ -263,6 +271,7 @@ static boolean xmlencodeentities (Handle htext) {
 	} /*xmlencodeentities*/
 
 
+__attribute__((unused))
 static boolean xmldecodeentities (Handle htext) {
 
 	/*
@@ -908,7 +917,7 @@ boolean xmlstructtofrontiervalue (tyaddress *adrstruct, tyvaluerecord *v) {
 		 * OR if it's a table of members to recursively convert */
 		hdlhashtable ht, htnew;
 		tyvaluerecord vtype, vdata;
-		hdlhashnode hnode, hn;
+		hdlhashnode hnode = NULL, hn;
 		bigstring bstype;
 		long ix;
 
@@ -3863,11 +3872,12 @@ static boolean xmlstructtofrontiervalueverb (hdltreenode hp1, tyvaluerecord *v) 
 	} /*xmlstructtofrontiervalueverb*/
 
 
+__attribute__((unused))
 static boolean xmlfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vreturned, bigstring bserror) {
-	
+
 	/*
 	*/
-	
+
 	hdltreenode hp1 = hparam1;
 	tyvaluerecord *v = vreturned;
 	

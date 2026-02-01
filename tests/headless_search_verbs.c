@@ -32,6 +32,8 @@ enum {
 static boolean search_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
+    (void)hparam1;
+    (void)vreturned;
     switch(token) {
         case seav_reset:
             /* Verb #0: search.reset - @SCRIPT_IMPLEMENTED (pure UserTalk) */

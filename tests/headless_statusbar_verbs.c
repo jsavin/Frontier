@@ -30,6 +30,8 @@ enum {
 static boolean statusbar_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
+    (void)hparam1;
+    (void)vreturned;
     switch(token) {
         case stav_msg:
             /* statusbar.msg - error stub */

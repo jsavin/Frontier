@@ -1041,7 +1041,7 @@ boolean opverbgetlangtext (hdlexternalvariable hvariable, boolean flpretty, Hand
 		        (unsigned long long)(**hv).variabledata, (int)(**hv).flinmemory);
 	}
 #endif
-	if (!opverbinmemory (&ctx, hv))
+	if (!opverbinmemory (&ctx, (hdlexternalvariable)hv))
 		return (false);
 
 	ho = (hdloutlinerecord) (**hv).variabledata;
@@ -1078,7 +1078,7 @@ boolean opverbgetsize (hdlexternalvariable hvariable, long *size) {
 
 	db_context_init(&ctx);
 	ctx.database = (**hv).hdatabase;  /* Use variable's own database for EFP support */
-	if (!opverbinmemory (&ctx, hv))
+	if (!opverbinmemory (&ctx, (hdlexternalvariable)hv))
 		return (false);
 
 	ho = (hdloutlinerecord) (**hv).variabledata;
@@ -1153,7 +1153,7 @@ boolean opverbsetdirty (hdlexternalvariable hvariable, boolean fldirty) {
 
 	db_context_init(&ctx);
 	ctx.database = (**hv).hdatabase;  /* Use variable's own database for EFP support */
-	if (!opverbinmemory (&ctx, hv))
+	if (!opverbinmemory (&ctx, (hdlexternalvariable)hv))
 		return (false);
 
 	ho = (hdloutlinerecord) (**hv).variabledata;
@@ -1182,7 +1182,7 @@ boolean opverbpacktotext (hdlexternalvariable h, Handle htext) {
 
 	db_context_init(&ctx);
 	ctx.database = (**hv).hdatabase;  /* Use variable's own database for EFP support */
-	if (!opverbinmemory (&ctx, hv))
+	if (!opverbinmemory (&ctx, (hdlexternalvariable)hv))
 		return (false);
 
 	ho = (hdloutlinerecord) (**hv).variabledata;
@@ -1216,7 +1216,7 @@ boolean opverbgettimes (hdlexternalvariable h, int64_t *timecreated, int64_t *ti
 
 	db_context_init(&ctx);
 	ctx.database = (**hv).hdatabase;  /* Use variable's own database for EFP support */
-	if (!opverbinmemory (&ctx, hv))
+	if (!opverbinmemory (&ctx, (hdlexternalvariable)hv))
 		return (false);
 
 	ho = (hdloutlinerecord) (**hv).variabledata;
@@ -1237,7 +1237,7 @@ boolean opverbsettimes (hdlexternalvariable h, int64_t timecreated, int64_t time
 
 	db_context_init(&ctx);
 	ctx.database = (**hv).hdatabase;  /* Use variable's own database for EFP support */
-	if (!opverbinmemory (&ctx, hv))
+	if (!opverbinmemory (&ctx, (hdlexternalvariable)hv))
 		return (false);
 
 	ho = (hdloutlinerecord) (**hv).variabledata;
@@ -1467,7 +1467,7 @@ boolean getoutlinevalue (hdltreenode hfirst, short pnum, hdloutlinerecord *houtl
 
 	db_context_init(&ctx);
 	ctx.database = (**hv).hdatabase;  /* Use variable's own database for EFP support */
-	if (!opverbinmemory (&ctx, hv))
+	if (!opverbinmemory (&ctx, (hdlexternalvariable)hv))
 		return (false);
 
 	*houtline = (hdloutlinerecord) (**hv).variabledata;
@@ -1487,7 +1487,7 @@ boolean opverbarrayreference (hdlexternalvariable hvariable, long ix, hdlheadrec
 
 	db_context_init(&ctx);
 	ctx.database = (**hv).hdatabase;  /* Use variable's own database for EFP support */
-	if (!opverbinmemory (&ctx, hv)) /*couldn't swap into memory*/
+	if (!opverbinmemory (&ctx, (hdlexternalvariable)hv)) /*couldn't swap into memory*/
 		return (false);
 
 	oppushoutline ((hdloutlinerecord) (**hv).variabledata); /*assume it's in memory*/
@@ -1537,7 +1537,7 @@ boolean opedit (hdlexternalvariable hvariable, hdlwindowinfo hparent, ptrfilespe
 
 	db_context_init(&ctx);
 	ctx.database = (**hv).hdatabase;  /* Use variable's own database for EFP support */
-	if (!opverbinmemory (&ctx, hv)) // couldn't swap it into memory
+	if (!opverbinmemory (&ctx, (hdlexternalvariable)hv)) // couldn't swap it into memory
 		return (false);
 
 	ho = (hdloutlinerecord) (**hv).variabledata; // assume it's in memory
@@ -1684,7 +1684,7 @@ boolean opvaltoscript (tyvaluerecord val, hdloutlinerecord *houtline) {
 
 	db_context_init(&ctx);
 	ctx.database = (**hv).hdatabase;  /* Use variable's own database for EFP support */
-	if (!opverbinmemory (&ctx, hv))
+	if (!opverbinmemory (&ctx, (hdlexternalvariable)hv))
 		return (false);
 
 	*houtline = (hdloutlinerecord) (**hv).variabledata;
@@ -2162,7 +2162,7 @@ static boolean opsettypeverb (hdltreenode hparam1, tyvaluerecord *v) {
 
 	db_context_init(&ctx);
 	ctx.database = (**hv).hdatabase;  /* Use variable's own database for EFP support */
-	if (!opverbinmemory (&ctx, hv))
+	if (!opverbinmemory (&ctx, (hdlexternalvariable)hv))
 		return (false);
 
 	ho = (hdloutlinerecord) (**hv).variabledata;
@@ -4083,7 +4083,7 @@ static boolean opfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord 
 
 			db_context_init(&ctx);
 			ctx.database = (**hv).hdatabase;  /* Use variable's own database for EFP support */
-			if (!opverbinmemory (&ctx, hv))
+			if (!opverbinmemory (&ctx, (hdlexternalvariable)hv))
 				return (false);
 
 			flnextparamislast = true;
@@ -4423,7 +4423,7 @@ boolean opverbfind (hdlexternalvariable hvariable, boolean *flzoom) {
 
 	db_context_init(&ctx);
 	ctx.database = (**hv).hdatabase;  /* Use variable's own database for EFP support */
-	if (!opverbinmemory (&ctx, hv))
+	if (!opverbinmemory (&ctx, (hdlexternalvariable)hv))
 		return (false);
 
 	ho = (hdloutlinerecord) (**hv).variabledata;

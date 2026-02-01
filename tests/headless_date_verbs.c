@@ -79,7 +79,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
             hdlhashtable ht;
             bigstring bs;
 
-            if (!getlongvalue(hparam1, 1, &date))
+            if (!getdatevalue(hparam1, 1, &date))
                 return false;
 
             secondstodatetime(date, &day, &month, &year, &hour, &minute, &second);
@@ -168,7 +168,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
             flnextparamislast = true;
 
-            if (!getlongvalue(hparam1, 1, &date))
+            if (!getdatevalue(hparam1, 1, &date))
                 return false;
 
             abbrevdatestring((unsigned long)date, bs);
@@ -182,7 +182,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
             flnextparamislast = true;
 
-            if (!getlongvalue(hparam1, 1, &date))
+            if (!getdatevalue(hparam1, 1, &date))
                 return false;
 
             secondstodayofweek(date, &dayofweek);
@@ -196,7 +196,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
             flnextparamislast = true;
 
-            if (!getlongvalue(hparam1, 1, &date))
+            if (!getdatevalue(hparam1, 1, &date))
                 return false;
 
             secondstodatetime(date, &day, &month, &year, &hour, &minute, &second);
@@ -210,7 +210,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
             flnextparamislast = true;
 
-            if (!getlongvalue(hparam1, 1, &date))
+            if (!getdatevalue(hparam1, 1, &date))
                 return false;
 
             secondstodayofweek(date, &dayofweek);
@@ -223,7 +223,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
             flnextparamislast = true;
 
-            if (!getlongvalue(hparam1, 1, &date))
+            if (!getdatevalue(hparam1, 1, &date))
                 return false;
 
             return setlongvalue(firstofmonth((unsigned long)date), vreturned);
@@ -235,7 +235,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
             flnextparamislast = true;
 
-            if (!getlongvalue(hparam1, 1, &date))
+            if (!getdatevalue(hparam1, 1, &date))
                 return false;
 
             return setlongvalue(lastofmonth((unsigned long)date), vreturned);
@@ -248,7 +248,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
             flnextparamislast = true;
 
-            if (!getlongvalue(hparam1, 1, &date))
+            if (!getdatevalue(hparam1, 1, &date))
                 return false;
 
             longdatestring((unsigned long)date, bs);
@@ -261,7 +261,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
             flnextparamislast = true;
 
-            if (!getlongvalue(hparam1, 1, &date))
+            if (!getdatevalue(hparam1, 1, &date))
                 return false;
 
             return setlongvalue(nextmonth((unsigned long)date), vreturned);
@@ -273,7 +273,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
             flnextparamislast = true;
 
-            if (!getlongvalue(hparam1, 1, &date))
+            if (!getdatevalue(hparam1, 1, &date))
                 return false;
 
             return setlongvalue(date + (7L * 24L * 60L * 60L), vreturned);
@@ -285,7 +285,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
             flnextparamislast = true;
 
-            if (!getlongvalue(hparam1, 1, &date))
+            if (!getdatevalue(hparam1, 1, &date))
                 return false;
 
             return setlongvalue(nextyear((unsigned long)date), vreturned);
@@ -297,7 +297,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
             flnextparamislast = true;
 
-            if (!getlongvalue(hparam1, 1, &date))
+            if (!getdatevalue(hparam1, 1, &date))
                 return false;
 
             return setlongvalue(prevmonth((unsigned long)date), vreturned);
@@ -309,7 +309,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
             flnextparamislast = true;
 
-            if (!getlongvalue(hparam1, 1, &date))
+            if (!getdatevalue(hparam1, 1, &date))
                 return false;
 
             return setlongvalue(date - (7L * 24L * 60L * 60L), vreturned);
@@ -321,7 +321,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
             flnextparamislast = true;
 
-            if (!getlongvalue(hparam1, 1, &date))
+            if (!getdatevalue(hparam1, 1, &date))
                 return false;
 
             return setlongvalue(prevyear((unsigned long)date), vreturned);
@@ -334,7 +334,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
             flnextparamislast = true;
 
-            if (!getlongvalue(hparam1, 1, &date))
+            if (!getdatevalue(hparam1, 1, &date))
                 return false;
 
             shortdatestring((unsigned long)date, bs);
@@ -347,7 +347,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
             flnextparamislast = true;
 
-            if (!getlongvalue(hparam1, 1, &date))
+            if (!getdatevalue(hparam1, 1, &date))
                 return false;
 
             return setlongvalue(date + (24L * 60L * 60L), vreturned);
@@ -361,7 +361,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
             flnextparamislast = true;
 
-            if (!getlongvalue(hparam1, 1, &date))
+            if (!getdatevalue(hparam1, 1, &date))
                 return false;
 
             secondstodatetime(date, &day, &month, &year, &hour, &minute, &second);
@@ -376,7 +376,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
             flnextparamislast = true;
 
-            if (!getlongvalue(hparam1, 1, &date))
+            if (!getdatevalue(hparam1, 1, &date))
                 return false;
 
             return setlongvalue(date - (24L * 60L * 60L), vreturned);
@@ -396,7 +396,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
             flnextparamislast = true;
 
-            if (!getlongvalue(hparam1, 1, &date))
+            if (!getdatevalue(hparam1, 1, &date))
                 return false;
 
             return datenetstandardstring(date, vreturned);
@@ -448,7 +448,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
             flnextparamislast = true;
 
-            if (!getlongvalue(hparam1, 1, &date))
+            if (!getdatevalue(hparam1, 1, &date))
                 return false;
 
             secondstodatetime(date, &day, &month, &year, &hour, &minute, &second);
@@ -463,7 +463,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
             flnextparamislast = true;
 
-            if (!getlongvalue(hparam1, 1, &date))
+            if (!getdatevalue(hparam1, 1, &date))
                 return false;
 
             secondstodatetime(date, &day, &month, &year, &hour, &minute, &second);
@@ -478,7 +478,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
             flnextparamislast = true;
 
-            if (!getlongvalue(hparam1, 1, &date))
+            if (!getdatevalue(hparam1, 1, &date))
                 return false;
 
             secondstodatetime(date, &day, &month, &year, &hour, &minute, &second);
@@ -493,7 +493,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
             flnextparamislast = true;
 
-            if (!getlongvalue(hparam1, 1, &date))
+            if (!getdatevalue(hparam1, 1, &date))
                 return false;
 
             secondstodatetime(date, &day, &month, &year, &hour, &minute, &second);
@@ -508,7 +508,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
             flnextparamislast = true;
 
-            if (!getlongvalue(hparam1, 1, &date))
+            if (!getdatevalue(hparam1, 1, &date))
                 return false;
 
             secondstodatetime(date, &day, &month, &year, &hour, &minute, &second);
@@ -522,7 +522,7 @@ static boolean date_valueproc(short token, hdltreenode hparam1,
 
             flnextparamislast = true;
 
-            if (!getlongvalue(hparam1, 1, &date))
+            if (!getdatevalue(hparam1, 1, &date))
                 return false;
 
             secondstodatetime(date, &day, &month, &year, &hour, &minute, &second);

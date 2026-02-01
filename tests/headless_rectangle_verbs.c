@@ -27,6 +27,7 @@ enum {
 static boolean rectangle_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
+    (void)bserror;
     switch(token) {
         case recv_get: {
             /* @IMPLEMENTED rectangle.get (rect, @top, @left, @bottom, @right)

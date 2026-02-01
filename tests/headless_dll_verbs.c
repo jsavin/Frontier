@@ -29,6 +29,8 @@ enum {
 static boolean dll_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
+    (void)hparam1;
+    (void)vreturned;
     switch(token) {
         case dllv_call:
             /* Verb #0: dll.call - not yet implemented */

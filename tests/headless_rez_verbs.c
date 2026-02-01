@@ -40,6 +40,8 @@ enum {
 static boolean rez_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
+    (void)hparam1;
+    (void)vreturned;
     switch(token) {
         case rezv_getresource:
             /* Verb #0: rez.getresource - not yet implemented */

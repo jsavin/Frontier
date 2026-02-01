@@ -208,6 +208,7 @@ static boolean is_safe_log_path(const char *path) {
 	return true;
 }
 #endif
+__attribute__((unused))
 static boolean langhash_materialize_trace_enabled(void) {
 	static short initialized = 0;
 	static boolean enabled = false;
@@ -1261,6 +1262,7 @@ boolean hashflushcache (long *ctbytesneeded) {
 
 boolean disposehashnode (hdlhashtable ht, hdlhashnode hnode, boolean fldisposevalue, boolean fldisk) {
 
+	(void)ht;
 	/* 2025-12-23: No push/pop needed - disposevaluerecord uses release stack, not db read operations */
 
 	/*
@@ -3665,12 +3667,13 @@ static boolean hashpackvisit_v7 (bigstring bsname, hdlhashnode hnode, tyvaluerec
 		case fixedvaluetype:
 		case singlevaluetype:
 		case directionvaluetype:
-		case datevaluetype:
+		case datevaluetype: {
 			tydiskvaluedata_v7 rec_data_local;
 			clearbytes(&rec_data_local, sizeof(rec_data_local));
 			diskvalue_from_value_v7 (&val, &rec_data_local);
 			memcpy(recbuf + 8, &rec_data_local, sizeof(rec_data_local));
 			break;
+		}
 
 	default:
 		langerror (cantpackerror);

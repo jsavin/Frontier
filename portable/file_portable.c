@@ -96,6 +96,7 @@ static fnum_entry *entry_from(hdlfilenum fnum) {
     return &ftable[fnum];
 }
 
+__attribute__((unused))
 static FILE *fp_from(hdlfilenum fnum) {
     fnum_entry *slot = entry_from(fnum);
     if (!slot)

@@ -33,6 +33,8 @@ enum {
 static boolean bit_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
+    (void)hparam1;
+    (void)vreturned;
     switch(token) {
         case bitv_get:
             /* Verb #0: bit.get - not yet implemented */

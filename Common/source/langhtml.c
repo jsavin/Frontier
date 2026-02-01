@@ -2657,12 +2657,14 @@ static boolean next_marker(hdlfilenum file_ref, unsigned char * c) {
     long            discarded_bytes = 0;
 
 	//  Find 0xFF byte; count and skip any non-FFs.
-    
+
     result = read_1_byte(file_ref, c);
     while ( ( result == true ) && (*c != 0xFF) ) {
         discarded_bytes++;
         result = read_1_byte(file_ref, c);
 		}
+
+	(void)discarded_bytes;  /* Could be used for debugging/diagnostics */
     
 	//  Get marker code byte, swallowing any duplicate FF bytes.     Extra FFs
 	//  are legal as pad bytes, so don't count them in discarded_bytes.
@@ -9845,12 +9847,13 @@ boolean htmlneutertagsverb (hdltreenode hp1, tyvaluerecord *v) {
 
 #pragma mark === html, searchengine, webserver, inetd EFP ===
 
+__attribute__((unused))
 static boolean htmlfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vreturned, bigstring bserror) {
-	
+
 	/*
 	6.1d16 AR: Integrated webserver and inetd verbs.
 	*/
-	
+
 	hdltreenode hp1 = hparam1;
 	tyvaluerecord *v = vreturned;
 	hdlhashnode hnode;

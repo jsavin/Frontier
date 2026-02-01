@@ -1061,6 +1061,8 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			FILE *fp;
 			short refnum;
 
+			(void)mode;  /* Used in conditional logic below */
+
 			if (!getfilespecvalue(hparam1, 1, &fs))
 				return false;
 
@@ -1148,6 +1150,8 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			long pos;
 			int fd;
 			boolean success;
+
+			(void)success;  /* Used for error handling flow */
 
 			flnextparamislast = true;
 
@@ -1659,6 +1663,8 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 		char path[4096];
 		bigstring bspath, bsfilename, bsext, bsresult;
 		short i, lastslash, lastdot;
+
+		(void)bsext;  /* Reserved for future extension parsing */
 
 		flnextparamislast = true;
 
