@@ -312,15 +312,15 @@ dist: $(TARGET)
 	@mkdir -p "$(DIST_DIR)/Guest Databases/ops/themes"
 	@mkdir -p "$(DIST_DIR)/Guest Databases/ops/discussion group themes"
 	@mkdir -p "$(DIST_DIR)/Guest Databases/www"
-	@# Migrate databases to v7 format
+	@# Migrate databases to v7 format (fail fast on any error)
 	@echo "Migrating databases to v7 format..."
-	./$(TARGET) --migrate $(DATABASES_DIR)/Frontier.root --output $(DIST_DIR)/Frontier.root7
-	./$(TARGET) --migrate "$(DATABASES_DIR)/Guest Databases/apps/mainResponder.root" --output "$(DIST_DIR)/Guest Databases/apps/mainResponder.root7"
-	./$(TARGET) --migrate "$(DATABASES_DIR)/Guest Databases/apps/manila.root" --output "$(DIST_DIR)/Guest Databases/apps/manila.root7"
-	./$(TARGET) --migrate "$(DATABASES_DIR)/Guest Databases/apps/Tools/radioCommunityServer.root" --output "$(DIST_DIR)/Guest Databases/apps/Tools/radioCommunityServer.root7"
-	./$(TARGET) --migrate "$(DATABASES_DIR)/Guest Databases/apps/Tools/serverMonitor.root" --output "$(DIST_DIR)/Guest Databases/apps/Tools/serverMonitor.root7"
-	./$(TARGET) --migrate "$(DATABASES_DIR)/Guest Databases/apps/Tools/TheXmlFiles.root" --output "$(DIST_DIR)/Guest Databases/apps/Tools/TheXmlFiles.root7"
-	./$(TARGET) --migrate "$(DATABASES_DIR)/Guest Databases/www/prefs.root" --output "$(DIST_DIR)/Guest Databases/www/prefs.root7"
+	./$(TARGET) --migrate $(DATABASES_DIR)/Frontier.root --output $(DIST_DIR)/Frontier.root7 || exit 1
+	./$(TARGET) --migrate "$(DATABASES_DIR)/Guest Databases/apps/mainResponder.root" --output "$(DIST_DIR)/Guest Databases/apps/mainResponder.root7" || exit 1
+	./$(TARGET) --migrate "$(DATABASES_DIR)/Guest Databases/apps/manila.root" --output "$(DIST_DIR)/Guest Databases/apps/manila.root7" || exit 1
+	./$(TARGET) --migrate "$(DATABASES_DIR)/Guest Databases/apps/Tools/radioCommunityServer.root" --output "$(DIST_DIR)/Guest Databases/apps/Tools/radioCommunityServer.root7" || exit 1
+	./$(TARGET) --migrate "$(DATABASES_DIR)/Guest Databases/apps/Tools/serverMonitor.root" --output "$(DIST_DIR)/Guest Databases/apps/Tools/serverMonitor.root7" || exit 1
+	./$(TARGET) --migrate "$(DATABASES_DIR)/Guest Databases/apps/Tools/TheXmlFiles.root" --output "$(DIST_DIR)/Guest Databases/apps/Tools/TheXmlFiles.root7" || exit 1
+	./$(TARGET) --migrate "$(DATABASES_DIR)/Guest Databases/www/prefs.root" --output "$(DIST_DIR)/Guest Databases/www/prefs.root7" || exit 1
 	@echo ""
 	@echo "Distribution created in $(DIST_DIR)/"
 	@echo "Run with: ./dist/frontier-cli --system-root dist/Frontier.root7"
