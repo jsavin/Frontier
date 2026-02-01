@@ -103,7 +103,13 @@ static boolean filemenu_save_systemroot(void) {
     /* Update views[0] to point to the saved root table */
     dbsetview(cancoonview, root_adr);
 
-    log_debug(LOG_COMP_DB, "filemenu_save_systemroot: saved, views[0] = 0x%llx",
+    /* Flush to disk - required for changes to persist */
+    if (!dbclose()) {
+        log_error(LOG_COMP_DB, "filemenu_save_systemroot: dbclose failed");
+        return false;
+    }
+
+    log_debug(LOG_COMP_DB, "filemenu_save_systemroot: saved and flushed, views[0] = 0x%llx",
               (unsigned long long)root_adr);
 
     return true;
