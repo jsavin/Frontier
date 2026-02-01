@@ -205,11 +205,19 @@ run_test "Non-existent file fails" 1 "$CLI" --migrate "$TMP_DIR/nonexistent.root
 echo ""
 
 echo "Test 8: Original v6 file unchanged"
-# Get hash of source before migration
-src_hash_before=$(md5 -q "$TMP_DIR/source.root")
+# Get hash of source before migration (portable for macOS and Linux)
+if command -v md5sum >/dev/null 2>&1; then
+    src_hash_before=$(md5sum "$TMP_DIR/source.root" | cut -d' ' -f1)
+else
+    src_hash_before=$(md5 -q "$TMP_DIR/source.root")
+fi
 rm -f "$TMP_DIR/source.root7"
 "$CLI" --migrate "$TMP_DIR/source.root" >/dev/null 2>&1
-src_hash_after=$(md5 -q "$TMP_DIR/source.root")
+if command -v md5sum >/dev/null 2>&1; then
+    src_hash_after=$(md5sum "$TMP_DIR/source.root" | cut -d' ' -f1)
+else
+    src_hash_after=$(md5 -q "$TMP_DIR/source.root")
+fi
 TESTS_RUN=$((TESTS_RUN + 1))
 if [ "$src_hash_before" = "$src_hash_after" ]; then
     echo -e "${GREEN}PASS${NC}: Source file unchanged after migration"

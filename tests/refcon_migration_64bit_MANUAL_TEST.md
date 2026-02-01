@@ -105,10 +105,7 @@ return "Test data created"
 '
 
 # 3. Migrate to v7
-FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli \
-  --system-root tests/tmp/migration/full_refcon_test_v6.root \
-  --upgrade-system-root \
-  -e "1"
+./frontier-cli/frontier-cli --migrate tests/tmp/migration/full_refcon_test_v6.root
 
 # 4. Verify values in migrated database
 FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli \

@@ -211,6 +211,7 @@ int main(int argc, char* argv[]) {
             FILE *dst = fopen(g_cli_options.output_path, "wb");
             if (!dst) {
                 fclose(src);
+                remove(default_output);  /* Clean up intermediate file */
                 fprintf(stderr, "Error: Cannot create output file: %s\n", g_cli_options.output_path);
                 return 1;
             }

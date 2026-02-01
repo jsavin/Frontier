@@ -85,7 +85,7 @@ if [ -f "databases/Frontier.root7" ]; then
 elif [ -f "databases/Frontier.root" ]; then
     print_info "Migrating v6 database to v7..."
     # Run migration
-    ./frontier-cli/frontier-cli --system-root databases/Frontier.root --upgrade-system-root
+    ./frontier-cli/frontier-cli --migrate databases/Frontier.root
     if [ -f "databases/Frontier.root7" ]; then
         cp databases/Frontier.root7 "$STAGE_DIR/"
         print_success "Database migrated and copied"
