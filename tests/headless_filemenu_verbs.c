@@ -121,6 +121,7 @@ static boolean filemenu_save_systemroot(void) {
     /* Flush to disk - required for changes to persist */
     if (!dbclose()) {
         log_error(LOG_COMP_DB, "filemenu_save_systemroot: dbclose failed");
+        langerrormessage(BIGSTRING("\x1b" "Can't save: disk flush failed"));
         return false;
     }
 

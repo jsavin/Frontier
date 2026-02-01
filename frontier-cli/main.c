@@ -86,6 +86,11 @@ static char g_system_root_path[CLI_MAX_PATH_LENGTH + 1] = {0};
 /*
  * Accessor functions for system root state.
  * Used by frontier.getFilePath() verb to access CLI state without exposing globals.
+ *
+ * Thread Safety: These accessors are NOT thread-safe. They are designed for use
+ * during single-threaded startup only. The path is set before the loaded flag
+ * (see hydrate_system_root_database) to avoid partial reads, but there is no
+ * mutex protection. If multi-threading is added, these will need synchronization.
  */
 boolean cli_is_system_root_loaded(void) {
     return g_system_root_loaded;
