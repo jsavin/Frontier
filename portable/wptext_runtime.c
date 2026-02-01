@@ -920,11 +920,13 @@ static boolean wp_portable_utf8_to_rtf(Handle hutf8, Handle *hrtf, long *out_cha
 
 #endif /* FRONTIER_HEADLESS */
 
-/* Helper functions for RTF conversion - used by both wp_portable_utf8_to_rtf and wp_portable_rtf_to_utf8 */
-#ifndef FRONTIER_WPTEXT_RTF_HELPERS_DEFINED
-#define FRONTIER_WPTEXT_RTF_HELPERS_DEFINED
-
-static boolean wp_portable_append_bytes_rtf(Handle h, const void *data, size_t len) {
+/*
+ * Helper function for RTF-to-UTF8 conversion (wp_portable_rtf_to_utf8).
+ * Defined outside FRONTIER_HEADLESS since wp_portable_rtf_to_utf8 is used unconditionally.
+ * Note: wp_portable_append_bytes (inside FRONTIER_HEADLESS) serves the same purpose for
+ * wp_portable_utf8_to_rtf, but that function is test-only.
+ */
+static boolean wp_portable_append_byte(Handle h, const void *data, size_t len) {
     if (h == nil || data == NULL || len == 0)
         return true;
     long old_size = gethandlesize(h);
@@ -934,8 +936,6 @@ static boolean wp_portable_append_bytes_rtf(Handle h, const void *data, size_t l
     BlockMoveData(data, *h + old_size, len);
     return true;
 }
-
-#endif /* FRONTIER_WPTEXT_RTF_HELPERS_DEFINED */
 
 static int wp_portable_hex_value(unsigned char c) {
     if (c >= '0' && c <= '9')
@@ -964,7 +964,7 @@ static boolean wp_portable_rtf_to_utf8(const uint8_t *rtf, long len, Handle *hou
                 goto fail;
             unsigned char next = rtf[i];
             if (next == '\\' || next == '{' || next == '}') {
-                if (!wp_portable_append_bytes_rtf(hout, &next, 1))
+                if (!wp_portable_append_byte(hout, &next, 1))
                     goto fail;
                 ++i;
                 continue;
@@ -977,7 +977,7 @@ static boolean wp_portable_rtf_to_utf8(const uint8_t *rtf, long len, Handle *hou
                 if (hi < 0 || lo < 0)
                     goto fail;
                 unsigned char byte = (unsigned char)((hi << 4) | lo);
-                if (!wp_portable_append_bytes_rtf(hout, &byte, 1))
+                if (!wp_portable_append_byte(hout, &byte, 1))
                     goto fail;
                 i += 3;
                 continue;
@@ -993,10 +993,10 @@ static boolean wp_portable_rtf_to_utf8(const uint8_t *rtf, long len, Handle *hou
             boolean handled = false;
             if (word_len == 3 && strncmp(word, "par", 3) == 0) {
                 unsigned char newline = '\r';
-                handled = wp_portable_append_bytes_rtf(hout, &newline, 1);
+                handled = wp_portable_append_byte(hout, &newline, 1);
             } else if (word_len == 3 && strncmp(word, "tab", 3) == 0) {
                 unsigned char tab = '\t';
-                handled = wp_portable_append_bytes_rtf(hout, &tab, 1);
+                handled = wp_portable_append_byte(hout, &tab, 1);
             } else if ((word_len == 3 && strncmp(word, "rtf", 3) == 0) ||
                        (word_len == 4 && strncmp(word, "ansi", 4) == 0) ||
                        (word_len == 4 && strncmp(word, "deff", 4) == 0) ||
@@ -1019,7 +1019,7 @@ static boolean wp_portable_rtf_to_utf8(const uint8_t *rtf, long len, Handle *hou
             continue;
         }
 
-        if (!wp_portable_append_bytes_rtf(hout, &c, 1))
+        if (!wp_portable_append_byte(hout, &c, 1))
             goto fail;
         ++i;
     }
