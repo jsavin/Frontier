@@ -1,0 +1,106 @@
+# Integration tests for frontier.* verbs
+# Tests CLI-specific functionality available in headless mode
+#
+# Verbs tested:
+#   - frontier.getProgramPath() - Returns path to CLI executable
+#   - frontier.getFilePath() - Returns path to loaded database
+#   - frontier.version() - Returns version string
+#   - frontier.enableAgents() - No-op in headless (returns true)
+#   - frontier.isValidSerialNumber() - Always returns true in headless
+
+tests:
+  # frontier.getProgramPath tests
+  - name: "frontier.getProgramPath - returns string"
+    description: "getProgramPath should return a string value"
+    script: |
+      local (path = frontier.getProgramPath());
+      return typeof(path) == 'TEXT'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "frontier.getProgramPath - contains frontier-cli"
+    description: "Path should contain the CLI executable name"
+    script: |
+      local (path = frontier.getProgramPath());
+      return path contains "frontier-cli"
+    expected_success: true
+    expected_result: "true"
+
+  - name: "frontier.getProgramPath - is absolute path"
+    description: "Path should be absolute (starts with /)"
+    script: |
+      local (path = frontier.getProgramPath());
+      return path[1] == '/'
+    expected_success: true
+    expected_result: "true"
+
+  # frontier.getFilePath tests
+  - name: "frontier.getFilePath - returns string"
+    description: "getFilePath should return a string value"
+    script: |
+      local (path = frontier.getFilePath());
+      return typeof(path) == 'TEXT'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "frontier.getFilePath - is absolute path"
+    description: "Path should be absolute (starts with /)"
+    script: |
+      local (path = frontier.getFilePath());
+      return path[1] == '/'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "frontier.getFilePath - contains root extension"
+    description: "Path should contain .root extension"
+    script: |
+      local (path = frontier.getFilePath());
+      return path contains ".root"
+    expected_success: true
+    expected_result: "true"
+
+  # frontier.version tests
+  - name: "frontier.version - returns string"
+    description: "version should return a string value"
+    script: |
+      local (v = frontier.version());
+      return typeof(v) == 'TEXT'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "frontier.version - returns 10.0"
+    description: "Headless mode returns version 10.0"
+    script: |
+      return frontier.version()
+    expected_success: true
+    expected_result: "10.0"
+
+  # frontier.enableAgents tests (no-op in headless)
+  - name: "frontier.enableAgents - returns true"
+    description: "enableAgents is a no-op in headless mode, returns true"
+    script: |
+      return frontier.enableAgents(true)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "frontier.enableAgents - accepts false"
+    description: "enableAgents accepts false parameter"
+    script: |
+      return frontier.enableAgents(false)
+    expected_success: true
+    expected_result: "true"
+
+  # frontier.isValidSerialNumber tests
+  - name: "frontier.isValidSerialNumber - always true in headless"
+    description: "Serial number validation always returns true in CLI mode"
+    script: |
+      return frontier.isValidSerialNumber("anything")
+    expected_success: true
+    expected_result: "true"
+
+  - name: "frontier.isValidSerialNumber - empty string"
+    description: "Empty serial number still returns true in headless"
+    script: |
+      return frontier.isValidSerialNumber("")
+    expected_success: true
+    expected_result: "true"
