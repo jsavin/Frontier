@@ -2123,7 +2123,7 @@ boolean portable_file_dialog_verb(short token, hdltreenode hparam1,
 		if (copyvaluerecord(val, &valcopy)) {
 			disablelangerror();
 			if (coercetofilespec(&valcopy)) {
-				filespec_to_cstring(&valcopy.data.filespecvalue, start_path, sizeof(start_path));
+				filespec_to_cstring(*valcopy.data.filespecvalue, start_path, sizeof(start_path));
 			}
 			enablelangerror();
 		}

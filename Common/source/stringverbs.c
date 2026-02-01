@@ -1871,7 +1871,7 @@ boolean stringfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vr
 			}
 		
 		case timestringfunc: {
-			unsigned long dt = timenow64 ();
+			int64_t dt = timenow64 ();
 			
 			/*
 			if (!langcheckparamcount (hp1, 0))
@@ -1892,7 +1892,7 @@ boolean stringfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vr
 			}
 		
 		case datestringfunc: {
-			unsigned long dt = timenow64 ();
+			int64_t dt = timenow64 ();
 			
 			/*
 			if (!langcheckparamcount (hp1, 0))

@@ -146,7 +146,7 @@ static boolean getoutlinefromtarget(hdloutlinerecord *ho, bigstring bserror) {
     }
 
     /* Get the outline record */
-    if ((**hv).variabledata == NULL) {
+    if ((**hv).variabledata == 0) {
         seterrorstring("target is not an outline", bserror);
         return false;
     }

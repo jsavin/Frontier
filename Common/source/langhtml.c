@@ -7096,15 +7096,15 @@ static boolean mrcalendargetdayaddress (tyaddress adrcalendar, unsigned long sec
 static boolean mrcalendargetdayaddressverb (hdltreenode hp1, tyvaluerecord *v) {
 	
 	short ctconsumed = 2, ctpositional = 2;
-	unsigned long secs;
+	int64_t secs;
 	tyvaluerecord val;
-	tyaddress adrcalendar, adr;	
+	tyaddress adrcalendar, adr;
 	boolean flcreate;
 	OSType idtype;
-	
+
 	if (!getaddressparam (hp1, 1, &val) || !getaddressvalue (val, &adrcalendar.ht, adrcalendar.bs))
 		return (false);
-	
+
 	if (!getdatevalue (hp1, 2, &secs))
 		return (false);
 		
@@ -8637,7 +8637,7 @@ static boolean htmlcalendardrawverb (hdltreenode hp1, tyvaluerecord *v) {
 	Handle hurlprefix = nil; /*exempt*/
 	Handle hbgcolor = nil; /*exempt*/
 	Handle hcssprefix = nil;
-	unsigned long curdate; /*date*/
+	int64_t curdate; /*date*/
 	long firstdayofweek; /*first day of the week, 1 == Sunday*/
 	tyvaluerecord vmonthlist, vdayofweeklist, vcssprefix;
 
