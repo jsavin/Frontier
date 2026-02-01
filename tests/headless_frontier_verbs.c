@@ -82,29 +82,40 @@ static boolean frontier_valueproc(short token, hdltreenode hparam1,
             /* Verb #1: frontier.getfilepath - returns path to current database file */
             /* In headless mode, return the system root path if loaded */
             /* IMPORTANT: Return an absolute path so startup scripts work correctly */
-            extern char g_system_root_path[];
-            extern boolean g_system_root_loaded;
+            extern boolean cli_is_system_root_loaded(void);
+            extern const char* cli_get_system_root_path(void);
+            const char *root_path;
             bigstring bspath;
             char fullpath[4096];
+            int len;
 
             if (!langcheckparamcount(hparam1, 0))
                 return false;
 
-            if (!g_system_root_loaded || g_system_root_path[0] == '\0') {
+            root_path = cli_get_system_root_path();
+            if (!cli_is_system_root_loaded() || root_path[0] == '\0') {
                 if (bserror) copystring(BIGSTRING("\pno database file loaded"), bserror);
                 return false;
             }
 
             /* Convert relative path to absolute if needed */
-            if (g_system_root_path[0] != '/') {
+            if (root_path[0] != '/') {
                 char cwd[4096];
                 if (getcwd(cwd, sizeof(cwd)) == NULL) {
                     if (bserror) copystring(BIGSTRING("\pcould not get current directory"), bserror);
                     return false;
                 }
-                snprintf(fullpath, sizeof(fullpath), "%s/%s", cwd, g_system_root_path);
+                len = snprintf(fullpath, sizeof(fullpath), "%s/%s", cwd, root_path);
+                if (len < 0 || len >= (int)sizeof(fullpath)) {
+                    if (bserror) copystring(BIGSTRING("\ppath too long"), bserror);
+                    return false;
+                }
             } else {
-                snprintf(fullpath, sizeof(fullpath), "%s", g_system_root_path);
+                len = snprintf(fullpath, sizeof(fullpath), "%s", root_path);
+                if (len < 0 || len >= (int)sizeof(fullpath)) {
+                    if (bserror) copystring(BIGSTRING("\ppath too long"), bserror);
+                    return false;
+                }
             }
 
             copyctopstring(fullpath, bspath);

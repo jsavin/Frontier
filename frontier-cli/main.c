@@ -78,10 +78,22 @@ extern long releasethreadglobals(void);
 // Global variables
 static cli_options_t g_cli_options = {0};
 static boolean g_initialized = false;
-boolean g_system_root_loaded = false;  /* Exported for frontier.getFilePath() verb */
+static boolean g_system_root_loaded = false;
 static hdlfilenum g_system_root_fnum = 0;
 static hdldatabaserecord g_previous_database = nil;
-char g_system_root_path[CLI_MAX_PATH_LENGTH + 1] = {0};  /* Exported for frontier.getFilePath() verb */
+static char g_system_root_path[CLI_MAX_PATH_LENGTH + 1] = {0};
+
+/*
+ * Accessor functions for system root state.
+ * Used by frontier.getFilePath() verb to access CLI state without exposing globals.
+ */
+boolean cli_is_system_root_loaded(void) {
+    return g_system_root_loaded;
+}
+
+const char* cli_get_system_root_path(void) {
+    return g_system_root_path;
+}
 
 // Function prototypes
 static void print_usage(const char* program_name);

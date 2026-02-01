@@ -51,12 +51,27 @@ enum {
 };
 
 /*
- * filemenu_save_systemroot - Save the system root database
+ * filemenu_save_systemroot - Save the system root database to disk
  *
- * Saves all dirty objects in the system root (Frontier.root) to disk.
- * Uses the same save logic as odbSaveFile but for the system root.
+ * Saves all dirty (modified) objects in the system root database (Frontier.root)
+ * to disk. This is the headless equivalent of File > Save in the GUI.
  *
- * Returns: true on success, false on failure
+ * Thread Safety: Not thread-safe. Should only be called from the main thread
+ * or with appropriate synchronization.
+ *
+ * Prerequisites:
+ *   - Database must be open (databasedata != nil)
+ *   - Root variable must exist (rootvariable != nil) for non-empty saves
+ *
+ * Side Effects:
+ *   - Calls dbclose() to flush buffers to disk
+ *   - Updates views[0] with new root table address
+ *   - Database remains open and usable after save
+ *
+ * Note: Safe to call during normal operation. Do NOT call during v6->v7 migration
+ * as the database state may be incomplete.
+ *
+ * Returns: true on success, false on failure (with error logged)
  */
 static boolean filemenu_save_systemroot(void) {
     dbaddress root_adr;
@@ -116,14 +131,27 @@ static boolean filemenu_save_systemroot(void) {
 }
 
 /*
- * filemenu_save_guestdb - Save a guest database by path
+ * filemenu_save_guestdb - Save a guest database by file path
  *
- * Looks up the guest database in hodblist by its file path and saves it.
+ * Looks up a guest database in the global hodblist by its file path and saves
+ * all dirty objects to disk. Guest databases are any databases opened via
+ * fileMenu.open() other than the system root.
+ *
+ * Thread Safety: Not thread-safe. Should only be called from the main thread.
  *
  * Parameters:
- *   hparam1 - Tree node containing the file path parameter
+ *   hparam1 - Tree node containing the file path parameter (bigstring)
  *
- * Returns: true on success, false on failure
+ * Algorithm:
+ *   1. Extract file path from parameter
+ *   2. Search hodblist for matching database (O(n) linear search)
+ *   3. If found, call odbSaveFile() to save
+ *   4. If not found, return error
+ *
+ * Note: The linear search is acceptable since guest database lists are typically
+ * small (< 10 databases in normal use).
+ *
+ * Returns: true on success, false on failure (with error message set)
  */
 static boolean filemenu_save_guestdb(hdltreenode hparam1) {
     tyfilespec fs;
