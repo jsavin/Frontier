@@ -271,15 +271,6 @@ mkdir -p tests/tmp/unit
 ❌ **NEVER use `/var/tmp`** or other system directories
 ❌ **NEVER use hardcoded absolute paths** outside the project
 
-### Linting Check
-
-Run the linting check to detect unsafe /tmp usage:
-```bash
-./tools/check_tmp_usage.sh
-```
-
-This script will scan tests/, portable/, and integration test YAML files for hardcoded /tmp paths.
-
 ---
 
 ## Network Tests (TCP Verbs)
