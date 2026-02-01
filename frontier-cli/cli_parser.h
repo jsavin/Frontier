@@ -32,7 +32,6 @@ typedef struct {
     boolean output_json;        // Output results as JSON
     boolean batch_mode;         // Batch mode (no interactive prompts)
     boolean hydrate_system_root;// Hydrate system root tables flag
-    boolean upgrade_system_root;// Upgrade system root to v7 without loading (DEPRECATED)
     boolean force_overwrite;    // Force overwrite existing output file (-f/--force)
     boolean show_help;          // Show help flag
     boolean show_version;       // Show version flag
