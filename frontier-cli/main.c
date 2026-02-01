@@ -227,8 +227,8 @@ int main(int argc, char* argv[]) {
                 }
             }
 
-            /* Check for read errors (fread returns 0 on both EOF and error) */
-            if (!copy_failed && ferror(src)) {
+            /* Check for read/write errors (fread returns 0 on both EOF and error) */
+            if (!copy_failed && (ferror(src) || ferror(dst))) {
                 copy_failed = true;
             }
 
