@@ -424,7 +424,11 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			if (stat(path, &st) != 0) {
 				/* Path doesn't exist - throw error (not return false) */
 				/* This matches original Mac behavior where filegetinfo fails */
-				copyctopstring("File not found", bserror);
+				bigstring bserrmsg;
+				char errbuf[512];
+				snprintf(errbuf, sizeof(errbuf), "Can't find a file named \"%s\".", path);
+				copyctopstring(errbuf, bserrmsg);
+				langerrormessage(bserrmsg);
 				return false;
 			}
 
