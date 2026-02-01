@@ -27,6 +27,8 @@ enum {
 static boolean clipboard_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
+    (void)hparam1;
+    (void)vreturned;
     switch(token) {
         case cliv_get:
             /* Verb #0: clipboard.get - not yet implemented */

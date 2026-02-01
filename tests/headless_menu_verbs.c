@@ -39,6 +39,8 @@ enum {
 static boolean menu_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
+    (void)hparam1;
+    (void)vreturned;
     switch(token) {
         case menv_zoomscript:
             /* Verb #0: menu.zoomscript - not yet implemented */

@@ -78,7 +78,7 @@
 
 static byte nametargetval [] = "\x08" "_target_";
 
-static byte semaphorewhen [] = "\x04" "when";
+static byte semaphorewhen [] __attribute__((unused)) = "\x04" "when";
 
 static byte semaphorewho [] = "\x03" "who";
 
@@ -1389,15 +1389,16 @@ boolean langfindtargetwindow (short id, WindowPtr *targetwindow) {
 #endif /* FRONTIER_HEADLESS */
 
 
+__attribute__((unused))
 static boolean editvalue (hdltreenode hparam1, tyvaluerecord *vreturned) {
-	
+
 	hdlhashtable htable;
 	bigstring bsname;
 	tyvaluerecord val;
 	hdlhashnode hnode;
-	
+
 	flnextparamislast = true;
-	
+
 	if (!getvarvalue (hparam1, 1, &htable, bsname, &val, &hnode))
 		return (false);
 	
@@ -2496,6 +2497,7 @@ boolean langclosefunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 
 
 boolean langscripterrorfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
+	(void)vreturned;
 	/*
 	Trigger a runtime error with either a numeric error code or string message.
 
@@ -3394,7 +3396,7 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			
 			n = rand ();	// 3/10/97 dmb - was: Random ();
 			
-			n = lower + (abs (n) % (upper - lower + 1));
+			n = lower + (labs (n) % (upper - lower + 1));
 			
 			return (setlongvalue (n, v));
 			

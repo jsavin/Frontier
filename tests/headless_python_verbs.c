@@ -26,6 +26,8 @@ enum {
 static boolean python_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
+    (void)hparam1;
+    (void)vreturned;
     switch(token) {
         case pytv_doscript:
             /* Verb #0: python.doscript - not yet implemented */

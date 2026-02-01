@@ -111,6 +111,7 @@ static boolean shellescapestring(bigstring input, Handle *hescaped) {
 static boolean sys_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
+    (void)bserror;
     switch(token) {
         case sysv_osversion: {
             /* @IMPLEMENTED sys.osversion - Return OS version string */

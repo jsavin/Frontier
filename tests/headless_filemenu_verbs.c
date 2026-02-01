@@ -35,6 +35,8 @@ enum {
 static boolean filemenu_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
+    (void)hparam1;
+    (void)vreturned;
     switch(token) {
         case filv_new:
             /* Verb #0: filemenu.new - not yet implemented */

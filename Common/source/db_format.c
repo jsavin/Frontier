@@ -80,6 +80,7 @@ typedef struct db_context_guard {
     hdldatabaserecord prev_db;
 } db_context_guard;
 
+__attribute__((unused))
 static void db_context_guard_enter(const db_context *context, db_context_guard *guard) {
     /* DEPRECATED: This function implements the guard pattern for backward compatibility.
      *
@@ -103,6 +104,7 @@ static void db_context_guard_enter(const db_context *context, db_context_guard *
     }
 }
 
+__attribute__((unused))
 static void db_context_guard_exit(const db_context_guard *guard) {
     /* DEPRECATED: This function implements the guard pattern for backward compatibility.
      * See db_context_guard_enter() deprecation notice above.
@@ -1418,6 +1420,7 @@ boolean create_root_backup(const char *original_path) {
  * This fixes the issue where externals captured v6 source database handle during initial load,
  * but need to reference v7 destination database after migration.
  * See: planning/phase3/kernel_verb_porting/DATABASE_HANDLE_MISMATCH_CONFIRMED.md */
+__attribute__((unused))
 static void db_format_fixup_external_handles(hdlhashtable hroot, hdldatabaserecord dest_db) {
     if (hroot == nil || dest_db == nil)
         return;
@@ -1864,9 +1867,9 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     if (db_trace_level() > 0)
         db_format_trace_database_path(db_path);
 
-    /* Derive output path: replace .root with .root7 (Phase 1 naming convention) */
-    /* Pattern: /*.root$/ → /*.root7/ */
-    /* Examples: Frontier.root → Frontier.root7, test.root → test.root7 */
+    /* Derive output path: replace .root with .root7 (Phase 1 naming convention)
+     * Pattern: .root$ → .root7
+     * Examples: Frontier.root → Frontier.root7, test.root → test.root7 */
     const char *ext = strrchr(db_path, '.');
     if (ext && strcmp(ext, ".root") == 0) {
         /* Replace .root with .root7 */

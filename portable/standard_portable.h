@@ -232,7 +232,7 @@ typedef boolean (*callback)(void);
 #define chsinglequote ((char)39)
 #define chdoublequote ((char)34)
 #define chclosecurlyquote ((char)0xD3)
-#define chtrademark ((char)0xAA)
+#define chtrademark ((byte)0xAA)
 #define chopencurlyquote ((byte)0xD2)
 #define chnotequals ((byte)0xAD)
 #define chdivide ((byte)0xD6)
@@ -354,10 +354,7 @@ static inline boolean langportable_err_noop(unsigned char* bs, void* refcon){ (v
 #define makelong(lo, hi) ((hi) << 16 | (lo))
 #endif
 
-#ifndef conditionalshortswap
-/* Portable builds are always little-endian native, big-endian on disk */
-#define conditionalshortswap(x) OSSwapInt16(x)
-#endif
+/* conditionalshortswap is defined in byteorder.h - do not duplicate here */
 
 #ifndef diskwordstomemlong
 #define diskwordstomemlong(lo, hi) makelong(conditionalshortswap(lo), conditionalshortswap(hi))

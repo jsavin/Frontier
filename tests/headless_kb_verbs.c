@@ -31,6 +31,7 @@ enum {
 static boolean kb_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
+    (void)bserror;
     switch(token) {
         case kbv_optionkey:
             /* @IMPLEMENTED kb.optionkey - Returns false (no keyboard in headless mode) */

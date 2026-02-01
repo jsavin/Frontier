@@ -31,6 +31,8 @@ enum {
 static boolean launch_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
+    (void)hparam1;
+    (void)vreturned;
     switch(token) {
         case lauv_applemenu:
             /* Verb #0: launch.applemenu - @SCRIPT_IMPLEMENTED (pure UserTalk) */

@@ -33,6 +33,8 @@ enum {
 static boolean htmlcontrol_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
+    (void)hparam1;
+    (void)vreturned;
     switch(token) {
         case htmv_back:
             /* Verb #0: htmlcontrol.back - not yet implemented */

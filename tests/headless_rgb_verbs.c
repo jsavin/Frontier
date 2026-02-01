@@ -29,6 +29,7 @@ enum {
 static boolean rgb_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
+    (void)bserror;
     switch(token) {
         case rgbv_get: {
             /* rgb.get (rgbvalue, @red, @green, @blue) - Extract RGB components */

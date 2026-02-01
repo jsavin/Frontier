@@ -70,6 +70,8 @@ static boolean webserver_valueproc(short token, hdltreenode hparam1,
             bigstring bs;
             hdlhashnode hnode;
 
+            (void)hnode;  /* Reserved for future node operations */
+
             if (!getreadonlytextvalue(hparam1, 1, &response))
                 return false;
 

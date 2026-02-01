@@ -107,6 +107,7 @@ enum {
 static boolean xml_valueproc(short token, hdltreenode hparam1,
                               tyvaluerecord *vreturned,
                               bigstring bserror) {
+    (void)bserror;
     switch(token) {
         case xmlv_addtable: {
             /* Verb #0: xml.addtable(adrParent, name)
@@ -159,6 +160,9 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
             bigstring name, bsexisting;
             xmladdress adrnew;
             hdlhashnode hn;
+
+            (void)valcopy;  /* Reserved for future value operations */
+            (void)hn;       /* Reserved for future node operations */
 
             log_trace(LOG_COMP_LANG, "xml.addvalue: entry");
 

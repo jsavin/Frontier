@@ -52,6 +52,8 @@ enum {
 static boolean mysql_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
+    (void)hparam1;
+    (void)vreturned;
     switch(token) {
         case mysv_init:
             /* Verb #0: mysql.init - not yet implemented */

@@ -36,6 +36,8 @@ enum {
 static boolean mrcalendar_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
+    (void)hparam1;
+    (void)vreturned;
     switch(token) {
         case mrcv_getaddressday:
             /* Verb #0: mrcalendar.getaddressday - not yet implemented */

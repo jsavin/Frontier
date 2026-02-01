@@ -939,6 +939,8 @@ static boolean ensure_external_in_memory (const db_context *ctx, hdlexternalvari
 		default:
 			return (false);
 		}
+
+	return (true); /* pict case breaks to here after success */
 	} /*ensure_external_in_memory*/
 
 

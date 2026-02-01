@@ -28,6 +28,8 @@ enum {
 static boolean speaker_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
+    (void)hparam1;
+    (void)vreturned;
     switch(token) {
         case spev_beep:
             /* Verb #0: speaker.beep - not yet implemented */

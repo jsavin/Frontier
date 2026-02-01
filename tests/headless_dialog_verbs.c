@@ -279,6 +279,8 @@ static boolean dialog_valueproc(short token, hdltreenode hparam1,
             bigstring bsprompt, bsdefault;
             boolean has_default = false;
 
+            (void)has_default;  /* Reserved for future default handling */
+
             if (!isInteractiveMode()) {
                 if (bserror) copystring(BIGSTRING("\pCan't use dialog verbs in batch mode"), bserror);
                 return false;

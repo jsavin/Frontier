@@ -41,6 +41,8 @@ enum {
 static boolean editmenu_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
+    (void)hparam1;
+    (void)vreturned;
     switch(token) {
         case ediv_undo:
             /* Verb #0: editmenu.undo - not yet implemented */

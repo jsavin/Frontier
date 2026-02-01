@@ -27,6 +27,8 @@ enum {
 static boolean mouse_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
+    (void)hparam1;
+    (void)vreturned;
     switch(token) {
         case mouv_button:
             /* Verb #0: mouse.button - not yet implemented */

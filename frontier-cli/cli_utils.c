@@ -32,6 +32,7 @@ char g_cli_error_buffer[1024] = {0};
 
 /* Routes log messages to structured logging based on level and verbosity settings. */
 static void cli_vlog(int level, const char* label, const char* format, va_list args) {
+    (void)label;
     /* Suppress logs in JSON mode to keep stderr clean for JSON output */
     if (g_cli_json_mode) {
         return;
