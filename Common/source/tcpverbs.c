@@ -673,7 +673,7 @@ boolean tcp_read_stream(long stream_id, long bytes_to_read, Handle *data_out) {
     }
 
     /* SECURITY: Verify allocated buffer size matches request (prevents undersized allocation) */
-    if (GetHandleSize(hdata) < bytes_to_read) {
+    if (GetHandleSize(hdata) < (size_t) bytes_to_read) {
         disposehandle(hdata);
         tcp_stream_release(stream);
         *data_out = nil;
