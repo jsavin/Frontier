@@ -2002,7 +2002,10 @@ boolean headless_init_kernel_verbs(void) {
     if (!init_efp_1001(&langfunctionvalue))
         return false;
 
-    if (!init_efp_1002(&langfunctionvalue))
+    /* SKIP init_efp_1002 (menu processor) - register with headless menu callback instead.
+       In headless mode, menu verbs like buildmenubar should be no-ops instead of failing. */
+    extern boolean menuinitverbs(void);
+    if (!menuinitverbs())
         return false;
 
     if (!init_efp_1003(&langfunctionvalue))
@@ -2032,7 +2035,10 @@ boolean headless_init_kernel_verbs(void) {
     if (!init_efp_1010(&langfunctionvalue))
         return false;
 
-    if (!init_efp_1011(&langfunctionvalue))
+    /* SKIP init_efp_1011 (filemenu processor) - register with headless filemenu callback.
+       In headless mode, filemenu verbs like save should be no-ops instead of failing. */
+    extern boolean filemenuinitverbs(void);
+    if (!filemenuinitverbs())
         return false;
 
     if (!init_efp_1012(&langfunctionvalue))

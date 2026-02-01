@@ -19,6 +19,13 @@
 #include "tablestructure.h"
 #include "process.h"  /* for hdlprocessthread */
 
+#include <unistd.h>  /* for getcwd */
+#include <string.h>  /* for strlen */
+
+#ifdef __APPLE__
+#include <mach-o/dyld.h>  /* for _NSGetExecutablePath */
+#endif
+
 /* Token enum for all verbs in the frontier processor */
 enum {
     frov_getprogrampath = 0,
@@ -44,18 +51,70 @@ static boolean frontier_valueproc(short token, hdltreenode hparam1,
     (void) vreturned;
 
     switch(token) {
-        case frov_getprogrampath:
-            /* Verb #0: frontier.getprogrampath - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case frov_getfilepath:
-            /* Verb #1: frontier.getfilepath - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+        case frov_getprogrampath: {
+            /* Verb #0: frontier.getprogrampath - returns path to CLI executable */
+            char path[1024];
+            bigstring bspath;
+
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+
+#ifdef __APPLE__
+            uint32_t size = sizeof(path);
+            if (_NSGetExecutablePath(path, &size) != 0) {
+                if (bserror) copystring(BIGSTRING("\pcould not get program path"), bserror);
+                return false;
+            }
+#else
+            /* Linux: read /proc/self/exe symlink */
+            ssize_t len = readlink("/proc/self/exe", path, sizeof(path) - 1);
+            if (len == -1) {
+                if (bserror) copystring(BIGSTRING("\pcould not get program path"), bserror);
+                return false;
+            }
+            path[len] = '\0';
+#endif
+
+            copyctopstring(path, bspath);
+            return setstringvalue(bspath, vreturned);
+        }
+        case frov_getfilepath: {
+            /* Verb #1: frontier.getfilepath - returns path to current database file */
+            /* In headless mode, return the system root path if loaded */
+            /* IMPORTANT: Return an absolute path so startup scripts work correctly */
+            extern char g_system_root_path[];
+            extern boolean g_system_root_loaded;
+            bigstring bspath;
+            char fullpath[4096];
+
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+
+            if (!g_system_root_loaded || g_system_root_path[0] == '\0') {
+                if (bserror) copystring(BIGSTRING("\pno database file loaded"), bserror);
+                return false;
+            }
+
+            /* Convert relative path to absolute if needed */
+            if (g_system_root_path[0] != '/') {
+                char cwd[4096];
+                if (getcwd(cwd, sizeof(cwd)) == NULL) {
+                    if (bserror) copystring(BIGSTRING("\pcould not get current directory"), bserror);
+                    return false;
+                }
+                snprintf(fullpath, sizeof(fullpath), "%s/%s", cwd, g_system_root_path);
+            } else {
+                snprintf(fullpath, sizeof(fullpath), "%s", g_system_root_path);
+            }
+
+            copyctopstring(fullpath, bspath);
+            return setstringvalue(bspath, vreturned);
+        }
         case frov_enableagents:
-            /* Verb #2: frontier.enableagents - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* frontier.enableAgents - no-op in headless mode (agents not supported) */
+            /* Startup script calls this, so we return true to not fail the script */
+            setbooleanvalue(true, vreturned);
+            return true;
         case frov_requesttofront:
             /* Verb #3: frontier.requesttofront - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
@@ -95,10 +154,21 @@ static boolean frontier_valueproc(short token, hdltreenode hparam1,
             /* Verb #11: frontier.hideapplication - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case frov_isvalidserialnumber:
-            /* Verb #12: frontier.isvalidserialnumber - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+        case frov_isvalidserialnumber: {
+            /* frontier.isvalidSerialNumber - in headless mode, always return true.
+             * Trial/licensing is not meaningful for CLI usage. */
+            bigstring bsserial;
+
+            flnextparamislast = true;
+
+            /* Consume the serial number parameter */
+            if (!getstringvalue(hparam1, 1, bsserial))
+                return false;
+
+            /* Always valid in headless mode */
+            setbooleanvalue(true, vreturned);
+            return true;
+        }
         case frov_showapplication:
             /* Verb #13: frontier.showapplication - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);

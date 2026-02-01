@@ -20,11 +20,14 @@ char portable_getpathsep(void) {
 boolean portable_folderfrompath(const bigstring bspath, bigstring bsfolder) {
 	/*
 	 * Extract folder portion from path by finding last path separator
-	 * and returning everything before it.
+	 * and returning everything up to and INCLUDING the separator.
+	 *
+	 * Per original Mac implementation (fileops.m):
+	 * "return all the characters to the left of the colon, and the colon"
 	 *
 	 * Examples:
-	 *   /Users/test/file.txt -> /Users/test
-	 *   /Users/test/         -> /Users
+	 *   /Users/test/file.txt -> /Users/test/
+	 *   /Users/test/         -> /Users/
 	 *   file.txt             -> (empty)
 	 *   /                    -> /
 	 */
@@ -76,10 +79,10 @@ boolean portable_folderfrompath(const bigstring bspath, bigstring bsfolder) {
 		}
 	}
 
-	/* Copy everything before last separator */
+	/* Copy everything up to and INCLUDING the last separator */
 	if (lastsep > 0) {
 		copystring(bspath, bsfolder);
-		setstringlength(bsfolder, lastsep - 1);
+		setstringlength(bsfolder, lastsep);  /* Include the separator */
 		return true;
 	}
 

@@ -135,17 +135,35 @@ static boolean headless_execute_script (hdlhashnode hnode) {
     return ok;
 }
 
-/* Visitor callback that executes each script in a table. */
+/* Visitor callback that executes each script in a table.
+ * Continue visiting even if individual scripts fail - log errors but don't stop.
+ * This allows headless mode to be more forgiving of startup script issues.
+ */
 static boolean headless_run_script_visit (hdlhashnode hnode, ptrvoid refcon) {
-#pragma unused(refcon)
-    return headless_execute_script (hnode);
+    boolean *had_error = (boolean *)refcon;
+    bigstring bsname;
+
+    gethashkey(hnode, bsname);
+
+    if (!headless_execute_script (hnode)) {
+        log_warn(LOG_COMP_STARTUP, "run_script_visit: '%s' failed, continuing with remaining scripts",
+                stringbaseaddress(bsname));
+        if (had_error)
+            *had_error = true;
+        /* Continue visiting remaining scripts */
+    }
+    return true;
 }
 
-/* Runs all scripts in a named system table (e.g., "startup"). */
+/* Runs all scripts in a named system table (e.g., "startup").
+ * In headless mode, script failures are logged but don't stop execution.
+ * Returns true if table was processed (even with errors), false only for fatal issues.
+ */
 static boolean headless_run_special_scripts (const unsigned char *bsspecialtable) {
     hdlhashtable htable;
     bigstring bstemp;
     long ctitems = 0;
+    boolean had_error = false;
 
     copystring (bsspecialtable, bstemp);
 
@@ -161,12 +179,19 @@ static boolean headless_run_special_scripts (const unsigned char *bsspecialtable
     log_debug(LOG_COMP_STARTUP, "run_special_scripts: table '%s' has %ld items, visiting",
             stringbaseaddress(bstemp), ctitems);
 
-    boolean result = hashtablevisit (htable, &headless_run_script_visit, nil);
+    /* Visit all scripts, continuing even if some fail */
+    hashtablevisit (htable, &headless_run_script_visit, &had_error);
 
-    log_debug(LOG_COMP_STARTUP, "run_special_scripts: table '%s' visit completed, result=%d",
-            stringbaseaddress(bstemp), result);
+    if (had_error) {
+        log_warn(LOG_COMP_STARTUP, "run_special_scripts: table '%s' completed with errors",
+                stringbaseaddress(bstemp));
+    } else {
+        log_debug(LOG_COMP_STARTUP, "run_special_scripts: table '%s' completed successfully",
+                stringbaseaddress(bstemp));
+    }
 
-    return result;
+    /* Return true to allow startup to continue - errors are logged but not fatal */
+    return true;
 }
 
 /* Initializes the headless environment and optionally runs startup scripts. */

@@ -1150,7 +1150,7 @@ boolean langdeletefunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 
 	/* Check if variable exists - error if it doesn't */
 	if (!hashtablesymbolexists (htable, bs)) {
-		langparamerror (undefinederror, bs);
+		langparamerror (cantdeleteerror, bs);
 		return (false);
 		}
 

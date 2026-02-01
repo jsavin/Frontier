@@ -78,10 +78,10 @@ extern long releasethreadglobals(void);
 // Global variables
 static cli_options_t g_cli_options = {0};
 static boolean g_initialized = false;
-static boolean g_system_root_loaded = false;
+boolean g_system_root_loaded = false;  /* Exported for frontier.getFilePath() verb */
 static hdlfilenum g_system_root_fnum = 0;
 static hdldatabaserecord g_previous_database = nil;
-static char g_system_root_path[CLI_MAX_PATH_LENGTH + 1] = {0};
+char g_system_root_path[CLI_MAX_PATH_LENGTH + 1] = {0};  /* Exported for frontier.getFilePath() verb */
 
 // Function prototypes
 static void print_usage(const char* program_name);
@@ -320,6 +320,17 @@ int main(int argc, char* argv[]) {
             log_error(LOG_COMP_GENERAL, "Error: Failed to load system root: %s", system_root_to_load);
             cleanup_frontier_runtime();
             return 1;
+        }
+
+        /* Run startup scripts AFTER full hydration.
+         * This ensures:
+         * 1. EFP tables are properly linked
+         * 2. system.paths is populated and resolved
+         * 3. Database tables are augmented with EFP implementations
+         * Controlled by FRONTIER_HEADLESS_RUN_STARTUP env var (default: skip). */
+        if (!loadsystemscripts()) {
+            log_error(LOG_COMP_GENERAL, "Error: startup scripts failed for: %s", system_root_to_load);
+            /* Continue despite startup script errors - they're not fatal */
         }
     }
 
@@ -891,6 +902,17 @@ static boolean hydrate_system_root_database(const char* path) {
         log_info(LOG_COMP_STARTUP, "Loaded system root: %s", path);
     }
 
+    /* Set globals for frontier.getFilePath() verb access */
+    g_system_root_loaded = true;
+    snprintf(g_system_root_path, sizeof(g_system_root_path), "%s", path);
+
+    /* NOTE: Startup scripts are NOT run here during hydration.
+     * They are run in main() AFTER hydration completes, which ensures:
+     * 1. EFP tables are properly linked (linksystemtablestructure)
+     * 2. system.paths is populated and resolved
+     * 3. Database tables are augmented with EFP implementations
+     * This avoids running scripts during v6->v7 migration when database state is incomplete. */
+
     ok = true;
 
 cleanup:
@@ -1108,21 +1130,18 @@ static boolean load_system_root_database_internal(const char* path, boolean allo
         return false;
     }
 
-    if (!loadsystemscripts()) {
-        cli_log_error("loadsystemscripts failed for %s", path);
-        cleartablestructureglobals();
-        dbdispose();
-        closefile(fnum);
-        databasedata = previous;
-        return false;
-    }
-
     currenthashtable = roottable;
 
+    /* Set globals so callers know the database is loaded */
     g_previous_database = previous;
     g_system_root_fnum = fnum;
     g_system_root_loaded = true;
     snprintf(g_system_root_path, sizeof(g_system_root_path), "%s", path);
+
+    /* NOTE: Startup scripts are NOT run here. They are run in main() AFTER
+     * hydrate_system_root_database() completes, which ensures EFP tables are
+     * properly linked and system.paths is resolved before scripts execute.
+     * See loadsystemscripts() call in main() after hydration. */
 
     cli_log_info("Loaded system root database: %s", g_system_root_path);
     return true;
