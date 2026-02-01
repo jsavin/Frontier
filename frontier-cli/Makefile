@@ -199,7 +199,11 @@ KERNELVERBS_PARSER = ../tools/kernelverbs_parser/parse_kernelverbs.py
 KERNELVERBS_RC = ../Common/resources/Win32/kernelverbs.rc
 KERNELVERBS_CLI = ../tools/kernelverbs_parser/cli.py
 
-all: strings_generated kernel_verbs_generated $(TARGET) dist
+# Fast build target - just the binary (for quick iteration)
+build: strings_generated kernel_verbs_generated $(TARGET)
+
+# Full distribution build (required for testing mainResponder/Manila)
+all: build dist
 
 $(TARGET): $(CLI_SOURCES) $(FRONTIER_SOURCES) $(PAIGE_LIB) $(LINENOISE_SRC)
 	$(CC) $(CFLAGS) $(ARCH_FLAGS) $(INCLUDES) \
@@ -324,4 +328,4 @@ dist: $(TARGET)
 dist-clean:
 	rm -rf $(DIST_DIR)
 
-.PHONY: all clean strings_generated kernel_verbs_generated check-paige-cache dist dist-clean
+.PHONY: all build clean strings_generated kernel_verbs_generated check-paige-cache dist dist-clean
