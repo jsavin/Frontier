@@ -140,7 +140,7 @@ void parseerror (bigstring bs) {
 	/* 2025-12-09 Codex: bs is a C string from yacc/lex; copy to Pascal safely. */
 	bigstring bscopy; /* must work on a copy */
 
-	copyctopstring ((ptrstring) bs, bscopy);
+	copyctopstring ((const char *) bs, bscopy);
 	langparamerror (parsererror, bscopy);
 	} /*parseerror*/
 

@@ -228,7 +228,7 @@ boolean unixshellcall (Handle hcommand, Handle hreturn) {
 
 	lockhandle (hcommand);
 
-	f = popenfunc (*hcommand, "r"); /*popen*/
+	f = popenfunc ((const char *) *hcommand, "r"); /*popen*/
 
 	unlockhandle (hcommand);
 

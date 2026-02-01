@@ -304,7 +304,7 @@ static boolean build_wrapped_script(const char *script, Handle *hresult) {
     }
 
     HLock(htext);
-    char *p = *htext;
+    char *p = (char *) *htext;
     memcpy(p, prefix, prefix_len);
     p += prefix_len;
     memcpy(p, script, script_len);

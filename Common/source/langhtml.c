@@ -3849,7 +3849,7 @@ static boolean stripmarkup (handlestream *s) {
 	long ix;
 	boolean fldidspace = true; // so leading spaces are omitted
 	
-	p = *(*s).data;
+	p = (char *) *(*s).data;
 	
 	for ((*s).pos = 0; (*s).pos < (*s).eof; ++(*s).pos) {
 		
