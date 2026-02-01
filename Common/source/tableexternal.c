@@ -1191,7 +1191,7 @@ static boolean tablesymbolchangedwindowvisit (WindowPtr w, ptrsymbolchangedinfo 
 		
 		shellpushglobals (w);
 		
-		if (tableformatsdata == op_get_outlinedata()) { // && !opinternalchange ())
+		if ((Handle) tableformatsdata == (Handle) op_get_outlinedata()) { // && !opinternalchange ())
 	
 			opvisiteverything ((*symbolinfo).opvisitroutine, symbolinfo);
 			

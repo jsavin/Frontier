@@ -387,7 +387,7 @@ unsigned char * iso8859table [256] = {
 
 	/*175*/ BIGSTRING ("&Oslash;"),
 
-	/*176*/ BIGSTRING ("°"),
+	/*176*/ BIGSTRING ("&infin;"),
 
 	/*177*/ BIGSTRING ("&#177;"),
 

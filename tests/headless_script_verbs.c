@@ -123,7 +123,7 @@ static boolean script_compile(hdltreenode hparam1, tyvaluerecord *vreturned) {
     }
 
     /* Link the compiled code to the script variable */
-    opverblinkcode(hv, hcode);
+    opverblinkcode(hv, (Handle) hcode);
 
     return setbooleanvalue(true, vreturned);
 }
@@ -387,7 +387,7 @@ static boolean script_setcode(hdltreenode hparam1, tyvaluerecord *vreturned) {
     }
 
     /* Link the code to the script */
-    opverblinkcode(hv, hcode);
+    opverblinkcode(hv, (Handle) hcode);
 
     return setbooleanvalue(true, vreturned);
 }

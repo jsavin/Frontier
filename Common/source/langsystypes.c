@@ -727,7 +727,7 @@ boolean aliastofilespec ( AliasHandle halias, ptrfilespec fs ) {
 		FSAliasInfoBitmap whichAliasInfo = kFSAliasInfoNone;
 		tyfsname volumeName;
 		
-		status = FSCopyAliasInfo ( halias, NULL, &volumeName, NULL, &whichAliasInfo, NULL );
+		status = FSCopyAliasInfo ( halias, NULL, (HFSUniStr255 *) &volumeName, NULL, &whichAliasInfo, NULL );
 		
 		if ( status == noErr ) { // try to get vol info
 		
@@ -736,7 +736,7 @@ boolean aliastofilespec ( AliasHandle halias, ptrfilespec fs ) {
 			fileparsevolname ( bs, fs );
 			}
 		
-		status = FSCopyAliasInfo ( halias, &fs->name, NULL, NULL, &whichAliasInfo, NULL );
+		status = FSCopyAliasInfo ( halias, (HFSUniStr255 *) &fs->name, NULL, NULL, &whichAliasInfo, NULL );
 		
 		if ( status != noErr ) {
 		

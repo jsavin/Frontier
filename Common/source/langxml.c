@@ -859,7 +859,7 @@ boolean xmlstructtofrontiervalue (tyaddress *adrstruct, tyvaluerecord *v) {
 		if (!copyvaluerecord (vstruct, &val) || !coercetostring (&val))
 			return (false);
 
-		if (!stringtonumber (val.data.stringvalue, &longval)) {
+		if (!stringtonumber (*val.data.stringvalue, &longval)) {
 			disposevaluerecord (val, false);
 			return (false);
 		}
@@ -874,7 +874,7 @@ boolean xmlstructtofrontiervalue (tyaddress *adrstruct, tyvaluerecord *v) {
 		if (!copyvaluerecord (vstruct, &val) || !coercetostring (&val))
 			return (false);
 
-		if (!stringtonumber (val.data.stringvalue, &longval)) {
+		if (!stringtonumber (*val.data.stringvalue, &longval)) {
 			disposevaluerecord (val, false);
 			return (false);
 		}

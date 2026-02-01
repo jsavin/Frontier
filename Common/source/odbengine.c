@@ -641,7 +641,8 @@ pascal boolean odbOpenFile (hdlfilenum fnum, odbref *odb, boolean flreadonly) {
 			goto error;
 		}
 
-		(**hc).hrootvariable = rootvariable = (hdltablevariable)val.data.externalvalue;
+		rootvariable = (Handle) val.data.externalvalue;
+		(**hc).hrootvariable = rootvariable;
 		(**hc).hroottable = roottable = htable;
 		/* htablestack is already allocated by newcancoonrecord() */
 

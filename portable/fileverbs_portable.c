@@ -1534,7 +1534,7 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			unlockhandle(hdata);
 			fclose(fp);
 
-			if (bytesread != filesize) {
+			if (bytesread != (size_t) filesize) {
 				disposehandle(hdata);
 				copyctopstring("Read error", bserror);
 				return false;
@@ -1577,7 +1577,7 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			if (datasize > 0) {
 				lockhandle(hdata);
 				buffer = (unsigned char *)*hdata;
-				if (fwrite(buffer, 1, datasize, fp) != datasize) {
+				if (fwrite(buffer, 1, datasize, fp) != (size_t) datasize) {
 					unlockhandle(hdata);
 					disposehandle(hdata);
 					fclose(fp);
@@ -2123,7 +2123,7 @@ boolean portable_file_dialog_verb(short token, hdltreenode hparam1,
 		if (copyvaluerecord(val, &valcopy)) {
 			disablelangerror();
 			if (coercetofilespec(&valcopy)) {
-				filespec_to_cstring(&valcopy.data.filespecvalue, start_path, sizeof(start_path));
+				filespec_to_cstring(*valcopy.data.filespecvalue, start_path, sizeof(start_path));
 			}
 			enablelangerror();
 		}
