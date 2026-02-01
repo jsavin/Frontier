@@ -337,8 +337,8 @@ The CLI automatically migrates v6 databases to v7 format:
 ### Manual Migration
 
 ```bash
-./frontier-cli/frontier-cli --system-root databases/Frontier.root --upgrade-system-root
-# Output: System root upgraded to v7 format (written to): databases/Frontier.root7
+./frontier-cli/frontier-cli --migrate databases/Frontier.root
+# Output: Migrated: databases/Frontier.root -> databases/Frontier.root7
 ```
 
 ---

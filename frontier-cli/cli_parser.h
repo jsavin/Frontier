@@ -25,12 +25,14 @@ typedef struct {
     char* script_file;          // Script file path
     char* inline_script;        // Inline script code
     char* system_root;          // Path to system/root database (e.g., Frontier.root)
+    char* migrate_database;     // Path to database to migrate (--migrate)
+    char* output_path;          // Output path for migration (--output)
     boolean verbose;            // Verbose output
     boolean debug;              // Debug output
     boolean output_json;        // Output results as JSON
     boolean batch_mode;         // Batch mode (no interactive prompts)
     boolean hydrate_system_root;// Hydrate system root tables flag
-    boolean upgrade_system_root;// Upgrade system root to v7 without loading
+    boolean force_overwrite;    // Force overwrite existing output file (-f/--force)
     boolean show_help;          // Show help flag
     boolean show_version;       // Show version flag
 } cli_options_t;

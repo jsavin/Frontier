@@ -61,18 +61,35 @@ boolean cli_validate_options(const cli_options_t* options) {
     }
 
     boolean hydration_mode = options->hydrate_system_root;
-    boolean upgrade_mode = options->upgrade_system_root;
+    boolean migrate_mode = (options->migrate_database != NULL);
 
-    if (upgrade_mode) {
-        if (options->system_root == NULL) {
-            log_error(LOG_COMP_GENERAL, "Error: --upgrade-system-root requires --system-root PATH");
+    /* --migrate mode: migrate a database to v7 and exit */
+    if (migrate_mode) {
+        if (!cli_file_exists(options->migrate_database)) {
+            log_error(LOG_COMP_GENERAL, "Error: Database does not exist: %s", options->migrate_database);
             return false;
         }
+        if (!cli_file_readable(options->migrate_database)) {
+            log_error(LOG_COMP_GENERAL, "Error: Database is not readable: %s", options->migrate_database);
+            return false;
+        }
+        /* --output without --migrate is an error */
+        /* --force without --migrate is harmless but meaningless */
         if (hydration_mode) {
-            log_error(LOG_COMP_GENERAL, "Error: --upgrade-system-root cannot be combined with --hydrate-system-root");
+            log_error(LOG_COMP_GENERAL, "Error: --migrate cannot be combined with --hydrate-system-root");
+            return false;
+        }
+        if (options->system_root != NULL || options->script_file != NULL || options->inline_script != NULL) {
+            log_error(LOG_COMP_GENERAL, "Error: --migrate runs standalone; do not combine with --system-root, scripts, or REPL mode");
             return false;
         }
         return true;
+    }
+
+    /* --output requires --migrate */
+    if (options->output_path != NULL) {
+        log_error(LOG_COMP_GENERAL, "Error: --output requires --migrate");
+        return false;
     }
 
     if (hydration_mode) {
@@ -114,10 +131,12 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
     static struct option long_options[] = {
         {"execute", required_argument, 0, 'e'},
         {"system-root", required_argument, 0, 'R'},
+        {"migrate", required_argument, 0, 'm'},
+        {"output", required_argument, 0, 'o'},
+        {"force", no_argument, 0, 'f'},
         {"batch", no_argument, 0, 'b'},
         {"non-interactive", no_argument, 0, 'b'},  /* Alias for --batch */
         {"hydrate-system-root", no_argument, 0, 'H'},
-        {"upgrade-system-root", no_argument, 0, 'U'},
         {"output-json", no_argument, 0, 'J'},
         {"verbose", no_argument, 0, 'v'},
         {"debug", no_argument, 0, 'D'},
@@ -127,7 +146,7 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
     };
 
     // Parse command line arguments
-    while ((opt = getopt_long(argc, argv, "e:R:bHUJvDhV", long_options, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "e:R:m:o:fbHJvDhV", long_options, &option_index)) != -1) {
         switch (opt) {
             case 'e':
                 // Inline script execution
@@ -154,6 +173,37 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
                 options->system_root = strdup(optarg);
                 break;
 
+            case 'm':
+                // Migrate database to v7 format
+                if (options->migrate_database != NULL) {
+                    log_error(LOG_COMP_GENERAL, "Error: Multiple --migrate options not allowed");
+                    return false;
+                }
+                if (strlen(optarg) > CLI_MAX_PATH_LENGTH) {
+                    log_error(LOG_COMP_GENERAL, "Error: Migrate path too long (max %d characters)", CLI_MAX_PATH_LENGTH);
+                    return false;
+                }
+                options->migrate_database = strdup(optarg);
+                break;
+
+            case 'o':
+                // Output path for migration
+                if (options->output_path != NULL) {
+                    log_error(LOG_COMP_GENERAL, "Error: Multiple --output options not allowed");
+                    return false;
+                }
+                if (strlen(optarg) > CLI_MAX_PATH_LENGTH) {
+                    log_error(LOG_COMP_GENERAL, "Error: Output path too long (max %d characters)", CLI_MAX_PATH_LENGTH);
+                    return false;
+                }
+                options->output_path = strdup(optarg);
+                break;
+
+            case 'f':
+                // Force overwrite existing output file
+                options->force_overwrite = true;
+                break;
+
             case 'b':
                 // Batch mode (no interactive prompts)
                 options->batch_mode = true;
@@ -161,10 +211,6 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
 
             case 'H':
                 options->hydrate_system_root = true;
-                break;
-
-            case 'U':
-                options->upgrade_system_root = true;
                 break;
 
             case 'J':
@@ -273,6 +319,16 @@ void cli_free_options(cli_options_t* options) {
         free(options->system_root);
         options->system_root = NULL;
     }
+
+    if (options->migrate_database != NULL) {
+        free(options->migrate_database);
+        options->migrate_database = NULL;
+    }
+
+    if (options->output_path != NULL) {
+        free(options->output_path);
+        options->output_path = NULL;
+    }
 }
 
 /* Prints parsed options for debugging purposes. */
@@ -286,11 +342,13 @@ void cli_print_options(const cli_options_t* options) {
     printf("  Script File: %s\n", options->script_file ? options->script_file : "(none)");
     printf("  Inline Script: %s\n", options->inline_script ? options->inline_script : "(none)");
     printf("  System Root: %s\n", options->system_root ? options->system_root : "(none)");
+    printf("  Migrate Database: %s\n", options->migrate_database ? options->migrate_database : "(none)");
+    printf("  Output Path: %s\n", options->output_path ? options->output_path : "(none)");
+    printf("  Force Overwrite: %s\n", options->force_overwrite ? "yes" : "no");
     printf("  Verbose: %s\n", options->verbose ? "yes" : "no");
     printf("  Debug: %s\n", options->debug ? "yes" : "no");
     printf("  Output JSON: %s\n", options->output_json ? "yes" : "no");
     printf("  Hydrate System Root: %s\n", options->hydrate_system_root ? "yes" : "no");
-    printf("  Upgrade System Root: %s\n", options->upgrade_system_root ? "yes" : "no");
     printf("  Show Help: %s\n", options->show_help ? "yes" : "no");
     printf("  Show Version: %s\n", options->show_version ? "yes" : "no");
 }

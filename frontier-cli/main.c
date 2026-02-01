@@ -153,6 +153,113 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
+    /* Handle --migrate mode: migrate database to v7 and exit */
+    if (g_cli_options.migrate_database != NULL) {
+        boolean migrated = false;
+        char default_output[CLI_MAX_PATH_LENGTH + 8];  /* Extra space for ".root7" suffix */
+        const char *final_output_path = g_cli_options.output_path;
+        const char *input = g_cli_options.migrate_database;
+        size_t input_len = strlen(input);
+
+        /* If no output path specified, create default: <input>.root7 or <input>7 */
+        if (final_output_path == NULL) {
+            /* Validate path length before constructing output path */
+            if (input_len >= CLI_MAX_PATH_LENGTH) {
+                fprintf(stderr, "Error: Input path too long for default output naming\n");
+                return 1;
+            }
+
+            /* Check if input ends with .root */
+            if (input_len >= 5 && strcasecmp(input + input_len - 5, ".root") == 0) {
+                snprintf(default_output, sizeof(default_output), "%s7", input);
+            } else {
+                /* Append .root7 for other extensions */
+                snprintf(default_output, sizeof(default_output), "%s.root7", input);
+            }
+            final_output_path = default_output;
+        }
+
+        /* Check if output file exists and --force not specified */
+        if (access(final_output_path, F_OK) == 0 && !g_cli_options.force_overwrite) {
+            fprintf(stderr, "Error: Output file already exists: %s\n", final_output_path);
+            fprintf(stderr, "Use --force (-f) to overwrite.\n");
+            return 1;
+        }
+
+        /* Initialize minimal runtime for migration */
+        if (!db_format_prepare_runtime()) {
+            fprintf(stderr, "Error: Failed to initialize runtime for migration\n");
+            return 1;
+        }
+
+        /* Perform the migration */
+        if (!ensure_database_v7(input, &migrated, default_output, sizeof(default_output))) {
+            fprintf(stderr, "Error: Migration failed for: %s\n", input);
+            /* Clean up partial migration output if it exists */
+            if (default_output[0] != '\0') {
+                remove(default_output);
+            }
+            return 1;
+        }
+
+        /* If custom output path specified and differs from what ensure_database_v7 produced, copy/rename */
+        if (g_cli_options.output_path != NULL && strcmp(g_cli_options.output_path, default_output) != 0) {
+            #define FILE_COPY_BUFFER_SIZE 8192
+
+            /* Copy the migrated file to the specified output path */
+            FILE *src = fopen(default_output, "rb");
+            if (!src) {
+                fprintf(stderr, "Error: Cannot read migrated file: %s\n", default_output);
+                return 1;
+            }
+            FILE *dst = fopen(g_cli_options.output_path, "wb");
+            if (!dst) {
+                fclose(src);
+                remove(default_output);  /* Clean up intermediate file */
+                fprintf(stderr, "Error: Cannot create output file: %s\n", g_cli_options.output_path);
+                return 1;
+            }
+
+            char buf[FILE_COPY_BUFFER_SIZE];
+            size_t n;
+            boolean copy_failed = false;
+
+            while ((n = fread(buf, 1, sizeof(buf), src)) > 0) {
+                if (fwrite(buf, 1, n, dst) != n) {
+                    copy_failed = true;
+                    break;
+                }
+            }
+
+            /* Check for read/write errors (fread returns 0 on both EOF and error) */
+            if (!copy_failed && (ferror(src) || ferror(dst))) {
+                copy_failed = true;
+            }
+
+            fclose(src);
+            fclose(dst);
+
+            if (copy_failed) {
+                /* Clean up both the failed output and intermediate file */
+                remove(g_cli_options.output_path);
+                remove(default_output);
+                fprintf(stderr, "Error: File copy failed\n");
+                return 1;
+            }
+
+            /* Remove the intermediate .root7 file */
+            remove(default_output);
+            printf("Migrated: %s -> %s\n", input, g_cli_options.output_path);
+
+            #undef FILE_COPY_BUFFER_SIZE
+        } else if (migrated) {
+            printf("Migrated: %s -> %s\n", input, default_output);
+        } else {
+            printf("Already v7 format: %s\n", input);
+        }
+        return 0;
+    }
+
     /* Set JSON mode early to suppress logs on stderr when JSON output is enabled.
      * Must be set BEFORE database loading to prevent log messages from appearing in JSON output. */
     cli_set_json_mode(g_cli_options.output_json);
@@ -165,22 +272,6 @@ int main(int argc, char* argv[]) {
         g_cli_options.script_file == NULL &&
         g_cli_options.inline_script == NULL) {
         log_set_level(LOG_LEVEL_ERROR);
-    }
-
-    /* Always hydrate the system root in headless/CLI; defaults to g_cli_options.system_root if provided. */
-    if (g_cli_options.upgrade_system_root) {
-        boolean migrated = false;
-        char output_path[1024];
-        if (!ensure_database_v7(g_cli_options.system_root, &migrated, output_path, sizeof output_path)) {
-            log_error(LOG_COMP_GENERAL, "Error: Failed to upgrade system root: %s", g_cli_options.system_root);
-            return 1;
-        }
-        if (migrated) {
-            printf("System root upgraded to v7 format (written to): %s\n", output_path);
-        } else {
-            printf("System root already in modern format: %s\n", g_cli_options.system_root);
-        }
-        return 0;
     }
 
     /* Always initialize runtime and hydrate system root (default path). */
@@ -420,7 +511,9 @@ static void print_usage(const char* program_name) {
     printf("  --system-root PATH       Load system root database before executing scripts\n");
     printf("  -b, --batch              Batch mode (disable interactive prompts)\n");
     printf("  --non-interactive        Alias for --batch\n");
-    printf("  --upgrade-system-root    Upgrade system root to v7 format (use with --system-root)\n");
+    printf("  --migrate PATH           Migrate v6 database to v7 format and exit\n");
+    printf("  --output PATH            Output path for migrated database (default: <input>.root7)\n");
+    printf("  -f, --force              Force overwrite if output file exists\n");
     printf("  --output-json            Output results in JSON format\n");
     printf("  -v, --verbose            Verbose output\n");
     printf("  --debug                  Debug mode\n");
@@ -444,8 +537,14 @@ static void print_usage(const char* program_name) {
     printf("  # Execute with system root database\n");
     printf("  %s --system-root databases/Frontier.root7 -e \"sizeOf(system)\"\n", program_name);
     printf("\n");
-    printf("  # Upgrade v6 database to v7 format\n");
-    printf("  %s --system-root databases/Frontier.root --upgrade-system-root\n", program_name);
+    printf("  # Migrate v6 database to v7 format (creates .root7 alongside original)\n");
+    printf("  %s --migrate Frontier.root\n", program_name);
+    printf("\n");
+    printf("  # Migrate with explicit output path\n");
+    printf("  %s --migrate legacy/Frontier.root --output databases/Frontier.root\n", program_name);
+    printf("\n");
+    printf("  # Force overwrite existing v7 file\n");
+    printf("  %s --migrate Frontier.root -f\n", program_name);
     printf("\n");
     printf("  # Execute with JSON output (for automation/testing)\n");
     printf("  %s --output-json -e \"1+1\"\n", program_name);

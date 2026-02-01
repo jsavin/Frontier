@@ -1,7 +1,7 @@
 # Frontier CLI Usage Guide
 
-**Version:** 1.1.0
-**Last Updated:** 2026-01-25
+**Version:** 1.2.0
+**Last Updated:** 2026-01-31
 
 ---
 
@@ -70,7 +70,9 @@ To run `frontier-cli` from any directory, either:
 |--------|-----------|----------|-------------|
 | `-e` | `--execute` | `SCRIPT` | Execute inline UserTalk script |
 | | `--system-root` | `PATH` | Load system root database before executing scripts |
-| | `--upgrade-system-root` | | Upgrade system root to v7 format (use with `--system-root`) |
+| | `--migrate` | `PATH` | Migrate v6 database to v7 format and exit |
+| | `--output` | `PATH` | Output path for migrated database (use with `--migrate`) |
+| `-f` | `--force` | | Force overwrite if output file exists (use with `--migrate`) |
 | `-b` | `--batch` | | Batch mode (disable interactive prompts) |
 | | `--non-interactive` | | Alias for `--batch` |
 | `-v` | `--verbose` | | Enable verbose output |
@@ -135,19 +137,35 @@ If you specify a v6 database, the CLI will automatically migrate it to v7 format
 ./frontier-cli/frontier-cli databases/Frontier.root -e "1"
 ```
 
-#### `--upgrade-system-root`
+#### `--migrate PATH`
 
-Upgrade a database to v7 format without loading or executing any scripts. Must be used with `--system-root`.
+Migrate a v6 database to v7 format and exit. This is a standalone operation that doesn't load the system root or execute any scripts.
 
-**Usage:**
+**Basic Usage** (creates `<input>.root7` alongside original):
 ```bash
-./frontier-cli/frontier-cli --system-root databases/Frontier.root --upgrade-system-root
+./frontier-cli/frontier-cli --migrate databases/Frontier.root
 ```
 
 **Output:**
 ```
-System root upgraded to v7 format (written to): databases/Frontier.root7
+Migrated: databases/Frontier.root -> databases/Frontier.root7
 ```
+
+**With Custom Output Path:**
+```bash
+./frontier-cli/frontier-cli --migrate legacy/Frontier.root --output databases/Frontier.root
+```
+
+**Force Overwrite Existing File:**
+```bash
+./frontier-cli/frontier-cli --migrate Frontier.root --output Frontier.root7 -f
+```
+
+**Notes:**
+- The original v6 file is never modified
+- If the input is already v7 format, prints "Already v7 format" and exits
+- Exit code 0 on success, 1 on error
+- Use `--force` (`-f`) to overwrite an existing output file
 
 #### `-b, --batch, --non-interactive`
 
@@ -395,12 +413,12 @@ When you specify a v6 database, the CLI automatically:
 To migrate a database without executing scripts:
 
 ```bash
-./frontier-cli/frontier-cli --system-root databases/Frontier.root --upgrade-system-root
+./frontier-cli/frontier-cli --migrate databases/Frontier.root
 ```
 
 **Output:**
 ```
-System root upgraded to v7 format (written to): databases/Frontier.root7
+Migrated: databases/Frontier.root -> databases/Frontier.root7
 ```
 
 ### Accessing Database Contents
@@ -542,7 +560,7 @@ return result
 
 ```bash
 # Migrate and verify
-./frontier-cli/frontier-cli --system-root databases/Frontier.root --upgrade-system-root
+./frontier-cli/frontier-cli --migrate databases/Frontier.root
 
 # Use the migrated database
 ./frontier-cli/frontier-cli --system-root databases/Frontier.root7 -e "defined(system)"
@@ -753,7 +771,7 @@ Automatically migrate all v6 databases in a directory:
 
 for db in databases/*-v6.root; do
     echo "Migrating: $db"
-    ./frontier-cli/frontier-cli --system-root "$db" --upgrade-system-root
+    ./frontier-cli/frontier-cli --migrate "$db"
 done
 ```
 
@@ -804,7 +822,7 @@ time ./frontier-cli/frontier-cli -e "local(i); for i = 1 to 1000 {i * 2}"
 - Script file execution
 - Database loading (`--system-root`)
 - Automatic v6→v7 migration
-- Manual database upgrade (`--upgrade-system-root`)
+- Manual database migration (`--migrate`)
 - Environment variable configuration
 - Verbose and debug logging modes
 - Exit code support for shell scripting
