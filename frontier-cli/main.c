@@ -914,9 +914,11 @@ static boolean hydrate_system_root_database(const char* path) {
         log_info(LOG_COMP_STARTUP, "Loaded system root: %s", path);
     }
 
-    /* Set globals for frontier.getFilePath() verb access */
-    g_system_root_loaded = true;
+    /* Set globals for frontier.getFilePath() verb access.
+     * Thread safety: Set path BEFORE setting loaded flag to avoid race condition
+     * where another thread sees loaded=true but path is still being written. */
     snprintf(g_system_root_path, sizeof(g_system_root_path), "%s", path);
+    g_system_root_loaded = true;
 
     /* NOTE: Startup scripts are NOT run here during hydration.
      * They are run in main() AFTER hydration completes, which ensures:
@@ -1144,11 +1146,13 @@ static boolean load_system_root_database_internal(const char* path, boolean allo
 
     currenthashtable = roottable;
 
-    /* Set globals so callers know the database is loaded */
+    /* Set globals so callers know the database is loaded.
+     * Thread safety: Set path BEFORE setting loaded flag to avoid race condition
+     * where another thread sees loaded=true but path is still being written. */
     g_previous_database = previous;
     g_system_root_fnum = fnum;
-    g_system_root_loaded = true;
     snprintf(g_system_root_path, sizeof(g_system_root_path), "%s", path);
+    g_system_root_loaded = true;
 
     /* NOTE: Startup scripts are NOT run here. They are run in main() AFTER
      * hydrate_system_root_database() completes, which ensures EFP tables are

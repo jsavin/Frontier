@@ -2,12 +2,12 @@
 <opml version="2.0">
   <head>
     <title>Table Sorting Verbs (table_sorting_verbs)</title>
-    <dateCreated>Wed, 21 Jan 2026 02:19:44 GMT</dateCreated>
+    <dateCreated>Sun, 01 Feb 2026 20:16:22 GMT</dateCreated>
   </head>
   <body>
     <outline text="table.sortby - sort by name (default) - Sort table by name column">
       <outline text="Metadata">
-        <outline text="expected_result: name"/>
+        <outline text="expected_result: Name"/>
       </outline>
       <outline text="Script">
         <outline text="lang.new(tableType, @t)"/>
@@ -21,7 +21,7 @@
     </outline>
     <outline text="table.sortby - sort by value - Sort table by value column">
       <outline text="Metadata">
-        <outline text="expected_result: value"/>
+        <outline text="expected_result: Value"/>
       </outline>
       <outline text="Script">
         <outline text="lang.new(tableType, @t)"/>
@@ -35,7 +35,7 @@
     </outline>
     <outline text="table.sortby - sort by kind - Sort table by kind (type) column">
       <outline text="Metadata">
-        <outline text="expected_result: kind"/>
+        <outline text="expected_result: Kind"/>
       </outline>
       <outline text="Script">
         <outline text="lang.new(tableType, @t)"/>
@@ -49,7 +49,7 @@
     </outline>
     <outline text="table.sortby - case insensitive NAME - Column names should be case-insensitive">
       <outline text="Metadata">
-        <outline text="expected_result: name"/>
+        <outline text="expected_result: Name"/>
       </outline>
       <outline text="Script">
         <outline text="lang.new(tableType, @t)"/>
@@ -60,7 +60,7 @@
     </outline>
     <outline text="table.sortby - case insensitive VaLuE - Mixed case should work">
       <outline text="Metadata">
-        <outline text="expected_result: value"/>
+        <outline text="expected_result: Value"/>
       </outline>
       <outline text="Script">
         <outline text="lang.new(tableType, @t)"/>
@@ -71,7 +71,7 @@
     </outline>
     <outline text="table.sortby - case insensitive kind - Lowercase should work">
       <outline text="Metadata">
-        <outline text="expected_result: kind"/>
+        <outline text="expected_result: Kind"/>
       </outline>
       <outline text="Script">
         <outline text="lang.new(tableType, @t)"/>
@@ -82,7 +82,7 @@
     </outline>
     <outline text="table.getsortorder - default is name - New tables default to sorting by name">
       <outline text="Metadata">
-        <outline text="expected_result: name"/>
+        <outline text="expected_result: Name"/>
       </outline>
       <outline text="Script">
         <outline text="lang.new(tableType, @t)"/>
@@ -92,7 +92,7 @@
     </outline>
     <outline text="table.sortby - multiple sequential sorts - Changing sort order multiple times should work">
       <outline text="Metadata">
-        <outline text="expected_result: name,value,kind"/>
+        <outline text="expected_result: Name,Value,Kind"/>
       </outline>
       <outline text="Script">
         <outline text="lang.new(tableType, @t)"/>
@@ -190,7 +190,7 @@
     </outline>
     <outline text="table.sortby - with explicit target - Combine target setting and sorting">
       <outline text="Metadata">
-        <outline text="expected_result: name"/>
+        <outline text="expected_result: Name"/>
       </outline>
       <outline text="Script">
         <outline text="lang.new(tableType, @t)"/>
@@ -205,7 +205,7 @@
     </outline>
     <outline text="table.getsortorder - persists after setting - Sort order should persist">
       <outline text="Metadata">
-        <outline text="expected_result: value,kind"/>
+        <outline text="expected_result: Value,Kind"/>
       </outline>
       <outline text="Script">
         <outline text="lang.new(tableType, @t)"/>

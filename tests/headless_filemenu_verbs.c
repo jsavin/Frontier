@@ -176,7 +176,12 @@ static boolean filemenu_save_guestdb(hdltreenode hparam1) {
         return false;
     }
 
-    for (hodb = (**hodblist).hnext; hodb != nil; hodb = (**hodb).hnext) {
+    for (hodb = (**hodblist).hnext; hodb != nil && hodb != hodblist; hodb = (**hodb).hnext) {
+        /* Defensive: skip nil or corrupted entries in the list */
+        if (*hodb == nil) {
+            log_warn(LOG_COMP_DB, "filemenu_save_guestdb: found nil entry in hodblist");
+            continue;
+        }
         if (equalfilespecs(&(**hodb).fs, &fs)) {
             /* Found it - check if read-only */
             if ((**hodb).flreadonly) {

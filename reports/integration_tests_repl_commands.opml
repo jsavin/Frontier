@@ -2,14 +2,21 @@
 <opml version="2.0">
   <head>
     <title>Repl Commands (repl_commands)</title>
-    <dateCreated>Wed, 21 Jan 2026 02:19:44 GMT</dateCreated>
+    <dateCreated>Sun, 01 Feb 2026 20:16:22 GMT</dateCreated>
   </head>
   <body>
-    <outline text="REPL /help - displays available commands - /help should list available commands (QuickScript model)">
+    <outline text="REPL /help - displays available commands - /help should list all available commands">
       <outline text="Metadata">
         <outline text="repl_mode: True"/>
         <outline text="stdin_input: /help&#10;/exit&#10;"/>
-        <outline text="expected_output_contains: ['/exit', '/help', 'Available commands', 'QuickScript']"/>
+        <outline text="expected_output_contains: ['/exit', '/help', '/jump', '/list', '/keycodes', 'Available commands']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /help - shows QuickScript model - /help should explain QuickScript variable persistence">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /help&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['QuickScript', 'workspace', 'system.temp']"/>
       </outline>
     </outline>
     <outline text="REPL /help - shows multi-line usage - /help should mention multi-line (Phase 2 feature)">
@@ -17,13 +24,6 @@
         <outline text="repl_mode: True"/>
         <outline text="stdin_input: /help&#10;/exit&#10;"/>
         <outline text="expected_output_contains: ['Multi-line', 'Phase 2']"/>
-      </outline>
-    </outline>
-    <outline text="REPL /help - shows examples - /help should provide usage examples">
-      <outline text="Metadata">
-        <outline text="repl_mode: True"/>
-        <outline text="stdin_input: /help&#10;/exit&#10;"/>
-        <outline text="expected_output_contains: ['Examples', 'workspace']"/>
       </outline>
     </outline>
     <outline text="REPL /vars - empty workspace - /vars shows empty ephemeral workspace">
@@ -130,6 +130,167 @@
         <outline text="repl_mode: True"/>
         <outline text="stdin_input: /exit&#10;x = 42&#10;"/>
         <outline text="expected_output_not_contains: ['42']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /list - lists current table (root) - /list with no argument lists the current table">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /list&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['root:', 'system', 'user']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /list - shows table type - /list should show 'table' type for sub-tables">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /list&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['table']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /list - with dot-path argument - /list should accept dot-path to list specific table">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /list system&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['system:', 'verbs']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /list - with nested dot-path - /list should accept nested dot-paths">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /list system.verbs&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['system.verbs:', 'builtins']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /list - with system.paths name - /list should resolve names via system.paths">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /list fileMenu&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['system.verbs.builtins.fileMenu:']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /list - with script expression - /list should evaluate script expressions like parentOf()">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /list parentOf(fileMenu)&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['system.verbs.builtins:']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /list - with address expression - /list should work with @ address expressions">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /list parentOf(@user.inetd)&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['user:']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /list - shows scalar values inline - /list should display scalar values (numbers, strings) inline">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /list user.prefs&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['user.prefs:']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /list - invalid path shows error - /list with invalid path should show error message">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /list nonexistent.path&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['Error', 'not a valid table path']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /list - empty path argument lists current - /list with just whitespace lists current table">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /list   &#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['root:']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /jump - to root (no argument) - /jump with no argument returns to root">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /jump system&#10;/jump&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['[root]&gt;']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /jump - changes prompt - /jump should change the prompt to show current location">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /jump system&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['[system]&gt;']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /jump - to nested table - /jump should navigate to nested tables">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /jump system.verbs&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['[system.verbs]&gt;']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /jump - parent with .. - /jump .. should go to parent table">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /jump system.verbs&#10;/jump ..&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['[system]&gt;']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /jump - via system.paths - /jump should resolve names via system.paths">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /jump fileMenu&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['[system.verbs.builtins.fileMenu]&gt;']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /jump - with script expression - /jump should evaluate script expressions">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /jump parentOf(fileMenu)&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['[system.verbs.builtins]&gt;']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /jump - with address expression - /jump should work with @ address expressions">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /jump parentOf(@user.inetd)&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['[user]&gt;']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /jump - invalid path shows error - /jump with invalid path should show error">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /jump nonexistent.path&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['Error', 'not a valid table path']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /jump - doesn't change on error - /jump to invalid path shouldn't change current table">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /jump system&#10;/jump nonexistent&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['[system]&gt;', 'Error']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /jump - then /list shows jumped table - /list after /jump should show the jumped-to table">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /jump system&#10;/list&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['system:', 'verbs']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /help - documents /jump command - /help should explain /jump command with examples">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /help&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['/jump', 'Navigate', 'system.paths', 'parentOf']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /help - documents /list command - /help should explain /list command with examples">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /help&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['/list', 'List', 'system.paths', 'parentOf']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /help - documents /keycodes command - /help should explain /keycodes command">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /help&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['/keycodes']"/>
       </outline>
     </outline>
     <outline text="REPL - unknown command - Unknown commands should show error and continue">

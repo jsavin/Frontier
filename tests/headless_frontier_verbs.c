@@ -19,11 +19,15 @@
 #include "tablestructure.h"
 #include "process.h"  /* for hdlprocessthread */
 
-#include <unistd.h>  /* for getcwd */
+#include <unistd.h>  /* for getcwd, readlink (Linux) */
 #include <string.h>  /* for strlen */
 
 #ifdef __APPLE__
 #include <mach-o/dyld.h>  /* for _NSGetExecutablePath */
+#endif
+
+#if defined(__linux__) || defined(__FreeBSD__)
+#include <limits.h>  /* for PATH_MAX */
 #endif
 
 /* Token enum for all verbs in the frontier processor */
@@ -101,16 +105,33 @@ static boolean frontier_valueproc(short token, hdltreenode hparam1,
             /* Convert relative path to absolute if needed */
             if (root_path[0] != '/') {
                 char cwd[4096];
+                size_t cwd_len, path_len;
+
                 if (getcwd(cwd, sizeof(cwd)) == NULL) {
                     if (bserror) copystring(BIGSTRING("\pcould not get current directory"), bserror);
                     return false;
                 }
+
+                /* Pre-check path lengths before formatting to avoid truncation */
+                cwd_len = strlen(cwd);
+                path_len = strlen(root_path);
+                if (cwd_len + 1 + path_len >= sizeof(fullpath)) {
+                    if (bserror) copystring(BIGSTRING("\ppath too long"), bserror);
+                    return false;
+                }
+
                 len = snprintf(fullpath, sizeof(fullpath), "%s/%s", cwd, root_path);
                 if (len < 0 || len >= (int)sizeof(fullpath)) {
                     if (bserror) copystring(BIGSTRING("\ppath too long"), bserror);
                     return false;
                 }
             } else {
+                /* Pre-check path length */
+                if (strlen(root_path) >= sizeof(fullpath)) {
+                    if (bserror) copystring(BIGSTRING("\ppath too long"), bserror);
+                    return false;
+                }
+
                 len = snprintf(fullpath, sizeof(fullpath), "%s", root_path);
                 if (len < 0 || len >= (int)sizeof(fullpath)) {
                     if (bserror) copystring(BIGSTRING("\ppath too long"), bserror);
