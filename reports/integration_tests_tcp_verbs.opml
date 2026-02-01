@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Tcp Verbs (tcp_verbs)</title>
-    <dateCreated>Wed, 21 Jan 2026 08:44:42 GMT</dateCreated>
+    <dateCreated>Sun, 01 Feb 2026 20:16:22 GMT</dateCreated>
   </head>
   <body>
     <outline text="tcp.countConnections - initial state - Verify countConnections returns a number (should be &gt;= 0)">
@@ -177,13 +177,13 @@
         </outline>
       </outline>
     </outline>
-    <outline text="tcp.openNameStream - invalid port (negative) - Negative port number should raise error">
+    <outline text="tcp.openStream - invalid port (negative) - Negative port number should raise error">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
         <outline text="try">
-          <outline text="tcp.openNameStream(&quot;localhost&quot;, -1)"/>
+          <outline text="tcp.openStream(&quot;localhost&quot;, -1)"/>
           <outline text="return &quot;false&quot;"/>
         </outline>
         <outline text="else">
@@ -191,13 +191,13 @@
         </outline>
       </outline>
     </outline>
-    <outline text="tcp.openNameStream - invalid port (zero) - Port 0 should raise error for client connections">
+    <outline text="tcp.openStream - invalid port (zero) - Port 0 should raise error for client connections">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
         <outline text="try">
-          <outline text="tcp.openNameStream(&quot;localhost&quot;, 0)"/>
+          <outline text="tcp.openStream(&quot;localhost&quot;, 0)"/>
           <outline text="return &quot;false&quot;"/>
         </outline>
         <outline text="else">
@@ -205,13 +205,13 @@
         </outline>
       </outline>
     </outline>
-    <outline text="tcp.openNameStream - invalid port (too large) - Port &gt; 65535 should raise error">
+    <outline text="tcp.openStream - invalid port (too large) - Port &gt; 65535 should raise error">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
         <outline text="try">
-          <outline text="tcp.openNameStream(&quot;localhost&quot;, 70000)"/>
+          <outline text="tcp.openStream(&quot;localhost&quot;, 70000)"/>
           <outline text="return &quot;false&quot;"/>
         </outline>
         <outline text="else">
@@ -219,13 +219,13 @@
         </outline>
       </outline>
     </outline>
-    <outline text="tcp.openNameStream - empty hostname - Empty hostname should raise error">
+    <outline text="tcp.openStream - empty hostname - Empty hostname should raise error">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
         <outline text="try">
-          <outline text="tcp.openNameStream(&quot;&quot;, 80)"/>
+          <outline text="tcp.openStream(&quot;&quot;, 80)"/>
           <outline text="return &quot;false&quot;"/>
         </outline>
         <outline text="else">
@@ -233,14 +233,14 @@
         </outline>
       </outline>
     </outline>
-    <outline text="tcp.openAddrStream - invalid port (negative) - Negative port number should raise error">
+    <outline text="tcp.openStream - invalid port (negative) - Negative port number should raise error">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
         <outline text="try">
           <outline text="local(localhost = 0x7F000001)"/>
-          <outline text="tcp.openAddrStream(localhost, -1)"/>
+          <outline text="tcp.openStream(localhost, -1)"/>
           <outline text="return &quot;false&quot;"/>
         </outline>
         <outline text="else">
@@ -248,14 +248,14 @@
         </outline>
       </outline>
     </outline>
-    <outline text="tcp.openAddrStream - invalid port (too large) - Port &gt; 65535 should raise error">
+    <outline text="tcp.openStream - invalid port (too large) - Port &gt; 65535 should raise error">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
         <outline text="try">
           <outline text="local(localhost = 0x7F000001)"/>
-          <outline text="tcp.openAddrStream(localhost, 70000)"/>
+          <outline text="tcp.openStream(localhost, 70000)"/>
           <outline text="return &quot;false&quot;"/>
         </outline>
         <outline text="else">
@@ -263,13 +263,13 @@
         </outline>
       </outline>
     </outline>
-    <outline text="tcp.openAddrStream - invalid address (zero) - Address 0.0.0.0 is invalid for client connect (Phase 1A)">
+    <outline text="tcp.openStream - invalid address (zero) - Address 0.0.0.0 is invalid for client connect (Phase 1A)">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
         <outline text="try">
-          <outline text="tcp.openAddrStream(0, 80)"/>
+          <outline text="tcp.openStream(0, 80)"/>
           <outline text="return &quot;false&quot;"/>
         </outline>
         <outline text="else">
@@ -327,12 +327,12 @@
         <outline text="return true"/>
       </outline>
     </outline>
-    <outline text="tcp.openNameStream - blocking DNS spec - Spec: openNameStream performs blocking DNS lookup + connect">
+    <outline text="tcp.openStream - blocking DNS spec - Spec: openNameStream performs blocking DNS lookup + connect">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="// Behavioral specification: tcp.openNameStream is BLOCKING."/>
+        <outline text="// Behavioral specification: tcp.openStream is BLOCKING."/>
         <outline text="// It performs DNS resolution (if hostname not IP) and TCP connect."/>
         <outline text="// Does not return until connection established or error."/>
         <outline text="// Phase 1A uses blocking DNS; Phase 1B may add async."/>
@@ -340,12 +340,12 @@
         <outline text="return true"/>
       </outline>
     </outline>
-    <outline text="tcp.openAddrStream - no DNS lookup spec - Spec: openAddrStream uses IP address directly (no DNS)">
+    <outline text="tcp.openStream - no DNS lookup spec - Spec: openAddrStream uses IP address directly (no DNS)">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="// Behavioral specification: tcp.openAddrStream bypasses DNS."/>
+        <outline text="// Behavioral specification: tcp.openStream bypasses DNS."/>
         <outline text="// Address parameter is a 4-byte encoded IP in host byte order."/>
         <outline text="// Faster than openNameStream when IP is already known."/>
         <outline text="// This test documents the expected behavior."/>
@@ -364,12 +364,12 @@
         <outline text="return true"/>
       </outline>
     </outline>
-    <outline text="tcp.openAddrStream - return type spec - Spec: openAddrStream returns positive long (stream ID)">
+    <outline text="tcp.openStream - return type spec - Spec: openAddrStream returns positive long (stream ID)">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="// Behavioral specification: tcp.openAddrStream returns longType."/>
+        <outline text="// Behavioral specification: tcp.openStream returns longType."/>
         <outline text="// Stream ID is always a positive integer (&gt; 0)."/>
         <outline text="// Zero is reserved as invalid stream ID."/>
         <outline text="// This test documents the expected behavior."/>

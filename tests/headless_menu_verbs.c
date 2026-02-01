@@ -47,21 +47,32 @@ static boolean menu_valueproc(short token, hdltreenode hparam1,
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case menv_buildmenubar:
-            /* Verb #1: menu.buildmenubar - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* menu.buildmenubar - no-op in headless mode (no GUI menubar) */
+            setbooleanvalue(true, vreturned);
+            return true;
         case menv_clearmenubar:
-            /* Verb #2: menu.clearmenubar - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case menv_isinstalled:
-            /* Verb #3: menu.isinstalled - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* menu.clearMenuBar - no-op in headless mode (no GUI menubar) */
+            setbooleanvalue(true, vreturned);
+            return true;
+        case menv_isinstalled: {
+            /* menu.isInstalled - in headless mode, no menus are installed.
+             * Return false to indicate the menu is not installed. */
+            hdlhashtable htable;
+            bigstring bs;
+
+            flnextparamislast = true;
+
+            /* Consume the address parameter */
+            if (!getvarparam(hparam1, 1, &htable, bs))
+                return false;
+
+            /* Nothing is installed in headless mode */
+            setbooleanvalue(false, vreturned);
+            return true;
+        }
         case menv_install:
-            /* Verb #4: menu.install - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* menu.install - no-op in headless mode (no menu bar to install to) */
+            return setbooleanvalue(true, vreturned);
         case menv_remove:
             /* Verb #5: menu.remove - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);

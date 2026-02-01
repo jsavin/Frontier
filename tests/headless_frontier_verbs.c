@@ -19,6 +19,17 @@
 #include "tablestructure.h"
 #include "process.h"  /* for hdlprocessthread */
 
+#include <unistd.h>  /* for getcwd, readlink (Linux) */
+#include <string.h>  /* for strlen */
+
+#ifdef __APPLE__
+#include <mach-o/dyld.h>  /* for _NSGetExecutablePath */
+#endif
+
+#if defined(__linux__) || defined(__FreeBSD__)
+#include <limits.h>  /* for PATH_MAX */
+#endif
+
 /* Token enum for all verbs in the frontier processor */
 enum {
     frov_getprogrampath = 0,
@@ -44,18 +55,98 @@ static boolean frontier_valueproc(short token, hdltreenode hparam1,
     (void) vreturned;
 
     switch(token) {
-        case frov_getprogrampath:
-            /* Verb #0: frontier.getprogrampath - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case frov_getfilepath:
-            /* Verb #1: frontier.getfilepath - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+        case frov_getprogrampath: {
+            /* Verb #0: frontier.getprogrampath - returns path to CLI executable */
+            char path[1024];
+            bigstring bspath;
+
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+
+#ifdef __APPLE__
+            uint32_t size = sizeof(path);
+            if (_NSGetExecutablePath(path, &size) != 0) {
+                if (bserror) copystring(BIGSTRING("\pcould not get program path"), bserror);
+                return false;
+            }
+#else
+            /* Linux: read /proc/self/exe symlink */
+            ssize_t len = readlink("/proc/self/exe", path, sizeof(path) - 1);
+            if (len == -1) {
+                if (bserror) copystring(BIGSTRING("\pcould not get program path"), bserror);
+                return false;
+            }
+            path[len] = '\0';
+#endif
+
+            copyctopstring(path, bspath);
+            return setstringvalue(bspath, vreturned);
+        }
+        case frov_getfilepath: {
+            /* Verb #1: frontier.getfilepath - returns path to current database file */
+            /* In headless mode, return the system root path if loaded */
+            /* IMPORTANT: Return an absolute path so startup scripts work correctly */
+            extern boolean cli_is_system_root_loaded(void);
+            extern const char* cli_get_system_root_path(void);
+            const char *root_path;
+            bigstring bspath;
+            char fullpath[4096];
+            int len;
+
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+
+            root_path = cli_get_system_root_path();
+            if (!cli_is_system_root_loaded() || root_path[0] == '\0') {
+                if (bserror) copystring(BIGSTRING("\pno database file loaded"), bserror);
+                return false;
+            }
+
+            /* Convert relative path to absolute if needed */
+            if (root_path[0] != '/') {
+                char cwd[4096];
+                size_t cwd_len, path_len;
+
+                if (getcwd(cwd, sizeof(cwd)) == NULL) {
+                    if (bserror) copystring(BIGSTRING("\pcould not get current directory"), bserror);
+                    return false;
+                }
+
+                /* Pre-check path lengths before formatting to avoid truncation */
+                cwd_len = strlen(cwd);
+                path_len = strlen(root_path);
+                if (cwd_len + 1 + path_len >= sizeof(fullpath)) {
+                    if (bserror) copystring(BIGSTRING("\ppath too long"), bserror);
+                    return false;
+                }
+
+                len = snprintf(fullpath, sizeof(fullpath), "%s/%s", cwd, root_path);
+                if (len < 0 || len >= (int)sizeof(fullpath)) {
+                    if (bserror) copystring(BIGSTRING("\ppath too long"), bserror);
+                    return false;
+                }
+            } else {
+                /* Pre-check path length */
+                if (strlen(root_path) >= sizeof(fullpath)) {
+                    if (bserror) copystring(BIGSTRING("\ppath too long"), bserror);
+                    return false;
+                }
+
+                len = snprintf(fullpath, sizeof(fullpath), "%s", root_path);
+                if (len < 0 || len >= (int)sizeof(fullpath)) {
+                    if (bserror) copystring(BIGSTRING("\ppath too long"), bserror);
+                    return false;
+                }
+            }
+
+            copyctopstring(fullpath, bspath);
+            return setstringvalue(bspath, vreturned);
+        }
         case frov_enableagents:
-            /* Verb #2: frontier.enableagents - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* frontier.enableAgents - no-op in headless mode (agents not supported) */
+            /* Startup script calls this, so we return true to not fail the script */
+            setbooleanvalue(true, vreturned);
+            return true;
         case frov_requesttofront:
             /* Verb #3: frontier.requesttofront - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
@@ -95,10 +186,21 @@ static boolean frontier_valueproc(short token, hdltreenode hparam1,
             /* Verb #11: frontier.hideapplication - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case frov_isvalidserialnumber:
-            /* Verb #12: frontier.isvalidserialnumber - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+        case frov_isvalidserialnumber: {
+            /* frontier.isvalidSerialNumber - in headless mode, always return true.
+             * Trial/licensing is not meaningful for CLI usage. */
+            bigstring bsserial;
+
+            flnextparamislast = true;
+
+            /* Consume the serial number parameter */
+            if (!getstringvalue(hparam1, 1, bsserial))
+                return false;
+
+            /* Always valid in headless mode */
+            setbooleanvalue(true, vreturned);
+            return true;
+        }
         case frov_showapplication:
             /* Verb #13: frontier.showapplication - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);

@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Tcp Phase2 Verbs (tcp_phase2_verbs)</title>
-    <dateCreated>Fri, 30 Jan 2026 01:52:36 GMT</dateCreated>
+    <dateCreated>Sun, 01 Feb 2026 20:16:22 GMT</dateCreated>
   </head>
   <body>
     <outline text="tcp.myAddress - returns valid address - Verify myAddress returns a valid IP address (not zero)">
@@ -55,9 +55,9 @@
         <outline text="notes: Phase 2 - Verify OPEN status for idle stream"/>
       </outline>
       <outline text="Script">
-        <outline text="local(listenID = tcp.listenStream(9100, 5, &quot;&quot;, 0, tcp.addressEncode(&quot;127.0.0.1&quot;)))"/>
+        <outline text="local(listenID = tcp.listenStream(9100, 5, &quot;&quot;))"/>
         <outline text="try">
-          <outline text="local(stream = tcp.openAddrStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9100))"/>
+          <outline text="local(stream = tcp.openStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9100))"/>
           <outline text="if (stream &lt;= 0)">
             <outline text="tcp.closeListen(listenID)"/>
             <outline text="return &quot;false&quot;"/>
@@ -89,8 +89,8 @@
           <outline text="system.temp.tcpTest.serverStream = streamID"/>
           <outline text="return true"/>
         </outline>
-        <outline text="local(listenID = tcp.listenStream(9101, 5, @tcpHandler, 0, tcp.addressEncode(&quot;127.0.0.1&quot;)))"/>
-        <outline text="local(clientStream = tcp.openAddrStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9101))"/>
+        <outline text="local(listenID = tcp.listenStream(9101, 5, @tcpHandler)"/>
+        <outline text="local(clientStream = tcp.openStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9101))"/>
         <outline text="// Wait for connection"/>
         <outline text="local(startTicks = clock.ticks())"/>
         <outline text="while (not system.temp.tcpTest.connected) and ((clock.ticks() - startTicks) &lt; 60)">
@@ -123,8 +123,8 @@
           <outline text="system.temp.tcpTest.serverStream = streamID"/>
           <outline text="return true"/>
         </outline>
-        <outline text="local(listenID = tcp.listenStream(9102, 5, @tcpHandler, 0, tcp.addressEncode(&quot;127.0.0.1&quot;)))"/>
-        <outline text="local(clientStream = tcp.openAddrStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9102))"/>
+        <outline text="local(listenID = tcp.listenStream(9102, 5, @tcpHandler)"/>
+        <outline text="local(clientStream = tcp.openStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9102))"/>
         <outline text="local(startTicks = clock.ticks())"/>
         <outline text="while (not system.temp.tcpTest.connected) and ((clock.ticks() - startTicks) &lt; 60)">
           <outline text="thread.sleepFor(10)"/>
@@ -147,9 +147,9 @@
         <outline text="notes: Phase 2 - Status is a string type"/>
       </outline>
       <outline text="Script">
-        <outline text="local(listenID = tcp.listenStream(9103, 5, &quot;&quot;, 0, tcp.addressEncode(&quot;127.0.0.1&quot;)))"/>
+        <outline text="local(listenID = tcp.listenStream(9103, 5, &quot;&quot;))"/>
         <outline text="try">
-          <outline text="local(stream = tcp.openAddrStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9103))"/>
+          <outline text="local(stream = tcp.openStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9103))"/>
           <outline text="if (stream &lt;= 0)">
             <outline text="tcp.closeListen(listenID)"/>
             <outline text="return &quot;false&quot;"/>
@@ -166,20 +166,28 @@
         </outline>
       </outline>
     </outline>
-    <outline text="tcp.statusStream - invalid stream returns error - Verify statusStream fails gracefully for invalid stream">
+    <outline text="tcp.statusStream - invalid stream returns INACTIVE - Verify statusStream returns INACTIVE for non-existent stream (not an error)">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
-        <outline text="notes: Phase 2 - Error handling for invalid stream"/>
+        <outline text="notes: Phase 2 - Non-existent streams return INACTIVE status, not an error"/>
       </outline>
       <outline text="Script">
-        <outline text="try">
-          <outline text="local(bytesPending)"/>
-          <outline text="tcp.statusStream(999999, @bytesPending)"/>
-          <outline text="return &quot;false&quot;"/>
-        </outline>
-        <outline text="else">
-          <outline text="return &quot;true&quot;"/>
-        </outline>
+        <outline text="local(bytesPending)"/>
+        <outline text="local(status = tcp.statusStream(999999, @bytesPending))"/>
+        <outline text="return status == &quot;INACTIVE&quot;"/>
+      </outline>
+    </outline>
+    <outline text="tcp.statusStream - listener ID returns LISTENING - Verify statusStream with listener ID returns LISTENING (legacy script compatibility)">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="notes: Phase 2 - Listener IDs passed to statusStream return LISTENING (legacy compatibility)"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(listenID = tcp.listenStream(9109, 5, &quot;&quot;))"/>
+        <outline text="local(bytesPending)"/>
+        <outline text="local(status = tcp.statusStream(listenID, @bytesPending))"/>
+        <outline text="tcp.closeListen(listenID)"/>
+        <outline text="return status == &quot;LISTENING&quot;"/>
       </outline>
     </outline>
     <outline text="tcp.getPeerAddress - returns localhost for local connection - Verify getPeerAddress returns 127.0.0.1 for localhost connection">
@@ -188,9 +196,9 @@
         <outline text="notes: Phase 2 - Client sees server address as 127.0.0.1"/>
       </outline>
       <outline text="Script">
-        <outline text="local(listenID = tcp.listenStream(9104, 5, &quot;&quot;, 0, tcp.addressEncode(&quot;127.0.0.1&quot;)))"/>
+        <outline text="local(listenID = tcp.listenStream(9104, 5, &quot;&quot;))"/>
         <outline text="try">
-          <outline text="local(stream = tcp.openAddrStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9104))"/>
+          <outline text="local(stream = tcp.openStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9104))"/>
           <outline text="if (stream &lt;= 0)">
             <outline text="tcp.closeListen(listenID)"/>
             <outline text="return &quot;false&quot;"/>
@@ -221,8 +229,8 @@
           <outline text="system.temp.tcpTest.peerAddrFromCallback = remoteAddr"/>
           <outline text="return true"/>
         </outline>
-        <outline text="local(listenID = tcp.listenStream(9105, 5, @tcpHandler, 0, tcp.addressEncode(&quot;127.0.0.1&quot;)))"/>
-        <outline text="local(clientStream = tcp.openAddrStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9105))"/>
+        <outline text="local(listenID = tcp.listenStream(9105, 5, @tcpHandler)"/>
+        <outline text="local(clientStream = tcp.openStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9105))"/>
         <outline text="local(startTicks = clock.ticks())"/>
         <outline text="while (not system.temp.tcpTest.connected) and ((clock.ticks() - startTicks) &lt; 60)">
           <outline text="thread.sleepFor(10)"/>
@@ -245,9 +253,9 @@
         <outline text="notes: Phase 2 - Return type validation"/>
       </outline>
       <outline text="Script">
-        <outline text="local(listenID = tcp.listenStream(9106, 5, &quot;&quot;, 0, tcp.addressEncode(&quot;127.0.0.1&quot;)))"/>
+        <outline text="local(listenID = tcp.listenStream(9106, 5, &quot;&quot;))"/>
         <outline text="try">
-          <outline text="local(stream = tcp.openAddrStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9106))"/>
+          <outline text="local(stream = tcp.openStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9106))"/>
           <outline text="if (stream &lt;= 0)">
             <outline text="tcp.closeListen(listenID)"/>
             <outline text="return &quot;false&quot;"/>
@@ -285,9 +293,9 @@
       </outline>
       <outline text="Script">
         <outline text="local(serverPort = 9107)"/>
-        <outline text="local(listenID = tcp.listenStream(serverPort, 5, &quot;&quot;, 0, tcp.addressEncode(&quot;127.0.0.1&quot;)))"/>
+        <outline text="local(listenID = tcp.listenStream(serverPort, 5, &quot;&quot;))"/>
         <outline text="try">
-          <outline text="local(stream = tcp.openAddrStream(tcp.addressEncode(&quot;127.0.0.1&quot;), serverPort))"/>
+          <outline text="local(stream = tcp.openStream(tcp.addressEncode(&quot;127.0.0.1&quot;), serverPort))"/>
           <outline text="if (stream &lt;= 0)">
             <outline text="tcp.closeListen(listenID)"/>
             <outline text="return &quot;false&quot;"/>
@@ -317,8 +325,8 @@
           <outline text="system.temp.tcpTest.peerPortFromCallback = remotePort"/>
           <outline text="return true"/>
         </outline>
-        <outline text="local(listenID = tcp.listenStream(9108, 5, @tcpHandler, 0, tcp.addressEncode(&quot;127.0.0.1&quot;)))"/>
-        <outline text="local(clientStream = tcp.openAddrStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9108))"/>
+        <outline text="local(listenID = tcp.listenStream(9108, 5, @tcpHandler)"/>
+        <outline text="local(clientStream = tcp.openStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9108))"/>
         <outline text="local(startTicks = clock.ticks())"/>
         <outline text="while (not system.temp.tcpTest.connected) and ((clock.ticks() - startTicks) &lt; 60)">
           <outline text="thread.sleepFor(10)"/>
@@ -341,9 +349,9 @@
         <outline text="notes: Phase 2 - Return type validation"/>
       </outline>
       <outline text="Script">
-        <outline text="local(listenID = tcp.listenStream(9109, 5, &quot;&quot;, 0, tcp.addressEncode(&quot;127.0.0.1&quot;)))"/>
+        <outline text="local(listenID = tcp.listenStream(9109, 5, &quot;&quot;))"/>
         <outline text="try">
-          <outline text="local(stream = tcp.openAddrStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9109))"/>
+          <outline text="local(stream = tcp.openStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9109))"/>
           <outline text="if (stream &lt;= 0)">
             <outline text="tcp.closeListen(listenID)"/>
             <outline text="return &quot;false&quot;"/>
@@ -389,8 +397,8 @@
           <outline text="system.temp.tcpTest.callbackPort = remotePort"/>
           <outline text="return true"/>
         </outline>
-        <outline text="local(listenID = tcp.listenStream(9110, 5, @tcpHandler, 0, tcp.addressEncode(&quot;127.0.0.1&quot;)))"/>
-        <outline text="local(clientStream = tcp.openAddrStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9110))"/>
+        <outline text="local(listenID = tcp.listenStream(9110, 5, @tcpHandler)"/>
+        <outline text="local(clientStream = tcp.openStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9110))"/>
         <outline text="local(startTicks = clock.ticks())"/>
         <outline text="while (not system.temp.tcpTest.connected) and ((clock.ticks() - startTicks) &lt; 60)">
           <outline text="thread.sleepFor(10)"/>
@@ -419,8 +427,8 @@
           <outline text="system.temp.tcpTest.serverStream = streamID"/>
           <outline text="return true"/>
         </outline>
-        <outline text="local(listenID = tcp.listenStream(9111, 5, @tcpHandler, 0, tcp.addressEncode(&quot;127.0.0.1&quot;)))"/>
-        <outline text="local(clientStream = tcp.openAddrStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9111))"/>
+        <outline text="local(listenID = tcp.listenStream(9111, 5, @tcpHandler)"/>
+        <outline text="local(clientStream = tcp.openStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9111))"/>
         <outline text="local(startTicks = clock.ticks())"/>
         <outline text="while (not system.temp.tcpTest.connected) and ((clock.ticks() - startTicks) &lt; 60)">
           <outline text="thread.sleepFor(10)"/>
@@ -444,9 +452,9 @@
         <outline text="notes: Phase 2 - Error handling for closed stream"/>
       </outline>
       <outline text="Script">
-        <outline text="local(listenID = tcp.listenStream(9112, 5, &quot;&quot;, 0, tcp.addressEncode(&quot;127.0.0.1&quot;)))"/>
+        <outline text="local(listenID = tcp.listenStream(9112, 5, &quot;&quot;))"/>
         <outline text="try">
-          <outline text="local(stream = tcp.openAddrStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9112))"/>
+          <outline text="local(stream = tcp.openStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9112))"/>
           <outline text="if (stream &lt;= 0)">
             <outline text="tcp.closeListen(listenID)"/>
             <outline text="return &quot;false&quot;"/>
@@ -476,9 +484,9 @@
         <outline text="notes: Phase 2 - Error handling for closed stream"/>
       </outline>
       <outline text="Script">
-        <outline text="local(listenID = tcp.listenStream(9113, 5, &quot;&quot;, 0, tcp.addressEncode(&quot;127.0.0.1&quot;)))"/>
+        <outline text="local(listenID = tcp.listenStream(9113, 5, &quot;&quot;))"/>
         <outline text="try">
-          <outline text="local(stream = tcp.openAddrStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9113))"/>
+          <outline text="local(stream = tcp.openStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9113))"/>
           <outline text="if (stream &lt;= 0)">
             <outline text="tcp.closeListen(listenID)"/>
             <outline text="return &quot;false&quot;"/>
@@ -506,9 +514,9 @@
         <outline text="notes: Phase 2 - Error handling for closed stream"/>
       </outline>
       <outline text="Script">
-        <outline text="local(listenID = tcp.listenStream(9114, 5, &quot;&quot;, 0, tcp.addressEncode(&quot;127.0.0.1&quot;)))"/>
+        <outline text="local(listenID = tcp.listenStream(9114, 5, &quot;&quot;))"/>
         <outline text="try">
-          <outline text="local(stream = tcp.openAddrStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9114))"/>
+          <outline text="local(stream = tcp.openStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9114))"/>
           <outline text="if (stream &lt;= 0)">
             <outline text="tcp.closeListen(listenID)"/>
             <outline text="return &quot;false&quot;"/>

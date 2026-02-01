@@ -80,9 +80,8 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case winv_frontmost:
-            /* Verb: window.frontmost - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* window.frontmost - no-op in headless mode, returns empty string */
+            return setstringvalue(BIGSTRING("\x00"), vreturned);
         case winv_next:
             /* Verb: window.next - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
@@ -104,9 +103,9 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case winv_update:
-            /* Verb: window.update - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* window.update - no-op in headless mode (no GUI to update) */
+            setbooleanvalue(true, vreturned);
+            return true;
         case winv_ismenuscript:
             /* Verb: window.ismenuscript - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
@@ -142,9 +141,9 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case winv_msg:
-            /* Verb: window.msg - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* window.msg - no-op in headless mode (no status bar) */
+            setbooleanvalue(true, vreturned);
+            return true;
         case winv_dbstats:
             /* window.dbstats - error stub */
             if (bserror)
@@ -171,9 +170,9 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
         case winv_about:
-            /* Verb: window.about - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+            /* window.about - no-op in headless mode (no GUI to display About window) */
+            setbooleanvalue(true, vreturned);
+            return true;
         case winv_getfile:
             /* Verb: window.getfile - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);

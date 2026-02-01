@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Frontier Integration Test Categories</title>
-    <dateCreated>Fri, 30 Jan 2026 01:52:36 GMT</dateCreated>
+    <dateCreated>Sun, 01 Feb 2026 20:16:22 GMT</dateCreated>
   </head>
   <body>
     <outline text="Builtins Priority (builtins_priority)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_builtins_priority.opml"/>
@@ -14,6 +14,7 @@
     <outline text="Efp Introspection (efp_introspection)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_efp_introspection.opml"/>
     <outline text="File Dialog Verbs (file_dialog_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_file_dialog_verbs.opml"/>
     <outline text="File Verbs (file_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_file_verbs.opml"/>
+    <outline text="Frontier Verbs (frontier_verbs)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_frontier_verbs.opml"/>
     <outline text="Html Core Tests (html_core_tests)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_html_core_tests.opml"/>
     <outline text="Html Framework Tests (html_framework_tests)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_html_framework_tests.opml"/>
     <outline text="Html Image Tests (html_image_tests)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_html_image_tests.opml"/>

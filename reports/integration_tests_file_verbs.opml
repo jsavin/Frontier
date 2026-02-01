@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>File Verbs (file_verbs)</title>
-    <dateCreated>Wed, 21 Jan 2026 02:19:44 GMT</dateCreated>
+    <dateCreated>Sun, 01 Feb 2026 20:16:22 GMT</dateCreated>
   </head>
   <body>
     <outline text="file.fileFromPath - extract filename from path - Extract filename component from path string (like basename)">
@@ -834,6 +834,67 @@
         <outline text="local(selectedDisk)"/>
         <outline text="local(result = file.getDiskDialog(&quot;Select a volume&quot;, @selectedDisk))"/>
         <outline text="return result"/>
+      </outline>
+    </outline>
+    <outline text="file.folderFromPath - includes trailing separator - folderFromPath should include trailing / per Mac behavior">
+      <outline text="Metadata">
+        <outline text="expected_result: /Users/test/"/>
+      </outline>
+      <outline text="Script">
+        <outline text="return file.folderFromPath(&quot;/Users/test/file.txt&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="file.folderFromPath - trailing separator on directory path - folderFromPath on path ending with / returns parent with /">
+      <outline text="Metadata">
+        <outline text="expected_result: /Users/test/"/>
+      </outline>
+      <outline text="Script">
+        <outline text="return file.folderFromPath(&quot;/Users/test/subdir/&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="file.folderFromPath - root path - folderFromPath on root returns root">
+      <outline text="Metadata">
+        <outline text="expected_result: /"/>
+      </outline>
+      <outline text="Script">
+        <outline text="return file.folderFromPath(&quot;/&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="file.folderFromPath - simple filename - folderFromPath on filename with no path returns empty">
+      <outline text="Metadata">
+        <outline text="expected_result: "/>
+      </outline>
+      <outline text="Script">
+        <outline text="return file.folderFromPath(&quot;file.txt&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="file.isFolder - existing directory returns true - isFolder on existing directory returns true">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="return file.isFolder(tmpDir)"/>
+      </outline>
+    </outline>
+    <outline text="file.isFolder - existing file returns false - isFolder on existing file returns false">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(filePath = tmpDir + &quot;/&quot; + &quot;isFolder_test.txt&quot;)"/>
+        <outline text="file.new(filePath)"/>
+        <outline text="return file.isFolder(filePath)"/>
+      </outline>
+    </outline>
+    <outline text="file.isFolder - nonexistent path errors - isFolder on nonexistent path should error (not return false)">
+      <outline text="Metadata">
+        <outline text="expected_success: False"/>
+        <outline text="expected_error: Can't find"/>
+      </outline>
+      <outline text="Script">
+        <outline text="return file.isFolder(&quot;/nonexistent/path/12345&quot;)"/>
       </outline>
     </outline>
   </body>

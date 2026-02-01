@@ -404,7 +404,11 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 		}
 
 		case fileisfolderfunc: {
-			/* Check if path is a folder/directory */
+			/* Check if path is a folder/directory
+			 * Per original Mac behavior: throws error if path doesn't exist,
+			 * returns false if path exists but is not a folder.
+			 * This is required for file.sureFolder() to work correctly.
+			 */
 			tyfilespec fs;
 			char path[4096];
 			struct stat st;
@@ -417,8 +421,16 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			if (!filespec_to_cstring(&fs, path, sizeof(path)))
 				return false;
 
-			if (stat(path, &st) != 0)
-				return setbooleanvalue(false, vreturned);
+			if (stat(path, &st) != 0) {
+				/* Path doesn't exist - throw error (not return false) */
+				/* This matches original Mac behavior where filegetinfo fails */
+				bigstring bserrmsg;
+				char errbuf[512];
+				snprintf(errbuf, sizeof(errbuf), "Can't find a file named \"%s\".", path);
+				copyctopstring(errbuf, bserrmsg);
+				langerrormessage(bserrmsg);
+				return false;
+			}
 
 			return setbooleanvalue(S_ISDIR(st.st_mode), vreturned);
 		}
@@ -1910,9 +1922,22 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			copyctopstring("File comments are Mac-only - not supported in headless mode", bserror);
 			return false;
 
-		case filefindappfunc:
-			copyctopstring("Application search not implemented in headless mode", bserror);
-			return false;
+		case filefindappfunc: {
+			/* In headless mode, app searching isn't meaningful.
+			 * Return empty string to allow scripts to continue gracefully.
+			 * Callers typically check for empty result anyway. */
+			bigstring bsresult;
+
+			flnextparamislast = true;
+
+			/* Consume the parameter (creator code) but ignore it */
+			if (!getstringvalue(hparam1, 1, bsresult))
+				return false;
+
+			/* Return empty string - app not found */
+			setemptystring(bsresult);
+			return setstringvalue(bsresult, vreturned);
+		}
 
 		case filecopyresourceforkfunc:
 			copyctopstring("Resource forks are obsolete (Mac OS 9) - not supported", bserror);

@@ -801,5 +801,60 @@ tests:
     expected_success: false
     expected_error: "not implemented"
 
+  # file.folderFromPath tests - includes trailing separator per Mac behavior
+  - name: "file.folderFromPath - includes trailing separator"
+    description: "folderFromPath should include trailing / per Mac behavior"
+    script: |
+      return file.folderFromPath("/Users/test/file.txt")
+    expected_success: true
+    expected_result: "/Users/test/"
+
+  - name: "file.folderFromPath - trailing separator on directory path"
+    description: "folderFromPath on path ending with / returns parent with /"
+    script: |
+      return file.folderFromPath("/Users/test/subdir/")
+    expected_success: true
+    expected_result: "/Users/test/"
+
+  - name: "file.folderFromPath - root path"
+    description: "folderFromPath on root returns root"
+    script: |
+      return file.folderFromPath("/")
+    expected_success: true
+    expected_result: "/"
+
+  - name: "file.folderFromPath - simple filename"
+    description: "folderFromPath on filename with no path returns empty"
+    script: |
+      return file.folderFromPath("file.txt")
+    expected_success: true
+    expected_result: ""
+
+  # file.isFolder tests
+  - name: "file.isFolder - existing directory returns true"
+    description: "isFolder on existing directory returns true"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      return file.isFolder(tmpDir)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "file.isFolder - existing file returns false"
+    description: "isFolder on existing file returns false"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(filePath = tmpDir + "/" + "isFolder_test.txt");
+      file.new(filePath);
+      return file.isFolder(filePath)
+    expected_success: true
+    expected_result: "false"
+
+  - name: "file.isFolder - nonexistent path errors"
+    description: "isFolder on nonexistent path should error (not return false)"
+    script: |
+      return file.isFolder("/nonexistent/path/12345")
+    expected_success: false
+    expected_error: "Can't find"
+
   # Note: Test runner automatically removes {FRONTIER_TEST_TMP_DIR} after all tests
   # No explicit cleanup needed - all test files are automatically removed
