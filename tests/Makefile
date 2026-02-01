@@ -65,8 +65,9 @@ else
   PAIGE_TESTS_FLAG = OFF
 endif
 PAIGE_LIB = $(PAIGE_BUILD_DIR)/libpaige.a
-# Use local cmake-install if it exists, otherwise fall back to system cmake
-CMAKE_BIN = $(shell if [ -x $(THIRDPARTYDIR)/cmake-install/bin/cmake ]; then echo "$(THIRDPARTYDIR)/cmake-install/bin/cmake"; else echo "cmake"; fi)
+# Use local cmake-install if it exists and works, otherwise fall back to system cmake
+# Check that cmake can actually run (not just executable bit set) by verifying no errors in version output
+CMAKE_BIN = $(shell if [ -x $(THIRDPARTYDIR)/cmake-install/bin/cmake ] && ! $(THIRDPARTYDIR)/cmake-install/bin/cmake --version 2>&1 | grep -q "Error"; then echo "$(THIRDPARTYDIR)/cmake-install/bin/cmake"; else echo "cmake"; fi)
 PAIGE_ARCHES = arm64;x86_64
 PAIGE_CONFIG = $(PAIGE_BUILD_DIR)/CMakeCache.txt
 PAIGE_SOURCES := $(shell find $(PAIGE_DIR) -type f \( -name '*.C' -o -name '*.CPP' -o -name '*.c' -o -name '*.cpp' -o -name '*.H' -o -name '*.h' \))
@@ -509,7 +510,21 @@ clean:
 	# Paige build artifacts retained under third_party/Paige/build-headless
 
 
-$(PAIGE_CONFIG):
+# Paige library build with automatic rebuild detection for worktrees
+# Rebuilds if CMakeCache.txt contains paths from a different worktree
+CURRENT_PAIGE_DIR := $(abspath $(PAIGE_BUILD_DIR))
+
+.PHONY: check-paige-cache
+check-paige-cache:
+	@if [ -f $(PAIGE_CONFIG) ]; then \
+		cached_path=$$(grep "^paige_BINARY_DIR:" $(PAIGE_CONFIG) 2>/dev/null | cut -d= -f2); \
+		if [ -n "$$cached_path" ] && [ "$$cached_path" != "$(CURRENT_PAIGE_DIR)" ]; then \
+			echo "Detected stale CMake cache from different worktree, cleaning..."; \
+			rm -rf $(PAIGE_BUILD_DIR); \
+		fi; \
+	fi
+
+$(PAIGE_CONFIG): check-paige-cache
 	@mkdir -p $(PAIGE_BUILD_DIR)
 	$(CMAKE_BIN) -S $(PAIGE_DIR) -B $(PAIGE_BUILD_DIR) -DCMAKE_BUILD_TYPE=$(PAIGE_BUILD_TYPE) -DCMAKE_OSX_ARCHITECTURES="$(PAIGE_ARCHES)" -DFRONTIER_TESTS=$(PAIGE_TESTS_FLAG) -DFRONTIER_DISABLE_DOCINFO=ON
 

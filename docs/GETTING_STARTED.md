@@ -122,13 +122,17 @@ make -C frontier-cli
 
 This builds a **universal binary** that runs natively on both Intel and Apple Silicon Macs.
 
-**Expected output:**
+**First build** (fresh clone or new worktree):
 
 ```
+Building Paige library (this only happens once per worktree)...
+-- Configuring done
+-- Building...
+[100%] Built target paige
 clang ... -o frontier-cli
 ```
 
-Build typically completes in 30-60 seconds.
+The first build takes 2-3 minutes because it compiles the Paige text engine library. **Subsequent builds** skip this step and complete in 30-60 seconds.
 
 ### Verify the Build
 
