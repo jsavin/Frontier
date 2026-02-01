@@ -199,7 +199,7 @@ KERNELVERBS_PARSER = ../tools/kernelverbs_parser/parse_kernelverbs.py
 KERNELVERBS_RC = ../Common/resources/Win32/kernelverbs.rc
 KERNELVERBS_CLI = ../tools/kernelverbs_parser/cli.py
 
-all: strings_generated kernel_verbs_generated $(TARGET)
+all: strings_generated kernel_verbs_generated $(TARGET) dist
 
 $(TARGET): $(CLI_SOURCES) $(FRONTIER_SOURCES) $(PAIGE_LIB) $(LINENOISE_SRC)
 	$(CC) $(CFLAGS) $(ARCH_FLAGS) $(INCLUDES) \
