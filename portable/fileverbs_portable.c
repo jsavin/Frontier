@@ -213,7 +213,8 @@ static FILE* get_file_by_path(const char *path) {
 	pthread_mutex_lock(&filetable_mutex);
 
 	for (i = 0; i < MAX_OPEN_FILES; i++) {
-		if (filetable[i].inuse) {
+		/* Skip reserved but not-yet-opened slots (fp=NULL during fopen) */
+		if (filetable[i].inuse && filetable[i].fp != NULL) {
 			char existing_normalized[4096];
 			normalize_path(filetable[i].path, existing_normalized, sizeof(existing_normalized));
 			if (strcmp(existing_normalized, normalized) == 0) {
@@ -256,6 +257,7 @@ static void release_file_by_path(const char *path) {
 
 /*
  * Close a file by path. Returns true if closed, false if not found.
+ * Skips reserved-but-not-opened slots (fp=NULL during fopen in another thread).
  */
 static boolean close_file_by_path(const char *path) {
 	int i;
@@ -267,7 +269,8 @@ static boolean close_file_by_path(const char *path) {
 	pthread_mutex_lock(&filetable_mutex);
 
 	for (i = 0; i < MAX_OPEN_FILES; i++) {
-		if (filetable[i].inuse) {
+		/* Skip reserved but not-yet-opened slots (fp=NULL during fopen) */
+		if (filetable[i].inuse && filetable[i].fp != NULL) {
 			char existing_normalized[4096];
 			normalize_path(filetable[i].path, existing_normalized, sizeof(existing_normalized));
 			if (strcmp(existing_normalized, normalized) == 0) {
@@ -309,9 +312,9 @@ static void cleanup_file_handles(void) {
 	/* Phase 1: Collect FILE* pointers under mutex */
 	pthread_mutex_lock(&filetable_mutex);
 	for (i = 0; i < MAX_OPEN_FILES; i++) {
-		if (filetable[i].inuse) {
-			log_debug(LOG_COMP_LANG, "cleanup_file_handles: closing path='%s' (fp=%p)",
-			         filetable[i].path, (void*)filetable[i].fp);
+		if (filetable[i].inuse && filetable[i].fp != NULL) {
+			log_warn(LOG_COMP_LANG, "cleanup_file_handles: closing leaked file path='%s'",
+			         filetable[i].path);
 
 			fps_to_close[count++] = filetable[i].fp;
 			filetable[i].inuse = false;
