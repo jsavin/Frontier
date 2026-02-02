@@ -834,7 +834,7 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			tyfilespec fssrc, fsdest;
 			char srcpath[4096], destpath[4096];
 			FILE *fpsrc = NULL, *fpdest = NULL;
-			char buffer[8192];
+			char buffer[131072];  /* 128KB - matches modern copy utilities */
 			size_t bytes_read;
 			struct stat st;
 			boolean success = false;
@@ -945,7 +945,7 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			/* If cross-volume (EXDEV), fall back to copy+delete */
 			if (errno == EXDEV) {
 				FILE *fpsrc = NULL, *fpdest = NULL;
-				char buffer[8192];
+				char buffer[131072];  /* 128KB - matches modern copy utilities */
 				size_t bytes_read;
 
 				/* Open source for reading */
