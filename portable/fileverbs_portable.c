@@ -84,6 +84,9 @@ static boolean filespec_to_cstring(const ptrfilespec fs, char *path, size_t path
 /* Maximum file size for readwholefile() - 500MB limit prevents OOM on huge files */
 #define MAX_READWHOLEFILE_SIZE (500 * 1024 * 1024)
 
+/* UserTalk 'infinity' constant - used for file.read(path, infinity) to read remaining bytes */
+#define USERTALK_INFINITY 0x7FFFFFFF
+
 typedef struct {
 	FILE *fp;
 	char path[4096];    /* Store path for path-based lookup (Frontier semantics) */
@@ -834,7 +837,7 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			tyfilespec fssrc, fsdest;
 			char srcpath[4096], destpath[4096];
 			FILE *fpsrc = NULL, *fpdest = NULL;
-			char buffer[131072];  /* 128KB - matches modern copy utilities */
+			char buffer[131072];  /* 128KB - reduces syscall overhead; macOS default stack is 8MB */
 			size_t bytes_read;
 			struct stat st;
 			boolean success = false;
@@ -945,7 +948,7 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			/* If cross-volume (EXDEV), fall back to copy+delete */
 			if (errno == EXDEV) {
 				FILE *fpsrc = NULL, *fpdest = NULL;
-				char buffer[131072];  /* 128KB - matches modern copy utilities */
+				char buffer[131072];  /* 128KB - reduces syscall overhead; macOS default stack is 8MB */
 				size_t bytes_read;
 
 				/* Open source for reading */
@@ -1124,6 +1127,7 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			 * - File can then be read/written using file.read(path, count) etc. */
 			tyfilespec fs;
 			char path[4096];
+			boolean success;
 
 			flnextparamislast = true;
 
@@ -1134,7 +1138,7 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 				return false;
 
 			/* Open file and register in path-based table */
-			boolean success = open_file_by_path(path);
+			success = open_file_by_path(path);
 
 			return setbooleanvalue(success, vreturned);
 		}
@@ -1146,6 +1150,7 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			 * - Returns true if closed successfully */
 			tyfilespec fs;
 			char path[4096];
+			boolean success;
 
 			flnextparamislast = true;
 
@@ -1155,7 +1160,7 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			if (!filespec_to_cstring(&fs, path, sizeof(path)))
 				return false;
 
-			boolean success = close_file_by_path(path);
+			success = close_file_by_path(path);
 
 			return setbooleanvalue(success, vreturned);
 		}
@@ -1477,7 +1482,7 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			}
 
 			/* Handle infinity (or very large count) - read remaining bytes in file */
-			if (count >= 0x7FFFFFFF) {
+			if (count >= USERTALK_INFINITY) {
 				current_pos = ftell(fp);
 				if (current_pos < 0) {
 					release_file_by_path(path);
@@ -1527,7 +1532,7 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 				sethandlesize(hdata, bytesread);
 			}
 
-			return setbinaryvalue(hdata, '\?\?\?\?', vreturned);
+			return setbinaryvalue(hdata, bytesread, vreturned);
 		}
 
 		case writefunc: {
