@@ -29,6 +29,10 @@
 #include <getopt.h>
 #include <stdint.h>
 
+#ifdef __APPLE__
+#include <mach-o/dyld.h>  /* for _NSGetExecutablePath */
+#endif
+
 // Frontier headers
 #include "../Common/headers/frontier.h"
 #include "../Common/headers/logging.h"
@@ -98,6 +102,10 @@ boolean cli_is_system_root_loaded(void) {
 
 const char* cli_get_system_root_path(void) {
     return g_system_root_path;
+}
+
+boolean cli_should_skip_startup(void) {
+    return g_cli_options.skip_startup;
 }
 
 // Function prototypes
@@ -344,7 +352,7 @@ int main(int argc, char* argv[]) {
          * 1. EFP tables are properly linked
          * 2. system.paths is populated and resolved
          * 3. Database tables are augmented with EFP implementations
-         * Controlled by FRONTIER_HEADLESS_RUN_STARTUP env var (default: skip). */
+         * Scripts run by default; use --skip-startup or FRONTIER_HEADLESS_RUN_STARTUP=0 to skip. */
         if (!loadsystemscripts()) {
             log_error(LOG_COMP_GENERAL, "Error: startup scripts failed for: %s", system_root_to_load);
             /* Continue despite startup script errors - they're not fatal */
@@ -374,8 +382,53 @@ int main(int argc, char* argv[]) {
 static int get_system_root_search_paths(char paths[][CLI_MAX_PATH_LENGTH + 1], int max_paths) {
     int count = 0;
     char expanded_path[CLI_MAX_PATH_LENGTH + 1];
+    char cwd[CLI_MAX_PATH_LENGTH + 1];
+    char exe_dir[CLI_MAX_PATH_LENGTH + 1];
 
-    // 1. Check FRONTIER_ROOT environment variable
+    // Get current working directory
+    if (getcwd(cwd, sizeof(cwd)) == NULL) {
+        log_debug(LOG_COMP_GENERAL, "get_system_root_search_paths: getcwd failed (errno=%d)", errno);
+        cwd[0] = '\0';
+    }
+
+    // Get executable directory
+    exe_dir[0] = '\0';
+#ifdef __APPLE__
+    {
+        char exe_path[CLI_MAX_PATH_LENGTH + 1];
+        uint32_t size = sizeof(exe_path);
+        if (_NSGetExecutablePath(exe_path, &size) == 0) {
+            // Find last slash to get directory
+            char *last_slash = strrchr(exe_path, '/');
+            if (last_slash != NULL) {
+                size_t dir_len = (size_t)(last_slash - exe_path);
+                if (dir_len < sizeof(exe_dir)) {
+                    memcpy(exe_dir, exe_path, dir_len);
+                    exe_dir[dir_len] = '\0';
+                }
+            }
+        }
+    }
+#else
+    // Linux: read /proc/self/exe symlink
+    {
+        char exe_path[CLI_MAX_PATH_LENGTH + 1];
+        ssize_t len = readlink("/proc/self/exe", exe_path, sizeof(exe_path) - 1);
+        if (len != -1) {
+            exe_path[len] = '\0';
+            char *last_slash = strrchr(exe_path, '/');
+            if (last_slash != NULL) {
+                size_t dir_len = (size_t)(last_slash - exe_path);
+                if (dir_len < sizeof(exe_dir)) {
+                    memcpy(exe_dir, exe_path, dir_len);
+                    exe_dir[dir_len] = '\0';
+                }
+            }
+        }
+    }
+#endif
+
+    // 1. Check FRONTIER_ROOT environment variable (highest priority)
     const char *frontier_root_env = getenv("FRONTIER_ROOT");
     if (frontier_root_env != NULL && frontier_root_env[0] != '\0') {
         // Expand ~ if present
@@ -394,48 +447,44 @@ static int get_system_root_search_paths(char paths[][CLI_MAX_PATH_LENGTH + 1], i
         }
     }
 
-    // Get home directory for remaining paths
+    // 2. Current working directory - Frontier.root7 (v7 preferred)
+    if (count < max_paths && cwd[0] != '\0') {
+        snprintf(paths[count], CLI_MAX_PATH_LENGTH + 1, "%s/Frontier.root7", cwd);
+        count++;
+    }
+
+    // 3. Current working directory - Frontier.root (v6)
+    if (count < max_paths && cwd[0] != '\0') {
+        snprintf(paths[count], CLI_MAX_PATH_LENGTH + 1, "%s/Frontier.root", cwd);
+        count++;
+    }
+
+    // 4. Executable directory - Frontier.root7 (fallback)
+    if (count < max_paths && exe_dir[0] != '\0') {
+        snprintf(paths[count], CLI_MAX_PATH_LENGTH + 1, "%s/Frontier.root7", exe_dir);
+        count++;
+    }
+
+    // 5. Executable directory - Frontier.root (v6 fallback)
+    if (count < max_paths && exe_dir[0] != '\0') {
+        snprintf(paths[count], CLI_MAX_PATH_LENGTH + 1, "%s/Frontier.root", exe_dir);
+        count++;
+    }
+
+    // 6. Legacy paths for backward compatibility
     const char *home = getenv("HOME");
     if (home != NULL && count < max_paths) {
-        // 2. ~/Library/Application Support/Frontier/Frontier.root7
+        // ~/Library/Application Support/Frontier/Frontier.root7
         snprintf(paths[count], CLI_MAX_PATH_LENGTH + 1,
                  "%s/Library/Application Support/Frontier/Frontier.root7", home);
         count++;
 
-        // 3. ~/Library/Application Support/Frontier/Frontier.root (v6)
         if (count < max_paths) {
+            // ~/Library/Application Support/Frontier/Frontier.root (v6)
             snprintf(paths[count], CLI_MAX_PATH_LENGTH + 1,
                      "%s/Library/Application Support/Frontier/Frontier.root", home);
             count++;
         }
-
-        // 4. ~/.frontier/Frontier.root7
-        if (count < max_paths) {
-            snprintf(paths[count], CLI_MAX_PATH_LENGTH + 1,
-                     "%s/.frontier/Frontier.root7", home);
-            count++;
-        }
-
-        // 5. ~/.frontier/Frontier.root (v6)
-        if (count < max_paths) {
-            snprintf(paths[count], CLI_MAX_PATH_LENGTH + 1,
-                     "%s/.frontier/Frontier.root", home);
-            count++;
-        }
-    }
-
-    // 6. Current working directory - databases/Frontier.root7
-    if (count < max_paths) {
-        strncpy(paths[count], DEFAULT_SYSTEM_ROOT_V7, CLI_MAX_PATH_LENGTH);
-        paths[count][CLI_MAX_PATH_LENGTH] = '\0';
-        count++;
-    }
-
-    // 7. Current working directory - databases/Frontier.root (v6)
-    if (count < max_paths) {
-        strncpy(paths[count], DEFAULT_SYSTEM_ROOT_V6, CLI_MAX_PATH_LENGTH);
-        paths[count][CLI_MAX_PATH_LENGTH] = '\0';
-        count++;
     }
 
     return count;
@@ -542,6 +591,7 @@ static void print_usage(const char* program_name) {
     printf("  --migrate PATH           Migrate v6 database to v7 format and exit\n");
     printf("  --output PATH            Output path for migrated database (default: <input>.root7)\n");
     printf("  -f, --force              Force overwrite if output file exists\n");
+    printf("  --skip-startup           Skip system.startup scripts (they run by default)\n");
     printf("  --output-json            Output results in JSON format\n");
     printf("  -v, --verbose            Verbose output\n");
     printf("  --debug                  Debug mode\n");
@@ -552,7 +602,7 @@ static void print_usage(const char* program_name) {
     printf("Environment Variables:\n");
     printf("  FRONTIER_LOG_LEVEL       Set log level (TRACE, DEBUG, INFO, WARN, ERROR)\n");
     printf("  FRONTIER_LOG_COMPONENT   Filter logs by component (DB, HASH, LANG, etc.)\n");
-    printf("  FRONTIER_HEADLESS_RUN_STARTUP  Set to 1 to run system.startup scripts (default: skip)\n");
+    printf("  FRONTIER_HEADLESS_RUN_STARTUP  Set to 0 to skip system.startup scripts (default: run)\n");
     printf("\n");
 
     printf("Examples:\n");

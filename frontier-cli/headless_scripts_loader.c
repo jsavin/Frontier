@@ -3,7 +3,7 @@
  *
  * Provides headless-compatible implementations for startup script execution,
  * including a msg() verb that outputs to stdout instead of GUI dialogs.
- * Startup scripts are skipped by default; set FRONTIER_HEADLESS_RUN_STARTUP=1 to enable.
+ * Startup scripts run by default; use --skip-startup or FRONTIER_HEADLESS_RUN_STARTUP=0 to skip.
  */
 
 /* 2025-12-02 Codex: Allow headless startup scripts to be skipped for debugging (env flag). */
@@ -194,9 +194,14 @@ static boolean headless_run_special_scripts (const unsigned char *bsspecialtable
     return true;
 }
 
-/* Initializes the headless environment and optionally runs startup scripts. */
+/* External accessor for CLI --skip-startup flag */
+extern boolean cli_should_skip_startup(void);
+
+/* Initializes the headless environment and runs startup scripts by default.
+ * Scripts can be skipped via --skip-startup flag or FRONTIER_HEADLESS_RUN_STARTUP=0. */
 boolean loadsystemscripts (void) {
-    const char *run_startup = getenv("FRONTIER_HEADLESS_RUN_STARTUP");
+    const char *env_startup = getenv("FRONTIER_HEADLESS_RUN_STARTUP");
+    boolean skip_startup = false;
 
     if (systemtable == nil) {
         log_error(LOG_COMP_STARTUP, "loadsystemscripts: system table is nil");
@@ -207,14 +212,22 @@ boolean loadsystemscripts (void) {
     langcallbacks.msgverbcallback = &headless_msgverb;
     log_debug(LOG_COMP_STARTUP, "loadsystemscripts: registered headless msg() verb");
 
-    /* Default: skip startup scripts (development/testing mode)
-     * Set FRONTIER_HEADLESS_RUN_STARTUP=1 to run system.startup scripts */
-    if (!run_startup || !*run_startup) {
-        log_debug(LOG_COMP_STARTUP, "loadsystemscripts: skipping startup/agents (default behavior)");
+    /* Check if startup should be skipped:
+     * 1. --skip-startup CLI flag
+     * 2. FRONTIER_HEADLESS_RUN_STARTUP=0 environment variable */
+    if (cli_should_skip_startup()) {
+        skip_startup = true;
+        log_debug(LOG_COMP_STARTUP, "loadsystemscripts: skipping startup (--skip-startup flag)");
+    } else if (env_startup && strcmp(env_startup, "0") == 0) {
+        skip_startup = true;
+        log_debug(LOG_COMP_STARTUP, "loadsystemscripts: skipping startup (FRONTIER_HEADLESS_RUN_STARTUP=0)");
+    }
+
+    if (skip_startup) {
         return true;
     }
 
-    log_debug(LOG_COMP_STARTUP, "loadsystemscripts: running system.startup per FRONTIER_HEADLESS_RUN_STARTUP");
+    log_debug(LOG_COMP_STARTUP, "loadsystemscripts: running system.startup scripts");
     if (!headless_run_special_scripts (namestartuptable)) {
         log_error(LOG_COMP_STARTUP, "loadsystemscripts: failed to run system.startup");
         return false;

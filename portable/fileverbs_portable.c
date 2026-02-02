@@ -84,11 +84,16 @@ static boolean filespec_to_cstring(const ptrfilespec fs, char *path, size_t path
 /* Maximum file size for readwholefile() - 500MB limit prevents OOM on huge files */
 #define MAX_READWHOLEFILE_SIZE (500 * 1024 * 1024)
 
+/* Threshold for treating count as "infinity" in file.read(path, infinity).
+ * Any count >= 2GB effectively means "read the rest of the file".
+ * This handles both UserTalk's 'infinity' constant and large explicit values. */
+#define USERTALK_INFINITY_THRESHOLD (2LL * 1024 * 1024 * 1024)
+
 typedef struct {
 	FILE *fp;
-	short refnum;
+	char path[4096];    /* Store path for path-based lookup (Frontier semantics) */
 	boolean inuse;
-	int refcount;  /* Reference count for thread-safe FILE* access */
+	int refcount;       /* Reference count for thread-safe FILE* access */
 } filehandle;
 
 static filehandle filetable[MAX_OPEN_FILES];
@@ -96,134 +101,201 @@ static boolean g_cleanup_registered = false;
 static pthread_mutex_t filetable_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /*
- * Allocate a file handle and return refnum.
- * Uses slot index + 1 as refnum for O(1) allocation and lookup.
+ * Normalize path for comparison.
+ * macOS: case-insensitive (HFS+/APFS default), convert to lowercase
+ * Linux: case-sensitive, preserve original case
+ * Returns true if path fit in buffer, false if truncated.
  */
-static short allocate_filehandle(FILE *fp) {
+static boolean normalize_path(const char *src, char *dst, size_t dstsize) {
+	size_t i;
+	for (i = 0; i < dstsize - 1 && src[i]; i++) {
+#ifdef __APPLE__
+		dst[i] = tolower((unsigned char)src[i]);
+#else
+		dst[i] = src[i];  /* Preserve case on case-sensitive filesystems */
+#endif
+	}
+	dst[i] = '\0';
+
+	/* Check if source was truncated */
+	if (src[i] != '\0') {
+		log_warn(LOG_COMP_LANG, "normalize_path: path truncated (len > %zu)", dstsize - 1);
+		return false;
+	}
+	return true;
+}
+
+/*
+ * Open a file by path and register it in the file table.
+ * Returns true if file was opened successfully, false otherwise.
+ * If file is already open, just returns true (Frontier behavior).
+ *
+ * Thread safety: We reserve the slot (inuse=true, fp=NULL) before doing I/O,
+ * preventing TOCTOU races where another thread could steal our slot.
+ */
+static boolean open_file_by_path(const char *path) {
 	int i;
-	short result = 0;
+	int reserved_slot = -1;
+	FILE *fp;
+	char normalized[4096];
+
+	normalize_path(path, normalized, sizeof(normalized));
 
 	pthread_mutex_lock(&filetable_mutex);
 
-	/* Find free slot and use slot index + 1 as refnum */
+	/* Check if file is already open */
+	for (i = 0; i < MAX_OPEN_FILES; i++) {
+		if (filetable[i].inuse && filetable[i].fp != NULL) {
+			char existing_normalized[4096];
+			normalize_path(filetable[i].path, existing_normalized, sizeof(existing_normalized));
+			if (strcmp(existing_normalized, normalized) == 0) {
+				pthread_mutex_unlock(&filetable_mutex);
+				return true;  /* Already open */
+			}
+		}
+	}
+
+	/* Find free slot and RESERVE it before doing I/O */
 	for (i = 0; i < MAX_OPEN_FILES; i++) {
 		if (!filetable[i].inuse) {
-			filetable[i].fp = fp;
-			filetable[i].refnum = i + 1;  /* Slot 0 → refnum 1, slot 1 → refnum 2, etc. */
+			/* Reserve the slot: mark inuse but with NULL fp */
 			filetable[i].inuse = true;
-			filetable[i].refcount = 0;  /* No active users yet */
-			result = filetable[i].refnum;
+			filetable[i].fp = NULL;
+			filetable[i].refcount = 0;
+			strncpy(filetable[i].path, path, sizeof(filetable[i].path) - 1);
+			filetable[i].path[sizeof(filetable[i].path) - 1] = '\0';
+			reserved_slot = i;
 			break;
 		}
 	}
 
 	pthread_mutex_unlock(&filetable_mutex);
-	return result; /* Returns refnum or 0 if no free handles */
-}
 
-/*
- * Get FILE* from refnum with reference counting (O(1) direct lookup)
- * MUST call release_filepointer() when done to avoid leaking references.
- * This prevents race condition where FILE* is closed by another thread.
- */
-static FILE* get_filepointer(short refnum) {
-	FILE *result = NULL;
+	if (reserved_slot < 0) {
+		return false;  /* No free slots */
+	}
 
-	/* Validate refnum range */
-	if (refnum < 1 || refnum > MAX_OPEN_FILES) {
-		return NULL;
+	/* Open file outside of lock to avoid blocking I/O under mutex */
+	fp = fopen(path, "r+b");
+	if (!fp) {
+		/* Try read-only if r+b fails */
+		fp = fopen(path, "rb");
 	}
 
 	pthread_mutex_lock(&filetable_mutex);
 
-	/* Direct O(1) lookup using refnum - 1 as index */
-	int i = refnum - 1;
-	if (filetable[i].inuse && filetable[i].refnum == refnum) {
-		result = filetable[i].fp;
-		filetable[i].refcount++;  /* Increment under lock to prevent close */
-	}
-
-	pthread_mutex_unlock(&filetable_mutex);
-	return result;
-}
-
-/*
- * Release reference to FILE* obtained from get_filepointer()
- * MUST be called after using FILE* to allow cleanup.
- * If this is the last reference and handle was marked for close, performs cleanup.
- */
-static void release_filepointer(short refnum) {
-	FILE *fp_to_close = NULL;
-
-	/* Validate refnum range */
-	if (refnum < 1 || refnum > MAX_OPEN_FILES) {
-		return;
-	}
-
-	pthread_mutex_lock(&filetable_mutex);
-
-	int i = refnum - 1;
-	if (filetable[i].refnum == refnum && filetable[i].refcount > 0) {
-		filetable[i].refcount--;
-
-		/* If this was the last reference and handle is marked for close, clean up */
-		if (filetable[i].refcount == 0 && !filetable[i].inuse) {
-			fp_to_close = filetable[i].fp;
-			filetable[i].fp = NULL;
-			filetable[i].refnum = 0;
-		}
-	}
-
-	pthread_mutex_unlock(&filetable_mutex);
-
-	/* Close outside mutex to avoid blocking I/O under lock */
-	if (fp_to_close) {
-		fclose(fp_to_close);
-	}
-}
-
-/*
- * Release file handle (O(1) direct lookup)
- * Only closes FILE* when refcount == 0 (no active users).
- * Prevents race condition where FILE* is in use by another thread.
- */
-static boolean release_filehandle(short refnum) {
-	boolean result = false;
-	FILE *fp_to_close = NULL;
-
-	/* Validate refnum range */
-	if (refnum < 1 || refnum > MAX_OPEN_FILES) {
+	if (!fp) {
+		/* fopen failed - release our reserved slot */
+		filetable[reserved_slot].inuse = false;
+		filetable[reserved_slot].path[0] = '\0';
+		pthread_mutex_unlock(&filetable_mutex);
 		return false;
 	}
 
+	/* Install the FILE* in our reserved slot */
+	filetable[reserved_slot].fp = fp;
+
+	pthread_mutex_unlock(&filetable_mutex);
+	return true;
+}
+
+/*
+ * Get FILE* for a path. Returns NULL if file is not open.
+ * Caller must call release_file_by_path() when done.
+ */
+static FILE* get_file_by_path(const char *path) {
+	int i;
+	FILE *result = NULL;
+	char normalized[4096];
+
+	normalize_path(path, normalized, sizeof(normalized));
+
 	pthread_mutex_lock(&filetable_mutex);
 
-	/* Direct O(1) lookup using refnum - 1 as index */
-	int i = refnum - 1;
-	if (filetable[i].inuse && filetable[i].refnum == refnum) {
-		if (filetable[i].refcount == 0) {
-			/* No active users - safe to close immediately */
-			fp_to_close = filetable[i].fp;
-			filetable[i].inuse = false;
-			filetable[i].fp = NULL;
-			filetable[i].refnum = 0;
-		} else {
-			/* Active users - mark for close but don't close yet */
-			filetable[i].inuse = false;  /* Prevent new references */
-			/* FILE* will be closed when last reference is released */
+	for (i = 0; i < MAX_OPEN_FILES; i++) {
+		/* Skip reserved but not-yet-opened slots (fp=NULL during fopen) */
+		if (filetable[i].inuse && filetable[i].fp != NULL) {
+			char existing_normalized[4096];
+			normalize_path(filetable[i].path, existing_normalized, sizeof(existing_normalized));
+			if (strcmp(existing_normalized, normalized) == 0) {
+				result = filetable[i].fp;
+				filetable[i].refcount++;
+				break;
+			}
 		}
-		result = true;
+	}
+
+	pthread_mutex_unlock(&filetable_mutex);
+	return result;
+}
+
+/*
+ * Release reference to file obtained via get_file_by_path()
+ */
+static void release_file_by_path(const char *path) {
+	int i;
+	char normalized[4096];
+
+	normalize_path(path, normalized, sizeof(normalized));
+
+	pthread_mutex_lock(&filetable_mutex);
+
+	for (i = 0; i < MAX_OPEN_FILES; i++) {
+		if (filetable[i].inuse) {
+			char existing_normalized[4096];
+			normalize_path(filetable[i].path, existing_normalized, sizeof(existing_normalized));
+			if (strcmp(existing_normalized, normalized) == 0) {
+				if (filetable[i].refcount > 0)
+					filetable[i].refcount--;
+				break;
+			}
+		}
+	}
+
+	pthread_mutex_unlock(&filetable_mutex);
+}
+
+/*
+ * Close a file by path. Returns true if closed, false if not found.
+ * Skips reserved-but-not-opened slots (fp=NULL during fopen in another thread).
+ */
+static boolean close_file_by_path(const char *path) {
+	int i;
+	FILE *fp_to_close = NULL;
+	char normalized[4096];
+
+	normalize_path(path, normalized, sizeof(normalized));
+
+	pthread_mutex_lock(&filetable_mutex);
+
+	for (i = 0; i < MAX_OPEN_FILES; i++) {
+		/* Skip reserved but not-yet-opened slots (fp=NULL during fopen) */
+		if (filetable[i].inuse && filetable[i].fp != NULL) {
+			char existing_normalized[4096];
+			normalize_path(filetable[i].path, existing_normalized, sizeof(existing_normalized));
+			if (strcmp(existing_normalized, normalized) == 0) {
+				if (filetable[i].refcount == 0) {
+					fp_to_close = filetable[i].fp;
+					filetable[i].fp = NULL;
+					filetable[i].inuse = false;
+					filetable[i].path[0] = '\0';
+				}
+				break;
+			}
+		}
 	}
 
 	pthread_mutex_unlock(&filetable_mutex);
 
-	/* Close outside mutex to avoid blocking I/O under lock */
 	if (fp_to_close) {
 		fclose(fp_to_close);
+		return true;
 	}
 
-	return result;
+	return (i < MAX_OPEN_FILES);  /* Return true if found (even if couldn't close due to refs) */
 }
+
+/* Legacy refnum-based functions removed - path-based API is now the only supported API */
 
 /*
  * Cleanup function registered with atexit() to close any leaked file handles.
@@ -240,9 +312,9 @@ static void cleanup_file_handles(void) {
 	/* Phase 1: Collect FILE* pointers under mutex */
 	pthread_mutex_lock(&filetable_mutex);
 	for (i = 0; i < MAX_OPEN_FILES; i++) {
-		if (filetable[i].inuse) {
-			log_debug(LOG_COMP_LANG, "cleanup_file_handles: closing refnum=%d (fp=%p)",
-			         filetable[i].refnum, (void*)filetable[i].fp);
+		if (filetable[i].inuse && filetable[i].fp != NULL) {
+			log_warn(LOG_COMP_LANG, "cleanup_file_handles: closing leaked file path='%s'",
+			         filetable[i].path);
 
 			fps_to_close[count++] = filetable[i].fp;
 			filetable[i].inuse = false;
@@ -782,7 +854,7 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			tyfilespec fssrc, fsdest;
 			char srcpath[4096], destpath[4096];
 			FILE *fpsrc = NULL, *fpdest = NULL;
-			char buffer[8192];
+			char buffer[131072];  /* 128KB - reduces syscall overhead; macOS default stack is 8MB */
 			size_t bytes_read;
 			struct stat st;
 			boolean success = false;
@@ -893,7 +965,7 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			/* If cross-volume (EXDEV), fall back to copy+delete */
 			if (errno == EXDEV) {
 				FILE *fpsrc = NULL, *fpdest = NULL;
-				char buffer[8192];
+				char buffer[131072];  /* 128KB - reduces syscall overhead; macOS default stack is 8MB */
 				size_t bytes_read;
 
 				/* Open source for reading */
@@ -1065,188 +1137,176 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 		/* Tier 2: File I/O operations (14 verbs) */
 
 		case openfilefunc: {
-			/* Open file and return refnum */
+			/* file.open(path) - Open file for subsequent read/write operations
+			 * Per docs/usertalk/docserver/file/open.txt:
+			 * - Opens file by path
+			 * - Returns true if file opened successfully, false otherwise
+			 * - File can then be read/written using file.read(path, count) etc. */
 			tyfilespec fs;
 			char path[4096];
-			char mode[4] = "r+b"; /* Default: read/write binary */
-			boolean flreadonly = false;
-			FILE *fp;
-			short refnum;
+			boolean success;
 
-			(void)mode;  /* Used in conditional logic below */
+			flnextparamislast = true;
 
 			if (!getfilespecvalue(hparam1, 1, &fs))
 				return false;
 
-			/* Optional second parameter: readonly flag */
-			if (langgetparamcount(hparam1) >= 2) {
-				flnextparamislast = true;
-				if (!getbooleanvalue(hparam1, 2, &flreadonly))
-					return false;
-			} else {
-				flnextparamislast = true;
-			}
+			if (!filespec_to_cstring(&fs, path, sizeof(path)))
+				return false;
+
+			/* Open file and register in path-based table */
+			success = open_file_by_path(path);
+
+			return setbooleanvalue(success, vreturned);
+		}
+
+		case closefilefunc: {
+			/* file.close(path) - Close file by path
+			 * Per docs/usertalk/docserver/file/close.txt:
+			 * - Closes file previously opened with file.open(path)
+			 * - Returns true if closed successfully */
+			tyfilespec fs;
+			char path[4096];
+			boolean success;
+
+			flnextparamislast = true;
+
+			if (!getfilespecvalue(hparam1, 1, &fs))
+				return false;
 
 			if (!filespec_to_cstring(&fs, path, sizeof(path)))
 				return false;
 
-			/* Set mode based on readonly flag */
-			if (flreadonly) {
-				fp = fopen(path, "rb");
-			} else {
-				/* Try r+b first, fall back to w+b if file doesn't exist */
-				fp = fopen(path, "r+b");
-				if (!fp) {
-					fp = fopen(path, "w+b");
-				}
-			}
+			success = close_file_by_path(path);
 
-			if (!fp) {
-				copyctopstring("Can't open file", bserror);
-				return false;
-			}
-
-			refnum = allocate_filehandle(fp);
-			if (refnum == 0) {
-				fclose(fp);
-				copyctopstring("Too many open files", bserror);
-				return false;
-			}
-
-			return setlongvalue(refnum, vreturned);
-		}
-
-		case closefilefunc: {
-			/* Close file by refnum (release_filehandle handles fclose) */
-			long refnum;
-
-			flnextparamislast = true;
-
-			if (!getlongvalue(hparam1, 1, &refnum))
-				return false;
-
-			if (!release_filehandle((short)refnum)) {
-				copyctopstring("Invalid file refnum", bserror);
-				return false;
-			}
-
-			return setbooleanvalue(true, vreturned);
+			return setbooleanvalue(success, vreturned);
 		}
 
 		case endoffilefunc: {
-			/* Check if at end of file */
-			long refnum;
+			/* file.endOfFile(path) - Check if at end of file */
+			tyfilespec fs;
+			char path[4096];
 			FILE *fp;
 			boolean iseof;
 
 			flnextparamislast = true;
 
-			if (!getlongvalue(hparam1, 1, &refnum))
+			if (!getfilespecvalue(hparam1, 1, &fs))
 				return false;
 
-			fp = get_filepointer((short)refnum);
+			if (!filespec_to_cstring(&fs, path, sizeof(path)))
+				return false;
+
+			fp = get_file_by_path(path);
 			if (!fp) {
-				copyctopstring("Invalid file refnum", bserror);
+				copyctopstring("File not open - call file.open first", bserror);
 				return false;
 			}
 
 			iseof = (feof(fp) != 0);
-			release_filepointer((short)refnum);
+			release_file_by_path(path);
 			return setbooleanvalue(iseof, vreturned);
 		}
 
 		case setendoffilefunc: {
-			/* Truncate file at current position */
-			long refnum;
+			/* file.setEndOfFile(path) - Truncate file at current position */
+			tyfilespec fs;
+			char path[4096];
 			FILE *fp;
 			long pos;
 			int fd;
-			boolean success;
-
-			(void)success;  /* Used for error handling flow */
 
 			flnextparamislast = true;
 
-			if (!getlongvalue(hparam1, 1, &refnum))
+			if (!getfilespecvalue(hparam1, 1, &fs))
 				return false;
 
-			fp = get_filepointer((short)refnum);
+			if (!filespec_to_cstring(&fs, path, sizeof(path)))
+				return false;
+
+			fp = get_file_by_path(path);
 			if (!fp) {
-				copyctopstring("Invalid file refnum", bserror);
+				copyctopstring("File not open - call file.open first", bserror);
 				return false;
 			}
 
 			pos = ftell(fp);
 			if (pos < 0) {
-				release_filepointer((short)refnum);
+				release_file_by_path(path);
 				copyctopstring("Can't get file position", bserror);
 				return false;
 			}
 
 			fd = fileno(fp);
 			if (ftruncate(fd, pos) != 0) {
-				release_filepointer((short)refnum);
+				release_file_by_path(path);
 				copyctopstring("Can't truncate file", bserror);
 				return false;
 			}
 
-			release_filepointer((short)refnum);
+			release_file_by_path(path);
 			return setbooleanvalue(true, vreturned);
 		}
 
 		case getendoffilefunc: {
-			/* Get file size */
-			long refnum;
+			/* file.getEndOfFile(path) - Get file size */
+			tyfilespec fs;
+			char path[4096];
 			FILE *fp;
 			long current, size;
 
 			flnextparamislast = true;
 
-			if (!getlongvalue(hparam1, 1, &refnum))
+			if (!getfilespecvalue(hparam1, 1, &fs))
 				return false;
 
-			fp = get_filepointer((short)refnum);
+			if (!filespec_to_cstring(&fs, path, sizeof(path)))
+				return false;
+
+			fp = get_file_by_path(path);
 			if (!fp) {
-				copyctopstring("Invalid file refnum", bserror);
+				copyctopstring("File not open - call file.open first", bserror);
 				return false;
 			}
 
 			current = ftell(fp);
 			if (current < 0) {
-				release_filepointer((short)refnum);
+				release_file_by_path(path);
 				copyctopstring("Can't get current file position", bserror);
 				return false;
 			}
 
 			if (fseek(fp, 0, SEEK_END) != 0) {
-				release_filepointer((short)refnum);
+				release_file_by_path(path);
 				copyctopstring("Can't seek to end of file", bserror);
 				return false;
 			}
 
 			size = ftell(fp);
 			if (size < 0) {
-				release_filepointer((short)refnum);
+				release_file_by_path(path);
 				copyctopstring("Can't get file size", bserror);
 				return false;
 			}
 
 			if (fseek(fp, current, SEEK_SET) != 0) {
-				release_filepointer((short)refnum);
+				release_file_by_path(path);
 				copyctopstring("Can't restore file position", bserror);
 				return false;
 			}
 
-			release_filepointer((short)refnum);
+			release_file_by_path(path);
 			return setlongvalue(size, vreturned);
 		}
 
 		case setpositionfunc: {
-			/* Set file position */
-			long refnum, position;
+			/* file.setPosition(path, position) - Set file position */
+			tyfilespec fs;
+			char path[4096];
+			long position;
 			FILE *fp;
 
-			if (!getlongvalue(hparam1, 1, &refnum))
+			if (!getfilespecvalue(hparam1, 1, &fs))
 				return false;
 
 			flnextparamislast = true;
@@ -1254,53 +1314,61 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			if (!getlongvalue(hparam1, 2, &position))
 				return false;
 
-			fp = get_filepointer((short)refnum);
+			if (!filespec_to_cstring(&fs, path, sizeof(path)))
+				return false;
+
+			fp = get_file_by_path(path);
 			if (!fp) {
-				copyctopstring("Invalid file refnum", bserror);
+				copyctopstring("File not open - call file.open first", bserror);
 				return false;
 			}
 
 			if (fseek(fp, position, SEEK_SET) != 0) {
-				release_filepointer((short)refnum);
+				release_file_by_path(path);
 				copyctopstring("Can't set file position", bserror);
 				return false;
 			}
 
-			release_filepointer((short)refnum);
+			release_file_by_path(path);
 			return setbooleanvalue(true, vreturned);
 		}
 
 		case getpositionfunc: {
-			/* Get current file position */
-			long refnum;
+			/* file.getPosition(path) - Get current file position */
+			tyfilespec fs;
+			char path[4096];
 			FILE *fp;
 			long position;
 
 			flnextparamislast = true;
 
-			if (!getlongvalue(hparam1, 1, &refnum))
+			if (!getfilespecvalue(hparam1, 1, &fs))
 				return false;
 
-			fp = get_filepointer((short)refnum);
+			if (!filespec_to_cstring(&fs, path, sizeof(path)))
+				return false;
+
+			fp = get_file_by_path(path);
 			if (!fp) {
-				copyctopstring("Invalid file refnum", bserror);
+				copyctopstring("File not open - call file.open first", bserror);
 				return false;
 			}
 
 			position = ftell(fp);
 			if (position < 0) {
-				release_filepointer((short)refnum);
+				release_file_by_path(path);
 				copyctopstring("Can't get file position", bserror);
 				return false;
 			}
 
-			release_filepointer((short)refnum);
+			release_file_by_path(path);
 			return setlongvalue(position, vreturned);
 		}
 
 		case readlinefunc: {
-			/* Read a line from file */
-			long refnum;
+			/* file.readLine(path) - Read a line from file */
+			tyfilespec fs;
+			char path[4096];
 			FILE *fp;
 			bigstring bsline;
 			int ch;
@@ -1308,12 +1376,15 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 
 			flnextparamislast = true;
 
-			if (!getlongvalue(hparam1, 1, &refnum))
+			if (!getfilespecvalue(hparam1, 1, &fs))
 				return false;
 
-			fp = get_filepointer((short)refnum);
+			if (!filespec_to_cstring(&fs, path, sizeof(path)))
+				return false;
+
+			fp = get_file_by_path(path);
 			if (!fp) {
-				copyctopstring("Invalid file refnum", bserror);
+				copyctopstring("File not open - call file.open first", bserror);
 				return false;
 			}
 
@@ -1332,17 +1403,18 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 
 			bsline[0] = (unsigned char)len;
 
-			release_filepointer((short)refnum);
+			release_file_by_path(path);
 			return setstringvalue(bsline, vreturned);
 		}
 
 		case writelinefunc: {
-			/* Write a line to file */
-			long refnum;
+			/* file.writeLine(path, line) - Write a line to file */
+			tyfilespec fs;
+			char path[4096];
 			FILE *fp;
 			bigstring bsline;
 
-			if (!getlongvalue(hparam1, 1, &refnum))
+			if (!getfilespecvalue(hparam1, 1, &fs))
 				return false;
 
 			flnextparamislast = true;
@@ -1350,16 +1422,19 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			if (!getstringvalue(hparam1, 2, bsline))
 				return false;
 
-			fp = get_filepointer((short)refnum);
+			if (!filespec_to_cstring(&fs, path, sizeof(path)))
+				return false;
+
+			fp = get_file_by_path(path);
 			if (!fp) {
-				copyctopstring("Invalid file refnum", bserror);
+				copyctopstring("File not open - call file.open first", bserror);
 				return false;
 			}
 
 			/* Write string */
 			if (bsline[0] > 0) {
 				if (fwrite(&bsline[1], 1, bsline[0], fp) != bsline[0]) {
-					release_filepointer((short)refnum);
+					release_file_by_path(path);
 					copyctopstring("Write error", bserror);
 					return false;
 				}
@@ -1367,104 +1442,164 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 
 			/* Write newline */
 			if (fputc('\n', fp) == EOF) {
-				release_filepointer((short)refnum);
+				release_file_by_path(path);
 				copyctopstring("Write error", bserror);
 				return false;
 			}
 
-			release_filepointer((short)refnum);
+			release_file_by_path(path);
 			return setbooleanvalue(true, vreturned);
 		}
 
 		case readfunc: {
-			/* Read bytes from file */
-			long refnum, count;
+			/* file.read(path, count) - Read bytes from file
+			 * Per docs/usertalk/docserver/file/read.txt:
+			 * - Takes path (not refnum!) and byte count
+			 * - File must be opened with file.open() first
+			 * - Maintains file position for sequential reads
+			 * - If count is infinity, reads all remaining bytes
+			 * - Returns binary data */
+			tyfilespec fs;
+			char path[4096];
+			long long count;  /* Use long long to handle infinity (LLONG_MAX) */
 			FILE *fp;
 			Handle hdata;
 			unsigned char *buffer;
 			size_t bytesread;
+			long current_pos, file_size, bytes_to_read;
 
-			if (!getlongvalue(hparam1, 1, &refnum))
+			if (!getfilespecvalue(hparam1, 1, &fs))
 				return false;
 
 			flnextparamislast = true;
 
-			if (!getlongvalue(hparam1, 2, &count))
+			/* Get count as long long to handle infinity (0x7FFFFFFFFFFFFFFF) */
+			tyvaluerecord countval;
+			if (!getparamvalue(hparam1, 2, &countval))
 				return false;
 
-			fp = get_filepointer((short)refnum);
+			if (!coercetolong(&countval))
+				return false;
+
+			count = countval.data.longvalue;
+
+			if (!filespec_to_cstring(&fs, path, sizeof(path)))
+				return false;
+
+			/* Look up file in path-based table (must be opened with file.open first) */
+			fp = get_file_by_path(path);
 			if (!fp) {
-				copyctopstring("Invalid file refnum", bserror);
+				copyctopstring("File not open - call file.open first", bserror);
 				return false;
 			}
 
 			if (count <= 0) {
-				release_filepointer((short)refnum);
+				release_file_by_path(path);
 				return setstringvalue(BIGSTRING("\x00"), vreturned);
 			}
 
-			/* For small reads (<=255 bytes), return as string */
-			if (count <= 255) {
-				bigstring bs;
-				bytesread = fread(&bs[1], 1, count, fp);
-				bs[0] = (unsigned char)bytesread;
-				release_filepointer((short)refnum);
-				return setstringvalue(bs, vreturned);
+			/* Handle infinity (or very large count) - read remaining bytes in file */
+			if (count >= USERTALK_INFINITY_THRESHOLD) {
+				current_pos = ftell(fp);
+				if (current_pos < 0) {
+					release_file_by_path(path);
+					copyctopstring("Can't get file position", bserror);
+					return false;
+				}
+				fseek(fp, 0, SEEK_END);
+				file_size = ftell(fp);
+				fseek(fp, current_pos, SEEK_SET);
+				bytes_to_read = file_size - current_pos;
+			} else {
+				bytes_to_read = (long)count;
 			}
 
-			/* For larger reads, return as binary */
-			if (!newhandle(count, &hdata)) {
-				release_filepointer((short)refnum);
+			if (bytes_to_read <= 0) {
+				release_file_by_path(path);
+				return setstringvalue(BIGSTRING("\x00"), vreturned);
+			}
+
+			/* Safety check - limit to reasonable size (500MB) */
+			if (bytes_to_read > 500 * 1024 * 1024) {
+				release_file_by_path(path);
+				copyctopstring("File too large (exceeds 500MB limit)", bserror);
+				return false;
+			}
+
+			/* Allocate handle for data */
+			if (!newhandle(bytes_to_read, &hdata)) {
+				release_file_by_path(path);
 				copyctopstring("Out of memory", bserror);
 				return false;
 			}
 
 			lockhandle(hdata);
 			buffer = (unsigned char *)*hdata;
-			bytesread = fread(buffer, 1, count, fp);
+			bytesread = fread(buffer, 1, bytes_to_read, fp);
 			unlockhandle(hdata);
 
 			if (bytesread == 0) {
+				release_file_by_path(path);
 				disposehandle(hdata);
-				release_filepointer((short)refnum);
 				return setstringvalue(BIGSTRING("\x00"), vreturned);
 			}
 
-			release_filepointer((short)refnum);
+			/* Resize handle if we read less than requested */
+			if (bytesread < (size_t)bytes_to_read) {
+				sethandlesize(hdata, bytesread);
+			}
+
+			release_file_by_path(path);
 			return setbinaryvalue(hdata, bytesread, vreturned);
 		}
 
 		case writefunc: {
-			/* Write bytes to file */
-			long refnum;
+			/* file.write(path, data) - Write bytes to file
+			 * Per docs/usertalk/docserver/file/write.txt:
+			 * - Takes path (not refnum!) and data to write
+			 * - File must be opened with file.open() first
+			 * - Writes at current file position
+			 * - Returns true on success */
+			tyfilespec fs;
+			char path[4096];
+			Handle hdata;
 			FILE *fp;
-			bigstring bs;
+			size_t datasize;
+			size_t written;
 
-			if (!getlongvalue(hparam1, 1, &refnum))
+			if (!getfilespecvalue(hparam1, 1, &fs))
 				return false;
 
 			flnextparamislast = true;
 
-			if (!getstringvalue(hparam1, 2, bs))
+			if (!getreadonlytextvalue(hparam1, 2, &hdata))
 				return false;
 
-			fp = get_filepointer((short)refnum);
+			if (!filespec_to_cstring(&fs, path, sizeof(path)))
+				return false;
+
+			/* Look up file in path-based table (must be opened with file.open first) */
+			fp = get_file_by_path(path);
 			if (!fp) {
-				copyctopstring("Invalid file refnum", bserror);
+				copyctopstring("File not open - call file.open first", bserror);
 				return false;
 			}
 
-			/* Write string data */
-			if (bs[0] > 0) {
-				if (fwrite(&bs[1], 1, bs[0], fp) != bs[0]) {
-					release_filepointer((short)refnum);
+			datasize = gethandlesize(hdata);
+			if (datasize > 0) {
+				lockhandle(hdata);
+				written = fwrite(*hdata, 1, datasize, fp);
+				unlockhandle(hdata);
+
+				if (written != datasize) {
+					release_file_by_path(path);
 					copyctopstring("Write error", bserror);
 					return false;
 				}
 			}
 
-			release_filepointer((short)refnum);
-			return setlongvalue(bs[0], vreturned);
+			release_file_by_path(path);
+			return setbooleanvalue(true, vreturned);
 		}
 
 		case readwholefilefunc: {

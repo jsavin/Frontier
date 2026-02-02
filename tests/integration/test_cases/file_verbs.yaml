@@ -341,32 +341,99 @@ tests:
     expected_success: true
     expected_result: "true"
 
-  # File I/O operations
+  # File I/O operations - path-based API
+  # NOTE: file.open/read/write/close use PATH-BASED access (not refnums)
+  # file.open(path) opens and registers file, returns true/false
+  # file.read(path, count) reads from already-opened file at current position
+  # file.write(path, data) writes to already-opened file at current position
+  # file.close(path) closes file by path
+
   - name: "file.open/close - open and close file for reading"
-    description: "Open file, verify handle, then close it"
+    description: "Open file by path, verify success, then close it"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(fs = tmpDir + "/" + "frontier_test_io.txt");
       file.writeWholeFile(fs, "test content");
-      local(f = file.open(fs, "r"));
-      local(ok = (f != nil));
-      file.close(f);
+      local(ok = file.open(fs));
+      file.close(fs);
       return ok
     expected_success: true
     expected_result: "true"
 
   - name: "file.read - read bytes from file"
-    description: "Open file and read specific number of bytes"
+    description: "Open file by path and read specific number of bytes"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(fs = tmpDir + "/" + "frontier_test_read.txt");
       file.writeWholeFile(fs, "Hello World!");
-      local(f = file.open(fs, "r"));
-      local(data = file.read(f, 5));
-      file.close(f);
-      return data
+      file.open(fs);
+      local(data = file.read(fs, 5));
+      file.close(fs);
+      return string(data)
     expected_success: true
     expected_result: "Hello"
+
+  - name: "file.read - sequential reads maintain position"
+    description: "Multiple reads from same open file advance position"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(fs = tmpDir + "/" + "frontier_test_read_seq.txt");
+      file.writeWholeFile(fs, "abcdefghij");
+      file.open(fs);
+      local(s1 = file.read(fs, 3));
+      local(s2 = file.read(fs, 3));
+      file.close(fs);
+      return string(s1) + "|" + string(s2)
+    expected_success: true
+    expected_result: "abc|def"
+
+  - name: "file.read - infinity reads remaining bytes"
+    description: "Using infinity as count reads all remaining bytes"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(fs = tmpDir + "/" + "frontier_test_read_inf.txt");
+      file.writeWholeFile(fs, "abcdefghij");
+      file.open(fs);
+      file.read(fs, 3);  // skip first 3 bytes
+      local(rest = file.read(fs, infinity));
+      file.close(fs);
+      return string(rest)
+    expected_success: true
+    expected_result: "defghij"
+
+  - name: "file.read - requires file.open first"
+    description: "Reading from unopened file should fail"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(fs = tmpDir + "/" + "frontier_test_read_unopened.txt");
+      file.writeWholeFile(fs, "test");
+      return file.read(fs, 5)
+    expected_success: false
+    expected_error: "File not open"
+
+  - name: "file.write - write bytes to open file"
+    description: "Write data to already-opened file"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(fs = tmpDir + "/" + "frontier_test_write_io.txt");
+      file.new(fs);
+      file.open(fs);
+      local(ok = file.write(fs, "hello"));
+      file.close(fs);
+      local(content = file.readWholeFile(fs));
+      return ok and (content == "hello")
+    expected_success: true
+    expected_result: "true"
+
+  - name: "file.write - requires file.open first"
+    description: "Writing to unopened file should fail"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(fs = tmpDir + "/" + "frontier_test_write_unopened.txt");
+      file.new(fs);
+      return file.write(fs, "test")
+    expected_success: false
+    expected_error: "File not open"
 
   - name: "file.readline - read line from file"
     description: "Read text file line by line"
@@ -374,9 +441,9 @@ tests:
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(fs = tmpDir + "/" + "frontier_test_readline.txt");
       file.writeWholeFile(fs, "Line 1\nLine 2\nLine 3");
-      local(f = file.open(fs, "r"));
-      local(line1 = file.readline(f));
-      file.close(f);
+      file.open(fs);
+      local(line1 = file.readline(fs));
+      file.close(fs);
       return line1
     expected_success: true
     expected_result: "Line 1"
@@ -387,11 +454,11 @@ tests:
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(fs = tmpDir + "/" + "frontier_test_eof.txt");
       file.writeWholeFile(fs, "AB");
-      local(f = file.open(fs, "r"));
-      file.read(f, 2);
-      file.read(f, 1);
-      local(isEof = file.endoffile(f));
-      file.close(f);
+      file.open(fs);
+      file.read(fs, 2);
+      file.read(fs, 1);
+      local(isEof = file.endoffile(fs));
+      file.close(fs);
       return isEof
     expected_success: true
     expected_result: "true"
@@ -402,10 +469,10 @@ tests:
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(fs = tmpDir + "/" + "frontier_test_getpos.txt");
       file.writeWholeFile(fs, "0123456789");
-      local(f = file.open(fs, "r"));
-      file.read(f, 5);
-      local(pos = file.getposition(f));
-      file.close(f);
+      file.open(fs);
+      file.read(fs, 5);
+      local(pos = file.getposition(fs));
+      file.close(fs);
       return pos
     expected_success: true
     expected_result: "5"
@@ -416,11 +483,11 @@ tests:
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(fs = tmpDir + "/" + "frontier_test_setpos.txt");
       file.writeWholeFile(fs, "ABCDEFGH");
-      local(f = file.open(fs, "r"));
-      file.setposition(f, 3);
-      local(data = file.read(f, 2));
-      file.close(f);
-      return data
+      file.open(fs);
+      file.setposition(fs, 3);
+      local(data = file.read(fs, 2));
+      file.close(fs);
+      return string(data)
     expected_success: true
     expected_result: "DE"
 
@@ -430,9 +497,9 @@ tests:
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(fs = tmpDir + "/" + "frontier_test_geteof.txt");
       file.writeWholeFile(fs, "12345");
-      local(f = file.open(fs, "r"));
-      local(size = file.getendoffile(f));
-      file.close(f);
+      file.open(fs);
+      local(size = file.getendoffile(fs));
+      file.close(fs);
       return size
     expected_success: true
     expected_result: "5"
@@ -529,11 +596,11 @@ tests:
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(filePath = tmpDir + "/" + "setpos_beyond_eof.txt");
       file.writeWholeFile(filePath, "test");
-      local(f = file.open(filePath, "r"));
-      local(eofPos = file.getendoffile(f));
-      local(ok = file.setposition(f, eofPos + 100));
-      local(newPos = file.getposition(f));
-      file.close(f);
+      file.open(filePath);
+      local(eofPos = file.getendoffile(filePath));
+      local(ok = file.setposition(filePath, eofPos + 100));
+      local(newPos = file.getposition(filePath));
+      file.close(filePath);
       return ok and (newPos == (eofPos + 100))
     expected_success: true
     expected_result: "true"
@@ -545,9 +612,9 @@ tests:
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(filePath = tmpDir + "/" + "readline_lf.txt");
       file.writeWholeFile(filePath, "line1\nline2");
-      local(f = file.open(filePath, "r"));
-      local(line = file.readline(f));
-      file.close(f);
+      file.open(filePath);
+      local(line = file.readline(filePath));
+      file.close(filePath);
       return line
     expected_success: true
     expected_result: "line1"
@@ -558,9 +625,9 @@ tests:
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(filePath = tmpDir + "/" + "readline_crlf.txt");
       file.writeWholeFile(filePath, "line1\r\nline2");
-      local(f = file.open(filePath, "r"));
-      local(line = file.readline(f));
-      file.close(f);
+      file.open(filePath);
+      local(line = file.readline(filePath));
+      file.close(filePath);
       return line
     expected_success: true
     expected_result: "line1"
@@ -571,9 +638,9 @@ tests:
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(filePath = tmpDir + "/" + "readline_cr.txt");
       file.writeWholeFile(filePath, "line1\rline2");
-      local(f = file.open(filePath, "r"));
-      local(line = file.readline(f));
-      file.close(f);
+      file.open(filePath);
+      local(line = file.readline(filePath));
+      file.close(filePath);
       return line
     expected_success: true
     expected_result: "line1"

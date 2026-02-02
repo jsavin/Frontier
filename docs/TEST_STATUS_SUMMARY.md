@@ -238,12 +238,6 @@ These processors have no implementations yet:
 
 ### Critical Test Constraints
 
-**macOS Sandbox Limitation:**
-- frontier-cli cannot access `/tmp` or `/var/tmp`
-- All file operations must use project-relative paths in `.gitignore`'d directories
-- Integration tests use `{FRONTIER_TEST_TMP_DIR}` template (auto-replaced with safe path)
-- Use `$(./tools/get_test_temp_path.sh)` for manual CLI testing
-
 **Network Tests:**
 - By default: Skipped (TCP network tests disabled)
 - To enable: `FRONTIER_RUN_NETWORK_TESTS=1 make test-integration`
