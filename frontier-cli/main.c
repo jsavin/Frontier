@@ -104,6 +104,10 @@ const char* cli_get_system_root_path(void) {
     return g_system_root_path;
 }
 
+boolean cli_should_skip_startup(void) {
+    return g_cli_options.skip_startup;
+}
+
 // Function prototypes
 static void print_usage(const char* program_name);
 static void print_version(void);
@@ -348,7 +352,7 @@ int main(int argc, char* argv[]) {
          * 1. EFP tables are properly linked
          * 2. system.paths is populated and resolved
          * 3. Database tables are augmented with EFP implementations
-         * Controlled by FRONTIER_HEADLESS_RUN_STARTUP env var (default: skip). */
+         * Scripts run by default; use --skip-startup or FRONTIER_HEADLESS_RUN_STARTUP=0 to skip. */
         if (!loadsystemscripts()) {
             log_error(LOG_COMP_GENERAL, "Error: startup scripts failed for: %s", system_root_to_load);
             /* Continue despite startup script errors - they're not fatal */
@@ -586,6 +590,7 @@ static void print_usage(const char* program_name) {
     printf("  --migrate PATH           Migrate v6 database to v7 format and exit\n");
     printf("  --output PATH            Output path for migrated database (default: <input>.root7)\n");
     printf("  -f, --force              Force overwrite if output file exists\n");
+    printf("  --skip-startup           Skip system.startup scripts (they run by default)\n");
     printf("  --output-json            Output results in JSON format\n");
     printf("  -v, --verbose            Verbose output\n");
     printf("  --debug                  Debug mode\n");
@@ -596,7 +601,7 @@ static void print_usage(const char* program_name) {
     printf("Environment Variables:\n");
     printf("  FRONTIER_LOG_LEVEL       Set log level (TRACE, DEBUG, INFO, WARN, ERROR)\n");
     printf("  FRONTIER_LOG_COMPONENT   Filter logs by component (DB, HASH, LANG, etc.)\n");
-    printf("  FRONTIER_HEADLESS_RUN_STARTUP  Set to 1 to run system.startup scripts (default: skip)\n");
+    printf("  FRONTIER_HEADLESS_RUN_STARTUP  Set to 0 to skip system.startup scripts (default: run)\n");
     printf("\n");
 
     printf("Examples:\n");

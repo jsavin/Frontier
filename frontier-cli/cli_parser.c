@@ -140,13 +140,14 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
         {"output-json", no_argument, 0, 'J'},
         {"verbose", no_argument, 0, 'v'},
         {"debug", no_argument, 0, 'D'},
+        {"skip-startup", no_argument, 0, 'S'},
         {"help", no_argument, 0, 'h'},
         {"version", no_argument, 0, 'V'},
         {0, 0, 0, 0}
     };
 
     // Parse command line arguments
-    while ((opt = getopt_long(argc, argv, "e:R:m:o:fbHJvDhV", long_options, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "e:R:m:o:fbHJvDShV", long_options, &option_index)) != -1) {
         switch (opt) {
             case 'e':
                 // Inline script execution
@@ -226,6 +227,11 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
             case 'D':
                 // Debug mode
                 options->debug = true;
+                break;
+
+            case 'S':
+                // Skip startup scripts
+                options->skip_startup = true;
                 break;
 
             case 'h':
@@ -345,6 +351,7 @@ void cli_print_options(const cli_options_t* options) {
     printf("  Migrate Database: %s\n", options->migrate_database ? options->migrate_database : "(none)");
     printf("  Output Path: %s\n", options->output_path ? options->output_path : "(none)");
     printf("  Force Overwrite: %s\n", options->force_overwrite ? "yes" : "no");
+    printf("  Skip Startup: %s\n", options->skip_startup ? "yes" : "no");
     printf("  Verbose: %s\n", options->verbose ? "yes" : "no");
     printf("  Debug: %s\n", options->debug ? "yes" : "no");
     printf("  Output JSON: %s\n", options->output_json ? "yes" : "no");
