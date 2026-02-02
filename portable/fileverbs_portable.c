@@ -84,10 +84,10 @@ static boolean filespec_to_cstring(const ptrfilespec fs, char *path, size_t path
 /* Maximum file size for readwholefile() - 500MB limit prevents OOM on huge files */
 #define MAX_READWHOLEFILE_SIZE (500 * 1024 * 1024)
 
-/* UserTalk 'infinity' constant - used for file.read(path, infinity) to read remaining bytes.
- * UserTalk infinity is 64-bit LLONG_MAX (0x7FFFFFFFFFFFFFFF) but we use a 32-bit threshold
- * since any count >= 2GB effectively means "read the rest of the file". */
-#define USERTALK_INFINITY 0x7FFFFFFFFFFFFFFFLL
+/* Threshold for treating count as "infinity" in file.read(path, infinity).
+ * Any count >= 2GB effectively means "read the rest of the file".
+ * This handles both UserTalk's 'infinity' constant and large explicit values. */
+#define USERTALK_INFINITY_THRESHOLD (2LL * 1024 * 1024 * 1024)
 
 typedef struct {
 	FILE *fp;
@@ -104,8 +104,9 @@ static pthread_mutex_t filetable_mutex = PTHREAD_MUTEX_INITIALIZER;
  * Normalize path for comparison.
  * macOS: case-insensitive (HFS+/APFS default), convert to lowercase
  * Linux: case-sensitive, preserve original case
+ * Returns true if path fit in buffer, false if truncated.
  */
-static void normalize_path(const char *src, char *dst, size_t dstsize) {
+static boolean normalize_path(const char *src, char *dst, size_t dstsize) {
 	size_t i;
 	for (i = 0; i < dstsize - 1 && src[i]; i++) {
 #ifdef __APPLE__
@@ -115,15 +116,26 @@ static void normalize_path(const char *src, char *dst, size_t dstsize) {
 #endif
 	}
 	dst[i] = '\0';
+
+	/* Check if source was truncated */
+	if (src[i] != '\0') {
+		log_warn(LOG_COMP_LANG, "normalize_path: path truncated (len > %zu)", dstsize - 1);
+		return false;
+	}
+	return true;
 }
 
 /*
  * Open a file by path and register it in the file table.
  * Returns true if file was opened successfully, false otherwise.
  * If file is already open, just returns true (Frontier behavior).
+ *
+ * Thread safety: We reserve the slot (inuse=true, fp=NULL) before doing I/O,
+ * preventing TOCTOU races where another thread could steal our slot.
  */
 static boolean open_file_by_path(const char *path) {
 	int i;
+	int reserved_slot = -1;
 	FILE *fp;
 	char normalized[4096];
 
@@ -133,7 +145,7 @@ static boolean open_file_by_path(const char *path) {
 
 	/* Check if file is already open */
 	for (i = 0; i < MAX_OPEN_FILES; i++) {
-		if (filetable[i].inuse) {
+		if (filetable[i].inuse && filetable[i].fp != NULL) {
 			char existing_normalized[4096];
 			normalize_path(filetable[i].path, existing_normalized, sizeof(existing_normalized));
 			if (strcmp(existing_normalized, normalized) == 0) {
@@ -143,50 +155,45 @@ static boolean open_file_by_path(const char *path) {
 		}
 	}
 
-	/* Find free slot */
+	/* Find free slot and RESERVE it before doing I/O */
 	for (i = 0; i < MAX_OPEN_FILES; i++) {
-		if (!filetable[i].inuse)
+		if (!filetable[i].inuse) {
+			/* Reserve the slot: mark inuse but with NULL fp */
+			filetable[i].inuse = true;
+			filetable[i].fp = NULL;
+			filetable[i].refcount = 0;
+			strncpy(filetable[i].path, path, sizeof(filetable[i].path) - 1);
+			filetable[i].path[sizeof(filetable[i].path) - 1] = '\0';
+			reserved_slot = i;
 			break;
-	}
-
-	if (i >= MAX_OPEN_FILES) {
-		pthread_mutex_unlock(&filetable_mutex);
-		return false;  /* No free slots */
+		}
 	}
 
 	pthread_mutex_unlock(&filetable_mutex);
 
-	/* Open file outside of lock to avoid blocking */
+	if (reserved_slot < 0) {
+		return false;  /* No free slots */
+	}
+
+	/* Open file outside of lock to avoid blocking I/O under mutex */
 	fp = fopen(path, "r+b");
 	if (!fp) {
 		/* Try read-only if r+b fails */
 		fp = fopen(path, "rb");
 	}
-	if (!fp) {
-		return false;
-	}
 
 	pthread_mutex_lock(&filetable_mutex);
 
-	/* Re-check slot is still free (another thread may have used it) */
-	if (filetable[i].inuse) {
-		/* Find another free slot */
-		for (i = 0; i < MAX_OPEN_FILES; i++) {
-			if (!filetable[i].inuse)
-				break;
-		}
-		if (i >= MAX_OPEN_FILES) {
-			pthread_mutex_unlock(&filetable_mutex);
-			fclose(fp);
-			return false;
-		}
+	if (!fp) {
+		/* fopen failed - release our reserved slot */
+		filetable[reserved_slot].inuse = false;
+		filetable[reserved_slot].path[0] = '\0';
+		pthread_mutex_unlock(&filetable_mutex);
+		return false;
 	}
 
-	filetable[i].fp = fp;
-	strncpy(filetable[i].path, path, sizeof(filetable[i].path) - 1);
-	filetable[i].path[sizeof(filetable[i].path) - 1] = '\0';
-	filetable[i].inuse = true;
-	filetable[i].refcount = 0;
+	/* Install the FILE* in our reserved slot */
+	filetable[reserved_slot].fp = fp;
 
 	pthread_mutex_unlock(&filetable_mutex);
 	return true;
@@ -1489,7 +1496,7 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			}
 
 			/* Handle infinity (or very large count) - read remaining bytes in file */
-			if (count >= USERTALK_INFINITY) {
+			if (count >= USERTALK_INFINITY_THRESHOLD) {
 				current_pos = ftell(fp);
 				if (current_pos < 0) {
 					release_file_by_path(path);
