@@ -219,15 +219,6 @@ Agents must verify fixes work end-to-end, not just fix one piece. Test the compl
 
 ## Critical Testing Constraints ⚠️
 
-### macOS Sandbox /tmp Restriction
-
-**CRITICAL**: frontier-cli runs in the macOS sandbox and **CANNOT access `/tmp`**.
-
-- ❌ NEVER use `/tmp`, `/var/tmp`, or system temp directories
-- ✅ ALWAYS use project-relative paths in .gitignore'd subdirectories
-- ✅ Use `{FRONTIER_TEST_TMP_DIR}` template in integration tests
-- ✅ Use `$(./tools/get_test_temp_path.sh)` for manual CLI testing
-
 ### Verb Testing Requirements
 
 PRs implementing new verbs or modifying verb functionality **MUST include integration tests**.
