@@ -355,19 +355,29 @@ export FRONTIER_LOG_FORMAT=json
 
 ### `FRONTIER_HEADLESS_RUN_STARTUP`
 
-Enable execution of `system.startup` scripts when loading a database (default: skipped). Set to 1 to run startup scripts. The default behavior skips startup scripts for faster CLI execution and testing.
+Control execution of `system.startup` scripts when loading a database.
 
-**Example (run startup scripts):**
+**Default behavior:** Startup scripts **run by default** (matching legacy Frontier behavior).
+
+To skip startup scripts, use the `--skip-startup` CLI flag or set `FRONTIER_HEADLESS_RUN_STARTUP=0`:
+
+**Skip startup scripts:**
 ```bash
-export FRONTIER_HEADLESS_RUN_STARTUP=1
+# Using CLI flag (recommended)
+./frontier-cli/frontier-cli --skip-startup --system-root databases/Frontier.root7 -e "1"
+
+# Or using environment variable
+export FRONTIER_HEADLESS_RUN_STARTUP=0
 ./frontier-cli/frontier-cli --system-root databases/Frontier.root7 -e "1"
 ```
 
-**Default behavior (startup scripts skipped):**
+**Default behavior (startup scripts run):**
 ```bash
-# No env var needed - startup scripts are skipped by default
+# Startup scripts execute automatically - matches legacy Frontier
 ./frontier-cli/frontier-cli --system-root databases/Frontier.root7 -e "1"
 ```
+
+> **Note:** Prior to v1.0.0-alpha.5, startup scripts were skipped by default. The default was changed to match legacy Frontier behavior where `system.startup` scripts always run on launch.
 
 ---
 

@@ -84,8 +84,10 @@ static boolean filespec_to_cstring(const ptrfilespec fs, char *path, size_t path
 /* Maximum file size for readwholefile() - 500MB limit prevents OOM on huge files */
 #define MAX_READWHOLEFILE_SIZE (500 * 1024 * 1024)
 
-/* UserTalk 'infinity' constant - used for file.read(path, infinity) to read remaining bytes */
-#define USERTALK_INFINITY 0x7FFFFFFF
+/* UserTalk 'infinity' constant - used for file.read(path, infinity) to read remaining bytes.
+ * UserTalk infinity is 64-bit LLONG_MAX (0x7FFFFFFFFFFFFFFF) but we use a 32-bit threshold
+ * since any count >= 2GB effectively means "read the rest of the file". */
+#define USERTALK_INFINITY 0x7FFFFFFFFFFFFFFFLL
 
 typedef struct {
 	FILE *fp;
@@ -99,13 +101,18 @@ static boolean g_cleanup_registered = false;
 static pthread_mutex_t filetable_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /*
- * Normalize path for comparison - convert to lowercase for case-insensitive matching.
- * This matches Frontier's case-insensitive file path behavior.
+ * Normalize path for comparison.
+ * macOS: case-insensitive (HFS+/APFS default), convert to lowercase
+ * Linux: case-sensitive, preserve original case
  */
 static void normalize_path(const char *src, char *dst, size_t dstsize) {
 	size_t i;
 	for (i = 0; i < dstsize - 1 && src[i]; i++) {
+#ifdef __APPLE__
 		dst[i] = tolower((unsigned char)src[i]);
+#else
+		dst[i] = src[i];  /* Preserve case on case-sensitive filesystems */
+#endif
 	}
 	dst[i] = '\0';
 }
@@ -1520,9 +1527,9 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			buffer = (unsigned char *)*hdata;
 			bytesread = fread(buffer, 1, bytes_to_read, fp);
 			unlockhandle(hdata);
-			release_file_by_path(path);
 
 			if (bytesread == 0) {
+				release_file_by_path(path);
 				disposehandle(hdata);
 				return setstringvalue(BIGSTRING("\x00"), vreturned);
 			}
@@ -1532,6 +1539,7 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 				sethandlesize(hdata, bytesread);
 			}
 
+			release_file_by_path(path);
 			return setbinaryvalue(hdata, bytesread, vreturned);
 		}
 

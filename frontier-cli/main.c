@@ -387,6 +387,7 @@ static int get_system_root_search_paths(char paths[][CLI_MAX_PATH_LENGTH + 1], i
 
     // Get current working directory
     if (getcwd(cwd, sizeof(cwd)) == NULL) {
+        log_debug(LOG_COMP_GENERAL, "get_system_root_search_paths: getcwd failed (errno=%d)", errno);
         cwd[0] = '\0';
     }
 
