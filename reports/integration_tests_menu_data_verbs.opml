@@ -2,13 +2,13 @@
 <opml version="2.0">
   <head>
     <title>Menu Data Verbs (menu_data_verbs)</title>
-    <dateCreated>Tue, 03 Feb 2026 03:20:43 GMT</dateCreated>
+    <dateCreated>Tue, 03 Feb 2026 03:30:11 GMT</dateCreated>
   </head>
   <body>
     <outline text="menu.addMenuCommand - create new menu and add item - Add a command to a new menubar, creating the menu if it doesn't exist">
       <outline text="Metadata">
         <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verbs return 'not implemented' in headless stubs (tests/headless_menu_verbs.c)"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -21,7 +21,7 @@
     <outline text="menu.addMenuCommand - add multiple items to same menu - Add multiple commands to the same menu">
       <outline text="Metadata">
         <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verbs return 'not implemented' in headless stubs (tests/headless_menu_verbs.c)"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -36,7 +36,7 @@
     <outline text="menu.addMenuCommand - replace existing item script - Adding an item that already exists should replace its script">
       <outline text="Metadata">
         <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verbs not yet compiled in headless mode"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -52,7 +52,7 @@
     <outline text="menu.addMenuCommand - create multiple menus - Add items to different menus in the same menubar">
       <outline text="Metadata">
         <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verbs not yet compiled in headless mode"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -67,7 +67,7 @@
     <outline text="menu.deleteMenuCommand - delete existing item - Delete a command that exists in the menu">
       <outline text="Metadata">
         <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verbs return 'not implemented' in headless stubs (tests/headless_menu_verbs.c)"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -81,7 +81,7 @@
     <outline text="menu.deleteMenuCommand - delete nonexistent item returns false - Attempting to delete a nonexistent item should return false">
       <outline text="Metadata">
         <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verbs not yet compiled in headless mode"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
@@ -95,7 +95,7 @@
     <outline text="menu.deleteMenuCommand - delete from nonexistent menu returns false - Deleting from a menu that doesn't exist should return false">
       <outline text="Metadata">
         <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verbs not yet compiled in headless mode"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
@@ -109,7 +109,7 @@
     <outline text="menu.deleteMenuCommand - verify item is actually removed - After deletion, adding same item again should work">
       <outline text="Metadata">
         <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verbs not yet compiled in headless mode"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -126,7 +126,7 @@
     <outline text="menu.getScript - retrieve script from menu item - Get the script attached to a menu item">
       <outline text="Metadata">
         <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verbs not yet compiled in headless mode; cursor-based verbs require target.set"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -149,7 +149,7 @@
     <outline text="menu.setScript - change script on menu item - Set a new script on a menu item using address">
       <outline text="Metadata">
         <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verbs not yet compiled in headless mode; cursor-based verbs require target.set"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -171,7 +171,7 @@
     <outline text="menu.getScript and setScript - round-trip verification - Set a script, get it back, verify they match">
       <outline text="Metadata">
         <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verbs not yet compiled in headless mode"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -194,7 +194,7 @@
     <outline text="menu.setCommandKey - set keyboard shortcut - Set a command key (keyboard shortcut) on a menu item">
       <outline text="Metadata">
         <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verbs not yet compiled in headless mode"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -212,7 +212,7 @@
     <outline text="menu.getCommandKey - retrieve keyboard shortcut - Get the command key from a menu item">
       <outline text="Metadata">
         <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verbs not yet compiled in headless mode"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -232,7 +232,7 @@
     <outline text="menu.setCommandKey - clear shortcut with empty string - Setting empty string should clear the command key">
       <outline text="Metadata">
         <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verbs not yet compiled in headless mode"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -253,7 +253,7 @@
     <outline text="menu.getCommandKey and setCommandKey - round-trip - Set a key, get it back, verify round-trip works">
       <outline text="Metadata">
         <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verbs not yet compiled in headless mode"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -273,7 +273,7 @@
     <outline text="menu.addMenuCommand - empty menu name creates unnamed menu - Using empty string for menu name should still work">
       <outline text="Metadata">
         <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verbs not yet compiled in headless mode"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -287,7 +287,7 @@
     <outline text="menu.addMenuCommand - empty item name - Using empty string for item name">
       <outline text="Metadata">
         <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verbs not yet compiled in headless mode"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -301,7 +301,7 @@
     <outline text="menu.addMenuCommand - special characters in item name - Item names with special characters should work">
       <outline text="Metadata">
         <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verbs not yet compiled in headless mode"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -315,7 +315,7 @@
     <outline text="menu.addMenuCommand - separator item - Using dash for item name may create separator">
       <outline text="Metadata">
         <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verbs not yet compiled in headless mode"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -329,7 +329,7 @@
     <outline text="menu.addMenuCommand - multiline script - Script parameter can contain multiple lines">
       <outline text="Metadata">
         <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verbs not yet compiled in headless mode"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -343,7 +343,7 @@
     <outline text="menu.buildMenuBar - stubbed in headless mode - Display verb should return false in headless mode">
       <outline text="Metadata">
         <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verbs not yet compiled in headless mode"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
@@ -358,7 +358,7 @@
     <outline text="menu.install - stubbed in headless mode - menu.install should return false without GUI">
       <outline text="Metadata">
         <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verbs not yet compiled in headless mode"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
@@ -374,7 +374,7 @@
     <outline text="menu.isInstalled - stubbed in headless mode - menu.isInstalled should return false without GUI">
       <outline text="Metadata">
         <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verbs not yet compiled in headless mode"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
@@ -389,7 +389,7 @@
     <outline text="menu verbs - build complete menu structure - Create a realistic menu structure with multiple menus and items">
       <outline text="Metadata">
         <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verbs not yet compiled in headless mode"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -417,7 +417,7 @@
     <outline text="menu verbs - modify existing menu - Add items, delete some, modify others">
       <outline text="Metadata">
         <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verbs not yet compiled in headless mode"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">

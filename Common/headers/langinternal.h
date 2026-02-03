@@ -330,8 +330,6 @@ extern Handle tryerror; /*non-nil after try error, until else is evaluated*/
 
 extern Handle tryerrorstack; /*non-nil after try error, until else is evaluated*/
 
-extern boolean flintryflag; /*if true, errors are being captured by try block (don't log as ERROR)*/
-
 /* ADR-005: Thread-local parameter state - now macros in lang.h */
 /* extern boolean flparamerrorenabled; */
 

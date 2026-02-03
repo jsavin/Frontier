@@ -150,12 +150,9 @@ static void headless_log_error(const bigstring bs) {
         len = (short)sizeof(buffer) - 1;
     memcpy(buffer, stringbaseaddress(bs), (size_t)len);
     buffer[len] = '\0';
-    /* When inside a try block, errors are expected and will be handled by script.
-     * Log as DEBUG to avoid alarming ERROR-level output for normal control flow. */
-    if (flintryflag)
-        log_debug(LOG_COMP_STARTUP, "try block error (handled): %s", buffer);
-    else
-        log_error(LOG_COMP_STARTUP, "headless lang error: %s", buffer);
+    /* Note: Errors inside try blocks are normal control flow, but we still log them.
+     * A future enhancement could track try block state to log these at DEBUG level. */
+    log_error(LOG_COMP_STARTUP, "headless lang error: %s", buffer);
 }
 
 static boolean headless_error_callback (bigstring bs, ptrvoid refcon) {

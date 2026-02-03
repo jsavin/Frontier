@@ -814,26 +814,29 @@ static boolean meunpackmenustructure_v7(Handle hpacked, hdlmenurecord *hmenureco
 	legacy.versionnumber = 1; /* not used downstream */
 	legacy.adroutline = (dbaddress) disk_to_host_uint64(modern.adroutline);
 
-	/* Note: Legacy format uses 16-bit shorts. Values beyond SHRT_MAX will be truncated.
-	 * This is a known limitation when converting from v7 format. */
+	/* Legacy format uses 16-bit shorts. Values beyond SHRT_MAX cannot be represented.
+	 * Rather than silently corrupt data, we fail the operation. */
 	uint64_t lnumcursor_value = disk_to_host_uint64(modern.lnumcursor);
 	if (lnumcursor_value > SHRT_MAX) {
-		log_warn(LOG_COMP_DB, "menupack: truncating lnumcursor %llu to 16-bit (legacy format limitation)",
+		log_error(LOG_COMP_DB, "menupack: cannot convert lnumcursor %llu to 16-bit legacy format (value exceeds SHRT_MAX)",
 		          (unsigned long long)lnumcursor_value);
+		return false;
 	}
 	legacy.lnumcursor = (short) lnumcursor_value;
 
 	uint32_t flags_value = disk_to_host_uint32(modern.flags);
 	if (flags_value > SHRT_MAX) {
-		log_warn(LOG_COMP_DB, "menupack: truncating flags %u to 16-bit (legacy format limitation)",
+		log_error(LOG_COMP_DB, "menupack: cannot convert flags %u to 16-bit legacy format (value exceeds SHRT_MAX)",
 		          (unsigned)flags_value);
+		return false;
 	}
 	legacy.flags = (short) flags_value;
 
 	uint32_t menuactiveitem_value = disk_to_host_uint32(modern.menuactiveitem);
 	if (menuactiveitem_value > SHRT_MAX) {
-		log_warn(LOG_COMP_DB, "menupack: truncating menuactiveitem %u to 16-bit (legacy format limitation)",
+		log_error(LOG_COMP_DB, "menupack: cannot convert menuactiveitem %u to 16-bit legacy format (value exceeds SHRT_MAX)",
 		          (unsigned)menuactiveitem_value);
+		return false;
 	}
 	legacy.menuactivelayer = (short) menuactiveitem_value;
 
