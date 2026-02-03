@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Menu Data Verbs (menu_data_verbs)</title>
-    <dateCreated>Tue, 03 Feb 2026 03:30:11 GMT</dateCreated>
+    <dateCreated>Tue, 03 Feb 2026 05:54:13 GMT</dateCreated>
   </head>
   <body>
     <outline text="menu.addMenuCommand - create new menu and add item - Add a command to a new menubar, creating the menu if it doesn't exist">
@@ -434,6 +434,505 @@
         <outline text="menu.addMenuCommand(@workspace.testMenu, &quot;Tools&quot;, &quot;Item1&quot;, &quot;modifiedScript1()&quot;)"/>
         <outline text="delete(@workspace.testMenu)"/>
         <outline text="return true"/>
+      </outline>
+    </outline>
+    <outline text="menu.addSubMenu - add submenu to existing menu - Add a pre-existing menubar as a submenu within another menubar">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="# Create the parent menubar"/>
+        <outline text="new(menubarType, @workspace.parentMenu)"/>
+        <outline text="menu.addMenuCommand(@workspace.parentMenu, &quot;File&quot;, &quot;New&quot;, &quot;fileNew()&quot;)"/>
+        <outline text="# Create the submenu menubar"/>
+        <outline text="new(menubarType, @workspace.subMenu)"/>
+        <outline text="menu.addMenuCommand(@workspace.subMenu, &quot;Recent&quot;, &quot;File1.txt&quot;, &quot;openRecent(1)&quot;)"/>
+        <outline text="menu.addMenuCommand(@workspace.subMenu, &quot;Recent&quot;, &quot;File2.txt&quot;, &quot;openRecent(2)&quot;)"/>
+        <outline text="# Add submenu to File menu"/>
+        <outline text="local(ok = menu.addSubMenu(@workspace.parentMenu, &quot;File&quot;, @workspace.subMenu))"/>
+        <outline text="# Clean up"/>
+        <outline text="delete(@workspace.parentMenu)"/>
+        <outline text="delete(@workspace.subMenu)"/>
+        <outline text="return ok"/>
+      </outline>
+    </outline>
+    <outline text="menu.addSubMenu - add as new top-level menu with empty menuName - Using empty string for menuName adds submenu as new top-level menu">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(menubarType, @workspace.parentMenu)"/>
+        <outline text="# Create submenu"/>
+        <outline text="new(menubarType, @workspace.subMenu)"/>
+        <outline text="menu.addMenuCommand(@workspace.subMenu, &quot;Tools&quot;, &quot;Calculator&quot;, &quot;calc()&quot;)"/>
+        <outline text="# Add as top-level (empty menuName)"/>
+        <outline text="local(ok = menu.addSubMenu(@workspace.parentMenu, &quot;&quot;, @workspace.subMenu))"/>
+        <outline text="delete(@workspace.parentMenu)"/>
+        <outline text="delete(@workspace.subMenu)"/>
+        <outline text="return ok"/>
+      </outline>
+    </outline>
+    <outline text="menu.addSubMenu - creates menu if menuName doesn't exist - If menuName doesn't exist, it should be created">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(menubarType, @workspace.parentMenu)"/>
+        <outline text="# parentMenu is empty - no &quot;Custom&quot; menu exists yet"/>
+        <outline text="new(menubarType, @workspace.subMenu)"/>
+        <outline text="menu.addMenuCommand(@workspace.subMenu, &quot;Sub&quot;, &quot;Item&quot;, &quot;doIt()&quot;)"/>
+        <outline text="# This should create &quot;Custom&quot; menu and add submenu to it"/>
+        <outline text="local(ok = menu.addSubMenu(@workspace.parentMenu, &quot;Custom&quot;, @workspace.subMenu))"/>
+        <outline text="delete(@workspace.parentMenu)"/>
+        <outline text="delete(@workspace.subMenu)"/>
+        <outline text="return ok"/>
+      </outline>
+    </outline>
+    <outline text="menu.addSubMenu - submenu address must exist - Adding a submenu from nonexistent address should fail">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="expected_result: error_caught"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(menubarType, @workspace.parentMenu)"/>
+        <outline text="# Try to add submenu from address that doesn't exist"/>
+        <outline text="try">
+          <outline text="local(ok = menu.addSubMenu(@workspace.parentMenu, &quot;File&quot;, @workspace.doesNotExist))"/>
+          <outline text="delete(@workspace.parentMenu)"/>
+          <outline text="return &quot;should_have_failed&quot;"/>
+        </outline>
+        <outline text="} else">
+          <outline text="delete(@workspace.parentMenu)"/>
+          <outline text="return &quot;error_caught&quot;"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="menu.deleteSubMenu - delete existing submenu - Delete a menu from the menubar by name">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(menubarType, @workspace.testMenu)"/>
+        <outline text="# Add some menus"/>
+        <outline text="menu.addMenuCommand(@workspace.testMenu, &quot;File&quot;, &quot;New&quot;, &quot;fileNew()&quot;)"/>
+        <outline text="menu.addMenuCommand(@workspace.testMenu, &quot;Edit&quot;, &quot;Undo&quot;, &quot;editUndo()&quot;)"/>
+        <outline text="menu.addMenuCommand(@workspace.testMenu, &quot;Help&quot;, &quot;About&quot;, &quot;helpAbout()&quot;)"/>
+        <outline text="# Delete the Edit menu"/>
+        <outline text="local(ok = menu.deleteSubMenu(@workspace.testMenu, &quot;Edit&quot;))"/>
+        <outline text="delete(@workspace.testMenu)"/>
+        <outline text="return ok"/>
+      </outline>
+    </outline>
+    <outline text="menu.deleteSubMenu - delete nonexistent menu returns false - Attempting to delete a menu that doesn't exist returns false">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(menubarType, @workspace.testMenu)"/>
+        <outline text="menu.addMenuCommand(@workspace.testMenu, &quot;File&quot;, &quot;New&quot;, &quot;fileNew()&quot;)"/>
+        <outline text="# Try to delete menu that doesn't exist"/>
+        <outline text="local(ok = menu.deleteSubMenu(@workspace.testMenu, &quot;NoSuchMenu&quot;))"/>
+        <outline text="delete(@workspace.testMenu)"/>
+        <outline text="return ok"/>
+      </outline>
+    </outline>
+    <outline text="menu.deleteSubMenu - can delete single item too - deleteSubMenu can delete a single item, not just a submenu">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(menubarType, @workspace.testMenu)"/>
+        <outline text="menu.addMenuCommand(@workspace.testMenu, &quot;File&quot;, &quot;SingleItem&quot;, &quot;doIt()&quot;)"/>
+        <outline text="# deleteSubMenu on a single item should still work"/>
+        <outline text="local(ok = menu.deleteSubMenu(@workspace.testMenu, &quot;SingleItem&quot;))"/>
+        <outline text="delete(@workspace.testMenu)"/>
+        <outline text="return ok"/>
+      </outline>
+    </outline>
+    <outline text="sizeOf - empty menubar - sizeOf on empty menubar returns 0">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="expected_result: 0"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(menubarType, @workspace.testMenu)"/>
+        <outline text="local(size = sizeOf(@workspace.testMenu))"/>
+        <outline text="delete(@workspace.testMenu)"/>
+        <outline text="return size"/>
+      </outline>
+    </outline>
+    <outline text="sizeOf - counts all items - sizeOf counts menus and their items">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="expected_result: 4"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(menubarType, @workspace.testMenu)"/>
+        <outline text="# Add File menu with 3 items (1 menu + 3 items = 4 headings)"/>
+        <outline text="menu.addMenuCommand(@workspace.testMenu, &quot;File&quot;, &quot;New&quot;, &quot;new()&quot;)"/>
+        <outline text="menu.addMenuCommand(@workspace.testMenu, &quot;File&quot;, &quot;Open&quot;, &quot;open()&quot;)"/>
+        <outline text="menu.addMenuCommand(@workspace.testMenu, &quot;File&quot;, &quot;Save&quot;, &quot;save()&quot;)"/>
+        <outline text="local(size = sizeOf(@workspace.testMenu))"/>
+        <outline text="delete(@workspace.testMenu)"/>
+        <outline text="return size"/>
+      </outline>
+    </outline>
+    <outline text="sizeOf - counts multiple menus - sizeOf counts all headings across multiple menus">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="expected_result: 7"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(menubarType, @workspace.testMenu)"/>
+        <outline text="# File menu: 1 + 2 items = 3"/>
+        <outline text="menu.addMenuCommand(@workspace.testMenu, &quot;File&quot;, &quot;New&quot;, &quot;new()&quot;)"/>
+        <outline text="menu.addMenuCommand(@workspace.testMenu, &quot;File&quot;, &quot;Open&quot;, &quot;open()&quot;)"/>
+        <outline text="# Edit menu: 1 + 3 items = 4"/>
+        <outline text="menu.addMenuCommand(@workspace.testMenu, &quot;Edit&quot;, &quot;Undo&quot;, &quot;undo()&quot;)"/>
+        <outline text="menu.addMenuCommand(@workspace.testMenu, &quot;Edit&quot;, &quot;Cut&quot;, &quot;cut()&quot;)"/>
+        <outline text="menu.addMenuCommand(@workspace.testMenu, &quot;Edit&quot;, &quot;Copy&quot;, &quot;copy()&quot;)"/>
+        <outline text="# Total: 3 + 4 = 7"/>
+        <outline text="local(size = sizeOf(@workspace.testMenu))"/>
+        <outline text="delete(@workspace.testMenu)"/>
+        <outline text="return size"/>
+      </outline>
+    </outline>
+    <outline text="sizeOf - counts submenus and their contents - sizeOf includes submenu items in the count">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(menubarType, @workspace.parentMenu)"/>
+        <outline text="new(menubarType, @workspace.subMenu)"/>
+        <outline text="# Parent has File with 1 item"/>
+        <outline text="menu.addMenuCommand(@workspace.parentMenu, &quot;File&quot;, &quot;New&quot;, &quot;new()&quot;)"/>
+        <outline text="# Submenu has 2 items"/>
+        <outline text="menu.addMenuCommand(@workspace.subMenu, &quot;Recent&quot;, &quot;Doc1&quot;, &quot;open1()&quot;)"/>
+        <outline text="menu.addMenuCommand(@workspace.subMenu, &quot;Recent&quot;, &quot;Doc2&quot;, &quot;open2()&quot;)"/>
+        <outline text="# Add submenu to File"/>
+        <outline text="menu.addSubMenu(@workspace.parentMenu, &quot;File&quot;, @workspace.subMenu)"/>
+        <outline text="# Expected: File(1) + New(1) + Recent submenu structure"/>
+        <outline text="# The exact count depends on how submenus are represented"/>
+        <outline text="local(size = sizeOf(@workspace.parentMenu))"/>
+        <outline text="delete(@workspace.parentMenu)"/>
+        <outline text="delete(@workspace.subMenu)"/>
+        <outline text="# Size should be &gt; 2 (at minimum File + New + submenu content)"/>
+        <outline text="return (size &gt; 2)"/>
+      </outline>
+    </outline>
+    <outline text="cursor navigation - navigate to item and getScript - Navigate to specific menu item using op verbs, then get its script">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(menubarType, @workspace.testMenu)"/>
+        <outline text="# Build menu: File &gt; New, Open, Save"/>
+        <outline text="menu.addMenuCommand(@workspace.testMenu, &quot;File&quot;, &quot;New&quot;, &quot;fileNew()&quot;)"/>
+        <outline text="menu.addMenuCommand(@workspace.testMenu, &quot;File&quot;, &quot;Open&quot;, &quot;fileOpen()&quot;)"/>
+        <outline text="menu.addMenuCommand(@workspace.testMenu, &quot;File&quot;, &quot;Save&quot;, &quot;fileSave()&quot;)"/>
+        <outline text="# Set target to menubar"/>
+        <outline text="target.set(@workspace.testMenu)"/>
+        <outline text="# Navigate: firstSummit (File), expand, go right (into items), down 1 (to Open)"/>
+        <outline text="op.firstSummit()"/>
+        <outline text="op.expand()"/>
+        <outline text="op.go(right, 1)"/>
+        <outline text="op.go(down, 1)"/>
+        <outline text="# Get script from &quot;Open&quot; item"/>
+        <outline text="menu.getScript(@workspace.retrievedScript)"/>
+        <outline text="# Verify we got the right script"/>
+        <outline text="local(match = (workspace.retrievedScript == &quot;fileOpen()&quot;))"/>
+        <outline text="delete(@workspace.testMenu)"/>
+        <outline text="try {delete(@workspace.retrievedScript)}"/>
+        <outline text="return match"/>
+      </outline>
+    </outline>
+    <outline text="cursor navigation - navigate and setScript - Navigate to item, change its script, verify change">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(menubarType, @workspace.testMenu)"/>
+        <outline text="menu.addMenuCommand(@workspace.testMenu, &quot;File&quot;, &quot;Test&quot;, &quot;originalScript()&quot;)"/>
+        <outline text="target.set(@workspace.testMenu)"/>
+        <outline text="# Navigate to File &gt; Test"/>
+        <outline text="op.firstSummit()"/>
+        <outline text="op.expand()"/>
+        <outline text="op.go(right, 1)"/>
+        <outline text="# Create new script and set it"/>
+        <outline text="workspace.newScript = &quot;modifiedScript()&quot;"/>
+        <outline text="menu.setScript(@workspace.newScript)"/>
+        <outline text="# Get it back to verify"/>
+        <outline text="menu.getScript(@workspace.verifyScript)"/>
+        <outline text="local(match = (workspace.verifyScript == &quot;modifiedScript()&quot;))"/>
+        <outline text="delete(@workspace.testMenu)"/>
+        <outline text="delete(@workspace.newScript)"/>
+        <outline text="try {delete(@workspace.verifyScript)}"/>
+        <outline text="return match"/>
+      </outline>
+    </outline>
+    <outline text="cursor navigation - navigate to third item - Navigate deeper into menu structure">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(menubarType, @workspace.testMenu)"/>
+        <outline text="# File menu with 4 items"/>
+        <outline text="menu.addMenuCommand(@workspace.testMenu, &quot;File&quot;, &quot;New&quot;, &quot;script1()&quot;)"/>
+        <outline text="menu.addMenuCommand(@workspace.testMenu, &quot;File&quot;, &quot;Open&quot;, &quot;script2()&quot;)"/>
+        <outline text="menu.addMenuCommand(@workspace.testMenu, &quot;File&quot;, &quot;Save&quot;, &quot;script3()&quot;)"/>
+        <outline text="menu.addMenuCommand(@workspace.testMenu, &quot;File&quot;, &quot;Close&quot;, &quot;script4()&quot;)"/>
+        <outline text="target.set(@workspace.testMenu)"/>
+        <outline text="# Navigate to Save (3rd item)"/>
+        <outline text="op.firstSummit()"/>
+        <outline text="op.expand()"/>
+        <outline text="op.go(right, 1)"/>
+        <outline text="op.go(down, 2)"/>
+        <outline text="menu.getScript(@workspace.retrieved)"/>
+        <outline text="local(match = (workspace.retrieved == &quot;script3()&quot;))"/>
+        <outline text="delete(@workspace.testMenu)"/>
+        <outline text="try {delete(@workspace.retrieved)}"/>
+        <outline text="return match"/>
+      </outline>
+    </outline>
+    <outline text="menu.zoomScript - returns false in headless mode - zoomScript is a GUI operation, should return false headless">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(menubarType, @workspace.testMenu)"/>
+        <outline text="menu.addMenuCommand(@workspace.testMenu, &quot;File&quot;, &quot;Test&quot;, &quot;script()&quot;)"/>
+        <outline text="target.set(@workspace.testMenu)"/>
+        <outline text="op.firstSummit()"/>
+        <outline text="op.expand()"/>
+        <outline text="op.go(right, 1)"/>
+        <outline text="# zoomScript opens editor window - noop in headless"/>
+        <outline text="local(result = menu.zoomScript())"/>
+        <outline text="delete(@workspace.testMenu)"/>
+        <outline text="return result"/>
+      </outline>
+    </outline>
+    <outline text="persistence - save and reload menubar structure - Create menubar, save to file, reload, verify structure intact">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="# Create menubar with structure"/>
+        <outline text="new(menubarType, @workspace.testMenu)"/>
+        <outline text="menu.addMenuCommand(@workspace.testMenu, &quot;File&quot;, &quot;New&quot;, &quot;fileNew()&quot;)"/>
+        <outline text="menu.addMenuCommand(@workspace.testMenu, &quot;File&quot;, &quot;Open&quot;, &quot;fileOpen()&quot;)"/>
+        <outline text="menu.addMenuCommand(@workspace.testMenu, &quot;Edit&quot;, &quot;Undo&quot;, &quot;editUndo()&quot;)"/>
+        <outline text="# Remember size before save"/>
+        <outline text="local(sizeBefore = sizeOf(@workspace.testMenu))"/>
+        <outline text="# Save to a file"/>
+        <outline text="local(testPath = &quot;{FRONTIER_TEST_TMP_DIR}/menu_persist_test.root7&quot;)"/>
+        <outline text="file.new(testPath, 'TABL')"/>
+        <outline text="local(fref = file.open(testPath, true))"/>
+        <outline text="db.save(@workspace.testMenu, fref)"/>
+        <outline text="file.close(fref)"/>
+        <outline text="# Delete from memory"/>
+        <outline text="delete(@workspace.testMenu)"/>
+        <outline text="# Reload"/>
+        <outline text="fref = file.open(testPath, false)"/>
+        <outline text="db.load(fref, @workspace.reloadedMenu)"/>
+        <outline text="file.close(fref)"/>
+        <outline text="# Verify size matches"/>
+        <outline text="local(sizeAfter = sizeOf(@workspace.reloadedMenu))"/>
+        <outline text="local(sizeMatch = (sizeBefore == sizeAfter))"/>
+        <outline text="# Clean up"/>
+        <outline text="delete(@workspace.reloadedMenu)"/>
+        <outline text="file.delete(testPath)"/>
+        <outline text="return sizeMatch"/>
+      </outline>
+    </outline>
+    <outline text="persistence - script content survives save/reload - Verify script text is preserved through save/reload cycle">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(testScript = &quot;dialog.alert(\&quot;Hello World!\&quot;)&quot;)"/>
+        <outline text="# Create menubar with script"/>
+        <outline text="new(menubarType, @workspace.testMenu)"/>
+        <outline text="menu.addMenuCommand(@workspace.testMenu, &quot;Test&quot;, &quot;Item&quot;, testScript)"/>
+        <outline text="# Save"/>
+        <outline text="local(testPath = &quot;{FRONTIER_TEST_TMP_DIR}/menu_script_persist.root7&quot;)"/>
+        <outline text="file.new(testPath, 'TABL')"/>
+        <outline text="local(fref = file.open(testPath, true))"/>
+        <outline text="db.save(@workspace.testMenu, fref)"/>
+        <outline text="file.close(fref)"/>
+        <outline text="delete(@workspace.testMenu)"/>
+        <outline text="# Reload"/>
+        <outline text="fref = file.open(testPath, false)"/>
+        <outline text="db.load(fref, @workspace.reloadedMenu)"/>
+        <outline text="file.close(fref)"/>
+        <outline text="# Navigate to item and get script"/>
+        <outline text="target.set(@workspace.reloadedMenu)"/>
+        <outline text="op.firstSummit()"/>
+        <outline text="op.expand()"/>
+        <outline text="op.go(right, 1)"/>
+        <outline text="menu.getScript(@workspace.retrievedScript)"/>
+        <outline text="# Compare"/>
+        <outline text="local(match = (workspace.retrievedScript == testScript))"/>
+        <outline text="# Clean up"/>
+        <outline text="delete(@workspace.reloadedMenu)"/>
+        <outline text="try {delete(@workspace.retrievedScript)}"/>
+        <outline text="file.delete(testPath)"/>
+        <outline text="return match"/>
+      </outline>
+    </outline>
+    <outline text="persistence - menu names survive save/reload - Verify menu and item names are preserved">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(menubarType, @workspace.testMenu)"/>
+        <outline text="menu.addMenuCommand(@workspace.testMenu, &quot;CustomMenu&quot;, &quot;CustomItem&quot;, &quot;script()&quot;)"/>
+        <outline text="# Save"/>
+        <outline text="local(testPath = &quot;{FRONTIER_TEST_TMP_DIR}/menu_names_persist.root7&quot;)"/>
+        <outline text="file.new(testPath, 'TABL')"/>
+        <outline text="local(fref = file.open(testPath, true))"/>
+        <outline text="db.save(@workspace.testMenu, fref)"/>
+        <outline text="file.close(fref)"/>
+        <outline text="delete(@workspace.testMenu)"/>
+        <outline text="# Reload"/>
+        <outline text="fref = file.open(testPath, false)"/>
+        <outline text="db.load(fref, @workspace.reloadedMenu)"/>
+        <outline text="file.close(fref)"/>
+        <outline text="# Navigate and get the headline text to verify name"/>
+        <outline text="target.set(@workspace.reloadedMenu)"/>
+        <outline text="op.firstSummit()"/>
+        <outline text="local(menuName = op.getLineText())"/>
+        <outline text="op.expand()"/>
+        <outline text="op.go(right, 1)"/>
+        <outline text="local(itemName = op.getLineText())"/>
+        <outline text="# Clean up"/>
+        <outline text="delete(@workspace.reloadedMenu)"/>
+        <outline text="file.delete(testPath)"/>
+        <outline text="return (menuName == &quot;CustomMenu&quot;) and (itemName == &quot;CustomItem&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="menu.buildMenuBar - returns false without error - buildMenuBar should return false in headless without throwing error">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(menubarType, @workspace.testMenu)"/>
+        <outline text="menu.addMenuCommand(@workspace.testMenu, &quot;File&quot;, &quot;New&quot;, &quot;test()&quot;)"/>
+        <outline text="# Should return false, NOT throw an error"/>
+        <outline text="local(result = menu.buildMenuBar())"/>
+        <outline text="local(noError = true);  # If we got here, no error was thrown"/>
+        <outline text="delete(@workspace.testMenu)"/>
+        <outline text="return (result == false) and noError"/>
+      </outline>
+    </outline>
+    <outline text="menu.install - returns false without error - install should return false in headless without throwing error">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(menubarType, @workspace.testMenu)"/>
+        <outline text="menu.addMenuCommand(@workspace.testMenu, &quot;Custom&quot;, &quot;Test&quot;, &quot;test()&quot;)"/>
+        <outline text="target.set(@workspace.testMenu)"/>
+        <outline text="local(result = menu.install())"/>
+        <outline text="local(noError = true)"/>
+        <outline text="delete(@workspace.testMenu)"/>
+        <outline text="return (result == false) and noError"/>
+      </outline>
+    </outline>
+    <outline text="menu.isInstalled - returns false without error - isInstalled should return false in headless without throwing error">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(menubarType, @workspace.testMenu)"/>
+        <outline text="target.set(@workspace.testMenu)"/>
+        <outline text="local(result = menu.isInstalled())"/>
+        <outline text="local(noError = true)"/>
+        <outline text="delete(@workspace.testMenu)"/>
+        <outline text="return (result == false) and noError"/>
+      </outline>
+    </outline>
+    <outline text="menu.remove - returns false without error - remove should return false in headless without throwing error">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(menubarType, @workspace.testMenu)"/>
+        <outline text="menu.addMenuCommand(@workspace.testMenu, &quot;File&quot;, &quot;Test&quot;, &quot;test()&quot;)"/>
+        <outline text="target.set(@workspace.testMenu)"/>
+        <outline text="local(result = menu.remove())"/>
+        <outline text="local(noError = true)"/>
+        <outline text="delete(@workspace.testMenu)"/>
+        <outline text="return (result == false) and noError"/>
+      </outline>
+    </outline>
+    <outline text="menu.clearMenubar - returns true without error - clearMenubar affects OS menubar, but should not error in headless">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="# clearMenubar operates on OS menu bar, not a menubar object"/>
+        <outline text="# In headless, it should be a noop that returns true"/>
+        <outline text="local(result = menu.clearMenubar())"/>
+        <outline text="local(noError = true)"/>
+        <outline text="return noError"/>
+      </outline>
+    </outline>
+    <outline text="menu.toggle - returns false without error - toggle should return false in headless without throwing error">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(menubarType, @workspace.testMenu)"/>
+        <outline text="menu.addMenuCommand(@workspace.testMenu, &quot;File&quot;, &quot;Toggle&quot;, &quot;test()&quot;)"/>
+        <outline text="target.set(@workspace.testMenu)"/>
+        <outline text="local(result = menu.toggle())"/>
+        <outline text="local(noError = true)"/>
+        <outline text="delete(@workspace.testMenu)"/>
+        <outline text="return (result == false) and noError"/>
       </outline>
     </outline>
   </body>
