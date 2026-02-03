@@ -344,9 +344,12 @@ boolean nildatahandle (AEDesc *desc) { (void)desc; return true; }
 #endif
 
 // Menu/UI verbs used by opverbs
-boolean menuedit (void) { return false; }
-boolean menuwindowopen (hdlexternalvariable h, hdlwindowinfo *hi) { (void)h; if (hi) *hi=nil; return false; }
-boolean menuverbisdirty (hdlexternalvariable h) { (void)h; return false; }
+// Note: menuwindowopen and menuverbisdirty are now provided by the real menuverbs.c
+// menuedit stub is needed because the real one is guarded by !FRONTIER_HEADLESS
+boolean menuedit (hdlexternalvariable hvariable, hdlwindowinfo hparent, ptrfilespec fs, bigstring bstitle, rectparam rzoom) {
+    (void)hvariable; (void)hparent; (void)fs; (void)bstitle; (void)rzoom;
+    return false;
+}
 
 // OP verbs helpers
 boolean opbeginprint (void) { return false; }

@@ -1,0 +1,539 @@
+# Integration tests for menu data manipulation verbs in headless mode
+#
+# These tests verify that Category A menu verbs (data manipulation) work in
+# headless mode. Menu verbs are now compiled in headless builds (PR #383),
+# but individual verb implementations are still in progress.
+#
+# Reference: planning/phase3/HEADLESS_MENU_OPERATIONS_PLAN.md
+#
+# Category A - Data Manipulation Verbs (MUST WORK HEADLESS):
+#   - menu.addMenuCommand() - Add item to menu
+#   - menu.deleteMenuCommand() - Remove item from menu
+#   - menu.getScript() - Get script text from menu item (cursor-based)
+#   - menu.setScript() - Set script text for menu item (cursor-based)
+#   - menu.getCommandKey() - Get keyboard shortcut (cursor-based)
+#   - menu.setCommandKey() - Set keyboard shortcut (cursor-based)
+#
+# TDD Strategy:
+#   - Tests are written FIRST to specify expected behavior
+#   - Tests will FAIL initially (menu verbs not in headless build)
+#   - Implementation should make these tests pass
+#
+# Test Dependencies:
+#   - Requires lang.new() to create menubarType objects
+#   - Cursor-based verbs require target.set() for menubar navigation
+#   - Script uses scratch tables for temporary storage
+
+tests:
+  # ==========================================================================
+  # menu.addMenuCommand() Tests
+  # ==========================================================================
+
+  - name: "menu.addMenuCommand - create new menu and add item"
+    description: "Add a command to a new menubar, creating the menu if it doesn't exist"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.testMenu);
+      local(ok = menu.addMenuCommand(@workspace.testMenu, "File", "New", "dialog.alert(\"New!\")"));
+      delete(@workspace.testMenu);
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  - name: "menu.addMenuCommand - add multiple items to same menu"
+    description: "Add multiple commands to the same menu"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.testMenu);
+      menu.addMenuCommand(@workspace.testMenu, "Edit", "Cut", "edit.cut()");
+      menu.addMenuCommand(@workspace.testMenu, "Edit", "Copy", "edit.copy()");
+      local(ok = menu.addMenuCommand(@workspace.testMenu, "Edit", "Paste", "edit.paste()"));
+      delete(@workspace.testMenu);
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  - name: "menu.addMenuCommand - replace existing item script"
+    description: "Adding an item that already exists should replace its script"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.testMenu);
+
+      # Add initial item
+      menu.addMenuCommand(@workspace.testMenu, "File", "Open", "oldScript()");
+
+      # Replace with new script
+      local(ok = menu.addMenuCommand(@workspace.testMenu, "File", "Open", "newScript()"));
+
+      delete(@workspace.testMenu);
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  - name: "menu.addMenuCommand - create multiple menus"
+    description: "Add items to different menus in the same menubar"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.testMenu);
+
+      menu.addMenuCommand(@workspace.testMenu, "File", "New", "file.new()");
+      menu.addMenuCommand(@workspace.testMenu, "Edit", "Undo", "edit.undo()");
+      local(ok = menu.addMenuCommand(@workspace.testMenu, "Help", "About", "help.about()"));
+
+      delete(@workspace.testMenu);
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  # ==========================================================================
+  # menu.deleteMenuCommand() Tests
+  # ==========================================================================
+
+  - name: "menu.deleteMenuCommand - delete existing item"
+    description: "Delete a command that exists in the menu"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.testMenu);
+      menu.addMenuCommand(@workspace.testMenu, "File", "ToDelete", "script()");
+      local(ok = menu.deleteMenuCommand(@workspace.testMenu, "File", "ToDelete"));
+      delete(@workspace.testMenu);
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  - name: "menu.deleteMenuCommand - delete nonexistent item returns false"
+    description: "Attempting to delete a nonexistent item should return false"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.testMenu);
+
+      # Try to delete item that doesn't exist
+      local(ok = menu.deleteMenuCommand(@workspace.testMenu, "File", "DoesNotExist"));
+
+      delete(@workspace.testMenu);
+      return ok
+    expected_success: true
+    expected_result: "false"
+
+  - name: "menu.deleteMenuCommand - delete from nonexistent menu returns false"
+    description: "Deleting from a menu that doesn't exist should return false"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.testMenu);
+
+      # Try to delete from menu that doesn't exist
+      local(ok = menu.deleteMenuCommand(@workspace.testMenu, "NoSuchMenu", "Item"));
+
+      delete(@workspace.testMenu);
+      return ok
+    expected_success: true
+    expected_result: "false"
+
+  - name: "menu.deleteMenuCommand - verify item is actually removed"
+    description: "After deletion, adding same item again should work"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.testMenu);
+
+      # Add, delete, then add again with different script
+      menu.addMenuCommand(@workspace.testMenu, "File", "Test", "original()");
+      menu.deleteMenuCommand(@workspace.testMenu, "File", "Test");
+
+      # Should succeed - item was deleted
+      local(ok = menu.addMenuCommand(@workspace.testMenu, "File", "Test", "replacement()"));
+
+      delete(@workspace.testMenu);
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  # ==========================================================================
+  # menu.getScript() and menu.setScript() Tests
+  # NOTE: These are cursor-based verbs that operate on the current menu
+  # selection. In headless mode, we need to verify they can work without
+  # a GUI window by using target.set() on the menubar.
+  # ==========================================================================
+
+  - name: "menu.getScript - retrieve script from menu item"
+    description: "Get the script attached to a menu item"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.testMenu);
+
+      # Add a command with a known script
+      menu.addMenuCommand(@workspace.testMenu, "Test", "MyItem", "dialog.alert(\"Hello\")");
+
+      # Set target to the menubar and navigate to item
+      # NOTE: This may require op.find() or similar to locate the item
+      target.set(@workspace.testMenu);
+
+      # Get the script into a scratch location
+      local(ok = menu.getScript(@workspace.retrievedScript));
+
+      # Verify the script was retrieved
+      local(result = defined(workspace.retrievedScript));
+
+      # Clean up
+      delete(@workspace.testMenu);
+      try {delete(@workspace.retrievedScript)};
+
+      return result
+    expected_success: true
+    expected_result: "true"
+
+  - name: "menu.setScript - change script on menu item"
+    description: "Set a new script on a menu item using address"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.testMenu);
+
+      # Add initial command
+      menu.addMenuCommand(@workspace.testMenu, "Test", "MyItem", "original()");
+
+      # Create a new script to set
+      workspace.newScript = "replacement()";
+
+      # Set target and change the script
+      target.set(@workspace.testMenu);
+
+      # Set the script from our stored value
+      local(ok = menu.setScript(@workspace.newScript));
+
+      # Clean up
+      delete(@workspace.testMenu);
+      delete(@workspace.newScript);
+
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  - name: "menu.getScript and setScript - round-trip verification"
+    description: "Set a script, get it back, verify they match"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.testMenu);
+
+      # Add a command
+      local(originalScript = "dialog.notify(\"test\")");
+      menu.addMenuCommand(@workspace.testMenu, "File", "Test", originalScript);
+
+      # Set target
+      target.set(@workspace.testMenu);
+
+      # Get the script back
+      menu.getScript(@workspace.retrieved);
+
+      # Compare
+      local(match = (workspace.retrieved == originalScript));
+
+      # Clean up
+      delete(@workspace.testMenu);
+      try {delete(@workspace.retrieved)};
+
+      return match
+    expected_success: true
+    expected_result: "true"
+
+  # ==========================================================================
+  # menu.getCommandKey() and menu.setCommandKey() Tests
+  # NOTE: These verbs operate on the current cursor position in the menu.
+  # They get/set keyboard shortcuts like Cmd+S, Ctrl+N, etc.
+  # ==========================================================================
+
+  - name: "menu.setCommandKey - set keyboard shortcut"
+    description: "Set a command key (keyboard shortcut) on a menu item"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.testMenu);
+
+      # Add a command
+      menu.addMenuCommand(@workspace.testMenu, "File", "Save", "file.save()");
+
+      # Set target to the menubar
+      target.set(@workspace.testMenu);
+
+      # Set command key to 'S'
+      local(ok = menu.setCommandKey("S"));
+
+      delete(@workspace.testMenu);
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  - name: "menu.getCommandKey - retrieve keyboard shortcut"
+    description: "Get the command key from a menu item"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.testMenu);
+
+      # Add a command and set its shortcut
+      menu.addMenuCommand(@workspace.testMenu, "File", "Open", "file.open()");
+      target.set(@workspace.testMenu);
+      menu.setCommandKey("O");
+
+      # Now retrieve it
+      local(key = menu.getCommandKey());
+
+      # Should contain "O" (exact format may vary: "O", "Cmd+O", "Ctrl+O")
+      local(hasKey = string.contains(key, "O"));
+
+      delete(@workspace.testMenu);
+      return hasKey
+    expected_success: true
+    expected_result: "true"
+
+  - name: "menu.setCommandKey - clear shortcut with empty string"
+    description: "Setting empty string should clear the command key"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.testMenu);
+
+      # Add command with shortcut
+      menu.addMenuCommand(@workspace.testMenu, "File", "Test", "test()");
+      target.set(@workspace.testMenu);
+      menu.setCommandKey("T");
+
+      # Now clear it
+      menu.setCommandKey("");
+
+      # Verify it's cleared
+      local(key = menu.getCommandKey());
+      local(cleared = (key == "") or (sizeof(key) == 0));
+
+      delete(@workspace.testMenu);
+      return cleared
+    expected_success: true
+    expected_result: "true"
+
+  - name: "menu.getCommandKey and setCommandKey - round-trip"
+    description: "Set a key, get it back, verify round-trip works"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.testMenu);
+
+      menu.addMenuCommand(@workspace.testMenu, "Edit", "Find", "edit.find()");
+      target.set(@workspace.testMenu);
+
+      # Set key
+      menu.setCommandKey("F");
+
+      # Get key back
+      local(key = menu.getCommandKey());
+
+      # Should contain F
+      local(match = string.contains(key, "F"));
+
+      delete(@workspace.testMenu);
+      return match
+    expected_success: true
+    expected_result: "true"
+
+  # ==========================================================================
+  # Edge Cases and Error Conditions
+  # ==========================================================================
+
+  - name: "menu.addMenuCommand - empty menu name creates unnamed menu"
+    description: "Using empty string for menu name should still work"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.testMenu);
+
+      # Empty menu name - behavior may vary
+      local(ok = menu.addMenuCommand(@workspace.testMenu, "", "Item", "script()"));
+
+      delete(@workspace.testMenu);
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  - name: "menu.addMenuCommand - empty item name"
+    description: "Using empty string for item name"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.testMenu);
+
+      # Empty item name - may fail or create separator
+      local(ok = menu.addMenuCommand(@workspace.testMenu, "File", "", "script()"));
+
+      delete(@workspace.testMenu);
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  - name: "menu.addMenuCommand - special characters in item name"
+    description: "Item names with special characters should work"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.testMenu);
+
+      # Test with special characters
+      local(ok = menu.addMenuCommand(@workspace.testMenu, "File", "Save As...", "file.saveAs()"));
+
+      delete(@workspace.testMenu);
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  - name: "menu.addMenuCommand - separator item"
+    description: "Using dash for item name may create separator"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.testMenu);
+
+      # Dash often indicates separator in menus
+      local(ok = menu.addMenuCommand(@workspace.testMenu, "File", "-", ""));
+
+      delete(@workspace.testMenu);
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  - name: "menu.addMenuCommand - multiline script"
+    description: "Script parameter can contain multiple lines"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.testMenu);
+
+      local(multilineScript = "local(x = 1);\nlocal(y = 2);\nreturn(x + y)");
+      local(ok = menu.addMenuCommand(@workspace.testMenu, "Tools", "Calculate", multilineScript));
+
+      delete(@workspace.testMenu);
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  # ==========================================================================
+  # Category B Verbs - Display/Installation (Should Remain Stubbed)
+  # These verbs interact with the OS menu system and MUST return false
+  # in headless mode. They cannot work without a GUI.
+  # ==========================================================================
+
+  - name: "menu.buildMenuBar - stubbed in headless mode"
+    description: "Display verb should return false in headless mode"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.testMenu);
+      menu.addMenuCommand(@workspace.testMenu, "File", "New", "test()");
+
+      # buildMenuBar installs menus in OS - should be stubbed
+      local(result = menu.buildMenuBar());
+
+      delete(@workspace.testMenu);
+      return result
+    expected_success: true
+    expected_result: "false"
+
+  - name: "menu.install - stubbed in headless mode"
+    description: "menu.install should return false without GUI"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.testMenu);
+      menu.addMenuCommand(@workspace.testMenu, "Custom", "Test", "test()");
+
+      # install() adds menu to OS menu bar - should be stubbed
+      target.set(@workspace.testMenu);
+      local(result = menu.install());
+
+      delete(@workspace.testMenu);
+      return result
+    expected_success: true
+    expected_result: "false"
+
+  - name: "menu.isInstalled - stubbed in headless mode"
+    description: "menu.isInstalled should return false without GUI"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.testMenu);
+
+      # isInstalled checks if menu is in OS menu bar - always false headless
+      target.set(@workspace.testMenu);
+      local(result = menu.isInstalled());
+
+      delete(@workspace.testMenu);
+      return result
+    expected_success: true
+    expected_result: "false"
+
+  # ==========================================================================
+  # Integration Tests - Complex Scenarios
+  # ==========================================================================
+
+  - name: "menu verbs - build complete menu structure"
+    description: "Create a realistic menu structure with multiple menus and items"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.testMenu);
+
+      # Build File menu
+      menu.addMenuCommand(@workspace.testMenu, "File", "New", "fileNew()");
+      menu.addMenuCommand(@workspace.testMenu, "File", "Open...", "fileOpen()");
+      menu.addMenuCommand(@workspace.testMenu, "File", "Save", "fileSave()");
+      menu.addMenuCommand(@workspace.testMenu, "File", "Save As...", "fileSaveAs()");
+      menu.addMenuCommand(@workspace.testMenu, "File", "-", "");
+      menu.addMenuCommand(@workspace.testMenu, "File", "Quit", "fileQuit()");
+
+      # Build Edit menu
+      menu.addMenuCommand(@workspace.testMenu, "Edit", "Undo", "editUndo()");
+      menu.addMenuCommand(@workspace.testMenu, "Edit", "-", "");
+      menu.addMenuCommand(@workspace.testMenu, "Edit", "Cut", "editCut()");
+      menu.addMenuCommand(@workspace.testMenu, "Edit", "Copy", "editCopy()");
+      menu.addMenuCommand(@workspace.testMenu, "Edit", "Paste", "editPaste()");
+
+      # Set some shortcuts
+      target.set(@workspace.testMenu);
+      # Note: Would need to navigate to specific items to set shortcuts
+
+      delete(@workspace.testMenu);
+      return true
+    expected_success: true
+    expected_result: "true"
+
+  - name: "menu verbs - modify existing menu"
+    description: "Add items, delete some, modify others"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.testMenu);
+
+      # Initial items
+      menu.addMenuCommand(@workspace.testMenu, "Tools", "Item1", "script1()");
+      menu.addMenuCommand(@workspace.testMenu, "Tools", "Item2", "script2()");
+      menu.addMenuCommand(@workspace.testMenu, "Tools", "Item3", "script3()");
+
+      # Delete middle item
+      menu.deleteMenuCommand(@workspace.testMenu, "Tools", "Item2");
+
+      # Add new item (should go at end)
+      menu.addMenuCommand(@workspace.testMenu, "Tools", "Item4", "script4()");
+
+      # Modify first item's script
+      menu.addMenuCommand(@workspace.testMenu, "Tools", "Item1", "modifiedScript1()");
+
+      delete(@workspace.testMenu);
+      return true
+    expected_success: true
+    expected_result: "true"

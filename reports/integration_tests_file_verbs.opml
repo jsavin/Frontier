@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>File Verbs (file_verbs)</title>
-    <dateCreated>Sun, 01 Feb 2026 20:16:22 GMT</dateCreated>
+    <dateCreated>Tue, 03 Feb 2026 02:57:04 GMT</dateCreated>
   </head>
   <body>
     <outline text="file.fileFromPath - extract filename from path - Extract filename component from path string (like basename)">
@@ -355,7 +355,7 @@
         <outline text="return (newPath == tmpDir)"/>
       </outline>
     </outline>
-    <outline text="file.open/close - open and close file for reading - Open file, verify handle, then close it">
+    <outline text="file.open/close - open and close file for reading - Open file by path, verify success, then close it">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
       </outline>
@@ -363,13 +363,12 @@
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
         <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_io.txt&quot;)"/>
         <outline text="file.writeWholeFile(fs, &quot;test content&quot;)"/>
-        <outline text="local(f = file.open(fs, &quot;r&quot;))"/>
-        <outline text="local(ok = (f != nil))"/>
-        <outline text="file.close(f)"/>
+        <outline text="local(ok = file.open(fs))"/>
+        <outline text="file.close(fs)"/>
         <outline text="return ok"/>
       </outline>
     </outline>
-    <outline text="file.read - read bytes from file - Open file and read specific number of bytes">
+    <outline text="file.read - read bytes from file - Open file by path and read specific number of bytes">
       <outline text="Metadata">
         <outline text="expected_result: Hello"/>
       </outline>
@@ -377,10 +376,79 @@
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
         <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_read.txt&quot;)"/>
         <outline text="file.writeWholeFile(fs, &quot;Hello World!&quot;)"/>
-        <outline text="local(f = file.open(fs, &quot;r&quot;))"/>
-        <outline text="local(data = file.read(f, 5))"/>
-        <outline text="file.close(f)"/>
-        <outline text="return data"/>
+        <outline text="file.open(fs)"/>
+        <outline text="local(data = file.read(fs, 5))"/>
+        <outline text="file.close(fs)"/>
+        <outline text="return string(data)"/>
+      </outline>
+    </outline>
+    <outline text="file.read - sequential reads maintain position - Multiple reads from same open file advance position">
+      <outline text="Metadata">
+        <outline text="expected_result: abc|def"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_read_seq.txt&quot;)"/>
+        <outline text="file.writeWholeFile(fs, &quot;abcdefghij&quot;)"/>
+        <outline text="file.open(fs)"/>
+        <outline text="local(s1 = file.read(fs, 3))"/>
+        <outline text="local(s2 = file.read(fs, 3))"/>
+        <outline text="file.close(fs)"/>
+        <outline text="return string(s1) + &quot;|&quot; + string(s2)"/>
+      </outline>
+    </outline>
+    <outline text="file.read - infinity reads remaining bytes - Using infinity as count reads all remaining bytes">
+      <outline text="Metadata">
+        <outline text="expected_result: defghij"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_read_inf.txt&quot;)"/>
+        <outline text="file.writeWholeFile(fs, &quot;abcdefghij&quot;)"/>
+        <outline text="file.open(fs)"/>
+        <outline text="file.read(fs, 3);  // skip first 3 bytes"/>
+        <outline text="local(rest = file.read(fs, infinity))"/>
+        <outline text="file.close(fs)"/>
+        <outline text="return string(rest)"/>
+      </outline>
+    </outline>
+    <outline text="file.read - requires file.open first - Reading from unopened file should fail">
+      <outline text="Metadata">
+        <outline text="expected_success: False"/>
+        <outline text="expected_error: File not open"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_read_unopened.txt&quot;)"/>
+        <outline text="file.writeWholeFile(fs, &quot;test&quot;)"/>
+        <outline text="return file.read(fs, 5)"/>
+      </outline>
+    </outline>
+    <outline text="file.write - write bytes to open file - Write data to already-opened file">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_write_io.txt&quot;)"/>
+        <outline text="file.new(fs)"/>
+        <outline text="file.open(fs)"/>
+        <outline text="local(ok = file.write(fs, &quot;hello&quot;))"/>
+        <outline text="file.close(fs)"/>
+        <outline text="local(content = file.readWholeFile(fs))"/>
+        <outline text="return ok and (content == &quot;hello&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="file.write - requires file.open first - Writing to unopened file should fail">
+      <outline text="Metadata">
+        <outline text="expected_success: False"/>
+        <outline text="expected_error: File not open"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_write_unopened.txt&quot;)"/>
+        <outline text="file.new(fs)"/>
+        <outline text="return file.write(fs, &quot;test&quot;)"/>
       </outline>
     </outline>
     <outline text="file.readline - read line from file - Read text file line by line">
@@ -391,9 +459,9 @@
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
         <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_readline.txt&quot;)"/>
         <outline text="file.writeWholeFile(fs, &quot;Line 1\nLine 2\nLine 3&quot;)"/>
-        <outline text="local(f = file.open(fs, &quot;r&quot;))"/>
-        <outline text="local(line1 = file.readline(f))"/>
-        <outline text="file.close(f)"/>
+        <outline text="file.open(fs)"/>
+        <outline text="local(line1 = file.readline(fs))"/>
+        <outline text="file.close(fs)"/>
         <outline text="return line1"/>
       </outline>
     </outline>
@@ -405,11 +473,11 @@
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
         <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_eof.txt&quot;)"/>
         <outline text="file.writeWholeFile(fs, &quot;AB&quot;)"/>
-        <outline text="local(f = file.open(fs, &quot;r&quot;))"/>
-        <outline text="file.read(f, 2)"/>
-        <outline text="file.read(f, 1)"/>
-        <outline text="local(isEof = file.endoffile(f))"/>
-        <outline text="file.close(f)"/>
+        <outline text="file.open(fs)"/>
+        <outline text="file.read(fs, 2)"/>
+        <outline text="file.read(fs, 1)"/>
+        <outline text="local(isEof = file.endoffile(fs))"/>
+        <outline text="file.close(fs)"/>
         <outline text="return isEof"/>
       </outline>
     </outline>
@@ -421,10 +489,10 @@
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
         <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_getpos.txt&quot;)"/>
         <outline text="file.writeWholeFile(fs, &quot;0123456789&quot;)"/>
-        <outline text="local(f = file.open(fs, &quot;r&quot;))"/>
-        <outline text="file.read(f, 5)"/>
-        <outline text="local(pos = file.getposition(f))"/>
-        <outline text="file.close(f)"/>
+        <outline text="file.open(fs)"/>
+        <outline text="file.read(fs, 5)"/>
+        <outline text="local(pos = file.getposition(fs))"/>
+        <outline text="file.close(fs)"/>
         <outline text="return pos"/>
       </outline>
     </outline>
@@ -436,11 +504,11 @@
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
         <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_setpos.txt&quot;)"/>
         <outline text="file.writeWholeFile(fs, &quot;ABCDEFGH&quot;)"/>
-        <outline text="local(f = file.open(fs, &quot;r&quot;))"/>
-        <outline text="file.setposition(f, 3)"/>
-        <outline text="local(data = file.read(f, 2))"/>
-        <outline text="file.close(f)"/>
-        <outline text="return data"/>
+        <outline text="file.open(fs)"/>
+        <outline text="file.setposition(fs, 3)"/>
+        <outline text="local(data = file.read(fs, 2))"/>
+        <outline text="file.close(fs)"/>
+        <outline text="return string(data)"/>
       </outline>
     </outline>
     <outline text="file.getendoffile - get file size via handle - Get file size using open file handle">
@@ -451,9 +519,9 @@
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
         <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_geteof.txt&quot;)"/>
         <outline text="file.writeWholeFile(fs, &quot;12345&quot;)"/>
-        <outline text="local(f = file.open(fs, &quot;r&quot;))"/>
-        <outline text="local(size = file.getendoffile(f))"/>
-        <outline text="file.close(f)"/>
+        <outline text="file.open(fs)"/>
+        <outline text="local(size = file.getendoffile(fs))"/>
+        <outline text="file.close(fs)"/>
         <outline text="return size"/>
       </outline>
     </outline>
@@ -555,11 +623,11 @@
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
         <outline text="local(filePath = tmpDir + &quot;/&quot; + &quot;setpos_beyond_eof.txt&quot;)"/>
         <outline text="file.writeWholeFile(filePath, &quot;test&quot;)"/>
-        <outline text="local(f = file.open(filePath, &quot;r&quot;))"/>
-        <outline text="local(eofPos = file.getendoffile(f))"/>
-        <outline text="local(ok = file.setposition(f, eofPos + 100))"/>
-        <outline text="local(newPos = file.getposition(f))"/>
-        <outline text="file.close(f)"/>
+        <outline text="file.open(filePath)"/>
+        <outline text="local(eofPos = file.getendoffile(filePath))"/>
+        <outline text="local(ok = file.setposition(filePath, eofPos + 100))"/>
+        <outline text="local(newPos = file.getposition(filePath))"/>
+        <outline text="file.close(filePath)"/>
         <outline text="return ok and (newPos == (eofPos + 100))"/>
       </outline>
     </outline>
@@ -571,9 +639,9 @@
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
         <outline text="local(filePath = tmpDir + &quot;/&quot; + &quot;readline_lf.txt&quot;)"/>
         <outline text="file.writeWholeFile(filePath, &quot;line1\nline2&quot;)"/>
-        <outline text="local(f = file.open(filePath, &quot;r&quot;))"/>
-        <outline text="local(line = file.readline(f))"/>
-        <outline text="file.close(f)"/>
+        <outline text="file.open(filePath)"/>
+        <outline text="local(line = file.readline(filePath))"/>
+        <outline text="file.close(filePath)"/>
         <outline text="return line"/>
       </outline>
     </outline>
@@ -585,9 +653,9 @@
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
         <outline text="local(filePath = tmpDir + &quot;/&quot; + &quot;readline_crlf.txt&quot;)"/>
         <outline text="file.writeWholeFile(filePath, &quot;line1\r\nline2&quot;)"/>
-        <outline text="local(f = file.open(filePath, &quot;r&quot;))"/>
-        <outline text="local(line = file.readline(f))"/>
-        <outline text="file.close(f)"/>
+        <outline text="file.open(filePath)"/>
+        <outline text="local(line = file.readline(filePath))"/>
+        <outline text="file.close(filePath)"/>
         <outline text="return line"/>
       </outline>
     </outline>
@@ -599,9 +667,9 @@
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
         <outline text="local(filePath = tmpDir + &quot;/&quot; + &quot;readline_cr.txt&quot;)"/>
         <outline text="file.writeWholeFile(filePath, &quot;line1\rline2&quot;)"/>
-        <outline text="local(f = file.open(filePath, &quot;r&quot;))"/>
-        <outline text="local(line = file.readline(f))"/>
-        <outline text="file.close(f)"/>
+        <outline text="file.open(filePath)"/>
+        <outline text="local(line = file.readline(filePath))"/>
+        <outline text="file.close(filePath)"/>
         <outline text="return line"/>
       </outline>
     </outline>

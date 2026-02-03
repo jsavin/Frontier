@@ -150,6 +150,8 @@ static void headless_log_error(const bigstring bs) {
         len = (short)sizeof(buffer) - 1;
     memcpy(buffer, stringbaseaddress(bs), (size_t)len);
     buffer[len] = '\0';
+    /* Note: Errors inside try blocks are normal control flow, but we still log them.
+     * A future enhancement could track try block state to log these at DEBUG level. */
     log_error(LOG_COMP_STARTUP, "headless lang error: %s", buffer);
 }
 

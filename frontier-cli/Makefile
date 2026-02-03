@@ -10,6 +10,7 @@ CFLAGS = -std=c17 -Wall -Wextra -O0 -g -fpascal-strings \
          -DHEADLESS_USE_REAL_OPLANGTEXT \
          -DHEADLESS_TEST_PORTABLE_FILE -DHEADLESS_LINKS_REAL_DB \
          -DHEADLESS_USE_REAL_TABLEPACK -DHEADLESS_USE_REAL_TABLEVALTOTABLE \
+         -DHEADLESS_LINKS_REAL_MENUVERBS \
          -DUNIX_COMPILE -DC_LIBRARY -DNO_OS_INLINE
 
 # Architecture support (for universal binary builds)
@@ -149,7 +150,9 @@ RUNTIME_SOURCES = \
     ../Common/source/headless_selection.c \
     ../Common/source/shell_api.c \
     ../Common/source/shell_api_headless.c \
-    ../Common/source/sysshellcall.c
+    ../Common/source/sysshellcall.c \
+    ../Common/source/menupack.c \
+    ../Common/source/menuverbs.c
 
 # Headless adapters mirrored from tests/
 HEADLESS_STUBS = \
@@ -160,6 +163,7 @@ HEADLESS_STUBS = \
     ../portable/paige_text_extractor.c \
     $(TESTSDIR)/headless_pict_stubs.c \
     $(TESTSDIR)/headless_menu_stubs.c \
+    $(TESTSDIR)/headless_menu_globals.c \
     $(TESTSDIR)/headless_search_stubs.c \
     $(TESTSDIR)/headless_mac_compat.c \
     $(TESTSDIR)/headless_langregexp_stub.c \

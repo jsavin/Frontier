@@ -128,10 +128,17 @@ static boolean getoutlinefromtarget(hdloutlinerecord *ho, bigstring bserror) {
         return false;
     }
 
-    /* Verify it's an outline processor type */
-    if ((**hv).id != idoutlineprocessor) {
-        seterrorstring("target is not an outline", bserror);
-        return false;
+    /* Verify it's an outline-based processor type.
+     * Scripts (idscriptprocessor) and menus (idmenuprocessor) are also outlines
+     * internally - they use the same hdloutlinerecord structure. */
+    switch ((**hv).id) {
+        case idoutlineprocessor:
+        case idscriptprocessor:
+        case idmenuprocessor:
+            break;  /* Valid outline types */
+        default:
+            seterrorstring("target is not an outline", bserror);
+            return false;
     }
 
     /* Ensure outline is in memory */
