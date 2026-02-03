@@ -32,17 +32,11 @@ tests:
   - name: "menu.addMenuCommand - create new menu and add item"
     description: "Add a command to a new menubar, creating the menu if it doesn't exist"
     skip: true
-    skip_reason: "TDD: Menu verbs not yet compiled in headless mode"
+    skip_reason: "TDD: Menu verbs return 'not implemented' in headless stubs (tests/headless_menu_verbs.c)"
     script: |
-      # Create a new menubar object
       new(menubarType, @workspace.testMenu);
-
-      # Add a command to a menu named "File" (creates menu if needed)
       local(ok = menu.addMenuCommand(@workspace.testMenu, "File", "New", "dialog.alert(\"New!\")"));
-
-      # Clean up
       delete(@workspace.testMenu);
-
       return ok
     expected_success: true
     expected_result: "true"
@@ -50,15 +44,12 @@ tests:
   - name: "menu.addMenuCommand - add multiple items to same menu"
     description: "Add multiple commands to the same menu"
     skip: true
-    skip_reason: "TDD: Menu verbs not yet compiled in headless mode"
+    skip_reason: "TDD: Menu verbs return 'not implemented' in headless stubs (tests/headless_menu_verbs.c)"
     script: |
       new(menubarType, @workspace.testMenu);
-
-      # Add multiple items
       menu.addMenuCommand(@workspace.testMenu, "Edit", "Cut", "edit.cut()");
       menu.addMenuCommand(@workspace.testMenu, "Edit", "Copy", "edit.copy()");
       local(ok = menu.addMenuCommand(@workspace.testMenu, "Edit", "Paste", "edit.paste()"));
-
       delete(@workspace.testMenu);
       return ok
     expected_success: true
@@ -105,14 +96,11 @@ tests:
   - name: "menu.deleteMenuCommand - delete existing item"
     description: "Delete a command that exists in the menu"
     skip: true
-    skip_reason: "TDD: Menu verbs not yet compiled in headless mode"
+    skip_reason: "TDD: Menu verbs return 'not implemented' in headless stubs (tests/headless_menu_verbs.c)"
     script: |
       new(menubarType, @workspace.testMenu);
-
-      # Add then delete
       menu.addMenuCommand(@workspace.testMenu, "File", "ToDelete", "script()");
       local(ok = menu.deleteMenuCommand(@workspace.testMenu, "File", "ToDelete"));
-
       delete(@workspace.testMenu);
       return ok
     expected_success: true

@@ -43,6 +43,8 @@
 #include "menuinternal.h"
 #include "db_format.h" /* 2025-11-23 Codex: BE helpers for menu metadata */
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
+#include "logging.h"    /* For structured logging of v7→legacy truncation warnings */
+#include <limits.h>     /* For SHRT_MAX */
 
 	
 
@@ -715,7 +717,14 @@ static boolean meunpackmenustructure_legacy (Handle hpacked, hdlmenurecord *hmen
 /* Modern (v7+) pack/unpack. For now, reuse legacy implementation but keep the fork explicit. */
 /* Modern (v7+) pack/unpack with BE64 addresses and reserved padding. */
 
-/* Host-to-disk byte order conversion helpers (return big-endian values) */
+/* Host-to-disk byte order conversion helpers (return big-endian values)
+ *
+ * TODO: These inline helpers are duplicated in langhash.c and memory.c.
+ * Consider consolidating into a shared header (e.g., byteorder_helpers.h)
+ * to eliminate redundancy and ensure consistent implementations.
+ * See: Common/source/langhash.c (lines ~493-591)
+ *      Common/source/memory.c (lines ~1399-1415)
+ */
 static inline uint16_t host_to_disk_uint16(uint16_t value) {
 #ifdef SWAP_BYTE_ORDER
     return (uint16_t)doshortswap((short)value);
@@ -850,9 +859,29 @@ static boolean meunpackmenustructure_v7(Handle hpacked, hdlmenurecord *hmenureco
 	clearbytes(&legacy, sizeof(legacy));
 	legacy.versionnumber = 1; /* not used downstream */
 	legacy.adroutline = (dbaddress) disk_to_host_uint64(modern.adroutline);
-	legacy.lnumcursor = (short) disk_to_host_uint64(modern.lnumcursor);
-	legacy.flags = (short) disk_to_host_uint32(modern.flags);
-	legacy.menuactivelayer = (short) disk_to_host_uint32(modern.menuactiveitem);
+
+	/* Note: Legacy format uses 16-bit shorts. Values beyond SHRT_MAX will be truncated.
+	 * This is a known limitation when converting from v7 format. */
+	uint64_t lnumcursor_value = disk_to_host_uint64(modern.lnumcursor);
+	if (lnumcursor_value > SHRT_MAX) {
+		log_debug(LOG_COMP_DB, "menupack: truncating lnumcursor %llu to 16-bit (legacy format limitation)",
+		          (unsigned long long)lnumcursor_value);
+	}
+	legacy.lnumcursor = (short) lnumcursor_value;
+
+	uint32_t flags_value = disk_to_host_uint32(modern.flags);
+	if (flags_value > SHRT_MAX) {
+		log_debug(LOG_COMP_DB, "menupack: truncating flags %u to 16-bit (legacy format limitation)",
+		          (unsigned)flags_value);
+	}
+	legacy.flags = (short) flags_value;
+
+	uint32_t menuactiveitem_value = disk_to_host_uint32(modern.menuactiveitem);
+	if (menuactiveitem_value > SHRT_MAX) {
+		log_debug(LOG_COMP_DB, "menupack: truncating menuactiveitem %u to 16-bit (legacy format limitation)",
+		          (unsigned)menuactiveitem_value);
+	}
+	legacy.menuactivelayer = (short) menuactiveitem_value;
 
 	/* Remaining handle contains outline + scripts. */
 	if (!opunpack(hpacked, &ix, &ho))

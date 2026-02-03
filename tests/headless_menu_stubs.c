@@ -283,9 +283,10 @@ void mesetcallbacks (hdloutlinerecord houtline) {
 }
 
 boolean mesomethingdirty (hdlmenurecord hmenurecord) {
-    /* In headless mode, nothing is dirty */
-    (void) hmenurecord;
-    return (false);
+    /* Return actual dirty state for proper save tracking */
+    if (hmenurecord == nil)
+        return (false);
+    return ((**hmenurecord).fldirty);
 }
 
 boolean medisposemenubar (hdlmenubarstack hstack) {
@@ -346,10 +347,14 @@ boolean meloadoutline_internal (const db_context *ctx, dbaddress adr,
             fl = dbrefhandle (adr, &hpackedoutline);
         }
 
-        if (fl) {
-            fl = opunpack (hpackedoutline, &ixload, houtline);
-            disposehandle (hpackedoutline);
+        if (!fl) {
+            /* Database read failed - leave *houtline as nil */
+            oppopoutline ();
+            return (false);
         }
+
+        fl = opunpack (hpackedoutline, &ixload, houtline);
+        disposehandle (hpackedoutline);
     }
 
     oppopoutline ();
