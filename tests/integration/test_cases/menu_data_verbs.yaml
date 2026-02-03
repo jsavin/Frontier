@@ -32,7 +32,7 @@ tests:
   - name: "menu.addMenuCommand - create new menu and add item"
     description: "Add a command to a new menubar, creating the menu if it doesn't exist"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.testMenu);
       local(ok = menu.addMenuCommand(@workspace.testMenu, "File", "New", "dialog.alert(\"New!\")"));
@@ -44,7 +44,7 @@ tests:
   - name: "menu.addMenuCommand - add multiple items to same menu"
     description: "Add multiple commands to the same menu"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.testMenu);
       menu.addMenuCommand(@workspace.testMenu, "Edit", "Cut", "edit.cut()");
@@ -58,7 +58,7 @@ tests:
   - name: "menu.addMenuCommand - replace existing item script"
     description: "Adding an item that already exists should replace its script"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.testMenu);
 
@@ -76,7 +76,7 @@ tests:
   - name: "menu.addMenuCommand - create multiple menus"
     description: "Add items to different menus in the same menubar"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.testMenu);
 
@@ -96,7 +96,7 @@ tests:
   - name: "menu.deleteMenuCommand - delete existing item"
     description: "Delete a command that exists in the menu"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.testMenu);
       menu.addMenuCommand(@workspace.testMenu, "File", "ToDelete", "script()");
@@ -109,7 +109,7 @@ tests:
   - name: "menu.deleteMenuCommand - delete nonexistent item returns false"
     description: "Attempting to delete a nonexistent item should return false"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.testMenu);
 
@@ -124,7 +124,7 @@ tests:
   - name: "menu.deleteMenuCommand - delete from nonexistent menu returns false"
     description: "Deleting from a menu that doesn't exist should return false"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.testMenu);
 
@@ -139,7 +139,7 @@ tests:
   - name: "menu.deleteMenuCommand - verify item is actually removed"
     description: "After deletion, adding same item again should work"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.testMenu);
 
@@ -165,7 +165,7 @@ tests:
   - name: "menu.getScript - retrieve script from menu item"
     description: "Get the script attached to a menu item"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.testMenu);
 
@@ -193,7 +193,7 @@ tests:
   - name: "menu.setScript - change script on menu item"
     description: "Set a new script on a menu item using address"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.testMenu);
 
@@ -220,7 +220,7 @@ tests:
   - name: "menu.getScript and setScript - round-trip verification"
     description: "Set a script, get it back, verify they match"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.testMenu);
 
@@ -254,7 +254,7 @@ tests:
   - name: "menu.setCommandKey - set keyboard shortcut"
     description: "Set a command key (keyboard shortcut) on a menu item"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.testMenu);
 
@@ -275,7 +275,7 @@ tests:
   - name: "menu.getCommandKey - retrieve keyboard shortcut"
     description: "Get the command key from a menu item"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.testMenu);
 
@@ -298,7 +298,7 @@ tests:
   - name: "menu.setCommandKey - clear shortcut with empty string"
     description: "Setting empty string should clear the command key"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.testMenu);
 
@@ -322,7 +322,7 @@ tests:
   - name: "menu.getCommandKey and setCommandKey - round-trip"
     description: "Set a key, get it back, verify round-trip works"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.testMenu);
 
@@ -350,7 +350,7 @@ tests:
   - name: "menu.addMenuCommand - empty menu name creates unnamed menu"
     description: "Using empty string for menu name should still work"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.testMenu);
 
@@ -365,7 +365,7 @@ tests:
   - name: "menu.addMenuCommand - empty item name"
     description: "Using empty string for item name"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.testMenu);
 
@@ -380,7 +380,7 @@ tests:
   - name: "menu.addMenuCommand - special characters in item name"
     description: "Item names with special characters should work"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.testMenu);
 
@@ -395,7 +395,7 @@ tests:
   - name: "menu.addMenuCommand - separator item"
     description: "Using dash for item name may create separator"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.testMenu);
 
@@ -410,7 +410,7 @@ tests:
   - name: "menu.addMenuCommand - multiline script"
     description: "Script parameter can contain multiple lines"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.testMenu);
 
@@ -431,7 +431,7 @@ tests:
   - name: "menu.buildMenuBar - stubbed in headless mode"
     description: "Display verb should return false in headless mode"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.testMenu);
       menu.addMenuCommand(@workspace.testMenu, "File", "New", "test()");
@@ -447,7 +447,7 @@ tests:
   - name: "menu.install - stubbed in headless mode"
     description: "menu.install should return false without GUI"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.testMenu);
       menu.addMenuCommand(@workspace.testMenu, "Custom", "Test", "test()");
@@ -464,7 +464,7 @@ tests:
   - name: "menu.isInstalled - stubbed in headless mode"
     description: "menu.isInstalled should return false without GUI"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.testMenu);
 
@@ -484,7 +484,7 @@ tests:
   - name: "menu verbs - build complete menu structure"
     description: "Create a realistic menu structure with multiple menus and items"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.testMenu);
 
@@ -515,7 +515,7 @@ tests:
   - name: "menu verbs - modify existing menu"
     description: "Add items, delete some, modify others"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.testMenu);
 
@@ -546,7 +546,7 @@ tests:
   - name: "menu.addSubMenu - add submenu to existing menu"
     description: "Add a pre-existing menubar as a submenu within another menubar"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       # Create the parent menubar
       new(menubarType, @workspace.parentMenu);
@@ -570,7 +570,7 @@ tests:
   - name: "menu.addSubMenu - add as new top-level menu with empty menuName"
     description: "Using empty string for menuName adds submenu as new top-level menu"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.parentMenu);
 
@@ -590,7 +590,7 @@ tests:
   - name: "menu.addSubMenu - creates menu if menuName doesn't exist"
     description: "If menuName doesn't exist, it should be created"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.parentMenu);
       # parentMenu is empty - no "Custom" menu exists yet
@@ -610,7 +610,7 @@ tests:
   - name: "menu.addSubMenu - submenu address must exist"
     description: "Adding a submenu from nonexistent address should fail"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.parentMenu);
 
@@ -629,7 +629,7 @@ tests:
   - name: "menu.deleteSubMenu - delete existing submenu"
     description: "Delete a menu from the menubar by name"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.testMenu);
 
@@ -649,7 +649,7 @@ tests:
   - name: "menu.deleteSubMenu - delete nonexistent menu returns false"
     description: "Attempting to delete a menu that doesn't exist returns false"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.testMenu);
       menu.addMenuCommand(@workspace.testMenu, "File", "New", "fileNew()");
@@ -665,7 +665,7 @@ tests:
   - name: "menu.deleteSubMenu - can delete single item too"
     description: "deleteSubMenu can delete a single item, not just a submenu"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.testMenu);
       menu.addMenuCommand(@workspace.testMenu, "File", "SingleItem", "doIt()");
@@ -686,7 +686,7 @@ tests:
   - name: "sizeOf - empty menubar"
     description: "sizeOf on empty menubar returns 0"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.testMenu);
       local(size = sizeOf(@workspace.testMenu));
@@ -698,7 +698,7 @@ tests:
   - name: "sizeOf - counts all items"
     description: "sizeOf counts menus and their items"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.testMenu);
 
@@ -716,7 +716,7 @@ tests:
   - name: "sizeOf - counts multiple menus"
     description: "sizeOf counts all headings across multiple menus"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.testMenu);
 
@@ -739,7 +739,7 @@ tests:
   - name: "sizeOf - counts submenus and their contents"
     description: "sizeOf includes submenu items in the count"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.parentMenu);
       new(menubarType, @workspace.subMenu);
@@ -754,15 +754,16 @@ tests:
       # Add submenu to File
       menu.addSubMenu(@workspace.parentMenu, "File", @workspace.subMenu);
 
-      # Expected: File(1) + New(1) + Recent submenu structure
-      # The exact count depends on how submenus are represented
+      # Expected count: File(1) + New(1) + Recent(1) + Doc1(1) + Doc2(1) = 5 minimum
+      # May include additional structure nodes depending on representation
       local(size = sizeOf(@workspace.parentMenu));
 
       delete(@workspace.parentMenu);
       delete(@workspace.subMenu);
 
-      # Size should be > 2 (at minimum File + New + submenu content)
-      return (size > 2)
+      # Verify size is at least the expected minimum (5 headings)
+      local(expectedMinimum = 5);
+      return (size >= expectedMinimum)
     expected_success: true
     expected_result: "true"
 
@@ -774,7 +775,7 @@ tests:
   - name: "cursor navigation - navigate to item and getScript"
     description: "Navigate to specific menu item using op verbs, then get its script"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.testMenu);
 
@@ -807,7 +808,7 @@ tests:
   - name: "cursor navigation - navigate and setScript"
     description: "Navigate to item, change its script, verify change"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.testMenu);
       menu.addMenuCommand(@workspace.testMenu, "File", "Test", "originalScript()");
@@ -837,7 +838,7 @@ tests:
   - name: "cursor navigation - navigate to third item"
     description: "Navigate deeper into menu structure"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.testMenu);
 
@@ -872,7 +873,7 @@ tests:
   - name: "menu.zoomScript - returns false in headless mode"
     description: "zoomScript is a GUI operation, should return false headless"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.testMenu);
       menu.addMenuCommand(@workspace.testMenu, "File", "Test", "script()");
@@ -898,7 +899,7 @@ tests:
   - name: "persistence - save and reload menubar structure"
     description: "Create menubar, save to file, reload, verify structure intact"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       # Create menubar with structure
       new(menubarType, @workspace.testMenu);
@@ -939,7 +940,7 @@ tests:
   - name: "persistence - script content survives save/reload"
     description: "Verify script text is preserved through save/reload cycle"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       local(testScript = "dialog.alert(\"Hello World!\")");
 
@@ -983,7 +984,7 @@ tests:
   - name: "persistence - menu names survive save/reload"
     description: "Verify menu and item names are preserved"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.testMenu);
       menu.addMenuCommand(@workspace.testMenu, "CustomMenu", "CustomItem", "script()");
@@ -1027,7 +1028,7 @@ tests:
   - name: "menu.buildMenuBar - returns false without error"
     description: "buildMenuBar should return false in headless without throwing error"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.testMenu);
       menu.addMenuCommand(@workspace.testMenu, "File", "New", "test()");
@@ -1044,7 +1045,7 @@ tests:
   - name: "menu.install - returns false without error"
     description: "install should return false in headless without throwing error"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.testMenu);
       menu.addMenuCommand(@workspace.testMenu, "Custom", "Test", "test()");
@@ -1061,7 +1062,7 @@ tests:
   - name: "menu.isInstalled - returns false without error"
     description: "isInstalled should return false in headless without throwing error"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.testMenu);
 
@@ -1077,7 +1078,7 @@ tests:
   - name: "menu.remove - returns false without error"
     description: "remove should return false in headless without throwing error"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.testMenu);
       menu.addMenuCommand(@workspace.testMenu, "File", "Test", "test()");
@@ -1094,20 +1095,19 @@ tests:
   - name: "menu.clearMenubar - returns true without error"
     description: "clearMenubar affects OS menubar, but should not error in headless"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       # clearMenubar operates on OS menu bar, not a menubar object
       # In headless, it should be a noop that returns true
       local(result = menu.clearMenubar());
-      local(noError = true);
-      return noError
+      return (result == true)
     expected_success: true
     expected_result: "true"
 
   - name: "menu.toggle - returns false without error"
     description: "toggle should return false in headless without throwing error"
     skip: true
-    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    skip_reason: "TDD: Menu verb implementations pending (menuverbs.c headless support)"
     script: |
       new(menubarType, @workspace.testMenu);
       menu.addMenuCommand(@workspace.testMenu, "File", "Toggle", "test()");
