@@ -10,6 +10,7 @@ CFLAGS = -std=c17 -Wall -Wextra -O0 -g -fpascal-strings \
          -DHEADLESS_USE_REAL_OPLANGTEXT \
          -DHEADLESS_TEST_PORTABLE_FILE -DHEADLESS_LINKS_REAL_DB \
          -DHEADLESS_USE_REAL_TABLEPACK -DHEADLESS_USE_REAL_TABLEVALTOTABLE \
+         -DHEADLESS_LINKS_REAL_MENUVERBS \
          -DUNIX_COMPILE -DC_LIBRARY -DNO_OS_INLINE
 
 # Architecture support (for universal binary builds)

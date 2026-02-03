@@ -1,12 +1,20 @@
 /*
- * headless_menu_stubs.c - Menu editor stubs for headless build
+ * headless_menu_stubs.c - Menu stubs for headless builds
  *
- * These are stub implementations for menueditor.c functions that are called
- * by menuverbs.c and menupack.c. The real menueditor.c is a GUI-only file
- * and not included in headless builds.
+ * This file provides two categories of stubs:
  *
- * The menuverb functions (menuverbgetsize, menuverbpack, etc.) are provided
- * by the real menuverbs.c which IS included in headless builds.
+ * 1. menueditor.c stubs (always included):
+ *    Stub implementations for GUI-only menueditor.c functions that are called
+ *    by menuverbs.c and menupack.c. The real menueditor.c is GUI-only and not
+ *    included in headless builds.
+ *
+ * 2. menuverbs.c stubs (conditional via HEADLESS_LINKS_REAL_MENUVERBS):
+ *    When HEADLESS_LINKS_REAL_MENUVERBS is NOT defined (e.g., save_migration_tests),
+ *    stub implementations for menuverb* functions are provided. These simplified
+ *    stubs handle database migration without requiring full GUI infrastructure.
+ *
+ *    When HEADLESS_LINKS_REAL_MENUVERBS IS defined (e.g., frontier-cli),
+ *    the real menuverbs.c provides these functions with full functionality.
  */
 
 #include "frontier.h"
@@ -399,5 +407,123 @@ boolean meloadscriptoutline (hdlmenurecord hm, hdlheadrecord hnode,
     if (fljustloaded) *fljustloaded = false;
     return (false); /* Scripts not loaded in headless mode */
 }
+
+/*
+ * menuverbs.c stub implementations for headless builds that DON'T link real menuverbs.c.
+ *
+ * When HEADLESS_LINKS_REAL_MENUVERBS is defined (e.g., frontier-cli), the real
+ * menuverbs.c provides these functions. When it's NOT defined (e.g., save_migration_tests),
+ * these stubs provide minimal implementations sufficient for database migration.
+ */
+#ifndef HEADLESS_LINKS_REAL_MENUVERBS
+
+#include "langexternal.h"
+#include "strings.h"
+#include "dbinternal.h"
+#include "logging.h"
+
+boolean menuverbgetdisplaystring (hdlexternalvariable h, bigstring bs) {
+    (void) h; copyctopstring("menu", bs); return true;
+}
+
+boolean menuverbgettypestring (hdlexternalvariable h, bigstring bs) {
+    (void) h; copyctopstring("menu", bs); return true;
+}
+
+boolean menuverbsetdirty (hdlexternalvariable h, boolean fldirty) {
+    (void) h; (void) fldirty; return false;
+}
+
+boolean menuverbmemorypack (hdlexternalvariable h, Handle *hp) {
+    (void) h; if (hp) *hp = nil; return false;
+}
+
+boolean menuverbmemoryunpack (Handle hpacked, long *ixload, hdlexternalvariable *h) {
+    (void) hpacked; (void) ixload; (void) h; return false;
+}
+
+boolean menuverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handle *hp, boolean *flnew) {
+    /*
+     * Context-aware menu packing for migration.
+     * During headless migration, menu externals are preserved as database references
+     * without materializing their data. We just pack the v6 address as-is.
+     */
+    (void) ctx;  /* Context not needed for address passthrough */
+
+    if ((h == nil) || (hp == nil))
+        return false;
+
+    dbaddress adr = (**h).oldaddress;
+    if (adr == nildbaddress)
+        adr = (dbaddress) (**h).variabledata;
+    if (adr == nildbaddress) {
+        if (flnew)
+            *flnew = false;
+        return false;
+    }
+
+    /* During migration, mark as new address (will be allocated in destination) */
+    if (flnew)
+        *flnew = true;
+
+    (**h).oldaddress = adr;
+    return pushlongondiskhandle((long) adr, *hp);
+}
+
+boolean menuverbpack (hdlexternalvariable h, Handle *hp, boolean *flnew) {
+    /* Wrapper for backward compatibility - uses global mode state */
+    return menuverbpack_internal(NULL, h, hp, flnew);
+}
+
+boolean menuverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *h) {
+    long rawadr = 0;
+    if (!loadlongfromdiskhandle(hpacked, ixload, &rawadr))
+        return false;
+    return langnewexternalvariable(false, rawadr, h);
+}
+
+boolean menuverbpacktotext (hdlexternalvariable h, Handle htext) {
+    (void) h; (void) htext; return false;
+}
+
+boolean menuverbgetsize (hdlexternalvariable h, long *size) {
+    (void) h; if (size) *size = 0; return true;
+}
+
+boolean menuverbgettimes (hdlexternalvariable h, int64_t *tc, int64_t *tm) {
+    (void) h; if (tc) *tc = 0; if (tm) *tm = 0; return false;
+}
+
+boolean menuverbsettimes (hdlexternalvariable h, int64_t tc, int64_t tm) {
+    (void) h; (void) tc; (void) tm; return false;
+}
+
+boolean menuverbfindusedblocks (hdlexternalvariable h, bigstring bspath) {
+    (void) h; if (bspath) setemptystring(bspath); return false;
+}
+
+boolean menuverbfind (hdlexternalvariable h, boolean *flzoom) {
+    (void) h; if (flzoom) *flzoom = false; return false;
+}
+
+boolean menuverbdispose (hdlexternalvariable h, boolean fldisk) {
+    (void) h; (void) fldisk; return true;
+}
+
+boolean menuverbnew (Handle hdata, hdlexternalvariable *hv) {
+    (void) hdata; (void) hv; return false;
+}
+
+boolean menuverbinmemory_context (const db_context *ctx, hdlexternalvariable hvariable) {
+    /*
+     * Menu externals are not materialized during headless migration.
+     * Mark as "in memory" to skip actual loading, but keep the address for packing.
+     */
+    (void) ctx;
+    (**hvariable).flinmemory = true;
+    return true;
+}
+
+#endif /* !HEADLESS_LINKS_REAL_MENUVERBS */
 
 #endif /* FRONTIER_HEADLESS */
