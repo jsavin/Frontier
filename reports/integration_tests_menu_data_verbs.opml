@@ -2,21 +2,18 @@
 <opml version="2.0">
   <head>
     <title>Menu Data Verbs (menu_data_verbs)</title>
-    <dateCreated>Tue, 03 Feb 2026 02:57:04 GMT</dateCreated>
+    <dateCreated>Tue, 03 Feb 2026 03:20:43 GMT</dateCreated>
   </head>
   <body>
     <outline text="menu.addMenuCommand - create new menu and add item - Add a command to a new menubar, creating the menu if it doesn't exist">
       <outline text="Metadata">
         <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verbs not yet compiled in headless mode"/>
+        <outline text="skip_reason: TDD: Menu verbs return 'not implemented' in headless stubs (tests/headless_menu_verbs.c)"/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="# Create a new menubar object"/>
         <outline text="new(menubarType, @workspace.testMenu)"/>
-        <outline text="# Add a command to a menu named &quot;File&quot; (creates menu if needed)"/>
         <outline text="local(ok = menu.addMenuCommand(@workspace.testMenu, &quot;File&quot;, &quot;New&quot;, &quot;dialog.alert(\&quot;New!\&quot;)&quot;))"/>
-        <outline text="# Clean up"/>
         <outline text="delete(@workspace.testMenu)"/>
         <outline text="return ok"/>
       </outline>
@@ -24,12 +21,11 @@
     <outline text="menu.addMenuCommand - add multiple items to same menu - Add multiple commands to the same menu">
       <outline text="Metadata">
         <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verbs not yet compiled in headless mode"/>
+        <outline text="skip_reason: TDD: Menu verbs return 'not implemented' in headless stubs (tests/headless_menu_verbs.c)"/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
         <outline text="new(menubarType, @workspace.testMenu)"/>
-        <outline text="# Add multiple items"/>
         <outline text="menu.addMenuCommand(@workspace.testMenu, &quot;Edit&quot;, &quot;Cut&quot;, &quot;edit.cut()&quot;)"/>
         <outline text="menu.addMenuCommand(@workspace.testMenu, &quot;Edit&quot;, &quot;Copy&quot;, &quot;edit.copy()&quot;)"/>
         <outline text="local(ok = menu.addMenuCommand(@workspace.testMenu, &quot;Edit&quot;, &quot;Paste&quot;, &quot;edit.paste()&quot;))"/>
@@ -71,12 +67,11 @@
     <outline text="menu.deleteMenuCommand - delete existing item - Delete a command that exists in the menu">
       <outline text="Metadata">
         <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verbs not yet compiled in headless mode"/>
+        <outline text="skip_reason: TDD: Menu verbs return 'not implemented' in headless stubs (tests/headless_menu_verbs.c)"/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
         <outline text="new(menubarType, @workspace.testMenu)"/>
-        <outline text="# Add then delete"/>
         <outline text="menu.addMenuCommand(@workspace.testMenu, &quot;File&quot;, &quot;ToDelete&quot;, &quot;script()&quot;)"/>
         <outline text="local(ok = menu.deleteMenuCommand(@workspace.testMenu, &quot;File&quot;, &quot;ToDelete&quot;))"/>
         <outline text="delete(@workspace.testMenu)"/>

@@ -39,6 +39,7 @@
 #include "shellhooks.h"
 #include "strings.h"
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
+#include "byteorder_helpers.h" /* 2026-02-02 Codex: Consolidated host/disk byte order helpers */
 #include "db.h" /* 2025-12-24 Codex: for dbgetdestinationdatabase */
 #include "db_format.h" /* 2025-11-23 Codex: BE helpers for memory serialization */
 #include <assert.h>
@@ -1396,23 +1397,7 @@ boolean concatheapstrings (hdlstring *h1, hdlstring *h2, hdlstring *hreturned) {
 	} /%concatheapstrings%/
 */
 
-static inline __attribute__((unused)) uint32_t memory_host_to_disk_uint32(uint32_t value) {
-#if defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
-    return __builtin_bswap32(value);
-#else
-    return value;
-#endif
-}
-
-static inline __attribute__((unused)) uint32_t memory_disk_to_host_uint32(uint32_t value) {
-#if defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
-    return __builtin_bswap32(value);
-#else
-    return value;
-#endif
-}
-
-
+/* Byte order helpers now in byteorder_helpers.h (2026-02-02 consolidation) */
 
 boolean pushhandle (Handle hsource, Handle hdest) {
 	
@@ -1805,7 +1790,7 @@ boolean debugmergehandles (char * filename, unsigned long linenumber, unsigned l
 	
 	sizefirsthandle = gethandlesize (h1);
 	assert ((uint64_t) sizefirsthandle <= UINT32_MAX);
-	storesizefirsthandle = memory_host_to_disk_uint32 ((uint32_t) sizefirsthandle);
+	storesizefirsthandle = host_to_disk_uint32 ((uint32_t) sizefirsthandle);
 	
 	sizesecondhandle = gethandlesize (h2);
 	
@@ -1920,7 +1905,7 @@ boolean debugunmergehandles (char * filename, unsigned long linenumber, unsigned
     printf("[unmerge] stored raw=0x%08x\n", storedsize);
 #endif
 
-    sizefirsthandle = (long) memory_disk_to_host_uint32 (storedsize);
+    sizefirsthandle = (long) disk_to_host_uint32 (storedsize);
 
 #ifdef DEBUG_SERIALIZER
     printf("[unmerge] converted sizefirst=%ld\n", sizefirsthandle);
@@ -2060,7 +2045,7 @@ boolean mergehandles (Handle h1, Handle h2, Handle *hmerged) {
 
 	sizefirsthandle = gethandlesize (h1);
 	assert ((uint64_t) sizefirsthandle <= UINT32_MAX);
-	storesizefirsthandle = memory_host_to_disk_uint32 ((uint32_t) sizefirsthandle);
+	storesizefirsthandle = host_to_disk_uint32 ((uint32_t) sizefirsthandle);
 
 	sizesecondhandle = gethandlesize (h2);
 
@@ -2174,7 +2159,7 @@ boolean unmergehandles (Handle hmerged, Handle *hfirst, Handle *hsecond) {
 #ifdef DEBUG_SERIALIZER
     printf("[unmerge] stored raw=0x%08x\n", storedsize);
 #endif
-    sizefirsthandle = (long) memory_disk_to_host_uint32 (storedsize);
+    sizefirsthandle = (long) disk_to_host_uint32 (storedsize);
 #ifdef DEBUG_SERIALIZER
     printf("[unmerge] converted sizefirst=%ld\n", sizefirsthandle);
 #endif

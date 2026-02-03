@@ -64,6 +64,7 @@
 #endif
 // 2025-11-28 Codex: Use db_context when dereferencing externals during hash packing.
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
+#include "byteorder_helpers.h" /* 2026-02-02 Codex: Consolidated host/disk byte order helpers */
 
 /* Forward declare disk record types needed for static assertions */
 typedef union tydiskvaluedata_v7 {
@@ -489,128 +490,7 @@ typedef struct tydiskvaluerecord {		/*4.0.1b1 dmb*/
 	dbaddress adr;	/*address of actual scalar value*/
 	} tydiskvaluerecord;
 
-
-static inline int32_t host_to_disk_int32(int32_t value) {
-#if defined(SWAP_BYTE_ORDER)
-	long temp = (long) value;
-	db_format_write_be32(&temp, (uint32_t) temp);
-	return (int32_t) temp;
-#else
-	return value;
-#endif
-}
-
-static inline int16_t host_to_disk_int16(int16_t value) {
-#if defined(SWAP_BYTE_ORDER)
-	short temp = (short) value;
-	memtodiskshort (temp);
-	return (int16_t) temp;
-#else
-	return value;
-#endif
-}
-
-static inline int32_t disk_to_host_int32(int32_t value) {
-#if defined(SWAP_BYTE_ORDER)
-	long temp = (long) value;
-	disktomemlong (temp);
-	return (int32_t) temp;
-#else
-	return value;
-#endif
-}
-
-static inline int16_t disk_to_host_int16(int16_t value) {
-#if defined(SWAP_BYTE_ORDER)
-	short temp = (short) value;
-	disktomemshort (temp);
-	return (int16_t) temp;
-#else
-	return value;
-#endif
-}
-
-static inline int64_t host_to_disk_int64(int64_t value) {
-#if defined(SWAP_BYTE_ORDER)
-	uint64_t temp = (uint64_t) value;
-	db_format_write_be64(&temp, temp);
-	return (int64_t) temp;
-#else
-	return value;
-#endif
-}
-
-static inline int64_t disk_to_host_int64(int64_t value) {
-#if defined(SWAP_BYTE_ORDER)
-	uint64_t temp = (uint64_t) value;
-	temp = db_format_read_be64((const unsigned char *) &temp);
-	return (int64_t) temp;
-#else
-	return value;
-#endif
-}
-
-static inline uint64_t host_to_disk_double_bits(double value) {
-	uint64_t bits = 0;
-	memcpy(&bits, &value, sizeof(bits));
-	db_format_write_be64(&bits, bits);
-	return bits;
-}
-
-static inline double disk_to_host_double_bits(uint64_t bits) {
-	uint64_t host = db_format_read_be64((const unsigned char *) &bits);
-	double value = 0.0;
-	memcpy(&value, &host, sizeof(value));
-	return value;
-}
-
-static inline dbaddress host_to_disk_dbaddress(dbaddress value) {
-#if defined(SWAP_BYTE_ORDER)
-	if (sizeof (dbaddress) == 8) {
-		unsigned long long temp = (unsigned long long) value;
-#if defined(__clang__) || defined(__GNUC__) || defined(__GNUG__)
-		temp = __builtin_bswap64(temp);
-#else
-		temp = ((temp & 0x00000000000000FFULL) << 56) |
-		       ((temp & 0x000000000000FF00ULL) << 40) |
-		       ((temp & 0x0000000000FF0000ULL) << 24) |
-		       ((temp & 0x00000000FF000000ULL) << 8)  |
-		       ((temp & 0x000000FF00000000ULL) >> 8)  |
-		       ((temp & 0x0000FF0000000000ULL) >> 24) |
-		       ((temp & 0x00FF000000000000ULL) >> 40) |
-		       ((temp & 0xFF00000000000000ULL) >> 56);
-#endif
-		return (dbaddress) temp;
-	}
-	return (dbaddress) host_to_disk_int32((int32_t) value);
-#else
-	return value;
-#endif
-}
-
-static inline dbaddress disk_to_host_dbaddress(dbaddress value) {
-#if defined(SWAP_BYTE_ORDER)
-	if (sizeof (dbaddress) == 8) {
-		unsigned long long temp = (unsigned long long) value;
-#if defined(__clang__) || defined(__GNUC__) || defined(__GNUG__)
-		temp = __builtin_bswap64(temp);
-#else
-		temp = ((temp & 0x00000000000000FFULL) << 56) |
-		       ((temp & 0x000000000000FF00ULL) << 40) |
-		       ((temp & 0x0000000000FF0000ULL) << 24) |
-		       ((temp & 0x00000000FF000000ULL) << 8)  |
-		       ((temp & 0x000000FF00000000ULL) >> 8)  |
-		       ((temp & 0x0000FF0000000000ULL) >> 24) |
-		       ((temp & 0x00FF000000000000ULL) >> 40) |
-		       ((temp & 0xFF00000000000000ULL) >> 56);
-#endif
-		return (dbaddress) temp;
-	}
-	return (dbaddress) disk_to_host_int32((int32_t) value);
-#else
-	return value;
-#endif
-}
+/* Byte order helpers now in byteorder_helpers.h (2026-02-02 consolidation) */
 
 static boolean write_disk_uint32 (handlestream *s, uint32_t value) {
 	uint32_t disk = (uint32_t) host_to_disk_int32((int32_t) value);
