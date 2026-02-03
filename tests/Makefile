@@ -190,6 +190,7 @@ LANG_RUNTIME_SOURCES = \
     ../portable/paige_text_extractor.c \
     headless_pict_stubs.c \
     headless_menu_stubs.c \
+    headless_menu_globals.c \
     headless_search_stubs.c \
     headless_mac_compat.c \
     headless_langregexp_stub.c \

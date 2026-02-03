@@ -714,6 +714,49 @@ static boolean meunpackmenustructure_legacy (Handle hpacked, hdlmenurecord *hmen
 
 /* Modern (v7+) pack/unpack. For now, reuse legacy implementation but keep the fork explicit. */
 /* Modern (v7+) pack/unpack with BE64 addresses and reserved padding. */
+
+/* Host-to-disk byte order conversion helpers (return big-endian values) */
+static inline uint16_t host_to_disk_uint16(uint16_t value) {
+#ifdef SWAP_BYTE_ORDER
+    return (uint16_t)doshortswap((short)value);
+#else
+    return value;
+#endif
+}
+
+static inline uint32_t host_to_disk_uint32(uint32_t value) {
+#ifdef SWAP_BYTE_ORDER
+    return (uint32_t)dolongswap((long)value);
+#else
+    return value;
+#endif
+}
+
+static inline uint64_t host_to_disk_uint64(uint64_t value) {
+#ifdef SWAP_BYTE_ORDER
+    return (uint64_t)dolonglongswap((long long)value);
+#else
+    return value;
+#endif
+}
+
+/* Disk-to-host byte order conversion helpers (from big-endian values) */
+static inline uint64_t disk_to_host_uint64(uint64_t value) {
+#ifdef SWAP_BYTE_ORDER
+    return (uint64_t)dolonglongswap((long long)value);
+#else
+    return value;
+#endif
+}
+
+static inline uint32_t disk_to_host_uint32(uint32_t value) {
+#ifdef SWAP_BYTE_ORDER
+    return (uint32_t)dolongswap((long)value);
+#else
+    return value;
+#endif
+}
+
 typedef struct tysavedmenuinfo_v7 {
 	uint16_t versionnumber;     /* v7+ marker */
 	uint16_t _pad;              /* align to 64-bit */

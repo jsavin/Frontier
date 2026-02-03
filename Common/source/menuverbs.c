@@ -52,6 +52,7 @@
 #include "cancoon.h"
 #include "kernelverbdefs.h"
 #include "file.h"
+#include "db_format.h"
 #include "logging.h"
 
 
@@ -150,7 +151,7 @@ boolean menuverbunload (hdlexternalvariable hvariable) {
 
 		/* Single-point state transition: in-memory -> on-disk */
 		if (!external_set_ondisk(hvariable, savedaddress)) {
-			log_error(LOG_COMP_MENU, "menuverbunload: failed to transition to on-disk state (savedaddress=0x%llx)",
+			log_error(LOG_COMP_EXTERNAL, "menuverbunload: failed to transition to on-disk state (savedaddress=0x%llx)",
 					(unsigned long long)savedaddress);
 			return false;
 			}
@@ -849,50 +850,51 @@ boolean menuwindowopen (hdlexternalvariable hvariable, hdlwindowinfo *hinfo) {
 	} /*menuwindowopen*/
 
 
+#ifndef FRONTIER_HEADLESS
 boolean menuedit (hdlexternalvariable hvariable, hdlwindowinfo hparent, ptrfilespec fs, bigstring bstitle, rectparam rzoom) {
-	
+
 	//
 	// 2006-09-16 creedon: on Mac, set window proxy icon
 	//
 	// 5.0d19 dmb: set flwindowopen; use locals, not menu globals.
 	//
-	
+
 	register hdlmenuvariable hv = (hdlmenuvariable) hvariable;
 	hdlmenurecord hm;
 	Rect rwindow;
 	WindowPtr w;
 	hdlwindowinfo hi;
-	
+
 	if ((**hv).flinmemory) {
-			
+
 		if (shellfinddatawindow ((Handle) (**hv).variabledata, &hi)) {
-			
+
 			if ((*rzoom).top > -2)
 				shellbringtofront (hi);
-			
+
 			return (true);
 			}
 		}
-		
+
 	if (!menuverbinmemory (hv)) // error swapping menurecord into memory
 		return (false);
-		
+
 	hm = (hdlmenurecord) (**hv).variabledata;
-	
+
 	rwindow = (**hm).menuwindowrect; // window comes up where it was last time
-	
-	if (!newchildwindow (idmenueditorconfig, hparent, &rwindow, rzoom, bstitle, &w)) 
+
+	if (!newchildwindow (idmenueditorconfig, hparent, &rwindow, rzoom, bstitle, &w))
 		return (false);
-	
+
 	getwindowinfo (w, &hi);
-	
+
 	(**hi).hdata = (Handle) hm; // link data into shell's structure
-	
+
 	if ( fs != nil ) {
-	
+
 		(**hi).fspec = *fs;
-		
-		
+
+
 			if (macfilespecisresolvable (fs))
 				SetWindowProxyCreatorAndType ( w, 'LAND', 'FTmb', kOnSystemDisk );
 				
@@ -911,10 +913,11 @@ boolean menuedit (hdlexternalvariable hvariable, hdlwindowinfo hparent, ptrfiles
 		shellsetwindowchanges (hi, true);
 	
 	windowzoom (w); // show the window to the user
-	
+
 	return (true);
-	
+
 	} // menuedit
+#endif /* !FRONTIER_HEADLESS */
 
 
 static boolean menudisposevariable (hdlexternalvariable hvariable, boolean fldisk) {
@@ -1906,40 +1909,64 @@ static boolean menufunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 	setbooleanvalue (false, v); /*by default, menu functions return false*/
 	
 	switch (token) {/*these verbs don't need any special globals pushed*/
-		
+
 		case buildmenubarfunc:
 			if (!langcheckparamcount (hparam1, 0)) /*shouldn't have any parameters*/
 				return (false);
-			
+
+			#ifdef FRONTIER_HEADLESS
+			/* GUI-only operation - return false in headless mode */
+			(*v).data.flvalue = false;
+			#else
 			(*v).data.flvalue = menubuildverb ();
-			
+			#endif
+
 			return (true);
-		
+
 		case clearmenubarfunc:
 			if (!langcheckparamcount (hparam1, 0))
 				return (false);
-			
+
+			#ifdef FRONTIER_HEADLESS
+			/* GUI-only operation - return true (no-op success) in headless mode */
+			(*v).data.flvalue = true;
+			#else
 			(*v).data.flvalue = menuclearverb ();
-			
+			#endif
+
 			return (true);
-		
+
 		case isinstalledfunc:
 			if (!menuisinstalledverb (hparam1, v))
 				goto error;
-			
+
 			return (true);
-		
+
 		case installfunc:
+			#ifdef FRONTIER_HEADLESS
+			/* GUI-only operation - return false in headless mode */
+			(void) hparam1;
+			(*v).data.flvalue = false;
+			return (true);
+			#else
 			if (!menuinstallverb (hparam1, v))
 				goto error;
-			
+
 			return (true);
-		
+			#endif
+
 		case removefunc:
+			#ifdef FRONTIER_HEADLESS
+			/* GUI-only operation - return false in headless mode */
+			(void) hparam1;
+			(*v).data.flvalue = false;
+			return (true);
+			#else
 			if (!menuremoveverb (hparam1, v))
 				goto error;
-			
+
 			return (true);
+			#endif
 		
 		case addmenucommandfunc:
 			if (!addmenucommandverb (hparam1, false, v))
@@ -1967,95 +1994,105 @@ static boolean menufunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 		} /*switch*/
 	
 	/*be sure there's a menu window in front -- set menueditor.c globals*/
-	
+
+	#ifdef FRONTIER_HEADLESS
+	/*
+	 * In headless mode, verbs that require the menu editor window are
+	 * GUI-only and return false. We don't have langfindtargetwindow.
+	 */
+	(void) targetwindow;
+	return (true); /* Already set booleanvalue to false above */
+	#else
+
 	if (!langfindtargetwindow (idmenuprocessor, &targetwindow)) { /*all other verbs require an outline window in front*/
-		
+
 		errornum = nomenuerror;
-		
+
 		goto error;
 		}
-	
+
 	shellpushglobals (targetwindow); /*following verbs assume that a menubar is pushed*/
-	
+
 	(*shellglobals.gettargetdataroutine) (idmenuprocessor); /*set op globals*/
-	
+
 	mecheckglobals (); /*copy handles from menudata to globals*/
-	
+
 	fl = false; /*default return value*/
-	
+
 	switch (token) { /*these verbs assume that the menueditor globals are set*/
-		
+
 		case zoomscriptfunc:
 			if (!langcheckparamcount (hparam1, 0))
 				return (false);
-			
+
 			(*v).data.flvalue = mezoomscriptwindow ();
-			
+
 			fl = true;
-			
+
 			break;
-			
+
 		/*
 		case findscriptfunc: {
 			bigstring bs;
 			boolean flinscript;
-			
+
 			flnextparamislast = true;
-			
+
 			if (!getstringvalue (hparam1, 1, searchparams.bsfind))
 				break;
-			
+
 			(*v).data.flvalue = mesearchoutline (false, searchparams.flwraparound, &flinscript);
-			
+
 			mepostcursormove ();
-			
+
 			fl = true;
-			
+
 			break;
 			}
-		
+
 		case findfunc: {
 			bigstring bs;
-			
+
 			flnextparamislast = true;
-			
+
 			if (!getstringvalue (hparam1, 1, searchparams.bsfind))
 				break;
-			
+
 			(*v).data.flvalue = opflatfind (false, true);
-			
+
 			mepostcursormove ();
-			
+
 			fl = true;
-			
+
 			break;
 			}
 		*/
-		
+
 		case getscriptfunc:
 			fl = menugetscriptverb (hparam1, v);
-			
+
 			break;
-		
+
 		case setscriptfunc:
 			fl = menusetscriptverb (hparam1, v);
-			
+
 			break;
-		
+
 		case getcommandkeyfunc:
 			fl = menugetcommandkeyverb (hparam1, v);
-			
+
 			break;
-			
+
 		case setcommandkeyfunc:
 			fl = menusetcommandkeyverb (hparam1, v);
-			
+
 			break;
 		} /*switch*/
-	
+
 	shellpopglobals ();
-	
+
 	return (fl);
+	#endif /* !FRONTIER_HEADLESS */
 	
 	error:
 	

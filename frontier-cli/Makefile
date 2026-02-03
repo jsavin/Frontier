@@ -149,7 +149,9 @@ RUNTIME_SOURCES = \
     ../Common/source/headless_selection.c \
     ../Common/source/shell_api.c \
     ../Common/source/shell_api_headless.c \
-    ../Common/source/sysshellcall.c
+    ../Common/source/sysshellcall.c \
+    ../Common/source/menupack.c \
+    ../Common/source/menuverbs.c
 
 # Headless adapters mirrored from tests/
 HEADLESS_STUBS = \
@@ -160,6 +162,7 @@ HEADLESS_STUBS = \
     ../portable/paige_text_extractor.c \
     $(TESTSDIR)/headless_pict_stubs.c \
     $(TESTSDIR)/headless_menu_stubs.c \
+    $(TESTSDIR)/headless_menu_globals.c \
     $(TESTSDIR)/headless_search_stubs.c \
     $(TESTSDIR)/headless_mac_compat.c \
     $(TESTSDIR)/headless_langregexp_stub.c \

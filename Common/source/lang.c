@@ -85,6 +85,8 @@ boolean flcontinue = false; /*for loops*/
 
 boolean flreturn = false; /*for return op*/
 
+boolean flintryflag = false; /*if true, errors are being captured by try block*/
+
 boolean flscriptrunning = false; /*for nesting within thread*/
 
 boolean flscriptresting = false; /*for being friendly, performance-wise*/
