@@ -537,3 +537,586 @@ tests:
       return true
     expected_success: true
     expected_result: "true"
+
+  # ==========================================================================
+  # menu.addSubMenu() and menu.deleteSubMenu() Tests
+  # Submenus allow composing menubars from other menubar objects
+  # ==========================================================================
+
+  - name: "menu.addSubMenu - add submenu to existing menu"
+    description: "Add a pre-existing menubar as a submenu within another menubar"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      # Create the parent menubar
+      new(menubarType, @workspace.parentMenu);
+      menu.addMenuCommand(@workspace.parentMenu, "File", "New", "fileNew()");
+
+      # Create the submenu menubar
+      new(menubarType, @workspace.subMenu);
+      menu.addMenuCommand(@workspace.subMenu, "Recent", "File1.txt", "openRecent(1)");
+      menu.addMenuCommand(@workspace.subMenu, "Recent", "File2.txt", "openRecent(2)");
+
+      # Add submenu to File menu
+      local(ok = menu.addSubMenu(@workspace.parentMenu, "File", @workspace.subMenu));
+
+      # Clean up
+      delete(@workspace.parentMenu);
+      delete(@workspace.subMenu);
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  - name: "menu.addSubMenu - add as new top-level menu with empty menuName"
+    description: "Using empty string for menuName adds submenu as new top-level menu"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.parentMenu);
+
+      # Create submenu
+      new(menubarType, @workspace.subMenu);
+      menu.addMenuCommand(@workspace.subMenu, "Tools", "Calculator", "calc()");
+
+      # Add as top-level (empty menuName)
+      local(ok = menu.addSubMenu(@workspace.parentMenu, "", @workspace.subMenu));
+
+      delete(@workspace.parentMenu);
+      delete(@workspace.subMenu);
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  - name: "menu.addSubMenu - creates menu if menuName doesn't exist"
+    description: "If menuName doesn't exist, it should be created"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.parentMenu);
+      # parentMenu is empty - no "Custom" menu exists yet
+
+      new(menubarType, @workspace.subMenu);
+      menu.addMenuCommand(@workspace.subMenu, "Sub", "Item", "doIt()");
+
+      # This should create "Custom" menu and add submenu to it
+      local(ok = menu.addSubMenu(@workspace.parentMenu, "Custom", @workspace.subMenu));
+
+      delete(@workspace.parentMenu);
+      delete(@workspace.subMenu);
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  - name: "menu.addSubMenu - submenu address must exist"
+    description: "Adding a submenu from nonexistent address should fail"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.parentMenu);
+
+      # Try to add submenu from address that doesn't exist
+      try {
+        local(ok = menu.addSubMenu(@workspace.parentMenu, "File", @workspace.doesNotExist));
+        delete(@workspace.parentMenu);
+        return "should_have_failed"
+      } else {
+        delete(@workspace.parentMenu);
+        return "error_caught"
+      }
+    expected_success: true
+    expected_result: "error_caught"
+
+  - name: "menu.deleteSubMenu - delete existing submenu"
+    description: "Delete a menu from the menubar by name"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.testMenu);
+
+      # Add some menus
+      menu.addMenuCommand(@workspace.testMenu, "File", "New", "fileNew()");
+      menu.addMenuCommand(@workspace.testMenu, "Edit", "Undo", "editUndo()");
+      menu.addMenuCommand(@workspace.testMenu, "Help", "About", "helpAbout()");
+
+      # Delete the Edit menu
+      local(ok = menu.deleteSubMenu(@workspace.testMenu, "Edit"));
+
+      delete(@workspace.testMenu);
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  - name: "menu.deleteSubMenu - delete nonexistent menu returns false"
+    description: "Attempting to delete a menu that doesn't exist returns false"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.testMenu);
+      menu.addMenuCommand(@workspace.testMenu, "File", "New", "fileNew()");
+
+      # Try to delete menu that doesn't exist
+      local(ok = menu.deleteSubMenu(@workspace.testMenu, "NoSuchMenu"));
+
+      delete(@workspace.testMenu);
+      return ok
+    expected_success: true
+    expected_result: "false"
+
+  - name: "menu.deleteSubMenu - can delete single item too"
+    description: "deleteSubMenu can delete a single item, not just a submenu"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.testMenu);
+      menu.addMenuCommand(@workspace.testMenu, "File", "SingleItem", "doIt()");
+
+      # deleteSubMenu on a single item should still work
+      local(ok = menu.deleteSubMenu(@workspace.testMenu, "SingleItem"));
+
+      delete(@workspace.testMenu);
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  # ==========================================================================
+  # sizeOf() Tests for Menubar Objects
+  # sizeOf() returns total headings in menu outline regardless of expansion
+  # ==========================================================================
+
+  - name: "sizeOf - empty menubar"
+    description: "sizeOf on empty menubar returns 0"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.testMenu);
+      local(size = sizeOf(@workspace.testMenu));
+      delete(@workspace.testMenu);
+      return size
+    expected_success: true
+    expected_result: "0"
+
+  - name: "sizeOf - counts all items"
+    description: "sizeOf counts menus and their items"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.testMenu);
+
+      # Add File menu with 3 items (1 menu + 3 items = 4 headings)
+      menu.addMenuCommand(@workspace.testMenu, "File", "New", "new()");
+      menu.addMenuCommand(@workspace.testMenu, "File", "Open", "open()");
+      menu.addMenuCommand(@workspace.testMenu, "File", "Save", "save()");
+
+      local(size = sizeOf(@workspace.testMenu));
+      delete(@workspace.testMenu);
+      return size
+    expected_success: true
+    expected_result: "4"
+
+  - name: "sizeOf - counts multiple menus"
+    description: "sizeOf counts all headings across multiple menus"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.testMenu);
+
+      # File menu: 1 + 2 items = 3
+      menu.addMenuCommand(@workspace.testMenu, "File", "New", "new()");
+      menu.addMenuCommand(@workspace.testMenu, "File", "Open", "open()");
+
+      # Edit menu: 1 + 3 items = 4
+      menu.addMenuCommand(@workspace.testMenu, "Edit", "Undo", "undo()");
+      menu.addMenuCommand(@workspace.testMenu, "Edit", "Cut", "cut()");
+      menu.addMenuCommand(@workspace.testMenu, "Edit", "Copy", "copy()");
+
+      # Total: 3 + 4 = 7
+      local(size = sizeOf(@workspace.testMenu));
+      delete(@workspace.testMenu);
+      return size
+    expected_success: true
+    expected_result: "7"
+
+  - name: "sizeOf - counts submenus and their contents"
+    description: "sizeOf includes submenu items in the count"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.parentMenu);
+      new(menubarType, @workspace.subMenu);
+
+      # Parent has File with 1 item
+      menu.addMenuCommand(@workspace.parentMenu, "File", "New", "new()");
+
+      # Submenu has 2 items
+      menu.addMenuCommand(@workspace.subMenu, "Recent", "Doc1", "open1()");
+      menu.addMenuCommand(@workspace.subMenu, "Recent", "Doc2", "open2()");
+
+      # Add submenu to File
+      menu.addSubMenu(@workspace.parentMenu, "File", @workspace.subMenu);
+
+      # Expected: File(1) + New(1) + Recent submenu structure
+      # The exact count depends on how submenus are represented
+      local(size = sizeOf(@workspace.parentMenu));
+
+      delete(@workspace.parentMenu);
+      delete(@workspace.subMenu);
+
+      # Size should be > 2 (at minimum File + New + submenu content)
+      return (size > 2)
+    expected_success: true
+    expected_result: "true"
+
+  # ==========================================================================
+  # Cursor Navigation Tests
+  # Using op verbs to navigate within menubar and access items
+  # ==========================================================================
+
+  - name: "cursor navigation - navigate to item and getScript"
+    description: "Navigate to specific menu item using op verbs, then get its script"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.testMenu);
+
+      # Build menu: File > New, Open, Save
+      menu.addMenuCommand(@workspace.testMenu, "File", "New", "fileNew()");
+      menu.addMenuCommand(@workspace.testMenu, "File", "Open", "fileOpen()");
+      menu.addMenuCommand(@workspace.testMenu, "File", "Save", "fileSave()");
+
+      # Set target to menubar
+      target.set(@workspace.testMenu);
+
+      # Navigate: firstSummit (File), expand, go right (into items), down 1 (to Open)
+      op.firstSummit();
+      op.expand();
+      op.go(right, 1);
+      op.go(down, 1);
+
+      # Get script from "Open" item
+      menu.getScript(@workspace.retrievedScript);
+
+      # Verify we got the right script
+      local(match = (workspace.retrievedScript == "fileOpen()"));
+
+      delete(@workspace.testMenu);
+      try {delete(@workspace.retrievedScript)};
+      return match
+    expected_success: true
+    expected_result: "true"
+
+  - name: "cursor navigation - navigate and setScript"
+    description: "Navigate to item, change its script, verify change"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.testMenu);
+      menu.addMenuCommand(@workspace.testMenu, "File", "Test", "originalScript()");
+
+      target.set(@workspace.testMenu);
+
+      # Navigate to File > Test
+      op.firstSummit();
+      op.expand();
+      op.go(right, 1);
+
+      # Create new script and set it
+      workspace.newScript = "modifiedScript()";
+      menu.setScript(@workspace.newScript);
+
+      # Get it back to verify
+      menu.getScript(@workspace.verifyScript);
+      local(match = (workspace.verifyScript == "modifiedScript()"));
+
+      delete(@workspace.testMenu);
+      delete(@workspace.newScript);
+      try {delete(@workspace.verifyScript)};
+      return match
+    expected_success: true
+    expected_result: "true"
+
+  - name: "cursor navigation - navigate to third item"
+    description: "Navigate deeper into menu structure"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.testMenu);
+
+      # File menu with 4 items
+      menu.addMenuCommand(@workspace.testMenu, "File", "New", "script1()");
+      menu.addMenuCommand(@workspace.testMenu, "File", "Open", "script2()");
+      menu.addMenuCommand(@workspace.testMenu, "File", "Save", "script3()");
+      menu.addMenuCommand(@workspace.testMenu, "File", "Close", "script4()");
+
+      target.set(@workspace.testMenu);
+
+      # Navigate to Save (3rd item)
+      op.firstSummit();
+      op.expand();
+      op.go(right, 1);
+      op.go(down, 2);
+
+      menu.getScript(@workspace.retrieved);
+      local(match = (workspace.retrieved == "script3()"));
+
+      delete(@workspace.testMenu);
+      try {delete(@workspace.retrieved)};
+      return match
+    expected_success: true
+    expected_result: "true"
+
+  # ==========================================================================
+  # menu.zoomScript() Tests
+  # In headless mode, zoomScript should be a noop returning false
+  # ==========================================================================
+
+  - name: "menu.zoomScript - returns false in headless mode"
+    description: "zoomScript is a GUI operation, should return false headless"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.testMenu);
+      menu.addMenuCommand(@workspace.testMenu, "File", "Test", "script()");
+
+      target.set(@workspace.testMenu);
+      op.firstSummit();
+      op.expand();
+      op.go(right, 1);
+
+      # zoomScript opens editor window - noop in headless
+      local(result = menu.zoomScript());
+
+      delete(@workspace.testMenu);
+      return result
+    expected_success: true
+    expected_result: "false"
+
+  # ==========================================================================
+  # Persistence Tests
+  # Verify menubar structure survives save and reload
+  # ==========================================================================
+
+  - name: "persistence - save and reload menubar structure"
+    description: "Create menubar, save to file, reload, verify structure intact"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      # Create menubar with structure
+      new(menubarType, @workspace.testMenu);
+      menu.addMenuCommand(@workspace.testMenu, "File", "New", "fileNew()");
+      menu.addMenuCommand(@workspace.testMenu, "File", "Open", "fileOpen()");
+      menu.addMenuCommand(@workspace.testMenu, "Edit", "Undo", "editUndo()");
+
+      # Remember size before save
+      local(sizeBefore = sizeOf(@workspace.testMenu));
+
+      # Save to a file
+      local(testPath = "{FRONTIER_TEST_TMP_DIR}/menu_persist_test.root7");
+      file.new(testPath, 'TABL');
+      local(fref = file.open(testPath, true));
+      db.save(@workspace.testMenu, fref);
+      file.close(fref);
+
+      # Delete from memory
+      delete(@workspace.testMenu);
+
+      # Reload
+      fref = file.open(testPath, false);
+      db.load(fref, @workspace.reloadedMenu);
+      file.close(fref);
+
+      # Verify size matches
+      local(sizeAfter = sizeOf(@workspace.reloadedMenu));
+      local(sizeMatch = (sizeBefore == sizeAfter));
+
+      # Clean up
+      delete(@workspace.reloadedMenu);
+      file.delete(testPath);
+
+      return sizeMatch
+    expected_success: true
+    expected_result: "true"
+
+  - name: "persistence - script content survives save/reload"
+    description: "Verify script text is preserved through save/reload cycle"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      local(testScript = "dialog.alert(\"Hello World!\")");
+
+      # Create menubar with script
+      new(menubarType, @workspace.testMenu);
+      menu.addMenuCommand(@workspace.testMenu, "Test", "Item", testScript);
+
+      # Save
+      local(testPath = "{FRONTIER_TEST_TMP_DIR}/menu_script_persist.root7");
+      file.new(testPath, 'TABL');
+      local(fref = file.open(testPath, true));
+      db.save(@workspace.testMenu, fref);
+      file.close(fref);
+
+      delete(@workspace.testMenu);
+
+      # Reload
+      fref = file.open(testPath, false);
+      db.load(fref, @workspace.reloadedMenu);
+      file.close(fref);
+
+      # Navigate to item and get script
+      target.set(@workspace.reloadedMenu);
+      op.firstSummit();
+      op.expand();
+      op.go(right, 1);
+      menu.getScript(@workspace.retrievedScript);
+
+      # Compare
+      local(match = (workspace.retrievedScript == testScript));
+
+      # Clean up
+      delete(@workspace.reloadedMenu);
+      try {delete(@workspace.retrievedScript)};
+      file.delete(testPath);
+
+      return match
+    expected_success: true
+    expected_result: "true"
+
+  - name: "persistence - menu names survive save/reload"
+    description: "Verify menu and item names are preserved"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.testMenu);
+      menu.addMenuCommand(@workspace.testMenu, "CustomMenu", "CustomItem", "script()");
+
+      # Save
+      local(testPath = "{FRONTIER_TEST_TMP_DIR}/menu_names_persist.root7");
+      file.new(testPath, 'TABL');
+      local(fref = file.open(testPath, true));
+      db.save(@workspace.testMenu, fref);
+      file.close(fref);
+
+      delete(@workspace.testMenu);
+
+      # Reload
+      fref = file.open(testPath, false);
+      db.load(fref, @workspace.reloadedMenu);
+      file.close(fref);
+
+      # Navigate and get the headline text to verify name
+      target.set(@workspace.reloadedMenu);
+      op.firstSummit();
+      local(menuName = op.getLineText());
+
+      op.expand();
+      op.go(right, 1);
+      local(itemName = op.getLineText());
+
+      # Clean up
+      delete(@workspace.reloadedMenu);
+      file.delete(testPath);
+
+      return (menuName == "CustomMenu") and (itemName == "CustomItem")
+    expected_success: true
+    expected_result: "true"
+
+  # ==========================================================================
+  # Category B Tests - Verify No Errors (Updated)
+  # These GUI-only verbs should return false without causing UserTalk errors
+  # ==========================================================================
+
+  - name: "menu.buildMenuBar - returns false without error"
+    description: "buildMenuBar should return false in headless without throwing error"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.testMenu);
+      menu.addMenuCommand(@workspace.testMenu, "File", "New", "test()");
+
+      # Should return false, NOT throw an error
+      local(result = menu.buildMenuBar());
+      local(noError = true);  # If we got here, no error was thrown
+
+      delete(@workspace.testMenu);
+      return (result == false) and noError
+    expected_success: true
+    expected_result: "true"
+
+  - name: "menu.install - returns false without error"
+    description: "install should return false in headless without throwing error"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.testMenu);
+      menu.addMenuCommand(@workspace.testMenu, "Custom", "Test", "test()");
+
+      target.set(@workspace.testMenu);
+      local(result = menu.install());
+      local(noError = true);
+
+      delete(@workspace.testMenu);
+      return (result == false) and noError
+    expected_success: true
+    expected_result: "true"
+
+  - name: "menu.isInstalled - returns false without error"
+    description: "isInstalled should return false in headless without throwing error"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.testMenu);
+
+      target.set(@workspace.testMenu);
+      local(result = menu.isInstalled());
+      local(noError = true);
+
+      delete(@workspace.testMenu);
+      return (result == false) and noError
+    expected_success: true
+    expected_result: "true"
+
+  - name: "menu.remove - returns false without error"
+    description: "remove should return false in headless without throwing error"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.testMenu);
+      menu.addMenuCommand(@workspace.testMenu, "File", "Test", "test()");
+
+      target.set(@workspace.testMenu);
+      local(result = menu.remove());
+      local(noError = true);
+
+      delete(@workspace.testMenu);
+      return (result == false) and noError
+    expected_success: true
+    expected_result: "true"
+
+  - name: "menu.clearMenubar - returns true without error"
+    description: "clearMenubar affects OS menubar, but should not error in headless"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      # clearMenubar operates on OS menu bar, not a menubar object
+      # In headless, it should be a noop that returns true
+      local(result = menu.clearMenubar());
+      local(noError = true);
+      return noError
+    expected_success: true
+    expected_result: "true"
+
+  - name: "menu.toggle - returns false without error"
+    description: "toggle should return false in headless without throwing error"
+    skip: true
+    skip_reason: "TDD: Menu verb implementations pending in headless_menu_verbs.c"
+    script: |
+      new(menubarType, @workspace.testMenu);
+      menu.addMenuCommand(@workspace.testMenu, "File", "Toggle", "test()");
+
+      target.set(@workspace.testMenu);
+      local(result = menu.toggle());
+      local(noError = true);
+
+      delete(@workspace.testMenu);
+      return (result == false) and noError
+    expected_success: true
+    expected_result: "true"
