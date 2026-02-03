@@ -1,8 +1,8 @@
 # Integration tests for menu data manipulation verbs in headless mode
 #
 # These tests verify that Category A menu verbs (data manipulation) work in
-# headless mode. Currently these verbs are NOT compiled in headless builds,
-# so tests are expected to FAIL until implementation is complete.
+# headless mode. Menu verbs are now compiled in headless builds (PR #383),
+# but individual verb implementations are still in progress.
 #
 # Reference: planning/phase3/HEADLESS_MENU_OPERATIONS_PLAN.md
 #
