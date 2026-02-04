@@ -52,142 +52,73 @@ extern boolean pophashtable (void);
 extern hdlhashtable currenthashtable;
 extern hdlhashtable roottable;
 
-/* Compiles a script node from the ODB into executable code. */
-static boolean headless_compile_script (hdlhashnode hnode, hdltreenode *hcode) {
-    tyvaluerecord val = (**hnode).val;
-    hdlexternalvariable hv;
-    Handle htext;
-    long signature = 0;
-    bigstring bsname;
+/* External declaration for langrunhandletraperror - runs scripts like REPL does */
+extern boolean langrunhandletraperror (Handle htext, bigstring bsresult, bigstring bserror);
 
-    *hcode = nil;
+/* Runs startup scripts by calling startup.startupScript() using the same
+ * execution path as the REPL. This ensures identical context: proper process
+ * management, error trapping for try blocks, and correct error flag handling.
+ *
+ * Previously we iterated through system.startup and called langruncode() directly,
+ * which bypassed process setup and error trapping, causing try block errors to
+ * be logged even when caught.
+ */
+static boolean headless_run_startup_script (void) {
+    Handle htext = nil;
+    bigstring bsresult;
+    bigstring bserror;
+    const char *script = "startup.startupScript()";
+    size_t script_len = strlen(script);
+    boolean ok;
 
-    gethashkey(hnode, bsname);
-    log_debug(LOG_COMP_STARTUP, "compile_script: compiling '%s'", stringbaseaddress(bsname));
+    log_debug(LOG_COMP_STARTUP, "run_startup_script: calling startup.startupScript()");
 
-    if (val.valuetype != externalvaluetype) {
-        log_debug(LOG_COMP_STARTUP, "compile_script: '%s' not external (type=%d)",
-                stringbaseaddress(bsname), val.valuetype);
+    /* Allocate handle for script text */
+    if (!newemptyhandle(&htext)) {
+        log_error(LOG_COMP_STARTUP, "run_startup_script: out of memory allocating script handle");
         return false;
     }
 
-    hv = (hdlexternalvariable) val.data.externalvalue;
-    if ((**hv).id != idscriptprocessor) {
-        log_debug(LOG_COMP_STARTUP, "compile_script: '%s' not script (id=%d)",
-                stringbaseaddress(bsname), (**hv).id);
+    if (!sethandlesize(htext, (long)script_len)) {
+        disposehandle(htext);
+        log_error(LOG_COMP_STARTUP, "run_startup_script: out of memory resizing script handle");
         return false;
     }
 
-    log_debug(LOG_COMP_STARTUP, "compile_script: '%s' getting langtext", stringbaseaddress(bsname));
-    if (!opverbgetlangtext (hv, false, &htext, &signature)) {
-        log_debug(LOG_COMP_STARTUP, "compile_script: '%s' opverbgetlangtext failed",
-                stringbaseaddress(bsname));
+    HLock(htext);
+    if (*htext == NULL) {
+        disposehandle(htext);
+        log_error(LOG_COMP_STARTUP, "run_startup_script: handle lock failed");
         return false;
     }
+    memcpy(*htext, script, script_len);
+    HUnlock(htext);
 
-    log_debug(LOG_COMP_STARTUP, "compile_script: '%s' building tree (textsize=%ld)",
-            stringbaseaddress(bsname), htext ? gethandlesize(htext) : 0);
-    if (!scriptbuildtree (htext, signature, hcode)) {
-        log_debug(LOG_COMP_STARTUP, "compile_script: '%s' scriptbuildtree failed",
-                stringbaseaddress(bsname));
-        return false;
-    }
+    /* Initialize result and error strings */
+    setemptystring(bsresult);
+    setemptystring(bserror);
 
-    if (*hcode != nil)
-        (***hcode).nodeval.data.longvalue = (long) hnode;
-
-    log_debug(LOG_COMP_STARTUP, "compile_script: '%s' compiled successfully", stringbaseaddress(bsname));
-    return true;
-}
-
-/* Compiles and executes a single script node. */
-static boolean headless_execute_script (hdlhashnode hnode) {
-    hdltreenode hcode = nil;
-    tyvaluerecord result;
-    bigstring bsname;
-    boolean ok = true;
-
-    gethashkey(hnode, bsname);
-
-    setnilvalue (&result);
-
-    log_debug(LOG_COMP_STARTUP, "execute_script: processing '%s'", stringbaseaddress(bsname));
-
-    if (!headless_compile_script (hnode, &hcode)) {
-        log_debug(LOG_COMP_STARTUP, "execute_script: '%s' skipped (not a script)", stringbaseaddress(bsname));
-        return true; /* skip non-script nodes */
-    }
-
-    log_debug(LOG_COMP_STARTUP, "execute_script: '%s' executing script with langruncode", stringbaseaddress(bsname));
-
-    ok = langruncode (hcode, NULL, &result);
-
-    log_debug(LOG_COMP_STARTUP, "execute_script: '%s' langruncode returned %d",
-            stringbaseaddress(bsname), ok);
+    /* Run using langrunhandletraperror - same path as REPL.
+     * This properly:
+     * - Pushes a process context
+     * - Sets up error trapping (so try blocks work correctly)
+     * - Resets fllangerror after execution
+     *
+     * Note: langrunhandletraperror consumes htext - do not access after this call.
+     */
+    ok = langrunhandletraperror(htext, bsresult, bserror);
 
     if (ok) {
-        log_debug(LOG_COMP_STARTUP, "execute_script: '%s' completed successfully", stringbaseaddress(bsname));
-        disposetmpvalue (&result);
+        log_debug(LOG_COMP_STARTUP, "run_startup_script: completed successfully");
+        if (stringlength(bsresult) > 0) {
+            char result_cstr[256];
+            copyptocstring(bsresult, result_cstr);
+            log_debug(LOG_COMP_STARTUP, "run_startup_script: result = %s", result_cstr);
+        }
     } else {
-        log_debug(LOG_COMP_STARTUP, "execute_script: '%s' FAILED", stringbaseaddress(bsname));
-    }
-
-    return ok;
-}
-
-/* Visitor callback that executes each script in a table.
- * Continue visiting even if individual scripts fail - log errors but don't stop.
- * This allows headless mode to be more forgiving of startup script issues.
- */
-static boolean headless_run_script_visit (hdlhashnode hnode, ptrvoid refcon) {
-    boolean *had_error = (boolean *)refcon;
-    bigstring bsname;
-
-    gethashkey(hnode, bsname);
-
-    if (!headless_execute_script (hnode)) {
-        log_warn(LOG_COMP_STARTUP, "run_script_visit: '%s' failed, continuing with remaining scripts",
-                stringbaseaddress(bsname));
-        if (had_error)
-            *had_error = true;
-        /* Continue visiting remaining scripts */
-    }
-    return true;
-}
-
-/* Runs all scripts in a named system table (e.g., "startup").
- * In headless mode, script failures are logged but don't stop execution.
- * Returns true if table was processed (even with errors), false only for fatal issues.
- */
-static boolean headless_run_special_scripts (const unsigned char *bsspecialtable) {
-    hdlhashtable htable;
-    bigstring bstemp;
-    long ctitems = 0;
-    boolean had_error = false;
-
-    copystring (bsspecialtable, bstemp);
-
-    log_debug(LOG_COMP_STARTUP, "run_special_scripts: looking for table '%s'", stringbaseaddress(bstemp));
-
-    if (!findnamedtable (systemtable, bstemp, &htable)) {
-        log_debug(LOG_COMP_STARTUP, "run_special_scripts: table '%s' not found (nothing to do)",
-                stringbaseaddress(bstemp));
-        return true; /* nothing to do */
-    }
-
-    hashcountitems(htable, &ctitems);
-    log_debug(LOG_COMP_STARTUP, "run_special_scripts: table '%s' has %ld items, visiting",
-            stringbaseaddress(bstemp), ctitems);
-
-    /* Visit all scripts, continuing even if some fail */
-    hashtablevisit (htable, &headless_run_script_visit, &had_error);
-
-    if (had_error) {
-        log_warn(LOG_COMP_STARTUP, "run_special_scripts: table '%s' completed with errors",
-                stringbaseaddress(bstemp));
-    } else {
-        log_debug(LOG_COMP_STARTUP, "run_special_scripts: table '%s' completed successfully",
-                stringbaseaddress(bstemp));
+        char error_cstr[256];
+        copyptocstring(bserror, error_cstr);
+        log_warn(LOG_COMP_STARTUP, "run_startup_script: failed with error: %s", error_cstr);
     }
 
     /* Return true to allow startup to continue - errors are logged but not fatal */
@@ -227,12 +158,12 @@ boolean loadsystemscripts (void) {
         return true;
     }
 
-    log_debug(LOG_COMP_STARTUP, "loadsystemscripts: running system.startup scripts");
-    if (!headless_run_special_scripts (namestartuptable)) {
-        log_error(LOG_COMP_STARTUP, "loadsystemscripts: failed to run system.startup");
+    log_debug(LOG_COMP_STARTUP, "loadsystemscripts: running startup.startupScript()");
+    if (!headless_run_startup_script ()) {
+        log_error(LOG_COMP_STARTUP, "loadsystemscripts: failed to run startup.startupScript()");
         return false;
     }
 
-    log_debug(LOG_COMP_STARTUP, "loadsystemscripts: skipping system.agents (not yet supported)");
+    log_debug(LOG_COMP_STARTUP, "loadsystemscripts: startup complete");
     return true;
 }

@@ -326,6 +326,8 @@ extern boolean flreplmode; /*if true, we're in interactive REPL mode (set by CLI
 
 extern unsigned short langerrordisable; /*6.1.1b2 AR: if > 0, don't execute langerrors*/
 
+extern unsigned short langerrorlogdisable; /*2026-02-04: if > 0, don't log errors but allow callbacks*/
+
 extern Handle tryerror; /*non-nil after try error, until else is evaluated*/
 
 extern Handle tryerrorstack; /*non-nil after try error, until else is evaluated*/

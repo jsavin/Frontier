@@ -145,13 +145,18 @@ static void headless_log_error(const bigstring bs) {
     short len = stringlength(bs);
     if (len <= 0)
         return;
+
+    /* 2026-02-04: Don't log errors caught by try blocks.
+     * When langerrorlogenabled() returns false, we're inside a try block
+     * and the error will be caught and handled - no need to log it. */
+    if (!langerrorlogenabled())
+        return;
+
     char buffer[512];
     if (len >= (short)sizeof(buffer))
         len = (short)sizeof(buffer) - 1;
     memcpy(buffer, stringbaseaddress(bs), (size_t)len);
     buffer[len] = '\0';
-    /* Note: Errors inside try blocks are normal control flow, but we still log them.
-     * A future enhancement could track try block state to log these at DEBUG level. */
     log_error(LOG_COMP_STARTUP, "headless lang error: %s", buffer);
 }
 

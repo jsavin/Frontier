@@ -1014,23 +1014,35 @@ static boolean langtryerror (bigstring bsmsg, ptrvoid refcon) {
 
 
 static boolean evaluatetry (hdltreenode htry, tyvaluerecord *valtree) {
-	
+
+	/*
+	2026-02-04: Also disable error logging while in try block.
+	Previously, try blocks only changed the error callback to langtryerror,
+	which captured errors but didn't prevent them from being logged.
+	Now we also call disablelangerrorlog() so caught errors aren't logged,
+	while still allowing the callback to capture the error message.
+	*/
+
 	register hdltreenode h = htry;
 	boolean fl;
 	langerrormessagecallback savecallback;
-	
+
 	assert (tryerror == nil);
 
 	#if fltryerrorstackcode
 		assert (tryerrorstack == nil);
 	#endif
-	
+
 	savecallback = langcallbacks.errormessagecallback;
-	
+
 	langcallbacks.errormessagecallback = &langtryerror;
-	
+
+	disablelangerrorlog (); /*suppress error logging but allow callback to capture error*/
+
 	fl = evaluatelist ((**h).param2, valtree);
-	
+
+	enablelangerrorlog (); /*restore error logging*/
+
 	langcallbacks.errormessagecallback = savecallback;
 	
 	if (!fllangerror) {

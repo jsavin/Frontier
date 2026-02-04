@@ -39,27 +39,50 @@ boolean fllangerror = false;  /*if true, the langerror dialog has already appear
 
 unsigned short langerrordisable = 0; /*it's possible to temporarily disable lang errors*/
 
+unsigned short langerrorlogdisable = 0; /*suppress logging but allow error callbacks (for try blocks)*/
+
 boolean flreplmode = false;  /*if true, we're in interactive REPL mode (set by CLI)*/
 
 
 
 
 void disablelangerror (void) {
-	
+
 	++langerrordisable;
 	} /*disablelangerror*/
 
 
 void enablelangerror (void) {
-	
+
 	--langerrordisable;
 	} /*enablelangerror*/
 
 
 boolean langerrorenabled (void) {
-	
+
 	return (langerrordisable == 0);
 	} /*langerrorenabled*/
+
+
+void disablelangerrorlog (void) {
+	/*
+	2026-02-04: Disable error logging without disabling error callbacks.
+	Used by try blocks - errors should be caught but not logged.
+	*/
+	++langerrorlogdisable;
+	} /*disablelangerrorlog*/
+
+
+void enablelangerrorlog (void) {
+
+	--langerrorlogdisable;
+	} /*enablelangerrorlog*/
+
+
+boolean langerrorlogenabled (void) {
+
+	return (langerrorlogdisable == 0);
+	} /*langerrorlogenabled*/
 
 
 /*

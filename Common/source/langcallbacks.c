@@ -228,13 +228,15 @@ boolean langerrormessage (bigstring bs) {
 	if (fllangerror) /*one message per script*/
 		return (true);
 
-	/* Headless/portable: safely print bigstring without VLAs or overflow */
-	{
+	/* Headless/portable: safely print bigstring without VLAs or overflow.
+	   2026-02-04: Check langerrorlogenabled() to suppress logging in try blocks.
+	   Try blocks disable logging but still need the callback to capture errors. */
+	if (langerrorlogenabled ()) {
 		char cs[256]; /* bigstring max length is 255 */
 		copyptocstring(bs, cs);
 		log_error(LOG_COMP_LANG, "%s", cs);
 	}
-	
+
 	fllangerror = true; /*only display once for each script*/
 	
 	

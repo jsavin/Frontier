@@ -851,6 +851,12 @@ extern void enablelangerror (void);
 
 extern boolean langerrorenabled (void);
 
+extern void disablelangerrorlog (void); /*suppress logging only, not callbacks*/
+
+extern void enablelangerrorlog (void);
+
+extern boolean langerrorlogenabled (void);
+
 extern void langerror (short);
 
 extern void lang3paramerror (short, const bigstring, const bigstring, const bigstring);
