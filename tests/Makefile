@@ -111,6 +111,7 @@ MIGRATION_SOURCES = \
     headless_shell.c \
     components/test_migration_portable.c
 
+# Note: ophoist.c is required because opverbnew() calls oppopallhoists() defined there.
 LANG_RUNTIME_SOURCES = \
     ../Common/source/logging.c \
     ../Common/source/lang.c \

@@ -2523,10 +2523,6 @@ boolean dbassignhandle_context(const db_context *context, Handle h, dbaddress *a
     return dbassignhandle(h, adr);
 }
 
-/* Forward declarations from db.c for explicit header size functions */
-extern boolean dbreference_with_header_size(dbaddress adr, long maxbytes, ptrvoid pdata, long header_size);
-extern boolean dbrefhandle_with_header_size(dbaddress adr, Handle *h, long header_size);
-
 boolean dbrefhandle_context(const db_context *context, dbaddress adr, Handle *h) {
     /*
     2025-12-20: Explicit context - NO GUARDS, NO SAVE/RESTORE

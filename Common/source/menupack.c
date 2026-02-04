@@ -973,8 +973,8 @@ boolean meloadmenurecord_internal (const db_context *ctx, dbaddress adr,
 		tysavedmenuinfo_disk_legacy legacy_info;
 
 #if defined(FRONTIER_HEADLESS)
-		log_error(LOG_COMP_OP, "meloadmenurecord_internal: reading v6 adr=0x%llx sizeof(legacy_info)=%zu databasedata=%p ctx_db=%p fldatabasesaveas=%d",
-		        (unsigned long long)adr, sizeof(legacy_info), (void*)databasedata, (void*)ctx->database, (int)fldatabasesaveas);
+		log_debug(LOG_COMP_OP, "meloadmenurecord_internal: reading v6 adr=0x%llx sizeof(legacy_info)=%zu",
+		        (unsigned long long)adr, sizeof(legacy_info));
 #endif
 
 		if (!dbreference_context (ctx, adr, sizeof (legacy_info), &legacy_info)) {
@@ -985,17 +985,6 @@ boolean meloadmenurecord_internal (const db_context *ctx, dbaddress adr,
 			return (false);
 		}
 
-		/* Dump first 20 bytes of raw data for debugging */
-#if defined(FRONTIER_HEADLESS)
-		{
-			unsigned char *p = (unsigned char *)&legacy_info;
-			log_error(LOG_COMP_OP, "meloadmenurecord_internal: raw bytes: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
-			        p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7],
-			        p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15],
-			        p[16], p[17], p[18], p[19]);
-		}
-#endif
-
 		/* Convert legacy 32-bit disk format to in-memory 64-bit format */
 		/* All values in the legacy struct are stored big-endian on disk */
 		clearbytes (&info, sizeof (info));
@@ -1003,9 +992,8 @@ boolean meloadmenurecord_internal (const db_context *ctx, dbaddress adr,
 		/* Legacy 32-bit address is stored big-endian on disk */
 		outline_adr = (dbaddress) conditionallongswap (legacy_info.adroutline);
 #if defined(FRONTIER_HEADLESS)
-		log_error(LOG_COMP_OP, "meloadmenurecord_internal: v6 versionnumber=%d (raw=0x%04x BE) legacy_info.adroutline raw=0x%08x swapped=0x%llx",
-		        (int)info.versionnumber, (unsigned)legacy_info.versionnumber,
-		        legacy_info.adroutline, (unsigned long long)outline_adr);
+		log_debug(LOG_COMP_OP, "meloadmenurecord_internal: v6 versionnumber=%d outline_adr=0x%llx",
+		        (int)info.versionnumber, (unsigned long long)outline_adr);
 #endif
 		info.adroutline = outline_adr;
 		info.vertmin = conditionalshortswap(legacy_info.vertmin);
