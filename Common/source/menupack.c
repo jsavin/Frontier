@@ -1219,7 +1219,7 @@ boolean mecreaterefcontable_v7 (byte cmdkey, tykeyflags modifiers,
 
 	hdlhashtable htable = nil;
 	hdlhashtable hmodifiers = nil;
-	tyvaluerecord tableval;
+	tyvaluerecord tableval = {0};  /* Initialize to prevent uninitialized access in cleanup */
 	boolean fl = false;
 
 	*hpackedtable = nil;
@@ -1262,6 +1262,8 @@ boolean mecreaterefcontable_v7 (byte cmdkey, tykeyflags modifiers,
 			goto exit;
 		}
 
+		/* hashtableassign() transfers ownership of scriptval on success.
+		 * On failure, we must dispose scriptval ourselves. */
 		if (!hashtableassign(htable, bsHandlerScript, scriptval)) {
 			disposevaluerecord(scriptval, false);
 			goto exit;
@@ -1277,12 +1279,8 @@ boolean mecreaterefcontable_v7 (byte cmdkey, tykeyflags modifiers,
 exit:
 	/* Clean up the temporary table.
 	 * Note: tableval holds the external wrapper around htable.
-	 * Disposing the value will clean up the table. */
-	if (tableval.valuetype == externalvaluetype && !fl) {
-		disposevaluerecord(tableval, false);
-	}
-	else if (tableval.valuetype == externalvaluetype) {
-		/* On success, we still need to dispose the table since we packed it */
+	 * Disposing the value will clean up the table and any nested tables. */
+	if (tableval.valuetype == externalvaluetype) {
 		disposevaluerecord(tableval, false);
 	}
 
@@ -1383,7 +1381,9 @@ boolean meunpackrefcontable_v7 (Handle hpackedtable,
 				if (opvaltoscript(scriptval, &houtline)) {
 					/* Copy the outline since we're about to dispose the table */
 					if (!opcopyoutlinerecord(houtline, hscript)) {
-						*hscript = nil;
+						log_error(LOG_COMP_OP, "meunpackrefcontable_v7: failed to copy script outline");
+						disposevaluerecord(tableval, false);
+						return false;
 					}
 				}
 			}

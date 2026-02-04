@@ -178,7 +178,7 @@ boolean menuverbinmemory_context (const db_context *ctx, hdlexternalvariable hva
 		return (true);
 
 #if defined(FRONTIER_HEADLESS)
-	log_error(LOG_COMP_OP, "menuverbinmemory_context: START hdatabase=%p current=%p variabledata=0x%llx ctx=%p ctx_db=%p ctx_use64=%d",
+	log_debug(LOG_COMP_OP, "menuverbinmemory_context: START hdatabase=%p current=%p variabledata=0x%llx ctx=%p ctx_db=%p ctx_use64=%d",
 	        (void*)(**hv).hdatabase,
 	        (void*)databasedata,
 	        (unsigned long long)(**hv).variabledata,

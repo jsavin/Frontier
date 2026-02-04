@@ -1607,10 +1607,18 @@ boolean dbreference_with_header_size(dbaddress adr, long maxbytes, ptrvoid pdata
 	/*
 	Like dbreference_internal but uses explicit header size instead of sizeheader macro.
 	Needed during migration when global mode is locked but we need to read v6 blocks.
+
+	header_size: Must be 8 (v6) or 12 (v7). Other values are invalid.
 	*/
 	long ctbytes;
 	boolean flfree;
 	tyvariance variance;
+
+	/* Validate header_size - only 8 (v6) and 12 (v7) are valid */
+	if (header_size != 8 && header_size != 12) {
+		log_error(LOG_COMP_DB, "dbreference_with_header_size: invalid header_size %ld (must be 8 or 12)", header_size);
+		return (false);
+	}
 
 #if defined(FRONTIER_HEADLESS)
 	(void) dbnormalizeaddress(&adr);
@@ -1637,6 +1645,8 @@ boolean dbrefhandle_with_header_size(dbaddress adr, Handle *h, long header_size)
 	/*
 	Like dbrefhandle but uses explicit header size instead of sizeheader macro.
 	Needed during migration when global mode is locked but we need to read v6 blocks.
+
+	header_size: Must be 8 (v6) or 12 (v7). Other values are invalid.
 	*/
 	dbaddress a = adr;
 	register boolean fl;
@@ -1647,6 +1657,12 @@ boolean dbrefhandle_with_header_size(dbaddress adr, Handle *h, long header_size)
 	tyvariance variance;
 
 	*h = nil;
+
+	/* Validate header_size - only 8 (v6) and 12 (v7) are valid */
+	if (header_size != 8 && header_size != 12) {
+		log_error(LOG_COMP_DB, "dbrefhandle_with_header_size: invalid header_size %ld (must be 8 or 12)", header_size);
+		return (false);
+	}
 
 	if (a == nildbaddress)
 		return (false);
