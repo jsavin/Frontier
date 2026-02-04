@@ -353,7 +353,10 @@ boolean meloadoutline_internal (const db_context *ctx, dbaddress adr,
         log_debug(LOG_COMP_OP, "meloadoutline_internal: created new outline fl=%d", (int)fl);
     }
     else {
-        log_error(LOG_COMP_OP, "meloadoutline_internal: reading adr=0x%llx ctx_db=%p global_db=%p",
+        /* These are debug messages, not errors - menu loading in headless mode
+         * is expected to be deferred or skipped entirely. Failures here are
+         * normal and handled gracefully. */
+        log_debug(LOG_COMP_OP, "meloadoutline_internal: reading adr=0x%llx ctx_db=%p global_db=%p",
                 (unsigned long long)adr, (void*)(ctx ? ctx->database : nil), (void*)databasedata);
 
         if (ctx != nil) {
@@ -363,8 +366,9 @@ boolean meloadoutline_internal (const db_context *ctx, dbaddress adr,
         }
 
         if (!fl) {
-            /* Database read failed - leave *houtline as nil */
-            log_error(LOG_COMP_OP, "meloadoutline_internal: dbrefhandle FAILED adr=0x%llx", (unsigned long long)adr);
+            /* Database read failed - leave *houtline as nil. This is expected
+             * in headless mode where menus are intentionally deferred. */
+            log_debug(LOG_COMP_OP, "meloadoutline_internal: dbrefhandle FAILED adr=0x%llx", (unsigned long long)adr);
             oppopoutline ();
             return (false);
         }
@@ -372,14 +376,14 @@ boolean meloadoutline_internal (const db_context *ctx, dbaddress adr,
         {
             long hsize = gethandlesize(hpackedoutline);
             unsigned char *p = (unsigned char *) *hpackedoutline;
-            log_error(LOG_COMP_OP, "meloadoutline_internal: dbrefhandle OK, unpacking size=%ld first_bytes=%02x%02x%02x%02x",
+            log_debug(LOG_COMP_OP, "meloadoutline_internal: dbrefhandle OK, unpacking size=%ld first_bytes=%02x%02x%02x%02x",
                     hsize, hsize > 0 ? p[0] : 0, hsize > 1 ? p[1] : 0, hsize > 2 ? p[2] : 0, hsize > 3 ? p[3] : 0);
         }
 
         fl = opunpack (hpackedoutline, &ixload, houtline);
 
         if (!fl) {
-            log_error(LOG_COMP_OP, "meloadoutline_internal: opunpack FAILED");
+            log_debug(LOG_COMP_OP, "meloadoutline_internal: opunpack FAILED");
         }
 
         disposehandle (hpackedoutline);

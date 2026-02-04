@@ -1023,14 +1023,15 @@ boolean meloadmenurecord_internal (const db_context *ctx, dbaddress adr,
 
 	if (!meloadoutline_internal (ctx, outline_adr, &houtline)) {
 #if defined(FRONTIER_HEADLESS)
-		log_error(LOG_COMP_OP, "meloadmenurecord_internal: meloadoutline_internal FAILED");
+		/* Expected in headless mode - menus are intentionally deferred */
+		log_debug(LOG_COMP_OP, "meloadmenurecord_internal: meloadoutline_internal FAILED");
 #endif
 		return (false);
 	}
 
 	if (!mesetupmenurecord (&info, houtline, hmenurecord)) {
 #if defined(FRONTIER_HEADLESS)
-		log_error(LOG_COMP_OP, "meloadmenurecord_internal: mesetupmenurecord FAILED");
+		log_debug(LOG_COMP_OP, "meloadmenurecord_internal: mesetupmenurecord FAILED");
 #endif
 		opdisposeoutline (houtline, false);
 
